@@ -1105,3 +1105,634 @@ realtime case, the lead's `0108`, this function's first draft, and `award_presen
 every row one transaction writes carries the same instant. «The latest check-in» is not a thing you
 can order by; the epoch is defined by **day position** for that reason. **Never write a second
 ordering when a function already owns the answer.**
+
+
+---
+
+# Wave 12 plan — every session award pays at completion (`REQ-PTS-015`, `DEC-172`)
+
+Written 2026-09-22, planning-only first task. **Nothing below is built.** Contract 1 leads the
+section because `checkin` renders against it.
+
+## ★ CONTRACT 1 — the pending state (`REQ-CHK-018`, `REQ-PTS-015`), published
+
+The names follow `checkin`'s plan (`docs/plan/notes/checkin.md` § 2), so neither side renames anything.
+
+### The SQL function
+
+```sql
+create function public.session_award_state(p_session uuid)
+returns table (
+  state          text,   -- 'none' | 'pending' | 'paid' | 'incomplete'
+  points         int,    -- pending: the live rule's points; paid: the standing award's amount; else 0
+  days_attended  int,    -- days with an ACTIVE check-in by the caller
+  days_required  int,    -- the day count when require_all_days, else 1
+  day_count      int,    -- how many days the session has
+  missed_days    jsonb   -- incomplete only: [{"position": 2, "starts_at": "…"}], day order; else '[]'
+)
+language plpgsql stable security definer set search_path = '';
+
+revoke execute on function public.session_award_state(uuid) from public, anon;
+grant  execute on function public.session_award_state(uuid) to authenticated;
+```
+
+- **The caller only.** It takes no member. It reads `auth_member_id()` and `auth_org_id()` alone, the same
+  shape as `0114`'s `missed_attendance_days()`, so it cannot be pointed at anyone else. It is definer
+  because it calls `session_attendance_complete()` and `check_in_ceiling()`, both `service_role`-only.
+  The grant is deliberate (`DEC-152`): `authenticated` only, never `anon`, and it is not an underscore
+  name. `definer-exposure`'s anon allowlist does not change.
+- **Zero rows** when the session does not exist or is not in the caller's org. This is not an error, and it
+  does not reveal whether the session exists. **Exactly one row** otherwise.
+- **Computed, never stored.** It reads `scoring_rules`, `sessions`, `session_days`, `check_ins`,
+  `session_attendance_complete()`, `check_in_ceiling()` and `points_ledger`, and writes nothing.
+
+**The state, decided in this order:**
+
+| # | Condition | `state` | `points` |
+|---|---|---|---|
+| 1 | An attendance award stands: a `points_ledger` row of the caller's with `source = 'check_in'` for this session that no `reversal` names | `paid` | the sum of the standing rows (one row in practice) |
+| 2 | The session is `cancelled`; or the org's `check_in` rule is missing, disabled or worth ≤ 0; or ★ `attendance_award_barred(session, caller)` — the caller is an accepted presenter of the session (sync-1 ruling 3) | `none` | 0 |
+| 3 | The caller has no active check-in on any day of the session. This covers a presenter or staff member who did not check in, and a check-in that was removed | `none` | 0 |
+| 4 | The award can no longer be earned. **Either** the session is `completed`/`archived` and `session_attendance_complete()` is false, **or** `require_all_days` is on and some day has passed `check_in_ceiling()` with no active check-in by the caller | `incomplete` | 0 |
+| 5 | Otherwise: checked in, and the completion pass has not paid yet. This includes a completed session whose job has not yet run | `pending` | the rule's current `points`, exactly what `award_points()` will write |
+
+- **Row 1 comes first**, so a one-day award paid at check-in **before** this migration reads `paid`, which
+  is true.
+- **Row 4, before completion, is `checkin`'s semantic 4** (*«emit it as soon as a required day's ceiling
+  has passed»*). It is computed from `check_in_ceiling()`, the lead's one definition, never copied. It can
+  go back to `pending`: an admin may still mark the member present on that day (`REQ-CHK-017` has no
+  ceiling for an admin). That is correct, because the state is read from the data every time.
+- `missed_days` lists, for a completed session, every day without an active check-in. Before completion
+  it lists only the days whose ceiling has passed. Days are ordered by `position`.
+- `days_required` is `1` when `require_all_days` is off (`checkin`'s semantic 3).
+
+### The DAL function and its type (`src/lib/dal/points.ts`)
+
+```ts
+/** A day, as contract 7's `dayName()` takes it — the same shape as `MissedAttendance.days`. */
+export interface AwardDay {
+  position: number;
+  startsAt: string;
+}
+
+export type SessionAwardState =
+  | { state: "none" }
+  | { state: "pending"; points: number; daysAttended: number; daysRequired: number; dayCount: number }
+  | { state: "paid"; points: number }
+  | { state: "incomplete"; missedDays: AwardDay[]; daysAttended: number; daysRequired: number; dayCount: number };
+
+/** REQ-CHK-018: the CALLER's attendance award for one session. React `cache()`d, `requireSession()`
+ *  inside (through `sessionClient`), one RPC. Null when the session is not visible to the caller. A
+ *  malformed id is refused by Zod before the RPC and also returns null, never a thrown 22P02. */
+export const getSessionAwardState: (locale: string, sessionId: string) => Promise<SessionAwardState | null>;
+```
+
+- `points` is the caller's **own attendance award** only. It never includes company, streak, badge or
+  presenter amounts (`checkin`'s semantic 2).
+- A failed RPC **throws**, as every function in this module does. `checkin`'s plan catches it in its own
+  component (its Q4). The DAL does not swallow errors.
+- `dayCount` is on `pending` and `incomplete` beyond `checkin`'s draft. It is additive, and they may ignore
+  it.
+
+---
+
+## The one sentence the plan turns on
+
+**`award_points()` becomes the one place that knows when a session-tied award may be written.** It
+re-derives the answer at run time from `sessions.state`, and for a presenter award also from
+`session_presenters`. Every enqueuer (the hooks, the fan-out, the new presenter trigger, a job queued
+before this migration, `main`'s worker) can be early or late, and the ledger is still right.
+Everything else is enqueueing **existing jobs under existing keys**. So **no worker task changes
+behaviour**, and `main`'s worker on this SQL behaves exactly like the new one.
+
+## Code that contradicts the brief, or the brief left out
+
+1. **`attendance_removed()` pays `no_show` at removal whatever the session's state**
+   (`0113_award_at_completion.sql:320`). `REQ-PTS-015` says a removal before completion «leaves no
+   ledger row». The brief names only the attendance award. Under this plan the no-show waits for
+   completion too, where `evaluate_no_shows` already records it under the same key
+   (`no_show:no_show:<rsvp>:<member>:v1`).
+2. **`evaluate_session_attendance()` / `evaluate_member_attendance()` check no state**
+   (`0113:225`, `0113:178`). Their only caller is the completion job, but either one called on a running
+   session enqueues a payment. I gate the pay branch on `completed`/`archived`. The reversal branch stays
+   unconditional. Before completion it finds nothing, except an award paid at check-in before this
+   migration, and reversing that is correct.
+3. **`proposal_accepted` rows carry `session_id = null`** (`0031:56`). A reversal for «a presenter award
+   it holds **for that session**» cannot find them by `session_id`. It finds them by
+   `source = 'proposal_accepted' and source_id = sessions.proposal_id`.
+4. ★ **A directly created session's presenters are `accepted = false`, and nothing can make them `true`**
+   (`0020_session_creation.sql:100–103`; `sessions`' plan § (a) measured the same thing). The fan-out
+   pays `accepted` presenters only (`0031:81`), so **no presenter of an admin-created session has ever
+   been paid `session_delivered`, `attendee_bonus` or `rating_bonus`.** It matters to me because of
+   contract 2. If the owner's data fix (or `sessions`' Q1/Q2) turns those rows `true` **after** my
+   trigger is live, every completed session among them pays its presenters retroactively: 50 points
+   each, plus bonuses. Whether to pay them is the owner's call. The fix running **before** or **after**
+   promotion decides it (question 3).
+5. **A presenter can set their own `accepted`** (`0010:478–484`, the `session_presenters_update_self`
+   policy and its column grant). On a completed session my trigger pays on `false → true` and reverses on
+   `true → false`. A presenter toggling it would write an unbounded run of award/reversal pairs. The
+   ledger stays correct (net zero per cycle) but grows without limit. Question 4.
+6. **The attendance epoch does not carry over to presenter awards as-is.** `0113`'s
+   `attendance_award_epoch()` counts reversals of any `check_in` row on the session. For presenter awards
+   the family is `(rule_key, source, source_id, member)`. Section A3 defines it. With no reversal it is
+   `v1`: today's key, byte for byte.
+7. **`REQ-PTS-015` lists attendance, company, presenter and proposal awards only.** `rating_submitted`,
+   `comment` and `photo` also name a session and still pay at the act (`0029`). A rating can only follow
+   completion anyway. A comment or a photo during a live session still pays at once. I read that as
+   deliberate, because the requirement lists its four, and I change none of them (question 8).
+8. **Two catalogue rules have no writer at all:** `materials_uploaded` (10, presenter) and
+   `late_cancellation`. Nothing in `supabase/migrations/` or `worker/` pays either. This is not this
+   wave's; it is recorded so nobody looks for them in the completion pass.
+
+---
+
+## A1 · One-day attendance at completion — one rule, one moment
+
+**File:** `supabase/proposed/scoring/0007_award_at_completion.sql` (after contract 1's `0001`). Four
+functions re-created with `create or replace` and the same signatures. No new signature.
+
+| Function | Change |
+|---|---|
+| `attendance_recorded(uuid)` | `if v_days <= 1 or s.state in ('completed','archived')` (`0113:266`) becomes `if s.state in ('completed','archived')`. **The day count is no longer read.** Still evaluated immediately after completion, which is what pays a member marked present afterwards (`REQ-CHK-017`) and a member re-added after a removal. |
+| `evaluate_member_attendance(uuid, uuid, text)` | The **pay** branch returns unless the session is `completed`/`archived`, **before** it enqueues. The reversal branch is unchanged. |
+| `award_points(...)` | The `check_in` timing clause loses `count(*) > 1` (`0121:78`). `state not in ('completed','archived') → return`, for every session. The remaining `check_in` clauses (removed check-in, predicate, standing award, epoch) are verbatim. The presenter clauses are in A3. |
+| `attendance_removed(uuid)` | The `no_show` block (`0113:320`) runs only when the session is `completed`/`archived` (finding 1). The two reversal blocks are unchanged. |
+
+**Every path that can enqueue or write a `check_in` award, measured, and none pays before completion:**
+
+| Path | Latest body | How it reaches the ledger | Before completion, after this plan |
+|---|---|---|---|
+| `check_in()` (code) | `0120:205` → `attendance_recorded()` | enqueue `pts:check_in:<epoch>` | `attendance_recorded()` returns on state: **no job** |
+| `mark_checked_in_manually()` | `0120:296` → `attendance_recorded()` | the same | the same: **no job** |
+| `remove_check_in()` | `0120:335` → `attendance_removed()` | reversals; `no_show` | reversals find nothing (nothing paid); **no `no_show`** |
+| `evaluate_session_attendance()` | `0113:225` → `evaluate_member_attendance()` | enqueue | pay branch gated: **no job** |
+| a job already queued (before this migration, or by `main`'s worker) | `award_points()` | insert | the timing clause returns: **no row** |
+| the completion job `evaluate_no_shows` | `sessions_completion_fanout()` → `evaluate_session_attendance()` | enqueue `pts:check_in:<epoch>` → `award_points` | **this is the one moment** |
+
+**No branch on the number of days.** None of the four functions reads the day count for timing any more.
+`session_attendance_complete()` still decides *whether* (`REQ-SES-017`), and at `n = 1` that is «has an
+active check-in».
+
+**Keys:** unchanged. A one-day award is `check_in:check_in:<the only check-in>:<member>:v1`, which is
+`main`'s row, now written about an hour later. The job key `pts:check_in:<id>` and the payload are
+unchanged.
+
+**What was paid before the migration** (one-day sessions checked into and not yet completed at the push):
+row 1 of the table above. At completion `evaluate_member_attendance()` finds the award standing and writes
+nothing. A removal before completion reverses it. Nothing is paid twice, and nothing is left standing
+wrongly.
+
+## A2 · `proposal_accepted` at completion, under its existing key
+
+**File:** `0008_presenter_awards.sql`.
+
+- **`proposals_award_points()` and its trigger are dropped**, both in this file:
+  `drop trigger proposals_award_points on public.proposals; drop function public.proposals_award_points();`.
+  No code on `main` calls it; it is a trigger. `policy-diff` compares policies, and this is not one.
+  ★ **An approval pays nothing from this migration on.**
+- **`sessions_completion_fanout()`** (mine, `0031`) is re-created. The `evaluate_no_shows` job and the
+  two `award_presenter_points` jobs per presenter are **verbatim**. One loop is added: for each accepted
+  session presenter who **was on the proposal** (`new.proposal_id is not null`, and the member is
+  `proposals.proposer_id` or an `accepted and declined_at is null` row of `proposal_presenters`), enqueue
+  `award_points` with key **`pts:proposal_accepted:<proposal>:<member>`**. That is today's job key, and
+  the payload is `{rule:'proposal_accepted', member_id, source:'proposal_accepted', source_id:<proposal>,
+  session_id:?}`. The ledger key is today's: `proposal_accepted:proposal_accepted:<proposal>:<member>:v1`.
+  - ★ **A proposal approved and paid before this migration is never paid twice**: the same ledger key,
+    `on conflict do nothing`.
+  - **A session an admin created directly** has `proposal_id is null` and pays none.
+  - **A co-presenter who was on the proposal but is not a session presenter** (declined or removed) is
+    not paid. One paid at approval before the migration keeps that row: no event touches it. Question 6.
+  - `session_id`: **I recommend the session's id** (question 5). Today's rows carry `null`. With the
+    session set, `/app/me/points` shows the title and filters by it, and the topic board (`0042:81`
+    joins `sessions` on `session_id`) counts it under the session's category. The key does not include
+    the session, so either choice keeps it byte-identical.
+- **`award_points()` re-derives it** (A3's guard): `proposal_accepted` writes only when the session whose
+  `proposal_id = p_source_id` is `completed`/`archived` and the member is an accepted presenter of it. So
+  a `pts:proposal_accepted` job queued at an approval seconds before the push writes nothing when it
+  runs. The completion fan-out enqueues the same key again and pays then.
+
+## A3 · Presenter awards follow the presenter after completion
+
+**Contract 2, from my side:** `sessions` inserts and deletes `session_presenters` rows and never names a
+scoring function. **My trigger decides the money**, so `0010`'s direct admin policies are covered as well
+as `sessions`' RPCs.
+
+### The trigger (`0008_presenter_awards.sql`)
+
+```sql
+create function public.session_presenters_awards() returns trigger
+  language plpgsql security definer set search_path = '';
+create trigger session_presenters_awards
+  after insert or delete or update of accepted, declined_at on public.session_presenters
+  for each row execute function public.session_presenters_awards();
+```
+
+`was := old is an accepted presenter` (`old.accepted and old.declined_at is null`, on update and delete);
+`is := new is one` (on insert and update).
+
+- **`is and not was`, and the session is `completed`/`archived`:** enqueue the presenter's awards
+  **exactly as the fan-out would have**, using existing jobs under existing keys:
+  - `award_presenter_points` with key `pts:presenter:<S>:<M>` and payload `{session_id, member_id}`;
+  - the `:rating_bonus` job at `completed_at + 48 h`, **only if that is still in the future**. The
+    immediate job evaluates `rating_bonus` too, so a session completed more than 48 h ago needs one job;
+  - `award_points` with key `pts:proposal_accepted:<proposal>:<M>`, if the member was on the proposal
+    (A2's predicate).
+- **`was and not is`**, whatever the state: for each **standing** presenter award the member holds on the
+  session (`session_id = S and source in ('session_delivered','attendee_bonus','rating_bonus')`, or
+  `source = 'proposal_accepted' and source_id = S.proposal_id`), write **one compensating row**. This is
+  `0087`'s shape: `amount = -l.amount`, `source = 'reversal'`, `source_id = l.id`,
+  `session_id = l.session_id`, `rule_key = l.rule_key`, key `reversal:<l.id>:v1`,
+  `on conflict do nothing`. The reason is **«أُزيل من مقدّمي الجلسة»** (question 7). No update, no
+  delete (invariant 9). Before completion this finds nothing, except a `proposal_accepted` paid at
+  approval before this migration. **Reversing that is correct under the same rule**, and it is paid again
+  at completion under A3's epoch if the member is back by then.
+- **Guards:** the session row is gone (a cascade from a session delete) → return. The member row is gone
+  → return.
+- The trigger never raises. A failed award must not undo an admin's presenter change.
+
+### The guard in `award_points()` (in `0002`, where the function is re-created once)
+
+For `p_source in ('session_delivered','attendee_bonus','rating_bonus','proposal_accepted')` (the
+**presenter** sources), with the session resolved from `p_session`, or through `sessions.proposal_id`
+for `proposal_accepted`:
+
+1. The session is `completed`/`archived`, or **return**. This is `REQ-PTS-015`'s moment for every
+   presenter rule.
+2. `p_member` is an **accepted, not declined** row of `session_presenters` for the session, or
+   **return**. For `proposal_accepted` the member must also have been on the proposal.
+
+★ **Why clause 2 is load-bearing, and not defence in depth.** The fan-out queues a `:rating_bonus` job for
+**+48 h**. Remove a presenter at +1 h: the trigger reverses `session_delivered`. At +48 h the queued job
+runs, and **with A3's epoch** `session_delivered` would compute `v2` and pay the removed presenter again.
+Only a check at run time closes that. The same principle as `0088` and `0121`: re-derive from the table,
+never trust the payload.
+
+### The epoch for presenter awards
+
+For the four presenter sources, `v_epoch := 1 + count(reversal rows whose source_id is a ledger row of
+(p_member, p_rule, p_source, p_source_id))`.
+
+- **No reversal → `v1`: today's key, byte for byte**, so every existing key and every
+  `on conflict` replay is unchanged.
+- **Removed and re-added after completion:** the first award's `v1` is reversed, so the re-add pays
+  `v2`. Removed again, `v2` is reversed. Re-added, `v3`. There is never more than one standing row per
+  family, by induction: a row is written only under `v(reversed + 1)`, which is the key of the one that
+  would already stand.
+- It is a separate function, `presenter_award_epoch()` (definer, `service_role`), beside `0113`'s
+  `attendance_award_epoch()`. It is not a change to that function, whose family is per session for a
+  different reason (`0113` § 1).
+- **Caps still hold.** `attendee_bonus` (30) and `rating_bonus` (1) sum `amount` over member, session and
+  rule, and a reversal row carries the same `rule_key` and `session_id`, so a reversed award frees its
+  place.
+
+### Trace — added after completion, removed, re-added
+
+Session `S` completed; `P` added (`accepted`); one qualifying attendee `A` (epoch check-in `CI`).
+
+| # | Event | Ledger | `P` net on `S` |
+|---|---|---|---|
+| 1 | insert `P` accepted → trigger enqueues `pts:presenter:S:P`; the job runs | `session_delivered …:S:P:v1` +50; `attendee_bonus …:CI:P:v1` +2 | 52 |
+| 2 | delete `P` → trigger | two reversals, «أُزيل من مقدّمي الجلسة» | 0 |
+| 3 | the `:rating_bonus` job queued at step 1 runs | guard clause 2: `P` is not a presenter → **nothing** | 0 |
+| 4 | insert `P` again → the job runs | `…:v2` +50; `…:CI:P:v2` +2 | 52 |
+| 5 | the job replays | `v2` conflicts → nothing | 52 |
+
+### Found while measuring, and left alone unless ruled in
+
+- **An attendee re-added after completion does not re-pay the presenter's `attendee_bonus`.**
+  `attendance_removed()` reverses it; nothing re-runs `award_presenter_points`. This predates the wave.
+  A3's epoch makes it one line: `evaluate_member_attendance()`'s after-completion pay branch also
+  enqueues `pts:presenter:<S>:<P>` for each accepted presenter, an existing job under its existing key.
+  Question 9.
+- **`company_presenting_pct` / `company_attendance_pct` are evaluated once, at completion**, and a later
+  presenter or attendance change does not re-evaluate them. They are keyed per company per session, and
+  `company_points_ledger` is a separate ledger. Unchanged; noted.
+- **A presenter added after completion gets no certificate**, and a removed one keeps theirs (`sessions`'
+  plan (c).2). That is `designer`'s, held by the lead. Not mine.
+
+## A4 · Streaks and badges count completed sessions; every downstream reader measured
+
+**File:** `0009_counting_completed.sql`, which re-creates `evaluate_streaks()` and `evaluate_badges()`
+from `0113`.
+
+| Reader | Today | Change |
+|---|---|---|
+| `evaluate_streaks()` (`0113:473`) | `count(distinct session_id)` of active check-ins in the org-month of `arrived_at` | **plus** the session is `completed`/`archived`. The bucket stays `arrived_at`'s month, so a check-in in a month keeps counting toward that month |
+| `evaluate_badges()`, `check_ins_count` (`0113:518`) | distinct sessions with an active check-in | **plus** the session is `completed`/`archived`. `first_check_in` now arrives the night after completion |
+| `evaluate_badges()`, `sessions_delivered_count` / `presenter_rating_avg` | already `s.state = 'completed'` / all ratings | **unchanged**. I leave `archived` alone: it was never counted, and changing that is not this wave |
+| `evaluate_levels_perks()` | reads `points_balances` | **unchanged**. It follows the ledger, so a level now arrives after completion |
+| `evaluate_no_shows` (worker, SQL) | at completion | **unchanged** |
+| `evaluate_company_points()` | at completion | **unchanged** |
+| `snapshot_leaderboard()` / `all_time_leaderboard()` (`0042`, `0044`) | sum the ledger by `occurred_at` | **code unchanged**. Two effects to know about: an attendance award lands at completion rather than check-in (the same day for a one-day session), and ★ `proposal_accepted` moves from the approval's month to the completion's month, possibly weeks later, onto the monthly and seasonal boards. With question 5's `session_id` it also counts on the topic board |
+| `audit_balances()` / `rebuild_points_balances()` | fold over the ledger | **unchanged**. Every movement is still an insert. The recompute test covers a presenter reversal and a re-pay under `v2` |
+| `/app/me/points` (`getPointsHistory`, `points-history-list`) | ledger rows + `missed_attendance_days()` | **unchanged**, with no pending rows (question 10). The balance never looks wrong, because nothing was paid, and the pending amount is on the check-in screen and the event page (contract 1), the two places the member is when it matters. A presenter reversal renders as every reversal does: its reason and a negative amount. **No new message key** (`DEC-172`'s «not this wave») |
+| `missed_attendance_days()` (`0114`) | completed multi-day sessions | **unchanged**. A one-day session still cannot appear: it has no «missed day» |
+| recognition (`src/lib/dal/recognition.ts`) | reads `member_badges`, `streak_awards` | **unchanged**. The rows just arrive later |
+| leaderboards screens (`sessions`') | — | **no request**: no screen changes |
+
+★ **A finding, pre-existing: the last evening of a month never counts toward that month's streak.** The
+cron is `0 1 * * *` UTC (`worker/src/index.ts:113`), which is 04:00 in Riyadh. `evaluate_streaks()`
+evaluates **only** `now()`'s month, so a check-in after 04:00 on the last day is first seen when the
+period is already the next month. Both periods are idempotent under `streak_awards`' unique key, so
+evaluating the previous month too on the first days of a month closes it. Mine, small, not a timing
+change. Question 11.
+
+## Contract 1 — the build
+
+**File:** `0006_session_award_state.sql`, then `src/lib/dal/points.ts` (additive: `AwardDay`,
+`SessionAwardState`, `getSessionAwardState`). No screen of mine changes.
+
+---
+
+## What `main`'s worker does on this SQL before `main`'s code catches up
+
+**Exactly what the new worker does**, because **no worker task changes behaviour**:
+
+- `award_points.ts` passes the payload through; `award_points()` decides everything.
+- `award_presenter_points.ts` calls `award_points()` three ways. The guard and the epoch are in SQL.
+- `evaluate_no_shows.ts` calls `evaluate_session_attendance()`, which now pays one-day sessions for real
+  rather than as a proven no-op. The same call, the same key.
+- `evaluate_streaks.ts` / `evaluate_badges.ts` are one `select` each.
+- The only TypeScript I touch in `worker/` is **a comment** in `evaluate_no_shows.ts`, where «for a
+  ONE-DAY session it is a proven no-op» becomes false. It changes no behaviour and can ship any time.
+
+**In flight at the push:** a `pts:check_in` job queued for a running one-day session, or a
+`pts:proposal_accepted` job queued at an approval, runs and writes nothing (the timing guard). The
+completion fan-out enqueues the same key again and pays then. **Vercel on `main`'s code** never calls
+`session_award_state()`. The old check-in screen simply shows no row until completion.
+
+**The owner's production reads before the push** (read-only; the result decides nothing automatically):
+
+```sql
+-- one-day sessions not yet completed whose members were already paid at check-in (they read «paid»)
+select count(*) from public.points_ledger l join public.sessions s on s.id = l.session_id
+ where l.source = 'check_in' and s.state not in ('completed','archived','cancelled');
+-- proposal_accepted paid at approval for a session not yet completed (reversible under A3)
+select count(*) from public.points_ledger l join public.sessions s on s.proposal_id = l.source_id
+ where l.source = 'proposal_accepted' and s.state not in ('completed','archived');
+-- sessions' finding (a): presenters that would be paid if flipped to accepted after this trigger
+select count(*) from public.session_presenters sp join public.sessions s on s.id = sp.session_id
+ where not sp.accepted and sp.declined_at is null and s.state in ('completed','archived');
+```
+
+---
+
+## ★ The existing tests whose assertions this moves — for the untouched-suite ledger
+
+Two kinds of move, named per case:
+- **(a) the expectation inverts.** The case pinned the old moment, and its scenario now proves the new
+  rule.
+- **(b) harness only.** The case's subject is not the timing (a reversal's shape, a counting rule, a
+  bonus's arithmetic), so its setup moves to a completed session or gains the presenter row, and **every
+  expectation stays literally as it is.**
+
+| # | File › case | Assertion | Move | Why |
+|---|---|---|---|---|
+| 1 | `award-points.test.ts` › `POL-check_in.award_points_hook` › «a successful check-in enqueues exactly one award_points job, keyed by the check-in id» | `jobs` `toHaveLength(1)` at check-in on an `in_progress` session | (a) → `0` | `REQ-PTS-015`: a check-in pays nothing before completion |
+| 2 | the same › «end to end: running the enqueued job's SQL awards the check-in's points» | reads the job's payload, balance `20` | (b): complete the session, run `evaluate_session_attendance()` and the job it enqueues; `20` unchanged | the job now exists only after completion |
+| 3 | `checkin-contract-5.test.ts` › «a code check-in enqueues exactly one award_points job under pts:check_in:<id>» | `toHaveLength(1)` | (a) → `0` | the same |
+| 4 | the same › «a manual mark enqueues the same one job under the same key…» | `toHaveLength(1)` | (a) → `0` | the same |
+| 5 | the same › «writes one compensating row per unreversed award, with the same key and reason, and awards the no-show» | the award exists; reversal shape; `no_show` count `"1"` | (b): the session is completed before the award is written | on a live session the award writes nothing and the removal records no `no_show` (finding 1) |
+| 6 | `checkin-manual-mark.test.ts` › «enqueues exactly one award_points job, keyed pts:check_in:<id>…» | `toHaveLength(1)` | (a) → `0` | the same as 1 |
+| 7 | `checkin-removal.test.ts` › «reverses the points award with ONE compensating entry…» | `award.amount > 0`, one reversal | (b): completed first | the award is not written on a live session |
+| 8 | the same › `no_show_symmetry` › «removing a confirmed-RSVP member's check-in awards no_show…» | `noShow` `toHaveLength(1)` | (b): completed first | finding 1 |
+| 9 | `scoring-days-award.test.ts` › `enqueues_award` › «enqueues exactly one award_points job under main's key, with main's exact payload» | one job, the payload | (b): session `completed` | the hook's key and payload are unchanged; only the moment moved |
+| 10 | the same › «★ the seam is behaviour-neutral: called after check_in()'s own inline enqueue…» | `before` `toHaveLength(1)` | (a) → `0` before and after | there is no inline enqueue and no pre-completion job. Its premise (the wave-9 switch) is history |
+| 11 | the same › «calling it twice touches the same key, never a second job» | `toHaveLength(1)` | (b): `completed` | the same as 9 |
+| 12 | the same › `attendance_removed.reversal` › «writes ONE compensating row for the attendee's award AND one for the presenter's attendee_bonus…» | `originals` `toHaveLength(2)` | (b): `completed` **and** the presenter's accepted row | the timing guard and A3's guard |
+| 13 | the same › `attendance_removed.no_show_symmetry` › «a confirmed RSVP earns the no_show rule…» | `toHaveLength(1)` | (b): `completed` | finding 1 |
+| 14 | the same › `RPC-attendance_recorded.one_day_pays_at_check_in` | one job at check-in, then one row | (a): no job at check-in; `completed` → the pass enqueues **the same key and payload** → one row `check_in:check_in:<id>:<m>:v1` | ★ the case `DEC-172` names. The key assertion survives unchanged |
+| 15 | the same › `reverses_added_day` › «a one-day award, then a second day added and missed…» | `[20, -20]` | (b): the one-day award is written **directly as the owner** (what a pre-migration payment left) instead of through a pre-completion job | that is the only way such an award can exist now, and the case stays the proof for those legacy rows |
+| 16 | the same › `multi_day_waits_for_completion` › «★ a ONE-DAY session is untouched by that guard: it still pays while the session is running» | `toHaveLength(1)` | (a) → `[]` | `REQ-PTS-015`: one rule, no branch on days |
+| 17 | the same › `reverses_presenter_bonus_by_member` | `bonus.amount > 0`, one reversal | (b): the presenter's accepted row | A3's guard |
+| 18 | `scoring-days-presenter-bonus.test.ts` › `epoch_only`, `one_day_unchanged` (×2), `skips_silently`, «★ … 50 + 2 × 2 = 54» | one bonus / two bonuses / `[]` / one / `54` | (b): **one line in the file's `oldWorkerLoop` / setup** inserting the presenter's accepted row | A3's guard. ★ Without it `requires_complete` and «a removed check-in earns nothing» would pass **vacuously**, refused by the presenter guard before the clause they exist to prove |
+| 19 | `scoring-days-counting.test.ts` › `JOB-award_presenter_points.one_bonus_per_qualifying_attendee` | `bonuses` `toHaveLength(1)` | (b): the presenter's row | A3's guard |
+| 20 | `award-presenter-points.test.ts` › «approval enqueues one proposal_accepted job for the proposer and each accepted co-presenter, none for a declined one» | two jobs of `1`, one of `[]` | (a) → all three `[]` | A2: approval pays nothing. A new file pins the completion |
+| 21 | the same › «end to end: the enqueued job awards proposal_accepted's 10 points» | balance `10` | (b): a session from the proposal, the proposer as its accepted presenter, completed; then the same direct call → `10` | A3's guard needs the completed session |
+| 22 | the same › «award_presenter_points' logic: session_delivered + attendee_bonus per check-in…» | `54`, no `rating_bonus` | (b): `completed` + the presenter's row | the timing and presenter guards |
+| 23 | `recognition-evaluators.test.ts` › `evaluate_streaks.idempotent` | one award, `15` | (b): `sessionAtOffset` inserts `completed` | A4 |
+| 24 | the same › `evaluate_badges.idempotent` | `regular` ×1, `first_check_in` ×1 | (b): the same helper | A4 |
+
+**Green and unedited, but they would turn vacuous.** I recommend a (b) line for each so they still
+prove something:
+- `checkin-late-job-hooks.test.ts` › `evaluate_streaks.excludes_removed / evaluate_badges.excludes_removed`
+  runs on an `in_progress` session, which A4 excludes anyway, so `0` no longer shows that the *removal*
+  excluded it. Move to `completed`.
+- `scoring-days-award.test.ts` › «★ the seam is behaviour-neutral: called after remove_check_in()…»
+  compares two empty lists on a live session. Move to `completed`.
+
+**Unchanged and still meaningful** (read, not assumed): `award-points` (definer_only, silent_skip,
+idempotent ×2 — `v_sess` is null so the timing clause is not reached), `checkin-late-job-hooks`
+(`skips_removed_check_in` — the removed clause fires first), `checkin-removal` (the rest),
+`checkin-days` (its reversal `every(...)`), the rest of `scoring-days-award` (all on `completed`
+sessions), `scoring-days-counting` (streak/badge/company — already `completed`),
+`scoring-days-recompute`, `scoring-days-predicate`, `scoring-days-missed`, `audit-balances`,
+`scoring-schema`, `snapshot-leaderboards`, `all-time-leaderboard`, `manual-adjustment-reversal`,
+`scoring-company-points`, `award-hooks-ratings-comments` (question 8), and the e2e files `points.spec.ts`,
+`wave9-scoring-missed-day.spec.ts` (every session `completed`) and the lead's
+`wave9-three-day-workshop.spec.ts`.
+
+Most rows are the timing. Only `#17`, `#18` and `#19` hang on question 1 (the presenter-row half of
+A3's guard): under the alternative guard they do not move. `#12`, `#21` and `#22` move in any case, because
+of the completed-session half.
+
+## New tests (new files only, rule 3) and their `03` §8.2 rows
+
+| File | Rows |
+|---|---|
+| `tests/rls/scoring-award-state.test.ts` | `RPC-session_award_state.caller_only` (no member parameter; another org's session → zero rows; `anon` refused) · `.none` (no check-in / removed / rule disabled / cancelled) · `.pending_before_completion` (the rule's points; `days_attended` / `days_required` / `day_count`; `require_all_days = false` → `days_required = 1`) · `.pending_until_the_job_runs` · `.paid_when_standing` (incl. a pre-migration one-day award on a running session) · `.incomplete_after_completion` (`missed_days` in order) · `.incomplete_when_a_ceiling_passed` · `.back_to_pending_after_a_mark` · `.writes_nothing` |
+| `tests/rls/scoring-completion-timing.test.ts` | `POL-check_in.no_award_before_completion` (code and manual, `n = 1` and `n = 3`, the same assertions — no branch) · `RPC-award_points.waits_for_completion_at_any_n` · `RPC-evaluate_member_attendance.pays_only_after_completion` · `RPC-attendance_removed.before_completion_writes_nothing` (**D3**: check in, remove, complete → no row, no reversal) · `RPC-attendance_removed.no_show_after_completion_only` · `JOB-evaluate_no_shows.pays_one_day_at_completion` (main's key and payload) · `RPC-award_points.legacy_award_standing` (pre-migration award → completion writes nothing) |
+| `tests/rls/scoring-proposal-at-completion.test.ts` | `POL-proposals.no_award_at_approval` · `POL-sessions.completion_pays_proposal_presenters` (proposer and accepted co-presenter; not a presenter who was not on the proposal) · `.never_paid_twice` (paid at approval before → the same key, zero rows) · `.direct_session_pays_none` · `RPC-award_points.proposal_accepted_waits_for_completion` |
+| `tests/rls/scoring-presenter-awards.test.ts` | `POL-session_presenters.pays_on_join_after_completion` (insert accepted; update false → true; as the **admin through the policy**, since the trigger is definer and tested as a member) · `.reverses_on_leave` (delete; accepted → false; the reason; `0087`'s key) · `.nothing_before_completion` · `.reverses_legacy_proposal_accepted` · `.epoch_repays_after_readd` (the trace above, `v1 → reversal → v2`) · `.key_unchanged_without_reversal` · `RPC-award_points.presenter_must_be_accepted` (step 3 of the trace) · `.caps_hold_across_epochs` · `.trigger_never_raises` |
+| `tests/rls/scoring-counting-completed.test.ts` | `RPC-evaluate_streaks.counts_completed_sessions` · `RPC-evaluate_badges.counts_completed_sessions` |
+| `tests/rls/scoring-presenter-recompute.test.ts` | `RPC-rebuild_points_balances.after_presenter_epochs` · `RPC-audit_balances.silent_after_presenter_epochs` |
+| `tests/unit/scoring-award-state.test.ts` | the DAL's row → DTO mapping for all four states; zero rows → `null`; a malformed id → `null` without an RPC |
+
+Every RLS file probes `to_regprocedure(...)` / `prosrc` before `applyProposed()`, as wave 9's do, so
+**none needs editing on promotion**. There is no e2e of mine: no screen of mine changes. The lead's D2 and
+D3 demonstrables exercise this end to end.
+
+## Files
+
+`supabase/proposed/scoring/{0006_session_award_state,0007_award_at_completion,0008_presenter_awards,0009_counting_completed}.sql`
+· `src/lib/dal/points.ts` (additive) · `worker/src/tasks/evaluate_no_shows.ts` (a comment) · the seven
+new test files · the ledger lines above, written by the lead in the same commit as each promoted file.
+**No** `create table` / `alter table`, no `src/messages` change, no screen.
+
+**Order.** Contract 1 (`0001` + DAL) first, because `checkin` waits on it. Then `0002` + `0003` + `0004`
+together, because moves `#12`, `#17–#22` need both the guard and the trigger to read coherently. Each file
+is proven with `applyProposed()` in its own tests before I hand it over.
+
+## Questions for the lead, numbered
+
+1. **The presenter guard in `award_points()`** — accepted presenter + completed, for the four presenter
+   sources. I recommend it: it is what stops the +48 h job from re-paying a removed presenter (step 3 of
+   the trace), and it moves `#17–#19` by one setup line each, on top of what the timing moves anyway. The alternative moves
+   none of them: refuse only a member with **no accepted row who already holds a presenter-removal
+   reversal** on the session. It leaves a race: a presenter removed between completion and the first job
+   (seconds) is paid once with nothing to reverse, and gets the +48 h `rating_bonus` too. Rule A or the
+   alternative.
+2. **`no_show` at removal waits for completion** (finding 1). It moves `#5`, `#8`, `#13` in setup only.
+   Confirm that `REQ-PTS-015`'s «leaves no ledger row» includes the 0-point `no_show` record.
+3. ★ **Sessions' `accepted = false` rows on completed sessions** (finding 4). If they are flipped after
+   my trigger is live, those presenters are paid retroactively; if before, they are not, and they never
+   were. The owner decides whether to pay them, and the order of the data fix follows from that.
+4. **A presenter toggling their own `accepted` on a completed session** (finding 5). Accept the churn
+   (net zero, correct), or ask the lead to narrow `session_presenters_update_self` (a policy, so the
+   lead's) so that `accepted` cannot move after completion?
+5. **`proposal_accepted`'s `session_id` at completion** — the session's id (my recommendation: the
+   history shows the title, and the topic board counts it) or `null` as today? The key is identical
+   either way.
+6. **A co-presenter paid at approval before the migration who is not a session presenter.** Leave the row
+   standing (my recommendation: no event touches it, and reversing it would be a backfill) or reverse it?
+   A reversal would be a one-off data fix, never a migration.
+7. **The reversal's reason «أُزيل من مقدّمي الجلسة».** Ledger data, not a message key. Confirm the words.
+8. **`comment`, `photo`, `rating_submitted`** still pay at the act. I read `REQ-PTS-015`'s list as
+   deliberate. Confirm.
+9. **An attendee re-added after completion re-paying the presenter's `attendee_bonus`** — one enqueue of an
+   existing job under its existing key. Include it (small, mine, correct) or carry it?
+10. **`/app/me/points` shows no pending entries.** It has no pending row and no new key; contract 1
+    carries the state. Confirm, or name the wording and I will request a key.
+11. **The month-end streak gap** — evaluate the previous month as well during the first days of a month.
+    Include it, or carry it?
+12. **A presenter badge after removal.** `sessions_delivered_count` badges are never revoked (the
+    evaluator only inserts), so a presenter removed after completion keeps one that counted that
+    session. Leave it (badges are not points, and `REQ-REC-*` has no revocation) — confirm.
+
+---
+
+## Sync-1 early rulings, folded in (the lead, 2026-09-22)
+
+**1 · `add_session_presenter()` may UPDATE a pending or declined row to `accepted = true`.** This is
+covered already. The trigger is `after insert or delete or update of accepted, declined_at`, and it
+compares `was` with `is`, not the operation. So `false → true`, and «`declined_at` cleared with
+`accepted` set», are both «becomes an accepted presenter». After completion that pays; before completion
+it does nothing. `POL-session_presenters.pays_on_join_after_completion` has an update case beside the
+insert case.
+
+**2 · Rows stuck at `accepted = false`, flipped by the owner's scoped data fix.** ★ **Stated plainly: on
+a COMPLETED or ARCHIVED session, flipping a row to `accepted = true` PAYS that presenter**, exactly as the
+fan-out would have at completion:
+- `session_delivered` (50);
+- `attendee_bonus` (2 per qualifying attendee, up to 30);
+- `rating_bonus` (20) if the session's ratings meet the threshold. It is evaluated at once when completion
+  was more than 48 h ago, otherwise also at +48 h;
+- `proposal_accepted` never, because a directly created session has no proposal.
+
+The payment goes through the worker (existing jobs, existing keys), so it lands when Railway runs them,
+not inside the data fix's transaction. On a session **not yet completed**, the flip pays nothing now and
+the member is paid at completion like any presenter. The owner's order: whether to run the fix before or
+after this trigger is promoted **is** the decision to pay or not. Before → nothing is paid for sessions
+already completed. After → they are paid. The read that sizes it is the third query in «What `main`'s
+worker does».
+
+**3 · Attendance and presenter awards together — the paths measured.** `check_in()` refuses
+`is_presenter_of()` (`0120`, `check_in` body) and `mark_checked_in_manually()` refuses an **accepted**
+presenter with `presenter_cannot_check_in` (`0120`, its body, «REQ-CHK-011 applies to manual too»). Both
+test `accepted` **only**. So a member can still hold both an attendance award and presenter awards by
+three routes, each of which **checks in first and becomes accepted later**:
+
+| Route | Guarded today? |
+|---|---|
+| `sessions`' `add_session_presenter()` (insert or update to accepted) | yes, by its Q4 refusal |
+| a pending (`accepted = false`) co-presenter checks in, then **the owner's data fix** flips the row | no. The fix is plain SQL |
+| the same member, then **self-update** `accepted = true` (`session_presenters_update_self`) | no |
+| an admin **inserting directly** through `p2_admin_insert` (`0010:476`), not through the RPC | no |
+
+**My proposal, in `award_points()` (`0002`), one clause:** a `check_in` attendance award writes nothing
+when the member is an accepted presenter of the session **at run time**. ★ **One condition in one place**
+(`checkin`'s correction, 2026-09-22): the clause is a function,
+`public.attendance_award_barred(p_session uuid, p_member uuid) returns boolean` (definer, `stable`,
+`service_role` only, not an underscore name), and **both** `award_points()` and contract 1's
+`session_award_state()` (row 2) call it. So a member who checks in and is then added as a presenter reads
+`none`, never «pending» for an award the completion pass will not write (`REQ-CHK-018`: «the amount shown
+is the one the completion pass will write»). The contract-1 test file gains
+`RPC-session_award_state.agrees_with_award_points`: for every state fixture, `pending` if and only if
+running the completion pass writes the award. Since the award now runs at
+completion, this closes every route above for a session whose presenter changed **before** completion,
+which is where the data fix mostly lands. After completion there is a residual case: a member already paid
+for attendance who becomes a presenter. I do **not** reverse the attendance award automatically. It was
+honestly earned when written, and a second automatic reversal path is more surface than the case is worth.
+**Recommendation for the owner's order: the data fix excludes rows whose member has an active check-in on
+that session**, which the owner can read first:
+`select count(*) from public.session_presenters sp join public.check_ins c on c.session_id = sp.session_id and c.member_id = sp.member_id and c.removed_at is null where not sp.accepted and sp.declined_at is null;`.
+This adds to the move list: **none**. No existing case checks in an accepted presenter, because both RPCs
+refuse it. The new row is `RPC-award_points.presenter_earns_no_attendance`, in
+`scoring-completion-timing.test.ts`.
+
+**`checkin`'s Q2** (incomplete before completion): accepted by the lead, as row 4 of contract 1 states.
+
+
+---
+
+# Wave 12 — built (after sync 1, `DEC-174`)
+
+**Proposed files are numbered `0006`–`0009`, not `0001`–`0004`.** Wave 9's test files still name
+`scoring/0001_attendance_hooks.sql` … `0005_attendee_bonus_guard.sql` behind their probes, so reusing a
+number would be confusing to read. The lead renumbers them from `0146` at promotion anyway.
+
+| File | What | Proven by (new files) | Green |
+|---|---|---|---|
+| `supabase/proposed/scoring/0006_session_award_state.sql` | contract 1: `session_award_state()`, `attendance_award_barred()` | `tests/rls/scoring-award-state.test.ts` (9) · `tests/unit/scoring-award-state.test.ts` (8) | yes |
+| `…/0007_award_at_completion.sql` | `award_points()` (timing for every session, the presenter bar, the presenter guard and epoch), `presenter_award_epoch()`, `proposal_presenter()`, `evaluate_member_attendance()` (pay waits for completion; ruling 9's re-pay), `attendance_recorded()`, `attendance_removed()` (no-show waits) | `scoring-completion-timing.test.ts` (10) | yes |
+| `…/0008_presenter_awards.sql` | the approval trigger dropped; `enqueue_presenter_awards()`; `sessions_completion_fanout()` re-created; the `session_presenters_awards` trigger | `scoring-presenter-awards.test.ts` (7) · `scoring-proposal-at-completion.test.ts` (5) · `scoring-presenter-recompute.test.ts` (1) | yes |
+| `…/0009_counting_completed.sql` | `evaluate_streaks()`, `evaluate_badges()` count completed sessions | `scoring-counting-completed.test.ts` (2) | yes |
+| `src/lib/dal/points.ts` | `AwardDay`, `SessionAwardState`, `getSessionAwardState()`, `toSessionAwardState()` | the unit file above | `1458c16` |
+| `worker/src/tasks/evaluate_no_shows.ts` | **comment only**: the one-day «proven no-op» sentence is no longer true | — | — |
+
+**Whole RLS suite with every edit below applied: 128 of 129 files green.** The one red file is
+`survey-submit.test.ts` (6 cases), which is **not mine and was red before any of my files existed**: it
+fails identically on a run that applies none of my SQL. It counts all `record_survey_response` jobs with a
+null key, and the shared database holds 4 such **committed** jobs, left there by some earlier run. Also
+not mine: `session-presenters-admin.test.ts` › «a member of another org» was red once, on `sessions`'
+uncommitted work, and green on the next run.
+
+**Every edited test file applies `0006`–`0009` in its `ready()` / `setup()` / `apply()`.** That is one
+loop, a no-op once promoted (`applyProposed()` skips a missing file), and it is what lets each case be
+proven green **before** promotion.
+
+## ★ The untouched-suite ledger lines — file, case, (a) expectation inverts / (b) harness only, why
+
+Every file below also gains the `applyProposed()` loop for `0006`–`0009` (harness). **Promote `0007`,
+`0008` and `0009` with these lines in the same commit**; `0006` moves nothing.
+
+| # | File › case | Move | Why | Needs |
+|---|---|---|---|---|
+| 1 | `award-points.test.ts` › `POL-check_in.award_points_hook` › «a successful check-in enqueues exactly one award_points job, keyed by the check-in id» | (a) `toHaveLength(1)` → `0`, twice; the task and payload lines go | `REQ-PTS-015`: nothing is enqueued before completion | `0007` |
+| 2 | the same › «end to end: running the enqueued job's SQL awards the check-in's points» | (b) the session completes and `evaluate_session_attendance()` runs before the job is read; `20` unchanged | the job exists only after completion | `0007` |
+| 3 | `checkin-contract-5.test.ts` › «a code check-in enqueues exactly one award_points job under pts:check_in:<id>» | (a) `1` → `0` | as 1 | `0007` |
+| 4 | the same › «a manual mark enqueues the same one job under the same key…» | (a) `1` → `0` | as 1 | `0007` |
+| 5 | the same › «writes one compensating row per unreversed award, with the same key and reason, and awards the no-show» | (b) the session completes before the award | no award on a live session, and no no-show at removal before completion (DEC-174 ruling 2) | `0007` |
+| 6 | `checkin-manual-mark.test.ts` › «enqueues exactly one award_points job, keyed pts:check_in:<id>…» | (a) `1` → `0` | as 1 | `0007` |
+| 7 | `checkin-removal.test.ts` › «reverses the points award with ONE compensating entry…» | (b) the session completes before the award | as 5 | `0007` |
+| 8 | the same › «removing a confirmed-RSVP member's check-in awards no_show…» | (b) the session completes before the removal | ruling 2 | `0007` |
+| 9 | `checkin-late-job-hooks.test.ts` › «a removed check-in does not count toward a NOT-YET-awarded streak period or badge threshold» | (b) the session completes before the evaluators run | it would otherwise pass vacuously: a running session no longer counts at all | `0009` |
+| 10 | `scoring-days-award.test.ts` › «enqueues exactly one award_points job under main's key, with main's exact payload» | (b) the session is `completed` | the hook pays only after completion; key and payload unchanged | `0007` |
+| 11 | the same › «★ the seam is behaviour-neutral: called after check_in()'s own inline enqueue…» | (a) `before` and `after` `1` → `0`; the equality lines go | no inline enqueue and no pre-completion job | `0007` |
+| 12 | the same › «calling it twice touches the same key, never a second job» | (b) `completed` | as 10 | `0007` |
+| 13 | the same › «writes ONE compensating row for the attendee's award AND one for the presenter's attendee_bonus…» | (b) completed, and the presenter's accepted row, before the awards | timing plus DEC-174 ruling 1 | `0007` |
+| 14 | the same › `no_show_symmetry` › «a confirmed RSVP earns the no_show rule…» | (b) completed before the removal | ruling 2 | `0007` |
+| 15 | the same › «★ the seam is behaviour-neutral: called after remove_check_in() has already run…» | (b) completed before the award | it would otherwise compare two empty lists | `0007` |
+| 16 | the same › `one_day_pays_at_check_in` | (a) no job at check-in; completion → **main's key and payload**, one row `…:v1`, the pass again writes nothing | ★ the case DEC-172 names; its key assertions survive verbatim | `0007` |
+| 17 | the same › `reverses_added_day` | (b) the one-day award is written directly as a pre-DEC-172 check-in left it; `[20, -20]` unchanged | no award can be paid before completion any more; the case stays the proof for legacy rows | `0007` |
+| 18 | the same › «★ a ONE-DAY session is untouched by that guard: it still pays while the session is running» | (a) `toHaveLength(1)` + key → `[]` | one rule, no branch on days | `0007` |
+| 19 | the same › `reverses_presenter_bonus_by_member` | (b) the presenter's accepted row | ruling 1 | `0007` |
+| 20 | `scoring-days-presenter-bonus.test.ts` › every case paying or refusing a bonus (`epoch_only`, both `requires_complete`, both `one_day_unchanged`, `skips_silently`, «… 50 + 2 × 2 = 54») | (b) one helper, `present()`, inserts the presenter's accepted row; `oldWorkerLoop()` calls it; two direct calls call it | ruling 1. Without it the refusing cases would pass vacuously | `0007` |
+| 21 | `scoring-days-counting.test.ts` › «★ the EXACT query worker/src/tasks/award_presenter_points.ts runs…» | (b) the presenter's accepted row | ruling 1 | `0007` |
+| 22 | `award-presenter-points.test.ts` › «approval enqueues one proposal_accepted job for the proposer and each accepted co-presenter, none for a declined one» | (a) `toHaveLength(1)` ×2 → `[]` | DEC-172: approval pays nothing | `0008` |
+| 23 | the same › «end to end: the enqueued job awards proposal_accepted's 10 points» | (b) a completed session from the proposal, the proposer its accepted presenter; `10` unchanged | the award re-derives the completed session and the presenter | `0007` |
+| 24 | the same › «award_presenter_points' logic: session_delivered + attendee_bonus per check-in…» | (b) completed + the presenter's row; `54` unchanged | timing + ruling 1 | `0007` |
+| 25 | `recognition-evaluators.test.ts` › `evaluate_streaks.idempotent` and `evaluate_badges.idempotent` | (b) `sessionAtOffset()` completes each session | streaks and badges count completed sessions | `0009` |
+| 26 | `checkin-days.test.ts:505–509` (**`checkin`'s, not edited**) | none: it still passes, but vacuously (no reversal before completion) | its after-completion half is proven by the new case «after completion a removal reverses under reversal:<id>:v1…» in `scoring-completion-timing.test.ts`, as DEC-174 asks | — |
+
+## What a reader should know that the SQL does not say out loud
+
+- ★ **A `proposal_accepted` job queued at approval seconds before the push** and run after completion
+  writes its row with `session_id = null`: the payload it carries is the old one. The completion fan-out
+  replaces a still-queued job under the same key with the new payload, so this needs a job that is
+  **both** queued before the push **and** still queued at completion. That is harmless, and recorded.
+- **`attendance_award_barred()` is also «is an accepted presenter»**: `award_points()`'s presenter guard
+  calls it with the opposite sense. One definition; the name reads from the attendance side because that
+  is where contract 1 needs it.
+- **The trigger never raises** and returns on a cascade (session or member row gone). A failed award
+  cannot undo an admin's presenter change.

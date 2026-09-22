@@ -33,6 +33,7 @@ export function RemoveCheckInForm({
   days,
   defaultDayId,
   candidatesByDay,
+  paysOnCompletion = false,
 }: {
   action: (prev: RemoveState, formData: FormData) => Promise<RemoveState>;
   /** Everyone with an active check-in on ANY day — the union, for the empty check. */
@@ -46,6 +47,10 @@ export function RemoveCheckInForm({
    *  member (the lead's own restated constraint for this control) — this
    *  page already reads it for its own `<h1>`, passed straight through. */
   sessionTitle: string;
+  /** REQ-PTS-015 (DEC-174 Q3): true while the session has not completed, so
+   *  nothing has been paid and there is nothing to reverse — the dialog says
+   *  «won't earn», not «reversed». Defaults to the after-completion wording. */
+  paysOnCompletion?: boolean;
 }) {
   const t = useTranslations("checkin.attendance");
   const [state, formAction, pending] = useActionState(action, emptyRemoveState);
@@ -134,7 +139,7 @@ export function RemoveCheckInForm({
         </DialogTrigger>
         <DialogContent
           title={t("removeConfirmTitle")}
-          description={t.rich("removeConfirmBody", { name: selected?.displayName ?? selected?.memberId ?? "", session: sessionTitle, bdi: (c) => <bdi>{c}</bdi> })}
+          description={t.rich(paysOnCompletion ? "removeConfirmBodyOpen" : "removeConfirmBody", { name: selected?.displayName ?? selected?.memberId ?? "", session: sessionTitle, bdi: (c) => <bdi>{c}</bdi> })}
           closeLabel={t("cancel")}
         >
           <div className="flex gap-2">

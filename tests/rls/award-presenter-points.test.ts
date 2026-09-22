@@ -11,7 +11,7 @@
 // and the tasks' own SQL (the no-show query, the rating-average threshold)
 // is proven by running the identical statements a worker run would.
 import { afterAll, describe, expect, it } from "vitest";
-import { pool, withTx } from "./db";
+import { applyProposed, pool, withTx } from "./db";
 import { seed, type Org } from "./fixture";
 import type { Tx } from "./db";
 
@@ -21,6 +21,11 @@ async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
   // Promoted at wave-2 sync 3 (0031–0035): applied by `supabase db reset`.
+  // Wave 12 (REQ-PTS-015, DEC-172): scoring's award-at-completion files, a no-op once promoted.
+  for (const file of ["0006_session_award_state", "0007_award_at_completion", "0008_presenter_awards", "0009_counting_completed"]) {
+    await applyProposed(tx, `scoring/${file}.sql`);
+  }
+  await tx.asOwner();
   return f;
 }
 
@@ -60,10 +65,12 @@ describe("POL-proposals.award_points_hook", () => {
       await tx.q(`update public.proposals set state = 'in_review' where id = $1`, [proposal.id]);
       await tx.q(`update public.proposals set state = 'approved' where id = $1`, [proposal.id]);
 
+      // ★ Wave 12 (DEC-172, the owner's answer): an approval pays nothing — proposal_accepted
+      // is enqueued at COMPLETION under these same keys (tests/rls/scoring-proposal-at-completion.test.ts).
       const proposerJobs = await tx.q(`select id from graphile_worker._private_jobs where key = $1`, [`pts:proposal_accepted:${proposal.id}:${proposer}`]);
-      expect(proposerJobs).toHaveLength(1);
+      expect(proposerJobs).toEqual([]);
       const acceptedJobs = await tx.q(`select id from graphile_worker._private_jobs where key = $1`, [`pts:proposal_accepted:${proposal.id}:${accepted}`]);
-      expect(acceptedJobs).toHaveLength(1);
+      expect(acceptedJobs).toEqual([]);
       const declinedJobs = await tx.q(`select id from graphile_worker._private_jobs where key = $1`, [`pts:proposal_accepted:${proposal.id}:${declined}`]);
       expect(declinedJobs).toEqual([]);
     });
@@ -81,6 +88,16 @@ describe("POL-proposals.award_points_hook", () => {
       await tx.q(`update public.proposals set state = 'submitted' where id = $1`, [proposal.id]);
       await tx.q(`update public.proposals set state = 'in_review' where id = $1`, [proposal.id]);
       await tx.q(`update public.proposals set state = 'approved' where id = $1`, [proposal.id]);
+      // Wave 12 (DEC-172, DEC-174 ruling 1): proposal_accepted is paid once the proposal's session
+      // has completed, to an accepted presenter of it who was on the proposal.
+      const [session] = await tx.q<{ id: string }>(
+        `insert into public.sessions (org_id, proposal_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
+                                       venue_id, capacity, state, published_at, completed_at)
+         values ($1, $2, 'اقتراح آخر', 'ملخص', $3, 'introductory', now() - interval '90 minutes', 60,
+                 now() - interval '30 minutes', $4, 40, 'completed', now() - interval '1 day', now()) returning id`,
+        [f.a.id, proposal.id, f.a.categoryId, f.a.venueId],
+      );
+      await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [f.a.id, session.id, proposer]);
 
       await tx.asServiceRole();
       await tx.q(`select public.award_points('proposal_accepted', $1, 'proposal_accepted', $2, null)`, [proposer, proposal.id]);
@@ -194,6 +211,10 @@ describe("POL-sessions.completion_fanout", () => {
       // balance assertion (award-points.test.ts's header note explains why).
       const presenter = f.a.members[1].memberId;
       const attendees = [f.a.admin.memberId, f.a.mod.memberId];
+      // Wave 12 (REQ-PTS-015, DEC-174 ruling 1): presenter awards are paid once the session has
+      // completed, to an accepted presenter of it.
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
+      await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [f.a.id, sessionId, presenter]);
       for (const m of attendees) {
         await tx.q(
           `insert into public.check_ins (org_id, session_id, member_id, method, manual_reason, marked_by, session_window)

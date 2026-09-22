@@ -21,7 +21,13 @@ import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
-const apply = (tx: Tx) => applyProposed(tx, "checkin/03_contract_5.sql");
+const apply = async (tx: Tx) => {
+  await applyProposed(tx, "checkin/03_contract_5.sql");
+  // Wave 12 (REQ-PTS-015): scoring's award-at-completion files, a no-op once promoted.
+  for (const file of ["0006_session_award_state", "0007_award_at_completion", "0008_presenter_awards", "0009_counting_completed"]) {
+    await applyProposed(tx, `scoring/${file}.sql`);
+  }
+};
 
 async function liveSession(tx: Tx, org: Org): Promise<string> {
   const [row] = await tx.q<{ id: string }>(
@@ -58,11 +64,10 @@ describe("the award is the hook's, and it is byte for byte the one main enqueues
       const [row] = await tx.q<{ r: { status: string; check_in: { id: string } } }>(`select public.check_in($1, $2) as r`, [s, code.code]);
       expect(row.r.status).toBe("ok");
 
+      // ★ Wave 12 (REQ-PTS-015, DEC-172): nothing is enqueued before the session completes.
       await tx.asOwner();
       const jobs = await jobsFor(tx, `pts:check_in:${row.r.check_in.id}`);
-      expect(jobs).toHaveLength(1);
-      expect(jobs[0].task_identifier).toBe("award_points");
-      expect(jobs[0].payload).toMatchObject({ rule: "check_in", source: "check_in", source_id: row.r.check_in.id, session_id: s });
+      expect(jobs).toHaveLength(0);
     });
   });
 
@@ -76,11 +81,10 @@ describe("the award is the hook's, and it is byte for byte the one main enqueues
       await tx.as(f.a.mod.claims);
       const [ci] = await tx.q<{ id: string }>(`select * from public.mark_checked_in_manually($1, $2, $3)`, [s, f.a.members[0].memberId, "نسي هاتفه"]);
 
+      // ★ Wave 12 (REQ-PTS-015, DEC-172): nothing is enqueued before the session completes.
       await tx.asOwner();
       const jobs = await jobsFor(tx, `pts:check_in:${ci.id}`);
-      expect(jobs).toHaveLength(1);
-      expect(jobs[0].task_identifier).toBe("award_points");
-      expect(jobs[0].payload).toMatchObject({ rule: "check_in", source: "check_in", source_id: ci.id });
+      expect(jobs).toHaveLength(0);
     });
   });
 });
@@ -99,7 +103,9 @@ describe("a removal still reverses exactly what it reversed", () => {
       const [ci] = await tx.q<{ id: string }>(`select * from public.mark_checked_in_manually($1, $2, $3)`, [s, member.memberId, "حضر"]);
 
       // The award the worker would have written, so there is something to reverse.
+      // Wave 12 (REQ-PTS-015): it is written only once the session has completed.
       await tx.asOwner();
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [s]);
       await tx.q(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [member.memberId, ci.id, s]);
       const [awarded] = await tx.q<{ id: string; amount: number }>(
         `select id, amount from public.points_ledger where source = 'check_in' and source_id = $1`,

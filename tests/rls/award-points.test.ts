@@ -14,7 +14,7 @@
 // sweep is never vacuous for points_ledger/points_balances — exactly the
 // row that would otherwise contaminate an "award nothing" assertion here.
 import { afterAll, describe, expect, it } from "vitest";
-import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed, type Org } from "./fixture";
 import type { Tx } from "./db";
 
@@ -24,6 +24,10 @@ async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
   // Promoted as migration 0028 at wave-2 sync 2: applied by `supabase db reset`.
+  // Wave 12 (REQ-PTS-015): scoring's award-at-completion files, a no-op once promoted.
+  for (const file of ["0006_session_award_state", "0007_award_at_completion", "0008_presenter_awards", "0009_counting_completed"]) {
+    await applyProposed(tx, `scoring/${file}.sql`);
+  }
   return f;
 }
 
@@ -153,6 +157,9 @@ describe("RPC-award_points.idempotent", () => {
 });
 
 describe("POL-check_in.award_points_hook", () => {
+  // ★ Wave 12 (REQ-PTS-015, DEC-172): a check-in pays nothing before the session completes, so
+  // on this running session the hook enqueues NO job. The key it enqueues at completion is still
+  // `pts:check_in:<id>` — proven by the end-to-end case below and tests/rls/scoring-completion-timing.test.ts.
   it("a successful check-in enqueues exactly one award_points job, keyed by the check-in id", async () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
@@ -173,9 +180,7 @@ describe("POL-check_in.award_points_hook", () => {
           where j.key = $1`,
         [`pts:check_in:${checkInId}`],
       );
-      expect(jobs).toHaveLength(1);
-      expect(jobs[0].task_identifier).toBe("award_points");
-      expect(jobs[0].payload).toMatchObject({ rule: "check_in", source: "check_in", source_id: checkInId, member_id: f.a.members[1].memberId });
+      expect(jobs).toHaveLength(0);
 
       // A repeat check-in (already_checked_in) enqueues nothing new — no
       // second job under a different key, and the same key isn't touched again.
@@ -184,7 +189,7 @@ describe("POL-check_in.award_points_hook", () => {
       expect(again.r.status).toBe("already_checked_in");
       await tx.asOwner();
       const stillOne = await tx.q(`select id from graphile_worker.jobs where key = $1`, [`pts:check_in:${checkInId}`]);
-      expect(stillOne).toHaveLength(1);
+      expect(stillOne).toHaveLength(0);
     });
   });
 
@@ -198,6 +203,12 @@ describe("POL-check_in.award_points_hook", () => {
       await tx.as(f.a.members[1].claims);
       const [row] = await tx.q<{ r: { check_in: { id: string } } }>(`select public.check_in($1, $2) as r`, [sessionId, code.code]);
       const checkInId = row.r.check_in.id;
+
+      // Wave 12 (REQ-PTS-015): the job exists once the session completes — the completion
+      // job's attendance pass enqueues it (worker/src/tasks/evaluate_no_shows.ts).
+      await tx.asOwner();
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
+      await tx.q(`select public.evaluate_session_attendance($1)`, [sessionId]);
 
       // What worker/src/tasks/award_points.ts does with the enqueued payload.
       await tx.asOwner();

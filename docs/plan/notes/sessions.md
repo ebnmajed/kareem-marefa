@@ -3087,3 +3087,449 @@ and in the database (`tests/rls/sessions-schedule-days.test.ts`). **The untouche
 one line from this track** — `tests/components/browse/fixtures.tsx`, `days: []` on the base session —
 and no expectation of a one-day session changed anywhere.
 
+
+
+---
+
+## Wave 12 plan — presenters change after creation (`REQ-SES-019`, `DEC-172`, contract 2)
+
+Planning only. No code, SQL or test is written until the lead approves this at sync 1. Measured on
+`wave-12/presenters-awards-posters` at `421f0ed`.
+
+### W12.1 ★ The three measurements the brief asked for
+
+#### (a) Does `create_session()` leave co-presenters `accepted = false` with no way to accept? — **Yes, but only on the DIRECT path. The proposal path does something else, and has its own gap.**
+
+`0020_session_creation.sql:88–106` has two branches:
+
+| Path | What lands in `session_presenters` | Line |
+|---|---|---|
+| **From a proposal** | only `proposal_presenters` rows with `accepted and declined_at is null`, inserted **`accepted = true`** | `0020:89–95` |
+| **Direct** (`p_presenters`, SCR-042's «أنشئ جلسة» form) | every named member inserted **`accepted = false`** — comment: «Not accepted: REQ-PRO-007 gives an assigned presenter the right to decline» | `0020:97–104` |
+
+- **The proposal path leaves no `false` row.** A co-presenter who had not accepted when the admin
+  pressed «create» is **dropped**, not carried as pending. Also: `proposal_presenters_update_self`
+  (`0010:441`) has no state guard, so a co-presenter can still accept on the proposal **after**
+  approval. If they do it after the session was created, they are on the proposal and on no session,
+  and nothing reconciles them. The one-time copy is by design, not a race.
+- ★ **The direct path is the live defect.** Every presenter an admin names when creating a session
+  directly is `accepted = false`. **Nothing in the app can ever set it `true`.** No DAL function
+  writes `session_presenters.accepted`. `respondToPresenterInvite()` (`src/lib/dal/proposals.ts:337`)
+  writes `proposal_presenters` only, and no screen offers a session-level accept. The table would
+  let the member do it themselves (`session_presenters_update_self` plus the column grant,
+  `0010:478–484`), but no code path does. Every reader filters on `accepted` (see (c)), so **a
+  directly created session has no presenter anywhere**: it is missing from the event page, the
+  poster, the certificates, the presenter awards at completion (`0031`'s fan-out reads `accepted`),
+  the member profile's «presented» list, search by presenter, and the admin dashboard's counts. The
+  presenter can even **check in as an attendee**, because `presenter_cannot_check_in` tests
+  `accepted` too (`0120:265–270`). The only screen that shows them is SCR-042's table
+  (`listSessionsForAdmin()`, `sessions.ts:131`, which reads `accepted` and shows it).
+- The direct form tells the admin «سيصل كلًّا منهم إشعار، ولكل منهم أن يعتذر.»
+  (`admin.json` `…presentersHint`, `console`'s). The first half is true. The second half can only be
+  done through the table, and a decline then fails the row's check if `accepted` were ever true.
+- **Pinned by an existing test:** `tests/rls/sessions-creation.test.ts:168` «an assigned presenter is
+  not accepted on their behalf» asserts `accepted = false`. The `POL-session_presenters.decline`
+  case at `:178` **depends on it**. It sets `declined_at` alone, and `0010:121`'s
+  `check (not (accepted and declined_at is not null))` would refuse that update if the row were
+  born `true`.
+- A second, smaller contradiction: `directSessionInput.presenterIds` has **no `.min(1)`**
+  (`sessions.ts:236`), so a session can be **born with zero presenters**. «The last presenter
+  cannot be removed» is therefore a rule about removal, not an invariant of the table. W12.3 is
+  written that way.
+
+**Proposed fix, for the lead to rule on (Q1):** `create_session()`'s direct branch inserts
+`accepted = true`, the same ruling `DEC-172` made for `add_session_presenter()`. The function would
+be re-created with the same signature and nothing else changed. The two existing assertions move
+(W12.6). Existing production rows with `accepted = false and declined_at is null` are a **data
+fix**, never a migration. The owner reads the count first:
+`select count(*) from public.session_presenters where not accepted and declined_at is null`.
+`add_session_presenter()` on such a row could also be the admin's repair path (Q2).
+
+#### (b) What does `MSG-presenter_assigned` say to someone assigned after completion? — **That they can accept or decline a session whose date has passed, and nothing about points.**
+
+The trigger is `session_presenters_notify()` (`0039:218–235`, `notify`'s, held by the lead). It
+fires `after insert`, on **every** insert, whatever the session's state, and sends
+`{session_id, title, startsAt, venue}`. Its category is `proposals`, and the matrix row is
+`('MSG-presenter_assigned','proposals', true, true, false)` (`0026:91`).
+
+| Surface | What it says |
+|---|---|
+| In-app (`notifications.json` `message.MSG-presenter_assigned`) | «أُسندت إليك جلسة» |
+| Designed mail (`packages/mail-runtime/src/designs.ts:115`, the `announcement` family, which is what an untouched org receives since wave 11) | heading «أُسندت إليك جلسة» · body **«تستطيع القبول أو الاعتذار من صفحة الجلسة.»** · a session card with the image, title, the (past) date and place · button «اعرض الجلسة» |
+| String path (`templates.ts:58–61`, for an org that edited its string template) | «أُسندت إليك جلسة «X». الموعد: <past date> المكان: <venue> **تستطيع القبول أو الاعتذار من صفحة الجلسة.**» |
+
+- **After completion it is wrong twice.** It reads as a forthcoming assignment, with a date in
+  the past presented as «الموعد». And it offers an accept/decline that does not exist: there is no
+  session-level accept screen (`DEC-172`), and an assigned row is already `accepted = true`. **It
+  says nothing about the presenter awards `scoring` will pay.** The accept/decline sentence is also
+  false **before** completion, for every assigned presenter today. This is not new to this wave.
+- **A removal says nothing at all.** No trigger on `session_presenters` notifies on `delete`. After
+  completion that means the member's points go down with no message. «No new message key this wave»
+  keeps it that way. Recorded, not fixed.
+- A request to the lead as `notify`'s custodian, **copy only, no new key**: drop «تستطيع القبول أو
+  الاعتذار من صفحة الجلسة.» from both paths. The lead rules whether a completed session deserves a
+  different sentence under the same key (Q5). The designed-mail change moves `notify`'s pinned mail
+  (`tests/unit/mail-pinned/**`) as a reviewed diff. It is not mine to do.
+
+#### (c) Every reader that filters on `accepted` — **what an assigned presenter appears in**
+
+An assigned (`accepted = true`) presenter appears in **all** of these. A pending (`false`) row
+appears in **none of them**, except the three at the bottom.
+
+**SQL**
+- `is_presenter_of()` (`0010:163–171`). It is the predicate behind **86 references across 23
+  migrations**: the presenter's own `sessions` update policy, session transitions, materials and
+  their storage reads, tasks, photos, Realtime authorization (`0016`), ratings (`0019`, `0130`),
+  survey results (`0138`), the check-in window RPCs (`0078`, `0084`, `0105`, `0120`), and
+  `award_points()` (`0028:114`).
+- `presenter_cannot_check_in` in the manual mark (`0086:76`, `0087:260`, `0105:477`, `0120:266`,
+  the latest): a presenter is refused as an attendee.
+- `sessions_completion_fanout()` (`0031:84`, `scoring`'s): `session_delivered`, `attendee_bonus`
+  and `rating_bonus`, per accepted presenter.
+- `proposals_award_points()` (`0031:52`, `scoring`'s): accepted `proposal_presenters`, **not**
+  session presenters.
+- `fan_out_certificates()` (`0108:86–88`, and `0065`): a presenter certificate per accepted
+  presenter, **at completion only**.
+- The poster's presenter names (`0128:61–64`, `0082:112`).
+- `evaluate_badges`: `sessions_delivered_count` and `presenter_rating_avg` (`0113:523–543`).
+- Company points `company_presenting_pct` (`0113:643–652`).
+
+**DAL**
+- `sessions.ts:656` `listSessionsPresentedBy()` (the member profile) and `sessions.ts:927`
+  `getSessionForEvent()` (the event page's presenter list and viewer relation).
+- `search.ts:120, :257, :334, :349` (the timeline, browse, search by presenter and by company).
+- `designer.ts:164` (the poster picker's names).
+- `certificates.ts:425`.
+- The viewer-is-presenter gates: `rsvp.ts:50`, `checkin.ts:238`, `materials.ts:325`, `tasks.ts:87`.
+- `admin-dashboard.ts:142, :242` (counts and top companies).
+
+**Readers that do NOT filter on `accepted`**, on purpose:
+- `ratings.ts:193`: a pending co-presenter still may not rate.
+- `0035:96`: the RSVP nudge skips any presenter row.
+- `listSessionsForAdmin()` (`sessions.ts:131`): shows the state.
+- `presenters_within_limit()` (`0010:127`): **counts every row, pending and declined included**,
+  toward `max_co_presenters + 1`.
+
+★ **Two places where REQ-SES-019's acceptance is not true after completion, and neither is
+mine:**
+1. **The poster.** «appear everywhere a presenter appears, the poster included»: yet
+   `session_presenters_poster_hook()` (`0063:234–247`) re-renders **only when the session is
+   `published` or `in_progress`**. A presenter added to a `draft` session is on the poster once it
+   renders. One added or removed **after** completion is not, and the old names stay.
+2. **The certificate.** No trigger on `session_presenters` issues or revokes a presenter
+   certificate. The triggers on the table are exactly `session_presenters_limit`,
+   `session_presenters_same_org`, `session_presenter_declined`, `session_presenters_notify` and
+   `session_presenters_poster_hook`. A presenter added after completion is paid (`scoring`'s new
+   trigger) but gets **no certificate**. A removed one keeps theirs.
+
+Both belong to `designer` (held by the lead). **Q6.**
+
+### W12.2 What I will change, file by file
+
+| File | Change |
+|---|---|
+| `supabase/proposed/sessions/0001_session_presenters_admin.sql` (new) | the two RPCs (W12.3); and, **only if Q1 is ruled yes**, `create_session()` re-created with the same signature, direct branch `accepted = true` |
+| `src/lib/dal/sessions.ts` | **add-only**: `listSessionPresentersForAdmin()`, `addSessionPresenter()`, `removeSessionPresenter()` (W12.4) |
+| `src/app/[locale]/app/admin/sessions/[id]/schedule/actions.ts` | two Server Actions, `addPresenter` and `removePresenter`: Zod on the ids, the DAL, then `revalidatePath` on the schedule and the event page |
+| `…/schedule/presenters-section.tsx` (new, `"use client"`) | the list, the add form (`useActionState`), and the error and status regions |
+| `…/schedule/page.tsx` | loads the presenters and the pickable members, and renders the section (W12.5) |
+| `src/components/sessions/remove-presenter.tsx` | generalised (W12.5). The proposal's call site `propose/[id]/page.tsx:219` is **not edited** |
+| `src/messages/{ar,en}/schedule.json` | `schedule.presenters.*`, Arabic authored first |
+
+**Not touched:** `components/admin/member-picker.tsx` is imported, not edited. `admin.json`,
+`notifications.json`, `mail-runtime`, every scoring function, and every table.
+
+### W12.3 The two RPCs
+
+Both are `security definer` with `set search_path = ''`, both start with
+`actor := public.assert_fresh_admin()` (the `03` §1.3 re-read and the stale-claims refusal), and
+both follow the same grant rule. Definer is needed, and not only for convenience: `write_audit()`
+is revoked from `authenticated` (`0005:40`), and the session-row lock below needs a write the
+admin's column grant does not give. **Admin only**, the same gate as `p2_admin_insert` and
+`p2_admin_delete` and SCR-043. A moderator is refused `42501`.
+
+**`add_session_presenter(p_session uuid, p_member uuid) returns void`**
+
+1. `select … from sessions where id = p_session and org_id = actor.org_id for update`. The org is
+   **re-derived from the session**, never from an argument. If the row is missing, raise
+   `42501 session_not_found`, so another org's session is indistinguishable from a missing one.
+   The `for update` serialises concurrent adds and removes on one session, which
+   `presenters_within_limit()` alone does not.
+2. Refusals, **every one before the first write** (`DEC-043`):
+   - `23514 session_cancelled`: see Q3.
+   - `P0002 member_not_found` when the member is not in `actor.org_id`.
+   - `23514 member_not_active` for a deactivated member.
+   - `23514 already_presenter` for an existing accepted row. For a pending or declined row, see Q2.
+   - ★ `23514 member_checked_in` for a member with an active check-in on this session (Q4).
+3. `insert into session_presenters (org_id, session_id, member_id, accepted) values (…, true)`.
+   `presenter_is_same_org()` and `presenters_within_limit()` fire **unchanged**. A `23514` from
+   either rolls back the insert and the queued notice together, before the audit row exists.
+   `session_presenters_notify()` and the poster hook fire unchanged. `scoring`'s new triggers
+   decide the money.
+4. `write_audit(actor.org_id, 'session.presenter_added', 'session', p_session, null,
+   jsonb_build_object('member_id', p_member), null, 'admin', actor.id)`.
+
+**`remove_session_presenter(p_session uuid, p_member uuid) returns void`**
+
+1. The same session read and lock.
+2. `P0002 presenter_not_found` when there is no row.
+3. ★ **The last-presenter rule**, `23514 last_presenter`. It refuses when the row being removed is
+   `accepted` and **no other accepted row** remains. This is «a session keeps at least one
+   presenter» expressed over what every reader counts. Removing a pending or declined row is never
+   refused by it: such a row is on no surface and pays nothing. (Q7 asks the lead to confirm the
+   rule counts accepted rows, not all rows.)
+4. **`delete`**, never `update … declined_at`. So `session_presenter_declined()` cannot fire and
+   cannot send a session back to `draft`.
+5. `write_audit(…, 'session.presenter_removed', …, before => jsonb_build_object('member_id',
+   p_member, 'accepted', <row>.accepted), …)`.
+
+**Both:** `revoke execute … from public, anon; grant execute … to authenticated;`. Neither lands
+on `definer-exposure`'s anon allowlist. ★ **Neither names `points_ledger`, `award_points`,
+`enqueue_job` or any scoring function** (contract 2). The RLS file asserts that from `prosrc`, so
+it holds after `scoring` promotes its triggers.
+
+**What `main`'s worker does in the gap.** Nothing new. The RPCs enqueue nothing themselves, and
+the notice they cause is `send_notification` under the key it has today. `main`'s code calls
+neither function. If Q1 is ruled yes, `create_session()` keeps its signature, and `main`'s
+`createSessionDirect()` sends the same arguments and gets `true` rows, which every one of `main`'s
+readers already handles. Additive in both directions.
+
+### W12.4 The DAL (add-only, `src/lib/dal/sessions.ts`)
+
+```ts
+export interface AdminSessionPresenter { memberId: string; displayName: string | null; accepted: boolean; declinedAt: string | null }
+export async function listSessionPresentersForAdmin(locale: string, sessionId: string): Promise<AdminSessionPresenter[] | null>
+export type PresenterChangeError =
+  | "session_not_found" | "session_cancelled" | "member_not_found" | "member_not_active"
+  | "already_presenter" | "member_checked_in" | "presenter_not_in_org" | "too_many_presenters"
+  | "presenter_not_found" | "last_presenter" | "stale_claims";
+export async function addSessionPresenter(locale: string, sessionId: string, memberId: string): Promise<{ ok: true } | { ok: false; error: PresenterChangeError }>
+export async function removeSessionPresenter(locale: string, sessionId: string, memberId: string): Promise<{ ok: true } | { ok: false; error: PresenterChangeError }>
+```
+
+- Each calls `requireSession()` first, through `sessionClient()`.
+- `list…` returns `null` for anyone who is not an admin, so the page answers not-found, like
+  `getSessionForSchedule()`. It **uses the existing `namesFor()`** (`members_member_view`, the A33
+  member tier).
+- The error mapping follows `admin-members.ts`'s `KnownError` pattern: a known code comes back as a
+  value, and anything else throws to the route boundary.
+- The pickable members come from **`listMembersForAdmin()` (`console`'s `admin-members.ts`,
+  imported, read only)**, the same source SCR-053 and SCR-054 feed `MemberPicker` from. The page
+  filters it to `status = 'active'` and removes current presenters. It adds no second
+  member-listing path (Q8).
+
+### W12.5 The section on SCR-043, and `RemovePresenter` generalised
+
+**`RemovePresenter`**
+- It gains an optional `messages` prop:
+  `{ trigger: ReactNode; title: ReactNode; body: string; confirm: string; cancel: string }`,
+  pre-rendered by the caller with `<bdi>` around the name.
+- **When `messages` is absent, it renders exactly what it renders today from
+  `proposals.proposal.*`.** The proposal's call site and its DOM are unchanged.
+- `action` widens from `() => Promise<void>` to `() => Promise<void | { error: string }>`. The
+  form goes through `useActionState`, and a returned `error` renders **inside the dialog**, with
+  `role="alert"`, above the buttons. The proposal's action returns `void`, so it never shows one.
+- Pending stays `useFormStatus`'s `SubmitButton`. No timers (`DEC-146`).
+
+**The section**
+- It sits in the aside, **first**, above «المحتوى — كما كتبه المُقترِح» and the poster. At 390 px
+  it comes after the form, as the content panel does today.
+- It is its own `<section aria-labelledby>` with a `SectionHeader` and a count, and it is **not
+  inside the schedule `<form>`**. Adding or removing a presenter never submits the schedule, and
+  the schedule's save never sees the picker's `memberId`.
+- Composition only: `SectionHeader`, `Avatar`, `Badge`, `Field` + `MemberPicker`, `SubmitButton`,
+  `RemovePresenter`. No new primitive, and nothing for `ui-lint`.
+
+At 390 × 844, RTL, after the schedule form:
+
+```
+┌──────────────────────────────────────────┐
+│ المُقدِّمون                          2   │  <h2> + count
+├──────────────────────────────────────────┤
+│ ◯  ‏سعد الحربي                            │  Avatar 32 · name in <bdi>
+│                     [ أزل سعد الحربي ]   │  ghost, min-h 44, own row when it wraps
+├──────────────────────────────────────────┤
+│ ◯  ‏نورة القحطاني   [بانتظار الرد]        │  Badge only for a legacy accepted=false row
+│                  [ أزل نورة القحطاني ]   │
+└──────────────────────────────────────────┘
+  (one accepted presenter: no remove button on that row, and a caption
+   «للجلسة مُقدِّم واحد على الأقل دائمًا.»)
+
+  أضف مُقدِّمًا                                ← Field label
+  [ اكتب اسم عضو                        ▾ ]  ← MemberPicker (combobox), full width
+  يصله إشعار بأن الجلسة أُسندت إليه.           ← hint
+  ⚠ هذا العضو مُقدِّم في الجلسة بالفعل.         ← field error on refusal (role=alert via Field)
+  [        أضف        ]                        ← SubmitButton, pending «جارٍ الإضافة…»
+
+  (completed or archived session only, above the field:)
+  «الجلسة مكتملة: من تضيفه تُحسب له نقاط التقديم، ومن تزيله تُسحب نقاطه بقيد معاكس.»
+
+  ✓ أُضيف سعد الحربي إلى المُقدِّمين.            ← role=status, after success
+```
+
+- The confirm dialog: title «إزالة <bdi>سعد الحربي</bdi> من مُقدِّمي الجلسة؟». The body, before
+  completion: «لن يظهر اسمه بين مُقدِّمي هذه الجلسة.» After completion it adds «وتُسحب نقاط تقديمه
+  بقيد معاكس.» The buttons are «أزل» (danger) and «تراجع».
+- **Success** is the row appearing or disappearing, plus the status line.
+- **Failure** is the field error (add) or the in-dialog alert (remove), naming the reason in
+  Arabic.
+- The completed-session sentence describes `scoring`'s behaviour, so its wording waits for their
+  plan to land. If sync 1 prefers, it is omitted (Q9).
+- Every count uses ICU `plural` with all six Arabic forms. Numerals are Western.
+
+### W12.6 Every existing test my change could move
+
+| File | Assertion | Moves? |
+|---|---|---|
+| `tests/rls/sessions-creation.test.ts:168` «an assigned presenter is not accepted on their behalf» | `accepted` is `false` | **Only if Q1 is ruled yes**. It would then assert `true`. A ledger line: an expectation that changes on purpose |
+| `tests/rls/sessions-creation.test.ts:178` `POL-session_presenters.decline` | a presenter's `declined_at` sends the session back to draft | **Only if Q1 is ruled yes**, as a harness change. The direct `createSession()` would now make a row that `0010:121` refuses to decline, so the case must seed its pending presenter by insert as owner (`accepted = false`). The expectation is unchanged; a ledger line records the harness |
+| `tests/rls/sessions-creation.test.ts:148` (direct vs from proposal, «indistinguishable») | the states and audit actions | no. It does not read `accepted` |
+| `tests/components/admin/sessions-table.test.tsx:41` (`console`'s) | renders a pending presenter | no. It is a DTO fixture |
+| `tests/e2e/wave8-lead-schedule.spec.ts`, `checkin-schedule-walk-ins.spec.ts`, `wave9-sessions-schedule-days.spec.ts` | every locator read | **Expected no.** Every one is named: «انشر الجلسة», «احفظ التعديلات», «أضف يومًا», «احذف هذا اليوم», level-3 day headings, the venue `<select>` by label. My names are distinct («أضف مُقدِّمًا», «أزل …»). The one unnamed `getByRole("dialog")` (`wave9…:245`) runs while only the day dialog is open, and Radix mounts nothing while mine is closed. `div[hidden][id^="S:"]` stays 0 because the section is not a separate stream. I run all three |
+| `tests/components/checkin/schedule-form.test.tsx` | the form alone | no. The form is not edited |
+| `tests/e2e/sessions-propose.spec.ts`, `wave7-sessions-propose.spec.ts` | the proposal page | no. `RemovePresenter`'s default render is byte-identical. **No existing test covers `RemovePresenter` at all**, so the new component test pins the default path first |
+| `tests/unit/mail-pinned/**` (`notify`'s) | the designed `MSG-presenter_assigned` | only if the lead takes the Q5 copy request. Not mine |
+| `tests/rls/notify-m2-notices.test.ts:245` | a presenter insert notifies | no. The trigger is unchanged |
+| Lead's `wave11-lead-a11y-sweep.spec.ts` | 0 findings on SCR-043 | should hold. I run axe on the section in my own spec |
+
+**New files:**
+- `tests/rls/session-presenters-admin.test.ts`.
+- `tests/unit/sessions-presenter-changes.test.ts`: the DAL error mapping and the Zod refusal.
+- `tests/components/sessions/remove-presenter.test.tsx`: the default strings equal
+  `proposals.proposal.*`, the caller's strings, the error in the dialog, and the name in `<bdi>`.
+- `tests/components/sessions/presenters-section.test.tsx`: no remove button on the sole accepted
+  presenter, the pending badge, and the completed note.
+- `tests/e2e/wave12-sessions-presenters.spec.ts`: add, remove, and last-refused, at 390 px.
+  Captures `wave12-sessions-schedule-presenters-{list,confirm,refused,completed}.png`.
+
+**`03` §8.2 rows**, each a test in the RLS file:
+
+| Row | What it asserts |
+|---|---|
+| `RPC-add_session_presenter.admin_only` | A member and a moderator get `42501`. An admin of org B gets `session_not_found` for org A's session. Stale claims are refused |
+| `RPC-add_session_presenter.assigned` | The row is `accepted = true`, with exactly one `MSG-presenter_assigned` and one `session.presenter_added` audit row |
+| `RPC-add_session_presenter.refusals` | Another org's member, beyond the limit, already a presenter, deactivated, cancelled session (Q3), checked in (Q4): each leaves no row, no notice and no audit |
+| `RPC-remove_session_presenter.delete_not_decline` | The row is gone. No `declined_at` is ever written. A published session keeps its state and gains no transition row |
+| `RPC-remove_session_presenter.last` | The sole accepted presenter gets `23514`, and nothing is written. A pending row can always be removed |
+| `RPC-session_presenters.no_ledger` | Neither function's `prosrc` names `points_ledger`, `award_points` or `enqueue_job`, and neither call writes a `points_ledger` row in its transaction |
+
+### W12.7 ★ Questions for the lead (sync 1)
+
+1. **Q1: the direct-creation defect (a).** Should `create_session()`'s direct branch insert
+   `accepted = true` this wave, with the two `sessions-creation` ledger lines? And does the owner
+   run the production count and the data fix for existing `false` rows? My recommendation is yes:
+   it is the same ruling as `DEC-172`'s, and without it a directly created session has no
+   presenter on any surface. This also needs `console`'s hint «ولكل منهم أن يعتذر» changed
+   (`admin.json`), which is a copy request for you as custodian.
+2. **Q2: adding someone who already has a pending or declined row.** Should the add **update** the
+   row to `accepted = true, declined_at = null` (the repair path for Q1's legacy rows), or refuse
+   it as `already_presenter`? An update is a write that is not an insert, so **`scoring`'s
+   triggers must then cover `update of accepted` false→true**. I recommend the update, and
+   `scoring` must know before it writes its triggers.
+3. **Q3: cancelled sessions.** I propose that both RPCs refuse `session_cancelled`, because nothing
+   is shown or paid there and the audit would record a meaningless act. Draft, published, live,
+   completed and archived are all allowed («at any time»).
+4. **Q4: a member who checked in as an attendee.** `REQ-CHK-011` refuses a presenter's check-in,
+   but nothing refuses making an attendee a presenter. After completion that would pay them
+   attendance **and** presenter awards. I propose refusing with `member_checked_in`. If you would
+   rather allow it, it is `scoring`'s to decide what is paid.
+5. **Q5: `MSG-presenter_assigned`'s copy.** Should «تستطيع القبول أو الاعتذار من صفحة الجلسة.» be
+   dropped from the designed mail and the string template (no new key; `notify`'s pinned mail moves
+   as one reviewed diff)? And should an assignment after completion say anything about points,
+   under the same key?
+6. **Q6: the poster and the certificate after completion.** `REQ-SES-019` says an added presenter
+   appears «everywhere … the poster included». The poster hook re-renders only while
+   `published`/`in_progress`, and no trigger issues or revokes a presenter certificate on a
+   presenter change. These are `designer`'s, held by you. Should the acceptance be narrowed, or is
+   one of them a row?
+7. **Q7: «the last presenter» counts accepted rows.** A pending or declined row can always be
+   removed, and a session born with zero presenters stays legal.
+8. **Q8:** may the page import `listMembersForAdmin()` from `console`'s `admin-members.ts` (read
+   only, as SCR-053 and SCR-054 do), or would you rather I add a sessions-side reader?
+9. **Q9:** the completed-session sentence on SCR-043 states `scoring`'s behaviour. Keep it,
+   pending their wording, or omit it?
+10. **An audit-label request** (`admin.json`, `console`'s): `actions.session.presenter_added`
+    «إضافة مُقدِّم إلى جلسة» and `actions.session.presenter_removed` «إزالة مُقدِّم من جلسة». The
+    audit screen falls back to the raw action (`audit/page.tsx:76–78`), so this is not blocking.
+
+### W12.8 As built, after sync 1 (`DEC-174`)
+
+What sync 1 ruled:
+- Q1: yes, `create_session()`'s direct branch assigns presenters.
+- Q2: yes, an add on a pending or declined row updates it.
+- Q3: refuse on a cancelled session.
+- Q4: refuse a member with an active check-in, and tell the admin to remove their attendance
+  first.
+- Q5: the mail's copy is the lead's.
+- Q6: the poster and the certificate after completion are carried, not built.
+- Q7: «the last presenter» counts accepted rows.
+- Q8: `listMembersForAdmin()` is imported read-only.
+- Q9: the completed-session sentence stays.
+
+**SQL.** `supabase/proposed/sessions/0001_session_presenters_admin.sql` holds four things:
+- `create_session()`, re-created with the same signature. The direct branch now inserts
+  `accepted = true`.
+- `_session_for_presenter_change()`, the helper that re-derives the session and takes `for update`
+  on it. It refuses a cancelled session. **No client role may execute it.**
+- `add_session_presenter()`. A pending or declined row is promoted by an `update` that sets
+  `accepted = true` and clears `declined_at`; any other add is an insert.
+- `remove_session_presenter()`, which is always a `delete`.
+
+Each audit row names the member. The `before` field records the row it replaced. **Nothing in the
+file names the ledger, an award or a job**, and a test asserts that from `prosrc`.
+
+**App.**
+- DAL: `listSessionPresentersForAdmin()`, `addSessionPresenter()`, `removeSessionPresenter()`,
+  and `presenterChangeError()` with the list of refusals.
+- `schedule/actions.ts`: two actions, `addPresenter` and `removePresenter`. `removePresenter`
+  returns the refusal already worded.
+- `schedule/presenters-state.ts`: the add form's state.
+- `schedule/presenters-section.tsx`: first in the aside on SCR-043. On a cancelled session it is
+  `locked`: the list shows and nothing is offered.
+- `RemovePresenter` gains an optional `messages` prop and an optional error return. The
+  proposal's call site is unedited, and its default render is pinned by a new test.
+- Strings in `schedule.presenters.*` (Arabic first).
+- `<AwardState … variant="inline" />` is mounted after `AttendanceOutcome` in `action-card.tsx`,
+  as the lead ruled for `checkin`. `checkin` was told the exact line.
+
+**The untouched-suite ledger. Two lines, both in `tests/rls/sessions-creation.test.ts`, both
+ruled at sync 1 (Q1):**
+
+| File | Assertion | Why |
+|---|---|---|
+| `tests/rls/sessions-creation.test.ts` «an assigned presenter is not accepted on their behalf» → «an assigned presenter is ASSIGNED — accepted, as the proposer is (REQ-SES-019)» | `accepted` `false` → **`true`** | **An expectation changed on purpose** (`DEC-172`, `DEC-174` Q1). No screen ever let a presenter accept a session, and every reader filters on `accepted`, so the row was on no surface at all. It is now the row `RPC-create_session.assigned`. The case applies `sessions/0001` through `applyProposed()`, which is a no-op once the file is promoted |
+| `tests/rls/sessions-creation.test.ts` `POL-session_presenters.decline` «a decline before publication sends the session back to draft» | unchanged. The presenter's write becomes `accepted = false, declined_at = now()` instead of `declined_at` alone | **Harness only.** The row is born accepted now, and `0010:121`'s check refuses `declined_at` beside `accepted`. The decline therefore withdraws the acceptance in the same write, which is the shape `respondToPresenterInvite()` already uses. The session still goes back to draft with the same transition row |
+
+**New files:**
+- `tests/rls/session-presenters-admin.test.ts`: 17 cases covering the six `03` §8.2 rows.
+- `tests/unit/sessions-presenter-changes.test.ts`: 8 cases.
+- `tests/components/sessions/remove-presenter.test.tsx`: 4 cases.
+- `tests/components/sessions/presenters-section.test.tsx`: 9 cases.
+- `tests/e2e/wave12-sessions-presenters.spec.ts`: 3 cases, 4 captures and an axe run on the
+  section. **It runs only after `sessions/0001` is promoted**, because the RPCs do not exist
+  before that, and only on a build that contains this commit.
+
+**Gates at the commit:**
+- `tsc` clean.
+- `lint`: 0 errors. The one warning in `sessions-creation.test.ts`, an unused `CHECK_VIOLATION`,
+  was already there.
+- `npm test`: 245 files, 2341 green.
+- `ui-lint --strict`: green, 276 files.
+- My RLS files: 29 green.
+- **The whole `test:rls` run: 124 of 125 files green.** The one red file is
+  `tests/rls/survey-submit.test.ts` (6 cases), and the cause is outside my change. It counts
+  `graphile_worker` jobs across the whole database and finds 4 and 5 where it expects 0 and 1. Its
+  `run_at` delta is **negative** (−18213 s), so it is reading **committed jobs left in the local
+  database by an earlier run**. That file applies none of my SQL. It belongs to `event` (held by
+  the lead), so I have recorded it and not touched it.
+
+**Requests to the lead, as custodian:**
+1. `admin.json` `admin.sessions.presentersHint` (line 134 of both files):
+   - ar: «سيصل كلًّا منهم إشعار، ولكل منهم أن يعتذر.» → **«يُسند إلى كلٍّ منهم تقديم الجلسة، ويصله إشعار بذلك.»**
+   - en: "Each is notified and each may decline." → **"Each is assigned to present the session, and is notified."**
+2. The audit labels in `admin.json` under `admin.audit.actions.session`:
+   - `presenter_added`: ar «إضافة مُقدِّم إلى جلسة» · en "Presenter added to a session"
+   - `presenter_removed`: ar «إزالة مُقدِّم من جلسة» · en "Presenter removed from a session"
+3. Promote `sessions/0001` **after** `scoring`'s files. The order within my file does not matter to
+   theirs: `scoring`'s triggers fire on insert, update and delete of `session_presenters` whatever
+   the writer is.

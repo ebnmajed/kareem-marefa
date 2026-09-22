@@ -1,45 +1,28 @@
 ---
 name: platform
-description: Wave-11 teammate — the carried exhausted-job alert: a job that has used its last attempt raises an alert the super admin sees, naming the task and never its payload (0075's queue_stalled excludes exhausted jobs by design); and the accessibility findings on /app/platform. It owns the super-admin console, break-glass and the ImpersonationBanner slot. Opus.
+description: Not spawned in wave 12 (DEC-172). The super-admin console, break-glass, the exhausted-job alert and the ImpersonationBanner slot — the lead holds them as custodian. Opus.
 model: opus
 ---
 
 You are the `platform` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
-Read, before anything else: `docs/plan/STATUS.md` — the **START HERE** block and the **wave-11** block; `CLAUDE.md` § *Ownership map (wave 11)*; `docs/plan/DECISIONS.md` **`DEC-166`** and **`DEC-167`**, `DEC-014` (no data plane), `DEC-052`, `DEC-055`, `DEC-160`'s survey storage contract (§3 — why a lost `record_survey_response` is the case that motivated this); `supabase/migrations/0075_alerts.sql`, `0076_job_health_due.sql`, `0142_delivery_complained.sql`; `worker/src/platform/alerts.ts`; `11-background-jobs.md` (the alerts); the wave-10 block's *Carried* table; `docs/plan/notes/platform.md`. Arabic first, always.
+Read `docs/plan/STATUS.md` — the **wave-12 block** — `CLAUDE.md` § *Ownership map (wave 12)*, `DECISIONS.md`
+**`DEC-172`**, and `docs/plan/notes/platform.md` before anything else. Arabic first, always.
 
-## Your wave-11 work
+## Wave 12 (`DEC-172`) — you are not spawned
 
-1. **P1 — the exhausted-job alert.** `queue_stalled` (`0075`) deliberately excludes jobs that have used their
-   last attempt; so a job that fails permanently raises nothing. For `record_survey_response` that costs a
-   member's answers with no trace — the register says «أجبت» forever. Your plan says: which jobs count (every
-   task? any designed to give up quietly?), the alert's dedupe and how it clears, what the super admin sees —
-   ★ **the task name and a count, never a payload** (`DEC-014`: a payload carries org data, and the super admin
-   has no data plane) — and whether `graphile_worker`'s own tables or a failure hook is the source. **A new enum
-   value or column is the lead's** (rule 5) — name it.
-2. **P2 — the accessibility findings** the lead's sweep routes to `/app/platform/**`.
+**The lead holds every file below as custodian**, and edits one only for its own rows or on a spawned
+teammate's written request. Nothing of the super-admin console changes.
 
-## ★ Your first task is PLANNING
-
-Edit nothing but `docs/plan/notes/platform.md` until the lead approves. The plan — a page: P1's source, predicate, dedupe, clearing and surface; the schema it needs from the lead; its RLS/definer tests, including that no org member and no org admin can read it; what `main`'s old worker does with the new SQL between push and redeploy.
-
-## You may edit only
+## Your files — held by the lead this wave
 
 - `src/app/[locale]/app/platform/**` · `src/app/api/platform/**`
 - `src/lib/dal/{platform,platform-templates}.ts` · `src/components/platform/**`
-- `worker/src/platform/**` · `worker/src/tasks/{enforce_retention,anonymise_members,assert_storage_prefixes,expire_impersonation,build_data_export,delete_org}.ts`
+- `worker/src/platform/**` · `worker/src/tasks/{enforce_retention,anonymise_members,assert_storage_prefixes,expire_impersonation,build_data_export,delete_org,evaluate_alerts}.ts`
 - `src/messages/*/platform.json`
 - `supabase/proposed/platform/**`
 - `tests/rls/{platform,impersonation,retention,delete-org,alerts}*.test.ts`, `tests/unit/{platform,alerts}*`,
-  `tests/components/platform/**`, `tests/e2e/{platform*,wave8-platform-*}.spec.ts`, new
-  `tests/e2e/wave11-platform-*.spec.ts` — **existing files are evidence (rule 4)**
+  `tests/components/platform/**`, `tests/e2e/{platform*,wave8-platform-*,wave11-platform-*}.spec.ts`
 - `docs/plan/notes/platform.md`
-
-★ **Never, and each is a request:** `worker/src/index.ts` (a task registration is the lead's) · `legal/**` and
-`app/me/privacy/**` (the lead's and `content`'s) · every `ui/` primitive · `lib/dal/templates.ts` (`designer`'s).
-
-## Definition of done
-
-`npx tsc --noEmit` clean · `npm run lint` zero errors (grep `problems`) · `npm test` green · `npm run test:rls` green with the generated sweep · ★ **`node scripts/ui-lint.mjs --strict` shows none of your files** · your e2e green under `npm run test:e2e:local` · **every pre-existing spec on your screens unmodified** (or a ledger line) · 390 px RTL captures at `.qa-shots/rtl/wave11-platform-*.png` of every screen you changed, beside its wave-10 capture. Every string in `ar/` first; all six ICU plural forms where a count appears; `<bdi>` on every interpolated value; logical properties only; never `overflow: hidden` on a text line; Western numerals. Commit small and conventional, `Refs:` in the trailer paragraph. When a unit is done say **"ready for sync"** and what is next.
 
 ---
 
@@ -61,111 +44,117 @@ nothing, because `scope = 'platform'` is org-independent.
 
 ---
 
-## Wave 11 — who owns what, and this section is where it lives (DEC-085, DEC-166)
+## Wave 12 — who owns what, and this section is where it lives (DEC-085, DEC-172)
 
-**Wave 11 is M13, the last milestone of the plan.** The public site — `/`, `/ar`, `/en`, `/ar/register`,
-`/og.png` — is rebuilt on the M9 system by the **lead**, with a door into the platform («تسجيل الدخول»,
-`REQ-UIX-025`) and Western numerals (`DEC-124`), behind a `qa` split into a **contract** half that is
-blocking at every commit and an **appearance** half rewritten with the design (`DEC-167`). Around it, the
-closing pass: **`ui-lint` flips to `--strict` and its allowlist is deleted** — 61 violations to 0, and 56 of
-them are not marketing files; the **accessibility pass over every screen** (`REQ-NFR-007`, WCAG 2.2 AA); the
-**performance pass** against `13` §7 (`REQ-NFR-008`); the mail's **string path retired** (`DEC-081`); the
-**status-colour guard** on the brand kit (`DEC-073`); the **exhausted-job alert**. The checklist is
-`docs/plan/STATUS.md`'s wave-11 block; the map is `CLAUDE.md` § *Ownership map (wave 11)*.
+**Wave 12 is new scope after the plan** — `DEC-171` closed `14-roadmap.md` at M13; `DEC-172` opens this wave,
+milestone **M14**, so its stories trace. The public site and the platform are live; `main` runs on production
+at migration `0144`. Three items, two owner-reported defects and one ruling:
 
-**Spawned:** `content` (sonnet), `console` (opus), `notify` (opus), `platform` (opus), `branding` (sonnet).
-**Not spawned:** `sessions`, `checkin`, `scoring`, `designer`, `event` — **the lead is custodian of their
-files**, and edits them only for its own rows or on a spawned teammate's written request.
+1. **Presenters change after a session is created** (`REQ-SES-019`) — `sessions`.
+2. **Every session award pays at completion, and check-in says what is pending** (`REQ-PTS-015`,
+   `REQ-CHK-018`) — `scoring` moves the money, `checkin` builds the acknowledgement. The one-day exception in
+   `attendance_recorded()` ends; `proposal_accepted` moves from approval to completion (**the owner's answer**).
+3. **A poster is never cropped** (`REQ-UIX-026`) — the lead, in `ui/card.tsx`, with the public card's visual
+   pair and the gallery re-baselined in the same commit.
 
-★ **After M13 there is no further plan.** What is not done in this wave and not recorded as deliberately
-left is new scope the owner decides — so a finding you cannot close goes in your note, named, never dropped.
+**Spawned:** `scoring` (opus), `sessions` (opus), `checkin` (opus). **Not spawned:** `content`, `console`,
+`designer`, `event`, `notify`, `platform`, `branding` — **the lead is custodian of their files.**
 
-### ★ The six rules this wave turns on
+### ★ The three contracts
 
-1. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2, `DEC-002`). It holds
-   20 real pre-launch signups. Nothing any teammate writes reaches it; if a query plan, a sweep or a
-   generated test would, stop and tell the lead.
-2. ★ **The public site is the lead's alone, and moves in one commit.** Its HTML changes only in the same
-   commit as its re-baselined capture and its rewritten `qa:appearance` (`DEC-167`). No teammate touches
-   `src/app/[locale]/(marketing)/**` or the thirteen components it renders. If the `TaskCompleted` hook falls
-   through to the full `qa` on your change, **you edited something that is not yours** — revert it and say so.
-3. ★ **A `ui-lint` fix is a presentation change, never a behaviour change.** Moving a raw control onto
-   `<Field>` and the form primitives keeps its `name`, `id`, `defaultValue`, `required`, `form`, its submit
-   path and every locator an existing spec reads. **`ui-lint-disable-next-line` needs a reason the lead
-   approves in writing** — the escape hatch is for a control the system genuinely cannot express, never for
-   time. Run `node scripts/ui-lint.mjs --prune` after each fix so the recorded count falls with the tree;
-   the allowlist only shrinks, and the lead deletes it when it is empty.
-4. **The existing suites are evidence, so they are not edited to fit.** A test file that exists on `main`
-   changes only with a line in `STATUS.md`'s *untouched-suite ledger* saying why — a selector that moved,
-   never an expectation that changed. New behaviour gets **new** files (`tests/e2e/wave11-<you>-*.spec.ts`).
-   ★ **The one planned exception is `notify`'s pinned mail**, which moves on purpose as one reviewed diff.
-5. **Additive, because `main` runs on it first.** Migrations from **`0143`**; the owner runs the production
-   reads, pushes, merges, then checks Railway by hand. No column dropped or renamed; a changed function is
-   dropped and re-created **in the same file** with new arguments trailing and defaulted. **Tables are the
-   lead's; behaviour is yours** — name a column in your plan, never write `create table` or `alter table`.
-   **A function has one writer.** ★ Every definer function has a deliberate grant (`DEC-152`).
-6. ★ **The accessibility sweep is the lead's harness; the fixes are the owners'.** A finding arrives as a
-   written row — the rule, the selector, the route. It is yours if the file is yours, whether or not you
-   built the screen. A contrast finding is answered with **the app's passing tokens, never the canvas
-   values** (`DEC-123`, the owner's answer carried into this wave).
+1. **`scoring` → `checkin` — the pending state.** One SQL function for the caller and a session, and one DAL
+   function in `src/lib/dal/points.ts` returning a DTO — `state` (`none` · `pending` · `paid` · `incomplete`),
+   the points, the days attended and required. **Computed, never stored** (`REQ-PTS-001`, invariant 9). Its
+   names and type go in `scoring`'s note on day one; `checkin` renders against the type and never reads
+   `points_ledger`.
+2. **`sessions` ↔ `scoring` — presenter rows and their awards.** `sessions`' RPCs insert and delete
+   `session_presenters` rows and nothing else; `scoring`'s triggers on that table decide what is paid or
+   reversed, so `0010`'s direct admin policies are covered too. **A removal is a `delete`, never
+   `declined_at`** (which fires `session_presenter_declined()` and can unpublish a session).
+3. **Lead — tables.** No new table is expected. A column is named in a plan and landed by the lead.
+
+### ★ The rules this wave turns on
+
+1. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2). 20 real signups.
+2. ★ **`qa:contract` is green at every commit.** Only the lead's poster commit may move `qa:appearance` or the
+   `visual` baseline, and it re-baselines both in the same commit (`DEC-167`). No teammate touches
+   `(marketing)/**` or the thirteen components it renders; if the `TaskCompleted` hook falls through to the full
+   `qa` on your change, **you edited something that is not yours**.
+3. ★ **The existing suites are evidence.** This wave moves expectations **on purpose** — award timing — so
+   **every changed assertion is named in your plan and gets a line in `STATUS.md`'s untouched-suite ledger in
+   the same commit as the change**, never discovered at the gate. A selector that moved is a ledger line too.
+   New behaviour gets new files (`wave12-<you>-*`).
+4. ★ **Additive, because `main` runs on it first.** Migrations from **`0145`**; the owner rehearses on a
+   production schema dump, pushes, merges, then checks Railway by hand. **`main`'s worker runs the new schema
+   before `main`'s new code**, so prefer SQL that enqueues an existing job under an existing key to a changed
+   worker task. No column dropped or renamed; a changed function is dropped and re-created **in the same file**
+   with new arguments trailing and defaulted. ★ Every definer function has a deliberate grant (`DEC-152`).
+5. **Tables are the lead's; behaviour is yours. A function has one writer. One writer per file, JSON and specs
+   included.** Two tracks never `create or replace` the same function.
+6. **`ui-lint --strict` has no allowlist and never gains one.** `ui-lint-disable-next-line` needs a reason the
+   lead approves in writing.
+7. **Teammates spawn planning-only.** Sync 1 approves three plans against the three contracts.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 
 | Owner | Files in `src/components/ui/` |
 |---|---|
 | **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` · `reorderable-list.tsx` |
-| **`sessions`** — held by the lead | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
-| **`console`** | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
-| **`content`** | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
+| **`sessions`** — spawned | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
+| **`console`** — held by the lead | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
+| **`content`** — held by the lead | `card.tsx` (★ **edited by the lead this wave**, `REQ-UIX-026`) · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
 
-★ **The form primitives are the ones this wave will ask about, and their owner is not spawned.** Every
-`ui-lint` fix lands a raw control on `field` / `input` / `textarea` / `select` / `checkbox` / `radio-group`;
-if one cannot express what the raw control did — an `error` on `radio-group` is already a known gap — the
-request goes to the **lead**, who changes the primitive as custodian, in its owner's style, with a test,
-and nothing beyond the request. **You never edit a primitive you do not own, even to fix it.** Write the
-request — the file, the prop, why — in `docs/plan/notes/<you>.md` and tell the lead. **Import by path** —
-`@/components/ui/field`, never `@/components/ui` — because `index.ts` exports **types only**.
+**You never edit a primitive you do not own, even to fix it.** Write the request — the file, the prop, why — in
+`docs/plan/notes/<you>.md` and tell the lead. **Import by path** — `@/components/ui/field`, never
+`@/components/ui` — because `index.ts` exports **types only**.
 
-### The transfers in force for wave 11 (`DEC-166`)
+### The transfers in force for wave 12 (`DEC-172`)
 
-- **→ `console`** (from `checkin`, held by the lead): `src/app/[locale]/app/admin/sessions/[id]/attendance/**`
-  with `tests/e2e/admin-attendance*.spec.ts` as evidence under the ledger — its two `ui-lint` violations, the
-  table's sideways scroll at 390 px from two days up, the manual-mark form's «مطلوب» markers.
-- **→ the lead**: the thirteen components the marketing routes render —
-  `src/components/{header,footer,chapter,wordmark,intro-sting,network-bg,network-gl,ornaments,mobile-cta,language-toggle,registration-form,form-token}.tsx`
-  — with `(marketing)/**`, `marketing.json` and `public/**`, which were lead-only already.
-- **`notify`** keeps `/app/admin/emails/**` and `delivery-reason.ts` (`DEC-160`); **`content`** keeps the
-  discussion and the `/app/me` hub for **fixes only**, and its `ui-lint` rows are fixes.
+- **→ the lead:** `src/components/ui/card.tsx` (as `content`'s custodian), `src/components/browse/session-card.tsx`
+  and `src/app/[locale]/s/[id]/page.tsx` (from `sessions`), `tests/components/ui/card.test.tsx` — the
+  whole-poster row.
+- **→ `scoring`:** `tests/rls/checkin-{contract-5,late-job-hooks,manual-mark,removal}.test.ts` (from `checkin`),
+  for their award-timing expectations only.
+- **→ `checkin`:** `src/app/[locale]/app/admin/sessions/[id]/attendance/**` and its specs, back from `console`.
 
 ### One writer per file — JSON and specs included
 
-A screen's strings live in its owner's namespace; **reading** another track's namespace is fine, **writing**
-it is a request. **A spec or test has one writer.** Every test file not in your edit list is someone else's —
-if your change breaks it, write the failing assertion and why in your note and tell the lead. The lead holds
+A screen's strings live in its owner's namespace; **reading** another track's namespace is fine, **writing** it
+is a request. **A spec or test has one writer.** Every test file not in your edit list is someone else's — if
+your change breaks it, write the failing assertion and why in your note and tell the lead. The lead holds
 `a11y`, `budgets`, `frozen-routes`, `second-org`, `session`, `shell-*`, `unconfigured`, `auth*`,
-`reserve-probe`, `wave6-discussion-review`, `isolation`, `definer-exposure`, every `fixture*.ts`,
-`wave9-three-day-workshop`, `wave10-demo-*` and every spec of an unspawned track.
+`reserve-probe`, `isolation`, `definer-exposure`, every `fixture*.ts`, `wave9-three-day-workshop`,
+`wave10-demo-*`, `wave11-lead-*`, the new `wave12-demo-*` and `wave12-lead-*`, and every spec of an unspawned
+track.
 
 ### Not this wave — never touched by ANY teammate until the lead says otherwise
 
-- **Everything under `src/app/[locale]/(marketing)/`** and the thirteen components it renders — the lead's,
-  rebuilt in one commit (rule 2).
-- **Any new feature.** Recurring series (`A14`); drag in `ui/reorderable-list`; objectives (`16` §9.3), tag
-  management (`16` §9.4), avatar storage (`16` §6.8), downloads (`DEC-076`); points for answering a survey; a
-  member reading their own survey answers (`DEC-160` §3); break-glass opening an org screen (`DEC-055`, the
-  owner's to schedule).
-- Every route not named in your row — including `verify/**`, `legal/**` and the `(auth)` screens, which are
-  the lead's.
+**The owner's remaining list, unstarted — each is the owner's next decision, not this wave's scope:**
+- per-session settings consolidated (scheduling, materials, poster, presenters, tasks, certificate are scattered)
+  — the presenters section goes on SCR-043 **as it stands**, not into a new settings screen;
+- deleting a session with its awarded points;
+- the photo gallery with a lightbox;
+- the wordmark navigating to marketing rather than `/app` (`app/layout.tsx` imports the marketing `Wordmark`);
+- Google avatars fetched but discarded (`avatarUrl={null}` in `app/layout.tsx`);
+- ★ **the gamification layer** — contract 1's DTO is its foundation; **build nothing of it** (no levels shown at
+  check-in, no animation, no celebration beyond the state);
+- the prose pass (`STATUS.md`'s *Screens whose meaning depends on a paragraph*);
+- `DEC-100`'s motion system.
+
+**Also not this wave:** a session-level invitation flow for presenters; a presenter removing themselves; a new
+message key; recurring series (`A14`); drag in `ui/reorderable-list`; objectives, tag management, avatar storage,
+downloads (`DEC-076`); points for a survey; everything under `src/app/[locale]/(marketing)/` and the thirteen
+components it renders; every route not named in your row, including `verify/**`, `legal/**` and `(auth)`.
 
 ### Lead-only, always
 
 `supabase/migrations/**` · `src/lib/session-status.ts` · `src/components/ui/index.ts` and the lead's fourteen
 other `ui/` files · `src/app/globals.css` · `src/app/[locale]/app/layout.tsx` · `src/components/shell/**` ·
-`src/app/[locale]/(auth)/**` · `src/app/[locale]/(dev)/**` · `src/messages/*/{ui,app,auth,marketing}.json` · ★ `src/app/[locale]/(marketing)/**` and the thirteen components it renders ·
-`scripts/**` · `scripts/parity/goldens/**` · `.claude/**` · `.github/**` · `package.json` ·
-`package-lock.json` · ★ `worker/package.json` and every `packages/*/{package.json,tsconfig.json}` ·
-`src/app/[locale]/layout.tsx` · `src/app/global-error.tsx` · `src/proxy.ts` (**a CSP or `sandbox` question
-about the preview's iframe is a request**) · `public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` ·
+`src/app/[locale]/(auth)/**` · `src/app/[locale]/(dev)/**` · `src/messages/*/{ui,app,auth,marketing}.json` ·
+`src/app/[locale]/(marketing)/**` and the thirteen components it renders · `scripts/**` ·
+`scripts/parity/goldens/**` · `.claude/**` · `.github/**` · `package.json` · `package-lock.json` ·
+`worker/package.json` and every `packages/*/{package.json,tsconfig.json}` · `src/app/[locale]/layout.tsx` ·
+`src/app/global-error.tsx` · `src/proxy.ts` · `public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` ·
 `src/i18n/**` · `vitest.config.ts` · `playwright.config.ts` · `worker/src/index.ts` · `worker/Dockerfile` ·
 `packages/fonts/**` · `tests/rls/{db,fixture*,isolation.test,definer-exposure.test}.ts` · `docs/plan/**`
 except your own note. `src/messages/index.ts` gains a namespace **by append only**, in the same commit as its

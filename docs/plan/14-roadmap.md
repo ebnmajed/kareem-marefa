@@ -491,6 +491,25 @@ behaviour being preserved byte-for-byte while only its presentation changes.
 
 ---
 
+## M14 — new scope after the plan · wave 12 · `DEC-172`
+
+**Not part of the sequence above.** `DEC-171` closed the plan at M13; M14 names the first piece of new
+scope the owner decided, so that its stories have a milestone to cite.
+
+| Work | Requirements |
+|---|---|
+| An admin changes a session's presenters after creation, from the schedule screen | `REQ-SES-019` |
+| Every session award pays at completion — the one-day exception and `proposal_accepted` at approval end | `REQ-PTS-015` |
+| Check-in says what is pending, as a state read from the data | `REQ-CHK-018` |
+| A poster is never cropped, on every surface that shows one | `REQ-UIX-026` |
+
+**Demonstrable:** a presenter added and removed after completion, with the ledger proving each; a
+one-day session where a member checks in, is told what is pending, sees no ledger row, and receives
+it at completion — and the same member removed before completion leaves no row and no reversal; a
+390 px capture of the timeline card showing the whole poster.
+
+---
+
 ## 3. Dependencies
 
 ```mermaid

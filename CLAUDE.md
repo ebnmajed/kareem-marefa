@@ -318,7 +318,73 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 11 — M13, the public site and the closing pass, DEC-166) — ★ THE MAP IN FORCE
+### Ownership map (wave 12 — presenters, awards at completion, the whole poster, DEC-172) — ★ THE MAP IN FORCE
+
+**New scope after the plan** (`DEC-171` closed it; `DEC-172` opens this, milestone **M14** so its stories trace).
+Three items: **(1)** an admin changes a session's presenters after creation (`REQ-SES-019`); **(2)** every
+session award pays at completion and check-in says what is pending (`REQ-PTS-015`, `REQ-CHK-018`) — the one-day
+exception in `attendance_recorded()` ends and `proposal_accepted` moves from approval to completion (the owner's
+answer); **(3)** a poster is never cropped (`REQ-UIX-026`). The checklist is `STATUS.md`'s wave-12 block. **The
+measure adds three demonstrables:** a 390 px capture of the timeline card showing a whole poster beside the
+owner's cropped one; a presenter added and removed **after** completion with the ledger proving both; a one-day
+session where a member checks in, is told what is pending, has **no** ledger row until completion — and the same
+member removed **before** completion leaves no row and no reversal.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ `DEC-172`, this map, the ten agent files, `01`/`09`/`14`/`15` · ★ **the poster** (`REQ-UIX-026`): `CardMedia` never crops, each surface's aspect decided and written down, the public card's `visual` pair, `qa:appearance` if it moves, and the `(dev)` gallery re-baselined **in the same commit** · every table change · promotion from **`0145`** · the three demonstrable specs · the gates, `STATUS`, the PR | the lead-only paths below, `supabase/migrations/**` from `0145`, ★ `src/components/ui/card.tsx` (custodian of `content`'s primitive, for this row), ★ `src/components/browse/session-card.tsx` and `src/app/[locale]/s/[id]/page.tsx` (from `sessions`, for the wave), `tests/components/ui/card.test.tsx`, new `tests/e2e/wave12-{demo,lead}-*.spec.ts`, the lead's fifteen `ui/` files, `src/app/globals.css`, `src/components/shell/**`, `src/app/[locale]/(dev)/**`, `messages/*/{ui,app,auth}.json`. **Custodian** of every file of a track not spawned — `content`, `console`, `designer`, `event`, `notify`, `platform`, `branding` — edited only for its own rows or on a teammate's written request |
+| `scoring` | opus | ★ **the timing** — `attendance_recorded()` evaluates only a completed session; `award_points()` loses the multi-day-only clause; `proposal_accepted` paid by the completion fan-out **under its existing key** · ★ **presenter awards follow the presenter** — triggers on `session_presenters`: paid on becoming an accepted presenter of a completed session, a compensating row per held presenter award on leaving (`0087`'s shape), an epoch so a re-added presenter can be paid again · ★ **the pending state, computed**: one function and one DTO (contract 1) · streaks and badges count completed sessions · every downstream reader measured — `me/points`, leaderboards, recognition, the balance audit | `supabase/proposed/scoring/**`, `src/lib/dal/{points,leaderboards,recognition}.ts`, `src/app/[locale]/app/me/points/**`, `src/components/scoring/{points-history-list,points-catalogue,points-strip}.tsx`, `worker/src/tasks/{award_points,award_presenter_points,evaluate_no_shows,evaluate_streaks,evaluate_badges,evaluate_levels_perks,snapshot_leaderboards,audit_balances}.ts`, `messages/*/scoring.json`, `tests/rls/{scoring,points,award,leaderboards,recognition,audit-balances,manual-adjustment,snapshot,all-time}*.test.ts`, ★ `tests/rls/checkin-{contract-5,late-job-hooks,manual-mark,removal}.test.ts` (from `checkin`, **evidence** — the timing expectations only, each under a ledger line), `tests/unit/scoring*`, `tests/components/scoring/**`, `tests/e2e/points.spec.ts`, `tests/e2e/wave9-scoring-*.spec.ts`, new `tests/e2e/wave12-scoring-*.spec.ts`, `docs/plan/notes/scoring.md` |
+| `sessions` | opus | ★ `add_session_presenter()` / `remove_session_presenter()` — admin only, audited, an added presenter **assigned** (`accepted = true`), the last one never removable; they write the table and **never award or reverse** (contract 2) · the DAL functions · the presenters section on SCR-043 from `components/admin/member-picker` (imported, not edited) and `RemovePresenter` (generalised, the proposal's use unchanged) | `supabase/proposed/sessions/**`, `src/app/[locale]/app/admin/sessions/[id]/schedule/**`, `src/components/sessions/**`, `src/lib/dal/{sessions,proposals}.ts`, `messages/*/{sessions,proposals,schedule}.json`, `tests/rls/{sessions,proposals,session-presenters}*.test.ts`, `tests/unit/{sessions,schedule-rules,schedule-actions}*`, `tests/components/sessions/**`, `tests/components/checkin/schedule-form.test.tsx`, `tests/e2e/{wave8-lead-schedule,checkin-schedule-walk-ins,wave9-sessions-schedule-days}.spec.ts` (evidence), new `tests/e2e/wave12-sessions-*.spec.ts`, `docs/plan/notes/sessions.md`. **Fixes only**, on a written request: its other files — the timeline, browse, the event page, `propose/**`, `members/**`, `leaderboards/**` and `components/scoring/{member-board,company-board,company-points-breakdown}.tsx` (a leaderboard change `scoring` measures is a request to `sessions`) |
+| `checkin` | opus | ★ **the acknowledgement** (`REQ-CHK-018`): SCR-014 after a verified check-in, and `attendance-outcome` on the event page, render contract 1's DTO — nothing earned, pending (the amount; days attended of days required), paid, incomplete — **a state read from the data, the same after a reload, never a toast** · the check-in path writes no ledger row and says so | `src/app/[locale]/app/sessions/[id]/{check-in,host}/**`, ★ `src/app/[locale]/app/admin/sessions/[id]/attendance/**` (back from `console`), `src/components/checkin/**`, `src/lib/dal/{rsvp,checkin}.ts`, `worker/src/tasks/{promote_waitlist,rotate_codes}.ts`, `messages/*/{rsvp,checkin}.json`, `supabase/proposed/checkin/**`, `tests/rls/{rsvp,checkin,priority-rsvp}*.test.ts` **except the four with `scoring`**, `tests/unit/session-matrix.test.ts`, `tests/unit/checkin-*`, `tests/components/checkin/**` except `schedule-form.test.tsx`, `tests/e2e/{checkin,checkin-gating}.spec.ts`, `tests/e2e/wave{7,9}-checkin-*.spec.ts`, `tests/e2e/admin-attendance*.spec.ts`, `tests/e2e/wave11-console-attendance.spec.ts` (evidence), new `tests/e2e/wave12-checkin-*.spec.ts`, `docs/plan/notes/checkin.md` |
+
+★ = transferred or changed for this wave by `DEC-172`.
+
+**Wave-12 contracts.**
+
+1. **`scoring` → `checkin` — the pending state.** One SQL function for the caller and a session, and one DAL
+   function in `src/lib/dal/points.ts` returning a DTO — `state` (`none` · `pending` · `paid` · `incomplete`),
+   the points, the days attended and required. **Computed, never stored** (`REQ-PTS-001`, invariant 9). The
+   names and the type are in `scoring`'s note on day one; `checkin` renders against the type and never queries
+   `points_ledger` itself.
+2. **`sessions` ↔ `scoring` — presenter rows and their awards.** `sessions`' RPCs insert and delete
+   `session_presenters` rows and nothing else. `scoring`'s triggers on that table decide what is paid or
+   reversed, so a direct admin write under `0010`'s policies is covered too. **A removal is a `delete`,
+   never `declined_at`**, which would fire `session_presenter_declined()` and can unpublish a session.
+3. **Lead — tables.** No new table is expected. A column any track needs is named in its plan and the lead
+   lands it.
+
+**Wave-12 rules.**
+
+- ★ **`qa:contract` green at every commit.** Only the lead's poster commit may move `qa:appearance` or the
+  `visual` baseline, and it re-baselines both in the same commit (`DEC-167`).
+- ★ **`registrations` is never touched** (invariant 2).
+- ★ **The existing suites are evidence.** Moving the award changes expectations on purpose, so **each
+  changed assertion is a ledger line in `STATUS.md`**, written in the same commit as the SQL that moves it —
+  never discovered at the gate. New behaviour gets new files.
+- ★ **Additive, because `main` runs on it first.** Migrations from `0145`; the owner rehearses on a production
+  schema dump, pushes, merges, then checks Railway. **`main`'s worker runs the new schema before it runs the
+  new code**, so prefer SQL that enqueues an existing job under an existing key to a changed worker task — and
+  where a task must change, the plan says what `main`'s worker does in the gap.
+- **Teammates spawn planning-only**; sync 1 approves three plans against the three contracts.
+- **Tables are the lead's; behaviour is the tracks'. A function has one writer. One writer per file, JSON and
+  specs included.**
+- **`ui-lint --strict` has no allowlist and never gains one.** Every track that ships a screen runs
+  `npm run ui-lint` before it commits.
+- **Captures land at `.qa-shots/rtl/wave12-<track>-<surface>-<state>.png`** in the main checkout, phone
+  project, `390 × 844`, from a production build the row names by commit, honouring `E2E_SHOTS_DIR`. The lead
+  opens every one **in bands, never downscaled**.
+- **Not this wave, and never-touch for every teammate — the owner's remaining list:** per-session settings
+  consolidated; deleting a session with its awarded points; the photo gallery with a lightbox; the wordmark
+  navigating to marketing rather than `/app`; Google avatars discarded (`avatarUrl={null}`); the gamification
+  layer (contract 1's DTO is its foundation — **build nothing of it**); the prose pass; `DEC-100`'s motion
+  system. Also: a session-level invitation flow for presenters; recurring series (`A14`); drag in
+  `ui/reorderable-list`; everything under `(marketing)/**`.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`,
+  `stop`, branch switches, pushes and the PR.
+
+### Ownership map (wave 11 — M13, the public site and the closing pass, DEC-166) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 11 merged as PR #28 (`b3f8d76`). Its map is kept as the record; **wave 12's map is directly above** (`DEC-172`).
 
 **The last milestone of the plan.** The public site rebuilt on the M9 system with a door into the platform
 (`REQ-UIX-025`) and Western numerals (`DEC-124`); `qa` split into a contract half that is blocking at every

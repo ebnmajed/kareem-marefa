@@ -1249,6 +1249,42 @@ generated suite is the highest-value test in the product.
 | `RPC-create_session.admin_only` | A member and a moderator are refused `42501`; an admin of another org cannot reach the proposal or create into that org. |
 | `RPC-create_session.one_per_proposal` | An approved proposal becomes at most one session (partial unique index); a second attempt is refused, and only an `approved` proposal can be turned into one (`REQ-PRO-007`, `REQ-PRO-008`). |
 | `POL-session_presenters.decline` | A presenter declining an unpublished session returns it to `draft` and writes the transition row; a published session is left alone (`REQ-SES-003`). |
+| `POL-session_presenters.update_self.not_after_completion` | A presenter of a completed or cancelled session cannot change their own `accepted` / `declined_at` (the update matches no row); on a session still ahead they can, as before (migration `0146`, `DEC-174`). |
+| `RPC-session_award_state.caller_only` | Takes no member; reads the caller's claims; another org's session returns zero rows; `anon` cannot execute it. |
+| `RPC-session_award_state.none` | No active check-in, a removed one, a disabled or zero-point rule, a cancelled session, or an accepted presenter → `none`. |
+| `RPC-session_award_state.pending_before_completion` | Checked in on a running session → `pending` with the rule's points and the days attended, required and counted. |
+| `RPC-session_award_state.paid_when_standing` | An attendance award that no reversal names → `paid` with its amount, before or after completion. |
+| `RPC-session_award_state.incomplete` | After completion with the predicate false, or before it once a required day's ceiling has passed unattended → `incomplete`, naming those days in order. |
+| `RPC-session_award_state.agrees_with_award_points` | `pending` on a completed session if and only if the completion pass writes the award. |
+| `RPC-session_award_state.writes_nothing` | The ledger and the queue are identical before and after a call. |
+| `RPC-attendance_award_barred.service_role_only` | No client role can execute the shared presenter bar. |
+| `POL-check_in.no_award_before_completion` | A code check-in and a manual mark on a running session — one day or three — enqueue no award job. |
+| `RPC-award_points.waits_for_completion_at_any_n` | A `check_in` award on a session that is not completed or archived writes nothing, at one day as at three. |
+| `RPC-evaluate_member_attendance.pays_only_after_completion` | The completion pass on a running session enqueues nothing; on a completed one it enqueues main's key and payload. |
+| `RPC-attendance_removed.before_completion_writes_nothing` | Check in, remove, complete: no award, no reversal, and the no-show only from the completion pass. |
+| `RPC-attendance_removed.no_show_after_completion_only` | A removal records the no-show only on a completed or archived session. |
+| `RPC-award_points.presenter_earns_no_attendance` | An accepted presenter of the session is paid no attendance, whenever they checked in. |
+| `RPC-award_points.presenter_sources_wait_for_completion` | `session_delivered`, `attendee_bonus`, `rating_bonus` and `proposal_accepted` write nothing before the session completes. |
+| `RPC-award_points.presenter_must_be_accepted` | The same four write nothing to a member who is not an accepted presenter of the session when the job runs. |
+| `RPC-award_points.presenter_epoch` | With no reversal a presenter award's key is today's (`…:v1`); after one it is `…:v2`. |
+| `RPC-evaluate_member_attendance.readd_repays_presenter_bonus` | An attendee re-added after completion re-runs the presenters' award job under its existing key. |
+| `POL-proposals.no_award_at_approval` | An approval enqueues nothing: the trigger is gone. |
+| `POL-sessions.completion_pays_proposal_presenters` | Completion enqueues `pts:proposal_accepted:<proposal>:<member>` for each accepted session presenter who was on the proposal, with the session's id; none for a direct session. |
+| `POL-sessions.proposal_accepted_never_twice` | A proposal paid at approval before this migration is not paid again at completion: the same ledger key. |
+| `POL-session_presenters.pays_on_join_after_completion` | Inserting an accepted row, or updating one to accepted, on a completed session enqueues the fan-out's jobs for that presenter; before completion, nothing. |
+| `POL-session_presenters.reverses_on_leave` | Deleting an accepted row, or updating it away from accepted, writes one compensating row per standing presenter award, «أُزيل من مقدّمي الجلسة», `reversal:<id>:v1`. |
+| `POL-session_presenters.reverses_legacy_proposal_accepted` | A `proposal_accepted` paid at approval is reversed when that presenter leaves, before completion too. |
+| `POL-session_presenters.epoch_repays_after_readd` | Removed and re-added after completion: `v1`, its reversal, `v2`. |
+| `POL-session_presenters.trigger_is_definer` | An admin's delete through `p2_admin_delete` writes the reversal, though the admin has no grant on the ledger. |
+| `RPC-evaluate_streaks.counts_completed_sessions` | Check-ins at sessions not yet completed do not count toward a streak; the same sessions completed do. |
+| `RPC-evaluate_badges.counts_completed_sessions` | The same for the `check_ins_count` badge metric. |
+| `RPC-add_session_presenter.admin_only` | A member and a moderator are refused 42501; an admin of another org cannot reach the session (`session_not_found`, 42501); stale claims are refused. |
+| `RPC-add_session_presenter.assigned` | The member becomes an ACCEPTED presenter, is told once by `MSG-presenter_assigned`, and one `session.presenter_added` audit row names them; a pending or declined row is promoted to accepted rather than refused. |
+| `RPC-add_session_presenter.refusals` | A member outside the org, a deactivated member, an existing accepted presenter, a member with an active check-in on the session, a cancelled session, and one beyond the org's presenter limit are each refused, leaving no row, no notice and no audit. |
+| `RPC-remove_session_presenter.delete_not_decline` | The row is DELETED — `declined_at` is never written, so a published session keeps its state and gains no transition row; one `session.presenter_removed` audit row. |
+| `RPC-remove_session_presenter.last` | The session's only accepted presenter cannot be removed (23514); a pending or declined row always can. |
+| `RPC-session_presenters.no_ledger` | Neither function names the ledger, an award or a job, and neither call writes a ledger row. |
+| `RPC-create_session.assigned` | A presenter named when an admin creates a session directly is ACCEPTED — assigned, as `DEC-172` rules for an added one (replaces `0020`'s «not accepted on their behalf»). |
 | `RPC-schedule_session.admin_only` | A member, a moderator and the session's own presenter are all refused; a presenter cannot set a date even through the RPC (D13, migration `0021`). |
 | `RPC-schedule_session.derives` | `ends_at` is stored, derived from the duration when not given and independently editable when it is; the time zone comes from the venue, else the org; a custom venue needs a name **and** an address (`REQ-SES-002`). |
 | `RPC-publish_session.gate` | Publishing without a date, an end, a venue or a capacity is refused by the **table**, not only by the form; the refusal names what is missing (`REQ-SES-001`; the poster gate joins at M6). |
@@ -1510,6 +1546,7 @@ generated suite is the highest-value test in the product.
 | `POL-design_assets.insert.mime` | An SVG named `.png` is rejected on `sniffed_mime`, never on the filename (DEC-009); a plain member cannot add or remove an asset; an asset is never updated in place. (migration `0055`). |
 | `POL-fonts.select` | Every member reads the manifest; only the job writes it; a font cannot reach `passed` without Arabic coverage (A39). (migration `0055`). |
 | `POL-export_artifacts.select` | Select follows the document; no client role writes one; `source_fingerprint` is the cache key — the same source cannot be stored twice (`REQ-DSG-013`). (migration `0055`). |
+| `POL-export_artifacts.select.session_poster` | A plain member reads the render of a published session's poster; a draft's stays hidden; another org — even its admin — reads nothing; a render of a document that is no session's poster stays admin-only. `exports_read`'s `exists` over `design_documents` had shown members none (migration `0145`, `DEC-172`). |
 | `POL-session_posters.*` | An `auto` poster is always live (structural); every member reads the poster, only an admin writes it, nobody deletes it. (migration `0055`). |
 | `POL-certificates.constraints` | An attendee certificate without a `check_in_id` is refused by the table (`REQ-CRT-001`); the same session, member and kind cannot be certified twice (`REQ-CRT-003`); a revoked certificate must carry a reason (`REQ-CRT-011`). (migration `0055`). |
 | `POL-certificates.select.held` | A held certificate is invisible to its recipient and visible to the admin (`REQ-CRT-004`); writes are RPC-only for every role. (migration `0055`). |

@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireSession } from "@/lib/dal/session";
 import { getCheckInScreenData } from "@/lib/dal/checkin";
+import { AwardState } from "@/components/checkin/award-state";
 import { CodeInput } from "@/components/checkin/code-input";
 import { dayName } from "@/components/checkin/day-name";
 import { Panel } from "@/components/ui/panel";
@@ -50,6 +52,19 @@ export default async function CheckInPage({
   const DAY_AWARE = new Set(["not_started", "session_ended", "check_in_closed"]);
   const say = (key: string) => (label && DAY_AWARE.has(key) ? t(`error.${key}_day`, { day: label }) : t(`error.${key}`));
 
+  // ★ REQ-CHK-018: what this session has earned the member, read from the data
+  // on every render — so the reload, and tomorrow's visit, say what the moment
+  // after the code said. It renders nothing unless there is something to say.
+  // DEC-174 Q6: once the member has checked in to this day the state leads;
+  // before it, the code form leads and the state follows it.
+  // Streamed: the room's most time-critical input never waits on a points read.
+  const award = (
+    <Suspense fallback={null}>
+      <AwardState sessionId={id} locale={locale} variant="section" />
+    </Suspense>
+  );
+  const awardLeads = data.checkedInToday || Boolean(success) || Boolean(already);
+
   return (
     <>
       <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
@@ -64,7 +79,11 @@ export default async function CheckInPage({
             {say(data.ineligibleReason)}
           </Panel>
         </div>
-      ) : (
+      ) : null}
+      {/* No form to fill: the state follows the reason — «the window has
+          closed» and «what you earned» are both true tomorrow. */}
+      {data.ineligibleReason ? award : null}
+      {data.ineligibleReason ? null : (
         <>
           <p className="mt-2 max-w-prose text-body text-fg-muted">{t("ready")}</p>
 
@@ -90,6 +109,8 @@ export default async function CheckInPage({
             </div>
           ) : null}
 
+          {awardLeads ? award : null}
+
           {/* `noValidate`: renders `errorKey`'s own Panel below (the app's
               Arabic error, post-submit) — content's bug class (7f4809f):
               without it, a native-blocking field would silently stop the
@@ -110,6 +131,8 @@ export default async function CheckInPage({
               {t("submit")}
             </button>
           </form>
+
+          {awardLeads ? null : award}
         </>
       )}
     </>

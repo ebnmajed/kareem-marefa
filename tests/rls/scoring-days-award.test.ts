@@ -42,6 +42,10 @@ async function apply(tx: Tx, upTo: number) {
     const [row] = await tx.q<{ present: boolean }>(`select to_regprocedure($1) is not null as present`, [probe]);
     if (!row.present) await applyProposed(tx, path);
   }
+  // Wave 12 (REQ-PTS-015, DEC-172): scoring's award-at-completion files, a no-op once promoted.
+  for (const file of ["0006_session_award_state", "0007_award_at_completion", "0008_presenter_awards", "0009_counting_completed"]) {
+    await applyProposed(tx, `scoring/${file}.sql`);
+  }
   await tx.asOwner();
 }
 
@@ -164,7 +168,8 @@ describe("RPC-attendance_recorded.enqueues_award", () => {
   it("enqueues exactly one award_points job under main's key, with main's exact payload", async () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
-      const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
+      // Wave 12 (REQ-PTS-015): the hook pays only a session that has completed.
+      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -10, endsInMinutes: 50 });
 
       // A check-in row written directly, so the ONLY enqueue in this test is
       // the hook's own — check_in() still enqueues inline until `checkin`
@@ -198,9 +203,10 @@ describe("RPC-attendance_recorded.enqueues_award", () => {
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       const checkInId = await checkInAsMember(tx, f, sessionId);
 
+      // ★ Wave 12 (REQ-PTS-015, DEC-172): no inline enqueue and no job before completion.
       await tx.asOwner();
       const before = await jobsUnderKey(tx, `pts:check_in:${checkInId}`);
-      expect(before).toHaveLength(1);
+      expect(before).toHaveLength(0);
 
       // This is precisely the substitution `checkin` will make: the inline
       // block's output, then the hook's. Identical key, identical payload,
@@ -208,16 +214,15 @@ describe("RPC-attendance_recorded.enqueues_award", () => {
       await tx.q(`select public.attendance_recorded($1)`, [checkInId]);
 
       const after = await jobsUnderKey(tx, `pts:check_in:${checkInId}`);
-      expect(after).toHaveLength(1);
-      expect(after[0].task_identifier).toBe(before[0].task_identifier);
-      expect(after[0].payload).toEqual(before[0].payload);
+      expect(after).toHaveLength(0);
     });
   });
 
   it("calling it twice touches the same key, never a second job", async () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
-      const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
+      // Wave 12 (REQ-PTS-015): the hook pays only a session that has completed.
+      const sessionId = await makeSession(tx, f.a, { state: "completed", startsInMinutes: -10, endsInMinutes: 50 });
       await tx.asOwner();
       const [ci] = await tx.q<{ id: string }>(
         `insert into public.check_ins (org_id, session_id, member_id, method, manual_reason, marked_by)
@@ -239,6 +244,12 @@ describe("RPC-attendance_removed.reversal", () => {
       const checkInId = await checkInAsMember(tx, f, sessionId);
       const attendee = f.a.members[1].memberId;
       const presenter = f.a.members[0].memberId;
+
+      // Wave 12 (REQ-PTS-015, DEC-174 ruling 1): both awards are written only once the session
+      // has completed, and the bonus only to an accepted presenter of it.
+      await tx.asOwner();
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
+      await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [f.a.id, sessionId, presenter]);
 
       // Both awards key their source_id to this check-in row (0087's header).
       await tx.asServiceRole();
@@ -310,6 +321,8 @@ describe("RPC-attendance_removed.no_show_symmetry", () => {
          values ($1, $2, $3, 'manual', 'حضر', $4) returning id`,
         [f.a.id, sessionId, member, f.a.admin.memberId],
       );
+      // Wave 12 (REQ-PTS-015, DEC-174 ruling 2): a removal records the no-show only after completion.
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
 
       await softDelete(tx, f.a, ci.id);
       await tx.q(`select public.attendance_removed($1)`, [ci.id]);
@@ -353,6 +366,8 @@ describe("RPC-attendance_removed.no_show_symmetry", () => {
 
       await tx.asOwner();
       await tx.q(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [f.a.id, sessionId, member]);
+      // Wave 12 (REQ-PTS-015): completed, so there is an award and a no-show to compare.
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
       await tx.asServiceRole();
       await tx.q(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [member, checkInId, sessionId]);
 
@@ -486,6 +501,8 @@ async function expectRollupMatchesLedger(tx: Tx, memberId: string): Promise<void
 }
 
 describe("RPC-attendance_recorded.one_day_pays_at_check_in", () => {
+  // ★ Wave 12 (REQ-PTS-015, DEC-172) inverts this case's moment: a one-day session pays at
+  // COMPLETION, like every session. What it pinned is unchanged — main's key, main's payload.
   it("★ a one-day session still pays at check-in, under main's key, with main's payload", async () => {
     await withTx(async (tx) => {
       const f = await readyP3(tx);
@@ -493,6 +510,11 @@ describe("RPC-attendance_recorded.one_day_pays_at_check_in", () => {
       const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 1, state: "in_progress" });
 
       const checkInId = await attend(tx, f.a, sessionId, dayIds[0], member);
+      expect(await jobsUnderKey(tx, `pts:check_in:${checkInId}`)).toEqual([]);
+
+      await tx.asOwner();
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
+      await tx.q(`select public.evaluate_session_attendance($1)`, [sessionId]);
 
       const jobs = await jobsUnderKey(tx, `pts:check_in:${checkInId}`);
       expect(jobs).toHaveLength(1);
@@ -694,8 +716,15 @@ describe("RPC-evaluate_session_attendance.reverses_added_day", () => {
       const member = f.a.members[1].memberId;
       const { sessionId, dayIds } = await makeDays(tx, f.a, { days: 1, state: "published" });
 
-      await attend(tx, f.a, sessionId, dayIds[0], member);
-      await runAwardJobs(tx, member, sessionId);
+      const ci = await attend(tx, f.a, sessionId, dayIds[0], member);
+      // Wave 12 (REQ-PTS-015): no award is paid before completion any more, so the one-day award
+      // this case reverses is written as a check-in before DEC-172 left it — directly.
+      await tx.asOwner();
+      await tx.q(
+        `insert into public.points_ledger (org_id, member_id, amount, source, source_id, session_id, reason, rule_key, rule_version, idempotency_key)
+         values ($1, $2, 20, 'check_in', $3, $4, 'تسجيل حضور مؤكَّد', 'check_in', 1, $5)`,
+        [f.a.id, member, ci, sessionId, `check_in:check_in:${ci}:${member}:v1`],
+      );
       expect(await sessionTotal(tx, member, sessionId)).toBe(20);
 
       // Rescheduled to two days. The member does not attend the second.
@@ -800,6 +829,9 @@ describe("RPC-attendance_removed.reverses_presenter_bonus_by_member", () => {
 
       const ids: string[] = [];
       for (const dayId of dayIds) ids.push(await attend(tx, f.a, sessionId, dayId, attendee));
+      // Wave 12 (DEC-174 ruling 1): the bonus is paid only to an accepted presenter of the session.
+      await tx.asOwner();
+      await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [f.a.id, sessionId, presenter]);
 
       // The bonus is keyed to the attendee's EPOCH check-in — day 3's — which
       // is what worker/src/tasks/award_presenter_points.ts now computes.
@@ -856,6 +888,8 @@ describe("RPC-award_points.multi_day_waits_for_completion", () => {
     });
   });
 
+  // ★ Wave 12 (REQ-PTS-015, DEC-172) inverts this case: one rule, no branch on days — a
+  // one-day session pays nothing while it is running either.
   it("★ a ONE-DAY session is untouched by that guard: it still pays while the session is running", async () => {
     await withTx(async (tx) => {
       const f = await readyP3(tx);
@@ -865,9 +899,7 @@ describe("RPC-award_points.multi_day_waits_for_completion", () => {
 
       await tx.asServiceRole();
       await tx.q(`select public.award_points('check_in', $1, 'check_in', $2, $3)`, [member, checkInId, sessionId]);
-      const rows = await ledger(tx, member, sessionId);
-      expect(rows).toHaveLength(1);
-      expect(rows[0].idempotency_key).toBe(`check_in:check_in:${checkInId}:${member}:v1`);
+      expect(await ledger(tx, member, sessionId)).toEqual([]);
     });
   });
 });

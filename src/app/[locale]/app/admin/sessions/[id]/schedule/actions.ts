@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { publishSession, scheduleInput, scheduleSession } from "@/lib/dal/sessions";
+import { getTranslations } from "next-intl/server";
+import { addSessionPresenter, publishSession, removeSessionPresenter, scheduleInput, scheduleSession } from "@/lib/dal/sessions";
 import type { Locale } from "@/i18n/routing";
 import { formStateFrom, was, withErrors, withFormError } from "@/lib/form-state";
 import { CUSTOM_VENUE, atZone, checkDays, checkRelations, dayEnd, deadlineFor, followingEnd, type DeadlinePreset } from "./rules";
 import { SCHEDULE_FIELDS, type ScheduleField, type ScheduleState } from "./state";
+import type { AddPresenterState } from "./presenters-state";
 
 // SCR-043's one Server Action (REQ-SES-001, REQ-SES-002, REQ-SES-016).
 //
@@ -234,4 +236,48 @@ export async function saveSchedule(
     return { ...state, saved: true, published: true };
   }
   return { ...state, saved: true, published: false };
+}
+
+// ── The presenters section (REQ-SES-019) ─────────────────────────────────────
+//
+// Two more actions on SCR-043, each its own form so neither ever submits the
+// schedule. Authority is the two RPCs (`assert_fresh_admin()`, the session
+// re-derived and locked); Zod checks shape only. A refusal the RPC names comes
+// back as a value the section words; anything else is `failed`.
+
+function revalidatePresenters(locale: Locale, sessionId: string) {
+  revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/schedule`);
+  revalidatePath(`/${locale}/app/sessions/${sessionId}`);
+}
+
+export async function addPresenter(locale: Locale, sessionId: string, _prev: AddPresenterState, formData: FormData): Promise<AddPresenterState> {
+  const raw = formData.get("memberId");
+  const memberId = z.uuid().safeParse(raw);
+  if (!memberId.success) return { status: "refused", error: "pick", memberId: null };
+  if (!z.uuid().safeParse(sessionId).success) return { status: "refused", error: "failed", memberId: memberId.data };
+
+  try {
+    const result = await addSessionPresenter(locale, sessionId, memberId.data);
+    if (!result.ok) return { status: "refused", error: result.error, memberId: memberId.data };
+  } catch {
+    return { status: "refused", error: "failed", memberId: memberId.data };
+  }
+  revalidatePresenters(locale, sessionId);
+  return { status: "added", memberId: memberId.data };
+}
+
+/**
+ * Bound per row, for `RemovePresenter`. Returns the refusal already worded —
+ * the dialog shows it as it is, and `RemovePresenter` knows no namespace.
+ */
+export async function removePresenter(locale: Locale, sessionId: string, memberId: string): Promise<void | { error: string }> {
+  const t = await getTranslations({ locale, namespace: "schedule.presenters.errors" });
+  if (!z.uuid().safeParse(sessionId).success || !z.uuid().safeParse(memberId).success) return { error: t("failed") };
+  try {
+    const result = await removeSessionPresenter(locale, sessionId, memberId);
+    if (!result.ok) return { error: t.has(result.error) ? t(result.error) : t("failed") };
+  } catch {
+    return { error: t("failed") };
+  }
+  revalidatePresenters(locale, sessionId);
 }

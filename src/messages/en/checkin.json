@@ -126,6 +126,7 @@
       },
       "removeTitle": "Remove a check-in",
       "removeIntro": "To correct a mistaken check-in. This reverses any points it earned and revokes any certificate issued from it — the check-in record itself is never deleted, only marked removed, with when and why. The member can check in again later if needed.",
+      "removeIntroOpen": "To correct a mistaken check-in before the session ends. The member won't earn attendance points for it when the session ends — the check-in record itself is never deleted, only marked removed, with when and why. The member can check in again later if needed.",
       "removeEmpty": "No one is currently checked in to remove.",
       "removeMemberLabel": "Member to remove",
       "removeMemberPlaceholder": "Choose a member",
@@ -134,6 +135,7 @@
       "cancel": "Cancel",
       "removeConfirmTitle": "Confirm removing this check-in",
       "removeConfirmBody": "<bdi>{name}</bdi>'s check-in for <bdi>{session}</bdi> will be removed. The check-in record itself isn't deleted — it's marked removed, with when and why. Any points tied to it are reversed with a separate ledger entry, and any certificate issued to them for this session is revoked. This can't be undone automatically, but the member can check in again if needed.",
+      "removeConfirmBodyOpen": "<bdi>{name}</bdi>'s check-in for <bdi>{session}</bdi> will be removed. The check-in record itself isn't deleted — it's marked removed, with when and why. They won't earn attendance points for it when the session ends. This can't be undone automatically, but the member can check in again if needed.",
       "removeDone": "Check-in removed",
       "removeError": {
         "not_a_member": "Your membership couldn't be verified",
@@ -157,6 +159,24 @@
       "removeDayHint": "Choose the day whose attendance record you are removing.",
       "complete": "Complete"
     },
-    "dayLine": "Check-in for {day}"
+    "dayLine": "Check-in for {day}",
+    "award": {
+      "heading": "Points from this session",
+      "pending": {
+        "amount": "{count, plural, one {1 point waiting for you} other {<bdi>{value}</bdi> points waiting for you}}",
+        "when": "They're added to your balance when the session ends.",
+        "whenRemaining": "They're added to your balance when the session ends, if you attend the remaining days.",
+        "days": "{count, plural, one {You've attended <bdi>{attended}</bdi> of 1 day} other {You've attended <bdi>{attended}</bdi> of <bdi>{value}</bdi> days}}"
+      },
+      "paid": {
+        "amount": "{count, plural, one {1 point was added to your balance} other {<bdi>{value}</bdi> points were added to your balance}}",
+        "link": "Your points history"
+      },
+      "incomplete": {
+        "title": "Attendance points won't count for this session",
+        "missed": "{count, plural, one {You missed <bdi>{days}</bdi>} other {You missed <bdi>{days}</bdi>}}",
+        "rule": "Attendance points require attending every day of the session."
+      }
+    }
   }
 }

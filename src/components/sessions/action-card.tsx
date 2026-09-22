@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import { RsvpReserve, RsvpSecondary, RsvpStatus } from "@/components/checkin/rsvp-panel";
 import { AttendanceOutcome } from "@/components/checkin/attendance-outcome";
+import { AwardState } from "@/components/checkin/award-state";
 import { AddToCalendar } from "@/components/calendar/add-to-calendar";
 import { CertificateModeBadge } from "@/components/certificates/mode-badge";
 import { BookmarkButton } from "@/components/search/bookmark-button";
@@ -122,6 +123,10 @@ export async function ActionCard(props: ActionCardProps) {
 
       <RsvpStatus {...slot} />
       {can.attendanceOutcome ? <AttendanceOutcome {...slot} /> : null}
+      {/* `checkin`'s acknowledgement (REQ-CHK-018, contract 1): self-gated on
+          its own DTO, so the card mounts it unconditionally — `checkin` owns
+          when it says something and the card owns only where. */}
+      <AwardState sessionId={slot.sessionId} locale={slot.locale} variant="inline" />
 
       {primary ? <PrimaryControl action={primary} placement="card" session={session} slot={slot} labels={{ checkIn: t("checkIn"), hostView: t("hostView"), rate: t("actions.rate") }} /> : null}
 

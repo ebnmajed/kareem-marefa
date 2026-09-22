@@ -5,11 +5,13 @@ import type { Locale } from "@/i18n/routing";
 import { SessionStatusBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionHeader } from "@/components/ui/section-header";
-import { getScheduleContent, getSessionForSchedule, listVenues } from "@/lib/dal/sessions";
+import { listMembersForAdmin } from "@/lib/dal/admin-members";
+import { getScheduleContent, getSessionForSchedule, listSessionPresentersForAdmin, listVenues } from "@/lib/dal/sessions";
 import { storedPhase } from "@/lib/session-status";
-import { saveSchedule } from "./actions";
+import { addPresenter, removePresenter, saveSchedule } from "./actions";
 import { followingEnd } from "./rules";
 import { ContentPanel } from "./content-panel";
+import { PresentersSection } from "./presenters-section";
 import { ScheduleForm } from "./schedule-form";
 
 // SCR-043 · /app/admin/sessions/[id]/schedule — REQ-SES-001, REQ-SES-002,
@@ -47,13 +49,17 @@ export default async function SchedulePage({ params }: { params: Promise<{ local
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const [session, content, venues, t] = await Promise.all([
+  const [session, content, venues, presenters, members, t] = await Promise.all([
     getSessionForSchedule(locale, id),
     getScheduleContent(locale, id),
     listVenues(locale),
+    listSessionPresentersForAdmin(locale, id),
+    // `console`'s admin reader — the same source SCR-053 and SCR-054 feed the
+    // member picker from (DEC-174 Q8). Imported, never edited.
+    listMembersForAdmin(locale),
     getTranslations("schedule"),
   ]);
-  if (!session || !content) notFound();
+  if (!session || !content || !presenters) notFound();
 
   const zone = session.timeZone;
   const provenance = content.proposal
@@ -126,6 +132,23 @@ export default async function SchedulePage({ params }: { params: Promise<{ local
         </div>
 
         <aside className="space-y-8 lg:sticky lg:top-[calc(var(--header-h)+1.5rem)] lg:self-start">
+          {/* ★ Who presents it (REQ-SES-019) — changed here at any time after the
+              session exists. A cancelled session keeps its presenters as they
+              were: both RPCs refuse there, so the section offers nothing. */}
+          <section aria-labelledby="presenters" className="space-y-4">
+            <SectionHeader id="presenters" title={t("presenters.title")} count={presenters.filter((p) => p.accepted).length} />
+            {session.state === "cancelled" ? (
+              <p className="text-body-sm text-fg-muted">{t("presenters.errors.session_cancelled")}</p>
+            ) : null}
+            <PresentersSection
+              presenters={presenters}
+              members={(members ?? []).filter((m) => m.status === "active").map((m) => ({ id: m.id, displayName: m.displayName, email: m.email }))}
+              completed={session.state === "completed" || session.state === "archived"}
+              locked={session.state === "cancelled"}
+              addAction={addPresenter.bind(null, locale as Locale, session.id)}
+              removeActions={Object.fromEntries(presenters.map((p) => [p.memberId, removePresenter.bind(null, locale as Locale, session.id, p.memberId)]))}
+            />
+          </section>
           <ContentPanel title={session.title} content={content} />
           {/* الملصق، بثلاث طرق — `designer`'s slot on SCR-043 (DEC-012,
               REQ-DSG-002/003). The page owns the landmark and the heading; the

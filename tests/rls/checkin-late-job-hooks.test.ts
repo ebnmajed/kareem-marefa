@@ -11,13 +11,19 @@
 
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { pool, withTx, type Claims, type Tx } from "./db";
+import { applyProposed, pool, withTx, type Claims, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
 async function setup(tx: Tx) {
-  return seed(tx);
+  const f = await seed(tx);
+  // Wave 12 (REQ-PTS-015): scoring's award-at-completion files, a no-op once promoted.
+  for (const file of ["0006_session_award_state", "0007_award_at_completion", "0008_presenter_awards", "0009_counting_completed"]) {
+    await applyProposed(tx, `scoring/${file}.sql`);
+  }
+  await tx.asOwner();
+  return f;
 }
 
 /** `seed()`'s own fixture gives members[0] a baseline badge and streak_award
@@ -178,6 +184,10 @@ describe("RPC-evaluate_streaks.excludes_removed / RPC-evaluate_badges.excludes_r
       await checkIn(tx, sessionId, code.code);
 
       await removeCheckIn(tx, f.a.admin, sessionId, fresh.memberId, "سبب");
+      // Wave 12 (REQ-PTS-015): only a COMPLETED session counts at all, so the session is
+      // completed here — otherwise «0» would say nothing about the removal.
+      await tx.asOwner();
+      await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
 
       await tx.asServiceRole();
       await tx.q(`select public.evaluate_streaks()`);

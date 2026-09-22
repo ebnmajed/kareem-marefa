@@ -12,7 +12,7 @@
 // members[0], which would make an idempotency assertion here ambiguous
 // about which award produced a given row.
 import { afterAll, describe, expect, it } from "vitest";
-import { errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
+import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx } from "./db";
 import { seed } from "./fixture";
 import type { Tx } from "./db";
 
@@ -22,6 +22,9 @@ async function ready(tx: Tx) {
   const f = await seed(tx);
   await tx.asOwner();
   // Promoted at wave-2 sync 6 (0041–0043): applied by `supabase db reset`.
+  // Wave 12 (REQ-PTS-015): scoring's completed-only counting, a no-op once promoted.
+  await applyProposed(tx, "scoring/0009_counting_completed.sql");
+  await tx.asOwner();
   return f;
 }
 
@@ -44,6 +47,9 @@ async function sessionAtOffset(tx: Tx, f: { id: string; categoryId: string; venu
      returning id`,
     [f.id, f.categoryId, startsAt, endsAt, f.venueId],
   );
+  // Wave 12 (REQ-PTS-015): streaks and badges count COMPLETED sessions, so each session these
+  // cases attend is completed. Harness only — no expectation below changes.
+  await tx.q(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [row.id]);
   return row.id;
 }
 async function checkInAt(tx: Tx, sessionId: string, member: string, orgId: string, admin: string) {

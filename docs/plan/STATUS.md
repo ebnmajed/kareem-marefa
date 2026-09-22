@@ -1,7 +1,112 @@
-**Last updated:** 2026-09-22 · **Branch:** `wave-11/m13`, **PR #28 ready for the owner** · **`main`:** **LAUNCHED 2026-09-15; wave 10 merged** (PR #27, `b75eb45`; `0123`–`0142` live on production; ★ **the Railway worker is RUNNING on `b75eb45`**, read 2026-09-22) · **Phase:** ★★ **WAVE 11 — M13, THE LAST MILESTONE (`DEC-166`, `DEC-167`)** — the public site rebuilt on the M9 system with a door into the platform, behind `qa` split into a contract half (blocking at every commit) and an appearance half; `ui-lint --strict` with its allowlist deleted (61 → 0); the accessibility and performance passes; the mail's string path retired. **Step 0 done**: the baseline `pre-m13` captured from `main` before the branch; the map in `CLAUDE.md` and all ten `.claude/agents/*.md`; the checklist is the wave-11 block below. Spawned, planning-only: `content`, `console`, `notify`, `platform`, `branding`. Migrations start at **`0143`** and are additive.
+**Last updated:** 2026-09-22 · **Branch:** `wave-12/presenters-awards-posters`, ★ **PR #29 ready for the owner** · **`main`:** wave 11 merged (`b3f8d76`); production at **`0144`** · **Phase:** ★★ **WAVE 12 COMPLETE — NEW SCOPE AFTER THE PLAN (`DEC-172` … `DEC-175`, M14)**: presenters change after creation, every session award pays at completion and check-in says what is pending, a poster is never cropped — and members see posters at all (`DEC-173`). Migrations **`0145`–`0151`**, additive. **The owner's order is in the wave-12 block: read, rehearse, push, merge, check Railway.** All three demonstrables pass (D2/D3 on the real worker); gates green from a fresh reset.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
+
+---
+
+## ★★★ WAVE 12 — on `wave-12/presenters-awards-posters` — presenters, awards at completion, the whole poster (`DEC-172`)
+
+**New scope after the plan.** `DEC-171` closed `14-roadmap.md`; this wave is milestone **M14** so its stories
+trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` § *Ownership map (wave 12)*.
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | `2eea8a5` (merge `b3f8d76` + the two brief commits, **not yet pushed to `origin/main`**) |
+| Production | `0144`; no open PRs |
+| ★ Brief vs code, 1 | **`proposal_accepted` is paid at APPROVAL** (`0031`'s `proposals_award_points()`), not at completion; `0031:84` is `sessions_completion_fanout()`. **The owner answered: it moves to completion** (`DEC-172`) |
+| ★ Brief vs code, 2 | `session_presenters` **has** admin `insert`/`delete` policies with grants (`0010:476–483`); what is missing is an RPC, a DAL function and a screen. **No session-level accept/decline screen exists** → an admin-added presenter is **assigned** (`accepted = true`), matching `MSG-presenter_assigned` |
+| ★ Brief vs code, 3 | `wave9-checkin-one-day.spec.ts` **asserts nothing about points**; pay-at-check-in is pinned by RLS files (`scoring-days-award` `one_day_pays_at_check_in`, `checkin-contract-5`, likely `checkin-{late-job-hooks,manual-mark,removal}`) — transferred to `scoring` as evidence |
+| ★ Brief vs code, 4 | `CardMedia` is used by 7 files, not the 10 listed: `browse/session-card` (4/5), `s/[id]` (16/9, placeholder only), `designer/template-library` (by orientation), the three moderation cards (16/9, photos), the `(dev)` gallery (4/5). `event-hero`, `posters/{picker,session-poster}` and `sessions/[id]/page` do **not** use it and have no `object-cover`. The crop is `object-cover` **plus** the row densities' `items-stretch`, which make the media box taller than 4:5 at a fixed width |
+| `trace` | 317 requirements · 151 stories · no gaps (M14 added to the milestone pattern) |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-172`; `REQ-SES-019`, `REQ-PTS-015`, `REQ-CHK-018`, `REQ-UIX-026` in `01` with stories, screens and M14; the map; the ten agent files | lead | **done** |
+| C1 | Contract 1 — `session_award_state(p_session)` + `getSessionAwardState(locale, id)` → `SessionAwardState` | `scoring` → `checkin` | **published** (`70e80f7`), `checkin` reconciled (`0bf1f02`) |
+| C2 | Contract 2 — presenter rows are `sessions'`, their money is `scoring`'s triggers; removal is a `delete`; the trigger covers `update of accepted` | `sessions` ↔ `scoring` | **agreed at sync 1** (`DEC-174`) |
+| P1 | `add_session_presenter()` / `remove_session_presenter()` + DAL + the section on SCR-043 | `sessions` | **built** `7f9b072`, SQL promoted as `0151`; e2e awaits the build |
+| A1 | One-day attendance at completion; `award_points()`'s clause for every session | `scoring` | **built** `d2b7050`, promoted as `0148` |
+| A2 | `proposal_accepted` at completion under its existing key | `scoring` | **built**, promoted as `0149` |
+| A3 | Presenter awards follow the presenter after completion — pay, reverse, epoch | `scoring` | **built**, promoted as `0148`–`0149` |
+| A4 | Streaks and badges count completed sessions; downstream readers measured | `scoring` | **built**, promoted as `0150` |
+| K1 | The acknowledgement on SCR-014 and `attendance-outcome` — a state, not a toast | `checkin` | **built** `18fe962`; event-page line in `7f9b072`; e2e awaits the build |
+| L1 | ★ The whole poster — `CardMedia` `object-contain`; row densities' media `self-start` so the box keeps 4:5. **Surfaces:** timeline card (`row`/`wide`, 4:5 poster) — the defect, fixed; event page and `/s/[id]` size their own `<img>` to the render's dimensions — never cropped, unchanged; `/s/[id]`'s no-poster placeholder 16:9 — no image; moderation cards 16:9 **photos** — now contained, so a moderator sees the whole reported photo; `template-library` — a live render in its own frame, unchanged; `(dev)` gallery — `grid` placeholder, unchanged, **so `/ar/ui` and `/s/[id]` do not move** (the brief expected both to). ★ **Found by D1: members never saw posters at all** — `DEC-173`, `0145` | lead | **done** — `wave12-lead-timeline-card-{whole-poster,cropped-reproduction}.png` opened |
+| L1b | `0145` — `exports_read_session_poster` (`DEC-173`), red→green, `policy-diff` ✓ | lead | **done**, applied locally |
+| L2 | Promotion from `0145`, the rehearsal notes | lead | **promoted** `0145`–`0151`; full RLS **129/129 files, 1263 tests** from the promoted tree; `policy-diff` ✓ (35 rows lifted into `03` §8.2); `trace` ✓. Rehearsal notes: todo |
+| L3 | `session_presenters_update_self` narrowed — no self change of `accepted`/`declined_at` once completed, archived or cancelled (`DEC-174` scoring 4) | lead | **done** — `0146`, red→green, full RLS 121/122 files (the one red is `survey-submit`, `DEC-171`'s leftover-job count, not this) |
+| L4 | `MSG-presenter_assigned` loses the accept/decline sentence — pinned mail moved as one reviewed diff (custodian of `notify`) · the two audit labels in `admin.json` (custodian of `console`) | lead | **mail done** — 3 pinned files, one line each, the reviewed diff; audit labels await `sessions`' keys |
+| O1 | ★ **Owner's question:** pay the presenters of directly created, already-completed sessions retroactively? Decides whether the data fix flipping their `accepted` runs after `scoring`'s trigger (pays) or before (does not). **Nothing is run until answered** | owner | **answered** (`DEC-175`): every production session is a test session — no retroactive pay, **no data fix** |
+| D1 | Demonstrable — the timeline card at 390 px showing a whole poster, beside the owner's cropped screenshot | lead | **done** on a build of `421f0ed`+L1: `tests/e2e/wave12-demo-poster.spec.ts` (box 4:5, `contain`); captures beside a labelled reproduction of the old rendering. **The owner's own screenshot is not in the tree** — asked for |
+| D2 | Demonstrable — a presenter added and removed after completion, the ledger proving both | lead | **done** on the build of `7c1e471` **with the real worker** — `tests/e2e/wave12-demo-awards.spec.ts` D2: added after completion → worker pays `session_delivered` + `attendee_bonus`; removed → 2 compensating rows, net 0; `points_balances` = sum of the ledger both times; the original presenter untouched |
+| D3 | Demonstrable — one-day: check in, told pending, no row; completes, row appears; removed before completion → no row, no reversal | lead | **done**, same run: the code → «20 نقطة بانتظارك», no row after the worker has had 5 s; completion → one `check_in` row of 20, balance = ledger; the same member in a second session removed before completion → **no row of any kind, no reversal**. Captures `wave12-demo-d3-{checked-in-pending,completed-paid}.png`, opened |
+| G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict` | lead | **green from a fresh `supabase db reset`** on `8e88609`: tsc ✓ · lint 0 errors (26 warnings, as `main`) · unit 2341 ✓ · RLS **129/129 files, 1263** ✓ · `ui-lint --strict` 276 files, no allowlist ✓ · `policy-diff` ✓ · `trace` 317/151 no gaps ✓ · `qa:contract` 38/38 · `qa:appearance` 19/19 · `visual` `m13`→`wave12` **0.000% on all 8 pairs** (the frozen routes did not move — the brief expected `/ar/ui` to) · parity 21/28 (the local count) · **full e2e 623 passed** under parallel workers; the 15 failures re-run alone with one worker: all green except `bookmarks:237` (`DEC-171`'s known flake — green on phone, red on desktop) · `wave12-demo-awards` now skips unless `E2E_REAL_WORKER=1` (it needs the running worker; green 3/3 with it) · ★ **budgets:** `check-in` (the one budgeted screen this wave changed) passes; the frozen landing's TBT read 294 / 4174 / 555 ms across three runs at load averages of 8–13, and **no file in its module graph changed this wave** — recorded as machine noise; **the back-to-back comparison against a `main` build was not run** |
+
+### ★ The owner's order (wave 12) — in this order
+
+1. **Read production first** (reads only; none returns personal data):
+   ```sql
+   -- one-day sessions not yet completed whose members were already paid at check-in (they will read «paid»)
+   select count(*) from public.points_ledger l join public.sessions s on s.id = l.session_id
+    where l.source = 'check_in' and s.state not in ('completed','archived','cancelled');
+   -- proposal_accepted paid at approval for a session not yet completed (a co-presenter removed before completion is reversed)
+   select count(*) from public.points_ledger l join public.sessions s on s.proposal_id = l.source_id
+    where l.source = 'proposal_accepted' and s.state not in ('completed','archived');
+   ```
+   ★ **Read 2026-09-22 by the owner: check-in `0`, `proposal_accepted` `1`.** Nobody reads a stale «paid»; the one approval-paid award is never paid twice (the completion pass reuses its key) and is reversed only if that co-presenter is removed before completion.
+2. ★ **Rehearsed 2026-09-22** on the owner's production schema dump (at `0144`, no data): loaded into a throwaway database in the local cluster over the local `auth`/`storage`/`extensions` schemas (2 platform-only errors: the realtime publication, `vault`); **`0145`–`0151` each applied in one transaction with `ON_ERROR_STOP` — all 7 ok**. End state vs the fully migrated local database: every public function body (by hash), policy and trigger **identical**, the only extra being production's own `rls_auto_enable()` (in no migration — Supabase's); client-role grants identical. Dump and database deleted. Next: **push the migrations**, then **push the migrations**, then **merge** — `main`'s worker runs the new schema first, and it needs nothing new: no worker task changes behaviour (one comment in `evaluate_no_shows.ts`).
+3. **Check Railway by hand** after the merge (six consecutive merges have needed a manual reconnect; the durable fix is the dashboard setting).
+4. ~~The presenter data fix~~ — **not run** (`DEC-175`): every session on production is a test session, so nothing is owed. From `0151` new directly created sessions assign their presenters.
+5. **What members will notice after the merge:** posters appear on the timeline and event page for the first time (`DEC-173`); a one-day session's points arrive when it ends, and check-in says so; admins can change presenters on the schedule screen.
+
+### Carried — not this wave
+
+- The month-end streak gap (`scoring` Q11) · presenter certificates and the poster after completion when presenters change (`DEC-174` sessions 6) · `materials_uploaded` and `late_cancellation` have no writer (`scoring` finding 8) · the content panel's «كما كتبه المُقترِح» on a session with no proposal · company points are not re-evaluated after a post-completion presenter or attendance change · `survey-submit.test.ts` counts every queued job (`DEC-171`) · the owner's remaining list (`DEC-172`).
+
+### Untouched-suite ledger (wave 12)
+
+*Every pre-existing test file whose assertion changes, with why — written in the same commit as the change.*
+
+| File | Assertion | Why |
+|---|---|---|
+| `tests/unit/mail-pinned/MSG-presenter_assigned.{txt,plain.html,brand.html}` | the body line | `DEC-174` sessions 5: the sentence promised an accept/decline screen that does not exist — a reviewed pinned change, written by hand with `MAIL_PIN_WRITE=1` |
+| `tests/rls/sessions-creation.test.ts` › the assigned-presenter case | (a) `accepted` `false` → `true` | `DEC-174` sessions 1 — an admin's direct assignment is accepted; before, such presenters appeared nowhere and were never paid |
+| `tests/rls/sessions-creation.test.ts` › the decline case | (b) the presenter's write becomes `accepted = false, declined_at = now()`; the expectation is unchanged | a row created accepted cannot be declined while `accepted` stays true (the table's check) |
+
+*`scoring`'s 26, copied verbatim from `docs/plan/notes/scoring.md` «The untouched-suite ledger lines» (`d2b7050`), promoted as `0147`–`0150`. Columns: # · file › case · (a) inverts / (b) harness only · why · file it needs.*
+
+| # | File › case | Change | Why | Needs |
+|---|---|---|---|---|
+| 1 | `award-points.test.ts` › `POL-check_in.award_points_hook` › «a successful check-in enqueues exactly one award_points job, keyed by the check-in id» | (a) `toHaveLength(1)` → `0`, twice; the task and payload lines go | `REQ-PTS-015`: nothing is enqueued before completion | `0007` |
+| 2 | the same › «end to end: running the enqueued job's SQL awards the check-in's points» | (b) the session completes and `evaluate_session_attendance()` runs before the job is read; `20` unchanged | the job exists only after completion | `0007` |
+| 3 | `checkin-contract-5.test.ts` › «a code check-in enqueues exactly one award_points job under pts:check_in:<id>» | (a) `1` → `0` | as 1 | `0007` |
+| 4 | the same › «a manual mark enqueues the same one job under the same key…» | (a) `1` → `0` | as 1 | `0007` |
+| 5 | the same › «writes one compensating row per unreversed award, with the same key and reason, and awards the no-show» | (b) the session completes before the award | no award on a live session, and no no-show at removal before completion (DEC-174 ruling 2) | `0007` |
+| 6 | `checkin-manual-mark.test.ts` › «enqueues exactly one award_points job, keyed pts:check_in:<id>…» | (a) `1` → `0` | as 1 | `0007` |
+| 7 | `checkin-removal.test.ts` › «reverses the points award with ONE compensating entry…» | (b) the session completes before the award | as 5 | `0007` |
+| 8 | the same › «removing a confirmed-RSVP member's check-in awards no_show…» | (b) the session completes before the removal | ruling 2 | `0007` |
+| 9 | `checkin-late-job-hooks.test.ts` › «a removed check-in does not count toward a NOT-YET-awarded streak period or badge threshold» | (b) the session completes before the evaluators run | it would otherwise pass vacuously: a running session no longer counts at all | `0009` |
+| 10 | `scoring-days-award.test.ts` › «enqueues exactly one award_points job under main's key, with main's exact payload» | (b) the session is `completed` | the hook pays only after completion; key and payload unchanged | `0007` |
+| 11 | the same › «★ the seam is behaviour-neutral: called after check_in()'s own inline enqueue…» | (a) `before` and `after` `1` → `0`; the equality lines go | no inline enqueue and no pre-completion job | `0007` |
+| 12 | the same › «calling it twice touches the same key, never a second job» | (b) `completed` | as 10 | `0007` |
+| 13 | the same › «writes ONE compensating row for the attendee's award AND one for the presenter's attendee_bonus…» | (b) completed, and the presenter's accepted row, before the awards | timing plus DEC-174 ruling 1 | `0007` |
+| 14 | the same › `no_show_symmetry` › «a confirmed RSVP earns the no_show rule…» | (b) completed before the removal | ruling 2 | `0007` |
+| 15 | the same › «★ the seam is behaviour-neutral: called after remove_check_in() has already run…» | (b) completed before the award | it would otherwise compare two empty lists | `0007` |
+| 16 | the same › `one_day_pays_at_check_in` | (a) no job at check-in; completion → **main's key and payload**, one row `…:v1`, the pass again writes nothing | ★ the case DEC-172 names; its key assertions survive verbatim | `0007` |
+| 17 | the same › `reverses_added_day` | (b) the one-day award is written directly as a pre-DEC-172 check-in left it; `[20, -20]` unchanged | no award can be paid before completion any more; the case stays the proof for legacy rows | `0007` |
+| 18 | the same › «★ a ONE-DAY session is untouched by that guard: it still pays while the session is running» | (a) `toHaveLength(1)` + key → `[]` | one rule, no branch on days | `0007` |
+| 19 | the same › `reverses_presenter_bonus_by_member` | (b) the presenter's accepted row | ruling 1 | `0007` |
+| 20 | `scoring-days-presenter-bonus.test.ts` › every case paying or refusing a bonus (`epoch_only`, both `requires_complete`, both `one_day_unchanged`, `skips_silently`, «… 50 + 2 × 2 = 54») | (b) one helper, `present()`, inserts the presenter's accepted row; `oldWorkerLoop()` calls it; two direct calls call it | ruling 1. Without it the refusing cases would pass vacuously | `0007` |
+| 21 | `scoring-days-counting.test.ts` › «★ the EXACT query worker/src/tasks/award_presenter_points.ts runs…» | (b) the presenter's accepted row | ruling 1 | `0007` |
+| 22 | `award-presenter-points.test.ts` › «approval enqueues one proposal_accepted job for the proposer and each accepted co-presenter, none for a declined one» | (a) `toHaveLength(1)` ×2 → `[]` | DEC-172: approval pays nothing | `0008` |
+| 23 | the same › «end to end: the enqueued job awards proposal_accepted's 10 points» | (b) a completed session from the proposal, the proposer its accepted presenter; `10` unchanged | the award re-derives the completed session and the presenter | `0007` |
+| 24 | the same › «award_presenter_points' logic: session_delivered + attendee_bonus per check-in…» | (b) completed + the presenter's row; `54` unchanged | timing + ruling 1 | `0007` |
+| 25 | `recognition-evaluators.test.ts` › `evaluate_streaks.idempotent` and `evaluate_badges.idempotent` | (b) `sessionAtOffset()` completes each session | streaks and badges count completed sessions | `0009` |
+| 26 | `checkin-days.test.ts:505–509` (**`checkin`'s, not edited**) | none: it still passes, but vacuously (no reversal before completion) | its after-completion half is proven by the new case «after completion a removal reverses under reversal:<id>:v1…» in `scoring-completion-timing.test.ts`, as DEC-174 asks | — |
 
 ---
 

@@ -5,13 +5,19 @@
 // RPC-mark_checked_in_manually.award_points.
 
 import { afterAll, describe, expect, it } from "vitest";
-import { errorMessage, pool, withTx, type Tx } from "./db";
+import { applyProposed, errorMessage, pool, withTx, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
 
 async function setup(tx: Tx) {
-  return seed(tx);
+  const f = await seed(tx);
+  // Wave 12 (REQ-PTS-015): scoring's award-at-completion files, a no-op once promoted.
+  for (const file of ["0006_session_award_state", "0007_award_at_completion", "0008_presenter_awards", "0009_counting_completed"]) {
+    await applyProposed(tx, `scoring/${file}.sql`);
+  }
+  await tx.asOwner();
+  return f;
 }
 
 async function makeSession(tx: Tx, org: Org, opts: { state: string; startsInMinutes: number; endsInMinutes: number }): Promise<string> {
@@ -88,9 +94,8 @@ describe("RPC-mark_checked_in_manually.award_points", () => {
           where j.key = $1`,
         [`pts:check_in:${ci.id}`],
       );
-      expect(jobs).toHaveLength(1);
-      expect(jobs[0].task_identifier).toBe("award_points");
-      expect(jobs[0].payload).toMatchObject({ rule: "check_in", source: "check_in", source_id: ci.id });
+      // ★ Wave 12 (REQ-PTS-015, DEC-172): nothing is enqueued before the session completes.
+      expect(jobs).toHaveLength(0);
     });
   });
 });
