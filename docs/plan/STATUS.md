@@ -32,14 +32,14 @@ the map is `CLAUDE.md` § *Ownership map (wave 13)*.
 | S0 | `DEC-176`; `REQ-SES-020`, `STORY-SES-013`, M15; `REQ-DSG-027`'s reading cited; the map; the ten agent files | lead | **done** `a53a7a2`; draft **PR #30** |
 | C1 | Contract 1 — the download DTO in `lib/dal/posters.ts`, its route, the primary artifact named | `designer` → `sessions` | open — day one of `designer`'s plan |
 | C2 | Contract 2 — the certificate mode's one writer | `sessions` ↔ `designer` | ruled at sync 1 |
-| C3 | Contract 3 — the download audit definer (re-derive admin · moderator · accepted presenter; `42501` otherwise; `write_audit()`), red→green, `03` §8.2 rows | lead | open — `0152` |
+| C3 | Contract 3 — the download audit definer, **created from nothing** (`DEC-076`'s «`0086`» was never written — `DEC-177`): a poster → admin · moderator · accepted presenter; a certificate → admin · moderator · its own member; `42501` otherwise; `write_audit()`; granted to `authenticated` only, in `definer-exposure`'s sweep; red→green, `03` §8.2 rows | lead | open — `0152` |
 | C4 | Contract 4 — the templates grid reads `designer`'s DAL | `designer` → `console` | open |
 | R1 | ★ The research: the five open questions of `DEC-176` §1, and the overlay-only libraries evaluated | `designer` | open — the plan's first section; logged at sync 1 |
 | D1 | `REQ-DSG-028` — direct manipulation in the overlay, the seven helpers reused, `DEC-093`'s path for every operation, the numeric fields **demoted, never deleted**, `DEC-096`'s axes | `designer` | open |
 | D2 | `REQ-DSG-030` — the focal dot and the nine-point grid, centre by default | `designer` | open |
 | D3 | `REQ-DSG-029` and `REQ-DSG-031` — what is not yet built | `designer` | open — measured in the plan |
 | D4 | One signer — three functions fold into one, every caller unchanged | `designer` | open |
-| D5 | The certificates screen: one download per issued certificate | `designer` | open |
+| D5 | The certificates screen: one download per issued certificate · ★ **`me/certificates`' bare `<a download>` onto the audited route** — today the only download in the product, and unaudited (`DEC-177`) | `designer` | open |
 | H1 | `REQ-SES-020` — the sub-nav over the routes that exist, no orphan screen | `sessions` | open |
 | H2 | The certificate mode off the schedule screen (C2) | `sessions` | open |
 | H3 | Materials, tasks and photos reachable from the hub — **first to shed** | `sessions` | open |

@@ -353,8 +353,11 @@ without ever opening `/app/admin/designer`.**
    it. Ruled at sync 1 and written in `DECISIONS.md`.
 3. **Lead — the download audit.** `REQ-DSG-027` and `REQ-ADM-021`: every download writes an audit row. `audit_log`
    is append-only with `service_role` revoked (invariant 9). The write goes through one definer function the
-   lead lands. It **re-derives who may download and refuses everyone else with `42501`**, which is where
-   «refused by policy» lives: a poster's bytes have been readable by the org since `DEC-173`, by design.
+   lead lands, **created from nothing** — `DEC-076`'s «`0086`» was never written (`DEC-177`). It **re-derives who
+   may download** (a poster: admin, moderator, an accepted presenter; a certificate: admin, moderator, its own
+   member) **and refuses everyone else with `42501`**, which is where «refused by policy» lives: a poster's bytes
+   have been readable by the org since `DEC-173`, by design. ★ `me/certificates`' unaudited `<a download>` moves
+   onto the same route.
 4. **`designer` → `console` — the templates grid** reads `designer`'s DAL. A new DAL function is a request to
    `designer`, never an edit.
 

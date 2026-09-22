@@ -4213,3 +4213,17 @@ The presenters of directly created sessions left at `accepted = false` (`0020`) 
 **Not this wave — named in every agent file:** deleting a session with its awarded points · the photo gallery and lightbox, `REQ-ADM-021`'s «تنزيل الكل» and `JOB-zip_session_photos` · the wordmark link · Google avatars · the gamification layer · the prose pass · `DEC-100`'s motion system · everything under `(marketing)/**` · recurring series (`A14`) · replacing the renderer (`DEC-017`, `DEC-048`).
 
 - **Documents changed:** `01-prd.md` (`REQ-SES-020`; `REQ-DSG-027`'s reading, cited), `14-roadmap.md` (M15), `15-backlog.md` (`STORY-SES-013`; M15 on `STORY-DSG-012`, `-013`, `STORY-ADM-009`), `scripts/traceability.mjs` (M15), `CLAUDE.md` and the ten agent files (the map), `STATUS.md` (the wave-13 block). `04` and `09` follow in the hub's commit.
+
+---
+
+## DEC-177 — Contract 3 creates the download audit from nothing, and a member's own certificate download is audited too; `DEC-076`'s pointer to `0086` is wrong
+
+- **Date:** 2026-09-22 · **Decided by:** the wave-13 lead, on two findings from the reviewer session, each verified against the tree
+- **Amends:** `DEC-176` contract 3 (who may download, and which path is audited)
+- **Corrects:** `DEC-076` (3) — «`0086` adds the audit action rows and nothing else». `0086` is `0086_manual_mark_window.sql`, wave 7's manual check-in (`DEC-141`); the number was taken, and **no download audit action exists anywhere in the schema**. `audit_log.action` is free text under a pattern check (`0004`), so nothing failed loudly. `DEC-076` is not edited; this sentence is the pointer.
+
+1. **`0152` creates the download audit, it does not extend one.** Its shape is already fixed by the tree: `write_audit()` is granted to `service_role` only (`0005:40–41`), and `service_role` is never on Vercel (invariant 7). So the function is `security definer`, `set search_path = ''`, **revoked from `public` and `anon`, granted to `authenticated`**, on `0049`'s pattern. It is covered by `tests/rls/definer-exposure.test.ts`, the gate that exists because of `DEC-152`.
+2. ★ **The one download path that ships today is unaudited, and it is brought onto the route.** `me/certificates/page.tsx:115` is a bare `<a download>` on a URL `signCertificateUrl()` minted at render time. The only certificate audits are issue and revoke (`certificates.ts:510`). So `REQ-ADM-021`'s «every download is audited» is **unmet today**. Landing contract 3 for the new menus and leaving that link alone would make the requirement look met while it is not, which is exactly the failure this wave exists to fix. **Decision:** `me/certificates` links through `designer`'s audited route (one `href`, `designer`'s file, already in its fixes-only list for the signer's fold). It is not exempted.
+3. **Contract 3's rule therefore has two subjects.** For a session poster: admin, moderator, or an accepted presenter of that session. For a certificate: admin, moderator, **or the certificate's own member**. Everyone else is refused with `42501`. One function or two is `designer`'s and the lead's call at sync 1. The audit row names the actor, the subject and the artifact (`REQ-ADM-021`'s acceptance).
+
+- **Documents changed:** `CLAUDE.md` and the ten agent files (contract 3), `STATUS.md` (C3, D5)

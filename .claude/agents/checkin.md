@@ -70,8 +70,10 @@ platform are live, and `main` runs on production at migration `0151`. Three item
 2. **`sessions` ↔ `designer` — the certificate mode.** It is written on the schedule screen today and read on the
    certificates screen. **One writer after this wave**, and the other screen only shows it. Ruled at sync 1.
 3. **Lead — the download audit.** One definer function on `0049`'s pattern. It re-derives «admin, moderator or an
-   accepted presenter of this session», refuses everyone else with `42501`, and writes `audit_log` through
-   `write_audit()`. That refusal is `REQ-DSG-027`'s «refused by policy»: a poster's bytes have been readable by the
+   accepted presenter of this session» for a poster, and «admin, moderator or the certificate's own member» for a
+   certificate (`DEC-177`). It refuses everyone else with `42501` and writes `audit_log` through `write_audit()`.
+   ★ `me/certificates`' bare `<a download>` moves onto the same audited route: today it is the only download that
+   ships, and it is unaudited. That refusal is `REQ-DSG-027`'s «refused by policy»: a poster's bytes have been readable by the
    org since `DEC-173`, by design.
 4. **`designer` → `console` — the templates grid** reads `designer`'s DAL. A new DAL function is a request to
    `designer`, never an edit.
