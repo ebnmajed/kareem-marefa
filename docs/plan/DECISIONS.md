@@ -4280,3 +4280,24 @@ The presenters of directly created sessions left at `accepted = false` (`0020`) 
 - `04` gains `/app/admin/sessions/[id]` (the redirect and its layout), `/attendance`, `/certificates` and `/app/admin/templates` — four routes, not two. `09`: SCR-043 without the mode, SCR-045 with it. `wave9-three-day-workshop.spec.ts:297–310` moves to set the mode on SCR-045 once the control lands; the ledger line is mine. The accessibility sweep gains `…/certificates` and `…/survey`.
 
 - **Documents changed:** `STATUS.md` (the checklist, the rulings), `CLAUDE.md` (the map points here)
+
+---
+
+## DEC-179 — An image layer's asset never resolved to a URL in any render; wave 13 fixes it before it builds «add image» on it
+
+- **Date:** 2026-09-22 · **Decided by:** the wave-13 lead, on `designer`'s finding during D1b, verified against the tree
+- **Amends:** `DEC-178` (`designer`'s row gains the fix; D1b and D2b depend on it)
+
+**Found.** The renderer draws an image as `resolveRef(ctx, l.image.assetId ?? l.image.binding)` (`render.ts:163`). A raw asset id is not a `{{binding}}`, so `resolveRef()` returns it unchanged (`bindings.ts:101`) and the output is `<img src="<uuid>">`, a relative URL that 404s. Nothing in the app, the worker or the runtime maps an asset id to a URL: the worker's only mention of `design-assets` is the storage sweep. Three consequences:
+- **Every uploaded poster** (`uploadedPosterDocument()` stores `image.assetId`) renders its only layer as a broken image, in the studio and in every export.
+- **An org's logo on every worker-generated poster** is the raw id that `resolveBrand()` emits (`brand.ts:137`). The app-side export worked only because `getDesignerDocument()` swaps in a five-minute signed URL (`designer.ts:283–288`), which can expire before the serial render queue reaches the job.
+- **`wave8-designer-posters` asserts the mode and the binding, never a render**, so no test could see it.
+
+**Decision — in scope, `designer`'s to build, before D1b's «add image» and «add logo» and D2b's crop:**
+1. The runtime's `BindingContext` gains an optional `assets: Record<assetId, url>`. The renderer resolves `image.assetId` and a `brand.logoAssetId` value through it first. **With no `assets` the output is byte-identical to today**, pinned by `designer`'s untouched-derive test against `main`'s runtime. No parity case has an image, so **no golden moves**.
+2. The worker (`render/variant.ts`) collects the asset ids a document uses, downloads them with `service_role` from `design-assets`, and passes them as `data:` URIs. So nothing expires and Chromium makes no network call. The studio passes five-minute signed URLs, as it does for the logo today.
+3. `resolveBrand()` and `worker/src/render/brand.ts` stay `branding`'s and are **not** edited. The worker maps the id they produce.
+4. **A render is asserted at last.** A spec uploads a poster and checks the rendered master shows the image, not a broken one. `data:` URIs count toward the page size, so the worker refuses an asset over the page budget rather than truncating it.
+5. **`main`'s worker in the gap** keeps today's broken image, so nothing gets worse. After the merge, `source_fingerprint` is unchanged (asset rows are immutable per id), so posters already rendered broken **stay cached broken** until something re-renders them. The owner's order gains a step: re-enqueue `regenerate_poster` for sessions whose poster uses an uploaded image or a logo — **every automatic poster uses the logo, so in practice every published session's poster**.
+
+- **Documents changed:** `STATUS.md` (row D6)
