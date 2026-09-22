@@ -157,6 +157,52 @@ async function settle(page: Page) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
+/**
+ * Where focus sits after a navigation nobody typed into. The lead's review
+ * found the admin skip link painted in a capture: if a real navigation (the
+ * hub's redirect, or a tap in the strip) leaves focus there, that is a finding,
+ * and this names it rather than a picture hinting at it.
+ */
+async function expectFocusNotOnSkipLink(page: Page, when: string) {
+  const active = await page.evaluate(() => {
+    const el = document.activeElement as HTMLElement | null;
+    return el ? `${el.tagName.toLowerCase()}${el.className ? `.${String(el.className).split(" ").join(".")}` : ""} «${(el.textContent ?? "").trim().slice(0, 40)}»` : "none";
+  });
+  expect(active, `${when}: focus is on ${active}`).not.toMatch(/skip-link/);
+}
+
+/**
+ * A viewport shot with one element in view between the sticky header and the
+ * phone's bottom layers — never an element screenshot, which draws the fixed
+ * header and tab bar over the very thing it is meant to show (the lead's first
+ * review of download-hub). The target's top is put just under the header, and
+ * the shot fails if anything fixed still paints over any part of it.
+ */
+async function captureAt(page: Page, target: ReturnType<Page["locator"]>, name: string) {
+  expect(page.viewportSize()).toEqual(PHONE);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await target.scrollIntoViewIfNeeded();
+  const header = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-h")) || 0);
+  const before = await target.boundingBox();
+  await page.evaluate((by) => window.scrollBy({ top: by, behavior: "instant" }), before!.y - header - 16);
+  const covered = await target.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const points = [
+      [r.left + r.width / 2, r.top + 2],
+      [r.left + r.width / 2, r.bottom - 2],
+      [r.left + 4, r.top + r.height / 2],
+      [r.right - 4, r.top + r.height / 2],
+    ];
+    return points.some(([x, y]) => {
+      const hit = document.elementFromPoint(x, y);
+      return hit !== null && !el.contains(hit);
+    });
+  });
+  expect(covered, `${name}: something fixed paints over the target`).toBe(false);
+  mkdirSync(SHOTS, { recursive: true });
+  await page.screenshot({ path: join(SHOTS, `wave13-sessions-${name}.png`) });
+}
+
 async function capture(page: Page, name: string) {
   expect(page.viewportSize()).toEqual(PHONE);
   const wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
@@ -184,6 +230,7 @@ test("an admin: the hub's address lands on the schedule, the strip follows the r
   await page.goto(`/ar/app/admin/sessions/${sessionId}`);
   await page.waitForURL(`**/ar/app/admin/sessions/${sessionId}/schedule`);
   await settle(page);
+  await expectFocusNotOnSkipLink(page, "after the hub's redirect");
 
   const links = strip(page).getByRole("link");
   await expect(links).toHaveText(["الجدولة", "الحضور", "الشهادات", "الاستبانة", "صفحة الجلسة"]);
@@ -205,13 +252,16 @@ test("an admin: the hub's address lands on the schedule, the strip follows the r
   await expect(primary).toHaveAttribute("href", `/api/designer/downloads/${masterId}`);
   await expect(poster.getByText("PNG · 4:5 · 1.2 ميغابايت")).toBeVisible();
   await expect(poster.locator("summary", { hasText: "صيغتان أخريان" })).toBeVisible();
-  mkdirSync(SHOTS, { recursive: true });
-  await poster.screenshot({ path: join(SHOTS, "wave13-sessions-download-hub.png") });
+  await expectFocusNotOnSkipLink(page, "before the download capture");
+  // The download block, not the whole section: its heading and the picker are
+  // above it, and a phone shows one or the other.
+  await captureAt(page, poster.locator("[data-session-download]"), "download-hub");
 
   // A client navigation: the layout stays, the marker moves.
   await strip(page).getByRole("link", { name: "الشهادات" }).click();
   await page.waitForURL(`**/ar/app/admin/sessions/${sessionId}/certificates`);
   await settle(page);
+  await expectFocusNotOnSkipLink(page, "after a tap in the strip");
   await expect(strip(page).getByRole("link", { name: "الشهادات" })).toHaveAttribute("aria-current", "page");
   await expect(strip(page).getByRole("link", { name: "الجدولة" })).not.toHaveAttribute("aria-current", "page");
   await capture(page, "hub-certificates");
@@ -241,9 +291,8 @@ test("an accepted presenter: the download on the event page, and no way into the
   const summary = main(page).locator("summary", { hasText: "صيغتان أخريان" });
   await expect(summary).toBeVisible();
   await expect(main(page).getByRole("link", { name: "تنزيل مربّع بصيغة PNG" })).toBeHidden();
-  await primary.scrollIntoViewIfNeeded();
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: join(SHOTS, "wave13-sessions-download-event.png") });
+  const block = main(page).locator("[data-session-download]");
+  await captureAt(page, block, "download-event");
 
   await summary.click();
   const square = main(page).getByRole("link", { name: "تنزيل مربّع بصيغة PNG" });
@@ -251,8 +300,7 @@ test("an accepted presenter: the download on the event page, and no way into the
   await expect(square).toHaveAttribute("href", `/api/designer/downloads/${squareId}`);
   await expect(main(page).getByRole("link", { name: /ستوري/ })).toHaveCount(0);
   await expect(main(page).getByText("قيد الإعداد", { exact: true })).toBeVisible();
-  await summary.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: join(SHOTS, "wave13-sessions-download-event-open.png") });
+  await captureAt(page, block, "download-event-open");
 
   // Not staff: the hub is not theirs, and says so the way every admin screen does.
   await page.goto(`/ar/app/admin/sessions/${sessionId}`);
@@ -276,7 +324,5 @@ test("back from a refused download, the page says so beside the control", async 
   await settle(page);
   const alert = main(page).getByRole("alert").filter({ hasText: "تعذّر التنزيل. حاول مرة أخرى." });
   await expect(alert).toBeVisible();
-  await alert.scrollIntoViewIfNeeded();
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: join(SHOTS, "wave13-sessions-download-failed.png") });
+  await captureAt(page, main(page).locator("[data-session-download]"), "download-failed");
 });
