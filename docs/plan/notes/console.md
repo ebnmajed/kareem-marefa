@@ -2567,5 +2567,34 @@ Once `sessions`' hub and my templates page both have a real build behind them:
    the hub's commit alongside `attendance`/`certificates`, since it is a fourth route missing from `04` today
    that this wave also fixes, not just the two `DEC-176` already named.
 
+## Wave 13 — sync 1 ruling (`DEC-178`, `7f25803`) and as built
+
+Shape (b): `/app/admin/templates` redirects to `posters`; `designer` carries a `ui/tabs` posters|certificates
+strip on its own two pages, so there is no second `<h1>`. The two purpose routes stay independently reachable
+(`#tpl-platform-section` intact). Rail: `designs` collapses into one leaf. `04` gets the reconciliation in the
+lead's commit.
+
+**`ui/tabs` already has link mode.** Checked before touching the file: `TabItem.href` is already in the frozen
+type (`components/ui/index.ts:522–527`) and already wired (`tabs.tsx:144–147`, `RadixTabs.Trigger asChild` +
+`<Link>`). Nothing to add — told `designer` the prop directly rather than build one.
+
+| Commit | What |
+|---|---|
+| `c95dd70` | new `src/app/[locale]/app/admin/templates/page.tsx` (redirect to `posters`); `designs` group → one `templates` leaf in `layout.tsx`'s `NAV_ENTRIES` and `admin-rail.tsx`'s comments; `admin.json` (ar/en): `nav.templatesPosters`/`templatesCertificates` → `nav.templates`, `groups.designs` removed; `console.spec.ts:194–210` — the moderator test's stale `role:"button"` check on «التصاميم» (would have kept passing for the wrong reason once it's a leaf) replaced with a `role:"link"` check, comment corrected |
+
+`npx tsc --noEmit` clean · `npm run lint` 0 errors (26 pre-existing warnings, none mine) · `npm run ui-lint`
+clean (281 files, strict) · `tests/components/admin/admin-rail{,-groups}.test.tsx` 10/10 (synthetic fixtures,
+unaffected either way) · `tests/unit/{messages-namespaces,platform-messages}.test.ts` 17/17. Full `vitest run`
+has 5 pre-existing failures, all in files this track never touches and none related to the rail or templates —
+`admin-audit-labels.test.ts` and `mail-runtime-dist.test.ts` (an unlabelled `export_artifact.downloaded` audit
+action and a stale `packages/mail-runtime` dist, both from `designer`'s in-flight contract-1/3 work) and
+`messages-numerals.test.ts` on `sessions.download.others` (an ICU `#` in `sessions`'s in-flight download-menu
+copy) — confirmed via `git status` against the shared tree, not mine to fix.
+
+K1 needed no code — confirmed and left as a finding (§1). `sessions`' hub routes
+(`admin/sessions/[id]/{layout,page}.tsx`) already exist in the shared tree as of this session; the
+`wave13-console-rail-hub-current.png` capture is ready to take on the lead's next build. K3 (the 390 px and
+accessibility review) waits on `designer`'s tab strip landing — not yet in the tree.
+
 Nothing above is built. Waiting for sync 1 before touching `admin-rail.tsx`, `layout.tsx`, `admin.json`, or
 writing the new `templates/page.tsx`.
