@@ -3906,3 +3906,85 @@ is not moved.
 3. The layout, the nav, `[id]/page.tsx`, and their tests.
 4. «تنزيل», against `designer`'s published type.
 5. `ui-lint --strict`, one e2e spec at a time through the gate lock, and the captures, looked at.
+
+### W13.10 As built, after sync 1 (`DEC-178`)
+
+**Unit 1: the mode's one writer.** Commit `a8deace`, handed to the lead for promotion.
+- **`supabase/proposed/sessions/0001_certificate_mode_one_writer.sql`:**
+  - `schedule_session()` is `0112`'s body with two lines changed: `p_certificate_mode … default null`,
+    and `certificate_mode = coalesce(p_certificate_mode, target.certificate_mode)`. It is
+    `create or replace`, and the signature is identical.
+  - `set_session_certificate_mode(p_session, p_mode) returns text` (`'ok'` or `'unchanged'`) is
+    definer and calls `assert_fresh_admin()`. It locks the session in the caller's org. It refuses,
+    before any write, `session_not_found` (42501), `session_completed` for completed or archived
+    (23514) and `session_cancelled` (23514). A change writes one `session.certificate_mode_changed`
+    audit row, with the old mode as `before` and the new one as `after`.
+  - The grant goes to `authenticated`. It is revoked from `public` and `anon`.
+- **The DAL:** `setSessionCertificateMode(locale, sessionId, mode)` in `src/lib/dal/sessions.ts`. It
+  returns `{status:'ok'|'unchanged'} | {status:'refused', error}`, with the errors listed in
+  `CERTIFICATE_MODE_ERRORS`. `designer` calls it from SCR-045.
+- **Tests:**
+  - `tests/rls/sessions-certificate-mode.test.ts`: 11 cases over the six `03` §8.2 rows.
+  - `tests/unit/sessions-certificate-mode.test.ts`: 5 cases.
+- **Every existing caller** of `schedule_session()` passes the mode explicitly, whether in the RLS
+  files or the DAL (measured), so none of them moves.
+
+**Unit 2: the hub and «تنزيل الملصق».** Commits `0586f97` and `78cf112`.
+- **`admin/sessions/[id]/layout.tsx`** renders a Suspense-wrapped `SessionSettingsNav` and nothing
+  else.
+- **`components/sessions/session-settings-nav.tsx`** is the server half: it calls
+  `getSessionSettingsNav()`, and `null` renders nothing.
+- **`components/sessions/session-settings-strip.tsx`** is the client half:
+  - links with `aria-current="page"`, the current one found by `useSelectedLayoutSegment()`;
+  - one row that scrolls inside itself, with an edge fade through `ui/tabs`' exported
+    `overflowEdges()`;
+  - 44 px targets.
+- **`admin/sessions/[id]/page.tsx`** redirects by role and 404s for anyone else.
+- **`getSessionSettingsNav()`** (`sessions.ts`) returns, by role, the accepted-presenter exception
+  for the survey, and `null` on any error. It is read by a layout, so it never throws.
+- **`components/sessions/session-download.tsx`**, with `download-failed-notice.tsx` (which reads
+  `?download=failed`), renders `getSessionPosterDownloads()`: one primary, the others behind a
+  `<details>`, pending and failed never a link, and plain `<a>` tags throughout. It appears in the
+  event page's action card for staff and accepted presenters, and under SCR-043's `PosterPicker`.
+- **`formatBytes()`** is added to `components/sessions/numerals.ts`.
+- **Strings:** `sessions.hub.*` and `sessions.download.*`, Arabic first. The plurals use a
+  pre-formatted `{value}` (`messages-numerals`).
+- **Tests:**
+  - `tests/unit/sessions-settings-nav.test.ts` (5 cases);
+  - `tests/unit/sessions-format-bytes.test.ts` (4 cases);
+  - `tests/components/sessions/session-settings-nav.test.tsx` (6 cases);
+  - `tests/components/sessions/session-download.test.tsx` (8 cases);
+  - `tests/e2e/wave13-sessions-hub.spec.ts` (5 cases, 7 captures). **Not yet run.** It needs a
+    production build that contains `0586f97` and `ddf9edb` (designer's route), and the build is
+    yours.
+
+**Gates at `78cf112`:**
+- `tsc` is clean.
+- `lint` has 0 errors. None of the 26 warnings is in my files.
+- `ui-lint --strict` is green over 283 files.
+- `npm test` passes 2405 tests. Three fail, and none of them is mine:
+  - `admin-audit-labels` (two cases) wants a label for `export_artifact.downloaded`, which is from
+    the lead's `0152`.
+  - `mail-runtime-dist` fails because a `dist` is stale.
+- The RLS file is green.
+
+**Unit 3: the radio leaves SCR-043.** Not started. It waits for `sessions/0001`'s promotion
+(`DEC-178` Q5). The four ledger lines, as W13.7 names them, are written for STATUS in the same
+commit as the change:
+
+| File | Assertion | Why |
+|---|---|---|
+| `tests/unit/schedule-days.test.ts` «still declares wave 8's sixteen fields, in wave 8's order» | `WAVE_8_FIELDS` loses `"certificateMode"`, so the field list goes from sixteen to fifteen | **An expectation changed on purpose** (`REQ-SES-020`, `DEC-178` contract 2): SCR-045 is the mode's one writer, and the schedule form no longer carries it |
+| `tests/unit/schedule-days.test.ts` «sends every wave-8 argument unchanged, and the two new ones as null» | `WAVE_8_INPUT` loses `certificateMode: "automatic"` | Same. `scheduleSession()` sends no mode, and `schedule_session()` leaves the stored mode standing (`sessions/0001`) |
+| `tests/components/checkin/schedule-form.test.tsx` `BASE_INITIAL` | the `certificateMode: "off"` line is removed | **Harness only.** `ScheduleInitial` loses the field, and no assertion reads it |
+| `tests/components/sessions/schedule-days.test.tsx` `BASE` | the same line is removed | Same |
+
+**Requests to the lead:**
+1. **An audit label.** Once `sessions/0001` is promoted, `admin-audit-labels` will fail for
+   `session.certificate_mode_changed` until `admin.json` (`console`'s) has one:
+   - ar: «تغيير وضع الشهادات لجلسة»
+   - en: "Session certificate mode changed"
+
+   This is best landed in the promotion commit.
+2. **The e2e run.** Run `wave13-sessions-hub.spec.ts` on a build at or after `78cf112`, or hand me
+   a window with the gate lock.
