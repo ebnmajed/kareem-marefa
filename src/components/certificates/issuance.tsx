@@ -212,7 +212,7 @@ export function CertificateIssuance({ locale, sessionId, sessionTitle, timeZone,
                 description: t("heldEmptyDescription"),
                 action: {
                   label: t("modeLink"),
-                  href: `/app/admin/sessions/${sessionId}/schedule`,
+                  href: "#cert-mode",
                 },
               }}
             />

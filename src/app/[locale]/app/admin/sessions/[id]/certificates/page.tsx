@@ -13,9 +13,9 @@ import { listEditorFaces } from "@/lib/dal/fonts";
 import { CertificateDesign } from "@/components/certificates/design-panel";
 import { EligibleList } from "@/components/certificates/eligible-list";
 import { CertificateIssuance } from "@/components/certificates/issuance";
+import { CertificateModeControl } from "@/components/certificates/mode-control";
 import { formatNumber } from "@/components/sessions/numerals";
 import { Badge, SessionStatusBadge } from "@/components/ui/badge";
-import { Link } from "@/components/ui/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -28,9 +28,8 @@ import { storedPhase, type SessionState } from "@/lib/session-status";
 // DESIGN (which composition, which colours — chosen before completion), WHO
 // receives one (exactly the fan-out's two groups, and the mode that decides
 // whether it happens at all), and the ISSUANCE (held, issued, revoked, with
-// each file's render). The mode is SHOWN here and CHANGED on the schedule
-// (SCR-043, the lead's): one control for one setting, and this page links to
-// it rather than growing a second.
+// each file's render). ★ Since wave 13 the mode is CHANGED here, in «من يستحق»,
+// and only here (DEC-178 contract 2); the schedule screen shows it.
 //
 // ★ THE MODE IS THE FIRST THING UNDER THE TITLE, and not decoration. In
 // `automatic` there is nothing to release and the held table never appears;
@@ -90,6 +89,7 @@ export default async function SessionCertificatesPage({
 
   const isAdmin = design.canEdit;
   const completed = data.state === "completed" || data.state === "archived";
+  const cancelled = data.state === "cancelled";
 
   // The preflight's name: the longest on the list, per kind — the one that
   // breaks is never the sample's.
@@ -113,6 +113,24 @@ export default async function SessionCertificatesPage({
   const whoSection = (
     <section aria-labelledby="cert-who" className="flex flex-col gap-4">
       <SectionHeader id="cert-who" title={t("sections.who")} description={t("whoIntro")} count={eligible.length} />
+      {isAdmin ? (
+        completed || cancelled ? (
+          // The function refuses a closed session (23514): a sentence, not a failing control.
+          <p className="text-body-sm text-fg-muted">{t(cancelled ? "modeControl.closedCancelled" : "modeControl.closedCompleted")}</p>
+        ) : (
+          <CertificateModeControl
+            locale={locale}
+            sessionId={id}
+            mode={data.mode}
+            preflight={{
+              fontsLoaded: faces.length > 0,
+              designs: design.kinds.map((k) => ({ kind: k.kind, saved: k.chosen !== null })),
+              eligible: eligible.length,
+              serial: estimate ? serial : null,
+            }}
+          />
+        )
+      ) : null}
       {showEstimate ? (
         <Panel>
           <p className="text-body-sm text-fg-heading">
@@ -184,10 +202,10 @@ export default async function SessionCertificatesPage({
               <Badge size="sm" tone={data.mode === "off" ? "ended" : data.mode === "review" ? "info" : "success"} outline={data.mode === "off"}>
                 {t(`modeBadge.${data.mode}`)}
               </Badge>
-              {isAdmin ? (
-                <Link href={`/app/admin/sessions/${id}/schedule`} className="text-body-sm text-fg-heading underline underline-offset-4">
+              {isAdmin && !completed && !cancelled ? (
+                <a href="#cert-mode" className="text-body-sm text-fg-heading underline underline-offset-4">
                   {t("modeLink")}
-                </Link>
+                </a>
               ) : null}
             </div>
             <p className="max-w-prose text-body-sm text-fg-muted">{t(`modeExplain.${data.mode}`)}</p>

@@ -12,6 +12,7 @@ import {
   setCertificateDesign,
 } from "@/lib/dal/certificates";
 import { retryExport } from "@/lib/dal/designer";
+import { setSessionCertificateMode, type CertificateModeError } from "@/lib/dal/sessions";
 
 // SCR-045's writes — REQ-CRT-004, REQ-CRT-011, REQ-DSG-031, DEC-128, DEC-148.
 //
@@ -73,4 +74,25 @@ export async function retryCertificateRender(locale: string, sessionId: string, 
   if (result.status !== "ok") return { status: "not_authorized" };
   revalidatePath(screen(locale, sessionId));
   return { status: "ok" };
+}
+
+export type ModeActionResult = { status: "ok" | "unchanged" } | { status: "refused"; error: CertificateModeError } | { status: "failed" };
+
+/**
+ * ★ THE MODE'S ONE WRITER (DEC-178 contract 2): SCR-045 changes it, through
+ * `sessions`' `setSessionCertificateMode()` → `set_session_certificate_mode()`
+ * (0154) — admin only, audited, refused once the session has completed, been
+ * archived or been cancelled, where a change would do nothing. The schedule
+ * screen only shows it.
+ */
+export async function saveCertificateMode(locale: string, sessionId: string, mode: string): Promise<ModeActionResult> {
+  const parsed = z.object({ sessionId: z.uuid(), mode: z.enum(["off", "automatic", "review"]) }).safeParse({ sessionId, mode });
+  if (!parsed.success) return { status: "refused", error: "session_not_found" };
+  try {
+    const result = await setSessionCertificateMode(locale, parsed.data.sessionId, parsed.data.mode);
+    if (result.status !== "refused") revalidatePath(screen(locale, sessionId));
+    return result;
+  } catch {
+    return { status: "failed" };
+  }
 }
