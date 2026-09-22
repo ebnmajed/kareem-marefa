@@ -353,7 +353,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PTS-012` | `ENT-points_ledger` `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` `JOB-award_presenter_points` | `MSG-reminder_` | `STORY-PTS-002` | M4 |
 | `REQ-PTS-013` | — | — | `SCR-022` | — | `MSG-presenter_assigned` | `STORY-PTS-005` | M4 |
 | `REQ-PTS-014` | — | — | `SCR-053` | — | — | `STORY-PTS-003` | M4 |
-| `REQ-PTS-015` | — | — | `SCR-014` `SCR-022` | — | `MSG-presenter_assigned` | `STORY-PTS-007` | M14 |
+| `REQ-PTS-015` | — | `POL-check_in.award_points_hook` | `SCR-014` `SCR-022` | — | `MSG-presenter_assigned` | `STORY-PTS-007` | M14 |
 
 ### RAT
 
