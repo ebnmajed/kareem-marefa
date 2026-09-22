@@ -123,6 +123,12 @@ async function scan(page: Page, route: string, role: string, exclude?: string) {
     findings: results.violations.map((v) => ({ rule: v.id, impact: v.impact ?? "unknown", help: v.help, targets: v.nodes.slice(0, 8).map((n) => n.target.join(" ")) })),
   };
   appendFileSync(join(OUT, `wave11-sweep-${line.project}.jsonl`), JSON.stringify(line) + "\n");
+  // SWEEP_SHOTS=1: a 390 px capture of every route the sweep visits, for the lead to open in bands.
+  if (process.env.SWEEP_SHOTS && line.project === "phone") {
+    const slug = route.replace(/^\/ar\/?/, "").replace(/[0-9a-f]{8}-[0-9a-f-]{27}/g, "id").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "landing";
+    const dir = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
+    await page.screenshot({ path: join(dir, `wave11-sweep-${role}-${slug}.png`), fullPage: true });
+  }
   const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect.soft(blocking.map((v) => `${v.id} ×${v.nodes.length}`), `${role} ${route}`).toEqual([]);
 }
@@ -145,8 +151,10 @@ test("member", async ({ context, page }) => {
   ids.proposal = p[0].id;
   // A converted document with one page, so the viewer renders its real frame rather than a gate.
   const { rows: mat } = await db.query<{ id: string }>(
-    `insert into public.materials (org_id, session_id, kind, title, render_status, added_by)
-     values ($1, $2, 'pdf', 'شرائح المسح', 'ready', $3) returning id`,
+    // phase 'before': the session is three days away, and an 'after' material (the default) is hidden
+    // from members until it ends — the viewer would answer 404 and the sweep would scan the wrong page.
+    `insert into public.materials (org_id, session_id, kind, title, phase, render_status, added_by)
+     values ($1, $2, 'pdf', 'شرائح المسح', 'before', 'ready', $3) returning id`,
     [orgId, ids.session, ids.member],
   );
   ids.material = mat[0].id;
