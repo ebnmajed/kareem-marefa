@@ -83,9 +83,12 @@ test.beforeAll(async ({}, testInfo) => {
     `insert into public.design_template_versions (org_id, template_id, version, document, published_at) values ($1, $2, 1, $3::jsonb, now()) returning id`,
     [orgId, tpl[0].id, empty],
   );
+  // The code is globally unique, and the phone and desktop projects seed in
+  // parallel: a literal collided on whichever ran second (the lead's runs).
+  // The serial is per org, and each project makes its own org.
   const { rows: cert } = await db.query<{ id: string }>(
     `insert into public.certificates (org_id, member_id, kind, session_id, serial, verification_code, state, template_version_id, recipient_name_snapshot, issued_at)
-     values ($1, $2, 'presenter', $3, $4, 'dlcodeabcdefghijklmnopq', 'issued', $5, $6, now()) returning id`,
+     values ($1, $2, 'presenter', $3, $4, public.new_verification_code(), 'issued', $5, $6, now()) returning id`,
     [orgId, ownerId, sessionId, SERIAL, ver[0].id, RECIPIENT],
   );
   const { rows: doc } = await db.query<{ id: string }>(
