@@ -253,6 +253,22 @@ A pre-existing `tests/**` file changes only with a line here saying why.
 
 ### ★ The owner's order — final
 
+**Rehearsed 2026-09-22 against the owner's production schema dump** (764 KB, schema only — zero `COPY`/`INSERT`;
+exactly at `0142`: `complained` and `0141` present, nothing of `0143`/`0144`). A bare `postgres:17` + `scripts/ci/roles.sql` +
+the `supabase_realtime` publication, the dump with its `supabase_vault` line stripped: **0 errors**; `0143` then `0144`, each
+in one transaction: **0 errors**. After: `evaluate_job_exhaustion()` executable by `service_role` only and answering
+`{exhausted_jobs: 0}` on the real graphile schema; `platform_job_health()` with the same four columns and its
+`authenticated` grant (what `main`'s SCR-084 calls); `save_brand_kit()` with the same five arguments and its `authenticated`
+grant (what `main`'s screen calls); the three helpers grantless; the platform default palette passes the guard, a failing
+canvas is refused naming `live_vs_light_canvas`. **The dump and the container were deleted after.**
+
+★ **Read 2026-09-22 — `APP_URL` is NOT set on the Railway worker** (`railway variables`, names only; the worker has
+`PUBLIC_ORIGIN` but the mail reads `APP_URL` alone — `send_notification.ts:112`). Today every mail goes out without its link;
+**after the merge the designed mail drops its buttons and the preference link too.** Set `APP_URL` (the app's public origin,
+no trailing slash) **before the merge** — the owner's, a configuration change no session makes.
+
+The four database reads below were **refused to the lead by the permission layer** (twice); they remain the owner's.
+
 1. **Production reads, before anything is pushed** (each a `select`, read-only):
    - orgs with no `org_settings` row — `select o.id, o.slug from public.orgs o where not exists (select 1 from public.org_settings s where s.org_id = o.id);` — zero rows closes L5; any rows: run `DEC-169`'s scoped insert (a data fix, never a migration) (L5)
    - `notify`'s read: every `notification_templates` row classified `design` / `string_edited` / `string_subject_edited` / `string_verbatim_default` by MD5 against the defaults — **no text returned** (the query is in `docs/plan/notes/notify.md` §Y2) (N1)
