@@ -68,7 +68,12 @@
     "canvas": {
       "label": "Design canvas",
       "zoom": "Zoom <bdi>{value}</bdi>%",
-      "size": "Canvas <bdi>{width}</bdi> × <bdi>{height}</bdi>"
+      "size": "Canvas <bdi>{width}</bdi> × <bdi>{height}</bdi>",
+      "coords": "From the start <bdi>{x}</bdi> · from the top <bdi>{y}</bdi>",
+      "derivedNote": "This size is derived from the main one: it is shown here, not moved. Only the focal point is set per size.",
+      "editSource": "Edit on the main size",
+      "placingNote": "Tap the canvas where the layer's centre should go.",
+      "dragHint": "Drag a layer to move it, its handles to resize it, and the top handle to rotate it. Arrow keys move it one pixel, ten with Shift. All of it is also a tap away in the properties panel."
     },
     "layers": {
       "heading": "Layers",
@@ -86,7 +91,11 @@
         "qr": "Verification QR",
         "dynamic_field": "Dynamic field"
       },
-      "orderHint": "Reorder with the buttons: higher in the list is nearer the viewer."
+      "orderHint": "Reorder with the buttons: higher in the list is nearer the viewer.",
+      "multi": "Select several",
+      "multiHint": "While selecting several, each tap on a layer adds it to the selection or removes it — no dragging and no keyboard.",
+      "selectKind": "Select every «{kind}» layer",
+      "selectedCount": "{count, plural, zero {No layer selected} one {One layer selected} other {{value} layers selected}}"
     },
     "properties": {
       "heading": "Properties",
@@ -287,7 +296,9 @@
         "order": "Order",
         "type": "Text and type",
         "binding": "Data binding",
-        "background": "Background"
+        "background": "Background",
+        "group": "Group",
+        "image": "Image"
       },
       "positionNote": "Collapsed by default and never removed: the numbers are the path that needs no dragging, and the most exact one.",
       "align": {
@@ -332,6 +343,47 @@
           "edgeStrong": "Strong edge colour",
           "spine": "Spine colour",
           "node": "Node colour"
+        }
+      },
+      "group": {
+        "heading": "Selected layers",
+        "selection": "The selection",
+        "distribute": "Distribute",
+        "distributeInline": "Distribute horizontally",
+        "distributeBlock": "Distribute vertically",
+        "distributeNote": "Distributing needs at least three layers: the outer two stay and the gaps between them become equal.",
+        "numbersNote": "Select a single layer to edit its position and size numbers.",
+        "lockedSkipped": "Layers locked by the template do not move with the group."
+      },
+      "transform": {
+        "rotateBack": "Rotate 15° anticlockwise",
+        "rotateForward": "Rotate 15° clockwise",
+        "rotateReset": "Reset rotation",
+        "fillWidth": "Fill the safe area's width",
+        "place": "Place with a tap",
+        "placeCancel": "Cancel placing",
+        "placeNote": "Press «Place with a tap», then tap the canvas where the layer's centre should go."
+      },
+      "image": {
+        "fit": "Image fit",
+        "contain": "Whole, inside the frame",
+        "cover": "Fills the frame",
+        "focal": "Focal point",
+        "focalNote": "The focal point is the centre of the crop: when a frame's shape differs from the image's, what surrounds it stays in view.",
+        "focalContainNote": "The focal point works when the image «fills the frame»: a whole image inside its frame is never cropped.",
+        "focalPresetNote": "On this size you set a point for this size alone; the others keep theirs.",
+        "dot": "The point on the image: drag it to fine-tune.",
+        "current": "The point now: <bdi>{x}</bdi>% from the left, <bdi>{y}</bdi>% from the top",
+        "points": {
+          "topLeft": "Top left",
+          "top": "Top centre",
+          "topRight": "Top right",
+          "left": "Centre left",
+          "centre": "Centre",
+          "right": "Centre right",
+          "bottomLeft": "Bottom left",
+          "bottom": "Bottom centre",
+          "bottomRight": "Bottom right"
         }
       }
     }

@@ -2,15 +2,22 @@
 
 import { cloneElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { DesignDocument, Layer, PresetName, ReorderMove } from "@kareem/designer-runtime";
+import type { DesignDocument, FocalPoint, Frame, Layer, PresetName, ReorderMove } from "@kareem/designer-runtime";
 import {
   alignLayer,
+  alignLayers,
   derive,
+  distributeLayers,
+  fillSafeWidth,
   fitLayerToSafeArea,
   fontFaceCss,
+  nudgeLayers,
+  placeLayerCentre,
   PRESETS,
   presetsForDocument,
   reorderLayer,
+  rotateLayer,
+  setFocal,
   snap,
   snapTargets,
   snapTargetsBlock,
@@ -18,7 +25,7 @@ import {
 } from "@kareem/designer-runtime";
 import { DesignerCanvas } from "@/components/designer/canvas";
 import { LayerList } from "@/components/designer/layer-list";
-import { Inspector, type ArrangeOp } from "@/components/designer/inspector";
+import { Inspector, type ArrangeOp, type GroupOp, type TransformOp } from "@/components/designer/inspector";
 import { BindingsPanel } from "@/components/designer/bindings-panel";
 import { ChecksPanel, useCheckFindings, type CheckFinding } from "@/components/designer/checks-panel";
 import { VariantStrip } from "@/components/designer/variant-strip";
@@ -53,10 +60,17 @@ import { AlertTriangleIcon, CheckIcon } from "@/components/ui/icons";
 // the end — properties, layers, checks — one tap apart. The dynamic fields
 // are the document's own properties, so they sit under «المستند».
 //
-// ★ NO DRAGGING THIS WAVE (DEC-148). Every operation here is a tap: select in
-// the list or on the canvas, align, fit, reorder, type a number. That is
-// SC 2.5.7's non-dragging path, and `tests/e2e/wave8-designer-editor.spec.ts`
-// performs each one with `click()` alone.
+// ★ DIRECT MANIPULATION, AND A TAP FOR EVERY DRAG (wave 13 — REQ-DSG-028,
+// DEC-093, DEC-178). The canvas drags, resizes, rotates, snaps, nudges and
+// marquee-selects (`canvas.tsx`); and every one of those has a single-pointer
+// path here — align, distribute, «لائم», «املأ عرضًا», ±15°, «ضع بنقرة», the
+// numbers, ▲▼, «تحديد متعدّد» — which `wave8-designer-editor.spec.ts` and
+// `wave13-designer-studio-taps.spec.ts` perform with `click()` alone. A gesture
+// is ONE undo entry, and a burst of arrow presses is one too (W13.1 R5).
+//
+// ★ ONLY THE SOURCE PRESET IS MANIPULATED. A derived preset's frames are
+// `derive()`'s, and writing one back would be a guess; there the canvas shows
+// and the focal point alone is set per preset (A32).
 //
 // MOBILE IS VIEW AND APPROVE (09, SCR-057). Below the editor breakpoint the
 // layer chrome is not reflowed but replaced: the canvas, every variant, the
@@ -108,16 +122,27 @@ export function DesignerEditor(props: DesignerEditorProps) {
   const tprops = useTranslations("designer.properties");
   const tpr = useTranslations("designer.presets");
   const tc = useTranslations("designer.checks");
+  const tcv = useTranslations("designer.canvas");
   const toast = useToast();
 
   const [document, setDocument] = useState<DesignDocument>(props.initialDocument);
-  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>([]);
+  /** «تحديد متعدّد» — DEC-178's added tap path: shift-click needs a keyboard. */
+  const [multi, setMulti] = useState(false);
+  /** Tap-to-place armed for the selected layer (DEC-093's path for a move). */
+  const [placing, setPlacing] = useState(false);
+  const selectedLayerId = selectedLayerIds.length === 1 ? (selectedLayerIds[0] as string) : null;
+  const setSelectedLayerId = useCallback((id: string | null) => setSelectedLayerIds(id ? [id] : []), []);
   const [save, setSave] = useState<SaveState>({ kind: "clean" });
   const [panel, setPanel] = useState<PanelTab>("layers");
   // 06 §10: undo/redo is document-level, fifty steps. A layer-level history
   // would let an undo half-apply an edit that touched two layers, and the
   // whole document is a few kilobytes.
   const past = useRef<DesignDocument[]>([]);
+  /** The burst an edit belongs to: consecutive edits with the SAME key are one
+   *  undo entry (a held arrow key). Any other edit, a key release, or a
+   *  selection change ends it. No timer (DEC-146). */
+  const burst = useRef<string | null>(null);
   const future = useRef<DesignDocument[]>([]);
   const [depth, setDepth] = useState({ past: 0, future: 0 });
   // A certificate is exported at the one page its master is composed for
@@ -229,7 +254,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
   }, [save.kind, toast, ts]);
 
   const mutate = useCallback(
-    (next: DesignDocument) => {
+    (next: DesignDocument, options: { coalesce?: string } = {}) => {
       // Validated in the browser too, so a bad edit is refused at the field
       // rather than round-tripping to a 422. The Route Handler runs the same
       // function — this is a courtesy, never the boundary.
@@ -239,8 +264,12 @@ export function DesignerEditor(props: DesignerEditorProps) {
         setSave({ kind: "invalid", issue: first ? `${first.path} — ${first.code}` : "" });
         return;
       }
+      const joins = options.coalesce !== undefined && options.coalesce === burst.current;
+      burst.current = options.coalesce ?? null;
       setDocument((current) => {
-        past.current = [...past.current, current].slice(-UNDO_STEPS);
+        // One entry per gesture or burst: a continuing burst replaces what is
+        // on screen without pushing another step.
+        if (!joins) past.current = [...past.current, current].slice(-UNDO_STEPS);
         // A new edit ends the redo branch: keeping it would let a redo jump
         // to a document that never followed from what is on screen.
         future.current = [];
@@ -331,6 +360,108 @@ export function DesignerEditor(props: DesignerEditorProps) {
 
   const reorder = useCallback((layerId: string, move: ReorderMove) => arrange(layerId, { kind: "order", move }), [arrange]);
 
+  /** Commits a document only when it changed — a no-op is not an undo step. */
+  const commit = useCallback(
+    (next: DesignDocument, options?: { coalesce?: string }) => {
+      if (next !== document && JSON.stringify(next) !== JSON.stringify(document)) mutate(next, options);
+    },
+    [document, mutate],
+  );
+
+  /** A canvas gesture's result: the new SOURCE frames, once, on release. */
+  const applyFrames = useCallback(
+    (frames: Record<string, Frame>) => {
+      const locked = Object.keys(frames).find((id) => isLocked(id));
+      if (locked) return setSave({ kind: "locked", layerId: locked });
+      commit({ ...document, layers: document.layers.map((l) => (frames[l.id] ? { ...l, frame: frames[l.id] as Frame } : l)) });
+    },
+    [commit, document, isLocked],
+  );
+
+  /** Arrow keys, on the VISUAL axis (DEC-096) — the runtime maps it to `x`. */
+  const nudge = useCallback(
+    (dx: number, dy: number) => {
+      const ids = selectedLayerIds.filter((id) => !isLocked(id));
+      if (ids.length === 0) return;
+      commit(nudgeLayers(document, ids, dx, dy), { coalesce: `nudge:${ids.join(",")}` });
+    },
+    [commit, document, isLocked, selectedLayerIds],
+  );
+  const endBurst = useCallback(() => {
+    burst.current = null;
+  }, []);
+
+  /** Align and distribute for two or more layers, on the DOCUMENT's axis. Locked ones stay put. */
+  const groupArrange = useCallback(
+    (op: GroupOp) => {
+      const ids = selectedLayerIds.filter((id) => !isLocked(id));
+      if (ids.length === 0) return;
+      commit(op.kind === "align" ? alignLayers(document, ids, op.axis, op.edge, op.target) : distributeLayers(document, ids, op.axis));
+    },
+    [commit, document, isLocked, selectedLayerIds],
+  );
+
+  /** ±15°, «صفّر», «املأ عرضًا» and arming «ضع بنقرة» — the taps for rotate, resize and move. */
+  const transform = useCallback(
+    (layerId: string, op: TransformOp) => {
+      if (op.kind === "place") return setPlacing((v) => !v);
+      if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
+      commit(
+        op.kind === "rotate"
+          ? rotateLayer(document, layerId, op.degrees, op.mode)
+          : fillSafeWidth(document, layerId),
+      );
+    },
+    [commit, document, isLocked],
+  );
+
+  const place = useCallback(
+    (point: { x: number; y: number }) => {
+      setPlacing(false);
+      if (!selectedLayerId) return;
+      if (isLocked(selectedLayerId)) return setSave({ kind: "locked", layerId: selectedLayerId });
+      commit(placeLayerCentre(document, selectedLayerId, point));
+    },
+    [commit, document, isLocked, selectedLayerId],
+  );
+
+  /**
+   * The focal point (REQ-DSG-030). Allowed on a layer locked by its OWN flag —
+   * an uploaded poster's only layer — because A32's crop override is not a
+   * move, a resize, a hide or a delete (REQ-DSG-024), and the database's guard
+   * compares exactly those (`0055`'s `design_documents_guard`). On a derived
+   * preset it writes that preset's override.
+   */
+  const focal = useCallback(
+    (layerId: string, point: FocalPoint, forPreset?: PresetName) => commit(setFocal(document, layerId, point, forPreset)),
+    [commit, document],
+  );
+
+  /** A tap selects; shift or «تحديد متعدّد» adds and removes. */
+  const select = useCallback(
+    (layerId: string | null, options: { additive?: boolean } = {}) => {
+      burst.current = null;
+      setPlacing(false);
+      if (!layerId) return setSelectedLayerIds([]);
+      if (options.additive) {
+        setSelectedLayerIds((ids) => (ids.includes(layerId) ? ids.filter((id) => id !== layerId) : [...ids, layerId]));
+      } else {
+        setSelectedLayerIds([layerId]);
+      }
+    },
+    [],
+  );
+
+  const marquee = useCallback((ids: string[], additive: boolean) => {
+    burst.current = null;
+    setSelectedLayerIds((current) => (additive ? [...new Set([...current, ...ids])] : ids));
+  }, []);
+
+  const selectKind = useCallback((kind: Layer["kind"]) => {
+    burst.current = null;
+    setSelectedLayerIds(document.layers.filter((l) => l.kind === kind && !l.hidden).map((l) => l.id));
+  }, [document.layers]);
+
   const toggleHidden = useCallback(
     (layerId: string) => {
       if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
@@ -365,19 +496,25 @@ export function DesignerEditor(props: DesignerEditorProps) {
 
   // ★ REQ-DSG-029: a check selects the layer that failed it, on the preset it
   // failed in — the canvas shows that variant with that layer outlined.
-  const goTo = useCallback((finding: CheckFinding) => {
-    setPreset(finding.preset);
-    setOverlays(true);
-    setSelectedLayerId(finding.layerId);
-    setPanel("inspector");
-  }, []);
+  const goTo = useCallback(
+    (finding: CheckFinding) => {
+      setPreset(finding.preset);
+      setOverlays(true);
+      setSelectedLayerId(finding.layerId);
+      setPanel("inspector");
+    },
+    [setSelectedLayerId],
+  );
 
   // Selecting on the CANVAS opens the layer's properties; selecting in the
   // layer list stays in the list, so several rows can be reordered in a row.
-  const selectOnCanvas = useCallback((layerId: string | null) => {
-    setSelectedLayerId(layerId);
-    if (layerId) setPanel("inspector");
-  }, []);
+  const selectOnCanvas = useCallback(
+    (layerId: string | null, options: { additive?: boolean } = {}) => {
+      select(layerId, options);
+      if (layerId) setPanel("inspector");
+    },
+    [select],
+  );
 
   const choosePreset = useCallback((name: PresetName) => {
     setPreset(name);
@@ -418,6 +555,10 @@ export function DesignerEditor(props: DesignerEditorProps) {
   );
 
   const shown = useMemo(() => derive(document, preset), [document, preset]);
+  const sourcePreset = presets[0] ?? "master";
+  const onSource = preset === sourcePreset;
+  const lockedIds = useMemo(() => document.layers.filter((l) => isLocked(l.id)).map((l) => l.id), [document.layers, isLocked]);
+  const selection = useMemo(() => document.layers.filter((l) => selectedLayerIds.includes(l.id)), [document.layers, selectedLayerIds]);
 
   const canvas = (
     <DesignerCanvas
@@ -427,10 +568,24 @@ export function DesignerEditor(props: DesignerEditorProps) {
       bindings={props.bindings}
       faces={props.faces}
       origin={props.origin}
-      selectedLayerId={selectedLayerId}
+      selectedLayerIds={selectedLayerIds}
       onSelect={selectOnCanvas}
-      lockedLayerIds={props.lockedLayerIds}
+      lockedLayerIds={lockedIds}
       placeholderLabel={placeholderLabel}
+      {...(props.canEdit ? { onFocal: (layerId: string, point: FocalPoint) => focal(layerId, point, onSource ? undefined : preset) } : {})}
+      {...(props.canEdit && onSource
+        ? {
+            source: document,
+            multi,
+            placing,
+            onFrames: applyFrames,
+            onMarquee: marquee,
+            onPlace: place,
+            onNudge: nudge,
+            onNudgeEnd: endBurst,
+            onReorderKey: reorder,
+          }
+        : {})}
     />
   );
 
@@ -518,6 +673,18 @@ export function DesignerEditor(props: DesignerEditorProps) {
               {t("previewHeading")}
             </h2>
             <p className="text-body-sm text-fg-muted">{t("realDataNote")}</p>
+            {props.canEdit ? (
+              onSource ? (
+                <p className="text-body-sm text-fg-muted">{tcv("dragHint")}</p>
+              ) : (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-body-sm text-fg-muted">{tcv("derivedNote")}</p>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => choosePreset(sourcePreset)}>
+                    {tcv("editSource")}
+                  </Button>
+                </div>
+              )
+            ) : null}
             {canvas}
             {strip}
           </section>
@@ -554,8 +721,16 @@ export function DesignerEditor(props: DesignerEditorProps) {
                       onPatchLayer={patchLayer}
                       onArrange={arrange}
                       onDocument={mutate}
+                      selection={selection}
+                      lockedLayerIds={lockedIds}
+                      onGroupArrange={groupArrange}
+                      onTransform={transform}
+                      placing={placing}
+                      canPlace={onSource}
+                      onFocal={focal}
+                      focalPreset={onSource ? undefined : preset}
                     />
-                    {selected ? null : (
+                    {selected || selection.length > 1 ? null : (
                       <div className="flex flex-col gap-3 pt-4">
                         <h3 className="text-label text-fg-heading">{tb("heading")}</h3>
                         <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} layerNames={bindingLayerNames} />
@@ -566,11 +741,15 @@ export function DesignerEditor(props: DesignerEditorProps) {
                   <LayerList
                     document={document}
                     selectedLayerId={selectedLayerId}
-                    onSelect={setSelectedLayerId}
+                    selectedLayerIds={selectedLayerIds}
+                    onSelect={(id: string, options?: { additive?: boolean }) => select(id, { additive: options?.additive || multi })}
                     onToggleHidden={toggleHidden}
                     onReorder={reorder}
-                    lockedLayerIds={document.layers.filter((l) => isLocked(l.id)).map((l) => l.id)}
+                    lockedLayerIds={lockedIds}
                     canEdit={props.canEdit}
+                    multi={multi}
+                    onToggleMulti={() => setMulti((v) => !v)}
+                    onSelectKind={selectKind}
                   />
                 ) : (
                   <ChecksPanel findings={findings} measuring={measuring} onGoTo={goTo} layerNames={layerNames} />
