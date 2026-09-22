@@ -1,4 +1,6 @@
 import "server-only";
+import { cache } from "react";
+import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 
 // The member's points history (SCR-022, REQ-PTS-003, `05` §8). The test of
@@ -217,3 +219,65 @@ export async function getPointsStripData(locale: string): Promise<PointsStripDat
   ]);
   return { totalPoints: balance?.total_points ?? 0 };
 }
+
+/** A day, as contract 7's `dayName()` takes it — the same shape as `MissedAttendance.days`. */
+export interface AwardDay {
+  position: number;
+  startsAt: string;
+}
+
+/** Contract 1 (`REQ-CHK-018`, `REQ-PTS-015`, `DEC-172`): the caller's own attendance award for one
+ *  session, as `checkin` renders it on SCR-014 and the event page.
+ *
+ *  ★ COMPUTED, NEVER STORED. `session_award_state()` reads the rules, the days, the check-ins and the
+ *  ledger and writes nothing; a second ledger with a pending state would be two sources of truth for a
+ *  balance invariant 9 exists to keep recomputable. `pending` means the completion pass WILL write
+ *  `points` — the function and `award_points()` share every condition, the presenter bar included
+ *  (`attendance_award_barred()`), so the amount shown is the one that is paid. */
+export type SessionAwardState =
+  | { state: "none" }
+  | { state: "pending"; points: number; daysAttended: number; daysRequired: number; dayCount: number }
+  | { state: "paid"; points: number }
+  | { state: "incomplete"; missedDays: AwardDay[]; daysAttended: number; daysRequired: number; dayCount: number };
+
+type AwardStateRow = {
+  state: "none" | "pending" | "paid" | "incomplete";
+  points: number;
+  days_attended: number;
+  days_required: number;
+  day_count: number;
+  missed_days: { position: number; starts_at: string }[] | null;
+};
+
+/** The row the function returns, as the DTO — exported for its unit test only. */
+export function toSessionAwardState(row: AwardStateRow): SessionAwardState {
+  switch (row.state) {
+    case "pending":
+      return { state: "pending", points: row.points, daysAttended: row.days_attended, daysRequired: row.days_required, dayCount: row.day_count };
+    case "paid":
+      return { state: "paid", points: row.points };
+    case "incomplete":
+      return {
+        state: "incomplete",
+        missedDays: (row.missed_days ?? []).map((d) => ({ position: d.position, startsAt: d.starts_at })),
+        daysAttended: row.days_attended,
+        daysRequired: row.days_required,
+        dayCount: row.day_count,
+      };
+    default:
+      return { state: "none" };
+  }
+}
+
+/** Null when the session is not visible to the caller — another org's, or none at all, which the
+ *  function does not tell apart — and for a malformed id, refused here before any round trip. A failed
+ *  RPC throws, as everything in this module does; the caller decides what a failure renders. Request-
+ *  scoped `cache()`: SCR-014 and the event page's card ask once between them. */
+export const getSessionAwardState = cache(async (locale: string, sessionId: string): Promise<SessionAwardState | null> => {
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("session_award_state", { p_session: sessionId });
+  if (error) throw new Error(`session_award_state: ${error.message}`);
+  const rows = (data ?? []) as AwardStateRow[];
+  return rows.length > 0 ? toSessionAwardState(rows[0]) : null;
+});
