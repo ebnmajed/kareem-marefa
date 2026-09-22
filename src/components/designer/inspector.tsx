@@ -403,7 +403,8 @@ export function Inspector({
 
       {onDuplicate && onDelete ? (
         <InspectorSection title={t("sections.layer")}>
-          {locked ? <p className="text-body-sm text-fg-muted">{t("layer.lockedNote")}</p> : null}
+          {/* A locked layer's buttons are simply disabled: the ONE note at the top
+              of this panel already says it cannot be deleted or duplicated. */}
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onDuplicate(layer.id)}>
               {t("layer.duplicate")}

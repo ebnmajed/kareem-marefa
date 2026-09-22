@@ -100,7 +100,7 @@
     "properties": {
       "heading": "Properties",
       "none": "Select a layer to see its properties.",
-      "lockedNotice": "This region is locked in the template: it cannot be moved, resized, hidden or deleted. Unlocking happens in the platform template, not here.",
+      "lockedNotice": "This region is locked in the template: it cannot be moved, resized, hidden, deleted or duplicated. Unlocking happens in the platform template, not here.",
       "positionHeading": "Position and size",
       "x": "Offset from the start",
       "y": "Offset from the top",
@@ -404,7 +404,6 @@
         "deleteBody": "The layer <bdi>{name}</bdi> will be removed from this document. «Undo» brings it back while the editor is open.",
         "deleteConfirm": "Delete",
         "cancel": "Cancel",
-        "lockedNote": "Locked by the template: it cannot be deleted or duplicated here.",
         "deletePosition": "A «<bdi>{kind}</bdi>» layer, number <bdi>{position}</bdi> of <bdi>{total}</bdi> in the layer list."
       }
     },
