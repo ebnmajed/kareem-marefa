@@ -2419,3 +2419,153 @@ specs named in the sync message.
 «مطلوب» joins the member select's accessible name (DEC-109, K2); selector only. · `tests/components/admin/rtl-datetime-picker.test.tsx`
 — the renders wrapped in a `NextIntlClientProvider` (RTL's `wrapper`): the hour and minute selects now sit in `<Field>`,
 which reads `ui.json`; harness only, no expectation moved.
+
+---
+
+## Wave 13 plan — the hub's rail entry, the templates grid, the review (`DEC-176`, `16` §10.3)
+
+Read `.claude/agents/console.md` (regenerated for wave 13), `STATUS.md`'s wave-13 block, `CLAUDE.md`'s
+wave-13 map, `DEC-176`, `16` §10.3. **PLANNING ONLY** — nothing below is built yet.
+
+### 1 · K1 — the rail on `/app/admin/sessions/[id]/*`, today, and the entry I propose
+
+`admin-rail.tsx`'s `isCurrent()` (`:155–157`) marks an item current on an exact match **or** on
+`path.startsWith(\`${href}/\`)`. `layout.tsx`'s `NAV_ENTRIES` (`:85`) already has `sessions` as a plain leaf,
+`href: "/app/admin/sessions"`, not a group. Every route `sessions` is about to nest under it —
+`[id]/schedule` (today), `[id]/attendance`, `[id]/certificates`, `[id]/survey`, and the new `[id]/{layout,page}`
+hub — already satisfies `startsWith("/app/admin/sessions/")`, so the rail already marks «الجلسات» current
+anywhere inside the hub, with **no code change**. Nothing in the rail duplicates a sub-nav: the rail has never
+rendered anything below the `sessions` leaf (it is not a `group` with `children`), so there is no second copy of
+the hub's own tabs to keep in sync. **Finding: K1 needs no change to `admin-rail.tsx` or `layout.tsx`.** I will
+re-verify this once `sessions` lands the hub's routes (a real build, not just reading the plan), and capture
+`.qa-shots/rtl/wave13-console-rail-hub-current.png` — «الجلسات» marked `aria-current="page"` while three levels
+into the hub — as the proof, rather than assume the reading holds. If `sessions` needs the rail's label, icon or
+grouping to change for some reason their own plan surfaces, that is a written request to me, per the transfer
+note — I build it, not them.
+
+### 2 · K2 — where the grid goes, and the evidence
+
+**Finding, load-bearing: `16` §10.3 is already built, twice.** `template-library.tsx` (designer's) — its own
+header comment (`:22–26`) cites «`16` §10.3's shape: a card grid with each template drawn by the renderer …
+its state («منشور»/«مسودة»), its use, and the platform library as a clearly separate, read-only-until-copied
+section» — and every one of those is on the card today: `TemplateCard` (`:108–210`) renders «الافتراضي»/
+platform/family/orientation/«مسودة»/«متقاعد» badges, a version + locked-region + **usage count** caption
+(`:176–188`, `card.usage`), `DuplicateTemplateDialog` on a platform card and `OrgTemplateActions` (edit,
+publish, set-default, retire/restore) on an org card (`:191–207`), and the platform section is a fully
+separate, always-first `<section>` with no write control rendered at all for a platform card (`:54–63`,
+comment `:29-30`: «a platform card carries no write control at all — not a disabled one»). This is split
+across two purpose-specific routes, `/app/admin/templates/posters` and `/app/admin/templates/certificates`
+(`TemplateLibraryPage`, `:36`), and **no route exists at `/app/admin/templates` itself** — confirmed by
+`find`, matching `DEC-176`'s own «Brief vs code, 5».
+
+**So the question is not «build the grid» — it already exists — but «give it one address».** Two shapes,
+weighed:
+
+- **(a) A new, self-contained index page (mine), importing designer's already-exported pieces read-only.**
+  `getTemplateLibrary(locale, purpose, {scheme?})` (`lib/dal/templates.ts:103`) and the exported
+  `TemplateLibraryPage` component (`components/designer/template-library-page.tsx:21`) are both already public
+  API of files I never touch. My new `src/app/[locale]/app/admin/templates/page.tsx` renders one `PageHeader`
+  («القوالب») and a `ui/tabs` strip (my own primitive, **in-page panel mode**, not `href` mode — this is one
+  screen's own two views, not two routes) with two panels, each holding the unmodified
+  `<TemplateLibraryPage locale purpose="poster" | "certificate" />`. **Zero new DAL functions, zero edits to
+  any file `designer` owns.** The two existing routes, `/templates/posters` and `/templates/certificates`,
+  keep working exactly as today — direct link, the `orgEmptyAction` deep link to
+  `#tpl-platform-section` (`template-library.tsx:74`), and `wave8-designer-templates.spec.ts`'s direct
+  `page.goto()` calls (confirmed: it never reaches either route through the rail — grepped for
+  `التصاميم`/`designs`, none in that file).
+- **(b) A request to `designer`** to add a `ui/tabs` (`href` mode — real navigation, since `posters` and
+  `certificates` would stay two routes) strip to the top of `template-library-page.tsx`'s shared render, and
+  my own `page.tsx` becomes a one-line `redirect("/app/admin/templates/posters")`. Cheaper in code, but it
+  is an edit to a file I do not own, and `DEC-176`'s own framing reads the two shapes as **either/or**, not
+  both — so it is what I ask for only if the lead or `designer` prefers not to see two `PageHeader`s stacked
+  under (a).
+
+**I am proposing (a), the self-contained page, as the default — it needs nothing from `designer` at all,
+which is the safer plan under «teammates spawn planning-only».** The one real cost is cosmetic: (a) nests
+`TemplateLibraryPage`'s own purpose-specific `<PageHeader>` (title «قوالب الملصقات»/«قوالب الشهادات», the
+scheme toggle, the create-dialog) inside my outer «القوالب» header — two headings stacked, not one. Flagged
+as **question 1** below rather than resolved unilaterally, since it is a design call, not a technical one.
+
+### 3 · Every DAL datum the grid needs (contract 4)
+
+**None are new. Everything the grid needs already exists**, all in `lib/dal/templates.ts`, all `designer`'s,
+all read-only imports for me:
+
+| Datum | Function / field | Return type | State |
+|---|---|---|---|
+| The whole library, per purpose | `getTemplateLibrary(locale, purpose, {scheme?})` (`:103`) | `Promise<TemplateLibraryData \| null>` | **existing** |
+| Published/draft state | `TemplateSummary.latestVersion: number \| null` + `.draftDocumentId: string \| null` (`:47,55`) | `number \| null`, `string \| null` | **existing** |
+| Usage count | `TemplateSummary.usageCount: number` (`:64–67`) — its own comment cites `16` §10.3 by name | `number` | **existing** |
+| Retired / default state | `TemplateSummary.retired`, `.isDefault` (`:46–47`) | `boolean` | **existing** |
+| Platform vs org, separated | `TemplateLibraryData.platform` / `.org: TemplateSummary[]` (`:73–74`) | `TemplateSummary[]` | **existing** |
+| Duplicate action (platform → org) | `<DuplicateTemplateDialog>` (`components/designer/template-actions.tsx`, used at `template-library.tsx:194`) | component, calls `templates/actions.ts`'s existing Server Action | **existing** |
+| Family list (only if I ever need my own create control — I do not, under shape (a)) | `familiesFor(purpose)` (`:35–37`) | `readonly string[]` | **existing, unused under shape (a)** |
+
+**Nothing is a request to `designer`** under shape (a). If sync 1 picks shape (b) instead, the request becomes
+the `ui/tabs` strip on `template-library-page.tsx`, not a DAL function — restated as **question 1**.
+
+### 4 · The 390 px and accessibility review (K3)
+
+Once `sessions`' hub and my templates page both have a real build behind them:
+
+- `.qa-shots/rtl/wave13-console-rail-hub-current.png` — «الجلسات» current, three levels into the hub (§1).
+- `.qa-shots/rtl/wave13-console-templates-index.png` — both tab panels, phone project, 390×844, checking the
+  card grid reflows to `DataTable`'s sibling discipline (it already does — `template-library.tsx`'s grid is
+  `sm:grid-cols-2 xl:grid-cols-3`, single column below `sm`, unrelated to `ui/data-table` but the same
+  no-sideways-scroll rule) and that `ui/tabs`' edge-fade (`tabs.tsx`'s `applyEdgeFade`) does not clip either
+  tab's Arabic label.
+- One new e2e file, `tests/e2e/wave13-console-templates.spec.ts` (mine): `/app/admin/templates` reachable from
+  the rail as a single link (not a button/group) for an admin, absent for a moderator; both tab panels render
+  their platform section before the org section; switching tabs never round-trips through the DAL twice for
+  the same purpose (a `Promise.all` on first render, not per-click — real, since Next streams both panels'
+  RSC payload on the one request under in-page mode).
+- I cannot edit `tests/e2e/a11y.spec.ts` or `wave11-lead-a11y-sweep.spec.ts` (the lead's). Both already scan
+  `/ar/app/admin/templates` (`a11y.spec.ts:120`) or the two purpose routes
+  (`wave11-lead-a11y-sweep.spec.ts:213`) — today the first hits `app/not-found.tsx`'s generic 404, which is
+  why it already passes (a well-formed, landmark-carrying 404 clears `main visible, zero blocking
+  violations` trivially). Once my page lands, that same assertion exercises real content for the first time —
+  the assertion text does not change, so this is **not a ledger line**, but I am flagging it here so the lead
+  runs it rather than trusting the pre-existing green.
+- axe-core direct (`node_modules/axe-core`, the wave-5 precedent — no `jest-axe` installed) against the new
+  page's own component test, if I write one; `ui/tabs.test.tsx` is not mine to touch (it is
+  `tests/components/ui/tabs.test.tsx`, in my never-edit list) so any tabs-specific finding is a request back
+  through the lead, on the lead's file.
+
+### 5 · Every existing test whose expectation moves
+
+- `tests/e2e/console.spec.ts:196–207` — the moderator-rail test's own comment says «no groups whose every
+  child is admin-only (`النقاط والتقدير`, `التصاميم`, `الإشعارات` all vanish, not just hide their contents)»
+  and then asserts `nav.getByRole("button", { name: "التصاميم" })` has count 0. **The assertion does not
+  change** — converting `designs` from a two-child group into a single admin-only leaf still yields zero
+  `button`s named «التصاميم» for a moderator (it is now a `link`, absent from the rail either way for that
+  role). **The comment does change**: «التصاميم» stops being an example of a group whose every child is
+  admin-only and becomes a plain admin-only leaf, the same path «الأعضاء»/«لوحة» already take. I will correct
+  the comment in the same commit as the rail change — ledger line, comment only, no assertion moved.
+- `tests/e2e/wave8-designer-templates.spec.ts`, `tests/e2e/wave11-lead-a11y-sweep.spec.ts:213` — both navigate
+  directly to `/templates/posters` / `/templates/certificates` by URL, never through the rail. Unaffected;
+  confirmed by grep for a rail click in either file (none).
+- `tests/components/admin/admin-rail.test.tsx`, `admin-rail-groups.test.tsx` — both render `AdminRail` against
+  a synthetic, inline `AdminRailItem[]` fixture (`moderation`/`points`, never `designs`), not the real
+  `NAV_ENTRIES`. Unaffected.
+- No RLS, unit, or `lib/dal/*` test changes — no SQL, no new DAL function, under shape (a).
+
+### 6 · Questions for the lead
+
+1. **Shape (a) vs (b) for K2** (§2): self-contained new page importing `designer`'s exports read-only
+   (nesting two `PageHeader`s), or a request to `designer` for a shared `href`-mode tab strip plus my
+   one-line redirect. I recommend (a) — it needs nothing from anyone else — but the nested-header look is a
+   real cost worth a second opinion before I build either.
+2. **The rail consolidation** (§2, §5): collapsing the `designs` group (`templatesPosters` +
+   `templatesCertificates`, two children) into one leaf, `templates` → `/app/admin/templates`. Confirm this is
+   the intended shape rather than adding a third link alongside the existing two (which would be exactly the
+   duplication K1's own language warns against for the hub, and reads just as wrong here).
+3. Should `/templates/posters` and `/templates/certificates` stay independently reachable by direct URL only
+   (my recommendation, since they are `designer`'s and I change nothing about them), or should they redirect
+   into the new combined page — which would strand the `orgEmptyAction` deep link
+   (`#tpl-platform-section`) designer's own empty state already depends on?
+4. `04`'s route table reconciliation is the lead's (L1) — confirm `/app/admin/templates` is added there in
+   the hub's commit alongside `attendance`/`certificates`, since it is a fourth route missing from `04` today
+   that this wave also fixes, not just the two `DEC-176` already named.
+
+Nothing above is built. Waiting for sync 1 before touching `admin-rail.tsx`, `layout.tsx`, `admin.json`, or
+writing the new `templates/page.tsx`.
