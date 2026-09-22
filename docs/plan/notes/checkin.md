@@ -2086,3 +2086,254 @@ They are ten screens at one instant. **The three-day workshop driven end to end 
 the lead's demonstrable**, not this track's — my specs drive the database directly and move a day
 with an owner `update` to reach a ceiling. What they do prove is the pair the wave is measured on:
 each surface at three days, and the same surface at one carrying none of it.
+
+---
+
+# Wave 12 plan — the acknowledgement (`REQ-CHK-018`, `DEC-172`, contract 1)
+
+**Status: planning only. No code, SQL or test is written until sync 1.** This plan is written against
+contract 1 **as the map and my message to `scoring` describe it**, because `scoring`'s note had no
+contract-1 section when I wrote this (its last heading is `attendance_epoch_check_in()`, commit `867726d`
+era). Every name in §2 is **provisional** and I will switch it to theirs. Nothing in the design depends on
+the names; it depends on the five semantics in §2.
+
+## 1 · What changes, and what does not
+
+**It does not change:** the check-in path. `submitCheckInForm`, `submitCheckIn()`, `check_in()`'s
+envelope, the `?success=1` / `?already=1` / `?error=` redirects, `CodeInput`, the form's position and the
+fact that it still renders for an already-checked-in member while the window is open.
+`checkin.spec.ts:170–177` fills the code a second time and relies on that. The affordance matrix
+(`session-matrix.ts`, `session-matrix.test.ts`) and `checkInIneligibleReason()` are untouched too, and so
+are the host view's and the attendance screen's reads. **No surface of mine reads `points_ledger`. No
+surface of mine computes an amount. No SQL of mine.** `supabase/proposed/checkin/` gains nothing this wave.
+
+**It changes:** what SCR-014 and the event page's action card **say afterwards**. That is a fourth fact
+rendered from `scoring`'s DTO, beside the facts they already render.
+
+## 2 · Contract 1 as I consume it (provisional names; semantics sent to `scoring` on 2026-09-22)
+
+```ts
+// src/lib/dal/points.ts — scoring's. I import the function and the type, never edit either.
+type SessionAwardState =
+  | { state: "none" }
+  | { state: "pending"; points: number; daysAttended: number; daysRequired: number }
+  | { state: "paid"; points: number }
+  | { state: "incomplete"; missedDays: LabelledDay[]; daysAttended: number; daysRequired: number };
+getSessionAwardState(locale: string, sessionId: string): Promise<SessionAwardState | null>  // cache()d
+```
+
+The five semantics I asked for:
+
+1. `pending` requires the caller to have **at least one active check-in**, with the session not yet
+   `completed`/`archived`. **`none` covers everything else I must stay silent about:** no check-in, a
+   presenter, staff who did not check in, a rule that is disabled or worth 0, and a check-in removed or
+   reversed. A disabled rule is not a message.
+2. `points` is the caller's **own attendance award** for this session, the number the completion pass
+   writes, from the same function. It carries no company, streak or badge amounts.
+3. `daysRequired` is `1` when `require_all_days` is off. **The days line shows on `daysRequired > 1`, never
+   on `dayCount`.** A relaxed workshop reads like a talk: «2 of 1» would be nonsense.
+4. `incomplete` names the missed day(s) as `LabelledDay` (`{ position, startsAt }`), so the words come from
+   `dayName()` and contract 7, never re-spelt. **It should be emitted before completion** as soon as a
+   required day's ceiling has passed without an active check-in. Otherwise the member reads «pending» for an
+   award that can no longer pay (question Q2).
+5. The signature is `(locale, sessionId)`, with `requireSession()` inside, and it returns null when the
+   session is not visible. The page has already 404'd by then, so I treat null as `none`.
+
+## 3 · The copy — Arabic first (`src/messages/ar/checkin.json`, new `checkin.award.*`)
+
+Western digits through `formatNumber()` inside `<bdi>`. The count's noun agrees in all six forms. The keys
+are shared by both surfaces, and `en` follows.
+
+| Key | Arabic |
+|---|---|
+| `award.heading` | نقاط هذه الجلسة |
+| `award.pending.amount` | `{count, plural, zero {لا نقاط بانتظارك} one {نقطة واحدة بانتظارك} two {نقطتان بانتظارك} few {<bdi>{value}</bdi> نقاط بانتظارك} many {<bdi>{value}</bdi> نقطة بانتظارك} other {<bdi>{value}</bdi> نقطة بانتظارك}}` |
+| `award.pending.when` | تُضاف إلى رصيدك عند انتهاء الجلسة. |
+| `award.pending.whenRemaining` | تُضاف إلى رصيدك عند انتهاء الجلسة، إن حضرت بقية الأيام. |
+| `award.pending.days` | `{count, plural, zero {حضرت <bdi>{attended}</bdi> من دون أيام} one {حضرت <bdi>{attended}</bdi> من يوم واحد} two {حضرت <bdi>{attended}</bdi> من يومين} few {حضرت <bdi>{attended}</bdi> من <bdi>{value}</bdi> أيام} many {حضرت <bdi>{attended}</bdi> من <bdi>{value}</bdi> يومًا} other {حضرت <bdi>{attended}</bdi> من <bdi>{value}</bdi> يوم}}` (count = days required) |
+| `award.paid.amount` | `{count, plural, zero {لم تُضف نقاط إلى رصيدك} one {أُضيفت نقطة واحدة إلى رصيدك} two {أُضيفت نقطتان إلى رصيدك} few {أُضيفت <bdi>{value}</bdi> نقاط إلى رصيدك} many {أُضيفت <bdi>{value}</bdi> نقطة إلى رصيدك} other {أُضيفت <bdi>{value}</bdi> نقطة إلى رصيدك}}` |
+| `award.paid.link` | سجلّ نقاطك |
+| `award.incomplete.title` | لن تُحتسب نقاط الحضور لهذه الجلسة |
+| `award.incomplete.missed` | `{count, plural, zero {لم يفتك أي يوم} one {فاتك <bdi>{days}</bdi>} two {فاتك <bdi>{days}</bdi>} few {فاتتك <bdi>{days}</bdi>} many {فاتتك <bdi>{days}</bdi>} other {فاتتك <bdi>{days}</bdi>}}`. This is scoring's own «missed» sentence shape (`scoring.json` `row.missed.days`), so `/app/me/points` and this screen agree. `{days}` is the `dayName()` labels joined with «، ». |
+| `award.incomplete.rule` | نقاط الحضور تتطلّب حضور جميع أيام الجلسة. |
+
+`zero` in `pending.days` is unreachable, because `daysRequired ≥ 2` whenever the line shows. It is there
+because ICU requires the form, and it says nothing false.
+
+## 4 · Where it appears — 390 px sketches
+
+### SCR-014 `/app/sessions/[id]/check-in`: a `<section aria-labelledby>` with an `<h2>`, **never `role="status"`**
+
+```
+┌──────────────── 390 ────────────────┐
+│ تسجيل الحضور                   (h1) │
+│ ‹عنوان الجلسة›                       │
+│ اليوم الثاني · الخميس   (n>1 only)   │
+│ ┌ role=status ────────────────────┐ │  ← unchanged: only on ?success / ?already,
+│ │ تم تسجيل حضورك                   │ │    or the refusal Panel in its place
+│ └─────────────────────────────────┘ │
+│ ┌ section · Panel tone=info ──────┐ │  ← NEW, only when state ≠ none
+│ │ نقاط هذه الجلسة            (h2)  │ │
+│ │ ◷ 10 نقاط بانتظارك   (text-h3)  │ │
+│ │ حضرت 2 من 3 أيام   (daysReq>1)  │ │
+│ │ تُضاف إلى رصيدك عند انتهاء الجلسة،│ │
+│ │ إن حضرت بقية الأيام.            │ │
+│ └─────────────────────────────────┘ │
+│ أدخل الرمز من شاشة المقدِّم …         │  ← unchanged «ready», label, six boxes, button
+│ [ □ □ □ □ □ □ ]                      │
+│ [        تسجيل الحضور        ]       │
+└─────────────────────────────────────┘
+```
+
+- **Paid:** Panel `success`, `CheckCircleIcon`, «أُضيفت 10 نقاط إلى رصيدك», and a `Link` «سجلّ نقاطك» to
+  `/app/me/points`.
+- **Incomplete:** Panel `ended`, `InfoIcon`, the title, «فاتك اليوم الأول · الأربعاء», and the rule line.
+- **None:** nothing. The DOM is the one wave 11 shipped.
+- ★ **One position, and it renders in BOTH branches of the page.** It sits after the status or refusal panel
+  and before the form. When the ceiling has passed, `ineligibleReason = session_ended` replaces the form, and
+  a member who opens the screen tomorrow still sees the state under «انتهى وقت تسجيل الحضور». That is
+  «the same after a reload». When a day-2 member has not yet checked in today, the block is one Panel of
+  about 110 px above the code boxes. That is an honest nudge, and the form is still inside the first 844 px.
+  Alternative for sync 1: below the form. My recommendation is above, as sketched.
+- ★ **Why not `role="status"`:** `checkin.spec.ts:167/177` and `sessions-screens.spec.ts:403` assert
+  `page.getByRole("status")).toHaveText(...)`. That is strict mode and an exact match, so a second status,
+  or text added inside the existing one, breaks three evidence assertions. It is also the right semantics:
+  a state read on load is content, not a live announcement. The success line is the live announcement.
+  The award block follows it in reading order.
+
+### The event page, in the action card: a new slot component, not a change to `AttendanceOutcome`
+
+```
+┌ action card (sessions' frame) ──────┐
+│ … RsvpStatus …                       │
+│ ✓ حضرت          (AttendanceOutcome,  │  ← unchanged; still only at `ended`
+│                  ended cells only)   │
+│ ◷ 10 نقاط بانتظارك                   │  ← NEW <AwardState>, no heading, one or two lines,
+│   تُضاف إلى رصيدك عند انتهاء الجلسة.  │    no Panel of its own (the card spaces its parts)
+│ [ primary action ]                   │
+└──────────────────────────────────────┘
+```
+
+- **The code contradicts the brief here**, which asks for `attendance-outcome` itself to carry the state.
+  `AttendanceOutcome` renders only when `can.attendanceOutcome`
+  (`src/components/sessions/action-card.tsx:124`). The matrix grants that only in `ended × {attended,
+  absent}` (`session-matrix.ts:141,144`). `viewerRelation()` returns `attended` **only at `ended`**
+  (`src/lib/session-status.ts:388–394`). So a member who checks in and opens the event page **while the
+  session is live, or between days of a workshop (phase `open`)**, would see nothing. Nor can a walk-in's
+  relation carry it: it is `none` until `ended`. Putting the state inside `AttendanceOutcome` would therefore
+  fail «opening the event page later shows the same thing» for the whole time before the end. Widening the
+  matrix to fix it is exactly what the brief forbids.
+- **So:** a new server component, `src/components/checkin/award-state.tsx` (`SlotProps`, no heading, per
+  `16` §5.4.1a(b)), **self-gated on the DTO alone.** It renders nothing on `none`, so it is safe to render for
+  every viewer in every phase, and the matrix does not move. `AttendanceOutcome` and
+  `attendance-outcome.test.tsx` stay byte-identical. The test's `getByRole("status")` would also break
+  under a second status inside the component.
+- **One written request to `sessions`** (their frame, fixes-only file): in `action-card.tsx`, add
+  `<AwardState {...slot} />` directly after line 124, **unconditionally**. Optionally, append `"AwardState"`
+  to `SLOT_NAMES` in `slots.ts:72`. Nothing else in the card changes. Question Q1.
+- The event page's `AwardState` and SCR-014's section render the **same component body with a `variant`**
+  (`"section"` with its `<h2>` and Panel, `"inline"` without either). That means one copy path and one test
+  file, and the two surfaces cannot disagree.
+
+## 5 · How the page reads the state (server-side)
+
+- **SCR-014:** `page.tsx` adds `getSessionAwardState(locale, id)` to the existing `Promise.all` at line 34.
+  It is not added to `getCheckInScreenData()`, so `lib/dal/checkin.ts` never imports `points.ts` and the
+  check-in DAL stays free of award logic (`REQ-TSK-002`'s spirit: the check-in path decides nothing about
+  points). After `submitCheckInForm` redirects, the page re-renders dynamically, so the DTO is computed from
+  the committed check-in. No cache, no revalidation and no client state are involved. A reload is the same
+  read.
+- **Event page:** `AwardState` calls the same function. It is `cache()`d, so SCR-014 and the card never
+  compute it twice in one request.
+- **Failure:** if the call throws, the block renders nothing (caught in the component) and the check-in
+  screen still works. I will not let a scoring read break the room's most time-critical screen. It is logged
+  through the existing error path, not swallowed silently. I need the lead's ruling on whether a missing
+  block beats a route error (Q4).
+- ★ **A defect found while measuring (mine, `src/lib/dal/checkin.ts:246`):** `getCheckInScreenData()`
+  fires `supabase.rpc("session_complete_attendees", …)` in its `Promise.all`, but the destructure takes only
+  five results (line 236), so the sixth is never read. The comment «Staff-gated inside (`is_staff()`), which
+  this reader already is» is false. SCR-014 is the **member's** screen, and `0108` refuses a member with
+  `42501` (its own §8.2 row `RPC-session_complete_attendees.staff_only`). So every check-in render pays one
+  wasted, refused round trip on the most latency-sensitive screen in the product. It came in with `dd607c2`
+  (a paste from `getAttendanceReport()`, line 575). The fix is deleting one array element. It is a
+  behaviour-neutral fix to my own file, and I will make it in this wave with the lead's nod (Q5).
+
+## 6 · The host view and the admin attendance screen
+
+- **Host view (`/host`): says nothing about points.** It is the presenter's room console: code, switch,
+  count. The presenter's own awards are `scoring`'s triggers (contract 2), and a presenter's pending bonus
+  is the gamification layer's, not this row's. Contract 1 is «for the caller», so it could not describe the
+  room anyway.
+- **Admin attendance (`/admin/sessions/[id]/attendance`): no per-member points.** Contract 1 answers for the
+  caller, and N calls for N rows would be a second computation path the requirement forbids. One copy fix is
+  proposed, because `REQ-PTS-015` makes its current text misleading before completion:
+  `checkin.attendance.removeIntro` and `removeConfirmBody` say «يُعكس هذا أي نقاط مُنحت بسببه» /
+  «تُعكس أي نقاط مرتبطة به بقيد منفصل». That is true only after completion. Before it, nothing was paid.
+  **Proposal:** read `session.state` (already on the report) and choose between two variants. Before
+  completion: «لم تُمنح نقاط عن هذا الحضور بعد، فلن يُحتسب له شيء عند انتهاء الجلسة». After: today's
+  sentence, verbatim. No test asserts either string (grep over `tests/`). Question Q3, and it is optional.
+- `requireAllDaysOn/Off` («النقاط والشهادة تتطلّب …») stays. It is still true.
+
+## 7 · Tests
+
+**Existing tests. Expected movement: none.**
+
+| File | Why it does not move |
+|---|---|
+| `tests/e2e/checkin.spec.ts` | Its two `getByRole("status")` asserts stay single and exact, because the new block is a `section`, not a status. It uses a one-day session whose rule is on, so the block **will render**, and nothing asserts the absence of content. |
+| `tests/e2e/wave9-checkin-{one-day,days}.spec.ts` | They assert nothing about points (the brief's claim 3, confirmed). Their locators are `#main`-scoped roles and names that the block does not share. |
+| `tests/e2e/checkin-gating.spec.ts`, `admin-attendance*.spec.ts`, `wave11-console-attendance.spec.ts` | Untouched screens, or copy they do not assert (§6). |
+| `tests/components/checkin/attendance-outcome.test.tsx` | The component is untouched (§4). |
+| `tests/unit/session-matrix.test.ts`, `tests/components/checkin/session-matrix.test.ts` | The matrix is untouched. |
+| `tests/rls/checkin-days.test.ts:505–509` | `reversal.every(...)` becomes **vacuously true** before completion: the one-day case removes a check-in on an `in_progress` session, which under `REQ-PTS-015` writes no reversal. It passes unmodified, but it now proves nothing about the reversal key. Flagged, not edited. The reversal-after-completion proof is `scoring`'s `checkin-removal` this wave. |
+| `tests/rls/{checkin,checkin-window,checkin-early-completion,checkin-walk-ins-publishing,rsvp,priority-rsvp}.test.ts` | No `points_ledger` or award read (grep). |
+| The four `checkin-{contract-5,late-job-hooks,manual-mark,removal}` | `scoring`'s this wave. Not mine to edit. |
+
+**Not mine, and at risk:** `sessions-screens.spec.ts:403` (the same exact status assert). It is safe for the
+same reason. `scoring.json`'s `me.empty` «أول تسجيل حضور يمنحك أول نقطة» stops being literally true at the
+moment of check-in. That goes to `scoring`, as a note, not an edit.
+
+**New:**
+- `tests/components/checkin/award-state.test.tsx` (jsdom, fixture DTOs, `points.ts` mocked). It covers the
+  four states × two variants, and:
+  - `none` renders an empty container;
+  - the days line appears only at `daysRequired > 1`;
+  - `whenRemaining` appears only when `daysAttended < daysRequired`;
+  - the plural forms at 1, 2, 3, 11 and 100;
+  - Western digits only (no code point in U+0660–U+0669, matched by a `\u` range so the test file itself
+    holds none);
+  - `<bdi>` around every value;
+  - **no element with `role="status"` or `role="alert"`**;
+  - no heading in the `inline` variant;
+  - a throwing DTO renders nothing.
+- `tests/e2e/wave12-checkin-acknowledgement.spec.ts` (phone project, `#main`-scoped). A one-day session:
+  check in, then «10 نقاط بانتظارك» under the status. **Reload** (`page.reload()`), the status is gone, the
+  block is identical. Open the event page, the same amount in the card. Then a two-day session with day 1
+  attended, 1 of 2. Then day 1 missed with require-all on, the incomplete line naming the day. `paid` is
+  driven by setting the session `completed` and calling the fan-out as the owner, the way my wave-9 specs
+  drive the database, **only once `scoring`'s SQL is promoted**. Captures:
+  `wave12-checkin-{check-in,event}-{pending,pending-days,paid,incomplete}.png`, 390 × 844, opened in bands.
+- `03` §8.2 rows: **none of mine.** I add no function, policy or grant. Contract 1's rows are `scoring`'s.
+
+## 8 · What `main`'s worker does on my change
+
+Nothing. I ship no SQL and no job. Before `scoring`'s migration lands, `main`'s old worker still pays a
+one-day check-in immediately, and the DTO (if it were deployed first) would read `paid` straight after a
+check-in. That is correct for that state of the world, and it is the argument for **shipping my screens in
+the same merge as `scoring`'s timing change, never before.** The lead orders the promotion.
+
+## 9 · Questions for the lead, numbered
+
+- **Q1.** May I request that `sessions` render `<AwardState {...slot} />` unconditionally after
+  `action-card.tsx:124`? Without it the event page is silent from check-in until the session ends (§4). The
+  fallback is to render only inside the `ended` cells, which I think fails `REQ-CHK-018`'s «opening the event
+  page later».
+- **Q2.** Should `incomplete` be reported before completion, once a required day's ceiling has passed? I have
+  asked `scoring` for yes. It is their function's semantics, so it is a sync-1 ruling.
+- **Q3.** Should the removal copy be completion-aware (§6)? It is optional, and no test moves either way.
+- **Q4.** If `getSessionAwardState()` throws on SCR-014, should the block render nothing with the form still
+  working (my proposal), or should the route error?
+- **Q5.** May I delete the stray `session_complete_attendees` call in `getCheckInScreenData()` (§5, a real
+  defect, one line, no behaviour visible to a member)?
+- **Q6.** Should the block sit above the code form (as sketched) or below it on SCR-014 when the member has
+  not yet checked in today on a multi-day session?
