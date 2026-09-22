@@ -269,3 +269,27 @@ describe("CardMedia — wave 8 additions (designer's W8.h, the lead as custodian
     expect(media.querySelector("bdi")).toBeNull();
   });
 });
+
+describe("CardMedia — REQ-UIX-026, a poster is never cropped (DEC-172)", () => {
+  it("shows the image whole: object-contain, never object-cover", async () => {
+    const { CardMedia } = await import("@/components/ui/card");
+    const { render } = await import("@testing-library/react");
+    const { container } = render(<CardMedia src="https://example.com/poster.webp" placeholderFrom="ملصق" aspect="4/5" />);
+    const img = container.querySelector("img")!;
+    expect(img).toHaveClass("object-contain");
+    expect(img).not.toHaveClass("object-cover");
+  });
+
+  it.each(["row", "compact", "wide"] as const)("density=%s keeps the media at its own aspect instead of stretching it", async (density) => {
+    const { Card, CardMedia, CardBody } = await import("@/components/ui/card");
+    const { render } = await import("@testing-library/react");
+    const { container } = render(
+      <Card density={density}>
+        <CardMedia src="https://example.com/poster.webp" placeholderFrom="ملصق" aspect="4/5" />
+        <CardBody>نص</CardBody>
+      </Card>,
+    );
+    expect(container.querySelector(`[data-density="${density}"]`)!.className).toContain("[&>[data-slot=media]]:self-start");
+    expect(container.querySelector('[data-slot="media"]')!.className).toContain("aspect-[4/5]");
+  });
+});

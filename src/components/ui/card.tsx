@@ -70,7 +70,13 @@ function rowClass(row: boolean, density: CardDensity): string {
     compact: "[&>[data-slot=media]]:w-20",
     wide: "[&>[data-slot=media]]:w-2/5",
   };
-  return `${base} flex-row items-stretch ${widths[density as Exclude<CardDensity, "grid">]}`;
+  // ★ REQ-UIX-026 (DEC-172): the media keeps its own aspect — `self-start`,
+  // never stretched to the body's height. Stretched, a 4:5 box at a fixed
+  // width became a tall narrow column, and the poster inside it lost both
+  // edges: the timeline card cut the title mid-word at 390 px. A poster is a
+  // designed artefact; empty card surface under it is acceptable, a sliced
+  // title is not.
+  return `${base} flex-row items-stretch [&>[data-slot=media]]:self-start ${widths[density as Exclude<CardDensity, "grid">]}`;
 }
 
 const ASPECT: Record<NonNullable<CardMediaProps["aspect"]>, string> = {
@@ -169,7 +175,12 @@ export function CardMedia({ src, alt = "", placeholderFrom, placeholderTone, asp
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : undefined}
           decoding="async"
-          className={`h-full w-full object-cover ${wash}`}
+          // ★ `object-contain`, never `object-cover` (REQ-UIX-026, DEC-172):
+          // whatever box a caller gives, the image is shown whole on the navy
+          // ground. `cover` cut a designed poster wherever its box was not
+          // exactly its aspect, and would hide part of a reported photo from
+          // the moderator judging it.
+          className={`h-full w-full object-contain ${wash}`}
         />
       ) : (
         <div

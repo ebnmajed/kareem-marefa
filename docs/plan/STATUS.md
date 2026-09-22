@@ -35,9 +35,10 @@ trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` §
 | A3 | Presenter awards follow the presenter after completion — pay, reverse, epoch | `scoring` | planning |
 | A4 | Streaks and badges count completed sessions; downstream readers measured | `scoring` | planning |
 | K1 | The acknowledgement on SCR-014 and `attendance-outcome` — a state, not a toast | `checkin` | planning |
-| L1 | ★ The whole poster — `CardMedia`, each surface's aspect written down, visual + gallery re-baselined in one commit | lead | todo |
+| L1 | ★ The whole poster — `CardMedia` `object-contain`; row densities' media `self-start` so the box keeps 4:5. **Surfaces:** timeline card (`row`/`wide`, 4:5 poster) — the defect, fixed; event page and `/s/[id]` size their own `<img>` to the render's dimensions — never cropped, unchanged; `/s/[id]`'s no-poster placeholder 16:9 — no image; moderation cards 16:9 **photos** — now contained, so a moderator sees the whole reported photo; `template-library` — a live render in its own frame, unchanged; `(dev)` gallery — `grid` placeholder, unchanged, **so `/ar/ui` and `/s/[id]` do not move** (the brief expected both to). ★ **Found by D1: members never saw posters at all** — `DEC-173`, `0145` | lead | **done** — `wave12-lead-timeline-card-{whole-poster,cropped-reproduction}.png` opened |
+| L1b | `0145` — `exports_read_session_poster` (`DEC-173`), red→green, `policy-diff` ✓ | lead | **done**, applied locally |
 | L2 | Promotion from `0145`, the rehearsal notes | lead | todo |
-| D1 | Demonstrable — the timeline card at 390 px showing a whole poster, beside the owner's cropped screenshot | lead | todo |
+| D1 | Demonstrable — the timeline card at 390 px showing a whole poster, beside the owner's cropped screenshot | lead | **done** on a build of `421f0ed`+L1: `tests/e2e/wave12-demo-poster.spec.ts` (box 4:5, `contain`); captures beside a labelled reproduction of the old rendering. **The owner's own screenshot is not in the tree** — asked for |
 | D2 | Demonstrable — a presenter added and removed after completion, the ledger proving both | lead | todo |
 | D3 | Demonstrable — one-day: check in, told pending, no row; completes, row appears; removed before completion → no row, no reversal | lead | todo |
 | G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict` | lead | todo |

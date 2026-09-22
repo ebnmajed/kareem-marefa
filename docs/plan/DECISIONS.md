@@ -4106,3 +4106,18 @@ The public site and the platform behind it, live since 2026-09-15: sessions (one
 **Not this wave — the owner's remaining list, unstarted:** per-session settings consolidated · deleting a session with its awarded points · the photo gallery with a lightbox · the wordmark navigating to marketing rather than `/app` · Google avatars discarded (`avatarUrl={null}`) · the gamification layer · the prose pass · `DEC-100`'s motion system.
 
 - **Documents changed:** `01-prd.md` (four requirements, `REQ-SES-017`'s acceptance), `CLAUDE.md` and the ten agent files (the map), `STATUS.md` (the wave-12 block)
+
+---
+
+## DEC-173 — A member reads the poster of a session they can see: `exports_read` had shown them none, and the whole-poster row found it
+
+- **Date:** 2026-09-22 · **Decided by:** the wave-12 lead, on D1's evidence (a defect against `03` §193, not new scope)
+- **Adds:** `0145_members_read_session_posters.sql`, `POL-export_artifacts.select.session_poster`
+
+D1 seeded a poster the way the worker writes one and signed in as a plain member: the timeline card rendered **no image**. `exports_read` (`0055`) admits an artifact through `exists (select 1 from design_documents …)`, and that subquery runs under the caller's RLS, where `documents_read` shows a session-bound document only to an admin or that session's presenter. Measured: one org, a member **0** artifacts, an admin **2**. So on production an ordinary member has never seen a poster — every card and event page shows the typographic placeholder — while an anonymous visitor to `/s/[id]` sees it through `0080`. The owner's cropped screenshot was necessarily taken as an admin or a presenter.
+
+**Decision.** One more permissive `select` policy, nothing dropped: a render is readable when its document is a session's poster and that session is one the caller may read under `sessions_read`. A draft's poster stays hidden from members; the design document itself stays admin/presenter-only. Proven red before, green after (`tests/rls/posters-member-read.test.ts`).
+
+★ **What the owner sees after the merge:** members start seeing posters on the timeline and the event page for the first time. That is `03` §193's intent, not a change of it — but it is a visible change on production and the PR says so.
+
+- **Documents changed:** `03` §8.2 (one row), `STATUS.md` (row L1)
