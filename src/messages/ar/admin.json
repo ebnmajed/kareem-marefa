@@ -21,8 +21,7 @@
         "moderationReports": "البلاغات",
         "scoring": "النقاط",
         "recognition": "الشارات والمستويات",
-        "templatesPosters": "قوالب الملصقات",
-        "templatesCertificates": "قوالب الشهادات",
+        "templates": "القوالب",
         "emails": "البريد",
         "reminders": "التذكيرات",
         "exports": "التصدير",
@@ -33,7 +32,6 @@
       "groups": {
         "moderation": "الإشراف",
         "points": "النقاط والتقدير",
-        "designs": "التصاميم",
         "notifications": "الإشعارات"
       }
     },

@@ -21,8 +21,7 @@
         "moderationReports": "Reports",
         "scoring": "Points",
         "recognition": "Badges and levels",
-        "templatesPosters": "Poster templates",
-        "templatesCertificates": "Certificate templates",
+        "templates": "Templates",
         "emails": "Email",
         "reminders": "Reminders",
         "exports": "Exports",
@@ -33,7 +32,6 @@
       "groups": {
         "moderation": "Moderation",
         "points": "Points and recognition",
-        "designs": "Designs",
         "notifications": "Notifications"
       }
     },

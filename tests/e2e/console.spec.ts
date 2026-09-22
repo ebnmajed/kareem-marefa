@@ -192,9 +192,14 @@ test("a moderator's rail regroups to exactly four top-level entries, matching RE
   await goto(page, "/ar/app/admin/sessions");
   const nav = page.getByRole("navigation", { name: "لوحة إدارة المؤسسة" });
   // «الجلسات» and «الاستبانات» direct, «الإشراف» disclosing all three queues, «السجل» direct —
-  // no «لوحة», no «الأعضاء», no «الإعدادات», no groups whose every child is
-  // admin-only (`النقاط والتقدير`, `التصاميم`, `الإشعارات` all vanish, not
-  // just hide their contents).
+  // no «لوحة», no «الأعضاء», no «الإعدادات»; no groups whose every child is
+  // admin-only (`النقاط والتقدير`, `الإشعارات` vanish, not just hide their
+  // contents). ★ Wave 13 (`DEC-176`, `DEC-178`): «القوالب» left this list —
+  // it is a plain admin-only LEAF now, not a group
+  // (`docs/plan/notes/console.md`'s "Wave 13 plan"), checked as a `link`
+  // alongside «الأعضاء»/«لوحة» below, not as a `button` here — it was never
+  // a disclosure once this landed, and the old `role: "button"` assertion
+  // would have kept passing for the wrong reason (the name matching nothing).
   await expect(nav.getByRole("link", { name: "الجلسات" })).toBeVisible();
   // Wave 10 (`DEC-160`, SCR-065): a session's survey is staff's, so the
   // moderator's rail gains this one entry — the title's count moved with it.
@@ -203,8 +208,8 @@ test("a moderator's rail regroups to exactly four top-level entries, matching RE
   await expect(nav.getByRole("link", { name: "سجل التدقيق" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "لوحة التحكم" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "الأعضاء" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "القوالب" })).toHaveCount(0);
   await expect(nav.getByRole("button", { name: "النقاط والتقدير" })).toHaveCount(0);
-  await expect(nav.getByRole("button", { name: "التصاميم" })).toHaveCount(0);
   await expect(nav.getByRole("button", { name: "الإشعارات" })).toHaveCount(0);
 
   await nav.getByRole("button", { name: "الإشراف" }).click();

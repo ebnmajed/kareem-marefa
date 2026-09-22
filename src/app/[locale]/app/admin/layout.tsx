@@ -49,24 +49,27 @@ import { AdminRail, type AdminRailChild, type AdminRailIconKey, type AdminRailIt
 //
 // `16` §6.7 names fifteen rail labels; the lead's sync-1 ruling is that
 // «لوحة» is the rail's own root/home link and the other fourteen are the
-// groups. Ten of those fourteen are still exactly one route each (rendered
-// as a leaf, unchanged shape from wave 6); four disclose 2–3 routes each —
-// «الإشراف» (the three moderation queues), «النقاط والتقدير» (scoring +
-// recognition), «التصاميم» (the two template libraries — NOT
-// `admin/designer`, which has no `page.tsx` of its own; a designer document
-// is reached only from its template, as today), and «الإشعارات» (emails +
-// reminders). `NAV_ENTRIES` below is the single source of truth for both:
-// each entry is tagged `"leaf"` or `"group"`, and `buildRailItems()` turns
-// it into `AdminRailItem[]`, applying the SAME staff/admin filter at
-// whichever level the route actually sits — a leaf's own `adminOnly` gates
-// it directly; a group survives only if at least one child does (so a
-// moderator's rail regroups to exactly four top-level entries — «الجلسات»,
-// «الاستبانات» (wave 10), «الإشراف» with all three children, «السجل» — six
-// reachable routes, per `REQ-ADM-020`).
+// groups. ★ wave 13 (`DEC-176`, `DEC-178`): «التصاميم» stops being one of
+// those groups. `16` §10.3's card grid already existed twice, at
+// `/app/admin/templates/{posters,certificates}` (`docs/plan/notes/console.md`'s
+// "Wave 13 plan" §2), with no single address — the fix is one leaf,
+// «القوالب», at the new `/app/admin/templates` (a redirect to `posters`;
+// `designer`'s two pages carry their own posters|certificates tab strip, so
+// there is no second `<h1>`). Top-level leaves go from 12 to 13; disclosure
+// groups from four to three — «الإشراف» (the three moderation queues),
+// «النقاط والتقدير» (scoring + recognition), and «الإشعارات» (emails +
+// reminders). `admin/designer` is still reached
+// only from a template, never from the rail, as before. `NAV_ENTRIES` below
+// is the single source of truth for both: each entry is tagged `"leaf"` or
+// `"group"`, and `buildRailItems()` turns it into `AdminRailItem[]`, applying
+// the SAME staff/admin filter at whichever level the route actually sits —
+// a leaf's own `adminOnly` gates it directly; a group survives only if at
+// least one child does (so a moderator's rail regroups to exactly four
+// top-level entries — «الجلسات», «الاستبانات» (wave 10), «الإشراف» with all
+// three children, «السجل» — six reachable routes, per `REQ-ADM-020`).
 //
-// `NAV_ENTRIES` has 20 leaf routes today (19 here plus `dashboard`), not the
-// 19 a stale comment once claimed — counted directly off this array, not
-// carried forward from an old note.
+// `NAV_ENTRIES` has 20 leaf routes today (19 here plus `dashboard`) —
+// counted directly off this array, not carried forward from an old note.
 interface LeafDef {
   key: string;
   href: string;
@@ -114,15 +117,10 @@ const NAV_ENTRIES: NavEntryDef[] = [
       { key: "recognition", href: "/app/admin/recognition", adminOnly: true, built: true },
     ],
   },
-  {
-    kind: "group",
-    key: "designs",
-    icon: "image",
-    items: [
-      { key: "templatesPosters", href: "/app/admin/templates/posters", adminOnly: true, built: true },
-      { key: "templatesCertificates", href: "/app/admin/templates/certificates", adminOnly: true, built: true },
-    ],
-  },
+  // ★ wave 13 (`DEC-176`, `DEC-178`): one leaf, not a two-child group — the
+  // grid at each route is `designer`'s (`template-library.tsx`), unchanged;
+  // this address is new. `/app/admin/templates` redirects to `posters`.
+  { kind: "leaf", key: "templates", href: "/app/admin/templates", adminOnly: true, built: true, icon: "image" },
   { kind: "leaf", key: "branding", href: "/app/admin/branding", adminOnly: true, built: true, icon: "palette" },
   {
     kind: "group",
