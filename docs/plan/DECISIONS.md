@@ -4157,3 +4157,14 @@ D1 seeded a poster the way the worker writes one and signed in as a plain member
 **Migration order:** `0146` onward — `scoring`'s files, then `sessions'`, then the lead's policy narrowing. Each is promoted as it proves green.
 
 - **Documents changed:** `STATUS.md` (checklist, ledger), `01-prd.md` (`REQ-SES-019`'s acceptance)
+
+---
+
+## DEC-175 — The owner's answer to DEC-174 scoring 3: every session on production is a test session, so no presenter is paid retroactively and no data fix is run
+
+- **Date:** 2026-09-22 · **Decided by:** the owner («all the current sessions on the live app are testing sessions»)
+- **Closes:** `STATUS.md` row O1; step 4 of the wave-12 owner's order
+
+The presenters of directly created sessions left at `accepted = false` (`0020`) exist on production only on test sessions. Nothing is owed, so **the scoped data fix is not run** — neither variant. From `0151` onward every new directly created session assigns its presenters, so the class cannot recur; a stuck row on an old test session stays as it is and pays nothing.
+
+- **Documents changed:** `STATUS.md` (O1, the owner's order)

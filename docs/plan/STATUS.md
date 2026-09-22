@@ -40,7 +40,7 @@ trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` §
 | L2 | Promotion from `0145`, the rehearsal notes | lead | **promoted** `0145`–`0151`; full RLS **129/129 files, 1263 tests** from the promoted tree; `policy-diff` ✓ (35 rows lifted into `03` §8.2); `trace` ✓. Rehearsal notes: todo |
 | L3 | `session_presenters_update_self` narrowed — no self change of `accepted`/`declined_at` once completed, archived or cancelled (`DEC-174` scoring 4) | lead | **done** — `0146`, red→green, full RLS 121/122 files (the one red is `survey-submit`, `DEC-171`'s leftover-job count, not this) |
 | L4 | `MSG-presenter_assigned` loses the accept/decline sentence — pinned mail moved as one reviewed diff (custodian of `notify`) · the two audit labels in `admin.json` (custodian of `console`) | lead | **mail done** — 3 pinned files, one line each, the reviewed diff; audit labels await `sessions`' keys |
-| O1 | ★ **Owner's question:** pay the presenters of directly created, already-completed sessions retroactively? Decides whether the data fix flipping their `accepted` runs after `scoring`'s trigger (pays) or before (does not). **Nothing is run until answered** | owner | asked |
+| O1 | ★ **Owner's question:** pay the presenters of directly created, already-completed sessions retroactively? Decides whether the data fix flipping their `accepted` runs after `scoring`'s trigger (pays) or before (does not). **Nothing is run until answered** | owner | **answered** (`DEC-175`): every production session is a test session — no retroactive pay, **no data fix** |
 | D1 | Demonstrable — the timeline card at 390 px showing a whole poster, beside the owner's cropped screenshot | lead | **done** on a build of `421f0ed`+L1: `tests/e2e/wave12-demo-poster.spec.ts` (box 4:5, `contain`); captures beside a labelled reproduction of the old rendering. **The owner's own screenshot is not in the tree** — asked for |
 | D2 | Demonstrable — a presenter added and removed after completion, the ledger proving both | lead | **done** on the build of `7c1e471` **with the real worker** — `tests/e2e/wave12-demo-awards.spec.ts` D2: added after completion → worker pays `session_delivered` + `attendee_bonus`; removed → 2 compensating rows, net 0; `points_balances` = sum of the ledger both times; the original presenter untouched |
 | D3 | Demonstrable — one-day: check in, told pending, no row; completes, row appears; removed before completion → no row, no reversal | lead | **done**, same run: the code → «20 نقطة بانتظارك», no row after the worker has had 5 s; completion → one `check_in` row of 20, balance = ledger; the same member in a second session removed before completion → **no row of any kind, no reversal**. Captures `wave12-demo-d3-{checked-in-pending,completed-paid}.png`, opened |
@@ -56,25 +56,10 @@ trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` §
    -- proposal_accepted paid at approval for a session not yet completed (a co-presenter removed before completion is reversed)
    select count(*) from public.points_ledger l join public.sessions s on s.proposal_id = l.source_id
     where l.source = 'proposal_accepted' and s.state not in ('completed','archived');
-   -- DEC-174: presenters of directly created sessions stuck at accepted = false, by session state
-   select s.state, count(*) from public.session_presenters sp join public.sessions s on s.id = sp.session_id
-    where s.proposal_id is null and not sp.accepted and sp.declined_at is null group by 1;
    ```
 2. **Rehearse `0145`–`0151` against a production schema dump**, then **push the migrations**, then **merge** — `main`'s worker runs the new schema first, and it needs nothing new: no worker task changes behaviour (one comment in `evaluate_no_shows.ts`).
 3. **Check Railway by hand** after the merge (six consecutive merges have needed a manual reconnect; the durable fix is the dashboard setting).
-4. ★ **Answer O1, then run the one scoped data fix — never a migration.** It flips the stuck presenters of directly created sessions to assigned, and skips any member who holds an active check-in on that session (no attendance-plus-presenter double pay):
-   ```sql
-   update public.session_presenters sp set accepted = true
-     from public.sessions s
-    where s.id = sp.session_id and s.proposal_id is null
-      and not sp.accepted and sp.declined_at is null
-      and not exists (select 1 from public.check_ins c where c.session_id = sp.session_id
-                        and c.member_id = sp.member_id and c.removed_at is null)
-      -- ★ add the next line ONLY if completed sessions' presenters are NOT to be paid retroactively:
-      -- and s.state not in ('completed', 'archived')
-   ;
-   ```
-   After `0149` is live, every flipped row on a **completed** session pays that presenter through the worker (`session_delivered` 50, `attendee_bonus` 2 per qualifying attendee up to 30, `rating_bonus` if earned).
+4. ~~The presenter data fix~~ — **not run** (`DEC-175`): every session on production is a test session, so nothing is owed. From `0151` new directly created sessions assign their presenters.
 5. **What members will notice after the merge:** posters appear on the timeline and event page for the first time (`DEC-173`); a one-day session's points arrive when it ends, and check-in says so; admins can change presenters on the schedule screen.
 
 ### Carried — not this wave
