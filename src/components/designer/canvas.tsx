@@ -158,7 +158,10 @@ export function DesignerCanvas({
               positioning, so it mirrors with the canvas instead of drifting
               off the far edge in the other direction. */}
           {selectable ? (
-          <div className="absolute inset-0" dir={doc.direction}>
+          // ★ SC 2.5.8's «equivalent» exception, named rather than assumed: a box here is sized to its
+          // layer, so a small layer is a small target — and the Layers panel selects the same layer
+          // with a 44 px row. The sweep excludes this overlay by this attribute, and says why.
+          <div className="absolute inset-0" dir={doc.direction} data-layer-hit-area="">
             {doc.layers
               .filter((l) => !l.hidden)
               .map((layer) => {

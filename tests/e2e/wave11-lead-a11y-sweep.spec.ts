@@ -209,7 +209,10 @@ test("admin", async ({ context, page }) => {
   }
   // The studio last, and without its canvas frame: the frame is the rendered poster — artwork named by its
   // `title` (4.1.2), not interface — and axe walking a full-bleed render inside it outran the test's budget.
-  await scan(page, `/ar/app/admin/designer/${ids.document}`, "admin", "iframe");
+  // …and without its per-layer hit boxes: each is sized to its layer, so a small layer is under SC 2.5.8's
+  // 24 px, and the criterion's «equivalent» exception applies — the Layers panel selects the same layer
+  // with a 44 px row (`layer-list.tsx`). Excluded by the attribute canvas.tsx names it with.
+  await scan(page, `/ar/app/admin/designer/${ids.document}`, "admin", "iframe, [data-layer-hit-area]");
 });
 
 test("platform admin", async ({ context, page }) => {
