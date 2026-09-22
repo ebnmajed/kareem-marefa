@@ -217,10 +217,10 @@ export function Inspector({
                 drag are the enhancement, these are the path. */}
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onTransform(layer.id, { kind: "rotate", degrees: -15, mode: "by" })}>
-                {t("transform.rotateBack")}
+                {t.rich("transform.rotateBack", { degrees: formatNumber(15), bdi: (c) => <bdi>{c}</bdi> })}
               </Button>
               <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onTransform(layer.id, { kind: "rotate", degrees: 15, mode: "by" })}>
-                {t("transform.rotateForward")}
+                {t.rich("transform.rotateForward", { degrees: formatNumber(15), bdi: (c) => <bdi>{c}</bdi> })}
               </Button>
               <Button
                 type="button"

@@ -154,7 +154,12 @@ export function sourceSafeBox(doc: DesignDocument): Box {
 /* ── per-layer preset behaviour (06 §5.1) ───────────────────────────────── */
 
 export type Anchor = 'block-start' | 'block-end' | 'center'
-export type ScaleMode = 'proportional' | 'fixed' | 'fill'
+/** `page` (schemaVersion 2, D2b): the layer becomes the preset's WHOLE page,
+ *  bleed included — so an image that `cover`s it is really cropped, around its
+ *  focal point, into every aspect ratio (REQ-DSG-020, REQ-DSG-030). `fill`
+ *  keeps its frame's own proportion and so never crops; it is unchanged, for
+ *  the documents that already use it. */
+export type ScaleMode = 'proportional' | 'fixed' | 'fill' | 'page'
 
 export interface LayerPresetBehaviour {
   /** Where the layer sits when the canvas reflows. */
@@ -202,6 +207,15 @@ export function derive(doc: DesignDocument, target: PresetName): DesignDocument 
     .map((layer): Layer => {
       const { anchor, scale, focal } = behaviourFor(layer, target)
       const f = layer.frame
+
+      // ★ D2b — a NEW branch, before every other: nothing the three branches
+      // below compute has changed. The layer is the whole page; its crop is
+      // `object-fit: cover` around its focal point (`render.ts`).
+      if (scale === 'page') {
+        const page: Layer = { ...layer, frame: { x: 0, y: 0, w: preset.width, h: preset.height } }
+        if (focal && page.kind === 'image') page.image = { ...page.image, focal }
+        return page
+      }
 
       let w: number
       let h: number
@@ -350,10 +364,12 @@ export function snapTargetsBlock(doc: DesignDocument, exceptLayerId: string): nu
   return [...targets].sort((a, b) => a - b)
 }
 
-/** The nearest target within `tolerance`, or the value unchanged. Snapping a
- *  TYPED number rather than a dragged one: the properties panel is where
- *  frames are edited (dragging is deliberately absent), and 3 px of slop on
- *  a 1080 px canvas is the difference between "aligned" and "nearly". */
+/** The nearest target within `tolerance`, or the value unchanged. A TYPED
+ *  number snaps with the default 8 document pixels — 3 px of slop on a 1080 px
+ *  canvas is the difference between "aligned" and "nearly". A DRAGGED frame
+ *  snaps through `snapFrame()` (`geometry.ts`) with a tolerance measured in
+ *  screen pixels, because 8 document pixels is 1 screen pixel on a 3508-wide
+ *  certificate (wave 13, W13.1 R2). */
 export function snap(value: number, targets: readonly number[], tolerance = 8): number {
   let best = value
   let distance = tolerance + 1

@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { cache } from "react";
 import { z } from "zod";
-import { imageSize, PRESETS, presetsFor, SCHEMA_VERSION, type DesignDocument, type PresetName } from "@kareem/designer-runtime";
+import { imageSize, PAGE_SCALE_SCHEMA_VERSION, PRESETS, presetsFor, type DesignDocument, type PresetName } from "@kareem/designer-runtime";
 import { storagePaths } from "@/lib/storage/paths";
 import { sniffContent } from "@/lib/storage/sniff";
 import { sessionClient } from "@/lib/dal/session";
@@ -158,20 +158,28 @@ export async function completeAssetUpload(
 }
 
 /**
- * The document an uploaded poster becomes — REQ-DSG-020, A32.
+ * The document an uploaded poster becomes — REQ-DSG-020, A32, REQ-DSG-030.
  *
- * One image layer, full bleed, `fill` on every preset so each variant crops
- * rather than letterboxes. The focal point starts centred (a saliency-free
- * centre-weighted crop is the honest default), and the admin overrides it
- * per variant from the editor.
+ * One image layer, full bleed, `page` on every preset so each variant is the
+ * whole page and the image `cover`s it — really cropped, around its focal
+ * point, into every aspect ratio. The focal point starts centred (a
+ * saliency-free centre-weighted crop is the honest default), and the admin
+ * moves it, for the poster or for one variant, from the studio.
+ *
+ * ★ Until wave 13 this was `fill`, which keeps the frame at 4:5 on every preset
+ * and so never cropped: the master itself was inset 80 px and `square`,
+ * `landscape` and `og` spilled off the page (measured, `designer.md` W13.0
+ * item 5). `page` is a schemaVersion 2 feature and this document declares it,
+ * so `main`'s worker refuses it rather than rendering it wrongly (DEC-178).
+ * Documents already written with `fill` keep rendering exactly as they did.
  */
 export function uploadedPosterDocument(assetId: string): DesignDocument {
   const master = PRESETS.master;
-  const presets: Record<string, { scale: "fill"; anchor: "center" }> = {};
-  for (const name of presetsFor("poster")) presets[name] = { scale: "fill", anchor: "center" };
+  const presets: Record<string, { scale: "page"; anchor: "center" }> = {};
+  for (const name of presetsFor("poster")) presets[name] = { scale: "page", anchor: "center" };
 
   return {
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: PAGE_SCALE_SCHEMA_VERSION,
     purpose: "poster",
     master: { width: master.width, height: master.height, unit: "px", dpi: master.dpi },
     direction: "rtl",

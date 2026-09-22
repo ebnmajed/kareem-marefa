@@ -94,7 +94,7 @@
       "orderHint": "رتّب بالأزرار: الأعلى في القائمة هو الأقرب إلى الناظر.",
       "multi": "تحديد متعدّد",
       "multiHint": "في التحديد المتعدّد تضيف كل نقرة على طبقة إلى التحديد أو تزيلها منه — بلا سحب وبلا لوحة مفاتيح.",
-      "selectKind": "اختر كل طبقات «{kind}»",
+      "selectKind": "اختر كل طبقات «<bdi>{kind}</bdi>»",
       "selectedCount": "{count, plural, zero {لا طبقة محدّدة} one {طبقة واحدة محدّدة} two {طبقتان محدّدتان} few {{value} طبقات محدّدة} many {{value} طبقة محدّدة} other {{value} طبقة محدّدة}}"
     },
     "properties": {
@@ -367,8 +367,8 @@
         "lockedSkipped": "الطبقات المقفلة في القالب لا تتحرّك مع المجموعة."
       },
       "transform": {
-        "rotateBack": "دوّر 15° عكس الساعة",
-        "rotateForward": "دوّر 15° مع الساعة",
+        "rotateBack": "دوّر <bdi>{degrees}</bdi>° عكس الساعة",
+        "rotateForward": "دوّر <bdi>{degrees}</bdi>° مع الساعة",
         "rotateReset": "صفّر الدوران",
         "fillWidth": "املأ المنطقة الآمنة عرضًا",
         "place": "ضع بنقرة",

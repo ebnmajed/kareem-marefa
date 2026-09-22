@@ -111,7 +111,7 @@ export function LayerList({
             <div className="flex flex-wrap gap-2">
               {kinds.map((kind) => (
                 <Button key={kind} type="button" size="sm" variant="ghost" onClick={() => onSelectKind(kind)}>
-                  {t("selectKind", { kind: t(`kind.${kind}`) })}
+                  {t.rich("selectKind", { kind: t(`kind.${kind}`), bdi: (c) => <bdi>{c}</bdi> })}
                 </Button>
               ))}
             </div>

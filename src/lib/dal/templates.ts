@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { type BrandScheme, type DesignDocument, orientationOf, SCHEMA_VERSION, validateDocument } from "@kareem/designer-runtime";
+import { BASE_SCHEMA_VERSION, type BrandScheme, type DesignDocument, orientationOf, validateDocument } from "@kareem/designer-runtime";
 import { previewBrandBindings } from "@/lib/dal/designer";
 import { sessionClient } from "@/lib/dal/session";
 
@@ -215,7 +215,9 @@ function blankDocument(purpose: TemplatePurpose, orientation: "landscape" | "por
   const master =
     purpose === "poster" ? { width: 1080, height: 1350 } : orientation === "portrait" ? { width: 2480, height: 3508 } : { width: 3508, height: 2480 };
   return {
-    schemaVersion: SCHEMA_VERSION,
+    // The version it needs, never the newest the renderer knows (D2b): a blank
+    // template must render on `main`'s worker too.
+    schemaVersion: BASE_SCHEMA_VERSION,
     purpose,
     master: { ...master, unit: "px", dpi: purpose === "poster" ? 72 : 300 },
     // RTL is the source composition (D5). LTR is the mirror, never the other

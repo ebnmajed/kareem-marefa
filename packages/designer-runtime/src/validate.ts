@@ -25,7 +25,7 @@
  */
 
 import type { AutoFit, DesignDocument, FontSpec, Frame, Layer, LayerKind } from './model.js'
-import { SCHEMA_VERSION } from './model.js'
+import { PAGE_SCALE_SCHEMA_VERSION, SCHEMA_VERSION } from './model.js'
 
 export interface ValidationIssue {
   /** A JSON path into the document, e.g. `layers[2].font.size`. */
@@ -303,6 +303,19 @@ export function validateDocument(input: unknown): ValidationResult {
   } else {
     const seen = new Set<string>()
     input.layers.forEach((l, i) => layer(l, i, seen, is))
+  }
+
+  // ★ D2b: `scale: 'page'` is a version-2 feature, and a document using it
+  // must SAY so — that declaration is what makes `main`'s worker refuse it in
+  // the merge-to-deploy gap instead of rendering it through the wrong branch
+  // and caching the result (DEC-178).
+  if (Array.isArray(input.layers) && Number.isInteger(input.schemaVersion) && (input.schemaVersion as number) < PAGE_SCALE_SCHEMA_VERSION) {
+    input.layers.forEach((l, i) => {
+      const presets = isObj(l) && isObj(l.presets) ? l.presets : null
+      if (presets && Object.values(presets).some((p) => isObj(p) && p.scale === 'page')) {
+        is.add(`layers[${i}].presets`, 'page_scale_needs_v2', `scale 'page' needs schemaVersion ${PAGE_SCALE_SCHEMA_VERSION}`)
+      }
+    })
   }
 
   if (is.list.length) return { ok: false, issues: is.list }

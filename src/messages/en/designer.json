@@ -94,7 +94,7 @@
       "orderHint": "Reorder with the buttons: higher in the list is nearer the viewer.",
       "multi": "Select several",
       "multiHint": "While selecting several, each tap on a layer adds it to the selection or removes it — no dragging and no keyboard.",
-      "selectKind": "Select every «{kind}» layer",
+      "selectKind": "Select every «<bdi>{kind}</bdi>» layer",
       "selectedCount": "{count, plural, zero {No layer selected} one {One layer selected} other {{value} layers selected}}"
     },
     "properties": {
@@ -367,8 +367,8 @@
         "lockedSkipped": "Layers locked by the template do not move with the group."
       },
       "transform": {
-        "rotateBack": "Rotate 15° anticlockwise",
-        "rotateForward": "Rotate 15° clockwise",
+        "rotateBack": "Rotate <bdi>{degrees}</bdi>° anticlockwise",
+        "rotateForward": "Rotate <bdi>{degrees}</bdi>° clockwise",
         "rotateReset": "Reset rotation",
         "fillWidth": "Fill the safe area's width",
         "place": "Place with a tap",
