@@ -3968,15 +3968,27 @@ is not moved.
   - `mail-runtime-dist` fails because a `dist` is stale.
 - The RLS file is green.
 
-**Unit 3: the radio leaves SCR-043.** Not started. It waits for `sessions/0001`'s promotion
-(`DEC-178` Q5). The four ledger lines, as W13.7 names them, are written for STATUS in the same
-commit as the change:
+**Unit 3: the radio leaves SCR-043.** Done after `0154` was promoted (`c47e5ef`).
+- **The form:** `schedule-form.tsx` renders and posts no mode. `REQ-SES-017`'s «every day» switch
+  moves into «الحضور» beside walk-ins. The section that is left is «اللغة»
+  (`schedule.sections.language`). `schedule.sections.certificate` and `schedule.certificate.*` are
+  deleted.
+- **The action and the DTO:** `state.ts` loses the field. `actions.ts` sends `certificateMode: null`
+  whatever a client posts. `getSessionForSchedule()` no longer reads `certificate_mode`.
+- **`scheduleInput.certificateMode`** is now `.nullable().default(null)`, so null means unchanged. A
+  named mode still passes through, because that is the function's contract.
+- **New tests:**
+  - `tests/components/sessions/schedule-no-certificate-mode.test.tsx` (2 cases);
+  - `tests/unit/sessions-schedule-certificate-mode.test.ts` (2 cases);
+  - `wave13-sessions-hub.spec.ts`, which gains «no mode control on SCR-043».
+
+**The ledger lines, for STATUS, in the same commit as the change:**
 
 | File | Assertion | Why |
 |---|---|---|
-| `tests/unit/schedule-days.test.ts` «still declares wave 8's sixteen fields, in wave 8's order» | `WAVE_8_FIELDS` loses `"certificateMode"`, so the field list goes from sixteen to fifteen | **An expectation changed on purpose** (`REQ-SES-020`, `DEC-178` contract 2): SCR-045 is the mode's one writer, and the schedule form no longer carries it |
-| `tests/unit/schedule-days.test.ts` «sends every wave-8 argument unchanged, and the two new ones as null» | `WAVE_8_INPUT` loses `certificateMode: "automatic"` | Same. `scheduleSession()` sends no mode, and `schedule_session()` leaves the stored mode standing (`sessions/0001`) |
-| `tests/components/checkin/schedule-form.test.tsx` `BASE_INITIAL` | the `certificateMode: "off"` line is removed | **Harness only.** `ScheduleInitial` loses the field, and no assertion reads it |
+| `tests/unit/schedule-days.test.ts` «still declares wave 8's sixteen fields, in wave 8's order» → «still declares wave 8's fields but the certificate mode, in wave 8's order» | `WAVE_8_FIELDS` loses `"certificateMode"`, leaving fifteen fields | **An expectation changed on purpose** (`REQ-SES-020`, `DEC-178` contract 2). SCR-045 is the mode's one writer, and the schedule form no longer carries it |
+| `tests/unit/schedule-days.test.ts` «sends every wave-8 argument unchanged, and the two new ones as null» | `WAVE_8_INPUT.certificateMode`: `"automatic"` → **`null`** | Same. A save states no mode, and `schedule_session()` keeps the stored one (`0154`). The fixture still posts `"automatic"`, which proves that a stale client cannot write the mode |
+| `tests/components/checkin/schedule-form.test.tsx` `BASE_INITIAL` | the `certificateMode: "off"` line is removed | **Harness only.** `ScheduleInitial` lost the field, and no assertion read it |
 | `tests/components/sessions/schedule-days.test.tsx` `BASE` | the same line is removed | Same |
 
 **Requests to the lead:**

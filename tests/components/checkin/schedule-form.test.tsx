@@ -36,7 +36,6 @@ const BASE_INITIAL: Omit<ScheduleInitial, "allowWalkIns"> = {
   capacity: "",
   rsvpDeadlineAt: "",
   cancellationCutoffAt: "",
-  certificateMode: "off",
   language: "ar",
 };
 

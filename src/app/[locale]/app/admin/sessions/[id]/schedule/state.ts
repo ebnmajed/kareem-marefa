@@ -34,9 +34,7 @@ export const SCHEDULE_FIELDS = [
   "rsvpDeadlineAt",
   "cutoffPreset",
   "cancellationCutoffAt",
-  "certificateMode",
-  // REQ-SES-017 puts this beside `certificateMode`, which is where that
-  // judgement already lives. Rendered only inside the multi-day affordance —
+  // REQ-SES-017's «every day». Rendered only inside the multi-day affordance —
   // it means nothing at one day — so an absent value is «unchanged», never
   // «false» (see `scheduleInput.requireAllDays`).
   "requireAllDays",

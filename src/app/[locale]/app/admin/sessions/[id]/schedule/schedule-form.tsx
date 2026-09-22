@@ -82,7 +82,6 @@ export interface ScheduleInitial {
   capacity: string;
   rsvpDeadlineAt: string;
   cancellationCutoffAt: string;
-  certificateMode: "off" | "automatic" | "review";
   language: "ar" | "en";
   /** `sessions.allow_walk_ins` — REQUIRED, and the stored value: an unticked
    *  default would switch walk-ins off on any save (DEC-118, DEC-141). */
@@ -139,7 +138,6 @@ const LABEL_KEY: Record<(typeof SCHEDULE_FIELDS)[number], string> = {
   rsvpDeadlineAt: "rsvpDeadline.legend",
   cutoffPreset: "cutoff.legend",
   cancellationCutoffAt: "cutoff.legend",
-  certificateMode: "certificate.legend",
   language: "language.legend",
 };
 
@@ -236,7 +234,6 @@ export function ScheduleForm({
   const [rsvpCustom, setRsvpCustom] = useState(initial.rsvpDeadlineAt);
   const [cutoffPreset, setCutoffPreset] = useState<DeadlinePreset>(presetOf(initial.cancellationCutoffAt, initial.startsAt));
   const [cutoffCustom, setCutoffCustom] = useState(initial.cancellationCutoffAt);
-  const [certificateMode, setCertificateMode] = useState<string>(initial.certificateMode);
   const [language, setLanguage] = useState<string>(initial.language);
 
   // ── The day set (REQ-SES-015, REQ-SES-016) ───────────────────────────────
@@ -705,38 +702,30 @@ export function ScheduleForm({
           {deadline("cutoff")}
 
           <Switch name="allowWalkIns" checked={walkIns} onCheckedChange={setWalkIns} label={t("walkIns.label")} description={t("walkIns.hint")} />
+
+          {/* ★ REQ-SES-017's «every day», beside the other question about who
+              counts as attending — and INSIDE the multi-day affordance, because
+              «attended every day» is «attended» at one day and the control
+              would be a question with one answer.
+
+              The hidden input is what actually posts: a Radix switch sends
+              nothing when it is off, which the action would have to read as
+              «unchanged» rather than as «false». Absent (the affordance closed)
+              IS «unchanged»; present-and-false is a decision. */}
+          {multiDay ? (
+            <div>
+              <Switch checked={requireAllDays} onCheckedChange={setRequireAllDays} label={t("requireAllDays.label")} description={t("requireAllDays.hint")} />
+              <input type="hidden" name="requireAllDays" value={requireAllDays ? "true" : "false"} />
+            </div>
+          ) : null}
         </div>
       </section>
 
-      {/* ── الشهادة واللغة ──────────────────────────────────────────────── */}
-      <section aria-labelledby="schedule-certificate" className="space-y-6">
-        <SectionHeader id="schedule-certificate" title={t("sections.certificate")} />
-        <RadioGroup
-          name="certificateMode"
-          legend={t("certificate.legend")}
-          value={certificateMode}
-          onChange={setCertificateMode}
-          options={[
-            { value: "off", label: t("certificate.off") },
-            { value: "automatic", label: t("certificate.automatic") },
-            { value: "review", label: t("certificate.review"), hint: t("certificate.reviewHint") },
-          ]}
-        />
-        {/* ★ REQ-SES-017 puts this beside `certificate_mode`, where that
-            judgement already lives — and INSIDE the multi-day affordance,
-            because «attended every day» is «attended» at one day and the
-            control would be a question with one answer.
-
-            The hidden input is what actually posts: a Radix switch sends
-            nothing when it is off, which the action would have to read as
-            «unchanged» rather than as «false». Absent (the affordance closed)
-            IS «unchanged»; present-and-false is a decision. */}
-        {multiDay ? (
-          <div>
-            <Switch checked={requireAllDays} onCheckedChange={setRequireAllDays} label={t("requireAllDays.label")} description={t("requireAllDays.hint")} />
-            <input type="hidden" name="requireAllDays" value={requireAllDays ? "true" : "false"} />
-          </div>
-        ) : null}
+      {/* ── اللغة ──────────────────────────────────────────────────────────
+          ★ The certificate mode is not here (REQ-SES-020, DEC-178): SCR-045 is
+          its one writer, and this form leaves it standing (0154). */}
+      <section aria-labelledby="schedule-language" className="space-y-6">
+        <SectionHeader id="schedule-language" title={t("sections.language")} />
         <div>
           <RadioGroup
             name="language"

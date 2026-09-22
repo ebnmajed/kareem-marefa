@@ -101,7 +101,6 @@ export default async function SchedulePage({ params }: { params: Promise<{ local
               capacity: session.capacity?.toString() ?? "",
               rsvpDeadlineAt: localValue(session.rsvpDeadlineAt, zone),
               cancellationCutoffAt: localValue(session.cancellationCutoffAt, zone),
-              certificateMode: session.certificateMode,
               language: session.language,
               // The stored value, never a default: the action always sends the
               // switch as an explicit boolean (DEC-118, DEC-141).

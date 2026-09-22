@@ -72,7 +72,8 @@ const WAVE_8_FIELDS = [
   "rsvpDeadlineAt",
   "cutoffPreset",
   "cancellationCutoffAt",
-  "certificateMode",
+  // ★ "certificateMode" left in wave 13 (REQ-SES-020, DEC-178): SCR-045 is the
+  // mode's one writer, and `schedule_session()` keeps an unnamed mode (0154).
   "language",
 ] as const;
 
@@ -91,7 +92,9 @@ const WAVE_8_INPUT = {
   capacity: null,
   rsvpDeadlineAt: "2026-10-01T15:00:00.000Z",
   cancellationCutoffAt: "2026-09-30T15:00:00.000Z",
-  certificateMode: "automatic",
+  // ★ Wave 13 (DEC-178): null, «unchanged» — the form no longer states the
+  // mode, whatever a stale client posts (the fixture still posts "automatic").
+  certificateMode: null,
   language: "ar",
   allowWalkIns: false,
 };
@@ -134,7 +137,7 @@ describe("★ the one-day form reaches schedule_session() exactly as it does on 
 });
 
 describe("★ the field list grows without the one-day form moving", () => {
-  it("still declares wave 8's sixteen fields, in wave 8's order", () => {
+  it("still declares wave 8's fields but the certificate mode, in wave 8's order", () => {
     const carried = SCHEDULE_FIELDS.filter((f) => !["days", "requireAllDays"].includes(f));
     expect(carried).toEqual([...WAVE_8_FIELDS]);
   });

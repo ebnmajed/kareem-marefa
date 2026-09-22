@@ -284,10 +284,9 @@ export interface SchedulableSession {
   capacity: number | null;
   rsvpDeadlineAt: string | null;
   cancellationCutoffAt: string | null;
-  certificateMode: "off" | "automatic" | "review";
   /** `sessions.allow_walk_ins` — the schedule form's initial value for the walk-in setting (DEC-117, DEC-118, contract 1). */
   allowWalkIns: boolean;
-  /** `sessions.require_all_days` (`REQ-SES-017`), for the control beside `certificate_mode`. */
+  /** `sessions.require_all_days` (`REQ-SES-017`), for the multi-day control. */
   requireAllDays: boolean;
   timeZone: string;
   /** What REQ-SES-001 still wants before this can be published. */
@@ -342,7 +341,7 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
       // path may read a task; this is a scheduling path — `sessions.ts` is in
       // no check-in import graph — and the form needs both numbers to ask
       // before it removes a day (DEC-151 ruling 6).
-      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, allow_walk_ins, require_all_days, time_zone, session_days(id, position, starts_at, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, check_ins(count), materials(count), session_tasks(count), photos(count))",
+      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, allow_walk_ins, require_all_days, time_zone, session_days(id, position, starts_at, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, check_ins(count), materials(count), session_tasks(count), photos(count))",
     )
     .eq("id", id)
     .maybeSingle();
@@ -387,7 +386,6 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
     capacity: data.capacity,
     rsvpDeadlineAt: data.rsvp_deadline_at,
     cancellationCutoffAt: data.cancellation_cutoff_at,
-    certificateMode: data.certificate_mode as SchedulableSession["certificateMode"],
     allowWalkIns: data.allow_walk_ins === true,
     requireAllDays: data.require_all_days !== false,
     timeZone: data.time_zone,
@@ -501,7 +499,14 @@ export const scheduleInput = z
     capacity: z.int().min(1).max(10000).nullable(),
     rsvpDeadlineAt: z.iso.datetime({ offset: true }).nullable(),
     cancellationCutoffAt: z.iso.datetime({ offset: true }).nullable(),
-    certificateMode: z.enum(["off", "automatic", "review"]),
+    /**
+     * ★ `null` means UNCHANGED (`0154`, `DEC-178` contract 2). The certificate
+     * mode's one writer is SCR-045 through `setSessionCertificateMode()`; the
+     * schedule form no longer states it, and `schedule_session()` keeps the
+     * stored mode when it is not named. A value is still honoured — the
+     * function's own contract — but no screen sends one.
+     */
+    certificateMode: z.enum(["off", "automatic", "review"]).nullable().default(null),
     language: z.enum(["ar", "en"]),
     /**
      * Walk-ins as a publishing setting (DEC-117, DEC-118, contract 1, 0085).
@@ -556,6 +561,7 @@ export async function scheduleSession(locale: string, sessionId: string, input: 
     p_capacity: input.capacity,
     p_rsvp_deadline_at: input.rsvpDeadlineAt,
     p_cancellation_cutoff_at: input.cancellationCutoffAt,
+    // `null` stays `null`: «unchanged» (0154). Never defaulted to 'off' here.
     p_certificate_mode: input.certificateMode,
     p_language: input.language,
     // Sent as given — `null` stays `null`, which the RPC reads as «unchanged».

@@ -187,7 +187,9 @@ export async function saveSchedule(
     capacity: capacity ? seats : null,
     rsvpDeadlineAt: rsvpDeadlineAt ? atZone(rsvpDeadlineAt, timeZone) : null,
     cancellationCutoffAt: cancellationCutoffAt ? atZone(cancellationCutoffAt, timeZone) : null,
-    certificateMode: was(state, "certificateMode") || "off",
+    // ★ Not stated here any more (REQ-SES-020, DEC-178): SCR-045 is the
+    // mode's one writer, and `null` leaves the stored mode standing (0154).
+    certificateMode: null,
     language: was(state, "language") || "ar",
     // DEC-117/DEC-118/DEC-141: this form always states the setting, so an
     // explicit boolean — an absent key is an unticked switch, never «unchanged».

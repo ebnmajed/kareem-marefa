@@ -10,7 +10,7 @@
       "when": "When",
       "where": "Where",
       "attendance": "Attendance",
-      "certificate": "Certificate and language"
+      "language": "Language"
     },
     "startsAt": {
       "label": "Date and time",
@@ -95,13 +95,6 @@
       "dayBefore": "A day before the start",
       "custom": "Another time",
       "customLabel": "Time"
-    },
-    "certificate": {
-      "legend": "Certificates",
-      "off": "No certificates for this session",
-      "automatic": "Issued automatically to everyone who checked in",
-      "review": "Reviewed, then issued",
-      "reviewHint": "Certificates wait for your approval on the session's certificates page."
     },
     "requireAllDays": {
       "label": "Points and the certificate after every day",
