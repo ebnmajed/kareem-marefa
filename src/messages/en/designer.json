@@ -415,7 +415,18 @@
       "image": "Image",
       "newText": "New text",
       "hint": "A new layer goes on top, inside the safe area; then move it by dragging or with the align buttons.",
-      "added": "Layer added."
+      "added": "Layer added.",
+      "imageTitle": "Add an image",
+      "imageFormats": "A PNG, JPEG or WebP image — no SVG; the file is checked by its content, not its name.",
+      "imageUpload": "Upload and add",
+      "imageErrors": {
+        "file_too_large": "The file is larger than your organisation's limit for images.",
+        "rejected_content": "This file is not a PNG, JPEG or WebP image. SVG files are not accepted.",
+        "too_small": "The image is below the minimum size.",
+        "unreadable": "The image could not be read. Try another file.",
+        "not_authorized": "Adding images is an org admin's act.",
+        "unknown": "The image could not be uploaded. Try again."
+      }
     }
   }
 }

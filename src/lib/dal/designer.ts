@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
+  assetIdsOf,
   type BindingContext,
   type DesignDocument,
   type BindingOptions,
@@ -76,6 +77,15 @@ export interface DesignerDocumentData {
    *  overflows with real text is the NORMAL outcome of previewing with fake
    *  data, which is why this is resolved server-side from the bound row. */
   bindings: Record<string, string>;
+  /**
+   * ★ DEC-179: each design asset the document's images name → a five-minute
+   * signed URL, for the STUDIO's canvas only. The ids stay ids in `bindings`,
+   * which are pinned into the render request and hashed into the fingerprint:
+   * a signed URL there changed the fingerprint on every page load (so the
+   * export queue never matched) and could expire before the serial render
+   * queue reached the job. The worker inlines the bytes itself.
+   */
+  assets: Record<string, string>;
   /** Every binding the document names, bound or not — the properties panel
    *  lists them so an unbound field is visible before it is exported. */
   declaredBindings: string[];
@@ -276,16 +286,14 @@ export async function getDesignerDocument(
   };
 
   // REQ-DSG-021 / 06 §8.3: the logo is BOUND, never embedded, which is what
-  // makes replacing it update every template at once. Wave 4's brand kit
-  // supplies the asset id; until then nothing binds and the image layer
-  // draws a marked placeholder, which is the correct answer for an org that
-  // has not uploaded one.
-  const logoAssetId = bindings["brand.logoAssetId"];
-  if (logoAssetId) {
-    const url = await signDesignAssetUrl(locale, logoAssetId);
-    if (url) bindings["brand.logoAssetId"] = url;
-    else delete bindings["brand.logoAssetId"];
-  }
+  // makes replacing it update every template at once. The binding keeps the
+  // asset's ID (DEC-179) — the studio's canvas gets signed URLs through
+  // `assets` below, and the worker inlines the bytes; an org with no logo
+  // binds nothing and the layer draws a marked placeholder.
+  const assetIds = assetIdsOf(document, { values: bindings });
+  const signedAssets = await Promise.all(assetIds.map(async (id) => [id, await signDesignAssetUrl(locale, id)] as const));
+  const assets: Record<string, string> = {};
+  for (const [id, url] of signedAssets) if (url) assets[id] = url;
 
   const templateLayers = (version?.document as { layers?: { id?: string; locked?: boolean }[] } | null)?.layers ?? [];
   const lockedLayerIds = templateLayers.filter((l) => l.locked === true && typeof l.id === "string").map((l) => l.id as string);
@@ -319,6 +327,7 @@ export async function getDesignerDocument(
     updatedAt: row.updated_at as string,
     lockedLayerIds,
     bindings,
+    assets,
     declaredBindings: declaredBindings(document),
     fonts: (fontRows ?? []).map((f) => ({
       family: f.family as string,

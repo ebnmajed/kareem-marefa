@@ -65,6 +65,8 @@ export interface DesignerCanvasProps {
   document: DesignDocument;
   /** Resolved binding values — real data (REQ-DSG-006). */
   bindings: Record<string, string>;
+  /** Design asset id → a URL the browser can load (DEC-179). */
+  assets?: Record<string, string>;
   /** The face set, by SHA-256. Never a CDN (REQ-DSG-016, A39). */
   faces: Array<{ family: string; weight: number; style: string; sha256: string; unicodeRange?: string }>;
   /** Absolute, so a `srcdoc` document resolves the font URLs the same way in
@@ -157,6 +159,7 @@ const HANDLE_POSITION: Record<ResizeHandle, { left: string; top: string; cursor:
 export function DesignerCanvas({
   document: doc,
   bindings,
+  assets,
   faces,
   origin,
   selectedLayerIds,
@@ -193,9 +196,9 @@ export function DesignerCanvas({
     () =>
       renderDocumentToHtml(doc, {
         fonts: faces.map((f) => ({ ...f, url: `${origin}/api/fonts/${f.sha256}` })),
-        bindings: { values: bindings, placeholderLabel },
+        bindings: { values: bindings, placeholderLabel, ...(assets ? { assets } : {}) },
       }),
-    [doc, faces, origin, bindings, placeholderLabel],
+    [doc, faces, origin, bindings, placeholderLabel, assets],
   );
 
   // Fit to the container rather than to a breakpoint: the editor is a

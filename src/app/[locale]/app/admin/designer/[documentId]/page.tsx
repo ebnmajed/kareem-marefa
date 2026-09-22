@@ -198,6 +198,7 @@ export default async function DesignerPage({
           initialDocument={data.document}
           initialUpdatedAt={data.updatedAt}
           bindings={data.bindings}
+          assets={data.assets}
           declaredBindings={data.declaredBindings}
           faces={faces}
           lockedLayerIds={data.lockedLayerIds}

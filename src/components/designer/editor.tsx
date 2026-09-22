@@ -89,6 +89,8 @@ export interface DesignerEditorProps {
   initialDocument: DesignDocument;
   initialUpdatedAt: string;
   bindings: Record<string, string>;
+  /** Design asset id → a signed URL, for the canvas only (DEC-179). */
+  assets?: Record<string, string>;
   declaredBindings: string[];
   faces: Array<{ family: string; weight: number; style: string; sha256: string; unicodeRange?: string }>;
   lockedLayerIds: string[];
@@ -136,6 +138,8 @@ export function DesignerEditor(props: DesignerEditorProps) {
 
   const [document, setDocument] = useState<DesignDocument>(props.initialDocument);
   const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>([]);
+  /** The canvas's asset URLs: the page's, plus any image added in this session. */
+  const [assets, setAssets] = useState<Record<string, string>>(() => props.assets ?? {});
   /** «تحديد متعدّد» — DEC-178's added tap path: shift-click needs a keyboard. */
   const [multi, setMulti] = useState(false);
   /** Tap-to-place armed for the selected layer (DEC-093's path for a move). */
@@ -482,6 +486,23 @@ export function DesignerEditor(props: DesignerEditorProps) {
     [commit, document, props.faces, ta],
   );
 
+  /** An uploaded image: the document stores the asset ID; the canvas shows the
+   *  signed preview at once (DEC-179). Sized to the image's own proportion,
+   *  inside the safe area. */
+  const addImage = useCallback(
+    (asset: { assetId: string; width: number; height: number; previewUrl: string | null }) => {
+      const base = newLayer(document, "image", { assetId: asset.assetId, name: ta("image") });
+      const w = base.frame.w;
+      const h = Math.max(1, Math.round((w * asset.height) / Math.max(1, asset.width)));
+      const layer = { ...base, frame: { ...base.frame, h } } as Layer;
+      if (asset.previewUrl) setAssets((current) => ({ ...current, [asset.assetId]: asset.previewUrl as string }));
+      commit(addLayer(document, layer));
+      setSelectedLayerIds([layer.id]);
+      setPanel("inspector");
+    },
+    [commit, document, ta],
+  );
+
   const duplicate = useCallback(
     (layerId: string) => {
       if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
@@ -619,6 +640,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
       preset={preset}
       showOverlays={overlays}
       bindings={props.bindings}
+      assets={assets}
       faces={props.faces}
       origin={props.origin}
       selectedLayerIds={selectedLayerIds}
@@ -824,7 +846,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
                     multi={multi}
                     onToggleMulti={() => setMulti((v) => !v)}
                     onSelectKind={selectKind}
-                    {...(props.canEdit && onSource ? { onAdd: add } : {})}
+                    {...(props.canEdit && onSource ? { onAdd: add, onAddImage: addImage } : {})}
                   />
                 ) : (
                   <ChecksPanel findings={findings} measuring={measuring} onGoTo={goTo} layerNames={layerNames} />

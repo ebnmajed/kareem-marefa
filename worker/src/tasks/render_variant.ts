@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { fingerprintSource, validateDocument, type DesignDocument, type PresetName } from "@kareem/designer-runtime";
 import { storagePaths } from "@kareem/storage-paths";
 import { uploadObject } from "../content/storage.js";
+import { AssetRefusal, inlineAssets } from "../render/assets.js";
 import { inlineFaces, type ManifestRow } from "../render/fonts.js";
 import { renderVariant, type ExportFormat } from "../render/variant.js";
 
@@ -105,11 +106,21 @@ export const render_variant: Task = async (payload, helpers) => {
     }
 
     const faces = await inlineFaces(faceRows);
+    // DEC-179: an image's asset id becomes its bytes. A refusal (another
+    // org's id, over the budget) fails THIS artifact with its reason.
+    let assets: Record<string, string>;
+    try {
+      assets = await inlineAssets(helpers, ctx.org_id, document, bindings);
+    } catch (e) {
+      if (e instanceof AssetRefusal) return await fail(e.message);
+      throw e;
+    }
     const result = await renderVariant({
       document,
       preset: ctx.preset,
       format: ctx.format,
       bindings,
+      assets,
       faces,
       previousSignature: (ctx.previous_signature as never) ?? null,
     });

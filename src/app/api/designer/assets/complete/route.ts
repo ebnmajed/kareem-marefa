@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { completeAssetInput, completeAssetUpload } from "@/lib/dal/posters";
+import { completeAssetInput, completeAssetUpload, signDesignAssetUrl } from "@/lib/dal/posters";
 
 // POST /api/designer/assets/complete — REQ-DSG-018, REQ-DSG-020, DEC-009.
 //
@@ -30,7 +30,9 @@ export async function POST(request: Request) {
   const result = await completeAssetUpload(locale, parsed.data);
   switch (result.status) {
     case "ok":
-      return NextResponse.json(result, { status: 201 });
+      // A short-lived URL for the studio's canvas to show the image at once
+      // (DEC-179): the document stores the ID, never this URL.
+      return NextResponse.json({ ...result, previewUrl: await signDesignAssetUrl(locale, result.assetId) }, { status: 201 });
     case "rejected_content":
       return NextResponse.json(result, { status: 415 });
     case "too_small":

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { ChevronIcon, EyeIcon, LockIcon, PlusIcon } from "@/components/ui/icons";
+import { AddImage } from "@/components/designer/add-image";
 
 // SCR-057's layer list — RTL-first (06 §10), the front of the stack first.
 //
@@ -37,9 +38,10 @@ export interface LayerListProps {
   onToggleMulti?: () => void;
   /** «اختر كل طبقات هذا النوع» (DEC-093 path 5). */
   onSelectKind?: (kind: Layer["kind"]) => void;
-  /** D1b — «أضف»: text, shape, the org's logo (DEC-178). An uploaded image
-   *  waits on assets resolving in the render (the lead's ruling). */
+  /** D1b — «أضف»: text, shape, the org's logo (DEC-178). */
   onAdd?: (kind: "text" | "shape" | "logo") => void;
+  /** D1b's uploaded image, once DEC-179 made an asset id render. */
+  onAddImage?: (asset: { assetId: string; width: number; height: number; previewUrl: string | null }) => void;
 }
 
 export function LayerList({
@@ -55,6 +57,7 @@ export function LayerList({
   onToggleMulti,
   onSelectKind,
   onAdd,
+  onAddImage,
 }: LayerListProps) {
   const t = useTranslations("designer.layers");
   const to = useTranslations("designer.inspector.order");
@@ -80,6 +83,7 @@ export function LayerList({
                 {ta(kind)}
               </Button>
             ))}
+            {onAddImage ? <AddImage onAdded={onAddImage} /> : null}
           </div>
           <p className="text-body-sm text-fg-muted">{ta("hint")}</p>
         </section>
