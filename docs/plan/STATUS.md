@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-22 · **Branch:** `wave-11/m13` (**draft PR at the first push**) · **`main`:** **LAUNCHED 2026-09-15; wave 10 merged** (PR #27, `b75eb45`; `0123`–`0142` live on production; ★ **the Railway worker is RUNNING on `b75eb45`**, read 2026-09-22) · **Phase:** ★★ **WAVE 11 — M13, THE LAST MILESTONE (`DEC-166`, `DEC-167`)** — the public site rebuilt on the M9 system with a door into the platform, behind `qa` split into a contract half (blocking at every commit) and an appearance half; `ui-lint --strict` with its allowlist deleted (61 → 0); the accessibility and performance passes; the mail's string path retired. **Step 0 done**: the baseline `pre-m13` captured from `main` before the branch; the map in `CLAUDE.md` and all ten `.claude/agents/*.md`; the checklist is the wave-11 block below. Spawned, planning-only: `content`, `console`, `notify`, `platform`, `branding`. Migrations start at **`0143`** and are additive.
+**Last updated:** 2026-09-22 · **Branch:** `wave-11/m13`, **PR #28 ready for the owner** · **`main`:** **LAUNCHED 2026-09-15; wave 10 merged** (PR #27, `b75eb45`; `0123`–`0142` live on production; ★ **the Railway worker is RUNNING on `b75eb45`**, read 2026-09-22) · **Phase:** ★★ **WAVE 11 — M13, THE LAST MILESTONE (`DEC-166`, `DEC-167`)** — the public site rebuilt on the M9 system with a door into the platform, behind `qa` split into a contract half (blocking at every commit) and an appearance half; `ui-lint --strict` with its allowlist deleted (61 → 0); the accessibility and performance passes; the mail's string path retired. **Step 0 done**: the baseline `pre-m13` captured from `main` before the branch; the map in `CLAUDE.md` and all ten `.claude/agents/*.md`; the checklist is the wave-11 block below. Spawned, planning-only: `content`, `console`, `notify`, `platform`, `branding`. Migrations start at **`0143`** and are additive.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -120,6 +120,26 @@ green at **every** commit; `ui-lint --strict` green with no allowlist; ★ **a v
 | The platform console on the system | **done in wave 8** (`DEC-147`) — `16` §15's M13 row closes by reference |
 | ★ Not read | the production read for orgs without an `org_settings` row — declined to the lead by the permission layer; **it is the owner's**, first in the order below |
 
+### The final gates — 2026-09-22 — product code at `1294402`
+
+| Gate | Result |
+|---|---|
+| `npx tsc --noEmit` | clean |
+| `npm run lint` | **0 errors**, 26 warnings — `main`'s 26, none added (two found and fixed on the way) |
+| `npm test` | **238 files · 2,280 passed · 1 skipped** |
+| `npm run test:rls` | **120 files · 1,204 passed · 4 todo · 0 failed** on the chain `0001`–`0144` |
+| `npm run ui-lint` | ★ **strict, no allowlist — 274 files, 0 violations** (61 at Step 0) |
+| `npm run qa` | ★ **57 / 57 — `qa:contract` 38 (the original 31 unchanged + the door on three routes × two widths + `/og.png`), `qa:appearance` 19** |
+| `npm run visual` vs `pre-m13` | the six marketing pairs move by design; **`/ar/ui` 0.000 % on both widths** — no `ui/` primitive moved. The re-baseline is `.qa-shots/visual/m13/` |
+| accessibility sweep | ★ **62 routes on each project, 0 findings of any impact** |
+| budgets | no regression against `main` measured back to back (L7) |
+| full e2e, both projects | 612 passed, 9 failed under parallel load; **re-run alone, all pass but `bookmarks:237`** — the wave-8 timing race, carried (`DEC-171`) |
+| `test:e2e:unconfigured` | 16 passed |
+| `parity` | holds — 21 of 28 (poppler/cwebp absent locally, as every wave; CI runs 28) · background block 3 of 3 |
+| `policy-diff` | ✓ agrees · `trace` ✓ 313 · 82 · 147, no gaps, matrix current |
+
+**Captures, every one opened by the lead in bands:** `wave11-lead-{landing,register}-390-rtl.png`, `wave11-lead-landing-en-390.png`, `wave11-console-attendance-{1day,2days,3days}.png`, `wave11-branding-status-contrast-{refused,accepted}.png`, `wave11-platform-{home,metrics}-exhausted.png`, and the sweep's 62 `wave11-sweep-*.png` (the viewer, privacy and the event page among them); the mail at `.qa-shots/mail-review/wave11-n1{,-wrap}/`.
+
 ### The rows
 
 | Row | Owner | Work | Cites | State |
@@ -237,7 +257,8 @@ A pre-existing `tests/**` file changes only with a line here saying why.
    - «`APP_URL` is set on the Railway worker» — a design's buttons and preference link need it (N1)
    - `branding`'s reads: `select bk.org_id, bk.light_canvas, bk.light_surface, bk.dark_canvas, bk.dark_surface, bk.updated_at from public.brand_kits bk;` (B1), and the logo query in `docs/plan/notes/branding.md` B3, then open the file (B3)
    - `platform`'s: the exhausted jobs production already holds, so the alert's first page after the redeploy is expected (`docs/plan/notes/platform.md` W11.5)
-2. **Push** migrations `0143`+ (additive), **then merge** — Vercel and the worker deploy from `main`.
+2. **Push** migrations **`0143`** (`evaluate_job_exhaustion()`; `platform_job_health()`'s `failed` gains `locked_at is null`) and **`0144`** (the status-colour guard in `save_brand_kit()`) — both additive; `main`'s app and worker run unchanged on them (`platform`'s W11.8, `branding`'s note) — **then merge**. Vercel and the worker deploy from `main`. ★ After the merge, `main`'s untouched orgs send the **designed** mail (`DEC-170`); until Railway redeploys, the old worker sends the old string mail — expected, closes at step 3.
+4. **After the redeploy**: expect `job_exhausted` to fire once for whatever production already holds (the read in step 1 tells you what); resolve by `11` §3.3's runbook.
 3. ★ **The standing post-merge step — Railway.** **Railway's push trigger has never been armed**: after
    **five** consecutive merges (PRs #23 … #27) the worker moved only when someone ran
    `railway service source connect` by hand. **After every merge, the owner checks the worker's deployed commit
