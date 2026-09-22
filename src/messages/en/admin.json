@@ -131,7 +131,7 @@
       "languageAr": "Arabic",
       "languageEn": "English",
       "presentersLabel": "Presenters",
-      "presentersHint": "Each is notified and each may decline.",
+      "presentersHint": "Each is assigned to present the session, and is notified.",
       "presentersPlaceholder": "Type a member's name",
       "create": "Create the session",
       "creating": "Creating…",
@@ -606,7 +606,9 @@
           "created_from_proposal": "Session created from a proposal",
           "published": "Session published",
           "scheduled": "Session scheduled",
-          "walk_ins_changed": "Walk-ins changed"
+          "walk_ins_changed": "Walk-ins changed",
+          "presenter_added": "Presenter added to a session",
+          "presenter_removed": "Presenter removed from a session"
         },
         "storage": {
           "prefix_violation": "Storage path violation"
