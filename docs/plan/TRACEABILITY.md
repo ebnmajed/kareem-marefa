@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **317** |
+| Requirements (`REQ-*`) | **318** |
 | Entities (`ENT-*`) | **82** |
-| Stories (`STORY-*`) | **151** |
+| Stories (`STORY-*`) | **152** |
 | Screens cited (`SCR-*`) | 57 |
 | Jobs cited (`JOB-*`) | 39 |
 | Messages cited (`MSG-*`) | 22 |
@@ -76,7 +76,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-018` | `ENT-audit_log` | `POL-comments.removal_audit` | `SCR-043` `SCR-059` `SCR-061` +1 | — | — | `STORY-ADM-008` | M7 |
 | `REQ-ADM-019` | `ENT-impersonation_sessions` | `POL-impersonation_sessions.select` | `SCR-085` | — | — | `STORY-ADM-002` | M8 |
 | `REQ-ADM-020` | `ENT-ratings` | `POL-org_settings.update.admin` `POL-task_form_responses.select` | `SCR-044` `SCR-050` `SCR-061` +3 | — | — | `STORY-ADM-005` | M7 |
-| `REQ-ADM-021` | — | — | `SCR-012` `SCR-043` | `JOB-zip_session_photos` | — | `STORY-ADM-009` | M11 |
+| `REQ-ADM-021` | — | — | `SCR-012` `SCR-043` `SCR-045` | `JOB-zip_session_photos` | — | `STORY-ADM-009` | M11, M15 |
 
 ### AUT
 
@@ -189,11 +189,11 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-024` | — | `POL-design_documents.locked` | `SCR-055` | — | — | `STORY-DSG-004` | M6 |
 | `REQ-DSG-025` | — | — | `SCR-057` | — | — | `STORY-DSG-005` | M6 |
 | `REQ-DSG-026` | `ENT-design_template_versions` `ENT-design_templates` `ENT-session_certificate_designs` | — | `SCR-043` `SCR-055` `SCR-061` | — | — | `STORY-DSG-011` | M6 |
-| `REQ-DSG-027` | — | — | `SCR-012` `SCR-043` | `JOB-zip_session_photos` | — | `STORY-ADM-009` | M11 |
-| `REQ-DSG-028` | — | — | `SCR-045` `SCR-057` `SCR-065` | — | — | `STORY-DSG-012` | M12 |
-| `REQ-DSG-029` | — | — | `SCR-045` `SCR-057` | — | — | `STORY-DSG-012` | M12 |
-| `REQ-DSG-030` | — | — | `SCR-045` `SCR-057` | — | — | `STORY-DSG-012` | M12 |
-| `REQ-DSG-031` | `ENT-session_certificate_designs` | — | `SCR-043` `SCR-045` `SCR-057` +1 | — | — | `STORY-DSG-013` | M12 |
+| `REQ-DSG-027` | — | — | `SCR-012` `SCR-043` `SCR-045` | `JOB-zip_session_photos` | — | `STORY-ADM-009` | M11, M15 |
+| `REQ-DSG-028` | — | — | `SCR-045` `SCR-057` `SCR-065` | — | — | `STORY-DSG-012` | M12, M15 |
+| `REQ-DSG-029` | — | — | `SCR-045` `SCR-057` | — | — | `STORY-DSG-012` | M12, M15 |
+| `REQ-DSG-030` | — | — | `SCR-045` `SCR-057` | — | — | `STORY-DSG-012` | M12, M15 |
+| `REQ-DSG-031` | `ENT-session_certificate_designs` | — | `SCR-043` `SCR-045` `SCR-057` +1 | — | — | `STORY-DSG-013` | M12, M15 |
 
 ### EVT
 
@@ -420,6 +420,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-SES-017` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` | `MSG-reminder_` | `STORY-SES-010` | M9 |
 | `REQ-SES-018` | — | — | `SCR-012` `SCR-013` | — | — | `STORY-SES-011` | M9 |
 | `REQ-SES-019` | — | — | `SCR-043` `SCR-057` | — | `MSG-presenter_assigned` | `STORY-SES-012` | M14 |
+| `REQ-SES-020` | — | — | — | `JOB-zip_session_photos` | — | `STORY-SES-013` | M15 |
 
 ### SUR
 

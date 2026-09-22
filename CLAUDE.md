@@ -318,7 +318,86 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 12 — presenters, awards at completion, the whole poster, DEC-172) — ★ THE MAP IN FORCE
+### Ownership map (wave 13 — the studio, the session download, the settings hub, DEC-176) — ★ THE MAP IN FORCE
+
+**Most of this scope was specified long ago and never built** (`DEC-176`, milestone **M15**). **(1)** The studio gets
+direct manipulation (`REQ-DSG-028` … `030`, the rest of `031`, M12 — never run). **(2)** Staff and presenters download
+a session's poster, and staff download its certificates, from the session (`REQ-DSG-027`, M11 — never run). This is
+read with the owner's «simple» ruling: **one primary «تنزيل», the other formats behind a disclosure**. **(3)** A
+session's settings are reached from one sub-nav (`REQ-SES-020`, new). The checklist is `STATUS.md`'s wave-13 block.
+**Four demonstrables:** every studio operation done with `page.click()` alone, with the document changed each time;
+an `ar` and an `en` console storing byte-identical documents for «align start»; **no parity golden moves**; and
+★ **a staff member downloads a session's poster and its certificates from the session, at 390 px in Arabic,
+without ever opening `/app/admin/designer`.**
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ `DEC-176`, this map, the ten agent files, `01`/`04`/`09`/`14`/`15` · ★ **contract 3, the download audit**: one definer function on `0049`'s pattern, which re-derives «admin, moderator or an accepted presenter of this session» and writes `audit_log` · every table change · ★ **`04`'s route table reconciled** — `attendance`, `certificates` and the hub, in the hub's commit · promotion from **`0152`** · the demonstrable specs · the gates, `STATUS`, the PR | the lead-only paths below, `supabase/migrations/**` from `0152`, the lead's fifteen `ui/` files, `src/app/globals.css`, `src/components/shell/**`, `src/app/[locale]/(dev)/**`, `messages/*/{ui,app,auth}.json`, new `tests/e2e/wave13-{demo,lead}-*.spec.ts`, new `tests/rls/session-downloads*.test.ts`. **Custodian** of every file of a track not spawned — `checkin`, `scoring`, `content`, `event`, `notify`, `platform`, `branding` — edited only for its own rows or on a teammate's written request |
+| `designer` | opus | ★ **`REQ-DSG-028` — direct manipulation in the overlay**: drag, eight-handle resize, rotate, snap with guides, arrow-key nudge, marquee, group align/distribute — **reusing the seven helpers already written**, with **`DEC-093`'s non-dragging path for every one** and **`DEC-096`'s axes** · ★ **the research first**, in the plan: the five open questions of `DEC-176` §1, and which overlay-only libraries were evaluated · **`REQ-DSG-029`** and **`REQ-DSG-031`**, whatever is not yet built · ★ **`REQ-DSG-030`**: the focal dot **and** the nine-point grid, centre by default, **no golden moves** · ★ **one signer**: `signExportUrl()`, `signCertificateUrl()` and `posters.ts:351` fold into one · ★ **contract 1, the download DTO, published on day one** · the certificates screen's per-certificate download · the SC 2.5.7 tap-only spec and the byte-identical «align start» unit | `packages/designer-runtime/src/**` **except** `brand.ts`, `packages/storage-paths/src/designer.ts`, `src/components/{designer,posters}/**`, `src/components/certificates/**` except `held-achievements.tsx`, `src/app/[locale]/app/admin/designer/**`, `src/app/[locale]/app/admin/templates/{posters,certificates}/**` and `templates/{actions,state}.ts`, `src/app/[locale]/app/admin/sessions/[id]/certificates/**`, **fixes only** `src/app/[locale]/app/me/certificates/**` (the signer's fold), `src/app/api/{designer,fonts,certificates}/**`, `src/lib/dal/{designer,templates,posters,certificates,fonts}.ts`, `worker/src/render/**` except `brand.ts` and its four tasks, `scripts/parity/**` minus `goldens/`, `messages/*/{designer,templates,certificates}.json`, `supabase/proposed/designer/**`, `tests/rls/{designer,templates,posters,certificates,fonts,exports}*.test.ts`, `tests/unit/{designer,render,posters,certificates,qr,fonts,serial}*`, `tests/components/{designer,certificates,posters}/**`, `tests/components/me/certificates-page.test.tsx`, `tests/e2e/{designer,templates,certificates,posters}*.spec.ts`, `tests/e2e/wave{7-content-certificates,8-designer-*,10-designer-*}.spec.ts` (evidence), new `tests/e2e/wave13-designer-*.spec.ts`, `docs/plan/notes/designer.md` |
+| `sessions` | opus | ★ **the session settings hub** (`REQ-SES-020`): one sub-nav over the routes that exist — schedule, presenters, the poster, the certificate mode (★ **off the schedule screen, where its own screen says it lives wrongly**), certificates, attendance, the survey, and a way to materials, tasks and photos — **without a fifth orphan screen** · ★ **`REQ-DSG-027`'s «تنزيل»** on the event page and the hub, rendering contract 1's DTO: **one primary file, the rest behind a disclosure**, pending shown as pending, **never touching storage or the signer** · the audit call through contract 3 | `src/app/[locale]/app/admin/sessions/**` **except** `[id]/{certificates,attendance,survey}/**` — ★ the list's top level (from `console`), the schedule, and a new `[id]/{layout,page}.tsx` · `src/app/[locale]/app/sessions/[id]/**` except `{check-in,host,rate,materials}/**`, `src/components/{sessions,browse}/**`, `src/lib/dal/{sessions,proposals}.ts`, `messages/*/{sessions,proposals,schedule}.json`, `supabase/proposed/sessions/**`, `tests/rls/{sessions,proposals,session-presenters}*.test.ts`, `tests/unit/{sessions,schedule-rules,schedule-actions}*`, `tests/components/{sessions,browse}/**`, `tests/components/checkin/schedule-form.test.tsx`, its existing e2e specs (evidence), new `tests/e2e/wave13-sessions-*.spec.ts`, `docs/plan/notes/sessions.md`. **Fixes only**: its other files — the timeline, `propose/**`, `members/**`, `leaderboards/**`, `components/search/**`, `lib/dal/{search,bookmarks,members}.ts`, `lib/form-state.ts`, its eight `ui/` primitives, `worker/src/tasks/{start,complete}_session.ts` |
+| `console` | sonnet | the admin rail's entry for the hub · ★ **`/app/admin/templates`' card grid** (`16` §10.3): «منشور»/«مسودة», duplicate, a usage count, the platform library as a separate section that is read-only until copied — **measured first**: no index page exists, and if the grid belongs on `designer`'s two pages, the row becomes a request to `designer` (contract 4) · the 390 px and accessibility review of the hub and the grid | `src/app/[locale]/app/admin/**` **except** `sessions/**`, `designer/**`, `templates/{posters,certificates}/**`, `templates/{actions,state}.ts`, `branding/**`, `emails/**`, `surveys/**` — **fixes only** on every existing route; new `templates/{page,loading,error}.tsx` · `src/app/api/admin/**` except `branding` and `emails` · `src/components/admin/**` except `delivery-reason.ts` · `src/lib/dal/admin*.ts`, `src/lib/dal/scoring-admin.ts` · its six `ui/` primitives · `messages/*/admin.json` · `supabase/proposed/console/**` · `tests/{unit,rls}/admin*`, `tests/components/admin/**` except `emails-page.test.tsx`, `tests/e2e/admin*.spec.ts` except `admin-attendance*`, `tests/e2e/wave{6,7,8,11}-console-*.spec.ts` (evidence) except `wave8-console-emails` and `wave11-console-attendance`, new `tests/e2e/wave13-console-*.spec.ts` · `docs/plan/notes/console.md` |
+
+★ = transferred or changed for this wave by `DEC-176`.
+
+**Wave-13 contracts.**
+
+1. **`designer` → `sessions` — the download DTO.** One DAL function in `src/lib/dal/posters.ts`. Per session, it
+   returns the ready artifacts with preset, format and `byte_size`, and the pending ones **as pending, never as a
+   broken link**. It also names which artifact is the primary download. ★ **Each ready artifact carries an
+   `href` to `designer`'s download route.** The route calls contract 3's audit, then redirects to a URL from
+   **the one signer**. It is never a signed URL minted at render time, because a bare `<a download>` writes no
+   audit row. The name and the type go in `designer`'s note on day one. `sessions` renders it and never calls
+   storage or a signer.
+2. **`sessions` ↔ `designer` — the certificate mode.** It is written on the schedule screen (`sessions`) and read
+   on the certificates screen (`designer`). After this wave it has **one writer**, and the other screen only shows
+   it. Ruled at sync 1 and written in `DECISIONS.md`.
+3. **Lead — the download audit.** `REQ-DSG-027` and `REQ-ADM-021`: every download writes an audit row. `audit_log`
+   is append-only with `service_role` revoked (invariant 9). The write goes through one definer function the
+   lead lands. It **re-derives who may download and refuses everyone else with `42501`**, which is where
+   «refused by policy» lives: a poster's bytes have been readable by the org since `DEC-173`, by design.
+4. **`designer` → `console` — the templates grid** reads `designer`'s DAL. A new DAL function is a request to
+   `designer`, never an edit.
+
+**Wave-13 rules.**
+
+- ★ **`DEC-093` is the specification, not advice.** The inspector's numeric X/Y/W/H/rotation fields are the
+  `SC 2.5.7` conformance path. **They may be demoted into a collapsed accordion, never deleted.** Every dragged
+  operation has a single-pointer path, and **a marquee is never the only way to select more than one layer.**
+  The gate is a Playwright case using `page.click()` alone. axe never catches this.
+- ★ **`DEC-096`: the overlay uses physical `left`/`top` computed from document geometry**, with the exemption
+  written where the code is. Nobody tidies it to logical properties. Align, distribute and rulers follow the
+  **document's** axis, and arrow keys the **visual** one.
+- ★ **The engine is not replaceable** (`DEC-017`, `DEC-048`). Anything evaluated sits in the overlay; a library
+  that wants to own rendering is disqualified on sight. A new dependency is a `package.json` change and
+  therefore **the lead's**, on a written request.
+- ★ **No parity golden moves.** The focal point defaults to the geometric centre, so an untouched document derives
+  identically. **A golden that moves is a bug, not a re-baseline.** `scripts/parity/goldens/**` is the lead's.
+- ★ **`qa:contract` green at every commit. `registrations` is never touched** (invariant 2).
+- ★ **The existing suites are evidence.** Each changed assertion is a ledger line in `STATUS.md`, written in the
+  same commit as the change. New behaviour gets new files.
+- ★ **Additive, because `main` runs on it first.** Migrations from `0152`. The owner rehearses on a production
+  schema dump, pushes, merges, then checks Railway. **`main`'s worker renders with `main`'s runtime** until the
+  merge, so a change to what a render produces says in the plan what `main`'s worker does in the gap. The
+  expected answer is «nothing moves».
+- **Teammates spawn planning-only**; sync 1 approves three plans against the four contracts.
+- **Tables are the lead's; behaviour is the tracks'. A function has one writer. One writer per file, JSON and
+  specs included.**
+- **`ui-lint --strict` has no allowlist and never gains one.** Every track that ships a screen runs
+  `npm run ui-lint` before it commits.
+- **Captures land at `.qa-shots/rtl/wave13-<track>-<surface>-<state>.png`** in the main checkout, phone project,
+  `390 × 844`, from a production build the row names by commit, honouring `E2E_SHOTS_DIR`. The lead opens every
+  one **in bands, never downscaled**.
+- **Not this wave, and never-touch for every teammate:** deleting a session with its awarded points; the photo
+  gallery and lightbox, `REQ-ADM-021`'s «تنزيل الكل» and `JOB-zip_session_photos`; the wordmark link
+  (`app/layout.tsx` imports the marketing `Wordmark`); Google avatars (`avatarUrl={null}`); the gamification
+  layer; the prose pass; `DEC-100`'s motion system; everything under `(marketing)/**`; recurring series (`A14`);
+  **replacing the renderer**; drag in `ui/reorderable-list`.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`,
+  `stop`, branch switches, pushes and the PR.
+
+### Ownership map (wave 12 — presenters, awards at completion, the whole poster, DEC-172) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 12 merged as PR #29 (`750367f`). Its map is kept as the record; **wave 13's map is directly above** (`DEC-176`).
 
 **New scope after the plan** (`DEC-171` closed it; `DEC-172` opens this, milestone **M14** so its stories trace).
 Three items: **(1)** an admin changes a session's presenters after creation (`REQ-SES-019`); **(2)** every

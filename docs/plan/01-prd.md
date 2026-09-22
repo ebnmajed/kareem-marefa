@@ -621,6 +621,21 @@ proposal's own control no longer applies.
   removed one's are reversed by compensating entries (`REQ-PTS-013`), never by deleting rows.
 - A presenter taking themselves off is not this requirement.
 
+#### REQ-SES-020 — A session's settings are reached from one place
+**Serves:** owner 2026-09-22 · DEC-176
+Every admin screen of one session — its schedule and days, its presenters, its poster, its
+certificate mode, its certificates, its attendance and its survey — is reached from **one sub-nav**
+shared by all of them, so «where do I change this session?» has one answer. The sub-nav joins the
+screens that exist; it is not a new screen that copies them.
+**Acceptance:**
+- From any one of those screens, every other is one tap away, and the current one is marked
+  (`aria-current`).
+- Each setting has **one** writer. The certificate mode is changed in exactly one place and only
+  shown elsewhere.
+- The session's materials, tasks and photos are reachable from the same sub-nav, even though they
+  are managed on the event page.
+- At 390 px in Arabic the sub-nav causes no horizontal page scroll, and every target meets `SC 2.5.8`.
+
 #### REQ-RSV-001 — A member reserves a seat
 **Serves:** D18
 A member can reserve a seat on any **published** session in their مؤسسة, before **آخر موعد
@@ -1816,6 +1831,10 @@ export read path; it never builds a client-side blob.
 - A member who is neither staff nor a presenter of that session sees no menu and, if they forge the
   request, is refused by policy.
 - A variant that has not finished rendering is listed as pending, not as a broken link.
+- ★ **Read with `DEC-176`** (the owner: «I just need a simple download»): one primary **«تنزيل»**
+  gives the obvious file — the 4:5 master as PNG — and every other ready artifact sits behind a
+  disclosure. The refusal is the audited download action's; a poster's bytes are readable by the
+  org since `DEC-173`, by design.
 
 #### REQ-DSG-028 — Layers are positioned by direct manipulation, with a non-dragging path for every dragged operation
 **Serves:** `REQ-DSG-022` · DEC-077 · DEC-093 · `SC 2.5.7`, `SC 2.1.1`

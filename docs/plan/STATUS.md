@@ -1,11 +1,90 @@
-**Last updated:** 2026-09-22 · **Branch:** `main` — ★ **PR #29 MERGED (`750367f`), branch deleted both sides** · **`main`:** wave 12 merged; production at **`0151`**; the Railway worker redeployed and `● Online` · **Phase:** ★★ **WAVE 12 COMPLETE AND LIVE — NEW SCOPE AFTER THE PLAN (`DEC-172` … `DEC-175`, M14)**: presenters change after creation, every session award pays at completion and check-in says what is pending, a poster is never cropped — and members see posters at all (`DEC-173`). Migrations **`0145`–`0151`**, additive. ★ **The owner's order in the wave-12 block is FINISHED — read, rehearse, push, merge, Railway, all on 2026-09-22.** All three demonstrables pass (D2/D3 on the real worker); gates green from a fresh reset.
+**Last updated:** 2026-09-22 · **Branch:** `wave-13/studio-and-session-settings` (cut from `main` at `1e39c47`) · **`main`:** wave 12 merged and live; production at **`0151`** · **Phase:** ★★ **WAVE 13 — STEP 0 DONE (`DEC-176`, M15)**: the studio's direct manipulation (`REQ-DSG-028` … `031`, M12, never run), the session download (`REQ-DSG-027`, M11, never run — one primary «تنزيل», the rest behind a disclosure), and a session's settings under one sub-nav (`REQ-SES-020`, new). Map written; `designer`, `sessions`, `console` spawn planning-only. Migrations from **`0152`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 12 — on `wave-12/presenters-awards-posters` — presenters, awards at completion, the whole poster (`DEC-172`)
+## ★★★ WAVE 13 — on `wave-13/studio-and-session-settings` — the studio, the session download, the settings hub (`DEC-176`)
+
+**Most of this is scope that was specified long ago and never built.** `REQ-DSG-027` (M11) and `REQ-DSG-028` …
+`031` (M12) were written, traced and never run. The design studio sat on the never-touch lists of waves 8–10.
+Only the settings hub is new (`REQ-SES-020`). Milestone **M15**. The brief is `docs/plan/notes/wave-13-lead.md`;
+the map is `CLAUDE.md` § *Ownership map (wave 13)*.
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | `1e39c47` = `origin/main`; production at **`0151`**; no open PRs; branch cut at `1e39c47` |
+| ★ Brief vs code, 1 | **Three signers, not one.** `signExportUrl()` (`designer.ts:547`), `signCertificateUrl()` (`certificates.ts:156`), inline in `getSessionPoster()` (`posters.ts:351`) — each `createSignedUrl(…, 300)` on `exports`. `REQ-DSG-027`'s «there is one» is false today, so `designer` folds them. `STORY-ADM-009`'s «three screens consume it» is also wrong: one does |
+| ★ Brief vs code, 2 | **A poster's bytes are not secret.** `exports_storage_read` (`0037:674`) admits any org member to any object under the org prefix; `DEC-173`/`0145` and `0080` show the poster to members and anonymous visitors. So «refused by policy» lives in **contract 3's audited RPC**, not in storage (`DEC-176` §2). A certificate is personal: `designer` measures whether a member can learn another's `storage_path` |
+| ★ Brief vs code, 3 | **A signed URL in the DTO would skip the audit.** Minted at render time and served by a bare `<a download>`, it writes no audit row on the click. So each ready artifact carries an **`href` to a route** that audits and then redirects (contract 1, amended in `DEC-176`) |
+| Brief vs code, 4 | `export_artifacts.byte_size` exists (`0055`) → **no table change** for contract 1. The only SQL the lead expects is contract 3's definer, on `0049`'s pattern |
+| Brief vs code, 5 | **`/app/admin/templates` has no index page** — only `templates/{posters,certificates}/page.tsx`, `actions.ts`, `state.ts`, all `designer`'s. `console` measures where the grid goes (contract 4) |
+| Confirmed | Zero pointer handlers in `src/components/designer/` (15 files, 2,526 lines; `editor` 585, `inspector` 333, `canvas` 200); the seven helpers at `presets.ts:331–357`, `arrange.ts:49–97`; `certificates/page.tsx:31` «The mode is SHOWN here and CHANGED on the schedule»; `04` lists `schedule` and `survey` and **not** `attendance` or `certificates`; no `/app/admin/sessions/[id]` page; 7 poster presets → 12 artifacts |
+| `trace` | **318 requirements · 152 stories · no gaps** (M15 added to the milestone pattern) |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-176`; `REQ-SES-020`, `STORY-SES-013`, M15; `REQ-DSG-027`'s reading cited; the map; the ten agent files | lead | **done** |
+| C1 | Contract 1 — the download DTO in `lib/dal/posters.ts`, its route, the primary artifact named | `designer` → `sessions` | open — day one of `designer`'s plan |
+| C2 | Contract 2 — the certificate mode's one writer | `sessions` ↔ `designer` | ruled at sync 1 |
+| C3 | Contract 3 — the download audit definer (re-derive admin · moderator · accepted presenter; `42501` otherwise; `write_audit()`), red→green, `03` §8.2 rows | lead | open — `0152` |
+| C4 | Contract 4 — the templates grid reads `designer`'s DAL | `designer` → `console` | open |
+| R1 | ★ The research: the five open questions of `DEC-176` §1, and the overlay-only libraries evaluated | `designer` | open — the plan's first section; logged at sync 1 |
+| D1 | `REQ-DSG-028` — direct manipulation in the overlay, the seven helpers reused, `DEC-093`'s path for every operation, the numeric fields **demoted, never deleted**, `DEC-096`'s axes | `designer` | open |
+| D2 | `REQ-DSG-030` — the focal dot and the nine-point grid, centre by default | `designer` | open |
+| D3 | `REQ-DSG-029` and `REQ-DSG-031` — what is not yet built | `designer` | open — measured in the plan |
+| D4 | One signer — three functions fold into one, every caller unchanged | `designer` | open |
+| D5 | The certificates screen: one download per issued certificate | `designer` | open |
+| H1 | `REQ-SES-020` — the sub-nav over the routes that exist, no orphan screen | `sessions` | open |
+| H2 | The certificate mode off the schedule screen (C2) | `sessions` | open |
+| H3 | Materials, tasks and photos reachable from the hub — **first to shed** | `sessions` | open |
+| H4 | `REQ-DSG-027` — «تنزيل» on the event page and the hub: one primary file, the rest behind a disclosure, pending as pending | `sessions` | open |
+| K1 | The admin rail's entry for the hub | `console` | open |
+| K2 | `/app/admin/templates`' card grid (`16` §10.3) | `console` | open |
+| K3 | The 390 px and accessibility review of the hub and the grid | `console` | open |
+| L1 | `04`'s route table reconciled (`attendance`, `certificates`, the hub) and `09` SCR-043 — **in the hub's commit** | lead | open |
+| L2 | Promotion from `0152`, the rehearsal notes | lead | open |
+| M1 | ★ Demonstrable — the `SC 2.5.7` gate: every studio operation with `page.click()` alone, the document changed each time | `designer` writes, lead runs | open |
+| M2 | Demonstrable — `ar` and `en` consoles store byte-identical documents for «align start» | `designer` | open |
+| M3 | Demonstrable — **no parity golden moves** | lead | open |
+| M4 | ★ Demonstrable — a staff member downloads a session's poster and its certificates from the session, at 390 px in Arabic, never opening `/app/admin/designer` (`wave13-demo-download.spec.ts`) | lead | open |
+| G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict` | lead | open |
+
+### ★ If the wave must shed
+
+**H3 first.** Then the sub-nav ships over the four routes that exist. **D1 and H4 are the owner's two named
+complaints and are not negotiable.** Whatever is shed is named here with why.
+
+### Carried — not this wave
+
+The owner's list, unchanged except the settings consolidation (now H1): deleting a session with its awarded
+points · the photo gallery and lightbox, `REQ-ADM-021`'s «تنزيل الكل» and `JOB-zip_session_photos` · the
+wordmark link · Google avatars · the gamification layer · the prose pass · `DEC-100`'s motion system. And from wave
+12: the month-end streak gap · presenter certificates and the poster after a post-completion presenter change ·
+`materials_uploaded` and `late_cancellation` have no writer · company points not re-evaluated after a
+post-completion change · `survey-submit.test.ts` counts every queued job.
+
+### ★ The standing owner step — Railway, after every merge
+
+Railway's push trigger has needed a manual `railway service source connect` after **seven consecutive merges**.
+**The durable fix is the dashboard's Settings → Source, not the CLI.** Until that is done it is an owner step after
+every merge, and **it is the last thing in this project still done by hand**.
+
+### Untouched-suite ledger (wave 13)
+
+*Every pre-existing test file whose assertion changes, with why — written in the same commit as the change.*
+
+| File | Assertion | Why |
+|---|---|---|
+
+---
+
+## ★★ WAVE 12 — COMPLETE and LIVE (PR #29, `750367f`; `0145`–`0151` pushed) — was on `wave-12/presenters-awards-posters` — presenters, awards at completion, the whole poster (`DEC-172`)
 
 **New scope after the plan.** `DEC-171` closed `14-roadmap.md`; this wave is milestone **M14** so its stories
 trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` § *Ownership map (wave 12)*.
