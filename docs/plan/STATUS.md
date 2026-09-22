@@ -249,7 +249,7 @@ A pre-existing `tests/**` file changes only with a line here saying why.
 | `tests/e2e/admin-attendance.spec.ts` | line 376 | «مطلوب» joins the member select's accessible name (`DEC-168` §5, K2): `{ exact: true }` → `{ exact: false }`; selector only | `81d4b31` |
 | `tests/components/admin/rtl-datetime-picker.test.tsx` | the renders | wrapped in a `NextIntlClientProvider`: the hour and minute selects now sit in `<Field>`, which reads `ui.json`; harness only, no expectation moved | `7e48e66` |
 
-### ★ The owner's order — a DRAFT from Step 0
+### ★ The owner's order — final
 
 1. **Production reads, before anything is pushed** (each a `select`, read-only):
    - orgs with no `org_settings` row — `select o.id, o.slug from public.orgs o where not exists (select 1 from public.org_settings s where s.org_id = o.id);` — zero rows closes L5; any rows: run `DEC-169`'s scoped insert (a data fix, never a migration) (L5)
@@ -258,13 +258,13 @@ A pre-existing `tests/**` file changes only with a line here saying why.
    - `branding`'s reads: `select bk.org_id, bk.light_canvas, bk.light_surface, bk.dark_canvas, bk.dark_surface, bk.updated_at from public.brand_kits bk;` (B1), and the logo query in `docs/plan/notes/branding.md` B3, then open the file (B3)
    - `platform`'s: the exhausted jobs production already holds, so the alert's first page after the redeploy is expected (`docs/plan/notes/platform.md` W11.5)
 2. **Push** migrations **`0143`** (`evaluate_job_exhaustion()`; `platform_job_health()`'s `failed` gains `locked_at is null`) and **`0144`** (the status-colour guard in `save_brand_kit()`) — both additive; `main`'s app and worker run unchanged on them (`platform`'s W11.8, `branding`'s note) — **then merge**. Vercel and the worker deploy from `main`. ★ After the merge, `main`'s untouched orgs send the **designed** mail (`DEC-170`); until Railway redeploys, the old worker sends the old string mail — expected, closes at step 3.
-4. **After the redeploy**: expect `job_exhausted` to fire once for whatever production already holds (the read in step 1 tells you what); resolve by `11` §3.3's runbook.
 3. ★ **The standing post-merge step — Railway.** **Railway's push trigger has never been armed**: after
    **five** consecutive merges (PRs #23 … #27) the worker moved only when someone ran
    `railway service source connect` by hand. **After every merge, the owner checks the worker's deployed commit
    and reconnects the source if it has not moved.** The CLI reconnect is a workaround that has to be repeated;
    ★ **the durable fix is the dashboard setting** (Service → Settings → Source → the branch's deploy trigger),
    and it is the owner's — no session changes it.
+4. **After the redeploy**: expect `job_exhausted` to fire once for whatever production already holds (the read in step 1 tells you what); resolve by `11` §3.3's runbook.
 
 ### Carried into the wave — each with an owner, or named as deliberately left
 
