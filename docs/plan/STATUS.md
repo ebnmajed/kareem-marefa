@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-22 · **Branch:** `wave-13/studio-and-session-settings` (cut from `main` at `1e39c47`) · **`main`:** wave 12 merged and live; production at **`0151`** · **Phase:** ★★ **WAVE 13 COMPLETE — PR #30 READY for the owner (`DEC-176` … `DEC-179`, M15, `0152`–`0154`)**: the studio's direct manipulation (`REQ-DSG-028` … `031`, M12, never run), the session download (`REQ-DSG-027`, M11, never run — one primary «تنزيل», the rest behind a disclosure), and a session's settings under one sub-nav (`REQ-SES-020`, new). Map written; ★ **draft PR #30** open at the first push; `designer`, `sessions`, `console` spawned planning-only — sync 1 approves their plans. Migrations from **`0152`**.
+**Last updated:** 2026-09-22 · **Branch:** `wave-13/studio-and-session-settings` (cut from `main` at `1e39c47`) · **`main`:** wave 12 merged and live; production at **`0151`** · **Phase:** ★★ **WAVE 13 COMPLETE — REHEARSED — PR #30 READY (`DEC-176` … `DEC-179`, M15, `0152`–`0154`)**: the owner pushes, merges, reconnects Railway — nothing else: the studio's direct manipulation (`REQ-DSG-028` … `031`, M12, never run), the session download (`REQ-DSG-027`, M11, never run — one primary «تنزيل», the rest behind a disclosure), and a session's settings under one sub-nav (`REQ-SES-020`, new). Map written; ★ **draft PR #30** open at the first push; `designer`, `sessions`, `console` spawned planning-only — sync 1 approves their plans. Migrations from **`0152`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -37,7 +37,7 @@ the map is `CLAUDE.md` § *Ownership map (wave 13)*.
 | R1 | ★ The research: the five open questions of `DEC-176` §1, and the overlay-only libraries evaluated | `designer` | **done** (`e221c56` W13.1) — no library; logged in `DEC-178` |
 | D1 | `REQ-DSG-028` — direct manipulation in the overlay, the seven helpers reused, `DEC-093`'s path for every operation, the numeric fields **demoted, never deleted**, `DEC-096`'s axes, the iframe origin fix, «تحديد متعدّد» | `designer` | **built**; the drag spec's main case green on `bfa194f` (one undo per gesture, the drag saves). ★ It found a real defect: a drag released in the same frame as its last move was never saved (`ffd1d93`). The marquee case is red — spec or RTL hit-test, with `designer` |
 | D1b | ★ Add text · image · logo · shape; delete, duplicate; edit a text's words, weight, colour **token** — the owner's sentence (`DEC-178`) | `designer` | **done** — `eebeb1f` (text, shape, logo, duplicate, delete, format) + «صورة» in `7f3b2a0`; the delete confirm names WHICH layer (`bfa194f`); one locked note, not two (`7965137`, found by the full gate) |
-| D6 | ★ **An image layer's asset never resolved to a URL** — every uploaded poster and every auto poster's logo is `<img src="<uuid>">` in every render (`DEC-179`): an optional `assets` map in the runtime (byte-identical without it), `data:` URIs in the worker, and a spec that finally asserts a render. **Before D1b's add image/logo.** After the merge the owner re-enqueues `regenerate_poster` | `designer` | **done** `7f3b2a0` — ★ `wave13-designer-upload-render.spec.ts` green **with the real worker**: an uploaded poster fills the master edge to edge and crops into the square. The owner's two-step re-render is in the draft order |
+| D6 | ★ **An image layer's asset never resolved to a URL** — every uploaded poster and every auto poster's logo is `<img src="<uuid>">` in every render (`DEC-179`): an optional `assets` map in the runtime (byte-identical without it), `data:` URIs in the worker, and a spec that finally asserts a render. **Before D1b's add image/logo.** After the merge the owner re-enqueues `regenerate_poster` | `designer` | **done** `7f3b2a0` — ★ `wave13-designer-upload-render.spec.ts` green **with the real worker**: an uploaded poster fills the master edge to edge and crops into the square. The re-render of the posters cached broken on production was **withdrawn by the owner** — test data, nothing owed |
 | D2 | `REQ-DSG-030` — the focal dot and the nine-point grid, centre by default | `designer` | **done** — the nine-point grid and the dot (`61afd8b`, `aa17eb4`); «Centre» on an untouched layer writes nothing; the taps gate sets it with `click()` alone |
 | D2b | An uploaded poster crops for real — `'page'` scale, `schemaVersion: 2` only; no golden moves; the fingerprint carries the version | `designer` | **done** `50c76af` — `'page'` scale behind `schemaVersion: 2`; `main`'s worker refuses a v2 document (`schema_version_future`) rather than cache a wrong render; the fingerprint hashes the document, which carries the version; no golden moved |
 | D3 | `REQ-DSG-029` and `REQ-DSG-031` — measured: 029 built except pre-export live thumbnails (**carried**); 031's stated preflight rides on C2 | `designer` | **done** — 029 built except pre-export live thumbnails (**carried**); 031's preflight is SCR-045's mode dialog (`0d64933`) |
@@ -51,7 +51,7 @@ the map is `CLAUDE.md` § *Ownership map (wave 13)*.
 | K2 | `/app/admin/templates` — the grid already exists (`template-library.tsx`): a redirect, the rail's «التصاميم» collapsed to one leaf, `designer`'s posters | certificates tab strip (shape (b), `DEC-178`) | `console` · `designer` | **done** — `c95dd70` (redirect, the rail's one leaf), `designer` `5cd672c` (the tab strip); `wave13-console-templates-index.png` opened in bands — the tabs within the first phone screen, the preview's Arabic whole at native resolution |
 | K3 | The 390 px and accessibility review of the hub and the grid | `console` | **done** — source review clean (`5cd672c`), both captures phone-project viewport shots, `wave13-console-templates.spec.ts` 2/2 on build `67c66e1` |
 | L1 | `04`'s route table reconciled (`attendance`, `certificates`, the hub) and `09` SCR-043 — **in the hub's commit** | lead | **done** — `04`: `[id]/{layout,page}`, `attendance`, `certificates`, `templates/page.tsx` and `api/designer/downloads/[artifactId]`; `09`: SCR-043 and SCR-045 amended |
-| L2 | Promotion from `0152`, the rehearsal notes | lead | **done** — `0152`–`0154` promoted and applied in order from a fresh reset; **the rehearsal on a production schema dump is the owner's** (the owner's order, step 2) |
+| L2 | Promotion from `0152`, the rehearsal notes | lead | **done** — `0152`–`0154` promoted and applied in order from a fresh reset; ★ **rehearsed on the owner's production schema dump** (the owner's order, step 2): all three ok, the end state identical apart from `rls_auto_enable()` (Supabase's) and the dump's missing storage schema; `0154` proven for `main`'s call and the new form's |
 | L3 | ★ **The certificate leak** — any member can list and sign another member's certificate PDF (`0037`'s org-prefix storage policy; probed by `designer`). A restrictive `select` policy on `exports`, `0153`, red→green for own · admin · another member · anon public card | lead | **landed** — `0153`, one restrictive policy + a definer predicate on the path's document segment; `session-downloads-storage.test.ts` red (3 × «another member sees it») → green; full RLS **131/132 files, 1282 tests**, the one red `survey-submit` = `DEC-171`'s leftover jobs (4–5 queued from earlier runs), not this. ★ **Still live on production until the owner pushes `0153`** |
 | M1 | ★ Demonstrable — the `SC 2.5.7` gate: every studio operation with `page.click()` alone, the document changed each time | `designer` writes, lead runs | ★ **GREEN** on build `bfa194f` — `wave13-designer-studio-taps.spec.ts`: every operation with `click()` alone, the stored document changed each time. On the way it found a delete confirm that named the layer's kind, not which layer (fixed, `bfa194f`) |
 | M2 | Demonstrable — `ar` and `en` consoles store byte-identical documents for «align start» | `designer` | **green** — `tests/components/designer/wave13-console-parity.test.tsx` 6/6 (align to the selection, distribute, nudge, both document directions) beside wave 8's `inspector-align.test.tsx` |
@@ -98,40 +98,41 @@ Found this wave, predating it (`sessions`, 2026-09-22):
 - On a phone the poster slot's pending line «يُولَّد الملصق… N من M» sits under «نبذة», away from the download (`session-poster.tsx`, M6, and the wave-6 phone composition).
 - The download menu trusts `status = 'ready'` and the slot trusts a successful sign, so a ready row whose object is missing makes them disagree. The route answers `?download=failed`, so the user is told.
 
-### ★ The owner's order (wave 13) — DRAFT, written as the wave builds; not yet rehearsed
+### ★ The owner's order (wave 13) — in this order
 
-**Migrations so far: `0152`–`0154`**, all additive:
-- `0152`: a new definer function;
+**Migrations: `0152`–`0154`**, all additive:
+- `0152`: a new definer function, `record_export_download()`;
 - `0153`: one restrictive storage policy, plus its definer predicate;
-- `0154`: `schedule_session()` re-created with one default changed, plus one new definer function.
+- `0154`: `schedule_session()` re-created with one default changed (`p_certificate_mode` → `null`), plus one new definer function, `set_session_certificate_mode()`.
 
-Each must still be **rehearsed on the owner's production schema dump before the push**, as every wave since 7. The rehearsal lands here.
+1. ★ **Production read, 2026-09-22, by the owner:** **11** certificate PDFs under the exports prefix (what `0153` narrows), and **3** posters left cached broken by `DEC-179`. ★ **The owner ruled that every session, poster and certificate on production is test data, so none of it is owed** (as `DEC-175`).
+2. ★ **Rehearsed 2026-09-22** on the owner's production schema dump, taken at `0151` (public schema only, **no data rows**).
+   - **Setup.** The dump was loaded into a throwaway database, `rehearse13`, in the local cluster, over the local `extensions` / `auth` / `storage` schemas; `realtime` was added for the fixture. Every storage policy the local chain had created was dropped first, so storage's policy set came only from what the migrations under test add.
+   - **Loading the dump.** Two errors, both platform-only, as in wave 12: the `supabase_realtime` publication, and the `vault` schema.
+   - **Migrations.** **`0152`, `0153` and `0154` were each applied in one transaction with `ON_ERROR_STOP`. All three ok.**
+   - **End state against the fully migrated local database:**
+     - **every public function body identical by hash** (290), including the three new or re-created ones;
+     - every public policy identical (169);
+     - every trigger identical (109);
+     - `anon` / `authenticated` / `service_role` table grants identical (150);
+     - function execute grants identical (474).
+   - **The differences, and why each is expected:**
+     - **Production-only:** `rls_auto_enable()` and its execute grant to the three client roles. This is Supabase's own function and is in no migration; wave 12 recorded the same.
+     - **An artefact of the dump, not of production:** the 11 older storage policies (`exports_storage_read`, `fonts_*`, `materials_*`, `photos_*`, `design_assets_*`, `exports_storage_read_public_card`, `material_pages_storage_read`) are absent from the rehearsal. The dump carries no `storage` schema. `0153`'s one new policy, `exports_storage_certificate_restricted`, matches the local database exactly. It only **adds** a uniquely named restrictive policy, so it cannot collide with production's existing storage policies.
+   - ★ **`0154` behaviour, proven on the rehearsed schema through the real RLS fixture** (13/13):
+     - **`main`'s exact call** (`origin/main` `lib/dal/sessions.ts:547`, all 16 arguments named, `p_certificate_mode` among them) writes the mode, `automatic` and then `review`.
+     - **The new form's call**, with `p_certificate_mode` `null`, leaves `review` standing. **It is not reset to «off»**, which is the failure this ordering exists to prevent.
+     - There is **one** overload, with `p_certificate_mode … DEFAULT NULL`.
+     - `sessions-certificate-mode.test.ts` passes 11/11 on the rehearsed schema, and `0152`'s `session-downloads.test.ts` 9/9.
+   - **Cleaned up:** the dump, the throwaway database and the one-off proof test are deleted.
+3. ★ **Push `0152`–`0154`, BEFORE the merge.**
+   - Order matters because the new form sends no mode. On the old schema, the old default (`'off'`) would switch every saved session's certificates off.
+   - `main`'s form names the mode, so `main` on the new schema saves exactly as before (proven in step 2).
+   - `supabase migration list --linked` must then read `0154` on both sides.
+4. **Merge PR #30.**
+5. **Reconnect Railway** (the standing step below). `main`'s old worker refuses a `schemaVersion: 2` document (`schema_version_future`) rather than caching a wrong render, and a retry after the new worker deploys renders it.
 
-1. **Read production first** (reads only):
-   ```sql
-   -- how many certificate PDFs sit under the exports prefix (what 0153 narrows)
-   select count(*) from public.export_artifacts ea join public.design_documents d on d.id = ea.document_id
-    where d.bound_certificate_id is not null and ea.status = 'ready';
-   -- the posters DEC-179 left cached broken (designer's query, notes/designer.md «DEC-179 as built»)
-   select p.session_id, p.mode, d.id as document_id
-     from public.session_posters p join public.design_documents d on d.id = p.document_id
-    where exists (select 1 from jsonb_array_elements(d.document->'layers') l
-                   where l->>'kind' = 'image'
-                     and (l#>>'{image,assetId}' ~ '^[0-9a-f-]{36}$'
-                          or (l#>>'{image,binding}' = 'brand.logoAssetId'
-                              and exists (select 1 from public.brand_kits b where b.org_id = p.org_id and b.logo_asset_id is not null))));
-   ```
-2. **Rehearse, then push `0152`–`0154` before the merge.**
-   - ★ **`0153` closes a live leak: any org member can list and sign another member's certificate PDF.** It can be pushed on its own ahead of the rest.
-   - ★ **The push MUST precede the merge.** `0154` makes `schedule_session()` treat a missing mode as unchanged. The new schedule form sends none. On the old schema the old default would reset every saved session's certificates to **off**.
-   - `main`'s form still sends the mode, so `main` on the new schema saves byte-identically.
-3. **Merge, then Railway.** Reconnect Railway (the standing step below) **before anyone edits in the new studio**. A `schemaVersion: 2` document rendered by `main`'s old worker is refused (`schema_version_future`) rather than cached wrong, and a retry after the new worker deploys renders it.
-4. ★ **Re-render the posters `DEC-179` left broken.** Re-enqueueing alone does nothing: `request_render()` skips a ready artifact with the same fingerprint (`0060:94`), and the fingerprint does not change. So:
-   - (a) delete the `export_artifacts` rows of the documents the query in step 1 lists — a **scoped data fix, never a migration**;
-   - (b) re-enqueue `regenerate_poster` under `poster:{session_id}` for each **live** poster;
-   - (c) for each **detached** one, press «اطلب التصدير» in the studio (`REQ-DSG-003`).
-   - Every production session is a test session (`DEC-175`), so this is cosmetic today. It becomes owed the day a real session exists.
-5. **Issued certificates that draw the logo stay as printed** (`REQ-CRT-014`) — `designer`'s recommendation, **the owner's call**.
+~~Re-render the posters `DEC-179` left cached broken~~ and ~~decide on issued certificates that draw the logo~~ — ★ **both withdrawn by the owner (2026-09-22): every session, poster and certificate on production is test data, so nothing is owed.** The 3 broken posters and the 11 certificate PDFs stay as they are.
 
 ### ★ The standing owner step — Railway, after every merge
 
