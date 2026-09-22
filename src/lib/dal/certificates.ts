@@ -3,6 +3,7 @@ import { z } from "zod";
 import { type BrandScheme, type DesignDocument, formatBindingDate, orientationOf, validateDocument } from "@kareem/designer-runtime";
 import { createServerClient } from "@/lib/supabase/server";
 import { previewBrandBindings } from "@/lib/dal/designer";
+import { downloadHref } from "@/lib/dal/posters";
 import { sessionClient } from "@/lib/dal/session";
 
 // Certificates — REQ-CRT-004 … REQ-CRT-014, 03 §5.8/§5.8a, A13.
@@ -45,6 +46,12 @@ export interface CertificateRow {
    *  while the render is still in flight — which the screen says, rather
    *  than showing a download that 404s. */
   pdfPath: string | null;
+  /** The audited download of that PDF — `/api/designer/downloads/<artifactId>`
+   *  — or `null` while it has not rendered. Every certificate a person takes
+   *  away goes through it, a member's own included (DEC-177, DEC-178).
+   *  Optional only so the existing suites' row fixtures still type-check —
+   *  every row the DAL returns carries it. */
+  downloadHref?: string | null;
   /** An achievement certificate's badge, when it is one. Filled by
    *  `listHeldAchievements()` (wave 8, `console`'s R-D2). */
   badgeName?: string | null;
@@ -91,11 +98,12 @@ function toRow(r: RawRow): CertificateRow {
     achievementName: one(r.badges)?.name ?? null,
     documentId: one(r.design_documents)?.id ?? null,
     pdfPath: null,
+    downloadHref: null,
   };
 }
 
 /**
- * Fills in `pdfPath` for a batch of certificates.
+ * Fills in `pdfPath` and `downloadHref` for a batch of certificates.
  *
  * One query for the whole list, not one per row. `export_artifacts` is
  * readable to an org member whose `design_documents` row they can read
@@ -108,19 +116,22 @@ async function attachPdfs(supabase: SupabaseLike, rows: CertificateRow[]): Promi
   if (ids.length === 0) return rows;
   const { data } = await supabase
     .from("export_artifacts")
-    .select("document_id, storage_path, preset")
+    .select("id, document_id, storage_path, preset")
     .in("document_id", ids)
     .eq("format", "pdf")
     .eq("status", "ready");
 
-  const byDocument = new Map<string, string>();
-  for (const a of (data ?? []) as Array<{ document_id: string; storage_path: string | null; preset: string }>) {
+  const byDocument = new Map<string, { id: string; path: string }>();
+  for (const a of (data ?? []) as Array<{ id: string; document_id: string; storage_path: string | null; preset: string }>) {
     if (!a.storage_path) continue;
     // Landscape is the one the certificate templates are drawn for; the
     // portrait is there for an org that chose it. First one wins otherwise.
-    if (a.preset === "cert_landscape" || !byDocument.has(a.document_id)) byDocument.set(a.document_id, a.storage_path);
+    if (a.preset === "cert_landscape" || !byDocument.has(a.document_id)) byDocument.set(a.document_id, { id: a.id, path: a.storage_path });
   }
-  return rows.map((r) => (r.documentId ? { ...r, pdfPath: byDocument.get(r.documentId) ?? null } : r));
+  return rows.map((r) => {
+    const pdf = r.documentId ? byDocument.get(r.documentId) : undefined;
+    return r.documentId ? { ...r, pdfPath: pdf?.path ?? null, downloadHref: pdf ? downloadHref(pdf.id) : null } : r;
+  });
 }
 
 /** The narrow slice of the Supabase client these helpers use. Typing it
@@ -151,13 +162,6 @@ export async function listMyCertificates(locale: string): Promise<MyCertificates
   };
 }
 
-/** A short-lived signed URL for a certificate PDF. Five minutes, the same as
- *  every other export: the bucket is private and the link is not a share. */
-export async function signCertificateUrl(locale: string, storagePath: string): Promise<string | null> {
-  const { supabase } = await sessionClient(locale);
-  const { data } = await supabase.storage.from("exports").createSignedUrl(storagePath, 300);
-  return data?.signedUrl ?? null;
-}
 
 /* ── SCR-045: the session's, for review and release ────────────────────── */
 

@@ -68,7 +68,12 @@
     "canvas": {
       "label": "Design canvas",
       "zoom": "Zoom <bdi>{value}</bdi>%",
-      "size": "Canvas <bdi>{width}</bdi> × <bdi>{height}</bdi>"
+      "size": "Canvas <bdi>{width}</bdi> × <bdi>{height}</bdi>",
+      "coords": "From the start <bdi>{x}</bdi> · from the top <bdi>{y}</bdi>",
+      "derivedNote": "This size is derived from the main one: it is shown here, not moved. Only the focal point is set per size.",
+      "editSource": "Edit on the main size",
+      "placingNote": "Tap the canvas where the layer's centre should go.",
+      "dragHint": "Drag a layer to move it, its handles to resize it, and the top handle to rotate it. Arrow keys move it one pixel, ten with Shift. All of it is also a tap away in the properties panel."
     },
     "layers": {
       "heading": "Layers",
@@ -86,12 +91,16 @@
         "qr": "Verification QR",
         "dynamic_field": "Dynamic field"
       },
-      "orderHint": "Reorder with the buttons: higher in the list is nearer the viewer."
+      "orderHint": "Reorder with the buttons: higher in the list is nearer the viewer.",
+      "multi": "Select several",
+      "multiHint": "While selecting several, each tap on a layer adds it to the selection or removes it — no dragging and no keyboard.",
+      "selectKind": "Select every «<bdi>{kind}</bdi>» layer",
+      "selectedCount": "{count, plural, zero {No layer selected} one {One layer selected} other {{value} layers selected}}"
     },
     "properties": {
       "heading": "Properties",
       "none": "Select a layer to see its properties.",
-      "lockedNotice": "This region is locked in the template: it cannot be moved, resized, hidden or deleted. Unlocking happens in the platform template, not here.",
+      "lockedNotice": "This region is locked in the template: it cannot be moved, resized, hidden, deleted or duplicated. Unlocking happens in the platform template, not here.",
       "positionHeading": "Position and size",
       "x": "Offset from the start",
       "y": "Offset from the top",
@@ -112,7 +121,17 @@
       "binding": "Binding",
       "bindingNone": "No binding",
       "fallback": "Fallback text",
-      "literal": "Literal text"
+      "literal": "Literal text",
+      "text": "Text",
+      "textHint": "Written as it will print. Text bound to the session's data is changed under «Data binding».",
+      "weight": "Weight",
+      "weights": {
+        "regular": "Regular",
+        "medium": "Medium",
+        "bold": "Bold"
+      },
+      "colour": "Text colour",
+      "fill": "Fill colour"
     },
     "bindings": {
       "heading": "Dynamic fields",
@@ -218,7 +237,8 @@
         "documentChanged": "The design changed after the export was requested. Request the export again.",
         "jpegDisabled": "JPEG export is not enabled for your organisation.",
         "unknown": "This format could not be rendered."
-      }
+      },
+      "downloadFailed": "The file could not be downloaded. Try again, and if it keeps happening request the export again."
     },
     "poster": {
       "alt": "Poster for <bdi>{title}</bdi>",
@@ -286,7 +306,10 @@
         "order": "Order",
         "type": "Text and type",
         "binding": "Data binding",
-        "background": "Background"
+        "background": "Background",
+        "group": "Group",
+        "image": "Image",
+        "layer": "Layer"
       },
       "positionNote": "Collapsed by default and never removed: the numbers are the path that needs no dragging, and the most exact one.",
       "align": {
@@ -332,6 +355,77 @@
           "spine": "Spine colour",
           "node": "Node colour"
         }
+      },
+      "group": {
+        "heading": "Selected layers",
+        "selection": "The selection",
+        "distribute": "Distribute",
+        "distributeInline": "Distribute horizontally",
+        "distributeBlock": "Distribute vertically",
+        "distributeNote": "Distributing needs at least three layers: the outer two stay and the gaps between them become equal.",
+        "numbersNote": "Select a single layer to edit its position and size numbers.",
+        "lockedSkipped": "Layers locked by the template do not move with the group."
+      },
+      "transform": {
+        "rotateBack": "Rotate <bdi>{degrees}</bdi>° anticlockwise",
+        "rotateForward": "Rotate <bdi>{degrees}</bdi>° clockwise",
+        "rotateReset": "Reset rotation",
+        "fillWidth": "Fill the safe area's width",
+        "place": "Place with a tap",
+        "placeCancel": "Cancel placing",
+        "placeNote": "Press «Place with a tap», then tap the canvas where the layer's centre should go."
+      },
+      "image": {
+        "fit": "Image fit",
+        "contain": "Whole, inside the frame",
+        "cover": "Fills the frame",
+        "focal": "Focal point",
+        "focalNote": "The focal point is the centre of the crop: when a frame's shape differs from the image's, what surrounds it stays in view.",
+        "focalContainNote": "The focal point works when the image «fills the frame»: a whole image inside its frame is never cropped.",
+        "focalPresetNote": "On this size you set a point for this size alone; the others keep theirs.",
+        "dot": "The point on the image: drag it to fine-tune.",
+        "current": "The point now: <bdi>{x}</bdi>% from the left, <bdi>{y}</bdi>% from the top",
+        "points": {
+          "topLeft": "Top left",
+          "top": "Top centre",
+          "topRight": "Top right",
+          "left": "Centre left",
+          "centre": "Centre",
+          "right": "Centre right",
+          "bottomLeft": "Bottom left",
+          "bottom": "Bottom centre",
+          "bottomRight": "Bottom right"
+        }
+      },
+      "layer": {
+        "duplicate": "Duplicate layer",
+        "delete": "Delete layer",
+        "deleteTitle": "Delete the layer",
+        "deleteBody": "The layer <bdi>{name}</bdi> will be removed from this document. «Undo» brings it back while the editor is open.",
+        "deleteConfirm": "Delete",
+        "cancel": "Cancel",
+        "deletePosition": "A «<bdi>{kind}</bdi>» layer, number <bdi>{position}</bdi> of <bdi>{total}</bdi> in the layer list."
+      }
+    },
+    "add": {
+      "heading": "Add",
+      "text": "Text",
+      "shape": "Shape",
+      "logo": "Logo",
+      "image": "Image",
+      "newText": "New text",
+      "hint": "A new layer goes on top, inside the safe area; then move it by dragging or with the align buttons.",
+      "added": "Layer added.",
+      "imageTitle": "Add an image",
+      "imageFormats": "A PNG, JPEG or WebP image — no SVG; the file is checked by its content, not its name.",
+      "imageUpload": "Upload and add",
+      "imageErrors": {
+        "file_too_large": "The file is larger than your organisation's limit for images.",
+        "rejected_content": "This file is not a PNG, JPEG or WebP image. SVG files are not accepted.",
+        "too_small": "The image is below the minimum size.",
+        "unreadable": "The image could not be read. Try another file.",
+        "not_authorized": "Adding images is an org admin's act.",
+        "unknown": "The image could not be uploaded. Try again."
       }
     }
   }

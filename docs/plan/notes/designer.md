@@ -2384,3 +2384,733 @@ which is what makes «clean» a result rather than an impression. **F1–F3 rout
 
 Carried under my name, neither fixed this wave: the phone review layout's canvas missing from the
 heading outline (M13), and **one logo asset for two schemes** (`branding`/M13).
+
+---
+
+## Wave 13 plan — 2026-09-22 (planning only; nothing is built until the lead approves it at sync 1)
+
+`DEC-176`, M15. The requirements are `REQ-DSG-027` … `031`, the specification is `DEC-077`, `DEC-093` and `DEC-096`, and
+the contracts are 1, 2 and 4. Everything below was measured on `46bbb15` unless a line says otherwise.
+
+### W13.0 · Where the brief and the code disagree. Each one changes the plan
+
+1. ★ **The owner asked for more than positioning.** The agent file says «the layer model already holds everything
+   the owner asked to add». That is true of the **model** (`model.ts:91–135`: text, image, shape). It is not true of
+   the **studio**. The editor has **no way to add a layer or delete one**: no add-text, add-image, add-logo or
+   add-shape, and no delete or duplicate (grepped for add/remove/delete/duplicate across `src/components/designer/*`
+   and the runtime, and found none). It has **no field for a text layer's own words** either: the inspector edits the
+   binding and the fallback, never `text.literal` (`inspector.tsx:205–237`). Nor can it set a text's weight or
+   colour, or a shape's fill. «add images, logos, text, format the text» is the owner's sentence, and drag alone does
+   not answer it. Proposed as **D1b** below, and put to the lead as **Q1**.
+2. ★ **Snap at a phone's scale is the wrong worry. The certificate is the right one.** The phone never edits: the
+   editor is `xl:` only, 1280 px and up (`editor.tsx:458`, `:494`), and the phone's canvas is rendered with
+   `selectable: false` (`:471`). At desktop, the canvas column is about 486 px: the ~830 px content column
+   (`editor.tsx:49–52`, measured in wave 8), minus the 20 rem panel and the gap. The canvas scales as
+   `min(1, available / master.width)` (`canvas.tsx:90`), so `snap()`'s 8 document px comes out as **3.6 screen px on
+   a 1080 poster, 1.6 px on a portrait certificate (2480) and 1.1 px on a landscape certificate (3508)**. The
+   certificate is where it is nearly sub-pixel. Answer: R2.
+3. ★ **`DEC-093`'s shift-click is not a single-pointer path on a touch device.** Shift needs a keyboard. A tablet
+   with no keyboard would be left with «select all of this type» alone, which cannot pick *these two* layers. R3
+   adds a tap-only multi-select toggle beside both.
+4. ★ **The canvas's iframe is positioned wrong in two of the four console × document combinations**, and this is
+   `DEC-096`'s class of bug. `canvas.tsx:125` places the iframe with `insetInlineStart: 0`, which resolves against
+   the **console's** direction because the wrapper carries no `dir`. `:103` then picks `transform-origin` from the
+   **document's** direction. The two match only when the console and the document agree. For an RTL poster in an
+   `en` console the scaled page lands `W·(1 − s)` px off its box, and the same happens for an LTR document in an `ar`
+   console. It is dormant because `en` is not shipped (`REQ-INT-008`), which is exactly `DEC-096`'s «lies dormant»
+   warning. The fix is physical `left: 0` with `transform-origin: top left`, which is correct in all four cases.
+   The selection overlay itself is correct today, but only because its wrapper carries `dir={doc.direction}`
+   (`:164`). `DEC-096` asks for physical `left`/`top` there, so D1 makes that explicit.
+5. ★ **The focal point is already in the runtime, and today it does nothing visible.** `image.focal` is modelled
+   (`model.ts:110`), validated (`validate.ts:165`), threaded per preset by `derive()` (`presets.ts:251`) and rendered
+   as `object-position` (`render.ts:164`). But it only shows under `fit: 'cover'`. The one kind of cover layer that
+   exists is the uploaded poster (`posters.ts:168–192`), and its `scale: 'fill'` keeps the frame at **4:5 on every
+   preset**, so there is nothing to crop. I measured `derive()` on `uploadedPosterDocument()` with the built runtime:
+
+   | preset | page | derived frame | |
+   |---|---|---|---|
+   | master | 1080×1350 | x 80 · y 100 · 920×1150 | inset 80 px: the master itself is **not full bleed** |
+   | square | 1080×1080 | y **−35** · 920×1150 | spills off the page top and bottom |
+   | landscape | 1920×1080 | y **−535** · 1720×2150 | a 4:5 poster behind a 16:9 window |
+   | og | 1200×630 | y **−345** · 1056×1320 | same |
+   | story · a4 · a3 | | 4:5, centred | letterboxed on the background, which is `#ffffff` (no `background`) |
+
+   So `REQ-DSG-020`'s «every variant exists … smart-cropped» and `REQ-DSG-030`'s «drives every derived crop» are
+   both **false for the only layers a focal point could act on**. A dot and a grid over this would move nothing an
+   admin can see. This is **D2b** and **Q4**.
+6. **`withVariantCrop()` already exists and nothing calls it** (`posters.ts:243`). It sits in a `server-only` DAL
+   module, so the client studio cannot reach it. It moves into the runtime, and there is still one copy.
+7. **`DEC-096`'s «one test» already exists and passes**: `tests/components/designer/inspector-align.test.tsx:81`, with
+   `:89` covering every edge in both document directions. Wave 13 adds the same byte-identity proof for the
+   operations that are new (group align, distribute, nudge, a drag). Those go in a new file, and the old one stays
+   evidence.
+8. **Much of `16` §10.2 is already built** (wave 8): single-layer align on the document's axis, «لائم المنطقة الآمنة»,
+   ▲▼ per row, front and back, «الموضع والحجم» closed by default, the checks badge that selects its layer, the
+   variant strip, the phone's review layout, and the click-only e2e (`wave8-designer-editor.spec.ts:205–310`).
+   Wave 13 adds **pointer** manipulation on top of an already-conformant tap path. It does not build the tap path
+   from nothing.
+9. **Three comments now say the opposite of the wave.** «dragging is deliberately absent» (`presets.ts:340–342`),
+   «NO DRAGGING THIS WAVE (DEC-148)» (`editor.tsx:56–59`) and «no second event model» (`canvas.tsx:23–25`, which
+   stays true). Each is rewritten in the commit that makes it false.
+10. ★ **A plain member can enumerate and download every certificate PDF in their org** (R11 below). I measured it.
+    I did not fix it.
+
+### W13.1 · The research (`DEC-176` §1), narrowly — five questions
+
+**R1 · Hit-testing and the pointer model on a rotated layer in an RTL document.**
+- *How others do it.* Canvas engines (Konva/Polotno, Fabric) hit-test in their own scene graph, with a transform
+  matrix per node. They own rendering, so they are out on sight. A DOM editor does what the browser already does:
+  wrap the selection in an element carrying the **same** `transform: rotate(θ)` about the same origin, put the
+  handles **inside** that element, and let the browser hit-test the rotated box. Figma's public model is the same
+  idea: each node carries a `relativeTransform`, and handles live in node-local space.
+- *Here.* The renderer draws each layer at `inset-inline-start: x; top: y; width; height; transform: rotate(θ)`, with
+  the default origin (the centre) (`render.ts:111–118`). **CSS rotation is not mirrored by `dir`**, so the direction
+  affects exactly one number, the physical left: `L = dir === 'rtl' ? W − x − w : x`. The overlay draws each box at
+  physical `left = L·s`, `top = y·s` and `w·s × h·s`, with the same `rotate(θ)`. The **browser hit-tests the rotated
+  box for free**. No hit-testing maths is written.
+- *What does need maths*, as pure functions in a new `packages/designer-runtime/src/geometry.ts`, each unit-tested
+  in both directions:
+  - `toPhysical` / `toLogical` (the one direction switch);
+  - `moveBy(frame, dxScreen, dyScreen, scale, dir)`, where the x delta is negated for RTL;
+  - `resizeFromHandle(frame, handle, dx, dy, θ, dir, {keepRatio})`: the pointer delta is rotated into the layer's
+    local axes by −θ, the opposite handle stays fixed in document space, and the result is converted back to a
+    logical `x`;
+  - `rotateTo(centre, pointer, start, {step15})`, normalised to (−180, 180] and a whole number of degrees.
+- **Cost:** about 200 lines of pure functions plus their tests. No dependency.
+- *Seen on the way, and not fixed:* the LTR mirror of a template (A27) renders a rotated layer with the **same**
+  sign, so it is not a true mirror. That is the renderer's behaviour, it is outside this wave, and no template
+  rotates today.
+
+**R2 · Snap tolerance and guides.** Measured as in W13.0 item 2. The tolerance becomes **screen-space**:
+`tolDoc = round(6 / scale)`, which is 13 document px on a poster and 43 on a landscape certificate. That is the same
+feel on both, and in the 4–8 screen px band the tools converge on. **`snap()` is reused unchanged.** It already
+takes `tolerance` (`presets.ts:357`). The typed-number path keeps its 8 (`editor.tsx:303–304`), so no existing test
+moves.
+- Targets are `snapTargets()` / `snapTargetsBlock()` unchanged: the safe box's edges and centre, the page, and the
+  siblings' edges. The moving layer offers its start edge, end edge and centre, and the nearest candidate wins
+  (a new `snapFrame()` built on the two helpers and `snap()`).
+- Siblings' centres are **not** added this wave. Adding them to `snapTargets()` would change what a typed number
+  snaps to.
+- Guides are 1 px physical lines in the overlay, drawn only during a gesture, in an existing token. Alt suspends
+  snapping. A rotated layer snaps its unrotated frame (stated in the UI copy's hint).
+
+**R3 · Marquee in RTL, and the taught alternative.**
+- The marquee lives in **screen space**. It selects every visible layer whose rotated box **intersects** it (Figma's
+  rule), so direction never enters: both rectangles are physical. It starts only on empty canvas and only for
+  `pointerType` mouse or pen. On touch, empty canvas keeps its scroll (`touch-action: pan-y`) rather than hijacking
+  the page.
+- **The taught alternatives, all single-pointer:**
+  - (a) «اختر كل طبقات هذا النوع» in the layers tab (`DEC-093`);
+  - (b) ★ an **«تحديد متعدّد»** toggle in the layers tab that turns each row into a checkbox, so a tap adds or
+    removes a row (W13.0 item 3);
+  - (c) shift-click on the canvas or on a row, for a keyboard.
+- The rail's hint names (b). A marquee is never the only way.
+
+**R4 · Touch targets at 390 px, and whether the essential exception survives.**
+- *At 390 px there are no handles at all.* The phone is view and approve (`editor.tsx:457–488`) and its canvas is
+  not selectable (wave 11's sweep). `DEC-093`'s claim is therefore never tested on a phone. It is tested on a
+  **touch device at 1280 px or wider** (a tablet in landscape).
+- There, each handle is an 8 px visual square inside a 24 × 24 transparent hit area, which meets `SC 2.5.8`'s size
+  by itself. On a small layer the eight hit areas overlap. At a screen box under 48 px on an axis, the four edge
+  handles are hidden and the corners stay. Under 24 px, only the move behaviour stays.
+- **The claim, stated precisely.** For `SC 2.5.8` it is the **«equivalent»** exception, not «essential»: the same
+  function is on the same page in controls that meet the size (the fields, align, «لائم», ±15°). That is the
+  exception `canvas.tsx:161` already names for the layer boxes. For `SC 2.5.7` the handles need no exception,
+  because a dragging function with a single-pointer alternative conforms. `DEC-093`'s «essential» wording is
+  stricter than required, and still true.
+
+**R5 · Undo granularity.**
+- **One entry per gesture.** `pointermove` never calls `mutate()` (`editor.tsx:231`). The gesture keeps a transient
+  frame. On `pointerup`, one `mutate()` pushes one undo entry and one debounced autosave. A gesture under a 3 screen
+  px threshold is a **tap**: it selects and writes nothing.
+- *Live feedback during the gesture:* the overlay's box and handles move with the pointer. The iframe's own
+  `[data-layer]` element gets a transient `translate` / size through `contentDocument`, which is reachable because
+  the frame is `allow-same-origin` with no scripts. That is the real rendered element offset for the gesture's
+  duration, not a second renderer. The committed `srcDoc` replaces it on release. Autofit runs at render, so text
+  in a box being resized shows its old fit until release (acceptable, and stated in the comment).
+- **Arrow-key nudge coalesces:** a burst of arrow presses on the same selection is one entry, closed on `keyup`, on a
+  selection change or on any other operation. This is `mutate(next, { coalesce: key })`, which replaces the top of
+  `past` instead of pushing. It uses no timer (`DEC-146`).
+- A typed number stays one entry per change, as today (the wave-8 undo assertion depends on it).
+
+**Libraries evaluated — all in-overlay candidates. I propose none. No `package.json` request.**
+
+| Library | What it is | Verdict and why |
+|---|---|---|
+| Konva / react-konva, **Polotno** | canvas scene graph and editor | **disqualified on sight.** It renders (`DEC-017`, `DEC-048`) |
+| Fabric.js | canvas object model | **disqualified.** Same reason |
+| **react-moveable** (daybrush) | DOM drag, resize, rotate, snap, guidelines and groups over any target | the only serious candidate. It sits in the overlay and would target our proxy boxes, not the iframe. **Dropped**: its handles are unlabelled divs we would have to re-wrap for `DEC-093` anyway; it writes transforms onto its target, which fights our physical-from-logical positioning (`DEC-096`); it snaps on screen geometry, not on `snapTargets()`, which would be a second copy of the seven helpers; and it is a large dependency for about 200 lines we would still write for the write-back |
+| interact.js | pointer gestures with snap modifiers | **dropped.** Pointer Events with `setPointerCapture` give the same thing natively, and its snapping would be a second snap |
+| @use-gesture/react | small gesture-state hooks | **dropped.** Convenient, but tap-vs-drag and capture are about 30 lines here |
+| dnd-kit | list and sortable drag-and-drop | **dropped.** Not free-form transforms, and drag in lists is not this wave |
+| Selecto (daybrush) | marquee selection | **dropped.** The marquee is about 40 lines of intersection over boxes we already have |
+
+### W13.2 · ★ Contract 1 — the download DTO and its route (day one)
+
+In `src/lib/dal/posters.ts`:
+
+```ts
+export type DownloadState = "ready" | "pending" | "failed";
+
+export interface PosterDownload {
+  preset: PresetName;                 // master · square · story · landscape · og · a4 · a3
+  format: "png" | "webp" | "pdf";
+  widthPx: number | null;
+  heightPx: number | null;
+  state: DownloadState;               // queued and rendering are both "pending" — never a link
+  byteSize: number | null;            // ready only (export_artifacts.byte_size, 0055)
+  href: string | null;                // ready only: `/api/designer/downloads/${artifactId}`; null otherwise
+}
+
+export interface SessionPosterDownloads {
+  sessionId: string;
+  primary: PosterDownload;            // ALWAYS master · png (DEC-176: «a simple download») — pending when not ready
+  others: PosterDownload[];           // the rest of the set, in presetsFor('poster') order, png before webp
+  ready: number;
+  total: number;
+  /** A newer render of this poster is queued or running — the files above are the previous one's. */
+  updating: boolean;
+}
+
+/** null = render nothing: no poster, no document yet, or a caller who is not
+ *  admin · moderator · an accepted presenter of this session (REQ-DSG-027). */
+export async function getSessionPosterDownloads(locale: string, sessionId: string): Promise<SessionPosterDownloads | null>;
+```
+
+- **Which set of files.** It is the same set `getSessionPoster()` shows (the newest *ready* fingerprint, else the
+  newest row's). The helper `currentPosterSet()` is extracted and shared, so the file downloaded **is** the poster
+  on the page. `updating` is true when another fingerprint of the document has queued or rendering rows. It orders
+  by `rendered_at` as today, never by `created_at`.
+- **Entitlement** is re-derived in the DAL from `session.role` plus an accepted `session_presenters` row read under
+  RLS. That decides only whether a menu renders. **The refusal that counts is the route's**, through contract 3.
+- **`sessions` renders a plain `<a href download>`, never a `<Link>`**, so nothing is prefetched. The route answers
+  with a redirect, so `download` is a hint and the filename comes from the signer.
+
+**The route — `src/app/api/designer/downloads/[artifactId]/route.ts`, `GET`:**
+1. Zod checks that `artifactId` is a uuid; otherwise `400`.
+2. It calls the lead's contract-3 function under the caller's session. **Proposed** signature, the name the lead's
+   to give: `record_export_download(p_artifact uuid) returns table (storage_path text, file_name text)`, security
+   definer, `0049`'s pattern.
+   - It re-derives from the artifact's document: a **session poster**'s artifact admits admin, moderator or an
+     accepted presenter of that session; a **certificate**'s artifact admits an org admin (`certs_read_*` are
+     admin-only, `03` §5.8); a template's or an unbound document's admits an admin.
+   - The artifact must be `ready`, in `auth_org_id()`'s org.
+   - Everything else gets `42501`, and an unknown id gets the same `42501` (no existence oracle).
+   - It writes `audit_log` through `write_audit()`, for example `export_artifact.downloaded` naming the artifact,
+     preset, format and session or certificate.
+   - `file_name` is ASCII and built in SQL: `poster-<preset>.<ext>`, or `certificate-<serial>.pdf` (the serial is
+     Western, `DEC-095`).
+3. `42501` → `403`, empty body. A ready row is expected, so a missing path → `404`.
+4. `signExportUrl(path, { download: file_name })` → `303` to the signed URL, with `Cache-Control: no-store`.
+
+**One route for both, not two.** The certificates screen's link points at the same route with the certificate
+artifact's id. That means one audit call site, one signer call site and one set of tests. `src/app/api/certificates/`
+stays unbuilt, which is my recommendation. **Q2** asks the lead to rule on the function's name, return shape and
+audit action.
+
+### W13.3 · The fold of the three signers (D4)
+
+- **The one implementation** moves to `posters.ts`, the leaf module: `designer.ts` imports `posters.ts`
+  (`designer.ts:22`), and `certificates.ts` imports `designer.ts`, so posters is the only home without a cycle.
+  ```ts
+  export async function signExportUrl(locale: string, storagePath: string, options: { download?: string } = {}): Promise<string | null>
+  ```
+  It is `createSignedUrl(path, 300, options.download ? { download } : undefined)`: five minutes, as all three are
+  today.
+- `designer.ts` keeps `export { signExportUrl } from "@/lib/dal/posters"`, so the studio page's import is unchanged.
+- `certificates.ts` keeps `export const signCertificateUrl = signExportUrl`: **an alias, not a copy**.
+  `sessions/[id]/page.tsx:379` is `sessions'` file and `me/certificates/page.tsx:30` and its component test mock
+  that name. The alias keeps both unchanged, and no test moves. `sessions` can switch its import during H4, and the
+  alias is deleted when the last caller goes.
+- `loadSessionPoster()`'s inline `createSignedUrl` (`posters.ts:351`) calls `signExportUrl`.
+- **A guard:** `tests/unit/designer-one-signer.test.ts` scans `src/**` and fails if `.from("exports")` is followed by
+  `createSignedUrl` anywhere but `posters.ts`'s one function.
+- **The studio's export panel downloads** (`designer/[documentId]/page.tsx:98–104`, the `links` map) switch to the
+  audited route's `href`, so an admin's download from the studio is audited too. **The variant strip's thumbnails
+  stay signed URLs.** They are `<img src>`, not downloads.
+
+### W13.4 · `REQ-DSG-029` and `REQ-DSG-031` — what is built, measured
+
+**`REQ-DSG-029`:**
+
+| Acceptance | State |
+|---|---|
+| a variant is inspectable before export | **built.** A strip tile puts `derive(document, preset)` on the canvas live (`editor.tsx:382–385`, `:420`) |
+| a warning dot where a check fails | **built** (`variant-strip.tsx:63–67`) |
+| a persistent badge with a count | **built** (`editor.tsx:413–418`, `:509–511`) |
+| clicking a failed check selects its layer | **built**, and it switches to the failing preset (`:368–373`). Pinned by `wave8-designer-editor.spec.ts:222–240` |
+| «live thumbnail» | the tile shows the **worker's** PNG once exported, and proportions before that. Ruled in wave 8 (W8.d) because seven live iframes are the cost. **Propose: unchanged** |
+
+**`REQ-DSG-031`:**
+
+| Acceptance | State |
+|---|---|
+| three meanings separated | **built.** Design, who and issue are three sections, in the order the job needs (`certificates/page.tsx:27–51`, `:151–161`) |
+| preview with a real attendee | **built.** The longest eligible name stands in for the recipient (`design-panel.tsx:150–159`) |
+| preflight | **partly built.** The studio's own checks run against the longest name (safe area, the auto-fit floor), and the next serial and count are an estimate, never reserved (`page.tsx:95–123`). **Not stated as a checklist:** fonts resolved and bindings bound. Tier A can only be green after a render, and it is shown per row (`issuance.tsx:151–175`) |
+| no trigger from a dropdown without preflight and confirmation | issuance is **not triggered by hand at all**: it is the completion fan-out (automatic) or a confirmed release of held rows (`issuance.tsx:305–331`, `REQ-UIX-013`). The only unconfirmed act is **choosing the mode**, on the schedule's radio |
+| a failed certificate re-issued alone | **built** (retry per row, serial untouched, `issuance.tsx:37–39`, `:118–125`) |
+
+**What I would build (small, and it rides on contract 2).**
+- The mode control in «من يستحق» (W13.7). Choosing «تلقائي» or «مراجعة» before completion opens a confirmation
+  listing the preflight as a checklist: fonts resolved (the manifest's faces for the chosen template), bindings
+  bound (declared minus resolved against the sample), the checks against the longest name, and the estimate.
+- If contract 2 goes the other way, the checklist sits under «الإصدار» as a read-only preflight instead.
+
+### W13.5 · Direct manipulation, file by file (D1) — each operation with its non-dragging path
+
+| Operation | Pointer (new) | Non-dragging path — `DEC-093` | Where |
+|---|---|---|---|
+| move | drag the box | ★ X/Y fields (kept, collapsed) · align start/centre/end × two axes · «لائم المنطقة الآمنة» · **tap-to-place**: «ضع هنا» arms, the next canvas tap places the layer's centre there (a `page.click({position})`, never a drag) | canvas · inspector |
+| resize | eight handles | ★ W/H fields · «لائم» · **«املأ المنطقة الآمنة عرضًا»** (new, one tap) | canvas · inspector |
+| rotate | a knob above the top edge, shift snaps to 15° | ★ the rotation field · **±15° buttons** · «صفّر الدوران» | canvas · inspector |
+| reorder | — (no drag in lists this wave) | ▲▼ per row (built) · front/back (built, in the inspector) · `Ctrl/⌘ + ↑↓` | layer list · inspector |
+| multi-select | marquee (mouse and pen only) · shift-click | ★ «تحديد متعدّد» toggle · «اختر كل طبقات هذا النوع» | canvas · layer list |
+| group align / distribute | — | buttons, prominent in the inspector when two or more are selected. Distribute needs three | inspector |
+| nudge | arrows 1 px, shift 10 px, on the **visual** axis | the fields | canvas focus |
+| focal point | the dot | ★ the nine-point grid (W13.6) | inspector |
+
+**Files:**
+- **`packages/designer-runtime/src/geometry.ts`** (new): `toPhysical`, `toLogical`, `moveBy`, `resizeFromHandle`,
+  `rotateTo`, `boundsOf` (rotated bounding box, for the marquee and group bounds), `snapFrame` (built on `snap`,
+  `snapTargets` and `snapTargetsBlock` — the helpers are called, not copied) and `nudge(doc, ids, dxVisual,
+  dyVisual)`, which is the one place the visual → logical sign flip lives. Whole pixels throughout (`arrange.ts:21`'s
+  rule).
+- **`packages/designer-runtime/src/arrange.ts`**: **added to, nothing edited.** New `alignLayers(doc, ids, axis, edge,
+  target: 'safe' | 'page' | 'selection')`, `distributeLayers(doc, ids, axis)` (equal gaps between bounds, the end
+  layers fixed), `placeCentre(doc, id, point)` and `rotateBy(doc, id, deg)`. `alignLayer`, `fitLayerToSafeArea` and
+  `reorderLayer` are untouched and so are their tests. Locked layers are skipped by the group operations and reported
+  back.
+- **`packages/designer-runtime/src/focal.ts`** (new): `setFocal(doc, layerId, focal, preset?)`, which is
+  `withVariantCrop()` moved here and generalised. `posters.ts` re-exports the old name.
+- **`packages/designer-runtime/src/validate.ts`**: `presets.*.focal` validated in 0…1, as `image.focal` already is.
+  It is only stricter, so `main`'s worker is unaffected.
+- **`packages/designer-runtime/src/index.ts`**: exports the new functions. **Not touched:** `render.ts`, `derive()`,
+  `fingerprint.ts`, `bindings.ts`, `brand.ts` (see W13.8 for D2b's one exception, put to the lead).
+- **`src/components/designer/canvas.tsx`**:
+  - the iframe fix (W13.0 item 4);
+  - the overlay repositioned in **physical** `left`/`top` from `toPhysical()`, with the `DEC-096` exemption written
+    as a comment where the style is set;
+  - `selectedLayerIds: string[]`;
+  - a selection frame carrying the layer's rotation, with handles as its children (`aria-hidden` pointer targets,
+    per R4's size rules) and a rotation knob;
+  - `onPointerDown` with `setPointerCapture` and a tap threshold;
+  - guides, the marquee, and a live coordinate chip that reads x/y **from the document's start edge**, exactly as
+    the fields do. That keeps `DEC-096`'s «rulers share an origin with the fields» true without drawing rulers
+    (**Q9**);
+  - arrow keys on the focused layer button;
+  - on a **derived preset**, handles are hidden and a note offers «حرّر على المقاس الأساسي», because a derived frame
+    is computed and writing it back would be a guess. The focal grid still works per preset.
+  - the per-layer `<button>`s stay: their names, `aria-pressed` and the wave-8 spec's locators are unchanged.
+- **`src/components/designer/editor.tsx`**:
+  - selection becomes a list;
+  - `mutate(next, { coalesce? })`;
+  - `commitGesture()` pushes one entry;
+  - keyboard handling: arrows, `Ctrl/⌘+↑↓`, `Escape` clears the selection, and `Delete` only with D1b;
+  - the old comments are rewritten (W13.0 item 9).
+- **`src/components/designer/inspector.tsx`**:
+  - new props are **optional** (`selection?`, `onGroupArrange?`, `onFocal?`), so the existing component test mounts
+    unchanged;
+  - the group section appears for two or more layers;
+  - an «الصورة» section for image layers holds fit (contain/cover) and the focal point;
+  - ±15° and «املأ عرضًا» go in «المحاذاة والترتيب»;
+  - «الموضع والحجم» stays **closed by default and present**. ★ It is not deleted, not hidden on multi-select (on
+    multi-select it says «حدّد طبقة واحدة لتحرير الأرقام»), and not tidied.
+- **`src/components/designer/layer-list.tsx`**: the «تحديد متعدّد» toggle with checkbox rows, «اختر كل طبقات هذا
+  النوع» per kind, and shift-click. The existing row button, its name and `aria-pressed` stay.
+- **`src/messages/{ar,en}/designer.json`**: new keys, Arabic first; every count carries all six plural forms and
+  goes through `formatNumber`.
+
+**D1b — «add images, logos, text, format the text» (Q1). Proposed IN, after D1, and sheddable before D1 is.**
+- An «أضف» group heads the layers tab: **نص** (a literal text layer at the safe box's start, brand ink),
+  **صورة** (the existing `/api/designer/assets` upload, sniffed on content, no SVG, `DEC-009`, with the PPI guard
+  checking at 200), **الشعار** (an image bound to `brand.logoAssetId`, `contain`) and **شكل** (a rect in
+  `{{brand.*}}` only).
+- Duplicate, and delete through a confirm that names the layer. A template-locked layer can be neither, and
+  `design_documents_guard` refuses it anyway (`0055:533–554`).
+- The inspector gains the text's own words (`text.literal`), weight (400/500/600), a colour **token** select
+  (`REQ-DSG-021`, the background's pattern at `inspector.tsx:265–281`) and a shape fill.
+- Letter-spacing stays uneditable (A30).
+- Every one of these is a click, so the `SC 2.5.7` gate covers it.
+
+### W13.6 · The focal point (D2), and why no golden moves
+
+- **The inspector's «الصورة» section, for `fit: 'cover'` layers only.** Under `contain`, `object-position` changes
+  nothing visible, so the control would be a lie. There, the section says «نقطة التركيز تعمل مع الملء
+  (cover)» next to the fit toggle.
+- **The nine-point grid** is a `radiogroup` of nine 44 px buttons (the corners, the edges and the centre, named in
+  words) and is **sufficient by itself**. The draggable dot sits on the layer's thumbnail and refines it to two
+  decimals.
+- On the **source preset** it writes `image.focal`. On a **derived preset** it writes `presets[preset].focal`, which
+  is A32's override (`setFocal`).
+- **The centre default.** An untouched layer has no `focal`. Choosing «الوسط» on a layer with no `focal` is a
+  **no-op**: nothing is written, so there is no fingerprint change and no undo entry. Otherwise an untouched
+  document would change bytes the first time someone looked at the grid.
+- ★ **No golden moves, and here is why:**
+  - (a) D2 changes **no** renderer and **no** derivation code. `object-position` and the per-preset threading already
+    exist in `main`'s runtime.
+  - (b) `scripts/parity/cases.mjs` (88 lines, 7 text cases) and the background goldens contain **no image layer**,
+    so no golden can see a focal point.
+  - (c) A new unit test, `designer-derive-untouched.test.ts`, asserts that for every seeded library template
+    `derive()` and `renderDocumentToHtml()` are **byte-identical** before and after the wave's runtime changes
+    (a committed snapshot taken from `main`'s runtime at `46bbb15`).
+  - (d) I run the parity harness without `--update`, and every golden must be unchanged. A moved golden is a bug I
+    report, and `goldens/**` is never mine.
+  - D2b (W13.8) is the only item that could change a render, and it is put to the lead.
+
+### W13.7 · Contract 2 — who writes the certificate mode after this wave
+
+Today, `schedule_session()` writes `certificate_mode` from `p_certificate_mode`, whose default is `'off'`
+(`0112:68`, `:312`). The schedule form sends it every time, and SCR-045 only links there
+(`certificates/page.tsx:31–33`, `:178–182`).
+
+**Recommendation: SCR-045 writes it (`designer`), and the schedule screen shows it.**
+- `REQ-DSG-031` places the mode in step 2, «من يستحق» («the mode, with the resulting list of names shown live and a
+  count»). The live list and the count are only on SCR-045.
+- The preflight confirmation (W13.4) is the one unconfirmed act left, and it belongs beside the mode.
+- The owner's complaint is written in that page's own comment.
+- The schedule shows `<CertificateModeBadge>` (my slot, unchanged) with a link into the hub's certificates tab.
+
+The pieces:
+- **Mine:** a new definer function, `set_certificate_mode(p_session uuid, p_mode public.certificate_mode)`, in
+  `supabase/proposed/designer/`. It is admin only, `42501` otherwise, with the same state rule `schedule_session`
+  applies to the mode (measured at build). It is audited through `write_audit()` and granted to `authenticated` alone
+  (`DEC-152`). **No table change.**
+- **`sessions'`:** `schedule_session()`'s `p_certificate_mode` default changes from `'off'` to `null`, and
+  `certificate_mode = coalesce(p_certificate_mode, certificate_mode)`. It is dropped and re-created in the same file
+  with its signature unchanged, so `main`'s app, which still sends the mode, behaves exactly as today in the gap.
+  The form stops sending it.
+- **Cost, named:**
+  - `tests/e2e/wave9-three-day-workshop.spec.ts:297–310` (the **lead's**) checks the radio on the schedule and reads
+    `certificate_mode = 'automatic'`, so it moves.
+  - `tests/components/checkin/schedule-form.test.tsx:39` (`sessions'`) passes `certificateMode`, so it moves.
+  - Each change is a ledger line by its owner.
+  - `wave8-designer-certificates.spec.ts:466`'s «الوضع معطّل» ×2 is **kept**: the radio labels will not contain that
+    phrase.
+- **Option B**, if the lead prefers zero moved assertions: the schedule stays the writer, SCR-045 keeps its link, and
+  the W13.4 preflight becomes read-only under «الإصدار». That is cheaper, but it leaves the owner's complaint
+  standing.
+
+### W13.8 · The certificates screen's download (D5), and D2b
+
+**D5:**
+- `SessionCertificateRow` gains `downloadHref: string | null`. It is set for **issued** rows with a ready PDF, to
+  `/api/designer/downloads/<artifactId>`, in `getSessionCertificatesWithRender()`, whose PDF lookup already exists
+  (`attachPdfs`).
+- A «الملف» column in the issued table (`onCard`, so it shows on the phone's cards) holds a plain link named
+  «نزّل شهادة <bdi>{name}</bdi>».
+- Held and revoked rows get no link: a revoked certificate's file is not something to hand out again, and a held
+  one has not been released.
+- The moderator sees no issuance section (unchanged).
+- **The header under the hub.** When `sessions` lands `[id]/layout.tsx` with the sub-nav, this page's `PageHeader`
+  breadcrumb and its «sessionLine» may duplicate the layout's. I change mine to fit once the layout's contract is
+  published. That is **Q6**, routed through the lead.
+
+**D2b (Q4), the uploaded poster's crop.** It is proposed and not assumed, because it is the one thing here that
+changes a render.
+- A new `LayerPresetOverride.scale` value, **`'page'`**: the frame becomes the preset's whole page, bleed included,
+  so `cover` plus `focal` actually crop. It is added to `derive()` as a **new branch**. The existing
+  `proportional`, `fixed` and `fill` branches are byte-identical, and `fill` is used by nothing but existing uploaded
+  posters (grepped).
+- `uploadedPosterDocument()` writes `'page'` from now on, and that document declares **`schemaVersion: 2`**.
+  `SCHEMA_VERSION` becomes 2. Every other writer (`library.ts`, `templates.ts` createBlank) pins its current `1`, so
+  no seed and no fingerprint moves.
+- Existing uploaded posters keep `'fill'` and render as today. Re-uploading gives the new behaviour. Whether to
+  convert the few existing documents is a data question for the owner, never a migration.
+
+### W13.9 · Existing tests whose expectation moves
+
+**Mine: none planned.** Each file below was checked, with the reason it holds.
+
+| File | Why it does not move |
+|---|---|
+| `tests/e2e/wave8-designer-editor.spec.ts` | the per-layer canvas buttons, «الموضع والحجم» closed by default, the align, «لائم», undo and typed-number paths and their stored values are all kept (`:205–310`). Still no `mouse.*` |
+| `tests/components/designer/inspector-align.test.tsx` | the new Inspector props are optional. Its four cases, and axe on a text layer, are unchanged |
+| `tests/unit/designer-arrange.test.ts` | `arrange.ts` is added to, never edited |
+| `tests/unit/designer-presets.test.ts` | `snap`, `snapTargets` and the existing `derive` branches are unchanged |
+| `tests/unit/designer-ppi.test.ts:160–190` | asserts only the focal threading for `'fill'`, which is unchanged |
+| `tests/unit/designer-model.test.ts:91` | written against `SCHEMA_VERSION + 1`, so it follows the constant |
+| `tests/components/me/certificates-page.test.tsx` · `tests/e2e/wave7-content-certificates.spec.ts` | `signCertificateUrl` is kept as the alias, and the member's page is unchanged |
+| `tests/e2e/wave8-designer-certificates.spec.ts` · `certificates.spec.ts` · `wave10-designer-reissue-and-days.spec.ts` | a new column appends a cell; no column count or index is asserted (grepped) |
+
+**Other tracks' tests that move, but only if contract 2 goes my way (W13.7):**
+`wave9-three-day-workshop.spec.ts:297–310` (the lead's) and `schedule-form.test.tsx:39` (`sessions'`).
+
+If anything above is wrong at build time, the ledger line goes in `STATUS.md` in the same commit as the change.
+
+**New tests** (all mine, new files):
+- **unit:**
+  - `designer-geometry.test.ts`: `toPhysical`/`toLogical` round trip in both directions; the RTL east handle writes
+    `x` and `w`; a rotated resize keeps its opposite corner fixed; rotate snaps and normalises; nudge → in RTL
+    decreases `x`.
+  - `designer-group-arrange.test.ts`: align, distribute, locked layers skipped.
+  - `designer-snap-drag.test.ts`: screen-space tolerance at three scales.
+  - `designer-focal.test.ts`: the centre no-op; the per-preset override; validation of `presets.*.focal`.
+  - `designer-derive-untouched.test.ts` (W13.6 (c)).
+  - `designer-one-signer.test.ts`.
+  - `designer-download-route.test.ts`: `400` on a bad uuid, `403` on `42501`, `303` with `no-store`, the filename
+    passed to the signer.
+- **component:**
+  - `tests/components/designer/wave13-console-parity.test.tsx`: group «align start», distribute and a nudge from an
+    `ar` and an `en` console, in both document directions, give **byte-identical** documents.
+  - `canvas-overlay.test.tsx`: physical `left` for each of the four console × document combinations; the iframe's
+    origin.
+- **RLS**, if contract 2 is mine: `tests/rls/certificates-mode.test.ts`, applied with `applyProposed()`. The `03`
+  §8.2 rows:
+  - `FN-set_certificate_mode` — an admin sets it, and an audit row is written in the same transaction.
+  - A moderator or a member → `42501`.
+  - Another org's admin → `42501`.
+  - The state rule.
+  - `schedule_session` with a null mode leaves it unchanged (that one is `sessions'` row).
+- **e2e:**
+  - ★ `wave13-designer-studio-taps.spec.ts`, the `SC 2.5.7` gate. Move (align, tap-to-place), resize (fields,
+    «املأ عرضًا»), rotate (±15°), reorder, focal (grid), multi-select (the toggle), group align and distribute, and
+    D1b's add, format and delete, each with `click()` alone (`page.click({position})` for tap-to-place), and the
+    stored document asserted after each.
+  - `wave13-designer-studio-drag.spec.ts`, the pointer path. `mouse.down/move/up`: drag, a resize handle, the
+    rotation knob, the marquee, and **one undo entry per gesture**.
+  - `wave13-designer-certificates-download.spec.ts`: an admin's link → `303` → the file, and an audit row; a plain
+    member forging the URL → `403`.
+- The captures go to `.qa-shots/rtl/wave13-designer-{studio,certificates}-<state>.png`.
+
+### W13.10 · What `main`'s worker does in the gap
+
+- **D1, D1b, D2, D4 and D5 change nothing a render produces.** Their documents are ordinary frames, rotations,
+  literals, tokens and `image.focal`, which `main`'s runtime already renders (`render.ts:111–118`, `:164`;
+  `presets.ts:251`). `derive()`, `render.ts` and `fingerprint.ts` are untouched, so a document edited in the new
+  studio renders byte-identically on `main`'s worker.
+- `validate.ts` only becomes stricter, so anything the new app saves, `main`'s worker accepts.
+- The download route, the signer and `set_certificate_mode` are app and SQL only. `main`'s app never calls the new
+  functions. `schedule_session`'s coalesce keeps `main`'s app's explicit mode working (W13.7).
+- ★ **D2b is the one exception, and its answer is the schema version.** `main`'s worker would render `'page'` through
+  the proportional branch, cache that wrong artifact under the new fingerprint, and keep it. Declaring
+  `schemaVersion: 2` makes `main`'s `validateDocument()` refuse it with `schema_version_future` instead. The
+  artifact fails loudly and is retried once Railway runs the new image. That is the mechanism `model.ts:9–10`
+  exists for.
+
+### W13.11 · The measurements the agent file asks for
+
+1. ★ **Can a member learn another member's certificate `storage_path`? Yes, through Storage. No, through the tables.**
+   - *Tables:* `exports_read` (`0055:650`) needs the design document to be readable, and `documents_read`
+     (`0055:614–619`) shows a certificate's document only to an admin or to its own member. `0145`'s policy covers
+     session posters only. So `export_artifacts` does not leak another member's certificate.
+   - *Storage:* `exports_storage_read` (`0037:674`) admits **any** org member to **any** object under the org
+     prefix, and Storage's list runs `storage.search` / `list_objects_with_delimiter`, both `SECURITY INVOKER`
+     (checked in `pg_proc`).
+   - **Probed locally, in one rolled-back transaction.** As the owner I inserted
+     `<org>/exports/<doc>/cert_landscape.pdf`. As `authenticated`, with `org_role: member`,
+     `select name from storage.objects where bucket_id = 'exports'` **returned it**. A member can therefore list
+     every certificate PDF in the org and mint a signed URL for any of them (`createSignedUrl` needs only that
+     `select`).
+   - **Not fixed. It is a finding for sync 1 (Q3).** A proposed shape for the lead: a **restrictive** `select`
+     policy on `storage.objects` for `bucket_id = 'exports'`, `to authenticated`, that passes unless the object is
+     a certificate document's render the caller cannot read. That is a definer predicate over
+     `design_documents.bound_certificate_id` and the path's document segment; a plain «must see its
+     `export_artifacts` row» would break cross-org public-card posters, `0080`. It needs a test for each of the
+     four readers (own, admin, another member, anon via the public card).
+2. **What the phone gets on SCR-057 today** (`editor.tsx:457–488`, `page.tsx:152–173`):
+   - the notice «على الهاتف تراجِع ولا تحرّر» (1280 px);
+   - the canvas, not selectable, under «المعاينة»;
+   - the variant strip with the worker's thumbnails;
+   - the checks with their count and «اذهب إلى الطبقة»;
+   - the data;
+   - «اطلب التصدير» in the header, and the export queue below.
+   `16` §10.2.2's «approve **or send back**» has no «send back»: there is no approval state in the model, so «اطلب
+   التصدير» is the approval. **Propose: unchanged this wave.** «send back» would need a state and a notification,
+   and that is new scope.
+3. **A document carrying a focal point on `main`'s worker:** it renders the same (W13.10). `object-position` has been
+   in the runtime since M6, and the uploaded poster has carried `focal: {0.5, 0.5}` since wave 3.
+
+### W13.12 · Order, once approved
+
+1. D4 (the fold) and **contract 1** (the DTO plus the route against a stub of the lead's function, then the real one
+   at `0152`). This unblocks `sessions'` H4 on day one.
+2. D5 (the certificates download).
+3. D1's runtime (`geometry.ts`, the `arrange.ts` additions, `focal.ts`) with its units.
+4. D1's canvas and editor (pointer, handles, snap, marquee, nudge, undo).
+5. D1's inspector and layer list (the group section, multi-select, tap-to-place, ±15°).
+6. D2 (focal).
+7. The `SC 2.5.7` gate and the drag spec.
+8. D1b, if approved.
+9. Contract 2's SQL and the mode control, if ruled mine.
+10. D2b, if approved.
+11. The captures.
+
+`npm run parity` (no `--update`) runs after 3, 6 and 10.
+
+**If I must shed:** D2b first, then D1b's delete/duplicate, then rotation's knob (the field and ±15° remain). D1's
+drag, resize, snap and multi-select are not shed.
+
+### W13.13 · Questions for the lead
+
+1. **Q1 — D1b.** Adding text, image, logo and shape, deleting and duplicating, and editing a text's own words, weight
+   and colour token. The owner's sentence asks for it, and `REQ-DSG-028`'s text does not. In scope? My
+   recommendation: **yes**, after D1.
+2. **Q2 — contract 3's function.** Its name, `record_export_download(p_artifact uuid) returns table (storage_path
+   text, file_name text)` or yours, and one function covering posters and certificates by the artifact's document.
+   Is the audit action `export_artifact.downloaded`? And may the studio's export panel downloads go through the
+   same audited route (I recommend it)?
+3. **Q3 — the certificate enumeration** (W13.11 item 1). Is it yours as a migration at `0152`+, or deferred? It is
+   not mine to fix silently.
+4. **Q4 — D2b.** Should the uploaded poster crop for real (`'page'` plus `schemaVersion: 2`)? Without it, `REQ-DSG-030`'s
+   focal point has no visible effect on any layer that exists.
+5. **Q5 — contract 2.** My recommendation is SCR-045 as the writer (W13.7), with the two named test moves, one of
+   them in your spec. Option B moves nothing.
+6. **Q6 — the certificates page under `sessions'` layout.** Should `[id]/layout.tsx` render the session title and
+   status (so I drop mine), or only the sub-nav? I need that contract before I change my header.
+7. **Q7 — a member's own certificate download** (`me/certificates`, the event page). Should it stay a direct signed
+   URL with no audit (my recommendation: unchanged, since it is their own document), or also go through the
+   audited route?
+8. **Q8 — the iframe origin fix** (W13.0 item 4). It is a fix in my file with no render change. Is it OK to land
+   with D1?
+9. **Q9 — rulers.** `DEC-096` rules on their axis if they exist, and `REQ-DSG-028` lists no ruler operation. I
+   propose none this wave, only a coordinate chip that reads like the fields. Agreed?
+10. **Q10 — the «تحديد متعدّد» toggle.** It goes beyond `DEC-093`'s named paths, because shift-click needs a keyboard
+    (W13.0 item 3). Should `DEC-093` be read as I read it, or should this be logged?
+11. **Q11 — contract 4.** `console`'s grid can read `getTemplateLibrary(locale, purpose)` as it stands. If the index
+    page wants counts only, I will add `getTemplateOverview(locale)` on request. I will not guess its shape.
+
+*Research sources consulted for the table in W13.1:* the daybrush/moveable repository and docs
+(github.com/daybrush/moveable, daybrush.com/moveable); W3C and practitioner notes on `SC 2.5.8`'s five
+exceptions (github.com/w3c/wcag/issues/3714, wcag22aa.org/new-criteria/target-size).
+
+### W13.14 · Amended by `DEC-177` (`225d858`) — contract 3 has two subjects, and the member's own download is audited
+
+I re-read `DEC-177` and the agent file from disk. The change supersedes W13.2's route text where they differ,
+W13.8's D5, and Q2 and Q7.
+
+**One function, not two.** The route passes **only `p_artifact uuid`**. The function finds the subject from the
+data, never from the URL, so a forged link cannot pick a laxer branch. It also gives one call site, one grant and
+one row in `definer-exposure.test.ts`.
+
+Proposed for `0152` (the lead's to write and name):
+
+```
+record_export_download(p_artifact uuid) returns table (storage_path text, file_name text)
+  security definer · set search_path = '' · revoke from public, anon · grant to authenticated   (DEC-177 §1, 0049's pattern)
+```
+
+It works in this order:
+1. The artifact must be `ready`, with `org_id = auth_org_id()`. Anything else raises `42501`, and so does an
+   unknown id, so there is no existence oracle.
+2. **Session poster**: the document is some `session_posters.document_id`. Admitted: `is_staff()` (admin or
+   moderator), or an **accepted** `session_presenters` row for that session and `auth_member_id()`.
+3. **Certificate**: the document's `bound_certificate_id` is set. Admitted: `is_staff()`, or
+   `certificates.member_id = auth_member_id()`. For the member, the certificate must not be `held` (`REQ-CRT-013`:
+   invisible until released). A `revoked` one stays downloadable to its member, as the page does today
+   (`me/certificates/page.tsx:111–114`, `REQ-CRT-011`).
+4. **Any other document** (a template draft, an unbound document in the studio's export panel): `is_org_admin()`.
+   This is not a new audience; `documents_read` already limits these to admins.
+5. **Everyone else** raises `42501`.
+6. `write_audit()` then records the actor, the subject and the artifact, as `REQ-ADM-021`'s acceptance asks. The
+   action is `export.downloaded`, the target is `export_artifacts` / `p_artifact`, and the details are `{ subject:
+   'session_poster' | 'certificate' | 'document', session_id?, certificate_id?, preset, format }`. It is written in
+   the same transaction, and then the path is returned.
+7. The function builds `file_name` as `poster-<preset>.<ext>` or `certificate-<serial>.pdf`: ASCII, and the serial
+   is Western (`DEC-095`).
+
+The `03` §8.2 rows the lead's red→green needs:
+
+| Subject | Rows |
+|---|---|
+| poster | admin ✓ · moderator ✓ · accepted presenter ✓ · a presenter not yet accepted ✗ · a plain member ✗ (though `0145` lets them read the bytes) · another org's admin ✗ |
+| certificate | its member ✓ · its member while `held` ✗ · its member when `revoked` ✓ · another member ✗ · admin ✓ · moderator ✓ |
+| both | unknown id ✗ · a non-`ready` artifact ✗ · exactly one audit row per admitted call · none per refused call · `anon` cannot execute |
+
+**One thing to flag on the moderator row.** `DEC-177` admits a moderator to a certificate, but `certs_read_*` are
+admin-only (`03` §5.8). So a moderator never *sees* a certificate row to get its `href`, and SCR-045 shows them no
+issuance table (`certificates/page.tsx:131–132`). The function allows it and no screen offers it. That is consistent,
+and I am stating it so nobody reads the missing link as a bug.
+
+**D5 is now three surfaces, one route:**
+
+| Surface | Change | Owner |
+|---|---|---|
+| SCR-045 (`admin/sessions/[id]/certificates`) | issued rows get a «الملف» link, as W13.8 | mine |
+| ★ **`me/certificates/page.tsx:115`** | the bare `<a download>` on a render-time signed URL becomes `href={c.downloadHref}`, a plain `<a>` to `/api/designer/downloads/<artifactId>`. «قيد التجهيز» when it is null, exactly as today. `links` and the `signCertificateUrl` call on that page go | mine (fixes only, `DEC-177` §2) |
+| the event page's «شهادتك» (`sessions/[id]/page.tsx:376–380`, `myCertificateHref()`) | **the same unaudited class**: a render-time signed URL on the member's own certificate. I publish `downloadHref` on `listMyCertificates()`'s rows, and `sessions` changes the one line to use it, which is a request to `sessions` through the lead. If it stays, `REQ-ADM-021` is still unmet on that page | `sessions'` file |
+
+**In the DAL.** `CertificateRow` gains `downloadHref: string | null`. `attachPdfs()` already selects the ready PDF per
+document, and it additionally selects the artifact `id`, so both `listMyCertificates()` and
+`getSessionCertificatesWithRender()` fill it. `pdfPath` stays, because other readers use it.
+
+**`signCertificateUrl` now has no caller left in my files.** If `sessions` moves the event page to `downloadHref`,
+the alias is deleted and **`signExportUrl` is left with exactly two callers**: the studio's thumbnails, and the
+route.
+
+**Tests, re-checked against this change:**
+- `tests/components/me/certificates-page.test.tsx`: **no assertion moves**. Its fixture's `pdfPath: null` case still
+  shows «قيد التجهيز» (the row carries no `downloadHref`). No case asserts the download link's `href`. Its
+  `signCertificateUrl` mock becomes unused; I leave it, because removing it is an edit to evidence for nothing.
+- `tests/e2e/wave7-content-certificates.spec.ts` asserts «الشهادة قيد التجهيز» and not the link (`:11`), so it holds.
+- **New:** `wave13-designer-certificates-download.spec.ts` gains the member's case. The member downloads their own
+  certificate from `/app/me/certificates` → `303` → the PDF, with one audit row naming them. Another member forging
+  that artifact id → `403`, with no row.
+
+**Q2 and Q7, answered by `DEC-177`:** one function (above), and the member's own download **is** audited. Q2 is now
+only the lead's call on the name and the action string.
+
+## Wave 13 — as built (after sync 1, `DEC-178`)
+
+| Row | Commit | State |
+|---|---|---|
+| C1 — `getSessionPosterDownloads()` + types, `downloadHref()` | `e2f9ddb` | **published** |
+| D4 — one signer in `posters.ts`; `designer.ts` re-exports it, `signCertificateUrl` is an alias; `designer-one-signer.test.ts` guards it | `e2f9ddb` | done |
+| The audited route `GET /api/designer/downloads/[artifactId]` → `record_export_download()` → `303` to the signer; a refusal or failure → `303` back to the same-origin Referer with `?download=failed` | `ddf9edb` | built. **End to end waits on `0152`** |
+| D5 — SCR-045's issued rows link to the route; `me/certificates` moved off its bare `<a download>` (`DEC-177`); the studio's export panel moved to the route; thumbnails stay previews | `ddf9edb` | built. The e2e waits on `0152` |
+| D1 runtime — `geometry.ts`, the `arrange.ts` additions, `focal.ts`, `validate.ts` checks a preset's focal | `aa17eb4` | done, with unit tests |
+| D1 UI — canvas pointer model, handles, knob, guides, marquee, nudge bursts, the iframe origin fix; inspector group, transform and image sections; «تحديد متعدّد», select-by-kind | `61afd8b` | done, with jsdom tests. **e2e not yet run (needs a build)** |
+| D1b — add text, shape and logo; duplicate; named delete; text words, weight, colour; shape fill | `eebeb1f` | done. **«صورة» held** on the asset-resolution finding below |
+| D2 — the nine-point grid (the path) and the draggable dot; «الوسط» on an untouched layer writes nothing | `61afd8b` | done |
+| D2b — `scale: 'page'`, `SCHEMA_VERSION` 2, `BASE_SCHEMA_VERSION` 1 for every other writer, `page_scale_needs_v2` | `50c76af` | done. Parity holds; `designer-derive-untouched` matches `main`'s runtime |
+| The posters \| certificates tab strip | `5cd672c` | done |
+| The `SC 2.5.7` gate and the drag spec | `dfafeab` | written, **not yet run** |
+| Contract 2's control on SCR-045 | — | waits on the lead's «promoted» |
+
+**Parity**, run without `--update` after D2b: «parity holds». 21 of 28 assertions ran (the 7 slide-page cases skip locally because there is no `cwebp`), the background block ran 3 of 3, and `scripts/parity/goldens/**` is untouched.
+
+★ **Found while building D1b and sent to the lead, unruled at this writing: no image asset resolves to a URL.**
+- `render.ts:163` passes `image.assetId` through `resolveRef()`, which returns a non-binding value unchanged. The output is `<img src="<uuid>">`.
+- **Every uploaded poster** renders its only layer as a broken image, in the studio and in every export.
+- **Every worker-generated poster** draws the org's logo the same way: `resolveBrand()` gives the raw asset id.
+- The app-side export of a logo works only while the 5-minute signed URL that `getDesignerDocument()` pins is still fresh.
+- My proposal is in the message: an optional `assets` map on the binding context. The worker supplies data: URIs and the studio signed URLs, and with no map the output is byte-identical.
+
+### DEC-179 as built (`7f3b2a0`), and the owner's step after the merge (condition 5)
+
+What was built:
+- The runtime's `BindingContext.assets` and `assetIdsOf()`. With no map, the output is byte-identical: `designer-derive-untouched` passes against `main`'s hashes.
+- `worker/src/render/assets.ts` inlines each asset as a `data:` URI:
+  - only this org's asset ids are looked up;
+  - another org's id fails the artifact with its reason;
+  - over 32 MB the artifact fails too, never truncated.
+- The studio gets signed URLs through `DesignerDocumentData.assets`.
+- The logo stays an **id** in the pinned bindings. Before, the logo went into the bindings as a signed URL that changed on every page load, so the fingerprint changed too. For a logo document the studio's export queue could therefore never match what was already rendered. It is now stable.
+- `brand.ts` is untouched in both places.
+
+Tests:
+- `tests/unit/render-assets.test.ts` (4 tests).
+- `tests/e2e/wave13-designer-upload-render.spec.ts` uploads through the real picker and asserts two things:
+  - the studio's canvas image loads;
+  - with `E2E_WORKER=1`, the worker's pixels: red at the master's centre and corner, and red at the square's corners.
+
+★ **Which posters are cached broken, and why a plain re-enqueue does NOT fix them.** `request_render()` (`0060:94–96`) finds a ready artifact for the same fingerprint and renders nothing. The fingerprint does not change: the stored document and the bindings are the same bytes, and the asset is immutable per id. So re-enqueuing `regenerate_poster` is a no-op for every poster that already rendered. The step has two parts:
+
+1. **Find them**, read-only:
+   ```sql
+   -- every poster whose document draws an asset: an upload, or the logo where the org has one
+   select p.session_id, p.mode, p.binding, d.id as document_id
+     from public.session_posters p
+     join public.design_documents d on d.id = p.document_id
+    where exists (select 1 from jsonb_array_elements(d.document->'layers') l
+                   where l->>'kind' = 'image'
+                     and (l#>>'{image,assetId}' ~ '^[0-9a-f-]{36}$'
+                          or (l#>>'{image,binding}' = 'brand.logoAssetId'
+                              and exists (select 1 from public.brand_kits b where b.org_id = p.org_id and b.logo_asset_id is not null))));
+   ```
+2. **Clear their cached artifacts, then render again.** Delete the `export_artifacts` rows of those documents. It is a data fix, scoped by that list, and never a migration. Then:
+   - a **live** poster: re-enqueue `regenerate_poster` under `poster:{session_id}`;
+   - a **detached** poster (customised or uploaded): press «اطلب التصدير» in the studio. `REQ-DSG-003` forbids regenerating it automatically.
+   
+   The old objects are overwritten at the same paths by the new renders.
+3. Certificates draw the logo too. An issued certificate's PDF re-renders only by the per-row retry or a re-issue, and a certificate is what was printed (`REQ-CRT-014`). **I recommend leaving issued certificates as they are**: the owner decides.

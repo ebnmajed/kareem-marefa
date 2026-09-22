@@ -1,11 +1,161 @@
-**Last updated:** 2026-09-22 · **Branch:** `main` — ★ **PR #29 MERGED (`750367f`), branch deleted both sides** · **`main`:** wave 12 merged; production at **`0151`**; the Railway worker redeployed and `● Online` · **Phase:** ★★ **WAVE 12 COMPLETE AND LIVE — NEW SCOPE AFTER THE PLAN (`DEC-172` … `DEC-175`, M14)**: presenters change after creation, every session award pays at completion and check-in says what is pending, a poster is never cropped — and members see posters at all (`DEC-173`). Migrations **`0145`–`0151`**, additive. ★ **The owner's order in the wave-12 block is FINISHED — read, rehearse, push, merge, Railway, all on 2026-09-22.** All three demonstrables pass (D2/D3 on the real worker); gates green from a fresh reset.
+**Last updated:** 2026-09-22 · **Branch:** `wave-13/studio-and-session-settings` (cut from `main` at `1e39c47`) · **`main`:** wave 12 merged and live; production at **`0151`** · **Phase:** ★★ **WAVE 13 COMPLETE — REHEARSED — PR #30 READY (`DEC-176` … `DEC-179`, M15, `0152`–`0154`)**: the owner pushes, merges, reconnects Railway — nothing else: the studio's direct manipulation (`REQ-DSG-028` … `031`, M12, never run), the session download (`REQ-DSG-027`, M11, never run — one primary «تنزيل», the rest behind a disclosure), and a session's settings under one sub-nav (`REQ-SES-020`, new). Map written; ★ **draft PR #30** open at the first push; `designer`, `sessions`, `console` spawned planning-only — sync 1 approves their plans. Migrations from **`0152`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 12 — on `wave-12/presenters-awards-posters` — presenters, awards at completion, the whole poster (`DEC-172`)
+## ★★★ WAVE 13 — on `wave-13/studio-and-session-settings` — the studio, the session download, the settings hub (`DEC-176`)
+
+**Most of this is scope that was specified long ago and never built.** `REQ-DSG-027` (M11) and `REQ-DSG-028` …
+`031` (M12) were written, traced and never run. The design studio sat on the never-touch lists of waves 8–10.
+Only the settings hub is new (`REQ-SES-020`). Milestone **M15**. The brief is `docs/plan/notes/wave-13-lead.md`;
+the map is `CLAUDE.md` § *Ownership map (wave 13)*.
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | `1e39c47` = `origin/main`; production at **`0151`**; no open PRs; branch cut at `1e39c47` |
+| ★ Brief vs code, 1 | **Three signers, not one.** `signExportUrl()` (`designer.ts:547`), `signCertificateUrl()` (`certificates.ts:156`), inline in `getSessionPoster()` (`posters.ts:351`) — each `createSignedUrl(…, 300)` on `exports`. `REQ-DSG-027`'s «there is one» is false today, so `designer` folds them. `STORY-ADM-009`'s «three screens consume it» is also wrong: one does |
+| ★ Brief vs code, 2 | **A poster's bytes are not secret.** `exports_storage_read` (`0037:674`) admits any org member to any object under the org prefix; `DEC-173`/`0145` and `0080` show the poster to members and anonymous visitors. So «refused by policy» lives in **contract 3's audited RPC**, not in storage (`DEC-176` §2). A certificate is personal: `designer` measures whether a member can learn another's `storage_path` |
+| ★ Brief vs code, 3 | **A signed URL in the DTO would skip the audit.** Minted at render time and served by a bare `<a download>`, it writes no audit row on the click. So each ready artifact carries an **`href` to a route** that audits and then redirects (contract 1, amended in `DEC-176`) |
+| Brief vs code, 4 | `export_artifacts.byte_size` exists (`0055`) → **no table change** for contract 1. The only SQL the lead expects is contract 3's definer, on `0049`'s pattern |
+| Brief vs code, 5 | **`/app/admin/templates` has no index page** — only `templates/{posters,certificates}/page.tsx`, `actions.ts`, `state.ts`, all `designer`'s. `console` measures where the grid goes (contract 4) |
+| Confirmed | Zero pointer handlers in `src/components/designer/` (15 files, 2,526 lines; `editor` 585, `inspector` 333, `canvas` 200); the seven helpers at `presets.ts:331–357`, `arrange.ts:49–97`; `certificates/page.tsx:31` «The mode is SHOWN here and CHANGED on the schedule»; `04` lists `schedule` and `survey` and **not** `attendance` or `certificates`; no `/app/admin/sessions/[id]` page; 7 poster presets → 12 artifacts |
+| `trace` | **318 requirements · 152 stories · no gaps** (M15 added to the milestone pattern) |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-176`; `REQ-SES-020`, `STORY-SES-013`, M15; `REQ-DSG-027`'s reading cited; the map; the ten agent files | lead | **done** `a53a7a2`; draft **PR #30** |
+| C1 | Contract 1 — `getSessionPosterDownloads()` in `lib/dal/posters.ts`; `href = /api/designer/downloads/<artifactId>`; `primary` = master PNG; failure → `303 ?download=failed` | `designer` → `sessions` | **published** (`e221c56`), approved at sync 1 |
+| C2 | Contract 2 — SCR-045 is the one writer: `sessions` writes `set_session_certificate_mode()` + `schedule_session()`'s `null`-means-unchanged (one file, promoted first); `designer` builds the control; refused after completion | `sessions` ↔ `designer` | **ruled** (`DEC-178`); ★ **SQL promoted as `0154`** — `schedule_session()`'s body diffed against the live function: one line differs (`coalesce(p_certificate_mode, …)`); mode + schedule RLS 146/146 |
+| C3 | Contract 3 — the download audit definer, **created from nothing** (`DEC-076`'s «`0086`» was never written — `DEC-177`): a poster → admin · moderator · accepted presenter; a certificate → admin · moderator · its own member; `42501` otherwise; `write_audit()`; granted to `authenticated` only, in `definer-exposure`'s sweep; red→green, `03` §8.2 rows | lead | **landed** — `0152` `record_export_download()`; `tests/rls/session-downloads.test.ts` red (8 × `42883`) → green 9/9; `definer-exposure` 4/4, `policy-diff` ✓, 4 rows in `03` §8.2. Applied locally; promoted with the wave |
+| C4 | Contract 4 — nothing new: `getTemplateLibrary()` as it stands | `designer` → `console` | **closed at sync 1** |
+| R1 | ★ The research: the five open questions of `DEC-176` §1, and the overlay-only libraries evaluated | `designer` | **done** (`e221c56` W13.1) — no library; logged in `DEC-178` |
+| D1 | `REQ-DSG-028` — direct manipulation in the overlay, the seven helpers reused, `DEC-093`'s path for every operation, the numeric fields **demoted, never deleted**, `DEC-096`'s axes, the iframe origin fix, «تحديد متعدّد» | `designer` | **built**; the drag spec's main case green on `bfa194f` (one undo per gesture, the drag saves). ★ It found a real defect: a drag released in the same frame as its last move was never saved (`ffd1d93`). The marquee case is red — spec or RTL hit-test, with `designer` |
+| D1b | ★ Add text · image · logo · shape; delete, duplicate; edit a text's words, weight, colour **token** — the owner's sentence (`DEC-178`) | `designer` | **done** — `eebeb1f` (text, shape, logo, duplicate, delete, format) + «صورة» in `7f3b2a0`; the delete confirm names WHICH layer (`bfa194f`); one locked note, not two (`7965137`, found by the full gate) |
+| D6 | ★ **An image layer's asset never resolved to a URL** — every uploaded poster and every auto poster's logo is `<img src="<uuid>">` in every render (`DEC-179`): an optional `assets` map in the runtime (byte-identical without it), `data:` URIs in the worker, and a spec that finally asserts a render. **Before D1b's add image/logo.** After the merge the owner re-enqueues `regenerate_poster` | `designer` | **done** `7f3b2a0` — ★ `wave13-designer-upload-render.spec.ts` green **with the real worker**: an uploaded poster fills the master edge to edge and crops into the square. The re-render of the posters cached broken on production was **withdrawn by the owner** — test data, nothing owed |
+| D2 | `REQ-DSG-030` — the focal dot and the nine-point grid, centre by default | `designer` | **done** — the nine-point grid and the dot (`61afd8b`, `aa17eb4`); «Centre» on an untouched layer writes nothing; the taps gate sets it with `click()` alone |
+| D2b | An uploaded poster crops for real — `'page'` scale, `schemaVersion: 2` only; no golden moves; the fingerprint carries the version | `designer` | **done** `50c76af` — `'page'` scale behind `schemaVersion: 2`; `main`'s worker refuses a v2 document (`schema_version_future`) rather than cache a wrong render; the fingerprint hashes the document, which carries the version; no golden moved |
+| D3 | `REQ-DSG-029` and `REQ-DSG-031` — measured: 029 built except pre-export live thumbnails (**carried**); 031's stated preflight rides on C2 | `designer` | **done** — 029 built except pre-export live thumbnails (**carried**); 031's preflight is SCR-045's mode dialog (`0d64933`) |
+| D4 | One signer — three functions fold into one, every caller unchanged | `designer` | **done** `e2f9ddb` — one `signExportUrl()`; `signCertificateUrl` deleted; `tests/unit/designer-one-signer.test.ts` fails on a second `exports` signer |
+| D5 | The certificates screen: one download per issued certificate · ★ **`me/certificates`' bare `<a download>` onto the audited route** — today the only download in the product, and unaudited (`DEC-177`) | `designer` | **done** — `ddf9edb` + `a781741` (a 36 px target); `wave13-designer-certificates-download` green on phone; ★ `me/certificates` and the event page through the route (`DEC-177`) |
+| H1 | `REQ-SES-020` — the sub-nav over the routes that exist, no orphan screen | `sessions` | **built** `0586f97`; admin and moderator cases green on build `c17aec3` (+`designer`'s uncommitted `compose.ts`); strip capture opened in bands — current item marked, the row fades at the edge; the skip link seen in the first capture was the element screenshot's artefact, proven by three focus assertions (`29ea484`) |
+| H2 | The certificate mode off the schedule screen (C2) | `sessions` | **done** `6f71d56` — the form neither shows nor posts it; «every day» moved into «الحضور»; 4 ledger lines |
+| H3 | Materials, tasks and photos reachable from the hub — through «صفحة الجلسة», so nothing to shed | `sessions` | **done** — «صفحة الجلسة» in the strip; nothing shed |
+| H4 | `REQ-DSG-027` — «تنزيل» on the event page and the hub: one primary file, the rest behind a disclosure, pending as pending | `sessions` | **green** on build `67c66e1`: `wave13-sessions-hub.spec.ts` **5/5** — admin, moderator, ★ the accepted presenter (after `designer`'s `67c66e1`: the DTO selected a missing column and swallowed the error), a plain member sees none, a refused download says so. Event-page captures opened in bands: one primary, «مربّع · PNG · 820 كيلوبايت» a link, «ستوري · PNG» «قيد الإعداد» and not a link |
+| K1 | The admin rail's entry for the hub — no code: `isCurrent()` already prefix-matches; proven by a capture | `console` | **done** — no code; `wave13-console-rail-hub-current.png` opened in bands: «الجلسات» current inside the hub, «القوالب» one leaf (`d2c1852`) |
+| K2 | `/app/admin/templates` — the grid already exists (`template-library.tsx`): a redirect, the rail's «التصاميم» collapsed to one leaf, `designer`'s posters | certificates tab strip (shape (b), `DEC-178`) | `console` · `designer` | **done** — `c95dd70` (redirect, the rail's one leaf), `designer` `5cd672c` (the tab strip); `wave13-console-templates-index.png` opened in bands — the tabs within the first phone screen, the preview's Arabic whole at native resolution |
+| K3 | The 390 px and accessibility review of the hub and the grid | `console` | **done** — source review clean (`5cd672c`), both captures phone-project viewport shots, `wave13-console-templates.spec.ts` 2/2 on build `67c66e1` |
+| L1 | `04`'s route table reconciled (`attendance`, `certificates`, the hub) and `09` SCR-043 — **in the hub's commit** | lead | **done** — `04`: `[id]/{layout,page}`, `attendance`, `certificates`, `templates/page.tsx` and `api/designer/downloads/[artifactId]`; `09`: SCR-043 and SCR-045 amended |
+| L2 | Promotion from `0152`, the rehearsal notes | lead | **done** — `0152`–`0154` promoted and applied in order from a fresh reset; ★ **rehearsed on the owner's production schema dump** (the owner's order, step 2): all three ok, the end state identical apart from `rls_auto_enable()` (Supabase's) and the dump's missing storage schema; `0154` proven for `main`'s call and the new form's |
+| L3 | ★ **The certificate leak** — any member can list and sign another member's certificate PDF (`0037`'s org-prefix storage policy; probed by `designer`). A restrictive `select` policy on `exports`, `0153`, red→green for own · admin · another member · anon public card | lead | **landed** — `0153`, one restrictive policy + a definer predicate on the path's document segment; `session-downloads-storage.test.ts` red (3 × «another member sees it») → green; full RLS **131/132 files, 1282 tests**, the one red `survey-submit` = `DEC-171`'s leftover jobs (4–5 queued from earlier runs), not this. ★ **Still live on production until the owner pushes `0153`** |
+| M1 | ★ Demonstrable — the `SC 2.5.7` gate: every studio operation with `page.click()` alone, the document changed each time | `designer` writes, lead runs | ★ **GREEN** on build `bfa194f` — `wave13-designer-studio-taps.spec.ts`: every operation with `click()` alone, the stored document changed each time. On the way it found a delete confirm that named the layer's kind, not which layer (fixed, `bfa194f`) |
+| M2 | Demonstrable — `ar` and `en` consoles store byte-identical documents for «align start» | `designer` | **green** — `tests/components/designer/wave13-console-parity.test.tsx` 6/6 (align to the selection, distribute, nudge, both document directions) beside wave 8's `inspector-align.test.tsx` |
+| M3 | Demonstrable — **no parity golden moves** | lead | **green** — `npm run parity` without `--update`: «parity holds», 21 of 28 locally (7 slide cases need `cwebp`; CI runs 28), background 3 of 3; `scripts/parity/goldens/**` untouched; `designer-derive-untouched` hashes every baseline template × preset against `main`'s runtime |
+| M4 | ★ Demonstrable — a staff member downloads a session's poster and its certificates from the session, at 390 px in Arabic, never opening `/app/admin/designer` (`wave13-demo-download.spec.ts`) | lead | ★ **green** on build `a781741` — `tests/e2e/wave13-demo-download.spec.ts`, phone, 390 × 844: the hub's address → «تنزيل الملصق» under the picker → the strip to «الشهادات» → the certificate; each download a 303 through the audited route to a real file (PNG, PDF, named), one audit row each; **no navigation touches `/app/admin/designer`**. ★ It found SCR-045's «نزّل» at **18.4 × 24 px** (SC 2.5.8) — fixed by `designer` (`a781741`), now asserted ≥ 24. Captures `wave13-demo-download-{poster,certificate}.png` opened in bands |
+| G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict` | lead | **run from a fresh `db:reset`** (at `0154`), build `a781741`: tsc ✓ · lint 0 errors (26 warnings, as `main`) · unit **2472** ✓ · `ui-lint --strict` 285 files ✓ · RLS **132/132 files, 1288** ✓ · `policy-diff` ✓ · `trace` 318/152 ✓ · `qa` **57/57** (38 contract + 19 appearance) · `visual` `wave12`→`wave13` **0.000% on all 8** · parity holds (21/28 local) · **full e2e, real worker, parallel: 657 passed, 12 failed** → each failed FILE rerun alone, one worker: `admin-dashboard`, `wave7-sessions-profile`, `wave13-sessions-hub` fail only **with a live worker running under specs that assume none** (it pays awards and re-renders the seeded poster) — **green without it**; `bookmarks:237` = `DEC-171`'s flake; ★ **one real regression, this wave's**: `wave8-designer-editor:324` — D1b added a second «مقفلة في القالب» note (routed to `designer`: remove the redundant note, the evidence spec unchanged); ★ **one pre-existing**: `wave10-demo-email-studio` case 6 asserts the untouched org's STRING-path mail, retired on purpose by `DEC-170` in wave 11 — stale since then, hidden because it runs only with `E2E_WORKER=1`; carried (notify's, not this wave's scope) · ★ **Closed** on build `7965137`: `wave8-designer-editor` + every wave-13 spec **25 passed, 0 failed** — the one regression fixed without touching the evidence spec |
+
+### Sync 1 — 2026-09-22 — three plans approved (`DEC-178`)
+
+The plans are `designer` `e221c56`, `sessions` `d75e45b` and `console` `784ea77`. Each headline claim was verified against the tree before ruling.
+
+**What the plans found:**
+- ★ **Any org member can read another member's certificate PDF through Storage** (row L3).
+- ★ **Moving the mode off the schedule form would turn certificates off on every save** (`0112:68`, `:312`).
+- A mode changed after completion does nothing.
+- The hub's address is already linked, and 404s.
+- The studio cannot add a layer.
+- An uploaded poster never crops.
+- The iframe is misplaced in two direction pairs.
+- The templates grid is already built.
+
+**`DEC-177`, from the reviewer session:**
+- `DEC-076`'s «`0086`» audit rows were never written.
+- `me/certificates` is the one download that ships, and it writes no audit row. It moves onto the audited route.
+
+### ★ If the wave must shed
+
+**H3 first.** Then the sub-nav ships over the four routes that exist. **D1 and H4 are the owner's two named
+complaints and are not negotiable.** Whatever is shed is named here with why.
+
+### Carried — not this wave
+
+The owner's list, unchanged except the settings consolidation (now H1): deleting a session with its awarded
+points · the photo gallery and lightbox, `REQ-ADM-021`'s «تنزيل الكل» and `JOB-zip_session_photos` · the
+wordmark link · Google avatars · the gamification layer · the prose pass · `DEC-100`'s motion system. And from wave
+12: the month-end streak gap · presenter certificates and the poster after a post-completion presenter change ·
+`materials_uploaded` and `late_cancellation` have no writer · company points not re-evaluated after a
+post-completion change · `survey-submit.test.ts` counts every queued job.
+Found by the final gates, predating the wave:
+- `wave10-demo-email-studio.spec.ts` case 6 still asserts an untouched org's string-path mail (no `color-scheme`). `DEC-170` retired that path in wave 11, so the case has been stale since then. It never ran in a gate because it needs `E2E_WORKER=1`. `notify`'s file; the fix is an expectation change with a ledger line, in a wave with mail scope.
+- The e2e suite cannot run with a live worker beside the specs that assume none (`admin-dashboard`, `wave7-sessions-profile`, `wave13-sessions-hub`): the worker pays and re-renders under them. Real-worker specs run in their own pass.
+
+Found this wave, predating it (`sessions`, 2026-09-22):
+- On a phone the poster slot's pending line «يُولَّد الملصق… N من M» sits under «نبذة», away from the download (`session-poster.tsx`, M6, and the wave-6 phone composition).
+- The download menu trusts `status = 'ready'` and the slot trusts a successful sign, so a ready row whose object is missing makes them disagree. The route answers `?download=failed`, so the user is told.
+
+### ★ The owner's order (wave 13) — in this order
+
+**Migrations: `0152`–`0154`**, all additive:
+- `0152`: a new definer function, `record_export_download()`;
+- `0153`: one restrictive storage policy, plus its definer predicate;
+- `0154`: `schedule_session()` re-created with one default changed (`p_certificate_mode` → `null`), plus one new definer function, `set_session_certificate_mode()`.
+
+1. ★ **Production read, 2026-09-22, by the owner:** **11** certificate PDFs under the exports prefix (what `0153` narrows), and **3** posters left cached broken by `DEC-179`. ★ **The owner ruled that every session, poster and certificate on production is test data, so none of it is owed** (as `DEC-175`).
+2. ★ **Rehearsed 2026-09-22** on the owner's production schema dump, taken at `0151` (public schema only, **no data rows**).
+   - **Setup.** The dump was loaded into a throwaway database, `rehearse13`, in the local cluster, over the local `extensions` / `auth` / `storage` schemas; `realtime` was added for the fixture. Every storage policy the local chain had created was dropped first, so storage's policy set came only from what the migrations under test add.
+   - **Loading the dump.** Two errors, both platform-only, as in wave 12: the `supabase_realtime` publication, and the `vault` schema.
+   - **Migrations.** **`0152`, `0153` and `0154` were each applied in one transaction with `ON_ERROR_STOP`. All three ok.**
+   - **End state against the fully migrated local database:**
+     - **every public function body identical by hash** (290), including the three new or re-created ones;
+     - every public policy identical (169);
+     - every trigger identical (109);
+     - `anon` / `authenticated` / `service_role` table grants identical (150);
+     - function execute grants identical (474).
+   - **The differences, and why each is expected:**
+     - **Production-only:** `rls_auto_enable()` and its execute grant to the three client roles. This is Supabase's own function and is in no migration; wave 12 recorded the same.
+     - **An artefact of the dump, not of production:** the 11 older storage policies (`exports_storage_read`, `fonts_*`, `materials_*`, `photos_*`, `design_assets_*`, `exports_storage_read_public_card`, `material_pages_storage_read`) are absent from the rehearsal. The dump carries no `storage` schema. `0153`'s one new policy, `exports_storage_certificate_restricted`, matches the local database exactly. It only **adds** a uniquely named restrictive policy, so it cannot collide with production's existing storage policies.
+   - ★ **`0154` behaviour, proven on the rehearsed schema through the real RLS fixture** (13/13):
+     - **`main`'s exact call** (`origin/main` `lib/dal/sessions.ts:547`, all 16 arguments named, `p_certificate_mode` among them) writes the mode, `automatic` and then `review`.
+     - **The new form's call**, with `p_certificate_mode` `null`, leaves `review` standing. **It is not reset to «off»**, which is the failure this ordering exists to prevent.
+     - There is **one** overload, with `p_certificate_mode … DEFAULT NULL`.
+     - `sessions-certificate-mode.test.ts` passes 11/11 on the rehearsed schema, and `0152`'s `session-downloads.test.ts` 9/9.
+   - **Cleaned up:** the dump, the throwaway database and the one-off proof test are deleted.
+3. ★ **Push `0152`–`0154`, BEFORE the merge.**
+   - Order matters because the new form sends no mode. On the old schema, the old default (`'off'`) would switch every saved session's certificates off.
+   - `main`'s form names the mode, so `main` on the new schema saves exactly as before (proven in step 2).
+   - `supabase migration list --linked` must then read `0154` on both sides.
+4. **Merge PR #30.**
+5. **Reconnect Railway** (the standing step below). `main`'s old worker refuses a `schemaVersion: 2` document (`schema_version_future`) rather than caching a wrong render, and a retry after the new worker deploys renders it.
+
+~~Re-render the posters `DEC-179` left cached broken~~ and ~~decide on issued certificates that draw the logo~~ — ★ **both withdrawn by the owner (2026-09-22): every session, poster and certificate on production is test data, so nothing is owed.** The 3 broken posters and the 11 certificate PDFs stay as they are.
+
+### ★ The standing owner step — Railway, after every merge
+
+Railway's push trigger has needed a manual `railway service source connect` after **seven consecutive merges**.
+**The durable fix is the dashboard's Settings → Source, not the CLI.** Until that is done it is an owner step after
+every merge, and **it is the last thing in this project still done by hand**.
+
+### Untouched-suite ledger (wave 13)
+
+*Every pre-existing test file whose assertion changes, with why — written in the same commit as the change.*
+
+| File | Assertion | Why |
+|---|---|---|
+| `tests/unit/schedule-days.test.ts` › «still declares wave 8's sixteen fields…» → «…wave 8's fields but the certificate mode…» | (a) `WAVE_8_FIELDS` loses `certificateMode` | **On purpose** — `REQ-SES-020`, contract 2 (`DEC-178`): the mode is written on SCR-045 only (`sessions` `6f71d56`) |
+| `tests/unit/schedule-days.test.ts` › «sends every wave-8 argument unchanged…» | (a) `WAVE_8_INPUT.certificateMode` `"automatic"` → `null` | **On purpose** — the action sends `null` whatever a client posts; the fixture still posts `"automatic"`, so it also proves a stale client cannot write the mode (`0154`: `null` = unchanged) |
+| `tests/components/checkin/schedule-form.test.tsx` › `BASE_INITIAL` | (b) the `certificateMode` line removed | harness only — `ScheduleInitial` lost the field |
+| `tests/components/sessions/schedule-days.test.tsx` › `BASE` | (b) the same line removed | harness only |
+| `tests/components/me/certificates-page.test.tsx` | (b) the mock of the deleted `signCertificateUrl` removed — the entry, its import, one `mockResolvedValueOnce`; **no assertion changed** | the page links through `downloadHref` (`DEC-177`); `designer` `67c66e1` |
+| `tests/e2e/wave9-three-day-workshop.spec.ts` › case 1 (the lead's, R7) | (b) the mode is set on SCR-045 — «تصدر تلقائيًا عند اكتمال الجلسة», «احفظ الوضع», the preflight's «ثبّت الوضع» — not by the schedule's radio; the DB assertion `certificate_mode = 'automatic'` is unchanged, now polled after SCR-045's save | the mode left SCR-043 (`DEC-178`, `6f71d56`, `0d64933`). **7/7 with the real worker** on build `2549666`: case 7 still issues exactly one certificate, to the member who came all three days |
+
+---
+
+## ★★ WAVE 12 — COMPLETE and LIVE (PR #29, `750367f`; `0145`–`0151` pushed) — was on `wave-12/presenters-awards-posters` — presenters, awards at completion, the whole poster (`DEC-172`)
 
 **New scope after the plan.** `DEC-171` closed `14-roadmap.md`; this wave is milestone **M14** so its stories
 trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` § *Ownership map (wave 12)*.

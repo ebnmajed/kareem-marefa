@@ -4168,3 +4168,136 @@ D1 seeded a poster the way the worker writes one and signed in as a plain member
 The presenters of directly created sessions left at `accepted = false` (`0020`) exist on production only on test sessions. Nothing is owed, so **the scoped data fix is not run** — neither variant. From `0151` onward every new directly created session assigns its presenters, so the class cannot recur; a stuck row on an old test session stays as it is and pays nothing.
 
 - **Documents changed:** `STATUS.md` (O1, the owner's order)
+
+---
+
+## DEC-176 — Wave 13 builds what M11 and M12 specified and never ran — the studio's direct manipulation and the session's download — and gathers a session's settings under one sub-nav; «simple» is the owner's reading of `REQ-DSG-027`
+
+- **Date:** 2026-09-22 · **Decided by:** the owner (three asks, and the ruling on «simple» below); scoped and measured by the wave-13 lead from `docs/plan/notes/wave-13-lead.md`
+- **Adds:** `REQ-SES-020` (`01-prd.md`), `STORY-SES-013` (`15-backlog.md`), milestone **M15** (`14-roadmap.md`)
+- **Delivers, unchanged in text:** `REQ-DSG-027` (M11), `REQ-DSG-028` … `REQ-DSG-030` and what of `REQ-DSG-031` is unbuilt (M12) — `STORY-ADM-009`'s poster half and `STORY-DSG-012` / `-013` now also cite M15
+- ★ **Two of the three asks are not new scope.** The owner asked for «a simple download for the session's poster» and «a fully drag and drop visual editor». Both are requirements that were written, traced and never built: `REQ-DSG-027` (M11) and `REQ-DSG-028` (M12). Waves 8, 9 and 10 put the design studio on their never-touch lists, and wave 10 built only M12's **email** studio. This wave stops deferring them. **Only the settings hub is new**, so it is the only new requirement.
+
+### Measured before deciding — where the tree and the brief disagree
+
+1. ★ **There are three signers, not one.** The brief and `STORY-ADM-009` call `signExportUrl()` (`lib/dal/designer.ts:547`) «the one signer». The same `createSignedUrl(…, 300)` on `exports` is also minted by `signCertificateUrl()` (`lib/dal/certificates.ts:156`) and inline in `getSessionPoster()` (`lib/dal/posters.ts:351`). `REQ-DSG-027`'s acceptance, «there is one», is **not true today**. `designer` folds all three into one function, and the download DTO is the first new reader of it. `STORY-ADM-009`'s «three screens already consume it» is wrong too: one screen does, the designer page.
+2. ★ **A poster's bytes are not secret, so «refused by policy» lives in the download action, not in storage.** `exports_storage_read` (`0037:674`) admits any member of the org to any object under the org's prefix. `DEC-173` (`0145`) admits a member to a session poster's `export_artifacts` rows, and `0080` shows the poster to an anonymous visitor on `/s/[id]`. So a member who is neither staff nor presenter can **already** read the poster, by design, because a poster is published artwork. `REQ-DSG-027`'s refusal is therefore enforced by the **audited download RPC** (contract 3): it re-derives «admin, moderator, or an accepted presenter of this session» and refuses everyone else with `42501`. The menu is not rendered for them. The bytes stay as `DEC-173` left them. ★ **Certificates are different**: a certificate is personal. `designer`'s plan measures whether any member can learn another member's certificate `storage_path` under RLS. If so, that is a finding for sync 1, not something to fix silently.
+3. **`export_artifacts.byte_size` already exists** (`0055`), so contract 1's DTO needs no table change. The only SQL the lead expects is contract 3's definer function, on `0049`'s pattern (`record_material_download()`: re-derive, then `write_audit()`).
+4. **`/app/admin/templates` has no index page.** Only `templates/{posters,certificates}/page.tsx`, `actions.ts` and `state.ts` exist, and all are `designer`'s. `16` §10.3's card grid is either a new index page or a change to those two. `console` measures which before building, and if it is the latter, the row becomes a request to `designer`.
+5. **`04`'s route table lists `sessions/[id]/schedule` and `/survey`, but not `/attendance` or `/certificates`,** and both ship. `DEC-083` is reconciled in the same commit as the hub.
+6. **The certificates screen records the owner's complaint in its own words** — `certificates/page.tsx:31`: «The mode is SHOWN here and CHANGED on the schedule screen.»
+7. **Zero pointer handlers** in `src/components/designer/` (`onPointerDown`, `onMouseDown`, `onDrag`, `draggable`, `pointermove` — no match). `snap()`, `snapTargets()`, `snapTargetsBlock()` (`presets.ts:331–357`) and `alignLayer()`, `fitLayerToSafeArea()`, `reorderLayer()` (`arrange.ts:49–97`) exist and are driven only by number entry. The overlay that drag belongs in is `canvas.tsx`'s, already documented for it (`:23–25`).
+
+### 1 · The studio (`REQ-DSG-028` … `REQ-DSG-030`, the rest of `REQ-DSG-031`) — `designer`
+
+- Direct manipulation **in the overlay only**. That covers drag, eight-handle resize, rotate, snap with guides, arrow-key nudge, marquee, and group align/distribute, all reusing the seven helpers. **`DEC-093` in full:** every dragged operation has a single-pointer, non-dragging path, and **the inspector's numeric X/Y/W/H/rotation fields are the conformance path — demoted into a collapsed accordion, never deleted.** **`DEC-096` in full:** align, distribute and rulers follow the document's axis, and arrow keys the visual one. The overlay uses physical `left`/`top` computed from document geometry, and that exemption is written in a comment where the code is.
+- The focal point is the draggable dot **and** the nine-point grid, and the grid alone must be enough. It defaults to the geometric centre, so **no parity golden moves**. A golden that moves is a bug.
+- ★ **The research the owner asked for is commissioned narrowly**, as the first part of `designer`'s plan, on the five open questions: hit-testing a rotated layer in an RTL document; snap tolerance at a phone's scale, since `snap()`'s 8 is in document pixels; the taught alternative to marquee; whether `SC 2.5.8`'s *essential* exception for the handles holds on a 390 px phone; and undo granularity for a drag, one entry per gesture. **The engine is not replaceable** (`DEC-017`, `DEC-048`). Any library evaluated must sit in the overlay, and a library that wants to own rendering is disqualified on sight. Which libraries were evaluated, and why, is logged at sync 1.
+
+### 2 · The download (`REQ-DSG-027`, and the certificates on SCR-045) — `designer` publishes, `sessions` renders
+
+- ★ **The owner's ruling beats the requirement's letter.** «Why would I ever need to export a template with all the world's available formats, I just need a simple download.» A session poster renders **12 artifacts**: `presetsFor('poster')` is seven presets, PNG + WebP for the five screen sizes and a PDF for `a4` and `a3`. A 12-row menu would move the designer's export queue onto the event page, which is exactly what the owner is complaining about. **The reading:** one primary **«تنزيل»** gives the obvious file, the 4:5 master as PNG. Every other ready format sits behind a disclosure. `REQ-DSG-027`'s intent is met in full: reach on the event page and SCR-043, one signer, a pending variant shown as pending and never as a broken link, and refusal for anyone else. **This is the reading, logged here so no later reader thinks the requirement was half-built.**
+- The staff who issue certificates can download them from `/app/admin/sessions/[id]/certificates`, one file per certificate, through the same signer. Today that screen has no download of any kind.
+- Every download writes an audit row (contract 3). **Photos are not this wave.** `REQ-ADM-021`'s «تنزيل الكل» and `JOB-zip_session_photos` stay unbuilt, because the poster menu is enough reach for one wave.
+
+### 3 · The session settings hub (`REQ-SES-020`, new) — `sessions`, with `console`'s rail entry
+
+- One place answers «where do I change this session?». It is **a sub-nav over the routes that exist** — schedule, presenters, the poster, the certificate mode, certificates, attendance, the survey. It is **not a fifth orphan screen**. The certificate mode gets **one writer** (contract 2). Materials, tasks and photos have no admin screen today. The hub reaches them, and **if the wave has to shed something, it sheds this absorption first**. The download and the studio are the owner's two named complaints, and neither is negotiable.
+
+### The team (the map is `CLAUDE.md` § *Ownership map (wave 13)*)
+
+`designer` (opus): the studio, the signer and the download DTO, the certificates screen's download. `sessions` (opus): the hub, and the «تنزيل» menu on the event page and the hub. `console` (sonnet): the rail's entry for the hub, `/app/admin/templates`' card grid (`16` §10.3), and the 390 px and accessibility review of both. **The lead** writes this entry, the map, the ten agent files, `01`/`04`/`09`/`14`/`15`, contract 3's definer function and any other table change, promotion from **`0152`**, the four demonstrables, and the gates. **Not spawned:** `checkin`, `scoring`, `content`, `event`, `notify`, `platform`, `branding`. The lead is custodian of their files.
+
+**Contracts:** (1) `designer` → `sessions`: one DAL function returning, per session, the ready artifacts with preset, format and bytes, plus the pending ones as pending. ★ **Each ready artifact carries an `href` to a route that audits and then serves the file, never a bare signed URL.** A URL minted at render time and served by a plain `<a download>` writes no audit row on the click. `REQ-DSG-027` promises the signed URL and `REQ-ADM-021` the audit row, and only a route that calls contract 3 and then redirects to the signed URL keeps both. `sessions` never touches storage or the signer. (2) `sessions` ↔ `designer`: the certificate mode has one writer after this wave, ruled at sync 1. (3) Lead: every download is audited through a definer function the lead lands, because `audit_log` is append-only with `service_role` revoked (invariant 9). (4) `designer` → `console`: the templates grid reads `designer`'s DAL, and a new DAL function is a request to `designer`.
+
+**Not this wave — named in every agent file:** deleting a session with its awarded points · the photo gallery and lightbox, `REQ-ADM-021`'s «تنزيل الكل» and `JOB-zip_session_photos` · the wordmark link · Google avatars · the gamification layer · the prose pass · `DEC-100`'s motion system · everything under `(marketing)/**` · recurring series (`A14`) · replacing the renderer (`DEC-017`, `DEC-048`).
+
+- **Documents changed:** `01-prd.md` (`REQ-SES-020`; `REQ-DSG-027`'s reading, cited), `14-roadmap.md` (M15), `15-backlog.md` (`STORY-SES-013`; M15 on `STORY-DSG-012`, `-013`, `STORY-ADM-009`), `scripts/traceability.mjs` (M15), `CLAUDE.md` and the ten agent files (the map), `STATUS.md` (the wave-13 block). `04` and `09` follow in the hub's commit.
+
+---
+
+## DEC-177 — Contract 3 creates the download audit from nothing, and a member's own certificate download is audited too; `DEC-076`'s pointer to `0086` is wrong
+
+- **Date:** 2026-09-22 · **Decided by:** the wave-13 lead, on two findings from the reviewer session, each verified against the tree
+- **Amends:** `DEC-176` contract 3 (who may download, and which path is audited)
+- **Corrects:** `DEC-076` (3) — «`0086` adds the audit action rows and nothing else». `0086` is `0086_manual_mark_window.sql`, wave 7's manual check-in (`DEC-141`); the number was taken, and **no download audit action exists anywhere in the schema**. `audit_log.action` is free text under a pattern check (`0004`), so nothing failed loudly. `DEC-076` is not edited; this sentence is the pointer.
+
+1. **`0152` creates the download audit, it does not extend one.** Its shape is already fixed by the tree: `write_audit()` is granted to `service_role` only (`0005:40–41`), and `service_role` is never on Vercel (invariant 7). So the function is `security definer`, `set search_path = ''`, **revoked from `public` and `anon`, granted to `authenticated`**, on `0049`'s pattern. It is covered by `tests/rls/definer-exposure.test.ts`, the gate that exists because of `DEC-152`.
+2. ★ **The one download path that ships today is unaudited, and it is brought onto the route.** `me/certificates/page.tsx:115` is a bare `<a download>` on a URL `signCertificateUrl()` minted at render time. The only certificate audits are issue and revoke (`certificates.ts:510`). So `REQ-ADM-021`'s «every download is audited» is **unmet today**. Landing contract 3 for the new menus and leaving that link alone would make the requirement look met while it is not, which is exactly the failure this wave exists to fix. **Decision:** `me/certificates` links through `designer`'s audited route (one `href`, `designer`'s file, already in its fixes-only list for the signer's fold). It is not exempted.
+3. **Contract 3's rule therefore has two subjects.** For a session poster: admin, moderator, or an accepted presenter of that session. For a certificate: admin, moderator, **or the certificate's own member**. Everyone else is refused with `42501`. One function or two is `designer`'s and the lead's call at sync 1. The audit row names the actor, the subject and the artifact (`REQ-ADM-021`'s acceptance).
+
+- **Documents changed:** `CLAUDE.md` and the ten agent files (contract 3), `STATUS.md` (C3, D5)
+
+---
+
+## DEC-178 — Wave 13, sync 1: three plans approved; one audited route for every download, the mode written only on SCR-045 and refused after completion, the studio adds and edits layers, and the org stops reading each other's certificates
+
+- **Date:** 2026-09-22 · **Decided by:** the wave-13 lead, on the plans in `docs/plan/notes/{designer,sessions,console}.md` (`e221c56`, `d75e45b`, `784ea77`)
+- **Amends:** `DEC-176` (contract 2's writer, D1's scope, the templates row), `DEC-093` (one more tap path, below)
+
+**Found by the plans, each verified against the tree:**
+- ★ **Any member of an org can list and sign any other member's certificate PDF.** `exports_storage_read` (`0037:674`) admits the whole org prefix, and Storage's listing runs as the caller. `designer` probed it in a rolled-back transaction. The tables do not leak (`documents_read`, `0055:614`); Storage does. **Live on production.**
+- ★ **Taking the mode off the schedule form would switch certificates off for every session.** `schedule_session()` defaults `p_certificate_mode` to `'off'` and writes it on every save (`0112:68`, `:312`).
+- **A mode changed after completion does nothing.** The fan-out ran at completion (`0065`/`0108`).
+- **`/app/admin/sessions/[id]` is linked and 404s** (`survey/page.tsx:56`).
+- **The studio cannot add or delete a layer, or edit a text's words, weight or colour** — the owner's «add images, logos, text, format the text».
+- **An uploaded poster never crops.** `derive()` keeps its 4:5 frame on every preset, so a focal point would have no visible effect on any layer that exists.
+- **The canvas iframe is misplaced** in two of the four console × document direction pairs (`canvas.tsx:103`, `:125`) — `DEC-096`'s dormant class, found live.
+- **`16` §10.3's templates grid is already built**, twice, in `components/designer/template-library.tsx`. Only the address `/app/admin/templates` is missing.
+
+**Rulings — contracts:**
+1. **Contract 1 approved as `designer` wrote it.** `getSessionPosterDownloads(locale, sessionId)` in `lib/dal/posters.ts`. It returns `null` for a viewer who may not download. `primary` is always the master PNG, pending when not ready. Each ready item carries `href = /api/designer/downloads/<artifactId>`. `sessions`' R4 is adopted: a refusal or failure answers `303` back to the page with `?download=failed`, never a raw body, and the file is named through the signer's `download` option.
+2. ★ **Contract 2: SCR-045 is the mode's one writer.** `sessions` writes `set_session_certificate_mode()` — admin only, audited, refusing before its first write — and `schedule_session()`'s `p_certificate_mode` becomes default `null`, where `null` means unchanged. Both go in one proposed file, promoted before `designer` builds the control. `designer` builds the control on SCR-045 and calls `sessions'` DAL function. ★ **The mode is refused once the session is `completed`, `archived` or `cancelled`**, because changing it then does nothing. «Issue now» for a late switch is not this wave.
+3. ★ **Contract 3 is `record_export_download(p_artifact uuid) returns table (storage_path text, file_name text)`** — one function for posters and certificates, keyed by the artifact's document, with audit action `export_artifact.downloaded`. The lead writes it in `0152`, with the two subjects of `DEC-177`. **Every download goes through `designer`'s one route**: the menus, SCR-045's certificates, the studio's export panel, and ★ **`me/certificates`**. `designer`'s Q7 recommended leaving the last one unaudited; `DEC-177` stands. Thumbnails and previews stay signed URLs — a preview is not a download.
+4. **Contract 4 needs nothing new.** `console` reads `getTemplateLibrary()` as it stands.
+
+**Rulings — `designer`:**
+- ★ **D1b is in scope:** add a text, image, logo or shape; delete and duplicate; edit a text's words, weight and colour token. It is the owner's sentence, and it lands after D1. Colour is a **token**, never a hex (`REQ-DSG-021`).
+- **No library.** Konva, Polotno and Fabric are disqualified because they render; react-moveable, interact.js, `@use-gesture`, dnd-kit and Selecto were evaluated and dropped (`designer`'s W13.1). Geometry lives in a new `packages/designer-runtime/src/geometry.ts`, and `arrange.ts` is added to, never edited. Snap tolerance is in screen space for the pointer, `round(6 / scale)` document pixels; typed numbers keep `snap()`'s 8. One undo entry per gesture.
+- ★ **D2b is approved, on conditions.** An uploaded poster crops for real under a new `'page'` scale, only in `schemaVersion: 2` documents. Three conditions:
+  - **no parity golden moves**;
+  - `source_fingerprint` includes the schema version, so a `v2` document rendered by `main`'s old worker in the merge-to-Railway gap is re-rendered once the new worker runs, not cached;
+  - the owner's order says to reconnect Railway before anyone edits in the new studio.
+- **The iframe origin fix lands with D1.** No render change.
+- **No rulers this wave.** A coordinate chip reads like the fields.
+- ★ **`DEC-093` gains a tap path:** «تحديد متعدّد», a toggle that makes each tap add to the selection. Shift-click needs a keyboard, so on a phone it is not a single-pointer path. The toggle is added **beside** shift-click and «select all of this type», never instead of them.
+- **`REQ-DSG-029`'s pre-export live thumbnails are carried, not built.** The strip shows the worker's thumbnails, and the checks select their layer. `REQ-DSG-031`'s stated preflight rides on contract 2.
+
+**Rulings — `sessions`:**
+- **The hub** is a sub-nav in `[id]/layout.tsx`: «الجدولة» · «الحضور» · «الشهادات» · «الاستبانة» · «صفحة الجلسة». Each viewer sees only the screens they may open, from `getSessionSettingsNav()`. The layout makes no auth decision, and `[id]/page.tsx` only redirects: an admin goes to the schedule, a moderator to attendance, anyone else gets a 404.
+- **Presenters and the poster stay on SCR-043.** Moving them would build the fifth screen `DEC-176` forbids.
+- **The strip sits above each page's own breadcrumb and title.** The layout renders the sub-nav only; each page keeps its header.
+- **A moderator downloads from the event page**, which is enough. SCR-045 carries the per-certificate downloads.
+- **«تنزيل الملصق» everywhere, one string**, in `sessions.json`.
+- Materials, tasks and photos are reached through «صفحة الجلسة», so H3 costs one item and nothing is shed.
+
+**Rulings — `console`:**
+- ★ **Shape (b):** `/app/admin/templates` redirects to `/templates/posters`, and `designer` adds a posters | certificates tab strip to its two pages. That means no second `h1` and no duplicated page. If `ui/tabs` has no link mode, `console` adds one, since it owns the primitive. The rail's «التصاميم» group collapses into one leaf, `/app/admin/templates`. The two pages stay reachable, so `#tpl-platform-section` still works.
+- K1 needs no code — `isCurrent()` already prefix-matches. It is proven by a capture once the hub exists.
+
+**Rulings — the lead's own rows:**
+- ★ **L3 — the certificate leak, `0153`.** A **restrictive** `select` policy on `storage.objects` for `bucket_id = 'exports'` that refuses a certificate document's render to anyone who is not an admin, a moderator or its own member. It is a definer predicate over the path's document segment, so `0080`'s public-card posters are untouched. Red before and green after, with a test for each reader: own, admin, another member, anonymous through the public card.
+- `04` gains `/app/admin/sessions/[id]` (the redirect and its layout), `/attendance`, `/certificates` and `/app/admin/templates` — four routes, not two. `09`: SCR-043 without the mode, SCR-045 with it. `wave9-three-day-workshop.spec.ts:297–310` moves to set the mode on SCR-045 once the control lands; the ledger line is mine. The accessibility sweep gains `…/certificates` and `…/survey`.
+
+- **Documents changed:** `STATUS.md` (the checklist, the rulings), `CLAUDE.md` (the map points here)
+
+---
+
+## DEC-179 — An image layer's asset never resolved to a URL in any render; wave 13 fixes it before it builds «add image» on it
+
+- **Date:** 2026-09-22 · **Decided by:** the wave-13 lead, on `designer`'s finding during D1b, verified against the tree
+- **Amends:** `DEC-178` (`designer`'s row gains the fix; D1b and D2b depend on it)
+
+**Found.** The renderer draws an image as `resolveRef(ctx, l.image.assetId ?? l.image.binding)` (`render.ts:163`). A raw asset id is not a `{{binding}}`, so `resolveRef()` returns it unchanged (`bindings.ts:101`) and the output is `<img src="<uuid>">`, a relative URL that 404s. Nothing in the app, the worker or the runtime maps an asset id to a URL: the worker's only mention of `design-assets` is the storage sweep. Three consequences:
+- **Every uploaded poster** (`uploadedPosterDocument()` stores `image.assetId`) renders its only layer as a broken image, in the studio and in every export.
+- **An org's logo on every worker-generated poster** is the raw id that `resolveBrand()` emits (`brand.ts:137`). The app-side export worked only because `getDesignerDocument()` swaps in a five-minute signed URL (`designer.ts:283–288`), which can expire before the serial render queue reaches the job.
+- **`wave8-designer-posters` asserts the mode and the binding, never a render**, so no test could see it.
+
+**Decision — in scope, `designer`'s to build, before D1b's «add image» and «add logo» and D2b's crop:**
+1. The runtime's `BindingContext` gains an optional `assets: Record<assetId, url>`. The renderer resolves `image.assetId` and a `brand.logoAssetId` value through it first. **With no `assets` the output is byte-identical to today**, pinned by `designer`'s untouched-derive test against `main`'s runtime. No parity case has an image, so **no golden moves**.
+2. The worker (`render/variant.ts`) collects the asset ids a document uses, downloads them with `service_role` from `design-assets`, and passes them as `data:` URIs. So nothing expires and Chromium makes no network call. The studio passes five-minute signed URLs, as it does for the logo today.
+3. `resolveBrand()` and `worker/src/render/brand.ts` stay `branding`'s and are **not** edited. The worker maps the id they produce.
+4. **A render is asserted at last.** A spec uploads a poster and checks the rendered master shows the image, not a broken one. `data:` URIs count toward the page size, so the worker refuses an asset over the page budget rather than truncating it.
+5. **`main`'s worker in the gap** keeps today's broken image, so nothing gets worse. After the merge, `source_fingerprint` is unchanged (asset rows are immutable per id), so posters already rendered broken **stay cached broken** until something re-renders them. The owner's order gains a step: re-enqueue `regenerate_poster` for sessions whose poster uses an uploaded image or a logo — **every automatic poster uses the logo, so in practice every published session's poster**.
+
+- **Documents changed:** `STATUS.md` (row D6)

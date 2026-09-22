@@ -294,7 +294,6 @@ test("1 · an admin schedules three days through the form, and publishes", async
   await expect(page.getByRole("heading", { level: 3, name: /^اليوم الثالث · / })).toBeVisible();
   // REQ-SES-017's default, left as it is: every day is required.
   await expect(page.getByRole("switch", { name: "النقاط والشهادة بعد حضور كل الأيام" })).toBeChecked();
-  await page.getByRole("radio", { name: "تُصدَر تلقائيًا لكل من سجّل حضوره" }).check({ force: true });
   await capture(page, "1-schedule-three-days");
 
   await page.getByRole("button", { name: "انشر الجلسة" }).click();
@@ -307,7 +306,20 @@ test("1 · an admin schedules three days through the form, and publishes", async
     `select state, require_all_days, certificate_mode from public.sessions where id = $1`,
     [sessionId],
   );
-  expect(s[0]).toEqual({ state: "published", require_all_days: true, certificate_mode: "automatic" });
+  expect(s[0]).toMatchObject({ state: "published", require_all_days: true });
+
+  // ★ Wave 13 (DEC-178): the certificate mode is written on SCR-045 only, never
+  // on the schedule. Set there, through designer's control and its preflight.
+  await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
+  await settled(page);
+  const modes = page.locator("#main").getByRole("radiogroup", { name: "من يستحق شهادة، ومتى" });
+  await modes.getByRole("radio", { name: "تصدر تلقائيًا عند اكتمال الجلسة", exact: true }).check({ force: true });
+  await page.locator("#main").getByRole("button", { name: "احفظ الوضع", exact: true }).click();
+  const preflight = page.getByRole("dialog", { name: "قبل التثبيت: الفحص المسبق" });
+  await preflight.getByRole("button", { name: "ثبّت الوضع", exact: true }).click();
+  await expect
+    .poll(async () => (await db.query<{ m: string }>(`select certificate_mode::text as m from public.sessions where id = $1`, [sessionId])).rows[0].m, { timeout: 20_000 })
+    .toBe("automatic");
 });
 
 test("2 · two members reserve; the event page shows the three days", async ({ context, page }) => {

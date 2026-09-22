@@ -42,6 +42,8 @@ export interface RenderRequest {
   preset: PresetName;
   format: ExportFormat;
   bindings: Record<string, string>;
+  /** Design asset id → a `data:` URI of its bytes (DEC-179, `assets.ts`). */
+  assets?: Record<string, string>;
   faces: WorkerFace[];
   /** The Tier A signature the previous render of this exact fingerprint
    *  produced, when there is one. Same source, same geometry — a difference
@@ -140,7 +142,10 @@ export async function renderVariant(request: RenderRequest): Promise<RenderResul
     const { document: fitted, expectations } = await applyAutoFit(page, derived, request.bindings);
 
     // Pass 2: the real document at the fitted sizes.
-    const html = renderDocumentToHtml(fitted, { fonts: request.faces, bindings: { values: request.bindings } });
+    const html = renderDocumentToHtml(fitted, {
+      fonts: request.faces,
+      bindings: { values: request.bindings, ...(request.assets ? { assets: request.assets } : {}) },
+    });
     await page.setContent(html, { waitUntil: "load" });
     await assertFacesUsable(page, request.faces);
 

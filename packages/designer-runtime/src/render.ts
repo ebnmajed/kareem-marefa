@@ -160,7 +160,12 @@ function renderLayer(l: Layer, ctx: BindingContext): string {
   }
 
   if (l.kind === 'image') {
-    const src = resolveRef(ctx, l.image.assetId ?? l.image.binding)
+    // ★ DEC-179: an asset id is not a URL. Until wave 13 this drew
+    // `<img src="<uuid>">` — every uploaded poster and every worker-generated
+    // logo, broken. The id is mapped through `ctx.assets` when the caller has
+    // one; with none, `ref` is used exactly as before.
+    const ref = resolveRef(ctx, l.image.assetId ?? l.image.binding)
+    const src = ref ? (ctx.assets?.[ref] ?? ref) : null
     const focal = l.image.focal ? `;object-position:${l.image.focal.x * 100}% ${l.image.focal.y * 100}%` : ''
     return src
       ? `<img class="dr-layer" data-layer="${esc(l.id)}" src="${esc(src)}" style="${style};object-fit:${l.image.fit ?? 'contain'}${focal}" alt="">`

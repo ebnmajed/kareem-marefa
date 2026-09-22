@@ -510,6 +510,31 @@ it at completion — and the same member removed before completion leaves no row
 
 ---
 
+## M15 — the studio, the session download, the settings hub · wave 13 · `DEC-176`
+
+**New scope after the plan, most of it specified long ago.** M11's download and M12's design studio
+were never run. This milestone runs them, and adds one requirement for gathering a session's
+settings in one place.
+
+| Work | Requirements |
+|---|---|
+| Direct manipulation in the studio, with a single-pointer path for every dragged operation | `REQ-DSG-028` (M12) |
+| The live variant strip and checks that select their layer, where not yet built | `REQ-DSG-029` (M12) |
+| The focal point: a draggable dot and the nine-point grid | `REQ-DSG-030` (M12) |
+| Certificate issuance's three steps, where not yet built | `REQ-DSG-031` (M12) |
+| «تنزيل» on the event page and the session's admin screens, one signer, audited | `REQ-DSG-027` (M11) |
+| A session's settings reached from one sub-nav | `REQ-SES-020` |
+
+**Demonstrable:** every studio operation performed with taps alone, and the document changed each
+time; an `ar` console and an `en` console store byte-identical documents for the same «align start»;
+no parity golden moves; a staff member downloads a session's poster and its certificates from the
+session, at 390 px in Arabic, without ever opening `/app/admin/designer`.
+
+**Not this milestone:** `REQ-ADM-021`'s album download and `JOB-zip_session_photos`; the rest of
+`DEC-172`'s list.
+
+---
+
 ## 3. Dependencies
 
 ```mermaid

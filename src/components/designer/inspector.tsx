@@ -1,14 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   BRAND_COLOUR_TOKENS,
+  FOCAL_GRID,
+  focalOf,
   type AlignAxis,
   type AlignEdge,
   type AlignTarget,
   type DesignDocument,
+  type FocalPoint,
+  type GroupAlignTarget,
+  type ImageLayer,
   type Layer,
+  type PresetName,
   type ReorderMove,
 } from "@kareem/designer-runtime";
 import { Button } from "@/components/ui/button";
@@ -16,7 +22,9 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { InspectorSection } from "@/components/designer/inspector-section";
+import { formatNumber } from "@/components/sessions/numerals";
 
 // SCR-057's inspector — `16` §10.2, REQ-DSG-005, REQ-DSG-028, DEC-093, DEC-096.
 //
@@ -44,6 +52,12 @@ export type ArrangeOp =
   | { kind: "fit" }
   | { kind: "order"; move: ReorderMove };
 
+/** Two or more layers at once (wave 13) — on the DOCUMENT's axis, like one. */
+export type GroupOp = { kind: "align"; axis: AlignAxis; edge: AlignEdge; target: GroupAlignTarget } | { kind: "distribute"; axis: AlignAxis };
+
+/** The taps for rotate, resize and move (DEC-093): ±15°, «صفّر», «املأ عرضًا», «ضع بنقرة». */
+export type TransformOp = { kind: "rotate"; degrees: number; mode: "by" | "to" } | { kind: "fillWidth" } | { kind: "place" };
+
 export interface InspectorProps {
   document: DesignDocument;
   layer: Layer | null;
@@ -53,15 +67,54 @@ export interface InspectorProps {
   onPatchLayer: (layerId: string, patch: Partial<Layer>) => void;
   onArrange: (layerId: string, op: ArrangeOp) => void;
   onDocument: (next: DesignDocument) => void;
+  /* ── wave 13, all optional: the panel mounts exactly as before without them ── */
+  /** The selection, when more than one layer: the group section replaces the layer's. */
+  selection?: Layer[];
+  lockedLayerIds?: string[];
+  onGroupArrange?: (op: GroupOp) => void;
+  onTransform?: (layerId: string, op: TransformOp) => void;
+  /** «ضع بنقرة» is armed. */
+  placing?: boolean;
+  /** Tap-to-place is offered only on the source preset. */
+  canPlace?: boolean;
+  onFocal?: (layerId: string, point: FocalPoint, preset?: PresetName) => void;
+  /** The derived preset on screen, whose own focal override the grid sets. */
+  focalPreset?: PresetName;
+  /** D1b: duplicate and delete (delete confirms by name, in the editor). */
+  onDuplicate?: (layerId: string) => void;
+  onDelete?: (layerId: string) => void;
 }
 
 const token = (value: string | undefined): string | null => /^\{\{\s*brand\.([A-Za-z]+)\s*\}\}$/.exec(value ?? "")?.[1] ?? null;
 const bind = (name: string) => `{{brand.${name}}}`;
 
-export function Inspector({ document: doc, layer, locked, canEdit, fontFamilies, onPatchLayer, onArrange, onDocument }: InspectorProps) {
+export function Inspector({
+  document: doc,
+  layer,
+  locked,
+  canEdit,
+  fontFamilies,
+  onPatchLayer,
+  onArrange,
+  onDocument,
+  selection = [],
+  lockedLayerIds = [],
+  onGroupArrange,
+  onTransform,
+  placing = false,
+  canPlace = false,
+  onFocal,
+  focalPreset,
+  onDuplicate,
+  onDelete,
+}: InspectorProps) {
   const t = useTranslations("designer.inspector");
   const tp = useTranslations("designer.properties");
   const [target, setTarget] = useState<AlignTarget>("safe");
+
+  if (selection.length > 1 && onGroupArrange) {
+    return <GroupSection selection={selection} lockedLayerIds={lockedLayerIds} canEdit={canEdit} onGroupArrange={onGroupArrange} />;
+  }
 
   if (!layer) {
     return (
@@ -147,10 +200,56 @@ export function Inspector({ document: doc, layer, locked, canEdit, fontFamilies,
             {edgeButton("block", "end", t("align.bottom"))}
           </div>
         </fieldset>
-        <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onArrange(layer.id, { kind: "fit" })} className="self-start">
-          {t("align.fit")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onArrange(layer.id, { kind: "fit" })}>
+            {t("align.fit")}
+          </Button>
+          {onTransform ? (
+            <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onTransform(layer.id, { kind: "fillWidth" })}>
+              {t("transform.fillWidth")}
+            </Button>
+          ) : null}
+        </div>
         <p className="text-body-sm text-fg-muted">{t("align.note")}</p>
+        {onTransform ? (
+          <>
+            {/* ★ The taps for ROTATE and MOVE (DEC-093): the canvas's knob and
+                drag are the enhancement, these are the path. */}
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onTransform(layer.id, { kind: "rotate", degrees: -15, mode: "by" })}>
+                {t.rich("transform.rotateBack", { degrees: formatNumber(15), bdi: (c) => <bdi>{c}</bdi> })}
+              </Button>
+              <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onTransform(layer.id, { kind: "rotate", degrees: 15, mode: "by" })}>
+                {t.rich("transform.rotateForward", { degrees: formatNumber(15), bdi: (c) => <bdi>{c}</bdi> })}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={disabled || !frame.rotation}
+                onClick={() => onTransform(layer.id, { kind: "rotate", degrees: 0, mode: "to" })}
+              >
+                {t("transform.rotateReset")}
+              </Button>
+            </div>
+            {canPlace ? (
+              <div className="flex flex-col gap-1">
+                <Button
+                  type="button"
+                  variant={placing ? "primary" : "secondary"}
+                  size="sm"
+                  aria-pressed={placing}
+                  disabled={disabled}
+                  onClick={() => onTransform(layer.id, { kind: "place" })}
+                  className="self-start"
+                >
+                  {placing ? t("transform.placeCancel") : t("transform.place")}
+                </Button>
+                <p className="text-body-sm text-fg-muted">{t("transform.placeNote")}</p>
+              </div>
+            ) : null}
+          </>
+        ) : null}
       </InspectorSection>
 
       <InspectorSection title={t("sections.order")}>
@@ -166,6 +265,18 @@ export function Inspector({ document: doc, layer, locked, canEdit, fontFamilies,
       {layer.kind === "text" || layer.kind === "dynamic_field" ? (
         <>
           <InspectorSection title={t("sections.type")}>
+            {layer.kind === "text" ? (
+              // The layer's own words (D1b, «format the text»). A bound text is
+              // changed at its binding; this is what prints when nothing binds.
+              <Field label={tp("text")} hint={tp("textHint")}>
+                <Textarea
+                  value={layer.text.literal ?? ""}
+                  rows={3}
+                  disabled={disabled}
+                  onChange={(e) => onPatchLayer(layer.id, { text: { ...layer.text, literal: e.target.value } } as Partial<Layer>)}
+                />
+              </Field>
+            ) : null}
             <Field label={tp("fontFamily")}>
               <Select
                 value={layer.font.family}
@@ -180,6 +291,26 @@ export function Inspector({ document: doc, layer, locked, canEdit, fontFamilies,
               </Select>
             </Field>
             {number(tp("fontSize"), layer.font.size, (n) => onPatchLayer(layer.id, { font: { ...layer.font, size: Math.max(1, n) } } as Partial<Layer>), 1, 1)}
+            <Field label={tp("weight")}>
+              <Select
+                value={String(layer.font.weight ?? 400)}
+                disabled={disabled}
+                onChange={(e) => onPatchLayer(layer.id, { font: { ...layer.font, weight: Number(e.target.value) as 400 | 500 | 600 } } as Partial<Layer>)}
+              >
+                {([400, 500, 600] as const).map((w) => (
+                  <option key={w} value={w}>
+                    {tp(`weights.${w === 400 ? "regular" : w === 500 ? "medium" : "bold"}`)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {/* ★ A token, never a hex (REQ-DSG-021) — the brand check and 0055's guard refuse anything else. */}
+            <TokenSelect
+              label={tp("colour")}
+              value={layer.color ?? bind("fgHeading")}
+              disabled={disabled}
+              onValue={(color) => onPatchLayer(layer.id, { color } as Partial<Layer>)}
+            />
             <fieldset className="flex flex-col gap-2 border-0 p-0">
               <legend className="text-label text-fg-heading">{tp("align")}</legend>
               <div className="flex flex-wrap gap-2">
@@ -238,6 +369,26 @@ export function Inspector({ document: doc, layer, locked, canEdit, fontFamilies,
         </>
       ) : null}
 
+      {layer.kind === "shape" ? (
+        <InspectorSection title={t("sections.type")}>
+          <TokenSelect
+            label={tp("fill")}
+            value={layer.shape.fill ?? bind("surface")}
+            disabled={disabled}
+            onValue={(fill) => onPatchLayer(layer.id, { shape: { ...layer.shape, fill } } as Partial<Layer>)}
+          />
+        </InspectorSection>
+      ) : null}
+
+      {layer.kind === "image" && onFocal ? (
+        <InspectorSection title={t("sections.image")}>
+          <ImageSection layer={layer} locked={locked} canEdit={canEdit} onPatchLayer={onPatchLayer} onFocal={onFocal} preset={focalPreset} />
+        </InspectorSection>
+      ) : null}
+
+      {/* ★ DEC-093: DEMOTED, NEVER DELETED. These numbers are SC 2.5.7's
+          conformance path for move, resize and rotate — whatever the canvas
+          learns to drag, and however the panel is tidied. */}
       <InspectorSection title={t("sections.position")} defaultOpen={false}>
         <p className="text-body-sm text-fg-muted">{t("positionNote")}</p>
         <div className="grid grid-cols-2 gap-3">
@@ -249,6 +400,21 @@ export function Inspector({ document: doc, layer, locked, canEdit, fontFamilies,
           {number(tp("opacity"), layer.opacity ?? 1, (n) => onPatchLayer(layer.id, { opacity: Math.min(1, Math.max(0, n)) }), 0.05, 0)}
         </div>
       </InspectorSection>
+
+      {onDuplicate && onDelete ? (
+        <InspectorSection title={t("sections.layer")}>
+          {/* A locked layer's buttons are simply disabled: the ONE note at the top
+              of this panel already says it cannot be deleted or duplicated. */}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onDuplicate(layer.id)}>
+              {t("layer.duplicate")}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onDelete(layer.id)}>
+              {t("layer.delete")}
+            </Button>
+          </div>
+        </InspectorSection>
+      ) : null}
     </div>
   );
 }
@@ -262,23 +428,9 @@ function BackgroundControl({ document: doc, canEdit, onDocument }: { document: D
   const t = useTranslations("designer.inspector.background");
   const bg = doc.background ?? { type: "solid" as const, color: bind("canvas") };
 
-  const tokenSelect = (label: string, value: string, onValue: (next: string) => void) => {
-    const current = token(value);
-    return (
-      <Field label={label}>
-        <Select value={current ?? value} disabled={!canEdit} onChange={(e) => onValue(bind(e.target.value))}>
-          {/* A legacy colour that is not a token stays visible as what it is,
-              so the admin can see it and replace it — never silently lost. */}
-          {current === null ? <option value={value}>{value}</option> : null}
-          {BRAND_COLOUR_TOKENS.map((name) => (
-            <option key={name} value={name}>
-              {t(`tokens.${name}`)}
-            </option>
-          ))}
-        </Select>
-      </Field>
-    );
-  };
+  const tokenSelect = (label: string, value: string, onValue: (next: string) => void) => (
+    <TokenSelect label={label} value={value} disabled={!canEdit} onValue={onValue} />
+  );
 
   const setType = (type: string) => {
     if (type === bg.type) return;
@@ -329,5 +481,212 @@ function BackgroundControl({ document: doc, canEdit, onDocument }: { document: D
           )}
       <p className="text-body-sm text-fg-muted">{t("tokenNote")}</p>
     </>
+  );
+}
+
+/**
+ * Two or more layers (wave 13, REQ-DSG-028): align and distribute, PROMINENT —
+ * they are conformance, not a convenience (DEC-093) — on the DOCUMENT's axis
+ * (DEC-096), against the safe area, the page or the selection itself. The
+ * numbers are one layer's, so they say how to reach them rather than vanish.
+ */
+function GroupSection({
+  selection,
+  lockedLayerIds,
+  canEdit,
+  onGroupArrange,
+}: {
+  selection: Layer[];
+  lockedLayerIds: string[];
+  canEdit: boolean;
+  onGroupArrange: (op: GroupOp) => void;
+}) {
+  const t = useTranslations("designer.inspector");
+  const tl = useTranslations("designer.layers");
+  const [target, setTarget] = useState<GroupAlignTarget>("selection");
+  const movable = selection.filter((l) => !lockedLayerIds.includes(l.id));
+  const disabled = !canEdit || movable.length === 0;
+  const edge = (axis: AlignAxis, value: AlignEdge, label: string) => (
+    <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => onGroupArrange({ kind: "align", axis, edge: value, target })}>
+      {label}
+    </Button>
+  );
+
+  return (
+    <div className="flex flex-col">
+      <p className="pb-3 text-body-sm text-fg-heading">{tl("selectedCount", { count: selection.length, value: formatNumber(selection.length) })}</p>
+      <InspectorSection title={t("sections.group")}>
+        <fieldset className="flex flex-col gap-2 border-0 p-0">
+          <legend className="text-label text-fg-heading">{t("align.target")}</legend>
+          <div className="flex flex-wrap gap-2">
+            {(["selection", "safe", "page"] as const).map((value) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={target === value ? "primary" : "secondary"}
+                aria-pressed={target === value}
+                disabled={disabled}
+                onClick={() => setTarget(value)}
+              >
+                {value === "selection" ? t("group.selection") : t(`align.${value}`)}
+              </Button>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="flex flex-col gap-2 border-0 p-0">
+          <legend className="text-label text-fg-heading">{t("align.inline")}</legend>
+          <div className="flex flex-wrap gap-2">
+            {edge("inline", "start", t("align.start"))}
+            {edge("inline", "center", t("align.center"))}
+            {edge("inline", "end", t("align.end"))}
+          </div>
+        </fieldset>
+        <fieldset className="flex flex-col gap-2 border-0 p-0">
+          <legend className="text-label text-fg-heading">{t("align.block")}</legend>
+          <div className="flex flex-wrap gap-2">
+            {edge("block", "start", t("align.top"))}
+            {edge("block", "center", t("align.middle"))}
+            {edge("block", "end", t("align.bottom"))}
+          </div>
+        </fieldset>
+        <fieldset className="flex flex-col gap-2 border-0 p-0">
+          <legend className="text-label text-fg-heading">{t("group.distribute")}</legend>
+          <div className="flex flex-wrap gap-2">
+            {(["inline", "block"] as const).map((axis) => (
+              <Button
+                key={axis}
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={!canEdit || movable.length < 3}
+                onClick={() => onGroupArrange({ kind: "distribute", axis })}
+              >
+                {t(axis === "inline" ? "group.distributeInline" : "group.distributeBlock")}
+              </Button>
+            ))}
+          </div>
+          <p className="text-body-sm text-fg-muted">{t("group.distributeNote")}</p>
+        </fieldset>
+        <p className="text-body-sm text-fg-muted">{t("align.note")}</p>
+        {movable.length < selection.length ? <p className="text-body-sm text-fg-muted">{t("group.lockedSkipped")}</p> : null}
+      </InspectorSection>
+      <p className="pt-3 text-body-sm text-fg-muted">{t("group.numbersNote")}</p>
+    </div>
+  );
+}
+
+const FOCAL_NAMES = ["topLeft", "top", "topRight", "left", "centre", "right", "bottomLeft", "bottom", "bottomRight"] as const;
+
+/**
+ * An image layer: its fit, and its focal point (REQ-DSG-030, DEC-093 path 3).
+ *
+ * ★ THE NINE-POINT GRID ALONE IS SUFFICIENT — nine 44 px radios, each a tap.
+ * The dot on the thumbnail refines it; it is the enhancement, never the path.
+ * The grid is laid out LEFT TO RIGHT in any console, because `object-position`
+ * is physical: its top-left radio is the image's top-left corner. Its names
+ * say left and right for the same reason.
+ *
+ * The point only shows under «تملأ الإطار» (`cover`): an image drawn whole
+ * inside its frame is never cropped, so there the section says so rather than
+ * offering a control with no visible effect.
+ */
+function ImageSection({
+  layer,
+  locked,
+  canEdit,
+  onPatchLayer,
+  onFocal,
+  preset,
+}: {
+  layer: ImageLayer;
+  locked: boolean;
+  canEdit: boolean;
+  onPatchLayer: (layerId: string, patch: Partial<Layer>) => void;
+  onFocal: (layerId: string, point: FocalPoint, preset?: PresetName) => void;
+  preset?: PresetName;
+}) {
+  const t = useTranslations("designer.inspector.image");
+  const fit = layer.image.fit ?? "contain";
+  const point = focalOf(layer, preset);
+  const name = useId();
+
+  return (
+    <>
+      <fieldset className="flex flex-col gap-2 border-0 p-0">
+        <legend className="text-label text-fg-heading">{t("fit")}</legend>
+        <div className="flex flex-wrap gap-2">
+          {(["contain", "cover"] as const).map((value) => (
+            <Button
+              key={value}
+              type="button"
+              size="sm"
+              variant={fit === value ? "primary" : "secondary"}
+              aria-pressed={fit === value}
+              disabled={locked || !canEdit}
+              onClick={() => onPatchLayer(layer.id, { image: { ...layer.image, fit: value } } as Partial<Layer>)}
+            >
+              {t(value)}
+            </Button>
+          ))}
+        </div>
+      </fieldset>
+
+      {fit !== "cover" ? (
+        <p className="text-body-sm text-fg-muted">{t("focalContainNote")}</p>
+      ) : (
+        <fieldset className="flex flex-col gap-3 border-0 p-0">
+          <legend className="text-label text-fg-heading">{t("focal")}</legend>
+          <p className="text-body-sm text-fg-muted">{t(preset ? "focalPresetNote" : "focalNote")}</p>
+          {/* Physical on purpose — see the comment above. */}
+          <div role="radiogroup" aria-label={t("focal")} dir="ltr" className="grid w-fit grid-cols-3 gap-1">
+            {FOCAL_GRID.map((p, i) => {
+              const checked = Math.abs(point.x - p.x) < 0.005 && Math.abs(point.y - p.y) < 0.005;
+              return (
+                <button
+                  key={`${name}-${i}`}
+                  type="button"
+                  role="radio"
+                  aria-checked={checked}
+                  aria-label={t(`points.${FOCAL_NAMES[i] ?? "centre"}`)}
+                  disabled={!canEdit}
+                  onClick={() => onFocal(layer.id, p, preset)}
+                  className={`flex size-11 items-center justify-center rounded-field border ${checked ? "border-edge-strong bg-silver-100" : "border-edge hover:border-edge-strong"}`}
+                >
+                  <span aria-hidden="true" className={`block rounded-full ${checked ? "size-3 bg-fg-heading" : "size-1.5 bg-fg-muted"}`} />
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-body-sm text-fg-muted">
+            {t.rich("current", { x: formatNumber(Math.round(point.x * 100)), y: formatNumber(Math.round(point.y * 100)), bdi: (c) => <bdi>{c}</bdi> })}
+          </p>
+        </fieldset>
+      )}
+    </>
+  );
+}
+
+/**
+ * A brand colour, chosen by NAME from the brand kit's tokens — never a picker,
+ * never a hex (REQ-DSG-021). Shared by the background, a text's colour and a
+ * shape's fill, so the rule lives once.
+ */
+function TokenSelect({ label, value, disabled, onValue }: { label: string; value: string; disabled: boolean; onValue: (next: string) => void }) {
+  const t = useTranslations("designer.inspector.background");
+  const current = token(value);
+  return (
+    <Field label={label}>
+      <Select value={current ?? value} disabled={disabled} onChange={(e) => onValue(bind(e.target.value))}>
+        {/* A legacy colour that is not a token stays visible as what it is,
+            so the admin can see it and replace it — never silently lost. */}
+        {current === null ? <option value={value}>{value}</option> : null}
+        {BRAND_COLOUR_TOKENS.map((name) => (
+          <option key={name} value={name}>
+            {t(`tokens.${name}`)}
+          </option>
+        ))}
+      </Select>
+    </Field>
   );
 }

@@ -10,6 +10,7 @@ import { ActionBar } from "@/components/sessions/action-bar";
 import { dayLabel } from "@/components/sessions/day-label";
 import { formatDate, formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
 import type { PrimaryAction } from "@/components/sessions/event-actions";
+import { SessionDownload } from "@/components/sessions/session-download";
 import { ShareLink } from "@/components/sessions/share-link";
 import type { SlotProps, SlotSummary } from "@/components/sessions/slots";
 import { buttonClass } from "@/components/ui/button";
@@ -178,6 +179,15 @@ export async function ActionCard(props: ActionCardProps) {
 
       <Meta session={session} phase={phase} days={props.days} locale={locale} />
       <CertificateRow sessionId={session.id} locale={locale} />
+
+      {/* «تنزيل الملصق» (REQ-DSG-027, DEC-178) — for staff and the session's own
+          presenters, once, here: the poster itself renders twice (the hero from
+          `md`, «نبذة» on the phone), and a download beside each would be two. */}
+      {session.viewerIsStaff || session.viewerIsPresenter ? (
+        <Suspense fallback={null}>
+          <SessionDownload sessionId={session.id} locale={locale} placement="event" />
+        </Suspense>
+      ) : null}
 
       {session.viewerIsStaff || hostViewSecondary ? (
         <nav aria-label={t("actions.staffHeading")} className="border-t border-edge pt-4">

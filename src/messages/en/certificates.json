@@ -92,7 +92,7 @@
       "applyHeldConfirm": "Apply",
       "applyHeldDone": "{count, plural, zero {No certificate changed} one {One certificate redesigned} two {Two certificates redesigned} few {{value} certificates redesigned} many {{value} certificates redesigned} other {{value} certificates redesigned}}",
       "whoIntro": "An attendance certificate goes to everyone checked in, and a presenter certificate to every presenter who accepted — and nothing else. The list is taken when the session completes.",
-      "modeLink": "Change the mode on the session's schedule",
+      "modeLink": "Change the issuing mode",
       "eligibleEmptyTitle": "Nobody yet",
       "eligibleEmptyDescription": "Nobody is checked in and no presenter has accepted. Names appear here when they do.",
       "attendanceLink": "Attendance",
@@ -173,7 +173,52 @@
       "summary": "«<bdi>{name}</bdi>» · <bdi>{scheme}</bdi> colours",
       "changeDesign": "Change the design",
       "showDesign": "Show the design",
-      "hideDesign": "Hide the design"
+      "hideDesign": "Hide the design",
+      "downloadOne": "Download<hidden> <bdi>{name}</bdi>’s certificate</hidden>",
+      "modeControl": {
+        "legend": "Who gets a certificate, and when",
+        "options": {
+          "off": {
+            "label": "No certificates for this session",
+            "hint": "Nothing is issued, and attendees see no trace of certificates."
+          },
+          "automatic": {
+            "label": "Issued automatically when the session completes",
+            "hint": "For everyone who checked in, sent on completion with no review."
+          },
+          "review": {
+            "label": "Prepared and held until you release them",
+            "hint": "You review the list after completion, then release what you choose."
+          }
+        },
+        "save": "Save the mode",
+        "saved": "Issuing mode saved.",
+        "unchanged": "The mode is as it was; nothing changed.",
+        "failed": "The mode could not be saved. Try again.",
+        "refused": {
+          "session_not_found": "We could not find this session.",
+          "session_completed": "The session has completed, so its mode no longer changes.",
+          "session_cancelled": "The session was cancelled, so it has no certificates.",
+          "not_an_admin": "Changing the mode is an org admin's act.",
+          "stale_claims": "Your permissions changed. Reload the page and try again."
+        },
+        "closedCompleted": "The session has completed, so its mode is fixed: certificates are issued once, at completion, and what was issued is under «Issuing».",
+        "closedCancelled": "The session was cancelled, so no certificates are issued for it.",
+        "confirmTitle": "Before you set it: the preflight",
+        "confirmBody": "In this mode certificates are issued when the session completes, with no further step from you. Serial numbers are not reserved now; they are allocated at issue.",
+        "checkFonts": "Fonts loaded from the platform set",
+        "checkFontsMissing": "No fonts loaded: certificates will not be issued until they are",
+        "checkDesign": "The «<bdi>{kind}</bdi>» design is saved",
+        "checkDesignMissing": "The «<bdi>{kind}</bdi>» design is not saved yet: the default template in light colours will be used",
+        "checkEligible": "{count, plural, zero {Nobody qualifies yet} one {One person qualifies now} other {<bdi>{value}</bdi> people qualify now}}",
+        "checkSerial": "Expected next serial <bdi>{serial}</bdi> — an estimate, not a reservation",
+        "checkTierA": "Text fit is checked on every certificate as it renders; the result is under «Issuing».",
+        "confirm": "Set the mode",
+        "cancel": "Cancel"
+      }
+    },
+    "download": {
+      "failed": "The file could not be downloaded. Try again, and if it keeps happening tell your organisation's admin."
     }
   }
 }

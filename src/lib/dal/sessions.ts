@@ -284,10 +284,9 @@ export interface SchedulableSession {
   capacity: number | null;
   rsvpDeadlineAt: string | null;
   cancellationCutoffAt: string | null;
-  certificateMode: "off" | "automatic" | "review";
   /** `sessions.allow_walk_ins` — the schedule form's initial value for the walk-in setting (DEC-117, DEC-118, contract 1). */
   allowWalkIns: boolean;
-  /** `sessions.require_all_days` (`REQ-SES-017`), for the control beside `certificate_mode`. */
+  /** `sessions.require_all_days` (`REQ-SES-017`), for the multi-day control. */
   requireAllDays: boolean;
   timeZone: string;
   /** What REQ-SES-001 still wants before this can be published. */
@@ -342,7 +341,7 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
       // path may read a task; this is a scheduling path — `sessions.ts` is in
       // no check-in import graph — and the form needs both numbers to ask
       // before it removes a day (DEC-151 ruling 6).
-      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, certificate_mode, allow_walk_ins, require_all_days, time_zone, session_days(id, position, starts_at, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, check_ins(count), materials(count), session_tasks(count), photos(count))",
+      "id, title, state, language, starts_at, duration_minutes, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, capacity, rsvp_deadline_at, cancellation_cutoff_at, allow_walk_ins, require_all_days, time_zone, session_days(id, position, starts_at, ends_at, venue_id, custom_venue_name, custom_venue_address, custom_venue_map_url, check_ins(count), materials(count), session_tasks(count), photos(count))",
     )
     .eq("id", id)
     .maybeSingle();
@@ -387,7 +386,6 @@ export async function getSessionForSchedule(locale: string, id: string): Promise
     capacity: data.capacity,
     rsvpDeadlineAt: data.rsvp_deadline_at,
     cancellationCutoffAt: data.cancellation_cutoff_at,
-    certificateMode: data.certificate_mode as SchedulableSession["certificateMode"],
     allowWalkIns: data.allow_walk_ins === true,
     requireAllDays: data.require_all_days !== false,
     timeZone: data.time_zone,
@@ -501,7 +499,14 @@ export const scheduleInput = z
     capacity: z.int().min(1).max(10000).nullable(),
     rsvpDeadlineAt: z.iso.datetime({ offset: true }).nullable(),
     cancellationCutoffAt: z.iso.datetime({ offset: true }).nullable(),
-    certificateMode: z.enum(["off", "automatic", "review"]),
+    /**
+     * ★ `null` means UNCHANGED (`0154`, `DEC-178` contract 2). The certificate
+     * mode's one writer is SCR-045 through `setSessionCertificateMode()`; the
+     * schedule form no longer states it, and `schedule_session()` keeps the
+     * stored mode when it is not named. A value is still honoured — the
+     * function's own contract — but no screen sends one.
+     */
+    certificateMode: z.enum(["off", "automatic", "review"]).nullable().default(null),
     language: z.enum(["ar", "en"]),
     /**
      * Walk-ins as a publishing setting (DEC-117, DEC-118, contract 1, 0085).
@@ -556,6 +561,7 @@ export async function scheduleSession(locale: string, sessionId: string, input: 
     p_capacity: input.capacity,
     p_rsvp_deadline_at: input.rsvpDeadlineAt,
     p_cancellation_cutoff_at: input.cancellationCutoffAt,
+    // `null` stays `null`: «unchanged» (0154). Never defaulted to 'off' here.
     p_certificate_mode: input.certificateMode,
     p_language: input.language,
     // Sent as given — `null` stays `null`, which the RPC reads as «unchanged».
@@ -662,6 +668,89 @@ export async function addSessionPresenter(locale: string, sessionId: string, mem
 /** Takes a presenter off a session (REQ-SES-019); never the last accepted one. */
 export async function removeSessionPresenter(locale: string, sessionId: string, memberId: string): Promise<PresenterChangeResult> {
   return changePresenter(locale, "remove_session_presenter", sessionId, memberId);
+}
+
+// ── The session settings hub (REQ-SES-020, DEC-178) ─────────────────────────
+
+/** The hub's destinations, in the order a session is lived. */
+export const SESSION_SETTINGS_KEYS = ["schedule", "attendance", "certificates", "survey", "event"] as const;
+export type SessionSettingsKey = (typeof SESSION_SETTINGS_KEYS)[number];
+
+export interface SessionSettingsNav {
+  /** Only what this viewer may open — each page is still its own boundary. */
+  items: SessionSettingsKey[];
+}
+
+/**
+ * Which of a session's admin screens the viewer may open, for the sub-nav in
+ * `admin/sessions/[id]/layout.tsx`. PRESENTATION, not authority: each page
+ * checks at its own data and 404s on its own.
+ *
+ * - schedule: admin (`getSessionForSchedule()`).
+ * - attendance, certificates: admin and moderator.
+ * - survey: admin and moderator, but never a presenter of THIS session —
+ *   `survey_results()` refuses them whatever their role.
+ * - the event page: everyone the nav renders for.
+ *
+ * `null` for a member, a session this org cannot see, a malformed id — and
+ * for any error, which is caught: this is read by a LAYOUT, and a throw there
+ * would replace every page under it with the error boundary.
+ */
+export async function getSessionSettingsNav(locale: string, sessionId: string): Promise<SessionSettingsNav | null> {
+  const { session, supabase } = await sessionClient(locale);
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  if (session.role !== "admin" && session.role !== "moderator") return null;
+  try {
+    const { data, error } = await supabase
+      .from("sessions")
+      .select("id, session_presenters(member_id, accepted)")
+      .eq("id", sessionId)
+      .eq("session_presenters.member_id", session.memberId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const presents = ((data.session_presenters ?? []) as { member_id: string; accepted: boolean }[]).some((p) => p.accepted);
+    const items = SESSION_SETTINGS_KEYS.filter((key) => {
+      if (key === "schedule") return session.role === "admin";
+      if (key === "survey") return !presents;
+      return true;
+    });
+    return { items };
+  } catch {
+    return null;
+  }
+}
+
+// ── The certificate mode's one writer (REQ-SES-020, DEC-178 contract 2) ────
+
+export type CertificateMode = "off" | "automatic" | "review";
+
+/** The refusals `set_session_certificate_mode()` names. Anything else is a fault, and throws. */
+export const CERTIFICATE_MODE_ERRORS = ["session_not_found", "session_completed", "session_cancelled", "not_an_admin", "stale_claims"] as const;
+export type CertificateModeError = (typeof CERTIFICATE_MODE_ERRORS)[number];
+export type CertificateModeResult = { status: "ok" | "unchanged" } | { status: "refused"; error: CertificateModeError };
+
+const certificateModeInput = z.object({ sessionId: z.uuid(), mode: z.enum(["off", "automatic", "review"]) }).strict();
+
+/**
+ * Changes a session's certificate mode — called by SCR-045 (`designer`'s), the
+ * one screen that writes it. The function is admin only, audited, and refuses
+ * a completed, archived or cancelled session, where a change would do nothing
+ * (the fan-out runs once, at completion). The schedule form no longer states
+ * the mode, and `schedule_session()` leaves it standing when it is not named.
+ */
+export async function setSessionCertificateMode(locale: string, sessionId: string, mode: CertificateMode): Promise<CertificateModeResult> {
+  const { session, supabase } = await sessionClient(locale);
+  const parsed = certificateModeInput.safeParse({ sessionId, mode });
+  if (!parsed.success) return { status: "refused", error: "session_not_found" };
+  if (session.role !== "admin") return { status: "refused", error: "not_an_admin" };
+
+  const { data, error } = await supabase.rpc("set_session_certificate_mode", { p_session: parsed.data.sessionId, p_mode: parsed.data.mode });
+  if (error) {
+    const known = CERTIFICATE_MODE_ERRORS.find((code) => new RegExp(`\\b${code}\\b`).test(error.message));
+    if (known) return { status: "refused", error: known };
+    throw new Error(`set_session_certificate_mode: ${error.message}`);
+  }
+  return { status: data === "unchanged" ? "unchanged" : "ok" };
 }
 
 // ── A session's heading, for the screens under it ──────────────────────────

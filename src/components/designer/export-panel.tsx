@@ -41,8 +41,9 @@ export async function ExportPanel({
   queue: ExportQueueData;
   canExport: boolean;
   locale: string;
-  /** Signed URLs of the READY artifacts, by artifact id — signed once by the
-   *  page for the strip and the list alike. */
+  /** The audited download of each READY artifact, by artifact id —
+   *  `/api/designer/downloads/<id>` (DEC-178: the studio's downloads are
+   *  audited too). The strip's thumbnails are previews and stay signed URLs. */
   links: Record<string, string>;
 }) {
   const t = await getTranslations("designer.exports");
@@ -81,7 +82,7 @@ export async function ExportPanel({
                   </Badge>
                   <span className="grow" />
                   {link ? (
-                    <a href={link} download className={buttonClass("secondary", "sm")}>
+                    <a href={link} className={buttonClass("secondary", "sm")}>
                       <DownloadIcon />
                       <span>{t("download")}</span>
                     </a>

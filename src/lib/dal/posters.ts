@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { cache } from "react";
 import { z } from "zod";
-import { imageSize, PRESETS, presetsFor, SCHEMA_VERSION, type DesignDocument, type PresetName } from "@kareem/designer-runtime";
+import { imageSize, PAGE_SCALE_SCHEMA_VERSION, PRESETS, presetsFor, type DesignDocument, type PresetName } from "@kareem/designer-runtime";
 import { storagePaths } from "@/lib/storage/paths";
 import { sniffContent } from "@/lib/storage/sniff";
 import { sessionClient } from "@/lib/dal/session";
@@ -158,20 +158,28 @@ export async function completeAssetUpload(
 }
 
 /**
- * The document an uploaded poster becomes — REQ-DSG-020, A32.
+ * The document an uploaded poster becomes — REQ-DSG-020, A32, REQ-DSG-030.
  *
- * One image layer, full bleed, `fill` on every preset so each variant crops
- * rather than letterboxes. The focal point starts centred (a saliency-free
- * centre-weighted crop is the honest default), and the admin overrides it
- * per variant from the editor.
+ * One image layer, full bleed, `page` on every preset so each variant is the
+ * whole page and the image `cover`s it — really cropped, around its focal
+ * point, into every aspect ratio. The focal point starts centred (a
+ * saliency-free centre-weighted crop is the honest default), and the admin
+ * moves it, for the poster or for one variant, from the studio.
+ *
+ * ★ Until wave 13 this was `fill`, which keeps the frame at 4:5 on every preset
+ * and so never cropped: the master itself was inset 80 px and `square`,
+ * `landscape` and `og` spilled off the page (measured, `designer.md` W13.0
+ * item 5). `page` is a schemaVersion 2 feature and this document declares it,
+ * so `main`'s worker refuses it rather than rendering it wrongly (DEC-178).
+ * Documents already written with `fill` keep rendering exactly as they did.
  */
 export function uploadedPosterDocument(assetId: string): DesignDocument {
   const master = PRESETS.master;
-  const presets: Record<string, { scale: "fill"; anchor: "center" }> = {};
-  for (const name of presetsFor("poster")) presets[name] = { scale: "fill", anchor: "center" };
+  const presets: Record<string, { scale: "page"; anchor: "center" }> = {};
+  for (const name of presetsFor("poster")) presets[name] = { scale: "page", anchor: "center" };
 
   return {
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: PAGE_SCALE_SCHEMA_VERSION,
     purpose: "poster",
     master: { width: master.width, height: master.height, unit: "px", dpi: master.dpi },
     direction: "rtl",
@@ -333,25 +341,15 @@ async function loadSessionPoster(locale: string, sessionId: string, variant: Pos
   let total = 0;
 
   if (documentId) {
-    // Only the newest fingerprint's artifacts matter: an older one describes
-    // a session that has since changed (REQ-DSG-013).
-    const { data: artifacts } = await supabase
-      .from("export_artifacts")
-      .select("preset, format, status, storage_path, source_fingerprint, rendered_at, width_px, height_px")
-      .eq("document_id", documentId)
-      .order("rendered_at", { ascending: false });
-
-    const newest = artifacts?.find((a) => a.status === "ready")?.source_fingerprint ?? artifacts?.[0]?.source_fingerprint;
-    const current = (artifacts ?? []).filter((a) => a.source_fingerprint === newest);
+    const { current } = await currentPosterSet(supabase, documentId);
     total = current.length;
     ready = current.filter((a) => a.status === "ready").length;
 
     const match = current.find((a) => a.preset === variant && a.status === "ready" && a.storage_path) ?? current.find((a) => a.status === "ready" && a.storage_path);
     if (match?.storage_path) {
-      const { data } = await supabase.storage.from("exports").createSignedUrl(match.storage_path as string, 300);
-      imageUrl = data?.signedUrl ?? null;
-      width = (match.width_px as number | null) ?? null;
-      height = (match.height_px as number | null) ?? null;
+      imageUrl = await signExportUrl(locale, match.storage_path);
+      width = match.width_px;
+      height = match.height_px;
     }
   }
 
@@ -429,4 +427,213 @@ export async function signDesignAssetUrl(locale: string, assetId: string): Promi
   if (!asset?.storage_path) return null;
   const { data } = await supabase.storage.from("design-assets").createSignedUrl(asset.storage_path as string, 300);
   return data?.signedUrl ?? null;
+}
+
+/* ── the one signer (REQ-DSG-027, DEC-176 §1) ────────────────────────────── */
+
+/**
+ * ★ THE ONE SIGNER for a finished export — every `exports` URL in the app is
+ * minted here, and `tests/unit/designer-one-signer.test.ts` fails the build if a
+ * second `createSignedUrl` on `exports` appears anywhere else. Five minutes: the
+ * bucket is private and a link is not a share. `exports_storage_read` (0037) is
+ * the boundary — org-prefixed, and the path came from the one builder (03 §6).
+ *
+ * It lives HERE, in the leaf module, because `designer.ts` imports this file and
+ * `certificates.ts` imports `designer.ts`; `designer.ts` re-exports it so the
+ * studio's import did not move. `signCertificateUrl` is gone: every certificate
+ * a person takes away now goes through the audited route (DEC-177), and a
+ * certificate needs no preview.
+ *
+ * `download` names the file (Content-Disposition: attachment) — the audited
+ * download route passes the name `record_export_download()` built; a preview or
+ * a thumbnail passes nothing and is served inline, exactly as before.
+ */
+export async function signExportUrl(locale: string, storagePath: string, options: { download?: string } = {}): Promise<string | null> {
+  const { supabase } = await sessionClient(locale);
+  const { data } = await supabase.storage
+    .from("exports")
+    .createSignedUrl(storagePath, 300, options.download ? { download: options.download } : undefined);
+  return data?.signedUrl ?? null;
+}
+
+/* ── a session poster's current set of renders ──────────────────────────── */
+
+interface PosterArtifactRow {
+  id: string;
+  preset: PresetName;
+  format: "png" | "webp" | "pdf";
+  status: "queued" | "rendering" | "ready" | "failed";
+  storage_path: string | null;
+  source_fingerprint: string;
+  width_px: number | null;
+  height_px: number | null;
+  byte_size: number | null;
+}
+
+/**
+ * The set of renders a poster SHOWS — shared by the slot and the download DTO,
+ * so the file downloaded is the poster on the page.
+ *
+ * Only one fingerprint's artifacts matter: an older one describes a session
+ * that has since changed (REQ-DSG-013). It is the newest READY fingerprint, by
+ * `rendered_at` (a render's own finish time, never a transaction's start), or,
+ * before anything has rendered, the newest row's. `updating` says a different
+ * fingerprint has work queued or running — a newer poster is on its way and the
+ * files here are the previous one's.
+ */
+async function currentPosterSet(supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"], documentId: string): Promise<{ current: PosterArtifactRow[]; updating: boolean }> {
+  const { data } = await supabase
+    .from("export_artifacts")
+    .select("id, preset, format, status, storage_path, source_fingerprint, width_px, height_px, byte_size, rendered_at")
+    .eq("document_id", documentId)
+    .order("rendered_at", { ascending: false });
+  const rows = (data ?? []) as unknown as PosterArtifactRow[];
+  const newest = rows.find((a) => a.status === "ready")?.source_fingerprint ?? rows[0]?.source_fingerprint;
+  return {
+    current: rows.filter((a) => a.source_fingerprint === newest),
+    updating: rows.some((a) => a.source_fingerprint !== newest && (a.status === "queued" || a.status === "rendering")),
+  };
+}
+
+/* ── ★ contract 1 — the session's download (REQ-DSG-027, DEC-176, DEC-178) ── */
+
+export type DownloadState = "ready" | "pending" | "failed";
+
+export interface PosterDownload {
+  /** master · square · story · landscape · og · a4 · a3 */
+  preset: PresetName;
+  format: "png" | "webp" | "pdf";
+  widthPx: number | null;
+  heightPx: number | null;
+  /** Queued and rendering are both `pending` — a file that is not there yet is
+   *  never a link (REQ-DSG-027's third acceptance). */
+  state: DownloadState;
+  /** Bytes, when ready (`export_artifacts.byte_size`, 0055). */
+  byteSize: number | null;
+  /** Ready only: `/api/designer/downloads/<artifactId>` — the audited route
+   *  (contract 3), never a signed URL. Render it as a plain `<a>`, never a
+   *  `<Link>`, so nothing is prefetched. */
+  href: string | null;
+}
+
+export interface SessionPosterDownloads {
+  sessionId: string;
+  /** ALWAYS the 4:5 master as PNG (DEC-176: «a simple download») — `pending`
+   *  until it has rendered. */
+  primary: PosterDownload;
+  /** Every other artifact of the same set, in `presetsFor('poster')` order,
+   *  PNG before WebP — for the disclosure. */
+  others: PosterDownload[];
+  ready: number;
+  total: number;
+  /** A newer render of this poster is queued or running; the files above are
+   *  the previous one's. */
+  updating: boolean;
+}
+
+const FORMAT_ORDER: Record<PosterDownload["format"], number> = { png: 0, webp: 1, pdf: 2 };
+
+/** The route every download goes through — `app/api/designer/downloads`. */
+export function downloadHref(artifactId: string): string {
+  return `/api/designer/downloads/${artifactId}`;
+}
+
+function toDownload(a: PosterArtifactRow): PosterDownload {
+  const ready = a.status === "ready" && a.storage_path !== null;
+  return {
+    preset: a.preset,
+    format: a.format,
+    widthPx: a.width_px,
+    heightPx: a.height_px,
+    state: ready ? "ready" : a.status === "failed" ? "failed" : "pending",
+    byteSize: ready ? a.byte_size : null,
+    href: ready ? downloadHref(a.id) : null,
+  };
+}
+
+/**
+ * A session poster's files, for «تنزيل الملصق» on the event page and the hub.
+ *
+ * `null` means render nothing: the session has no poster, its poster has never
+ * been rendered, or the caller is not an admin, a moderator or an ACCEPTED
+ * presenter of this session. That decides only whether a menu is drawn — the
+ * refusal that counts is the route's, where `record_export_download()`
+ * re-derives the same rule and audits (contract 3, DEC-177).
+ */
+export async function getSessionPosterDownloads(locale: string, sessionId: string): Promise<SessionPosterDownloads | null> {
+  const { session, supabase } = await sessionClient(locale);
+
+  let entitled = session.role === "admin" || session.role === "moderator";
+  if (!entitled) {
+    // The same rule as `record_export_download()` (0152): an ACCEPTED presenter
+    // who has not declined. `session_presenters` has no `id` column — asking for
+    // one made PostgREST error, `data` came back null, and every non-staff
+    // presenter read as «not entitled» (found by `sessions`' hub spec). An error
+    // is therefore thrown, never read as «render nothing»: a silent null is
+    // exactly what hid it.
+    const { data: presenter, error } = await supabase
+      .from("session_presenters")
+      .select("member_id")
+      .eq("session_id", sessionId)
+      .eq("member_id", session.memberId)
+      .eq("accepted", true)
+      .is("declined_at", null)
+      .maybeSingle();
+    if (error) throw new Error(`posters: the presenter check failed — ${error.message}`);
+    entitled = presenter !== null;
+  }
+  if (!entitled) return null;
+
+  const { data: poster } = await supabase.from("session_posters").select("document_id").eq("session_id", sessionId).maybeSingle();
+  const documentId = (poster?.document_id as string | null | undefined) ?? null;
+  if (!documentId) return null;
+
+  const { current, updating } = await currentPosterSet(supabase, documentId);
+  if (current.length === 0) return null;
+
+  const order = presetsFor("poster");
+  const sorted = current
+    .slice()
+    .sort((a, b) => order.indexOf(a.preset) - order.indexOf(b.preset) || FORMAT_ORDER[a.format] - FORMAT_ORDER[b.format]);
+  const primaryRow = sorted.find((a) => a.preset === "master" && a.format === "png");
+  const primary: PosterDownload = primaryRow
+    ? toDownload(primaryRow)
+    : { preset: "master", format: "png", widthPx: PRESETS.master.width, heightPx: PRESETS.master.height, state: "pending", byteSize: null, href: null };
+
+  return {
+    sessionId,
+    primary,
+    others: sorted.filter((a) => a !== primaryRow).map(toDownload),
+    ready: current.filter((a) => a.status === "ready").length,
+    total: current.length,
+    updating,
+  };
+}
+
+/* ── the audited download (contract 3, DEC-177, DEC-178) ─────────────────── */
+
+export type ExportDownloadResult = { status: "ok"; url: string } | { status: "refused" } | { status: "failed" };
+
+/**
+ * ONE audited download, for every file a person takes away: a session poster,
+ * a certificate (the admin's on SCR-045 and the member's own), and the studio's
+ * export panel. A preview or a thumbnail is not a download and is signed
+ * directly (DEC-178).
+ *
+ * The DAL re-derives nothing. `record_export_download()` (the lead's, `0152`)
+ * finds the SUBJECT from the artifact's own document — so a forged id cannot
+ * choose a laxer rule — admits admin · moderator · an accepted presenter for a
+ * poster and admin · moderator · the certificate's own member for a
+ * certificate, refuses everyone else with `42501`, and writes the audit row in
+ * the same transaction. Only then is the one signer asked for a URL, named with
+ * the file name the function built.
+ */
+export async function recordExportDownload(locale: string, artifactId: string): Promise<ExportDownloadResult> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("record_export_download", { p_artifact: artifactId });
+  if (error) return error.code === "42501" ? { status: "refused" } : { status: "failed" };
+  const row = (Array.isArray(data) ? data[0] : data) as { storage_path?: string | null; file_name?: string | null } | null;
+  if (!row?.storage_path) return { status: "failed" };
+  const url = await signExportUrl(locale, row.storage_path, row.file_name ? { download: row.file_name } : {});
+  return url ? { status: "ok", url } : { status: "failed" };
 }

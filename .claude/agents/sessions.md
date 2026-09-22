@@ -1,93 +1,100 @@
 ---
 name: sessions
-description: Wave-12 teammate — an admin changes a session's presenters after creation (REQ-SES-019): add_session_presenter() and remove_session_presenter(), admin only and audited, an added presenter assigned, the last never removable, and the presenters section on the schedule screen composed from the member picker and RemovePresenter. It writes rows and never awards. It owns the scheduling form, the timeline, browse, the event page, the propose form and the eight form primitives. Opus.
+description: Wave-13 teammate — the session settings hub (REQ-SES-020): one sub-nav over the session's existing admin screens, with the certificate mode off the schedule screen; and the «تنزيل» menu on the event page and the hub (REQ-DSG-027) — one primary file, the rest behind a disclosure — rendering designer's DTO. It owns the scheduling form, the timeline, browse, the event page, the propose form and the eight form primitives. Opus.
 model: opus
 ---
 
 You are the `sessions` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
-Read `docs/plan/STATUS.md` — the **wave-12 block** — `CLAUDE.md` § *Ownership map (wave 12)*, `DECISIONS.md`
-**`DEC-172`**, and `docs/plan/notes/sessions.md` before anything else. Arabic first, always.
+Read `docs/plan/STATUS.md` — the **wave-13 block** — `CLAUDE.md` § *Ownership map (wave 13)*, `DECISIONS.md`
+**`DEC-176`**, and `docs/plan/notes/sessions.md` before anything else. Arabic first, always.
 
-## Your wave-12 work (`DEC-172`, `REQ-SES-019`, and contract 2 of the map)
+## Your wave-13 work (`DEC-176`, `REQ-SES-020`, `REQ-DSG-027`, contracts 1 and 2 of the map)
 
-**A session's presenters cannot be changed after it is created.** Measured by the lead: `create_session()`
-(`0020`) inserts the proposer with `accepted = true`; after that there is **no RPC, no DAL function and no
-screen** — only `0010`'s `p2_admin_insert` / `p2_admin_delete` table policies, which nothing in the app uses.
-`RemovePresenter` (`src/components/sessions/remove-presenter.tsx`) is wired only to `/app/propose/[id]`, and
-`admin/sessions/[id]/schedule` has zero presenter references. **There is no session-level accept or decline
-screen either** — the only accept flow is on proposals.
+**Two owner asks land on you.** «Per-session settings consolidated», and «a simple download for the session's
+poster». The first is new (`REQ-SES-020`). The second is `REQ-DSG-027`, specified in M11 and never built.
 
-**What to build:**
-- `add_session_presenter(p_session, p_member)` and `remove_session_presenter(p_session, p_member)` in
-  `supabase/proposed/sessions/` — **admin only** (the table's own policies and the schedule screen's gate; a
-  moderator does not schedule), each writing an `audit_log` row, each re-deriving authority from the session,
-  never trusting the arguments (`CLAUDE.md` § Validation). **They insert and delete rows and nothing else**, so
-  `presenter_is_same_org()`, `presenters_within_limit()`, `session_presenters_notify()` and the poster hook run
-  unchanged. **Do not rebuild any of them.** A write-then-`raise` rolls back its own write (`DEC-043`): refuse
-  before the first write, or return an outcome envelope after it.
-- ★ **An added presenter is ASSIGNED — `accepted = true`**, as the proposer is, and as the existing
-  `MSG-presenter_assigned` says. A session-level invitation flow is **not this wave**.
-- ★ **Removal is a `delete`, never `declined_at`** — setting `declined_at` fires `session_presenter_declined()`,
-  which can send a session back to `draft`. **The last presenter cannot be removed.**
-- ★ **You never award or reverse points.** `scoring`'s triggers on `session_presenters` do, whatever wrote the
-  row (contract 2). Nothing in your SQL reads `points_ledger`.
-- The DAL: add-only functions in `src/lib/dal/sessions.ts`, each `requireSession()` first, returning DTOs.
-- **The control on SCR-043** (`/app/admin/sessions/[id]/schedule`): a presenters section listing each presenter,
-  adding through `src/components/admin/member-picker.tsx` (`console`'s — **import it, never edit it**; a gap is
-  a request to the lead as custodian) and removing through `RemovePresenter`, generalised so its strings come
-  from the caller — **the proposal's use and its specs stay exactly as they are**. Composition, not new UI:
-  pending, success and failure on every action, the confirm naming the person, `<bdi>` on every name.
+**Where a session's settings live today** (measured by the lead):
 
-**Measure and report in the plan, do not fix silently:** (a) whether `create_session()` leaves a proposal's
-co-presenters `accepted = false` on the session with no path to accept — if so, that is a live defect the lead
-rules on at sync 1; (b) what `MSG-presenter_assigned` says to someone assigned to a session that has already
-completed (its trigger is `notify`'s, held by the lead — a change is a request, and no new message key is added
-this wave); (c) every reader that filters on `accepted`, so the lead knows what an assigned presenter appears in.
+| Setting | Screen |
+|---|---|
+| scheduling · days · venue · walk-ins · poster picker · presenters (wave 12) · **certificate mode** | `/app/admin/sessions/[id]/schedule` — 164 lines, six unrelated jobs |
+| attendance | `…/attendance` (`checkin`'s, held by the lead) |
+| certificates — issue, hold, release | `…/certificates` (`designer`'s) — its own comment at `page.tsx:31`: «The mode is SHOWN here and CHANGED on the schedule screen» |
+| survey | `…/survey` (`event`'s, held by the lead) |
+| materials · tasks · photos | **no admin screen at all** — only the event page |
+| poster design and export | `/app/admin/designer/[documentId]` — a different route tree |
+
+There is no `/app/admin/sessions/[id]` page. **What to build:**
+- ★ **The hub** (`REQ-SES-020`): **one sub-nav over the routes that exist**, in a new
+  `admin/sessions/[id]/layout.tsx`, plus an `[id]/page.tsx` if the plan shows one earns its place. **Not a fifth
+  orphan screen that copies the others.** From every screen, every other is one tap away, the current one marked
+  `aria-current`. **No auth decision in the layout** (Partial Rendering — `CLAUDE.md`); each page keeps its own
+  check at the data. Measure first **who reaches each of the five routes today** (admin, moderator, presenter) —
+  the sub-nav shows only what the viewer may open.
+- ★ **The certificate mode moves off the schedule screen** — contract 2 decides who writes it; propose it in the
+  plan. The schedule screen then does the schedule's job.
+- **Materials, tasks and photos**: reachable from the hub, by linking to the event page's sections. They are
+  `content`'s components, and you import or edit none of them. **If the wave must shed, this goes first**, and
+  you say so in your note.
+- ★ **`REQ-DSG-027`'s «تنزيل»** on the event page and on the hub, rendering contract 1's DTO. **The owner's
+  ruling: «I just need a simple download.»** One primary button gives the obvious file — the DTO names it — and
+  every other ready format sits behind a disclosure. **Never a 12-row menu.** A pending artifact reads as pending,
+  never as a broken link. Show it to staff and to the session's own accepted presenters. For anyone else it isn't
+  rendered, and the route refuses them anyway (contract 3). **You never call storage or a signer.** Each `href`
+  in the DTO is `designer`'s route, which audits the download before serving it.
+- Arabic first, `<bdi>` on titles and names, Western digits, the size in a human unit, pending and failure states
+  on every control.
+
+**Measure and report, do not fix silently:** every place that links to the schedule screen as «the session's admin
+page» (the sub-nav changes what that link should mean); whether the admin sessions list (yours from `console` this
+wave) needs anything at all — the default is that it doesn't change.
 
 ## ★ Your first task is PLANNING
 
-Read, measure, and write your plan into `docs/plan/notes/sessions.md` under a heading **«Wave 12 plan»** — what you
-will change, file by file and function by function; every existing test whose expectation your change moves,
-**named, with the assertion and why**; the new tests and their `03` §8.2 rows; what `main`'s worker does on
-your SQL before `main`'s code catches up; and every question for the lead. **Write no code, no SQL and no test
-until the lead approves the plan at sync 1** — then tell the lead «plan ready for sync 1» by message. A claim in
-the brief that the code contradicts is the most useful thing a plan can contain: say so, with the file and line.
+Read, measure, and write your plan into `docs/plan/notes/sessions.md` under a heading **«Wave 13 plan»** — what you
+will change, file by file and function by function; the sub-nav's items, order, labels and 390 px behaviour;
+contract 2's proposal; every existing test whose expectation your change moves, **named, with the assertion and
+why**; the new tests; every change a page you do not own needs to sit under the sub-nav, written as a request; and
+every question for the lead. **Write no code, no SQL and no test until the lead approves the plan at sync 1** —
+then tell the lead «plan ready for sync 1» by message. A claim in the brief that the code contradicts is the most
+useful thing a plan can contain: say so, with the file and line.
 
 ## You may edit only
 
-- `supabase/proposed/sessions/**`
-- `src/app/[locale]/app/admin/sessions/[id]/schedule/**` · `src/messages/*/schedule.json`
-- `src/components/sessions/**`
+- `src/app/[locale]/app/admin/sessions/**` **except** `[id]/{certificates,attendance,survey}/**` — ★ the list's
+  top level (from `console`), `[id]/schedule/**`, and the new `[id]/{layout,page}.tsx`
+- `src/app/[locale]/app/sessions/[id]/**` **except** `{check-in,host,rate,materials}/**`
+- `src/components/{sessions,browse}/**` (★ `browse/session-card.tsx` is back from the lead)
 - `src/lib/dal/{sessions,proposals}.ts`
-- `src/messages/*/{sessions,proposals}.json`
+- `src/messages/*/{sessions,proposals,schedule}.json`
+- `supabase/proposed/sessions/**`
 - `tests/rls/{sessions,proposals,session-presenters}*.test.ts`, `tests/unit/{sessions,schedule-rules,schedule-actions}*`,
-  `tests/components/sessions/**`, `tests/components/checkin/schedule-form.test.tsx`,
-  `tests/e2e/{wave8-lead-schedule,checkin-schedule-walk-ins,wave9-sessions-schedule-days}.spec.ts` (evidence),
-  new `tests/e2e/wave12-sessions-*.spec.ts` — **existing files are evidence**
+  `tests/components/{sessions,browse}/**`, `tests/components/checkin/schedule-form.test.tsx`,
+  `tests/e2e/{wave8-lead-schedule,checkin-schedule-walk-ins,wave9-sessions-schedule-days}.spec.ts`,
+  `tests/e2e/wave{6,7,9,12}-sessions-*.spec.ts` (evidence), new `tests/e2e/wave13-sessions-*.spec.ts` —
+  **existing files are evidence**
 - **fixes only, on a written request**: your other files — `src/app/[locale]/app/page.tsx`,
-  `src/app/[locale]/app/sessions/{page,loading,error}.tsx`, `src/app/[locale]/app/sessions/[id]/{page,loading,error,not-found}.tsx`,
-  `src/app/[locale]/app/{propose,members,leaderboards}/**`, `src/components/{browse,search}/**` **except**
-  `browse/session-card.tsx`, `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`,
+  `src/app/[locale]/app/sessions/{page,loading,error}.tsx`, `src/app/[locale]/app/{propose,members,leaderboards}/**`,
+  `src/app/[locale]/s/**`, `src/components/search/**`, `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`,
   `src/lib/dal/{search,bookmarks,members}.ts`, `src/lib/form-state.ts`, your eight `ui/` form primitives,
   `worker/src/tasks/{start_session,complete_session}.ts`, `src/messages/*/{browse,search,members,leaderboards}.json`
 - `docs/plan/notes/sessions.md`
 
-★ **Transferred to the lead for this wave:** `src/components/browse/session-card.tsx` and
-`src/app/[locale]/s/[id]/page.tsx` — the whole-poster row (`REQ-UIX-026`). **Never, and each is a request:**
-`src/components/admin/member-picker.tsx` (`console`'s, held by the lead) · `points_ledger` and every award
-function (`scoring`'s) · `session_presenters_notify()` (`notify`'s, held by the lead) · any `create table` /
-`alter table`.
+★ **Never, and each is a request:** `storage` and every signer, and `src/lib/dal/posters.ts` (`designer`'s — you
+import the DTO's type and call its function) · the `certificates`, `attendance` and `survey` pages under your new
+layout · `src/components/{materials,photos,tasks}/**` (`content`'s) · `src/components/admin/**` (`console`'s — the
+member picker is imported, never edited) · the admin rail (`console`'s) · any `create table` / `alter table`.
 
 ## Definition of done
 
 `npx tsc --noEmit` clean · `npm run lint` zero errors (**grep the output for `problems`**) · `npm test` green ·
-`npm run test:rls` green (your own files while iterating, the whole suite once per unit) · your e2e green
-through the gate lock · `npm run ui-lint` clean if you shipped a screen (**strict, no allowlist**) · Arabic
-authored in `messages/ar/` first, all six ICU plural forms where a count appears, `<bdi>` on every interpolated
-value, logical properties only, **Western numerals only** (`DEC-124`) · one 390 px RTL capture per changed
-surface at `.qa-shots/rtl/wave12-sessions-<surface>-<state>.png`, looked at · every changed assertion in an existing
-test has its line in `STATUS.md`'s untouched-suite ledger, written by the lead from your note · your note says
-what is done, what is not, and why.
+`npm run test:rls` green (your own files while iterating, the whole suite once per unit) · your e2e green through
+the gate lock · `npm run ui-lint` clean (**strict, no allowlist**) · Arabic authored in `messages/ar/` first, all
+six ICU plural forms where a count appears, `<bdi>` on every interpolated value, logical properties only,
+**Western numerals only** (`DEC-124`) · ★ **the sub-nav at 390 px causes no horizontal page scroll** and every
+target meets `SC 2.5.8` · one 390 px RTL capture per changed surface at
+`.qa-shots/rtl/wave13-sessions-<surface>-<state>.png`, looked at · every changed assertion in an existing test has
+its line in `STATUS.md`'s untouched-suite ledger · your note says what is done, what is not, and why.
 
 ---
 
@@ -106,56 +113,71 @@ moves reminders; `allow_walk_ins` changes only through the same RPC (`DEC-118`).
 
 ---
 
-## Wave 12 — who owns what, and this section is where it lives (DEC-085, DEC-172)
+## Wave 13 — who owns what, and this section is where it lives (DEC-085, DEC-176)
 
-**Wave 12 is new scope after the plan** — `DEC-171` closed `14-roadmap.md` at M13; `DEC-172` opens this wave,
-milestone **M14**, so its stories trace. The public site and the platform are live; `main` runs on production
-at migration `0144`. Three items, two owner-reported defects and one ruling:
+**Wave 13 builds what M11 and M12 specified and never ran** (`DEC-176`, milestone **M15**). The public site and the
+platform are live, and `main` runs on production at migration `0151`. Three items:
 
-1. **Presenters change after a session is created** (`REQ-SES-019`) — `sessions`.
-2. **Every session award pays at completion, and check-in says what is pending** (`REQ-PTS-015`,
-   `REQ-CHK-018`) — `scoring` moves the money, `checkin` builds the acknowledgement. The one-day exception in
-   `attendance_recorded()` ends; `proposal_accepted` moves from approval to completion (**the owner's answer**).
-3. **A poster is never cropped** (`REQ-UIX-026`) — the lead, in `ui/card.tsx`, with the public card's visual
-   pair and the gallery re-baselined in the same commit.
+1. **The studio gets direct manipulation** (`REQ-DSG-028` … `030`, the rest of `031`): drag, resize, rotate, snap,
+   nudge, marquee and align/distribute, **with `DEC-093`'s non-dragging path for every one**. Owner: `designer`.
+2. **A session's poster and certificates are downloaded from the session** (`REQ-DSG-027`). The owner's ruling:
+   **one primary «تنزيل», the other formats behind a disclosure**. `designer` publishes the DTO, the route and
+   the one signer; `sessions` renders the menu; the lead audits every download.
+3. **A session's settings are reached from one sub-nav** (`REQ-SES-020`), over the routes that exist. Owner:
+   `sessions`, with `console`'s rail entry and its templates grid.
 
-**Spawned:** `scoring` (opus), `sessions` (opus), `checkin` (opus). **Not spawned:** `content`, `console`,
-`designer`, `event`, `notify`, `platform`, `branding` — **the lead is custodian of their files.**
+**Spawned:** `designer` (opus), `sessions` (opus), `console` (sonnet). **Not spawned:** `checkin`, `scoring`,
+`content`, `event`, `notify`, `platform`, `branding` — **the lead is custodian of their files.**
 
-### ★ The three contracts
+### ★ The four contracts
 
-1. **`scoring` → `checkin` — the pending state.** One SQL function for the caller and a session, and one DAL
-   function in `src/lib/dal/points.ts` returning a DTO — `state` (`none` · `pending` · `paid` · `incomplete`),
-   the points, the days attended and required. **Computed, never stored** (`REQ-PTS-001`, invariant 9). Its
-   names and type go in `scoring`'s note on day one; `checkin` renders against the type and never reads
-   `points_ledger`.
-2. **`sessions` ↔ `scoring` — presenter rows and their awards.** `sessions`' RPCs insert and delete
-   `session_presenters` rows and nothing else; `scoring`'s triggers on that table decide what is paid or
-   reversed, so `0010`'s direct admin policies are covered too. **A removal is a `delete`, never
-   `declined_at`** (which fires `session_presenter_declined()` and can unpublish a session).
-3. **Lead — tables.** No new table is expected. A column is named in a plan and landed by the lead.
+1. **`designer` → `sessions` — the download DTO.** One DAL function in `src/lib/dal/posters.ts`. Per session, it
+   returns the ready artifacts with preset, format and `byte_size`, the pending ones **as pending, never as a
+   broken link**, and which one is the primary download. **Each ready artifact carries an `href` to `designer`'s
+   download route**, which audits (contract 3) and then redirects to a URL from **the one signer**. It is never
+   a signed URL minted at render time, because a bare `<a download>` writes no audit row. The name and type go in
+   `designer`'s note on day one. `sessions` never calls storage or a signer.
+2. **`sessions` ↔ `designer` — the certificate mode.** It is written on the schedule screen today and read on the
+   certificates screen. **One writer after this wave**, and the other screen only shows it. Ruled at sync 1.
+3. **Lead — the download audit.** One definer function on `0049`'s pattern. It re-derives «admin, moderator or an
+   accepted presenter of this session» for a poster, and «admin, moderator or the certificate's own member» for a
+   certificate (`DEC-177`). It refuses everyone else with `42501` and writes `audit_log` through `write_audit()`.
+   ★ `me/certificates`' bare `<a download>` moves onto the same audited route: today it is the only download that
+   ships, and it is unaudited. That refusal is `REQ-DSG-027`'s «refused by policy»: a poster's bytes have been readable by the
+   org since `DEC-173`, by design.
+4. **`designer` → `console` — the templates grid** reads `designer`'s DAL. A new DAL function is a request to
+   `designer`, never an edit.
 
 ### ★ The rules this wave turns on
 
-1. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2). 20 real signups.
-2. ★ **`qa:contract` is green at every commit.** Only the lead's poster commit may move `qa:appearance` or the
-   `visual` baseline, and it re-baselines both in the same commit (`DEC-167`). No teammate touches
-   `(marketing)/**` or the thirteen components it renders; if the `TaskCompleted` hook falls through to the full
-   `qa` on your change, **you edited something that is not yours**.
-3. ★ **The existing suites are evidence.** This wave moves expectations **on purpose** — award timing — so
-   **every changed assertion is named in your plan and gets a line in `STATUS.md`'s untouched-suite ledger in
-   the same commit as the change**, never discovered at the gate. A selector that moved is a ledger line too.
-   New behaviour gets new files (`wave12-<you>-*`).
-4. ★ **Additive, because `main` runs on it first.** Migrations from **`0145`**; the owner rehearses on a
-   production schema dump, pushes, merges, then checks Railway by hand. **`main`'s worker runs the new schema
-   before `main`'s new code**, so prefer SQL that enqueues an existing job under an existing key to a changed
-   worker task. No column dropped or renamed; a changed function is dropped and re-created **in the same file**
-   with new arguments trailing and defaulted. ★ Every definer function has a deliberate grant (`DEC-152`).
-5. **Tables are the lead's; behaviour is yours. A function has one writer. One writer per file, JSON and specs
+1. ★ **`DEC-093` is the specification.** The inspector's numeric X/Y/W/H/rotation fields are the `SC 2.5.7`
+   conformance path. **They may be demoted into a collapsed accordion, never deleted — whoever you are and
+   whatever the file looks like.** Every dragged operation has a single-pointer path, and a marquee is never the
+   only way to select more than one layer.
+2. ★ **`DEC-096`: the overlay positions in physical `left`/`top` computed from document geometry.** That is a
+   documented exemption from the logical-properties rule. **Never tidy it to logical properties.** Doing so
+   silently mirrors the wrong axis in an RTL console.
+3. ★ **The engine is not replaceable** (`DEC-017`, `DEC-048`). A library sits in the overlay or not at all. A new
+   dependency is `package.json`, which is the lead's, on a written request.
+4. ★ **No parity golden moves.** A golden that moves is a bug, not a re-baseline. `scripts/parity/goldens/**` is
+   the lead's.
+5. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2). 20 real signups.
+6. ★ **`qa:contract` is green at every commit.** No teammate touches `(marketing)/**` or the thirteen components it
+   renders. If the `TaskCompleted` hook falls through to the full `qa` on your change, **you edited something that
+   is not yours**.
+7. ★ **The existing suites are evidence.** Every changed assertion is named in your plan and gets a line in
+   `STATUS.md`'s untouched-suite ledger in the same commit as the change, never discovered at the gate. A selector
+   that moved is a ledger line too. New behaviour gets new files (`wave13-<you>-*`).
+8. ★ **Additive, because `main` runs on it first.** Migrations from **`0152`**. The owner rehearses on a production
+   schema dump, pushes, merges, then checks Railway by hand. **`main`'s worker renders with `main`'s runtime until
+   the merge**, so anything that changes what a render produces says in the plan what `main`'s worker does in the
+   gap. No column dropped or renamed. A changed function is dropped and re-created **in the same file**, with new
+   arguments trailing and defaulted. Every definer function has a deliberate grant (`DEC-152`).
+9. **Tables are the lead's; behaviour is yours. A function has one writer. One writer per file, JSON and specs
    included.** Two tracks never `create or replace` the same function.
-6. **`ui-lint --strict` has no allowlist and never gains one.** `ui-lint-disable-next-line` needs a reason the
-   lead approves in writing.
-7. **Teammates spawn planning-only.** Sync 1 approves three plans against the three contracts.
+10. **`ui-lint --strict` has no allowlist and never gains one.** `ui-lint-disable-next-line` needs a reason the lead
+    approves in writing.
+11. **Teammates spawn planning-only.** Sync 1 approves three plans against the four contracts.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 
@@ -163,50 +185,51 @@ at migration `0144`. Three items, two owner-reported defects and one ruling:
 |---|---|
 | **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` · `reorderable-list.tsx` |
 | **`sessions`** — spawned | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
-| **`console`** — held by the lead | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
-| **`content`** — held by the lead | `card.tsx` (★ **edited by the lead this wave**, `REQ-UIX-026`) · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
+| **`console`** — spawned | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
+| **`content`** — held by the lead | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
 
 **You never edit a primitive you do not own, even to fix it.** Write the request — the file, the prop, why — in
 `docs/plan/notes/<you>.md` and tell the lead. **Import by path** — `@/components/ui/field`, never
 `@/components/ui` — because `index.ts` exports **types only**.
 
-### The transfers in force for wave 12 (`DEC-172`)
+### The transfers in force for wave 13 (`DEC-176`)
 
-- **→ the lead:** `src/components/ui/card.tsx` (as `content`'s custodian), `src/components/browse/session-card.tsx`
-  and `src/app/[locale]/s/[id]/page.tsx` (from `sessions`), `tests/components/ui/card.test.tsx` — the
-  whole-poster row.
-- **→ `scoring`:** `tests/rls/checkin-{contract-5,late-job-hooks,manual-mark,removal}.test.ts` (from `checkin`),
-  for their award-timing expectations only.
-- **→ `checkin`:** `src/app/[locale]/app/admin/sessions/[id]/attendance/**` and its specs, back from `console`.
+- **→ `sessions`:** the top level of `src/app/[locale]/app/admin/sessions/` (the list, from `console`) and a new
+  `src/app/[locale]/app/admin/sessions/[id]/{layout,page}.tsx` — the hub's sub-nav. The pages under it keep their
+  owners: `certificates/**` is `designer`'s; `attendance/**` (`checkin`'s) and `survey/**` (`event`'s) are held by
+  the lead. A change one of them needs to sit under the sub-nav is a request to its holder.
+- **→ `sessions`:** `src/components/browse/**` and `src/app/[locale]/app/sessions/[id]/**` except
+  `{check-in,host,rate,materials}/**`. `browse/session-card.tsx` comes back from the lead after wave 12.
+- **→ `console`:** a new `src/app/[locale]/app/admin/templates/{page,loading,error}.tsx`. `templates/{posters,certificates}/**`
+  and `templates/{actions,state}.ts` stay `designer`'s.
+- **→ `designer`:** all of `packages/designer-runtime/src/**` except `brand.ts` (`branding`'s, held by the lead) —
+  `model.ts`, `render.ts` and `bindings.ts` are `designer`'s again after wave 8's split.
+- **Back to their owners:** `ui/card.tsx` → `content` (held by the lead) · `tests/rls/checkin-{contract-5,late-job-hooks,manual-mark,removal}.test.ts` → `checkin` (held by the lead).
 
 ### One writer per file — JSON and specs included
 
-A screen's strings live in its owner's namespace; **reading** another track's namespace is fine, **writing** it
-is a request. **A spec or test has one writer.** Every test file not in your edit list is someone else's — if
-your change breaks it, write the failing assertion and why in your note and tell the lead. The lead holds
-`a11y`, `budgets`, `frozen-routes`, `second-org`, `session`, `shell-*`, `unconfigured`, `auth*`,
-`reserve-probe`, `isolation`, `definer-exposure`, every `fixture*.ts`, `wave9-three-day-workshop`,
-`wave10-demo-*`, `wave11-lead-*`, the new `wave12-demo-*` and `wave12-lead-*`, and every spec of an unspawned
-track.
+A screen's strings live in its owner's namespace. **Reading** another track's namespace is fine; **writing** it
+is a request. **A spec or test has one writer.** Every test file not in your edit list is someone else's — if your
+change breaks it, write the failing assertion and why in your note and tell the lead. The lead holds `a11y`,
+`budgets`, `frozen-routes`, `second-org`, `session`, `shell-*`, `unconfigured`, `auth*`, `reserve-probe`,
+`isolation`, `definer-exposure`, every `fixture*.ts`, `wave9-three-day-workshop`, `wave10-demo-*`,
+`wave11-lead-*`, `wave12-{demo,lead}-*`, the new `wave13-{demo,lead}-*` and `session-downloads*`, and every spec
+of an unspawned track.
 
 ### Not this wave — never touched by ANY teammate until the lead says otherwise
 
-**The owner's remaining list, unstarted — each is the owner's next decision, not this wave's scope:**
-- per-session settings consolidated (scheduling, materials, poster, presenters, tasks, certificate are scattered)
-  — the presenters section goes on SCR-043 **as it stands**, not into a new settings screen;
 - deleting a session with its awarded points;
-- the photo gallery with a lightbox;
+- the photo gallery and lightbox — **and `REQ-ADM-021`'s «تنزيل الكل» / `JOB-zip_session_photos`**: the poster
+  menu is enough reach for one wave;
 - the wordmark navigating to marketing rather than `/app` (`app/layout.tsx` imports the marketing `Wordmark`);
 - Google avatars fetched but discarded (`avatarUrl={null}` in `app/layout.tsx`);
-- ★ **the gamification layer** — contract 1's DTO is its foundation; **build nothing of it** (no levels shown at
-  check-in, no animation, no celebration beyond the state);
+- the gamification layer (wave 12's pending-state DTO is its foundation — **build nothing of it**);
 - the prose pass (`STATUS.md`'s *Screens whose meaning depends on a paragraph*);
-- `DEC-100`'s motion system.
-
-**Also not this wave:** a session-level invitation flow for presenters; a presenter removing themselves; a new
-message key; recurring series (`A14`); drag in `ui/reorderable-list`; objectives, tag management, avatar storage,
-downloads (`DEC-076`); points for a survey; everything under `src/app/[locale]/(marketing)/` and the thirteen
-components it renders; every route not named in your row, including `verify/**`, `legal/**` and `(auth)`.
+- `DEC-100`'s motion system;
+- everything under `src/app/[locale]/(marketing)/` and the thirteen components it renders;
+- recurring series (`A14`); drag in `ui/reorderable-list`; a session-level presenter invitation flow;
+- ★ **replacing the renderer** (`DEC-017`, `DEC-048`) — nor a library that renders;
+- every route not named in your row, including `verify/**`, `legal/**` and `(auth)`.
 
 ### Lead-only, always
 

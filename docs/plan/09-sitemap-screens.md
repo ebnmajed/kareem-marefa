@@ -410,6 +410,7 @@ reason** the proposer receives.
 
 ### SCR-043 · `/app/admin/sessions/[id]/schedule` ★
 
+★ **Wave 13 (`DEC-176`, `DEC-178`) — `REQ-SES-020`, `REQ-DSG-027`:** SCR-043 sits under the session's settings sub-nav («الجدولة» · «الحضور» · «الشهادات» · «الاستبانة» · «صفحة الجلسة»), shared with SCR-044, SCR-045 and SCR-064. **وضع الشهادات leaves this screen** and is written on SCR-045 only. Under the poster picker, **«تنزيل الملصق»** gives the 4:5 master; the other formats are behind «صيغ أخرى», and a render still in progress reads as pending, never as a link.
 ★ **Wave 12 (`DEC-172`) — `REQ-SES-019`:** the session's presenters are listed here and changed here — add with the member picker, remove with a confirm that names the person; the last presenter cannot be removed.
 **Purpose:** turn an approved مقترح into a published جلسة. **Serves:** `REQ-SES-001`,
 `REQ-SES-002`, `REQ-CRT-002`, `REQ-DSG-002`
@@ -469,6 +470,7 @@ exports** (A8).
 ### SCR-045 · `/app/admin/sessions/[id]/certificates`
 **Serves:** `REQ-CRT-004`, `REQ-CRT-011` · Review and release held certificates, individually or in
 bulk; revoke with a mandatory reason.
+★ **Wave 13 (`DEC-178`):** **the one writer of وضع الشهادات** (`set_session_certificate_mode()`, `0154`) — shown as a sentence, not a control, once the session is completed, archived or cancelled; every issued certificate has its own download through the audited route; the settings sub-nav above it.
 
 ### SCR-050–052 · Moderation queues
 **Serves:** `REQ-ADM-010`, `REQ-EVT-008`, `REQ-EVT-012`, `REQ-EVT-014`

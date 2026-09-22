@@ -21,8 +21,7 @@
         "moderationReports": "Reports",
         "scoring": "Points",
         "recognition": "Badges and levels",
-        "templatesPosters": "Poster templates",
-        "templatesCertificates": "Certificate templates",
+        "templates": "Templates",
         "emails": "Email",
         "reminders": "Reminders",
         "exports": "Exports",
@@ -33,7 +32,6 @@
       "groups": {
         "moderation": "Moderation",
         "points": "Points and recognition",
-        "designs": "Designs",
         "notifications": "Notifications"
       }
     },
@@ -558,6 +556,9 @@
         "export": {
           "created": "Data exported"
         },
+        "export_artifact": {
+          "downloaded": "Exported file downloaded"
+        },
         "impersonation": {
           "started": "Break-glass access started",
           "ended": "Break-glass access ended",
@@ -608,7 +609,8 @@
           "scheduled": "Session scheduled",
           "walk_ins_changed": "Walk-ins changed",
           "presenter_added": "Presenter added to a session",
-          "presenter_removed": "Presenter removed from a session"
+          "presenter_removed": "Presenter removed from a session",
+          "certificate_mode_changed": "Session certificate mode changed"
         },
         "storage": {
           "prefix_violation": "Storage path violation"

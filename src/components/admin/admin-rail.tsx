@@ -97,14 +97,16 @@ export type AdminRailIconKey = keyof typeof ICONS;
 //
 // ── the fourteen-group regroup (wave 7) ───────────────────────────────────
 //
-// `AdminRailItem` now carries an optional `children`: ten of the fourteen
-// groups are still one route (rendered exactly as before — an `<a>`-shaped
-// rail item), four disclose 2–3 routes each (moderation, points ×
-// recognition, the two template libraries, emails × reminders). A child
-// never carries its own icon — only the group does — so there is no
-// icon-reuse collision to solve at the nested level, unlike the flat list's
-// own adjacent-icon problem (`admin/layout.tsx`'s own comments on
-// `recognition`/`templatesCertificates`).
+// `AdminRailItem` now carries an optional `children`: most top-level items
+// are still one route (rendered exactly as before — an `<a>`-shaped rail
+// item), three disclose 2–3 routes each (moderation, points × recognition,
+// emails × reminders — `admin/layout.tsx`'s own header comment is the
+// count). ★ Wave 13 (`DEC-176`, `DEC-178`): the template libraries stopped
+// being one of those three — «التصاميم» is a plain leaf now, at the new
+// `/app/admin/templates`, since the card grid it points at was already
+// built twice and only needed one address, not a disclosure. A child never
+// carries its own icon — only the group does — so there is no icon-reuse
+// collision to solve at the nested level.
 //
 // Three renderings of a group, by surface:
 //   - Phone sheet: always the inline disclosure below (full-height drawer,

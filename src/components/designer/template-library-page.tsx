@@ -6,6 +6,7 @@ import { listEditorFaces } from "@/lib/dal/fonts";
 import { buttonClass } from "@/components/ui/button";
 import { Link } from "@/components/ui/link";
 import { PageHeader } from "@/components/ui/page-header";
+import { Tabs } from "@/components/ui/tabs";
 import { CreateTemplateDialog } from "@/components/designer/template-actions";
 import { TemplateLibrary } from "@/components/designer/template-library";
 
@@ -17,6 +18,12 @@ import { TemplateLibrary } from "@/components/designer/template-library";
 // chosen per session and is never a row (DEC-148) — so its library offers
 // both, as links: the brand is composed on the server at request time, the
 // same path an export takes (DEC-053).
+//
+// ★ ONE ADDRESS, TWO TABS (DEC-178, `console`'s shape (b)). `/app/admin/templates`
+// redirects here, and a posters | certificates strip under the header moves
+// between the two pages — real links, so each stays URL-addressable and keeps
+// its one `h1`. Nothing is duplicated: the grid is `TemplateLibrary`, as it
+// was (`16` §10.3).
 
 export async function TemplateLibraryPage({ locale, purpose, scheme }: { locale: string; purpose: TemplatePurpose; scheme?: string }) {
   const [t, data, faces, headerList] = await Promise.all([
@@ -63,8 +70,19 @@ export async function TemplateLibraryPage({ locale, purpose, scheme }: { locale:
           </>
         }
       />
-      <div className="mt-8">
-        <TemplateLibrary data={data} locale={locale} origin={origin} faces={faces} />
+      <div className="mt-6">
+        <Tabs
+          label={t("library.tabsLabel")}
+          value={purpose}
+          items={[
+            { value: "poster", label: t("library.tabPosters"), href: "/app/admin/templates/posters" },
+            { value: "certificate", label: t("library.tabCertificates"), href: "/app/admin/templates/certificates" },
+          ]}
+        >
+          <div className="pt-4">
+            <TemplateLibrary data={data} locale={locale} origin={origin} faces={faces} />
+          </div>
+        </Tabs>
       </div>
     </>
   );

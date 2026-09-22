@@ -110,3 +110,27 @@ export function sameDay(a: string, b: string, timeZone: string): boolean {
   const day = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone, dateStyle: "short" }).format(new Date(iso));
   return day(a) === day(b);
 }
+
+/**
+ * A file's size in a human unit, in Western digits (REQ-DSG-027, DEC-124):
+ * «1.2 ميغابايت», «820 كيلوبايت», "1.2 MB". Decimal units, as a phone's files
+ * app shows them; one decimal under 10, none above. The number and its unit
+ * never break apart — the same no-break rule as a time's «م».
+ */
+export function formatBytes(bytes: number, locale = "ar"): string {
+  const units = ["byte", "kilobyte", "megabyte", "gigabyte"] as const;
+  let value = Math.max(0, bytes);
+  let unit = 0;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit += 1;
+  }
+  return new Intl.NumberFormat(`${locale}-u-nu-latn`, {
+    style: "unit",
+    unit: units[unit],
+    unitDisplay: locale === "ar" ? "long" : "short",
+    maximumFractionDigits: value < 10 && unit > 0 ? 1 : 0,
+  })
+    .format(value)
+    .replace(/\s+/gu, NBSP);
+}

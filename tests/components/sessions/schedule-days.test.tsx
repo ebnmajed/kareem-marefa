@@ -64,7 +64,6 @@ const BASE: ScheduleInitial = {
   capacity: "40",
   rsvpDeadlineAt: "",
   cancellationCutoffAt: "",
-  certificateMode: "off",
   language: "ar",
   allowWalkIns: false,
 };

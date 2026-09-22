@@ -3533,3 +3533,470 @@ ruled at sync 1 (Q1):**
 3. Promote `sessions/0001` **after** `scoring`'s files. The order within my file does not matter to
    theirs: `scoring`'s triggers fire on insert, update and delete of `session_presenters` whatever
    the writer is.
+
+---
+
+## Wave 13 plan — the settings hub and the session download (`REQ-SES-020`, `REQ-DSG-027`, `DEC-176`, contracts 1 and 2)
+
+Planning only. No code, SQL or test is written until the lead approves this at sync 1. Measured on
+`wave-13/studio-and-session-settings` at `784ea77`.
+
+### W13.0 ★ Where the brief and the code disagree
+
+1. ★ **`/app/admin/sessions/[id]` is already linked, and it 404s.** The survey page's breadcrumb
+   points at it (`survey/page.tsx:56`, `sessionHref`, used at `:63`). The brief says «there is no
+   `/app/admin/sessions/[id]` page». That is true, and a live screen links to it anyway. This is
+   what earns `[id]/page.tsx` its place (W13.2).
+2. ★ **Taking the radio off the schedule form would silently switch every session's certificates
+   OFF.** `schedule_session()` (`0112:68`) declares `p_certificate_mode … default 'off'` and writes
+   `certificate_mode = p_certificate_mode` on every call (`0112:312`). A form that stops sending the
+   mode would reset it to `off` on the next save. So contract 2 is not UI-only: `schedule_session()`
+   must learn «null = unchanged», as walk-ins did in `DEC-141` (W13.3).
+3. **The poster designer route is not the same audience as the hub.** `/app/admin/designer/[documentId]`
+   admits an **admin or an accepted presenter** (read-only), and **not a moderator**
+   (`documents_read`, `0055:614–618`). It lives outside `admin/sessions/[id]/`, so no layout there
+   can wrap it. The hub reaches it through the schedule screen's poster section, as it does today.
+4. **An admin who presents their own session cannot open its survey.** `survey_results()` refuses
+   any presenter of the session, whatever their role (`survey/page.tsx:21–26`). The sub-nav has to
+   know that, or it offers an admin a link that 404s.
+5. **«164 lines, six unrelated jobs»** counts `schedule/page.tsx`. The form is `schedule-form.tsx`
+   (987 lines). The jobs on the screen are the form (when, where, deadlines, walk-ins, **the
+   certificate mode**, all-days, language), presenters, what the proposer wrote, and the poster.
+   Only the mode leaves.
+6. `certificates/page.tsx:29–31` is quoted correctly. The same link to the schedule for the mode is
+   also at `certificates/page.tsx:179` and `components/certificates/issuance.tsx:205`. Both go with
+   contract 2.
+
+### W13.1 (1) Who reaches each per-session admin route today — measured
+
+| Route | Admin | Moderator | Accepted presenter (a member) | Gate, file:line |
+|---|---|---|---|---|
+| `…/[id]/schedule` (SCR-043) | yes | **404** | 404 | `getSessionForSchedule()` `sessions.ts:336`, `getScheduleContent()` `:425`: `role !== "admin"` → null → `notFound()` |
+| `…/[id]/attendance` (SCR-044) | yes (CSV, removal, per-rater ratings are admin-only inside) | yes | 404 | `getAttendanceReport()` `checkin.ts:555` |
+| `…/[id]/certificates` (SCR-045) | yes | yes: design read-only, **no certificate** (`certs_read_*` admin-only) | 404 | `getCertificateDesign()` `certificates.ts:315` |
+| `…/[id]/survey` (SCR-064) | yes, **unless they present this session** | yes, same exception | 404 | `getSurveyResults()` → `survey_results()` refuses presenters |
+| `/app/admin/designer/[documentId]` (the poster) | yes | **404** | yes, read-only | `documents_read` (`0055:614`) |
+| `/app/admin/sessions/[id]` | 404 (no page) | 404 | 404 | — |
+
+`admin/layout.tsx` (`console`'s) gates nothing, on purpose: a member gets an empty rail, and the page
+404s itself (its header comment, bug 1). **The hub follows that rule.** The layout decides nothing.
+Each page keeps its own check, at the data.
+
+### W13.2 (2) The hub — the sub-nav, and whether `[id]/page.tsx` earns its place
+
+**The shape: a sub-nav over the routes that exist. Nothing moves between screens except the
+certificate mode.** Presenters and the poster stay on SCR-043, where wave 12 and wave 8 put them.
+Moving them to a new overview would create the fifth screen the brief forbids. It would also move
+three other tracks' specs (`wave8-designer-posters.spec.ts` visits the schedule six times for the
+picker, and `wave8-designer-editor.spec.ts:213` pins the poster's back link). Q1 offers the
+alternative.
+
+**Items, in the order a session is lived.** Each item is shown only to a viewer who may open it:
+
+| # | Label (ar) | en | Route | Shown to |
+|---|---|---|---|---|
+| 1 | «الجدولة» | Schedule | `…/[id]/schedule` — the form, presenters, the poster, the download | admin |
+| 2 | «الحضور» | Attendance | `…/[id]/attendance` | admin, moderator |
+| 3 | «الشهادات» | Certificates | `…/[id]/certificates` — **and the certificate mode** (W13.3) | admin, moderator |
+| 4 | «الاستبانة» | Survey | `…/[id]/survey` | admin, moderator, **not** an accepted presenter of this session |
+| 5 | «صفحة الجلسة» | Session page | `/app/sessions/[id]` — materials, tasks and photos (W13.5) | everyone the nav renders for |
+
+- The nav's accessible name is «إعدادات الجلسة». These are **links in a `<nav>`**, not a tablist,
+  and the current one carries `aria-current="page"`. That is what `REQ-SES-020` says, and it is the
+  event page sub-nav's precedent (`event-subnav.tsx:20–21`). `ui/tabs` gives `role="tab"` and
+  `aria-selected`, which is the wrong semantics for five separate pages, so I do not reuse it.
+- The labels are the ones the admin list's menu and the event page's staff links already use
+  (`admin.json` `sessions.{attendance,certificates,survey}`, `sessions.json`
+  `event.manageSchedule`), so one thing keeps one name.
+
+**Files:**
+- **`src/app/[locale]/app/admin/sessions/[id]/layout.tsx`** (new, a Server Component). It renders
+  `<Suspense fallback={<SessionSettingsNavSkeleton/>}><SessionSettingsNav locale id /></Suspense>`
+  and then `{children}`. It awaits nothing itself, so the nav never holds up the page. It **never
+  calls `notFound()` or `redirect()`**, for the streaming reason in `admin/layout.tsx`'s bug 1.
+  Rendered once above the existing `[id]/loading.tsx`, the strip stays on screen while a sibling
+  page streams. `[id]/loading.tsx` is the lead's wave-5 file and stays untouched.
+- **`src/components/sessions/session-settings-nav.tsx`** (new): an async server loader, plus a
+  `"use client"` strip.
+  - The loader calls `getSessionSettingsNav()` and renders **nothing** on `null`: a member, another
+    org, a bad id, or an error. The page below still answers 404 itself.
+  - The strip takes `{ key, href, label }[]` and marks the current item with
+    `useSelectedLayoutSegment()` (`next/navigation`, documented in
+    `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/use-selected-layout-segment.md`).
+    Partial Rendering does not re-render a layout on navigation, so the marker has to come from the
+    client and not from props. «صفحة الجلسة» is never current.
+  - Links are `Link` from `@/i18n/navigation`, so route progress works.
+- **`getSessionSettingsNav(locale, id)`** (new, in `src/lib/dal/sessions.ts`). It calls
+  `requireSession()`, then `z.uuid()`. It runs one query: the session's `id` and
+  `session_presenters(member_id)` filtered to the caller and `accepted`. It returns
+  `{ items: SessionSettingsKey[] } | null`, where `null` means not staff, not found, or an error
+  (caught, never thrown into a layout). The keys are computed from the role and the presenter flag,
+  per the table above. This is presentation only; each page stays the boundary.
+  - A staleness edge: an admin who adds themself as a presenter keeps the survey item until the next
+    navigation, because the layout is not re-rendered. The survey page still 404s, so it is correct
+    but untidy. I will not add a refresh mechanism for it.
+- **`src/app/[locale]/app/admin/sessions/[id]/page.tsx`** (new) — **a redirect, not a screen.** An
+  admin goes to `…/schedule`, a moderator to `…/attendance`, and anyone else gets `notFound()` at
+  the page. This fixes W13.0's dead breadcrumb, and gives the hub one URL for «this session's
+  settings». The redirect uses `redirect` from `@/i18n/navigation`, as `survey/actions.ts:27`
+  does. Under `[id]/loading.tsx` it arrives as a streamed redirect rather than a 307; the same
+  applies to every page there, and I will say so in its comment.
+
+**At 390 px (`REQ-SES-020`: no horizontal page scroll, `SC 2.5.8`):**
+- An admin's five Arabic labels need about 470 px against 358 px of content width. So the strip
+  is **one row that scrolls inside itself**, and the page never scrolls sideways.
+  - The `<ul>` is `flex overflow-x-auto` inside a `min-w-0` nav.
+  - The side that hides more fades. I mask with `overflowEdges()`, which `ui/tabs.tsx` exports, so
+    it is imported and not edited. It is a mask and not `overflow: hidden`, so no line is clipped.
+  - The current item is scrolled into view by adjusting the strip's own `scrollLeft`, never
+    `scrollIntoView`, which can move the page. That is `ui/tabs.tsx`'s lesson from wave 8.
+- **I do not wrap it onto two lines.** `ui/tabs.tsx`'s header records why, found twice.
+- Each link is `h-11` (44 px) with `px-3`, above `SC 2.5.8`'s 24 px, in both directions.
+- The strip is **not sticky**. SCR-043 already has a sticky action bar above the tab bar, and a
+  third fixed layer at 844 px is the event page's rejected option (`event-subnav.tsx:13–18`).
+- A moderator's four items may just fit. The same code handles both.
+
+**Placement, stated honestly.** A layout can only render above its page, so the strip sits
+**above** each page's own header, breadcrumb and `h1`. Each header stays its owner's. The four
+screens do not share a header shape today:
+- schedule uses `PageHeader` with the session title;
+- certificates uses `PageHeader` with «شهادات الجلسة»;
+- survey uses `PageHeader` with «نتائج الاستبانة»;
+- attendance has a bare `h1` «تقرير الحضور — title» and a back link.
+
+Unifying them is four owners' work and is not this wave (Q2).
+
+### W13.3 (3) Contract 2 — the certificate mode's single writer: **the certificates screen**
+
+**The proposal:** the mode is **changed on SCR-045 (`designer`'s) and nowhere else**. It is shown
+on SCR-045 already, with its explanation (`modeExplain.*`). The screen's own comment asks for this.
+The schedule form stops rendering or sending it.
+
+**Who writes what:**
+
+| Part | Owner | What |
+|---|---|---|
+| `schedule_session()` learns «null = unchanged» for the mode | **`sessions`** (its function) | `supabase/proposed/sessions/0001_certificate_mode_one_writer.sql`: drop and re-create **with the identical signature**, change `p_certificate_mode … default 'off'` → `default null`, and write `certificate_mode = coalesce(p_certificate_mode, target.certificate_mode)`. Nothing else in the 350-line body moves. The revoke and grant are re-stated as `0112:406–407` |
+| `set_session_certificate_mode(p_session uuid, p_mode certificate_mode)` | **`sessions`**, same file, because it writes a `sessions` column and one track holding both writers of the column keeps them from drifting | definer, `assert_fresh_admin()` (the admin gate `schedule_session()` uses), re-derives the session in the actor's org `for update`, and **refuses before any write**: `session_not_found`, `session_cancelled`, and (Q3) `session_completed` for completed/archived. Same mode → `{status: 'unchanged'}`, nothing written. Otherwise one `update` and one `write_audit(…, 'session.certificate_mode_changed', 'session', id, {mode: old}, {mode: new})`. `revoke … from public, anon`; `grant execute … to authenticated` (`DEC-152`) |
+| `setSessionCertificateMode(locale, sessionId, mode)` | **`sessions`**, `src/lib/dal/sessions.ts`, add-only | `requireSession()`, Zod on the id and the enum, returns `{status: 'ok'|'unchanged'} | {status: 'refused', reason}` — a DTO, never a row |
+| The control on SCR-045 — three radios and «احفظ», pending and failure, its server action, its strings in `certificates.json`, its revalidation of `…/certificates` and `/app/sessions/[id]` | **`designer`** | replaces the badge and `modeLink` (`certificates/page.tsx:173–182`) for an admin. A moderator keeps the badge. `issuance.tsx:205`'s link to the schedule is re-pointed or removed |
+| The schedule form without the mode | **`sessions`** | W13.7 lists the files |
+
+**`main` in the gap** (the new schema, then the old code until the merge):
+- `main`'s schedule form still sends `p_certificate_mode` explicitly. `coalesce` keeps that write
+  exactly as it is, so a `main` save is byte-identical.
+- `set_session_certificate_mode()` has no caller on `main`.
+- No worker job, key or task is touched.
+- **The order is a hard dependency the other way.** The new code must never run on the old schema:
+  without the key, the old default `'off'` would reset the mode. That is already the project's
+  order (migrations are pushed before the merge). I state it here so the rehearsal checks it.
+
+**Why a new RPC and not «designer calls `schedule_session()`»:** that function needs the whole
+schedule (the start, the duration, the day set) and would reschedule and notify as a side effect of
+changing the mode.
+
+`require_all_days` stays on the schedule form. It is a question about days, and it lives inside
+the multi-day affordance. It moves from the «الشهادة واللغة» section into «الحضور», beside
+walk-ins. The section that is left holds only the language, so it becomes
+`schedule.sections.language` «اللغة». `schedule.sections.certificate` and `schedule.certificate.*`
+are deleted (my namespace). `certificate.reviewHint` is `designer`'s to re-word in
+`certificates.json`.
+
+### W13.4 (4) «تنزيل» — on the event page and on the hub, from contract 1's DTO
+
+**The type is `designer`'s.** Their note has not published it yet. I build against it the day it
+lands, and nothing below adds a field of my own. **What I rely on**, as questions for `designer`
+(Q6):
+- **A primary artifact.** The DTO names it: the 4:5 master as PNG, per `DEC-176`.
+- **Others**, each with its `preset`, `format`, `byteSize` and a state of
+  `ready | pending | failed`. A ready artifact carries an `href` to `designer`'s route. A pending
+  or failed one carries none.
+- **`null`** for a viewer who may not download: not staff, and not an accepted presenter. I render
+  nothing on `null`, so the DAL is the second gate behind the page's own.
+
+**`src/components/sessions/session-download.tsx`** (new, a Server Component) takes
+`{ sessionId, locale, placement: "event" | "hub" }`. It calls `designer`'s one function and renders:
+- **The primary:** one anchor styled with `buttonClass("secondary", "md")`, reading «تنزيل الملصق»,
+  with a caption under it: «PNG · 4:5 · 1.2 ميغابايت».
+  - It is a **plain `<a href>`**, not `next/link`: the target is a Route Handler that audits and
+    redirects. That is the survey CSV's precedent (`survey/page.tsx:66–68`).
+  - When the primary is pending there is **no link**. It reads «الملصق قيد الإعداد» with the
+    pending badge tone.
+  - When it failed it reads «تعذّر إعداد الملصق». On the hub it adds «اطلب التصدير من جديد من
+    الاستوديو», and the studio link beside it is the picker's own.
+- **The disclosure:** `<details>` whose `<summary>` reads «صيغ أخرى», plus the count in all six
+  ICU forms (`{count, plural, zero {…} one {صيغة أخرى} two {صيغتان أخريان} few {# صيغ أخرى} many
+  {# صيغة أخرى} other {# صيغة أخرى}}`), then a `<ul>`.
+  - Each row reads «مربّع · PNG · 820 كيلوبايت». The preset labels come from `designer.json`,
+    which I read and never write.
+  - A ready row has a link «تنزيل» whose accessible name is the full «تنزيل مربّع بصيغة PNG».
+  - A pending row has **no link**, only «قيد الإعداد».
+  - The disclosure is not rendered when there are no others. **It is never a 12-row menu at the
+    top level.**
+- **Nothing at all** when the DTO is `null`, or when the session has no poster document. On the
+  hub, the picker directly above already says there is no poster.
+- **No polling and no interval** (`DEC-146`). A pending artifact reads as pending until the next
+  render.
+- **`formatBytes(bytes, locale)`**, new in `src/components/sessions/numerals.ts` (mine). It uses
+  `Intl.NumberFormat` `style: "unit"` (kilobyte/megabyte, `unitDisplay: "long"`) on `ar-u-nu-latn`
+  / `en`, with one decimal under 10. **Western digits** (`DEC-124`). No such helper exists in the
+  tree today (measured).
+
+**Placement:**
+- **The event page:** inside `action-card.tsx`, after `CertificateRow` and before the staff nav. It
+  renders when `session.viewerIsStaff || session.viewerIsPresenter`, which `getSessionForEvent()`
+  already carries (`sessions.ts:1021`). There is **one instance in the DOM**. The poster itself is
+  rendered twice (the hero from `md`, and «نبذة» on the phone), and a download beside each would
+  duplicate controls and e2e matches.
+- **The hub:** SCR-043's poster section, under `<PosterPicker>` (`schedule/page.tsx:156–159`),
+  `placement="hub"`. A moderator does not reach SCR-043 and downloads from the event page (Q4).
+
+The strings live in `sessions.json` under `sessions.download.*`, Arabic first.
+
+### W13.5 (5) Materials, tasks and photos — the first thing to shed
+
+- They are reached through item 5, «صفحة الجلسة». The event page's own sub-nav lists
+  «المهام», «المواد» and «الصور» for staff: `materials/list.tsx:277`, `tasks/panel.tsx:159` and
+  `photos/gallery.tsx:190` all return `visible: … || canManage`. So each is **two taps from any
+  hub screen**, and I import and edit none of `content`'s components.
+- The richer version is three deep links (`/app/sessions/[id]#tasks` and so on) with counts. That
+  needs a screen to hold them, and W13.2 declines to build one. **So H3 costs one nav item, and I
+  propose shipping it as that.** If the lead wants the three anchors in the strip itself, that is
+  eight items and a longer scroll, and it is the first thing to drop.
+
+### W13.6 (6) Requests — every change a page I do not own needs
+
+**None is needed for a page to sit under the sub-nav.** Each page renders unchanged below the
+layout. The requests are for contract 2 and for tidiness.
+
+| # | To | File | What, and why |
+|---|---|---|---|
+| R1 | `designer` | `certificates/page.tsx:173–182`, `certificates/actions.ts`, `certificates.json` | The mode control (W13.3), calling `setSessionCertificateMode()`. The badge and «غيّره من الجدولة» (`modeLink`) are replaced for an admin. The header comment at `:29–31` changes |
+| R2 | `designer` | `components/certificates/issuance.tsx:205` | Its link to `…/schedule` exists for the mode. It goes, or points at the control on its own page |
+| R3 | `designer` | contract 1 | The DTO's name, its type, and `null` for a viewer who may not download (Q6) |
+| R4 | `designer` | the download route | On a refusal or failure, answer with **a page the user can read**, or a `303` back to the page it came from with `?download=failed` so the control can say «تعذّر التنزيل». Never a raw JSON body. Name the file through the signer's `download` option, so a phone saves «<title> — ملصق 4:5.png» and not a UUID (Q6) |
+| R5 | lead (`event`'s custodian) | `survey/page.tsx:56` | Nothing. The crumb to `/app/admin/sessions/${id}` starts working with `[id]/page.tsx` |
+| R6 | lead (`checkin`'s custodian) | `attendance/page.tsx:108–111` | Nothing required. Its back link to the list stays correct |
+| R7 | lead | `tests/e2e/wave9-three-day-workshop.spec.ts:297–310` | It ticks «تُصدَر تلقائيًا لكل من سجّل حضوره» on SCR-043 and asserts `certificate_mode = 'automatic'`. **It breaks when the radio leaves.** It should set the mode on SCR-045 once R1 lands, or by SQL. It is a ledger line in the lead's file |
+| R8 | lead | `04` route table, `09` SCR-043 / SCR-045 (L1) | `/app/admin/sessions/[id]` (a redirect) and its layout; SCR-043 without the mode; SCR-045 with it |
+| R9 | `console` | K1 | The rail's «الجلسات» should read as current under `/app/admin/sessions/[id]/**`. I touch no rail file |
+| R10 | lead | `tests/e2e/wave11-lead-a11y-sweep.spec.ts:207` | Optional: add `…/[id]/certificates` and `…/[id]/survey` so axe sees the strip on two more screens |
+
+**The sessions list** (the top level, mine from `console` this wave) **does not change.** Its
+menu already reaches all four screens and the event page (`sessions-table.tsx:158–165`), and the
+moderator's table reaches attendance and the survey. `tests/components/admin/sessions-table.test.tsx`
+is not moved.
+
+**The places that link to the schedule as «the session's admin page»:**
+- Only the survey breadcrumb means «the session», and it points at `[id]`, which W13.2 builds.
+- The event page's staff links (`action-card.tsx:195–215`) name their screens: الجدولة, الحضور,
+  الشهادات. They stay, because the sub-nav reaches the rest from any one of them.
+- `designer/[documentId]/page.tsx:40` goes to the schedule for the poster, which stays there.
+- `posters/actions.ts:21` revalidates the schedule, which is still where the picker lives.
+
+### W13.7 (7) Existing tests whose expectation moves — each a ledger line in the same commit
+
+| File | Assertion | Why |
+|---|---|---|
+| `tests/unit/schedule-days.test.ts` «still declares wave 8's sixteen fields, in wave 8's order» | `WAVE_8_FIELDS` loses `"certificateMode"` (sixteen → fifteen; the test name's count changes with it) | **An expectation changed on purpose** (`REQ-SES-020`, contract 2). The one-day form no longer carries the mode |
+| `tests/unit/schedule-days.test.ts` «sends every wave-8 argument unchanged, and the two new ones as null» | `WAVE_8_INPUT` loses `certificateMode: "automatic"` | Same. `scheduleSession()` receives no mode, and `schedule_session()` leaves the stored one standing |
+| `tests/components/checkin/schedule-form.test.tsx` `BASE_INITIAL` | the `certificateMode: "off"` line is removed | **Harness only.** `ScheduleInitial` loses the field, and the typed literal would not compile. No assertion reads it |
+| `tests/components/sessions/schedule-days.test.tsx` `BASE` | same | Same |
+| `tests/e2e/wave9-three-day-workshop.spec.ts:297–310` | the mode is set somewhere other than SCR-043 | **The lead's file, R7** |
+
+**Unmoved, measured:**
+- `tests/unit/schedule-actions.test.ts:34` and `tests/unit/checkin-schedule-form-walk-ins.test.ts:48`
+  post `certificateMode` in `FormData`. The action ignores a key it no longer reads, and neither
+  file asserts on it.
+- `tests/unit/sessions-schedule-walk-ins.test.ts:37` parses `scheduleInput` with
+  `certificateMode: "off"`. `scheduleInput` keeps `certificateMode` as **`.optional()`** (still
+  `.strict()`), so it passes, and the DAL simply omits `p_certificate_mode` when the key is absent.
+- The RLS files pass `'off'` positionally (`sessions-scheduling.test.ts:33`, `sessions-guard.test.ts:180`,
+  `checkin-walk-ins-publishing.test.ts:38–71`, `sessions-schedule-days.test.ts`), so they are
+  unchanged. With my file applied I run the **whole** RLS suite once, to catch any call that relied
+  on the `'off'` reset.
+- `tests/components/ui/form-reset.test.tsx:141` uses the name `certificateMode` in its own shell and
+  is independent.
+- The four schedule specs that are evidence (`wave8-lead-schedule`, `wave9-sessions-schedule-days`,
+  `checkin-schedule-walk-ins`, `wave12-sessions-presenters`) assert nothing about the mode. Three of
+  them assert **no horizontal page scroll** on SCR-043 (`wave8-lead-schedule.spec.ts:113`,
+  `wave9-sessions-schedule-days.spec.ts:112`, `wave12-sessions-presenters.spec.ts:157`), so the
+  strip is measured by suites that already exist. No existing e2e locator names a link «الحضور»,
+  «الشهادات», «الاستبانة» or «الجدولة» (grepped). The wave-8 spec's `heading level 1` still finds
+  one, because the strip has no heading.
+
+**New files** (`03` §8.2 rows in the RLS file):
+- `tests/rls/sessions-certificate-mode.test.ts`:
+
+  | Row | What it asserts |
+  |---|---|
+  | `RPC-schedule_session.certificate_mode_unchanged` | A call with no mode leaves `automatic` standing |
+  | `RPC-schedule_session.certificate_mode_named` | `main`'s explicit call still writes the mode |
+  | `RPC-set_session_certificate_mode.admin_only` | A member and a moderator get `42501`; another org's admin gets `session_not_found`; stale claims are refused |
+  | `RPC-set_session_certificate_mode.audited` | One `session.certificate_mode_changed` row with the before and after; the same mode writes nothing |
+  | `RPC-set_session_certificate_mode.refusals` | Cancelled, and completed (Q3): no write, no audit |
+  | `RPC-set_session_certificate_mode.no_side_effects` | No job is enqueued, and no notice or transition row is written in its transaction |
+
+- `tests/unit/sessions-settings-nav.test.ts`: `getSessionSettingsNav()` for an admin, a moderator,
+  an admin who presents, a member, a bad id and an error, on `memorySupabase`.
+- `tests/unit/sessions-certificate-mode.test.ts`: `setSessionCertificateMode()`'s outcomes;
+  `scheduleSession()` omits `p_certificate_mode` when it is absent.
+- `tests/unit/sessions-format-bytes.test.ts`: Western digits in `ar`, the unit boundaries.
+- `tests/components/sessions/session-settings-nav.test.tsx`: the items per role, `aria-current`
+  from a mocked segment, «صفحة الجلسة» never current, nothing rendered on `null`, and the
+  `data-overflow` edge.
+- `tests/components/sessions/session-download.test.tsx`:
+  - a ready primary is one link whose `href` is exactly the DTO's;
+  - a pending primary is no link;
+  - failed on the hub against the event page;
+  - the disclosure's count in the six plural forms;
+  - pending rows are not links;
+  - nothing renders on `null`;
+  - never more than one primary.
+- `tests/e2e/wave13-sessions-hub.spec.ts`, at 390 px:
+  - an admin walks schedule → attendance → certificates → survey by the strip, `aria-current` on
+    each;
+  - no horizontal page scroll, and every link at least 24 × 24;
+  - a moderator has no «الجدولة»;
+  - an admin-presenter has no «الاستبانة»;
+  - `/app/admin/sessions/[id]` redirects by role, and a member gets a 404;
+  - the mode radio is gone from SCR-043.
+  - Captures: `wave13-sessions-hub-{schedule,certificates,moderator}.png`.
+- `tests/e2e/wave13-sessions-download.spec.ts`:
+  - the menu for an admin and for an accepted presenter on the event page, and on SCR-043;
+  - none for a member;
+  - the pending state;
+  - the disclosure opened.
+  - **It asserts the rendered links, not the download.** The route, the signer and the audit are
+    `designer`'s and the lead's, and the lead's `wave13-demo-download` proves the file.
+  - Captures: `wave13-sessions-download-{event,event-open,pending,hub}.png`.
+
+### W13.8 (8) Questions for the lead (sync 1)
+
+1. **Q1 — the hub's shape.** I recommend a sub-nav over the four routes, a redirecting
+   `[id]/page.tsx`, and presenters and the poster staying on SCR-043. The alternative is an overview
+   page at `[id]` holding presenters, the poster and the download. It costs moving
+   `wave8-designer-posters` (six visits), `wave8-designer-editor:213`, `posters/actions.ts`'
+   revalidation and `wave12-sessions-presenters`, and it is closer to a fifth screen. Rule which.
+2. **Q2 — the strip above each page's header.** A layout cannot place it between a page's `h1` and
+   its body. Accept «strip, then breadcrumb and title» this wave? The alternative is each page
+   rendering the strip under its own header: three requests to two holders, and no layout.
+3. **Q3 — changing the mode after completion.** Today SCR-043 lets an admin change it on a
+   completed session, and **nothing happens**. The fan-out ran at completion (`0065`/`0108`), and
+   `attendance_certificate_sync()` only acts per later attendance change (`0108:257`). I propose
+   `set_session_certificate_mode()` refuses `session_completed`, unless `designer` builds «issue
+   now» for a late switch. That is `designer`'s and yours to rule.
+4. **Q4 — a moderator and the hub download.** A moderator never reaches SCR-043, so on the hub they
+   have no download (they have it on the event page). Is that enough, or should the download also
+   sit on SCR-045 for staff? That is `designer`'s page.
+5. **Q5 — who writes `set_session_certificate_mode()`.** I propose `sessions`, beside
+   `schedule_session()`, because they write the same column. If you would rather `designer` own the
+   SQL and the DAL too, I keep only the `schedule_session()` change, and it must be promoted **in
+   the same migration or before** theirs.
+6. **Q6 — contract 1, for `designer`:** `null` for an unauthorised viewer; `pending` against
+   `failed` against absent; the preset labels in `designer.json`; R4's failure page and filename.
+7. **Q7 — the primary's label:** «تنزيل الملصق» everywhere, or the bare «تنزيل» under the hub's
+   «الملصق» heading? I propose «تنزيل الملصق» in both, one string.
+
+### W13.9 Order of work, once approved
+
+1. `sessions/0001_certificate_mode_one_writer.sql` with its RLS file green, the DAL functions and
+   their units. **The lead promotes it before R1 is built.**
+2. The schedule form without the mode, with the four ledger lines in the same commit.
+3. The layout, the nav, `[id]/page.tsx`, and their tests.
+4. «تنزيل», against `designer`'s published type.
+5. `ui-lint --strict`, one e2e spec at a time through the gate lock, and the captures, looked at.
+
+### W13.10 As built, after sync 1 (`DEC-178`)
+
+**Unit 1: the mode's one writer.** Commit `a8deace`, handed to the lead for promotion.
+- **`supabase/proposed/sessions/0001_certificate_mode_one_writer.sql`:**
+  - `schedule_session()` is `0112`'s body with two lines changed: `p_certificate_mode … default null`,
+    and `certificate_mode = coalesce(p_certificate_mode, target.certificate_mode)`. It is
+    `create or replace`, and the signature is identical.
+  - `set_session_certificate_mode(p_session, p_mode) returns text` (`'ok'` or `'unchanged'`) is
+    definer and calls `assert_fresh_admin()`. It locks the session in the caller's org. It refuses,
+    before any write, `session_not_found` (42501), `session_completed` for completed or archived
+    (23514) and `session_cancelled` (23514). A change writes one `session.certificate_mode_changed`
+    audit row, with the old mode as `before` and the new one as `after`.
+  - The grant goes to `authenticated`. It is revoked from `public` and `anon`.
+- **The DAL:** `setSessionCertificateMode(locale, sessionId, mode)` in `src/lib/dal/sessions.ts`. It
+  returns `{status:'ok'|'unchanged'} | {status:'refused', error}`, with the errors listed in
+  `CERTIFICATE_MODE_ERRORS`. `designer` calls it from SCR-045.
+- **Tests:**
+  - `tests/rls/sessions-certificate-mode.test.ts`: 11 cases over the six `03` §8.2 rows.
+  - `tests/unit/sessions-certificate-mode.test.ts`: 5 cases.
+- **Every existing caller** of `schedule_session()` passes the mode explicitly, whether in the RLS
+  files or the DAL (measured), so none of them moves.
+
+**Unit 2: the hub and «تنزيل الملصق».** Commits `0586f97` and `78cf112`.
+- **`admin/sessions/[id]/layout.tsx`** renders a Suspense-wrapped `SessionSettingsNav` and nothing
+  else.
+- **`components/sessions/session-settings-nav.tsx`** is the server half: it calls
+  `getSessionSettingsNav()`, and `null` renders nothing.
+- **`components/sessions/session-settings-strip.tsx`** is the client half:
+  - links with `aria-current="page"`, the current one found by `useSelectedLayoutSegment()`;
+  - one row that scrolls inside itself, with an edge fade through `ui/tabs`' exported
+    `overflowEdges()`;
+  - 44 px targets.
+- **`admin/sessions/[id]/page.tsx`** redirects by role and 404s for anyone else.
+- **`getSessionSettingsNav()`** (`sessions.ts`) returns, by role, the accepted-presenter exception
+  for the survey, and `null` on any error. It is read by a layout, so it never throws.
+- **`components/sessions/session-download.tsx`**, with `download-failed-notice.tsx` (which reads
+  `?download=failed`), renders `getSessionPosterDownloads()`: one primary, the others behind a
+  `<details>`, pending and failed never a link, and plain `<a>` tags throughout. It appears in the
+  event page's action card for staff and accepted presenters, and under SCR-043's `PosterPicker`.
+- **`formatBytes()`** is added to `components/sessions/numerals.ts`.
+- **Strings:** `sessions.hub.*` and `sessions.download.*`, Arabic first. The plurals use a
+  pre-formatted `{value}` (`messages-numerals`).
+- **Tests:**
+  - `tests/unit/sessions-settings-nav.test.ts` (5 cases);
+  - `tests/unit/sessions-format-bytes.test.ts` (4 cases);
+  - `tests/components/sessions/session-settings-nav.test.tsx` (6 cases);
+  - `tests/components/sessions/session-download.test.tsx` (8 cases);
+  - `tests/e2e/wave13-sessions-hub.spec.ts` (5 cases, 7 captures). **Not yet run.** It needs a
+    production build that contains `0586f97` and `ddf9edb` (designer's route), and the build is
+    yours.
+
+**Gates at `78cf112`:**
+- `tsc` is clean.
+- `lint` has 0 errors. None of the 26 warnings is in my files.
+- `ui-lint --strict` is green over 283 files.
+- `npm test` passes 2405 tests. Three fail, and none of them is mine:
+  - `admin-audit-labels` (two cases) wants a label for `export_artifact.downloaded`, which is from
+    the lead's `0152`.
+  - `mail-runtime-dist` fails because a `dist` is stale.
+- The RLS file is green.
+
+**Unit 3: the radio leaves SCR-043.** Done after `0154` was promoted (`c47e5ef`).
+- **The form:** `schedule-form.tsx` renders and posts no mode. `REQ-SES-017`'s «every day» switch
+  moves into «الحضور» beside walk-ins. The section that is left is «اللغة»
+  (`schedule.sections.language`). `schedule.sections.certificate` and `schedule.certificate.*` are
+  deleted.
+- **The action and the DTO:** `state.ts` loses the field. `actions.ts` sends `certificateMode: null`
+  whatever a client posts. `getSessionForSchedule()` no longer reads `certificate_mode`.
+- **`scheduleInput.certificateMode`** is now `.nullable().default(null)`, so null means unchanged. A
+  named mode still passes through, because that is the function's contract.
+- **New tests:**
+  - `tests/components/sessions/schedule-no-certificate-mode.test.tsx` (2 cases);
+  - `tests/unit/sessions-schedule-certificate-mode.test.ts` (2 cases);
+  - `wave13-sessions-hub.spec.ts`, which gains «no mode control on SCR-043».
+
+**The ledger lines, for STATUS, in the same commit as the change:**
+
+| File | Assertion | Why |
+|---|---|---|
+| `tests/unit/schedule-days.test.ts` «still declares wave 8's sixteen fields, in wave 8's order» → «still declares wave 8's fields but the certificate mode, in wave 8's order» | `WAVE_8_FIELDS` loses `"certificateMode"`, leaving fifteen fields | **An expectation changed on purpose** (`REQ-SES-020`, `DEC-178` contract 2). SCR-045 is the mode's one writer, and the schedule form no longer carries it |
+| `tests/unit/schedule-days.test.ts` «sends every wave-8 argument unchanged, and the two new ones as null» | `WAVE_8_INPUT.certificateMode`: `"automatic"` → **`null`** | Same. A save states no mode, and `schedule_session()` keeps the stored one (`0154`). The fixture still posts `"automatic"`, which proves that a stale client cannot write the mode |
+| `tests/components/checkin/schedule-form.test.tsx` `BASE_INITIAL` | the `certificateMode: "off"` line is removed | **Harness only.** `ScheduleInitial` lost the field, and no assertion read it |
+| `tests/components/sessions/schedule-days.test.tsx` `BASE` | the same line is removed | Same |
+
+**Requests to the lead:**
+1. **An audit label.** Once `sessions/0001` is promoted, `admin-audit-labels` will fail for
+   `session.certificate_mode_changed` until `admin.json` (`console`'s) has one:
+   - ar: «تغيير وضع الشهادات لجلسة»
+   - en: "Session certificate mode changed"
+
+   This is best landed in the promotion commit.
+2. **The e2e run.** Run `wave13-sessions-hub.spec.ts` on a build at or after `78cf112`, or hand me
+   a window with the gate lock.

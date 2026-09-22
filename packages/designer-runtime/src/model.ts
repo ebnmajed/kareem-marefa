@@ -6,9 +6,24 @@
  * (REQ-DSG-005).
  */
 
-/** Bumped on any breaking change. Older versions must keep rendering — a
- *  certificate issued in 2026 has to regenerate in 2031 (REQ-CRT-014). */
-export const SCHEMA_VERSION = 1
+/** The newest version this renderer understands. Bumped on any breaking
+ *  change. Older versions must keep rendering — a certificate issued in 2026
+ *  has to regenerate in 2031 (REQ-CRT-014).
+ *
+ *  2 (wave 13, DEC-178, D2b): a layer may declare `scale: 'page'`. A document
+ *  declares 2 ONLY when it uses it; `main`'s worker, which understands 1,
+ *  then refuses it with `schema_version_future` rather than rendering it
+ *  through the wrong branch and caching the result under its fingerprint. */
+export const SCHEMA_VERSION = 2
+
+/** What a document that needs nothing newer declares. Every writer that does
+ *  not use `scale: 'page'` writes this — the library, a blank template — so no
+ *  seed, no fingerprint and no golden moves because the renderer learned
+ *  something. */
+export const BASE_SCHEMA_VERSION = 1
+
+/** The version a document using `scale: 'page'` must declare. */
+export const PAGE_SCALE_SCHEMA_VERSION = 2
 
 export type Purpose = 'poster' | 'certificate'
 export type Direction = 'rtl' | 'ltr'
@@ -79,7 +94,7 @@ interface LayerBase {
 /** The shape of one per-preset override. `presets.ts` owns the meaning. */
 export interface LayerPresetOverride {
   anchor?: 'block-start' | 'block-end' | 'center'
-  scale?: 'proportional' | 'fixed' | 'fill'
+  scale?: 'proportional' | 'fixed' | 'fill' | 'page'
   /** The per-variant crop override (A32, REQ-DSG-020). Automatic cropping
    *  gets some cases wrong — a poster with its title at the bottom, a logo
    *  in a corner a 16:9 crop would cut — and this is the escape hatch: the

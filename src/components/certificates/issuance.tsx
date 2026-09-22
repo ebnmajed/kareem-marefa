@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { CertificateRenderStatus, SessionCertificateRow } from "@/lib/dal/certificates";
 import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import type { DataTableColumn } from "@/components/ui";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
@@ -158,6 +158,19 @@ export function CertificateIssuance({ locale, sessionId, sessionTitle, timeZone,
         <Badge size="sm" tone={RENDER_TONE[c.renderStatus]} outline={c.renderStatus === "none" || c.renderStatus === "queued"}>
           {t(`render.${c.renderStatus}`)}
         </Badge>
+        {/* ★ The file itself, for an ISSUED certificate whose PDF has rendered
+            (DEC-176 §2, D5). A plain link to the one audited route — never a
+            URL signed at render time — so the download writes its audit row
+            (DEC-177). A held certificate has not been released, and a revoked
+            one is not handed out again from here. */}
+        {c.state === "issued" && c.downloadHref ? (
+          // ★ SC 2.5.8 (the lead's M4 finding): a bare word in a table row measured
+          // 18.4 × 24 px on a phone, beside «ألغِ». It is a button-sized target
+          // now — the small ghost button's 36 px — with the same name and href.
+          <a href={c.downloadHref} className={buttonClass("ghost", "sm")} data-download-target="">
+            {t.rich("downloadOne", { name: c.recipientName, bdi: (chunk) => <bdi>{chunk}</bdi>, hidden: (chunk) => <span className="sr-only">{chunk}</span> })}
+          </a>
+        ) : null}
         {c.renderStatus === "failed" && c.failedArtifactId ? (
           <Button
             type="button"
@@ -202,7 +215,7 @@ export function CertificateIssuance({ locale, sessionId, sessionTitle, timeZone,
                 description: t("heldEmptyDescription"),
                 action: {
                   label: t("modeLink"),
-                  href: `/app/admin/sessions/${sessionId}/schedule`,
+                  href: "#cert-mode",
                 },
               }}
             />

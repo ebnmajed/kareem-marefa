@@ -10,6 +10,7 @@ import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { FileDrop } from "@/components/ui/file-drop";
 import { useToast } from "@/components/ui/toast";
 import { attachPosterUpload, customisePoster } from "@/components/posters/actions";
+import { uploadDesignAsset, type UploadFailure } from "@/components/designer/upload-asset";
 
 // The picker's two controls — DEC-012, REQ-DSG-003, REQ-DSG-020, REQ-UIX-013.
 //
@@ -81,7 +82,6 @@ export function CustomiseButton({
   );
 }
 
-type UploadFailure = "file_too_large" | "rejected_content" | "too_small" | "unreadable" | "not_authorized" | "unknown";
 
 /**
  * «ارفع ملصقًا جاهزًا» — the two Route Handlers (the bytes go straight to
@@ -129,25 +129,8 @@ export function PosterUpload({
     setFailure(null);
     start(async () => {
       try {
-        const initiated = await fetch("/api/designer/assets", {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-locale": locale },
-          body: JSON.stringify({ byteSize: file.size, declaredType: file.type, sessionId }),
-        }).then((r) => r.json());
-        if ("status" in initiated) return say(initiated.status === "file_too_large" ? "file_too_large" : "not_authorized");
-
-        const put = await fetch(initiated.uploadUrl, { method: "PUT", body: file, headers: { "content-type": file.type || "application/octet-stream" } });
-        if (!put.ok) return say("unknown");
-
-        const completed = await fetch("/api/designer/assets/complete", {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-locale": locale },
-          body: JSON.stringify({ assetId: initiated.assetId, sessionId }),
-        }).then((r) => r.json());
-        if (completed.status !== "ok") {
-          const known: UploadFailure[] = ["file_too_large", "rejected_content", "too_small", "unreadable", "not_authorized"];
-          return say(known.includes(completed.status) ? completed.status : "unknown", completed.shortSide);
-        }
+        const completed = await uploadDesignAsset(file, locale, sessionId);
+        if (completed.status !== "ok") return say(completed.status, completed.shortSide);
 
         const attached = await attachPosterUpload(locale, sessionId, completed.assetId);
         if (attached.status !== "ok") return say(attached.status === "not_authorized" ? "not_authorized" : "unknown");

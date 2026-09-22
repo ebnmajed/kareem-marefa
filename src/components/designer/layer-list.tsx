@@ -2,12 +2,13 @@
 
 import { useId } from "react";
 import { useTranslations } from "next-intl";
-import { paintOrder, type DesignDocument, type ReorderMove } from "@kareem/designer-runtime";
+import { paintOrder, type DesignDocument, type Layer, type ReorderMove } from "@kareem/designer-runtime";
 import { formatNumber } from "@/components/sessions/numerals";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
-import { ChevronIcon, EyeIcon, LockIcon } from "@/components/ui/icons";
+import { ChevronIcon, EyeIcon, LockIcon, PlusIcon } from "@/components/ui/icons";
+import { AddImage } from "@/components/designer/add-image";
 
 // SCR-057's layer list — RTL-first (06 §10), the front of the stack first.
 //
@@ -24,28 +25,103 @@ import { ChevronIcon, EyeIcon, LockIcon } from "@/components/ui/icons";
 export interface LayerListProps {
   document: DesignDocument;
   selectedLayerId: string | null;
-  onSelect: (layerId: string) => void;
+  onSelect: (layerId: string, options?: { additive?: boolean }) => void;
   onToggleHidden: (layerId: string) => void;
   onReorder: (layerId: string, move: ReorderMove) => void;
   lockedLayerIds: string[];
   canEdit: boolean;
+  /* ── wave 13, optional ── */
+  /** The whole selection, when it can be more than one layer. */
+  selectedLayerIds?: string[];
+  /** «تحديد متعدّد» is on: each tap adds or removes (DEC-178's tap path). */
+  multi?: boolean;
+  onToggleMulti?: () => void;
+  /** «اختر كل طبقات هذا النوع» (DEC-093 path 5). */
+  onSelectKind?: (kind: Layer["kind"]) => void;
+  /** D1b — «أضف»: text, shape, the org's logo (DEC-178). */
+  onAdd?: (kind: "text" | "shape" | "logo") => void;
+  /** D1b's uploaded image, once DEC-179 made an asset id render. */
+  onAddImage?: (asset: { assetId: string; width: number; height: number; previewUrl: string | null }) => void;
 }
 
-export function LayerList({ document: doc, selectedLayerId, onSelect, onToggleHidden, onReorder, lockedLayerIds, canEdit }: LayerListProps) {
+export function LayerList({
+  document: doc,
+  selectedLayerId,
+  onSelect,
+  onToggleHidden,
+  onReorder,
+  lockedLayerIds,
+  canEdit,
+  selectedLayerIds,
+  multi = false,
+  onToggleMulti,
+  onSelectKind,
+  onAdd,
+  onAddImage,
+}: LayerListProps) {
   const t = useTranslations("designer.layers");
   const to = useTranslations("designer.inspector.order");
+  const ta = useTranslations("designer.add");
   const base = useId();
 
   // Front first: «above» in the list is «in front» on the page — the exact
   // order the renderer paints, read backwards.
   const layers = paintOrder(doc).reverse();
+  const chosen = selectedLayerIds ?? (selectedLayerId ? [selectedLayerId] : []);
+  const kinds = [...new Set(doc.layers.filter((l) => !l.hidden).map((l) => l.kind))];
 
   return (
     <div className="flex flex-col gap-3">
+      {onAdd ? (
+        <section aria-labelledby={`${base}-add`} className="flex flex-col gap-2 border-b border-edge pb-4">
+          <h3 id={`${base}-add`} className="text-label text-fg-heading">
+            {ta("heading")}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {(["text", "shape", "logo"] as const).map((kind) => (
+              <Button key={kind} type="button" variant="secondary" size="sm" iconStart={<PlusIcon />} onClick={() => onAdd(kind)}>
+                {ta(kind)}
+              </Button>
+            ))}
+            {onAddImage ? <AddImage onAdded={onAddImage} /> : null}
+          </div>
+          <p className="text-body-sm text-fg-muted">{ta("hint")}</p>
+        </section>
+      ) : null}
+
       <p className="text-body-sm text-fg-muted">
         {t("count", { count: layers.length, value: formatNumber(layers.length) })}
         {layers.length > 1 && canEdit ? ` · ${t("orderHint")}` : ""}
       </p>
+
+      {/* ★ MORE THAN ONE LAYER WITHOUT A MARQUEE (DEC-093 path 5, DEC-178): a
+          toggle that makes each tap add or remove — shift-click needs a
+          keyboard, so on a tablet it is not a single-pointer path — and «اختر
+          كل طبقات» per kind. The canvas's marquee is the enhancement. */}
+      {onToggleMulti && layers.length > 1 ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant={multi ? "primary" : "secondary"} aria-pressed={multi} onClick={onToggleMulti}>
+              {t("multi")}
+            </Button>
+            {chosen.length > 1 ? (
+              <span className="text-body-sm text-fg-heading" role="status">
+                {t("selectedCount", { count: chosen.length, value: formatNumber(chosen.length) })}
+              </span>
+            ) : null}
+          </div>
+          {multi ? <p className="text-body-sm text-fg-muted">{t("multiHint")}</p> : null}
+          {onSelectKind ? (
+            <div className="flex flex-wrap gap-2">
+              {kinds.map((kind) => (
+                <Button key={kind} type="button" size="sm" variant="ghost" onClick={() => onSelectKind(kind)}>
+                  {t.rich("selectKind", { kind: t(`kind.${kind}`), bdi: (c) => <bdi>{c}</bdi> })}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {layers.length === 0 ? (
         <p className="text-body-sm text-fg-muted">{t("empty")}</p>
@@ -53,12 +129,12 @@ export function LayerList({ document: doc, selectedLayerId, onSelect, onToggleHi
         <ul className="flex flex-col gap-1">
           {layers.map((layer, index) => {
             const locked = lockedLayerIds.includes(layer.id);
-            const selected = layer.id === selectedLayerId;
+            const selected = chosen.includes(layer.id);
             const nameId = `${base}-${layer.id}`;
             return (
               <li key={layer.id}>
                 <div className={`flex items-center gap-1 rounded-field border px-2 py-1 ${selected ? "border-edge-strong bg-silver-100" : "border-edge"}`}>
-                  <button type="button" onClick={() => onSelect(layer.id)} aria-pressed={selected} className="min-h-11 min-w-0 flex-1 px-1 text-start">
+                  <button type="button" onClick={(e) => onSelect(layer.id, { additive: e.shiftKey || multi })} aria-pressed={selected} className="min-h-11 min-w-0 flex-1 px-1 text-start">
                     <span id={nameId} className="block text-body-sm text-fg-heading">
                       <bdi>{layer.name ?? layer.id}</bdi>
                     </span>

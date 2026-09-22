@@ -42,6 +42,15 @@ export interface BindingContext {
    *  translated formatter; the default names the binding, because a
    *  placeholder that does not say WHAT is missing sends the admin hunting. */
   placeholderLabel?: (binding: string) => string
+  /**
+   * An image's bytes, by design-asset id (DEC-179). An image layer names an
+   * asset by id — directly (`image.assetId`, an uploaded poster) or through a
+   * binding whose value is one (`brand.logoAssetId`) — and an id is not a URL.
+   * The worker maps each to a `data:` URI of the bytes it downloaded; the studio
+   * to a five-minute signed URL. Absent, nothing is mapped and the output is
+   * byte-identical to before (`designer-derive-untouched.test.ts`).
+   */
+  assets?: Readonly<Record<string, string>>
 }
 
 export const EMPTY_BINDINGS: BindingContext = { values: {} }

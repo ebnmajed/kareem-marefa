@@ -44,7 +44,7 @@
 import { declaredBindingsOf } from './bindings.js'
 import { BRAND_COLOUR_TOKENS } from './brand.js'
 import type { DesignDocument, Layer } from './model.js'
-import { SCHEMA_VERSION } from './model.js'
+import { BASE_SCHEMA_VERSION } from './model.js'
 import { PRESETS } from './presets.js'
 
 export type PosterFamily = 'talk' | 'workshop' | 'panel' | 'meetup' | 'announcement'
@@ -258,7 +258,7 @@ function posterDocument(family: PosterFamily): DesignDocument {
   }
 
   return {
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: BASE_SCHEMA_VERSION,
     purpose: 'poster',
     master: { width: master.width, height: master.height, unit: 'px', dpi: master.dpi },
     direction: 'rtl',
@@ -463,7 +463,7 @@ function certificateDocument(family: CertificateFamily, orientation: Certificate
   ]
 
   return {
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: BASE_SCHEMA_VERSION,
     purpose: 'certificate',
     master: { width: master.width, height: master.height, unit: 'px', dpi: master.dpi },
     direction: 'rtl',
