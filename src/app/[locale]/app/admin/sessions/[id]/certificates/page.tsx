@@ -54,12 +54,21 @@ import { storedPhase, type SessionState } from "@/lib/session-status";
 // «الرقم التالي المتوقع … والعدد», shown only before completion, when it
 // helps an admin who prints a register; the number is allocated at issue.
 
-export default async function SessionCertificatesPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
+export default async function SessionCertificatesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+  searchParams?: Promise<{ download?: string | string[] }>;
+}) {
   const { locale, id } = await params;
+  // A download refused or failed by the audited route comes back here (DEC-178).
+  const downloadFailed = ((await (searchParams ?? Promise.resolve({}))) as { download?: string | string[] }).download === "failed";
   setRequestLocale(locale);
 
-  const [t, ui, data, design, eligible, timeZone, faces, estimate, headerList] = await Promise.all([
+  const [t, tc, ui, data, design, eligible, timeZone, faces, estimate, headerList] = await Promise.all([
     getTranslations("certificates.session"),
+    getTranslations("certificates"),
     getTranslations("ui"),
     getSessionCertificatesWithRender(locale, id),
     getCertificateDesign(locale, id),
@@ -185,6 +194,14 @@ export default async function SessionCertificatesPage({ params }: { params: Prom
           </div>
         }
       />
+
+      {downloadFailed ? (
+        <Panel tone="error">
+          <p role="alert" className="text-body-sm text-fg-heading">
+            {tc("download.failed")}
+          </p>
+        </Panel>
+      ) : null}
 
       {!isAdmin ? (
         <Panel tone="info">

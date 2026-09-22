@@ -218,7 +218,8 @@
         "documentChanged": "The design changed after the export was requested. Request the export again.",
         "jpegDisabled": "JPEG export is not enabled for your organisation.",
         "unknown": "This format could not be rendered."
-      }
+      },
+      "downloadFailed": "The file could not be downloaded. Try again, and if it keeps happening request the export again."
     },
     "poster": {
       "alt": "Poster for <bdi>{title}</bdi>",

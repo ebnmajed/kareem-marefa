@@ -591,3 +591,31 @@ export async function getSessionPosterDownloads(locale: string, sessionId: strin
     updating,
   };
 }
+
+/* ── the audited download (contract 3, DEC-177, DEC-178) ─────────────────── */
+
+export type ExportDownloadResult = { status: "ok"; url: string } | { status: "refused" } | { status: "failed" };
+
+/**
+ * ONE audited download, for every file a person takes away: a session poster,
+ * a certificate (the admin's on SCR-045 and the member's own), and the studio's
+ * export panel. A preview or a thumbnail is not a download and is signed
+ * directly (DEC-178).
+ *
+ * The DAL re-derives nothing. `record_export_download()` (the lead's, `0152`)
+ * finds the SUBJECT from the artifact's own document — so a forged id cannot
+ * choose a laxer rule — admits admin · moderator · an accepted presenter for a
+ * poster and admin · moderator · the certificate's own member for a
+ * certificate, refuses everyone else with `42501`, and writes the audit row in
+ * the same transaction. Only then is the one signer asked for a URL, named with
+ * the file name the function built.
+ */
+export async function recordExportDownload(locale: string, artifactId: string): Promise<ExportDownloadResult> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("record_export_download", { p_artifact: artifactId });
+  if (error) return error.code === "42501" ? { status: "refused" } : { status: "failed" };
+  const row = (Array.isArray(data) ? data[0] : data) as { storage_path?: string | null; file_name?: string | null } | null;
+  if (!row?.storage_path) return { status: "failed" };
+  const url = await signExportUrl(locale, row.storage_path, row.file_name ? { download: row.file_name } : {});
+  return url ? { status: "ok", url } : { status: "failed" };
+}

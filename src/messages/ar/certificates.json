@@ -173,7 +173,11 @@
       "summary": "«<bdi>{name}</bdi>» · ألوان <bdi>{scheme}</bdi>",
       "changeDesign": "غيّر التصميم",
       "showDesign": "اعرض التصميم",
-      "hideDesign": "أخفِ التصميم"
+      "hideDesign": "أخفِ التصميم",
+      "downloadOne": "نزّل<hidden> شهادة <bdi>{name}</bdi></hidden>"
+    },
+    "download": {
+      "failed": "تعذّر تنزيل الملف. أعد المحاولة، وإن تكرّر فأخبر مشرف المؤسسة."
     }
   }
 }

@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { listMyCertificates, signCertificateUrl } from "@/lib/dal/certificates";
+import { listMyCertificates } from "@/lib/dal/certificates";
 import { formatNumber, formatDateTime } from "@/components/sessions/numerals";
 import { getOrgTimeZone } from "@/lib/dal/certificates";
 import { PageHeader } from "@/components/ui/page-header";
@@ -22,16 +22,38 @@ import { EmptyState } from "@/components/ui/empty-state";
 // The name shown is `recipient_name_snapshot`, frozen at issuance: a member
 // who later changes their display name still sees the name that is PRINTED
 // on the document they are holding (REQ-CRT-014).
-export default async function MyCertificatesPage({ params }: { params: Promise<{ locale: string }> }) {
+//
+// ★ THE DOWNLOAD IS AUDITED (DEC-177, DEC-178). It was a bare `<a download>` on
+// a URL signed while the page rendered — the only download that shipped, and
+// the one that wrote no audit row. It is now a plain link to the one audited
+// route, which admits the certificate's own member, writes the row, and only
+// then redirects to the signer. A refusal or a failure comes back here with
+// `?download=failed`, and the page says so where the link was.
+export default async function MyCertificatesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams?: Promise<{ download?: string | string[] }>;
+}) {
   const { locale } = await params;
   const t = await getTranslations("certificates");
-  const [{ certificates }, timeZone] = await Promise.all([listMyCertificates(locale), getOrgTimeZone(locale)]);
+  const [{ certificates }, timeZone, query] = await Promise.all([listMyCertificates(locale), getOrgTimeZone(locale), searchParams ?? Promise.resolve({})]);
+  const downloadFailed = (query as { download?: string | string[] }).download === "failed";
 
-  const links = await Promise.all(certificates.map((c) => (c.pdfPath ? signCertificateUrl(locale, c.pdfPath) : Promise.resolve(null))));
+  const links = certificates.map((c) => c.downloadHref ?? null);
 
   return (
     <div>
       <PageHeader title={t("mine.title")} />
+
+      {downloadFailed ? (
+        <Panel tone="error" className="mt-4 p-3">
+          <p role="alert" className="text-body-sm text-fg-heading">
+            {t("download.failed")}
+          </p>
+        </Panel>
+      ) : null}
 
       {certificates.length === 0 ? (
         // ★ REQ-UIX-012, the lead's sync-2 finding: an empty state always
@@ -112,7 +134,7 @@ export default async function MyCertificatesPage({ params }: { params: Promise<{
                         /verify is what says so. Not offering the download would
                         not un-print the copies already in the world. */}
                     {links[i] ? (
-                      <a className="text-fg-heading underline" href={links[i] as string} download>
+                      <a className="text-fg-heading underline" href={links[i] as string}>
                         {t("mine.download")}
                       </a>
                     ) : (

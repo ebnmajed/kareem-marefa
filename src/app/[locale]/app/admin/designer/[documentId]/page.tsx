@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { PresetName } from "@kareem/designer-runtime";
 import { exportFingerprint, getDesignerDocument, getExportQueue, signExportUrl, type DesignerDocumentData } from "@/lib/dal/designer";
 import { listEditorFaces } from "@/lib/dal/fonts";
-import { assetSizesFor } from "@/lib/dal/posters";
+import { assetSizesFor, downloadHref } from "@/lib/dal/posters";
 import { DesignerEditor } from "@/components/designer/editor";
 import { ExportActionButton } from "@/components/designer/export-action-button";
 import { ExportPanel } from "@/components/designer/export-panel";
@@ -60,11 +60,11 @@ export default async function DesignerPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; documentId: string }>;
-  searchParams: Promise<{ scheme?: string }>;
+  searchParams: Promise<{ scheme?: string; download?: string | string[] }>;
 }) {
   const { locale, documentId } = await params;
   setRequestLocale(locale);
-  const { scheme: requestedScheme } = await searchParams;
+  const { scheme: requestedScheme, download } = await searchParams;
 
   // The QR target and the font URLs must be ABSOLUTE: a phone camera needs a
   // URL (REQ-DSG-023), and a `srcdoc` iframe resolves a relative one against
@@ -92,17 +92,15 @@ export default async function DesignerPage({
   });
   const [queue, assetSizes] = await Promise.all([getExportQueue(locale, documentId, fingerprint), assetSizesFor(locale, data.document)]);
 
-  // Signed once, 5 minutes, through `exports_storage_read` (03 §6): the list
-  // downloads them and the variant strip shows the PNGs as thumbnails.
+  // ★ A DOWNLOAD IS AUDITED, A PREVIEW IS NOT (DEC-178). The list's links go
+  // through the one audited route; the variant strip's PNG thumbnails are
+  // previews, signed once, 5 minutes, through `exports_storage_read` (03 §6).
   const ready = queue.artifacts.filter((a) => a.status === "ready" && a.storagePath);
-  const signed = await Promise.all(ready.map(async (a) => [a, await signExportUrl(locale, a.storagePath as string)] as const));
-  const links: Record<string, string> = {};
+  const links: Record<string, string> = Object.fromEntries(ready.map((a) => [a.id, downloadHref(a.id)]));
+  const thumbnails = ready.filter((a) => a.format === "png");
+  const signed = await Promise.all(thumbnails.map(async (a) => [a, await signExportUrl(locale, a.storagePath as string)] as const));
   const variantPreviews: Partial<Record<PresetName, string>> = {};
-  for (const [artifact, url] of signed) {
-    if (!url) continue;
-    links[artifact.id] = url;
-    if (artifact.format === "png") variantPreviews[artifact.preset as PresetName] = url;
-  }
+  for (const [artifact, url] of signed) if (url) variantPreviews[artifact.preset as PresetName] = url;
 
   const { context } = data;
   const back = backOf(context);
@@ -172,6 +170,15 @@ export default async function DesignerPage({
           </>
         }
       />
+
+      {download === "failed" ? (
+        // The audited download route sends a refusal or a failure back here (DEC-178).
+        <Panel tone="error" className="mt-8">
+          <p role="alert" className="text-body-sm text-fg-heading">
+            {te("downloadFailed")}
+          </p>
+        </Panel>
+      ) : null}
 
       {liveGate ? (
         <Panel tone="info" className="mt-8 flex flex-col gap-3">

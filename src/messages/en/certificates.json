@@ -173,7 +173,11 @@
       "summary": "«<bdi>{name}</bdi>» · <bdi>{scheme}</bdi> colours",
       "changeDesign": "Change the design",
       "showDesign": "Show the design",
-      "hideDesign": "Hide the design"
+      "hideDesign": "Hide the design",
+      "downloadOne": "Download<hidden> <bdi>{name}</bdi>’s certificate</hidden>"
+    },
+    "download": {
+      "failed": "The file could not be downloaded. Try again, and if it keeps happening tell your organisation's admin."
     }
   }
 }

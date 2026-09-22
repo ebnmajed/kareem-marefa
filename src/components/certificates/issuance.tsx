@@ -158,6 +158,16 @@ export function CertificateIssuance({ locale, sessionId, sessionTitle, timeZone,
         <Badge size="sm" tone={RENDER_TONE[c.renderStatus]} outline={c.renderStatus === "none" || c.renderStatus === "queued"}>
           {t(`render.${c.renderStatus}`)}
         </Badge>
+        {/* ★ The file itself, for an ISSUED certificate whose PDF has rendered
+            (DEC-176 §2, D5). A plain link to the one audited route — never a
+            URL signed at render time — so the download writes its audit row
+            (DEC-177). A held certificate has not been released, and a revoked
+            one is not handed out again from here. */}
+        {c.state === "issued" && c.downloadHref ? (
+          <a href={c.downloadHref} className="text-body-sm text-fg-heading underline underline-offset-4">
+            {t.rich("downloadOne", { name: c.recipientName, bdi: (chunk) => <bdi>{chunk}</bdi>, hidden: (chunk) => <span className="sr-only">{chunk}</span> })}
+          </a>
+        ) : null}
         {c.renderStatus === "failed" && c.failedArtifactId ? (
           <Button
             type="button"
