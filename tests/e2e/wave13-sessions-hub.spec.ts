@@ -119,8 +119,10 @@ test.beforeAll(async ({}, testInfo) => {
   const artifact = async (preset: string, w: number, h: number, status: string, bytes: number | null) => {
     const { rows } = await db.query<{ id: string }>(
       `insert into public.export_artifacts (org_id, document_id, preset, format, width_px, height_px, storage_path, byte_size, status, source_fingerprint, rendered_at)
-       values ($1, $2, $3, 'png', $4, $5, $6, $7, $8, $9, case when $8 = 'ready' then now() end) returning id`,
-      [orgId, doc[0].id, preset, w, h, status === "ready" ? `${orgId}/exports/${doc[0].id}/${preset}.png` : null, bytes, status, `fp-${doc[0].id}`],
+       values ($1, $2, $3, 'png', $4, $5, $6, $7, $8::public.export_status, $9, $10::timestamptz) returning id`,
+      // One parameter, one type: `rendered_at` is its own argument rather than a
+      // `case` over `$8`, which Postgres would have to type twice.
+      [orgId, doc[0].id, preset, w, h, status === "ready" ? `${orgId}/exports/${doc[0].id}/${preset}.png` : null, bytes, status, `fp-${doc[0].id}`, status === "ready" ? new Date().toISOString() : null],
     );
     return rows[0].id;
   };
