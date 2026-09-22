@@ -664,6 +664,39 @@ export async function removeSessionPresenter(locale: string, sessionId: string, 
   return changePresenter(locale, "remove_session_presenter", sessionId, memberId);
 }
 
+// ── The certificate mode's one writer (REQ-SES-020, DEC-178 contract 2) ────
+
+export type CertificateMode = "off" | "automatic" | "review";
+
+/** The refusals `set_session_certificate_mode()` names. Anything else is a fault, and throws. */
+export const CERTIFICATE_MODE_ERRORS = ["session_not_found", "session_completed", "session_cancelled", "not_an_admin", "stale_claims"] as const;
+export type CertificateModeError = (typeof CERTIFICATE_MODE_ERRORS)[number];
+export type CertificateModeResult = { status: "ok" | "unchanged" } | { status: "refused"; error: CertificateModeError };
+
+const certificateModeInput = z.object({ sessionId: z.uuid(), mode: z.enum(["off", "automatic", "review"]) }).strict();
+
+/**
+ * Changes a session's certificate mode — called by SCR-045 (`designer`'s), the
+ * one screen that writes it. The function is admin only, audited, and refuses
+ * a completed, archived or cancelled session, where a change would do nothing
+ * (the fan-out runs once, at completion). The schedule form no longer states
+ * the mode, and `schedule_session()` leaves it standing when it is not named.
+ */
+export async function setSessionCertificateMode(locale: string, sessionId: string, mode: CertificateMode): Promise<CertificateModeResult> {
+  const { session, supabase } = await sessionClient(locale);
+  const parsed = certificateModeInput.safeParse({ sessionId, mode });
+  if (!parsed.success) return { status: "refused", error: "session_not_found" };
+  if (session.role !== "admin") return { status: "refused", error: "not_an_admin" };
+
+  const { data, error } = await supabase.rpc("set_session_certificate_mode", { p_session: parsed.data.sessionId, p_mode: parsed.data.mode });
+  if (error) {
+    const known = CERTIFICATE_MODE_ERRORS.find((code) => new RegExp(`\\b${code}\\b`).test(error.message));
+    if (known) return { status: "refused", error: known };
+    throw new Error(`set_session_certificate_mode: ${error.message}`);
+  }
+  return { status: data === "unchanged" ? "unchanged" : "ok" };
+}
+
 // ── A session's heading, for the screens under it ──────────────────────────
 
 export interface SessionHeading {
