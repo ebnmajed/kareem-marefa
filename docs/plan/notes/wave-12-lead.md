@@ -11,7 +11,7 @@ ownership map into `CLAUDE.md` and all ten `.claude/agents/*.md` **and log the s
 `DEC-171`'s table of what was deliberately left. Then `DECISIONS.md` `DEC-160` … `DEC-172`,
 `CLAUDE.md` (★ **invariant 1 is re-cut** — `DEC-167`), `TEAM.md` §1–§3.
 
-## The wave — two owner-reported defects, both small, both with real decisions inside
+## The wave — three items: two owner-reported defects and one ruling
 
 ### 1 · A session's presenters cannot be changed after it is created
 
@@ -43,7 +43,46 @@ been paid. **Do not move the award.**
 - Who may do it: staff. A presenter removing themselves is `session_presenter_declined()`'s existing
   path and is **not** this.
 
-### 2 · The poster is cropped everywhere it is shown
+### 2 · Every award pays at completion, and check-in acknowledges without paying
+
+★★ **The owner's ruling, and it is a design change rather than a patch: nothing is paid until the
+session ends, and the member is told at check-in what they have earned.**
+
+**Where the four awards fire today, measured:**
+
+| | |
+|---|---|
+| Presenter | **already at completion** — `proposals_award_points` (`0031:84`) |
+| Company | follows the member award — `company_points_rollup` on insert into `company_points_ledger` |
+| Attendee, multi-day | **already at completion** — `0113` |
+| ★ Attendee, **one day** | **at check-in, immediately** — `attendance_recorded()` is *"the one place that knows a one-day session pays at check-in"* (`0113:37`) |
+
+So one case is the outlier, and the wave closes it.
+
+**What to build, and the second half is the point:**
+
+1. **`attendance_recorded()` stops paying a one-day session at check-in.** Every award — attendee,
+   company, presenter — is written when the session completes. One rule, one moment, no branch on
+   day count. ★ **`wave9-checkin-one-day.spec.ts` asserts today's behaviour and will fail. It is
+   meant to** — update it to the new rule deliberately, in the same commit, and say so; do not
+   discover it at the gate.
+2. ★ **Check-in acknowledges what is pending.** The member who enters the code is told immediately
+   what they have earned and that it arrives when the session ends. **This is not a toast.** It is
+   the affordance that replaces the feedback the ledger row used to give, and it is the foundation
+   the owner's later gamification layer builds on — so design it as a state the screen can show,
+   readable from the data, not a message fired once and lost on reload.
+   ★ **A pending amount is computed, never stored.** Inventing a second ledger with a pending state
+   would be two sources of truth for a balance that invariant 9 exists to keep recomputable.
+3. **Everything downstream follows** — `me/points`, the leaderboards, streaks, badges and the
+   attendance-outcome surface all read a balance that now moves at a different moment. Check each
+   rather than assume.
+
+★ **What this buys, and why it is worth the change:** an admin editing attendance or presenters
+**before** a session completes now costs nothing — no compensating entry, no reversal, because
+nothing was paid. `0087`'s machinery stays for the after-completion case, which is the only case
+that still needs it.
+
+### 3 · The poster is cropped everywhere it is shown
 
 **The cause is one line.** `CardMedia` renders the image with **`object-cover`**
 (`src/components/ui/card.tsx:173`), which fills the box by cutting whatever does not fit. On a
@@ -89,13 +128,17 @@ The usual — `tsc`, `lint` zero errors (**grep for `problems`**), `npm test`, `
 moved, `parity`, `policy-diff`, `trace`, **`ui-lint --strict` with no allowlist** — it is empty now
 and must stay empty. Arabic authored in `messages/ar/` first, `<bdi>` on every interpolated value.
 
-**And two this wave adds:**
+**And three this wave adds:**
 
 1. ★ **A 390 px RTL capture of the timeline card showing a whole poster**, opened by you, beside the
    owner's screenshot of the cropped one. The defect was reported from a screenshot; it closes with
    one.
 2. ★ **A presenter added and removed after completion, with the ledger proving it** — the award
    paid for the addition and a compensating row for the removal, balances recomputable either way.
+3. ★ **A one-day session, end to end: a member checks in, is told what is pending and sees no
+   ledger row; the session completes; the row appears.** And the same member removed from
+   attendance **before** completion leaves **no** ledger row and needs **no** reversal — which is
+   the whole point of the change.
 
 ## How it ends
 
