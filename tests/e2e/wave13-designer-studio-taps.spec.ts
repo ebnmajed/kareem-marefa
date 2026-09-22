@@ -158,12 +158,12 @@ async function openStudio(page: Page) {
   await expect(main(page).getByRole("heading", { name: SESSION_TITLE, level: 1 })).toBeVisible();
 }
 
-const panel = (page: Page) => main(page).getByRole("tablist", { name: "لوحات المحرّر" });
-const inspector = (page: Page) => main(page).getByRole("region", { name: "الخصائص" });
+const panel = (page: Page) => main(page).getByRole("tablist", { name: "لوحات المحرّر", exact: true });
+const inspector = (page: Page) => main(page).getByRole("region", { name: "الخصائص", exact: true });
 async function selectInList(page: Page, name: string) {
-  await panel(page).getByRole("tab", { name: "الطبقات" }).click();
+  await panel(page).getByRole("tab", { name: "الطبقات", exact: true }).click();
   await main(page).getByRole("tabpanel").getByRole("button", { name: new RegExp(`^${name}`) }).first().click();
-  await panel(page).getByRole("tab", { name: "الخصائص" }).click();
+  await panel(page).getByRole("tab", { name: "الخصائص", exact: true }).click();
 }
 
 test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed with click() alone, and the stored document changes each time", async ({ context, page }) => {
@@ -177,7 +177,7 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
   await selectInList(page, "المكان");
   const before = await storedLayer("l_where");
   let done = saved(page);
-  await inspector(page).getByRole("button", { name: "ضع بنقرة" }).click();
+  await inspector(page).getByRole("button", { name: "ضع بنقرة", exact: true }).click();
   await main(page).locator("[data-layer-hit-area]").click({ position: { x: 60, y: 60 } });
   await done;
   const placed = await storedLayer("l_where");
@@ -188,22 +188,22 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
 
   // ── resize: «املأ المنطقة الآمنة عرضًا» ─────────────────────────────────
   done = saved(page);
-  await inspector(page).getByRole("button", { name: "املأ المنطقة الآمنة عرضًا" }).click();
+  await inspector(page).getByRole("button", { name: "املأ المنطقة الآمنة عرضًا", exact: true }).click();
   await done;
   expect((await storedLayer("l_where")).frame).toMatchObject({ x: 80, w: 920 });
 
   // ── rotate: ±15°, and back ────────────────────────────────────────────────
   done = saved(page);
-  await inspector(page).getByRole("button", { name: "دوّر 15° مع الساعة" }).click();
+  await inspector(page).getByRole("button", { name: "دوّر 15° مع الساعة", exact: true }).click();
   await done;
   expect((await storedLayer("l_where")).frame.rotation).toBe(15);
   done = saved(page);
-  await inspector(page).getByRole("button", { name: "صفّر الدوران" }).click();
+  await inspector(page).getByRole("button", { name: "صفّر الدوران", exact: true }).click();
   await done;
   expect((await storedLayer("l_where")).frame.rotation).toBe(0);
 
   // ── reorder: ▲ on the row ──────────────────────────────────────────────────
-  await panel(page).getByRole("tab", { name: "الطبقات" }).click();
+  await panel(page).getByRole("tab", { name: "الطبقات", exact: true }).click();
   const order = async () => (await stored()).map((l) => l.id).indexOf("l_where");
   const zBefore = (await storedLayer("l_where")).z;
   const indexBefore = await order();
@@ -211,7 +211,7 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
   await main(page)
     .getByRole("tabpanel")
     .locator("li", { has: page.getByText("المكان", { exact: true }) })
-    .getByRole("button", { name: "طبقة إلى الأمام" })
+    .getByRole("button", { name: "طبقة إلى الأمام", exact: true })
     .click();
   await done;
   const after = await storedLayer("l_where");
@@ -219,34 +219,34 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
 
   // ── focal point: the nine-point grid alone (REQ-DSG-030's second acceptance) ──
   await selectInList(page, "الصورة");
-  const grid = inspector(page).getByRole("radiogroup", { name: "نقطة التركيز" });
+  const grid = inspector(page).getByRole("radiogroup", { name: "نقطة التركيز", exact: true });
   await expect(grid.getByRole("radio")).toHaveCount(9);
-  await expect(grid.getByRole("radio", { name: "الوسط" })).toHaveAttribute("aria-checked", "true");
+  await expect(grid.getByRole("radio", { name: "الوسط", exact: true })).toHaveAttribute("aria-checked", "true");
   done = saved(page);
-  await grid.getByRole("radio", { name: "أسفل اليمين" }).click();
+  await grid.getByRole("radio", { name: "أسفل اليمين", exact: true }).click();
   await done;
   expect((await storedLayer("l_photo")).image?.focal).toEqual({ x: 1, y: 1 });
 
   // ── multi-select without a keyboard or a marquee: «تحديد متعدّد» ─────────
-  await panel(page).getByRole("tab", { name: "الطبقات" }).click();
+  await panel(page).getByRole("tab", { name: "الطبقات", exact: true }).click();
   const list = main(page).getByRole("tabpanel");
-  await list.getByRole("button", { name: "تحديد متعدّد" }).click();
-  await expect(list.getByRole("button", { name: "تحديد متعدّد" })).toHaveAttribute("aria-pressed", "true");
+  await list.getByRole("button", { name: "تحديد متعدّد", exact: true }).click();
+  await expect(list.getByRole("button", { name: "تحديد متعدّد", exact: true })).toHaveAttribute("aria-pressed", "true");
   for (const name of ["نوع الجلسة", "المكان", "الصورة"]) {
     await list.getByRole("button", { name: new RegExp(`^${name}`) }).first().click();
   }
   await expect(list.getByText("3 طبقات محدّدة")).toBeVisible();
 
   // ── group align and distribute ─────────────────────────────────────────────
-  await panel(page).getByRole("tab", { name: "الخصائص" }).click();
+  await panel(page).getByRole("tab", { name: "الخصائص", exact: true }).click();
   const group = inspector(page);
   done = saved(page);
-  await group.getByRole("group", { name: "أفقيًا" }).getByRole("button", { name: "البداية" }).click();
+  await group.getByRole("group", { name: "أفقيًا", exact: true }).getByRole("button", { name: "البداية", exact: true }).click();
   await done;
   const xs = await Promise.all(["l_kicker", "l_where", "l_photo"].map(async (id) => (await storedLayer(id)).frame.x));
   expect(new Set(xs).size).toBe(1);
   done = saved(page);
-  await group.getByRole("button", { name: "وزّع رأسيًا" }).click();
+  await group.getByRole("button", { name: "وزّع رأسيًا", exact: true }).click();
   await done;
   const ys = (await Promise.all(["l_kicker", "l_where", "l_photo"].map((id) => storedLayer(id)))).map((l) => ({ y: l.frame.y, h: l.frame.h })).sort((a, b) => a.y - b.y);
   const gaps = [ys[1]!.y - (ys[0]!.y + ys[0]!.h), ys[2]!.y - (ys[1]!.y + ys[1]!.h)];
@@ -254,8 +254,8 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
   await page.screenshot({ path: `${SHOTS}/wave13-designer-studio-group.png`, fullPage: true });
 
   // Leave multi-select.
-  await panel(page).getByRole("tab", { name: "الطبقات" }).click();
-  await list.getByRole("button", { name: "تحديد متعدّد" }).click();
+  await panel(page).getByRole("tab", { name: "الطبقات", exact: true }).click();
+  await list.getByRole("button", { name: "تحديد متعدّد", exact: true }).click();
 
   // ── D1b: add a text, write it, colour it, duplicate it, delete it ─────────
   const count = (await stored()).length;
@@ -279,20 +279,20 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
   expect((await storedLayer(added.id)).color).toBe("{{brand.fgMuted}}");
 
   done = saved(page);
-  await inspector(page).getByRole("button", { name: "كرّر الطبقة" }).click();
+  await inspector(page).getByRole("button", { name: "كرّر الطبقة", exact: true }).click();
   await done;
   expect(await stored()).toHaveLength(count + 2);
 
-  await inspector(page).getByRole("button", { name: "احذف الطبقة" }).click();
+  await inspector(page).getByRole("button", { name: "احذف الطبقة", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("ملتقى المعرفة");
   done = saved(page);
-  await dialog.getByRole("button", { name: "احذف" }).click();
+  await dialog.getByRole("button", { name: "احذف", exact: true }).click();
   await done;
   expect(await stored()).toHaveLength(count + 1);
   await page.screenshot({ path: `${SHOTS}/wave13-designer-studio-taps.png`, fullPage: true });
 
   // And the numbers are still there, demoted, never deleted (DEC-093).
   await selectInList(page, "المكان");
-  await expect(inspector(page).getByRole("button", { name: "الموضع والحجم" })).toHaveAttribute("aria-expanded", "false");
+  await expect(inspector(page).getByRole("button", { name: "الموضع والحجم", exact: true })).toHaveAttribute("aria-expanded", "false");
 });

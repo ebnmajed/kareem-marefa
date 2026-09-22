@@ -145,7 +145,7 @@ test("★ an uploaded poster is SEEN — in the studio, and (with a worker) edge
   await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule`);
   const upload = main(page).locator('section[aria-labelledby="poster"]').locator("article", { has: page.getByRole("heading", { name: "رفع ملصق جاهز", level: 3, exact: true }) });
   await upload.locator('input[type="file"][name="poster"]').setInputFiles({ name: "poster.png", mimeType: "image/png", buffer: redPng(1200, 1500) });
-  await upload.getByRole("button", { name: "ارفع الملصق" }).click();
+  await upload.getByRole("button", { name: "ارفع الملصق", exact: true }).click();
   await expect(page.getByText("رُفع الملصق، وتُجهَّز مقاساته الآن.", { exact: true })).toBeVisible({ timeout: 30_000 });
 
   const { rows } = await db.query<{ document_id: string; schema_version: number; scale: string }>(

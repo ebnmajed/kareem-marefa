@@ -190,7 +190,19 @@ export function DesignerCanvas({
   /** Set when a press became a drag, so the click that follows it is not also a selection. */
   const swallowClick = useRef(false);
   const [scale, setScale] = useState(0.4);
-  const [preview, setPreview] = useState<Preview>(null);
+  const [preview, setPreviewState] = useState<Preview>(null);
+  /**
+   * ★ The gesture's result is read from THIS, never from the state. A fast hand
+   * — or Playwright's mouse — delivers the last pointermove and the pointerup
+   * inside one frame, before React commits the move; the release handler bound
+   * in the previous render then saw no preview and saved nothing (the lead's
+   * run on dfafeab: «no PUT in 90 s»). The state draws; the ref decides.
+   */
+  const previewRef = useRef<Preview>(null);
+  const setPreview = useCallback((next: Preview) => {
+    previewRef.current = next;
+    setPreviewState(next);
+  }, []);
 
   const html = useMemo(
     () =>
@@ -270,7 +282,7 @@ export function DesignerCanvas({
     gesture.current = null;
     setPreview(null);
     paintTransient(null);
-  }, [paintTransient]);
+  }, [paintTransient, setPreview]);
 
   // A gesture never outlives the document it started on.
   useEffect(() => finish, [finish]);
@@ -373,7 +385,7 @@ export function DesignerCanvas({
   const onPointerUp = (event: ReactPointerEvent<HTMLElement>) => {
     const g = gesture.current;
     if (!g || g.pointerId !== event.pointerId) return;
-    const current = preview;
+    const current = previewRef.current;
     if (g.kind === "focal") {
       if (current?.kind === "focal") onFocal?.(g.layerId, current.point);
       finish();

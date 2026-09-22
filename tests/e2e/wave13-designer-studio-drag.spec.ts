@@ -147,7 +147,7 @@ async function openStudio(page: Page) {
 }
 
 const layerBox = async (page: Page, name: string) => {
-  const box = await main(page).getByRole("button", { name: `اختيار الطبقة ${name}` }).boundingBox();
+  const box = await main(page).getByRole("button", { name: `اختيار الطبقة ${name}`, exact: true }).boundingBox();
   if (!box) throw new Error(`no box for ${name}`);
   return box;
 };
@@ -184,12 +184,12 @@ test("★ drag, resize and rotate on the canvas — one undo step per gesture, t
 
   // ★ One gesture, one undo step: a single «تراجع» restores the frame.
   done = saved(page);
-  await main(page).getByRole("toolbar").getByRole("button", { name: "تراجع" }).click();
+  await main(page).getByRole("toolbar").getByRole("button", { name: "تراجع", exact: true }).click();
   await done;
   expect((await storedLayer("l_where")).frame).toEqual(where.frame);
 
   // ── resize from the south-east handle ─────────────────────────────────────
-  await main(page).getByRole("button", { name: "اختيار الطبقة الصورة" }).click();
+  await main(page).getByRole("button", { name: "اختيار الطبقة الصورة", exact: true }).click();
   const photo = await storedLayer("l_photo");
   const se = main(page).locator('[data-handle="se"]');
   await expect(se).toBeVisible();
@@ -231,9 +231,9 @@ test("the marquee selects what it touches, and a locked region neither drags nor
   const kicker = await layerBox(page, "نوع الجلسة");
   if (!stage) throw new Error("no stage");
   await drag(page, { x: stage.x + 20, y: stage.y + 8 }, { x: stage.x + stage.width / 2, y: kicker.y + kicker.height + 10 });
-  await expect(main(page).getByRole("button", { name: "اختيار الطبقة نوع الجلسة" })).toHaveAttribute("aria-pressed", "true");
-  await expect(main(page).getByRole("button", { name: "اختيار الطبقة عنوان الجلسة" })).toHaveAttribute("aria-pressed", "false");
-  await expect(main(page).getByRole("button", { name: "اختيار الطبقة شعار المؤسسة" })).toHaveAttribute("aria-pressed", "false");
+  await expect(main(page).getByRole("button", { name: "اختيار الطبقة نوع الجلسة", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(main(page).getByRole("button", { name: "اختيار الطبقة عنوان الجلسة", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await expect(main(page).getByRole("button", { name: "اختيار الطبقة شعار المؤسسة", exact: true })).toHaveAttribute("aria-pressed", "false");
 
   // The QR is locked by the template (REQ-DSG-024): it selects, but no handle
   // appears and a drag writes nothing.

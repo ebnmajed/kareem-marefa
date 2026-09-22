@@ -140,7 +140,7 @@ test("★ the admin downloads an issued certificate from SCR-045 — through the
   if (test.info().project.name === "phone") await page.setViewportSize(PHONE);
   const screen = `/ar/app/admin/sessions/${sessionId}/certificates`;
   await page.goto(screen);
-  const link = main(page).getByRole("link", { name: `نزّل شهادة ${RECIPIENT}` });
+  const link = main(page).getByRole("link", { name: `نزّل شهادة ${RECIPIENT}`, exact: true });
   await expect(link).toHaveAttribute("href", `/api/designer/downloads/${artifactId}`);
   if (test.info().project.name === "phone") {
     await page.screenshot({ path: `${SHOTS}/wave13-designer-certificates-download.png`, fullPage: true });
@@ -159,7 +159,7 @@ test("★ the admin downloads an issued certificate from SCR-045 — through the
 test("★ the member downloads their OWN certificate from /app/me/certificates — audited too (DEC-177)", async ({ context, page }) => {
   await signIn(context, emails.owner);
   await page.goto("/ar/app/me/certificates");
-  const link = main(page).getByRole("link", { name: "نزّل الشهادة" });
+  const link = main(page).getByRole("link", { name: "نزّل الشهادة", exact: true });
   await expect(link).toHaveAttribute("href", `/api/designer/downloads/${artifactId}`);
   await expect(link).not.toHaveAttribute("download", /.*/);
 

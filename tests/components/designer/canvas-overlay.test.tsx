@@ -11,7 +11,7 @@
 // «تحديد متعدّد» adds, a drag hands over ONE set of frames on release, arrows
 // nudge on the VISUAL axis, «ضع بنقرة» turns the next tap into a logical point.
 import type React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { DesignDocument, Layer } from "@kareem/designer-runtime";
@@ -140,6 +140,23 @@ describe("the pointer path — one hand-over per gesture", () => {
     fireEvent.pointerUp(b, { pointerId: 1, clientX: 40, clientY: 0, pointerType: "mouse" });
     expect(handlers.onFrames).toHaveBeenCalledTimes(1);
     // 40 screen px at 0.4 is 100 document px to the right.
+    expect(handlers.onFrames.mock.calls[0]?.[0]).toEqual({ l_a: { x: 200, y: 400, w: 100, h: 50 } });
+  });
+
+  it("★ a release that arrives before React has rendered the last move still hands the moved frame over (the real browser's timing)", () => {
+    // Playwright's mouse — and a fast hand — can deliver the last pointermove
+    // and the pointerup inside one frame, before React commits the move's
+    // state. The handler bound in the previous render then saw NO preview and
+    // saved nothing: the lead's run on dfafeab, «no PUT in 90 s». Batching both
+    // events in one act() reproduces that timing in jsdom.
+    const { handlers } = mount("ar", { document: d, source: d, selectedLayerIds: ["l_a"] });
+    const b = layerButton("l_a");
+    fireEvent.pointerDown(b, { pointerId: 1, button: 0, clientX: 0, clientY: 0, pointerType: "mouse" });
+    act(() => {
+      fireEvent.pointerMove(b, { pointerId: 1, clientX: 40, clientY: 0, pointerType: "mouse" });
+      fireEvent.pointerUp(b, { pointerId: 1, clientX: 40, clientY: 0, pointerType: "mouse" });
+    });
+    expect(handlers.onFrames).toHaveBeenCalledTimes(1);
     expect(handlers.onFrames.mock.calls[0]?.[0]).toEqual({ l_a: { x: 200, y: 400, w: 100, h: 50 } });
   });
 
