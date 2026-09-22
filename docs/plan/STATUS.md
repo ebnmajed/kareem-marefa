@@ -43,7 +43,7 @@ the map is `CLAUDE.md` § *Ownership map (wave 13)*.
 | D4 | One signer — three functions fold into one, every caller unchanged | `designer` | open |
 | D5 | The certificates screen: one download per issued certificate · ★ **`me/certificates`' bare `<a download>` onto the audited route** — today the only download in the product, and unaudited (`DEC-177`) | `designer` | open |
 | H1 | `REQ-SES-020` — the sub-nav over the routes that exist, no orphan screen | `sessions` | open |
-| H2 | The certificate mode off the schedule screen (C2) | `sessions` | open |
+| H2 | The certificate mode off the schedule screen (C2) | `sessions` | **done** `6f71d56` — the form neither shows nor posts it; «every day» moved into «الحضور»; 4 ledger lines |
 | H3 | Materials, tasks and photos reachable from the hub — through «صفحة الجلسة», so nothing to shed | `sessions` | approved |
 | H4 | `REQ-DSG-027` — «تنزيل» on the event page and the hub: one primary file, the rest behind a disclosure, pending as pending | `sessions` | open |
 | K1 | The admin rail's entry for the hub — no code: `isCurrent()` already prefix-matches; proven by a capture | `console` | approved |
@@ -102,6 +102,10 @@ every merge, and **it is the last thing in this project still done by hand**.
 
 | File | Assertion | Why |
 |---|---|---|
+| `tests/unit/schedule-days.test.ts` › «still declares wave 8's sixteen fields…» → «…wave 8's fields but the certificate mode…» | (a) `WAVE_8_FIELDS` loses `certificateMode` | **On purpose** — `REQ-SES-020`, contract 2 (`DEC-178`): the mode is written on SCR-045 only (`sessions` `6f71d56`) |
+| `tests/unit/schedule-days.test.ts` › «sends every wave-8 argument unchanged…» | (a) `WAVE_8_INPUT.certificateMode` `"automatic"` → `null` | **On purpose** — the action sends `null` whatever a client posts; the fixture still posts `"automatic"`, so it also proves a stale client cannot write the mode (`0154`: `null` = unchanged) |
+| `tests/components/checkin/schedule-form.test.tsx` › `BASE_INITIAL` | (b) the `certificateMode` line removed | harness only — `ScheduleInitial` lost the field |
+| `tests/components/sessions/schedule-days.test.tsx` › `BASE` | (b) the same line removed | harness only |
 
 ---
 
