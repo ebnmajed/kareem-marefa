@@ -30,30 +30,51 @@ the map is `CLAUDE.md` § *Ownership map (wave 13)*.
 | # | Row | Owner | State |
 |---|---|---|---|
 | S0 | `DEC-176`; `REQ-SES-020`, `STORY-SES-013`, M15; `REQ-DSG-027`'s reading cited; the map; the ten agent files | lead | **done** `a53a7a2`; draft **PR #30** |
-| C1 | Contract 1 — the download DTO in `lib/dal/posters.ts`, its route, the primary artifact named | `designer` → `sessions` | open — day one of `designer`'s plan |
-| C2 | Contract 2 — the certificate mode's one writer | `sessions` ↔ `designer` | ruled at sync 1 |
+| C1 | Contract 1 — `getSessionPosterDownloads()` in `lib/dal/posters.ts`; `href = /api/designer/downloads/<artifactId>`; `primary` = master PNG; failure → `303 ?download=failed` | `designer` → `sessions` | **published** (`e221c56`), approved at sync 1 |
+| C2 | Contract 2 — SCR-045 is the one writer: `sessions` writes `set_session_certificate_mode()` + `schedule_session()`'s `null`-means-unchanged (one file, promoted first); `designer` builds the control; refused after completion | `sessions` ↔ `designer` | **ruled** (`DEC-178`) |
 | C3 | Contract 3 — the download audit definer, **created from nothing** (`DEC-076`'s «`0086`» was never written — `DEC-177`): a poster → admin · moderator · accepted presenter; a certificate → admin · moderator · its own member; `42501` otherwise; `write_audit()`; granted to `authenticated` only, in `definer-exposure`'s sweep; red→green, `03` §8.2 rows | lead | open — `0152` |
-| C4 | Contract 4 — the templates grid reads `designer`'s DAL | `designer` → `console` | open |
-| R1 | ★ The research: the five open questions of `DEC-176` §1, and the overlay-only libraries evaluated | `designer` | open — the plan's first section; logged at sync 1 |
-| D1 | `REQ-DSG-028` — direct manipulation in the overlay, the seven helpers reused, `DEC-093`'s path for every operation, the numeric fields **demoted, never deleted**, `DEC-096`'s axes | `designer` | open |
-| D2 | `REQ-DSG-030` — the focal dot and the nine-point grid, centre by default | `designer` | open |
-| D3 | `REQ-DSG-029` and `REQ-DSG-031` — what is not yet built | `designer` | open — measured in the plan |
+| C4 | Contract 4 — nothing new: `getTemplateLibrary()` as it stands | `designer` → `console` | **closed at sync 1** |
+| R1 | ★ The research: the five open questions of `DEC-176` §1, and the overlay-only libraries evaluated | `designer` | **done** (`e221c56` W13.1) — no library; logged in `DEC-178` |
+| D1 | `REQ-DSG-028` — direct manipulation in the overlay, the seven helpers reused, `DEC-093`'s path for every operation, the numeric fields **demoted, never deleted**, `DEC-096`'s axes, the iframe origin fix, «تحديد متعدّد» | `designer` | approved — building |
+| D1b | ★ Add text · image · logo · shape; delete, duplicate; edit a text's words, weight, colour **token** — the owner's sentence (`DEC-178`) | `designer` | approved — after D1 |
+| D2 | `REQ-DSG-030` — the focal dot and the nine-point grid, centre by default | `designer` | approved |
+| D2b | An uploaded poster crops for real — `'page'` scale, `schemaVersion: 2` only; no golden moves; the fingerprint carries the version | `designer` | approved on conditions (`DEC-178`) |
+| D3 | `REQ-DSG-029` and `REQ-DSG-031` — measured: 029 built except pre-export live thumbnails (**carried**); 031's stated preflight rides on C2 | `designer` | approved |
 | D4 | One signer — three functions fold into one, every caller unchanged | `designer` | open |
 | D5 | The certificates screen: one download per issued certificate · ★ **`me/certificates`' bare `<a download>` onto the audited route** — today the only download in the product, and unaudited (`DEC-177`) | `designer` | open |
 | H1 | `REQ-SES-020` — the sub-nav over the routes that exist, no orphan screen | `sessions` | open |
 | H2 | The certificate mode off the schedule screen (C2) | `sessions` | open |
-| H3 | Materials, tasks and photos reachable from the hub — **first to shed** | `sessions` | open |
+| H3 | Materials, tasks and photos reachable from the hub — through «صفحة الجلسة», so nothing to shed | `sessions` | approved |
 | H4 | `REQ-DSG-027` — «تنزيل» on the event page and the hub: one primary file, the rest behind a disclosure, pending as pending | `sessions` | open |
-| K1 | The admin rail's entry for the hub | `console` | open |
-| K2 | `/app/admin/templates`' card grid (`16` §10.3) | `console` | open |
+| K1 | The admin rail's entry for the hub — no code: `isCurrent()` already prefix-matches; proven by a capture | `console` | approved |
+| K2 | `/app/admin/templates` — the grid already exists (`template-library.tsx`): a redirect, the rail's «التصاميم» collapsed to one leaf, `designer`'s posters | certificates tab strip (shape (b), `DEC-178`) | `console` · `designer` | approved |
 | K3 | The 390 px and accessibility review of the hub and the grid | `console` | open |
 | L1 | `04`'s route table reconciled (`attendance`, `certificates`, the hub) and `09` SCR-043 — **in the hub's commit** | lead | open |
 | L2 | Promotion from `0152`, the rehearsal notes | lead | open |
+| L3 | ★ **The certificate leak** — any member can list and sign another member's certificate PDF (`0037`'s org-prefix storage policy; probed by `designer`). A restrictive `select` policy on `exports`, `0153`, red→green for own · admin · another member · anon public card | lead | open — **live on production** |
 | M1 | ★ Demonstrable — the `SC 2.5.7` gate: every studio operation with `page.click()` alone, the document changed each time | `designer` writes, lead runs | open |
 | M2 | Demonstrable — `ar` and `en` consoles store byte-identical documents for «align start» | `designer` | open |
 | M3 | Demonstrable — **no parity golden moves** | lead | open |
 | M4 | ★ Demonstrable — a staff member downloads a session's poster and its certificates from the session, at 390 px in Arabic, never opening `/app/admin/designer` (`wave13-demo-download.spec.ts`) | lead | open |
 | G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict` | lead | open |
+
+### Sync 1 — 2026-09-22 — three plans approved (`DEC-178`)
+
+The plans are `designer` `e221c56`, `sessions` `d75e45b` and `console` `784ea77`. Each headline claim was verified against the tree before ruling.
+
+**What the plans found:**
+- ★ **Any org member can read another member's certificate PDF through Storage** (row L3).
+- ★ **Moving the mode off the schedule form would turn certificates off on every save** (`0112:68`, `:312`).
+- A mode changed after completion does nothing.
+- The hub's address is already linked, and 404s.
+- The studio cannot add a layer.
+- An uploaded poster never crops.
+- The iframe is misplaced in two direction pairs.
+- The templates grid is already built.
+
+**`DEC-177`, from the reviewer session:**
+- `DEC-076`'s «`0086`» audit rows were never written.
+- `me/certificates` is the one download that ships, and it writes no audit row. It moves onto the audited route.
 
 ### ★ If the wave must shed
 

@@ -383,6 +383,7 @@ without ever opening `/app/admin/designer`.**
   merge, so a change to what a render produces says in the plan what `main`'s worker does in the gap. The
   expected answer is «nothing moves».
 - **Teammates spawn planning-only**; sync 1 approves three plans against the four contracts.
+- ★ **Sync 1's rulings (`DEC-177`, `DEC-178`) are part of this map.** The mode is written only on SCR-045, through `sessions'` function and `designer`'s control. **Every download — the menus, SCR-045, the studio's panel and `me/certificates` — goes through `designer`'s one audited route.** D1b (adding and editing layers) and D2b (`schemaVersion: 2`) are in. `/app/admin/templates` is a redirect plus `designer`'s tab strip.
 - **Tables are the lead's; behaviour is the tracks'. A function has one writer. One writer per file, JSON and
   specs included.**
 - **`ui-lint --strict` has no allowlist and never gains one.** Every track that ships a screen runs

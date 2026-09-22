@@ -4227,3 +4227,56 @@ The presenters of directly created sessions left at `accepted = false` (`0020`) 
 3. **Contract 3's rule therefore has two subjects.** For a session poster: admin, moderator, or an accepted presenter of that session. For a certificate: admin, moderator, **or the certificate's own member**. Everyone else is refused with `42501`. One function or two is `designer`'s and the lead's call at sync 1. The audit row names the actor, the subject and the artifact (`REQ-ADM-021`'s acceptance).
 
 - **Documents changed:** `CLAUDE.md` and the ten agent files (contract 3), `STATUS.md` (C3, D5)
+
+---
+
+## DEC-178 — Wave 13, sync 1: three plans approved; one audited route for every download, the mode written only on SCR-045 and refused after completion, the studio adds and edits layers, and the org stops reading each other's certificates
+
+- **Date:** 2026-09-22 · **Decided by:** the wave-13 lead, on the plans in `docs/plan/notes/{designer,sessions,console}.md` (`e221c56`, `d75e45b`, `784ea77`)
+- **Amends:** `DEC-176` (contract 2's writer, D1's scope, the templates row), `DEC-093` (one more tap path, below)
+
+**Found by the plans, each verified against the tree:**
+- ★ **Any member of an org can list and sign any other member's certificate PDF.** `exports_storage_read` (`0037:674`) admits the whole org prefix, and Storage's listing runs as the caller. `designer` probed it in a rolled-back transaction. The tables do not leak (`documents_read`, `0055:614`); Storage does. **Live on production.**
+- ★ **Taking the mode off the schedule form would switch certificates off for every session.** `schedule_session()` defaults `p_certificate_mode` to `'off'` and writes it on every save (`0112:68`, `:312`).
+- **A mode changed after completion does nothing.** The fan-out ran at completion (`0065`/`0108`).
+- **`/app/admin/sessions/[id]` is linked and 404s** (`survey/page.tsx:56`).
+- **The studio cannot add or delete a layer, or edit a text's words, weight or colour** — the owner's «add images, logos, text, format the text».
+- **An uploaded poster never crops.** `derive()` keeps its 4:5 frame on every preset, so a focal point would have no visible effect on any layer that exists.
+- **The canvas iframe is misplaced** in two of the four console × document direction pairs (`canvas.tsx:103`, `:125`) — `DEC-096`'s dormant class, found live.
+- **`16` §10.3's templates grid is already built**, twice, in `components/designer/template-library.tsx`. Only the address `/app/admin/templates` is missing.
+
+**Rulings — contracts:**
+1. **Contract 1 approved as `designer` wrote it.** `getSessionPosterDownloads(locale, sessionId)` in `lib/dal/posters.ts`. It returns `null` for a viewer who may not download. `primary` is always the master PNG, pending when not ready. Each ready item carries `href = /api/designer/downloads/<artifactId>`. `sessions`' R4 is adopted: a refusal or failure answers `303` back to the page with `?download=failed`, never a raw body, and the file is named through the signer's `download` option.
+2. ★ **Contract 2: SCR-045 is the mode's one writer.** `sessions` writes `set_session_certificate_mode()` — admin only, audited, refusing before its first write — and `schedule_session()`'s `p_certificate_mode` becomes default `null`, where `null` means unchanged. Both go in one proposed file, promoted before `designer` builds the control. `designer` builds the control on SCR-045 and calls `sessions'` DAL function. ★ **The mode is refused once the session is `completed`, `archived` or `cancelled`**, because changing it then does nothing. «Issue now» for a late switch is not this wave.
+3. ★ **Contract 3 is `record_export_download(p_artifact uuid) returns table (storage_path text, file_name text)`** — one function for posters and certificates, keyed by the artifact's document, with audit action `export_artifact.downloaded`. The lead writes it in `0152`, with the two subjects of `DEC-177`. **Every download goes through `designer`'s one route**: the menus, SCR-045's certificates, the studio's export panel, and ★ **`me/certificates`**. `designer`'s Q7 recommended leaving the last one unaudited; `DEC-177` stands. Thumbnails and previews stay signed URLs — a preview is not a download.
+4. **Contract 4 needs nothing new.** `console` reads `getTemplateLibrary()` as it stands.
+
+**Rulings — `designer`:**
+- ★ **D1b is in scope:** add a text, image, logo or shape; delete and duplicate; edit a text's words, weight and colour token. It is the owner's sentence, and it lands after D1. Colour is a **token**, never a hex (`REQ-DSG-021`).
+- **No library.** Konva, Polotno and Fabric are disqualified because they render; react-moveable, interact.js, `@use-gesture`, dnd-kit and Selecto were evaluated and dropped (`designer`'s W13.1). Geometry lives in a new `packages/designer-runtime/src/geometry.ts`, and `arrange.ts` is added to, never edited. Snap tolerance is in screen space for the pointer, `round(6 / scale)` document pixels; typed numbers keep `snap()`'s 8. One undo entry per gesture.
+- ★ **D2b is approved, on conditions.** An uploaded poster crops for real under a new `'page'` scale, only in `schemaVersion: 2` documents. Three conditions:
+  - **no parity golden moves**;
+  - `source_fingerprint` includes the schema version, so a `v2` document rendered by `main`'s old worker in the merge-to-Railway gap is re-rendered once the new worker runs, not cached;
+  - the owner's order says to reconnect Railway before anyone edits in the new studio.
+- **The iframe origin fix lands with D1.** No render change.
+- **No rulers this wave.** A coordinate chip reads like the fields.
+- ★ **`DEC-093` gains a tap path:** «تحديد متعدّد», a toggle that makes each tap add to the selection. Shift-click needs a keyboard, so on a phone it is not a single-pointer path. The toggle is added **beside** shift-click and «select all of this type», never instead of them.
+- **`REQ-DSG-029`'s pre-export live thumbnails are carried, not built.** The strip shows the worker's thumbnails, and the checks select their layer. `REQ-DSG-031`'s stated preflight rides on contract 2.
+
+**Rulings — `sessions`:**
+- **The hub** is a sub-nav in `[id]/layout.tsx`: «الجدولة» · «الحضور» · «الشهادات» · «الاستبانة» · «صفحة الجلسة». Each viewer sees only the screens they may open, from `getSessionSettingsNav()`. The layout makes no auth decision, and `[id]/page.tsx` only redirects: an admin goes to the schedule, a moderator to attendance, anyone else gets a 404.
+- **Presenters and the poster stay on SCR-043.** Moving them would build the fifth screen `DEC-176` forbids.
+- **The strip sits above each page's own breadcrumb and title.** The layout renders the sub-nav only; each page keeps its header.
+- **A moderator downloads from the event page**, which is enough. SCR-045 carries the per-certificate downloads.
+- **«تنزيل الملصق» everywhere, one string**, in `sessions.json`.
+- Materials, tasks and photos are reached through «صفحة الجلسة», so H3 costs one item and nothing is shed.
+
+**Rulings — `console`:**
+- ★ **Shape (b):** `/app/admin/templates` redirects to `/templates/posters`, and `designer` adds a posters | certificates tab strip to its two pages. That means no second `h1` and no duplicated page. If `ui/tabs` has no link mode, `console` adds one, since it owns the primitive. The rail's «التصاميم» group collapses into one leaf, `/app/admin/templates`. The two pages stay reachable, so `#tpl-platform-section` still works.
+- K1 needs no code — `isCurrent()` already prefix-matches. It is proven by a capture once the hub exists.
+
+**Rulings — the lead's own rows:**
+- ★ **L3 — the certificate leak, `0153`.** A **restrictive** `select` policy on `storage.objects` for `bucket_id = 'exports'` that refuses a certificate document's render to anyone who is not an admin, a moderator or its own member. It is a definer predicate over the path's document segment, so `0080`'s public-card posters are untouched. Red before and green after, with a test for each reader: own, admin, another member, anonymous through the public card.
+- `04` gains `/app/admin/sessions/[id]` (the redirect and its layout), `/attendance`, `/certificates` and `/app/admin/templates` — four routes, not two. `09`: SCR-043 without the mode, SCR-045 with it. `wave9-three-day-workshop.spec.ts:297–310` moves to set the mode on SCR-045 once the control lands; the ledger line is mine. The accessibility sweep gains `…/certificates` and `…/survey`.
+
+- **Documents changed:** `STATUS.md` (the checklist, the rulings), `CLAUDE.md` (the map points here)
