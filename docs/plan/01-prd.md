@@ -613,7 +613,9 @@ proposal's own control no longer applies.
   outside the org, beyond the org's presenter limit (`A5`), or — for removal — for the last
   presenter.
 - An added presenter is **assigned**, not invited. They are told by the existing
-  `MSG-presenter_assigned` and appear everywhere a presenter appears, the poster included.
+  `MSG-presenter_assigned` and appear everywhere a presenter appears — the poster included while the
+  session has not completed. ★ `DEC-174`: after completion the poster is not re-rendered and presenter
+  certificates are not issued or revoked; both are carried.
 - Before the session completes, a change costs nothing, because nothing has been paid
   (`REQ-PTS-015`). After it completes, an added presenter is paid their presenter awards and a
   removed one's are reversed by compensating entries (`REQ-PTS-013`), never by deleting rows.

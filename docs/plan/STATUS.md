@@ -27,17 +27,20 @@ trace. The brief is `docs/plan/notes/wave-12-lead.md`; the map is `CLAUDE.md` §
 | # | Row | Owner | State |
 |---|---|---|---|
 | S0 | `DEC-172`; `REQ-SES-019`, `REQ-PTS-015`, `REQ-CHK-018`, `REQ-UIX-026` in `01` with stories, screens and M14; the map; the ten agent files | lead | **done** |
-| C1 | Contract 1 — the pending state: SQL function + `points.ts` DTO, names and type in `scoring`'s note | `scoring` → `checkin` | planning |
-| C2 | Contract 2 — presenter rows are `sessions'`, their money is `scoring`'s triggers; removal is a `delete` | `sessions` ↔ `scoring` | planning |
-| P1 | `add_session_presenter()` / `remove_session_presenter()` + DAL + the section on SCR-043 | `sessions` | planning |
-| A1 | One-day attendance at completion; `award_points()`'s clause for every session | `scoring` | planning |
-| A2 | `proposal_accepted` at completion under its existing key | `scoring` | planning |
-| A3 | Presenter awards follow the presenter after completion — pay, reverse, epoch | `scoring` | planning |
-| A4 | Streaks and badges count completed sessions; downstream readers measured | `scoring` | planning |
-| K1 | The acknowledgement on SCR-014 and `attendance-outcome` — a state, not a toast | `checkin` | planning |
+| C1 | Contract 1 — `session_award_state(p_session)` + `getSessionAwardState(locale, id)` → `SessionAwardState` | `scoring` → `checkin` | **published** (`70e80f7`), `checkin` reconciled (`0bf1f02`) |
+| C2 | Contract 2 — presenter rows are `sessions'`, their money is `scoring`'s triggers; removal is a `delete`; the trigger covers `update of accepted` | `sessions` ↔ `scoring` | **agreed at sync 1** (`DEC-174`) |
+| P1 | `add_session_presenter()` / `remove_session_presenter()` + DAL + the section on SCR-043 | `sessions` | building — approved at sync 1 (`DEC-174`) |
+| A1 | One-day attendance at completion; `award_points()`'s clause for every session | `scoring` | building — approved at sync 1 (`DEC-174`) |
+| A2 | `proposal_accepted` at completion under its existing key | `scoring` | building — approved at sync 1 (`DEC-174`) |
+| A3 | Presenter awards follow the presenter after completion — pay, reverse, epoch | `scoring` | building — approved at sync 1 (`DEC-174`) |
+| A4 | Streaks and badges count completed sessions; downstream readers measured | `scoring` | building — approved at sync 1 (`DEC-174`) |
+| K1 | The acknowledgement on SCR-014 and `attendance-outcome` — a state, not a toast | `checkin` | building — approved at sync 1 (`DEC-174`) |
 | L1 | ★ The whole poster — `CardMedia` `object-contain`; row densities' media `self-start` so the box keeps 4:5. **Surfaces:** timeline card (`row`/`wide`, 4:5 poster) — the defect, fixed; event page and `/s/[id]` size their own `<img>` to the render's dimensions — never cropped, unchanged; `/s/[id]`'s no-poster placeholder 16:9 — no image; moderation cards 16:9 **photos** — now contained, so a moderator sees the whole reported photo; `template-library` — a live render in its own frame, unchanged; `(dev)` gallery — `grid` placeholder, unchanged, **so `/ar/ui` and `/s/[id]` do not move** (the brief expected both to). ★ **Found by D1: members never saw posters at all** — `DEC-173`, `0145` | lead | **done** — `wave12-lead-timeline-card-{whole-poster,cropped-reproduction}.png` opened |
 | L1b | `0145` — `exports_read_session_poster` (`DEC-173`), red→green, `policy-diff` ✓ | lead | **done**, applied locally |
 | L2 | Promotion from `0145`, the rehearsal notes | lead | todo |
+| L3 | `session_presenters_update_self` narrowed — no self change of `accepted`/`declined_at` once completed, archived or cancelled (`DEC-174` scoring 4) | lead | todo |
+| L4 | `MSG-presenter_assigned` loses the accept/decline sentence — pinned mail moved as one reviewed diff (custodian of `notify`) · the two audit labels in `admin.json` (custodian of `console`) | lead | todo |
+| O1 | ★ **Owner's question:** pay the presenters of directly created, already-completed sessions retroactively? Decides whether the data fix flipping their `accepted` runs after `scoring`'s trigger (pays) or before (does not). **Nothing is run until answered** | owner | asked |
 | D1 | Demonstrable — the timeline card at 390 px showing a whole poster, beside the owner's cropped screenshot | lead | **done** on a build of `421f0ed`+L1: `tests/e2e/wave12-demo-poster.spec.ts` (box 4:5, `contain`); captures beside a labelled reproduction of the old rendering. **The owner's own screenshot is not in the tree** — asked for |
 | D2 | Demonstrable — a presenter added and removed after completion, the ledger proving both | lead | todo |
 | D3 | Demonstrable — one-day: check in, told pending, no row; completes, row appears; removed before completion → no row, no reversal | lead | todo |

@@ -4121,3 +4121,39 @@ D1 seeded a poster the way the worker writes one and signed in as a plain member
 ★ **What the owner sees after the merge:** members start seeing posters on the timeline and the event page for the first time. That is `03` §193's intent, not a change of it — but it is a visible change on production and the PR says so.
 
 - **Documents changed:** `03` §8.2 (one row), `STATUS.md` (row L1)
+
+---
+
+## DEC-174 — Wave 12, sync 1: three plans approved; a directly created session's presenters are assigned, awards re-derive the presenter at run time, the no-show waits for completion, and a presenter's own `accepted` stops moving once the session completes
+
+- **Date:** 2026-09-22 · **Decided by:** the wave-12 lead, on the plans in `docs/plan/notes/{scoring,sessions,checkin}.md` (`70e80f7`, `c3b8a41`, `0bf1f02`)
+- **Amends:** `DEC-172` §1 (the poster and certificate after completion), `REQ-SES-019`'s «the poster included» (below)
+
+**Found by the plans, and each is a live defect:**
+- **A directly created session's presenters are `accepted = false` forever** (`0020:100–103`). Nothing can make them `true`, and every reader filters on `accepted`. So they appear on no surface and have never been paid a presenter award. They could even check in as attendees.
+- **`MSG-presenter_assigned` tells the presenter they can accept or decline «from the session page»** (`designs.ts:115` and the string template). No such screen exists.
+- **`attendance_removed()` records a `no_show` at removal, whatever the session's state** (`0113:320`). `evaluate_session_attendance()` / `evaluate_member_attendance()` pay with no state check (`0113:178,225`).
+- **A presenter can set their own `accepted`** (`0010:478`). With awards following the presenter, every toggle after completion would write an award/reversal pair.
+
+**Rulings — `scoring`:**
+1. ★ **`award_points()` re-derives the presenter at run time** for the four presenter sources: the session is completed and the member is an accepted, not declined, presenter, or nothing is written. This is what stops the +48 h `rating_bonus` job re-paying a removed presenter under the next epoch. The three cases it moves are ledger lines.
+2. **The `no_show` waits for completion.** A removal before completion leaves no row of any kind, as `REQ-PTS-015` says.
+3. **Presenters of directly created, already-completed sessions — the owner's question.** The code lands either way. **The data fix that flips their rows is not run until the owner answers.** Once `scoring`'s trigger is live, flipping a row on a completed session pays that presenter; the owner decides whether that is wanted.
+4. **The self-update policy is narrowed** (the lead's, in the wave's migrations): a presenter's own `accepted` / `declined_at` may change only while the session is neither `completed`, `archived` nor `cancelled`.
+5. `proposal_accepted` carries **the session's id** at completion; the key is unchanged. 6. A co-presenter paid at approval who never became a session presenter keeps the row — no backfill. 7. The reversal reason is «أُزيل من مقدّمي الجلسة». 8. `comment`, `photo` and `rating_submitted` stay at the act; `REQ-PTS-015` lists its four deliberately. 9. **An attendee re-added after completion re-pays the presenter's `attendee_bonus`** — in, one enqueue of an existing job. 10. `/app/me/points` shows no pending rows; contract 1 carries the state, and the gamification layer is later. 11. **The month-end streak gap is carried**, not fixed this wave. 12. Badges are never revoked; unchanged.
+
+**Rulings — `sessions`:**
+1. ★ **`create_session()`'s direct branch inserts presenters `accepted = true`** — an admin's assignment, as `DEC-172` rules for the add. `sessions-creation.test.ts:168,178` move, with ledger lines. The production rows follow the owner's answer to `scoring`'s 3.
+2. An add on a pending or declined row **updates** it to `accepted = true` and clears `declined_at`; `scoring`'s trigger covers the update.
+3. Both actions are **refused on a cancelled session**. 4. **An add is refused for a member with an active check-in** on the session — no attendance-plus-presenter double pay. 7. The last-presenter rule counts accepted rows. 8. Importing `listMembersForAdmin()` read-only is fine. 9. The completed-session sentence stays.
+5. **The accept/decline sentence leaves `MSG-presenter_assigned`** — the lead, as `notify`'s custodian, moves the pinned mail as one reviewed diff. The two audit labels go into `admin.json`, also the lead's as `console`'s custodian.
+6. ★ **`REQ-SES-019` narrowed:** before completion the poster follows the presenters (the hook re-renders while published or in progress). **After completion the poster is not re-rendered and presenter certificates are not issued or revoked** — both are `designer`'s and are carried to the owner's list.
+
+**Rulings — `checkin`:**
+1. `sessions` adds `<AwardState … />` after `action-card.tsx:124`, one line, on `checkin`'s request.
+3. The removal copy becomes completion-aware. 4. **A failed read renders nothing and logs server-side** — the check-in screen never breaks on a points read. 5. The wasted staff-only call at `checkin.ts:246` is deleted, with a test. 6. On day *N* before that day's check-in, **the form comes first** and the state follows; once checked in, the state leads.
+- `tests/rls/checkin-days.test.ts:505–509` goes vacuous before completion: a (b) ledger line, and `scoring` adds a new case that proves the after-completion reversal instead.
+
+**Migration order:** `0146` onward — `scoring`'s files, then `sessions'`, then the lead's policy narrowing. Each is promoted as it proves green.
+
+- **Documents changed:** `STATUS.md` (checklist, ledger), `01-prd.md` (`REQ-SES-019`'s acceptance)
