@@ -1151,7 +1151,7 @@ grant  execute on function public.session_award_state(uuid) to authenticated;
 | # | Condition | `state` | `points` |
 |---|---|---|---|
 | 1 | An attendance award stands: a `points_ledger` row of the caller's with `source = 'check_in'` for this session that no `reversal` names | `paid` | the sum of the standing rows (one row in practice) |
-| 2 | The session is `cancelled`; or the org's `check_in` rule is missing, disabled or worth ≤ 0 | `none` | 0 |
+| 2 | The session is `cancelled`; or the org's `check_in` rule is missing, disabled or worth ≤ 0; or ★ `attendance_award_barred(session, caller)` — the caller is an accepted presenter of the session (sync-1 ruling 3) | `none` | 0 |
 | 3 | The caller has no active check-in on any day of the session. This covers a presenter or staff member who did not check in, and a check-in that was removed | `none` | 0 |
 | 4 | The award can no longer be earned. **Either** the session is `completed`/`archived` and `session_attendance_complete()` is false, **or** `require_all_days` is on and some day has passed `check_in_ceiling()` with no active check-in by the caller | `incomplete` | 0 |
 | 5 | Otherwise: checked in, and the completion pass has not paid yet. This includes a completed session whose job has not yet run | `pending` | the rule's current `points`, exactly what `award_points()` will write |
@@ -1640,7 +1640,15 @@ three routes, each of which **checks in first and becomes accepted later**:
 | an admin **inserting directly** through `p2_admin_insert` (`0010:476`), not through the RPC | no |
 
 **My proposal, in `award_points()` (`0002`), one clause:** a `check_in` attendance award writes nothing
-when the member is an accepted presenter of the session **at run time**. Since the award now runs at
+when the member is an accepted presenter of the session **at run time**. ★ **One condition in one place**
+(`checkin`'s correction, 2026-09-22): the clause is a function,
+`public.attendance_award_barred(p_session uuid, p_member uuid) returns boolean` (definer, `stable`,
+`service_role` only, not an underscore name), and **both** `award_points()` and contract 1's
+`session_award_state()` (row 2) call it. So a member who checks in and is then added as a presenter reads
+`none`, never «pending» for an award the completion pass will not write (`REQ-CHK-018`: «the amount shown
+is the one the completion pass will write»). The contract-1 test file gains
+`RPC-session_award_state.agrees_with_award_points`: for every state fixture, `pending` if and only if
+running the completion pass writes the award. Since the award now runs at
 completion, this closes every route above for a session whose presenter changed **before** completion,
 which is where the data fix mostly lands. After completion there is a residual case: a member already paid
 for attendance who becomes a presenter. I do **not** reverse the attendance award automatically. It was
