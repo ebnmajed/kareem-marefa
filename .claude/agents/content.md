@@ -31,9 +31,10 @@ Read `docs/plan/STATUS.md` — the **wave-14 block** — `CLAUDE.md` § *Ownersh
     once**. The job zips the **visible, EXIF-stripped** objects — never a hidden or removed one — writes one zip under
     the org's prefix through the one path builder, and notifies when ready. The zip is downloaded through the same
     audited-route shape. **Say what «ready» looks like on the page** after a reload, not only in a notification.
-- ★ **The comment's avatar** — contract 4. `comments.ts:123` and the realtime payload built in SQL (`0016:122`,
-  `authorAvatarUrl`) both carry `members.avatar_url`, a Google URL, to the browser today. Both move to `platform`'s
-  resolver. The SQL change is proposed under `supabase/proposed/content/`, and the lead promotes it.
+- ★ **The comment's avatar** — contract 4. The live hotlink is closed already (`92953c8`: `comments.ts` and
+  `comment-list.tsx` pass `null`, `0155` nulls the realtime payload). When `platform` publishes the resolver, the
+  comment draws **our** copy: `comments.ts` calls it, and the realtime path resolves `authorId` through it — **never
+  by putting a URL back into the SQL payload**.
 
 ## ★ Your first task is PLANNING
 
@@ -43,7 +44,7 @@ Read, measure, and write your plan into `docs/plan/notes/content.md` under a hea
 - ★ **the shapes of the two audit definers you need** — name, arguments, return, who may call, what `42501`
   means — so the lead can land them in `0155` (contract 1);
 - the album's state: a table or not, its columns, its bucket and its read policy, **named, never written** (contract 2);
-- **whether you need a zip dependency**, and which, with its size and licence — or why the worker can zip without one;
+- ★ **the zip binary** you want in `worker/Dockerfile` (Debian's `zip`, or why another), invoked from the job — **not an npm package** (`DEC-181`);
 - the notification for «ready», and whether it needs a new key;
 - every existing test whose expectation your change moves, **named, with the assertion and why**;
 - what `main`'s worker does in the gap;
@@ -79,8 +80,8 @@ with the file and line.** When your last story is done, say so and stop.
 ★ **Transferred away this wave:** `src/app/[locale]/app/me/privacy/**` and `src/messages/*/privacy.json` →
 `platform`. **Never, and each is a request:** `ui/dialog.tsx` (the lead's) · the event page's frame and its
 `<section>`/`<h2>` (`sessions'`, held by the lead — your slot renders no heading of its own) · the audit definers,
-any `create table` / `alter table`, any bucket or storage policy (the lead's) · `package.json` and
-`worker/package.json` (a dependency) · `src/lib/dal/avatars.ts` (`platform`'s — you call it).
+any `create table` / `alter table`, any bucket or storage policy (the lead's) · `package.json`,
+`worker/package.json` and `worker/Dockerfile` (a binary is a request) · `src/lib/dal/avatars.ts` (`platform`'s — you call it).
 
 ## Definition of done
 
@@ -145,10 +146,11 @@ spawned because its brief row does not exist: the moderation queue shows preview
 3. **Lead → both — the audit action names:** `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded`.
 4. **`platform` → every avatar reader — one resolver.** `src/lib/dal/avatars.ts` turns a member into a same-origin
    `href` to `/api/avatars/<memberId>` (versioned) or `null`. The DTO field keeps its name, `avatarUrl`, and its type.
-   Readers swap one expression: `session.ts` (lead), `comments.ts` **and the realtime payload** (`0016:122`,
-   `content`), `ratings.ts` and `members.ts` (lead, as custodian). The name and type go in `platform`'s note on day
-   one. Once no reader carries a Google URL to a browser, the lead removes `https://lh3.googleusercontent.com` from
-   `img-src`.
+   Readers swap one expression: `session.ts` (lead), `comments.ts` and `comment-list.tsx` (`content`), `ratings.ts`
+   and `members.ts` (lead, as custodian). The name and type go in `platform`'s note on day one. ★ **The live hotlink
+   is already closed, ahead of the feature** (`92953c8`, `DEC-181`): the Google `img-src` entry is gone, both comment
+   carriers say `null`, and `0155` nulls `authorAvatarUrl` in the realtime payload. Initials show until the resolver
+   lands; nothing may reintroduce a Google URL on the way.
 
 ### ★ The rules this wave turns on
 
@@ -162,8 +164,10 @@ spawned because its brief row does not exist: the moderation queue shows preview
    something that is not yours**.
 4. ★ **An album download never runs inside a request** (`REQ-ADM-021`). A zip holds visible, EXIF-stripped
    photographs and nothing else.
-5. ★ **A new dependency is a written request** — a zip writer, an image resizer. It goes into `worker/package.json`
-   and the lock through the lead, via `npm run lockfile`. Say in your plan whether one is needed at all.
+5. ★ **No npm package for image or archive work** (`DEC-181`). The worker uses **system binaries from
+   `worker/Dockerfile`** (the lead's) — `poppler-utils` and `cwebp` (`worker/src/content/pdf.ts:16`). Avatar
+   derivatives are `cwebp -resize`; the album's zip is a binary added to the Dockerfile, not `archiver` or `jszip`. A
+   plan that proposes an npm package says why a binary will not do; `npm run lockfile` runs through Docker only.
 6. ★ **`DEC-096`, `DEC-017`, `DEC-048` still bind:** the studio's overlay keeps physical `left`/`top`, the engine is
    not replaceable, and **no parity golden moves**.
 7. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2). 20 real signups.

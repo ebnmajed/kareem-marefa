@@ -22,9 +22,10 @@ member consented. **The owner was asked on 2026-09-27 and kept it: copy the phot
 - **The job:** it fetches from **Google's image host only** — a fixed host allowlist, `https` only, a byte cap, no
   redirects off the host. It sniffs the bytes on content (PNG or JPEG in; **never SVG**, invariant 11), strips EXIF
   exactly as photographs are (`worker/src/content/exif.ts`, imported and never edited), and stores the result under
-  the org's prefix through a new `packages/storage-paths/src/avatar.ts`. Google's `picture` is often already
-  96 px — **measure it**. Say whether 96/192 px WebP derivatives need an image library (a dependency, the lead's)
-  or can come from Google's own size parameter. A failure leaves initials, never a broken frame.
+  the org's prefix through a new `packages/storage-paths/src/avatar.ts`. The 96 px and 192 px WebP
+  derivatives are **`cwebp -resize`**, already in the worker image — no new dependency (`DEC-181`, `DEC-099`: «a size
+  list, not a new job»). Google's `picture` may already be small; measure it and fetch at 192 px or larger. A
+  failure leaves initials, never a broken frame.
 - **Refresh:** `provision_member()` rewrites `members.avatar_url` on every sign-in (`0005:124`, `REQ-PRF-001`). For a
   member who said yes, a changed source re-copies. `members.avatar_url` stays the **source** and is never rendered.
 - ★ **One route, one resolver** (contract 4, published in your note on day one). `src/app/api/avatars/[memberId]`
@@ -47,7 +48,7 @@ Read, measure, and write your plan into `docs/plan/notes/platform.md` under a he
 - the resolver's name and type (contract 4);
 - the prompt's placement and its copy, **written in Arabic first**;
 - every path that carries `avatar_url` to a browser today;
-- whether you need a dependency;
+- the `cwebp` invocation — and ★ **no npm package** (`DEC-181`);
 - every existing test whose expectation moves, **named, with the assertion and why**;
 - what `main`'s worker does in the gap;
 - every question for the lead.
@@ -78,7 +79,7 @@ with the file and line.** When your last story is done, say so and stop.
 `src/components/shell/**`, `src/app/[locale]/app/layout.tsx`, `src/lib/dal/session.ts`, `src/proxy.ts` (the lead's —
 the slot, the shell's avatar and the CSP) · `lib/dal/{comments,members,ratings}.ts` and the realtime SQL (their
 owners swap one expression each) · `worker/src/content/**` (import, never edit) · any `create table` /
-`alter table`, bucket or storage policy · `package.json` and `worker/package.json`.
+`alter table`, bucket or storage policy · `package.json`, `worker/package.json` and `worker/Dockerfile`.
 
 ## Definition of done
 
@@ -146,10 +147,11 @@ spawned because its brief row does not exist: the moderation queue shows preview
 3. **Lead → both — the audit action names:** `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded`.
 4. **`platform` → every avatar reader — one resolver.** `src/lib/dal/avatars.ts` turns a member into a same-origin
    `href` to `/api/avatars/<memberId>` (versioned) or `null`. The DTO field keeps its name, `avatarUrl`, and its type.
-   Readers swap one expression: `session.ts` (lead), `comments.ts` **and the realtime payload** (`0016:122`,
-   `content`), `ratings.ts` and `members.ts` (lead, as custodian). The name and type go in `platform`'s note on day
-   one. Once no reader carries a Google URL to a browser, the lead removes `https://lh3.googleusercontent.com` from
-   `img-src`.
+   Readers swap one expression: `session.ts` (lead), `comments.ts` and `comment-list.tsx` (`content`), `ratings.ts`
+   and `members.ts` (lead, as custodian). The name and type go in `platform`'s note on day one. ★ **The live hotlink
+   is already closed, ahead of the feature** (`92953c8`, `DEC-181`): the Google `img-src` entry is gone, both comment
+   carriers say `null`, and `0155` nulls `authorAvatarUrl` in the realtime payload. Initials show until the resolver
+   lands; nothing may reintroduce a Google URL on the way.
 
 ### ★ The rules this wave turns on
 
@@ -163,8 +165,10 @@ spawned because its brief row does not exist: the moderation queue shows preview
    something that is not yours**.
 4. ★ **An album download never runs inside a request** (`REQ-ADM-021`). A zip holds visible, EXIF-stripped
    photographs and nothing else.
-5. ★ **A new dependency is a written request** — a zip writer, an image resizer. It goes into `worker/package.json`
-   and the lock through the lead, via `npm run lockfile`. Say in your plan whether one is needed at all.
+5. ★ **No npm package for image or archive work** (`DEC-181`). The worker uses **system binaries from
+   `worker/Dockerfile`** (the lead's) — `poppler-utils` and `cwebp` (`worker/src/content/pdf.ts:16`). Avatar
+   derivatives are `cwebp -resize`; the album's zip is a binary added to the Dockerfile, not `archiver` or `jszip`. A
+   plan that proposes an npm package says why a binary will not do; `npm run lockfile` runs through Docker only.
 6. ★ **`DEC-096`, `DEC-017`, `DEC-048` still bind:** the studio's overlay keeps physical `left`/`top`, the engine is
    not replaceable, and **no parity golden moves**.
 7. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2). 20 real signups.

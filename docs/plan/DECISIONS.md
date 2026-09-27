@@ -4355,3 +4355,27 @@ An additive `href` prop on `Wordmark`, defaulting to `/`; the app shell passes `
 Asked before Step 0, as the brief required: **not run**. The owner's standing comment is that the UI/UX is poor, with no screen or finding named. That is recorded in `STATUS.md` as an **unmeasured** item, not a row. A general quality complaint cannot be closed by this wave's map. The next step is the owner naming the screens, or a critique pass the owner commissions.
 
 - **Documents changed:** `01-prd.md` (`REQ-EVT-016`, `REQ-UIX-027`, `REQ-PRF-008`'s reading cited), `04-architecture.md` (three route handlers), `09-sitemap-screens.md` (SCR-012's photos, the account menu), `11-background-jobs.md` (the avatar job), `14-roadmap.md` (M16), `15-backlog.md` (`STORY-EVT-007`, `STORY-UIX-018`; M16 on `STORY-ADM-009`, `STORY-PRF-005`), `scripts/traceability.mjs` (M16), `CLAUDE.md` and the ten agent files (the map), `STATUS.md` (the wave-14 block)
+
+---
+
+## DEC-181 — Wave 14, the owner's approval: the live hotlink closes before the avatar feature, a decision never cites an unallocated migration, image and archive work uses Dockerfile binaries, and the UI/UX complaint is wave 15's
+
+- **Date:** 2026-09-27 · **Decided by:** the owner, approving `DEC-180`'s Step 0 and ruling on five points
+- **Amends:** `DEC-180` §3 (ordering) and its Step 0 finding 5 («no image resizer»)
+
+1. **`DEC-180` is approved as written**: `REQ-EVT-016` with the tap targets, `REQ-UIX-027`, M16, the two stories, the map, and `console` not spawned (`DEC-178`'s «a preview is not a download»). `DEC-099` stands in full — copy never link, the once-only import prompt, the initials fallback, the CSP removal. The owner's brief had called `avatarUrl={null}` a bug; the owner withdrew that.
+2. ★ **The live hotlink is closed first, before the avatar feature and not with it.** It is `DEC-099`'s «PDPL-relevant disclosure with no consent and no purpose», live on production. **Done in `92953c8`:** `comments.ts` stops selecting `avatar_url`; `comment-list.tsx` ignores the payload's `authorAvatarUrl`; `0155` re-creates `comments_broadcast()` with `authorAvatarUrl` null (the key kept for `main`'s client); `proxy.ts` drops `https://lh3.googleusercontent.com` from `img-src`. `tests/rls/comments-no-hotlink.test.ts` was red on `0154` and is green on `0155`. Unit and component tests 2472 ✓, `qa` 57/57, `policy-diff` ✓. The two code carriers alone stop every browser fetch, so the order of push and merge does not matter for this commit.
+3. ★ **A `DECISIONS.md` entry never cites an unallocated migration number.** Either the migration exists when the entry is written, or the entry says «a migration in the wave that builds this». Written into `CLAUDE.md` § *The migration rule*, naming the two cases it exists for: **`DEC-076` → «`0086`»** (download audit rows, never written; `0086` became wave 7's manual-mark window) and **`DEC-099` → «`0089`»** (the CSP entry and the `^https://` check, never removed; `0089` became wave 7's early-completion close). This entry is the pointer; neither is edited.
+4. ★ **Image and archive work uses system binaries in `worker/Dockerfile`, not npm packages.** `DEC-180`'s «the worker has no image resizer» was wrong. `worker/src/content/pdf.ts:16` says «None is an npm dependency»; the image carries `poppler-utils` and `cwebp`. The 96 px and 192 px avatar derivatives are `cwebp -resize`, which needs nothing new, as `DEC-099` said («a size list, not a new job»). The album's zip is a binary added to the Dockerfile (the lead's), not `archiver` or `jszip`. A plan that proposes an npm package says why a binary will not do; `npm run lockfile` runs through Docker only.
+5. ★ **The owner's «garbage UI/UX» is not wave 14's**, and the critique pass is not run now. It is **wave 15's whole subject.** Its starting point is recorded in `STATUS.md`. The obvious starting point is *Screens whose meaning depends on a paragraph*, and it is the wrong one. Measured 2026-09-27, the table has 42 rows:
+
+   | Area | Rows |
+   |---|---|
+   | `/app/admin` | 30 |
+   | `/app/platform` | 9 |
+   | `/app/me` | 3 (calendar, notifications, privacy) |
+   | `/app` | 0 |
+
+   So **39 of 42 are staff screens**, and **none lies on the member path** reserve → check in → rate → certificate. Nearly all of the prose explains **policy** rather than compensating for a weak affordance. The member path has **no inventory at all**: the accessibility sweep returned 62/62 clean, and the prose table did not reach it. **Wave 15's measure:** can a member complete each step of reserve → check in → rate → certificate with **every explanatory paragraph deleted** from the screen? Delete the prose, then try; whatever breaks is the list. The owner's count of the same table was 40 rows with four on the path; the difference is recorded here rather than argued, and the conclusion does not depend on it.
+
+- **Documents changed:** `CLAUDE.md` (the migration rule; the dependency rule; contract 4's wording), the ten agent files (the same), `STATUS.md` (row L0, the wave-15 finding)

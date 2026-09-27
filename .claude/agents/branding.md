@@ -82,10 +82,11 @@ spawned because its brief row does not exist: the moderation queue shows preview
 3. **Lead → both — the audit action names:** `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded`.
 4. **`platform` → every avatar reader — one resolver.** `src/lib/dal/avatars.ts` turns a member into a same-origin
    `href` to `/api/avatars/<memberId>` (versioned) or `null`. The DTO field keeps its name, `avatarUrl`, and its type.
-   Readers swap one expression: `session.ts` (lead), `comments.ts` **and the realtime payload** (`0016:122`,
-   `content`), `ratings.ts` and `members.ts` (lead, as custodian). The name and type go in `platform`'s note on day
-   one. Once no reader carries a Google URL to a browser, the lead removes `https://lh3.googleusercontent.com` from
-   `img-src`.
+   Readers swap one expression: `session.ts` (lead), `comments.ts` and `comment-list.tsx` (`content`), `ratings.ts`
+   and `members.ts` (lead, as custodian). The name and type go in `platform`'s note on day one. ★ **The live hotlink
+   is already closed, ahead of the feature** (`92953c8`, `DEC-181`): the Google `img-src` entry is gone, both comment
+   carriers say `null`, and `0155` nulls `authorAvatarUrl` in the realtime payload. Initials show until the resolver
+   lands; nothing may reintroduce a Google URL on the way.
 
 ### ★ The rules this wave turns on
 
@@ -99,8 +100,10 @@ spawned because its brief row does not exist: the moderation queue shows preview
    something that is not yours**.
 4. ★ **An album download never runs inside a request** (`REQ-ADM-021`). A zip holds visible, EXIF-stripped
    photographs and nothing else.
-5. ★ **A new dependency is a written request** — a zip writer, an image resizer. It goes into `worker/package.json`
-   and the lock through the lead, via `npm run lockfile`. Say in your plan whether one is needed at all.
+5. ★ **No npm package for image or archive work** (`DEC-181`). The worker uses **system binaries from
+   `worker/Dockerfile`** (the lead's) — `poppler-utils` and `cwebp` (`worker/src/content/pdf.ts:16`). Avatar
+   derivatives are `cwebp -resize`; the album's zip is a binary added to the Dockerfile, not `archiver` or `jszip`. A
+   plan that proposes an npm package says why a binary will not do; `npm run lockfile` runs through Docker only.
 6. ★ **`DEC-096`, `DEC-017`, `DEC-048` still bind:** the studio's overlay keeps physical `left`/`top`, the engine is
    not replaceable, and **no parity golden moves**.
 7. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2). 20 real signups.

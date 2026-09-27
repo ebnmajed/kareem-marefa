@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — STEP 0 DONE (`DEC-180`, M16)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; ★ **draft PR #31** open; `content` (opus) and `platform` (opus) spawn planning-only once the owner approves the plan — sync 1 approves two plans. Migrations from **`0155`**.
+**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — STEP 0 DONE (`DEC-180`, M16)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; ★ **draft PR #31** open; **approved by the owner (`DEC-181`)**; ★ the live Google hotlink **closed first** (`92953c8`, `0155`); `content` (opus) and `platform` (opus) spawned planning-only — sync 1 approves both plans before any code — sync 1 approves two plans. Migrations from **`0155`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -24,6 +24,30 @@ screen, so this wave's map cannot close it. What would turn it into rows:
 `STATUS.md`'s *Screens whose meaning depends on a paragraph* (wave 11) is the existing list to start from. The
 walk-through itself — the certificate and its QR **on paper** — has still never been done by a person.
 
+### ★ For wave 15 — where the UI/UX work starts, and where it does not (`DEC-181` §5)
+
+**Not this wave.** The owner's «garbage UI/UX» is wave 15's whole subject, and the critique pass is not run now.
+★ **The obvious starting point is the wrong one.** *Screens whose meaning depends on a paragraph* (the wave-11 table
+below) has **42 rows**:
+
+| Area | Rows |
+|---|---|
+| `/app/admin` | 30 |
+| `/app/platform` | 9 |
+| `/app/me` | 3 (calendar, notifications, privacy) |
+| `/app` | 0 |
+
+So **39 of 42 are staff screens**, and **not one lies on reserve → check in → rate → certificate**. Nearly all of
+that prose explains **policy** — deactivation is the only removal, a manual entry can only be offset, the evaluator
+runs nightly, suspend is reversible and delete is not — rather than compensating for a weak affordance. The table is
+a real inventory of a real problem. **It is not a map of the member path, which has no inventory at all**: the
+accessibility sweep returned 62/62 clean, and the prose table did not reach it. (The owner counted 40 rows with four
+on the path; the measured numbers are above, and the conclusion is the same.)
+
+★ **Wave 15's measure:** can a member complete each step of **reserve → check in → rate → certificate** with
+**every explanatory paragraph deleted** from the screen? Delete the prose, then try; whatever breaks is the list.
+That is the owner's item 8 turned into a test that can fail, which a count of primitives is not.
+
 ### Step 0 — measured before anyone was spawned
 
 | | |
@@ -33,7 +57,7 @@ walk-through itself — the certificate and its QR **on paper** — has still ne
 | ★ Brief vs code, 2 | **The hotlink is already live.** `comment-item.tsx:257` draws `comments.ts:123`'s `members.avatar_url`, a Google URL, and the realtime payload carries it too (`0016:122`). `proxy.ts:148` still allows `lh3.googleusercontent.com`. `DEC-099` said `0089` would remove it; `0089` is `early_completion_closes_check_in`, the same class as `DEC-177`'s «`0086`» |
 | ★ Brief vs code, 3 | **The moderation queue does not download.** `admin-moderation.ts:246` signs one-hour thumbnails; `DEC-178`: a preview is not a download. `console`'s row does not exist → **`console` not spawned** |
 | Brief vs code, 4 | **`Wordmark` has five consumers** (app shell, `(auth)`, `legal`, marketing `header`, `footer`). The footer variant is not a link. The additive `href` prop holds |
-| Brief vs code, 5 | **The worker has no zip writer and no image resizer** (`worker/package.json`). Each is a dependency request to the lead, or a plan that shows none is needed |
+| Brief vs code, 5 | ~~The worker has no zip writer and no image resizer~~ — ★ **corrected by the owner (`DEC-181` §4):** the worker uses Dockerfile **binaries**, `poppler-utils` and `cwebp` (`pdf.ts:16`). Avatar derivatives are `cwebp -resize`; the zip is a binary added to the Dockerfile, never an npm package |
 | Confirmed | `gallery.tsx:157` `aspect-square … object-cover` — the grid crops by default and never said why; `REQ-EVT-009` … `015` hold no gallery or lightbox; `JOB-zip_session_photos` fully specified in `11` §2.4; no `src/app/api/photos/` |
 | `trace` | **320 requirements · 154 stories · no gaps** (M16 added to the milestone pattern) |
 
@@ -42,6 +66,7 @@ walk-through itself — the certificate and its QR **on paper** — has still ne
 | # | Row | Owner | State |
 |---|---|---|---|
 | S0 | `DEC-180`; `REQ-EVT-016`, `REQ-UIX-027`, `STORY-EVT-007`, `STORY-UIX-018`, M16; `REQ-PRF-008`'s reading cited; `04`, `09`, `11`; the map; the ten agent files | lead | **done** `8ae8b16`; draft **PR #31** |
+| L0 | ★ **The live Google hotlink closed, before the avatar feature** (`DEC-181`): `comments.ts` and `comment-list.tsx` pass `null`; `0155` nulls `authorAvatarUrl` in `comments_broadcast()`; `img-src` loses `lh3.googleusercontent.com` | lead | **done** `92953c8` — `comments-no-hotlink.test.ts` red on `0154` → green on `0155`; realtime suites 8/8; unit + components 2472 ✓; build ✓; `qa` **57/57**; `policy-diff` ✓. ★ `0155` applied locally by hand (a full `db:reset` at sync 1). ★ **Local trap:** `realtime.messages` had no partition for today after the realtime container had run 4 days → every broadcast test failed with «no partition of relation "messages"»; `docker restart supabase_realtime_kareem-marefa` creates them |
 | C1 | Contract 1 — the photo download route shape; the lead lands two audit definers (a photograph; the album) from `content`'s plan | `content` → lead | todo — shapes in `content`'s plan |
 | C2 | Contract 2 — the album's state, bucket and policy (lead); its path through the builder; the job's registration; visible photographs only; a `notify()` key if needed (lead, as custodian) | lead ↔ `content` | todo |
 | C3 | Contract 3 — audit action names: `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded` | lead | **fixed** in `DEC-180` |
