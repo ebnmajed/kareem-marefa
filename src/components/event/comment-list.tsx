@@ -7,6 +7,7 @@ import { Panel } from "@/components/ui/panel";
 import { CommentComposer } from "@/components/event/comment-composer";
 import { CommentItem } from "@/components/event/comment-item";
 import type { CommentDTO } from "@/lib/dal/comments";
+import { avatarHref } from "@/components/privacy/avatar-href";
 import type { ReactionSummary } from "@/lib/dal/reactions";
 
 // The live thread (REQ-EVT-015, A18): server-rendered on first paint
@@ -21,7 +22,10 @@ type CommentBroadcastPayload = {
   parentId: string | null;
   authorId: string;
   authorDisplayName: string | null;
+  /** Always null (0155) — kept for `main`'s client; never read. */
   authorAvatarUrl: string | null;
+  /** `members.avatar_version` (0157) — absent on a database that predates it, which reads as none. */
+  authorAvatarVersion?: number | string | null;
   body: string;
   mentions: string[] | null;
   createdAt: string;
@@ -40,7 +44,13 @@ function fromBroadcast(payload: CommentBroadcastPayload, viewerMemberId: string,
     parentId: payload.parentId,
     // ★ DEC-099: the payload's `authorAvatarUrl` is ignored even where an old
     // database still fills it with Google's URL (0155 nulls it at the source).
-    author: { id: payload.authorId, displayName: payload.authorDisplayName, avatarUrl: null },
+    // Contract 4: the payload carries a VERSION, never a URL, and the one
+    // resolver builds our same-origin href from it here — SQL never builds it.
+    author: {
+      id: payload.authorId,
+      displayName: payload.authorDisplayName,
+      avatarUrl: avatarHref({ id: payload.authorId, avatarVersion: payload.authorAvatarVersion }),
+    },
     body: payload.body,
     mentions: payload.mentions ?? [],
     createdAt: payload.createdAt,
