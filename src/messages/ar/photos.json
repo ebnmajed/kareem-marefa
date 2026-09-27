@@ -34,10 +34,10 @@
     },
     "lightbox": {
       "title": "صور الجلسة",
-      "open": "افتح الصورة {current} من {total}",
+      "open": "افتح الصورة <bdi>{current}</bdi> من <bdi>{total}</bdi>",
       "position": "<bdi>{current}</bdi> من <bdi>{total}</bdi>",
-      "announce": "الصورة {current} من {total}",
-      "alt": "الصورة {current} من {total}",
+      "announce": "الصورة <bdi>{current}</bdi> من <bdi>{total}</bdi>",
+      "alt": "الصورة <bdi>{current}</bdi> من <bdi>{total}</bdi>",
       "previous": "الصورة السابقة",
       "next": "الصورة التالية",
       "close": "إغلاق",

@@ -34,10 +34,10 @@
     },
     "lightbox": {
       "title": "Session photos",
-      "open": "Open photo {current} of {total}",
+      "open": "Open photo <bdi>{current}</bdi> of <bdi>{total}</bdi>",
       "position": "<bdi>{current}</bdi> of <bdi>{total}</bdi>",
-      "announce": "Photo {current} of {total}",
-      "alt": "Photo {current} of {total}",
+      "announce": "Photo <bdi>{current}</bdi> of <bdi>{total}</bdi>",
+      "alt": "Photo <bdi>{current}</bdi> of <bdi>{total}</bdi>",
       "previous": "Previous photo",
       "next": "Next photo",
       "close": "Close",

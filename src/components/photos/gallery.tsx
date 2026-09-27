@@ -11,6 +11,9 @@ import { UploadWidget } from "@/components/photos/upload-widget";
 import { TakedownButton } from "@/components/photos/takedown-button";
 import { rescopePhotoAction } from "@/components/photos/actions";
 import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
+import { PhotoLightbox, LightboxTile, type LightboxPhoto } from "@/components/photos/lightbox";
+import { AlbumControl } from "@/components/photos/album-control";
+import { PhotoDownloadNotice } from "@/components/photos/download-notice";
 
 // The `Photos` slot — `id="photos"`, «الصور» (`sessions.md` §22.2) —
 // REQ-EVT-009 … REQ-EVT-013. No <section>/<h2> of its own (the event page
@@ -28,7 +31,9 @@ import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-
 export async function Photos({ sessionId, locale }: SlotProps) {
   const t = await getTranslations("photos.gallery");
   const tDays = await getTranslations("sessions.days");
-  const { photos, canUpload, isStaff, imageLimitMb, days: rawDays, timeZone } = await getPhotosPageData(locale, sessionId);
+  const tAlbum = await getTranslations("photos.album");
+  const tDownload = await getTranslations("photos.download");
+  const { photos, canUpload, isStaff, imageLimitMb, days: rawDays, timeZone, album } = await getPhotosPageData(locale, sessionId);
   const days = rawDays ?? [];
 
   // ★ visible === false exactly when this returns null (sessions.md §22.4):
@@ -69,13 +74,27 @@ export async function Photos({ sessionId, locale }: SlotProps) {
     );
   }
 
+  // REQ-ADM-021 — «تنزيل الكل» for staff, and the notice a refused download comes back to. The
+  // slot's first row; no heading of its own (the section's <h2> is the page's).
+  const visibleCount = photos.filter((p) => !p.hiddenAt).length;
+  const albumRow = isStaff ? (
+    <AlbumControl t={tAlbum} sessionId={sessionId} locale={locale} album={album ?? null} visibleCount={visibleCount} timeZone={timeZone ?? "Asia/Riyadh"} />
+  ) : null;
+  const notice = <PhotoDownloadNotice photoFailed={tDownload("photoFailed")} albumFailed={tDownload("albumFailed")} />;
+
   if (days.length <= 1) {
     return (
-      <div>
-        <p className="text-body-sm text-fg-muted">{t("count", { count: photos.length, value: formatNumber(photos.length) })}</p>
-        <PhotoGrid photos={photos} sessionId={sessionId} locale={locale} isStaff={isStaff} t={t} scope={null} />
-        {uploader}
-      </div>
+      <PhotoLightbox photos={lightboxSequence(photos)}>
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-body-sm text-fg-muted">{t("count", { count: photos.length, value: formatNumber(photos.length) })}</p>
+            {albumRow}
+          </div>
+          {notice}
+          <PhotoGrid photos={photos} sessionId={sessionId} locale={locale} isStaff={isStaff} t={t} scope={null} />
+          {uploader}
+        </div>
+      </PhotoLightbox>
     );
   }
 
@@ -86,19 +105,31 @@ export async function Photos({ sessionId, locale }: SlotProps) {
     ...days.map((d) => ({ id: d.id, label: dayShortLabel(d, tDays) })),
   ];
 
+  const shown = groups.filter((g) => g.items.length > 0);
   return (
-    <div>
-      {groups
-        .filter((g) => g.items.length > 0)
-        .map((g) => (
+    // One sequence through every group, in the order the page shows them (DEC-182, Q11).
+    <PhotoLightbox photos={lightboxSequence(shown.flatMap((g) => g.items))}>
+      <div>
+        {albumRow}
+        {notice}
+        {shown.map((g) => (
           <div key={g.dayId ?? "session"} className="mt-6 first:mt-0">
             <h3 className="text-body font-medium text-fg-heading">{g.heading}</h3>
             <PhotoGrid photos={g.items} sessionId={sessionId} locale={locale} isStaff={isStaff} t={t} scope={{ currentLabel: g.shortLabel, options }} />
           </div>
         ))}
-      {uploader}
-    </div>
+        {uploader}
+      </div>
+    </PhotoLightbox>
   );
+}
+
+/** REQ-EVT-016: the lightbox's sequence is the VISIBLE photographs, in page order. A hidden one —
+ *  which only staff see in the grid, badged — is never in it, for anyone (DEC-182, Q2). */
+function lightboxSequence(photos: PhotoSummary[]): LightboxPhoto[] {
+  return photos
+    .filter((p) => !p.hiddenAt && p.url)
+    .map((p) => ({ id: p.id, url: p.url, width: p.width ?? null, height: p.height ?? null }));
 }
 
 interface PhotoGroup {
@@ -153,8 +184,19 @@ function PhotoGrid({ photos, sessionId, locale, isStaff, t, scope }: PhotoGridPr
               default is `p-4`, so this keeps the smaller inset on purpose. */}
           <Panel className="flex min-w-0 flex-col gap-2 p-2!">
             {p.url ? (
-              // eslint-disable-next-line @next/next/no-img-element -- a signed URL, not a static/optimizable asset
-              <img src={p.url} alt="" className="aspect-square w-full rounded-field object-cover" />
+              <LightboxTile photoId={p.id}>
+                {/* ★ THIS TILE CROPS, ON PURPOSE (REQ-UIX-026 asks a photo surface to say
+                    so, and why). The grid is an index for FINDING a photograph, not a
+                    place to read one: uniform squares keep a two-column grid scannable at
+                    390 px, where letterboxed portrait and landscape tiles make it ragged.
+                    A photograph is not a designed artefact — the poster rule's own
+                    carve-out. The crop is centred because no focal point exists for a
+                    member's photograph: nobody sets one, and detecting faces to choose
+                    one would be a new processing of personal data. The whole frame is one
+                    tap away — the lightbox never crops (`object-contain`). */}
+                {/* eslint-disable-next-line @next/next/no-img-element -- a signed URL, not a static/optimizable asset */}
+                <img src={p.url} alt="" className="aspect-square w-full rounded-field object-cover object-center" />
+              </LightboxTile>
             ) : null}
             {p.hiddenAt ? (
               <Badge tone="error" outline size="sm" className="self-start">
