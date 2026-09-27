@@ -158,7 +158,9 @@ member, an admin, a moderator and another org's member. What is open is only the
 bucket, whose owning-table mapping differs. There are eight buckets: `materials`, `material-pages`, `photos`,
 `design-assets`, `exports`, `fonts`, `photo-albums`, `avatars`.
 
-### ★ The owner's order (wave 14) — FINAL (rehearsed 2026-09-27)
+### ★ The owner's order (wave 14) — ★ FINISHED 2026-09-27
+
+★ **DONE — pushed, merged and deployed 2026-09-27.** `0155`–`0159` are on production: `supabase migration list --linked` reads **`0159` on both sides**. The push printed the same cosmetic `pg-delta` catalogue-cache warning as waves 12 and 13, after every migration had applied. PR **#31** merged at **`d29b362`**, both branches deleted. ★ **PR #32 is superseded, not merged** — its commit `92953c8` reached `main` with #31, because the wave branch carried the same commit; close it. ★ **Railway rebuilt the image** — the first wave to change `worker/Dockerfile` — needing the manual `railway service source connect` for the **ninth** consecutive merge; deployment `5773f6ed`, then plain `● Online`, boot line «LISTEN/NOTIFY probe OK — round trip 5 ms», and the task list ends with `'import_avatar', 'zip_session_photos'`, so the album and the avatar import are live. ★ **A trap for the next wave:** the reconnect reported `Building`, then `Deploying (1m)`, and only then `● Online`. **Both intermediate states read as `● Online · …`**, so a glance at the first word says «online» while the old image is still serving. Wait for the status with **no suffix** and for the task list to name the wave's new jobs.
 
 **Migrations: `0155`–`0159`, all additive.** No column is dropped or renamed. Each changed function keeps its
 signature, and every new column is nullable.
