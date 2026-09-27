@@ -63,6 +63,8 @@ export const assert_storage_prefixes: Task = async (_payload, helpers) => {
       if (!first) violations.push({ bucket: bucket.name, path, reason: "empty first segment" });
       else if (!orgIds.has(first)) violations.push({ bucket: bucket.name, path, reason: "first segment is not a known org id" });
     }
+
+    if (bucket.name === "avatars") violations.push(...(await avatarOwnerViolations(helpers, paths)));
   }
 
   if (violations.length === 0) {
@@ -81,3 +83,42 @@ export const assert_storage_prefixes: Task = async (_payload, helpers) => {
   // immediately, and a task that returns successfully pages nobody.
   throw new Error(`assert_storage_prefixes: ${violations.length} object(s) outside an org prefix — see the platform audit log`);
 };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * ★ The second question, for `avatars` only (DEC-182): a face filed under the
+ * right-looking org prefix is still a leak if the member it belongs to is in
+ * ANOTHER org — `avatars_storage_read` would serve it to the wrong org's
+ * members. `avatars/{org}/members/{member}/…` (packages/storage-paths/src/
+ * avatar.ts): the member segment must name a member, and that member's org
+ * must be the prefix's. Asked through `avatar_member_orgs()`, the one definer
+ * door, in one query for the whole bucket.
+ */
+export async function avatarOwnerViolations(
+  helpers: Parameters<Task>[1],
+  paths: string[],
+): Promise<{ bucket: string; path: string; reason: string }[]> {
+  const out: { bucket: string; path: string; reason: string }[] = [];
+  const named = new Set<string>();
+  for (const path of paths) {
+    const [, literal, member] = path.split("/");
+    if (literal !== "members" || !member || !UUID_RE.test(member)) out.push({ bucket: "avatars", path, reason: "not a member avatar path" });
+    else named.add(member.toLowerCase());
+  }
+  if (named.size === 0) return out;
+
+  const { rows } = await helpers.query<{ member_id: string; org_id: string }>(
+    `select member_id, org_id from public.avatar_member_orgs($1::uuid[])`,
+    [Array.from(named)],
+  );
+  const orgOf = new Map(rows.map((r) => [r.member_id.toLowerCase(), r.org_id]));
+  for (const path of paths) {
+    const [org, literal, member] = path.split("/");
+    if (literal !== "members" || !member || !UUID_RE.test(member)) continue;
+    const owner = orgOf.get(member.toLowerCase());
+    if (!owner) out.push({ bucket: "avatars", path, reason: "member segment is not a known member" });
+    else if (owner !== org) out.push({ bucket: "avatars", path, reason: "member belongs to another org" });
+  }
+  return out;
+}

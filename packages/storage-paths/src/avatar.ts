@@ -14,17 +14,10 @@
 // repeats: a member who declines and later accepts never reuses a URL a browser
 // cached as immutable. No original is kept — the 192 px derivative is the
 // largest copy of a face the platform holds.
-import { assertUuid, InvalidStoragePathError } from "./guards.js";
+import { assertUuid, InvalidStoragePathError, type StorageLocation } from "./guards.js";
 
 export const AVATAR_SIZES = [96, 192] as const;
 export type AvatarSize = (typeof AVATAR_SIZES)[number];
-
-/** Until `Bucket` in ./guards.ts names `avatars` (DEC-182, the lead's R2), the
- *  location says its one bucket itself — structurally a `StorageLocation`. */
-export interface AvatarLocation {
-  bucket: "avatars";
-  path: string;
-}
 
 const VERSION_RE = /^[1-9][0-9]{0,15}$/;
 
@@ -46,7 +39,7 @@ export function avatarMemberPrefix(orgId: string, memberId: string): string {
 }
 
 /** `avatars/{org_id}/members/{member_id}/{version}/{size}.webp` */
-export function avatarPath(orgId: string, memberId: string, version: number | string, size: AvatarSize): AvatarLocation {
+export function avatarPath(orgId: string, memberId: string, version: number | string, size: AvatarSize): StorageLocation {
   return {
     bucket: "avatars",
     path: [avatarMemberPrefix(orgId, memberId), assertVersion(version, "version"), `${assertAvatarSize(size, "size")}.webp`].join("/"),
