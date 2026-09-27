@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — BUILT; GATES GREEN LOCALLY AND IN CI; AWAITING THE OWNER'S SCHEMA DUMP FOR THE REHEARSAL (`DEC-180` … `DEC-182`, M16, `0155`–`0159`)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; ★ **PR #31** (CI green at `5547566`); **approved by the owner (`DEC-181`)**; ★ the live Google hotlink **closed first** (`92953c8`, `0155`); ★ **sync 1 done (`DEC-182`)** — both plans approved; the lead's `0156` (photos, a removed photo unreadable, `MSG-photo_album_ready`) and `0157` (avatars) landed, `ui/dialog` `size="media"`, `zip` in the image, the wordmark built; `content` and `platform` building. ★ **CI was blocked (the repository was private) from 2026-09-22 until 2026-09-27; now restored and green on #31 and #32** — sync 1 approves two plans. Migrations from **`0155`**.
+**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — COMPLETE: REHEARSED ON THE PRODUCTION SCHEMA DUMP, CI GREEN (13/13 on `946a254`), PR #31 READY — the owner pushes `0155`–`0159`, merges, rebuilds Railway (`DEC-180` … `DEC-182`, M16, `0155`–`0159`)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; ★ **PR #31** (CI green at `5547566`); **approved by the owner (`DEC-181`)**; ★ the live Google hotlink **closed first** (`92953c8`, `0155`); ★ **sync 1 done (`DEC-182`)** — both plans approved; the lead's `0156` (photos, a removed photo unreadable, `MSG-photo_album_ready`) and `0157` (avatars) landed, `ui/dialog` `size="media"`, `zip` in the image, the wordmark built; `content` and `platform` building. ★ **CI was blocked (the repository was private) from 2026-09-22 until 2026-09-27; now restored and green on #31 and #32** — sync 1 approves two plans. Migrations from **`0155`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -97,7 +97,7 @@ That is the owner's item 8 turned into a test that can fail, which a count of pr
 | # | Row | Owner | State |
 |---|---|---|---|
 | S0 | `DEC-180`; `REQ-EVT-016`, `REQ-UIX-027`, `STORY-EVT-007`, `STORY-UIX-018`, M16; `REQ-PRF-008`'s reading cited; `04`, `09`, `11`; the map; the ten agent files | lead | **done** `8ae8b16`; draft **PR #31** |
-| L0 | ★ **The live Google hotlink closed, before the avatar feature** (`DEC-181`): `comments.ts` and `comment-list.tsx` pass `null`; `0155` nulls `authorAvatarUrl` in `comments_broadcast()`; `img-src` loses `lh3.googleusercontent.com` | lead | **done** `92953c8` — `comments-no-hotlink.test.ts` red on `0154` → green on `0155`; realtime suites 8/8; unit + components 2472 ✓; build ✓; `qa` **57/57**; `policy-diff` ✓. ★ `0155` applied locally by hand (a full `db:reset` at sync 1). ★ **Split out as PR #32** (`hotfix/no-google-hotlink`, the same commit cherry-picked onto `main`) so production gets it before the wave; push and merge in either order. ★ **Local trap:** `realtime.messages` had no partition for today after the realtime container had run 4 days → every broadcast test failed with «no partition of relation "messages"»; `docker restart supabase_realtime_kareem-marefa` creates them |
+| L0 | ★ **The live Google hotlink closed, before the avatar feature** (`DEC-181`): `comments.ts` and `comment-list.tsx` pass `null`; `0155` nulls `authorAvatarUrl` in `comments_broadcast()`; `img-src` loses `lh3.googleusercontent.com` | lead | **done** `92953c8` — `comments-no-hotlink.test.ts` red on `0154` → green on `0155`; realtime suites 8/8; unit + components 2472 ✓; build ✓; `qa` **57/57**; `policy-diff` ✓. ★ `0155` applied locally by hand (a full `db:reset` at sync 1). ★ **Split out as PR #32** (`hotfix/no-google-hotlink`, the same commit cherry-picked onto `main`) so production gets it before the wave; push and merge in either order. ★ **Trap (the owner's, 2026-09-27):** every `--linked` command began failing with «unexpected login role status 403: Missing required permission(s): database_write» — on `db dump` **and** on `db query "select 1;"`. So it was the **Management API token**, not the command: the CLI assumes a login role even for a read-only query. **`supabase login`** made a fresh token, and both worked at once. If you see that string, re-login; don't debug the dump. ★ **Local trap:** `realtime.messages` had no partition for today after the realtime container had run 4 days → every broadcast test failed with «no partition of relation "messages"»; `docker restart supabase_realtime_kareem-marefa` creates them |
 | C1 | Contract 1 — the photo download route shape; ★ **three** audit definers (`DEC-182`): `record_photo_download()`, `request_photo_album()`, `record_photo_album_download()` | `content` → lead | ★ **landed in `0156`** — `tests/rls/photo-downloads.test.ts` 8/8 (local; CI blocked) |
 | C2 | Contract 2 — the album's state, bucket and policy (lead); its path through the builder; the job's registration; visible photographs only; a `notify()` key if needed (lead, as custodian) | lead ↔ `content` | **schema landed in `0156`**: `photo_album_status`, `photo_albums` + `photo_albums_read_staff`, bucket `photo-albums` + `photo_albums_storage_read` (current build, ready, unexpired). ★ Also `photos_storage_read` gains `removed_at is null` — **a removed photo was readable by every member** (`DEC-182`). `zip` in the image (`a23cbfb`, built locally: Zip 3.0, cwebp 1.2.4); ★ `MSG-photo_album_ready` in `notification_matrix()` (appended to `0156`, unpushed; `admin_queue`, in-app only, optional), `08` §1.6a, strings `ar` first — notify + calendar + photo + avatar + members + isolation + definer + realtime **150/150** from a fresh reset. Still to do: the job's registration and crontab (when `content`'s task exists) |
 | C3 | Contract 3 — audit action names: `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded` | lead | **fixed** in `DEC-180` |
@@ -158,42 +158,122 @@ member, an admin, a moderator and another org's member. What is open is only the
 bucket, whose owning-table mapping differs. There are eight buckets: `materials`, `material-pages`, `photos`,
 `design-assets`, `exports`, `fonts`, `photo-albums`, `avatars`.
 
-### ★ The owner's order (wave 14) — a DRAFT until the gates close
+### ★ The owner's order (wave 14) — FINAL (rehearsed 2026-09-27)
 
 **Migrations: `0155`–`0159`, all additive.** No column is dropped or renamed. Each changed function keeps its
-signature, and a new column is nullable.
-- `0155`: `comments_broadcast()` stops sending Google's URL. ★ **Also on hotfix PR #32**, the same file.
-- `0156`: `photos_storage_read` gains `removed_at is null` ★ (a removed photo was readable by the org). Also
-  `photo_albums`, the `photo-albums` bucket and its policy, three audit definers, and `MSG-photo_album_ready`.
-- `0157`: `members.avatar_import` / `avatar_version`, the `avatars` bucket and its policy; `me()` and
-  `members_member_view` gain a trailing `avatar_version`; `comments_broadcast()` gains `authorAvatarVersion`.
+signature, and every new column is nullable.
+- `0155`: `comments_broadcast()` stops sending Google's URL. ★ Also on hotfix **PR #32**, the same file.
+- `0156`: `photos_storage_read` gains `removed_at is null`; `photo_albums`, the `photo-albums` bucket and its policy;
+  three audit definers; `MSG-photo_album_ready`.
+- `0157`: `members.avatar_import` / `avatar_version`, the `avatars` bucket and its policy; a trailing `avatar_version`
+  on `me()` and `members_member_view`; `comments_broadcast()` gains `authorAvatarVersion`.
 - `0158`: platform's avatar functions, the source-changed trigger, and `anonymise_members()` re-created (its diff is
   the avatar lines only).
 - `0159`: content's album-build functions and the stale triggers.
 
-**What `main` does on the new schema, before the merge.** Nothing moves.
-- The avatar trigger and the re-created `anonymise_members()` enqueue only for a member who said yes, and nobody can
-  say yes until the new app ships.
-- The stale triggers find no album.
-- `main`'s comment client reads `authorAvatarUrl`, which is null, and draws initials. PR #32 already does the same.
-- `main`'s worker has no `import_avatar` or `zip_session_photos` task, and no job for either exists.
+#### ✅ Step 2 — the rehearsal on the owner's production schema dump (2026-09-27, by the lead)
 
-**Between the merge and Railway's redeploy.** An album request or a «نعم» is queued, and graphile only fetches tasks
-it has registered, so the job waits. The page says «نُجهّز» and the member sees initials until the new worker runs.
-★ **The new worker image needs `zip`** (`worker/Dockerfile`, `a23cbfb`). Railway builds from the Dockerfile, so the
-redeploy must be a rebuild, not a restart of the old image.
+- **Setup.** The dump was taken at `0154` (`public` + `graphile_worker`, **no data rows**). It was loaded into a throwaway
+  database, `rehearse14`, over the local `auth`, `storage` and `realtime` schemas (loaded as `supabase_admin`, so the
+  ownership matches):
+  - The database's owner is `postgres`, and `public`'s is `pg_database_owner`, **as in production**. (The first
+    attempt made `supabase_admin` own `public`, and `0155` was refused with «permission denied for schema public» and
+    rolled back whole. It was a setup artefact, fixed before any migration counted.)
+  - **Storage was set to its state at `0154`.** The dump carries no `storage` schema, so the local chain's 15 policies
+    as they stood at `0154` were used: `avatars_storage_read` and `photo_albums_storage_read` were absent, and
+    `photos_storage_read` was in its `0037` form. The six bucket rows at `0154` were copied too.
+  - Also copied: `graphile_worker.migrations`' 20 rows and `retention_periods`' 7 seeded rows. A schema-only dump drops
+    both, and production has both.
+- **Loading the dump.** One error, and it is platform-only, as in waves 12 and 13: the `supabase_realtime`
+  publication.
+- **Migrations.** `0155`, `0156`, `0157`, `0158` and `0159` were **each applied in one transaction with
+  `ON_ERROR_STOP`, as `postgres`. All five ok.**
+- **End state against the fully migrated local database:**
 
-1. ★ **The owner takes a schema-only dump of production** (`public`; no data rows), because the lead's session is
-   refused it. The lead rehearses `0155`–`0159` on it, as in waves 12 and 13.
-2. **PR #32 first, if you want the hotlink off production today.** Push `0155` and merge #32, in either order (its
-   code alone stops every browser fetch). `supabase migration list --linked` must read `0155` on both sides.
-3. **Push `0156`–`0159`, then merge PR #31.** `migration list` must read `0159` on both sides.
-4. **Reconnect Railway**, the standing step below, and confirm the worker log lists `import_avatar` and
-   `zip_session_photos`.
-5. ✅ **CI restored** (the repository is public again): #31 and #32 are green. The blocked period is recorded above.
-6. **After the merge, a follow-up migration** (carried): revoke `avatar_url` from the column grant, `members_member_view`
-   and `me()`, so no member's own browser can ask PostgREST for a colleague's Google URL. It waits for the merge
-   because `main` selects the column.
+  | Compared | local | rehearsed |
+  |---|---|---|
+  | Public function bodies, by hash | 304 | 305 |
+  | Policies in `public`, `storage` and `realtime` | 187 | 187, identical |
+  | Triggers | 108 | 108, identical |
+  | Client-role table grants | 151 | 151, identical |
+  | Client-role column grants | 1382 | 1382, identical |
+  | Function execute grants | 255 | 255, identical |
+  | Buckets | 8 | 8, identical |
+
+  ★ **The only difference is production-only and expected:** `rls_auto_enable()`, Supabase's own function, in no
+  migration. It no longer carries a client execute grant. The Storage policies match **by construction** (they came
+  from the local chain at `0154`, above); `0156`/`0157`'s policies only **add** names and alter one, so they cannot
+  collide with production's.
+- **The wave's RLS suites against the rehearsed schema: 172/173** (`photo-downloads`, `avatar-copy`,
+  `avatar-import`, `photos-album-build`, `comments-no-hotlink`, `members`, `notify-contract`, `retention`,
+  `definer-exposure`, `isolation`, `realtime` and the one-off proof below). The one red is `definer-exposure` listing
+  `rls_auto_enable()`, the production-only difference above.
+- **Cleaned up:** the dump, `rehearse14` and the one-off proof test are deleted.
+
+★ **The four things proved specifically:**
+1. **`0156`'s Storage fix, red before and green after, on the REHEARSED schema.**
+   - Before `0156`: a photo with `removed_at` set and `hidden_at` null **was readable** by a member (red: «member reads
+     a removed photo: expected 1 to be 0»).
+   - After: it is unreadable to a member, a moderator and an admin.
+   - ★ **The moderation path is unchanged** where anything can see it. `remove_photo()` (`0059:84-85`, which sets
+     `removed_at` **and** `hidden_at`) still refuses a member (before and after) and still resolves the open takedowns.
+     The review path — a member's takedown, `hidden_at` only — still refuses the member and lets staff read the photo
+     to review it (before and after).
+   - ★ **One measured change, said out loud:** a moderator-removed photo's object was readable **by staff** before
+     (`1`) and is not after (`0`). No screen reads it. The takedown queue lists only unresolved takedowns
+     (`admin-moderation.ts:196`), `remove_photo()` resolves them in the same transaction, and every photo reader filters
+     `removed_at is null` (`photos.ts:181`). It is the intent of `DEC-182` — a removed photo is gone — not a
+     regression.
+2. **`main`'s worker in the gap — benign; the jobs sit unclaimed.**
+   - **After the push, before the merge, nothing on the new schema enqueues either job.**
+     - `import_avatar` is enqueued only by `set_avatar_import()`, which only the new app calls. Its other two sources
+       fire only for `avatar_import = 'accepted'`, which is null for every member until the new app ships: the
+       source-changed trigger (`when … new.avatar_import = 'accepted'`) and `anonymise_members()`.
+     - `zip_session_photos` is enqueued only by `request_photo_album()` (the new app) and `record_photo_album_built()`
+       (the new worker).
+     - No column default, trigger or cron entry names either: `main`'s `crontab` lists twelve tasks, neither of them.
+   - **After the merge, before Railway redeploys**, the new app can enqueue both. `main`'s worker has neither name,
+     and graphile-worker 0.18.0's `getJobs` asks only for **the task ids it registered**
+     (`dist/sql/getJobs.js:13–26`). So an unknown job is **never claimed and uses no attempts**. It waits, unfailed,
+     until the new worker starts. Nothing fails and the owner does nothing about it.
+3. **The zip binary and the Railway gap** — step 4 below. It is the first wave to change `worker/Dockerfile`.
+4. **`0157`/`0158` on a schema that never had an avatars bucket.**
+   - `0157` creates the `avatars` bucket (private, 262144 bytes, `image/webp`) and `avatars_storage_read` **in the same
+     transaction**. The rehearsal shows both, and `avatar-copy` passes against them.
+   - The path shape `{org}/members/{member}/{version}/{96|192}.webp` is built only by
+     `packages/storage-paths/src/avatar.ts` (`storagePaths.avatar`), and the policy reads exactly those four segments.
+   - `assert_storage_prefixes` lists `avatars` (and `photo-albums`) in `BUCKETS` (`worker/src/platform/storage.ts:102–103`).
+     For avatars it also asks `avatar_member_orgs()` (`0158`) whether the member belongs to the org the path is filed
+     under.
+   - ★ **Coverage from the day the objects exist (`REQ-NFR-014`).** An avatar object can only be written by the NEW
+     worker's `import_avatar`, and that same image carries the new `BUCKETS`. So no object exists before the
+     assertion covers it. The same holds for `photo-albums`.
+
+#### The owner's steps
+
+**PR #32 is independent** (`0155` and the comment code). You may push `0155` and merge #32 at any time, before or
+after the steps below, in either order. Its code alone stops every browser fetch from Google.
+
+1. **Push the migrations**, from `main`'s checkout with this branch's `supabase/migrations/` (as in wave 13):
+   `supabase db push --linked`
+2. **Verify** `0159` on both sides: `supabase migration list --linked`. The last row must read `0159 | 0159`.
+3. **Merge PR #31:** `gh pr merge 31 --merge` (the owner's; denied to every session). CI is green on `946a254`
+   (run `36318671772`, 13/13).
+4. **Reconnect Railway, as a REBUILD:** `railway service source connect` (the standing step below), or Settings →
+   Source in the dashboard. ★ **This is the first wave to change `worker/Dockerfile`: the image gains `zip`.** A
+   restart of the old image has no `zip`, and no `import_avatar` or `zip_session_photos`.
+5. **Wait for plain ● Online — not Building, not Deploying — BEFORE anyone is told the album works.** Then check that
+   the log's «Worker connected and looking for jobs… (task names: …)» line ends with
+   `'import_avatar', 'zip_session_photos'`.
+   - **Meanwhile, what people see.** Vercel deploys the new app at once, so a staff member can press «تنزيل الكل» on
+     new code before the new worker exists. The request is audited and queued, and returns at once. The photo section
+     shows «نُجهّز ملف الصور. سيصلك إشعار حين يجهز، ويبقى رابطه هنا.» and stays there, because the job sits
+     unclaimed (point 2) with no error. As soon as the rebuilt worker is Online it claims the job, builds the zip, and
+     the notice arrives.
+   - A member who answers «نعم» meanwhile keeps initials until the new worker copies the photo, then sees it on their
+     next page.
+6. **After the merge, a follow-up** (carried): revoke `avatar_url` from the column grant, `members_member_view` and
+   `me()`, so no member's own browser can ask PostgREST for a colleague's Google URL.
 
 ### ★ The standing owner step — Railway, after every merge
 
