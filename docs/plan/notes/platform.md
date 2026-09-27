@@ -1640,3 +1640,9 @@ prompt's slot and L2 (the shell's avatar through `getMe()`) before it can pass. 
 those land, and the four captures come from that run.
 
 **Untouched-suite ledger:** none of mine. `members.test.ts:41` was the lead's, in `0157`'s commit.
+
+**M3, run by the lead on production build `c0bd26b` at `0159`:** `tests/e2e/wave14-platform-avatar.spec.ts` is
+**10/10 green on phone and desktop**, including the check that no response body contains a `googleusercontent`
+URL. The lead opened the captures at full resolution. For «نعم» the account menu shows our copy; for «لا» it shows
+the «س» initial. The four captures are `.qa-shots/rtl/wave14-platform-{account-menu,privacy}-{photo,initials}.png`.
+**Platform's wave-14 rows (A1–A4, C4, M3) are done**, unless the lead's final gates say otherwise.
