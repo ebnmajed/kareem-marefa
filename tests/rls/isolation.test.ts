@@ -102,9 +102,10 @@ describe("a member of org A selecting with no org predicate", () => {
         // authoring tables, which staff alone read (0124, REQ-SUR-005 — a plain
         // member reads a survey through one function, never a table). The
         // survey's register and box are not here: with no grant at all they are
-        // refused above, which is isolation too (DEC-160 §3.3). Their own
+        // refused above, which is isolation too (DEC-160 §3.3). A session's photo
+        // album (0156, REQ-ADM-021) is staff-only and the fixture seeds none. Their own
         // per-policy tests prove the scoping; the sweep proves the wall.
-        if (!["org_domains", "audit_log", "scoring_config_history", "check_in_codes", "check_in_attempts", "session_state_transitions", "ratings", "reports", "notification_templates", "email_deliveries", "fonts", "impersonation_sessions", "session_certificate_designs", "survey_templates", "survey_template_questions", "survey_template_options", "surveys", "survey_questions", "survey_question_options"].includes(table)) {
+        if (!["org_domains", "audit_log", "scoring_config_history", "check_in_codes", "check_in_attempts", "session_state_transitions", "ratings", "reports", "notification_templates", "email_deliveries", "fonts", "impersonation_sessions", "session_certificate_designs", "survey_templates", "survey_template_questions", "survey_template_options", "surveys", "survey_questions", "survey_question_options", "photo_albums"].includes(table)) {
           expect(rows.some((r) => r.org_id === f.a.id)).toBe(true);
         }
       });

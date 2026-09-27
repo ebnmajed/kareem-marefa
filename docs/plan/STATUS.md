@@ -12,6 +12,23 @@
 the wordmark (`REQ-UIX-027`) are new. Milestone **M16**. The brief is `docs/plan/notes/wave-14-lead.md`; the map is
 `CLAUDE.md` § *Ownership map (wave 14)*.
 
+### ★★ CI IS BLOCKED, NOT FAILING — local gates are the only gates (2026-09-27)
+
+**The repository is private** (`gh repo view`: `PRIVATE`). `DEC-051` had it public until Launch. A private repository
+meters Actions against the owner's account, and **every job is refused before a runner starts**: each "fails" in 1–2 s
+with «The job was not started because recent account payments have failed or your spending limit needs to be
+increased». The last real run was 2026-09-22 13:21, the wave-13 close. Every run since has been refused the same way:
+PR #31's runs, PR #32's, and the wave-13 docs push. **No session did this, and no session may fix it**, because
+visibility and billing are the owner's (`CLAUDE.md`, the deny list). Two ways out, both on the web: **restore public
+visibility, or add a payment method and an Actions spending limit.**
+- **Until then, every row below records its LOCAL gate results**, and a red PR check means «not run».
+- ★ **The lockfile trap is unbacked.** CI's `npm ci` was the backstop for a lock written by the wrong npm. If any
+  dependency changes, `npm run lockfile` runs through Docker, and the row says so. (This wave adds none: the zip is a
+  Dockerfile binary.)
+- Both PR bodies carry this note at the top.
+- ★ **A correction.** The lead told the owner PR #32 could be merged as it stood, citing only local results, without
+  running `gh pr checks`. «Ready» is a claim about the PR, so check the PR before making it.
+
 ### Asked before Step 0 — the owner's production walk-through
 
 **Not run.** The owner (2026-09-27): it «was working fine before», and «the only comment was the garbage UI/UX so I am
@@ -67,8 +84,8 @@ That is the owner's item 8 turned into a test that can fail, which a count of pr
 |---|---|---|---|
 | S0 | `DEC-180`; `REQ-EVT-016`, `REQ-UIX-027`, `STORY-EVT-007`, `STORY-UIX-018`, M16; `REQ-PRF-008`'s reading cited; `04`, `09`, `11`; the map; the ten agent files | lead | **done** `8ae8b16`; draft **PR #31** |
 | L0 | ★ **The live Google hotlink closed, before the avatar feature** (`DEC-181`): `comments.ts` and `comment-list.tsx` pass `null`; `0155` nulls `authorAvatarUrl` in `comments_broadcast()`; `img-src` loses `lh3.googleusercontent.com` | lead | **done** `92953c8` — `comments-no-hotlink.test.ts` red on `0154` → green on `0155`; realtime suites 8/8; unit + components 2472 ✓; build ✓; `qa` **57/57**; `policy-diff` ✓. ★ `0155` applied locally by hand (a full `db:reset` at sync 1). ★ **Split out as PR #32** (`hotfix/no-google-hotlink`, the same commit cherry-picked onto `main`) so production gets it before the wave; push and merge in either order. ★ **Local trap:** `realtime.messages` had no partition for today after the realtime container had run 4 days → every broadcast test failed with «no partition of relation "messages"»; `docker restart supabase_realtime_kareem-marefa` creates them |
-| C1 | Contract 1 — the photo download route shape; the lead lands two audit definers (a photograph; the album) from `content`'s plan | `content` → lead | todo — shapes in `content`'s plan |
-| C2 | Contract 2 — the album's state, bucket and policy (lead); its path through the builder; the job's registration; visible photographs only; a `notify()` key if needed (lead, as custodian) | lead ↔ `content` | todo |
+| C1 | Contract 1 — the photo download route shape; ★ **three** audit definers (`DEC-182`): `record_photo_download()`, `request_photo_album()`, `record_photo_album_download()` | `content` → lead | ★ **landed in `0156`** — `tests/rls/photo-downloads.test.ts` 8/8 (local; CI blocked) |
+| C2 | Contract 2 — the album's state, bucket and policy (lead); its path through the builder; the job's registration; visible photographs only; a `notify()` key if needed (lead, as custodian) | lead ↔ `content` | **schema landed in `0156`**: `photo_album_status`, `photo_albums` + `photo_albums_read_staff`, bucket `photo-albums` + `photo_albums_storage_read` (current build, ready, unexpired). ★ Also `photos_storage_read` gains `removed_at is null` — **a removed photo was readable by every member** (`DEC-182`). Still to do: the Dockerfile `zip`, the registration, `MSG-photo_album_ready` |
 | C3 | Contract 3 — audit action names: `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded` | lead | **fixed** in `DEC-180` |
 | C4 | Contract 4 — `src/lib/dal/avatars.ts`'s resolver; every reader swaps one expression; published in `platform`'s note on day one | `platform` → all | todo |
 | P1 | ★ `REQ-EVT-016` — the lightbox on `ui/dialog`; previous/next tap targets; Escape, backdrop, focus return; «3 من 12» | `content` | todo |
@@ -83,7 +100,7 @@ That is the owner's item 8 turned into a test that can fail, which a count of pr
 | L1 | ★ The wordmark — additive `href`, the shell passes `/app`; `qa:contract` + `visual` **unmoved** | lead | todo |
 | L2 | The shell's avatar through contract 4; `members.ts` and `ratings.ts` as custodian | lead | todo |
 | L3 | ★ The CSP — `https://lh3.googleusercontent.com` out of `img-src` once no reader carries a Google URL | lead | todo |
-| L4 | Promotion from `0155`: the tables, columns, buckets, policies and the audit definers; the job registrations; any dependency | lead | todo |
+| L4 | Promotion: `0156` (photos) and `0157` (avatars) are the lead's schema; the tracks' own SQL from `0158`; the job registrations; `zip` in the Dockerfile | lead | `0156` **landed** — from a fresh `db:reset`: `photo-downloads` 8/8, `isolation` + `definer-exposure` 89/89, `policy-diff` ✓, 03 rows added (local; CI blocked). `0157` next |
 | M1 | ★ Demonstrable — the lightbox through every photograph with `page.click()` alone, the photograph changed each time | `content` writes, lead runs | todo |
 | M2 | ★ Demonstrable — `qa:contract` and `visual` unmoved by the wordmark | lead | todo |
 | M3 | ★ Demonstrable — yes → the photo in the account menu; no → initials; both at 390 px, captured | `platform` writes, lead runs | todo |
@@ -112,6 +129,7 @@ done by hand.
 
 | File | Assertion | Why |
 |---|---|---|
+| `tests/rls/isolation.test.ts` (the lead's) | `photo_albums` joins the list of tables where a plain member sees none of org A's rows | staff-only by design (`0156`, `photo_albums_read_staff`), and the fixture seeds no album. The wall — zero rows of org B — is asserted unchanged |
 
 ---
 

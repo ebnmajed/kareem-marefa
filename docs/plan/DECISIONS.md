@@ -4379,3 +4379,42 @@ Asked before Step 0, as the brief required: **not run**. The owner's standing co
    So **39 of 42 are staff screens**, and **none lies on the member path** reserve → check in → rate → certificate. Nearly all of the prose explains **policy** rather than compensating for a weak affordance. The member path has **no inventory at all**: the accessibility sweep returned 62/62 clean, and the prose table did not reach it. **Wave 15's measure:** can a member complete each step of reserve → check in → rate → certificate with **every explanatory paragraph deleted** from the screen? Delete the prose, then try; whatever breaks is the list. The owner's count of the same table was 40 rows with four on the path; the difference is recorded here rather than argued, and the conclusion does not depend on it.
 
 - **Documents changed:** `CLAUDE.md` (the migration rule; the dependency rule; contract 4's wording), the ten agent files (the same), `STATUS.md` (row L0, the wave-15 finding)
+
+---
+
+## DEC-182 — Wave 14, sync 1: two plans approved; the album ships in parts under the upload cap, a removed photo stops being readable, avatars are served from our own origin, and the lead lands the schema as `0156`/`0157`
+
+- **Date:** 2026-09-27 · **Decided by:** the wave-14 lead, on the plans in `docs/plan/notes/{content,platform}.md` (`c324171`, `05130c3`), each headline claim verified against the tree
+- **Amends:** `DEC-180` (contract 1: three definers, not two; contract 2: the album's shape), `DEC-181` (nothing)
+
+**Found by the plans, verified:**
+- ★ **A removed photograph is still readable from Storage by any member of its org.** `photos_storage_read` (`0037:646`) checks `hidden_at` only — never `removed_at` — and no later migration changes it. Closed in `0156`.
+- ★ **A Google URL reached `/app/me`'s client payload** through `getMe()` → `ProfileForm` (`platform` and `content` independently). Closed in `ce774f5`, also on PR #32.
+- **The CSP is report-only** (`proxy.ts:131`) and `img-src` omits the Supabase origin, so removing Google blocked nothing by itself — the render carriers were the fix. A `303` to a signed URL would be a reported violation today and blocked once the CSP enforces.
+- **One zip does not fit the upload cap** — 50 MiB (`config.toml:121`, Supabase's default) against one `uploadObject()` POST.
+- **The raw upload sits at the stripped object's path until `process_photo` runs**, so «the only file that exists» is true only of rows; `process_photo` makes no WebP and no variants (`11` §2.4 is wrong), so the grid draws originals.
+- **`?download=failed` is `sessions`' poster notice's trigger** (`download-failed-notice.tsx:11`).
+- `ui/avatar.tsx` draws an empty box for a `src` that fails; the shell's avatar comes through `layout.tsx:199`, not `session.ts`; `members/[id]/page.tsx:51` passes no `src`; the Auth cookie carries Google's URL in `user_metadata`.
+
+**Rulings — the lead's schema.** `0156` (photos) and `0157` (avatars), landed by the lead before either track's SQL is promoted:
+- `0156`: `photos_storage_read` gains `and p.removed_at is null`; enum `photo_album_status` (`queued`, `building`, `ready`, `failed`, `stale`); table `photo_albums` as `content` named it, with `photo_albums_read_staff` its only policy and its grant; private bucket `photo-albums` (zip) with its read policy keyed on `build_id`, `ready` and unexpired; the three audit definers — **three, not two** — `record_photo_download()`, `request_photo_album()`, `record_photo_album_download()`, each on `0152`'s shape, `42501 not_authorized` before any write, in `definer-exposure`'s sweep.
+- `0157`: enum `avatar_import_answer` (`accepted`, `declined`); `members.avatar_import` (null = unanswered, in no client grant) and `members.avatar_version bigint`; `avatar_version` appended to the select grant, last in `members_member_view`, and as a key of `me()`; private bucket `avatars` (256 KB, WebP) with `avatars_storage_read` (same org, current version only); `comments_broadcast()` gains `authorAvatarVersion` (`0155`'s function is the lead's). ★ The `^https://` check on `avatar_url` **stays**: the source is member-controllable through `auth.updateUser`, so it and the job's host allowlist are the SSRF control. `DEC-099`'s «supersedes» of it is not carried out.
+- Each track's own functions and triggers are promoted from `proposed/` after these, from `0158`.
+
+**Rulings — `content`:**
+- **The album ships in parts.** Each part is a self-contained zip of at most 45 MiB (`PHOTO_ALBUM_PART_BYTES`), and a session under the cap gets one. It uses Debian's `zip` in `worker/Dockerfile` (`DEC-181`); the lead adds it and registers the job. It reads the visible set from `photos` rows and checks each object's `sha256` against its row. `photo_albums_stale` marks a built album stale on a hide, a removal or a delete.
+- Q2 **yes**: a hidden tile never opens the lightbox, for anyone. Q3 **yes**: `record_photo_download()` refuses a hidden or removed photo to staff too, because a «remove photos of me» request outranks staff convenience. Q4 **yes**: `?download=photo_failed` / `album_failed`. Q5 **yes**, three definers. Q6 **ASCII by date**, `photo-YYYYMMDD-<8hex>.ext` and `album-YYYYMMDD-part-N.zip`. Q7 **the job's own expire mode**, one writer, with its crontab entry the lead's. Q8 **in-app only**: `MSG-photo_album_ready`, `admin_queue`, optional; the lead adds it as `notify`'s custodian, and `notify-contract.test.ts`'s count 39 → 40 is a ledger line. Q9 **yes**: the takedown stays on the tile. Q10 **carried**: tile thumbnails. Q11 **yes**: one sequence through every visible photograph in page order, across the day groups.
+- **R1** (`ui/dialog` `size="media"`): the lead builds it. **R7** is done (`ce774f5`). ★ `platform`'s R1 is `content`'s: `ui/avatar.tsx` draws the initials **under** the `<img>`, CSS only, so a failed image falls back to initials.
+- `REQ-EVT-012` → `REQ-EVT-011` in `11` §2.4 and `REQ-ADM-021`'s acceptance is a citation fix. The lead makes it.
+
+**Rulings — `platform`** (the leanings sent before this entry, confirmed):
+- **The avatar route proxies the bytes**, the way `/api/brand/[orgId]/logo` does: it reads through the viewer's session, so `avatars_storage_read` re-checks every request; it is same-origin and privately cached per version; every refusal is the same `404`.
+- `avatarHref()` lives in `src/components/privacy/avatar-href.ts`, and `lib/dal/avatars.ts` re-exports it. Readers swap `avatar_url` → `avatar_version` and one expression.
+- Hosts are `lh3`–`lh6.googleusercontent.com` exactly. Input is PNG or JPEG only; WebP input is refused (`REQ-PRF-010`). The job requests `=s192-c` and logs the dimensions it gets, so no production read is needed.
+- The prompt goes on the `/app` timeline beside `companyMissing`, and the lead places it.
+- The assertion «no response carries a Google URL» covers **response bodies** (HTML, RSC, JSON, realtime). The access-token hook is **not** changed this wave (it is sign-in's single point of failure).
+- Revoking `avatar_url` from the grant, the view and `me()` is **carried to after the merge**, because `main` selects it.
+- `avatar_member_orgs()` for the prefix assertion is approved. `photo-albums` and `avatars` join `BUCKETS`.
+- **R2** (`guards.ts`' `Bucket`, `index.ts`' export) and **R3** (the profile page's `src`) are the lead's.
+
+- **Documents changed:** `STATUS.md` (the checklist), `11-background-jobs.md` and `01-prd.md` (the citation), `04-architecture.md` (the album route's part parameter)
