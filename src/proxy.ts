@@ -145,7 +145,7 @@ function contentSecurityPolicy(nonce: string | null): string {
     "default-src 'self'",
     `script-src 'self' ${scripts}${dev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self' ${styles}`,
-    "img-src 'self' blob: data: https://lh3.googleusercontent.com",
+    "img-src 'self' blob: data:", // DEC-099: no Google hotlink — the entry `0089` was meant to remove (DEC-180)
     "font-src 'self'",
     `connect-src 'self'${supabase ? ` ${supabase} ${supabase.replace(/^http/, "ws")}` : ""}`,
     "object-src 'none'",

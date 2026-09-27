@@ -48,7 +48,7 @@ type CommentRow = {
   created_at: string;
   edited_at: string | null;
   deleted_at: string | null;
-  author: { id: string; display_name: string | null; avatar_url: string | null } | null;
+  author: { id: string; display_name: string | null } | null;
 };
 
 function mapCommentError(error: { message: string; code?: string }): Error {
@@ -99,7 +99,7 @@ export const getCommentsPageData = cache(async (locale: string, sessionId: strin
       .from("comments")
       .select(
         "id, session_id, parent_id, author_id, body, mentions, created_at, edited_at, deleted_at, " +
-          "author:members!comments_author_id_fkey(id, display_name, avatar_url)",
+          "author:members!comments_author_id_fkey(id, display_name)",
       )
       .eq("session_id", sessionId)
       .order("created_at", { ascending: true }),
@@ -120,7 +120,10 @@ export const getCommentsPageData = cache(async (locale: string, sessionId: strin
       id: r.id,
       sessionId: r.session_id,
       parentId: r.parent_id,
-      author: { id: r.author?.id ?? r.author_id, displayName: r.author?.display_name ?? null, avatarUrl: r.author?.avatar_url ?? null },
+      // ★ DEC-099: never `members.avatar_url` — that is Google's URL, and drawing it
+      // discloses every viewer to Google. Initials until wave 14's resolver
+      // (`lib/dal/avatars.ts`, contract 4) serves our stored copy (DEC-180).
+      author: { id: r.author?.id ?? r.author_id, displayName: r.author?.display_name ?? null, avatarUrl: null },
       body: r.body,
       mentions: r.mentions ?? [],
       createdAt: r.created_at,
