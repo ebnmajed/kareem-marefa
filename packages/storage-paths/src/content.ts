@@ -73,3 +73,23 @@ export function photoPath(orgId: string, sessionId: string, photoId: string, ext
   ].join("/");
 }
 
+
+/** `photo-albums/{org_id}/sessions/{session_id}/albums/{build_id}/part-{n}.zip` — one self-contained
+ *  part of a session's album (REQ-ADM-021, DEC-182). `photo_albums_storage_read` (0156) reads
+ *  segment [3] as the session and segment [5] as the build, and admits only the album's CURRENT,
+ *  ready, unexpired build — so a request that replaces the build makes every older part
+ *  unreadable at once. `record_photo_album_built()` refuses a part outside this build's prefix. */
+export function photoAlbumPartPath(orgId: string, sessionId: string, buildId: string, part: number): string {
+  return [photoAlbumBuildPrefix(orgId, sessionId, buildId), `part-${assertPageNumber(part, "part")}.zip`].join("/");
+}
+
+/** `{org_id}/sessions/{session_id}/albums/{build_id}` — every part of one build. */
+export function photoAlbumBuildPrefix(orgId: string, sessionId: string, buildId: string): string {
+  return [photoAlbumPrefix(orgId, sessionId), assertUuid(buildId, "buildId")].join("/");
+}
+
+/** `{org_id}/sessions/{session_id}/albums` — every build of one session's album; the job lists it
+ *  to delete the builds a new one replaced. No day ever appears in it. */
+export function photoAlbumPrefix(orgId: string, sessionId: string): string {
+  return [assertUuid(orgId, "orgId"), "sessions", assertUuid(sessionId, "sessionId"), "albums"].join("/");
+}

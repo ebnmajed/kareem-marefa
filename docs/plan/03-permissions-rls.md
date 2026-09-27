@@ -692,6 +692,15 @@ moderation material (`REQ-ADM-020`).
 | `survey_participations` | — | — | — | — | **No policy at all.** The REGISTER: who answered, with no answer, no time and no surrogate id (`DEC-160` §3). Written by `submit_survey_response()` alone. |
 | `survey_responses` | — | — | — | — | **No policy at all.** The BOX: a random id, an org and a survey, **and nothing else, ever** — no member, no timestamp. Written by the jittered job alone; read by `survey_results()` alone. |
 | `survey_answers` | — | — | — | — | **No policy at all.** One value of one response. No member, no timestamp. |
+| `photo_albums` | §5.6g | — | — | — | One album per session (`0156`, `REQ-ADM-021`). Staff of the org read it; the three audit definers and `content`'s service_role functions are its only writers. |
+
+#### §5.6g — the photo album (`0156`, `DEC-180`, `DEC-182`)
+```sql
+create policy "photo_albums_read_staff" on photo_albums for select to authenticated
+  using (org_id = auth_org_id() and is_staff());
+```
+No client role writes an album. `request_photo_album()` queues it, `JOB-zip_session_photos` builds it, and the
+row is what «ready» reads after a reload.
 
 #### §5.6f — the survey (`0124`, `DEC-074`, `DEC-160` §3, `DEC-161`)
 ```sql
@@ -1065,13 +1074,15 @@ bodies are the prefix rules of §6.1–§6.6 and are read there, not restated he
 create policy "materials_storage_read"       on storage.objects for select to authenticated;  -- org prefix · phase gate · allow_download (REQ-MAT-005, REQ-MAT-006) · since 0054 also the pre-finalize self-read: whoever may WRITE the path may read it back before a material_versions row exists (the complete step sniffs the landed bytes)
 create policy "materials_storage_write"      on storage.objects for insert to authenticated;  -- org prefix · sessions/<id> · presenter or staff
 create policy "material_pages_storage_read"  on storage.objects for select to authenticated;  -- org prefix · phase gate, no allow_download conjunct
-create policy "photos_storage_read"          on storage.objects for select to authenticated;  -- org prefix · hidden only to staff (REQ-EVT-012)
+create policy "photos_storage_read"          on storage.objects for select to authenticated;  -- org prefix · hidden only to staff (REQ-EVT-012) · ★ never once removed (0156, DEC-182)
 create policy "photos_storage_write"         on storage.objects for insert to authenticated;  -- org prefix · has_checked_in() or presenter or staff (REQ-EVT-009)
 create policy "design_assets_storage_read"   on storage.objects for select to authenticated;  -- org prefix
 create policy "design_assets_storage_write"  on storage.objects for insert to authenticated;  -- org prefix · staff
 create policy "exports_storage_read"         on storage.objects for select to authenticated;  -- org prefix · the requesting member; writes are service_role only
 create policy "exports_storage_read_public_card" on storage.objects for select to anon, authenticated;  -- DEC-066 (0080): ONLY the og.png of a card-eligible session's poster, via export_is_public_card(name); a member of another org sees what a stranger sees
 create policy "exports_storage_certificate_restricted" on storage.objects as restrictive for select to authenticated;  -- DEC-178 (0153): a certificate's render only to staff of its org or its own member once released, via export_object_is_foreign_certificate(name); narrows exports_storage_read, which admitted the whole org prefix
+create policy "photo_albums_storage_read"          on storage.objects for select to authenticated;  -- DEC-182 (0156): staff of the org, and only the album's CURRENT build (path segment 5 = build_id), ready and unexpired — a stale, superseded or expired zip is unreadable with its path in hand
+create policy "avatars_storage_read"                on storage.objects for select to authenticated;  -- DEC-182 (0157): same org, and only a member's CURRENT avatar_version (path segment 4) — clearing the version cuts access in the same statement
 create policy "design_assets_storage_read_public_logo" on storage.objects for select to anon, authenticated;  -- DEC-161 (0126): ONLY the PNG or JPEG an ACTIVE org's brand_kits.logo_asset_id names, via brand_logo_is_public(name) — so a mail client can fetch a logo; every other design asset stays closed
 create policy "fonts_storage_read"           on storage.objects for select to authenticated;  -- no org prefix (REQ-DSG-016)
 ```
@@ -1419,6 +1430,32 @@ generated suite is the highest-value test in the product.
 | `RPC-record_export_download.certificate` | A certificate's download: its own member ✓ (issued or revoked), admin ✓, moderator ✓; its member while `held` ✗; another member ✗. The file is named by the Western serial. (migration `0152`, `DEC-177`). |
 | `RPC-record_export_download.document` | Any other render (a template, the studio's panel): admin ✓, moderator ✗, member ✗. (migration `0152`). |
 | `RPC-record_export_download.refusals` | An unknown id and a not-ready artifact both answer `42501`, so the function is no existence oracle; `anon` cannot execute it. (migration `0152`). |
+| `POL-avatars_storage_read.same_org` | A member of the org reads another member's current copy ✓ · another org's member ✗. (migration `0157`, `DEC-182`). |
+| `POL-avatars_storage_read.stale_version_refused` | An older version's object ✗; ★ clearing `avatar_version` (a decline, anonymisation) makes the current one unreadable at once. (migration `0157`). |
+| `COL-members.avatar_import.no_grant` | A client select of `members.avatar_import` is refused (42501); `avatar_version` is readable through the grant, `members_member_view` and `me()`. (migration `0157`). |
+| `TRG-comments_broadcast.avatar_version` | The comment payload carries `authorAvatarVersion`, and `authorAvatarUrl` stays null — no Google URL on the wire. (migrations `0155`, `0157`). |
+| `RPC-begin_photo_album_build` | `service_role` only · returns the visible set, never a hidden or removed photograph · a superseded build gets no rows. (migration `0159`, `DEC-182`). |
+| `RPC-record_photo_album_built` | Ready + `MSG-photo_album_ready` to who asked + the expiry enqueued · `stale` when a photograph was hidden mid-build · `superseded` for a replaced build · a part outside its build's prefix refused. (migration `0159`). |
+| `RPC-fail_photo_album` | The current build only, `failed` with its error. (migration `0159`). |
+| `TRG-photo_albums_stale` | ★ A member's takedown, a staff removal and a delete each make a ready album stale — «remove photos of me» reaches a zip already built — and the takedown still succeeds. (migration `0159`). |
+| `RPC-set_avatar_import.self_only` | A member records only their OWN answer; there is no member argument. (migration `0158`, `DEC-182`). |
+| `RPC-set_avatar_import.decline_clears_version` | «لا» clears `avatar_version` in the same statement, so `avatars_storage_read` stops serving at once, and enqueues the deletion. (migration `0158`). |
+| `RPC-set_avatar_import.no_source` | «نعم» with no Google source answers `no_source` and enqueues nothing. (migration `0158`). |
+| `RPC-set_avatar_import.audited` | Each answer writes `member.avatar_import_answered` with before and after. (migration `0158`). |
+| `RPC-my_avatar.self_only` | Returns the caller's own answer, version and whether a source exists — never the source URL. (migration `0158`). |
+| `RPC-avatar_job_target.worker_only` | `service_role` only; every client role is refused. (migration `0158`). |
+| `RPC-record_avatar_copy.worker_only` | `service_role` only. (migration `0158`). |
+| `RPC-record_avatar_copy.stale_when_declined` | A copy recorded after a decline answers `stale` and sets nothing. (migration `0158`). |
+| `RPC-record_avatar_copy.stale_when_source_changed` | A copy of a source that has since changed answers `stale`. (migration `0158`). |
+| `RPC-avatar_member_orgs.worker_only` | `service_role` only — the prefix assertion's member-in-org question. (migration `0158`). |
+| `TRG-members_avatar_source_changed.accepted_only` | A changed `avatar_url` enqueues `import_avatar` only for a member who said yes. (migration `0158`). |
+| `RPC-anonymise_members.avatar` | Anonymisation clears the answer and the version in the anonymising statement and enqueues the objects' deletion; the summary keys are unchanged. (migration `0158`, `REQ-PRF-011`). |
+| `POL-photos_storage_read.removed` | ★ A removed photograph's object is readable by nobody, member or staff — before `0156` it was readable by every member of the org. (migration `0156`, `DEC-182`). |
+| `POL-photo_albums_read_staff` | Admin ✓ · moderator ✓ · member ✗ · another org's admin ✗. (migration `0156`). |
+| `POL-photo_albums_storage_read` | Staff, a ready and current build ✓ · a member ✗ · stale ✗ · expired ✗ · a superseded `build_id` ✗. (migration `0156`). |
+| `RPC-record_photo_download` | Any member of the org ✓ for a visible photo, one `photo.downloaded` row naming the session; ★ a hidden photo ✗ **for staff too** (`DEC-182` Q3); removed ✗ · another org ✗ · unknown ✗ — all `42501`, no row. (migration `0156`). |
+| `RPC-request_photo_album` | Admin ✓ · moderator ✓: one row `queued`, one `photo_album.requested` row, one `zip_session_photos` job under `zipphotos:{session}`; a repeat moves `build_id`, not the row · member ✗ · another org ✗ (`42501`) · no visible photo → `album_empty` (`P0002`), no row. (migration `0156`). |
+| `RPC-record_photo_album_download` | Staff, a ready album ✓ per part, one `photo_album.downloaded` row each, named `photos-YYYYMMDD[-part-n-of-m].zip` · member ✗ · stale · expired · part out of range ✗. (migration `0156`). |
 | `POL-storage.objects.exports_certificate_restricted` | ★ A RESTRICTIVE select policy on `exports`: a certificate's render is listed only by staff of its org or its own member once released. Another member ✗; its member while `held` ✗; an orphaned object is covered by its path; a session poster stays readable by a member (`DEC-173`); another org ✗. Closes the leak `0037`'s org-prefix policy left open. (migration `0153`, `DEC-178`). |
 | `RPC-schedule_session.certificate_mode_unchanged` | A save that does not name the mode leaves the stored mode standing — the schedule form no longer states it. (migration `0154`, `DEC-178`). |
 | `RPC-schedule_session.certificate_mode_named` | A save that names the mode still writes it (`main`'s call, unchanged). (migration `0154`). |

@@ -10,6 +10,7 @@ import { Panel } from "@/components/ui/panel";
 import { buttonClass } from "@/components/ui/button";
 import { requestDeactivationAction, requestExportAction } from "./actions";
 import { DeactivationForm, RequestExportForm } from "./forms";
+import { AvatarSection } from "@/components/privacy/avatar-section";
 
 // `/app/me/privacy` — REQ-PRF-006, REQ-PRF-007, REQ-NFR-013, 12 §5.4.
 //
@@ -54,6 +55,9 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
           {t("policyLink")}
         </Link>
       </p>
+
+      {/* REQ-PRF-008 (DEC-182): where «نستخدم صورتك من Google؟» is changed. */}
+      <AvatarSection locale={locale} />
 
       <section aria-labelledby="export" className="mt-10 max-w-2xl">
         <SectionHeader id="export" title={t("exportTitle")} description={t("exportIntro")} />

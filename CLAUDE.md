@@ -318,7 +318,93 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 13 — the studio, the session download, the settings hub, DEC-176) — ★ THE MAP IN FORCE
+### Ownership map (wave 14 — photos, the lightbox, the wordmark, the avatar, DEC-180) — ★ THE MAP IN FORCE
+
+**Half of this was specified long ago and never built** (`DEC-180`, milestone **M16**). **(1)** A session's photographs
+open whole in a lightbox you move through by **tapping** (`REQ-EVT-016`, new) — ★ **`DEC-093`'s sixth place**: a swipe
+is the enhancement, never the only path. **(2)** A photograph and a session's album are downloaded, **audited**; the
+album by `JOB-zip_session_photos` (`REQ-ADM-021`, M11 — never run). **(3)** ★ **Google's photo is copied into our
+storage, never hotlinked** — the owner kept `DEC-099` when asked (`REQ-PRF-008`'s import half, M10 — never run); the
+brief's «one line» would have overruled it. **(4)** Inside `/app` the wordmark leads to `/app` (`REQ-UIX-027`, new).
+The checklist is `STATUS.md`'s wave-14 block. **Four demonstrables:** the lightbox driven through every photograph with
+`page.click()` alone, the displayed photograph changed each time; ★ **`qa:contract` and `visual` unmoved by the
+wordmark — not re-baselined, unmoved**; a member who said yes sees their photo in the account menu and one who said no
+sees initials, both at 390 px; staff press «تنزيل الكل», the response returns at once, and **the real worker's** zip
+holds the EXIF-stripped files and no others.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ `DEC-180`, this map, the ten agent files, `01`/`04`/`09`/`11`/`14`/`15` · ★ **the wordmark**: an additive `href` prop defaulting to `/`, the app shell passing `/app`, `qa:contract` + `visual` **unmoved** · ★ **the shell's avatar** through contract 4 and the **consent prompt's slot** · ★ **the live hotlink closed first** — the Google `img-src` entry, both comment carriers and `0155` (`92953c8`, before the feature) · every table, column and bucket, and ★ **the two photo audit definers** (contract 1) — from **`0155`** · the job registrations · `worker/Dockerfile`'s binaries (a zip binary; `cwebp` is there already) · the demonstrable specs · the gates, `STATUS`, the PR | the lead-only paths below, `supabase/migrations/**` from `0155`, `src/components/{wordmark,header,footer}.tsx`, `src/app/[locale]/app/layout.tsx`, `src/lib/dal/session.ts`, `src/components/shell/**`, `src/proxy.ts`, `packages/storage-paths/src/index.ts`, the lead's fifteen `ui/` files, `src/app/globals.css`, `worker/src/index.ts`, `messages/*/{ui,app,marketing}.json`, new `tests/rls/photo-downloads*.test.ts`, new `tests/e2e/wave14-{demo,lead}-*.spec.ts`. **Custodian** of every file of a track not spawned — `sessions`, `checkin`, `scoring`, `designer`, `console`, `event`, `notify`, `branding` — edited only for its own rows or on a teammate's written request; ★ this wave that includes `lib/dal/{members,ratings}.ts`'s avatar expression (contract 4) and `notify`'s one message key if the album's notification needs one |
+| `content` | ★ **opus** | ★ **the gallery and the lightbox** (`REQ-EVT-016`): a tap opens the photograph whole, previous/next **always-visible tap targets**, Escape and the backdrop close, focus returns to the tile, «3 من 12», on the lead's `ui/dialog` · the grid's crop **deliberate and written down** (`REQ-UIX-026`) · ★ **`REQ-ADM-021`**: a per-photo download for any viewer who may see it, **«تنزيل الكل»** for staff in the photo group's header, `JOB-zip_session_photos` writing a zip of the visible, EXIF-stripped objects through the one path builder and notifying — **every download through an audited route** (contract 1) · the SC 2.5.7 tap-only spec and the album spec with the real worker · ★ the comment's avatar through contract 4's resolver once it lands (the hotlink itself is already closed, `92953c8`) | `src/components/{photos,viewer,materials,tasks}/**`, `src/lib/dal/{photos,materials,tasks}.ts`, `src/app/api/upload/**`, new `src/app/api/photos/**`, `src/lib/storage/**`, `packages/storage-paths/src/content.ts`, `worker/src/content/**`, `worker/src/tasks/{convert_document,render_pages,process_photo}.ts` and new `zip_session_photos.ts`, its nine `ui/` primitives, `messages/*/{photos,materials,tasks}.json`, `supabase/proposed/content/**`, `tests/rls/{materials,photos,tasks,storage-content}*.test.ts`, `tests/unit/{materials,photos,tasks,storage}*`, `tests/components/{materials,photos,tasks,viewer}/**`, `tests/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop}.test.tsx`, `tests/e2e/{materials,photos,tasks,proposal-materials}.spec.ts` and `tests/e2e/wave{9,10,11}-content-*.spec.ts` (evidence), new `tests/e2e/wave14-content-*.spec.ts`, `docs/plan/notes/content.md`. **Fixes only**: `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx` and `actions.ts`, `src/lib/dal/{comments,reactions,reports}.ts`, `src/lib/realtime/**`, `src/app/[locale]/app/me/{page,layout,loading,error}.tsx`, `me/bookmarks/**`, `src/components/me/**`, `messages/*/{event,profile}.json` |
+| `platform` | opus | ★ **the avatar, copied** (`REQ-PRF-008`'s import half, `REQ-PRF-009`, `REQ-PRF-011`): «نستخدم صورتك من Google؟» offered once — a component the lead slots into the shell — and changeable on `/app/me/privacy` · `JOB-import_avatar` (the thirty-sixth job): fetched from **Google's image host only**, byte-capped, sniffed, **EXIF-stripped**, stored under the org's prefix · ★ **one avatar route** and **one resolver** (contract 4) so no DTO ever carries a Google URL again · a changed Google source re-copies for a member who said yes · `anonymise_members` **deletes the objects**; `build_data_export` **includes the picture**; `assert_storage_prefixes` covers the new objects · ★ the path shape in a new `packages/storage-paths/src/avatar.ts` | new `src/app/api/avatars/**`, new `src/lib/dal/avatars.ts`, `src/lib/dal/privacy.ts`, ★ `src/app/[locale]/app/me/privacy/**` and `messages/*/privacy.json` (from `content`), `src/components/{privacy,platform}/**`, new `packages/storage-paths/src/avatar.ts`, `worker/src/platform/**`, new `worker/src/tasks/import_avatar.ts`, `worker/src/tasks/{anonymise_members,build_data_export,assert_storage_prefixes}.ts`, **fixes only** `worker/src/tasks/{enforce_retention,expire_impersonation,delete_org,evaluate_alerts}.ts` and `src/app/[locale]/app/platform/**`, `src/app/api/platform/**`, `src/lib/dal/{platform,platform-templates}.ts`, `messages/*/platform.json`, `supabase/proposed/platform/**`, `tests/rls/{platform,impersonation,retention,delete-org,alerts,avatar,privacy}*.test.ts`, `tests/unit/{platform,alerts,avatar,privacy}*`, `tests/components/{platform,privacy}/**`, `tests/e2e/{platform*,wave8-platform-*,wave11-platform-*}.spec.ts` (evidence), new `tests/e2e/wave14-platform-*.spec.ts`, `docs/plan/notes/platform.md` |
+
+★ = transferred or changed for this wave by `DEC-180`.
+
+**Wave-14 contracts.**
+
+1. **`content` → everyone — one audited download route per photo subject.** A link to a route that writes the audit
+   row and then `303`s to a short-lived signed URL. **Never a signed URL in page data, never a plain
+   `<a download>`** (`DEC-177`). `record_export_download()` (`0152`) is for export artifacts; photos are a different
+   bucket and policy, so **the lead lands their definers** — one for a photograph (who may see it may download it),
+   one for the album (staff only, which audits and enqueues) — from the shapes `content`'s plan names. A refusal
+   `303`s back with `?download=failed`. A preview is not a download (`DEC-178`); thumbnails stay signed URLs.
+2. **Lead ↔ `content` — the album.** Any table for an album's state, its bucket and its policy are the lead's, from
+   `content`'s plan. The zip's path goes through the one builder (`content`'s). The job's registration in
+   `worker/src/index.ts` is the lead's. The zip holds **visible photographs only** — never a hidden or removed one.
+   If «ready» needs a new `notify()` key, it is the lead's as `notify`'s custodian, on `content`'s written request.
+3. **Lead → both — the audit action names**, fixed in `DEC-180`: `photo.downloaded`, `photo_album.requested`,
+   `photo_album.downloaded`.
+4. **`platform` → every avatar reader — one resolver.** `src/lib/dal/avatars.ts` turns a member into a same-origin
+   `href` to `/api/avatars/<memberId>` (with a version for caching) or `null`. The DTO field keeps its name
+   (`avatarUrl`) and its type. Readers swap one expression: `session.ts` (the lead), `comments.ts` and
+   `comment-list.tsx` (`content` — never a URL back in the SQL payload), `ratings.ts` and `members.ts` (the lead, as custodian). **The published name and type go in
+   `platform`'s note on day one.** ★ **The live hotlink is closed ahead of the feature** (`92953c8`, `DEC-181`):
+   the Google `img-src` entry is gone, both comment carriers say `null`, `0155` nulls the realtime payload.
+   `members.avatar_url` stays the source Google provisions (`0005:124`) and is never
+   rendered.
+
+**Wave-14 rules.**
+
+- ★ **`DEC-093` is the specification for the lightbox.** Previous and next are tap targets, always visible. The
+  swipe is layered on and optional. The gate is a Playwright case with `page.click()` alone; axe never catches this.
+- ★ **`DEC-099` stands.** No `<img>` loads from a domain the platform does not control. A Google URL reaching a
+  browser, in HTML, a DTO or a realtime payload, is a defect.
+- ★ **The wordmark row is additive, and its acceptance is that nothing moves.** `qa:contract` and `visual` are
+  **unmoved, not re-baselined**. No teammate touches `wordmark.tsx`, `header.tsx`, `footer.tsx` or `(marketing)/**`.
+- ★ **An album download never runs inside a request** (`REQ-ADM-021`). The route enqueues and returns.
+- ★ **No npm package for image or archive work** (`DEC-181`). The worker uses **system binaries from
+  `worker/Dockerfile`** (the lead's) — `poppler-utils` and `cwebp` today (`worker/src/content/pdf.ts:16`: «None is an
+  npm dependency»). The 96 px and 192 px avatar derivatives are `cwebp -resize`, which needs nothing new — «a size
+  list, not a new job» (`DEC-099`). The album's zip follows the same pattern: a binary added to the Dockerfile, not
+  `archiver` or `jszip`. A plan that proposes an npm package says why a binary will not do; `npm run lockfile` runs
+  through Docker only.
+- ★ **`qa:contract` green at every commit. `registrations` is never touched** (invariant 2).
+- ★ **The existing suites are evidence.** Each changed assertion is a ledger line in `STATUS.md`, written in the
+  same commit as the change. New behaviour gets new files.
+- ★ **Additive, because `main` runs on it first.** Migrations from `0155`. The owner rehearses on a production
+  schema dump, pushes, merges, then reconnects Railway. **`main`'s worker runs the new schema before the new code**,
+  so a plan says what `main`'s worker does in the gap. The expected answer is «nothing moves».
+- **Teammates spawn planning-only**; sync 1 approves two plans against the four contracts.
+- **Tables are the lead's; behaviour is the tracks'. A function has one writer. One writer per file, JSON and specs
+  included.**
+- **`ui-lint --strict` has no allowlist and never gains one.** Every track that ships a screen runs
+  `npm run ui-lint` before it commits.
+- **Captures land at `.qa-shots/rtl/wave14-<track>-<surface>-<state>.png`** in the main checkout, phone project,
+  `390 × 844`, from a production build the row names by commit, honouring `E2E_SHOTS_DIR`. The lead opens every
+  one **in bands, never downscaled**.
+- **Not this wave, and never-touch for every teammate:** a member uploading their own picture and `REQ-PRF-010`'s
+  avatar moderation (`STORY-PRF-005`'s upload half); new avatar placements (presenter cards, the host view's list,
+  the directory, browse cards); deleting a session with its awarded points (wave 15's whole subject); the
+  gamification layer; the prose pass; `DEC-100`'s motion system; live poster thumbnails before export
+  (`REQ-DSG-029`'s carry); the stale email-studio test; the «still generating» line's placement on phones;
+  everything under `(marketing)/**` beyond the wordmark's additive prop; recurring series (`A14`); drag in
+  `ui/reorderable-list`; replacing the renderer.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`,
+  `stop`, branch switches, pushes and the PR.
+
+### Ownership map (wave 13 — the studio, the session download, the settings hub, DEC-176) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 13 merged as PR #30 (`7a66690`). Its map is kept as the record; **wave 14's map is directly above** (`DEC-180`).
 
 **Most of this scope was specified long ago and never built** (`DEC-176`, milestone **M15**). **(1)** The studio gets
 direct manipulation (`REQ-DSG-028` … `030`, the rest of `031`, M12 — never run). **(2)** Staff and presenters download
@@ -898,6 +984,19 @@ and two teammates would race for a sequence number. Teammates write SQL under
 `supabase/proposed/<name>/`, prove it with `applyProposed()` inside their RLS tests (transactional,
 rolled back), and hand the lead the file plus the `03` §8.2 rows and test names. The lead numbers,
 moves, resets, runs the suite, commits. **Only the lead runs `supabase db reset`, `start`, `stop`.**
+
+★ **A `DECISIONS.md` entry never cites an unallocated migration number** (`DEC-180`). Either the migration
+exists on disk when the entry is written, and the entry names it, or the entry says «a migration in the wave that
+builds this», and the wave's own entry names the number once it is written. It has happened twice, with the same
+cause each time:
+- **`DEC-076` → «`0086`».** The download audit rows were never written; `0086` became wave 7's manual-mark window
+  (`DEC-141`). `DEC-177` found it.
+- **`DEC-099` → «`0089`».** The Google CSP entry and the `^https://` check were never removed; `0089` became
+  wave 7's early-completion check-in close. A later wave then drew the Google URL on every comment, so the
+  decision to stop the hotlink predates the code that started it. `DEC-180` found it, and `0155` closed it.
+
+A number cited ahead of time is taken by whatever wave gets there first, and the promised change vanishes without
+an error: nothing fails when a migration that was only ever a sentence is not applied.
 
 ### The gate lock
 

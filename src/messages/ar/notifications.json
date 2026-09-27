@@ -134,7 +134,8 @@
       "MSG-role_changed": "تغيّر دورك",
       "MSG-account_deactivated": "أُوقف حسابك",
       "MSG-calendar_disconnected": "فُصل تقويمك",
-      "MSG-export_ready": "بياناتك جاهزة للتحميل"
+      "MSG-export_ready": "بياناتك جاهزة للتحميل",
+      "MSG-photo_album_ready": "ملف صور الجلسة جاهز للتنزيل"
     },
     "admin": {
       "emails": {

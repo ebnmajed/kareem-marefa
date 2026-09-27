@@ -265,6 +265,9 @@ keeps initials.
 - No `<img>` anywhere in the product has a `src` on a domain the platform does not control.
 - Removal is immediate: the row is cleared and the stored object is deleted.
 - The nightly storage-prefix assertion (`REQ-NFR-014`) covers avatar objects the day they exist.
+- ★ **Read with `DEC-180`:** wave 14 delivers the **import** half — Google's photo offered once,
+  copied on yes, served from our storage through one route, the Google `img-src` entry removed. The
+  member's own upload, and `REQ-PRF-010`'s moderation of it, are not yet built.
 
 #### REQ-PRF-009 — Initials over a deterministic tint are the default and the permanent fallback
 **Serves:** DEC-099 · `REQ-INT-007`
@@ -1152,6 +1155,21 @@ At upload time, the member is told plainly that photos are **shared with everyon
 New comments, reactions, RSVP counts and check-in counts appear without a manual refresh.
 **Acceptance:**
 - With realtime unavailable, the page still renders correct values server-side on load (DEC-020).
+
+#### REQ-EVT-016 — A session's photographs open whole, and are moved through by tapping
+**Serves:** owner 2026-09-27 · DEC-180 · DEC-093 · `SC 2.5.7`
+A tap on a photograph in a session's gallery opens it **whole** in a lightbox, and the member moves
+to the previous and next photograph from there. The lightbox shows only photographs the viewer may
+see, and never a hidden or removed one.
+**Acceptance:**
+- **Previous and next are always-visible tap targets.** A swipe may be added, but it is never the
+  only way to move — a single pointer without dragging reaches every photograph (`DEC-093`'s sixth
+  place). A Playwright case drives the whole lightbox with `page.click()` alone.
+- The photograph is never cropped in the lightbox. Where the grid crops a tile, the crop is
+  deliberate and written down in the file that does it (`REQ-UIX-026`).
+- Escape and the backdrop close it, and focus returns to the tile that opened it. The position reads
+  «3 من 12», with Western numerals (`DEC-124`).
+- At 390 px in Arabic the controls meet `SC 2.5.8` and cause no horizontal page scroll.
 
 ---
 
@@ -2247,7 +2265,7 @@ download **the album** — **«تنزيل الكل»** — produced by a backgro
 storage and notifies when it is ready. **Every download is audited.**
 **Acceptance:**
 - An album download never runs inside a request; a 300-photo album does not block a function.
-- The served file is the EXIF-stripped one, which is the only one that exists (`REQ-EVT-012`).
+- The served file is the EXIF-stripped one, which is the only one a row points at (`REQ-EVT-011`; `DEC-182`: the raw upload shares its path until `process_photo` runs, so the served set is read from rows, never from a bucket listing).
 - Each download writes an audit row naming the actor, the session and what was taken.
 
 ---
@@ -2832,6 +2850,14 @@ the poster being cut.
   other surface showing a poster show its full width and height.
 - Each surface's media aspect is chosen deliberately and written down. A surface that shows a
   photo rather than a poster says whether it may crop, and why.
+
+#### REQ-UIX-027 — Inside the platform, the wordmark leads to the platform's home
+**Serves:** owner 2026-09-27 · DEC-180
+On every screen under `/app`, the wordmark in the header links to `/app`, the member's home. On the
+public site, `(auth)` and `legal` it keeps linking to `/`.
+**Acceptance:**
+- The change is additive: `qa:contract` and the visual baseline of the public routes do **not**
+  move. They are not re-baselined (invariant 1, `DEC-167`).
 
 ---
 

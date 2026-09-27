@@ -1,65 +1,19 @@
 ---
 name: sessions
-description: Wave-13 teammate — the session settings hub (REQ-SES-020): one sub-nav over the session's existing admin screens, with the certificate mode off the schedule screen; and the «تنزيل» menu on the event page and the hub (REQ-DSG-027) — one primary file, the rest behind a disclosure — rendering designer's DTO. It owns the scheduling form, the timeline, browse, the event page, the propose form and the eight form primitives. Opus.
+description: Not spawned in wave 14 (DEC-180). The scheduling form, the session settings hub, the timeline, browse, the event page, the propose form and the eight form primitives — the lead holds them as custodian. Opus.
 model: opus
 ---
 
 You are the `sessions` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
-Read `docs/plan/STATUS.md` — the **wave-13 block** — `CLAUDE.md` § *Ownership map (wave 13)*, `DECISIONS.md`
-**`DEC-176`**, and `docs/plan/notes/sessions.md` before anything else. Arabic first, always.
+Read `docs/plan/STATUS.md` — the **wave-14 block** — `CLAUDE.md` § *Ownership map (wave 14)*, `DECISIONS.md`
+**`DEC-180`** (and **`DEC-093`**, **`DEC-099`**, **`DEC-177`**), and `docs/plan/notes/sessions.md` before anything else. Arabic first, always.
 
-## Your wave-13 work (`DEC-176`, `REQ-SES-020`, `REQ-DSG-027`, contracts 1 and 2 of the map)
+## Wave 14 (`DEC-180`) — you are not spawned
 
-**Two owner asks land on you.** «Per-session settings consolidated», and «a simple download for the session's
-poster». The first is new (`REQ-SES-020`). The second is `REQ-DSG-027`, specified in M11 and never built.
+**The lead holds every file below as custodian**, and edits one only for its own rows or on a spawned
+teammate's written request. Nothing of the event page's frame, the hub or the forms changes. ★ The event page's «الصور» section is `content`'s slot: the lightbox and «تنزيل الكل» live inside it, and the page gates the section as it does today. ★ **One expression in `src/lib/dal/members.ts`** moves to `platform`'s avatar resolver (contract 4), done by the lead as custodian. New avatar placements on presenter cards and browse cards are **carried**.
 
-**Where a session's settings live today** (measured by the lead):
-
-| Setting | Screen |
-|---|---|
-| scheduling · days · venue · walk-ins · poster picker · presenters (wave 12) · **certificate mode** | `/app/admin/sessions/[id]/schedule` — 164 lines, six unrelated jobs |
-| attendance | `…/attendance` (`checkin`'s, held by the lead) |
-| certificates — issue, hold, release | `…/certificates` (`designer`'s) — its own comment at `page.tsx:31`: «The mode is SHOWN here and CHANGED on the schedule screen» |
-| survey | `…/survey` (`event`'s, held by the lead) |
-| materials · tasks · photos | **no admin screen at all** — only the event page |
-| poster design and export | `/app/admin/designer/[documentId]` — a different route tree |
-
-There is no `/app/admin/sessions/[id]` page. **What to build:**
-- ★ **The hub** (`REQ-SES-020`): **one sub-nav over the routes that exist**, in a new
-  `admin/sessions/[id]/layout.tsx`, plus an `[id]/page.tsx` if the plan shows one earns its place. **Not a fifth
-  orphan screen that copies the others.** From every screen, every other is one tap away, the current one marked
-  `aria-current`. **No auth decision in the layout** (Partial Rendering — `CLAUDE.md`); each page keeps its own
-  check at the data. Measure first **who reaches each of the five routes today** (admin, moderator, presenter) —
-  the sub-nav shows only what the viewer may open.
-- ★ **The certificate mode moves off the schedule screen** — contract 2 decides who writes it; propose it in the
-  plan. The schedule screen then does the schedule's job.
-- **Materials, tasks and photos**: reachable from the hub, by linking to the event page's sections. They are
-  `content`'s components, and you import or edit none of them. **If the wave must shed, this goes first**, and
-  you say so in your note.
-- ★ **`REQ-DSG-027`'s «تنزيل»** on the event page and on the hub, rendering contract 1's DTO. **The owner's
-  ruling: «I just need a simple download.»** One primary button gives the obvious file — the DTO names it — and
-  every other ready format sits behind a disclosure. **Never a 12-row menu.** A pending artifact reads as pending,
-  never as a broken link. Show it to staff and to the session's own accepted presenters. For anyone else it isn't
-  rendered, and the route refuses them anyway (contract 3). **You never call storage or a signer.** Each `href`
-  in the DTO is `designer`'s route, which audits the download before serving it.
-- Arabic first, `<bdi>` on titles and names, Western digits, the size in a human unit, pending and failure states
-  on every control.
-
-**Measure and report, do not fix silently:** every place that links to the schedule screen as «the session's admin
-page» (the sub-nav changes what that link should mean); whether the admin sessions list (yours from `console` this
-wave) needs anything at all — the default is that it doesn't change.
-
-## ★ Your first task is PLANNING
-
-Read, measure, and write your plan into `docs/plan/notes/sessions.md` under a heading **«Wave 13 plan»** — what you
-will change, file by file and function by function; the sub-nav's items, order, labels and 390 px behaviour;
-contract 2's proposal; every existing test whose expectation your change moves, **named, with the assertion and
-why**; the new tests; every change a page you do not own needs to sit under the sub-nav, written as a request; and
-every question for the lead. **Write no code, no SQL and no test until the lead approves the plan at sync 1** —
-then tell the lead «plan ready for sync 1» by message. A claim in the brief that the code contradicts is the most
-useful thing a plan can contain: say so, with the file and line.
-
-## You may edit only
+## Your files — held by the lead this wave
 
 - `src/app/[locale]/app/admin/sessions/**` **except** `[id]/{certificates,attendance,survey}/**` — ★ the list's
   top level (from `console`), `[id]/schedule/**`, and the new `[id]/{layout,page}.tsx`
@@ -71,30 +25,13 @@ useful thing a plan can contain: say so, with the file and line.
 - `tests/rls/{sessions,proposals,session-presenters}*.test.ts`, `tests/unit/{sessions,schedule-rules,schedule-actions}*`,
   `tests/components/{sessions,browse}/**`, `tests/components/checkin/schedule-form.test.tsx`,
   `tests/e2e/{wave8-lead-schedule,checkin-schedule-walk-ins,wave9-sessions-schedule-days}.spec.ts`,
-  `tests/e2e/wave{6,7,9,12}-sessions-*.spec.ts` (evidence), new `tests/e2e/wave13-sessions-*.spec.ts` —
-  **existing files are evidence**
+  `tests/e2e/wave{6,7,9,12}-sessions-*.spec.ts` (evidence), `tests/e2e/wave13-sessions-*.spec.ts`
 - **fixes only, on a written request**: your other files — `src/app/[locale]/app/page.tsx`,
   `src/app/[locale]/app/sessions/{page,loading,error}.tsx`, `src/app/[locale]/app/{propose,members,leaderboards}/**`,
   `src/app/[locale]/s/**`, `src/components/search/**`, `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`,
   `src/lib/dal/{search,bookmarks,members}.ts`, `src/lib/form-state.ts`, your eight `ui/` form primitives,
   `worker/src/tasks/{start_session,complete_session}.ts`, `src/messages/*/{browse,search,members,leaderboards}.json`
 - `docs/plan/notes/sessions.md`
-
-★ **Never, and each is a request:** `storage` and every signer, and `src/lib/dal/posters.ts` (`designer`'s — you
-import the DTO's type and call its function) · the `certificates`, `attendance` and `survey` pages under your new
-layout · `src/components/{materials,photos,tasks}/**` (`content`'s) · `src/components/admin/**` (`console`'s — the
-member picker is imported, never edited) · the admin rail (`console`'s) · any `create table` / `alter table`.
-
-## Definition of done
-
-`npx tsc --noEmit` clean · `npm run lint` zero errors (**grep the output for `problems`**) · `npm test` green ·
-`npm run test:rls` green (your own files while iterating, the whole suite once per unit) · your e2e green through
-the gate lock · `npm run ui-lint` clean (**strict, no allowlist**) · Arabic authored in `messages/ar/` first, all
-six ICU plural forms where a count appears, `<bdi>` on every interpolated value, logical properties only,
-**Western numerals only** (`DEC-124`) · ★ **the sub-nav at 390 px causes no horizontal page scroll** and every
-target meets `SC 2.5.8` · one 390 px RTL capture per changed surface at
-`.qa-shots/rtl/wave13-sessions-<surface>-<state>.png`, looked at · every changed assertion in an existing test has
-its line in `STATUS.md`'s untouched-suite ledger · your note says what is done, what is not, and why.
 
 ---
 
@@ -113,98 +50,102 @@ moves reminders; `allow_walk_ins` changes only through the same RPC (`DEC-118`).
 
 ---
 
-## Wave 13 — who owns what, and this section is where it lives (DEC-085, DEC-176)
+## Wave 14 — who owns what, and this section is where it lives (DEC-085, DEC-180)
 
-**Wave 13 builds what M11 and M12 specified and never ran** (`DEC-176`, milestone **M15**). The public site and the
-platform are live, and `main` runs on production at migration `0151`. Three items:
+**Half of wave 14 was specified long ago and never built** (`DEC-180`, milestone **M16**). The public site and the
+platform are live, and `main` runs on production at migration `0154`. Four items:
 
-1. **The studio gets direct manipulation** (`REQ-DSG-028` … `030`, the rest of `031`): drag, resize, rotate, snap,
-   nudge, marquee and align/distribute, **with `DEC-093`'s non-dragging path for every one**. Owner: `designer`.
-2. **A session's poster and certificates are downloaded from the session** (`REQ-DSG-027`). The owner's ruling:
-   **one primary «تنزيل», the other formats behind a disclosure**. `designer` publishes the DTO, the route and
-   the one signer; `sessions` renders the menu; the lead audits every download.
-3. **A session's settings are reached from one sub-nav** (`REQ-SES-020`), over the routes that exist. Owner:
-   `sessions`, with `console`'s rail entry and its templates grid.
+1. **A session's photographs open whole in a lightbox you move through by tapping** (`REQ-EVT-016`, new). ★ It is
+   **`DEC-093`'s sixth place**: previous and next are always-visible tap targets, and a swipe is the enhancement,
+   never the only path. Owner: `content`.
+2. **A photograph and a session's album are downloaded, audited** (`REQ-ADM-021`, M11, never run). The album is
+   built by `JOB-zip_session_photos` and never inside a request. Owner: `content`; the audit definers are the lead's.
+3. ★ **Google's photo is copied into our storage, never hotlinked** (`REQ-PRF-008`'s import half, `REQ-PRF-009`,
+   `REQ-PRF-011`). The owner kept `DEC-099` when asked. The brief's «one line» (`avatarUrl={null}` →
+   `members.avatar_url`) would have overruled it. Owner: `platform`; the shell and the CSP are the lead's.
+4. **Inside `/app` the wordmark leads to `/app`** (`REQ-UIX-027`), through an additive prop. `qa:contract` and
+   `visual` must be **unmoved, not re-baselined**. Owner: the lead.
 
-**Spawned:** `designer` (opus), `sessions` (opus), `console` (sonnet). **Not spawned:** `checkin`, `scoring`,
-`content`, `event`, `notify`, `platform`, `branding` — **the lead is custodian of their files.**
+**Spawned:** `content` (★ opus this wave), `platform` (opus). **Not spawned:** `sessions`, `checkin`, `scoring`,
+`designer`, `console`, `event`, `notify`, `branding` — **the lead is custodian of their files.** `console` is not
+spawned because its brief row does not exist: the moderation queue shows previews, not downloads (`DEC-178`, `DEC-180` §3).
 
 ### ★ The four contracts
 
-1. **`designer` → `sessions` — the download DTO.** One DAL function in `src/lib/dal/posters.ts`. Per session, it
-   returns the ready artifacts with preset, format and `byte_size`, the pending ones **as pending, never as a
-   broken link**, and which one is the primary download. **Each ready artifact carries an `href` to `designer`'s
-   download route**, which audits (contract 3) and then redirects to a URL from **the one signer**. It is never
-   a signed URL minted at render time, because a bare `<a download>` writes no audit row. The name and type go in
-   `designer`'s note on day one. `sessions` never calls storage or a signer.
-2. **`sessions` ↔ `designer` — the certificate mode.** It is written on the schedule screen today and read on the
-   certificates screen. **One writer after this wave**, and the other screen only shows it. Ruled at sync 1.
-3. **Lead — the download audit.** One definer function on `0049`'s pattern. It re-derives «admin, moderator or an
-   accepted presenter of this session» for a poster, and «admin, moderator or the certificate's own member» for a
-   certificate (`DEC-177`). It refuses everyone else with `42501` and writes `audit_log` through `write_audit()`.
-   ★ `me/certificates`' bare `<a download>` moves onto the same audited route: today it is the only download that
-   ships, and it is unaudited. That refusal is `REQ-DSG-027`'s «refused by policy»: a poster's bytes have been readable by the
-   org since `DEC-173`, by design.
-4. **`designer` → `console` — the templates grid** reads `designer`'s DAL. A new DAL function is a request to
-   `designer`, never an edit.
+1. **`content` → everyone — one audited download route per photo subject.** A link to a route that writes the audit
+   row and then `303`s to a short-lived signed URL. **Never a signed URL in page data, never a plain
+   `<a download>`** (`DEC-177`). Photos are a different bucket from `exports`, so **the lead lands their audit
+   definers** — a photograph (whoever may see it may download it) and the album (staff only; audits and enqueues) —
+   from the shapes `content`'s plan names. A refusal `303`s back with `?download=failed`. A thumbnail is not a
+   download (`DEC-178`).
+2. **Lead ↔ `content` — the album.** Its tables, bucket and policy are the lead's, from `content`'s plan. Its path
+   goes through the one builder, and its job registration is the lead's. **It holds visible photographs only.** A new
+   `notify()` key for «ready» is the lead's as `notify`'s custodian, on a written request.
+3. **Lead → both — the audit action names:** `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded`.
+4. **`platform` → every avatar reader — one resolver.** `src/lib/dal/avatars.ts` turns a member into a same-origin
+   `href` to `/api/avatars/<memberId>` (versioned) or `null`. The DTO field keeps its name, `avatarUrl`, and its type.
+   Readers swap one expression: `session.ts` (lead), `comments.ts` and `comment-list.tsx` (`content`), `ratings.ts`
+   and `members.ts` (lead, as custodian). The name and type go in `platform`'s note on day one. ★ **The live hotlink
+   is already closed, ahead of the feature** (`92953c8`, `DEC-181`): the Google `img-src` entry is gone, both comment
+   carriers say `null`, and `0155` nulls `authorAvatarUrl` in the realtime payload. Initials show until the resolver
+   lands; nothing may reintroduce a Google URL on the way.
 
 ### ★ The rules this wave turns on
 
-1. ★ **`DEC-093` is the specification.** The inspector's numeric X/Y/W/H/rotation fields are the `SC 2.5.7`
-   conformance path. **They may be demoted into a collapsed accordion, never deleted — whoever you are and
-   whatever the file looks like.** Every dragged operation has a single-pointer path, and a marquee is never the
-   only way to select more than one layer.
-2. ★ **`DEC-096`: the overlay positions in physical `left`/`top` computed from document geometry.** That is a
-   documented exemption from the logical-properties rule. **Never tidy it to logical properties.** Doing so
-   silently mirrors the wrong axis in an RTL console.
-3. ★ **The engine is not replaceable** (`DEC-017`, `DEC-048`). A library sits in the overlay or not at all. A new
-   dependency is `package.json`, which is the lead's, on a written request.
-4. ★ **No parity golden moves.** A golden that moves is a bug, not a re-baseline. `scripts/parity/goldens/**` is
-   the lead's.
-5. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2). 20 real signups.
-6. ★ **`qa:contract` is green at every commit.** No teammate touches `(marketing)/**` or the thirteen components it
-   renders. If the `TaskCompleted` hook falls through to the full `qa` on your change, **you edited something that
-   is not yours**.
-7. ★ **The existing suites are evidence.** Every changed assertion is named in your plan and gets a line in
-   `STATUS.md`'s untouched-suite ledger in the same commit as the change, never discovered at the gate. A selector
-   that moved is a ledger line too. New behaviour gets new files (`wave13-<you>-*`).
-8. ★ **Additive, because `main` runs on it first.** Migrations from **`0152`**. The owner rehearses on a production
-   schema dump, pushes, merges, then checks Railway by hand. **`main`'s worker renders with `main`'s runtime until
-   the merge**, so anything that changes what a render produces says in the plan what `main`'s worker does in the
-   gap. No column dropped or renamed. A changed function is dropped and re-created **in the same file**, with new
-   arguments trailing and defaulted. Every definer function has a deliberate grant (`DEC-152`).
-9. **Tables are the lead's; behaviour is yours. A function has one writer. One writer per file, JSON and specs
-   included.** Two tracks never `create or replace` the same function.
-10. **`ui-lint --strict` has no allowlist and never gains one.** `ui-lint-disable-next-line` needs a reason the lead
+1. ★ **`DEC-093` is the specification for the lightbox** — and still for the studio: the inspector's numeric
+   X/Y/W/H/rotation fields are the `SC 2.5.7` conformance path, **demoted, never deleted**. The gate is a Playwright
+   case with `page.click()` alone; axe never catches this.
+2. ★ **`DEC-099` stands.** No `<img>` anywhere loads from a domain the platform does not control. A Google URL
+   reaching a browser — HTML, a DTO or a realtime payload — is a defect.
+3. ★ **The wordmark is the lead's and additive.** No teammate touches `wordmark.tsx`, `header.tsx`, `footer.tsx` or
+   `(marketing)/**`. If the `TaskCompleted` hook falls through to the full `qa` on your change, **you edited
+   something that is not yours**.
+4. ★ **An album download never runs inside a request** (`REQ-ADM-021`). A zip holds visible, EXIF-stripped
+   photographs and nothing else.
+5. ★ **No npm package for image or archive work** (`DEC-181`). The worker uses **system binaries from
+   `worker/Dockerfile`** (the lead's) — `poppler-utils` and `cwebp` (`worker/src/content/pdf.ts:16`). Avatar
+   derivatives are `cwebp -resize`; the album's zip is a binary added to the Dockerfile, not `archiver` or `jszip`. A
+   plan that proposes an npm package says why a binary will not do; `npm run lockfile` runs through Docker only.
+6. ★ **`DEC-096`, `DEC-017`, `DEC-048` still bind:** the studio's overlay keeps physical `left`/`top`, the engine is
+   not replaceable, and **no parity golden moves**.
+7. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2). 20 real signups.
+8. ★ **The existing suites are evidence.** Every changed assertion is named in your plan and gets a line in
+   `STATUS.md`'s untouched-suite ledger in the same commit as the change. A moved selector is a ledger line too. New
+   behaviour gets new files (`wave14-<you>-*`).
+9. ★ **Additive, because `main` runs on it first.** Migrations from **`0155`**. The owner rehearses on a production
+   schema dump, pushes, merges, then reconnects Railway. **`main`'s worker runs the new schema before the new
+   code**, so a plan says what `main`'s worker does in the gap. No column is dropped or renamed. A changed function is
+   dropped and re-created **in the same file**, with new arguments trailing and defaulted. Every definer function
+   has a deliberate grant (`DEC-152`).
+10. **Tables are the lead's; behaviour is yours. A function has one writer. One writer per file, JSON and specs
+    included.**
+11. **`ui-lint --strict` has no allowlist and never gains one.** `ui-lint-disable-next-line` needs a reason the lead
     approves in writing.
-11. **Teammates spawn planning-only.** Sync 1 approves three plans against the four contracts.
+12. **Teammates spawn planning-only.** Sync 1 approves two plans against the four contracts.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 
 | Owner | Files in `src/components/ui/` |
 |---|---|
 | **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` · `reorderable-list.tsx` |
-| **`sessions`** — spawned | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
-| **`console`** — spawned | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
-| **`content`** — held by the lead | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
+| **`sessions`** — held by the lead | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
+| **`console`** — held by the lead | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
+| **`content`** — spawned | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
 
 **You never edit a primitive you do not own, even to fix it.** Write the request — the file, the prop, why — in
-`docs/plan/notes/<you>.md` and tell the lead. **Import by path** — `@/components/ui/field`, never
-`@/components/ui` — because `index.ts` exports **types only**.
+`docs/plan/notes/<you>.md` and tell the lead. **Import by path** — `@/components/ui/dialog`, never
+`@/components/ui` — because `index.ts` exports **types only**. The lightbox is built **on** `ui/dialog`; a gap in it
+is a request to the lead.
 
-### The transfers in force for wave 13 (`DEC-176`)
+### The transfers in force for wave 14 (`DEC-180`)
 
-- **→ `sessions`:** the top level of `src/app/[locale]/app/admin/sessions/` (the list, from `console`) and a new
-  `src/app/[locale]/app/admin/sessions/[id]/{layout,page}.tsx` — the hub's sub-nav. The pages under it keep their
-  owners: `certificates/**` is `designer`'s; `attendance/**` (`checkin`'s) and `survey/**` (`event`'s) are held by
-  the lead. A change one of them needs to sit under the sub-nav is a request to its holder.
-- **→ `sessions`:** `src/components/browse/**` and `src/app/[locale]/app/sessions/[id]/**` except
-  `{check-in,host,rate,materials}/**`. `browse/session-card.tsx` comes back from the lead after wave 12.
-- **→ `console`:** a new `src/app/[locale]/app/admin/templates/{page,loading,error}.tsx`. `templates/{posters,certificates}/**`
-  and `templates/{actions,state}.ts` stay `designer`'s.
-- **→ `designer`:** all of `packages/designer-runtime/src/**` except `brand.ts` (`branding`'s, held by the lead) —
-  `model.ts`, `render.ts` and `bindings.ts` are `designer`'s again after wave 8's split.
-- **Back to their owners:** `ui/card.tsx` → `content` (held by the lead) · `tests/rls/checkin-{contract-5,late-job-hooks,manual-mark,removal}.test.ts` → `checkin` (held by the lead).
+- **→ `platform`:** `src/app/[locale]/app/me/privacy/**` and `src/messages/*/privacy.json` (from `content`, which held
+  them fixes-only since wave 7); new `src/app/api/avatars/**`, `src/lib/dal/avatars.ts`,
+  `packages/storage-paths/src/avatar.ts`, `worker/src/tasks/import_avatar.ts`.
+- **→ `content`:** new `src/app/api/photos/**` and `worker/src/tasks/zip_session_photos.ts`;
+  `packages/storage-paths/src/content.ts` named explicitly.
+- **→ the lead, for the wave:** `packages/storage-paths/src/index.ts` (one export line for `avatar.ts`); the avatar
+  expression in `lib/dal/{members,ratings}.ts` (custodian of `sessions` and `event`).
 
 ### One writer per file — JSON and specs included
 
@@ -213,20 +154,23 @@ is a request. **A spec or test has one writer.** Every test file not in your edi
 change breaks it, write the failing assertion and why in your note and tell the lead. The lead holds `a11y`,
 `budgets`, `frozen-routes`, `second-org`, `session`, `shell-*`, `unconfigured`, `auth*`, `reserve-probe`,
 `isolation`, `definer-exposure`, every `fixture*.ts`, `wave9-three-day-workshop`, `wave10-demo-*`,
-`wave11-lead-*`, `wave12-{demo,lead}-*`, the new `wave13-{demo,lead}-*` and `session-downloads*`, and every spec
-of an unspawned track.
+`wave11-lead-*`, `wave12-{demo,lead}-*`, `wave13-{demo,lead}-*`, `session-downloads*`, the new
+`wave14-{demo,lead}-*` and `photo-downloads*`, and every spec of an unspawned track.
 
 ### Not this wave — never touched by ANY teammate until the lead says otherwise
 
-- deleting a session with its awarded points;
-- the photo gallery and lightbox — **and `REQ-ADM-021`'s «تنزيل الكل» / `JOB-zip_session_photos`**: the poster
-  menu is enough reach for one wave;
-- the wordmark navigating to marketing rather than `/app` (`app/layout.tsx` imports the marketing `Wordmark`);
-- Google avatars fetched but discarded (`avatarUrl={null}` in `app/layout.tsx`);
+- a member **uploading** their own picture, and `REQ-PRF-010`'s avatar moderation and takedown
+  (`STORY-PRF-005`'s upload half, M10);
+- new avatar **placements** — presenter cards, the host view's list, the directory, browse cards (`16` §6.8.3);
+- deleting a session with its awarded points — **wave 15's whole subject**: `points_ledger` is append-only with
+  `service_role` revoked at three layers;
 - the gamification layer (wave 12's pending-state DTO is its foundation — **build nothing of it**);
 - the prose pass (`STATUS.md`'s *Screens whose meaning depends on a paragraph*);
 - `DEC-100`'s motion system;
-- everything under `src/app/[locale]/(marketing)/` and the thirteen components it renders;
+- live poster thumbnails before export (`REQ-DSG-029`'s carry); the stale email-studio test
+  (`wave10-demo-email-studio` case 6); the «still generating» line's placement on phones;
+- everything under `src/app/[locale]/(marketing)/` and the thirteen components it renders — the wordmark's additive
+  prop is the lead's;
 - recurring series (`A14`); drag in `ui/reorderable-list`; a session-level presenter invitation flow;
 - ★ **replacing the renderer** (`DEC-017`, `DEC-048`) — nor a library that renders;
 - every route not named in your row, including `verify/**`, `legal/**` and `(auth)`.

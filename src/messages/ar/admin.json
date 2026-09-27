@@ -576,7 +576,8 @@
           "deactivation_requested": "طلب تعطيل عضوية",
           "provisioned": "انضمام عضو",
           "reactivated": "إعادة تفعيل عضوية",
-          "role_changed": "تغيير دور عضو"
+          "role_changed": "تغيير دور عضو",
+          "avatar_import_answered": "أجاب عن سؤال صورة Google"
         },
         "org": {
           "created": "إنشاء المؤسسة",
@@ -588,7 +589,8 @@
         },
         "photo": {
           "removed": "إزالة صورة",
-          "restored": "استعادة صورة"
+          "restored": "استعادة صورة",
+          "downloaded": "تنزيل صورة"
         },
         "points": {
           "balance_divergence": "اختلاف في رصيد النقاط",
@@ -627,6 +629,10 @@
         },
         "notify": {
           "test_email_sent": "أُرسلت رسالة اختبار"
+        },
+        "photo_album": {
+          "requested": "طلب ملف صور جلسة",
+          "downloaded": "تنزيل ملف صور جلسة"
         }
       },
       "domains": {
@@ -669,7 +675,8 @@
         "photo": "صورة",
         "points_ledger": "قيد نقاط",
         "session": "جلسة",
-        "template": "قالب"
+        "template": "قالب",
+        "photo_album": "ملف صور جلسة"
       }
     },
     "settings": {

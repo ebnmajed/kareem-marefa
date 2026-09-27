@@ -210,8 +210,18 @@ it is ready; the audit row is written by the request that enqueued it, not by th
 **Key:** `zipphotos:{session_id}` · **Retry:** 3 × 60 s · **Queue:** `convert`
 **Notes:** ★ **this is a job precisely because it cannot be a request** — an album of 300 photographs
 would block a Vercel function past its limit. It zips the **EXIF-stripped** objects, which are the
-only ones that exist (`REQ-EVT-012`). The zip is short-lived and expires on the retention schedule;
+only ones a row points at (`REQ-EVT-011`, corrected by `DEC-182`; the set is read from `photos` rows and each object is checked against its `sha256`). The zip is short-lived and expires on the retention schedule;
 a re-request re-enqueues under the same key, which moves the job rather than duplicating it.
+
+#### `JOB-import_avatar` ★ the thirty-sixth job
+**Serves:** `REQ-PRF-008` (the import half), `REQ-PRF-009`, DEC-099, DEC-180 · **Trigger:** a member's «نعم»
+to «نستخدم صورتك من Google؟», and a sign-in that changes Google's source URL for a member who said yes
+**Out:** the member's picture in platform storage under the org's prefix — EXIF-stripped, 96 px and
+192 px WebP — and the row pointing at it
+**Key:** `avatar:{member_id}` · **Retry:** 3 × 60 s · **Queue:** `convert`
+**Notes:** ★ it fetches from **Google's image host only**, with a byte cap, and sniffs the bytes before
+anything is stored; a failure leaves initials, never a broken frame. `members.avatar_url` stays the
+source and is never rendered. Named provisionally; `platform`'s plan confirms the name at sync 1.
 
 #### `JOB-transcode_audio` · `JOB-cleanup_rejected`
 **Keys:** `audio:{version_id}` · `cleanup:{date}`

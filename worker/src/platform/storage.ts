@@ -95,5 +95,11 @@ export const BUCKETS: { name: string; orgPrefixed: boolean }[] = [
   { name: "photos", orgPrefixed: true },
   { name: "design-assets", orgPrefixed: true },
   { name: "exports", orgPrefixed: true },
+  // ★ Wave 14 (DEC-182): both join the day their buckets exist, so the nightly
+  // assertion and `delete_org` cover them with no edit of their own. Before
+  // `0156`/`0157` each answers «Bucket not found», which both jobs already
+  // treat as a fact about the environment, not a violation.
+  { name: "photo-albums", orgPrefixed: true },
+  { name: "avatars", orgPrefixed: true },
   { name: "fonts", orgPrefixed: false },
 ];

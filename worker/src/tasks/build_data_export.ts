@@ -1,4 +1,6 @@
 import type { Task } from "graphile-worker";
+import { avatarPath } from "@kareem/storage-paths";
+import { downloadObject } from "../content/storage.js";
 
 // JOB-build_data_export (11 §2.7, REQ-PRF-006, REQ-NFR-013). On request, key
 // `export:{member_id}:{requested_at}`.
@@ -53,10 +55,16 @@ export const build_data_export: Task = async (payload, helpers) => {
   ]);
 
   try {
-    const { rows } = await helpers.query<{ payload: unknown }>(`select public.build_data_export_payload($1) as payload`, [
+    const { rows } = await helpers.query<{ payload: Record<string, unknown> }>(`select public.build_data_export_payload($1) as payload`, [
       member_id,
     ]);
-    await helpers.query(`select public.record_data_export($1, $2::jsonb)`, [request_id, JSON.stringify(rows[0].payload)]);
+    const payload = rows[0].payload;
+    // REQ-PRF-011: «an export archive for a member with a picture contains it».
+    // Appended here, not in SQL, because the bytes live in Storage — and the
+    // SQL payload's own keys stay exactly as they were.
+    const avatar = await exportAvatar(helpers, member_id);
+    if (avatar) payload.avatar = avatar;
+    await helpers.query(`select public.record_data_export($1, $2::jsonb)`, [request_id, JSON.stringify(payload)]);
     helpers.logger.info(`build_data_export: request ${request_id} is ready`);
   } catch (error) {
     const message = (error as Error).message;
@@ -77,4 +85,28 @@ export const build_data_export: Task = async (payload, helpers) => {
 export function isSubjectGone(error: unknown): boolean {
   const message = (error as Error | undefined)?.message ?? "";
   return /\b(member|request)_not_found\b/.test(message);
+}
+
+/**
+ * The member's picture as the archive carries it — OUR 192 px copy, inline, or
+ * nothing (DEC-182). ★ Never `members.avatar_url`: that is Google's URL, and the
+ * archive is a response like any other — it carries no Google image URL.
+ * `avatar_job_target()` is the one door that reads the version; a download
+ * failure is thrown, so the job retries rather than shipping an archive that
+ * silently lacks the picture.
+ */
+export async function exportAvatar(
+  helpers: Parameters<Task>[1],
+  memberId: string,
+  download: typeof downloadObject = downloadObject,
+): Promise<{ content_type: "image/webp"; size: 192; data_base64: string } | null> {
+  const { rows } = await helpers.query<{ target: { org_id: string; answer: string | null; version: number | string | null; anonymised: boolean } | null }>(
+    `select public.avatar_job_target($1) as target`,
+    [memberId],
+  );
+  const target = rows[0]?.target;
+  if (!target || target.anonymised || target.answer !== "accepted" || target.version === null) return null;
+  const location = avatarPath(target.org_id, memberId, String(target.version), 192);
+  const bytes = await download(location.bucket, location.path);
+  return { content_type: "image/webp", size: 192, data_base64: Buffer.from(bytes).toString("base64") };
 }

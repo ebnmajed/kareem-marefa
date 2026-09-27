@@ -3782,3 +3782,469 @@ while fixing its two `ui-lint` violations to recognise the shape:
 | `/app/me/privacy` | `privacy.page.deactivateHonest` | The whole reason there is no self-service "delete my account" — a member reading only the button labels («تصدير», «إلغاء التفعيل») would not know deletion is deliberately unavailable, or why (anonymisation instead, to protect content other members depend on) | A short inline note beside the deactivation button, or a `Tooltip`/disclosure triggered from a "لماذا لا يمكنني حذف حسابي؟" link, carrying the same explanation without it having to be read start-to-front before the member understands what pressing the button will and will not do | `content`, wave 11 C1 |
 
 More rows land here as C2's routed findings arrive.
+
+---
+
+## Wave 14 plan
+
+`DEC-180`, `DEC-181`, `DEC-093`, `DEC-099`, `DEC-177`, `DEC-178`, `CLAUDE.md` § *Ownership map (wave 14)*,
+`.claude/agents/content.md`, `STATUS.md`'s wave-14 block and `platform`'s draft W14.4 (contract 4) read. Measured on
+`4ee7318`. **Planning only — no code, no test, no SQL until sync 1.** Rows: P1 (lightbox), P2 (the crop), P3 (one
+photograph), P4 (the album), P5 (the comment's avatar).
+
+### W14.0 Where the brief and the tree disagree — each checked against the file
+
+1. ★ **`0155` is taken.** `STATUS.md`'s header and the agent file say «migrations from `0155`»; `0155` is
+   `0155_comments_broadcast_no_hotlink.sql` (`92953c8`, L0). This wave's SQL starts at **`0156`**.
+2. ★ **«Writes one zip» cannot hold under the Storage upload limit.** `supabase/config.toml:121` sets
+   `file_size_limit = "50MiB"` locally, and 50 MB is also Supabase's default global limit. A phone photograph is
+   2–6 MB, and the org limit is 20 MB by default (`photos.ts:142`). So an album of 20 photographs can already pass
+   50 MB, and `11` §2.4's 300 is about 1 GB. The worker's `uploadObject()` (`worker/src/content/storage.ts:39`) is
+   one `POST` of the whole body. **Proposal: the album is written in self-contained parts, each at most a cap**
+   (45 MiB by default, env `PHOTO_ALBUM_PART_BYTES`). A session under the cap gets one zip, as the brief says. Each
+   part is a complete zip that opens on a phone on its own. A split archive (`zip -s`) is rejected, because
+   `.z01`/`.z02` need every piece to extract. → **Q1** (production's limit).
+3. ★ **«It zips the EXIF-stripped objects, which are the only ones that exist» (`11` §2.4, and `REQ-ADM-021`'s
+   second acceptance) is false for a window.** The browser's raw `PUT` lands at the same path **before**
+   `process_photo` strips it, and there is no row yet (`0050`'s header, `photos.ts:18-29`). So the job **never lists
+   the bucket**. It reads the visible set from `photos` rows (`check (exif_stripped)`, `0037:169`). It also checks
+   each downloaded object's SHA-256 against the row's `sha256`, which `process_photo.ts:85` computed over the
+   stripped bytes. A mismatch fails the job. Both texts also cite `REQ-EVT-012` for the strip; the strip is
+   `REQ-EVT-011`.
+4. **`11` §2.4 says `JOB-process_photo` «re-encodes WebP, variants». It does neither** (`process_photo.ts:83-84`
+   writes back the same kind; `DEC-047` deferred re-encoding). **No thumbnail exists.** The grid draws full
+   originals as 160 px tiles (`gallery.tsx:157`), and so will the lightbox. This is not this wave's job, and it is
+   named for the lead → **Q10**.
+5. ★ **`REQ-EVT-015` is not the photos' live path.** It covers comments, reactions and counts. A photo's liveness is
+   `REQ-EVT-010`'s last acceptance: `0091_photos_broadcast.sql` broadcasts an `INSERT`, and **only the uploader's own
+   widget** listens (`upload-widget.tsx:101`), then calls `router.refresh()`. A hide is broadcast to no one. So the
+   lightbox's «live update» means **new server props after a `router.refresh()`**: your own upload landing, or a
+   takedown or restore action revalidating. The lightbox reconciles those by photo id (P1 below).
+6. ★ **Contract 1's refusal parameter collides with the poster's.** `?download=failed` is exactly what
+   `sessions`' `DownloadFailedNotice` fires on (`components/sessions/download-failed-notice.tsx:11`), beside the
+   poster control. A refused photo download would then be announced under the poster. **Proposal:**
+   `?download=photo_failed` and `?download=album_failed`. The poster notice compares `=== "failed"` and stays
+   silent, and my own notice sits beside the control that was pressed → **Q4**.
+7. **Contract 1 names two audit definers, and contract 3 fixes three actions.** The album's download returns a path.
+   The request returns a build. I name **three** functions below, one per action, with the same authority rule for
+   the two album ones → **Q5**.
+8. ★ **A removed photograph's object is still readable by staff.** `photos_storage_read` (`0037:646`) checks
+   `hidden_at is null or is_staff()` and **no `removed_at`**. `remove_photo()` (`0059:62`) also sets `hidden_at`, so a
+   member is refused, but staff can still sign a removed photo's object. My definers refuse `removed_at is not null`
+   for everyone. **Recommended to the lead:** add `and p.removed_at is null` to the policy in `0156`. It is a
+   one-conjunct tightening, and nothing in the product reads a removed photo.
+9. **The staff grid shows hidden photos, and `REQ-EVT-016` says the lightbox never does.** So a hidden tile
+   (`gallery.tsx:159`, the «مخفية» badge) **is not a lightbox trigger**. It stays exactly as it renders today →
+   **Q2**.
+10. ★ **`/app/me` still ships Google's URL to a browser** — already found by `platform` (their W14.0 §1), confirmed
+    here: `me/page.tsx:44` hands `getMe()`'s whole `SelfProfile` (`members.ts:44`, `avatarUrl: m.avatar_url`) to the
+    `"use client"` `ProfileForm`. The fix is the lead's line in `members.ts` (L2). If the lead would rather not wait
+    for L2, my fixes-only file can narrow the prop in one line (`me={{ ...me, avatarUrl: null }}`). It is one or
+    the other, not both.
+11. **There is no zip writer in the image.** `docker run kareem-worker:latest` → `zip`, `bsdtar`, `python3` and `7z`
+    are all absent. `node` is `v22.23.2`, and `zlib.crc32` exists.
+
+### P1 — the lightbox (`REQ-EVT-016`, `DEC-093`'s sixth place)
+
+**Structure.** `gallery.tsx` stays a Server Component. A new `src/components/photos/lightbox.tsx`
+(`"use client"`) exports two pieces:
+- `PhotoLightbox({ photos, labels, children })` — a context provider wrapping the slot's whole output, both the
+  flat branch and the grouped one. `photos` is the **visible** sequence only (`hiddenAt === null`), in display
+  order, across all day groups: one album with one «3 من 12», never numbering that restarts per group → **Q11**.
+  Each entry is `{ id, url, width, height }`. Server children pass through as `children`, never a closure
+  (`DEC-159`).
+- `LightboxTile({ photoId, children })` — a `<button type="button" aria-haspopup="dialog" aria-label="افتح الصورة 3
+  من 12">` around the existing `<img>`. The tile keeps its one `<li>`, its `<img src>` and its `alt=""` — the
+  button carries the name. A hidden tile renders its `<img>` bare, as today.
+
+**The dialog**, on the lead's `ui/dialog` (`Dialog` + `DialogContent`), **controlled** (`open`/`onOpenChange`), with
+no `DialogTrigger`:
+- Top bar: the title «صور الجلسة», the position «<bdi>3</bdi> من <bdi>12</bdi>» (`formatNumber`, Western numerals,
+  `DEC-124`), **«تنزيل الصورة»** — a plain `<a href="/api/photos/{id}/download">`, never `<Link>` (nothing
+  prefetches it) and never `download` — and the dialog's close button.
+- The stage: `<img src alt="الصورة 3 من 12" width height class="max-h-full max-w-full object-contain">` — **never
+  cropped**; the DTO's `width`/`height` reserve the box.
+- Bottom bar: **«السابقة» and «التالية», always rendered and always visible**, `ui/icon-button` at `md` (44 px,
+  `SC 2.5.8`), with `ChevronIcon direction` and logical order, so that in RTL «التالية» sits at the inline end.
+  They sit **below** the photograph, never over it, so no part of the frame is covered.
+- **Ends: no wrap.** At the first photo «السابقة» is `aria-disabled="true"` and a no-op, and the same holds for
+  «التالية» at the last — **not `disabled`**. A `disabled` button drops focus to `<body>`, and Radix's `FocusScope`
+  does not pull it back (`relatedTarget === null`). A keyboard user who presses «التالية» onto the last photo would
+  otherwise lose their place.
+- **An `aria-live="polite"` region** (`sr-only`) says «الصورة 3 من 12» on every move.
+- Keys: `ArrowLeft`/`ArrowRight` follow the **visual** axis (`page-viewer.tsx:56-63`'s rule). Escape is Radix's.
+- **The swipe, the enhancement only:** `pointerdown`/`pointerup` on the stage, a horizontal delta over 48 px that
+  also beats the vertical one, `touch-action: pan-y`. In RTL a rightward swipe is «التالية». There is no animation
+  (`DEC-100` is not this wave), and nothing depends on it — the gate never swipes.
+- **«The backdrop closes it».** A full-viewport lightbox has no Radix «outside», so the **letterbox around the
+  photograph** is the backdrop. A click whose target is the stage itself, not the image or a control, closes it.
+- **Focus returns to the tile that opened it.** Radix's modal content calls `preventDefault()` and focuses
+  `triggerRef` in `onCloseAutoFocus` (`@radix-ui/react-dialog` 1.1.23, `dist/index.mjs:154-157`). With no trigger,
+  that ref is null and focus falls to `<body>`. So the lightbox passes its own `onCloseAutoFocus`, which calls
+  `preventDefault()` and focuses the ref of the tile it opened from. `DialogContent` already spreads `...props`, so
+  **this needs no change to `ui/dialog`.**
+- **Live reconciliation, by id, never by index.** New `photos` props while the dialog is open: if the current id is
+  still there, stay on it and recompute «n من m». If it is gone (hidden for this viewer after a takedown), move to
+  the photo now at the same position, clamped, and announce it. If none are left, close and focus the slot's first
+  focusable element. While the dialog is open, the `src` for an id already shown is **pinned** to the URL it first
+  used, so a `router.refresh()` that re-signs every URL (`photos.ts:174`) does not blank the photograph on screen.
+- No `setTimeout`, no interval, no nudge (`DEC-146`).
+
+**What `ui/dialog` lacks — request R1 to the lead.** `DialogContent`'s class string is a centred card: `inset-x-4
+top-1/2 -translate-y-1/2 max-w-lg p-6 overflow-y-auto rounded-field`, with the body in `mt-5`. Overriding it through
+`className` means fighting Tailwind's emit order on seven properties (the `DEC-111` trap `gallery.tsx:147` already
+had to `!` once). **Request:** `size?: "default" | "media"` on `DialogContent`. `media` means `fixed inset-0`, no
+max width or height, no translate, no card padding and no `overflow-y-auto`, a dark surface token for the
+photograph, and a `flex flex-col` body (`flex-1 min-h-0`). The title row stays: `Title` plus `Close` with its
+`closeLabel`, with colours for the dark surface. ★ **The safe-area insets:** a new fixed full-screen element needs
+`env(safe-area-inset-*)` padding under `viewport-fit=cover`, which is the mobile pass's standing rule. The default
+size is untouched, so every existing dialog renders byte-identically.
+
+### P2 — the grid's crop (`REQ-UIX-026`)
+
+**Deliberate and written down, not focal-aware.** It stays `aspect-square object-cover`, with `object-center`
+explicit. The comment goes where the class is (`gallery.tsx:157`):
+- the grid is an index for finding a photograph, not a place to read one;
+- uniform squares keep a two-column grid at 390 px scannable, where letterboxed mixed portrait and landscape tiles
+  make it ragged;
+- a photograph is not a designed artefact (`REQ-UIX-026`'s own carve-out);
+- **no focal point exists** for a member's photograph. Nobody sets one, and detecting faces to pick one would be a
+  new processing of personal data. So the centre is the honest default;
+- the whole frame is one tap away, and **the lightbox never crops** (`object-contain`).
+
+Focal-aware is rejected: it needs data that does not exist, for a crop the lightbox already undoes.
+
+### P3 — one photograph (`REQ-ADM-021`, contract 1)
+
+`src/app/api/photos/[photoId]/download/route.ts` — `GET`, `runtime = "nodejs"`, `designer`'s route
+(`api/designer/downloads/[artifactId]/route.ts`) as the shape:
+1. Zod: `photoId` is a uuid, or `303` back.
+2. `recordPhotoDownload(locale, photoId)` (my DAL) → `rpc("record_photo_download")` **as the caller**.
+3. It signs **as the caller** with `storage.from("photos").createSignedUrl(path, 60, { download: file_name })`. So
+   `photos_storage_read` is a second, independent gate. The TTL is 60 s — «short-lived» — and the URL is minted in
+   the request, never in page data.
+4. `303` to it, `Cache-Control: no-store`. A refusal or a failure is a `303` to the same-origin Referer, with
+   `?download=photo_failed` and `#photos` (W14.0 §6). An off-origin or missing Referer falls back to `/{locale}/app`,
+   so this is not an open redirect.
+
+The lightbox's link is the only place the route is offered. **A thumbnail is not a download** (`DEC-178`): the grid's
+and the lightbox's `<img src>` stay the one-hour display URLs `getPhotosPageData` signs today.
+
+### ★ The three audit definers the lead lands in `0156` (contracts 1 and 3)
+
+All three follow `0152`'s shape: `language plpgsql security definer set search_path = ''`, `revoke all … from
+public, anon`, `grant execute … to authenticated`. They are covered by `definer-exposure.test.ts` as generated.
+**`42501 not_authorized` is the one answer for every refusal**, raised **before any write** (`DEC-043`), and it
+carries the same text whether the id is unknown, in another org, or not allowed, so none is an existence oracle.
+The route turns `42501` into `?download=…_failed`.
+
+**1 · `public.record_photo_download(p_photo uuid) returns table (storage_path text, file_name text)`**
+- *Admits:* a photo with `org_id = auth_org_id()`, `hidden_at is null` and `removed_at is null` — what
+  `photos_read` shows a plain member. **Any role may call it; staff get no wider branch.** A hidden photo is one
+  someone asked to be removed from (`REQ-EVT-012`), and taking a copy of it is exactly the harm the hide prevents
+  → **Q3**.
+- *Writes:* `write_audit(org, 'photo.downloaded', 'photo', p_photo, null, jsonb_build_object('session_id', …,
+  'session_day_id', …), null, null, auth_member_id())` — the actor, the session and what was taken.
+- *Returns:* the path and `file_name` = `photo-<YYYYMMDD>-<first 8 hex of the id>.<ext>`, where the date is the
+  session's start in its own zone. The name is ASCII with Western digits (`DEC-095`, `0152`'s precedent), and «named
+  for the session» → **Q6**.
+
+**2 · `public.request_photo_album(p_session uuid) returns table (album_id uuid, build_id uuid)`**
+- *Admits:* `is_staff()`, with the session in `auth_org_id()`. Everyone else — a presenter, a member, another org,
+  an unknown session — gets `42501`. **Zero visible photographs:** `raise 'album_empty' using errcode = 'P0002'`,
+  also before any write.
+- *Writes, in order:* upserts `photo_albums` on `session_id` (`status = 'queued'`, a **new** `build_id =
+  gen_random_uuid()`, `requested_by`, `requested_at = now()`, built fields and `error` cleared) ·
+  `write_audit(org, 'photo_album.requested', 'photo_album', album_id, null, jsonb_build_object('session_id', …,
+  'build_id', …, 'visible_count', …), null, null, auth_member_id())` ·
+  `enqueue_job('zip_session_photos', jsonb_build_object('album_id', …, 'build_id', …, 'session_id', …, 'org_id',
+  …), 'zipphotos:' || p_session, null, 'convert', 3)` — `11` §2.4's key, queue and three attempts.
+- A repeat request replaces the queued job under the same key (`0025`, `job_key_mode => 'replace'`). A job already
+  running on the old `build_id` finishes and is refused at its last step (below), so two builds never both land.
+- *Returns* at once, before any byte is read.
+
+**3 · `public.record_photo_album_download(p_session uuid, p_part int default 1) returns table (storage_path text,
+file_name text)`**
+- *Admits:* `is_staff()`, the session in `auth_org_id()`, the album `status = 'ready'`, `expires_at > now()`, and
+  `1 ≤ p_part ≤ jsonb_array_length(parts)`. Everything else is `42501`, including stale, failed, building, expired
+  and none.
+- *Writes:* `write_audit(org, 'photo_album.downloaded', 'photo_album', album_id, null, jsonb_build_object(
+  'session_id', …, 'build_id', …, 'part', p_part, 'parts', …, 'photo_count', …), null, null, auth_member_id())`.
+- *Returns:* that part's path, and `photos-<YYYYMMDD>.zip`, or `photos-<YYYYMMDD>-part-<n>-of-<m>.zip`.
+
+### P4 — the album (`REQ-ADM-021`, contract 2) — its state, **named, never written**
+
+**A table, because «ready» must read the same after a reload** and a notification is not a state.
+`public.photo_albums` — one row per session:
+
+| Column | Type | Note |
+|---|---|---|
+| `id` | `uuid` pk `default gen_random_uuid()` | |
+| `org_id` | `uuid not null` → `orgs` `on delete cascade` | invariant 5 |
+| `session_id` | `uuid not null unique` → `sessions` `on delete cascade` | one album per session |
+| `build_id` | `uuid not null` | replaced on every request; **segment 5 of the object path** |
+| `status` | `public.photo_album_status not null default 'queued'` | a new enum: `queued` · `building` · `ready` · `failed` · `stale` |
+| `requested_by` | `uuid not null` → `members` | the notification's recipient |
+| `requested_at` | `timestamptz not null default now()` | |
+| `built_at` · `expires_at` | `timestamptz` | `expires_at = built_at + 7 days` → **Q7** |
+| `photo_count` | `int check (photo_count >= 0)` | |
+| `byte_size` | `bigint check (byte_size > 0)` | the sum of the parts |
+| `parts` | `jsonb not null default '[]'` `check (jsonb_typeof(parts) = 'array')` | `[{ "path", "byteSize", "photoCount" }]` |
+| `error` | `text` | |
+| check | `status <> 'ready' or (built_at is not null and expires_at is not null and jsonb_array_length(parts) > 0)` | `0069:259`'s pattern |
+
+- **RLS:** enabled; `revoke all … from anon, authenticated, service_role` (the house pattern); **one** policy,
+  `photo_albums_read_staff` `for select to authenticated using (org_id = auth_org_id() and is_staff())`, with
+  `grant select … to authenticated`. There is no insert, update or delete for any client role: the definers are the
+  only writers, which is `photos`' shape. The generated isolation sweep covers it the day it exists.
+- **Bucket:** `photo-albums`, private, `allowed_mime_types = '{application/zip}'`.
+- **Path, through the one builder** — `packages/storage-paths/src/content.ts`, which is mine:
+  `photoAlbumPartPath(orgId, sessionId, buildId, part)` →
+  `{org_id}/sessions/{session_id}/albums/{build_id}/part-{n}.zip`, and `photoAlbumPrefix(orgId, sessionId)` for the
+  job's cleanup listing. Both are re-exported by `index.ts`'s existing `export * from "./content.js"`, so **no
+  edit to `index.ts`** (the lead's this wave). No day ever appears in the path.
+- **Read policy, `photo_albums_storage_read`** (`for select to authenticated`): `bucket_id = 'photo-albums' and
+  (storage.foldername(name))[1] = auth_org_id()::text and is_staff() and exists (select 1 from photo_albums a where
+  a.session_id = nullif((storage.foldername(name))[3], '')::uuid and a.org_id = auth_org_id() and a.build_id =
+  nullif((storage.foldername(name))[5], '')::uuid and a.status = 'ready' and a.expires_at > now())`. **A stale,
+  superseded or expired build is unreadable to every client role** even with its path in hand. There is no insert
+  policy, because only the worker writes (`exports`' shape).
+- ★ **The nightly prefix assertion** must learn the bucket. `BUCKETS` is `platform`'s
+  (`worker/src/platform/storage.ts:92`) → request **R5**: `{ name: "photo-albums", orgPrefixed: true }`.
+
+**Behaviour, mine, proposed under `supabase/proposed/content/`** once the lead's table exists. All three functions
+are `service_role` only (`revoke … from public, anon, authenticated`), and the trigger is `security definer`:
+- `begin_photo_album_build(p_build uuid) returns table (photo_id uuid, storage_path text, byte_size bigint, sha256
+  text)` — **no rows** if `p_build` is no longer the row's `build_id`, and the job then returns quietly. Otherwise
+  it sets `building` and returns **the visible set at build time**: `hidden_at is null and removed_at is null`,
+  ordered `(created_at, id)`. It is an order for naming entries, never a «last row» read.
+- `record_photo_album_built(p_build uuid, p_parts jsonb, p_photo_ids uuid[]) returns text` — `'ready'` ·
+  `'superseded'` · `'stale'`. It locks the album row **first** (`for update`), then re-checks that every one of
+  `p_photo_ids` is **still** visible. A hide that committed during the build makes it return `'stale'`, and the job
+  throws so the retry rebuilds without that photograph. On `ready` it calls `notify(org, requested_by,
+  'admin_queue', {session_id, photo_count, parts}, 'MSG-photo_album_ready')` and enqueues the expiry
+  (`'zipphotos-expire:' || session`, `run_at = expires_at`).
+- `fail_photo_album(p_build uuid, p_error text)` — called on the **last** attempt only
+  (`helpers.job.attempts >= helpers.job.max_attempts`), `build_data_export.ts`'s shape.
+- ★ **`photo_albums_stale()`**, `AFTER UPDATE OF hidden_at, removed_at` and `AFTER DELETE` on `photos`: when a
+  photo leaves the visible set, its session's `ready` album becomes `stale`. **A «remove photos of me» must reach a
+  zip that already holds the photo.** Its row lock and the one in `record_photo_album_built()` serialise, so every
+  interleaving ends `stale`. It is `security definer` because a member's takedown reaches it through
+  `photo_takedowns_hide()`, and it **never raises**: it sits on the takedown path, which is `REQ-EVT-012`'s
+  «instant». It is tested **as a member** (the house rule for a trigger that writes). A new upload or a restore
+  leaves a ready album ready; the page offers «جهّزه من جديد» when the counts differ.
+
+**`worker/src/tasks/zip_session_photos.ts`** (new; its registration in `worker/src/index.ts` is the lead's):
+1. Validate the payload, then `begin_photo_album_build(build_id)`. No rows → return (superseded).
+2. Split the rows into parts by cumulative `byte_size` ≤ the cap. A single photo over the cap is a part of its own.
+3. For each part, in `withTempDir()` (`pdf.ts:50`): `downloadObject("photos", path)` → **SHA-256 must equal the
+   row's** → write `NNN-<8 hex>.<ext>` → `zip -q -X -0 -j part.zip <files…>` → `uploadObject("photo-albums",
+   photoAlbumPartPath(…), bytes, "application/zip")`. Only one part is on disk at a time, so disk and memory are
+   bounded at about twice the cap.
+4. `record_photo_album_built(…)`: `'stale'` → throw (retry); `'superseded'` → return; `'ready'` → delete every
+   object under `photoAlbumPrefix()` not in this build (`listObjects` + `deleteObject`, added to my
+   `worker/src/content/storage.ts`).
+5. The `{ mode: "expire" }` payload deletes that build's objects if it is still the current one, and marks nothing
+   ready.
+
+`queue: 'convert'` — **no job uses that queue today** (`convert_document` and `process_photo` enqueue with none,
+`0046:99`, `0050:97`). A named queue runs one job at a time, so zips serialise **against each other only**, which
+is what bounds disk. They never delay a photo's strip.
+
+**The zip binary — request R4.** Debian bookworm's **`zip` 3.0-13+deb12u1**: Info-ZIP's licence (BSD-style),
+**798 KB installed**, and it depends only on `libbz2-1.0` and `libc6`. Measured in `node:22-slim` with `apt-cache
+show`. It is one word on `worker/Dockerfile`'s `apt-get install` line. It is called with `execFile`, never a shell,
+on a 60 s-per-part timeout, and `ENOENT` says «worker/Dockerfile installs zip» (`pdf.ts:36`'s shape). The flags:
+`-0` stores without compressing (JPEG, PNG and WebP are already compressed, and CPU is the scarce thing), `-X` drops
+uid/gid and extended attributes, `-j` drops the temp directory, and `-q` keeps it quiet. **No npm package** (`DEC-181`
+§4). *Recorded, not proposed:* Node 22.23 has `zlib.crc32`, so a stored zip could be written in about 80 lines with
+no dependency at all. The owner ruled a binary, and a binary is less code of ours to be wrong.
+
+**«Ready» on the page, the same after a reload** — `src/components/photos/album-control.tsx`, a Server Component in
+the slot's **first row** (beside the count line in the flat branch; above the groups in the grouped one), **staff
+only**. There is no `<h2>` of its own, because the section heading is the page's:
+
+| State | What it says | Control |
+|---|---|---|
+| none / expired, visible > 0 | — | **«تنزيل الكل»** — `<form method="post" action="/api/photos/albums/{id}">` |
+| `queued` · `building` | «نُجهّز ملف الصور. سيصلك إشعار حين يجهز، ويبقى رابطه هنا.» (`role="status"`) | none; no spinner, no timer |
+| `ready` | «ملف الصور جاهز — <bdi>12</bdi> صورة · <bdi>48</bdi> م.ب · متاح حتى <bdi>3 أكتوبر</bdi>» | «تنزيل الملف», or «الجزء 1 من 3» … one `<a>` per part to `…/download?part=n` · «جهّزه من جديد» when the visible count ≠ `photo_count` |
+| `stale` | «تغيّرت الصور بعد تجهيز الملف، فلم يعد متاحًا.» | «جهّزه من جديد» |
+| `failed` | «تعذّر تجهيز الملف.» | «حاول مرة أخرى» |
+
+The count uses all six forms: `{count, plural, zero {لا صور} one {صورة واحدة} two {صورتان} few {{value} صور} many
+{{value} صورة} other {{value} صورة}}`. The state comes from `getPhotosPageData()` — the same `cache()`d read — as a
+new **optional** `album` field that is `null` for non-staff. It is optional because `gallery.test.tsx:14` mocks the
+module with `getPhotosPageData` alone, and a second DAL function would be `undefined` there.
+
+**The two album routes:**
+- `POST /api/photos/albums/[sessionId]` — Zod uuid · `Origin` must equal the host (a Route Handler has no Server
+  Action origin check; the auth cookies' `SameSite=Lax` is the second line) · `request_photo_album` · `303` to the
+  Referer `#photos`. It works with no JS; the page then reads `queued` from the data. `album_empty` and `42501` →
+  `?download=album_failed`.
+- `GET /api/photos/albums/[sessionId]/download?part=n` — `record_photo_album_download` · signs as the caller
+  (`photo-albums`, 60 s, `download: file_name`) · `303`. A refusal → `?download=album_failed#photos`.
+
+**The notification — request R3: a new key, `MSG-photo_album_ready`**, category `admin_queue`, **in-app only**
+(`in_app true, email false`, optional `true`), payload `{ session_id, photo_count, parts }`. The inbox already links
+any row carrying `session_id` to the session (`notification-list.tsx:149-150`), which is where the ready row is.
+In-app only means no mail design, so `notify`'s 25 designed email keys are unmoved. The inbox strings are
+«ملف صور الجلسة جاهز للتنزيل» and «Session photos are ready to download», in `notifications.json` (the lead's as
+custodian). It moves `tests/rls/notify-contract.test.ts:96` (`toHaveLength(39)` → 40), which is a ledger line of the
+lead's. **`MSG-export_ready` is not reused** — it is the member's own data export under `account`, and its copy says
+so.
+
+### P5 — the comment's avatar (contract 4)
+
+The hotlink is closed (`92953c8`, `0155`). This row puts **our** copy back, on `platform`'s W14.4 as drafted:
+- `comments.ts:~118,126` — embed `author:members(id, display_name, avatar_version)` and set `avatarUrl:
+  avatarHref({ id, avatarVersion })`. The DTO's name and type are unchanged, so the four component tests' fixtures
+  (`avatarUrl: null`) still type-check.
+- **The realtime payload never carries a URL again, not even ours.** `authorAvatarUrl` stays `null` for `main`'s
+  client. A new `authorAvatarVersion` (an integer or null) is appended. I propose `comments_broadcast()`'s
+  re-creation under `supabase/proposed/content/`, dropped and re-created in one file, and the lead promotes it.
+  `comment-list.tsx:43` calls `avatarHref({ id: payload.authorId, avatarVersion: payload.authorAvatarVersion })`.
+  An absent key — `main`'s SQL during the gap — reads as `null`, which means initials. `comments-no-hotlink.test.ts`
+  (the lead's) stays green unmodified, because its two assertions still hold.
+- **What I need from `platform`:** `avatarHref` as a **pure** module, as their W14.4 already says, so the client
+  list can import it, and the name and type committed in their note.
+
+### Files, one by one
+
+| File | Change | Row |
+|---|---|---|
+| `src/components/photos/gallery.tsx` | tiles → `LightboxTile`; `PhotoLightbox` around both branches; the crop comment; `AlbumControl` and the notice in the first row | P1 P2 P4 |
+| `src/components/photos/lightbox.tsx` (new) | provider, tile, dialog, keys, swipe, live reconciliation | P1 |
+| `src/components/photos/album-control.tsx` (new) | the five states | P4 |
+| `src/components/photos/download-notice.tsx` (new, client) | `?download=photo_failed \| album_failed`, `role="alert"` beside the slot | P3 P4 |
+| `src/lib/dal/photos.ts` | select `width, height`; optional `PhotoSummary.width/height`; optional `PhotosPageData.album`; `recordPhotoDownload`, `requestPhotoAlbum`, `recordPhotoAlbumDownload` | P1 P3 P4 |
+| `src/app/api/photos/[photoId]/download/route.ts` (new) | `GET` | P3 |
+| `src/app/api/photos/albums/[sessionId]/route.ts` (new) | `POST` | P4 |
+| `src/app/api/photos/albums/[sessionId]/download/route.ts` (new) | `GET ?part=` | P4 |
+| `packages/storage-paths/src/content.ts` | `photoAlbumPartPath`, `photoAlbumPrefix` | P4 |
+| `worker/src/tasks/zip_session_photos.ts` (new) | the job | P4 |
+| `worker/src/content/zip.ts` (new) · `worker/src/content/storage.ts` | the `zip` call · `listObjects` | P4 |
+| `supabase/proposed/content/0156-album-build.sql` (lead renumbers) | three service definers and the trigger | P4 |
+| `supabase/proposed/content/0157-comments-broadcast-avatar-version.sql` | `comments_broadcast()` + `authorAvatarVersion` | P5 |
+| `src/lib/dal/comments.ts` · `src/components/event/comment-list.tsx` | `avatarHref` | P5 |
+| `src/messages/{ar,en}/photos.json` | `photos.lightbox.*`, `photos.album.*`, `photos.download.*` — Arabic first | P1 P3 P4 |
+
+**New tests** (existing files are evidence and are not edited): `tests/components/photos/lightbox.test.tsx` (the
+opening tile, focus back to it after moves, the ends `aria-disabled`, keys by direction, «3 من 12» and the live
+text, hidden photos absent, a prop update that removes the current photo, a swipe in RTL and LTR, axe) ·
+`tests/components/photos/album-control.test.tsx` (each state; a member sees none) ·
+`tests/unit/photos-download-routes.test.ts` (uuid, refusal → Referer `?download=photo_failed#photos`, off-origin
+Referer, `Origin` on the `POST`) · `tests/unit/photos-album-parts.test.ts` (partitioning, names, `zip`'s argv,
+`ENOENT`) · `tests/unit/storage-paths-album.test.ts` · `tests/rls/photos-album-build.test.ts` (`applyProposed`:
+superseded, stale mid-build, the trigger **as a member** through a takedown, `service_role`-only grants) ·
+`tests/e2e/wave14-content-lightbox.spec.ts` — ★ **the `SC 2.5.7` gate**: open the first photo, «التالية» through
+every one and «السابقة» back, `page.click()` alone and no `mouse.down/move/up`, asserting the displayed `img`'s
+`src` names a different photo id each time and the position text says so; Escape closes and focus is back on that
+tile; a 390 px capture · `tests/e2e/wave14-content-photo-download.spec.ts` (the link is a route; `303` to a signed
+URL with `content-disposition: attachment`; a hidden photo's route bounces back) ·
+`tests/e2e/wave14-content-album.spec.ts` — ★ **M4 with the real worker**, which the lead runs: «تنزيل الكل» returns
+in under 2 s with «نُجهّز» on the page; the worker builds; a reload shows «جاهز»; the bell has the row; the zip is
+fetched through the route and **parsed in Node** (a stored zip is about 30 lines: EOCD, the central directory, local
+headers — no `unzip` needed). Its entry count equals the visible photos, **each entry's SHA-256 equals its row's**,
+the hidden photo is absent, and there is no EXIF marker in any entry. The rows that prove `record_*` refuses and
+audits are the lead's `tests/rls/photo-downloads*.test.ts`.
+
+**Captures:** `.qa-shots/rtl/wave14-content-{gallery-grid,lightbox-open,lightbox-last,album-building,album-ready}.png`.
+
+### Existing tests whose expectations move — predicted: none
+
+Each is named with the reason it holds. If any one moves, it becomes a ledger line in the same commit.
+- `tests/components/photos/gallery.test.tsx:59` (`toBeEmptyDOMElement`) — the `null` return is unchanged.
+  `:76`, `:88` and `:98-99` count buttons **by name** only; the new tile buttons are named «افتح الصورة …».
+  `:109` (axe) — each new button has a name. `:14` mocks only `getPhotosPageData`, which is why `album` is an
+  optional field of that one read.
+- `tests/components/photos/gallery-grouping.test.tsx:63` (`getAllByRole("listitem")` ×2) — one `<li>` per tile,
+  unchanged. `:76` (three `menuitem`s) — the rescope chip is untouched.
+- `tests/e2e/photos.spec.ts:206`, `:269` and `wave9-content-photo-worker.spec.ts:161`, `:176` count **`page.locator
+  ("img")`** across the whole page. They hold because Radix unmounts closed content, so a closed lightbox renders
+  no `img`. ★ **Risk, named:** P5 draws an `<img>` for a comment author with an imported copy. No fixture member has
+  one, and if one ever did, `:176`'s strict `toBeVisible()` would see two images.
+- `wave9-content-days.spec.ts:328`, `:335` and `:337` filter `li` by `img[src*="/photos/<id>.jpg"]` — the tile's
+  `src` is unchanged.
+- `wave10-content-photos-takedown.spec.ts:140` — its name is `exact`, so it is untouched.
+- `tests/components/event/{comment-list,comments,comment-item}.test.tsx` — fixtures carry `avatarUrl: null`, and the
+  type is unchanged.
+- **Not mine, and it moves:** `tests/rls/notify-contract.test.ts:96` (39 → 40) with R3 — the lead's line.
+
+### What `main`'s worker does in the gap
+
+- **The schema first (`0156`+) with `main`'s app and worker:** nothing in `main` enqueues `zip_session_photos` or
+  calls the new definers. The only live change is the `photos` trigger. `main`'s hides, removals and deletes fire
+  it, it updates zero rows (no album exists), and it never raises — the takedown path is untouched. The
+  `comments_broadcast()` re-creation keeps `authorAvatarUrl: null`, so `main`'s `comment-list.tsx` (which ignores
+  it) is unchanged. `process_photo` is not changed at all.
+- **After the merge, before Railway is reconnected by hand** (eight merges running): Vercel serves «تنزيل الكل»
+  and the job waits in `graphile_worker._private_jobs`, because 0.18's `getJobs` fetches only the tasks a worker
+  registered (`task_id = any($2::int[])`, `dist/sql/getJobs.js:176`). The page honestly says «نُجهّز» until the
+  new worker starts. If the new image lacked `zip`, three attempts fail on `ENOENT`, the row says `failed`, and staff
+  see «حاول مرة أخرى». The lightbox and the per-photo route need no worker at all.
+
+### Requests to the lead
+
+- **R1** `ui/dialog.tsx`: `size="media"` (P1 above), including the safe-area insets.
+- **R2** `0156`: `photo_album_status`, `photo_albums` with its policy and grant, the `photo-albums` bucket and its
+  read policy, the three audit definers above, **and** (recommended) `and p.removed_at is null` in
+  `photos_storage_read`.
+- **R3** `MSG-photo_album_ready` (in-app, `admin_queue`, optional), its two inbox strings, and the `notify-contract`
+  ledger line.
+- **R4** `worker/Dockerfile`: `zip` on the `apt-get` line · register `zip_session_photos` in `worker/src/index.ts` ·
+  optionally `PHOTO_ALBUM_PART_BYTES` on Railway (the default is 45 MiB).
+- **R5** to `platform`: `photo-albums` in `BUCKETS`; `avatarHref` pure and committed.
+- **R6** `04`'s route table: `?part=` on the album download, and the refusal values from W14.0 §6.
+- **R7** `members.ts:44` (L2, or `avatarUrl: null` now) — W14.0 §10.
+
+### Questions for sync 1
+
+- **Q1** What is production's global Storage limit (dashboard → Storage → Settings)? It sets the part cap. «One zip»
+  holds only if the owner raises it, and that is a plan setting.
+- **Q2** Hidden tiles are not lightbox triggers, even for staff — confirmed?
+- **Q3** The per-photo download refuses a hidden photo to staff too — confirmed? (`REQ-ADM-021`'s «any viewer who
+  may see it» against `REQ-EVT-016`'s «never a hidden one».)
+- **Q4** `?download=photo_failed` / `album_failed` rather than `failed`?
+- **Q5** Three definers rather than two?
+- **Q6** ASCII file names by the session's date, or the Arabic title through `filename*`?
+- **Q7** Seven days to expiry, cleaned up by the job's own `expire` mode — or `enforce_retention` (`platform`)?
+- **Q8** The notification is in-app only, under `admin_queue` — agreed?
+- **Q9** «احذف الصور التي أظهر فيها» stays on the tile and is **not** repeated in the lightbox — agreed?
+- **Q10** Tile thumbnails (`cwebp -resize`, a second object per photo) — carried to a later wave?
+- **Q11** One sequence across day groups, rather than one per group — agreed?
+
+**Order after approval:** P2 and the DTO → P1 (logic first; the frame once R1 lands) → P3 (after `0156`) → P4 (after
+R2–R4) → P5 (after `platform`'s commit) → the three specs → captures.
+
+### W14.1 Built after sync 1 (`DEC-182`) — what is done, what is not, and why
+
+| Row | Commit | State |
+|---|---|---|
+| platform's R1 — `ui/avatar` initials under the image | `b45541b` | done; ★ **ledger line** below |
+| P3 + P4 routes, DAL, `AlbumControl`, the notice, the strings | `02c6090` | done — 13 route units, 8 component cases |
+| P1 lightbox + P2 crop, wired into the slot | `29eb962` | done — 11 component cases; the three existing photo suites pass **unmodified** |
+| P4 `JOB-zip_session_photos`, `zip.ts`, `listObjects`, the album paths | `d94a882` | done — 20 units, the real `zip` on this machine, the parts opened and hashed |
+| P4 SQL: `begin`/`record`/`fail_photo_album`, `photo_albums_stale` | `910388c` | proposed as `content/0158_photo_album_build.sql`; `photos-album-build.test.ts` 11/11 with `applyProposed`, the trigger **as a member** |
+| P5 the comment's avatar through `avatarHref` | `9d2e8dc` | done; `0157` already appends `authorAvatarVersion`, so **no SQL of mine** |
+| M1 `wave14-content-lightbox.spec.ts` (the `SC 2.5.7` gate + the per-photo route) | `29eb962` | **written, not run** — it needs a production build of this tree (the lead's) |
+| M4 `wave14-content-album.spec.ts` (real worker, `E2E_WORKER=1`) | `50ad630` | **written, not run** — needs the job's registration in `worker/src/index.ts` and a worker on the new code |
+| Captures `wave14-content-{lightbox-open,lightbox-last,album-building,album-ready}` | — | written by the two specs, so they land when those run |
+
+**Ledger line (to `STATUS.md`, through the lead):**
+
+| File | Assertion | Why |
+|---|---|---|
+| `tests/components/ui/avatar.test.tsx:31-35` | «renders a real image, not initials» — `bdi` **not** in the document → `bdi` present with the initial, and the `img` `absolute` over it | `DEC-182` (`platform`'s R1): the initials are always drawn underneath, so an image that fails falls back to them with no script |
+
+**Deviations from the plan, each small:**
+- The lightbox's `aria-label`, `alt` and live text carry `<bdi>` in the catalogue, as `content-i18n.test.ts` requires, and
+  drop it with `t.markup(…, { bdi: plain })`, as `gallery.tsx`'s rescope label already does.
+- An expired album is dropped in the DAL (`toAlbumState()`), not in the component: `react-hooks/purity` refuses `Date.now()` in render.
+- The lightbox's frame is `size="media"` plus `className="theme-dark"`, so the secondary controls and the focus ring take the dark tokens.
+- `AlbumControl` is synchronous and takes `t` from the slot, like `PhotoGrid`. An async child would not render inside `gallery.test.tsx`'s tree.
+- File names are `0156`'s, and the lead wrote them: `photos-YYYYMMDD[-part-N-of-M].zip`. `DEC-182` Q6 says `album-YYYYMMDD-part-N.zip`, so the ruling and the landed SQL disagree. I changed nothing on my side, because no code of mine reads the name.
+
+**Failures in `npm test` that are not mine** (seen at `29eb962`): `admin-audit-labels.test.ts`, where the three new audit actions
+have no labels in `admin.json`; and `mail-render.test.ts`, where the matrix now has 40 rows against 39. Both come from `0156`'s
+additions, and both are the lead's as custodian.

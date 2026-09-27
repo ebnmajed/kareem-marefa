@@ -70,21 +70,21 @@ export function Avatar({ memberId, displayName, src, size = 40, decorative, clas
   const shared = `inline-flex shrink-0 items-center justify-center overflow-hidden rounded-field font-medium ${DIMENSION[size]} ${className}`;
   const a11y = decorative ? { "aria-hidden": true as const } : { role: "img" as const, "aria-label": displayName ?? undefined };
 
-  if (src) {
-    return (
-      <span className={shared} {...a11y}>
-        {/* A platform-stored, already-derivative WebP — same reasoning as
-            `CardMedia`, not `next/image`: nothing here changes size and the
-            derivative pipeline (M10) already produces the right dimensions. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt="" className="h-full w-full object-cover" />
-      </span>
-    );
-  }
-
+  // ★ The initials are ALWAYS drawn, and the image is laid over them (DEC-182,
+  // `platform`'s R1). An `<img>` whose request fails — an expired version, a
+  // takedown between render and fetch, a 404 from `/api/avatars/…` — paints
+  // nothing at `alt=""`, so the glyph underneath shows through. CSS only: no
+  // `onError`, so this stays a Server Component and needs no hydration.
   return (
-    <span className={`${shared} ${TINTS[tintIndex(memberId)]}`} {...a11y}>
+    <span className={`relative ${shared} ${TINTS[tintIndex(memberId)]}`} {...a11y}>
       <bdi>{initial(displayName)}</bdi>
+      {src ? (
+        // A platform-stored, already-derivative WebP — same reasoning as
+        // `CardMedia`, not `next/image`: nothing here changes size and the
+        // derivative pipeline already produces the right dimensions.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      ) : null}
     </span>
   );
 }

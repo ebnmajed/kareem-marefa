@@ -31,6 +31,34 @@
       "uploadFailed": "تعذّر رفع الصورة. حاول مرة أخرى.",
       "processing": "تتم معالجة الصورة الآن…",
       "requirement": "JPEG أو PNG أو WebP · حتى <bdi>{limitMb}</bdi> ميغابايت"
+    },
+    "lightbox": {
+      "title": "صور الجلسة",
+      "open": "افتح الصورة <bdi>{current}</bdi> من <bdi>{total}</bdi>",
+      "position": "<bdi>{current}</bdi> من <bdi>{total}</bdi>",
+      "announce": "الصورة <bdi>{current}</bdi> من <bdi>{total}</bdi>",
+      "alt": "الصورة <bdi>{current}</bdi> من <bdi>{total}</bdi>",
+      "previous": "الصورة السابقة",
+      "next": "الصورة التالية",
+      "close": "إغلاق",
+      "download": "تنزيل الصورة"
+    },
+    "download": {
+      "photoFailed": "تعذّر تنزيل الصورة. حاول مرة أخرى.",
+      "albumFailed": "تعذّر تنزيل ملف الصور. حاول مرة أخرى."
+    },
+    "album": {
+      "request": "تنزيل الكل",
+      "building": "نُجهّز ملف الصور. سيصلك إشعار حين يجهز، ويبقى رابطه هنا.",
+      "ready": "ملف الصور جاهز: {count, plural, zero {لا صور} one {صورة واحدة} two {صورتان} few {{value} صور} many {{value} صورة} other {{value} صورة}} · <bdi>{size}</bdi>",
+      "expires": "متاح حتى <bdi>{date}</bdi>",
+      "downloadOne": "تنزيل الملف",
+      "downloadPart": "الجزء <bdi>{part}</bdi> من <bdi>{parts}</bdi>",
+      "changed": "تغيّر عدد الصور بعد تجهيز الملف.",
+      "stale": "أُخفيت صورة بعد تجهيز الملف، فلم يعد متاحًا.",
+      "failed": "تعذّر تجهيز ملف الصور.",
+      "rebuild": "جهّزه من جديد",
+      "retry": "حاول مرة أخرى"
     }
   }
 }

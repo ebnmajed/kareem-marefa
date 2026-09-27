@@ -83,7 +83,7 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 
 
 #### STORY-PRF-005 — Avatars, stored by the platform
-**Covers:** `REQ-PRF-008`, `REQ-PRF-009`, `REQ-PRF-010`, `REQ-PRF-011` · **M10** · **M**
+**Covers:** `REQ-PRF-008`, `REQ-PRF-009`, `REQ-PRF-010`, `REQ-PRF-011` · **M10** · the Google import in **M16** (`DEC-180`); the member upload and its moderation still unbuilt · **M**
 - The value already travels the whole stack — column, provisioning, five DAL modules, CSP — and is
   discarded at the last step. This story draws it **and fixes how it got there**.
 - Upload is sniffed on content, EXIF-stripped, PNG/JPEG only; derivatives at 96 and 192 px come
@@ -343,6 +343,13 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 **Covers:** `REQ-EVT-012`, `REQ-EVT-014`, `REQ-EVT-015` · **M5** · **L**
 - ★ The takedown hides the photo **before any human sees the request**.
 - The uploader is notified without being told who asked.
+
+#### STORY-EVT-007 — The gallery and the lightbox
+**Covers:** `REQ-EVT-016` · **M16** · **M**
+- A tap opens a photograph whole; previous and next are always-visible tap targets and a swipe is only
+  the enhancement (`DEC-093`'s sixth place). Built on `ui/dialog`.
+- The grid's crop is deliberate and written down; the lightbox never crops.
+- The gate is a Playwright case driving every photograph with `page.click()` alone.
 
 ## EPIC-RAT — Ratings
 
@@ -656,7 +663,7 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 
 
 #### STORY-ADM-009 — Downloads reach the screens that need them, and are audited
-**Covers:** `REQ-ADM-021`, `REQ-DSG-027` · **M11** · the poster half in **M15** (`DEC-176`); the photo album stays unbuilt · **M**
+**Covers:** `REQ-ADM-021`, `REQ-DSG-027` · **M11** · the poster half in **M15** (`DEC-176`); the photo half in **M16** (`DEC-180`) · **M**
 - **The mechanism is not invented** — `signExportUrl()` already mints a five-minute signed URL. ★ `DEC-176`:
   one screen consumes it, not three, and two more functions mint the same URL — they fold into one.
   This story is **reach**.
@@ -965,6 +972,15 @@ file-level split; these are the stories the traceability gate counts.*
 - The certificate mode has one writer and is only shown elsewhere.
 - Materials, tasks and photos are reachable from it. This is the first thing shed if the wave must
   shed anything.
+
+---
+
+## 23c. Wave 14 — `M16` (`DEC-180`)
+
+#### STORY-UIX-018 — Inside the platform, the wordmark leads home
+**Covers:** `REQ-UIX-027` · **M16** · **S**
+- An additive `href` prop on `Wordmark`, defaulting to `/`; the app shell passes `/app`.
+- `qa:contract` and the visual baseline do not move — not re-baselined.
 
 ---
 

@@ -1272,3 +1272,377 @@ than a sentence, before any sweep row arrived. Fixes that are not about prose go
 
 This list covers what I found by reading, before any sweep rows. The sweep can add to it, and I will add a row for
 any finding that turns out to be about copy.
+
+---
+
+## Wave 14 plan (2026-09-27) — Google's photo copied, never hotlinked (`DEC-180` §3, `DEC-181`, M16)
+
+`REQ-PRF-008` (the import half), `REQ-PRF-009`, `REQ-PRF-011`, contract 4. Written before any code, measured on
+`ba3ffe7`. **No code and no test until sync 1.** `DEC-099` read in full; it stands, and nothing below renders
+`members.avatar_url` or carries it to a browser.
+
+### W14.0 Measured — where the brief and the tree disagree
+
+1. ★ **A Google URL still reaches a browser today, after `92953c8`: `/app/me`.** `getMe()` (`lib/dal/members.ts:44`)
+   returns `avatarUrl: m.avatar_url`, which is Google's URL. `app/me/page.tsx:47` hands the **whole** `SelfProfile` to
+   `ProfileForm`, a `"use client"` component (`components/me/profile-form.tsx:1`, `:44`), so the URL is serialised
+   into `/app/me`'s RSC payload for every member who has one. It is text only, and nothing fetches it, but under rule
+   2 it is a defect. **It needs a one-line fix in `members.ts:44`, the lead's as custodian.** Either
+   `avatarUrl: null` now, as L0 did for comments, or contract 4's expression in L2. I recommend closing it now,
+   the way L0 did.
+2. ★ **The 303 target is outside `img-src`, and the CSP is report-only.** `proxy.ts:131` sets
+   `content-security-policy-report-only`, and `img-src 'self' blob: data:` (`:148`) does not list the Supabase
+   origin. Every signed-URL image the product draws today is already a reported violation: photos
+   (`photos.ts:174`), material pages (`materials.ts:509`) and moderation thumbnails (`admin-moderation.ts:246`).
+   So a `303` from `/api/avatars/…` to `…supabase.co/storage/v1/object/sign/…` would be reported. The day the CSP
+   enforces, it would be blocked. It follows that **removing Google from `img-src` (L3) prevented nothing on its
+   own**; `DEC-181` §2 already says the code carriers were the control. There is also a caching cost: a freshly
+   minted signed URL is a new URL on every render, so the browser downloads it again every time. → **Q1**: I
+   recommend the route **proxies the bytes**, as `/api/brand/[orgId]/logo` does (`route.ts:1-60`). The read runs
+   as the viewer, the response comes from our own origin, and a versioned URL can be cached. The DTO type is the
+   same either way.
+3. ★ **A 404 does not fall back to initials.** `ui/avatar.tsx:73-83`: once `src` is truthy the component draws only
+   the `<img>`, with no tint and no initial, and it is a server component with no `onError`. A failed load
+   therefore shows an empty 34 px box, which is the «broken frame» `REQ-PRF-010` forbids. My mitigation is that the
+   resolver emits an `href` **only** when a copy exists and is readable (W14.4), so a 404 remains possible only in
+   a race, for example a member who removes their photo while another member's page is open. **Request R1 to
+   `content`:** draw the tint and the initial **under** the image (CSS only, no client JS), so that an image which
+   fails to load leaves the initial showing.
+4. **The brief says `session.ts` swaps an expression. It carries no avatar.** The shell's value comes from
+   `layout.tsx:105` (`getMe`) through `:199` (`avatarUrl={null}`). The shell swap is therefore `members.ts:44` plus
+   `layout.tsx:199` → `me?.avatarUrl ?? null`, both the lead's.
+5. **«The member profile draws our copy» needs a new expression in a page, not just a DAL swap.**
+   `members/[id]/page.tsx:51` draws `<Avatar … size={96}>` **with no `src`**. The ratings list
+   (`admin/sessions/[id]/attendance/page.tsx:368-372`) draws no avatar at all. Today only the comment and the
+   account menu pass a `src`, and both pass `null`. The profile needs `src={profile.avatarUrl}` (the lead, as
+   custodian of `sessions`). Ratings need nothing drawn: the DTO swaps, and no placement is added.
+6. **The session cookie carries Google's URL.** `0006`'s hook does not touch `user_metadata`, so the access token
+   carries `user_metadata.avatar_url` and `picture`, and `@supabase/ssr` keeps the session, including `user`, in
+   the `sb-…-auth-token` cookie. It is the member's own value, in their own cookie, and nothing fetches it.
+   **«No response anywhere carries a Google image URL» is attainable for response bodies** (HTML, RSC, JSON,
+   realtime), which is what my spec asserts. It is not attainable for `Set-Cookie` without an auth-hook change
+   (the lead's `0006`). → **Q6**
+7. **PostgREST still serves the source to any member who asks.** The column grant (`0004:305`),
+   `members_member_view` (`0004:319`) and `me()` (`0005:203`) all expose `avatar_url` to `authenticated`. No app
+   code does this from a browser, but a member's own JS could fetch colleagues' Google URLs. It cannot be revoked
+   in the push that precedes the merge: `main`'s `members.ts:61` and `ratings.ts:253` select it from the view,
+   and would get `42501`. → **Q5**: a revoke migration **after** the merge.
+8. **`DEC-099`'s «supersedes the `^https://` check» should not happen.** `0004:243`'s check and
+   `provision_member()`'s own guard (`0005:125`) stop a non-https source from ever reaching the job. The column is
+   still the source, so **keep the check**. ★ The source is also **member-controllable**:
+   `supabase.auth.updateUser({ data: { avatar_url } })` writes `raw_user_meta_data`, and `provision_member()`
+   (`0005:124`) copies it on the next sign-in. The job's host allowlist is therefore the **SSRF control**, not a
+   tidy-up.
+9. **`DEC-099` and `DEC-180` differ on two small points; I follow the later one.** `DEC-099` puts the path in
+   `packages/storage-paths/src/content.ts`; `DEC-180` and the map put it in a new `avatar.ts`. `DEC-099` has
+   «derivatives by the existing worker job»; `11` §2.4 has a new `JOB-import_avatar`.
+10. **Google's `picture` size is not measured.** My aggregate read of production (host and size suffix only, no
+    URL) was refused by the permission layer, so I did not retry it. Google's OIDC `picture` normally ends in
+    `=s96-c` (96 px, square-cropped), and `=sN-c` selects the size. The job asks for `=s192-c`. It logs the
+    decoded dimensions on every run, so the first real import measures it. → **Q10** asks the lead or owner to run
+    `select substring(avatar_url from '=s[0-9]+[^/]*$') as suffix, count(*) from public.members group by 1`. It
+    returns no personal data.
+11. **`provision_member()` has one definition** (`0005:101`); no later migration re-creates it. `me()` is also
+    `0005`'s. `anonymise_members()` is `0073:158`. `build_data_export_payload()` was last re-created by `0135`, and
+    `main`'s worker stores its payload opaquely.
+
+### W14.1 Schema — named for the lead to land in `0156`, never written by me
+
+| Object | Shape | Why |
+|---|---|---|
+| **enum** `public.avatar_import_answer` | `('accepted', 'declined')` | the answer to «نستخدم صورتك من Google؟». A Postgres enum, singular |
+| `members.avatar_import` | `public.avatar_import_answer`, **nullable**, no default | `null` = not answered, so the prompt shows. **Not** in any client grant. It is read through `my_avatar()` and written through `set_avatar_import()` |
+| `members.avatar_version` | `bigint`, **nullable** | the version of **our** copy, the epoch milliseconds at copy time. `null` = no readable copy, so initials. It never repeats, so a declined-then-accepted member never reuses a URL a browser cached as immutable. ★ **Invariant, held by the writers:** non-null ⇒ `avatar_import = 'accepted'` and both objects stored |
+| grant | `avatar_version` **appended** to `0004:305`'s `grant select (…) on public.members to authenticated` | readers select it, and `comments.ts` embeds it through `author:members(…)` |
+| view | `members_member_view` re-created with `avatar_version` **appended last** (`create or replace view` allows a trailing column) | `members.ts` and `ratings.ts` read the view. `main` selects named columns, so this is additive |
+| `me()` | re-created in the same file with one key appended, `'avatar_version', m.avatar_version` | `getMe()` resolves the shell's and `/app/me`'s avatar without a second query. `main`'s `getMe` ignores an unknown key |
+| **bucket** `avatars` | private; `file_size_limit` 262144; `allowed_mime_types` `{image/webp}` | our copy only, WebP derivatives only. No SVG can be stored (invariant 11) |
+| **storage policy** `avatars_storage_read` | `for select to authenticated using (bucket_id = 'avatars' and (storage.foldername(name))[1] = public.auth_org_id()::text and (storage.foldername(name))[2] = 'members' and exists (select 1 from public.members m where m.id::text = (storage.foldername(name))[3] and m.org_id = public.auth_org_id() and m.avatar_version::text = (storage.foldername(name))[4]))` | same org, and **only the current version**. A decline or an anonymisation makes the object unreadable **in the same statement** that clears the version, before the job deletes it («removal is immediate», `REQ-PRF-008`) |
+| no write policy | none for any client role | only the worker writes and deletes, holding `service_role` (invariant 7) |
+| `03` §8.2 rows | `POL-avatars_storage_read.same_org`, `.other_org_refused`, `.stale_version_refused`, `.anonymised_refused` | `policy-diff` |
+
+**Where our copy lives:** `avatars/{org_id}/members/{member_id}/{version}/{96|192}.webp`, built only by
+`packages/storage-paths/src/avatar.ts`. No original is kept. The 192 px derivative is the largest copy of a face we
+hold, which keeps the personal data to the minimum `DEC-099` needs. **R2 to the lead:** `Bucket` in
+`packages/storage-paths/src/guards.ts:55` gains `"avatars"`, and `index.ts` gets its export line and
+`storagePaths.avatar`. Until then, `avatar.ts` returns its own `{ bucket: "avatars"; path }`.
+
+No new table, so there is no new entity for the isolation sweep. `registrations` is untouched.
+
+### W14.2 My SQL — `supabase/proposed/platform/0010_avatar_import.sql` (functions and one trigger; no DDL)
+
+| Function | Caller | Does |
+|---|---|---|
+| `set_avatar_import(p_answer public.avatar_import_answer) returns jsonb` | `authenticated`, self (`assert_active_member()`) | writes `avatar_import`. On `declined` it sets `avatar_version = null` **in the same statement**. Audits `member.avatar_import_answered` `{answer}`. When there is a source, or a copy to delete, it enqueues `import_avatar` `{member_id}` under key `avatar:{member_id}`, queue `convert`, 3 attempts. Returns an envelope (`ok` · `no_source`) and never raises after its write (`DEC-043`) |
+| `my_avatar() returns jsonb` | `authenticated`, self | `{answer, has_source, version}` for the prompt and `/app/me/privacy` |
+| `avatar_job_target(p_member uuid) returns jsonb` | `service_role` only | `{org_id, answer, source_url, version, anonymised}`, which the job reconciles against |
+| `record_avatar_copy(p_member uuid, p_version bigint, p_source text) returns jsonb` | `service_role` only | sets `avatar_version = p_version` **only if** `avatar_import = 'accepted'`, `avatar_url = p_source` and `anonymised_at is null`. Otherwise it returns `stale`, and the job deletes what it just uploaded |
+| trigger `members_avatar_source_changed` (after update of `avatar_url`, `when old.avatar_url is distinct from new.avatar_url and new.avatar_import = 'accepted'`), definer | fires under `provision_member()` | **re-copies on a changed source** (`REQ-PRF-001`'s refresh) **without touching the lead's `provision_member()`** |
+| `anonymise_members()` re-created from `0073:158` | worker | additionally sets `avatar_version = null, avatar_import = null` and enqueues `import_avatar` for each member who had either. **The summary's keys are unchanged** (`anonymised`, `after_days`) |
+
+Grants: the two self functions go to `authenticated`, revoked from `public` and `anon`. The two worker functions go
+to `service_role` only. `definer-exposure` stays as it is, because nothing is added to `anon`. `build_data_export_payload()`
+is **not** changed: the worker adds the picture (W14.6), so the SQL payload's keys, which `privacy.test.ts:70` and
+`data-export-surveys.test.ts:73` pin, do not move.
+
+### W14.3 `JOB-import_avatar` — `worker/src/tasks/import_avatar.ts` (name confirmed; registration is the lead's)
+
+**One reconcile job, keyed `avatar:{member_id}`.** It makes storage match the row, whatever triggered it: a yes, a
+no, a changed source, an anonymisation, or a retry. Because it reconciles, the key's `replace` mode is exactly
+right.
+
+1. It reads `avatar_job_target()`. If the member is gone or anonymised, or the answer is not `accepted`, it
+   **deletes everything under `{org}/members/{member}/`** and returns.
+2. **Fetch rules.** The URL is parsed with `new URL()`. The protocol must be `https:`, the hostname must be an
+   **exact** member of `{lh3,lh4,lh5,lh6}.googleusercontent.com` (→ **Q8**), and there must be no userinfo and no
+   port. The request is `redirect: "manual"`, and each `Location` is re-validated against the same rules, **at most
+   2 hops**, never off the host set. Headers: `Accept: image/jpeg, image/png`, which stops Google negotiating
+   WebP, with no cookie, no `Referer` and a fixed UA. A trailing `=s<N>(-c)?` becomes `=s192-c`.
+   `AbortSignal.timeout(10_000)`.
+3. **Byte cap of 2 MiB**, enforced on `content-length` **and** on the streamed body, so a missing or lying header
+   does not get past it. Anything but a `200` is refused.
+4. **Sniffed on content** with `sniffImageKind()` from `worker/src/content/exif.ts`, **imported, never edited**.
+   `jpeg` and `png` pass. `svg`, `webp` and `unknown` are refused (→ **Q9** on WebP). Then
+   `stripImageMetadata()` runs, and `assertsNoExifRemains()` must hold. The decoded width and height are logged,
+   which is the running measurement of W14.0 §10, and anything over 4096 px on either side is refused before any
+   binary sees it.
+5. **Derivatives come from `cwebp` in the image** (`worker/Dockerfile`, `DEC-181` §4). With a centred square
+   `-crop`, it runs `cwebp -quiet -metadata none -q 82 -crop x y s s -resize 96 96` and again at `192 192`, under
+   `withTempDir()` from `content/pdf.ts` (imported). **No npm package and no Dockerfile change.**
+6. It uploads both files to `avatars/{org}/members/{member}/{version}/`, then calls `record_avatar_copy()`. On
+   `stale` it deletes the new version and returns; a newer job is already queued. On `recorded` it deletes
+   **every other version** under the member's prefix.
+
+**Failure modes: a failure never sets a version, so it leaves initials, or the previous copy.**
+
+| Case | Outcome |
+|---|---|
+| host not allowlisted · not https · redirect off-host or > 2 hops · userinfo/port | warn, return (no retry) |
+| `404` / `410` / any other `4xx` | warn, return |
+| `5xx`, network error, timeout | throw → retry (3 × 60 s) |
+| over 2 MiB · over 4096 px · `svg` / `webp` / `unknown` · EXIF residue after the strip | warn (EXIF: error), return |
+| `cwebp` fails · upload fails | throw → retry. Partial objects sit under an unrecorded version, which the policy cannot read, and the next run deletes them |
+| `record_avatar_copy` → `stale` | delete the new version, return |
+
+### W14.4 Contract 4 — the resolver and the route (★ published day one)
+
+```ts
+// src/components/privacy/avatar-href.ts — PURE, no `server-only`, so the realtime comment list can use it (Q2)
+export type AvatarSize = 96 | 192;
+export interface AvatarSource { id: string; avatarVersion: number | null | undefined }
+/** `/api/avatars/{id}?v={version}&s={size}`, or null when there is no readable copy. */
+export function avatarHref(member: AvatarSource, size?: AvatarSize /* = 96 */): string | null;
+
+// src/lib/dal/avatars.ts — `import "server-only"`; re-exports avatarHref, AvatarSize, AvatarSource
+export interface MyAvatar { answer: "accepted" | "declined" | null; hasSource: boolean; href: string | null }
+export async function getMyAvatar(locale: string): Promise<MyAvatar>;
+export async function setMyAvatarImport(locale: string, answer: "accepted" | "declined"): Promise<{ status: "ok" | "no_source" | "failed" }>;
+export async function readAvatar(memberId: string, version: string, size: AvatarSize): Promise<Uint8Array | null>; // the route's read
+```
+
+**Every reader keeps `avatarUrl: string | null`.** Each reader changes its select (`avatar_url` → `avatar_version`)
+and swaps one expression:
+
+| Reader | Owner | The swap |
+|---|---|---|
+| `members.ts:44` `getMe` | lead | `avatarUrl: avatarHref({ id: m.id as string, avatarVersion: m.avatar_version as number \| null })` (needs `me()`'s key, W14.1) |
+| `members.ts:61,69` `getMemberProfile` | lead | select `avatar_version` · `avatarHref({ id: data.id, avatarVersion: data.avatar_version }, 192)`, plus `src={profile.avatarUrl}` at `members/[id]/page.tsx:51` (W14.0 §5) |
+| `ratings.ts:253,260` | lead | select `avatar_version` · `avatarHref({ id: r.member_id, avatarVersion: m.avatar_version })` |
+| `comments.ts:~118,126` | `content` | embed `avatar_version` · `avatarHref({ id, avatarVersion })` |
+| realtime `comments_broadcast()` (`0155`) | lead's SQL, `content`'s client | `authorAvatarUrl` **stays null** for `main`'s client. A new `authorAvatarVersion` key is appended, and `comment-list.tsx:43` calls `avatarHref`. There is only one URL shape, and SQL never builds it (Q3) |
+| `layout.tsx:199` | lead | `avatarUrl={me?.avatarUrl ?? null}` |
+
+**The route: `GET /api/avatars/[memberId]?v=&s=`** (`runtime = "nodejs"`, outside `proxy.ts`'s matcher). It calls
+`getSessionState()`, **not** `requireSession()`: an image request that gets a redirect to `/sign-in` is a broken
+frame, so every non-member answer is a plain `404`. That includes a platform admin with no member row, per
+`DEC-057`. Zod: `memberId` uuid, `v` digits, `s` ∈ {96, 192}. It reads `members.avatar_version` for the id **as
+the viewer**, so `members_read_org` makes another org's member invisible. `null` → `404`. It then downloads the
+object **as the viewer**, and `avatars_storage_read` re-checks the org and the current version.
+- **Recommended (Q1): proxy the bytes.** `200 image/webp` with `content-length`, `x-content-type-options: nosniff`
+  and `content-security-policy: default-src 'none'; sandbox`. The cache header is
+  `private, max-age=86400, immutable` when `v` is current, and `private, no-cache` when `v` is stale and the
+  current copy is served.
+- **If the lead holds the brief:** `303` to `createSignedUrl(path, 300)` minted as the viewer, with
+  `Cache-Control: no-store`.
+- Any refusal, whether another org, no copy, a bad id or no session, gets the **same** `404` and no body anyone
+  could learn from. No `service_role` is involved (invariant 7).
+
+### W14.5 The prompt and `/app/me/privacy` — Arabic first
+
+**`src/components/privacy/avatar-import-prompt.tsx`** is a server component, `AvatarImportPrompt({ locale })`, that
+the lead slots in. It renders **only** when `answer === null && hasSource`, so **no existing e2e member ever sees
+it**: every spec creates users with `user_metadata: { full_name }` alone (`a11y.spec.ts:67` and the rest), which
+means the blast radius over the existing suites is nil. It uses one form with two submit buttons,
+`name="answer" value="accepted|declined"`, bound to `setAvatarImportAction` in `me/privacy/actions.ts`. That action
+calls `revalidatePath(`/${locale}/app`, "layout")` so that the shell re-reads. ★ **It never previews the Google
+photo**, because a preview would be the hotlink. It shows the member's initial instead. **Placement (Q7):** the
+constraints are inside `#main`'s landmark (the a11y sweep), in its own `Suspense` with a `null` fallback so that it
+never delays a page, and with no `role="status"`. I recommend the top of `/app` (the timeline), beside the
+existing `companyMissing` panel (`sessions-timeline.tsx:41`), rather than on every screen. The lead rules on it.
+
+`privacy.avatar.*` in `messages/ar/privacy.json`, written first:
+
+| Key | ar | en |
+|---|---|---|
+| `prompt.title` | نستخدم صورتك من Google؟ | Use your Google photo? |
+| `prompt.body` | ننسخ صورة حسابك في Google إلى المنصة لتظهر بجانب اسمك لأعضاء مؤسستك. يمكنك تغيير اختيارك لاحقًا من صفحة الخصوصية. | We copy your Google account photo onto the platform so it shows beside your name to members of your organisation. You can change this later on the privacy page. |
+| `prompt.accept` | نعم، انسخ صورتي | Yes, copy my photo |
+| `prompt.decline` | لا، أبقِ الحرف الأول | No, keep my initial |
+| `section.title` | صورتك الشخصية | Your profile photo |
+| `section.ready` | تظهر نسختنا من صورتك في Google بجانب اسمك. | Our copy of your Google photo shows beside your name. |
+| `section.pending` | لم تُنسخ صورتك بعد. | Your photo has not been copied yet. |
+| `section.initials` | يظهر الحرف الأول من اسمك. | Your initial shows beside your name. |
+| `section.noSource` | لا توجد صورة في حساب Google لننسخها. | Your Google account has no photo to copy. |
+| `section.use` | استخدم صورتي من Google | Use my Google photo |
+| `section.retry` | أعد المحاولة | Try again |
+| `section.remove` | أزل صورتي | Remove my photo |
+| `page.exportIntro` (changed) | …وسجل نقاطك وشهاداتك، وصورتك الشخصية إن نسختها المنصة. ويضم أيضًا… | (mirrored) |
+
+The `/app/me/privacy` section sits before the export section. It shows the `<Avatar>` at 96 px, drawn from
+`getMyAvatar().href` or as initials, plus one sentence and one button, bound by `.bind(null, locale, answer)`
+(`DEC-159`). «أزل صورتي» takes effect immediately because the policy stops the read in the same statement.
+«أعد المحاولة» submits `accepted` again. **No `role="status"` element**, because `privacy.spec.ts:324`'s
+`getByRole("status")` is strict. There are no interpolated values, and the numerals are Western.
+
+### W14.6 `REQ-PRF-011` and `REQ-NFR-014`
+
+- **Anonymisation:** `anonymise_members()` (W14.2) clears the version and the answer, and the policy refuses the
+  read at once. The enqueued reconcile job deletes every object under the member's prefix.
+  `worker/src/tasks/anonymise_members.ts` stays as it is.
+- **Export:** `build_data_export.ts`, after `build_data_export_payload()`, reads `avatar_job_target()`. If there is a
+  version, it downloads `192.webp` (`content/storage.ts`'s `downloadObject`, imported) and appends
+  `avatar: { content_type: "image/webp", size: 192, data_base64 }` before `record_data_export()`. ★ It **never**
+  includes `members.avatar_url`, so the export stays a response with no Google URL in it. A download failure
+  throws, and the retry follows the existing path.
+- **Prefixes:** `{ name: "avatars", orgPrefixed: true }` joins `BUCKETS` (`worker/src/platform/storage.ts:92`). One
+  line covers **both** `assert_storage_prefixes` **and** `delete_org`, which iterates the same list (`delete_org.ts:33`,
+  `:58`), so a deleted org's avatars go with it and `delete_org.ts` needs no edit. I recommend a deeper check for
+  `avatars` as well: segment 3 must be a member **of that org**. It needs one more `service_role` definer,
+  `avatar_member_orgs()`, so it is optional (Q11).
+
+### W14.7 Every path that carries `members.avatar_url` toward a browser today (`ba3ffe7`)
+
+| # | Path | State |
+|---|---|---|
+| 1 | `members.ts:44` `getMe` → `me/page.tsx:47` → `"use client"` `ProfileForm` | ★ **LIVE**: the Google URL is in `/app/me`'s RSC payload (W14.0 §1) |
+| 2 | `members.ts:44` `getMe` → `layout.tsx:105` → `:199` | closed (`avatarUrl={null}`); `sessions-timeline.tsx:33` reads only `companyId` |
+| 3 | `members.ts:61,69` `getMemberProfile` → `members/[id]/page.tsx` | server-only today (`<Avatar>` has no `src`); becomes a carrier the moment a `src` is added, which is why it swaps first |
+| 4 | `ratings.ts:253,260` `getRatingsForAdmin` → `attendance/page.tsx:368` | server-only (the name is rendered, the avatar is not) |
+| 5 | `comments.ts:123-126` | closed by `92953c8` (`null`) |
+| 6 | realtime `comments_broadcast()` `0016:114,122` | closed by `0155` (`authorAvatarUrl` null) |
+| 7 | `admin_list_members()` `0056:45` → `admin-members.ts:41` | server-only; the DTO drops it (`AdminMemberRow` has no avatar) |
+| 8 | the column grant `0004:305`, `members_member_view` `0004:319`, `me()` `0005:203`, all via PostgREST | reachable by any member's own JS with their JWT; no app code does it (Q5) |
+| 9 | the Auth session cookie and JWT `user_metadata.{avatar_url,picture}` | the member's own value in their own cookie (Q6) |
+| 10 | `notifications.ts:707,711` | selects `display_name` only; not a carrier |
+| 11 | `build_data_export_payload()` `0073:222` / `0135` | no `avatar_url`; not a carrier, and W14.6 keeps it that way |
+
+Rows 1 and 3–7 are closed by contract 4's swaps, and row 1 today if the lead takes W14.0 §1. After that, **L3 is
+safe:** no reader needs Google in `img-src`, and none does today.
+
+### W14.8 Dependencies — none
+
+`cwebp` and the strip are already in the image and in `exif.ts`. The fetch is Node's `fetch`. Nothing goes into
+`package.json` or `worker/package.json`, and there is no Dockerfile change.
+
+### W14.9 Existing tests whose expectation moves — each one gets a ledger line in the same commit
+
+| File | Assertion | Why | Owner |
+|---|---|---|---|
+| `tests/rls/members.test.ts:41` | `Object.keys(rows[0]).sort()` on `members_member_view` gains `"avatar_version"` | the view gains the column (W14.1). **This is the only one** | lead (custodian), in `0156`'s commit |
+
+**Measured, and not moving:** `rpcs.test.ts:43,79` (the source is still refreshed); `retention.test.ts:53,137-188`
+(the summary's keys and counts are unchanged); `privacy.test.ts:70` and `data-export-surveys.test.ts:48,73` (the
+SQL payload is unchanged); `platform-tasks.test.ts` (its fake returns `{ rows: [] }` for unknown SQL, so no
+avatar is found); `sessions-member-profile.test.ts:27` (no assertion on `avatarUrl`; `avatarHref` returns `null`
+for `undefined`); `comments-no-hotlink.test.ts` (`authorAvatarUrl` stays null); `profile-form.test.tsx:26` and
+`comments*.test.tsx` (fixtures are `null`, and the type is unchanged); `definer-exposure` (nothing is added to
+`anon`); `privacy.spec.ts` (no `role="status"` is added; its locators are all named).
+
+**New files only:** `tests/rls/avatar-import.test.ts` (★ another org's member is refused our copy, a stale
+version is refused, anonymisation refuses the read and enqueues the delete, the self functions refuse another
+member, the worker functions refuse `authenticated`, and a changed source re-enqueues for `accepted` only);
+`tests/unit/avatar-import-job.test.ts` (every row of W14.3's table, with a fake `fetch`, a fake `cwebp` runner and
+storage: the allowlist, off-host redirects, the cap with a lying `content-length`, SVG renamed `.png`, EXIF gone, a
+failure sets no version, `stale` deletes); `tests/unit/avatar-href.test.ts`; `tests/unit/avatar-route.test.ts`
+(404 for every refusal alike); `tests/components/privacy/avatar-*.test.tsx`;
+`tests/e2e/wave14-platform-avatar.spec.ts`. That spec is **M3**: a seeded member with an lh3 source answers
+«نعم», and **the spec plays the worker** by uploading a fixture WebP with the service key and calling
+`record_avatar_copy`, because CI cannot reach Google. The photo is then visible in the account menu. A second
+member answers «لا» and sees initials. Both are captured at 390 px as
+`.qa-shots/rtl/wave14-platform-{account-menu,privacy}-{photo,initials}.png`. ★ **It asserts that no response body
+on `/app`, `/app/me`, `/app/me/privacy` or `/app/members/[id]` contains `googleusercontent`**, by collecting
+`page.on("response")` bodies, including RSC.
+
+### W14.10 What `main`'s worker does in the gap
+
+- **Pushed, not merged** (the new schema, `main`'s app, `main`'s worker): the columns are nullable and unanswered,
+  and `main` never writes them. The view's trailing column and `me()`'s extra key are both ignored. The
+  re-created `anonymise_members()` enqueues only for members with an answer or a version, and there are none. The
+  trigger fires only for `accepted`, which is nobody. The bucket is empty. **Nothing moves.**
+- **Merged, Vercel live, Railway not yet reconnected** (the standing owner step): members can answer, and
+  `import_avatar` jobs queue. **graphile-worker 0.18 only fetches task identifiers it has registered**, so `main`'s
+  worker leaves them alone rather than failing them. Members see initials. An export built by the old worker has
+  no picture, but no copies exist yet either. When the new worker boots, the queue drains, and because the job
+  reconciles, jobs replaced in the meantime do no harm.
+
+### W14.11 Questions for the lead (sync 1)
+
+1. **Proxy or `303`?** (W14.0 §2) I recommend the proxy: it stays on our origin and inside `img-src`, it can be
+   cached, and no signed URL ever reaches a browser.
+2. **Where the pure `avatarHref` lives.** It has to be importable from `"use client"`, and `lib/dal/*` is
+   `server-only`. My proposal is `src/components/privacy/avatar-href.ts`, re-exported by `avatars.ts`.
+   `src/lib/avatar-href.ts` would read better, but it is not in my list.
+3. The realtime payload: append `authorAvatarVersion` and keep `authorAvatarUrl` null (the lead's SQL, `content`'s
+   client).
+4. `me()` gains `avatar_version` (the lead's function, the same file as `0156`)?
+5. When is `avatar_url` revoked from the grant, the view and `me()`? After the merge, once `main` no longer
+   selects it. A second push this wave, or wave 15's first migration?
+6. The cookie and JWT `user_metadata`: accept it and scope the assertion to response bodies, or strip
+   `avatar_url`/`picture` in `0006`'s hook? (That still leaves the cookie's `user`.)
+7. The prompt's slot: the shell, or `/app`'s timeline (my recommendation)?
+8. The host allowlist: `lh3` only, or `lh3`–`lh6`?
+9. Google negotiates WebP. Refuse it (the brief: «PNG or JPEG in») and force JPEG through `Accept`, or accept it?
+   `cwebp` reads WebP.
+10. Run W14.0 §10's aggregate read, which returns no personal data?
+11. The `avatars` member-in-org check (W14.6) needs one extra definer. Wanted?
+12. **Requests:** R1 to `content`, initials under the `<img>` (W14.0 §3). R2 to the lead: `guards.ts`' `Bucket`,
+    and `index.ts`' export and `storagePaths.avatar`. R3 to the lead: `members/[id]/page.tsx:51`'s `src`
+    (W14.0 §5).
+13. **The `/app/me` carrier** (W14.0 §1): close it now with `avatarUrl: null` in `members.ts:44`, as L0 did?
+
+### W14.12 Order of work, after sync 1
+
+(1) `avatar.ts`, `avatar-href.ts` and `avatars.ts` with their units, which publishes contract 4 as code.
+(2) `0010_avatar_import.sql` and `avatar-import.test.ts` via `applyProposed()`, on top of the lead's `0156`.
+(3) `import_avatar.ts` and its unit. (4) The route and its unit. (5) The prompt, the privacy section and the
+messages, with `ui-lint`. (6) `BUCKETS`, the export, and the anonymise hook. (7) The e2e and the captures, through
+the gate lock. The note says what is done at each step.
+
+---
+
+## Wave 14 — as built (2026-09-27), after sync 1 (`DEC-182`)
+
+CI is blocked (the repo is private, so no runner starts). **The local gates below are the gates.**
+
+| Commit | What | Local gates |
+|---|---|---|
+| `1dedf42` | `avatarHref()` (contract 4 as code) · `packages/storage-paths/src/avatar.ts` · `worker/src/platform/avatar.ts`: allowlist, redirects, byte cap, sniff, strip, cwebp · `avatars` and `photo-albums` in `BUCKETS` · `privacy.avatar.*` in ar and en | the avatar units 42/42 |
+| `e044e1e` | `lib/dal/avatars.ts` · `/api/avatars/[memberId]`, which proxies the bytes read as the viewer, with one 404 for every refusal · `import_avatar.ts`, the reconcile job · the export's 192 px copy (never the source URL) · the prefix assertion's member-in-org check · the prompt, the `/app/me/privacy` section and its action · `proposed/platform/0010_avatar_import.sql` · `tests/rls/avatar-import.test.ts` | tsc clean for these files (the tree's only error was `content`'s WIP `comment-list.tsx:51`) · lint 0 errors · avatar units and components 79/79 · `test:rls` 136 files, 1316 passed (`avatar-import` 14/14) · `ui-lint` strict clean |
+
+**For the lead's promotion (0158):** `0010`'s five functions, the trigger and the re-created `anonymise_members()`. The
+`03` §8.2 rows are in the file header. The audit label `admin.audit.actions.member.avatar_import_answered` is needed
+in `admin.json` (the lead's) or `admin-audit-labels.test.ts` fails. The `import_avatar` registration is also needed,
+along with the prompt's slot, `<Suspense fallback={null}><AvatarImportPrompt locale={locale} /></Suspense>` in `#main`
+on the timeline.
+
+**Not done yet:** `tests/e2e/wave14-platform-avatar.spec.ts` (M3) is written and uncommitted. It needs `0158`, the
+prompt's slot and L2 (the shell's avatar through `getMe()`) before it can pass. It runs through the gate lock once
+those land, and the four captures come from that run.
+
+**Untouched-suite ledger:** none of mine. `members.test.ts:41` was the lead's, in `0157`'s commit.
+
+**M3, run by the lead on production build `c0bd26b` at `0159`:** `tests/e2e/wave14-platform-avatar.spec.ts` is
+**10/10 green on phone and desktop**, including the check that no response body contains a `googleusercontent`
+URL. The lead opened the captures at full resolution. For «نعم» the account menu shows our copy; for «لا» it shows
+the «س» initial. The four captures are `.qa-shots/rtl/wave14-platform-{account-menu,privacy}-{photo,initials}.png`.
+**Platform's wave-14 rows (A1–A4, C4, M3) are done**, unless the lead's final gates say otherwise.

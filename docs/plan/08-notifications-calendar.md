@@ -90,6 +90,15 @@ the category it belongs to for preferences.
 | Calendar disconnected | `MSG-calendar_disconnected` | the member | in-app | **no** | `account` |
 | Data export ready | `MSG-export_ready` | the member | in-app, email | **no** | `account` |
 
+### 1.6a Photos (`DEC-182`, migration `0156`)
+
+| Trigger | `MSG-*` | To | Channels | Optional? | Category |
+|---|---|---|---|---|---|
+| A session's photo album is ready to download | `MSG-photo_album_ready` | the staff member who asked for it | in-app | yes | `admin_queue` |
+
+In-app only: no mail design is added, so the designed email keys are unmoved. The album's «ready» is also a state on
+the event page's photo slot, read from `photo_albums`, so it survives a reload; this message only points at it.
+
 ### 1.7 The seventeen a member cannot switch off
 
 > **Corrected under DEC-047:** the heading said eleven; the list below has always had seventeen keys and the list is authoritative (`REQ-NTF-003` names four and says "certain notifications"). Migration `0026`'s matrix carries all seventeen and `tests/rls/notify-contract.test.ts` pins them by name.

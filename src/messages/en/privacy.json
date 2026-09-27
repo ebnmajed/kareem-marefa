@@ -5,7 +5,7 @@
       "intro": "Export everything the platform holds about you, and request that your account be deactivated. The privacy policy says what is collected, why, and for how long.",
       "policyLink": "Read the privacy policy",
       "exportTitle": "Export my data",
-      "exportIntro": "One machine-readable file with your profile, RSVPs, check-ins, comments, photos, the ratings you wrote, your points ledger and your certificates. It also lists the sessions whose survey you answered — not your answers, since those are never stored under your name.",
+      "exportIntro": "One machine-readable file with your profile, RSVPs, check-ins, comments, photos, the ratings you wrote, your points ledger, your certificates, and your profile photo if the platform copied it. It also lists the sessions whose survey you answered — not your answers, since those are never stored under your name.",
       "exportNote": "The file carries no other member's personal data. A comment you replied to appears by its author's display name alone, with no address and no id.",
       "exportRequest": "Request the export",
       "exportDownload": "Download the file",
@@ -28,6 +28,24 @@
       "deactivateConfirmBody": "Your request will reach your org's admin with the reason you wrote above. Continue?",
       "cancel": "Cancel",
       "deactivateSent": "Your request was sent. Your org's admin will see it in the audit log."
+    },
+    "avatar": {
+      "prompt": {
+        "title": "Use your Google photo?",
+        "body": "We copy your Google account photo onto the platform so it shows beside your name to members of your organisation. You can change this later on the privacy page.",
+        "accept": "Yes, copy my photo",
+        "decline": "No, keep my initial"
+      },
+      "section": {
+        "title": "Your profile photo",
+        "ready": "Our copy of your Google photo shows beside your name.",
+        "pending": "Your photo has not been copied yet.",
+        "initials": "Your initial shows beside your name.",
+        "noSource": "Your Google account has no photo to copy.",
+        "use": "Use my Google photo",
+        "retry": "Try again",
+        "remove": "Remove my photo"
+      }
     },
     "errors": {
       "failed": "That did not go through. Try again.",

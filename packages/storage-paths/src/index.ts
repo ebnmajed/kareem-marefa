@@ -17,10 +17,12 @@ export { InvalidStoragePathError, type Bucket, type StorageLocation } from "./gu
 export * from "./content.js";
 export * from "./designer.js";
 export * from "./brand.js";
+export * from "./avatar.js"; // wave 14, DEC-182 — platform's file, the lead's export line (R2)
 
 import type { StorageLocation } from "./guards.js";
 import { materialPagePath, materialPageThumbnailPath, materialSourcePath, photoPath } from "./content.js";
 import { designAssetPath, exportPath, fontPath } from "./designer.js";
+import { avatarPath, type AvatarSize } from "./avatar.js";
 
 export const storagePaths = {
   materialSource: (orgId: string, sessionId: string, versionId: string, filename: string): StorageLocation => ({
@@ -48,4 +50,6 @@ export const storagePaths = {
     path: exportPath(orgId, documentId, preset, ext),
   }),
   font: (sha256: string, ext: "woff2" | "ttf"): StorageLocation => ({ bucket: "fonts", path: fontPath(sha256, ext) }),
+  avatar: (orgId: string, memberId: string, version: number | string, size: AvatarSize): StorageLocation =>
+    avatarPath(orgId, memberId, version, size),
 } as const;

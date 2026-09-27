@@ -1,11 +1,303 @@
-**Last updated:** 2026-09-22 · **Branch:** `wave-13/studio-and-session-settings` (cut from `main` at `1e39c47`) · **`main`:** wave 12 merged and live; production at **`0151`** · **Phase:** ★★ **WAVE 13 COMPLETE — REHEARSED — PR #30 READY (`DEC-176` … `DEC-179`, M15, `0152`–`0154`)**: the owner pushes, merges, reconnects Railway — nothing else: the studio's direct manipulation (`REQ-DSG-028` … `031`, M12, never run), the session download (`REQ-DSG-027`, M11, never run — one primary «تنزيل», the rest behind a disclosure), and a session's settings under one sub-nav (`REQ-SES-020`, new). Map written; ★ **draft PR #30** open at the first push; `designer`, `sessions`, `console` spawned planning-only — sync 1 approves their plans. Migrations from **`0152`**.
+**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — COMPLETE: REHEARSED ON THE PRODUCTION SCHEMA DUMP, CI GREEN (13/13 on `946a254`), PR #31 READY — the owner pushes `0155`–`0159`, merges, rebuilds Railway (`DEC-180` … `DEC-182`, M16, `0155`–`0159`)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; ★ **PR #31** (CI green at `5547566`); **approved by the owner (`DEC-181`)**; ★ the live Google hotlink **closed first** (`92953c8`, `0155`); ★ **sync 1 done (`DEC-182`)** — both plans approved; the lead's `0156` (photos, a removed photo unreadable, `MSG-photo_album_ready`) and `0157` (avatars) landed, `ui/dialog` `size="media"`, `zip` in the image, the wordmark built; `content` and `platform` building. ★ **CI was blocked (the repository was private) from 2026-09-22 until 2026-09-27; now restored and green on #31 and #32** — sync 1 approves two plans. Migrations from **`0155`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 13 — on `wave-13/studio-and-session-settings` — the studio, the session download, the settings hub (`DEC-176`)
+## ★★★ WAVE 14 — on `wave-14/photos-and-polish` — photos, the lightbox, the wordmark, the avatar (`DEC-180`)
+
+**Half of this is scope that was specified long ago and never built.** `REQ-ADM-021`'s photo downloads (M11) and
+`REQ-PRF-008`'s import of Google's photo (M10) were written, traced and never run. The lightbox (`REQ-EVT-016`) and
+the wordmark (`REQ-UIX-027`) are new. Milestone **M16**. The brief is `docs/plan/notes/wave-14-lead.md`; the map is
+`CLAUDE.md` § *Ownership map (wave 14)*.
+
+### ✅ CI RESTORED AND GREEN (2026-09-27) — kept below as history: the period it was blocked
+
+★ **The owner made the repository public again**, and Actions allocates runners. The first genuine CI signal since
+2026-09-22 13:21 covers wave 13's close-out push and all of wave 14:
+- **PR #31**, run `36317818852` at `5547566`: **every job green** — build, types and lint, unit, RLS, end to end,
+  frozen routes (`qa`), design-system gates, plan gates, shaping parity, platform unconfigured, the worker probe, and
+  Vercel.
+- **PR #32**, run `36313758121` at `4b4e0f8`: **every job green**.
+
+(The reviewer session re-ran both runs; the lead checked them with `gh pr checks` and `gh run view`.)
+★ **For the record: waves 13's close-out and 14 were built with no CI backstop from 2026-09-22 13:21 until this
+run.** Every row below was gated locally, and CI now agrees with it.
+
+#### History — the blocked period (2026-09-22 → 2026-09-27)
+
+
+**The repository is private** (`gh repo view`: `PRIVATE`). `DEC-051` had it public until Launch. A private repository
+meters Actions against the owner's account, and **every job is refused before a runner starts**: each "fails" in 1–2 s
+with «The job was not started because recent account payments have failed or your spending limit needs to be
+increased». The last real run was 2026-09-22 13:21, the wave-13 close. Every run since has been refused the same way:
+PR #31's runs, PR #32's, and the wave-13 docs push. **No session did this, and no session may fix it**, because
+visibility and billing are the owner's (`CLAUDE.md`, the deny list). Two ways out, both on the web: **restore public
+visibility, or add a payment method and an Actions spending limit.**
+- **Until then, every row below records its LOCAL gate results**, and a red PR check means «not run».
+- ★ **The lockfile trap is unbacked.** CI's `npm ci` was the backstop for a lock written by the wrong npm. If any
+  dependency changes, `npm run lockfile` runs through Docker, and the row says so. (This wave adds none: the zip is a
+  Dockerfile binary.)
+- Both PR bodies carry this note at the top.
+- ★ **A correction.** The lead told the owner PR #32 could be merged as it stood, citing only local results, without
+  running `gh pr checks`. «Ready» is a claim about the PR, so check the PR before making it.
+
+### Asked before Step 0 — the owner's production walk-through
+
+**Not run.** The owner (2026-09-27): it «was working fine before», and «the only comment was the garbage UI/UX so I am
+not sure what I need to look for». ★ **Recorded as UNMEASURED, not as a row.** A general quality complaint names no
+screen, so this wave's map cannot close it. What would turn it into rows:
+- the owner names the screens and what is wrong on each; **or**
+- the owner commissions a critique pass over the member path (RSVP → check in → pending → completion →
+  certificate), producing rows with a route, a capture and a rule each.
+
+`STATUS.md`'s *Screens whose meaning depends on a paragraph* (wave 11) is the existing list to start from. The
+walk-through itself — the certificate and its QR **on paper** — has still never been done by a person.
+
+### ★ For wave 15 — where the UI/UX work starts, and where it does not (`DEC-181` §5)
+
+**Not this wave.** The owner's «garbage UI/UX» is wave 15's whole subject, and the critique pass is not run now.
+★ **The obvious starting point is the wrong one.** *Screens whose meaning depends on a paragraph* (the wave-11 table
+below) has **42 rows**:
+
+| Area | Rows |
+|---|---|
+| `/app/admin` | 30 |
+| `/app/platform` | 9 |
+| `/app/me` | 3 (calendar, notifications, privacy) |
+| `/app` | 0 |
+
+So **39 of 42 are staff screens**, and **not one lies on reserve → check in → rate → certificate**. Nearly all of
+that prose explains **policy** — deactivation is the only removal, a manual entry can only be offset, the evaluator
+runs nightly, suspend is reversible and delete is not — rather than compensating for a weak affordance. The table is
+a real inventory of a real problem. **It is not a map of the member path, which has no inventory at all**: the
+accessibility sweep returned 62/62 clean, and the prose table did not reach it. (The owner counted 40 rows with four
+on the path; the measured numbers are above, and the conclusion is the same.)
+
+★ **Wave 15's measure:** can a member complete each step of **reserve → check in → rate → certificate** with
+**every explanatory paragraph deleted** from the screen? Delete the prose, then try; whatever breaks is the list.
+That is the owner's item 8 turned into a test that can fail, which a count of primitives is not.
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | `00f687d` = `origin/main`; production at **`0154`**; no open PRs. The brief's commit `53e0faa` was local-only and rides on this branch |
+| ★ Brief vs code, 1 | **The avatar is not «one line», and the line is not a bug.** `app/layout.tsx:199`'s `avatarUrl={null}` **enforces `DEC-099`** (the owner, 2026-09-15: the Google hotlink is retired; copy, never link). `ui/avatar.tsx`'s header says so. ★ **The owner was asked with `DEC-099` quoted, and kept it: copy into our storage.** `REQ-PRF-008`'s import half becomes `platform`'s row |
+| ★ Brief vs code, 2 | **The hotlink is already live.** `comment-item.tsx:257` draws `comments.ts:123`'s `members.avatar_url`, a Google URL, and the realtime payload carries it too (`0016:122`). `proxy.ts:148` still allows `lh3.googleusercontent.com`. `DEC-099` said `0089` would remove it; `0089` is `early_completion_closes_check_in`, the same class as `DEC-177`'s «`0086`» |
+| ★ Brief vs code, 3 | **The moderation queue does not download.** `admin-moderation.ts:246` signs one-hour thumbnails; `DEC-178`: a preview is not a download. `console`'s row does not exist → **`console` not spawned** |
+| Brief vs code, 4 | **`Wordmark` has five consumers** (app shell, `(auth)`, `legal`, marketing `header`, `footer`). The footer variant is not a link. The additive `href` prop holds |
+| Brief vs code, 5 | ~~The worker has no zip writer and no image resizer~~ — ★ **corrected by the owner (`DEC-181` §4):** the worker uses Dockerfile **binaries**, `poppler-utils` and `cwebp` (`pdf.ts:16`). Avatar derivatives are `cwebp -resize`; the zip is a binary added to the Dockerfile, never an npm package |
+| Confirmed | `gallery.tsx:157` `aspect-square … object-cover` — the grid crops by default and never said why; `REQ-EVT-009` … `015` hold no gallery or lightbox; `JOB-zip_session_photos` fully specified in `11` §2.4; no `src/app/api/photos/` |
+| `trace` | **320 requirements · 154 stories · no gaps** (M16 added to the milestone pattern) |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-180`; `REQ-EVT-016`, `REQ-UIX-027`, `STORY-EVT-007`, `STORY-UIX-018`, M16; `REQ-PRF-008`'s reading cited; `04`, `09`, `11`; the map; the ten agent files | lead | **done** `8ae8b16`; draft **PR #31** |
+| L0 | ★ **The live Google hotlink closed, before the avatar feature** (`DEC-181`): `comments.ts` and `comment-list.tsx` pass `null`; `0155` nulls `authorAvatarUrl` in `comments_broadcast()`; `img-src` loses `lh3.googleusercontent.com` | lead | **done** `92953c8` — `comments-no-hotlink.test.ts` red on `0154` → green on `0155`; realtime suites 8/8; unit + components 2472 ✓; build ✓; `qa` **57/57**; `policy-diff` ✓. ★ `0155` applied locally by hand (a full `db:reset` at sync 1). ★ **Split out as PR #32** (`hotfix/no-google-hotlink`, the same commit cherry-picked onto `main`) so production gets it before the wave; push and merge in either order. ★ **Trap (the owner's, 2026-09-27):** every `--linked` command began failing with «unexpected login role status 403: Missing required permission(s): database_write» — on `db dump` **and** on `db query "select 1;"`. So it was the **Management API token**, not the command: the CLI assumes a login role even for a read-only query. **`supabase login`** made a fresh token, and both worked at once. If you see that string, re-login; don't debug the dump. ★ **Local trap:** `realtime.messages` had no partition for today after the realtime container had run 4 days → every broadcast test failed with «no partition of relation "messages"»; `docker restart supabase_realtime_kareem-marefa` creates them |
+| C1 | Contract 1 — the photo download route shape; ★ **three** audit definers (`DEC-182`): `record_photo_download()`, `request_photo_album()`, `record_photo_album_download()` | `content` → lead | ★ **landed in `0156`** — `tests/rls/photo-downloads.test.ts` 8/8 (local; CI blocked) |
+| C2 | Contract 2 — the album's state, bucket and policy (lead); its path through the builder; the job's registration; visible photographs only; a `notify()` key if needed (lead, as custodian) | lead ↔ `content` | **schema landed in `0156`**: `photo_album_status`, `photo_albums` + `photo_albums_read_staff`, bucket `photo-albums` + `photo_albums_storage_read` (current build, ready, unexpired). ★ Also `photos_storage_read` gains `removed_at is null` — **a removed photo was readable by every member** (`DEC-182`). `zip` in the image (`a23cbfb`, built locally: Zip 3.0, cwebp 1.2.4); ★ `MSG-photo_album_ready` in `notification_matrix()` (appended to `0156`, unpushed; `admin_queue`, in-app only, optional), `08` §1.6a, strings `ar` first — notify + calendar + photo + avatar + members + isolation + definer + realtime **150/150** from a fresh reset. Still to do: the job's registration and crontab (when `content`'s task exists) |
+| C3 | Contract 3 — audit action names: `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded` | lead | **fixed** in `DEC-180` |
+| C4 | Contract 4 — `src/lib/dal/avatars.ts`'s resolver; every reader swaps one expression; published in `platform`'s note on day one | `platform` → all | todo |
+| P1 | ★ `REQ-EVT-016` — the lightbox on `ui/dialog`; previous/next tap targets; Escape, backdrop, focus return; «3 من 12» | `content` | todo |
+| P2 | The grid's crop deliberate and written down, or focal-aware; the lightbox never crops (`REQ-UIX-026`) | `content` | todo |
+| P3 | `REQ-ADM-021` — the per-photo audited download | `content` | todo |
+| P4 | `REQ-ADM-021` — «تنزيل الكل», `JOB-zip_session_photos`, the ready state and the audited zip download | `content` | todo |
+| P5 | The comment's avatar and the realtime payload onto contract 4 | `content` | todo |
+| A1 | ★ The consent prompt — «نستخدم صورتك من Google؟» — its component (`platform`), its slot in the shell (lead); changeable on `/app/me/privacy` | `platform` · lead | **slotted** — in the timeline (`/app` and `/app/sessions`) beside the company prompt, in its own `Suspense`; the component and `/app/me/privacy`'s section are `platform`'s |
+| A2 | `JOB-import_avatar` — Google's host only, byte cap, sniffed, EXIF-stripped, under the org prefix; re-copy on a changed source | `platform` | todo |
+| A3 | The avatar route and resolver (contract 4) | `platform` | todo |
+| A4 | `REQ-PRF-011` — anonymisation deletes the objects; the export includes the picture; the prefix assertion covers them | `platform` | todo |
+| L1 | ★ The wordmark — additive `href`, the shell passes `/app`; `qa:contract` + `visual` **unmoved** | lead | **built** — `href` defaults to `/`, so the marketing `header`, `(auth)` and `legal` pass nothing and render as before; the app shell passes `/app`. `tests/components/shell/wordmark.test.tsx` 3/3 (local; CI blocked). **M2's proof (a `main` capture against this branch's) runs at the gates** |
+| L2 | The shell's avatar through contract 4; `members.ts` and `ratings.ts` as custodian | lead | **done** — `getMe()` (96 px, the shell and `/app/me`), `getMemberProfile()` (192 px, and ★ the profile page now passes `src`, platform's R3), the admin ratings list (96 px) all read `avatar_version` through `avatarHref()`; no reader selects `avatar_url` for a browser. Unit + components 2594 ✓, `ui-lint` 291 ✓ (local; CI blocked) |
+| L3 | ★ The CSP — `https://lh3.googleusercontent.com` out of `img-src` once no reader carries a Google URL | lead | todo |
+| L4 | Promotion: `0156` (photos) and `0157` (avatars) are the lead's schema; the tracks' own SQL from `0158`; the job registrations; `zip` in the Dockerfile | lead | `0156` **landed** (`b1c7737`) — from a fresh `db:reset`: `photo-downloads` 8/8, `isolation` + `definer-exposure` 89/89, `policy-diff` ✓, 03 rows added. `0157` **landed** — `avatar_import_answer`, `members.avatar_import` (no client grant) / `avatar_version`, the grant/view/`me()` gaining `avatar_version`, bucket `avatars` + `avatars_storage_read` (current version only), `comments_broadcast()` gaining `authorAvatarVersion`: `avatar-copy` 5/5 + members/rpcs/realtime 31/31, `policy-diff` ✓. R2 (`Bucket`, `index.ts`' export and `storagePaths.avatar`) done; `ui/dialog` `size="media"` (content's R1) done, dialog tests 6/6, `ui-lint` 291 ✓ (all local; CI blocked); ★ **`0158` promoted** (`platform`'s `0010_avatar_import.sql`, reviewed: `anonymise_members()` differs from `0073` only by the avatar lines) — full RLS from a fresh reset **137 files, 1327 ✓**; `import_avatar` registered in `worker/src/index.ts`, worker build ✓; audit labels for the four new actions in `admin.json` (`admin-audit-labels` ✓); ★ **`0159` promoted** (`content`'s `0158_photo_album_build.sql`, renumbered because `platform` took `0158`; reviewed: row lock first, visibility re-checked under it, every part under its own build's prefix, the stale trigger never raises) and **`zip_session_photos` registered** — full RLS from a fresh reset **137 files, 1327 ✓**, unit + components **2597 ✓**, `policy-diff` ✓, worker build ✓. ★ The album's file name is `0156`'s, `photos-YYYYMMDD[-part-n-of-m].zip`; `DEC-182` Q6's «`album-…`» wording is superseded by what landed (nothing reads the name) |
+| M1 | ★ Demonstrable — the lightbox through every photograph with `page.click()` alone, the photograph changed each time | `content` writes, lead runs | ★ **GREEN** on production build `c0bd26b` (at `0159`) — `wave14-content-lightbox.spec.ts` **8/8**, phone and desktop: click-only (verified: no `mouse.*`, no swipe; Escape is its own case), the photograph on screen asserted changed at every step, the hidden one never entered, focus back on the opening tile, the per-photo route audits and `303`s. ★ **Captures opened in bands:** the frame, «2 من 3», «تنزيل الصورة», and the RTL arrows are right («السابقة» at the start, pointing right), **but the fixture is a tiny JPEG, so the photograph is a dot** — `content` regenerates with realistic images (routed) |
+| M2 | ★ Demonstrable — `qa:contract` and `visual` unmoved by the wordmark | lead | ★ **GREEN — unmoved, not re-baselined.** `visual`: a clean `origin/main` (`00f687d`) built in its own worktree (`npm ci`; Turbopack refuses a symlinked `node_modules`) and captured as `wave14-main`, against this branch's build `c0bd26b` as `wave14-branch` → **0.000% on all 8 pairs**. `qa` on `c0bd26b`: **57/57** (contract + appearance). Repeated at the final gates |
+| M3 | ★ Demonstrable — yes → the photo in the account menu; no → initials; both at 390 px, captured | `platform` writes, lead runs | ★ **GREEN** on `c0bd26b` — `wave14-platform-avatar.spec.ts` **10/10**: «نعم» draws our `/api/avatars/…` copy (loaded), another org gets the same bodiless 404 as a bad id, «لا» keeps the initial, «أزل صورتي» is immediate, and ★ **no response body on `/app`, `/app/me`, `/app/me/privacy` or a profile contains `googleusercontent`**. Captures opened in bands: the photo in the menu, and «س» for the member who said no |
+| M4 | ★ Demonstrable — «تنزيل الكل» returns at once; the real worker's zip holds the EXIF-stripped files and no others | `content` writes, lead runs | ★ **GREEN** on `c0bd26b` with the **real worker** (built from the tree, `E2E_WORKER=1`) — `wave14-content-album.spec.ts` **4/4**: the POST returns in < 5 s; the worker logged «build … ready — 3 photographs in 1 part(s)»; each entry equals its row's `sha256`, none carries an EXIF marker, the hidden photo is absent; a member sees no control and is refused. Captures: «ملف الصور جاهز: 3 صور · 427 بايت · متاح حتى الأحد، 4 أكتوبر» reads right. ★ **Two findings routed to `content`:** the hidden badge's two-line text overflows its one-line outline at 390 px (**a real defect**); the fixture bytes do not decode, so the tiles show broken-image icons (a capture artefact) |
+| G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict` | lead | ★ **GREEN — locally and in CI.** ★ **CI**: run `36317818852` on `5547566`, every job green (the first real CI run since the block lifted). **Local**, at `56c8f21`–`7f62949` (product code at `e6868ca`):
+- tsc ✓ · lint 0 errors (26 warnings, as `main`) · unit + components **2597** ✓ · `ui-lint --strict` 291 ✓ · `trace` 320/154 ✓ · `policy-diff` ✓
+- RLS from a fresh `db:reset` at **`0159`**: **137 files, 1327** ✓
+- `qa` **57/57**. `visual` from a clean `main` build: the four frozen routes × 2 at **0.000%**; `ar_ui` — the `(dev)` gallery, not a public route — grows 6 px on phone from `content`'s badge fix (`81f9a4a`), which is expected and not re-baselined
+- parity holds (21/28 local; the 7 slide cases need `cwebp` locally)
+- **Full e2e: 678 passed, 2 failed, 168 skipped** (the skips are the worker- and unconfigured-gated specs). Each failure was measured against `main`:
+  - `bookmarks:237` = `DEC-171`'s flake: 2 fails in 4 runs on the branch, **and 2 in 4 on `main`**.
+  - `budgets` («marketing landing TBT 1113 vs 243 ms»): alone it passed once and tripped on a different screen each other time. **`main`, measured back-to-back, failed 1 run in 2** (landing TBT 437 vs 243). Event page LCP was `main` 3309/3166 ms against the branch's 3307/3675 ms, and first-load JS is identical (159/164 KB). It is machine noise, not this wave.
+- The four wave-14 demonstrables were run on the real worker where it applies (M1–M4 above) |
+
+### Carried — not this wave
+
+A member uploading their own picture and `REQ-PRF-010`'s avatar moderation (`STORY-PRF-005`'s upload half) · new
+avatar placements — presenter cards, the host view's list (`16` §6.8.3's highest-value one), the directory, browse
+cards · deleting a session with its awarded points (**wave 15**) · the gamification layer · the prose pass ·
+`DEC-100`'s motion system · live poster thumbnails before export · `wave10-demo-email-studio` case 6 (stale since
+`DEC-170`) · the «still generating» line's placement on phones · the e2e suite beside a live worker · wave 12's list
+(the month-end streak gap; presenter certificates after a post-completion change; `materials_uploaded` and
+`late_cancellation` with no writer; company points not re-evaluated; `survey-submit.test.ts` counting every queued job).
+
+★ **For wave 15 — a generated gate for Storage read policies** (the reviewer session, 2026-09-27). **Every live privacy defect
+this project has found was in `storage.objects`, never in a table policy.** There have been three, each a bucket's read
+predicate disagreeing with its table's policy:
+- `0145` (wave 12): the poster table admitted a member, but Storage did not, so members saw no renders.
+- `0153` (wave 13): `exports_storage_read` admitted the whole org prefix, so any member could list another member's
+  certificate PDF.
+- `0156` (this wave): `photos_storage_read` never checked `removed_at`, so a photo **staff removed** stayed readable to
+  the org. The member's own «remove photos of me» sets `hidden_at`, which the policy did check.
+
+`assert_storage_prefixes` checks that an object is under the right **prefix**. Nothing checks that a bucket's **read
+predicate** admits the same rows as the table that owns it, and all three defects passed the prefix assertion. `0156`'s
+fix is **one instance of a class with no gate**. The proposal is a generated sweep, like the table isolation sweep: for
+each bucket and each reader role, seed a row, ask the table and ask `storage.objects`, and fail where they disagree.
+★ **Feasibility is measured, not assumed.** Storage's listing can be driven per role from the RLS fixture:
+`tests/rls/{session-downloads-storage,photo-downloads,avatar-copy}.test.ts` already assert `storage.objects` as a
+member, an admin, a moderator and another org's member. What is open is only the generic «ask the table» half per
+bucket, whose owning-table mapping differs. There are eight buckets: `materials`, `material-pages`, `photos`,
+`design-assets`, `exports`, `fonts`, `photo-albums`, `avatars`.
+
+### ★ The owner's order (wave 14) — FINAL (rehearsed 2026-09-27)
+
+**Migrations: `0155`–`0159`, all additive.** No column is dropped or renamed. Each changed function keeps its
+signature, and every new column is nullable.
+- `0155`: `comments_broadcast()` stops sending Google's URL. ★ Also on hotfix **PR #32**, the same file.
+- `0156`: `photos_storage_read` gains `removed_at is null`; `photo_albums`, the `photo-albums` bucket and its policy;
+  three audit definers; `MSG-photo_album_ready`.
+- `0157`: `members.avatar_import` / `avatar_version`, the `avatars` bucket and its policy; a trailing `avatar_version`
+  on `me()` and `members_member_view`; `comments_broadcast()` gains `authorAvatarVersion`.
+- `0158`: platform's avatar functions, the source-changed trigger, and `anonymise_members()` re-created (its diff is
+  the avatar lines only).
+- `0159`: content's album-build functions and the stale triggers.
+
+#### ✅ Step 2 — the rehearsal on the owner's production schema dump (2026-09-27, by the lead)
+
+- **Setup.** The dump was taken at `0154` (`public` + `graphile_worker`, **no data rows**). It was loaded into a throwaway
+  database, `rehearse14`, over the local `auth`, `storage` and `realtime` schemas (loaded as `supabase_admin`, so the
+  ownership matches):
+  - The database's owner is `postgres`, and `public`'s is `pg_database_owner`, **as in production**. (The first
+    attempt made `supabase_admin` own `public`, and `0155` was refused with «permission denied for schema public» and
+    rolled back whole. It was a setup artefact, fixed before any migration counted.)
+  - **Storage was set to its state at `0154`.** The dump carries no `storage` schema, so the local chain's 15 policies
+    as they stood at `0154` were used: `avatars_storage_read` and `photo_albums_storage_read` were absent, and
+    `photos_storage_read` was in its `0037` form. The six bucket rows at `0154` were copied too.
+  - Also copied: `graphile_worker.migrations`' 20 rows and `retention_periods`' 7 seeded rows. A schema-only dump drops
+    both, and production has both.
+- **Loading the dump.** One error, and it is platform-only, as in waves 12 and 13: the `supabase_realtime`
+  publication.
+- **Migrations.** `0155`, `0156`, `0157`, `0158` and `0159` were **each applied in one transaction with
+  `ON_ERROR_STOP`, as `postgres`. All five ok.**
+- **End state against the fully migrated local database:**
+
+  | Compared | local | rehearsed |
+  |---|---|---|
+  | Public function bodies, by hash | 304 | 305 |
+  | Policies in `public`, `storage` and `realtime` | 187 | 187, identical |
+  | Triggers | 108 | 108, identical |
+  | Client-role table grants | 151 | 151, identical |
+  | Client-role column grants | 1382 | 1382, identical |
+  | Function execute grants | 255 | 255, identical |
+  | Buckets | 8 | 8, identical |
+
+  ★ **The only difference is production-only and expected:** `rls_auto_enable()`, Supabase's own function, in no
+  migration. It no longer carries a client execute grant. The Storage policies match **by construction** (they came
+  from the local chain at `0154`, above); `0156`/`0157`'s policies only **add** names and alter one, so they cannot
+  collide with production's.
+- **The wave's RLS suites against the rehearsed schema: 172/173** (`photo-downloads`, `avatar-copy`,
+  `avatar-import`, `photos-album-build`, `comments-no-hotlink`, `members`, `notify-contract`, `retention`,
+  `definer-exposure`, `isolation`, `realtime` and the one-off proof below). The one red is `definer-exposure` listing
+  `rls_auto_enable()`, the production-only difference above.
+- **Cleaned up:** the dump, `rehearse14` and the one-off proof test are deleted.
+
+★ **The four things proved specifically:**
+1. **`0156`'s Storage fix, red before and green after, on the REHEARSED schema.**
+   - Before `0156`: a photo with `removed_at` set and `hidden_at` null **was readable** by a member (red: «member reads
+     a removed photo: expected 1 to be 0»).
+   - After: it is unreadable to a member, a moderator and an admin.
+   - ★ **The moderation path is unchanged** where anything can see it. `remove_photo()` (`0059:84-85`, which sets
+     `removed_at` **and** `hidden_at`) still refuses a member (before and after) and still resolves the open takedowns.
+     The review path — a member's takedown, `hidden_at` only — still refuses the member and lets staff read the photo
+     to review it (before and after).
+   - ★ **One measured change, said out loud:** a moderator-removed photo's object was readable **by staff** before
+     (`1`) and is not after (`0`). No screen reads it. The takedown queue lists only unresolved takedowns
+     (`admin-moderation.ts:196`), `remove_photo()` resolves them in the same transaction, and every photo reader filters
+     `removed_at is null` (`photos.ts:181`). It is the intent of `DEC-182` — a removed photo is gone — not a
+     regression.
+2. **`main`'s worker in the gap — benign; the jobs sit unclaimed.**
+   - **After the push, before the merge, nothing on the new schema enqueues either job.**
+     - `import_avatar` is enqueued only by `set_avatar_import()`, which only the new app calls. Its other two sources
+       fire only for `avatar_import = 'accepted'`, which is null for every member until the new app ships: the
+       source-changed trigger (`when … new.avatar_import = 'accepted'`) and `anonymise_members()`.
+     - `zip_session_photos` is enqueued only by `request_photo_album()` (the new app) and `record_photo_album_built()`
+       (the new worker).
+     - No column default, trigger or cron entry names either: `main`'s `crontab` lists twelve tasks, neither of them.
+   - **After the merge, before Railway redeploys**, the new app can enqueue both. `main`'s worker has neither name,
+     and graphile-worker 0.18.0's `getJobs` asks only for **the task ids it registered**
+     (`dist/sql/getJobs.js:13–26`). So an unknown job is **never claimed and uses no attempts**. It waits, unfailed,
+     until the new worker starts. Nothing fails and the owner does nothing about it.
+3. **The zip binary and the Railway gap** — step 4 below. It is the first wave to change `worker/Dockerfile`.
+4. **`0157`/`0158` on a schema that never had an avatars bucket.**
+   - `0157` creates the `avatars` bucket (private, 262144 bytes, `image/webp`) and `avatars_storage_read` **in the same
+     transaction**. The rehearsal shows both, and `avatar-copy` passes against them.
+   - The path shape `{org}/members/{member}/{version}/{96|192}.webp` is built only by
+     `packages/storage-paths/src/avatar.ts` (`storagePaths.avatar`), and the policy reads exactly those four segments.
+   - `assert_storage_prefixes` lists `avatars` (and `photo-albums`) in `BUCKETS` (`worker/src/platform/storage.ts:102–103`).
+     For avatars it also asks `avatar_member_orgs()` (`0158`) whether the member belongs to the org the path is filed
+     under.
+   - ★ **Coverage from the day the objects exist (`REQ-NFR-014`).** An avatar object can only be written by the NEW
+     worker's `import_avatar`, and that same image carries the new `BUCKETS`. So no object exists before the
+     assertion covers it. The same holds for `photo-albums`.
+
+#### The owner's steps
+
+**PR #32 is independent** (`0155` and the comment code). You may push `0155` and merge #32 at any time, before or
+after the steps below, in either order. Its code alone stops every browser fetch from Google.
+
+1. **Push the migrations**, from `main`'s checkout with this branch's `supabase/migrations/` (as in wave 13):
+   `supabase db push --linked`
+2. **Verify** `0159` on both sides: `supabase migration list --linked`. The last row must read `0159 | 0159`.
+3. **Merge PR #31:** `gh pr merge 31 --merge` (the owner's; denied to every session). CI is green on `946a254`
+   (run `36318671772`, 13/13).
+4. **Reconnect Railway, as a REBUILD:** `railway service source connect` (the standing step below), or Settings →
+   Source in the dashboard. ★ **This is the first wave to change `worker/Dockerfile`: the image gains `zip`.** A
+   restart of the old image has no `zip`, and no `import_avatar` or `zip_session_photos`.
+5. **Wait for plain ● Online — not Building, not Deploying — BEFORE anyone is told the album works.** Then check that
+   the log's «Worker connected and looking for jobs… (task names: …)» line ends with
+   `'import_avatar', 'zip_session_photos'`.
+   - **Meanwhile, what people see.** Vercel deploys the new app at once, so a staff member can press «تنزيل الكل» on
+     new code before the new worker exists. The request is audited and queued, and returns at once. The photo section
+     shows «نُجهّز ملف الصور. سيصلك إشعار حين يجهز، ويبقى رابطه هنا.» and stays there, because the job sits
+     unclaimed (point 2) with no error. As soon as the rebuilt worker is Online it claims the job, builds the zip, and
+     the notice arrives.
+   - A member who answers «نعم» meanwhile keeps initials until the new worker copies the photo, then sees it on their
+     next page.
+6. **After the merge, a follow-up** (carried): revoke `avatar_url` from the column grant, `members_member_view` and
+   `me()`, so no member's own browser can ask PostgREST for a colleague's Google URL.
+
+### ★ The standing owner step — Railway, after every merge
+
+Railway's push trigger has needed a manual `railway service source connect` after **eight consecutive merges**.
+**The durable fix is the dashboard's Settings → Source, not the CLI.** It is the last thing in this project still
+done by hand.
+
+### Untouched-suite ledger (wave 14)
+
+*Every pre-existing test file whose assertion changes, with why — written in the same commit as the change.*
+
+| File | Assertion | Why |
+|---|---|---|
+| `tests/rls/members.test.ts` › «the member tier view exposes exactly A33's fields» | the view's keys gain `avatar_version` | `0157` appends it last to `members_member_view` (`DEC-182`): the version of our stored copy, never a URL — predicted by `platform`'s plan W14.9 |
+| `tests/rls/notify-contract.test.ts` › «carries every message in the document and nothing else» | `toHaveLength(39)` → `40`, and it names `MSG-photo_album_ready` | one in-app-only key added by `0156` (`DEC-182` Q8, `08` §1.6a); the lead's as `notify`'s custodian |
+| `tests/unit/mail-render.test.ts` › «parsed the matrix out of the migration at all» | `toHaveLength(39)` → `40` | the matrix's last definition is now `0156`'s, with `MSG-photo_album_ready` — in-app only, so «a template for every email row» and «no stray template» are unchanged (`DEC-182` Q8) |
+| `tests/components/browse/sessions-timeline.test.tsx` (`sessions'`, the lead as custodian) | (b) harness only — a `vi.mock` of `AvatarImportPrompt`; **no assertion changed** | the timeline now renders platform's server component, whose DAL is `server-only` (`DEC-182`) |
+| `tests/components/ui/avatar.test.tsx` › the `src` case (`content`'s, `b45541b`) | «no `<bdi>`» → the `<bdi>` with the initial is present **under** an absolutely positioned `<img>` | `DEC-182`, platform's R1: a failed image falls back to initials, never an empty box |
+| `tests/rls/photos-album-build.test.ts` (`content`'s) | (b) `applyProposed` guarded by the proposed file's existence; **no assertion changed** | promoted as `0159` by the lead (the proposed file moved) |
+| `tests/rls/isolation.test.ts` (the lead's) | `photo_albums` joins the list of tables where a plain member sees none of org A's rows | staff-only by design (`0156`, `photo_albums_read_staff`), and the fixture seeds no album. The wall — zero rows of org B — is asserted unchanged |
+
+---
+
+## ★★ WAVE 13 — COMPLETE and LIVE (PR #30, `7a66690`; `0152`–`0154` pushed) — was on `wave-13/studio-and-session-settings` — the studio, the session download, the settings hub (`DEC-176`)
 
 **Most of this is scope that was specified long ago and never built.** `REQ-DSG-027` (M11) and `REQ-DSG-028` …
 `031` (M12) were written, traced and never run. The design studio sat on the never-touch lists of waves 8–10.

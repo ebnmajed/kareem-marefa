@@ -576,7 +576,8 @@
           "deactivation_requested": "Deactivation requested",
           "provisioned": "Member joined",
           "reactivated": "Membership reactivated",
-          "role_changed": "Member's role changed"
+          "role_changed": "Member's role changed",
+          "avatar_import_answered": "Answered the Google photo question"
         },
         "org": {
           "created": "Organisation created",
@@ -588,7 +589,8 @@
         },
         "photo": {
           "removed": "Photo removed",
-          "restored": "Photo restored"
+          "restored": "Photo restored",
+          "downloaded": "Downloaded a photo"
         },
         "points": {
           "balance_divergence": "Points balance divergence",
@@ -627,6 +629,10 @@
         },
         "notify": {
           "test_email_sent": "Test email sent"
+        },
+        "photo_album": {
+          "requested": "Requested a session photo album",
+          "downloaded": "Downloaded a session photo album"
         }
       },
       "domains": {
@@ -669,7 +675,8 @@
         "photo": "Photo",
         "points_ledger": "Points entry",
         "session": "Session",
-        "template": "Template"
+        "template": "Template",
+        "photo_album": "Session photo album"
       }
     },
     "settings": {

@@ -35,7 +35,8 @@ describe("REQ-NTF-002 — every email row of the matrix has an Arabic template",
   }));
 
   it("parsed the matrix out of the migration at all", () => {
-    expect(matrix).toHaveLength(39);
+    // 40 since 0156: MSG-photo_album_ready, in-app only (DEC-182), so no template is owed.
+    expect(matrix).toHaveLength(40);
   });
 
   it("has a subject and a body for every message with an email channel", () => {
