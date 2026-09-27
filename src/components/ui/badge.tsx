@@ -48,9 +48,18 @@ const OUTLINE_TONE: Record<Tone, string> = {
   error: "border border-error-border text-error",
 };
 
+// ★ A MINIMUM height, never a fixed one (the lead's wave-14 capture review): a
+// label longer than its container — «مخفية — بانتظار المراجعة» on a photo tile
+// at 390 px — wraps, and a fixed `h-6` kept the outlined box one line tall while
+// the text spilled across its border. The box now grows with its lines. No
+// vertical padding is added: the line-height's own leading keeps a wrapped
+// glyph off the border, and a one-line badge keeps its height — one line plus
+// the border fits inside `min-h-6`/`min-h-7` at the phone type scale, and the
+// desktop `sm` badge, whose 24 px line never fitted a 24 px box with its
+// border, now holds its border instead of overlapping it by a pixel.
 const SIZE: Record<"sm" | "md", string> = {
-  sm: "h-6 gap-1 px-2 text-caption",
-  md: "h-7 gap-1.5 px-2.5 text-label",
+  sm: "min-h-6 gap-1 px-2 text-caption",
+  md: "min-h-7 gap-1.5 px-2.5 text-label",
 };
 
 // ★ `rounded-field` (6 px), not a pill — the canvas's own shape for a status
