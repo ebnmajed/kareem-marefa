@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { avatarHref } from "@/lib/dal/avatars";
 
 // Ratings — gated by check-in, anonymous to the presenter, and honest about
 // the one exception (REQ-RAT-001 … REQ-RAT-006, D35, D36). The `with check`
@@ -250,14 +251,14 @@ export async function getRatingsForAdmin(locale: string, sessionId: string): Pro
   if (rows.length === 0) return [];
 
   const memberIds = Array.from(new Set(rows.map((r) => r.member_id)));
-  const { data: members, error: memberError } = await supabase.from("members_member_view").select("id, display_name, avatar_url").in("id", memberIds);
+  const { data: members, error: memberError } = await supabase.from("members_member_view").select("id, display_name, avatar_version").in("id", memberIds);
   if (memberError) throw new Error(`members_member_view: ${memberError.message}`);
   const byId = new Map((members ?? []).map((m) => [m.id as string, m]));
 
   return rows.map((r) => ({
     ...toRatingDTO(r),
     member: byId.has(r.member_id)
-      ? { id: r.member_id, displayName: byId.get(r.member_id)!.display_name, avatarUrl: byId.get(r.member_id)!.avatar_url }
+      ? { id: r.member_id, displayName: byId.get(r.member_id)!.display_name, avatarUrl: avatarHref({ id: r.member_id, avatarVersion: byId.get(r.member_id)!.avatar_version }, 96) }
       : null,
   }));
 }

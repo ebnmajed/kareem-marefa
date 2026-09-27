@@ -15,6 +15,8 @@ vi.mock("next/navigation", async (importOriginal) => ({
 vi.mock("@/components/search/actions", () => ({ toggleBookmarkAction: vi.fn() }));
 vi.mock("@/lib/dal/search", () => ({ getTimeline: vi.fn() }));
 vi.mock("@/lib/dal/members", () => ({ getMe: vi.fn(async () => ({ id: "me", companyId: "c-1" })) }));
+// The avatar prompt is platform's server component with its own DAL (DEC-182); this suite is about the timeline.
+vi.mock("@/components/privacy/avatar-import-prompt", () => ({ AvatarImportPrompt: () => null }));
 
 const { getTimeline } = await import("@/lib/dal/search");
 const { getMe } = await import("@/lib/dal/members");

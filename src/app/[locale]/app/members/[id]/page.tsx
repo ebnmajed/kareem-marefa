@@ -48,7 +48,7 @@ export default async function MemberPage({ params }: { params: Promise<{ locale:
   return (
     <div className="flex max-w-3xl flex-col gap-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-        <Avatar memberId={profile.id} displayName={profile.displayName} size={96} decorative />
+        <Avatar memberId={profile.id} displayName={profile.displayName} src={profile.avatarUrl} size={96} decorative />
         <PageHeader
           className="flex-1"
           status={

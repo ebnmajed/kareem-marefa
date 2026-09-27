@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import { FilterBar } from "@/components/browse/filter-bar";
 import { SessionCard } from "@/components/browse/session-card";
@@ -10,6 +11,7 @@ import { Link } from "@/components/ui/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
+import { AvatarImportPrompt } from "@/components/privacy/avatar-import-prompt";
 import { getMe } from "@/lib/dal/members";
 import { getTimeline, type TimelineData, type TimelineSession } from "@/lib/dal/search";
 
@@ -48,6 +50,13 @@ export async function SessionsTimeline({ locale, searchParams }: { locale: strin
           </Panel>
         </div>
       ) : null}
+
+      {/* «نستخدم صورتك من Google؟» — asked once, beside the company prompt
+          (REQ-PRF-008, DEC-099, DEC-182). platform's component decides whether it
+          shows; its own Suspense so it never delays the timeline. */}
+      <Suspense fallback={null}>
+        <AvatarImportPrompt locale={locale} />
+      </Suspense>
 
       <FilterBar query={query} data={data} locale={locale} />
 

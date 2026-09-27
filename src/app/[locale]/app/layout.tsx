@@ -197,7 +197,7 @@ export default async function AppLayout({
             <AccountMenu
               memberId={me?.id ?? null}
               displayName={me?.displayName ?? null}
-              avatarUrl={null}
+              avatarUrl={me?.avatarUrl ?? null}
               isStaff={isStaff}
               isPlatformAdmin={isPlatformAdmin}
               labels={{
