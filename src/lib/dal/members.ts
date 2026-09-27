@@ -41,7 +41,9 @@ export async function getMe(locale: string): Promise<SelfProfile> {
     id: m.id as string,
     email: m.email as string,
     displayName: (m.display_name as string) ?? null,
-    avatarUrl: (m.avatar_url as string) ?? null,
+    // ★ DEC-099: `me()`'s `avatar_url` is Google's URL, and this DTO reaches the
+    // client `ProfileForm`'s RSC payload. Null until contract 4's resolver (DEC-181).
+    avatarUrl: null,
     companyId: (m.company_id as string) ?? null,
     jobTitle: (m.job_title as string) ?? null,
     bio: (m.bio as string) ?? null,
@@ -66,7 +68,7 @@ export async function getMemberProfile(locale: string, id: string): Promise<Memb
   return {
     id: data.id,
     displayName: data.display_name,
-    avatarUrl: data.avatar_url,
+    avatarUrl: null, // DEC-099 — never Google's URL; contract 4's resolver replaces this (DEC-181)
     companyId: data.company_id,
     jobTitle: data.job_title,
     bio: data.bio,
