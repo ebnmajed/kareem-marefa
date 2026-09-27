@@ -1,4 +1,4 @@
--- platform (wave 14) — Google's photo copied into our storage, never hotlinked.
+-- 0158 · promoted by the lead from supabase/proposed/platform/0010_avatar_import.sql (e044e1e) — platform (wave 14): Google's photo copied into our storage, never hotlinked.
 --
 -- Serves:  01 REQ-PRF-008 (the import half), REQ-PRF-009, REQ-PRF-010, REQ-PRF-011,
 --          REQ-NFR-014 · 11 §2.4 JOB-import_avatar · DEC-099, DEC-180 §3, DEC-182

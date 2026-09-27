@@ -1434,6 +1434,18 @@ generated suite is the highest-value test in the product.
 | `POL-avatars_storage_read.stale_version_refused` | An older version's object ✗; ★ clearing `avatar_version` (a decline, anonymisation) makes the current one unreadable at once. (migration `0157`). |
 | `COL-members.avatar_import.no_grant` | A client select of `members.avatar_import` is refused (42501); `avatar_version` is readable through the grant, `members_member_view` and `me()`. (migration `0157`). |
 | `TRG-comments_broadcast.avatar_version` | The comment payload carries `authorAvatarVersion`, and `authorAvatarUrl` stays null — no Google URL on the wire. (migrations `0155`, `0157`). |
+| `RPC-set_avatar_import.self_only` | A member records only their OWN answer; there is no member argument. (migration `0158`, `DEC-182`). |
+| `RPC-set_avatar_import.decline_clears_version` | «لا» clears `avatar_version` in the same statement, so `avatars_storage_read` stops serving at once, and enqueues the deletion. (migration `0158`). |
+| `RPC-set_avatar_import.no_source` | «نعم» with no Google source answers `no_source` and enqueues nothing. (migration `0158`). |
+| `RPC-set_avatar_import.audited` | Each answer writes `member.avatar_import_answered` with before and after. (migration `0158`). |
+| `RPC-my_avatar.self_only` | Returns the caller's own answer, version and whether a source exists — never the source URL. (migration `0158`). |
+| `RPC-avatar_job_target.worker_only` | `service_role` only; every client role is refused. (migration `0158`). |
+| `RPC-record_avatar_copy.worker_only` | `service_role` only. (migration `0158`). |
+| `RPC-record_avatar_copy.stale_when_declined` | A copy recorded after a decline answers `stale` and sets nothing. (migration `0158`). |
+| `RPC-record_avatar_copy.stale_when_source_changed` | A copy of a source that has since changed answers `stale`. (migration `0158`). |
+| `RPC-avatar_member_orgs.worker_only` | `service_role` only — the prefix assertion's member-in-org question. (migration `0158`). |
+| `TRG-members_avatar_source_changed.accepted_only` | A changed `avatar_url` enqueues `import_avatar` only for a member who said yes. (migration `0158`). |
+| `RPC-anonymise_members.avatar` | Anonymisation clears the answer and the version in the anonymising statement and enqueues the objects' deletion; the summary keys are unchanged. (migration `0158`, `REQ-PRF-011`). |
 | `POL-photos_storage_read.removed` | ★ A removed photograph's object is readable by nobody, member or staff — before `0156` it was readable by every member of the org. (migration `0156`, `DEC-182`). |
 | `POL-photo_albums_read_staff` | Admin ✓ · moderator ✓ · member ✗ · another org's admin ✗. (migration `0156`). |
 | `POL-photo_albums_storage_read` | Staff, a ready and current build ✓ · a member ✗ · stale ✗ · expired ✗ · a superseded `build_id` ✗. (migration `0156`). |

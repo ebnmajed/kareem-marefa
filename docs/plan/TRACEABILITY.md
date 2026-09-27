@@ -13,7 +13,7 @@
 | Stories (`STORY-*`) | **154** |
 | Screens cited (`SCR-*`) | 57 |
 | Jobs cited (`JOB-*`) | 40 |
-| Messages cited (`MSG-*`) | 22 |
+| Messages cited (`MSG-*`) | 23 |
 
 ## Cross-cutting requirements
 
@@ -76,7 +76,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-ADM-018` | `ENT-audit_log` | `POL-comments.removal_audit` | `SCR-043` `SCR-059` `SCR-061` +1 | — | — | `STORY-ADM-008` | M7 |
 | `REQ-ADM-019` | `ENT-impersonation_sessions` | `POL-impersonation_sessions.select` | `SCR-085` | — | — | `STORY-ADM-002` | M8 |
 | `REQ-ADM-020` | `ENT-ratings` | `POL-org_settings.update.admin` `POL-task_form_responses.select` | `SCR-044` `SCR-050` `SCR-061` +3 | — | — | `STORY-ADM-005` | M7 |
-| `REQ-ADM-021` | — | — | `SCR-012` `SCR-043` `SCR-045` | `JOB-zip_session_photos` | — | `STORY-ADM-009` | M11, M15, M16 |
+| `REQ-ADM-021` | — | — | `SCR-012` `SCR-043` `SCR-045` | `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-ADM-009` | M11, M15, M16 |
 
 ### AUT
 
@@ -209,12 +209,12 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-EVT-008` | `ENT-reports` | — | `SCR-012` `SCR-050` | — | — | `STORY-EVT-004` | M2 |
 | `REQ-EVT-009` | `ENT-photos` | — | `SCR-012` | `JOB-zip_session_photos` | — | `STORY-EVT-005` | M5 |
 | `REQ-EVT-010` | `ENT-photos` `ENT-session_days` | — | `SCR-012` | `JOB-process_photo` | — | `STORY-EVT-005` | M5 |
-| `REQ-EVT-011` | `ENT-photos` | — | `SCR-012` | `JOB-process_photo` | — | `STORY-EVT-005` | M5 |
-| `REQ-EVT-012` | `ENT-photo_takedowns` `ENT-photos` | — | `SCR-012` `SCR-043` `SCR-050` +1 | `JOB-zip_session_photos` | — | `STORY-EVT-006` | M5 |
+| `REQ-EVT-011` | `ENT-photos` | — | `SCR-012` | `JOB-process_photo` `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-EVT-005` | M5 |
+| `REQ-EVT-012` | `ENT-photo_takedowns` `ENT-photos` | — | `SCR-012` `SCR-043` `SCR-050` +1 | `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-EVT-006` | M5 |
 | `REQ-EVT-013` | `ENT-photo_takedowns` `ENT-photos` | — | `SCR-012` | — | — | `STORY-EVT-005` | M5 |
 | `REQ-EVT-014` | `ENT-photos` | `POL-comments.removal_audit` | `SCR-011` `SCR-012` `SCR-043` +3 | — | `MSG-reminder_generic` | `STORY-EVT-006` | M5 |
 | `REQ-EVT-015` | — | — | `SCR-012` | — | — | `STORY-EVT-006` | M5 |
-| `REQ-EVT-016` | — | — | `SCR-012` | `JOB-zip_session_photos` | — | `STORY-EVT-007` | M16 |
+| `REQ-EVT-016` | — | — | `SCR-012` | `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-EVT-007` | M16 |
 
 ### INT
 
@@ -318,7 +318,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRF-007` | — | — | `SCR-021` `SCR-083` | `JOB-anonymise_members` `JOB-enforce_retention` +1 | — | `STORY-PRF-004` | M8 |
 | `REQ-PRF-008` | — | — | `SCR-012` `SCR-021` | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-009` | — | — | `SCR-016` `SCR-020` | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
-| `REQ-PRF-010` | — | — | `SCR-021` `SCR-050` | `JOB-anonymise_members` | — | `STORY-PRF-005` | M10, M16 |
+| `REQ-PRF-010` | — | — | `SCR-021` `SCR-050` | `JOB-anonymise_members` | `MSG-photo_album_ready` | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-011` | — | — | `SCR-021` | `JOB-anonymise_members` `JOB-zip_session_photos` | — | `STORY-PRF-005` | M10, M16 |
 
 ### PRO
@@ -490,6 +490,6 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-024` | — | — | `SCR-012` | — | — | `STORY-UIX-014` | M10 |
 | `REQ-UIX-025` | — | — | `SCR-002` | — | — | `STORY-UIX-015` | M13 |
 | `REQ-UIX-026` | — | — | `SCR-007` `SCR-011` `SCR-012` | `JOB-zip_session_photos` | — | `STORY-UIX-017` | M14 |
-| `REQ-UIX-027` | — | — | `SCR-012` | `JOB-zip_session_photos` | — | `STORY-UIX-018` | M16 |
+| `REQ-UIX-027` | — | — | `SCR-012` | `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-UIX-018` | M16 |
 
 <!-- TRACEABILITY:END -->
