@@ -61,3 +61,34 @@ export async function deleteObject(bucket: string, path: string): Promise<void> 
   });
   if (!res.ok) throw new Error(`content/storage: delete ${bucket}/${path} failed: ${res.status} ${await res.text()}`);
 }
+
+interface ListEntry {
+  name: string;
+  /** `null` for a folder — Storage's listing is one level deep. */
+  id: string | null;
+}
+
+/** Every object under `prefix`, walking at most `depth` folders down — the zip job lists one
+ *  session's album prefix (builds, then their parts) to delete the builds a new one replaced. */
+export async function listObjects(bucket: string, prefix: string, depth = 2): Promise<string[]> {
+  const { url, key } = requireEnv();
+  const PAGE = 1000;
+  const out: string[] = [];
+  for (let offset = 0; ; offset += PAGE) {
+    const res = await fetch(`${url}/storage/v1/object/list/${bucket}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, apikey: key, "content-type": "application/json" },
+      body: JSON.stringify({ prefix, limit: PAGE, offset, sortBy: { column: "name", order: "asc" } }),
+    });
+    if (!res.ok) throw new Error(`content/storage: list ${bucket}/${prefix} failed: ${res.status} ${await res.text()}`);
+    const entries = (await res.json()) as ListEntry[];
+    for (const entry of entries) {
+      const path = `${prefix}/${entry.name}`;
+      if (entry.id === null) {
+        if (depth > 0) out.push(...(await listObjects(bucket, path, depth - 1)));
+      } else out.push(path);
+    }
+    if (entries.length < PAGE) break;
+  }
+  return out;
+}
