@@ -1082,6 +1082,7 @@ create policy "exports_storage_read"         on storage.objects for select to au
 create policy "exports_storage_read_public_card" on storage.objects for select to anon, authenticated;  -- DEC-066 (0080): ONLY the og.png of a card-eligible session's poster, via export_is_public_card(name); a member of another org sees what a stranger sees
 create policy "exports_storage_certificate_restricted" on storage.objects as restrictive for select to authenticated;  -- DEC-178 (0153): a certificate's render only to staff of its org or its own member once released, via export_object_is_foreign_certificate(name); narrows exports_storage_read, which admitted the whole org prefix
 create policy "photo_albums_storage_read"          on storage.objects for select to authenticated;  -- DEC-182 (0156): staff of the org, and only the album's CURRENT build (path segment 5 = build_id), ready and unexpired — a stale, superseded or expired zip is unreadable with its path in hand
+create policy "avatars_storage_read"                on storage.objects for select to authenticated;  -- DEC-182 (0157): same org, and only a member's CURRENT avatar_version (path segment 4) — clearing the version cuts access in the same statement
 create policy "design_assets_storage_read_public_logo" on storage.objects for select to anon, authenticated;  -- DEC-161 (0126): ONLY the PNG or JPEG an ACTIVE org's brand_kits.logo_asset_id names, via brand_logo_is_public(name) — so a mail client can fetch a logo; every other design asset stays closed
 create policy "fonts_storage_read"           on storage.objects for select to authenticated;  -- no org prefix (REQ-DSG-016)
 ```
@@ -1429,6 +1430,10 @@ generated suite is the highest-value test in the product.
 | `RPC-record_export_download.certificate` | A certificate's download: its own member ✓ (issued or revoked), admin ✓, moderator ✓; its member while `held` ✗; another member ✗. The file is named by the Western serial. (migration `0152`, `DEC-177`). |
 | `RPC-record_export_download.document` | Any other render (a template, the studio's panel): admin ✓, moderator ✗, member ✗. (migration `0152`). |
 | `RPC-record_export_download.refusals` | An unknown id and a not-ready artifact both answer `42501`, so the function is no existence oracle; `anon` cannot execute it. (migration `0152`). |
+| `POL-avatars_storage_read.same_org` | A member of the org reads another member's current copy ✓ · another org's member ✗. (migration `0157`, `DEC-182`). |
+| `POL-avatars_storage_read.stale_version_refused` | An older version's object ✗; ★ clearing `avatar_version` (a decline, anonymisation) makes the current one unreadable at once. (migration `0157`). |
+| `COL-members.avatar_import.no_grant` | A client select of `members.avatar_import` is refused (42501); `avatar_version` is readable through the grant, `members_member_view` and `me()`. (migration `0157`). |
+| `TRG-comments_broadcast.avatar_version` | The comment payload carries `authorAvatarVersion`, and `authorAvatarUrl` stays null — no Google URL on the wire. (migrations `0155`, `0157`). |
 | `POL-photos_storage_read.removed` | ★ A removed photograph's object is readable by nobody, member or staff — before `0156` it was readable by every member of the org. (migration `0156`, `DEC-182`). |
 | `POL-photo_albums_read_staff` | Admin ✓ · moderator ✓ · member ✗ · another org's admin ✗. (migration `0156`). |
 | `POL-photo_albums_storage_read` | Staff, a ready and current build ✓ · a member ✗ · stale ✗ · expired ✗ · a superseded `build_id` ✗. (migration `0156`). |

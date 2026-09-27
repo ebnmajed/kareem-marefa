@@ -26,27 +26,51 @@ type ContentProps = Omit<ComponentProps<typeof RadixDialog.Content>, "title"> & 
   description?: ReactNode;
   /** Label for the close button, from `ui.dialog.close`. */
   closeLabel: string;
+  /**
+   * `media` — the whole viewport on a dark ground, inside the device's safe
+   * areas, with the body taking every remaining pixel: for showing one
+   * photograph whole (`REQ-EVT-016`, DEC-182, `content`'s R1). The caller lays
+   * the image out in the body; this frame never crops or scales it.
+   */
+  size?: "default" | "media";
 };
 
-export function DialogContent({ title, description, closeLabel, children, className = "", ...props }: ContentProps) {
+const FRAME = {
+  default:
+    "fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-field bg-[var(--color-canvas)] p-6 text-[var(--fg-body)] shadow-xl outline-none sm:inset-x-auto sm:start-1/2 sm:w-full sm:-translate-x-1/2 rtl:sm:translate-x-1/2",
+  // Safe-area padding is symmetric on the inline axis (the larger of the two
+  // insets), so it needs no direction: a notch on either side is cleared.
+  media:
+    "fixed inset-0 z-50 flex flex-col bg-[var(--color-navy-950)] px-[max(1rem,env(safe-area-inset-left),env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] text-white outline-none",
+} as const;
+
+export function DialogContent({ title, description, closeLabel, size = "default", children, className = "", ...props }: ContentProps) {
+  const media = size === "media";
   return (
     <RadixDialog.Portal>
       <RadixDialog.Overlay className="fixed inset-0 z-40 bg-[var(--color-navy-950)]/60 motion-safe:animate-[fade-in_150ms_ease-out]" />
-      <RadixDialog.Content
-        className={`fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-field bg-[var(--color-canvas)] p-6 text-[var(--fg-body)] shadow-xl outline-none sm:inset-x-auto sm:start-1/2 sm:w-full sm:-translate-x-1/2 rtl:sm:translate-x-1/2 ${className}`}
-        {...props}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <RadixDialog.Title className="text-h3 text-[var(--fg-heading)]">{title}</RadixDialog.Title>
+      <RadixDialog.Content className={`${FRAME[size]} ${className}`} data-size={size} {...props}>
+        <div className={`flex items-start justify-between gap-4 ${media ? "shrink-0 items-center" : ""}`}>
+          <RadixDialog.Title className={media ? "min-w-0 text-body font-semibold text-white" : "text-h3 text-[var(--fg-heading)]"}>
+            {title}
+          </RadixDialog.Title>
           <RadixDialog.Close
             aria-label={closeLabel}
-            className="-me-2 -mt-2 inline-flex size-10 shrink-0 items-center justify-center rounded-field text-[var(--fg-muted)] transition-colors hover:bg-[var(--btn2-bg-hover)] hover:text-[var(--fg-heading)]"
+            className={
+              media
+                ? "-me-2 inline-flex size-11 shrink-0 items-center justify-center rounded-field text-white/85 transition-colors hover:bg-white/10 hover:text-white"
+                : "-me-2 -mt-2 inline-flex size-10 shrink-0 items-center justify-center rounded-field text-[var(--fg-muted)] transition-colors hover:bg-[var(--btn2-bg-hover)] hover:text-[var(--fg-heading)]"
+            }
           >
             <CloseIcon className="text-xl" />
           </RadixDialog.Close>
         </div>
-        {description ? <RadixDialog.Description className="mt-2 text-body text-[var(--fg-muted)]">{description}</RadixDialog.Description> : null}
-        <div className="mt-5">{children}</div>
+        {description ? (
+          <RadixDialog.Description className={media ? "mt-1 text-body text-white/75" : "mt-2 text-body text-[var(--fg-muted)]"}>
+            {description}
+          </RadixDialog.Description>
+        ) : null}
+        <div className={media ? "mt-3 flex min-h-0 flex-1 flex-col" : "mt-5"}>{children}</div>
       </RadixDialog.Content>
     </RadixDialog.Portal>
   );

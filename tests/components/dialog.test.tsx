@@ -54,3 +54,38 @@ describe("Dialog", () => {
     expect(closeLabel).toBe("إغلاق");
   });
 });
+
+describe("Dialog size=\"media\" (REQ-EVT-016, DEC-182)", () => {
+  it("fills the viewport inside the safe areas, keeps its title and close control, and gives the body the rest", async () => {
+    render(
+      <Direction.Provider dir="rtl">
+        <Dialog defaultOpen>
+          <DialogContent title="صورة 3 من 12" closeLabel={closeLabel} size="media">
+            {/* eslint-disable-next-line @next/next/no-img-element -- a test double for the photograph */}
+            <img alt="" src="data:," />
+          </DialogContent>
+        </Dialog>
+      </Direction.Provider>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "صورة 3 من 12" });
+    expect(dialog).toHaveAttribute("data-size", "media");
+    expect(dialog.className).toContain("inset-0");
+    expect(dialog.className).toContain("safe-area-inset-top");
+    expect(dialog.className).not.toContain("max-w-lg");
+    expect(screen.getByRole("button", { name: closeLabel })).toBeInTheDocument();
+    expect(dialog.querySelector("img")?.parentElement?.className).toContain("flex-1");
+  });
+
+  it("the default size is unchanged", async () => {
+    render(
+      <Dialog defaultOpen>
+        <DialogContent title="تأكيد" closeLabel={closeLabel}>
+          <p>المحتوى</p>
+        </DialogContent>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "تأكيد" });
+    expect(dialog).toHaveAttribute("data-size", "default");
+    expect(dialog.className).toContain("max-w-lg");
+  });
+});

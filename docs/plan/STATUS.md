@@ -100,7 +100,7 @@ That is the owner's item 8 turned into a test that can fail, which a count of pr
 | L1 | ★ The wordmark — additive `href`, the shell passes `/app`; `qa:contract` + `visual` **unmoved** | lead | todo |
 | L2 | The shell's avatar through contract 4; `members.ts` and `ratings.ts` as custodian | lead | todo |
 | L3 | ★ The CSP — `https://lh3.googleusercontent.com` out of `img-src` once no reader carries a Google URL | lead | todo |
-| L4 | Promotion: `0156` (photos) and `0157` (avatars) are the lead's schema; the tracks' own SQL from `0158`; the job registrations; `zip` in the Dockerfile | lead | `0156` **landed** — from a fresh `db:reset`: `photo-downloads` 8/8, `isolation` + `definer-exposure` 89/89, `policy-diff` ✓, 03 rows added (local; CI blocked). `0157` next |
+| L4 | Promotion: `0156` (photos) and `0157` (avatars) are the lead's schema; the tracks' own SQL from `0158`; the job registrations; `zip` in the Dockerfile | lead | `0156` **landed** (`b1c7737`) — from a fresh `db:reset`: `photo-downloads` 8/8, `isolation` + `definer-exposure` 89/89, `policy-diff` ✓, 03 rows added. `0157` **landed** — `avatar_import_answer`, `members.avatar_import` (no client grant) / `avatar_version`, the grant/view/`me()` gaining `avatar_version`, bucket `avatars` + `avatars_storage_read` (current version only), `comments_broadcast()` gaining `authorAvatarVersion`: `avatar-copy` 5/5 + members/rpcs/realtime 31/31, `policy-diff` ✓. R2 (`Bucket`, `index.ts`' export and `storagePaths.avatar`) done; `ui/dialog` `size="media"` (content's R1) done, dialog tests 6/6, `ui-lint` 291 ✓ (all local; CI blocked) |
 | M1 | ★ Demonstrable — the lightbox through every photograph with `page.click()` alone, the photograph changed each time | `content` writes, lead runs | todo |
 | M2 | ★ Demonstrable — `qa:contract` and `visual` unmoved by the wordmark | lead | todo |
 | M3 | ★ Demonstrable — yes → the photo in the account menu; no → initials; both at 390 px, captured | `platform` writes, lead runs | todo |
@@ -129,6 +129,7 @@ done by hand.
 
 | File | Assertion | Why |
 |---|---|---|
+| `tests/rls/members.test.ts` › «the member tier view exposes exactly A33's fields» | the view's keys gain `avatar_version` | `0157` appends it last to `members_member_view` (`DEC-182`): the version of our stored copy, never a URL — predicted by `platform`'s plan W14.9 |
 | `tests/rls/isolation.test.ts` (the lead's) | `photo_albums` joins the list of tables where a plain member sees none of org A's rows | staff-only by design (`0156`, `photo_albums_read_staff`), and the fixture seeds no album. The wall — zero rows of org B — is asserted unchanged |
 
 ---

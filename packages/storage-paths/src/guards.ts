@@ -52,7 +52,8 @@ export function assertSafeSegment(value: string, label: string): string {
   return value;
 }
 
-export type Bucket = "materials" | "material-pages" | "photos" | "design-assets" | "exports" | "fonts";
+// `photo-albums` (0156) and `avatars` (0157) — wave 14, DEC-182.
+export type Bucket = "materials" | "material-pages" | "photos" | "design-assets" | "exports" | "fonts" | "photo-albums" | "avatars";
 
 /** The bucket + path pair a caller actually needs to hand to Storage. */
 export interface StorageLocation {
