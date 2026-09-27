@@ -31,6 +31,34 @@
       "uploadFailed": "The upload failed. Try again.",
       "processing": "Processing the photo…",
       "requirement": "JPEG, PNG or WebP · up to <bdi>{limitMb}</bdi> MB"
+    },
+    "lightbox": {
+      "title": "Session photos",
+      "open": "Open photo {current} of {total}",
+      "position": "<bdi>{current}</bdi> of <bdi>{total}</bdi>",
+      "announce": "Photo {current} of {total}",
+      "alt": "Photo {current} of {total}",
+      "previous": "Previous photo",
+      "next": "Next photo",
+      "close": "Close",
+      "download": "Download photo"
+    },
+    "download": {
+      "photoFailed": "The photo could not be downloaded. Try again.",
+      "albumFailed": "The photo archive could not be downloaded. Try again."
+    },
+    "album": {
+      "request": "Download all",
+      "building": "Preparing the photo archive. You will be notified when it is ready, and its link stays here.",
+      "ready": "The photo archive is ready: {count, plural, zero {no photos} one {one photo} two {two photos} few {{value} photos} many {{value} photos} other {{value} photos}} · <bdi>{size}</bdi>",
+      "expires": "Available until <bdi>{date}</bdi>",
+      "downloadOne": "Download the archive",
+      "downloadPart": "Part <bdi>{part}</bdi> of <bdi>{parts}</bdi>",
+      "changed": "The number of photos changed after the archive was prepared.",
+      "stale": "A photo was hidden after the archive was prepared, so it is no longer available.",
+      "failed": "The photo archive could not be prepared.",
+      "rebuild": "Prepare it again",
+      "retry": "Try again"
     }
   }
 }

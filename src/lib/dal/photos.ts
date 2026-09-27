@@ -116,6 +116,20 @@ export interface PhotoSummary {
    *  existing fixture literal that predates this field still type-checks without editing a file
    *  rule 4 asks to stay untouched. */
   sessionDayId?: string | null;
+  /** The stripped image's own pixel size (`record_photo_upload()`, 0050) — the lightbox reserves
+   *  its box from these (REQ-EVT-016). OPTIONAL for the same reason as `sessionDayId`. */
+  width?: number | null;
+  height?: number | null;
+}
+
+/** The session's album for staff (`photo_albums`, 0156; DEC-182) — the state «تنزيل الكل» reads,
+ *  the same after a reload. `parts` is how many self-contained zips the build wrote. */
+export interface PhotoAlbumState {
+  status: "queued" | "building" | "ready" | "failed" | "stale";
+  photoCount: number | null;
+  byteSize: number | null;
+  parts: number;
+  expiresAt: string | null;
 }
 
 export interface PhotosPageData {
@@ -137,6 +151,10 @@ export interface PhotosPageData {
   /** The session's own zone, else the org's — `dayLabel()`'s weekday reads the room's clock.
    *  OPTIONAL for the same reason as `days`. */
   timeZone?: string;
+  /** Staff only — `null` for everyone else and when no album was ever requested. OPTIONAL, not
+   *  required: every existing fixture predates it, and `gallery.test.tsx` mocks this module with
+   *  `getPhotosPageData` alone, so the album is part of this one read rather than a second one. */
+  album?: PhotoAlbumState | null;
 }
 
 const DEFAULT_IMAGE_LIMIT_MB = 20;
@@ -153,11 +171,12 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
     return { photos: [], canUpload: false, isStaff: false, myMemberId: "", imageLimitMb: DEFAULT_IMAGE_LIMIT_MB, days: [], timeZone: DEFAULT_TIME_ZONE };
   }
   const { session, supabase } = await sessionClient(locale);
+  const isStaff = session.role === "admin" || session.role === "moderator";
 
-  const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }, days, heading] = await Promise.all([
+  const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }, days, heading, { data: albumRow }] = await Promise.all([
     supabase
       .from("photos")
-      .select("id, uploader_id, storage_path, created_at, hidden_at, session_day_id")
+      .select("id, uploader_id, storage_path, created_at, hidden_at, session_day_id, width, height")
       .eq("session_id", sessionId)
       .is("removed_at", null)
       .order("created_at", { ascending: false }),
@@ -166,6 +185,11 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
     supabase.from("org_settings").select("limit_image_mb").eq("org_id", session.orgId).maybeSingle(),
     listSessionDays(locale, sessionId),
     getSessionHeading(locale, sessionId),
+    // REQ-ADM-021 — staff alone read `photo_albums` (`photo_albums_read_staff`, 0156), so nobody
+    // else is asked; RLS would answer nothing anyway.
+    isStaff
+      ? supabase.from("photo_albums").select("status, photo_count, byte_size, parts, expires_at").eq("session_id", sessionId).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   if (error) throw new Error(`photos: ${error.message}`);
 
@@ -179,11 +203,12 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
         url: signed?.signedUrl ?? "",
         hiddenAt: (p.hidden_at as string | null) ?? null,
         sessionDayId: (p.session_day_id as string | null) ?? null,
+        width: (p.width as number | null) ?? null,
+        height: (p.height as number | null) ?? null,
       };
     }),
   );
 
-  const isStaff = session.role === "admin" || session.role === "moderator";
   return {
     photos,
     canUpload: !!checkedIn || !!presents || isStaff,
@@ -192,8 +217,31 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
     imageLimitMb: (settings?.limit_image_mb as number | undefined) ?? DEFAULT_IMAGE_LIMIT_MB,
     days,
     timeZone: heading?.timeZone ?? DEFAULT_TIME_ZONE,
+    album: toAlbumState(albumRow as AlbumRow | null),
   };
 });
+
+interface AlbumRow {
+  status: PhotoAlbumState["status"];
+  photo_count: number | null;
+  byte_size: number | null;
+  parts: unknown[] | null;
+  expires_at: string | null;
+}
+
+/** A ready album past its `expires_at` is no album at all: the definer refuses it and the bucket's
+ *  policy hides it (0156), so the slot offers «تنزيل الكل» again rather than a dead link. */
+function toAlbumState(row: AlbumRow | null): PhotoAlbumState | null {
+  if (!row) return null;
+  if (row.status === "ready" && (!row.expires_at || Date.parse(row.expires_at) <= Date.now())) return null;
+  return {
+    status: row.status,
+    photoCount: row.photo_count,
+    byteSize: row.byte_size,
+    parts: Array.isArray(row.parts) ? row.parts.length : 0,
+    expiresAt: row.expires_at,
+  };
+}
 
 const requestTakedownInput = z.object({ photoId: z.uuid() });
 
@@ -253,4 +301,68 @@ function mapRescopeError(error: { code?: string; message: string }): string {
   if (error.code === "P0002") return "not_found";
   if (error.message.startsWith("day_not_of_session")) return "day_not_of_session";
   return `rescope: ${error.message}`;
+}
+
+// ── Downloads — REQ-ADM-021, DEC-180 contract 1, DEC-182 ──────────────────
+//
+// ★ A route audits, THEN signs, then 303s — never a signed URL in page data and
+// never a bare `<a download>` (DEC-177). Each of the three is the caller's own
+// session calling one audit definer (`0156`), which re-derives who may take the
+// file and writes the audit row; the URL is then minted AS THE CALLER, so the
+// bucket's read policy is a second, independent gate. `42501` is the one answer
+// for every refusal — an unknown id, another org's, a hidden or removed photo,
+// an album not ready — so the route can say only «failed», never which.
+
+/** «Short-lived»: long enough to start the download the 303 hands over, no longer. */
+const DOWNLOAD_TTL_S = 60;
+
+export type PhotoDownloadResult = { status: "ok"; url: string } | { status: "refused" } | { status: "failed" };
+
+function firstRow(data: unknown): { storage_path?: string | null; file_name?: string | null } | null {
+  return (Array.isArray(data) ? data[0] : data) as { storage_path?: string | null; file_name?: string | null } | null;
+}
+
+async function signDownload(
+  supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"],
+  bucket: "photos" | "photo-albums",
+  data: unknown,
+): Promise<PhotoDownloadResult> {
+  const row = firstRow(data);
+  if (!row?.storage_path) return { status: "failed" };
+  const { data: signed } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(row.storage_path, DOWNLOAD_TTL_S, row.file_name ? { download: row.file_name } : { download: true });
+  return signed?.signedUrl ? { status: "ok", url: signed.signedUrl } : { status: "failed" };
+}
+
+/** One photograph — anyone who may see it, never a hidden or removed one, staff included
+ *  (`record_photo_download()`, DEC-182 Q3). Audits `photo.downloaded`. */
+export async function recordPhotoDownload(locale: string, photoId: string): Promise<PhotoDownloadResult> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("record_photo_download", { p_photo: photoId });
+  if (error) return error.code === "42501" ? { status: "refused" } : { status: "failed" };
+  return signDownload(supabase, "photos", data);
+}
+
+export type PhotoAlbumRequestResult = { status: "queued" } | { status: "refused" } | { status: "empty" } | { status: "failed" };
+
+/** «تنزيل الكل» — staff only. `request_photo_album()` audits `photo_album.requested` and enqueues
+ *  `JOB-zip_session_photos`; nothing here waits for a byte (REQ-ADM-021: an album never runs
+ *  inside a request). `album_empty` (`P0002`) is raised before any write when no photograph is
+ *  visible. */
+export async function requestPhotoAlbum(locale: string, sessionId: string): Promise<PhotoAlbumRequestResult> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("request_photo_album", { p_session: sessionId });
+  if (!error) return { status: "queued" };
+  if (error.code === "42501") return { status: "refused" };
+  if (error.code === "P0002") return { status: "empty" };
+  return { status: "failed" };
+}
+
+/** One part of a ready album — staff only. Audits `photo_album.downloaded`. */
+export async function recordPhotoAlbumDownload(locale: string, sessionId: string, part: number): Promise<PhotoDownloadResult> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("record_photo_album_download", { p_session: sessionId, p_part: part });
+  if (error) return error.code === "42501" ? { status: "refused" } : { status: "failed" };
+  return signDownload(supabase, "photo-albums", data);
 }
