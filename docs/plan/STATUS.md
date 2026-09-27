@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — STEP 0 DONE (`DEC-180`, M16)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; draft PR at the first push; `content` (opus) and `platform` (opus) spawn planning-only — sync 1 approves two plans. Migrations from **`0155`**.
+**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — STEP 0 DONE (`DEC-180`, M16)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; ★ **draft PR #31** open; `content` (opus) and `platform` (opus) spawn planning-only once the owner approves the plan — sync 1 approves two plans. Migrations from **`0155`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -41,7 +41,7 @@ walk-through itself — the certificate and its QR **on paper** — has still ne
 
 | # | Row | Owner | State |
 |---|---|---|---|
-| S0 | `DEC-180`; `REQ-EVT-016`, `REQ-UIX-027`, `STORY-EVT-007`, `STORY-UIX-018`, M16; `REQ-PRF-008`'s reading cited; `04`, `09`, `11`; the map; the ten agent files | lead | **done** — this commit; draft PR at the first push |
+| S0 | `DEC-180`; `REQ-EVT-016`, `REQ-UIX-027`, `STORY-EVT-007`, `STORY-UIX-018`, M16; `REQ-PRF-008`'s reading cited; `04`, `09`, `11`; the map; the ten agent files | lead | **done** `8ae8b16`; draft **PR #31** |
 | C1 | Contract 1 — the photo download route shape; the lead lands two audit definers (a photograph; the album) from `content`'s plan | `content` → lead | todo — shapes in `content`'s plan |
 | C2 | Contract 2 — the album's state, bucket and policy (lead); its path through the builder; the job's registration; visible photographs only; a `notify()` key if needed (lead, as custodian) | lead ↔ `content` | todo |
 | C3 | Contract 3 — audit action names: `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded` | lead | **fixed** in `DEC-180` |
