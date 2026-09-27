@@ -44,6 +44,11 @@
 --    record_photo_album_download(s, n)  → is_staff(); the album ready, unexpired,
 --                                         and part n in range
 --
+-- 5. `MSG-photo_album_ready` joins `notification_matrix()` (0062's body, one row
+--    appended): `admin_queue`, IN-APP ONLY, optional (DEC-182 Q8). No mail design
+--    is added, so the 25 designed email keys are unmoved. `content`'s
+--    `record_photo_album_built()` sends it to the staff member who asked.
+--
 -- File names are ASCII with Western digits (DEC-095, 0152's precedent; DEC-182
 -- Q6), dated by the session's start in the session's own zone.
 --
@@ -277,3 +282,58 @@ end $$;
 
 revoke all on function public.record_photo_album_download(uuid, int) from public, anon;
 grant execute on function public.record_photo_album_download(uuid, int) to authenticated;
+
+-- ─── 5 · the «ready» message ─────────────────────────────────────────────────
+
+create or replace function public.notification_matrix()
+  returns table (key text, category text, in_app boolean, email boolean, optional boolean)
+  language sql immutable parallel safe set search_path = '' as $$
+  values
+    -- 08 §1.1 proposals
+    ('MSG-proposal_submitted',    'admin_queue',  true,  true,  true ),
+    ('MSG-copresenter_invited',   'proposals',    true,  true,  false),
+    ('MSG-copresenter_declined',  'proposals',    true,  false, true ),
+    ('MSG-proposal_changes',      'proposals',    true,  true,  false),
+    ('MSG-proposal_approved',     'proposals',    true,  true,  false),
+    ('MSG-proposal_rejected',     'proposals',    true,  true,  false),
+    -- 08 §1.2 sessions
+    ('MSG-session_published',     'new_sessions', true,  true,  true ),
+    ('MSG-presenter_assigned',    'proposals',    true,  true,  false),
+    ('MSG-session_changed',       'my_sessions',  true,  true,  false),
+    ('MSG-session_cancelled',     'my_sessions',  true,  true,  false),
+    ('MSG-reminder_7d',           'reminders',    true,  true,  true ),
+    ('MSG-reminder_1d',           'reminders',    true,  true,  true ),
+    ('MSG-reminder_2h',           'reminders',    true,  true,  true ),
+    ('MSG-reminder_generic',      'reminders',    true,  true,  true ),  -- new: console, DEC-047
+    ('MSG-rsvp_nudge',            'new_sessions', true,  false, true ),
+    -- 08 §1.3 RSVP
+    ('MSG-rsvp_confirmed',        'my_sessions',  true,  false, true ),
+    ('MSG-rsvp_waitlisted',       'my_sessions',  true,  false, true ),
+    ('MSG-rsvp_promoted',         'my_sessions',  true,  true,  false),
+    ('MSG-rsvp_deadline_soon',    'my_sessions',  true,  false, true ),
+    ('MSG-priority_window',       'new_sessions', true,  false, true ),
+    -- 08 §1.4 during and after
+    ('MSG-check_in_confirmed',    'my_sessions',  true,  false, true ),
+    ('MSG-rating_prompt',         'ratings',      true,  true,  true ),
+    ('MSG-materials_added',       'my_sessions',  true,  true,  true ),
+    ('MSG-comment_reply',         'social',       true,  true,  true ),
+    ('MSG-mentioned',             'social',       true,  true,  true ),
+    ('MSG-photo_hidden',          'moderation',   true,  false, false),
+    ('MSG-content_removed',       'moderation',   true,  false, false),
+    ('MSG-report_filed',          'admin_queue',  true,  false, true ),
+    -- 08 §1.5 recognition and certificates
+    ('MSG-badge_earned',          'recognition',  true,  true,  true ),
+    ('MSG-level_reached',         'recognition',  true,  true,  true ),
+    ('MSG-streak_completed',      'recognition',  true,  false, true ),
+    ('MSG-points_adjusted',       'recognition',  true,  false, false),
+    ('MSG-leaderboard_closed',    'recognition',  true,  false, true ),
+    ('MSG-certificate_issued',    'certificates', true,  true,  false),
+    ('MSG-certificate_revoked',   'certificates', true,  true,  false),
+    -- 08 §1.6 account
+    ('MSG-role_changed',          'account',      true,  true,  false),
+    ('MSG-account_deactivated',   'account',      false, true,  false),
+    ('MSG-calendar_disconnected', 'account',      true,  false, false),
+    ('MSG-export_ready',          'account',      true,  true,  false),
+    -- 08 §1.6a photos (0156, DEC-182): in-app only, so no mail design moves
+    ('MSG-photo_album_ready',     'admin_queue',  true,  false, true )
+$$;

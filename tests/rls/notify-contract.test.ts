@@ -92,8 +92,10 @@ describe("notification_matrix — 08 §1", () => {
     await withTx(async (tx) => {
       const rows = await tx.q<{ key: string }>(`select key from public.notification_matrix() order by key`);
       // 38 in 08 §1 as settled, plus MSG-reminder_generic (§1.2's fourth
-      // reminder, DEC-047 → migration 0062).
-      expect(rows).toHaveLength(39);
+      // reminder, DEC-047 → migration 0062), plus MSG-photo_album_ready
+      // (§1.6a, in-app only, DEC-182 → migration 0156).
+      expect(rows).toHaveLength(40);
+      expect(rows.map((r) => r.key)).toContain("MSG-photo_album_ready");
       expect(rows.map((r) => r.key)).toContain("MSG-reminder_generic");
       // A message in no category cannot have a preference; a category outside
       // 08 §2 cannot be stored by notification_preferences' check constraint.

@@ -134,7 +134,8 @@
       "MSG-role_changed": "Your role changed",
       "MSG-account_deactivated": "Your account was deactivated",
       "MSG-calendar_disconnected": "Your calendar was disconnected",
-      "MSG-export_ready": "Your data is ready to download"
+      "MSG-export_ready": "Your data is ready to download",
+      "MSG-photo_album_ready": "Session photos are ready to download"
     },
     "admin": {
       "emails": {
