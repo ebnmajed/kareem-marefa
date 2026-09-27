@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — BUILT; LOCAL GATES GREEN; AWAITING THE OWNER'S SCHEMA DUMP FOR THE REHEARSAL (`DEC-180` … `DEC-182`, M16, `0155`–`0159`)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; ★ **draft PR #31** open; **approved by the owner (`DEC-181`)**; ★ the live Google hotlink **closed first** (`92953c8`, `0155`); ★ **sync 1 done (`DEC-182`)** — both plans approved; the lead's `0156` (photos, a removed photo unreadable, `MSG-photo_album_ready`) and `0157` (avatars) landed, `ui/dialog` `size="media"`, `zip` in the image, the wordmark built; `content` and `platform` building. ★ **CI is blocked (the repository is private) — local gates only** — sync 1 approves two plans. Migrations from **`0155`**.
+**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — BUILT; GATES GREEN LOCALLY AND IN CI; AWAITING THE OWNER'S SCHEMA DUMP FOR THE REHEARSAL (`DEC-180` … `DEC-182`, M16, `0155`–`0159`)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; ★ **PR #31** (CI green at `5547566`); **approved by the owner (`DEC-181`)**; ★ the live Google hotlink **closed first** (`92953c8`, `0155`); ★ **sync 1 done (`DEC-182`)** — both plans approved; the lead's `0156` (photos, a removed photo unreadable, `MSG-photo_album_ready`) and `0157` (avatars) landed, `ui/dialog` `size="media"`, `zip` in the image, the wordmark built; `content` and `platform` building. ★ **CI was blocked (the repository was private) from 2026-09-22 until 2026-09-27; now restored and green on #31 and #32** — sync 1 approves two plans. Migrations from **`0155`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -12,7 +12,21 @@
 the wordmark (`REQ-UIX-027`) are new. Milestone **M16**. The brief is `docs/plan/notes/wave-14-lead.md`; the map is
 `CLAUDE.md` § *Ownership map (wave 14)*.
 
-### ★★ CI IS BLOCKED, NOT FAILING — local gates are the only gates (2026-09-27)
+### ✅ CI RESTORED AND GREEN (2026-09-27) — kept below as history: the period it was blocked
+
+★ **The owner made the repository public again**, and Actions allocates runners. The first genuine CI signal since
+2026-09-22 13:21 covers wave 13's close-out push and all of wave 14:
+- **PR #31**, run `36317818852` at `5547566`: **every job green** — build, types and lint, unit, RLS, end to end,
+  frozen routes (`qa`), design-system gates, plan gates, shaping parity, platform unconfigured, the worker probe, and
+  Vercel.
+- **PR #32**, run `36313758121` at `4b4e0f8`: **every job green**.
+
+(The reviewer session re-ran both runs; the lead checked them with `gh pr checks` and `gh run view`.)
+★ **For the record: waves 13's close-out and 14 were built with no CI backstop from 2026-09-22 13:21 until this
+run.** Every row below was gated locally, and CI now agrees with it.
+
+#### History — the blocked period (2026-09-22 → 2026-09-27)
+
 
 **The repository is private** (`gh repo view`: `PRIVATE`). `DEC-051` had it public until Launch. A private repository
 meters Actions against the owner's account, and **every job is refused before a runner starts**: each "fails" in 1–2 s
@@ -105,7 +119,7 @@ That is the owner's item 8 turned into a test that can fail, which a count of pr
 | M2 | ★ Demonstrable — `qa:contract` and `visual` unmoved by the wordmark | lead | ★ **GREEN — unmoved, not re-baselined.** `visual`: a clean `origin/main` (`00f687d`) built in its own worktree (`npm ci`; Turbopack refuses a symlinked `node_modules`) and captured as `wave14-main`, against this branch's build `c0bd26b` as `wave14-branch` → **0.000% on all 8 pairs**. `qa` on `c0bd26b`: **57/57** (contract + appearance). Repeated at the final gates |
 | M3 | ★ Demonstrable — yes → the photo in the account menu; no → initials; both at 390 px, captured | `platform` writes, lead runs | ★ **GREEN** on `c0bd26b` — `wave14-platform-avatar.spec.ts` **10/10**: «نعم» draws our `/api/avatars/…` copy (loaded), another org gets the same bodiless 404 as a bad id, «لا» keeps the initial, «أزل صورتي» is immediate, and ★ **no response body on `/app`, `/app/me`, `/app/me/privacy` or a profile contains `googleusercontent`**. Captures opened in bands: the photo in the menu, and «س» for the member who said no |
 | M4 | ★ Demonstrable — «تنزيل الكل» returns at once; the real worker's zip holds the EXIF-stripped files and no others | `content` writes, lead runs | ★ **GREEN** on `c0bd26b` with the **real worker** (built from the tree, `E2E_WORKER=1`) — `wave14-content-album.spec.ts` **4/4**: the POST returns in < 5 s; the worker logged «build … ready — 3 photographs in 1 part(s)»; each entry equals its row's `sha256`, none carries an EXIF marker, the hidden photo is absent; a member sees no control and is refused. Captures: «ملف الصور جاهز: 3 صور · 427 بايت · متاح حتى الأحد، 4 أكتوبر» reads right. ★ **Two findings routed to `content`:** the hidden badge's two-line text overflows its one-line outline at 390 px (**a real defect**); the fixture bytes do not decode, so the tiles show broken-image icons (a capture artefact) |
-| G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict` | lead | ★ **run, LOCAL ONLY (CI blocked)**, at `56c8f21`–`7f62949` (product code at `e6868ca`):
+| G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict` | lead | ★ **GREEN — locally and in CI.** ★ **CI**: run `36317818852` on `5547566`, every job green (the first real CI run since the block lifted). **Local**, at `56c8f21`–`7f62949` (product code at `e6868ca`):
 - tsc ✓ · lint 0 errors (26 warnings, as `main`) · unit + components **2597** ✓ · `ui-lint --strict` 291 ✓ · `trace` 320/154 ✓ · `policy-diff` ✓
 - RLS from a fresh `db:reset` at **`0159`**: **137 files, 1327** ✓
 - `qa` **57/57**. `visual` from a clean `main` build: the four frozen routes × 2 at **0.000%**; `ar_ui` — the `(dev)` gallery, not a public route — grows 6 px on phone from `content`'s badge fix (`81f9a4a`), which is expected and not re-baselined
@@ -176,8 +190,7 @@ redeploy must be a rebuild, not a restart of the old image.
 3. **Push `0156`–`0159`, then merge PR #31.** `migration list` must read `0159` on both sides.
 4. **Reconnect Railway**, the standing step below, and confirm the worker log lists `import_avatar` and
    `zip_session_photos`.
-5. ★ **CI is blocked** until the repository is public again, or until Actions billing is set up. The wave's gates are
-   local and recorded row by row.
+5. ✅ **CI restored** (the repository is public again): #31 and #32 are green. The blocked period is recorded above.
 6. **After the merge, a follow-up migration** (carried): revoke `avatar_url` from the column grant, `members_member_view`
    and `me()`, so no member's own browser can ask PostgREST for a colleague's Google URL. It waits for the merge
    because `main` selects the column.
