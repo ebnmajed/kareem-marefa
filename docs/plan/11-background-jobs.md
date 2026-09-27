@@ -210,7 +210,7 @@ it is ready; the audit row is written by the request that enqueued it, not by th
 **Key:** `zipphotos:{session_id}` · **Retry:** 3 × 60 s · **Queue:** `convert`
 **Notes:** ★ **this is a job precisely because it cannot be a request** — an album of 300 photographs
 would block a Vercel function past its limit. It zips the **EXIF-stripped** objects, which are the
-only ones that exist (`REQ-EVT-012`). The zip is short-lived and expires on the retention schedule;
+only ones a row points at (`REQ-EVT-011`, corrected by `DEC-182`; the set is read from `photos` rows and each object is checked against its `sha256`). The zip is short-lived and expires on the retention schedule;
 a re-request re-enqueues under the same key, which moves the job rather than duplicating it.
 
 #### `JOB-import_avatar` ★ the thirty-sixth job

@@ -2265,7 +2265,7 @@ download **the album** — **«تنزيل الكل»** — produced by a backgro
 storage and notifies when it is ready. **Every download is audited.**
 **Acceptance:**
 - An album download never runs inside a request; a 300-photo album does not block a function.
-- The served file is the EXIF-stripped one, which is the only one that exists (`REQ-EVT-012`).
+- The served file is the EXIF-stripped one, which is the only one a row points at (`REQ-EVT-011`; `DEC-182`: the raw upload shares its path until `process_photo` runs, so the served set is read from rows, never from a bucket listing).
 - Each download writes an audit row naming the actor, the session and what was taken.
 
 ---
