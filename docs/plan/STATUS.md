@@ -100,7 +100,7 @@ That is the owner's item 8 turned into a test that can fail, which a count of pr
 | L1 | ★ The wordmark — additive `href`, the shell passes `/app`; `qa:contract` + `visual` **unmoved** | lead | **built** — `href` defaults to `/`, so the marketing `header`, `(auth)` and `legal` pass nothing and render as before; the app shell passes `/app`. `tests/components/shell/wordmark.test.tsx` 3/3 (local; CI blocked). **M2's proof (a `main` capture against this branch's) runs at the gates** |
 | L2 | The shell's avatar through contract 4; `members.ts` and `ratings.ts` as custodian | lead | **done** — `getMe()` (96 px, the shell and `/app/me`), `getMemberProfile()` (192 px, and ★ the profile page now passes `src`, platform's R3), the admin ratings list (96 px) all read `avatar_version` through `avatarHref()`; no reader selects `avatar_url` for a browser. Unit + components 2594 ✓, `ui-lint` 291 ✓ (local; CI blocked) |
 | L3 | ★ The CSP — `https://lh3.googleusercontent.com` out of `img-src` once no reader carries a Google URL | lead | todo |
-| L4 | Promotion: `0156` (photos) and `0157` (avatars) are the lead's schema; the tracks' own SQL from `0158`; the job registrations; `zip` in the Dockerfile | lead | `0156` **landed** (`b1c7737`) — from a fresh `db:reset`: `photo-downloads` 8/8, `isolation` + `definer-exposure` 89/89, `policy-diff` ✓, 03 rows added. `0157` **landed** — `avatar_import_answer`, `members.avatar_import` (no client grant) / `avatar_version`, the grant/view/`me()` gaining `avatar_version`, bucket `avatars` + `avatars_storage_read` (current version only), `comments_broadcast()` gaining `authorAvatarVersion`: `avatar-copy` 5/5 + members/rpcs/realtime 31/31, `policy-diff` ✓. R2 (`Bucket`, `index.ts`' export and `storagePaths.avatar`) done; `ui/dialog` `size="media"` (content's R1) done, dialog tests 6/6, `ui-lint` 291 ✓ (all local; CI blocked); ★ **`0158` promoted** (`platform`'s `0010_avatar_import.sql`, reviewed: `anonymise_members()` differs from `0073` only by the avatar lines) — full RLS from a fresh reset **137 files, 1327 ✓**; `import_avatar` registered in `worker/src/index.ts`, worker build ✓; audit labels for the four new actions in `admin.json` (`admin-audit-labels` ✓) |
+| L4 | Promotion: `0156` (photos) and `0157` (avatars) are the lead's schema; the tracks' own SQL from `0158`; the job registrations; `zip` in the Dockerfile | lead | `0156` **landed** (`b1c7737`) — from a fresh `db:reset`: `photo-downloads` 8/8, `isolation` + `definer-exposure` 89/89, `policy-diff` ✓, 03 rows added. `0157` **landed** — `avatar_import_answer`, `members.avatar_import` (no client grant) / `avatar_version`, the grant/view/`me()` gaining `avatar_version`, bucket `avatars` + `avatars_storage_read` (current version only), `comments_broadcast()` gaining `authorAvatarVersion`: `avatar-copy` 5/5 + members/rpcs/realtime 31/31, `policy-diff` ✓. R2 (`Bucket`, `index.ts`' export and `storagePaths.avatar`) done; `ui/dialog` `size="media"` (content's R1) done, dialog tests 6/6, `ui-lint` 291 ✓ (all local; CI blocked); ★ **`0158` promoted** (`platform`'s `0010_avatar_import.sql`, reviewed: `anonymise_members()` differs from `0073` only by the avatar lines) — full RLS from a fresh reset **137 files, 1327 ✓**; `import_avatar` registered in `worker/src/index.ts`, worker build ✓; audit labels for the four new actions in `admin.json` (`admin-audit-labels` ✓); ★ **`0159` promoted** (`content`'s `0158_photo_album_build.sql`, renumbered because `platform` took `0158`; reviewed: row lock first, visibility re-checked under it, every part under its own build's prefix, the stale trigger never raises) and **`zip_session_photos` registered** — full RLS from a fresh reset **137 files, 1327 ✓**, unit + components **2597 ✓**, `policy-diff` ✓, worker build ✓. ★ The album's file name is `0156`'s, `photos-YYYYMMDD[-part-n-of-m].zip`; `DEC-182` Q6's «`album-…`» wording is superseded by what landed (nothing reads the name) |
 | M1 | ★ Demonstrable — the lightbox through every photograph with `page.click()` alone, the photograph changed each time | `content` writes, lead runs | todo |
 | M2 | ★ Demonstrable — `qa:contract` and `visual` unmoved by the wordmark | lead | todo |
 | M3 | ★ Demonstrable — yes → the photo in the account menu; no → initials; both at 390 px, captured | `platform` writes, lead runs | todo |
@@ -116,6 +116,25 @@ cards · deleting a session with its awarded points (**wave 15**) · the gamific
 `DEC-170`) · the «still generating» line's placement on phones · the e2e suite beside a live worker · wave 12's list
 (the month-end streak gap; presenter certificates after a post-completion change; `materials_uploaded` and
 `late_cancellation` with no writer; company points not re-evaluated; `survey-submit.test.ts` counting every queued job).
+
+★ **For wave 15 — a generated gate for Storage read policies** (the reviewer session, 2026-09-27). **Every live privacy defect
+this project has found was in `storage.objects`, never in a table policy.** There have been three, each a bucket's read
+predicate disagreeing with its table's policy:
+- `0145` (wave 12): the poster table admitted a member, but Storage did not, so members saw no renders.
+- `0153` (wave 13): `exports_storage_read` admitted the whole org prefix, so any member could list another member's
+  certificate PDF.
+- `0156` (this wave): `photos_storage_read` never checked `removed_at`, so a photo **staff removed** stayed readable to
+  the org. The member's own «remove photos of me» sets `hidden_at`, which the policy did check.
+
+`assert_storage_prefixes` checks that an object is under the right **prefix**. Nothing checks that a bucket's **read
+predicate** admits the same rows as the table that owns it, and all three defects passed the prefix assertion. `0156`'s
+fix is **one instance of a class with no gate**. The proposal is a generated sweep, like the table isolation sweep: for
+each bucket and each reader role, seed a row, ask the table and ask `storage.objects`, and fail where they disagree.
+★ **Feasibility is measured, not assumed.** Storage's listing can be driven per role from the RLS fixture:
+`tests/rls/{session-downloads-storage,photo-downloads,avatar-copy}.test.ts` already assert `storage.objects` as a
+member, an admin, a moderator and another org's member. What is open is only the generic «ask the table» half per
+bucket, whose owning-table mapping differs. There are eight buckets: `materials`, `material-pages`, `photos`,
+`design-assets`, `exports`, `fonts`, `photo-albums`, `avatars`.
 
 ### ★ The standing owner step — Railway, after every merge
 
@@ -133,6 +152,8 @@ done by hand.
 | `tests/rls/notify-contract.test.ts` › «carries every message in the document and nothing else» | `toHaveLength(39)` → `40`, and it names `MSG-photo_album_ready` | one in-app-only key added by `0156` (`DEC-182` Q8, `08` §1.6a); the lead's as `notify`'s custodian |
 | `tests/unit/mail-render.test.ts` › «parsed the matrix out of the migration at all» | `toHaveLength(39)` → `40` | the matrix's last definition is now `0156`'s, with `MSG-photo_album_ready` — in-app only, so «a template for every email row» and «no stray template» are unchanged (`DEC-182` Q8) |
 | `tests/components/browse/sessions-timeline.test.tsx` (`sessions'`, the lead as custodian) | (b) harness only — a `vi.mock` of `AvatarImportPrompt`; **no assertion changed** | the timeline now renders platform's server component, whose DAL is `server-only` (`DEC-182`) |
+| `tests/components/ui/avatar.test.tsx` › the `src` case (`content`'s, `b45541b`) | «no `<bdi>`» → the `<bdi>` with the initial is present **under** an absolutely positioned `<img>` | `DEC-182`, platform's R1: a failed image falls back to initials, never an empty box |
+| `tests/rls/photos-album-build.test.ts` (`content`'s) | (b) `applyProposed` guarded by the proposed file's existence; **no assertion changed** | promoted as `0159` by the lead (the proposed file moved) |
 | `tests/rls/isolation.test.ts` (the lead's) | `photo_albums` joins the list of tables where a plain member sees none of org A's rows | staff-only by design (`0156`, `photo_albums_read_staff`), and the fixture seeds no album. The wall — zero rows of org B — is asserted unchanged |
 
 ---

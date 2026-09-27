@@ -1434,6 +1434,10 @@ generated suite is the highest-value test in the product.
 | `POL-avatars_storage_read.stale_version_refused` | An older version's object ✗; ★ clearing `avatar_version` (a decline, anonymisation) makes the current one unreadable at once. (migration `0157`). |
 | `COL-members.avatar_import.no_grant` | A client select of `members.avatar_import` is refused (42501); `avatar_version` is readable through the grant, `members_member_view` and `me()`. (migration `0157`). |
 | `TRG-comments_broadcast.avatar_version` | The comment payload carries `authorAvatarVersion`, and `authorAvatarUrl` stays null — no Google URL on the wire. (migrations `0155`, `0157`). |
+| `RPC-begin_photo_album_build` | `service_role` only · returns the visible set, never a hidden or removed photograph · a superseded build gets no rows. (migration `0159`, `DEC-182`). |
+| `RPC-record_photo_album_built` | Ready + `MSG-photo_album_ready` to who asked + the expiry enqueued · `stale` when a photograph was hidden mid-build · `superseded` for a replaced build · a part outside its build's prefix refused. (migration `0159`). |
+| `RPC-fail_photo_album` | The current build only, `failed` with its error. (migration `0159`). |
+| `TRG-photo_albums_stale` | ★ A member's takedown, a staff removal and a delete each make a ready album stale — «remove photos of me» reaches a zip already built — and the takedown still succeeds. (migration `0159`). |
 | `RPC-set_avatar_import.self_only` | A member records only their OWN answer; there is no member argument. (migration `0158`, `DEC-182`). |
 | `RPC-set_avatar_import.decline_clears_version` | «لا» clears `avatar_version` in the same statement, so `avatars_storage_read` stops serving at once, and enqueues the deletion. (migration `0158`). |
 | `RPC-set_avatar_import.no_source` | «نعم» with no Google source answers `no_source` and enqueues nothing. (migration `0158`). |

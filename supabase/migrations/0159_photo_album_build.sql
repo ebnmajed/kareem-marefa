@@ -1,3 +1,4 @@
+-- 0159 · promoted by the lead from supabase/proposed/content/0158_photo_album_build.sql (910388c) — renumbered: platform's SQL took 0158.
 -- proposed by `content` (wave 14, DEC-180, DEC-182) — the album's build, on the
 -- lead's 0156 (`photo_albums`, the `photo-albums` bucket, the three audit
 -- definers). The lead numbers and promotes it, from 0158.

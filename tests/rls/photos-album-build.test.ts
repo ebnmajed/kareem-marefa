@@ -6,13 +6,17 @@
 // hidden after makes the ready album stale — through a MEMBER's takedown (the
 // trigger is tested as a member, the house rule for a trigger that writes), a
 // staff removal and a delete. And the takedown still succeeds.
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
+// Promoted as 0159 (the lead, DEC-182); applied here only while the proposed copy still exists.
 const PROPOSED = "content/0158_photo_album_build.sql";
+const proposedExists = existsSync(join(process.cwd(), "supabase", "proposed", PROPOSED));
 type F = Awaited<ReturnType<typeof seed>>;
 
 async function photo(tx: Tx, f: F, opts: { hidden?: boolean; removed?: boolean; minutesAgo?: number } = {}) {
@@ -54,7 +58,7 @@ describe("RPC-begin_photo_album_build", () => {
   it("is the worker's alone — no client role may execute any of the three", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const p = await photo(tx, f);
       const r = await request(tx, f, p.session);
       for (const who of [f.a.admin, f.a.members[0]]) {
@@ -69,7 +73,7 @@ describe("RPC-begin_photo_album_build", () => {
   it("★ returns the visible set only, oldest first, and marks the album building", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const older = await photo(tx, f, { minutesAgo: 10 });
       const newer = await photo(tx, f, { minutesAgo: 1 });
       const hidden = await photo(tx, f, { hidden: true });
@@ -95,7 +99,7 @@ describe("RPC-begin_photo_album_build", () => {
   it("a build a newer request replaced gets no rows", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const p = await photo(tx, f);
       const first = await request(tx, f, p.session);
       await request(tx, f, p.session);
@@ -108,7 +112,7 @@ describe("RPC-record_photo_album_built", () => {
   it("★ ready: the parts, the count, a seven-day expiry, the in-app notice to the one who asked, and the expiry job", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const p = await photo(tx, f);
       const r = await request(tx, f, p.session);
       await tx.q(`select * from public.begin_photo_album_build($1)`, [r.build_id]);
@@ -145,7 +149,7 @@ describe("RPC-record_photo_album_built", () => {
   it("★ a photograph hidden mid-build: 'stale', and the row stays building for the retry", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const p = await photo(tx, f);
       const r = await request(tx, f, p.session);
       await tx.q(`select * from public.begin_photo_album_build($1)`, [r.build_id]);
@@ -164,7 +168,7 @@ describe("RPC-record_photo_album_built", () => {
   it("a replaced build is 'superseded' and changes nothing", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const p = await photo(tx, f);
       const first = await request(tx, f, p.session);
       const second = await request(tx, f, p.session);
@@ -181,7 +185,7 @@ describe("RPC-record_photo_album_built", () => {
   it("★ a part outside this build's prefix is refused — the path handed out is always one the bucket policy admits", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const p = await photo(tx, f);
       const r = await request(tx, f, p.session);
       await tx.q(`select * from public.begin_photo_album_build($1)`, [r.build_id]);
@@ -200,7 +204,7 @@ describe("RPC-fail_photo_album", () => {
   it("fails the current build with its error, and leaves a replaced build's album alone", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const p = await photo(tx, f);
       const first = await request(tx, f, p.session);
       const second = await request(tx, f, p.session);
@@ -217,7 +221,7 @@ describe("TRG-photo_albums_stale", () => {
   it("★ a MEMBER's «remove photos of me» makes the ready album stale — and the takedown still hides the photo", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const { p, r } = await ready(tx, f);
       await tx.as(f.a.members[1].claims);
       await tx.q(`insert into public.photo_takedowns (org_id, photo_id, requester_id) values ($1, $2, $3)`, [f.a.id, p.id, f.a.members[1].memberId]);
@@ -234,7 +238,7 @@ describe("TRG-photo_albums_stale", () => {
   it("a staff removal and a delete each make it stale", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const one = await ready(tx, f);
       await tx.as(f.a.admin.claims);
       await tx.q(`select public.remove_photo($1, 'test')`, [one.p.id]);
@@ -254,7 +258,7 @@ describe("TRG-photo_albums_stale", () => {
   it("a new upload or a restore leaves a ready album ready — the slot offers a rebuild, nothing is refused", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, PROPOSED);
+      if (proposedExists) await applyProposed(tx, PROPOSED);
       const { r } = await ready(tx, f);
       await photo(tx, f);
       expect(await status(tx, r.album_id)).toBe("ready");
