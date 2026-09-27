@@ -28,10 +28,16 @@ describe("Avatar — the default and permanent fallback", () => {
     expect(container.querySelector("svg")).not.toBeInTheDocument();
   });
 
-  it("renders a real image, not initials, once src is given — and still no silhouette underneath it", () => {
+  it("renders a real image over the initials once src is given — and still no silhouette underneath it", () => {
     const { container } = render(<Avatar memberId="m-3" displayName="سارة" src="https://example.com/a.webp" />);
-    expect(container.querySelector("img")).toHaveAttribute("src", "https://example.com/a.webp");
-    expect(container.querySelector("bdi")).not.toBeInTheDocument();
+    const img = container.querySelector("img");
+    expect(img).toHaveAttribute("src", "https://example.com/a.webp");
+    // DEC-182: the initials stay underneath, so an image that fails to load
+    // falls back to them with no script — the image is the later sibling,
+    // absolutely positioned over the glyph.
+    expect(container.querySelector("bdi")).toHaveTextContent("س");
+    expect(img?.className).toContain("absolute");
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
   });
 
   it("is named for a screen reader by the display name unless marked decorative", () => {
