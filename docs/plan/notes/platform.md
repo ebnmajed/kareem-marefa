@@ -1617,3 +1617,26 @@ on `/app`, `/app/me`, `/app/me/privacy` or `/app/members/[id]` contains `googleu
 (3) `import_avatar.ts` and its unit. (4) The route and its unit. (5) The prompt, the privacy section and the
 messages, with `ui-lint`. (6) `BUCKETS`, the export, and the anonymise hook. (7) The e2e and the captures, through
 the gate lock. The note says what is done at each step.
+
+---
+
+## Wave 14 — as built (2026-09-27), after sync 1 (`DEC-182`)
+
+CI is blocked (the repo is private, so no runner starts). **The local gates below are the gates.**
+
+| Commit | What | Local gates |
+|---|---|---|
+| `1dedf42` | `avatarHref()` (contract 4 as code) · `packages/storage-paths/src/avatar.ts` · `worker/src/platform/avatar.ts`: allowlist, redirects, byte cap, sniff, strip, cwebp · `avatars` and `photo-albums` in `BUCKETS` · `privacy.avatar.*` in ar and en | the avatar units 42/42 |
+| `e044e1e` | `lib/dal/avatars.ts` · `/api/avatars/[memberId]`, which proxies the bytes read as the viewer, with one 404 for every refusal · `import_avatar.ts`, the reconcile job · the export's 192 px copy (never the source URL) · the prefix assertion's member-in-org check · the prompt, the `/app/me/privacy` section and its action · `proposed/platform/0010_avatar_import.sql` · `tests/rls/avatar-import.test.ts` | tsc clean for these files (the tree's only error was `content`'s WIP `comment-list.tsx:51`) · lint 0 errors · avatar units and components 79/79 · `test:rls` 136 files, 1316 passed (`avatar-import` 14/14) · `ui-lint` strict clean |
+
+**For the lead's promotion (0158):** `0010`'s five functions, the trigger and the re-created `anonymise_members()`. The
+`03` §8.2 rows are in the file header. The audit label `admin.audit.actions.member.avatar_import_answered` is needed
+in `admin.json` (the lead's) or `admin-audit-labels.test.ts` fails. The `import_avatar` registration is also needed,
+along with the prompt's slot, `<Suspense fallback={null}><AvatarImportPrompt locale={locale} /></Suspense>` in `#main`
+on the timeline.
+
+**Not done yet:** `tests/e2e/wave14-platform-avatar.spec.ts` (M3) is written and uncommitted. It needs `0158`, the
+prompt's slot and L2 (the shell's avatar through `getMe()`) before it can pass. It runs through the gate lock once
+those land, and the four captures come from that run.
+
+**Untouched-suite ledger:** none of mine. `members.test.ts:41` was the lead's, in `0157`'s commit.
