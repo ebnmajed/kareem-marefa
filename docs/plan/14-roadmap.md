@@ -535,6 +535,29 @@ session, at 390 px in Arabic, without ever opening `/app/admin/designer`.
 
 ---
 
+## M16 — photos, the wordmark and the avatar · wave 14 · `DEC-180`
+
+**New scope after the plan, half of it specified long ago.** `REQ-ADM-021`'s photo downloads (M11) and
+`REQ-PRF-008`'s import of Google's photo (M10) were written and never run. The gallery's lightbox and the
+wordmark are new.
+
+| Work | Requirements |
+|---|---|
+| A session's photographs open whole in a lightbox, moved through by tapping | `REQ-EVT-016` |
+| A photograph and a session's album are downloaded, audited; the album by a job | `REQ-ADM-021` (M11) |
+| Google's photo offered once and copied into our storage; the hotlink removed | `REQ-PRF-008` (import half), `REQ-PRF-009`, `REQ-PRF-011` (M10) |
+| Inside the platform, the wordmark leads to `/app` | `REQ-UIX-027` |
+
+**Demonstrable:** the lightbox driven through every photograph with taps alone; `qa:contract` and the
+visual baseline unmoved by the wordmark; a member who said yes sees their photo in the account menu and a
+member who said no sees initials, at 390 px; staff press «تنزيل الكل» and the zip the real worker writes
+holds the EXIF-stripped files and no others.
+
+**Not this milestone:** a member uploading their own picture; new avatar placements; deleting a session
+with its awarded points; the rest of `DEC-180`'s list.
+
+---
+
 ## 3. Dependencies
 
 ```mermaid

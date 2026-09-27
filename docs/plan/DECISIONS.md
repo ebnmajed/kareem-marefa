@@ -4301,3 +4301,57 @@ The presenters of directly created sessions left at `accepted = false` (`0020`) 
 5. **`main`'s worker in the gap** keeps today's broken image, so nothing gets worse. After the merge, `source_fingerprint` is unchanged (asset rows are immutable per id), so posters already rendered broken **stay cached broken** until something re-renders them. The owner's order gains a step: re-enqueue `regenerate_poster` for sessions whose poster uses an uploaded image or a logo — **every automatic poster uses the logo, so in practice every published session's poster**.
 
 - **Documents changed:** `STATUS.md` (row D6)
+
+---
+
+## DEC-180 — Wave 14: a photo gallery with a lightbox you can move through by tapping, audited photo and album downloads, the wordmark leading home inside the app, and Google's photo copied into our storage rather than hotlinked
+
+- **Date:** 2026-09-27 · **Decided by:** the owner (four items, and the avatar ruling below, asked 2026-09-27); scoped and measured by the wave-14 lead from `docs/plan/notes/wave-14-lead.md`
+- **Adds:** `REQ-EVT-016` (the gallery and the lightbox), `REQ-UIX-027` (the wordmark) — `01-prd.md`; `STORY-EVT-007`, `STORY-UIX-018` — `15-backlog.md`; milestone **M16** — `14-roadmap.md`
+- **Delivers, unchanged in text:** `REQ-ADM-021` (M11; the photo half, never built — `DEC-176` left it) with `JOB-zip_session_photos`, the thirty-fifth job, already specified in `11` §2.4; and **the import half** of `REQ-PRF-008` with `REQ-PRF-009` and `REQ-PRF-011` (M10, `STORY-PRF-005`, never run)
+- **Amends:** nothing in `DEC-099`. ★ **It is kept, deliberately, by the owner's ruling** — see §3.
+
+### Measured before deciding — where the tree and the brief disagree
+
+1. ★ **The avatar is not «one line», and the line is not a bug.** The brief read `app/[locale]/app/layout.tsx:199`'s `avatarUrl={null}` as the one liar in the chain. It is the **enforcement** of `DEC-099` (2026-09-15, the owner): the Google hotlink is retired, because it discloses every viewer's IP and `Referer` to Google on every render, its URLs rotate and break silently, and no member consented. `ui/avatar.tsx`'s header says the same («never the Google hotlink DEC-099 retires»). What `DEC-099` ordered — **copy it into our storage, never link it** — was never built (`STORY-PRF-005`, M10). Passing `members.avatar_url` would have overruled the owner's own decision in a one-line diff.
+2. ★ **The hotlink is already live in one place.** `comment-item.tsx:257` draws `comment.author.avatarUrl`, which `comments.ts:123` reads straight from `members.avatar_url` — a Google URL. `proxy.ts:148` still allows `https://lh3.googleusercontent.com` in `img-src`; `DEC-099` said `0089` would remove it, and `0089` is `early_completion_closes_check_in` — **the number was taken and the removal never happened**, the same class as `DEC-177`'s «`0086`». This wave closes both.
+3. **The moderation queue does not download photographs.** `admin-moderation.ts:246` signs one-hour URLs for the takedown queue's **thumbnails**. `DEC-178` ruled «a preview is not a download», so there is nothing there to move onto an audited route. `console`'s row in the brief does not exist, and `console` is **not spawned**.
+4. **The album's entry belongs in the photo slot**, not in the admin console. Photos have no admin screen; the settings hub reaches them through «صفحة الجلسة» (`DEC-178`). «تنزيل الكل» sits in the event page's photo group header, for staff only — `content`'s gallery, one writer.
+5. **The grid crops by default** — `gallery.tsx:157`, `aspect-square … object-cover`. `REQ-UIX-026` permits a photo surface to crop **if it says so and why**; it never said. The lightbox shows the whole frame.
+6. **`Wordmark` has five consumers**: the app shell, `(auth)`, `legal`, and the marketing `header` and `footer`. Only the non-footer variant is a link, to `/`. The change is an **additive** `href` prop defaulting to `/`; the app shell alone passes `/app`.
+7. **`JOB-zip_session_photos` is already specified** (`11` §2.4: key `zipphotos:{session_id}`, queue `convert`, 3 × 60 s, the audit row written by the request that enqueues it). It is built as written.
+
+### 1 · The gallery and the lightbox (`REQ-EVT-016`, new) — `content`
+
+A tap on a photograph opens it **whole**, in a lightbox built on the lead's `ui/dialog`. **Previous and next are always-visible tap targets**; a swipe is the enhancement, never the only path. ★ **This is `DEC-093`'s sixth place:** «navigable through them» is a dragging movement if it is only a swipe, and `SC 2.5.7` requires a single-pointer path. Escape and the backdrop close it; focus returns to the tile that opened it; the position reads «3 من 12» with Western numerals. The grid's square crop becomes **deliberate and written down** in the file — a photograph is not a designed artefact (`REQ-UIX-026`'s own carve-out) — or focal-aware; the lightbox never crops. **The gate** (`DEC-093`'s, unchanged): a Playwright case opens a photograph, moves forward and back through every one and closes it with `page.click()` alone, no `mouse.down/move/up`, asserting the displayed photograph changed each time.
+
+### 2 · The downloads (`REQ-ADM-021`) — `content`, the audit the lead's
+
+- **Per photograph:** any viewer who may see it may download it — through a **route** that audits and then `303`s to a short-lived signed URL, never a signed URL in page data and never a bare `<a download>` (`DEC-177`). Photos are a different bucket with a different read policy from `exports`, so they get **their own** audit definer, not `record_export_download()`.
+- **The album, «تنزيل الكل»:** staff only. The request writes the audit row and enqueues `JOB-zip_session_photos`, and returns at once. The job zips the visible, EXIF-stripped objects — **never a hidden or removed photograph** — writes one zip under the org's prefix through the one path builder, and notifies when ready. The zip is downloaded through the same audited-route shape.
+- **Audit actions** (contract 3, both tracks write these strings): `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded` — each matches `audit_log`'s `^[a-z_]+\.[a-z_]+$` (`0004:405`).
+
+### 3 · The avatar — Google's photo copied into our storage (`REQ-PRF-008`'s import half, `REQ-PRF-009`, `REQ-PRF-011`) — `platform`
+
+★ **The owner's ruling, 2026-09-27, asked with `DEC-099` quoted back:** copy it into our storage. So:
+- **Offered once, as `DEC-099` specifies** — «نستخدم صورتك من Google؟». On yes a worker job copies Google's picture into platform storage — fetched from **Google's image host only**, sniffed on content, **EXIF-stripped**, PNG/JPEG in, 96 px and 192 px WebP out — under the org's prefix through the one path builder, so the nightly prefix assertion covers it the day it exists. On no, initials. The choice can be changed later on `/app/me/privacy`.
+- **Served through one route** that checks the viewer is in the member's org and redirects to a short-lived signed URL. So every consumer's DTO carries a same-origin `href` or `null`, and never a Google URL. **Every surface that draws an avatar today** — the account menu (this wave's addition), comments, ratings, the member profile — draws our copy. **The Google entry leaves `img-src`**, and nothing in the product loads an image from Google again.
+- `members.avatar_url` stays the **source** Google provisions on every sign-in (`0005:124`, `REQ-PRF-001`'s refresh). It is **never rendered again**. A changed source re-copies for a member who said yes.
+- **`JOB-anonymise_members` deletes the stored objects** and clears the row; **the data export includes the picture** (`REQ-PRF-011`).
+- **Not this wave:** a member **uploading** their own picture, with `REQ-PRF-010`'s moderation and takedown (`STORY-PRF-005`'s upload half, M10). New **placements** — presenter cards, the host view's list, the directory, browse cards (`16` §6.8.3) — are carried; this wave replaces the source of the ones that draw today and adds the account menu.
+
+### 4 · The wordmark (`REQ-UIX-027`, new) — the lead
+
+An additive `href` prop on `Wordmark`, defaulting to `/`; the app shell passes `/app`. ★ **The acceptance is that `qa:contract` and `visual` do not move** — not re-baselined, unmoved. If either moves, the change was not additive.
+
+### The team (the map is `CLAUDE.md` § *Ownership map (wave 14)*)
+
+`content` (★ opus this wave): the gallery, the lightbox, both downloads and the zip job. `platform` (opus): the avatar copy, its route, the consent prompt's component, anonymisation and export. **The lead:** this entry, the map, the ten agent files, `01`/`04`/`09`/`14`/`15`, every table and bucket change and the two audit definers in **`0155`+**, the wordmark, the shell's avatar and the prompt's slot, the CSP line, the job registrations, the demonstrables, the gates. **Not spawned:** `sessions`, `checkin`, `scoring`, `designer`, `console`, `event`, `notify`, `branding` — the lead is custodian of their files; `notify`'s one new message key, if the album's notification needs one, is the lead's as custodian on `content`'s written request.
+
+**Not this wave — named in every agent file:** `REQ-PRF-008`'s member upload and `REQ-PRF-010`'s avatar moderation · new avatar placements · deleting a session with its awarded points (wave 15's whole subject) · the gamification layer · the prose pass · `DEC-100`'s motion system · live poster thumbnails before export (`REQ-DSG-029`'s carry) · the stale email-studio test · the «still generating» line's placement on phones · everything under `(marketing)/**` beyond the wordmark's additive prop · recurring series (`A14`) · replacing the renderer.
+
+### The owner's walk-through
+
+Asked before Step 0, as the brief required: **not run**. The owner's standing comment is that the UI/UX is poor, with no screen or finding named. That is recorded in `STATUS.md` as an **unmeasured** item, not a row. A general quality complaint cannot be closed by this wave's map. The next step is the owner naming the screens, or a critique pass the owner commissions.
+
+- **Documents changed:** `01-prd.md` (`REQ-EVT-016`, `REQ-UIX-027`, `REQ-PRF-008`'s reading cited), `04-architecture.md` (three route handlers), `09-sitemap-screens.md` (SCR-012's photos, the account menu), `11-background-jobs.md` (the avatar job), `14-roadmap.md` (M16), `15-backlog.md` (`STORY-EVT-007`, `STORY-UIX-018`; M16 on `STORY-ADM-009`, `STORY-PRF-005`), `scripts/traceability.mjs` (M16), `CLAUDE.md` and the ten agent files (the map), `STATUS.md` (the wave-14 block)

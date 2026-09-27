@@ -197,6 +197,7 @@ from a separate rule. Date range pickers run right-to-left.
 ### SCR-012 · `/app/sessions/[id]` ★ — the event page
 
 ★ **Wave 12 (`DEC-172`) — `REQ-CHK-018`, `REQ-UIX-026`:** the attendance outcome shows the pending award until the session completes; the poster is shown whole.
+★ **Wave 14 (`DEC-180`) — `REQ-EVT-016`, `REQ-ADM-021`:** «الصور» opens each photograph whole in a lightbox moved through by always-visible previous/next tap targets; each photograph has an audited download, and staff see «تنزيل الكل» in the photo group's header, which queues the album and says it will be ready shortly.
 **Purpose:** everything about one جلسة. **Roles:** any member. **Serves:** `REQ-SES-013`,
 `REQ-EVT-001` … `REQ-EVT-015`, `REQ-MAT-006`, `REQ-TSK-004`
 **Primary action:** exactly one — «احجز مقعدك» / «انضم لقائمة الانتظار» / «ألغِ حجزي» / «سجّل حضورك»

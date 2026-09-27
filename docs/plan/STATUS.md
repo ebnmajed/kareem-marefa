@@ -1,11 +1,96 @@
-**Last updated:** 2026-09-22 · **Branch:** `wave-13/studio-and-session-settings` (cut from `main` at `1e39c47`) · **`main`:** wave 12 merged and live; production at **`0151`** · **Phase:** ★★ **WAVE 13 COMPLETE — REHEARSED — PR #30 READY (`DEC-176` … `DEC-179`, M15, `0152`–`0154`)**: the owner pushes, merges, reconnects Railway — nothing else: the studio's direct manipulation (`REQ-DSG-028` … `031`, M12, never run), the session download (`REQ-DSG-027`, M11, never run — one primary «تنزيل», the rest behind a disclosure), and a session's settings under one sub-nav (`REQ-SES-020`, new). Map written; ★ **draft PR #30** open at the first push; `designer`, `sessions`, `console` spawned planning-only — sync 1 approves their plans. Migrations from **`0152`**.
+**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — STEP 0 DONE (`DEC-180`, M16)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; draft PR at the first push; `content` (opus) and `platform` (opus) spawn planning-only — sync 1 approves two plans. Migrations from **`0155`**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 13 — on `wave-13/studio-and-session-settings` — the studio, the session download, the settings hub (`DEC-176`)
+## ★★★ WAVE 14 — on `wave-14/photos-and-polish` — photos, the lightbox, the wordmark, the avatar (`DEC-180`)
+
+**Half of this is scope that was specified long ago and never built.** `REQ-ADM-021`'s photo downloads (M11) and
+`REQ-PRF-008`'s import of Google's photo (M10) were written, traced and never run. The lightbox (`REQ-EVT-016`) and
+the wordmark (`REQ-UIX-027`) are new. Milestone **M16**. The brief is `docs/plan/notes/wave-14-lead.md`; the map is
+`CLAUDE.md` § *Ownership map (wave 14)*.
+
+### Asked before Step 0 — the owner's production walk-through
+
+**Not run.** The owner (2026-09-27): it «was working fine before», and «the only comment was the garbage UI/UX so I am
+not sure what I need to look for». ★ **Recorded as UNMEASURED, not as a row.** A general quality complaint names no
+screen, so this wave's map cannot close it. What would turn it into rows:
+- the owner names the screens and what is wrong on each; **or**
+- the owner commissions a critique pass over the member path (RSVP → check in → pending → completion →
+  certificate), producing rows with a route, a capture and a rule each.
+
+`STATUS.md`'s *Screens whose meaning depends on a paragraph* (wave 11) is the existing list to start from. The
+walk-through itself — the certificate and its QR **on paper** — has still never been done by a person.
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | `00f687d` = `origin/main`; production at **`0154`**; no open PRs. The brief's commit `53e0faa` was local-only and rides on this branch |
+| ★ Brief vs code, 1 | **The avatar is not «one line», and the line is not a bug.** `app/layout.tsx:199`'s `avatarUrl={null}` **enforces `DEC-099`** (the owner, 2026-09-15: the Google hotlink is retired; copy, never link). `ui/avatar.tsx`'s header says so. ★ **The owner was asked with `DEC-099` quoted, and kept it: copy into our storage.** `REQ-PRF-008`'s import half becomes `platform`'s row |
+| ★ Brief vs code, 2 | **The hotlink is already live.** `comment-item.tsx:257` draws `comments.ts:123`'s `members.avatar_url`, a Google URL, and the realtime payload carries it too (`0016:122`). `proxy.ts:148` still allows `lh3.googleusercontent.com`. `DEC-099` said `0089` would remove it; `0089` is `early_completion_closes_check_in`, the same class as `DEC-177`'s «`0086`» |
+| ★ Brief vs code, 3 | **The moderation queue does not download.** `admin-moderation.ts:246` signs one-hour thumbnails; `DEC-178`: a preview is not a download. `console`'s row does not exist → **`console` not spawned** |
+| Brief vs code, 4 | **`Wordmark` has five consumers** (app shell, `(auth)`, `legal`, marketing `header`, `footer`). The footer variant is not a link. The additive `href` prop holds |
+| Brief vs code, 5 | **The worker has no zip writer and no image resizer** (`worker/package.json`). Each is a dependency request to the lead, or a plan that shows none is needed |
+| Confirmed | `gallery.tsx:157` `aspect-square … object-cover` — the grid crops by default and never said why; `REQ-EVT-009` … `015` hold no gallery or lightbox; `JOB-zip_session_photos` fully specified in `11` §2.4; no `src/app/api/photos/` |
+| `trace` | **320 requirements · 154 stories · no gaps** (M16 added to the milestone pattern) |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-180`; `REQ-EVT-016`, `REQ-UIX-027`, `STORY-EVT-007`, `STORY-UIX-018`, M16; `REQ-PRF-008`'s reading cited; `04`, `09`, `11`; the map; the ten agent files | lead | **done** — this commit; draft PR at the first push |
+| C1 | Contract 1 — the photo download route shape; the lead lands two audit definers (a photograph; the album) from `content`'s plan | `content` → lead | todo — shapes in `content`'s plan |
+| C2 | Contract 2 — the album's state, bucket and policy (lead); its path through the builder; the job's registration; visible photographs only; a `notify()` key if needed (lead, as custodian) | lead ↔ `content` | todo |
+| C3 | Contract 3 — audit action names: `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded` | lead | **fixed** in `DEC-180` |
+| C4 | Contract 4 — `src/lib/dal/avatars.ts`'s resolver; every reader swaps one expression; published in `platform`'s note on day one | `platform` → all | todo |
+| P1 | ★ `REQ-EVT-016` — the lightbox on `ui/dialog`; previous/next tap targets; Escape, backdrop, focus return; «3 من 12» | `content` | todo |
+| P2 | The grid's crop deliberate and written down, or focal-aware; the lightbox never crops (`REQ-UIX-026`) | `content` | todo |
+| P3 | `REQ-ADM-021` — the per-photo audited download | `content` | todo |
+| P4 | `REQ-ADM-021` — «تنزيل الكل», `JOB-zip_session_photos`, the ready state and the audited zip download | `content` | todo |
+| P5 | The comment's avatar and the realtime payload onto contract 4 | `content` | todo |
+| A1 | ★ The consent prompt — «نستخدم صورتك من Google؟» — its component (`platform`), its slot in the shell (lead); changeable on `/app/me/privacy` | `platform` · lead | todo |
+| A2 | `JOB-import_avatar` — Google's host only, byte cap, sniffed, EXIF-stripped, under the org prefix; re-copy on a changed source | `platform` | todo |
+| A3 | The avatar route and resolver (contract 4) | `platform` | todo |
+| A4 | `REQ-PRF-011` — anonymisation deletes the objects; the export includes the picture; the prefix assertion covers them | `platform` | todo |
+| L1 | ★ The wordmark — additive `href`, the shell passes `/app`; `qa:contract` + `visual` **unmoved** | lead | todo |
+| L2 | The shell's avatar through contract 4; `members.ts` and `ratings.ts` as custodian | lead | todo |
+| L3 | ★ The CSP — `https://lh3.googleusercontent.com` out of `img-src` once no reader carries a Google URL | lead | todo |
+| L4 | Promotion from `0155`: the tables, columns, buckets, policies and the audit definers; the job registrations; any dependency | lead | todo |
+| M1 | ★ Demonstrable — the lightbox through every photograph with `page.click()` alone, the photograph changed each time | `content` writes, lead runs | todo |
+| M2 | ★ Demonstrable — `qa:contract` and `visual` unmoved by the wordmark | lead | todo |
+| M3 | ★ Demonstrable — yes → the photo in the account menu; no → initials; both at 390 px, captured | `platform` writes, lead runs | todo |
+| M4 | ★ Demonstrable — «تنزيل الكل» returns at once; the real worker's zip holds the EXIF-stripped files and no others | `content` writes, lead runs | todo |
+| G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict` | lead | todo |
+
+### Carried — not this wave
+
+A member uploading their own picture and `REQ-PRF-010`'s avatar moderation (`STORY-PRF-005`'s upload half) · new
+avatar placements — presenter cards, the host view's list (`16` §6.8.3's highest-value one), the directory, browse
+cards · deleting a session with its awarded points (**wave 15**) · the gamification layer · the prose pass ·
+`DEC-100`'s motion system · live poster thumbnails before export · `wave10-demo-email-studio` case 6 (stale since
+`DEC-170`) · the «still generating» line's placement on phones · the e2e suite beside a live worker · wave 12's list
+(the month-end streak gap; presenter certificates after a post-completion change; `materials_uploaded` and
+`late_cancellation` with no writer; company points not re-evaluated; `survey-submit.test.ts` counting every queued job).
+
+### ★ The standing owner step — Railway, after every merge
+
+Railway's push trigger has needed a manual `railway service source connect` after **eight consecutive merges**.
+**The durable fix is the dashboard's Settings → Source, not the CLI.** It is the last thing in this project still
+done by hand.
+
+### Untouched-suite ledger (wave 14)
+
+*Every pre-existing test file whose assertion changes, with why — written in the same commit as the change.*
+
+| File | Assertion | Why |
+|---|---|---|
+
+---
+
+## ★★ WAVE 13 — COMPLETE and LIVE (PR #30, `7a66690`; `0152`–`0154` pushed) — was on `wave-13/studio-and-session-settings` — the studio, the session download, the settings hub (`DEC-176`)
 
 **Most of this is scope that was specified long ago and never built.** `REQ-DSG-027` (M11) and `REQ-DSG-028` …
 `031` (M12) were written, traced and never run. The design studio sat on the never-touch lists of waves 8–10.

@@ -195,6 +195,10 @@ src/
 │       ├── upload/design-asset/route.ts
 │       ├── designer/autosave/route.ts        # > 1 MB; cannot be an action [v16]
 │       ├── designer/downloads/[artifactId]/route.ts  # GET — EVERY download: record_export_download() (0152) audits, then 303 to the one signer; a refusal 303s back with ?download=failed [DEC-176…178]
+│       ├── photos/[photoId]/download/route.ts  # GET — one photograph: its audit definer (photo.downloaded), then 303 to a short-lived signed URL [DEC-180]
+│       ├── photos/albums/[sessionId]/route.ts  # POST — staff «تنزيل الكل»: audits photo_album.requested, enqueues JOB-zip_session_photos, returns at once [DEC-180]
+│       ├── photos/albums/[sessionId]/download/route.ts  # GET — the ready zip: audits photo_album.downloaded, then 303 [DEC-180]
+│       ├── avatars/[memberId]/route.ts   # GET — our stored copy of a member's photo, to a viewer in the same org; 303 to a signed URL, else 404 → initials [DEC-180]
 │       ├── sessions/[id]/ics/route.ts
 │       ├── verify/[code]/route.ts            # rate-limited, in front of verify_certificate()
 │       ├── webhooks/{resend,google-calendar}/route.ts
