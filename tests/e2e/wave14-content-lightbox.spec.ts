@@ -10,12 +10,13 @@
 // Seeded through SQL — rows and their objects — never through the worker; the
 // strip has its own contract and its own spec (`wave9-content-photo-worker`).
 // One of the four photographs is hidden: it never enters the sequence.
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
+import { drawPhotos } from "../unit/photos-fixtures";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
@@ -28,12 +29,6 @@ test.describe.configure({ mode: "serial" });
 
 const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
-// A genuine tiny JPEG, so every <img> really loads.
-const TINY_JPEG = Buffer.from(
-  "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
-  "base64",
-);
-
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
 let orgId = "";
@@ -62,7 +57,7 @@ async function provisionMemberId(email: string): Promise<string> {
   return (data as { member_id: string }).member_id;
 }
 
-test.beforeAll(async ({}, testInfo) => {
+test.beforeAll(async ({ browser }, testInfo) => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
   db = new pg.Client(DB_URL);
   await db.connect();
@@ -92,16 +87,22 @@ test.beforeAll(async ({}, testInfo) => {
   userIds.push(data.user.id);
   const memberId = await provisionMemberId(memberEmail);
 
-  // Four photographs a minute apart; the second newest is hidden. The page lists newest first.
+  // Four real photographs a minute apart, landscape and portrait alternating (so the captures show
+  // the lightbox's letterbox on both axes and the tile's crop); the second newest is hidden. The page
+  // lists newest first.
+  const drawer = await browser.newPage();
+  const drawn = await drawPhotos(drawer, 4);
+  await drawer.close();
   const ids: string[] = [];
   for (let i = 0; i < 4; i += 1) {
     const id = randomUUID();
     const path = `${orgId}/sessions/${sessionId}/photos/${id}.jpg`;
-    await uploadObject("photos", path, TINY_JPEG, "image/jpeg");
+    const { bytes, width, height } = drawn[i];
+    await uploadObject("photos", path, bytes, "image/jpeg");
     await db.query(
       `insert into public.photos (id, org_id, session_id, uploader_id, storage_path, width, height, byte_size, sha256, exif_stripped, created_at, hidden_at)
-       values ($1, $2, $3, $4, $5, 1, 1, $6, $7, true, now() - ($8 || ' minutes')::interval, $9)`,
-      [id, orgId, sessionId, memberId, path, TINY_JPEG.byteLength, "d".repeat(64), String(10 - i), i === 2 ? new Date() : null],
+       values ($1, $2, $3, $4, $5, $10, $11, $6, $7, true, now() - ($8 || ' minutes')::interval, $9)`,
+      [id, orgId, sessionId, memberId, path, bytes.byteLength, createHash("sha256").update(bytes).digest("hex"), String(10 - i), i === 2 ? new Date() : null, width, height],
     );
     ids.push(id);
   }
@@ -206,7 +207,7 @@ test("Escape closes it too, focus returns to the opening tile, and the letterbox
 
   await second.click();
   await expect(dialog).toBeVisible();
-  // A point in the stage's corner — the letterbox around a 1 × 1 photograph, not the image.
+  // A point in the stage's corner — the letterbox beside a portrait photograph, not the image.
   await dialog.getByTestId("lightbox-stage").click({ position: { x: 4, y: 4 } });
   await expect(dialog).toHaveCount(0);
 });

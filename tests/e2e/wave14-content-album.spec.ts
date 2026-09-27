@@ -17,6 +17,7 @@ import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 import { readStoredZip } from "../unit/photos-zip-reader";
+import { drawPhotos } from "../unit/photos-fixtures";
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
@@ -34,18 +35,6 @@ test.describe.configure({ mode: "serial" });
 const PASSWORD = "correct-horse-battery-staple-9";
 const PHONE = { width: 390, height: 844 };
 const EXIF_MARKERS = ["Exif\0\0", "http://ns.adobe.com/xap/", "Photoshop 3.0"];
-
-// A stripped JPEG: SOI, a JFIF APP0, a minimal body, EOI — no APP1. Each photograph gets a
-// different trailing byte so the four hashes differ.
-function strippedJpeg(n: number): Buffer {
-  return Buffer.concat([
-    Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]),
-    Buffer.from("JFIF\0", "latin1"),
-    Buffer.from([1, 1, 0, 0, 1, 0, 1, 0, 0]),
-    Buffer.from([0xff, 0xfe, 0x00, 0x03, n]),
-    Buffer.from([0xff, 0xd9]),
-  ]);
-}
 
 let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
@@ -75,7 +64,7 @@ async function provisionMemberId(email: string): Promise<string> {
   return (data as { member_id: string }).member_id;
 }
 
-test.beforeAll(async ({}, testInfo) => {
+test.beforeAll(async ({ browser }, testInfo) => {
   admin = createClient(SUPABASE_URL, SERVICE_KEY!, { auth: { persistSession: false } });
   db = new pg.Client(DB_URL);
   await db.connect();
@@ -106,16 +95,21 @@ test.beforeAll(async ({}, testInfo) => {
   staffMemberId = await provisionMemberId(staffEmail);
   await db.query(`update public.members set org_role = 'moderator' where id = $1`, [staffMemberId]);
 
+  // Real, decodable, EXIF-free photographs (a canvas's own JPEG encoder writes no metadata), so the
+  // captures show real tiles and the zip holds real files.
+  const drawer = await browser.newPage();
+  const drawn = await drawPhotos(drawer, 4);
+  await drawer.close();
   for (let i = 0; i < 4; i += 1) {
     const id = randomUUID();
-    const bytes = strippedJpeg(i);
+    const { bytes, width, height } = drawn[i];
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     const path = `${orgId}/sessions/${sessionId}/photos/${id}.jpg`;
     await uploadObject("photos", path, bytes, "image/jpeg");
     await db.query(
       `insert into public.photos (id, org_id, session_id, uploader_id, storage_path, width, height, byte_size, sha256, exif_stripped, created_at, hidden_at)
-       values ($1, $2, $3, $4, $5, 1, 1, $6, $7, true, now() - ($8 || ' minutes')::interval, $9)`,
-      [id, orgId, sessionId, staffMemberId, path, bytes.byteLength, sha256, String(10 - i), i === 1 ? new Date() : null],
+       values ($1, $2, $3, $4, $5, $10, $11, $6, $7, true, now() - ($8 || ' minutes')::interval, $9)`,
+      [id, orgId, sessionId, staffMemberId, path, bytes.byteLength, sha256, String(10 - i), i === 1 ? new Date() : null, width, height],
     );
     if (i === 1) hidden = { id, sha256 };
     else visible.push({ id, sha256 });
