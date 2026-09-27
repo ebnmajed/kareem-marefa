@@ -38,7 +38,9 @@ function fromBroadcast(payload: CommentBroadcastPayload, viewerMemberId: string,
     id: payload.id,
     sessionId: payload.sessionId,
     parentId: payload.parentId,
-    author: { id: payload.authorId, displayName: payload.authorDisplayName, avatarUrl: payload.authorAvatarUrl },
+    // ★ DEC-099: the payload's `authorAvatarUrl` is ignored even where an old
+    // database still fills it with Google's URL (0155 nulls it at the source).
+    author: { id: payload.authorId, displayName: payload.authorDisplayName, avatarUrl: null },
     body: payload.body,
     mentions: payload.mentions ?? [],
     createdAt: payload.createdAt,
