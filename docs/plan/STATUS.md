@@ -136,6 +136,44 @@ member, an admin, a moderator and another org's member. What is open is only the
 bucket, whose owning-table mapping differs. There are eight buckets: `materials`, `material-pages`, `photos`,
 `design-assets`, `exports`, `fonts`, `photo-albums`, `avatars`.
 
+### ★ The owner's order (wave 14) — a DRAFT until the gates close
+
+**Migrations: `0155`–`0159`, all additive.** No column is dropped or renamed. Each changed function keeps its
+signature, and a new column is nullable.
+- `0155`: `comments_broadcast()` stops sending Google's URL. ★ **Also on hotfix PR #32**, the same file.
+- `0156`: `photos_storage_read` gains `removed_at is null` ★ (a removed photo was readable by the org). Also
+  `photo_albums`, the `photo-albums` bucket and its policy, three audit definers, and `MSG-photo_album_ready`.
+- `0157`: `members.avatar_import` / `avatar_version`, the `avatars` bucket and its policy; `me()` and
+  `members_member_view` gain a trailing `avatar_version`; `comments_broadcast()` gains `authorAvatarVersion`.
+- `0158`: platform's avatar functions, the source-changed trigger, and `anonymise_members()` re-created (its diff is
+  the avatar lines only).
+- `0159`: content's album-build functions and the stale triggers.
+
+**What `main` does on the new schema, before the merge.** Nothing moves.
+- The avatar trigger and the re-created `anonymise_members()` enqueue only for a member who said yes, and nobody can
+  say yes until the new app ships.
+- The stale triggers find no album.
+- `main`'s comment client reads `authorAvatarUrl`, which is null, and draws initials. PR #32 already does the same.
+- `main`'s worker has no `import_avatar` or `zip_session_photos` task, and no job for either exists.
+
+**Between the merge and Railway's redeploy.** An album request or a «نعم» is queued, and graphile only fetches tasks
+it has registered, so the job waits. The page says «نُجهّز» and the member sees initials until the new worker runs.
+★ **The new worker image needs `zip`** (`worker/Dockerfile`, `a23cbfb`). Railway builds from the Dockerfile, so the
+redeploy must be a rebuild, not a restart of the old image.
+
+1. ★ **The owner takes a schema-only dump of production** (`public`; no data rows), because the lead's session is
+   refused it. The lead rehearses `0155`–`0159` on it, as in waves 12 and 13.
+2. **PR #32 first, if you want the hotlink off production today.** Push `0155` and merge #32, in either order (its
+   code alone stops every browser fetch). `supabase migration list --linked` must read `0155` on both sides.
+3. **Push `0156`–`0159`, then merge PR #31.** `migration list` must read `0159` on both sides.
+4. **Reconnect Railway**, the standing step below, and confirm the worker log lists `import_avatar` and
+   `zip_session_photos`.
+5. ★ **CI is blocked** until the repository is public again, or until Actions billing is set up. The wave's gates are
+   local and recorded row by row.
+6. **After the merge, a follow-up migration** (carried): revoke `avatar_url` from the column grant, `members_member_view`
+   and `me()`, so no member's own browser can ask PostgREST for a colleague's Google URL. It waits for the merge
+   because `main` selects the column.
+
 ### ★ The standing owner step — Railway, after every merge
 
 Railway's push trigger has needed a manual `railway service source connect` after **eight consecutive merges**.
