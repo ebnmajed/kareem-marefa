@@ -6,7 +6,18 @@ import { Link } from "@/i18n/navigation";
  * locales. Never letter-spaced (Arabic is a connected script); only the
  * Latin sub-line takes tracking.
  */
-export function Wordmark({ variant = "header" }: { variant?: "header" | "footer" }) {
+export function Wordmark({
+  variant = "header",
+  href = "/",
+}: {
+  variant?: "header" | "footer";
+  /**
+   * Where the mark leads. `/` everywhere it did before — the public site,
+   * `(auth)`, `legal` — so every existing caller renders byte-identically; the
+   * app shell alone passes `/app`, the member's home (`REQ-UIX-027`, DEC-180).
+   */
+  href?: string;
+}) {
   const locale = useLocale();
 
   if (variant === "footer") {
@@ -28,7 +39,7 @@ export function Wordmark({ variant = "header" }: { variant?: "header" | "footer"
 
   return (
     <Link
-      href="/"
+      href={href}
       className="flex items-center gap-3 rounded-field text-fg-heading"
     >
       <span lang="ar" dir="rtl" className="whitespace-nowrap text-[1.375rem] font-semibold leading-none">

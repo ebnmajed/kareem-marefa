@@ -157,7 +157,8 @@ export default async function AppLayout({
           computes from it, so this row's height and that token move together. */}
         <header className="sticky top-0 z-30 border-b border-edge bg-canvas">
           <div className="mx-auto flex h-[68px] max-w-6xl items-center gap-2 px-3 md:gap-4 md:px-8">
-            <Wordmark />
+            {/* Inside the platform the mark leads home, not to the public site (REQ-UIX-027). */}
+            <Wordmark href="/app" />
 
             {/* تصفّح ▾ — desktop only; the phone reaches all of it from the tab
               bar and the account menu, which is the point of having them.
