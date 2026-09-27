@@ -4216,3 +4216,35 @@ Each is named with the reason it holds. If any one moves, it becomes a ledger li
 
 **Order after approval:** P2 and the DTO → P1 (logic first; the frame once R1 lands) → P3 (after `0156`) → P4 (after
 R2–R4) → P5 (after `platform`'s commit) → the three specs → captures.
+
+### W14.1 Built after sync 1 (`DEC-182`) — what is done, what is not, and why
+
+| Row | Commit | State |
+|---|---|---|
+| platform's R1 — `ui/avatar` initials under the image | `b45541b` | done; ★ **ledger line** below |
+| P3 + P4 routes, DAL, `AlbumControl`, the notice, the strings | `02c6090` | done — 13 route units, 8 component cases |
+| P1 lightbox + P2 crop, wired into the slot | `29eb962` | done — 11 component cases; the three existing photo suites pass **unmodified** |
+| P4 `JOB-zip_session_photos`, `zip.ts`, `listObjects`, the album paths | `d94a882` | done — 20 units, the real `zip` on this machine, the parts opened and hashed |
+| P4 SQL: `begin`/`record`/`fail_photo_album`, `photo_albums_stale` | `910388c` | proposed as `content/0158_photo_album_build.sql`; `photos-album-build.test.ts` 11/11 with `applyProposed`, the trigger **as a member** |
+| P5 the comment's avatar through `avatarHref` | `9d2e8dc` | done; `0157` already appends `authorAvatarVersion`, so **no SQL of mine** |
+| M1 `wave14-content-lightbox.spec.ts` (the `SC 2.5.7` gate + the per-photo route) | `29eb962` | **written, not run** — it needs a production build of this tree (the lead's) |
+| M4 `wave14-content-album.spec.ts` (real worker, `E2E_WORKER=1`) | `50ad630` | **written, not run** — needs the job's registration in `worker/src/index.ts` and a worker on the new code |
+| Captures `wave14-content-{lightbox-open,lightbox-last,album-building,album-ready}` | — | written by the two specs, so they land when those run |
+
+**Ledger line (to `STATUS.md`, through the lead):**
+
+| File | Assertion | Why |
+|---|---|---|
+| `tests/components/ui/avatar.test.tsx:31-35` | «renders a real image, not initials» — `bdi` **not** in the document → `bdi` present with the initial, and the `img` `absolute` over it | `DEC-182` (`platform`'s R1): the initials are always drawn underneath, so an image that fails falls back to them with no script |
+
+**Deviations from the plan, each small:**
+- The lightbox's `aria-label`, `alt` and live text carry `<bdi>` in the catalogue, as `content-i18n.test.ts` requires, and
+  drop it with `t.markup(…, { bdi: plain })`, as `gallery.tsx`'s rescope label already does.
+- An expired album is dropped in the DAL (`toAlbumState()`), not in the component: `react-hooks/purity` refuses `Date.now()` in render.
+- The lightbox's frame is `size="media"` plus `className="theme-dark"`, so the secondary controls and the focus ring take the dark tokens.
+- `AlbumControl` is synchronous and takes `t` from the slot, like `PhotoGrid`. An async child would not render inside `gallery.test.tsx`'s tree.
+- File names are `0156`'s, and the lead wrote them: `photos-YYYYMMDD[-part-N-of-M].zip`. `DEC-182` Q6 says `album-YYYYMMDD-part-N.zip`, so the ruling and the landed SQL disagree. I changed nothing on my side, because no code of mine reads the name.
+
+**Failures in `npm test` that are not mine** (seen at `29eb962`): `admin-audit-labels.test.ts`, where the three new audit actions
+have no labels in `admin.json`; and `mail-render.test.ts`, where the matrix now has 40 rows against 39. Both come from `0156`'s
+additions, and both are the lead's as custodian.
