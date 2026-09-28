@@ -3002,3 +3002,56 @@ test at all — worth flagging to the lead as a pre-existing gap, not one this w
    count client-side) does not use `count()`. Out of scope here; flagging so it is not lost.
 
 Refs: DEC-183, DEC-184, REQ-UIX-030, REQ-UIX-043
+
+---
+
+## Wave 15 — done
+
+All six primitives (`data-table`, `combobox`, `menu`, `tabs`, `sheet`, `date-time` — via
+`rtl-datetime-picker.tsx`) are onto the scope, tokens only, no existing class edited, no behaviour
+change. `SCR-048`'s team colour is built in today's look: the seven named colours plus «بلا لون», no
+free hex, a per-row `ui/menu`, and its own audit trigger (the table's first). Commits, in order:
+
+| Commit | What |
+|---|---|
+| `751685f` | `data-table` onto the scope |
+| `8b49ba7` | `combobox` onto the scope |
+| `899b180` | `menu` onto the scope |
+| `282f117` | `tabs` onto the scope |
+| `cd9f99e` | `sheet` onto the scope |
+| `215862f` | `date-time` onto the scope, via `rtl-datetime-picker.tsx` |
+| `314e14d` | `tests/e2e/wave15-console-gallery.spec.ts` |
+| `4c0d4ef4` | `companies_team_color_audit()` — proposed SQL + RLS test, 5/5 green |
+| `758edd5` | gallery spec fixed to the corrected single-render-per-scope pattern |
+| `ce32281f` | `data-demo` roots added to all six demos |
+| `4425070` | `SCR-048`'s team colour — DAL, actions, table, messages, tests, e2e |
+
+`npx tsc --noEmit` clean throughout · `npm run lint` 0 errors (26 pre-existing warnings, none mine) ·
+`npm run ui-lint` clean (321 files, strict) · every targeted test green before each commit ·
+`npm run test:rls` full run: 138/139 files green, the one failure (`survey-submit.test.ts`, six cases)
+is `event`'s file and unrelated to `companies` — pre-existing, not touched by my SQL · full
+`vitest run --project unit --project components`: 3212/3213 green, the one failure
+(`typography-utilities.test.ts`, `text-play-*` orphans in `playground.tsx`) is the lead's in-flight
+gallery page, not mine.
+
+**Two things left for the lead**, both need access I don't have this wave:
+1. **Promote `supabase/proposed/console/team_colour_audit.sql`** after `0160` (already landed). Until
+   then the audit half of `wave15-console-team-colour.spec.ts` fails against a real database, though
+   the RLS suite already proves the trigger itself (`4c0d4ef4`).
+2. **Run `wave15-console-gallery.spec.ts` and `wave15-console-team-colour.spec.ts`** against a fresh
+   `KAREEM_GALLERY=1` / production build — building is lead-only, and the `.next` on disk predates my
+   `companies/**` commits entirely.
+
+**Found, not mine to fix:** `ui/scope.tsx` imports `next/font/google`, and `vitest.config.ts`'s
+`components` project has no alias for it — `IBM_Plex_Sans is not a function` under jsdom the moment a
+component test imports `PlayScope`. Worked around in every `*-scope.test.tsx` by not mounting the
+scope (jsdom applies no CSS regardless, so the assertion is the `pg:` class string's presence).
+
+**Untouched-suite ledger lines, for `STATUS.md`** (I cannot write it myself — `docs/plan/**` except my
+own note):
+- `tests/components/admin/managed-lists-status-badge.test.tsx` — two `AdminCompany` fixture literals
+  widened with `teamColor: null` (the interface's new required field); assertions unchanged.
+- `tests/components/admin/phone-card-actions.test.tsx` — one `AdminCompany` fixture literal widened
+  the same way; assertions unchanged.
+
+Nothing else outside the scope moved. My row is done.
