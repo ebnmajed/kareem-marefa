@@ -19,6 +19,11 @@
 //   E2E_FINGERPRINT_OUT=.qa-shots/fingerprint/branch.json \
 //   E2E_FINGERPRINT_BASELINE=.qa-shots/fingerprint/main.json npx playwright test wave15-sessions-public-controls --project=desktop
 //
+// ★ Time. Every wait is polled and bounded (8 s per sample, 10 s between states), so the worst case
+// is finite, and a still page costs a few frames per sample. It prints each pass's time. It has NOT
+// been timed on the author's machine: the spec needs a production build, and building is the lead's
+// — the first of the lead's runs records it here.
+//
 // With a baseline the test FAILS on any difference, and names it. Without one it only records,
 // and asserts that every part it looks for exists — so a renamed id fails here too.
 //
@@ -130,11 +135,16 @@ const DOORS: Part[] = [
  * a part still, and each is checked, never slept for:
  *   1. two animation frames have passed — Chromium applies `:hover` and `:focus` at the next
  *      frame, so a transition does not exist yet at the instant the pointer arrives;
- *   2. no FINITE animation or transition runs on a sampled part or on an ancestor of one (an
- *      ancestor's transform moves the part's box); an infinite one is ignored — it never ends;
+ *   2. no FINITE animation or transition is still inside its own timing on a sampled part or an
+ *      ancestor of one (an ancestor's transform moves the part's box); an infinite one is ignored;
  *   3. two readings two frames apart are identical.
- * It gives up after a bounded number of rounds and says so in the record (`unsettled`), so a part
- * that never settles is a visible difference, not a hang.
+ * ★ «Still inside its timing» is `currentTime < endTime`, polled once a frame — never an `await` on
+ * `finished`. The browser does not always keep that promise: on `main`'s build the hero's
+ * `svg.network-svg` (`network-fade`, 1100 ms) read `playState: "running"` at a `currentTime` of
+ * 4150 ms and its `finished` never settled (the lead, sync 1). Past its end, an animation is over,
+ * whatever its `playState` says.
+ * Every wait is bounded, in frames and in time, and a part that never settles is recorded as
+ * `unsettled`: a visible difference, not a hang.
  *
  * `next/font` names a family `__IBM_Plex_Sans_Arabic_5a1b2c`; the suffix is a build hash, so it is
  * dropped — a different FACE still shows, a rebuilt one does not.
@@ -172,21 +182,20 @@ async function snapshot(page: Page, parts: readonly Part[]): Promise<Snapshot> {
       };
       const sampled = parts.map(([, selector]) => document.querySelector(selector)).filter((el): el is Element => el !== null);
       const moving = () =>
-        document.getAnimations().filter((a) => {
-          if (a.playState !== "running") return false; // finished, idle or paused never settle by waiting
+        document.getAnimations().some((a) => {
+          if (a.playState !== "running") return false; // finished, idle or paused: nothing to wait for
           const end = a.effect?.getComputedTiming().endTime;
-          if (typeof end !== "number" || !Number.isFinite(end)) return false;
+          if (typeof end !== "number" || !Number.isFinite(end)) return false; // infinite, or scroll-driven
+          if (typeof a.currentTime !== "number" || a.currentTime >= end) return false; // over, whatever playState says
           const target = a.effect instanceof KeyframeEffect ? a.effect.target : null;
           return target !== null && sampled.some((el) => target === el || target.contains(el));
         });
 
-      for (let round = 0; round < 40; round++) {
+      const deadline = performance.now() + 8_000;
+      for (let round = 0; round < 40 && performance.now() < deadline; round++) {
         await frames(2);
-        const running = moving();
-        if (running.length > 0) {
-          await Promise.all(running.map((a) => a.finished.catch(() => undefined)));
-          continue;
-        }
+        // Polled a frame at a time, never awaited: bounded by the same deadline.
+        while (moving() && performance.now() < deadline) await frames(1);
         const first = read();
         await frames(2);
         const second = read();
@@ -206,22 +215,26 @@ async function snapshot(page: Page, parts: readonly Part[]): Promise<Snapshot> {
  *
  * ★ The public pages run infinite animations (`globals.css`: `.ripple-ring`, `.pulse-dot`,
  * `.loader-dot`), whose `finished` never settles — waiting on all of them hung for the whole
- * timeout on `main`'s build (the lead, sync 1). Two frames first, so a transition the last
- * interaction started exists before it is looked for; rounds until nothing finite runs.
+ * timeout on `main`'s build (the lead, sync 1). And a FINITE one's `finished` is not a promise the
+ * browser always keeps either (see `snapshot`), so nothing here awaits it: it polls
+ * `currentTime < endTime` once a frame, under a deadline.
  */
 async function settle(page: Page) {
   await page.evaluate(async () => {
-    const frames = () => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
-    for (let round = 0; round < 40; round++) {
-      await frames();
-      const running = document.getAnimations().filter((a) => {
-        if (a.playState !== "running") return false; // finished, idle or paused never settle by waiting
+    const frame = () => new Promise<void>((done) => requestAnimationFrame(() => done()));
+    const moving = () =>
+      document.getAnimations().some((a) => {
+        if (a.playState !== "running") return false;
         const end = a.effect?.getComputedTiming().endTime;
-        return typeof end === "number" && Number.isFinite(end);
+        if (typeof end !== "number" || !Number.isFinite(end)) return false;
+        return typeof a.currentTime === "number" && a.currentTime < end;
       });
-      if (running.length === 0) return;
-      await Promise.all(running.map((a) => a.finished.catch(() => undefined)));
-    }
+    // Two frames first, so a transition the last interaction started exists; then one frame at a
+    // time until nothing finite is inside its timing. Bounded: the landing's intro is ~3.8 s.
+    const deadline = performance.now() + 10_000;
+    await frame();
+    await frame();
+    while (moving() && performance.now() < deadline) await frame();
   });
 }
 
@@ -335,8 +348,12 @@ test.describe("wave 15 — the public site's controls, computed", () => {
     for (const locale of LOCALES) {
       for (const size of WIDTHS) {
         await page.setViewportSize({ width: size.width, height: size.height });
+        let started = Date.now();
         result[`/${locale}/register@${size.name}`] = await register(page, locale);
+        console.log(`fingerprint /${locale}/register@${size.name}: ${((Date.now() - started) / 1000).toFixed(1)} s`);
+        started = Date.now();
         result[`/${locale}@${size.name}`] = await landing(page, locale);
+        console.log(`fingerprint /${locale}@${size.name}: ${((Date.now() - started) / 1000).toFixed(1)} s`);
       }
     }
 
