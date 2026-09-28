@@ -1,19 +1,17 @@
 // console · wave 15 — `companies_team_color_audit()` (DEC-183 §4.11,
-// DEC-186 §8, REQ-UIX-043). Applied with applyProposed() inside this test's
-// rolled-back transaction (DEC-040). Tested as an ORG ADMIN performing an
+// DEC-186 §8, REQ-UIX-043). Promoted by the lead as `0161`, so it is in the
+// database the suite runs against. Tested as an ORG ADMIN performing an
 // ordinary `update` through RLS's own p2_admin_update policy — never as the
 // trigger's owner — because the trigger fires on every write path a member
 // can actually reach, not just an RPC.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, pool, withTx, type Tx } from "./db";
+import { pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
 async function setup(tx: Tx) {
-  const f = await seed(tx);
-  await applyProposed(tx, "console/team_colour_audit.sql");
-  return f;
+  return seed(tx);
 }
 
 describe("POL-companies.team_color_audit", () => {
