@@ -28,7 +28,7 @@ import { Link } from "@/components/ui/link";
 // beside a menu item's own icon.
 
 const itemBase =
-  "flex w-full items-center gap-2 rounded-field px-3 py-2 text-start text-body-sm text-fg-heading outline-none data-[highlighted]:bg-silver-100 data-[disabled]:pointer-events-none data-[disabled]:text-fg-muted/50";
+  "flex w-full items-center gap-2 rounded-field px-3 py-2 text-start text-body-sm text-fg-heading outline-none data-[highlighted]:bg-silver-100 pg:data-[highlighted]:bg-hover data-[disabled]:pointer-events-none data-[disabled]:text-fg-muted/50";
 
 const toneClass: Record<string, string> = {
   error: "text-error data-[highlighted]:bg-error-bg",
@@ -44,7 +44,7 @@ export function Menu({ trigger, items, align = "start" }: MenuProps) {
         <DropdownMenu.Content
           align={align}
           sideOffset={6}
-          className="z-40 min-w-48 rounded-card border border-edge bg-canvas p-1.5 shadow-[var(--shadow-card)]"
+          className="z-40 min-w-48 rounded-card border border-edge bg-canvas p-1.5 shadow-[var(--shadow-card)] pg:shadow-none"
         >
           {items.map((item, i) => {
             // The page on show: `aria-current` for a screen reader, and a check
@@ -57,7 +57,7 @@ export function Menu({ trigger, items, align = "start" }: MenuProps) {
                 {item.current ? <CheckIcon className="shrink-0 text-[1rem]" /> : null}
               </>
             );
-            const className = `${itemBase} ${item.current ? "bg-silver-100" : ""} ${item.tone ? (toneClass[item.tone] ?? "") : ""}`;
+            const className = `${itemBase} ${item.current ? "bg-silver-100 pg:bg-raised" : ""} ${item.tone ? (toneClass[item.tone] ?? "") : ""}`;
             const current = item.current ? ("page" as const) : undefined;
             return (
               <div key={item.label + i}>
