@@ -278,17 +278,6 @@
   --radius-panel: 22px;
   --radius-pill: 999px;
 
-  /* The display scale. `text-play-*`, so that nothing confuses it with the
-     public site's `text-display`. Phone values; `xl` is desktop's hero. */
-  --text-play-sm: 1.375rem; /* 22 */
-  --text-play-sm--line-height: 1.15;
-  --text-play-md: 1.875rem; /* 30 */
-  --text-play-md--line-height: 1.15;
-  --text-play-lg: 3rem; /* 48 */
-  --text-play-lg--line-height: 1.15;
-  --text-play-xl: 4rem; /* 64 */
-  --text-play-xl--line-height: 1.15;
-
   /* `--ease-out` is taken, and its curve is the skip link's. */
   --ease-play: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-play-in: cubic-bezier(0.7, 0, 0.84, 0);
@@ -334,6 +323,33 @@
   --focus-width: 2px;
 }
 
+/* The display scale. `text-play-*`, so that nothing confuses it with the public
+   site's `text-display`. Phone values; `xl` is desktop's hero.
+
+   ★ DECLARED AS THE HOUSE RAMP IS, WITH `@utility`, AND NOT AS `--text-*` THEME
+   KEYS. Tailwind generates the same four classes from either. But DEC-108's gate
+   (`tests/unit/typography-utilities.test.ts`) reads `@utility` blocks, and it is
+   the only thing that can see a `text-*` class that emits nothing; a scale it
+   cannot read is a scale it cannot guard. It failed on the first file that used
+   one of these, and it was right to. Size and line height only: the face and the
+   weight are the caller's (`font-display font-extrabold`). */
+@utility text-play-sm {
+  font-size: 1.375rem; /* 22 */
+  line-height: 1.15;
+}
+@utility text-play-md {
+  font-size: 1.875rem; /* 30 */
+  line-height: 1.15;
+}
+@utility text-play-lg {
+  font-size: 3rem; /* 48 */
+  line-height: 1.15;
+}
+@utility text-play-xl {
+  font-size: 4rem; /* 64 */
+  line-height: 1.15;
+}
+
 /* ── the scope: dark is the direction's default ── */
 .theme-play {
   color-scheme: dark;
@@ -351,7 +367,8 @@
   --btn-bg: var(--color-play-lime);
   --btn-fg: var(--color-play-ink);
   --btn-bg-hover: var(--color-play-lime);
-  --btn-bg-active: var(--color-play-lime-deep);
+  /* The press is the control sinking onto its shadow, not a darker fill. */
+  --btn-bg-active: var(--color-play-lime);
   --btn2-border: var(--color-play-bone);
   --btn2-border-hover: var(--color-play-bone);
   --btn2-fg: var(--color-play-bone);
@@ -406,6 +423,12 @@
   --spine: var(--color-play-paper-line);
   --node: var(--color-play-paper-ink);
   --index: var(--color-play-paper-muted);
+}
+
+/* The metallic sheen is the public site's — light catching brushed chrome. A
+   playground button is a toy, and its feedback is the press. */
+.theme-play .btn-sheen::after {
+  display: none;
 }
 
 /* The scope's ONE focus rule, so no primitive declares a ring of its own.
