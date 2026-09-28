@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { AvatarProps, AvatarStackProps } from "@/components/ui";
 
 // content's file — `16` §6.8, DEC-099.
@@ -35,6 +36,31 @@ export const TINTS = [
   "bg-silver-400 text-navy-950",
 ] as const;
 
+// ★ Wave 15 — inside the playground's scope (DEC-183, DEC-186 §5, REQ-PRF-009).
+// The SAME six slots, keyed by the SAME hash of the member id, take the
+// playground's six dark tints with bone on each (9.4:1 or better). A member's
+// slot never moves; only its value inside the scope. Added under `pg:`, after
+// `TINTS`' own classes, so outside the scope nothing changes.
+export const SCOPE_TINTS = [
+  "pg:bg-tint-1 pg:text-on-tint",
+  "pg:bg-tint-2 pg:text-on-tint",
+  "pg:bg-tint-3 pg:text-on-tint",
+  "pg:bg-tint-4 pg:text-on-tint",
+  "pg:bg-tint-5 pg:text-on-tint",
+  "pg:bg-tint-6 pg:text-on-tint",
+] as const;
+
+/**
+ * The team colour, re-checked — REQ-UIX-043, DEC-186 §5. The database refuses
+ * anything but `#rrggbb` (`0160`), and this is the second line: React writes a
+ * server-rendered custom property as it is given, so a `;` in the value would
+ * end the declaration and start another. Anything that is not exactly a
+ * six-digit colour is treated as no colour — the neutral ring.
+ */
+export function teamColorOrNull(value: string | null | undefined): string | null {
+  return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value) ? value : null;
+}
+
 /**
  * A small stable string hash (djb2), exported so the contrast test can
  * assert every one of the six tints independently rather than relying on
@@ -66,8 +92,30 @@ function initial(displayName: string | null): string {
 // (`Main`'s presenter cards, `Shell`'s account menu), the lead's ruling
 // (DEC-110's "match the mockups"). Was `rounded-full` through M9; carried
 // into `AvatarStack`'s own ring below so the ring traces the same shape.
-export function Avatar({ memberId, displayName, src, size = 40, decorative, className = "" }: AvatarProps) {
-  const shared = `inline-flex shrink-0 items-center justify-center overflow-hidden rounded-field font-medium ${DIMENSION[size]} ${className}`;
+//
+// ★ Wave 15: a CIRCLE inside the playground's scope (`pg:rounded-pill`), as
+// `04-components.md` and both prototypes draw it; outside, the 6 px corner.
+//
+// ★ The team ring (REQ-UIX-043, contract 3, DEC-186 §5). `teamColor` has THREE
+// values: `undefined` draws no ring — every caller before wave 15, so nothing
+// moves — `null` the neutral ring of a company with no colour, and a colour the
+// team's ring. It is a BORDER, not a box-shadow: the box keeps its size, so a
+// row never reflows, and the image (`inset-0`) sits inside the padding box and
+// leaves the ring showing. The colour reaches the element as `--team`, the one
+// place a value from data becomes a style. The neutral ring names its own token
+// rather than reading `--team`, because `--team` inherits: an avatar with no
+// colour inside a team-coloured poster must not wear the poster's team. The
+// ring never touches the fill — the tint stays the member's (REQ-PRF-009).
+function ring(teamColor: string | null | undefined): { className: string; style?: CSSProperties } {
+  if (teamColor === undefined) return { className: "" };
+  const colour = teamColorOrNull(teamColor);
+  if (colour === null) return { className: "border-[3px] border-team-neutral" };
+  return { className: "border-[3px] border-team", style: { "--team": colour } as CSSProperties };
+}
+
+export function Avatar({ memberId, displayName, src, size = 40, decorative, teamColor, className = "" }: AvatarProps) {
+  const team = ring(teamColor);
+  const shared = `inline-flex shrink-0 items-center justify-center overflow-hidden rounded-field font-medium ${DIMENSION[size]} pg:rounded-pill ${team.className} ${className}`;
   const a11y = decorative ? { "aria-hidden": true as const } : { role: "img" as const, "aria-label": displayName ?? undefined };
 
   // ★ The initials are ALWAYS drawn, and the image is laid over them (DEC-182,
@@ -76,7 +124,7 @@ export function Avatar({ memberId, displayName, src, size = 40, decorative, clas
   // nothing at `alt=""`, so the glyph underneath shows through. CSS only: no
   // `onError`, so this stays a Server Component and needs no hydration.
   return (
-    <span className={`relative ${shared} ${TINTS[tintIndex(memberId)]}`} {...a11y}>
+    <span className={`relative ${shared} ${TINTS[tintIndex(memberId)]} ${SCOPE_TINTS[tintIndex(memberId)]}`} style={team.style} {...a11y}>
       <bdi>{initial(displayName)}</bdi>
       {src ? (
         // A platform-stored, already-derivative WebP — same reasoning as
@@ -101,7 +149,8 @@ export function AvatarStack({ members, size = 24, max = 2, overflowLabel, classN
           `rtl:` for exactly this kind of stack. */}
       <span className="flex [&>*:not(:first-child)]:-ms-2">
         {shown.map((m) => (
-          <span key={m.memberId} className="rounded-field ring-2 ring-surface">
+          // No team ring on a stack this wave (DEC-186 §5); a circle inside the scope, like the avatar.
+          <span key={m.memberId} className="rounded-field ring-2 ring-surface pg:rounded-pill">
             <Avatar memberId={m.memberId} displayName={m.displayName} src={m.src} size={size} decorative />
           </span>
         ))}
