@@ -4811,3 +4811,51 @@ list** — Q19.
 18. **Q18** — new cases appended to my nine existing test files, or separate new files (not in my edit list today)?
 19. **Q19** — captures and the prototype side-by-side: a `tests/e2e/wave15-content-gallery.spec.ts` of mine, run by the lead
     against a `KAREEM_GALLERY=1` build, or the lead captures from the gallery?
+
+---
+
+## Wave 15 — built after sync 1 (`DEC-186`)
+
+**Date:** 2026-09-28. Built in the plan's order, with `avatar` and `progress-bar` pulled forward for `scoring`, one commit
+per primitive. Mechanism C, as ruled: **every class that existed stays; the scope's look is added under `pg:` /
+`pg-dark:`**. New cases are in new `*-scope.test.tsx` files; **no existing test file was touched and no existing assertion
+moved**.
+
+| Primitive | Commit | Demo export | What changes inside the scope |
+|---|---|---|---|
+| `tag-chip` | `2d2d45b` | `TagChipDemo` (client) | pill on `raised`, 13 px 700; selected `accent` / `on-accent`; remove: 44 px hit area by pseudo-element |
+| `badge` | `9ef8bb6` | `BadgeDemo` | `pg-dark:` = today's on-dark forms; `ended` → `ended-on-dark`; filled `info` and the success/error outlines covered too; **6 px corner kept**; no colour added |
+| `avatar` | `0b34e89` | `AvatarDemo` | circle; `tint-1..6` + `on-tint` at the same index; **team ring**: `undefined` none · `null` `border-team-neutral` (never reads `--team`) · colour `border-team` + `--team`, re-checked `^#[0-9a-fA-F]{6}$` by the exported `teamColorOrNull()` |
+| `progress-bar` (new) | `231254a` | `ProgressBarDemo` | `scaleX` from the inline start (`ltr:origin-left rtl:origin-right`), static; team fill; `decorative`; unnamed and not decorative throws |
+| `card` | `3df570e` | `CardDemo` | `rounded-panel`, no shadow, no transition, hover → `border-edge-strong`; body 12 / 16 px; media letterbox `raised`; `MEDIA_TINTS` untouched |
+| `progress` | `e96f8b7` | `ProgressDemo` | track `raised`; neutral fill `accent`; status fills on-dark; `width` fill and pulse unchanged |
+| `empty-state` | `dd7f651` | `EmptyStateDemo` (client) | `rounded-panel`; title `font-display` 700 |
+| `stat` | `cd20ac5` | `StatDemo` | `rounded-panel`; value `font-display` 700; toned values on-dark; linked hover as `card` |
+| `panel` | `343250f` | `PanelDemo` | `rounded-panel`; `info` → `raised`; toned → outline form (transparent, on-dark border) in a dark scope |
+| `file-drop` | `babf8d9` | `FileDropDemo` | `rounded-panel`, `pg:transition-none`; drag-over `accent` + `raised`; invalid / refused on-dark; chooser pill; row `rounded-input`; remove 44 px hit area |
+| ★ `file-drop` repair | `59e15ba` | — | **the one visible change outside the scope** (`DEC-186` §5): drag-over `border-navy-700` (emitted nothing) → `border-fg-heading`. Ledger line requested from the lead |
+| `sticker` (new) | `7c2bba2` | `StickerDemo` | six fills by name, ±6° clamp, `shadow-sticker` from `--sticker-ground`, `aria-hidden` unless `informative`; static |
+| `poster` (new) | `667fc250` | `PosterDemo` | composes `CardMedia`; artifact ratio when `CardMedia` has it, else whole in 4:5; team-coloured placeholder with the company's name; no QR |
+| `reaction-bar` (new) | `cb7dce06` | `ReactionBarDemo` (client) | set from props; named «word count»; `aria-pressed` + filled glyph + stronger border; 44 px; nothing moves; read-only |
+| `story-ring` (new) | `fa76d90f` | `StoryRingDemo` | four states, each its own word **and** shape (double ring · accent ring · team ring · 1 px + check); static |
+| captures | `6b5caa3d` | — | `tests/e2e/wave15-content-gallery.spec.ts`; every demo root carries `data-demo` |
+
+**Gates at `6b5caa3d`:** `tsc` — my files clean (three errors in `console`'s in-progress admin tests, `AdminCompany.teamColor`);
+`eslint` clean on my files; `ui-lint --strict` clean; `tokens-only` green; `npm test` 3174 passed, **1 failed:
+`typography-utilities`**, which does not know the `--text-play-*` theme keys (the lead's gate; `playground.tsx`,
+`level-card.tsx` and my `poster.tsx` use `text-play-*`, which emits CSS — measured).
+
+**Not done, and why:**
+- **Captures** are not taken: the spec needs a `KAREEM_GALLERY=1` build, which is the lead's to run. Nothing is looked at yet.
+- ★ **The card's focus ring** (reported to the lead): `card.tsx:52`'s `focus-visible:-outline-offset-2` is in `@layer
+  utilities` and every global `:focus-visible` rule is unlayered, so the inset offset never applies and the ring is drawn
+  outside a link its `overflow-hidden` article clips — today and in the scope. The fix needs a `--focus-offset` variable
+  in `globals.css`; the card's half waits for it.
+- **A token request:** the poster's placeholder uses `text-on-sticker` / `bg-on-sticker` for ink on a team colour —
+  right value, wrong name. An `on-team` constant would say what it means.
+- **Carried, as ruled:** the missing glyph on `cancelled`; `box-shadow` transitions outside the scope; the light variant's
+  team ring.
+
+**Design choices the lead did not rule on explicitly, open to reversal:** the display face on `stat`'s value and
+`empty-state`'s title; the card's and stat's hover as a border step; `story-ring`'s state word under every ring (the
+prototype puts «مباشر» inside the live ring; here the ring holds the letter and the word is always the line beneath).
