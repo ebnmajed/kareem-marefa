@@ -124,7 +124,7 @@ export function DataTable<Row>({
       </div>
 
       {selection && selection.selected.length > 0 ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-field border border-edge-strong bg-silver-100 px-4 py-2.5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-field border border-edge-strong bg-silver-100 px-4 py-2.5 pg:bg-raised">
           <p className="text-label text-fg-heading">{selection.label(selection.selected.length)}</p>
           <div className="flex flex-wrap items-center gap-2">{selection.actions}</div>
         </div>
@@ -195,7 +195,7 @@ export function DataTable<Row>({
                   const key = rowKey(row);
                   const primaryCellId = `${tableId}-${key}-primary`;
                   return (
-                    <tr key={key} className="border-b border-edge last:border-b-0 hover:bg-silver-100/60">
+                    <tr key={key} className="border-b border-edge last:border-b-0 hover:bg-silver-100/60 pg:hover:bg-hover">
                       {selection ? (
                         <td className="px-3 py-2.5">
                           <IndeterminateCheckbox
