@@ -4248,3 +4248,566 @@ R2–R4) → P5 (after `platform`'s commit) → the three specs → captures.
 **Failures in `npm test` that are not mine** (seen at `29eb962`): `admin-audit-labels.test.ts`, where the three new audit actions
 have no labels in `admin.json`; and `mail-render.test.ts`, where the matrix now has 40 rows against 39. Both come from `0156`'s
 additions, and both are the lead's as custodian.
+
+---
+
+## Wave 15 plan
+
+**Date:** 2026-09-28 · **Branch:** `wave-15/tokens-and-primitives` at `9a81014` · **State:** planning only — no code, no
+test, no demo written. **Refs:** `DEC-183`, `DEC-184`, `REQ-UIX-030` … `032`, `034`, `036`, `040`, `043`, contracts C1 – C4.
+
+Read, in order: `.claude/agents/content.md` (from disk), `STATUS.md`'s wave-15 block, `CLAUDE.md`'s wave-15 map, `DEC-183`
+in full, `DEC-184`, `DEC-073`, `DEC-093`, `DEC-100`, `DEC-167`, `docs/design/README.md` → `00` … `08` + `tokens.css`, both
+prototypes as behaviour, `01-prd.md` `REQ-UIX-026` … `043`, my nine primitives, their nine tests, `ui/index.ts`, `ui/icons.tsx`,
+`globals.css`, `posters/session-poster.tsx`, `event/comment-item.tsx`.
+
+**How measured.** Besides reading, I compiled `globals.css` with the repo's own Tailwind (`node_modules/tailwindcss`, the
+`compile()` API, in my scratchpad) to see what each utility actually emits, and computed WCAG ratios for every pair named
+below. Nothing in the tree was written.
+
+The scope's class is not published yet (C1). Below it is **`<scope>`**, its light variant **`<scope-light>`**, and a class
+keyed to it is written **`pg:`** (see §0).
+
+### 0 · The one ruling that sizes this plan — how a primitive reads the scope (Q1)
+
+**Measured** (compiled output):
+
+| Utility | Emits | Consequence |
+|---|---|---|
+| `bg-surface`, `border-edge`, `text-fg-muted`, `ring-surface` | `var(--surface)`, `var(--edge)`, … (`@theme inline`) | a scope **could** re-point them, as `.theme-dark` does (`globals.css` `.theme-dark` block) |
+| `rounded-card`, `rounded-field` | `var(--radius-card)`, `var(--radius-field)` | same |
+| `bg-navy-900`, `bg-silver-100`, `text-white` | `var(--color-navy-900)` … | same, but that would re-point a **raw** name |
+| `shadow-card`, `hover:shadow-raise` | the shadow **inlined** (`0 1px 2px var(--tw-shadow-color, rgba(…))…`) | **cannot** be changed by a token; a scope needs a class |
+| `border-live/30`, `border-error-border/40` | `color-mix(… #8a5a1f 30% …)` — **hex inlined** | same |
+| `duration-150` | `150ms` literal; Tailwind's default transition is also `150ms` | not a token (§2, Q7) |
+| `animate-pulse` | `var(--animate-pulse)` = `pulse 2s …` | a Tailwind duration, not ours (Q7) |
+| `[.<scope>_&]:x` and a `@custom-variant pg (&:where(.<scope>, .<scope> *))` | both emitted **after** the base utility; the first at 0,2,0, the second at 0,1,0 | either overrides the base inside the scope and nothing outside |
+
+**Three ways to migrate, and what each moves:**
+
+- **A — the scope re-points the existing semantic variables** (`--surface`, `--edge`, `--fg-*`, `--bg`, `--ring`,
+  `--radius-card`) the way `.theme-dark` already does. Every primitive reading `bg-surface` changes inside the scope with no
+  edit. **But** it is a redefinition inside a class, which `DEC-183` §4.2(a) may forbid, and it changes every non-primitive
+  class inside the scope too (a screen's own `text-fg-muted`). Moves no test.
+- **B — new semantic names, class by class** (`bg-surface` → `bg-<new-surface>`). Moves assertions (§9): `panel.test.tsx:16`
+  at least, `card.test.tsx:69` if the hover class moves, and — if `MEDIA_TINTS` is renamed — `card.test.tsx:199`, `:200`,
+  `:215` and `sessions`' `tests/e2e/wave7-sessions-public-card.spec.ts:107`.
+- ★ **C — recommended: every class that exists today stays byte-identical, and the scope's look is ADDED by scope-keyed
+  classes that read only the scope's semantic and structural tokens.** Outside the scope the class list resolves exactly as
+  today, by construction, so no screen and no public route can move; **no existing assertion moves**. It is the repository's
+  own precedent: `badge.tsx:32-47` (`[.theme-dark_&]:`) and `platform/impersonation-banner.tsx:69`, which works round
+  `Panel`'s missing dark form at the call site. What I ask the lead for is **a published variant** (C1): `pg:` for «inside the
+  scope», `pg-dark:` and `pg-light:` for its two grounds (`@custom-variant` in `globals.css`, `:where()` so it adds no
+  specificity, or the `[.<scope>_&]` arbitrary form if the lead prefers no new variant). A raw palette name never appears
+  after `pg:` — only the scope's names.
+
+The rest of this plan is written for C. Under A, §2's «inside» column is what the scope's values produce with no edit, and my
+commits shrink to the structural rows. Under B, §9 lists the ledger lines.
+
+### 1 · Token requests — what contract 1's list does not carry (to the lead)
+
+Contract 1 names: ground, surface, raised, text, muted, line, accent, accent-deep, signal, signal-deep; the control's radius,
+face, press shadow, heights. **I also need:**
+
+| # | Role (name is the lead's) | Outside the scope (today) | Inside, dark / light | Read by | Why |
+|---|---|---|---|---|---|
+| T1 | **text-strong** — a second text role | `--fg-heading` `#0b1220` | bone / paper-ink | card, stat, empty-state, tag-chip hover, file-drop | the tree has two text roles (`fg-heading`, `fg-body`); the scope has one `fg` |
+| T2 | **line-strong** — a control boundary at ≥ 3:1 | `--edge-strong` `#767f8c` | ≥ 3:1 on ground **and** surface / same on paper | badge outline, file-drop's dashed zone, empty-state's underline | ★ the scope's `line` `#2A2E40` is **1.45:1 on ink** and paper-line `#E4DFD3` **1.20:1 on paper** — decoration only (SC 1.4.11) |
+| T3 | **on-fill** — text on accent, signal, a team colour, a sticker | — | ink in both (`01`: «text on it is always ink») | tag-chip selected, reaction pressed, sticker, poster placeholder | ink on every fill ≥ 6.25:1 (lime 16.52, coral 7.06, violet 6.25, gold 13.52, bone 17.31, tangerine 9.22) |
+| T4 | ★ **focus** — distinct from accent | `--ring` | lime (16.52:1 on ink) / **ink (16.71:1)** | card, reaction-bar, story-ring, file-drop, tag-chip | ★ `04`: «focus ring = 3px accent outline», and `01` keeps accent **lime in the light variant — 1.07:1 on paper**. Invisible. Plus a **focus-width** (`2px` today on `card.tsx:52`; `3px` in `04`) |
+| T5 | **radius-pill** | `--radius-field` 6px | 999px | tag-chip, avatar, sticker, reaction pill, story-ring | `01`'s `--radius-pill`; the tree has only `field` 6 and `card` 14 |
+| T6 | **radius-card** (scope value) | 14px | 22px | card, stat, panel, empty-state, file-drop | `01`: 22. Under C the class `rounded-card` stays and `pg:` adds the scope's card radius |
+| T7 | **radius-poster** | — | 16px | poster | `01` |
+| T8 | ★ **avatar tints ×6 + their text** | today's pairs: navy-950/900/800 + white, silver-200/300/400 + navy-950 (`avatar.tsx:29-36`) | `01`'s six (`#2C3D4A` … `#3C4A2E`) with bone; bone on each ≥ 9.4:1 | avatar | `REQ-PRF-009`: six tints keyed to the member id. Inside the scope three of today's six are **light silvers**, which on ink read as the only bright faces in a row. Six `bg` + one text is enough inside (all dark); outside nothing reads them |
+| T9 | **team-neutral** — the ring for `teamColor: null` | — | muted `#A7ABBE` (8.56:1 on ink) / paper-muted | avatar, poster, story-ring, progress-bar | `line` would be 1.45:1 — a «no colour» ring that cannot be seen is not a neutral ring |
+| T10 | **ring-team-width** | — | 3px | avatar, story-ring | `01`'s `--ring-team` |
+| T11 | ★ **`--color-ended-on-dark`** — a platform constant | `#a8b3c4` (today's `.theme-dark` `--fg-muted`, which the badge borrows at `badge.tsx:35`) | the same constant | badge, stat, panel, progress | `ended` is the one status with no on-dark constant; it borrows `--fg-muted`, which the scope **would** remap to `#A7ABBE`. `DEC-073`: a status colour never remaps. Same value, new name, nothing moves |
+| T12 | **sticker fills ×6 by name** | — | accent, signal, cyan, gold, violet, bone | sticker | `REQ-UIX-031`: «its fill comes from the allowed set by name». Three are team colours — a primitive may not read the raw palette, so they need semantic names |
+| T13 | **sticker rim** — `--shadow-sticker` reading `--sticker-ground` | — | `0 0 0 3px var(--sticker-ground), 0 0 0 6px <outer>` | sticker; poster sets `--sticker-ground: var(--team)` | `01` says the outer rim is `--fg` (bone on dark); **both prototypes draw it ink** (§8 D8) — the lead picks |
+| T14 | **elevation off inside** | `shadow-card`, `shadow-raise` | none (`01`: «no soft grey drop shadow anywhere») | card, stat | no token needed under C: `pg:shadow-none`. Listed so the ruling is explicit |
+| T15 | **card padding** | `p-4` 16px | 12px phone / 16px desktop | card body | `04`; under C it is `pg:p-3 pg:sm:p-4` and needs no token |
+| T16 | **face** on a label | today's family | Baloo Bhaijaan 2 | stat value, sticker, poster title, story-ring word, empty-state title (Q9) | contract 1 names it; I need to know whether `font-display` resolves to Baloo **outside** the scope too (F1), because a new primitive rendered outside the scope would then load the face |
+| T17 | **keyframe `reaction-pop`** `scale 1 → 1.22 → 1` at `--duration-base` | — | — | reaction-bar | `globals.css` is the lead's. The existing `reaction-ignite` (`globals.css:531`) starts at `scale(0.6)` with opacity — an entrance, not a pop (and see D10) |
+| T18 | **keyframe `story-pulse`** + a **loop duration** token, `animation: none` under reduced motion | — | — | story-ring | `03`: `scale .9 → 1.25`, opacity → 0, **1.6s loop** — no duration token is 1.6s (fast 120 · base 220 · slow 420 · party 900). Q8 |
+
+### 2 · The nine existing primitives — what each declares today, and what carries it inside the scope
+
+Every class in the «today» column **stays exactly as it is** (C). The «inside» column is added with `pg:` (or `pg-dark:` /
+`pg-light:`) and reads only scope names. A status colour is never touched (`DEC-073`, §3).
+
+**`tag-chip.tsx`** (103 lines; the documents' «chip»)
+
+| Line | Today | Role inside the scope |
+|---|---|---|
+| 67 | `inline-flex w-fit items-center gap-1.5 rounded-field border px-3 py-1 text-caption` | radius-pill; `04`: «13px 700» → face size 13px, weight 700 (the one structural pair I name here; Q9) |
+| 68 unselected | `border-edge bg-surface text-fg-body` | line · **raised** (`04`: «`--bg-raised`») · text |
+| 68 selected | `border-navy-900 bg-navy-900 text-white` | accent fill · on-fill (T3). `aria-current` stays the non-colour channel |
+| 37 | count `text-fg-muted` | muted |
+| 49 | link `hover:text-fg-heading` | text-strong (T1) |
+| 82, 96 | remove `-me-1 size-6 rounded-full text-fg-muted hover:bg-silver-100 hover:text-fg-heading` | muted · raised · text-strong. ★ **24 px target** (`DEC-123`'s exemption, `tag-chip.tsx:87-91`) against this wave's «every target at least 44 px»: inside the scope I extend the **hit area** to 44 px with a transparent pseudo-element, visual size unchanged (Q10) |
+
+**`badge.tsx`** (145 lines; the documents' «status badge», holds `SessionStatusBadge`)
+
+| Line | Today | Inside |
+|---|---|---|
+| 74 | `inline-flex w-fit items-center rounded-field font-medium` | **unchanged** — I recommend the badge keeps its 6 px corner inside the scope: the sober rectangle is the non-colour channel that separates a status (truth) from a sticker (joy, a pill). Q11 |
+| 61-62 | `sm: min-h-6 gap-1 px-2 text-caption` · `md: min-h-7 gap-1.5 px-2.5 text-label` | unchanged |
+| 29-38 filled, 42-49 outline | status constants + `[.theme-dark_&]:` on-dark forms | ★ **`pg-dark:` gets exactly the `[.theme-dark_&]:` forms** (on-dark constants), **`pg-light:` the light ones**. Measured: the light constants on the scope's surface `#151724` are **2.67 – 3.13:1** (success 2.83, live 3.02, ended 3.13, error 2.67) — they fail inside a dark scope, so this is required, not optional. The on-dark constants pass: live 8.10, success 8.61, error 7.05, ended (T11) 8.40 on surface; on ink 7.73 – 9.45. On paper the light constants pass: 5.13 – 6.01 |
+| 110 | live dot `motion-safe:animate-pulse` (Tailwind's 2s) | Q7 |
+
+**`avatar.tsx`** (116 lines)
+
+| Line | Today | Inside |
+|---|---|---|
+| 70 | `inline-flex shrink-0 items-center justify-center overflow-hidden rounded-field font-medium` + `relative` | radius-pill (the documents and both prototypes draw a circle; the tree's 6 px is the lead's `DEC-110` ruling — D2) |
+| 29-36 | `TINTS` six navy/silver pairs, indexed by `tintIndex(memberId)` (`:43`) | T8's six, **same index** — the member keeps their tint's slot; only its value is the scope's |
+| 51-59 | sizes 24/32/34/40/56/96/160 with arbitrary `text-[…rem]` | unchanged (`04` names 32/38/40; 38 does not exist — D3) |
+| 86 | img `absolute inset-0 h-full w-full object-cover` | unchanged — a photograph may crop; a poster may not |
+| 102-111 | `AvatarStack`: `[&>*:not(:first-child)]:-ms-2`, `rounded-field ring-2 ring-surface`, overflow `ms-1.5 text-caption text-fg-muted` | radius-pill · the ring in **surface** stays surface · muted. No team ring on the stack (its member type has no colour; Q12) |
+| new | the team ring — §4 | |
+
+**`card.tsx`** (214 lines — `Card`, `CardMedia`, `CardBody`, `CardActions`)
+
+| Line | Today | Inside |
+|---|---|---|
+| 41 | `group relative overflow-hidden rounded-card border border-edge bg-surface shadow-card transition-shadow duration-150 hover:shadow-raise` | card radius 22 (T6) · line · surface · `pg:shadow-none pg:hover:shadow-none` (T14). ★ Hover inside the scope: nothing scales, nothing moves; I propose **line → line-strong on hover, no transition** (Q13) |
+| 52 | link `focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)]` | focus + focus-width (T4) |
+| 68-79 | density widths `w-28 sm:w-36`, `w-20`, `w-2/5`, `self-start` | unchanged (layout, `REQ-UIX-026`) |
+| 161 | media box `relative shrink-0 overflow-hidden bg-navy-900` | the letterbox ground → **raised** |
+| 104-111 | `MEDIA_TINTS` (navy/silver + white) | **unchanged, and not re-coloured inside the scope** — pinned by `card.test.tsx:199`, `:200`, `:215` and `wave7-sessions-public-card.spec.ts:107`. Inside the scope a session's placeholder is `poster`'s job (§5.2), not `CardMedia`'s. Q14 |
+| 183, 188 | `object-contain`; placeholder `text-h2 font-semibold` | unchanged |
+| 200 | `CardBody` `flex min-w-0 flex-1 flex-col gap-1.5 p-4` | `pg:p-3 pg:sm:p-4` (T15) |
+
+**`progress.tsx`** (40 lines)
+
+| Line | Today | Inside |
+|---|---|---|
+| 32 | track `h-2 w-full overflow-hidden rounded-full bg-silver-200` | raised |
+| 13-19 | fills `bg-navy-900` (neutral, info), `bg-success`, `bg-live`, `bg-ended`, `bg-error` | neutral/info → **accent**; the four status fills → their on-dark constants under `pg-dark:`. ★ Measured: `navy-900` on the scope's surface is **1.02:1** — invisible |
+| 36 | fill `style={{ width: pct% }}` | **unchanged** (§6a) |
+| 35 | indeterminate `w-full motion-safe:animate-pulse` | Q7 |
+
+**`empty-state.tsx`** (58 lines)
+
+| Line | Today | Inside |
+|---|---|---|
+| 27 | `flex flex-col items-center gap-3 rounded-card border border-edge px-6 text-center py-8/py-14` | card radius · line |
+| 30 | icon `text-[1.75rem] text-fg-muted` | muted |
+| 34 | title `font-medium text-fg-heading text-label/text-h3` | text-strong; the face (Q9) |
+| 35 | `max-w-prose text-body-sm text-fg-muted` | muted |
+| 38-45 | the lead's `Button` / `ButtonLink` `variant="primary"` | nothing here — `button` migrates itself (L1) |
+| 49 | clear link `text-label text-fg-muted underline decoration-edge-strong underline-offset-4 hover:text-fg-heading` | muted · line-strong (T2) · text-strong |
+
+**`stat.tsx`** (39 lines)
+
+| Line | Today | Inside |
+|---|---|---|
+| 31 | `block rounded-card border border-edge bg-surface p-4` | card radius · line · surface |
+| 33 | link `transition-shadow duration-150 hover:shadow-raise` | `pg:shadow-none`; hover as `card` (Q13) |
+| 24, 28 | label, hint `text-caption text-fg-muted` | muted |
+| 25 | value `text-h2` + `text-fg-heading` or a tone | text-strong in the face (`00`: «big numbers in the display face»); the tones → on-dark constants under `pg-dark:` (the light ones are 2.67 – 3.13:1 there) |
+
+**`panel.tsx`** (18 lines)
+
+| Line | Today | Inside |
+|---|---|---|
+| 17 | `rounded-card border p-4` | card radius |
+| 8 neutral | `border-edge bg-surface` | line · surface |
+| 9 info | `border-edge bg-silver-100` | line · raised |
+| 10-13 status | `border-success/30 bg-success-bg` · `border-live/30 bg-live-bg` · `border-edge bg-ended-bg` · `border-error-border/40 bg-error-bg` | ★ under `pg-dark:` the **outline form** with the on-dark constants and a transparent fill — exactly what `impersonation-banner.tsx:69` adds by hand today. Finding F4 (§8) |
+
+**`file-drop.tsx`** (175 lines) — tokens only, **no animation** (`REQ-UIX-030`)
+
+| Line | Today | Inside |
+|---|---|---|
+| 94 | zone `rounded-card border-2 border-dashed px-6 py-8 transition-colors duration-150` | card radius · `pg:transition-none` (no animation, as the wave says) |
+| 95 | drag-over `border-navy-700 bg-silver-100` · invalid `border-error-border` · rest `border-edge-strong` | drag-over → accent border + raised · invalid → the error on-dark constant · rest → line-strong (T2). ★ **`border-navy-700` emits nothing** — F1 (§8) |
+| 96 | disabled `opacity-50` | unchanged |
+| 98 | glyph `text-[1.5rem] text-fg-muted` | muted |
+| 108 | chooser `inline-flex h-11 items-center rounded-field border border-edge-strong px-5 text-label text-fg-heading hover:bg-silver-100 disabled:…` | control radius · line-strong · text-strong · raised. 44 px already |
+| 133, 147, 151 | `text-caption text-fg-muted` · `text-body-sm text-fg-heading` · `text-caption text-error` | muted · text-strong · error on-dark |
+| 143 | row `rounded-field border border-edge p-2` | control radius · line |
+| 165 | remove `h-7 w-7 rounded-full text-fg-muted hover:bg-silver-100 hover:text-fg-heading` | ★ **28 px** — hit area to 44 px inside the scope, as `tag-chip` (Q10) |
+| 157 | `<Progress>` indeterminate | follows `progress` |
+
+### 3 · ★ `01-tokens.md`'s status table against what `DEC-073` fixed — token by token (N2)
+
+What the tree renders (`badge.tsx:118-145`, strings `messages/ar/browse.json` `status.*`, constants `globals.css:29-55`):
+**nine rows** from `phase × seat × closingSoon`. What `01` specifies: **five tokens**.
+
+| `01` token | `01` look | Tree today | Difference |
+|---|---|---|---|
+| `status-live` «جارية الآن» | coral fill `#FF6E4F`, ink text, leading dot | `live` tone: `#8a5a1f` on `#fbf5ea` (light) · `#d2a86b` outline on dark · a pulsing `DotIcon` (`badge.tsx:110`) | **colour** (coral = the scope's **signal** — the same colour as streak and check-in urgency; a status sharing a brand accent is no longer a constant) · the word matches · the dot matches |
+| `status-done` «مكتملة» | surface-2 fill, bone text, line border, **check glyph** | `ended` «انتهت», `#5b6780` on `#f1f3f7`; no glyph | **word** («مكتملة» ≠ «انتهت») · colour · **a glyph the tree lacks**. ★ `01` builds it from `surface-2`, `bone` and `line` — **scope semantics that remap in the light variant**, contradicting `01`'s own «status tokens do not remap» |
+| `status-cancelled` «أُلغيت» | transparent, muted text and border, **x glyph** | `error` tone, `#9e3b3f` on `#fbf1f1`; **no glyph** | colour (muted grey vs error red — a demotion of meaning) · a glyph. ★ **`REQ-UIX-003`'s acceptance already says «`cancelled` … carry chrome, colour and an icon — never bare text», and the tree's cancelled badge carries no icon** (`badge.tsx:110` gives an icon to `live` alone). The code contradicts its own requirement, today, outside this wave (F2) |
+| `status-waitlist` «قائمة انتظار» | **team-cyan** fill, ink text, **clock glyph** | `open` + `seat="full"` → `live` tone «قائمة انتظار» (`badge.tsx:130`) | colour · a glyph (`ClockIcon` exists). ★ **A status in a team colour**: `01` proposes cyan for مواهب — that company's sessions would wear the waitlist's colour |
+| `status-full` «ممتلئة» | surface-2 fill, bone text | **no such row** — a full session reads «قائمة انتظار» | a **new word and a new state**; the tree folds «full» into «waitlist» on purpose (`badge.tsx:125-130`, the test at `badge.test.tsx:72`) |
+| — | — | `open` «التسجيل مفتوح» (success) · `closingSoon` «يُغلق التسجيل قريبًا» (live) · `registrationClosed` «أُغلق التسجيل» (ended) · `draft` «مسودة», `pending_schedule` «بانتظار الجدولة» (outline) | **five of the tree's nine rows are absent from `01`** |
+
+**Recommendation (a decision, not a restyle):** this wave the badge keeps `DEC-073`'s colours, words and dot **on every
+surface**, and inside the dark scope wears the **on-dark constants it already has** — measured above, they pass there. Two
+things are the lead's to take to the owner: (1) whether `01`'s palette replaces `DEC-073`'s — that means a new entry, and the
+brand kit's status guard (`0144_status_contrast_guard.sql`, which pins `#8a5a1f`, `#5b6780`, `#d2a86b`) moves with it; (2)
+`REQ-UIX-003`'s missing glyph on `cancelled` (F2), which is already owed. My recommendation on (1): **no** for coral and cyan
+(each collides with a meaning the scope gives that colour elsewhere); **yes** to `01`'s glyphs (check, x, clock), which add a
+non-colour channel.
+
+### 4 · The avatar's team ring (C3, `REQ-UIX-043`, D2)
+
+- **Prop:** `teamColor?: string | null` on `AvatarProps` (the lead lands it). ★ **Three values, not two**: `undefined` → **no
+  ring**, today's avatar (every existing caller passes nothing, so nothing moves) · `null` → the **neutral** ring
+  (a company with no colour) · `"#rrggbb"` → the team ring.
+- **Into the DOM:** `style={{ "--team": teamColor }}` on the avatar's own `<span>` — the one value from data that becomes a
+  style. ★ **The component re-checks `^#[0-9a-fA-F]{6}$` and treats anything else as `null`.** The database refuses a bad
+  value (`0160`'s check), but React serialises a server-rendered custom property as written, and a `;` in it would end the
+  declaration and start another. Defence in depth, one regex.
+- **The ring:** `border-[3px]` (T10) coloured `var(--team)`, or `var(--team-neutral)` (T9) for `null`. **A border, not a
+  box-shadow:** the box keeps its size, so a row does not reflow; the image (`inset-0`, `avatar.tsx:86`) sits inside the
+  padding box and leaves the ring visible; a box-shadow ring would draw past the box into a neighbour. Classes are added
+  **only when `teamColor !== undefined`**.
+- **The fill stays the member's tint:** `TINTS[tintIndex(memberId)]` (`:79`) is untouched; the ring never feeds the tint and
+  the tint never reads the company. Tested: the same id with two different `teamColor`s keeps the same tint class.
+- **The initials stay under the image exactly as wave 14 left them** (`:78-88`, `DEC-182`): the `<bdi>` first, the `<img>`
+  absolute over it, no `onError`, still a Server Component. `avatar.test.tsx:31-40` passes untouched.
+- **Contrast, measured:** every team colour on ink is ≥ 6.25:1 (violet lowest), silver 15.37. ★ **On the light variant's paper
+  every one fails 3:1** — silver 1.15, gold 1.30, mint 1.42, cyan 1.63, tangerine 1.91, magenta 2.68. The name always travels
+  with the ring, so no information is lost (SC 1.4.11 is about information), but a silver ring on paper is invisible (F6, Q15).
+
+### 5 · The five new primitives
+
+Every one renders every state from props, reads no DAL, no session and no message catalogue (strings arrive as props), holds
+no hex, no duration and no raw palette name, and is placed on no screen. Types are proposals for the lead's `ui/index.ts` (C2).
+
+#### 5.1 `sticker` (`REQ-UIX-031`)
+
+```ts
+/** `content` · `sticker.tsx` — die-cut decoration. Never a status (REQ-UIX-003). */
+export type StickerFill = "accent" | "signal" | "cyan" | "gold" | "violet" | "bone";
+export interface StickerProps extends Styleable {
+  /** The word — «محجوز», «مستوى جديد». Numerals already Western. */
+  children: ReactNode;
+  fill?: StickerFill;              // default "accent"
+  /** Degrees; clamped to [-6, 6] (`REQ-UIX-031`). Default -4. */
+  rotate?: number;
+  size?: "sm" | "md";              // 16 px / 20 px in the face
+  /** true only when it says what no badge on the surface says; otherwise aria-hidden. */
+  informative?: boolean;
+}
+```
+
+- **States:** six fills × two sizes × rotation; `informative` on and off. The rim reads `--sticker-ground` (T13), so it is
+  drawn from whatever it sits on: a poster sets it to `var(--team)`, a card leaves the scope's surface.
+- **Name:** `aria-hidden` by default; `informative` renders plain text in the flow (no role).
+- **Reduced motion:** nothing moves this wave — the overshoot is the moments' wave (`DEC-183` §2). Rotation is static.
+- **RTL:** rotation is visual, not directional; the word is `<bdi>`-wrapped.
+- **Already in the tree:** nothing. The nearest are `Badge` (`badge.tsx:70`), which it must never replace, and `CardMedia`'s
+  `overlay` slot (`card.tsx:193`), where one would sit on media.
+
+#### 5.2 `poster` (`REQ-UIX-032`) — ★ measure-first (b)
+
+**What is already there:**
+- `CardMedia` (`card.tsx:152-196`): a reserved aspect box, the image **whole** (`object-contain`, `:183`, `REQ-UIX-026`), a
+  generated placeholder — **one letter** on a navy/silver tint hashed from the title (`:139-145`, `:104-129`) — an `overlay`
+  slot, `dimmed`, and `data-slot="media"`, which `Card`'s row densities size (`:69-79`).
+- `SessionPoster` (`posters/session-poster.tsx:22-73`, `designer`'s, held by the lead): an **async Server Component that reads
+  the DAL** (`getSessionPoster`), renders **nothing** when there is no poster, a «rendering n of m» line while rendering, and
+  the artifact whole at its own ratio (`:63-64`) with a stale caption.
+
+**What `poster` is beside them:** the **pure presentation of a session's poster in the playground**. It reads nothing.
+★ **It composes `CardMedia`** (imported by path): the image-whole path, the slot name and `overlay` are `CardMedia`'s, and
+`poster` passes its designed placeholder as `CardMedia`'s `children` when there is no image — so the whole-poster rule has
+one implementation, not two. `SessionPoster` stays the DAL slot on the event page; when a screens wave moves the event page
+into the scope, `SessionPoster`'s ready path can render `<Poster src …>` — a request to `designer`'s custodian **then**, not
+now. Nothing is duplicated except the placeholder, which is new.
+
+```ts
+/** `content` · `poster.tsx` — the rendered poster whole, or its team-coloured placeholder. */
+export interface PosterProps extends Styleable {
+  /** The rendered master (same-origin or signed). Absent → the placeholder. */
+  src?: string | null;
+  /** The artifact's own size, when known, so the box is reserved at its ratio. */
+  width?: number;
+  height?: number;
+  /** The image's alternative text. Default "" — the host renders the title as text. */
+  alt?: string;
+  /** Placeholder: the title in the face, balanced, never clipped on a line. */
+  title: string;
+  /** Placeholder: the category — «جلسة إدارية». */
+  category?: string;
+  /** Placeholder: pre-formatted date, Western digits — «2 أكتوبر، 6:30 م». */
+  date?: string;
+  /** "#rrggbb" → `--team`; null → the neutral ground; same check as the avatar's. */
+  teamColor: string | null;
+  /** ★ The company's name, drawn on the placeholder: colour is never the only channel. */
+  teamName: string;
+  /** A `<Sticker>` in the top-end corner of the placeholder. */
+  sticker?: ReactNode;
+  priority?: boolean;
+}
+```
+
+- **States:** image with known size (box at its ratio) · image with unknown size (4:5, contained) · placeholder in a team
+  colour · placeholder with `teamColor: null` (raised ground, text colour) · with and without category, date, sticker · a
+  long title (four lines, balanced).
+- **Name:** the image's `alt`; the placeholder's text is real text (no heading — the host owns the landmark, as `SessionPoster`
+  says at `:8-10`).
+- **Title:** `text-wrap: balance`, the face at 30 px; a long title is clamped on its **container** with room under the last
+  line for marks (`02`: «truncation uses a container with `line-clamp`, never a clipped line»).
+- **Reduced motion / RTL:** static; category at the inline start, sticker at the inline end, logical properties only.
+- **Contrast:** ink on every team colour ≥ 6.25:1.
+
+#### 5.3 `reaction-bar` (`REQ-UIX-034`)
+
+```ts
+/** `content` · `reaction-bar.tsx` — a like and four house reactions. Worth nothing (REQ-EVT-004). */
+export interface ReactionBarItem {
+  kind: string;                   // "like" | the house kinds — matches `reactions.kind` (`0010:341`, text)
+  /** The accessible name — «إعجاب». */
+  label: string;
+  count: number;                  // rendered in Western digits, in <bdi>
+  pressed: boolean;
+  /** The glyph, from `ui/icons` — the caller chooses (§7). */
+  icon: ReactNode;
+}
+export interface ReactionBarProps extends Styleable {
+  /** The group's name — «التفاعلات». */
+  label: string;
+  items: ReactionBarItem[];
+  onToggle?: (kind: string) => void;
+  /** A read-only bar — a frozen thread shows counts and offers nothing (comment-item.tsx:309-319). */
+  readOnly?: boolean;
+  pending?: boolean;
+}
+```
+
+- **States:** none pressed · one pressed · several pressed · zero counts (count hidden, as `comment-item.tsx:328`) · large
+  counts · read-only · pending (`aria-busy`, labels kept).
+- **Name:** `role="group"` named by `label`; each item a `<button aria-pressed>` whose name is its label and count. ★ **Pressed
+  is shown without colour**: the glyph fills (the tree's own answer, `comment-item.tsx:307-316`: a filled dot against an
+  outline one) and the pill's border steps up.
+- **The pop:** one `reaction-pop` (T17) on the **transition into pressed caused by this viewer's press** — set in the click
+  handler, never from a prop change, so a realtime count from someone else never pops (`REQ-UIX-034`, `DEC-183` §2: once per
+  occurrence). Cleared on `animationend`, **no timer** (`DEC-146`); under reduced motion the global block collapses the
+  animation, so the event still fires. `motion-safe:`-gated as well. Nothing else moves; nothing reads as an achievement.
+- **Optimism** is the caller's, as today (`comment-item.tsx:86-90`, `useOptimistic`) — the primitive decides nothing.
+- **Targets:** each pill `min-h-11` (44 px).
+- **RTL:** the row flows in reading order; no glyph mirrors.
+- **Already in the tree:** `comment-item.tsx:75-94, 306-330` — the one live like toggle, `IconButton` over a filled/outline
+  `DotIcon`, `.reaction-ignite` + `.reaction-ring` (`globals.css:531-560`). `reaction-bar` does not replace it this wave.
+
+#### 5.4 `progress-bar` (`REQ-UIX-036`) — ★ measure-first (a)
+
+**Answer: a new file, and `progress.tsx` keeps its mechanism.** `progress.tsx:36` sizes its fill by **`width`**, and
+`progress.test.tsx:26` and `:32` assert `width: 25%` / `100%`. `REQ-UIX-036` says «`scaleX`, never `width`». Changing
+`Progress`'s fill would move pixels outside the scope — a scaled fill's rounded cap goes elliptical, and its end is no
+longer where `width` put it — and two assertions. **The finding, stated:** after this wave the tree has two determinate bars.
+`Progress` keeps its indeterminate mode and its three determinate consumers (`sessions/action-card.tsx`,
+`materials/list.tsx`, `survey/results.tsx`); when each moves into the scope in a screens wave it adopts `progress-bar`, and
+`Progress`'s determinate mode retires then. Not a second implementation of the same thing for ever — a replacement with a
+dated exit.
+
+```ts
+/** `content` · `progress-bar.tsx` — one track, one fill, grown by transform from the inline start. */
+export interface ProgressBarProps extends Styleable {
+  value: number;
+  max?: number;                    // default 100
+  /** The accessible name — «مستواك». */
+  label: string;
+  /** Pre-formatted, Western digits — «320 من 500». */
+  valueText: string;
+  fill?: "accent" | "signal" | "team" | "text";   // default "accent"
+  /** With fill="team": "#rrggbb" or null (neutral), set as --team on the element. */
+  teamColor?: string | null;
+  size?: "sm" | "md";              // 3 px (a story segment) · 10 px (a level, a race)
+}
+```
+
+- **States:** 0, partial, full, over `max` (clamped); each fill; `teamColor` null; both sizes.
+- **Name:** `role="progressbar"`, `aria-label`, `aria-valuenow/min/max`, `aria-valuetext`.
+- **Transform:** the fill is `w-full`, `transform: scaleX(ratio)` inline (a number, not a colour). ★ **`transform-origin` has
+  no logical keyword**, so the inline start is `ltr:origin-left rtl:origin-right` — both variants, never a bare physical
+  utility — with the exemption written in the file, as `DEC-096` does for the overlay. The repository's precedent is
+  `.scroll-progress` (`globals.css:966-973`), which flips its origin under `[dir="rtl"]`.
+- **The cap:** the track clips (`overflow-hidden`, pill radius) and the fill carries no radius, so the leading edge is square
+  rather than a squashed ellipse (D14).
+- **Reduced motion:** static this wave — no transition. The race bar's 900 ms move is the moments' wave.
+- **Already in the tree:** `progress.tsx:21-40`; `.scroll-progress`.
+
+#### 5.5 `story-ring` (`REQ-UIX-040`)
+
+```ts
+/** `content` · `story-ring.tsx` — opens a session's story. A button; nothing of the viewer. */
+export type StoryRingState = "live" | "upcoming" | "recap" | "seen";
+export interface StoryRingProps extends Styleable {
+  state: StoryRingState;
+  /** The accessible name, naming the session — «قصة جلسة: العرض في 5 شرائح، مباشر». */
+  label: string;
+  /** The state's word, visible — «مباشر», «ملخص», «قادمة», «شوهدت». */
+  stateLabel: string;
+  /** One letter for upcoming — the avatar's rule. */
+  glyph: string;
+  /** The line under the ring — «اليوم», «الخميس». */
+  caption: string;
+  /** upcoming's ring: "#rrggbb" or null (neutral). */
+  teamColor?: string | null;
+  onOpen?: () => void;
+}
+```
+
+- **Four states told apart without colour** — each has its own visible label **and** its own shape:
+  live → the word «مباشر» inside, a **double** ring (the outer one pulses) · recap → the word «ملخص» inside, a single ring ·
+  upcoming → the letter, a 3 px ring in the team colour · seen → the letter with a `CheckIcon` mark and a **1 px** ring, text
+  kept at ≥ 4.5:1 (no opacity on the letter).
+- **Name:** `<button type="button" aria-label={label}>`; the visible words are `aria-hidden` inside it, so nothing is read
+  twice. Target: 60 px ring in a ≥ 66 px column.
+- **Reduced motion:** the pulse is off (`motion-safe:` and `animation: none`, T18); the live ring still reads live by its word
+  and its double ring (`REQ-UIX-040`).
+- **RTL:** centred column, nothing directional.
+- **Already in the tree:** nothing is a story ring. `Avatar`'s initial rule (`avatar.tsx:61-63`) and the badge's live dot
+  (`badge.tsx:110`) are the nearest. `DEC-093`'s seventh place is the **viewer's**; the ring is a plain button.
+
+### 6 · The three measure-first answers, short
+
+- **(a) `progress-bar`:** a **new file**; `progress.tsx` keeps `width` (pinned by `progress.test.tsx:26`, `:32`); the overlap
+  is named and retires when the three consumers adopt the new bar in the screens waves (§5.4).
+- **(b) `poster`:** a **new file that composes `CardMedia`** for the whole image and the slot, and adds the team-coloured
+  placeholder `CardMedia` does not have. `SessionPoster` stays the DAL slot; it renders `Poster` in a later wave (§5.2).
+- **(c) the status colours:** `01`'s table differs from `DEC-073` in **colour on all five rows, the word on two («مكتملة»,
+  «ممتلئة»), a glyph on three, and it omits five of the tree's nine rows**; its «waitlist» uses a team colour and its «done»
+  uses remappable semantics. This wave keeps `DEC-073`'s constants and uses their existing on-dark forms inside the dark scope.
+  Two decisions for the owner via the lead (§3).
+
+### 7 · Glyphs, objects and keyframes I need from the lead
+
+- ★ **The like glyph** — `HeartIcon` (the prototypes' like is a heart, `stories.html` `I.heart`), house shape: `1em`, `label`
+  prop, **never mirrors**, with a **`filled`** prop like `StarIcon` (`icons.tsx:326`) — the pressed state's non-colour channel.
+  Or the lead rules that the house like stays the dot (`comment-item.tsx:322`), and I need only `DotIcon`'s outline form.
+- **`filled` on `FlameIcon` and `BoltIcon`** when L2 draws them, for the same reason. `StarIcon` has it.
+- **The fourth house reaction** (Q5): `04` names fire, star, bolt, **pin**; `stories.html` draws three (fire, star, bolt);
+  the house `PinIcon` is «المكان — a venue» (`icons.tsx:294`).
+- `CheckIcon` (exists) for the seen ring. No object is needed this wave.
+- Keyframes T17 (`reaction-pop`) and T18 (`story-pulse`), in `globals.css`.
+
+### 8 · Where `docs/design/` and the tree disagree — not in `DEC-183` §4
+
+Findings the tree gives against itself are marked F; disagreements with the documents D.
+
+- **F1** — ★ `file-drop.tsx:95`: **`border-navy-700` emits no CSS** (measured; only 1000/950/900/850/800 exist). On drag-over
+  the dashed border falls back to Tailwind's preflight grey, **lighter** than the resting `border-edge-strong`. The same class
+  of defect as the `navy-600` the lead found in `avatar.tsx:21-28`. Fixing it moves the drag-over state outside the scope —
+  Q16.
+- **F2** — ★ `REQ-UIX-003`: «`cancelled` … carry chrome, colour and an icon — never bare text». `SessionStatusBadge` gives a
+  glyph to `live` only (`badge.tsx:110`); **cancelled is bare text today**.
+- **F3** — `card.tsx:41` and `stat.tsx:33` transition **`box-shadow`**, which `REQ-UIX-020` («transform, opacity and filter
+  only») does not allow; and `duration-150` there and at `file-drop.tsx:94` is not a duration token (Q7).
+- **F4** — `panel.tsx:7-14`: the status tones' fills are light constants while the text inside is inherited; inside any dark
+  context the text turns light on a near-white fill. `impersonation-banner.tsx:33-34, 69` documents it and patches it at the
+  call site. Inside the dark scope it is fixed by `pg-dark:` (§2); outside, `.theme-dark` still needs it — reported, not
+  touched.
+- **F5** — ★ **`src/app/[locale]/app/layout.tsx:30`**: the brand layer emits `--canvas`, and **nothing reads `--canvas`**
+  (`bg-canvas` is `var(--bg)`, `globals.css` `@theme inline`; `grep` finds no `var(--canvas)`). An org's canvas override has
+  no effect, while `0144_status_contrast_guard.sql` refuses palettes by that canvas. The lead's file; relevant because the
+  scope adds a third ground (Q17).
+- **D1** — the status table (§3).
+- **D2** — avatar shape: a 6 px square (`avatar.tsx:65-68`, the lead's `DEC-110` ruling) against a circle in `04` and both
+  prototypes. Same for the chip (`tag-chip.tsx:60-65`) against `04`'s pill.
+- **D3** — avatar sizes: `04` names 32/38/40; the type has 24/32/34/40/56/96/160 and no 38.
+- **D4** — `01`'s «avatar tints» are six dark hexes; the tree's six are three navy and three light silver.
+- **D5** — `01` has one line role at 1.45:1 on ink; a control boundary needs 3:1 (T2).
+- **D6** — `04`'s focus ring is accent, and `01`'s light accent is lime: 1.07:1 on paper (T4).
+- **D7** — `01`'s team colours «do not remap», but every one fails 3:1 on the light variant's paper (§4).
+- **D8** — the sticker's outer rim: `01` `var(--fg)` (bone on dark); `motion-story.html:98` and `stories.html` `.sticker` draw it
+  **ink**.
+- **D9** — the reaction set: `04` «fire, star, bolt, pin»; `stories.html` draws like + three; the tree's like is a dot.
+- **D10** — ★ `03`'s reaction pop is `scale 1 → 1.22 → 1` and the code box `1 → 1.14 → 1`; `DEC-183` §2 reverses the ban on an
+  overshoot «up to `1.08` on a sticker **and nowhere else**». If a pop past 1 is an overshoot, 1.22 is five times over the limit
+  on a non-sticker. Q6.
+- **D11** — `03` gives the pop 260 ms; no token is 260 (base is 220). I use base.
+- **D12** — ★ `stories.html`: the **seen** ring and the **upcoming** ring carry the same letter and the same day — only colour and
+  opacity differ. `REQ-UIX-040` requires a different label. §5.5 adds the check mark and the 1 px ring.
+- **D13** — `04`'s poster block has «a QR placeholder that becomes the real poster QR». A drawn QR that scans to nothing looks
+  like a working code. Neither prototype draws one on a card. I leave it out.
+- **D14** — the prototypes scale a **rounded** fill (`motion-story.html:143`, `:204`), whose cap squashes; I clip instead (§5.4).
+- **D15** — `transform-origin: right` in both prototypes is physical; the tree allows logical only — an exemption, written in
+  the file.
+- **D16** — `REQ-UIX-032` requires the company's name on the placeholder; `stories.html`'s `.poster` carries category, title and
+  date **but no company** — colour is the only channel there.
+- **D17** — the live ring pulses on a 1.6 s loop; no token is 1.6 s (T18).
+- **D18** — `04`'s stat and the prototypes' numbers are lime (`stories.html` `.stat .n`); a `Stat` with a `tone` is a status
+  colour and must stay one. I keep text-strong for untoned values (Q9).
+
+### 9 · Tests — what moves, and what is added
+
+**Existing assertions this plan moves: none** (mechanism C). Every assertion below passes unmodified, and each commit runs the
+whole `tests/components/ui/` directory before it lands:
+
+- `avatar.test.tsx:18-60` (initials, `<bdi>`, `img` over initials with `absolute`, name, `aria-hidden`, tint by id),
+  `:116-127` (every `TINTS` class resolves to a `--color-*` token) · `badge.test.tsx:38-40`, `:63-70`, `:72-80`, `:82-97`
+  (`motion-safe:animate-pulse` on live's dot), `:99-111` (`border` on outline), the contrast tables `:124-159` ·
+  `card.test.tsx:62-71` (`hover:shadow-raise`, no `scale`), `:72-86`, `:186-215` (`MEDIA_TINTS`), `:237-248`, `:263-293`
+  (`aspect-*`, `grayscale`, `object-contain`, `self-start`) · `panel.test.tsx:16-31` · `progress.test.tsx:14-55` (`width`,
+  `animate-pulse`, fills) · `stat.test.tsx:49-55` · `empty-state.test.tsx`, `file-drop.test.tsx`, `tag-chip.test.tsx`
+  (behaviour only) · outside my nine, `sessions`' `tests/e2e/wave7-sessions-public-card.spec.ts:107` (`bg-navy-(950|900|800)`
+  on `CardMedia`'s dark placeholder). No other test under `tests/` asserts a class my nine emit (searched for every class in
+  §2).
+
+**Under mechanism B** (the lead's choice, not mine) the ledger lines would be: `panel.test.tsx:16` (`border-edge`,
+`bg-surface`) — and, if the lead also wants `MEDIA_TINTS` or the hover class renamed, `card.test.tsx:69`, `:199`, `:200`,
+`:215` and `wave7-sessions-public-card.spec.ts:107`, which is `sessions'` spec and would be a request.
+
+**Added:** new `describe` blocks **appended** to my nine existing files — «inside the scope» (the `pg:` classes present, the
+outside class list byte-identical to a snapshot taken before the commit), and for the avatar the ring's three values, the
+regex fallback and the tint unchanged by `teamColor`. **Five new files** for the new primitives: every state, the name,
+`aria-hidden` / `aria-pressed` / progressbar attributes, the rotation clamp, the pop only on a press, the RTL origin, axe on
+each state (colour-contrast off, as the tree does), and numeric contrast tables for the pairs in this plan. Q18 asks whether
+appending to an existing file is acceptable or the lead wants separate new files.
+
+### 10 · Order of commits, and the demos
+
+Each commit is one primitive: its file, its tests, its demo `src/app/[locale]/(dev)/ui/demos/<primitive>.tsx` (Arabic,
+fixture literals, no DAL, no session, every state; an exported `<Primitive>Demo` for the lead's `page.tsx`), `tsc`, lint
+(grepped for `problems`), `npm test`, `ui-lint`. Message `feat(ui): …` / `Refs: REQ-UIX-030, DEC-183`.
+
+1. `tag-chip` · 2. `badge` (+ `SessionStatusBadge`) · 3. `avatar` (with the ring — `REQ-UIX-043`) · 4. `card` ·
+5. `progress` · 6. `empty-state` · 7. `stat` · 8. `panel` · 9. `file-drop` · 10. `sticker` · 11. `poster` (needs 4 and 10) ·
+12. `reaction-bar` (needs the like glyph and T17) · 13. `progress-bar` · 14. `story-ring` (needs T18 or Q8's static ruling).
+
+**Blocked by:** C1's token commit (T1 in `STATUS.md`) before commit 1; C2's signatures before 3's ring and 10 – 14; L2's glyphs
+before 12; F1's face for the display-face rows (they degrade to today's face until it lands).
+
+**Captures** (`.qa-shots/rtl/wave15-content-<primitive>-<state>.png`, 390 px and desktop) and the prototype side-by-side need
+the gallery served with `KAREEM_GALLERY=1` and a spec to drive it. **Neither the spec path nor the server is in my edit
+list** — Q19.
+
+### 11 · Questions for the lead
+
+1. **Q1** — the mechanism (§0): C (keep every class, add `pg:` / `pg-dark:` / `pg-light:`) — recommended — or A or B. And the
+   variant's name and form.
+2. **Q2** — T1 – T18: which land in the token commit, under which names.
+3. **Q3** — what the scope's new semantic names resolve to **outside** it where there is no «today» (accent, signal, on-fill):
+   a new primitive rendered outside the scope must still resolve to something.
+4. **Q4** — the status colours (§3): take `01`'s table to the owner, or record that `DEC-073` stands and the badge wears its
+   on-dark constants inside the scope (my recommendation). And F2's missing glyph on `cancelled`: whose, and when.
+5. **Q5** — the like glyph (a heart with `filled`, or the dot) and the fourth house reaction.
+6. **Q6** — is the reaction's `1.22` pop an «overshoot» under `DEC-183` §2's «up to 1.08 on a sticker and nowhere else»? If yes,
+   the pop is capped at 1.08 or becomes an opacity acknowledgement.
+7. **Q7** — `duration-150` (card, stat, file-drop) and Tailwind's `animate-pulse` 2 s (badge's live dot, progress's
+   indeterminate): outside the scope they stay (moving them moves nothing visible at rest, but they are not tokens); inside
+   the scope `pg:transition-none` for card/stat/file-drop, and the dot — keep Tailwind's pulse or a token keyframe?
+8. **Q8** — the live ring's pulse this wave (T18, a loop token), or the live state static until the moments' wave (fully
+   readable by its word and double ring).
+9. **Q9** — the face inside the scope on existing primitives: stat's value, empty-state's title, chip's 13 px 700 — yes/no.
+10. **Q10** — the 44 px target inside the scope for the chip's (24 px) and the file-drop's (28 px) remove controls by an
+    invisible hit area — acceptable, or leave `DEC-123`'s exemption?
+11. **Q11** — the badge keeps its 6 px corner inside the scope (the non-colour difference from a sticker)?
+12. **Q12** — `AvatarStack` members carry no team colour this wave?
+13. **Q13** — a card's hover inside the scope: no shadow; line → line-strong with no transition?
+14. **Q14** — `CardMedia`'s generated placeholder stays navy/silver inside the scope (pinned by two suites), with `poster`
+    as the scope's session placeholder?
+15. **Q15** — team rings on the light variant (1.15 – 2.68:1 on paper): acceptable because the name travels with them, or a
+    rim of the text colour inside the ring?
+16. **Q16** — F1 (`border-navy-700`): fixed in `file-drop`'s commit (moves the drag-over state outside the scope) or carried?
+17. **Q17** — F5 (`--canvas` read by nothing) and whether an org's brand kit reaches **inside** the scope at all.
+18. **Q18** — new cases appended to my nine existing test files, or separate new files (not in my edit list today)?
+19. **Q19** — captures and the prototype side-by-side: a `tests/e2e/wave15-content-gallery.spec.ts` of mine, run by the lead
+    against a `KAREEM_GALLERY=1` build, or the lead captures from the gallery?
