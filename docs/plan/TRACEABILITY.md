@@ -378,7 +378,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-REC-001` | `ENT-badges` `ENT-member_badges` | `POL-badges.select` `POL-badges.update.admin` | `SCR-043` `SCR-045` `SCR-054` +3 | — | — | `STORY-REC-001` | M4 |
 | `REQ-REC-002` | `ENT-badges` `ENT-member_badges` `ENT-member_perks` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-001` | M4 |
 | `REQ-REC-003` | `ENT-levels` `ENT-member_perks` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-002` | M4 |
-| `REQ-REC-004` | `ENT-levels` | — | `SCR-022` `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-002` | M4 |
+| `REQ-REC-004` | `ENT-levels` | — | `SCR-022` `SCR-028` `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-002` | M4 |
 | `REQ-REC-005` | `ENT-member_perks` `ENT-streak_awards` `ENT-streak_rules` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-003` | M4 |
 | `REQ-REC-006` | `ENT-member_perks` `ENT-perks` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-004` | M4 |
 | `REQ-REC-007` | `ENT-member_perks` `ENT-perks` | — | `SCR-054` | — | — | `STORY-REC-004` | M4 |
@@ -505,7 +505,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-036` | — | — | `SCR-010` `SCR-022` `SCR-028` +1 | — | — | `STORY-UIX-024` | M17 |
 | `REQ-UIX-037` | — | — | `SCR-027` `SCR-048` | — | — | `STORY-UIX-024` | M17 |
 | `REQ-UIX-038` | — | — | `SCR-010` `SCR-028` `SCR-048` | — | — | `STORY-UIX-024` | M17 |
-| `REQ-UIX-039` | — | — | `SCR-022` `SCR-048` | — | — | `STORY-UIX-024` | M17 |
+| `REQ-UIX-039` | — | — | `SCR-022` `SCR-028` `SCR-048` | — | — | `STORY-UIX-024` | M17 |
 | `REQ-UIX-040` | — | — | `SCR-010` `SCR-048` | — | — | `STORY-UIX-022` | M17 |
 | `REQ-UIX-041` | — | — | `SCR-010` `SCR-012` `SCR-014` +3 | — | — | `STORY-UIX-025` | M17 |
 | `REQ-UIX-042` | — | — | `SCR-012` `SCR-014` `SCR-022` +2 | — | — | `STORY-UIX-025` | M17 |

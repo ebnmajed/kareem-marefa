@@ -4570,3 +4570,106 @@ Asked before Step 0, as the brief required: **not run**. The owner's standing co
 8. **Still owed:** the same render in the **worker's** Chromium, and CI's 28 parity assertions in the worker image, which now installs two more TrueType files.
 
 - **Documents changed:** `STATUS.md` (rows F1 and F2)
+
+---
+
+## DEC-186 — Wave 15, sync 1: four plans approved; the scope reassigns today's context variables and adds a variant, five primitives reach the public site and not eight, the status colours stay `DEC-073`'s, and this wave ships no new keyframe
+
+- **Date:** 2026-09-28 · **Decided by:** the wave-15 lead, on the plans in `docs/plan/notes/{content,sessions,scoring,console}.md` (`e960702`, `be622d7`, `dbce028`, `68c25fa`), each headline claim verified against the tree
+- **Amends:** `DEC-183` §4.2 (the count, and how the scope is built), §5 (contract 5, and rule 7 of the map); the acceptance of `REQ-UIX-034`, `REQ-UIX-039`, `REQ-UIX-040` and `REQ-CHK-003`
+- **Corrects:** `DEC-183` §4.2, `STATUS.md` and contract 5, which said the public site renders **eight** primitives
+
+### 1 · A correction of the lead's own measurement
+
+`DEC-183` §4.2 said the public site reaches `button`, `field`, `input`, `textarea`, `checkbox`, `radio-group`, `form-summary` and `icons`. **It reaches five: `button`, `icons`, `field`, `input`, `textarea`.** `sessions` walked the import graph of `(marketing)/**` and `[locale]/layout.tsx`. The register form's category chips and role cards are raw radios under reasoned `ui-lint` escapes (`registration-form.tsx:299`, `:396`), its error summary is hand-rolled (`:165-184`), and no checkbox exists on a public route. The lead's Step-0 search had been handed the three files as candidates and read their own contents as a match. **Contract 5 binds five.** `radio-group` does reach `(auth)/choose-org`, which is public, dark, and not the frozen contract.
+
+### 2 · How the scope is built — contract 1, published
+
+`content` (§0) and `sessions` (Q1) reached the same design from opposite sides, and it is better than the lead's. **`DEC-183` §4.2 stands; this is how it is carried out.**
+
+**A · The scope reassigns today's context variables, exactly as `.theme-dark` does.** `--bg`, `--surface`, `--fg-heading`, `--fg-body`, `--fg-muted`, `--edge`, `--edge-strong`, `--ring` and the eight `--btn*` names are the semantic layer, and they already exist. Inside the scope they take the playground's values; at `:root` and in `.theme-dark` nothing about them changes. **So no existing class changes for a colour, no existing test assertion moves, and the register form's class strings stay what they are.**
+
+**B · A variant carries what a variable cannot.** `pg:` means «inside the scope», `pg-dark:` and `pg-light:` its two grounds. Each is a `@custom-variant` in `:where()`, so it adds no specificity. A radius that differs by primitive, a shadow switched off, a status colour's on-dark form, a raw-named class that must not survive inside the scope — each is **added** after the existing classes and never replaces one.
+
+**C · New names, for the roles that have no variable today.** Each is registered in `@theme inline` with a fallback to today's context variable, resolved **at the element that uses it** — so outside the scope it follows `.theme-dark` and an org's brand layer with no alias to go stale (`sessions`' W15.0 #4).
+
+| Utility name | Inside, dark | Inside, light | Outside the scope |
+|---|---|---|---|
+| `canvas` · `surface` (existing) | `#0B0C12` · `#151724` | `#F6F3EC` · `#FFFFFF` | today's |
+| `raised` | `#1E2130` | paper-line at 60 % over white | `var(--btn2-bg-hover)` |
+| `fg-heading` · `fg-body` (existing) | `#F4F1EA` | `#12131A` | today's |
+| `fg-muted` (existing) | `#A7ABBE` | `#5B5F73` | today's |
+| `edge` (existing) — decoration | `#2A2E40` | `#E4DFD3` | today's |
+| ★ `edge-strong` (existing) — a control's boundary | **`#6B7088`** | **`#807C6C`** | today's |
+| `accent` · `accent-deep` · `on-accent` | `#C6FF3D` · `#78AD12` · `#0B0C12` | the same | `--btn-bg` · `--btn-bg-active` · `--btn-fg` |
+| `signal` · `signal-deep` · `on-signal` | `#FF6E4F` · `#C2472C` · `#0B0C12` | the same | `--color-live` · `--color-live` · white |
+| `hover` | `#1E2130` | as `raised` | `var(--btn2-bg-hover)` |
+| `scrim` | the ground at 78 % | the ink at 60 % | today's overlay, navy-950 at 60 % |
+| `team` · `team-neutral` | `--team` on the element · `#A7ABBE` | `--team` · `#5B5F73` | `--team` · `var(--edge-strong)` |
+| `--ring`, the focus colour (existing) | `#C6FF3D` | ★ **`#12131A`** | today's |
+
+Structural, with no colour in them: `rounded-pill` (999 px), `rounded-input` (12 px), `rounded-tile` (16 px — the poster block and a board's row), `rounded-panel` (22 px); `--radius-field` (6 px) and `--radius-card` (14 px) are untouched. `font-display` is Baloo Bhaijaan 2 inside the scope and today's face outside it. The type scale is `text-play-xl` / `-lg` / `-md` / `-sm`, named so that nothing confuses it with the public site's `text-display`. `shadow-press` and `shadow-press-down`; `--duration-fast` / `-base` / `-slow` / `-party` beside `--dur-*`; `ease-play`. The level ramp `level-1` … `level-5` with `on-level`, the six sticker fills by name, the six tints with `on-tint`, and the seven team colours by name are **constants**: they do not remap, and an org's brand kit does not reach them.
+
+**The scope itself:** `.theme-play`, and `.theme-play.theme-play-light` for the light variant. It sets `color-scheme`, the ground and the text, and one focus rule — a 3 px outline in `--ring` — so no primitive declares its own ring. It is applied through one component, `ui/scope.tsx`, which also sets the display face's variable. **This wave only the gallery renders it.** Scopes do not nest.
+
+**Three measured corrections to `01-tokens.md`, all inside the scope:**
+1. ★ **Its hairline cannot be a control's boundary.** `#2A2E40` is 1.45:1 on the ground. `edge-strong` is `#6B7088` — 4.00:1 on the ground, 3.64 on the surface, 3.27 on raised — and `#807C6C` on the light variant (3.78 on paper, 4.19 on white). SC 1.4.11.
+2. ★ **Its focus ring cannot be the accent on the light variant.** Lime on paper is 1.07:1. The ring is the ink there (16.71:1) and lime on the dark ground (16.52:1).
+3. **It names no error colour.** The status constants serve, in their on-dark forms inside a dark scope.
+
+**What stays open, and is said so:** on the light variant a lime primary sits on paper at 1.07:1, and a team ring between 1.15 and 2.68:1. The word on the button and the company's name carry the meaning, so nothing is lost; whether the light variant wants a boundary on both is the owner's, with the screens.
+
+### 3 · The status colours stay `DEC-073`'s
+
+`content` compared `01-tokens.md`'s status table with the tree, token by token. It differs in colour on all five rows and in the word on two, omits five of the tree's nine rows, paints «قائمة انتظار» in a **team** colour — مواهب's — and «جارية الآن» in the scope's signal, which also means a streak and a check-in. **A status colour that is also an accent or a company is not a constant.** `01` itself says to keep `DEC-073` where the two differ. **It is kept**: colours, words and the live dot, on every surface; inside a dark scope the badge wears the on-dark constants it already has, which pass there (7.05 – 8.61:1 on the surface) where the light ones do not (2.67 – 3.13:1). `ended` gains its own on-dark constant, `#a8b3c4` — the value it borrows today from `.theme-dark`'s muted text, under a name the scope cannot remap. **The badge keeps its 6 px corner inside the scope**: the sober rectangle is what tells a status from a sticker without colour.
+
+### 4 · This wave ships no new keyframe
+
+`03-motion.md` pops a reaction to `1.22` and a code box to `1.14`. `06-decisions-proposed.md`, which the owner accepted and confirmed, allows «a sticker overshoot of at most 1.08» and no other. The two documents disagree with each other, and the owner's words are the narrower. **So nothing pops this wave.** A reaction's acknowledgement is its pressed state, shown in place; the code box is static; the live ring reads live by its word and its double ring, with no pulse; the sticker's overshoot is the moments' wave's. `scoring` had already planned its three with no transition at all. **Whether a pop beyond 1.08 is wanted is asked of the owner with the moments' wave**, where it can be seen. The map's rule 7 is narrowed accordingly. What exists today stays: the badge's live dot, the switch's colour transition, the comment's reaction.
+
+### 5 · Rulings — `content`
+
+- **The mechanism:** as §2. Every class that exists stays; the scope's look is added with `pg:`.
+- **`progress-bar` is a new file**, and `progress.tsx` keeps its `width` fill — two assertions pin it, and scaling a rounded fill changes pixels outside the scope. The overlap is named: `Progress`'s determinate mode retires when its three consumers adopt the new bar, in the screens waves.
+- **`poster` is a new file that composes `CardMedia`** for the whole image, the slot and the overlay, and adds the team-coloured placeholder. `SessionPoster` stays the DAL slot. **No drawn QR on the placeholder**: a code that scans to nothing looks like one that works.
+- **The avatar is a circle inside the scope** and stays as it is outside. `teamColor` has **three** values: `undefined` draws no ring — every caller today — `null` the neutral ring, a colour the team ring. The component re-checks `#rrggbb` before writing `--team`, because a custom property is serialised as written. The ring is a border, so a row does not reflow. `AvatarStack` carries no team colour this wave.
+- **The sticker's outer rim is the scope's text colour** — `00-direction.md`'s «thick bone rim» and `01`'s formula agree; the prototypes drew it ink.
+- **The reactions:** a like and the house reactions arrive as **props**; the primitive names no set. The lead draws a heart with a `filled` form, and gives `FlameIcon`, `BoltIcon` and `StarIcon`'s family the same form, so pressed is never colour alone. `PinIcon` stays a venue.
+- **A 44 px hit area** inside the scope for the chip's and the file drop's remove controls, by a transparent pseudo-element; the visual size does not change. `DEC-123`'s exemption stands outside the scope.
+- ★ **One visible exception outside the scope, approved:** `file-drop.tsx:95`'s `border-navy-700` emits no CSS — only five navy steps exist — so on drag-over the dashed border turns *lighter* than at rest. It is fixed in a commit of its own, with a line in the ledger. It is a defect's repair, seen only while a file is being dragged.
+- **Carried, recorded:** `REQ-UIX-003` requires an icon on `cancelled`, and the badge gives one to `live` alone. Adding glyphs changes every screen that shows a badge, so it belongs to the screens waves, with `01`'s check, x and clock. `card.tsx` and `stat.tsx` transition `box-shadow`, which `REQ-UIX-020` does not allow; inside the scope there is no shadow, and outside nothing changes this wave.
+
+### 6 · Rulings — `sessions`
+
+- **`controlClass()` is one function** (`field.tsx:105`) and the face of `input`, `textarea`, `select`, `combobox` and five files outside `ui/`. **The commit that touches it is announced to `console` and to the lead**, and the register form's four controls are proven after it. Under §2 it keeps every class it has and gains `pg:` ones.
+- **Contract 5's proof is four parts:** `qa:contract`; `visual` at 0.000 % — which proves the resting state only; ★ **a computed-style fingerprint** of the register form's controls at rest, hovered, focused, invalid, and invalid and focused, equal on `main`'s build and the branch's — `sessions` writes it **before** its first commit and the lead runs it; and a unit test that the scope's class appears nowhere in the public import graph — the lead's.
+- **«On the waitlist» is `booked` with `hold: "waitlist"`**, not a seventh state.
+- **`session-cta` composes the lead's `Button`**, which gains the playground's faces inside the scope and a `signal` variant; it never overrides a `Button` class.
+- **`code-input`:** the alphabet is the migration's — six characters of `ACDEFGHJKMNPQRTUVWXY34679` (`0010:210`) — so a demo never shows «M7K2QX», which the product cannot issue. It does not filter as the member types: a character that silently fails to appear is a failure with no message, and the server is the judge. `autoCapitalize` is off, as `REQ-UIX-035` says. It is static (§4).
+- **`REQ-CHK-003`'s acceptance is amended:** the code is **posted** as a single field; it is entered in six boxes, as the screen has done since M2.
+- **Found, `checkin`'s, carried:** the check-in screen's code group is named by an id that does not exist (`code-input.tsx:52` against `check-in/page.tsx:123`), so boxes 2 to 6 have no name, and the refusal is not tied to the boxes. These are `REQ-UIX-035`'s two acceptance lines. The new primitive is built right; the screen adopts it in a screens wave. A checked-in member is offered the check-in link again during the session (`session-matrix.ts:241-246`).
+
+### 7 · Rulings — `scoring`
+
+- The three prop types are approved as written. **`rank-row` takes no «fell» state**: it compares `previousRank` with `rank` and draws only a rise, so a fall takes the same code path as no movement, and the test asserts the two rows are byte-identical. The viewer's own row keeps the member's name and adds the word.
+- ★ **`REQ-REC-004` against the tree.** It says every level above the first grants something real. `perks.key` admits two keys (`0027:286`), so levels 2 and 5 can grant nothing; both perks ship disabled, so in a default org **no level grants anything**; and «يمكنك الآن تقديم الجلسات» would be false there, because `can_host` is a gate everyone already passes while it is off. **The card says so rather than invent a privilege** — `noUnlocksLabel` — and `REQ-UIX-039`'s acceptance is amended to match. **Which to change, the privileges or the requirement, is the owner's**, and it is carried to the game layer's wave.
+- **The ramp is keyed by `levels.sort_order`**, never by a level's name, which an org may change.
+- **A negative company value** draws an empty track and keeps its signed number. **`metricLabel` is visible on every bar**; `secondary` carries the other metric, which `REQ-LDR-004` requires on `SCR-028`.
+- **Carried to the moments' wave:** moment 5 — a rank changed «since last view» — has no data source: no last-seen rank is stored, and the all-time board keeps no history.
+
+### 8 · Rulings — `console`
+
+- ★ **A company's edits are not audited today**, and neither are a category's or a venue's. `createCompany` and `setCompanyActive` are plain writes, and no trigger calls `write_audit()`. **The team colour's audit is the first this table has had.** `console` writes `companies_team_color_audit()` as a definer trigger on `org_domains_audit()`'s pattern, in `proposed/`, proven as a member; the lead promotes it after `0160`. **It covers the team colour only.** The wider gap is recorded for the owner, not closed here: widening it adds audit actions to three tables this wave does not touch.
+- **The field offers the seven named colours and «بلا لون»**, each with a swatch and its name in words, and no free hex. A free hex reopens a contrast question this wave cannot answer. The form posts a name; the server writes the `#rrggbb`. The edit is a per-row menu, since the screen has no edit form.
+- ★ **`date-time.tsx` is a wrapper with one class.** The control's visible classes are in `src/components/admin/rtl-datetime-picker.tsx`, which the map froze. **It joins `console`'s list for this wave, tokens only.**
+- **No shadow inside the scope**: a popover and a sheet are told from the page by their surface and a line. **The sheet's scrim** reads `scrim`. **The active tab's underline** reads `accent` inside the scope; outside, the class it has.
+- **The sheet gains no prop this wave.**
+
+### 9 · The rules the plans added
+
+- ★ **«Tokens only» gets a gate**, the lead's: a unit test over `src/components/ui/**`. In a file created this wave it refuses a hex, a literal duration and a raw palette name anywhere; in every file it refuses them in a class that follows `pg:`, `pg-dark:` or `pg-light:`. `ui-lint` excludes the directory by design, so until now the rule held only where someone looked.
+- **New cases go in new files** — `<primitive>-scope.test.tsx` beside each existing test — so «the existing suites are untouched» stays a statement about whole files.
+- **Captures:** each track writes one gallery spec, `tests/e2e/wave15-<track>-gallery.spec.ts`; the lead runs it against a build made with `KAREEM_GALLERY=1`.
+- ★ **Whether an org's brand kit reaches inside the scope is not decided here.** `.brand-org` writes the same context variables the scope reassigns, so inside the scope the scope wins. The gallery has no org. It is asked with the first screen that enters the scope. **Found on the way, carried:** `app/layout.tsx:30` writes an org's canvas to `--canvas`, and nothing reads `--canvas` — `bg-canvas` is `var(--bg)` — so an org's canvas override has never had an effect, while `0144`'s guard refuses palettes by it.
+
+- **Documents changed:** `01-prd.md` (the acceptance of `REQ-UIX-034`, `REQ-UIX-039`, `REQ-UIX-040` and `REQ-CHK-003`), `CLAUDE.md` and the ten agent files (contract 5's five; rule 7; the edit lists' additions), `STATUS.md` (the contracts, the checklist, the carried findings)

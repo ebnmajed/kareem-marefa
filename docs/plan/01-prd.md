@@ -757,7 +757,8 @@ Six characters, rotating every 10 minutes (org-configurable), with the previous 
 The member enters the code in the app. A correct code within the window marks them **حاضر** and
 records the arrival timestamp.
 **Acceptance:**
-- Entry is a single field on a screen reachable in one tap from the event page.
+- The code is **posted as a single field**, from a screen reachable in one tap from the event page.
+  It is **entered** in six boxes (`REQ-UIX-035`), as the screen has done since M2 (`DEC-186` §6).
 - Success is unambiguous: the member sees **«تم تسجيل حضورك»** and the page state changes.
 
 #### REQ-CHK-004 — The code is valid only during the session window
@@ -2959,9 +2960,10 @@ cancel beneath it), check in, attended, and none — with the reason.
 A like and four house reactions, each with its count, on `SCR-012`.
 **Acceptance:**
 - Each control has an accessible name and a pressed state; a count changes in place.
-- The acknowledgement is one pop, and nothing else: a reaction earns no points, so nothing about it
-  reads as an achievement.
-- Under reduced motion the pressed state is shown with no motion.
+- The acknowledgement is the **pressed state, shown in place**: a reaction earns no points, so
+  nothing about it reads as an achievement. Whether it also pops is decided with the moments
+  (`DEC-186` §4).
+- Pressed is never colour alone: the glyph fills.
 
 #### REQ-UIX-035 — The check-in code is entered in six boxes that read left to right inside an Arabic page
 **Serves:** `DEC-183` · `REQ-CHK-003` · `REQ-INT-007`
@@ -3002,7 +3004,9 @@ A company's bar on `SCR-028` and on `SCR-010`: the team ring, the name, the bar 
 On `SCR-022`: the current level and what it unlocks, and — when a level has just been reached — the
 new level and what it unlocks.
 **Acceptance:**
-- Each face names a real privilege, not only a title (`REQ-REC-004`).
+- A face lists the privileges the org has **enabled** at that level, by name, and says plainly when
+  there are none. It never names a privilege the member does not have (`DEC-186` §7: in a default
+  org no level grants one, and `REQ-REC-004`'s promise is the owner's to keep or amend).
 - Which face is shown is a prop. With reduced motion the new face is simply shown.
 - Both faces are reachable by a screen reader in either state.
 
@@ -3011,7 +3015,7 @@ new level and what it unlocks.
 The ring that will open a session's story from `SCR-010`: live, upcoming, recap and seen.
 **Acceptance:**
 - Each state differs in its label as well as in its colour.
-- The live ring's pulse is off under reduced motion, and the ring still reads as live.
+- The live ring reads as live by its word and its double ring, with no motion (`DEC-186` §4).
 - It is a button with an accessible name that names the session; its target is at least 44 px.
 
 #### REQ-UIX-041 — The house glyph set grows by hand

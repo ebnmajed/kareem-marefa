@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-28 · **Branch:** `wave-15/tokens-and-primitives` (cut from `main` at `dfcfea3` — `origin/main` `34713cb` plus the brief's unpushed correction, which rides on this branch) · **`main`:** wave 14 merged and live; production at **`0159`** · **Phase:** ★★ **WAVE 15 — STEP 0 APPROVED, four teammates planning (`DEC-183`, `DEC-184`, M17, migrations from `0160`)**: the first wave of the visual-direction programme «ساحة اللعب» (`docs/design/`). The owner's decision gate is **closed** — everything in scope, the playground's motion **reverses `DEC-100`**, the public site moves last, and this programme replaces the member-path UI/UX wave. This wave is **the foundation only, and nothing visible changes**: the tokens as a scope, the display face, the 37 primitives migrated, ten new ones, nine glyphs, six objects, and team colours. ★ Step 0 found **seventeen places where `docs/design/` and the tree disagree** (`DEC-183` §4) — a literal merge of `tokens.css` would have moved the public site. ★ **Draft PR #33** is open and CI is green on it. ★ **The owner approved Step 0 (`DEC-184`)**: `DEC-183` stands as written, §3's four amendments and §4.2's scope ruling included. `content`, `sessions`, `scoring` and `console` spawn **planning-only**; sync 1 approves four plans.
+**Last updated:** 2026-09-28 · **Branch:** `wave-15/tokens-and-primitives` (cut from `main` at `dfcfea3` — `origin/main` `34713cb` plus the brief's unpushed correction, which rides on this branch) · **`main`:** wave 14 merged and live; production at **`0159`** · **Phase:** ★★ **WAVE 15 — SYNC 1 DONE, building (`DEC-183` … `DEC-186`, M17, migrations from `0160`)**: the first wave of the visual-direction programme «ساحة اللعب» (`docs/design/`). The owner's decision gate is **closed** — everything in scope, the playground's motion **reverses `DEC-100`**, the public site moves last, and this programme replaces the member-path UI/UX wave. This wave is **the foundation only, and nothing visible changes**: the tokens as a scope, the display face, the 37 primitives migrated, ten new ones, nine glyphs, six objects, and team colours. ★ Step 0 found **seventeen places where `docs/design/` and the tree disagree** (`DEC-183` §4) — a literal merge of `tokens.css` would have moved the public site. ★ **Draft PR #33** is open and CI is green on it. ★ **The owner approved Step 0 (`DEC-184`)**. ★ **Sync 1 is done (`DEC-186`)**: four plans approved; the scope reassigns today's context variables and adds a `pg:` variant; **five** primitives reach the public site, not eight; the status colours stay `DEC-073`'s; no new keyframe this wave. ★ **The display face is in** (`DEC-185`) and nine glyphs. Next: the token commit (T1), the signatures (C2), then the four build.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -27,7 +27,7 @@ and each later wave of the programme claims its own number in `14-roadmap.md` wh
 |---|---|
 | `main` | local `dfcfea3`, one commit ahead of `origin/main` (`34713cb`): the owner's correction to the brief, made while this lead was reading. Production at **`0159`**; no open PRs; migrations end at `0159_photo_album_build.sql` |
 | ★★ Design vs tree, 1 | **`tokens.css` redefines five existing names and two utilities** — `--color-surface`, `--radius-card`, `--ease-out`, `:root`'s `--bg` and `--fg-muted`, and `--text-body` / `--text-caption`, which would make Tailwind emit `text-body` and `text-caption` a second time. Its theme switch is inverted (dark by default, `.theme-light`; the tree is light by default, `.theme-dark`). **Appended as written, it moves the public site.** → the playground is a **scope** (`DEC-183` §4.2, contract 1) |
-| ★★ Design vs tree, 2 | **The public site renders eight primitives**: `button` ×5, `field`, `input`, `textarea`, `icons` from `(marketing)`, and `checkbox`, `radio-group`, `form-summary` through the register form. `(auth)`, `legal`, `verify` and `s/[id]` — public, though not the frozen contract — reach ten, `card`, `badge`, `panel` and `page-header` among them. So «migrate `button`» is a change to a frozen route unless it is scoped → contract 5 |
+| ★★ Design vs tree, 2 | ~~**The public site renders eight primitives**~~ — ★ **corrected by `sessions` at sync 1 (`DEC-186` §1): FIVE** — `button`, `icons`, `field`, `input`, `textarea`. The register form's radios and its error summary are hand-rolled, and no checkbox is on a public route. The lead's search had been handed `checkbox`, `radio-group` and `form-summary` as candidate files and read their own contents as a match. *As first written:* `button` ×5, `field`, `input`, `textarea`, `icons` from `(marketing)`, and `checkbox`, `radio-group`, `form-summary` through the register form. `(auth)`, `legal`, `verify` and `s/[id]` — public, though not the frozen contract — reach ten, `card`, `badge`, `panel` and `page-header` among them. So «migrate `button`» is a change to a frozen route unless it is scoped → contract 5 |
 | ★ Design vs tree, 3 | **«M13» is spent** — corrected in the brief by the owner (`dfcfea3`) after this lead found it. This wave is **M17** |
 | ★ Design vs tree, 4 | **A Kufi display face already ships**: Reem Kufi, 12 of the manifest's 33 entries, the baseline poster templates' face. Baloo Bhaijaan 2 is **added** for the interface; no template and no golden moves |
 | ★ Design vs tree, 5 | **Fonts enter through `next/font`**, not a `@font-face` block: `src/lib/fonts.ts` → `fonts:extract` → `packages/fonts` by SHA-256 → `fonts:derive` → `fonts:check`. `font-src 'self'`. The shipped `.woff2` files are the **reference** for the shaping check |
@@ -43,11 +43,11 @@ and each later wave of the programme claims its own number in `14-roadmap.md` wh
 
 | # | Contract | Owner | State |
 |---|---|---|---|
-| C1 | **The scope and its names** — the scope class and its light variant; the semantic names; the structural ones; the raw palette no primitive reads. Outside the scope every name resolves to today's value | lead → all | todo — fixed by the token commit, published **here** |
+| C1 | **The scope and its names** — `.theme-play` and `.theme-play-light`, through `ui/scope.tsx`; ★ the scope **reassigns today's context variables** as `.theme-dark` does; `pg:` / `pg-dark:` / `pg-light:` carry the rest; the new names fall back to today's variable at the element | lead → all | **published** — `DEC-186` §2 holds the table of names and values. The token commit (T1) makes them real |
 | C2 | **The signatures** — ten new primitives and `AvatarProps.teamColor` in `ui/index.ts`, types only | lead → all | todo — after sync 1, from the plans |
 | C3 | **The team colour** — `companies.team_color` (`0160`), `teamColor: string \| null`, `--team` on the element; a neutral ring for `null`; the fill stays the member's tint | lead ↔ `console` ↔ `content` | todo |
 | C4 | **The gallery** — one demo per primitive under `(dev)/ui/demos/`; the lead wires it and owns the baseline | every owner → lead | todo |
-| C5 | ★ **The eight the public site renders** — one commit each, `qa` and `visual` against `main`'s capture before the next | lead · `sessions` | todo |
+| C5 | ★ **The five the public site renders** (`DEC-186` §1) — `button`, `icons`, `field`, `input`, `textarea`; one commit each; four proofs: `qa:contract`, `visual`, the computed-style fingerprint, the public-graph test | lead · `sessions` | todo — `icons` moved nothing (L2: six public pairs 0.000 %) |
 
 ### The checklist
 
@@ -80,7 +80,35 @@ and each later wave of the programme claims its own number in `14-roadmap.md` wh
 | M4 | ★ Demonstrable — every new primitive at 390 px in Arabic beside its counterpart in the prototypes, opened in bands | owners write, lead opens | todo |
 | G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `fonts:check`, `policy-diff`, `trace`, `ui-lint --strict` | lead | todo |
 
-### For sync 1 — the questions already open
+### Sync 1 — 2026-09-28 — four plans approved (`DEC-186`)
+
+The plans are `content` `e960702`, `sessions` `be622d7`, `scoring` `dbce028` and `console` `68c25fa`. Each headline claim was verified against the tree before ruling.
+
+**What the plans found:**
+- ★ **The public site renders five primitives, not eight** (`sessions`) — a correction of the lead's Step 0.
+- ★ **The scope should reassign today's context variables and add a variant**, so that no existing class changes and no assertion moves (`content` §0, `sessions` Q1). Adopted: `DEC-186` §2.
+- ★ **The design's hairline is 1.45:1 on the ground, and its accent focus ring 1.07:1 on the light variant** (`content`, `sessions`). `edge-strong` is `#6B7088` / `#807C6C`; the ring is lime on dark and ink on light.
+- ★ **`01-tokens.md`'s status table is not `DEC-073`'s** — colour on five rows, the word on two, a team colour for the waitlist (`content`). `DEC-073` stands.
+- ★ **`03-motion.md`'s pops (1.22, 1.14) exceed the overshoot the owner accepted (1.08, on a sticker)** (`content`). This wave ships no new keyframe.
+- ★ **In a default org no level grants a privilege** — two perk keys, both disabled (`scoring`). The level card says so.
+- ★ **A company's edits are not audited today**, nor a category's or a venue's (`console`). The team colour's audit is the table's first.
+- `controlClass()` is the face of five primitives and five other files; `date-time.tsx` wraps a file the map had frozen; `progress.tsx` sizes by `width`; `file-drop`'s `border-navy-700` emits nothing; the check-in screen's code group is named by an id that does not exist.
+
+**Carried findings, each somebody's in a later wave:**
+
+| Finding | Whose | When |
+|---|---|---|
+| `REQ-REC-004`: no level grants anything in a default org — the privileges or the requirement | **the owner** | the game layer's wave |
+| A pop beyond 1.08 on a reaction or a code box | **the owner** | the moments' wave |
+| The light variant: a lime primary and a team ring on paper, 1.07 – 2.68:1 | **the owner** | the screens |
+| Whether an org's brand kit reaches inside the scope; `app/layout.tsx:30` writes `--canvas`, which nothing reads | lead, as `branding`'s custodian | the first screen in the scope |
+| `REQ-UIX-003`: `cancelled` carries no icon | `content` | the screens waves |
+| Company, category and venue edits are unaudited | `console` | the owner's call |
+| The check-in screen's code group has no name; check-in is re-offered to a member who has checked in | `checkin` | the screens waves |
+| Moment 5 has no «since last view» data | lead | the moments' wave |
+| `card` and `stat` transition `box-shadow` outside the scope (`REQ-UIX-020`) | `content` | the screens waves |
+
+### For sync 1 — the questions that were open, all answered in `DEC-186`
 
 1. **The scope's names** (C1) — the class, its light variant, and the structural tokens a button needs to be today's button outside the scope.
 2. ★ **The coin's «+50»** — `REQ-CHK-018` computes the amount per session; recommended: a label-free coin (`DEC-183` §4.14).
