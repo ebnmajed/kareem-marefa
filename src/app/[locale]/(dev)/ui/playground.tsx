@@ -10,15 +10,27 @@ import { PlayWordmark } from "@/components/brand/wordmark";
 import { AvatarDemo } from "./demos/avatar";
 import { BadgeDemo } from "./demos/badge";
 import { CardDemo } from "./demos/card";
+import { CheckboxDemo } from "./demos/checkbox";
 import { ComboboxDemo } from "./demos/combobox";
 import { DataTableDemo } from "./demos/data-table";
 import { DateTimeDemo } from "./demos/date-time";
 import { EmptyStateDemo } from "./demos/empty-state";
+import { FileDropDemo } from "./demos/file-drop";
+import { FormSummaryDemo } from "./demos/form-summary";
+import { LevelCardDemo } from "./demos/level-card";
 import { MenuDemo } from "./demos/menu";
+import { PanelDemo } from "./demos/panel";
+import { PosterDemo } from "./demos/poster";
 import { ProgressDemo } from "./demos/progress";
 import { ProgressBarDemo } from "./demos/progress-bar";
+import { RaceBarDemo } from "./demos/race-bar";
+import { RankRowDemo } from "./demos/rank-row";
+import { ReactionBarDemo } from "./demos/reaction-bar";
 import { SheetDemo } from "./demos/sheet";
 import { StatDemo } from "./demos/stat";
+import { StickerDemo } from "./demos/sticker";
+import { StoryRingDemo } from "./demos/story-ring";
+import { SwitchDemo } from "./demos/switch";
 import { TabsDemo } from "./demos/tabs";
 import { TagChipDemo } from "./demos/tag-chip";
 
@@ -39,6 +51,13 @@ import { TagChipDemo } from "./demos/tag-chip";
 // ★ One writer per file. A demo is its primitive's owner's; the order and the
 // titles below are the lead's. A demo is wired in the commit that names it in
 // `STATUS.md`'s ledger of what moved `ar_ui`.
+//
+// ★ NOT WIRED YET, AND WHY. `radio-group` and `code-input` name a radio group
+// and element ids, and a demo stands on the page twice (`./ground.ts`): wired as
+// they are, the dark ground's radios would lose their checked option to the
+// light ground's. They are wired when their demos take `ground`. `date-time`
+// has the same fault with two ids and is wired already; its owner has the same
+// request. `button`, `field`, `input` and `textarea` wait for contract 5.
 
 const DEMOS: { file: string; title: string; node: ReactNode }[] = [
   { file: "tag-chip", title: "الوسم", node: <TagChipDemo /> },
@@ -49,6 +68,18 @@ const DEMOS: { file: string; title: string; node: ReactNode }[] = [
   { file: "progress-bar", title: "شريط التقدّم", node: <ProgressBarDemo /> },
   { file: "empty-state", title: "الحالة الفارغة", node: <EmptyStateDemo /> },
   { file: "stat", title: "الرقم", node: <StatDemo /> },
+  { file: "panel", title: "اللوحة", node: <PanelDemo /> },
+  { file: "file-drop", title: "رفع الملفات", node: <FileDropDemo /> },
+  { file: "sticker", title: "اللاصقة", node: <StickerDemo /> },
+  { file: "poster", title: "الملصق", node: <PosterDemo /> },
+  { file: "reaction-bar", title: "التفاعلات", node: <ReactionBarDemo /> },
+  { file: "story-ring", title: "حلقة القصة", node: <StoryRingDemo /> },
+  { file: "checkbox", title: "خانة الاختيار", node: <CheckboxDemo /> },
+  { file: "switch", title: "المفتاح", node: <SwitchDemo /> },
+  { file: "form-summary", title: "ملخّص الأخطاء", node: <FormSummaryDemo /> },
+  { file: "rank-row", title: "صفّ الترتيب", node: <RankRowDemo /> },
+  { file: "race-bar", title: "سباق الشركات", node: <RaceBarDemo /> },
+  { file: "level-card", title: "بطاقة المستوى", node: <LevelCardDemo /> },
   { file: "data-table", title: "الجدول", node: <DataTableDemo /> },
   { file: "combobox", title: "القائمة القابلة للبحث", node: <ComboboxDemo /> },
   { file: "menu", title: "القائمة المنسدلة", node: <MenuDemo /> },
