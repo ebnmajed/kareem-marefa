@@ -93,6 +93,25 @@ describe("Card — the look inside the scope (`04-components.md`)", () => {
     expect(container.querySelector("img")).toHaveClass("object-contain");
   });
 
+  it("★ the linked card's ring is drawn inside the link in the scope — the article clips, and the link fills it", () => {
+    const { container } = render(
+      <Scope>
+        <Card href="/app/sessions/s-1">
+          <CardBody>محتوى</CardBody>
+        </Card>
+      </Scope>,
+    );
+    const link = container.querySelector("article > a")!;
+    // What it had stays, byte for byte — inert today, and on main.
+    for (const cls of ["block", "h-full", "rounded-card", "focus-visible:outline-2", "focus-visible:-outline-offset-2", "focus-visible:outline-[var(--ring)]"]) {
+      expect(link, cls).toHaveClass(cls);
+    }
+    // The scope's rule reads the variable; the corner follows the article's.
+    expect(link).toHaveClass("pg:[--focus-offset:calc(var(--focus-width)*-1)]", "pg:rounded-panel");
+    // Never without `pg:` — outside the scope the global rule must not change this wave.
+    expect(link.className).not.toMatch(/(?:^|\s)\[--focus-offset/);
+  });
+
   it("is accessible inside the scope, linked, with media and a nested action", async () => {
     const { container } = render(
       <Scope>

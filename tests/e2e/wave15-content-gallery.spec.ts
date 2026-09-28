@@ -174,6 +174,72 @@ for (const width of WIDTHS) {
   });
 }
 
+// ★ The card's focus ring, inside the scope (the lead's measurement, 081ffe8c). The article is
+// `overflow: hidden` and its link fills it, so a ring drawn OUTSIDE the link is clipped whole —
+// the link's own `focus-visible:-outline-offset-2` is layered and never applies. The link sets
+// `--focus-offset` to minus the ring's width, which the scope's rule reads. Proven by keyboard:
+// the link is reached by Tab, matches `:focus-visible`, and the ring's outer edge — the link's box
+// grown by `outline-offset + outline-width` — lies inside the article's clip (its padding box) on
+// all four sides. Then the card's own box is captured with the ring showing.
+for (const width of WIDTHS) {
+  test(`card: a linked card's focus ring is inside its clip, reached by Tab, at ${width.name}`, async ({ page }) => {
+    await openGallery(page, width.size);
+    test.skip((await page.locator('[data-demo="card"]').count()) === 0, "card's demo is not wired into the gallery yet");
+    for (const ground of GROUNDS) {
+      const demo = page.locator(demoOn("card", ground.scope));
+      const link = demo.locator("article > a").first();
+      await link.scrollIntoViewIfNeeded();
+      // Start just before the demo: focus its root (made focusable for the moment), then Tab once.
+      await demo.evaluate((el) => {
+        el.setAttribute("tabindex", "-1");
+        (el as HTMLElement).focus();
+      });
+      await page.keyboard.press("Tab");
+      await demo.evaluate((el) => el.removeAttribute("tabindex"));
+      await expect(link).toBeFocused();
+
+      const ring = await link.evaluate((a) => {
+        const cs = getComputedStyle(a);
+        const article = a.closest("article")!;
+        const acs = getComputedStyle(article);
+        const lr = a.getBoundingClientRect();
+        const ar = article.getBoundingClientRect();
+        const reach = parseFloat(cs.outlineOffset) + parseFloat(cs.outlineWidth);
+        // The article clips at its padding box: its border box less its borders.
+        const clip = {
+          top: ar.top + parseFloat(acs.borderTopWidth),
+          right: ar.right - parseFloat(acs.borderRightWidth),
+          bottom: ar.bottom - parseFloat(acs.borderBottomWidth),
+          left: ar.left + parseFloat(acs.borderLeftWidth),
+        };
+        return {
+          focusVisible: a.matches(":focus-visible"),
+          offset: cs.outlineOffset,
+          width: cs.outlineWidth,
+          style: cs.outlineStyle,
+          articleOverflow: acs.overflow,
+          inside: {
+            top: lr.top - reach >= clip.top - 0.5,
+            right: lr.right + reach <= clip.right + 0.5,
+            bottom: lr.bottom + reach <= clip.bottom + 0.5,
+            left: lr.left - reach >= clip.left - 0.5,
+          },
+        };
+      });
+      const where = `${ground.name} · ${width.name}`;
+      expect(ring.focusVisible, `${where}: the link is not :focus-visible after Tab`).toBe(true);
+      expect(ring.style, `${where}: no ring is drawn`).toBe("solid");
+      expect(ring.width, `${where}: the scope's ring width`).toBe("3px");
+      expect(ring.offset, `${where}: the ring is not drawn inside the link`).toBe("-3px");
+      expect(ring.articleOverflow, `${where}: the article no longer clips — this test would prove nothing`).toBe("hidden");
+      expect(ring.inside, `${where}: the ring's outer edge crosses the article's clip`).toEqual({ top: true, right: true, bottom: true, left: true });
+
+      await demo.locator("article").first().screenshot({ path: join(SHOTS, `wave15-content-card-focus-${ground.name}-${width.name}.png`) });
+      await page.keyboard.press("Shift+Tab");
+    }
+  });
+}
+
 test("every primitive's demo is in both grounds, once each", async ({ page }) => {
   await openGallery(page, WIDTHS[1].size);
   for (const primitive of PRIMITIVES) {

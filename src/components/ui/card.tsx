@@ -60,7 +60,15 @@ export function Card({ density = "grid", href, children, className = "" }: CardP
         <Link
           href={href}
           quiet
-          className="block h-full rounded-card focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)]"
+          // ★ Inside the scope the ring is drawn INSIDE the link (the lead measured it in a
+          // browser, 081ffe8c): the article is `overflow: hidden` and the link fills it, so a ring
+          // outside the link is clipped whole. `focus-visible:-outline-offset-2` below never applied
+          // — every utility is in a layer and the focus rules are not — so the scope's rule reads
+          // `--focus-offset`, set here to minus the ring's own width: the ring's outer edge lands
+          // on the link's edge, inside the clip. The link takes the article's 22 px corner too, so
+          // the inset ring's corners follow the clip's curve. Outside the scope nothing reads the
+          // variable and nothing changes this wave (carried to the owner, SC 2.4.7).
+          className="block h-full rounded-card focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)] pg:rounded-panel pg:[--focus-offset:calc(var(--focus-width)*-1)]"
         >
           {inner}
         </Link>
