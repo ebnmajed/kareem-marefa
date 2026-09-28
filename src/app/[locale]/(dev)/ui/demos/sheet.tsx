@@ -12,7 +12,7 @@ import { Sheet } from "@/components/ui/sheet";
 export function SheetDemo() {
   const [open, setOpen] = useState<"bottom" | "inline-start" | "inline-end" | null>(null);
   return (
-    <div className="flex flex-wrap gap-3">
+    <div data-demo="sheet" className="flex flex-wrap gap-3">
       <Button onClick={() => setOpen("bottom")}>ورقة سفلية</Button>
       <Button variant="secondary" onClick={() => setOpen("inline-start")}>
         ورقة جانبية

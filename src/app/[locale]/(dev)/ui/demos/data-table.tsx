@@ -32,7 +32,7 @@ const COLUMNS: DataTableColumn<DemoSession>[] = [
 export function DataTableDemo() {
   const [selected, setSelected] = useState<string[]>(["s1"]);
   return (
-    <div className="flex flex-col gap-8">
+    <div data-demo="data-table" className="flex flex-col gap-8">
       <DataTable<DemoSession>
         label="جلسات هذا الأسبوع"
         columns={COLUMNS}

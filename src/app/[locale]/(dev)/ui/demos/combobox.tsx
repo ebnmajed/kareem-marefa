@@ -15,7 +15,7 @@ const PRESENTERS: ComboboxOption[] = [
 
 export function ComboboxDemo() {
   return (
-    <div className="flex flex-col gap-6">
+    <div data-demo="combobox" className="flex flex-col gap-6">
       <div className="max-w-sm">
         <Combobox name="presenter-single" options={PRESENTERS} placeholder="اختر مقدِّمًا" />
       </div>

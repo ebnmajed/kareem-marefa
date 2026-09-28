@@ -10,7 +10,7 @@ import { GearIcon, DownloadIcon } from "@/components/ui/icons";
 
 export function MenuDemo() {
   return (
-    <div className="flex flex-wrap items-start gap-6">
+    <div data-demo="menu" className="flex flex-wrap items-start gap-6">
       <Menu
         trigger={<Button variant="secondary">القائمة</Button>}
         items={[

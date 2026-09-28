@@ -9,7 +9,7 @@ import { DateTime } from "@/components/ui/date-time";
 
 export function DateTimeDemo() {
   return (
-    <div className="flex flex-col gap-6">
+    <div data-demo="date-time" className="flex flex-col gap-6">
       <DateTime
         id="starts-at"
         name="startsAt"

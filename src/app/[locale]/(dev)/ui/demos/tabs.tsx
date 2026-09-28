@@ -9,16 +9,18 @@ import { Tabs } from "@/components/ui/tabs";
 
 export function TabsDemo() {
   return (
-    <Tabs
-      label="أقسام لوحة الإدارة"
-      defaultValue="pending"
-      items={[
-        { value: "pending", label: "قيد المراجعة", count: 3 },
-        { value: "approved", label: "مقبولة", count: 12 },
-        { value: "rejected", label: "مرفوضة", count: 0 },
-      ]}
-    >
-      <p className="text-body text-fg-body">محتوى القسم النشط</p>
-    </Tabs>
+    <div data-demo="tabs">
+      <Tabs
+        label="أقسام لوحة الإدارة"
+        defaultValue="pending"
+        items={[
+          { value: "pending", label: "قيد المراجعة", count: 3 },
+          { value: "approved", label: "مقبولة", count: 12 },
+          { value: "rejected", label: "مرفوضة", count: 0 },
+        ]}
+      >
+        <p className="text-body text-fg-body">محتوى القسم النشط</p>
+      </Tabs>
+    </div>
   );
 }
