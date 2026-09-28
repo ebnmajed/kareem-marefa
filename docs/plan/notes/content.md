@@ -4878,3 +4878,29 @@ prototype puts «مباشر» inside the live ring; here the ring holds the lett
   overflow as scrollable even where nothing clips.
 - **Reported, not mine:** `content-panel.tsx:33` (`sessions'`) clamps Arabic body text with `line-clamp-4` — the same
   ellipsis defect.
+
+### Wave 15 — `on-team`, the lead's four rulings, and the card's focus ring
+
+- **`1b59ca0c`** — the poster's ink on a team colour is `text-on-team` / `bg-on-team` (`35a94be0`), not `on-sticker`. Same
+  value, its own name; nothing renders differently.
+- **Rulings on the open choices (the lead):** `stat`'s value in the display face — stays; `empty-state`'s title in the
+  display face — stays, **recorded as open** until the owner aligns it with `page-header` at the first screen; `card` and
+  `stat` hover as a border step with no shadow and no transition — approved; `story-ring`'s word under every ring —
+  approved.
+- **`fbae7d64` — the card's focus ring, inside the scope.** Confirmed by the lead in a browser (`081ffe8c` makes the
+  scope's rule read `--focus-offset`) and by me in Chromium: reached by Tab, the link computes `outline-offset: -3px`,
+  `outline-width: 3px`, and the ring's outer edge is inside the article's padding box on all four sides, on both grounds.
+  Before: `2px`, outside, clipped whole — no ring visible at all. The link also takes `pg:rounded-panel`, so the inset
+  ring's corners follow the article's 22 px curve rather than being cut by it. The inert `focus-visible:-outline-offset-2`
+  stays. **Outside the scope: not changed, and carried to the owner (SC 2.4.7).**
+- **The other thirteen, checked for a focusable control filling a box that clips.** The only `overflow-hidden` boxes in
+  my primitives are `card`'s article, `CardMedia`'s box, `avatar`, and the `progress` / `progress-bar` tracks:
+  - `avatar`, `progress`, `progress-bar` — hold nothing focusable. The poster's placeholder box clips nothing
+    (`91bd5c37`); its image box is `CardMedia`'s.
+  - `CardMedia`'s overlay — inset 8 px (`inset-x-2 top-2`). A focusable in it rings 5 px out (3 + 2) inside the
+    scope: inside the clip.
+  - `CardActions` — in the body, with 12 px (phone) or 16 px of padding: a ring of 5 px stays inside the article.
+  - `stat` with `href`, `story-ring`'s button, `reaction-bar`'s pills, `tag-chip`'s link and remove control,
+    `file-drop`'s chooser and remove controls, `empty-state`'s action — none sits inside a box that clips; each draws
+    the scope's ring 2 px outside itself, unclipped.
+  - `badge`, `panel`, `sticker` — nothing focusable.
