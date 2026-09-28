@@ -33,7 +33,12 @@ export function SessionCtaDemo() {
         chip="ترتيبك 3"
       />
       <SessionCta state={{ kind: "checkIn", act: { href: "/app/sessions/demo/check-in" } }} label="سجّل حضورك" />
-      <SessionCta state={{ kind: "attended" }} label="حضرت" chip="+50 تصل عند انتهاء الجلسة" />
+      {/* A chip is a few characters; the sentence is a note beneath it. `attended` has no note of
+          its own yet, so the demo sets the line under it, as a screen would. */}
+      <div className="flex flex-col gap-2">
+        <SessionCta state={{ kind: "attended" }} label="حضرت" chip="+50" />
+        <p className="text-caption text-fg-muted">تصل النقاط عند انتهاء الجلسة.</p>
+      </div>
       <SessionCta state={{ kind: "none", reason: "انتهى وقت الحجز لهذه الجلسة." }} label="الحجز مغلق" />
     </div>
   );

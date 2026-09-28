@@ -162,6 +162,47 @@ for (const { primitive, target, background, text } of COMPUTED) {
   });
 }
 
+// ── session-cta's layout, measured (the lead's review of the 390 px captures, sync 3). ──
+// A chip that touched its label, a label cut by a fixed 52 px, a chip that wrapped to the
+// control's height: each was seen by eye first. Now a gate: at 390 px on both grounds, for every
+// control and face in the demo, every part sits inside the control's box, the label and the chip
+// do not overlap, and the chip is one line.
+
+test("session-cta's parts fit their control at 390 px, on both grounds", async ({ page }) => {
+  await openGallery(page, WIDTHS[0].size);
+  test.skip(!(await wired(page, "session-cta")), "session-cta's demo is not wired into the gallery yet");
+  for (const ground of GROUNDS) {
+    const problems = await page.locator(demoOn("session-cta", ground.scope)).evaluate((demo) => {
+      const found: string[] = [];
+      const EPS = 0.5;
+      const inside = (a: DOMRect, b: DOMRect) =>
+        a.left >= b.left - EPS && a.right <= b.right + EPS && a.top >= b.top - EPS && a.bottom <= b.bottom + EPS;
+      const overlap = (a: DOMRect, b: DOMRect) =>
+        Math.min(a.right, b.right) - Math.max(a.left, b.left) > EPS && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > EPS;
+      const controls = Array.from(demo.querySelectorAll<HTMLElement>('button, a[href], [data-part="face"]'));
+      controls.forEach((control, i) => {
+        const name = `${i + 1}: ${control.textContent?.trim()}`;
+        const box = control.getBoundingClientRect();
+        const label = control.querySelector('[data-part="label"]');
+        const chip = control.querySelector('[data-part="chip"]');
+        if (label && !inside(label.getBoundingClientRect(), box)) found.push(`${name} — the label leaves the control`);
+        if (chip) {
+          const c = chip.getBoundingClientRect();
+          if (!inside(c, box)) found.push(`${name} — the chip leaves the control`);
+          if (label && overlap(label.getBoundingClientRect(), c)) found.push(`${name} — the label and the chip overlap`);
+          const range = document.createRange();
+          range.selectNodeContents(chip);
+          const lines = new Set(Array.from(range.getClientRects()).map((r) => Math.round(r.top)));
+          if (lines.size > 1) found.push(`${name} — the chip wraps to ${lines.size} lines`);
+        }
+      });
+      if (controls.length === 0) found.push("no control or face found in the demo");
+      return found;
+    });
+    expect(problems, `session-cta on the ${ground.name} ground`).toEqual([]);
+  }
+});
+
 test("every primitive's demo is in both grounds, once each", async ({ page }) => {
   await openGallery(page, WIDTHS[1].size);
   for (const primitive of PRIMITIVES) {

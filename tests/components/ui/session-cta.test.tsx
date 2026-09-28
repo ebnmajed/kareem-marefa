@@ -70,6 +70,34 @@ describe("SessionCta — the three states that are a control", () => {
   });
 });
 
+describe("SessionCta — the chip is Button's trailing slot, and never wraps", () => {
+  it("★ on a button the chip is a flex child after the label, not inside the label's run", () => {
+    draw({ state: { kind: "reserve", act: { action: never } }, label: "احجز مقعدك", chip: "12 من 40" });
+    const button = screen.getByRole("button");
+    const label = button.querySelector('[data-part="label"]')!;
+    const chip = button.querySelector('[data-part="chip"]')!;
+    expect(label).toHaveTextContent("احجز مقعدك");
+    expect(label.contains(chip)).toBe(false);
+    // Label first, chip after it, in document order.
+    expect(label.compareDocumentPosition(chip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chip.className).toContain("whitespace-nowrap");
+  });
+
+  it("the chip stays while pending, beside the kept label", () => {
+    draw({ state: { kind: "reserve", act: { action: never } }, label: "احجز مقعدك", chip: "12 من 40", pending: true });
+    expect(screen.getByRole("button").querySelector('[data-part="chip"]')).toHaveTextContent("12 من 40");
+  });
+
+  it("a face puts the word at the start and the chip at the end, with no fixed height", () => {
+    const { container } = draw({ state: { kind: "attended" }, label: "حضرت", chip: "+50" });
+    const face = container.querySelector('[data-part="face"]')!;
+    const parts = Array.from(face.children).map((el) => el.getAttribute("data-part") ?? el.querySelector("[data-part]")?.getAttribute("data-part"));
+    expect(parts).toEqual(["label", "chip"]);
+    expect(face.className).not.toMatch(/(^|\s)(pg:)?h-\d/);
+    expect(face.className).toContain("pg:min-h-13");
+  });
+});
+
 describe("SessionCta — pending keeps the label, and nothing is confirmed early (REQ-UIX-007)", () => {
   it("while pending the label stays, the spinner speaks, and a second press is impossible", () => {
     draw({ state: { kind: "reserve", act: { action: never } }, label: "احجز مقعدك", chip: "12 من 40", pending: true, pendingLabel: "جارٍ الحجز…" });
@@ -124,9 +152,9 @@ describe("SessionCta — the three faces that offer nothing to press but what th
   });
 
   it("attended: a fact with its chip — the amount is the caller's computed words, never the primitive's", () => {
-    const { container } = draw({ state: { kind: "attended" }, label: "حضرت", chip: "+50 تصل عند انتهاء الجلسة" });
+    const { container } = draw({ state: { kind: "attended" }, label: "حضرت", chip: "+50" });
     expect(controls(container)).toHaveLength(0);
-    expect(screen.getByText("+50 تصل عند انتهاء الجلسة").tagName).toBe("BDI");
+    expect(screen.getByText("+50").tagName).toBe("BDI");
   });
 
   it("★ none: the label and the reason in words — never a disabled control with no reason (REQ-SES-013)", () => {
@@ -184,7 +212,7 @@ describe("SessionCta — tokens only, composition, and the scope", () => {
           />
           <SessionCta state={{ kind: "booked", hold: "waitlist", cancel: { label: "غادر قائمة الانتظار", act: { action: never } } }} label="على قائمة الانتظار" chip="ترتيبك 3" />
           <SessionCta state={{ kind: "checkIn", act: { href: CHECK_IN } }} label="سجّل حضورك" />
-          <SessionCta state={{ kind: "attended" }} label="حضرت" chip="+50 تصل عند انتهاء الجلسة" />
+          <SessionCta state={{ kind: "attended" }} label="حضرت" chip="+50" />
           <SessionCta state={{ kind: "none", reason: "انتهى وقت الحجز لهذه الجلسة" }} label="الحجز مغلق" />
           <SessionCta state={{ kind: "reserve", act: { action: never } }} label="احجز مقعدك" pending pendingLabel="جارٍ الحجز…" />
         </div>
