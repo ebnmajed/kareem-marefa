@@ -18,11 +18,13 @@ import { CodeInputDemo } from "./demos/code-input";
 import { ComboboxDemo } from "./demos/combobox";
 import { DataTableDemo } from "./demos/data-table";
 import { DateTimeDemo } from "./demos/date-time";
+import { DialogDemo } from "./demos/dialog";
 import { EmptyStateDemo } from "./demos/empty-state";
 import { FileDropDemo } from "./demos/file-drop";
 import { FormSummaryDemo } from "./demos/form-summary";
 import { LevelCardDemo } from "./demos/level-card";
 import { MenuDemo } from "./demos/menu";
+import { PageHeaderDemo } from "./demos/page-header";
 import { PanelDemo } from "./demos/panel";
 import { PosterDemo } from "./demos/poster";
 import { ProgressDemo } from "./demos/progress";
@@ -31,14 +33,18 @@ import { RadioGroupDemo } from "./demos/radio-group";
 import { RaceBarDemo } from "./demos/race-bar";
 import { RankRowDemo } from "./demos/rank-row";
 import { ReactionBarDemo } from "./demos/reaction-bar";
+import { RouteErrorDemo } from "./demos/route-error";
 import { SheetDemo } from "./demos/sheet";
+import { SkeletonDemo } from "./demos/skeleton";
 import { StatDemo } from "./demos/stat";
 import { StickerDemo } from "./demos/sticker";
 import { StoryRingDemo } from "./demos/story-ring";
 import { SwitchDemo } from "./demos/switch";
 import { TabsDemo } from "./demos/tabs";
 import { TagChipDemo } from "./demos/tag-chip";
+import { ToastDemo } from "./demos/toast";
 import type { DemoGround } from "./ground";
+import { ReorderableDemo } from "./reorderable-demo";
 
 // «ساحة اللعب» in the gallery — contract 4, DEC-183 §4.2(f), DEC-186 §2.
 //
@@ -66,6 +72,12 @@ import type { DemoGround } from "./ground";
 // `field`, `input` and `textarea` wait for contract 5; `session-cta` for the button.
 
 const DEMOS: { file: string; title: string; node: ReactNode | ((ground: DemoGround) => ReactNode) }[] = [
+  { file: "page-header · section-header · prose", title: "العناوين والنص", node: <PageHeaderDemo /> },
+  { file: "dialog", title: "الحوار", node: <DialogDemo /> },
+  { file: "toast", title: "الإشعار العابر", node: <ToastDemo /> },
+  { file: "skeleton", title: "الهياكل", node: <SkeletonDemo /> },
+  { file: "route-error", title: "خطأ المسار", node: <RouteErrorDemo /> },
+  { file: "reorderable-list", title: "قائمة تُرتَّب بالنقر", node: <ReorderableDemo /> },
   { file: "tag-chip", title: "الوسم", node: <TagChipDemo /> },
   { file: "badge", title: "شارة الحالة", node: <BadgeDemo /> },
   { file: "avatar", title: "الصورة الرمزية وحلقة الفريق", node: <AvatarDemo /> },
