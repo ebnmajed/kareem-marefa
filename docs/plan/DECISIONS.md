@@ -4537,3 +4537,18 @@ Asked before Step 0, as the brief required: **not run**. The owner's standing co
 `scripts/traceability.mjs` matched a milestone with `/\bM(?:1[0-6]|[0-9])\b/`, an alternation that is order-sensitive (`DEC-102`) and was edited for M14, M15 and M16. It is now `/\bM\d{1,2}\b/`, which takes `M13` whole and names no milestone. The enumeration also refused, by accident, a story citing a milestone nobody had defined; that is kept on purpose as a **fifth gap report**: a story may cite only a milestone with its own `## M<n> —` heading in `14-roadmap.md` — `15` §24's invariant 3, which the script had never checked. Run against the plan as it stood: 320 requirements, 154 stories, no gaps.
 
 - **Documents changed:** `01-prd.md` (`REQ-UIX-018`, `REQ-UIX-019`, `REQ-INT-005`, `REQ-DSG-026` amended; `REQ-UIX-028` … `REQ-UIX-043` added), `14-roadmap.md` (M17), `15-backlog.md` (`STORY-UIX-019` … `STORY-UIX-026`; §24), `scripts/traceability.mjs` (§6), `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten agent files (the map; the pointer to `docs/design/`), `STATUS.md` (the wave-15 block), `docs/design/README.md` (its status line). `02-domain-model.md`'s `companies` follows in `0160`'s commit.
+
+---
+
+## DEC-184 — Wave 15, the owner's approval of Step 0: `DEC-183` stands as written, its four amendments and the scope ruling included
+
+- **Date:** 2026-09-28 · **Decided by:** the owner, after reading `DEC-183` on draft PR #33
+- **Confirms:** `DEC-183` in full. Nothing in it is amended.
+
+1. **§3's four amendments stand.** `DEC-NEXT-3`: Baloo Bhaijaan 2 is the interface's display face, and the baseline poster templates keep Reem Kufi. `DEC-NEXT-4`: `0160` adds `companies.team_color` and seeds nothing. `DEC-NEXT-8`: a leaderboard row carries the initials avatar in a team ring and never a photograph, so `DEC-099` holds. `DEC-NEXT-14`: the story viewer's hold and swipe get visible tap controls when it is built (`DEC-093`'s seventh place).
+2. **§4.2's ruling stands: the playground is a scope class, never `:root`.** No existing token is redefined; outside the scope every name resolves to today's value; this wave the gallery applies the scope and nothing else does.
+3. **The four teammates spawn planning-only** — `content`, `sessions`, `scoring`, `console` — and sync 1 approves their plans against the five contracts.
+
+**For the record, the order things happened in.** The approval was given while the session's permission classifier was refusing the shell and the agent tool, for the second time that day. The lead made no edit and spawned nobody until the owner had cleared it; this entry and the spawn follow that.
+
+- **Documents changed:** `STATUS.md` (the phase line; the contracts' and the checklist's first row)
