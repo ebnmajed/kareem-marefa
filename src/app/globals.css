@@ -237,6 +237,12 @@
   --color-team-gold: #ffd23f;
   --color-team-violet: #9b7cff;
   --color-team-mint: #3be8b0;
+  /* Ink on a team colour: a poster's placeholder is filled with its company's
+     colour and written on in this (REQ-UIX-032). It is 6.25:1 or better on all
+     seven. A team colour is data and any `#rrggbb` passes the column's check, so
+     the seven are what is proven; a colour an org invents is the brand kit's
+     kind of question, and `SCR-048` offers only the seven (DEC-186 §8). */
+  --color-on-team: #0b0c12;
 
   /* The five seeded levels, keyed by `levels.sort_order` — NEVER by a level's
      name, which an org may change (DEC-186 §7). Ink on every one. */

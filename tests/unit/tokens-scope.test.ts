@@ -157,6 +157,8 @@ describe("the playground's values pass, measured", () => {
 
   it("bone passes 4.5:1 on each of the six tints", () => {
     for (const n of [1, 2, 3, 4, 5, 6]) expect(contrast(hex("on-tint"), hex(`tint-${n}`)), `tint-${n}`).toBeGreaterThanOrEqual(4.5);
+    for (const team of ["silver", "tangerine", "magenta", "cyan", "gold", "violet", "mint"])
+      expect(contrast(hex("on-team"), hex(`team-${team}`)), `on-team on team-${team}`).toBeGreaterThanOrEqual(4.5);
   });
 
   it("the status constants' on-dark forms pass on the scope's surface, where the light ones do not", () => {
