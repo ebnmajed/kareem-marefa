@@ -95,8 +95,12 @@ export function Poster({ src, width, height, alt = "", title, category, date, te
       {/* Balanced, whole, never clamped, never shrunk (`02-typography.md`, REQ-UIX-032). */}
       <p
         data-slot="poster-title"
-        // The display scale's utilities carry their own 1.15 line height, so each size is followed
-        // by the same variant's `leading-[1.4]`, which Tailwind emits after it.
+        // ★ 1.4, NOT THE DISPLAY SCALE'S 1.15 — ruled by the lead after 91bd5c37; do not tidy it
+        // back. 1.15 is for a single line of numerals or a short label. This title wraps to several
+        // lines of Arabic that carry marks: Baloo Bhaijaan 2's content area is 1.712 em, so at 1.15
+        // a line's stacked marks (a shadda with its vowel) crowd into the line above. The display
+        // scale's utilities set their own 1.15, so each size is followed by the same variant's
+        // `leading-[1.4]`, which Tailwind emits after it.
         className="shrink-0 font-display text-base leading-[1.4] font-extrabold text-balance @min-[11rem]:text-lg @min-[14rem]:text-play-sm @min-[14rem]:leading-[1.4] @min-[18rem]:text-play-md @min-[18rem]:leading-[1.4]"
       >
         <bdi>{title}</bdi>
