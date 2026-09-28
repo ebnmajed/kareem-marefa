@@ -928,7 +928,8 @@ export type SessionCtaState =
   | { kind: "waitlist"; act: SessionCtaAct }
   | { kind: "booked"; hold?: "seat" | "waitlist"; cancel: { label: string; act: SessionCtaAct; note?: string } }
   | { kind: "checkIn"; act: SessionCtaAct }
-  | { kind: "attended" }
+  /** `note` is the sentence beneath the face — «تصل النقاط عند انتهاء الجلسة» (REQ-CHK-018). Never in the chip. */
+  | { kind: "attended"; note?: string }
   | { kind: "none"; reason: string };
 
 /**
@@ -941,7 +942,11 @@ export interface SessionCtaProps extends Styleable {
   state: SessionCtaState;
   /** The words on the face. */
   label: string;
-  /** The trailing chip — «12 من 40». Drawn inside `<bdi>`. */
+  /**
+   * The trailing chip — «12 من 40», «+50». ★ A FEW CHARACTERS, NEVER A SENTENCE: a chip does not
+   * wrap, and one that tried swallowed the control at 326 px. A sentence is a state's `note`.
+   * Drawn inside `<bdi>`, and part of the accessible name.
+   */
   chip?: string;
   /** Beside the spinner while an action is in flight. The label never changes. */
   pendingLabel?: string;
