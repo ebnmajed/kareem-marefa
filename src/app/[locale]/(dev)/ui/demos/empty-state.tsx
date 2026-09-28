@@ -9,7 +9,7 @@ import { ImageIcon } from "@/components/ui/icons";
 
 export function EmptyStateDemo() {
   return (
-    <div className="flex flex-col gap-4">
+    <div data-demo="empty-state" className="flex flex-col gap-4">
       <EmptyState
         title="لا جلسات بعد"
         description="كل جلسة تبدأ باقتراح. اقترح أول جلسة لفريقك، وستظهر هنا حين تُنشر."

@@ -12,7 +12,7 @@ const RACE = [
 
 export function ProgressBarDemo() {
   return (
-    <div className="flex max-w-md flex-col gap-5">
+    <div data-demo="progress-bar" className="flex max-w-md flex-col gap-5">
       {/* A level: named, with its value in text. */}
       <div className="flex flex-col gap-1.5">
         <span className="text-caption text-fg-muted">

@@ -20,7 +20,7 @@ const TEAMS = [
 
 export function PosterDemo() {
   return (
-    <div className="flex flex-col gap-6">
+    <div data-demo="poster" className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {TEAMS.map((team, i) => (
           <Poster

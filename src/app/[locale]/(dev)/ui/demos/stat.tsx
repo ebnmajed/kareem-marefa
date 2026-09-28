@@ -6,7 +6,7 @@ import { Stat } from "@/components/ui/stat";
 
 export function StatDemo() {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div data-demo="stat" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Stat label="الحضور" value="124" hint="هذا الشهر" />
       <Stat label="الجلسات" value="18" href="/ar/ui" />
       <Stat label="النقاط" value="1,410" hint="منذ بداية الموسم" />

@@ -8,7 +8,7 @@ import { TagChip } from "@/components/ui/tag-chip";
 
 export function TagChipDemo() {
   return (
-    <div className="flex flex-col gap-4">
+    <div data-demo="tag-chip" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <TagChip label="تقارير" />
         <TagChip label="أتمتة" count={12} />

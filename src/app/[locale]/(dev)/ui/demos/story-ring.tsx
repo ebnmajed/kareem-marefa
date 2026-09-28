@@ -18,7 +18,7 @@ const RINGS = [
 
 export function StoryRingDemo() {
   return (
-    <div className="flex gap-3 overflow-x-auto p-2">
+    <div data-demo="story-ring" className="flex gap-3 overflow-x-auto p-2">
       {RINGS.map((ring) => (
         <StoryRing
           key={`${ring.state}-${ring.glyph}`}

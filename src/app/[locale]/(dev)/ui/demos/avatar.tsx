@@ -20,7 +20,7 @@ const NAMES = ["ريم العتيبي", "سارة القحطاني", "نورة �
 
 export function AvatarDemo() {
   return (
-    <div className="flex flex-col gap-6">
+    <div data-demo="avatar" className="flex flex-col gap-6">
       {/* The six tints, keyed by the member id; no team ring. */}
       <div className="flex flex-wrap items-center gap-3">
         {NAMES.map((name, i) => (

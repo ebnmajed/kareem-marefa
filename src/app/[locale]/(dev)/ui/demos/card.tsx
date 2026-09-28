@@ -21,7 +21,7 @@ function Body({ title, meta }: { title: string; meta: string }) {
 
 export function CardDemo() {
   return (
-    <div className="flex flex-col gap-6">
+    <div data-demo="card" className="flex flex-col gap-6">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Card href="/ar/ui">
           <CardMedia placeholderFrom="لوحة تحكم لا يهجرها أحد" overlay={<SessionStatusBadge phase="open" seat="available" size="sm" />} />

@@ -22,7 +22,7 @@ const TANGERINE = { backgroundColor: "#FF9A2E", ["--sticker-ground" as string]: 
 
 export function StickerDemo() {
   return (
-    <div className="flex flex-col gap-6">
+    <div data-demo="sticker" className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-5 p-2">
         {FILLS.map(({ fill, word }, i) => (
           <Sticker key={fill} fill={fill} rotate={i % 2 === 0 ? -4 : 3}>

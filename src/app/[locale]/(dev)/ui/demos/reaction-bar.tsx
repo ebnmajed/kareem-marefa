@@ -24,7 +24,7 @@ const noop = () => {};
 
 export function ReactionBarDemo() {
   return (
-    <div className="flex flex-col gap-4">
+    <div data-demo="reaction-bar" className="flex flex-col gap-4">
       <ReactionBar label="التفاعلات — لا شيء مضغوط" items={set([], { like: 12, fire: 3, bolt: 7 })} onToggle={noop} />
       <ReactionBar label="التفاعلات — إعجاب ونار" items={set(["like", "fire"], { like: 13, fire: 4, bolt: 7 })} onToggle={noop} />
       <ReactionBar label="التفاعلات — بلا عدد" items={set([], {})} onToggle={noop} />

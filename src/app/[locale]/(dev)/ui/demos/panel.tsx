@@ -6,7 +6,7 @@ import { Panel } from "@/components/ui/panel";
 
 export function PanelDemo() {
   return (
-    <div className="flex flex-col gap-3">
+    <div data-demo="panel" className="flex flex-col gap-3">
       <Panel>لوحة عادية — ملخص الجلسة ومكانها وموعدها.</Panel>
       <Panel tone="info">معلومة — تصلك النقاط عند انتهاء الجلسة، لا عند الحضور.</Panel>
       <Panel tone="success">تم — حُفظت المادة ويمكن للحاضرين تنزيلها.</Panel>

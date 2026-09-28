@@ -10,7 +10,7 @@ const SEATS: SeatState[] = ["available", "full", "closed"];
 
 export function BadgeDemo() {
   return (
-    <div className="flex flex-col gap-4">
+    <div data-demo="badge" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         {SESSION_PHASES.map((phase) => (
           <SessionStatusBadge key={phase} phase={phase} />

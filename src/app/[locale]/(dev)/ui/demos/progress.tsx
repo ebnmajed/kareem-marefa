@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 
 export function ProgressDemo() {
   return (
-    <div className="flex max-w-md flex-col gap-4">
+    <div data-demo="progress" className="flex max-w-md flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <span className="text-caption text-fg-muted">
           المقاعد المحجوزة · <bdi>18 من 40</bdi>
