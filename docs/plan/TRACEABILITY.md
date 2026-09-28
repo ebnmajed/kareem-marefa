@@ -509,6 +509,6 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-040` | — | — | `SCR-010` `SCR-048` | — | — | `STORY-UIX-022` | M17 |
 | `REQ-UIX-041` | — | — | `SCR-010` `SCR-012` `SCR-014` +3 | — | — | `STORY-UIX-025` | M17 |
 | `REQ-UIX-042` | — | — | `SCR-012` `SCR-014` `SCR-022` +2 | — | — | `STORY-UIX-025` | M17 |
-| `REQ-UIX-043` | `ENT-companies` | — | `SCR-048` | — | — | `STORY-UIX-026` | M17 |
+| `REQ-UIX-043` | `ENT-companies` | `POL-companies.team_color` | `SCR-048` | — | — | `STORY-UIX-026` | M17 |
 
 <!-- TRACEABILITY:END -->

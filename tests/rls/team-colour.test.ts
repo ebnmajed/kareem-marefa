@@ -21,7 +21,7 @@ async function companyOf(tx: Tx, f: F) {
   return company(tx, f.a.id);
 }
 
-describe("companies.team_color", () => {
+describe("POL-companies.team_color", () => {
   it("★ the migration wrote no colour: every company starts with none", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
