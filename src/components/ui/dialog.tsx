@@ -36,9 +36,17 @@ type ContentProps = Omit<ComponentProps<typeof RadixDialog.Content>, "title"> & 
   size?: "default" | "media";
 };
 
+// ★ `pg:bg-surface` is not decoration. The frame's own background is
+// `bg-[var(--color-canvas)]`, and that variable is resolved at the ROOT — it is
+// white inside `.theme-dark` and inside the playground alike — while the text
+// beside it reads `--fg-body`, which the scope does reassign. Without a
+// background of the scope's the dialog was the scope's light text on white. Only
+// a browser could see it (`tests/e2e/wave15-lead-gallery.spec.ts`); jsdom
+// computes no colour. The surface, not the ground: a dialog is told from the page
+// by its surface and a line (DEC-186 §8).
 const FRAME = {
   default:
-    "fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-field bg-[var(--color-canvas)] p-6 text-[var(--fg-body)] shadow-xl outline-none sm:inset-x-auto sm:start-1/2 sm:w-full sm:-translate-x-1/2 rtl:sm:translate-x-1/2 pg:rounded-panel pg:border pg:border-edge-strong pg:shadow-none",
+    "fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] w-auto max-w-lg -translate-y-1/2 overflow-y-auto rounded-field bg-[var(--color-canvas)] p-6 text-[var(--fg-body)] shadow-xl outline-none sm:inset-x-auto sm:start-1/2 sm:w-full sm:-translate-x-1/2 rtl:sm:translate-x-1/2 pg:rounded-panel pg:border pg:border-edge-strong pg:bg-surface pg:shadow-none",
   // Safe-area padding is symmetric on the inline axis (the larger of the two
   // insets), so it needs no direction: a notch on either side is cleared.
   media:

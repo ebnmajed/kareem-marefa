@@ -47,6 +47,21 @@ async function scopeComputes(page: import("@playwright/test").Page, scope: strin
   );
 }
 
+/**
+ * Whether a computed `box-shadow` paints anything. Tailwind's `shadow-none` does not compute to
+ * `none`: it composes five layers, each `rgba(0, 0, 0, 0) 0px 0px 0px 0px`. What is asked is that
+ * nothing is drawn, so every layer must be fully transparent or have no extent.
+ */
+function paintsAShadow(value: string) {
+  if (value === "none") return false;
+  const layers = value.split(/,(?![^(]*\))/).map((l) => l.trim());
+  return layers.some((layer) => {
+    const transparent = /rgba\(\s*\d+,\s*\d+,\s*\d+,\s*0\s*\)|transparent/.test(layer);
+    const lengths = (layer.replace(/rgba?\([^)]*\)/, "").match(/-?[\d.]+px/g) ?? []).map(parseFloat);
+    return !transparent && lengths.some((n) => n !== 0);
+  });
+}
+
 for (const ground of GROUNDS) {
   test(`a dialog opened on the ${ground.name} ground lands inside the scope and wears it`, async ({ page }) => {
     const demo = page.locator(`${ground.scope} [data-demo="dialog"]`);
@@ -70,13 +85,17 @@ for (const ground of GROUNDS) {
     // It wears the scope: the panel's corner, a line and no shadow, the scope's ground.
     const computed = await dialog.evaluate((el) => {
       const cs = getComputedStyle(el);
-      return { radius: cs.borderTopLeftRadius, shadow: cs.boxShadow, border: cs.borderTopWidth, background: cs.backgroundColor, position: cs.position };
+      return { radius: cs.borderTopLeftRadius, shadow: cs.boxShadow, border: cs.borderTopWidth, background: cs.backgroundColor, color: cs.color, position: cs.position };
     });
     expect(computed.radius).toBe("22px");
-    expect(computed.shadow).toBe("none");
+    expect(paintsAShadow(computed.shadow), `the dialog draws a shadow: ${computed.shadow}`).toBe(false);
     expect(computed.border).toBe("1px");
     expect(computed.position).toBe("fixed");
-    expect(computed.background).toBe(await scopeComputes(page, ground.scope, "bg-canvas", "background-color"));
+    // ★ The scope's SURFACE — and its text is the scope's too, so the two are a pair the scope chose.
+    // The frame's own background resolves at the root and is white on every ground; this failed
+    // on the first run, with the scope's light text on it.
+    expect(computed.background).toBe(await scopeComputes(page, ground.scope, "bg-surface", "background-color"));
+    expect(computed.color).toBe(await scopeComputes(page, ground.scope, "text-fg-body", "color"));
 
     // It is whole inside the viewport at 390 px, and it covers the page beneath it.
     const box = await dialog.boundingBox();
@@ -114,7 +133,7 @@ for (const ground of GROUNDS) {
       });
       expect(c.inScope).toBe(true);
       expect(c.radius).toBe("16px");
-      expect(c.shadow).toBe("none");
+      expect(paintsAShadow(c.shadow), `the toast draws a shadow: ${c.shadow}`).toBe(false);
     }
     await page.screenshot({ path: join(SHOTS, `wave15-lead-toast-${ground.name}-390.png`), animations: "disabled" });
   });
