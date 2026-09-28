@@ -23,6 +23,7 @@ it never defines them.
 | `05-stories.md` | The session stories feature: frame types, triggers, sources, viewer behaviour, RLS, one schema addition | before the stories work |
 | `06-decisions-proposed.md` | Draft DEC entries this direction requires. **Nothing in this folder overrides `DECISIONS.md` until these are accepted** | before planning |
 | `07-tasks.md` | Implementation order in waves, definition of done, what must not move | when planning |
+| `08-assets.md` + `assets/` | The wordmark, the app mark, the six objects, the display font files, the new glyphs, and the pipeline that regenerates them | before wave 1 |
 | `prototypes/motion-story.html` | The eight-moment reference prototype (vanilla HTML/CSS/JS, RTL, reduced-motion aware) | as behaviour reference, never as code to paste |
 | `prototypes/stories.html` | The stories viewer reference prototype | same |
 | `HANDOFF-PROMPT.md` | The prompt to give the lead Claude Code session | when starting the session |

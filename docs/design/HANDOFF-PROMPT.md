@@ -11,7 +11,7 @@ gate.
 
 **1. Read, in this order, before anything else:** `docs/design/README.md`, `00-direction.md`,
 `01-tokens.md` with `tokens.css`, `02-typography.md`, `03-motion.md`, `04-components.md`,
-`05-stories.md`, `06-decisions-proposed.md`, `07-tasks.md`. Then open
+`05-stories.md`, `06-decisions-proposed.md`, `07-tasks.md`, `08-assets.md`. Then open
 `docs/design/prototypes/motion-story.html` and `docs/design/prototypes/stories.html` and read their CSS
 and JS as behaviour references: sequence, durations, transform-only rules, RTL tap zones, the
 `dir="ltr"` code boxes, the reduced-motion fallbacks. They are not code to port; the product is React 19,

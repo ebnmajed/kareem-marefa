@@ -24,7 +24,8 @@ and `DECISIONS.md` as the source of truth).
   `date-time` → `sheet` → `tabs` → `toast` → `skeleton` → the console primitives (tokens only).
 - New primitives: `sticker`, `poster`, `session-cta`, `reaction-bar`, `code-input`, `progress-bar`,
   `rank-row`, `race-bar`, `level-card`, `story-ring`.
-- New glyphs in `icons.tsx`.
+- New glyphs in `icons.tsx` (from `assets/icons/icons-additions.tsx`).
+- Install the assets per `08-assets.md`: wordmark component, mark and metadata icons, object components and `public/objects/`, the 2048 px rasters as platform design assets.
 - Gate: `npm run qa` green; the frozen public routes' visual baseline **unchanged**
   (`REQ-NFR-019`); every new primitive has its jsdom test, RTL check and gallery entry.
 

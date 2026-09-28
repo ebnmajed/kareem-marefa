@@ -43,10 +43,13 @@ flame, trophy, compass, plus, ticket, coin, bolt, star, pin, camera, download, c
 chevron-start/end (mirrored pair), pause, close. Each is an inline SVG in `icons.tsx`; none comes
 from a library.
 
-## Assets (rendered, not drawn in CSS)
+## Assets
 
-The 3D objects are pre-rendered images, self-hosted, served from our storage through the existing
-image route, at two sizes (1× and 2×), WebP with a PNG fallback:
+The six objects, the wordmark, the app mark, the display font files and the new glyphs ship in
+`docs/design/assets/` — masters as SVG with outlined labels, rasters at 1×/2×/4× and 2048 px for
+posters, WebP with PNG fallback. `08-assets.md` says where each file goes in the repo and how to
+regenerate them. Inline the SVG when an object animates (coin, flame); use `<img>` with `srcset`
+elsewhere; hand the designer only the rasters (`DEC-009`).
 
 | Asset | Used by |
 |---|---|
@@ -56,10 +59,6 @@ image route, at two sizes (1× and 2×), WebP with a PNG fallback:
 | ticket | reservation moment |
 | star badge | achievements, badge unlock |
 | rocket | level-up |
-
-Until the renders exist, the SVG approximations in the prototypes are the placeholders; the coin and
-the flame in `prototypes/motion-story.html` are close enough to ship behind a flag. The set is also the
-optional poster layer proposed in `06` (`REQ-DSG-026` amendment).
 
 ## Definition of done for every primitive
 

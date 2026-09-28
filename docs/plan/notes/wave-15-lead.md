@@ -62,60 +62,60 @@ is append-only, and corrections are new entries. Write `DEC-183` yourself.
 `docs/plan/`, `DECISIONS.md` still wins and you stop and ask — but it has already been checked against
 the tree once, and re-measuring what is in that table is waste.
 
-## ★★ The six toy-gloss objects — the owner's ruling, and what «verbatim» can and cannot mean
+## ★★ The assets EXIST. `docs/design/assets/` — 102 files, and it changes this wave's shape
 
-**The owner has ruled that this session generates them, verbatim to the design.** Measured, that
-splits in two, and the design says so itself (`04-components.md`): *«Until the renders exist, the SVG
-approximations in the prototypes are the placeholders; the coin and the flame in
-`prototypes/motion-story.html` are close enough to ship behind a flag.»*
+The owner commissioned the asset set on 2026-09-28 and it is installed. **An earlier version of this
+brief told you to derive four of the six objects from a recipe. That instruction is withdrawn — do not
+derive anything.** `08-assets.md` is the new document and its destination table is the instruction.
 
-| Object | Used by | What exists |
-|---|---|---|
-| **coin** | check-in celebration, points empty state | ★ **complete inline SVG**, `motion-story.html:392-395` |
-| **flame** | streak card, story «جارية الآن» | ★ **complete inline SVG** |
-| cup | companies race, season end | **nothing** |
-| ticket | reservation moment | nothing as an object — `.ticket` in the prototype is a CSS card with punched notches, not the toy-gloss object |
-| star badge | achievements, badge unlock | **nothing** |
-| rocket | level-up | **nothing** |
+| Shipped | |
+|---|---|
+| **The six objects** | SVG masters at a `160 × 160` viewBox with **outlined labels**, plus PNG **and** WebP at **160 / 320 / 640 / 2048** — 1×, 2×, 4× and the poster size |
+| **The display face** | Baloo Bhaijaan 2, Arabic and Latin, 700 + 800 + variable, as `.woff2`, with `fonts.css` and **`LICENSE-OFL.txt`** |
+| **Brand** | the Arabic wordmark as **outlines** in three tones (ink, lime, bone), SVG + PNG + WebP at 1200 and 3000; the app mark; icons at 32/180/192/512 |
+| **Glyphs** | **fifteen** new house glyphs already written as React components, `assets/icons/icons-additions.tsx` |
+| **The pipeline** | `assets/scripts/generate-masters.py` and `render-assets.mjs`, so a change to a master is one command from every derived file |
 
-★ **For the coin and the flame, «verbatim» is exact and is an EXTRACTION, not an invention.** Take
-the SVG out of the prototype byte-for-byte and rasterise it. Do not redraw it, do not tidy it, do not
-re-pick its colours.
+★ **Follow `08-assets.md`'s destination table literally.** It is correct about this repository's own
+rules and it has been checked: inline SVG belongs in `src/` (where `icons.tsx` already lives), the
+**designer takes raster only** (`DEC-009`, invariant 11), the **3000 px wordmark** clears the A3 PPI
+guard (`REQ-DSG-019`), and the objects' 2048 px rasters — **never the SVG** — are the optional poster
+layer.
 
-★★ **For the other four there is no «T» to follow — the design names them and stops.** Say so to the
-owner rather than inventing and calling it verbatim. **But the coin makes the vocabulary legible**, so
-derivation is disciplined rather than free. Its recipe, read off `:393-394`:
+**What I verified for you, so you do not spend the wave on it:**
 
-- a radial gradient from `35% 28%`, light to dark — `#EDFFA3` → `#C6FF3D` → `#78AD12`;
-- a second circle of the same radius offset **10 px below**, filled with a darker vertical gradient
-  (`#9CCF29` → `#4F7A0C`), which is what reads as depth;
-- an inner ring, `stroke-width 4`, the mid tone at `opacity .5`;
-- a white ellipse `rx 18 ry 8` at `opacity .55`, rotated `-30°`, upper left — the specular gloss.
+1. ★★ **The font keeps its Arabic shaping.** `fontTools` on
+   `baloo-bhaijaan-2-arabic-800-normal.woff2` reads **`GSUB: ccmp fina init locl medi rlig`** and
+   **`GPOS: kern mark mkmk`**. `rlig`, `mark` and `mkmk` are all present, so lam-alef and tashkeel
+   survive. That is the trap `CLAUDE.md` calls «the likeliest silent Arabic killer» and this file
+   clears it. ★ **Re-run that check after any step that re-subsets or instances the face** — the TTFs
+   the worker and the parity goldens need are produced from the variable `.woff2`, and that
+   conversion is where the features would be lost, not here.
+2. **The six objects are visually consistent** — one specular highlight upper-left, a darker edge
+   beneath for depth, a separate soft shadow. I opened `assets/objects/contact-sheet.png`. The masters
+   carry `<g id="shadow">` apart from `<g id="object">` so the shadow drops on a coloured poster
+   ground, exactly as `08` says.
+3. **The coin master is the prototype's coin, promoted** — the same gradients (`#EDFFA3` → `#C6FF3D`
+   → `#78AD12`, edge `#9CCF29` → `#4F7A0C`), the same geometry and the same `-12°` rotation, with the
+   label converted from text to a path.
 
-**Write that recipe into `DEC-183` or a sibling entry** so the four derived objects are consistent
-with the two given ones and with each other, and so a later session can extend the set without
-guessing. Propose the four to the owner as stills before rasterising them.
+**Two things `08-assets.md` does not tell you:**
 
-**The pipeline is entirely in-house — nothing new is needed:**
-
-1. `04-components.md` requires **pre-rendered images**, self-hosted through the existing image route,
-   **1× and 2×, WebP with a PNG fallback**. They are not shipped as live SVG.
-2. Rasterise with the Playwright already in `scripts/`, then `cwebp`, which **is already in the worker
-   image** (wave 14 added `zip` beside it the same way). No new dependency, no CDN.
-3. ★ **Invariant 11 is not in the way and you must not read it as a blocker.** It forbids SVG
-   *uploads*, because an uploaded SVG renders inside a privileged headless Chromium. These are
-   authored in the repository and rasterised by us — exactly the position of `icons.tsx`'s
-   hand-authored inline SVG. What ships is raster.
-4. ★ **The coin's SVG sets `font-family: 'Baloo Bhaijaan 2'` weight 800**, so it cannot be rasterised
-   until step 2 of this wave has materialised the face. Sequence it after the font, not before.
-
-★ **One real defect in the coin, and it is a requirement conflict, not a taste question.** The «+50»
-is **baked into the SVG as text**. `REQ-CHK-018` — built in wave 12 — computes what a member has
-earned **per session**, and it is not always 50. A hardcoded coin would state a number the product
-knows to be wrong, on the one screen whose whole purpose is telling the member the truth about what
-they earned. **Recommendation: rasterise the coin WITHOUT the numeral and let the component draw the
-amount over it** from the type scale, so there is one asset and the number stays honest. Settle it at
-sync 1 and write it down.
+1. ★ **`sharp` is installed but is NOT a direct dependency.** `08` says it is «already a Next.js
+   dependency»; it is in `node_modules` transitively and appears nowhere in `package.json`.
+   `render-assets.mjs` therefore works on this machine today and could stop working after any
+   dependency change, silently. **Either add `sharp` explicitly — and then `npm run lockfile` through
+   Docker, never a plain `npm install` — or treat regeneration as a local-only tool and never put it
+   in CI.** Say which you chose.
+2. ★★ **The «+50» on the coin is still a requirement conflict, and it is now cheap to fix.**
+   `REQ-CHK-018`, built in wave 12, computes what a member has earned **per session**, and it is not
+   always 50. A baked «+50» states a number the product knows to be wrong on the one screen whose
+   purpose is telling the member the truth. The label is a separate `<path>` inside `<g id="object">`,
+   so **a label-free coin is one edit to the master and one run of `render-assets.mjs`** — not a
+   redesign. **Recommendation: ship the coin without the numeral and let the component draw the amount
+   over it** from the type scale, keeping one asset and an honest number. Settle it at sync 1, write
+   it down, and keep the «+50» master for the points empty state where the number is decorative.
+   ★ The ticket's «محجوز» is a fixed word and is correctly baked.
 
 ## STEP 0 — a gate, not a step
 
