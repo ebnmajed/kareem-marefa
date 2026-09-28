@@ -174,6 +174,7 @@ async function snapshot(page: Page, parts: readonly Part[]): Promise<Snapshot> {
             out.width = Math.round(box.width * 100) / 100;
             out.height_box = Math.round(box.height * 100) / 100;
             out.focusVisible = el.matches(":focus-visible");
+            out.focused = document.activeElement === el;
             out.hovered = el.matches(":hover");
           }
           snap[name] = out;
@@ -258,6 +259,44 @@ async function keyboardFocus(page: Page, selector: string) {
 }
 
 /**
+ * ★ A STATE IS RECORDED ONLY WHEN IT HOLDS. The lead's first run on `main` recorded the submit
+ * button AT REST under «hover submit»: on the first, cold page the button moved from under the
+ * pointer after `hover()` returned. So the sample itself is the check — its `hovered` (or
+ * `focused`) on the target must be true — and a sample that fails it is retried, a bounded number
+ * of times, with the pointer (or focus) cleared first. Never a rest state under a hover's name:
+ * after the last attempt the test FAILS, naming the part.
+ */
+const ATTEMPTS = 5;
+
+async function sampleHovered(page: Page, name: string, selector: string, parts: readonly Part[]): Promise<Snapshot> {
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    await neutral(page);
+    await page.locator(selector).first().hover();
+    await settle(page);
+    const snap = await snapshot(page, parts);
+    if (snap[name]?.hovered === true) return snap;
+  }
+  throw new Error(`«hover ${name}»: ${selector} never matched :hover in ${ATTEMPTS} attempts`);
+}
+
+async function sampleFocused(page: Page, name: string, selector: string, parts: readonly Part[], focus: () => Promise<void>): Promise<Snapshot> {
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    await neutral(page);
+    await focus();
+    await settle(page);
+    const snap = await snapshot(page, parts);
+    if (snap[name]?.focused === true) return snap;
+  }
+  throw new Error(`«focus ${name}»: ${selector} was never document.activeElement in ${ATTEMPTS} attempts`);
+}
+
+/** The first page of a run measured like the rest: its fonts loaded and its network quiet. */
+async function arrive(page: Page, path: string) {
+  await page.goto(path, { waitUntil: "networkidle" });
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+}
+
+/**
  * Hover and keyboard focus for each target that is not a text field, recording the target with
  * its own sub-parts (`submit` with `submit label`). A target hidden at this width — «سجّل اهتمامك»
  * is `max-sm:hidden` — has its rest state only.
@@ -267,19 +306,14 @@ async function interactive(page: Page, targets: readonly Part[], parts: readonly
     const target = page.locator(selector).first();
     if (!(await target.count()) || !(await target.isVisible())) continue;
     const group = parts.filter(([n]) => n === name || n.startsWith(`${name} `));
-    await target.hover();
-    await settle(page);
-    states[`hover ${name}`] = await snapshot(page, group);
-    await neutral(page);
-    await keyboardFocus(page, selector);
-    await settle(page);
-    states[`focus ${name}`] = await snapshot(page, group);
+    states[`hover ${name}`] = await sampleHovered(page, name, selector, group);
+    states[`focus ${name}`] = await sampleFocused(page, name, selector, group, () => keyboardFocus(page, selector));
     await neutral(page);
   }
 }
 
 async function register(page: Page, locale: string) {
-  await page.goto(`/${locale}/register`, { waitUntil: "networkidle" });
+  await arrive(page, `/${locale}/register`);
   // The provider's role reveals the two topic fields (CSS `:has`, `globals.css` `.provider-fields`).
   await page.click('label[for="reg-role-provider"]');
   await expect(page.locator("#reg-topic-description")).toBeVisible();
@@ -291,18 +325,14 @@ async function register(page: Page, locale: string) {
   states.rest = await snapshot(page, all);
 
   for (const { id } of CONTROLS) {
-    await page.locator(`#${id}`).hover();
-    await settle(page);
-    states[`hover ${id}`] = await snapshot(page, controlParts(id));
+    states[`hover ${id}`] = await sampleHovered(page, id, `#${id}`, controlParts(id));
     await neutral(page);
   }
 
   // A text field matches `:focus-visible` on any focus in Chromium, so `focus()` is the keyboard
   // ring; the snapshot records `focusVisible` so a change in that heuristic is seen, not assumed.
   for (const { id } of CONTROLS) {
-    await page.locator(`#${id}`).focus();
-    await settle(page);
-    states[`focus ${id}`] = await snapshot(page, controlParts(id));
+    states[`focus ${id}`] = await sampleFocused(page, id, `#${id}`, controlParts(id), () => page.locator(`#${id}`).focus());
     await neutral(page);
   }
 
@@ -319,9 +349,7 @@ async function register(page: Page, locale: string) {
   states.invalid = await snapshot(page, all);
 
   for (const { id } of CONTROLS) {
-    await page.locator(`#${id}`).focus();
-    await settle(page);
-    states[`invalid+focus ${id}`] = await snapshot(page, controlParts(id));
+    states[`invalid+focus ${id}`] = await sampleFocused(page, id, `#${id}`, controlParts(id), () => page.locator(`#${id}`).focus());
     await neutral(page);
   }
 
@@ -329,7 +357,7 @@ async function register(page: Page, locale: string) {
 }
 
 async function landing(page: Page, locale: string) {
-  await page.goto(`/${locale}`, { waitUntil: "networkidle" });
+  await arrive(page, `/${locale}`);
   // The intro sting is finite (~3.8 s); `settle` waits it out and ignores the infinite ones.
   await neutral(page);
   const states: Record<string, Snapshot> = {};
@@ -344,6 +372,13 @@ test.describe("wave 15 — the public site's controls, computed", () => {
     test.skip(test.info().project.name !== "desktop", "recorded once, on the desktop project");
     test.setTimeout(300_000);
     const result: Record<string, Record<string, Snapshot>> = {};
+
+    // Warm the server and the font cache, so the first measured page is measured like the other seven.
+    await page.setViewportSize({ width: WIDTHS[0].width, height: WIDTHS[0].height });
+    for (const locale of LOCALES) {
+      await arrive(page, `/${locale}/register`);
+      await arrive(page, `/${locale}`);
+    }
 
     for (const locale of LOCALES) {
       for (const size of WIDTHS) {
