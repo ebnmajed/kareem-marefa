@@ -4000,3 +4000,615 @@ is not moved.
    This is best landed in the promotion commit.
 2. **The e2e run.** Run `wave13-sessions-hub.spec.ts` on a build at or after `78cf112`, or hand me
    a window with the gate lock.
+
+---
+
+# Wave 15 plan — the eight form primitives onto the scope, `session-cta` and `code-input` (`DEC-183`, `DEC-184`, M17)
+
+*Planning only. No code, no test and no demo until sync 1 approves this. Measured on
+`wave-15/tokens-and-primitives` at `dbce028`, 2026-09-28. Serves `REQ-UIX-030`, `REQ-UIX-033`,
+`REQ-UIX-035`, contracts 1, 2, 4 and 5.*
+
+## W15.0 · The four findings that change the plan
+
+1. ★★ **The public site renders three of my eight primitives, not six.** The brief, `STATUS.md` (Step 0,
+   «Design vs tree, 2»), `DEC-183` §4.2's last paragraph and contract 5 all say the register form renders
+   `checkbox`, `radio-group` and `form-summary` too. **It does not.** I walked the import graph of every file
+   under `(marketing)/` and of `[locale]/layout.tsx` (value imports, transitively). The only `ui/` files it
+   reaches are `button`, `icons`, **`field`, `input` and `textarea`**.
+   - `registration-form.tsx:24-27` imports `Field`, `Input` and `Textarea`, and no other primitive of mine.
+   - The category chips (`:295-316`) and the role cards (`:392-427`) are **raw** `<input type="radio">`
+     under `ui-lint-disable-next-line field` escapes (`:299`, `:396`). Neither is `ui/radio-group`.
+   - The error summary is hand-rolled (`:165-184`), with `role="alert"` and plain links. It is not
+     `ui/form-summary`. The role and category errors are the file's own `FieldError` (`:485-506`).
+   - No checkbox exists on any public route.
+   So contract 5 binds **`field`, `input` and `textarea`** for me. `checkbox`, `radio-group` and
+   `form-summary` reach no frozen route. (`radio-group` does reach `(auth)/choose-org/page.tsx:5`, which is
+   public but not the frozen contract, and it renders inside `.theme-dark`, `(auth)/layout.tsx:20`.)
+2. ★★ **`controlClass()` is one function, in `field.tsx:105`, and it is the face of five primitives and
+   five other files.** `input.tsx:45`, `textarea.tsx:32` and `select.tsx:64` call it. So do `console`'s
+   `combobox.tsx:307`, `comment-composer.tsx:218`, `admin/rtl-datetime-picker.tsx:283`,
+   `admin/duration-input.tsx`, and three `branding/*` files. **«One commit per primitive» cannot hold for the
+   control's face.** Whichever commit changes `controlClass()` moves the input, the textarea, the select and
+   the combobox at once, and on the register form it moves `#reg-name`, `#reg-email`, `#reg-topic-title`
+   and `#reg-topic-description` together. §W15.6 orders the commits around this, and `console` must hear it
+   (its plan §1.7 #2 already expects it).
+3. ★ **The semantic roles alone cannot be «today's value outside the scope» for my primitives.** Today one
+   playground role maps to several different today-tokens, depending on the primitive:
+   - the input's fill is `--bg` (`field.tsx:77`, `bg-canvas`);
+   - the checkbox row hovers with `silver-100` (`checkbox.tsx:42`), and the radio row with
+     `--btn2-bg-hover` (`radio-group.tsx:76`);
+   - the check accent is `--btn-bg` (`checkbox.tsx:48`, `radio-group.tsx:85`, `switch.tsx:74`).
+   A role called `raised` or `accent` has **one** outside value, so it cannot equal all of these. The
+   control needs **structural tokens of its own**, each an alias of a today-token outside the scope and of a
+   role inside it (§W15.2).
+4. ★ **Every outside value must be an alias, never a copied hex.** Inside `/app` a control's colours are
+   the org's today: `.brand-org` writes `--edge-strong`, `--fg-heading`, `--fg-body`, `--fg-muted`, `--edge`
+   and `--surface` (`app/layout.tsx:28-52`). `.theme-dark` reassigns the same names. So `--control-edge`
+   must be `var(--edge-strong)` at `:root`, not `#767f8c`, or a branded org's controls change colour and so
+   does every control on a dark band. Every colour token must also sit in `@theme inline`, for the reason
+   `CLAUDE.md` gives.
+
+## W15.1 · The eight today — every class, colour, size, focus and duration, with the token that carries it
+
+Legend: **keep** means the utility stays as it is, because the scope does not change that property. **→ X**
+means it moves onto token X, whose outside value is shown in brackets. Only colour, radius and the focus ring
+move. **Heights, padding, type sizes and weights all stay**, because the playground does not change them for
+a form control (`02-typography.md`: forms keep the body face). That keeps every `min-h-*` assertion
+untouched.
+
+### `field.tsx`
+
+| Line | Today | Carried by |
+|---|---|---|
+| 77 `controlBase` | `block w-full` | keep |
+| 77 | `rounded-field` (6 px, `--radius-field`) | → `control-radius` [`var(--radius-field)`]; inside 12 px (`01` `--radius-input`) |
+| 77 | `border` (1 px) | keep |
+| 77 | `bg-canvas` (`var(--bg)`: `#fff`, `.theme-dark` `#0b1220`) | → `control-face` [`var(--bg)`]; inside `raised` |
+| 77 | `text-fg-heading` | → `control-text` [`var(--fg-heading)`]; inside `text` |
+| 77 | `placeholder:text-fg-muted` | → `muted` [`var(--fg-muted)`] |
+| 77 | `disabled:cursor-not-allowed disabled:opacity-60` | keep |
+| 83-85 `controlSizes` | `min-h-9 py-1.5 text-caption` · `min-h-11 py-2.5 text-body` · `min-h-12 py-3 text-body` | keep |
+| 95-97 `controlInline` | `px-3` / `px-4` / `ps-9 pe-3` / `ps-11 pe-4` | keep |
+| 107 | `border-edge-strong` (`#767f8c`; `.theme-dark` 38 % silver) | → `control-edge` [`var(--edge-strong)`]; inside ≥ 3:1, §W15.2 |
+| 107 | `border-error-border` (`#c0555a`, a raw `@theme` colour, the same in dark) | → `control-edge-invalid` [`var(--color-error-border)`] |
+| 123 label | `text-label text-fg-heading` | `text-label` keep · colour → `control-text` |
+| 141 «مطلوب» | `ms-2 text-caption font-normal text-fg-muted` | → `muted` |
+| 147 hint | `mt-1 text-caption text-fg-muted` | → `muted` |
+| 152 | `mt-2` | keep |
+| 165 error | `mt-2 flex items-start gap-2 text-caption text-error` (`#9e3b3f`) | colour → `error-text` [`var(--color-error)`] |
+| 166 | `AlertCircleIcon mt-[0.2em]` | keep |
+| focus | none. The global `:focus-visible` (`globals.css:473-479`) is 2 px `var(--ring)`, offset 2 px, 3 px in `.theme-dark` | the scope's own rule (§W15.2, R1) |
+| duration | none | — |
+
+### `input.tsx`
+
+| Line | Today | Carried by |
+|---|---|---|
+| 45 | `controlClass(…)` | via `field.tsx` |
+| 25-29 `iconSlot` | `ps-2.5 text-base` / `ps-3.5 text-[1.125rem]` | keep (sizes) |
+| 59 | `pointer-events-none absolute inset-y-0 start-0 flex items-center text-fg-muted` | colour → `muted`; the rest keep |
+
+### `textarea.tsx`
+
+Only `controlClass(isInvalid, "md", …)` (`:32`) and `min-h-32` when no `rows` is given. Nothing of its own
+moves, because its face moves with `controlClass()`.
+
+### `select.tsx`
+
+Only `controlClass(isInvalid, "md", className)` (`:64`), with the native arrow and **no** `appearance-none`
+(`:9-17`). ★ In a dark scope the native arrow and the picker follow `color-scheme`, not a token: **the scope
+must declare `color-scheme: dark` and its light variant `light`** (R2), or a dark-scope select opens a white
+system picker. Nothing in the file moves beyond `controlClass()`.
+
+### `checkbox.tsx`
+
+| Line | Today | Carried by |
+|---|---|---|
+| 42 row | `flex min-h-11 items-center gap-3 px-2 text-body` | keep |
+| 42 | `rounded-field` | → `control-radius` |
+| 42 | `text-fg-body` | → `text-body` [`var(--fg-body)`]; inside `text` (R3) |
+| 42 | `cursor-not-allowed opacity-60` / `cursor-pointer` | keep |
+| 42 | ★ `hover:bg-silver-100` — **a raw palette name in a primitive** | → `hover` [`var(--btn2-bg-hover)`] |
+| 48 | `size-5 shrink-0` | keep |
+| 48 | `accent-[var(--btn-bg)]` | → `check-accent` [`var(--btn-bg)`]; inside `accent` |
+
+★ **The hover change is invisible, and I measured that.** `--btn2-bg-hover` is `#f4f6f9` at `:root`, which
+is `silver-100` exactly (`globals.css:19`, `:134`). It differs only inside `.theme-dark`. The five `Checkbox`
+consumers are `platform/orgs/new/org-form.tsx`, `admin/surveys/[templateId]/template-editor.tsx`,
+`materials/settings-form.tsx`, `me/profile-form.tsx` and `survey/question-field.tsx`, and none renders under
+`.theme-dark`. The move also removes the dark-band defect `radio-group` fixed in wave 11 (`radio-group.tsx:24-28`),
+before anything can trigger it.
+
+### `radio-group.tsx`
+
+| Line | Today | Carried by |
+|---|---|---|
+| 69 legend | `text-label text-fg-heading` | colour → `control-text` |
+| 72 | `mt-2` | keep |
+| 76 row | as checkbox, with `hover:bg-[var(--btn2-bg-hover)]` | → `control-radius`, `text-body`, `hover` |
+| 85 | `size-5 shrink-0 accent-[var(--btn-bg)]` | → `check-accent` |
+| 98 hint | `ps-10 pb-1.5 text-caption text-fg-muted` | → `muted` |
+| 109 error | as `field.tsx:165` | → `error-text` |
+
+### `switch.tsx`
+
+| Line | Today | Carried by |
+|---|---|---|
+| 50 row | `flex min-h-11 items-center gap-3 text-body text-fg-body` (+ disabled / pointer) | colour → `text-body` |
+| 74 track | `flex h-6 w-11 shrink-0 items-center justify-start rounded-full p-0.5` (24 × 44, pill) | keep. The pill is `rounded-full`, the same in and out of the scope |
+| 74 | `bg-edge-strong` (off) | → `control-edge` (the SC 1.4.11 reason at `:67-73` holds inside too) |
+| 74 | `peer-checked:bg-[var(--btn-bg)]` (on) | → `check-accent` |
+| 74 | ★ `transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)]` — the only duration in my eight, already a token (120 ms) | → `--duration-fast`, the new ramp at the same 120 ms (`DEC-183` §4.3), so `--dur-*` can retire. See §W15.5 #6 for the `transition-colors` question |
+| 74 | `peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--ring)]` — the one ring my primitives draw themselves, because the input is `sr-only` | → `focus-width` [2 px], `focus-color` [`var(--ring)`]; the offset keeps 2 px |
+| 74 | `peer-disabled:opacity-60` | keep |
+| 76 thumb | `size-5 rounded-full bg-canvas` | → `control-face` (ink on lime inside is 16.5:1; on the `muted` off-track 8.6:1) |
+| 78 | `text-label text-fg-heading` | → `control-text` |
+| 85 | `ps-14 text-caption text-fg-muted` | → `muted` |
+
+### `form-summary.tsx`
+
+| Line | Today | Carried by |
+|---|---|---|
+| 75 | `rounded-field border` | → `control-radius`; the 1 px width keeps |
+| 75 | `border-error-border` | → `error-edge` [`var(--color-error-border)`] |
+| 75 | `bg-error-bg` (`#fbf1f1`, the same in dark) | → `error-ground` [`var(--color-error-bg)`] |
+| 75 | `p-4 focus-visible:outline-2 focus-visible:outline-offset-2` (colour from the global rule) | → `focus-width`; the colour follows the scope rule |
+| 77 h2 | `flex items-start gap-2 text-label text-error` | → `error-text` |
+| 84 | `mt-1 text-caption text-fg-body` | → `text-body` |
+| 85 | `mt-2 space-y-1` | keep |
+| 97 links | `inline-block py-2.5 text-caption text-error underline underline-offset-4` (44 px, `:96`) | → `error-text`; the rest keep |
+
+**Behaviour: nothing moves in any of the eight.** The wiring stays as it is (`FieldContext`, `describedIds`,
+`aria-*`, the `id={name}` fieldset, `role="alert"` with a focus on mount keyed by `attempt`), and so does
+every `DEC-149` §1 repair (`select.tsx:34-55`, `checkbox.tsx:33-38`, `radio-group.tsx:50-57`,
+`switch.tsx:40-45`). `form-state.ts` is not touched.
+
+## W15.2 · Token requests to the lead (contract 1)
+
+I plan against the roles of the map: ground, surface, raised, text, muted, line, accent, accent-deep,
+signal and signal-deep, plus the control's radius, face, press shadow and heights. **These roles are not in
+that list.** Each outside value is an alias (W15.0 #4), and each colour sits in `@theme inline`.
+
+| # | Token (role) | Outside the scope | Inside, suggested | Why |
+|---|---|---|---|---|
+| R1 | `focus-color` and `focus-width`, and **one scope rule** `:focus-visible { outline: var(--focus-width) solid var(--focus-color) }` | `var(--ring)`, 2 px (the global rule is untouched) | 3 px; dark `accent` (16.5:1 on ink), ★ light **`text`** | `04`: «3 px accent». ★ On the light variant lime is **1.07:1** on paper and lime-deep **2.43:1**, so an accent ring fails `REQ-UIX-030`'s own 3:1. The scope rule means no primitive re-declares the ring. `switch` and `form-summary` still name the two tokens, because they draw their own |
+| R2 | `color-scheme` on the scope class and its light variant | not set (today's) | `dark` / `light` | The native select's arrow and picker, the checkbox's and radio's unchecked boxes and the textarea's scrollbar follow it |
+| R3 | `text-body` — a second text role | `var(--fg-body)` | `text` | Today labels are `--fg-heading`, and row text and the summary's reassurance are `--fg-body`. Inside they merge; outside they must stay two |
+| R4 | `control-face` | `var(--bg)` | `raised` | `01`: surface-2 is «raised elements, chips, inputs». Also the switch's thumb |
+| R5 | ★ `control-edge` | `var(--edge-strong)` | **≥ 3:1 against ground, surface and raised**, e.g. `muted` (8.6:1) or a new step | ★ `01`'s `line` is **1.45:1** on ink and 1.32:1 on surface. `surface-2` against ink is 1.22:1, so the fill does not identify the control either. SC 1.4.11 is why `--edge-strong` exists (`globals.css:115`, `field.tsx:72-74`, `switch.tsx:67-73`) |
+| R6 | `control-text` | `var(--fg-heading)` | `text` | the value, the label, the legend |
+| R7 | `control-radius` | `var(--radius-field)` (6 px) | 12 px | `04`'s `--radius-input` |
+| R8 | ★ `error-text`, `error-edge`, `control-edge-invalid`, `error-ground` | `var(--color-error)`, `var(--color-error-border)` (both edges), `var(--color-error-bg)` | text ≥ 4.5:1 and edge ≥ 3:1 on ink (`--color-error-on-dark` `#e08c8f` is 7.7:1), and a dark error ground | ★ **`01-tokens.md` defines no error colour at all.** `--color-error` is 2.93:1 on ink. These are status constants (`DEC-073`), outside the brand kit, and I am not using `signal` for them: coral means «live» and «check-in», not «wrong» |
+| R9 | `check-accent` | `var(--btn-bg)` | `accent` | the native box's `accent-color` and the switch's on-track |
+| R10 | `hover` | `var(--btn2-bg-hover)` | a raised step | ★ the **same** token `console` requests (its §1.7 #1); one token, not two |
+| — | `muted` | `var(--fg-muted)` | `muted` | in the map; listed so its outside value is pinned to `--fg-muted` |
+
+**For `session-cta`**, beyond the map's press shadow, heights and face:
+- R11: `cta-height` — 52 px inside (`01`: «primary CTAs 52 px»).
+- R12: `pill` radius.
+- R13: the press shadow's pressed step (`--shadow-press-down`, from `tokens.css`) and a **signal** press
+  shadow from `signal-deep`, for the check-in state.
+- R14: a `waitlist`/`booked` edge. The prototype draws booked with a 2 px inset **cyan**, which is a raw team
+  colour (`motion-story.html:111`). Either `content`'s status reconciliation (N2) names a waitlist token, or
+  I use `accent`. **I propose `accent`**, and no raw palette name.
+- R15: `--font-display` on the label, inside only (the lead's F1).
+- The durations: `--duration-fast` only, for the press.
+
+## W15.3 · ★ Contract 5 — the three public primitives, and how each is proven unmoved
+
+**What the register form passes them today** (`registration-form.tsx`):
+- `<Field id label hint? error? required>` (`:458`), with **no** `className`, for:
+  - `reg-name`, `reg-email` (with a hint), `reg-topic-title` (with a hint), `reg-topic-description` (with a
+    hint);
+  - `required` is `ariaRequired`, so «مطلوب» renders on all four;
+  - `error` is `errors.x && t(...)`, a string or nothing.
+- `<Input name size="lg" aria-describedby={privacyId} …>` (`:468`), with:
+  - `autoComplete`, `autoCapitalize`, `enterKeyHint`, `maxLength`, `defaultValue`, `onBlur` and `onInput`;
+  - on `reg-email` also `type="email"`, `inputMode="email"`, `autoCorrect="off"`, `spellCheck={false}` and
+    `dir="ltr"`, with the privacy line merged into `aria-describedby`.
+- `<Textarea name rows={3} className="min-h-[7.5rem]" aria-describedby …>` (`:460`), so `min-h-32` is not
+  applied.
+- The form sits on `bg-white`, **not** `.theme-dark` (`register/page.tsx:37`). So the outside values that
+  matter are `:root`'s: ring `#0b1220`, edge `#767f8c`, face `#fff`, label `#0b1220`, muted `#5b6780`, error
+  `#9e3b3f` / `#c0555a`.
+
+**The class strings that reach the DOM there today:**
+- input: `block w-full rounded-field border bg-canvas text-fg-heading placeholder:text-fg-muted
+  disabled:cursor-not-allowed disabled:opacity-60 min-h-12 py-3 text-body px-4 border-edge-strong` (or
+  `border-error-border`);
+- textarea: the same with `min-h-11 py-2.5 text-body px-4 … min-h-[7.5rem]`;
+- label: `text-label text-fg-heading`;
+- «مطلوب»: `ms-2 text-caption font-normal text-fg-muted`;
+- hint: `mt-1 text-caption text-fg-muted`;
+- error: `mt-2 flex items-start gap-2 text-caption text-error`.
+
+★ **Under contract 1 as written, those class names change**, so «byte-identical HTML» is not the bar.
+Computed style is. The proof has four parts, run by the lead after each commit, against `main`'s capture:
+1. **`qa:contract` green.** It reads ids, `label[for]`, focus, values, the no-JS echo and `#reg-email`'s
+   font size ≥ 16 px (`scripts/qa/contract.mjs:228`), and never a class. The ids, the names, the `-error`
+   ids and every handler are untouched, because the register form does not change and nothing I change
+   touches `id`, `name`, `aria-*` or an event.
+2. **`visual` at 0.000 %** on `/ar`, `/en` and `/ar/register`, at 390 and 1440 px. **This proves the resting
+   state only.** The capture never focuses a field and never shows an error.
+3. ★ **A computed-style fingerprint** — the proof `visual` cannot give, and **a request**.
+   - A spec that opens `/ar/register` and `/en/register` at 390 and 1440 px, on `main`'s build and on the
+     branch's. For both locales it records `getComputedStyle` for:
+     - `label[for=reg-name]` and its «مطلوب» span;
+     - `#reg-email-hint`;
+     - `#reg-name`, `#reg-email` and `#reg-topic-description` (after `label[for=reg-role-provider]` reveals
+       it), each also with `::placeholder`;
+     - `#reg-email-error` and its `svg`.
+   - It records them in five states: **at rest**, **hovered**, **keyboard-focused** (Tab), **invalid**
+     (`not-an-email`, then blur), and **invalid and focused**.
+   - The properties recorded: colour, background, every border side's colour, width and style, the four
+     radii, padding, height and min-height, font size, line height and weight, outline colour, width, style
+     and offset, box shadow, and the transition.
+   - **The two JSON files must be equal.** It is the lead's spec (`wave15-lead-*`), or mine if you add
+     `tests/e2e/wave15-sessions-public-controls.spec.ts` to my list. I would write it **before** the
+     `field` commit and run it against `main` first, so it is known to be deterministic.
+4. **The scope never reaches the public graph.** A unit test asserts that no file in the transitive import
+   graph of `(marketing)/**` and `registration-form.tsx` contains the scope class. That is the graph walk I
+   ran for W15.0 #1, kept. It is the lead's (the scope's name is the lead's), or mine on the same request.
+
+**The order**, one at a time, each announced, with `qa` and `visual` run between:
+1. `field` — the label, «مطلوب», the hint and the error's colours only; `controlClass()` untouched.
+2. `input` together with `controlClass()` — this moves the face of all four public controls, of `select` and
+   of `combobox`. I tell `console` the commit hash.
+3. `textarea` — nothing of its own moves (only its demo and test land), so it gates on the fingerprint
+   alone.
+
+`checkbox`, `radio-group` and `form-summary` are not under contract 5 (W15.0 #1). They still land one commit
+each, and the lead may run `qa` on them anyway, since the hook falls through regardless.
+
+## W15.4 · The two new primitives — props (contract 2), states, names, motion
+
+### `session-cta` (`REQ-UIX-033`) — `src/components/ui/session-cta.tsx`
+
+**No `"use client"`**, so a server page renders it. It composes the lead's `SubmitButton`
+(`useFormStatus`) and `ButtonLink` / `ui/link`.
+
+```ts
+/** What pressing does. Exactly one of the two. */
+export type SessionCtaAct =
+  | { href: string; action?: never }
+  /** A Server Action the CALLER bound (`DEC-159`) — never an inline closure from a Server Component. */
+  | { action: (formData: FormData) => void | Promise<void>; href?: never };
+
+/** The six states of REQ-UIX-033. Which one a viewer gets is the affordance matrix's answer
+ *  (REQ-UIX-015), computed by the caller — this type only carries it. */
+export type SessionCtaState =
+  | { kind: "reserve"; act: SessionCtaAct }
+  | { kind: "waitlist"; act: SessionCtaAct }
+  | { kind: "booked"; cancel: { label: string; act: SessionCtaAct; note?: string } }
+  | { kind: "checkIn"; act: SessionCtaAct }
+  | { kind: "attended" }
+  | { kind: "none"; reason: string };
+
+export interface SessionCtaProps extends Styleable {
+  state: SessionCtaState;
+  /** The words on the face — «احجز مقعدك», «انضمّ إلى قائمة الانتظار», «محجوز», «سجّل حضورك»,
+   *  «حضرت», «الحجز مغلق». Strings arrive as props; the primitive reads no catalogue. */
+  label: string;
+  /** The trailing chip — «12 من 40», «+50 عند الانتهاء». Formatted by the caller in Western digits;
+   *  drawn inside <bdi>. Omitted → no chip. */
+  chip?: string;
+  /** Beside the spinner while an `action` is in flight — «جارٍ الحجز…». The label never changes. */
+  pendingLabel?: string;
+  /** Overrides `useFormStatus`, for a caller whose action is not this control's own form. */
+  pending?: boolean;
+}
+```
+
+**The states it renders:**
+
+| State | What it is | Inside the scope |
+|---|---|---|
+| `reserve` | a `<form action>` with `SubmitButton`, or a link | `accent` fill, ink text, `pill`, 52 px, press shadow |
+| `waitlist` | the same control, with its own label | the same face; the chip says the waitlist's length |
+| `booked` | **not a control**: a status face with a check glyph, then the cancel control **beneath**. `note` (the late-cancel warning) is tied to cancel by `aria-describedby` | `raised` fill, `text`, 2 px `accent` inset (R14); cancel is the secondary variant |
+| `checkIn` | the control (the tree's is a link to `/check-in`) | `signal` fill, `signal-deep` press shadow |
+| `attended` | not a control: a status face with a check glyph; the chip carries the caller's computed «+N تصل عند انتهاء الجلسة» (`REQ-CHK-018`), never a figure of its own | `raised` fill, `accent` inset |
+| `none` | not a control, and **never a disabled button**: the label and, beneath it, the reason in words (`REQ-SES-013`) | `muted` text on `raised` |
+| pending | `aria-busy`, disabled against a second submit, spinner beside the label — `Button`'s behaviour, reused | as the state |
+
+- **Accessible names.** A control's name is its label followed by its chip: «احجز مقعدك، 12 من 40». A
+  visually hidden «، » separates the two. The status faces are text. The primitive renders **no heading and
+  no landmark**, because the event page owns the region «الحضور» (the slot contract, §22).
+- ★ **It decides nothing, and it has no state.** It never moves from `reserve` to `booked` on a click. The
+  caller re-renders it after the server answers, so a seat can never show as confirmed early
+  (`REQ-UIX-007`).
+- **Motion.** One acknowledgement: `:active` → `translateY(3px)` over `--duration-fast`, `transform` only.
+  The press shadow's step is **not** transitioned, because `box-shadow` is not in `REQ-UIX-020`'s three. It
+  is zero under reduced motion, and the pressed state is then shown statically. **Nothing scales on hover.**
+  There is no ticket, no stamp and no moment (the next wave's).
+- **RTL.** A flex row: the label at the inline start and the chip at the inline end, using logical
+  properties only. No glyph points, so nothing mirrors.
+- **Depends on the lead's `button`** (L1). The playground's primary face, 52 px and signal are
+  `04-components.md`'s button variants. If `Button` gains them as opt-in props, `session-cta` composes them
+  and never overrides a `Button` class — two utilities for one property resolve by emit order (`DEC-111`).
+  **Q4.**
+
+**What the tree does today, and what the primitive takes from it.** `rsvp-panel.tsx` is `checkin`'s file,
+held by the lead, and nothing on the event page changes this wave.
+
+| State | Today | Where |
+|---|---|---|
+| reserve | Above: «يتبقى N مقاعد» · «N في قائمة الانتظار». Then `<form action={reserveSeatAction.bind(null, locale, id)}><SubmitButton size="lg" className="w-full">احجز مقعدك</SubmitButton></form>`, in two placements (the card from `md` up, the phone's bar). The card also shows «N من M» with a `Progress` | `rsvp-panel.tsx:48-56`, `:85-94`; `action-card.tsx:112-122` |
+| waitlist | ★ **Not a distinct state today.** A full session still says «احجز مقعدك», and `reserve_seat()` waitlists. `rsvp.json` has no «join the waitlist» string. The data is there: `RsvpPanelData.seat === "full"` | `rsvp-panel.tsx:85-94`; `session-status.ts:343-348` |
+| booked | A success `Panel` with `role="status"` («تم تأكيد حجزك»), the late-cancel warning, then `SubmitButton variant="secondary"` «إلغاء الحجز» / «إلغاء الحجز (سيُسجَّل كإلغاء متأخر)». ★ The **primary** becomes «أضِف إلى تقويمك» | `rsvp-panel.tsx:72-82`, `:96-106`; `event-actions.ts:16-18`, `:46` |
+| on the waitlist | «أنت على قائمة الانتظار — ترتيبك رقم N» and «غادر قائمة الانتظار». ★ **Not one of the six** | `rsvp-panel.tsx:65-71`, `:98` |
+| check in | `<Link href="/app/sessions/<id>/check-in" className={buttonClass("primary","lg","w-full")}>`, gated by `eventCheckInLink()` → `canOfferCheckInFor()` | `action-card.tsx:252-258`; `event-check-in.ts:17-25` |
+| attended | Only once `ended`: a success `Panel` «حضرت». ★ During the session a checked-in member **is offered the check-in link again**, because `viewer.checkedIn` is not consulted | `attendance-outcome.tsx:29-46`; `session-matrix.ts:241-246` |
+| none | `primaryActionFor()` returns `null`. The reason is in words only for the deadline («انتهى وقت الحجز لهذه الجلسة») | `event-actions.ts:38-50`; `rsvp-panel.tsx:57-61` |
+
+**The primitive takes** four things from the tree:
+- the bound-action-in-a-form pattern, and `SubmitButton`'s label-kept pending;
+- «one primary» (`event-actions.ts`);
+- the chip's Western digits, formatted by the caller as `formatNumber()` does today;
+- `<bdi>` around the chip.
+
+**Everything else stays where it is:**
+- every gate (`canReserve`, `canCancel`, `seat`, `cutoffPassed`, `canOfferCheckInFor`, the matrix);
+- the actions and the strings;
+- the two placements;
+- `primaryActionFor()`, whose `calendar`, `hostView` and `rate` are not `session-cta` states.
+
+The adoption wave maps each row across. The ★ rows are the decisions it inherits, in §W15.5 #9.
+
+### `code-input` (`REQ-UIX-035`) — `src/components/ui/code-input.tsx`
+
+**The alphabet is measured from the migrations, not the prototype.** It is six characters from 25:
+`ACDEFGHJKMNPQRTUVWXY34679`.
+- The table enforces it with `check (code ~ '^[ACDEFGHJKMNPQRTUVWXY34679]{6}$')` (`0010_m2_schema.sql:210`).
+- It is generated by `_issue_check_in_code` (`0015_check_in_rpcs.sql:29`, re-created at
+  `0105_check_in_day.sql:117`).
+- `check_in()` compares `upper(btrim(p_code))` (`0105:279`).
+- The DAL's Zod is `trim().toUpperCase().length(6)` (`lib/dal/checkin.ts:315`).
+- The rotation is **org data**, 60–3600 s with a default of 600 (`0004_tenancy.sql:114`), so the component
+  says nothing about «every 10 minutes».
+
+**The field today** is `components/checkin/code-input.tsx`:
+- six `<input maxLength={1}>` in a `dir="ltr"` `role="group"`, with `inputMode="text"`,
+  `autoComplete="off"`, `autoCorrect="off"`, `spellCheck={false}`;
+- ★ `autoCapitalize="characters"` (`:68`);
+- it upper-cases, advances on a character, goes back on Backspace, pastes from the first box after stripping
+  `[^A-Z0-9]` (`:42`);
+- one hidden `code` field carries the value (`:51`);
+- each box is `h-14 w-full min-w-11 rounded-field border border-edge-strong bg-canvas text-center text-h2`
+  under a `class-string` escape (`:72`);
+- the check-in page seeds it from `?code=` after a refusal (`check-in/actions.ts:14-16`,
+  `check-in/page.tsx:127`).
+
+★ **A defect found while measuring** (`checkin`'s files, the lead's as custodian; this wave does not change
+them):
+- `CodeInput` names its group `aria-labelledby={`${id}-label`}`, which is `code-0-label`
+  (`code-input.tsx:52`), but the page's label is `id="code-label"` (`check-in/page.tsx:123`). **The group's
+  name points at nothing.** Box 1 is named through `htmlFor`, and boxes 2–6 have no name at all.
+- The refusal's `Panel role="alert"` (`:105-108`) is not tied to the boxes.
+
+`REQ-UIX-035`'s two acceptance lines are these two gaps.
+
+```ts
+export interface CodeInputProps extends Styleable {
+  /** The hidden field the assembled code posts under — `code` on SCR-014, where the Server Action reads it. */
+  name: string;
+  /** The first box's id (the others `${id}-2` … `${id}-6`), so a `#id` link or `htmlFor` lands in box 1. Generated when omitted. */
+  id?: string;
+  /** The group's accessible name, rendered as its visible label — «رمز الحضور». Self-labelling, like
+   *  `ui/radio-group`: it does not go inside a `<Field>`. */
+  label: ReactNode;
+  /** Each box's position, read after the group's name — «الخانة 1 من 6». One string per box, from the
+   *  caller's catalogue (a function cannot cross the server boundary, DEC-159). */
+  positionLabels: readonly string[];
+  /** 6 (REQ-CHK-002, `0010`:210). `positionLabels` must be as long. */
+  length?: number;
+  /** Shown on mount — the code a refused submission carried back. Upper-cased. */
+  defaultValue?: string;
+  /** Beneath the boxes, with the house error glyph; tied to the GROUP by `aria-describedby`. Never animated. */
+  error?: ReactNode;
+  /** Invalid with the message elsewhere — SCR-014's banner; pass its id below. */
+  invalid?: boolean;
+  /** Merged with the error's id, never replacing it (`describedIds`). */
+  "aria-describedby"?: string;
+  disabled?: boolean;
+}
+```
+
+**What it renders:**
+- the visible label (`<label htmlFor={firstBoxId} id={labelId}>`), so it names box 1 and the group;
+- `<div role="group" dir="ltr" aria-labelledby={labelId} aria-describedby={errorId + caller's}>`;
+- six `<input>`s. Each is named `aria-label={positionLabels[i]}` and carries:
+  - `inputMode="text"` (the alphabet has letters, so `numeric` would hide them);
+  - `autoComplete="off"`, `autoCorrect="off"`, **`autoCapitalize="off"`** (`REQ-UIX-035`; the tree says
+    `characters`, and upper-casing is done in code), `spellCheck={false}`;
+  - `maxLength={1}`, and `aria-invalid` when invalid;
+- one hidden `<input name>` carrying the value;
+- the error `<p id>` beneath.
+
+**Its states** — every one from props or from what is typed:
+- empty, partly filled, complete (every box filled: its border takes `accent` inside the scope);
+- invalid (the edge turns to `control-edge-invalid`, and the message shows);
+- disabled;
+- focused (the scope's ring, R1).
+
+**Its behaviour:**
+- typing advances;
+- Backspace on an empty box goes back;
+- `ArrowLeft` and `ArrowRight` move visually, which is logically too inside the `ltr` group;
+- a paste into any box fills from box 1 and focuses the next empty box or the last;
+- ★ a multi-character `change` (a keyboard suggestion, autofill) is treated as a paste, not `slice(-1)`;
+- characters are upper-cased, and whitespace and hyphens are dropped;
+- the `DEC-149` §1 repair is applied: the boxes are controlled, so a layout effect puts back what is on show
+  after React's form reset.
+
+**Its structural tokens:**
+- box face `control-face`, box edge `control-edge`, radius `control-radius`;
+- 48 × 60 px inside (`04`), with today's `h-14 min-w-11` outside;
+- the glyph in `--font-display` inside.
+
+**The layout:** 6 × 48 + 5 × 8 = 328 px, which fits 390 − 2 × 16.
+
+- ★ **A wrong code does not animate.** Nothing moves on `error` or `invalid`, and there is no shake.
+- The per-box pop (`03`: `scale 1→1.14→1`) is **Q6**. If it is built, it uses `element.animate()` with
+  transform only, over `--duration-base` read from the token, and is skipped when that token resolves to
+  `0ms`. It fires only when a character is typed, and never on paste, on an error or on mount.
+
+## W15.5 · Where `docs/design/` (or the brief) and the tree disagree — not in `DEC-183` §4
+
+1. ★★ **The public site renders three of my primitives, not six.** See W15.0 #1. The same claim appears in
+   the brief, `STATUS.md` Step 0 row 2, `DEC-183` §4.2 and contract 5 (`CLAUDE.md` and the agent file).
+2. ★ **`controlClass()` is shared** (`field.tsx:105`). «One commit per primitive» (`07-tasks.md`) cannot hold
+   for the face of `input`, `textarea`, `select` and `combobox`. See W15.0 #2.
+3. ★ **`01`'s `line` fails SC 1.4.11 as an input edge**: 1.45:1 on ink and 1.32:1 on surface. The
+   `surface-2` fill against ink is 1.22:1. The prototype's code box is exactly that pair
+   (`motion-story.html:163`, `.bx`). See R5.
+4. ★ **«Focus ring = 3 px accent»** (`04-components.md`, the `field, input …` row) **fails on the light
+   variant**: lime is 1.07:1 on paper and lime-deep 2.43:1. See R1.
+5. ★ **`01-tokens.md` has no error colour**, and the form model needs three: text, edge and ground. See R8.
+6. **`REQ-UIX-020`** («transform, opacity and filter only») disagrees with three things:
+   - `03-motion.md`'s whisper «state badge — background and colour transition 220 ms»;
+   - the prototype's `.cta` transitions of `background`, `color` and `box-shadow` (`motion-story.html:108`);
+   - the tree's own `switch.tsx:74`, whose `transition-colors` exists today and is zero under reduced
+     motion.
+   **Q5.**
+7. **The prototype's code «M7K2QX» contains `2`**, which the alphabet excludes (`0010:210`). A demo copied
+   from it would show a code the product can never issue. My demo uses «M7K3QX».
+8. **The prototype's «الرمز يتغيّر كل 10 دقائق»** is org-configurable (`0004:114`). It is page copy, not
+   the component's.
+9. ★ **`session-cta`'s six states against the event page today.** Each is a decision for the adoption wave,
+   not this one:
+   - (a) «booked» as the face, where the tree makes the calendar the primary (`event-actions.ts:46`,
+     `16` §5.4.2);
+   - (b) «attended» during the session, where the tree re-offers check-in (`session-matrix.ts:241-246`);
+   - (c) «join the waitlist» has no string and no distinct label (`rsvp-panel.tsx:85-94`);
+   - (d) «on the waitlist» is not one of the six (`rsvp-panel.tsx:65-71`) — **Q3**;
+   - (e) `hostView` and `rate` are primaries in the tree (`event-actions.ts:21`) and not CTA states.
+10. **Plan against plan:** `REQ-CHK-003`'s acceptance says «Entry is a single field», while `REQ-UIX-035` and
+    `04` say six boxes, «one labelled input per box». I follow `REQ-UIX-035`. **Q7.**
+11. **`autoCapitalize`**: the tree uses `characters` (`checkin/code-input.tsx:68`); `REQ-UIX-035` and `04`
+    say off. I follow the requirement.
+12. **The code box's pop is 200 ms** (`03`, the prototype's `hit`), outside rule 7's 220–260 ms band. If
+    built, it runs at `--duration-base` (220 ms).
+13. **«Every primitive has a gallery entry»** (`REQ-UIX-001`, `04`'s DoD) — none of my eight appears in
+    `/ar/ui` today (`(dev)/ui/page.tsx`). So my demos **add** to the gallery, and `ar_ui` moves when you
+    wire them.
+14. ★ **«Tokens only: no hex, no duration, no raw palette name in a primitive» has no gate.** `ui-lint`
+    excludes `src/components/ui/` by design (`scripts/ui-lint.mjs:16-20`, `:42`). What it would find today:
+    - `checkbox.tsx:42` `hover:bg-silver-100` — mine, fixed by this plan;
+    - `button.tsx:28` `duration-150` and `registration-form.tsx:297` `duration-150` — neither is mine.
+    I add a source scan to my two new test files. **Q8** proposes one gate for all 47.
+15. **An aside, `app/layout.tsx:31`** (the lead's). The brand kit's canvas is written to `--canvas`, and
+    nothing reads `--canvas`: `globals.css:92` reads `--bg`. The comment at `:23-25` says every
+    `bg-canvas` picks the org's value up, and that looks untrue for `canvas` alone. It was found because
+    `control-face` aliases `--bg`. It is not mine, and not this wave's.
+16. **An aside on today's dark bands.** `field`'s and `radio-group`'s `text-error` (`#9e3b3f`) is 2.93:1 on
+    ink-like grounds, and `(auth)` is `.theme-dark` (`choose-org` renders `RadioGroup` with an `error`). It
+    stays as it is outside the scope, because this wave moves nothing there. It is recorded for the screens
+    wave.
+
+## W15.6 · Tests whose expectation moves — named, with why
+
+**Under contract 1 as written** — the scope's names are new utilities — **nine assertions in six of my
+files move.** Each is a **renamed class for the same property**, and each gets a ledger line in the commit
+that moves it:
+
+| File:line | Assertion | Why |
+|---|---|---|
+| `field.test.tsx:168` | `querySelector("p.text-error svg")` | the error's colour utility is renamed (`error-text`); the selector follows it. What it checks (an icon-marked error) is unchanged |
+| `field.test.tsx:171` | `toContain("border-error-border")` | invalid edge → `control-edge-invalid` |
+| `field.test.tsx:172` | `not.toContain("border-edge-strong")` | would pass vacuously, so it moves to the new resting-edge name, keeping its meaning |
+| `input.test.tsx:53` | `toContain("border-error-border")` | as 171 |
+| `input.test.tsx:69` | `toContain("rounded-field")` («appends, never replaces the house classes») | the house radius is renamed (`control-radius`) |
+| `textarea.test.tsx:55` | `toContain("border-error-border")` | as 171 |
+| `select.test.tsx:63` | `toContain("border-error-border")` | as 171 |
+| `radio-group.test.tsx:35-36` | `toContain("hover:bg-[var(--btn2-bg-hover)]")`, `not.toContain("bg-silver-100")` | → `hover`; the second keeps its meaning under the new name |
+| `switch.test.tsx:68-69` | `toContain("bg-edge-strong")`, `not.toMatch(/\bbg-silver-\d/)` | off-track → `control-edge`; the SC 1.4.11 reason is unchanged |
+
+**Nothing else moves.** I grepped `tests/` for every class these files emit:
+- `checkbox.test.tsx` asserts only `min-h-11` and `cursor-not-allowed`, which stay;
+- `form-summary.test.tsx:161` reads `globals.css`'s scroll tokens, which I do not touch;
+- `form-reset.test.tsx` asserts behaviour;
+- `panel.test.tsx:23` is `content`'s own `bg-error-bg`;
+- no e2e locator reads a class of mine;
+- `qa:contract` reads no class.
+
+**Additions, not changes:** each of the eight test files gains cases that render the primitive inside the
+scope class and assert it reads the token names, has the same accessible tree, and holds no hex, duration or
+raw palette name. **Q9** asks whether that is allowed or whether you want new files.
+
+## W15.7 · Commits and demos, in order
+
+| # | Commit | Public (C5) | Demo |
+|---|---|---|---|
+| 0 | (the lead's) the tokens, R1–R15, and the fingerprint spec run against `main` | — | — |
+| 1 | `field` — the label, «مطلوب», the hint and the error | ★ yes | `demos/field.tsx` — label, hint, required, error, and a `<bdi>` label from «ما رأيك في <bdi>تصميم الواجهات</bdi>؟» |
+| 2 | `input` + `controlClass()` | ★ yes; tell `console` | `demos/input.tsx` — sm / md / lg, start icon, placeholder, invalid, disabled, `dir="ltr"` email |
+| 3 | `textarea` | ★ yes (fingerprint only) | `demos/textarea.tsx` — default rows, 3 rows, invalid |
+| 4 | `select` | — | `demos/select.tsx` — default, invalid, disabled; the native arrow under `color-scheme` |
+| 5 | `checkbox` | — | `demos/checkbox.tsx` — off, on, disabled, a rich label |
+| 6 | `radio-group` | — (`choose-org` is dark and public) | `demos/radio-group.tsx` — legend, hints, error, a disabled option |
+| 7 | `switch` | — | `demos/switch.tsx` — off, on, disabled, a description |
+| 8 | `form-summary` | — | `demos/form-summary.tsx` — three errors, one with a `<bdi>` field name, and the description |
+| 9 | `code-input` | — | `demos/code-input.tsx` (client) — empty, «M7K», «M7K3QX» complete, invalid with «الرمز غير صحيح — تأكد من الرمز المعروض الآن», disabled |
+| 10 | `session-cta` (after L1's button variants) | — | `demos/session-cta.tsx` (client, so `action` can be a local async function) — all six states and pending, chips «12 من 40» and «+50 تصل عند انتهاء الجلسة», and a «none» with «انتهى وقت الحجز لهذه الجلسة» |
+
+The rules for every demo:
+- every state, inside the scope, in Arabic;
+- literal fixtures, no DAL and no session, Western digits;
+- `<bdi>` on every interpolated value, logical properties only.
+
+**Each commit's gates:** `tsc`, `lint` (grepped for `problems`), `npm test`, `ui-lint` (the demos are under
+`src/app`, so it covers them), and two captures (390 px and desktop) at
+`.qa-shots/rtl/wave15-sessions-<primitive>-<state>.png`, which I look at.
+
+**The two new primitives' tests:** `tests/components/ui/{session-cta,code-input}.test.tsx`. Each covers every
+state, axe, the RTL render, the accessible names, and a source scan for hex, `ms`, `duration-<n>` and raw
+palette names.
+- `code-input` adds: paste, a multi-character change, Backspace, the arrows, the hidden value, the form-reset
+  repair, and **no animation on error**.
+- `session-cta` adds: pending keeps the label, a `booked` state holds no button of its own apart from
+  cancel, `none` has no button at all, and it has no state.
+
+## W15.8 · Questions for the lead (sync 1)
+
+1. **Q1 — the mechanism, and the one alternative worth a sentence.** Contract 1 gives the scope new names,
+   so nine test assertions move and the register form's class names change (W15.3). The alternative is what
+   `01-tokens.md` itself asks for («the same mechanism the repo already uses»): the scope reassigns today's
+   context variables — `--edge-strong`, `--ring`, `--bg`, `--fg-*`, `--btn-bg`, `--btn2-bg-hover`,
+   `--radius-field` — as `.theme-dark` already does. Then **no class changes at all**, `/ar/register`'s HTML
+   stays byte-identical, and no test moves. The costs: it re-skins every non-migrated consumer inside the
+   scope too (only the gallery this wave), and a nested `.theme-dark` wins inside it. **I plan contract 1 as
+   written.** I raise this only because it would make contract 5's proof trivial, and I am not asking to
+   re-open `DEC-183` §4.2.
+2. **Q2 — the token requests R1–R15.** In particular: the focus rule on the scope (R1), `color-scheme`
+   (R2), an input edge that passes 3:1 (R5), and the error set (R8).
+3. **Q3 — «on the waitlist».** Is a waitlisted member `booked` with a position — the face «على قائمة
+   الانتظار · 3», with «غادر قائمة الانتظار» beneath — or a seventh state that amends `REQ-UIX-033`? I
+   propose the first: it needs no change to the requirement, and the type then gains
+   `hold?: "seat" | "waitlist"` on `booked`.
+4. **Q4 — `session-cta` composes `Button`.** Will `Button` gain the playground's primary face, `signal` and
+   a 52 px size as opt-in props in L1? If not, I draw the face myself and reuse only `SubmitButton`'s
+   pending. That would be a second pending implementation, which I would rather not write.
+5. **Q5 — colour transitions** (W15.5 #6). Does `REQ-UIX-020` forbid the switch's existing
+   `transition-colors`, and the booked face's background change? I propose that the switch keeps its
+   transition (it is zero under reduced motion and is unchanged outside the scope) and that `session-cta`
+   transitions only `transform`.
+6. **Q6 — `code-input`'s per-character pop.** Build it now at `--duration-base` (rule 7 allows it), or leave
+   the box static until moment 2's wave? I lean towards **static now**. The static box is already the
+   reduced-motion state, and it adds no WAAPI to a check-in path this wave.
+7. **Q7 — `REQ-CHK-003`'s «single field»** against `REQ-UIX-035`'s six boxes. Which requirement is amended?
+8. **Q8 — a «tokens only» gate for `src/components/ui/**`** (W15.5 #14), as a lead-owned unit test. Until
+   it exists, the rule holds only where a file's own test scans it.
+9. **Q9 — additions to existing test files.** May I add cases to the eight existing files, or do you want
+   new files beside them?
+10. **Q10 — the fingerprint spec and the graph test** (W15.3, parts 3 and 4). Are they yours, or do you add
+    `tests/e2e/wave15-sessions-public-controls.spec.ts` and a `tests/unit/` file to my list? And who takes
+    the gallery captures — your build and your server, with a spec of mine, or you?
+11. **Q11 — `code-input`'s filter.** Today it keeps `[A-Z0-9]`, and the server says «الرمز غير صحيح» for
+    `O` or `0`. Should the primitive refuse characters outside the alphabet as they are typed? I propose
+    **no**: a character that silently does not appear is a failure with no message, and the server is the
+    judge. It is also no behaviour change for SCR-014 when adopted.
+12. **Q12 — does the brand kit reach inside the scope?** `.brand-org` writes today's context variables, and
+    the scope's own values would shadow them inside it. That is `branding`'s question, with you as
+    custodian, and it decides whether R4–R6 alias the org's values inside the scope as well.
