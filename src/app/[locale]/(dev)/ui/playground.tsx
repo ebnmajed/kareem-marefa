@@ -76,45 +76,51 @@ import { ReorderableDemo } from "./reorderable-demo";
 // name.
 // Every primitive of the wave stands here: 37 migrated and ten new.
 
-const DEMOS: { file: string; title: string; node: ReactNode | ((ground: DemoGround) => ReactNode) }[] = [
-  { file: "page-header · section-header · prose", title: "العناوين والنص", node: <PageHeaderDemo /> },
-  { file: "dialog", title: "الحوار", node: <DialogDemo /> },
-  { file: "toast", title: "الإشعار العابر", node: <ToastDemo /> },
-  { file: "skeleton", title: "الهياكل", node: <SkeletonDemo /> },
-  { file: "route-error", title: "خطأ المسار", node: <RouteErrorDemo /> },
-  { file: "reorderable-list", title: "قائمة تُرتَّب بالنقر", node: <ReorderableDemo /> },
-  { file: "tag-chip", title: "الوسم", node: <TagChipDemo /> },
-  { file: "badge", title: "شارة الحالة", node: <BadgeDemo /> },
-  { file: "avatar", title: "الصورة الرمزية وحلقة الفريق", node: <AvatarDemo /> },
-  { file: "card", title: "البطاقة", node: <CardDemo /> },
-  { file: "progress", title: "التقدّم", node: <ProgressDemo /> },
-  { file: "progress-bar", title: "شريط التقدّم", node: <ProgressBarDemo /> },
-  { file: "empty-state", title: "الحالة الفارغة", node: <EmptyStateDemo /> },
-  { file: "stat", title: "الرقم", node: <StatDemo /> },
-  { file: "panel", title: "اللوحة", node: <PanelDemo /> },
-  { file: "file-drop", title: "رفع الملفات", node: <FileDropDemo /> },
-  { file: "sticker", title: "اللاصقة", node: <StickerDemo /> },
-  { file: "poster", title: "الملصق", node: <PosterDemo /> },
-  { file: "reaction-bar", title: "التفاعلات", node: <ReactionBarDemo /> },
-  { file: "story-ring", title: "حلقة القصة", node: <StoryRingDemo /> },
-  { file: "field", title: "الحقل", node: <FieldDemo /> },
-  { file: "input", title: "حقل النص", node: <InputDemo /> },
-  { file: "textarea", title: "النص الطويل", node: <TextareaDemo /> },
-  { file: "select", title: "القائمة", node: <SelectDemo /> },
-  { file: "checkbox", title: "خانة الاختيار", node: <CheckboxDemo /> },
+// ★ EVERY ENTRY IS A FUNCTION, NEVER AN ELEMENT (`scoring`'s finding, wave 15).
+// An element built once here and placed on both grounds is ONE subtree to the
+// server renderer: it is written once and referenced twice, ids included, so a
+// server component that calls `useId` writes the same id on both grounds.
+// `level-card` did, 29 times. A function is called inside each ground and
+// returns a new element, so each ground is its own render.
+const DEMOS: { file: string; title: string; node: (ground: DemoGround) => ReactNode }[] = [
+  { file: "page-header · section-header · prose", title: "العناوين والنص", node: () => <PageHeaderDemo /> },
+  { file: "dialog", title: "الحوار", node: () => <DialogDemo /> },
+  { file: "toast", title: "الإشعار العابر", node: () => <ToastDemo /> },
+  { file: "skeleton", title: "الهياكل", node: () => <SkeletonDemo /> },
+  { file: "route-error", title: "خطأ المسار", node: () => <RouteErrorDemo /> },
+  { file: "reorderable-list", title: "قائمة تُرتَّب بالنقر", node: () => <ReorderableDemo /> },
+  { file: "tag-chip", title: "الوسم", node: () => <TagChipDemo /> },
+  { file: "badge", title: "شارة الحالة", node: () => <BadgeDemo /> },
+  { file: "avatar", title: "الصورة الرمزية وحلقة الفريق", node: () => <AvatarDemo /> },
+  { file: "card", title: "البطاقة", node: () => <CardDemo /> },
+  { file: "progress", title: "التقدّم", node: () => <ProgressDemo /> },
+  { file: "progress-bar", title: "شريط التقدّم", node: () => <ProgressBarDemo /> },
+  { file: "empty-state", title: "الحالة الفارغة", node: () => <EmptyStateDemo /> },
+  { file: "stat", title: "الرقم", node: () => <StatDemo /> },
+  { file: "panel", title: "اللوحة", node: () => <PanelDemo /> },
+  { file: "file-drop", title: "رفع الملفات", node: () => <FileDropDemo /> },
+  { file: "sticker", title: "اللاصقة", node: () => <StickerDemo /> },
+  { file: "poster", title: "الملصق", node: () => <PosterDemo /> },
+  { file: "reaction-bar", title: "التفاعلات", node: () => <ReactionBarDemo /> },
+  { file: "story-ring", title: "حلقة القصة", node: () => <StoryRingDemo /> },
+  { file: "field", title: "الحقل", node: () => <FieldDemo /> },
+  { file: "input", title: "حقل النص", node: () => <InputDemo /> },
+  { file: "textarea", title: "النص الطويل", node: () => <TextareaDemo /> },
+  { file: "select", title: "القائمة", node: () => <SelectDemo /> },
+  { file: "checkbox", title: "خانة الاختيار", node: () => <CheckboxDemo /> },
   { file: "radio-group", title: "مجموعة الاختيار", node: (ground) => <RadioGroupDemo ground={ground} /> },
-  { file: "switch", title: "المفتاح", node: <SwitchDemo /> },
-  { file: "form-summary", title: "ملخّص الأخطاء", node: <FormSummaryDemo /> },
+  { file: "switch", title: "المفتاح", node: () => <SwitchDemo /> },
+  { file: "form-summary", title: "ملخّص الأخطاء", node: () => <FormSummaryDemo /> },
   { file: "code-input", title: "رمز الحضور", node: (ground) => <CodeInputDemo ground={ground} /> },
-  { file: "session-cta", title: "زرّ الجلسة", node: <SessionCtaDemo /> },
-  { file: "rank-row", title: "صفّ الترتيب", node: <RankRowDemo /> },
-  { file: "race-bar", title: "سباق الشركات", node: <RaceBarDemo /> },
-  { file: "level-card", title: "بطاقة المستوى", node: <LevelCardDemo /> },
-  { file: "data-table", title: "الجدول", node: <DataTableDemo /> },
-  { file: "combobox", title: "القائمة القابلة للبحث", node: <ComboboxDemo /> },
-  { file: "menu", title: "القائمة المنسدلة", node: <MenuDemo /> },
-  { file: "tabs", title: "الألسنة", node: <TabsDemo /> },
-  { file: "sheet", title: "الورقة", node: <SheetDemo /> },
+  { file: "session-cta", title: "زرّ الجلسة", node: () => <SessionCtaDemo /> },
+  { file: "rank-row", title: "صفّ الترتيب", node: () => <RankRowDemo /> },
+  { file: "race-bar", title: "سباق الشركات", node: () => <RaceBarDemo /> },
+  { file: "level-card", title: "بطاقة المستوى", node: () => <LevelCardDemo /> },
+  { file: "data-table", title: "الجدول", node: () => <DataTableDemo /> },
+  { file: "combobox", title: "القائمة القابلة للبحث", node: () => <ComboboxDemo /> },
+  { file: "menu", title: "القائمة المنسدلة", node: () => <MenuDemo /> },
+  { file: "tabs", title: "الألسنة", node: () => <TabsDemo /> },
+  { file: "sheet", title: "الورقة", node: () => <SheetDemo /> },
   { file: "date-time", title: "التاريخ والوقت", node: (ground) => <DateTimeDemo ground={ground} /> },
 ];
 
@@ -282,7 +288,7 @@ function Ground({ light }: { light?: boolean }) {
       </Block>
       {DEMOS.map((d) => (
         <Block key={d.file} title={d.title} file={d.file}>
-          {typeof d.node === "function" ? d.node(light ? "light" : "dark") : d.node}
+          {d.node(light ? "light" : "dark")}
         </Block>
       ))}
     </PlayScope>
