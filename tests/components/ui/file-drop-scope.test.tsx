@@ -3,6 +3,8 @@
 // New cases live here, never in `file-drop.test.tsx`, which is evidence (DEC-186 §9). Tokens only
 // and NO ANIMATION inside the scope; the scope's look is added under `pg:`, never replacing a class.
 import type React from "react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
@@ -86,6 +88,26 @@ describe("FileDrop — the scope adds, it never replaces", () => {
     );
     fireEvent.dragOver(zone(), { dataTransfer: { files: [pdf()] } });
     expect(zone()).toHaveClass("pg:border-accent", "pg:bg-raised", "pg:transition-none");
+  });
+
+  it("★ drag-over's border is a colour that exists — the heading ink, never the `border-navy-700` that emitted nothing", () => {
+    render(
+      <Wrap>
+        <FileDrop name="material" accept={["application/pdf"]} maxBytes={1_000_000} />
+      </Wrap>,
+    );
+    fireEvent.dragOver(zone(), { dataTransfer: { files: [pdf()] } });
+    expect(zone()).toHaveClass("border-fg-heading", "bg-silver-100");
+    expect(zone()).not.toHaveClass("border-navy-700");
+    // Every colour utility on the zone names a token `globals.css` defines — the check that
+    // would have caught `navy-700`, and `avatar.test.tsx` makes for the tints.
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+    const defined = new Set([...css.matchAll(/--color-([a-z0-9-]+):/g)].map((m) => m[1]!));
+    for (const cls of classes(zone()).filter((c) => !c.includes(":"))) {
+      const m = /^(?:border|bg|text)-([a-z]+(?:-[a-z0-9]+)*)$/.exec(cls);
+      if (!m || /^(?:\d|dashed|solid|2|x|y|center|start|end)/.test(m[1]!)) continue;
+      expect(defined.has(m[1]!), `${cls} has no --color-${m[1]} in globals.css`).toBe(true);
+    }
   });
 
   it("the chooser keeps every class and becomes a pill", () => {

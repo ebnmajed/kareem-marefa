@@ -107,7 +107,12 @@ export function FileDrop({ name, accept, maxBytes, multiple, requirements, onFil
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
         className={`flex flex-col items-center gap-3 rounded-card border-2 border-dashed px-6 py-8 text-center transition-colors duration-150 ${
-          dragOver ? "border-navy-700 bg-silver-100" : invalid ? "border-error-border" : "border-edge-strong"
+          // ★ Drag-over was `border-navy-700`, which is not a token (only 1000/950/900/850/800
+          // exist) and so emitted nothing: the dashed border fell back to Tailwind's preflight
+          // grey and turned LIGHTER than at rest, the opposite of a cue (DEC-186 §5, the one
+          // approved visible repair of wave 15). It is the heading ink now — the strongest
+          // colour the context has, in light and under `.theme-dark` alike.
+          dragOver ? "border-fg-heading bg-silver-100" : invalid ? "border-error-border" : "border-edge-strong"
         } ${disabled ? "opacity-50" : ""} ${SCOPE_ZONE} ${dragOver ? SCOPE_DRAG : invalid ? SCOPE_INVALID : ""}`}
       >
         <UploadIcon aria-hidden className="text-[1.5rem] text-fg-muted" />
