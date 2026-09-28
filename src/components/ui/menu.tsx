@@ -4,6 +4,7 @@ import { DropdownMenu } from "radix-ui";
 import type { MenuProps } from "@/components/ui";
 import { CheckIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
+import { usePlayPortal } from "@/components/ui/scope-portal";
 
 // The house dropdown menu over Radix (DEC-019), the same wrapper shape as
 // `dialog.tsx`: Radix owns focus trapping, typeahead, roving tabindex and
@@ -35,10 +36,15 @@ const toneClass: Record<string, string> = {
 };
 
 export function Menu({ trigger, items, align = "start" }: MenuProps) {
+  // ★ Wave 15 (DEC-188): inside the playground's scope the portal lands
+  // INSIDE the scope's element, so the menu wears the scope. Outside a
+  // scope this is `undefined` — Radix's default, `<body>`, exactly as
+  // before the wave.
+  const landing = usePlayPortal();
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
+      <DropdownMenu.Portal container={landing}>
         {/* No entrance animation in M9 — `16` §16.2 moves the motion system to
             M10 and only its duration/ease TOKENS ship here. */}
         <DropdownMenu.Content

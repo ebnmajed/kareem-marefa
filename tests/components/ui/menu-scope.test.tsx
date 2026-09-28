@@ -1,15 +1,21 @@
 // `console`'s file — DEC-186 §9: new wave-15 cases live in a file of their
 // own. Token migration, not a behaviour change: every class `menu.tsx` had
 // before this wave is still there, unedited; this proves the `pg:`
-// additions land beside them. Not wrapped in `<PlayScope>` — see
-// `data-table-scope.test.tsx`'s header comment (`next/font/google` has no
-// jsdom alias in `vitest.config.ts`, a lead-only file).
+// additions land beside them. The token cases below are not wrapped in
+// `<PlayScope>` — see `data-table-scope.test.tsx`'s header comment (jsdom
+// applies no CSS regardless, so the assertion is the class string's
+// presence); the portal cases (DEC-188, contract 6) DO mount the scope,
+// which needs `@/lib/fonts` mocked — `tests/components/ui/
+// scope-portal.test.tsx` is the pattern.
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { Direction } from "radix-ui";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Menu } from "@/components/ui/menu";
+import { PlayScope } from "@/components/ui/scope";
+
+vi.mock("@/lib/fonts", () => ({ balooBhaijaan: { variable: "font-baloo-variable" } }));
 
 function Example() {
   return (
@@ -43,5 +49,31 @@ describe("Menu — the playground's scope, token-only", () => {
     const current = screen.getByRole("menuitem", { name: "لوحة المؤسسة" });
     expect(current).toHaveClass("bg-silver-100");
     expect(current).toHaveClass("pg:bg-raised");
+  });
+});
+
+describe("Menu — the portal (DEC-188, contract 6)", () => {
+  it("★ inside the scope it lands INSIDE the scope's element, so the menu wears the scope", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <PlayScope>
+        <Example />
+      </PlayScope>,
+    );
+    await user.click(screen.getByRole("button", { name: "القائمة" }));
+    const menu = screen.getByRole("menu");
+    expect(menu.closest(".theme-play")).toBe(container.firstElementChild);
+    expect(menu.closest("[data-play-portal]")).not.toBeNull();
+  });
+
+  it("★ outside a scope it lands in <body>, exactly as before the wave", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Example />);
+    await user.click(screen.getByRole("button", { name: "القائمة" }));
+    const menu = screen.getByRole("menu");
+    expect(menu.closest(".theme-play")).toBeNull();
+    expect(menu.closest("[data-play-portal]")).toBeNull();
+    expect(container.contains(menu)).toBe(false);
+    expect(document.body.contains(menu)).toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { Dialog as RadixDialog } from "radix-ui";
+import { usePlayPortal } from "@/components/ui/scope-portal";
 import type { SheetProps } from "@/components/ui";
 
 // The house sheet over Radix Dialog (DEC-019) — `dialog.tsx` is the house
@@ -29,9 +30,14 @@ const sidePosition: Record<NonNullable<SheetProps["side"]>, string> = {
 };
 
 export function Sheet({ open, onOpenChange, title, description, side = "bottom", children }: SheetProps) {
+  // ★ Wave 15 (DEC-188): inside the playground's scope the portal lands
+  // INSIDE the scope's element, so the sheet wears the scope. Outside a
+  // scope this is `undefined` — Radix's default, `<body>`, exactly as
+  // before the wave.
+  const landing = usePlayPortal();
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
-      <RadixDialog.Portal>
+      <RadixDialog.Portal container={landing}>
         <RadixDialog.Overlay className="fixed inset-0 z-40 bg-[var(--color-navy-950)]/60 pg:bg-scrim" />
         <RadixDialog.Content
           className={`fixed z-50 overflow-y-auto border-edge bg-[var(--color-canvas)] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] text-fg-body shadow-xl pg:shadow-none outline-none ${sidePosition[side]}`}
