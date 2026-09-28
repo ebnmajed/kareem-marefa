@@ -4859,3 +4859,22 @@ moved**.
 **Design choices the lead did not rule on explicitly, open to reversal:** the display face on `stat`'s value and
 `empty-state`'s title; the card's and stat's hover as a border step; `story-ring`'s state word under every ring (the
 prototype puts «مباشر» inside the live ring; here the ring holds the letter and the word is always the line beneath).
+
+### Wave 15 — two fixes from the lead's native-resolution review of the gallery
+
+- **`2ae43a10` — a selected chip's count.** Inside the scope a selected chip is the accent, and its count kept the muted
+  text: `#a7abbe` on `#c6ff3d`, **1.93:1**. It now adds `pg:text-on-accent pg:font-normal` — ink on the accent, 16.52:1 on
+  both grounds, quieter than the label by weight only. The unselected count was checked and left: 7.00:1 dark, about
+  5.3:1 light (4.74:1 at its darkest bound).
+- **`91bd5c37` — the poster's title.** It was clamped to four 30 px lines at 1.15 with padding inside the clip; in the
+  two-column grid at 390 px it was squeezed and cut mid-glyph, with a sliver of the next line under it. ★ **A clamp is
+  not safe for Arabic, measured in Chromium with Baloo loaded:** a hidden line's stacked marks (shadda + vowel) leak into
+  the last visible line even at 1.6, and `-webkit-line-clamp`'s ellipsis dropped letters from inside a word in RTL
+  («يمتد على» → «يم على…»). So nothing is clamped: sizes step by container query (16 / 18 from 11rem / 22 from 14rem /
+  30 from 18rem; captions 13 px under 8.5rem); the placeholder has its own 4:5 box that clips nothing, so it **grows**
+  for a long title (an aspect-ratio box's content minimum applies only while its overflow is visible); line height
+  1.4. 400 placeholders, 144 – 420 px, titles up to about 150 characters: every line whole; ordinary titles grow 5 – 11 px
+  only beside a sticker at 150 – 164 px. The gallery spec measures it without `scrollHeight`, which counts Arabic ink
+  overflow as scrollable even where nothing clips.
+- **Reported, not mine:** `content-panel.tsx:33` (`sessions'`) clamps Arabic body text with `line-clamp-4` — the same
+  ellipsis defect.
