@@ -29,6 +29,7 @@ import { CloseIcon } from "@/components/ui/icons";
 const SCOPE_CHIP = "pg:rounded-pill pg:text-[0.8125rem] pg:font-bold";
 const SCOPE_UNSELECTED = "pg:bg-raised";
 const SCOPE_SELECTED = "pg:border-accent pg:bg-accent pg:text-on-accent";
+const SCOPE_SELECTED_COUNT = "pg:text-on-accent pg:font-normal";
 // The remove control is 24 px (`DEC-123`'s exemption, below). Inside the scope
 // every target is 44 px (DEC-186 §5): a transparent pseudo-element extends the
 // hit area 10 px on every side, and the glyph's visual size does not change.
@@ -45,9 +46,16 @@ export function TagChip({ label, href, count, onRemove, removeLabel, selected, r
   // the label — the label is what is being chosen, the count is a hint —
   // and stays in its own `<bdi>`: a Western-digit count after an Arabic
   // label is a bidi boundary (a digit run beside Arabic text reorders without it).
+  //
+  // ★ Wave 15, the lead's gallery review: inside the scope a SELECTED chip is the
+  // accent, and the muted count on it measured 1.93:1 on the dark ground. There
+  // the count takes the chip's own ink (16.52:1 on both grounds) and stays
+  // quieter than the bold label by WEIGHT, never by a colour or an opacity that
+  // would drop it under 4.5:1. Unselected, muted on the raised surface already
+  // passes (7.00:1 dark, about 5.3:1 light) and is left as it is.
   const countNode =
     typeof count === "number" ? (
-      <span className="text-fg-muted">
+      <span className={`text-fg-muted ${selected ? SCOPE_SELECTED_COUNT : ""}`}>
         (<bdi>{count}</bdi>)
       </span>
     ) : null;

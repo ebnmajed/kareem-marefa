@@ -11,6 +11,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
 import axe from "axe-core";
 import { TagChip } from "@/components/ui/tag-chip";
+import { contrastRatio } from "@/lib/brand/contrast";
 import ar from "@/messages/ar/browse.json";
 
 function Scope({ children }: { children: React.ReactNode }) {
@@ -79,6 +80,35 @@ describe("TagChip — the look inside the scope (`04-components.md`)", () => {
     expect(link).toHaveAttribute("aria-current", "true");
     expect(link.parentElement).toHaveClass("pg:bg-accent", "pg:text-on-accent", "pg:border-accent");
     expect(link.parentElement).not.toHaveClass("pg:bg-raised");
+  });
+
+  it("★ a selected chip's count takes the chip's ink inside the scope — muted on the accent was 1.93:1", () => {
+    const { container } = render(
+      <Scope>
+        <TagChip label="تحليل البيانات" count={1250} href="/app/sessions?tag=data" selected />
+      </Scope>,
+    );
+    const count = container.querySelector("bdi + span, a > span") as HTMLElement;
+    expect(count).toHaveTextContent("(1250)");
+    // The class it had stays; the scope's is added after it.
+    expect(count).toHaveClass("text-fg-muted", "pg:text-on-accent", "pg:font-normal");
+  });
+
+  it("an unselected chip's count keeps the muted colour, which passes on the raised surface", () => {
+    const { container } = render(<TagChip label="أتمتة" count={12} />);
+    const count = [...container.querySelectorAll("span")].find((s) => s.textContent === "(12)") as HTMLElement;
+    expect(count).toHaveTextContent("(12)");
+    expect(classes(count)).toEqual(["text-fg-muted"]);
+  });
+
+  it.each([
+    ["the dark ground: muted on the accent, before", "#a7abbe", "#c6ff3d", false],
+    ["the light variant: paper-muted on the accent, before", "#5b5f73", "#c6ff3d", true],
+    ["both grounds: ink on the accent, after", "#0b0c12", "#c6ff3d", true],
+    ["the dark ground: muted on raised, unselected", "#a7abbe", "#1e2130", true],
+    ["the light variant: paper-muted on paper-line, unselected, its darkest bound", "#5b5f73", "#e4dfd3", true],
+  ] as const)("the count's contrast on %s clears 4.5:1: %s", (_name, fg, bg, passes) => {
+    expect(contrastRatio(fg, bg) >= 4.5).toBe(passes);
   });
 
   it("the remove button keeps its 24 px glyph and gains a 44 px hit area inside the scope", () => {
