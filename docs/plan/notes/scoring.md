@@ -2207,3 +2207,22 @@ does not recognise the lead's `text-play-*` theme keys, and fails on `playground
 
 **Not done, and why:** the captures need the lead's `KAREEM_GALLERY=1` build and the three demos wired into
 `playground.tsx`. Adoption on a board is the screens wave's, with §5's DTO list.
+
+## The lead's 390 px finding on `race-bar`: fixed in `7f03d4ed`
+
+**What was wrong:** at 390 px the gallery gives a demo 326 px. `race-bar` put five things on one line, three of
+them fixed-width (the rank, the ring, and the name at `w-24`), and the value column with `metricLabel` could
+not shrink. The value and its metric therefore stood outside the row's frame toward the inline end, and on
+the dark ground the page edge cut them («9.4» read «.4»). My gallery spec checked only the page for sideways
+scroll, and in RTL an overflow toward the left does not always widen the page.
+
+**The fix, with the props unchanged:** the row is now three lines. The first holds the rank, the ring, the
+name (`min-w-0 flex-1`, so it wraps) and the number (`shrink-0`, display face, sign kept). The bar runs across
+the whole row on the second. The third is `metricLabel` and `secondary`, and it is `flex-wrap`, never
+truncated, with no `overflow-hidden` on it.
+
+**The proof:** `race-bar.test.tsx` gains four structural cases: the bar has its own line, the name has no
+fixed width, the metric line wraps and is never truncated, and the number stays whole. The gallery spec now
+asserts, per row on both grounds and at both widths, that every descendant's box lies inside the row's frame.
+It skips `sr-only`; the frames are the `<li>` of `rank-row` and `race-bar` and the visible face of
+`level-card`. Only the lead's re-capture measures the widths.
