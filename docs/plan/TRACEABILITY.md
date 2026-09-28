@@ -217,7 +217,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-EVT-013` | `ENT-photo_takedowns` `ENT-photos` | — | `SCR-012` | — | — | `STORY-EVT-005` | M5 |
 | `REQ-EVT-014` | `ENT-photos` | `POL-comments.removal_audit` | `SCR-011` `SCR-012` `SCR-043` +3 | — | `MSG-reminder_generic` | `STORY-EVT-006` | M5 |
 | `REQ-EVT-015` | — | — | `SCR-012` | — | — | `STORY-EVT-006` | M5 |
-| `REQ-EVT-016` | — | — | `SCR-012` | `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-EVT-007` | M16 |
+| `REQ-EVT-016` | — | — | `SCR-012` | `JOB-zip_session_photos` | — | `STORY-EVT-007` | M16 |
 
 ### INT
 
@@ -493,7 +493,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-024` | — | — | `SCR-012` | — | — | `STORY-UIX-014` | M10 |
 | `REQ-UIX-025` | — | — | `SCR-002` | — | — | `STORY-UIX-015` | M13 |
 | `REQ-UIX-026` | — | — | `SCR-007` `SCR-010` `SCR-011` +1 | `JOB-zip_session_photos` | — | `STORY-UIX-017` | M14 |
-| `REQ-UIX-027` | — | — | `SCR-012` `SCR-048` `SCR-059` | `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-UIX-018` | M16 |
+| `REQ-UIX-027` | — | — | `SCR-012` `SCR-048` `SCR-059` | `JOB-zip_session_photos` | — | `STORY-UIX-018` | M16 |
 | `REQ-UIX-028` | — | — | `SCR-048` | — | — | `STORY-UIX-019` | M17 |
 | `REQ-UIX-029` | — | — | `SCR-048` | — | — | `STORY-UIX-020` | M17 |
 | `REQ-UIX-030` | — | — | `SCR-048` | — | — | `STORY-UIX-021` | M17 |
