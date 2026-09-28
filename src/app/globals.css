@@ -447,6 +447,11 @@
    ring's outer edge stands 4 px outside an article that is `overflow: hidden`,
    and the ring is clipped whole. A control inside a clipping box sets the
    VARIABLE on itself, which this rule reads; it never fights the rule.
+   ★ It is not enough where a positioned child covers the control: the card's
+   media paints over an inset outline along three edges, so the card draws its
+   ring as a pseudo-element above the media and leaves this variable alone
+   (`ui/card.tsx`, DEC-190 §3). The variable is for a box that clips and has
+   nothing over its edge.
    Outside the scope the global rule has the same trap and is not changed this
    wave: it is a visible repair on every screen with a card (STATUS, carried). */
 .theme-play :focus-visible {

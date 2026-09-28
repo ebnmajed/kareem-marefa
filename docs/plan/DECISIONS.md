@@ -4759,3 +4759,18 @@ Structural, with no colour in them: `rounded-pill` (999 px), `rounded-input` (12
 7. **RLS from a fresh reset: 139 files, 1,345 passed**, with `0160` and `0161` applied in order.
 
 - **Documents changed:** `STATUS.md` (C5, L1, E2, V1, G, M1 – M4, the carried list)
+
+---
+
+## DEC-191 — The card's ring is a layer above its media, and wave 15 is ready
+
+- **Date:** 2026-09-28 · **Decided by:** the wave-15 lead, closing `DEC-190` §3's open item
+- **Adds to:** `DEC-190`; it changes nothing there
+
+1. ★ **Inside the scope a linked card draws its focus ring as a pseudo-element above its media** (`content`, `39a98087`). `content` measured four shapes in Chromium, sampling pixels inside each edge of a card with media: the inset outline (covered along the top and both sides of the media); the same with a stacking context on the link (no different — a stacking context does not lift an outline above a positioned child); the article's own outline (visible, **rejected**: it stands outside the card, where a caller's clipping row cuts it, and suppressing the link's own ring through a variable would be inherited by the bookmark nested in the link); and `::after` on the link, which shows on every side and leaves the nested control its ring. The link's own outline falls back outside the card, where the article clips it whole, so exactly one ring shows. Everything is under `pg:`.
+2. **The lead sampled the capture itself**: six points, the top, the bottom and both sides at the media's height and at the body's, on both grounds — the ring's colour at every one, lime on the dark ground and ink on the light. `content`'s gallery spec samples the same six against the colour the scope computes, and names no hex.
+3. **`--focus-offset` stays in the scope's focus rule** (`081ffe8c`), for a control in a box that clips and has nothing over its edge. The card no longer sets it, and the rule's comment says why.
+4. ★ **The final gates, on `87f79031`**: tsc clean · lint 0 errors · `ui-lint --strict` 331 files · `trace` 336 · 162, no gaps · `policy-diff` · `fonts:check` · unit + components 3,290 · build · `qa` 57/57 · `visual` six public pairs 0.000 % · parity 21 of 28 locally · the fingerprint byte-identical to `main`'s · gallery specs 115, none skipped · the end-to-end suite as CI runs it, 161 passed. RLS from a fresh reset is `DEC-190` §7's, on `09fe5323`; no migration and no policy changed after it. The commit that carries this entry differs from `87f79031` by documents and one CSS comment.
+5. **The PR is marked ready. The owner merges**, in the order `STATUS.md` gives.
+
+- **Documents changed:** `STATUS.md` (N3, M4, G, the header)
