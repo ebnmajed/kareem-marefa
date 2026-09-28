@@ -36,6 +36,38 @@ const WIDTHS = [
   { name: "desktop", size: { width: 1280, height: 900 } },
 ] as const;
 
+/** Navigate to the gallery, wait for fonts, and freeze scrolling — the
+ *  lead's own finding on `dialog` (`wave15-lead-gallery.spec.ts`): the page
+ *  scrolls SMOOTHLY, and a press or a focus can start a scroll. A viewport
+ *  capture taken mid-scroll shows the fixed layers and the page out of
+ *  step — an undimmed band was measured, in a browser, to be nothing wrong
+ *  with the product, only with the moment the picture was taken. */
+async function gotoGallery(page: import("@playwright/test").Page) {
+  const res = await page.goto("/ar/ui");
+  expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
+  await page.evaluate(() => document.fonts.ready);
+  await page.addStyleTag({ content: "html { scroll-behavior: auto !important; }" });
+}
+
+/** Wait until the page has stopped scrolling: three equal readings, a frame apart. */
+async function still(page: import("@playwright/test").Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((done) => {
+        let last = -1;
+        let equal = 0;
+        let frames = 0;
+        const step = () => {
+          equal = scrollY === last ? equal + 1 : 0;
+          last = scrollY;
+          if (equal >= 3 || ++frames > 120) done();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }),
+  );
+}
+
 // The widths are set here, so one project is enough: the phone project would
 // shoot the same boxes again at the same sizes.
 test.beforeEach(({}, info) => {
@@ -46,8 +78,7 @@ for (const primitive of PRIMITIVES) {
   for (const width of WIDTHS) {
     test(`${primitive} at ${width.name}`, async ({ page }) => {
       await page.setViewportSize(width.size);
-      const res = await page.goto("/ar/ui");
-      expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
+      await gotoGallery(page);
 
       test.skip((await page.locator(`[data-demo="${primitive}"]`).count()) === 0, `${primitive}'s demo is not wired into the gallery yet`);
 
@@ -55,12 +86,12 @@ for (const primitive of PRIMITIVES) {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, "the page scrolls sideways").toBeLessThanOrEqual(0);
 
-      await page.evaluate(() => document.fonts.ready);
       for (const ground of GROUNDS) {
         const box = page.locator(demoOn(primitive, ground.scope));
         await expect(box).toHaveCount(1);
         await expect(box).toBeVisible();
         await box.scrollIntoViewIfNeeded();
+        await still(page);
         await box.screenshot({ path: join(SHOTS, `wave15-console-${primitive}-${ground.name}-${width.name}.png`), animations: "disabled" });
       }
     });
@@ -96,9 +127,7 @@ test.beforeEach(async ({ page }, info) => {
 
 for (const ground of GROUNDS) {
   test(`the sheet's content is the scope's SURFACE, ${ground.name} ground`, async ({ page }) => {
-    const res = await page.goto("/ar/ui");
-    expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
-    await page.evaluate(() => document.fonts.ready);
+    await gotoGallery(page);
     const demo = page.locator(demoOn("sheet", ground.scope));
     test.skip((await demo.count()) === 0, "sheet's demo is not wired into the gallery yet");
 
@@ -111,13 +140,33 @@ for (const ground of GROUNDS) {
     });
     expect(computed.background).toBe(await scopeComputes(page, ground.scope, "bg-surface", "background-color"));
     expect(computed.color).toBe(await scopeComputes(page, ground.scope, "text-fg-body", "color"));
+
+    // Measured, not judged from a picture: the scrim covers the whole
+    // screen and a BOTTOM sheet's own frame reaches the screen's bottom
+    // edge — the lead's own finding, restated here for the sheet (`still()`
+    // above is what makes the picture agree with these numbers).
+    const boxes = await sheet.evaluate((el) => {
+      const scrim = (el.previousElementSibling as HTMLElement).getBoundingClientRect();
+      const content = el.getBoundingClientRect();
+      return {
+        scrim: { top: scrim.top, left: scrim.left, width: scrim.width, height: scrim.height },
+        content: { bottom: content.bottom },
+        innerWidth,
+        innerHeight,
+      };
+    });
+    expect(boxes.scrim.top).toBe(0);
+    expect(boxes.scrim.left).toBe(0);
+    expect(boxes.scrim.width).toBe(boxes.innerWidth);
+    expect(boxes.scrim.height).toBe(boxes.innerHeight);
+    expect(boxes.content.bottom).toBe(boxes.innerHeight);
+
+    await still(page);
     await page.screenshot({ path: join(SHOTS, `wave15-console-sheet-popup-${ground.name}-390.png`), animations: "disabled" });
   });
 
   test(`the menu's content is the scope's SURFACE, ${ground.name} ground`, async ({ page }) => {
-    const res = await page.goto("/ar/ui");
-    expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
-    await page.evaluate(() => document.fonts.ready);
+    await gotoGallery(page);
     const demo = page.locator(demoOn("menu", ground.scope));
     test.skip((await demo.count()) === 0, "menu's demo is not wired into the gallery yet");
 
@@ -129,13 +178,13 @@ for (const ground of GROUNDS) {
       return { background: cs.backgroundColor, color: cs.color };
     });
     expect(computed.background).toBe(await scopeComputes(page, ground.scope, "bg-surface", "background-color"));
+
+    await still(page);
     await page.screenshot({ path: join(SHOTS, `wave15-console-menu-popup-${ground.name}-390.png`), animations: "disabled" });
   });
 
   test(`the combobox's listbox is the scope's SURFACE, ${ground.name} ground`, async ({ page }) => {
-    const res = await page.goto("/ar/ui");
-    expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
-    await page.evaluate(() => document.fonts.ready);
+    await gotoGallery(page);
     const demo = page.locator(demoOn("combobox", ground.scope));
     test.skip((await demo.count()) === 0, "combobox's demo is not wired into the gallery yet");
 
@@ -147,13 +196,13 @@ for (const ground of GROUNDS) {
       return { background: cs.backgroundColor, color: cs.color };
     });
     expect(computed.background).toBe(await scopeComputes(page, ground.scope, "bg-surface", "background-color"));
+
+    await still(page);
     await page.screenshot({ path: join(SHOTS, `wave15-console-combobox-popup-${ground.name}-390.png`), animations: "disabled" });
   });
 
   test(`the date picker's popover is the scope's SURFACE, ${ground.name} ground`, async ({ page }) => {
-    const res = await page.goto("/ar/ui");
-    expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
-    await page.evaluate(() => document.fonts.ready);
+    await gotoGallery(page);
     const demo = page.locator(demoOn("date-time", ground.scope));
     test.skip((await demo.count()) === 0, "date-time's demo is not wired into the gallery yet");
 
@@ -165,6 +214,8 @@ for (const ground of GROUNDS) {
       return { background: cs.backgroundColor, color: cs.color };
     });
     expect(computed.background).toBe(await scopeComputes(page, ground.scope, "bg-surface", "background-color"));
+
+    await still(page);
     await page.screenshot({ path: join(SHOTS, `wave15-console-date-time-popup-${ground.name}-390.png`), animations: "disabled" });
   });
 }
