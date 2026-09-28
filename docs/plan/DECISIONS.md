@@ -4774,3 +4774,19 @@ Structural, with no colour in them: `rounded-pill` (999 px), `rounded-input` (12
 5. **The PR is marked ready. The owner merges**, in the order `STATUS.md` gives.
 
 - **Documents changed:** `STATUS.md` (N3, M4, G, the header)
+
+---
+
+## DEC-192 — A correction: CI was not green, and the lead wrote that it was
+
+- **Date:** 2026-09-28 · **Decided by:** the wave-15 lead, reading CI on the push it meant to mark ready
+- **Corrects:** `DEC-190` §6 («CI … is green on `09fe5323`») and `STATUS.md`'s row G («CI green on all twelve jobs, end to end included»). `DECISIONS.md` is append-only, so the sentence stays where it is and this entry says it is false.
+
+1. ★ **What was false.** On `09fe5323` eleven of CI's jobs had passed and one — «platform unconfigured (build + 404s)» — was still running when the lead wrote «all twelve». It then failed. **It had failed on every run of the branch since `6a803b57`**, six runs, and the lead had not once read a run to its end: each time it looked, that job was the one still pending, and the others were green. `DEC-191` §5 then called the PR ready on the strength of gates the lead had run itself, and the PR was **not** marked ready only because CI on that push was read before the button was pressed.
+2. ★ **What failed, and whose it is.** The wave's own fingerprint spec (`wave15-sessions-public-controls.spec.ts`). On a build made without `NEXT_PUBLIC_SUPABASE_*` it navigates to `/ar/register` waiting for the network to go idle, and it never does: 300 s, and again on the retry. **The public route did not regress.** The same spec was run in unconfigured mode on the branch and on `main`'s code, and both hang at the same line.
+3. **Why the page never goes idle there, measured on `main`'s unconfigured build.** The header's «تسجيل الدخول» door (`REQ-UIX-025`, wave 11) is prefetched, and on a build where the platform is off the prefetch — `GET /ar/sign-in?_rsc=…` — is opened 191 ms after load and **never completes**. The same page posts eight CSP reports in twelve seconds. Both are `main`'s, neither is this wave's, and production is configured; they are carried, because «`main` stays deployable with the platform unconfigured» (`DEC-038`) is a job that should be able to say so about every page.
+4. **The repair.** The spec skips when `E2E_PLATFORM_UNCONFIGURED` is `1`, as `auth.spec.ts`, `auth-screens.spec.ts` and `legal.spec.ts` do. Contract 5's proof is run on a configured build against `main`'s record, and CI's ordinary end-to-end job, which is configured, runs the spec and passes. In the same job one of `console`'s new cases — the date picker's popover on the dark ground — failed once and passed on the retry: a press before hydration; its owner makes the open robust.
+5. ★ **The rule this leaves.** **«CI is green» is said of a run whose every job has concluded, by the run's own conclusion** — `gh run view <id> --json conclusion` — never by counting the jobs that happen to be green when looked at. A pending job is not a passing one. The lead's own gates do not stand in for it: the unconfigured build is a gate the lead never ran locally in this wave.
+6. **The PR is marked ready when a run concludes `success` on the head commit, and not before.**
+
+- **Documents changed:** `STATUS.md` (row G, the header, the carried list)
