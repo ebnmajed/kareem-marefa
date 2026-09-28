@@ -174,22 +174,26 @@ for (const width of WIDTHS) {
   });
 }
 
-// ★ The card's focus ring, inside the scope (the lead's measurement, 081ffe8c). The article is
-// `overflow: hidden` and its link fills it, so a ring drawn OUTSIDE the link is clipped whole —
-// the link's own `focus-visible:-outline-offset-2` is layered and never applies. The link sets
-// `--focus-offset` to minus the ring's width, which the scope's rule reads. Proven by keyboard:
-// the link is reached by Tab, matches `:focus-visible`, and the ring's outer edge — the link's box
-// grown by `outline-offset + outline-width` — lies inside the article's clip (its padding box) on
-// all four sides. Then the card's own box is captured with the ring showing.
+// ★ The card's focus ring, inside the scope (the lead's two reviews). The article is `overflow:
+// hidden` and its link fills it: an outline outside the link is clipped whole, and one pulled
+// inside it is COVERED by `CardMedia`, a positioned child — geometry passed while the top and both
+// sides of the media showed no ring. So the ring is the link's `::after`, above the media, and
+// this measures what can be SEEN: the link is reached by Tab and matches `:focus-visible`, then the
+// card's own box is captured and pixels are sampled just inside each edge — the top, the bottom,
+// both sides at the media's height and at the body's — each must be the colour the scope computes
+// for `--ring` (no hex is named here). Exactly one ring: the article draws none, and the link's own
+// outline lies outside the article's clip.
 for (const width of WIDTHS) {
-  test(`card: a linked card's focus ring is inside its clip, reached by Tab, at ${width.name}`, async ({ page }) => {
+  test(`card: a linked card's focus ring can be seen on all four sides, reached by Tab, at ${width.name}`, async ({ page }) => {
     await openGallery(page, width.size);
     test.skip((await page.locator('[data-demo="card"]').count()) === 0, "card's demo is not wired into the gallery yet");
     for (const ground of GROUNDS) {
       const demo = page.locator(demoOn("card", ground.scope));
-      const link = demo.locator("article > a").first();
-      await link.scrollIntoViewIfNeeded();
-      // Start just before the demo: focus its root (made focusable for the moment), then Tab once.
+      // The first linked card with media — the case the covered ring hid.
+      const article = demo.locator("article:has(> a [data-slot=media])").first();
+      const link = article.locator(":scope > a");
+      await article.scrollIntoViewIfNeeded();
+      // Start just before the card: focus the demo's root for the moment, then Tab once.
       await demo.evaluate((el) => {
         el.setAttribute("tabindex", "-1");
         (el as HTMLElement).focus();
@@ -198,43 +202,75 @@ for (const width of WIDTHS) {
       await demo.evaluate((el) => el.removeAttribute("tabindex"));
       await expect(link).toBeFocused();
 
-      const ring = await link.evaluate((a) => {
+      const facts = await link.evaluate((a) => {
+        const art = a.closest("article")!;
+        const ar = art.getBoundingClientRect();
         const cs = getComputedStyle(a);
-        const article = a.closest("article")!;
-        const acs = getComputedStyle(article);
+        const after = getComputedStyle(a, "::after");
         const lr = a.getBoundingClientRect();
-        const ar = article.getBoundingClientRect();
         const reach = parseFloat(cs.outlineOffset) + parseFloat(cs.outlineWidth);
-        // The article clips at its padding box: its border box less its borders.
-        const clip = {
-          top: ar.top + parseFloat(acs.borderTopWidth),
-          right: ar.right - parseFloat(acs.borderRightWidth),
-          bottom: ar.bottom - parseFloat(acs.borderBottomWidth),
-          left: ar.left + parseFloat(acs.borderLeftWidth),
-        };
+        const media = a.querySelector<HTMLElement>("[data-slot=media]")!.getBoundingClientRect();
+        const body = a.querySelector<HTMLElement>("[data-slot=body]")!.getBoundingClientRect();
         return {
           focusVisible: a.matches(":focus-visible"),
-          offset: cs.outlineOffset,
-          width: cs.outlineWidth,
-          style: cs.outlineStyle,
-          articleOverflow: acs.overflow,
-          inside: {
-            top: lr.top - reach >= clip.top - 0.5,
-            right: lr.right + reach <= clip.right + 0.5,
-            bottom: lr.bottom + reach <= clip.bottom + 0.5,
-            left: lr.left - reach >= clip.left - 0.5,
-          },
+          ring: getComputedStyle(a.closest(".theme-play")!).getPropertyValue("--ring").trim(),
+          afterWidth: after.borderTopWidth,
+          articleOutline: getComputedStyle(art).outlineStyle,
+          linkOwnOutsideClip: reach > 0 && lr.top - reach < ar.top,
+          // Sample rows, relative to the captured article box.
+          mediaY: (media.top + media.bottom) / 2 - ar.top,
+          bodyY: (body.top + body.bottom) / 2 - ar.top,
         };
       });
       const where = `${ground.name} · ${width.name}`;
-      expect(ring.focusVisible, `${where}: the link is not :focus-visible after Tab`).toBe(true);
-      expect(ring.style, `${where}: no ring is drawn`).toBe("solid");
-      expect(ring.width, `${where}: the scope's ring width`).toBe("3px");
-      expect(ring.offset, `${where}: the ring is not drawn inside the link`).toBe("-3px");
-      expect(ring.articleOverflow, `${where}: the article no longer clips — this test would prove nothing`).toBe("hidden");
-      expect(ring.inside, `${where}: the ring's outer edge crosses the article's clip`).toEqual({ top: true, right: true, bottom: true, left: true });
+      expect(facts.focusVisible, `${where}: the link is not :focus-visible after Tab`).toBe(true);
+      expect(facts.afterWidth, `${where}: no ring is drawn above the media`).not.toBe("0px");
+      expect(facts.articleOutline, `${where}: a second ring, on the article`).toBe("none");
+      expect(facts.linkOwnOutsideClip, `${where}: the link's own outline is inside the clip — a second ring`).toBe(true);
+      expect(facts.ring, `${where}: the scope computes no --ring`).toMatch(/^#[0-9a-f]{6}$/i);
 
-      await demo.locator("article").first().screenshot({ path: join(SHOTS, `wave15-content-card-focus-${ground.name}-${width.name}.png`) });
+      const shot = await article.screenshot({ path: join(SHOTS, `wave15-content-card-focus-${ground.name}-${width.name}.png`) });
+      const seen = await page.evaluate(
+        async ({ b64, ring, mediaY, bodyY }) => {
+          const img = new Image();
+          img.src = `data:image/png;base64,${b64}`;
+          await img.decode();
+          const canvas = new OffscreenCanvas(img.width, img.height);
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0);
+          const data = ctx.getImageData(0, 0, img.width, img.height).data;
+          // The capture is at the device's pixel ratio; the rows arrive in CSS pixels.
+          const k = window.devicePixelRatio || 1;
+          const [R, G, B] = [1, 3, 5].map((i) => parseInt(ring.slice(i, i + 2), 16));
+          const hit = (x: number, y: number) => {
+            const i = (Math.round(y) * img.width + Math.round(x)) * 4;
+            return Math.abs(data[i]! - R) < 40 && Math.abs(data[i + 1]! - G) < 40 && Math.abs(data[i + 2]! - B) < 40;
+          };
+          const W = img.width, H = img.height, N = Math.ceil(7 * k);
+          const any = (pts: [number, number][]) => pts.some(([x, y]) => hit(x, y));
+          const inFromTop = (x: number) => Array.from({ length: N }, (_, n) => [x, n] as [number, number]);
+          const inFromBottom = (x: number) => Array.from({ length: N }, (_, n) => [x, H - 1 - n] as [number, number]);
+          const inFromLeft = (y: number) => Array.from({ length: N }, (_, n) => [n, y] as [number, number]);
+          const inFromRight = (y: number) => Array.from({ length: N }, (_, n) => [W - 1 - n, y] as [number, number]);
+          return {
+            top: any(inFromTop(W / 2)),
+            bottom: any(inFromBottom(W / 2)),
+            leftAtMedia: any(inFromLeft(mediaY * k)),
+            rightAtMedia: any(inFromRight(mediaY * k)),
+            leftAtBody: any(inFromLeft(bodyY * k)),
+            rightAtBody: any(inFromRight(bodyY * k)),
+          };
+        },
+        { b64: shot.toString("base64"), ring: facts.ring, mediaY: facts.mediaY, bodyY: facts.bodyY },
+      );
+      expect(seen, `${where}: the ring cannot be seen on every side`).toEqual({
+        top: true,
+        bottom: true,
+        leftAtMedia: true,
+        rightAtMedia: true,
+        leftAtBody: true,
+        rightAtBody: true,
+      });
       await page.keyboard.press("Shift+Tab");
     }
   });

@@ -60,15 +60,23 @@ export function Card({ density = "grid", href, children, className = "" }: CardP
         <Link
           href={href}
           quiet
-          // ★ Inside the scope the ring is drawn INSIDE the link (the lead measured it in a
-          // browser, 081ffe8c): the article is `overflow: hidden` and the link fills it, so a ring
-          // outside the link is clipped whole. `focus-visible:-outline-offset-2` below never applied
-          // — every utility is in a layer and the focus rules are not — so the scope's rule reads
-          // `--focus-offset`, set here to minus the ring's own width: the ring's outer edge lands
-          // on the link's edge, inside the clip. The link takes the article's 22 px corner too, so
-          // the inset ring's corners follow the clip's curve. Outside the scope nothing reads the
-          // variable and nothing changes this wave (carried to the owner, SC 2.4.7).
-          className="block h-full rounded-card focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)] pg:rounded-panel pg:[--focus-offset:calc(var(--focus-width)*-1)]"
+          // ★ Inside the scope the card's focus ring is a PSEUDO-ELEMENT on the link, drawn ABOVE
+          // the media (the lead's two reviews, measured in a browser):
+          //   · the article is `overflow: hidden` and the link fills it, so the link's own outline
+          //     — at the scope's 2 px outside, since `focus-visible:-outline-offset-2` is layered and
+          //     never applies — is clipped whole;
+          //   · pulled inside the link, that outline was COVERED: `CardMedia` is a positioned child,
+          //     so it paints over its parent's outline on the top and both sides of the media, and
+          //     a stacking context on the link does not change it (measured).
+          // `::after` is absolute over the whole card (the article is its containing block), above
+          // the media (`z-10`), clicks passing through it, its 3 px band in the scope's ring colour
+          // and width, its corner inherited from the link's 22 px — and it exists only while the
+          // link is `:focus-visible`. It is the one ring: the link's own stays outside and clipped.
+          // It is not the article's outline, which would sit outside the card where a caller's
+          // clipping rail cuts it, and not a variable set on the link, which the card's nested
+          // controls would inherit. The link takes the article's corner too. Outside the scope
+          // nothing changes this wave (carried to the owner, SC 2.4.7).
+          className="block h-full rounded-card focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)] pg:rounded-panel pg:focus-visible:after:pointer-events-none pg:focus-visible:after:absolute pg:focus-visible:after:inset-0 pg:focus-visible:after:z-10 pg:focus-visible:after:rounded-[inherit] pg:focus-visible:after:border-[length:var(--focus-width)] pg:focus-visible:after:border-[var(--ring)]"
         >
           {inner}
         </Link>

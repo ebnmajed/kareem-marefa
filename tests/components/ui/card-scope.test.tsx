@@ -93,23 +93,36 @@ describe("Card — the look inside the scope (`04-components.md`)", () => {
     expect(container.querySelector("img")).toHaveClass("object-contain");
   });
 
-  it("★ the linked card's ring is drawn inside the link in the scope — the article clips, and the link fills it", () => {
+  it("★ the linked card's ring is a pseudo-element above the media in the scope — never covered, never clipped", () => {
     const { container } = render(
       <Scope>
         <Card href="/app/sessions/s-1">
+          <CardMedia placeholderFrom="ملصق" />
           <CardBody>محتوى</CardBody>
         </Card>
       </Scope>,
     );
     const link = container.querySelector("article > a")!;
+    const BEFORE = ["block", "h-full", "rounded-card", "focus-visible:outline-2", "focus-visible:-outline-offset-2", "focus-visible:outline-[var(--ring)]"];
     // What it had stays, byte for byte — inert today, and on main.
-    for (const cls of ["block", "h-full", "rounded-card", "focus-visible:outline-2", "focus-visible:-outline-offset-2", "focus-visible:outline-[var(--ring)]"]) {
-      expect(link, cls).toHaveClass(cls);
-    }
-    // The scope's rule reads the variable; the corner follows the article's.
-    expect(link).toHaveClass("pg:[--focus-offset:calc(var(--focus-width)*-1)]", "pg:rounded-panel");
-    // Never without `pg:` — outside the scope the global rule must not change this wave.
-    expect(link.className).not.toMatch(/(?:^|\s)\[--focus-offset/);
+    for (const cls of BEFORE) expect(link, cls).toHaveClass(cls);
+    // The ring: over the whole card, above the media, clicks passing through, in the scope's ring
+    // colour and width, only while the link is focus-visible; the corner follows the article's.
+    expect(link).toHaveClass(
+      "pg:rounded-panel",
+      "pg:focus-visible:after:absolute",
+      "pg:focus-visible:after:inset-0",
+      "pg:focus-visible:after:z-10",
+      "pg:focus-visible:after:pointer-events-none",
+      "pg:focus-visible:after:rounded-[inherit]",
+      "pg:focus-visible:after:border-[length:var(--focus-width)]",
+      "pg:focus-visible:after:border-[var(--ring)]",
+    );
+    // One ring: the link does not pull its own outline inside (where the media covered it), and
+    // sets no variable its nested controls would inherit.
+    expect(link.className).not.toMatch(/--focus-offset|--focus-width:|--ring:/);
+    // Everything added is under `pg:` — outside the scope nothing changes this wave.
+    for (const cls of link.className.split(/\s+/).filter(Boolean)) if (!BEFORE.includes(cls)) expect(cls, cls).toMatch(/^pg:/);
   });
 
   it("is accessible inside the scope, linked, with media and a nested action", async () => {
