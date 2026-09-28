@@ -3079,3 +3079,29 @@ Nothing else outside the scope moved. My row is done.
 Full `npx tsc --noEmit`, `npm run lint`, `npm run ui-lint`, and the full `unit`+`components` project run
 (3216/3217 green, the one failure is the lead's in-flight `playground.tsx`) all clean after these two
 commits.
+
+---
+
+## Wave 15 — the popup-surface fix (91398840)
+
+`sheet.tsx` had its own separate fault, identical to the lead's `dialog` one: `bg-[var(--color-canvas)]`
+resolves at `:root` and is white on every ground. Fixed with the same `pg:bg-surface`, and moved
+`pg:shadow-none` to the end of the class string (existing classes first, the scope's after — it had
+been sitting mid-string).
+
+`menu.tsx:53`, `combobox.tsx:318/324` and `rtl-datetime-picker.tsx:289` all read `bg-canvas` (the
+utility, which follows the scope, not the raw `--color-canvas` variable) — so none of these three had
+the white-on-white fault. What they had instead: `bg-canvas` is the scope's **ground**, so a popup
+floating over the page rendered the exact colour of the page beneath it, told apart only by its
+1px border. Each gains `pg:bg-surface`.
+
+★ **What I actually saw, honestly:** I have no way to open a browser against a real build — building
+is lead-only, and the `.next` on disk is stale relative to my own commits regardless. So this is
+traced from the mechanism (`--bg`/`--surface` are two different values on both grounds inside
+`.theme-play`/`.theme-play-light`, per `tests/unit/tokens-scope.test.ts`'s own fixtures), not eyeballed
+in Chromium. The e2e proof in `wave15-console-gallery.spec.ts` (four tests × two grounds, computed
+`background-color`/`color` compared against `scopeComputes()`, a capture per popup per ground) is what
+actually verifies it, and needs the lead's build to run.
+
+82 existing component tests across the four files pass untouched (jsdom applies no CSS; they only
+ever assert class-string presence).
