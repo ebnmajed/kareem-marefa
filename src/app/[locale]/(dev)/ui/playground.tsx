@@ -36,6 +36,7 @@ import { RaceBarDemo } from "./demos/race-bar";
 import { RankRowDemo } from "./demos/rank-row";
 import { ReactionBarDemo } from "./demos/reaction-bar";
 import { RouteErrorDemo } from "./demos/route-error";
+import { SelectDemo } from "./demos/select";
 import { SessionCtaDemo } from "./demos/session-cta";
 import { SheetDemo } from "./demos/sheet";
 import { SkeletonDemo } from "./demos/skeleton";
@@ -45,6 +46,7 @@ import { StoryRingDemo } from "./demos/story-ring";
 import { SwitchDemo } from "./demos/switch";
 import { TabsDemo } from "./demos/tabs";
 import { TagChipDemo } from "./demos/tag-chip";
+import { TextareaDemo } from "./demos/textarea";
 import { ToastDemo } from "./demos/toast";
 import type { DemoGround } from "./ground";
 import { ReorderableDemo } from "./reorderable-demo";
@@ -72,7 +74,7 @@ import { ReorderableDemo } from "./reorderable-demo";
 // group to the browser: the dark ground's would lose its checked option to the
 // light ground's. `radio-group`, `code-input` and `date-time` suffix what they
 // name.
-// `textarea` waits for contract 5, and `select` for its demo.
+// Every primitive of the wave stands here: 37 migrated and ten new.
 
 const DEMOS: { file: string; title: string; node: ReactNode | ((ground: DemoGround) => ReactNode) }[] = [
   { file: "page-header · section-header · prose", title: "العناوين والنص", node: <PageHeaderDemo /> },
@@ -97,6 +99,8 @@ const DEMOS: { file: string; title: string; node: ReactNode | ((ground: DemoGrou
   { file: "story-ring", title: "حلقة القصة", node: <StoryRingDemo /> },
   { file: "field", title: "الحقل", node: <FieldDemo /> },
   { file: "input", title: "حقل النص", node: <InputDemo /> },
+  { file: "textarea", title: "النص الطويل", node: <TextareaDemo /> },
+  { file: "select", title: "القائمة", node: <SelectDemo /> },
   { file: "checkbox", title: "خانة الاختيار", node: <CheckboxDemo /> },
   { file: "radio-group", title: "مجموعة الاختيار", node: (ground) => <RadioGroupDemo ground={ground} /> },
   { file: "switch", title: "المفتاح", node: <SwitchDemo /> },
