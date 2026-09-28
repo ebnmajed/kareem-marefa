@@ -89,6 +89,16 @@ const ICON_NAMES: Record<string, string> = {
   UploadIcon: "رفع",
   UserIcon: "عضو",
   UsersIcon: "حضور",
+  // Wave 15 — the playground's nine (DEC-183 §4.7, REQ-UIX-041).
+  BoltIcon: "برق",
+  CalendarCheckIcon: "في تقويمك",
+  CameraIcon: "كاميرا",
+  CoinIcon: "نقاط",
+  CompassIcon: "استكشف",
+  FlameIcon: "سلسلة",
+  PauseIcon: "إيقاف مؤقت",
+  TicketIcon: "حجز",
+  TrophyIcon: "كأس",
 };
 
 const GLYPH_COUNT = Object.keys(Icons).filter((name) => name.endsWith("Icon")).length;

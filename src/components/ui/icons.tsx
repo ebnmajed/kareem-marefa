@@ -518,3 +518,126 @@ export function HomeIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE PLAYGROUND'S NINE — «ساحة اللعب», DEC-183 §4.7, REQ-UIX-041.
+
+   `docs/design/assets/icons/icons-additions.tsx` offers sixteen glyphs. SEVEN
+   of them are already in this file, and the house drawing stands (DEC-106: the
+   set reads as one hand): close, plus, download, star, pin, and the chevron
+   pair, which is `ChevronIcon`'s `forward` and `back`. A second `DownloadIcon`
+   drawn by another hand is exactly how a set starts to look bought.
+
+   So nine are added, and each is redrawn into THIS file's shape rather than
+   pasted: `1em` so the glyph sizes with its text, a `label` that turns a
+   decoration into a named image, `currentColor`, stroke 2, round caps and
+   joins. The additions file sizes in pixels and mirrors by a CSS class; this
+   file does neither.
+
+   NONE OF THE NINE POINTS, so none mirrors. A flame, a cup and a coin read the
+   same in both directions; the ticket's perforation and the compass's needle
+   carry no reading order.
+
+   They are GLYPHS — small, stroked, one colour. The six toy-gloss OBJECTS of
+   the same names (the coin, the cup, the flame, the ticket) are a different
+   thing in a different folder, `ui/objects/`, and a glyph never stands in for
+   one in a celebration.
+
+   ★ The forbidden imagery still stands (condition 3 above): a trophy is a cup
+   for a race between companies, never a graduation.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** السلسلة — a streak, and the «fire» reaction. */
+export function FlameIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z" />
+    </Svg>
+  );
+}
+
+/** الكأس — the companies' race and a season's end. A cup, two handles, a foot. */
+export function TrophyIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 4h8v5a4 4 0 0 1-8 0z" />
+      <path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4" />
+      <path d="M12 13v4M8 21h8M9 17h6" />
+    </Svg>
+  );
+}
+
+/** استكشف — browse. A ring and a needle; the needle names no direction of reading. */
+export function CompassIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="m15 9-2 5.5-4 1.5 2-5.5z" />
+    </Svg>
+  );
+}
+
+/** الحجز — a reserved seat. The perforation is the ticket's only ornament. */
+export function TicketIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z" />
+      <path d="M14 6v12" strokeDasharray="2 2" />
+    </Svg>
+  );
+}
+
+/**
+ * النقاط — points. A ring inside a ring, and a dot at the centre: the dot is
+ * the family's ancestor. ★ It carries NO numeral and no plus sign — what a
+ * member earned is computed per session (REQ-CHK-018) and is written in text
+ * beside the glyph, never drawn into it (DEC-183 §4.14).
+ */
+export function CoinIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** البرق — the «bolt» reaction. */
+export function BoltIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M13 3 5 14h6l-1 7 8-11h-6z" />
+    </Svg>
+  );
+}
+
+/** الكاميرا — adding a photograph of the session. */
+export function CameraIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 8.5a2 2 0 0 1 2-2h2l1.5-2h5l1.5 2h2a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+      <circle cx="12" cy="13" r="3.4" />
+    </Svg>
+  );
+}
+
+/** في تقويمك — the house calendar, with the check inside it. Same frame as `CalendarIcon`. */
+export function CalendarCheckIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="6" width="16" height="14" rx="2" />
+      <path d="M4 11h16M9 4v3m6-3v3" />
+      <path d="m9.5 15.5 1.8 1.8 3.4-3.6" />
+    </Svg>
+  );
+}
+
+/** إيقاف مؤقت — the tap path a story viewer's hold needs (DEC-093's seventh place). */
+export function PauseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9 6v12M15 6v12" />
+    </Svg>
+  );
+}
