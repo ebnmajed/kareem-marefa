@@ -11,6 +11,7 @@ import { AvatarDemo } from "./demos/avatar";
 import { BadgeDemo } from "./demos/badge";
 import { CardDemo } from "./demos/card";
 import { CheckboxDemo } from "./demos/checkbox";
+import { CodeInputDemo } from "./demos/code-input";
 import { ComboboxDemo } from "./demos/combobox";
 import { DataTableDemo } from "./demos/data-table";
 import { DateTimeDemo } from "./demos/date-time";
@@ -23,6 +24,7 @@ import { PanelDemo } from "./demos/panel";
 import { PosterDemo } from "./demos/poster";
 import { ProgressDemo } from "./demos/progress";
 import { ProgressBarDemo } from "./demos/progress-bar";
+import { RadioGroupDemo } from "./demos/radio-group";
 import { RaceBarDemo } from "./demos/race-bar";
 import { RankRowDemo } from "./demos/rank-row";
 import { ReactionBarDemo } from "./demos/reaction-bar";
@@ -33,6 +35,7 @@ import { StoryRingDemo } from "./demos/story-ring";
 import { SwitchDemo } from "./demos/switch";
 import { TabsDemo } from "./demos/tabs";
 import { TagChipDemo } from "./demos/tag-chip";
+import type { DemoGround } from "./ground";
 
 // «ساحة اللعب» in the gallery — contract 4, DEC-183 §4.2(f), DEC-186 §2.
 //
@@ -52,14 +55,14 @@ import { TagChipDemo } from "./demos/tag-chip";
 // titles below are the lead's. A demo is wired in the commit that names it in
 // `STATUS.md`'s ledger of what moved `ar_ui`.
 //
-// ★ NOT WIRED YET, AND WHY. `radio-group` and `code-input` name a radio group
-// and element ids, and a demo stands on the page twice (`./ground.ts`): wired as
-// they are, the dark ground's radios would lose their checked option to the
-// light ground's. They are wired when their demos take `ground`. `date-time`
-// has the same fault with two ids and is wired already; its owner has the same
-// request. `button`, `field`, `input` and `textarea` wait for contract 5.
+// ★ A DEMO THAT NAMES AN ID OR A RADIO GROUP TAKES THE GROUND (`./ground.ts`).
+// A demo stands on the page twice, and two radio groups with one `name` are one
+// group to the browser: the dark ground's would lose its checked option to the
+// light ground's. `radio-group`, `code-input` and `date-time` suffix what they
+// name.
+// `button`, `field`, `input` and `textarea` wait for contract 5.
 
-const DEMOS: { file: string; title: string; node: ReactNode }[] = [
+const DEMOS: { file: string; title: string; node: ReactNode | ((ground: DemoGround) => ReactNode) }[] = [
   { file: "tag-chip", title: "الوسم", node: <TagChipDemo /> },
   { file: "badge", title: "شارة الحالة", node: <BadgeDemo /> },
   { file: "avatar", title: "الصورة الرمزية وحلقة الفريق", node: <AvatarDemo /> },
@@ -75,8 +78,10 @@ const DEMOS: { file: string; title: string; node: ReactNode }[] = [
   { file: "reaction-bar", title: "التفاعلات", node: <ReactionBarDemo /> },
   { file: "story-ring", title: "حلقة القصة", node: <StoryRingDemo /> },
   { file: "checkbox", title: "خانة الاختيار", node: <CheckboxDemo /> },
+  { file: "radio-group", title: "مجموعة الاختيار", node: (ground) => <RadioGroupDemo ground={ground} /> },
   { file: "switch", title: "المفتاح", node: <SwitchDemo /> },
   { file: "form-summary", title: "ملخّص الأخطاء", node: <FormSummaryDemo /> },
+  { file: "code-input", title: "رمز الحضور", node: (ground) => <CodeInputDemo ground={ground} /> },
   { file: "rank-row", title: "صفّ الترتيب", node: <RankRowDemo /> },
   { file: "race-bar", title: "سباق الشركات", node: <RaceBarDemo /> },
   { file: "level-card", title: "بطاقة المستوى", node: <LevelCardDemo /> },
@@ -85,7 +90,7 @@ const DEMOS: { file: string; title: string; node: ReactNode }[] = [
   { file: "menu", title: "القائمة المنسدلة", node: <MenuDemo /> },
   { file: "tabs", title: "الألسنة", node: <TabsDemo /> },
   { file: "sheet", title: "الورقة", node: <SheetDemo /> },
-  { file: "date-time", title: "التاريخ والوقت", node: <DateTimeDemo /> },
+  { file: "date-time", title: "التاريخ والوقت", node: (ground) => <DateTimeDemo ground={ground} /> },
 ];
 
 function Swatch({ className, name }: { className: string; name: string }) {
@@ -210,7 +215,7 @@ function Ground({ light }: { light?: boolean }) {
       </Block>
       {DEMOS.map((d) => (
         <Block key={d.file} title={d.title} file={d.file}>
-          {d.node}
+          {typeof d.node === "function" ? d.node(light ? "light" : "dark") : d.node}
         </Block>
       ))}
     </PlayScope>
