@@ -36,6 +36,18 @@
 //   content   card · badge · tag-chip · avatar · progress · empty-state
 //             stat · panel · file-drop
 //
+// ★ WAVE 15 — «ساحة اللعب» (DEC-183, DEC-186). Ten files join, each with one
+// owner, and `scoring` holds primitives for the first time:
+//
+//   lead      scope · objects/**
+//   content   sticker · poster · reaction-bar · progress-bar · story-ring
+//   sessions  session-cta · code-input
+//   scoring   rank-row · race-bar · level-card
+//
+// Every one of the ten renders each of its states FROM PROPS. None reads the
+// DAL, a session or a message catalogue; none is placed on a screen in M17;
+// none is orchestrated. Their signatures are at the end of this file.
+//
 // `16` §4.2 counts thirty-one components; the file lists add `link`,
 // `route-error` and `data-table`, which §4.2's table omits and §16.2's lists
 // name — so thirty-four files, and §16.2 is authoritative (DEC-102).
@@ -599,6 +611,16 @@ export interface AvatarProps extends Styleable {
   size?: 24 | 32 | 34 | 40 | 56 | 96 | 160;
   /** Decorative beside a name that is already rendered. */
   decorative?: boolean;
+  /**
+   * The company's team colour — REQ-UIX-043, DEC-186 §5. ★ THREE values, not two:
+   * `undefined` draws NO ring, which is every caller before wave 15; `null` draws the neutral
+   * ring of a company that has no colour; `"#rrggbb"` draws the team ring.
+   *
+   * It rings the avatar and NEVER fills it: the fill stays the member's tint (REQ-PRF-009). The
+   * component re-checks the value before it writes `--team`, because a custom property is
+   * serialised as written.
+   */
+  teamColor?: string | null;
 }
 
 export interface AvatarStackProps extends Styleable {
@@ -748,4 +770,278 @@ export interface RouteErrorProps {
   reset?: () => void;
   /** Rendered small, for a support conversation. Never the headline. */
   digest?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Wave 15 — the playground's ten (DEC-183, DEC-186 §5 – §7; contract 2).
+//
+// Taken from the four plans approved at sync 1. Strings arrive as props, in
+// Arabic first, with Western digits already formatted by the caller. A colour
+// from data arrives as `teamColor` and reaches the DOM as `--team`.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** "#rrggbb", or null for a company that has no colour. Re-checked by the primitive. */
+export type TeamColor = string | null;
+
+// ── content (5) ───────────────────────────────────────────────────────────
+
+export type StickerFill = "accent" | "signal" | "cyan" | "gold" | "violet" | "bone";
+
+/**
+ * `content` · `sticker.tsx` — REQ-UIX-031. Die-cut decoration, and NEVER a
+ * status: a session's lifecycle is a badge (REQ-UIX-003). Static this wave; the
+ * overshoot is the moments' wave's (DEC-186 §4).
+ */
+export interface StickerProps extends Styleable {
+  /** The word — «محجوز», «مستوى جديد». */
+  children: ReactNode;
+  fill?: StickerFill;
+  /** Degrees, clamped to [-6, 6]. */
+  rotate?: number;
+  size?: "sm" | "md";
+  /** True only when it says what no badge on the surface says; otherwise `aria-hidden`. */
+  informative?: boolean;
+}
+
+/**
+ * `content` · `poster.tsx` — REQ-UIX-032. The rendered poster WHOLE when there
+ * is one (REQ-UIX-026), its team-coloured placeholder until there is. It
+ * composes `CardMedia`, so the whole-poster rule has one implementation.
+ * `SessionPoster` stays the DAL slot. No drawn QR: a code that scans to nothing
+ * looks like one that works.
+ */
+export interface PosterProps extends Styleable {
+  /** The rendered master. Absent → the placeholder. */
+  src?: string | null;
+  /** The artifact's own size, so the box is reserved at its ratio. */
+  width?: number;
+  height?: number;
+  /** Default "" — the host renders the title as text. */
+  alt?: string;
+  /** Placeholder: the title in the display face, balanced, never clipped on a line. */
+  title: string;
+  category?: string;
+  /** Pre-formatted, Western digits — «2 أكتوبر، 6:30 م». */
+  date?: string;
+  teamColor: TeamColor;
+  /** ★ Drawn on the placeholder: colour is never the only channel. */
+  teamName: string;
+  /** A `<Sticker>` at the placeholder's inline end. */
+  sticker?: ReactNode;
+  priority?: boolean;
+}
+
+export interface ReactionBarItem {
+  /** Matches `reactions.kind`. The SET is the caller's; the primitive names none. */
+  kind: string;
+  /** The accessible name — «إعجاب». */
+  label: string;
+  count: number;
+  pressed: boolean;
+  /** From `ui/icons`. Pressed is never colour alone: pass the `filled` form when pressed. */
+  icon: ReactNode;
+}
+
+/**
+ * `content` · `reaction-bar.tsx` — REQ-UIX-034. A reaction earns nothing
+ * (REQ-EVT-004), so nothing about it reads as an achievement. The
+ * acknowledgement is the pressed state, shown in place.
+ */
+export interface ReactionBarProps extends Styleable {
+  /** The group's name — «التفاعلات». */
+  label: string;
+  items: ReactionBarItem[];
+  onToggle?: (kind: string) => void;
+  /** A frozen thread shows counts and offers nothing. */
+  readOnly?: boolean;
+  pending?: boolean;
+}
+
+/**
+ * `content` · `progress-bar.tsx` — REQ-UIX-036. One track, one fill, grown by
+ * `scaleX` from the inline start. `progress.tsx` keeps its `width` fill and its
+ * indeterminate mode until its three consumers adopt this one (DEC-186 §5).
+ */
+export interface ProgressBarProps extends Styleable {
+  value: number;
+  /** Default 100. */
+  max?: number;
+  /** The accessible name — «مستواك». Ignored when `decorative`. */
+  label?: string;
+  /** Pre-formatted, Western digits — «320 من 500». */
+  valueText?: string;
+  fill?: "accent" | "signal" | "team" | "text";
+  /** With `fill="team"`. */
+  teamColor?: TeamColor;
+  /** 3 px — a story's segment; 10 px — a level, a race. */
+  size?: "sm" | "md";
+  /**
+   * `aria-hidden`, no role: the value is already in text beside the bar, and a second
+   * `progressbar` would read it twice (the race bar's case — `scoring`'s request).
+   */
+  decorative?: boolean;
+}
+
+export type StoryRingState = "live" | "upcoming" | "recap" | "seen";
+
+/**
+ * `content` · `story-ring.tsx` — REQ-UIX-040. A button that will open a
+ * session's story; nothing of the viewer. Four states told apart WITHOUT
+ * colour, each by its word and its shape. Static: no pulse (DEC-186 §4).
+ */
+export interface StoryRingProps extends Styleable {
+  state: StoryRingState;
+  /** The accessible name, naming the session. */
+  label: string;
+  /** The state's word, visible — «مباشر», «ملخص», «قادمة», «شوهدت». */
+  stateLabel: string;
+  /** One letter — the avatar's rule. */
+  glyph: string;
+  /** The line under the ring — «اليوم». */
+  caption: string;
+  teamColor?: TeamColor;
+  onOpen?: () => void;
+}
+
+// ── sessions (2) ──────────────────────────────────────────────────────────
+
+/** What pressing does. Exactly one of the two. */
+export type SessionCtaAct =
+  | { href: string; action?: never }
+  /** A Server Action the CALLER bound (DEC-159) — never an inline closure from a Server Component. */
+  | { action: (formData: FormData) => void | Promise<void>; href?: never };
+
+/**
+ * The six states of REQ-UIX-033. Which one a viewer gets is the affordance
+ * matrix's answer (REQ-UIX-015), computed by the caller; this type only
+ * carries it. «On the waitlist» is `booked` with `hold: "waitlist"`.
+ */
+export type SessionCtaState =
+  | { kind: "reserve"; act: SessionCtaAct }
+  | { kind: "waitlist"; act: SessionCtaAct }
+  | { kind: "booked"; hold?: "seat" | "waitlist"; cancel: { label: string; act: SessionCtaAct; note?: string } }
+  | { kind: "checkIn"; act: SessionCtaAct }
+  | { kind: "attended" }
+  | { kind: "none"; reason: string };
+
+/**
+ * `sessions` · `session-cta.tsx` — REQ-UIX-033. ★ It decides nothing and holds
+ * no state: it never moves from `reserve` to `booked` on a press. The caller
+ * re-renders it after the server answers, so a seat is never shown as
+ * confirmed early (REQ-UIX-007). It composes the lead's `Button`.
+ */
+export interface SessionCtaProps extends Styleable {
+  state: SessionCtaState;
+  /** The words on the face. */
+  label: string;
+  /** The trailing chip — «12 من 40». Drawn inside `<bdi>`. */
+  chip?: string;
+  /** Beside the spinner while an action is in flight. The label never changes. */
+  pendingLabel?: string;
+  /** Overrides `useFormStatus`. */
+  pending?: boolean;
+}
+
+/**
+ * `sessions` · `code-input.tsx` — REQ-UIX-035. Six boxes in a `dir="ltr"` group
+ * inside the Arabic page; the code is POSTED as one field (REQ-CHK-003). The
+ * alphabet is the migration's — six of `ACDEFGHJKMNPQRTUVWXY34679`. It does not
+ * filter as the member types, and a wrong code never animates.
+ */
+export interface CodeInputProps extends Styleable {
+  /** The hidden field the assembled code posts under. */
+  name: string;
+  /** The first box's id; the others follow. Generated when omitted. */
+  id?: string;
+  /** The group's name, rendered as its visible label. It does not go inside a `<Field>`. */
+  label: ReactNode;
+  /** Each box's position — «الخانة 1 من 6». One string per box, from the caller's catalogue. */
+  positionLabels: readonly string[];
+  /** 6. `positionLabels` must be as long. */
+  length?: number;
+  /** The code a refused submission carried back. */
+  defaultValue?: string;
+  /** Beneath the boxes; tied to the GROUP by `aria-describedby`. */
+  error?: ReactNode;
+  /** Invalid with the message elsewhere; pass its id below. */
+  invalid?: boolean;
+  /** Merged with the error's id, never replacing it. */
+  "aria-describedby"?: string;
+  disabled?: boolean;
+}
+
+// ── scoring (3) ───────────────────────────────────────────────────────────
+
+/**
+ * `scoring` · `rank-row.tsx` — REQ-UIX-037. One member's row on a board.
+ *
+ * ★ There is NO `src`: the row draws the avatar's initials in the team ring and
+ * never a photograph (DEC-183 §3, DEC-099). The type makes one impossible to pass.
+ * ★ A leaderboard never shames. There is no «fell» state: a row whose rank fell
+ * renders byte-identically to a row with no `movement`. Only a rise is drawn.
+ */
+export interface RankRowProps extends Styleable {
+  rank: number;
+  /** What a screen reader hears — «المركز 5». */
+  rankLabel: string;
+  /** The avatar's tint key — never the name. */
+  memberId: string;
+  displayName: string;
+  company: string | null;
+  teamColor: TeamColor;
+  /** The digits shown, formatted by the caller. */
+  points: string;
+  /** What a screen reader hears — «1,410 نقطة». */
+  pointsLabel: string;
+  /** Set on the viewer's own row only: outlined AND carrying this word — «أنت». */
+  selfLabel?: string | null;
+  /** The primitive compares: `previousRank > rank` draws the rise; anything else draws nothing. */
+  movement?: { previousRank: number; riseLabel: string } | null;
+  href?: string;
+}
+
+/** `scoring` · `race-bar.tsx` — REQ-UIX-038. The colour is never the only thing that names the company. */
+export interface RaceBarProps extends Styleable {
+  companyName: string;
+  teamColor: TeamColor;
+  /** The ranking metric's value, formatted and possibly signed by the caller. */
+  value: string;
+  /** Names the metric the org ranks by (REQ-LDR-005). Drawn visibly. */
+  metricLabel: string;
+  /** 0 to 1, relative to the leader. A negative, NaN or missing value draws an empty track. */
+  fraction: number;
+  rank?: number;
+  /** Required when `rank` is given. */
+  rankLabel?: string;
+  /** The other metric, quieter — REQ-LDR-004 keeps both visible. */
+  secondary?: { label: string; value: string } | null;
+  /** Set on the viewer's own company only — «فريقك». */
+  ownLabel?: string | null;
+}
+
+/** One face of the level card. */
+export interface LevelFace {
+  /** `levels.sort_order`. It picks the ramp stop; the name never does. Clamped to 1–5. */
+  tier: number;
+  name: string;
+  /** Heads the face — «مستواك الحالي», «مستوى جديد». */
+  caption: string;
+  /** The privileges the org has ENABLED at this level, by name. May be empty. */
+  unlocks: readonly string[];
+}
+
+/**
+ * `scoring` · `level-card.tsx` — REQ-UIX-039. Both faces are in the document in
+ * every state, and neither is hidden from assistive technology. A face never
+ * names a privilege the member does not have (DEC-186 §7).
+ */
+export interface LevelCardProps extends Styleable {
+  level: LevelFace;
+  reached?: LevelFace | null;
+  /** Which face shows. Default «level». */
+  shown?: "level" | "reached";
+  /** Heads the unlock list — «يفتح لك». */
+  unlocksLabel: string;
+  /** Said on a face whose `unlocks` is empty. */
+  noUnlocksLabel: string;
 }

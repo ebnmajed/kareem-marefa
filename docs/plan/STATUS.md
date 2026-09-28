@@ -44,7 +44,7 @@ and each later wave of the programme claims its own number in `14-roadmap.md` wh
 | # | Contract | Owner | State |
 |---|---|---|---|
 | C1 | **The scope and its names** — `.theme-play` and `.theme-play-light`, through `ui/scope.tsx`; ★ the scope **reassigns today's context variables** as `.theme-dark` does; `pg:` / `pg-dark:` / `pg-light:` carry the rest; the new names fall back to today's variable at the element | lead → all | **published** — `DEC-186` §2 holds the table of names and values. The token commit (T1) makes them real |
-| C2 | **The signatures** — ten new primitives and `AvatarProps.teamColor` in `ui/index.ts`, types only | lead → all | todo — after sync 1, from the plans |
+| C2 | **The signatures** — ten new primitives and `AvatarProps.teamColor` in `ui/index.ts`, types only | lead → all | **landed** — the ten, taken from the approved plans, with `TeamColor`, `LevelFace`, `SessionCtaState` (`booked` carries `hold`) and `ProgressBarProps.decorative` (`scoring`'s request of `content`). Types only: each owner creates its own file. tsc ✓; `tests/components/ui` 437 ✓ |
 | C3 | **The team colour** — `companies.team_color` (`0160`), `teamColor: string \| null`, `--team` on the element; a neutral ring for `null`; the fill stays the member's tint | lead ↔ `console` ↔ `content` | todo |
 | C4 | **The gallery** — one demo per primitive under `(dev)/ui/demos/`; the lead wires it and owns the baseline | every owner → lead | todo |
 | C5 | ★ **The five the public site renders** (`DEC-186` §1) — `button`, `icons`, `field`, `input`, `textarea`; one commit each; four proofs: `qa:contract`, `visual`, the computed-style fingerprint, the public-graph test | lead · `sessions` | todo — `icons` moved nothing (L2: six public pairs 0.000 %) |
