@@ -34,6 +34,15 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
+// Contract 5's proof is run on a CONFIGURED build against `main`'s record, which is where the public
+// site is served from. On the unconfigured build (DEC-038, CI's «platform unconfigured» job)
+// `/ar/register` never reaches network-idle — measured by the lead on `main`'s code as well as this
+// branch's, 315 s each — so the spec would only time out there.
+test.skip(
+  process.env.E2E_PLATFORM_UNCONFIGURED === "1",
+  "contract 5's fingerprint runs on a configured build against main's record; on the unconfigured build /ar/register never reaches network-idle, on main too",
+);
+
 const OUT = process.env.E2E_FINGERPRINT_OUT;
 const BASELINE = process.env.E2E_FINGERPRINT_BASELINE;
 
