@@ -241,7 +241,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-LDR-001` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-001` | M4 |
 | `REQ-LDR-002` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | — | `SCR-027` `SCR-028` | `JOB-snapshot_leaderboards` | — | `STORY-LDR-001` | M4 |
 | `REQ-LDR-003` | `ENT-categories` | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-002` | M4 |
-| `REQ-LDR-004` | `ENT-companies` `ENT-company_points_balances` `ENT-company_points_ledger` +2 | — | `SCR-010` `SCR-027` `SCR-028` +2 | — | — | `STORY-LDR-003` | M4 |
+| `REQ-LDR-004` | `ENT-companies` `ENT-company_points_balances` `ENT-company_points_ledger` +2 | — | `SCR-010` `SCR-027` `SCR-028` +3 | — | — | `STORY-LDR-003` | M4 |
 | `REQ-LDR-005` | — | — | `SCR-010` `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
 | `REQ-LDR-006` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | `POL-achievement.snapshot` | `SCR-027` `SCR-028` | `JOB-snapshot_leaderboards` | — | `STORY-LDR-004` | M4 |
 | `REQ-LDR-007` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-004` | M4 |
@@ -314,13 +314,13 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 |---|---|---|---|---|---|---|---|
 | `REQ-PRF-001` | `ENT-member_interests` `ENT-members` | — | `SCR-010` `SCR-011` `SCR-012` +2 | `JOB-anonymise_members` | — | `STORY-PRF-001` | M1 |
 | `REQ-PRF-002` | `ENT-companies` | — | `SCR-021` `SCR-048` | — | — | `STORY-PRF-001` | M1 |
-| `REQ-PRF-003` | `ENT-companies` | — | `SCR-020` | — | — | `STORY-PRF-001` | M1 |
+| `REQ-PRF-003` | `ENT-companies` | — | `SCR-020` `SCR-048` | — | — | `STORY-PRF-001` | M1 |
 | `REQ-PRF-004` | `ENT-calendar_connections` | — | `SCR-007` `SCR-020` `SCR-043` +5 | `JOB-zip_session_photos` | — | `STORY-PRF-002` | M1 |
 | `REQ-PRF-005` | — | — | `SCR-019` | — | — | `STORY-PRF-003` | M2 |
 | `REQ-PRF-006` | `ENT-data_export_requests` `ENT-platform_audit_log` `ENT-retention_periods` | `POL-data_export_requests.select.self` | `SCR-005` `SCR-021` `SCR-080` +1 | `JOB-anonymise_members` `JOB-build_data_export` +2 | — | `STORY-PRF-004` | M8 |
 | `REQ-PRF-007` | — | — | `SCR-021` `SCR-083` | `JOB-anonymise_members` `JOB-enforce_retention` +1 | — | `STORY-PRF-004` | M8 |
 | `REQ-PRF-008` | — | — | `SCR-012` `SCR-021` | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
-| `REQ-PRF-009` | — | — | `SCR-016` `SCR-020` `SCR-048` | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
+| `REQ-PRF-009` | `ENT-companies` | — | `SCR-016` `SCR-020` `SCR-048` | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-010` | — | — | `SCR-021` `SCR-050` | `JOB-anonymise_members` | `MSG-photo_album_ready` | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-011` | — | — | `SCR-021` | `JOB-anonymise_members` `JOB-zip_session_photos` | — | `STORY-PRF-005` | M10, M16 |
 
@@ -509,6 +509,6 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-040` | — | — | `SCR-010` `SCR-048` | — | — | `STORY-UIX-022` | M17 |
 | `REQ-UIX-041` | — | — | `SCR-010` `SCR-012` `SCR-014` +3 | — | — | `STORY-UIX-025` | M17 |
 | `REQ-UIX-042` | — | — | `SCR-012` `SCR-014` `SCR-022` +2 | — | — | `STORY-UIX-025` | M17 |
-| `REQ-UIX-043` | — | — | `SCR-048` | — | — | `STORY-UIX-026` | M17 |
+| `REQ-UIX-043` | `ENT-companies` | — | `SCR-048` | — | — | `STORY-UIX-026` | M17 |
 
 <!-- TRACEABILITY:END -->
