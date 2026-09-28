@@ -50,7 +50,7 @@ export function Menu({ trigger, items, align = "start" }: MenuProps) {
         <DropdownMenu.Content
           align={align}
           sideOffset={6}
-          className="z-40 min-w-48 rounded-card border border-edge bg-canvas p-1.5 shadow-[var(--shadow-card)] pg:shadow-none"
+          className="z-40 min-w-48 rounded-card border border-edge bg-canvas p-1.5 shadow-[var(--shadow-card)] pg:bg-surface pg:shadow-none"
         >
           {items.map((item, i) => {
             // The page on show: `aria-current` for a screen reader, and a check

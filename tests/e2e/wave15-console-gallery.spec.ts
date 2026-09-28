@@ -66,3 +66,105 @@ for (const primitive of PRIMITIVES) {
     });
   }
 }
+
+// ★ Found from the lead's `dialog` fault (`REQ-UIX-030`, DEC-186 §8): a
+// popup's own frame reads `bg-canvas`, which follows the scope but is the
+// GROUND — a popover told apart from the page beneath it by a line alone.
+// Sync 1 ruled a popover and a sheet are told from the page by their
+// SURFACE and a line, so each gained `pg:bg-surface`. Proven in a real
+// browser, not jsdom, the same way `wave15-lead-gallery.spec.ts` proves it
+// for `dialog` — `scopeComputes()` reads a utility's computed value from
+// inside the scope so nothing here names a hex.
+async function scopeComputes(page: import("@playwright/test").Page, scope: string, className: string, property: string) {
+  return page.locator(scope).first().evaluate(
+    (el, { className, property }) => {
+      const probe = document.createElement("div");
+      probe.className = className;
+      el.appendChild(probe);
+      const value = getComputedStyle(probe).getPropertyValue(property);
+      probe.remove();
+      return value;
+    },
+    { className, property },
+  );
+}
+
+test.beforeEach(async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "one project is enough; the popup surface does not depend on width");
+  await page.setViewportSize({ width: 390, height: 844 });
+});
+
+for (const ground of GROUNDS) {
+  test(`the sheet's content is the scope's SURFACE, ${ground.name} ground`, async ({ page }) => {
+    const res = await page.goto("/ar/ui");
+    expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
+    await page.evaluate(() => document.fonts.ready);
+    const demo = page.locator(demoOn("sheet", ground.scope));
+    test.skip((await demo.count()) === 0, "sheet's demo is not wired into the gallery yet");
+
+    await demo.getByRole("button", { name: "ورقة سفلية" }).click();
+    const sheet = page.locator(ground.scope).getByRole("dialog", { name: "تصفية النتائج" });
+    await expect(sheet).toBeVisible();
+    const computed = await sheet.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { background: cs.backgroundColor, color: cs.color };
+    });
+    expect(computed.background).toBe(await scopeComputes(page, ground.scope, "bg-surface", "background-color"));
+    expect(computed.color).toBe(await scopeComputes(page, ground.scope, "text-fg-body", "color"));
+    await page.screenshot({ path: join(SHOTS, `wave15-console-sheet-popup-${ground.name}-390.png`), animations: "disabled" });
+  });
+
+  test(`the menu's content is the scope's SURFACE, ${ground.name} ground`, async ({ page }) => {
+    const res = await page.goto("/ar/ui");
+    expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
+    await page.evaluate(() => document.fonts.ready);
+    const demo = page.locator(demoOn("menu", ground.scope));
+    test.skip((await demo.count()) === 0, "menu's demo is not wired into the gallery yet");
+
+    await demo.getByRole("button", { name: "القائمة" }).click();
+    const menu = page.locator(ground.scope).getByRole("menu");
+    await expect(menu).toBeVisible();
+    const computed = await menu.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { background: cs.backgroundColor, color: cs.color };
+    });
+    expect(computed.background).toBe(await scopeComputes(page, ground.scope, "bg-surface", "background-color"));
+    await page.screenshot({ path: join(SHOTS, `wave15-console-menu-popup-${ground.name}-390.png`), animations: "disabled" });
+  });
+
+  test(`the combobox's listbox is the scope's SURFACE, ${ground.name} ground`, async ({ page }) => {
+    const res = await page.goto("/ar/ui");
+    expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
+    await page.evaluate(() => document.fonts.ready);
+    const demo = page.locator(demoOn("combobox", ground.scope));
+    test.skip((await demo.count()) === 0, "combobox's demo is not wired into the gallery yet");
+
+    await demo.getByRole("combobox").first().click();
+    const listbox = page.locator(ground.scope).getByRole("listbox");
+    await expect(listbox).toBeVisible();
+    const computed = await listbox.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { background: cs.backgroundColor, color: cs.color };
+    });
+    expect(computed.background).toBe(await scopeComputes(page, ground.scope, "bg-surface", "background-color"));
+    await page.screenshot({ path: join(SHOTS, `wave15-console-combobox-popup-${ground.name}-390.png`), animations: "disabled" });
+  });
+
+  test(`the date picker's popover is the scope's SURFACE, ${ground.name} ground`, async ({ page }) => {
+    const res = await page.goto("/ar/ui");
+    expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
+    await page.evaluate(() => document.fonts.ready);
+    const demo = page.locator(demoOn("date-time", ground.scope));
+    test.skip((await demo.count()) === 0, "date-time's demo is not wired into the gallery yet");
+
+    await demo.getByRole("button").first().click();
+    const popover = page.locator(ground.scope).getByRole("dialog");
+    await expect(popover).toBeVisible();
+    const computed = await popover.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { background: cs.backgroundColor, color: cs.color };
+    });
+    expect(computed.background).toBe(await scopeComputes(page, ground.scope, "bg-surface", "background-color"));
+    await page.screenshot({ path: join(SHOTS, `wave15-console-date-time-popup-${ground.name}-390.png`), animations: "disabled" });
+  });
+}

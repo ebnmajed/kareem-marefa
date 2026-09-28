@@ -286,7 +286,7 @@ export function RtlDateTimePicker({
       </button>
 
       {open ? (
-        <div id={popoverId} role="dialog" aria-label={label} className="absolute z-20 mt-2 w-80 max-w-[90vw] rounded-card border border-edge bg-canvas p-4 shadow-[var(--shadow-card)] pg:shadow-none">
+        <div id={popoverId} role="dialog" aria-label={label} className="absolute z-20 mt-2 w-80 max-w-[90vw] rounded-card border border-edge bg-canvas p-4 shadow-[var(--shadow-card)] pg:bg-surface pg:shadow-none">
           <div className="flex items-center justify-between">
             <button type="button" onClick={goPrevMonth} aria-label={prevMonthLabel} className="inline-flex h-9 w-9 items-center justify-center rounded-field hover:bg-silver-100 pg:hover:bg-hover">
               <ChevronIcon direction="back" />

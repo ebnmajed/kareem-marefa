@@ -315,13 +315,13 @@ export function Combobox({
           component's own test (`aria-live` region below covers the
           NON-zero case only, so the two never coexist). */}
       {open && rowCount === 0 ? (
-        <div ref={(node) => { popupRef.current = node; }} role="status" className="absolute z-20 mt-1 w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body-sm text-fg-muted shadow-lg pg:shadow-none">
+        <div ref={(node) => { popupRef.current = node; }} role="status" className="absolute z-20 mt-1 w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body-sm text-fg-muted shadow-lg pg:bg-surface pg:shadow-none">
           {resultsText}
         </div>
       ) : null}
 
       {open && rowCount > 0 ? (
-        <ul ref={(node) => { popupRef.current = node; }} id={listboxId} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-field border border-edge-strong bg-canvas shadow-lg pg:shadow-none">
+        <ul ref={(node) => { popupRef.current = node; }} id={listboxId} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-field border border-edge-strong bg-canvas shadow-lg pg:bg-surface pg:shadow-none">
           {/* `role="option"` lives ON THE BUTTON, not on the `<li>` wrapper —
               member-picker.tsx's own precedent, and the ARIA-correct place
               for it: a listbox option must not contain a nested interactive
