@@ -161,6 +161,260 @@
   color: var(--fg-body);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   «ساحة اللعب» — THE PLAYGROUND, AS A SCOPE.  DEC-183 §4.2, DEC-186 §2,
+   REQ-UIX-028.  The visual direction is `docs/design/`; where it and this
+   file disagree, this file and `DECISIONS.md` win.
+
+   ★★ NOTHING ABOVE THIS LINE CHANGED, AND NOTHING BELOW IT REACHES `:root`.
+   `docs/design/tokens.css` was written to be appended as it stands. Read
+   against this file it redefines five names that exist — `--color-surface`,
+   `--radius-card`, `--ease-out`, `--bg`, `--fg-muted` — and adds `--text-body`
+   and `--text-caption`, which would make Tailwind emit `text-body` and
+   `text-caption` a second time beside the `@utility` blocks below. The public
+   site renders five of the primitives. Appended as written, it moves a page
+   real visitors are looking at.
+
+   So the playground is a SCOPE, built the way `.theme-dark` is built:
+
+     A · THE SCOPE REASSIGNS TODAY'S CONTEXT VARIABLES. `--bg`, `--surface`,
+         `--fg-heading` … `--btn-bg` are the semantic layer, and they already
+         exist. A primitive that reads `bg-surface` takes the playground's
+         surface inside the scope with no edit, and no class changes anywhere.
+     B · A VARIANT CARRIES WHAT A VARIABLE CANNOT. `pg:` is «inside the
+         scope»; `pg-dark:` and `pg-light:` are its two grounds. A class under
+         one is ADDED after the classes that exist and never replaces one.
+         `:where()` adds no specificity, so the variant wins by coming later.
+     C · NEW NAMES FALL BACK AT THE ELEMENT. `bg-accent` is
+         `var(--accent, var(--btn-bg))`: inside the scope the accent, outside
+         it whatever `--btn-bg` is THERE — in `.theme-dark`, under an org's
+         brand layer — with no alias at `:root` to go stale.
+
+   This wave the scope is rendered by the gallery and by nothing else. The
+   shell adopts it in the screens waves, the public site in its own, last.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@custom-variant pg (&:where(.theme-play, .theme-play *));
+@custom-variant pg-light (&:where(.theme-play-light, .theme-play-light *));
+@custom-variant pg-dark (&:where(.theme-play:not(.theme-play-light), .theme-play:not(.theme-play-light) *));
+
+@theme {
+  /* The raw palette. ★ NO PRIMITIVE READS THESE — `tests/unit/tokens-only`
+     refuses a `play-` name in `src/components/ui/`. They exist so the scope
+     below has one place to take its values from. Named `play-*` because
+     `--color-surface` is taken, and a palette that needs one exception to its
+     naming is better with none. */
+  --color-play-ink: #0b0c12;
+  --color-play-surface: #151724;
+  --color-play-surface-2: #1e2130;
+  --color-play-line: #2a2e40;
+  --color-play-bone: #f4f1ea;
+  --color-play-muted: #a7abbe;
+  --color-play-lime: #c6ff3d;
+  --color-play-lime-deep: #78ad12;
+  --color-play-coral: #ff6e4f;
+  --color-play-coral-deep: #c2472c;
+  --color-play-paper: #f6f3ec;
+  --color-play-paper-surface: #ffffff;
+  --color-play-paper-line: #e4dfd3;
+  --color-play-paper-ink: #12131a;
+  --color-play-paper-muted: #5b5f73;
+  /* ★ Not in `01-tokens.md`: its hairline is 1.45:1 on the ground, and a
+     control's boundary needs 3:1 (SC 1.4.11). 4.00 / 3.64 / 3.27 on ink,
+     surface and raised; 3.78 / 4.19 on paper and white (DEC-186 §2). */
+  --color-play-edge-strong: #6b7088;
+  --color-play-paper-edge-strong: #807c6c;
+
+  /* ── CONSTANTS. They never remap, in either ground, and an org's brand kit
+     does not reach them — the same standing as the status colours above. ── */
+
+  /* A company's team colour. DATA reaches an element as `--team`; these seven
+     are the named defaults SCR-048 offers. Always beside the company's name. */
+  --color-team-silver: #e9e4d6;
+  --color-team-tangerine: #ff9a2e;
+  --color-team-magenta: #ff4fb8;
+  --color-team-cyan: #35d0ff;
+  --color-team-gold: #ffd23f;
+  --color-team-violet: #9b7cff;
+  --color-team-mint: #3be8b0;
+
+  /* The five seeded levels, keyed by `levels.sort_order` — NEVER by a level's
+     name, which an org may change (DEC-186 §7). Ink on every one. */
+  --color-level-1: #9aa0b4;
+  --color-level-2: #c8875a;
+  --color-level-3: #d9dee8;
+  --color-level-4: #c6ff3d;
+  --color-level-5: #bfe9ff;
+  --color-on-level: #0b0c12;
+
+  /* The avatar's six tints inside the scope (REQ-PRF-009): a stable hash of
+     the member id, never the company. Bone on each is 9.4:1 or better. */
+  --color-tint-1: #2c3d4a;
+  --color-tint-2: #3a3f56;
+  --color-tint-3: #4a3a2e;
+  --color-tint-4: #2e4a3f;
+  --color-tint-5: #463a4a;
+  --color-tint-6: #3c4a2e;
+  --color-on-tint: #f4f1ea;
+
+  /* A sticker's fill comes from this set BY NAME (REQ-UIX-031). Ink on each
+     is 6.25:1 or better. A sticker is never a status. */
+  --color-sticker-accent: #c6ff3d;
+  --color-sticker-signal: #ff6e4f;
+  --color-sticker-cyan: #35d0ff;
+  --color-sticker-gold: #ffd23f;
+  --color-sticker-violet: #9b7cff;
+  --color-sticker-bone: #f4f1ea;
+  --color-on-sticker: #0b0c12;
+
+  /* `ended` is the one status with no on-dark constant: the badge borrows
+     `.theme-dark`'s muted text, which the scope reassigns. Same value, a name
+     the scope cannot touch (DEC-186 §3, DEC-073). */
+  --color-ended-on-dark: #a8b3c4;
+
+  /* Radii. `--radius-field` (6px) and `--radius-card` (14px) are untouched. */
+  --radius-input: 12px;
+  --radius-tile: 16px;
+  --radius-panel: 22px;
+  --radius-pill: 999px;
+
+  /* The display scale. `text-play-*`, so that nothing confuses it with the
+     public site's `text-display`. Phone values; `xl` is desktop's hero. */
+  --text-play-sm: 1.375rem; /* 22 */
+  --text-play-sm--line-height: 1.15;
+  --text-play-md: 1.875rem; /* 30 */
+  --text-play-md--line-height: 1.15;
+  --text-play-lg: 3rem; /* 48 */
+  --text-play-lg--line-height: 1.15;
+  --text-play-xl: 4rem; /* 64 */
+  --text-play-xl--line-height: 1.15;
+
+  /* `--ease-out` is taken, and its curve is the skip link's. */
+  --ease-play: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-play-in: cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+/* The new semantic names. `inline`, for the reason the block above gives —
+   and because the fallback has to be resolved where the class is used. */
+@theme inline {
+  --color-raised: var(--raised, var(--btn2-bg-hover));
+  --color-hover: var(--hover, var(--btn2-bg-hover));
+  --color-accent: var(--accent, var(--btn-bg));
+  --color-accent-deep: var(--accent-deep, var(--btn-bg-active));
+  --color-on-accent: var(--on-accent, var(--btn-fg));
+  --color-signal: var(--signal, var(--color-live));
+  --color-signal-deep: var(--signal-deep, var(--color-live));
+  --color-on-signal: var(--on-signal, #ffffff);
+  --color-scrim: var(--scrim, rgb(11 18 32 / 0.6));
+  /* `--team` is set on the element, from data, by the primitive that draws it. */
+  --color-team: var(--team, var(--team-neutral, var(--edge-strong)));
+  --color-team-neutral: var(--team-neutral, var(--edge-strong));
+  --color-focus: var(--ring);
+
+  /* Baloo Bhaijaan 2 inside the scope; today's face outside it, so a
+     primitive rendered outside the scope never asks for the display face. */
+  --font-display: var(--display-face, var(--font-arabic));
+
+  --shadow-press: 0 5px 0 var(--accent-deep, transparent);
+  --shadow-press-down: 0 2px 0 var(--accent-deep, transparent);
+  --shadow-press-signal: 0 5px 0 var(--signal-deep, transparent);
+  --shadow-press-signal-down: 0 2px 0 var(--signal-deep, transparent);
+  /* The die-cut rim: the ground the sticker sits on, then the scope's text. */
+  --shadow-sticker: 0 0 0 3px var(--sticker-ground, var(--surface)), 0 0 0 6px var(--fg-heading);
+}
+
+:root {
+  /* The playground's durations, beside `--dur-*`, which stays until nothing
+     reads it (DEC-183 §4.3). They collapse in the one block at the bottom. */
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 420ms;
+  --duration-party: 900ms;
+  /* The focus ring's width: 2px today, 3px inside the scope. */
+  --focus-width: 2px;
+}
+
+/* ── the scope: dark is the direction's default ── */
+.theme-play {
+  color-scheme: dark;
+
+  --bg: var(--color-play-ink);
+  --surface: var(--color-play-surface);
+  --fg-heading: var(--color-play-bone);
+  --fg-body: var(--color-play-bone);
+  --fg-muted: var(--color-play-muted);
+  --edge: var(--color-play-line);
+  --edge-strong: var(--color-play-edge-strong);
+  --ring: var(--color-play-lime);
+
+  /* Primary: the accent, ink on it. Secondary: an outline in the text colour. */
+  --btn-bg: var(--color-play-lime);
+  --btn-fg: var(--color-play-ink);
+  --btn-bg-hover: var(--color-play-lime);
+  --btn-bg-active: var(--color-play-lime-deep);
+  --btn2-border: var(--color-play-bone);
+  --btn2-border-hover: var(--color-play-bone);
+  --btn2-fg: var(--color-play-bone);
+  --btn2-bg-hover: var(--color-play-surface-2);
+
+  --raised: var(--color-play-surface-2);
+  --hover: var(--color-play-surface-2);
+  --accent: var(--color-play-lime);
+  --accent-deep: var(--color-play-lime-deep);
+  --on-accent: var(--color-play-ink);
+  --signal: var(--color-play-coral);
+  --signal-deep: var(--color-play-coral-deep);
+  --on-signal: var(--color-play-ink);
+  --scrim: rgb(11 12 18 / 0.78);
+  --team-neutral: var(--color-play-muted);
+  --focus-width: 3px;
+  --display-face: var(--font-baloo), var(--font-arabic);
+
+  /* The public site's spine and nodes, should a chapter ever sit in a scope. */
+  --spine: var(--color-play-line);
+  --node: var(--color-play-muted);
+  --index: var(--color-play-muted);
+
+  background-color: var(--bg);
+  color: var(--fg-body);
+}
+
+/* ── the light variant: supported, not the default ── */
+.theme-play-light {
+  color-scheme: light;
+
+  --bg: var(--color-play-paper);
+  --surface: var(--color-play-paper-surface);
+  --fg-heading: var(--color-play-paper-ink);
+  --fg-body: var(--color-play-paper-ink);
+  --fg-muted: var(--color-play-paper-muted);
+  --edge: var(--color-play-paper-line);
+  --edge-strong: var(--color-play-paper-edge-strong);
+  /* ★ NOT the accent: lime on paper is 1.07:1 (DEC-186 §2). */
+  --ring: var(--color-play-paper-ink);
+
+  --btn2-border: var(--color-play-paper-ink);
+  --btn2-border-hover: var(--color-play-paper-ink);
+  --btn2-fg: var(--color-play-paper-ink);
+  --btn2-bg-hover: color-mix(in oklab, var(--color-play-paper-line) 60%, var(--color-play-paper-surface));
+
+  --raised: color-mix(in oklab, var(--color-play-paper-line) 60%, var(--color-play-paper-surface));
+  --hover: color-mix(in oklab, var(--color-play-paper-line) 60%, var(--color-play-paper-surface));
+  --scrim: rgb(18 19 26 / 0.6);
+  --team-neutral: var(--color-play-paper-muted);
+
+  --spine: var(--color-play-paper-line);
+  --node: var(--color-play-paper-ink);
+  --index: var(--color-play-paper-muted);
+}
+
+/* The scope's ONE focus rule, so no primitive declares a ring of its own.
+   Unlayered, like the global rule further down, so it outranks a utility. */
+.theme-play :focus-visible {
+  outline: var(--focus-width) solid var(--ring);
+  outline-offset: 2px;
+}
+
 /* --------------------------------- typography ---------------------------
    AR runs slightly larger with taller line-height at equal hierarchy.
    Mobile values by default; desktop overrides ≥768px. Body sizes hold. */
@@ -1063,6 +1317,11 @@ html[data-sting="done"] {
     --dur-fast: 0ms;
     --dur-base: 0ms;
     --dur-slow: 0ms;
+    /* The playground's ramp collapses here too, and nowhere else (DEC-183 §4.3). */
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-party: 0ms;
   }
   *,
   ::before,
