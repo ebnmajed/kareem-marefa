@@ -19,7 +19,7 @@ import { expect, test } from "@playwright/test";
 
 const SHOTS = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
 
-const PRIMITIVES = ["level-card"] as const;
+const PRIMITIVES = ["rank-row", "level-card"] as const;
 // The scope's class is written in `ui/scope.tsx` alone; a test may select by it.
 const GROUNDS = [
   { name: "dark", scope: ".theme-play:not(.theme-play-light)" },
