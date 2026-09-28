@@ -408,6 +408,12 @@ export interface ButtonProps extends Omit<ComponentProps<"button">, "children"> 
   pendingLabel?: string;
   iconStart?: ReactNode;
   iconEnd?: ReactNode;
+  /**
+   * Wave 15, opt-in — a second child after the label, kept while pending: a call to action's
+   * capacity chip. Inside the playground's scope the label stands at the start and this at the
+   * end. It is part of the accessible name, so it is text, never decoration.
+   */
+  trailing?: ReactNode;
   children: ReactNode;
 }
 

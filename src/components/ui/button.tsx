@@ -1,5 +1,5 @@
 import { Link } from "@/i18n/navigation";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import type { ButtonProps, ButtonVariant, Size } from "@/components/ui";
 import { SpinnerIcon } from "@/components/ui/icons";
 
@@ -38,6 +38,9 @@ import { SpinnerIcon } from "@/components/ui/icons";
 //     (REQ-UIX-020); the shadow's step is not. Nothing scales, on hover or ever.
 //   · the display face on a primary and a secondary label, at `lg`.
 //   · 52 px for `lg` — the direction's CTA height. `md` stays 44 and `sm` 36.
+//   · `trailing`, an opt-in slot (`04-components.md`: «capacity chip in the trailing slot»):
+//     a second flex child after the label, kept while pending, and inside the scope the label
+//     stands at the start and the slot at the end. A button without it renders what it did.
 // The focus ring is the scope's one rule; this file declares none for it.
 const playBase = "pg:rounded-pill pg:transition-transform pg:duration-(--duration-fast) pg:ease-play";
 
@@ -48,7 +51,11 @@ export const buttonBase = `inline-flex items-center justify-center gap-2 rounded
 export const buttonSizes: Record<Size, string> = {
   sm: "h-9 px-3.5",
   md: "h-11 px-5",
-  lg: "h-12 px-7 pg:h-13",
+  // ★ Inside the scope `lg` is 52 px AT LEAST, not exactly. A call to action carries a label
+  // in the display face and sometimes a chip beside it, and at 326 px the two do not always
+  // fit one line: a fixed height cut the second line at the pill's edge (the lead's review of
+  // `session-cta`, wave 15). A one-line label is 52 px, as before.
+  lg: "h-12 px-7 pg:h-auto pg:min-h-13 pg:py-2",
 };
 
 // The press. A control with a hard shadow beneath it, which it sinks onto.
@@ -84,6 +91,9 @@ const disabledClass =
 // it: a primary, a secondary and the check-in, at the CTA's height.
 const DISPLAY_LABEL: ReadonlySet<ButtonVariant> = new Set(["primary", "secondary", "signal"]);
 
+// With a trailing slot, inside the scope: the label at the start, the slot at the end.
+const SPLIT = "pg:justify-between pg:text-start";
+
 export function buttonClass(variant: ButtonVariant = "primary", size: Size = "lg", extra = "") {
   const label = size === "lg" && DISPLAY_LABEL.has(variant) ? "pg:text-play-sm" : "";
   return `${buttonBase} ${buttonSizes[size]} ${buttonVariants[variant]} ${label} ${extra}`;
@@ -96,6 +106,7 @@ export function Button({
   pendingLabel,
   iconStart,
   iconEnd,
+  trailing,
   className = "",
   children,
   disabled,
@@ -103,7 +114,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`${buttonClass(variant, size)} ${disabledClass} ${className}`}
+      className={`${buttonClass(variant, size)} ${disabledClass} ${trailing ? SPLIT : ""} ${className}`}
       aria-busy={pending || undefined}
       disabled={disabled || pending}
       {...props}
@@ -115,6 +126,7 @@ export function Button({
       )}
       <span>{children}</span>
       {pending ? null : iconEnd}
+      {trailing}
     </button>
   );
 }
@@ -122,8 +134,15 @@ export function Button({
 export function ButtonLink({
   variant = "primary",
   size = "lg",
+  trailing,
   className = "",
+  children,
   ...props
-}: ComponentProps<typeof Link> & { variant?: ButtonVariant; size?: Size }) {
-  return <Link className={`${buttonClass(variant, size)} ${className}`} {...props} />;
+}: ComponentProps<typeof Link> & { variant?: ButtonVariant; size?: Size; trailing?: ReactNode }) {
+  return (
+    <Link className={`${buttonClass(variant, size)} ${trailing ? SPLIT : ""} ${className}`} {...props}>
+      {children}
+      {trailing}
+    </Link>
+  );
 }

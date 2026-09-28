@@ -81,7 +81,8 @@ describe("ui/button — inside the scope", () => {
   });
 
   it("lg is 52 px inside the scope; md stays 44 and sm 36", () => {
-    expect(inside(buttonSizes.lg)).toEqual(["pg:h-13"]);
+    // 52 px AT LEAST: a label that wraps beside a chip grows the control, it is never cut.
+    expect(inside(buttonSizes.lg)).toEqual(["pg:h-auto", "pg:min-h-13", "pg:py-2"]);
     expect(inside(buttonSizes.md)).toEqual([]);
     expect(inside(buttonSizes.sm)).toEqual([]);
   });
@@ -128,5 +129,33 @@ describe("ui/button — the two variants wave 15 added", () => {
     );
     const button = screen.getByRole("button", { name: "إغلاق" });
     expect(button).toHaveClass("pg:rounded-pill", "bg-raised");
+  });
+});
+
+describe("ui/button — the trailing slot is opt-in", () => {
+  it("a button without it renders exactly the children it rendered, and no split", () => {
+    render(<Button>احجز مقعدك</Button>);
+    const button = screen.getByRole("button", { name: "احجز مقعدك" });
+    expect(button.children).toHaveLength(1);
+    expect(button.className).not.toContain("justify-between");
+  });
+
+  it("with it, the slot follows the label, is part of the name, and the split is the scope's alone", () => {
+    render(<Button trailing={<span>12 من 40</span>}>احجز مقعدك</Button>);
+    const button = screen.getByRole("button", { name: /احجز مقعدك\s*12 من 40/ });
+    expect(button.children).toHaveLength(2);
+    expect(button.lastElementChild).toHaveTextContent("12 من 40");
+    expect(tokens(button.className)).toContain("pg:justify-between");
+    expect(tokens(button.className)).not.toContain("justify-between");
+    expect(tokens(button.className)).toContain("justify-center");
+  });
+
+  it("the slot stays while pending, so the control does not change width under a thumb", () => {
+    render(
+      <Button pending pendingLabel="جارٍ الحجز…" trailing={<span>12 من 40</span>}>
+        احجز مقعدك
+      </Button>,
+    );
+    expect(screen.getByRole("button")).toHaveTextContent("12 من 40");
   });
 });
