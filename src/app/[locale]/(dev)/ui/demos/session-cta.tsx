@@ -15,7 +15,7 @@ const nothing = async () => {};
 
 export function SessionCtaDemo() {
   return (
-    <div className="flex max-w-sm flex-col gap-6">
+    <div data-demo="session-cta" className="flex max-w-sm flex-col gap-6">
       <SessionCta state={{ kind: "reserve", act: { action: nothing } }} label="احجز مقعدك" chip="12 من 40" />
       <SessionCta state={{ kind: "reserve", act: { action: nothing } }} label="احجز مقعدك" chip="12 من 40" pending pendingLabel="جارٍ الحجز…" />
       <SessionCta state={{ kind: "waitlist", act: { action: nothing } }} label="انضمّ إلى قائمة الانتظار" chip="3 في الانتظار" />

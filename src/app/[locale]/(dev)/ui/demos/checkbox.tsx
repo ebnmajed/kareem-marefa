@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 export function CheckboxDemo() {
   return (
-    <fieldset className="flex flex-col gap-1">
+    <fieldset data-demo="checkbox" className="flex flex-col gap-1">
       <legend className="text-label text-fg-heading">المواضيع التي تهمّك</legend>
       <Checkbox name="topics" value="design" label="تصميم الواجهات" />
       <Checkbox name="topics" value="data" label="تحليل البيانات" defaultChecked />

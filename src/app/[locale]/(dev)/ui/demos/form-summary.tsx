@@ -12,14 +12,16 @@ import { FormSummary } from "@/components/ui/form-summary";
 
 export function FormSummaryDemo() {
   return (
-    <FormSummary
-      title="تعذّر إرسال النموذج"
-      description="ما كتبته محفوظ كما هو."
-      errors={[
-        { fieldId: "demo-title", label: "عنوان الجلسة", message: "اكتب عنوانًا من 3 أحرف على الأقل" },
-        { fieldId: "demo-category", label: "الفئة", message: "اختر فئة واحدة" },
-        { fieldId: "demo-q3", label: "ماذا تقترح للجلسة القادمة؟", message: "هذا السؤال مطلوب" },
-      ]}
-    />
+    <div data-demo="form-summary">
+      <FormSummary
+        title="تعذّر إرسال النموذج"
+        description="ما كتبته محفوظ كما هو."
+        errors={[
+          { fieldId: "demo-title", label: "عنوان الجلسة", message: "اكتب عنوانًا من 3 أحرف على الأقل" },
+          { fieldId: "demo-category", label: "الفئة", message: "اختر فئة واحدة" },
+          { fieldId: "demo-q3", label: "ماذا تقترح للجلسة القادمة؟", message: "هذا السؤال مطلوب" },
+        ]}
+      />
+    </div>
   );
 }

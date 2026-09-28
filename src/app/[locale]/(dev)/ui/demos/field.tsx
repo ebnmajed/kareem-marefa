@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 
 export function FieldDemo() {
   return (
-    <div className="flex max-w-md flex-col gap-6">
+    <div data-demo="field" className="flex max-w-md flex-col gap-6">
       <Field label="عنوان الجلسة">
         <Input name="demo-field-title" defaultValue="كيف اختصرنا وقت التقارير" />
       </Field>

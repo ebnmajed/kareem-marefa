@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 
 export function SwitchDemo() {
   return (
-    <div className="flex flex-col gap-4">
+    <div data-demo="switch" className="flex flex-col gap-4">
       <Switch name="demo-walk-ins" label="السماح بالحضور دون حجز" description="يُسجَّل الحاضر دون مقعد محجوز، حتى تمتلئ القاعة." />
       <Switch name="demo-check-in" label="تسجيل الحضور مفتوح" defaultChecked />
       <Switch name="demo-all-days" label="الشهادة تتطلّب حضور كل الأيام" defaultChecked disabled />

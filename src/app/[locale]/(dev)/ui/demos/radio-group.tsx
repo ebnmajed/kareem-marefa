@@ -22,7 +22,7 @@ const FORMAT = [
 
 export function RadioGroupDemo({ ground }: { ground: DemoGround }) {
   return (
-    <div className="flex flex-col gap-6">
+    <div data-demo="radio-group" className="flex flex-col gap-6">
       <RadioGroup name={`demo-level-${ground}`} legend="مستوى الجلسة" options={LEVELS} defaultValue="intermediate" />
       <RadioGroup name={`demo-format-${ground}`} legend="شكل الجلسة" options={FORMAT} error="اختر شكل الجلسة قبل الإرسال" />
     </div>

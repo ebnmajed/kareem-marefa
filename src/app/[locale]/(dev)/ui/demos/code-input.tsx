@@ -15,7 +15,7 @@ const POSITIONS = [1, 2, 3, 4, 5, 6].map((n) => `الخانة ${n} من 6`);
 
 export function CodeInputDemo({ ground }: { ground: DemoGround }) {
   return (
-    <div className="flex max-w-sm flex-col gap-6">
+    <div data-demo="code-input" className="flex max-w-sm flex-col gap-6">
       <CodeInput name={`demo-code-empty-${ground}`} id={`demo-code-empty-${ground}`} label="رمز الحضور" positionLabels={POSITIONS} />
       <CodeInput name={`demo-code-partial-${ground}`} id={`demo-code-partial-${ground}`} label="رمز الحضور — نصف مكتوب" positionLabels={POSITIONS} defaultValue="M7K" />
       <CodeInput name={`demo-code-complete-${ground}`} id={`demo-code-complete-${ground}`} label="رمز الحضور — مكتمل" positionLabels={POSITIONS} defaultValue="M7K3QX" />
