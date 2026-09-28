@@ -3105,3 +3105,17 @@ actually verifies it, and needs the lead's build to run.
 
 82 existing component tests across the four files pass untouched (jsdom applies no CSS; they only
 ever assert class-string presence).
+
+---
+
+## Wave 15 — captures stilled (e97f9b3d), and one carried finding
+
+`wave15-console-gallery.spec.ts` now disables smooth scrolling on `goto` and waits for `still()` (three
+equal `scrollY` readings) before every screenshot, in both the per-primitive capture loop and the four
+popup-surface tests — the lead's own fix on `dialog`, applied here. The sheet's popup test also
+measures its scrim and its own bottom edge directly rather than trusting the picture.
+
+**Carried, not this wave, recorded here per the lead's message:** at 320 px the date picker's weekday
+names touch («السبت» «الجمعة» «الخميس» run together, no space) — present outside the scope and on
+`main` too, so not a wave-15 regression. `rtl-datetime-picker.tsx` is mine; this goes on my list for
+whichever screens wave next touches it.
