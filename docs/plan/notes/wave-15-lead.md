@@ -62,16 +62,60 @@ is append-only, and corrections are new entries. Write `DEC-183` yourself.
 `docs/plan/`, `DECISIONS.md` still wins and you stop and ask — but it has already been checked against
 the tree once, and re-measuring what is in that table is waste.
 
-## ★ The one thing that can stall this wave, and it is not code
+## ★★ The six toy-gloss objects — the owner's ruling, and what «verbatim» can and cannot mean
 
-**The six toy-gloss objects — coin, cup, flame, ticket, star badge, rocket — do not exist as files.**
-`docs/design/` ships fourteen files and no images. `DEC-NEXT-2` makes them an allowed poster layer and
-`00-direction.md` makes them a pillar of the visual language, but nothing has rendered them.
-**Raise this with the owner in your first message**, before you plan the sticker or poster rows:
-who produces them, at what sizes, and in what format. ★ **Invariant 11 forbids SVG anywhere**, so they
-are raster — PNG or WebP through the `design-assets` path — and they must survive a dark and a light
-ground. Until they exist, `sticker` and the poster layer are specified and unbuildable; everything
-else in this wave is not blocked.
+**The owner has ruled that this session generates them, verbatim to the design.** Measured, that
+splits in two, and the design says so itself (`04-components.md`): *«Until the renders exist, the SVG
+approximations in the prototypes are the placeholders; the coin and the flame in
+`prototypes/motion-story.html` are close enough to ship behind a flag.»*
+
+| Object | Used by | What exists |
+|---|---|---|
+| **coin** | check-in celebration, points empty state | ★ **complete inline SVG**, `motion-story.html:392-395` |
+| **flame** | streak card, story «جارية الآن» | ★ **complete inline SVG** |
+| cup | companies race, season end | **nothing** |
+| ticket | reservation moment | nothing as an object — `.ticket` in the prototype is a CSS card with punched notches, not the toy-gloss object |
+| star badge | achievements, badge unlock | **nothing** |
+| rocket | level-up | **nothing** |
+
+★ **For the coin and the flame, «verbatim» is exact and is an EXTRACTION, not an invention.** Take
+the SVG out of the prototype byte-for-byte and rasterise it. Do not redraw it, do not tidy it, do not
+re-pick its colours.
+
+★★ **For the other four there is no «T» to follow — the design names them and stops.** Say so to the
+owner rather than inventing and calling it verbatim. **But the coin makes the vocabulary legible**, so
+derivation is disciplined rather than free. Its recipe, read off `:393-394`:
+
+- a radial gradient from `35% 28%`, light to dark — `#EDFFA3` → `#C6FF3D` → `#78AD12`;
+- a second circle of the same radius offset **10 px below**, filled with a darker vertical gradient
+  (`#9CCF29` → `#4F7A0C`), which is what reads as depth;
+- an inner ring, `stroke-width 4`, the mid tone at `opacity .5`;
+- a white ellipse `rx 18 ry 8` at `opacity .55`, rotated `-30°`, upper left — the specular gloss.
+
+**Write that recipe into `DEC-183` or a sibling entry** so the four derived objects are consistent
+with the two given ones and with each other, and so a later session can extend the set without
+guessing. Propose the four to the owner as stills before rasterising them.
+
+**The pipeline is entirely in-house — nothing new is needed:**
+
+1. `04-components.md` requires **pre-rendered images**, self-hosted through the existing image route,
+   **1× and 2×, WebP with a PNG fallback**. They are not shipped as live SVG.
+2. Rasterise with the Playwright already in `scripts/`, then `cwebp`, which **is already in the worker
+   image** (wave 14 added `zip` beside it the same way). No new dependency, no CDN.
+3. ★ **Invariant 11 is not in the way and you must not read it as a blocker.** It forbids SVG
+   *uploads*, because an uploaded SVG renders inside a privileged headless Chromium. These are
+   authored in the repository and rasterised by us — exactly the position of `icons.tsx`'s
+   hand-authored inline SVG. What ships is raster.
+4. ★ **The coin's SVG sets `font-family: 'Baloo Bhaijaan 2'` weight 800**, so it cannot be rasterised
+   until step 2 of this wave has materialised the face. Sequence it after the font, not before.
+
+★ **One real defect in the coin, and it is a requirement conflict, not a taste question.** The «+50»
+is **baked into the SVG as text**. `REQ-CHK-018` — built in wave 12 — computes what a member has
+earned **per session**, and it is not always 50. A hardcoded coin would state a number the product
+knows to be wrong, on the one screen whose whole purpose is telling the member the truth about what
+they earned. **Recommendation: rasterise the coin WITHOUT the numeral and let the component draw the
+amount over it** from the type scale, so there is one asset and the number stays honest. Settle it at
+sync 1 and write it down.
 
 ## STEP 0 — a gate, not a step
 
