@@ -19,6 +19,17 @@
 // per-channel tolerance of 2 so JPEG-free re-encodes never count. It exits 1
 // on any pair above THRESHOLD, or on a size mismatch, which is what a changed
 // line break looks like.
+//
+// ★ A PAGE TALLER THAN 16,384 PX IS CAPTURED IN PARTS (wave 15, DEC-189).
+// Chromium draws a full-page screenshot onto one surface, and a surface is at
+// most 16,384 px on a side. Past that it does not fail: it WRAPS, and paints the
+// top of the page again. The gallery reached 42,031 px in wave 15, and its
+// capture was the first 16,384 px two and a half times — the light ground was
+// never in it, and a diff of two such files compares the same third of the page
+// with itself. So a tall page is written as `<name>.part01.png`, `.part02.png`
+// …, each PART_HEIGHT tall, and a page under the limit is written as it always
+// was: one file, the same name, the same call. The frozen routes are 1,437 to
+// 6,940 px and take the old path.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -29,6 +40,9 @@ const OUT = join(ROOT, '.qa-shots', 'visual')
 const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 // 0.1% of pixels — the parity harness's own bar. Below it is anti-aliasing.
 const THRESHOLD = Number(process.env.VISUAL_THRESHOLD ?? 0.001)
+// Chromium's largest surface, and the height of one part of a page taller than it.
+const SURFACE_LIMIT = 16_384
+const PART_HEIGHT = 8_000
 
 // The three frozen marketing routes, plus ★ the (dev) component gallery
 // (DEC-083). The gallery is the design system's OWN regression net: it renders
@@ -94,8 +108,26 @@ async function capture(name) {
         if (blank.skipped || blank.invisible)
           fail(`${route} @ ${vp.name}: ${blank.skipped} skipped sections, ${blank.invisible} invisible text elements — refusing a blank capture`)
         const file = `${vp.name}${route.replace(/\//g, '_')}.png`
-        await page.screenshot({ path: join(dir, file), fullPage: true })
-        console.log(`  ✓ ${file}`)
+        const size = await page.evaluate(() => ({
+          width: document.documentElement.scrollWidth,
+          height: document.documentElement.scrollHeight,
+        }))
+        if (size.height <= SURFACE_LIMIT) {
+          await page.screenshot({ path: join(dir, file), fullPage: true })
+          console.log(`  ✓ ${file}`)
+        } else {
+          const parts = Math.ceil(size.height / PART_HEIGHT)
+          for (let n = 0; n < parts; n++) {
+            const y = n * PART_HEIGHT
+            const part = file.replace(/\.png$/, `.part${String(n + 1).padStart(2, '0')}.png`)
+            await page.screenshot({
+              path: join(dir, part),
+              captureBeyondViewport: true,
+              clip: { x: 0, y, width: size.width, height: Math.min(PART_HEIGHT, size.height - y) },
+            })
+          }
+          console.log(`  ✓ ${file} — ${size.width}×${size.height}, taller than one surface: ${parts} parts`)
+        }
         await page.close()
       }
     }
@@ -103,7 +135,7 @@ async function capture(name) {
     await browser.close()
     shutdown()
   }
-  console.log(`\ncaptured ${ROUTES.length * VIEWPORTS.length} screenshots → ${dir}`)
+  console.log(`\ncaptured ${ROUTES.length * VIEWPORTS.length} pages → ${dir}`)
 }
 
 /* ---------------------------------------------------------------- compare */
@@ -114,6 +146,10 @@ async function compare(before, after) {
   for (const d of [a, b]) if (!existsSync(d)) fail(`no capture at ${d}`)
   const files = readdirSync(a).filter((f) => f.endsWith('.png')).sort()
   if (files.length === 0) fail(`nothing captured in ${a}`)
+  // A file only `after` has is a difference too: a page that grew past one
+  // surface is written in parts, and a part with nothing to stand against must
+  // not pass by being skipped.
+  const added = readdirSync(b).filter((f) => f.endsWith('.png') && !files.includes(f)).sort()
 
   const browser = await launch()
   const page = await browser.newPage()
@@ -133,8 +169,12 @@ async function compare(before, after) {
     const detail = r.sizeMismatch ? `size ${r.a} → ${r.b}` : `${(r.ratio * 100).toFixed(3)}% pixels differ`
     console.log(`  ${ok ? '✓' : '✗'} ${f.padEnd(28)} ${detail}`)
   }
+  for (const f of added) {
+    console.log(`  ✗ ${f.padEnd(28)} new in ${after}`)
+    failed++
+  }
   await browser.close()
-  console.log(failed ? `\n${failed} of ${files.length} differ` : `\nidentical within threshold — ${files.length} pairs`)
+  console.log(failed ? `\n${failed} of ${files.length + added.length} differ` : `\nidentical within threshold — ${files.length} pairs`)
   process.exit(failed ? 1 : 0)
 }
 
