@@ -553,6 +553,9 @@
           "removed": "Comment removed",
           "restored": "Comment restored"
         },
+        "company": {
+          "team_color_changed": "Company team colour changed"
+        },
         "design": {
           "export_requested": "Design export requested",
           "export_retried": "Design export retried",

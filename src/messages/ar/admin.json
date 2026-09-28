@@ -553,6 +553,9 @@
           "removed": "إزالة تعليق",
           "restored": "استعادة تعليق"
         },
+        "company": {
+          "team_color_changed": "تغيير لون فريق شركة"
+        },
         "design": {
           "export_requested": "طلب تصدير تصميم",
           "export_retried": "إعادة محاولة تصدير تصميم",
