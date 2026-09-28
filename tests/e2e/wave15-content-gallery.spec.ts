@@ -240,6 +240,32 @@ for (const width of WIDTHS) {
   });
 }
 
+// The story ring's demo shows all four states — REQ-UIX-040 is about telling them apart, so a
+// capture that scrolls two of them out of the box proves nothing (the lead's review at 390 px).
+// Every ring lies inside the demo's box, and all four states are there, on both grounds.
+for (const width of WIDTHS) {
+  test(`story-ring: every ring of the demo is inside its box, all four states, at ${width.name}`, async ({ page }) => {
+    await openGallery(page, width.size);
+    test.skip((await page.locator('[data-demo="story-ring"]').count()) === 0, "story-ring's demo is not wired into the gallery yet");
+    for (const ground of GROUNDS) {
+      const found = await page.locator(demoOn("story-ring", ground.scope)).evaluate((demo) => {
+        const box = demo.getBoundingClientRect();
+        return [...demo.querySelectorAll<HTMLElement>("button[data-state]")].map((ring) => {
+          const r = ring.getBoundingClientRect();
+          return {
+            state: ring.dataset.state!,
+            inside: r.left >= box.left - 0.5 && r.right <= box.right + 0.5 && r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5,
+          };
+        });
+      });
+      const where = `${ground.name} · ${width.name}`;
+      expect(found.length, `${where}: the demo draws its rings`).toBeGreaterThan(0);
+      for (const ring of found) expect(ring.inside, `${where}: a «${ring.state}» ring is outside the demo's box`).toBe(true);
+      expect(new Set(found.map((r) => r.state)), `${where}: a state is missing`).toEqual(new Set(["live", "upcoming", "recap", "seen"]));
+    }
+  });
+}
+
 test("every primitive's demo is in both grounds, once each", async ({ page }) => {
   await openGallery(page, WIDTHS[1].size);
   for (const primitive of PRIMITIVES) {

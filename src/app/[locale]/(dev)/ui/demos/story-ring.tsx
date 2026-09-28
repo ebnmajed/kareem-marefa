@@ -18,7 +18,9 @@ const RINGS = [
 
 export function StoryRingDemo() {
   return (
-    <div data-demo="story-ring" className="flex gap-3 overflow-x-auto p-2">
+    // Wraps, so every state is in the box at 390 px (the lead's review: scrolled, «ملخص» and
+    // «شوهدت» fell outside the capture). The home row's sideways scroll is a screen's, later.
+    <div data-demo="story-ring" className="flex flex-wrap gap-3 p-2">
       {RINGS.map((ring) => (
         <StoryRing
           key={`${ring.state}-${ring.glyph}`}
