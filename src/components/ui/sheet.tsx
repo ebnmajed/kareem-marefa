@@ -32,9 +32,9 @@ export function Sheet({ open, onOpenChange, title, description, side = "bottom",
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-[var(--color-navy-950)]/60" />
+        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-[var(--color-navy-950)]/60 pg:bg-scrim" />
         <RadixDialog.Content
-          className={`fixed z-50 overflow-y-auto border-edge bg-[var(--color-canvas)] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] text-fg-body shadow-xl outline-none ${sidePosition[side]}`}
+          className={`fixed z-50 overflow-y-auto border-edge bg-[var(--color-canvas)] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] text-fg-body shadow-xl pg:shadow-none outline-none ${sidePosition[side]}`}
         >
           {side === "bottom" ? (
             <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 rounded-full bg-edge-strong" />
