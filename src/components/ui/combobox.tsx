@@ -256,7 +256,7 @@ export function Combobox({
             const label = opt?.label ?? v;
             return (
               <li key={v}>
-                <span className="inline-flex items-center gap-1 rounded-field border border-edge-strong bg-silver-100 py-1 ps-2.5 pe-1 text-body-sm text-fg-heading">
+                <span className="inline-flex items-center gap-1 rounded-field border border-edge-strong bg-silver-100 py-1 ps-2.5 pe-1 text-body-sm text-fg-heading pg:bg-raised">
                   <bdi>{label}</bdi>
                   <button
                     type="button"
@@ -270,7 +270,7 @@ export function Combobox({
                     // tag in the SOURCE string; an attribute has no visual
                     // direction to isolate, so the tag here is a no-op.
                     aria-label={t.markup("combobox.removeChip", { name: label, t: (chunks) => chunks })}
-                    className="inline-flex size-6 items-center justify-center rounded-field text-fg-muted hover:bg-silver-200 hover:text-fg-heading"
+                    className="inline-flex size-6 items-center justify-center rounded-field text-fg-muted hover:bg-silver-200 hover:text-fg-heading pg:hover:bg-hover"
                   >
                     <CloseIcon className="text-sm" />
                   </button>
@@ -315,13 +315,13 @@ export function Combobox({
           component's own test (`aria-live` region below covers the
           NON-zero case only, so the two never coexist). */}
       {open && rowCount === 0 ? (
-        <div ref={(node) => { popupRef.current = node; }} role="status" className="absolute z-20 mt-1 w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body-sm text-fg-muted shadow-lg">
+        <div ref={(node) => { popupRef.current = node; }} role="status" className="absolute z-20 mt-1 w-full rounded-field border border-edge-strong bg-canvas px-3 py-2 text-body-sm text-fg-muted shadow-lg pg:shadow-none">
           {resultsText}
         </div>
       ) : null}
 
       {open && rowCount > 0 ? (
-        <ul ref={(node) => { popupRef.current = node; }} id={listboxId} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-field border border-edge-strong bg-canvas shadow-lg">
+        <ul ref={(node) => { popupRef.current = node; }} id={listboxId} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-field border border-edge-strong bg-canvas shadow-lg pg:shadow-none">
           {/* `role="option"` lives ON THE BUTTON, not on the `<li>` wrapper —
               member-picker.tsx's own precedent, and the ARIA-correct place
               for it: a listbox option must not contain a nested interactive
@@ -342,7 +342,7 @@ export function Combobox({
                 disabled={o.disabled}
                 onMouseEnter={() => setHighlight(i)}
                 onClick={() => selectOption(o)}
-                className={`block w-full px-3 py-2 text-start text-body-sm ${i === highlight ? "bg-silver-100" : ""} ${o.disabled ? "text-fg-muted/50" : "text-fg-heading"}`}
+                className={`block w-full px-3 py-2 text-start text-body-sm ${i === highlight ? "bg-silver-100 pg:bg-hover" : ""} ${o.disabled ? "text-fg-muted/50" : "text-fg-heading"}`}
               >
                 <bdi>{o.label}</bdi>
                 {o.hint ? (
@@ -362,7 +362,7 @@ export function Combobox({
                 aria-selected={highlight === filtered.length}
                 onMouseEnter={() => setHighlight(filtered.length)}
                 onClick={createFromQuery}
-                className={`block w-full px-3 py-2 text-start text-body-sm text-fg-heading ${highlight === filtered.length ? "bg-silver-100" : ""}`}
+                className={`block w-full px-3 py-2 text-start text-body-sm text-fg-heading ${highlight === filtered.length ? "bg-silver-100 pg:bg-hover" : ""}`}
               >
                 {t.rich("combobox.createOption", { name: query.trim(), t: (chunks) => <bdi>{chunks}</bdi> })}
               </button>
