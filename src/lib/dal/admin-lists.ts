@@ -29,6 +29,10 @@ export interface AdminCompany {
   deactivatedAt: string | null;
   /** How many members currently carry this company. */
   memberCount: number;
+  /** `#rrggbb`, or `null` — the ring, never the avatar's fill (REQ-UIX-043,
+   *  REQ-PRF-009). Set on this screen; no migration ever writes one
+   *  (DEC-183 §4.11). */
+  teamColor: string | null;
 }
 
 async function requireAdmin(locale: string) {
@@ -79,7 +83,7 @@ export async function listCompaniesForAdmin(locale: string): Promise<AdminCompan
   if (!client) return null;
   const { supabase } = client;
 
-  const { data, error } = await supabase.from("companies").select("id, name, deactivated_at").order("deactivated_at", { nullsFirst: true }).order("name");
+  const { data, error } = await supabase.from("companies").select("id, name, deactivated_at, team_color").order("deactivated_at", { nullsFirst: true }).order("name");
   if (error) throw new Error(`companies: ${error.message}`);
   const rows = data ?? [];
   if (rows.length === 0) return [];
@@ -89,7 +93,7 @@ export async function listCompaniesForAdmin(locale: string): Promise<AdminCompan
   const counts = new Map<string, number>();
   for (const m of memberRows ?? []) counts.set(m.company_id as string, (counts.get(m.company_id as string) ?? 0) + 1);
 
-  return rows.map((c) => ({ id: c.id, name: c.name, deactivatedAt: c.deactivated_at, memberCount: counts.get(c.id) ?? 0 }));
+  return rows.map((c) => ({ id: c.id, name: c.name, deactivatedAt: c.deactivated_at, memberCount: counts.get(c.id) ?? 0, teamColor: c.team_color }));
 }
 
 export const companyInput = z.object({ name: z.string().trim().min(1).max(120) }).strict();
@@ -109,5 +113,16 @@ export async function setCompanyActive(locale: string, companyId: string, active
     .from("companies")
     .update({ deactivated_at: active ? null : new Date().toISOString() })
     .eq("id", companyId);
+  if (error) throw new Error(`companies.update: ${error.message}`);
+}
+
+/** `null` clears the colour to «بلا لون». Written through `p2_admin_update`
+ *  (`0004`), the same policy `setCompanyActive` already relies on — no new
+ *  grant (REQ-UIX-043). The change is audited by `companies_team_color_
+ *  audit()` (`supabase/proposed/console/team_colour_audit.sql`), a trigger
+ *  on the write itself, so this function does nothing beyond the write. */
+export async function setCompanyTeamColor(locale: string, companyId: string, teamColorHex: string | null): Promise<void> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.from("companies").update({ team_color: teamColorHex }).eq("id", companyId);
   if (error) throw new Error(`companies.update: ${error.message}`);
 }

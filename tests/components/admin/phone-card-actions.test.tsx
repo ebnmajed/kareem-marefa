@@ -64,7 +64,7 @@ describe("the phone card list carries each row's actions (wave 8, F1)", () => {
   });
 
   it("companies: the card offers «عطّل»", () => {
-    const companies: AdminCompany[] = [{ id: "co1", name: "شركة نشطة", deactivatedAt: null, memberCount: 0 }];
+    const companies: AdminCompany[] = [{ id: "co1", name: "شركة نشطة", deactivatedAt: null, memberCount: 0, teamColor: null }];
     const { container } = render(withProviders(<CompaniesTable companies={companies} locale="ar" />));
     expect(within(cards(container)[0]).getByRole("button", { name: "عطّل" })).toBeTruthy();
   });

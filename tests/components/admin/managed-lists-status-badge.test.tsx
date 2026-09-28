@@ -76,8 +76,8 @@ describe("managed lists — the phone card view's status column", () => {
 
   it("companies: an active company's card shows «نشطة» (feminine, REQ-ADM-008's own noun), not an empty value", () => {
     const companies: AdminCompany[] = [
-      { id: "co1", name: "شركة نشطة", deactivatedAt: null, memberCount: 0 },
-      { id: "co2", name: "شركة معطّلة", deactivatedAt: "2026-09-01T00:00:00Z", memberCount: 0 },
+      { id: "co1", name: "شركة نشطة", deactivatedAt: null, memberCount: 0, teamColor: null },
+      { id: "co2", name: "شركة معطّلة", deactivatedAt: "2026-09-01T00:00:00Z", memberCount: 0, teamColor: null },
     ];
     const { container } = render(withProviders(<CompaniesTable companies={companies} locale="ar" />));
     const cardList = container.querySelector("ul")!;
