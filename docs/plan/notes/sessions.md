@@ -4612,3 +4612,89 @@ palette names.
 12. **Q12 — does the brand kit reach inside the scope?** `.brand-org` writes today's context variables, and
     the scope's own values would shadow them inside it. That is `branding`'s question, with you as
     custodian, and it decides whether R4–R6 alias the org's values inside the scope as well.
+
+## W15.9 · As built, after sync 1 (`DEC-186`)
+
+**The mechanism was ruled differently from my plan, and better** (`DEC-186` §2, my Q1's alternative). The
+scope (`.theme-play`, `.theme-play-light`) reassigns today's context variables, as `.theme-dark` does. So:
+- no existing class changed for a colour;
+- R3 – R10 were not needed;
+- none of the nine assertions in W15.6 moved.
+
+What a variable cannot carry is **added** under `pg:` / `pg-dark:` / `pg-light:`, after the class it
+overrides, and never replaces a class. I checked every added class against the compiled stylesheet with
+`@tailwindcss/node`: each `pg*` rule is emitted after the class it overrides.
+
+### The commits, in order
+
+| Commit | What |
+|---|---|
+| `6aa5d02` → `5eab65a` → `7d879117` → `6c20e991` → `bcb3b9c9` | ★ contract 5's **fingerprint**, `tests/e2e/wave15-sessions-public-controls.spec.ts` (see below) |
+| `941c67c9` | `checkbox`: `pg:rounded-input`, and `hover:bg-silver-100` → `hover:bg-[var(--btn2-bg-hover)]` — the one existing class changed, approved at sync 1; `silver-100` at `:root`, and no checkbox renders in `.theme-dark` |
+| `4a1ff166` | `radio-group`: `pg:rounded-input` on each row, `pg-dark:text-error-on-dark` on the error |
+| `42dabcba` | `switch`: the ring's width on the track it draws, and ★ `pg-light:peer-checked:bg-fg-heading` — lime on paper is 1.07:1, so an ON switch would vanish (the lead confirmed it) |
+| `5e0d3131` | `form-summary`: on the dark ground an outline in `--color-error-on-dark` with a transparent ground, the input's corner, the ring's width |
+| `f2ccf30a` | ★ `code-input` (new, `REQ-UIX-035`) |
+| `08deb498` | the `radio-group` and `code-input` demos take the lead's `DemoGround` and suffix every name and id |
+| `12e1481a` | ★ **`field` + `controlClass()`** — `pg:rounded-input pg:bg-raised`, and `pg-dark:border-error-on-dark` when invalid; the error line's on-dark colour. Announced to `console`, which confirmed its seven files green |
+| `3c06d53a` | ★ `session-cta` (new, `REQ-UIX-033`) and its demo |
+| `0e761b84` | the `field` demo |
+| `b0b4daa6`, `dc73ca40` | `wave15-sessions-gallery.spec.ts`: per-demo captures on both grounds at 390 px and desktop, focus rings, no duplicate id, no sideways scroll, the two prototype counterparts; each control's computed colours against the scope's own utilities |
+| `a7d03933` | `input`: its scope test and demo — `input.tsx` gains no class |
+| `a985050a` | `data-demo` on the root of seven demos that lacked it |
+| `0e5216a2` | `select`: its scope test and demo — `select.tsx` gains no class |
+| `e6f4d22d` | `textarea`: its scope test and demo — `textarea.tsx` gains no class |
+
+### Contract 5, as proven by the lead
+
+| Step | Result |
+|---|---|
+| The fingerprint on `main` | three runs, 46 – 51 s, byte-identical, 29,608 values, zero `unsettled` |
+| The lead's `button` (`ee5ad1d9`) | byte-identical to `main` |
+| ★ `field` + `controlClass()` (`12e1481a`) | tsc, lint, 3,233 tests, build, `qa` 57/57, six public pairs 0.000 %, the fingerprint byte-identical |
+| `input` (`a985050a`) | tsc, lint, 3,266 tests, build, `qa` 57/57, six pairs 0.000 %; the fingerprint was running when last reported |
+| `textarea` (`e6f4d22d`) | landed without a separate proof (the lead's ruling): neither `input.tsx` nor `textarea.tsx` gains a class. **The lead runs the closing proof on the commit that holds all three** |
+
+### The fingerprint — what it took to make it deterministic
+
+These are four lessons for the next spec that samples computed style:
+1. **Never wait on every animation.** The public pages run infinite ones (`.ripple-ring`, `.pulse-dot`,
+   `.loader-dot`), and their `finished` never settles.
+2. **Chromium applies `:hover` and `:focus` at the next frame.** Wait two frames before looking for the
+   transition a hover starts, or the sample catches `button`'s 150 ms colour change half-way.
+3. **Never `await finished` at all.** On `main`'s build the hero's `network-fade` (1100 ms) read
+   `playState: "running"` at `currentTime` 4150 ms, and its promise never settled. Poll
+   `currentTime < endTime` once a frame under a deadline, and take a sample only when two readings two
+   frames apart are identical.
+4. **A state is recorded only when it holds.** On a cold first page the submit button moved from under the
+   pointer, and a rest state was recorded as «hover». Every hover and focus sample now checks its own
+   `hovered` / `focused` field and retries. The run also warms both pages and waits for
+   `document.fonts.ready`.
+
+### Measured and different from the plan
+
+- **`code-input` needs no `DEC-149` §1 repair.** React keeps a controlled text box's `value` attribute in
+  step, so `reset()` restores it. A mutation check showed the test passes without the repair, so the repair
+  was removed and the test asserts the value straight after `reset()`.
+- **`code-input` is static** (`DEC-186` §4): no pop.
+- **`session-cta` adds only `w-full` to `Button`.** A test asserts it sets none of the classes `Button` owns.
+- **The playground's `edge`, focus ring and error colours** were corrected by `DEC-186` §2 as W15.2
+  requested: `edge-strong` `#6B7088`, the ring ink on the light ground, and the on-dark status constants.
+
+### The untouched-suite ledger
+
+**No lines.** No pre-existing assertion moved. The one existing class that changed, `checkbox.tsx`'s hover,
+is named by no assertion. Every new case is in a new `<primitive>-scope.test.tsx` or in the two new
+primitives' own files.
+
+### Not done, and why
+
+- **The gallery captures** (`.qa-shots/rtl/wave15-sessions-*.png`) and the gallery spec's colour, focus and
+  duplicate-id cases need a production build with `KAREEM_GALLERY=1`, which is the lead's. The lead runs
+  them, and I open the captures when they exist.
+- **Carried to `checkin` (the lead as custodian), not this wave:**
+  - the check-in screen's code group is named by an id that does not exist (`code-input.tsx:52` against
+    `check-in/page.tsx:123`), so boxes 2 – 6 have no name and the refusal is not tied to them. The new
+    `ui/code-input` does both, and a screens wave adopts it;
+  - a checked-in member is offered the check-in link again (`session-matrix.ts:241-246`).
+- **Carried, the lead's:** `app/layout.tsx:30` writes an org's canvas to `--canvas`, which nothing reads.
