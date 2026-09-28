@@ -20,18 +20,25 @@ import { CloseIcon } from "@/components/ui/icons";
 // `"use client"`: `action.onClick` is a plain function, which only a client
 // module can wire to a `<button>` — `action.href` alone would not need it,
 // but the type allows either and a caller should not have to know which.
+//
+// ★ Wave 15 — inside the playground's scope (DEC-183, DEC-186 §2, REQ-UIX-030):
+// the 22 px panel radius, and the title in the display face at 700 (the face's
+// lightest weight; `00-direction.md`: headings in the display face). The
+// scope's variables already give the hairline and the text their colours, and
+// the action is the lead's `Button`, which takes the scope's face itself. Added
+// under `pg:`, after every class that exists, so outside the scope nothing moves.
 export function EmptyState({ title, description, action, clearFilter, icon, size = "md", className = "" }: EmptyStateProps) {
   const compact = size === "sm";
   return (
     <div
-      className={`flex flex-col items-center gap-3 rounded-card border border-edge px-6 text-center ${compact ? "py-8" : "py-14"} ${className}`}
+      className={`flex flex-col items-center gap-3 rounded-card border border-edge px-6 text-center ${compact ? "py-8" : "py-14"} pg:rounded-panel ${className}`}
     >
       {icon ? (
         <span aria-hidden className="text-[1.75rem] text-fg-muted">
           {icon}
         </span>
       ) : null}
-      <p className={`font-medium text-fg-heading ${compact ? "text-label" : "text-h3"}`}>{title}</p>
+      <p className={`font-medium text-fg-heading ${compact ? "text-label" : "text-h3"} pg:font-display pg:font-bold`}>{title}</p>
       {description ? <p className="max-w-prose text-body-sm text-fg-muted">{description}</p> : null}
       <div className="mt-1 flex flex-wrap items-center justify-center gap-4">
         {action.href ? (
