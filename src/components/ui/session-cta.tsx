@@ -107,10 +107,11 @@ function Act({
  * glyph and the word at the start, the chip at the end; 52 px at least inside the scope, and taller
  * when the word wraps.
  */
-function Face({ glyph, label, chip, ringed }: { glyph: ReactNode; label: string; chip?: ReactNode; ringed: boolean }) {
+function Face({ glyph, label, chip, ringed, describedBy }: { glyph: ReactNode; label: string; chip?: ReactNode; ringed: boolean; describedBy?: string }) {
   return (
     <p
       data-part="face"
+      aria-describedby={describedBy}
       // One colour class per state, never two for one property (DEC-111): a fact is the text colour
       // in an accent ring; «none» is muted and unringed, so it never reads as a held seat.
       className={`flex min-h-12 items-center justify-between gap-3 rounded-field bg-raised px-7 py-2 text-start text-label pg:min-h-13 pg:rounded-pill pg:font-display pg:font-extrabold pg:text-play-sm ${
@@ -174,9 +175,22 @@ export function SessionCta({ state, label, chip, pendingLabel, pending, classNam
     }
 
     case "attended":
+      // The sentence a chip must not be — «تصل النقاط عند انتهاء الجلسة» — is the state's note,
+      // beneath the face and tied to it, as `booked`'s cancel note is.
       return (
-        <div className={className}>
-          <Face ringed glyph={<CheckCircleIcon className="text-[1.25rem]" />} label={label} chip={chip ? <Chip tone="face">{chip}</Chip> : undefined} />
+        <div className={`flex flex-col gap-2 ${className}`}>
+          <Face
+            ringed
+            glyph={<CheckCircleIcon className="text-[1.25rem]" />}
+            label={label}
+            chip={chip ? <Chip tone="face">{chip}</Chip> : undefined}
+            describedBy={state.note ? noteId : undefined}
+          />
+          {state.note ? (
+            <p id={noteId} className="text-caption text-fg-muted">
+              {state.note}
+            </p>
+          ) : null}
         </div>
       );
 

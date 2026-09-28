@@ -157,6 +157,21 @@ describe("SessionCta — the three faces that offer nothing to press but what th
     expect(screen.getByText("+50").tagName).toBe("BDI");
   });
 
+  it("attended carries its sentence as a note beneath the face, tied to it — never inside the chip", () => {
+    const { container } = draw({ state: { kind: "attended", note: "تصل النقاط عند انتهاء الجلسة." }, label: "حضرت", chip: "+50" });
+    const face = container.querySelector('[data-part="face"]')!;
+    expect(face).toHaveAccessibleDescription("تصل النقاط عند انتهاء الجلسة.");
+    expect(face.querySelector('[data-part="chip"]')).toHaveTextContent(/^\+50$/);
+    const note = screen.getByText("تصل النقاط عند انتهاء الجلسة.");
+    expect(face.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(controls(container)).toHaveLength(0);
+  });
+
+  it("attended without a note has no description", () => {
+    const { container } = draw({ state: { kind: "attended" }, label: "حضرت" });
+    expect(container.querySelector('[data-part="face"]')).not.toHaveAttribute("aria-describedby");
+  });
+
   it("★ none: the label and the reason in words — never a disabled control with no reason (REQ-SES-013)", () => {
     const { container } = draw({ state: { kind: "none", reason: "انتهى وقت الحجز لهذه الجلسة" }, label: "الحجز مغلق" });
     expect(controls(container)).toHaveLength(0);
