@@ -118,6 +118,50 @@ for (const { primitive, target } of FOCUSABLE) {
   });
 }
 
+// ── What the browser computes inside each scope, which jsdom cannot see. ──
+// A class that reads a colour through a variable resolved at `:root` (the lead's dialog, sync 2:
+// `var(--color-canvas)` stayed white inside the scope) paints the page's colour under the scope's
+// text. So each control's computed background and text colour are compared with what the scope's
+// OWN utilities compute on a probe placed beside it — on the same ground, in the same scope.
+
+const COMPUTED: { primitive: string; target: string; background: string; text: string }[] = [
+  { primitive: "field", target: "input:not([type=hidden])", background: "bg-raised", text: "text-fg-heading" },
+  { primitive: "input", target: "input:not([type=hidden]):not([disabled])", background: "bg-raised", text: "text-fg-heading" },
+  { primitive: "textarea", target: "textarea", background: "bg-raised", text: "text-fg-heading" },
+  { primitive: "select", target: "select:not([disabled])", background: "bg-raised", text: "text-fg-heading" },
+  { primitive: "code-input", target: "input:not([type=hidden]):not([disabled])", background: "bg-raised", text: "text-fg-heading" },
+  { primitive: "session-cta", target: "button:not([disabled])", background: "bg-accent", text: "text-on-accent" },
+  { primitive: "form-summary", target: "[role=alert]", background: "bg-transparent", text: "text-fg-body" },
+];
+
+for (const { primitive, target, background, text } of COMPUTED) {
+  test(`${primitive} paints the scope's own colours on both grounds`, async ({ page }) => {
+    await openGallery(page, WIDTHS[1].size);
+    test.skip(!(await wired(page, primitive)), `${primitive}'s demo is not wired into the gallery yet`);
+    for (const ground of GROUNDS) {
+      const got = await page.locator(demoOn(primitive, ground.scope)).locator(target).first().evaluate(
+        (el, probes) => {
+          const probe = document.createElement("span");
+          el.parentElement!.appendChild(probe);
+          probe.className = probes.background;
+          const wantBackground = getComputedStyle(probe).backgroundColor;
+          probe.className = probes.text;
+          const wantText = getComputedStyle(probe).color;
+          probe.remove();
+          const cs = getComputedStyle(el);
+          return { background: cs.backgroundColor, wantBackground, text: cs.color, wantText };
+        },
+        { background, text },
+      );
+      // form-summary's dark ground is an outline on the page; on the light ground it keeps its box.
+      if (!(primitive === "form-summary" && ground.name === "light")) {
+        expect(got.background, `${primitive} background on ${ground.name}`).toBe(got.wantBackground);
+      }
+      if (!(primitive === "form-summary")) expect(got.text, `${primitive} text on ${ground.name}`).toBe(got.wantText);
+    }
+  });
+}
+
 test("every primitive's demo is in both grounds, once each", async ({ page }) => {
   await openGallery(page, WIDTHS[1].size);
   for (const primitive of PRIMITIVES) {
