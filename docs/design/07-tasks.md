@@ -1,0 +1,68 @@
+# 07 — Implementation order
+
+**Serves:** the build process already in use (lead + teammates, PR per wave, the owner merges, `STATUS.md`
+and `DECISIONS.md` as the source of truth).
+
+## Before any code
+
+1. The lead reads this folder in order and the prototypes.
+2. The lead lists the entries in `06-decisions-proposed.md` and asks the owner to accept, amend or
+   refuse each. **No wave starts on an entry that is not in `DECISIONS.md`.** Waves 1 and 2 need
+   DEC-NEXT-1, 3 and 4; wave 3 needs DEC-NEXT-14; wave 4 waits for the screen designs.
+3. The lead writes the plan as `STORY-*` items in the existing backlog shape, each citing the `REQ-*`
+   it serves and the primitive file it owns, and posts it for review before assigning teammates.
+
+## Waves
+
+### Wave 1 — tokens, type, primitives, gallery
+- Merge `tokens.css` into `globals.css`; add the semantic layer to the existing theme switch; nothing
+  visible changes yet.
+- Materialise Baloo Bhaijaan 2 through the font path (`02-typography.md` §"Getting the display face
+  into the product"); parity goldens green; `@font-face` with a metric-matched fallback.
+- Migrate the primitives in this order, one commit each with a gallery screenshot at 390px and desktop:
+  `button` → `chip` → `status-badge` → `avatar` → `card` → `field`/`input`/`select`/`combobox`/
+  `date-time` → `sheet` → `tabs` → `toast` → `skeleton` → the console primitives (tokens only).
+- New primitives: `sticker`, `poster`, `session-cta`, `reaction-bar`, `code-input`, `progress-bar`,
+  `rank-row`, `race-bar`, `level-card`, `story-ring`.
+- New glyphs in `icons.tsx`.
+- Gate: `npm run qa` green; the frozen public routes' visual baseline **unchanged**
+  (`REQ-NFR-019`); every new primitive has its jsdom test, RTL check and gallery entry.
+
+### Wave 2 — the five moments
+- `lib/ui/confetti.ts`, `useCountUp`, the once-per-occurrence keying.
+- Moment 1 on `SCR-012` (reservation); moment 2 on `SCR-014` (check-in celebration, honest copy from
+  `REQ-CHK-018`); moments 3 and 4 on `SCR-022` and the home «التالية لك» card; moment 5 on
+  `SCR-027`/`SCR-028`.
+- Static states reviewed at 390px beside the animated ones.
+- Gate: Playwright trace on a throttled CPU, no frame over 16ms for moments 1 and 2; lint clean.
+
+### Wave 3 — stories
+- Migration: `story_views` (if DEC-NEXT-14 option A), the `story` photo derivative in the photo job.
+- `dal/stories.ts` and its RLS tests; the ring row on `SCR-010`; the viewer under `features/stories/`;
+  the «القصة» sub-nav entry on `SCR-012`.
+- Gate: the RLS cases in `05-stories.md` §Tests; Playwright tap/hold/swipe at 390px.
+
+### Wave 4 — screens
+- Waits for the per-screen designs (mobile and desktop per `SCR-*`), delivered in the same folder as
+  `docs/design/screens/<SCR-id>.md` with their reference artboards. Milestone order follows
+  `09` §8: M10 member screens first, then M11 console, M12 designer and certificates, M13 public.
+
+## Definition of done (every wave)
+
+- Only primitives from `src/components/ui/`; no control styles declared in a screen.
+- Tokens only; no hex, no per-component duration, no animation dependency.
+- RTL renders correct at 390px in Arabic with no horizontal page scroll; Western numerals; `<bdi>` on
+  mixed runs.
+- Loading skeleton and error boundary at every touched route boundary.
+- WCAG 2.2 AA: focus visible, targets ≥ 44px, contrast as in `01-tokens.md`.
+- `npm run qa` green; `main` deployable; `STATUS.md` updated; `DECISIONS.md` untouched by the agents
+  (the owner writes decisions).
+
+## What must not move
+
+- `docs/plan/02-domain-model.md` beyond the additions named in `06` (`team_color`, `weekly`,
+  `consecutive_sessions`, `proposal_votes`, `feed_announcements`, `story_views`).
+- The append-only tables, the check-in constraints, the certificate identifiers, the RLS pattern.
+- `REQ-NFR-019`'s frozen routes before M13.
+- The designer's document model and export pipeline (`06-visual-designer.md`); this direction adds
+  templates and assets, not mechanics.

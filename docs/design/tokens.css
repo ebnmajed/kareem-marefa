@@ -1,0 +1,114 @@
+/* docs/design/tokens.css — merge into src/app/globals.css after the existing @theme block.
+   Raw palette + typography + radius + motion. Semantic layer below it. Nothing here removes an
+   existing token; migration is per primitive (see docs/design/04-components.md). */
+
+@theme {
+  /* ground, dark (default) */
+  --color-ink: #0B0C12;
+  --color-surface: #151724;
+  --color-surface-2: #1E2130;
+  --color-line: #2A2E40;
+  --color-bone: #F4F1EA;
+  --color-muted: #A7ABBE;
+
+  /* accents */
+  --color-lime: #C6FF3D;
+  --color-lime-deep: #78AD12;
+  --color-coral: #FF6E4F;
+  --color-coral-deep: #C2472C;
+
+  /* ground, light */
+  --color-paper: #F6F3EC;
+  --color-paper-surface: #FFFFFF;
+  --color-paper-line: #E4DFD3;
+  --color-paper-ink: #12131A;
+  --color-paper-muted: #5B5F73;
+
+  /* team colours (org data renders through --team; these are the defaults seeded per company) */
+  --color-team-silver: #E9E4D6;
+  --color-team-tangerine: #FF9A2E;
+  --color-team-magenta: #FF4FB8;
+  --color-team-cyan: #35D0FF;
+  --color-team-gold: #FFD23F;
+  --color-team-violet: #9B7CFF;
+  --color-team-mint: #3BE8B0;
+
+  /* level ramp — REQ-REC-004 */
+  --color-level-1: #9AA0B4;
+  --color-level-2: #C8875A;
+  --color-level-3: #D9DEE8;
+  --color-level-4: #C6FF3D;
+  --color-level-5: #BFE9FF;
+
+  /* avatar tints — REQ-PRF-009 (stable hash of member id) */
+  --color-tint-1: #2C3D4A;
+  --color-tint-2: #3A3F56;
+  --color-tint-3: #4A3A2E;
+  --color-tint-4: #2E4A3F;
+  --color-tint-5: #463A4A;
+  --color-tint-6: #3C4A2E;
+
+  /* type */
+  --font-display: "Baloo Bhaijaan 2", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --text-display-xl: 64px;   /* desktop hero numbers, level names */
+  --text-display-lg: 48px;   /* phone hero, celebration */
+  --text-display-md: 30px;   /* poster title on a card, widget titles */
+  --text-display-sm: 22px;   /* section titles, CTA labels */
+  --text-title: 28px;
+  --text-subtitle: 22px;
+  --text-body: 17px;
+  --text-secondary: 15px;
+  --text-caption: 13px;
+  --leading-display: 1.15;
+  --leading-heading: 1.4;
+  --leading-body: 1.7;
+
+  /* radius */
+  --radius-card: 22px;
+  --radius-poster: 16px;
+  --radius-input: 12px;
+  --radius-pill: 999px;
+
+  /* motion */
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 420ms;
+  --duration-party: 900ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+/* semantic layer — dark is the default; the light switch remaps only these */
+:root {
+  --bg: var(--color-ink);
+  --bg-surface: var(--color-surface);
+  --bg-raised: var(--color-surface-2);
+  --fg: var(--color-bone);
+  --fg-muted: var(--color-muted);
+  --line-color: var(--color-line);
+  --accent: var(--color-lime);
+  --accent-deep: var(--color-lime-deep);
+  --signal: var(--color-coral);
+  --signal-deep: var(--color-coral-deep);
+  --shadow-press: 0 5px 0 var(--accent-deep);
+  --shadow-press-down: 0 2px 0 var(--accent-deep);
+}
+.theme-light {
+  --bg: var(--color-paper);
+  --bg-surface: var(--color-paper-surface);
+  --bg-raised: color-mix(in oklab, var(--color-paper-line) 60%, var(--color-paper-surface));
+  --fg: var(--color-paper-ink);
+  --fg-muted: var(--color-paper-muted);
+  --line-color: var(--color-paper-line);
+}
+
+/* reduced motion: every token duration collapses; loops are switched off where they are declared */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-party: 0ms;
+  }
+}

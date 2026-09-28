@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>كريم معرفة — الحركة في العمل</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --m:1;
+    --ink:#0B0C12; --surf:#151724; --surf2:#1E2130; --line:#2A2E40; --bone:#F4F1EA; --muted:#A7ABBE;
+    --lime:#C6FF3D; --lime-d:#78AD12; --coral:#FF6E4F; --coral-d:#C2472C;
+    --tang:#FF9A2E; --cyan:#35D0FF; --mag:#FF4FB8; --mint:#3BE8B0; --viol:#9B7CFF; --gold:#FFD23F; --silver:#E9E4D6;
+    --fast:calc(120ms * var(--m)); --base:calc(220ms * var(--m)); --slow:calc(420ms * var(--m)); --party:calc(900ms * var(--m));
+    --ease:cubic-bezier(.16,1,.3,1);
+    --page-bg:#F6F3EC; --page-fg:#12131A; --panel:#FFFFFF; --panel-line:#E4DFD3; --panel-muted:#5B5F73; --panel-soft:#EEEAE0; --title:#12131A;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top, 0px);
+    padding-bottom:env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --page-bg:#0B0C12; --page-fg:#F4F1EA; --panel:#151724; --panel-line:#2A2E40; --panel-muted:#A7ABBE; --panel-soft:#1E2130; --title:#C6FF3D }
+  }
+  :root[data-theme="dark"]{ --page-bg:#0B0C12; --page-fg:#F4F1EA; --panel:#151724; --panel-line:#2A2E40; --panel-muted:#A7ABBE; --panel-soft:#1E2130; --title:#C6FF3D }
+  @media (prefers-reduced-motion: reduce){ :root{ --m:0 } }
+  :root.reduced{ --m:0 }
+  html{ scroll-padding-top:env(safe-area-inset-top, 0px); height:100% }
+  body{ margin:0; height:100%; background:var(--page-bg); color:var(--page-fg); font-family:'IBM Plex Sans Arabic', system-ui, sans-serif; font-size:16px; line-height:1.7; letter-spacing:0 }
+  *,*::before,*::after{ box-sizing:border-box }
+  [hidden]{ display:none !important }
+  :root.instant *{ transition:none !important; animation:none !important }
+  button{ font-family:inherit; font-size:inherit; letter-spacing:0 }
+  :focus-visible{ outline:3px solid var(--lime); outline-offset:2px }
+  .d{ font-family:'Baloo Bhaijaan 2','IBM Plex Sans Arabic',sans-serif; font-weight:800; line-height:1.15 }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+
+  /* ---------- page shell ---------- */
+  .app{ height:100%; display:grid; grid-template-columns:360px minmax(0,1fr); grid-template-rows:minmax(0,1fr); gap:20px; padding:20px; max-width:1400px; margin:0 auto }
+  .panel{ background:var(--panel); border:1px solid var(--panel-line); border-radius:24px; padding:22px; display:flex; flex-direction:column; gap:16px; min-height:0; overflow:auto }
+  .panel h1{ margin:0; font-size:28px; color:var(--title) }
+  .panel .sub{ margin:0; color:var(--panel-muted); font-size:14px }
+  .controls{ display:flex; flex-wrap:wrap; gap:8px }
+  .btn{ display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:8px 16px; border-radius:999px; border:1px solid var(--panel-line); background:var(--panel-soft); color:var(--page-fg); font-weight:700; cursor:pointer }
+  .btn.primary{ background:var(--lime); color:var(--ink); border-color:var(--lime); box-shadow:0 4px 0 var(--lime-d) }
+  .btn.primary:active{ transform:translateY(2px); box-shadow:0 2px 0 var(--lime-d) }
+  .btn[aria-pressed="true"]{ border-color:var(--lime); background:var(--lime); color:var(--ink) }
+  .steps{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px }
+  .steps button{ width:100%; display:flex; align-items:center; gap:12px; min-height:44px; padding:8px 12px; border-radius:14px; border:1px solid transparent; background:transparent; color:var(--page-fg); text-align:start; cursor:pointer }
+  .steps button:hover{ background:var(--panel-soft) }
+  .steps li.now button{ background:var(--panel-soft); border-color:var(--lime) }
+  .steps li.done .n{ background:var(--lime); color:var(--ink) }
+  .steps .n{ width:30px; height:30px; border-radius:999px; background:var(--panel-soft); border:1px solid var(--panel-line); display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0 }
+  .steps li.now .n{ background:var(--lime); color:var(--ink); border-color:var(--lime) }
+  .caption{ margin-top:auto; padding:16px; border-radius:18px; background:var(--panel-soft); display:flex; flex-direction:column; gap:6px }
+  .caption .t{ font-size:22px }
+  .caption .c{ font-size:15px; color:var(--panel-muted); margin:0 }
+  .caption .tok{ font-size:12px; color:var(--panel-muted) }
+  .stage{ position:relative; min-height:0; display:flex; align-items:center; justify-content:center }
+  .scaler{ position:relative }
+
+  /* ---------- phone ---------- */
+  .phone{ position:absolute; top:0; inset-inline-start:0; transform-origin:top right; width:390px; height:844px; background:var(--ink); color:var(--bone); border-radius:44px; overflow:hidden; position:relative; box-shadow:0 30px 80px rgba(0,0,0,.45); font-size:17px; line-height:1.6; -webkit-user-select:none; user-select:none }
+  .screen{ position:absolute; inset:0; display:flex; flex-direction:column; opacity:0; pointer-events:none; transform:translateX(-28px); transition:opacity var(--base) var(--ease), transform var(--base) var(--ease) }
+  .screen.show{ opacity:1; pointer-events:auto; transform:none }
+  .top{ display:flex; align-items:center; justify-content:space-between; padding:20px 16px 8px }
+  .wordmark{ font-size:24px; color:var(--lime); line-height:1 }
+  .icons{ display:flex; gap:8px }
+  .ib{ width:40px; height:40px; border-radius:999px; border:1px solid var(--line); background:var(--surf); color:var(--bone); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; position:relative }
+  .ib .dot{ position:absolute; top:6px; inset-inline-end:6px; width:9px; height:9px; border-radius:999px; background:var(--coral); border:2px solid var(--surf) }
+  .scroll{ flex:1; overflow:hidden; display:flex; flex-direction:column; gap:10px; padding:0 12px }
+
+  /* stories */
+  .stories{ display:flex; gap:14px; padding:6px 16px 10px; overflow:hidden }
+  .story{ display:flex; flex-direction:column; align-items:center; gap:5px; width:64px; flex-shrink:0 }
+  .ring{ width:58px; height:58px; border-radius:999px; border:3px solid var(--line); background:var(--surf); display:flex; align-items:center; justify-content:center; position:relative; font-size:20px }
+  .ring.live{ border-color:var(--coral); color:var(--coral); font-size:13px }
+  .ring.live::after{ content:""; position:absolute; inset:-7px; border-radius:999px; border:2px solid var(--coral); opacity:.6; animation:pulse 1.6s ease-out infinite }
+  .ring.recap{ border-color:var(--lime); color:var(--lime); font-size:13px }
+  .story small{ font-size:11px; font-weight:600; color:var(--muted) }
+  .story.live small{ color:var(--coral) }
+  @keyframes pulse{ from{ transform:scale(.9); opacity:.7 } to{ transform:scale(1.25); opacity:0 } }
+
+  /* card */
+  .card{ display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:22px; background:var(--surf); border:1px solid var(--line); position:relative }
+  .card.thud{ animation:thud calc(160ms * var(--m)) ease-out }
+  @keyframes thud{ 0%{ transform:translateY(0) } 45%{ transform:translateY(3px) } 100%{ transform:translateY(0) } }
+  .who{ display:flex; align-items:center; gap:10px }
+  .av{ width:38px; height:38px; border-radius:999px; background:var(--surf2); border:3px solid var(--tang); display:inline-flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0 }
+  .who .n{ font-size:14px; font-weight:700; line-height:1.3 }
+  .who .n b{ font-weight:600; font-size:11px; color:var(--tang) }
+  .who .w{ font-size:11px; color:var(--muted) }
+  .state{ font-size:11px; font-weight:700; padding:5px 10px; border-radius:999px; background:var(--surf2); color:var(--muted); display:inline-flex; align-items:center; gap:6px; transition:background var(--base), color var(--base) }
+  .state.live{ background:var(--coral); color:var(--ink) }
+  .state.live::before{ content:""; width:7px; height:7px; border-radius:999px; background:var(--ink) }
+  .state.done{ background:var(--surf2); color:var(--bone); border:1px solid var(--line) }
+  .poster{ position:relative; height:232px; border-radius:16px; background:var(--tang); color:var(--ink); padding:14px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden }
+  .poster .cat{ font-size:11px; font-weight:700; padding:5px 9px; border-radius:999px; background:var(--ink); color:var(--tang) }
+  .sticker{ display:inline-flex; padding:5px 10px; border-radius:999px; background:var(--lime); color:var(--ink); font-size:14px; transform:rotate(6deg); box-shadow:0 0 0 3px var(--tang), 0 0 0 5px var(--ink) }
+  .poster .ttl{ font-size:30px; text-wrap:balance }
+  .poster .meta{ display:flex; justify-content:space-between; align-items:flex-end; font-size:12px; font-weight:700 }
+  .qr{ width:40px; height:40px; border-radius:6px; background:var(--ink); display:grid; grid-template-columns:repeat(3,1fr); gap:2px; padding:5px }
+  .qr span{ background:var(--tang) } .qr span.o{ background:var(--ink) }
+  .actions{ display:flex; align-items:center; gap:6px }
+  .re{ display:inline-flex; align-items:center; gap:5px; padding:7px 11px; border-radius:999px; border:1px solid var(--line); background:var(--surf2); color:var(--bone); font-weight:700; font-size:13px; cursor:pointer; transition:transform var(--fast) var(--ease) }
+  .re.pop{ animation:pop calc(260ms * var(--m)) var(--ease) }
+  @keyframes pop{ 0%{ transform:scale(1) } 40%{ transform:scale(1.22) } 100%{ transform:scale(1) } }
+  .spacer{ flex:1 }
+  .cta{ position:relative; display:flex; align-items:center; justify-content:space-between; width:100%; min-height:52px; padding:10px 16px; border-radius:999px; border:0; background:var(--lime); color:var(--ink); font-size:20px; cursor:pointer; box-shadow:0 5px 0 var(--lime-d); transition:transform var(--fast), box-shadow var(--fast), background var(--base), color var(--base) }
+  .cta:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--lime-d) }
+  .cta .cap{ font-family:'IBM Plex Sans Arabic',sans-serif; font-size:12px; font-weight:700; padding:4px 9px; border-radius:999px; background:var(--ink); color:var(--lime) }
+  .cta.booked{ background:var(--surf2); color:var(--bone); box-shadow:0 0 0 2px var(--cyan) inset }
+  .cta.booked .cap{ background:var(--cyan); color:var(--ink) }
+  .cta.checkin{ background:var(--coral); box-shadow:0 5px 0 var(--coral-d) }
+  .cta.checkin .cap{ background:var(--ink); color:var(--coral) }
+  .cta.attended{ background:var(--surf2); color:var(--bone); box-shadow:0 0 0 2px var(--lime) inset }
+  .cta.attended .cap{ background:var(--lime); color:var(--ink) }
+  .cancel{ font-size:12px; color:var(--muted); text-align:center; opacity:0; transition:opacity var(--base) }
+  .cancel.show{ opacity:1 }
+
+  /* ticket + stamp */
+  .ticket{ position:absolute; inset:auto 12px 76px 12px; height:96px; border-radius:16px; background:var(--cyan); color:var(--ink); display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(60px); transition:transform var(--slow) var(--ease), opacity var(--base); pointer-events:none }
+  .ticket::before,.ticket::after{ content:""; position:absolute; top:calc(50% - 10px); width:20px; height:20px; border-radius:999px; background:var(--surf) }
+  .ticket::before{ inset-inline-start:-10px } .ticket::after{ inset-inline-end:-10px }
+  .ticket .perf{ position:absolute; inset-inline-start:96px; top:12px; bottom:12px; border-inline-start:3px dashed rgba(11,12,18,.5) }
+  .ticket .tinfo{ position:absolute; inset-inline-start:14px; top:14px; font-size:11px; font-weight:700; line-height:1.4 }
+  .ticket.show{ opacity:1; transform:none }
+  .stamp{ display:inline-flex; padding:6px 16px; border:4px solid var(--ink); border-radius:10px; font-size:30px; color:var(--ink); transform:scale(2.4) rotate(-8deg); opacity:0; transition:transform var(--slow) var(--ease), opacity var(--fast) }
+  .stamp.on{ transform:scale(1) rotate(-8deg); opacity:1 }
+
+  /* toast */
+  .toast{ position:absolute; inset-inline:24px; bottom:96px; padding:10px 14px; border-radius:14px; background:var(--surf2); border:1px solid var(--line); color:var(--bone); font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; opacity:0; transform:translateY(8px); transition:opacity var(--base), transform var(--base) var(--ease); pointer-events:none }
+  .toast.show{ opacity:1; transform:none }
+
+  /* race widget */
+  .race{ padding:12px 14px; border-radius:22px; background:var(--surf); border:1px solid var(--line); display:flex; flex-direction:column; gap:8px }
+  .race .h{ display:flex; justify-content:space-between; align-items:center }
+  .race .h .t{ font-size:18px }
+  .tag{ font-size:11px; padding:4px 9px; border-radius:999px; background:var(--surf2); color:var(--muted) }
+  .bar{ display:flex; align-items:center; gap:8px; font-size:12px }
+  .bar .r{ width:20px; height:20px; border-radius:999px; background:var(--ink); border:3px solid var(--line); flex-shrink:0 }
+  .bar .nm{ width:76px; font-weight:700 }
+  .bar .tr{ flex:1; height:10px; border-radius:999px; background:var(--surf2); overflow:hidden }
+  .bar .fl{ height:100%; border-radius:999px; transform-origin:right center; transform:scaleX(var(--v)); transition:transform var(--party) var(--ease) }
+  .bar .v{ width:30px; font-weight:700; text-align:start }
+  .bar.me{ padding:4px 6px; margin:-4px -6px; border-radius:12px; border:2px solid transparent; transition:border-color var(--base) }
+  .bar.me.hi{ border-color:var(--lime) }
+
+  /* tabs and action bar */
+  .tabs{ display:flex; align-items:flex-end; justify-content:space-around; padding:8px 8px 14px; background:var(--surf); border-top:1px solid var(--line); transition:transform var(--base) var(--ease) }
+  .tabs a{ display:flex; flex-direction:column; align-items:center; gap:3px; width:62px; padding:6px 0; text-decoration:none; color:var(--muted); font-size:11px; font-weight:700 }
+  .tabs a.on{ color:var(--lime) }
+  .tabs a.fab{ width:56px; height:56px; margin-top:-26px; border-radius:999px; background:var(--lime); color:var(--ink); justify-content:center; box-shadow:0 5px 0 var(--lime-d), 0 0 0 5px var(--ink) }
+
+  /* check-in sheet */
+  .sheet{ position:absolute; inset:0; background:var(--ink); display:flex; flex-direction:column; transform:translateY(100%); transition:transform var(--slow) var(--ease); z-index:5 }
+  .sheet.show{ transform:none }
+  .sheet .hd{ display:flex; align-items:center; gap:10px; padding:20px 16px 6px }
+  .sheet .hd .t{ font-size:24px }
+  .sheet .body{ flex:1; display:flex; flex-direction:column; align-items:stretch; justify-content:center; gap:18px; padding:0 20px 20px }
+  .sheet .lead{ font-size:17px; font-weight:600; text-align:center }
+  .boxes{ display:flex; gap:8px; justify-content:center }
+  .bx{ width:48px; height:60px; border-radius:12px; background:var(--surf); border:2px solid var(--line); display:inline-flex; align-items:center; justify-content:center; font-size:30px; color:var(--bone); transition:border-color var(--fast), transform var(--fast) var(--ease) }
+  .bx.f{ border-color:var(--lime) }
+  .bx.hit{ animation:hit calc(200ms * var(--m)) var(--ease) }
+  @keyframes hit{ 0%{ transform:scale(1) } 40%{ transform:scale(1.14) } 100%{ transform:scale(1) } }
+  .note{ font-size:12px; color:var(--muted); text-align:center; margin:0 }
+  .abar{ padding:12px 16px calc(14px + 4px); background:var(--surf); border-top:1px solid var(--line) }
+  .earn{ display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; color:var(--muted) }
+  .earn b{ color:var(--lime); font-weight:800 }
+
+  /* celebration */
+  .celebrate{ position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:rgba(11,12,18,.78); opacity:0; pointer-events:none; transition:opacity var(--base) }
+  .celebrate.show{ opacity:1; pointer-events:auto }
+  .confetti{ position:absolute; inset:0; pointer-events:none; overflow:hidden }
+  .confetti i{ position:absolute; left:50%; top:46%; width:9px; height:15px; border-radius:2px; display:block; will-change:transform, opacity }
+  .coin{ width:150px; height:150px; transform:rotate(-12deg) }
+  .coin.drop{ animation:coinDrop var(--party) var(--ease) both }
+  @keyframes coinDrop{ 0%{ transform:translateY(-240px) scale(.6) rotate(-30deg); opacity:0 } 60%{ transform:translateY(0) scale(1.06) rotate(-12deg); opacity:1 } 78%{ transform:translateY(0) scale(1.02,.92) rotate(-12deg) } 100%{ transform:translateY(0) scale(1) rotate(-12deg); opacity:1 } }
+  .celebrate .big{ font-size:46px; color:var(--lime); line-height:1 }
+  .celebrate .why{ font-size:15px; color:var(--muted); margin:0 }
+  .celebrate .chip{ font-size:13px; font-weight:700; padding:6px 12px; border-radius:999px; background:var(--surf2); border:1px solid var(--line) }
+  .celebrate .big, .celebrate .why, .celebrate .chip{ opacity:0; transform:translateY(8px); transition:opacity var(--base), transform var(--base) var(--ease) }
+  .celebrate.words .big, .celebrate.words .why, .celebrate.words .chip{ opacity:1; transform:none }
+
+  /* hud */
+  .hud .body{ flex:1; display:flex; flex-direction:column; gap:12px; padding:0 12px }
+  .panelc{ padding:16px; border-radius:22px; background:var(--surf); border:1px solid var(--line); display:flex; flex-direction:column; gap:8px }
+  .panelc .h{ display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--muted); font-weight:700 }
+  .pts{ display:flex; align-items:baseline; gap:10px }
+  .pts .n{ font-size:56px; line-height:1; color:var(--lime) }
+  .pts .l{ font-size:20px; color:var(--muted) }
+  .pts .dl{ font-size:18px; color:var(--lime); opacity:0; transform:translateY(6px); transition:opacity var(--base), transform var(--base) var(--ease) }
+  .pts .dl.show{ opacity:1; transform:none }
+  .streak{ display:flex; align-items:center; gap:14px }
+  .flame{ width:56px; height:70px; transform-origin:50% 90%; transition:transform var(--slow) var(--ease) }
+  .flame.on{ animation:flick 2s ease-in-out infinite }
+  .flame.big{ transform:scale(1.28) }
+  .flame.big.on{ animation:flickBig 2s ease-in-out infinite }
+  @keyframes flick{ 0%,100%{ transform:scale(1) skewX(0) } 25%{ transform:scale(1.04,.98) skewX(-2deg) } 50%{ transform:scale(.98,1.04) skewX(2deg) } 75%{ transform:scale(1.03,.99) skewX(-1deg) } }
+  @keyframes flickBig{ 0%,100%{ transform:scale(1.28) skewX(0) } 25%{ transform:scale(1.33,1.25) skewX(-2deg) } 50%{ transform:scale(1.25,1.33) skewX(2deg) } 75%{ transform:scale(1.31,1.27) skewX(-1deg) } }
+  .streak .t{ font-size:30px; color:var(--coral); line-height:1.1 }
+  .streak .s{ font-size:12px; color:var(--muted) }
+  .prog{ height:12px; border-radius:999px; background:var(--surf2); overflow:hidden }
+  .prog .fl{ height:100%; border-radius:999px; background:var(--lime); transform-origin:right center; transform:scaleX(var(--v)); transition:transform var(--party) var(--ease) }
+  .lvl{ perspective:1000px; height:150px }
+  .lvl-in{ position:relative; width:100%; height:100%; transform-style:preserve-3d; transition:transform var(--party) var(--ease) }
+  .lvl.flip .lvl-in{ transform:rotateY(180deg) }
+  .face{ position:absolute; inset:0; border-radius:20px; backface-visibility:hidden; -webkit-backface-visibility:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; overflow:hidden }
+  .face.front{ background:var(--surf2); border:1px solid var(--line) }
+  .face.front .nm{ font-size:26px; color:var(--silver) }
+  .face.back{ background:var(--lime); color:var(--ink); transform:rotateY(180deg) }
+  .face.back .nm{ font-size:34px }
+  .face small{ font-size:13px; font-weight:700 }
+  .shine{ position:absolute; top:-30%; bottom:-30%; left:-40%; width:26%; background:rgba(255,255,255,.55); transform:rotate(20deg) translateX(0); opacity:0 }
+  .lvl.flip .shine{ animation:shine calc(700ms * var(--m)) ease-out calc(var(--party) * .6) both }
+  @keyframes shine{ 0%{ transform:rotate(20deg) translateX(0); opacity:0 } 20%{ opacity:1 } 100%{ transform:rotate(20deg) translateX(520px); opacity:0 } }
+
+  /* board */
+  .board .body{ flex:1; display:flex; flex-direction:column; gap:10px; padding:0 12px }
+  .list{ display:flex; flex-direction:column; gap:8px }
+  .row{ display:flex; align-items:center; gap:10px; height:56px; padding:0 12px; border-radius:16px; background:var(--surf); border:1px solid var(--line); font-size:14px; transition:transform var(--slow) var(--ease), border-color var(--base) }
+  .row .rk{ width:28px; font-size:22px; color:var(--muted) }
+  .row .av{ width:32px; height:32px; font-size:14px }
+  .row .nm{ flex:1; font-weight:700; line-height:1.2 }
+  .row .nm small{ display:block; font-weight:600; font-size:11px; color:var(--muted) }
+  .row .p{ font-weight:800 }
+  .row.me{ border-color:var(--lime) }
+  .row.me .rk{ color:var(--lime) }
+  .row.up{ transform:translateY(-64px) } .row.down{ transform:translateY(64px) }
+  .delta{ color:var(--lime); font-weight:800; opacity:0 }
+  .delta.on{ animation:arrow calc(600ms * var(--m)) var(--ease) both }
+  @keyframes arrow{ 0%{ opacity:0; transform:translateY(6px) scale(.8) } 50%{ opacity:1; transform:translateY(-2px) scale(1.2) } 100%{ opacity:1; transform:none } }
+
+  /* recap post */
+  .photos{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px }
+  .photos div{ aspect-ratio:1; border-radius:12px; background:var(--surf2); display:flex; align-items:end; padding:6px; font-size:11px; color:var(--muted) }
+  .photos div:nth-child(1){ background:#3A3F56 } .photos div:nth-child(2){ background:#2C3D4A } .photos div:nth-child(3){ background:#4A3A2E }
+
+  /* end */
+  .end{ position:absolute; inset:0; z-index:9; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:32px; background:rgba(11,12,18,.86); opacity:0; pointer-events:none; transition:opacity var(--base) }
+  .end.show{ opacity:1; pointer-events:auto }
+  .end .t{ font-size:40px; color:var(--lime); text-align:center }
+  .end p{ margin:0; color:var(--muted); text-align:center; font-size:14px }
+  .end .btn{ background:var(--lime); color:var(--ink); border-color:var(--lime); font-size:20px; font-family:'Baloo Bhaijaan 2',sans-serif; font-weight:800; box-shadow:0 5px 0 var(--lime-d) }
+
+  /* reduced motion: loops off, end states shown */
+  :root.reduced .ring.live::after, :root.reduced .flame.on, :root.reduced .flame.big.on{ animation:none }
+  :root.reduced .flame.big{ transform:scale(1.28) }
+  :root.reduced .coin.drop{ animation:none; opacity:1; transform:rotate(-12deg) }
+  :root.reduced .delta.on{ animation:none; opacity:1 }
+  :root.reduced .lvl.flip .shine{ animation:none; opacity:0 }
+  @media (prefers-reduced-motion: reduce){
+    :root:not(.motion) .ring.live::after, :root:not(.motion) .flame.on, :root:not(.motion) .flame.big.on{ animation:none }
+    :root:not(.motion) .flame.big{ transform:scale(1.28) }
+    :root:not(.motion) .coin.drop{ animation:none; opacity:1; transform:rotate(-12deg) }
+    :root:not(.motion) .delta.on{ animation:none; opacity:1 }
+    :root:not(.motion) .lvl.flip .shine{ animation:none; opacity:0 }
+  }
+  :root.motion{ --m:1 }
+
+  /* responsive */
+  @media (max-width: 959px){
+    .app{ grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) auto; gap:12px; padding:12px }
+    .stage{ order:1 }
+    .panel{ order:2; padding:14px; gap:10px; border-radius:20px }
+    .panel h1{ font-size:20px }
+    .panel .sub, .caption .tok{ display:none }
+    .steps{ flex-direction:row; overflow-x:auto; gap:6px; padding-bottom:2px }
+    .steps button{ width:auto; white-space:nowrap; padding:6px 10px }
+    .steps .lbl{ display:none }
+    .caption{ margin-top:0; padding:10px 12px; flex-direction:row; align-items:baseline; gap:10px }
+    .caption .t{ font-size:18px; white-space:nowrap }
+    .caption .c{ font-size:13px }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <div>
+      <h1 class="d">كريم معرفة — الحركة في العمل</h1>
+      <p class="sub">قصة من ثماني لحظات. اضغط داخل الهاتف أو «التالي»، أو دع التشغيل التلقائي يأخذك.</p>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn primary" id="btnNext">التالي</button>
+      <button type="button" class="btn" id="btnAuto" aria-pressed="true">تشغيل تلقائي</button>
+      <button type="button" class="btn" id="btnReplay">إعادة</button>
+      <button type="button" class="btn" id="btnReduced" aria-pressed="false">تقليل الحركة</button>
+    </div>
+    <ol class="steps" id="steps" aria-label="لحظات القصة"></ol>
+    <div class="caption" role="status" aria-live="polite">
+      <div class="t d" id="capT">الخلاصة</div>
+      <p class="c" id="capC">الجلسة منشور: ملصق، مُقدِّم، تفاعل، وحجز بضغطة.</p>
+      <div class="tok" id="capK">تحميل بهيكل يشبه المحتوى، لا دوّارات</div>
+    </div>
+  </aside>
+
+  <div class="stage" id="stage">
+    <div class="scaler" id="scaler">
+      <div class="phone" id="phone">
+
+        <!-- FEED -->
+        <section class="screen show" id="feed" aria-label="الرئيسية">
+          <div class="top">
+            <div class="wordmark d">كريم معرفة</div>
+            <div class="icons">
+              <button type="button" class="ib" aria-label="بحث"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+              <button type="button" class="ib" aria-label="الإشعارات"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21a2 2 0 0 0 4 0"/></svg><span class="dot"></span></button>
+            </div>
+          </div>
+          <div class="stories" id="stories">
+            <div class="story live"><div class="ring live d" id="ringLive">مباشر</div><small id="ringLiveL">الآن</small></div>
+            <div class="story"><div class="ring d" style="border-color:var(--tang); color:var(--tang)" id="ringMine">ص</div><small id="ringMineL">الخميس</small></div>
+            <div class="story"><div class="ring d" style="border-color:var(--cyan); color:var(--cyan)">م</div><small>أمس</small></div>
+            <div class="story"><div class="ring d" style="color:var(--viol)">أ</div><small>الثلاثاء</small></div>
+            <div class="story"><div class="ring d" style="color:var(--mint)">ج</div><small>الأحد</small></div>
+          </div>
+          <div class="scroll">
+            <article class="card" id="card">
+              <div class="who">
+                <span class="av d">ن</span>
+                <div style="flex:1">
+                  <div class="n">نورة العتيبي <b>صنف</b></div>
+                  <div class="w">الخميس 2 أكتوبر، 6:30 م، قاعة الرياض</div>
+                </div>
+                <span class="state" id="state">بعد 3 أيام</span>
+              </div>
+              <div class="poster">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start"><span class="cat">جلسة إدارية</span><span class="sticker d" id="sticker">+50</span></div>
+                <div class="ttl d">لوحة تحكم لا يهجرها أحد بعد أسبوع</div>
+                <div class="meta"><span>2 أكتوبر، 6:30 م</span><span class="qr" aria-hidden="true"><span></span><span></span><span class="o"></span><span class="o"></span><span></span><span></span><span></span><span class="o"></span><span></span></span></div>
+              </div>
+              <div class="actions">
+                <button type="button" class="re" id="reHeart"><svg width="16" height="16" viewBox="0 0 24 24" fill="#FF4FB8" stroke="#FF4FB8" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.6-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.4-9.5 9-9.5 9z"/></svg><span id="heartN">48</span></button>
+                <button type="button" class="re"><svg width="16" height="16" viewBox="0 0 24 24" fill="#FF6E4F" stroke="#FF6E4F" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z"/></svg>21</button>
+                <button type="button" class="re"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.6A8 8 0 1 1 21 12z"/></svg>8</button>
+                <span class="spacer"></span>
+                <button type="button" class="ib" style="width:36px;height:36px" aria-label="مشاركة"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 15V3"/><path d="m8 7 4-4 4 4"/></svg></button>
+                <button type="button" class="ib" style="width:36px;height:36px" aria-label="حفظ"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>
+              </div>
+              <button type="button" class="cta d" id="cta"><span id="ctaT">احجز مقعدك</span><span class="cap" id="ctaC">12 من 40</span></button>
+              <div class="cancel" id="cancel">ألغِ حجزي</div>
+              <div class="ticket" id="ticket" aria-hidden="true"><span class="tinfo">قاعة الرياض<br>الخميس 6:30 م</span><span class="perf"></span><span class="stamp d" id="stamp">محجوز</span></div>
+            </article>
+
+            <section class="race" id="race" aria-label="سباق الشركات">
+              <div class="h"><span class="t d">سباق الشركات</span><span class="tag" id="raceTag">فريقك #3</span></div>
+              <div class="bar"><span class="r" style="border-color:var(--cyan)"></span><span class="nm">مواهب</span><span class="tr"><span class="fl" style="background:var(--cyan); --v:.92"></span></span><span class="v">9.4</span></div>
+              <div class="bar"><span class="r" style="border-color:var(--mag)"></span><span class="nm">بنينسولا ستوري</span><span class="tr"><span class="fl" style="background:var(--mag); --v:.84"></span></span><span class="v">8.7</span></div>
+              <div class="bar me" id="barMe"><span class="r" style="border-color:var(--tang)"></span><span class="nm">صنف</span><span class="tr"><span class="fl" id="barMeFl" style="background:var(--tang); --v:.71"></span></span><span class="v" id="barMeV">7.3</span></div>
+            </section>
+
+            <article class="card" id="recap" hidden>
+              <div class="who">
+                <span class="av d" style="border-color:var(--lime)">ن</span>
+                <div style="flex:1"><div class="n">ملخص الجلسة <b style="color:var(--lime)">اكتملت</b></div><div class="w">28 حاضرًا، 3 صور جديدة، المواد متاحة الآن</div></div>
+              </div>
+              <div class="photos" aria-label="صور الحضور"><div>قاعة الرياض</div><div>الشرائح</div><div>الفريق</div></div>
+              <div class="actions">
+                <button type="button" class="re"><svg width="16" height="16" viewBox="0 0 24 24" fill="#FF4FB8" stroke="#FF4FB8" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.6-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.4-9.5 9-9.5 9z"/></svg>63</button>
+                <button type="button" class="re"><svg width="16" height="16" viewBox="0 0 24 24" fill="#FFD23F" stroke="#FFD23F" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>17</button>
+                <span class="spacer"></span>
+                <button type="button" class="re" style="background:var(--lime); color:var(--ink); border-color:var(--lime)">حمّل المواد</button>
+              </div>
+            </article>
+          </div>
+          <div class="toast" id="toast"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span id="toastT">أُضيفت إلى تقويمك</span></div>
+          <nav class="tabs" id="tabs" aria-label="التنقل">
+            <a href="#feed" class="on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>الرئيسية</a>
+            <a href="#explore"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-2 6-4 2 2-6z"/></svg>استكشف</a>
+            <a href="#propose" class="fab" aria-label="اقترح جلسة"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+            <a href="#ranks"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 13v4M8 21h8M9 17h6"/></svg>الترتيب</a>
+            <a href="#me"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>أنا</a>
+          </nav>
+        </section>
+
+        <!-- CHECK-IN SHEET -->
+        <section class="sheet" id="sheet" aria-label="تسجيل الحضور">
+          <div class="hd"><button type="button" class="ib" id="sheetClose" aria-label="إغلاق"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button><span class="t d">تسجيل الحضور</span></div>
+          <div class="body">
+            <div class="lead">أدخل الرمز الذي أعلنه المُقدِّم</div>
+            <div class="boxes d" dir="ltr" id="boxes" aria-label="رمز الحضور"><span class="bx f"></span><span class="bx"></span><span class="bx"></span><span class="bx"></span><span class="bx"></span><span class="bx"></span></div>
+            <p class="note">الرمز يتغيّر كل 10 دقائق، ويُقبل أثناء الجلسة فقط</p>
+            <div class="earn"><span>عند الحضور تكسب</span><b>+50</b><span>تصل عند انتهاء الجلسة</span></div>
+          </div>
+          <div class="abar"><button type="button" class="cta d" id="ctaCheck" style="justify-content:center"><span>سجّل حضورك</span></button></div>
+        </section>
+
+        <!-- CELEBRATION -->
+        <div class="celebrate" id="celebrate" aria-live="polite">
+          <div class="confetti" id="confetti" aria-hidden="true"></div>
+          <svg class="coin" id="coin" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs><radialGradient id="cG" cx="35%" cy="28%" r="80%"><stop offset="0" stop-color="#EDFFA3"/><stop offset="0.55" stop-color="#C6FF3D"/><stop offset="1" stop-color="#78AD12"/></radialGradient><linearGradient id="cE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9CCF29"/><stop offset="1" stop-color="#4F7A0C"/></linearGradient></defs>
+            <circle cx="80" cy="86" r="52" fill="url(#cE)"/><circle cx="80" cy="76" r="52" fill="url(#cG)"/><circle cx="80" cy="76" r="38" fill="none" stroke="#6E9E12" stroke-width="4" opacity="0.5"/><text x="80" y="90" text-anchor="middle" font-family="'Baloo Bhaijaan 2', sans-serif" font-weight="800" font-size="38" fill="#0B0C12">+50</text><ellipse cx="60" cy="48" rx="18" ry="8" fill="#FFFFFF" opacity="0.55" transform="rotate(-30 60 48)"/>
+          </svg>
+          <div class="big d">أنت هنا!</div>
+          <p class="why">+50 تصل عند انتهاء الجلسة</p>
+          <span class="chip">حضورك مسجَّل، 6:41 م</span>
+        </div>
+
+        <!-- HUD -->
+        <section class="screen hud" id="hud" aria-label="ما بعد الجلسة">
+          <div class="top"><div class="wordmark d">انتهت الجلسة</div><span class="tag">قبل دقيقة</span></div>
+          <div class="body">
+            <div class="panelc">
+              <div class="h"><span>نقاطك</span><span>الحضور دُفع الآن</span></div>
+              <div class="pts"><span class="n d" id="pts">680</span><span class="l d">نقطة</span><span class="dl d" id="ptsDelta">+50</span></div>
+            </div>
+            <div class="panelc">
+              <div class="streak">
+                <svg class="flame" id="flame" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><radialGradient id="fG" cx="50%" cy="85%" r="70%"><stop offset="0" stop-color="#FFD23F"/><stop offset="0.55" stop-color="#FF6E4F"/><stop offset="1" stop-color="#B8321B"/></radialGradient></defs><path d="M42 4c5 22 28 28 28 56a28 28 0 0 1-56 0c0-12 6-18 12-24 0 12 5 18 12 18 0-18-6-32 4-50z" fill="url(#fG)"/><path d="M43 42c2 10 12 13 12 24a12 12 0 0 1-24 0c0-6 3-9 6-12 0 5 2 8 5 8 0-8-3-13 1-20z" fill="#FFF3C4" opacity="0.92"/></svg>
+                <div><div class="t d" id="streakT">سلسلة ×6</div><div class="s" id="streakS">ست جلسات متتالية، تخطٍّ واحد متاح</div></div>
+              </div>
+            </div>
+            <div class="panelc">
+              <div class="h"><span>المستوى التالي: كريم معرفة</span><span id="lvlN">680 من 700</span></div>
+              <div class="prog"><span class="fl" id="lvlFl" style="--v:.971"></span></div>
+              <div class="lvl" id="lvl">
+                <div class="lvl-in">
+                  <div class="face front"><small style="color:var(--muted)">مستواك الحالي</small><div class="nm d">صاحب أثر</div><small style="color:var(--muted)">حجز مبكر قبل الجميع</small></div>
+                  <div class="face back"><small>مستوى جديد</small><div class="nm d">كريم معرفة</div><small>يمكنك الآن تقديم الجلسات</small><span class="shine"></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <nav class="tabs" aria-label="التنقل"><a href="#feed"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>الرئيسية</a><a href="#explore"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-2 6-4 2 2-6z"/></svg>استكشف</a><a href="#propose" class="fab" aria-label="اقترح جلسة"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a><a href="#ranks"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 13v4M8 21h8M9 17h6"/></svg>الترتيب</a><a href="#me" class="on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>أنا</a></nav>
+        </section>
+
+        <!-- BOARD -->
+        <section class="screen board" id="board" aria-label="الترتيب">
+          <div class="top"><div class="wordmark d">ترتيب هذا الأسبوع</div><span class="tag">ينتهي الجمعة</span></div>
+          <div class="body">
+            <div class="list" id="list">
+              <div class="row"><span class="rk d">1</span><span class="av d" style="border-color:var(--cyan)">س</span><span class="nm">سارة القحطاني<small>مواهب</small></span><span class="p">1,410</span></div>
+              <div class="row"><span class="rk d">2</span><span class="av d" style="border-color:var(--mint)">م</span><span class="nm">محمد الدوسري<small>جذر</small></span><span class="p">1,205</span></div>
+              <div class="row"><span class="rk d">3</span><span class="av d" style="border-color:var(--mag)">ر</span><span class="nm">ريم الشهري<small>بنينسولا ستوري</small></span><span class="p">980</span></div>
+              <div class="row" id="rowOther"><span class="rk d">4</span><span class="av d" style="border-color:var(--viol)">ف</span><span class="nm">فهد العنزي<small>أيك</small></span><span class="p">715</span></div>
+              <div class="row me" id="rowMe"><span class="rk d" id="rkMe">5</span><span class="av d" style="border-color:var(--tang)">ي</span><span class="nm">أنت<small>صنف</small></span><span class="delta" id="delta">▲</span><span class="p" id="pMe">680</span></div>
+            </div>
+            <section class="race" aria-label="سباق الشركات">
+              <div class="h"><span class="t d">سباق الشركات</span><span class="tag">الجولة 3، نقاط لكل عضو</span></div>
+              <div class="bar"><span class="r" style="border-color:var(--cyan)"></span><span class="nm">مواهب</span><span class="tr"><span class="fl" style="background:var(--cyan); --v:.92"></span></span><span class="v">9.4</span></div>
+              <div class="bar"><span class="r" style="border-color:var(--mag)"></span><span class="nm">بنينسولا ستوري</span><span class="tr"><span class="fl" style="background:var(--mag); --v:.84"></span></span><span class="v">8.7</span></div>
+              <div class="bar me" id="barMe2"><span class="r" style="border-color:var(--tang)"></span><span class="nm">صنف</span><span class="tr"><span class="fl" id="barMe2Fl" style="background:var(--tang); --v:.71"></span></span><span class="v" id="barMe2V">7.3</span></div>
+            </section>
+          </div>
+          <nav class="tabs" aria-label="التنقل"><a href="#feed"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>الرئيسية</a><a href="#explore"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-2 6-4 2 2-6z"/></svg>استكشف</a><a href="#propose" class="fab" aria-label="اقترح جلسة"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a><a href="#ranks" class="on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 13v4M8 21h8M9 17h6"/></svg>الترتيب</a><a href="#me"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>أنا</a></nav>
+        </section>
+
+        <!-- END -->
+        <div class="end" id="end">
+          <div class="t d">انتهت القصة</div>
+          <p>كل ما رأيته تحويل وشفافية فقط، بلا مكتبة حركة، ولكل لحظة حالة ثابتة تحت «تقليل الحركة».</p>
+          <button type="button" class="btn" id="btnReplay2">إعادة</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var root = document.documentElement;
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ---------- reduced motion ---------- */
+  var mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var stored = null;
+  try { stored = localStorage.getItem('km-reduced'); } catch(e){ stored = null; }
+  var reduced = stored === null ? mq.matches : stored === '1';
+  function applyReduced(){
+    root.classList.toggle('reduced', reduced);
+    root.classList.toggle('motion', !reduced);
+    $('btnReduced').setAttribute('aria-pressed', reduced ? 'true' : 'false');
+  }
+  applyReduced();
+  $('btnReduced').addEventListener('click', function(){
+    reduced = !reduced;
+    try { localStorage.setItem('km-reduced', reduced ? '1' : '0'); } catch(e){}
+    applyReduced();
+  });
+
+  /* ---------- fit the phone to the stage ---------- */
+  function fit(){
+    var st = $('stage'), sc = $('scaler'), ph = $('phone');
+    var w = st.clientWidth - 8, h = st.clientHeight - 8;
+    var s = Math.min(1, w / 390, h / 844);
+    if (!(s > 0)) s = 1;
+    sc.style.width = Math.round(390 * s) + 'px'; sc.style.height = Math.round(844 * s) + 'px';
+    ph.style.transform = 'scale(' + s + ')';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+
+  /* ---------- helpers ---------- */
+  var instant = false;
+  function ms(n){ return (reduced || instant) ? 0 : n; }
+  function wait(n){ return new Promise(function(r){ setTimeout(r, ms(n)); }); }
+  function show(id){ $(id).classList.add('show'); }
+  function hide(id){ $(id).classList.remove('show'); }
+  function countUp(el, from, to, dur){
+    if (ms(dur) === 0){ el.textContent = to.toLocaleString('en-US'); return Promise.resolve(); }
+    return new Promise(function(res){
+      var t0 = null;
+      function frame(t){
+        if (!t0) t0 = t;
+        var p = Math.min(1, (t - t0) / dur);
+        var e = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(from + (to - from) * e).toLocaleString('en-US');
+        if (p < 1) requestAnimationFrame(frame); else res();
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+  function burst(){
+    if (ms(1) === 0) return;
+    var box = $('confetti');
+    var colors = ['#C6FF3D','#FF9A2E','#F4F1EA','#C6FF3D','#FF9A2E','#FF4FB8'];
+    for (var i = 0; i < 44; i++){
+      var p = document.createElement('i');
+      p.style.background = colors[i % colors.length];
+      box.appendChild(p);
+      var ang = (Math.random() * Math.PI * 2);
+      var dist = 120 + Math.random() * 190;
+      var dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist * 0.9;
+      var rot = (Math.random() * 720 - 360);
+      var dur = 700 + Math.random() * 500;
+      var anim = p.animate([
+        { transform: 'translate(0,0) rotate(0deg) scale(.6)', opacity: 1 },
+        { transform: 'translate(' + (dx * .7) + 'px,' + (dy * .55 - 60) + 'px) rotate(' + (rot * .5) + 'deg) scale(1)', opacity: 1, offset: .45 },
+        { transform: 'translate(' + dx + 'px,' + (dy + 120) + 'px) rotate(' + rot + 'deg) scale(.9)', opacity: 0 }
+      ], { duration: dur, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' });
+      anim.onfinish = (function(el){ return function(){ el.remove(); }; })(p);
+    }
+  }
+  function toast(text, hold){
+    $('toastT').textContent = text;
+    show('toast');
+    return wait(hold || 1500).then(function(){ hide('toast'); });
+  }
+
+  /* ---------- the story ---------- */
+  var steps = [
+    { t:'الخلاصة', c:'الجلسة منشور: ملصق، مُقدِّم، تفاعل، وحجز بضغطة. إعجاب واحد يصفّق مرة ويسكت.', k:'تحميل بهيكل يشبه المحتوى، لا دوّارات، ثم همسة تفاعل 260ms',
+      run: function(){
+        show('feed');
+        return wait(700).then(function(){
+          var h = $('reHeart'); h.classList.remove('pop'); void h.offsetWidth; h.classList.add('pop');
+          $('heartN').textContent = '49';
+          return wait(500);
+        });
+      } },
+    { t:'الحجز', c:'تذكرة تصعد ويُهبط عليها الخاتم بثقل، بلا ارتداد. السعة تتحدّث فورًا، والتقويم يهمس.', k:'600ms، ease-out-expo، اهتزاز البطاقة 160ms',
+      run: function(){
+        var cta = $('cta'), card = $('card');
+        cta.classList.remove('booked','checkin','attended');
+        show('ticket');
+        return wait(380).then(function(){
+          $('stamp').classList.add('on');
+          card.classList.remove('thud'); void card.offsetWidth; card.classList.add('thud');
+          return wait(520);
+        }).then(function(){
+          cta.classList.add('booked'); $('ctaT').textContent = 'محجوز'; $('ctaC').textContent = '13 من 40'; $('cancel').classList.add('show');
+          hide('ticket'); $('stamp').classList.remove('on');
+          return toast('أُضيفت إلى تقويمك', 1400);
+        });
+      } },
+    { t:'يوم الجلسة', c:'الوقت مضى: الحالة تتغيّر في مكانها إلى «جارية الآن»، والحلقة تنبض، والزر يصير حضورًا.', k:'الحالة مشتقّة من الساعة، لا من زر',
+      run: function(){
+        var st = $('state'); st.textContent = 'جارية الآن'; st.classList.add('live');
+        $('ringMineL').textContent = 'الآن'; $('ringMine').style.borderColor = 'var(--coral)'; $('ringMine').style.color = 'var(--coral)';
+        var cta = $('cta'); cta.classList.remove('booked'); cta.classList.add('checkin'); $('ctaT').textContent = 'سجّل حضورك'; $('ctaC').textContent = 'رمز الحضور';
+        $('cancel').classList.remove('show');
+        return wait(600);
+      } },
+    { t:'رمز الحضور', c:'ورقة تصعد. ستة صناديق لاتينية من اليسار لليمين داخل صفحة عربية، وكل حرف يُصفّق حين يهبط.', k:'ورقة 420ms، صندوق 200ms، شريط تبويبات يُستبدل بشريط إجراء',
+      run: function(){
+        show('sheet');
+        var bxs = $('boxes').children, code = 'M7K2QX';
+        var chain = wait(520);
+        for (var i = 0; i < 6; i++){
+          (function(i){
+            chain = chain.then(function(){
+              for (var j = 0; j < 6; j++) bxs[j].classList.toggle('f', j === i + 1);
+              bxs[i].textContent = code[i];
+              bxs[i].classList.remove('hit'); void bxs[i].offsetWidth; bxs[i].classList.add('hit');
+              return wait(170);
+            });
+          })(i);
+        }
+        return chain.then(function(){ for (var j = 0; j < 6; j++) bxs[j].classList.add('f'); return wait(400); });
+      } },
+    { t:'أنت هنا!', c:'قصاصات بلون فريقك وليم، ثم تهبط العملة وتقول الحقيقة: النقاط تصل عند انتهاء الجلسة.', k:'900ms، القصاصات تحويل وشفافية بواجهة Web Animations',
+      run: function(){
+        show('celebrate');
+        burst();
+        var coin = $('coin'); coin.classList.remove('drop'); void coin.offsetWidth; coin.classList.add('drop');
+        return wait(520).then(function(){ $('celebrate').classList.add('words'); return wait(1400); }).then(function(){
+          $('celebrate').classList.remove('words'); hide('celebrate'); hide('sheet');
+          var cta = $('cta'); cta.classList.remove('checkin'); cta.classList.add('attended'); $('ctaT').textContent = 'حضرت'; $('ctaC').textContent = '+50 عند الانتهاء';
+          $('sticker').textContent = 'حضرت';
+          return wait(500);
+        });
+      } },
+    { t:'انتهت الجلسة', c:'النقاط تُدفع عند الاكتمال فتصعد بالعد، اللهب يكبر لجلسة سابعة، والشريط يمتلئ فتنقلب بطاقة المستوى.', k:'عدّ 700ms، لهب حلقة 2s، انقلاب 900ms + بريق 700ms',
+      run: function(){
+        hide('feed'); show('hud');
+        $('flame').classList.add('on');
+        return wait(400).then(function(){
+          $('ptsDelta').classList.add('show');
+          return countUp($('pts'), 680, 730, 700);
+        }).then(function(){
+          $('flame').classList.add('big'); $('streakT').textContent = 'سلسلة ×7'; $('streakS').textContent = 'سبع جلسات متتالية، تخطٍّ واحد متاح';
+          return wait(500);
+        }).then(function(){
+          $('lvlFl').style.setProperty('--v', '1'); $('lvlN').textContent = '730 من 700';
+          return wait(700);
+        }).then(function(){
+          $('lvl').classList.add('flip');
+          return wait(1400);
+        });
+      } },
+    { t:'الترتيب', c:'صفّك ينزلق فوق الذي أمامك وسهمك ينبض مرة. الهابط لا يُذَلّ: لا لون خطر ولا اهتزاز. كأس الشركات يتحرّك بمقياس، لا بعرض.', k:'صف 420ms، سهم 600ms، شريط scaleX 900ms',
+      run: function(){
+        hide('hud'); show('board');
+        return wait(700).then(function(){
+          $('pMe').textContent = '730';
+          $('rowMe').classList.add('up'); $('rowOther').classList.add('down');
+          return wait(440);
+        }).then(function(){
+          var list = $('list'), me = $('rowMe'), other = $('rowOther');
+          me.style.transition = 'none'; other.style.transition = 'none';
+          me.classList.remove('up'); other.classList.remove('down');
+          list.insertBefore(me, other);
+          void list.offsetWidth; me.style.transition = ''; other.style.transition = '';
+          $('rkMe').textContent = '4'; other.querySelector('.rk').textContent = '5';
+          $('delta').classList.add('on');
+          return wait(500);
+        }).then(function(){
+          $('barMe2Fl').style.setProperty('--v', '.75'); $('barMe2V').textContent = '7.6';
+          $('barMeFl').style.setProperty('--v', '.75'); $('barMeV').textContent = '7.6';
+          $('barMe2').classList.add('hi');
+          return wait(1000);
+        });
+      } },
+    { t:'الملخص', c:'صور الحضور تصير القصة: الحلقة تتحوّل إلى ملخص، والمنشور يعود ببطاقة مكتملة ومواد للتحميل.', k:'الملخص يُشتق من الصور والحالة، لا يكتبه أحد',
+      run: function(){
+        hide('board'); show('feed');
+        var st = $('state'); st.textContent = 'مكتملة'; st.classList.remove('live'); st.classList.add('done');
+        $('ringMine').style.borderColor = 'var(--lime)'; $('ringMine').style.color = 'var(--lime)'; $('ringMine').textContent = 'ملخص'; $('ringMine').style.fontSize = '13px'; $('ringMineL').textContent = 'اكتملت';
+        $('ringLive').classList.remove('live'); $('ringLive').textContent = 'م'; $('ringLive').style.fontSize = '20px'; $('ringLive').style.color = 'var(--cyan)'; $('ringLive').style.borderColor = 'var(--cyan)'; $('ringLiveL').textContent = 'أمس'; $('ringLiveL').style.color = '';
+        var rc = $('recap'); rc.hidden = false; $('card').after(rc);
+        $('race').hidden = true;
+        return wait(1200).then(function(){ show('end'); });
+      } }
+  ];
+
+  /* ---------- engine ---------- */
+  var current = -1, auto = true, timer = null, busy = false;
+  var stepsEl = $('steps');
+  steps.forEach(function(s, i){
+    var li = document.createElement('li');
+    var b = document.createElement('button'); b.type = 'button';
+    b.innerHTML = '<span class="n">' + (i + 1) + '</span><span class="lbl">' + s.t + '</span>';
+    b.addEventListener('click', function(){ jump(i); });
+    li.appendChild(b); stepsEl.appendChild(li);
+  });
+  function mark(i){
+    var lis = stepsEl.children;
+    for (var k = 0; k < lis.length; k++){ lis[k].classList.toggle('now', k === i); lis[k].classList.toggle('done', k < i); }
+    $('capT').textContent = steps[i].t; $('capC').textContent = steps[i].c; $('capK').textContent = steps[i].k;
+  }
+  function schedule(){
+    clearTimeout(timer);
+    if (auto && current < steps.length - 1) timer = setTimeout(next, reduced ? 1600 : 1500);
+  }
+  function next(){
+    if (busy) return;
+    if (current >= steps.length - 1) return;
+    current += 1; busy = true; mark(current);
+    steps[current].run().then(function(){ busy = false; schedule(); });
+  }
+  function jump(n){
+    try { sessionStorage.setItem('km-jump', String(n)); } catch(e){}
+    location.reload();
+  }
+  function replay(){
+    try { sessionStorage.removeItem('km-jump'); } catch(e){}
+    location.reload();
+  }
+  $('btnNext').addEventListener('click', function(){ clearTimeout(timer); next(); });
+  $('btnAuto').addEventListener('click', function(){ auto = !auto; this.setAttribute('aria-pressed', auto ? 'true' : 'false'); if (auto) schedule(); else clearTimeout(timer); });
+  $('btnReplay').addEventListener('click', replay);
+  $('btnReplay2').addEventListener('click', replay);
+  $('sheetClose').addEventListener('click', function(){ hide('sheet'); });
+  $('cta').addEventListener('click', function(e){ e.stopPropagation(); clearTimeout(timer); next(); });
+  $('ctaCheck').addEventListener('click', function(e){ e.stopPropagation(); clearTimeout(timer); next(); });
+  $('phone').addEventListener('click', function(e){
+    if (e.target.closest('button, a')) return;
+    clearTimeout(timer); next();
+  });
+
+  /* start: rebuild instantly up to a jumped step, then play it */
+  var start = 0;
+  try { var j = sessionStorage.getItem('km-jump'); if (j !== null){ start = Math.max(0, Math.min(steps.length - 1, parseInt(j, 10) || 0)); sessionStorage.removeItem('km-jump'); } } catch(e){}
+  if (start > 0){
+    instant = true; root.classList.add('instant');
+    var chain = Promise.resolve();
+    for (var i = 0; i < start; i++){ (function(i){ chain = chain.then(function(){ current = i; mark(i); return steps[i].run(); }); })(i); }
+    chain.then(function(){ hide('end'); $('celebrate').classList.remove('words'); hide('celebrate'); hide('toast'); busy = false; return new Promise(function(r){ setTimeout(r, 60); }); })
+         .then(function(){ instant = false; root.classList.remove('instant'); return new Promise(function(r){ setTimeout(r, 60); }); })
+         .then(function(){ next(); });
+  } else {
+    next();
+  }
+})();
+</script>
+</body>
+</html>
