@@ -94,6 +94,37 @@ describe("LevelCard — two faces", () => {
   });
 });
 
+describe("LevelCard — no id is written twice (the lead's finding on a985050a)", () => {
+  it("★ a card with both faces, rendered TWICE from one element, repeats no id", () => {
+    const card = <LevelCard level={HELD} reached={REACHED} shown="reached" {...LABELS} />;
+    // The gallery places one demo element on both grounds; Flight writes the same subtree twice.
+    // ★ Honest limit: a client render gives each instance its own useId, so this case alone would
+    // NOT have caught the old code — the next case, «no id reference at all», is what pins the fix.
+    const { container } = render(
+      <>
+        {card}
+        {card}
+      </>,
+    );
+    const ids = [...container.querySelectorAll("[id]")].map((el) => el.id);
+    expect(ids.filter((id, i) => ids.indexOf(id) !== i)).toEqual([]);
+  });
+
+  it("★ each face is named by its own caption and its list by its own label, with no id reference", () => {
+    const { container } = render(<LevelCard level={HELD} reached={REACHED} shown="level" {...LABELS} />);
+    expect(container.querySelector("[aria-labelledby], [aria-describedby]")).toBeNull();
+    for (const [caption, unlock] of [
+      ["مستواك الحالي", "أولوية الحجز"],
+      ["مستوى جديد", "الحق في اقتراح جلسة"],
+    ]) {
+      const face = screen.getByRole("group", { name: caption });
+      const list = within(face).getByRole("list", { name: "يفتح لك" });
+      expect(within(list).getByText(unlock)).toBeInTheDocument();
+      expect(within(face).getByText(caption)).toBeInTheDocument();
+    }
+  });
+});
+
 describe("LevelCard — the ramp is keyed on tier, never on the name", () => {
   it("clamps sort_order to the five stops", () => {
     expect([1, 2, 3, 4, 5].map(rampStop)).toEqual([1, 2, 3, 4, 5]);

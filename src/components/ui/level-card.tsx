@@ -1,4 +1,3 @@
-import { useId } from "react";
 import type { LevelCardProps, LevelFace } from "@/components/ui";
 
 // scoring's file — REQ-UIX-039, REQ-REC-004, DEC-183, DEC-186 §7.
@@ -21,6 +20,15 @@ import type { LevelCardProps, LevelFace } from "@/components/ui";
 // org's ENABLED perks at that level, and in a default org there are none
 // (`0027:577-582`), so an empty list says `noUnlocksLabel` — never a made-up
 // privilege (DEC-186 §7).
+//
+// ★ NO ID IS WRITTEN (the lead's finding on a985050a). Each face and its list
+// are named by `aria-label`, never by `aria-labelledby` to a generated id: an
+// element rendered twice — the gallery places one demo element on both grounds,
+// and Flight writes the same subtree twice — would repeat every id in it, and a
+// reference to a repeated id resolves to the FIRST, so the face on screen could
+// be named by a caption that is not. A primitive with no ids cannot collide.
+// The visible «يفتح لك» is `aria-hidden` because the list already carries it as
+// its name; the caption stays readable text as well as the group's name.
 //
 // The ramp stop is keyed on `tier` (`levels.sort_order`), never on the name,
 // which an org may change (REQ-REC-003). The five stops are constants.
@@ -47,7 +55,6 @@ function Face({
   unlocksLabel: string;
   noUnlocksLabel: string;
 }) {
-  const id = useId();
   const stop = rampStop(face.tier);
   const reached = kind === "reached";
   const look = reached
@@ -58,13 +65,13 @@ function Face({
   return (
     <div
       role="group"
-      aria-labelledby={`${id}-caption`}
+      aria-label={face.caption}
       data-face={kind}
       data-tier={stop}
       data-visible={visible ? "true" : "false"}
       className={visible ? `flex flex-col items-center gap-2 rounded-panel border p-5 text-center ${look}` : "sr-only"}
     >
-      <p id={`${id}-caption`} className={`text-caption font-semibold ${quiet}`}>
+      <p className={`text-caption font-semibold ${quiet}`}>
         {face.caption}
       </p>
       <p className={`font-display font-extrabold ${reached ? "text-play-md" : "text-play-sm"}`}>
@@ -72,10 +79,10 @@ function Face({
       </p>
       {face.unlocks.length > 0 ? (
         <div className="flex flex-col items-center gap-1">
-          <p id={`${id}-unlocks`} className={`text-caption font-semibold ${quiet}`}>
+          <p aria-hidden="true" className={`text-caption font-semibold ${quiet}`}>
             {unlocksLabel}
           </p>
-          <ul aria-labelledby={`${id}-unlocks`} className="flex flex-col items-center gap-0.5 text-body font-semibold">
+          <ul aria-label={unlocksLabel} className="flex flex-col items-center gap-0.5 text-body font-semibold">
             {face.unlocks.map((unlock) => (
               <li key={unlock}>
                 <bdi>{unlock}</bdi>

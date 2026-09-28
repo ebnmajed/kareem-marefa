@@ -2226,3 +2226,29 @@ fixed width, the metric line wraps and is never truncated, and the number stays 
 asserts, per row on both grounds and at both widths, that every descendant's box lies inside the row's frame.
 It skips `sr-only`; the frames are the `<li>` of `rank-row` and `race-bar` and the visible face of
 `level-card`. Only the lead's re-capture measures the widths.
+
+## The lead's finding on `level-card`: repeated ids. Fixed in the commit below
+
+**What the lead measured:** 29 repeated ids on `/ar/ui` at `a985050a`, all `_S_<n>_-caption` / `-unlocks`,
+coming from `level-card`'s `useId()`-based `aria-labelledby`.
+
+**What I found:** within one card the two faces do get different ids, because `Face` calls `useId()` once per
+instance: `_S_5_` for one face and `_S_6_` for the other, which is what the lead's sample shows. Flight's
+`useId` is a per-request counter (`react-server-dom-webpack-server…js:6206-6216`), so it never repeats within
+one render. The repeats come from **one element rendered twice**. `playground.tsx` builds `DEMOS` once, as
+elements (`node: <LevelCardDemo />`), and places the same element on both grounds. Flight writes that one
+subtree in both places, with every id in it. **Any** primitive that writes an id would repeat in the same way;
+that includes `useId` in `content`'s, `sessions'` or `console`'s primitives. This is a finding for the lead's
+file: `{ Demo: LevelCardDemo }` rendered as `<d.Demo />` per ground would give each ground its own render.
+
+**What the fix in my file does:** `level-card` writes **no id at all**. Each face is `role="group"` with
+`aria-label={caption}`. The caption stays visible, readable text. The unlock list is `aria-label={unlocksLabel}`,
+and its visible «يفتح لك» is `aria-hidden`, so the heading is not read twice. A primitive with no ids cannot
+collide however it is placed, and no reference can resolve to another face's caption.
+
+**The proof:** two new cases in `level-card.test.tsx`. The first renders one card element twice and checks
+that no id repeats. On its own it would not have caught the old code, because a client render gives each
+instance its own `useId`; the comment says so. The second checks that the card has no `aria-labelledby` or
+`aria-describedby`, and that each face is named by its own caption with its own list inside it.
+
+**`rank-row` and `race-bar`:** checked; neither writes an id or uses `useId`.
