@@ -96,6 +96,7 @@ const ICON_NAMES: Record<string, string> = {
   CoinIcon: "نقاط",
   CompassIcon: "استكشف",
   FlameIcon: "سلسلة",
+  HeartIcon: "إعجاب",
   PauseIcon: "إيقاف مؤقت",
   TicketIcon: "حجز",
   TrophyIcon: "كأس",

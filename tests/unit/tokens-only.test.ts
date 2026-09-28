@@ -48,7 +48,11 @@ const HEX = /#[0-9a-fA-F]{3,8}\b/;
 const LITERAL_DURATION = /(?:\bduration-\d|\bdelay-\d|\[\d+(?:\.\d+)?m?s\]|:\s*["'`]?\d+(?:\.\d+)?m?s\b)/;
 // `theme-play` and `theme-play-light` are the scope's own class, written in `scope.tsx` alone
 // (`public-graph.test.ts` holds that); they are not the palette.
-const RAW_PALETTE = /(?<!theme-)\b(?:navy|silver|slate|play)-[a-z0-9]/;
+//
+// ★ The playground's palette is refused by its COLOURS' names, not by the word «play»: the
+// display scale is `text-play-sm` … `-xl` and the curve is `ease-play`, and both are tokens a
+// primitive is meant to read (DEC-186 §2).
+const RAW_PALETTE = /\b(?:navy|silver|slate)-[a-z0-9]|\bplay-(?:ink|surface|line|bone|muted|lime|coral|paper|edge)\b/;
 const PROTOTYPE_CLASS = /className=["'`](?:[^"'`]*\s)?(?:cta|bx|lvl|lvl-in|celebrate|confetti|panelc)(?:\s|["'`])/;
 
 const files = walk(UI);
@@ -97,5 +101,8 @@ describe("tokens only, in src/components/ui", () => {
     expect(HEX.test('className="pg:bg-accent pg:text-on-accent"')).toBe(false);
     expect(LITERAL_DURATION.test('className="duration-(--duration-fast)"')).toBe(false);
     expect(RAW_PALETTE.test('className="pg:rounded-pill pg:bg-raised"')).toBe(false);
+    expect(RAW_PALETTE.test('className="pg:text-play-sm pg:ease-play pg:font-display"')).toBe(false);
+    expect(RAW_PALETTE.test('className="pg:text-play-bone"')).toBe(true);
+    expect(RAW_PALETTE.test('className="pg:border-play-line"')).toBe(true);
   });
 });

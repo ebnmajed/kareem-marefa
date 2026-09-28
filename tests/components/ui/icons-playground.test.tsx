@@ -73,9 +73,26 @@ describe("the playground's nine glyphs", () => {
     expect(container.querySelectorAll("circle")).toHaveLength(3);
   });
 
-  it("the set is forty-nine glyphs, and the gallery names every one in Arabic", async () => {
+  it.each(["HeartIcon", "FlameIcon", "BoltIcon", "StarIcon"])("%s has a filled form, so pressed is never colour alone (DEC-186 §5)", (name) => {
+    const G = glyph(name) as unknown as (p: { filled?: boolean }) => React.ReactElement;
+    const outline = render(<G />).container.querySelector("path")!;
+    const filled = render(<G filled />).container.querySelector("path")!;
+    expect(outline).toHaveAttribute("fill", "none");
+    expect(filled).toHaveAttribute("fill", "currentColor");
+    expect(filled.getAttribute("d")).toBe(outline.getAttribute("d"));
+  });
+
+  it("the heart is drawn in the house shape and never mirrors", () => {
+    const { container } = render(<Icons.HeartIcon />);
+    const svg = container.querySelector("svg")!;
+    expect(svg).toHaveAttribute("width", "1em");
+    expect(svg).toHaveAttribute("stroke-width", "2");
+    expect(svg).not.toHaveClass("rtl:-scale-x-100");
+  });
+
+  it("the set is fifty glyphs, and the gallery names every one in Arabic", async () => {
     const glyphs = Object.keys(Icons).filter((n) => n.endsWith("Icon"));
-    expect(glyphs).toHaveLength(49);
+    expect(glyphs).toHaveLength(50);
     const { readFileSync } = await import("node:fs");
     const page = readFileSync("src/app/[locale]/(dev)/ui/page.tsx", "utf8");
     for (const name of glyphs) expect(page, `${name} has an Arabic name in the gallery`).toMatch(new RegExp(`\\b${name}: "`));

@@ -520,7 +520,8 @@ export function HomeIcon(props: IconProps) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   THE PLAYGROUND'S NINE — «ساحة اللعب», DEC-183 §4.7, REQ-UIX-041.
+   THE PLAYGROUND'S NINE, AND A HEART — «ساحة اللعب», DEC-183 §4.7,
+   DEC-186 §5, REQ-UIX-041.
 
    `docs/design/assets/icons/icons-additions.tsx` offers sixteen glyphs. SEVEN
    of them are already in this file, and the house drawing stands (DEC-106: the
@@ -547,11 +548,33 @@ export function HomeIcon(props: IconProps) {
    for a race between companies, never a graduation.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** السلسلة — a streak, and the «fire» reaction. */
-export function FlameIcon(props: IconProps) {
+/**
+ * السلسلة — a streak, and the «fire» reaction. `filled` is a reaction's pressed
+ * state: pressed is never colour alone (DEC-186 §5), as `StarIcon` already does.
+ */
+export function FlameIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
   return (
     <Svg {...props}>
-      <path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z" />
+      <path
+        d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z"
+        fill={filled ? "currentColor" : "none"}
+      />
+    </Svg>
+  );
+}
+
+/**
+ * الإعجاب — the like. A heart is not on the forbidden list, which bans
+ * education clichés; it is drawn from two arcs and two straight lines, with no
+ * highlight and no shine. `filled` is the pressed state.
+ */
+export function HeartIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
+  return (
+    <Svg {...props}>
+      <path
+        d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"
+        fill={filled ? "currentColor" : "none"}
+      />
     </Svg>
   );
 }
@@ -603,11 +626,11 @@ export function CoinIcon(props: IconProps) {
   );
 }
 
-/** البرق — the «bolt» reaction. */
-export function BoltIcon(props: IconProps) {
+/** البرق — the «bolt» reaction. `filled` is its pressed state. */
+export function BoltIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
   return (
     <Svg {...props}>
-      <path d="M13 3 5 14h6l-1 7 8-11h-6z" />
+      <path d="M13 3 5 14h6l-1 7 8-11h-6z" fill={filled ? "currentColor" : "none"} />
     </Svg>
   );
 }
