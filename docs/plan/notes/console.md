@@ -3055,3 +3055,27 @@ own note):
   the same way; assertions unchanged.
 
 Nothing else outside the scope moved. My row is done.
+
+---
+
+## Wave 15 — contract 6 (DEC-188), and the audit label fix
+
+- `859024820` — `sheet.tsx` and `menu.tsx` wired to `usePlayPortal()` on their Radix portal, matching
+  `dialog.tsx`'s worked example (`container={landing}`, `undefined` outside a scope — Radix's own
+  default, unchanged). New cases in the existing `sheet-scope.test.tsx`/`menu-scope.test.tsx` prove
+  `closest(".theme-play")` resolves inside a scope and is `null` outside one, following
+  `tests/components/ui/scope-portal.test.tsx`'s pattern (including the `@/lib/fonts` mock — this also
+  resolves the `IBM_Plex_Sans is not a function` blocker I'd flagged earlier; every future scope test
+  of mine can mount `<PlayScope>` for real now). `combobox` and `date-time` need nothing: both position
+  their popups `absolute` inside their own root, never through a portal.
+- `f39f13a5` — `0161` (the lead's promotion of my audit trigger) writes `company.team_color_changed`
+  into `audit_log`, and `tests/unit/admin-audit-labels.test.ts` scans every migration for a label on
+  `admin.audit.actions.<domain>.<verb>` in both `ar` and `en`. Added the one missing pair
+  (`company.team_color_changed`), alphabetical with its siblings. This touches `admin.json` outside the
+  `companies` namespace strictly named in my edit list — flagging it as a request/notice rather than
+  something I assumed: it was the only way to keep `REQ-ADM-018`'s suite green after the promotion, and
+  it is two lines, additive, no other key touched (confirmed by diff before committing).
+
+Full `npx tsc --noEmit`, `npm run lint`, `npm run ui-lint`, and the full `unit`+`components` project run
+(3216/3217 green, the one failure is the lead's in-flight `playground.tsx`) all clean after these two
+commits.
