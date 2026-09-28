@@ -15,8 +15,23 @@ three a Latin-minded subsetter drops (10 §4.2). check.mjs asserts that.
     pip install -r scripts/fonts/requirements.txt
     npm run fonts:derive
 
-Deterministic: the same manifest always yields the same TTF bytes, so the
-hashes recorded here are reproducible in the converter's image build.
+Deterministic — and since DEC-183 that is true, which it was not before.
+fontTools' Merger stamps the CURRENT TIME into `head.created` and
+`head.modified`, so every face merged from two subsets got a new hash on every
+run while its glyphs and layout tables stayed byte-identical. Nobody saw it
+until a face was added in wave 15 and nine existing files changed their names.
+Two rules fix it:
+
+  1. A TTF that is already derived is KEPT. When a manifest entry's
+     `derivedFrom` is this group's woff2 hashes and its file still hashes to
+     its name, it is not derived again. The worker's set does not move because
+     a new face arrived. `--force` re-derives everything.
+  2. A merged face takes `head.created` and `head.modified` from its FIRST
+     input — the Arabic subset — so a new face derives to the same bytes on
+     every machine and every run.
+
+The entries written before this fix carry the time they were derived; rule 1
+is what keeps them.
 """
 
 import hashlib
@@ -70,8 +85,24 @@ def main() -> int:
     for face in manifest["faces"]:
         groups.setdefault((face["family"], face["weight"], face["style"]), []).append(face)
 
+    force = "--force" in sys.argv
+    derived = {(e["family"], e["weight"], e["style"]): e for e in manifest.get("ttf", [])}
+
     ttf_entries = []
     for (family, weight, style), faces in sorted(groups.items()):
+        # Rule 1: keep what is already derived from exactly these bytes.
+        kept = derived.get((family, weight, style))
+        if kept and not force:
+            wanted = [f["sha256"] for f in sorted(faces, key=lambda f: (f["script"] != "arabic", f["sha256"]))]
+            path = FONTS / kept["file"]
+            if (
+                kept.get("derivedFrom") == wanted
+                and path.exists()
+                and hashlib.sha256(path.read_bytes()).hexdigest() == kept["sha256"]
+            ):
+                ttf_entries.append(kept)
+                print(f"  {family} {weight} {style}  {kept['sha256'][:12]}…  kept")
+                continue
         # Arabic first: the merged font takes its name and metrics from the
         # first input, and the Arabic subset is the one whose vertical
         # metrics were set for stacked tashkeel.
@@ -88,6 +119,10 @@ def main() -> int:
             merger = Merger()
             font = merger.merge([io.BytesIO(b) for b in tmp])
             font.recalcTimestamp = False
+            # Rule 2: the Merger wrote `now` into both. The first input's own
+            # values are a fact about the font, not about the day it was built.
+            font["head"].created = parts[0]["head"].created
+            font["head"].modified = parts[0]["head"].modified
 
         arabic = any(f["script"] == "arabic" for f in faces)
         if arabic:

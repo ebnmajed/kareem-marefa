@@ -1,4 +1,4 @@
-import { Amiri, IBM_Plex_Sans, IBM_Plex_Sans_Arabic, Reem_Kufi } from "next/font/google";
+import { Amiri, Baloo_Bhaijaan_2, IBM_Plex_Sans, IBM_Plex_Sans_Arabic, Reem_Kufi } from "next/font/google";
 
 // Latin is the body face only on /en; on the Arabic-primary routes it is just
 // the small bilingual wordmark. Skip its critical preload so the ~heavy Arabic
@@ -32,6 +32,29 @@ export const reemKufi = Reem_Kufi({
   subsets: ["arabic", "latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-reem-kufi",
+  display: "swap",
+  preload: false,
+});
+
+// The interface's display face — «ساحة اللعب», DEC-183 §4.4 and §4.5,
+// REQ-UIX-029. Headings inside the playground's scope, big numbers, the label
+// of a primary action, stickers.
+//
+// It enters by the same door as the two above, and for the same reason: the
+// app, the worker's Chromium and the worker's poppler must read one set of
+// bytes (invariant 12). `docs/design/assets/fonts/` holds reference files and
+// a `fonts.css`; neither is loaded — they are what the extracted and derived
+// faces are compared with, feature by feature (`rlig`, `mark`, `mkmk`).
+//
+// ★ Reem Kufi stays the baseline poster templates' face. This one is ADDED,
+// so no template and no parity golden moves.
+//
+// Never preloaded and applied to no public route: the variable is set on the
+// playground's scope, which this wave is the gallery alone.
+export const balooBhaijaan = Baloo_Bhaijaan_2({
+  subsets: ["arabic", "latin"],
+  weight: ["700", "800"],
+  variable: "--font-baloo",
   display: "swap",
   preload: false,
 });
