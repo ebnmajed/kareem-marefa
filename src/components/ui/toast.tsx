@@ -47,8 +47,10 @@ interface Live extends ToastOptions {
 }
 
 const tones = {
-  success: { cls: "border-success text-success", Icon: CheckCircleIcon },
-  error: { cls: "border-error-border text-error", Icon: AlertCircleIcon },
+  // ★ Wave 15: inside a dark scope the status constants wear their on-dark forms
+  // (DEC-073, DEC-186 §3) — the light ones are 2.67 – 2.83:1 on the scope's ground.
+  success: { cls: "border-success text-success pg-dark:border-success-on-dark pg-dark:text-success-on-dark", Icon: CheckCircleIcon },
+  error: { cls: "border-error-border text-error pg-dark:border-error-on-dark pg-dark:text-error-on-dark", Icon: AlertCircleIcon },
   info: { cls: "border-edge-strong text-fg-heading", Icon: InfoIcon },
 } as const;
 
@@ -82,7 +84,7 @@ export function ToastProvider({ children, closeLabel, label }: { children: React
                 if (!open) setLive((current) => current.filter((t) => t.id !== toast.id));
               }}
               type={isError ? "foreground" : "background"}
-              className={`pointer-events-auto flex w-full items-start gap-3 rounded-card border bg-canvas p-4 shadow-[var(--shadow-card)] ${tone.cls}`}
+              className={`pointer-events-auto flex w-full items-start gap-3 rounded-card border bg-canvas p-4 shadow-[var(--shadow-card)] pg:rounded-tile pg:bg-raised pg:shadow-none ${tone.cls}`}
             >
               <tone.Icon aria-hidden className="mt-0.5 shrink-0 text-[1.25rem]" />
               <div className="min-w-0 flex-1">
@@ -108,7 +110,7 @@ export function ToastProvider({ children, closeLabel, label }: { children: React
               </div>
               <RadixToast.Close
                 aria-label={closeLabel}
-                className="shrink-0 rounded-field p-1 text-fg-muted hover:bg-silver-100 hover:text-fg-heading"
+                className="shrink-0 rounded-field p-1 text-fg-muted hover:bg-silver-100 hover:text-fg-heading pg:rounded-pill pg:hover:bg-hover"
               >
                 <CloseIcon aria-hidden />
               </RadixToast.Close>

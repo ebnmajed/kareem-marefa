@@ -67,7 +67,7 @@ and `main` runs on production at migration `0159`. This wave lays the foundation
 **Spawned:** `content` (opus), `sessions` (opus), `scoring` (opus), `console` (sonnet). **Not spawned:** `checkin`,
 `designer`, `event`, `notify`, `platform`, `branding` — **the lead is custodian of their files.**
 
-### ★ The five contracts
+### ★ The six contracts
 
 1. **Lead → everyone — the scope and its names** (`DEC-186` §2, which publishes them; `STATUS.md` repeats the
    table). The playground is **a scope class, never `:root`**: `.theme-play`, with `.theme-play-light` beside it for
@@ -106,6 +106,12 @@ and `main` runs on production at migration `0159`. This wave lays the foundation
    import graph (the lead's). ★ **`controlClass()` (`field.tsx:105`) is the face of `input`, `textarea`, `select`,
    `combobox` and five files outside `ui/`**: the commit that touches it is announced to `console` too. The register
    form's `name`, `id`, validation and no-JS path are the contract, byte for byte.
+6. ★ **A portal lands inside the scope** (`DEC-188`, found after sync 1). `dialog`, `sheet` and `menu` render through
+   a portal into `<body>`, which is outside the scope. The scope carries a landing element, and
+   **`usePlayPortal()`** (`src/components/ui/scope-portal.tsx`, the lead's) returns it — or `undefined` outside a
+   scope, which is Radix's default, so nothing moves there. **A primitive that portals passes it as `container`**:
+   `dialog` is the lead's and done; `menu` and `sheet` are `console`'s. The toast region is the shell's and stays
+   outside the scope until the shell enters it.
 
 ### ★ The rules this wave turns on
 

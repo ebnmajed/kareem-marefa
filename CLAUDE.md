@@ -379,6 +379,12 @@ opened by the lead.
    build and the branch's (`sessions` writes it first, the lead runs it); and a unit test that the scope's class is
    nowhere in the public import graph. The register form's `name`, `id`, validation and no-JS path are the
    contract, byte for byte.
+6. ★ **A portal lands inside the scope** (`DEC-188`, found after sync 1). `dialog`, `sheet` and `menu` render through
+   a portal into `<body>`, which is outside the scope. The scope carries a landing element, and
+   **`usePlayPortal()`** (`src/components/ui/scope-portal.tsx`, the lead's) returns it — or `undefined` outside a
+   scope, which is Radix's default, so nothing moves there. **A primitive that portals passes it as `container`**:
+   `dialog` is the lead's and done; `menu` and `sheet` are `console`'s. The toast region is the shell's and stays
+   outside the scope until the shell enters it.
 
 **Wave-15 rules.**
 
