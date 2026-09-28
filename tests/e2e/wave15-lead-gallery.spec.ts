@@ -30,7 +30,32 @@ test.beforeEach(async ({ page }, info) => {
   const res = await page.goto("/ar/ui");
   expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
   await page.evaluate(() => document.fonts.ready);
+  // ★ The page scrolls SMOOTHLY (`html { scroll-behavior: smooth }`), and a press or a focus can
+  // start a scroll. A viewport capture taken while it runs shows the fixed layers and the page
+  // out of step: the first captures of the dialog had an undimmed band at one edge, and a sheet
+  // that seemed to stop short of the screen's bottom. Measured in a browser, the scrim covered
+  // 0 – 844 and nothing was wrong. So scrolling is instant here, and `still()` waits it out.
+  await page.addStyleTag({ content: "html { scroll-behavior: auto !important; }" });
 });
+
+/** Wait until the page has stopped scrolling: three equal readings, a frame apart. */
+async function still(page: import("@playwright/test").Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((done) => {
+        let last = -1;
+        let equal = 0;
+        let frames = 0;
+        const step = () => {
+          equal = scrollY === last ? equal + 1 : 0;
+          last = scrollY;
+          if (equal >= 3 || ++frames > 120) done();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }),
+  );
+}
 
 /** The colour a scope's own element computes for a utility, so nothing here names a hex. */
 async function scopeComputes(page: import("@playwright/test").Page, scope: string, className: string, property: string) {
@@ -109,6 +134,17 @@ for (const ground of GROUNDS) {
     const danger = dialog.getByRole("button", { name: "ألغِ الحجز" });
     expect(await danger.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe("999px");
 
+    // The scrim covers the whole screen, measured and not judged from a picture.
+    const scrim = await dialog.evaluate((el) => {
+      const r = (el.previousElementSibling as HTMLElement).getBoundingClientRect();
+      return { top: r.top, left: r.left, width: r.width, height: r.height, innerWidth, innerHeight };
+    });
+    expect(scrim.top).toBe(0);
+    expect(scrim.left).toBe(0);
+    expect(scrim.width).toBe(scrim.innerWidth);
+    expect(scrim.height).toBe(scrim.innerHeight);
+
+    await still(page);
     await page.screenshot({ path: join(SHOTS, `wave15-lead-dialog-${ground.name}-390.png`), animations: "disabled" });
 
     // Escape closes it and focus returns to what opened it — unchanged by the landing place.
@@ -135,6 +171,7 @@ for (const ground of GROUNDS) {
       expect(c.radius).toBe("16px");
       expect(paintsAShadow(c.shadow), `the toast draws a shadow: ${c.shadow}`).toBe(false);
     }
+    await still(page);
     await page.screenshot({ path: join(SHOTS, `wave15-lead-toast-${ground.name}-390.png`), animations: "disabled" });
   });
 
