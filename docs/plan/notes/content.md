@@ -4904,3 +4904,11 @@ prototype puts «مباشر» inside the live ring; here the ring holds the lett
     `file-drop`'s chooser and remove controls, `empty-state`'s action — none sits inside a box that clips; each draws
     the scope's ring 2 px outside itself, unclipped.
   - `badge`, `panel`, `sticker` — nothing focusable.
+- ★ **`39a98087` supersedes `fbae7d64`'s mechanism.** The inset outline passed on geometry and was not seen: `CardMedia`
+  is a positioned child and paints over its parent's outline, so the top and both sides of the media showed no ring
+  (the lead's pixel samples; a stacking context on the link changes nothing — measured). The ring is now the link's
+  `::after` while `:focus-visible`: absolute over the card, `z-10` above the media, `pointer-events: none`, the scope's
+  ring width and colour, the 22 px corner. One ring: no `--focus-offset` (the link's own outline stays outside and
+  clipped), the article draws none, and nothing is set that the card's nested controls inherit. **Lesson: a focus ring
+  is proven by pixels, not by geometry** — the gallery spec samples six points inside the edges against the `--ring`
+  the scope computes.
