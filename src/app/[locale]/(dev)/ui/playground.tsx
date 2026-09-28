@@ -20,8 +20,10 @@ import { DataTableDemo } from "./demos/data-table";
 import { DateTimeDemo } from "./demos/date-time";
 import { DialogDemo } from "./demos/dialog";
 import { EmptyStateDemo } from "./demos/empty-state";
+import { FieldDemo } from "./demos/field";
 import { FileDropDemo } from "./demos/file-drop";
 import { FormSummaryDemo } from "./demos/form-summary";
+import { InputDemo } from "./demos/input";
 import { LevelCardDemo } from "./demos/level-card";
 import { MenuDemo } from "./demos/menu";
 import { PageHeaderDemo } from "./demos/page-header";
@@ -34,6 +36,7 @@ import { RaceBarDemo } from "./demos/race-bar";
 import { RankRowDemo } from "./demos/rank-row";
 import { ReactionBarDemo } from "./demos/reaction-bar";
 import { RouteErrorDemo } from "./demos/route-error";
+import { SessionCtaDemo } from "./demos/session-cta";
 import { SheetDemo } from "./demos/sheet";
 import { SkeletonDemo } from "./demos/skeleton";
 import { StatDemo } from "./demos/stat";
@@ -69,7 +72,7 @@ import { ReorderableDemo } from "./reorderable-demo";
 // group to the browser: the dark ground's would lose its checked option to the
 // light ground's. `radio-group`, `code-input` and `date-time` suffix what they
 // name.
-// `field`, `input` and `textarea` wait for contract 5; `session-cta` for the button.
+// `textarea` waits for contract 5, and `select` for its demo.
 
 const DEMOS: { file: string; title: string; node: ReactNode | ((ground: DemoGround) => ReactNode) }[] = [
   { file: "page-header · section-header · prose", title: "العناوين والنص", node: <PageHeaderDemo /> },
@@ -92,11 +95,14 @@ const DEMOS: { file: string; title: string; node: ReactNode | ((ground: DemoGrou
   { file: "poster", title: "الملصق", node: <PosterDemo /> },
   { file: "reaction-bar", title: "التفاعلات", node: <ReactionBarDemo /> },
   { file: "story-ring", title: "حلقة القصة", node: <StoryRingDemo /> },
+  { file: "field", title: "الحقل", node: <FieldDemo /> },
+  { file: "input", title: "حقل النص", node: <InputDemo /> },
   { file: "checkbox", title: "خانة الاختيار", node: <CheckboxDemo /> },
   { file: "radio-group", title: "مجموعة الاختيار", node: (ground) => <RadioGroupDemo ground={ground} /> },
   { file: "switch", title: "المفتاح", node: <SwitchDemo /> },
   { file: "form-summary", title: "ملخّص الأخطاء", node: <FormSummaryDemo /> },
   { file: "code-input", title: "رمز الحضور", node: (ground) => <CodeInputDemo ground={ground} /> },
+  { file: "session-cta", title: "زرّ الجلسة", node: <SessionCtaDemo /> },
   { file: "rank-row", title: "صفّ الترتيب", node: <RankRowDemo /> },
   { file: "race-bar", title: "سباق الشركات", node: <RaceBarDemo /> },
   { file: "level-card", title: "بطاقة المستوى", node: <LevelCardDemo /> },
