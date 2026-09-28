@@ -286,15 +286,15 @@ export function RtlDateTimePicker({
       </button>
 
       {open ? (
-        <div id={popoverId} role="dialog" aria-label={label} className="absolute z-20 mt-2 w-80 max-w-[90vw] rounded-card border border-edge bg-canvas p-4 shadow-[var(--shadow-card)]">
+        <div id={popoverId} role="dialog" aria-label={label} className="absolute z-20 mt-2 w-80 max-w-[90vw] rounded-card border border-edge bg-canvas p-4 shadow-[var(--shadow-card)] pg:shadow-none">
           <div className="flex items-center justify-between">
-            <button type="button" onClick={goPrevMonth} aria-label={prevMonthLabel} className="inline-flex h-9 w-9 items-center justify-center rounded-field hover:bg-silver-100">
+            <button type="button" onClick={goPrevMonth} aria-label={prevMonthLabel} className="inline-flex h-9 w-9 items-center justify-center rounded-field hover:bg-silver-100 pg:hover:bg-hover">
               <ChevronIcon direction="back" />
             </button>
             <p className="text-label text-fg-heading">
               <bdi>{monthLabel}</bdi>
             </p>
-            <button type="button" onClick={goNextMonth} aria-label={nextMonthLabel} className="inline-flex h-9 w-9 items-center justify-center rounded-field hover:bg-silver-100">
+            <button type="button" onClick={goNextMonth} aria-label={nextMonthLabel} className="inline-flex h-9 w-9 items-center justify-center rounded-field hover:bg-silver-100 pg:hover:bg-hover">
               <ChevronIcon direction="forward" />
             </button>
           </div>
@@ -321,7 +321,7 @@ export function RtlDateTimePicker({
                   disabled={disabled}
                   aria-label={fullDate}
                   onClick={() => pickDay(cell)}
-                  className={`h-9 rounded-field text-body-sm ${selected ? "bg-navy-950 text-white" : !disabled ? "text-fg-heading hover:bg-silver-100" : "text-fg-muted/40"}`}
+                  className={`h-9 rounded-field text-body-sm ${selected ? "bg-navy-950 text-white pg:bg-accent pg:text-on-accent" : !disabled ? "text-fg-heading hover:bg-silver-100 pg:hover:bg-hover" : "text-fg-muted/40"}`}
                 >
                   <span aria-hidden="true">{num(cell.date)}</span>
                 </button>
@@ -383,7 +383,7 @@ export function RtlDateTimePicker({
                 setOpen(false);
                 triggerRef.current?.focus();
               }}
-              className="ms-auto inline-flex h-10 items-center rounded-field bg-navy-950 px-5 text-body-sm text-white hover:bg-navy-900">
+              className="ms-auto inline-flex h-10 items-center rounded-field bg-navy-950 px-5 text-body-sm text-white hover:bg-navy-900 pg:bg-accent pg:text-on-accent pg:hover:bg-accent-deep">
               {doneLabel}
             </button>
           </div>
