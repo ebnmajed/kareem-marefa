@@ -388,7 +388,8 @@ export interface FormSummaryProps extends Styleable {
 
 // ── Action (4) ────────────────────────────────────────────────────────────
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+/** `signal` and `quiet` joined in wave 15 (DEC-186 §6): the check-in's coral, and a filled tertiary. */
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "signal" | "quiet";
 
 /**
  * lead · `button.tsx` — extends the existing house button with `ghost`,

@@ -1,4 +1,7 @@
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { CloseIcon, FlameIcon, HeartIcon } from "@/components/ui/icons";
 import { CoinObject } from "@/components/ui/objects/coin";
 import { CupObject } from "@/components/ui/objects/cup";
 import { FlameObject } from "@/components/ui/objects/flame";
@@ -60,7 +63,7 @@ import type { DemoGround } from "./ground";
 // group to the browser: the dark ground's would lose its checked option to the
 // light ground's. `radio-group`, `code-input` and `date-time` suffix what they
 // name.
-// `button`, `field`, `input` and `textarea` wait for contract 5.
+// `field`, `input` and `textarea` wait for contract 5; `session-cta` for the button.
 
 const DEMOS: { file: string; title: string; node: ReactNode | ((ground: DemoGround) => ReactNode) }[] = [
   { file: "tag-chip", title: "الوسم", node: <TagChipDemo /> },
@@ -171,6 +174,45 @@ function Objects() {
   );
 }
 
+/** Every variant and size, the pending and the disabled state, and the icon button that composes it. */
+function Buttons() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-4">
+        <Button variant="primary">احجز مقعدك</Button>
+        <Button variant="signal">سجّل حضورك</Button>
+        <Button variant="secondary">إلغاء</Button>
+        <Button variant="quiet">المزيد</Button>
+        <Button variant="ghost">تخطَّ</Button>
+        <Button variant="danger">احذف</Button>
+      </div>
+      <div className="flex flex-wrap items-end gap-4">
+        <Button variant="primary" size="md">
+          متوسط
+        </Button>
+        <Button variant="primary" size="sm">
+          صغير
+        </Button>
+        <Button variant="primary" pending pendingLabel="جارٍ الحجز…">
+          احجز مقعدك
+        </Button>
+        <Button variant="primary" disabled>
+          معطّل
+        </Button>
+        <Button variant="quiet" iconStart={<FlameIcon />}>
+          سلسلة
+        </Button>
+        <IconButton label="إعجاب" variant="quiet">
+          <HeartIcon />
+        </IconButton>
+        <IconButton label="إغلاق">
+          <CloseIcon />
+        </IconButton>
+      </div>
+    </div>
+  );
+}
+
 function Wordmarks() {
   return (
     <div className="flex flex-col items-start gap-4">
@@ -212,6 +254,9 @@ function Ground({ light }: { light?: boolean }) {
       </Block>
       <Block title="الأشكال الستة" file="objects">
         <Objects />
+      </Block>
+      <Block title="الزر" file="button">
+        <Buttons />
       </Block>
       {DEMOS.map((d) => (
         <Block key={d.file} title={d.title} file={d.file}>
