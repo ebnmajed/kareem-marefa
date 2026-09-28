@@ -4726,3 +4726,36 @@ Structural, with no colour in them: `rounded-pill` (999 px), `rounded-input` (12
 6. **What the gallery showed at native resolution, sent to its owners:** a selected chip's count at 1.93:1 on the accent (`content`, fixed in `2ae43a10`); the poster's title clipped mid-glyph in a two-column grid at 390 px (`content`); the race bar's value and label standing outside their row at 326 px (`scoring`). None of the three fails a gate that existed. **Each owner adds the measurement to its own gallery spec**, so the next one does.
 
 - **Documents changed:** `STATUS.md` (C4, C5, V1, the ledger)
+
+---
+
+## DEC-190 — Wave 15's closing record: contract 5 closed, what the captures found, and eleven end-to-end failures that are not this wave's
+
+- **Date:** 2026-09-28 · **Decided by:** the wave-15 lead, at the final gates
+- **Adds to:** `DEC-186`, `DEC-188`, `DEC-189`
+
+1. ★ **Contract 5 is closed, twice.** On `a7150011`, which holds all five primitives the public site renders, and again on `34d60324`, after the button changed once more: `qa` 57/57 (contract 38, appearance 19), the six public pairs at 0.000 % against a capture of `main`, and the computed-style fingerprint **byte-identical** to `main`'s — 29,608 values, none moved. `input.tsx` and `textarea.tsx` gained no class, their face being `controlClass()`'s, so they were released without a round of their own: a commit that holds a test and a demo has nothing to name.
+2. ★ **The button, after its proof: 52 px at least, and a trailing slot** (`b33b04ef`). `session-cta`'s captures at 326 px showed a label and its chip touching, and a label that wrapped cut at the pill's edge. Two causes were the lead's: `lg` was a fixed height inside the scope, and `Button` renders its children inside one inline span, so a label and a chip were one run of text that the button's gap never came between. Inside the scope `lg` is `min-height`; `trailing` is an opt-in second child after the label, kept while pending — `04-components.md`'s «capacity chip in the trailing slot». `SessionCtaState`'s `attended` gains an optional `note`, and a chip is «a few characters, never a sentence» (`07a26812`).
+3. ★ **What opening the captures found, after every gate was green.** Each was sent to its owner with the measurement, and each owner added the measurement to its gallery spec:
+   - a selected chip's count at 1.93:1 (`content`, `2ae43a10`);
+   - the poster's title cut mid-glyph — and then **no clamp at all** (`91bd5c37`): a clamp leaks a hidden line's marks into the last visible one, and its ellipsis drops letters from inside a word in RTL;
+   - the race bar's value outside its row at 326 px (`scoring`, `7f03d4ed`);
+   - `session-cta`'s four layout faults (`sessions`, `808e93a1`, `34d60324`);
+   - `story-ring`'s demo scrolling two of its four states out of the box (`content`, `b1e21401`);
+   - ★ **a linked card's focus ring covered by its own media** — the ring is inset so that the article's clip cannot cut it (`081ffe8c`, `fbae7d64`), and the media, a positioned child, then paints over it along three edges. `content`'s spec measured where the ring is and not whether it shows. **Open when this entry was written.**
+4. ★ **A rule for every spec that captures: measure, and capture a page that has stopped.** Twice a picture said something the browser did not: the scrim seemed to stop short of the screen (the page scrolls smoothly and was mid-scroll), and the gallery seemed to repeat itself (`DEC-189` §1). And once a measurement said something the picture did not: a ring in the right place that cannot be seen. A spec asserts the box, samples the pixel, and waits for `scrollY` to hold still.
+5. ★ **The gallery's entries are functions** (`804abc64`). An element built once and placed on both grounds is one subtree to the server renderer, written once and referenced twice, so a server component's `useId` repeats. **The lead told `scoring` the cause was inside its card, and `scoring` showed it was in the lead's file.**
+6. ★ **Eleven end-to-end failures, seven distinct specs, none of them this wave's.** The database-backed suite on `09fe5323`: 776 passed, 11 failed. The failing specs were then run alone on the branch **and on `main`'s build against the same database**:
+
+   | Spec | Alone, branch | Alone, `main` | What it is |
+   |---|---|---|---|
+   | `wave7-sessions-leaderboards`, `checkin`, `event-comments`, `wave10-notify-studio` | pass | pass | failed only inside the whole suite, under load |
+   | `bookmarks` | fail | fail | the un-bookmarked card is still there after the action answers; flaky on `main` since 16.3.5 (wave 8's note) |
+   | `budgets` | fail | fail | the frozen landing's TBT against its baseline, on a machine running everything else |
+   | `a11y` — the admin's screens | fail | fail | `Execution context was destroyed`: a navigation under `document.fonts.ready` |
+   | `sessions-screens` — the M2 demonstrable | fail | fail | ★ **date-dependent.** It schedules «today + 2» and clicks the first day button that begins with that number. On 2026-09-28 that is 30, and September's grid opens with August's 30, greyed and disabled. It fails on the last days of a month whose predecessor's tail shows the same number |
+
+   CI runs the suite without a database (150 cases) and is green on `09fe5323`. **None is fixed here**: each spec is a finished wave's evidence, the four that fail do so on `main`, and a repair belongs to its owner with a ledger line. They are carried in `STATUS.md`.
+7. **RLS from a fresh reset: 139 files, 1,345 passed**, with `0160` and `0161` applied in order.
+
+- **Documents changed:** `STATUS.md` (C5, L1, E2, V1, G, M1 – M4, the carried list)
