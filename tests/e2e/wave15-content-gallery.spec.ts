@@ -118,6 +118,62 @@ test("file-drop's drag-over state, on both grounds", async ({ page }) => {
   }
 });
 
+// ★ The lead's gallery review at 390 px: a poster's title was clipped mid-glyph when the poster was
+// small. The fix hides no line at all (poster.tsx says why a clamp cannot be safe for Arabic), so
+// «no partial line» is measured as: NOTHING between the title and the page clips, and every row
+// is inside the box. On every placeholder, both grounds, both widths:
+//   · the title, the meta line, the placeholder and its box clip nothing (`overflow: visible`);
+//   · the title's height is a whole number of its line heights, and it has at least one;
+//   · its line height is 1.4 × its size (never the display scale's 1.15);
+//   · the rows are in order — top row, title, meta line — and the meta line ends inside the box;
+//   · the box is 4:5 at least: it may grow for a long title, never shrink.
+// `scrollHeight` is not used: Arabic ink overflows its line box by design and Chrome counts that
+// as scrollable height even where nothing clips.
+for (const width of WIDTHS) {
+  test(`poster: every title line is whole, and the meta line too, at ${width.name}`, async ({ page }) => {
+    await openGallery(page, width.size);
+    test.skip((await page.locator('[data-demo="poster"]').count()) === 0, "poster's demo is not wired into the gallery yet");
+    for (const ground of GROUNDS) {
+      const results = await page.locator(demoOn("poster", ground.scope)).evaluate((demo) =>
+        [...demo.querySelectorAll<HTMLElement>('[data-slot="poster-placeholder"]')].map((ph) => {
+          const title = ph.querySelector<HTMLElement>('[data-slot="poster-title"]')!;
+          const meta = ph.querySelector<HTMLElement>('[data-slot="poster-meta"]')!;
+          const top = ph.firstElementChild as HTMLElement;
+          const media = ph.closest('[data-slot="media"]') as HTMLElement;
+          const box = media.getBoundingClientRect();
+          const cs = getComputedStyle(title);
+          const lh = parseFloat(cs.lineHeight);
+          const r = (el: HTMLElement) => el.getBoundingClientRect();
+          const clips = [title, meta, ph, media].filter((el) => !/^visible$/.test(getComputedStyle(el).overflowY)).map((el) => el.dataset.slot);
+          return {
+            text: title.textContent?.slice(0, 24),
+            width: Math.round(box.width),
+            lines: r(title).height / lh,
+            ratio: lh / parseFloat(cs.fontSize),
+            clips,
+            topAboveTitle: r(top).bottom <= r(title).top + 0.5,
+            titleAboveMeta: r(title).bottom <= r(meta).top + 0.5,
+            metaInside: r(meta).bottom <= box.bottom + 0.5,
+            atLeast45: box.height >= 1.25 * box.width - 1,
+          };
+        }),
+      );
+      expect(results.length, `${ground.name}: the demo draws its placeholders`).toBeGreaterThan(0);
+      for (const p of results) {
+        const where = `${ground.name} · ${p.width}px · «${p.text}»`;
+        expect(p.clips, `${where}: something between the title and the page clips`).toEqual([]);
+        expect(Math.abs(p.lines - Math.round(p.lines)), `${where}: ${p.lines.toFixed(3)} lines — a partial line`).toBeLessThan(0.02);
+        expect(Math.round(p.lines), `${where}: no line at all`).toBeGreaterThanOrEqual(1);
+        expect(p.ratio, `${where}: line height is not 1.4 × the size`).toBeCloseTo(1.4, 2);
+        expect(p.topAboveTitle, `${where}: the top row overlaps the title`).toBe(true);
+        expect(p.titleAboveMeta, `${where}: the title overlaps the meta line`).toBe(true);
+        expect(p.metaInside, `${where}: the meta line falls outside the poster`).toBe(true);
+        expect(p.atLeast45, `${where}: the box is shorter than 4:5`).toBe(true);
+      }
+    }
+  });
+}
+
 test("every primitive's demo is in both grounds, once each", async ({ page }) => {
   await openGallery(page, WIDTHS[1].size);
   for (const primitive of PRIMITIVES) {

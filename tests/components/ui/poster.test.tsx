@@ -84,15 +84,67 @@ describe("Poster — the placeholder, until there is one", () => {
     expect(screen.getByText("2 أكتوبر، 6:30 م").tagName).toBe("BDI");
     const title = screen.getByText(BASE.title);
     expect(title.tagName).toBe("BDI");
-    expect(title.parentElement).toHaveClass("font-display", "text-play-md", "text-balance");
+    expect(title.parentElement).toHaveClass("font-display", "font-extrabold", "text-balance", "@min-[18rem]:text-play-md");
     expect(container.querySelector("h1, h2, h3, h4, h5, h6")).not.toBeInTheDocument();
   });
 
-  it("clamps a long title on its container, with room for the marks — never a clipped line", () => {
-    render(<Poster {...BASE} title="عنوان طويل جدًا يمتد على أسطر كثيرة ليختبر كيف يتوازن النص ويُقصّ على الحاوية لا على السطر" />);
-    const p = screen.getByText(/عنوان طويل/).parentElement!;
-    expect(p).toHaveClass("line-clamp-4", "pb-[0.2em]");
-    expect(p.className).not.toMatch(/\btruncate\b|overflow-hidden/);
+  // ★ The lead's gallery review at 390 px: the title was clipped mid-glyph when the poster was
+  // small. jsdom lays nothing out, so these hold the SHAPE of the fix; the gallery spec measures it.
+  describe("★ every line of the title is whole, and none is hidden", () => {
+    const LONG = "عنوان طويل جدًا يمتد على أسطر كثيرة ليختبر كيف يتوازن النص ويُقصّ على الحاوية لا على السطر";
+
+    function title() {
+      render(<Poster {...BASE} title={LONG} category="اختبار" date="2 أكتوبر" />);
+      return screen.getByText(/عنوان طويل/).parentElement!;
+    }
+
+    it("is never clamped: a hidden Arabic line leaks its stacked marks, and the clamp's ellipsis cut letters from a word", () => {
+      const p = title();
+      expect(p.className).not.toMatch(/line-clamp|truncate|overflow-hidden|overflow-clip/);
+    });
+
+    it("never shrinks — and neither do the rows around it, so the meta line stays whole", () => {
+      const p = title();
+      expect(p).toHaveClass("shrink-0");
+      expect(p.nextElementSibling).toHaveClass("shrink-0");
+      expect(p.previousElementSibling).toHaveClass("shrink-0");
+    });
+
+    it("carries no padding of its own", () => {
+      expect(title().className).not.toMatch(/(?:^|\s)(?:@[^\s]*:)?p[bty]?-/);
+    });
+
+    it("sits at the house heading's line height, 1.4, at every size — never the display scale's 1.15", () => {
+      const cls = title().className.split(/\s+/);
+      expect(cls).toEqual(expect.arrayContaining(["leading-[1.4]", "@min-[14rem]:leading-[1.4]", "@min-[18rem]:leading-[1.4]"]));
+      // Every display size it takes is followed by the same variant's line height.
+      for (const size of cls.filter((c) => /text-play-/.test(c))) {
+        const variant = size.slice(0, size.lastIndexOf(":") + 1);
+        expect(cls, size).toContain(`${variant}leading-[1.4]`);
+      }
+    });
+
+    it("steps its size by the poster's own width (a container query), and the small captions with it", () => {
+      const p = title();
+      expect(p.parentElement).toHaveClass("@container");
+      expect(p).toHaveClass("text-base", "@min-[11rem]:text-lg", "@min-[14rem]:text-play-sm", "@min-[18rem]:text-play-md");
+      expect(p.nextElementSibling).toHaveClass("@max-[8.5rem]:text-[0.8125rem]");
+    });
+
+    it("the placeholder's box may GROW: 4:5 at least, clipping nothing, the placeholder filling it", () => {
+      const { container } = render(<Poster {...BASE} title={LONG} />);
+      const box = media(container);
+      expect(box).toHaveClass("aspect-[4/5]", "rounded-tile");
+      // An aspect-ratio box takes its content's height as a minimum only while nothing clips.
+      expect(box.className).not.toMatch(/overflow-(hidden|clip)/);
+      expect(placeholder(container)).toHaveClass("min-h-full", "rounded-tile");
+    });
+
+    it("the rendered poster does not grow: it stays in CardMedia's reserved, clipping box", () => {
+      const { container } = render(<Poster {...BASE} src="/posters/s-1.webp" />);
+      expect(media(container)).toHaveClass("overflow-hidden", "aspect-[4/5]");
+      expect(media(container).className).not.toMatch(/min-h-fit/);
+    });
   });
 
   it.each([null, "tangerine", "#FF9A2E;background:url(x)", "#FFF"])("with no valid colour (%j) the ground is the raised surface, and no style is written", (teamColor) => {
