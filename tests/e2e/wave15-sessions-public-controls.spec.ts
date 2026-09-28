@@ -123,62 +123,106 @@ const DOORS: Part[] = [
 ];
 
 /**
- * Everything the browser computes for each part. Runs in the page.
+ * Everything the browser computes for each part, once it has stopped changing. Runs in the page.
+ *
+ * ★ A sample is taken only when the parts are STILL (the lead, sync 1: a hover sampled mid-way
+ * through `button`'s 150 ms colour transition read a colour between two tokens). Three things make
+ * a part still, and each is checked, never slept for:
+ *   1. two animation frames have passed — Chromium applies `:hover` and `:focus` at the next
+ *      frame, so a transition does not exist yet at the instant the pointer arrives;
+ *   2. no FINITE animation or transition runs on a sampled part or on an ancestor of one (an
+ *      ancestor's transform moves the part's box); an infinite one is ignored — it never ends;
+ *   3. two readings two frames apart are identical.
+ * It gives up after a bounded number of rounds and says so in the record (`unsettled`), so a part
+ * that never settles is a visible difference, not a hang.
+ *
  * `next/font` names a family `__IBM_Plex_Sans_Arabic_5a1b2c`; the suffix is a build hash, so it is
  * dropped — a different FACE still shows, a rebuilt one does not.
  */
 async function snapshot(page: Page, parts: readonly Part[]): Promise<Snapshot> {
   return page.evaluate(
-    ({ parts, props }) => {
-      const snap: Record<string, Record<string, string | number | boolean | null> | null> = {};
-      for (const [name, selector, pseudo] of parts) {
-        const el = document.querySelector(selector);
-        if (!el) {
-          snap[name] = null;
+    async ({ parts, props }) => {
+      type Values = Record<string, string | number | boolean | null>;
+      const frames = (n: number) =>
+        new Promise<void>((done) => {
+          const step = (left: number) => (left === 0 ? done() : requestAnimationFrame(() => step(left - 1)));
+          step(n);
+        });
+      const read = (): Record<string, Values | null> => {
+        const snap: Record<string, Values | null> = {};
+        for (const [name, selector, pseudo] of parts) {
+          const el = document.querySelector(selector);
+          if (!el) {
+            snap[name] = null;
+            continue;
+          }
+          const cs = getComputedStyle(el, pseudo);
+          const out: Values = {};
+          for (const p of props) out[p] = cs.getPropertyValue(p).replace(/(__[A-Za-z0-9_]+?)_[0-9a-f]{6}\b/g, "$1");
+          if (!pseudo) {
+            const box = el.getBoundingClientRect();
+            out.width = Math.round(box.width * 100) / 100;
+            out.height_box = Math.round(box.height * 100) / 100;
+            out.focusVisible = el.matches(":focus-visible");
+            out.hovered = el.matches(":hover");
+          }
+          snap[name] = out;
+        }
+        return snap;
+      };
+      const sampled = parts.map(([, selector]) => document.querySelector(selector)).filter((el): el is Element => el !== null);
+      const moving = () =>
+        document.getAnimations().filter((a) => {
+          if (a.playState !== "running") return false; // finished, idle or paused never settle by waiting
+          const end = a.effect?.getComputedTiming().endTime;
+          if (typeof end !== "number" || !Number.isFinite(end)) return false;
+          const target = a.effect instanceof KeyframeEffect ? a.effect.target : null;
+          return target !== null && sampled.some((el) => target === el || target.contains(el));
+        });
+
+      for (let round = 0; round < 40; round++) {
+        await frames(2);
+        const running = moving();
+        if (running.length > 0) {
+          await Promise.all(running.map((a) => a.finished.catch(() => undefined)));
           continue;
         }
-        const cs = getComputedStyle(el, pseudo);
-        const out: Record<string, string | number | boolean | null> = {};
-        for (const p of props) out[p] = cs.getPropertyValue(p).replace(/(__[A-Za-z0-9_]+?)_[0-9a-f]{6}\b/g, "$1");
-        if (!pseudo) {
-          const box = el.getBoundingClientRect();
-          out.width = Math.round(box.width * 100) / 100;
-          out.height_box = Math.round(box.height * 100) / 100;
-          out.focusVisible = el.matches(":focus-visible");
-          out.hovered = el.matches(":hover");
-        }
-        snap[name] = out;
+        const first = read();
+        await frames(2);
+        const second = read();
+        if (JSON.stringify(first) === JSON.stringify(second)) return first;
       }
-      return snap;
+      const last = read();
+      for (const values of Object.values(last)) if (values) values.unsettled = true;
+      return last;
     },
     { parts, props: PROPS as readonly string[] },
   );
 }
 
 /**
- * Wait for every FINITE animation and transition to end, and never for an infinite one.
+ * Wait for every FINITE animation and transition in the document to end, and never for an
+ * infinite one — used between states, before the next interaction.
  *
  * ★ The public pages run infinite animations (`globals.css`: `.ripple-ring`, `.pulse-dot`,
  * `.loader-dot`), whose `finished` never settles — waiting on all of them hung for the whole
- * timeout on `main`'s build (the lead, sync 1). A finite one — `.provider-fields`' `rise-in`, a
- * button's 150 ms colour transition after a hover, the landing page's intro — must end before a
- * sample, or the sample reads a value mid-way. Capped, so a finite but long one cannot hang it.
+ * timeout on `main`'s build (the lead, sync 1). Two frames first, so a transition the last
+ * interaction started exists before it is looked for; rounds until nothing finite runs.
  */
 async function settle(page: Page) {
-  await page.evaluate(() =>
-    Promise.race([
-      Promise.all(
-        document
-          .getAnimations()
-          .filter((a) => {
-            const end = a.effect?.getComputedTiming().endTime;
-            return typeof end === "number" && Number.isFinite(end);
-          })
-          .map((a) => a.finished.catch(() => undefined)),
-      ),
-      new Promise((done) => setTimeout(done, 10_000)),
-    ]),
-  );
+  await page.evaluate(async () => {
+    const frames = () => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
+    for (let round = 0; round < 40; round++) {
+      await frames();
+      const running = document.getAnimations().filter((a) => {
+        if (a.playState !== "running") return false; // finished, idle or paused never settle by waiting
+        const end = a.effect?.getComputedTiming().endTime;
+        return typeof end === "number" && Number.isFinite(end);
+      });
+      if (running.length === 0) return;
+      await Promise.all(running.map((a) => a.finished.catch(() => undefined)));
+    }
+  });
 }
 
 /** Mouse off every control and nothing focused, so a state is only ever the one asked for. */
