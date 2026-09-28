@@ -2170,3 +2170,40 @@ has wired the demos (question 6).
 8. **`index.ts`'s header comment** lists the owners (`index.ts:29-37`). It gains a `scoring` line
    (`rank-row · race-bar · level-card`) with C2. That is yours, and I mention it only so that it is not
    missed.
+
+---
+
+# Wave 15: built (after sync 1, `DEC-186`)
+
+| Primitive | Commit | Test | Demo |
+|---|---|---|---|
+| `level-card` (`REQ-UIX-039`) | `0b07d73` | `tests/components/ui/level-card.test.tsx`: 13 cases | `demos/level-card.tsx` → `LevelCardDemo` |
+| `rank-row` (`REQ-UIX-037`) | `cfe05730` | `tests/components/ui/rank-row.test.tsx`: 18 cases | `demos/rank-row.tsx` → `RankRowDemo` |
+| `race-bar` (`REQ-UIX-038`) | `bf5e0859` | `tests/components/ui/race-bar.test.tsx`: 20 cases | `demos/race-bar.tsx` → `RaceBarDemo` |
+
+`tests/e2e/wave15-scoring-gallery.spec.ts` captures all three on both grounds at 390 px and desktop width
+(`.qa-shots/rtl/wave15-scoring-<primitive>-<dark|light>-<390|desktop>.png`). It skips a demo that is not wired
+yet, and the lead runs it against a `KAREEM_GALLERY=1` build. Each demo's root is `data-demo="<primitive>"` and
+carries **no scope of its own**; `playground.tsx` places it on each ground.
+
+**Done, as planned:**
+- ★ **A falling row is the neutral row, byte for byte.** Four cases cover a fall, a tie, `previousRank: 0` and
+  NaN, and one more covers the viewer's own row falling. A guard case asserts that a risen row differs and carries
+  the up arrow. The row takes no `src`, and a source scan asserts that `src` never appears in the file.
+- **The level card:** both faces are `role="group"`, in the DOM in either state, and never `aria-hidden`,
+  `hidden` or `inert`. The face not shown is `sr-only`. The ramp is keyed on `tier`, clamped to 1–5. An empty
+  `unlocks` says `noUnlocksLabel`.
+- **The race bar:** the name is always text, and two companies with the same colour are still told apart. A
+  malformed colour takes the neutral ring and fill. `metricLabel` is visible. The bar is `decorative`, so a
+  screen reader reads the value once. A negative value draws an empty track and keeps its sign.
+- **Nothing moves:** each test scans its source for `transition`, `animate-`, `@keyframes` and `.animate(`, for
+  physical-direction utilities, and for `overflow-hidden` / `truncate`.
+- **The light ground:** the accent is 1.07:1 on paper (`DEC-186` §2), so the self or own outline and the rise
+  arrow take `pg-light:` heading ink there. The word carries the meaning on both grounds.
+
+**Gates at `bf5e0859`:** tsc clean · lint 0 errors · `ui-lint` strict clean · `tokens-only` and
+`public-graph` green · `npm test` 3159 passed, **1 failed, not mine**: `tests/unit/typography-utilities.test.ts`
+does not recognise the lead's `text-play-*` theme keys, and fails on `playground.tsx` too. Told to the lead.
+
+**Not done, and why:** the captures need the lead's `KAREEM_GALLERY=1` build and the three demos wired into
+`playground.tsx`. Adoption on a board is the screens wave's, with §5's DTO list.
