@@ -145,6 +145,38 @@ describe("RaceBar — the viewer's own company", () => {
   });
 });
 
+describe("RaceBar — it fits the box it is given (the lead's 390 px finding)", () => {
+  // jsdom has no layout; the widths themselves are asserted by
+  // `wave15-scoring-gallery.spec.ts` at 326 px. These pin the structure that makes them fit.
+  it("the bar has a line of its own, not a share of the name's", () => {
+    const { container } = one(BASE);
+    const first = container.querySelector("li > div") as HTMLElement;
+    expect(first.contains(fillOf(container))).toBe(false);
+    expect(fillOf(container).parentElement?.parentElement).toBe(screen.getByRole("listitem"));
+  });
+
+  it("the name may shrink and wrap; nothing on its line is wider than the rank and the ring", () => {
+    one({ ...BASE, rank: 1, rankLabel: "المركز 1", companyName: "شركة لم تختر لونًا بعد" });
+    const nameColumn = screen.getByText("شركة لم تختر لونًا بعد").parentElement?.parentElement as HTMLElement;
+    expect(nameColumn).toHaveClass("min-w-0", "flex-1");
+    expect(nameColumn.className).not.toMatch(/(?:^|\s)w-\d/);
+  });
+
+  it("★ the metric is on its own line, free to wrap, never truncated", () => {
+    one({ ...BASE, secondary: { label: "إجمالي النقاط", value: "1,204" } });
+    const line = screen.getByText("نقاط لكل عضو نشِط").parentElement as HTMLElement;
+    expect(line.tagName).toBe("P");
+    expect(line).toHaveClass("flex-wrap");
+    expect(line.className).not.toMatch(/truncate|overflow-hidden|whitespace-nowrap|line-clamp/);
+  });
+
+  it("the number stays whole, in the display face, with its sign", () => {
+    one({ ...BASE, value: "\u200e-0.4", fraction: -0.04 });
+    const value = screen.getByText("\u200e-0.4");
+    expect(value.parentElement).toHaveClass("shrink-0", "font-display");
+  });
+});
+
 describe("RaceBar — the source", () => {
   it("★ nothing moves (DEC-186 §4), and no physical direction", () => {
     const source = readFileSync("src/components/ui/race-bar.tsx", "utf8")

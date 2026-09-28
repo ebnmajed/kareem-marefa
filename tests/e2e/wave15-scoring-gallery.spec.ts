@@ -26,6 +26,14 @@ const GROUNDS = [
   { name: "light", scope: ".theme-play.theme-play-light" },
 ] as const;
 
+// What counts as one row's frame, per primitive: a board row, a race row, the
+// level card's visible face.
+const FRAMES: Record<(typeof PRIMITIVES)[number], string> = {
+  "rank-row": "li",
+  "race-bar": "li",
+  "level-card": '[role="group"][data-visible="true"]',
+};
+
 const demoOn = (primitive: string, scope: string) => `${scope} [data-demo="${primitive}"]`;
 const WIDTHS = [
   { name: "390", size: { width: 390, height: 844 } },
@@ -53,6 +61,26 @@ for (const primitive of PRIMITIVES) {
 
       await page.evaluate(() => document.fonts.ready);
       for (const ground of GROUNDS) {
+        // ★ Every row's content inside the row's frame (the lead's 390 px finding on
+        // race-bar). The page-level check above misses it: in RTL an overflow runs
+        // toward the inline END, the left, and does not always widen the page.
+        const escapes = await page.locator(demoOn(primitive, ground.scope)).evaluate((demo, selector) => {
+          const out: string[] = [];
+          for (const frame of demo.querySelectorAll<HTMLElement>(selector)) {
+            const box = frame.getBoundingClientRect();
+            for (const el of frame.querySelectorAll<HTMLElement>("*")) {
+              if (el.closest(".sr-only")) continue; // 1 px and clipped by design
+              const r = el.getBoundingClientRect();
+              if (r.width === 0 && r.height === 0) continue;
+              if (r.left < box.left - 0.5 || r.right > box.right + 0.5) {
+                out.push(`${(frame.textContent ?? "").slice(0, 40)} › <${el.tagName.toLowerCase()}> ${Math.round(r.left)}–${Math.round(r.right)} outside ${Math.round(box.left)}–${Math.round(box.right)}`);
+              }
+            }
+          }
+          return out;
+        }, FRAMES[primitive]);
+        expect(escapes, `${primitive} on ${ground.name} at ${width.name}: content outside its row`).toEqual([]);
+
         const box = page.locator(demoOn(primitive, ground.scope));
         await expect(box).toHaveCount(1);
         await expect(box).toBeVisible();

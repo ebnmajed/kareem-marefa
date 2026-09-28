@@ -35,8 +35,13 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
   const ringStyle = colour ? ({ "--team": colour } as CSSProperties) : undefined;
   const frame = own ? "border-accent pg-light:border-fg-heading" : "border-transparent";
 
+  // Three lines, so the row fits the box it is given — 326 px in the gallery at
+  // 390, less inside a card: the ring, the name and the number; the bar across
+  // the whole row; then the metric and the other one. Nothing on the first line
+  // is fixed-width but the rank and the ring, so the name wraps and the number
+  // stays whole.
   return (
-    <li className={`flex flex-col gap-1 rounded-tile border-2 px-2 py-2 ${frame} ${className}`}>
+    <li className={`flex flex-col gap-1.5 rounded-tile border-2 px-2 py-2 ${frame} ${className}`}>
       <div className="flex items-center gap-2">
         {rank != null ? (
           <span className="w-6 shrink-0 text-center font-display font-extrabold text-fg-muted">
@@ -45,26 +50,26 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
           </span>
         ) : null}
         <span aria-hidden="true" data-slot="ring" style={ringStyle} className={`size-5 shrink-0 rounded-pill border-[3px] bg-canvas ${ring}`} />
-        <span className="flex w-24 shrink-0 flex-col">
+        <span className="flex min-w-0 flex-1 flex-col">
           <span className="text-body font-bold leading-snug text-fg-heading">
             <bdi>{companyName}</bdi>
           </span>
           {own ? <span className="text-caption font-semibold text-fg-body">{ownLabel}</span> : null}
         </span>
-        <ProgressBar value={fraction} max={1} fill="team" teamColor={colour} decorative className="min-w-12 flex-1" />
-        <span className="flex shrink-0 flex-col items-end">
-          <span className="font-display text-play-sm font-extrabold text-fg-heading">
-            <bdi dir="ltr">{value}</bdi>
-          </span>
-          <span className="text-caption font-semibold text-fg-muted">{metricLabel}</span>
+        <span className="shrink-0 font-display text-play-sm font-extrabold text-fg-heading">
+          <bdi dir="ltr">{value}</bdi>
         </span>
       </div>
-      {secondary ? (
-        <p className="flex flex-wrap items-baseline gap-x-1.5 ps-7 text-caption text-fg-muted">
-          <span>{secondary.label}</span>
-          <bdi dir="ltr">{secondary.value}</bdi>
-        </p>
-      ) : null}
+      <ProgressBar value={fraction} max={1} fill="team" teamColor={colour} decorative />
+      <p className="flex flex-wrap items-baseline gap-x-3 text-caption">
+        <span className="font-semibold text-fg-muted">{metricLabel}</span>
+        {secondary ? (
+          <span className="flex flex-wrap items-baseline gap-x-1.5 text-fg-muted">
+            <span>{secondary.label}</span>
+            <bdi dir="ltr">{secondary.value}</bdi>
+          </span>
+        ) : null}
+      </p>
     </li>
   );
 }
