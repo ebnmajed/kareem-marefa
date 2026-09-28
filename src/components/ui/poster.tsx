@@ -55,9 +55,9 @@ export function Poster({ src, width, height, alt = "", title, category, date, te
   // On a team colour the text is the ink (6.25:1 or better on all seven); with no
   // colour, the scope's raised surface and its text. The sticker's rim follows.
   const ground = colour
-    ? "bg-team text-on-sticker [--sticker-ground:var(--team)]"
+    ? "bg-team text-on-team [--sticker-ground:var(--team)]"
     : "bg-raised text-fg-heading [--sticker-ground:var(--raised)]";
-  const label = colour ? "bg-on-sticker text-team" : "bg-surface text-fg-heading";
+  const label = colour ? "bg-on-team text-team" : "bg-surface text-fg-heading";
   const style = colour ? ({ "--team": colour } as CSSProperties) : undefined;
 
   // ★ EVERY LINE OF THE TITLE IS WHOLE, AND NONE IS HIDDEN (the lead's gallery review, 390 px).

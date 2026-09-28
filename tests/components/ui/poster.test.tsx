@@ -68,7 +68,8 @@ describe("Poster — the placeholder, until there is one", () => {
     const { container } = render(<Poster {...BASE} category="جلسة إدارية" date="2 أكتوبر، 6:30 م" />);
     const ph = placeholder(container)!;
     expect(ph.style.getPropertyValue("--team")).toBe("#FF9A2E");
-    expect(ph).toHaveClass("bg-team", "text-on-sticker", "[--sticker-ground:var(--team)]");
+    expect(ph).toHaveClass("bg-team", "text-on-team", "[--sticker-ground:var(--team)]");
+    expect(ph.className).not.toMatch(/on-sticker/);
     expect(container.querySelector("img")).not.toBeInTheDocument();
     expect(media(container)).toHaveClass("aspect-[4/5]");
   });
