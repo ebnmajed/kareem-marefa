@@ -4418,3 +4418,122 @@ Asked before Step 0, as the brief required: **not run**. The owner's standing co
 - **R2** (`guards.ts`' `Bucket`, `index.ts`' export) and **R3** (the profile page's `src`) are the lead's.
 
 - **Documents changed:** `STATUS.md` (the checklist), `11-background-jobs.md` and `01-prd.md` (the citation), `04-architecture.md` (the album route's part parameter)
+
+---
+
+## DEC-183 — The visual direction «ساحة اللعب» is accepted: the playground replaces `DEC-100`'s motion grammar, everything it proposes is in scope, the public site moves last, and wave 15 lays the foundation with nothing visible changed
+
+- **Date:** 2026-09-28 · **Decided by:** the owner (four rulings, answered 2026-09-28 before the wave opened); recorded, measured and scoped by the wave-15 lead from `docs/plan/notes/wave-15-lead.md` and `docs/design/`
+- **Accepts:** the fifteen proposed entries of `docs/design/06-decisions-proposed.md`, each with its line below. `docs/design/` becomes the visual specification; **where it and `docs/plan/` disagree, `docs/plan/` wins, and every case found is listed here** (§4).
+- ★★ **Reverses:** `DEC-100` (2026-09-15, the same owner) — knowingly. See §2.
+- **Supersedes, where the two disagree:** `16-ui-redesign.md`'s visual notes (colour, type, radius, the motion vocabulary). `16`'s structural decisions stand: the shell, the contextual tab bar, the loading and failure models, the form model, the affordance rule.
+- **Adds:** `REQ-UIX-028` … `REQ-UIX-043`; `STORY-UIX-019` … `STORY-UIX-026`; milestone **M17**.
+- **Amends in text, now:** `REQ-UIX-018`, `REQ-UIX-019`, `REQ-INT-005`, `REQ-DSG-026`.
+
+### 1 · The owner's four rulings
+
+| | |
+|---|---|
+| **Everything is in scope** | session stories, the timeline's recap, achievement and announcement items, the weekly leaderboard and proposal voting — all four — with team colours as the base every primitive depends on |
+| ★★ **Motion: the playground wins** | `DEC-NEXT-1` is accepted, and with it a confetti burst and a sticker overshoot. This reverses `DEC-100` (§2) |
+| **The public site** | `DEC-NEXT-5`, option **A**: it is re-skinned to the playground, **last**, after the app's screens. Until that wave it does not move (`REQ-NFR-019`, `DEC-167`) |
+| **Sequencing** | this programme **replaces** the member-path UI/UX wave that `DEC-181` §5 named as wave 15. Its measure — can a member complete reserve → check in → rate → certificate with every explanatory paragraph deleted — is kept, as a gate of the screens waves |
+
+### 2 · `DEC-100` is reversed, and this is what that means
+
+`DEC-100` was long, considered and owner-approved. In its own words: «cinema, not decoration … never UI-library defaults: no bounce, no elastic, no hover scale-ups, **no confetti**», one metaphor — knowledge as a dot of light that joins a network — and nine moments in three tiers. **The playground adds a confetti burst and a sticker overshoot, replaces the dot-and-line metaphor with physical objects (a coin, a ticket, a cup), and cuts nine moments to five.** The owner chose a full-party tone, and two orchestrated moments with no celebration cannot carry it. A reader who finds confetti in this product next year is looking at a decision, not at drift.
+
+**What is reversed:** the ban on confetti; the ban on an overshoot, up to `1.08` on a sticker and nowhere else; the dot-and-line vocabulary as the app's celebratory language; the count and the tiers — five orchestrated moments (reservation, check-in, session completion, level-up, rank change), and beneath them only acknowledgements of 220–260 ms.
+
+**What survives, unchanged:**
+- `REQ-UIX-020` — animation touches transform, opacity and filter only, holds 60 fps, and leaves no `will-change` on.
+- `REQ-UIX-014` — durations are tokens and collapse once, globally, under reduced motion; **and collapsing a duration is still not a reduced-motion design**: every moment names its own static state, reviewed at 390 px beside the animated one.
+- **A failure never animates.** Tables, lists, admin screens, the audit log, exports and every error state do not animate.
+- **Nothing scales on hover.**
+- **No motion library is added.** Confetti is `element.animate()`.
+- Each moment plays once per occurrence and never on a re-render.
+- A reaction earns nothing and stays a whisper (`REQ-EVT-004`, `REQ-UIX-024`).
+
+**Nothing is thrown away.** `DEC-100`'s motion system was never built: `STORY-UIX-011` (M10) never ran, and only its tokens and the reaction's one ignite exist. `globals.css`'s keyframes are used by the public site's files, and they stay exactly as they are until the public site's own wave.
+
+**Not this wave.** The five moments are the programme's next wave. Wave 15 lands the duration tokens and nothing that moves.
+
+### 3 · The fifteen entries, one line each
+
+| Entry | Ruling |
+|---|---|
+| `DEC-NEXT-1` five moments; confetti and stickers | **accepted** — §2. `REQ-UIX-018` and `REQ-UIX-019` are amended now; the moments are built by the wave after this one |
+| `DEC-NEXT-2` the six objects as an optional poster layer | **accepted** — `REQ-DSG-026`'s imagery rule is amended now. Raster only, never the SVG (`DEC-009`, invariant 11). How a platform-owned asset is seeded is measured at sync 1; no template changes and no golden moves |
+| `DEC-NEXT-3` the display face is Baloo Bhaijaan 2 | **accepted, amended** — it is the **UI's** display face. The baseline poster templates keep Reem Kufi (§4.4), so no parity golden moves; the face becomes selectable in the designer once it passes the parity gate |
+| `DEC-NEXT-4` team colours are company data | **accepted, amended** — `companies.team_color`, nullable, in `0160`. **The migration seeds nothing** (§4.11) |
+| `DEC-NEXT-5` the public site | **accepted, option A**, with its label corrected (§4.1): the programme's last wave, under a milestone that wave claims |
+| `DEC-NEXT-6` recap, achievement and announcement items on the timeline | **accepted** — a later wave. Its one table, `feed_announcements`, is the lead's then. Polls stay out |
+| `DEC-NEXT-7` comments stay one level deep | **confirmed** — `REQ-EVT-002` is unchanged |
+| `DEC-NEXT-8` a weekly leaderboard; avatars on boards | **accepted, amended** — a board row carries the **initials** avatar with the team ring and never a photograph. `DEC-099` kept photographs off leaderboards because ranking by face invites comparison, and the owner kept `DEC-099` in full on 2026-09-27 (`DEC-181`); initials in a team ring do not reopen that. **Leagues: deferred**, as `06` says |
+| `DEC-NEXT-9` streaks count consecutive sessions, one free skip a season | **accepted** — built with the game layer's wave, which amends `REQ-REC-005` then. The monthly rule stays available as a second kind |
+| `DEC-NEXT-10` reactions stay worth nothing | **confirmed** — `REQ-EVT-004`, `REQ-PTS-010` |
+| `DEC-NEXT-11` calendar: Google syncs, Outlook and Apple are links | **confirmed** — `REQ-CAL-001` … `REQ-CAL-003` |
+| `DEC-NEXT-12` sign-in stays Google | **confirmed** — `REQ-AUT-001` |
+| `DEC-NEXT-13` proposal voting, org-toggled, off by default | **accepted** — a later wave |
+| `DEC-NEXT-14` stories are generated, with a `story_views` register | **accepted, option A, on one condition** — ★ **the viewer is `DEC-093`'s seventh place.** The prototype pauses by press-and-hold and changes session by swipe. Tapping the two halves of the screen is a single-pointer path and conforms; the hold and the swipe are not, so the built viewer carries a visible pause control and visible previous-session and next-session controls, and its gate is a Playwright case with `page.click()` alone |
+| `DEC-NEXT-15` the desktop shell | **deferred** — the owner chooses after the screen designs. `REQ-UIX-021`'s one column stands |
+
+★ **A requirement is written by the wave that builds it.** This entry records the decisions. The requirement text for stories, the feed items, voting, the weekly board, the streak rule and the five moments' screens is written — and its milestone claimed — when that wave opens, because `trace` refuses a requirement with no milestone and a number claimed here would presume the programme's shape. **Nothing in this entry cites a migration, a milestone or a requirement id that does not exist today**, except the ones it creates (`DEC-181` §3).
+
+### 4 · Where `docs/design/` and the tree disagree — measured before anything was written
+
+`docs/design/` is unusually accurate: 37 primitives (37 `.tsx` files), the gallery behind `KAREEM_GALLERY=1`, fonts by SHA-256, and the font file's own tables — `GSUB` with `rlig`, `GPOS` with `mark` and `mkmk` — were all confirmed. These are the places it is wrong about this repository. Each is ruled here.
+
+1. ★★ **«M13» is already spent.** `docs/design/` re-skins the public site «at M13». M13 closed in wave 11 (`DEC-166` … `DEC-171`); M14, M15 and M16 were waves 12, 13 and 14. **This wave is M17**, and each later wave of the programme claims its own number in `14-roadmap.md`. The principle is untouched: the public site moves last.
+2. ★★ **`tokens.css` redefines names that exist.** `01-tokens.md` says to append its `@theme` block and that «nothing visible changes». Read against `globals.css`, a literal merge redefines **five names and two utilities**:
+
+   | Name | Today | `tokens.css` | Who reads it |
+   |---|---|---|---|
+   | `--color-surface` | `var(--surface)`, in `@theme inline` — a semantic colour | `#151724`, raw | every `bg-surface` |
+   | `--radius-card` | `14px` | `22px` | every `rounded-card` |
+   | `--ease-out` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | `cubic-bezier(0.16, 1, 0.3, 1)` | the skip link, the reaction |
+   | `--bg` at `:root` | `#ffffff` | the ink ground | `body`, and `--color-canvas` |
+   | `--fg-muted` at `:root` | `#5b6780` | `#A7ABBE` | every `text-fg-muted` |
+   | `--text-body`, `--text-caption` | do not exist; `@utility text-body` and `text-caption` do | theme keys, which make Tailwind emit `text-body` and `text-caption` **again** | most text in the product |
+
+   The mechanism is inverted as well: the repository is light by default with `.theme-dark` per section; `tokens.css` is dark by default with `.theme-light`. And the frozen routes reach the primitives: `(marketing)` and the register form import `ui/button`, `field`, `input`, `textarea`, `checkbox`, `radio-group`, `form-summary` and `icons`. **A literal merge moves the public site.**
+
+   **Ruling — the playground is a scope, not the root.** (a) **No existing token is redefined, renamed or removed.** (b) The playground's raw palette lands under names that collide with nothing. (c) Its semantic layer lands on a **scope class** — never on `:root` — with a light variant beside it. (d) A migrated primitive reads semantic names whose values **outside the scope are today's**, so every screen and every public route renders as it does now; inside the scope it is the playground. (e) What is structural and not a colour — the pill radius, the display face on a label, the press shadow, a 52 px height — is a token too, and carries today's value outside the scope. (f) This wave the scope is applied **in the gallery and nowhere else**. The shell adopts it in the screens waves, the public site in its own. The names are fixed by the lead's token commit and published in `STATUS.md` (contract 1).
+3. **Two duration ramps.** The repository has `--dur-fast` / `--dur-base` / `--dur-slow` (120 / 200 / 360 ms); `tokens.css` adds `--duration-fast` / `-base` / `-slow` / `-party` (120 / 220 / 420 / 900 ms). The new ramp is added beside the old one; `--dur-*` stays until nothing reads it. Both collapse in the one reduced-motion block (`REQ-UIX-014`).
+4. **A Kufi display face already ships.** `DEC-NEXT-3` «realises `REQ-INT-005`'s unnamed Kufi face». It was realised in M6: **Reem Kufi**, twelve entries in `packages/fonts/manifest.json`, the face of the baseline poster templates. Baloo Bhaijaan 2 is **added** for the interface; the templates and their goldens do not change.
+5. **The font's door is `next/font`, not a `@font-face` block.** `02-typography.md` and `08-assets.md` say to merge `fonts.css` into `globals.css`. Every face here enters through `src/lib/fonts.ts` (`next/font/google`, fetched at build, served from our origin; `font-src 'self'`), then `fonts:extract` pins the bytes into `packages/fonts` by SHA-256, `fonts:derive` makes the worker's TTFs and `fonts:check` is the CI gate (`REQ-DSG-016`, `DEC-049`). The display face takes the same door. The `.woff2` files in `docs/design/assets/fonts/` are the **reference**: after extraction and after derivation the result's `GSUB` and `GPOS` features are compared with theirs, and a lam-alef with tashkeel is rendered and looked at.
+6. **Three primitive names.** `04-components.md` promises to rename none of the 37 and then names `chip`, `status-badge` and a bottom-bar `tabs`. They are `ui/tag-chip.tsx`, `ui/badge.tsx` (which holds `SessionStatusBadge`) and — for the phone tab bar — `src/components/shell/**`, which is not a primitive. No file is renamed and none is added for them. `ui/tabs.tsx` is the tab **strip** and takes tokens only.
+7. **Sixteen glyphs, seven of which exist.** `icons-additions.tsx` exports sixteen components; the documents say fifteen. `CloseIcon`, `PlusIcon`, `DownloadIcon`, `StarIcon` and `PinIcon` are in `ui/icons.tsx` already, and the chevron pair is `ChevronIcon`'s `forward` and `back`. **The house drawings stand** (`DEC-106`: one hand). **Nine are added** — flame, trophy, compass, ticket, coin, bolt, camera, calendar-check, pause — redrawn into the house shape: `1em`, a `label` prop, `rtl:-scale-x-100` for anything that points. `ReactionBar` needs a «like» glyph that is in neither list; it is settled at sync 1.
+8. **The mark is not installed as the favicon.** `08-assets.md` sends it to `src/app/icon.svg`. The app's root is `src/app/[locale]/`, and an icon there is served on `/`, `/ar`, `/en` and `/ar/register` — the public site's appearance, which changes only in its own wave (`DEC-167`). The files are kept in the repository; nothing references them yet.
+9. **The new wordmark is built and not yet worn.** `src/components/brand/wordmark.tsx` is added and shown in the gallery. The shell keeps `src/components/wordmark.tsx` — five consumers, `REQ-UIX-027` — until the screens wave changes the shell.
+10. **The first org's logo is the owner's act.** `08-assets.md` makes the 3000 px wordmark the first org's brand-kit logo and the 1200 px one the mail header. Both are production data: an upload on `SCR-059` by an admin, when the owner chooses, which restyles that org's posters and mail. It is never a migration.
+11. ★ **A migration seeds no team colour.** The brief seeds `01-tokens.md`'s mapping in `0160`. The mapping is keyed by company **name** in one org — data, which `CLAUDE.md` forbids in a migration («never do a one-off data fix as a migration»). `0160` adds the column and its check. The mapping is applied on `SCR-048`, or by the owner as one scoped statement after reading the rows; the test fixtures, the local dev seed (`scripts/seed-dev.mjs`) and the gallery's own demo data carry it, so the tests, a local app and the gallery have colours.
+12. **`sharp` is not a dependency.** `08-assets.md` calls it «already a Next.js dependency»; it is in `node_modules` transitively and in no `package.json`. **Regenerating the assets is a local tool and is never run in CI.** Nothing is added, so the lock file does not move.
+13. **88 files, not 102.** `docs/design/assets/` holds 88. Nothing depends on the number.
+14. ★ **The coin's «+50».** `REQ-CHK-018` computes what a member has earned per session, and it is not always 50. A numeral baked into the coin states a figure the product knows to be wrong on the screen whose purpose is the truth. The label is a separate path in the master. **Recommended, and settled at sync 1:** the coin ships without the numeral and the component draws the computed amount over it; the «+50» master stays for a surface where the number is decorative. The ticket's «محجوز» is a fixed word and is correctly baked.
+15. **Who writes decisions.** `07-tasks.md` and `HANDOFF-PROMPT.md` say the agents never edit `DECISIONS.md`. Every lead since `DEC-040` has written entries; the log is append-only and a correction is a new entry. This is one.
+16. **Ten primitives.** `04-components.md` says «adds nine» and lists ten files and one utility. Ten are built this wave; the confetti utility belongs to the moments' wave.
+17. **An existing primitive gains no behaviour this wave.** `04` makes `sheet` full-height with its own action bar and gives the tab bar a raised centre slot. Both change screens that exist. A structural change arrives as an opt-in prop, shown in the gallery, and is adopted by the screens waves.
+
+### 5 · Wave 15 — the foundation (M17)
+
+**Nothing visible changes**, in the app or on the public site. The gallery changes, on purpose.
+
+1. The tokens and the scope (`REQ-UIX-028`) — the lead.
+2. The display face, through the font door (`REQ-UIX-029`) — the lead.
+3. The 37 primitives onto the scope's semantic tokens, each by its owner, identical outside the scope (`REQ-UIX-030`).
+4. Ten new primitives (`REQ-UIX-031` … `REQ-UIX-040`): `sticker`, `poster`, `session-cta`, `reaction-bar`, `code-input`, `progress-bar`, `rank-row`, `race-bar`, `level-card`, `story-ring`. Each renders every one of its states from props, with a jsdom test, an RTL check and a gallery entry. **None is placed on a screen this wave, and none is orchestrated.**
+5. Nine glyphs, the six objects and the brand files (`REQ-UIX-041`, `REQ-UIX-042`) — the lead.
+6. Team colours (`REQ-UIX-043`): the column in `0160`, the field on `SCR-048`, `--team` on the element. **The company is the ring, never the avatar's fill** (`REQ-PRF-009`); the six tints stay keyed to the member id.
+
+**The team** (the map is `CLAUDE.md` § *Ownership map (wave 15)*). `content` (opus): its nine primitives, and `sticker`, `poster`, `reaction-bar`, `progress-bar`, `story-ring`. `sessions` (opus): its eight form primitives, and `session-cta`, `code-input`. `scoring` (opus): `rank-row`, `race-bar`, `level-card`. `console` (sonnet): its six primitives — tokens only, no animation — and the team colour on `SCR-048`. **The lead:** this entry, the map, the ten agent files, `01` / `14` / `15`, the tokens, the face, its own fifteen primitives, `ui/index.ts`'s signatures on day one, the glyphs, the objects, the wordmark, the gallery page, `0160`, the gates and the PR. **Not spawned:** `checkin`, `designer`, `event`, `notify`, `platform`, `branding`.
+
+**Three gates decide whether the wave is correct.** (1) The frozen routes do not move: `qa:contract` green at every commit, `qa:appearance` and `visual` **unchanged, not re-baselined**. (2) The gallery **is** in the visual baseline and will move; it is re-baselined deliberately, and the row names which primitives moved it. (3) `ui-lint --strict` has no allowlist and gains none; a new primitive complies from birth.
+
+**Not this wave:** the five moments · stories · the feed items · proposal voting · the weekly leaderboard · any screen redesign, the shell included · everything under `(marketing)/**` · the desktop shell · leagues · the certificate look, which keeps its Naskh families — the playground stops at the certificate's edge · the designer's document model and export pipeline · the generated gate for Storage read predicates, carried from wave 14 · deleting a session with its awarded points, carried again.
+
+### 6 · A gate change, listed so it is not mistaken for drift
+
+`scripts/traceability.mjs` matched a milestone with `/\bM(?:1[0-6]|[0-9])\b/`, an alternation that is order-sensitive (`DEC-102`) and was edited for M14, M15 and M16. It is now `/\bM\d{1,2}\b/`, which takes `M13` whole and names no milestone. The enumeration also refused, by accident, a story citing a milestone nobody had defined; that is kept on purpose as a **fifth gap report**: a story may cite only a milestone with its own `## M<n> —` heading in `14-roadmap.md` — `15` §24's invariant 3, which the script had never checked. Run against the plan as it stood: 320 requirements, 154 stories, no gaps.
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-018`, `REQ-UIX-019`, `REQ-INT-005`, `REQ-DSG-026` amended; `REQ-UIX-028` … `REQ-UIX-043` added), `14-roadmap.md` (M17), `15-backlog.md` (`STORY-UIX-019` … `STORY-UIX-026`; §24), `scripts/traceability.mjs` (§6), `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten agent files (the map; the pointer to `docs/design/`), `STATUS.md` (the wave-15 block), `docs/design/README.md` (its status line). `02-domain-model.md`'s `companies` follows in `0160`'s commit.

@@ -1,11 +1,130 @@
-**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — COMPLETE: REHEARSED ON THE PRODUCTION SCHEMA DUMP, CI GREEN (13/13 on `946a254`), PR #31 READY — the owner pushes `0155`–`0159`, merges, rebuilds Railway (`DEC-180` … `DEC-182`, M16, `0155`–`0159`)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; ★ **PR #31** (CI green at `5547566`); **approved by the owner (`DEC-181`)**; ★ the live Google hotlink **closed first** (`92953c8`, `0155`); ★ **sync 1 done (`DEC-182`)** — both plans approved; the lead's `0156` (photos, a removed photo unreadable, `MSG-photo_album_ready`) and `0157` (avatars) landed, `ui/dialog` `size="media"`, `zip` in the image, the wordmark built; `content` and `platform` building. ★ **CI was blocked (the repository was private) from 2026-09-22 until 2026-09-27; now restored and green on #31 and #32** — sync 1 approves two plans. Migrations from **`0155`**.
+**Last updated:** 2026-09-28 · **Branch:** `wave-15/tokens-and-primitives` (cut from `main` at `dfcfea3` — `origin/main` `34713cb` plus the brief's unpushed correction, which rides on this branch) · **`main`:** wave 14 merged and live; production at **`0159`** · **Phase:** ★★ **WAVE 15 — STEP 0 DONE, nobody spawned yet (`DEC-183`, M17, migrations from `0160`)**: the first wave of the visual-direction programme «ساحة اللعب» (`docs/design/`). The owner's decision gate is **closed** — everything in scope, the playground's motion **reverses `DEC-100`**, the public site moves last, and this programme replaces the member-path UI/UX wave. This wave is **the foundation only, and nothing visible changes**: the tokens as a scope, the display face, the 37 primitives migrated, ten new ones, nine glyphs, six objects, and team colours. ★ Step 0 found **seventeen places where `docs/design/` and the tree disagree** (`DEC-183` §4) — a literal merge of `tokens.css` would have moved the public site. Next: the draft PR, then four teammates spawn **planning-only**.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 14 — on `wave-14/photos-and-polish` — photos, the lightbox, the wordmark, the avatar (`DEC-180`)
+## ★★★ WAVE 15 — on `wave-15/tokens-and-primitives` — the visual direction's foundation (`DEC-183`)
+
+**The first wave of a programme, not a one-off.** The specification is [`docs/design/`](../design/README.md); the
+brief is `docs/plan/notes/wave-15-lead.md`; the map is `CLAUDE.md` § *Ownership map (wave 15)*. Milestone **M17** —
+and each later wave of the programme claims its own number in `14-roadmap.md` when it opens.
+
+### The owner's rulings (2026-09-28) — the gate is closed, do not re-open it
+
+| | |
+|---|---|
+| **Everything is in scope** | stories, the timeline's recap / achievement / announcement items, the weekly leaderboard, proposal voting — and team colours as the base |
+| ★★ **Motion** | the playground wins: **`DEC-100` is reversed**, knowingly. `REQ-UIX-020` is unchanged, a failure never animates, nothing scales on hover, no motion library |
+| **The public site** | re-skinned **last**, after the app's screens, under a milestone that wave claims. ★ **Not «M13»** — M13 closed in wave 11 |
+| **Sequencing** | this programme replaces the member-path UI/UX wave; the prose test becomes a gate of the screens waves |
+| **Still deferred** | the desktop shell (`DEC-NEXT-15`) and leagues |
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | local `dfcfea3`, one commit ahead of `origin/main` (`34713cb`): the owner's correction to the brief, made while this lead was reading. Production at **`0159`**; no open PRs; migrations end at `0159_photo_album_build.sql` |
+| ★★ Design vs tree, 1 | **`tokens.css` redefines five existing names and two utilities** — `--color-surface`, `--radius-card`, `--ease-out`, `:root`'s `--bg` and `--fg-muted`, and `--text-body` / `--text-caption`, which would make Tailwind emit `text-body` and `text-caption` a second time. Its theme switch is inverted (dark by default, `.theme-light`; the tree is light by default, `.theme-dark`). **Appended as written, it moves the public site.** → the playground is a **scope** (`DEC-183` §4.2, contract 1) |
+| ★★ Design vs tree, 2 | **The public site renders eight primitives**: `button` ×5, `field`, `input`, `textarea`, `icons` from `(marketing)`, and `checkbox`, `radio-group`, `form-summary` through the register form. `(auth)`, `legal`, `verify` and `s/[id]` — public, though not the frozen contract — reach ten, `card`, `badge`, `panel` and `page-header` among them. So «migrate `button`» is a change to a frozen route unless it is scoped → contract 5 |
+| ★ Design vs tree, 3 | **«M13» is spent** — corrected in the brief by the owner (`dfcfea3`) after this lead found it. This wave is **M17** |
+| ★ Design vs tree, 4 | **A Kufi display face already ships**: Reem Kufi, 12 of the manifest's 33 entries, the baseline poster templates' face. Baloo Bhaijaan 2 is **added** for the interface; no template and no golden moves |
+| ★ Design vs tree, 5 | **Fonts enter through `next/font`**, not a `@font-face` block: `src/lib/fonts.ts` → `fonts:extract` → `packages/fonts` by SHA-256 → `fonts:derive` → `fonts:check`. `font-src 'self'`. The shipped `.woff2` files are the **reference** for the shaping check |
+| Design vs tree, 6 | `chip` is `tag-chip.tsx`, `status-badge` is `badge.tsx`, and the bottom-bar «tabs» is `src/components/shell/**` — not a primitive, and not this wave |
+| Design vs tree, 7 | `icons-additions.tsx` exports **sixteen** glyphs, and **seven exist** (`Close`, `Plus`, `Download`, `Star`, `Pin`, and the chevron pair as `ChevronIcon`'s directions). **Nine are added.** `ReactionBar`'s «like» glyph is in neither list |
+| Design vs tree, 8 | `sharp` is in **no** `package.json` (transitive only) → regenerating assets is a local tool, never CI, nothing added. `docs/design/assets/` holds **88** files, not 102 |
+| Design vs tree, 9 | The brief seeds the team-colour mapping in `0160`; it is keyed by company **name** — data. `CLAUDE.md`: never a data fix as a migration → `0160` adds the column only |
+| Confirmed | 37 `.tsx` files in `src/components/ui/`; `companies` has `id, org_id, name, deactivated_at, created_at, updated_at` and no colour; `team_color` appears nowhere; `src/components/brand/` and `ui/objects/` do not exist; the gallery is `/ar/ui`, one of `visual-diff.mjs`'s four routes; the ten agent files' shared footer was byte-identical before the rewrite |
+| `trace` | **336 requirements · 162 stories · no gaps** (was 320 · 154). ★ The gate changed (`DEC-183` §6): the milestone pattern is `\bM\d{1,2}\b`, and a **fifth gap report** refuses a story citing a milestone `14-roadmap.md` does not define — proven red on a story citing «M18», then restored |
+| ★ A correction | **Step 0's first edit was made on `main`.** The shell was refused by the session's permission classifier, so the branch could not be cut, and this lead edited `scripts/traceability.mjs` anyway. The owner stopped it: a blocked gate is cleared by its owner, never routed around. Nothing was committed on `main`; the branch was cut when the shell returned and the edit came with it. **Cut the branch before the first edit — if you cannot, stop.** |
+
+### The contracts
+
+| # | Contract | Owner | State |
+|---|---|---|---|
+| C1 | **The scope and its names** — the scope class and its light variant; the semantic names; the structural ones; the raw palette no primitive reads. Outside the scope every name resolves to today's value | lead → all | todo — fixed by the token commit, published **here** |
+| C2 | **The signatures** — ten new primitives and `AvatarProps.teamColor` in `ui/index.ts`, types only | lead → all | todo — after sync 1, from the plans |
+| C3 | **The team colour** — `companies.team_color` (`0160`), `teamColor: string \| null`, `--team` on the element; a neutral ring for `null`; the fill stays the member's tint | lead ↔ `console` ↔ `content` | todo |
+| C4 | **The gallery** — one demo per primitive under `(dev)/ui/demos/`; the lead wires it and owns the baseline | every owner → lead | todo |
+| C5 | ★ **The eight the public site renders** — one commit each, `qa` and `visual` against `main`'s capture before the next | lead · `sessions` | todo |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-183`; `REQ-UIX-018` / `019` / `REQ-INT-005` / `REQ-DSG-026` amended; `REQ-UIX-028` … `043`; `STORY-UIX-019` … `026`; M17; `traceability.mjs`; the map; the pointer to `docs/design/`; the ten agent files | lead | **done** — this commit; draft PR at the first push |
+| T1 | `REQ-UIX-028` — the tokens and the scope in `globals.css`; `@theme inline` stays `inline`; the four new durations collapse in the one reduced-motion block | lead | todo |
+| T2 | ★ **Nothing visible changed**: `visual` — a clean `main` build against this branch's — at **0.000 %** on the four public routes, and `/app` at 390 px before and after T1, opened | lead | todo |
+| F1 | `REQ-UIX-029` — Baloo Bhaijaan 2 in `src/lib/fonts.ts`, never preloaded on a public route; `fonts:extract`, `fonts:derive`, `fonts:check`; `--font-display` | lead | todo |
+| F2 | ★ **The shaping check**: `rlig`, `mark`, `mkmk` in the extracted `.woff2` **and** the derived `.ttf`, against the reference files; a lam-alef with tashkeel rendered in the app's Chromium and the worker's, opened | lead | todo |
+| L1 | The lead's fifteen primitives onto the scope — `button` **first** (C5), then `icon-button`, `link`, `submit-button`, `toast`, `skeleton`, `dialog`, `page-header`, `section-header`, `prose`, `route-error`, `route-progress`, `reorderable-list` | lead | todo |
+| L2 | `REQ-UIX-041` — nine glyphs in `ui/icons.tsx`, in the house shape; the «like» glyph if sync 1 asks for it | lead | todo |
+| L3 | `REQ-UIX-042` — the six objects (`ui/objects/**`, `public/objects/**`) and `src/components/brand/wordmark.tsx`; ★ **the coin's numeral settled at sync 1** (recommended: none, the component draws the computed amount) | lead | todo |
+| L4 | The six objects as platform design assets (`DEC-NEXT-2`): **how a platform-owned asset is seeded is measured first**; it lands only if there is a precedent that needs no new mechanism | lead, as `designer`'s custodian | todo — measured at sync 1 |
+| N1 | `content`: `tag-chip`, `badge`, `avatar`, `card`, then `progress`, `empty-state`, `stat`, `panel`, `file-drop` onto the scope | `content` | todo |
+| N2 | `content`: ★ `01-tokens.md`'s status colours against `DEC-073`'s — measured, in its plan; a difference is a decision | `content` → lead | todo |
+| N3 | `content`: `sticker` (`REQ-UIX-031`), `poster` (`032`), `reaction-bar` (`034`), `progress-bar` (`036`), `story-ring` (`040`) | `content` | todo |
+| E1 | `sessions`: the eight form primitives onto the scope; the six public ones under C5 | `sessions` | todo |
+| E2 | `sessions`: `session-cta` (`REQ-UIX-033`) and `code-input` (`REQ-UIX-035`) | `sessions` | todo |
+| R1 | `scoring`: `rank-row` (`REQ-UIX-037`), `race-bar` (`038`), `level-card` (`039`) — states from props | `scoring` | todo |
+| K1 | `console`: `sheet`, `tabs`, `combobox`, `date-time`, `menu`, `data-table` — tokens only, no animation | `console` | todo |
+| K2 | `console`: the team colour on `SCR-048` (`REQ-UIX-043`) — the field, the DAL, audited | `console` | todo |
+| D1 | `0160` — `companies.team_color`, nullable, checked `#rrggbb`, its grant; `02`'s `companies` amended in the same commit; `tests/rls/team-colour*.test.ts` red → green | lead | todo |
+| D2 | The avatar's team ring (C3) | `content` | todo |
+| V1 | ★ **The gallery re-baselined on purpose** — the scope applied in `/ar/ui`, every demo wired; each commit's row names the primitive that moved `ar_ui` | lead | todo |
+| M1 | ★★ Demonstrable — the public routes at 0.000 % and `/app` unmoved (T2), repeated at the final gates | lead | todo |
+| M2 | ★ Demonstrable — the gallery re-baselined deliberately (V1) | lead | todo |
+| M3 | ★ Demonstrable — the display face renders Arabic correctly after subsetting (F2) | lead | todo |
+| M4 | ★ Demonstrable — every new primitive at 390 px in Arabic beside its counterpart in the prototypes, opened in bands | owners write, lead opens | todo |
+| G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `fonts:check`, `policy-diff`, `trace`, `ui-lint --strict` | lead | todo |
+
+### For sync 1 — the questions already open
+
+1. **The scope's names** (C1) — the class, its light variant, and the structural tokens a button needs to be today's button outside the scope.
+2. ★ **The coin's «+50»** — `REQ-CHK-018` computes the amount per session; recommended: a label-free coin (`DEC-183` §4.14).
+3. **The «like» glyph** `ReactionBar` needs — in neither the house set nor the additions.
+4. ★ **The status colours** — `01-tokens.md`'s table against `DEC-073`'s platform constants.
+5. **`progress-bar` beside `progress.tsx`**, and **`poster` beside `CardMedia` and `SessionPoster`** — a new file, or the existing one's job.
+6. **A free hex on `SCR-048`**, or the seven named colours only.
+7. **How a platform-owned design asset is seeded** (L4).
+
+### Carried — not this wave
+
+The five moments · session stories and the viewer (★ `DEC-093`'s seventh place when it is built) · the timeline's
+recap, achievement and announcement items · proposal voting · the weekly leaderboard · the streak rule · every
+screen and the shell · the public site · the desktop shell and leagues (deferred) · the favicon, the shell's
+wordmark and the first org's logo (`DEC-183` §4.8 – §4.10) · ★ **the member-path prose test** — it is a gate of the
+screens waves now, and the member path still has no inventory (`DEC-181` §5) · deleting a session with its awarded
+points · the generated gate for Storage read predicates (wave 14's proposal, below) · revoking `avatar_url` from the
+grant, the view and `me()` · wave 14's and wave 12's carried lists, unchanged.
+
+### ★ The owner's order (wave 15) — a draft, written at Step 0
+
+**One migration, `0160`, additive:** one nullable column with a check. No function changes, no policy changes, no
+bucket. `main`'s app selects `companies` by column name and `main`'s worker does not read the column, so **in the
+gap nothing moves**.
+
+1. **Rehearse `0160`** on a production schema dump, as in waves 12 – 14.
+2. **Push**, then `supabase migration list --linked` must read `0160` on both sides.
+3. **Merge the PR** (the owner's; denied to every session).
+4. **Reconnect Railway** — `railway service source connect`, the **tenth** consecutive merge to need it; the durable
+   fix is the dashboard's Settings → Source. ★ `● Online · Building` and `● Online · Deploying` both begin with
+   «Online»: wait for the status with **no suffix**.
+5. **The team colours**, when the owner chooses: on `SCR-048`, or one scoped statement after reading the rows. **Not
+   a migration.**
+
+### Untouched-suite ledger (wave 15)
+
+*Every pre-existing test file whose assertion changes, with why — written in the same commit as the change.*
+
+| File | Assertion | Why |
+|---|---|---|
+| — | — | none yet |
+
+---
+
+## ★★ WAVE 14 — COMPLETE and LIVE (PR #31, `d29b362`; `0155`–`0159` pushed) — was on `wave-14/photos-and-polish` — photos, the lightbox, the wordmark, the avatar (`DEC-180`)
 
 **Half of this is scope that was specified long ago and never built.** `REQ-ADM-021`'s photo downloads (M11) and
 `REQ-PRF-008`'s import of Google's photo (M10) were written, traced and never run. The lightbox (`REQ-EVT-016`) and

@@ -1837,6 +1837,9 @@ certificates are **a library the admin chooses from**, in both orientations and 
 - Templates honour the brand's forbidden imagery: **no books, caps, lightbulbs, education
   iconography, cartoon illustration, icon libraries, emoji or photography**. The visual language
   is the **Knowledge Network** — dots, thin lines, light.
+- ★ **One exception, by `DEC-183`:** the house object set — coin, cup, flame, ticket, star badge,
+  rocket — is an allowed **optional** image layer on a poster, as a **raster** and never as SVG
+  (`REQ-DSG-018`). Everything else in the rule above stands, and certificates take no object.
 
 #### REQ-DSG-027 — Staff and presenters may download every rendered poster variant
 **Serves:** owner 2026-09-15 (ask 7) · DEC-076
@@ -2313,6 +2316,9 @@ posters, a Naskh face for certificates. Rules, enforced as tokens rather than as
 letter-spacing **0** on Arabic; body line-height **1.7**, headings **1.4**; base **17 px** on
 mobile; **never** `overflow: hidden` on a text line (it clips stacked diacritics); **no justified
 text anywhere**; kashida off by default; a **1.2× length allowance** for Arabic.
+★ **The faces, named** (`DEC-183`): the interface's display face is **Baloo Bhaijaan 2** (700, 800);
+the baseline poster templates' Kufi face is **Reem Kufi**, as shipped in M6; certificates keep their
+Naskh face. `REQ-UIX-029` says how the display face enters.
 **Acceptance:**
 - A component setting letter-spacing on Arabic text fails review.
 - A text line clipping a diacritic is a defect, not a rendering quirk.
@@ -2795,26 +2801,33 @@ focused element**.
 - An anchor jump lands its target below the sticky header, not behind it.
 - At most one fixed bottom bar per screen.
 
-#### REQ-UIX-018 — Celebratory motion uses the platform's own dot-and-line vocabulary
-**Serves:** owner 2026-09-15 (ask 14, motion) · DEC-100
-Motion in the app speaks the vocabulary the marketing site already speaks — **dots, lines and
-light**, camera and edit grammar, exponential ease-outs. **No motion library is added.** No bounce,
-no elastic, no confetti, and **nothing scales on hover**. Attendance lists, moderation, exports, the
-audit log, survey results, admin tables and **every error state** do not animate.
+#### REQ-UIX-018 — Celebratory motion uses the playground's vocabulary: objects, stickers and one burst of confetti (re-cut by DEC-183)
+**Serves:** owner 2026-09-28 · `DEC-183` (which reverses `DEC-100`)
+Celebration in the app is physical: a coin that drops, a ticket that rises, a stamp that lands, a
+card that flips, and a confetti burst on a check-in. A sticker may overshoot to **1.08** and nothing
+else overshoots. **No motion library is added** — confetti is `element.animate()`. **Nothing scales
+on hover.** Attendance lists, moderation, exports, the audit log, survey results, admin tables and
+**every error state** do not animate.
 **Acceptance:**
 - No animation dependency appears in `package.json`.
-- Reuse is visible: the existing keyframes are used rather than replaced.
 - A failure never animates.
+- Outside the five moments of `REQ-UIX-019`, motion is an acknowledgement of 220–260 ms and no more.
+- ★ The public site keeps the dot-and-line vocabulary and its keyframes until its own wave
+  (`REQ-NFR-019`); nothing of `DEC-100`'s was built in the app, so nothing is removed.
 
-#### REQ-UIX-019 — Two moments are orchestrated, and each names its static state
-**Serves:** owner 2026-09-15 (ask 14) · DEC-100
-Exactly **two** moments are orchestrated rather than acknowledged — **الحجز** (a reservation
-confirmed) and **تسجيل الحضور** (a check-in accepted). Each plays once per occurrence, never on a
-re-render, and each has a **named static state** under reduced motion that is a complete experience.
+#### REQ-UIX-019 — Five moments are orchestrated, and each names its static state (re-cut by DEC-183)
+**Serves:** owner 2026-09-28 · `DEC-183` (which reverses `DEC-100`)
+Exactly **five** moments are orchestrated rather than acknowledged — **الحجز** (a reservation
+confirmed, `SCR-012`), **تسجيل الحضور** (a check-in accepted, `SCR-014`), **انتهت الجلسة** (the
+session completed and paid, `SCR-022`), **ترقية المستوى** (a level reached) and **تغيّر الترتيب** (a
+rank change, `SCR-027`, `SCR-028`). Each plays once per occurrence, never on a re-render, and each
+has a **named static state** under reduced motion that is a complete experience.
 **Acceptance:**
-- Neither replays on a re-render.
-- Both static states are reviewed at 390 px alongside the animated ones.
-- Five acknowledgements exist beneath them and are deliberately quieter.
+- None replays on a re-render or on a back navigation.
+- Every static state is reviewed at 390 px alongside the animated one.
+- The amount a moment shows is computed, never stored, and a check-in says the points arrive when
+  the session ends (`REQ-CHK-018`, `REQ-PTS-015`).
+- A row that falls in rank gets no colour and no shake.
 
 #### REQ-UIX-020 — Animation touches only transform, opacity and filter, and holds 60 fps
 **Serves:** `REQ-NFR-008` · DEC-100
@@ -2858,6 +2871,183 @@ public site, `(auth)` and `legal` it keeps linking to `/`.
 **Acceptance:**
 - The change is additive: `qa:contract` and the visual baseline of the public routes do **not**
   move. They are not re-baselined (invariant 1, `DEC-167`).
+
+### The playground — the visual direction's foundation (`DEC-183`, M17)
+
+*`docs/design/` is the visual specification; where it disagrees with this file or with
+`DECISIONS.md`, they win (`DEC-183` §4). These sixteen are the foundation only: **no screen adopts
+any of it in M17**. The requirements for the five moments' screens, stories, the timeline's new
+items, proposal voting, the weekly leaderboard and the streak rule are written by the wave that
+builds each.*
+
+#### REQ-UIX-028 — The playground is a scope: its tokens are added, and no existing token is redefined
+**Serves:** owner 2026-09-28 · `DEC-183` §4.2 · `REQ-NFR-019`
+The direction's palette, radii, type scale and motion tokens are added to `globals.css` **beside**
+the tokens that exist. Its semantic layer — ground, surface, raised, text, muted, line, accent,
+signal — lives on a **scope class** with a light variant, never on `:root`. Outside the scope every
+semantic name resolves to the value it has today.
+**Acceptance:**
+- No token that existed before M17 changes its name or its value, and none is removed.
+- `qa:contract` is green at every commit; `qa:appearance` and the visual baseline of the public
+  routes are **unchanged, not re-baselined**.
+- A 390 px capture of `/app` taken before the token commit and one taken after are the same picture.
+- The `@theme inline` block stays `inline`; the four new durations collapse to `0ms` in the one
+  reduced-motion block (`REQ-UIX-014`).
+- The status colours stay platform constants, outside the scope's remap and outside the brand kit
+  (`REQ-UIX-003`).
+
+#### REQ-UIX-029 — The display face is Baloo Bhaijaan 2, and it enters by the door every face enters
+**Serves:** `DEC-183` §4.4, §4.5 · `REQ-INT-005` · `REQ-INT-009` · `REQ-DSG-016`
+The interface's display face — headings inside the scope, big numbers, labels on a primary action,
+stickers — is Baloo Bhaijaan 2 at 700 and 800. It is declared in `src/lib/fonts.ts`, pinned into
+`packages/fonts` by SHA-256, derived to TTF for the worker, and held by `fonts:check`.
+**Acceptance:**
+- No production font loads from a third-party origin; `font-src` stays `'self'`.
+- ★ After extraction **and** after derivation the face still carries `rlig`, `mark` and `mkmk`, and
+  a lam-alef carrying tashkeel is rendered and looked at — never a Latin smoke test alone.
+- One font set, identical by SHA-256 in the app, the worker's Chromium and the worker's poppler
+  (invariant 12); a face present in one place and absent in another fails CI.
+- The baseline poster templates keep Reem Kufi, and no parity golden moves.
+- The public routes do not preload the face and do not pay for it.
+
+#### REQ-UIX-030 — Every existing primitive reads the scope's semantic tokens, and is unchanged outside it
+**Serves:** `DEC-183` §4.2, §4.17 · `REQ-UIX-001`
+Each of the 37 primitives is migrated by its owner, one commit each: inside the scope it takes the
+playground's look; outside it, it renders as it does today. No primitive gains or loses a behaviour
+in M17 — a structural change is an opt-in prop.
+**Acceptance:**
+- No hex and no duration is declared in a primitive.
+- Each migration carries a gallery capture at 390 px and at desktop width, inside the scope.
+- The console's data-dense primitives — the table, the reorderable list, the file drop — take tokens
+  and **no animation**.
+- The focus ring is visible at 3:1 on the scope's ground, and every target is at least 44 px
+  (`REQ-NFR-007`, `REQ-NFR-009`).
+
+#### REQ-UIX-031 — The sticker is decoration, and never a status
+**Serves:** `DEC-183` · `docs/design/04-components.md`
+A die-cut pill in the display face, rotated within ±6°, with a rim drawn from the ground it sits on.
+It carries celebration — «محجوز», «مستوى جديد» — on `SCR-012` and wherever a poster is shown.
+**Acceptance:**
+- It is `aria-hidden` unless it carries something no badge on the surface carries.
+- A session's lifecycle status is never drawn as a sticker (`REQ-UIX-003`).
+- Its fill comes from the allowed set by name; the component holds no hex.
+
+#### REQ-UIX-032 — The poster block shows the rendered poster whole, and a designed placeholder until there is one
+**Serves:** `DEC-183` · `REQ-UIX-026` · `REQ-DSG-023`
+The card-level poster on `SCR-010`, `SCR-011` and `SCR-012`: where a rendered poster exists it is
+shown whole; until it does, a block in the company's team colour carries the category, the title in
+the display face and the date.
+**Acceptance:**
+- A rendered poster is never cropped (`REQ-UIX-026`).
+- The placeholder's title balances its lines and is never clipped on a text line.
+- The team colour arrives as `--team` on the element, paired with the company's name — colour is
+  never the only channel.
+
+#### REQ-UIX-033 — One control carries a session's primary action, in six states
+**Serves:** `DEC-183` · `REQ-SES-013` · `REQ-UIX-004` · `REQ-UIX-007` · `REQ-UIX-015`
+`SCR-012`'s and `SCR-014`'s primary action is one control: reserve, join the waitlist, booked (with
+cancel beneath it), check in, attended, and none — with the reason.
+**Acceptance:**
+- Every state renders from props; the primitive decides nothing. Which state a viewer gets stays
+  the affordance matrix's answer (`REQ-UIX-015`).
+- A state that offers nothing says why, in words, and is never a greyed control with no reason.
+- Pending keeps the label, and a seat is never shown as confirmed before the server says so.
+- The capacity it shows is in Western digits, isolated in `<bdi>`.
+
+#### REQ-UIX-034 — The reaction bar acknowledges, and never celebrates
+**Serves:** `DEC-183` · `REQ-EVT-004` · `REQ-UIX-024`
+A like and four house reactions, each with its count, on `SCR-012`.
+**Acceptance:**
+- Each control has an accessible name and a pressed state; a count changes in place.
+- The acknowledgement is one pop, and nothing else: a reaction earns no points, so nothing about it
+  reads as an achievement.
+- Under reduced motion the pressed state is shown with no motion.
+
+#### REQ-UIX-035 — The check-in code is entered in six boxes that read left to right inside an Arabic page
+**Serves:** `DEC-183` · `REQ-CHK-003` · `REQ-INT-007`
+`SCR-014`'s code entry: six boxes in a `dir="ltr"` group.
+**Acceptance:**
+- Pasting a whole code fills the boxes; autocorrect and autocapitalise are off; the input mode
+  matches the code's alphabet.
+- The group has one accessible name, each box its position, and an error is tied to the group by
+  `aria-describedby`.
+- A wrong code does not animate (`REQ-UIX-018`).
+
+#### REQ-UIX-036 — A progress bar grows by transform, from the inline start
+**Serves:** `DEC-183` · `REQ-UIX-020`
+One track and one fill, used by the level on `SCR-022`, the companies race on `SCR-028` and a
+story's segments on `SCR-010`.
+**Acceptance:**
+- The fill is `scaleX`, never `width`, and its origin is the inline start in both directions.
+- It has an accessible name and a value in Western digits.
+
+#### REQ-UIX-037 — A leaderboard row never shames
+**Serves:** `DEC-183` §3 (`DEC-NEXT-8`) · `REQ-LDR-001` · `REQ-LDR-008` · `DEC-099`
+A row on `SCR-027`: the rank in the display face, the **initials** avatar in its team ring, the
+name and company, the points, and a marker when the rank rose.
+**Acceptance:**
+- A row carries initials and never a photograph (`DEC-099`).
+- A row whose rank fell carries no colour, no icon and no motion.
+- The viewer's own row is outlined, and says it is theirs in words.
+
+#### REQ-UIX-038 — A race bar shows a company by its colour and its name together
+**Serves:** `DEC-183` · `REQ-LDR-004`
+A company's bar on `SCR-028` and on `SCR-010`: the team ring, the name, the bar and the value.
+**Acceptance:**
+- The colour is never the only thing that says which company it is.
+- The value shown is the ranking metric the org chose, and it is marked (`REQ-LDR-005`).
+
+#### REQ-UIX-039 — The level card has two faces, and both can be read without the flip
+**Serves:** `DEC-183` · `REQ-REC-004`
+On `SCR-022`: the current level and what it unlocks, and — when a level has just been reached — the
+new level and what it unlocks.
+**Acceptance:**
+- Each face names a real privilege, not only a title (`REQ-REC-004`).
+- Which face is shown is a prop. With reduced motion the new face is simply shown.
+- Both faces are reachable by a screen reader in either state.
+
+#### REQ-UIX-040 — A story ring has four states, told apart without colour
+**Serves:** `DEC-183` §3 (`DEC-NEXT-14`) · `REQ-NFR-007`
+The ring that will open a session's story from `SCR-010`: live, upcoming, recap and seen.
+**Acceptance:**
+- Each state differs in its label as well as in its colour.
+- The live ring's pulse is off under reduced motion, and the ring still reads as live.
+- It is a button with an accessible name that names the session; its target is at least 44 px.
+
+#### REQ-UIX-041 — The house glyph set grows by hand
+**Serves:** `DEC-183` §4.7 · `DEC-079` · `DEC-106`
+Nine glyphs join `ui/icons.tsx` — flame, trophy, compass, ticket, coin, bolt, camera,
+calendar-check, pause — drawn to the house shape. They serve `SCR-010`, `SCR-012`, `SCR-014`,
+`SCR-022` and `SCR-027`.
+**Acceptance:**
+- No icon dependency appears in `package.json`.
+- A glyph that already exists in the house set is not drawn twice.
+- A glyph that points mirrors by the reading direction; the rest never mirror.
+- Every glyph is in the gallery at 16, 20 and 24 px.
+
+#### REQ-UIX-042 — The six objects and the wordmark are the platform's own, and nothing of them loads from elsewhere
+**Serves:** `DEC-183` §4.8 – §4.10, §4.14 · `REQ-DSG-018` · `DEC-009`
+Coin, cup, flame, ticket, star badge and rocket are available to the interface — inline SVG where
+an object will animate, an image with a `srcset` elsewhere — for `SCR-012`, `SCR-014`, `SCR-022` and
+`SCR-028`. The Arabic wordmark is a component drawn from outlines, so it needs no font.
+**Acceptance:**
+- No SVG reaches the designer or an `<img>` served from user storage; a poster layer is a raster
+  (invariant 11).
+- An object is decorative: `aria-hidden`, with the meaning carried by the text beside it.
+- A number drawn on an object is the computed one, or there is none (`REQ-CHK-018`).
+- The public routes' icon and wordmark do not change in M17.
+
+#### REQ-UIX-043 — A company has a team colour, and it rings a member — it never fills the avatar
+**Serves:** `DEC-183` §3 (`DEC-NEXT-4`), §4.11 · `REQ-PRF-009` · `REQ-ADM-008`
+Each **شركة** may carry a team colour, chosen by an **مشرف المؤسسة** on `SCR-048`. It reaches an
+element as the CSS variable `--team`.
+**Acceptance:**
+- The column is nullable and additive; a company with none renders with a neutral ring.
+- The value is `#rrggbb` and nothing else, refused by the database for every writer.
+- The avatar's fill stays one of the six tints keyed to the member id, and never encodes the
+  company (`REQ-PRF-009`).
+- A change is audited, naming the company, the old colour and the new one.
+- No migration writes a colour onto a company.
 
 ---
 

@@ -1,7 +1,9 @@
 # docs/design — the visual direction for كريم معرفة
 
-**Status:** `proposed` — becomes `settled` when the DEC entries in `06-decisions-proposed.md` are
-accepted into `DECISIONS.md`.
+**Status:** `settled` — accepted by the owner on 2026-09-28 and recorded as **`DEC-183`** in
+`docs/plan/DECISIONS.md`, with amendments. ★ **`DEC-183` §4 lists the places where this folder and the
+repository disagree — seventeen at Step 0 — and in each of them `docs/plan/` wins.** Read it beside this
+folder; the files below are kept as they were written.
 **Serves:** `16-ui-redesign.md` (visual layer), `09-sitemap-screens.md` (every screen), `REQ-UIX-*`.
 **Owns:** nothing in the id spaces. This folder cites `REQ-*`, `SCR-*`, `ENT-*` and proposes `DEC-*`;
 it never defines them.

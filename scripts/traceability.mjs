@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Regenerates docs/plan/TRACEABILITY.md between markers and fails on four gap
+// Regenerates docs/plan/TRACEABILITY.md between markers and fails on five gap
 // reports. A CI gate on docs/plan/** is the only mechanism in the plan's
 // cross-session protocol that actually holds; everything else is etiquette.
 //
@@ -11,6 +11,7 @@
 //   2. a requirement with neither a screen nor a job
 //   3. an artifact citing a requirement that does not exist
 //   4. a requirement with no milestone
+//   5. a story citing a milestone `14-roadmap.md` does not define
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -29,8 +30,14 @@ const RE = {
   job: /\bJOB-[a-z_]+\b/g,
   msg: /\bMSG-[a-z_]+\b/g,
   story: /^####\s+(STORY-[A-Z]{3}-\d{3})\s+—/gm,
-  // Longest alternative first, or `M13` matches as `M1` and drops the 3 (DEC-102).
-  milestone: /\bM(?:1[0-6]|[0-9])\b/g,  // M14: DEC-172, new scope after the plan · M15: DEC-176 · M16: DEC-180
+  // A digit class, not an alternation. `/M(?:1[0-6]|[0-9])/` was order-sensitive — `M13` could
+  // match as `M1` and drop the 3 (DEC-102) — and it had to be edited for every milestone after
+  // M13 (DEC-172, DEC-176, DEC-180). `\d{1,2}` takes `M13` whole and names no milestone, so a new
+  // wave claims its number in `14-roadmap.md` and nowhere else (DEC-183).
+  milestone: /\bM\d{1,2}\b/g,
+  // What the enumeration gave by accident, kept on purpose: a story may cite only a milestone
+  // the roadmap defines under its own `## M<n> —` heading (`15` §24, invariant 3).
+  milestoneDef: /^##\s+(M\d{1,2})\s+—/gm,
 }
 
 // TRACEABILITY.md is excluded: it is generated FROM this analysis, so feeding
@@ -183,15 +190,29 @@ const CROSS_CUTTING = {
   'REQ-UIX-016': 'every route segment, plus the root error page',
   'REQ-UIX-017': 'the shell, and every screen rendered under it',
   'REQ-UIX-020': 'every animation in the product',
+  // Added with the visual direction's foundation (DEC-183). The other thirteen of M17 name the
+  // screens that will consume them; these three are properties of every token and every primitive.
+  'REQ-UIX-028': 'every token every primitive reads, on every screen',
+  'REQ-UIX-029': 'every heading and every big number inside the scope',
+  'REQ-UIX-030': 'all 37 primitives, wherever they render',
 }
 
 // ── gap reports ───────────────────────────────────────────────────────────
-const gaps = { noStory: [], noScreenOrJob: [], brokenCitations: [], noMilestone: [] }
+const gaps = { noStory: [], noScreenOrJob: [], brokenCitations: [], noMilestone: [], unknownMilestone: [] }
 
 for (const r of definedReqs) {
   if (!row[r].stories.length) gaps.noStory.push(r)
   if (!row[r].screens.length && !row[r].jobs.length && !CROSS_CUTTING[r]) gaps.noScreenOrJob.push(r)
   if (!row[r].milestones.length) gaps.noMilestone.push(r)
+}
+
+const definedMilestones = new Set(
+  [...(files['14-roadmap.md'] ?? '').matchAll(RE.milestoneDef)].map((m) => m[1])
+)
+for (const s of stories) {
+  for (const m of s.milestones) {
+    if (!definedMilestones.has(m)) gaps.unknownMilestone.push(`${s.id}: ${m}`)
+  }
 }
 
 const known = new Set(definedReqs)
@@ -274,6 +295,7 @@ failed += report('requirements with no story', gaps.noStory)
 failed += report('requirements with neither a screen nor a job', gaps.noScreenOrJob)
 failed += report('citations to artifacts that do not exist', uniq(gaps.brokenCitations))
 failed += report('requirements with no milestone', gaps.noMilestone)
+failed += report('stories citing a milestone the roadmap does not define', uniq(gaps.unknownMilestone))
 
 if (failed) {
   console.error(`\n${definedReqs.length} requirements · ${stories.length} stories · FAILED\n`)
