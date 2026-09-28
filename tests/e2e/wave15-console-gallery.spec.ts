@@ -125,15 +125,28 @@ test.beforeEach(async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
 });
 
+/** Press `trigger` until `popover` is visible — found in CI (`f5e0664f`): a
+ *  cold page's picker button is in the HTML before its handler attaches, so
+ *  the first press can land on nothing. The dark ground, being first, is
+ *  the one that meets a cold page; it never reproduced on a warm local
+ *  machine. Checks BEFORE pressing, because a second press on a popover
+ *  that DID open closes it again — no fixed sleep, `toPass()` retries the
+ *  whole check-then-press instead. */
+async function openPopover(trigger: import("@playwright/test").Locator, popover: import("@playwright/test").Locator) {
+  await expect(async () => {
+    if (!(await popover.isVisible())) await trigger.click();
+    await expect(popover).toBeVisible({ timeout: 500 });
+  }).toPass({ timeout: 10_000 });
+}
+
 for (const ground of GROUNDS) {
   test(`the sheet's content is the scope's SURFACE, ${ground.name} ground`, async ({ page }) => {
     await gotoGallery(page);
     const demo = page.locator(demoOn("sheet", ground.scope));
     test.skip((await demo.count()) === 0, "sheet's demo is not wired into the gallery yet");
 
-    await demo.getByRole("button", { name: "ورقة سفلية" }).click();
     const sheet = page.locator(ground.scope).getByRole("dialog", { name: "تصفية النتائج" });
-    await expect(sheet).toBeVisible();
+    await openPopover(demo.getByRole("button", { name: "ورقة سفلية" }), sheet);
     const computed = await sheet.evaluate((el) => {
       const cs = getComputedStyle(el);
       return { background: cs.backgroundColor, color: cs.color };
@@ -170,9 +183,8 @@ for (const ground of GROUNDS) {
     const demo = page.locator(demoOn("menu", ground.scope));
     test.skip((await demo.count()) === 0, "menu's demo is not wired into the gallery yet");
 
-    await demo.getByRole("button", { name: "القائمة" }).click();
     const menu = page.locator(ground.scope).getByRole("menu");
-    await expect(menu).toBeVisible();
+    await openPopover(demo.getByRole("button", { name: "القائمة" }), menu);
     const computed = await menu.evaluate((el) => {
       const cs = getComputedStyle(el);
       return { background: cs.backgroundColor, color: cs.color };
@@ -188,9 +200,8 @@ for (const ground of GROUNDS) {
     const demo = page.locator(demoOn("combobox", ground.scope));
     test.skip((await demo.count()) === 0, "combobox's demo is not wired into the gallery yet");
 
-    await demo.getByRole("combobox").first().click();
     const listbox = page.locator(ground.scope).getByRole("listbox");
-    await expect(listbox).toBeVisible();
+    await openPopover(demo.getByRole("combobox").first(), listbox);
     const computed = await listbox.evaluate((el) => {
       const cs = getComputedStyle(el);
       return { background: cs.backgroundColor, color: cs.color };
@@ -206,9 +217,8 @@ for (const ground of GROUNDS) {
     const demo = page.locator(demoOn("date-time", ground.scope));
     test.skip((await demo.count()) === 0, "date-time's demo is not wired into the gallery yet");
 
-    await demo.getByRole("button").first().click();
     const popover = page.locator(ground.scope).getByRole("dialog");
-    await expect(popover).toBeVisible();
+    await openPopover(demo.getByRole("button").first(), popover);
     const computed = await popover.evaluate((el) => {
       const cs = getComputedStyle(el);
       return { background: cs.backgroundColor, color: cs.color };
