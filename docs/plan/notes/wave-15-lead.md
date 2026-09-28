@@ -24,7 +24,7 @@ HERE and the wave-14 block, `DECISIONS.md` **`DEC-100`** in full and `DEC-176` �
 |---|---|
 | **Everything is in scope** | stories, the timeline's recap/achievement/announcement items, the weekly leaderboard, proposal voting — **all four**, plus team colours as the base |
 | ★★ **Motion: the playground wins** | `DEC-NEXT-1` accepted. **This REVERSES `DEC-100`**, which the same owner approved on 2026-09-15 |
-| **Marketing** | `DEC-NEXT-5` **option A** — the public site is re-skinned to the playground **at M13**, not before |
+| **Marketing** | `DEC-NEXT-5` **option A** — the public site is re-skinned to the playground, **last**, after the app screens |
 | **Sequencing** | this programme **replaces** the pending member-path UI/UX wave; its prose test folds in as a gate (below) |
 
 ★ **Log all of it as `DEC-183` before anyone is spawned**, one entry that accepts the fifteen with the
@@ -117,6 +117,20 @@ layer.
    it down, and keep the «+50» master for the points empty state where the number is decorative.
    ★ The ticket's «محجوز» is a fixed word and is correctly baked.
 
+## ★ A correction to this brief, and to `docs/design/`
+
+★★ **«M13» is already spent.** `docs/design/` says the marketing re-skin happens «at M13» and an
+earlier version of this brief repeated it. **M13 closed in wave 11** — `14-roadmap.md` reads M13
+(wave 11), **M14** (wave 12), **M15** (wave 13), **M16** (wave 14), so **this wave opens M17** and
+the marketing re-skin gets its own number later still. The design folder was written against the
+roadmap as `16-ui-redesign.md` §15 originally sequenced it and did not notice wave 11 had closed it.
+**The principle survives and only the label is wrong:** the public site moves **last**, after the app
+screens, and `REQ-NFR-019`'s contract holds until it does.
+
+★ **Where `docs/design/` and `docs/plan/` disagree, `docs/plan/` wins and you say so in `DEC-183`.**
+This is the first such case; the second is `tokens.css`'s colliding token names. Expect more, list
+each one, and do not silently pick a side.
+
 ## STEP 0 — a gate, not a step
 
 `DEC-183`, the **wave-15 ownership map** into `CLAUDE.md` and **all ten `.claude/agents/*.md`**, the
@@ -156,8 +170,8 @@ push.
 ## ★★ Three gates that decide whether this wave is correct
 
 1. ★ **The frozen public routes do not move.** `qa:contract` green at every commit, `qa:appearance`
-   and `npm run visual` **unchanged — not re-baselined**. Marketing is re-skinned at **M13**
-   (`DEC-NEXT-5` A), not now. A token merge that moves the landing page is not additive and you have
+   and `npm run visual` **unchanged — not re-baselined**. Marketing is re-skinned in this
+   programme's **last** wave (`DEC-NEXT-5` A), not now. A token merge that moves the landing page is not additive and you have
    broken something. This is the criterion wave 14's wordmark row passed on and it works.
 2. ★★ **The `(dev)` gallery IS in the visual baseline, and ten new primitives WILL move it.**
    Wave 14 recorded `ar_ui` growing 6 px from one badge fix and deliberately did not re-baseline.
@@ -175,7 +189,7 @@ push.
 | then | **stories** — `story_views`, the `story` derivative, `dal/stories.ts` with its RLS cases, the ring row, the viewer |
 | then | the timeline's recap/achievement/announcement items (`feed_announcements`), proposal voting, the weekly leaderboard |
 | then | **the screens**, per `SCR-*`, M10 member first — and `07` §Wave 4 **waits for per-screen designs** the owner delivers as `docs/design/screens/<SCR-id>.md` |
-| M13 | the public site re-skinned (`DEC-NEXT-5` A) |
+| last | the public site re-skinned (`DEC-NEXT-5` A) — ★ **its own milestone, NOT M13** |
 
 ★ **The member-path prose test folds into the screens waves, not into this one.** The owner's
 standing measure: **can a member complete reserve → check in → rate → certificate with every
@@ -187,7 +201,7 @@ separate prose wave.
 ## Not this wave — name each in every agent file's never-touch list
 
 The five moments · stories · feed items · proposal voting · the weekly leaderboard · any screen
-redesign · **anything under `(marketing)/**`** (M13) · the desktop shell (`DEC-NEXT-15`, deferred) ·
+redesign · **anything under `(marketing)/**`** (the last wave of this programme) · the desktop shell (`DEC-NEXT-15`, deferred) ·
 leagues (deferred) · the certificate look, which keeps its formal Naskh families — **the playground
 stops at the certificate's edge** · the designer's document model and export pipeline · the
 storage-predicate gate carried from wave 14 (three hits, no test — it stays carried).
