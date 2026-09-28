@@ -438,10 +438,20 @@
 }
 
 /* The scope's ONE focus rule, so no primitive declares a ring of its own.
-   Unlayered, like the global rule further down, so it outranks a utility. */
+   Unlayered, like the global rule further down, so it outranks a utility.
+
+   ★ THAT IS ALSO A TRAP, AND `--focus-offset` IS THE WAY OUT OF IT. An unlayered
+   declaration beats a layered one whatever its specificity, and every utility is
+   in a layer — so `focus-visible:-outline-offset-2` on a card's link never
+   applies. Measured in a browser: the link computes `outline-offset: 2px`, the
+   ring's outer edge stands 4 px outside an article that is `overflow: hidden`,
+   and the ring is clipped whole. A control inside a clipping box sets the
+   VARIABLE on itself, which this rule reads; it never fights the rule.
+   Outside the scope the global rule has the same trap and is not changed this
+   wave: it is a visible repair on every screen with a card (STATUS, carried). */
 .theme-play :focus-visible {
   outline: var(--focus-width) solid var(--ring);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset, 2px);
 }
 
 /* --------------------------------- typography ---------------------------
