@@ -99,10 +99,47 @@ stories `STORY-UIX-027` … `032`.
 
 ### ★ The owner's order (wave 16)
 
-1. **Rehearse `0162` and `0163` on a production schema dump**, as for waves 12 – 15: each applies in one transaction with
-   `ON_ERROR_STOP`; the end state matches a fully migrated local database; ★ `anonymise_members()` is replaced with the
-   same signature and grants (`\df+` before and after) and deletes a member's `member_seen_marks` row; `main`'s app and
-   worker on the new schema do nothing different — nothing on `main` names the table or the two functions.
+1. ✅ **Rehearsed 2026-09-29 by the lead on the owner's production schema dump** (taken at `0161`; `public` +
+   `graphile_worker`, 89 tables, **no data rows** — zero `COPY`/`INSERT`).
+   - **Setup.** A throwaway database, `rehearse16`, in the local cluster, owned by `postgres`, over the local
+     `extensions`, `auth`, `storage`, `realtime` and `vault` schemas (loaded as `supabase_admin`). The 16 `storage`/
+     `realtime` policies that name `public` objects were re-applied once the dump had loaded. Copied, because a
+     schema-only dump drops them and production has them: 8 bucket rows, `graphile_worker.migrations`' 20,
+     `retention_periods`' 7.
+   - **Loading the dump: one error, platform-only** — the `supabase_realtime` publication, as in waves 12 – 15.
+   - **Migrations:** `0162` and `0163` **each applied in one transaction with `ON_ERROR_STOP`, as `postgres` — both ok.**
+   - **End state against the fully migrated local database:**
+
+     | Compared | local | rehearsed |
+     |---|---|---|
+     | Public function bodies, by hash | 307 | 308 |
+     | Policies in `public`, `storage`, `realtime` | 190 | 190, identical |
+     | Triggers in `public`, `storage`, `auth`, `realtime` | 114 | 114, identical |
+     | Client-role table grants (`public`, `storage`, `graphile_worker`) | 261 | 261, identical |
+     | Client-role column grants | 1,421 | 1,421, identical |
+     | Function execute grants (three client roles and `PUBLIC`) | 347 | 348 |
+     | Buckets | 8 | 8, identical |
+
+     ★ **The only difference is production-only and expected:** `rls_auto_enable()`, Supabase's own event-trigger
+     function, in no migration — one body and its default `PUBLIC` execute grant, as in wave 15. ★ `anonymise_members()`
+     **hashes identically** to the local one: `0162`'s replacement landed exactly.
+   - ★ **`member_seen_marks` proved on the rehearsed schema** (`RLS_DATABASE_URL` → `rehearse16`; 151 of 152 across
+     `moment-seen-marks`, `scoring-seen`, `isolation`, `definer-exposure`, `retention`, `team-colour*`, `tenancy`):
+     a member reads and writes only their own mark; **another member, the admin, the moderator and another org read
+     nothing** and update nothing; a mark cannot name another org's company or level; nobody deletes one; no timestamp
+     column; `service_role` holds nothing; ★ **`anonymise_members()` deletes the row** and keeps its summary's two keys.
+     The isolation sweep is generated over `pg_tables`, so `member_seen_marks` has its own case — «sees zero rows of
+     org B» ✓. The one red is `definer-exposure` listing `rls_auto_enable()`, the production-only difference above.
+   - ★ **The gap — push before merge — proved, not asserted.** On `origin/main` (`526b40ea`), `member_seen_marks`,
+     `mark_points_seen` and `mark_board_seen` appear in **zero** files of `src`, `worker`, `packages`, `supabase`,
+     `scripts` or `tests`. On the rehearsed schema the table has **no trigger** and **no dependent view**; the only
+     pre-existing function that names it is `anonymise_members()`. `main`'s nightly job runs exactly
+     `select public.anonymise_members() as summary` and reads `anonymised` and `after_days`: run on the rehearsed
+     schema in a rolled-back transaction, the summary's keys are exactly `after_days,anonymised`, and the table holds
+     **0 rows before and after** — the new line deletes from a table nothing writes in the gap. The two new functions
+     are granted to `authenticated` and nothing on `main` calls them. **In the gap, nothing writes it, nothing reads it,
+     and no trigger fires.**
+   - **Cleaned up:** the dump, `rehearse16` and the rehearsal's copies of the local schemas are deleted.
 2. **Push `0162` – `0163`** (`supabase db push`), then confirm `supabase migration list --linked` reads `0163` on both sides.
 3. **Merge PR #34** once CI has **concluded `success` on the head** (`DEC-192`) — read the run's conclusion, not a count of green jobs.
 4. **Reconnect Railway** (`railway service source connect`) — the eleventh time unless Settings → Source is set — and wait for a
