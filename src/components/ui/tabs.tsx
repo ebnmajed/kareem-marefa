@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Tabs as RadixTabs } from "radix-ui";
 import { Link } from "@/i18n/navigation";
 import { formatNumber } from "@/components/sessions/numerals";
@@ -30,6 +30,15 @@ import type { TabsProps } from "@/components/ui";
 // duplication in the accessibility tree, because Radix only ever mounts the
 // Content matching the current value and leaves the rest out of the DOM
 // entirely (no `forceMount`).
+//
+// ★ wave 16 (scoring's finding, DEC-197): «only ever mounts the Content
+// matching the current value» is not quite true — Radix's Presence keeps the
+// OUTGOING Content mounted for one commit, and with the same `children` in
+// every panel the new screen mounted first inside the outgoing, inactive
+// panel. Moment 5 lost its occurrence to that invisible copy, and every tabbed
+// screen mounted its content twice on a switch. So the children render in the
+// ACTIVE panel only; an inactive one renders nothing, and still exists for
+// `aria-controls`. `tests/components/ui/tabs-one-panel.test.tsx`.
 //
 // `count` is a raw number, printed in Western digits (`DEC-124`).
 //
@@ -91,6 +100,9 @@ export function Tabs({
   children,
   className = "",
 }: TabsProps & { }) {
+  // The active tab, whichever way the caller drives it: `value` when controlled, the strip's own state when not.
+  const [uncontrolled, setUncontrolled] = useState(defaultValue);
+  const active = value ?? uncontrolled;
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -115,7 +127,15 @@ export function Tabs({
   }, [value]);
 
   return (
-    <RadixTabs.Root value={value} defaultValue={defaultValue} onValueChange={onValueChange} className={className}>
+    <RadixTabs.Root
+      value={value}
+      defaultValue={defaultValue}
+      onValueChange={(next) => {
+        setUncontrolled(next);
+        onValueChange?.(next);
+      }}
+      className={className}
+    >
       {/* ★ NOT `flex-wrap` — a real sync-3/sync-2 finding, hit twice by two
           different callers (this file's own `moderation-tabs.tsx` at 390 px,
           and independently by `content`'s `me/tab-strip.tsx`, which forked
@@ -154,7 +174,7 @@ export function Tabs({
       </RadixTabs.List>
       {items.map((item) => (
         <RadixTabs.Content key={item.value} value={item.value} className="mt-4">
-          {children}
+          {item.value === active ? children : null}
         </RadixTabs.Content>
       ))}
     </RadixTabs.Root>
