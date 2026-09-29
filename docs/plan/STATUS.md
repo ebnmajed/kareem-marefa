@@ -89,6 +89,11 @@ stories `STORY-UIX-027` … `032`.
 
 - ★ **Overshoot** (`DEC-186` §4, `DEC-195` §6.20): the coin with and without `1.06`, and whether the reaction's `1.22`
   and the code box's `1.14` are wanted at all. Until then nothing overshoots but a sticker's `1.08`.
+- **Where moment 1's ticket rests on the phone.** At 390 px it rises from behind the fixed bottom bar (`DEC-195` §6
+  D8) and, for the rise, the stamp and a short hold, covers whatever the scroll has put there — the venue line in one
+  capture, the sub-nav in another. It is `aria-hidden` and takes no pointer. `sessions` found no offset that reliably
+  clears text; the alternative is a layout choice — resting it inside the bar over the reserve button's own place, as
+  the prototype does in the card. Its floor shadow is already gone (`c25235fa`).
 - **A scoped surface beside an unscoped page** (`DEC-195` §1.3): if the dark action card looks wrong on a light event
   page, the capture goes to the owner; the lead does not pick.
 
