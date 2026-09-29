@@ -34,7 +34,7 @@ behaviour reference — and `docs/plan/notes/scoring.md` before anything else. A
   default org no level grants anything; the question to the owner stands). Keyed by `levels.sort_order`, never a name.
 - ★ **Moment 5, تغيّر الترتيب, on `SCR-027` and `SCR-028`** (`03-motion.md` §5): the boards' rows move onto your
   `rank-row` and `race-bar`; the member's row and the one it passed swap by FLIP (`translateY`, then the DOM reorder with
-  transitions off for one frame, then the transforms cleared); the risen row's arrow pulses once; a company bar moves
+  transitions off for one frame, then the transforms cleared); the risen row's arrow is shown — ★ **never pulsed** (`DEC-197` §2); a company bar moves
   by `scaleX` from the inline start. ★★ **The falling row carries no colour, no icon, no shake and no motion of its
   own** — asserted. Initials in a team ring, never a photograph (`DEC-099`).
 - ★ **Each surface enters the scope** (contract 3) — the head of `SCR-022` alone, and each board — never transformed.
@@ -47,12 +47,27 @@ behaviour reference — and `docs/plan/notes/scoring.md` before anything else. A
   `race-bar` replace; every assertion in `points.spec.ts`, `leaderboards.spec.ts`, `wave7-sessions-leaderboards` and
   your component tests that moves — each a ledger line.
 
+## ★ Sync 1's rulings for you (`DEC-197` — read it in full)
+
+- **Your plan is approved.** ★ **Contract 5 landed as `0162`, `member_seen_marks`**, exactly your columns, no timestamp,
+  with `anonymise_members()` deleting the row and the export leaving it out. Your two invoker functions go in
+  `proposed/scoring/`; the lead promotes them. `LevelCardProps.flip` landed; `--duration-loop` (2 s) landed;
+  **`moment-flicker`** (use the class `.moment-flicker`, off under reduced motion) and **`moment-shine`** (with
+  `--moment-dir`) landed. Other one-shots may be `element.animate()` on tokens.
+- ★★ **No arrow pulse** (§2): the owner dropped it. The risen row's arrow is shown and does not move.
+- ★ **Your hard-load finding was right, and it is fixed in the mechanism** (§5): a moment born hydrating stays static and
+  leaves its occurrence unclaimed, so it plays at the next in-app arrival. Build against that.
+- D-25: completion-pass rows only. D-26: the static bar shows true progress — `REQ-UIX-047` amended.
+  `tests/components/leaderboards/boards.test.tsx` is yours this wave (ledger lines). The scope sits on the nearest
+  untransformed container of each board's list (§8).
+
 ## You may edit only
 
 - `src/app/[locale]/app/me/points/**`
 - ★ `src/app/[locale]/app/leaderboards/**` and `src/components/scoring/{member-board,company-board}.tsx` —
   **transferred from `sessions` for this wave**
 - `src/components/scoring/**` and new `src/components/scoring/moment-*.tsx`
+- ★ `tests/components/leaderboards/boards.test.tsx` — **from `sessions`, this wave** (`DEC-197` §9); evidence, each moved assertion a ledger line
 - `src/components/ui/{rank-row,race-bar,level-card}.tsx` — your primitives
 - `src/lib/dal/{points,leaderboards,recognition}.ts` — **add-only**
 - `src/messages/*/{scoring,leaderboards}.json`

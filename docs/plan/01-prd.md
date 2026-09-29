@@ -3102,16 +3102,23 @@ returns to the event page, whose action reads «حضرت».
   path unchanged.
 - A checked-in member is not offered the check-in link again during the session.
 - A trace on a throttled CPU shows no frame over 16 ms, as it does for `REQ-UIX-045`.
+- ★ **After a hold of 1.4 s the screen returns to the event page on its own**, as `03-motion.md` specifies. This is a
+  **recorded exception to SC 2.2.1** (`DEC-197` §1): found by `checkin`, kept by the owner, scoped to this one moment
+  and nothing else. `REQ-NFR-007` stands for everything else.
 
 #### REQ-UIX-047 — انتهت الجلسة and ترقية المستوى: the points screen counts up, the flame grows, and a level turns over
 **Serves:** `DEC-195` §1.1, §2.2 · `REQ-UIX-019` · `REQ-UIX-039` · `REQ-PTS-015` · `REQ-REC-004`
 The first time a member sees ledger rows a completion pass wrote, the head of `SCR-022` counts the balance up from the
 old figure to the new with the delta beside it, the streak flame grows and keeps its flicker, and the level bar fills.
 When a threshold was crossed, the level card turns over to its new face with one shine, and that face names what the
-level unlocks — or says plainly that it unlocks nothing.
+level unlocks — or says plainly that it unlocks nothing. It plays for the ledger rows a **completion pass** wrote, and for no
+other gain (`DEC-197` §7).
 **Acceptance:**
-- The static states — the new balance with its delta, the flame at its larger size without flicker, the bar full; the
-  new face shown with no shine — are complete.
+- The static states — the new balance with its delta, the flame at its larger size without flicker, **the bar at the
+  member's true progress** (full only when a threshold was crossed, `DEC-197` §7); the new face shown with no shine —
+  are complete.
+- On a page the server painted, the moment does not jump back: it stays static and plays at the next arrival by the
+  app's own navigation (`DEC-197` §5).
 - The same rows seen again, on the same device or another, play nothing.
 - The history and the catalogue below do not animate.
 - Bars grow by `scaleX`, never `width`.
@@ -3119,7 +3126,7 @@ level unlocks — or says plainly that it unlocks nothing.
 #### REQ-UIX-048 — تغيّر الترتيب: a rank change swaps two rows, and the falling row is never shamed
 **Serves:** `DEC-195` §1.1, §2.6 · `REQ-UIX-019` · `REQ-UIX-037` · `REQ-UIX-038` · `REQ-LDR-004`
 When a member opens a board on which their rank has changed since they last saw it, their row and the one it passed
-swap places, and the risen row's arrow pulses once. On the company board a bar moves by `scaleX` from the inline
+swap places, and the risen row's arrow is shown — **it does not pulse** (`DEC-197` §2). On the company board a bar moves by `scaleX` from the inline
 start. What the member last saw is recorded, so the change is real and is shown once.
 **Acceptance:**
 - The static state — the new order, the arrow shown — is complete.

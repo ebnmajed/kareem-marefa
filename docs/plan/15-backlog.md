@@ -1092,7 +1092,7 @@ does not. The five public routes do not move. Every moment has a re-render test 
 
 #### STORY-UIX-031 — تغيّر الترتيب on the two boards
 **Covers:** `REQ-UIX-048`, `REQ-UIX-044` · **M18** · **L**
-- The boards' rows on `rank-row` and `race-bar`; the swap by FLIP; the arrow's one pulse; a bar by `scaleX`.
+- The boards' rows on `rank-row` and `race-bar`; the swap by FLIP; the arrow shown, not pulsed (`DEC-197` §2); a bar by `scaleX`.
 - «Since last view» has a data source, ruled at sync 1; a table is the lead's, with its RLS case.
 - A falling row is asserted to carry no colour, no icon and no motion of its own.
 

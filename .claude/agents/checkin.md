@@ -49,13 +49,26 @@ room, on a phone, at the moment that matters.
   today (wave 12's acknowledgement, `REQ-CHK-018`) and how the moment's three lines relate to it — one truth, said
   once — and every assertion in your suites that moves.
 
+## ★ Sync 1's rulings for you (`DEC-197` — read it in full)
+
+- **Your plan is approved.** `refresh()`; the lead changes `wave12-demo-awards:125` and `wave9-three-day-workshop:257`.
+  The two keyframes landed as **`moment-coin-drop`** and **`moment-rise`** (`DEC-197` §9). The lines' delay is
+  `calc(var(--duration-slow) + var(--duration-fast))`. With the state `none`: «لا نقاط حضور لهذه الجلسة.».
+- ★★ **Your SC 2.2.1 finding is right, and the owner has overruled it** (§1): **keep the 1.4-second return to the event
+  page**, exactly as `03-motion.md` specifies — a recorded exception, scoped to this one moment and nothing else. The
+  hold is measured from the three lines being in; it is a timing, not a motion, so it does **not** collapse under
+  reduced motion; the link stays on screen during it; a named constant in your moment component, citing `DEC-197`.
+- ★ **Fix `rsvp.ts:61`'s two-day read** (§3) — its own commit, with a test that a two-day check-in reads correctly on
+  both days — and **`reservation_required`** gets its own message on both paths (§4), a ledger line for the redirect.
+- `checkInOffer()` is approved. `confetti.ts`'s header now says the host clips.
+
 ## You may edit only
 
 - `src/app/[locale]/app/sessions/[id]/check-in/**`
 - new `src/components/checkin/moment-*.tsx`
 - `src/components/checkin/{session-matrix.ts,award-state.tsx,attendance-outcome.tsx,code-input.tsx}`
 - `src/lib/dal/checkin.ts` · `src/messages/*/checkin.json`
-- `src/lib/dal/rsvp.ts` — **add-only**, a field `sessions` asks for in writing (contract 4)
+- `src/lib/dal/rsvp.ts` — **add-only**, a field `sessions` asks for in writing (contract 4) — ★ **and the fix of `:61`'s two-day read** (`DEC-197` §3)
 - `tests/unit/{session-matrix,checkin-*}*`, `tests/components/checkin/**` **except** `rsvp-panel.test.tsx` (with
   `sessions` this wave) and `schedule-form.test.tsx` (`sessions'`), `tests/e2e/{checkin,checkin-gating}.spec.ts` and
   `tests/e2e/wave{7,9,12}-checkin-*.spec.ts` (evidence), new `tests/components/checkin/moment-*.test.tsx`, new

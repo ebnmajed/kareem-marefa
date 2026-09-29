@@ -9,7 +9,7 @@
 | Artifact | Count |
 |---|---|
 | Requirements (`REQ-*`) | **341** |
-| Entities (`ENT-*`) | **82** |
+| Entities (`ENT-*`) | **83** |
 | Stories (`STORY-*`) | **168** |
 | Screens cited (`SCR-*`) | 57 |
 | Jobs cited (`JOB-*`) | 40 |
@@ -274,7 +274,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NFR-004` | — | — | — | — | — | `STORY-NFR-003` | M1 |
 | `REQ-NFR-005` | `ENT-check_in_attempts` | — | — | — | — | `STORY-NFR-003` | M1 |
 | `REQ-NFR-006` | `ENT-audit_log` `ENT-points_ledger` | — | `SCR-062` | — | — | `STORY-NFR-001` | M1 |
-| `REQ-NFR-007` | — | — | `SCR-010` `SCR-022` `SCR-040` | — | — | `STORY-NFR-004` `STORY-UIX-016` | M10, M8, M9 |
+| `REQ-NFR-007` | — | — | `SCR-010` `SCR-014` `SCR-022` +1 | — | — | `STORY-NFR-004` `STORY-UIX-016` | M10, M8, M9 |
 | `REQ-NFR-008` | — | — | `SCR-000` `SCR-011` `SCR-012` +5 | — | — | `STORY-NFR-004` | M8 |
 | `REQ-NFR-009` | — | — | — | — | — | `STORY-NFR-004` | M8 |
 | `REQ-NFR-010` | — | — | — | — | — | `STORY-NFR-005` | M8 |
@@ -512,8 +512,8 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-043` | `ENT-companies` | `POL-companies.team_color` | `SCR-014` `SCR-048` | — | — | `STORY-UIX-026` `STORY-UIX-032` | M17, M18 |
 | `REQ-UIX-044` | — | — | `SCR-012` `SCR-014` `SCR-022` +2 | — | — | `STORY-UIX-027` `STORY-UIX-028` +3 | M18 |
 | `REQ-UIX-045` | — | — | `SCR-012` | — | — | `STORY-UIX-028` | M18 |
-| `REQ-UIX-046` | — | — | `SCR-014` | — | — | `STORY-UIX-029` | M18 |
-| `REQ-UIX-047` | — | — | `SCR-022` | — | — | `STORY-UIX-030` | M18 |
-| `REQ-UIX-048` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-UIX-031` | M18 |
+| `REQ-UIX-046` | `ENT-member_seen_marks` | — | `SCR-014` | — | — | `STORY-UIX-029` | M18 |
+| `REQ-UIX-047` | `ENT-member_seen_marks` `ENT-survey_participations` | — | `SCR-022` | — | — | `STORY-UIX-030` | M18 |
+| `REQ-UIX-048` | `ENT-member_seen_marks` `ENT-survey_participations` | — | `SCR-027` `SCR-028` | — | — | `STORY-UIX-031` | M18 |
 
 <!-- TRACEABILITY:END -->

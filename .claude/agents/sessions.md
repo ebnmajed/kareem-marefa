@@ -44,6 +44,18 @@ sub-nav, every section and slot stay as they are.
   render today, which of them `session-cta` replaces, and every assertion in `rsvp-panel.test.tsx`,
   `tests/components/sessions/**` and your specs that moves — each a ledger line.
 
+## ★ Sync 1's rulings for you (`DEC-197` — read it in full)
+
+- **Your plan is approved.** R1 landed (`TicketObject word={false}`), R4 landed as `SessionCtaState` `booked.between`,
+  R2 is `checkin`'s, add-only. The five keyframes landed under the names in `DEC-197` §9 (`moment-ticket-rise`,
+  `moment-stamp-land`, `moment-thud`, `moment-ticket-leave`, `moment-fade-in`).
+- Q1 the tree's words; Q2 the badge's `live` tone for the waitlisted stamp; Q3 `fast` / `base` / the toast's own, each
+  step on the previous `animationend`; Q4 the trace window is the moment's own animations, the refresh commit reported
+  beside it; ★ Q5 **a refused reservation says so in the card, statically** (`role="alert"`, no animation).
+- ★ **Fix `sessions.ts:1098`'s two-day read** (`DEC-197` §3) — its own commit, with a test that a member checked in on
+  two workshop days reads as checked in on both. **The calendar whisper says what is true** (§4).
+- **You found three of the seven** (the two-day read, the ticket's word, the whisper). That is why you were spawned.
+
 ## You may edit only
 
 - ★ `src/components/checkin/{rsvp-panel.tsx,actions.ts}` — **transferred from `checkin` for this wave**; the gates in
@@ -54,7 +66,7 @@ sub-nav, every section and slot stay as they are.
 - `src/app/[locale]/app/sessions/[id]/page.tsx` — **the action card's region only**
 - `src/components/ui/{session-cta,code-input}.tsx` — your primitives, for what the moment needs and for what
   `checkin` asks of `code-input`
-- `src/lib/dal/sessions.ts` — add-only
+- `src/lib/dal/sessions.ts` — add-only, ★ **and the fix of `:1098`'s two-day read** (`DEC-197` §3)
 - `src/messages/*/sessions.json`
 - ★ `tests/components/checkin/rsvp-panel.test.tsx` (evidence, with the panel), `tests/components/sessions/**`,
   `tests/components/ui/{session-cta,code-input}*.test.tsx`, your existing e2e specs (evidence), new

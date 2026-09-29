@@ -5038,3 +5038,131 @@ lead. (4) ★ **`qa:contract`, `visual`'s public pairs and the register-form fin
 4. **Held to, from the brief's definition of done:** a re-render test per moment (mount, play, unmount, mount again — it does **not** play); a throttled-CPU trace with no frame over 16 ms for moments 1 and 2; every static state captured at 390 px in Arabic beside its animated counterpart, opened by the lead — collapsing a duration is not a reduced-motion design; and **the frozen five do not move** — `qa:contract` green at every commit, `visual` unchanged on the public pairs, the register-form fingerprint byte-identical.
 
 - **Documents changed:** `STATUS.md` (the phase line)
+
+---
+
+## DEC-197 — Wave 16, sync 1: three plans approved; three independent readings found seven defects the lead's did not; the owner keeps the 1.4-second return as a recorded exception to SC 2.2.1, and drops the arrow's pulse
+
+- **Date:** 2026-09-29 · **Decided by:** the owner (§1 – §5, answered on the findings) and the wave-16 lead (§6 – §9), on the plans in `docs/plan/notes/{sessions,checkin,scoring}.md` (`sessions` `cb863e73`, `69a9d41b`, `f6282410` · `checkin` `7fb0c18b`, `2aca4732` · `scoring` `5e30bd35`, `879b5761`)
+- **Amends:** `REQ-UIX-046`, `REQ-UIX-047`, `REQ-UIX-048` (their text, now); `DEC-195` §1.3 (§8 below); the map (§9)
+- **Adds:** `0162` — `member_seen_marks`, contract 5 (§6)
+
+### ★★ Why teammates are spawned — read this before planning a wave alone
+
+**`sessions`, `checkin` and `scoring` were spawned as teammates, planning-only, and each wrote its own plan.** The lead
+had already read the same tree for Step 0, written `DEC-195` and built the mechanism the moments stand on. **Three
+independent readings found seven defects the lead's reading did not** — one of them in the lead's own code, found by
+the track that was reviewing it by using it. The reason to spawn is not parallelism; it is **independence**. Wave 14
+showed it first (the Google URL in the RSC payload, removed photos still readable from Storage, the image-asset bug
+breaking every uploaded poster since M6). This wave shows it again:
+
+| # | Finding | Found by | Ruling |
+|---|---|---|---|
+| 1 | `03-motion.md`'s «holds 1.4s → returns to the event page» is a timed change of context, which **fails SC 2.2.1 (Level A)** | `checkin` | ★ **kept by the owner as a recorded exception** (§1) |
+| 2 | Moment 5's arrow «pulses once» at `1.2` — an overshoot on an element that is not a sticker | `scoring` | **dropped** (§2) |
+| 3 | `sessions.ts:1098` reads the viewer's check-in with `.maybeSingle()`: a member checked in on two workshop days has two rows, the read errors unchecked, and **the member reads as NOT checked in from day 2** — live since wave 9 | `sessions` | **fixed this wave** (§3) |
+| 4 | The same `.maybeSingle()` defect in `rsvp.ts:61` | `checkin` | **fixed this wave** (§3) |
+| 5 | `check-in/actions.ts:6` and `CheckInError` have no `reservation_required`, so that refusal from the RPC reads «حدث خطأ» | `checkin` | **fixed** (§4) |
+| 6 | `TicketObject` bakes «محجوز» into the drawing, so a waitlisted ticket would say a seat was booked | `sessions` | **fixed** (§4) — `word={false}` landed |
+| 7 | The whisper «أُضيفت إلى تقويمك» is false for a member whose calendar is not connected | `sessions` | **fixed** (§4) |
+| 8 | ★ **The lead's `useMoment` decides after the server's page is painted**: on a hard load moments 3 to 5 would snap back from the true figure to the old one and animate forward | `scoring` | **fixed in the mechanism** (§5) |
+
+Items 3 and 4 are one defect in two files; **seven distinct defects**. The next lead reading this should know that a
+wave planned by one reader ships what that reader cannot see.
+
+### 1 · ★★ The 1.4-second return on `SCR-014` is KEPT — a deliberate exception to SC 2.2.1, not an oversight
+
+**`checkin` found it and is right:** a check-in screen that returns to the event page on its own after 1.4 s changes
+the context on a timer the member cannot turn off, extend or adjust. That is what SC 2.2.1 Timing Adjustable (Level
+A) forbids. **The owner has overruled it.** The return stays exactly as `03-motion.md` specifies: the lines land, the
+screen holds 1.4 s, and it returns to the event page, whose action then reads «حضرت».
+
+- **Recorded here so that a later session does not «fix» it back, and so that an auditor gets an answer, not a
+  silence.**
+- **`REQ-NFR-007` stands** as the project's requirement. This is **one recorded exception to it, scoped to this one
+  moment on `SCR-014` and to nothing else.** No other screen, timer or moment may cite it.
+- How it is built (`checkin`): the hold is measured from the moment the three lines are in; it is **a timing, not a
+  motion**, so it does **not** collapse under reduced motion — the static state is held the same 1.4 s and returns
+  the same way. The link to the event page stays on the screen during the hold. The hold is a named constant in
+  `checkin`'s moment component, citing this entry; it is not a duration token.
+
+### 2 · Moment 5's arrow does not pulse
+
+`DEC-183` §2 allowed an overshoot of **at most 1.08, on a sticker, and nowhere else** — three days ago. An arrow is
+elsewhere, and widening the line for one element makes it not a line. This is not a WCAG matter. **The risen row's
+arrow is shown; it does not move.** `moment-arrow-rise` is not landed. `REQ-UIX-048` and `STORY-UIX-031` say so.
+
+### 3 · The two-day check-in defect is fixed this wave, in both files
+
+A live production bug, not a design question: since wave 9, a member checked in on two days of a workshop reads as not
+checked in from day 2, because two active check-in rows make `.maybeSingle()` error and the error is not checked.
+**`sessions` fixes `sessions.ts:1098`; `checkin` fixes `rsvp.ts:61`.** Each is a fix to an existing read, permitted
+this wave by this entry although both DAL modules are otherwise add-only. **Its own checklist row, and a test that a
+member checked in on two days reads as checked in on both days** — in each file's own suite, and a ledger line if an
+existing assertion moves.
+
+### 4 · Three truth defects fixed
+
+- **`reservation_required`** (`checkin`): the refusal gets its own message, authored in `messages/ar/checkin.json`
+  first, on the JS path and the no-JS redirect alike. The no-JS redirect's new flag is a ledger line.
+- **The ticket's word** (`sessions`, the lead's R1): `TicketObject` takes `word={false}` (`tests/components/ui/
+  ticket-word.test.tsx`); the moment draws the ticket without it and the stamp says «محجوز» or «قائمة الانتظار · N».
+  ★ The ticket's cyan body is the object's own drawing, not a status and not a company's colour; it stands.
+- **The calendar whisper** (`sessions`): it reads the member's calendar connection and says what is true — that the
+  session was added, or that it can be added.
+
+### 5 · ★ The mechanism never jumps back on a page the server painted
+
+`useMoment` decided in a layout effect, which on a **client** mount runs before the first paint — but on a hard load
+the server's HTML is already on screen, showing the truth. **A moment whose component is born hydrating now renders
+its static state and does not claim its occurrence**, so the occurrence stays unseen and plays at the member's next
+arrival by the app's own navigation. Moments 1 and 2 are unaffected: their key comes from an action's result, which
+a server render never has. `tests/components/lib-ui/moment.test.tsx` hydrates server HTML and asserts static and
+unclaimed, then mounts on the client and asserts it plays — **red with the guard removed, green with it**.
+
+### 6 · Contract 5 — `0162`, `member_seen_marks`
+
+`scoring`'s design, landed by the lead: **a cursor, not a log** — one row per member, the values last shown, **no
+timestamp of any kind**. A member reads, inserts and updates their own row only; a level or company named on it must
+be of their org; no delete; `service_role` and `anon` hold nothing; no super-admin disjunct. **`anonymise_members()`
+deletes the row** (the same function, signature and grants, one line more); the data export leaves it out, every value
+being a copy of source data. `main`'s app and worker name nothing in it. `tests/rls/moment-seen-marks.test.ts`, the
+isolation sweep (the fixture now seeds a mark per org), `02` `ENT-member_seen_marks`, `03` §5.7c. **RLS from a fresh
+reset: 141 files, 1,360 passed.** `scoring`'s two functions are its own, in `proposed/scoring/`, promoted by the lead.
+
+### 7 · The other rulings
+
+**`sessions`:** Q1 — **the tree's words** on the face and the cancel; the stamp alone says «محجوز». Q2 — the waitlisted
+stamp wears **the badge's `live` tone**, `DEC-073`'s waitlist form. Q3 — `fast` for the thud, `base` for the leave and
+the fade, the toast's own timing; a step starts on the previous one's `animationend`, never a timer. Q4 — **the trace
+window is the moment's own animations**, from the ticket's `animationstart` to the last `animationend`; the commit that
+applies the refreshed page is measured and reported beside it, not inside the gate. Q5 — **a refused reservation says
+so in the card, statically** (`role="alert"`, no animation). R1 landed; R4 landed as `booked.between`; R2 accepted by
+`checkin`. D4 and D8 approved. Losing the same-URL history entry on reserve is accepted.
+**`checkin`:** `refresh()`, not `router.replace` — the lead changes its two specs (`wave12-demo-awards:125`,
+`wave9-three-day-workshop:257`) with ledger lines. The lines' delay is `calc(var(--duration-slow) +
+var(--duration-fast))`. With the state `none` the line reads «لا نقاط حضور لهذه الجلسة.» — the truth, not silence.
+`checkInOffer()` approved. `confetti.ts`'s header now says the host clips.
+**`scoring`:** the tokens: the count-up `party`; the FLIP, the flame's growth and the shine `slow`; the delta `base`;
+the bars and the flip `party`; **`--duration-loop` (2 s) landed** for the flicker, collapsed in the one block.
+`moment-flicker` and `moment-shine` landed; other one-shots may be `element.animate()` on tokens. `LevelCardProps.flip`
+landed. **D-25: moment 3 plays for completion-pass rows only.** **D-26: the static bar shows the member's true
+progress**, full only when a threshold was crossed — `REQ-UIX-047` is amended. D-27 answered by §2. D-29 noted:
+a level changes only in the nightly run, so moment 4 plays alone, the next day.
+
+### 8 · Where the scope sits on a board — `DEC-195` §1.3, amended
+
+The boards live inside `ui/tabs`' panel, so the scope cannot be a direct child of the screen's content. **It sits on
+the nearest container of the surface that is neither transformed, filtered nor clipped** — around each board's list.
+The rule's reason (`DEC-188` §5, a portal trapped under a transform) is what binds, not the words «direct child».
+
+### 9 · The map, amended
+
+`tests/components/leaderboards/boards.test.tsx` goes to `scoring` for the wave (evidence; each moved assertion a
+ledger line). `sessions` may fix `sessions.ts:1098`; `checkin` may fix `rsvp.ts:61` and `check-in/actions.ts`'s
+refusals. Keyframes landed, by name: `moment-ticket-rise`, `moment-stamp-land`, `moment-thud`, `moment-ticket-leave`,
+`moment-fade-in` (`sessions`) · `moment-coin-drop`, `moment-rise` (`checkin`) · `moment-flicker` (a class, `.moment-
+flicker`, off under reduced motion) and `moment-shine` (`scoring`, with `--moment-dir` for the inline start). The
+names differ from some plans' `play-*`: one prefix for one vocabulary.
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-046`, `047`, `048`), `02-domain-model.md` (`ENT-member_seen_marks`), `03-permissions-rls.md` (§5.7, §5.7c), `15-backlog.md` (`STORY-UIX-031`), `CLAUDE.md` and three agent files (the rulings; the transfers), `STATUS.md` (sync 1; the checklist; the ledger)
