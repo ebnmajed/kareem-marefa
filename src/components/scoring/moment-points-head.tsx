@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useCountUp } from "@/lib/ui/count-up";
 import { readDuration, readEasing } from "@/lib/ui/duration";
-import { readyToAcknowledge, useSeenMoment } from "@/components/scoring/use-seen-moment";
+import { momentKeys, readyToAcknowledge, useSeenMoment } from "@/components/scoring/use-seen-moment";
 
 // Moments 3 and 4 on the head of SCR-022 — انتهت الجلسة and ترقية المستوى (wave 16,
 // REQ-UIX-047, DEC-195 §1.1, DEC-197 §7). scoring's file.
@@ -163,7 +163,12 @@ export function MomentPointsHead(props: MomentPointsHeadProps) {
   }, [three.verdict, four.verdict, finished, props]);
 
   return (
-    <div ref={root} data-moment={playThree || playFour ? "playing" : "static"} className="flex flex-col gap-5">
+    <div
+      ref={root}
+      data-moment={playThree || playFour ? "playing" : "static"}
+      data-moment-keys={momentKeys([["completion", completion?.occurrenceId], ["level", levelUp?.occurrenceId]])}
+      className="flex flex-col gap-5"
+    >
       <h2 className="sr-only">{props.heading}</h2>
       <p className="flex flex-wrap items-baseline gap-x-3">
         <span className="sr-only">{props.balanceLabel}</span>

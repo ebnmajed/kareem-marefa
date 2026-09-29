@@ -125,6 +125,33 @@ async function countAnimations(context: BrowserContext) {
 }
 const animations = (page: Page) => page.evaluate(() => (window as unknown as { __animations: number }).__animations);
 
+/**
+ * ★ Clicks a link as the APP's own navigation — the gate at a9bd97df found the phone clicking a tab before React had
+ * hydrated it, which is a plain browser navigation: a server paint, correctly silent, and the wrong thing to test.
+ * So it waits until React owns the link, marks the window, clicks, and proves the window survived (a hard load
+ * would have replaced it).
+ */
+/**
+ * «Nothing moved» is only worth asserting once React owns the surface and a moment would have had time to run: the
+ * longest sequence is the count-up, the flame, the bar and the turn — under three seconds. The one fixed wait in the
+ * file, and it only ever makes a silence assertion stricter.
+ */
+async function settled(page: Page) {
+  const surface = page.locator("#main [data-moment]").first();
+  await expect.poll(() => surface.evaluate((el) => Object.keys(el).some((k) => k.startsWith("__react"))), { timeout: 15_000 }).toBe(true);
+  await page.waitForTimeout(3000);
+}
+
+async function navigateInApp(page: Page, link: ReturnType<Page["locator"]>, url: RegExp) {
+  await expect
+    .poll(() => link.evaluate((el) => Object.keys(el).some((k) => k.startsWith("__reactFiber") || k.startsWith("__reactProps"))), { timeout: 15_000 })
+    .toBe(true);
+  await page.evaluate(() => ((window as unknown as { __inApp: boolean }).__inApp = true));
+  await link.click();
+  await expect(page).toHaveURL(url);
+  expect(await page.evaluate(() => (window as unknown as { __inApp?: boolean }).__inApp), "the navigation was the app's own, not a page load").toBe(true);
+}
+
 async function capture(page: Page, name: string) {
   if (test.info().project.name !== "phone") return;
   mkdirSync(SHOTS, { recursive: true });
@@ -166,13 +193,13 @@ test("moments 3 and 4 — the head of SCR-022: a server paint is silent; the app
   await one.page.goto("/ar/app/me/points");
   await expect(one.page.locator("#main strong", { hasText: "120" })).toBeVisible();
   await expect(head).toHaveAttribute("data-moment", "static");
+  await settled(one.page);
   expect(await animations(one.page)).toBe(0);
   expect((await mark())?.points_total).toBe(0);
 
   // ★ The app's own navigation: moment 3 then moment 4 play once, and the client records what it showed.
   await one.page.goto("/ar/app/me");
-  await one.page.locator("#main").getByRole("link", { name: "نقاطي", exact: true }).first().click();
-  await expect(one.page).toHaveURL(/\/ar\/app\/me\/points$/);
+  await navigateInApp(one.page, one.page.locator("#main").getByRole("link", { name: "نقاطي", exact: true }).first(), /\/ar\/app\/me\/points$/);
   await expect.poll(() => animations(one.page)).toBeGreaterThan(0);
   await expect(head).toHaveAttribute("data-moment", "static", { timeout: 20_000 });
   await expect.poll(async () => (await mark())?.points_total, { timeout: 20_000 }).toBe(120);
@@ -186,6 +213,7 @@ test("moments 3 and 4 — the head of SCR-022: a server paint is silent; the app
   // ★ A reload: silent, and the occurrence is seen — no delta, one face.
   await one.page.reload();
   await expect(head).toHaveAttribute("data-moment", "static");
+  await settled(one.page);
   expect(await animations(one.page)).toBe(0);
   await expect(one.page.locator("#main [data-slot=delta]")).toHaveCount(0);
 
@@ -193,14 +221,16 @@ test("moments 3 and 4 — the head of SCR-022: a server paint is silent; the app
   await one.page.goto("/ar/app/me");
   await one.page.goBack();
   await expect(one.page).toHaveURL(/\/ar\/app\/me\/points$/);
+  await settled(one.page);
   expect(await animations(one.page)).toBe(0);
   await one.context.close();
 
   // ★★ Another phone, after the first recorded it: silent. The record is the server's, not the browser's.
   const two = await anotherPhone(browser);
   await two.page.goto("/ar/app/me");
-  await two.page.locator("#main").getByRole("link", { name: "نقاطي", exact: true }).first().click();
+  await navigateInApp(two.page, two.page.locator("#main").getByRole("link", { name: "نقاطي", exact: true }).first(), /\/ar\/app\/me\/points$/);
   await expect(two.page.locator("#main strong", { hasText: "120" })).toBeVisible();
+  await settled(two.page);
   expect(await animations(two.page)).toBe(0);
   await expect(two.page.locator("#main [data-slot=delta]")).toHaveCount(0);
   await two.context.close();
@@ -212,7 +242,7 @@ test("moments 3 and 4 — the static state under reduced motion is complete, and
 
   const calm = await anotherPhone(browser, "reduce");
   await calm.page.goto("/ar/app/me");
-  await calm.page.locator("#main").getByRole("link", { name: "نقاطي", exact: true }).first().click();
+  await navigateInApp(calm.page, calm.page.locator("#main").getByRole("link", { name: "نقاطي", exact: true }).first(), /\/ar\/app\/me\/points$/);
   await expect(calm.page.locator("#main strong", { hasText: "120" })).toBeVisible();
   // The new balance, its delta and its words, the flame's line, the bar's line, the new face — and no motion.
   await expect(calm.page.locator("#main [data-slot=delta]")).toContainText("+120");
@@ -246,8 +276,7 @@ test("moment 5 — the boards: a rise plays once by the app's own navigation, a 
 
   // Arrive by the app's own navigation: from the monthly tab to the all-time tab.
   await one.page.goto("/ar/app/leaderboards?board=month");
-  await one.page.getByRole("tab", { name: "كل الأوقات" }).click();
-  await expect(one.page).toHaveURL(/\/ar\/app\/leaderboards$/);
+  await navigateInApp(one.page, one.page.getByRole("tab", { name: "كل الأوقات" }), /\/ar\/app\/leaderboards$/);
   await expect.poll(() => animations(one.page)).toBeGreaterThan(0);
   await expect(board("all-time")).toHaveAttribute("data-moment", "static", { timeout: 15_000 });
   const rows = one.page.locator("#main #all-time ul").first().locator(":scope > li");
@@ -259,8 +288,7 @@ test("moment 5 — the boards: a rise plays once by the app's own navigation, a 
 
   // The company race: the own bar grows.
   const before = await animations(one.page);
-  await one.page.getByRole("tab", { name: "سباق الشركات" }).click();
-  await expect(one.page).toHaveURL(/board=companies$/);
+  await navigateInApp(one.page, one.page.getByRole("tab", { name: "سباق الشركات" }), /board=companies$/);
   await expect.poll(() => animations(one.page)).toBeGreaterThan(before);
   await expect(board("company")).toHaveAttribute("data-moment", "static", { timeout: 15_000 });
   await expect(one.page.locator("#main #company li", { hasText: "صنف" })).toContainText("فريقك");
@@ -269,6 +297,7 @@ test("moment 5 — the boards: a rise plays once by the app's own navigation, a 
 
   // ★ A reload of each: silent.
   await one.page.goto("/ar/app/leaderboards");
+  await settled(one.page);
   expect(await animations(one.page)).toBe(0);
   await expect(one.page.locator("#main #all-time [data-slot=rise]")).toHaveCount(0);
   await one.context.close();
@@ -277,10 +306,10 @@ test("moment 5 — the boards: a rise plays once by the app's own navigation, a 
   await db.query(`update public.member_seen_marks set all_time_rank = 1 where member_id = $1`, [meId]);
   const fell = await anotherPhone(browser);
   await fell.page.goto("/ar/app/leaderboards?board=month");
-  await fell.page.getByRole("tab", { name: "كل الأوقات" }).click();
-  await expect(fell.page).toHaveURL(/\/ar\/app\/leaderboards$/);
+  await navigateInApp(fell.page, fell.page.getByRole("tab", { name: "كل الأوقات" }), /\/ar\/app\/leaderboards$/);
   await expect(fell.page.locator("#main #all-time ul").first().locator(":scope > li").nth(1)).toContainText("ريم الشهري");
   await expect.poll(async () => (await mark())?.all_time_rank, { timeout: 15_000 }).toBe(2);
+  await settled(fell.page);
   expect(await animations(fell.page)).toBe(0);
   await expect(fell.page.locator("#main #all-time [data-slot=rise]")).toHaveCount(0);
   await fell.context.close();
@@ -289,13 +318,12 @@ test("moment 5 — the boards: a rise plays once by the app's own navigation, a 
   await db.query(`update public.member_seen_marks set all_time_rank = 4, company_rank = 2, company_fraction = 0.2 where member_id = $1`, [meId]);
   const calm = await anotherPhone(browser, "reduce");
   await calm.page.goto("/ar/app/leaderboards?board=month");
-  await calm.page.getByRole("tab", { name: "كل الأوقات" }).click();
-  await expect(calm.page).toHaveURL(/\/ar\/app\/leaderboards$/);
+  await navigateInApp(calm.page, calm.page.getByRole("tab", { name: "كل الأوقات" }), /\/ar\/app\/leaderboards$/);
   const calmRows = calm.page.locator("#main #all-time ul").first().locator(":scope > li");
   await expect(calmRows.nth(1).locator("[data-slot=rise]")).toBeVisible();
   expect(await animations(calm.page)).toBe(0);
   await capture(calm.page, "rank-members-static");
-  await calm.page.getByRole("tab", { name: "سباق الشركات" }).click();
+  await navigateInApp(calm.page, calm.page.getByRole("tab", { name: "سباق الشركات" }), /board=companies$/);
   await expect(calm.page.locator("#main #company li", { hasText: "صنف" })).toContainText("فريقك");
   expect(await animations(calm.page)).toBe(0);
   await capture(calm.page, "rank-companies-static");

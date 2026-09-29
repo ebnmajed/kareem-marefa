@@ -261,4 +261,31 @@ describe("a page the server painted (DEC-197 §5)", () => {
     await act(async () => root.unmount());
     host.remove();
   });
+
+  // ★ The gate at a9bd97df, desktop: `/app` streams behind `loading.tsx`, and when React throws a boundary's server
+  // HTML away and renders it afresh, the fresh mount is a CLIENT mount over a truth already on screen.
+  it("★ a client mount over the server's visible paint of the same occurrence stays static, unclaimed, untold", () => {
+    const painted = document.createElement("div");
+    painted.setAttribute("data-moment-keys", "completion:e-730");
+    document.body.appendChild(painted);
+    const acknowledge = vi.fn(async () => {});
+    render(<MomentPointsHead {...props({ acknowledge })} />);
+    painted.remove();
+    expect(moment()).toBe("static");
+    expect(made).toHaveLength(0);
+    expect(frames).toHaveLength(0);
+    expect(balance()).toBe("730");
+    expect(isMomentClaimed(momentKey("completion", "e-730"))).toBe(false);
+    expect(acknowledge).not.toHaveBeenCalled();
+  });
+
+  it("a HIDDEN copy — the orphaned streaming segment (DEC-145) — is not a paint: the in-app arrival plays", () => {
+    const orphan = document.createElement("div");
+    orphan.hidden = true;
+    orphan.innerHTML = '<div data-moment-keys="completion:e-730"></div>';
+    document.body.appendChild(orphan);
+    render(<MomentPointsHead {...props()} />);
+    orphan.remove();
+    expect(moment()).toBe("playing");
+  });
 });

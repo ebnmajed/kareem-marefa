@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { readDuration, readEasing } from "@/lib/ui/duration";
-import { readyToAcknowledge, useSeenMoment } from "@/components/scoring/use-seen-moment";
+import { momentKeys, readyToAcknowledge, useSeenMoment } from "@/components/scoring/use-seen-moment";
 
 // Moment 5, تغيّر الترتيب, on SCR-027 and SCR-028 (wave 16, REQ-UIX-048, DEC-195 §1.1,
 // DEC-197 §2). scoring's file.
@@ -101,7 +101,7 @@ export function MomentRank({ occurrenceId, index, passed, fromFraction, needsMar
   }, [five.verdict, finished, needsMark, acknowledge]);
 
   return (
-    <div ref={root} data-moment={playing ? "playing" : "static"}>
+    <div ref={root} data-moment={playing ? "playing" : "static"} data-moment-keys={momentKeys([["rank", latchedId]])}>
       {children}
     </div>
   );
