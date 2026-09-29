@@ -259,7 +259,12 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // day grid whose cells are labelled by full date, hour and minute selects.
   await boss.getByRole("button", { name: new RegExp("^التاريخ والوقت:") }).click();
   const picker = boss.getByRole("dialog", { name: "التاريخ والوقت" });
-  await picker.getByRole("button", { name: new RegExp(`^${when.getDate()} `) }).first().click();
+  // ★ Two days ahead can be NEXT MONTH (the gate at a9bd97df ran on 29 September): the grid opens on this
+  // month, and «1 …» there was the 1st of the month already gone, so the session was scheduled in the past
+  // and the presenter's page read «ended» with no host link. Turn the month when it must, and pick the
+  // enabled cell whose full-date name starts with the day (the grid pads with the neighbours' days).
+  if (when.getMonth() !== new Date().getMonth()) await picker.getByRole("button", { name: "الشهر التالي" }).click();
+  await picker.getByRole("button", { name: new RegExp(`^${when.getDate()} `) }).and(picker.locator("button:enabled")).first().click();
   await picker.getByLabel("الساعة").selectOption("18");
   await picker.getByLabel("الدقيقة").selectOption("0");
   await picker.getByRole("button", { name: "تم", exact: true }).click();

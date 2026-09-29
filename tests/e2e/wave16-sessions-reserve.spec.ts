@@ -64,12 +64,14 @@ test.beforeAll(async ({}, testInfo) => {
   await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
 
+  // `sessions.category_id` is NOT NULL: the fixture org needs a category.
+  const { rows: cat } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'إداري') returning id`, [orgId]);
   const session = async (title: string, capacity: number) => {
     const { rows } = await db.query<{ id: string }>(
-      `insert into public.sessions (org_id, title, abstract, level, language, state, starts_at, duration_minutes, ends_at, capacity, published_at, custom_venue_name)
-       values ($1, $2, 'ملخص الجلسة.', 'introductory', 'ar', 'published', now() + interval '5 days', 60, now() + interval '5 days 1 hour', $3, now() - interval '1 day', 'قاعة الابتكار')
+      `insert into public.sessions (org_id, title, abstract, category_id, level, language, state, starts_at, duration_minutes, ends_at, capacity, published_at, custom_venue_name)
+       values ($1, $2, 'ملخص الجلسة.', $4, 'introductory', 'ar', 'published', now() + interval '5 days', 60, now() + interval '5 days 1 hour', $3, now() - interval '1 day', 'قاعة الابتكار')
        returning id`,
-      [orgId, title, capacity],
+      [orgId, title, capacity, cat[0].id],
     );
     return rows[0].id;
   };
