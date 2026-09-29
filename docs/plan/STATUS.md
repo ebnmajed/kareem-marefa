@@ -97,7 +97,11 @@ stories `STORY-UIX-027` … `032`.
 - **A scoped surface beside an unscoped page** (`DEC-195` §1.3): if the dark action card looks wrong on a light event
   page, the capture goes to the owner; the lead does not pick.
 
-### ★ The owner's order (wave 16)
+### ★ The owner's order (wave 16) — ★ FINISHED 2026-09-29, with one step NOT RUN
+
+★ **DONE — pushed, merged and deployed 2026-09-29.** `0162` and `0163` are on production: `supabase migration list --linked` reads **`0163` on both sides**. PR **#34** merged at **`65ca7a7a`**, both branches deleted, CI **13/13 green** on the head, read from the run's own conclusion (`DEC-192`). Railway needed the manual `railway service source connect` for the **eleventh** consecutive merge, rebuilt, and reads plain `● Online` with «LISTEN/NOTIFY probe OK — round trip 22 ms». ★ **A local wrinkle worth recording:** `gh pr merge` fetched over plain `git@github.com` rather than the `github-second` alias and failed with «Permission denied (publickey)», leaving the local `main` 70 commits behind while the merge itself succeeded. `git pull --ff-only origin main` fixed it. The remote is correct; `gh` used its own host resolution.
+
+★★ **STEP 6 — THE PHONE CHECK — WAS NOT RUN.** The owner declined it on 2026-09-29 and it is recorded as not run rather than assumed. **Nobody has seen the five moments play on a real device.** Every trace, capture and comparison in this wave was taken on the lead's machine in headless Chromium; `DEC-198` says so. The two halves that remain unverified on the build Vercel serves: **the five public pages unchanged**, and **the four screens that changed — reserve, check-in, «نقاطي» and the leaderboards — behaving on a phone.** Wave 15's equivalent check was run and passed; this one is owed.
 
 1. ✅ **Rehearsed 2026-09-29 by the lead on the owner's production schema dump** (taken at `0161`; `public` +
    `graphile_worker`, 89 tables, **no data rows** — zero `COPY`/`INSERT`).
