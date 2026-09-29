@@ -378,7 +378,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-REC-001` | `ENT-badges` `ENT-member_badges` | `POL-badges.select` `POL-badges.update.admin` | `SCR-043` `SCR-045` `SCR-054` +3 | — | — | `STORY-REC-001` | M4 |
 | `REQ-REC-002` | `ENT-badges` `ENT-member_badges` `ENT-member_perks` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-001` | M4 |
 | `REQ-REC-003` | `ENT-levels` `ENT-member_perks` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-002` | M4 |
-| `REQ-REC-004` | `ENT-levels` | — | `SCR-022` `SCR-028` `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-002` | M4 |
+| `REQ-REC-004` | `ENT-levels` | — | `SCR-010` `SCR-014` `SCR-022` +2 | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-002` | M4 |
 | `REQ-REC-005` | `ENT-member_perks` `ENT-streak_awards` `ENT-streak_rules` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-003` | M4 |
 | `REQ-REC-006` | `ENT-member_perks` `ENT-perks` | — | `SCR-054` | `JOB-evaluate_badges` `JOB-evaluate_levels_perks` +1 | — | `STORY-REC-004` | M4 |
 | `REQ-REC-007` | `ENT-member_perks` `ENT-perks` | — | `SCR-054` | — | — | `STORY-REC-004` | M4 |
