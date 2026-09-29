@@ -107,20 +107,42 @@ function mapRpcError(message: string): RsvpRpcError {
 export interface RsvpOutcome {
   status: RsvpStatus;
   waitlistPosition: number | null;
+  /** The `rsvps` row's id — moment 1's occurrence (DEC-195 §2.1, contract 4, `sessions'` R2). */
+  id: string;
+  reservedAt: string;
+  /**
+   * ★ True when THIS call created or reactivated the reservation. `reserve_seat()` (`0045:80-100`) sets
+   * `reserved_at = now()` in the same statement as `updated_at = now()` on a new or reactivated row — one
+   * transaction, one `now()` — and on a repeat submit keeps the old `reserved_at` while `updated_at` moves.
+   * So `fresh ⇔ reserved_at = updated_at`, compared as instants, never as strings.
+   */
+  fresh: boolean;
+}
+
+type RsvpRow = { id: string; status: RsvpStatus; waitlist_position: number | null; reserved_at: string; updated_at: string };
+
+/** The row the two RPCs return, as the outcome — exported for its unit test only. */
+export function toRsvpOutcome(row: RsvpRow): RsvpOutcome {
+  const reserved = new Date(row.reserved_at).getTime();
+  return {
+    status: row.status,
+    waitlistPosition: row.waitlist_position,
+    id: row.id,
+    reservedAt: row.reserved_at,
+    fresh: Number.isFinite(reserved) && reserved === new Date(row.updated_at).getTime(),
+  };
 }
 
 export async function reserveSeat(locale: string, sessionId: string): Promise<RsvpOutcome | { error: RsvpRpcError }> {
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase.rpc("reserve_seat", { p_session: sessionId });
   if (error) return { error: mapRpcError(error.message) };
-  const row = data as { status: RsvpStatus; waitlist_position: number | null };
-  return { status: row.status, waitlistPosition: row.waitlist_position };
+  return toRsvpOutcome(data as RsvpRow);
 }
 
 export async function cancelRsvp(locale: string, sessionId: string): Promise<RsvpOutcome | { error: RsvpRpcError }> {
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase.rpc("cancel_rsvp", { p_session: sessionId });
   if (error) return { error: mapRpcError(error.message) };
-  const row = data as { status: RsvpStatus; waitlist_position: number | null };
-  return { status: row.status, waitlistPosition: row.waitlist_position };
+  return toRsvpOutcome(data as RsvpRow);
 }
