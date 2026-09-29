@@ -220,6 +220,13 @@ export interface CheckInScreenData {
    * state does. It gates nothing — `check_in()` answers «already» itself.
    */
   checkedInToday: boolean;
+  /** When today's check-in was recorded — moment 2's third line (REQ-UIX-046). Null exactly when `checkedInToday` is false. */
+  arrivedAt: string | null;
+  /**
+   * The member's company colour, `#rrggbb`, or null — the confetti's colour (DEC-195 §6.22, REQ-UIX-043).
+   * ★ Decoration: a failed read is null (lime and bone), never a broken check-in screen.
+   */
+  teamColor: string | null;
 }
 
 /**
@@ -240,14 +247,16 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
   if (!z.uuid().safeParse(sessionId).success) return null;
   const { session, supabase } = await sessionClient(locale);
 
-  const [sessionRes, presenterRes, rsvpRes, checkInRes, days] = await Promise.all([
+  const [sessionRes, presenterRes, rsvpRes, checkInRes, days, memberRes] = await Promise.all([
     supabase.from("sessions").select("id, title, state, starts_at, ends_at, duration_minutes, time_zone, allow_walk_ins, check_in_open").eq("id", sessionId).maybeSingle(),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
     supabase.from("rsvps").select("status").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
     // Every day, not one: «already checked in» is per day (REQ-CHK-005 per
     // DEC-119), and the screen wants the answer for the day it is about.
-    supabase.from("check_ins").select("session_day_id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null),
+    supabase.from("check_ins").select("session_day_id, arrived_at").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null),
     listSessionDays(locale, sessionId),
+    // The confetti's colour. Own row, own org's company — both readable under RLS.
+    supabase.from("members").select("companies(team_color)").eq("id", session.memberId).maybeSingle(),
     // ★ No `session_complete_attendees()` here (DEC-174, Q5). It is staff-only
     // and this is the MEMBER's screen: the call was refused 42501 on every
     // render and its result never read. What the member has earned is
@@ -272,7 +281,9 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
   const now = new Date();
   const day = resolveDay(days, now);
   // ★ PER DAY. A member who attended day 1 is not «already checked in» to day 2.
-  const checkedIn = (checkInRes.data ?? []).some((r) => (day ? r.session_day_id === day.id : true));
+  const today = (checkInRes.data ?? []).find((r) => (day ? r.session_day_id === day.id : true));
+  const checkedIn = today !== undefined;
+  const company = memberRes.error ? null : (memberRes.data as { companies: { team_color: string | null } | null } | null)?.companies;
   const relation = viewerRelation({ isStaff, isPresenter, rsvpStatus, checkedIn }, phase);
   const allowWalkIns = s.allow_walk_ins === true;
   // The session-level shadow is the fallback the matrix uses only when the day
@@ -292,6 +303,8 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
     dayCount: days.length,
     timeZone: s.time_zone,
     checkedInToday: checkedIn,
+    arrivedAt: (today?.arrived_at as string | undefined) ?? null,
+    teamColor: company?.team_color ?? null,
   };
 }
 
@@ -325,10 +338,12 @@ export function checkInOfferFor(session: PhaseInput, viewer: CheckInOfferViewer,
 
 export const checkInInput = z.object({ code: z.string().trim().toUpperCase().length(6) });
 
-export type CheckInError = "not_found" | "presenter_cannot_check_in" | "rate_limited" | "not_started" | "session_ended" | "not_open" | "check_in_closed" | "invalid_code" | "overlap" | "unknown";
+export type CheckInError = "not_found" | "presenter_cannot_check_in" | "rate_limited" | "not_started" | "session_ended" | "not_open" | "check_in_closed" | "reservation_required" | "invalid_code" | "overlap" | "unknown";
 
 export interface CheckInSuccess {
   ok: true;
+  /** The `check_ins` row's id — moment 2's occurrence (DEC-195 §2.1). `check_in()` returns the whole row. */
+  checkInId: string;
   /** `alreadyCheckedIn` is its own state (09 SCR-014) — a no-op, not a duplicate "success". */
   alreadyCheckedIn: boolean;
   method: "code" | "manual";
@@ -346,9 +361,9 @@ export async function submitCheckIn(locale: string, sessionId: string, code: str
   if (error) {
     return { ok: false, error: error.message.includes("not_found") ? "not_found" : "unknown" };
   }
-  const envelope = data as { status: string; check_in?: { method: "code" | "manual"; arrived_at: string }; conflict_session_id?: string };
+  const envelope = data as { status: string; check_in?: { id: string; method: "code" | "manual"; arrived_at: string }; conflict_session_id?: string };
   if ((envelope.status === "ok" || envelope.status === "already_checked_in") && envelope.check_in) {
-    return { ok: true, alreadyCheckedIn: envelope.status === "already_checked_in", method: envelope.check_in.method, arrivedAt: envelope.check_in.arrived_at };
+    return { ok: true, checkInId: envelope.check_in.id, alreadyCheckedIn: envelope.status === "already_checked_in", method: envelope.check_in.method, arrivedAt: envelope.check_in.arrived_at };
   }
   return { ok: false, error: envelope.status as CheckInError, conflictSessionId: envelope.conflict_session_id };
 }

@@ -238,7 +238,8 @@ test("the check-in screen names the day, and refuses in THAT day's words once it
     await expect(assembled).toHaveValue(code, { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
   await main.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/\?success=1$/, { timeout: 15_000 });
+  // ★ Wave 16 (REQ-UIX-046, ledger): moment 2 plays on this screen; the URL carries no `?success=1`.
+  await expect(main.locator("[data-moment='check-in']")).toBeVisible({ timeout: 15_000 });
 
   // The row belongs to DAY 2.
   const { rows: ci } = await db.query<{ session_day_id: string }>(

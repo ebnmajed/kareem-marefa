@@ -3,6 +3,7 @@
     "title": "تسجيل الحضور",
     "ready": "أدخل رمز الحضور الذي أعلنه المُقدِّم",
     "codeLabel": "رمز الحضور",
+    "codePosition": "الخانة {position} من {total}",
     "submit": "تسجيل الحضور",
     "success": "تم تسجيل حضورك",
     "alreadyCheckedIn": "أنت مسجَّل بالفعل",
@@ -177,6 +178,12 @@
         "missed": "{count, plural, zero {لم يفتك أي يوم} one {فاتك <bdi>{days}</bdi>} two {فاتك <bdi>{days}</bdi>} few {فاتتك <bdi>{days}</bdi>} many {فاتتك <bdi>{days}</bdi>} other {فاتتك <bdi>{days}</bdi>}}",
         "rule": "نقاط الحضور تتطلّب حضور جميع أيام الجلسة."
       }
+    },
+    "moment": {
+      "here": "أنت هنا!",
+      "noPoints": "لا نقاط حضور لهذه الجلسة.",
+      "recordedAt": "حضورك مسجَّل، <bdi>{time}</bdi>",
+      "toSession": "إلى صفحة الجلسة"
     }
   }
 }

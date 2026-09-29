@@ -3,6 +3,7 @@
     "title": "Check in",
     "ready": "Enter the check-in code the presenter announced",
     "codeLabel": "Check-in code",
+    "codePosition": "Box {position} of {total}",
     "submit": "Check in",
     "success": "You're checked in",
     "alreadyCheckedIn": "You're already checked in",
@@ -177,6 +178,12 @@
         "missed": "{count, plural, one {You missed <bdi>{days}</bdi>} other {You missed <bdi>{days}</bdi>}}",
         "rule": "Attendance points require attending every day of the session."
       }
+    },
+    "moment": {
+      "here": "You're here!",
+      "noPoints": "This session carries no attendance points.",
+      "recordedAt": "Checked in at <bdi>{time}</bdi>",
+      "toSession": "To the session page"
     }
   }
 }

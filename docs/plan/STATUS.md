@@ -109,6 +109,12 @@ end-to-end failures `DEC-190` §6 carried, each its owner's · the unconfigured 
 | `tests/unit/tokens-scope.test.ts:75` | the `:root` names gain `--duration-loop` and `--moment-dir` | both are the block's one `:root` rule; still no colour |
 | `tests/unit/tokens-scope.test.ts:109` | the collapsed names gain `loop` | the same |
 | `tests/rls/fixture.ts` `seed()` | seeds one `member_seen_marks` row for each org's first member | the isolation sweep must meet a real org-B row, and see org A's own; no assertion changed |
+| `tests/e2e/checkin.spec.ts:166-167` (`checkin`) | `toHaveURL(?success=1)` + status `toHaveText("تم تسجيل حضورك")` → the moment is visible, `#main`'s status contains «أنت هنا!», then the URL returns to the event page | the hydrated form returns the check-in's id instead of redirecting (moment 2's occurrence, `DEC-195` §2.1), and returns 1.4 s after the lines (`DEC-197` §1). The no-JS path still ends at `?success=1` (`wave16-checkin-moment.spec.ts`) |
+| `tests/e2e/checkin.spec.ts:169-177` (`checkin`) | a second visit re-submits and expects `?already=1` → a second visit shows the static state: no boxes, no layer, no status | a member checked in to today gets the static state, not a form (`REQ-UIX-046`). `?already=1` is still what a repeat returns — pinned in `check-in-screen.test.tsx` and `checkin-actions.test.ts` |
+| `tests/e2e/checkin.spec.ts` C1 captures (`checkin`) | the «ready» capture signs in the staff member instead of the checked-in attendee | the same reason; the capture's file name is unchanged |
+| `tests/e2e/wave12-checkin-acknowledgement.spec.ts:212-223` (`checkin`) | `?success=1` + the «تم تسجيل حضورك» status + «the award above the form» → the moment, its status «أنت هنا!», the award region inside it, **no form**, the return; the capture moves to the fresh navigation below it | moment 2's second line IS the award (one truth, said once); the award's words are asserted unchanged |
+| `tests/e2e/wave9-checkin-days.spec.ts:241` (`checkin`) | `toHaveURL(?success=1)` → the moment is visible | as the first row |
+| — no assertion (`checkin`) | the no-JS redirect for `reservation_required` is `?error=reservation_required`, was `?error=unknown` | `DEC-197` §4; pinned new in `tests/unit/checkin-actions.test.ts` |
 
 ---
 
