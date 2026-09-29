@@ -254,7 +254,8 @@ async function checkIn(context: BrowserContext, page: Page, who: "sara" | "khali
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
   await settled(page);
   await typeCode(page, code);
-  await expect(page).toHaveURL(/\?success=1$/, { timeout: 20_000 });
+  // wave 16 (DEC-197): the JS path answers in place with the moment, not a `?success=1` redirect.
+  await expect(page.locator("#main [data-moment='check-in']")).toBeVisible({ timeout: 20_000 });
   const { rows } = await db.query<{ session_day_id: string }>(
     `select session_day_id from public.check_ins where session_id = $1 and member_id = $2 and removed_at is null order by arrived_at`,
     [sessionId, member[who]],

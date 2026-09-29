@@ -122,7 +122,9 @@ async function checkInWithCode(page: Page, sessionId: string, code: string) {
     await expect(assembled).toHaveValue(code, { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
   await main.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/\?success=1$/, { timeout: 15_000 });
+  // wave 16 (DEC-197): a fresh check-in answers in place with its moment, and returns to the event page after
+  // its hold — no `?success=1` redirect on the JS path any more. The moment's element is the answer.
+  await expect(page.locator("#main [data-moment='check-in']")).toBeVisible({ timeout: 15_000 });
 }
 
 const rows = (sessionId: string, member: string) =>
