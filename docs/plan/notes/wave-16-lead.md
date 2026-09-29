@@ -73,6 +73,24 @@ a screen that needs the playground listed under a milestone that closed.
    screen every member sees, and the only place `SC 3.3.8` applies» (`09` §8's own words). It is not
    a screen to reach by accident twice.
 
+## ★ One small row the owner added on 2026-09-29, and one ruling to record
+
+**The row — a colour when the company is created.** `createCompany` inserts `{ org_id, name }` and
+nothing else; the team colour is set afterwards as a separate action on the row. The owner's model is
+that an admin sets it **while adding the company**. Put the colour control on the add form and let the
+insert carry it — nullable still, and the same named-colour picker the edit path uses, never a hex
+field (the column's check refuses upper case, and `TEAM_COLOUR_NAMES` keeps an admin away from that
+entirely). `companies-table.tsx` and `actions.ts` are `console`'s files and `console` is not spawned,
+so this is the **lead's as custodian**, with its test and a 390 px capture.
+
+★★ **The ruling — companies have NO logo, and this is a decision, not an omission.** The owner asked
+whether a logo belonged beside the colour and ruled **no** on 2026-09-29. Record it in `DEC-195` with
+the reason, because someone will propose it again: `00-direction.md`'s third principle makes the
+colour the company's identity — *«Companies are houses. Each company has a team colour that rings
+every avatar and colours every poster and race bar. The company is never the avatar fill; it is the
+ring»* — and a ring plus a logo on one avatar is two identity signals competing. A company in this
+product is a name, a team colour, and active-or-deactivated. **That is the whole entity, on purpose.**
+
 ## The wave — the five moments
 
 | | |
