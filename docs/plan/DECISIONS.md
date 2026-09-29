@@ -4808,3 +4808,18 @@ Structural, with no colour in them: `rounded-pill` (999 px), `rounded-input` (12
 8. **Deleted:** the dump, the throwaway database, the one-off proof. **Not pushed:** the commit that carries this entry.
 
 - **Documents changed:** `STATUS.md` (the owner's order, the header)
+
+---
+
+## DEC-194 — The owner's rulings on the rehearsal: merge as it is, no `0162`; the trigger definers are swept together, with a generated test; nobody points `qa` at production
+
+- **Date:** 2026-09-29 · **Decided by:** the owner, on reading `DEC-193`
+- **Rules on:** `DEC-193` §3 and §5
+
+1. ★ **Merge as it is. No `0162`.** `0161`'s function keeps the default ACL. The revoke closes no hole — `0A000` proves a trigger function cannot be called directly — and 58 of `public`'s 60 trigger definers carry the same ACL, so revoking on one more would make it three of sixty-one and leave the inconsistency where it is.
+2. ★ **Carried, as a SWEEP, with a test that enforces the rule.** Every `SECURITY DEFINER` function in `public` that returns `trigger` has `EXECUTE` revoked from `public`, `anon`, `authenticated` and `service_role` — the 58 that carry the default ACL, and `companies_team_color_audit()` with them — in one migration, and a **generated** test refuses a trigger definer that does not. `definer-exposure.test.ts` excludes trigger functions by design today; the sweep's test is what covers them.
+3. ★ **In the same wave as wave 14's carried gate for Storage read predicates.** Two rules, one wave, **both enforced by generation rather than by memory**: a new trigger definer and a new Storage read policy are each covered the day they are written, as a new table is by the isolation sweep.
+4. **`DEC-193` and the no-session audit case belong in `main`.** `de3eb9cf` is pushed, and the PR is merged when CI's run on the head has **concluded** `success` (`DEC-192` §5).
+5. ★ **Point 4 is accepted with its limits stated, and `qa` is never pointed at production.** No session runs `qa`, `visual` or the fingerprint against the live site or a Vercel deployment: the suites submit forms, and there is one Supabase project and it is production. **The owner opens the live site on a phone after the merge.** That closes the gap `DEC-193` §5 names — nothing was measured on a build Vercel made — and the real-device check owed since Launch, in one go.
+
+- **Documents changed:** `STATUS.md` (the carried list, the owner's order, the header)
