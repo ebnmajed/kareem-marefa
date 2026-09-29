@@ -825,6 +825,7 @@ for insert and update, so "opens at completion, closes 14 days later" is one rul
 | `badges`, `levels`, `perks`, `streak_rules` | P1 | P2 | P2 | — | |
 | `member_badges`, `member_perks`, `streak_awards` | P1 | — | — | — | Awarded by job or admin RPC. |
 | `leaderboard_snapshots`, `leaderboard_entries` | §5.7b | — | — | — | Job-written. |
+| `member_seen_marks` | §5.7c | §5.7c | §5.7c | — | A member's own bookmark of what they have seen (`0162`, `DEC-197`). No timestamp; no delete; the worker never touches it. |
 
 #### §5.7a — `points_ledger`, read
 ```sql
@@ -853,6 +854,18 @@ create policy "boards_read" on leaderboard_entries for select to authenticated
 sees their own row, and **company rows (`member_id is null`) are unaffected** — so opting out never
 changes a company's standing, which removes the incentive to opt out in order to protect a company
 average.
+
+#### §5.7c — `member_seen_marks` — a member's own cursor (`0162`, `DEC-197`)
+```sql
+create policy "member_seen_marks_read_own"   on member_seen_marks for select to authenticated;  -- member_id = auth_member_id() and org_id = auth_org_id()
+create policy "member_seen_marks_insert_own" on member_seen_marks for insert to authenticated;  -- the same, and a level or company named on the row is of the org
+create policy "member_seen_marks_update_own" on member_seen_marks for update to authenticated;  -- the same, both sides
+grant select, insert, update on member_seen_marks to authenticated;
+revoke all on member_seen_marks from anon, service_role;
+```
+Nobody reads another member's marks — not an admin, not a moderator: what a member has looked at is theirs. No
+delete: the member's deletion cascades. `service_role` holds nothing; moments 3 to 5 are acknowledged by the client
+that showed them, never by a job.
 
 ### 5.8 Certificates
 
