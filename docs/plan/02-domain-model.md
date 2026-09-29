@@ -281,6 +281,10 @@ non-scoring settings too.
 #### `ENT-companies`
 **Serves:** `REQ-PRF-002`, `REQ-PRF-003`, `REQ-LDR-004`
 `name text not null`, `deactivated_at timestamptz`. `unique (org_id, name) where deactivated_at is null`.
+★ **`team_color text`** (`0160`, `DEC-183` §3, `REQ-UIX-043`) — nullable, `check (team_color ~ '^#[0-9a-f]{6}$')`:
+`#rrggbb` in lower case, or none. It rings a member's avatar and never fills it (`REQ-PRF-009`). Read through
+`p1_org_read` and written through `p2_admin_update`, with no new policy and no new grant. **No migration writes
+one** (`DEC-183` §4.11): it is set on `SCR-048`.
 
 #### `ENT-members`
 **Serves:** `REQ-AUT-003`, `REQ-TEN-004`, `REQ-TEN-005`, `REQ-PRF-001`, `REQ-AUT-007`

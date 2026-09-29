@@ -27,6 +27,14 @@ import { AlertCircleIcon } from "@/components/ui/icons";
 // unreadable. The token is defined in both themes, so the hover follows the
 // section it sits in.
 //
+// ★ WAVE 15 (DEC-186 §2, §6). The scope reassigns `--fg-heading`, `--fg-body`,
+// `--fg-muted`, `--btn-bg` and `--btn2-bg-hover` and sets `color-scheme`, so the
+// legend, the rows, the hints, the dot and the hover follow it with no class of
+// their own. Two classes are ADDED, never swapped: the input's corner, and the
+// error's on-dark constant — `--color-error` is 2.93:1 on the scope's ground.
+// Outside the scope neither applies, so `(auth)/choose-org`, the one public
+// caller, renders exactly as before.
+//
 // `role="radiogroup"` with an explicit `aria-labelledby`: the role is what
 // carries `aria-invalid` for the group, and naming it from the legend by id
 // rather than relying on implicit legend naming is the difference between
@@ -73,7 +81,7 @@ export function RadioGroup({ name, options, legend, defaultValue, value, onChang
         {options.map((option, index) => (
           <div key={option.value}>
             <label
-              className={`flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body ${option.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-[var(--btn2-bg-hover)]"}`}
+              className={`flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body pg:rounded-input ${option.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-[var(--btn2-bg-hover)]"}`}
             >
               {/* ui-lint-disable-next-line field — the label IS the wrapper (`16` §17) */}
               <input
@@ -106,7 +114,7 @@ export function RadioGroup({ name, options, legend, defaultValue, value, onChang
           summary is the announcement; this is what is read on ARRIVAL, through the group's
           `aria-describedby`. */}
       {error ? (
-        <p id={errorId} className="mt-2 flex items-start gap-2 text-caption text-error">
+        <p id={errorId} className="mt-2 flex items-start gap-2 text-caption text-error pg-dark:text-error-on-dark">
           <AlertCircleIcon className="mt-[0.2em]" />
           <span>{error}</span>
         </p>

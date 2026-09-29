@@ -1736,3 +1736,519 @@ Every file below also gains the `applyProposed()` loop for `0006`–`0009` (harn
   is where contract 1 needs it.
 - **The trigger never raises** and returns on a cascade (session or member row gone). A failed award
   cannot undo an admin's presenter change.
+
+---
+
+# Wave 15 plan: `rank-row`, `race-bar`, `level-card` (`DEC-183`, `DEC-184`, M17)
+
+*Planning only. No code, no test, no demo and no SQL until sync 1 approves this. Measured on
+`wave-15/tokens-and-primitives` at `9a81014`, 2026-09-28.*
+
+The three files are my first `ui/` primitives. Each renders every state from props. None reads the DAL, a
+session or a message catalogue, and none is placed on a screen. **Nothing moves this wave.** The FLIP, the
+arrow's pulse, the bar's growth and the card's flip with its shine belong to the next wave. This wave, a rank
+change and a level reached are props, and so the three primitives have **no transition, no animation and no
+keyframe at all**. Under reduced motion they therefore render exactly as they do without it, which is the
+static state the next wave's moments must end on.
+
+## 0 · What I change, and in which order
+
+**Existing primitives: none.** I own no existing `ui/` file. No class, colour or size of the 37 moves because
+of me. **No existing test moves.** `tests/components/scoring/**` has no board test. `member-board.tsx` and
+`company-board.tsx` are frozen and I only read them. Nothing goes into the untouched-suite ledger.
+
+The order is `07-tasks.md`'s («`rank-row`, `race-bar`, `level-card`»), one commit per primitive. Each commit
+holds its `.tsx`, its test and its demo:
+
+| # | Commit | Files | Waits on |
+|---|---|---|---|
+| R1a | `feat(scoring): rank-row, every state from props` | `src/components/ui/rank-row.tsx`, `tests/components/ui/rank-row.test.tsx`, `src/app/[locale]/(dev)/ui/demos/rank-row.tsx` | C1 (names), C2 (`RankRowProps` and `AvatarProps.teamColor` in `index.ts`), D2 (`content`'s ring on `avatar`) |
+| R1b | `feat(scoring): race-bar, every state from props` | `ui/race-bar.tsx`, its test, its demo | C1, C2, N3 (`content`'s `progress-bar`, with the three asks in §5) |
+| R1c | `feat(scoring): level-card, both faces from props` | `ui/level-card.tsx`, its test, its demo | C1, C2, F1 (`--font-display`) |
+
+If D2 or N3 is late, `level-card` goes first because it depends on no other track. The order is a
+preference, not a dependency. `Refs:` on each: `REQ-UIX-037` / `038` / `039`, `DEC-183`.
+
+**Tokens only**, in all three: no hex, no duration, no raw palette name, and no `left`/`right`/`ml-`/`pl-`/
+`text-left`. Nothing mechanical checks this in a primitive: `ui-lint` excludes `src/components/ui/`
+(`scripts/ui-lint.mjs:42`). So **each test file carries a source scan** of its own primitive. It reads the
+`.tsx` as text and fails on `/#[0-9a-f]{3,8}\b/i`, `/\d+m?s\b/` in a class or style, the raw palette's names
+(`navy-`, `silver-`, `lime`, `coral`, `ink`, `bone`, `team-`, `level-`, once C1 publishes the raw list),
+`transition`, `animate-` and `@keyframes`. Physical-direction utilities fail the scan too.
+
+## 1 · The three prop types (contract 2 — for the lead to land in `ui/index.ts`)
+
+```ts
+// ── Game (3) — `scoring`, wave 15 (DEC-183) ─────────────────────────────────
+
+/**
+ * `scoring` · `rank-row.tsx` — REQ-UIX-037. One member's row on SCR-027.
+ *
+ * ★ There is NO `src`: the row draws `avatar`'s initials in the team ring and never a photograph
+ * (DEC-183 §3, DEC-099). The type makes a photograph impossible to pass.
+ * ★ A leaderboard never shames: a row whose rank FELL renders byte-identically to a row with no
+ * `movement` at all — no colour, no icon, no motion. Only a rise is drawn.
+ */
+export interface RankRowProps extends Styleable {
+  rank: number;
+  /** What a screen reader hears for the rank — «المركز 5». The caller's string. */
+  rankLabel: string;
+  /** The avatar's tint key (REQ-PRF-009) — never the name. */
+  memberId: string;
+  displayName: string;
+  /** The member's شركة, or null when they have none (`members.company_id` is nullable). */
+  company: string | null;
+  /** `#rrggbb` or null (contract 3). Rings the avatar, never fills it; null draws the neutral ring. */
+  teamColor: string | null;
+  /** The digits shown, formatted by the caller in Western numerals («1,410»). */
+  points: string;
+  /** What a screen reader hears — «1,410 نقطة», all six ICU forms being the caller's. */
+  pointsLabel: string;
+  /** Set on the viewer's own row only: the row is outlined AND carries this word visibly — «أنت». */
+  selfLabel?: string | null;
+  /**
+   * The rank held before. The primitive compares, so no caller can draw a fall by mistake:
+   * previousRank > rank draws the rise marker and reads `riseLabel`; a fall, a tie or null draw nothing.
+   */
+  movement?: { previousRank: number; riseLabel: string } | null;
+  /** The member's profile. The whole row becomes the target (≥ 44 px), not only the name. */
+  href?: string;
+}
+
+/**
+ * `scoring` · `race-bar.tsx` — REQ-UIX-038. One company on SCR-028 (and SCR-010's widget).
+ * The colour is never the only channel: the name is always drawn, in text, beside the ring.
+ */
+export interface RaceBarProps extends Styleable {
+  companyName: string;
+  /** `#rrggbb` or null (contract 3) — the ring and the fill. Null draws the neutral ring and fill. */
+  teamColor: string | null;
+  /** The ranking metric's value, formatted and possibly signed by the caller («7.3», «‎-12»). */
+  value: string;
+  /** Names the metric the org ranks by (REQ-LDR-005) — «نقاط لكل عضو نشِط». Drawn visibly. */
+  metricLabel: string;
+  /**
+   * The fill, from 0 to 1, relative to the leader. Clamped. A negative, NaN or missing value draws an
+   * empty track: a company's total can be below zero (`company-board.tsx:56-58`), and the text says so.
+   */
+  fraction: number;
+  rank?: number;
+  /** «المركز 3» — required when `rank` is given. */
+  rankLabel?: string;
+  /** The other metric, quieter — REQ-LDR-004 keeps both visible on SCR-028. */
+  secondary?: { label: string; value: string } | null;
+  /** Set on the viewer's own company only: outlined AND named in words — «فريقك». */
+  ownLabel?: string | null;
+}
+
+/** One face of the level card. */
+export interface LevelFace {
+  /**
+   * `levels.sort_order`. It picks the ramp stop. The name never does, because an admin can rename a
+   * level (REQ-REC-003, SCR-054). Values outside 1–5 clamp to the nearest stop.
+   */
+  tier: number;
+  /** The org's name for the level — «صاحب أثر». */
+  name: string;
+  /** Heads the face — «مستواك الحالي», «مستوى جديد». */
+  caption: string;
+  /**
+   * What the level turns on: each entry is an ENABLED `perks` row at this level, named. It may be
+   * empty, and then the face says `noUnlocksLabel`. A privilege the org has not enabled is never listed
+   * (REQ-REC-004, and §6.1 below).
+   */
+  unlocks: readonly string[];
+}
+
+/**
+ * `scoring` · `level-card.tsx` — REQ-UIX-039. SCR-022's level, and the level just reached.
+ * Both faces are in the document in every state, and neither is hidden from assistive technology.
+ */
+export interface LevelCardProps extends Styleable {
+  /** The level the member held — the front face. */
+  level: LevelFace;
+  /** The level just reached — the back face. Absent when nothing was reached. */
+  reached?: LevelFace | null;
+  /** Which face shows. «reached» with no `reached` face shows `level`. Default «level». */
+  shown?: "level" | "reached";
+  /** Heads the unlock list — «يفتح لك». */
+  unlocksLabel: string;
+  /** Said on a face whose `unlocks` is empty — «لا امتياز مرتبط بهذا المستوى بعد». */
+  noUnlocksLabel: string;
+}
+```
+
+Each type is a plain object with string and number props and no function props. A Server Component can
+therefore render all three, and none of the three needs `"use client"`, because nothing in them is
+interactive beyond `rank-row`'s optional link. The house `ui/link` is the lead's file and I import it by path.
+
+## 2 · `rank-row` (`REQ-UIX-037`)
+
+**What it draws**, inline start to inline end: the rank in the display face, the avatar in its team ring
+(`content`'s `avatar` at 32 px, `decorative`, with `teamColor` and **no `src`**), then the name over the
+company, then the rise marker if the rank rose, then the points in the display face. The row is 56 px tall
+and never less than 44. It is an `<li>`, and the board wraps rows in a `<ul>`, as `member-board.tsx:68` does
+today. It is a `<ul>` and not an `<ol>`: ties share a rank, and an `<ol>` would announce a position that
+contradicts the number.
+
+**States:** neutral · self (outlined, and the word) · rose (the marker) · self and rose · fell (**identical
+to neutral**) · tie or new entry (identical to neutral) · no company · null team colour (neutral ring) · with
+`href` (the whole row is the link) · a long name, which wraps and is never clipped, with no `overflow:hidden`
+on a text line.
+
+**★ How a fall is guaranteed to carry no colour, no icon and no motion.** The row does not take a «fell»
+state. It takes `movement.previousRank` and draws only when `previousRank > rank`. Any other value takes the
+**same code path** as `movement: null`. A fall is not «drawn quietly». There is no branch for it at all.
+**The test** (`tests/components/ui/rank-row.test.tsx`, «a row whose rank fell is the neutral row»):
+- it renders `{rank: 5, movement: {previousRank: 3, riseLabel: "…"}}` and `{rank: 5}` into two containers
+  and asserts `fell.innerHTML === neutral.innerHTML`. Byte identity covers colour, icon, motion and every
+  attribute at once;
+- it asserts the fallen row holds no `svg`, and that the `riseLabel` text is absent from it;
+- it asserts no element in the row has a class matching
+  `/accent|signal|error|live|success|danger|warn|animate|transition|motion-/`, and no inline `style` other
+  than the avatar's `--team`;
+- it runs the same two assertions for a tie (`previousRank === rank`) and for `previousRank: 0`;
+- ★ **a guard against a vacuous pass:** the same file asserts that the RISEN row does differ from neutral
+  and holds the marker. If a refactor dropped the marker entirely, the fell-row test alone would stay green.
+
+**The rise marker:** `ArrowIcon direction="up"`. It already exists (`ui/icons.tsx:89-97`, and `up` does not
+mirror, `:85`), so **no glyph request**. It is drawn in the accent, and `riseLabel` sits beside it in a
+visually-hidden span, so colour is never the only channel: the glyph's shape and the words carry it.
+`04-components.md` calls it a «delta arrow»; the number of places risen belongs in `riseLabel`, which the
+caller writes with ICU plurals.
+
+**The viewer's own row** is outlined with a 2 px accent border, **and** `selfLabel` («أنت») is rendered as
+**visible** text next to the name. The name stays. The prototype replaces the name with «أنت»
+(`motion-story.html:438`), which loses the member's own name. The tree keeps the name and adds a word
+(`member-board.tsx:35-39`), and I follow the tree. The word is text, not an `aria-label`, so sighted
+screen-reader users and sighted users get the same thing.
+
+**What a screen reader hears**, in DOM order: «المركز 5 · ريم الشهري · بنينسولا ستوري · تقدّم مركزين · 680
+نقطة · أنت». The visible rank digit is `aria-hidden`, and `rankLabel` is in an `sr-only` span, as
+`member-board.tsx:27-30` does today. The avatar is `decorative`, so the name is not read twice. When the row
+has `href`, the link's accessible name is the display name, and its `::after` covers the row.
+
+**RTL:** logical properties only. The rank sits at the inline start. `<bdi>` wraps the name, the company,
+the points and the visible rank. The digits are Western: the rank is `String(rank)`, which is ASCII in every
+locale, and the points arrive already formatted by `formatNumber` (`src/components/sessions/numerals.ts`,
+`ar-u-nu-latn`, which gives «1,410»; checked with node).
+
+**Reduced motion:** nothing moves in any state, so there is nothing to collapse. The next wave's FLIP ends
+on exactly this markup.
+
+**Token roles:** surface (row), line (border), text, muted (the company and the neutral rank), accent (the
+self outline, the rise marker), the display face (rank and points), `--team` (on the avatar, drawn by
+`content`), and a row radius (see §7).
+
+**What in the tree already does part of its job:** `member-board.tsx:24-44` (the `Row`). It supplies the
+sr-only rank sentence (`:27-30`), the name in `<bdi>` linking to `/app/members/<id>` (`:32-34`), the self
+word as a `Badge` (`:35-39`), and the points (`:41`). Its self row uses `bg-silver-100` + `border-edge-strong`
+(`:26`), a colour change on the viewer's own row that the playground replaces with the accent outline plus
+the word. Its comment «NO AVATARS (DEC-099)» (`:17-18`) is superseded for **initials** by `DEC-183` §3; the
+adopting wave rewrites that comment. `member-board.tsx:53-76` also keeps the viewer's row «under ترتيبك»
+when it falls outside the top N (`REQ-LDR-001`). That is the **board's** job, and `rank-row` stays one row.
+
+## 3 · `race-bar` (`REQ-UIX-038`)
+
+**What it draws:** optional rank, a small team ring (a 20 px circle with a 3 px `--team` border, as in the
+prototype at `motion-story.html:140`), the company name **in text**, the bar (`content`'s `progress-bar`),
+then the value in the display face with `metricLabel` beneath it. `secondary` goes under the name when given.
+
+**The company is identified by its name as well as its colour.** The name is always rendered, in text, and
+is never truncated to nothing. The ring and the fill repeat the colour and never replace the name. A test
+renders two companies with the same `teamColor` and asserts both names are visible text. With a null colour,
+the name is the only identifier, and that is enough.
+
+**The ranking metric is marked (`REQ-LDR-005`).** `metricLabel` is **visible** on every bar, and a screen
+reader hears it with the value: «صنف · 7.3 نقاط لكل عضو نشِط». `REQ-LDR-004` asks for both metrics at once on
+SCR-028, and the prototype's widget shows only one (see §6.4), so `secondary` carries the other metric.
+`company-board.tsx:24-28` already orders «ranked first, other quieter», and I keep that order.
+
+**The viewer's own company** gets the accent outline **and** `ownLabel` («فريقك») in words, by the same rule
+as `rank-row`'s self row.
+
+**States:** neutral · own · with and without rank · with secondary · null colour · `fraction` 0, 1, over 1,
+negative and NaN (clamped; the value text keeps its sign in `<bdi dir="ltr">`, as `company-board.tsx:59`
+does today) · a long company name that wraps («بنينسولا ستوري»).
+
+**What a screen reader hears:** «المركز 3 · صنف · 7.3 نقاط لكل عضو نشِط · إجمالي النقاط 1,204 · فريقك». The
+**bar itself is decorative**, because its value is already in the text beside it. Exposing a second
+`progressbar` would read the number twice. This is my first ask of `content` (§5).
+
+**RTL:** the fill grows from the inline start: the right in Arabic, the left in English. That is
+`progress-bar`'s `transform-origin` (`REQ-UIX-036`). Logical flex order puts the ring and the name at the
+start and the value at the end. The `teamColor` value reaches the DOM only as `style={{"--team": teamColor}}`
+on the ring and the bar's element. It never becomes a class and never becomes a hex in the file (contract 3).
+
+**Reduced motion:** nothing moves. The fill is a static `scaleX`.
+
+**Token roles:** surface, raised (the track), line, text, muted, accent (the own outline), `--team` (ring and
+fill), the neutral ring and fill for null (see §7), pill radius, the display face.
+
+**What in the tree already does part of its job:** `company-board.tsx:34-64`. It supplies the rank sentence
+(`:36-39`), the name in `<bdi>` (`:40-42`), both metrics with the ranked one first and marked by a `Badge`
+«الترتيب حسبه» (`:44-62`), signed values in `<bdi dir="ltr">` (`:56-59`), «—» for a null per-member value
+(`:23`) and the «as of» line (`:67`). It has no bar, no ring and no colour.
+
+## 4 · `level-card` (`REQ-UIX-039`)
+
+**Two faces.** Front: `level`, the level held, its caption («مستواك الحالي»), its name in the display face
+and its unlocks. Back: `reached`, the new level with the same parts. **Which face shows is `shown`**
+(«level» | «reached»). There are three states: (a) `level` alone, where the card is one face; (b) `level` and
+`reached` with `shown="level"`, which is the frame the next wave's flip starts from; (c) `level` and
+`reached` with `shown="reached"`, which is the flip's end frame and **the reduced-motion state: the new face
+simply shown**.
+
+**Both faces are reachable by a screen reader in either state.** Both are always in the DOM, each is a
+`role="group"` named by its caption, and in logical order: the level held, then the level reached. The face
+that is not shown is **visually hidden (`sr-only`)**. It is not `hidden`, `display:none`, `aria-hidden` or
+`inert`. The test asserts, for both values of `shown`, that `getAllByRole("group")` has length 2 and that
+neither group carries `aria-hidden` or `hidden` or has an `aria-hidden` ancestor. The next wave's 3D flip
+uses `backface-visibility: hidden`, which does not hide anything from assistive technology, so this
+guarantee survives the moment. Nothing on the card is focusable, so a visually hidden face never takes
+focus.
+
+**Each face names a real privilege.** `unlocks` lists the **enabled** `perks` at that level, by name
+(`perks.key` → «أولوية الحجز», «الحق في اقتراح جلسة», `recognition.json:176-177`). ★ **The tree cannot
+satisfy «each face names a real privilege» in a default org, and the primitive will not pretend otherwise**
+(§6.1). A face with empty `unlocks` says `noUnlocksLabel`. The primitive never invents a privilege, and its
+demo never shows one that the org could not have enabled.
+
+**The level ramp:** the face's stop is picked by `tier` (`levels.sort_order`) and never by the name,
+because levels are org-editable. The front face is raised/line; the reached face takes the ramp stop as its
+fill. The text on every stop is the dark ink: all five stops in `01-tokens.md` are light. That makes it a
+**token request** (§7).
+
+**RTL:** the caption, name and list flow start-aligned and centred as in the prototype. `<bdi>` wraps the
+level name and every unlock, because an org's level name is data. The card's height is set by its content,
+never a fixed 150 px with `overflow:hidden` as in the prototype (`motion-story.html:205, 208`), which would
+clip tashkeel.
+
+**Reduced motion:** nothing moves. Switching `shown` swaps which face is visually hidden.
+
+**Token roles:** raised, line, text, muted, the level ramp, on-ramp text, card radius, the display face.
+
+**What in the tree already does part of its job:** nothing on a member screen. The level appears as
+`levelName` text on the profile (`leaderboards.ts:241-272`, `getMemberStanding`), and the perks appear only
+on the admin's SCR-054 (`app/admin/recognition/perks-table.tsx:28-48`), whose strings are the privilege
+names above.
+
+## 5 · Measured: what the boards draw today, and what the DTOs carry, for the wave that ADOPTS them
+
+**No board, no DAL and no message file changes this wave.** This is the adoption wave's shopping list.
+
+| Prop | Today's DTO | Carries | Lacks |
+|---|---|---|---|
+| `rank-row` `rank`, `memberId`, `displayName`, `points`, self | `MemberBoardRow` (`leaderboards.ts:12-18`) | `rank`, `memberId`, `displayName`, `points`, `isSelf` | — |
+| `rank-row` `company` | — | — | the member's company name: `getLeaderboards` selects only `id, display_name` (`:65`, `:88`) |
+| `rank-row` `teamColor` | — | — | `companies.team_color` (`0160`, D1) joined through `members.company_id` |
+| `rank-row` `movement` | — | — | **any previous rank**. All-time is a live RPC with no history (`:40`); the monthly board reads only the latest snapshot (`:42-49`). «Since last view» (`03-motion.md` moment 5) has no store (§6.3) |
+| `rank-row` opted-out | database | `all_time_leaderboard()` already omits an opted-out member for others (`0044`) | — |
+| `race-bar` `companyName`, `rank`, both metrics, which is ranked | `CompanyBoardRow` (`:20-26`) + `Leaderboards.companyMetric` (`:32`) | all of it | — |
+| `race-bar` `fraction` | computable from the rows (value ÷ the leader's) | — | — |
+| `race-bar` `teamColor` | — | — | `team_color`: `:113` selects `id, name` |
+| `race-bar` `ownLabel` | `getCompanyPointsBreakdown` knows the viewer's company (`:173`) | — | a flag on the row; `getLeaderboards` does not read `members.company_id` |
+| `level-card` `level.name` | `MemberStanding.levelName` (`:245`) | the name | `tier` (`levels.sort_order`) |
+| `level-card` `unlocks` | — | — | the **enabled** `perks` at that level (`perks.required_level_id`, `enabled`, `0027:283-294`); `member_perks` is readable (`0027:323-325`) |
+| `level-card` `reached` | — | — | a «just reached» signal. `points_balances.current_level_id` holds only the present (`0027:374`). `MSG-level_reached` exists as a notification key (`0026:115`, bindings `level`, `url` at `0133:104`), so a notification row is the nearest existing record |
+| `recognition.ts` | `MemberRecognition` (badges, `streakMonths`) | nothing these three read | — |
+| `points.ts` | `PointsStripData` (`totalPoints`) and `PointsHistory` | nothing these three read | — |
+
+## 6 · New disagreements, beyond `DEC-183` §4's seventeen (I pick no side)
+
+1. ★★ **`REQ-REC-004` against the tree, which the level card surfaces.** `REQ-REC-004` says «every level above
+   the first grants something real». In the tree:
+   - `perks.key` is checked to `('priority_rsvp', 'can_host')` (`0027_m4_schema.sql:286`), so **levels 2
+     (مشارِك نشِط) and 5 (سفير المعرفة) cannot grant anything**;
+   - both perks **ship disabled** (`0027:577-582`, re-seeded in `0083:75`, `REQ-REC-008`), so in a default
+     org **no level grants anything**;
+   - `can_host` is labelled «الحق في اقتراح جلسة» (`recognition.json:177`). It is a **gate**: enabling it
+     stops members below the level from proposing (`:179`, `canHostWarning`), and while it is disabled
+     everyone may already propose. The prototype's back face says «يمكنك الآن تقديم الجلسات»
+     (`motion-story.html:421`). In a default org that sentence is false.
+
+   `REQ-UIX-039`'s «each face names a real privilege» therefore cannot be met truthfully in a default org.
+   The primitive says `noUnlocksLabel` rather than invent one. **Which of the two to change, the privileges
+   or the requirement, is the owner's call.**
+2. **The level ramp is keyed by level name** in `01-tokens.md` («level-4 = كريم معرفة, the brand accent, on
+   purpose»), but level names and thresholds are org-editable (`REQ-REC-003`, `scoring-admin.ts:481, 610`).
+   The card keys the ramp on `sort_order`. An org that renames level 4 keeps the lime. There are five stops,
+   and nothing stops a sixth level from existing in principle. The primitive clamps.
+3. **Moment 5's trigger has no data source.** «The member opens a board where their rank changed since
+   last view» (`03-motion.md`, moment 5) needs a stored last-seen rank per member and board. None exists,
+   and the all-time board has no history. That is the next wave's problem, and it is a schema question,
+   which makes it the lead's.
+4. **The race widget shows one metric; `REQ-LDR-004` requires both at once** on the company board.
+   `motion-story.html:346-351, 440-445` show only the ranked value. `REQ-UIX-038` alone would permit that on
+   SCR-010's widget, but SCR-028 must keep both. Hence `secondary`.
+5. **A negative company value.** `company-board.tsx:56-58` says a company's total can go below zero.
+   `03-motion.md` and the prototype assume a bar from 0 to the leader. `race-bar` clamps the fill at empty
+   and keeps the signed text. Is that acceptable, or should a negative company be drawn differently?
+6. **The avatar's shape and sizes.** The design draws a **circle** with a 3 px ring
+   (`motion-story.html:223`, `04-components.md`: «sizes 32/38/40»). The tree's avatar is a 6 px
+   rounded square (`avatar.tsx:65-70`, the lead's ruling, `DEC-110`), and has no 38 (`index.ts:599`). It is
+   `content`'s to rule; `rank-row` draws whatever `avatar` draws.
+7. **The self row.** The prototype replaces the viewer's name with «أنت» (`motion-story.html:438`). The tree
+   keeps the name and adds the word (`member-board.tsx:35-39`). I follow the tree, and `REQ-UIX-037` («says
+   it is theirs in words») is met either way.
+8. **Naming hazard, for C1.** A marketing `@utility text-display` already exists (`globals.css:336-342`, the
+   hero's size). `tokens.css` adds `--text-display-xl … -sm` and `--font-display`. They do not collide
+   byte-for-byte, but `text-display` (the marketing hero) and `text-display-lg` (the playground) side by
+   side will be confused. I need to know the class that means **the display face**.
+9. **Not a disagreement, but not to be copied:** the prototype's level faces are a fixed 150 px with
+   `overflow:hidden` (`motion-story.html:205, 208`), which clips tashkeel. `CLAUDE.md` forbids it.
+
+## 7 · Requests
+
+**To the lead: tokens (contract 1).** Beyond the ten semantic roles and the structural ones, I need:
+- **the display face**, and its class name (§6.8);
+- **text on accent**: `01-tokens.md` says «text on it is always ink», but the list has no `on-accent` role.
+  The level card's reached face and any accent fill need it;
+- **the level ramp as readable names**: five stops, which do not remap per theme (`01-tokens.md`), plus the
+  text colour on them (ink for all five). Otherwise `level-card` reads raw palette names, which rule 5
+  forbids;
+- **the neutral team ring and fill for `teamColor: null`**, one name shared with `content`'s avatar so that
+  a company without a colour looks the same on a row, a bar and an avatar;
+- **a row radius**: the prototype's row is 16 px (`motion-story.html:221`). That is `--radius-poster`'s
+  value in `01-tokens.md`, and «poster» is the wrong name for a row. Or I use the card radius, which the lead
+  can rule;
+- **what `accent` resolves to outside the scope.** Today has no accent. The primitives appear only inside
+  the scope this wave, but a test renders them outside it. I suggest today's `--btn-bg`.
+
+**To the lead: glyphs and objects.** **None.** The rise marker is `ArrowIcon direction="up"`
+(`icons.tsx:89`), which exists. The cup (season end) and the rocket (level-up) belong to the next wave's
+moments. No primitive of mine draws an object this wave.
+
+**To `content` (through the lead), for `progress-bar` (N3):**
+1. a **decorative** mode (`aria-hidden`, no role) for a bar whose value is already in text beside it, which
+   is the race bar's case. Without it, a screen reader hears the value twice;
+2. a **fill that reads `--team`**, with the neutral fallback, in one shared place;
+3. `value` as a **fraction or value/max, clamped**, including negative and NaN → empty;
+4. heights: 10 px for the race, and the level bar's 12 px is the next wave's.
+
+**To `content`, for `avatar` (D2):** `teamColor` → the ring, the neutral ring for null, and `decorative`
+kept. `rank-row` passes `size={32}`, `decorative`, `teamColor` and **never `src`**.
+
+## 8 · Demos (contract 4): fixture literals only, Arabic, inside the scope
+
+`src/app/[locale]/(dev)/ui/demos/{rank-row,race-bar,level-card}.tsx`, each exporting one Server Component
+(`RankRowDemo`, `RaceBarDemo`, `LevelCardDemo`) for the lead to import into `page.tsx`. They read no DAL, no
+session and no catalogue. ★ The team colours in the fixtures are **data**, as `DEC-183` §4.11 wants the
+gallery to carry them. They are hex strings in the demo file, never in a primitive.
+
+- **`rank-row`:** a `<ul>` of seven rows from `motion-story.html:434-438`'s board. The rows are سارة
+  القحطاني · مواهب (1), محمد الدوسري · جذر (2), ريم الشهري · بنينسولا ستوري (3), فهد العنزي · أيك (4,
+  **fell** from 3, beside a label saying so in the demo's own caption), the viewer · صنف (5, **self + rose**
+  from 6), a member with **no company**, and one with a **null team colour**. A second list shows **one
+  self row that fell**, which must look exactly like a neutral self row. The points are «1,410», «1,205»
+  and so on.
+- **`race-bar`:** five companies ranked by «نقاط لكل عضو نشِط» (9.4, 8.7, 7.3 own «فريقك», a null colour,
+  a **negative** total «‎-12» with an empty track) under a demo heading. The same five are shown again with
+  `secondary`, as SCR-028 will draw them.
+- **`level-card`:** (a) مشارِك alone, no unlocks → `noUnlocksLabel`; (b) صاحب أثر → كريم معرفة,
+  `shown="level"`; (c) the same pair, `shown="reached"`; (d) tier 3 with «أولوية الحجز» as its one unlock,
+  labelled in the demo «when the org has enabled the perk».
+
+Captures: `.qa-shots/rtl/wave15-scoring-<primitive>-<state>.png`, at 390 px and desktop width, once the lead
+has wired the demos (question 6).
+
+## 9 · Questions for the lead, numbered
+
+1. ★ **`REQ-REC-004` / `REQ-UIX-039` against the perks** (§6.1): may a face say «no privilege yet»
+   (`noUnlocksLabel`) when the org has none enabled? That is my plan. Or does the owner want privileges for
+   levels 2 and 5 (a `perks.key` change, the lead's table), or the requirement amended?
+2. **C1's names** for the six token requests in §7, especially **on-accent**, the **level ramp** and the
+   **neutral team ring**. Is the neutral ring content's name or a published token?
+3. **The row radius:** the card radius, or a new structural one (§7)?
+4. **Metric marking on the race bar:** visible `metricLabel` on every bar (my plan), or once per group in
+   the board's header, with the bar carrying it only for screen readers?
+5. **A negative company value** (§6.5): an empty track with the signed number, as planned?
+6. **Captures:** my demos show only once `page.tsx` imports them. Will you wire each on my commit so that I
+   can take the captures through one e2e spec under the gate lock, or will you take them in V1?
+7. **`rank-row`'s `href`:** keep it (the adopting board links to the profile today, `member-board.tsx:32`),
+   or leave linking to the board?
+8. **`index.ts`'s header comment** lists the owners (`index.ts:29-37`). It gains a `scoring` line
+   (`rank-row · race-bar · level-card`) with C2. That is yours, and I mention it only so that it is not
+   missed.
+
+---
+
+# Wave 15: built (after sync 1, `DEC-186`)
+
+| Primitive | Commit | Test | Demo |
+|---|---|---|---|
+| `level-card` (`REQ-UIX-039`) | `0b07d73` | `tests/components/ui/level-card.test.tsx`: 13 cases | `demos/level-card.tsx` → `LevelCardDemo` |
+| `rank-row` (`REQ-UIX-037`) | `cfe05730` | `tests/components/ui/rank-row.test.tsx`: 18 cases | `demos/rank-row.tsx` → `RankRowDemo` |
+| `race-bar` (`REQ-UIX-038`) | `bf5e0859` | `tests/components/ui/race-bar.test.tsx`: 20 cases | `demos/race-bar.tsx` → `RaceBarDemo` |
+
+`tests/e2e/wave15-scoring-gallery.spec.ts` captures all three on both grounds at 390 px and desktop width
+(`.qa-shots/rtl/wave15-scoring-<primitive>-<dark|light>-<390|desktop>.png`). It skips a demo that is not wired
+yet, and the lead runs it against a `KAREEM_GALLERY=1` build. Each demo's root is `data-demo="<primitive>"` and
+carries **no scope of its own**; `playground.tsx` places it on each ground.
+
+**Done, as planned:**
+- ★ **A falling row is the neutral row, byte for byte.** Four cases cover a fall, a tie, `previousRank: 0` and
+  NaN, and one more covers the viewer's own row falling. A guard case asserts that a risen row differs and carries
+  the up arrow. The row takes no `src`, and a source scan asserts that `src` never appears in the file.
+- **The level card:** both faces are `role="group"`, in the DOM in either state, and never `aria-hidden`,
+  `hidden` or `inert`. The face not shown is `sr-only`. The ramp is keyed on `tier`, clamped to 1–5. An empty
+  `unlocks` says `noUnlocksLabel`.
+- **The race bar:** the name is always text, and two companies with the same colour are still told apart. A
+  malformed colour takes the neutral ring and fill. `metricLabel` is visible. The bar is `decorative`, so a
+  screen reader reads the value once. A negative value draws an empty track and keeps its sign.
+- **Nothing moves:** each test scans its source for `transition`, `animate-`, `@keyframes` and `.animate(`, for
+  physical-direction utilities, and for `overflow-hidden` / `truncate`.
+- **The light ground:** the accent is 1.07:1 on paper (`DEC-186` §2), so the self or own outline and the rise
+  arrow take `pg-light:` heading ink there. The word carries the meaning on both grounds.
+
+**Gates at `bf5e0859`:** tsc clean · lint 0 errors · `ui-lint` strict clean · `tokens-only` and
+`public-graph` green · `npm test` 3159 passed, **1 failed, not mine**: `tests/unit/typography-utilities.test.ts`
+does not recognise the lead's `text-play-*` theme keys, and fails on `playground.tsx` too. Told to the lead.
+
+**Not done, and why:** the captures need the lead's `KAREEM_GALLERY=1` build and the three demos wired into
+`playground.tsx`. Adoption on a board is the screens wave's, with §5's DTO list.
+
+## The lead's 390 px finding on `race-bar`: fixed in `7f03d4ed`
+
+**What was wrong:** at 390 px the gallery gives a demo 326 px. `race-bar` put five things on one line, three of
+them fixed-width (the rank, the ring, and the name at `w-24`), and the value column with `metricLabel` could
+not shrink. The value and its metric therefore stood outside the row's frame toward the inline end, and on
+the dark ground the page edge cut them («9.4» read «.4»). My gallery spec checked only the page for sideways
+scroll, and in RTL an overflow toward the left does not always widen the page.
+
+**The fix, with the props unchanged:** the row is now three lines. The first holds the rank, the ring, the
+name (`min-w-0 flex-1`, so it wraps) and the number (`shrink-0`, display face, sign kept). The bar runs across
+the whole row on the second. The third is `metricLabel` and `secondary`, and it is `flex-wrap`, never
+truncated, with no `overflow-hidden` on it.
+
+**The proof:** `race-bar.test.tsx` gains four structural cases: the bar has its own line, the name has no
+fixed width, the metric line wraps and is never truncated, and the number stays whole. The gallery spec now
+asserts, per row on both grounds and at both widths, that every descendant's box lies inside the row's frame.
+It skips `sr-only`; the frames are the `<li>` of `rank-row` and `race-bar` and the visible face of
+`level-card`. Only the lead's re-capture measures the widths.
+
+## The lead's finding on `level-card`: repeated ids. Fixed in the commit below
+
+**What the lead measured:** 29 repeated ids on `/ar/ui` at `a985050a`, all `_S_<n>_-caption` / `-unlocks`,
+coming from `level-card`'s `useId()`-based `aria-labelledby`.
+
+**What I found:** within one card the two faces do get different ids, because `Face` calls `useId()` once per
+instance: `_S_5_` for one face and `_S_6_` for the other, which is what the lead's sample shows. Flight's
+`useId` is a per-request counter (`react-server-dom-webpack-server…js:6206-6216`), so it never repeats within
+one render. The repeats come from **one element rendered twice**. `playground.tsx` builds `DEMOS` once, as
+elements (`node: <LevelCardDemo />`), and places the same element on both grounds. Flight writes that one
+subtree in both places, with every id in it. **Any** primitive that writes an id would repeat in the same way;
+that includes `useId` in `content`'s, `sessions'` or `console`'s primitives. This is a finding for the lead's
+file: `{ Demo: LevelCardDemo }` rendered as `<d.Demo />` per ground would give each ground its own render.
+
+**What the fix in my file does:** `level-card` writes **no id at all**. Each face is `role="group"` with
+`aria-label={caption}`. The caption stays visible, readable text. The unlock list is `aria-label={unlocksLabel}`,
+and its visible «يفتح لك» is `aria-hidden`, so the heading is not read twice. A primitive with no ids cannot
+collide however it is placed, and no reference can resolve to another face's caption.
+
+**The proof:** two new cases in `level-card.test.tsx`. The first renders one card element twice and checks
+that no id repeats. On its own it would not have caught the old code, because a client render gives each
+instance its own `useId`; the comment says so. The second checks that the card has no `aria-labelledby` or
+`aria-describedby`, and that each face is named by its own caption with its own list inside it.
+
+**`rank-row` and `race-bar`:** checked; neither writes an id or uses `useId`.

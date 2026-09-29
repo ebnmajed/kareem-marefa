@@ -71,7 +71,18 @@ export function Switch({ label, description, checked, defaultChecked, onCheckedC
           // already annotates «input borders on white must meet 3:1»: 3.4:1
           // against the canvas AND against the thumb, so both boundaries that
           // carry the state clear the bar. On, the navy fill carries it.
-          className="flex h-6 w-11 shrink-0 items-center justify-start rounded-full bg-edge-strong p-0.5 transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] peer-checked:justify-end peer-checked:bg-[var(--btn-bg)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--ring)] peer-disabled:opacity-60"
+          //
+          // ★ WAVE 15 (DEC-186 §2, §6). The scope reassigns `--edge-strong`,
+          // `--btn-bg`, `--bg` and `--ring`, so the two tracks, the thumb and
+          // the ring's colour follow it. Two classes are ADDED:
+          //   · the ring's WIDTH — this is the one ring the switch draws itself
+          //     (the input is `sr-only`, so the scope's own `:focus-visible`
+          //     rule lands on nothing visible), and the scope's ring is 3 px;
+          //   · the ON track on the light variant. The accent is lime, which is
+          //     1.07:1 on paper, and the thumb is paper — an ON switch there
+          //     would be a white dot on a white field. The text colour is
+          //     16.7:1 on paper and on the thumb, so the state reads.
+          className="flex h-6 w-11 shrink-0 items-center justify-start rounded-full bg-edge-strong p-0.5 transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] peer-checked:justify-end peer-checked:bg-[var(--btn-bg)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--ring)] peer-disabled:opacity-60 pg:peer-focus-visible:outline-[length:var(--focus-width)] pg-light:peer-checked:bg-fg-heading"
         >
           <span className="size-5 rounded-full bg-canvas" />
         </span>

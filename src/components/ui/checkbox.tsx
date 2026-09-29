@@ -37,9 +37,17 @@ export function Checkbox({ label, className = "", disabled, ref, ...props }: Che
     if (node.checked !== Boolean(checked)) node.checked = Boolean(checked);
   });
 
+  // ★ WAVE 15 (DEC-186 §2, §6). The scope reassigns `--fg-body`, `--btn-bg` and
+  // `--btn2-bg-hover`, so the text, the tick's `accent-color` and the hover
+  // follow it with no class of their own; `color-scheme` draws the unchecked
+  // box for a dark ground. Only the corner is added, after the class it
+  // overrides. The hover was `silver-100` — a raw palette name, and the light
+  // wash `ui/radio-group` stopped using for exactly this reason — and is now
+  // `--btn2-bg-hover`, which is `silver-100` at `:root` (`globals.css`), so
+  // nothing moves outside a dark section, and no checkbox renders inside one.
   return (
     <label
-      className={`flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-silver-100"} ${className}`}
+      className={`flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body pg:rounded-input ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-[var(--btn2-bg-hover)]"} ${className}`}
     >
       {/* ui-lint-disable-next-line field — the label IS the wrapper (`16` §17) */}
       <input

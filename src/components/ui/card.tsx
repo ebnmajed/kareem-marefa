@@ -26,6 +26,17 @@ import type { CardActionsProps, CardBodyProps, CardDensity, CardMediaProps, Card
 //
 // Hover raises the card by `--shadow-raise` and never scales — the
 // UI-library default the brief bans by name (`16` §3).
+//
+// ★ Wave 15 — inside the playground's scope (DEC-183, DEC-186 §2, REQ-UIX-030):
+// `04-components.md`'s card — the 22 px panel radius, the scope's surface and
+// hairline (which the scope's variables already give `bg-surface` and
+// `border-edge`), and NO SHADOW: depth comes from surface steps, never a soft
+// grey drop shadow (`01-tokens.md`). With no shadow there is nothing to rise, so
+// hover inside the scope steps the hairline up to the boundary colour, in place
+// and without a transition — nothing scales and nothing moves. Every class that
+// existed stays; these are added under `pg:` and win only inside the scope.
+const SCOPE_CARD = "pg:rounded-panel pg:shadow-none pg:transition-none pg:hover:shadow-none pg:hover:border-edge-strong";
+
 export function Card({ density = "grid", href, children, className = "" }: CardProps) {
   const row = density !== "grid";
   const inner = (
@@ -38,7 +49,7 @@ export function Card({ density = "grid", href, children, className = "" }: CardP
   );
   return (
     <article
-      className={`group relative overflow-hidden rounded-card border border-edge bg-surface shadow-card transition-shadow duration-150 hover:shadow-raise ${className}`}
+      className={`group relative overflow-hidden rounded-card border border-edge bg-surface shadow-card transition-shadow duration-150 hover:shadow-raise ${SCOPE_CARD} ${className}`}
     >
       {href ? (
         // ★ `quiet` (R-C4, `sessions`' request): the whole card is the
@@ -49,7 +60,23 @@ export function Card({ density = "grid", href, children, className = "" }: CardP
         <Link
           href={href}
           quiet
-          className="block h-full rounded-card focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)]"
+          // ★ Inside the scope the card's focus ring is a PSEUDO-ELEMENT on the link, drawn ABOVE
+          // the media (the lead's two reviews, measured in a browser):
+          //   · the article is `overflow: hidden` and the link fills it, so the link's own outline
+          //     — at the scope's 2 px outside, since `focus-visible:-outline-offset-2` is layered and
+          //     never applies — is clipped whole;
+          //   · pulled inside the link, that outline was COVERED: `CardMedia` is a positioned child,
+          //     so it paints over its parent's outline on the top and both sides of the media, and
+          //     a stacking context on the link does not change it (measured).
+          // `::after` is absolute over the whole card (the article is its containing block), above
+          // the media (`z-10`), clicks passing through it, its 3 px band in the scope's ring colour
+          // and width, its corner inherited from the link's 22 px — and it exists only while the
+          // link is `:focus-visible`. It is the one ring: the link's own stays outside and clipped.
+          // It is not the article's outline, which would sit outside the card where a caller's
+          // clipping rail cuts it, and not a variable set on the link, which the card's nested
+          // controls would inherit. The link takes the article's corner too. Outside the scope
+          // nothing changes this wave (carried to the owner, SC 2.4.7).
+          className="block h-full rounded-card focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)] pg:rounded-panel pg:focus-visible:after:pointer-events-none pg:focus-visible:after:absolute pg:focus-visible:after:inset-0 pg:focus-visible:after:z-10 pg:focus-visible:after:rounded-[inherit] pg:focus-visible:after:border-[length:var(--focus-width)] pg:focus-visible:after:border-[var(--ring)]"
         >
           {inner}
         </Link>
@@ -158,7 +185,10 @@ export function CardMedia({ src, alt = "", placeholderFrom, placeholderTone, asp
   // `overlay` renders in a sibling node below, entirely outside this wash.
   const wash = dimmed ? "grayscale opacity-45" : "";
   return (
-    <div data-slot="media" className={`relative shrink-0 overflow-hidden bg-navy-900 ${ASPECT[aspect]} ${className}`}>
+    // Inside the scope the letterbox around a contained image is the raised surface, not navy
+    // (1.02:1 against the scope's surface — invisible). `MEDIA_TINTS` stay as they are: two suites
+    // pin them, and a session's placeholder inside the scope is `poster`'s job (DEC-186 §5).
+    <div data-slot="media" className={`relative shrink-0 overflow-hidden bg-navy-900 pg:bg-raised ${ASPECT[aspect]} ${className}`}>
       {children ? (
         // A live render in place of an image (wave 8, `designer`'s template cards) — the wash
         // wraps it exactly as it wraps an image, and `overlay` stays outside it.
@@ -197,7 +227,8 @@ export function CardMedia({ src, alt = "", placeholderFrom, placeholderTone, asp
 
 export function CardBody({ children, className = "" }: CardBodyProps) {
   return (
-    <div data-slot="body" className={`flex min-w-0 flex-1 flex-col gap-1.5 p-4 ${className}`}>
+    // Inside the scope: 12 px on the phone, 16 px from `sm` up (`04-components.md`).
+    <div data-slot="body" className={`flex min-w-0 flex-1 flex-col gap-1.5 p-4 pg:p-3 pg:sm:p-4 ${className}`}>
       {children}
     </div>
   );

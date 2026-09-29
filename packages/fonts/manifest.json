@@ -37,6 +37,42 @@
       "file": "25feffc5815d323a2eb4daef379697d0ebffff34367ee8b2560e5a0e9a54fa23.woff2"
     },
     {
+      "family": "Baloo Bhaijaan 2",
+      "weight": 700,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "ddfc8d7ce4a727b666b57681c4394688814573e601946bfa49f9abc10ee0ffce",
+      "bytes": 38588,
+      "file": "ddfc8d7ce4a727b666b57681c4394688814573e601946bfa49f9abc10ee0ffce.woff2"
+    },
+    {
+      "family": "Baloo Bhaijaan 2",
+      "weight": 700,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "9716a70e65cec6997acad8a854cf3510169faa76884d70f7c6f043b722c9e0cc",
+      "bytes": 34704,
+      "file": "9716a70e65cec6997acad8a854cf3510169faa76884d70f7c6f043b722c9e0cc.woff2"
+    },
+    {
+      "family": "Baloo Bhaijaan 2",
+      "weight": 800,
+      "style": "normal",
+      "script": "arabic",
+      "sha256": "ddfc8d7ce4a727b666b57681c4394688814573e601946bfa49f9abc10ee0ffce",
+      "bytes": 38588,
+      "file": "ddfc8d7ce4a727b666b57681c4394688814573e601946bfa49f9abc10ee0ffce.woff2"
+    },
+    {
+      "family": "Baloo Bhaijaan 2",
+      "weight": 800,
+      "style": "normal",
+      "script": "latin",
+      "sha256": "9716a70e65cec6997acad8a854cf3510169faa76884d70f7c6f043b722c9e0cc",
+      "bytes": 34704,
+      "file": "9716a70e65cec6997acad8a854cf3510169faa76884d70f7c6f043b722c9e0cc.woff2"
+    },
+    {
       "family": "IBM Plex Sans",
       "weight": 400,
       "style": "normal",
@@ -214,6 +250,32 @@
       "derivedFrom": [
         "1313bcd0bcb23aa414a601c41d7cd3e751a00f80ae72f0d5dad8acdba04f836f",
         "25feffc5815d323a2eb4daef379697d0ebffff34367ee8b2560e5a0e9a54fa23"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "Baloo Bhaijaan 2",
+      "weight": 700,
+      "style": "normal",
+      "sha256": "47d2f06c6bd8658d15e30fde260837b9eb43c71f07e9304214c0430828872d84",
+      "bytes": 107064,
+      "file": "47d2f06c6bd8658d15e30fde260837b9eb43c71f07e9304214c0430828872d84.ttf",
+      "derivedFrom": [
+        "ddfc8d7ce4a727b666b57681c4394688814573e601946bfa49f9abc10ee0ffce",
+        "9716a70e65cec6997acad8a854cf3510169faa76884d70f7c6f043b722c9e0cc"
+      ],
+      "tool": "fonttools 4.60.2"
+    },
+    {
+      "family": "Baloo Bhaijaan 2",
+      "weight": 800,
+      "style": "normal",
+      "sha256": "5db0e03c94ae85b96dceac0bed796a2234ff8ebb622fa30c900d5919d26ee3ea",
+      "bytes": 106980,
+      "file": "5db0e03c94ae85b96dceac0bed796a2234ff8ebb622fa30c900d5919d26ee3ea.ttf",
+      "derivedFrom": [
+        "ddfc8d7ce4a727b666b57681c4394688814573e601946bfa49f9abc10ee0ffce",
+        "9716a70e65cec6997acad8a854cf3510169faa76884d70f7c6f043b722c9e0cc"
       ],
       "tool": "fonttools 4.60.2"
     },

@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { companyInput, createCompany, setCompanyActive } from "@/lib/dal/admin-lists";
+import { companyInput, createCompany, setCompanyActive, setCompanyTeamColor } from "@/lib/dal/admin-lists";
 import type { Locale } from "@/i18n/routing";
 import { emptyFormState, formStateFrom, was, withErrors, withFormError, zodErrors } from "@/lib/form-state";
 import { COMPANY_FIELDS, type CompanyField, type CompanyState } from "./state";
+import { TEAM_COLOUR_HEX, TEAM_COLOUR_NAMES } from "./team-colours";
 
 // SCR-048's Server Actions (REQ-ADM-008). Same reasoning as
 // `admin/categories/actions.ts` and the inherited `admin/venues/actions.ts`:
@@ -34,5 +35,21 @@ export async function addCompany(locale: Locale, prev: CompanyState, formData: F
 export async function toggleCompany(locale: Locale, companyId: string, active: boolean): Promise<void> {
   if (!z.uuid().safeParse(companyId).success) return;
   await setCompanyActive(locale, companyId, active);
+  revalidatePath(`/${locale}/app/admin/companies`);
+}
+
+// «بلا لون» posts `null`; every other choice posts one of the seven NAMES
+// (`REQ-UIX-043`, DEC-186 §8) — never a hex the client invented. The name
+// is validated here, against the closed enum, and only then turned into the
+// `#rrggbb` the database's own check constraint (`0160`) also enforces —
+// two independent boundaries agreeing on one shape, neither trusting the
+// other alone.
+const teamColourNameSchema = z.enum(TEAM_COLOUR_NAMES).nullable();
+
+export async function setCompanyTeamColour(locale: Locale, companyId: string, name: string | null): Promise<void> {
+  if (!z.uuid().safeParse(companyId).success) return;
+  const parsed = teamColourNameSchema.safeParse(name);
+  if (!parsed.success) return;
+  await setCompanyTeamColor(locale, companyId, parsed.data === null ? null : TEAM_COLOUR_HEX[parsed.data]);
   revalidatePath(`/${locale}/app/admin/companies`);
 }

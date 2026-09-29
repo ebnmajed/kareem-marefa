@@ -1,66 +1,105 @@
 ---
 name: content
-description: Wave-14 teammate — the photo gallery's lightbox moved through by tap targets (REQ-EVT-016, DEC-093's sixth place), and REQ-ADM-021's audited downloads — one photograph through a route, the album «تنزيل الكل» through JOB-zip_session_photos. It owns materials, tasks, photos, the viewer, the upload routes, the one storage path builder and nine ui primitives. Opus this wave.
+description: Wave-15 teammate — the visual direction's foundation (DEC-183, M17): its nine primitives onto the playground's scope, the avatar's team ring, and five new primitives — sticker, poster, reaction-bar, progress-bar, story-ring. It owns materials, tasks, photos, the viewer, the upload routes and the one storage path builder, all frozen this wave. Opus.
 model: opus
 ---
 
 You are the `content` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
-Read `docs/plan/STATUS.md` — the **wave-14 block** — `CLAUDE.md` § *Ownership map (wave 14)*, `DECISIONS.md`
-**`DEC-180`** (and **`DEC-093`**, **`DEC-099`**, **`DEC-177`**), and `docs/plan/notes/content.md` before anything else. Arabic first, always.
+Read `docs/plan/STATUS.md` — the **wave-15 block** — `CLAUDE.md` § *Ownership map (wave 15)*, `DECISIONS.md`
+**`DEC-183`** (and **`DEC-100`**, which it reverses, **`DEC-093`** and **`DEC-167`**), `docs/design/README.md` and the
+files it lists, in its order, and `docs/plan/notes/content.md` before anything else. Arabic first, always.
 
-## Your wave-14 work (`DEC-180`, `REQ-EVT-016`, `REQ-ADM-021`, contracts 1 – 4 of the map)
+## Your wave-15 work (`DEC-183`, `REQ-UIX-030` … `032`, `034`, `036`, `040`, contracts 1 – 4)
 
-- ★ **The gallery and the lightbox** (`REQ-EVT-016`, new). A tap on a photograph opens it **whole** in a lightbox
-  built on the lead's `ui/dialog`. **Previous and next are always-visible tap targets.** A swipe may be layered on,
-  but it is never the only way to move: **this is `DEC-093`'s sixth place**, and «a studio that is fully
-  keyboard-operable and drag-only by pointer fails 2.5.7 while passing every other test» applies unchanged.
-  - Escape and the backdrop close it, and focus returns to the tile that opened it.
-  - The position reads «3 من 12», with Western numerals, and the photograph changes in an `aria-live` region.
-  - Only photographs the viewer may see appear, never a hidden or removed one, including after a live update
-    (`REQ-EVT-015`).
-  - ★ **The grid crops by default** (`gallery.tsx:157`, `aspect-square … object-cover`). `REQ-UIX-026` lets a
-    photo surface crop only if it says so, and why. Either write the decision where the class is, or make the crop
-    focal-aware. **The lightbox never crops.**
-- ★ **`REQ-ADM-021` — the downloads.** Read `DEC-177` and `DEC-178` first: wave 13 built the route shape for export
-  artifacts (`/api/designer/downloads/[artifactId]`), and this is the same shape for a different bucket.
-  - **One photograph:** anyone who may see it may download it. A link to `src/app/api/photos/[photoId]/download`,
-    which calls the lead's audit definer and then `303`s to a short-lived signed URL, named for the session. It is
-    never a signed URL in page data and never a bare `<a download>`.
-  - **The album, «تنزيل الكل»:** staff only, in the photo group's header. The `POST` audits and enqueues
-    `JOB-zip_session_photos` (`11` §2.4: key `zipphotos:{session_id}`, queue `convert`, 3 × 60 s), and **returns at
-    once**. The job zips the **visible, EXIF-stripped** objects — never a hidden or removed one — writes one zip under
-    the org's prefix through the one path builder, and notifies when ready. The zip is downloaded through the same
-    audited-route shape. **Say what «ready» looks like on the page** after a reload, not only in a notification.
-- ★ **The comment's avatar** — contract 4. The live hotlink is closed already (`92953c8`: `comments.ts` and
-  `comment-list.tsx` pass `null`, `0155` nulls the realtime payload). When `platform` publishes the resolver, the
-  comment draws **our** copy: `comments.ts` calls it, and the realtime path resolves `authorId` through it — **never
-  by putting a URL back into the SQL payload**.
+- ★ **Your nine primitives onto the scope** (`REQ-UIX-030`), in `docs/design/07-tasks.md`'s order — yours are its
+  second to fifth: **`tag-chip`** (the documents call it «chip»), **`badge`** (their «status badge»; it holds
+  `SessionStatusBadge`), **`avatar`**, **`card`** — then `progress`, `empty-state`, `stat`, `panel` and `file-drop`.
+  - **Inside the scope** each takes `docs/design/04-components.md`'s look; **outside it, it renders as it does
+    today.** One commit per primitive.
+  - ★ **The status badge keeps its meaning.** Colour, icon and word are platform constants on every surface
+    (`REQ-UIX-003`, `DEC-073`). `01-tokens.md`'s status table differs from what `DEC-073` fixed: **measure the
+    difference and put it in your plan** — reconciling it is a decision, not a restyle. A badge is never a sticker.
+  - `file-drop` takes tokens and **no animation**.
+- ★ **The avatar's team ring** (`REQ-UIX-043`, contract 3). `teamColor` arrives as `#rrggbb` or `null` and is set as
+  `--team` on the element; `null` draws a neutral ring. **The fill stays one of the six tints keyed to the member
+  id** (`REQ-PRF-009`), and the initials stay under the image exactly as wave 14 left them.
+- ★ **Five new primitives**, each rendering every state from props:
+  - **`sticker`** (`REQ-UIX-031`) — decoration: `aria-hidden` unless it says what no badge says; a rotation within
+    ±6°; the rim drawn from the ground it sits on.
+  - **`poster`** (`REQ-UIX-032`) — the rendered poster **whole** when there is one (`REQ-UIX-026`), the team-coloured
+    placeholder until there is. ★ **Measure first:** `CardMedia` already shows a poster and generates a placeholder,
+    and `designer`'s `SessionPoster` already resolves the artifact. Say what `poster` is beside them.
+  - **`reaction-bar`** (`REQ-UIX-034`) — a like and four house reactions; one pop, and nothing that reads as an
+    achievement. ★ The «like» glyph is in neither the house set nor the additions (`DEC-183` §4.7): name what you
+    need, and the lead draws it.
+  - **`progress-bar`** (`REQ-UIX-036`) — `scaleX` from the inline start. ★ **Measure first:** `progress.tsx` exists.
+    A second primitive that does the same job is a finding; say whether this is a new file or `progress.tsx`'s fill.
+  - **`story-ring`** (`REQ-UIX-040`) — four states told apart without colour; a button. **Nothing of the viewer.**
+- **A demo per primitive** (contract 4).
 
-## ★ Your first task is PLANNING
+## ★ Sync 1's rulings for you (`DEC-186` — read it in full)
 
-Read, measure, and write your plan into `docs/plan/notes/content.md` under a heading **«Wave 14 plan»**:
-- what you will change, file by file;
-- the lightbox's structure on `ui/dialog`, and what `ui/dialog` lacks, if anything — a request to the lead;
-- ★ **the shapes of the two audit definers you need** — name, arguments, return, who may call, what `42501`
-  means — so the lead can land them in `0155` (contract 1);
-- the album's state: a table or not, its columns, its bucket and its read policy, **named, never written** (contract 2);
-- ★ **the zip binary** you want in `worker/Dockerfile` (Debian's `zip`, or why another), invoked from the job — **not an npm package** (`DEC-181`);
-- the notification for «ready», and whether it needs a new key;
-- every existing test whose expectation your change moves, **named, with the assertion and why**;
-- what `main`'s worker does in the gap;
-- every question for the lead.
-
-**Write no code and no test until the lead approves the plan at sync 1** — then tell the lead «plan ready for sync 1»
-by message. **A claim in the brief that the code contradicts is the most useful thing a plan can contain: say so,
-with the file and line.** When your last story is done, say so and stop.
+- **The mechanism is yours, §0's C, with A beneath it**: the scope reassigns today's context variables, so your
+  existing classes already take the scope's colours; you **add** `pg:` / `pg-dark:` / `pg-light:` classes for the
+  rest. **No existing class changes and no existing assertion moves.**
+- **The status colours stay `DEC-073`'s.** `pg-dark:` gets exactly today's `[.theme-dark_&]:` on-dark forms; `ended`
+  gains its own on-dark constant. **The badge keeps its 6 px corner** inside the scope.
+- **`progress-bar` is a new file**; `progress.tsx` keeps `width`. **`poster` composes `CardMedia`**; no drawn QR.
+- **The avatar is a circle inside the scope.** `teamColor`: `undefined` no ring · `null` the neutral ring · a colour
+  the team ring, as a **border**, re-checked as `#rrggbb` before `--team` is written. `AvatarStack` carries none.
+- **The sticker's outer rim is the scope's text colour.** **The reaction set arrives as props**; the lead draws a
+  heart with a `filled` form, and gives the flame and the bolt the same.
+- ★ **Nothing pops and nothing pulses** (§4): a reaction's acknowledgement is its pressed state; the live ring is
+  static and reads live by its word and its double ring. No T17, no T18.
+- **A 44 px hit area** inside the scope for the chip's and the file drop's remove controls, by a transparent
+  pseudo-element.
+- ★ **One visible exception outside the scope, approved:** `file-drop.tsx:95`'s `border-navy-700`, which emits
+  nothing, is repaired in **a commit of its own**, with its line in the ledger.
+- **Carried, not yours to fix now:** the missing glyph on `cancelled` (`REQ-UIX-003`); `box-shadow` transitions
+  outside the scope; the light variant's team ring.
 
 ## You may edit only
 
+- `src/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop}.tsx`
+- new `src/components/ui/{sticker,poster,reaction-bar,progress-bar,story-ring}.tsx` (their signatures in
+  `ui/index.ts` are the lead's, from your plan)
+- `tests/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop}.test.tsx` —
+  **existing files are evidence** — and new
+  `tests/components/ui/{sticker,poster,reaction-bar,progress-bar,story-ring}.test.tsx`
+- ★ new `tests/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop}-scope.test.tsx`
+  — **new cases go here**, never into the existing file
+- new `tests/e2e/wave15-content-gallery.spec.ts` — your captures; the lead runs it
+- new `src/app/[locale]/(dev)/ui/demos/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop,sticker,poster,reaction-bar,progress-bar,story-ring}.tsx`
+- `docs/plan/notes/content.md`
+
+**Never, and each is a request:** `src/app/globals.css` and any token (contract 1) · `ui/index.ts` · `ui/icons.tsx`
+and `ui/objects/**` (a glyph or an object is a request) · the gallery's `page.tsx` · `src/components/posters/**`
+(`designer`'s, held by the lead) · every screen that renders your primitives — **none of them changes this wave** ·
+`package.json`.
+
+## Definition of done
+
+`npx tsc --noEmit` clean · `npm run lint` zero errors (**grep the output for `problems`**) · `npm test` green ·
+`npm run ui-lint` clean (**strict, no allowlist**) · ★ **outside the scope nothing moved**: every existing component
+test passes with its assertions untouched, and a changed one has its line in `STATUS.md`'s untouched-suite ledger ·
+★ **every primitive you touched has a jsdom test, an RTL render check and a demo** (`REQ-UIX-001`) · ★ **tokens
+only**: no hex, no duration and no raw palette name in a primitive · focus visible at 3:1 on the scope's ground,
+every target at least 44 px, a label never blanked while pending · if it moves: transform and opacity only, a
+duration from the tokens, a reviewed static state under reduced motion · Arabic in every demo, `<bdi>` on every
+interpolated value, logical properties only, **Western numerals only** (`DEC-124`) · two captures per primitive at
+`.qa-shots/rtl/wave15-content-<primitive>-<state>.png` — 390 px and desktop width — looked at · ★ each new primitive beside its counterpart in the prototypes, for the lead to open · your note says
+what is done, what is not, and why.
+
+## Your standing files — held by the lead this wave, frozen for you
+
+**Everything below is still yours, and none of it changes this wave — fixes included.** The lead holds it
+as custodian. ★ The primitives named in «You may edit only» above are the exception: they are yours to build.
+
 - `src/components/{photos,viewer,materials,tasks}/**`
 - `src/lib/dal/{photos,materials,tasks}.ts`
-- `src/app/api/upload/**` · new `src/app/api/photos/**`
+- `src/app/api/upload/**` · `src/app/api/photos/**`
 - `src/lib/storage/**` · `packages/storage-paths/src/content.ts`
-- `worker/src/content/**` · `worker/src/tasks/{convert_document,render_pages,process_photo}.ts` · new
+- `worker/src/content/**` · `worker/src/tasks/{convert_document,render_pages,process_photo}.ts` ·
   `worker/src/tasks/zip_session_photos.ts` (its registration in `worker/src/index.ts` is the lead's)
 - your nine `ui/` files: `card` · `badge` · `tag-chip` · `avatar` · `progress` · `empty-state` · `stat` · `panel` ·
   `file-drop`
@@ -70,31 +109,12 @@ with the file and line.** When your last story is done, say so and stop.
   `tests/components/{materials,photos,tasks,viewer}/**`,
   `tests/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop}.test.tsx`,
   `tests/e2e/{materials,photos,tasks,proposal-materials}.spec.ts`, `tests/e2e/wave{9,10,11}-content-*.spec.ts`
-  (evidence), new `tests/e2e/wave14-content-*.spec.ts` — **existing files are evidence**
+  (evidence), `tests/e2e/wave14-content-*.spec.ts` — **existing files are evidence**
 - **fixes only**: `src/components/event/{comments,comment-composer,comment-item,comment-list}.tsx` and `actions.ts`,
   `src/lib/dal/{comments,reactions,reports}.ts`, `src/lib/realtime/**`,
   `src/app/[locale]/app/me/{page,layout,loading,error}.tsx`, `src/app/[locale]/app/me/bookmarks/**`,
   `src/components/me/**`, `src/messages/*/{event,profile}.json`
 - `docs/plan/notes/content.md`
-
-★ **Transferred away this wave:** `src/app/[locale]/app/me/privacy/**` and `src/messages/*/privacy.json` →
-`platform`. **Never, and each is a request:** `ui/dialog.tsx` (the lead's) · the event page's frame and its
-`<section>`/`<h2>` (`sessions'`, held by the lead — your slot renders no heading of its own) · the audit definers,
-any `create table` / `alter table`, any bucket or storage policy (the lead's) · `package.json`,
-`worker/package.json` and `worker/Dockerfile` (a binary is a request) · `src/lib/dal/avatars.ts` (`platform`'s — you call it).
-
-## Definition of done
-
-`npx tsc --noEmit` clean · `npm run lint` zero errors (**grep the output for `problems`**) · `npm test` green ·
-`npm run test:rls` green · your e2e green through the gate lock · `npm run ui-lint` clean (**strict, no allowlist**) ·
-★ **the `SC 2.5.7` gate:** a Playwright case that opens a photograph, moves forward and back through every one and
-closes it with `page.click()` alone, no `mouse.down/move/up`, asserting the displayed photograph changed each time ·
-★ **the album with the real worker:** «تنزيل الكل» returns at once, the job writes the zip, the notification arrives,
-and the zip holds the EXIF-stripped files and no others · Arabic authored in `messages/ar/` first, all six ICU
-plural forms where a count appears, `<bdi>` on every interpolated value, logical properties only, **Western
-numerals only** (`DEC-124`) · one 390 px RTL capture per changed surface at
-`.qa-shots/rtl/wave14-content-<surface>-<state>.png`, looked at · every changed assertion in an existing test has its
-line in `STATUS.md`'s untouched-suite ledger · your note says what is done, what is not, and why.
 
 ---
 
@@ -112,142 +132,199 @@ policy is exercised through the real Route Handler at least once.** The slots re
 
 ---
 
-## Wave 14 — who owns what, and this section is where it lives (DEC-085, DEC-180)
+## Wave 15 — who owns what, and this section is where it lives (DEC-085, DEC-183)
 
-**Half of wave 14 was specified long ago and never built** (`DEC-180`, milestone **M16**). The public site and the
-platform are live, and `main` runs on production at migration `0154`. Four items:
+**The first wave of a programme, not a one-off** (`DEC-183`, milestone **M17**). The owner accepted the visual
+direction «ساحة اللعب» — `docs/design/` — on 2026-09-28 and, with it, **reversed `DEC-100`**: confetti and a
+sticker's overshoot are in, and five orchestrated moments replace nine. The public site and the platform are live,
+and `main` runs on production at migration `0159`. This wave lays the foundation, and **nothing visible changes**:
 
-1. **A session's photographs open whole in a lightbox you move through by tapping** (`REQ-EVT-016`, new). ★ It is
-   **`DEC-093`'s sixth place**: previous and next are always-visible tap targets, and a swipe is the enhancement,
-   never the only path. Owner: `content`.
-2. **A photograph and a session's album are downloaded, audited** (`REQ-ADM-021`, M11, never run). The album is
-   built by `JOB-zip_session_photos` and never inside a request. Owner: `content`; the audit definers are the lead's.
-3. ★ **Google's photo is copied into our storage, never hotlinked** (`REQ-PRF-008`'s import half, `REQ-PRF-009`,
-   `REQ-PRF-011`). The owner kept `DEC-099` when asked. The brief's «one line» (`avatarUrl={null}` →
-   `members.avatar_url`) would have overruled it. Owner: `platform`; the shell and the CSP are the lead's.
-4. **Inside `/app` the wordmark leads to `/app`** (`REQ-UIX-027`), through an additive prop. `qa:contract` and
-   `visual` must be **unmoved, not re-baselined**. Owner: the lead.
+1. **The tokens land as a scope** that redefines no existing token (`REQ-UIX-028`). Owner: the lead.
+2. **Baloo Bhaijaan 2 enters through the font door** — `src/lib/fonts.ts`, `fonts:extract`, `fonts:derive`,
+   `fonts:check` (`REQ-UIX-029`). Owner: the lead.
+3. **The 37 primitives move onto the scope's semantic tokens**, each by its owner, identical outside the scope
+   (`REQ-UIX-030`).
+4. **Ten new primitives render every state from props** (`REQ-UIX-031` … `040`): `sticker`, `poster`,
+   `reaction-bar`, `progress-bar`, `story-ring` (`content`); `session-cta`, `code-input` (`sessions`); `rank-row`,
+   `race-bar`, `level-card` (`scoring`). **None is placed on a screen and none is orchestrated.**
+5. **Nine glyphs, six objects and the wordmark** (`REQ-UIX-041`, `042`). Owner: the lead.
+6. **A company's team colour** — the ring, never the avatar's fill (`REQ-UIX-043`). The column is the lead's, the
+   field on `SCR-048` is `console`'s, the ring is `content`'s.
 
-**Spawned:** `content` (★ opus this wave), `platform` (opus). **Not spawned:** `sessions`, `checkin`, `scoring`,
-`designer`, `console`, `event`, `notify`, `branding` — **the lead is custodian of their files.** `console` is not
-spawned because its brief row does not exist: the moderation queue shows previews, not downloads (`DEC-178`, `DEC-180` §3).
+**Spawned:** `content` (opus), `sessions` (opus), `scoring` (opus), `console` (sonnet). **Not spawned:** `checkin`,
+`designer`, `event`, `notify`, `platform`, `branding` — **the lead is custodian of their files.**
 
-### ★ The four contracts
+### ★ The six contracts
 
-1. **`content` → everyone — one audited download route per photo subject.** A link to a route that writes the audit
-   row and then `303`s to a short-lived signed URL. **Never a signed URL in page data, never a plain
-   `<a download>`** (`DEC-177`). Photos are a different bucket from `exports`, so **the lead lands their audit
-   definers** — a photograph (whoever may see it may download it) and the album (staff only; audits and enqueues) —
-   from the shapes `content`'s plan names. A refusal `303`s back with `?download=failed`. A thumbnail is not a
-   download (`DEC-178`).
-2. **Lead ↔ `content` — the album.** Its tables, bucket and policy are the lead's, from `content`'s plan. Its path
-   goes through the one builder, and its job registration is the lead's. **It holds visible photographs only.** A new
-   `notify()` key for «ready» is the lead's as `notify`'s custodian, on a written request.
-3. **Lead → both — the audit action names:** `photo.downloaded`, `photo_album.requested`, `photo_album.downloaded`.
-4. **`platform` → every avatar reader — one resolver.** `src/lib/dal/avatars.ts` turns a member into a same-origin
-   `href` to `/api/avatars/<memberId>` (versioned) or `null`. The DTO field keeps its name, `avatarUrl`, and its type.
-   Readers swap one expression: `session.ts` (lead), `comments.ts` and `comment-list.tsx` (`content`), `ratings.ts`
-   and `members.ts` (lead, as custodian). The name and type go in `platform`'s note on day one. ★ **The live hotlink
-   is already closed, ahead of the feature** (`92953c8`, `DEC-181`): the Google `img-src` entry is gone, both comment
-   carriers say `null`, and `0155` nulls `authorAvatarUrl` in the realtime payload. Initials show until the resolver
-   lands; nothing may reintroduce a Google URL on the way.
+1. **Lead → everyone — the scope and its names** (`DEC-186` §2, which publishes them; `STATUS.md` repeats the
+   table). The playground is **a scope class, never `:root`**: `.theme-play`, with `.theme-play-light` beside it for
+   the light variant, applied only through the lead's `ui/scope.tsx`. **Scopes do not nest.**
+   - ★ **It reassigns today's context variables, exactly as `.theme-dark` does** — `--bg`, `--surface`,
+     `--fg-heading`, `--fg-body`, `--fg-muted`, `--edge`, `--edge-strong`, `--ring` and the `--btn*` names. **So no
+     existing class changes for a colour, and no existing assertion moves.**
+   - ★ **A variant carries the rest**: `pg:` (inside the scope), `pg-dark:`, `pg-light:`. A class under it is
+     **added** after the existing classes and never replaces one.
+   - **New names**, each falling back to today's context variable at the element that uses it: `raised`, `accent`,
+     `accent-deep`, `on-accent`, `signal`, `signal-deep`, `on-signal`, `hover`, `scrim`, `team`, `team-neutral`;
+     `rounded-pill` / `-input` / `-tile` / `-panel`; `font-display`; `text-play-xl` … `-sm`; `shadow-press`,
+     `shadow-press-down`; `--duration-fast` … `-party`; `ease-play`. **Constants that never remap:** `level-1` …
+     `level-5` with `on-level`, the six sticker fills, the six tints with `on-tint`, the seven team colours.
+   - `edge` is decoration (1.45:1 on the ground); **a control's boundary is `edge-strong`** (≥ 3:1 on every surface).
+     The focus ring is the scope's one rule, 3 px in `--ring` — no primitive declares its own.
+   - Nobody edits a primitive before the lead's token commit.
+2. **Lead → everyone — the signatures.** `ui/index.ts` is lead-only and append-only. Each owner names its new
+   primitive's props in its plan; the lead lands all ten signatures and `AvatarProps.teamColor` as **types** after
+   sync 1, and the files beside them start as stubs. Import by path, never from the barrel.
+3. **Lead ↔ `console` ↔ `content` — the team colour.** The column is the lead's (`0160`): `companies.team_color`,
+   nullable, `#rrggbb`. It travels as `teamColor: string | null` and reaches the DOM as **`--team` on the element**
+   — the one place a value from data becomes a style. **Never a class per company, never a hex in a component.**
+   `null` draws a neutral ring. `console` writes the field and the DAL; `content` draws the ring; **the avatar's
+   fill stays the member's tint** (`REQ-PRF-009`).
+4. **Every owner → lead — the gallery.** One demo per primitive at
+   `src/app/[locale]/(dev)/ui/demos/<primitive>.tsx`: every state, inside the scope, in Arabic, from fixture data,
+   **no DAL and no session**. The lead imports it into `page.tsx` and owns the baseline. **The gallery moves when
+   the lead wires a demo**, and that commit's row names the primitive.
+5. ★ **The five the public site renders** (`DEC-186` §1 — five, not the eight Step 0 counted). `button` and
+   `icons` (the lead's), `field`, `input` and `textarea` (`sessions'`) are imported by `(marketing)` and the
+   register form. **One commit each, announced to the lead.** The proof is four parts: `qa:contract`; `visual` at
+   0.000 %, which proves the resting state only; ★ a **computed-style fingerprint** of the register form's controls
+   at rest, hovered, focused, invalid, and invalid and focused, equal on `main`'s build and the branch's
+   (`sessions` writes it first, the lead runs it); and a unit test that the scope's class is nowhere in the public
+   import graph (the lead's). ★ **`controlClass()` (`field.tsx:105`) is the face of `input`, `textarea`, `select`,
+   `combobox` and five files outside `ui/`**: the commit that touches it is announced to `console` too. The register
+   form's `name`, `id`, validation and no-JS path are the contract, byte for byte.
+6. ★ **A portal lands inside the scope** (`DEC-188`, found after sync 1). `dialog`, `sheet` and `menu` render through
+   a portal into `<body>`, which is outside the scope. The scope carries a landing element, and
+   **`usePlayPortal()`** (`src/components/ui/scope-portal.tsx`, the lead's) returns it — or `undefined` outside a
+   scope, which is Radix's default, so nothing moves there. **A primitive that portals passes it as `container`**:
+   `dialog` is the lead's and done; `menu` and `sheet` are `console`'s. The toast region is the shell's and stays
+   outside the scope until the shell enters it.
 
 ### ★ The rules this wave turns on
 
-1. ★ **`DEC-093` is the specification for the lightbox** — and still for the studio: the inspector's numeric
-   X/Y/W/H/rotation fields are the `SC 2.5.7` conformance path, **demoted, never deleted**. The gate is a Playwright
-   case with `page.click()` alone; axe never catches this.
-2. ★ **`DEC-099` stands.** No `<img>` anywhere loads from a domain the platform does not control. A Google URL
-   reaching a browser — HTML, a DTO or a realtime payload — is a defect.
-3. ★ **The wordmark is the lead's and additive.** No teammate touches `wordmark.tsx`, `header.tsx`, `footer.tsx` or
-   `(marketing)/**`. If the `TaskCompleted` hook falls through to the full `qa` on your change, **you edited
-   something that is not yours**.
-4. ★ **An album download never runs inside a request** (`REQ-ADM-021`). A zip holds visible, EXIF-stripped
-   photographs and nothing else.
-5. ★ **No npm package for image or archive work** (`DEC-181`). The worker uses **system binaries from
-   `worker/Dockerfile`** (the lead's) — `poppler-utils` and `cwebp` (`worker/src/content/pdf.ts:16`). Avatar
-   derivatives are `cwebp -resize`; the album's zip is a binary added to the Dockerfile, not `archiver` or `jszip`. A
-   plan that proposes an npm package says why a binary will not do; `npm run lockfile` runs through Docker only.
-6. ★ **`DEC-096`, `DEC-017`, `DEC-048` still bind:** the studio's overlay keeps physical `left`/`top`, the engine is
-   not replaceable, and **no parity golden moves**.
-7. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2). 20 real signups.
-8. ★ **The existing suites are evidence.** Every changed assertion is named in your plan and gets a line in
-   `STATUS.md`'s untouched-suite ledger in the same commit as the change. A moved selector is a ledger line too. New
-   behaviour gets new files (`wave14-<you>-*`).
-9. ★ **Additive, because `main` runs on it first.** Migrations from **`0155`**. The owner rehearses on a production
-   schema dump, pushes, merges, then reconnects Railway. **`main`'s worker runs the new schema before the new
-   code**, so a plan says what `main`'s worker does in the gap. No column is dropped or renamed. A changed function is
-   dropped and re-created **in the same file**, with new arguments trailing and defaulted. Every definer function
-   has a deliberate grant (`DEC-152`).
-10. **Tables are the lead's; behaviour is yours. A function has one writer. One writer per file, JSON and specs
+1. ★★ **Nothing visible changes.** Not in the app, not on the public site. If a screen looks different after your
+   commit, the primitive is reading the playground outside the scope, and that is a defect — not a preview.
+2. ★ **The frozen routes do not move**: `qa:contract` green at every commit, `qa:appearance` and `visual`
+   **unchanged, not re-baselined**. The gallery **is** in the visual baseline and **will** move; the lead
+   re-baselines it on purpose and the row names the primitives that moved it.
+3. ★ **`docs/plan/` wins over `docs/design/`.** `DEC-183` §4 lists seventeen disagreements already — among them:
+   «M13» is spent and this wave is **M17**; `tokens.css` redefines five existing token names and two utilities;
+   `chip` is `tag-chip.tsx`, `status-badge` is `badge.tsx`, and the phone tab bar is the shell's, not `ui/tabs`;
+   seven of the sixteen «new» glyphs already exist. **A new disagreement is the most useful thing a plan can
+   contain**: write it down with the file and the line, and do not pick a side.
+4. ★ **The prototypes are behaviour references, never code.** `docs/design/prototypes/*.html` teach the sequence,
+   the durations, the transform-only rule, the RTL choices and the reduced-motion states. **A prototype's class
+   name never appears in `src/`**, and nothing in them is pasted.
+5. ★ **Semantic names only, and a gate holds it** (`DEC-186` §9, the lead's `tests/unit/tokens-only.test.ts`). A
+   file created this wave holds **no hex, no literal duration, no raw palette name**; in every file, no class after
+   `pg:`, `pg-dark:` or `pg-light:` does. A colour from data arrives as `--team`, re-checked as `#rrggbb` by the
+   component before it is written.
+6. ★ **No primitive gains or loses a behaviour.** A structural change — a full-height sheet, a 52 px action — is an
+   **opt-in prop**, shown in the gallery and adopted by a later wave.
+7. ★ **States, not moments — and no new keyframe** (`DEC-186` §4). A new primitive renders each state from props,
+   and **nothing pops this wave**: the owner's accepted text allows an overshoot of `1.08` on a sticker and no
+   other, while `03-motion.md` asks for `1.22` on a reaction; the question goes to the owner with the moments. A
+   reaction's acknowledgement is its pressed state; the code box and the live ring are static. **A failure never
+   animates. Nothing scales on hover.** What exists today stays as it is. **Confetti, the coin's drop, the
+   count-up, the FLIP and the flip's orchestration are the next wave's** (`DEC-183` §2).
+8. ★ **No primitive is placed on a screen**, and none reads the DAL, a session or a message catalogue: strings
+   arrive as props. The one screen that changes is `SCR-048`.
+9. ★ **`DEC-093` still binds, and gains a seventh place** (`DEC-183` §3): a story viewer's hold and swipe will
+   need tap paths. Nothing of the viewer is built this wave; `story-ring` is a button.
+10. ★ **No new dependency** — no icon library, no motion library, no `sharp` (`DEC-183` §4.12). `package.json` is
+    the lead's, and `npm run lockfile` runs through Docker only.
+11. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2).
+12. ★ **The existing suites are evidence.** Every changed assertion is named in your plan and gets a line in
+    `STATUS.md`'s untouched-suite ledger in the same commit as the change. A moved selector is a ledger line too.
+    New behaviour gets new files.
+13. ★ **Additive, because `main` runs on it first.** Migrations from **`0160`**: one nullable column. The owner
+    rehearses on a production schema dump, pushes, merges, then reconnects Railway. `main`'s app and worker on the
+    new schema do nothing different. **No migration writes a colour onto a company** (`DEC-183` §4.11). Every
+    definer function has a deliberate grant (`DEC-152`).
+14. **Tables are the lead's; behaviour is yours. A function has one writer. One writer per file, specs and demos
     included.**
-11. **`ui-lint --strict` has no allowlist and never gains one.** `ui-lint-disable-next-line` needs a reason the lead
-    approves in writing.
-12. **Teammates spawn planning-only.** Sync 1 approves two plans against the four contracts.
+15. **`ui-lint --strict` has no allowlist and never gains one.** A new primitive complies from birth;
+    `ui-lint-disable-next-line` needs a reason the lead approves in writing.
+16. ★ **The status colours are `DEC-073`'s** (`DEC-186` §3). `01-tokens.md`'s status table is not adopted: inside a
+    dark scope a badge wears the on-dark constants it already has, and it keeps its 6 px corner.
+17. ★ **New cases go in new files** — `<primitive>-scope.test.tsx` beside the existing test, which is not edited.
+    Each track writes one `tests/e2e/wave15-<track>-gallery.spec.ts`; the lead runs it against a build made with
+    `KAREEM_GALLERY=1`.
+18. **Sync 1 is done** (`DEC-186`): four plans approved. Build in your plan's order, one commit per primitive.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 
 | Owner | Files in `src/components/ui/` |
 |---|---|
-| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` · `reorderable-list.tsx` |
-| **`sessions`** — held by the lead | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` |
-| **`console`** — held by the lead | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
-| **`content`** — spawned | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` |
+| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` · `reorderable-list.tsx` · ★ new `scope.tsx` · `objects/**` |
+| **`sessions`** — spawned | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` · ★ new `session-cta.tsx` · `code-input.tsx` |
+| **`console`** — spawned | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
+| **`content`** — spawned | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` · ★ new `sticker.tsx` · `poster.tsx` · `reaction-bar.tsx` · `progress-bar.tsx` · `story-ring.tsx` |
+| **`scoring`** — spawned | ★ new `rank-row.tsx` · `race-bar.tsx` · `level-card.tsx` |
 
 **You never edit a primitive you do not own, even to fix it.** Write the request — the file, the prop, why — in
-`docs/plan/notes/<you>.md` and tell the lead. **Import by path** — `@/components/ui/dialog`, never
-`@/components/ui` — because `index.ts` exports **types only**. The lightbox is built **on** `ui/dialog`; a gap in it
-is a request to the lead.
+`docs/plan/notes/<you>.md` and tell the lead. **Import by path** — `@/components/ui/card`, never
+`@/components/ui` — because `index.ts` exports **types only**. A primitive that composes another — a `rank-row`
+drawing an `avatar`, a `poster` carrying a `sticker` — imports it and asks its owner for what it lacks.
 
-### The transfers in force for wave 14 (`DEC-180`)
+### The transfers in force for wave 15 (`DEC-183`)
 
-- **→ `platform`:** `src/app/[locale]/app/me/privacy/**` and `src/messages/*/privacy.json` (from `content`, which held
-  them fixes-only since wave 7); new `src/app/api/avatars/**`, `src/lib/dal/avatars.ts`,
-  `packages/storage-paths/src/avatar.ts`, `worker/src/tasks/import_avatar.ts`.
-- **→ `content`:** new `src/app/api/photos/**` and `worker/src/tasks/zip_session_photos.ts`;
-  `packages/storage-paths/src/content.ts` named explicitly.
-- **→ the lead, for the wave:** `packages/storage-paths/src/index.ts` (one export line for `avatar.ts`); the avatar
-  expression in `lib/dal/{members,ratings}.ts` (custodian of `sessions` and `event`).
+- **→ each owner of a primitive:** its demo under `src/app/[locale]/(dev)/ui/demos/` (new; the rest of `(dev)/**`
+  stays the lead's).
+- **→ `scoring`:** three new files under `src/components/ui/` — its first primitives.
+- **→ `console`:** `src/app/[locale]/app/admin/companies/**`, the companies functions of
+  `src/lib/dal/admin-lists.ts` and the `companies` keys of `messages/*/admin.json` are its to **build** this wave;
+  ★ `src/components/admin/rtl-datetime-picker.tsx`, **tokens only**, because it holds the classes `date-time.tsx`
+  wraps (`DEC-186` §8); every other admin route is frozen.
+- **→ the lead:** `src/lib/fonts.ts`, `packages/fonts/**`, `scripts/fonts/**`, new `src/components/ui/objects/**`,
+  new `src/components/brand/**`, new `public/objects/**`, `docs/design/**`.
+- ★ **Frozen for everyone this wave, fixes included:** every screen, DAL module, route handler, worker task and
+  message file not named in a row of the map. A defect found there is written in your note and told to the lead.
 
-### One writer per file — JSON and specs included
+### One writer per file — specs and demos included
 
 A screen's strings live in its owner's namespace. **Reading** another track's namespace is fine; **writing** it
 is a request. **A spec or test has one writer.** Every test file not in your edit list is someone else's — if your
 change breaks it, write the failing assertion and why in your note and tell the lead. The lead holds `a11y`,
 `budgets`, `frozen-routes`, `second-org`, `session`, `shell-*`, `unconfigured`, `auth*`, `reserve-probe`,
 `isolation`, `definer-exposure`, every `fixture*.ts`, `wave9-three-day-workshop`, `wave10-demo-*`,
-`wave11-lead-*`, `wave12-{demo,lead}-*`, `wave13-{demo,lead}-*`, `session-downloads*`, the new
-`wave14-{demo,lead}-*` and `photo-downloads*`, and every spec of an unspawned track.
+`wave11-lead-*`, `wave12-{demo,lead}-*`, `wave13-{demo,lead}-*`, `wave14-{demo,lead}-*`, `session-downloads*`,
+`photo-downloads*`, the new `wave15-{demo,lead}-*` and `team-colour*`, and every spec of an unspawned track.
 
 ### Not this wave — never touched by ANY teammate until the lead says otherwise
 
-- a member **uploading** their own picture, and `REQ-PRF-010`'s avatar moderation and takedown
-  (`STORY-PRF-005`'s upload half, M10);
-- new avatar **placements** — presenter cards, the host view's list, the directory, browse cards (`16` §6.8.3);
-- deleting a session with its awarded points — **wave 15's whole subject**: `points_ledger` is append-only with
-  `service_role` revoked at three layers;
-- the gamification layer (wave 12's pending-state DTO is its foundation — **build nothing of it**);
-- the prose pass (`STATUS.md`'s *Screens whose meaning depends on a paragraph*);
-- `DEC-100`'s motion system;
-- live poster thumbnails before export (`REQ-DSG-029`'s carry); the stale email-studio test
-  (`wave10-demo-email-studio` case 6); the «still generating» line's placement on phones;
-- everything under `src/app/[locale]/(marketing)/` and the thirteen components it renders — the wordmark's additive
-  prop is the lead's;
-- recurring series (`A14`); drag in `ui/reorderable-list`; a session-level presenter invitation flow;
-- ★ **replacing the renderer** (`DEC-017`, `DEC-048`) — nor a library that renders;
+- **the five moments** and everything that orchestrates — `lib/ui/confetti.ts`, `useCountUp`, the
+  once-per-occurrence keying;
+- **session stories** and their viewer, `story_views`, the `story` photo derivative;
+- the timeline's recap, achievement and announcement items, and `feed_announcements`;
+- **proposal voting**; **the weekly leaderboard**; the streak rule (`DEC-NEXT-9`);
+- ★ **any screen redesign — the shell and the phone tab bar included.** The gallery is where the playground is
+  seen this wave;
+- everything under `src/app/[locale]/(marketing)/` and the components it renders, beyond contract 5's proof;
+- the desktop shell (`DEC-NEXT-15`, deferred); leagues (deferred);
+- **the certificate look**, which keeps its formal Naskh families — the playground stops at the certificate's
+  edge;
+- the designer's document model, its templates and the export pipeline; **replacing the renderer**
+  (`DEC-017`, `DEC-048`);
+- the favicon, the shell's wordmark and the first org's logo (`DEC-183` §4.8 – §4.10);
+- the generated gate for Storage read predicates (carried from wave 14); deleting a session with its awarded
+  points (carried); a member uploading their own picture and `REQ-PRF-010`'s moderation; new avatar placements;
+- recurring series (`A14`); drag in `ui/reorderable-list`;
 - every route not named in your row, including `verify/**`, `legal/**` and `(auth)`.
 
 ### Lead-only, always
 
 `supabase/migrations/**` · `src/lib/session-status.ts` · `src/components/ui/index.ts` and the lead's fourteen
-other `ui/` files · `src/app/globals.css` · `src/app/[locale]/app/layout.tsx` · `src/components/shell/**` ·
-`src/app/[locale]/(auth)/**` · `src/app/[locale]/(dev)/**` · `src/messages/*/{ui,app,auth,marketing}.json` ·
+other `ui/` files · `src/components/ui/objects/**` · `src/components/brand/**` · `src/app/globals.css` ·
+`src/lib/fonts.ts` · `packages/fonts/**` · `scripts/fonts/**` · `src/app/[locale]/app/layout.tsx` ·
+`src/components/shell/**` · `src/app/[locale]/(auth)/**` · `src/app/[locale]/(dev)/**` **except the demos you
+own under `(dev)/ui/demos/`** · `src/messages/*/{ui,app,auth,marketing}.json` ·
 `src/app/[locale]/(marketing)/**` and the thirteen components it renders · `scripts/**` ·
 `scripts/parity/goldens/**` · `.claude/**` · `.github/**` · `package.json` · `package-lock.json` ·
 `worker/package.json` and every `packages/*/{package.json,tsconfig.json}` · `src/app/[locale]/layout.tsx` ·
 `src/app/global-error.tsx` · `src/proxy.ts` · `public/**` · `src/lib/supabase/**` · `src/lib/dal/session.ts` ·
 `src/i18n/**` · `vitest.config.ts` · `playwright.config.ts` · `worker/src/index.ts` · `worker/Dockerfile` ·
-`packages/fonts/**` · `tests/rls/{db,fixture*,isolation.test,definer-exposure.test}.ts` · `docs/plan/**`
+`tests/rls/{db,fixture*,isolation.test,definer-exposure.test}.ts` · `docs/design/**` · `docs/plan/**`
 except your own note. `src/messages/index.ts` gains a namespace **by append only**, in the same commit as its
 `ar/` and `en/` JSON.
 
@@ -264,7 +341,7 @@ where you learn), and `npm run test:rls` (single-runner: `pgrep -fl "[n]ode_modu
 question to the lead — **never run anything in the lead's verification worktree without asking**. The
 `TaskCompleted` hook is path-aware (DEC-088): tsc, lint and vitest for you; it falls through to the
 full `qa` only when a change can reach the frozen marketing routes — **if it does, you edited
-something that is not yours.** SQL goes under `supabase/proposed/<you>/`, proven with
+something that is not yours** (★ wave 15: except the five primitives of contract 5, where it is expected). SQL goes under `supabase/proposed/<you>/`, proven with
 `applyProposed()` inside your RLS tests, never into `supabase/migrations/`; **never save a failing test
 under `tests/rls/`** — everyone's run executes it. A write-then-`raise` RPC rolls back its own write
 (`DEC-043`): after the first write, return an outcome envelope. A trigger that enqueues or notifies is

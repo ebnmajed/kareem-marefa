@@ -47,6 +47,21 @@ function typeAccepted(file: File, accept: string[]): boolean {
   });
 }
 
+// ★ Wave 15 — inside the playground's scope (DEC-183, DEC-186 §2, §5, REQ-UIX-030).
+// Tokens only and NO ANIMATION: the zone's colour transition is switched off
+// inside the scope. The zone takes the panel radius; drag-over the accent's
+// border on the raised surface; invalid the error's on-dark constant in a dark
+// scope; the chooser is a pill; a picked file's row the input radius. The
+// remove control keeps its 28 px glyph and gains a 44 px hit area inside the
+// scope, by a transparent pseudo-element. The scope's variables already give
+// the boundary (`edge-strong`, 3:1 or better) and the text their colours.
+// Added under `pg:` / `pg-dark:` after every class that exists.
+const SCOPE_ZONE = "pg:rounded-panel pg:transition-none";
+const SCOPE_DRAG = "pg:border-accent pg:bg-raised";
+const SCOPE_INVALID = "pg-dark:border-error-on-dark";
+const SCOPE_CHOOSER = "pg:rounded-pill pg:hover:bg-hover";
+const SCOPE_REMOVE = "pg:relative pg:after:absolute pg:after:-inset-2 pg:after:content-[''] pg:hover:bg-hover";
+
 export function FileDrop({ name, accept, maxBytes, multiple, requirements, onFiles, disabled, invalid, className = "" }: FileDropProps) {
   const t = useTranslations("browse.fileDrop");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -92,8 +107,13 @@ export function FileDrop({ name, accept, maxBytes, multiple, requirements, onFil
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
         className={`flex flex-col items-center gap-3 rounded-card border-2 border-dashed px-6 py-8 text-center transition-colors duration-150 ${
-          dragOver ? "border-navy-700 bg-silver-100" : invalid ? "border-error-border" : "border-edge-strong"
-        } ${disabled ? "opacity-50" : ""}`}
+          // ★ Drag-over was `border-navy-700`, which is not a token (only 1000/950/900/850/800
+          // exist) and so emitted nothing: the dashed border fell back to Tailwind's preflight
+          // grey and turned LIGHTER than at rest, the opposite of a cue (DEC-186 §5, the one
+          // approved visible repair of wave 15). It is the heading ink now — the strongest
+          // colour the context has, in light and under `.theme-dark` alike.
+          dragOver ? "border-fg-heading bg-silver-100" : invalid ? "border-error-border" : "border-edge-strong"
+        } ${disabled ? "opacity-50" : ""} ${SCOPE_ZONE} ${dragOver ? SCOPE_DRAG : invalid ? SCOPE_INVALID : ""}`}
       >
         <UploadIcon aria-hidden className="text-[1.5rem] text-fg-muted" />
         {/* ★ the lead's live-build review: the button IS the primary
@@ -105,7 +125,7 @@ export function FileDrop({ name, accept, maxBytes, multiple, requirements, onFil
           type="button"
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex h-11 items-center rounded-field border border-edge-strong px-5 text-label text-fg-heading hover:bg-silver-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className={`inline-flex h-11 items-center rounded-field border border-edge-strong px-5 text-label text-fg-heading hover:bg-silver-100 disabled:cursor-not-allowed disabled:opacity-50 ${SCOPE_CHOOSER}`}
         >
           {t("chooseFiles")}
         </button>
@@ -140,7 +160,7 @@ export function FileDrop({ name, accept, maxBytes, multiple, requirements, onFil
       {picked.length > 0 ? (
         <ul aria-live="polite" className="mt-3 flex flex-col gap-2">
           {picked.map((p) => (
-            <li key={p.id} className="flex items-center gap-2 rounded-field border border-edge p-2">
+            <li key={p.id} className="flex items-center gap-2 rounded-field border border-edge p-2 pg:rounded-input">
               <div className="min-w-0 flex-1">
                 {/* `break-words`, never `truncate` — `overflow: hidden` on a
                     text line clips tashkeel, and a file name can be Arabic. */}
@@ -148,7 +168,7 @@ export function FileDrop({ name, accept, maxBytes, multiple, requirements, onFil
                   <bdi>{p.file.name}</bdi>
                 </p>
                 {p.error ? (
-                  <p className="mt-0.5 flex items-center gap-1 text-caption text-error">
+                  <p className="mt-0.5 flex items-center gap-1 text-caption text-error pg-dark:text-error-on-dark">
                     <AlertCircleIcon aria-hidden />
                     {p.error}
                   </p>
@@ -162,7 +182,7 @@ export function FileDrop({ name, accept, maxBytes, multiple, requirements, onFil
                 type="button"
                 onClick={() => remove(p.id)}
                 aria-label={t("removeFile", { file: p.file.name })}
-                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-silver-100 hover:text-fg-heading"
+                className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-silver-100 hover:text-fg-heading ${SCOPE_REMOVE}`}
               >
                 <CloseIcon aria-hidden />
               </button>

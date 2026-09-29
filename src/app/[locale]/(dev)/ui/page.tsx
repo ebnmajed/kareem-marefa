@@ -13,6 +13,7 @@ import { Panel } from "@/components/ui/panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { SESSION_PHASES, type SeatState } from "@/lib/session-status";
+import { Playground } from "./playground";
 import { ReorderableDemo } from "./reorderable-demo";
 
 // The component gallery — `16` §4.3, DEC-083, REQ-UIX-001.
@@ -89,6 +90,17 @@ const ICON_NAMES: Record<string, string> = {
   UploadIcon: "رفع",
   UserIcon: "عضو",
   UsersIcon: "حضور",
+  // Wave 15 — the playground's nine (DEC-183 §4.7, REQ-UIX-041).
+  BoltIcon: "برق",
+  CalendarCheckIcon: "في تقويمك",
+  CameraIcon: "كاميرا",
+  CoinIcon: "نقاط",
+  CompassIcon: "استكشف",
+  FlameIcon: "سلسلة",
+  HeartIcon: "إعجاب",
+  PauseIcon: "إيقاف مؤقت",
+  TicketIcon: "حجز",
+  TrophyIcon: "كأس",
 };
 
 const GLYPH_COUNT = Object.keys(Icons).filter((name) => name.endsWith("Icon")).length;
@@ -302,6 +314,18 @@ export default async function GalleryPage({
           ))}
           <Avatar memberId="m-dark" displayName="ريم العتيبي" size={40} />
         </div>
+      </section>
+
+      {/* ★ Wave 15 — the playground, on both of its grounds (DEC-183, DEC-186).
+          Everything ABOVE this line is outside the scope and renders as it did
+          before the wave: that is the promise, and the baseline holds it. */}
+      <section className="mt-10">
+        <SectionHeader
+          title="ساحة اللعب"
+          as="h2"
+          description="النظام نفسه داخل النطاق الجديد، على أرضيتيه. خارج النطاق لا شيء يتغيّر."
+        />
+        <Playground />
       </section>
     </div>
   );

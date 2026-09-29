@@ -5,13 +5,66 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { DeactivateToggle } from "@/components/admin/deactivate-toggle";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import type { DataTableColumn } from "@/components/ui";
+import { Menu } from "@/components/ui/menu";
+import type { DataTableColumn, MenuItem } from "@/components/ui";
 import type { AdminCompany } from "@/lib/dal/admin-lists";
 import type { Locale } from "@/i18n/routing";
-import { toggleCompany } from "./actions";
+import { toggleCompany, setCompanyTeamColour } from "./actions";
+import { TEAM_COLOUR_HEX, TEAM_COLOUR_NAMES, teamColourNameOf } from "./team-colours";
 
 // SCR-048 · onto `ui/data-table` for wave 7 — see `venues-table.tsx`'s
 // header for the shared reasoning ("one list pattern three times").
+//
+// ★ wave 15 (`REQ-UIX-043`, `DEC-183` §4.11, `DEC-186` §8) — the team colour
+// column. There is no per-row edit form on this screen (the only editable
+// field beyond `name` is this one), so it is a `ui/menu` trigger: the seven
+// named colours plus «بلا لون», never a free hex — colour is never the only
+// channel, so every choice carries a swatch AND its name in words.
+
+/** A small filled circle — never the only channel: it always sits beside
+ *  the colour's name in words, here and in the trigger. */
+function Swatch({ hex }: { hex: string | null }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block size-4 shrink-0 rounded-full border border-edge-strong"
+      style={{ backgroundColor: hex ?? "transparent" }}
+    />
+  );
+}
+
+function TeamColourCell({ company, locale, t }: { company: AdminCompany; locale: Locale; t: ReturnType<typeof useTranslations> }) {
+  const current = teamColourNameOf(company.teamColor);
+  const currentLabel = current ? t(`teamColourNames.${current}`) : t("teamColourNone");
+
+  const items: MenuItem[] = [
+    ...TEAM_COLOUR_NAMES.map<MenuItem>((name) => ({
+      label: t(`teamColourNames.${name}`),
+      icon: <Swatch hex={TEAM_COLOUR_HEX[name]} />,
+      current: current === name,
+      onSelect: () => setCompanyTeamColour(locale, company.id, name),
+    })),
+    {
+      label: t("teamColourNone"),
+      icon: <Swatch hex={null} />,
+      current: current === null,
+      startsGroup: true,
+      onSelect: () => setCompanyTeamColour(locale, company.id, null),
+    },
+  ];
+
+  return (
+    <Menu
+      trigger={
+        <button type="button" className="inline-flex items-center gap-2 rounded-field px-2 py-1 text-body-sm text-fg-heading hover:bg-silver-100 pg:hover:bg-hover">
+          <Swatch hex={current ? TEAM_COLOUR_HEX[current] : null} />
+          <bdi>{currentLabel}</bdi>
+        </button>
+      }
+      items={items}
+    />
+  );
+}
 
 export function CompaniesTable({ companies, locale }: { companies: AdminCompany[]; locale: Locale }) {
   const t = useTranslations("admin.companies");
@@ -33,6 +86,12 @@ export function CompaniesTable({ companies, locale }: { companies: AdminCompany[
       header: t("memberCountColumn"),
       onCard: true,
       cell: (c) => <bdi>{t("memberCount", { count: c.memberCount, value: num(c.memberCount) })}</bdi>,
+    },
+    {
+      key: "teamColor",
+      header: t("teamColourColumn"),
+      onCard: true,
+      cell: (c) => <TeamColourCell company={c} locale={locale} t={t} />,
     },
     {
       key: "status",

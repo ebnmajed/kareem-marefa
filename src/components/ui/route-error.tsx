@@ -27,7 +27,7 @@ import { AlertTriangleIcon } from "@/components/ui/icons";
 export function RouteError({ title, description, retryLabel, backLabel, backHref, reset, digest }: RouteErrorProps) {
   return (
     <div role="alert" className="mx-auto max-w-prose py-8">
-      <p className="mb-3 text-error">
+      <p className="mb-3 text-error pg-dark:text-error-on-dark">
         <AlertTriangleIcon aria-hidden className="text-[1.75rem]" />
       </p>
       <h1 className="text-h2 text-fg-heading">{title}</h1>
@@ -37,14 +37,14 @@ export function RouteError({ title, description, retryLabel, backLabel, backHref
           <button
             type="button"
             onClick={reset}
-            className="inline-flex h-12 items-center rounded-field bg-navy-950 px-7 text-label text-white hover:bg-navy-900"
+            className="inline-flex h-12 items-center rounded-field bg-navy-950 px-7 text-label text-white hover:bg-navy-900 pg:rounded-pill pg:bg-accent pg:text-on-accent pg:hover:bg-accent"
           >
             {retryLabel}
           </button>
         ) : null}
         <a
           href={backHref}
-          className="inline-flex h-12 items-center rounded-field border border-edge-strong px-7 text-label text-fg-heading hover:bg-silver-100"
+          className="inline-flex h-12 items-center rounded-field border border-edge-strong px-7 text-label text-fg-heading hover:bg-silver-100 pg:rounded-pill pg:hover:bg-hover"
         >
           {backLabel}
         </a>

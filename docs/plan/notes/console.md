@@ -2598,3 +2598,524 @@ accessibility review) waits on `designer`'s tab strip landing — not yet in the
 
 Nothing above is built. Waiting for sync 1 before touching `admin-rail.tsx`, `layout.tsx`, `admin.json`, or
 writing the new `templates/page.tsx`.
+
+---
+
+## Wave 15 plan
+
+`DEC-183`/`DEC-184`, `CLAUDE.md` § *Ownership map (wave 15)*. Planning only — nothing below is built.
+Re-read `.claude/agents/console.md` from disk today; it is the wave-15 rewrite. Measured against
+`docs/design/{00-direction,01-tokens,tokens.css,04-components,06-decisions-proposed,07-tasks}.md` and
+the tree at `9a81014`.
+
+### 0 · Order of commits
+
+`07-tasks.md`'s wave-1 order, restricted to my six files, then `SCR-048`:
+
+1. `ui/data-table.tsx` — the console primitive named first among "the console primitives (tokens
+   only)" in `04-components.md`'s migration table; also the one two existing screens already exercise
+   most heavily, so any token gap surfaces early.
+2. `ui/combobox.tsx`
+3. `ui/menu.tsx`
+4. `ui/tabs.tsx`
+5. `ui/sheet.tsx`
+6. `ui/date-time.tsx` — last: it renders almost nothing of its own (see §2.6) and depends on
+   `rtl-datetime-picker.tsx`, which I do not own, so any token gap here is mostly a request, not a fix.
+7. `SCR-048` (`src/app/[locale]/app/admin/companies/**`, the two `admin-lists.ts` functions, `admin.json`),
+   after C1 (the token names), C2 (`AvatarProps.teamColor` — I only need `--team` to exist, not the
+   avatar prop) and D1 (`0160`) land.
+
+Each primitive is one commit with its jsdom test extended if needed, its RTL check, and its gallery
+demo under `(dev)/ui/demos/`, per the six files' existing test suite (`tests/components/ui/*.test.tsx` —
+all six already exist and are evidence, §5).
+
+### 1 · Existing primitives — class-by-class, with the token role that carries it
+
+Contract 1 (`STATUS.md`) has not landed yet; I plan against the **roles** named in the map — semantic
+(`ground`, `surface`, `raised`, `text`, `muted`, `line`, `accent`, `accent-deep`, `signal`,
+`signal-deep`) and structural (control radius, face, press shadow, heights) — and name every token I
+need beyond that list as a request (§1.7).
+
+Today's names, confirmed from `src/app/globals.css`: `--color-canvas` (`--bg`, semantic ground),
+`--color-fg-heading`/`--fg-body`/`--fg-muted` (heading/body/muted text), `--color-edge`/`--edge-strong`
+(hairline/emphasised line), `--radius-field` `6px`, `--radius-card` `14px`, `--btn-bg`/`--ring`
+(button fill / focus ring, both flip per theme), `--color-silver-100/200/300/400` (a **raw** palette,
+not remapped per theme — used here only as a hover/highlight fill, never as text on light).
+`01-tokens.md`'s raw palette adds no name that collides with any of these (§4 already rules that); its
+semantic layer is `--bg`/`--bg-surface`/`--bg-raised`/`--fg`/`--fg-muted`/`--line-color`/`--accent`/
+`--accent-deep`/`--signal`/`--signal-deep`, scoped, never `:root` (`DEC-183` §4.2).
+
+**`data-table.tsx`** (`src/components/ui/data-table.tsx`):
+- `size-4 rounded-field border-edge-strong` (checkbox, :48) → structural **control radius** (small),
+  semantic **line** (emphasised)
+- `border-b border-edge` (`<th>`/`<tr>` dividers, :159/176/198) → semantic **line**
+- `bg-canvas` (`<th>`, :159/176) → semantic **surface** (the table header sits on the card/surface, not
+  the page ground)
+- `text-fg-muted` (`<th>` label, :176) → semantic **muted**
+- `hover:text-fg-heading` (:182), `text-fg-body` (`<td>`, :213) → semantic **text**
+- `hover:bg-silver-100/60` (`<tr>`, :198) → **not in the named roles** — a hover/highlight fill; request
+  (§1.7 #1)
+- `rounded-card border border-edge` (phone card, :236) → structural **raised card radius**, semantic
+  **line**
+- `text-label text-fg-heading` (card title, :247), `text-body-sm text-fg-muted` (card field label, :262)
+  → semantic **text**/**muted**
+- `rounded-field border-edge-strong bg-silver-100` (selection banner, :127) → structural radius,
+  semantic line, and the same hover/highlight request as above
+- Nothing here is a duration or an animation class — `04-components.md`'s own row says "tokens only; no
+  animation" for the console primitives, matching what is already true: zero `transition`/`animate-`
+  classes in this file today.
+- **Renders on:** every admin list screen — companies, categories, venues, members, proposals,
+  sessions, moderation's three queues, scoring, recognition, exports, audit — at minimum 14 routes.
+  The heaviest check for "unmoved outside the scope": `tests/e2e/admin*.spec.ts` and
+  `tests/e2e/wave{6,7,8,11,13}-console-*.spec.ts` all render this component unscoped.
+
+**`combobox.tsx`** (`src/components/ui/combobox.tsx`):
+- The text input itself reads `controlClass(isInvalid)` from `ui/field.tsx` (`sessions'` file, :307) —
+  **not mine to migrate**. Its tokens move only when `sessions` migrates `field.tsx`; until then this
+  input renders in today's classes regardless of what I do to the rest of the file. I plan around this
+  and note it to `sessions` and the lead (§1.7 #2).
+- `rounded-field border-edge-strong bg-silver-100` (chip, :259) → structural radius, semantic line, hover/highlight request
+- `rounded-field … hover:bg-silver-200 hover:text-fg-heading` (chip remove, :273) → same, plus text
+- `rounded-field border-edge-strong bg-canvas` (status/listbox popup, :318/324) → structural radius,
+  semantic line, semantic surface
+- `text-body-sm text-fg-muted` (status text, :318) → semantic muted
+- `bg-silver-100` (highlighted option, :345/365), `text-fg-muted/50` (disabled option, :345),
+  `text-fg-heading` (option text, :345/365) → hover/highlight request, muted (at reduced opacity —
+  **not a token today**, a raw Tailwind opacity modifier; flagged §1.7 #3), text
+- `shadow-lg` (popup, :318/324) → **not in the named roles** — no "popup elevation" token exists yet;
+  request (§1.7 #4)
+- **Renders on:** the member picker (`components/admin/member-picker.tsx`, which re-exports this file
+  — wave 8's note), used on session presenter assignment, proposal review, and — after this wave — the
+  companies field is text-only, so combobox does not gain a new caller from `SCR-048` unless sync 1
+  decides a company picker belongs somewhere it does not exist today. At minimum 3–4 screens.
+
+**`menu.tsx`** (`src/components/ui/menu.tsx`):
+- `itemBase`: `rounded-field … text-fg-heading … data-[highlighted]:bg-silver-100 …
+  data-[disabled]:text-fg-muted/50` (:30) → structural radius, semantic text, hover/highlight request,
+  muted-at-opacity (same §1.7 #3 flag)
+- `toneClass.error: "text-error data-[highlighted]:bg-error-bg"` (:34) → **status/error tokens, not in
+  the five roles or the semantic list** — `--color-error`/`--color-error-bg` are today's existing
+  status constants (`DEC-073`), never touched by this migration; I read them as-is, not remapped
+  (matches `01-tokens.md`: "Status colours are platform constants… never remapped")
+- `rounded-card border border-edge bg-canvas … shadow-[var(--shadow-card)]` (content, :47) → structural
+  card radius, semantic line, semantic surface, existing `--shadow-card` token (unaffected — not a
+  playground name)
+- `bg-silver-100` (current-page item, :60), `h-px bg-edge` (separator, :64) → hover/highlight request,
+  semantic line
+- **Renders on:** the collapsed admin rail's group menu (wave 8), the account menu (lead's), any
+  `ui/link`-based overflow menu. At minimum 2–3 places I can see; the account menu is the lead's file,
+  outside my edit list, so I only verify it renders unmoved, never touch it.
+
+**`tabs.tsx`** (`src/components/ui/tabs.tsx`):
+- `ms-1.5 rounded-full bg-silver-100 … text-fg-muted` (count badge, :136) → hover/highlight request
+  (or a dedicated **count-badge** structural token — flagged), semantic muted
+- `triggerClass`: `rounded-t-field … text-fg-body outline-none hover:text-fg-heading
+  data-[state=active]:border-b-2 data-[state=active]:border-[var(--btn-bg)]
+  data-[state=active]:text-fg-heading focus-visible:outline-2 …
+  focus-visible:outline-[var(--ring)]` (:143) → structural radius, semantic text, **`--btn-bg` as the
+  active-tab underline** — this is today's *button* fill token doing double duty as an accent; under
+  the scope it should read semantic **accent** instead (a real behaviour-preserving substitution
+  outside the scope, since `--btn-bg` and the future `--accent` both resolve to today's ink/white
+  today) — flagged as a request to confirm the mapping is intentional (§1.7 #5), plus the existing
+  `--ring` focus token
+- `border-b border-edge` (list, :130) → semantic line
+- **This is the tab *strip*, not the phone tab bar** (`DEC-183` §4.6/§4 disagreement #6, already
+  ruled) — confirmed again from the file itself: no `role="navigation"`, no bottom-fixed positioning,
+  nothing here composes with `src/components/shell/**`. I touch nothing there.
+- **Renders on:** the admin sub-nav (moderation's three queues — wave 6/7's own finding about the
+  fade), and wherever a URL-addressable tab strip exists. At minimum 3–4 places.
+
+**`sheet.tsx`** (`src/components/ui/sheet.tsx`, the whole file — 51 lines):
+- `bg-[var(--color-navy-950)]/60` (overlay, :35) → **a raw hex-backed token used as a raw value with
+  opacity** — under the scope this is semantic **ground** at reduced opacity, but `--color-navy-950` is
+  a **raw palette name**, and `04-components.md`'s definition of done says "no hex in the component";
+  this line is already a token reference (not a literal hex), so it is compliant today, but it is the
+  one place in my six files closest to the letter of that rule — flagged so the lead confirms whether
+  a raw-palette-named custom property (vs. a semantic one) is what "no raw palette name" (`DEC-183`
+  rule 5) means to forbid inside the *scope*, since outside the scope it must keep resolving to
+  `--color-navy-950`'s value regardless of what I name it (§1.7 #6)
+- `border-edge bg-[var(--color-canvas)] p-5 … text-fg-body shadow-xl` (content, :37) → semantic line,
+  ground/surface (canvas), text, and another **elevation** request (`shadow-xl`, same family as
+  combobox's `shadow-lg`, §1.7 #4)
+- `rounded-t-card` (:26, bottom variant) → structural raised-card radius
+- `h-1 w-10 rounded-full bg-edge-strong` (drag handle, :40) → semantic line (emphasised)
+- `text-h3 text-fg-heading` (title, :42), `text-body-sm text-fg-muted` (description, :44) → semantic
+  text/muted
+- **`04-components.md` says `sheet` "carries its own action bar and hides the tab bar" and becomes
+  full-height on phone** — already ruled not this wave by `.claude/agents/console.md` and `DEC-183` §4
+  disagreement #17: **no behaviour change**, and if a full-height variant is built at all it is an
+  opt-in prop. I plan **zero new props** for `sheet` this wave; a pure token migration of the five
+  class strings above. If the lead wants the opt-in prop started now, that is outside my current plan
+  and I ask at sync 1 (§8).
+- **No animation exists in this file today** (comment at :20–23 confirms it deliberately — "No
+  entrance/exit animation… only the `--dur-*`/`--ease-out` TOKENS ship"). I add none.
+- **Renders on:** the search sheet, the filter sheet, and the mobile nav drawer (`STATUS.md`: "the
+  phone drawer is `ui/sheet`" — wave 6/7 standing note) — at minimum 3 places, one of them
+  (`src/components/shell/**`) outside my edit list; I verify it unmoved, never touch it.
+
+**`date-time.tsx`** (`src/components/ui/date-time.tsx`, 74 lines):
+- **This file declares one class**: `className={className}` on its own wrapper `<div>` (:45), passed
+  straight through from the caller. Every visible token — border, radius, focus ring, the calendar
+  popover, the hour/minute grid — lives in `src/components/admin/rtl-datetime-picker.tsx`, which is
+  under `src/components/admin/**` and **is** in my edit list ("your standing files" — `console` holds
+  `components/admin/**` except `delivery-reason.ts`). So the actual token migration for date-time
+  happens in `rtl-datetime-picker.tsx`, not in `date-time.tsx` itself; `date-time.tsx`'s own commit is
+  close to a no-op (confirm the wrapper needs nothing, or add nothing beyond what the picker needs).
+  I read `rtl-datetime-picker.tsx`'s classes before that commit and list them there rather than
+  guessing here, since it is a large file (the wave-8 note above already calls it "the hardest," 5
+  `ui-lint` violations at the time) — **flagged as the one place my plan is incomplete until I read
+  that file in full**, which I will do before the `date-time` commit, not before sync 1.
+- **Renders on:** the schedule form's four pickers (`sessions'` screen, frozen this wave — I touch it
+  for nothing but confirming it renders unmoved), and any other admin form using a date/time field.
+
+### 1.7 · Token requests beyond the five semantic + structural roles
+
+1. **A hover/highlight fill** — `bg-silver-100`/`hover:bg-silver-100`/`hover:bg-silver-200` appear in
+   four of six files (rows, chips, menu items, count badges). Not "raised" (raised is a static surface
+   step, e.g. inputs/chips at rest); this is an *interaction* state. Request: a semantic `--hover` (or
+   confirm it should map to `--bg-raised` and drop the distinction).
+2. **`controlClass()` in `ui/field.tsx`** is `sessions'` file and out of my edit list; `combobox`'s
+   input inherits its tokens from there. Not a request to the lead — a note to `sessions` and a line in
+   my own "outside the scope, nothing moved" check: if `sessions` migrates `field.tsx` before I migrate
+   `combobox.tsx`, my gallery/RTL check for `combobox` must run **after** that commit or it tests a
+   stale input.
+3. **Opacity-modified muted text** (`text-fg-muted/50`) in `combobox` and `menu` — Tailwind's `/50`
+   syntax on a semantic token, not a distinct token. No request; noting it renders unchanged either way
+   since it is a modifier on whatever `--fg-muted` resolves to.
+4. **A popover/menu elevation token** — `shadow-lg` (combobox), `shadow-xl` (sheet),
+   `shadow-[var(--shadow-card)]` (menu, already named) are three different shadow expressions for the
+   same "content floating above the page" idea. Request: confirm whether the scope wants one
+   `--shadow-elevated` role or whether `--shadow-card` covers all three (menu already uses it; sheet
+   and combobox do not).
+5. **`tabs.tsx`'s active-tab colour reads `--btn-bg`**, today's *button* fill token, not a tabs-specific
+   one. Outside the scope this must keep resolving to `--btn-bg`'s value; inside the scope I plan to
+   read semantic `--accent` instead, since that is what an "active/selected" indicator is supposed to
+   be under the direction (lime, `01-tokens.md`). Confirm this substitution is intended and not a
+   drift risk (`--btn-bg` and `--accent` are two different names for the same current value only by
+   coincidence, not by contract).
+6. **`sheet.tsx`'s overlay reads a raw-named custom property**, `--color-navy-950`, not a semantic one.
+   Confirm whether "no raw palette name" (`DEC-183` rule 5) forbids me from continuing to reference that
+   name at all (even though it already resolves via `var()`, not a literal hex) or whether the rule
+   targets literal hex/rgb values, which this file has none of.
+7. **Control radius vs. card radius**, already two structural names in `01-tokens.md`
+   (`--radius-input`/`--radius-card`) — my six files use *three* distinct radii today (`rounded-field`
+   6px for controls/chips, `rounded-card` 14px for cards/popovers, `rounded-full`/`rounded-t-card` for
+   pills and the sheet's top corners). `01-tokens.md` names `--radius-input` (12px) and `--radius-card`
+   (22px) — a `--radius-pill` (999px) is also named and covers the count badge and any pill chip.
+   Nothing further needed here; noting the mapping is 1:1 already, not a request.
+
+### 2 · New states, props, or behaviour — none
+
+Per `.claude/agents/console.md` and `DEC-183` §4.17/§4 disagreement #6, none of my six primitives
+gains a prop, a state, or a behaviour this wave. `tabs` stays the tab strip (not the phone tab bar,
+which is `src/components/shell/**`, the lead's — confirmed again from the file, §1). `sheet` stays
+exactly as animated (not at all) and exactly as sized (not full-height) as it is today; if a
+full-height opt-in prop is wanted this wave, that is a question for sync 1 (§8), not something I am
+building without an explicit go-ahead, since it is the one item `DEC-183` §4.17 calls out by name as
+"an opt-in prop… adopted later," which reads as *available to build* but not *required* this wave.
+
+### 3 · SCR-048 today — measured from the code
+
+**Route:** `src/app/[locale]/app/admin/companies/page.tsx`. Server component, `requireAdmin`-gated
+(via `listCompaniesForAdmin`'s own `requireAdmin` check, `src/lib/dal/admin-lists.ts:31-34` — role
+must be exactly `"admin"`, so a moderator gets `null` → `notFound()`, DEC-134's contract).
+
+**Form (`company-form.tsx`):** one field, `name` (`Input`, `maxLength={120}`, required). No colour
+field, no other field. `Field`/`Input`/`FormSummary`/`Button` from `ui/`, none of which I own.
+
+**Table (`companies-table.tsx`, onto `ui/data-table`):** four columns — `name` (bdi-wrapped), `memberCount`
+(computed client-side count, not stored), `status` (`Badge`, active/deactivated), `actions`
+(`DeactivateToggle`, no delete — no delete grant exists on `companies`, confirmed in `0004`). All four
+are `onCard: true` — every column shows on the phone card list.
+
+**DAL (`src/lib/dal/admin-lists.ts`):**
+- `listCompaniesForAdmin(locale)` (:77-93) — `select("id, name, deactivated_at")`, ordered
+  deactivated-first then name; a second query counts `members.company_id` client-side (not a SQL
+  `count`, a `Map` built in application code from every non-null `company_id` row — this becomes
+  relevant if a future wave adds per-company aggregates, not this one). **Grant:** none beyond table
+  grants — `requireAdmin()` gates it, then relies on RLS's `p1_org_read` (org-scoped select, any
+  authenticated member, not admin-only at the DB layer — the admin gate is app-side only, same as
+  every other admin-lists function).
+- `createCompany(locale, input)` (:99-104) — plain `insert({org_id, name})`. Relies on `p2_admin_insert`
+  (`0004:205-206`: `org_id = auth_org_id() and is_org_admin()`).
+- `setCompanyActive(locale, companyId, active)` (:107-114) — plain `update({deactivated_at})`. Relies
+  on `p2_admin_update` (`0004:208-209`, same predicate).
+- `companyInput` Zod schema (:95): `z.object({ name: z.string().trim().min(1).max(120) }).strict()`.
+
+**RLS policies on `companies`** (`0004_tenancy.sql:201-210`): `p1_org_read` (select, any authenticated
+member of the org), `p2_admin_insert`/`p2_admin_update` (org admin only), **no delete policy, no delete
+grant**. `grant select, insert, update on public.companies to authenticated`.
+
+**★ How a company edit is audited today: it is not.** `createCompany` and `setCompanyActive` are plain
+PostgREST calls (`supabase.from("companies").insert/update`), not RPCs, and neither calls
+`write_audit()` (`0005_tenancy_rpcs.sql:16-40`, the only entry point into `audit_log`) nor sits behind
+a trigger that does. Grepping `src/lib/dal/admin-lists.ts` and every migration touching `companies`
+(`0004`) finds no audit path — confirmed by `grep -rln "audit_log" src/lib/dal/*.ts`, which lists six
+files and `admin-lists.ts` is not one of them. This is a finding, not a design choice I am reversing:
+`categories` and `venues` (the two other "same shape" tables the header comment cites) are equally
+unaudited today, so this is consistent with the tier of screen SCR-048 has always been, not a
+regression I would be introducing. The requirement in `.claude/agents/console.md` ("a change is
+audited, naming the company, the old colour and the new one") therefore adds a **new** audit path that
+does not exist for `name` or `deactivated_at` either — I am not extending an existing mechanism, I am
+building the first one this table has ever had, scoped to `team_color` only unless the lead wants it
+to cover the whole table.
+
+**Team-colour field, proposed:**
+- Seven named swatches from `01-tokens.md`'s team-colour table (`--color-team-{silver,tangerine,
+  magenta,cyan,gold,violet,mint}`), each rendered as a small filled circle **and** its Arabic name in
+  words beside it (`WCAG` colour-is-never-the-only-channel, restated in `01-tokens.md` itself: "always
+  paired with the company logo or name; never the only channel") — so the seven labels are new
+  `admin.json` keys, e.g. `teamColour.silver: "فضي"`, `.tangerine: "برتقالي"`, `.magenta: "أرجواني
+  محمر"` (or a closer Arabic word — final wording is a translation pass, not blocked on sync 1), plus a
+  `«بلا لون»` option (`teamColour.none`).
+- At 390 px: a `radiogroup` of seven swatch buttons plus "بلا لون" wrapping in the form's existing
+  `max-w-md space-y-5` column — each swatch ≥ 44px hit target (`01-tokens.md`'s own rule), not a native
+  `<input type="radio">` row (too small), a custom `radiogroup` built from `ui/button` toggle-style or a
+  small new internal control **inside `companies/**`**, not a new `ui/` primitive — nothing in the six
+  files I own is a colour picker, and `04-components.md` proposes none either.
+- **Posts:** a `teamColor` field alongside `name` on the existing edit surface — but there is **no
+  existing edit surface** for a company beyond activate/deactivate (`DeactivateToggle`) and the add
+  form. Team colour is a **per-row edit** on an already-created company, which `companies-table.tsx`
+  has no pattern for today (its only per-row action is the toggle). I plan a new per-row control (a
+  `Menu` or a small inline `Sheet`/popover — both primitives I own) rather than a full edit form,
+  since the only editable field is the colour. Recommendation: a `Menu` trigger button in a new
+  `teamColor` column, opening the seven-swatch choice as menu items (tone dot + label), calling a new
+  Server Action. This reuses `ui/menu.tsx` (already migrated by commit 3 in my order) rather than
+  adding a new primitive.
+- **Zod schema:** `z.object({ teamColor: z.enum(["silver","tangerine","magenta","cyan","gold","violet",
+  "mint"]).nullable() }).strict()` if the seven-name-only recommendation (below) is taken, translated
+  server-side to the `#rrggbb` value before the write (the enum member names never reach the database
+  as data — the hex does, matching `01-tokens.md`'s "org data… `#rrggbb`" and the column's check
+  constraint). If a free hex is wanted instead: `z.object({ teamColor:
+  z.string().regex(/^#[0-9a-f]{6}$/i).nullable() })`, and the seven swatches become presets that fill
+  the same field rather than the only options.
+- **Recommendation: named-only, no free hex.** `01-tokens.md` is explicit that the seven are "the
+  proposal" with "the mapping to companies… the owner's to change" — a mapping between names and
+  fixed hexes it already picked for accessibility (bone/ink text contrast against each was presumably
+  checked when the palette was built) and for visual consistency with every other team-coloured surface
+  (avatar rings, race bars, posters) still to come. A free hex reopens a contrast question this wave
+  is not scoped to solve (no swatch-vs-text contrast checker exists in `companies/**` or anywhere I
+  own), and `docs/design/` never mentions a free-hex path — `06-decisions-proposed.md`'s `DEC-NEXT-4`
+  says "seeded… with the mapping… editable by an org admin," which reads as picking among the mapping,
+  not inventing new colours. The database's `#rrggbb` check constrains storage either way, so the
+  decision is only about what the *form* offers.
+
+### 4 · What I need from `0160` beyond the column and its check
+
+1. **Confirm the grant.** `companies` today has `grant select, insert, update … to authenticated`
+   (`0004:210`) with RLS deciding who may actually write. If `team_color` is written through the same
+   `p2_admin_update` policy (no new policy, since it is the same row, same predicate), no new grant is
+   needed — I plan on this being sufficient and ask the lead to confirm rather than add one.
+2. **A definer trigger for the audit**, not a definer function I call from the DAL — matching the
+   existing `org_domains_audit()` pattern (`0005_tenancy_rpcs.sql:315-330`, `security definer`, `after
+   insert or update or delete`, calling `write_audit()`), which I can write myself under
+   `supabase/proposed/console/**` ("functions and triggers only, never a table or a column" — a trigger
+   on an existing table is exactly this). Planned shape: `companies_team_color_audit()` fires `after
+   update on public.companies for each row when (old.team_color is distinct from new.team_color)`,
+   calling `write_audit(new.org_id, 'company.team_color_changed', 'company', new.id, jsonb_build_object
+   ('teamColor', old.team_color), jsonb_build_object('teamColor', new.team_color))`. No new grant
+   needed on `write_audit` itself (`0005:39-40` already grants it to `service_role`, and a `security
+   definer` trigger executes as its owner, the same pattern `org_domains_audit` already relies on). I
+   will write this trigger under `supabase/proposed/console/companies-team-colour-audit.sql`, prove it
+   with `applyProposed()` in a new `tests/rls/team-colour-audit.test.ts` (tested as a member performing
+   the update through RLS, not as the trigger owner — per the standing rule for definer triggers), and
+   hand the file and the test names to the lead for `0160`'s commit (or a follow-on migration the lead
+   numbers).
+3. **Nothing else.** No bucket, no new table, no new function beyond the one trigger above.
+
+### 5 · What `main`'s app does with a column it does not select
+
+`listCompaniesForAdmin` selects `"id, name, deactivated_at"` — an explicit column list, not `select("*")`
+(`admin-lists.ts:82`). `createCompany` inserts `{org_id, name}` (:101) and `setCompanyActive` updates
+`{deactivated_at}` (:110) — both explicit object literals, neither spreading a form payload. **A new
+nullable `team_color` column is invisible to every one of these three functions until I edit them.**
+`main`'s worker never reads `companies` at all (confirmed: no `worker/src/**` file references
+`companies` — the table has no job, no render context path, nothing). **Nothing moves.**
+
+### 6 · Places `docs/design/` and the tree disagree, not yet in `DEC-183` §4
+
+1. **`04-components.md`'s `tabs` row** ("five slots with the centre slot a raised 56px accent circle
+   («اقترح»)… contextual… hidden on detail/immersive screens") describes the **phone tab bar**, already
+   ruled (`DEC-183` §4 disagreement #6) to be `src/components/shell/**`, not `ui/tabs`. That ruling
+   covers the *naming* confusion; it does not separately say what `ui/tabs.tsx` (the strip) itself
+   should look like under the scope, and `04`'s table gives it no row of its own beyond the one that is
+   actually about the bottom bar. Not a new disagreement to log — the existing ruling already resolves
+   it for me (§2) — but worth stating plainly since a fast read of `04`'s table row labelled "`tabs`"
+   could mislead a future reader into thinking it describes my file.
+2. **`04-components.md`'s `sheet` row** ("full-height on phone… carries its own action bar and hides
+   the tab bar") is the one `DEC-183` §4 disagreement #17 already names and rules on (opt-in prop, not
+   built this wave unless asked). No new disagreement; restating because it is the item most likely to
+   be mis-scoped into "just build it."
+3. **`data-table`, `reorderable-list`, `file-drop` and the rest of the console primitives** grouped in
+   one row of `04-components.md`'s table ("tokens only; no animation") — `reorderable-list.tsx` and
+   `file-drop.tsx` are **not mine**: `reorderable-list` is the lead's (`ui/index.ts`'s table), `file-drop`
+   is `content`'s. `04`'s prose groups them with mine under "console primitives," which is imprecise
+   against the actual per-file ownership table in `CLAUDE.md`. Not a behaviour disagreement, just a
+   grouping error in the design doc; I am touching only the six files named in my own row.
+
+### 7 · Existing tests whose expectation would move — none found
+
+`tests/components/ui/{data-table,combobox,menu,tabs,sheet,date-time}.test.tsx` all exist today. Grepped
+every one for `className`/`toHaveClass`/literal `class=` assertions: the **only** hits are in
+`data-table.test.tsx:188-189` (`expect(label).toHaveClass("shrink-0")` and
+`expect(label.nextElementSibling).toHaveClass("min-w-0")`), both plain Tailwind layout utilities
+(flex-shrink and min-width), never touched by a token migration. No other file asserts a class string.
+Every other assertion in these six suites reads text content, roles, `aria-*` attributes or DOM
+structure — none of which a token-only, behaviour-unchanged migration moves. **Nothing in my six
+existing-primitive test files is expected to break.** `tests/components/admin/compan*` does not exist
+yet (new, for `SCR-048`'s new field — no pre-existing assertion to preserve there either, since the
+route's current tests, if any, live under a file I have not found: `grep`-ing `tests/**` for
+"companies" other than `admin-lists`/RLS turns up nothing, so `SCR-048` currently has **no** component
+test at all — worth flagging to the lead as a pre-existing gap, not one this wave opens).
+
+### 8 · Questions for the lead
+
+1. **The hover/highlight fill** (§1.7 #1) — is there a semantic `--hover` planned, or does
+   `--bg-raised` cover it?
+2. **The popover/menu elevation** (§1.7 #4) — one `--shadow-elevated` role, or does existing
+   `--shadow-card` (already used by `menu.tsx`) cover `combobox`'s and `sheet`'s cases too?
+3. **`tabs.tsx`'s `--btn-bg`-as-active-indicator** (§1.7 #5) — confirm the intended semantic replacement
+   is `--accent`, not a tabs-specific token, and that this substitution (same value today, different
+   name) is the kind of "identical outside the scope" the contract means.
+4. **`sheet.tsx`'s `--color-navy-950` reference** (§1.7 #6) — does "no raw palette name" forbid
+   continuing to *reference* an existing raw-named custom property from inside a migrated primitive, or
+   only forbid introducing a *new* one / a literal hex? (The file has no literal hex; it already reads
+   through a `var()`.)
+5. **`date-time.tsx` vs. `rtl-datetime-picker.tsx`** (§1) — confirming the token migration for the
+   date/time control is really `rtl-datetime-picker.tsx`'s commit (which I own under
+   `components/admin/**`) and `date-time.tsx`'s own commit is close to a no-op. I will read the picker
+   file in full before that commit either way; flagging now so the lead's expectation of "six commits,
+   one per primitive" is not surprised by the sixth being thin and a seventh (the picker) carrying the
+   actual weight.
+6. **`sheet`'s opt-in full-height prop** (§2) — build it this wave (unused, gallery-only, per `DEC-183`
+   §4.17's "shown in the gallery and adopted by a later wave"), or leave it entirely for a later wave's
+   plan? My default is: not this wave, unless told otherwise at sync 1.
+7. **The team-colour field's shape on `SCR-048`** (§3) — confirm named-only (my recommendation) vs. a
+   free hex, and confirm the per-row `Menu`-based edit control over a full inline edit form, since
+   there is no existing per-row edit affordance on this screen to extend.
+8. **The audit trigger's scope** (§4.2) — `team_color` only, or should `companies_team_color_audit()`
+   become a general `companies_audit()` also covering `name` and `deactivated_at`, which have never
+   been audited? My plan builds the narrower one (matches the requirement's literal ask); widening it
+   is a five-minute change if the lead wants the whole table's history closed in the same commit.
+9. **`memberCount`'s non-aggregate query** (§3, DAL) — not a wave-15 question, but noted: if a future
+   screen needs this at scale, `listCompaniesForAdmin`'s current approach (fetch every member row,
+   count client-side) does not use `count()`. Out of scope here; flagging so it is not lost.
+
+Refs: DEC-183, DEC-184, REQ-UIX-030, REQ-UIX-043
+
+---
+
+## Wave 15 — done
+
+All six primitives (`data-table`, `combobox`, `menu`, `tabs`, `sheet`, `date-time` — via
+`rtl-datetime-picker.tsx`) are onto the scope, tokens only, no existing class edited, no behaviour
+change. `SCR-048`'s team colour is built in today's look: the seven named colours plus «بلا لون», no
+free hex, a per-row `ui/menu`, and its own audit trigger (the table's first). Commits, in order:
+
+| Commit | What |
+|---|---|
+| `751685f` | `data-table` onto the scope |
+| `8b49ba7` | `combobox` onto the scope |
+| `899b180` | `menu` onto the scope |
+| `282f117` | `tabs` onto the scope |
+| `cd9f99e` | `sheet` onto the scope |
+| `215862f` | `date-time` onto the scope, via `rtl-datetime-picker.tsx` |
+| `314e14d` | `tests/e2e/wave15-console-gallery.spec.ts` |
+| `4c0d4ef4` | `companies_team_color_audit()` — proposed SQL + RLS test, 5/5 green |
+| `758edd5` | gallery spec fixed to the corrected single-render-per-scope pattern |
+| `ce32281f` | `data-demo` roots added to all six demos |
+| `4425070` | `SCR-048`'s team colour — DAL, actions, table, messages, tests, e2e |
+
+`npx tsc --noEmit` clean throughout · `npm run lint` 0 errors (26 pre-existing warnings, none mine) ·
+`npm run ui-lint` clean (321 files, strict) · every targeted test green before each commit ·
+`npm run test:rls` full run: 138/139 files green, the one failure (`survey-submit.test.ts`, six cases)
+is `event`'s file and unrelated to `companies` — pre-existing, not touched by my SQL · full
+`vitest run --project unit --project components`: 3212/3213 green, the one failure
+(`typography-utilities.test.ts`, `text-play-*` orphans in `playground.tsx`) is the lead's in-flight
+gallery page, not mine.
+
+**Two things left for the lead**, both need access I don't have this wave:
+1. **Promote `supabase/proposed/console/team_colour_audit.sql`** after `0160` (already landed). Until
+   then the audit half of `wave15-console-team-colour.spec.ts` fails against a real database, though
+   the RLS suite already proves the trigger itself (`4c0d4ef4`).
+2. **Run `wave15-console-gallery.spec.ts` and `wave15-console-team-colour.spec.ts`** against a fresh
+   `KAREEM_GALLERY=1` / production build — building is lead-only, and the `.next` on disk predates my
+   `companies/**` commits entirely.
+
+**Found, not mine to fix:** `ui/scope.tsx` imports `next/font/google`, and `vitest.config.ts`'s
+`components` project has no alias for it — `IBM_Plex_Sans is not a function` under jsdom the moment a
+component test imports `PlayScope`. Worked around in every `*-scope.test.tsx` by not mounting the
+scope (jsdom applies no CSS regardless, so the assertion is the `pg:` class string's presence).
+
+**Untouched-suite ledger lines, for `STATUS.md`** (I cannot write it myself — `docs/plan/**` except my
+own note):
+- `tests/components/admin/managed-lists-status-badge.test.tsx` — two `AdminCompany` fixture literals
+  widened with `teamColor: null` (the interface's new required field); assertions unchanged.
+- `tests/components/admin/phone-card-actions.test.tsx` — one `AdminCompany` fixture literal widened
+  the same way; assertions unchanged.
+
+Nothing else outside the scope moved. My row is done.
+
+---
+
+## Wave 15 — contract 6 (DEC-188), and the audit label fix
+
+- `859024820` — `sheet.tsx` and `menu.tsx` wired to `usePlayPortal()` on their Radix portal, matching
+  `dialog.tsx`'s worked example (`container={landing}`, `undefined` outside a scope — Radix's own
+  default, unchanged). New cases in the existing `sheet-scope.test.tsx`/`menu-scope.test.tsx` prove
+  `closest(".theme-play")` resolves inside a scope and is `null` outside one, following
+  `tests/components/ui/scope-portal.test.tsx`'s pattern (including the `@/lib/fonts` mock — this also
+  resolves the `IBM_Plex_Sans is not a function` blocker I'd flagged earlier; every future scope test
+  of mine can mount `<PlayScope>` for real now). `combobox` and `date-time` need nothing: both position
+  their popups `absolute` inside their own root, never through a portal.
+- `f39f13a5` — `0161` (the lead's promotion of my audit trigger) writes `company.team_color_changed`
+  into `audit_log`, and `tests/unit/admin-audit-labels.test.ts` scans every migration for a label on
+  `admin.audit.actions.<domain>.<verb>` in both `ar` and `en`. Added the one missing pair
+  (`company.team_color_changed`), alphabetical with its siblings. This touches `admin.json` outside the
+  `companies` namespace strictly named in my edit list — flagging it as a request/notice rather than
+  something I assumed: it was the only way to keep `REQ-ADM-018`'s suite green after the promotion, and
+  it is two lines, additive, no other key touched (confirmed by diff before committing).
+
+Full `npx tsc --noEmit`, `npm run lint`, `npm run ui-lint`, and the full `unit`+`components` project run
+(3216/3217 green, the one failure is the lead's in-flight `playground.tsx`) all clean after these two
+commits.
+
+---
+
+## Wave 15 — the popup-surface fix (91398840)
+
+`sheet.tsx` had its own separate fault, identical to the lead's `dialog` one: `bg-[var(--color-canvas)]`
+resolves at `:root` and is white on every ground. Fixed with the same `pg:bg-surface`, and moved
+`pg:shadow-none` to the end of the class string (existing classes first, the scope's after — it had
+been sitting mid-string).
+
+`menu.tsx:53`, `combobox.tsx:318/324` and `rtl-datetime-picker.tsx:289` all read `bg-canvas` (the
+utility, which follows the scope, not the raw `--color-canvas` variable) — so none of these three had
+the white-on-white fault. What they had instead: `bg-canvas` is the scope's **ground**, so a popup
+floating over the page rendered the exact colour of the page beneath it, told apart only by its
+1px border. Each gains `pg:bg-surface`.
+
+★ **What I actually saw, honestly:** I have no way to open a browser against a real build — building
+is lead-only, and the `.next` on disk is stale relative to my own commits regardless. So this is
+traced from the mechanism (`--bg`/`--surface` are two different values on both grounds inside
+`.theme-play`/`.theme-play-light`, per `tests/unit/tokens-scope.test.ts`'s own fixtures), not eyeballed
+in Chromium. The e2e proof in `wave15-console-gallery.spec.ts` (four tests × two grounds, computed
+`background-color`/`color` compared against `scopeComputes()`, a capture per popup per ground) is what
+actually verifies it, and needs the lead's build to run.
+
+82 existing component tests across the four files pass untouched (jsdom applies no CSS; they only
+ever assert class-string presence).
+
+---
+
+## Wave 15 — captures stilled (e97f9b3d), and one carried finding
+
+`wave15-console-gallery.spec.ts` now disables smooth scrolling on `goto` and waits for `still()` (three
+equal `scrollY` readings) before every screenshot, in both the per-primitive capture loop and the four
+popup-surface tests — the lead's own fix on `dialog`, applied here. The sheet's popup test also
+measures its scrim and its own bottom edge directly rather than trusting the picture.
+
+**Carried, not this wave, recorded here per the lead's message:** at 320 px the date picker's weekday
+names touch («السبت» «الجمعة» «الخميس» run together, no space) — present outside the scope and on
+`main` too, so not a wave-15 regression. `rtl-datetime-picker.tsx` is mine; this goes on my list for
+whichever screens wave next touches it.

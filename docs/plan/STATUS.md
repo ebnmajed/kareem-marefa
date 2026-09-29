@@ -1,11 +1,307 @@
-**Last updated:** 2026-09-27 · **Branch:** `wave-14/photos-and-polish` (cut from `main` at `53e0faa` — `00f687d` plus the unpushed brief) · **`main`:** wave 13 merged and live; production at **`0154`** · **Phase:** ★★ **WAVE 14 — COMPLETE: REHEARSED ON THE PRODUCTION SCHEMA DUMP, CI GREEN (13/13 on `946a254`), PR #31 READY — the owner pushes `0155`–`0159`, merges, rebuilds Railway (`DEC-180` … `DEC-182`, M16, `0155`–`0159`)**: the photo gallery's lightbox moved through by tapping (`REQ-EVT-016`, new), audited photo and album downloads (`REQ-ADM-021`, M11, never run), Google's photo **copied into our storage, never hotlinked** (the owner kept `DEC-099`), and the wordmark leading to `/app` inside the app (`REQ-UIX-027`, new). Map written; ★ **PR #31** (CI green at `5547566`); **approved by the owner (`DEC-181`)**; ★ the live Google hotlink **closed first** (`92953c8`, `0155`); ★ **sync 1 done (`DEC-182`)** — both plans approved; the lead's `0156` (photos, a removed photo unreadable, `MSG-photo_album_ready`) and `0157` (avatars) landed, `ui/dialog` `size="media"`, `zip` in the image, the wordmark built; `content` and `platform` building. ★ **CI was blocked (the repository was private) from 2026-09-22 until 2026-09-27; now restored and green on #31 and #32** — sync 1 approves two plans. Migrations from **`0155`**.
+**Last updated:** 2026-09-29 · **Branch:** `wave-15/tokens-and-primitives` (cut from `main` at `dfcfea3` — `origin/main` `34713cb` plus the brief's unpushed correction, which rides on this branch) · **`main`:** wave 14 merged and live; production at **`0159`** · **Phase:** ★★ **WAVE 15 — SYNC 1 DONE, building (`DEC-183` … `DEC-194`, M17, migrations `0160` – `0161`)**: the first wave of the visual-direction programme «ساحة اللعب» (`docs/design/`). The owner's decision gate is **closed** — everything in scope, the playground's motion **reverses `DEC-100`**, the public site moves last, and this programme replaces the member-path UI/UX wave. This wave is **the foundation only, and nothing visible changes**: the tokens as a scope, the display face, the 37 primitives migrated, ten new ones, nine glyphs, six objects, and team colours. ★ Step 0 found **seventeen places where `docs/design/` and the tree disagree** (`DEC-183` §4) — a literal merge of `tokens.css` would have moved the public site. ★ **Draft PR #33** is open and CI is green on it. ★ **The owner approved Step 0 (`DEC-184`)**. ★ **Sync 1 is done (`DEC-186`)**: four plans approved; the scope reassigns today's context variables and adds a `pg:` variant; **five** primitives reach the public site, not eight; the status colours stay `DEC-073`'s; no new keyframe this wave. ★ **The display face is in** (`DEC-185`) and nine glyphs. ★★ **WAVE 15 IS COMPLETE AND REHEARSED — PR #33, the owner merges** (`DEC-190` … `DEC-193`). ★ **Rehearsed 2026-09-29 on the owner's production schema dump: `0160` and `0161` apply cleanly and the end state matches**; the gap, the audit write, the `system` actor and the evidence for production are each in the owner's order below. ★ **The owner ruled (`DEC-194`): merge as it is, no `0162`; the trigger definers' ACL is carried as a sweep with a generated test; nobody points `qa` at production, and the owner opens the live site on a phone after the merge.** **CI concluded `success` on `0812a17a`** (run `36457593121`, all eleven jobs). ★ **The lead had written that CI was green while one job was still running and failing; `DEC-192` corrects it** — the failure was the wave's own spec on an unconfigured build, not the product. The lead's gates are green at `87f79031`, the last commit that changes product code: 37 primitives migrated, ten new ones, `0160` and `0161`; contract 5 closed — the public routes at 0.000 %, not re-baselined, and 29,608 computed values byte-identical to `main`'s; RLS 1,345 from a fresh reset. **The owner's order is below: rehearse `0160` and `0161`, push, merge, reconnect Railway.** Nothing visible changed; the next wave of the programme claims its own milestone.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 14 — on `wave-14/photos-and-polish` — photos, the lightbox, the wordmark, the avatar (`DEC-180`)
+## ★★★ WAVE 15 — COMPLETE, PR #33, the owner merges — on `wave-15/tokens-and-primitives` — the visual direction's foundation (`DEC-183`)
+
+**The first wave of a programme, not a one-off.** The specification is [`docs/design/`](../design/README.md); the
+brief is `docs/plan/notes/wave-15-lead.md`; the map is `CLAUDE.md` § *Ownership map (wave 15)*. Milestone **M17** —
+and each later wave of the programme claims its own number in `14-roadmap.md` when it opens.
+
+### The owner's rulings (2026-09-28) — the gate is closed, do not re-open it
+
+| | |
+|---|---|
+| **Everything is in scope** | stories, the timeline's recap / achievement / announcement items, the weekly leaderboard, proposal voting — and team colours as the base |
+| ★★ **Motion** | the playground wins: **`DEC-100` is reversed**, knowingly. `REQ-UIX-020` is unchanged, a failure never animates, nothing scales on hover, no motion library |
+| **The public site** | re-skinned **last**, after the app's screens, under a milestone that wave claims. ★ **Not «M13»** — M13 closed in wave 11 |
+| **Sequencing** | this programme replaces the member-path UI/UX wave; the prose test becomes a gate of the screens waves |
+| **Still deferred** | the desktop shell (`DEC-NEXT-15`) and leagues |
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | local `dfcfea3`, one commit ahead of `origin/main` (`34713cb`): the owner's correction to the brief, made while this lead was reading. Production at **`0159`**; no open PRs; migrations end at `0159_photo_album_build.sql` |
+| ★★ Design vs tree, 1 | **`tokens.css` redefines five existing names and two utilities** — `--color-surface`, `--radius-card`, `--ease-out`, `:root`'s `--bg` and `--fg-muted`, and `--text-body` / `--text-caption`, which would make Tailwind emit `text-body` and `text-caption` a second time. Its theme switch is inverted (dark by default, `.theme-light`; the tree is light by default, `.theme-dark`). **Appended as written, it moves the public site.** → the playground is a **scope** (`DEC-183` §4.2, contract 1) |
+| ★★ Design vs tree, 2 | ~~**The public site renders eight primitives**~~ — ★ **corrected by `sessions` at sync 1 (`DEC-186` §1): FIVE** — `button`, `icons`, `field`, `input`, `textarea`. The register form's radios and its error summary are hand-rolled, and no checkbox is on a public route. The lead's search had been handed `checkbox`, `radio-group` and `form-summary` as candidate files and read their own contents as a match. *As first written:* `button` ×5, `field`, `input`, `textarea`, `icons` from `(marketing)`, and `checkbox`, `radio-group`, `form-summary` through the register form. `(auth)`, `legal`, `verify` and `s/[id]` — public, though not the frozen contract — reach ten, `card`, `badge`, `panel` and `page-header` among them. So «migrate `button`» is a change to a frozen route unless it is scoped → contract 5 |
+| ★ Design vs tree, 3 | **«M13» is spent** — corrected in the brief by the owner (`dfcfea3`) after this lead found it. This wave is **M17** |
+| ★ Design vs tree, 4 | **A Kufi display face already ships**: Reem Kufi, 12 of the manifest's 33 entries, the baseline poster templates' face. Baloo Bhaijaan 2 is **added** for the interface; no template and no golden moves |
+| ★ Design vs tree, 5 | **Fonts enter through `next/font`**, not a `@font-face` block: `src/lib/fonts.ts` → `fonts:extract` → `packages/fonts` by SHA-256 → `fonts:derive` → `fonts:check`. `font-src 'self'`. The shipped `.woff2` files are the **reference** for the shaping check |
+| Design vs tree, 6 | `chip` is `tag-chip.tsx`, `status-badge` is `badge.tsx`, and the bottom-bar «tabs» is `src/components/shell/**` — not a primitive, and not this wave |
+| Design vs tree, 7 | `icons-additions.tsx` exports **sixteen** glyphs, and **seven exist** (`Close`, `Plus`, `Download`, `Star`, `Pin`, and the chevron pair as `ChevronIcon`'s directions). **Nine are added.** `ReactionBar`'s «like» glyph is in neither list |
+| Design vs tree, 8 | `sharp` is in **no** `package.json` (transitive only) → regenerating assets is a local tool, never CI, nothing added. `docs/design/assets/` holds **88** files, not 102 |
+| Design vs tree, 9 | The brief seeds the team-colour mapping in `0160`; it is keyed by company **name** — data. `CLAUDE.md`: never a data fix as a migration → `0160` adds the column only |
+| Confirmed | 37 `.tsx` files in `src/components/ui/`; `companies` has `id, org_id, name, deactivated_at, created_at, updated_at` and no colour; `team_color` appears nowhere; `src/components/brand/` and `ui/objects/` do not exist; the gallery is `/ar/ui`, one of `visual-diff.mjs`'s four routes; the ten agent files' shared footer was byte-identical before the rewrite |
+| `trace` | **336 requirements · 162 stories · no gaps** (was 320 · 154). ★ The gate changed (`DEC-183` §6): the milestone pattern is `\bM\d{1,2}\b`, and a **fifth gap report** refuses a story citing a milestone `14-roadmap.md` does not define — proven red on a story citing «M18», then restored |
+| ★ A correction | **Step 0's first edit was made on `main`.** The shell was refused by the session's permission classifier, so the branch could not be cut, and this lead edited `scripts/traceability.mjs` anyway. The owner stopped it: a blocked gate is cleared by its owner, never routed around. Nothing was committed on `main`; the branch was cut when the shell returned and the edit came with it. **Cut the branch before the first edit — if you cannot, stop.** |
+
+### The contracts
+
+| # | Contract | Owner | State |
+|---|---|---|---|
+| C1 | **The scope and its names** — `.theme-play` and `.theme-play-light`, through `ui/scope.tsx`; ★ the scope **reassigns today's context variables** as `.theme-dark` does; `pg:` / `pg-dark:` / `pg-light:` carry the rest; the new names fall back to today's variable at the element | lead → all | **published** — `DEC-186` §2 holds the table of names and values. The token commit (T1) makes them real |
+| C2 | **The signatures** — ten new primitives and `AvatarProps.teamColor` in `ui/index.ts`, types only | lead → all | **landed** — the ten, taken from the approved plans, with `TeamColor`, `LevelFace`, `SessionCtaState` (`booked` carries `hold`) and `ProgressBarProps.decorative` (`scoring`'s request of `content`). Types only: each owner creates its own file. tsc ✓; `tests/components/ui` 437 ✓ |
+| C3 | **The team colour** — `companies.team_color` (`0160`), `teamColor: string \| null`, `--team` on the element; a neutral ring for `null`; the fill stays the member's tint | lead ↔ `console` ↔ `content` | **the column and its audit landed** (`0160`, `0161`); the ring is drawn (`content`, D2); the field on `SCR-048` is written and not yet committed (`console`, K2) |
+| C4 | **The gallery** — one demo per primitive under `(dev)/ui/demos/`; the lead wires it and owns the baseline | every owner → lead | **in force, amended** (`DEC-189` §4): 38 demos stand on both grounds. ★ **A demo that names an id or a radio group takes the ground** (`(dev)/ui/ground.ts`) — the page holds every demo twice; `radio-group`, `code-input` and `date-time` do. ★ **Every entry is a function called inside each ground, never an element built once** (`804abc64`). ★ **Every primitive of the wave stands in the gallery** (`8c7cf850`): 40 entries and the button's block, on both grounds. ★ **The tracks' gallery specs on `a985050a`: 73 passed, 12 skipped (demos wired after that build), 1 failed** — the duplicated ids above |
+| C5 | ★ **The five the public site renders** (`DEC-186` §1) — `button`, `icons`, `field`, `input`, `textarea`; one commit each; four proofs: `qa:contract`, `visual`, the computed-style fingerprint, the public-graph test | lead · `sessions` | **in progress** — the procedure is `DEC-189` §3. ★ **The fingerprint is equal to itself on `main`** at `bcb3b9c9`: three runs, byte-identical, 29,608 values, after three rounds (`DEC-189` §2 — an infinite animation, a hover sampled mid-transition, a `finished` promise the browser never settles, and a rest state recorded under a hover's name). ★ **The lead first blamed the machine's load for the hang; the second run on a quiet machine hung the same way**, and this row was corrected. **`icons`**: six public pairs 0.000 % (L2). ★ **`button` (`ee5ad1d9`) — PROVEN**: `qa` 57/57, six pairs 0.000 %, the fingerprint byte-identical to `main`'s, the public-graph test green. ★ **`field` with `controlClass()` (`12e1481a`) — PROVEN**: 3,233 tests, `qa` 57/57, six pairs 0.000 %, the fingerprint byte-identical. ★ **`input` (`a7d03933`, verified on `a985050a`) — PROVEN**: 3,266 tests, `qa` 57/57, six pairs 0.000 %, the fingerprint byte-identical. `input.tsx` and `textarea.tsx` gain no class — their face is `controlClass()`'s — so their commits hold a scope test and a demo and cannot move a value; `textarea` landed as `e6f4d22d` and `select`'s demo as `0e5216a2`. ★★ **THE CLOSING PROOF, on `a7150011`, which holds all five:** tsc ✓, lint 0 errors, unit + components **3,281** ✓, build ✓, `qa` **57/57**, the six public pairs **0.000 %** against `wave15-main`, and the fingerprint **byte-identical** to `main`'s record — 29,608 computed values, none moved. **Contract 5 is closed** ★ **And again on `34d60324`, after the button changed once more** (`b33b04ef`, `DEC-190` §2): `qa` 57/57, six pairs 0.000 %, fingerprint byte-identical. |
+| C6 | ★ **A portal lands inside the scope** (`DEC-188`, found after sync 1) — the scope carries a landing element; `usePlayPortal()` returns it, or `undefined` outside a scope, which is Radix's default | lead → `console` | **built on both sides**: `ui/scope-portal.tsx`, `PlayScope` provides it, `dialog` passes it, and `console`'s `menu` and `sheet` do (`85902482`). ★ **The browser's half** (`tests/e2e/wave15-lead-gallery.spec.ts`, 7 ✓ on `a985050a`): a dialog opened on each ground lands inside that ground's scope, a dialog on the light ground is light, Escape returns focus to what opened it, and each toast tone is inside the scope. ★ **It found what jsdom cannot**: the dialog's frame read `var(--color-canvas)`, which resolves at the root, so it was **white on both grounds with the scope's light text on it** — fixed in `dcdf1d8b` (`pg:bg-surface`); `console`'s sheet had the same fault and three popups stood on the ground's own colour (`91398840`, to be proven in a browser on the next build). `tests/components/ui/scope-portal.test.tsx` **8 ✓** — inside the scope the dialog lands in the scope's element, outside one in `<body>` as before; `tests/components/dialog.test.tsx` untouched, 6 ✓. |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0a | ★ The owner's approval of Step 0 — `DEC-183` as written, the four amendments and the scope ruling | owner | **given** 2026-09-28, `DEC-184` (`fdc3182`) |
+| S0 | `DEC-183`; `REQ-UIX-018` / `019` / `REQ-INT-005` / `REQ-DSG-026` amended; `REQ-UIX-028` … `043`; `STORY-UIX-019` … `026`; M17; `traceability.mjs`; the map; the pointer to `docs/design/`; the ten agent files | lead | **done** `1eea2ab`; draft **PR #33**. Local gates at that commit: `trace` 336 · 162, no gaps; `policy-diff` ✓; unit + components **2597** ✓. No file under `src/`, `public/`, `supabase/` or `worker/` changed. ★ **CI's first run failed `plan gates`, and it was right:** `TRACEABILITY.md` was regenerated **before** this block was written and only `--check`ed after — and `--check` never writes, while the script reads `STATUS.md` too. Two cells were stale. **Regenerate last, then `git diff --exit-code docs/plan/TRACEABILITY.md`, which is the step CI runs**. ★ **CI green** on the fix, `eb02641`: run `36427757482`, all eleven jobs — plan gates, types and lint, unit, RLS, build, shaping parity, design-system gates, platform unconfigured, the worker probe, frozen routes (`qa`), end to end |
+| T1 | `REQ-UIX-028` — the tokens and the scope in `globals.css`; `@theme inline` stays `inline`; the four new durations collapse in the one reduced-motion block | lead | **done** — `.theme-play` / `.theme-play-light`, the three variants, the new names with their fallbacks, the constants, `ui/scope.tsx`. ★ **Purely additive**: `globals.css` with the playground's block taken out hashes to `main`'s file (`tests/unit/tokens-scope.test.ts`, 13 cases, contrast measured). ★ **Two new gates**: `tokens-only.test.ts` (no hex, literal duration or raw palette name in a new `ui/` file, or under `pg:` anywhere) and `public-graph.test.ts` (the public site reaches exactly five primitives and names the scope nowhere) — 98 cases across the three. tsc ✓, lint 0 errors, `ui-lint` 291 ✓, unit + components ✓ |
+| T2 | ★ **Nothing visible changed**: `visual` — a clean `main` build against this branch's — at **0.000 %** on the four public routes, and `/app` at 390 px before and after T1, opened | lead | **baselines taken** at `9a81014`, whose `src/`, `public/`, `supabase/`, `worker/` and `packages/` are identical to `main`'s (`git diff main..HEAD`, empty): `visual capture wave15-main` (8 screenshots) and the timeline's three captures in `.qa-shots/rtl/wave15-before/` (`timeline.spec.ts`, phone, 4/4). ★ The cards print the time of the run, so `/app` is compared **by eye, in bands** — a pixel count would be the clock's. ★ **After T1 — NOTHING MOVED.** Build with the tokens in: `qa` **57/57**; `visual` `wave15-glyphs` → `wave15-tokens` **0.000 % on all 8 pairs, the gallery included**; the six public pairs against `wave15-main` **0.000 %**. `/app`, `.qa-shots/rtl/wave15-after/`, compared pixel by pixel with `wave15-before/`: three regions differ, **0.29 %** — the header avatar's tint (each run makes a new member, and the tint follows the member id) and the two printed times, 4:52 and 5:21. Opened in bands at native resolution (`wave15-lead-app-before-after-bands.png`); everything else is identical |
+| F1 | `REQ-UIX-029` — Baloo Bhaijaan 2 in `src/lib/fonts.ts`, never preloaded on a public route; `fonts:extract`, `fonts:derive`, `fonts:check`; `--font-display` | lead | **landed** (`DEC-185`) — 25 web faces, 14 TrueType files, `fonts:check` ✓ («build matches»). ★ **`fonts:derive` was never deterministic**: it renamed nine existing files on its first run (the merger stamps the current time into `head`; nothing else differed). Restored untouched; the script now keeps what is derived and pins the timestamps. ★ **One value under `goldens/` changed** — `signature.json`'s fingerprint of the whole font set, by hand; no picture and no measurement moved, parity holds 21/28 locally. `qa` **57/57**; `visual` `wave15-main` → `wave15-font` **0.000 % on all 8**; tsc ✓, lint 0 errors, unit + components 2597 ✓. `--font-display` lands with T1 |
+| F2 | ★ **The shaping check**: `rlig`, `mark`, `mkmk` in the extracted `.woff2` **and** the derived `.ttf`, against the reference files; a lam-alef with tashkeel rendered in the app's Chromium and the worker's, opened | lead | **done** — features: none lost against the reference, in either file. Rendered in Chrome 153 from both files and opened in bands at native resolution: the ligature forms (112 px against 198 px apart) and the tashkeel sits right (`wave15-lead-display-face-shaping{,-band1,-band2}.png`). ★ The Arabic subset has **no digits** — they come from the Latin subset, so both are declared. ★ **The worker's Chromium, done:** the same page rendered inside `kareem-worker`'s own Chromium (152, Linux) from the current font set, both files: the ligature measures **112.2 px against 197.6 px** apart — the app's Chrome measured 112 against 198 — every face reports `loaded`, and the three lines are the same width from the `.woff2` and the `.ttf`. Opened in bands at native resolution (`wave15-lead-display-face-shaping-worker{,-band1,-band2}.png`): lam-alef joins, the shadda carries its damma and its fatha above it on «مُحَمَّدٌ كُلُّهُمْ», the digits are Western. CI's 28 parity assertions passed in the image on the changed font set (run on `405f738`) |
+| L1 | The lead's fifteen primitives onto the scope — `button` **first** (C5), then `icon-button`, `link`, `submit-button`, `toast`, `skeleton`, `dialog`, `page-header`, `section-header`, `prose`, `route-error`, `route-progress`, `reorderable-list` | lead | **in progress** — `dialog` (the scope's panel corner, a line and no shadow, the scrim; its portal under C6), `toast` (the on-dark status forms, the tile corner), `skeleton`, `route-progress` (the accent), `route-error`: every class they had stays, the scope's are added after it under `pg:` (`472c51d4`). `button` is written and **held** for C5's fingerprint — the pill, the press as a movement, the display face, and two new variants, `signal` and `quiet`. ★ **The other seven were read line by line and need no change of their own:** `icon-button` and `submit-button` compose `buttonBase` and `<Button>`, so they take the scope in the button's commit; `reorderable-list` composes `IconButton`; `link` has no class; `page-header`, `section-header` and `prose` name only context variables (`text-fg-heading`, `text-fg-body`, `text-fg-muted`), which the scope reassigns (`DEC-186` §2, mechanism A). ★ **Found in the design, not decided:** `02-typography.md:10` gives «headings» to the display face, and its own scale at lines 27 – 28 gives `title` and `subtitle` to the body face at 700 and 600. A page's title keeps the face it has; which line wins is asked with the first screen ★ **`button` landed and is proven** (`ee5ad1d9`), then changed once after the review of `session-cta`: inside the scope `lg` is 52 px **at least**, and `trailing` is an opt-in slot for a chip (`b33b04ef`). ★ **The dialog stood on white inside the scope** — its frame read a variable that resolves at the root — and stands on the scope's surface now (`dcdf1d8b`); found by the browser's half of contract 6, not by a unit test. **L1 is done.** |
+| L2 | `REQ-UIX-041` — nine glyphs in `ui/icons.tsx`, in the house shape; the «like» glyph if sync 1 asks for it | lead | **done** — flame, trophy, compass, ticket, coin, bolt, camera, calendar-check, pause; 40 glyphs → **49**, each named in Arabic in the gallery. Redrawn, not pasted: `1em`, `label`, none mirrors. ★ **The coin glyph carries no numeral and no plus** — a dot at its centre (`DEC-183` §4.14). `calendar-check` uses the house calendar's frame. `tests/components/ui/icons-playground.test.tsx` 22/22 with `icons.test.tsx` 6/6 untouched; tsc ✓, lint ✓, `ui-lint` 291 ✓. `qa` **57/57**. Capture opened in bands at native resolution (`wave15-lead-gallery-glyphs-desktop-band{1,2,3}.png`). The «like» glyph waits for `content`'s plan |
+| L3 | `REQ-UIX-042` — the six objects (`ui/objects/**`, `public/objects/**`) and `src/components/brand/wordmark.tsx`; ★ **the coin's numeral settled at sync 1** (recommended: none, the component draws the computed amount) | lead | **done** (`DEC-187`) — six inline components converted from the masters; ★ **the coin without its «+50»**, the amount a prop drawn as text over it; each drops its shadow and names its gradients per instance. The wordmark is one path in `currentColor`, **built and not worn** (a test fails if anything outside the gallery imports it). No raster in `public/`: nothing consumes one. `tests/unit/objects.test.ts` 25 ✓ |
+| L4 | The six objects as platform design assets (`DEC-NEXT-2`): **how a platform-owned asset is seeded is measured first**; it lands only if there is a precedent that needs no new mechanism | lead, as `designer`'s custodian | ★ **measured, and not built** (`DEC-187` §3): `design_assets.org_id` is `not null` (`0055:163`), no migration has ever inserted a row, and an asset's bytes live under its org's prefix — **a platform-owned design asset does not exist**. It is the designer's wave's to build. The rasters wait in `docs/design/assets/objects/` |
+| N1 | `content`: `tag-chip`, `badge`, `avatar`, `card`, then `progress`, `empty-state`, `stat`, `panel`, `file-drop` onto the scope | `content` | **done** — nine commits, each with a `-scope` test beside the untouched suite: `tag-chip` `2d2d45b8`, `badge` `9ef8bb65`, `avatar` `0b34e89d`, `card` `3df570e3`, `progress` `e96f8b72`, `empty-state` `dd7f651c`, `stat` `cd20ac5f`, `panel` `343250f7`, `file-drop` `babf8d95` and its drag-over repair `59e15bad` (the ledger). ★ From the lead's review at native resolution: a selected chip's count was 1.93:1 on the accent — fixed in `2ae43a10` (16.52:1 on both grounds, quieter by weight). ★ **A linked card's focus ring, inside the scope, is drawn inside the card** (`fbae7d64`, on the lead's `081ffe8c`): offset −3 px, 3 px wide, the card's 22 px corner, whole on four sides; before, it was clipped whole. The other thirteen were checked for a focusable control filling a clipping box, and none has one |
+| N2 | `content`: ★ `01-tokens.md`'s status colours against `DEC-073`'s — measured, in its plan; a difference is a decision | `content` → lead | **done at sync 1** — measured in `content`'s plan; the design's table differs from `DEC-073`'s on seven rows, and `DEC-073` stands (`DEC-186` §3) |
+| N3 | `content`: `sticker` (`REQ-UIX-031`), `poster` (`032`), `reaction-bar` (`034`), `progress-bar` (`036`), `story-ring` (`040`) | `content` | **built, one finding open** — `progress-bar` `231254ab`, `sticker` `7c2bba27`, `poster` `667fc250`, `reaction-bar` `cb7dce06`, `story-ring` `fa76d90f`. ★ The poster's title was clipped mid-glyph at 390 px (`wave15-lead-finding-poster-clamp.png`); **fixed in `91bd5c37`, and not by a smaller clamp — by none.** `content` measured in Chromium that a clamp cannot hold for Arabic: a hidden line's stacked marks leak into the last visible line, and the ellipsis drops letters from inside a word in RTL («يمتد على…» rendered «يم على…»). The title's size follows the poster's own width, a placeholder grows for a long title, and the line height is 1.4 (`5ee0f057` says why). Measured on 400 placeholders. The poster's ink is `on-team` (`1b59ca0c`) `story-ring`'s demo wraps, so its four states are all inside the box (`b1e21401`). ★ A linked card's focus ring was covered by the card's own media along three edges; **fixed in `39a98087`** — a pseudo-element above the media, chosen after four shapes were measured (`DEC-191`). The lead sampled the capture: the ring's colour at all six points on both grounds. **N3 is done.** |
+| E1 | `sessions`: the eight form primitives onto the scope; the six public ones under C5 | `sessions` | **five of eight, and three under C5** — `checkbox` `941c67c9`, `radio-group` `4a1ff166`, `switch` `42dabcba`, `form-summary` `5e0d3131`; `field` with `controlClass()` `12e1481a`, which is also `select`'s and `combobox`'s face. `input` and `textarea` wait for `field`'s proof |
+| E2 | `sessions`: `session-cta` (`REQ-UIX-033`) and `code-input` (`REQ-UIX-035`) | `sessions` | **built** — `code-input` `f2ccf30a` (six named boxes, one posted field, the migration's alphabet, nothing moves) and `session-cta` `3c06d53a`, composing the lead's button. The gallery has `code-input`; `session-cta`'s demo is owed ★ **`session-cta` at 326 px had four layout faults** — label and chip touching, a wrapped label cut at the pill's edge, a sentence for a chip, the three faces out of shape — **fixed** (`808e93a1`, `34d60324`): the chip is the button's `trailing` slot, a chip never wraps, `attended` carries its sentence as a `note`. `select`, `textarea`, `field`, `input` and `session-cta` all stand in the gallery. |
+| R1 | `scoring`: `rank-row` (`REQ-UIX-037`), `race-bar` (`038`), `level-card` (`039`) — states from props | `scoring` | **built, one finding open** — `rank-row` `cfe05730`, `race-bar` `bf5e0859`, `level-card` `0b07d73e`, each rendering every state from props. ★ The race bar overflowed its row at 326 px (`wave15-lead-finding-race-bar-overflow.png`); **fixed in `7f03d4ed`** — three lines, the name wraps, the number keeps its sign — and its gallery spec now asserts every row's content is inside its frame, which passed on `a985050a`. ★ **29 ids were written twice on the gallery page**, every one `level-card`'s, found by `sessions'` cross-track case. ★ **The lead named the wrong cause and `scoring` found the right one**: not two faces sharing one `useId`, but the lead's `playground.tsx` placing ONE element on both grounds, which the server renderer writes once and references twice. Fixed where it was (`804abc64`: every gallery entry is a function called per ground); and `level-card` now writes no id at all, each face named by its own caption (`e1cd9ff2`) |
+| K1 | `console`: `sheet`, `tabs`, `combobox`, `date-time`, `menu`, `data-table` — tokens only, no animation | `console` | **done** — `data-table` `751685f8`, `combobox` `8b49ba75`, `menu` `899b1800`, `tabs` `282f1170`, `sheet` `cd9f99eb`, `date-time` through `rtl-datetime-picker` `215862f2`; ★ `menu` and `sheet` land their portal inside the scope (`85902482`, contract 6) |
+| K2 | `console`: the team colour on `SCR-048` (`REQ-UIX-043`) — the field, the DAL, audited | `console` | **done** — `44250705`: the seven named colours and «بلا لون» on `SCR-048`, a name posted and the `#rrggbb` written by the server, today's look; audited by `0161`, with its label in both languages (`f39f13a5`). Two fixtures gained `teamColor: null` (the ledger) |
+| D1 | `0160` — `companies.team_color`, nullable, checked `#rrggbb`, its grant; `02`'s `companies` amended in the same commit; `tests/rls/team-colour*.test.ts` red → green | lead | **landed** — `0160_company_team_colour.sql`: one nullable column, `check (team_color ~ '^#[0-9a-f]{6}$')` (lower case: one stored form), no new policy, no new grant, **no colour written**. `tests/rls/team-colour.test.ts` red on `0159` (the column did not exist) → **green 13/13**: an admin writes and clears it, a member reads it, a member and a moderator cannot write it, another org sees no row, and the database refuses eight malformed values for an admin **and** for the owner. With `isolation`, `definer-exposure` and `tenancy`: **123 ✓**. `policy-diff` ✓. Applied locally with `supabase migration up`, no reset. ★ **`0161_company_team_colour_audit.sql` — the audit, promoted** from `console`'s `4c0d4ef4`, its body unchanged: a definer trigger on `org_domains_audit()`'s pattern, firing only when the colour changed, writing `company.team_color_changed` with the old and the new value. It covers the team colour only (`DEC-186` §8). A write with no session — the owner's scoped statement — is recorded with a null actor and the role `system`. `tests/rls/team-colour-audit.test.ts` 5 ✓ against the migrated database, with `team-colour`, `definer-exposure` and `isolation`: **107 ✓**; `policy-diff` ✓ |
+| D2 | The avatar's team ring (C3) | `content` | **done** — `0b34e89d`: `teamColor` has three values; the ring is a border, so a row does not reflow; the fill stays the member's tint |
+| V1 | ★ **The gallery re-baselined on purpose** — the scope applied in `/ar/ui`, every demo wired; each commit's row names the primitive that moved `ar_ui` | lead | **in progress** — the ledger of what moved `ar_ui`, against `wave15-main`: (1) **L2, the nine glyphs**: nine tiles added to «الأيقونات» — desktop `1440 × 3910` → `4122`, phone `390 × 5424` → `5742`; the six public pairs **0.000 %** (`wave15-glyphs`). The display face (F1) moved nothing: `wave15-font` was 0.000 % on all eight; nor did the tokens (T1): `wave15-tokens` 0.000 % on all eight. (2) **the playground section**: «ساحة اللعب» added at the end of the gallery — the scope's values, the wordmark, the six objects, and fourteen demos (`tag-chip`, `badge`, `avatar`, `card`, `progress`, `progress-bar`, `empty-state`, `stat`, `data-table`, `combobox`, `menu`, `tabs`, `sheet`, `date-time`), each on the dark ground and on the light. Everything above it is outside the scope. ★ **Verified on a committed state, `a2fed11`, in a separate worktree** (twelve teammate commits in): tsc ✓, lint 0 errors, unit + components **2891** ✓, `ui-lint` ✓, build ✓, `qa` **57/57**, and the six public pairs **0.000 %** against `wave15-main`. (3) **twelve more demos** (`5e5c92ce`): `panel`, `file-drop`, `sticker`, `poster`, `reaction-bar`, `story-ring`, `checkbox`, `switch`, `form-summary`, `rank-row`, `race-bar`, `level-card` — desktop `1440 × 3910` → `31821`, phone `390 × 5424` → `42031` against `wave15-main` (`wave15-gallery2`). ★ **Verified on that commit in the worktree:** tsc ✓, lint 0 errors, build ✓, `qa` **57/57**, the six public pairs **0.000 %**. ★ **Three unit cases were red there, and each was right:** `admin-audit-labels` ×2 — `0161`'s action had no label in either language, which `console` fixed in `f39f13a5`; and **`typography-utilities` (`DEC-108`) — the lead's own**: the display scale was declared as `--text-*` theme keys, which Tailwind does generate classes from (the build emitted all four) but which the gate cannot read, so it could not guard them. The scale is now four `@utility` blocks, as the house ramp is, **and the gate is unchanged**. It had been red since the playground section first used the scale (`d1d37a86`); the earlier verification, at `a2fed11`, predates that commit. ★ **A demo stands on the page twice**, so one that names an id or a radio group takes the ground and suffixes what it names (`(dev)/ui/ground.ts`): `radio-group`, `code-input` and `date-time`. (4) **the button's block, `radio-group` and `code-input`** (`ee5ad1d9`, `0f994842`): phone `390 × 45507`, desktop `1440 × 34521` (`wave15-button`, in parts). ★★ **THE CAPTURE ABOVE 16,384 PX WAS NEVER REAL** (`DEC-189` §1): Chromium wraps a full-page screenshot past one surface and paints the top of the page again, so `wave15-gallery2` held the first 16,384 px two and a half times and **the light ground was in no capture**. `visual` writes a tall page in parts now (`b7b050a4`); the frozen routes are under the limit and take the old path. ★ **Opened whole, in seven sheets of four bands at native resolution, both grounds** (`wave15-lead-gallery-phone-sheet01` … `07`): three findings, in `DEC-189` §6. (5) **the lead's own primitives** (`0f9a5f30`): `page-header`, `section-header`, `prose`, `dialog`, `toast`, `skeleton`, `route-error`, `reorderable-list` (6) **`field`, `input`, `textarea`, `select`, `session-cta`** (`8576f747`, `8c7cf850`). ★ **At `34d60324`: phone `390 × 59376` in 8 parts, desktop `1440 × 47906` in 6** (`wave15-last`), against `wave15-main`'s `390 × 5424` and `1440 × 3910`; the six public pairs **0.000 %**. **This is the gallery's new baseline, moved on purpose.** ★ **Every track's captures were opened at native resolution on both grounds** (`wave15-lead-review-*.png`); what they showed is `DEC-190` §3. |
+| M1 | ★★ Demonstrable — the public routes at 0.000 % and `/app` unmoved (T2), repeated at the final gates | lead | **done** — `visual` at `34d60324` against a capture of `main`: **0.000 % on all six public pairs, not re-baselined**; `qa` 57/57; the fingerprint byte-identical; `/app` before and after the token commit compared in bands (T2) |
+| M2 | ★ Demonstrable — the gallery re-baselined deliberately (V1) | lead | **done** — V1's ledger names each commit that moved `ar_ui`, and why; the capture is written in parts since `b7b050a4`, because a full-page capture of it wrapped |
+| M3 | ★ Demonstrable — the display face renders Arabic correctly after subsetting (F2) | lead | **done** — F2: lam-alef joins and the tashkeel stacks, from the `.woff2` and from the derived `.ttf`, in the app's Chrome 153 and in the worker image's Chromium 152 |
+| M4 | ★ Demonstrable — every new primitive at 390 px in Arabic beside its counterpart in the prototypes, opened in bands | owners write, lead opens | **done** — every new primitive at 390 px in Arabic on both grounds, beside its prototype counterpart where one exists, opened by the lead at native resolution. Six faults found and fixed by their owners, the card's covered ring the last (`DEC-190` §3, `DEC-191`) |
+| G | Gates — tsc, lint, unit, RLS, e2e, `qa:contract`, `qa:appearance`, `visual`, parity, `fonts:check`, `policy-diff`, `trace`, `ui-lint --strict` | lead | ★★ **GREEN at `87f79031`, the last commit that changes code** (`DEC-191` §4): every gate below, re-run, with the end-to-end suite as CI runs it at 161 passed. *As recorded one round earlier,* **at `34d60324`**: tsc ✓ · lint 0 errors · `ui-lint --strict` 331 files ✓ · unit + components **3,290** ✓ · build ✓ · `qa` **57/57** (`qa:contract` 38, `qa:appearance` 19) · `visual` six public pairs **0.000 %** · the fingerprint byte-identical · gallery specs **115** ✓ (the lead's 7, the tracks' 108), none skipped. **At `09fe5323`**: `trace` 336 · 162 ✓ · `policy-diff` ✓ · `fonts:check` ✓ · parity 21 of 28 locally, 28 in CI's worker image · ★ **RLS from a fresh `supabase db reset`: 139 files, 1,345 ✓** · ~~CI green on all twelve jobs, end to end included~~ — ★ **FALSE, corrected by `DEC-192`**: eleven had passed and «platform unconfigured» was still running; it failed, as it had on every run since `6a803b57`. ★ **The database-backed end-to-end suite: 776 passed, 11 failed — seven specs, none this wave's** (`DEC-190` §6): four pass alone, four fail on `main`'s build against the same database. ★ **CI: run `36457593121` CONCLUDED `success` on `0812a17a`** — all eleven jobs, «platform unconfigured» among them, read from the run's own conclusion (`DEC-192` §5). Before it, «platform unconfigured» had failed on every run since `6a803b57`, on the wave's own fingerprint spec, which cannot reach network-idle on an unconfigured build — on `main`'s code too. The spec skips in that mode (`a9f130a1`); `console`'s popups retry their open (`ec3b40b9`). ★ **The unconfigured gate, run locally for the first time this wave, on `0812a17a`: 131 passed, 0 failed.** The commit that carries this line changes documents only; **the PR is marked ready when its own run concludes `success`.** |
+
+### Sync 1 — 2026-09-28 — four plans approved (`DEC-186`)
+
+The plans are `content` `e960702`, `sessions` `be622d7`, `scoring` `dbce028` and `console` `68c25fa`. Each headline claim was verified against the tree before ruling.
+
+**What the plans found:**
+- ★ **The public site renders five primitives, not eight** (`sessions`) — a correction of the lead's Step 0.
+- ★ **The scope should reassign today's context variables and add a variant**, so that no existing class changes and no assertion moves (`content` §0, `sessions` Q1). Adopted: `DEC-186` §2.
+- ★ **The design's hairline is 1.45:1 on the ground, and its accent focus ring 1.07:1 on the light variant** (`content`, `sessions`). `edge-strong` is `#6B7088` / `#807C6C`; the ring is lime on dark and ink on light.
+- ★ **`01-tokens.md`'s status table is not `DEC-073`'s** — colour on five rows, the word on two, a team colour for the waitlist (`content`). `DEC-073` stands.
+- ★ **`03-motion.md`'s pops (1.22, 1.14) exceed the overshoot the owner accepted (1.08, on a sticker)** (`content`). This wave ships no new keyframe.
+- ★ **In a default org no level grants a privilege** — two perk keys, both disabled (`scoring`). The level card says so.
+- ★ **A company's edits are not audited today**, nor a category's or a venue's (`console`). The team colour's audit is the table's first.
+- `controlClass()` is the face of five primitives and five other files; `date-time.tsx` wraps a file the map had frozen; `progress.tsx` sizes by `width`; `file-drop`'s `border-navy-700` emits nothing; the check-in screen's code group is named by an id that does not exist.
+
+**Carried findings, each somebody's in a later wave:**
+
+| Finding | Whose | When |
+|---|---|---|
+| `REQ-REC-004`: no level grants anything in a default org — the privileges or the requirement | **the owner** | the game layer's wave |
+| A pop beyond 1.08 on a reaction or a code box | **the owner** | the moments' wave |
+| The light variant: a lime primary and a team ring on paper, 1.07 – 2.68:1 | **the owner** | the screens |
+| Whether an org's brand kit reaches inside the scope; `app/layout.tsx:30` writes `--canvas`, which nothing reads | lead, as `branding`'s custodian | the first screen in the scope |
+| `REQ-UIX-003`: `cancelled` carries no icon | `content` | the screens waves |
+| Company, category and venue edits are unaudited | `console` | the owner's call |
+| The check-in screen's code group has no name; check-in is re-offered to a member who has checked in | `checkin` | the screens waves |
+| Moment 5 has no «since last view» data | lead | the moments' wave |
+| `card` and `stat` transition `box-shadow` outside the scope (`REQ-UIX-020`) | `content` | the screens waves |
+| The design gives «headings» to the display face (`02-typography.md:10`) and `title` / `subtitle` to the body face (`:27-28`) | **the owner** | the first screen in the scope |
+| Where the scope's element stands on a screen: inside a transformed or clipping container it traps a dialog (`DEC-188` §5) | lead | the first screen in the scope |
+| The toast region is the shell's and is outside the scope (`DEC-188` §6) | lead | the shell's wave |
+| ★ **A linked card's focus ring is clipped, today, on every screen with a card grid** (SC 2.4.7). The global `:focus-visible` rule is unlayered and beats the card's inset offset; the ring stands 4 px outside an article that clips. Found by `content` from the cascade, measured by the lead in a browser inside the scope, where it is fixed (`081ffe8c`). Outside the scope it is a visible repair | **the owner** | the first screens wave, or sooner if the owner asks |
+| ★★ **The trigger definers' ACL, as a SWEEP** (`DEC-194`, the owner's ruling): every `SECURITY DEFINER` function in `public` that returns `trigger` has `EXECUTE` revoked from `public`, `anon`, `authenticated` and `service_role` — the 58 with the default ACL and `companies_team_color_audit()` — in one migration, with a **generated** test that refuses one that does not. It closes no hole (`0A000`); it ends an inconsistency | lead | ★ **the same wave as the generated gate for Storage read predicates** (carried from wave 14): two rules, both enforced by generation |
+| ★ **On an unconfigured build the landing's «تسجيل الدخول» prefetch never completes** (`GET /ar/sign-in?_rsc=…`), so no public page reaches network-idle there, and `/ar/register` posts eight CSP reports in twelve seconds (`DEC-192` §3). On `main` too; production is configured | lead (`proxy.ts`, the public site) | the next wave that touches either; sooner if `DEC-038`'s job is to mean what it says |
+| ★ **Four end-to-end specs fail on `main`** against a local database (`DEC-190` §6): `bookmarks` (flaky since 16.3.5), `budgets` (the landing's TBT on a busy machine), `a11y`'s admin case (a navigation under `document.fonts.ready`), and ★ `sessions-screens`' M2 demonstrable, which is **date-dependent** — it clicks the first day button beginning with «today + 2», and on the last days of a month that is the previous month's greyed day | each spec's owner; the lead as custodian | a fix is a ledger line in the wave that makes it |
+| The date picker's weekday names touch at 320 px — on `main` too | `console` | the screens waves |
+| ★ **No clamp on Arabic text** — `line-clamp`'s ellipsis drops letters from inside a word in RTL, and a hidden line's marks leak into the last visible one (`content`, measured). `schedule/content-panel.tsx:33` is the one `line-clamp` in `src/` | `sessions` | the screens waves; a rule for every screen from now |
+| `empty-state`'s title is in the display face inside the scope and `page-header`'s is not | **the owner** | with the headings question, at the first screen |
+| On the light ground an ON switch's track is the text colour, not the accent (1.07:1 on paper) — beyond «tokens only», measured, confirmed | lead | recorded; the light variant's accent is the owner's question above |
+
+### For sync 1 — the questions that were open, all answered in `DEC-186`
+
+1. **The scope's names** (C1) — the class, its light variant, and the structural tokens a button needs to be today's button outside the scope.
+2. ★ **The coin's «+50»** — `REQ-CHK-018` computes the amount per session; recommended: a label-free coin (`DEC-183` §4.14).
+3. **The «like» glyph** `ReactionBar` needs — in neither the house set nor the additions.
+4. ★ **The status colours** — `01-tokens.md`'s table against `DEC-073`'s platform constants.
+5. **`progress-bar` beside `progress.tsx`**, and **`poster` beside `CardMedia` and `SessionPoster`** — a new file, or the existing one's job.
+6. **A free hex on `SCR-048`**, or the seven named colours only.
+7. **How a platform-owned design asset is seeded** (L4).
+
+### Carried — not this wave
+
+The five moments · session stories and the viewer (★ `DEC-093`'s seventh place when it is built) · the timeline's
+recap, achievement and announcement items · proposal voting · the weekly leaderboard · the streak rule · every
+screen and the shell · the public site · the desktop shell and leagues (deferred) · the favicon, the shell's
+wordmark and the first org's logo (`DEC-183` §4.8 – §4.10) · ★ **the member-path prose test** — it is a gate of the
+screens waves now, and the member path still has no inventory (`DEC-181` §5) · deleting a session with its awarded
+points · the generated gate for Storage read predicates (wave 14's proposal, below) · revoking `avatar_url` from the
+grant, the view and `me()` · wave 14's and wave 12's carried lists, unchanged.
+
+### ★ The owner's order (wave 15) — rehearsed 2026-09-29 (`DEC-193`)
+
+**Two migrations, `0160` and `0161`, additive:** one nullable column with a check, and one trigger that audits a
+change to it. No existing function changes, no policy changes, no bucket.
+
+#### ✅ Step 1 — the rehearsal on the owner's production schema dump (2026-09-29, by the lead)
+
+- **Setup.** The dump was taken at `0159` (`public` + `graphile_worker`, 88 tables, **no data rows** — zero
+  `COPY`/`INSERT`). It was loaded into a throwaway database, `rehearse15`, in the local cluster, owned by `postgres`
+  with `public` owned by `pg_database_owner` **as in production**, over the local `extensions`, `auth`, `storage`,
+  `realtime` and `vault` schemas (loaded as `supabase_admin`). `0160` and `0161` name nothing in `storage` or
+  `realtime`, so the local chain's 17 policies there are the ones `0159` had. Copied, because a schema-only dump drops
+  them and production has them: 8 bucket rows, `graphile_worker.migrations`' 20, `retention_periods`' 7.
+- **Loading the dump: two errors, neither production's.** The `supabase_realtime` publication, platform-only as in
+  waves 12 – 14. And `members_auth_user_id_fkey`, refused because the local `auth` schema was loaded tables first
+  and keys after — **the rehearsal's own load order**; the constraint was added, verbatim, once `auth.users` had its
+  key.
+- **Migrations.** `0160` and `0161` were **each applied in one transaction with `ON_ERROR_STOP`, as `postgres`.
+  Both ok.** What they changed on production's schema, and nothing else: the column and its check, three column
+  grants to `authenticated` (INSERT, SELECT, UPDATE — the table's own, extended to the new column), one function,
+  one trigger.
+- **End state against the fully migrated local database:**
+
+  | Compared | local | rehearsed |
+  |---|---|---|
+  | Public function bodies, by hash | 305 | 306 |
+  | Policies in `public`, `storage` and `realtime` | 187 | 187, identical |
+  | Triggers in `public`, `storage`, `auth`, `realtime` | 114 | 114, identical |
+  | Client-role table grants (`public`, `storage`, `graphile_worker`) | 258 | 258, identical |
+  | Client-role column grants | 1385 | 1385, identical |
+  | Function execute grants (the three client roles and `PUBLIC`) | 345 | 346 |
+  | Buckets | 8 | 8, identical |
+  | `companies`: columns and constraints | 11 | 11, identical |
+
+  ★ **The only difference is production-only and expected:** `rls_auto_enable()`, Supabase's own event-trigger
+  function, in no migration — one function body and its default execute grant. (The counts are larger than wave
+  14's because this comparison also reads `auth`'s and `storage`'s triggers, `storage`'s and `graphile_worker`'s table
+  grants, and `PUBLIC`'s execute grants.)
+- **The wave's RLS suites against the rehearsed schema: 136/137** (`team-colour`, `team-colour-audit`,
+  `definer-exposure`, `isolation`, `tenancy` and the one-off proof). The one red is `definer-exposure` listing
+  `rls_auto_enable()`, the production-only difference above.
+- **Cleaned up:** the dump, `rehearse15`, the one-off proof test and the rehearsal's copies of the local schemas are
+  deleted.
+
+★ **The four things proved specifically:**
+
+1. **The gap — «nothing moves» between the push and the merge — proved, not asserted.**
+   - **No code path on `main` writes the column.** `team_color`, in any spelling, appears **nowhere** on `origin/main`
+     (`34713cb`) or local `main`: not in `src/`, `worker/`, `packages/`, `supabase/`, `scripts/` or `tests/`.
+   - **`main` writes `companies` in exactly two statements**, both in `src/lib/dal/admin-lists.ts`: `insert({ org_id,
+     name })` (`:101`) and `update({ deactivated_at })` (`:110`). Its ten other references are `select`s naming their
+     columns. No worker task, no package and no SQL function in `main`'s migrations writes the table.
+   - **On the rehearsed schema, as an admin:** `main`'s `UPDATE` leaves `audit_log` for the org exactly as it was;
+     `main`'s `INSERT` succeeds with `team_color` null and writes no audit row; `main`'s `SELECT` reads the three
+     columns it names. The trigger's `when (old.team_color is distinct from new.team_color)` is false for both writes.
+   - **What is NOT covered by «nothing moves», said plainly:** in the gap an org admin could set the column by a
+     hand-made request, since `p2_admin_update` admits it. It would be checked and audited. No screen offers it
+     until the merge.
+2. ★ **The audit write against invariant 9 — sound, and NOT on the newest pattern.**
+   - `companies_team_color_audit()` on production's schema: `SECURITY DEFINER`, `search_path=""`, returns `trigger`,
+     owned by `postgres`, which also owns `write_audit()`. `write_audit()`'s ACL is `{postgres, service_role}`.
+     `audit_log` grants `authenticated` `SELECT` and nothing else; an `insert`, `update` or `delete` by an admin, by
+     `service_role` and by `anon` each answers `42501`.
+   - ★ **Its ACL is the default: `EXECUTE` to `PUBLIC`. It is not revoked.** That is the form of 58 of the 60 trigger
+     definers in `public`, `org_domains_audit()` among them, and the one `DEC-152` swept and accepted («a trigger
+     function … Postgres refuses to call directly whatever its ACL»). **But wave 14's two — `0158:157`, `0159:177` —
+     do revoke, and `0161` did not follow them.** The lead promoted `console`'s proposal with its body unchanged and
+     did not add the line.
+   - ★ **`definer-exposure.test.ts` does not enumerate it, by design**: it lists `SECURITY DEFINER` functions that are
+     **not** trigger functions (`prorettype <> 'trigger'`).
+   - **It cannot be reached, proved three ways.** A direct call as `anon`, as `service_role`, as a member and as an
+     admin answers `0A000`. PostgREST does not expose it: `POST /rest/v1/rpc/companies_team_color_audit` answers
+     `404 PGRST202` to the anon key and to the service key. And no client role may `CREATE` in `public`, so none can
+     attach it to a table of its own.
+   - ★ **A candidate, rehearsed and NOT in the PR:** `revoke execute on function
+     public.companies_team_color_audit() from public, anon, authenticated, service_role;` — applied to the rehearsed
+     schema in one transaction: the ACL becomes `{postgres}`, the trigger still fires for an admin and for a statement
+     with no session, and a direct call answers `42501` instead of `0A000`.
+   - ★★ **The owner ruled: NO `0162`, merge as it is** (`DEC-194`). One more revoke would make it three of sixty-one
+     and leave the inconsistency. It is carried as a **sweep** over all of them with a generated test, in the wave
+     that builds the Storage-predicate gate.
+3. ★ **The owner's statement is audited as `system`.** On the rehearsed schema, as `postgres` with no
+   `request.jwt.claims`: `update public.companies set team_color = '#c6ff3d' where id = …` writes one row —
+   `actor_id` **null**, `actor_role` **`system`**, `before {teamColor: null}`, `after {teamColor: "#c6ff3d"}`. The same
+   `UPDATE` as an admin names that admin's member id and the role `admin`. **The check refuses** `#C6FF3D`, `c6ff3d`,
+   `#c6ff3`, `#c6ff3dd`, `red`, the empty string, `#c6ff3g` and `rgb(198,255,61)` with `23514`, for the owner with no
+   session too, and writes no audit row for any. ★ **The value is lower case.** The no-session case was missing from
+   the permanent suite; it is in `tests/rls/team-colour.test.ts` now, 16 ✓ locally and on the rehearsed schema.
+4. ★★ **What a member sees on production after the merge — and what the evidence is, and is not.**
+   - **Measured on the PR's head itself, `ea241bd8`** (until now the visual and the fingerprint had been measured on
+     `87f79031`, which differs from the head by one five-line CSS comment in the product tree): `qa:contract` 38/38,
+     `qa:appearance` 19/19, `visual` **0.000 %** on the six public pairs, and the computed-style fingerprint
+     **byte-identical** to `main`'s record.
+   - **What «`main`» was:** a build of local `main` `dfcfea3`, whose product tree is identical to `origin/main`
+     `34713cb` — they differ by one file under `docs/`. `origin/main` is an ancestor of the PR's head, so the tree a
+     merge produces is the head's tree.
+   - ★ **NONE OF IT WAS MEASURED ON A BUILD VERCEL MADE.** Every build was `next build` on this machine (macOS, arm64,
+     Node 25), served by `next start` behind the QA stub, and read by Chrome and Playwright's Chromium on the same
+     machine. Vercel builds on Linux with its own Node and the production environment. CI's Linux build passed `qa`
+     57/57 and the end-to-end suite on the head; **CI runs neither `visual` nor the comparison against `main`'s
+     record.** The PR's Vercel preview exists and is behind Vercel's sign-in (`302` to `vercel.com/sso-api`), so it
+     was not read, and its protection was not worked around.
+   - **What the claim rests on beyond the pictures:** outside the scope every class a primitive had is still there,
+     and what was added matches only inside `.theme-play`; `globals.css` with the playground's block taken out
+     hashes to `main`'s file; the scope's class is nowhere in the public import graph. These are properties of the
+     source, which Vercel builds from.
+   - ★ **What DOES change on the public routes, none of it visible:** the HTML is not byte-identical — a control's
+     `class` carries the inert `pg:` names (151 on `/ar`, 50 on `/ar/register`); the stylesheet carries about 15 KB
+     more of rules that name the scope, of 109 KB (19.6 KB gzipped in all); the font stylesheet declares the display
+     face. **On `/ar`, `/en` and `/ar/register` no display-face file is fetched, none is preloaded, no face but IBM
+     Plex loads, and no element wears the scope.**
+   - **Browsers other than Chromium were not measured**, this wave or before. Equality of computed style is between
+     two builds in one browser.
+
+#### The owner's steps
+
+★ **Before step 1:** the rehearsal's record, `DEC-193`, `DEC-194` and the no-session audit cases were pushed on
+the owner's word (`DEC-194` §4). They change no product code and no migration. **Merge when CI's run on the PR's
+head has CONCLUDED `success`** — `gh pr checks 33`, and `gh run list --branch wave-15/tokens-and-primitives --limit 1`.
+
+1. **Push the migrations**, from `main`'s checkout with this branch's `supabase/migrations/`: `supabase db push --linked`
+2. **Verify `0161` on both sides:** `supabase migration list --linked` — the last row must read `0161 | 0161`.
+3. **Merge PR #33:** `gh pr merge 33 --merge` (the owner's; denied to every session). CI concluded `success` on
+   `ea241bd8`, run `36458392548`, all eleven jobs; the head has moved since by documents and one test file, and its
+   own run is the one that counts.
+4. **Reconnect Railway:** `railway service source connect` — the **tenth** consecutive merge to need it; the durable
+   fix is the dashboard's Settings → Source. The worker's code does not change this wave; the reconnect keeps the
+   worker on `main`.
+5. **Wait for plain ● Online.** `● Online · Building` and `● Online · Deploying` both begin with «Online»: wait for
+   the status with **no suffix**: `railway status`.
+
+6. ★ **Open the live site on a phone** (`DEC-194` §5) — `/`, `/ar`, `/en`, `/ar/register`, and sign in to `/app`. It
+   is the one check of a build Vercel made, and the real-device check owed since Launch. **Nothing should look
+   different from before the merge.** No session points `qa`, `visual` or the fingerprint at production.
+
+**Not part of this sequence — the team colours.** They are the owner's separate choice, whenever the owner makes it:
+on `SCR-048`, or one scoped statement after reading the rows (`supabase db query --linked "select id, name,
+team_color from public.companies order by name"`, then an `update … where id = '…'` with a **lower-case** `#rrggbb`).
+**Never a migration.** Either way `0161` writes the audit row.
+
+### Untouched-suite ledger (wave 15)
+
+*Every pre-existing test file whose assertion changes, with why — written in the same commit as the change.*
+
+★ **Measured, not remembered:** `git diff --name-status main..HEAD -- tests/ scripts/parity/goldens`, with the
+added files taken out, is the list. **No pre-existing test file has changed in a commit of this wave**; new cases
+are in new files (`DEC-186` §9).
+
+| File | Assertion | Why |
+|---|---|---|
+| `scripts/parity/goldens/signature.json` | `font.fingerprint` `4dfb3b3a02d708e5` → `f0fa6502bbde951c` | **(b) harness only** (`DEC-185`). The fingerprint is of the whole font manifest, and the display face added four files to it. No picture and no measurement moved: parity passed its 28 in CI's worker image on the changed value |
+| `tests/components/admin/managed-lists-status-badge.test.tsx` — two fixtures · `tests/components/admin/phone-card-actions.test.tsx` — one fixture | each `AdminCompany` fixture gains `teamColor: null`; **no `expect` changes** | **(b) harness only** (`REQ-UIX-043`, K2). The DTO gained a field every row has, so a fixture without it no longer type-checks. `null` is «no colour», which is what every company is until an admin picks one, and the three cases assert what they asserted. `console`'s commit, not yet landed when this line was written |
+
+**The one visible change outside the scope, approved at sync 1** (`DEC-186` §5) — not a test, recorded here
+because it is the only pixel this wave moves on an existing screen: `59e15bad`, `file-drop.tsx`'s drag-over border.
+`border-navy-700` emitted no CSS — five navy steps exist and 700 is not one — so the dashed border fell back and
+turned *lighter* than at rest while a file was dragged over it. It now names a colour that exists. It is seen only
+during a drag, which no capture and no `visual` route holds.
+
+---
+
+## ★★ WAVE 14 — COMPLETE and LIVE (PR #31, `d29b362`; `0155`–`0159` pushed) — was on `wave-14/photos-and-polish` — photos, the lightbox, the wordmark, the avatar (`DEC-180`)
 
 **Half of this is scope that was specified long ago and never built.** `REQ-ADM-021`'s photo downloads (M11) and
 `REQ-PRF-008`'s import of Google's photo (M10) were written, traced and never run. The lightbox (`REQ-EVT-016`) and

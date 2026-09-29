@@ -72,9 +72,16 @@ export function FormSummary({ errors, title, description, className = "" }: Form
       ref={region}
       role="alert"
       tabIndex={-1}
-      className={`rounded-field border border-error-border bg-error-bg p-4 focus-visible:outline-2 focus-visible:outline-offset-2 ${className}`}
+      // ★ WAVE 15 (DEC-186 §2, §6). Everything here is ADDED under the scope, and
+      // nothing replaced. The error constants are light-ground colours: on the
+      // dark ground a `#fbf1f1` box would be the one bright block on the page,
+      // and `--color-error` is under 3:1 there. So the dark scope draws the
+      // summary as an outline in the error's on-dark constant (7.7:1 on the
+      // ground), the way `ui/panel`'s toned panels do. The ring is the scope's
+      // width; its colour is `--ring`, which the scope reassigns.
+      className={`rounded-field border border-error-border bg-error-bg p-4 focus-visible:outline-2 focus-visible:outline-offset-2 pg:rounded-input pg:focus-visible:outline-[length:var(--focus-width)] pg-dark:border-error-on-dark pg-dark:bg-transparent ${className}`}
     >
-      <h2 className="flex items-start gap-2 text-label text-error">
+      <h2 className="flex items-start gap-2 text-label text-error pg-dark:text-error-on-dark">
         <AlertCircleIcon className="mt-[0.2em]" />
         <span>{title}</span>
       </h2>
@@ -94,7 +101,7 @@ export function FormSummary({ errors, title, description, className = "" }: Form
               // stranded on its own line. Found in the phone capture, not in
               // jsdom — the accessible name is identical either way.
               // `py-2.5` on a 24 px line box is the 44 px target (REQ-NFR-007).
-              className="inline-block py-2.5 text-caption text-error underline underline-offset-4"
+              className="inline-block py-2.5 text-caption text-error underline underline-offset-4 pg-dark:text-error-on-dark"
             >
               {/* The field's own name is an interpolated value, so it is
                   bidi-isolated; the message is a whole sentence in the

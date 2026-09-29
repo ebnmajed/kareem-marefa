@@ -133,14 +133,14 @@ export function Tabs({
             <>
               <span>{item.label}</span>
               {item.count !== undefined ? (
-                <span className="ms-1.5 rounded-full bg-silver-100 px-1.5 py-0.5 text-body-sm text-fg-muted">
+                <span className="ms-1.5 rounded-full bg-silver-100 px-1.5 py-0.5 text-body-sm text-fg-muted pg:bg-raised">
                   {formatNumber(item.count)}
                 </span>
               ) : null}
             </>
           );
           const triggerClass =
-            "relative -mb-px inline-flex h-11 items-center whitespace-nowrap rounded-t-field px-3 text-label text-fg-body outline-none hover:text-fg-heading data-[state=active]:border-b-2 data-[state=active]:border-[var(--btn-bg)] data-[state=active]:text-fg-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]";
+            "relative -mb-px inline-flex h-11 items-center whitespace-nowrap rounded-t-field px-3 text-label text-fg-body outline-none hover:text-fg-heading data-[state=active]:border-b-2 data-[state=active]:border-[var(--btn-bg)] pg:data-[state=active]:border-accent data-[state=active]:text-fg-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]";
           return item.href ? (
             <RadixTabs.Trigger key={item.value} value={item.value} asChild className={triggerClass}>
               <Link href={item.href}>{inner}</Link>

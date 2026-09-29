@@ -297,6 +297,17 @@
       "emptyAction": "انتقل إلى النموذج أعلاه",
       "nameColumn": "الاسم",
       "memberCountColumn": "الأعضاء",
+      "teamColourColumn": "لون الفريق",
+      "teamColourNone": "بلا لون",
+      "teamColourNames": {
+        "silver": "فضي",
+        "tangerine": "يوسفي",
+        "magenta": "فوشي",
+        "cyan": "سماوي",
+        "gold": "ذهبي",
+        "violet": "بنفسجي",
+        "mint": "نعناعي"
+      },
       "statusColumn": "الحالة",
       "actionsColumn": "الإجراءات",
       "deactivate": "عطّل",
@@ -541,6 +552,9 @@
         "comment": {
           "removed": "إزالة تعليق",
           "restored": "استعادة تعليق"
+        },
+        "company": {
+          "team_color_changed": "تغيير لون فريق شركة"
         },
         "design": {
           "export_requested": "طلب تصدير تصميم",

@@ -76,6 +76,21 @@ export function describedIds(...ids: (string | undefined)[]): string | undefined
 const controlBase =
   "block w-full rounded-field border bg-canvas text-fg-heading placeholder:text-fg-muted disabled:cursor-not-allowed disabled:opacity-60";
 
+// ★ WAVE 15 — the playground's scope (DEC-183 §4.2, DEC-186 §2, §6). Every class
+// above stays exactly as it was, because the public register form renders them
+// (contract 5). The scope reassigns `--edge-strong`, `--fg-heading`,
+// `--fg-muted` and `--ring`, so the edge, the text, the placeholder and the ring
+// already follow it; what a variable cannot carry is ADDED here, after the
+// class it overrides, and applies inside the scope only (`ui/scope.tsx`):
+//   · the input's 12 px corner (`--radius-field` stays 6 px for everything else);
+//   · the raised face — `bg-canvas` inside the scope is the page's own ground,
+//     and a control has to stand off it;
+//   · on the dark ground, the invalid edge in the error's on-dark constant —
+//     `--color-error-border` is a light-ground colour.
+// This string is also the face of `ui/select`, `console`'s `ui/combobox` and five
+// files outside `ui/` (`controlClass()` below), and they take the scope with it.
+const controlScope = "pg:rounded-input pg:bg-raised";
+
 // 44 px is the floor for a touch target (REQ-NFR-007). `sm` is for dense
 // console rows where the row itself is the target; it is never a form control
 // a member fills in on a phone.
@@ -104,7 +119,7 @@ const controlInline: Record<Size, { plain: string; startIcon: string }> = {
  */
 export function controlClass(invalid = false, size: Size = "md", extra = "", options: { startIcon?: boolean } = {}) {
   const inline = options.startIcon ? controlInline[size].startIcon : controlInline[size].plain;
-  return `${controlBase} ${controlSizes[size]} ${inline} ${invalid ? "border-error-border" : "border-edge-strong"} ${extra}`;
+  return `${controlBase} ${controlSizes[size]} ${inline} ${invalid ? "border-error-border" : "border-edge-strong"} ${controlScope}${invalid ? " pg-dark:border-error-on-dark" : ""} ${extra}`;
 }
 
 export function Field({ id, label, hint, error, required, children, className = "" }: FieldProps) {
@@ -162,7 +177,8 @@ export function Field({ id, label, hint, error, required, children, className = 
           moment focus lands, which is exactly where the summary's link sends
           the member. */}
       {error ? (
-        <p id={errorId} className="mt-2 flex items-start gap-2 text-caption text-error">
+        // The error's on-dark constant on the scope's dark ground, where `--color-error` is under 3:1.
+        <p id={errorId} className="mt-2 flex items-start gap-2 text-caption text-error pg-dark:text-error-on-dark">
           <AlertCircleIcon className="mt-[0.2em]" />
           <span>{error}</span>
         </p>

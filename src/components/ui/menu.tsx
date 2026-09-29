@@ -4,6 +4,7 @@ import { DropdownMenu } from "radix-ui";
 import type { MenuProps } from "@/components/ui";
 import { CheckIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
+import { usePlayPortal } from "@/components/ui/scope-portal";
 
 // The house dropdown menu over Radix (DEC-019), the same wrapper shape as
 // `dialog.tsx`: Radix owns focus trapping, typeahead, roving tabindex and
@@ -28,23 +29,28 @@ import { Link } from "@/components/ui/link";
 // beside a menu item's own icon.
 
 const itemBase =
-  "flex w-full items-center gap-2 rounded-field px-3 py-2 text-start text-body-sm text-fg-heading outline-none data-[highlighted]:bg-silver-100 data-[disabled]:pointer-events-none data-[disabled]:text-fg-muted/50";
+  "flex w-full items-center gap-2 rounded-field px-3 py-2 text-start text-body-sm text-fg-heading outline-none data-[highlighted]:bg-silver-100 pg:data-[highlighted]:bg-hover data-[disabled]:pointer-events-none data-[disabled]:text-fg-muted/50";
 
 const toneClass: Record<string, string> = {
   error: "text-error data-[highlighted]:bg-error-bg",
 };
 
 export function Menu({ trigger, items, align = "start" }: MenuProps) {
+  // ★ Wave 15 (DEC-188): inside the playground's scope the portal lands
+  // INSIDE the scope's element, so the menu wears the scope. Outside a
+  // scope this is `undefined` — Radix's default, `<body>`, exactly as
+  // before the wave.
+  const landing = usePlayPortal();
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
+      <DropdownMenu.Portal container={landing}>
         {/* No entrance animation in M9 — `16` §16.2 moves the motion system to
             M10 and only its duration/ease TOKENS ship here. */}
         <DropdownMenu.Content
           align={align}
           sideOffset={6}
-          className="z-40 min-w-48 rounded-card border border-edge bg-canvas p-1.5 shadow-[var(--shadow-card)]"
+          className="z-40 min-w-48 rounded-card border border-edge bg-canvas p-1.5 shadow-[var(--shadow-card)] pg:bg-surface pg:shadow-none"
         >
           {items.map((item, i) => {
             // The page on show: `aria-current` for a screen reader, and a check
@@ -57,7 +63,7 @@ export function Menu({ trigger, items, align = "start" }: MenuProps) {
                 {item.current ? <CheckIcon className="shrink-0 text-[1rem]" /> : null}
               </>
             );
-            const className = `${itemBase} ${item.current ? "bg-silver-100" : ""} ${item.tone ? (toneClass[item.tone] ?? "") : ""}`;
+            const className = `${itemBase} ${item.current ? "bg-silver-100 pg:bg-raised" : ""} ${item.tone ? (toneClass[item.tone] ?? "") : ""}`;
             const current = item.current ? ("page" as const) : undefined;
             return (
               <div key={item.label + i}>

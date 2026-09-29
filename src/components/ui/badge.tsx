@@ -48,6 +48,34 @@ const OUTLINE_TONE: Record<Tone, string> = {
   error: "border border-error-border text-error",
 };
 
+// ★ Wave 15 — inside the playground's scope (DEC-183, DEC-186 §3, REQ-UIX-030).
+// The status colours are `DEC-073`'s on EVERY surface, the scope included: the
+// scope never remaps them, and this file adds no colour. What the dark scope
+// needs is the ON-DARK form each tone already has for `.theme-dark` — the light
+// constants measure 2.67 – 3.13:1 on the scope's surface, the on-dark ones 7.05 –
+// 8.61:1. So `pg-dark:` carries exactly those forms, added after the classes
+// that exist, and `ended` reads its own constant (`--color-ended-on-dark`, the
+// value it borrows from `.theme-dark`'s muted text) because the scope reassigns
+// muted. Two tones `.theme-dark` never covered get the same treatment here:
+// `info` filled (a near-white fill under text the scope turns light) and the
+// `success` / `error` outlines. The light variant keeps the light constants,
+// which pass on paper (5.13 – 6.01:1). The 6 px corner stays: a sober rectangle
+// is what tells a status from a sticker without colour (DEC-186 §3).
+const SCOPE_FILLED: Partial<Record<Tone, string>> = {
+  info: "pg-dark:border pg-dark:border-edge-strong pg-dark:bg-transparent",
+  success: "pg-dark:border pg-dark:border-success-on-dark/50 pg-dark:bg-transparent pg-dark:text-success-on-dark",
+  live: "pg-dark:border pg-dark:border-live-on-dark/50 pg-dark:bg-transparent pg-dark:text-live-on-dark",
+  ended: "pg-dark:border pg-dark:border-edge-strong pg-dark:bg-transparent pg-dark:text-ended-on-dark",
+  error: "pg-dark:border pg-dark:border-error-on-dark/50 pg-dark:bg-transparent pg-dark:text-error-on-dark",
+};
+
+const SCOPE_OUTLINE: Partial<Record<Tone, string>> = {
+  success: "pg-dark:border-success-on-dark pg-dark:text-success-on-dark",
+  live: "pg-dark:border-live-on-dark pg-dark:text-live-on-dark",
+  ended: "pg-dark:text-ended-on-dark",
+  error: "pg-dark:border-error-on-dark pg-dark:text-error-on-dark",
+};
+
 // ★ A MINIMUM height, never a fixed one (the lead's wave-14 capture review): a
 // label longer than its container — «مخفية — بانتظار المراجعة» on a photo tile
 // at 390 px — wraps, and a fixed `h-6` kept the outlined box one line tall while
@@ -69,9 +97,11 @@ const SIZE: Record<"sm" | "md", string> = {
 // else moves.
 export function Badge({ tone = "neutral", outline, size = "md", icon, children, className = "" }: BadgeProps) {
   const filled = FILLED_TONE[tone];
-  const toneClass = outline || !filled ? OUTLINE_TONE[tone] : filled;
+  const outlined = outline || !filled;
+  const toneClass = outlined ? OUTLINE_TONE[tone] : filled;
+  const scopeClass = (outlined ? SCOPE_OUTLINE[tone] : SCOPE_FILLED[tone]) ?? "";
   return (
-    <span className={`inline-flex w-fit items-center rounded-field font-medium ${SIZE[size]} ${toneClass} ${className}`}>
+    <span className={`inline-flex w-fit items-center rounded-field font-medium ${SIZE[size]} ${toneClass} ${scopeClass} ${className}`}>
       {icon}
       <bdi>{children}</bdi>
     </span>

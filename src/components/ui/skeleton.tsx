@@ -34,7 +34,7 @@ export function Skeleton({ variant = "text", count = 1, width, className = "" }:
         <div
           key={i}
           aria-hidden="true"
-          className={`animate-pulse bg-silver-100 ${shapes[variant]} ${className}`}
+          className={`animate-pulse bg-silver-100 pg:bg-raised ${shapes[variant]} ${className}`}
           style={width ? { width } : undefined}
         />
       ))}

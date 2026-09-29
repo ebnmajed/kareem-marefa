@@ -21,6 +21,20 @@ import { CloseIcon } from "@/components/ui/icons";
 // after hydration, at the cost of never honouring an org's Arabic-Indic
 // setting the way the other two primitives do. Flagged in
 // `docs/plan/notes/content.md` §6.0 for whoever wires a real facet count.
+// ★ Wave 15 (DEC-183, DEC-186 §2, REQ-UIX-030): inside the playground's scope
+// the chip is `04-components.md`'s — a pill on the raised surface, 13 px at
+// 700, the accent when selected. Every class that existed before stays exactly
+// as it was, so outside the scope nothing moves; the scope's look is ADDED
+// under `pg:`, which comes later in the stylesheet and so wins only there.
+const SCOPE_CHIP = "pg:rounded-pill pg:text-[0.8125rem] pg:font-bold";
+const SCOPE_UNSELECTED = "pg:bg-raised";
+const SCOPE_SELECTED = "pg:border-accent pg:bg-accent pg:text-on-accent";
+const SCOPE_SELECTED_COUNT = "pg:text-on-accent pg:font-normal";
+// The remove control is 24 px (`DEC-123`'s exemption, below). Inside the scope
+// every target is 44 px (DEC-186 §5): a transparent pseudo-element extends the
+// hit area 10 px on every side, and the glyph's visual size does not change.
+const SCOPE_REMOVE = "pg:relative pg:after:absolute pg:after:-inset-2.5 pg:after:content-[''] pg:hover:bg-hover";
+
 export function TagChip({ label, href, count, onRemove, removeLabel, selected, removeHref, className = "" }: TagChipProps) {
   const labelNode = <bdi>{label}</bdi>;
   // ★ Gallery finding (390 px review): with no separator this glued to the
@@ -32,9 +46,16 @@ export function TagChip({ label, href, count, onRemove, removeLabel, selected, r
   // the label — the label is what is being chosen, the count is a hint —
   // and stays in its own `<bdi>`: a Western-digit count after an Arabic
   // label is a bidi boundary (a digit run beside Arabic text reorders without it).
+  //
+  // ★ Wave 15, the lead's gallery review: inside the scope a SELECTED chip is the
+  // accent, and the muted count on it measured 1.93:1 on the dark ground. There
+  // the count takes the chip's own ink (16.52:1 on both grounds) and stays
+  // quieter than the bold label by WEIGHT, never by a colour or an opacity that
+  // would drop it under 4.5:1. Unselected, muted on the raised surface already
+  // passes (7.00:1 dark, about 5.3:1 light) and is left as it is.
   const countNode =
     typeof count === "number" ? (
-      <span className="text-fg-muted">
+      <span className={`text-fg-muted ${selected ? SCOPE_SELECTED_COUNT : ""}`}>
         (<bdi>{count}</bdi>)
       </span>
     ) : null;
@@ -66,7 +87,7 @@ export function TagChip({ label, href, count, onRemove, removeLabel, selected, r
     <span
       className={`inline-flex w-fit items-center gap-1.5 rounded-field border px-3 py-1 text-caption ${
         selected ? "border-navy-900 bg-navy-900 text-white" : "border-edge bg-surface text-fg-body"
-      } ${className}`}
+      } ${SCOPE_CHIP} ${selected ? SCOPE_SELECTED : SCOPE_UNSELECTED} ${className}`}
     >
       {content}
       {removeHref ? (
@@ -79,7 +100,7 @@ export function TagChip({ label, href, count, onRemove, removeLabel, selected, r
           href={removeHref}
           quiet
           aria-label={removeLabel ?? label}
-          className="-me-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-silver-100 hover:text-fg-heading"
+          className={`-me-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-silver-100 hover:text-fg-heading ${SCOPE_REMOVE}`}
         >
           <CloseIcon aria-hidden />
         </Link>
@@ -93,7 +114,7 @@ export function TagChip({ label, href, count, onRemove, removeLabel, selected, r
           type="button"
           onClick={onRemove}
           aria-label={removeLabel ?? label}
-          className="-me-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-silver-100 hover:text-fg-heading"
+          className={`-me-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-silver-100 hover:text-fg-heading ${SCOPE_REMOVE}`}
         >
           <CloseIcon aria-hidden />
         </button>

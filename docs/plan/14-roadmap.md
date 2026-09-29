@@ -558,6 +558,35 @@ with its awarded points; the rest of `DEC-180`'s list.
 
 ---
 
+## M17 — the visual direction's foundation · wave 15 · `DEC-183`
+
+**The first milestone of a programme, not a one-off.** The owner accepted the visual direction
+«ساحة اللعب» — `docs/design/` — on 2026-09-28, reversing `DEC-100`'s motion grammar. This milestone
+lays its foundation, and **nothing visible changes**: no screen adopts it, and the public site does
+not move.
+
+| Work | Requirements |
+|---|---|
+| The playground's tokens, as a scope that redefines no existing token | `REQ-UIX-028` |
+| The display face, Baloo Bhaijaan 2, through the font door | `REQ-UIX-029` |
+| The 37 primitives onto the scope's semantic tokens, unchanged outside it | `REQ-UIX-030` |
+| Ten new primitives, each rendering every state from props | `REQ-UIX-031` … `REQ-UIX-040` |
+| Nine glyphs, the six objects and the wordmark | `REQ-UIX-041`, `REQ-UIX-042` |
+| A company's team colour — the ring, never the avatar's fill | `REQ-UIX-043` |
+
+**Demonstrable:** the four public routes at 0.000 % against a capture of `main`, and `/app` at
+390 px the same picture before and after the token commit; the gallery re-baselined on purpose, the
+row naming the primitives that moved it; a lam-alef with tashkeel rendered in the display face after
+subsetting, in the app's Chromium and the worker's; every new primitive at 390 px in Arabic beside
+its counterpart in the prototypes, opened by the lead.
+
+**Not this milestone:** the five moments, session stories, the timeline's new items, proposal
+voting, the weekly leaderboard, every screen and the shell, the public site. ★ **Each later wave of
+the programme claims its own milestone number here when it opens** (`DEC-183` §3) — the public
+site's re-skin is the last of them, and it is **not** M13, which closed in wave 11.
+
+---
+
 ## 3. Dependencies
 
 ```mermaid

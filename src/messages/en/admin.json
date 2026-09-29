@@ -297,6 +297,17 @@
       "emptyAction": "Go to the form above",
       "nameColumn": "Name",
       "memberCountColumn": "Members",
+      "teamColourColumn": "Team colour",
+      "teamColourNone": "No colour",
+      "teamColourNames": {
+        "silver": "Silver",
+        "tangerine": "Tangerine",
+        "magenta": "Magenta",
+        "cyan": "Cyan",
+        "gold": "Gold",
+        "violet": "Violet",
+        "mint": "Mint"
+      },
       "statusColumn": "Status",
       "actionsColumn": "Actions",
       "deactivate": "Deactivate",
@@ -541,6 +552,9 @@
         "comment": {
           "removed": "Comment removed",
           "restored": "Comment restored"
+        },
+        "company": {
+          "team_color_changed": "Company team colour changed"
         },
         "design": {
           "export_requested": "Design export requested",
