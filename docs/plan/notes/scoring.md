@@ -2252,3 +2252,402 @@ instance its own `useId`; the comment says so. The second checks that the card h
 `aria-describedby`, and that each face is named by its own caption with its own list inside it.
 
 **`rank-row` and `race-bar`:** checked; neither writes an id or uses `useId`.
+
+---
+
+# Wave 16 — plan
+
+*Planning only (`DEC-195`, `DEC-196`, M18). `REQ-UIX-044`, `REQ-UIX-047`, `REQ-UIX-048`; contracts 1 – 3, 5 and 6.
+Nothing under `src/`, `tests/`, `supabase/` or `messages/` has been touched. The sync-1 questions are answered here, in
+§5 – §9, in the order `STATUS.md` asks them; the lead copies what it wants into `STATUS.md`, which is not mine.*
+
+## 1 · ★★ Contract 5 — what «first sight» and «since last view» read
+
+### 1.1 · What exists today, measured
+
+| Moment | Its occurrence | Where it lives today | What is missing |
+|---|---|---|---|
+| 3 · انتهت الجلسة | the ledger rows the completion pass wrote | `points_ledger` (self-readable, `0027:359`), `points_balances.last_entry_id` / `total_points` (`0027:369-376`) | **the balance and the last row the member last SAW** |
+| 4 · ترقية المستوى | a new `current_level_id` | `points_balances.current_level_id` (`0027:374`), set only by the **nightly** `evaluate_levels_perks()` (`0041:136-176`, raise-only) | **the level the member last saw**. `MSG-level_reached` is declared (`0026:115`) and never sent, so no notification row records it either |
+| 5 · تغيّر الترتيب | a rank that differs from the one last seen | all-time: `all_time_leaderboard()`, live, **no history** (`0044:17-27`) · monthly and company: the latest snapshot, **replaced in place every night** for the running month (`snapshot_leaderboards.ts`, `0042`, `0081`), so even the snapshot boards keep no «yesterday» | **the rank (and, for a company, the bar) the member last saw, per board and period** |
+
+Nothing records what a member has seen. `DEC-186` §7 and `DEC-195` §2.6 confirmed; I re-measured and found nothing else
+to lean on.
+
+### 1.2 · What I rule out, and why
+
+- **Browser storage as the record.** It replays on every new phone and after every cleared history, and
+  `REQ-UIX-047` says outright: «the same rows seen again, **on the same device or another**, play nothing». It stays
+  what the lead's `moment.ts` already makes it — **the second line** (the `sessionStorage` claim that stops a remount
+  or a back navigation in one tab from replaying), never the record.
+- **Marking «seen» while the page renders.** A GET that writes is a render with a side effect: a render that errors
+  after the write loses the moment, two tabs race, and a Server Component is the wrong place for a mutation. (Link
+  prefetch would not trigger it — both routes are dynamic and `me/` and `leaderboards/` carry a `loading.tsx`, so a
+  prefetch stops at the boundary, `next/dist/docs/01-app/01-getting-started/04-linking-and-navigating.md:83-86` — but
+  that is luck, not design.)
+- **Columns on `members` or `points_balances`.** `points_balances` is written only by the rollup trigger and the
+  evaluators (`0027:385`); giving a member write access to it for a UI cursor would widen a table that must stay
+  recomputable. `members` is not the place for a per-board cursor either.
+- **`notifications` as the record.** Nothing sends `MSG-level_reached`, and a notification is a message, not a cursor.
+
+### 1.3 · ★ What I need: one table, the lead's, from `0162`
+
+One row per member — **a cursor, not a log**. Suggested name `member_seen_marks` (the lead names it):
+
+| Column | Type | Note |
+|---|---|---|
+| `member_id` | `uuid` **PK**, `references members(id) on delete cascade` | one row per member |
+| `org_id` | `uuid not null references orgs(id) on delete cascade` | invariant 5 |
+| `points_entry_id` | `uuid` null | `points_balances.last_entry_id` when last seen. **No FK** — an opaque marker; ledger rows only disappear with their org, which takes this row too |
+| `points_total` | `int` null | the balance last seen — the count-up's `from` |
+| `level_id` | `uuid` null, `references levels(id) on delete set null` | the level last seen — the flip's front face |
+| `all_time_rank` | `int` null, `check (all_time_rank > 0)` | |
+| `monthly_period` | `date` null | the monthly snapshot's `period_start` the rank below belongs to |
+| `monthly_rank` | `int` null, `check (> 0)` | |
+| `company_period` | `date` null | the company snapshot's `period_start` |
+| `company_id` | `uuid` null, `references companies(id) on delete set null` | the member's company when last seen — a move to another company is not a «rise» |
+| `company_rank` | `int` null, `check (> 0)` | |
+| `company_fraction` | `numeric` null, `check (company_fraction between 0 and 1)` | own company's bar (value ÷ leader) last seen — the `scaleX` `from` |
+
+★ **Deliberately no `created_at`, no `updated_at`, no `seen_at`.** A timestamp would turn a cursor into a record of
+when a member opened their points page — a behavioural log nobody asked for. The survey's rule (`DEC-160` §3) is the
+precedent. The only times in the row are none.
+
+**RLS and grants** (the lead's migration, its `03` §8.2 rows and its RLS case):
+- `enable row level security`; `revoke all … from anon, authenticated, service_role`.
+- `select`, `insert`, `update` to `authenticated`, each policy `member_id = public.auth_member_id() and org_id =
+  public.auth_org_id()` (`using` and `with check`). **No `delete` policy or grant** — a member has no reason to erase
+  their cursor, and the cascade covers the member's deletion. No super-admin disjunct (invariant 8).
+- `service_role` gets nothing: the worker never reads or writes it.
+- The generated isolation sweep covers it the day it lands (`org_id`, RLS, a full policy set).
+
+### 1.4 · The functions over it — mine, in `supabase/proposed/scoring/`, **after sync 1**
+
+Both `security invoker`, so RLS is the boundary and neither needs a definer:
+
+- `public.mark_points_seen(p_entry uuid, p_total int, p_level uuid) returns void` — upserts the caller's row
+  (`member_id = auth_member_id()`, `org_id = auth_org_id()`), refuses a `p_level` from another org (`22023`), before
+  any write, so there is nothing to roll back (`DEC-043`).
+- `public.mark_board_seen(p_board text, p_period date, p_rank int, p_company uuid, p_fraction numeric) returns void`
+  — `p_board in ('all_time', 'monthly', 'company')`, touches only that board's columns.
+- `revoke execute … from public, anon`; `grant execute … to authenticated`.
+- **Last write wins.** Two tabs acknowledging out of order can at worst replay one moment once; I write that down
+  rather than add a sequence column.
+- Tests: `tests/rls/scoring-seen*.test.ts` — own row read/insert/update; another member's row invisible and
+  unwritable; a row claiming another org refused; `anon` nothing; no delete; a foreign level refused; each board
+  touches only its columns.
+
+### 1.5 · When a mark is written: when the moment is DONE, from the client that showed it
+
+1. The page reads the member's row with the data (DAL, own row under RLS) and computes, **on the server**, whether
+   each moment has an occurrence (§1.6). It writes nothing.
+2. The client plays the moment, keyed by the lead's `useMoment(kind, occurrenceId)`.
+3. **On `done()`** — or at once when there is nothing to play, or under reduced motion — the client calls a bound
+   `"use server"` action (`app/me/points/actions.ts`, `app/leaderboards/actions.ts`, Zod first) that calls the DAL,
+   which calls the function above with **exactly the values that were shown** (so a row written between the render
+   and the acknowledgement is still unseen next time).
+4. The first visit after the table lands has **no row**, so **nothing plays**: it writes the baseline. No member is
+   greeted by a replay of their whole history on merge day.
+5. ★ A Server Action that refreshes the Supabase cookie re-renders the page (`07-mutating-data.md:510-512`), and the
+   re-render would carry no occurrence. So each moment component **latches** the occurrence it claimed for the life
+   of its mount; a later prop change does not un-draw the delta mid-visit. Acknowledging at `done()`, not at the
+   start, means that re-render can only ever arrive after the moment.
+6. A failed acknowledgement animates nothing and says nothing: the next visit on another device plays it again,
+   and this tab's `sessionStorage` claim keeps this tab silent.
+
+### 1.6 · What each moment reads — the occurrence, decided on the server
+
+| Moment | Plays when | Occurrence id (`useMoment`) |
+|---|---|---|
+| 3 | a row exists **and** `points_entry_id ≠ last_entry_id` **and** `total_points > points_total` **and** at least one unseen row is a completion-pass row (§9 D-25 asks whether any net gain should play) | `completion:<last_entry_id>` |
+| 4 | a row exists **and** `level_id` is set **and** `current_level_id ≠ level_id` **and** the new level's `sort_order` is higher | `level:<current_level_id>` |
+| 5 · members | a row exists **and** the seen rank is for this board (and this `period_start`, monthly) **and** `rank < seen rank` | `rank:<board>:<period>:<seen>-<rank>` |
+| 5 · companies | same period, same company, and the own company's `rank` rose **or** its fraction grew | `rank:company:<period>:<company>:<seen>-<rank>` |
+
+«Unseen rows» are the member's ledger rows with `occurred_at` after the seen entry's (`occurred_at` is
+`clock_timestamp()`, distinct inside a transaction, `DEC-046` — never `created_at`). **A net decrease, a fall, a tie,
+a new period, a changed company: no occurrence, the static state, and the mark updated.** The history explains a
+decrease; the head does not stage it.
+
+### 1.7 · `main`, retention, anonymisation, the export
+
+- **`main`'s app and worker on this schema do nothing different.** Nothing on `main` names the table or the two
+  functions; no trigger fires on it; nothing enqueues. Additive, one new table.
+- **Retention:** none of its own. It lives and dies with the member (cascade) and the org (cascade). No
+  `retention_periods` row.
+- **Anonymisation** (`platform`'s, held by the lead): `anonymise_members` should **delete** the row. It holds no
+  personal data beyond the link, but a cursor for an anonymised member has no use.
+- **Data export:** I recommend it is **left out**, and the lead rules. Every value in it (the balance, the level, the
+  ranks) is a copy of data the export already carries from its source tables, and it holds no timestamp and no
+  content. If the lead reads PDPL as «every row keyed to the member», it is one more small JSON object.
+
+## 2 · Measured: what the head and the boards read, and what the DAL adds (add-only)
+
+### 2.1 · `SCR-022`'s head
+
+`getPointsHistory()` (`points.ts:94-209`) returns `totalPoints` from `points_balances` and the ledger rows, filtered;
+`getPointsStripData()` (`:215-221`) returns `totalPoints` alone. **Neither reads the level, the streak, the next
+threshold, the perks or the seen row.** Where the head's parts come from today:
+
+- **Streak:** `streak_awards` (org-readable, `0027:273`) — **monthly** periods written by the nightly
+  `evaluate_streaks()` (`0150`), counted by `currentStreak()` (`recognition.ts:25-34`, exported). The default org's
+  rule is `monthly_3`, **enabled** (`0027:573-575`). An org with no enabled rule draws no streak at all.
+- **Level:** `points_balances.current_level_id` → `levels(name, threshold_points, sort_order)`; the next level is the
+  lowest threshold above the current one. `null` until the first nightly run → «no level yet» and the bar toward the
+  lowest threshold.
+- **Unlocks:** enabled `perks` with `required_level_id` = that level (`0027:283-307`, org-readable), named through
+  `recognition.json`'s perk labels (read, not written). In a default org none are enabled → `noUnlocksLabel`
+  (`DEC-186` §7, question 1 of wave 15 still stands).
+
+**New, add-only in `points.ts`:** `getPointsHead(locale): Promise<PointsHead>` — balance and `last_entry_id`, the
+current and next level (`tier`, name, threshold, unlocks), `streakMonths` and whether any streak rule is enabled, and
+the three occurrences of §1.6 already decided (`completion: {from, to, delta} | null`, `level: {held: LevelFace,
+reached: LevelFace} | null`) plus the values to acknowledge. And `markPointsSeen(locale, input)`. `getPointsHistory()`
+and `getPointsStripData()` are untouched; the page calls both (one duplicate balance read, accepted).
+
+### 2.2 · The boards
+
+`member-board.tsx` draws a `<ul>` of its own `Row`: the rank (sr-only «المرتبة N»), the name as a profile link, a
+`Badge` «أنت», the points; the viewer's row below the top 20 under «ترتيبك» (`REQ-LDR-001`); **no avatar**
+(`:14-15`). `company-board.tsx` draws each company with a `<dl>` of both metrics, the ranked one first with a `Badge`
+«الترتيب حسبه», signed values in `<bdi dir="ltr">`, and «as of» under the list; **no bar, no ring, no colour**.
+
+What replaces what: each member row becomes `rank-row` (rank, initials in the team ring, name over company, the rise
+arrow when `movement` says so, points, «أنت» in words, the profile `href` kept); each company row becomes `race-bar`
+(`metricLabel` = «الترتيب حسبه: {metric}», `secondary` = the other metric, `fraction` = value ÷ the leader's,
+`ownLabel` = «فريقك»). The «ترتيبك» section, the empty state and the «as of» line stay.
+
+**New, add-only in `leaderboards.ts`:** `company` and `teamColor` on `MemberBoardRow` (through `members.company_id` →
+`companies(name, team_color)`), `teamColor` and `isOwn` on `CompanyBoardRow` — new fields on the existing DTOs, no
+field changed; `getBoardMoments(locale, board)` returning the occurrence and the values to acknowledge;
+`markBoardSeen(locale, input)`. `REQ-LDR-008` stays the database's: the rows are what `all_time_leaderboard()` and
+`boards_read` return.
+
+## 3 · The surfaces and the scope (contract 3)
+
+- **`SCR-022`:** `<PlayScope>` wraps **the head alone**, a sibling of `PageHeader` and of the filter form, as a direct
+  child of the page's content (`me/layout.tsx:46`, `div.mt-6`, untransformed; `#main` is `mx-auto max-w-6xl px-4
+  py-8`, untransformed). The flip's `perspective` and every moving element sit **inside** it. The history, the
+  catalogue and the filters stay outside and do not move.
+- **`SCR-027` / `SCR-028`:** `<PlayScope>` wraps **each board's list** inside its `<section>`, below its
+  `SectionHeader`. It cannot be a direct child of the screen's content, because the boards live inside `ui/tabs`'
+  panel (`tabs.tsx:156`, `mt-4`, untransformed, unclipped — the `overflow-x-auto` is on the tab *list*, `:130`).
+  **Question 5.** The company breakdown (`sessions'`) stays outside.
+- **Dark ground** on all three, as `DEC-195` §1.3(2) says; a dark head on the light points page goes to the owner at
+  the 390 px review with its capture.
+
+## 4 · The moments
+
+All three are client components in new files — `src/components/scoring/moment-points-head.tsx` (moments 3 and 4) and
+`moment-rank.tsx` (moment 5) — that take their strings and their occurrence as props, render the primitives, and move
+the primitives' DOM **by `element.animate()`** through refs. **The primitives stay states from props**: their
+source scans (`rank-row.test.tsx:213`, `race-bar.test.tsx:185`, `level-card.test.tsx:154`) are unchanged, because
+the motion is not in them. The Server Components (`page.tsx`, `member-board.tsx`, `company-board.tsx`) hand each
+moment a bound action, never a closure (`DEC-159`).
+
+### Moment 3 — انتهت الجلسة (head of `SCR-022`)
+1. `useCountUp({from: points_total, to: total, duration: …, play})` writes the balance into its `<strong>`; the delta
+   «+N» fades in beside it (opacity + `translateY`, `base`).
+2. Then the flame's **outer** wrapper grows from `scale(0.78)` to `1` (`slow`) — the rest size is the natural size,
+   so the static state needs no scale class — and its **inner** wrapper carries the flicker loop class.
+3. Then the level bar's fill (`ProgressBar`'s `[data-slot=fill]`) animates `scaleX(old) → scaleX(new)` (`party`);
+   `cancel()` on finish leaves the inline `scaleX(new)` the server rendered.
+4. If moment 4 has an occurrence, it follows; otherwise `done()` → acknowledge.
+
+### Moment 4 — ترقية المستوى (same head, after 3)
+`level-card` in its **flip** layout (a request, §10): both faces stacked in one grid cell, `preserve-3d`, both
+`backface-visibility: hidden`, the reached face `rotateY(180deg)`; `shown="reached"` rotates the inner card 180° **as a
+static class**. The moment animates the inner `rotateY(0) → rotateY(180deg)` (`party`) and cancels on finish; the shine
+— a decorative layer on the reached face clipped by `clip-path: inset(0 round …)`, **never `overflow-hidden`**, which
+the face's text must not sit in — sweeps once from the inline start, starting at 60 % of the flip. Keyed by
+`levels.sort_order`, never a name. **Moment 4 also plays alone**, on the first visit after the nightly run, because
+that is when `current_level_id` changes (§9 D-29).
+
+### Moment 5 — تغيّر الترتيب (`SCR-027`, `SCR-028`)
+The server renders **the new order** — the static state. With an occurrence, before first paint
+(`useLayoutEffect`), the moment measures each row's height, and animates by FLIP **without reordering the DOM**, since
+it is already final: the member's row from `translateY(+k·h)` to `0` and each of the `k` rows it passed from
+`translateY(−h)` to `0` (`slow`); then the arrow (`rank-row`'s `[data-slot=rise]`, one attribute added to my own file)
+pulses once. `k = seen − rank`, and the FLIP runs only when both the old and new positions are inside the rows drawn;
+otherwise the arrow alone. The design's «DOM reorder with transitions off for one frame» is the prototype's way to the
+same frames; with the DOM already final it has nothing to do. **A passed row moves only as the member's row displaces
+it, and carries nothing of its own.** On the company board the own company's fill animates `scaleX(seen) →
+scaleX(now)` from the inline start (`party`), after a FLIP if its rank rose. **WAAPI writes no `style` attribute**, so
+`rank-row.test.tsx:118-128`'s «no inline style but `--team`» holds during and after.
+
+## 5 · Sync-1 Q2 — the static states, in words
+
+| Moment | Static state (reduced motion, reload, another phone after the mark) | Where |
+|---|---|---|
+| 3 | The new balance in the display face; **on first sight only**, the delta «+N» beside it with its words for a screen reader («N نقطة منذ زيارتك الأخيرة»); the flame at its full size, still (no flicker class under reduced motion), with «N أشهر متتالية»; the level bar at its value, labelled «التقدّم نحو {level}» and «{points} من {threshold}». With no streak rule enabled, no flame and no line. With no streak, no flame and «لا سلسلة جارية». | head of `SCR-022`, top |
+| 4 | The level card's reached face, whole, no shine; the held face still in the document for a screen reader (`level-card`'s guarantee). The face names its unlocks or says `noUnlocksLabel`. | head, beneath the bar |
+| 5 · members | The new order; the member's row with the rise arrow and its words («تقدّمت N مراكز»); the passed rows exactly as any row. | each board |
+| 5 · companies | The new order; the own company's bar at its new length, «فريقك» in words. | company board |
+
+On a **later** visit (the mark written) the head shows the same thing without the delta, and the boards without the
+arrow — that is «since last view».
+
+## 6 · Sync-1 Q3 — the keyframes and tokens I need (contract 2, the lead's to land)
+
+**Keyframes in `globals.css`, three:**
+
+| Name | Properties | Use | Reduced motion |
+|---|---|---|---|
+| `play-flicker` | `transform` only: `scale(1)` → `scale(1.04, .98) skewX(-2deg)` → `scale(.98, 1.04) skewX(2deg)` → `scale(1.03, .99) skewX(-1deg)` → `scale(1)`, `ease-in-out`, infinite | a class on the flame's **inner** wrapper; the outer holds the size, so one keyframe serves both sizes (the prototype needed two, `motion-story.html:199-200`) | `animation: none` |
+| `play-shine` | `transform: translateX(…)` + `opacity` 0 → 1 → 0; the bar's `rotate(20deg)` in every frame | one sweep on the reached face; direction by a variable (`--play-dir: 1` / `-1` under `[dir=rtl]`) so it runs from the inline start | never applied |
+| `play-rise-pulse` | `opacity` 0 → 1 and `transform: translateY(6px) scale(.8)` → `none` — **no overshoot** (§9 D-27) | the rise arrow, once | never applied |
+
+**One-shots by `element.animate()`, with durations from `readDuration()`, no keyframe:** the count-up (rAF, the lead's),
+the delta's fade (`base`), the flame's growth (`slow`), the bars' `scaleX` (`party`), the FLIP (`slow`), the flip's
+`rotateY` (`party`). If the lead prefers every one-shot as a named keyframe, these become `play-grow`, `play-fill`,
+`play-flip` and the FLIP stays WAAPI (its distance is measured).
+
+**Tokens:** the design's 700 ms (count-up, shine), 600 ms (arrow) and 2 s (flicker loop) have **no token**
+(`--duration-*` is 120 / 220 / 420 / 900, `globals.css:324-327`). I propose count-up `party`, shine `slow`, arrow
+`slow`, and **a new `--duration-loop: 2s`** for the flicker, collapsed like the others under reduced motion. The
+lead's call (question 3).
+
+## 7 · The mechanism (contract 1) — what I use, and one thing I need
+
+I plan against what is on disk (`src/lib/ui/`): `useMoment(kind, occurrenceId)` with kinds `completion`, `level`,
+`rank`; `useCountUp({from, to, duration, play, onDone})`; `readDuration()`, `readEasing("play")`;
+`useReducedMotion()`. Enough, with one exception:
+
+★ **A hard load paints the static state before hydration.** `moment.ts:83-85` decides in `useLayoutEffect` «before
+the first paint», which is true for a client navigation (the tab bar, a link) and **false for a reload or a typed
+URL**: the server's HTML — the new balance, the new order, the reached face — is on screen before React hydrates, and
+then the moment would jump back to the old frame and play forward. For moments 1 and 2 that cannot happen (a reload
+has no action result); for 3 – 5 it is the normal case on a first visit from a notification link. **Request:** a
+`useMoment` rule that a moment whose surface was **painted by the server** before hydration does not play (it is
+claimed and acknowledged, statically). A module flag set by the first hydration's effect is enough. The lead's call;
+the alternative is a visible jump.
+
+## 8 · Sync-1 Q4 — every existing assertion that moves
+
+**Expected to pass unchanged** (verified when built; any that fails gets its ledger line then):
+
+- `tests/e2e/points.spec.ts:159` — `locator("strong", {hasText: "25"})`: the balance stays **the page's only
+  `<strong>`** (the head renders it there; the delta, the bar's value and the card use no `<strong>`). The comment
+  above it names the `Stat`, which goes; the assertion does not change. `:170`, `:247` («لا نقاط بعد» is the history's,
+  and the head never says it), `:276-297` (scoped to `#history`).
+- `tests/e2e/wave9-scoring-missed-day.spec.ts:216` — `strong` «20»: same rule. Its later visits may now play a
+  count-up (a row exists after the first visit); Playwright's retrying assertion waits for the final figure.
+- `tests/e2e/leaderboards.spec.ts:114-116` — the leader's name, «65», «أنت» (`rank-row`'s visible `selfLabel`, once).
+- `tests/e2e/leaderboards.spec.ts:130-132` and `tests/e2e/wave7-sessions-leaderboards.spec.ts:138-141` — «مجموع
+  النقاط», «نقاط لكل عضو نشط», and «الترتيب حسبه» once per row: `metricLabel` = «الترتيب حسبه: {metric}» and
+  `secondary.label` carry all three, each once.
+- `tests/e2e/wave7-sessions-leaderboards.spec.ts:120-123` — `li a` in rank order (the profile `href` is kept), «أنت»,
+  and **no `img`**: the avatar draws initials in the ring, never an image.
+
+**Will change — each a ledger line in the commit that moves it. ★ The file is not mine:**
+`tests/components/leaderboards/boards.test.tsx` (last `2c6f6322`, `sessions'` since wave 7) is not in my edit list,
+and the transfer named only the e2e specs. Request 6.
+
+| Line | Assertion | Why it moves |
+|---|---|---|
+| `boards.test.tsx:62` | `querySelector("img, [data-slot=avatar]")` is `null` — «draws no avatar (DEC-099)» | `rank-row` draws the avatar's **initials in the team ring** by `DEC-183` §3 and `REQ-UIX-048` («initials in a team ring, never a photograph»). The `img` half stays true and stays asserted; the `[data-slot=avatar]` half is reversed by decision |
+| `boards.test.tsx:78-86` | each company row's `term` / `definition` roles, ranked first and marked | `race-bar` has no `<dl>`. The same facts — the ranked metric first and marked «الترتيب حسبه», the other second and unmarked, the values «35» and «420» — are asserted on `metricLabel`, `secondary` and the value |
+| `boards.test.tsx:89-93` | the same under `total_points` | same |
+| `boards.test.tsx:100-107` | both signed values through `definition` → `bdi[dir=ltr]` | the two `bdi[dir=ltr]` exist in `race-bar` (value and secondary); only the path to them changes |
+
+`boards.test.tsx:41-56, 61, 65-68` and the breakdown's `:111-125` should pass unchanged. `tests/components/scoring/**`
+and `tests/components/ui/{rank-row,race-bar}.test.tsx` do not change; `level-card.test.tsx` gains cases for the flip
+layout in the same file (new behaviour, new `describe`), its existing cases untouched.
+
+**Lead-held specs that visit these routes** — `a11y.spec.ts:113`, `budgets.spec.ts:178` (the boards gain a small
+client component), `wave9-three-day-workshop.spec.ts:501-517` (a `li`/`strong`-scoped read, unaffected) — may
+capture a count-up mid-flight on a second visit; a capture wants `reducedMotion: "reduce"` or a settled head.
+
+## 9 · Sync-1 Q5 — new disagreements (numbered after `DEC-195` §6's 24; I pick no side, I say what I plan)
+
+- **D-25 · Moment 3's trigger.** `REQ-UIX-047` and `03-motion.md` §3 «Trigger»: «the ledger rows the completion pass
+  wrote». A balance also rises for a comment, a photo, a rating, a streak or a manual adjustment, which are not
+  completion rows. **Plan:** play only when an unseen row is a completion-pass row (the set of `ledger_source` values
+  named in one place in `getPointsHead()`: `check_in`, `proposal_accepted`, `session_delivered`, `attendee_bonus`,
+  `rating_bonus` — the lead confirms it), counting the whole balance from seen to now. The alternative is any net
+  gain.
+- **D-26 · «The bar full».** `REQ-UIX-047`'s acceptance and `03-motion.md` §3's static state say the level bar is
+  **full**. Unless a threshold was crossed, full is false — a member at 25 of 100 is not at the next level. The
+  prototype shows «730 من 700» (`motion-story.html:618`), which is a bar measuring the level being reached. **Plan:**
+  the bar is always the truth — progress toward the next level; with a crossing it fills to the end, the card turns
+  over, and the bar then shows the new level's progress, in place. **The REQ's line is `docs/plan/`'s, so it wins
+  until amended** — this is a request to amend it, not a choice made.
+- **D-27 · The arrow's pulse overshoots.** `motion-story.html:232`: `scale(.8) → scale(1.2) → none` and
+  `translateY(6px) → -2px → 0`. `DEC-186` §4 / `DEC-195` §6.20 hold every pop beyond a sticker's `1.08`. **Plan:**
+  `play-rise-pulse` rises to rest with no overshoot; the owner is shown both with the coin.
+- **D-28 · Durations with no token** — 700 ms, 600 ms and 2 s (`03-motion.md` §3, §5; `motion-story.html:199, 215,
+  231`). §6 proposes a mapping and one new token.
+- **D-29 · Moment 4 does not follow moment 3.** `03-motion.md` §4: «same surface, after 3 when a threshold is
+  crossed». `current_level_id` is written only by the **nightly** `evaluate_levels_perks()` (`0041:136`; the
+  «on balance change» enqueue its task mentions, `evaluate_levels_perks.ts:4-6`, was never wired). So on the day a
+  session pays, the bar can reach the end with no flip, and the flip plays **alone** on the first visit after the
+  night. Wiring an evaluation on balance change is the award path, frozen this wave. Written down; not changed.
+- **D-30 · The streak counts months, not sessions.** The prototype's flame reads «سلسلة ×7 — سبع جلسات متتالية»
+  (`motion-story.html:615`); the tree's streak is a monthly award (`streak_rules.monthly_3`, `0027:573`), and the
+  streak rule itself is `DEC-NEXT-9`, not this wave. The head says months.
+- **D-31 · Moment 5's «or a live update lands».** `03-motion.md` §5 «Trigger». The boards have no Realtime; a live
+  rank change is not built.
+- **D-32 · «Swap two rows».** `REQ-UIX-048` and `03-motion.md` §5 (`translateY(∓64px)`): a rise can pass several
+  rows, and rows are not 64 px. The FLIP moves the member's row by `k` measured rows and each passed row by one.
+- **D-33 · `16` §6.8.3 «no avatars on a board»** (quoted at `member-board.tsx:14-15`) against `DEC-183` §3 and
+  `REQ-UIX-048`'s «initials in a team ring». `DEC-183` is later and says initials; I follow it, and the comment goes
+  with the old row. Listed because the old text is still in `16`.
+
+## 10 · Tests, captures, files
+
+**Re-render tests, one per moment** (★★ mount → play → unmount → mount with the same occurrence → silence: no
+`animate()` call, no count, the static state):
+- `tests/components/scoring/moment-points-head.test.tsx` — moment 3; and a **decrease** plays nothing and draws no
+  delta; no occurrence plays nothing.
+- `tests/components/scoring/moment-level.test.tsx` — moment 4, alone and after 3.
+- `tests/components/scoring/moment-rank.test.tsx` — moment 5 on the member board and on the company board; ★★ **a
+  fall plays nothing, and the fallen and passed rows carry no class, no icon and no `style` at any point** — asserted
+  before, during (a pending fake animation) and after.
+Each file also asserts: under reduced motion (`matchMedia` mocked) the static state is **complete** — every element
+of §5's row present — and `animate()` is never called; after `finish`, **no element has `will-change`** and no
+animation is left running; the acknowledgement action is called once, with the shown values, after `done()`. jsdom
+has no `Element.prototype.animate`, so a fake with a controllable `finished` promise is installed per test (the
+lead's `confetti` tests may already have one to reuse).
+
+**Unit:** `tests/unit/scoring-seen.test.ts` — §1.6's occurrence rules as a pure function (every «no occurrence»
+branch). **RLS:** `tests/rls/scoring-seen.test.ts` (§1.4), with `applyProposed()`, only once the table exists.
+
+**E2E:** `tests/e2e/wave16-scoring-moments.spec.ts` — seeds a mark row, opens `/ar/app/me/points` and each board
+through a **client navigation**, sees the moment, reloads (silence), goes back (silence), and ★ **opens the same page
+in a second browser context — another phone — after the first acknowledged: silence**. That last case is the proof
+that the record works. Captures: `.qa-shots/rtl/wave16-scoring-{completion,level,rank-members,rank-companies}-{animated,static}.png`,
+390 × 844, `static` under `reducedMotion: "reduce"`, honouring `E2E_SHOTS_DIR`.
+
+**Files I will write** (all in my list): `me/points/page.tsx`, new `me/points/actions.ts`; `leaderboards/page.tsx`,
+new `leaderboards/actions.ts`; `components/scoring/{member-board,company-board}.tsx`, new
+`components/scoring/{points-head,moment-points-head,moment-rank}.tsx`; `ui/level-card.tsx` (the flip layout),
+`ui/rank-row.tsx` (`data-slot="rise"` only); `lib/dal/{points,leaderboards}.ts` (add-only);
+`messages/{ar,en}/{scoring,leaderboards}.json` — Arabic first; the streak count, the delta and the rise in all six
+plural forms; every value in `<bdi>`; Western digits; `supabase/proposed/scoring/<n>_seen_marks.sql` after sync 1.
+
+## 11 · Requests and questions for the lead
+
+1. ★★ **Contract 5 — the table** of §1.3, from `0162`, with its RLS case and `02`'s text. Name it; I write the two
+   functions and their RLS tests against it after sync 1.
+2. ★ **`ui/index.ts`:** `LevelCardProps.flip?: boolean` — «both faces stacked in 3D, `shown` picks the one facing
+   the viewer, a decorative shine layer on the reached face». Types only; the default stays today's layout, so every
+   existing `level-card` case holds. `RankRowProps` and `RaceBarProps` do not change.
+3. **Tokens (D-28):** count-up `party`, shine `slow`, arrow `slow`, and a new `--duration-loop: 2s`?
+4. **Keyframes (§6):** `play-flicker`, `play-shine`, `play-rise-pulse` — names, properties and reduced-motion rule as
+   in the table; and whether the other one-shots may stay WAAPI.
+5. **The scope on the boards (§3):** inside each `<section>`, around the list, below the `SectionHeader` — acceptable
+   as «the surface», since the tabs panel is the screen's content here?
+6. ★ **`tests/components/leaderboards/boards.test.tsx`** — transfer it to me for the wave (evidence, four ledger
+   lines), or edit it yourself under those lines.
+7. ★ **`useMoment` and the server's paint (§7)** — a moment painted by SSR before hydration does not play?
+8. **D-25** (which rows trigger moment 3) and **D-26** (the bar «full» in `REQ-UIX-047`) — rulings, and the REQ's text
+   amended if D-26 goes my way.
+9. **Anonymisation and export (§1.7)** — `anonymise_members` deletes the row; the export leaves it out?
+10. **Wave 15's question 1 stands** — a level that unlocks nothing says `noUnlocksLabel`, in a default org every level.
+11. **Budgets:** `/app/leaderboards` and `/app/me/points` each gain one small client component; `budgets.spec.ts:178`
+    is yours.
+
+**For other tracks:** none. `checkin` keeps contract 6 as it is (`getSessionAwardState()` unchanged; moment 3 does not
+touch it). `sessions'` `company-points-breakdown.tsx` is not touched. `content`'s `avatar` and `progress-bar` are used
+as they are — the fill is moved by WAAPI on `[data-slot=fill]`, which writes nothing into the file or its inline
+style.
