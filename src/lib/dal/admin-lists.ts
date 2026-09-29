@@ -99,10 +99,14 @@ export async function listCompaniesForAdmin(locale: string): Promise<AdminCompan
 export const companyInput = z.object({ name: z.string().trim().min(1).max(120) }).strict();
 export type CompanyInput = z.infer<typeof companyInput>;
 
-/** Plain insert: `p2_admin_insert` on `companies` already says who may (0004). */
-export async function createCompany(locale: string, input: CompanyInput): Promise<void> {
+/** Plain insert: `p2_admin_insert` on `companies` already says who may (0004).
+ *  ★ wave 16 (DEC-195 §3): the team colour travels with the insert, `null` for
+ *  «بلا لون». The caller has turned a closed name into `#rrggbb`; the column's
+ *  check (`0160`) is the boundary. An insert is not audited — `0161` fires on
+ *  update, and creating a company has never been audited (DEC-186 §8). */
+export async function createCompany(locale: string, input: CompanyInput, teamColorHex: string | null = null): Promise<void> {
   const { session, supabase } = await sessionClient(locale);
-  const { error } = await supabase.from("companies").insert({ org_id: session.orgId, name: input.name });
+  const { error } = await supabase.from("companies").insert({ org_id: session.orgId, name: input.name, team_color: teamColorHex });
   if (error) throw new Error(`companies.insert: ${error.message}`);
 }
 

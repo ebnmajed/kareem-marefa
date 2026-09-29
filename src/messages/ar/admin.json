@@ -326,8 +326,10 @@
       "errors": {
         "nameRequired": "اسم الشركة مطلوب.",
         "nameTooLong": "الاسم أطول من اللازم.",
-        "failed": "تعذّر الحفظ — حاول مرة أخرى."
-      }
+        "failed": "تعذّر الحفظ — حاول مرة أخرى.",
+        "teamColourInvalid": "اختر لونًا من القائمة."
+      },
+      "teamColourLabel": "لون الفريق"
     },
     "members": {
       "title": "الأعضاء والأدوار",

@@ -10,6 +10,7 @@ import type { DataTableColumn, MenuItem } from "@/components/ui";
 import type { AdminCompany } from "@/lib/dal/admin-lists";
 import type { Locale } from "@/i18n/routing";
 import { toggleCompany, setCompanyTeamColour } from "./actions";
+import { Swatch } from "./swatch";
 import { TEAM_COLOUR_HEX, TEAM_COLOUR_NAMES, teamColourNameOf } from "./team-colours";
 
 // SCR-048 · onto `ui/data-table` for wave 7 — see `venues-table.tsx`'s
@@ -20,18 +21,6 @@ import { TEAM_COLOUR_HEX, TEAM_COLOUR_NAMES, teamColourNameOf } from "./team-col
 // field beyond `name` is this one), so it is a `ui/menu` trigger: the seven
 // named colours plus «بلا لون», never a free hex — colour is never the only
 // channel, so every choice carries a swatch AND its name in words.
-
-/** A small filled circle — never the only channel: it always sits beside
- *  the colour's name in words, here and in the trigger. */
-function Swatch({ hex }: { hex: string | null }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-block size-4 shrink-0 rounded-full border border-edge-strong"
-      style={{ backgroundColor: hex ?? "transparent" }}
-    />
-  );
-}
 
 function TeamColourCell({ company, locale, t }: { company: AdminCompany; locale: Locale; t: ReturnType<typeof useTranslations> }) {
   const current = teamColourNameOf(company.teamColor);
