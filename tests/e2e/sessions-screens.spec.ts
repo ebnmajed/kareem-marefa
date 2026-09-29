@@ -398,9 +398,14 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
     await expect(assembled).toHaveValue(code, { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
   await attendee.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  // The URL first: a refusal then fails naming its reason (`?error=…`), not «no status».
-  await expect(attendee).toHaveURL(/\/check-in\?success=1$/, { timeout: 15_000 });
-  await expect(attendee.getByRole("status")).toHaveText("تم تسجيل حضورك");
+  // ★ Wave 16 (REQ-UIX-046, ledger): the hydrated check-in plays moment 2 on this
+  // screen instead of redirecting to `?success=1`, its status says «أنت هنا!», and
+  // 1.4 s after the lines it returns to the event page (DEC-197 §1). A refusal
+  // still redirects to `?error=…`, so it still fails naming its reason.
+  const checkInMain = attendee.locator("#main");
+  await expect(checkInMain.locator("[data-moment='check-in']")).toBeVisible({ timeout: 15_000 });
+  await expect(checkInMain.getByRole("status")).toContainText("أنت هنا!");
+  await expect(attendee).toHaveURL(new RegExp(`/ar/app/sessions/${sessionId}$`), { timeout: 15_000 });
 
   const checkIn = await db.query<{ method: string }>(`select method from public.check_ins where session_id = $1 and member_id = $2`, [sessionId, attendeeId]);
   expect(checkIn.rows).toHaveLength(1);
