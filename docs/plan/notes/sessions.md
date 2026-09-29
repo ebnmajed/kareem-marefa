@@ -5040,3 +5040,61 @@ remount that is silent. **I no longer need R3.**
 - **`sessions-screens.spec.ts:402-403` is mine.** When K1 lands I change the wait to the lead's sync-1 ruling
   (`?success=1` is gone, the status is «أنت هنا!»), with its ledger line in the same commit. `checkin` tells me the
   commit.
+
+## W16.11 · As built, after sync 1 (`DEC-197`)
+
+**Commits:** `f653cafd` the two-day read · `752865c2` moment 1 · `3e0c2510` «حضرت» on the card · `0d9caa6f` the e2e
+spec · `50cc3ff8` `sessions-screens` follows moment 2.
+
+### Done
+
+- ★★ **`sessions.ts:1098`'s two-day read** (`DEC-197` §3), in its own commit. The read is a list, its error is
+  checked, and the DTO carries `checkedInDayIds`. `tests/unit/sessions-two-day-check-in.test.ts` fails with the
+  old `.maybeSingle()` (two of five cases red) and passes with the fix.
+- ★★ **Moment 1** (`components/sessions/moment-reserve.tsx`):
+  - `reserveSeatAction` returns `ReserveResult` and calls `refresh()`. It never calls `redirect()`. The
+    occurrence comes from `checkin`'s R2 (`cca6bb32`).
+  - `ReserveMoment` holds the result with `useActionState`, and the stage is keyed on the occurrence. ★ The key
+    is load-bearing: the host is born hydrating, and `useMoment` keeps a component born hydrating static for good
+    (`DEC-197` §5). A stage the client mounts after the result arrives is not affected.
+  - The ticket, the stamp, the thud and the reveal are declarative `MomentPart`s the server places: the card's
+    content wrapper (`thud="card"`); the booked face (`anchor="card"`, `reveal="card"`); the phone bar's row
+    (`thud="bar"`, `anchor="bar"`); the bar's primary (`reveal="bar"`). The ticket plays in the card from `md` and
+    over the bar below it. Only that placement thuds and holds.
+  - Each step starts on the previous one's `animationend`. There are no timers and no DOM queries.
+- **The stamp's tones:** `live` for the waitlist (Q2). For a held seat, the badge's `success` rather than the
+  prototype's ink, so both stamps wear `DEC-073`'s status forms.
+- **The action card** adopts `session-cta`:
+  - before a seat: `reserve`, or `waitlist` once the seat state is `full`;
+  - once a seat is held: `booked`, with the calendar in `between`;
+  - the tree's words throughout (Q1).
+- **The refusal** is `ReserveRefused`, with `role="alert"` and no animation (Q5). **The whisper** says what is true
+  (D4).
+- **The scope** is `page.tsx`'s grid item, now `PlayScope` with `rounded-card`.
+- **«حضرت»** comes from `checkInOfferFor()`, with the days and `checkedInDayIds`. It is drawn only before the
+  session ends, and it suppresses the check-in primary.
+
+### Verified
+
+- `npx tsc --noEmit` clean.
+- ESLint on every file I touched: 0 errors. The whole tree's lint showed 3 errors, all in other tracks' in-flight
+  files at the time.
+- `npm run ui-lint`: strict, 337 files, clean.
+- Components and units:
+  - `tests/components/sessions/**`, `rsvp-panel.test.tsx` and `tests/unit/sessions-two-day-check-in.test.ts` all
+    green.
+  - The moment's suite has 18 cases: the re-render silence, reduced motion (complete static state and one
+    whisper), a failure that does not animate, no `will-change` left after the finish, the waitlist's
+    `<bdi>`/tone, and token durations only.
+- `npm test` also has three failures that are not mine: `public-graph.test.ts` (below), and `scoring`'s in-flight
+  `boards.test.tsx` and `scoring-i18n.test.ts`.
+
+### Not done, and why
+
+- **The e2e spec, the trace and the four captures** need a production build with this code, which is the lead's.
+  `tests/e2e/wave16-sessions-reserve.spec.ts` lists 10 cases. I have not run it, and nothing is claimed green.
+- ★ **`tests/unit/public-graph.test.ts:85-86` (the lead's) fails on purpose-built code.** It asserts that only
+  `(dev)` renders `<PlayScope>`, and this wave places the scope on `SCR-012` and `SCR-014` by `DEC-195` §1.1. It
+  needs the lead's amendment, with a ledger line.
+- `tests/components/checkin/schedule-form.test.tsx` (mine, frozen) timed out once at 5 s under a full parallel run,
+  and passed on the next three runs. It is load, not this change.
