@@ -5024,3 +5024,17 @@ test, and wave 14's Storage-predicate gate — one wave, one generated test each
 lead. (4) ★ **`qa:contract`, `visual`'s public pairs and the register-form fingerprint all unmoved.**
 
 - **Documents changed:** `01-prd.md` (`REQ-UIX-043` amended; `REQ-UIX-044` … `REQ-UIX-048` added), `09-sitemap-screens.md` (§8's three `(auth)` rows), `14-roadmap.md` (M18; the programme's sequence), `15-backlog.md` (`STORY-UIX-027` … `STORY-UIX-032`; §24), `TRACEABILITY.md` (generated), `docs/design/07-tasks.md` (wave 4 names the three `(auth)` screens), `CLAUDE.md` and the ten agent files (the wave-16 map), `STATUS.md` (the wave-16 block)
+
+---
+
+## DEC-196 — Wave 16, the owner's approval of Step 0: `DEC-195` stands as written; three teammates spawn planning-only
+
+- **Date:** 2026-09-29 · **Decided by:** the owner, after verifying Step 0 on draft PR #34 independently
+- **Confirms:** `DEC-195` in full. Nothing in it is amended.
+
+1. **Verified by the owner:** all ten agent files carry the wave-16 map; `DEC-195` names the surfaces that move and what does not, and amends `DEC-183` §4.2(f) explicitly; the three `(auth)` rows are corrected in `09` §8 and in `docs/design/07-tasks.md`, with sign-in first in the member-screens milestone.
+2. **`sessions`, `checkin` and `scoring` spawn planning-only.** Sync 1 runs when all three plans are in; building follows it.
+3. **The lead builds `src/lib/ui/confetti.ts` and `useCountUp` before any track needs them** — contract 1.
+4. **Held to, from the brief's definition of done:** a re-render test per moment (mount, play, unmount, mount again — it does **not** play); a throttled-CPU trace with no frame over 16 ms for moments 1 and 2; every static state captured at 390 px in Arabic beside its animated counterpart, opened by the lead — collapsing a duration is not a reduced-motion design; and **the frozen five do not move** — `qa:contract` green at every commit, `visual` unchanged on the public pairs, the register-form fingerprint byte-identical.
+
+- **Documents changed:** `STATUS.md` (the phase line)
