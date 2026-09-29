@@ -37,6 +37,9 @@ export type CheckInMomentResult = { checkInId: string };
  */
 const RETURN_HOLD_MS = 1400;
 
+/** The coin's and the lines' first keyframe, held while the moment arms. */
+const HIDDEN = { opacity: 0 } as const;
+
 type Occurrence = { checkInId: string | null; announce: boolean };
 const OccurrenceContext = createContext<Occurrence>({ checkInId: null, announce: false });
 const ResultContext = createContext<(result: CheckInMomentResult) => void>(() => {});
@@ -122,7 +125,17 @@ function Moment({
   link: ReactNode;
 }) {
   const { phase, done } = useMoment("check-in", occurrenceId);
-  const playing = phase === "playing";
+  // ★ ARMED A FRAME LATE (REQ-UIX-020, DEC-197 Q4). The result arrives in the
+  // same commit that swaps the form for this screen, and that commit's layout
+  // is the heaviest work on the page. Starting the burst and the drop in the
+  // same frame put both in one 66 ms frame on a 4× throttled phone. So the
+  // moment waits until the swapped screen has been painted — two animation
+  // frames — holding the coin and the lines at opacity 0 meanwhile (their
+  // animations' own first frame), and only then plays. The commit is measured
+  // beside the moment, not inside it.
+  const [armed, setArmed] = useState(false);
+  const arming = phase === "playing" && !armed;
+  const playing = phase === "playing" && armed;
   const stage = useRef<HTMLDivElement>(null);
   const router = useRouter();
   // What has finished: the coin's drop, the lines' rise, the burst.
@@ -135,6 +148,18 @@ function Moment({
     const s = settled.current;
     if (s.coin && s.lines && s.burst) done();
   }
+
+  useEffect(() => {
+    if (phase !== "playing") return;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setArmed(true));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [phase]);
 
   useEffect(() => {
     if (!playing || !stage.current) return;
@@ -153,7 +178,7 @@ function Moment({
   }, [playing, teamColor]);
 
   // The lines are in at once when nothing plays — reduced motion, or a moment already seen.
-  const inNow = linesIn || !playing;
+  const inNow = linesIn || phase !== "playing";
 
   // ★ DEC-197 §1: the hold and the return, only for a fresh result — never on a reload.
   useEffect(() => {
@@ -163,20 +188,21 @@ function Moment({
   }, [occurrenceId, inNow, eventHref, router]);
 
   return (
-    <div data-moment="check-in" data-phase={phase} className="relative flex min-h-[28rem] flex-col items-center justify-center gap-3 py-6 text-center">
-      {/* The confetti's host. It clips, so a particle never widens the page at 390 px; the scope above is never clipped. */}
-      <div ref={stage} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-clip" />
+    <div data-moment="check-in" data-phase={arming ? "arming" : phase} className="relative flex min-h-[28rem] flex-col items-center justify-center gap-3 py-6 text-center">
+      {/* The confetti's host. It clips, so a particle never widens the page at 390 px; the scope above is never clipped.
+          `contain-strict` makes it a layout and paint root: 44 particles arriving lay out themselves, not the page. */}
+      <div ref={stage} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-clip contain-strict" />
       <div
         aria-hidden="true"
         onAnimationEnd={(e) => e.target === e.currentTarget && settle("coin")}
-        style={playing ? { animation: "moment-coin-drop var(--duration-party) var(--ease-play) both" } : undefined}
+        style={playing ? { animation: "moment-coin-drop var(--duration-party) var(--ease-play) both" } : arming ? HIDDEN : undefined}
       >
         {coin}
       </div>
       <div
         role={announce ? "status" : undefined}
         onAnimationEnd={(e) => e.target === e.currentTarget && settle("lines")}
-        style={playing ? { animation: "moment-rise var(--duration-base) var(--ease-play) calc(var(--duration-slow) + var(--duration-fast)) both" } : undefined}
+        style={playing ? { animation: "moment-rise var(--duration-base) var(--ease-play) calc(var(--duration-slow) + var(--duration-fast)) both" } : arming ? HIDDEN : undefined}
         className="flex flex-col items-center gap-2"
       >
         {lines}

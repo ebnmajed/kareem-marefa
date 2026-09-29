@@ -2724,3 +2724,18 @@ when nothing plays); the coin and lines animate by inline `animation:` on tokens
   input, and `sessions'` primitive → told to the lead and `sessions`.
 - `tests/unit/public-graph.test.ts:81-87` (the lead's) asserts only the `(dev)` gallery renders `<PlayScope>`; the
   five wave-16 surfaces now do, by `DEC-195` §1. It fails on `check-in/page.tsx` → the lead's to amend.
+
+## 12 · Gate run 2 (`255caa13`) — the trace failed at 66.6 ms, and why
+
+Read from `.qa-shots/rtl/wave16-checkin-moment-trace.json`: the window opened on the SAME task as the `refresh()` commit
+that swaps the form for the static state. `useMoment` answers `playing` in a layout effect, so the swap's React commit
+(a 36 ms `FunctionCall` ending at the mark) and its first layout (**25.9 ms, 87 of 123 objects dirty, a full
+layout**) landed in the first frames of the window, together with 44 new particles — the dropped frames sit at
+−25 … +41 ms around the mark. Not the particles' animations: those are compositor transforms.
+
+**Changed:** the moment **arms two frames late** — a new `data-phase="arming"` holds the coin and the lines at
+opacity 0 (their animations' own first keyframe) until the swapped screen has been painted, then plays. The swap is
+measured **beside** the window (the trace spec reports the arming frames as an annotation), as `DEC-197` Q4 rules for
+moment 1. And the confetti's stage is `contain-strict`, so 44 particles arriving lay out themselves, not the page.
+The count stays 44 (`03-motion.md`); fewer particles is the next lever if a rerun still exceeds.
+The no-JS walk is `test.fixme` with F3's reason, kept as F3's test.

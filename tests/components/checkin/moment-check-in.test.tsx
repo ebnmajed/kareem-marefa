@@ -83,6 +83,13 @@ async function checkIn(view: ReturnType<typeof render>, rest: ReactElement, id =
   return action;
 }
 
+/** Two animation frames — the moment arms after the swapped screen has been painted. */
+async function frames() {
+  await act(async () => {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  });
+}
+
 /**
  * ★ jsdom has no `AnimationEvent`, so React DOM listens for the prefixed
  * `webkitAnimationEnd` (as `sessions'` moment-reserve test found). Dispatched
@@ -115,6 +122,7 @@ describe("moment 2 — plays from the check-in's own result", () => {
     const rest = await restFor(pending());
     const view = render(<Screen rest={null} action={vi.fn()} />);
     await checkIn(view, rest);
+    await frames();
     expect(moment()).toHaveAttribute("data-phase", "playing");
     expect(layer()?.children).toHaveLength(44);
     expect(animations).toHaveLength(44);
@@ -124,10 +132,25 @@ describe("moment 2 — plays from the check-in's own result", () => {
     expect(screen.getByRole("status")).toHaveTextContent("أنت هنا!");
   });
 
+  it("★ arms a frame late: the swapped screen is painted first, the coin and lines held at opacity 0, no particle yet", async () => {
+    const rest = await restFor(pending());
+    const view = render(<Screen rest={null} action={vi.fn()} />);
+    await checkIn(view, rest);
+    expect(moment()).toHaveAttribute("data-phase", "arming");
+    expect(coinWrap().style.opacity).toBe("0");
+    expect(linesWrap().style.opacity).toBe("0");
+    expect(layer()).toBeNull();
+    expect(animations).toHaveLength(0);
+    await frames();
+    expect(moment()).toHaveAttribute("data-phase", "playing");
+    expect(coinWrap().style.opacity).toBe("");
+  });
+
   it("★ settles into the static state: every node removed, no animation left, no will-change anywhere", async () => {
     const rest = await restFor(pending());
     const view = render(<Screen rest={null} action={vi.fn()} />);
     await checkIn(view, rest);
+    await frames();
     animationEnd(coinWrap());
     animationEnd(linesWrap());
     await act(async () => {
@@ -144,12 +167,14 @@ describe("moment 2 — plays from the check-in's own result", () => {
     const rest = await restFor(pending());
     const first = render(<Screen rest={null} action={vi.fn()} />);
     await checkIn(first, rest, "c1");
+    await frames();
     expect(moment()).toHaveAttribute("data-phase", "playing");
     first.unmount();
 
     const played = animations.length;
     const again = render(<Screen rest={null} action={vi.fn()} />);
     await checkIn(again, rest, "c1");
+    await frames();
     expect(moment()).toHaveAttribute("data-phase", "static");
     expect(layer()).toBeNull();
     expect(coinWrap().style.animation).toBe("");
@@ -163,6 +188,7 @@ describe("moment 2 — plays from the check-in's own result", () => {
     first.unmount();
     const next = render(<Screen rest={null} action={vi.fn()} />);
     await checkIn(next, rest, "c2");
+    await frames();
     expect(moment()).toHaveAttribute("data-phase", "playing");
   });
 
@@ -190,6 +216,7 @@ describe("★ DEC-197 §1 — the hold and the return", () => {
     const rest = await restFor(pending());
     const view = render(<Screen rest={null} action={vi.fn()} />);
     await checkIn(view, rest);
+    await frames();
     act(() => void vi.advanceTimersByTime(5_000));
     expect(push).not.toHaveBeenCalled(); // the lines are not in yet
     animationEnd(linesWrap());

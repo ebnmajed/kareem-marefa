@@ -12,6 +12,8 @@
 //   4. ★ a wrong code → an error, NO layer and no running animation;
 //   5. ★ reduced motion → the complete static state, NO layer, and the same return;
 //   6. ★ no JavaScript → the no-JS action still checks in, to `?success=1`, static.
+//      `test.fixme` — F3: /app streams behind loading.tsx; without JS the content
+//      never swaps in (STATUS F3). Not this screen's defect; kept as F3's test.
 //
 // Captures (phone, 390 × 844, honouring E2E_SHOTS_DIR):
 //   wave16-checkin-check-in-animated.png — the moment at its rest
@@ -208,7 +210,9 @@ test("★ reduced motion: the complete static state, no particle, and the same h
   await expect(page).toHaveURL(eventUrl(), { timeout: 15_000 });
 });
 
+// Kept, not deleted: it becomes F3's test once `/app` renders without JS (the lead's ruling, gate run 2).
 test("★ without JavaScript the no-JS action still checks in, to ?success=1, and the screen is static", async ({ browser }) => {
+  test.fixme(true, "F3: /app streams behind loading.tsx; without JS the content never swaps in (STATUS F3)");
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();
   try {

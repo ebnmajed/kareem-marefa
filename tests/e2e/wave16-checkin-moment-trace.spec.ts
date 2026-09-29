@@ -9,8 +9,10 @@
 //   · The window is the moment's own animations (DEC-197 Q4): from the render
 //     that turns the moment to `playing` to the one that returns it to `static`,
 //     marked with `performance.mark()` by an init script watching `data-phase`.
-//     The commit that applies the refreshed page lands before `playing` and is
-//     reported beside the window, not inside the gate.
+//     The commit that applies the refreshed page — the form swapped for the
+//     static state — is the `arming` phase before it (the moment waits two
+//     frames for it to be painted), and its frames are REPORTED beside the
+//     window, not inside the gate.
 //   · Inside the window a `requestAnimationFrame` sampler records every frame
 //     interval; the gate is that none is longer than one 60 Hz frame (16.7 ms)
 //     plus 1 ms of timer jitter — i.e. no frame was missed.
@@ -97,25 +99,29 @@ async function signIn(context: BrowserContext, who: string, asAdmin = false): Pr
 /** Marks the moment's window and samples every frame inside it. */
 async function instrument(page: Page) {
   await page.addInitScript(() => {
-    const w = window as unknown as { __frames: number[]; __sampling: boolean };
+    const w = window as unknown as { __frames: number[]; __arming: number[]; __sampling: "no" | "arming" | "playing" };
     w.__frames = [];
-    w.__sampling = false;
+    w.__arming = [];
+    w.__sampling = "no";
     let last = 0;
     const tick = (t: number) => {
-      if (w.__sampling && last) w.__frames.push(t - last);
-      last = w.__sampling ? t : 0;
+      if (w.__sampling !== "no" && last) (w.__sampling === "playing" ? w.__frames : w.__arming).push(t - last);
+      last = w.__sampling !== "no" ? t : 0;
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
     new MutationObserver(() => {
       const el = document.querySelector("[data-moment='check-in']");
       const phase = el?.getAttribute("data-phase");
-      if (phase === "playing" && !w.__sampling) {
+      if (phase === "arming" && w.__sampling === "no") {
+        performance.mark("moment-2-arming");
+        w.__sampling = "arming";
+      } else if (phase === "playing" && w.__sampling !== "playing") {
         performance.mark("moment-2-start");
-        w.__sampling = true;
-      } else if (phase === "static" && w.__sampling) {
+        w.__sampling = "playing";
+      } else if (phase === "static" && w.__sampling === "playing") {
         performance.mark("moment-2-end");
-        w.__sampling = false;
+        w.__sampling = "no";
       }
     }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-phase"] });
   });
@@ -153,9 +159,14 @@ test("★★ moment 2 on a 4× throttled CPU: no frame over 16 ms", async ({ con
   mkdirSync(SHOTS, { recursive: true });
   writeFileSync(join(SHOTS, "wave16-checkin-moment-trace.json"), trace);
 
-  const frames = await page.evaluate(() => (window as unknown as { __frames: number[] }).__frames);
+  const { frames, arming } = await page.evaluate(() => {
+    const w = window as unknown as { __frames: number[]; __arming: number[] };
+    return { frames: w.__frames, arming: w.__arming };
+  });
   const longest = Math.max(...frames);
   testInfo.annotations.push({ type: "frames", description: `${frames.length} frames in the window; the longest ${longest.toFixed(1)} ms` });
+  // Reported, not gated (DEC-197 Q4): the commit that swapped the form for the static state.
+  testInfo.annotations.push({ type: "the swap, beside the window", description: `${arming.length} frames; the longest ${arming.length ? Math.max(...arming).toFixed(1) : "—"} ms` });
   expect(frames.length, "the window saw frames").toBeGreaterThan(10);
   expect(longest, `no frame over one 60 Hz frame (+${JITTER_MS} ms jitter)`).toBeLessThanOrEqual(FRAME_MS + JITTER_MS);
 });
