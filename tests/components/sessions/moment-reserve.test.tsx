@@ -97,6 +97,8 @@ async function press() {
     await answered;
   });
   await act(async () => {});
+  // The ticket is armed two frames after the commit, so the commit's layout stays out of its frames.
+  await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))));
 }
 
 const ticket = () => document.querySelector<HTMLElement>('[data-moment="ticket"]');
@@ -135,6 +137,19 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("moment 1 — plays from the action's own result", () => {
+  it("★ the face is held from the commit, and the ticket arrives two frames later — never in the commit's frame", async () => {
+    render(<Card result={booked("r1:confirmed:2026-09-29T10:00:00Z")} />);
+    await userEvent.click(screen.getByRole("button", { name: /احجز مقعدك/ }));
+    await act(async () => {
+      await answered;
+    });
+    await act(async () => {});
+    expect(part("in-face").style.opacity).toBe("0");
+    expect(ticket()).toBeNull();
+    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))));
+    expect(ticket()).not.toBeNull();
+  });
+
   it("nothing moves on the tap, before the server answers (REQ-UIX-007)", () => {
     render(<Card result={booked("r1:confirmed:2026-09-29T10:00:00Z")} />);
     expect(ticket()).toBeNull();

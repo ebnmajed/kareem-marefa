@@ -295,8 +295,9 @@ test("★★ @trace moment 1 on a 4× throttled CPU: no frame over 16 ms", async
   test.skip(testInfo.project.name !== "phone", "the phone is the budget's case");
   test.skip(browser.browserType().name() !== "chromium", "CDP throttling and tracing are Chromium's");
   await page.setViewportSize({ width: 390, height: 844 });
-  // The window is the moment's own animations (DEC-197 Q4): from the ticket's first appearance to its
-  // removal. The commit that applies the refreshed page is measured beside it, not inside the gate.
+  // The window is the moment's own animations (DEC-197 Q4): from the ticket's `animationstart` to the leave's
+  // `animationend`. The commit that applies the refreshed page is measured beside it, not inside the gate —
+  // and the ticket is armed two frames after it, so the two never share a frame.
   await page.addInitScript(() => {
     const w = window as unknown as { __frames: number[]; __sampling: boolean; __commit: number };
     w.__frames = [];
@@ -309,16 +310,27 @@ test("★★ @trace moment 1 on a 4× throttled CPU: no frame over 16 ms", async
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-    new MutationObserver(() => {
-      const present = document.querySelector("[data-moment='ticket']") !== null;
-      if (present && !w.__sampling) {
-        performance.mark("moment-1-start");
-        w.__sampling = true;
-      } else if (!present && w.__sampling) {
-        performance.mark("moment-1-end");
-        w.__sampling = false;
-      }
-    }).observe(document, { subtree: true, childList: true });
+    // DEC-197 Q4, to the letter: from the ticket's `animationstart` to the last `animationend`, the leave's.
+    document.addEventListener(
+      "animationstart",
+      (event) => {
+        if (event.animationName === "moment-ticket-rise" && !w.__sampling) {
+          performance.mark("moment-1-start");
+          w.__sampling = true;
+        }
+      },
+      true,
+    );
+    document.addEventListener(
+      "animationend",
+      (event) => {
+        if (event.animationName === "moment-ticket-leave" && w.__sampling) {
+          performance.mark("moment-1-end");
+          w.__sampling = false;
+        }
+      },
+      true,
+    );
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) w.__commit = Math.max(w.__commit, entry.duration);
     }).observe({ type: "long-animation-frame", buffered: true });

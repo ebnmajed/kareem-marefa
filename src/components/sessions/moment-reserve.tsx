@@ -4,6 +4,7 @@ import {
   createContext,
   useActionState,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -84,6 +85,8 @@ interface HostContext {
 
 interface StageContext {
   playing: boolean;
+  /** Two frames after the commit that brought the result: the ticket mounts only then (see `MomentStage`). */
+  armed: boolean;
   /** Where the ticket plays: the card from `md`, the phone's bar below it (`16` §6.1 note 2). */
   host: Placement;
   step: Step;
@@ -168,7 +171,7 @@ export function MomentPart({
 }) {
   const stage = useContext(Stage);
   const live = stage?.playing === true;
-  const hosts = live && anchor !== undefined && stage.host === anchor;
+  const hosts = live && stage.armed && anchor !== undefined && stage.host === anchor;
   const held = live && reveal !== undefined && stage.host === reveal;
   const thudHere = live && thud !== undefined && stage.host === thud && stage.thudding;
 
@@ -244,6 +247,19 @@ function MomentStage({
   const [step, setStep] = useState<Step>("rise");
   const [thudding, setThudding] = useState(false);
   const [revealing, setRevealing] = useState(false);
+  // ★ ARMED TWO FRAMES AFTER THE COMMIT (REQ-UIX-020, the lead's five-run trace at 24b2da5e). The result
+  // arrives in the same commit as the refreshed page, and that commit's style and layout (≈ 22 ms on a 4×
+  // throttled phone) fell in the ticket's first frame — one dropped frame, every run. The booked face is held
+  // out of sight from the commit on, and the ticket mounts two frames later, when the page has settled: the
+  // moment's own frames are then compositor work alone. A frame is not a timer — nothing waits on the clock.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (phase !== "playing") return;
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => setArmed(true));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [phase]);
 
   const finish = () => {
     setThudding(false);
@@ -257,6 +273,7 @@ function MomentStage({
 
   const value: StageContext = {
     playing: phase === "playing",
+    armed,
     host: md ? "card" : "bar",
     step,
     thudding,
