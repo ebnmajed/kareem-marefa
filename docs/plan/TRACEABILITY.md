@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **336** |
+| Requirements (`REQ-*`) | **341** |
 | Entities (`ENT-*`) | **82** |
-| Stories (`STORY-*`) | **162** |
+| Stories (`STORY-*`) | **168** |
 | Screens cited (`SCR-*`) | 57 |
 | Jobs cited (`JOB-*`) | 40 |
 | Messages cited (`MSG-*`) | 23 |
@@ -286,7 +286,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NFR-016` | `ENT-brand_kits` `ENT-email_deliveries` `ENT-impersonation_sessions` | — | `SCR-057` `SCR-059` `SCR-083` +1 | `JOB-evaluate_alerts` | — | `STORY-NFR-007` | M0 |
 | `REQ-NFR-017` | — | — | — | — | — | `STORY-NFR-007` | M0 |
 | `REQ-NFR-018` | — | — | — | — | — | `STORY-NFR-008` | M0 |
-| `REQ-NFR-019` | — | — | `SCR-000` `SCR-001` `SCR-002` +7 | `JOB-zip_session_photos` | — | `STORY-NFR-008` | M0 |
+| `REQ-NFR-019` | — | — | `SCR-000` `SCR-001` `SCR-002` +12 | `JOB-zip_session_photos` | — | `STORY-NFR-008` | M0 |
 | `REQ-NFR-020` | `ENT-registrations` | — | — | — | — | `STORY-NFR-008` | M0 |
 
 ### NTF
@@ -343,7 +343,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-PTS-001` | `ENT-audit_log` `ENT-points_ledger` | — | `SCR-022` | — | — | `STORY-PTS-001` | M4 |
+| `REQ-PTS-001` | `ENT-audit_log` `ENT-points_ledger` | — | `SCR-010` `SCR-012` `SCR-014` +1 | — | — | `STORY-PTS-001` | M4 |
 | `REQ-PTS-002` | `ENT-points_ledger` | — | `SCR-022` | — | — | `STORY-PTS-001` | M4 |
 | `REQ-PTS-003` | — | `POL-scoring_rules.select` | `SCR-007` `SCR-010` `SCR-022` +6 | `JOB-zip_session_photos` | — | `STORY-PTS-006` | M4 |
 | `REQ-PTS-004` | `ENT-scoring_rules` | — | `SCR-045` `SCR-053` `SCR-054` | — | — | `STORY-PTS-003` | M4 |
@@ -480,13 +480,13 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-011` | — | — | `SCR-002` `SCR-017` `SCR-043` +4 | — | — | `STORY-UIX-006` | M9 |
 | `REQ-UIX-012` | — | — | `SCR-010` `SCR-011` | — | — | `STORY-UIX-007` | M9 |
 | `REQ-UIX-013` | — | — | `SCR-057` | — | — | `STORY-UIX-007` | M9 |
-| `REQ-UIX-014` | — | — | `SCR-048` `SCR-059` | — | — | `STORY-UIX-011` | M10 |
+| `REQ-UIX-014` | — | — | `SCR-012` `SCR-014` `SCR-022` +4 | — | — | `STORY-UIX-011` | M10 |
 | `REQ-UIX-015` | — | — | `SCR-012` `SCR-014` `SCR-016` | — | `MSG-rsvp_promoted` | `STORY-UIX-010` | M9 |
 | `REQ-UIX-016` | — | — | — | — | — | `STORY-UIX-005` | M9 |
 | `REQ-UIX-017` | — | — | `SCR-080` `SCR-083` `SCR-085` | — | — | `STORY-UIX-008` | M9 |
-| `REQ-UIX-018` | — | — | `SCR-012` `SCR-014` | — | — | `STORY-UIX-011` | M10 |
+| `REQ-UIX-018` | — | — | `SCR-012` `SCR-014` `SCR-022` | — | — | `STORY-UIX-011` | M10 |
 | `REQ-UIX-019` | — | — | `SCR-012` `SCR-014` `SCR-022` +2 | — | — | `STORY-UIX-011` | M10 |
-| `REQ-UIX-020` | — | — | `SCR-010` `SCR-022` `SCR-028` | — | — | `STORY-UIX-011` | M10 |
+| `REQ-UIX-020` | — | — | `SCR-010` `SCR-012` `SCR-014` +3 | — | — | `STORY-UIX-011` | M10 |
 | `REQ-UIX-021` | — | — | `SCR-010` `SCR-011` | — | — | `STORY-UIX-012` | M9 |
 | `REQ-UIX-022` | — | — | `SCR-010` `SCR-011` | — | — | `STORY-UIX-012` | M9 |
 | `REQ-UIX-023` | — | — | `SCR-010` | — | — | `STORY-UIX-013` | M9 |
@@ -501,7 +501,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-032` | — | — | `SCR-010` `SCR-011` `SCR-012` +1 | — | — | `STORY-UIX-022` | M17 |
 | `REQ-UIX-033` | — | — | `SCR-012` `SCR-014` `SCR-048` | — | — | `STORY-UIX-023` | M17 |
 | `REQ-UIX-034` | — | — | `SCR-012` `SCR-048` | — | — | `STORY-UIX-022` | M17 |
-| `REQ-UIX-035` | — | — | `SCR-014` `SCR-048` | — | — | `STORY-UIX-023` | M17 |
+| `REQ-UIX-035` | — | — | `SCR-014` `SCR-048` | — | — | `STORY-UIX-023` `STORY-UIX-029` | M17, M18 |
 | `REQ-UIX-036` | — | — | `SCR-010` `SCR-022` `SCR-028` +1 | — | — | `STORY-UIX-024` | M17 |
 | `REQ-UIX-037` | — | — | `SCR-027` `SCR-048` | — | — | `STORY-UIX-024` | M17 |
 | `REQ-UIX-038` | — | — | `SCR-010` `SCR-028` `SCR-048` | — | — | `STORY-UIX-024` | M17 |
@@ -509,6 +509,11 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-040` | — | — | `SCR-010` `SCR-048` | — | — | `STORY-UIX-022` | M17 |
 | `REQ-UIX-041` | — | — | `SCR-010` `SCR-012` `SCR-014` +3 | — | — | `STORY-UIX-025` | M17 |
 | `REQ-UIX-042` | — | — | `SCR-012` `SCR-014` `SCR-022` +2 | — | — | `STORY-UIX-025` | M17 |
-| `REQ-UIX-043` | `ENT-companies` | `POL-companies.team_color` | `SCR-048` | — | — | `STORY-UIX-026` | M17 |
+| `REQ-UIX-043` | `ENT-companies` | `POL-companies.team_color` | `SCR-014` `SCR-048` | — | — | `STORY-UIX-026` `STORY-UIX-032` | M17, M18 |
+| `REQ-UIX-044` | — | — | `SCR-012` `SCR-014` `SCR-022` +2 | — | — | `STORY-UIX-027` `STORY-UIX-028` +3 | M18 |
+| `REQ-UIX-045` | — | — | `SCR-012` | — | — | `STORY-UIX-028` | M18 |
+| `REQ-UIX-046` | — | — | `SCR-014` | — | — | `STORY-UIX-029` | M18 |
+| `REQ-UIX-047` | — | — | `SCR-022` | — | — | `STORY-UIX-030` | M18 |
+| `REQ-UIX-048` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-UIX-031` | M18 |
 
 <!-- TRACEABILITY:END -->

@@ -4823,3 +4823,204 @@ Structural, with no colour in them: `rounded-pill` (999 px), `rounded-input` (12
 5. ★ **Point 4 is accepted with its limits stated, and `qa` is never pointed at production.** No session runs `qa`, `visual` or the fingerprint against the live site or a Vercel deployment: the suites submit forms, and there is one Supabase project and it is production. **The owner opens the live site on a phone after the merge.** That closes the gap `DEC-193` §5 names — nothing was measured on a build Vercel made — and the real-device check owed since Launch, in one go.
 
 - **Documents changed:** `STATUS.md` (the carried list, the owner's order, the header)
+
+---
+
+## DEC-195 — Wave 16 opens M18: the five moments land on the real screens, which amends `DEC-183` §4.2(f); a company takes its colour when it is created and never takes a logo; and the three `(auth)` screens are placed in the programme by name
+
+- **Date:** 2026-09-29 · **Decided by:** the owner (three rulings, answered 2026-09-29 before the wave opened, recorded in `docs/plan/notes/wave-16-lead.md`); the boundary, the ownership and the corrections measured and written by the wave-16 lead
+- ★★ **Amends:** `DEC-183` §4.2(f) — see §1. **Amends in text, now:** `REQ-UIX-043` (§3, §4). **Corrects:** `09-sitemap-screens.md` §8's three `(auth)` rows (§5).
+- **Adds:** `REQ-UIX-044` … `REQ-UIX-048`; `STORY-UIX-027` … `STORY-UIX-032`; milestone **M18**. Migrations start at **`0162`**; none is expected, and one is written only if a plan at sync 1 needs it (§2.6) — this entry cites no migration number (`DEC-180`).
+- **Keeps, unchanged:** `DEC-183` §2 in full — `REQ-UIX-020`, a failure never animates, nothing scales on hover, no motion library, once per occurrence, a static state that is a complete experience — and `DEC-186` §3 (the status colours are `DEC-073`'s) and §4 (no pop beyond `1.08` until the owner has seen one).
+
+### 1 · ★★ The moments land on the real screens, and this amends `DEC-183` §4.2(f)
+
+`DEC-183` §4.2(f) said: «this wave the scope is applied **in the gallery and nowhere else**. The shell adopts it in the
+screens waves, the public site in its own.» **That sentence is amended.** The surfaces the five moments touch adopt
+what they need **now**, in M18, ahead of the screens waves. **Every other screen still waits**, exactly as §4.2(f) said.
+The owner was told before the wave opened that screens will look different on production the day this merges, and
+said yes.
+
+★ **The reason, so the choice stays legible: a moment cannot be verified in a gallery.** A moment's definition is
+that it plays **once, when the action resolves, and never on a re-render**. A canned replay in a demo proves that the
+animation renders. It proves nothing about *when* it fires, and *when* is the whole requirement. The defect this
+kind of work ships with is a moment keyed to a render, which fires again on every navigation back to the screen.
+That defect is only observable where the action, the redirect, the back button and the reload exist — on the real
+screen, with the real action. **Built anywhere else, a moment is drawn, not tested.**
+
+#### 1.1 · Exactly what moves — five surfaces, and on each only the named part
+
+| Surface | Screen | What moves | Moment | Owner |
+|---|---|---|---|---|
+| **The event page's action card** | `SCR-012` `app/sessions/[id]` | the action card only: the reserve CTA becomes `session-cta`; the ticket rises and the stamp lands on it; the capacity chip updates in place; the booked state with «ألغِ حجزي»; the calendar whisper | 1 · الحجز | `sessions` |
+| **The check-in screen** | `SCR-014` `app/sessions/[id]/check-in` | the screen's content: the code entry on `sessions'` `code-input` (§2.4), and the celebration layer — confetti, the coin, the three lines | 2 · تسجيل الحضور | `checkin` |
+| **The points screen's head** | `SCR-022` `app/me/points` | a head above the history: the balance with its count-up, the streak flame, the level bar and the `level-card` | 3 · انتهت الجلسة, 4 · ترقية المستوى | `scoring` |
+| **The member board** | `SCR-027` `app/leaderboards` | the board's rows become `rank-row`; two rows swap by FLIP and the risen row's arrow pulses once | 5 · تغيّر الترتيب | `scoring` |
+| **The company board** | `SCR-028` `app/leaderboards` | the company rows become `race-bar`; a bar moves by `scaleX` | 5 · تغيّر الترتيب | `scoring` |
+
+★ **The brief speaks of «two screens» that will look different** — `SCR-012` and `SCR-014`, the two a member meets in
+a room. **Moments 3 to 5 also move `SCR-022` and `SCR-027`/`SCR-028`**, which `03-motion.md` places them on and the
+brief's own table assigns to `scoring`. They are named here so that the owner's phone check after the merge
+**expects** four screens to look different, and five public pages not to.
+
+#### 1.2 · Exactly what does not move
+
+- ★★ **The five frozen public routes** — `/`, `/ar`, `/en`, `/ar/register`, `/og.png`. `qa:contract` green at every
+  commit, `visual` unchanged on the public pairs **and not re-baselined**, the register form's computed-style
+  fingerprint byte-identical to `main`'s record, and the public-graph test (`DEC-186` §6) still finds no scope in the
+  public import graph. **The owner opens the live site on a phone after the merge** (`DEC-194` §5).
+- **The shell** — the header, the account menu, the phone tab bar, the toast region (`DEC-188` §6). A moment's
+  whisper raised on a scoped surface is drawn in the shell's region and wears the shell's look.
+- **On `SCR-012`, everything but the action card** — the hero, the poster, the sub-nav, every section and slot, the
+  presenters, the discussion, materials, photos, tasks, the rating. ★ **The award state on the event page stays a
+  state**: `award-state.tsx` does not count up. A count-up runs from an old balance to a new one, and the event page
+  shows a session's award, not a balance.
+- ★ **The home screen, `SCR-010`, does not move.** `03-motion.md` and `07-tasks.md` play moment 3 on «the home card».
+  `/app` is the sessions timeline (`DEC-112`), its first item is the member's next session, and it carries **no
+  balance, streak or level** today. Putting one there is a redesign of the home screen, which is the screens waves'.
+  Moment 3 plays on `SCR-022` alone (§4, disagreement 18).
+- **On `SCR-022`, the history and the catalogue** — a list does not animate.
+- **On `SCR-014`, nothing of what check-in decides** — the window, the ceiling, the attempt limit, the code's
+  alphabet, the no-JS path, and the posted field's name.
+- **Every other screen, the `(auth)` screens included** (§5), every admin screen but the one row of §3, the
+  platform console, `verify/**`, `legal/**`, the studio and the certificates.
+- **The data under the moments**: no award, no ledger row, no balance, no level and no rank is computed differently.
+  A moment **reads** what exists (`REQ-PTS-001`, invariant 9). The one exception a plan may propose is a record of
+  what a member has **seen** (§2.6), and it is a table the lead lands.
+
+#### 1.3 · How a surface adopts the scope — `DEC-186` §9 and `DEC-188` §5, answered
+
+Both entries left a question «to the first screen that enters the scope». This is that screen.
+
+1. **The scope's element wraps exactly the surface of §1.1**, as a direct child of the screen's content, and **is
+   never itself transformed, filtered or clipped, nor placed inside an element that is** (`DEC-188` §5). A thud, a
+   rise or a flip moves an element **inside** the scope. So a menu opened from the action card — the calendar menu —
+   lands in the scope and is not trapped under a transformed card.
+2. **Dark or light is the surface's.** `SCR-014` and the celebration are the dark ground. The other three default to
+   the dark ground as well, which is the direction's own. **A surface that looks wrong beside the unscoped page
+   around it is raised at the 390 px review with its capture**, and the owner decides; the lead does not pick.
+3. **An org's brand kit does not reach inside a moment's surface this wave.** Mechanically the scope wins: `.brand-org`
+   writes the same context variables the scope reassigns (`DEC-186` §9). A brand-aware playground is a question for
+   the shell's wave, where the whole app would carry it. **The team colour does reach inside**: it is data on the
+   member's company, not a brand, and it arrives as `--team` on the element (`REQ-UIX-043`).
+
+### 2 · The moments — rulings made before anyone plans
+
+1. ★★ **Moments 1 and 2 are triggered by the action's own result, in the client that performed it — never by a
+   render and never by first sight.** A reservation seen tomorrow on another phone, a reload, a back navigation: each
+   shows the **static state**. The occurrence key is the reservation's id and status (`confirmed` or `waitlisted`), or
+   the check-in's id, as the action returns it. `reserveSeatAction` today redirects and returns nothing; `sessions`
+   plans what it returns. **A redirect that drops the result is the exact defect this entry exists for.**
+2. ★ **Moments 3, 4 and 5 are triggered by first sight of an occurrence** — the ledger rows the completion pass wrote,
+   a new `current_level_id`, a rank that differs from the one last seen. Each is keyed on that occurrence's id, and
+   **what a member has seen needs a record** (§2.6).
+3. **The shared mechanism is the lead's, and lands before any track uses it** — `src/lib/ui/confetti.ts`
+   (`element.animate()`, an `aria-hidden` layer with `pointer-events: none`, each node removed on `finish`, and an
+   immediate return under reduced motion), `useCountUp(from, to, duration)` (it writes text through the repository's
+   numeral formatter, and sets the final value at once under reduced motion), and **the once-per-occurrence keying**
+   (`src/lib/ui/`). `src/lib/ui/` is new and the lead's. `DEC-100`'s rule that the vocabulary lives with the lead so
+   it cannot drift track by track survives in this form; the moments themselves are the tracks'.
+4. ★ **`SCR-014` adopts `code-input`.** `DEC-186` §6 found the check-in screen's code group named by an id that does
+   not exist, so boxes 2 to 6 have no accessible name and the refusal is not tied to the boxes — `REQ-UIX-035`'s two
+   acceptance lines, failing on the most operationally important input in the product. `SCR-014` moves this wave, so
+   the repair moves with it. **The posted field, its name, the no-JS path and the server as the judge are unchanged**,
+   and the code box does not pop (`DEC-186` §4).
+5. ★ **The event page's CTA after a check-in reads «حضرت».** `DEC-186` §6 found a checked-in member offered the
+   check-in link again during the session (`session-matrix.ts:241-246`). Moment 2 ends by returning to that page, so
+   it would end on a wrong button. `checkin` fixes the matrix's answer, and the change is a ledger line.
+6. **A record of what a member has seen is a table, and tables are the lead's.** Moment 5's «since last view» has no
+   data source (`DEC-186` §7): no last-seen rank is stored and the all-time board keeps no history. Moments 3 and 4
+   have the same need. Browser storage replays on every new phone and after every cleared history, so it is not the
+   default. **`scoring`'s plan says what it needs**; the lead rules at sync 1, and if it is a table, it lands from
+   `0162` with its RLS case. `main`'s app and worker on that schema do nothing different.
+7. **Once per occurrence is proved by a test per moment**: mount, play, unmount, mount again with the same occurrence
+   — and assert silence. And for moments 1 and 2, a reload after the action shows the static state.
+
+### 3 · The owner's first ruling — the team colour is chosen when the company is created
+
+`createCompany` inserts `{ org_id, name }` and nothing else; the colour is set afterwards as a separate action on the
+row. **The owner's model is that an admin sets it while adding the company.** The add form on `SCR-048` gains the
+colour control and the insert carries it: **nullable still**, and **the same named-colour picker the edit path uses —
+the seven named colours and «بلا لون», each with a swatch and its name in words — never a hex field.** The column's
+check refuses upper case (`0160`), and `TEAM_COLOUR_NAMES` keeps an admin away from that entirely. The audit trigger
+(`0161`) is on `update` only today; **an insert that carries a colour is measured at sync 1** — if it writes no audit
+row, the plan says whether the creation's own audit covers it or `REQ-UIX-043`'s «a change is audited» needs the
+trigger to fire on insert too, and any change to `0161`'s function is the lead's migration.
+
+`console` is not spawned, so this is **the lead's, as custodian**, with its test and a 390 px capture.
+`REQ-UIX-043` gains the acceptance line (`STORY-UIX-032`).
+
+### 4 · ★★ The owner's second ruling — a company has NO logo, and this is a decision, not an omission
+
+The owner was asked whether a logo belonged beside the colour and ruled **no** on 2026-09-29. **Someone will propose
+it again**, so the reason is written here. `docs/design/00-direction.md`'s third principle makes the colour the
+company's identity: *«Companies are houses. Each company has a team colour that rings every avatar and colours every
+poster and race bar. The company is never the avatar fill; it is the ring.»* A ring **and** a logo on one avatar are
+two identity signals competing for one small circle, and the logo would lose the ring its meaning. **A company in
+this product is a name, a team colour, and active-or-deactivated. That is the whole entity, on purpose.** A proposal
+for a company logo — a column, an upload route, a storage path, a placement — is refused by reference to this entry.
+`REQ-UIX-043` says so in its text.
+
+### 5 · ★ The three `(auth)` screens — a planning bug, fixed in the plan
+
+1. **`09` §8's three rows were wrong twice.** They read «M9 ✗ NOT DONE — carried, `DEC-129`». **Wave 6 did them**:
+   `f8a977ca feat(auth): sign-in, choose-org and no-access on the design system` — `sign-in` imports `button`, `icons`,
+   `page-header` and `panel`; `choose-org` `page-header`, `panel`, `radio-group` and `submit-button`; `no-access` `button` and `page-header`. The rows now
+   say done, in wave 6, with the commit.
+2. ★★ **And they are in no wave of this programme.** `07-tasks.md`'s screens wave follows `09` §8's order — «M10 member
+   screens, then M11 console, M12 designer and certificates, M13 public». `09` §8 put the three at **M9**, which is not
+   in that list. They are neither behind sign-in nor public marketing, so **every grouping skips them** — which is how
+   the owner found the login page untouched after the first redesign and had to ask for it by name (`DEC-129`,
+   2026-09-16). They are on the M9 system; they are **not** on the playground, and `SCR-002` is «the first screen
+   every member sees, and the only place `SC 3.3.8` applies».
+3. ★ **The ruling: `SCR-002`, `SCR-003` and `SCR-004` are the first three screens of the programme's member-screens
+   milestone** — the first of its screens waves. `14-roadmap.md` now carries the programme's sequence with them named
+   in it: **M17** the foundation (done) · **M18** the five moments (this wave) · session stories · ★ **the member
+   screens, which open with `SCR-002`, `SCR-003` and `SCR-004`** · the console · the studio and the certificates · the
+   public site, last. ★ **The member-screens milestone's number is claimed when it opens** (`DEC-183` §3): on the
+   sequence as it stands that is **M20**, behind stories' M19, and if stories move, the number moves and **the
+   position does not** — the three `(auth)` screens open the member-screens milestone whatever it is called.
+   `07-tasks.md`'s wave 4 says the same, in the design folder's own words. **A screen absent from a plan is not a
+   screen deferred — it is a screen nobody decided about** (`09` §8); these three are decided.
+
+### 6 · Where `docs/design/` and the tree disagree — continued from `DEC-183` §4
+
+18. ★ **Moment 3 on «the home card».** The home screen carries no balance (§1.2). Moment 3 plays on `SCR-022`.
+19. **Moment 3 on `SCR-012`.** The event page shows a session's award, not a balance; it stays a state (§1.2).
+20. ★ **The coin overshoots.** `03-motion.md` drops the coin through `scale(1.06)` at 60 %. `REQ-UIX-018` allows an
+    overshoot on a sticker, to `1.08`, and on nothing else, and `DEC-186` §4 held every pop beyond that until the
+    owner has seen one. **Until the owner answers, the coin lands at `1` and keeps its squash** — `scale(1.02, .92)` is
+    a deformation on impact, not an overshoot past rest. **The owner is shown both at the 390 px review**, with the
+    reaction's `1.22` and the code box's `1.14`, which is the question `DEC-186` §4 promised to ask with this wave.
+21. ★ **The waitlisted stamp is «colour cyan».** Cyan is one of the seven **team** colours, and `DEC-186` §3 found
+    `01-tokens.md` painting «قائمة انتظار» in a company's colour. **A status colour that is also a company is not a
+    constant.** The waitlisted stamp wears `DEC-073`'s waitlist tone, as the badge does; its word and «· N» carry it.
+22. **Confetti is «team colour + lime + bone».** A member whose company has no colour (`null`) gets lime and bone —
+    **never the neutral ring's grey**, which is a company's absence and not a celebration.
+23. **Moment 5 has no data source** (`DEC-186` §7, §2.6 above).
+24. **`03-motion.md`'s sequence for moment 2 ends «+50 تصل عند انتهاء الجلسة».** The figure is computed from the pending
+    state (`REQ-CHK-018`, the `SessionAwardState` DTO), never 50 and never stored. When the state is `none`, the coin
+    draws **no** amount and the line says what is true; a `+0` is never drawn.
+
+### 7 · The wave (M18)
+
+| | |
+|---|---|
+| **lead** | this entry, the map, the ten agent files, `01` / `09` / `14` / `15`, `07-tasks.md`'s wave 4 · the shared mechanism (§2.3) **before any track uses it** · the add form's colour (§3) as `console`'s custodian · any table §2.6 needs, from `0162` · the demonstrables · the gates, `STATUS`, the PR |
+| `sessions` (opus) | moment 1 on `SCR-012`'s action card, and its waitlisted variant — ★ with `components/checkin/{rsvp-panel.tsx,actions.ts}` **transferred from `checkin` for this wave** (the panel's gates, `getRsvpPanelData()` and `session-matrix.ts` stay `checkin`'s) |
+| `checkin` (opus) | moment 2 on `SCR-014`, the adoption of `code-input` (§2.4), the matrix's «حضرت» (§2.5) |
+| `scoring` (opus) | moments 3 and 4 on `SCR-022`; moment 5 on `SCR-027` and `SCR-028` — ★ with `app/leaderboards/**` and `components/scoring/{member-board,company-board}.tsx` **transferred from `sessions` for this wave** |
+
+**Not spawned:** `content`, `console`, `designer`, `event`, `notify`, `platform`, `branding` — the lead is custodian.
+**Not this wave:** session stories and their viewer; the timeline's feed items; proposal voting; the weekly
+leaderboard; the streak rule (`DEC-NEXT-9`); any screen redesign beyond §1.1; `(marketing)/**`; the desktop shell
+(`DEC-NEXT-15`); leagues; the certificates' look; the whispers beyond what a moment's own surface needs; ★ **and the
+two carried gates, together** (`DEC-194` §2 – §3) — the trigger-definer ACL sweep over all of them with its generated
+test, and wave 14's Storage-predicate gate — one wave, one generated test each, not piecemeal.
+
+**The demonstrables.** (1) ★★ A trace on a throttled CPU with **no frame over 16 ms** for moments 1 and 2
+(`REQ-UIX-020`, `07-tasks.md`'s own gate). (2) ★★ **A re-render test per moment**: mount, play, unmount, mount again
+— silence. (3) ★ **Every static state captured at 390 px in Arabic beside its animated counterpart**, opened by the
+lead. (4) ★ **`qa:contract`, `visual`'s public pairs and the register-form fingerprint all unmoved.**
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-043` amended; `REQ-UIX-044` … `REQ-UIX-048` added), `09-sitemap-screens.md` (§8's three `(auth)` rows), `14-roadmap.md` (M18; the programme's sequence), `15-backlog.md` (`STORY-UIX-027` … `STORY-UIX-032`; §24), `TRACEABILITY.md` (generated), `docs/design/07-tasks.md` (wave 4 names the three `(auth)` screens), `CLAUDE.md` and the ten agent files (the wave-16 map), `STATUS.md` (the wave-16 block)

@@ -29,7 +29,7 @@ and `DECISIONS.md` as the source of truth).
 - Gate: `npm run qa` green; the frozen public routes' visual baseline **unchanged**
   (`REQ-NFR-019`); every new primitive has its jsdom test, RTL check and gallery entry.
 
-### Wave 2 — the five moments
+### Wave 2 — the five moments  ·  ★ built as M18, wave 16 (`DEC-195`): on the real screens; §1.1 of that entry names the five surfaces, and the home card is not one of them
 - `lib/ui/confetti.ts`, `useCountUp`, the once-per-occurrence keying.
 - Moment 1 on `SCR-012` (reservation); moment 2 on `SCR-014` (check-in celebration, honest copy from
   `REQ-CHK-018`); moments 3 and 4 on `SCR-022` and the home «التالية لك» card; moment 5 on
@@ -47,6 +47,12 @@ and `DECISIONS.md` as the source of truth).
 - Waits for the per-screen designs (mobile and desktop per `SCR-*`), delivered in the same folder as
   `docs/design/screens/<SCR-id>.md` with their reference artboards. Milestone order follows
   `09` §8: M10 member screens first, then M11 console, M12 designer and certificates, M13 public.
+- ★ **Corrected by `DEC-195` §5 — the three `(auth)` screens open the member screens.** `09` §8 placed `SCR-002`
+  sign-in, `SCR-003` choose-org and `SCR-004` no-access at M9, which is in none of the four groups above: they are
+  neither behind sign-in nor public marketing, so this ordering skipped them — as the first redesign did before the
+  owner asked for the login page by name (`DEC-129`). **They are the member-screens wave's first three screens.**
+  The milestone labels above are also spent (M10–M13 closed by wave 11); the programme's own numbers and order are
+  in `docs/plan/14-roadmap.md`, «The programme's sequence», which wins where the two differ (`DEC-183`).
 
 ## Definition of done (every wave)
 

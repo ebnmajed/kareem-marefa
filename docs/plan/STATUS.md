@@ -1,11 +1,106 @@
-**Last updated:** 2026-09-29 · **Branch:** `wave-15/tokens-and-primitives` (cut from `main` at `dfcfea3` — `origin/main` `34713cb` plus the brief's unpushed correction, which rides on this branch) · **`main`:** wave 14 merged and live; production at **`0159`** · **Phase:** ★★ **WAVE 15 — SYNC 1 DONE, building (`DEC-183` … `DEC-194`, M17, migrations `0160` – `0161`)**: the first wave of the visual-direction programme «ساحة اللعب» (`docs/design/`). The owner's decision gate is **closed** — everything in scope, the playground's motion **reverses `DEC-100`**, the public site moves last, and this programme replaces the member-path UI/UX wave. This wave is **the foundation only, and nothing visible changes**: the tokens as a scope, the display face, the 37 primitives migrated, ten new ones, nine glyphs, six objects, and team colours. ★ Step 0 found **seventeen places where `docs/design/` and the tree disagree** (`DEC-183` §4) — a literal merge of `tokens.css` would have moved the public site. ★ **Draft PR #33** is open and CI is green on it. ★ **The owner approved Step 0 (`DEC-184`)**. ★ **Sync 1 is done (`DEC-186`)**: four plans approved; the scope reassigns today's context variables and adds a `pg:` variant; **five** primitives reach the public site, not eight; the status colours stay `DEC-073`'s; no new keyframe this wave. ★ **The display face is in** (`DEC-185`) and nine glyphs. ★★ **WAVE 15 IS COMPLETE AND REHEARSED — PR #33, the owner merges** (`DEC-190` … `DEC-193`). ★ **Rehearsed 2026-09-29 on the owner's production schema dump: `0160` and `0161` apply cleanly and the end state matches**; the gap, the audit write, the `system` actor and the evidence for production are each in the owner's order below. ★ **The owner ruled (`DEC-194`): merge as it is, no `0162`; the trigger definers' ACL is carried as a sweep with a generated test; nobody points `qa` at production, and the owner opens the live site on a phone after the merge.** **CI concluded `success` on `0812a17a`** (run `36457593121`, all eleven jobs). ★ **The lead had written that CI was green while one job was still running and failing; `DEC-192` corrects it** — the failure was the wave's own spec on an unconfigured build, not the product. The lead's gates are green at `87f79031`, the last commit that changes product code: 37 primitives migrated, ten new ones, `0160` and `0161`; contract 5 closed — the public routes at 0.000 %, not re-baselined, and 29,608 computed values byte-identical to `main`'s; RLS 1,345 from a fresh reset. **The owner's order is below: rehearse `0160` and `0161`, push, merge, reconnect Railway.** Nothing visible changed; the next wave of the programme claims its own milestone.
+**Last updated:** 2026-09-29 · **Branch:** `wave-16/the-five-moments` (cut from `main` at `526b40ea`) · **`main`:** wave 15 merged and live (PR #33, `b9f2ca0b`); production at **`0161`**; the owner's phone check passed · **Phase:** ★★ **WAVE 16 — STEP 0 DONE, teammates not yet spawned (`DEC-195`, M18, migrations from `0162` only if contract 5 needs one)**: the programme's second wave, **the five moments, on the real screens**. The owner's gate is **closed** — the moments land on `SCR-012`'s action card, `SCR-014`, the head of `SCR-022`, `SCR-027` and `SCR-028`, which **amends `DEC-183` §4.2(f)**, and the owner has accepted that those screens look different on production. ★ The five public routes do not move. ★ Two owner rulings recorded: the team colour is chosen **on the add-company form**, and **a company has no logo** (`DEC-195` §3, §4). ★ The three `(auth)` screens are placed by name at the head of the member-screens milestone, and `09` §8's stale rows are corrected (`DEC-195` §5). **Next: spawn `sessions`, `checkin` and `scoring` planning-only; the lead lands contract 1 (the mechanism) while they plan; sync 1 approves three plans.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 15 — COMPLETE, PR #33, the owner merges — on `wave-15/tokens-and-primitives` — the visual direction's foundation (`DEC-183`)
+## ★★★ WAVE 16 — STEP 0 DONE — on `wave-16/the-five-moments` — the five moments, on the real screens (`DEC-195`)
+
+**The programme's second wave.** The brief is `docs/plan/notes/wave-16-lead.md`; the map is `CLAUDE.md` § *Ownership
+map (wave 16)*; the decision is `DEC-195`. Milestone **M18**. Requirements `REQ-UIX-044` … `048` (and `043` amended);
+stories `STORY-UIX-027` … `032`.
+
+### The owner's rulings (2026-09-29) — the gate is closed, do not re-open it
+
+| | |
+|---|---|
+| ★★ **The moments land on the real screens** | amends `DEC-183` §4.2(f). **A moment cannot be verified in a gallery**: it is defined by *when* it fires, and a canned replay proves only that it renders. `DEC-195` §1.1 names the five surfaces; §1.2 names what does not move |
+| ★ **The team colour on the add-company form** | the named-colour picker, never a hex field; the insert carries it, nullable (`DEC-195` §3) — the lead's, as `console`'s custodian |
+| ★★ **Companies have NO logo** | a decision, not an omission: the colour is the company's identity, and a ring plus a logo would be two (`DEC-195` §4) |
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | `526b40ea` (wave 15 merged at `b9f2ca0b`, the brief's three commits after it). Production at **`0161`**; no open PRs |
+| The surfaces | `SCR-012` `sessions/[id]/page.tsx` 385 lines, the action card composed from `components/sessions/action-card.tsx` and `components/checkin/rsvp-panel.tsx` · `SCR-014` `check-in/page.tsx` 140, with `components/checkin/code-input.tsx` and `award-state.tsx` · `SCR-022` `me/points/page.tsx` 106 — a `Stat`, the history and the catalogue; **no streak and no level on any screen today** · `SCR-027`/`028` `leaderboards/page.tsx` 92, with `components/scoring/{member-board,company-board}.tsx` · home `app/page.tsx` 19 — the timeline, **no balance** |
+| ★ The home card | `03-motion.md` and `07-tasks.md` play moment 3 on «the home card». `/app` is the timeline (`DEC-112`) and carries no balance, streak or level. **Moment 3 plays on `SCR-022` alone**; the home does not move (`DEC-195` §1.2, §6.18) |
+| ★ Ownership across the surfaces | `rsvp-panel.tsx` and `reserveSeatAction` are `checkin`'s files, and moment 1 is `sessions'` → **transferred to `sessions` for the wave**. `leaderboards/**`, `member-board.tsx` and `company-board.tsx` are `sessions'`, and moment 5 is `scoring`'s → **transferred to `scoring`** |
+| ★★ The reserve action returns nothing | `reserveSeatAction` redirects (`components/checkin/actions.ts:13`), so nothing after it knows a reservation *just* happened. A moment keyed to the render after it would replay on every visit. **Moments 1 and 2 play from the action's own result** (`DEC-195` §2.1) — `sessions'` and `checkin`'s first plan question |
+| ★ «Since last view» has no source | `DEC-186` §7, confirmed: no last-seen rank is stored and the all-time board keeps no history. Moments 3 and 4 have the same need. **Contract 5** — `scoring`'s plan; a table is the lead's |
+| ★ The `(auth)` screens | `09` §8 read «M9 ✗ NOT DONE» for all three; **wave 6 did them** (`f8a977ca`). And no grouping of the programme reached them. Corrected, and placed at the head of the member-screens milestone (`DEC-195` §5, `14-roadmap.md`, `07-tasks.md`) |
+| Design vs tree | seven new disagreements, `DEC-195` §6.18 – §6.24: the home card; moment 3 on `SCR-012`; ★ **the coin's `1.06` overshoot** (lands at `1` until the owner rules); ★ **the waitlisted stamp's cyan is a team colour** (it takes `DEC-073`'s waitlist tone); confetti with no team colour; moment 5's data; the «+50» in the sequence |
+| The mechanism | `src/lib/ui/` does not exist; neither `confetti.ts` nor `useCountUp`. Both duration ramps exist (`--dur-*` and `--duration-*`); **15 keyframes** in `globals.css`, the marketing three untouched |
+| `trace` | **341 requirements · 168 stories · no gaps** (was 336 · 162). `REQ-UIX-044` names its five screens so gap report 2 needs no exemption |
+
+### The contracts
+
+| # | Contract | Owner | State |
+|---|---|---|---|
+| C1 | **The mechanism** — `src/lib/ui/`: `confetti.ts`, `useCountUp`, the once-per-occurrence keying, the duration reader; before any track's moment | lead → all | **to build** — while the three plan |
+| C2 | **Keyframes and tokens** — every `@keyframes` in `globals.css`, named in the plans, landed by the lead | lead → all | **published**; the keyframes land after sync 1 |
+| C3 | **The scope on a real screen** — wraps exactly the named surface, a direct child of the content, never transformed (`DEC-195` §1.3) | lead → every surface | **published** |
+| C4 | **The matrix decides, the moment plays** — `session-matrix.ts` and `lib/dal/rsvp.ts` stay `checkin`'s; a field is add-only on request | `sessions` ↔ `checkin` | **published** |
+| C5 | **What a member has seen** — moments 3 to 5 at first sight; «since last view» | `scoring` → lead | ★ **open — `scoring`'s plan, ruled at sync 1**; browser storage is not the default |
+| C6 | **The amount** — `getSessionAwardState()`'s pending figure, read, never re-derived | `scoring` → `checkin` | **published** — the DTO exists since wave 12 |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-195`; `REQ-UIX-043` amended, `REQ-UIX-044` … `048`; `STORY-UIX-027` … `032`; M18 and the programme's sequence in `14`; `09` §8's three `(auth)` rows; `07-tasks.md`; the map in `CLAUDE.md`; the ten agent files; this block; the branch; the draft PR | lead | **done** — see the commit and the PR below |
+| T0 | ★ **Baselines before any product commit**: `visual capture wave16-main` on `main`'s build; the register-form fingerprint's record from `main`; the five surfaces captured at 390 px as they are today | lead | todo |
+| L1 | **Contract 1** — `src/lib/ui/{confetti,count-up,moment,duration}.ts` with jsdom tests: reduced motion, node removal, no `will-change` after `finish`, **mount → play → unmount → mount → silence** | lead | todo |
+| L2 | Contract 2 — the keyframes the plans name (the stamp, the thud, the coin's drop and squash, the flame's flicker, the shine, the arrow's pulse), transform/opacity/filter only, off under reduced motion | lead | todo, after sync 1 |
+| L3 | ★ **The add-company form's colour** (`DEC-195` §3, `STORY-UIX-032`) — the named picker on the add form, the insert carries it, whether an insert is audited measured and written down, a test, a 390 px capture | lead, as `console`'s custodian | todo |
+| L4 | Any table contract 5 needs, from `0162`, with its RLS case and `02`'s text in the same commit | lead | only if sync 1 rules one |
+| E1 | ★ **Moment 1, الحجز**, on `SCR-012`'s action card, and the waitlisted variant (`REQ-UIX-045`) | `sessions` | todo — planning first |
+| K1 | ★ **Moment 2, تسجيل الحضور**, on `SCR-014` (`REQ-UIX-046`) | `checkin` | todo — planning first |
+| K2 | `code-input` adopted on `SCR-014` — the posted field and the no-JS path byte-identical (`DEC-195` §2.4) | `checkin` | todo |
+| K3 | The matrix's «حضرت» — a checked-in member is not offered check-in again (`DEC-195` §2.5), a ledger line | `checkin` | todo |
+| R1 | ★ **Moments 3 and 4** on the head of `SCR-022` (`REQ-UIX-047`) | `scoring` | todo — planning first |
+| R2 | ★ **Moment 5** on `SCR-027` and `SCR-028` (`REQ-UIX-048`) | `scoring` | todo — planning first |
+| M1 | ★★ Demonstrable — a throttled-CPU trace, **no frame over 16 ms**, moments 1 and 2, on a production build | lead | todo |
+| M2 | ★★ Demonstrable — a re-render test per moment: mount, play, unmount, mount again — silence; and a reload after moments 1 and 2 shows the static state | each track, the lead runs | todo |
+| M3 | ★ Demonstrable — every static state at 390 px in Arabic beside its animated counterpart, opened in bands; ★ **the owner shown the coin with and without its `1.06`** (`DEC-195` §6.20) | lead | todo |
+| M4 | ★ Demonstrable — `qa:contract` at every commit, `visual`'s public pairs at 0.000 % against T0, the fingerprint byte-identical, the public-graph test green | lead | todo |
+| G | The gates — tsc, lint (**grep `problems`**), `npm test`, `test:rls`, e2e, `qa`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict`; ★ **CI read from the run's own conclusion on the head** (`DEC-192`) | lead | todo |
+
+### Sync 1 — what the three plans must answer
+
+1. **The occurrence each moment is keyed on**, and how a remount with the same occurrence stays silent. For moments 1
+   and 2: what the action returns. For 3 to 5: contract 5.
+2. **The static state** each moment renders, in words, and where on the surface it sits.
+3. **The keyframes** each needs, by name and property — contract 2.
+4. **Every existing assertion that moves**, each to become a ledger line.
+5. **Any new disagreement with `docs/design/`**, with the file and the line.
+
+### For the owner, at the 390 px review — not before
+
+- ★ **Overshoot** (`DEC-186` §4, `DEC-195` §6.20): the coin with and without `1.06`, and whether the reaction's `1.22`
+  and the code box's `1.14` are wanted at all. Until then nothing overshoots but a sticker's `1.08`.
+- **A scoped surface beside an unscoped page** (`DEC-195` §1.3): if the dark action card looks wrong on a light event
+  page, the capture goes to the owner; the lead does not pick.
+
+### Carried — not this wave
+
+Session stories and the viewer · the timeline's recap, achievement and announcement items · proposal voting · the
+weekly leaderboard · the streak rule · every screen beyond the five surfaces, the home screen and the shell included ·
+the public site · the `(auth)` screens (the member-screens milestone's first three) · the desktop shell and leagues ·
+★ **the two carried gates, together** (`DEC-194`): the trigger-definer ACL sweep with its generated test, and wave 14's
+Storage-predicate gate · `REQ-REC-004` in a default org, where no level grants anything (`DEC-186` §7) · the eleven
+end-to-end failures `DEC-190` §6 carried, each its owner's · the unconfigured build's hanging sign-in prefetch
+(`DEC-192` §3) · deleting a session with its awarded points · wave 15's carried list, unchanged.
+
+### Untouched-suite ledger (wave 16)
+
+*Every pre-existing test assertion that changes this wave gets a line here, in the same commit as the change.* None
+yet.
+
+---
+
+## ★★ WAVE 15 — COMPLETE and LIVE (PR #33, `b9f2ca0b`; `0160`–`0161` pushed) — was on `wave-15/tokens-and-primitives` — the visual direction's foundation (`DEC-183`)
 
 **The first wave of a programme, not a one-off.** The specification is [`docs/design/`](../design/README.md); the
 brief is `docs/plan/notes/wave-15-lead.md`; the map is `CLAUDE.md` § *Ownership map (wave 15)*. Milestone **M17** —

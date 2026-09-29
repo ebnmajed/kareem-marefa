@@ -587,6 +587,48 @@ site's re-skin is the last of them, and it is **not** M13, which closed in wave 
 
 ---
 
+## M18 — the five moments · wave 16 · `DEC-195`
+
+**The moments land on the real screens** — the owner's ruling of 2026-09-29, which amends `DEC-183` §4.2(f): the
+surfaces the five moments touch adopt the playground now, and every other screen still waits. A moment cannot be
+verified in a gallery, because its definition is *when* it fires. `DEC-195` §1.1 names the five surfaces that move —
+`SCR-012`'s action card, `SCR-014`, the head of `SCR-022`, `SCR-027` and `SCR-028` — and §1.2 everything that does
+not, the five public routes, the shell and the home screen among them.
+
+| Work | Requirements |
+|---|---|
+| The shared mechanism — confetti, the count-up, the once-per-occurrence keying | `REQ-UIX-044` |
+| الحجز on `SCR-012`'s action card, and its waitlisted variant | `REQ-UIX-045` |
+| تسجيل الحضور on `SCR-014`, with `code-input` adopted and the truthful amount | `REQ-UIX-046` |
+| انتهت الجلسة and ترقية المستوى on `SCR-022` | `REQ-UIX-047` |
+| تغيّر الترتيب on `SCR-027` and `SCR-028` | `REQ-UIX-048` |
+| A company's colour chosen on the add form; no company logo | `REQ-UIX-043` |
+
+**Demonstrable:** a throttled-CPU trace with no frame over 16 ms for moments 1 and 2; a re-render test per moment
+that mounts, plays, unmounts, mounts again and hears silence; every static state at 390 px in Arabic beside its
+animated counterpart; and `qa:contract`, `visual`'s public pairs and the register form's fingerprint unmoved.
+
+**Not this milestone:** session stories, the timeline's new items, proposal voting, the weekly leaderboard, the
+streak rule, any screen beyond the five surfaces, the shell, the public site, the desktop shell, leagues, the
+certificates' look — and the two carried gates, which travel together (`DEC-194`).
+
+### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5)
+
+Each wave of the programme claims its milestone number when it opens (`DEC-183` §3). **The positions are fixed now;
+the numbers after M18 are the sequence as it stands, and move with it.**
+
+| Order | Milestone | Scope |
+|---|---|---|
+| 1 | **M17** — done, wave 15 | the foundation: tokens as a scope, the display face, the primitives, team colours |
+| 2 | **M18** — this wave, wave 16 | the five moments on their real surfaces |
+| 3 | M19, when it opens | session stories and their viewer (`DEC-093`'s seventh place) |
+| 4 | ★ **M20, when it opens — the member screens** | ★★ **opens with `SCR-002` sign-in, `SCR-003` choose-org and `SCR-004` no-access**, then the member screens in `09` §8's order. The three `(auth)` screens are neither behind sign-in nor public marketing, so a grouping by either skipped them twice (`DEC-129`, `DEC-195` §5); **they are placed here by name** |
+| 5 | when it opens | the console |
+| 6 | when it opens | the studio and the certificates' surroundings — the certificate itself keeps its look |
+| 7 | when it opens, **last** | the public site (`DEC-NEXT-5`, option A; `REQ-NFR-019` holds until then) |
+
+---
+
 ## 3. Dependencies
 
 ```mermaid

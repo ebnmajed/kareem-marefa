@@ -674,9 +674,9 @@ inventory screens have no route yet), and **49 pages under `app/[locale]/app/**`
 | Route | Screen | M | Note |
 |---|---|---|---|
 | `(marketing)/page.tsx` · `/register` · `[...rest]` | SCR-000 · SCR-001 | **M13** | The frozen contract, re-cut by `DEC-078`. Untouched before M13 |
-| ★ `(auth)/sign-in` | SCR-002 | **M9 ✗ NOT DONE — carried, `DEC-129`** | The first screen every member sees, and the only place `SC 3.3.8` applies |
-| ★ `(auth)/choose-org` | SCR-003 | **M9 ✗ NOT DONE — carried, `DEC-129`** | The fork that decides which `org_id` the session carries, permanently |
-| ★ `(auth)/no-access` | SCR-004 | **M9 ✗ NOT DONE — carried, `DEC-129`** | The product's only answer to «فتحت الرابط ولا شيء يعمل» |
+| ★ `(auth)/sign-in` | SCR-002 | **M9 ✓ done in wave 6** (`f8a977ca`, `DEC-130`) · ★ **the playground: the member-screens milestone, first** (`DEC-195` §5) | The first screen every member sees, and the only place `SC 3.3.8` applies |
+| ★ `(auth)/choose-org` | SCR-003 | **M9 ✓ done in wave 6** (`f8a977ca`, `DEC-130`) · ★ **the playground: the member-screens milestone, second** (`DEC-195` §5) | The fork that decides which `org_id` the session carries, permanently |
+| ★ `(auth)/no-access` | SCR-004 | **M9 ✓ done in wave 6** (`f8a977ca`, `DEC-130`) · ★ **the playground: the member-screens milestone, third** (`DEC-195` §5) | The product's only answer to «فتحت الرابط ولا شيء يعمل» |
 | `legal/privacy` · `legal/terms` | SCR-005 | **M13** | Public, and the home of the accessibility statement |
 | `verify/[code]` | SCR-006 | **M12** | Reached from a **printed** certificate; where `DEC-095`'s numeral bug fails silently |
 | ★ `s/[id]` | SCR-007 | **M10** | How members actually arrive — the WhatsApp entry path |
@@ -712,6 +712,12 @@ inventory screens have no route yet), and **49 pages under `app/[locale]/app/**`
 | `app/admin/exports` · `audit` · `settings` | SCR-061 … SCR-063 | **M11** | `exports` carries `REQ-INT-010`'s Western-digit rule |
 | `app/platform/**` (7 routes) | SCR-080 … SCR-085 | **M13** | Deferred from M11 — cosmetic work on screens only the owner sees |
 | `(dev)/ui` | — | **M9** | Not a product screen: the component gallery, 404 unless `KAREEM_GALLERY=1` (`DEC-083`) |
+
+★ **Corrected by `DEC-195` §5.** The three `(auth)` rows read «M9 ✗ NOT DONE» until wave 16, though wave 6 had
+rebuilt all three on the M9 system in `f8a977ca` (`sign-in` imports `button`, `icons`, `page-header` and `panel`).
+And M9 is in no grouping of the visual-direction programme — neither behind sign-in nor public marketing — so a lead
+planning the programme's screens from this table would have skipped them a second time. **They open the programme's
+member-screens milestone** (`14-roadmap.md`, «The programme's sequence»), whose number is claimed when it opens.
 
 **Leave, with a reason:** none. Every route is placed. Two screens in §7.1's inventory — SCR-019
 (`/app/members`, the directory) and the companies leaderboard — have **no route on disk yet**; they
