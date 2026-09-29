@@ -2390,3 +2390,297 @@ Consequences for my rendering, none of which changes the plan's shape:
   - a missed required day, before the end;
   - completed and paid.
   It produces eight captures at `wave12-checkin-{check-in,event}-{pending,pending-days,incomplete,paid}.png`.
+
+---
+
+# Wave 16 — plan (`DEC-195`, `REQ-UIX-046`, `REQ-UIX-044`, `REQ-UIX-035`, `REQ-CHK-018`, `REQ-UIX-015`)
+
+Planning only. Nothing under `src/`, `tests/`, `supabase/` or `messages/` has changed. Measured against the tree at
+`75e3fa05`, with the lead's `src/lib/ui/{moment,confetti,count-up,duration,reduced-motion}.ts` as they stood on disk
+while I read them (uncommitted then; I plan against their names and say below what I need from them).
+
+Three rows: **K1**, moment 2 on `SCR-014` · **K2**, `sessions'` `ui/code-input` adopted · **K3**, the matrix's «حضرت».
+No SQL. No migration. What check-in *decides* does not change.
+
+## 0 · Measured first
+
+### 0.1 · The flow today, submit to result
+
+1. `check-in/page.tsx:121` renders `<form action={submitCheckInForm.bind(null, locale, id)} noValidate>`. The code
+   posts as one hidden field, `code` (`components/checkin/code-input.tsx:51`).
+2. `check-in/actions.ts:14-30` Zod-parses it, calls `submitCheckIn()` (`lib/dal/checkin.ts:332`) → `check_in()`
+   (`0120_contract_5_switch.sql`), and **always redirects**: `?error=<key>&code=<code>[&conflict=]`, `?already=1`,
+   or `?success=1`.
+3. The page re-renders from the URL. `?success=1` draws a `role="status"` Panel «تم تسجيل حضورك»
+   (`page.tsx:90-96`), and `data.checkedInToday || success || already` puts `AwardState` before the form
+   (`page.tsx:66`, `DEC-174` Q6).
+
+★ **So nothing after the action knows a check-in *just* happened.** `?success=1` is a URL, and a URL is a render:
+a reload of it replays, and a shared or restored tab replays. It is the exact defect `DEC-195` §2.1 names.
+
+★ **The result the moment needs already exists and is dropped.** `check_in()` returns
+`{status: 'ok', check_in: to_jsonb(ci)}` (`0120:213`) — the whole row, **with its `id`**. `submitCheckIn()` keeps
+`method` and `arrived_at` and throws the id away (`checkin.ts:340`). K1 keeps it. No SQL moves.
+
+★ `already_checked_in` also returns a row with an id (`0120:121`). **It never plays**: it is not a new occurrence.
+
+### 0.2 · What `award-state.tsx` shows on this screen today
+
+`AwardState variant="section"` — a `region` named «نقاط هذه الجلسة», `data-award-state`, never a live region —
+read from `getSessionAwardState()` on every render, streamed behind `Suspense` (`page.tsx:61-65`). After a check-in
+on a one-day session it reads «50 نقطة بانتظارك» / «تُضاف إلى رصيدك عند انتهاء الجلسة.». `none` renders nothing.
+
+### 0.3 · The scope and the confetti layer
+
+- `ui/scope.tsx` is a `div.theme-play` that paints `background-color: var(--bg)` (`globals.css:360-400`) and
+  carries the portal landing. The layout's `<main>` is not transformed. **`PlayScope` becomes the page's one root
+  element** — a direct child of the screen's content, never transformed, filtered or clipped (contract 3).
+- `burstConfetti(host)` appends an `absolute inset-0` layer to `host` with **`overflow: visible`**, and particles
+  travel up to ~310 px. At 390 px that is a horizontal scroll for the life of the burst. **The host is therefore my
+  own stage element inside the scope**: `pointer-events-none absolute inset-0 overflow-clip`, `aria-hidden`, a
+  sibling of the coin and the lines — so no text line sits inside the clipping element, and the scope itself is
+  never clipped. (`overflow: clip` makes no scroll container.)
+
+## 1 · ★★ The occurrence — the check-in's id, from the action's own result
+
+**Two exported actions in `check-in/actions.ts`, sharing one private helper:**
+
+| | posted by | fresh success | already | refusal |
+|---|---|---|---|---|
+| `submitCheckInForm` — **unchanged, byte for byte** | the HTML form, **no JS** | `redirect(?success=1)` | `redirect(?already=1)` | `redirect(?error=…&code=…)` |
+| `checkInForMoment` — new | the hydrated form | **returns** `{ checkInId, arrivedAt }` and calls `refresh()` | the same redirect | the same redirect |
+
+- The form's `action` stays `submitCheckInForm` — so the server-rendered HTML, the posted field (`code`), its
+  name, the no-JS path and the server as the judge are byte-identical. A client wrapper
+  (`moment-check-in-form.tsx`) adds `onSubmit`: `preventDefault()` and, **synchronously**, `startTransition` around
+  `checkInForMoment(formData)`. I read React's dispatch (`react-dom-client.production.js:13567`): a
+  `defaultPrevented` submit runs **no** form action, and inside a transition it still marks the form pending, so
+  `useFormStatus` — the submit button's spinner — works. No form reset happens either (no action ran).
+- `refresh()` (`next/cache`, Server-Action-only) sends the page's fresh tree in the **same response**: one round
+  trip, and the router cache now holds the post-check-in page, so a **back navigation** onto `SCR-014` restores the
+  static state, not the stale form.
+- **The key is `momentKey("check-in", checkInId)` through the lead's `useMoment("check-in", checkInId)`**
+  (`src/lib/ui/moment.ts`). The id exists only in the client that performed the action, in React state held by the
+  screen's client surface.
+
+**Why each replay case is silent:**
+
+| Case | Why |
+|---|---|
+| Reload | no action ran → `checkInId` is `null` → `useMoment` answers `static` for good |
+| Back navigation (event page → `SCR-014`) | the component remounts with empty state → `null` → static; the cached tree is the refreshed one |
+| Remount with the **same** result (Strict Mode, a re-render, a restored prop) | `claimMoment()` has recorded the key, in memory and `sessionStorage` → `static` |
+| Another phone, tomorrow | no result → static |
+| The host's projector (`host/**`) | it renders nothing of the moment: it is another screen, frozen this wave |
+| No-JS | `?success=1` is served **static** — the URL is never a trigger |
+
+★ **While the transition is pending, the surface keeps the form in its pending state**, so a refreshed tree that
+lands a frame before the action's value can never paint the resting coin first.
+
+## 2 · ★★ The static state, in words — and the one truth
+
+On `SCR-014`, inside the dark scope, **whenever the member is checked in to the day the screen is about and no
+refusal applies** (`checkedInToday && !ineligibleReason`) — after the moment has run, on a reload, on a back
+navigation, under reduced motion, and on the no-JS `?success=1`:
+
+1. The screen's head, unchanged: «تسجيل الحضور», the session's title in `<bdi>`, the day line when there are days.
+2. **The coin at rest** — the lead's `CoinObject`, which carries no numeral (`DEC-187` §1), with
+   `amount="+<formatNumber(points)>"` **only** when the state is `pending` or `paid`. `none`, `incomplete` or a failed
+   read → **no number on the coin**. The coin is inside an `aria-hidden` wrapper, because line 2 says the figure.
+3. **Line 1 — «أنت هنا!»**, the display face in the accent colour, the section's `<h2>`.
+4. **Line 2 — the award, rendered by `AwardState`'s own body** (a new `variant="moment"`: the same message keys,
+   the same DTO, a `region` named «نقاط هذه الجلسة» with `data-award-state`, **no Panel and no visible heading**).
+   Pending one day: «50 نقطة بانتظارك» · «تُضاف إلى رصيدك عند انتهاء الجلسة.». A workshop that requires its days: the
+   days line and «… إن حضرت بقية الأيام». Paid and incomplete as the section says them. **`none`** after a check-in
+   means the session carries no attendance points (`0147:28` — a disabled or zero-point rule; a presenter cannot
+   check in), so this variant says **«لا نقاط حضور لهذه الجلسة.»** (a new key) — never «+0», never a figure.
+5. **Line 3 — the time**: «حضورك مسجَّل، <bdi>6:41 م</bdi>», `arrived_at` through `formatTime()` in the session's zone.
+6. **«إلى صفحة الجلسة»** — a link to `/app/sessions/[id]` (`DEC-093`: the moment is never the only way on).
+7. **No particles. No form** — the member is checked in to this day (day 2 of a workshop shows the form again).
+   **No live region on load**: a state present on arrival is content (`award-state.tsx:23-26`'s rule).
+   `role="status"` wraps the three lines **only** when the member arrived by submitting — the JS result, or the no-JS
+   `?success=1`. `?already=1` keeps its own status Panel «أنت مسجَّل بالفعل» above the static state.
+
+★ **One truth, said once.** The page no longer renders the separate `AwardState` section once the member is checked
+in to this day, and never renders the «تم تسجيل حضورك» Panel beside «أنت هنا!»: line 2 **is** `AwardState`, one code
+path, one DTO (`getSessionAwardState()`, read by the page — **never** by the action, never re-derived, never a query of
+`points_ledger`). The coin's figure is the same read, `aria-hidden`, so assistive technology hears the amount once.
+Before today's check-in, and after a refusal, the screen is exactly today's: the form, then the section.
+
+★ **The amount the moment draws comes from the refreshed server tree**, not from the action: the action returns the
+id and the time; the coin and line 2 arrive already rendered, in the same response.
+
+## 3 · The sequence (`03-motion.md` §2, `motion-story.html`'s «أنت هنا!» step) and the keyframes (contract 2)
+
+`useMoment` answers `playing` (first sight of this id, motion allowed):
+
+1. **Confetti** — `burstConfetti(stage, { teamColor })`, 44 particles, the lead's `confetti.ts`, never mine. The
+   colour is the member's company `team_color` (a new `teamColor` on `CheckInScreenData`, read from
+   `members → companies`; a failed read gives `null` → lime and bone, `DEC-195` §6.22 — decoration never breaks the
+   room's screen).
+2. **The coin drops** — a class on my wrapper around `CoinObject` (the object itself is never transformed).
+3. **The three lines rise in**, together.
+4. **Rest.** `done()` when the coin's `animationend` and `burst.finished` have both settled; the phase becomes
+   `static`, and the static render **is** the resting frame, so nothing jumps. Unmount mid-moment → `burst.cancel()`.
+
+**Keyframes I need from the lead** — transform and opacity only, durations and easing from tokens, both
+`animation: none` under reduced motion (and never applied then — `useMoment` answers `static`):
+
+| Name (lead's to choose) | Property | Frames | Timing |
+|---|---|---|---|
+| `play-coin-drop` | transform, opacity | `0%` `translateY(-240px) scale(.6) rotate(-18deg)`, opacity 0 → `60%` `translateY(0) scale(1) rotate(0)`, opacity 1 → `78%` `scale(1.02, .92)` → `100%` `none` | `--duration-party`, `--ease-play`, `both` |
+| `play-rise` | transform, opacity | `from` opacity 0, `translateY(8px)` → `to` opacity 1, `none` | `--duration-base`, `--ease-play`, delayed (§5, D2) |
+
+- ★ **The coin lands at `1` and keeps its squash** — no `1.06` (`DEC-195` §6.20). The rotation is `-18deg → 0`
+  because `CoinObject` already draws its own `-12deg` (`coin.tsx:33`); the prototype's `-30 → -12` is the same swing.
+  Transform origin: the centre, as the prototype. If the lead wants the owner's with-and-without capture (M3), a
+  second keyframe with `scale(1.06)` at `60%` is **the lead's capture-only variant**; I ship only the one above.
+- No `will-change` anywhere (`confetti.ts` sets none; a CSS animation needs none), asserted after `finish`.
+
+## 4 · K2 — `code-input` adopted, and K3 — «حضرت»
+
+### K2
+`page.tsx` imports `@/components/ui/code-input` with `name="code"`, `id="code-0"`, `label={t("codeLabel")}`,
+`positionLabels` from a new key («الخانة {position} من {total}», Western numerals through `formatNumber`),
+`defaultValue={code}`. The page's own `<label id="code-label">` goes (the primitive renders the label; the old group
+pointed at `code-0-label`, which never existed — `code-input.tsx:52` against `page.tsx:123`). **The refusal is tied
+to the boxes**: the error Panel keeps `role="alert"` and gains an id, and the group gets `invalid` +
+`aria-describedby` to it — the message is said once, in the Panel. The submit button becomes the lead's
+`ui/submit-button` inside the scope. **Posted field, its name, the no-JS path: byte-identical**; the alphabet stays
+the migration's (`0010:210`), unenforced here; the boxes do not pop. `src/components/checkin/code-input.tsx` is then
+unimported and deleted (`rm`). Normalisation differs, knowingly and in the primitive's favour: a pasted «M7K-3QX»
+or «M7K 3QX» now fills; any other character still appears, and `check_in()` judges it.
+
+### K3 — the matrix's answer (contract 4)
+`checkInIneligibleReason()`'s comment (`session-matrix.ts:241-246`) says the predicate does not consult
+`viewer.checkedIn`. **I do not change `checkInIneligibleReason()` or `checkInWindowAllowed()`** — the first is the
+check-in screen's own gate (which now shows the static state instead), and the second also feeds the **timeline's
+pinned card** (`browse/timeline-session.ts:205`), which is `SCR-010`, and `SCR-010` does not move (`DEC-195` §1.2).
+
+New, in `session-matrix.ts`: **`checkInOffer(session, viewer, allowWalkIns, checkInOpen, now) → "offer" | "recorded" | "none"`**,
+where `viewer` is `ViewerInput & { checkedInDayIds?: readonly string[] }`:
+
+- `recorded` — not a presenter, the state is one of the three attendance states, and the viewer holds an active
+  check-in **on the day `checkInDayFor()` resolves**: by `checkedInDayIds` when given; without them, by
+  `viewer.checkedIn` **only at one day or none**. A workshop without ids never reads `recorded` — it would hide
+  day 2's link from a member who attended day 1.
+- `offer` — not `recorded`, and `checkInWindowAllowed()`.
+- `none` — otherwise.
+
+`lib/dal/checkin.ts`: `checkInOfferFor()` re-exports it, and **`canOfferCheckInFor()` becomes
+`checkInOfferFor(…) === "offer"`** — so the event page's existing call (`sessions/event-check-in.ts:19`) stops
+offering the link to a checked-in member **with no change on `sessions'` side**. «حضرت» itself is `sessions'`
+rendering of `recorded` (`session-cta`'s `attended` state). For a workshop, `sessions` passes `checkedInDayIds`,
+which I add to `getRsvpPanelData()` **add-only** on their written request (a new parallel read of
+`check_ins.session_day_id`, active rows only).
+
+## 5 · Disagreements with `docs/design/` — new, not in `DEC-183` §4 or `DEC-195` §6
+
+- **D1 · The timed return fails `SC 2.2.1`.** `03-motion.md:30` — «holds 1.4s → returns to the event page». A timed
+  change of context the member cannot stop or extend is a Level A failure (`SC 2.2.1`; `F40`/`F41` are the same
+  shape), and `REQ-NFR-007` holds the product at AA. A screen-reader user would be moved away mid-sentence. **Not
+  picked by me**: the build rests on the static state with «إلى صفحة الجلسة», and a timer is one line if the owner
+  rules one — offered as «the owner is shown both» at the 390 px review.
+- **D2 · «copy fades in at 520ms»** (`03-motion.md:30`, `motion-story.html:600`) is not a token. The nearest the ramp
+  composes is `calc(var(--duration-slow) + var(--duration-fast))` = 540 ms. The lead picks the expression; no
+  literal enters `src/`.
+- **D3 · «the overlay»** (`03-motion.md:32`; the prototype's `.celebrate` over a check-in **sheet**,
+  `motion-story.html:170-172, 377`). `SCR-014` is a route, not a sheet, and the sheet's rise is a whisper this wave
+  does not build. The celebration **replaces the form in place**, inside the scope; no scrim.
+- **D4 · The pre-check-in «عند الحضور تكسب +50 تصل عند انتهاء الجلسة»** (`motion-story.html:388`). Before a check-in
+  `getSessionAwardState()` is `none` (no active check-in, `0147:28`), so contract 6 has no truthful figure to show
+  there. Not built; a figure before the check-in would need a read that does not exist.
+- **D5 · The event page's chip «+50 عند الانتهاء»** after «حضرت» (`motion-story.html:602`) — `sessions'` surface;
+  raised so their plan reads the amount from the same DTO, never a constant.
+
+## 6 · ★ Every existing assertion that moves — each a ledger line in the commit that moves it
+
+| # | File:line | Today | After | Owner |
+|---|---|---|---|---|
+| 1 | `tests/e2e/checkin.spec.ts:166` | `toHaveURL(/\?success=1$/)` | the URL stays `/check-in`; wait for the celebration's status | me |
+| 2 | `checkin.spec.ts:167` | status `toHaveText("تم تسجيل حضورك")` | status contains «أنت هنا!» | me |
+| 3 | `checkin.spec.ts:169-177` | a second visit re-submits → `?already=1` | a second visit shows the static state and **no form**; `?already=1` moves to a component test | me |
+| 4 | `checkin.spec.ts:288-297` | the **checked-in** attendee's «ready» capture | a member not yet checked in; same file name | me |
+| 5 | `tests/e2e/wave12-checkin-acknowledgement.spec.ts:212, 215` | as 1 and 2 | as 1 and 2 | me |
+| 6 | `wave12-checkin-acknowledgement.spec.ts:220-222` | the award box above the form | the award region inside the static state; no form | me |
+| 7 | `tests/e2e/wave9-checkin-days.spec.ts:241` | as 1 | as 1 | me |
+| 8 | `tests/e2e/sessions-screens.spec.ts:402-403` | as 1 and 2 | as 1 and 2 | ★ `sessions'` — a request |
+| 9 | `tests/e2e/wave12-demo-awards.spec.ts:125` | as 1 | as 1 | ★ the lead's — a request |
+| 10 | `tests/e2e/wave9-three-day-workshop.spec.ts:257` | as 1 | as 1 | ★ the lead's — a request |
+
+**Unmoved, checked:** `session-matrix.test.ts`, `checkin-day-window.test.ts` and `sessions-event-check-in.test.ts`
+(no case passes `checkedIn: true` to the link predicate); `award-state.test.tsx` (the two existing variants render
+as today); `checkin-screen-reads.test.ts` (it asserts fields, never the whole DTO, and no RPC — the team-colour read is
+a table read); `wave12-checkin-acknowledgement.spec.ts:230` (a fresh navigation has **no** status — still true);
+`wave9-checkin-days.spec.ts:255-256`; `checkin-gating.spec.ts:136, 155`. `budgets.spec.ts:62` — SCR-014's 80 KB JS
+budget gains the moment's client code (a few KB); the lead's run measures it.
+
+**The alternative that moves fewer:** the hydrated form could `router.replace("?success=1")` instead of `refresh()`,
+which keeps rows 1, 5 (`:212`), 7, 8, 9 and 10 green, at the cost of a **second round trip before the coin drops**,
+in the room. I recommend `refresh()`; the lead rules.
+
+## 7 · Tests and captures
+
+- **`tests/components/checkin/moment-check-in.test.tsx`** (jsdom, `Element.prototype.animate` stubbed):
+  ★★ **the re-render test** — mount with `checkInId: "a"` → playing (a confetti layer, 44 nodes, the coin's drop
+  class, `animate` called); finish every animation → nodes removed, layer gone, **no element with `will-change`**;
+  unmount; mount again with `"a"` → **silence** (no layer, no class, no `animate` call); a new id `"b"` plays ·
+  ★ **reduced motion** (`matchMedia` true) → the complete static state: the coin, the three lines, the link; no
+  layer, no `animate` call · ★ **a refusal does not animate** — no id → nothing animates, the boxes carry no animation
+  class · `none` → no number on the coin and **no `+0` anywhere** (`/\+\s*0(?!\d)/`), the no-points line · no Eastern
+  digit · `<bdi>` on the time and the figure.
+- **`tests/components/checkin/moment-check-in-form.test.tsx`** — a submit calls `checkInForMoment`, never
+  `submitCheckInForm`; the form's `action` attribute is still the no-JS action's.
+- **`tests/components/checkin/check-in-code.test.tsx`** — the group named by the visible label, each box
+  «الخانة n من 6», the refusal tied by `aria-describedby`, one hidden field `code`.
+- **`tests/unit/checkin-offer.test.ts`** — `offer` / `recorded` / `none` at one day, and at three: day 1 attended and
+  day 2 live → `offer`; ids absent at three days → never `recorded`.
+- **`tests/unit/checkin-actions.test.ts`** — both actions: every envelope → the same redirect URL as today; only a
+  fresh `ok` returns, and it returns the row's id.
+- **`tests/e2e/wave16-checkin-moment.spec.ts`** — the walk on a real session: check in → the moment plays (an init
+  script counts confetti layers and `getAnimations()`) → rest → ★ **reload: zero layers** → the event page → ★ **back:
+  zero layers** → a wrong code: zero layers, zero running animations · the same under `reducedMotion: "reduce"` · a
+  **no-JS context** posting the form → `?success=1` → the static state. Captures
+  `.qa-shots/rtl/wave16-checkin-check-in-{animated,static}.png`, phone, 390 × 844, honouring `E2E_SHOTS_DIR` —
+  `animated` at the moment's rest, `static` under reduced motion.
+- ★★ **`tests/e2e/wave16-checkin-moment-trace.spec.ts`** — the lead runs it on a production build: phone project,
+  CDP `Emulation.setCPUThrottlingRate` at 4×, a Chromium trace (`devtools.timeline` +
+  `disabled-by-default-devtools.timeline.frame`) around submit → rest; asserts **no presented frame over 16 ms** and
+  no dropped frame, and writes the trace beside the captures.
+
+## 8 · Files
+
+`check-in/{page,actions}.ts(x)` · new `components/checkin/moment-check-in.tsx` and `moment-check-in-form.tsx` ·
+`components/checkin/{session-matrix.ts,award-state.tsx}` · `components/checkin/code-input.tsx` deleted ·
+`lib/dal/checkin.ts` (`CheckInSuccess.checkInId`; `CheckInScreenData.{arrivedAt,teamColor}`; `checkInOfferFor()`) ·
+`lib/dal/rsvp.ts` add-only `checkedInDayIds`, on request · `messages/{ar,en}/checkin.json` — `checkin.moment.*`
+(`here`, `noPoints`, `recordedAt`, `toSession`) and `checkin.codePosition`, Arabic first · the tests above.
+
+## 9 · For the lead, and for `sessions`
+
+**Questions (sync 1):**
+1. **D1** — no timed return (my build), or the owner's 1.4 s hold? Shown both at the review?
+2. **§6** — `refresh()` (one round trip; rows 1, 5, 7 – 10 move) or `router.replace("?success=1")` (two)?
+3. **D2** — the delay's expression.
+4. The `none` line «لا نقاط حضور لهذه الجلسة.» — or silence, as `AwardState` keeps elsewhere?
+5. The scope is a dark block inside `<main>`'s gutter on a light page — the owner's call at the review
+   (`DEC-195` §1.3.2); I render it with the card radius and no full-bleed trick.
+
+**Requests:**
+- **Lead (contract 2):** `play-coin-drop` and `play-rise` as in §3.
+- **Lead:** rows 9 and 10 of §6, in your specs, once K1 lands.
+- **Lead (contract 1):** `confetti.ts` sets `overflow: visible` on its layer; a host that does not clip scrolls the
+  page sideways at 390 px. Worth a sentence in its header, since every caller must clip.
+- **`sessions`:** row 8 of §6 · render `recorded` as `attended` («حضرت») on the action card through
+  `checkInOfferFor()` · ask for `checkedInDayIds` if the card should be right on day 2 of a workshop · D5.
+
+**Defects found, not mine to fix this wave (each told, none fixed):**
+- **`check-in/actions.ts:6` omits `reservation_required`** from its known errors, and `CheckInError`
+  (`checkin.ts:317`) lacks it: a walk-in refused by the RPC reads «حدث خطأ» rather than the page's own sentence.
+  The file is mine, but the fix changes a no-JS redirect, which this wave holds byte-identical — **the lead rules**.
+- **Two `.maybeSingle()` reads of `check_ins`** — `lib/dal/rsvp.ts:61` (mine, add-only this wave) and
+  `lib/dal/sessions.ts:1098` (`sessions'`) — fail on a member with active check-ins on **two** days, and the error is
+  not read, so `checkedIn` is `false` from day 2 of a workshop. Latent in `relation` (which reads it only once
+  `ended`), real for anything that reads it during the session — K3's `checkedInDayIds` sidesteps it.
+- **The timeline's pinned card** (`browse/timeline-session.ts:205`) has K3's bug too, and reads `attended` as «any
+  row, removed or not». `SCR-010` is frozen; carried.
