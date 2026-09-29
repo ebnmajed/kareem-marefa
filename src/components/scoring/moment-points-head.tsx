@@ -177,7 +177,10 @@ export function MomentPointsHead(props: MomentPointsHeadProps) {
         </strong>
         {latched.delta ? (
           <span data-slot="delta" className="font-display text-play-sm font-extrabold text-accent pg-light:text-fg-heading">
-            <span aria-hidden="true">{latched.delta}</span>
+            {/* ★ A signed figure reads left to right: «+120», never «120+» (the lead's 390 px finding). */}
+            <bdi aria-hidden="true" dir="ltr">
+              {latched.delta}
+            </bdi>
             <span className="sr-only">{latched.deltaLabel}</span>
           </span>
         ) : null}

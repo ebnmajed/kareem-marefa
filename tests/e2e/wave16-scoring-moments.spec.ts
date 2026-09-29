@@ -160,6 +160,21 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: join(SHOTS, `wave16-scoring-${name}.png`) });
 }
 
+/**
+ * ★ Moment 4's shot is the LEVEL CARD, not the screen (the lead's finding: the level captures were the completion
+ * frame saved twice, because the card already sat inside the first viewport). The card, turned, at 390 px — after
+ * the turn for `animated`, the reached face with no shine for `static`.
+ */
+async function captureCard(page: Page, name: string) {
+  if (test.info().project.name !== "phone") return;
+  mkdirSync(SHOTS, { recursive: true });
+  await page.setViewportSize(PHONE);
+  const card = page.locator("#main [data-layout=flip]");
+  await expect(card.locator("[data-slot=flip-inner]")).toHaveClass(/rotate-y-180/);
+  await expect(card.locator("[data-slot=shine]")).not.toHaveClass(/moment-shine/);
+  await card.screenshot({ path: join(SHOTS, `wave16-scoring-${name}.png`) });
+}
+
 async function mark() {
   const { rows } = await db.query(`select * from public.member_seen_marks where member_id = $1`, [meId]);
   return rows[0] as Record<string, unknown> | undefined;
@@ -206,9 +221,9 @@ test("moments 3 and 4 — the head of SCR-022: a server paint is silent; the app
   expect((await mark())?.level_id).toBe(levels[1].id);
   await expect(one.page.locator("#main strong", { hasText: "120" })).toBeVisible();
   await expect(one.page.getByRole("group", { name: "مستوى جديد" })).toContainText("مشارِك نشِط");
+  // The animated shots are taken only after the moment has PLAYED — the counter above is above zero.
   await capture(one.page, "completion-animated");
-  await one.page.getByRole("group", { name: "مستوى جديد" }).scrollIntoViewIfNeeded();
-  await capture(one.page, "level-animated");
+  await captureCard(one.page, "level-animated");
 
   // ★ A reload: silent, and the occurrence is seen — no delta, one face.
   await one.page.reload();
@@ -245,14 +260,16 @@ test("moments 3 and 4 — the static state under reduced motion is complete, and
   await navigateInApp(calm.page, calm.page.locator("#main").getByRole("link", { name: "نقاطي", exact: true }).first(), /\/ar\/app\/me\/points$/);
   await expect(calm.page.locator("#main strong", { hasText: "120" })).toBeVisible();
   // The new balance, its delta and its words, the flame's line, the bar's line, the new face — and no motion.
-  await expect(calm.page.locator("#main [data-slot=delta]")).toContainText("+120");
+  await expect(calm.page.locator("#main [data-slot=delta] bdi[dir=ltr]").first()).toHaveText("+120");
   await expect(calm.page.getByText("120 نقطة جديدة منذ زيارتك الأخيرة")).toBeAttached();
   await expect(calm.page.getByRole("group", { name: "مستوى جديد" })).toContainText("مشارِك نشِط");
   await expect(calm.page.locator("#main [data-slot=level-bar]")).toContainText("صاحب أثر");
+  // ★★ The bar and its line state one fraction: «120 من 300» is a 0.4 fill.
+  await expect(calm.page.locator("#main [data-slot=level-bar]")).toContainText("120 من 300");
+  expect(await calm.page.locator("#main [data-slot=level-bar] [data-slot=fill]").evaluate((el) => (el as HTMLElement).style.transform)).toBe("scaleX(0.4)");
   expect(await animations(calm.page)).toBe(0);
   await capture(calm.page, "completion-static");
-  await calm.page.getByRole("group", { name: "مستوى جديد" }).scrollIntoViewIfNeeded();
-  await capture(calm.page, "level-static");
+  await captureCard(calm.page, "level-static");
   // Seen statically is seen.
   await expect.poll(async () => (await mark())?.points_total, { timeout: 15_000 }).toBe(120);
   await calm.context.close();

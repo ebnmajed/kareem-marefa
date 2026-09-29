@@ -337,13 +337,13 @@ export interface PointsHead {
   mark: PointsMark;
 }
 
-/** The bar's value within a level — `null` with no level. Exported for its unit test. */
+/** The bar's value — the balance out of the next level's threshold, EXACTLY the numbers its line says («120 من 300»).
+ *  ★ The picture and the words state one fraction (the lead's 390 px finding: a bar measured within the level's band
+ *  drew 10 % beside a line that said 40 %). Full at the top; `null` with no level. Exported for its unit test. */
 export function levelProgress(total: number, level: { threshold: number } | null, next: { threshold: number } | null): { value: number; max: number } | null {
   if (!level) return null;
-  if (!next) return { value: 1, max: 1 };
-  const span = next.threshold - level.threshold;
-  if (span <= 0) return { value: 1, max: 1 };
-  return { value: Math.min(span, Math.max(0, total - level.threshold)), max: span };
+  if (!next || next.threshold <= 0) return { value: 1, max: 1 };
+  return { value: Math.min(next.threshold, Math.max(0, total)), max: next.threshold };
 }
 
 type SeenRow = { points_entry_id: string | null; points_total: number | null; level_id: string | null };
@@ -434,7 +434,8 @@ export async function getPointsHead(locale: string): Promise<PointsHead> {
   const decided = decideCompletion(seen, { entryId, total }, unseenCompletionRow);
   const levelUp = decideLevelUp(seenLevel, level) && seenLevel && level ? { occurrenceId: level.id, held: seenLevel } : null;
 
-  // Where the bar starts: the balance last seen, inside the level last seen when the card is about to turn.
+  // Where the bar starts: the balance last seen, out of the threshold it was then heading for — the new level's own,
+  // when the card is about to turn.
   const fromProgressOf = (from: number): number => {
     const within = levelUp ? levelUp.held : level;
     const beyond = levelUp ? level : next;

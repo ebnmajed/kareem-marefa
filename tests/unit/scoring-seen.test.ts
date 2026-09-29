@@ -57,14 +57,15 @@ describe("decideLevelUp — moment 4", () => {
   });
 });
 
-describe("levelProgress — the bar's truth (D-26)", () => {
-  it("points into the level held, out of the level's span", () => {
-    expect(points.levelProgress(730, { threshold: 700 }, { threshold: 1500 })).toEqual({ value: 30, max: 800 });
+describe("levelProgress — the bar's truth (D-26), the same fraction its line states", () => {
+  it("the balance out of the next level's threshold — «730 من 1500»", () => {
+    expect(points.levelProgress(730, { threshold: 700 }, { threshold: 1500 })).toEqual({ value: 730, max: 1500 });
+    expect(points.levelProgress(120, { threshold: 100 }, { threshold: 300 })).toEqual({ value: 120, max: 300 });
   });
   it("full at the top; clamped at both ends; nothing with no level", () => {
     expect(points.levelProgress(2000, { threshold: 1500 }, null)).toEqual({ value: 1, max: 1 });
-    expect(points.levelProgress(1600, { threshold: 700 }, { threshold: 1500 })).toEqual({ value: 800, max: 800 });
-    expect(points.levelProgress(650, { threshold: 700 }, { threshold: 1500 })).toEqual({ value: 0, max: 800 });
+    expect(points.levelProgress(1600, { threshold: 700 }, { threshold: 1500 })).toEqual({ value: 1500, max: 1500 });
+    expect(points.levelProgress(-40, { threshold: 0 }, { threshold: 100 })).toEqual({ value: 0, max: 100 });
     expect(points.levelProgress(10, null, null)).toBeNull();
   });
 });

@@ -2699,3 +2699,13 @@ not in them) · `ui-lint` strict clean · `npm test` 3458 passed, 2 failed — `
   and the animation counter, not by a still.
 - **D-29 stands:** a level changes only in the nightly run, so on the day a session pays the bar can reach its end
   with no new level; the card turns on the first visit after the night.
+
+## The gate at `a9bd97df` and the lead's 390 px findings — fixed
+
+| Finding | Cause | Fix |
+|---|---|---|
+| desktop: three animations on a hard load | `/app` streams behind `loading.tsx` (`DEC-145`); a boundary React re-renders afresh is a client mount the hydration guard cannot see, over a truth already painted | each surface writes `data-moment-keys`; a first render that finds a VISIBLE element with its key leaves the occurrence unseen and tells nothing (`use-seen-moment.ts`), two jsdom cases |
+| phone: moment 5 did not play on the tab | the spec clicked before React owned the tab — a page load, correctly silent | `navigateInApp()` waits for React, proves the window survived; `settled()` before every silence assertion |
+| the delta read «120+» | the figure was not isolated left to right | `<bdi dir="ltr">`; `points-head.test.tsx` asserts «+120» |
+| ★★ the bar said 10 % beside «120 من 300» | the fill measured within the level's band, the line from zero | **the bar is now the balance out of the next threshold — the line's own numbers** (`levelProgress`); asserted in jsdom and in the spec (`scaleX(0.4)`). D-26 still holds: the truth, full only at the top or while a level is being reached |
+| the level shots were the completion frame twice | the card sat inside the first viewport | the level shots are the turned card itself (`captureCard`), asserting the turn and no shine |
