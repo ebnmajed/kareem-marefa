@@ -5019,3 +5019,24 @@ remount that is silent. **I no longer need R3.**
 - **`done`** is held in a ref inside the host, so the `animationend` handler never depends on its identity.
 - The moment test follows `tests/components/lib-ui/moment.test.tsx`'s pattern, with `resetMomentsForTests()` between
   cases.
+
+### W16.10 · Contract 4 — `checkin`'s «حضرت» answer (their note §4, `7fb0c18b`), as I will render it
+
+- **The link:** `canOfferCheckInFor()` becomes `checkInOfferFor(...) === "offer"`. `event-check-in.ts` calls it
+  unchanged, so a checked-in member stops getting the link with no edit of mine (that file is frozen for me this wave).
+- **«حضرت» on the card:** `action-card.tsx` calls `checkInOfferFor()` itself, with the same facts
+  `eventCheckInLink()` passes. On `"recorded"` it draws `session-cta` `attended` at the status position, with the
+  label `rsvp.attended` (read from `checkin`'s catalogue, never written). **Only while `can.attendanceOutcome` is
+  false.** Once the session has ended, `AttendanceOutcome` (`checkin`'s) already says «حضرت», and the card would
+  otherwise say it twice. **No chip and no note:** `AwardState` (`checkin`'s, `getSessionAwardState()`) already
+  states the amount and when it arrives, so a «+50» beside the face would be a second, possibly different, figure.
+- **Workshops:** I add `checkedInDayIds` to `getSessionForEvent()`'s DTO myself — `lib/dal/sessions.ts` is add-only
+  for me, as a new read of `check_ins.session_day_id` where `removed_at is null` — and pass it to `checkInOfferFor()`.
+  **No request to `checkin`.**
+- ★ **A defect in my frozen DAL, reported to the lead:** `sessions.ts:1098` reads the viewer's active check-in with
+  `.maybeSingle()`. A member with active check-ins on two days of a workshop has two rows, the read errors, the
+  error is not checked, and `checkedIn` reads `false`. Fixing it changes an existing read, which is not add-only, so
+  it is the lead's call. The new `checkedInDayIds` read does not depend on it.
+- **`sessions-screens.spec.ts:402-403` is mine.** When K1 lands I change the wait to the lead's sync-1 ruling
+  (`?success=1` is gone, the status is «أنت هنا!»), with its ledger line in the same commit. `checkin` tells me the
+  commit.
