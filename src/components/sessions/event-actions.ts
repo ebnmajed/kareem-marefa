@@ -48,3 +48,22 @@ export function primaryActionFor(input: PrimaryActionInput): PrimaryAction | nul
   if (input.canRate) return "rate";
   return null;
 }
+
+// ★ Wave 16 — «حضرت» (DEC-195 §2.5, contract 4, REQ-UIX-015). `checkin`'s
+// `checkInOfferFor()` answers `recorded` for a member already checked in to
+// today (per day, from `checkedInDayIds`). The card then draws `session-cta`'s
+// `attended` face while the session runs — once it has ended,
+// `AttendanceOutcome` says «حضرت» and the card must not say it twice — and
+// never the check-in link beside it.
+
+export type CheckInAnswer = "offer" | "recorded" | "none";
+
+/** Whether the card draws «حضرت» itself: recorded, and not yet the ended outcome's to say. */
+export function showsAttended(answer: CheckInAnswer, can: Pick<AffordanceCell, "attendanceOutcome">): boolean {
+  return answer === "recorded" && !can.attendanceOutcome;
+}
+
+/** The primary once the matrix has answered: a recorded check-in is never offered again. */
+export function primaryAfterCheckIn(primary: PrimaryAction | null, answer: CheckInAnswer): PrimaryAction | null {
+  return primary === "checkIn" && answer === "recorded" ? null : primary;
+}

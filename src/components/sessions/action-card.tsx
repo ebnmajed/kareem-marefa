@@ -11,11 +11,13 @@ import { ActionBar } from "@/components/sessions/action-bar";
 import { MomentPart, ReserveMoment, ReserveRefused } from "@/components/sessions/moment-reserve";
 import { dayLabel } from "@/components/sessions/day-label";
 import { formatDate, formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
-import type { PrimaryAction } from "@/components/sessions/event-actions";
+import { primaryAfterCheckIn, showsAttended, type PrimaryAction } from "@/components/sessions/event-actions";
 import { SessionDownload } from "@/components/sessions/session-download";
 import { ShareLink } from "@/components/sessions/share-link";
 import type { SlotProps, SlotSummary } from "@/components/sessions/slots";
 import { buttonClass } from "@/components/ui/button";
+import { SessionCta } from "@/components/ui/session-cta";
+import { checkInOfferFor } from "@/lib/dal/checkin";
 import { ClockIcon, DownloadIcon, PinIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { Progress } from "@/components/ui/progress";
@@ -80,7 +82,22 @@ export interface ActionCardProps {
 }
 
 export async function ActionCard(props: ActionCardProps) {
-  const { session, phase, can, rsvp, primary, slot, locale } = props;
+  const { session, phase, can, rsvp, slot, locale } = props;
+  // ★ Contract 4 (DEC-195 §2.5): the matrix's answer for a member already checked in to today — with the
+  // days, so a workshop's day 2 is not answered by day 1's check-in.
+  const checkIn = checkInOfferFor(
+    { ...session, days: props.days },
+    {
+      isPresenter: session.viewerIsPresenter,
+      isStaff: session.viewerIsStaff,
+      rsvpStatus: session.rsvpStatus,
+      checkedIn: session.checkedIn,
+      checkedInDayIds: session.checkedInDayIds,
+    },
+    session.allowWalkIns,
+    session.checkInOpen,
+  );
+  const primary = primaryAfterCheckIn(props.primary, checkIn);
   const [t, tRsvp, momentLabels] = await Promise.all([getTranslations("sessions.event"), getTranslations("rsvp"), reserveMomentLabels(slot)]);
 
   const showSeats =
@@ -141,6 +158,7 @@ export async function ActionCard(props: ActionCardProps) {
 
           <RsvpStatus {...slot} between={calendarInBooked ? <PrimaryControl action="calendar" placement="card" session={session} slot={slot} labels={labels} /> : undefined} />
           <ReserveRefused />
+          {showsAttended(checkIn, can) ? <SessionCta state={{ kind: "attended" }} label={tRsvp("attended")} /> : null}
           {can.attendanceOutcome ? <AttendanceOutcome {...slot} /> : null}
           {/* `checkin`'s acknowledgement (REQ-CHK-018, contract 1): self-gated on
               its own DTO, so the card mounts it unconditionally — `checkin` owns
