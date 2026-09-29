@@ -162,6 +162,8 @@ export function SessionCta({ state, label, chip, pendingLabel, pending, classNam
             label={label}
             chip={chip ? <Chip tone="face">{chip}</Chip> : undefined}
           />
+          {/* wave 16 (R4, DEC-197): the calendar, between the fact and the cancel — `16` §5.4.2's order. */}
+          {state.between}
           <Act act={cancel.act} variant="secondary" size="md" describedBy={cancel.note ? noteId : undefined}>
             {cancel.label}
           </Act>
