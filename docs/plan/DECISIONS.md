@@ -4790,3 +4790,21 @@ Structural, with no colour in them: `rounded-pill` (999 px), `rounded-input` (12
 6. **The PR is marked ready when a run concludes `success` on the head commit, and not before.**
 
 - **Documents changed:** `STATUS.md` (row G, the header, the carried list)
+
+---
+
+## DEC-193 — Wave 15 rehearsed on production's schema: the gap is proved, the audit trigger is sound and not on the newest pattern, and nothing was measured on a build Vercel made
+
+- **Date:** 2026-09-29 · **Decided by:** the wave-15 lead, rehearsing on the owner's dump at the owner's written brief
+- **Adds to:** `DEC-190` … `DEC-192`. The full record is `STATUS.md`'s wave-15 block, «the owner's order», step 1.
+
+1. **`0160` and `0161` apply cleanly to production's schema**, each in one transaction with `ON_ERROR_STOP`, as `postgres`, on a dump taken at `0159` with no data rows. The end state matches the fully migrated local database in policies (187), triggers (114), client table grants (258), column grants (1385), buckets (8) and `companies`' shape. **The one difference is production-only**: Supabase's own `rls_auto_enable()`.
+2. ★ **«In the gap nothing moves» is proved.** `team_color` appears nowhere on `main`. `main` writes `companies` in two statements — `insert({ org_id, name })` and `update({ deactivated_at })` — and on the rehearsed schema each leaves `audit_log` as it was. **What the sentence does not cover:** an admin's hand-made request could set the column in the gap; it would be checked and audited.
+3. ★ **`0161`'s function is sound and is not what the owner's brief expected to be shown.** It is `SECURITY DEFINER` with an empty search path and cannot be reached: a direct call answers `0A000` for every client role, PostgREST answers `404`, and no client role may create in `public`. **But its `EXECUTE` is not revoked from `PUBLIC`**, and `definer-exposure.test.ts` does not list it, because that test lists the definer functions that are not trigger functions. It has the ACL of 58 of `public`'s 60 trigger definers, which `DEC-152` swept and accepted — and not that of wave 14's two, which revoke (`0158:157`, `0159:177`). **The lead promoted `console`'s proposal unchanged and did not bring it onto the newer form.** A revoke was rehearsed as a candidate and is harmless: the trigger still fires, and a direct call answers `42501`. **It is not in the PR; whether it becomes `0162` is the owner's.**
+4. ★ **The owner's statement with no session is audited as `system`** — a null actor, the role `system`, the old and the new value — and an admin's names the admin. The check refuses eight malformed values, upper-case hex among them: **the stored form is lower case.** The no-session case was missing from the permanent suite and is added (`tests/rls/team-colour.test.ts`).
+5. ★★ **The evidence that nothing a member sees changes was measured on this machine's builds, never on Vercel's.** On the PR's head, `ea241bd8`: `qa:contract` 38/38, `qa:appearance` 19/19, `visual` 0.000 % on the six public pairs, the fingerprint byte-identical to `main`'s record — `main` being a build whose product tree is `origin/main`'s. CI's Linux build passed `qa` and the end-to-end suite on the head; it runs neither `visual` nor the comparison with `main`. The Vercel preview is behind Vercel's sign-in and was not read. **Until this entry the visual and the fingerprint had been measured on `87f79031`, not on the head**; the two differ by a CSS comment.
+6. **What does change on the public routes, none of it visible:** inert `pg:` names in controls' `class` attributes, about 15 KB of scope rules in a 109 KB stylesheet, and the display face declared in the font stylesheet. No display-face file is fetched or preloaded on `/ar`, `/en` or `/ar/register`, and no element wears the scope.
+7. ★ **A rule for the record that follows a measurement: name the commit it was taken on, and say when the head is another.** `DEC-191` §4 did; the owner's order before this entry did not.
+8. **Deleted:** the dump, the throwaway database, the one-off proof. **Not pushed:** the commit that carries this entry.
+
+- **Documents changed:** `STATUS.md` (the owner's order, the header)

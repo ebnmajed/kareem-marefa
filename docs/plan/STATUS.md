@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-28 · **Branch:** `wave-15/tokens-and-primitives` (cut from `main` at `dfcfea3` — `origin/main` `34713cb` plus the brief's unpushed correction, which rides on this branch) · **`main`:** wave 14 merged and live; production at **`0159`** · **Phase:** ★★ **WAVE 15 — SYNC 1 DONE, building (`DEC-183` … `DEC-192`, M17, migrations `0160` – `0161`)**: the first wave of the visual-direction programme «ساحة اللعب» (`docs/design/`). The owner's decision gate is **closed** — everything in scope, the playground's motion **reverses `DEC-100`**, the public site moves last, and this programme replaces the member-path UI/UX wave. This wave is **the foundation only, and nothing visible changes**: the tokens as a scope, the display face, the 37 primitives migrated, ten new ones, nine glyphs, six objects, and team colours. ★ Step 0 found **seventeen places where `docs/design/` and the tree disagree** (`DEC-183` §4) — a literal merge of `tokens.css` would have moved the public site. ★ **Draft PR #33** is open and CI is green on it. ★ **The owner approved Step 0 (`DEC-184`)**. ★ **Sync 1 is done (`DEC-186`)**: four plans approved; the scope reassigns today's context variables and adds a `pg:` variant; **five** primitives reach the public site, not eight; the status colours stay `DEC-073`'s; no new keyframe this wave. ★ **The display face is in** (`DEC-185`) and nine glyphs. ★★ **WAVE 15 IS COMPLETE — PR #33, the owner merges** (`DEC-190` … `DEC-192`). **CI concluded `success` on `0812a17a`** (run `36457593121`, all eleven jobs). ★ **The lead had written that CI was green while one job was still running and failing; `DEC-192` corrects it** — the failure was the wave's own spec on an unconfigured build, not the product. The lead's gates are green at `87f79031`, the last commit that changes product code: 37 primitives migrated, ten new ones, `0160` and `0161`; contract 5 closed — the public routes at 0.000 %, not re-baselined, and 29,608 computed values byte-identical to `main`'s; RLS 1,345 from a fresh reset. **The owner's order is below: rehearse `0160` and `0161`, push, merge, reconnect Railway.** Nothing visible changed; the next wave of the programme claims its own milestone.
+**Last updated:** 2026-09-29 · **Branch:** `wave-15/tokens-and-primitives` (cut from `main` at `dfcfea3` — `origin/main` `34713cb` plus the brief's unpushed correction, which rides on this branch) · **`main`:** wave 14 merged and live; production at **`0159`** · **Phase:** ★★ **WAVE 15 — SYNC 1 DONE, building (`DEC-183` … `DEC-193`, M17, migrations `0160` – `0161`)**: the first wave of the visual-direction programme «ساحة اللعب» (`docs/design/`). The owner's decision gate is **closed** — everything in scope, the playground's motion **reverses `DEC-100`**, the public site moves last, and this programme replaces the member-path UI/UX wave. This wave is **the foundation only, and nothing visible changes**: the tokens as a scope, the display face, the 37 primitives migrated, ten new ones, nine glyphs, six objects, and team colours. ★ Step 0 found **seventeen places where `docs/design/` and the tree disagree** (`DEC-183` §4) — a literal merge of `tokens.css` would have moved the public site. ★ **Draft PR #33** is open and CI is green on it. ★ **The owner approved Step 0 (`DEC-184`)**. ★ **Sync 1 is done (`DEC-186`)**: four plans approved; the scope reassigns today's context variables and adds a `pg:` variant; **five** primitives reach the public site, not eight; the status colours stay `DEC-073`'s; no new keyframe this wave. ★ **The display face is in** (`DEC-185`) and nine glyphs. ★★ **WAVE 15 IS COMPLETE AND REHEARSED — PR #33, the owner merges** (`DEC-190` … `DEC-193`). ★ **Rehearsed 2026-09-29 on the owner's production schema dump: `0160` and `0161` apply cleanly and the end state matches**; the gap, the audit write, the `system` actor and the evidence for production are each in the owner's order below. ★ **One commit of this branch is not on GitHub** — the rehearsal's record; the owner chooses whether to push it. **CI concluded `success` on `0812a17a`** (run `36457593121`, all eleven jobs). ★ **The lead had written that CI was green while one job was still running and failing; `DEC-192` corrects it** — the failure was the wave's own spec on an unconfigured build, not the product. The lead's gates are green at `87f79031`, the last commit that changes product code: 37 primitives migrated, ten new ones, `0160` and `0161`; contract 5 closed — the public routes at 0.000 %, not re-baselined, and 29,608 computed values byte-identical to `main`'s; RLS 1,345 from a fresh reset. **The owner's order is below: rehearse `0160` and `0161`, push, merge, reconnect Railway.** Nothing visible changed; the next wave of the programme claims its own milestone.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -139,21 +139,139 @@ screens waves now, and the member path still has no inventory (`DEC-181` §5) ·
 points · the generated gate for Storage read predicates (wave 14's proposal, below) · revoking `avatar_url` from the
 grant, the view and `me()` · wave 14's and wave 12's carried lists, unchanged.
 
-### ★ The owner's order (wave 15) — a draft, written at Step 0
+### ★ The owner's order (wave 15) — rehearsed 2026-09-29 (`DEC-193`)
 
 **Two migrations, `0160` and `0161`, additive:** one nullable column with a check, and one trigger that audits a
-change to it. No existing function changes, no policy changes, no bucket. `main`'s app selects `companies` by
-column name, `main`'s worker does not read the column, and neither ever writes it — so the trigger's `when` is
-never true and **in the gap nothing moves**.
+change to it. No existing function changes, no policy changes, no bucket.
 
-1. **Rehearse `0160` and `0161`** on a production schema dump, as in waves 12 – 14.
-2. **Push**, then `supabase migration list --linked` must read `0161` on both sides.
-3. **Merge the PR** (the owner's; denied to every session).
-4. **Reconnect Railway** — `railway service source connect`, the **tenth** consecutive merge to need it; the durable
-   fix is the dashboard's Settings → Source. ★ `● Online · Building` and `● Online · Deploying` both begin with
-   «Online»: wait for the status with **no suffix**.
-5. **The team colours**, when the owner chooses: on `SCR-048`, or one scoped statement after reading the rows. **Not
-   a migration.** Either way `0161` writes the audit row; a statement run with no session is recorded as `system`.
+#### ✅ Step 1 — the rehearsal on the owner's production schema dump (2026-09-29, by the lead)
+
+- **Setup.** The dump was taken at `0159` (`public` + `graphile_worker`, 88 tables, **no data rows** — zero
+  `COPY`/`INSERT`). It was loaded into a throwaway database, `rehearse15`, in the local cluster, owned by `postgres`
+  with `public` owned by `pg_database_owner` **as in production**, over the local `extensions`, `auth`, `storage`,
+  `realtime` and `vault` schemas (loaded as `supabase_admin`). `0160` and `0161` name nothing in `storage` or
+  `realtime`, so the local chain's 17 policies there are the ones `0159` had. Copied, because a schema-only dump drops
+  them and production has them: 8 bucket rows, `graphile_worker.migrations`' 20, `retention_periods`' 7.
+- **Loading the dump: two errors, neither production's.** The `supabase_realtime` publication, platform-only as in
+  waves 12 – 14. And `members_auth_user_id_fkey`, refused because the local `auth` schema was loaded tables first
+  and keys after — **the rehearsal's own load order**; the constraint was added, verbatim, once `auth.users` had its
+  key.
+- **Migrations.** `0160` and `0161` were **each applied in one transaction with `ON_ERROR_STOP`, as `postgres`.
+  Both ok.** What they changed on production's schema, and nothing else: the column and its check, three column
+  grants to `authenticated` (INSERT, SELECT, UPDATE — the table's own, extended to the new column), one function,
+  one trigger.
+- **End state against the fully migrated local database:**
+
+  | Compared | local | rehearsed |
+  |---|---|---|
+  | Public function bodies, by hash | 305 | 306 |
+  | Policies in `public`, `storage` and `realtime` | 187 | 187, identical |
+  | Triggers in `public`, `storage`, `auth`, `realtime` | 114 | 114, identical |
+  | Client-role table grants (`public`, `storage`, `graphile_worker`) | 258 | 258, identical |
+  | Client-role column grants | 1385 | 1385, identical |
+  | Function execute grants (the three client roles and `PUBLIC`) | 345 | 346 |
+  | Buckets | 8 | 8, identical |
+  | `companies`: columns and constraints | 11 | 11, identical |
+
+  ★ **The only difference is production-only and expected:** `rls_auto_enable()`, Supabase's own event-trigger
+  function, in no migration — one function body and its default execute grant. (The counts are larger than wave
+  14's because this comparison also reads `auth`'s and `storage`'s triggers, `storage`'s and `graphile_worker`'s table
+  grants, and `PUBLIC`'s execute grants.)
+- **The wave's RLS suites against the rehearsed schema: 136/137** (`team-colour`, `team-colour-audit`,
+  `definer-exposure`, `isolation`, `tenancy` and the one-off proof). The one red is `definer-exposure` listing
+  `rls_auto_enable()`, the production-only difference above.
+- **Cleaned up:** the dump, `rehearse15`, the one-off proof test and the rehearsal's copies of the local schemas are
+  deleted.
+
+★ **The four things proved specifically:**
+
+1. **The gap — «nothing moves» between the push and the merge — proved, not asserted.**
+   - **No code path on `main` writes the column.** `team_color`, in any spelling, appears **nowhere** on `origin/main`
+     (`34713cb`) or local `main`: not in `src/`, `worker/`, `packages/`, `supabase/`, `scripts/` or `tests/`.
+   - **`main` writes `companies` in exactly two statements**, both in `src/lib/dal/admin-lists.ts`: `insert({ org_id,
+     name })` (`:101`) and `update({ deactivated_at })` (`:110`). Its ten other references are `select`s naming their
+     columns. No worker task, no package and no SQL function in `main`'s migrations writes the table.
+   - **On the rehearsed schema, as an admin:** `main`'s `UPDATE` leaves `audit_log` for the org exactly as it was;
+     `main`'s `INSERT` succeeds with `team_color` null and writes no audit row; `main`'s `SELECT` reads the three
+     columns it names. The trigger's `when (old.team_color is distinct from new.team_color)` is false for both writes.
+   - **What is NOT covered by «nothing moves», said plainly:** in the gap an org admin could set the column by a
+     hand-made request, since `p2_admin_update` admits it. It would be checked and audited. No screen offers it
+     until the merge.
+2. ★ **The audit write against invariant 9 — sound, and NOT on the newest pattern.**
+   - `companies_team_color_audit()` on production's schema: `SECURITY DEFINER`, `search_path=""`, returns `trigger`,
+     owned by `postgres`, which also owns `write_audit()`. `write_audit()`'s ACL is `{postgres, service_role}`.
+     `audit_log` grants `authenticated` `SELECT` and nothing else; an `insert`, `update` or `delete` by an admin, by
+     `service_role` and by `anon` each answers `42501`.
+   - ★ **Its ACL is the default: `EXECUTE` to `PUBLIC`. It is not revoked.** That is the form of 58 of the 60 trigger
+     definers in `public`, `org_domains_audit()` among them, and the one `DEC-152` swept and accepted («a trigger
+     function … Postgres refuses to call directly whatever its ACL»). **But wave 14's two — `0158:157`, `0159:177` —
+     do revoke, and `0161` did not follow them.** The lead promoted `console`'s proposal with its body unchanged and
+     did not add the line.
+   - ★ **`definer-exposure.test.ts` does not enumerate it, by design**: it lists `SECURITY DEFINER` functions that are
+     **not** trigger functions (`prorettype <> 'trigger'`).
+   - **It cannot be reached, proved three ways.** A direct call as `anon`, as `service_role`, as a member and as an
+     admin answers `0A000`. PostgREST does not expose it: `POST /rest/v1/rpc/companies_team_color_audit` answers
+     `404 PGRST202` to the anon key and to the service key. And no client role may `CREATE` in `public`, so none can
+     attach it to a table of its own.
+   - ★ **A candidate, rehearsed and NOT in the PR:** `revoke execute on function
+     public.companies_team_color_audit() from public, anon, authenticated, service_role;` — applied to the rehearsed
+     schema in one transaction: the ACL becomes `{postgres}`, the trigger still fires for an admin and for a statement
+     with no session, and a direct call answers `42501` instead of `0A000`. **Whether it goes in as `0162` is the
+     owner's**; it closes no hole and it ends the inconsistency.
+3. ★ **The owner's statement is audited as `system`.** On the rehearsed schema, as `postgres` with no
+   `request.jwt.claims`: `update public.companies set team_color = '#c6ff3d' where id = …` writes one row —
+   `actor_id` **null**, `actor_role` **`system`**, `before {teamColor: null}`, `after {teamColor: "#c6ff3d"}`. The same
+   `UPDATE` as an admin names that admin's member id and the role `admin`. **The check refuses** `#C6FF3D`, `c6ff3d`,
+   `#c6ff3`, `#c6ff3dd`, `red`, the empty string, `#c6ff3g` and `rgb(198,255,61)` with `23514`, for the owner with no
+   session too, and writes no audit row for any. ★ **The value is lower case.** The no-session case was missing from
+   the permanent suite; it is in `tests/rls/team-colour.test.ts` now, 16 ✓ locally and on the rehearsed schema.
+4. ★★ **What a member sees on production after the merge — and what the evidence is, and is not.**
+   - **Measured on the PR's head itself, `ea241bd8`** (until now the visual and the fingerprint had been measured on
+     `87f79031`, which differs from the head by one five-line CSS comment in the product tree): `qa:contract` 38/38,
+     `qa:appearance` 19/19, `visual` **0.000 %** on the six public pairs, and the computed-style fingerprint
+     **byte-identical** to `main`'s record.
+   - **What «`main`» was:** a build of local `main` `dfcfea3`, whose product tree is identical to `origin/main`
+     `34713cb` — they differ by one file under `docs/`. `origin/main` is an ancestor of the PR's head, so the tree a
+     merge produces is the head's tree.
+   - ★ **NONE OF IT WAS MEASURED ON A BUILD VERCEL MADE.** Every build was `next build` on this machine (macOS, arm64,
+     Node 25), served by `next start` behind the QA stub, and read by Chrome and Playwright's Chromium on the same
+     machine. Vercel builds on Linux with its own Node and the production environment. CI's Linux build passed `qa`
+     57/57 and the end-to-end suite on the head; **CI runs neither `visual` nor the comparison against `main`'s
+     record.** The PR's Vercel preview exists and is behind Vercel's sign-in (`302` to `vercel.com/sso-api`), so it
+     was not read, and its protection was not worked around.
+   - **What the claim rests on beyond the pictures:** outside the scope every class a primitive had is still there,
+     and what was added matches only inside `.theme-play`; `globals.css` with the playground's block taken out
+     hashes to `main`'s file; the scope's class is nowhere in the public import graph. These are properties of the
+     source, which Vercel builds from.
+   - ★ **What DOES change on the public routes, none of it visible:** the HTML is not byte-identical — a control's
+     `class` carries the inert `pg:` names (151 on `/ar`, 50 on `/ar/register`); the stylesheet carries about 15 KB
+     more of rules that name the scope, of 109 KB (19.6 KB gzipped in all); the font stylesheet declares the display
+     face. **On `/ar`, `/en` and `/ar/register` no display-face file is fetched, none is preloaded, no face but IBM
+     Plex loads, and no element wears the scope.**
+   - **Browsers other than Chromium were not measured**, this wave or before. Equality of computed style is between
+     two builds in one browser.
+
+#### The owner's steps
+
+★ **Before step 1, and the owner's choice:** this branch has **one commit that is not on GitHub** — this record,
+`DEC-193`, and three cases in `tests/rls/team-colour.test.ts`. It changes no product code and no migration. Pushing it
+(`git push origin wave-15/tokens-and-primitives`, as `ebnmajed`) starts a CI run that must **conclude** `success`
+before the merge; leaving it means the record lands with a later wave. **No session pushed it.**
+
+1. **Push the migrations**, from `main`'s checkout with this branch's `supabase/migrations/`: `supabase db push --linked`
+2. **Verify `0161` on both sides:** `supabase migration list --linked` — the last row must read `0161 | 0161`.
+3. **Merge PR #33:** `gh pr merge 33 --merge` (the owner's; denied to every session). CI concluded `success` on
+   `ea241bd8`, run `36458392548`, all eleven jobs, and `gh pr checks 33` read 13 pass, 0 fail, 0 pending on 2026-09-29.
+4. **Reconnect Railway:** `railway service source connect` — the **tenth** consecutive merge to need it; the durable
+   fix is the dashboard's Settings → Source. The worker's code does not change this wave; the reconnect keeps the
+   worker on `main`.
+5. **Wait for plain ● Online.** `● Online · Building` and `● Online · Deploying` both begin with «Online»: wait for
+   the status with **no suffix**: `railway status`.
+
+**Not part of this sequence — the team colours.** They are the owner's separate choice, whenever the owner makes it:
+on `SCR-048`, or one scoped statement after reading the rows (`supabase db query --linked "select id, name,
+team_color from public.companies order by name"`, then an `update … where id = '…'` with a **lower-case** `#rrggbb`).
+**Never a migration.** Either way `0161` writes the audit row.
 
 ### Untouched-suite ledger (wave 15)
 

@@ -106,3 +106,49 @@ describe("POL-companies.team_color", () => {
     });
   });
 });
+
+// ★ The owner's own statement (`STATUS.md`, the owner's order; DEC-193). The colours may be set
+// on SCR-048 or by one scoped statement run with NO session — `supabase db query --linked`. The
+// audit is a trigger, so that path is audited too, and this is the case that says how: a null
+// actor and the role `system` (`write_audit()`, 0005). Found missing at the wave-15 rehearsal.
+describe("POL-companies.team_color_audit — a write with no session", () => {
+  it("★ is recorded with a null actor and the role `system`", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.asOwner();
+      const [who] = await tx.q<{ claims: string | null }>(`select nullif(current_setting('request.jwt.claims', true), '') as claims`);
+      expect(who.claims).toBeNull();
+      await tx.q(`update public.companies set team_color = '#c6ff3d' where id = $1`, [f.a.companyId]);
+      const rows = await tx.q(
+        `select actor_id, actor_role, subject_type, subject_id, before, after from public.audit_log
+          where org_id = $1 and action = 'company.team_color_changed'`,
+        [f.a.id],
+      );
+      expect(rows).toEqual([
+        { actor_id: null, actor_role: "system", subject_type: "company", subject_id: f.a.companyId, before: { teamColor: null }, after: { teamColor: "#c6ff3d" } },
+      ]);
+    });
+  });
+
+  it("main's own UPDATE — `{ deactivated_at }` — with no session writes no audit row at all", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.asOwner();
+      const before = await tx.q(`select count(*)::int as n from public.audit_log where org_id = $1`, [f.a.id]);
+      await tx.q(`update public.companies set deactivated_at = now() where id = $1`, [f.a.companyId]);
+      expect(await tx.q(`select count(*)::int as n from public.audit_log where org_id = $1`, [f.a.id])).toEqual(before);
+    });
+  });
+
+  it("the trigger's function cannot be called directly, by any client role", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      for (const become of [() => tx.asAnon(), () => tx.asServiceRole(), () => tx.as(f.a.members[0].claims), () => tx.as(f.a.admin.claims)]) {
+        await become();
+        // `0A000` while the function keeps the default ACL (Postgres refuses to call a trigger
+        // function directly), `42501` once EXECUTE is revoked. Either is a refusal; success is not.
+        expect(["0A000", "42501"]).toContain(await errorCode(() => tx.q(`select public.companies_team_color_audit()`)));
+      }
+    });
+  });
+});
