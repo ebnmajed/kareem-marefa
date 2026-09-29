@@ -106,13 +106,11 @@ export default async function CheckInPage({
           ) : null}
           <CheckInSurface
             announce={Boolean(success)}
-            rest={
-              data.checkedInToday ? (
-                <Suspense fallback={null}>
-                  <CheckInRest sessionId={id} locale={locale} arrivedAt={data.arrivedAt} timeZone={data.timeZone} teamColor={data.teamColor} />
-                </Suspense>
-              ) : null
-            }
+            // ★ NOT behind `Suspense`: a streamed boundary is swapped in by a script, so
+            // without JS the static state would stay in a hidden `<div>` and a no-JS
+            // `?success=1` would show nothing. A checked-in member has no form to wait
+            // for, so the page awaits the award read here instead of streaming it.
+            rest={data.checkedInToday ? <CheckInRest sessionId={id} locale={locale} arrivedAt={data.arrivedAt} timeZone={data.timeZone} teamColor={data.teamColor} /> : null}
           >
             <p className="mt-2 max-w-prose text-body text-fg-muted">{t("ready")}</p>
             {errorKey ? (

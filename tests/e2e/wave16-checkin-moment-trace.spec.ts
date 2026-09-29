@@ -56,11 +56,12 @@ test.beforeAll(async ({}, testInfo) => {
   await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
   await db.query(`insert into public.companies (org_id, name, team_color) values ($1, 'شركة', '#ff9a2e')`, [orgId]);
+  const { rows: cat } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'فني') returning id`, [orgId]);
   const { rows: s } = await db.query<{ id: string }>(
-    `insert into public.sessions (org_id, title, abstract, level, starts_at, duration_minutes, ends_at, capacity, state, published_at, allow_walk_ins, custom_venue_name)
-     values ($1, 'جلسة القياس', 'ملخص', 'introductory', now() - interval '10 minutes', 60, now() + interval '50 minutes', 40, 'in_progress', now() - interval '1 day', true, 'القاعة')
+    `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, capacity, state, published_at, allow_walk_ins, custom_venue_name)
+     values ($1, 'جلسة القياس', 'ملخص', $2, 'introductory', now() - interval '10 minutes', 60, now() + interval '50 minutes', 40, 'in_progress', now() - interval '1 day', true, 'القاعة')
      returning id`,
-    [orgId],
+    [orgId, cat[0].id],
   );
   sessionId = s[0].id;
 });
