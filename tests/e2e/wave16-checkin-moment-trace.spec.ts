@@ -159,14 +159,18 @@ test("★★ moment 2 on a 4× throttled CPU: no frame over 16 ms", async ({ con
   mkdirSync(SHOTS, { recursive: true });
   writeFileSync(join(SHOTS, "wave16-checkin-moment-trace.json"), trace);
 
-  const { frames, arming } = await page.evaluate(() => {
-    const w = window as unknown as { __frames: number[]; __arming: number[] };
-    return { frames: w.__frames, arming: w.__arming };
+  const { frames, swapMs } = await page.evaluate(() => {
+    const w = window as unknown as { __frames: number[] };
+    // The swap is two frames long by design, too short for the sampler: it is measured mark to mark.
+    const at = (name: string) => performance.getEntriesByName(name)[0]?.startTime;
+    const armingAt = at("moment-2-arming");
+    const startAt = at("moment-2-start");
+    return { frames: w.__frames, swapMs: armingAt !== undefined && startAt !== undefined ? startAt - armingAt : null };
   });
   const longest = Math.max(...frames);
   testInfo.annotations.push({ type: "frames", description: `${frames.length} frames in the window; the longest ${longest.toFixed(1)} ms` });
-  // Reported, not gated (DEC-197 Q4): the commit that swapped the form for the static state.
-  testInfo.annotations.push({ type: "the swap, beside the window", description: `${arming.length} frames; the longest ${arming.length ? Math.max(...arming).toFixed(1) : "—"} ms` });
+  // Reported, not gated (DEC-197 Q4): the commit that swapped the form for the static state, until the moment armed.
+  testInfo.annotations.push({ type: "the swap, beside the window", description: swapMs === null ? "not observed" : `${swapMs.toFixed(1)} ms from arming to playing` });
   expect(frames.length, "the window saw frames").toBeGreaterThan(10);
   expect(longest, `no frame over one 60 Hz frame (+${JITTER_MS} ms jitter)`).toBeLessThanOrEqual(FRAME_MS + JITTER_MS);
 });
