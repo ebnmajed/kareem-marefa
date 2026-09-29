@@ -2651,3 +2651,14 @@ plural forms; every value in `<bdi>`; Western digits; `supabase/proposed/scoring
 touch it). `sessions'` `company-points-breakdown.tsx` is not touched. `content`'s `avatar` and `progress-bar` are used
 as they are — the fill is moved by WAAPI on `[data-slot=fill]`, which writes nothing into the file or its inline
 style.
+
+### Addendum — contract 1 as landed (`cfb3d9a5`)
+
+The API is the one §7 planned against, unchanged: `useMoment(kind, id | null)` with `completion`, `level` and `rank`;
+`useCountUp({from, to, duration, play, onDone})`; `readDuration()` and `readEasing("play")`. **Token choices, fixed:**
+the count-up is **`party`** (900 ms, the nearest to the design's 700 that keeps the sequence unhurried). The FLIP, the
+flame's growth, the shine and the arrow are `slow`, the delta's fade is `base`, and the bars and the flip are
+`party`. The flicker loop still needs `--duration-loop` (request 3). The re-render tests import the lead's
+`tests/components/lib-ui/motion-env.ts` (its `animate` recorder, whose animations finish when told), and never
+copy it. Request 7 (a moment the server painted before hydration) is still open: `moment.ts` at `cfb3d9a5` decides
+in `useLayoutEffect`, which runs after the server's HTML is on screen on a reload.
