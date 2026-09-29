@@ -2662,3 +2662,40 @@ flame's growth, the shine and the arrow are `slow`, the delta's fade is `base`, 
 `tests/components/lib-ui/motion-env.ts` (its `animate` recorder, whose animations finish when told), and never
 copy it. Request 7 (a moment the server painted before hydration) is still open: `moment.ts` at `cfb3d9a5` decides
 in `useLayoutEffect`, which runs after the server's HTML is on screen on a reload.
+
+---
+
+# Wave 16 — built (after sync 1, `DEC-197`)
+
+| Row | Commit | What |
+|---|---|---|
+| Contract 5's writers | `e4e639f9` | `supabase/proposed/scoring/0001_seen_marks_functions.sql` — `mark_points_seen()`, `mark_board_seen()`, invoker, checked before the one write; `tests/rls/scoring-seen.test.ts`, 8 cases through `applyProposed()`. **For the lead to promote.** |
+| Moments 3 – 5 | `48859649` | the head of `SCR-022` (`points-head.tsx` + `moment-points-head.tsx`), the boards on `rank-row` / `race-bar` inside the scope (`member-board.tsx`, `company-board.tsx` + `moment-rank.tsx`), `use-seen-moment.ts`, `race-fractions.ts`, the DAL (add-only: `getPointsHead`, `markPointsSeen`, `getBoardMoment`, `markBoardSeen`, optional new DTO fields), the two bound actions, `level-card`'s `flip` layout, `rank-row`'s `data-slot="rise"`, the messages in Arabic first, the ledger lines |
+| E2E | `6dd82fed` | `tests/e2e/wave16-scoring-moments.spec.ts`, with the captures |
+
+**How «seen» works, as built.** The server reads `member_seen_marks` and decides each occurrence (`decideCompletion`,
+`decideLevelUp`, `decideBoardMoment`, pure, 19 unit cases). The client plays through `useMoment`, and
+`useSeenMoment` brackets its claim to know one of three answers: **plays** (tell the server at `done()`), **seen**
+(reduced motion, a remount, or nothing to play: tell it now), **hydrating** (a server paint: tell it nothing, so the
+moment plays at the next in-app arrival, `DEC-197` §5). The acknowledgement is a Server Action **bound on the server**
+with the locale and the mark the page rendered; the client sends nothing of its own. The head latches its occurrence,
+its delta and its turned card for the visit.
+
+**Tests:** `moment-points-head.test.tsx` 13, `moment-rank.test.tsx` 11, `level-card.test.tsx` +4, `scoring-seen.test.ts`
+19, `boards.test.tsx` 8 (three cases moved, ledger lines in `STATUS.md`). Each moment has its ★★ mount → play →
+unmount → mount → silence case, its complete reduced-motion static state, a case where nothing is an occurrence
+(a decrease, a non-completion gain, a fall), a transform/opacity-and-tokens-only case, and no `will-change`. A
+server-painted head is proven silent and unrecorded by hydrating real server HTML.
+
+**Gates at `6dd82fed`:** tsc clean for my files (the tree's two tsc errors are `sessions'` in-progress
+`moment-reserve.tsx` and a missing `tests/components/sessions/__dbg`) · eslint 0 on my files (the tree's 3 errors are
+not in them) · `ui-lint` strict clean · `npm test` 3458 passed, 2 failed — `designer/inspector-align` and
+`sessions/schedule-days`, both green when run alone (timing under a full run), neither mine · RLS: my file 8/8.
+
+**Not done, and why:**
+- **The e2e spec has not run.** It needs a production build (the lead's) and my two functions promoted (it writes
+  through them). The captures come from that run: `.qa-shots/rtl/wave16-scoring-{completion,level,rank-members,rank-companies}-{animated,static}.png`.
+- **Moment 4's `animated` capture** is the card at rest after the turn; the turn itself is proven by the jsdom case
+  and the animation counter, not by a still.
+- **D-29 stands:** a level changes only in the nightly run, so on the day a session pays the bar can reach its end
+  with no new level; the card turns on the first visit after the night.
