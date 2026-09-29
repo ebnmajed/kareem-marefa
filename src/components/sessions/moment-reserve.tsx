@@ -299,7 +299,9 @@ function Ticket({ stage }: { stage: StageContext }) {
       onAnimationEnd={stage.onTicketEnd}
     >
       <div className="relative">
-        <TicketObject word={false} size={144} />
+        {/* No contact shadow: the ticket floats over the card, or over the page above the phone's bar, and a
+            floor shadow cast onto the light page outside the scope read as detached (the lead's 390 px review). */}
+        <TicketObject word={false} shadow={false} size={144} />
         <div className="absolute inset-0 flex items-center justify-center">
           <span
             data-moment="stamp"
