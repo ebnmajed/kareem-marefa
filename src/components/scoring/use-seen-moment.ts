@@ -32,6 +32,14 @@ import { prefersReducedMotion } from "@/lib/ui/reduced-motion";
 // copy (the orphaned streaming segment DEC-145 records) does not count, and an
 // in-app arrival finds none — the previous screen is what is in the document.
 //
+// ★ And the document is read ONCE, at the page's first moment render, too
+// (scoring's own local build, phone): React may delete the server's DOM for a
+// boundary BEFORE it renders the boundary afresh, so a live look at that point
+// finds nothing. The first render of any moment in a page's life is the
+// hydration attempt, when the server's DOM is still there; the keys it sees are
+// kept, and a later mount of the same occurrence counts as painted — until the
+// instance that stood for it unmounts, so the next in-app arrival plays it.
+//
 // The verdict is read around `useMoment`'s own layout effect: whether the key was
 // claimed BEFORE it ran, and whether it is claimed AFTER. Layout effects run in
 // declaration order within a component, so both reads bracket the claim. The
@@ -43,20 +51,43 @@ export type SeenVerdict = "pending" | "plays" | "seen" | "hydrating";
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? () => {} : useLayoutEffect;
 
-/** Whether a visible element in the document already shows this occurrence — the server's paint. Exported for its test. */
+function visibleKeys(): string[] {
+  const keys: string[] = [];
+  for (const el of document.querySelectorAll("[data-moment-keys]")) {
+    if (el.closest("[hidden]")) continue;
+    keys.push(...(el.getAttribute("data-moment-keys") ?? "").split(" ").filter(Boolean));
+  }
+  return keys;
+}
+
+// The keys the server painted, read at the first moment render of this page's life.
+let serverPainted: Set<string> | null = null;
+
+/** Whether the server painted this occurrence — seen in the document now, or at the page's first moment render. Exported for its test. */
 export function paintedInDocument(key: string): boolean {
   if (typeof document === "undefined") return false;
-  for (const el of document.querySelectorAll("[data-moment-keys]")) {
-    if (!(el.getAttribute("data-moment-keys") ?? "").split(" ").includes(key)) continue;
-    if (!el.closest("[hidden]")) return true;
-  }
-  return false;
+  if (serverPainted === null) serverPainted = new Set(visibleKeys());
+  return serverPainted.has(key) || visibleKeys().includes(key);
+}
+
+/** Tests only: forget what the first render saw. */
+export function resetPaintedForTests(): void {
+  serverPainted = null;
 }
 
 export function useSeenMoment(kind: MomentKind, id: string | null): { phase: MomentPhase; done: () => void; verdict: SeenVerdict } {
   // Read once, on the first render — before this mount's own DOM exists.
   const [painted] = useState(() => id !== null && paintedInDocument(momentKey(kind, id)));
   const occurrenceId = painted ? null : id;
+
+  // The instance that stood for a painted occurrence is leaving: the next in-app arrival is a first sight.
+  useIsomorphicLayoutEffect(() => {
+    if (!painted || id === null) return;
+    const key = momentKey(kind, id);
+    return () => {
+      serverPainted?.delete(key);
+    };
+  }, [painted, kind, id]);
   const before = useRef<{ id: string | null; claimed: boolean } | null>(null);
 
   useIsomorphicLayoutEffect(() => {

@@ -11,6 +11,7 @@ import { MomentPointsHead, type MomentPointsHeadProps } from "@/components/scori
 import { LevelCard } from "@/components/ui/level-card";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { isMomentClaimed, momentKey, resetMomentsForTests } from "@/lib/ui/moment";
+import { paintedInDocument, resetPaintedForTests } from "@/components/scoring/use-seen-moment";
 import { fakeAnimate, removeFakeAnimate, setDurationTokens, setReducedMotion, type FakeAnimation } from "../lib-ui/motion-env";
 
 let frames: FrameRequestCallback[];
@@ -82,6 +83,7 @@ async function finishAll() {
 
 beforeEach(() => {
   resetMomentsForTests();
+  resetPaintedForTests();
   setReducedMotion(false);
   setDurationTokens({ fast: "120ms", base: "220ms", slow: "420ms", party: "900ms" });
   frames = [];
@@ -277,6 +279,27 @@ describe("a page the server painted (DEC-197 §5)", () => {
     expect(balance()).toBe("730");
     expect(isMomentClaimed(momentKey("completion", "e-730"))).toBe(false);
     expect(acknowledge).not.toHaveBeenCalled();
+  });
+
+  it("★ React may delete the server's DOM BEFORE the fresh render: what the page's first moment render saw still counts — until that instance leaves", () => {
+    // The page's first moment render: the hydration attempt, with the server's DOM in the document.
+    const server = document.createElement("div");
+    server.setAttribute("data-moment-keys", "completion:e-730");
+    document.body.appendChild(server);
+    // (The attempt itself never commits, so it is its first-render read that is simulated here.)
+    expect(paintedInDocument("completion:e-730")).toBe(true);
+    const acknowledge = vi.fn(async () => {});
+    // …then React discards the server's DOM, and the boundary renders afresh with nothing painted in the document.
+    server.remove();
+    const fresh = render(<MomentPointsHead {...props({ acknowledge })} />);
+    expect(moment()).toBe("static");
+    expect(made).toHaveLength(0);
+    expect(isMomentClaimed(momentKey("completion", "e-730"))).toBe(false);
+    expect(acknowledge).not.toHaveBeenCalled();
+    // The member navigates away and comes back in the app: a first sight, and it plays.
+    fresh.unmount();
+    render(<MomentPointsHead {...props({ acknowledge })} />);
+    expect(moment()).toBe("playing");
   });
 
   it("a HIDDEN copy — the orphaned streaming segment (DEC-145) — is not a paint: the in-app arrival plays", () => {

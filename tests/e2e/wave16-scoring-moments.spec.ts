@@ -28,7 +28,9 @@ const PHONE = { width: 390, height: 844 };
 const PASSWORD = "correct-horse-battery-staple-9";
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
-test.describe.configure({ mode: "serial" });
+// Each case drives several navigations and waits out a whole moment before asserting silence; the default 30 s is a
+// cold server's first case on two projects at once.
+test.describe.configure({ mode: "serial", timeout: 90_000 });
 
 let db: pg.Client;
 let admin: ReturnType<typeof createClient>;

@@ -12,6 +12,7 @@ import { MomentRank, type MomentRankProps } from "@/components/scoring/moment-ra
 import { RaceBar } from "@/components/ui/race-bar";
 import { RankRow } from "@/components/ui/rank-row";
 import { isMomentClaimed, momentKey, resetMomentsForTests } from "@/lib/ui/moment";
+import { resetPaintedForTests } from "@/components/scoring/use-seen-moment";
 import { fakeAnimate, removeFakeAnimate, setDurationTokens, setReducedMotion, type FakeAnimation } from "../lib-ui/motion-env";
 
 const ROW = 64;
@@ -70,6 +71,7 @@ async function finishAll() {
 
 beforeEach(() => {
   resetMomentsForTests();
+  resetPaintedForTests();
   setReducedMotion(false);
   setDurationTokens({ fast: "120ms", base: "220ms", slow: "420ms", party: "900ms" });
   made = fakeAnimate();
