@@ -140,7 +140,11 @@ screens waves now, and the member path still has no inventory (`DEC-181` §5) ·
 points · the generated gate for Storage read predicates (wave 14's proposal, below) · revoking `avatar_url` from the
 grant, the view and `me()` · wave 14's and wave 12's carried lists, unchanged.
 
-### ★ The owner's order (wave 15) — rehearsed 2026-09-29 (`DEC-193`)
+### ★ The owner's order (wave 15) — ★ FINISHED 2026-09-29
+
+★ **DONE — pushed, merged and deployed 2026-09-29.** `0160` and `0161` are on production: `supabase migration list --linked` reads **`0161` on both sides**. The push printed the same cosmetic `pg-delta` catalogue-cache warning as waves 12–14, after both migrations had applied. PR **#33** merged at **`b9f2ca0b`**, both branches deleted, CI **12/12 green on `d64c47d5`** — the head, not a local run (`DEC-192`'s lesson applied). Railway needed the manual `railway service source connect` for the **tenth** consecutive merge, rebuilt, and reads plain `● Online` with «LISTEN/NOTIFY probe OK — round trip 10 ms». ★ **Step 6, the phone check, is the owner's and is the wave's real acceptance test:** `/`, `/ar`, `/en`, `/ar/register` and `/app` on a real device, where **nothing should look different**. It closes the gap `DEC-193` named honestly — that no measurement was taken on a build Vercel made — and the real-device check owed since Launch.
+
+★ **Carried, and deliberately not fixed here** (`DEC-194`): the trigger definers' ACL, as a sweep over all 58 with a generated test, **in the same wave as wave 14's Storage-predicate gate**. A one-off `0162` was rehearsed, found to close no hole — a trigger function answers `0A000` to a direct call from every role — and refused, because fixing the newest of 60 makes it 3 of 61 and leaves the inconsistency.
 
 **Two migrations, `0160` and `0161`, additive:** one nullable column with a check, and one trigger that audits a
 change to it. No existing function changes, no policy changes, no bucket.
