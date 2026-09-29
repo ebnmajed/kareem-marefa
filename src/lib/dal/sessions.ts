@@ -1047,6 +1047,12 @@ export interface EventSession {
   rsvpStatus: "confirmed" | "waitlisted" | "cancelled" | "late_cancelled" | null;
   /** The viewer's ACTIVE check-in — `removed_at is null` (REQ-CHK-017). */
   checkedIn: boolean;
+  /**
+   * ★ Wave 16 (DEC-197 §3, `checkin`'s contract 4): the days the viewer holds an ACTIVE check-in for — one
+   * row per day since wave 9 (`REQ-SES-015`). `checkInOffer()` reads it, so a workshop's day 2 is not
+   * answered by day 1's check-in. Empty when `checkedIn` is false.
+   */
+  checkedInDayIds: string[];
 }
 
 /**
@@ -1095,7 +1101,11 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     // the row and RLS does not hide it, so the reader says «active» itself —
     // and with a removed row beside a re-added one, `.maybeSingle()` would
     // otherwise refuse two rows.
-    supabase.from("check_ins").select("id").eq("session_id", id).eq("member_id", session.memberId).is("removed_at", null).maybeSingle(),
+    // ★ A LIST, NEVER `.maybeSingle()` (DEC-197 §3). A workshop has one active
+    // check-in PER DAY (wave 9), so a member checked in on two days holds two
+    // rows; `.maybeSingle()` errored on them, the error went unchecked, and
+    // the member read as NOT checked in from day 2 on.
+    supabase.from("check_ins").select("id, session_day_id").eq("session_id", id).eq("member_id", session.memberId).is("removed_at", null),
     supabase.from("session_tags").select("tags(label, normalised)").eq("session_id", id),
   ]);
   const { data: presenters, error: pErr } = presentersRes;
@@ -1129,7 +1139,10 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     days: await listSessionDays(locale, id),
   });
   const rsvpStatus = (mineRes.data?.status as EventSession["rsvpStatus"] | undefined) ?? null;
-  const checkedIn = Boolean(checkInRes.data);
+  if (checkInRes.error) throw new Error(`check_ins: ${checkInRes.error.message}`);
+  const activeCheckIns = (checkInRes.data ?? []) as { id: string; session_day_id: string | null }[];
+  const checkedIn = activeCheckIns.length > 0;
+  const checkedInDayIds = activeCheckIns.map((c) => c.session_day_id).filter((d): d is string => d !== null);
   const relation = deriveRelation({ isStaff: viewerIsStaff, isPresenter: viewerIsPresenter, rsvpStatus, checkedIn }, phase);
 
   return {
@@ -1161,6 +1174,7 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     checkInOpen: row.check_in_open === true,
     rsvpStatus,
     checkedIn,
+    checkedInDayIds,
   };
 }
 
