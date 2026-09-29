@@ -115,6 +115,9 @@ end-to-end failures `DEC-190` §6 carried, each its owner's · the unconfigured 
 | `tests/e2e/wave12-checkin-acknowledgement.spec.ts:212-223` (`checkin`) | `?success=1` + the «تم تسجيل حضورك» status + «the award above the form» → the moment, its status «أنت هنا!», the award region inside it, **no form**, the return; the capture moves to the fresh navigation below it | moment 2's second line IS the award (one truth, said once); the award's words are asserted unchanged |
 | `tests/e2e/wave9-checkin-days.spec.ts:241` (`checkin`) | `toHaveURL(?success=1)` → the moment is visible | as the first row |
 | — no assertion (`checkin`) | the no-JS redirect for `reservation_required` is `?error=reservation_required`, was `?error=unknown` | `DEC-197` §4; pinned new in `tests/unit/checkin-actions.test.ts` |
+| `tests/components/checkin/rsvp-panel.test.tsx:11-26` (`sessions`) | harness only: mocks `@/lib/dal/calendar` and `next/cache`, and the translator also serves `sessions.moment` from `ar/sessions.json` | the panel's actions refresh instead of redirecting and read the calendar connection for the whisper; the panel reads the moment's words from `sessions`' catalogue. No expectation changed |
+| `tests/components/checkin/rsvp-panel.test.tsx:52` (`sessions`) | `getByRole("button", { name: "احجز مقعدك" })` → `name: /^احجز مقعدك\s*،\s*27 من 30$/` | the reserve is `session-cta` now, and its capacity chip is part of the name (`REQ-UIX-033`, moment 1) |
+| `tests/components/checkin/rsvp-panel.test.tsx:73-75` (`sessions`) | `getByText(/ترتيبك رقم/).closest("bdi")` → «على قائمة الانتظار» on the face, and `getByText("ترتيبك 2").closest("bdi")` | the waitlisted state is `session-cta`'s `booked` with `hold: "waitlist"`: the position is the chip, in its `<bdi>`; the old sentence is not rendered |
 
 ---
 

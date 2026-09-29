@@ -1,12 +1,14 @@
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
-import { RsvpReserve, RsvpSecondary, RsvpStatus } from "@/components/checkin/rsvp-panel";
+import { RsvpReserve, RsvpStatus, reserveMomentLabels } from "@/components/checkin/rsvp-panel";
+import { reserveSeatAction } from "@/components/checkin/actions";
 import { AttendanceOutcome } from "@/components/checkin/attendance-outcome";
 import { AwardState } from "@/components/checkin/award-state";
 import { AddToCalendar } from "@/components/calendar/add-to-calendar";
 import { CertificateModeBadge } from "@/components/certificates/mode-badge";
 import { BookmarkButton } from "@/components/search/bookmark-button";
 import { ActionBar } from "@/components/sessions/action-bar";
+import { MomentPart, ReserveMoment, ReserveRefused } from "@/components/sessions/moment-reserve";
 import { dayLabel } from "@/components/sessions/day-label";
 import { formatDate, formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
 import type { PrimaryAction } from "@/components/sessions/event-actions";
@@ -40,6 +42,14 @@ import type { SessionPhase } from "@/lib/session-status";
 // and `checkin.spec.ts` finds the reservation controls inside it). Sticky beside
 // the sections from `md`; in flow after the hero on the phone, where its primary
 // moves to the bottom action bar.
+//
+// ★ Wave 16 — moment 1, الحجز (REQ-UIX-045, DEC-195, DEC-197). The card's
+// content sits in `ReserveMoment`, which holds the reserve action's result, so
+// the ticket and the stamp play once, in the client that pressed, and never on
+// a render. The page wraps this card in the playground's scope. Inside, the
+// thud moves the INNER content wrapper (`MomentPart thud`), which holds
+// everything but `ActionBar`: a transformed ancestor would pin the fixed bar
+// to the card instead of the viewport.
 
 export interface ActionCardProps {
   session: EventSession;
@@ -71,7 +81,7 @@ export interface ActionCardProps {
 
 export async function ActionCard(props: ActionCardProps) {
   const { session, phase, can, rsvp, primary, slot, locale } = props;
-  const [t, tRsvp] = await Promise.all([getTranslations("sessions.event"), getTranslations("rsvp")]);
+  const [t, tRsvp, momentLabels] = await Promise.all([getTranslations("sessions.event"), getTranslations("rsvp"), reserveMomentLabels(slot)]);
 
   const showSeats =
     phase === "open" && rsvp !== null && rsvp.capacity !== null && (session.viewerRelation === "none" || session.viewerRelation === "presenter" || session.viewerRelation === "staff");
@@ -95,6 +105,11 @@ export async function ActionCard(props: ActionCardProps) {
       />
     ) : null;
 
+  const labels = { checkIn: t("checkIn"), hostView: t("hostView"), rate: t("actions.rate") };
+  // ★ Once a seat is held the calendar is the primary (`16` §5.4.2) and sits INSIDE the booked state,
+  // between the face and the cancel, so the order is status → calendar → cancel in the tab order too.
+  const calendarInBooked = primary === "calendar" && rsvp !== null && rsvp.canCancel && !rsvp.canReserve;
+
   const barSecondary = bookmarkable || props.shareUrl ? (
     <>
       {bookmark("icon")}
@@ -103,134 +118,134 @@ export async function ActionCard(props: ActionCardProps) {
   ) : null;
 
   return (
-    <section id="attend" aria-labelledby="attend-heading" className="flex flex-col gap-4 rounded-card border border-edge bg-canvas p-5 shadow-card md:p-6">
-      <h2 id="attend-heading" className="sr-only">
-        {tRsvp("title")}
-      </h2>
+    <section id="attend" aria-labelledby="attend-heading" className="rounded-card border border-edge bg-canvas p-5 shadow-card md:p-6">
+      <ReserveMoment action={reserveSeatAction.bind(null, locale, session.id)} labels={momentLabels}>
+        <MomentPart thud="card" className="flex flex-col gap-4">
+          <h2 id="attend-heading" className="sr-only">
+            {tRsvp("title")}
+          </h2>
 
-      {showSeats && rsvp?.capacity != null ? (
-        <div className="flex flex-col gap-2.5">
-          <p className="text-h3 text-fg-heading">
-            <bdi>{t("seatsTaken", { count: rsvp.capacity, value: formatNumber(rsvp.capacity), taken: formatNumber(rsvp.confirmedCount) })}</bdi>
-          </p>
-          <Progress
-            value={Math.min(rsvp.confirmedCount, rsvp.capacity)}
-            max={rsvp.capacity}
-            label={t("seatsProgress")}
-            valueText={t("seatsTaken", { count: rsvp.capacity, value: formatNumber(rsvp.capacity), taken: formatNumber(rsvp.confirmedCount) })}
-          />
-        </div>
-      ) : null}
-
-      <RsvpStatus {...slot} />
-      {can.attendanceOutcome ? <AttendanceOutcome {...slot} /> : null}
-      {/* `checkin`'s acknowledgement (REQ-CHK-018, contract 1): self-gated on
-          its own DTO, so the card mounts it unconditionally — `checkin` owns
-          when it says something and the card owns only where. */}
-      <AwardState sessionId={slot.sessionId} locale={slot.locale} variant="inline" />
-
-      {primary ? <PrimaryControl action={primary} placement="card" session={session} slot={slot} labels={{ checkIn: t("checkIn"), hostView: t("hostView"), rate: t("actions.rate") }} /> : null}
-
-      {/* The calendar the matrix offers, when it is not the primary: a running
-          session keeps it for a confirmed member and its presenter (`16` §5.3),
-          as a secondary action beside «تسجيل الحضور». */}
-      {can.calendar && primary !== "calendar" ? <AddToCalendar {...slot} placement="inline" variant="secondary" /> : null}
-
-      {primary === "rate" && props.ratingClosesAt ? (
-        <p className="text-body-sm text-fg-muted">{t("actions.ratingWindow", { date: formatDate(props.ratingClosesAt, session.timeZone, locale) })}</p>
-      ) : null}
-
-      {confirmedOpen && props.tasks ? (
-        <Suspense fallback={null}>
-          <TasksJump tasks={props.tasks} label={t("actions.tasks")} />
-        </Suspense>
-      ) : null}
-
-      {props.certificateHref ? (
-        <a href={props.certificateHref} className={buttonClass("secondary", "md", "w-full")}>
-          <DownloadIcon className="text-[1.125rem]" />
-          <span>{t("actions.certificate")}</span>
-        </a>
-      ) : null}
-
-      {phase === "ended" && props.materials ? (
-        <Suspense fallback={null}>
-          <MaterialsJump materials={props.materials} label={t("actions.materials")} />
-        </Suspense>
-      ) : null}
-
-      <RsvpSecondary {...slot} />
-
-      {confirmedOpen ? <p className="text-body-sm text-fg-muted">{t("actions.confirmedHint")}</p> : null}
-
-      {bookmarkable || props.shareUrl ? (
-        <div className="hidden flex-col gap-2 md:flex">
-          <div className="grid grid-cols-2 gap-2 [&>*]:w-full">
-            {bookmark("button")}
-            {share("button")}
-          </div>
-          {props.shareUrl ? (
-            <p id="share-hint" className="text-caption text-fg-muted">
-              {t("shareHint")}
-            </p>
+          {showSeats && rsvp?.capacity != null ? (
+            <div className="flex flex-col gap-2.5">
+              <p className="text-h3 text-fg-heading">
+                <bdi>{t("seatsTaken", { count: rsvp.capacity, value: formatNumber(rsvp.capacity), taken: formatNumber(rsvp.confirmedCount) })}</bdi>
+              </p>
+              <Progress
+                value={Math.min(rsvp.confirmedCount, rsvp.capacity)}
+                max={rsvp.capacity}
+                label={t("seatsProgress")}
+                valueText={t("seatsTaken", { count: rsvp.capacity, value: formatNumber(rsvp.capacity), taken: formatNumber(rsvp.confirmedCount) })}
+              />
+            </div>
           ) : null}
-        </div>
-      ) : null}
 
-      <Meta session={session} phase={phase} days={props.days} locale={locale} />
-      <CertificateRow sessionId={session.id} locale={locale} />
+          <RsvpStatus {...slot} between={calendarInBooked ? <PrimaryControl action="calendar" placement="card" session={session} slot={slot} labels={labels} /> : undefined} />
+          <ReserveRefused />
+          {can.attendanceOutcome ? <AttendanceOutcome {...slot} /> : null}
+          {/* `checkin`'s acknowledgement (REQ-CHK-018, contract 1): self-gated on
+              its own DTO, so the card mounts it unconditionally — `checkin` owns
+              when it says something and the card owns only where. */}
+          <AwardState sessionId={slot.sessionId} locale={slot.locale} variant="inline" />
 
-      {/* «تنزيل الملصق» (REQ-DSG-027, DEC-178) — for staff and the session's own
-          presenters, once, here: the poster itself renders twice (the hero from
-          `md`, «نبذة» on the phone), and a download beside each would be two. */}
-      {session.viewerIsStaff || session.viewerIsPresenter ? (
-        <Suspense fallback={null}>
-          <SessionDownload sessionId={session.id} locale={locale} placement="event" />
-        </Suspense>
-      ) : null}
+          {primary && !calendarInBooked ? <PrimaryControl action={primary} placement="card" session={session} slot={slot} labels={labels} /> : null}
 
-      {session.viewerIsStaff || hostViewSecondary ? (
-        <nav aria-label={t("actions.staffHeading")} className="border-t border-edge pt-4">
-          <p className="text-caption text-fg-muted" aria-hidden="true">
-            {t("actions.staffHeading")}
-          </p>
-          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-body-sm">
-            {hostViewSecondary ? (
-              <li>
-                <Link href={`/app/sessions/${session.id}/host`} className="text-fg-heading underline underline-offset-4">
-                  {t("hostView")}
-                </Link>
-              </li>
-            ) : null}
-            {session.viewerIsStaff && props.isAdmin ? (
-              <li>
-                <Link href={`/app/admin/sessions/${session.id}/schedule`} className="text-fg-heading underline underline-offset-4">
-                  {t("manageSchedule")}
-                </Link>
-              </li>
-            ) : null}
-            {session.viewerIsStaff ? (
-              <li>
-                <Link href={`/app/admin/sessions/${session.id}/attendance`} className="text-fg-heading underline underline-offset-4">
-                  {t("manageAttendance")}
-                </Link>
-              </li>
-            ) : null}
-            {session.viewerIsStaff && props.isAdmin ? (
-              <li>
-                <Link href={`/app/admin/sessions/${session.id}/certificates`} className="text-fg-heading underline underline-offset-4">
-                  {t("manageCertificates")}
-                </Link>
-              </li>
-            ) : null}
-          </ul>
-        </nav>
-      ) : null}
+          {/* The calendar the matrix offers, when it is not the primary: a running
+              session keeps it for a confirmed member and its presenter (`16` §5.3),
+              as a secondary action beside «تسجيل الحضور». */}
+          {can.calendar && primary !== "calendar" ? <AddToCalendar {...slot} placement="inline" variant="secondary" /> : null}
 
-      <ActionBar
-        primary={primary ? <PrimaryControl action={primary} placement="bar" session={session} slot={slot} labels={{ checkIn: t("checkIn"), hostView: t("hostView"), rate: t("actions.rate") }} /> : null}
-        secondary={barSecondary}
-      />
+          {primary === "rate" && props.ratingClosesAt ? (
+            <p className="text-body-sm text-fg-muted">{t("actions.ratingWindow", { date: formatDate(props.ratingClosesAt, session.timeZone, locale) })}</p>
+          ) : null}
+
+          {confirmedOpen && props.tasks ? (
+            <Suspense fallback={null}>
+              <TasksJump tasks={props.tasks} label={t("actions.tasks")} />
+            </Suspense>
+          ) : null}
+
+          {props.certificateHref ? (
+            <a href={props.certificateHref} className={buttonClass("secondary", "md", "w-full")}>
+              <DownloadIcon className="text-[1.125rem]" />
+              <span>{t("actions.certificate")}</span>
+            </a>
+          ) : null}
+
+          {phase === "ended" && props.materials ? (
+            <Suspense fallback={null}>
+              <MaterialsJump materials={props.materials} label={t("actions.materials")} />
+            </Suspense>
+          ) : null}
+
+          {confirmedOpen ? <p className="text-body-sm text-fg-muted">{t("actions.confirmedHint")}</p> : null}
+
+          {bookmarkable || props.shareUrl ? (
+            <div className="hidden flex-col gap-2 md:flex">
+              <div className="grid grid-cols-2 gap-2 [&>*]:w-full">
+                {bookmark("button")}
+                {share("button")}
+              </div>
+              {props.shareUrl ? (
+                <p id="share-hint" className="text-caption text-fg-muted">
+                  {t("shareHint")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <Meta session={session} phase={phase} days={props.days} locale={locale} />
+          <CertificateRow sessionId={session.id} locale={locale} />
+
+          {/* «تنزيل الملصق» (REQ-DSG-027, DEC-178) — for staff and the session's own
+              presenters, once, here: the poster itself renders twice (the hero from
+              `md`, «نبذة» on the phone), and a download beside each would be two. */}
+          {session.viewerIsStaff || session.viewerIsPresenter ? (
+            <Suspense fallback={null}>
+              <SessionDownload sessionId={session.id} locale={locale} placement="event" />
+            </Suspense>
+          ) : null}
+
+          {session.viewerIsStaff || hostViewSecondary ? (
+            <nav aria-label={t("actions.staffHeading")} className="border-t border-edge pt-4">
+              <p className="text-caption text-fg-muted" aria-hidden="true">
+                {t("actions.staffHeading")}
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-body-sm">
+                {hostViewSecondary ? (
+                  <li>
+                    <Link href={`/app/sessions/${session.id}/host`} className="text-fg-heading underline underline-offset-4">
+                      {t("hostView")}
+                    </Link>
+                  </li>
+                ) : null}
+                {session.viewerIsStaff && props.isAdmin ? (
+                  <li>
+                    <Link href={`/app/admin/sessions/${session.id}/schedule`} className="text-fg-heading underline underline-offset-4">
+                      {t("manageSchedule")}
+                    </Link>
+                  </li>
+                ) : null}
+                {session.viewerIsStaff ? (
+                  <li>
+                    <Link href={`/app/admin/sessions/${session.id}/attendance`} className="text-fg-heading underline underline-offset-4">
+                      {t("manageAttendance")}
+                    </Link>
+                  </li>
+                ) : null}
+                {session.viewerIsStaff && props.isAdmin ? (
+                  <li>
+                    <Link href={`/app/admin/sessions/${session.id}/certificates`} className="text-fg-heading underline underline-offset-4">
+                      {t("manageCertificates")}
+                    </Link>
+                  </li>
+                ) : null}
+              </ul>
+            </nav>
+          ) : null}
+        </MomentPart>
+
+        <ActionBar primary={primary ? <PrimaryControl action={primary} placement="bar" session={session} slot={slot} labels={labels} /> : null} secondary={barSecondary} />
+      </ReserveMoment>
     </section>
   );
 }

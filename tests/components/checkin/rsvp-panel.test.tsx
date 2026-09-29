@@ -8,13 +8,22 @@ import { createTranslator } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ar from "@/messages/ar/rsvp.json";
+import arSessions from "@/messages/ar/sessions.json";
 import type { RsvpPanelData } from "@/lib/dal/rsvp";
 
 vi.mock("@/lib/dal/rsvp", () => ({ getRsvpPanelData: vi.fn() }));
+// Wave 16: the panel's actions refresh rather than redirect, and the reserve reads the calendar connection
+// for moment 1's whisper — both server-only, so both stand in here.
+vi.mock("@/lib/dal/calendar", () => ({ getCalendarConnection: vi.fn(async () => null) }));
+vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 // The panel formats its counts with the org's numerals (REQ-INT-006, DEC-056).
 vi.mock("@/lib/dal/designer", () => ({ getOrgNumerals: vi.fn(async () => "western") }));
 vi.mock("next-intl/server", () => ({
-  getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages: ar, namespace: namespace as "rsvp" }),
+  // Wave 16: the panel also reads `sessions.moment` (the waitlist face and the chips), from `sessions`' catalogue.
+  getTranslations: async (namespace: string) =>
+    namespace.startsWith("sessions")
+      ? createTranslator({ locale: "ar", messages: arSessions, namespace: namespace as "sessions.moment" })
+      : createTranslator({ locale: "ar", messages: ar, namespace: namespace as "rsvp" }),
 }));
 
 const { getRsvpPanelData } = await import("@/lib/dal/rsvp");
@@ -39,7 +48,8 @@ describe("RsvpPanel", () => {
     vi.mocked(getRsvpPanelData).mockResolvedValue({ ...base });
     render(await RsvpPanel({ sessionId: base.sessionId, memberId: "m1", locale: "ar" }));
     expect(screen.getByText("يتبقى 3 مقاعد")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "احجز مقعدك" })).toBeInTheDocument();
+    // Wave 16 (ledger): the capacity chip is part of the name — `session-cta`, REQ-UIX-033.
+    expect(screen.getByRole("button", { name: /^احجز مقعدك\s*،\s*27 من 30$/ })).toBeInTheDocument();
   });
 
   it("hides the reserve button and explains once the deadline has passed (seat: closed)", async () => {
@@ -60,7 +70,9 @@ describe("RsvpPanel", () => {
       canCancel: true,
     });
     render(await RsvpPanel({ sessionId: base.sessionId, memberId: "m1", locale: "ar" }));
-    const bdi = screen.getByText(/ترتيبك رقم/).closest("bdi");
+    // Wave 16 (ledger): `booked` on the waitlist — «على قائمة الانتظار» on the face, the position in the chip's `<bdi>`.
+    expect(screen.getByText("على قائمة الانتظار")).toBeInTheDocument();
+    const bdi = screen.getByText("ترتيبك 2").closest("bdi");
     expect(bdi).not.toBeNull();
     expect(screen.getByRole("button", { name: "غادر قائمة الانتظار" })).toBeInTheDocument();
   });

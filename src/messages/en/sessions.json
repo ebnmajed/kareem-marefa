@@ -153,6 +153,20 @@
       "rowPending": "Being prepared",
       "rowFailed": "Could not be prepared",
       "downloadFailed": "The download failed. Try again."
+    },
+    "moment": {
+      "reserveChip": "{taken} of {capacity}",
+      "joinWaitlist": "Join the waitlist",
+      "waitlistFace": "On the waitlist",
+      "positionChip": "Position {position}",
+      "stampBooked": "Booked",
+      "stampWaitlist": "Waitlist · <n>{position}</n>",
+      "whisperSync": "The session will appear in your calendar shortly",
+      "whisperManual": "Your seat is booked — add the session to your calendar with the button",
+      "whisperWaitlist": "We will tell you as soon as a seat frees up",
+      "refusedDeadline": "Could not reserve: reservations for this session have closed.",
+      "refusedNotOpen": "Could not reserve: this session is not taking reservations now.",
+      "refusedUnknown": "Could not reserve. Try again in a moment."
     }
   }
 }
