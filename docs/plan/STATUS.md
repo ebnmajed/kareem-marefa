@@ -1,11 +1,11 @@
-**Last updated:** 2026-09-29 · **Branch:** `wave-16/the-five-moments` (cut from `main` at `526b40ea`) · **`main`:** wave 15 merged and live (PR #33, `b9f2ca0b`); production at **`0161`**; the owner's phone check passed · **Phase:** ★★ **WAVE 16 — SYNC 1 DONE (`DEC-197`), three teammates building (`DEC-195`, M18, migrations from `0162` only if contract 5 needs one)**: the programme's second wave, **the five moments, on the real screens**. The owner's gate is **closed** — the moments land on `SCR-012`'s action card, `SCR-014`, the head of `SCR-022`, `SCR-027` and `SCR-028`, which **amends `DEC-183` §4.2(f)**, and the owner has accepted that those screens look different on production. ★ The five public routes do not move. ★ Two owner rulings recorded: the team colour is chosen **on the add-company form**, and **a company has no logo** (`DEC-195` §3, §4). ★ The three `(auth)` screens are placed by name at the head of the member-screens milestone, and `09` §8's stale rows are corrected (`DEC-195` §5). ★ **Draft PR #34.** **Next: spawn `sessions`, `checkin` and `scoring` planning-only; the lead lands contract 1 (the mechanism) while they plan; sync 1 approves three plans.**
+**Last updated:** 2026-09-29 · **Branch:** `wave-16/the-five-moments` (cut from `main` at `526b40ea`) · **`main`:** wave 15 merged and live; production at **`0161`** · **Phase:** ★★ **WAVE 16 — COMPLETE, PR #34, the owner rehearses, pushes and merges (`DEC-195` … `DEC-198`, M18, migrations `0162` – `0163`)**: the five moments, on the real screens. All five play once per occurrence on the surfaces `DEC-195` named, each with a complete static state, verified on a production build of `8043ba74`: RLS 1,368 from a fresh reset, 3,489 unit and component tests, ★★ **the frozen five unmoved** (`qa` 57/57, the six public pairs at 0.000 %, the register-form fingerprint byte-identical to `main`), ★★ **both traces 5/5 at 16.8 ms**, every capture opened at native resolution. ★ **CI concluded `success` on `8043ba74`**, all twelve jobs, after a rerun (Google Fonts failed to fetch four times on the runners — `DEC-198` §4). ★ **Three independent readings found seven defects at sync 1 (`DEC-197`); building found more, three in the lead's own mechanism, and the lead's two errors are recorded (`DEC-198` §2).** Carried for the owner: **F3 — `/app` has no working no-JavaScript path** — F2, the build's dependency on Google Fonts, and the 390 px review list. **The owner's order is in the wave-16 block.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 16 — SYNC 1 DONE (`DEC-197`), BUILDING — on `wave-16/the-five-moments` — the five moments, on the real screens (`DEC-195`)
+## ★★★ WAVE 16 — COMPLETE, PR #34, THE OWNER MERGES — on `wave-16/the-five-moments` — the five moments, on the real screens (`DEC-195`)
 
 **The programme's second wave.** The brief is `docs/plan/notes/wave-16-lead.md`; the map is `CLAUDE.md` § *Ownership
 map (wave 16)*; the decision is `DEC-195`. Milestone **M18**. Requirements `REQ-UIX-044` … `048` (and `043` amended);
@@ -96,6 +96,22 @@ stories `STORY-UIX-027` … `032`.
   the prototype does in the card. Its floor shadow is already gone (`c25235fa`).
 - **A scoped surface beside an unscoped page** (`DEC-195` §1.3): if the dark action card looks wrong on a light event
   page, the capture goes to the owner; the lead does not pick.
+
+### ★ The owner's order (wave 16)
+
+1. **Rehearse `0162` and `0163` on a production schema dump**, as for waves 12 – 15: each applies in one transaction with
+   `ON_ERROR_STOP`; the end state matches a fully migrated local database; ★ `anonymise_members()` is replaced with the
+   same signature and grants (`\df+` before and after) and deletes a member's `member_seen_marks` row; `main`'s app and
+   worker on the new schema do nothing different — nothing on `main` names the table or the two functions.
+2. **Push `0162` – `0163`** (`supabase db push`), then confirm `supabase migration list --linked` reads `0163` on both sides.
+3. **Merge PR #34** once CI has **concluded `success` on the head** (`DEC-192`) — read the run's conclusion, not a count of green jobs.
+4. **Reconnect Railway** (`railway service source connect`) — the eleventh time unless Settings → Source is set — and wait for a
+   status with **no suffix** (`● Online · Building` also begins with «Online»).
+5. ★★ **Open the live site on a phone.** Four screens **should** look different — the event page's action card when you
+   reserve, the check-in screen when you check in, the points screen's head, the leaderboards — and the **five public pages
+   should not**.
+6. **The 390 px review** (above): overshoot, a dark card on a light page, where moment 1's ticket rests; and rule on **F3**
+   (should `/app` work without JavaScript at all?), **F2**, and **self-hosting the display face** (`DEC-198` §4).
 
 ### Carried — not this wave
 

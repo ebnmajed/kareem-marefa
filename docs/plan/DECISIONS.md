@@ -5166,3 +5166,65 @@ flicker`, off under reduced motion) and `moment-shine` (`scoring`, with `--momen
 names differ from some plans' `play-*`: one prefix for one vocabulary.
 
 - **Documents changed:** `01-prd.md` (`REQ-UIX-046`, `047`, `048`), `02-domain-model.md` (`ENT-member_seen_marks`), `03-permissions-rls.md` (§5.7, §5.7c), `15-backlog.md` (`STORY-UIX-031`), `CLAUDE.md` and three agent files (the rulings; the transfers), `STATUS.md` (sync 1; the checklist; the ledger)
+
+---
+
+## DEC-198 — Wave 16's closing record: the five moments are built and verified on a production build, the frozen five did not move, and what the tracks found after sync 1
+
+- **Date:** 2026-09-29 · **Decided by:** the wave-16 lead, at the final gates; the owner rules on §5's carried items
+- **Adds to:** `DEC-195`, `DEC-196`, `DEC-197`
+
+### 1 · What was built, and where it was proved
+
+The five moments play on the surfaces `DEC-195` §1.1 named, and nowhere else: الحجز on `SCR-012`'s action card (`sessions`),
+تسجيل الحضور on `SCR-014` with `code-input` adopted (`checkin`), انتهت الجلسة and ترقية المستوى on the head of
+`SCR-022`, and تغيّر الترتيب on `SCR-027`/`SCR-028` (`scoring`). Each plays once per occurrence — keyed on the action's
+result for 1 and 2, on the server's `member_seen_marks` (`0162`, `0163`) for 3 to 5 — and each has a static state that
+is complete under reduced motion. **Proved on a production build of `8043ba74`, in a verification worktree, against
+local Supabase at `0163`:**
+
+| Gate | Result |
+|---|---|
+| RLS, from a fresh `supabase db reset` | 142 files · **1,368** passed |
+| tsc · lint · `ui-lint --strict` · `trace` · `policy-diff` | clean · 0 errors · 337 files · 341 · 168, no gaps · agree |
+| `npm test` | **3,489** passed |
+| ★★ the frozen five | `qa` **57/57** · `visual` six public pairs **0.000 %** · the register-form fingerprint **byte-identical** to `main`'s record |
+| ★★ the traces, moments 1 and 2, phone, 4× CPU | **5/5 each, every run 16.8 ms**, serial, at load ≈ 17 – 23 |
+| e2e — every wave-16 spec and every spec the moments touch | green; two cases failed only inside the parallel suite and pass alone (`points.spec`, scoped to `#main` in `733bfc67`; the M2 demonstrable under load) |
+| ★ the re-render tests | one per moment: mount, play, unmount, mount again — silence |
+| ★ the captures | every moment, animated and static, 390 × 844, opened at native resolution in bands by the lead |
+| CI on `8043ba74` | **concluded `success`**, all twelve jobs (after a rerun, §4) |
+
+### 2 · ★★ What the tracks found after sync 1 — and the lead's own errors
+
+`DEC-197` recorded seven defects three plans found. Building found more, **three of them in the lead's mechanism**:
+
+| Finding | Found by | Fix |
+|---|---|---|
+| The hydration guard silenced a whole *instance* born hydrating, so a server-rendered host could never play even a key from a later action | `sessions` | per occurrence (`4c9ee494`) |
+| A streamed `<Suspense>` boundary client-rendered over server HTML is a client mount the guard cannot see | `scoring` | a visible-copy probe (`94d24f4c`), then superseded ↓ |
+| On a cold, slow hydration React discards the server DOM before any moment render sees it — moments 3/4 replayed over the truth 1 in 5 | `scoring`, at the lead's cold-server gate | ★ **the server says it**: a document request, read from the browser's `Sec-Fetch-Dest` (`8043ba74`); 10/10 cold |
+| `ui/tabs` rendered the same children in every panel; Radix keeps the outgoing panel a commit, so moment 5's occurrence was claimed by an invisible copy | `scoring` | the active panel only (`751618c5`, the lead as `console`'s custodian) |
+| `session-cta` never drew `booked.between` — the calendar vanished from a booked card | the gate (`event-page:248`) | `9f8463da` |
+| Moment 2's trace window opened inside the swap's commit (36 ms) and a full layout (26 ms) | `checkin`, from the trace | arm two frames late; `contain: strict` (`a35ee3cf`), a race closed (`24b2da5e`) |
+| Moment 1's first frame carried the refreshed page's 22 ms of layout | `sessions`, from the trace | the same arming (`46f382d9`) |
+| The level bar drew 10 % beside a label reading «120 من 300»; the delta read «120+» | the lead, opening the captures | `ee38a537` |
+| ★ **The lead's own errors, recorded** | | |
+| · moment 1's trace was reported green on **one** sample; five serial runs failed | the lead | a trace is a serial distribution, never one run and never beside another trace |
+| · the lead «verified» `scoring`'s `rsc`-header premise on the client side only; Next strips flight headers before `headers()` (`strip-flight-headers.js`), so the fix made every moment silent | the lead's gate | `Sec-Fetch-Dest`, which Next reads and does not strip |
+
+### 3 · Rulings made during the build
+
+- **F1 — ruled in by the lead** (same class as `DEC-197` §4): without JavaScript the check-in code posted nothing typed. `ui/code-input` renders one named `code` field before hydration and the six boxes after; the posted field is byte-identical (`7a7fa684`). It takes effect when F3 is fixed (§5).
+- **Captures are taken after a moment has played** (`animations() > 0`), never on a hard load; a level shot is the card itself.
+- **The trace window** is the moment's own animations, from its first `animationstart`; the commit that swaps the screen is measured and reported beside it (`DEC-197` §7 Q4, applied to both).
+
+### 4 · CI's build failed four runs in a row fetching Google Fonts, then passed
+
+`next/font/google` fetches Baloo Bhaijaan 2's files at build time; on GitHub's runners the fetch failed on `89def5b1` … `8043ba74`, and a rerun of `8043ba74` passed. `main` had not moved and nothing touched fonts. ★ **Carried:** every build depends on Google Fonts being reachable, so an outage there blocks CI **and a production deploy**. Whether to self-host the display face (`packages/fonts` already holds its bytes) is for the owner.
+
+### 5 · Carried, for the owner
+
+**F2** — the pre-check-in award section on `SCR-014` is inside `<Suspense>` and never appears without JavaScript (since wave 12). ★★ **F3** — **`/app` does not work without JavaScript**: every route streams behind `loading.tsx`, so with JavaScript off the skeleton never swaps out (since M9's loading model); both no-JS specs are `test.fixme` citing it. **The 390 px review:** overshoot (the coin with and without `1.06`; the reaction's and code box's pops), a dark scope beside a light page, and where moment 1's ticket rests on a phone. Also carried: lifting the document-load rule into `useMoment` for all tracks; the pre-existing `.maybeSingle()` in the timeline's pinned card (`SCR-010`, frozen); `REQ-REC-004` in a default org; the level turning over only after the nightly run (D-29); `DEC-190` §6's eleven; `DEC-194`'s two gates.
+
+- **Documents changed:** `STATUS.md` (the closing block, the owner's order)
