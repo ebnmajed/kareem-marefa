@@ -12,33 +12,32 @@ places), `DEC-183`, `DEC-192`, `DEC-193`, `DEC-194`. Then `STATUS.md`'s wave-15 
 
 ---
 
-## ★★ The thing to settle at Step 0, before anyone is spawned
+## ★★ ANSWERED by the owner, 2026-09-29 — the moments land on the real screens
 
-**Wave 15 changed nothing visible. This wave does, and the owner should hear it from you in plain
-words before you build.**
+**Wave 15 changed nothing visible. This wave does, and the owner has already been told and has said
+yes. Do not re-open it; record it in `DEC-195`.**
 
 `03-motion.md` puts the moments on **real screens** — `SCR-012` (reservation), `SCR-014` (check-in),
 `SCR-022` and the home card (completion), the level card (level-up), `SCR-027`/`SCR-028` (rank
-change). A reservation moment plays a ticket rising and a stamp landing; a check-in plays confetti and
-the coin. **Those are visible on production the day this merges.**
+change). A reservation plays a ticket rising and a stamp landing; a check-in plays confetti and the
+coin. **Those are visible on production the day this merges, and the owner accepts that.**
 
-★ **That is the plan, and I believe it is right** — a moment cannot be verified in a gallery. Its
-whole definition is «plays once when the action resolves»; a canned replay in a demo proves the
-animation renders, not that it fires once, on the real transition, and never on a re-render. Building
-it anywhere but the real screen means it is not really tested.
+★ **The reason, which belongs in `DEC-195` so the choice is legible later: a moment cannot be verified
+in a gallery.** Its definition is «plays once, when the action resolves, never on a re-render». A
+canned replay in a demo proves the animation renders; it proves nothing about *when* it fires. Built
+anywhere but the real screen, a moment is not tested — only drawn.
 
-★★ **But `DEC-183` §4.2(f) says «this wave the scope is applied in the gallery and nowhere else. The
-shell adopts it in the screens waves.»** Moments on `SCR-012` and `SCR-014` are the shell adopting
-something ahead of that. **Reconcile it in `DEC-195` explicitly:** say whether those two screens adopt
-the scope, or whether a moment can play with the playground's motion and objects while the screen
-keeps today's colours — and if the latter, say how, because the coin and the ticket are playground
-objects. **Put the answer to the owner at Step 0 with the consequence named: after this merges, two
-screens look different on their phone.** The owner declined a one-screen demonstrator on 2026-09-29
-and should not discover one by accident.
+★★ **This amends `DEC-183` §4.2(f)**, which said «this wave the scope is applied in the gallery and
+nowhere else. The shell adopts it in the screens waves». **Say so plainly in `DEC-195`** — the
+surfaces the five moments touch adopt what they need now, ahead of the screens waves, and every other
+screen still waits. **Name in the entry exactly which surfaces move and which do not**, so the next
+lead does not have to infer the boundary.
 
-★ **Whatever is decided, the five frozen public routes do not move.** `qa:contract` green at every
-commit, `visual` unchanged on the public pairs, and the register-form fingerprint byte-identical —
-wave 15 built all three and they are the cheapest proof you have.
+★ **The five frozen public routes still do not move.** `qa:contract` green at every commit, `visual`
+unchanged on the public pairs, and the register-form fingerprint byte-identical — wave 15 built all
+three and they are the cheapest proof you have. ★ **And the owner will open the live site on a phone
+after the merge**, as in wave 15: the two moment screens *should* look different, and the five public
+pages should not.
 
 ## What exists — measured, so you do not re-derive it
 
