@@ -40,6 +40,23 @@
       },
       "strip": {
         "cta": "View my full points history"
+      },
+      "head": {
+        "heading": "Your balance and level",
+        "balanceLabel": "Your balance",
+        "delta": "+<bdi>{value}</bdi>",
+        "deltaLabel": "{count, plural, zero {No new points since your last visit} one {One new point since your last visit} two {Two new points since your last visit} few {{value} new points since your last visit} many {{value} new points since your last visit} other {{value} new points since your last visit}}",
+        "streak": "{count, plural, zero {No streak running yet} one {A one-month streak} two {A two-month streak} few {A <bdi>{value}</bdi>-month streak} many {A <bdi>{value}</bdi>-month streak} other {A <bdi>{value}</bdi>-month streak}}",
+        "streakNone": "No streak running yet",
+        "level": {
+          "caption": "Your level",
+          "reachedCaption": "New level",
+          "unlocks": "Unlocks",
+          "noUnlocks": "This level unlocks no privilege yet",
+          "toNext": "<bdi>{points}</bdi> of <bdi>{threshold}</bdi> points toward <bdi>{level}</bdi>",
+          "top": "You have reached the top level",
+          "none": "Your level is set in the next nightly evaluation."
+        }
       }
     },
     "admin": {

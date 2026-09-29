@@ -32,6 +32,18 @@ import type { LevelCardProps, LevelFace } from "@/components/ui";
 //
 // The ramp stop is keyed on `tier` (`levels.sort_order`), never on the name,
 // which an org may change (REQ-REC-003). The five stops are constants.
+//
+// ★ `flip` (wave 16, DEC-197 — moment 4's layout). The two faces are stacked in
+// one grid cell, back to back in 3D: both `backface-visibility: hidden`, the
+// reached face turned 180°, and `shown` turns the INNER card — as a static
+// class, so the static state is the end frame without anything having moved.
+// Both faces are drawn (neither `sr-only`), so a screen reader still meets
+// both, in order. The card's height is its taller face's — no fixed height and
+// no clip on the faces' text. The reached face carries one decorative shine
+// layer (`data-slot="shine"`), transparent at rest, clipped by `clip-path` on
+// its own layer so the text never sits inside a clip; moment 4 sweeps it once.
+// Nothing here moves: the turn and the sweep are the moment's
+// (`components/scoring/moment-points-head.tsx`).
 
 // Literal strings, so Tailwind sees every class.
 const RAMP = ["bg-level-1", "bg-level-2", "bg-level-3", "bg-level-4", "bg-level-5"] as const;
@@ -48,12 +60,17 @@ function Face({
   visible,
   unlocksLabel,
   noUnlocksLabel,
+  stacked = "",
+  shine = false,
 }: {
   face: LevelFace;
   kind: "level" | "reached";
   visible: boolean;
   unlocksLabel: string;
   noUnlocksLabel: string;
+  /** The flip layout's placement classes; empty in the default layout. */
+  stacked?: string;
+  shine?: boolean;
 }) {
   const stop = rampStop(face.tier);
   const reached = kind === "reached";
@@ -69,8 +86,13 @@ function Face({
       data-face={kind}
       data-tier={stop}
       data-visible={visible ? "true" : "false"}
-      className={visible ? `flex flex-col items-center gap-2 rounded-panel border p-5 text-center ${look}` : "sr-only"}
+      className={visible ? `relative flex flex-col items-center gap-2 rounded-panel border p-5 text-center ${look} ${stacked}` : "sr-only"}
     >
+      {shine ? (
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 [clip-path:inset(0_round_var(--radius-panel))]">
+          <span data-slot="shine" className="absolute -inset-y-1/3 start-0 w-1/4 bg-fg-heading/50 opacity-0" />
+        </span>
+      ) : null}
       <p className={`text-caption font-semibold ${quiet}`}>
         {face.caption}
       </p>
@@ -97,9 +119,28 @@ function Face({
   );
 }
 
-export function LevelCard({ level, reached, shown = "level", unlocksLabel, noUnlocksLabel, className = "" }: LevelCardProps) {
+export function LevelCard({ level, reached, shown = "level", unlocksLabel, noUnlocksLabel, flip = false, className = "" }: LevelCardProps) {
   // «reached» with no reached face shows the level held.
   const showing = shown === "reached" && reached ? "reached" : "level";
+  if (flip && reached) {
+    return (
+      <div data-shown={showing} data-layout="flip" className={`perspective-distant ${className}`}>
+        {/* Logical order for a screen reader: the level held, then the level reached — both drawn. */}
+        <div data-slot="flip-inner" className={`grid transform-3d ${showing === "reached" ? "rotate-y-180" : ""}`}>
+          <Face face={level} kind="level" visible unlocksLabel={unlocksLabel} noUnlocksLabel={noUnlocksLabel} stacked="[grid-area:1/1] backface-hidden" />
+          <Face
+            face={reached}
+            kind="reached"
+            visible
+            unlocksLabel={unlocksLabel}
+            noUnlocksLabel={noUnlocksLabel}
+            stacked="[grid-area:1/1] backface-hidden rotate-y-180"
+            shine
+          />
+        </div>
+      </div>
+    );
+  }
   return (
     <div data-shown={showing} className={`flex flex-col ${className}`}>
       {/* Logical order for a screen reader: the level held, then the level reached. */}

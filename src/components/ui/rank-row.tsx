@@ -79,7 +79,8 @@ export function RankRow({
       </span>
 
       {rose && movement ? (
-        <span className="flex shrink-0 items-center text-accent pg-light:text-fg-heading">
+        // `data-slot="rise"`: moment 5 reads it to know the row rose. The arrow is shown and never moves (DEC-197 §2).
+        <span data-slot="rise" className="flex shrink-0 items-center text-accent pg-light:text-fg-heading">
           <ArrowIcon direction="up" />
           <span className="sr-only">{movement.riseLabel}</span>
         </span>

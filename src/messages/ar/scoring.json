@@ -40,6 +40,23 @@
       },
       "strip": {
         "cta": "عرض سجل نقاطي كاملاً"
+      },
+      "head": {
+        "heading": "رصيدك ومستواك",
+        "balanceLabel": "رصيدك",
+        "delta": "+<bdi>{value}</bdi>",
+        "deltaLabel": "{count, plural, zero {لا نقاط جديدة منذ زيارتك الأخيرة} one {نقطة واحدة جديدة منذ زيارتك الأخيرة} two {نقطتان جديدتان منذ زيارتك الأخيرة} few {{value} نقاط جديدة منذ زيارتك الأخيرة} many {{value} نقطة جديدة منذ زيارتك الأخيرة} other {{value} نقطة جديدة منذ زيارتك الأخيرة}}",
+        "streak": "{count, plural, zero {لا سلسلة جارية بعد} one {سلسلة شهر واحد} two {سلسلة شهرين متتاليين} few {سلسلة <bdi>{value}</bdi> أشهر متتالية} many {سلسلة <bdi>{value}</bdi> شهرًا متتاليًا} other {سلسلة <bdi>{value}</bdi> شهر متتالٍ}}",
+        "streakNone": "لا سلسلة جارية بعد",
+        "level": {
+          "caption": "مستواك الحالي",
+          "reachedCaption": "مستوى جديد",
+          "unlocks": "يفتح لك",
+          "noUnlocks": "لا يفتح هذا المستوى امتيازًا بعد",
+          "toNext": "<bdi>{points}</bdi> من <bdi>{threshold}</bdi> نقطة نحو <bdi>{level}</bdi>",
+          "top": "بلغت أعلى مستوى",
+          "none": "يُحدَّد مستواك في التقييم الليلي القادم."
+        }
       }
     },
     "admin": {

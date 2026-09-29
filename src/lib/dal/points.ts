@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { currentStreak } from "@/lib/dal/recognition";
 
 // The member's points history (SCR-022, REQ-PTS-003, `05` §8). The test of
 // this screen is REQ-PTS-003's own wording: a member must be able to
@@ -281,3 +282,191 @@ export const getSessionAwardState = cache(async (locale: string, sessionId: stri
   const rows = (data ?? []) as AwardStateRow[];
   return rows.length > 0 ? toSessionAwardState(rows[0]) : null;
 });
+
+// ── The head of SCR-022 — moments 3 and 4 (wave 16, add-only) ────────────────
+//
+// `REQ-UIX-047`, `DEC-195` §2.2 / §2.6, `DEC-197` §6 – §7. The balance, the streak,
+// the level and its bar — and whether the member has SEEN them. What they last
+// saw is `member_seen_marks` (0162), a cursor with no timestamp, read here under
+// its own-row policy. ★ Nothing here writes during a render: `markPointsSeen()`
+// is called by the client that showed the moment, with the values it showed.
+//
+// ★ What a balance, a level or a streak IS does not change here. The level is
+// `points_balances.current_level_id` as the nightly `evaluate_levels_perks()`
+// left it — never recomputed from the balance — so on the day a session pays
+// the bar can reach its end with no new level: the card turns over on the
+// first visit after the night (`DEC-197` §7, D-29).
+
+/** The sources a completion pass writes (`REQ-PTS-015`): moment 3 plays for these rows and for no other gain
+ *  (`DEC-197` §7, D-25). A comment, a photo, a rating bonus, a streak or a manual adjustment moves the balance,
+ *  quietly. One list, here. */
+export const COMPLETION_SOURCES = ["check_in", "proposal_accepted", "session_delivered", "attendee_bonus"] as const;
+
+export interface HeadLevel {
+  id: string;
+  /** `levels.sort_order` — the level card's ramp stop, never the name (`REQ-REC-003`). */
+  tier: number;
+  name: string;
+  threshold: number;
+  /** The perk KEYS the org has ENABLED at this level; the screen names them. Empty in a default org. */
+  unlocks: string[];
+}
+
+/** The mark this page will write once the member has seen it. */
+export interface PointsMark {
+  entryId: string | null;
+  total: number;
+  levelId: string | null;
+}
+
+export interface PointsHead {
+  totalPoints: number;
+  /** The level held — null until the nightly evaluation has run once for this member. */
+  level: HeadLevel | null;
+  /** The next level above the one held; null at the top. */
+  next: { name: string; threshold: number } | null;
+  /** The bar's truth: points into the level held, out of the level's span. Full at the top. */
+  progress: { value: number; max: number } | null;
+  streak: { enabled: boolean; months: number };
+  /** Moment 3's occurrence, or null (`DEC-197` §7). */
+  completion: { occurrenceId: string; from: number; to: number; delta: number; fromProgress: number } | null;
+  /** Moment 4's occurrence, or null: the level last seen, now left behind. */
+  levelUp: { occurrenceId: string; held: HeadLevel } | null;
+  /** Whether the stored mark differs from `mark` — the client acknowledges only then. */
+  needsMark: boolean;
+  mark: PointsMark;
+}
+
+/** The bar's value within a level — `null` with no level. Exported for its unit test. */
+export function levelProgress(total: number, level: { threshold: number } | null, next: { threshold: number } | null): { value: number; max: number } | null {
+  if (!level) return null;
+  if (!next) return { value: 1, max: 1 };
+  const span = next.threshold - level.threshold;
+  if (span <= 0) return { value: 1, max: 1 };
+  return { value: Math.min(span, Math.max(0, total - level.threshold)), max: span };
+}
+
+type SeenRow = { points_entry_id: string | null; points_total: number | null; level_id: string | null };
+
+/** Moment 3's rule, as a pure function — exported for its unit test.
+ *  No mark: the first sight writes a baseline and plays nothing, so no member is greeted by their whole history.
+ *  A net decrease, no change, or a gain with no completion row: nothing plays. */
+export function decideCompletion(
+  seen: SeenRow | null,
+  now: { entryId: string | null; total: number },
+  unseenCompletionRow: boolean,
+): { occurrenceId: string; from: number; to: number; delta: number } | null {
+  if (!seen || seen.points_total === null || !now.entryId) return null;
+  if (seen.points_entry_id === now.entryId) return null;
+  if (now.total <= seen.points_total) return null;
+  if (!unseenCompletionRow) return null;
+  return { occurrenceId: now.entryId, from: seen.points_total, to: now.total, delta: now.total - seen.points_total };
+}
+
+/** Moment 4's rule — exported for its unit test. Only a level last SEEN and now left for a HIGHER one turns the card;
+ *  the first level a member is given is where they start, not a promotion. */
+export function decideLevelUp(seenLevel: { id: string; tier: number } | null, now: { id: string; tier: number } | null): boolean {
+  return Boolean(seenLevel && now && seenLevel.id !== now.id && now.tier > seenLevel.tier);
+}
+
+export async function getPointsHead(locale: string): Promise<PointsHead> {
+  const { session, supabase } = await sessionClient(locale);
+
+  const [balanceRes, levelsRes, perksRes, streakRulesRes, streaksRes, seenRes] = await Promise.all([
+    supabase.from("points_balances").select("total_points, last_entry_id, current_level_id").eq("member_id", session.memberId).maybeSingle(),
+    supabase.from("levels").select("id, name, threshold_points, sort_order").eq("org_id", session.orgId).order("threshold_points"),
+    supabase.from("perks").select("key, required_level_id").eq("org_id", session.orgId).eq("enabled", true).not("required_level_id", "is", null),
+    supabase.from("streak_rules").select("id").eq("org_id", session.orgId).eq("enabled", true).limit(1),
+    supabase.from("streak_awards").select("period_start").eq("member_id", session.memberId).order("period_start", { ascending: false }).limit(36),
+    supabase.from("member_seen_marks").select("points_entry_id, points_total, level_id").eq("member_id", session.memberId).maybeSingle(),
+  ]);
+  if (balanceRes.error) throw new Error(`points_balances: ${balanceRes.error.message}`);
+  if (levelsRes.error) throw new Error(`levels: ${levelsRes.error.message}`);
+  if (perksRes.error) throw new Error(`perks: ${perksRes.error.message}`);
+  if (streakRulesRes.error) throw new Error(`streak_rules: ${streakRulesRes.error.message}`);
+  if (streaksRes.error) throw new Error(`streak_awards: ${streaksRes.error.message}`);
+  if (seenRes.error) throw new Error(`member_seen_marks: ${seenRes.error.message}`);
+
+  const total = balanceRes.data?.total_points ?? 0;
+  const entryId = (balanceRes.data?.last_entry_id as string | null | undefined) ?? null;
+  const currentLevelId = (balanceRes.data?.current_level_id as string | null | undefined) ?? null;
+
+  const unlocksOf = new Map<string, string[]>();
+  for (const p of (perksRes.data ?? []) as Array<{ key: string; required_level_id: string }>) {
+    unlocksOf.set(p.required_level_id, [...(unlocksOf.get(p.required_level_id) ?? []), p.key]);
+  }
+  const levels: HeadLevel[] = ((levelsRes.data ?? []) as Array<{ id: string; name: string; threshold_points: number; sort_order: number }>).map((l) => ({
+    id: l.id,
+    tier: l.sort_order,
+    name: l.name,
+    threshold: l.threshold_points,
+    unlocks: unlocksOf.get(l.id) ?? [],
+  }));
+  const level = levels.find((l) => l.id === currentLevelId) ?? null;
+  const nextLevel = level ? (levels.find((l) => l.threshold > level.threshold) ?? null) : null;
+  const next = nextLevel ? { name: nextLevel.name, threshold: nextLevel.threshold } : null;
+
+  const seen = (seenRes.data as SeenRow | null) ?? null;
+  const seenLevel = seen?.level_id ? (levels.find((l) => l.id === seen.level_id) ?? null) : null;
+
+  // Only when the mark says something is unseen is the ledger asked which rows those are.
+  let unseenCompletionRow = false;
+  if (seen && seen.points_total !== null && entryId && seen.points_entry_id !== entryId && total > seen.points_total) {
+    let after: string | null = null;
+    if (seen.points_entry_id) {
+      const { data: seenEntry, error } = await supabase.from("points_ledger").select("occurred_at").eq("id", seen.points_entry_id).maybeSingle();
+      if (error) throw new Error(`points_ledger (seen): ${error.message}`);
+      after = (seenEntry?.occurred_at as string | undefined) ?? null;
+    }
+    let q = supabase
+      .from("points_ledger")
+      .select("id")
+      .eq("member_id", session.memberId)
+      .gt("amount", 0)
+      .in("source", [...COMPLETION_SOURCES])
+      .limit(1);
+    if (after) q = q.gt("occurred_at", after);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(`points_ledger (unseen): ${error.message}`);
+    unseenCompletionRow = (rows ?? []).length > 0;
+  }
+
+  const decided = decideCompletion(seen, { entryId, total }, unseenCompletionRow);
+  const levelUp = decideLevelUp(seenLevel, level) && seenLevel && level ? { occurrenceId: level.id, held: seenLevel } : null;
+
+  // Where the bar starts: the balance last seen, inside the level last seen when the card is about to turn.
+  const fromProgressOf = (from: number): number => {
+    const within = levelUp ? levelUp.held : level;
+    const beyond = levelUp ? level : next;
+    const p = levelProgress(from, within, beyond);
+    return p ? p.value / p.max : 0;
+  };
+
+  const mark: PointsMark = { entryId, total, levelId: currentLevelId };
+  return {
+    totalPoints: total,
+    level,
+    next,
+    progress: levelProgress(total, level, next),
+    streak: { enabled: (streakRulesRes.data ?? []).length > 0, months: currentStreak((streaksRes.data ?? []).map((r) => r.period_start as string)) },
+    completion: decided ? { ...decided, fromProgress: fromProgressOf(decided.from) } : null,
+    levelUp,
+    needsMark: !seen || seen.points_entry_id !== entryId || seen.points_total !== total || seen.level_id !== currentLevelId,
+    mark,
+  };
+}
+
+const PointsMarkInput = z.object({
+  entryId: z.uuid().nullable(),
+  total: z.number().int(),
+  levelId: z.uuid().nullable(),
+});
+
+/** Called by the client that showed the head — never by a render (`DEC-195` §2.6). The values are the ones it
+ *  showed; the function writes the caller's own row only, so a well-formed value names nobody else's. */
+export async function markPointsSeen(locale: string, input: PointsMark): Promise<void> {
+  const parsed = PointsMarkInput.parse(input);
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("mark_points_seen", { p_entry: parsed.entryId, p_total: parsed.total, p_level: parsed.levelId });
+  if (error) throw new Error(`mark_points_seen: ${error.message}`);
+}

@@ -22,7 +22,12 @@
       "provisional": "مؤقتة — تُحدَّث كل ليلة حتى نهاية الشهر",
       "final": "نهائية",
       "rankedMetric": "الترتيب حسبه",
-      "takenAt": "احتُسبت في <bdi>{date}</bdi>"
+      "takenAt": "احتُسبت في <bdi>{date}</bdi>",
+      "rankedMetricLabel": {
+        "total_points": "الترتيب حسبه: مجموع النقاط",
+        "points_per_active_member": "الترتيب حسبه: نقاط لكل عضو نشط"
+      },
+      "ownLabel": "فريقك"
     },
     "companyBreakdown": {
       "heading": "كيف حصلت شركتك على نقاطها",
@@ -53,6 +58,7 @@
     "rankValue": "المرتبة <bdi>{value}</bdi>",
     "allTime": {
       "live": "تُحدَّث مباشرة مع كل نقطة"
-    }
+    },
+    "riseLabel": "{count, plural, zero {لم يتغيّر مركزك} one {تقدّمت مركزًا واحدًا منذ زيارتك الأخيرة} two {تقدّمت مركزين منذ زيارتك الأخيرة} few {تقدّمت {value} مراكز منذ زيارتك الأخيرة} many {تقدّمت {value} مركزًا منذ زيارتك الأخيرة} other {تقدّمت {value} مركز منذ زيارتك الأخيرة}}"
   }
 }

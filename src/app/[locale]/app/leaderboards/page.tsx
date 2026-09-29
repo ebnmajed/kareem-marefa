@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Tabs } from "@/components/ui/tabs";
-import { getCompanyPointsBreakdown, getLeaderboards } from "@/lib/dal/leaderboards";
+import { getBoardMoment, getCompanyPointsBreakdown, getLeaderboards, type BoardKind } from "@/lib/dal/leaderboards";
+import { acknowledgeBoardSeen } from "./actions";
 
 // SCR-027 · SCR-028 · /app/leaderboards — on the M9 system for wave 7
 // (DEC-137; three tabs on one route, DEC-141 ruling 6).
@@ -41,6 +42,13 @@ export default async function LeaderboardsPage({ params, searchParams }: { param
     board === "companies" ? getCompanyPointsBreakdown(locale) : Promise.resolve(null),
   ]);
 
+  // ★ wave 16 (REQ-UIX-048, DEC-195 §2.6): what the viewer last saw on THIS board —
+  // moment 5 plays when their rank rose since. The mark is bound here, so the client
+  // that shows the board sends nothing of its own when it acknowledges.
+  const kind: BoardKind = board === "all" ? "all_time" : board === "month" ? "monthly" : "company";
+  const moment = await getBoardMoment(locale, kind, boards);
+  const acknowledge = acknowledgeBoardSeen.bind(null, locale, moment.mark);
+
   const items = [
     { value: "all", label: t("tabs.allTime"), href: "/app/leaderboards" },
     { value: "month", label: t("tabs.monthly"), href: "/app/leaderboards?board=month" },
@@ -61,7 +69,7 @@ export default async function LeaderboardsPage({ params, searchParams }: { param
         {board === "all" ? (
           <section id="all-time" aria-labelledby="all-time-heading" className="flex flex-col gap-4">
             <SectionHeader id="all-time-heading" title={t("tabs.allTime")} description={t("allTime.live")} />
-            <MemberBoard rows={boards.allTime} />
+            <MemberBoard rows={boards.allTime} moment={moment} acknowledge={acknowledge} />
           </section>
         ) : board === "month" ? (
           <section id="monthly" aria-labelledby="monthly-heading" className="flex flex-col gap-4">
@@ -70,7 +78,7 @@ export default async function LeaderboardsPage({ params, searchParams }: { param
               title={t("tabs.monthly")}
               actions={boards.monthly ? finality(boards.monthly.isFinal, t("monthly.provisional"), t("monthly.final")) : undefined}
             />
-            <MemberBoard rows={boards.monthly?.rows ?? []} />
+            <MemberBoard rows={boards.monthly?.rows ?? []} moment={moment} acknowledge={acknowledge} />
           </section>
         ) : (
           <div className="flex flex-col gap-12">
@@ -81,7 +89,7 @@ export default async function LeaderboardsPage({ params, searchParams }: { param
                 description={boards.company ? t.markup("company.takenAt", { date: formatDateTime(boards.company.takenAt, boards.timeZone, locale), bdi: (chunks) => chunks }) : undefined}
                 actions={boards.company ? finality(boards.company.isFinal, t("company.provisional"), t("company.final")) : undefined}
               />
-              <CompanyBoard rows={boards.company?.rows ?? []} metric={boards.companyMetric} />
+              <CompanyBoard rows={boards.company?.rows ?? []} metric={boards.companyMetric} moment={moment} acknowledge={acknowledge} />
             </section>
             {companyBreakdown ? <CompanyPointsBreakdownSection breakdown={companyBreakdown} locale={locale} timeZone={boards.timeZone} /> : null}
           </div>
