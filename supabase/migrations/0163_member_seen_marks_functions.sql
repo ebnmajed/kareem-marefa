@@ -1,3 +1,6 @@
+-- 0163 · wave 16 — promoted by the lead from supabase/proposed/scoring/0001_seen_marks_functions.sql (scoring, DEC-197 §6).
+-- The two invoker writers of `member_seen_marks` (0162). Unchanged from the proposal; proven by tests/rls/scoring-seen.test.ts.
+--
 -- scoring · wave 16 (DEC-195 §2.6, DEC-197 §6, REQ-UIX-047, REQ-UIX-048) — the two
 -- writers of `member_seen_marks` (0162, the lead's table).
 --

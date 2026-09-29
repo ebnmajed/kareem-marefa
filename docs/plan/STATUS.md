@@ -42,7 +42,7 @@ stories `STORY-UIX-027` … `032`.
 | C2 | **Keyframes and tokens** — every `@keyframes` in `globals.css`, named in the plans, landed by the lead | lead → all | ★ **landed at sync 1** (`DEC-197` §9): `moment-ticket-rise`, `-stamp-land`, `-thud`, `-ticket-leave`, `-fade-in`, `-coin-drop`, `-rise`, `-flicker` (the class `.moment-flicker`, only under `no-preference`), `-shine` with `--moment-dir`; `--duration-loop` 2 s, collapsed in the one block. **No arrow pulse** (§2). Inside the playground block, so `tokens-scope`'s hash of the rest still equals `main`'s |
 | C3 | **The scope on a real screen** — wraps exactly the named surface, a direct child of the content, never transformed (`DEC-195` §1.3) | lead → every surface | **published** |
 | C4 | **The matrix decides, the moment plays** — `session-matrix.ts` and `lib/dal/rsvp.ts` stay `checkin`'s; a field is add-only on request | `sessions` ↔ `checkin` | **published** |
-| C5 | **What a member has seen** — moments 3 to 5 at first sight; «since last view» | `scoring` → lead | ★ **landed: `0162` `member_seen_marks`** (`DEC-197` §6) — a cursor with no timestamp, own-row RLS, deleted by `anonymise_members()`; `scoring`'s two invoker functions to promote |
+| C5 | **What a member has seen** — moments 3 to 5 at first sight; «since last view» | `scoring` → lead | ★ **landed: `0162` `member_seen_marks`** (`DEC-197` §6) — a cursor with no timestamp, own-row RLS, deleted by `anonymise_members()`; ★ `scoring`'s two invoker writers **promoted as `0163`**, unchanged (`tests/rls/scoring-seen.test.ts` 12 ✓ against the migration) |
 | C6 | **The amount** — `getSessionAwardState()`'s pending figure, read, never re-derived | `scoring` → `checkin` | **published** — the DTO exists since wave 12 |
 
 ### The checklist

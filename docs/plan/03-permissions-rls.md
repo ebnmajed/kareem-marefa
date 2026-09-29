@@ -1450,6 +1450,12 @@ generated suite is the highest-value test in the product.
 | `COL-members.avatar_import.no_grant` | A client select of `members.avatar_import` is refused (42501); `avatar_version` is readable through the grant, `members_member_view` and `me()`. (migration `0157`). |
 | `TRG-comments_broadcast.avatar_version` | The comment payload carries `authorAvatarVersion`, and `authorAvatarUrl` stays null — no Google URL on the wire. (migrations `0155`, `0157`). |
 | `RPC-begin_photo_album_build` | `service_role` only · returns the visible set, never a hidden or removed photograph · a superseded build gets no rows. (migration `0159`, `DEC-182`). |
+| `RPC-mark_points_seen.own_row` | Writes the caller's own mark, inserting it the first time; never another member's. (migration `0163`, `DEC-197`). |
+| `RPC-mark_points_seen.foreign_level` | A level of another org is refused with `22023` and nothing is written. (migration `0163`). |
+| `RPC-mark_board_seen.one_board` | Touches only the named board's columns; the others and the points cursor are unchanged. (migration `0163`). |
+| `RPC-mark_board_seen.unknown_board` | A board other than `all_time`, `monthly` or `company` is refused with `22023`. (migration `0163`). |
+| `RPC-mark_board_seen.fraction_clamped` | A company fraction outside 0–1 is stored clamped. (migration `0163`). |
+| `RPC-mark_seen.anon` | `anon` cannot execute either function. (migration `0163`). |
 | `RPC-record_photo_album_built` | Ready + `MSG-photo_album_ready` to who asked + the expiry enqueued · `stale` when a photograph was hidden mid-build · `superseded` for a replaced build · a part outside its build's prefix refused. (migration `0159`). |
 | `RPC-fail_photo_album` | The current build only, `failed` with its error. (migration `0159`). |
 | `TRG-photo_albums_stale` | ★ A member's takedown, a staff removal and a delete each make a ready album stale — «remove photos of me» reaches a zip already built — and the takedown still succeeds. (migration `0159`). |
