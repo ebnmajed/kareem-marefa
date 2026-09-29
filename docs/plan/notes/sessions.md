@@ -4698,3 +4698,313 @@ primitives' own files.
     `ui/code-input` does both, and a screens wave adopts it;
   - a checked-in member is offered the check-in link again (`session-matrix.ts:241-246`).
 - **Carried, the lead's:** `app/layout.tsx:30` writes an org's canvas to `--canvas`, which nothing reads.
+
+---
+
+# Wave 16 — plan: moment 1, الحجز, on `SCR-012`'s action card (`DEC-195`, `REQ-UIX-045`, `REQ-UIX-044`, M18)
+
+Planning only — nothing under `src/`, `tests/`, `supabase/` or `messages/` changed. Measured on
+`wave-16/the-five-moments` at `75e3fa05`, with the lead's uncommitted `src/lib/ui/{moment,duration,
+reduced-motion,count-up,confetti}.ts` read from disk as the API I plan against.
+
+## W16.0 · What is on the card today — measured
+
+| File | Renders today | Moves this wave |
+|---|---|---|
+| `components/sessions/action-card.tsx` (432 lines) | `<section id="attend">` «الحضور» (sr-only `<h2>`); for `none`/presenter/staff on an open session the heading «27 من 30 مقعدًا محجوزًا» + `Progress` (`:111-123`); `RsvpStatus` (`:125`); `AttendanceOutcome` (`:126`, `checkin`'s); `AwardState` (`:130`, `checkin`'s); the primary via `PrimaryControl` (`:132`, `:239-263`); a secondary `AddToCalendar` (`:137`); rate window, tasks jump, certificate, materials jump; `RsvpSecondary` (`:162`); the confirmed hint (`:164`); bookmark + share (md+); `Meta`; `CertificateRow`; `SessionDownload`; the staff nav; **`ActionBar` inside the section** (`:230`) | the section gains the moment's host and an inner **thud element that excludes `ActionBar`**; the reserve / booked parts become `session-cta`. Everything else in the card is unchanged |
+| `components/sessions/action-bar.tsx` (36) | the phone's **`position: fixed`** bottom bar, `md:hidden`, the one primary + bookmark + share; `data-action-bar` is the shell's `--tabbar-h` contract | the bar's **inner row** is the phone's thud element and the ticket's anchor; the fixed element itself is never transformed |
+| `components/sessions/event-actions.ts` (50) | `primaryActionFor()` — `reserve` › `checkIn` › `calendar` (open + confirmed) › `hostView` › `rate` | **unchanged** — it decides which control is primary; the matrix decides what is permitted |
+| `components/sessions/calendar-menu.tsx` (99) | «أضِف إلى تقويمك» as one `Button` over `ui/menu` (per-day groups) | **unchanged.** `ui/menu.tsx:43-47` already passes `usePlayPortal()` as the Radix `container`, so inside the scope the menu lands in the scope's landing element with no change here |
+| `components/checkin/rsvp-panel.tsx` (147) | `RsvpStatus` (seats left / waitlist length / deadline, or «تم تأكيد حجزك» in a success `Panel`, or «أنت على قائمة الانتظار — ترتيبك رقم N»); `RsvpReserve` (a `SubmitButton` «احجز مقعدك» in `card` = `hidden md:block` or `bar`); `RsvpSecondary` (cancel / late cancel / leave waitlist); `RsvpPanel` (all three stacked — used by its test only) | see W16.2. **Every gate is unchanged**: it still renders on `canReserve` / `canCancel` / `seat` from `getRsvpPanelData()` |
+| `components/checkin/actions.ts` (21) | `reserveSeatAction` / `cancelRsvpAction` → the DAL, then **`redirect()` to the same page, returning nothing** (`:13-16`) | returns a result and calls `refresh()` (W16.1) |
+
+**What `session-cta` replaces:** `RsvpReserve`'s `SubmitButton` (→ `reserve`, or `waitlist` when `seat === "full"`);
+`RsvpStatus`'s confirmed `Panel` and waitlisted line **and** `RsvpSecondary`'s cancel form (→ one `booked`, `hold:
+"seat" | "waitlist"`, the cancel and its late-cancel note inside it). **Not** replaced: the seats-left / deadline lines
+of the `canReserve` branch, the card's seats heading and `Progress`, `PrimaryControl`'s check-in / host / rate links,
+`AddToCalendar` / `CalendarMenu`, `AttendanceOutcome` and `AwardState` (`checkin`'s, frozen). **Which** state a viewer
+gets stays the matrix's answer through the panel's existing flags (contract 4) — the panel maps them to a
+`SessionCtaState` and nothing else.
+
+## W16.1 · ★★ Sync-1 question 1 — the occurrence, and how it reaches the client that performed it
+
+### What the action returns
+
+`reserve_seat()` already `returns public.rsvps` (`0045:31`) — the row's `id`, `status`, `waitlist_position`,
+`reserved_at`, `updated_at`. The DAL drops all but two (`lib/dal/rsvp.ts:111-112`). ★ **A fresh reservation is
+already distinguishable in the row**: on a new or reactivated reservation the RPC sets `reserved_at = now()` in the
+same statement that sets `updated_at = now()` (`0045:80-99`, `set_updated_at()` at `0003:56`, both the transaction's
+`now()`), and on a repeat submit it keeps the old `reserved_at` and writes a new `updated_at` (`0045:96`). So
+`fresh ⇔ reserved_at = updated_at` — **no SQL, no migration.**
+
+```ts
+// actions.ts — "use server"; the type lives in moment-reserve.tsx and is imported as a type only
+export async function reserveSeatAction(locale: string, sessionId: string, _prev: ReserveResult | null, _form: FormData): Promise<ReserveResult>
+
+type ReserveResult =
+  | { ok: true; status: "confirmed" | "waitlisted"; position: number | null;
+      /** `${rsvpId}:${status}:${reservedAt}` when THIS call created or reactivated the seat; null on a repeat submit. */
+      occurrence: string | null;
+      /** The whisper's truth: the member's calendar is connected, so `calendar_upsert` will sync it. */
+      calendar: "sync" | "manual" }
+  | { ok: false };   // refused — not_open, deadline_passed, rsvp_not_open_yet, anything
+```
+
+- It calls the DAL, then **`refresh()`** (`next/cache`, Server-Action-only, `node_modules/next/dist/docs/01-app/
+  03-api-reference/04-functions/refresh.md`) and **returns** — never `redirect()`. The action's result and the
+  refreshed RSC payload arrive in **one response** and commit in **one transition**, so the booked card and the
+  result land together.
+- `calendar` reads `getCalendarConnection()` (`lib/dal/calendar.ts:86`, `notify`'s — a read, no edit): connected
+  and not disconnected → `"sync"`. Only for `confirmed`.
+- `cancelRsvpAction` also moves to `refresh()` and returns nothing, so both halves of the panel behave alike.
+
+### How the client that performed it receives it
+
+A new client host, **`src/components/sessions/moment-reserve.tsx`**, wraps the action card's content. The server
+binds the action (`reserveSeatAction.bind(null, locale, sessionId)` — a `"use server"` export, `DEC-159`) and passes it
+as a prop; the host holds **`useActionState(action, null)`** and provides `formAction` by context. The reserve CTA
+(both placements, `card` and `bar`) is a small client part that reads it and hands it to `SessionCta` as
+`act.action` (its type `(formData: FormData) => void | Promise<void>` fits). ★ **The state lives in the host, not in
+the reserve button**, because the button unmounts in the very commit the result arrives (the primary becomes the
+calendar). The host sits at the same position in both trees, so the refresh keeps it and its state.
+
+### How it stays silent
+
+`useMoment("reservation", result?.ok ? result.occurrence : null)` (the lead's `src/lib/ui/moment.ts:93`).
+
+| Case | Occurrence | What plays |
+|---|---|---|
+| the tap that reserved, JS on | the key | **the moment**, once |
+| a re-render or a later `refresh()` with the same state | same key, effect deps unchanged | nothing |
+| an unmount and a remount with the same key (strict mode, a future `<Activity>`) | same key, **already claimed** | the static state |
+| a reload / a back navigation / tomorrow / another phone | **none** — `useActionState` starts at `null` | the static state |
+| a double tap or a second tab's submit | `occurrence: null` (not fresh) | the static state |
+| a promotion off the waitlist by `promote_waitlist` | none — not this client's action | the static state |
+| a refused reservation | `{ ok: false }` | **nothing animates**; the refreshed card shows the truth |
+| a press before hydration (the form posts without JS) | Next renders the page with the result as the form state; the server renders the static state; if JS then hydrates in that tab, the moment plays once — it is still this client's own result. A reload re-POSTs, `reserve_seat` is idempotent, `fresh` is false → silent |
+
+★ Two side effects of dropping `redirect()`, said now: **(a)** a Server Action's `redirect()` pushes a history entry,
+so today a back press after reserving lands on *the same event page*; after this it returns to where the member came
+from. **(b)** `reserve-probe.spec.ts` (the lead's) exists to catch React's lost ping on the redirect path; it will now
+probe the `refresh()` path. Its assertions still hold (it waits for «تم تأكيد حجزك», W16.5).
+
+### What I need from the keying (contract 1)
+
+`useMoment` fits. Two asks, both additive:
+
+1. ★ **`first: boolean`** beside `phase` — true on the mount that claimed the key, **whether or not motion is
+   reduced**. The reduced-motion static state with an occurrence raises the whisper once; with `phase` alone a claimed
+   reduced-motion mount and a later visit are indistinguishable.
+2. **`done` with a stable identity** (`useCallback`) — it is called from an `animationend` handler registered in an
+   effect.
+
+## W16.2 · Sync-1 question 2 — the static state, in words, and where it sits
+
+**The static state is what every visit without a fresh occurrence renders, and the end frame of the moment:**
+
+- **md+, in the card**, at the status position (where «تم تأكيد حجزك» is today): `session-cta` `booked` — the face (a
+  fact, not a control: the check glyph, the words, and the **capacity chip «28 من 30»** in `<bdi>`, Western digits),
+  then the cancel («إلغاء الحجز», or its late form with the late-cancel note tied by `aria-describedby`). The primary
+  below it is «أضِف إلى تقويمك», unchanged (`16` §5.4.2 — see W16.6 D2 for the order).
+- **At 390 px**: the same face and cancel in the card; the bottom bar carries «أضِف إلى تقويمك», bookmark, share.
+- **Waitlisted**: `booked` with `hold: "waitlist"` — the clock glyph, «على قائمة الانتظار», the chip «ترتيبك 3» in
+  `<bdi>`, and «غادر قائمة الانتظار». No calendar (the matrix gives none to a waitlisted member).
+- **The whisper**: raised **only** where there is a fresh occurrence — i.e. the reduced-motion member who just
+  reserved gets the toast (the shell's region, the shell's look, `DEC-188` §6), with no motion from this surface. **A
+  later visit raises no toast**: a whisper acknowledges an action, and a visit is not one (W16.6 D5).
+- No ticket, no stamp, no thud — none of their DOM exists outside the playing phase.
+
+Asserted in jsdom under `prefers-reduced-motion: reduce` (the lead's `motion-env.ts`), captured at 390 × 844.
+
+## W16.3 · The sequence (behaviour reference `motion-story.html:554-568`, text `03-motion.md` §1)
+
+Every step starts on the previous one's `animationend`; no `setTimeout`, no JS-driven frames, durations from tokens.
+The ticket and stamp are rendered by a stage **inside** the anchor of the placement that is visible
+(`checkVisibility()` on the two anchors: the card's from md, the bar's below), because a CSS animation on a
+`display: none` element never ends.
+
+| # | Element | Keyframe | Duration / easing |
+|---|---|---|---|
+| 0 | the stage mounts (layout effect, before paint) with the ticket at its first frame; `will-change: transform, opacity` on ticket and stamp; the new booked face and, on the phone, the bar's new primary held at `opacity: 0` by a data attribute | — | — |
+| 1 | the ticket (`TicketObject`, `aria-hidden`) rises from behind the CTA | `moment-ticket-rise` | `--duration-slow`, `--ease-play` |
+| 2 | the stamp «محجوز» lands on it, **no overshoot** | `moment-stamp-land` | `--duration-slow`, `--ease-play` |
+| 3 | on landing: the **inner** thud element thuds — md+ the card's content wrapper (a new `<div>` inside the section that holds everything **but** `ActionBar`), phone the bar's inner row. `will-change: transform` on it for this step only | `moment-thud` | `--duration-fast` (W16.6 D6) |
+| 4 | a hold, then the ticket leaves | `moment-ticket-leave`, `animation-delay: var(--duration-base)` | `--duration-base` |
+| 5 | as it leaves, the booked face (with the new capacity chip) and the bar's new primary fade in — **the capacity update in place** | `moment-fade-in` | `--duration-base` |
+| 6 | on the ticket's `animationend`: the whisper (`useToast().show`, `tone: "success"`); `done()` → the stage unmounts, the face's hold attribute goes; **no `will-change` remains anywhere** | — | the toast's own |
+
+`animationcancel` ends the moment the same way. Under reduced motion none of this mounts (`useMoment` returns
+`static`), and `globals.css:1360-1370` collapses any stray duration anyway.
+
+**The waitlisted variant** is the same sequence; the stamp reads **«قائمة الانتظار · N»** with `<bdi>` around N, in
+`DEC-073`'s waitlist tone (W16.6 D10); step 5 reveals the waitlisted face; the whisper is the waitlist's.
+
+**The scope (contract 3).** `page.tsx:173`'s grid-item `<div>` becomes **`<PlayScope className="rounded-card -mt-4
+md:sticky …">`** — the same element, the same classes, now the scope. It is a direct child of the page's grid, sticky
+(neither a transform nor a filter nor a clip), never animated; everything that moves is inside it. ★ `.theme-play`
+is unlayered and paints `background-color: var(--bg)` (`globals.css:360-404`), so without `rounded-card` its square
+ink corners would show behind the card's rounded ones on the light page. `ActionBar` stays inside the section and
+therefore inside the scope — it becomes the dark ground at 390 px, which is part of the action card, and the
+`fixed` bar keeps working because no ancestor up to the viewport is transformed. The calendar menu portals into the
+scope's landing element (W16.0). **Nothing else on `SCR-012` is inside the scope.**
+
+## W16.4 · Sync-1 question 3 — the keyframes (contract 2, the lead's `globals.css`)
+
+Transform and opacity only; each used by a class the lead names, and `animation: none` under reduced motion.
+
+| Name | Keyframes | Duration |
+|---|---|---|
+| `moment-ticket-rise` | `from { transform: translateY(3.75rem); opacity: 0 } to { transform: none; opacity: 1 }` | `--duration-slow` |
+| `moment-stamp-land` | `0% { transform: scale(2.4) rotate(-8deg); opacity: 0 } 30% { opacity: 1 } 100% { transform: scale(1) rotate(-8deg); opacity: 1 }` — no step past `1` | `--duration-slow` |
+| `moment-thud` | `0% { transform: translateY(0) } 45% { transform: translateY(0.1875rem) } 100% { transform: translateY(0) }` | `--duration-fast` |
+| `moment-ticket-leave` | `from { opacity: 1 } to { opacity: 0 }` | `--duration-base` |
+| `moment-fade-in` | `from { opacity: 0 } to { opacity: 1 }` | `--duration-base` |
+
+`moment-fade-in` and `moment-thud` are generic enough for `checkin` and `scoring` to share; the names are the lead's to
+change.
+
+## W16.5 · Sync-1 question 4 — every existing assertion that moves
+
+**`tests/components/checkin/rsvp-panel.test.tsx`** (evidence, transferred with the panel):
+
+| Line | Today | After | Why |
+|---|---|---|---|
+| `:16-18` | the `next-intl/server` mock serves the `rsvp` catalogue only | also serves `ar/sessions.json` for `sessions.moment` | harness only — the panel reads the moment's words (the face's waitlist label, the chips) from `sessions.json`, because `rsvp.json` is `checkin`'s |
+| `:13` | mocks `@/lib/dal/rsvp` | also mocks `next/cache`'s `refresh` for `actions.ts`'s import | harness only |
+| `:42` | `getByRole("button", { name: "احجز مقعدك" })` | the name is «احجز مقعدك، 27 من 30» — the chip is part of the name (`REQ-UIX-033`, `session-cta.tsx:31-34`) | the reserve CTA carries the capacity chip |
+| `:63-64` | `getByText(/ترتيبك رقم/).closest("bdi")` | `getByText("ترتيبك 2").closest("bdi")` | the waitlisted state is `booked` `hold: "waitlist"`: «على قائمة الانتظار» on the face and the position in the chip's `<bdi>`; the old sentence is not rendered |
+
+Every other case passes unchanged: `:41` (seats left, the same `statusPart` branch), `:48-49`, `:65`, `:77-78` (**if**
+W16.6 D3 keeps «تم تأكيد حجزك» on the face — the face renders its label as text), `:91-92` (the late label and the
+note, now `booked`'s `cancel.note`), `:105-136` (the empty cases — the gates are unchanged).
+
+**`tests/components/sessions/**`** — `calendar-menu-days`, `event-hero-days`, `session-download`,
+`session-settings-nav`: **none moves.** **`tests/components/ui/session-cta.test.tsx`**: none moves (any change to the
+primitive is additive, W16.8 R4).
+
+**My e2e specs** (evidence) — with D3 ruled «keep the tree's words», **none moves**:
+`event-page.spec.ts:195-196` (`getByRole` name is a substring match in Playwright, so the chip does not break it),
+`:240-250` (the click, «تم تأكيد حجزك», the calendar, «إلغاء الحجز», no «احجز مقعدك» after), `:284-285`;
+`sessions-screens.spec.ts:301`, `:326` (its regex), `:343-346`. The comment at `event-page.spec.ts:220` («The
+reservation redirects back to this page») becomes wrong and is corrected — a comment, no ledger line. The captures
+`event-before` / `event-after` / `scr-012-event-page` change picture on purpose (the card is scoped).
+
+**If D3 is ruled the design's way** («محجوز», «ألغِ حجزي»), these move too, and five of them are **other owners'**:
+`event-page.spec.ts:241, 246, 250`, `sessions-screens.spec.ts:345, 346` (mine) · `checkin.spec.ts:231-232`
+(`checkin`'s) · `wave9-three-day-workshop.spec.ts:331` and `reserve-probe.spec.ts:131` (the lead's) ·
+`rsvp-panel.test.tsx:77-78, 92`.
+
+★ **A risk to verify, not a known move:** the whisper is a `role="status"` toast in the shell's region, which lives
+in the layout and survives a client navigation. A spec that reserves and then, within the toast's lifetime, asserts
+`getByRole("status")` in strict mode on the next screen would now see two — `sessions-screens.spec.ts:403` (mine) and
+`checkin.spec.ts:167, 177` (`checkin`'s). I run mine and report; if it bites, the fix is a `filter({ hasText })`, one
+ledger line each.
+
+## W16.6 · Sync-1 question 5 — disagreements with `docs/design/` (new; numbered for `DEC-195` §6's list to continue)
+
+- **D1 · The ticket bakes «محجوز», and the stamp says it again — and on a waitlist the ticket is false.**
+  `ui/objects/ticket.tsx:32` draws «محجوز» as a path; `03-motion.md:15` lands a stamp «محجوز» on the ticket;
+  `03-motion.md:19` («same ticket») puts that ticket under «قائمة الانتظار · 3» for a member who holds **no seat**.
+  The prototype's ticket carries no word (`motion-story.html:343`). → **Request R1**: an additive prop on
+  `TicketObject` that omits the word, so the stamp carries it in both variants. And the ticket body is cyan
+  (`ticket.tsx:17-19`), a team colour — `DEC-195` §6.21 ruled the stamp, not the ticket; **not picked, raised**.
+- **D2 · After booking, the design makes the CTA a fact; the plan makes the calendar the primary.** `03-motion.md:15`
+  «the CTA becomes «محجوز» with «ألغِ حجزي» beneath → calendar toast whispers» against `16` §5.4.2 and
+  `event-actions.ts:16-18,46` — once a seat is held «أضِف إلى تقويمك» takes the reserve button's place, in the order
+  status → calendar → cancel. `docs/plan/` wins: the booked face sits at the **status** position, the calendar stays
+  primary, the whisper is a whisper. ★ `session-cta`'s `booked` draws its cancel directly under the face, which puts
+  the cancel before the calendar in the tab order at md+ → **Request R4**.
+- **D3 · The words.** Face «محجوز» (`03-motion.md:15`) vs «تم تأكيد حجزك» (`rsvp.json:6`); «ألغِ حجزي» vs «إلغاء
+  الحجز» (`rsvp.json:10`, with its late form `:11`). Both tree strings are `checkin`'s catalogue and asserted by eight
+  specs across three owners (W16.5). **My default: the tree's words on the face and the cancel; «محجوز» on the stamp
+  alone.** The lead rules.
+- **D4 · «أُضيفت إلى تقويمك» is false for most members.** (`motion-story.html:567`, `03-motion.md:15` «calendar
+  toast».) `calendar_upsert` is enqueued on every confirmation (`0034:255-257`) but syncs only a connected member
+  (`0038:124-130`). The whisper says what is true: connected → «ستُضاف إلى تقويمك خلال لحظات»; not → «احفظ موعدها في
+  تقويمك» (the calendar button is right there). **The waitlisted whisper is not specified**: «سنُعلمك إن توفّر لك
+  مقعد» — true, `MSG-rsvp_promoted` is non-optional (`0034:229`). Final words in `ar/sessions.json` first.
+- **D5 · «Static state: … toast shown without motion»** (`03-motion.md:18`) cannot mean every later visit — that
+  would toast «booked» at a member each time they open the page. The toast is raised on a fresh occurrence only;
+  a later visit's static state has none.
+- **D6 · Three durations are off the token ramp.** The thud's 160 ms (`03-motion.md:15`), the 520 ms hold
+  (`:15`), the toast's 1.4 s (`:15`, `motion-story.html:567`). The ramp is 120 / 220 / 420 / 900
+  (`globals.css:324-327`). **My default:** thud `--duration-fast`, hold `--duration-base`, the toast's own duration
+  (the shell's; `ToastOptions` has none, `ui/index.ts:675-681`). Or the lead adds a token.
+- **D7 · The prototype thuds as the stamp starts** (`motion-story.html:561-562`, both on the same tick), the text
+  «stamp lands → the card thuds». I follow the text: the thud on the stamp's `animationend`.
+- **D8 · At 390 px the CTA is not in the card.** The prototype's ticket rises inside the card above an in-card CTA
+  (`motion-story.html:121,341`); the tree's phone primary is the **fixed bottom bar** (`action-bar.tsx`,
+  `16` §6.1 note 2), and the booked face is in the card, which may be below the fold. At 390 the stage is the bar:
+  the ticket rises above it, the bar's row thuds, and the chip's update happens in the card's face, possibly out of
+  view. **The capture decides; if it reads wrong, it goes to the owner at the 390 px review.**
+- **D9 · The capacity chip «updates in place»** (`03-motion.md:15`). The refreshed tree already carries the new count
+  when the moment starts, and the reserve CTA that showed the old one is gone. The update is the face's chip fading
+  in with the new figure at step 5 — the old figure is not re-derived on the client (`count − 1` would be exactly
+  the re-derivation `REQ-PTS-001`'s spirit forbids).
+- **D10 · Which tone is «the waitlist's».** `DEC-195` §6.21 says `DEC-073`'s waitlist tone. The tree's only waitlist
+  colour is `SessionStatusBadge`'s `seat === "full"` → key `waitlist` in the **`live`** tone (`badge.tsx:160`). On a
+  cyan ticket, the on-dark `live` constant is untested for contrast. **My default:** the stamp drawn in the badge's
+  **filled** `live` form (its fixed background and text), which carries its own contrast. Question Q2.
+
+## W16.7 · Files, tests, captures — in commit order
+
+1. **After R2 lands** — `components/checkin/actions.ts`: `reserveSeatAction(locale, sessionId, prev, formData)`
+   returns `ReserveResult` and calls `refresh()`; `cancelRsvpAction` calls `refresh()`. New
+   **`tests/components/sessions/moment-reserve-action.test.tsx`**: fresh → occurrence; repeat → `null`; error →
+   `{ ok: false }`; `refresh` called, `redirect` never; `calendar` from the connection.
+2. **After L1 is committed** — new **`src/components/sessions/moment-reserve.tsx`**: the host (`useActionState`,
+   `useMoment`, the whisper), the stage (ticket + stamp + the `animationend` chain), the reserve CTA client part, the
+   `ReserveResult` type. New **`tests/components/sessions/moment-reserve.test.tsx`** — ★★ **the re-render test**:
+   mount with an occurrence → the ticket and the stamp are there and the phase is playing; finish the chain; unmount;
+   mount again **with the same occurrence** → no ticket, no stamp, no second toast. Also: `rerender` with the same
+   result → silence; ★★ reduced motion + a fresh occurrence → the complete static state (face, chip, cancel) and the
+   toast once, no ticket; no occurrence → static, no toast; ★ `{ ok: false }` → nothing animates, no toast; ★ **no
+   `will-change` on any element after the last `animationend`**, and none on the thud element after its own; the
+   waitlisted stamp reads «قائمة الانتظار · 3» with `3` inside `<bdi>` and carries the waitlist tone's class, never
+   `--team` and never a cyan class; the durations are `var(--duration-*)` and nothing else.
+3. **After L2 and R1** — `rsvp-panel.tsx` onto `session-cta` (W16.0); `action-card.tsx` (the host, the thud wrapper,
+   the anchors); `action-bar.tsx` (the row as thud element and anchor); `page.tsx:173` → `PlayScope`; `messages/
+   {ar,en}/sessions.json` gain `sessions.moment.*`, **Arabic first**. The ledger lines of W16.5 in `STATUS.md`'s
+   untouched-suite ledger, in the same commit.
+4. New **`tests/e2e/wave16-sessions-reserve.spec.ts`** (the phone project, 390 × 844, locators from `#main`):
+   reserve → the ticket and the stamp appear once, the card ends booked; **a reload** → static, no ticket; **a back
+   navigation** (to `/ar/app`, then back) → static; **a second browser context** as the same member → static;
+   `emulateMedia({ reducedMotion: "reduce" })` → no ticket, the static state, the toast; the **waitlisted** variant on
+   a session filled to capacity by the spec (the stamp's text and tone); **a refused reservation** (the session
+   cancelled between render and press) → no ticket. ★★ **The trace case** (`@trace`): CDP
+   `Emulation.setCPUThrottlingRate` 4×, a Chromium trace from the ticket's first frame to the toast, **no frame over
+   16 ms** — the lead runs it on a production build. Captures, honouring `E2E_SHOTS_DIR`:
+   `.qa-shots/rtl/wave16-sessions-reserve-{animated,static}.png` and
+   `.qa-shots/rtl/wave16-sessions-reserve-waitlist-{animated,static}.png` — `animated` with the animations paused at
+   the stamp's rest (`document.getAnimations()`), `static` under reduced motion.
+5. My note: what is done, what is not, why.
+
+★ **A trace risk, said now:** the moment begins in the commit that applies the refreshed page, and that commit is the
+page's re-render, not the moment's. If the throttled trace shows that frame over 16 ms, it is the refresh's cost; the
+lead rules whether the window starts at the commit or at the ticket's first animation frame.
+
+## W16.8 · Requests and questions
+
+**To `checkin` — contract 4, add-only:**
+- **R2** · `lib/dal/rsvp.ts`'s `RsvpOutcome` (`:102-105`) gains `id: string`, `reservedAt: string` and
+  `fresh: boolean` (= `reserved_at = updated_at` on the row `reserve_seat()` already returns, W16.1). `reserveSeat()`
+  fills them; `cancelRsvp()` may too. No gate, no SQL, no matrix change.
+- **No field is needed from `getRsvpPanelData()`**: `capacity`, `confirmedCount`, `relation`, `seat`, `myRsvp.
+  waitlistPosition`, `cutoffPassed`, `canReserve`, `canCancel` carry everything.
+- For their «حضرت» fix: the card renders `AttendanceOutcome` unchanged; nothing of mine depends on it.
+
+**To the lead:**
+- **R1** · `ui/objects/ticket.tsx`: an additive prop that omits the baked «محجوز» (D1).
+- **R3** · contract 1: `useMoment` returns `first` and a stable `done` (W16.1).
+- **R4** · `ui/index.ts`: an additive `SessionCtaProps` slot for `booked` — a node drawn **between** the face and the
+  cancel — so the calendar sits in `16` §5.4.2's order (D2). The implementation in `session-cta.tsx` is mine. If
+  ruled not needed, the calendar stays where it is and the cancel precedes it in the tab order.
+- **L2** · the five keyframes of W16.4.
+- **Q1** · D3 — the tree's words or the design's, on the face and the cancel.
+- **Q2** · D10 — the waitlisted stamp's tone and form.
+- **Q3** · D6 — the three off-ramp durations: map to the ramp, or a token.
+- **Q4** · the trace window (W16.7).
+- **Q5** · is a refused reservation to stay silent as today (the refreshed card shows the truth), or raise an
+  `error` toast? Today it says nothing; I plan no change unless ruled.
+- **Informational:** `reserve-probe.spec.ts` now probes `refresh()` rather than `redirect()` (W16.1); back after
+  reserving no longer returns to the same page.
