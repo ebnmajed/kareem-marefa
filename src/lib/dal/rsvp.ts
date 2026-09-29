@@ -48,7 +48,11 @@ async function loadRsvpPanelData(locale: string, sessionId: string): Promise<Rsv
     supabase.rpc("session_seat_counts", { p_session: sessionId }).single(),
     supabase.from("rsvps").select("status, waitlist_position").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
-    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null).maybeSingle(),
+    // ★ A LIST, never `.maybeSingle()` (DEC-197 §3): a member checked in on two
+    // days of a workshop holds two active rows, and `.maybeSingle()` refused
+    // them with an error nobody read — so from day 2 the member read as NOT
+    // checked in. One row is enough to know; the error is read below.
+    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null).limit(1),
     // ★ THE DAYS, and this panel is wrong without them (DEC-119, contract 9).
     // `sessionPhase()` only reads the NIGHT between two days as `open` when it
     // is given the day set; handed the session's stored window alone, a
@@ -64,6 +68,7 @@ async function loadRsvpPanelData(locale: string, sessionId: string): Promise<Rsv
   if (!sessionRes.data) return null;
   if (countsRes.error) throw new Error(`session_seat_counts: ${countsRes.error.message}`);
   if (mineRes.error) throw new Error(`rsvps: ${mineRes.error.message}`);
+  if (checkInRes.error) throw new Error(`check_ins: ${checkInRes.error.message}`);
 
   const s = sessionRes.data;
   const counts = countsRes.data as { confirmed_count: number; waitlist_count: number };
@@ -74,7 +79,7 @@ async function loadRsvpPanelData(locale: string, sessionId: string): Promise<Rsv
   const phase = sessionPhase(phaseInput, now);
   const isStaff = session.role === "admin" || session.role === "moderator";
   const rsvpStatus = (mine?.status as RsvpStatus | undefined) ?? null;
-  const relation = viewerRelation({ isStaff, isPresenter: Boolean(presenterRes.data), rsvpStatus, checkedIn: Boolean(checkInRes.data) }, phase);
+  const relation = viewerRelation({ isStaff, isPresenter: Boolean(presenterRes.data), rsvpStatus, checkedIn: (checkInRes.data ?? []).length > 0 }, phase);
   const cellAffordances = affordancesFor(phase, relation);
 
   return {
