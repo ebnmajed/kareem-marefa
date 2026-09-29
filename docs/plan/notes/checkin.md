@@ -2757,3 +2757,11 @@ both fire in isolation too. So the hang is something only the production page do
   walk spec annotates both and **fails if the bound settled anything** — so a real non-running animation is reported
   by name, not masked.
 - The hold is no longer keyed on the router's identity: a re-render handing back a new router object restarted it.
+
+## 14 · Gate run 4 (`24b2da5e`) — green
+
+The trace passes **5 of 5** in a serial repeat on the phone, longest frame **16.8 ms**, load average about 28. The walk
+plays, rests, returns and never replays, with `data-bound` unset — every part ended by its own event, so the hang was
+the reset race fix 1 closed and the bound is only the net. Wrong code, reduced motion and all of `checkin.spec` pass
+(`:184` was collateral). The trace's «0 frames» swap annotation is now measured mark to mark (`2d93d3be`; it gates
+nothing). **Moment 2 is done**, pending the captures' retake at the lead's final run.
