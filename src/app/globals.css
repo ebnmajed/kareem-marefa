@@ -325,6 +325,10 @@
   --duration-base: 220ms;
   --duration-slow: 420ms;
   --duration-party: 900ms;
+  /* The flame's flicker loop (wave 16, moment 3). It collapses in the one block below. */
+  --duration-loop: 2s;
+  /* A shine runs from the inline start: left to right in LTR, right to left in RTL (wave 16). */
+  --moment-dir: 1;
   /* The focus ring's width: 2px today, 3px inside the scope. */
   --focus-width: 2px;
 }
@@ -457,6 +461,78 @@
 .theme-play :focus-visible {
   outline: var(--focus-width) solid var(--ring);
   outline-offset: var(--focus-offset, 2px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE FIVE MOMENTS' KEYFRAMES — wave 16, contract 2 (DEC-195, DEC-197).
+   Named in the tracks' plans, landed here, and nowhere else. Transform,
+   opacity and filter only (REQ-UIX-020). No overshoot but a sticker's 1.08,
+   which none of these is (DEC-186 §4, DEC-195 §6.20): the coin lands at 1
+   and squashes, the stamp comes to rest, and the arrow does not move at all. Every duration is a
+   token at the element that uses one. A one-shot class is simply never
+   applied under reduced motion — the moment renders its static state
+   instead (`src/lib/ui/moment.ts`); the loop runs only under no-preference.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[dir="rtl"] {
+  --moment-dir: -1;
+}
+
+/* Moment 1, الحجز (sessions). */
+@keyframes moment-ticket-rise {
+  from { transform: translateY(3.75rem); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes moment-stamp-land {
+  from { transform: scale(2.4) rotate(-8deg); opacity: 0; }
+  to { transform: scale(1) rotate(-8deg); opacity: 1; }
+}
+@keyframes moment-thud {
+  0%, 100% { transform: none; }
+  50% { transform: translateY(0.1875rem); }
+}
+@keyframes moment-ticket-leave {
+  to { opacity: 0; }
+}
+@keyframes moment-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Moment 2, تسجيل الحضور (checkin). The coin lands at 1 and squashes; no 1.06. */
+@keyframes moment-coin-drop {
+  0% { transform: translateY(-240px) scale(0.6) rotate(-18deg); opacity: 0; }
+  60% { transform: none; opacity: 1; }
+  78% { transform: scale(1.02, 0.92); }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes moment-rise {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Moments 3 to 5 (scoring). */
+@keyframes moment-flicker {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.04, 0.98) skewX(-2deg); }
+  50% { transform: scale(0.98, 1.04) skewX(2deg); }
+  75% { transform: scale(1.03, 0.99) skewX(-1deg); }
+}
+@keyframes moment-shine {
+  from { transform: translateX(calc(-150% * var(--moment-dir))) rotate(20deg); opacity: 0; }
+  50% { opacity: 1; }
+  to { transform: translateX(calc(250% * var(--moment-dir))) rotate(20deg); opacity: 0; }
+}
+/* No arrow pulse (DEC-197): moment 5's arrow is simply shown. An overshoot is
+   a sticker's alone (DEC-183 §2), and a pulse on an arrow widens that line. */
+
+/* The one loop. A class on the flame's INNER wrapper. It runs only when motion
+   is welcome, so under reduced motion it never starts — `animation: none` by
+   omission, and the one reduced-motion block stays the one. */
+@media (prefers-reduced-motion: no-preference) {
+  .moment-flicker {
+    animation: moment-flicker var(--duration-loop) ease-in-out infinite;
+  }
 }
 
 /* --------------------------------- typography ---------------------------
@@ -1366,6 +1442,7 @@ html[data-sting="done"] {
     --duration-base: 0ms;
     --duration-slow: 0ms;
     --duration-party: 0ms;
+    --duration-loop: 0ms;
   }
   *,
   ::before,

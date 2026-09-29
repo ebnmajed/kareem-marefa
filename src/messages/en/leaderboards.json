@@ -22,7 +22,12 @@
       "provisional": "Provisional — refreshed nightly until the month closes",
       "final": "Final",
       "rankedMetric": "Ranked by this",
-      "takenAt": "Calculated on <bdi>{date}</bdi>"
+      "takenAt": "Calculated on <bdi>{date}</bdi>",
+      "rankedMetricLabel": {
+        "total_points": "Ranked by: total points",
+        "points_per_active_member": "Ranked by: points per active member"
+      },
+      "ownLabel": "Your team"
     },
     "companyBreakdown": {
       "heading": "How your company earned its points",
@@ -53,6 +58,7 @@
     "rankValue": "Rank <bdi>{value}</bdi>",
     "allTime": {
       "live": "Updates live with every point"
-    }
+    },
+    "riseLabel": "{count, plural, zero {Your rank has not changed} one {Up one place since your last visit} two {Up two places since your last visit} few {Up {value} places since your last visit} many {Up {value} places since your last visit} other {Up {value} places since your last visit}}"
   }
 }

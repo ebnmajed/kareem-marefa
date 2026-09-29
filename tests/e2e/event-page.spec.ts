@@ -217,7 +217,8 @@ test("before reserving: one primary «احجز مقعدك», no calendar, the he
 });
 
 test("★ after reserving: the same card, re-rendered — «أضِف إلى تقويمك» where «احجز مقعدك» was, and it survives a reload", async ({ context, page }, testInfo) => {
-  // The reservation redirects back to this page, and the pending state lasts
+  // The reservation refreshes this page in the same response that answers it
+  // (wave 16 — it returns moment 1's result rather than redirecting), and the pending state lasts
   // until the whole page — every slot — has re-rendered, because React does not
   // fall back to a skeleton for a section already on screen.
   //

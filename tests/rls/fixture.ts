@@ -106,7 +106,14 @@ async function org(tx: Tx, name: string, slug: string, prefix: string, domain: s
 
 /** The base fixture plus the M2 rows (sessions, RSVPs, check-ins, comments, ratings…). */
 export async function seed(tx: Tx): Promise<M7Fixture> {
-  return seedM7(tx, await seedM6(tx, await seedM5(tx, await seedM4(tx, await seedM3(tx, await seedM2(tx, await seedBase(tx)))))));
+  const f = await seedM7(tx, await seedM6(tx, await seedM5(tx, await seedM4(tx, await seedM3(tx, await seedM2(tx, await seedBase(tx)))))));
+  // wave 16 (0162, DEC-197): each org's first member has a mark of what they have seen, so the isolation
+  // sweep meets a real row of org B behind the wall — and org A's member sees their own.
+  await tx.asOwner();
+  for (const org of [f.a, f.b]) {
+    await tx.q(`insert into public.member_seen_marks (member_id, org_id, points_total, all_time_rank, company_id) values ($1, $2, 680, 5, $3)`, [org.members[0].memberId, org.id, org.companyId]);
+  }
+  return f;
 }
 
 /** A per-run token on the two slugs. `orgs.slug` is unique platform-wide, and

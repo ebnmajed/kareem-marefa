@@ -55,6 +55,10 @@ async function openGallery(page: Page, size: { width: number; height: number }) 
   const res = await page.goto("/ar/ui");
   expect(res?.status(), "the gallery needs KAREEM_GALLERY=1").toBe(200);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  // ★ Wave 16 (F1, ledger): `code-input` is served as ONE named field and becomes the six boxes once
+  // hydrated. A locator taken before the swap holds a field that leaves the DOM. So every case waits
+  // until no server field is left — page-wide, which is also every ground's demo.
+  await expect(page.locator("input[autocomplete='one-time-code'][maxlength='6']")).toHaveCount(0);
 }
 
 async function wired(page: Page, primitive: string) {

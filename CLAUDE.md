@@ -16,8 +16,8 @@ plan is in [`docs/plan/`](docs/plan/).
 
 ★ **Visual direction lives in [`docs/design/`](docs/design/)** — «ساحة اللعب», accepted by `DEC-183`.
 Read [`docs/design/README.md`](docs/design/README.md) before any UI work. **`DECISIONS.md` and
-`docs/plan/` win over it**: where the two disagree, the case is listed in `DEC-183` §4 (seventeen so
-far) or becomes a new entry — nobody picks a side silently. Its prototypes are behaviour references;
+`docs/plan/` win over it**: where the two disagree, the case is listed in `DEC-183` §4 and `DEC-195` §6
+(twenty-four so far) or becomes a new entry — nobody picks a side silently. Its prototypes are behaviour references;
 a prototype's class name never appears in `src/`.
 
 **Before ending a session, update `STATUS.md`**, whether or not you finished what you set out to do.
@@ -324,7 +324,114 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 15 — the visual direction's foundation: tokens, the display face, the primitives, team colours, DEC-183) — ★ THE MAP IN FORCE
+### Ownership map (wave 16 — the five moments, on the real screens, DEC-195) — ★ THE MAP IN FORCE
+
+**The programme's second wave** (`DEC-195`, milestone **M18**). ★★ **The moments land on the real screens**, which
+**amends `DEC-183` §4.2(f)**: the surfaces the five moments touch adopt the playground now, ahead of the screens
+waves, and every other screen still waits. The owner said yes before the wave opened. **The reason: a moment cannot
+be verified in a gallery** — it is defined by *when* it fires («once, when the action resolves, never on a
+re-render»), and a canned replay proves only that it renders. **Five surfaces move, and on each only the named
+part** (`DEC-195` §1.1): `SCR-012`'s **action card** (moment 1, الحجز) · `SCR-014` (moment 2, تسجيل الحضور, with
+`code-input` adopted) · the **head of `SCR-022`** (moments 3 and 4 — the count-up, the flame, the level bar, the
+level card's flip) · `SCR-027` and `SCR-028` (moment 5, the rank change). **What does not move** (§1.2): the five
+public routes, the shell and the tab bar, the rest of `SCR-012`, ★ **the home screen `SCR-010`** (it carries no
+balance), the history and catalogue on `SCR-022`, every other screen, the `(auth)` screens included, and every
+award, balance, level and rank as computed. The checklist is `STATUS.md`'s wave-16 block. **Four demonstrables:**
+★★ a throttled-CPU trace with no frame over 16 ms for moments 1 and 2; ★★ a re-render test per moment — mount, play,
+unmount, mount again, silence; ★ every static state at 390 px in Arabic beside its animated counterpart, opened by
+the lead; ★ `qa:contract`, `visual`'s public pairs and the register-form fingerprint unmoved.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ `DEC-195`, this map, the ten agent files, `01`/`09`/`14`/`15`, `07-tasks.md` · ★ **contract 1, the mechanism, before any track uses it** — `src/lib/ui/confetti.ts`, `useCountUp`, the once-per-occurrence keying, the duration reader · ★ **contract 2** — every `@keyframes` a moment needs, in `globals.css`, from the plans · ★ **the team colour on the add-company form** (`DEC-195` §3, `REQ-UIX-043`) as `console`'s custodian, with its test and a 390 px capture · any table contract 5 needs, from `0162`, with its RLS case · the demonstrables · the gates, `STATUS`, the PR | the lead-only paths below, ★ new `src/lib/ui/**`, `supabase/migrations/**` from `0162`, `src/app/globals.css`, the lead's fifteen `ui/` files, `ui/scope.tsx`, `ui/scope-portal.tsx`, `ui/objects/**`, `src/components/brand/**`, `src/components/shell/**`, `messages/*/{ui,app}.json`, ★ as custodian: `src/app/[locale]/app/admin/companies/**`, the companies functions of `src/lib/dal/admin-lists.ts`, the `companies` keys of `messages/*/admin.json`, `tests/components/admin/compan*`, `tests/unit/admin-lists*`; new `tests/components/lib-ui/**` (jsdom — the mechanism needs a DOM), new `tests/rls/moment*.test.ts`, new `tests/e2e/wave16-{demo,lead}-*.spec.ts`, `docs/design/**`. **Custodian** of every file of a track not spawned — `content`, `console`, `designer`, `event`, `notify`, `platform`, `branding` — ★ including `content`'s `avatar`, `sticker`, `progress-bar` and `poster`, which the moments compose: a change is a written request |
+| `sessions` | opus | ★ **moment 1, الحجز, on `SCR-012`'s action card** (`REQ-UIX-045`) — the reserve action returns what the moment is keyed on; the ticket rises, the stamp «محجوز» lands with no overshoot, the card thuds, the capacity chip updates in place, the action becomes `session-cta`'s booked state with «ألغِ حجزي», the calendar whisper · **the waitlisted variant** — the same ticket, «قائمة الانتظار · N», in the waitlist's status tone (`DEC-073`, `DEC-195` §6.21), never cyan · the static state · the re-render test · the throttled trace · ★ `code-input` fixes `checkin` asks for | ★ `src/components/checkin/{rsvp-panel.tsx,actions.ts}` (**from `checkin`, this wave** — its gates unchanged), `src/components/sessions/{action-card,action-bar,event-actions,calendar-menu}.*` and new `src/components/sessions/moment-*.tsx`, `src/app/[locale]/app/sessions/[id]/page.tsx` **for the action card only**, `src/components/ui/{session-cta,code-input}.tsx`, `src/lib/dal/sessions.ts` (add-only — ★ **and the fix of `:1098`'s two-day read**, `DEC-197` §3), `messages/*/sessions.json`, ★ `tests/components/checkin/rsvp-panel.test.tsx` (evidence, from `checkin`), `tests/components/sessions/**`, `tests/components/ui/{session-cta,code-input}*.test.tsx`, its existing e2e specs (evidence), new `tests/e2e/wave16-sessions-*.spec.ts`, `docs/plan/notes/sessions.md`. **Nothing else this wave** — the hero, the sub-nav, the sections and slots, the timeline, browse, the propose form, the hub, `lib/dal/rsvp.ts` and `session-matrix.ts` are frozen for it |
+| `checkin` | opus | ★ **moment 2, تسجيل الحضور, on `SCR-014`** (`REQ-UIX-046`) — confetti in the team colour with lime and bone, the coin's drop and squash (★ landing at `1` until the owner rules on overshoot, `DEC-195` §6.20), the three lines: «أنت هنا!», **the computed amount and that it arrives when the session ends** (`REQ-CHK-018`, `REQ-PTS-015` — from `scoring`'s `getSessionAwardState()`, read and never changed; no number when the state is `none`), the time · ★ **`code-input` adopted** — boxes named, the refusal tied to the group, the posted field and the no-JS path byte-identical (`DEC-195` §2.4) · ★ **the matrix's «حضرت»**: a checked-in member is not offered the check-in link again (`DEC-195` §2.5), a ledger line · the static state · the re-render test · the throttled trace | `src/app/[locale]/app/sessions/[id]/check-in/**`, new `src/components/checkin/moment-*.tsx`, `src/components/checkin/{session-matrix.ts,award-state.tsx,attendance-outcome.tsx,code-input.tsx}`, `src/lib/dal/checkin.ts`, ★ `src/lib/dal/rsvp.ts` (**the fix of `:61`'s two-day read** and `RsvpOutcome`'s add-only fields, `DEC-197` §3, contract 4), `messages/*/checkin.json`, `tests/unit/{session-matrix,checkin-*}*`, `tests/components/checkin/**` **except** `rsvp-panel.test.tsx` and `schedule-form.test.tsx`, `tests/e2e/{checkin,checkin-gating}.spec.ts` and `tests/e2e/wave{7,9,12}-checkin-*.spec.ts` (evidence), new `tests/e2e/wave16-checkin-*.spec.ts`, `docs/plan/notes/checkin.md`. **Nothing else this wave** — the host view, the attendance screen, `lib/dal/rsvp.ts`, the code's rotation and every SQL function are frozen; a change to what check-in decides is not this wave's |
+| `scoring` | opus | ★ **moments 3 and 4 on the head of `SCR-022`** (`REQ-UIX-047`) — the balance counting up from the old figure with the delta beside it, the streak flame growing and keeping its flicker, the level bar by `scaleX`, `level-card` turning over with one shine, its face naming what the level unlocks or saying it unlocks nothing · ★ **moment 5 on `SCR-027` and `SCR-028`** (`REQ-UIX-048`) — the rows on `rank-row` and `race-bar`, the swap by FLIP, the arrow shown and never pulsed (`DEC-197` §2), a bar by `scaleX`; the falling row with no colour, icon or motion of its own · ★ **the plan's first answer: what «first sight» and «since last view» read** (contract 5) · the static states · a re-render test per moment | `src/app/[locale]/app/me/points/**`, ★ `src/app/[locale]/app/leaderboards/**` and `src/components/scoring/{member-board,company-board}.tsx` (**from `sessions`, this wave**), `src/components/scoring/**` and new `src/components/scoring/moment-*.tsx`, ★ `tests/components/leaderboards/boards.test.tsx` (**from `sessions`, this wave**, `DEC-197` §9), `src/components/ui/{rank-row,race-bar,level-card}.tsx`, `src/lib/dal/{points,leaderboards,recognition}.ts` (add-only), `messages/*/{scoring,leaderboards}.json`, `supabase/proposed/scoring/**` (functions only — a table is the lead's), `tests/components/scoring/**`, `tests/components/ui/{rank-row,race-bar,level-card}*.test.tsx`, `tests/unit/scoring*`, `tests/rls/{scoring,points,leaderboards}*.test.ts` (evidence), `tests/e2e/{points,leaderboards,wave7-sessions-leaderboards,scoring-company-points}.spec.ts` and `tests/e2e/wave{9,12}-scoring-*.spec.ts` (evidence), new `tests/e2e/wave16-scoring-*.spec.ts`, `docs/plan/notes/scoring.md`. **Nothing else this wave** — the ledger, the awards, the eight worker tasks and what a balance, level or rank **is** are frozen |
+
+★ = transferred or changed for this wave by `DEC-195`.
+
+★ **Sync 1 is done (`DEC-197`).** Three plans approved. **Three independent readings found seven defects the lead's
+did not** — the table in `DEC-197` is why teammates are spawned. Its rulings bind: ★ **the 1.4-second return on
+`SCR-014` is KEPT, a recorded exception to SC 2.2.1 scoped to that one moment** (§1); **moment 5's arrow does not
+pulse** (§2); **the two-day `.maybeSingle()` read is fixed in `sessions.ts:1098` and `rsvp.ts:61`** (§3); the three truth
+defects are fixed (§4); `useMoment` never jumps back on a server-painted page (§5); `0162` is `member_seen_marks` (§6).
+
+**Wave-16 contracts.**
+
+1. **Lead → everyone — the mechanism** (`DEC-195` §2.3, `REQ-UIX-044`). `src/lib/ui/` is new and the lead's, and it
+   lands **before any track's moment**: `confetti.ts` (`element.animate()`, an `aria-hidden` layer with no pointer
+   events, each node removed on `finish`, an immediate return under reduced motion, colours from `--team` plus lime
+   and bone — lime and bone alone when the company has none), `useCountUp(from, to, duration)` (text through the
+   numeral formatter; the final value at once under reduced motion), the **once-per-occurrence keying**, and a reader
+   that turns a `--duration-*` token into milliseconds for `element.animate()`. **No track writes its own.** The names
+   go in `STATUS.md` the day they land.
+2. **Lead → everyone — keyframes and tokens.** Every `@keyframes` lives in `globals.css`, which is the lead's; a loop
+   (the flame's flicker, a live pulse) is a class switched off under reduced motion, never JS. A track names the
+   keyframes it needs in its plan and the lead lands them. **Transform, opacity and filter only; a duration from the
+   tokens; no `will-change` left on; no motion library.**
+3. **Lead → every surface — the scope on a real screen** (`DEC-195` §1.3). The scope's element wraps **exactly** the
+   surface `DEC-195` §1.1 names, as a direct child of the screen's content, **never itself transformed, filtered or
+   clipped, nor inside an element that is** — a thud, a rise or a flip moves an element **inside** it (`DEC-188` §5).
+   An org's brand kit does not reach inside; the team colour does, as `--team`.
+4. **`sessions` ↔ `checkin` — the matrix decides, the moment plays.** `session-matrix.ts` and `lib/dal/rsvp.ts` stay
+   `checkin`'s: which state a viewer gets is still the matrix's answer (`REQ-UIX-015`). `sessions` renders it. A new
+   field `sessions` needs from `getRsvpPanelData()` — the reservation's id, for the key — is a written request to
+   `checkin`, **add-only**. `checkin`'s «حضرت» fix is the one change to the matrix, with its ledger line.
+5. **`scoring` → lead — what a member has seen** (`DEC-195` §2.6). Moments 3 to 5 play at first sight, and moment 5
+   needs «since last view», which nothing stores. **`scoring`'s plan says what it reads**; browser storage is not the
+   default, because it replays on every new phone. A table is the lead's, from `0162`, with its RLS case; `main`'s app
+   and worker on that schema do nothing different.
+6. **`scoring` → `checkin` — the amount.** The coin's figure is `getSessionAwardState()`'s pending amount, **read,
+   never re-derived and never changed**; `checkin` never queries `points_ledger` itself.
+
+**Wave-16 rules.**
+
+- ★★ **Once per occurrence, never on a re-render.** This is a state problem, not an animation problem. Moments 1 and
+  2 play from the action's own result in the client that performed it — a reload, a back navigation or another phone
+  shows the static state. Moments 3 to 5 play at first sight. **Every moment has a test that mounts, plays, unmounts,
+  mounts again and asserts silence.**
+- ★★ **Every moment has a named static state that is a COMPLETE experience under reduced motion** (`REQ-UIX-014`).
+  Collapsing a duration is not a reduced-motion design. It is built, captured at 390 px beside the animated one, and
+  opened by the lead.
+- ★ **Transform, opacity and filter only. 60 fps. No `will-change` left on. No motion library.** Confetti is
+  `element.animate()`. Bars grow by `scaleX`, rows move by `translateY`, never `width` or `top`.
+- ★ **A failure never animates** — a refused reservation, a wrong code, an error state. Nor do tables, lists, admin
+  screens, the audit log or exports. **Nothing scales on hover.**
+- ★ **No overshoot beyond a sticker's `1.08`, and none elsewhere, until the owner has seen one** (`DEC-186` §4,
+  `DEC-195` §6.20). The coin lands at `1` with its squash; the owner is shown both at the 390 px review.
+- ★ **Only the named surfaces move** (`DEC-195` §1.1 and §1.2). A change outside them is a defect, not a preview.
+- ★ **The five frozen public routes do not move**: `qa:contract` green at every commit, `visual`'s public pairs
+  unchanged and not re-baselined, the register-form fingerprint byte-identical, the public-graph test green.
+- ★ **The amount is computed, never stored, and always says it arrives at completion** (`REQ-CHK-018`,
+  `REQ-PTS-015`). A `+0` is never drawn.
+- ★ **The status colours are `DEC-073`'s.** A waitlisted stamp wears the waitlist's tone; a status colour is never a
+  company's.
+- ★ **`docs/plan/` wins over `docs/design/`** — `DEC-183` §4 and `DEC-195` §6 list twenty-four disagreements. A new one
+  is written down with the file and the line; nobody picks a side.
+- ★ **The existing suites are evidence.** Each changed assertion is a ledger line in `STATUS.md`, in the same commit.
+  New behaviour gets new files.
+- ★ **Additive, because `main` runs on it first.** Migrations from `0162`, only if contract 5 needs one. The owner
+  rehearses on a production schema dump, pushes, merges, then reconnects Railway. **`registrations` is never touched.**
+- **Teammates spawn planning-only**; sync 1 approves three plans against the six contracts.
+- **Tables are the lead's; behaviour is the tracks'. A function has one writer. One writer per file, specs included.**
+- **`ui-lint --strict` has no allowlist and never gains one.**
+- **Captures land at `.qa-shots/rtl/wave16-<track>-<moment>-<state>.png`** — `animated` at the moment's rest and
+  `static` under reduced motion — in the main checkout, phone project, `390 × 844`, from a production build the row
+  names by commit, honouring `E2E_SHOTS_DIR`. The lead opens every one **in bands, never downscaled**.
+- **Not this wave, and never-touch for every teammate:** session stories and their viewer; the timeline's recap,
+  achievement and announcement items; proposal voting; the weekly leaderboard; the streak rule (`DEC-NEXT-9`); **any
+  screen redesign beyond the five surfaces**, the home screen, the shell and the tab bar included; everything under
+  `(marketing)/**`; the desktop shell (`DEC-NEXT-15`); leagues; the certificates' look; the `(auth)` screens (the
+  member-screens milestone's first three, `DEC-195` §5); **a company logo — refused, `DEC-195` §4**; the whispers
+  beyond a moment's own surface; ★ **the two carried gates, together** (`DEC-194`) — the trigger-definer ACL sweep
+  with its generated test and wave 14's Storage-predicate gate; deleting a session with its awarded points; a member
+  uploading their own picture; recurring series (`A14`); replacing the renderer.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`,
+  `stop`, branch switches, pushes and the PR.
+
+### Ownership map (wave 15 — the visual direction's foundation: tokens, the display face, the primitives, team colours, DEC-183) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 15 merged as PR #33 (`b9f2ca0b`). Its map is kept as the record; **wave 16's map is directly above** (`DEC-195`).
 
 **The first wave of a programme, not a one-off** (`DEC-183`, milestone **M17**). The owner accepted the visual
 direction «ساحة اللعب» — [`docs/design/`](docs/design/) — on 2026-09-28 and, with it, **reversed `DEC-100`**: confetti
@@ -1077,6 +1184,7 @@ to hard-fail in M13.
 `vitest.config.ts` · `playwright.config.ts` · `patches/**` (`DEC-136` — empty since `DEC-146` retired the one patch; a new one is the lead's) ·
 ★ from wave 10 (`DEC-160`): `worker/Dockerfile`, `worker/package.json` and every `packages/*/{package.json,tsconfig.json}` — a package's manifest is the lead's, its `src/` is its track's.
 ★ from wave 15 (`DEC-183`): `src/lib/fonts.ts`, `packages/fonts/**`, `scripts/fonts/**`, `src/components/ui/objects/**`, `src/components/brand/**` and `docs/design/**` — the font set, the objects and the wordmark have one writer.
+★ from wave 16 (`DEC-195`): `src/lib/ui/**` — the moments' shared mechanism (confetti, the count-up, the once-per-occurrence keying) has one writer, so the vocabulary cannot drift track by track.
 
 ★ **Added by DEC-085, with the design milestone** — none of these was lead-only before, and
 `src/components/ui/**` was in no teammate's edit list *and no teammate's never-touch list*:
@@ -1092,7 +1200,7 @@ the sessions timeline (`DEC-112`), which is no longer a page composed of other t
 **Inside `src/components/ui/` ownership is per FILE, not per directory** — a glob with four writers
 is the exact failure `TEAM.md` exists to prevent. The four literal file lists — the lead's fifteen,
 `sessions'` eight, `console'`s six, `content'`s nine — are in each `.claude/agents/*.md`, and they are
-unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. **Ownership lives in those never-touch paragraphs or
+unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. **Ownership lives in those never-touch paragraphs or
 it does not exist**, which is why all ten were regenerated in the same commit as this list.
 
 `src/components/ui/index.ts` exports **types only**; implementations are imported **by path**. A

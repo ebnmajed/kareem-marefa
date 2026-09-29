@@ -30,16 +30,23 @@ import { CheckCircleIcon, ClockIcon, InfoIcon } from "@/components/ui/icons";
 // hour ago — or on day one of three — must be told now. `none` renders
 // nothing, so this is safe in every cell and the matrix does not move.
 //
-// Two variants of one body, so the two surfaces cannot disagree:
-//   · "section" — SCR-014: its own <h2> and a Panel (the page owns the <h1>);
+// Three variants of one body, so the surfaces cannot disagree:
+//   · "section" — SCR-014 before today's check-in: its own <h2> and a Panel
+//                 (the page owns the <h1>);
 //   · "inline"  — the event page's action card: no heading (16 §5.4.1a(b)),
-//                 no Panel of its own — the card spaces and frames its parts.
+//                 no Panel of its own — the card spaces and frames its parts;
+//   · "moment"  — ★ moment 2's second line (REQ-UIX-046, DEC-195 §6.24): the
+//                 same words, centred, no icon, no Panel, still the region
+//                 named «نقاط هذه الجلسة». And ★ it alone speaks for `none`:
+//                 after a check-in, `none` means the session carries no
+//                 attendance points, and the moment says so rather than
+//                 leaving a gap where the amount would be (DEC-197).
 
-type Variant = "section" | "inline";
+type Variant = "section" | "inline" | "moment";
 
 /** A failed read renders nothing and is logged (DEC-174 Q4): the check-in
  *  screen never breaks on a points read. The log names the session only. */
-async function readAward(locale: string, sessionId: string): Promise<SessionAwardState | null> {
+export async function readAward(locale: string, sessionId: string): Promise<SessionAwardState | null> {
   try {
     return await getSessionAwardState(locale, sessionId);
   } catch (error) {
@@ -52,7 +59,16 @@ const bdi = (chunks: ReactNode) => <bdi>{chunks}</bdi>;
 
 export async function AwardState({ sessionId, locale, variant = "inline" }: Pick<SlotProps, "sessionId" | "locale"> & { variant?: Variant }) {
   const award = await readAward(locale, sessionId);
-  if (!award || award.state === "none") return null;
+  if (!award) return null;
+  if (award.state === "none") {
+    if (variant !== "moment") return null;
+    const [t, tMoment] = await Promise.all([getTranslations("checkin.award"), getTranslations("checkin.moment")]);
+    return (
+      <section aria-label={t("heading")} data-award-state="none">
+        <p className="text-body text-fg-body">{tMoment("noPoints")}</p>
+      </section>
+    );
+  }
   const [t, tDays] = await Promise.all([getTranslations("checkin.award"), getTranslations("sessions.days")]);
 
   let tone: "info" | "success" | "ended";
@@ -85,6 +101,19 @@ export async function AwardState({ sessionId, locale, variant = "inline" }: Pick
     const names = award.missedDays.map((d) => dayShortName(d, award.dayCount, tDays)).filter((n): n is string => n !== null);
     if (names.length > 0) lines.push(t.rich("incomplete.missed", { count: names.length, days: names.join("، "), bdi }));
     lines.push(t("incomplete.rule"));
+  }
+
+  if (variant === "moment") {
+    return (
+      <section aria-label={t("heading")} data-award-state={award.state}>
+        <p className="text-h3 text-fg-heading">{lead}</p>
+        {lines.map((line, i) => (
+          <p key={i} className="mt-1 text-body-sm text-fg-body">
+            {line}
+          </p>
+        ))}
+      </section>
+    );
   }
 
   const body = (

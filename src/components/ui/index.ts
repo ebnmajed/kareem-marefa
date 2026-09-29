@@ -926,7 +926,14 @@ export type SessionCtaAct =
 export type SessionCtaState =
   | { kind: "reserve"; act: SessionCtaAct }
   | { kind: "waitlist"; act: SessionCtaAct }
-  | { kind: "booked"; hold?: "seat" | "waitlist"; cancel: { label: string; act: SessionCtaAct; note?: string } }
+  | {
+      kind: "booked";
+      hold?: "seat" | "waitlist";
+      cancel: { label: string; act: SessionCtaAct; note?: string };
+      /** wave 16 (R4, DEC-197): drawn BETWEEN the face and the cancel — the calendar, so it keeps `16` §5.4.2's
+       *  place in the tab order. Additive; absent, nothing is drawn. */
+      between?: ReactNode;
+    }
   | { kind: "checkIn"; act: SessionCtaAct }
   /** `note` is the sentence beneath the face — «تصل النقاط عند انتهاء الجلسة» (REQ-CHK-018). Never in the chip. */
   | { kind: "attended"; note?: string }
@@ -1056,4 +1063,9 @@ export interface LevelCardProps extends Styleable {
   unlocksLabel: string;
   /** Said on a face whose `unlocks` is empty. */
   noUnlocksLabel: string;
+  /**
+   * wave 16 (DEC-197): the two faces stacked in 3D, back-to-back, for moment 4's turn. Default `false`: the
+   * layout every screen has today, both faces readable without the flip.
+   */
+  flip?: boolean;
 }

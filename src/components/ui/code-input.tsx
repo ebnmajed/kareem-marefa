@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
+import { useId, useRef, useState, useSyncExternalStore, type ClipboardEvent, type KeyboardEvent } from "react";
 import type { CodeInputProps } from "@/components/ui";
 import { describedIds } from "@/components/ui/field";
 import { AlertCircleIcon } from "@/components/ui/icons";
@@ -41,6 +41,17 @@ import { AlertCircleIcon } from "@/components/ui/icons";
 // show. `code-input.test.tsx` proves it, so a React that stops doing so fails
 // there rather than on SCR-014.
 //
+// ★★ WITHOUT JAVASCRIPT IT IS ONE FIELD, AND IT POSTS (wave 16, STATUS F1,
+// REQ-CHK-003). The six boxes are a controlled component, and only React fills
+// the hidden field they post through — so with JS off a member typed a correct
+// code, posted an empty one, and was told it was wrong. The SERVER therefore
+// renders one labelled text field named `name` itself (six characters,
+// `autocomplete="one-time-code"`), and the client swaps it for the six boxes
+// once it has hydrated. The first client render matches the server's, so
+// hydration never disagrees; a code typed before the swap is carried into the
+// boxes. Either way exactly one control posts under `name`: the posted field,
+// and so `check-in/actions.ts`, are byte-identical.
+//
 // Not a `<Field>` child: it names itself, as `ui/radio-group` does.
 
 const LENGTH = 6;
@@ -48,6 +59,17 @@ const LENGTH = 6;
 /** Upper-case, and drop the separators a copied code may carry. Nothing else. */
 function normalise(raw: string): string {
   return raw.toUpperCase().replace(/[\s-]/g, "");
+}
+
+const noSubscribe = () => () => {};
+
+/** False on the server and while hydrating its HTML; true once the client owns the component. */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    noSubscribe,
+    () => true,
+    () => false,
+  );
 }
 
 function seed(defaultValue: string | undefined, length: number): string[] {
@@ -76,6 +98,23 @@ export function CodeInput({
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
   const isInvalid = invalid ?? Boolean(error);
   const complete = chars.every(Boolean);
+  const hydrated = useHydrated();
+  const describedByIds = describedIds(error ? errorId : undefined, describedBy);
+
+  /**
+   * The server's single field, until the swap. Its ref's cleanup runs as it leaves: whatever a member typed
+   * before the page hydrated is carried into the boxes rather than lost, with the caret after it.
+   */
+  const carryOver = (node: HTMLInputElement | null) => {
+    if (!node) return;
+    return () => {
+      const typed = normalise(node.value).slice(0, length);
+      if (!typed || typed === chars.join("")) return;
+      const wasFocused = node.ownerDocument.activeElement === node;
+      setChars(seed(typed, length));
+      if (wasFocused) queueMicrotask(() => focusBox(typed.length));
+    };
+  };
 
   const focusBox = (i: number) => boxes.current[Math.max(0, Math.min(length - 1, i))]?.focus();
 
@@ -126,6 +165,47 @@ export function CodeInput({
     else fill(i, pasted.slice(0, length - i));
   }
 
+  const errorLine = error ? (
+    <p id={errorId} className="mt-2 flex items-start gap-2 text-caption text-error pg-dark:text-error-on-dark">
+      <AlertCircleIcon className="mt-[0.2em]" />
+      <span>{error}</span>
+    </p>
+  ) : null;
+
+  if (!hydrated) {
+    return (
+      <div className={className}>
+        <label id={labelId} htmlFor={firstId} className="text-label text-fg-heading">
+          {label}
+        </label>
+        <input
+          // Its own key: the boxes' render puts the hidden input where this one stood, and a reused
+          // element would turn an uncontrolled field into a controlled one. This one leaves, and the
+          // boxes arrive.
+          key="no-js"
+          ref={carryOver}
+          id={firstId}
+          name={name}
+          defaultValue={chars.join("")}
+          maxLength={length}
+          dir="ltr"
+          aria-describedby={describedByIds}
+          aria-invalid={isInvalid || undefined}
+          disabled={disabled}
+          inputMode="text"
+          autoComplete="one-time-code"
+          autoCorrect="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          className={`mt-2 block h-14 w-full rounded-field border bg-canvas px-3 text-center text-h2 text-fg-heading disabled:cursor-not-allowed disabled:opacity-60 pg:h-15 pg:rounded-input pg:bg-raised pg:font-display ${
+            isInvalid ? "border-error-border pg-dark:border-error-on-dark" : "border-edge-strong"
+          }`}
+        />
+        {errorLine}
+      </div>
+    );
+  }
+
   return (
     <div className={className}>
       <label id={labelId} htmlFor={firstId} className="text-label text-fg-heading">
@@ -137,7 +217,7 @@ export function CodeInput({
         role="group"
         dir="ltr"
         aria-labelledby={labelId}
-        aria-describedby={describedIds(error ? errorId : undefined, describedBy)}
+        aria-describedby={describedByIds}
         data-complete={complete || undefined}
         className="mt-2 flex gap-2"
       >
@@ -172,12 +252,7 @@ export function CodeInput({
       </div>
       {/* The same shape as `<Field>`'s error, and for the same reason no `role="alert"`: the page's
           banner or summary is the announcement; this is what is read on arriving in the group. */}
-      {error ? (
-        <p id={errorId} className="mt-2 flex items-start gap-2 text-caption text-error pg-dark:text-error-on-dark">
-          <AlertCircleIcon className="mt-[0.2em]" />
-          <span>{error}</span>
-        </p>
-      ) : null}
+      {errorLine}
     </div>
   );
 }

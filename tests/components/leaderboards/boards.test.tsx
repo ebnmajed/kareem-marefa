@@ -14,6 +14,10 @@ import type { CompanyBoardRow, CompanyPointsBreakdown, MemberBoardRow } from "@/
 
 const messages = { ...leaderboards, ...ui };
 
+// wave 16: the boards sit inside the playground's scope, which reads one class name from `next/font`,
+// compiled by Next and not by vitest.
+vi.mock("@/lib/fonts", () => ({ balooBhaijaan: { variable: "font-baloo-variable" } }));
+
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace?: string) => createTranslator({ locale: "ar", messages, namespace: namespace as never }),
 }));
@@ -75,22 +79,32 @@ describe("CompanyBoard", () => {
     { companyId: "c2", companyName: "الشركة الثانية", rank: 2, totalPoints: 900, pointsPerActiveMember: 22.5 },
   ];
 
+  // ★ wave 16 (REQ-UIX-048, DEC-195 §1.1): each company is a `race-bar`, which has no `<dl>` — the
+  // ranked metric is the bar's value and its `metricLabel` («الترتيب حسبه: …»), the other is its
+  // `secondary`. The same facts are asserted on those: both metrics, the ranked one first and the
+  // only one marked, the same two figures. Ledger: STATUS.md, wave 16, boards.test.tsx:78-93.
+  const metrics = (row: HTMLElement) => {
+    const [metricLine] = row.querySelectorAll("p");
+    const [ranked, other] = Array.from(metricLine.children) as HTMLElement[];
+    const values = Array.from(row.querySelectorAll("bdi[dir=ltr]")).map((b) => b.textContent);
+    return { ranked: ranked.textContent ?? "", other: other.textContent ?? "", values };
+  };
+
   it("★ shows both metrics on every row, the ranking one first and marked", async () => {
     render(<Wrap>{await CompanyBoard({ rows, metric: "points_per_active_member" })}</Wrap>);
-    const first = screen.getAllByRole("listitem")[0];
-    const terms = within(first).getAllByRole("term").map((dt) => dt.textContent);
-    expect(terms[0]).toContain("نقاط لكل عضو نشط");
-    expect(terms[0]).toContain("الترتيب حسبه");
-    expect(terms[1]).toContain("مجموع النقاط");
-    expect(terms[1]).not.toContain("الترتيب حسبه");
-    expect(within(first).getAllByRole("definition").map((dd) => dd.textContent)).toEqual(["35", "420"]);
+    const first = metrics(screen.getAllByRole("listitem")[0]);
+    expect(first.ranked).toContain("نقاط لكل عضو نشط");
+    expect(first.ranked).toContain("الترتيب حسبه");
+    expect(first.other).toContain("مجموع النقاط");
+    expect(first.other).not.toContain("الترتيب حسبه");
+    expect(first.values).toEqual(["35", "420"]);
   });
 
   it("follows the org's metric when it is total points", async () => {
     render(<Wrap>{await CompanyBoard({ rows, metric: "total_points" })}</Wrap>);
-    const second = screen.getAllByRole("listitem")[1];
-    expect(within(second).getAllByRole("term")[0]).toHaveTextContent("مجموع النقاط");
-    expect(within(second).getAllByRole("definition").map((dd) => dd.textContent)).toEqual(["900", "22.5"]);
+    const second = metrics(screen.getAllByRole("listitem")[1]);
+    expect(second.ranked).toContain("مجموع النقاط");
+    expect(second.values).toEqual(["900", "22.5"]);
   });
 });
 
@@ -100,7 +114,9 @@ describe("signed numbers read left to right", () => {
   it("a negative company total and its per-member figure", async () => {
     const negative: CompanyBoardRow[] = [{ companyId: "c3", companyName: "الشركة الثالثة", rank: 3, totalPoints: -12, pointsPerActiveMember: -1.5 }];
     render(<Wrap>{await CompanyBoard({ rows: negative, metric: "total_points" })}</Wrap>);
-    const values = within(screen.getByRole("listitem")).getAllByRole("definition").map((dd) => dd.querySelector("bdi")!);
+    // wave 16: the two values are `race-bar`'s value and its `secondary` — no `definition` role any more.
+    // Ledger: STATUS.md, wave 16, boards.test.tsx:100-107.
+    const values = Array.from(screen.getByRole("listitem").querySelectorAll("bdi[dir=ltr]"));
     expect(values).toHaveLength(2);
     for (const bdi of values) {
       expect(bdi).toHaveAttribute("dir", "ltr");

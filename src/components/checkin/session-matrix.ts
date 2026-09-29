@@ -241,9 +241,10 @@ export type CheckInIneligibleReason = "not_published" | "cancelled" | "not_start
  * `viewer` carries the RAW facts (`isPresenter`, `rsvpStatus`, `isStaff`),
  * never a pre-derived `ViewerRelation` — that's the whole fix (see the header
  * above). `viewer.checkedIn` is accepted (reusing `session-status.ts`'s
- * `ViewerInput` shape as-is) but not consulted: whether to keep OFFERING the
- * check-in link to someone already checked in is `check_in()`'s own
- * `already_checked_in` no-op to answer, not this predicate's.
+ * `ViewerInput` shape as-is) but not consulted HERE: this is the WINDOW, and
+ * the check-in screen renders its own static state for a member already in
+ * (REQ-UIX-046). Whether the event page keeps OFFERING the link to that member
+ * is `checkInOffer()`'s answer below (DEC-195 §2.5) — it says `recorded`.
  */
 export function checkInIneligibleReason(session: PhaseInput, viewer: ViewerInput, allowWalkIns: boolean, checkInOpen: boolean, now: Date = new Date()): CheckInIneligibleReason | null {
   if (viewer.isPresenter) return "presenter_cannot_check_in"; // REQ-CHK-011, absolute — no walk-in exception either.
@@ -296,4 +297,40 @@ export function checkInIneligibleReason(session: PhaseInput, viewer: ViewerInput
 /** `checkInIneligibleReason() === null`, for a caller that only needs the boolean. */
 export function checkInWindowAllowed(session: PhaseInput, viewer: ViewerInput, allowWalkIns: boolean, checkInOpen: boolean, now: Date = new Date()): boolean {
   return checkInIneligibleReason(session, viewer, allowWalkIns, checkInOpen, now) === null;
+}
+
+// ── ★ DEC-195 §2.5 — «حضرت», the matrix's answer for the event page's link ──
+//
+// A checked-in member was offered the check-in link again for the rest of the
+// session, because the window above is the only thing the link asked. Moment 2
+// ends by returning to that page, so it would end on a wrong button.
+//
+// ★ PER DAY. A workshop member who attended day 1 is owed day 2's link. So a
+// check-in is `recorded` only on the day `checkInDayFor()` resolves — by the
+// caller's `checkedInDayIds` when it passes them; without them, only at one day
+// (or none), where any active check-in IS today's. A workshop caller that passes
+// no ids is never told `recorded`: hiding a day's link is the worse error.
+//
+// `checkInWindowAllowed()` is deliberately NOT changed: it also feeds the
+// timeline's pinned card on `SCR-010`, which does not move this wave (DEC-195 §1.2).
+
+export type CheckInOffer = "offer" | "recorded" | "none";
+
+export type CheckInOfferViewer = ViewerInput & {
+  /** The days the viewer holds an ACTIVE check-in on (`removed_at is null`). */
+  checkedInDayIds?: readonly string[];
+};
+
+/** The viewer holds an active check-in on the day a check-in now would be about. */
+function checkedInForCurrentDay(session: PhaseInput, viewer: CheckInOfferViewer, now: Date): boolean {
+  if (viewer.checkedInDayIds) {
+    const day = checkInDayFor(session, now);
+    return day ? viewer.checkedInDayIds.includes(day.id) : viewer.checkedInDayIds.length > 0;
+  }
+  return (session.days?.length ?? 0) <= 1 && viewer.checkedIn;
+}
+
+export function checkInOffer(session: PhaseInput, viewer: CheckInOfferViewer, allowWalkIns: boolean, checkInOpen: boolean, now: Date = new Date()): CheckInOffer {
+  if (!viewer.isPresenter && CHECK_IN_ATTENDANCE_STATES.includes(session.state) && checkedInForCurrentDay(session, viewer, now)) return "recorded";
+  return checkInWindowAllowed(session, viewer, allowWalkIns, checkInOpen, now) ? "offer" : "none";
 }

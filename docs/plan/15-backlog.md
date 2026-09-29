@@ -1055,6 +1055,53 @@ written by the wave that builds each.*
   ring and keeps its tint.
 - An RLS case: a moderator and a member cannot write it; another org cannot read it.
 
+## 23e. Wave 16 — `M18`, the five moments (`DEC-195`)
+
+*The moments land on the real screens, and `DEC-195` §1.1 names the five surfaces that move and §1.2 everything that
+does not. The five public routes do not move. Every moment has a re-render test and a static state captured at
+390 px beside its animated counterpart.*
+
+#### STORY-UIX-027 — The moments' shared mechanism
+**Covers:** `REQ-UIX-044` · **M18** · **M**
+- `src/lib/ui/confetti.ts`, `useCountUp` and the once-per-occurrence keying land before any track uses them, each
+  with a jsdom test that covers reduced motion.
+- The keying is proved by mount, play, unmount, mount again — silence.
+- The public-graph test still finds no scope, and `qa:contract`, `visual`'s public pairs and the register form's
+  fingerprint are unchanged at every commit of the wave.
+
+#### STORY-UIX-028 — الحجز on the event page's action card
+**Covers:** `REQ-UIX-045`, `REQ-UIX-044` · **M18** · **L**
+- The reserve action returns what the moment is keyed on; a redirect that drops it is the defect.
+- The ticket, the stamp, the thud, the capacity chip, `session-cta`'s booked state, the calendar whisper; the
+  waitlisted variant in the waitlist's status tone.
+- A reload shows the static state. A throttled-CPU trace: no frame over 16 ms.
+
+#### STORY-UIX-029 — تسجيل الحضور on the check-in screen
+**Covers:** `REQ-UIX-046`, `REQ-UIX-044`, `REQ-UIX-035` · **M18** · **L**
+- Confetti, the coin, the three lines; the amount from the pending state, and no number when nothing is earned.
+- The code entered in `code-input`, the posted field and the no-JS path unchanged.
+- The event page's action reads «حضرت» afterwards; the matrix's changed answer is a ledger line.
+- A reload shows the static state. A throttled-CPU trace: no frame over 16 ms.
+
+#### STORY-UIX-030 — انتهت الجلسة and ترقية المستوى on the points screen
+**Covers:** `REQ-UIX-047`, `REQ-UIX-044` · **M18** · **L**
+- The head of `SCR-022`: the balance counting up with its delta, the flame, the level bar, `level-card`.
+- Keyed on the ledger rows and the level, played at first sight and never again; what was seen is recorded as sync
+  1 rules.
+- The history and the catalogue do not animate.
+
+#### STORY-UIX-031 — تغيّر الترتيب on the two boards
+**Covers:** `REQ-UIX-048`, `REQ-UIX-044` · **M18** · **L**
+- The boards' rows on `rank-row` and `race-bar`; the swap by FLIP; the arrow shown, not pulsed (`DEC-197` §2); a bar by `scaleX`.
+- «Since last view» has a data source, ruled at sync 1; a table is the lead's, with its RLS case.
+- A falling row is asserted to carry no colour, no icon and no motion of its own.
+
+#### STORY-UIX-032 — A company's colour, chosen when it is created
+**Covers:** `REQ-UIX-043` · **M18** · **S**
+- The add form on `SCR-048` carries the named-colour picker; the insert carries the colour, or none.
+- Whether an insert with a colour is audited is measured, and the answer is written down.
+- A 390 px capture of the add form, looked at. **No logo, anywhere** (`DEC-195` §4).
+
 ---
 
 ## 24. Coverage check
@@ -1067,7 +1114,7 @@ backlog must satisfy:
    redesigns screens `STORY-AUT-001` built. `trace` cannot see that gap, because it checks
    REQ→story, not decision→story; `DEC-129` is why it is written down.
 2. **Every story cites at least one `REQ-*`.**
-3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180` and M17 since `DEC-183`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
+3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183` and M18 since `DEC-195`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
 4. **No story cites a requirement that does not exist.**
 
 A violation of any of the five **fails CI** (`13` §10). That gate is the only thing that keeps this

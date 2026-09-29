@@ -157,3 +157,43 @@ describe("LevelCard — RTL and motion", () => {
     expect(source).not.toMatch(/overflow-hidden|truncate/);
   });
 });
+
+// ★ wave 16 (DEC-197): `flip` — moment 4's layout. New behaviour, new cases; the ones above are untouched.
+describe("LevelCard — flip, the two faces stacked back to back", () => {
+  it("★ draws BOTH faces, neither hidden from assistive technology, held first then reached", async () => {
+    const { container } = render(<LevelCard flip level={HELD} reached={REACHED} shown="reached" {...LABELS} />);
+    expect(groups().map((g) => g.getAttribute("aria-label"))).toEqual(["مستواك الحالي", "مستوى جديد"]);
+    for (const g of groups()) {
+      expect(hiddenFromAT(g)).toBe(false);
+      expect(g).not.toHaveClass("sr-only");
+      expect(g).toHaveClass("backface-hidden");
+    }
+    await expectAccessible(container);
+  });
+
+  it("`shown` turns the inner card as a static class: the reached face is the end frame, with nothing moving", () => {
+    const { rerender } = render(<LevelCard flip level={HELD} reached={REACHED} shown="reached" {...LABELS} />);
+    const inner = document.querySelector("[data-slot=flip-inner]")!;
+    expect(inner).toHaveClass("transform-3d", "rotate-y-180");
+    expect(screen.getByRole("group", { name: "مستوى جديد" })).toHaveClass("rotate-y-180");
+    rerender(<LevelCard flip level={HELD} reached={REACHED} shown="level" {...LABELS} />);
+    expect(document.querySelector("[data-slot=flip-inner]")).not.toHaveClass("rotate-y-180");
+  });
+
+  it("the reached face carries one decorative shine, transparent at rest, clipped on its own layer — never the text's", () => {
+    render(<LevelCard flip level={HELD} reached={REACHED} shown="reached" {...LABELS} />);
+    const shines = document.querySelectorAll("[data-slot=shine]");
+    expect(shines).toHaveLength(1);
+    expect(screen.getByRole("group", { name: "مستوى جديد" }).contains(shines[0])).toBe(true);
+    expect(shines[0]).toHaveClass("opacity-0");
+    expect(shines[0].parentElement).toHaveAttribute("aria-hidden", "true");
+    expect(shines[0].parentElement!.className).toContain("clip-path");
+    expect(shines[0].parentElement!.textContent).toBe("");
+  });
+
+  it("with no reached face, `flip` draws the one face as before", () => {
+    render(<LevelCard flip level={HELD} {...LABELS} />);
+    expect(groups()).toHaveLength(1);
+    expect(document.querySelector("[data-slot=flip-inner]")).toBeNull();
+  });
+});

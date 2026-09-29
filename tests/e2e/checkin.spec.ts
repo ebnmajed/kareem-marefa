@@ -161,20 +161,24 @@ test("an ordinary member reaches the check-in field one tap away and checks in w
     await expect(assembled).toHaveValue(codeValue, { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
   await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  // The URL first, with a real timeout: a refusal then fails naming its
-  // reason (`?error=…`), not "no status" under full-suite load.
-  await expect(page).toHaveURL(/\?success=1$/, { timeout: 15_000 });
-  await expect(page.getByRole("status")).toHaveText("تم تسجيل حضورك");
+  // ★ Wave 16 (REQ-UIX-046, ledger): the hydrated form plays moment 2 on this
+  // screen — the URL carries no `?success=1` — and the lines say it. A refusal
+  // still fails naming its reason, because it still redirects to `?error=…`.
+  const main = page.locator("#main");
+  await expect(main.locator("[data-moment='check-in']")).toBeVisible({ timeout: 15_000 });
+  await expect(main.getByRole("status")).toContainText("أنت هنا!");
+  // DEC-197 §1: 1.4 s after the lines are in, back to the event page.
+  await expect(page).toHaveURL(new RegExp(`/ar/app/sessions/${sessionId}$`), { timeout: 15_000 });
 
-  // A second visit and submit is the DISTINCT "already checked in" state, not another success.
+  // ★ Wave 16 (ledger): a second visit is the static state — no form to submit
+  // again, no particle, no announcement. The distinct «already» state is still
+  // what `check_in()` answers to a repeat; it is pinned without JS in
+  // `tests/components/checkin/check-in-screen.test.tsx` and `tests/unit/checkin-actions.test.ts`.
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
-  await expect(async () => {
-    for (const [i, ch] of Array.from(codeValue).entries()) await boxes.nth(i).fill(ch);
-    await expect(assembled).toHaveValue(codeValue, { timeout: 1_000 });
-  }).toPass({ timeout: 15_000 });
-  await page.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/\?already=1$/, { timeout: 15_000 });
-  await expect(page.getByRole("status")).toHaveText("أنت مسجَّل بالفعل");
+  await expect(main.locator("[data-moment='check-in']")).toHaveAttribute("data-phase", "static");
+  await expect(main.locator("input[maxlength='1']")).toHaveCount(0);
+  await expect(main.locator("[data-confetti]")).toHaveCount(0);
+  await expect(main.getByRole("status")).toHaveCount(0);
 });
 
 test("a plain member is refused the host view by policy, not merely hidden UI (REQ-CHK-014)", async ({ context, page }) => {
@@ -279,16 +283,18 @@ test("REQ-CHK-015/016: the check-in switch closes and reopens, staying at 390px"
 
 // ★ C1's own captures, last in the file: `getCheckInScreenData()`'s
 // `ineligibleReason` doesn't consult `viewer.checkedIn` (session-matrix.ts's
-// own comment on `checkInIneligibleReason()`) — an already-checked-in
-// member still sees the same "ready" form the next member would, so
-// `attendeeEmail` (checked in by the first test above) works for the
-// "ready" capture unmodified. `check_in_open` is toggled directly through
+// own comment on `checkInIneligibleReason()`), but since wave 16 the screen
+// shows a member checked in to today its static state instead of the form —
+// so the «ready» capture is the staff member's. `check_in_open` is toggled directly through
 // the database rather than the host UI — that round trip is already
 // covered above; this is only ever the check-in SCREEN's own two states.
 test("C1 captures: the ready code form, and the proactive check_in_closed banner, at 390px", async ({ context, page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const isPhone = test.info().project.name === "phone";
-  await signIn(context, attendeeEmail, false);
+  // ★ Wave 16 (ledger): the attendee is checked in, and a checked-in member now
+  // sees the static state, not the form. The staff member — walk-ins are on and
+  // their code above was refused — sees the same «ready» form the next member would.
+  await signIn(context, staffEmail, true);
 
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
   await expect(page.getByText("أدخل رمز الحضور الذي أعلنه المُقدِّم")).toBeVisible();

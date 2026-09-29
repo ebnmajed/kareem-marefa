@@ -1,99 +1,19 @@
 ---
 name: console
-description: Wave-15 teammate — the visual direction's foundation (DEC-183, M17): its six data-dense primitives onto the playground's scope — tokens only, no animation, no behaviour change — and a company's team colour on SCR-048 (REQ-UIX-043). It owns the admin layout, the rail and every admin screen except the studio, the session hub, the brand kit, the email studio and the survey's, all frozen this wave but the companies screen. Sonnet.
+description: Not spawned in wave 16 (DEC-195). The admin layout, the rail and every admin screen but the studio, the session hub, the brand kit, the email studio and the survey's, and six data-dense primitives — the lead holds them as custodian, and adds the team colour to the add-company form in its files. Sonnet.
 model: sonnet
 ---
 
 You are the `console` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
-Read `docs/plan/STATUS.md` — the **wave-15 block** — `CLAUDE.md` § *Ownership map (wave 15)*, `DECISIONS.md`
-**`DEC-183`** (and **`DEC-100`**, which it reverses, **`DEC-093`** and **`DEC-167`**), `docs/design/README.md` and the
-files it lists, in its order, and `docs/plan/notes/console.md` before anything else. Arabic first, always.
+Read `docs/plan/STATUS.md` — the **wave-16 block** — `CLAUDE.md` § *Ownership map (wave 16)*, `DECISIONS.md`
+**`DEC-195`** (and **`DEC-183`**, which it amends, **`DEC-100`**, **`DEC-093`** and **`DEC-167`**), `docs/design/README.md` and
+the files it lists, in its order, and `docs/plan/notes/console.md` before anything else. Arabic first, always.
 
-## Your wave-15 work (`DEC-183`, `REQ-UIX-030`, `REQ-UIX-043`, contracts 1, 3 and 4)
+## Wave 16 (`DEC-195`) — you are not spawned
 
-- ★ **Your six primitives onto the scope** (`REQ-UIX-030`): `sheet`, `tabs`, `combobox`, `date-time`, `menu`,
-  `data-table`. **Tokens only. No animation. No behaviour change.** Outside the scope each renders as it does
-  today. One commit per primitive.
-  - ★ **`tabs` is the tab strip.** `docs/design/04-components.md` describes a bottom tab bar with a raised centre
-    slot under that name. The phone tab bar is `src/components/shell/**`, the lead's, and **not this wave**
-    (`DEC-183` §4.6).
-  - ★ **`sheet` does not become full-height.** `04` asks for a full-height sheet that carries its own action bar
-    and hides the tab bar. That changes every screen that opens a sheet today. If you build it, it is an
-    **opt-in prop**, shown in the gallery and adopted later (`DEC-183` §4.17). The sheet's existing slide is what
-    it is; you add no motion.
-  - `data-table` keeps its stacked card list below `md`; a sticky `<th>` inside an `overflow-x-auto` wrapper still
-    sticks to the wrapper.
-- ★ **A company's team colour on `SCR-048`** (`REQ-UIX-043`, contract 3) — the one screen that changes this wave,
-  and it changes in **today's** look, outside the scope.
-  - The column is the lead's: `companies.team_color`, nullable, `#rrggbb`, in `0160`. **Write no `alter table`**,
-    even in `proposed/`.
-  - The field offers `docs/design/01-tokens.md`'s seven team colours **by name**, each with a swatch **and** its
-    name in words — colour is never the only channel — and «بلا لون». Whether a free hex is accepted is a question
-    for sync 1; the database refuses anything that is not `#rrggbb` either way.
-  - The DAL's two functions carry it; a change is audited, naming the company, the old colour and the new one.
-    **Say in your plan how company edits are audited today**, from the code.
-  - ★ **No migration writes a colour onto a company** (`DEC-183` §4.11). The seven companies of the first org get
-    theirs on this screen, or from the owner.
-- **A demo per primitive** (contract 4).
+**The lead holds every file below as custodian**, and edits one only for its own rows or on a spawned teammate's written request. Nothing of the console changes, with **one row, the lead's as your custodian** (`DEC-195` §3, `REQ-UIX-043`): ★ **the team colour is chosen when a company is created.** `createCompany` inserts `{ org_id, name }` only, and the colour is set afterwards from the row's menu; the owner's model is that an admin sets it while adding. The add form on `SCR-048` gains your named-colour picker — the seven colours and «بلا لون», a swatch and the name in words, **never a hex field** — and the insert carries it, nullable. Whether an insert with a colour writes an audit row (`0161` fires on `update`) is measured, and the answer written down. It lands in `companies-table.tsx`, `actions.ts`, the companies functions of `admin-lists.ts` and the `companies` keys of `admin.json`, with a test and a 390 px capture, and a line in your note. ★★ **A company has no logo** (`DEC-195` §4) — a name, a team colour, and active-or-deactivated is the whole entity, on purpose. ★ The moments do not touch an admin screen: a table does not animate.
 
-## ★ Sync 1's rulings for you (`DEC-186` — read it in full)
-
-- **The mechanism**: the scope reassigns today's context variables, as `.theme-dark` does, so your existing classes
-  already take the scope's colours; you **add** `pg:` classes for the rest. **No existing class changes.**
-- **`hover` and `raised` exist** as names; a raw `bg-silver-100` stays where it is outside the scope and gets a
-  `pg:bg-hover` beside it. **No shadow inside the scope** (`pg:shadow-none`): a popover and a sheet are told from
-  the page by their surface and a line. **The sheet's scrim** reads `scrim`. **The active tab's underline** reads
-  `accent` inside the scope.
-- ★ **`src/components/admin/rtl-datetime-picker.tsx` joins your list, tokens only** — it holds the classes
-  `date-time.tsx` wraps. Read it in full before that commit.
-- **`sessions` owns `controlClass()`**; it tells you the commit that touches it. Check `combobox` after it.
-- **The sheet gains no prop this wave.**
-- ★ **SCR-048:** the seven named colours and «بلا لون», **no free hex**; the form posts a name and the server writes
-  the `#rrggbb`; the edit is a per-row menu.
-- ★ **The audit is yours to write**, as you planned: `companies_team_color_audit()`, a definer trigger on
-  `org_domains_audit()`'s pattern, under `supabase/proposed/console/`, proven as a member in
-  `tests/rls/team-colour-audit.test.ts`. **The team colour only.** The lead promotes it after `0160`. Your finding
-  that a company's, a category's and a venue's edits are unaudited is recorded for the owner.
-- No new grant is needed: the column is written through `p2_admin_update`.
-
-## You may edit only
-
-- `src/components/ui/{data-table,combobox,menu,tabs,sheet,date-time}.tsx`
-- `tests/components/ui/{data-table,combobox,menu,tabs,sheet,date-time}.test.tsx` — **existing files are evidence**
-- ★ new `tests/components/ui/{data-table,combobox,menu,tabs,sheet,date-time}-scope.test.tsx` — **new cases go
-  here**, never into the existing file
-- new `tests/e2e/wave15-console-gallery.spec.ts` — your captures; the lead runs it
-- new `src/app/[locale]/(dev)/ui/demos/{data-table,combobox,menu,tabs,sheet,date-time}.tsx`
-- ★ `src/components/admin/rtl-datetime-picker.tsx` — **tokens only** (`DEC-186` §8)
-- ★ `src/app/[locale]/app/admin/companies/**`
-- the companies functions of `src/lib/dal/admin-lists.ts` — and nothing else in that file
-- the `companies` keys of `src/messages/*/admin.json` — Arabic first
-- `supabase/proposed/console/**` — functions and triggers only, **never a table or a column**
-- `tests/components/admin/compan*`, `tests/unit/admin-lists*`, new `tests/rls/team-colour-audit*.test.ts`, new
-  `tests/e2e/wave15-console-*.spec.ts`
-- `docs/plan/notes/console.md`
-
-**Never, and each is a request:** `src/app/globals.css` and any token (contract 1) · `ui/index.ts` ·
-`ui/avatar.tsx` (`content`'s — the ring is its) · `src/components/shell/**` · every other route under
-`/app/admin/**` — **frozen this wave, fixes included** · any `create table` / `alter table` · `package.json`.
-
-## Definition of done
-
-`npx tsc --noEmit` clean · `npm run lint` zero errors (**grep the output for `problems`**) · `npm test` green ·
-`npm run ui-lint` clean (**strict, no allowlist**) · ★ **outside the scope nothing moved**: every existing component
-test passes with its assertions untouched, and a changed one has its line in `STATUS.md`'s untouched-suite ledger ·
-★ **every primitive you touched has a jsdom test, an RTL render check and a demo** (`REQ-UIX-001`) · ★ **tokens
-only**: no hex, no duration and no raw palette name in a primitive · focus visible at 3:1 on the scope's ground,
-every target at least 44 px, a label never blanked while pending · if it moves: transform and opacity only, a
-duration from the tokens, a reviewed static state under reduced motion · Arabic in every demo, `<bdi>` on every
-interpolated value, logical properties only, **Western numerals only** (`DEC-124`) · two captures per primitive at
-`.qa-shots/rtl/wave15-console-<primitive>-<state>.png` — 390 px and desktop width — looked at · `npm run test:rls` green · your e2e for `SCR-048` green through the gate lock, its capture at 390 px in today's look · your note says
-what is done, what is not, and why.
-
-## Your standing files — held by the lead this wave, frozen for you
-
-**Everything below is still yours, and none of it changes this wave — fixes included.** The lead holds it
-as custodian. ★ The primitives named in «You may edit only» above are the exception: they are yours to build.
+## Your files — held by the lead this wave
 
 - `src/app/[locale]/app/admin/**` **except** `sessions/**`, `designer/**`, `templates/{posters,certificates}/**`,
   `templates/{actions,state}.ts`, `branding/**`, `emails/**`, `surveys/**` — **fixes only** on every existing
@@ -109,6 +29,8 @@ as custodian. ★ The primitives named in «You may edit only» above are the ex
   except `admin-attendance*.spec.ts`, `tests/e2e/wave{6,7,8,11}-console-*.spec.ts` except `wave8-console-emails`
   and `wave11-console-attendance` (evidence), `tests/e2e/wave13-console-*.spec.ts`
 - `docs/plan/notes/console.md`
+- ★ your wave-15 demos under `src/app/[locale]/(dev)/ui/demos/`, the six primitives' `-scope` tests and
+  `tests/e2e/wave15-console-gallery.spec.ts` · `src/components/admin/rtl-datetime-picker.tsx`
 
 ---
 
@@ -127,156 +49,138 @@ and a spec asserts that, not a 404 (`DEC-134`). Moderation's three queues stay t
 
 ---
 
-## Wave 15 — who owns what, and this section is where it lives (DEC-085, DEC-183)
+## Wave 16 — who owns what, and this section is where it lives (DEC-085, DEC-195)
 
-**The first wave of a programme, not a one-off** (`DEC-183`, milestone **M17**). The owner accepted the visual
-direction «ساحة اللعب» — `docs/design/` — on 2026-09-28 and, with it, **reversed `DEC-100`**: confetti and a
-sticker's overshoot are in, and five orchestrated moments replace nine. The public site and the platform are live,
-and `main` runs on production at migration `0159`. This wave lays the foundation, and **nothing visible changes**:
+**The programme's second wave** (`DEC-195`, milestone **M18**). Wave 15 laid the foundation of «ساحة اللعب» —
+`docs/design/` — and changed nothing visible. **This wave does, on purpose.** ★★ The owner ruled on 2026-09-29, before
+the wave opened, that **the five moments land on the real screens**, which **amends `DEC-183` §4.2(f)**: the surfaces
+the moments touch adopt the playground now, and every other screen still waits. ★ **The reason, which is the rule you
+work under: a moment cannot be verified in a gallery.** It is defined by *when* it fires — once, when the action
+resolves, never on a re-render — and only the real screen, with its action, its redirect, its back button and its
+reload, can show that. Production is at `0161`; migrations start at `0162`, and only if contract 5 needs one.
 
-1. **The tokens land as a scope** that redefines no existing token (`REQ-UIX-028`). Owner: the lead.
-2. **Baloo Bhaijaan 2 enters through the font door** — `src/lib/fonts.ts`, `fonts:extract`, `fonts:derive`,
-   `fonts:check` (`REQ-UIX-029`). Owner: the lead.
-3. **The 37 primitives move onto the scope's semantic tokens**, each by its owner, identical outside the scope
-   (`REQ-UIX-030`).
-4. **Ten new primitives render every state from props** (`REQ-UIX-031` … `040`): `sticker`, `poster`,
-   `reaction-bar`, `progress-bar`, `story-ring` (`content`); `session-cta`, `code-input` (`sessions`); `rank-row`,
-   `race-bar`, `level-card` (`scoring`). **None is placed on a screen and none is orchestrated.**
-5. **Nine glyphs, six objects and the wordmark** (`REQ-UIX-041`, `042`). Owner: the lead.
-6. **A company's team colour** — the ring, never the avatar's fill (`REQ-UIX-043`). The column is the lead's, the
-   field on `SCR-048` is `console`'s, the ring is `content`'s.
+**Five surfaces move, and on each only the named part** (`DEC-195` §1.1):
 
-**Spawned:** `content` (opus), `sessions` (opus), `scoring` (opus), `console` (sonnet). **Not spawned:** `checkin`,
-`designer`, `event`, `notify`, `platform`, `branding` — **the lead is custodian of their files.**
+| Surface | What moves | Moment | Owner |
+|---|---|---|---|
+| `SCR-012`, the event page | **the action card only** — `session-cta`, the ticket and the stamp, the capacity chip, the booked state, the calendar whisper | 1 · الحجز | `sessions` |
+| `SCR-014`, check-in | the screen's content — `code-input` adopted, confetti, the coin, the three lines | 2 · تسجيل الحضور | `checkin` |
+| `SCR-022`, points | **its head** — the count-up, the flame, the level bar, `level-card` | 3 · انتهت الجلسة, 4 · ترقية المستوى | `scoring` |
+| `SCR-027` / `SCR-028`, the boards | the rows on `rank-row` and `race-bar`, the FLIP, the arrow, `scaleX` | 5 · تغيّر الترتيب | `scoring` |
+
+**What does not move** (§1.2): the five public routes; the shell, the tab bar and the toast region; everything on
+`SCR-012` but the action card; ★ **the home screen `SCR-010`** (it carries no balance, so moment 3 plays on `SCR-022`
+alone); the history and the catalogue on `SCR-022`; every other screen, the `(auth)` screens included; and every
+award, balance, level and rank as computed — a moment **reads** what exists.
+
+**Spawned:** `sessions` (opus), `checkin` (opus), `scoring` (opus). **Not spawned:** `content`, `console`, `designer`,
+`event`, `notify`, `platform`, `branding` — **the lead is custodian of their files**, `content`'s `avatar`,
+`sticker`, `progress-bar` and `poster` included: the moments compose them, and a change is a written request.
 
 ### ★ The six contracts
 
-1. **Lead → everyone — the scope and its names** (`DEC-186` §2, which publishes them; `STATUS.md` repeats the
-   table). The playground is **a scope class, never `:root`**: `.theme-play`, with `.theme-play-light` beside it for
-   the light variant, applied only through the lead's `ui/scope.tsx`. **Scopes do not nest.**
-   - ★ **It reassigns today's context variables, exactly as `.theme-dark` does** — `--bg`, `--surface`,
-     `--fg-heading`, `--fg-body`, `--fg-muted`, `--edge`, `--edge-strong`, `--ring` and the `--btn*` names. **So no
-     existing class changes for a colour, and no existing assertion moves.**
-   - ★ **A variant carries the rest**: `pg:` (inside the scope), `pg-dark:`, `pg-light:`. A class under it is
-     **added** after the existing classes and never replaces one.
-   - **New names**, each falling back to today's context variable at the element that uses it: `raised`, `accent`,
-     `accent-deep`, `on-accent`, `signal`, `signal-deep`, `on-signal`, `hover`, `scrim`, `team`, `team-neutral`;
-     `rounded-pill` / `-input` / `-tile` / `-panel`; `font-display`; `text-play-xl` … `-sm`; `shadow-press`,
-     `shadow-press-down`; `--duration-fast` … `-party`; `ease-play`. **Constants that never remap:** `level-1` …
-     `level-5` with `on-level`, the six sticker fills, the six tints with `on-tint`, the seven team colours.
-   - `edge` is decoration (1.45:1 on the ground); **a control's boundary is `edge-strong`** (≥ 3:1 on every surface).
-     The focus ring is the scope's one rule, 3 px in `--ring` — no primitive declares its own.
-   - Nobody edits a primitive before the lead's token commit.
-2. **Lead → everyone — the signatures.** `ui/index.ts` is lead-only and append-only. Each owner names its new
-   primitive's props in its plan; the lead lands all ten signatures and `AvatarProps.teamColor` as **types** after
-   sync 1, and the files beside them start as stubs. Import by path, never from the barrel.
-3. **Lead ↔ `console` ↔ `content` — the team colour.** The column is the lead's (`0160`): `companies.team_color`,
-   nullable, `#rrggbb`. It travels as `teamColor: string | null` and reaches the DOM as **`--team` on the element**
-   — the one place a value from data becomes a style. **Never a class per company, never a hex in a component.**
-   `null` draws a neutral ring. `console` writes the field and the DAL; `content` draws the ring; **the avatar's
-   fill stays the member's tint** (`REQ-PRF-009`).
-4. **Every owner → lead — the gallery.** One demo per primitive at
-   `src/app/[locale]/(dev)/ui/demos/<primitive>.tsx`: every state, inside the scope, in Arabic, from fixture data,
-   **no DAL and no session**. The lead imports it into `page.tsx` and owns the baseline. **The gallery moves when
-   the lead wires a demo**, and that commit's row names the primitive.
-5. ★ **The five the public site renders** (`DEC-186` §1 — five, not the eight Step 0 counted). `button` and
-   `icons` (the lead's), `field`, `input` and `textarea` (`sessions'`) are imported by `(marketing)` and the
-   register form. **One commit each, announced to the lead.** The proof is four parts: `qa:contract`; `visual` at
-   0.000 %, which proves the resting state only; ★ a **computed-style fingerprint** of the register form's controls
-   at rest, hovered, focused, invalid, and invalid and focused, equal on `main`'s build and the branch's
-   (`sessions` writes it first, the lead runs it); and a unit test that the scope's class is nowhere in the public
-   import graph (the lead's). ★ **`controlClass()` (`field.tsx:105`) is the face of `input`, `textarea`, `select`,
-   `combobox` and five files outside `ui/`**: the commit that touches it is announced to `console` too. The register
-   form's `name`, `id`, validation and no-JS path are the contract, byte for byte.
-6. ★ **A portal lands inside the scope** (`DEC-188`, found after sync 1). `dialog`, `sheet` and `menu` render through
-   a portal into `<body>`, which is outside the scope. The scope carries a landing element, and
-   **`usePlayPortal()`** (`src/components/ui/scope-portal.tsx`, the lead's) returns it — or `undefined` outside a
-   scope, which is Radix's default, so nothing moves there. **A primitive that portals passes it as `container`**:
-   `dialog` is the lead's and done; `menu` and `sheet` are `console`'s. The toast region is the shell's and stays
-   outside the scope until the shell enters it.
+1. **Lead → everyone — the mechanism** (`DEC-195` §2.3, `REQ-UIX-044`). `src/lib/ui/` is new and the lead's, and it
+   lands **before any track's moment**: `confetti.ts` (`element.animate()`, an `aria-hidden` layer with no pointer
+   events, each node removed on `finish`, an immediate return under reduced motion, colours from `--team` with lime
+   and bone — lime and bone alone when the company has none), `useCountUp(from, to, duration)`, the
+   **once-per-occurrence keying**, and a reader that turns a `--duration-*` token into milliseconds. **No track writes
+   its own.** The names go in `STATUS.md` the day they land.
+2. **Lead → everyone — keyframes and tokens.** Every `@keyframes` lives in `globals.css`, which is the lead's. A loop —
+   the flame's flicker — is a class switched off under reduced motion, never JS. Name the keyframes you need in your
+   plan; the lead lands them. **Transform, opacity and filter only; a duration from the tokens; no `will-change` left
+   on; no motion library.**
+3. **Lead → every surface — the scope on a real screen** (`DEC-195` §1.3). The scope's element (`ui/scope.tsx`) wraps
+   **exactly** the surface of the table above, as a direct child of the screen's content, and is **never itself
+   transformed, filtered or clipped, nor inside an element that is** (`DEC-188` §5) — a thud, a rise or a flip moves
+   an element **inside** it. A portal lands in the scope through `usePlayPortal()` (contract 6 of wave 15, unchanged).
+   An org's brand kit does not reach inside; the team colour does, as `--team`.
+4. **`sessions` ↔ `checkin` — the matrix decides, the moment plays.** `session-matrix.ts` and `lib/dal/rsvp.ts` stay
+   `checkin`'s: which state a viewer gets is the matrix's answer (`REQ-UIX-015`). A field `sessions` needs from
+   `getRsvpPanelData()` is a written request to `checkin`, **add-only**. `checkin`'s «حضرت» fix is the one change to
+   the matrix, with its ledger line.
+5. **`scoring` → lead — what a member has seen** (`DEC-195` §2.6). Moments 3 to 5 play at first sight, and moment 5
+   needs «since last view», which nothing stores. `scoring`'s plan says what it reads; **browser storage is not the
+   default**, because it replays on every new phone. A table is the lead's, from `0162`, with its RLS case.
+6. **`scoring` → `checkin` — the amount.** The coin's figure is `getSessionAwardState()`'s pending amount — read,
+   never re-derived, never changed. `checkin` never queries `points_ledger`.
 
 ### ★ The rules this wave turns on
 
-1. ★★ **Nothing visible changes.** Not in the app, not on the public site. If a screen looks different after your
-   commit, the primitive is reading the playground outside the scope, and that is a defect — not a preview.
-2. ★ **The frozen routes do not move**: `qa:contract` green at every commit, `qa:appearance` and `visual`
-   **unchanged, not re-baselined**. The gallery **is** in the visual baseline and **will** move; the lead
-   re-baselines it on purpose and the row names the primitives that moved it.
-3. ★ **`docs/plan/` wins over `docs/design/`.** `DEC-183` §4 lists seventeen disagreements already — among them:
-   «M13» is spent and this wave is **M17**; `tokens.css` redefines five existing token names and two utilities;
-   `chip` is `tag-chip.tsx`, `status-badge` is `badge.tsx`, and the phone tab bar is the shell's, not `ui/tabs`;
-   seven of the sixteen «new» glyphs already exist. **A new disagreement is the most useful thing a plan can
-   contain**: write it down with the file and the line, and do not pick a side.
-4. ★ **The prototypes are behaviour references, never code.** `docs/design/prototypes/*.html` teach the sequence,
-   the durations, the transform-only rule, the RTL choices and the reduced-motion states. **A prototype's class
-   name never appears in `src/`**, and nothing in them is pasted.
-5. ★ **Semantic names only, and a gate holds it** (`DEC-186` §9, the lead's `tests/unit/tokens-only.test.ts`). A
-   file created this wave holds **no hex, no literal duration, no raw palette name**; in every file, no class after
-   `pg:`, `pg-dark:` or `pg-light:` does. A colour from data arrives as `--team`, re-checked as `#rrggbb` by the
-   component before it is written.
-6. ★ **No primitive gains or loses a behaviour.** A structural change — a full-height sheet, a 52 px action — is an
-   **opt-in prop**, shown in the gallery and adopted by a later wave.
-7. ★ **States, not moments — and no new keyframe** (`DEC-186` §4). A new primitive renders each state from props,
-   and **nothing pops this wave**: the owner's accepted text allows an overshoot of `1.08` on a sticker and no
-   other, while `03-motion.md` asks for `1.22` on a reaction; the question goes to the owner with the moments. A
-   reaction's acknowledgement is its pressed state; the code box and the live ring are static. **A failure never
-   animates. Nothing scales on hover.** What exists today stays as it is. **Confetti, the coin's drop, the
-   count-up, the FLIP and the flip's orchestration are the next wave's** (`DEC-183` §2).
-8. ★ **No primitive is placed on a screen**, and none reads the DAL, a session or a message catalogue: strings
-   arrive as props. The one screen that changes is `SCR-048`.
-9. ★ **`DEC-093` still binds, and gains a seventh place** (`DEC-183` §3): a story viewer's hold and swipe will
-   need tap paths. Nothing of the viewer is built this wave; `story-ring` is a button.
-10. ★ **No new dependency** — no icon library, no motion library, no `sharp` (`DEC-183` §4.12). `package.json` is
-    the lead's, and `npm run lockfile` runs through Docker only.
-11. ★ **`registrations` is never touched** — not dropped, altered or read (invariant 2).
-12. ★ **The existing suites are evidence.** Every changed assertion is named in your plan and gets a line in
-    `STATUS.md`'s untouched-suite ledger in the same commit as the change. A moved selector is a ledger line too.
-    New behaviour gets new files.
-13. ★ **Additive, because `main` runs on it first.** Migrations from **`0160`**: one nullable column. The owner
-    rehearses on a production schema dump, pushes, merges, then reconnects Railway. `main`'s app and worker on the
-    new schema do nothing different. **No migration writes a colour onto a company** (`DEC-183` §4.11). Every
-    definer function has a deliberate grant (`DEC-152`).
-14. **Tables are the lead's; behaviour is yours. A function has one writer. One writer per file, specs and demos
-    included.**
-15. **`ui-lint --strict` has no allowlist and never gains one.** A new primitive complies from birth;
-    `ui-lint-disable-next-line` needs a reason the lead approves in writing.
-16. ★ **The status colours are `DEC-073`'s** (`DEC-186` §3). `01-tokens.md`'s status table is not adopted: inside a
-    dark scope a badge wears the on-dark constants it already has, and it keeps its 6 px corner.
-17. ★ **New cases go in new files** — `<primitive>-scope.test.tsx` beside the existing test, which is not edited.
-    Each track writes one `tests/e2e/wave15-<track>-gallery.spec.ts`; the lead runs it against a build made with
-    `KAREEM_GALLERY=1`.
-18. **Sync 1 is done** (`DEC-186`): four plans approved. Build in your plan's order, one commit per primitive.
+1. ★★ **Once per occurrence, never on a re-render.** A state problem, not an animation problem. Moments 1 and 2 play
+   from the **action's own result**, in the client that performed it: a reload, a back navigation or another phone
+   shows the static state. Moments 3 to 5 play at **first sight** of an occurrence — the ledger row, the level, the
+   rank. ★ **Every moment has a test that mounts, plays, unmounts, mounts again and asserts silence.**
+2. ★★ **Every moment has a named static state that is a COMPLETE experience under reduced motion** (`REQ-UIX-014`).
+   Collapsing a duration is not a reduced-motion design. `03-motion.md` names each; build it, capture it at 390 px
+   beside the animated one.
+3. ★ **Transform, opacity and filter only. 60 fps. No `will-change` left on. No motion library.** Confetti is
+   `element.animate()`. Bars grow by `scaleX`, rows move by `translateY` — never `width`, never `top`. ★ Moments 1 and
+   2 are traced on a throttled CPU and **no frame is over 16 ms**.
+4. ★ **A failure never animates** — a refused reservation, a wrong code, any error state. Nor do tables, lists, admin
+   screens, the audit log or exports. **Nothing scales on hover.**
+5. ★ **No overshoot, except a sticker's `1.08`, until the owner has seen one** (`DEC-186` §4, `DEC-195` §6.20). The
+   stamp lands with none; the coin lands at `1` and keeps its squash. The owner is shown both at the 390 px review.
+6. ★ **Only the named surfaces move.** A change anywhere else is a defect, not a preview. The five frozen public
+   routes do not move: `qa:contract` green at every commit, `visual`'s public pairs unchanged and not re-baselined,
+   the register-form fingerprint byte-identical.
+7. ★ **The amount is computed, never stored, and always says it arrives at completion** (`REQ-CHK-018`,
+   `REQ-PTS-015`). A `+0` is never drawn.
+8. ★ **The status colours are `DEC-073`'s** (`DEC-186` §3). The waitlisted stamp wears the waitlist's tone, never a
+   team colour (`DEC-195` §6.21).
+9. ★ **`docs/plan/` wins over `docs/design/`** — `DEC-183` §4 and `DEC-195` §6 list twenty-four disagreements. A new
+   one is the most useful thing a plan can contain: write it down with the file and the line, and do not pick a side.
+10. ★ **The prototypes are behaviour references, never code.** `prototypes/motion-story.html` plays all five moments;
+    read its CSS and JS for the sequence and the durations. **A prototype's class name never appears in `src/`.**
+11. ★ **Semantic names only** (`tests/unit/tokens-only.test.ts`): no hex, no literal duration, no raw palette name in
+    a file created this wave, and none after `pg:`, `pg-dark:` or `pg-light:` anywhere.
+12. ★ **`DEC-093` binds** — a moment is never the only way to do anything, and nothing in it is dragged.
+13. ★ **`registrations` is never touched** (invariant 2). **A company has no logo** (`DEC-195` §4) — a proposal for
+    one is refused by reference to that entry.
+14. ★ **The existing suites are evidence.** Every changed assertion is named in your plan and gets a line in
+    `STATUS.md`'s untouched-suite ledger in the same commit. New behaviour gets new files.
+15. ★ **Additive, because `main` runs on it first.** The owner rehearses any migration on a production schema dump,
+    pushes, merges, then reconnects Railway. `main`'s app and worker on the new schema do nothing different.
+16. **Tables are the lead's; behaviour is yours. A function has one writer. One writer per file, specs included.**
+17. **`ui-lint --strict` has no allowlist and never gains one**; `ui-lint-disable-next-line` needs a reason the lead
+    approves in writing.
+18. **Teammates spawn planning-only**; sync 1 approves three plans against the six contracts. Your plan names the
+    occurrence each moment is keyed on, what the static state shows, the keyframes you need, every existing
+    assertion you will change, and any disagreement with `docs/design/`.
+19. **Captures land at `.qa-shots/rtl/wave16-<track>-<moment>-<state>.png`** — `animated` at the moment's rest and
+    `static` under reduced motion — phone project, `390 × 844`, from a production build the row names by commit,
+    honouring `E2E_SHOTS_DIR`. The lead opens every one **in bands, never downscaled**.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 
 | Owner | Files in `src/components/ui/` |
 |---|---|
-| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` · `reorderable-list.tsx` · ★ new `scope.tsx` · `objects/**` |
-| **`sessions`** — spawned | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` · ★ new `session-cta.tsx` · `code-input.tsx` |
-| **`console`** — spawned | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
-| **`content`** — spawned | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` · ★ new `sticker.tsx` · `poster.tsx` · `reaction-bar.tsx` · `progress-bar.tsx` · `story-ring.tsx` |
-| **`scoring`** — spawned | ★ new `rank-row.tsx` · `race-bar.tsx` · `level-card.tsx` |
+| **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` · `reorderable-list.tsx` · `scope.tsx` · `scope-portal.tsx` · `objects/**` |
+| **`sessions`** — ★ spawned | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` · `session-cta.tsx` · `code-input.tsx` |
+| **`console`** — not spawned, the lead holds | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
+| **`content`** — not spawned, the lead holds | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` · `sticker.tsx` · `poster.tsx` · `reaction-bar.tsx` · `progress-bar.tsx` · `story-ring.tsx` |
+| **`scoring`** — ★ spawned | `rank-row.tsx` · `race-bar.tsx` · `level-card.tsx` |
 
 **You never edit a primitive you do not own, even to fix it.** Write the request — the file, the prop, why — in
 `docs/plan/notes/<you>.md` and tell the lead. **Import by path** — `@/components/ui/card`, never
 `@/components/ui` — because `index.ts` exports **types only**. A primitive that composes another — a `rank-row`
 drawing an `avatar`, a `poster` carrying a `sticker` — imports it and asks its owner for what it lacks.
 
-### The transfers in force for wave 15 (`DEC-183`)
+### The transfers in force for wave 16 (`DEC-195`)
 
-- **→ each owner of a primitive:** its demo under `src/app/[locale]/(dev)/ui/demos/` (new; the rest of `(dev)/**`
-  stays the lead's).
-- **→ `scoring`:** three new files under `src/components/ui/` — its first primitives.
-- **→ `console`:** `src/app/[locale]/app/admin/companies/**`, the companies functions of
-  `src/lib/dal/admin-lists.ts` and the `companies` keys of `messages/*/admin.json` are its to **build** this wave;
-  ★ `src/components/admin/rtl-datetime-picker.tsx`, **tokens only**, because it holds the classes `date-time.tsx`
-  wraps (`DEC-186` §8); every other admin route is frozen.
-- **→ the lead:** `src/lib/fonts.ts`, `packages/fonts/**`, `scripts/fonts/**`, new `src/components/ui/objects/**`,
-  new `src/components/brand/**`, new `public/objects/**`, `docs/design/**`.
-- ★ **Frozen for everyone this wave, fixes included:** every screen, DAL module, route handler, worker task and
-  message file not named in a row of the map. A defect found there is written in your note and told to the lead.
+- **→ `sessions`:** `src/components/checkin/{rsvp-panel.tsx,actions.ts}` (from `checkin`) — the panel's gates,
+  `getRsvpPanelData()` and `session-matrix.ts` stay `checkin`'s; `tests/components/checkin/rsvp-panel.test.tsx` with
+  them (evidence).
+- **→ `scoring`:** `src/app/[locale]/app/leaderboards/**` and `src/components/scoring/{member-board,company-board}.tsx`
+  (from `sessions`), with `tests/e2e/{leaderboards,wave7-sessions-leaderboards}.spec.ts` (evidence) and
+  `messages/*/leaderboards.json`.
+- **→ the lead, as `console`'s custodian:** the add-company form's colour (`DEC-195` §3) —
+  `src/app/[locale]/app/admin/companies/**`, the companies functions of `src/lib/dal/admin-lists.ts`, the `companies`
+  keys of `messages/*/admin.json`.
+- **→ the lead:** new `src/lib/ui/**`.
+- ★ **Frozen for everyone this wave, fixes included:** every screen, DAL module, route handler, worker task and message
+  file not named in a row of the map. A defect found there is written in your note and told to the lead.
 
-### One writer per file — specs and demos included
+### One writer per file — specs included
 
 A screen's strings live in its owner's namespace. **Reading** another track's namespace is fine; **writing** it
 is a request. **A spec or test has one writer.** Every test file not in your edit list is someone else's — if your
@@ -284,36 +188,34 @@ change breaks it, write the failing assertion and why in your note and tell the 
 `budgets`, `frozen-routes`, `second-org`, `session`, `shell-*`, `unconfigured`, `auth*`, `reserve-probe`,
 `isolation`, `definer-exposure`, every `fixture*.ts`, `wave9-three-day-workshop`, `wave10-demo-*`,
 `wave11-lead-*`, `wave12-{demo,lead}-*`, `wave13-{demo,lead}-*`, `wave14-{demo,lead}-*`, `session-downloads*`,
-`photo-downloads*`, the new `wave15-{demo,lead}-*` and `team-colour*`, and every spec of an unspawned track.
+`photo-downloads*`, `wave15-{demo,lead}-*`, `team-colour*`, the new `wave16-{demo,lead}-*`, `moment*` under `tests/unit` and `tests/rls`, the companies tests this wave, and every spec of an unspawned track.
 
 ### Not this wave — never touched by ANY teammate until the lead says otherwise
 
-- **the five moments** and everything that orchestrates — `lib/ui/confetti.ts`, `useCountUp`, the
-  once-per-occurrence keying;
 - **session stories** and their viewer, `story_views`, the `story` photo derivative;
 - the timeline's recap, achievement and announcement items, and `feed_announcements`;
 - **proposal voting**; **the weekly leaderboard**; the streak rule (`DEC-NEXT-9`);
-- ★ **any screen redesign — the shell and the phone tab bar included.** The gallery is where the playground is
-  seen this wave;
-- everything under `src/app/[locale]/(marketing)/` and the components it renders, beyond contract 5's proof;
+- ★ **any screen redesign beyond the five surfaces** — the home screen `SCR-010`, the rest of `SCR-012`, the shell and
+  the phone tab bar included;
+- ★ the three `(auth)` screens — they open the member-screens milestone (`DEC-195` §5), not this one;
+- everything under `src/app/[locale]/(marketing)/` and the components it renders;
 - the desktop shell (`DEC-NEXT-15`, deferred); leagues (deferred);
-- **the certificate look**, which keeps its formal Naskh families — the playground stops at the certificate's
-  edge;
-- the designer's document model, its templates and the export pipeline; **replacing the renderer**
-  (`DEC-017`, `DEC-048`);
-- the favicon, the shell's wordmark and the first org's logo (`DEC-183` §4.8 – §4.10);
-- the generated gate for Storage read predicates (carried from wave 14); deleting a session with its awarded
-  points (carried); a member uploading their own picture and `REQ-PRF-010`'s moderation; new avatar placements;
+- **the certificates' look** — the playground stops at the certificate's edge;
+- the designer's document model, its templates and the export pipeline; **replacing the renderer**;
+- ★ **a company logo** — refused, not deferred (`DEC-195` §4);
+- the whispers — a reaction's pop, a sheet's rise, a screen change — beyond what a moment's own surface needs;
+- ★ **the two carried gates, together** (`DEC-194`): the trigger-definer ACL sweep with its generated test, and wave
+  14's Storage-predicate gate — one wave, one generated test each, not piecemeal;
+- deleting a session with its awarded points; a member uploading their own picture; new avatar placements;
 - recurring series (`A14`); drag in `ui/reorderable-list`;
 - every route not named in your row, including `verify/**`, `legal/**` and `(auth)`.
 
 ### Lead-only, always
 
-`supabase/migrations/**` · `src/lib/session-status.ts` · `src/components/ui/index.ts` and the lead's fourteen
-other `ui/` files · `src/components/ui/objects/**` · `src/components/brand/**` · `src/app/globals.css` ·
+`supabase/migrations/**` · `src/lib/session-status.ts` · ★ `src/lib/ui/**` · `src/components/ui/index.ts` and the lead's fourteen
+other `ui/` files, `scope.tsx` and `scope-portal.tsx` · `src/components/ui/objects/**` · `src/components/brand/**` · `src/app/globals.css` ·
 `src/lib/fonts.ts` · `packages/fonts/**` · `scripts/fonts/**` · `src/app/[locale]/app/layout.tsx` ·
-`src/components/shell/**` · `src/app/[locale]/(auth)/**` · `src/app/[locale]/(dev)/**` **except the demos you
-own under `(dev)/ui/demos/`** · `src/messages/*/{ui,app,auth,marketing}.json` ·
+`src/components/shell/**` · `src/app/[locale]/(auth)/**` · `src/app/[locale]/(dev)/**` (a demo you built in wave 15 is fixes-only, through the lead) · `src/messages/*/{ui,app,auth,marketing}.json` ·
 `src/app/[locale]/(marketing)/**` and the thirteen components it renders · `scripts/**` ·
 `scripts/parity/goldens/**` · `.claude/**` · `.github/**` · `package.json` · `package-lock.json` ·
 `worker/package.json` and every `packages/*/{package.json,tsconfig.json}` · `src/app/[locale]/layout.tsx` ·
@@ -336,7 +238,7 @@ where you learn), and `npm run test:rls` (single-runner: `pgrep -fl "[n]ode_modu
 question to the lead — **never run anything in the lead's verification worktree without asking**. The
 `TaskCompleted` hook is path-aware (DEC-088): tsc, lint and vitest for you; it falls through to the
 full `qa` only when a change can reach the frozen marketing routes — **if it does, you edited
-something that is not yours** (★ wave 15: except the five primitives of contract 5, where it is expected). SQL goes under `supabase/proposed/<you>/`, proven with
+something that is not yours** (★ wave 16: no moment surface reaches them — if the hook runs the full `qa` for you, stop and tell the lead). SQL goes under `supabase/proposed/<you>/`, proven with
 `applyProposed()` inside your RLS tests, never into `supabase/migrations/`; **never save a failing test
 under `tests/rls/`** — everyone's run executes it. A write-then-`raise` RPC rolls back its own write
 (`DEC-043`): after the first write, return an outcome envelope. A trigger that enqueues or notifies is

@@ -1,14 +1,15 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { formatNumber } from "@/components/sessions/numerals";
 import { PageHeader } from "@/components/ui/page-header";
-import { Stat } from "@/components/ui/stat";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { PointsHistoryList } from "@/components/scoring/points-history-list";
 import { PointsCatalogue } from "@/components/scoring/points-catalogue";
-import { getPointsHistory } from "@/lib/dal/points";
+import { PointsHead } from "@/components/scoring/points-head";
+import { getPointsHead, getPointsHistory } from "@/lib/dal/points";
+import { isDocumentLoad } from "@/components/scoring/document-load";
+import { acknowledgePointsSeen } from "./actions";
 
 // SCR-022 · /app/me/points — the member's full points history (REQ-PTS-003,
 // `05` §8). The whole point of this screen: a member can explain every
@@ -32,8 +33,12 @@ export default async function PointsPage({
   setRequestLocale(locale);
   const { session: sessionId, month } = await searchParams;
 
-  const [t, history] = await Promise.all([getTranslations("scoring.points"), getPointsHistory(locale, { sessionId, month })]);
-  const value = formatNumber(history.totalPoints);
+  const [t, history, head, documentLoad] = await Promise.all([
+    getTranslations("scoring.points"),
+    getPointsHistory(locale, { sessionId, month }),
+    getPointsHead(locale),
+    isDocumentLoad(),
+  ]);
   const filtered = Boolean(sessionId || month);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -49,14 +54,13 @@ export default async function PointsPage({
     <>
       <PageHeader title={t("title")} description={t("intro")} />
 
-      {/* ★ Reconsidered per the lead's sync-2 ruling: a `Stat` tile, not the
-          old "رصيدك N نقطة" sentence — REQ-PTS-003's own test is that the
-          balance stays LEGIBLE, which a labelled, prominent number
-          satisfies as well as a sentence does. `tests/e2e/points.spec.ts`
-          reads the Stat now, not the retired sentence. */}
-      <div className="mt-6 max-w-xs">
-        <Stat label={t("title")} value={value} />
-      </div>
+      {/* ★ wave 16 (REQ-UIX-047, DEC-195 §1.1): the head — the balance, the
+          streak, the level bar and the level card, in the playground's scope, and
+          the only part of this screen that moves (moments 3 and 4). It replaces
+          the `Stat` tile; the balance stays the page's one labelled `<strong>`,
+          which `tests/e2e/points.spec.ts` reads (REQ-PTS-003: legible). The mark
+          it acknowledges is bound here, so the client sends nothing of its own. */}
+      <PointsHead head={head} acknowledge={acknowledgePointsSeen.bind(null, locale, head.mark)} documentLoad={documentLoad} />
 
       <form method="get" aria-labelledby="filters-heading" className="mt-8 flex flex-wrap items-end gap-4">
         <h2 id="filters-heading" className="sr-only">

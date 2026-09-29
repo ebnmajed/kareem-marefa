@@ -4,10 +4,15 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireSession } from "@/lib/dal/session";
 import { getCheckInScreenData } from "@/lib/dal/checkin";
 import { AwardState } from "@/components/checkin/award-state";
-import { CodeInput } from "@/components/checkin/code-input";
 import { dayName } from "@/components/checkin/day-name";
+import { CheckInForm, CheckInSurface } from "@/components/checkin/moment-check-in";
+import { CheckInRest } from "@/components/checkin/moment-check-in-rest";
+import { formatNumber } from "@/components/sessions/numerals";
+import { CodeInput } from "@/components/ui/code-input";
 import { Panel } from "@/components/ui/panel";
-import { submitCheckInForm } from "./actions";
+import { PlayScope } from "@/components/ui/scope";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { checkInForMoment, submitCheckInForm } from "./actions";
 
 // SCR-014 — check-in (REQ-CHK-003, REQ-CHK-006, REQ-CHK-010, REQ-CHK-011,
 // REQ-UIX-015, DEC-090). "The most operationally important input in the
@@ -21,7 +26,15 @@ import { submitCheckInForm } from "./actions";
 // PLACE OF the form. The RPC stays authoritative (submitCheckInForm still
 // calls it and still handles every one of its refusals) — this screen just
 // stops lying before the member starts typing.
+//
+// ★ Wave 16 (DEC-195 §1.1, REQ-UIX-046): the screen's content is the
+// playground's dark scope — never itself transformed — and moment 2 plays on it
+// from the check-in's own result (`moment-check-in.tsx`). A member checked in to
+// the day this screen is about sees the static state: the coin at rest and the
+// three lines, in place of a form they have no use for.
 const KNOWN_ERRORS = new Set(["not_found", "presenter_cannot_check_in", "rate_limited", "not_started", "session_ended", "not_open", "check_in_closed", "reservation_required", "invalid_code", "overlap", "unknown"]);
+const CODE_LENGTH = 6;
+const ERROR_ID = "check-in-error";
 
 export default async function CheckInPage({
   params,
@@ -55,18 +68,17 @@ export default async function CheckInPage({
   // ★ REQ-CHK-018: what this session has earned the member, read from the data
   // on every render — so the reload, and tomorrow's visit, say what the moment
   // after the code said. It renders nothing unless there is something to say.
-  // DEC-174 Q6: once the member has checked in to this day the state leads;
-  // before it, the code form leads and the state follows it.
   // Streamed: the room's most time-critical input never waits on a points read.
   const award = (
     <Suspense fallback={null}>
       <AwardState sessionId={id} locale={locale} variant="section" />
     </Suspense>
   );
-  const awardLeads = data.checkedInToday || Boolean(success) || Boolean(already);
+
+  const positions = Array.from({ length: CODE_LENGTH }, (_, i) => t("codePosition", { position: formatNumber(i + 1), total: formatNumber(CODE_LENGTH) }));
 
   return (
-    <>
+    <PlayScope className="rounded-card px-4 py-6">
       <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
       <p className="mt-1 text-body-sm text-fg-muted">
         <bdi>{data.title}</bdi>
@@ -85,15 +97,6 @@ export default async function CheckInPage({
       {data.ineligibleReason ? award : null}
       {data.ineligibleReason ? null : (
         <>
-          <p className="mt-2 max-w-prose text-body text-fg-muted">{t("ready")}</p>
-
-          {success ? (
-            <div role="status">
-              <Panel tone="info" className="mt-4 text-body text-fg-heading">
-                {t("success")}
-              </Panel>
-            </div>
-          ) : null}
           {already ? (
             <div role="status">
               <Panel tone="info" className="mt-4 text-body text-fg-heading">
@@ -101,40 +104,50 @@ export default async function CheckInPage({
               </Panel>
             </div>
           ) : null}
-          {errorKey ? (
-            <div role="alert">
-              <Panel tone="error" className="mt-4 text-body text-fg-heading">
-                {say(errorKey)}
-              </Panel>
-            </div>
-          ) : null}
-
-          {awardLeads ? award : null}
-
-          {/* `noValidate`: renders `errorKey`'s own Panel below (the app's
-              Arabic error, post-submit) — content's bug class (7f4809f):
-              without it, a native-blocking field would silently stop the
-              submit and neither this banner nor the RPC's own refusal
-              would ever run. No `required` field exists on this form
-              today (`CodeInput` has none), but the rule is "renders an
-              app-side error", not "has a blocking field right now". */}
-          <form action={submitCheckInForm.bind(null, locale, id)} noValidate className="mt-8 max-w-sm space-y-4">
-            <div>
-              <label id="code-label" htmlFor="code-0" className="text-label text-fg-heading">
-                {t("codeLabel")}
-              </label>
-              <div className="mt-1">
-                <CodeInput id="code-0" name="code" defaultValue={code} />
+          <CheckInSurface
+            announce={Boolean(success)}
+            // ★ NOT behind `Suspense`: a streamed boundary is swapped in by a script, so
+            // without JS the static state would stay in a hidden `<div>` and a no-JS
+            // `?success=1` would show nothing. A checked-in member has no form to wait
+            // for, so the page awaits the award read here instead of streaming it.
+            rest={data.checkedInToday ? <CheckInRest sessionId={id} locale={locale} arrivedAt={data.arrivedAt} timeZone={data.timeZone} teamColor={data.teamColor} /> : null}
+          >
+            <p className="mt-2 max-w-prose text-body text-fg-muted">{t("ready")}</p>
+            {errorKey ? (
+              <div role="alert" id={ERROR_ID}>
+                <Panel tone="error" className="mt-4 text-body text-fg-heading">
+                  {say(errorKey)}
+                </Panel>
               </div>
-            </div>
-            <button type="submit" className="inline-flex h-12 w-full items-center justify-center rounded-field bg-navy-950 px-7 text-label text-white hover:bg-navy-900">
-              {t("submit")}
-            </button>
-          </form>
+            ) : null}
 
-          {awardLeads ? null : award}
+            {/* `noValidate`: renders `errorKey`'s own Panel above (the app's
+                Arabic error, post-submit) — content's bug class (7f4809f):
+                without it, a native-blocking field would silently stop the
+                submit and neither this banner nor the RPC's own refusal
+                would ever run. The form posts `submitCheckInForm` without JS
+                and `checkInForMoment` once hydrated (moment-check-in.tsx). */}
+            <CheckInForm action={submitCheckInForm.bind(null, locale, id)} momentAction={checkInForMoment.bind(null, locale, id)} className="mt-8 max-w-sm space-y-4">
+              {/* ★ REQ-UIX-035 (DEC-195 §2.4): the group is named by its visible
+                  label, each box by its position, and a refusal is tied to the
+                  boxes — the Panel above says it, once. The posted field is
+                  `code`, as it always was. */}
+              <CodeInput
+                id="code-0"
+                name="code"
+                label={t("codeLabel")}
+                positionLabels={positions}
+                defaultValue={code}
+                invalid={errorKey !== null}
+                aria-describedby={errorKey ? ERROR_ID : undefined}
+              />
+              <SubmitButton className="w-full">{t("submit")}</SubmitButton>
+            </CheckInForm>
+
+            {award}
+          </CheckInSurface>
         </>
       )}
-    </>
+    </PlayScope>
   );
 }

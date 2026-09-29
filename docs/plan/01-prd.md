@@ -3052,6 +3052,87 @@ element as the CSS variable `--team`.
   company (`REQ-PRF-009`).
 - A change is audited, naming the company, the old colour and the new one.
 - No migration writes a colour onto a company.
+- ★ The colour is chosen **when the company is created**, on the add form, with the same named-colour picker as
+  the edit path — the named colours and «بلا لون», never a hex field — and the insert carries it (`DEC-195` §3).
+- ★★ **A company has no logo** (`DEC-195` §4): a name, a team colour, and active-or-deactivated is the whole
+  entity. The colour is the company's identity; a logo beside the ring would be a second one.
+
+#### REQ-UIX-044 — A moment plays once per occurrence, from one shared mechanism, and never on a re-render
+**Serves:** `DEC-195` §2 · `DEC-183` §2 · `REQ-UIX-014` · `REQ-UIX-019` · `REQ-UIX-020`
+The five moments share one mechanism, owned in one place: a confetti utility on `element.animate()`, a count-up that
+writes text through the repository's numeral formatter, and a keying that ties a moment to its **occurrence** — a
+reservation, a check-in, a ledger row, a level, a rank — and never to a render. A reservation and a check-in play
+from the result of the action the member just took, in the client that took it; the other three play at the first
+sight of their occurrence. Only the surfaces `DEC-195` §1.1 names wear the playground — `SCR-012`'s action
+card, `SCR-014`, the head of `SCR-022`, `SCR-027` and `SCR-028`.
+**Acceptance:**
+- Mounting a moment, letting it play, unmounting and mounting it again with the same occurrence plays nothing.
+- A reload or a back navigation after a reservation or a check-in shows the static state, never the animation.
+- Under reduced motion the confetti utility returns at once and the count-up sets its final value at once; every
+  moment renders its named static state, which is a complete experience.
+- Confetti's colours are the member's team colour with lime and bone, or lime and bone alone when the company has
+  none; the layer is `aria-hidden`, takes no pointer events, and leaves no node behind.
+- No `will-change` survives a moment; no animation dependency is added.
+- The five public routes do not move: `qa:contract`, `visual`'s public pairs and the register form's fingerprint
+  are unchanged (`REQ-NFR-019`).
+
+#### REQ-UIX-045 — الحجز: a confirmed reservation raises a ticket and lands a stamp on the event page's action card
+**Serves:** `DEC-195` §1.1 · `REQ-UIX-019` · `REQ-UIX-007` · `REQ-RSV-001`
+When the reserve action resolves `confirmed` — never optimistically — a ticket rises from behind the action, the
+stamp «محجوز» lands on it without overshoot, the card settles, the capacity updates in place, and the action becomes
+its booked state with «ألغِ حجزي» beneath it; the calendar whisper follows. A waitlisted result plays the same ticket
+with «قائمة الانتظار · N», in the waitlist's status tone (`DEC-073`), never a company's colour.
+**Acceptance:**
+- The static state — the booked action, the capacity updated, the whisper shown without motion — is complete, and is
+  what every later visit shows.
+- A refused reservation does not animate.
+- Only the action card moves; the hero, the sub-nav and every section of `SCR-012` are unchanged.
+- The gating is unchanged: the affordance matrix decides which state a viewer gets (`REQ-UIX-015`).
+
+#### REQ-UIX-046 — تسجيل الحضور: an accepted check-in bursts, drops the coin, and tells the truth about the points
+**Serves:** `DEC-195` §1.1, §2.4, §2.5 · `REQ-UIX-019` · `REQ-CHK-018` · `REQ-PTS-015` · `REQ-UIX-035`
+When the check-in succeeds, confetti bursts, the coin drops and settles, and three lines appear: «أنت هنا!», the
+amount the session pays and that it **arrives when the session ends**, and the time. The amount is the computed
+pending figure, never stored and never a constant; when nothing is earned the coin carries no number. The screen then
+returns to the event page, whose action reads «حضرت».
+**Acceptance:**
+- The static state — the coin at rest and the three lines, no particles — is complete.
+- A refused code does not animate.
+- The code is entered in `code-input`: each box named, the refusal tied to the group, the posted field and the no-JS
+  path unchanged.
+- A checked-in member is not offered the check-in link again during the session.
+- A trace on a throttled CPU shows no frame over 16 ms, as it does for `REQ-UIX-045`.
+- ★ **After a hold of 1.4 s the screen returns to the event page on its own**, as `03-motion.md` specifies. This is a
+  **recorded exception to SC 2.2.1** (`DEC-197` §1): found by `checkin`, kept by the owner, scoped to this one moment
+  and nothing else. `REQ-NFR-007` stands for everything else.
+
+#### REQ-UIX-047 — انتهت الجلسة and ترقية المستوى: the points screen counts up, the flame grows, and a level turns over
+**Serves:** `DEC-195` §1.1, §2.2 · `REQ-UIX-019` · `REQ-UIX-039` · `REQ-PTS-015` · `REQ-REC-004`
+The first time a member sees ledger rows a completion pass wrote, the head of `SCR-022` counts the balance up from the
+old figure to the new with the delta beside it, the streak flame grows and keeps its flicker, and the level bar fills.
+When a threshold was crossed, the level card turns over to its new face with one shine, and that face names what the
+level unlocks — or says plainly that it unlocks nothing. It plays for the ledger rows a **completion pass** wrote, and for no
+other gain (`DEC-197` §7).
+**Acceptance:**
+- The static states — the new balance with its delta, the flame at its larger size without flicker, **the bar at the
+  member's true progress** (full only when a threshold was crossed, `DEC-197` §7); the new face shown with no shine —
+  are complete.
+- On a page the server painted, the moment does not jump back: it stays static and plays at the next arrival by the
+  app's own navigation (`DEC-197` §5).
+- The same rows seen again, on the same device or another, play nothing.
+- The history and the catalogue below do not animate.
+- Bars grow by `scaleX`, never `width`.
+
+#### REQ-UIX-048 — تغيّر الترتيب: a rank change swaps two rows, and the falling row is never shamed
+**Serves:** `DEC-195` §1.1, §2.6 · `REQ-UIX-019` · `REQ-UIX-037` · `REQ-UIX-038` · `REQ-LDR-004`
+When a member opens a board on which their rank has changed since they last saw it, their row and the one it passed
+swap places, and the risen row's arrow is shown — **it does not pulse** (`DEC-197` §2). On the company board a bar moves by `scaleX` from the inline
+start. What the member last saw is recorded, so the change is real and is shown once.
+**Acceptance:**
+- The static state — the new order, the arrow shown — is complete.
+- The falling row carries no colour, no icon, no shake and no motion of its own beyond the swap.
+- A board opened again with no change plays nothing.
+- Rows are initials in a team ring, never a photograph (`DEC-099`, `DEC-183` §3).
 
 ---
 

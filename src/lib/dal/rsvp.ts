@@ -48,7 +48,11 @@ async function loadRsvpPanelData(locale: string, sessionId: string): Promise<Rsv
     supabase.rpc("session_seat_counts", { p_session: sessionId }).single(),
     supabase.from("rsvps").select("status, waitlist_position").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
-    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null).maybeSingle(),
+    // ★ A LIST, never `.maybeSingle()` (DEC-197 §3): a member checked in on two
+    // days of a workshop holds two active rows, and `.maybeSingle()` refused
+    // them with an error nobody read — so from day 2 the member read as NOT
+    // checked in. One row is enough to know; the error is read below.
+    supabase.from("check_ins").select("id").eq("session_id", sessionId).eq("member_id", session.memberId).is("removed_at", null).limit(1),
     // ★ THE DAYS, and this panel is wrong without them (DEC-119, contract 9).
     // `sessionPhase()` only reads the NIGHT between two days as `open` when it
     // is given the day set; handed the session's stored window alone, a
@@ -64,6 +68,7 @@ async function loadRsvpPanelData(locale: string, sessionId: string): Promise<Rsv
   if (!sessionRes.data) return null;
   if (countsRes.error) throw new Error(`session_seat_counts: ${countsRes.error.message}`);
   if (mineRes.error) throw new Error(`rsvps: ${mineRes.error.message}`);
+  if (checkInRes.error) throw new Error(`check_ins: ${checkInRes.error.message}`);
 
   const s = sessionRes.data;
   const counts = countsRes.data as { confirmed_count: number; waitlist_count: number };
@@ -74,7 +79,7 @@ async function loadRsvpPanelData(locale: string, sessionId: string): Promise<Rsv
   const phase = sessionPhase(phaseInput, now);
   const isStaff = session.role === "admin" || session.role === "moderator";
   const rsvpStatus = (mine?.status as RsvpStatus | undefined) ?? null;
-  const relation = viewerRelation({ isStaff, isPresenter: Boolean(presenterRes.data), rsvpStatus, checkedIn: Boolean(checkInRes.data) }, phase);
+  const relation = viewerRelation({ isStaff, isPresenter: Boolean(presenterRes.data), rsvpStatus, checkedIn: (checkInRes.data ?? []).length > 0 }, phase);
   const cellAffordances = affordancesFor(phase, relation);
 
   return {
@@ -102,20 +107,42 @@ function mapRpcError(message: string): RsvpRpcError {
 export interface RsvpOutcome {
   status: RsvpStatus;
   waitlistPosition: number | null;
+  /** The `rsvps` row's id — moment 1's occurrence (DEC-195 §2.1, contract 4, `sessions'` R2). */
+  id: string;
+  reservedAt: string;
+  /**
+   * ★ True when THIS call created or reactivated the reservation. `reserve_seat()` (`0045:80-100`) sets
+   * `reserved_at = now()` in the same statement as `updated_at = now()` on a new or reactivated row — one
+   * transaction, one `now()` — and on a repeat submit keeps the old `reserved_at` while `updated_at` moves.
+   * So `fresh ⇔ reserved_at = updated_at`, compared as instants, never as strings.
+   */
+  fresh: boolean;
+}
+
+type RsvpRow = { id: string; status: RsvpStatus; waitlist_position: number | null; reserved_at: string; updated_at: string };
+
+/** The row the two RPCs return, as the outcome — exported for its unit test only. */
+export function toRsvpOutcome(row: RsvpRow): RsvpOutcome {
+  const reserved = new Date(row.reserved_at).getTime();
+  return {
+    status: row.status,
+    waitlistPosition: row.waitlist_position,
+    id: row.id,
+    reservedAt: row.reserved_at,
+    fresh: Number.isFinite(reserved) && reserved === new Date(row.updated_at).getTime(),
+  };
 }
 
 export async function reserveSeat(locale: string, sessionId: string): Promise<RsvpOutcome | { error: RsvpRpcError }> {
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase.rpc("reserve_seat", { p_session: sessionId });
   if (error) return { error: mapRpcError(error.message) };
-  const row = data as { status: RsvpStatus; waitlist_position: number | null };
-  return { status: row.status, waitlistPosition: row.waitlist_position };
+  return toRsvpOutcome(data as RsvpRow);
 }
 
 export async function cancelRsvp(locale: string, sessionId: string): Promise<RsvpOutcome | { error: RsvpRpcError }> {
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase.rpc("cancel_rsvp", { p_session: sessionId });
   if (error) return { error: mapRpcError(error.message) };
-  const row = data as { status: RsvpStatus; waitlist_position: number | null };
-  return { status: row.status, waitlistPosition: row.waitlist_position };
+  return toRsvpOutcome(data as RsvpRow);
 }

@@ -1,19 +1,45 @@
 import { getTranslations } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
-import { Badge } from "@/components/ui/badge";
+import { MomentRank } from "@/components/scoring/moment-rank";
 import { EmptyState } from "@/components/ui/empty-state";
-import type { CompanyBoardRow } from "@/lib/dal/leaderboards";
+import { RaceBar } from "@/components/ui/race-bar";
+import { PlayScope } from "@/components/ui/scope";
+import { companyFractions } from "@/components/scoring/race-fractions";
+import type { BoardMoment, CompanyBoardRow } from "@/lib/dal/leaderboards";
 
-// SCR-028 · سباق الشركات, on the M9 system for wave 7 (`sessions`' this wave).
+// SCR-028 · سباق الشركات. On the M9 system in wave 7 (`sessions`'); ★ wave 16
+// (`scoring`'s for the wave, DEC-195 §1.1, REQ-UIX-048): each company is a
+// `race-bar` inside the playground's scope, and moment 5 grows the member's own
+// company's bar by `scaleX` from where they last saw it — and swaps its row if it
+// rose.
 //
 // ★ BOTH METRICS, ALWAYS, AND THE RANKING ONE MARKED (REQ-LDR-004, REQ-LDR-005).
-// A company with a small, high-scoring roster and a company with a large,
-// modest one are both visible on their own terms. The metric the org ranks by
-// comes first in every row and carries «الترتيب حسبه»; the other follows,
-// quieter. The active-member count behind «نقاط لكل عضو نشط» is frozen at
-// snapshot time (`05` §6.2), and the screen says so under the list.
+// The bar's value is the metric the org ranks by, and its `metricLabel` says so
+// in words — «الترتيب حسبه: …»; the other metric follows, quieter, as
+// `secondary`. Both values are signed: the board keeps any company whose total
+// is not zero (0081), and members' reversals can take it below — `race-bar`
+// holds each in `<bdi dir="ltr">` and draws a negative as an empty track.
+//
+// ★ A COMPANY IS ITS NAME AND ITS COLOUR (DEC-195 §4 — no logo). The name is
+// always text; the colour is `--team`, never the only identifier. The viewer's
+// own company says «فريقك» in words. The active-member count behind «نقاط لكل
+// عضو نشط» is frozen at snapshot time (`05` §6.2), and the screen says so.
 
-export async function CompanyBoard({ rows, metric }: { rows: CompanyBoardRow[]; metric: "total_points" | "points_per_active_member" }) {
+export async function CompanyBoard({
+  rows,
+  metric,
+  moment = null,
+  acknowledge = null,
+  documentLoad = false,
+}: {
+  rows: CompanyBoardRow[];
+  metric: "total_points" | "points_per_active_member";
+  /** wave 16: what the viewer last saw of their company, from `getBoardMoment()`. */
+  moment?: BoardMoment | null;
+  acknowledge?: (() => Promise<void>) | null;
+  /** wave 16: from `isDocumentLoad()` — a hard load plays nothing. */
+  documentLoad?: boolean;
+}) {
   const t = await getTranslations("leaderboards");
 
   if (rows.length === 0) {
@@ -21,50 +47,56 @@ export async function CompanyBoard({ rows, metric }: { rows: CompanyBoardRow[]; 
   }
 
   const perMember = (v: number | null) => (v != null ? formatNumber(Math.round(v * 100) / 100) : "—");
-  const metrics = (row: CompanyBoardRow) => {
-    const total = { key: "total", label: t("company.totalPoints"), value: formatNumber(row.totalPoints) };
-    const per = { key: "per", label: t("company.perActiveMember"), value: perMember(row.pointsPerActiveMember) };
-    return metric === "points_per_active_member" ? [per, total] : [total, per];
-  };
+  const fractions = companyFractions(rows, metric);
+  const totalLabel = t("company.totalPoints");
+  const perLabel = t("company.perActiveMember");
 
-  return (
+  const own = rows.findIndex((r) => r.isOwn);
+  const seenRank = moment?.seenRank ?? null;
+
+  const list = (
     <div className="flex flex-col gap-4">
       <ul className="flex flex-col gap-2">
         {rows.map((row) => (
-          <li key={row.companyId} className="rounded-card border border-edge bg-surface px-4 py-3">
-            <div className="flex items-center gap-3">
-              <span className="w-9 shrink-0 text-center text-label text-fg-muted">
-                <span className="sr-only">{t.rich("rankValue", { value: formatNumber(row.rank), bdi: (chunks) => <bdi>{chunks}</bdi> })}</span>
-                <span aria-hidden>{formatNumber(row.rank)}</span>
-              </span>
-              <span className="min-w-0 flex-1 text-body text-fg-heading">
-                <bdi>{row.companyName}</bdi>
-              </span>
-            </div>
-            <dl className="mt-2 grid grid-cols-2 gap-3 ps-12">
-              {metrics(row).map((m, i) => (
-                <div key={m.key}>
-                  <dt className="flex flex-wrap items-center gap-1.5 text-caption text-fg-muted">
-                    {m.label}
-                    {i === 0 ? (
-                      <Badge tone="info" size="sm">
-                        {t("company.rankedMetric")}
-                      </Badge>
-                    ) : null}
-                  </dt>
-                  <dd className={i === 0 ? "mt-0.5 text-label text-fg-heading" : "mt-0.5 text-body-sm text-fg-body"}>
-                    {/* `dir="ltr"`: both metrics are signed — the board keeps any
-                        company whose total is not zero (0081), and members'
-                        reversals and manual adjustments can take it below. */}
-                    <bdi dir="ltr">{m.value}</bdi>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </li>
+          <RaceBar
+            key={row.companyId}
+            companyName={row.companyName}
+            teamColor={row.teamColor ?? null}
+            rank={row.rank}
+            rankLabel={t.markup("rankValue", { value: formatNumber(row.rank), bdi: (chunks) => chunks })}
+            value={metric === "points_per_active_member" ? perMember(row.pointsPerActiveMember) : formatNumber(row.totalPoints)}
+            metricLabel={t(`company.rankedMetricLabel.${metric}`)}
+            fraction={fractions.get(row.companyId) ?? 0}
+            secondary={
+              metric === "points_per_active_member"
+                ? { label: totalLabel, value: formatNumber(row.totalPoints) }
+                : { label: perLabel, value: perMember(row.pointsPerActiveMember) }
+            }
+            ownLabel={row.isOwn ? t("company.ownLabel") : null}
+          />
         ))}
       </ul>
       <p className="text-body-sm text-fg-muted">{t("company.asOf")}</p>
     </div>
+  );
+
+  return (
+    <PlayScope className="rounded-panel bg-canvas p-3">
+      {acknowledge ? (
+        <MomentRank
+          occurrenceId={moment?.occurrenceId ?? null}
+          index={own >= 0 ? own : null}
+          passed={seenRank !== null && own >= 0 ? Math.max(0, seenRank - rows[own].rank) : 0}
+          fromFraction={moment?.seenFraction ?? null}
+          needsMark={moment?.needsMark ?? false}
+          acknowledge={acknowledge}
+          documentLoad={documentLoad}
+        >
+          {list}
+        </MomentRank>
+      ) : (
+        list
+      )}
+    </PlayScope>
   );
 }

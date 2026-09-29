@@ -153,6 +153,20 @@
       "rowPending": "قيد الإعداد",
       "rowFailed": "تعذّر إعداده",
       "downloadFailed": "تعذّر التنزيل. حاول مرة أخرى."
+    },
+    "moment": {
+      "reserveChip": "{taken} من {capacity}",
+      "joinWaitlist": "انضم لقائمة الانتظار",
+      "waitlistFace": "على قائمة الانتظار",
+      "positionChip": "ترتيبك {position}",
+      "stampBooked": "محجوز",
+      "stampWaitlist": "قائمة الانتظار · <n>{position}</n>",
+      "whisperSync": "ستُضاف الجلسة إلى تقويمك خلال لحظات",
+      "whisperManual": "حُجز مقعدك — أضِف الجلسة إلى تقويمك من الزرّ",
+      "whisperWaitlist": "سنُعلمك فور توفّر مقعد لك",
+      "refusedDeadline": "تعذّر الحجز: انتهى وقت الحجز لهذه الجلسة.",
+      "refusedNotOpen": "تعذّر الحجز: الجلسة لا تستقبل حجوزات الآن.",
+      "refusedUnknown": "تعذّر الحجز. حاول مرة أخرى بعد قليل."
     }
   }
 }

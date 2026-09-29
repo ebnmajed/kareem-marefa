@@ -19,3 +19,10 @@ export interface ObjectProps {
   shadow?: boolean;
   className?: string;
 }
+
+/** The ticket (wave 16, R1): its «محجوز» is part of the drawing, and `word={false}` leaves it out — so a
+ *  stamp can say «محجوز» or «قائمة الانتظار · N» over it and the ticket never says the wrong one. */
+export interface TicketObjectProps extends ObjectProps {
+  /** Default `true`: the drawing as the master has it. */
+  word?: boolean;
+}

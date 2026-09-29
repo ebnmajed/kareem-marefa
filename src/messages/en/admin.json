@@ -326,8 +326,10 @@
       "errors": {
         "nameRequired": "A company name is required.",
         "nameTooLong": "The name is too long.",
-        "failed": "That could not be saved — try again."
-      }
+        "failed": "That could not be saved — try again.",
+        "teamColourInvalid": "Choose a colour from the list."
+      },
+      "teamColourLabel": "Team colour"
     },
     "members": {
       "title": "Members and roles",

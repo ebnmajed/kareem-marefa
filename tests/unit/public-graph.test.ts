@@ -78,11 +78,25 @@ describe("the public site's import graph", () => {
     }
   });
 
-  it("the scope's class is written in one file, and only the gallery renders it", () => {
+  // ★ wave 16 (DEC-195 §1.1, DEC-197): the five moments' surfaces render the scope too — and ONLY they. The list
+  // is the entry's, by directory: the event page's action card, the check-in screen, the points screen's head and the
+  // two boards. A scope anywhere else is a screen the programme has not reached, rendered early.
+  const MOMENT_SURFACES = [
+    "app/[locale]/(dev)/",
+    "app/[locale]/app/sessions/[id]/page.tsx",
+    "components/sessions/",
+    "components/checkin/",
+    "app/[locale]/app/sessions/[id]/check-in/",
+    "app/[locale]/app/me/points/",
+    "components/scoring/",
+    "app/[locale]/app/leaderboards/",
+  ];
+
+  it("the scope's class is written in one file, and only the gallery and the five moment surfaces render it", () => {
     const all = filesUnder(SRC);
     const naming = all.filter((f) => readFileSync(f, "utf8").includes("theme-play")).map(rel).sort();
     expect(naming).toEqual(["components/ui/scope.tsx"]);
     const rendering = all.filter((f) => /<PlayScope\b/.test(readFileSync(f, "utf8"))).map(rel);
-    for (const f of rendering) expect(f.startsWith("app/[locale]/(dev)/"), `${f} renders the scope`).toBe(true);
+    for (const f of rendering) expect(MOMENT_SURFACES.some((d) => f.startsWith(d)), `${f} renders the scope`).toBe(true);
   });
 });

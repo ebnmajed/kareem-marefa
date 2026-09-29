@@ -8,6 +8,7 @@ import { Materials, materialsSummary } from "@/components/materials/list";
 import { Photos, photosSummary } from "@/components/photos/gallery";
 import { SessionPoster } from "@/components/posters/session-poster";
 import { ActionCard } from "@/components/sessions/action-card";
+import { PlayScope } from "@/components/ui/scope";
 import { eventCheckInLink } from "@/components/sessions/event-check-in";
 import { EventHero } from "@/components/sessions/event-hero";
 import { primaryActionFor } from "@/components/sessions/event-actions";
@@ -170,7 +171,13 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           {/* The card first in the DOM — in flow straight after the hero on the
               phone (REQ-SES-013) — and in the second column from `md`, lifted
               onto the band's bottom edge only, never over the poster. */}
-          <div className="-mt-4 md:sticky md:top-[calc(var(--header-h)+1.5rem)] md:col-start-2 md:row-start-1 md:-mt-10">
+          {/* ★ Wave 16 (DEC-195 §1.3, contract 3): the action card — and only the
+              card — is inside the playground's scope, for moment 1. The scope IS
+              the grid item: sticky, never transformed, filtered or clipped, so a
+              portal (the calendar menu) lands inside it and the phone's fixed
+              bar stays fixed to the viewport. `rounded-card`, because the scope
+              paints its own ground and its corners would show behind the card's. */}
+          <PlayScope className="-mt-4 rounded-card md:sticky md:top-[calc(var(--header-h)+1.5rem)] md:col-start-2 md:row-start-1 md:-mt-10">
             <ActionCard
               days={days}
               session={session}
@@ -188,7 +195,7 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
               isAdmin={me.role === "admin"}
               locale={locale}
             />
-          </div>
+          </PlayScope>
 
           <div className="mt-8 flex min-w-0 flex-col gap-10 md:col-start-1 md:row-start-1 md:mt-8">
             {/* The sub-nav lists exactly the sections that render, so it waits on

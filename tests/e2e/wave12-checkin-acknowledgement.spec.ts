@@ -209,18 +209,20 @@ test("★ one day: the code, then «pending» — the same after a fresh visit a
     await expect(assembled).toHaveValue(CODE, { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
   await main.getByRole("button", { name: "تسجيل الحضور" }).last().click();
-  await expect(page).toHaveURL(/\?success=1$/, { timeout: 15_000 });
-
-  // The status line is unchanged and still the only one; the state sits beside it.
-  await expect(page.getByRole("status")).toHaveText("تم تسجيل حضورك");
+  // ★ Wave 16 (REQ-UIX-046, ledger): moment 2 plays on this screen — the URL
+  // carries no `?success=1` — and its status is the three lines. The award is
+  // its second line: the same region, the same words.
+  await expect(main.locator("[data-moment='check-in']")).toBeVisible({ timeout: 15_000 });
+  await expect(main.getByRole("status")).toContainText("أنت هنا!");
   const award = awardIn(page);
   await expect(award).toContainText(`${pointsPhrase(rulePoints)} بانتظارك`);
   await expect(award).toContainText("تُضاف إلى رصيدك عند انتهاء الجلسة.");
   await expect(award).not.toContainText("حضرت");
-  // DEC-174 Q6: once checked in, the state leads the form.
-  const [awardBox, formBox] = await Promise.all([award.boundingBox(), main.locator("form").boundingBox()]);
-  expect(awardBox!.y).toBeLessThan(formBox!.y);
-  await shoot(page, "wave12-checkin-check-in-pending", phone);
+  // ★ Wave 16 (ledger): once checked in, the static state replaces the form —
+  // the award is inside it, and there is no form to lead.
+  await expect(main.locator("form")).toHaveCount(0);
+  // DEC-197 §1: then back to the event page.
+  await expect(page).toHaveURL(new RegExp(`/ar/app/sessions/${sessionId}$`), { timeout: 15_000 });
 
   // REQ-PTS-015: nothing is written at check-in.
   expect(await ledgerRows(sessionId)).toBe(0);
@@ -229,6 +231,7 @@ test("★ one day: the code, then «pending» — the same after a fresh visit a
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
   await expect(main.getByRole("status")).toHaveCount(0);
   await expect(awardIn(page)).toContainText(`${pointsPhrase(rulePoints)} بانتظارك`);
+  await shoot(page, "wave12-checkin-check-in-pending", phone);
 
   // ★ And the event page, a different route on the same DTO.
   await page.goto(`/ar/app/sessions/${sessionId}`);
