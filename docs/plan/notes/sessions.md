@@ -5008,3 +5008,14 @@ lead rules whether the window starts at the commit or at the ticket's first anim
   `error` toast? Today it says nothing; I plan no change unless ruled.
 - **Informational:** `reserve-probe.spec.ts` now probes `refresh()` rather than `redirect()` (W16.1); back after
   reserving no longer returns to the same page.
+
+### W16.9 · After contract 1 landed (`cfb3d9a5`) — R3 withdrawn
+
+The landed `useMoment` (`src/lib/ui/moment.ts`) keeps its shape: `{ phase, done }`, a per-instance claim, and a real
+remount that is silent. **I no longer need R3.**
+- **The whisper's once** comes from a claim of its own: `claimMoment(\`reservation-whisper:${occurrence}\`)`, called in
+  the host's effect when an occurrence arrives. It is true exactly once per occurrence, under reduced motion too.
+  Under strict mode the first run shows the toast and the second finds the claim, so there is still one toast.
+- **`done`** is held in a ref inside the host, so the `animationend` handler never depends on its identity.
+- The moment test follows `tests/components/lib-ui/moment.test.tsx`'s pattern, with `resetMomentsForTests()` between
+  cases.
