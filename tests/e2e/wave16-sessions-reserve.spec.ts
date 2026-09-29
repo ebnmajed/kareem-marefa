@@ -335,20 +335,33 @@ test("★★ @trace moment 1 on a 4× throttled CPU: no frame over 16 ms", async
       for (const entry of list.getEntries()) w.__commit = Math.max(w.__commit, entry.duration);
     }).observe({ type: "long-animation-frame", buffered: true });
   });
-  await signIn(context, `trace-${Date.now()}`);
-  await page.goto(`/ar/app/sessions/${openId}`);
-  await settled(page);
+  // ★ Every phase is a named step, so a failure before the window — a sign-in or a setup timeout on a loaded
+  // machine — says where it happened, and never reads as a failure of the moment (the lead's ask).
+  await test.step("sign in a fresh member", () => signIn(context, `trace-${Date.now()}`));
+  await test.step("open the event page and let it settle", async () => {
+    await page.goto(`/ar/app/sessions/${openId}`);
+    await settled(page);
+  });
 
-  const cdp = await context.newCDPSession(page);
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-  await browser.startTracing(page, { categories: ["devtools.timeline", "disabled-by-default-devtools.timeline.frame", "blink.user_timing"] });
-  await reserveButton(page).click();
-  await expect(ticket(page)).toHaveCount(1, { timeout: 30_000 });
-  await expect(ticket(page)).toHaveCount(0, { timeout: 30_000 });
-  const trace = await browser.stopTracing();
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
-  mkdirSync(SHOTS, { recursive: true });
-  writeFileSync(join(SHOTS, "wave16-sessions-reserve-trace.json"), trace);
+  const cdp = await test.step("throttle the CPU 4× and start the trace", async () => {
+    const session = await context.newCDPSession(page);
+    await session.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    await browser.startTracing(page, { categories: ["devtools.timeline", "disabled-by-default-devtools.timeline.frame", "blink.user_timing"] });
+    return session;
+  });
+  await test.step("press «احجز مقعدك» and wait for the ticket (the window opens on its animationstart)", async () => {
+    await reserveButton(page).click();
+    await expect(ticket(page)).toHaveCount(1, { timeout: 30_000 });
+  });
+  await test.step("wait for the ticket to leave (the window closes on the leave's animationend)", async () => {
+    await expect(ticket(page)).toHaveCount(0, { timeout: 30_000 });
+  });
+  await test.step("stop the trace, unthrottle, write the JSON", async () => {
+    const trace = await browser.stopTracing();
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    mkdirSync(SHOTS, { recursive: true });
+    writeFileSync(join(SHOTS, "wave16-sessions-reserve-trace.json"), trace);
+  });
 
   const { frames, commit } = await page.evaluate(() => {
     const w = window as unknown as { __frames: number[]; __commit: number };
