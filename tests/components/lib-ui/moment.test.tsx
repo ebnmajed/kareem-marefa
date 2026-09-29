@@ -137,4 +137,32 @@ describe("useMoment — a page the server painted", () => {
     render(<Probe kind="completion" id="e1" />);
     expect(phase()).toBe("playing");
   });
+
+  it("★ a host the server painted still plays a key that arrives LATER — an action's result (sessions' finding)", async () => {
+    const { renderToString } = await import("react-dom/server");
+    const { hydrateRoot } = await import("react-dom/client");
+    const { act } = await import("react");
+    const host = document.createElement("div");
+    host.innerHTML = renderToString(<Probe kind="reservation" id={null} />);
+    document.body.appendChild(host);
+    let root!: import("react-dom/client").Root;
+    await act(async () => {
+      root = hydrateRoot(host, <Probe kind="reservation" id={null} />);
+    });
+    expect(host.textContent).toBe("static");
+    await act(async () => root.render(<Probe kind="reservation" id="r7" />));
+    expect(host.textContent).toBe("playing");
+    // …and a hydrated key followed by a NEW one: the new one plays, the painted one never did.
+    await act(async () => root.unmount());
+    host.innerHTML = renderToString(<Probe kind="completion" id="e8" />);
+    await act(async () => {
+      root = hydrateRoot(host, <Probe kind="completion" id="e8" />);
+    });
+    expect(host.textContent).toBe("static");
+    await act(async () => root.render(<Probe kind="completion" id="e9" />));
+    expect(host.textContent).toBe("playing");
+    expect(isMomentClaimed(momentKey("completion", "e8"))).toBe(false);
+    await act(async () => root.unmount());
+    host.remove();
+  });
 });

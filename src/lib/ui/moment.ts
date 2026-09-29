@@ -85,8 +85,8 @@ export function resetMomentsForTests(): void {
 // the server's HTML is already on screen, showing the truth: the new balance,
 // the new level, the new order. Playing then would snap back to the old
 // picture and animate forward: a flash of a figure that is no longer true.
-// So a moment whose component was born HYDRATING renders its static state and
-// does NOT claim its occurrence: the occurrence stays unseen, and plays the
+// So the occurrence a component was HYDRATED with renders its static state and
+// is NOT claimed: the occurrence stays unseen, and plays the
 // next time the member arrives by the app's own navigation. Moments 1 and 2
 // are never affected — their key comes from an action's result, which a
 // server render never has.
@@ -117,22 +117,25 @@ export function useMoment(kind: MomentKind, occurrenceId: string | null): { phas
   // run's claim as someone else's. A real remount is a new instance, with a
   // fresh ref, and finds the key claimed — which is the silence we want.
   const mine = useRef<string | null>(null);
-  // Read on the first render only: was this instance born from server HTML?
+  // Read on the first render only: the occurrence this instance was born with, if it was born from server HTML.
+  // ★ Per OCCURRENCE, not per instance (sessions' finding, DEC-197): the server painted the truth for the key it
+  // rendered, so THAT key must not snap back — but a key that arrives later, from an action's result, was never
+  // painted by anyone, and plays.
   const hydrating = useIsHydrating();
-  const bornHydrating = useRef(hydrating);
+  const paintedByServer = useRef<string | null>(hydrating && occurrenceId !== null ? momentKey(kind, occurrenceId) : null);
 
   useIsomorphicLayoutEffect(() => {
     if (occurrenceId === null) {
       setPhase("static");
       return;
     }
-    // Born from server HTML: the truth is already painted. Stay static, and
-    // leave the occurrence unclaimed so a later client arrival plays it.
-    if (bornHydrating.current) {
+    const key = momentKey(kind, occurrenceId);
+    // The server painted this occurrence's truth: stay static, and leave it
+    // unclaimed so a later client arrival plays it.
+    if (paintedByServer.current === key) {
       setPhase("static");
       return;
     }
-    const key = momentKey(kind, occurrenceId);
     if (mine.current === key) return;
     // Claimed even under reduced motion: the member has seen it, statically.
     const first = claimMoment(key);
