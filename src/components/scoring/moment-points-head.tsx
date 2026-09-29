@@ -56,8 +56,9 @@ export interface MomentPointsHeadProps {
 
 export function MomentPointsHead(props: MomentPointsHeadProps) {
   // ★ Latched for the life of this mount: an acknowledgement may refresh the page
-  // with no occurrence, and the delta the member was shown must not vanish mid-visit.
-  const [latched] = useState(() => ({ completion: props.completion, levelUp: props.levelUp, delta: props.delta, deltaLabel: props.deltaLabel }));
+  // with no occurrence, and the delta and the turned card the member was shown
+  // must not vanish mid-visit.
+  const [latched] = useState(() => ({ completion: props.completion, levelUp: props.levelUp, delta: props.delta, deltaLabel: props.deltaLabel, card: props.card }));
   const { completion, levelUp } = latched;
 
   const three = useSeenMoment("completion", completion?.occurrenceId ?? null);
@@ -178,7 +179,7 @@ export function MomentPointsHead(props: MomentPointsHeadProps) {
       </p>
       {props.streak}
       {props.bar}
-      {props.card}
+      {latched.card}
     </div>
   );
 }
