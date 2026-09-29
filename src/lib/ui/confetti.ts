@@ -17,6 +17,11 @@ import { prefersReducedMotion } from "./reduced-motion";
 // lime and bone alone when the company has none. The neutral ring's grey is a
 // company's absence, not a celebration (DEC-195 §6.22). The team colour is
 // data, so it is checked as `#rrggbb` before it is written, as the avatar does.
+//
+// ★ THE LAYER DOES NOT CLIP (checkin's finding, DEC-197). Particles fly past
+// the host's box on purpose, so the HOST must clip — `overflow: clip` on a
+// positioned stage — or a burst at 390 px scrolls the page sideways. Never clip
+// the scope itself (contract 3); clip the stage inside it.
 
 const TEAM = /^#[0-9a-f]{6}$/;
 const LIME = "var(--color-play-lime)";

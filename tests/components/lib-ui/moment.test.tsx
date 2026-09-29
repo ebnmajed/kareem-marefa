@@ -112,3 +112,29 @@ describe("useMoment — once per occurrence", () => {
     expect(claimMoment("check-in:c1")).toBe(false);
   });
 });
+
+// ★ scoring's finding (DEC-197): a hard load paints the truth before React
+// runs. A moment born from that HTML must not snap back and play — it stays
+// static and leaves the occurrence unseen, so a later client arrival plays it.
+describe("useMoment — a page the server painted", () => {
+  it("★ a hydrated mount stays static and does not claim; the next client mount plays", async () => {
+    const { renderToString } = await import("react-dom/server");
+    const { hydrateRoot } = await import("react-dom/client");
+    const html = renderToString(<Probe kind="completion" id="e1" />);
+    const host = document.createElement("div");
+    host.innerHTML = html;
+    document.body.appendChild(host);
+    const { act } = await import("react");
+    let root!: import("react-dom/client").Root;
+    await act(async () => {
+      root = hydrateRoot(host, <Probe kind="completion" id="e1" />);
+    });
+    expect(host.textContent).toBe("static");
+    expect(isMomentClaimed(momentKey("completion", "e1"))).toBe(false);
+    await act(async () => root.unmount());
+    host.remove();
+
+    render(<Probe kind="completion" id="e1" />);
+    expect(phase()).toBe("playing");
+  });
+});

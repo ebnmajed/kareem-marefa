@@ -33,6 +33,8 @@ const REDUCED = [
   "    --duration-base: 0ms;",
   "    --duration-slow: 0ms;",
   "    --duration-party: 0ms;",
+  // wave 16 (DEC-197): the flame's loop collapses in the same block.
+  "    --duration-loop: 0ms;",
   "",
 ].join("\n");
 
@@ -70,7 +72,8 @@ describe("the playground's tokens are added, and nothing that existed changed", 
     const roots = [...block.matchAll(/^:root \{([\s\S]*?)\n\}/gm)].map((m) => m[1]);
     expect(roots).toHaveLength(1);
     const names = [...roots[0].matchAll(/^\s*(--[a-z-]+):/gm)].map((m) => m[1]).sort();
-    expect(names).toEqual(["--duration-base", "--duration-fast", "--duration-party", "--duration-slow", "--focus-width"]);
+    // wave 16 (DEC-197): the flame's loop and the shine's direction join the ramp; still no colour.
+    expect(names).toEqual(["--duration-base", "--duration-fast", "--duration-loop", "--duration-party", "--duration-slow", "--focus-width", "--moment-dir"]);
   });
 
   it("the semantic layer sits on .theme-play and .theme-play-light, and both set color-scheme", () => {
@@ -104,7 +107,7 @@ describe("the playground's tokens are added, and nothing that existed changed", 
 
   it("the four durations collapse in the one reduced-motion block", () => {
     const reduced = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
-    for (const name of ["fast", "base", "slow", "party"]) expect(reduced).toContain(`--duration-${name}: 0ms;`);
+    for (const name of ["fast", "base", "slow", "party", "loop"]) expect(reduced).toContain(`--duration-${name}: 0ms;`);
     expect(css.match(/@media \(prefers-reduced-motion: reduce\)/g)).toHaveLength(1);
   });
 });

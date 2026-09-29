@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { prefersReducedMotion } from "./reduced-motion";
 
 // ★★ ONCE PER OCCURRENCE, NEVER ON A RE-RENDER (REQ-UIX-044, DEC-195 §2).
@@ -80,6 +80,26 @@ export function resetMomentsForTests(): void {
   }
 }
 
+// ★ A PAGE THE SERVER PAINTED NEVER JUMPS BACK (scoring's finding, DEC-197).
+// `useLayoutEffect` decides before the first CLIENT paint — but on a hard load
+// the server's HTML is already on screen, showing the truth: the new balance,
+// the new level, the new order. Playing then would snap back to the old
+// picture and animate forward: a flash of a figure that is no longer true.
+// So a moment whose component was born HYDRATING renders its static state and
+// does NOT claim its occurrence: the occurrence stays unseen, and plays the
+// next time the member arrives by the app's own navigation. Moments 1 and 2
+// are never affected — their key comes from an action's result, which a
+// server render never has.
+const noSubscribe = () => () => {};
+/** True during the render that hydrates server HTML; false for a mount the client made. */
+function useIsHydrating(): boolean {
+  return useSyncExternalStore(
+    noSubscribe,
+    () => false,
+    () => true,
+  );
+}
+
 // `useLayoutEffect` decides before the first paint, so a moment that will play
 // never flashes its static state first. It is inert on the server, which
 // renders the static state.
@@ -97,9 +117,18 @@ export function useMoment(kind: MomentKind, occurrenceId: string | null): { phas
   // run's claim as someone else's. A real remount is a new instance, with a
   // fresh ref, and finds the key claimed — which is the silence we want.
   const mine = useRef<string | null>(null);
+  // Read on the first render only: was this instance born from server HTML?
+  const hydrating = useIsHydrating();
+  const bornHydrating = useRef(hydrating);
 
   useIsomorphicLayoutEffect(() => {
     if (occurrenceId === null) {
+      setPhase("static");
+      return;
+    }
+    // Born from server HTML: the truth is already painted. Stay static, and
+    // leave the occurrence unclaimed so a later client arrival plays it.
+    if (bornHydrating.current) {
       setPhase("static");
       return;
     }
