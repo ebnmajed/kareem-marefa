@@ -52,17 +52,19 @@ export interface MomentPointsHeadProps {
   card: ReactNode | null;
   needsMark: boolean;
   acknowledge: () => Promise<void>;
+  /** The server rendered this head for the document — a hard load: it never plays on this page load. */
+  documentLoad?: boolean;
 }
 
 export function MomentPointsHead(props: MomentPointsHeadProps) {
   // ★ Latched for the life of this mount: an acknowledgement may refresh the page
   // with no occurrence, and the delta and the turned card the member was shown
   // must not vanish mid-visit.
-  const [latched] = useState(() => ({ completion: props.completion, levelUp: props.levelUp, delta: props.delta, deltaLabel: props.deltaLabel, card: props.card }));
+  const [latched] = useState(() => ({ completion: props.completion, levelUp: props.levelUp, delta: props.delta, deltaLabel: props.deltaLabel, card: props.card, documentLoad: props.documentLoad ?? false }));
   const { completion, levelUp } = latched;
 
-  const three = useSeenMoment("completion", completion?.occurrenceId ?? null);
-  const four = useSeenMoment("level", levelUp?.occurrenceId ?? null);
+  const three = useSeenMoment("completion", completion?.occurrenceId ?? null, latched.documentLoad);
+  const four = useSeenMoment("level", levelUp?.occurrenceId ?? null, latched.documentLoad);
   const [finished, setFinished] = useState({ three: false, four: false });
 
   const root = useRef<HTMLDivElement>(null);

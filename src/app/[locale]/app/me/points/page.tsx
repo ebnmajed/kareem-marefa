@@ -8,6 +8,7 @@ import { PointsHistoryList } from "@/components/scoring/points-history-list";
 import { PointsCatalogue } from "@/components/scoring/points-catalogue";
 import { PointsHead } from "@/components/scoring/points-head";
 import { getPointsHead, getPointsHistory } from "@/lib/dal/points";
+import { isDocumentLoad } from "@/components/scoring/document-load";
 import { acknowledgePointsSeen } from "./actions";
 
 // SCR-022 · /app/me/points — the member's full points history (REQ-PTS-003,
@@ -32,7 +33,12 @@ export default async function PointsPage({
   setRequestLocale(locale);
   const { session: sessionId, month } = await searchParams;
 
-  const [t, history, head] = await Promise.all([getTranslations("scoring.points"), getPointsHistory(locale, { sessionId, month }), getPointsHead(locale)]);
+  const [t, history, head, documentLoad] = await Promise.all([
+    getTranslations("scoring.points"),
+    getPointsHistory(locale, { sessionId, month }),
+    getPointsHead(locale),
+    isDocumentLoad(),
+  ]);
   const filtered = Boolean(sessionId || month);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -54,7 +60,7 @@ export default async function PointsPage({
           the `Stat` tile; the balance stays the page's one labelled `<strong>`,
           which `tests/e2e/points.spec.ts` reads (REQ-PTS-003: legible). The mark
           it acknowledges is bound here, so the client sends nothing of its own. */}
-      <PointsHead head={head} acknowledge={acknowledgePointsSeen.bind(null, locale, head.mark)} />
+      <PointsHead head={head} acknowledge={acknowledgePointsSeen.bind(null, locale, head.mark)} documentLoad={documentLoad} />
 
       <form method="get" aria-labelledby="filters-heading" className="mt-8 flex flex-wrap items-end gap-4">
         <h2 id="filters-heading" className="sr-only">

@@ -302,6 +302,29 @@ describe("a page the server painted (DEC-197 §5)", () => {
     expect(moment()).toBe("playing");
   });
 
+  // ★★ The lead's cold-phone gate at 751618c5: on a slow hydration React can discard the boundary and render it
+  // afresh without the page ever showing a moment render the server's DOM — no probe of the document is reliable.
+  // So the SERVER says «this render was for the document» (`isDocumentLoad()`), and that is the rule.
+  it("★★ rendered for the document — a hard load — it never plays on that page load, whatever path the mount took", () => {
+    const acknowledge = vi.fn(async () => {});
+    // An empty document: nothing for a probe to find. A client mount, not a hydration.
+    const first = render(<MomentPointsHead {...withLevelUp({ acknowledge, documentLoad: true })} />);
+    expect(moment()).toBe("static");
+    expect(made).toHaveLength(0);
+    expect(frames).toHaveLength(0);
+    expect(balance()).toBe("730");
+    expect(isMomentClaimed(momentKey("completion", "e-730"))).toBe(false);
+    expect(isMomentClaimed(momentKey("level", "lvl-4"))).toBe(false);
+    expect(acknowledge).not.toHaveBeenCalled();
+    // The same page's props arriving again (a re-render) do not change what this mount decided.
+    first.rerender(<MomentPointsHead {...withLevelUp({ acknowledge, documentLoad: false })} />);
+    expect(made).toHaveLength(0);
+    first.unmount();
+    // The next arrival by the app's own navigation is rendered for the router, not the document: it plays.
+    render(<MomentPointsHead {...withLevelUp({ acknowledge, documentLoad: false })} />);
+    expect(moment()).toBe("playing");
+  });
+
   it("a HIDDEN copy — the orphaned streaming segment (DEC-145) — is not a paint: the in-app arrival plays", () => {
     const orphan = document.createElement("div");
     orphan.hidden = true;

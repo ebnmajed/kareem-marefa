@@ -35,6 +35,7 @@ export async function MemberBoard({
   limit = DEFAULT_LIMIT,
   moment = null,
   acknowledge = null,
+  documentLoad = false,
 }: {
   rows: MemberBoardRow[];
   limit?: number;
@@ -42,6 +43,8 @@ export async function MemberBoard({
   moment?: BoardMoment | null;
   /** wave 16: the bound Server Action that records it. */
   acknowledge?: (() => Promise<void>) | null;
+  /** wave 16: from `isDocumentLoad()` — a hard load plays nothing. */
+  documentLoad?: boolean;
 }) {
   const t = await getTranslations("leaderboards");
 
@@ -96,6 +99,7 @@ export async function MemberBoard({
           fromFraction={null}
           needsMark={moment?.needsMark ?? false}
           acknowledge={acknowledge}
+          documentLoad={documentLoad}
         >
           {board}
         </MomentRank>

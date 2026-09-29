@@ -75,9 +75,18 @@ export function resetPaintedForTests(): void {
   serverPainted = null;
 }
 
-export function useSeenMoment(kind: MomentKind, id: string | null): { phase: MomentPhase; done: () => void; verdict: SeenVerdict } {
+/**
+ * `documentLoad` is the SERVER's word that it rendered this surface for the document — a hard load — and it is the
+ * rule (`components/scoring/document-load.ts`): a moment the server painted never plays on that page load, whatever
+ * path React took to mount it. The DOM probe stays beside it as a second line.
+ */
+export function useSeenMoment(
+  kind: MomentKind,
+  id: string | null,
+  documentLoad = false,
+): { phase: MomentPhase; done: () => void; verdict: SeenVerdict } {
   // Read once, on the first render — before this mount's own DOM exists.
-  const [painted] = useState(() => id !== null && paintedInDocument(momentKey(kind, id)));
+  const [painted] = useState(() => id !== null && (documentLoad || paintedInDocument(momentKey(kind, id))));
   const occurrenceId = painted ? null : id;
 
   // The instance that stood for a painted occurrence is leaving: the next in-app arrival is a first sight.

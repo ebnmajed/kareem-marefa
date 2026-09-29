@@ -35,12 +35,15 @@ export interface MomentRankProps {
   fromFraction: number | null;
   needsMark: boolean;
   acknowledge: (() => Promise<void>) | null;
+  /** The server rendered this board for the document — a hard load: it never plays on this page load. */
+  documentLoad?: boolean;
   children: ReactNode;
 }
 
-export function MomentRank({ occurrenceId, index, passed, fromFraction, needsMark, acknowledge, children }: MomentRankProps) {
+export function MomentRank({ occurrenceId, index, passed, fromFraction, needsMark, acknowledge, documentLoad = false, children }: MomentRankProps) {
   const [latchedId] = useState(occurrenceId);
-  const five = useSeenMoment("rank", latchedId);
+  const [latchedLoad] = useState(documentLoad);
+  const five = useSeenMoment("rank", latchedId, latchedLoad);
   const [finished, setFinished] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const playing = five.phase === "playing";

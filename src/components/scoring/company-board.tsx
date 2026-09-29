@@ -30,12 +30,15 @@ export async function CompanyBoard({
   metric,
   moment = null,
   acknowledge = null,
+  documentLoad = false,
 }: {
   rows: CompanyBoardRow[];
   metric: "total_points" | "points_per_active_member";
   /** wave 16: what the viewer last saw of their company, from `getBoardMoment()`. */
   moment?: BoardMoment | null;
   acknowledge?: (() => Promise<void>) | null;
+  /** wave 16: from `isDocumentLoad()` — a hard load plays nothing. */
+  documentLoad?: boolean;
 }) {
   const t = await getTranslations("leaderboards");
 
@@ -87,6 +90,7 @@ export async function CompanyBoard({
           fromFraction={moment?.seenFraction ?? null}
           needsMark={moment?.needsMark ?? false}
           acknowledge={acknowledge}
+          documentLoad={documentLoad}
         >
           {list}
         </MomentRank>

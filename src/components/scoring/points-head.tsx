@@ -24,7 +24,16 @@ import type { HeadLevel, PointsHead as PointsHeadData } from "@/lib/dal/points";
 // (DEC-197 §7, D-30). The bar is the member's true progress toward the next
 // level (D-26): full only at the top, or while a level is being reached.
 
-export async function PointsHead({ head, acknowledge }: { head: PointsHeadData; acknowledge: () => Promise<void> }) {
+export async function PointsHead({
+  head,
+  acknowledge,
+  documentLoad = false,
+}: {
+  head: PointsHeadData;
+  acknowledge: () => Promise<void>;
+  /** From `isDocumentLoad()`: rendered for a hard load, so no moment plays on it. */
+  documentLoad?: boolean;
+}) {
   const [t, perks] = await Promise.all([getTranslations("scoring.points.head"), getTranslations("recognition.admin.perks")]);
 
   const perkName = (key: string) => (perks.has(key) ? perks(key) : key);
@@ -98,6 +107,7 @@ export async function PointsHead({ head, acknowledge }: { head: PointsHeadData; 
           card={card}
           needsMark={head.needsMark}
           acknowledge={acknowledge}
+          documentLoad={documentLoad}
         />
       </section>
     </PlayScope>

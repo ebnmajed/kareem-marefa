@@ -161,6 +161,19 @@ describe("moment 5 on the member board", () => {
     expect(acknowledge).toHaveBeenCalledTimes(1);
   });
 
+  it("★★ rendered for the document — a hard load — nothing moves and nothing is recorded; the next in-app arrival plays", () => {
+    const acknowledge = vi.fn(async () => {});
+    const first = render(<Rank acknowledge={acknowledge} documentLoad />);
+    expect(moment()).toBe("static");
+    expect(made).toHaveLength(0);
+    expect(rows()[1].querySelector("[data-slot=rise]")).not.toBeNull();
+    expect(isMomentClaimed(momentKey("rank", "all_time:all:4-2"))).toBe(false);
+    expect(acknowledge).not.toHaveBeenCalled();
+    first.unmount();
+    render(<Rank acknowledge={acknowledge} />);
+    expect(moment()).toBe("playing");
+  });
+
   it("an old place below the rows drawn: no swap, the arrow alone", async () => {
     render(<Rank passed={9} />);
     expect(made).toHaveLength(0);
