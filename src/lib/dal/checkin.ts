@@ -2,8 +2,8 @@ import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { listSessionDays, type SessionDay } from "@/lib/dal/sessions";
-import { resolveDay, sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerInput, type ViewerRelation } from "@/lib/session-status";
-import { affordancesFor, checkInIneligibleReason, checkInWindowAllowed, type CheckInIneligibleReason } from "@/components/checkin/session-matrix";
+import { resolveDay, sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
+import { affordancesFor, checkInIneligibleReason, checkInOffer, type CheckInIneligibleReason, type CheckInOffer, type CheckInOfferViewer } from "@/components/checkin/session-matrix";
 import type { RsvpStatus } from "@/lib/dal/rsvp";
 
 // ── the day, on every DTO in this file (DEC-119, DEC-150 contract 4) ───────
@@ -301,15 +301,26 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
  * member on any live session, leading to a screen the RPC refuses. Exported
  * as a function, not handed to the lead as prose (DEC-103).
  *
- * Thin re-export of `checkInWindowAllowed()` (session-matrix.ts) — pure,
+ * `checkInOffer() === "offer"` (session-matrix.ts) — the window, `checkInWindowAllowed()`, and not already
+ * checked in to today (DEC-195 §2.5). Pure,
  * self-contained, never routed through `sessionPhase()`/`viewerRelation()`,
  * because the grace window (`ends_at + 2h`) outlives the phase they derive
  * from. `viewer` is the RAW facts, not a derived `ViewerRelation` — that is
  * the whole point (see session-matrix.ts's own header for the bug this
  * avoids). `sessions` wired the event page's call site at `a55cf37`.
  */
-export function canOfferCheckInFor(session: PhaseInput, viewer: ViewerInput, allowWalkIns: boolean, checkInOpen: boolean, now: Date = new Date()): boolean {
-  return checkInWindowAllowed(session, viewer, allowWalkIns, checkInOpen, now);
+export function canOfferCheckInFor(session: PhaseInput, viewer: CheckInOfferViewer, allowWalkIns: boolean, checkInOpen: boolean, now: Date = new Date()): boolean {
+  // ★ DEC-195 §2.5: a member already checked in to today is not offered the link again.
+  return checkInOffer(session, viewer, allowWalkIns, checkInOpen, now) === "offer";
+}
+
+/**
+ * The event page's answer for its check-in affordance (contract 4): `offer` the
+ * link, `recorded` — «حضرت», `sessions` draws `session-cta`'s `attended` — or
+ * `none`. Thin re-export of `checkInOffer()` (session-matrix.ts).
+ */
+export function checkInOfferFor(session: PhaseInput, viewer: CheckInOfferViewer, allowWalkIns: boolean, checkInOpen: boolean, now: Date = new Date()): CheckInOffer {
+  return checkInOffer(session, viewer, allowWalkIns, checkInOpen, now);
 }
 
 export const checkInInput = z.object({ code: z.string().trim().toUpperCase().length(6) });
