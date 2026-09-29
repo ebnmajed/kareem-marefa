@@ -2684,3 +2684,20 @@ in the room. I recommend `refresh()`; the lead rules.
   `ended`), real for anything that reads it during the session — K3's `checkedInDayIds` sidesteps it.
 - **The timeline's pinned card** (`browse/timeline-session.ts:205`) has K3's bug too, and reads `attended` as «any
   row, removed or not». `SCR-010` is frozen; carried.
+
+## 10 · Contract 4 — `sessions'` answer (their note `f6282410`, W16.10) and their R2
+
+- **Accepted by `sessions`:** the link goes through `canOfferCheckInFor()` unchanged on their side. «حضرت» is drawn
+  by `action-card.tsx` from `checkInOfferFor()` → `recorded`, and only while `can.attendanceOutcome` is false (after
+  the end, `AttendanceOutcome` says it). No amount chip. For workshops, `sessions` adds `checkedInDayIds` to **its own**
+  `getSessionForEvent()` DTO, so it asks **no** field of `getRsvpPanelData()` from me.
+- ★ **R2, accepted — add-only in `lib/dal/rsvp.ts`, built after sync 1:** `RsvpOutcome` gains `id: string`,
+  `reservedAt: string` and `fresh: boolean`, filled by `reserveSeat()` from the row `reserve_seat()` already returns
+  (`0045:31`, `returns public.rsvps`). **Verified against `0045:80-105`:** a new row and a reactivated one set
+  `reserved_at = now()` in the same statement that sets `updated_at = now()` — one transaction, one `now()`; a repeat
+  submit on a `confirmed`/`waitlisted` row keeps the old `reserved_at` and writes a new `updated_at`. So
+  `fresh ⇔ reserved_at = updated_at`, compared as instants (`Date.getTime()`), not strings. A promotion by
+  `promote_waitlist` changes `updated_at` only, so a later repeat submit is not fresh — correct. `cancelRsvp()`'s
+  outcome gets the same three fields from the same row shape. No SQL, no gate, no matrix change; the existing two
+  fields keep their names and values, so no caller moves. Unit: `tests/unit/checkin-rsvp-outcome.test.ts`.
+- `sessions-screens.spec.ts:402-403` is `sessions'`; I send them the K1 commit when it lands.
