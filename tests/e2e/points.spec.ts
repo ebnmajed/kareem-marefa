@@ -134,12 +134,14 @@ test("a member reads their whole points history and can explain every point with
   if (adjustError) throw adjustError;
 
   await page.goto("/ar/app/me/points");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("نقاطي");
+  await expect(page.locator("#main").getByRole("heading", { level: 1 })).toHaveText("نقاطي");
 
   // Scoped to the history list, not the catalogue below it — the catalogue
   // repeats check_in's own reasonAr as its "what earns points" row, which
   // would otherwise match the same text.
-  const history = page.locator("#history");
+  // wave 16: every /app locator is scoped to #main (DEC-145) — the new head changes how the page streams, and on
+  // desktop an orphaned hidden segment duplicated `#history` in the full suite.
+  const history = page.locator("#main #history");
 
   // The check-in award: reason, amount, and a link to the session it came from.
   const checkInRow = history.locator("li", { hasText: "تسجيل حضور مؤكَّد" });
@@ -156,19 +158,19 @@ test("a member reads their whole points history and can explain every point with
   // `Stat` tile now, not the old "رصيدك N نقطة" sentence (the lead's
   // sync-2 ruling: the balance stays legible as a labelled `strong`
   // value, which is the one `<strong>` this page renders).
-  await expect(page.locator("strong", { hasText: "25" })).toBeVisible();
+  await expect(page.locator("#main strong", { hasText: "25" })).toBeVisible();
 
   // "What earns what" is read live from scoring_rules — check_in's default appears.
-  await expect(page.getByRole("heading", { name: "ماذا يمنحك نقاطًا؟" })).toBeVisible();
-  const catalogueRow = page.locator("#catalogue").locator("li", { hasText: "تسجيل حضور مؤكَّد" });
+  await expect(page.locator("#main").getByRole("heading", { name: "ماذا يمنحك نقاطًا؟" })).toBeVisible();
+  const catalogueRow = page.locator("#main #catalogue").locator("li", { hasText: "تسجيل حضور مؤكَّد" });
   await expect(catalogueRow).toContainText("نقطة");
 });
 
 test("filtering by session narrows the history to that session's rows", async ({ context, page }) => {
   await signIn(context, memberEmail, false);
   await page.goto(`/ar/app/me/points?session=${sessionId}`);
-  await expect(page.locator("li")).not.toHaveCount(0);
-  await expect(page.getByRole("link", { name: "مسح التصفية" })).toBeVisible();
+  await expect(page.locator("#main li")).not.toHaveCount(0);
+  await expect(page.locator("#main").getByRole("link", { name: "مسح التصفية" })).toBeVisible();
 });
 
 // wave-7, task T2 (`docs/plan/notes/content.md`): the M9 restyle, an empty
@@ -243,8 +245,8 @@ test.describe("M9 restyle: empty state and the reversal entry", () => {
     rMemberId = signedIn.memberId;
 
     await page.goto("/ar/app/me/points");
-    await expect(page.getByRole("heading", { name: "نقاطي", level: 1 })).toBeVisible();
-    await expect(page.getByText("لا نقاط بعد")).toBeVisible();
+    await expect(page.locator("#main").getByRole("heading", { name: "نقاطي", level: 1 })).toBeVisible();
+    await expect(page.locator("#main").getByText("لا نقاط بعد")).toBeVisible();
     await capture(page, "empty");
 
     // ★ The lead's own ask: seed through the REAL pipeline, not a
@@ -273,7 +275,7 @@ test.describe("M9 restyle: empty state and the reversal entry", () => {
     // test already names why (`checkin`'s scoring_rules row reuses its own
     // reasonAr as the catalogue's "what earns points" text below), and an
     // unscoped `getByText` here is a strict-mode violation across the two.
-    const history = page.locator("#history");
+    const history = page.locator("#main #history");
     // The real award_points('check_in', …) reason (`award_points.ts`'s
     // own scoring_rules seed) — "تسجيل حضور مؤكَّد", not the plain
     // "تسجيل حضور" a hand-written fixture might guess at; verified

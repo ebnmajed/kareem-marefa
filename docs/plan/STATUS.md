@@ -136,6 +136,7 @@ end-to-end failures `DEC-190` §6 carried, each its owner's · the unconfigured 
 | `tests/components/leaderboards/boards.test.tsx:89-93` (`scoring`) | the same under `total_points`: «مجموع النقاط» first, «900» then «22.5» | the same |
 | `tests/components/leaderboards/boards.test.tsx:100-107` (`scoring`) | the two signed values are found as `bdi[dir=ltr]` in the row instead of through `definition` | the same; each still `dir="ltr"` and still `-1…` |
 | `tests/components/leaderboards/boards.test.tsx:59-63` (`scoring`) | **unchanged, and still green** — noted because its name says «draws no avatar» | `rank-row` draws the avatar's initials in the team ring (`DEC-183` §3, `REQ-UIX-048`), which carries no `img` and no `data-slot=avatar`, so the assertion holds; `16` §6.8.3's «no avatars on a board» is superseded (scoring's note, D-33) |
+| `tests/e2e/points.spec.ts:137, 142, 159, 162-163, 170-171, 246-247, 276` (`scoring`) | every `/app` locator — the heading, `#history`, the balance's `strong`, the catalogue, the list, the clear link, the empty state — is scoped to `#main`; no expectation changed | the head changes how `/app/me/points` streams, and in the full suite on desktop `#history` resolved twice: `DEC-145`'s orphaned hidden segment. Locators under `/app` read from `#main` (`DEC-145`) |
 
 ---
 
