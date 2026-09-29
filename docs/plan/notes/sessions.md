@@ -5098,3 +5098,27 @@ spec · `50cc3ff8` `sessions-screens` follows moment 2.
   needs the lead's amendment, with a ledger line.
 - `tests/components/checkin/schedule-form.test.tsx` (mine, frozen) timed out once at 5 s under a full parallel run,
   and passed on the next three runs. It is load, not this change.
+
+## W16.12 · After the gate at `a9bd97df`, and F1
+
+- **`event-page.spec.ts:248` was mine and real.** R4's `booked.between` was typed, but `session-cta.tsx` never drew
+  it, so a booked card lost «أضِف إلى تقويمك». Fixed at `9f8463da`. `tests/components/ui/session-cta-between.test.tsx`
+  is red without the line and green with it. My moment suite missed it because its card passes no `between`.
+- **`sessions-screens.spec.ts:300` was a date-rot defect in the spec**, not the card. «Two days ahead» on 29
+  September is 1 October, but the picker opens on September. `.first()` picked 1 September, so the session was
+  published in the past, and the presenter saw an ended page with no host link. It would fail on `main` today too.
+  Fixed at `29780743` (the month is turned when needed, and only enabled cells are picked), with a ledger line.
+- **The reserve spec's fixture** lacked the NOT NULL `category_id`. Fixed at `29780743`. Its cases and the trace
+  have not run yet.
+- ★ **F1 — `ui/code-input` without JavaScript** (`7a7fa684`):
+  - The server renders one labelled `code` field (maxlength 6, `autocomplete="one-time-code"`, `dir="ltr"`, the
+    error tied by `aria-describedby`).
+  - The client swaps it for the six boxes after hydration. It has its own `key`, so React never turns an
+    uncontrolled field into a controlled one. A code typed before the swap is carried into the boxes, through the
+    ref's cleanup.
+  - Exactly one control posts under the name, so `check-in/actions.ts` is untouched.
+  - `code-input-no-js.test.tsx` is red on the old file (4 of 5) and green on the new, and hydration raises no
+    warning. The pre-existing `code-input` suites pass untouched, so there is no ledger line.
+  - `ui-lint` excludes `ui/`, so the field needs no disable comment.
+  - The e2e is `tests/e2e/wave16-sessions-code-input-no-js.spec.ts`: JavaScript off, the code typed in lower
+    case, `?success=1`, and one `check_ins` row by `code`. It is for the lead to run.
