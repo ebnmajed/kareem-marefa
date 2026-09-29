@@ -152,6 +152,10 @@ test("★ the moment plays from the check-in's own result, rests, and returns �
   await expect(page.locator("#main").getByRole("status")).toContainText("أنت هنا!");
   await expect.poll(() => layers(page)).toBeGreaterThan(0);
   await expect(moment(page)).toHaveAttribute("data-phase", "static", { timeout: 5_000 });
+  // ★ Which parts ended by their own event, and which the token bound had to settle (gate run 3's hang).
+  const settledBy = await moment(page).evaluate((el) => ({ settled: el.getAttribute("data-settled"), bound: el.getAttribute("data-bound") }));
+  test.info().annotations.push({ type: "moment 2 settled", description: `events: ${settledBy.settled ?? "—"} · the bound: ${settledBy.bound ?? "none"}` });
+  expect(settledBy.bound, "every part of the moment ended by its own animation event, not the bound").toBeNull();
   await expect(page.locator("#main [data-confetti]")).toHaveCount(0);
   await shoot(page, "wave16-checkin-check-in-animated");
   // No horizontal scroll at 390 px, during or after the burst.

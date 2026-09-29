@@ -158,6 +158,7 @@ describe("moment 2 — plays from the check-in's own result", () => {
     });
     expect(layer()).toBeNull();
     expect(moment()).toHaveAttribute("data-phase", "static");
+    expect(moment()).not.toHaveAttribute("data-bound"); // every part ended by its own event
     expect(coinWrap().style.animation).toBe("");
     expect(linesWrap().style.animation).toBe("");
     expect(document.querySelector("[style*='will-change']")).toBeNull();
@@ -217,7 +218,7 @@ describe("★ DEC-197 §1 — the hold and the return", () => {
     const view = render(<Screen rest={null} action={vi.fn()} />);
     await checkIn(view, rest);
     await frames();
-    act(() => void vi.advanceTimersByTime(5_000));
+    act(() => void vi.advanceTimersByTime(500));
     expect(push).not.toHaveBeenCalled(); // the lines are not in yet
     animationEnd(linesWrap());
     act(() => void vi.advanceTimersByTime(1_399));
@@ -226,6 +227,38 @@ describe("★ DEC-197 §1 — the hold and the return", () => {
     expect(push).toHaveBeenCalledWith(EVENT);
     // The link stays on the screen throughout.
     expect(screen.getByRole("link", { name: "إلى صفحة الجلسة" })).toHaveAttribute("href", EVENT);
+  });
+
+  it("★ a moment never hangs: with no animationend at all, it settles at the token bound, then holds and returns", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const rest = await restFor(pending());
+    const view = render(<Screen rest={null} action={vi.fn()} />);
+    await checkIn(view, rest);
+    await frames();
+    expect(moment()).toHaveAttribute("data-phase", "playing");
+    // The bound: max(party × 1.33, slow + fast + base) + base = max(1197, 760) + 220 = 1417 ms.
+    act(() => void vi.advanceTimersByTime(1_416));
+    expect(moment()).toHaveAttribute("data-phase", "playing");
+    act(() => void vi.advanceTimersByTime(1));
+    expect(moment()).toHaveAttribute("data-phase", "static");
+    expect(moment()).toHaveAttribute("data-settled", "coin,lines,burst");
+    expect(moment()).toHaveAttribute("data-bound", "coin,lines,burst");
+    act(() => void vi.advanceTimersByTime(1_399));
+    expect(push).not.toHaveBeenCalled();
+    act(() => void vi.advanceTimersByTime(1));
+    expect(push).toHaveBeenCalledWith(EVENT);
+  });
+
+  it("names what has settled, so a stuck moment says which part did not end", async () => {
+    const rest = await restFor(pending());
+    const view = render(<Screen rest={null} action={vi.fn()} />);
+    await checkIn(view, rest);
+    await frames();
+    animationEnd(coinWrap());
+    expect(moment()).toHaveAttribute("data-settled", "coin");
+    animationEnd(linesWrap());
+    expect(moment()).toHaveAttribute("data-settled", "coin,lines");
+    expect(moment()).toHaveAttribute("data-phase", "playing");
   });
 
   it("★ reduced motion: the complete static state, nothing animates, and it holds and returns the same", async () => {

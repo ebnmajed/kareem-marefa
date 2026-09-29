@@ -2739,3 +2739,21 @@ measured **beside** the window (the trace spec reports the arming frames as an a
 moment 1. And the confetti's stage is `contain-strict`, so 44 particles arriving lay out themselves, not the page.
 The count stays 44 (`03-motion.md`); fewer particles is the next lever if a rerun still exceeds.
 The no-JS walk is `test.fixme` with F3's reason, kept as F3's test.
+
+## 13 · Gate run 3 (`a35ee3cf`) — the moment stayed in `playing`
+
+**Not reproduced.** I bundled the real `moment-check-in.tsx` with `src/lib/ui/**` into a harness (vite, in my
+scratchpad) and drove it in Playwright's Chromium, with React 19.2 and then with Next's vendored canary, with the real
+`CoinObject`, and with the rest arriving before and after the result: every run went `arming → playing → static` in
+about 1.3 s and returned. CSS `animationend` after an inline `opacity: 0`, and WAAPI `finish` inside `contain: strict`,
+both fire in isolation too. So the hang is something only the production page does, and I cannot name it yet.
+
+**Changed, so it can never hang and so the next run names the part that did not end:**
+- `settled` is reset when the moment starts arming — before any animation can end — no longer in the burst's
+  passive effect, which ran after the armed commit.
+- ★ **A bound from the tokens**: `max(party × 1.33, slow + fast + base) + base` (1417 ms at today's ramp). Whatever has
+  not settled by then is settled; the owner's 1.4 s hold counts from there.
+- `data-settled` (the parts that ended, in order) and `data-bound` (what the bound had to settle) on the moment. The
+  walk spec annotates both and **fails if the bound settled anything** — so a real non-running animation is reported
+  by name, not masked.
+- The hold is no longer keyed on the router's identity: a re-render handing back a new router object restarted it.

@@ -3,6 +3,7 @@
 import { createContext, startTransition, useContext, useEffect, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { burstConfetti } from "@/lib/ui/confetti";
+import { readDuration } from "@/lib/ui/duration";
 import { useMoment } from "@/lib/ui/moment";
 
 // Moment 2, تسجيل الحضور — SCR-014 (REQ-UIX-046, REQ-UIX-044, DEC-195 §2.1, DEC-197 §1).
@@ -141,16 +142,23 @@ function Moment({
   // What has finished: the coin's drop, the lines' rise, the burst.
   const settled = useRef({ coin: false, lines: false, burst: false });
   const [linesIn, setLinesIn] = useState(false);
+  // What has settled, on the DOM, so a moment that never ends names the part that did not (gate run 3).
+  const [settledParts, setSettledParts] = useState("");
+  // What the bound had to settle, if anything — empty when every part ended by its own event.
+  const [boundParts, setBoundParts] = useState("");
 
   function settle(part: "coin" | "lines" | "burst") {
     settled.current[part] = true;
     if (part === "lines") setLinesIn(true);
     const s = settled.current;
+    setSettledParts((["coin", "lines", "burst"] as const).filter((k) => s[k]).join(","));
     if (s.coin && s.lines && s.burst) done();
   }
 
   useEffect(() => {
     if (phase !== "playing") return;
+    // Reset before anything can end: the arming frames precede every animation.
+    settled.current = { coin: false, lines: false, burst: false };
     let second = 0;
     const first = requestAnimationFrame(() => {
       second = requestAnimationFrame(() => setArmed(true));
@@ -163,7 +171,6 @@ function Moment({
 
   useEffect(() => {
     if (!playing || !stage.current) return;
-    settled.current = { coin: false, lines: false, burst: false };
     const burst = burstConfetti(stage.current, { teamColor });
     let live = true;
     void burst.finished.then(() => {
@@ -177,6 +184,29 @@ function Moment({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, teamColor]);
 
+  // ★ A MOMENT NEVER HANGS. An `animationend` that never arrives — an animation
+  // a browser did not run, a node swapped under it — would hold the moment in
+  // `playing` for ever, and the hold after it would never start. So the longest
+  // the sequence can take, read from the same tokens (the burst's slowest
+  // particle, `party × 1.33`; the lines' delay and rise, `slow + fast + base`),
+  // plus one `base` of grace, is a bound: past it, whatever has not settled is
+  // settled. The owner's 1.4 s then counts from there.
+  useEffect(() => {
+    if (!playing) return;
+    const party = readDuration("party");
+    const base = readDuration("base");
+    const lines = readDuration("slow") + readDuration("fast") + base;
+    const bound = Math.max(party * 1.33, lines) + base;
+    const timer = window.setTimeout(() => {
+      const late = (["coin", "lines", "burst"] as const).filter((part) => !settled.current[part]);
+      if (late.length > 0) setBoundParts(late.join(","));
+      for (const part of late) settle(part);
+    }, bound);
+    return () => window.clearTimeout(timer);
+    // `settle` reads refs and stable setters; the bound is keyed on the phase alone.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing]);
+
   // The lines are in at once when nothing plays — reduced motion, or a moment already seen.
   const inNow = linesIn || phase !== "playing";
 
@@ -185,10 +215,13 @@ function Moment({
     if (occurrenceId === null || !inNow) return;
     const timer = window.setTimeout(() => router.push(eventHref), RETURN_HOLD_MS);
     return () => window.clearTimeout(timer);
-  }, [occurrenceId, inNow, eventHref, router]);
+    // Not keyed on `router`: a re-render that hands back a new router object must
+    // never restart the owner's hold — it counts once, from the lines being in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [occurrenceId, inNow, eventHref]);
 
   return (
-    <div data-moment="check-in" data-phase={arming ? "arming" : phase} className="relative flex min-h-[28rem] flex-col items-center justify-center gap-3 py-6 text-center">
+    <div data-moment="check-in" data-phase={arming ? "arming" : phase} data-settled={settledParts || undefined} data-bound={boundParts || undefined} className="relative flex min-h-[28rem] flex-col items-center justify-center gap-3 py-6 text-center">
       {/* The confetti's host. It clips, so a particle never widens the page at 390 px; the scope above is never clipped.
           `contain-strict` makes it a layout and paint root: 44 particles arriving lay out themselves, not the page. */}
       <div ref={stage} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-clip contain-strict" />
