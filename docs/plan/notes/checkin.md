@@ -2701,3 +2701,26 @@ in the room. I recommend `refresh()`; the lead rules.
   outcome gets the same three fields from the same row shape. No SQL, no gate, no matrix change; the existing two
   fields keep their names and values, so no caller moves. Unit: `tests/unit/checkin-rsvp-outcome.test.ts`.
 - `sessions-screens.spec.ts:402-403` is `sessions'`; I send them the K1 commit when it lands.
+
+## 11 · Built after sync 1 (`DEC-197`)
+
+| Row | Commit | What |
+|---|---|---|
+| `rsvp.ts:61` two-day read (`DEC-197` §3) | `8af56ece` | a list, never `.maybeSingle()`; the error read. `tests/unit/checkin-rsvp-two-days.test.ts` — **red without the fix, green with it** (proved by reverting the three lines locally) |
+| R2 (`sessions'`) | `cca6bb32` | `RsvpOutcome.{id,reservedAt,fresh}`, `toRsvpOutcome()`; `tests/unit/checkin-rsvp-outcome.test.ts` |
+| K3 «حضرت» | `35b1f3d8` | `checkInOffer()` / `checkInOfferFor()`; `canOfferCheckInFor()` offer-only; `tests/unit/checkin-offer.test.ts`. No existing assertion moved |
+| K1 + K2 + `reservation_required` | `2b0d3edf` | the moment, the static state, `ui/code-input`, the two actions; ledger lines in `STATUS.md`; `moment-check-in.test.tsx` (14), `check-in-screen.test.tsx` (9), `checkin-actions.test.ts` (9); e2e `wave16-checkin-moment.spec.ts` and `wave16-checkin-moment-trace.spec.ts` **written, not run** — they need a production build of this tree (the lead's) |
+
+**As built, where it differs from the plan:** the static state's time line is the design's «حضورك مسجَّل، 6:41 م»;
+the hold is `RETURN_HOLD_MS = 1400` in `moment-check-in.tsx`, measured from the lines' `animationend` (or from mount,
+when nothing plays); the coin and lines animate by inline `animation:` on tokens (`moment-coin-drop`,
+`moment-rise`); jsdom has no `AnimationEvent`, so the tests dispatch `webkitAnimationEnd` too (as `sessions` found).
+
+**Found while building, not mine to fix:**
+- ★ **Without JavaScript the six boxes post nothing.** `ui/code-input` (and the screen's old boxes before it) posts one
+  hidden field that React state assembles; no box carries a `name`. With JS off, typing a code submits an empty
+  `code` and the no-JS action answers `invalid_code`. The no-JS path works only with the code carried back in
+  `?code=` (which is how `wave16-checkin-moment.spec.ts` proves the no-JS action). Pre-existing since the six-box
+  input, and `sessions'` primitive → told to the lead and `sessions`.
+- `tests/unit/public-graph.test.ts:81-87` (the lead's) asserts only the `(dev)` gallery renders `<PlayScope>`; the
+  five wave-16 surfaces now do, by `DEC-195` §1. It fails on `check-in/page.tsx` → the lead's to amend.
