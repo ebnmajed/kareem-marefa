@@ -82,11 +82,12 @@ describe("the playground's wordmark", () => {
   // screens wave changes the shell». The screens wave has come: the rebuilt shell and the rebuilt
   // door wear it. What still holds is the other half of §4.9 — the public site keeps its own mark,
   // so nothing a public route renders imports this one (`public-graph` walks that graph).
-  it("★ is worn by the rebuilt shell and the rebuilt door, and by nothing the public site renders", () => {
+  it("★ is worn by the rebuilt shell, the door and the public card, and by nothing the public site renders", () => {
     const walk = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${dir}/${e.name}`) : /\.(tsx?|mjs)$/.test(e.name) ? [`${dir}/${e.name}`] : []));
     const importers = walk("src").filter((f) => /components\/brand\/wordmark["']/.test(readFileSync(f, "utf8")));
-    const allowed = ["src/app/[locale]/(dev)/", "src/app/[locale]/app/layout.tsx", "src/app/[locale]/(auth)/door.tsx"];
+    // The public session card (`/s/[id]`) is not one of the five frozen routes (`REQ-UIX-059`); it wears it too.
+    const allowed = ["src/app/[locale]/(dev)/", "src/app/[locale]/app/layout.tsx", "src/app/[locale]/(auth)/door.tsx", "src/components/browse/public-card-frame.tsx"];
     for (const f of importers) expect(allowed.some((a) => f.startsWith(a)), `${f} wears the new wordmark`).toBe(true);
     expect(importers).toContain("src/app/[locale]/app/layout.tsx");
   });

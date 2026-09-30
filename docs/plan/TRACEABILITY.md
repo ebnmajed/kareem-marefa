@@ -418,7 +418,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-SES-005` | `ENT-session_state_transitions` | — | `SCR-042` `SCR-044` | `JOB-start_session` | — | `STORY-SES-003` | M2 |
 | `REQ-SES-006` | `ENT-venues` | — | `SCR-043` `SCR-046` | — | — | `STORY-SES-004` | M2 |
 | `REQ-SES-007` | `ENT-venues` | — | `SCR-043` | — | — | `STORY-SES-004` | M2 |
-| `REQ-SES-008` | — | — | `SCR-012` | — | — | `STORY-SES-006` | M2 |
+| `REQ-SES-008` | — | — | `SCR-012` `SCR-020` | — | — | `STORY-SES-006` | M2 |
 | `REQ-SES-009` | — | — | `SCR-043` `SCR-044` `SCR-045` +2 | — | `MSG-session_changed` `MSG-session_rescheduled` | `STORY-SES-005` | M3 |
 | `REQ-SES-010` | — | — | `SCR-012` | — | — | `STORY-SES-005` | M3 |
 | `REQ-SES-011` | `ENT-sessions` | — | `SCR-002` `SCR-004` `SCR-007` +9 | — | — | `STORY-SES-006` | M2 |
@@ -498,7 +498,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-023` | — | — | `SCR-010` `SCR-011` `SCR-012` | — | — | `STORY-UIX-013` | M9 |
 | `REQ-UIX-024` | — | — | `SCR-012` | — | — | `STORY-UIX-014` | M10 |
 | `REQ-UIX-025` | — | — | `SCR-002` | — | — | `STORY-UIX-015` | M13 |
-| `REQ-UIX-026` | — | — | `SCR-007` `SCR-010` `SCR-011` +1 | `JOB-zip_session_photos` | — | `STORY-UIX-017` | M14 |
+| `REQ-UIX-026` | — | — | `SCR-007` `SCR-010` `SCR-011` +2 | `JOB-zip_session_photos` | — | `STORY-UIX-017` | M14 |
 | `REQ-UIX-027` | — | — | `SCR-010` `SCR-011` `SCR-012` +2 | `JOB-zip_session_photos` | — | `STORY-UIX-018` | M16 |
 | `REQ-UIX-028` | — | — | `SCR-048` | — | — | `STORY-UIX-019` | M17 |
 | `REQ-UIX-029` | — | — | `SCR-048` | — | — | `STORY-UIX-020` | M17 |
@@ -527,11 +527,11 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-052` | — | — | — | — | — | `STORY-UIX-036` | M19 |
 | `REQ-UIX-053` | — | — | — | — | — | `STORY-UIX-038` | M19 |
 | `REQ-UIX-054` | — | — | `SCR-010` `SCR-011` `SCR-012` | — | — | `STORY-UIX-039` | M20 |
-| `REQ-UIX-055` | `ENT-feed_announcements` | — | `SCR-010` `SCR-022` | — | — | `STORY-UIX-044` `STORY-UIX-047` | M20 |
+| `REQ-UIX-055` | `ENT-feed_announcements` | — | `SCR-010` `SCR-020` `SCR-022` | — | — | `STORY-UIX-044` `STORY-UIX-047` | M20 |
 | `REQ-UIX-056` | `ENT-feed_announcements` | `POL-feed_announcements.read` `POL-feed_announcements.write` | `SCR-010` | — | — | `STORY-UIX-040` `STORY-UIX-044` | M20 |
 | `REQ-UIX-057` | — | — | `SCR-010` `SCR-012` | — | — | `STORY-UIX-041` | M20 |
 | `REQ-UIX-058` | — | — | `SCR-002` `SCR-003` `SCR-004` | — | — | `STORY-UIX-042` | M20 |
-| `REQ-UIX-059` | — | — | `SCR-007` | — | — | `STORY-UIX-043` | M20 |
+| `REQ-UIX-059` | — | — | `SCR-007` `SCR-020` | — | — | `STORY-UIX-043` | M20 |
 | `REQ-UIX-060` | — | — | `SCR-011` | — | — | `STORY-UIX-045` | M20 |
 | `REQ-UIX-061` | — | — | `SCR-012` | — | — | `STORY-UIX-048` | M20 |
 | `REQ-UIX-062` | — | — | `SCR-014` `SCR-016` | — | — | `STORY-UIX-049` `STORY-UIX-050` | M20 |
