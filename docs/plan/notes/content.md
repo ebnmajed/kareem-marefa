@@ -5133,3 +5133,39 @@ that has a utility») reads as covering them; **I would rename them only if the 
   have grown it to 52 px inside the scope — a size change, which the ruling's own «class only» excludes. The calendar's
   was `h-12 px-7`, which is `lg` exactly. **One entry left on my side of the gate and it is not mine:**
   `lib/ui/confetti.ts: var(--color-play-lime) var(--color-play-bone)` — the lead's file, and the playground's own tokens.
+
+### Wave 17 — N3: my fourteen on the real screens, on the dark ground
+
+Read from the lead's sweep captures (`.qa-shots/rtl/wave11-sweep-*`, production build of `abb1b8d9`), cropped into
+1082 × 1100 bands at native size, never downscaled: `/app`, `/app/sessions/[id]` (+ check-in, rate, materials viewer),
+`/app/me` and its six tabs, `/app/leaderboards`, `/app/propose` and `[id]`, `/s/[id]`, `/verify/[code]`, `/legal/privacy`.
+
+**Seen and right:** `badge` (open, draft, the material's phase), `tag-chip` (the hero's four, the card's one), `avatar`
+(the shell's and the 96 px one on privacy), `progress` (the capacity track at 0), `empty-state` (bookmarks,
+certificates, calendar, rate, leaderboards), `stat` (`/app/me`), `panel` (the profile prompt, the catalogue rows, the
+check-in notice, the preferences), `file-drop` (the proposal's dashed zone), `card` (the timeline's, the public one).
+**Not on any captured screen**, so not seen outside the gallery: `sticker`, `poster`, `reaction-bar`, `progress-bar`,
+`story-ring` (no screen places them yet, or the fixture had no data for the five moment surfaces).
+
+**One defect, fixed in the primitive:** `card`'s typographic placeholder. Three of `MEDIA_TINTS` are silver
+(`bg-silver-200/300/400 text-navy-950`) and had no form inside the scope — a light block on the dark ground for half of
+all titles; the three navy ones are about 1:1 against the scope's surface (visible in the capture as a box with no
+edge). Inside the scope every placeholder is now `pg:bg-raised pg:text-fg-heading`; the tint is still chosen and still
+in the class, so `card.test.tsx` and `wave7-sessions-public-card.spec.ts:107` hold. A case in `card-scope.test.tsx`.
+The fixture's one session hashed to navy, so the silver patch itself was read from the source, not seen.
+
+**Seen, not mine, not fixed** (added to §4's list):
+10. `/app` — the timeline card's media column ends above the card's foot; the strip under it is the card's surface.
+    Geometry, the same on any ground — the row density's layout, for the screen's rebuild.
+11. `/app/sessions/[id]` — the action card is the page's ink on the `bg-surface` band, a dark card on a lighter band,
+    the reverse of every other card on the app. And the material row's «فتح العارض» reads as plain text: no underline,
+    no button.
+12. `/app/me` — an unchecked `checkbox` is a flat grey square, the browser's dark-scheme default showing through
+    (`sessions'` primitive, the lead's custody). The native `select` arrow likewise.
+13. `/app/sessions/[id]/materials/[id]` — the viewer's page box shows the browser's broken-image glyph in its corner
+    (the fixture has no rendered page); on ink it is the brightest thing on the screen. A missing page has no state.
+14. Empty lists are drawn two ways on one hub: `empty-state` (an outline on the ground, display face) on bookmarks,
+    certificates and calendar; a `panel` with muted body text on notifications.
+15. Disabled primaries («نشر», «رفع») are the lime at 45 % — an olive pill that still reads as the brightest control.
+16. `/verify/[code]` and `/legal/**` have no `page-header` look: the title is the body face, while every `/app` title
+    is the display face.

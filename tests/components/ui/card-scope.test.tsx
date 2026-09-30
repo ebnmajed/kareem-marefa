@@ -93,6 +93,29 @@ describe("Card — the look inside the scope (`04-components.md`)", () => {
     expect(container.querySelector("img")).toHaveClass("object-contain");
   });
 
+  it("★ a placeholder is never a light block in the scope: every tint, silver included, is drawn over by the raised surface (wave 17)", () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 60; i += 1) {
+      const { container, unmount } = render(
+        <Scope>
+          <Card>
+            <CardMedia placeholderFrom={`جلسة رقم ${i}`} />
+          </Card>
+        </Scope>,
+      );
+      const box = container.querySelector('[data-slot="media"] > [aria-hidden]');
+      const got = classes(box);
+      const tint = MEDIA_TINTS.find((t) => t.split(" ").every((c) => got.includes(c)));
+      expect(tint, "the tint is still chosen").toBeDefined();
+      seen.add(tint!);
+      expect(got).toContain("pg:bg-raised");
+      expect(got).toContain("pg:text-fg-heading");
+      unmount();
+    }
+    // The case means nothing unless a silver tint was among them.
+    expect([...seen].some((t) => t.includes("silver"))).toBe(true);
+  });
+
   it("★ the linked card's ring is a pseudo-element above the media in the scope — never covered, never clipped", () => {
     const { container } = render(
       <Scope>
