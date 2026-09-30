@@ -58,7 +58,7 @@ and `DEC-199` §5 do — one line per deviation, which document wins, why. Never
 | ★ `/app` today | **19 lines**, and it *renders* `SessionsTimeline` rather than redirecting. Ruling 3 makes it its own page; the timeline component stays `/app/sessions`' |
 | The screens, as they stand | `sign-in` 70 · `choose-org` 68 · `no-access` 76 · `s/[id]` 221 · `/app` 19 · `/app/sessions` 21 · `sessions/[id]` **389** · `check-in` 153 · `host` 206 |
 | The shell | `src/components/shell/` — `shell-frame`, `tab-bar`, `shell-routes` (`IMMERSIVE` at `:19`), `account-menu`, `search-entry`. The bar already hides on immersive routes; **do not re-invent that** |
-| ★ Feed data | `member_badges`, `points_balances`, `streak_awards` (`0027`), `company_points_ledger` (`0081`), `session_posters` (`0055`) **all exist**. ★ **`feed_announcements` does NOT.** It is this wave's one table, at `0164`, and it needs a `REQ-*` and a story |
+| ★ Feed data | `member_badges`, `points_balances`, `streak_awards` (`0027`), `company_points_ledger` (`0081`), `session_posters` (`0055`) **all exist**. ★ **`feed_announcements` does NOT** — see the story below; it is this wave's one table |
 
 ## The wave — and settle the split at Step 0
 
@@ -96,6 +96,30 @@ wave 15 and 17 did. ★ **The three prop additions** — `avatar`'s team ring, `
 variants, `session-cta`'s phases as drawn — are add-only on existing primitives and must not change
 any existing call site's rendering.
 
+## ★★ `feed_announcements` — a new table, and it has no requirement behind it
+
+`DEC-NEXT-6` proposed the entity in a sentence. **That is not a requirement, and `01-prd.md` is the
+only file that may define one.** Before the migration is written:
+
+1. ★ **Define its `REQ-*` in `01-prd.md`** — what an announcement is, who may write one, who reads it,
+   how long it lives (`published_at`, `expires_at`), and what it is **not** (not a member post, not a
+   poll — `DEC-NEXT-6` says both). Claim the id at Step 0 and trace it to its story and to **M20**;
+   `trace` refuses a requirement with no milestone.
+2. ★★ **The migration story at `0164` names all five, explicitly** — this is invariants 5 and 6, and
+   `0002` exists in this repository *solely* because `0001` forgot the grant:
+   - **`org_id`**, not null, referencing `orgs`;
+   - **RLS enabled** on the table;
+   - **the full policy set** — org-read for members, admin-write, and what happens on the other three
+     commands rather than silence;
+   - ★ **a matching `grant` for every policy.** A policy without one fails `42501` and the screen goes
+     blank with no error a member can read;
+   - **its test**, and confirmation that the **generated isolation sweep** picks the table up — it is
+     generated over the entity list, so a new table is covered the day it is created (`REQ-NFR-001`).
+3. The row in `03-permissions-rls.md` §8.2, as every promoted policy gets.
+
+★ **No new table without all of that.** The brief's «no new table without a `REQ-*`» was too loose:
+a requirement alone is not enough, and the five above are what makes the table safe.
+
 ## The five moments — confirm, do not add
 
 `M10a.md` names which fire where. Check each against `DEC-195`'s **once-per-occurrence** keying and
@@ -112,9 +136,12 @@ routes** and anything `tests/unit/public-graph.test.ts` protects · the stories 
 ## Carried, and not yours to close
 
 `DEC-201` §3 / `DEC-204` — **the duplicate on hard loads**, 24 % against `main`'s 6 %, cause unknown,
-with the **assistive-technology question open**. ★ This wave rebuilds three of the routes it was
-measured on, so **re-measure it on the rebuilt screens and record the rate** — do not fix it, and do
-not let it silently disappear into a rewrite. · `DEC-194`'s two gates (the trigger-definer ACL sweep,
+with the **assistive-technology question open**. ★ `DEC-204`'s table measured three routes — `/app`,
+`/app/me/points` and `/app/leaderboards`. **This wave rebuilds exactly one of them: `/app`.** So
+**re-measure `/app` only**, on the rebuilt feed, and record the rate beside the old one. ★ `points`
+and the boards are **batch M10c** and their re-measure belongs to the wave that rebuilds them — say so
+in your record, so the next lead inherits the other two rather than assuming they were covered here.
+Do not fix the defect, and do not let it silently disappear into a rewrite. · `DEC-194`'s two gates (the trigger-definer ACL sweep,
 the Storage-predicate gate) stay carried together. · `DEC-186` §4's `1.08` overshoot ceiling is
 **open with the owner** and not yours to close.
 
@@ -132,8 +159,9 @@ interpolated title, name and code, Western numerals only (`DEC-124`), logical pr
    This is the wave's acceptance and it is the first time the product is compared to a drawing.
 2. ★ **`qa:contract` and the register-form fingerprint unmoved.** The five public routes do not move;
    `SCR-007` is `/s/[id]`, which is **not** one of them — confirm that before you touch it.
-3. ★ **The duplicate-on-hard-load rate re-measured** on the rebuilt `/app`, `/app/me/points` and the
-   boards, and recorded against `DEC-204`'s table.
+3. ★ **The duplicate-on-hard-load rate re-measured on the rebuilt `/app`** — the one route of
+   `DEC-204`'s three this wave rebuilds — and recorded beside the old figure, with `points` and the
+   boards named as still owed by M10c.
 4. ★ **No `.dc.html` in the bundle and no prototype class name in `src/`.** Add the gate if one does
    not exist; `docs/design/screens/` must not reach the build.
 
