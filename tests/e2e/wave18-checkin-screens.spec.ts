@@ -162,6 +162,22 @@ test("SCR-016 live: two groups, the countdown, the count, the switch; projection
   await expect(main(page).getByText("سجَّلوا حضورهم")).toBeVisible();
   await expect(main(page).getByRole("switch", { name: "تسجيل الحضور مفتوح" })).toBeChecked();
   await expect(main(page).getByRole("button", { name: "أبطل هذا الرمز الآن" })).toBeVisible();
+  // ★ Nothing overlaps at 390 (the lead's review of d563ee1c): the title and the projection toggle
+  // never intersect — the row wraps the toggle under the title when both do not fit — and the two
+  // actions are one line each, the same height, as `Host.dc.html` draws them.
+  const [title, toggle] = await Promise.all([
+    main(page).getByRole("heading", { level: 1 }).boundingBox(),
+    main(page).getByRole("button", { name: "اعرض على الشاشة" }).boundingBox(),
+  ]);
+  const intersects = (a: NonNullable<typeof title>, b: NonNullable<typeof title>) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  expect(intersects(title!, toggle!), "the title and the projection toggle overlap").toBe(false);
+  const [revoke, manual] = await Promise.all([
+    main(page).getByRole("button", { name: "أبطل هذا الرمز الآن" }).boundingBox(),
+    main(page).getByRole("button", { name: "تسجيل يدوي" }).boundingBox(),
+  ]);
+  expect(Math.abs(revoke!.width - manual!.width), "the two actions are equal halves").toBeLessThanOrEqual(1);
+  expect(Math.abs(revoke!.height - manual!.height), "revoke's label wraps onto a second line").toBeLessThanOrEqual(1);
   await shoot(page, "scr016-live");
 
   await main(page).getByRole("button", { name: "اعرض على الشاشة" }).click();
