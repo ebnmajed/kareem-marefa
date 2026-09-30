@@ -84,12 +84,16 @@ async function goto(page: Page, url: string) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
-async function capture(page: Page, name: string) {
+async function capture(page: Page, name: string, open = false) {
   expect(page.viewportSize()).toEqual(PHONE);
-  await page.evaluate(() => {
-    (document.activeElement as HTMLElement | null)?.blur();
-    window.scrollTo({ top: 0, behavior: "instant" });
-  });
+  // An open menu follows its trigger: scrolling the page to the top moves the row, and the menu with it. Inside the
+  // root scope the page is taller, so that scroll is no longer a no-op (wave 17).
+  if (!open) {
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      window.scrollTo({ top: 0, behavior: "instant" });
+    });
+  }
   mkdirSync(SHOTS, { recursive: true });
   await page.screenshot({ path: join(SHOTS, `wave15-console-${name}.png`) });
 }
@@ -113,7 +117,7 @@ test("K2: a company starts with «بلا لون», the menu offers the seven nam
   }
   await expect(page.locator('input[type="color"]')).toHaveCount(0);
 
-  await capture(page, "team-colour");
+  await capture(page, "team-colour", true);
 
   await menu.getByRole("menuitem", { name: "سماوي" }).click();
   await expect(page.getByRole("button", { name: /سماوي/ }).first()).toBeVisible();

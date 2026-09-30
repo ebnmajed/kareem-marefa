@@ -53,6 +53,7 @@ test.beforeAll(async ({}, testInfo) => {
   );
   orgId = org[0].id;
   await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
+  await db.query(`insert into public.companies (org_id, name) values ($1, 'شركة المسح')`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
   const { rows: cat } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'عام') returning id`, [orgId]);
   const { rows: venue } = await db.query<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'القاعة الرئيسية', 30) returning id`, [orgId]);
@@ -145,7 +146,8 @@ test("the members table on the dark ground", async ({ page }) => {
 test("the companies row menu is legible over the table", async ({ page }) => {
   await goto(page, "/ar/app/admin/companies");
   await register(page);
-  const trigger = page.locator("#main").getByRole("button", { name: /خيارات|قائمة|إجراءات/ }).first();
+  // The row's button is named by its colour (`wave15-console-team-colour.spec.ts`): a new company has none.
+  const trigger = page.locator("#main").getByRole("button", { name: /بلا لون/ }).first();
   test.skip((await trigger.count()) === 0, "no company row in this org — the menu has nothing to open on");
   await trigger.click();
   await expect(page.getByRole("menu")).toBeVisible();
