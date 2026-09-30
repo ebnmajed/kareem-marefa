@@ -3047,3 +3047,22 @@ As planned, with these as-built notes:
 and `tests/components/photos/lightbox.test.tsx`. `npm run test:rls` runs the new case at 3/3. `ui-lint` flags 2
 files, both `content`'s: `materials/audio-row.tsx` and `photos/upload-widget.tsx`. **Not run:**
 `tests/e2e/wave18-checkin-screens.spec.ts` and the two edited specs, which need a production build of this tree.
+
+## B.8 · Verified (the lead's serial run on `fb85f1ca`)
+
+`checkin.spec.ts` 12/12 on both projects, `:251` (the switch) included · `wave18-checkin-screens.spec.ts` 6/6 ·
+`wave9-checkin-days.spec.ts` 6/6. The captures `wave18-checkin-{scr014-form,scr014-refused,scr016-live,scr016-projecting}-{390,1280}.png`
+were opened beside the artboards.
+
+**Found and fixed after the first builds** (each by pathspec):
+- `a4110d43` — the refused-code check is scoped to the form. The live badge's dot, `DEC-073`'s, pulses outside it.
+- `26843652`, `eb976fb5` — the host's top row wraps the toggle, the projected code fits at `min(19vw, 40vh)`, and the
+  actions are equal halves. `21eae440` asserts no overlap.
+- ★ `aeb6612c` — **the switch is disabled until hydrated.** Before that, a tap flipped the native checkbox and
+  submitted nothing, so the thumb read «closed» while the door stayed open.
+- `c46d586b` — the monitor glyph on the projection toggle. `9d517cb9` — a 15 s wait for hydration.
+
+**Traced and not mine:** the switch's `switchError=unknown` was Kong returning 502 «Connection reset by peer» from
+PostgREST (ten times in an hour, across four RPCs). Another track's runs were also restarting port 3000. The CSP
+reports are report-only, a carry since wave 6. The poster thumbnail is drawn only when a poster has rendered, and
+never a placeholder (the lead records this in `DEC-211`).
