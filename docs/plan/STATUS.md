@@ -147,6 +147,7 @@ says whether a **selector** moved or an **expectation** did.*
 | `tests/components/ui/story-ring.test.tsx`, the `ring()` fixture (`content`) | **expectation moved**: the fixture now passes `onOpen={() => {}}` | `DEC-207` §1.5: a ring with no `onOpen` is no longer a button, and this suite is about the button — its cases are unchanged. The inert ring's cases are the new `story-ring-inert.test.tsx` |
 | `tests/e2e/wave15-content-gallery.spec.ts:289` (`content`) | **selector moved**: `button[data-state]` → `[data-state]` | the gallery's rings pass no `onOpen` (a server demo cannot hand a closure to a client component), so they are the inert form the home uses |
 | `tests/unit/ui-playground.test.ts:117` | **expectation moved**: the floor `>= 49` → `>= 53` | `DEC-206` §1.3: `action-bar`, `attendee-stack`, `feed-item`, `week-hud`, each registered in the same commit |
+| `tests/e2e/session.spec.ts:88` | **expectation moved**: `/app`'s `h1` «الجلسات» → «الرئيسية», read from `#main` | `DEC-205` §2, `REQ-UIX-055`: home is the feed. The company nudge in `role="status"` is unchanged, and `:113`'s count of 0 holds |
 
 ---
 

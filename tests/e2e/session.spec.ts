@@ -85,13 +85,13 @@ async function signIn(context: BrowserContext) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-test("a member lands on the sessions timeline, with the company nudge", async ({ context, page }) => {
+test("a member lands on the home, with the company nudge", async ({ context, page }) => {
   await signIn(context);
   await page.goto("/ar/app");
-  // `/app` renders the timeline rather than redirecting to it (DEC-112,
-  // DEC-130): the address stays, the heading is the sessions list's.
+  // ★ wave 18 (DEC-205 §2, REQ-UIX-055): home is the feed and `/app` is its own page; the timeline
+  // is `/app/sessions`' alone. The address stays, and the heading is the home's.
   await expect(page).toHaveURL(/\/ar\/app$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("الجلسات");
+  await expect(page.locator("#main").getByRole("heading", { level: 1 })).toHaveText("الرئيسية");
   await expect(page.getByRole("status")).toContainText("اختر شركتك");
 });
 
