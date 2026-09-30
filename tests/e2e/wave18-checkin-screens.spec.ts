@@ -92,6 +92,10 @@ async function signIn(context: BrowserContext, who: string, asAdmin = false): Pr
 }
 
 const main = (page: Page) => page.locator("#main");
+// The phone project's device is 412 wide; the artboards and the rule are 390 × 844.
+test.beforeEach(async ({ page }, testInfo) => {
+  if (testInfo.project.name === "phone") await page.setViewportSize({ width: 390, height: 844 });
+});
 async function shoot(page: Page, name: string): Promise<void> {
   mkdirSync(SHOTS, { recursive: true });
   const width = page.viewportSize()?.width ?? 0;

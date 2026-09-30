@@ -112,7 +112,7 @@ export default async function HostPage({
           >
             <ArrowIcon direction="back" className="text-[1.125rem]" />
           </Link>
-          <h1 className="font-display text-play-sm font-extrabold text-fg-heading">{t("host.title")}</h1>
+          <h1 className="whitespace-nowrap font-display text-play-sm font-extrabold text-fg-heading">{t("host.title")}</h1>
         </div>
         {/* The toggle is not hidden with the row's start: it stays in reach while projecting. */}
         {view.code ? <ProjectionToggle /> : null}
@@ -142,7 +142,8 @@ export default async function HostPage({
       <div className="flex flex-col items-center gap-3.5 py-6">
         {view.code ? (
           <>
-            <p dir="ltr" aria-live="polite" className="flex gap-3.5 font-display text-[5.25rem] font-extrabold leading-none text-fg-heading group-data-[projecting]/project:text-[min(26vw,42vh)]">
+            {/* Projected, six display-face characters and the gap fit the viewport at 19vw: 26vw overflowed 390. */}
+            <p dir="ltr" aria-live="polite" className="flex gap-3.5 font-display text-[5.25rem] font-extrabold leading-none text-fg-heading group-data-[projecting]/project:text-[min(19vw,40vh)]">
               <span>{view.code.slice(0, 3)}</span>
               <span>{view.code.slice(3)}</span>
             </p>
