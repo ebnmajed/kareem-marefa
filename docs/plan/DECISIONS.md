@@ -5483,3 +5483,16 @@ On a hard load of a streamed page, the content sometimes stands in `#main` while
 
 - **Documents changed:** `01-prd.md` (`REQ-DSG-021`, `REQ-UIX-051`), `messages/*/branding.json` (two sentences), `STATUS.md` (the closing block)
 - **Added at the close:** the public pairs recaptured on a build of `6f870541` — all six at **0.000 %**, `qa` 57/57. The 0.002 % in §2 was one capture's flicker.
+
+---
+
+## DEC-202 — Wave 17, the owner's acceptance: the gallery reads as one design system
+
+- **Date:** 2026-09-30 · **Decided by:** the owner, after opening `/ar/ui` on a phone from a build of `wave-17/every-primitive`
+- **Closes:** `DEC-199` §6's fourth demonstrable and `STATUS.md` row D4. **Changes nothing else.**
+
+The owner's words: **«I can confirm there is only one design system in the link I followed.»** That was the wave's acceptance, and it was the owner's to give: the lead's captures were evidence for it and not a substitute.
+
+**What it does not cover, so nobody reads more into it:** the gallery, not the app's screens. Every screen is inside the scope at the token level and none has been rebuilt (`DEC-199` §2); `DEC-201` §3's duplicate on hard loads is carried to the next wave; self-hosting the display face is unanswered; and wave 16's phone check of the five moments was never run.
+
+- **Documents changed:** `STATUS.md` (row D4, the count, the phase line)
