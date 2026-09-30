@@ -5905,3 +5905,10 @@ two were caught by the check itself:
 ★ **One disagreement I did not pick, found while building:** `EventDone.dc.html` has no icon rows. The ended session
 therefore drops the in-person line, which `REQ-SES-008` asks the product to say. The product still offers no remote
 affordance anywhere, so the requirement's acceptance holds; the sentence is simply not repeated on an ended page.
+
+**After DEC-210** (`scoring`'s evidence: check-in points feed the company board, and `company_attendance_pct` credits a
+company for its members' attendance): the desktop aside draws «لفريقك» for a member with a company, **only** while
+`isCompanyAttendanceRuleEnabled()` (scoring's, `2c68e625`) says the rule is on, and only on an open or live session.
+It is one sentence stating the rule: «حضورك يرفع نسبة مشاركة <company> في سباق الشركات.» — no round, no count of who
+attends, no standing. The member's own company comes from an add-only `getViewerCompany()` in `sessions.ts`.
+

@@ -1514,3 +1514,16 @@ export async function getPublicCardImage(id: string): Promise<{ bytes: ArrayBuff
   if (error || !data) return null;
   return { bytes: await data.arrayBuffer(), contentType: "image/png" };
 }
+
+/**
+ * wave 18 (DEC-210, add-only): the viewer's own company — its name and colour — for the event page's «لفريقك».
+ * Null when the member has none. Read from the caller's own row, so it names no one else.
+ */
+export const getViewerCompany = cache(async (locale: string): Promise<{ id: string; name: string; teamColor: string | null } | null> => {
+  const { session, supabase } = await sessionClient(locale);
+  const { data: me } = await supabase.from("members").select("company_id").eq("id", session.memberId).maybeSingle();
+  const companyId = (me?.company_id as string | null | undefined) ?? null;
+  if (!companyId) return null;
+  const { data } = await supabase.from("companies").select("id, name, team_color").eq("id", companyId).maybeSingle();
+  return data ? { id: data.id as string, name: data.name as string, teamColor: (data.team_color as string | null) ?? null } : null;
+});

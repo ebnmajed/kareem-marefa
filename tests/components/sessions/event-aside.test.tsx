@@ -33,4 +33,19 @@ describe("EventAside", () => {
     render(await EventAside({ session: SESSION, phase: "live", reserved: 12, attended: 3, faces: [{ memberId: "m1", displayName: "سارة", avatarUrl: null, teamColor: "#35d0ff" }] }));
     expect(screen.getByRole("group", { name: "من يحضر" })).toBeInTheDocument();
   });
+
+  it("★ «لفريقك» states the rule with the member's company — only when the page passes it (the rule on)", async () => {
+    render(await EventAside({ session: SESSION, phase: "open", reserved: 12, attended: null, faces: [], team: { name: "صنف" } }));
+    const team = screen.getByRole("region", { name: "لفريقك" });
+    expect(team).toHaveTextContent("حضورك يرفع نسبة مشاركة صنف في سباق الشركات.");
+    expect(team.textContent).not.toMatch(/الجولة|\d/);
+  });
+
+  it("no team, or an ended session: no «لفريقك»", async () => {
+    const { unmount } = render(await EventAside({ session: SESSION, phase: "open", reserved: 12, attended: null, faces: [] }));
+    expect(screen.queryByRole("region", { name: "لفريقك" })).toBeNull();
+    unmount();
+    render(await EventAside({ session: SESSION, phase: "ended", reserved: 12, attended: 3, faces: [], team: { name: "صنف" } }));
+    expect(screen.queryByRole("region", { name: "لفريقك" })).toBeNull();
+  });
 });

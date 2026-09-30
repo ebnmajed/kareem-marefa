@@ -10,19 +10,24 @@ import type { SessionPhase } from "@/lib/session-status";
 //     not admit), the capacity, and «الحضور في القاعة فقط» (REQ-SES-008);
 //   · «من يحضر»: how many, in words — never who for a member (A33 rule 3, §4.56); faces only for staff and the
 //     session's presenters, whom RLS already answers. The per-company figure does not exist and is not built.
-//   · «لفريقك» is not built: attendance does not feed the company board (DEC-209 §2).
+//   · «لفريقك» (DEC-210): for a member with a company, and ONLY when the org's `company_attendance_pct` rule is on,
+//     one sentence stating the rule — attending raises the company's share in the race. No round, no count of who
+//     attends, no standing. Rule off or no company: nothing.
 export async function EventAside({
   session,
   phase,
   reserved,
   attended,
   faces,
+  team = null,
 }: {
   session: EventSession;
   phase: SessionPhase;
   reserved: number | null;
   attended: number | null;
   faces: EventAttendeeFace[];
+  /** The viewer's company, passed only when the org's attendance rule for companies is on. */
+  team?: { name: string } | null;
 }) {
   const t = await getTranslations("sessions.event");
   const count = phase === "open" ? reserved : attended;
@@ -63,6 +68,14 @@ export async function EventAside({
           ) : (
             <p className="text-body-sm text-fg-heading">{countLabel}</p>
           )}
+        </section>
+      ) : null}
+      {team && (phase === "open" || phase === "live") ? (
+        <section aria-labelledby="aside-team" className="flex flex-col gap-1.5 rounded-panel border border-edge bg-surface p-4">
+          <h2 id="aside-team" className="text-caption font-bold text-fg-muted">
+            {t("forYourTeam")}
+          </h2>
+          <p className="text-body-sm text-fg-heading">{t.rich("teamRule", { company: team.name, bdi: (c) => <bdi>{c}</bdi> })}</p>
         </section>
       ) : null}
     </aside>

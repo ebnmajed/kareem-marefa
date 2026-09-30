@@ -145,7 +145,9 @@
       "recapLabel": "The session in numbers",
       "venueLabel": "The room",
       "bookedChip": "Your seat is booked",
-      "presenterPoints": "{count, plural, =0 {No points} one {1 point added to your balance} other {{value} points added to your balance}}"
+      "presenterPoints": "{count, plural, =0 {No points} one {1 point added to your balance} other {{value} points added to your balance}}",
+      "forYourTeam": "For your team",
+      "teamRule": "Attending raises <bdi>{company}</bdi>'s participation share in the company race."
     },
     "card": {
       "presentedBy": "Hosted by <bdi>{org}</bdi>",

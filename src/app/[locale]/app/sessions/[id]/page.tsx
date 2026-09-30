@@ -34,7 +34,8 @@ import { getRatingEligibility } from "@/lib/dal/ratings";
 import { getRsvpPanelData } from "@/lib/dal/rsvp";
 import { getAttendanceRulePoints } from "@/lib/dal/search";
 import { requireSession } from "@/lib/dal/session";
-import { getEventAttendeeFaces, getEventFigures, getSessionForEvent, listSessionDays, type EventSession } from "@/lib/dal/sessions";
+import { isCompanyAttendanceRuleEnabled } from "@/lib/dal/leaderboards";
+import { getEventAttendeeFaces, getEventFigures, getSessionForEvent, getViewerCompany, listSessionDays, type EventSession } from "@/lib/dal/sessions";
 import { canGrantOn, closingSoon, sessionPhase, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
 
 // SCR-012 · /app/sessions/[id] ★ — the event page, rebuilt in wave 18 from `Event.dc.html`,
@@ -94,13 +95,15 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   const counted = phase === "live" || phase === "ended";
   const facesPhase = phase === "open" || phase === "live" || phase === "ended" ? phase : null;
 
-  const [eligibility, certificateHref, bookmarked, rulePoints, figures, faces] = await Promise.all([
+  const [eligibility, certificateHref, bookmarked, rulePoints, figures, faces, team] = await Promise.all([
     endedAttendee ? getRatingEligibility(locale, id) : Promise.resolve(null),
     endedAttendee ? myCertificateHref(locale, id) : Promise.resolve(null),
     isSessionBookmarked(locale, id),
     getAttendanceRulePoints(locale).catch(() => null),
     counted ? getEventFigures(locale, id) : Promise.resolve({ attendedCount: null, rotationSeconds: null }),
     staffOrPresenter && facesPhase ? getEventAttendeeFaces(locale, id, facesPhase) : Promise.resolve([]),
+    // «لفريقك» (DEC-210): the viewer's company, only when the org's company attendance rule is on — scoring's gate.
+    phase === "open" || phase === "live" ? teamForRule(locale) : Promise.resolve(null),
   ]);
   // «قيّم الجلسة» only to someone who may and has not yet (REQ-RAT-001, REQ-RAT-003).
   const canRate = rateAllowed(session, relation) && canGrantOn(session, "rate") && Boolean(eligibility?.eligible) && !eligibility?.existing;
@@ -287,10 +290,16 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
 
       <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8">
         <div className="flex min-w-0 flex-col gap-10">{order.map((sectionId) => sections[sectionId])}</div>
-        <EventAside session={session} phase={phase} reserved={rsvp?.confirmedCount ?? null} attended={figures.attendedCount} faces={faces} />
+        <EventAside session={session} phase={phase} reserved={rsvp?.confirmedCount ?? null} attended={figures.attendedCount} faces={faces} team={team} />
       </div>
     </article>
   );
+}
+
+/** The viewer's company for «لفريقك», or null when the rule is off or the member has none (DEC-210). */
+async function teamForRule(locale: string): Promise<{ name: string } | null> {
+  const [enabled, company] = await Promise.all([isCompanyAttendanceRuleEnabled(locale).catch(() => false), getViewerCompany(locale).catch(() => null)]);
+  return enabled && company ? { name: company.name } : null;
 }
 
 async function SubnavFor({
