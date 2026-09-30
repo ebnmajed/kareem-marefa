@@ -120,7 +120,9 @@ for by hand; inside it they are the playground's.
 - ✅ **The org theme layer — answered** (`DEC-201` §1): accepted and recorded; `REQ-DSG-021` amended; the brand-kit
   screen says what the kit reaches.
 - ★★ **A finding for the next wave** (`DEC-201` §3): on a hard load the page stands twice in the DOM for ~300 ms —
-  **34 of 144 loads on the branch against 9 of 144 on `main`**, 22 of 48 on the boards. Invisible, cause not found.
+  **34 of 144 loads on the branch against 9 of 144 on `main`**, 22 of 48 on the boards. Cause not found. ★ **Invisible to a sighted user; UNPROVEN for assistive technology**
+  (`DEC-204`): two `h1`s and two of every id is what a screen reader would announce. The next wave's probe reads the
+  **accessibility tree** in that window and what an id reference resolves to — an open question, not an answered one.
 - ✅ **Self-hosting — answered and built** (`DEC-203`, branch `wave-17b/self-host-app-faces`, its own PR): Reem Kufi,
   Amiri and Baloo Bhaijaan 2 are read from `packages/fonts`. ★ **The two Plex faces stay on Google until the public
   site's wave**, so a build still needs Google for them: two families instead of five, not none.

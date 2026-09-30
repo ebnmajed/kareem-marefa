@@ -5513,3 +5513,20 @@ The owner's words: **«I can confirm there is only one design system in the link
 6. `fonts:extract` keeps the three families' manifest entries as they are: for them the manifest is the source and the build the copy. Run on this build it leaves `packages/fonts` untouched.
 
 - **Documents changed:** `STATUS.md` (the carried list)
+
+---
+
+## DEC-204 — A correction to `DEC-201` §3: assistive technology is a reader of the DOM too, and «nothing is visible» is proven for a sighted user only
+
+- **Date:** 2026-09-30 · **Decided by:** the owner, on reading `DEC-201`
+- **Amends:** `DEC-201` §3, in its list of who reads the DOM and in what it claims. The measurement, the table and the ruling that it is the next wave's finding stand.
+
+`DEC-201` §3 said of the duplicate on hard loads that «nothing is left behind and nothing is visible», and named the readers of the DOM who meet two of everything in that window as «a test, or a moment's probe». **A screen reader is a reader of the DOM as well, and «two `h1`s, two of every id» is exactly what it would announce.** So:
+
+1. **«Nothing is visible» is true of a sighted user and unproven for anyone else.** It was written from what the lead could see in a capture, and it was stated more widely than it was tested.
+2. **The list of readers is: a test, a moment's probe, and assistive technology.**
+3. ★ **It is an open question, carried into the next wave's probe — not an answered one.** The probe that measured the rate counted `h1`s in the DOM. The next wave's probe must also say what the **accessibility tree** holds in that window: whether the second copy is exposed, whether a heading or a landmark is announced twice, and what an `aria-labelledby`, an `aria-describedby` or a `<label for>` resolves to while two elements carry one id.
+
+**What is known, and it is not an answer.** In the one probe that recorded where the copies stood, the second copy was inside the streamed segment `div[hidden]`, outside `#main`, and a `hidden` element is ordinarily left out of the accessibility tree. That is a reason to expect the announcement is not doubled. **It was observed in the DOM, not in an accessibility tree and not with a screen reader**, and it says nothing about id references, which resolve by document order whatever is hidden. Nobody has tested it.
+
+- **Documents changed:** `STATUS.md` (the finding's line)
