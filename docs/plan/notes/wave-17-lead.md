@@ -56,7 +56,46 @@ code. **The register form's appearance may move; its action, field names, ids, v
 path are the contract and are byte-identical.** The reviewer flagged this to the owner and the owner
 did not overturn it.
 
-## ★ The decision this wave turns on — put it to the owner at Step 0
+## ★★ ANSWERED by the owner, 2026-09-30 — one visual language, everywhere. Do not re-open it.
+
+> **«A full redesign for all the web app and the marketing page and everywhere.»**
+
+**Record it as `DEC-199` §1.** The playground is **the product's only visual language**. No screen
+keeps the old one, and **no compatibility layer for the old look survives this programme.** The
+option of a narrower `/app`-only move is withdrawn; the owner chose everywhere.
+
+★ **The admin console is IN, at the token level, and the design already said how.** The owner asked
+whether the design covers admin and whether it should be carved out and redesigned separately. It is
+not covered — and every mention of admin in `docs/design/` is an **exclusion**, which is a position
+rather than a gap:
+
+- `04-components.md:23` — «`data-table`, `reorderable-list`, `file-drop` and the rest of the console
+  primitives | **tokens only; no animation**»
+- `03-motion.md:12` and `06-decisions-proposed.md:17` — «tables, lists, **admin surfaces** and error
+  states never animate»
+- `05-stories.md:94` — «Admin: nothing.»
+
+**So admin takes the palette, the radii and the type, and takes none of the playground's motion,
+objects or stickers.** That is a register difference, not a second design, and wave 15 already built
+it that way — its order ended with «the console primitives (tokens only)».
+
+★ **Why this beats carving admin out**, and say it in `DEC-199` so it is not revisited: freezing
+admin at today's values would need a compatibility layer **for admin** — the same scope mechanism
+pointed the other way — and staff would work in what reads as a different product. One language with
+a sober register for staff is the ordinary answer and it costs nothing extra.
+
+★ **A separate admin pass later is about LAYOUT, not visual language** — data density, table
+ergonomics, the rail — and it is not a blocker for anything in this programme. Note it as available,
+not scheduled.
+
+★★ **The public site is in scope and still moves LAST** (`DEC-NEXT-5` A, `DEC-183` §1). «Everywhere»
+settles *whether*, not *when*, and the ordering stands for one practical reason: it is the only
+surface with a frozen behavioural contract and **20 real pre-launch signups** behind it. Until its
+wave, `qa:contract` and the register-form fingerprint stay pass/fail.
+
+## ★ What this means for THIS wave's token move
+
+### The mechanism, now that the destination is settled
 
 **Does the playground move to `:root`, or does the scope stay?**
 
