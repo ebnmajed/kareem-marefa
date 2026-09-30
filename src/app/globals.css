@@ -590,6 +590,15 @@ html:has([data-play-root].theme-play-light) {
   }
 }
 
+/* ★ Wave 18 (DEC-209): an immersive screen's bottom `action-bar` stands until `lg` too — the tab bar's
+   breakpoint — so between `md` and `lg` `<main>` still clears it. Below `md` the rule further down already
+   sets 76 px; this adds the band it did not reach. */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  :root:has([data-action-bar]) {
+    --tabbar-h: 76px;
+  }
+}
+
 /* --------------------------------- typography ---------------------------
    AR runs slightly larger with taller line-height at equal hierarchy.
    Mobile values by default; desktop overrides ≥768px. Body sizes hold. */
