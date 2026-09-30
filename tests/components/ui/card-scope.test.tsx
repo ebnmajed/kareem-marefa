@@ -170,4 +170,22 @@ describe("Card — the look inside the scope (`04-components.md`)", () => {
     );
     await expectAccessible(container);
   });
+
+  it("★ dimmed: an image keeps the whole wash, the typographic placeholder drains to grey at full opacity (REQ-NFR-007)", () => {
+    const { container, unmount } = render(
+      <Scope>
+        <CardMedia src="https://example.test/p.png" placeholderFrom="أتمتة التقارير" dimmed />
+      </Scope>,
+    );
+    expect(classes(container.querySelector("img"))).toEqual(expect.arrayContaining(["grayscale", "opacity-45"]));
+    unmount();
+    const placeholder = render(
+      <Scope>
+        <CardMedia placeholderFrom="أتمتة التقارير" dimmed />
+      </Scope>,
+    ).container.querySelector('[data-slot="media"] > [aria-hidden]');
+    // `opacity-45` took the placeholder's ink to 3.8:1; grey at full opacity keeps it legible.
+    expect(classes(placeholder)).toContain("grayscale");
+    expect(classes(placeholder)).not.toContain("opacity-45");
+  });
 });

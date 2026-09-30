@@ -202,6 +202,10 @@ export function CardMedia({ src, alt = "", placeholderFrom, placeholderTone, asp
   // («انتهت» measured 1.87:1 that way; the badge's own tokens are 5.11:1).
   // `overlay` renders in a sibling node below, entirely outside this wash.
   const wash = dimmed ? "grayscale opacity-45" : "";
+  // ★ The placeholder is real ink on a tint, not a picture: it drains to grey and keeps its opacity.
+  // `opacity-45` took an ended poster's placeholder text to 3.8:1 (the lead's a11y sweep, REQ-NFR-007,
+  // `sessions`' 5aeb22f2); an image and a live render keep the whole wash (DEC-123 item 1).
+  const placeholderWash = dimmed ? "grayscale" : "";
   return (
     // Inside the scope the letterbox around a contained image is the raised surface, not navy
     // (1.02:1 against the scope's surface — invisible). `MEDIA_TINTS` stay as they are: two suites
@@ -238,7 +242,7 @@ export function CardMedia({ src, alt = "", placeholderFrom, placeholderTone, asp
           // the one mixture a screen could still draw from this file — and the three navy ones
           // are 1.0x:1 against the scope's surface. The tint is still chosen and still in the
           // class (two suites pin it); the scope's pair is drawn over it.
-          className={`flex h-full w-full items-center justify-center text-h2 font-semibold ${mediaTint(placeholderFrom, placeholderTone)} pg:bg-raised pg:text-fg-heading ${wash}`}
+          className={`flex h-full w-full items-center justify-center text-h2 font-semibold ${mediaTint(placeholderFrom, placeholderTone)} pg:bg-raised pg:text-fg-heading ${placeholderWash}`}
         >
           <bdi>{placeholderGlyph(placeholderFrom)}</bdi>
         </div>

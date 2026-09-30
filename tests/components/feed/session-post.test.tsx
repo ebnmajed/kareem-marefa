@@ -123,6 +123,17 @@ describe("SessionPost", () => {
     expect(container.textContent).toContain("أُلغيت");
   });
 
+  it("★ a cancelled post's placeholder drains to grey at full opacity; a rendered poster keeps the whole wash (REQ-NFR-007)", async () => {
+    const { container, unmount } = await show(post({ phase: "cancelled", state: "cancelled", action: { kind: "none" } }));
+    const placeholder = container.querySelector('[data-slot="poster-placeholder"]')!.closest('[data-slot="media"]');
+    // The placeholder draws the title, category and date as text: `opacity-45` took them under 4.5:1.
+    expect(placeholder).toHaveClass("grayscale");
+    expect(placeholder).not.toHaveClass("opacity-45");
+    unmount();
+    const rendered = await show(post({ phase: "cancelled", state: "cancelled", action: { kind: "none" }, posterUrl: "https://example.test/p.png" }));
+    expect(rendered.container.querySelector('[data-slot="media"]')).toHaveClass("grayscale", "opacity-45");
+  });
+
   it("a live post with a count says how many are here — a number, never who (§4.56)", async () => {
     const { container } = await show(post({ phase: "live", state: "in_progress", attendedCount: 23, action: { kind: "checkIn", href: "/app/sessions/x/check-in", booked: true } }));
     expect(screen.getByText("23 حاضرًا الآن")).toBeInTheDocument();

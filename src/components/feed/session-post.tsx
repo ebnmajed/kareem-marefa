@@ -138,7 +138,9 @@ export async function SessionPost({ post, locale, today, noCompany }: { post: Se
             teamName={company?.name ?? lead?.displayName ?? ""}
             // §4.46: a rendered poster carries no sticker; the placeholder draws the rule's amount.
             sticker={!post.posterUrl && points ? <Sticker size="sm">{points}</Sticker> : undefined}
-            className={cancelled ? "opacity-45 grayscale" : ""}
+            // A rendered poster takes the whole wash; the placeholder draws the title, category and date as
+            // real text, so it drains to grey at full opacity — `opacity-45` took them under 4.5:1 (REQ-NFR-007).
+            className={cancelled ? (post.posterUrl ? "opacity-45 grayscale" : "grayscale") : ""}
           />
         </Link>
         <div className="flex min-w-0 flex-1 flex-col gap-2">
