@@ -5943,3 +5943,23 @@ deleted** (behaviour components the slots compose, not the screen's markup — t
 
 **For the lead:** the delete boundary in §6; the CSP's `media-src`; a play glyph; whether admin playback is audited as
 a download (`REQ-MAT-005` «that access is audited»); the realtime payload (7).
+
+### PR B — the tasks slot, added by `DEC-209` (NB9) — its regions and kept-behaviour table, before the delete
+
+**Region** (`Event.dc.html:87-91`, `EventDesktop.dc.html:76-79`): one row per task — a checkbox and the title (with
+its hint in parentheses, «(المواد، صفحتان)») — under the page's heading row «المهام التحضيرية · 0 من 2، تذكير فقط»
+(the heading and that count are the page's). Primitive: `ui/checkbox` (`sessions'`), whose label is the row.
+**Delete:** `tasks/panel.tsx`, `tasks/task-item.tsx`. **Keep:** `tasks/{create-form,group-disclosure,actions}` and
+their tests.
+
+| Behaviour | Lives now | Kept because |
+|---|---|---|
+| Four kinds, each with its own affordance: a link to the material (read), a form, a checkbox (checklist), an external link with a checkbox | `tasks/task-row.tsx` | `REQ-TSK-001` |
+| Completion is self-declared for checklist, external and read; a form is completed by submitting it, never by the checkbox | `task-row.tsx` over the unchanged actions | `REQ-TSK-004` |
+| A form's answers go to presenters and admins only; the member sees their own prior answer and may edit it | `task-row.tsx`'s form | `REQ-TSK-003` |
+| Nothing earns points and nothing gates check-in: the slot reads no check-in and writes nothing a check-in reads | the unchanged DAL and actions | `REQ-TSK-002` |
+| Progress visible: this viewer's completed of total, and `tasksSummary().outstanding` for the action card | `tasks/panel.tsx`, `tasksSummary()` | `REQ-TSK-004` |
+| A presenter or admin authors tasks; at more than one day per group, behind a closed disclosure; the re-scope chip | `panel.tsx` + the kept `create-form.tsx`, `group-disclosure.tsx` | `REQ-TSK-001`, `REQ-SES-018`, `DEC-121` |
+| A failed toggle says so at the row; a dropped connection does not take the page to the error boundary | `task-row.tsx` | `REQ-UIX-016` |
+| External links `rel="noopener noreferrer"`; `<bdi>` on titles and descriptions; Western numerals | `task-row.tsx` | `REQ-MAT-007`'s rule, `REQ-INT-007`, `REQ-INT-006` |
+| `null` exactly when `tasksSummary()` is not visible; no `<section>`, no `<h2>` | `panel.tsx` | slot contract |
