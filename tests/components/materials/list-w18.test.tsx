@@ -119,7 +119,11 @@ describe("Materials slot — rebuilt", () => {
     await renderSlot({ ...base, materials: [mat({ kind: "audio", title: "التسجيل الصوتي" })] }, "https://storage.test/a.m4a");
     const play = screen.getByRole("button", { name: "تشغيل التسجيل الصوتي" });
     expect(play).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("slider", { name: "موضع التشغيل" })).toBeInTheDocument();
+    // The glyph, not a word: the name carries the meaning (PlayIcon, e7017f71).
+    expect(play.querySelector("svg")).not.toBeNull();
+    expect(play.textContent).toBe("");
+    // The scrubber reads its place in words, the catalogue's <bdi> dropped from the attribute.
+    expect(screen.getByRole("slider", { name: "موضع التشغيل" })).toHaveAttribute("aria-valuetext", "0:00 من —:—");
     expect(screen.getByTestId("slot").querySelector("audio")).toHaveAttribute("src", "https://storage.test/a.m4a");
   });
 

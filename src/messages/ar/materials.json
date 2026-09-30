@@ -50,10 +50,9 @@
       "audio": {
         "tile": "صوت",
         "play": "تشغيل التسجيل الصوتي",
-        "playText": "تشغيل",
         "pause": "إيقاف مؤقت",
         "seek": "موضع التشغيل",
-        "position": "{elapsed} من {total}",
+        "position": "<bdi>{elapsed}</bdi> من <bdi>{total}</bdi>",
         "listenOnly": "للاستماع فقط",
         "listenAndDownload": "للاستماع والتحميل",
         "unavailable": "الاستماع غير متاح لك، فالتحميل مغلق لهذه المادة"

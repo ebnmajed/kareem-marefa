@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
-import { PauseIcon } from "@/components/ui/icons";
+import { useTranslations } from "next-intl";
+import { PauseIcon, PlayIcon } from "@/components/ui/icons";
 
 // The audio row — REQ-MAT-007: «Audio gets an in-page player… keyboard operable and shows elapsed and total
 // duration». `EventDone.dc.html:72`, DEC-209. No dependency: a native `<audio>` with no `controls`, driven by
@@ -13,8 +14,7 @@ import { PauseIcon } from "@/components/ui/icons";
 // ★ The scrubber is an `<input type="range">`: arrows, Page Up/Down, Home and End come from the platform,
 // and `aria-valuetext` reads «12:03 من 58:12». The times are Western digits in an LTR run (DEC-124).
 // ★ One recording at a time on a page: starting this one pauses any other.
-// ★ The play glyph is the lead's, last in the wave; until it lands the button says «تشغيل» in words, and
-// while playing shows `PauseIcon` with its name.
+// ★ The button draws `PlayIcon` or `PauseIcon`; its name says which, in words.
 
 let current: HTMLAudioElement | null = null;
 
@@ -32,9 +32,9 @@ export interface AudioRowProps {
   title: string;
   /** «للاستماع فقط» or «للاستماع والتحميل» — the row's second line, after the duration. */
   note: string;
-  /** Plain strings — a Server Component hands these across the boundary, so no function (DEC-159).
-   *  `position` holds `{elapsed}` and `{total}`, replaced here: «{elapsed} من {total}». */
-  labels: { play: string; playText: string; pause: string; seek: string; position: string };
+  /** Plain strings — a Server Component hands these across the boundary, so no function (DEC-159). The
+   *  scrubber's «12:03 من 58:12» is read here, from `materials.list.audio.position`, as it changes. */
+  labels: { play: string; pause: string; seek: string };
 }
 
 export function AudioRow({ src, title, note, labels }: AudioRowProps) {
@@ -43,6 +43,7 @@ export function AudioRow({ src, title, note, labels }: AudioRowProps) {
   const [elapsed, setElapsed] = useState(0);
   const [total, setTotal] = useState<number>(Number.NaN);
   const titleId = useId();
+  const t = useTranslations("materials.list.audio");
 
   useEffect(() => {
     const node = audio.current;
@@ -71,7 +72,8 @@ export function AudioRow({ src, title, note, labels }: AudioRowProps) {
   }
 
   const known = Number.isFinite(total) && total > 0;
-  const position = labels.position.replace("{elapsed}", clock(elapsed)).replace("{total}", clock(total));
+  // An attribute carries plain text: the catalogue's <bdi> is dropped here, and the values are Western digits.
+  const position = t.markup("position", { elapsed: clock(elapsed), total: clock(total), bdi: (chunks) => chunks });
 
   return (
     <div className="flex items-center gap-3 rounded-tile border border-edge bg-surface px-3.5 py-3">
@@ -92,9 +94,9 @@ export function AudioRow({ src, title, note, labels }: AudioRowProps) {
         aria-pressed={playing}
         aria-label={playing ? labels.pause : labels.play}
         aria-describedby={titleId}
-        className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-pill bg-accent px-3 text-label font-bold text-on-accent"
+        className="inline-flex size-11 shrink-0 items-center justify-center rounded-pill bg-accent text-on-accent"
       >
-        {playing ? <PauseIcon className="text-lg" /> : <span aria-hidden>{labels.playText}</span>}
+        {playing ? <PauseIcon className="text-lg" /> : <PlayIcon className="text-lg" />}
       </button>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p id={titleId} className="text-label font-bold text-fg-heading">

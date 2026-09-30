@@ -50,10 +50,9 @@
       "audio": {
         "tile": "Audio",
         "play": "Play the recording",
-        "playText": "Play",
         "pause": "Pause",
         "seek": "Playback position",
-        "position": "{elapsed} of {total}",
+        "position": "<bdi>{elapsed}</bdi> of <bdi>{total}</bdi>",
         "listenOnly": "Listen only",
         "listenAndDownload": "Listen or download",
         "unavailable": "Listening is unavailable: download is off for this item"

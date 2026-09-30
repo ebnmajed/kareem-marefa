@@ -92,7 +92,7 @@ export function MaterialRow({ m, sessionId, locale, canManage, scope, playbackUr
         src={playbackUrl}
         title={m.title}
         note={join(phase, note)}
-        labels={{ play: t("audio.play"), playText: t("audio.playText"), pause: t("audio.pause"), seek: t("audio.seek"), position: t.raw("audio.position") as string }}
+        labels={{ play: t("audio.play"), pause: t("audio.pause"), seek: t("audio.seek") }}
       />
     ) : (
       <div className={ROW}>
