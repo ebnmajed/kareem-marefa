@@ -291,7 +291,7 @@
         "heading": "Your rank in <bdi>{month}</bdi>"
       },
       "streak": {
-        "label": "Streak, in months",
+        "label": "Your streak",
         "none": "Not started",
         "rule": "{count, plural, =0 {No condition to keep it} one {One session a month keeps it} other {{value} sessions a month keep it}}"
       },

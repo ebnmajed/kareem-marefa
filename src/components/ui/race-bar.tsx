@@ -43,11 +43,10 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
       <li className={`flex items-center gap-2 rounded-tile border-2 px-2 py-1.5 ${frame} ${className}`}>
         {rank != null ? <span className="sr-only">{rankLabel}</span> : null}
         <span aria-hidden="true" data-slot="ring" style={ringStyle} className={`size-5 shrink-0 rounded-pill border-[3px] bg-canvas ${ring}`} />
-        <span className="flex w-24 min-w-0 shrink-0 flex-col">
-          <span className="text-caption font-bold leading-snug text-fg-heading">
-            <bdi>{companyName}</bdi>
-          </span>
-          {own ? <span className="text-caption font-semibold text-fg-body">{ownLabel}</span> : null}
+        {/* The name and «فريقك» run on as one line, as the artboard sets «صنف، فريقك»; a long name may still wrap. */}
+        <span className="min-w-0 max-w-[45%] shrink-0 text-caption leading-snug">
+          <bdi className="font-bold text-fg-heading">{companyName}</bdi>
+          {own ? <span className="ms-1.5 font-semibold text-fg-body">{ownLabel}</span> : null}
         </span>
         <ProgressBar value={fraction} max={1} fill="team" teamColor={colour} decorative className="min-w-0 flex-1" />
         <span className="shrink-0 font-display font-extrabold text-fg-heading">
