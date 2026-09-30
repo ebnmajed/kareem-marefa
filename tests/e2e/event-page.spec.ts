@@ -252,7 +252,10 @@ test("★ after reserving: the same card, re-rendered — «أضِف إلى تق
   const region = page.getByRole("region", { name: "الحضور" });
   await expect(region.getByText("تم تأكيد حجزك")).toBeVisible();
   await expect(region.getByRole("button", { name: "أضِف إلى تقويمك" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "أضِف إلى تقويمك" })).toHaveCount(1);
+  // ★ Wave 18 (DEC-209, a ledger line): once held, the calendar is the primary — in the card at every width, and in
+  // the bottom bar on the phone too. The region holds exactly one.
+  await expect(page.getByRole("button", { name: "أضِف إلى تقويمك" })).toHaveCount(testInfo.project.name === "phone" ? 2 : 1);
+  await expect(region.getByRole("button", { name: "أضِف إلى تقويمك" })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "احجز مقعدك" })).toHaveCount(0);
   await expect(region.getByRole("button", { name: "إلغاء الحجز" })).toBeVisible();
 
