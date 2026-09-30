@@ -5963,3 +5963,30 @@ their tests.
 | A failed toggle says so at the row; a dropped connection does not take the page to the error boundary | `task-row.tsx` | `REQ-UIX-016` |
 | External links `rel="noopener noreferrer"`; `<bdi>` on titles and descriptions; Western numerals | `task-row.tsx` | `REQ-MAT-007`'s rule, `REQ-INT-007`, `REQ-INT-006` |
 | `null` exactly when `tasksSummary()` is not visible; no `<section>`, no `<h2>` | `panel.tsx` | slot contract |
+
+### PR B — built (the create commit), checked against the kept-behaviour tables
+
+Every row of the two tables above was checked against the new files; «lives now» holds for each, with these
+**deliberate differences**, each named so the reviewer reads them as chosen, not lost:
+
+1. **The count lines left the slots** («3 مواد», «صورتان», «3 تعليقات», «أنجزت 1 منها»): the artboards put the count
+   in the heading's row, which is the page's (slot contract 1); each `…Summary()` still returns it.
+2. **The font-substitution warning shows to the presenter and staff only** (`REQ-MAT-011` warns «the presenter»;
+   its sentence tells them to re-export). A member no longer sees it.
+3. **The like on a comment is `reaction-bar`**: one name, «إعجاب» and the count, with `aria-pressed`; «إلغاء
+   الإعجاب» is gone (a toggle keeps one name), and so is the old «whisper» motion (`REQ-UIX-034`: the pressed state is
+   the acknowledgement; `DEC-183` withdrew `DEC-100`).
+4. **A comment's time is relative** («قبل ساعتين»), from the server's render instant so both sides of hydration agree;
+   the full date is its `title`.
+5. **The photo tiles carry no takedown**; it is in the lightbox beside the download (`album.tsx` — a client wrapper, so
+   `lightbox.tsx` imports no server action and its evidence suite loads unchanged).
+6. **Choosing a photograph uploads it**: the tile and the pill are one labelled file control (`upload-widget`'s add-only
+   `variant`); the form variant — drop zone and button — is unchanged for every other caller.
+7. **A task is a checkbox** (`ui/checkbox`), a form task has none; «أنجزتها» / «التراجع عن الإنجاز» are gone as words.
+
+**Two `ui-lint` escapes, for the lead's written approval:** the audio scrubber's native range input (no slider
+primitive exists) and the add tile's visually-hidden file input inside its own label. Each carries its reason.
+
+**The SQL for the lead:** `supabase/proposed/content/comments_broadcast_author_context.sql` — `comments_broadcast()`
+gains `authorCompanyName`, `authorTeamColor`, `authorIsPresenter`, add-only; `tests/rls/comments-broadcast-author.test.ts`
+(3 cases, as a member writing, through `applyProposed()`); `comments-no-hotlink` still green beside it.

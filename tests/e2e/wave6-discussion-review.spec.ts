@@ -180,8 +180,9 @@ test("the discussion at 390 px RTL, in the states a member meets", async ({ cont
   await page.getByRole("button", { name: "نشر" }).click();
   await expect(discussion(page).getByText("Transformers", { exact: false })).toBeVisible();
   // A reaction on the other member's question — the resting reacted state.
-  await discussion(page).getByRole("button", { name: "إعجاب" }).first().click();
-  await expect(discussion(page).getByRole("button", { name: "إلغاء الإعجاب" }).first()).toBeVisible();
+  // Wave 18 (DEC-208): the like is `reaction-bar`'s — one name, «إعجاب N», and its pressed state.
+  await discussion(page).getByRole("button", { name: /^إعجاب/ }).first().click();
+  await expect(discussion(page).getByRole("button", { name: /^إعجاب/, pressed: true }).first()).toBeVisible();
   await page.waitForTimeout(600); // past the whisper, so the capture is the resting state
   await capture(page, "2-thread");
 

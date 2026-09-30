@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FileDrop } from "@/components/ui/file-drop";
 import { Panel } from "@/components/ui/panel";
 import { useToast } from "@/components/ui/toast";
-import { AlertCircleIcon } from "@/components/ui/icons";
+import { AlertCircleIcon, CameraIcon } from "@/components/ui/icons";
 import { subscribeToSessionTopic } from "@/lib/realtime/channel";
 import type { PhotoKind } from "@/lib/dal/photos";
 
@@ -65,9 +65,17 @@ interface UploadWidgetProps {
   locale: string;
   sessionId: string;
   imageLimitMb: number;
+  /**
+   * Wave 18, add-only (`EventLive.dc.html:63`, `EventDone.dc.html:83`, DEC-209). `form` (the default) is the
+   * drop zone and its button, unchanged. `tile` is the dashed square that stands first in a live session's grid;
+   * `pill` is the quiet control under an ended session's grid. Both are ONE labelled file control: choosing a
+   * photograph uploads it, through the same checks and the same «تتم معالجة الصورة الآن…» as the form — the
+   * accepted types and the size limit are said beside them by the caller (REQ-UIX-024).
+   */
+  variant?: "form" | "tile" | "pill";
 }
 
-export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetProps) {
+export function UploadWidget({ locale, sessionId, imageLimitMb, variant = "form" }: UploadWidgetProps) {
   const t = useTranslations("photos.upload");
   const router = useRouter();
   const toast = useToast();
@@ -109,9 +117,9 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
     };
   }, [sessionId, resolveAwaited]);
 
-  function handleSubmit() {
+  function handleSubmit(chosen?: File) {
     setError(null);
-    const file = files[0] ?? null;
+    const file = chosen ?? files[0] ?? null;
     if (!file) {
       setError(t("fileRequired"));
       return;
@@ -188,6 +196,49 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
     });
   }
 
+  if (variant !== "form") {
+    const tile = variant === "tile";
+    return (
+      <div className={tile ? "flex h-full flex-col gap-1" : "flex flex-col gap-2"}>
+        <label
+          className={
+            tile
+              ? "flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-tile border-2 border-dashed border-edge bg-surface text-caption font-bold text-fg-muted focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--ring)] hover:bg-hover"
+              : "inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-pill border border-edge bg-surface px-4 text-label font-bold text-fg-heading focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--ring)] hover:bg-hover"
+          }
+          aria-busy={pending || undefined}
+        >
+          <CameraIcon aria-hidden className={tile ? "text-2xl" : "text-lg"} />
+          <span>{pending ? t("uploading") : t("action")}</span>
+          {/* ui-lint-disable-next-line field — the add tile's file input, visually hidden inside its own <label> (the tile IS the label, «إضافة صورة»); `file-drop`'s zone and button cannot be drawn as one grid square (pending the lead's written approval, PR B) */}
+          <input
+            key={resetKey}
+            type="file"
+            name="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={pending}
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (!file) return;
+              if (file.size > imageLimitMb * 1024 * 1024) {
+                setError(t.rich("sizeLimitExceeded", { limitMb: imageLimitMb, bdi: (chunks) => <bdi>{chunks}</bdi> }));
+                setResetKey((k) => k + 1);
+                return;
+              }
+              handleSubmit(file);
+            }}
+          />
+        </label>
+        {error ? (
+          <p role="alert" className="text-caption text-fg-heading">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <FileDrop
@@ -209,7 +260,7 @@ export function UploadWidget({ locale, sessionId, imageLimitMb }: UploadWidgetPr
       {/* ★ the lead's live-build review: an enabled dark primary under an
           empty drop zone reads as a dead button — disabled until there is
           something to submit, not just while busy. */}
-      <Button type="button" onClick={handleSubmit} disabled={files.length === 0} pending={pending} pendingLabel={t("uploading")} size="sm" className="self-start">
+      <Button type="button" onClick={() => handleSubmit()} disabled={files.length === 0} pending={pending} pendingLabel={t("uploading")} size="sm" className="self-start">
         {t("action")}
       </Button>
     </div>

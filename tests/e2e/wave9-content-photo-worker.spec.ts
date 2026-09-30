@@ -160,8 +160,8 @@ test("★ T4 — a real upload through the real worker: exif stripped, the galle
 
   await expect(page.locator("img")).toHaveCount(0); // nothing seeded — this run creates the only photo
 
-  await page.locator('input[name="file"]').setInputFiles({ name: "photo.jpg", mimeType: "image/jpeg", buffer: jpegWithExif() });
-  await page.getByRole("button", { name: "إضافة صورة" }).click();
+  // Wave 18 (DEC-209): choosing the photograph IS the upload — the tile is one labelled file control.
+  await page.locator("#main").getByLabel("إضافة صورة").setInputFiles({ name: "photo.jpg", mimeType: "image/jpeg", buffer: jpegWithExif() });
   // REQ-EVT-010: told AT ONCE that it is processing, never that it was posted.
   // ★ Exact match only — Radix's own live region duplicates the toast's text prefixed with the
   // shell's "إشعار"/"Notification" announcement word (`<span role="status">`), and a substring
