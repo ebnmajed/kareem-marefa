@@ -9,7 +9,7 @@
 | Artifact | Count |
 |---|---|
 | Requirements (`REQ-*`) | **356** |
-| Entities (`ENT-*`) | **83** |
+| Entities (`ENT-*`) | **84** |
 | Stories (`STORY-*`) | **186** |
 | Screens cited (`SCR-*`) | 57 |
 | Jobs cited (`JOB-*`) | 40 |
@@ -527,8 +527,8 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-052` | — | — | — | — | — | `STORY-UIX-036` | M19 |
 | `REQ-UIX-053` | — | — | — | — | — | `STORY-UIX-038` | M19 |
 | `REQ-UIX-054` | — | — | `SCR-010` `SCR-011` `SCR-012` | — | — | `STORY-UIX-039` | M20 |
-| `REQ-UIX-055` | — | — | `SCR-010` `SCR-022` | — | — | `STORY-UIX-044` `STORY-UIX-047` | M20 |
-| `REQ-UIX-056` | — | — | `SCR-010` | — | — | `STORY-UIX-040` `STORY-UIX-044` | M20 |
+| `REQ-UIX-055` | `ENT-feed_announcements` | — | `SCR-010` `SCR-022` | — | — | `STORY-UIX-044` `STORY-UIX-047` | M20 |
+| `REQ-UIX-056` | `ENT-feed_announcements` | `POL-feed_announcements.read` `POL-feed_announcements.write` | `SCR-010` | — | — | `STORY-UIX-040` `STORY-UIX-044` | M20 |
 | `REQ-UIX-057` | — | — | `SCR-010` `SCR-012` | — | — | `STORY-UIX-041` | M20 |
 | `REQ-UIX-058` | — | — | `SCR-002` `SCR-003` `SCR-004` | — | — | `STORY-UIX-042` | M20 |
 | `REQ-UIX-059` | — | — | `SCR-007` | — | — | `STORY-UIX-043` | M20 |

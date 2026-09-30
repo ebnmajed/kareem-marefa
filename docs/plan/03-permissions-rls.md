@@ -826,6 +826,7 @@ for insert and update, so "opens at completion, closes 14 days later" is one rul
 | `member_badges`, `member_perks`, `streak_awards` | P1 | — | — | — | Awarded by job or admin RPC. |
 | `leaderboard_snapshots`, `leaderboard_entries` | §5.7b | — | — | — | Job-written. |
 | `member_seen_marks` | §5.7c | §5.7c | §5.7c | — | A member's own bookmark of what they have seen (`0162`, `DEC-197`). No timestamp; no delete; the worker never touches it. |
+| `feed_announcements` | §5.7d | §5.7d | §5.7d | §5.7d | An org's announcements in the feed (`0164`, `DEC-206` §3, `REQ-UIX-056`). Members read what is published and unexpired; an admin reads and writes all of the org's. The update grant is by column. The worker never touches it. |
 
 #### §5.7a — `points_ledger`, read
 ```sql
@@ -866,6 +867,25 @@ revoke all on member_seen_marks from anon, service_role;
 Nobody reads another member's marks — not an admin, not a moderator: what a member has looked at is theirs. No
 delete: the member's deletion cascades. `service_role` holds nothing; moments 3 to 5 are acknowledged by the client
 that showed them, never by a job.
+
+
+#### §5.7d — `feed_announcements` — an org's announcements (`0164`, `DEC-206` §3, `REQ-UIX-056`)
+
+Expiry is a predicate, not a deletion: the member's read policy stops answering for an expired row and no job runs.
+`org_id` and `author_id` are never updatable — the update grant names three columns. No super-admin disjunct;
+`service_role` holds nothing. Cases: `POL-feed_announcements.read`, `POL-feed_announcements.write` in
+`tests/rls/feed-announcements.test.ts`.
+
+```sql
+create policy "feed_announcements_read_published" on feed_announcements for select to authenticated;  -- org_id = auth_org_id() and published_at <= now() and not expired
+create policy "feed_announcements_admin_read"     on feed_announcements for select to authenticated;  -- org_id = auth_org_id() and is_org_admin()
+create policy "feed_announcements_admin_insert"   on feed_announcements for insert to authenticated;  -- the same, and author_id = auth_member_id()
+create policy "feed_announcements_admin_update"   on feed_announcements for update to authenticated;  -- the same, both sides
+create policy "feed_announcements_admin_delete"   on feed_announcements for delete to authenticated;  -- org_id = auth_org_id() and is_org_admin()
+grant select, insert, delete on feed_announcements to authenticated;
+grant update (body, published_at, expires_at) on feed_announcements to authenticated;
+revoke all on feed_announcements from anon, service_role;
+```
 
 ### 5.8 Certificates
 

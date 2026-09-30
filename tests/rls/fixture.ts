@@ -112,6 +112,8 @@ export async function seed(tx: Tx): Promise<M7Fixture> {
   await tx.asOwner();
   for (const org of [f.a, f.b]) {
     await tx.q(`insert into public.member_seen_marks (member_id, org_id, points_total, all_time_rank, company_id) values ($1, $2, 680, 5, $3)`, [org.members[0].memberId, org.id, org.companyId]);
+    // wave 18 (0164, DEC-206 §3): one published announcement per org, so the sweep meets org B's behind the wall.
+    await tx.q(`insert into public.feed_announcements (org_id, author_id, body) values ($1, $2, $3)`, [org.id, org.admin.memberId, `إعلان ${org.slug}`]);
   }
   return f;
 }
