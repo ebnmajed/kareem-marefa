@@ -141,7 +141,10 @@ export async function ActionCard(props: ActionCardProps) {
             <RsvpStatus {...slot} between={calendarInBooked ? <AddToCalendar {...slot} placement="card" /> : undefined} />
             <ReserveRefused />
             {showsAttended(checkIn, can) ? <SessionCta state={{ kind: "attended" }} label={tRsvp("attended")} /> : null}
-            {live ? <AwardState sessionId={slot.sessionId} locale={slot.locale} variant="inline" /> : null}
+            {/* `checkin`'s acknowledgement (REQ-CHK-018): self-gated on its own DTO — `none` renders nothing — so it is
+                mounted in every phase but the ended one, where the outcome card carries it. Between two days of a
+                workshop the phase is `open` and a member checked in on day one is still told what is pending. */}
+            {!ended ? <AwardState sessionId={slot.sessionId} locale={slot.locale} variant="inline" /> : null}
             {!calendarInBooked ? control("card") : null}
             {can.calendar && primary !== "calendar" ? <AddToCalendar {...slot} placement="inline" variant="secondary" /> : null}
           </div>
