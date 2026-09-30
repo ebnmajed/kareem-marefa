@@ -55,6 +55,22 @@ test.beforeAll(async ({}, testInfo) => {
   orgId = rows[0].id;
   await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
+  // A seeded feed, not an empty one: a live session, two open ones, one that ended — so the home the probe
+  // loads has posts, rings, a recap and the week (the empty feed is a different page).
+  const { rows: cat } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'قياس') returning id`, [orgId]);
+  const { rows: venue } = await db.query<{ id: string }>(`insert into public.venues (org_id, name, capacity) values ($1, 'قاعة القياس', 40) returning id`, [orgId]);
+  for (const [title, offset, state] of [
+    ["جلسة جارية", "-30 minutes", "in_progress"],
+    ["جلسة الغد", "1 day", "published"],
+    ["جلسة بعد يومين", "2 days", "published"],
+    ["جلسة الأمس", "-1 day", "completed"],
+  ] as const) {
+    await db.query(
+      `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at)
+       values ($1, $2, 'نبذة', $3, 'introductory', now() + $4::interval, 90, now() + $4::interval + interval '90 minutes', $5, 40, $6::public.session_state, now() - interval '3 days')`,
+      [orgId, title, cat[0].id, offset, venue[0].id, state],
+    );
+  }
   email = `member@${domain}`;
   const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "يمان رضا" } });
   if (error) throw error;
