@@ -3175,8 +3175,8 @@ no animation.
 - Each has a test that renders it inside the scope, an RTL check and a gallery entry at 390 px and desktop.
 - A page's `h1` and a section's `h2` are set in the display face; `h3` and below in the body face.
 - A link is told from text by its underline and never by the accent alone.
-- An icon button's target is at least 44 px and its name is on the element; a submit button keeps its label while
-  pending.
+- An icon button's target is at least 44 px at its default size and its name is on the element — `sm`, for dense
+  rows, stays 36 px and adds nothing that overflows its box; a submit button keeps its label while pending.
 - The reorderable list keeps its buttons as the conforming path (`DEC-093`) and does not animate.
 - No behaviour, prop or accessible name of the seven changes.
 

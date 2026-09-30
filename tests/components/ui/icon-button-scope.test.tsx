@@ -1,8 +1,8 @@
 // `ui/icon-button` inside the playground's scope — DEC-199 §3, REQ-UIX-051.
 //
 // It composes `ui/button`, so inside the scope it is already a circle with the
-// button's faces. What a square needs of its own: 52 px at `lg`, and a 44 px hit
-// area around the 36 px `sm` (`04-components.md`: «hit target ≥ 44px»).
+// button's faces. What a square needs of its own: 52 px at `lg`. `sm` stays 36 px
+// with no larger hit area — see the component for what one cost.
 import { render, screen } from "@testing-library/react";
 import axe from "axe-core";
 import { NextIntlClientProvider } from "next-intl";
@@ -48,7 +48,7 @@ const BEFORE: Record<Size, string> = {
   lg: "size-12 text-[1.375rem]",
 };
 const ADDED: Record<Size, string[]> = {
-  sm: ["pg:relative", "pg:after:absolute", "pg:after:-inset-1", "pg:after:content-['']"],
+  sm: [],
   md: [],
   lg: ["pg:size-13"],
 };
@@ -83,10 +83,10 @@ describe("ui/icon-button — inside the scope", () => {
     expect(inside(mount("md"))).toContain("pg:rounded-pill");
   });
 
-  it("`sm` draws 36 px and is hit at 44 px: a transparent pseudo-element 4 px out on every side", () => {
+  it("`sm` draws 36 px and adds nothing that overflows its box — a pseudo-element hit area made a phone page scroll sideways", () => {
     const cls = tokens(mount("sm").getAttribute("class"));
     expect(cls).toContain("size-9");
-    for (const c of ADDED.sm) expect(cls).toContain(c);
+    expect(cls.some((c) => /after:|before:|-inset-/.test(c))).toBe(false);
   });
 
   it("nothing scales on hover, and the press is the button's — transform only", () => {

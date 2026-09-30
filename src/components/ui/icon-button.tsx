@@ -16,14 +16,19 @@ import { SpinnerIcon } from "@/components/ui/icons";
 //
 // ★★ WAVE 17 — «ساحة اللعب» (DEC-199 §3, REQ-UIX-051). It composes `ui/button`, so
 // inside the scope it is already a circle (the pill, on a square) with the
-// button's faces and its press. Two things a square needs of its own:
-//   · `lg` is 52 px inside the scope, the call to action's height beside it;
-//   · `sm` keeps its 36 px drawing and takes a 44 px HIT AREA, by a transparent
-//     pseudo-element — `04-components.md`: «hit target ≥ 44px» — as the chip's
-//     remove control does (DEC-186 §5). Outside the scope nothing changes.
+// button's faces and its press. One thing a square needs of its own: `lg` is 52 px
+// inside the scope, the call to action's height beside it.
+//
+// ★ `sm` STAYS 36 px, AND TAKES NO LARGER HIT AREA. It was given one for a commit —
+// a transparent pseudo-element 4 px out on every side, for `04-components.md`'s
+// «hit target ≥ 44px». The gallery's spec measured what that costs: the
+// pseudo-element is part of the scrollable overflow, so an `sm` button at a
+// container's inline end made the container 4 px wider than its box — a phone
+// page that scrolls sideways. `md`, the default, is 44 px; `sm` is for dense rows
+// and clears SC 2.5.8's 24 px, as it always has.
 
 const SQUARE: Record<Size, string> = {
-  sm: "size-9 text-[1.125rem] pg:relative pg:after:absolute pg:after:-inset-1 pg:after:content-['']",
+  sm: "size-9 text-[1.125rem]",
   md: "size-11 text-[1.25rem]",
   lg: "size-12 text-[1.375rem] pg:size-13",
 };
