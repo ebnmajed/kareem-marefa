@@ -159,7 +159,17 @@ const desktop = () => test.info().project.name === "desktop";
 
 /** The week this project shows: the rail from `lg`, the HUD below it — the other copy is in the HTML, not displayed. */
 const weekOf = (page: Page) =>
-  desktop() ? page.locator("#main aside [data-moment]").first() : page.locator("#main").getByRole("region", { name: "حصيلتك هذا الشهر" }).locator("xpath=..");
+  desktop() ? page.locator("#main aside [data-moment-copy]").first() : page.locator("#main [data-moment-copy]").filter({ has: page.getByRole("region", { name: "حصيلتك هذا الشهر" }) });
+
+/**
+ * ★ The week has arrived and its displayed copy owns the moments — the controller is mounted. Before this, «no
+ * animation yet» means nothing: under load (this spec beside `content`'s, four workers) the home's streamed week
+ * can land seconds after the URL changes. The generous timeout is that load, not a guess at the moment's length.
+ */
+async function weekReady(page: Page) {
+  await expect(weekOf(page)).toHaveAttribute("data-moment-copy", "displayed", { timeout: 30_000 });
+  await expect(weekOf(page)).toHaveAttribute("data-moment", /playing|static/, { timeout: 30_000 });
+}
 
 async function capture(page: Page, surface: "hud" | "rail", state: "animated" | "static") {
   mkdirSync(SHOTS, { recursive: true });
@@ -222,6 +232,7 @@ test("★★ the home first: moments 3 and 5 play on the week; SCR-022 and the m
 
   // ★ A hard load of the home: the truth, painted; nothing plays, nothing is recorded.
   await one.page.goto("/ar/app");
+  await weekReady(one.page);
   await settled(one.page);
   expect(await animations(one.page)).toBe(0);
   expect((await mark())?.points_total).toBe(total - 120);
@@ -229,7 +240,8 @@ test("★★ the home first: moments 3 and 5 play on the week; SCR-022 and the m
   // ★ The app's own arrival: the week plays, and records the points and the rank — with the level LAST SEEN.
   await one.page.goto("/ar/app/me");
   await navigateInApp(one.page, homeTab(one.page), /\/ar\/app$/);
-  await expect.poll(() => animations(one.page)).toBeGreaterThan(0);
+  await weekReady(one.page);
+  await expect.poll(() => animations(one.page), { message: "the week's moments played on the app's own arrival", timeout: 30_000 }).toBeGreaterThan(0);
   await expect.poll(async () => (await mark())?.points_total, { timeout: 20_000 }).toBe(total);
   await expect.poll(async () => (await mark())?.monthly_rank, { timeout: 20_000 }).toBe(2);
   expect((await mark())?.level_id, "the week passes the level through (DEC-207 §1.3)").toBe(levels[0].id);
@@ -263,6 +275,7 @@ test("★★ SCR-022 and the board first: the home is silent for what they showe
 
   // Now the home, in-app: nothing of the week moves.
   await navigateInApp(two.page, homeTab(two.page), /\/ar\/app$/);
+  await weekReady(two.page);
   const before = await animations(two.page);
   await settled(two.page);
   expect(await animations(two.page)).toBe(before);
@@ -275,6 +288,7 @@ test("★ the static state under reduced motion is whole — and recorded as see
   const total = await anOccurrence(20, 4);
   await calm.page.goto("/ar/app/me");
   await navigateInApp(calm.page, homeTab(calm.page), /\/ar\/app$/);
+  await weekReady(calm.page);
   await settled(calm.page);
   expect(await animations(calm.page)).toBe(0);
   const week = weekOf(calm.page);

@@ -243,6 +243,35 @@ describe("★ the copy that is not displayed", () => {
     expect(shown.acknowledgePoints).toHaveBeenCalledTimes(1);
   });
 
+  it("★ a copy committed before it is shown plays when it gets its box — the gate watches, it does not measure once", async () => {
+    let observed: (() => void) | null = null;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(cb: () => void) {
+          observed = cb;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const p = week();
+    const { container } = render(
+      <div data-hidden-copy="">
+        <MomentWeek {...p} />
+      </div>,
+    );
+    expect(made).toHaveLength(0);
+    expect(container.querySelector("[data-moment-copy]")).toHaveAttribute("data-moment-copy", "hidden");
+    // The boundary reveals it: the element now has a box.
+    container.firstElementChild!.removeAttribute("data-hidden-copy");
+    await act(async () => observed!());
+    expect(container.querySelector("[data-moment-copy]")).toHaveAttribute("data-moment-copy", "displayed");
+    expect(made.length).toBeGreaterThan(0);
+    await finishAll();
+    expect(p.acknowledgePoints).toHaveBeenCalledTimes(1);
+  });
+
   it("alone, it leaves the occurrence unclaimed for the next surface", () => {
     render(
       <div data-hidden-copy="">

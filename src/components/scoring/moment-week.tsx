@@ -71,15 +71,33 @@ export function MomentWeek(props: MomentWeekProps) {
   const [displayed, setDisplayed] = useState(false);
   const [frames, setFrames] = useState<Frames>({ points: null, rank: null });
 
-  // Measured once, before the first paint of this mount. A resize across `lg` later does not hand the
-  // occurrence to the other copy: it stays with the one the member was looking at.
+  // Measured before the first paint of this mount — and, when this copy has no box yet, watched until it
+  // gets one. ★ A copy can be committed before it is shown: under load, a streamed segment may land while
+  // its boundary still hides it, and a copy measured only once at that instant would never play (the lead's
+  // gate at f7d0f4d7, the week's spec run beside `content`'s). The copy the frame hides at this width never
+  // gets a box, so it never mounts the controller. A copy that appears later — a resize across `lg` — finds
+  // the occurrence already claimed by the one the member was looking at, and stays static.
   useIsomorphicLayoutEffect(() => {
-    if (root.current && isDisplayed(root.current)) setDisplayed(true);
+    const el = root.current;
+    if (!el) return;
+    if (isDisplayed(el)) {
+      setDisplayed(true);
+      return;
+    }
+    if (typeof ResizeObserver === "undefined") return;
+    const watch = new ResizeObserver(() => {
+      if (!isDisplayed(el)) return;
+      watch.disconnect();
+      setDisplayed(true);
+    });
+    watch.observe(el);
+    return () => watch.disconnect();
   }, []);
 
   return (
     <WeekFrames.Provider value={frames}>
-      <div ref={root} className={props.className}>
+      {/* `data-moment-copy` says which copy owns the moments — for a test to wait on, never for style. */}
+      <div ref={root} className={props.className} data-moment-copy={displayed ? "displayed" : "hidden"}>
         {props.children}
       </div>
       {displayed ? <Controller {...props} root={root} onFrames={setFrames} /> : null}
