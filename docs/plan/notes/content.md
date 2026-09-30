@@ -5126,3 +5126,10 @@ that has a utility») reads as covering them; **I would rename them only if the 
   stalled at the network draws the link's dot and the route bar. **The least certain case is the last**: it assumes
   `useLinkStatus` reports pending for a navigation to the same path with a different query, and that holding the
   prefetch holds the navigation. If it does not go pending, the link's target is what to change, not the assertion.
+- **N2 — the member side's raw palette, a class at a time.** Twelve files, nothing but the class in each: six
+  `bg-silver-100` at rest → `bg-raised`; two on hover → `hover:bg-hover`; the sheet's footer → `bg-surface` (F3); the
+  mention popup → `bg-raised!` (F4); the tab strip's fade → `var(--bg)` (F6); the two hand-built buttons →
+  `buttonClass()` with its import. ★ **`ratings.tsx`'s is `"md"`, not the ruled `"lg"`**: it was `h-11`, and `lg` would
+  have grown it to 52 px inside the scope — a size change, which the ruling's own «class only» excludes. The calendar's
+  was `h-12 px-7`, which is `lg` exactly. **One entry left on my side of the gate and it is not mine:**
+  `lib/ui/confetti.ts: var(--color-play-lime) var(--color-play-bone)` — the lead's file, and the playground's own tokens.

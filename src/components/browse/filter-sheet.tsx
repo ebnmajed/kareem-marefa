@@ -117,7 +117,7 @@ export function FilterSheet({ search, options }: FilterSheetProps) {
       >
         {t("more")}
         {applied > 0 ? (
-          <span aria-hidden="true" className="ms-1 rounded-field bg-silver-100 px-1.5 text-caption text-fg-heading">
+          <span aria-hidden="true" className="ms-1 rounded-field bg-raised px-1.5 text-caption text-fg-heading">
             {formatNumber(applied)}
           </span>
         ) : null}
@@ -211,7 +211,7 @@ export function FilterSheet({ search, options }: FilterSheetProps) {
 
           {/* ★ Sticky at the sheet's bottom edge: on a phone the fields run past the
               first screen, and «اعرض النتائج» must not be below the fold. */}
-          <div className="sticky bottom-0 -mx-5 flex flex-wrap items-center gap-2 border-t border-edge bg-[var(--color-canvas)] px-5 py-3">
+          <div className="sticky bottom-0 -mx-5 flex flex-wrap items-center gap-2 border-t border-edge bg-surface px-5 py-3">
             <Button type="submit" size="md">
               {t("sheet.apply")}
             </Button>

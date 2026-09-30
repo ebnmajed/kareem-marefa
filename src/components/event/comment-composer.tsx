@@ -218,7 +218,7 @@ export function CommentComposer({
         className={controlClass(false, "md", "resize-none overflow-hidden")}
       />
       {candidates.length > 0 ? (
-        <Panel className="absolute z-10 mt-1 w-full max-w-xs p-0! bg-[var(--color-canvas)]! shadow-card">
+        <Panel className="absolute z-10 mt-1 w-full max-w-xs p-0! bg-raised! shadow-card">
           <ul>
             {candidates.map((c) => (
               <li key={c.id}>

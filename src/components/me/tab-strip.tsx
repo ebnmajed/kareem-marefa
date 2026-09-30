@@ -91,7 +91,7 @@ export function MeTabStrip({ label, items }: { label: string; items: MeTabItem[]
           (DEC-133, `tests/unit/logical-utilities.test.ts`). */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 end-0 w-8 [background:linear-gradient(to_var(--me-tab-fade-dir,right),transparent,var(--color-canvas))] ltr:[--me-tab-fade-dir:right] rtl:[--me-tab-fade-dir:left]"
+        className="pointer-events-none absolute inset-y-0 end-0 w-8 [background:linear-gradient(to_var(--me-tab-fade-dir,right),transparent,var(--bg))] ltr:[--me-tab-fade-dir:right] rtl:[--me-tab-fade-dir:left]"
       />
     </div>
   );

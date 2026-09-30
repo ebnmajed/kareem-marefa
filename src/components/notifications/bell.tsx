@@ -25,7 +25,7 @@ export async function NotificationBell({ locale }: { memberId?: string; locale: 
     <Link
       href="/app/me/notifications"
       aria-label={t("bell.unread", { count: unread, value: formatNumber(unread) })}
-      className="relative inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-field px-2.5 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading md:px-3"
+      className="relative inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-field px-2.5 text-label text-fg-body hover:bg-hover hover:text-fg-heading md:px-3"
     >
       {/* ★ The BELL glyph, at icon size, on every width (DEC-111). It was the
           house DOT at 8 px below `md` — which read as a stray full stop between

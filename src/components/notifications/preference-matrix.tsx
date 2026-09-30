@@ -51,7 +51,7 @@ function Toggle({
         aria-label={`${label} — ${enabled ? on : off}`}
         className={`${cell} ${
           enabled
-            ? "border-edge-strong bg-silver-100 text-fg-heading"
+            ? "border-edge-strong bg-raised text-fg-heading"
             : "border-edge text-fg-muted hover:border-edge-strong hover:text-fg-heading"
         }`}
       >

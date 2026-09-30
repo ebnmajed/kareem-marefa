@@ -57,7 +57,7 @@ export async function SessionPoster({ sessionId, locale, variant = "master" }: D
       <img
         src={poster.imageUrl}
         alt=""
-        className="w-full rounded-card border border-edge bg-silver-100"
+        className="w-full rounded-card border border-edge bg-raised"
         loading="lazy"
         decoding="async"
         {...(poster.width && poster.height ? { width: poster.width, height: poster.height } : {})}

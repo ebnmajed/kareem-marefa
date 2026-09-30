@@ -83,7 +83,7 @@ export function StarRating({
             key={star}
             className={[
               "relative inline-flex size-11 cursor-pointer items-center justify-center rounded-field text-[1.75rem]",
-              "text-fg-muted hover:bg-silver-100",
+              "text-fg-muted hover:bg-hover",
               // Filled when this star, or any star after it in the row, is chosen.
               "[&:has(:checked)]:text-fg-heading [&:has(:checked)_path]:fill-current",
               "[&:has(~label_:checked)]:text-fg-heading [&:has(~label_:checked)_path]:fill-current",

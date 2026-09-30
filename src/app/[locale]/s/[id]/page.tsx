@@ -135,7 +135,7 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
           <img
             src={publicCardImagePath(data.id)}
             alt={t("posterAlt")}
-            className={`block w-full bg-silver-100 ${ended ? "grayscale opacity-45" : ""}`}
+            className={`block w-full bg-raised ${ended ? "grayscale opacity-45" : ""}`}
             width={data.imageWidth ?? undefined}
             height={data.imageHeight ?? undefined}
             style={{ aspectRatio: data.imageWidth && data.imageHeight ? `${data.imageWidth} / ${data.imageHeight}` : "1200 / 630" }}

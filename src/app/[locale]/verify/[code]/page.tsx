@@ -101,7 +101,7 @@ async function Result({ certificate: c, locale }: { certificate: Certificate; lo
         role="status"
         className={
           revoked
-            ? "mt-6 rounded-card border border-edge-strong bg-silver-100 px-4 py-3 text-h2 text-fg-heading"
+            ? "mt-6 rounded-card border border-edge-strong bg-raised px-4 py-3 text-h2 text-fg-heading"
             : "mt-6 rounded-card border border-success bg-success-bg px-4 py-3 text-h2 text-success"
         }
       >
