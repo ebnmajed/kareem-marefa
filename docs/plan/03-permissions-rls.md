@@ -1475,6 +1475,13 @@ generated suite is the highest-value test in the product.
 | `RPC-mark_board_seen.one_board` | Touches only the named board's columns; the others and the points cursor are unchanged. (migration `0163`). |
 | `RPC-mark_board_seen.unknown_board` | A board other than `all_time`, `monthly` or `company` is refused with `22023`. (migration `0163`). |
 | `RPC-mark_board_seen.fraction_clamped` | A company fraction outside 0–1 is stored clamped. (migration `0163`). |
+| `RPC-session_attendance_count.count_not_who` | A member reads how many attended a session and no `check_ins` row of anyone else. (migration `0165`). |
+| `RPC-session_attendance_count.removed` | A check-in an admin removed does not count; a member is counted once across days. (migration `0165`). |
+| `RPC-session_attendance_count.foreign_org` | Another org's session counts zero; `anon` cannot execute it. (migration `0165`). |
+| `RPC-monthly_ranked_count.counts_hidden` | Counts every member entry of the snapshot, an opted-out member's included, though the caller cannot read that row. (migration `0165`). |
+| `RPC-monthly_ranked_count.members_only` | Company entries are not counted. (migration `0165`). |
+| `RPC-monthly_ranked_count.foreign_org` | A snapshot of another org answers null, as an unknown id does. (migration `0165`). |
+| `RPC-monthly_ranked_count.anon` | `anon` cannot execute it. (migration `0165`). |
 | `RPC-mark_seen.anon` | `anon` cannot execute either function. (migration `0163`). |
 | `RPC-record_photo_album_built` | Ready + `MSG-photo_album_ready` to who asked + the expiry enqueued · `stale` when a photograph was hidden mid-build · `superseded` for a replaced build · a part outside its build's prefix refused. (migration `0159`). |
 | `RPC-fail_photo_album` | The current build only, `failed` with its error. (migration `0159`). |
