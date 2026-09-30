@@ -45,6 +45,16 @@ import { SubmitButton } from "@/components/ui/submit-button";
 //
 // No heading and no landmark: the event page owns the region «الحضور» (the slot
 // contract). Static — the reservation's ticket and stamp are the moments' wave's.
+//
+// ★ Wave 18 — the phases as the artboards draw them (REQ-UIX-057, DEC-207 §2),
+// three additions and every existing face unchanged:
+//   · `rate` — «قيّم الجلسة», a link to SCR-015, drawn as `reserve` is (the accent
+//     face, its chip the window's end). Its own kind so the matrix's answer is not
+//     smuggled through `reserve`;
+//   · `size` and `width` — the desktop feed post draws a 44 px action beside the
+//     reaction pills, not a full-width one (`HomeDesktop.dc.html`);
+//   · `booked` with no `cancel` — the feed shows a held seat as a fact and offers no
+//     cancel there, because a feed never reserves (DEC-206 §4.57, N10).
 
 function Chip({ children, tone }: { children: string; tone: "accent" | "signal" | "face" }) {
   const colours =
@@ -68,6 +78,7 @@ function Act({
   pending,
   pendingLabel,
   describedBy,
+  full = true,
 }: {
   act: SessionCtaAct;
   variant: "primary" | "signal" | "secondary";
@@ -77,10 +88,13 @@ function Act({
   pending?: boolean;
   pendingLabel?: string;
   describedBy?: string;
+  /** `w-full` unless the caller asked for the control's own width. */
+  full?: boolean;
 }) {
+  const width = full ? "w-full" : "";
   if (act.href !== undefined) {
     return (
-      <ButtonLink href={act.href} variant={variant} size={size} trailing={trailing} className="w-full" aria-describedby={describedBy}>
+      <ButtonLink href={act.href} variant={variant} size={size} trailing={trailing} className={width} aria-describedby={describedBy}>
         <span data-part="label">{children}</span>
       </ButtonLink>
     );
@@ -91,7 +105,7 @@ function Act({
         variant={variant}
         size={size}
         trailing={trailing}
-        className="w-full"
+        className={width}
         pending={pending}
         pendingLabel={pendingLabel}
         aria-describedby={describedBy}
@@ -127,12 +141,14 @@ function Face({ glyph, label, chip, ringed, describedBy }: { glyph: ReactNode; l
   );
 }
 
-export function SessionCta({ state, label, chip, pendingLabel, pending, className = "" }: SessionCtaProps) {
+export function SessionCta({ state, label, chip, pendingLabel, pending, size = "lg", width = "full", className = "" }: SessionCtaProps) {
   const noteId = useId();
+  const full = width === "full";
 
   switch (state.kind) {
     case "reserve":
     case "waitlist":
+    case "rate":
     case "checkIn": {
       const signal = state.kind === "checkIn";
       return (
@@ -140,7 +156,8 @@ export function SessionCta({ state, label, chip, pendingLabel, pending, classNam
           <Act
             act={state.act}
             variant={signal ? "signal" : "primary"}
-            size="lg"
+            size={size}
+            full={full}
             trailing={chip ? <Chip tone={signal ? "signal" : "accent"}>{chip}</Chip> : undefined}
             pending={pending}
             pendingLabel={pendingLabel}
@@ -164,10 +181,12 @@ export function SessionCta({ state, label, chip, pendingLabel, pending, classNam
           />
           {/* wave 16 (R4, DEC-197): the calendar, between the fact and the cancel — `16` §5.4.2's order. */}
           {state.between}
-          <Act act={cancel.act} variant="secondary" size="md" describedBy={cancel.note ? noteId : undefined}>
-            {cancel.label}
-          </Act>
-          {cancel.note ? (
+          {cancel ? (
+            <Act act={cancel.act} variant="secondary" size="md" full={full} describedBy={cancel.note ? noteId : undefined}>
+              {cancel.label}
+            </Act>
+          ) : null}
+          {cancel?.note ? (
             <p id={noteId} className="text-caption text-fg-muted">
               {cancel.note}
             </p>

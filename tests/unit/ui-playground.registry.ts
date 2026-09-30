@@ -84,6 +84,10 @@ export const REGISTRY: Record<string, Entry> = {
   "reaction-bar.tsx": tokens("reaction-bar", ["bg-raised", "border-edge", "rounded-pill", "text-fg-heading"]),
   "sticker.tsx": tokens("sticker", ["bg-sticker", "text-on-sticker", "shadow-sticker", "font-display", "rounded-pill"]),
   "story-ring.tsx": tokens("story-ring", ["border-team", "border-accent", "border-signal", "font-display"]),
+  // wave 18 (DEC-207): born inside the scope.
+  "feed-item.tsx": tokens("feed-item", ["bg-surface", "bg-raised", "rounded-tile", "text-accent"], "feed-item-scope.test.tsx"),
+  // Its faces are `avatar`'s; what it draws itself is the gap between them and the count line.
+  "attendee-stack.tsx": tokens("attendee-stack", ["ring-canvas", "text-fg-muted"], "attendee-stack-scope.test.tsx"),
 
   // ── `sessions'` ──
   "field.tsx": variant("field"),
@@ -97,6 +101,8 @@ export const REGISTRY: Record<string, Entry> = {
   "textarea.tsx": composes("textarea", ["ui/field"]),
   "session-cta.tsx": variant("session-cta", "session-cta.test.tsx"),
   "code-input.tsx": variant("code-input", "code-input.test.tsx"),
+  // wave 18 (DEC-207): born inside the scope — the bar of an immersive screen; its controls are the caller's.
+  "action-bar.tsx": tokens("action-bar", ["bg-surface", "border-edge", "text-fg-muted"], "action-bar-scope.test.tsx"),
 
   // ── `console`'s ──
   "data-table.tsx": variant("data-table"),
@@ -111,4 +117,7 @@ export const REGISTRY: Record<string, Entry> = {
   "rank-row.tsx": variant("rank-row"),
   "race-bar.tsx": variant("race-bar"),
   "level-card.tsx": tokens("level-card", ["rounded-panel", "font-display", "text-on-level", "bg-raised"], "level-card-scope.test.tsx"),
+  // wave 18 (DEC-207): it draws its own tiles — a figure is a node, which `stat` cannot take (W4) —
+  // and composes `progress-bar`; its accent figures take the light ground's heading through `pg-light:`.
+  "week-hud.tsx": variant("week-hud"),
 };

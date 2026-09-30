@@ -1,5 +1,7 @@
 import { Card, CardBody, CardMedia } from "@/components/ui/card";
 import { SessionStatusBadge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
+import { Poster } from "@/components/ui/poster";
 
 // The gallery's `card` demo — contract 4 (DEC-183 §5, DEC-186 §5). Every density
 // and media state, from literal fixtures: no DAL, no session, no image from
@@ -51,6 +53,25 @@ export function CardDemo() {
           <Body title="تحليل البيانات لغير المتخصصين" meta="الثلاثاء 10:00 ص · 24 مقعدًا متبقيًا" />
         </Card>
       </div>
+
+      {/* ★ Wave 18 — `post`, the feed's session post (REQ-UIX-057): a column, not one link; the poster beside the
+          copy once the CARD is wide enough (a container query), under it on a phone. */}
+      <Card density="post">
+        <div className="flex items-center gap-2.5">
+          <Avatar memberId="demo-sara" displayName="سارة القحطاني" size={40} teamColor="#35D0FF" decorative />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <p className="text-label font-bold text-fg-heading">
+              <bdi>سارة القحطاني</bdi>
+            </p>
+            <p className="text-caption text-fg-muted">قاعة الرياض، 6:30 م</p>
+          </div>
+          <SessionStatusBadge phase="live" size="sm" />
+        </div>
+        <div className="flex flex-col gap-3 @min-[34rem]:flex-row">
+          <Poster title="العرض في 5 شرائح: كيف تُقنع اللجنة التنفيذية" teamColor="#35D0FF" teamName="مواهب" date="اليوم، 6:30 م" className="@min-[34rem]:w-64" />
+          <p className="text-body text-fg-body">خمس شرائح فقط، ولجنة لا تملك أكثر من عشر دقائق.</p>
+        </div>
+      </Card>
 
       <Card>
         <CardBody>

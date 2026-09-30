@@ -4,7 +4,7 @@ import type { MouseEvent } from "react";
 import { Link } from "@/components/ui/link";
 import type { CardActionsProps, CardBodyProps, CardDensity, CardMediaProps, CardProps } from "@/components/ui";
 
-// content's file — `16` §6.4. ONE component, four densities: `grid`
+// content's file — `16` §6.4. ONE component, four densities and the feed's `post` (wave 18): `grid`
 // (browse), `row` (lists, `/app/me`, admin), `compact` (rails, related
 // sessions), `wide` (the home hero rail).
 //
@@ -37,7 +37,25 @@ import type { CardActionsProps, CardBodyProps, CardDensity, CardMediaProps, Card
 // existed stays; these are added under `pg:` and win only inside the scope.
 const SCOPE_CARD = "pg:rounded-panel pg:shadow-none pg:transition-none pg:hover:shadow-none pg:hover:border-edge-strong";
 
+// ★ Wave 18 — `post` (REQ-UIX-057, DEC-206 §4.80), the feed's session post on
+// `SCR-010`. Add-only: the four densities above render exactly as before.
+// A post holds several links and buttons — the presenter, the poster, the like,
+// the comments, share, bookmark and its action — so it is NOT one link: `href`
+// is ignored, because a wrapping link would nest every one of them. It is a
+// column with the scope's padding and a `@container`, so its content lays the
+// poster beside the copy by the card's own width, not the viewport's (the home's
+// column is 600 px at `lg`). No `overflow: hidden`: nothing inside it is clipped,
+// focus rings included.
+const POST = "@container flex min-w-0 flex-col gap-2.5 rounded-panel border border-edge bg-surface p-3 sm:p-4";
+
 export function Card({ density = "grid", href, children, className = "" }: CardProps) {
+  if (density === "post") {
+    return (
+      <article data-density="post" className={`${POST} ${className}`}>
+        {children}
+      </article>
+    );
+  }
   const row = density !== "grid";
   const inner = (
     <div
@@ -92,7 +110,7 @@ function rowClass(row: boolean, density: CardDensity): string {
   if (!row) return `${base} flex-col`;
   // Direction-safe: flexbox's "row" axis already follows the document's own
   // `dir`, so this is not a physical `left`/`right` utility.
-  const widths: Record<Exclude<CardDensity, "grid">, string> = {
+  const widths: Record<Exclude<CardDensity, "grid" | "post">, string> = {
     row: "[&>[data-slot=media]]:w-28 sm:[&>[data-slot=media]]:w-36",
     compact: "[&>[data-slot=media]]:w-20",
     wide: "[&>[data-slot=media]]:w-2/5",
@@ -103,7 +121,7 @@ function rowClass(row: boolean, density: CardDensity): string {
   // edges: the timeline card cut the title mid-word at 390 px. A poster is a
   // designed artefact; empty card surface under it is acceptable, a sliced
   // title is not.
-  return `${base} flex-row items-stretch [&>[data-slot=media]]:self-start ${widths[density as Exclude<CardDensity, "grid">]}`;
+  return `${base} flex-row items-stretch [&>[data-slot=media]]:self-start ${widths[density as Exclude<CardDensity, "grid" | "post">]}`;
 }
 
 const ASPECT: Record<NonNullable<CardMediaProps["aspect"]>, string> = {

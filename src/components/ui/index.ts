@@ -86,7 +86,10 @@ export interface Labelled {
 // ── Surface (4) ───────────────────────────────────────────────────────────
 
 /** `content` · `card.tsx` — one component, four densities (`16` §6.4). */
-export type CardDensity = "grid" | "row" | "compact" | "wide";
+/** ★ wave 18 (REQ-UIX-057, `content`): `post` — the feed's session post, a column that is its own
+ *  `@container` and ignores `href` (a post holds several links; one wrapping link would nest them).
+ *  Add-only: the four existing densities render as they did. */
+export type CardDensity = "grid" | "row" | "compact" | "wide" | "post";
 
 export interface CardProps extends Styleable {
   density?: CardDensity;
@@ -929,12 +932,17 @@ export type SessionCtaState =
   | {
       kind: "booked";
       hold?: "seat" | "waitlist";
-      cancel: { label: string; act: SessionCtaAct; note?: string };
+      /** ★ wave 18 (REQ-UIX-057): optional. Absent, the booked face is drawn alone — the feed, where a
+       *  post's control is a link and nothing is cancelled there (DEC-206 §4.57). */
+      cancel?: { label: string; act: SessionCtaAct; note?: string };
       /** wave 16 (R4, DEC-197): drawn BETWEEN the face and the cancel — the calendar, so it keeps `16` §5.4.2's
        *  place in the tab order. Additive; absent, nothing is drawn. */
       between?: ReactNode;
     }
   | { kind: "checkIn"; act: SessionCtaAct }
+  /** ★ wave 18 (REQ-UIX-057): «قيّم الجلسة» — drawn as `reserve` is, under its own name, so the matrix is
+   *  never told a lie. `EventDone.dc.html`, and the feed's recap. */
+  | { kind: "rate"; act: SessionCtaAct }
   /** `note` is the sentence beneath the face — «تصل النقاط عند انتهاء الجلسة» (REQ-CHK-018). Never in the chip. */
   | { kind: "attended"; note?: string }
   | { kind: "none"; reason: string };

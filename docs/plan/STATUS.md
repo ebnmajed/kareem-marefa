@@ -79,12 +79,12 @@ is ever found based on A: retarget it to `main` BEFORE A is merged with `--delet
 | P0 | Contract 2 — the signatures, the registry, the floor at 53 | lead | **signatures landed** with `DEC-207` (`ActionBarProps`, `WeekHud*`, `FeedItem*`, `AttendeeStackProps`, `RaceBarProps.layout`, `SessionCtaProps.size`/`width`). ★ `CardDensity`'s `post` and `session-cta`'s `rate` / optional `cancel` land **with their implementations** (they change what existing files satisfy). Registry entries and the floor: with each file, in one commit |
 | E1 | ★ **`SCR-007`, the public card, rebuilt** (`REQ-UIX-059`, `STORY-UIX-043`) | `sessions` | todo — planning first |
 | E2 | ★ **`SCR-011`, browse, rebuilt** (`REQ-UIX-060`, `STORY-UIX-045`) | `sessions` | todo — planning first |
-| E3 | `action-bar`; `session-cta`'s drawn phases, add-only (`REQ-UIX-057`) | `sessions` | todo |
-| E4 | Contract 3 — the session post's data and «التالية لك» | `sessions` | todo |
+| E3 | `action-bar`; `session-cta`'s drawn phases, add-only (`REQ-UIX-057`) | `sessions` | **DONE** — landed by the lead with the registry (see the commit after `29fbb02e`): `action-bar` 12 ✓ (`tokens`); `session-cta`'s `rate`, optional `booked.cancel`, `size` / `width`, 29 ✓ with the existing suites untouched |
+| E4 | Contract 3 — the session post's data and «التالية لك» | `sessions` | **DONE `004b5088`** — `getSessionPosts()`, `compareSessionPosts()`, `getNextForMe()`, `<NextForMe>` |
 | N1 | ★★ **`SCR-010`, home as the feed, phone and desktop** (`REQ-UIX-055`, `STORY-UIX-044`) — the page, `feed.ts`, the items | `content` | todo — planning first |
-| N2 | `feed-item`, `attendee-stack`; `card`'s `post`, add-only (`REQ-UIX-057`) | `content` | todo |
-| R1 | `week-hud` (`REQ-UIX-057`) | `scoring` | todo — planning first |
-| R2 | ★ The member's week and the game rail's cards; the achievement items' source (contract 4) | `scoring` | todo |
+| N2 | `feed-item`, `attendee-stack`; `card`'s `post`, add-only (`REQ-UIX-057`) | `content` | **DONE** — landed with the registry (both `tokens`), `card` `post` with `CardDensity`, `story-ring`'s inert form (`DEC-207` §1.5, two ledger lines). ★ `attendee-stack` has no consumer in PR A: no home board draws one — PR B's |
+| R1 | `week-hud` (`REQ-UIX-057`) | `scoring` | **DONE** — landed with its entry (`variant`: its accent figures take the light ground's heading through `pg-light:`), 18 ✓. ★ **The floor is 53** and the gate is green over all 53 files |
+| R2 | ★ The member's week and the game rail's cards; the achievement items' source (contract 4) | `scoring` | **DONE `782f80d1`** — `getMemberWeek()`, `getCompanyRace()`, `getAchievementItems()`; `GameRail`, `CompanyRaceCard`, `MemberWeekHud`; `race-bar` `layout="inline"` add-only; RLS 9 ✓ |
 | R3 | ★ Moments 3 and 5 on the week, one mark shared with `SCR-022` and the boards — **a test opens both** | `scoring` | todo |
 | H1 | ★★ **The hard-load duplicate, re-measured on the rebuilt `/app` ONLY** (`STORY-UIX-047`, `DEC-204`) — the rate beside the old 24 % and `main`'s 6 %, the accessibility tree read in the window. ★ **Still owed, by M10c: `/app/me/points` and `/app/leaderboards`** | lead | todo |
 | X1 | ★★ Demonstrable — **every rebuilt screen at 390 px, and at 1280 where an artboard is drawn, opened beside its artboard**: regions in order, primitives by name | lead | todo |
@@ -144,6 +144,9 @@ says whether a **selector** moved or an **expectation** did.*
 | `tests/e2e/shell-tab-bar.spec.ts:246,253,259` | **selector moved**: `main` `toHaveClass(/max-w-6xl/)` / `.not` → `toHaveAttribute("data-frame", "member" \| "bleed")` | F1: the rebuilt member frame has no `max-w-6xl`; `ShellMain` names the frame it chose. What is held — the frame follows a client-side navigation both ways — is unchanged |
 | `tests/e2e/shell-disclosures.spec.ts:134` | **expectation moved**: ««تصفّح» closes on navigation, and never two menus are open at once» → «the account menu closes on navigation, and the rail is links — no second disclosure exists» | F1: «تصفّح» is gone; its four links are the navigation rail (`DEC-205` §2, `REQ-UIX-054`). `REQ-UIX-023` is held on the one menu that remains |
 | `tests/unit/objects.test.ts:81` | **expectation moved**: «the new wordmark is built and not yet worn: nothing outside the gallery imports it» → «worn by the rebuilt shell and the rebuilt door, and by nothing the public site renders» | F1, A1: `DEC-183` §4.9 said the shell keeps the old mark «until the screens wave changes the shell». This is that wave. The public site still imports only its own mark (`public-graph` green) |
+| `tests/components/ui/story-ring.test.tsx`, the `ring()` fixture (`content`) | **expectation moved**: the fixture now passes `onOpen={() => {}}` | `DEC-207` §1.5: a ring with no `onOpen` is no longer a button, and this suite is about the button — its cases are unchanged. The inert ring's cases are the new `story-ring-inert.test.tsx` |
+| `tests/e2e/wave15-content-gallery.spec.ts:289` (`content`) | **selector moved**: `button[data-state]` → `[data-state]` | the gallery's rings pass no `onOpen` (a server demo cannot hand a closure to a client component), so they are the inert form the home uses |
+| `tests/unit/ui-playground.test.ts:117` | **expectation moved**: the floor `>= 49` → `>= 53` | `DEC-206` §1.3: `action-bar`, `attendee-stack`, `feed-item`, `week-hud`, each registered in the same commit |
 
 ---
 
