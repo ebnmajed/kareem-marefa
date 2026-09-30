@@ -210,7 +210,7 @@ export function UploadWidget({ locale, sessionId, imageLimitMb, variant = "form"
         >
           <CameraIcon aria-hidden className={tile ? "text-2xl" : "text-lg"} />
           <span>{pending ? t("uploading") : t("action")}</span>
-          {/* ui-lint-disable-next-line field — the add tile's file input, visually hidden inside its own <label> (the tile IS the label, «إضافة صورة»); `file-drop`'s zone and button cannot be drawn as one grid square (pending the lead's written approval, PR B) */}
+          {/* ui-lint-disable-next-line field — the add tile's file input, visually hidden inside its own <label> (the tile IS the label, «إضافة صورة»); `file-drop`'s zone and button cannot be drawn as one grid square (approved by the lead in writing, wave 18 PR B, DEC-211) */}
           <input
             key={resetKey}
             type="file"

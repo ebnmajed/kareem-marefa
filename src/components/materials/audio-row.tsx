@@ -109,7 +109,7 @@ export function AudioRow({ src, title, note, labels }: AudioRowProps) {
           <span aria-hidden> · </span>
           {note}
         </p>
-        {/* ui-lint-disable-next-line field — the player's scrubber: the system has no slider primitive, and a native range IS the keyboard-operable control REQ-MAT-007 asks for; named by aria-label, valued by aria-valuetext (pending the lead's written approval, PR B) */}
+        {/* ui-lint-disable-next-line field — the player's scrubber: the system has no slider primitive, and a native range IS the keyboard-operable control REQ-MAT-007 asks for; named by aria-label, valued by aria-valuetext (approved by the lead in writing, wave 18 PR B, DEC-211) */}
         <input
           type="range"
           min={0}
