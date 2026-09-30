@@ -5732,3 +5732,214 @@ now was checked against the files as they stand at this note's commit.
    sees it is deliberate. ★ **Ruled: accepted** (§4.59).
 6. **The page title's intro sentence** («تصفّح الجلسات القادمة…») — gone with the timeline's header; the home has no
    visible title, as drawn. ★ **Ruled: accepted** — the artboard draws no title.
+
+---
+
+## Wave 18, PR B — plan (`DEC-206`, `DEC-208`, `REQ-UIX-061`, `STORY-UIX-048`) — planning only, nothing edited
+
+**Scope:** the event page's three slots — materials, photos, the discussion — rebuilt from `Event.dc.html` (open),
+`EventLive.dc.html`, `EventDone.dc.html` and `EventDesktop.dc.html`, `M10a.md` §7. **Read:** the agent file's PR B
+paragraph, `CLAUDE.md` § *Wave 18, PR B*, `DEC-206` §4.66 – §4.77, `DEC-208` in full, the four artboards' HTML, every
+file under `components/{materials,photos,event,viewer}`, `lib/dal/{materials,photos,comments,reactions,reports}.ts`,
+`sessions/slots.ts`, the event page's composition, `0116`'s storage policy, and the slots' specs. **Nothing is
+deleted before the lead posts «B's plans are approved».**
+
+### 1 · The regions, per phase, in the artboards' order
+
+The page owns every `<section>`, its `<h2>` and whatever stands in the heading's row («3 تعليقات · رد واحد لكل
+تعليق», «للحاضرين المسجَّلين · تُعرض لكل المؤسسة») — slot contract 1. A slot renders what is under the heading.
+
+**Materials** (`Event.dc.html:93-97` open · `EventDone.dc.html:69-74` completed · `EventDesktop.dc.html:81-84`)
+
+| # | Region | Primitive |
+|---|---|---|
+| 1 | one row per document: a type tile («PDF»), the title (`<bdi>`), a meta line — «قبل الجلسة · صفحتان · للقراءة والتحميل» — the whole row a link to the viewer (`SCR-013`) | a new `materials/material-row.tsx` on `card` `density="row"`'s surface tokens; `link` |
+| 2 | ★ the audio row: a play button, «التسجيل الصوتي», «58:12 · للاستماع فقط», a scrub track | new `materials/audio-row.tsx` (§3); `icon-button`, `progress-bar` for the track's picture |
+| 3 | a link row (Slides, a video link, any URL): the title, «يفتح خارج المنصة», `rel="noopener noreferrer"` | `material-row` in its link form |
+| 4 | an image material: a tile that opens whole | `material-row` + the photos' lightbox |
+| — | the dashed locked row (`Event.dc.html:96`) | **not built** (§4.68: RLS returns no row; no count exists) |
+
+At `days.length > 1` the rows group under the day headings as today (`h3`, `DEC-121`) — not drawn, kept.
+
+**Photos** (`EventLive.dc.html:60-68` live · `EventDone.dc.html:76-84` completed)
+
+| # | Region | Primitive |
+|---|---|---|
+| 1 | live, for who may upload: the dashed «إضافة صورة» tile FIRST in a 3-column grid | the kept `upload-widget`, drawn as a tile |
+| 2 | the grid: square tiles, cropped on purpose (written in the file, `REQ-UIX-026`), each a button that opens the lightbox; the uploader's team colour as a dot | new `photos/photo-grid.tsx`; `avatar`'s ring rules for the dot |
+| 3 | live: the privacy line «كل صورة تُنشر بعد تجريدها… «أزلني» تخفيها فورًا» | text (`REQ-EVT-013` is the upload notice; this is its short form) |
+| 4 | completed: «إضافة صورة من القاعة» as a pill UNDER the grid | the kept `upload-widget`, drawn as a pill |
+| 5 | the lightbox: whole photograph, previous/next tap targets, «3 من 12», download, ★ **and now the takedown** («أزلني» → `REQ-EVT-012`) and, for staff, restore and re-scope — the tiles carry no button of their own | the kept `photos/lightbox.tsx`, `takedown-button.tsx` |
+| 6 | staff: «تنزيل الكل» and the album's state | the kept `album-control.tsx`, as the slot's first row |
+
+**The discussion** (`Event.dc.html:99-117` · `EventLive.dc.html:70-78` · `EventDone.dc.html:86-92` · `EventDesktop.dc.html:86-89`)
+
+| # | Region | Primitive |
+|---|---|---|
+| 1 | the composer: the viewer's avatar in its team ring, a pill field «اكتب تعليقًا… @ لذكر عضو» with its visually-hidden label, and «نشر» | new `event/comment-composer.tsx`; `avatar`, `textarea` (one row, growing), `button` |
+| 2 | a comment: avatar (32, team ring) · a bubble with «name · company · قبل ساعتين» and the body · under it the like and «رد» | new `event/comment-item.tsx`; `avatar`, `reaction-bar` (like) |
+| 3 | a reply: indented, avatar 24 (the artboard's 28 is not an `avatar` size — the primitive wins), «· المُقدِّمة» when the author presents | the same item, `reply` form |
+| — | a photo button in the composer (`Event.dc.html:105`) | **not built** (§4.70) |
+
+**Desktop** (`EventDesktop.dc.html`): the same three slots in the body's start column (`1fr`); nothing of theirs moves
+to the end column. No photos are drawn at desktop (the open phase has none).
+
+### 2 · ★ The kept-behaviour table (`DEC-208` §2) — written before the delete
+
+Re-derived from the requirements, the policies and the DAL, not from the old markup; «lives now» is the file that
+will hold it after the create commit, and the lead checks each row against that file.
+
+| Behaviour | Lives now | Kept because |
+|---|---|---|
+| **Materials** | | |
+| The slot adds no phase filter: what `materials_read` returns is what is drawn; a day-scoped «بعد» is released when its own day ends | `materials/list.tsx` over `getMaterialsPageData()` (unchanged DAL) | `REQ-MAT-006`, `DEC-121`, `0116` |
+| The phase chip says «قبل/بعد الجلسة» or «…اليوم» by the item's own scope, in words | `material-row.tsx` via the kept `phase-label.ts` | `REQ-MAT-006` (amended), `DEC-121` |
+| A PDF opens in the viewer once rendered; pending shows progress, failed says so | `material-row.tsx` → `/app/sessions/{id}/materials/{mid}` | `REQ-MAT-003` |
+| The font-substitution warning names the font, on the material | `material-row.tsx` (manager view) | `REQ-MAT-011` |
+| With download off no file reaches a member: enforced by `materials_storage_read` (`0116`), not the row; the download itself stays in the viewer, admin downloads audited by `record_material_download()` | unchanged: `getMaterialDownloadUrl()`, the viewer's page | `REQ-MAT-005`, `0049` |
+| External links leave with `rel="noopener noreferrer"` and say they leave | `material-row.tsx` | `REQ-MAT-007` |
+| Who may add: presenters and admins; the upload is PDF-only for documents, sniffed on content after the bytes land, size-limited server-side; the limit said before a file is chosen | the kept `upload-form.tsx` → `/api/upload/material` (unchanged) | `REQ-MAT-002`, `REQ-MAT-008`, `REQ-MAT-009`, `REQ-MAT-012`, `DEC-058`, `REQ-UIX-024` |
+| A manager sets the phase and «السماح بالتحميل» per item; a change is audited | the kept `settings-form.tsx` | `REQ-MAT-005`, `REQ-MAT-006` |
+| At more than one day: groups by day, session content first; the add control in each group's header; the re-scope chip for managers | `list.tsx` + the kept `group-disclosure.tsx`, `rescope-chip.tsx` | `REQ-SES-018`, `DEC-121` |
+| The slot returns `null` exactly when `materialsSummary()` says not visible | `list.tsx` | slot contract, `16` §5.4.1a(b) |
+| **Photos** | | |
+| Who may add: checked-in attendees, the session's presenters, admins — the policy decides, the control follows `canUpload` | `photos/gallery.tsx` → the kept `upload-widget.tsx` → `/api/upload/photo` | `REQ-EVT-009`, `REQ-CHK-009` |
+| The uploader is told it is processing, never that it is posted; the photograph appears without a reload once stripped | the kept `upload-widget.tsx` | `REQ-EVT-010`, `DEC-139` |
+| A photograph is never retrievable before its EXIF strip: rows exist only after `process_photo`; tiles are signed from rows | `getPhotosPageData()` (unchanged) | `REQ-EVT-011`, `DEC-182` |
+| «Shared with everyone in the org» said at the point of upload | `gallery.tsx`, beside the add control | `REQ-EVT-013` |
+| «أزلني» hides at once, pending review; staff restore | the kept `takedown-button.tsx`, moved into the lightbox | `REQ-EVT-012`, `REQ-EVT-014` |
+| A hidden photograph: staff see it badged, nobody sees it in the lightbox | `photo-grid.tsx`; `lightboxSequence()` | `REQ-EVT-016`, `DEC-182` |
+| The lightbox: whole, tap targets always visible, Escape and backdrop close, focus returns to the tile, «3 من 12» | the kept `lightbox.tsx` | `REQ-EVT-016`, `DEC-093`, SC 2.5.7 |
+| The grid's crop is deliberate and said in the file | `photo-grid.tsx` | `REQ-UIX-026` |
+| Every download through the audited route; staff «تنزيل الكل» enqueues, never builds in the request | the lightbox's link to `/api/photos/{id}/download`; the kept `album-control.tsx` | `REQ-ADM-021`, `DEC-177` |
+| A refused download comes back as a notice | the kept `download-notice.tsx` | `REQ-ADM-021` |
+| **The discussion** | | |
+| Any member may comment, reserved or not, before, during and after | `event/comments.tsx` | `REQ-EVT-003` |
+| One level of replies; a reply to a reply attaches to the thread | `comment-list.tsx`, `comment-item.tsx` | `REQ-EVT-002` |
+| Edit own for the org's window, marked «معدّل»; delete own at any time, a tombstone when replies exist | `comment-item.tsx` over the unchanged actions | `REQ-EVT-005` |
+| Mentions: org-only search, the mentioned ids posted with the body | `comment-composer.tsx` → `searchMentionsAction` (unchanged) | `REQ-EVT-006`, `REQ-TEN-003` |
+| Report with a reason; «already reported»; the reporter never shown to the reported | `comment-item.tsx`'s report dialog | `REQ-EVT-008` |
+| Moderators and admins remove and restore, audited | `comment-item.tsx` | `REQ-EVT-014` |
+| Frozen on a cancelled session: read-only, no composer; nothing at all when frozen and empty | `comments.tsx`, `comment-list.tsx` | `REQ-EVT-003`, `REQ-SES-010` |
+| The like earns nothing; the pressed state is the acknowledgement | `comment-item.tsx` → `reaction-bar` | `REQ-EVT-004`, `REQ-UIX-034` |
+| Live: new comments and reaction totals arrive by the session topic's broadcasts; server values are correct without the socket | `comment-list.tsx` over `src/lib/realtime/**` (unchanged) | `REQ-EVT-015`, `DEC-020` |
+| No Google URL reaches a browser: avatars through `avatarHref()`; the broadcast's `authorAvatarUrl` ignored | `comment-list.tsx` | `DEC-099`, `DEC-181` |
+| A field that shows an app-side error sets `noValidate`; the typed text is not lost on a failed post | `comment-composer.tsx` | `DEC-149` §1 |
+| **All three** | | |
+| `<bdi>` on every title, name, company and file name | each new file | `REQ-INT-007` |
+| Western numerals, counts through `formatNumber` | each new file | `REQ-INT-006`, `DEC-124` |
+| The slot renders no `<section>` and no `<h2>`; its `…Summary()` reader shares its `cache()`d read | each slot file | slot contract (`sessions/slots.ts`) |
+| The auth boundary is the DAL's `requireSession()`; the slots read ids, never rows | the unchanged DAL | `REQ-NFR-004` |
+
+### 3 · ★ The audio row (`REQ-MAT-007`) — no new dependency
+
+A client component over a native `<audio preload="metadata">` with no `controls`: a play/pause `icon-button`
+(`aria-pressed`, its name «تشغيل التسجيل الصوتي» / «إيقاف مؤقت»); a native `<input type="range">` as the scrubber —
+keyboard-operable for free (arrows, Home, End), `aria-valuetext` «12:03 من 58:12»; elapsed and total as text in
+Western digits inside `<bdi dir="ltr">` — the requirement's «shows elapsed and total duration». The total comes from
+`loadedmetadata`; until it does, «—:—». One player plays at a time on the page (a module-level «now playing»). No
+autoplay, no motion, nothing kept after the page is left.
+
+**Its source is a signed URL of the stored file**, from a new add-only `getMaterialPlaybackUrl(locale, id)` in
+`materials.ts` (`materials_storage_read` decides, as for a download). ★ Three things I cannot settle alone:
+- **`allow_download` off means no member can play it** — `0116` refuses the object to a member when download is
+  off, and a stream IS the file. The artboard's «للاستماع فقط» assumes the opposite. §6.1.
+- **The CSP**: `src/proxy.ts` has no `media-src`, so `default-src 'self'` would refuse a Supabase-hosted stream if the
+  header covers `/app`. The lead's file; I need `media-src 'self' <supabase>` or the fact that it does not apply.
+- **A play glyph**: `ui/icons` has `PauseIcon` and no play. A request, under contract 5's proof like the last two.
+
+### 4 · The states not drawn, and how each is built
+
+| Slot | State | Built |
+|---|---|---|
+| materials | none, for a member | `null`; the page drops the section |
+| materials | none, for a manager | one quiet line and the upload control (never a second primary) |
+| materials | a manager's view | the upload control, each row's settings, the re-scope chip at > 1 day |
+| materials | rendering / failed / font warning | progress, a status badge, an info panel on the row |
+| materials | several days | groups under `h3` day headings, session first |
+| materials | audio that this viewer may not play | the row without the play button, saying why (§6.1's default) |
+| photos | none, with the right to add | one quiet line and the add tile / pill |
+| photos | processing after an upload | the widget's own «تتم معالجة الصورة الآن…» |
+| photos | hidden (staff) | the tile badged «مخفية — بانتظار المراجعة»; restore in the lightbox |
+| photos | album queued / building / ready / failed / stale | `album-control`'s states |
+| photos | a refused download | the notice |
+| discussion | empty, open | the composer alone |
+| discussion | cancelled | read-only; `null` when also empty |
+| discussion | edited · tombstone · reply form open · mention list · report dialog · already reported · removed (staff) | in the item and the composer |
+| discussion | a post that failed | the error at the field, the text kept |
+| all | the socket never connects | the server's values stand (`DEC-020`) |
+
+### 5 · What the page (`sessions`) passes each slot
+
+The props stay the contract's — ids and a derived enum, never rows — with **one addition**, the phase, because the
+photos slot draws its add control differently live and after (`EventLive.dc.html:63` against
+`EventDone.dc.html:83`):
+
+```ts
+// sessions/slots.ts (sessions' file) — add-only
+export type PhaseSlotProps = SlotProps & { phase: SessionPhase };   // from `sessionPhase()`, never re-derived
+
+<Materials {...slot} />                        // SlotProps
+<Photos {...slot} phase={phase} />              // PhaseSlotProps
+<Comments {...slot} />                         // SlotProps — `frozen` stays the DAL's
+materialsSummary(slot) · photosSummary(slot) · commentsSummary(slot)   // SlotSummary, unchanged
+```
+
+The heading row's text is the page's: «N تعليقات» from `commentsSummary().count`, «الصور N» from `photosSummary()`.
+
+### 6 · Files, moved assertions, disagreements
+
+**DELETE (commit 1):** `components/materials/list.tsx` · `components/photos/gallery.tsx` · `components/event/{comments,
+comment-list,comment-item,comment-composer}.tsx` — the files that draw the three slots' regions. ★ **Kept, and not
+deleted** (behaviour components the slots compose, not the screen's markup — the lead rules if this line is wrong):
+`materials/{upload-form,settings-form,rescope-chip,group-disclosure,phase-label,actions,proposal-*}`,
+`photos/{lightbox,upload-widget,takedown-button,album-control,download-notice,actions}`, `event/actions.ts`,
+`viewer/page-viewer.tsx` (`SCR-013` is M10b).
+
+**CREATE (commit 2):** the six above, written from the artboards; new `materials/{material-row,audio-row}.tsx`,
+`photos/photo-grid.tsx`; add-only `getMaterialPlaybackUrl()` (`materials.ts`), `PhotoSummary.uploaderTeamColor`
+(`photos.ts`), `CommentAuthor.company` and `.isPresenter` (`comments.ts`); strings in
+`messages/*/{materials,photos,event}.json`; new `tests/components/{materials,photos,event}/*-w18.test.tsx`; new
+`tests/e2e/wave18-content-event-{materials,photos,discussion}.spec.ts`.
+
+**Assertions that move** — each a ledger line in the create commit:
+- `tests/components/materials/{list,list-grouping}.test.tsx`, `tests/components/photos/{gallery,gallery-grouping}.test.tsx`,
+  `tests/components/event/{comments,comment-item,comment-list,comment-composer}.test.tsx` test deleted files: each
+  case is **re-asserted in a new file against the new component**, and the old file removed — an expectation line
+  per file saying which case went where.
+- `materials.spec.ts`: «فتح العارض» link → the row is a link named by the material's title (**selector**).
+- `photos.spec.ts`, `wave10-content-photos-takedown.spec.ts`: the takedown button leaves the tile for the lightbox
+  (**selector**); its accessible name «احذف الصور التي أظهر فيها» is **kept** — the artboard's «أزلني» is the
+  privacy line's word, not the button's (§6.4).
+- `wave6-discussion-review.spec.ts`: the comment like becomes `reaction-bar`'s «إعجاب N» with `aria-pressed`, not
+  «إلغاء الإعجاب» (**expectation**).
+- Held unchanged, by keeping their names: `event-comments.spec` («نشر», «رد», «حذف», the dialogs), the lightbox spec
+  («افتح الصورة 1 من 3», «الصورة التالية»), the album spec («تنزيل الكل»), `wave9-content-days` (the `h3` day groups).
+
+**New disagreements** — not in `DEC-206` §4, not picked:
+1. ★ **«للاستماع فقط»** (`EventDone.dc.html:72`) against `REQ-MAT-005` and `0116`: with download off the stored
+   file is refused to a member, and a player streams the file. Listening without downloading needs a separate
+   derivative or a widened policy — neither is this wave's. Default: the play button only for a viewer who may sign.
+2. **A download glyph on every material row** (`Event.dc.html:95`, `EventDone.dc.html:71,73`) — the row links to the
+   viewer, and the download lives there. A download from the row needs a route, and `REQ-MAT-005` audits admins
+   only; `DEC-177`'s «every download through an audited route» was written for posters, certificates and photos.
+3. **The composer has no send button** (`Event.dc.html:104-105`) — the pill field alone. «نشر» is kept: a field
+   with no button fails without a keyboard's Enter and fails SC 3.2.2's expectation of an explicit submit.
+4. **«أضف صورة» and «أزلني»** are the artboard's words; the suites pin «إضافة صورة» and «احذف الصور التي أظهر
+   فيها». Default: the pinned names stay on the controls, the artboard's words in the visible privacy line.
+5. **«افتح الألبوم»** in the photos heading's row (`EventDone.dc.html:77`) — the heading row is the page's, the
+   lightbox is the slot's state. And «album» is also staff's «تنزيل الكل». Default: no such link; a tile opens the
+   lightbox.
+6. **The uploader's team colour on a tile** (`EventLive.dc.html:64-65`) — new data on a photo, the uploader's
+   company; readable (the row names the uploader already), but a colour from data on a photograph. Default: drawn
+   as a ring dot, add-only field.
+7. **«· المُقدِّمة» and the company on a comment** (`Event.dc.html:114`) — the DTO carries neither; add-only in
+   `comments.ts`. ★ The realtime payload (`comments_broadcast()`, SQL, not mine) carries neither, so a comment that
+   arrives live shows them only if its author is already known on the page. The payload is the lead's to widen.
+8. **A video link's embedded player** (`REQ-MAT-007`) against the CSP's closed `frame-src` — the case §4.71 ruled for
+   the map. Not drawn. Default: the link out.
+9. **The section order** differs by phase in the artboards (live: الصور · النقاش · المواد) — the page's, noted for
+   `sessions`.
+
+**For the lead:** the delete boundary in §6; the CSP's `media-src`; a play glyph; whether admin playback is audited as
+a download (`REQ-MAT-005` «that access is audited»); the realtime payload (7).
