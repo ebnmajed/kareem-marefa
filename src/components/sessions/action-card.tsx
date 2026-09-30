@@ -105,12 +105,15 @@ export async function ActionCard(props: ActionCardProps) {
           : undefined;
 
   return (
-    <section
-      id="attend"
-      aria-labelledby="attend-heading"
-      className={`rounded-panel border bg-surface p-4 lg:p-5 ${live ? "border-signal" : ended && session.viewerRelation === "attended" ? "border-accent" : "border-edge"}`}
-    >
-      <ReserveMoment action={reserveSeatAction.bind(null, locale, session.id)} labels={momentLabels}>
+    // ★ The moment's host wraps the card AND the bar, so the ticket can rise from either; the bar stands OUTSIDE
+    // the region «الحضور» — it is fixed to the viewport anyway — so the region holds one primary and a locator
+    // inside it finds one control, while the phone still shows the primary twice (DEC-209).
+    <ReserveMoment action={reserveSeatAction.bind(null, locale, session.id)} labels={momentLabels}>
+      <section
+        id="attend"
+        aria-labelledby="attend-heading"
+        className={`rounded-panel border bg-surface p-4 lg:p-5 ${live ? "border-signal" : ended && session.viewerRelation === "attended" ? "border-accent" : "border-edge"}`}
+      >
         <MomentPart thud="card" className="flex flex-col gap-3.5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-5">
           <h2 id="attend-heading" className="sr-only">
             {tRsvp("title")}
@@ -227,8 +230,9 @@ export async function ActionCard(props: ActionCardProps) {
             </nav>
           ) : null}
         </MomentPart>
+      </section>
 
-        {primary || barSecondary ? (
+      {primary || barSecondary ? (
           <ActionBar
             label={t("actionsLabel")}
             hideFrom="lg"
@@ -240,8 +244,7 @@ export async function ActionCard(props: ActionCardProps) {
             secondary={barSecondary}
           />
         ) : null}
-      </ReserveMoment>
-    </section>
+    </ReserveMoment>
   );
 }
 
