@@ -1,28 +1,28 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
+import { LockIcon } from "@/components/ui/icons";
+import { Panel } from "@/components/ui/panel";
 import { ImpersonationBanner } from "@/components/platform/impersonation-banner";
 import { getSessionState } from "@/lib/dal/session";
+import { createServerClient } from "@/lib/supabase/server";
+import { DoorFooter, DoorLockup, doorLink } from "../door";
 
-// SCR-004 · /no-access — names no org, lists no domain (REQ-AUT-006). Also
-// the suspended-org (REQ-TEN-006) and the deactivated-member (REQ-AUT-008)
-// messages, chosen by `reason`.
+// SCR-004 — the product's only answer to «فتحت الرابط ولا شيء يعمل» (REQ-AUT-006,
+// REQ-TEN-006, REQ-UIX-058). REBUILT from `docs/design/screens/m10a/NoAccess.dc.html`;
+// `M10a.md` §3. Top to bottom: the wordmark · the panel — the lock, the title, the
+// explanation, WHICH account the visitor came in with, the two actions · the way
+// home and the privacy policy.
 //
-// ★ NEVER A DEAD END (REQ-UIX-012, DEC-129). This is the product's only answer
-// to «فتحت الرابط ولا شيء يعمل», so every reason names what to do next and
-// offers it: a member whose domain matched no org is most often signed in with
-// the wrong Google account, so the primary action signs them out and lands
-// them on sign-in with another; a suspended org or a deactivated account is an
-// administrator's decision, which the message says, and signing out is the
-// one act left to offer.
+// What survives is behaviour: it names no org and lists no domain; it is a dead
+// end with an explanation, never a blank screen or a redirect loop; its four
+// variants — no match, a suspended org, a deactivated account, a platform admin
+// with no org — share one frame; the impersonation banner stands above it for an
+// operator in a break-glass session (SCR-085, DEC-055 option C).
 //
-// ★ A PLATFORM ADMIN WITH NO ORG lands here too — sign-in has nowhere else to
-// send an account that belongs to no organisation — and «الدخول بحساب آخر» was
-// the wrong first act: the console was reachable only by typing its URL, and
-// during break-glass this page's primary action signed the operator out
-// (`platform`'s F6, wave 8, `DEC-148`). For that account the primary action is
-// «لوحة المنصة»; signing out stays, secondary. The claim decides only which
-// door is offered — the console gates itself at the data.
+// ★ The visitor's own address, masked, is new (DEC-206 §4.40). It is theirs — it
+// names no org and no listed domain — and it answers the question this screen
+// exists for: «which account did I come in with?». Only the first character shows.
 export default async function NoAccessPage({
   params,
   searchParams,
@@ -33,8 +33,14 @@ export default async function NoAccessPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const { reason } = await searchParams;
-  const [t, state] = await Promise.all([getTranslations("auth.noAccess"), getSessionState()]);
+  const [t, shell, state] = await Promise.all([getTranslations("auth.noAccess"), getTranslations("app.shell"), getSessionState()]);
+
+  // `/no-access` is where BOTH a member of no org and a platform admin with no
+  // member row land. The second is not a mistake to be contacted about, and
+  // «contact your organisation's administrator» is wrong for them; their door
+  // is the console, and they are told so.
   const platformAdmin = state.kind === "no_org" && state.platformAdmin && reason !== "suspended" && reason !== "deactivated";
+  const noMatch = !platformAdmin && reason !== "suspended" && reason !== "deactivated";
 
   const [title, body] =
     reason === "suspended"
@@ -44,33 +50,83 @@ export default async function NoAccessPage({
         : platformAdmin
           ? [t("platformTitle"), t("platformBody")]
           : [t("title"), t("noMatch")];
-  const wrongAccountLikely = !platformAdmin && reason !== "suspended" && reason !== "deactivated";
+
+  const email = state.kind === "none" ? null : await signedInEmail();
+  const masked = email ? maskEmail(email) : null;
 
   return (
     <>
-      {/* SCR-085 under DEC-055 option C: a break-glass session carries no
-          member id, so this is the screen an impersonating operator lands
-          on from any org route. The banner (platform's slot, DEC-057) shows
-          the org, the time left and the stop control; it renders nothing
-          for everyone else. */}
       <ImpersonationBanner locale={locale} />
-      <PageHeader title={title} description={body} />
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+      <DoorLockup size="md" label={shell("brand")} />
+
+      <Panel className="mt-8 flex flex-col gap-3.5 px-[18px] py-[22px]">
+        <span aria-hidden className="inline-flex size-14 items-center justify-center rounded-[16px] border border-edge bg-raised text-[1.5rem] text-fg-muted">
+          <LockIcon />
+        </span>
+        <h1 className="font-display text-[1.625rem] leading-[1.2] font-extrabold text-fg-heading">{title}</h1>
+        <p className="text-fg-muted">{body}</p>
+
+        {masked ? (
+          <p className="flex items-center gap-2.5 rounded-tile border border-edge bg-canvas px-3.5 py-3 text-[0.8125rem] text-fg-muted">
+            <span aria-hidden className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-raised font-display text-[0.875rem] font-extrabold text-fg-heading">
+              {masked[0].toUpperCase()}
+            </span>
+            <span>
+              {t.rich(noMatch ? "signedInNoMatch" : "signedIn", {
+                email: () => (
+                  <bdi dir="ltr" className="font-semibold text-fg-heading">
+                    {masked}
+                  </bdi>
+                ),
+              })}
+            </span>
+          </p>
+        ) : null}
+
         {platformAdmin ? (
-          <ButtonLink href="/app/platform" variant="primary" size="md" className="w-full sm:w-auto">
+          <ButtonLink href="/app/platform" variant="primary" size="lg" className="w-full">
             {t("platformConsole")}
           </ButtonLink>
         ) : null}
-        {/* Sign-out answers 303 to /ar/sign-in, so «another account» is one act. */}
+
+        {/* Sign-out answers 303 to the sign-in screen, so «another account» is one act. */}
+        {noMatch ? (
+          <form method="post" action="/api/auth/sign-out">
+            <Button type="submit" variant="primary" size="lg" className="w-full">
+              {t("switchAccount")}
+            </Button>
+          </form>
+        ) : null}
         <form method="post" action="/api/auth/sign-out">
-          <Button type="submit" variant={wrongAccountLikely ? "primary" : "secondary"} size="md" className="w-full sm:w-auto">
-            {wrongAccountLikely ? t("switchAccount") : t("signOut")}
+          <Button type="submit" variant="quiet" size="lg" className="w-full">
+            {t("signOut")}
           </Button>
         </form>
-        <ButtonLink href="/" variant="ghost" size="md">
+      </Panel>
+
+      <DoorFooter>
+        <Link href="/" className={doorLink}>
           {t("backHome")}
-        </ButtonLink>
-      </div>
+        </Link>
+        <Link href="/legal/privacy" className={doorLink}>
+          {shell("privacy")}
+        </Link>
+      </DoorFooter>
     </>
   );
+}
+
+/** The address of the session that reached this screen. `getClaims()` is a three-way
+ *  union — narrow on `data`, never on `error` (CLAUDE.md, Supabase specifics). */
+async function signedInEmail(): Promise<string | null> {
+  const supabase = await createServerClient();
+  const { data } = await supabase.auth.getClaims();
+  const email = data?.claims?.email;
+  return typeof email === "string" && email.includes("@") ? email : null;
+}
+
+/** `yaman@example.com` → `y•••@example.com`. The domain is the visitor's own. */
+function maskEmail(email: string): string {
+  const at = email.lastIndexOf("@");
+  return `${[...email.slice(0, at)][0] ?? ""}•••${email.slice(at)}`;
 }
