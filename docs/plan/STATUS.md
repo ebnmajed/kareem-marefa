@@ -144,6 +144,10 @@ site's wave) · ★ **the two carried gates, together** (`DEC-194`) · `REQ-REC-
 | `tests/components/ui/icons-playground.test.tsx:97` | the Arabic names are read from `(dev)/ui/demos/icons.tsx`, was `(dev)/ui/page.tsx` | the gallery page is one playground now; the glyph table and its names moved into `content`'s icons demo. The assertion — fifty glyphs, each named in Arabic — is unchanged |
 | `tests/components/ui/date-time-scope.test.tsx:53` (`console`) | the selected day: `toHaveClass("bg-navy-950", "text-white")` + `toHaveClass("pg:bg-accent", "pg:text-on-accent")` → `toHaveClass("bg-accent", "text-on-accent")` | K2: `rtl-datetime-picker.tsx` is outside `ui/`, where `no-raw-palette` ends at zero, so the raw + `pg:` pair collapses to the semantic name (`DEC-200` §2). `accent` falls back to `--btn-bg` outside a scope — the same navy |
 | `tests/components/ui/date-time-scope.test.tsx:60` (`console`) | the «تم» control: the same two assertions → `toHaveClass("bg-accent", "text-on-accent")` | the same |
+| `tests/e2e/forms-propose.spec.ts:213` | the invalid control's border `rgb(192, 85, 90)` → `rgb(224, 140, 143)` | M1: the screen is on the dark ground, where `--color-error-border` takes `DEC-073`'s on-dark form (`DEC-200` §2). Still 1 px, still a glyph beside the message |
+| `tests/e2e/forms-propose.spec.ts:222-223` | the message `rgb(158, 59, 63)`, not `rgb(11, 18, 32)` → `rgb(224, 140, 143)`, not `rgb(244, 241, 234)` | the same: the error's on-dark form, and the heading's colour inside the scope is the bone. The assertion's point — an error is not the colour of a heading — is unchanged |
+| `tests/e2e/branding.spec.ts:171` | after saving `#ff5500`, the shell's `h1` computed `rgb(255, 85, 0)` → it computes `rgb(244, 241, 234)`, and no `.brand-org` rule is in the document | ★ `DEC-199` §1.3.7: the shell stops emitting the org theme layer. The save, the row, `brand_kit()`'s answer and the form's round trip are asserted unchanged |
+| `tests/e2e/branding.spec.ts:198` | after the reset the `h1` computed `rgb(11, 18, 32)` → `rgb(244, 241, 234)` | the same: the kit does not reach the app, before a reset or after it |
 
 ---
 

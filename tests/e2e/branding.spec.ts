@@ -130,8 +130,9 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   // OWN reactivity to typed colours is a component concern, already proven
   // by tests/components/branding/brand-kit-form.test.tsx. What only a real
   // browser against a real database can prove is the round trip THIS test
-  // checks below: save, reload, and the org theme CSS layer (`.brand-org`,
-  // DEC-053 decision 3) actually carries the new colour into the shell.
+  // checks below: save and reload. ★ Wave 17 (DEC-199 §1.3.7): the shell no longer emits the org
+  // theme layer — it named the variables the playground's scope reassigns — so the kit reaches
+  // posters, certificates and mail, and the app's own colours stay the scope's.
   const headingField = main.getByLabel("لون العناوين").first();
   await headingField.fill("#ff5500");
 
@@ -158,17 +159,15 @@ test("★ REQ-DSG-021/ADM-015: an admin uploads a real logo, saves a colour, and
   expect(kitRows[0].brand_kit.isOverridden).toBe(true);
   expect(kitRows[0].brand_kit.light.fgHeading).toBe("#ff5500");
 
-  // Reload: the persisted override comes back, not the platform default —
-  // both in the form (the DAL round trip) and in the SHELL'S OWN theme
-  // layer (the CSS round trip, DEC-053 decision 3): the app layout emits
-  // `.brand-org{--fg-heading:#ff5500;…}` only once `isOverridden` is true,
-  // over globals.css's platform value, and this page's own `<h1>` carries
-  // `text-fg-heading` — so its COMPUTED colour is the org override,
-  // resolved through the `@theme inline` layer, not read off a class name
-  // or an inline style string.
+  // Reload: the persisted override comes back in the form (the DAL round trip), not the platform
+  // default. ★ Wave 17 (DEC-199 §1.3.7): and the SHELL does not wear it. Until wave 17 the app
+  // layout emitted `.brand-org{--fg-heading:#ff5500;…}` and this `<h1>` computed the org's colour;
+  // inside the playground it computes the scope's heading colour, the bone, whatever the kit says,
+  // and no `.brand-org` rule is in the document.
   await page.reload();
   await expect(page.locator("#main").getByLabel("لون العناوين").first()).toHaveValue("#ff5500");
-  await expect(page.getByRole("heading", { name: "هوية المؤسسة", level: 1 })).toHaveCSS("color", "rgb(255, 85, 0)");
+  await expect(page.getByRole("heading", { name: "هوية المؤسسة", level: 1 })).toHaveCSS("color", "rgb(244, 241, 234)");
+  expect(await page.evaluate(() => document.querySelector(".brand-org") === null && ![...document.querySelectorAll("style")].some((s) => (s.textContent ?? "").includes(".brand-org")))).toBe(true);
 });
 
 test("resetting deletes the row — every consumer returns to the platform default", async ({ context, page }) => {
@@ -188,12 +187,11 @@ test("resetting deletes the row — every consumer returns to the platform defau
   const { rows } = await db.query(`select 1 from public.brand_kits where org_id = $1`, [orgId]);
   expect(rows).toEqual([]);
 
-  // The identity override, symmetrically: no row means the SHELL'S OWN CSS
-  // layer stops emitting `.brand-org` altogether (DEC-053 decision 3), so
-  // the heading reverts to the platform default — packages/designer-runtime/
-  // src/brand.ts's LIGHT.fgHeading, #0b1220.
+  // The identity override, symmetrically: no row, and `brand_kit()` answers the platform default
+  // for posters, certificates and mail. ★ Wave 17 (DEC-199 §1.3.7): the shell's heading is the
+  // scope's before the reset and after it — the kit does not reach the app.
   await page.reload();
-  await expect(page.getByRole("heading", { name: "هوية المؤسسة", level: 1 })).toHaveCSS("color", "rgb(11, 18, 32)");
+  await expect(page.getByRole("heading", { name: "هوية المؤسسة", level: 1 })).toHaveCSS("color", "rgb(244, 241, 234)");
 });
 
 test("SCR-059 at 390 px RTL: the branding form reads down the page, never sideways", async ({ context, page }) => {
