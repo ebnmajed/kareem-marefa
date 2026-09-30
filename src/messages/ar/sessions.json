@@ -114,7 +114,6 @@
       "shareFailed": "تعذّر نسخ الرابط. انسخه من هنا:",
       "back": "رجوع",
       "profileLink": "الملف",
-      "seatsLeftShort": "{count, plural, zero {لا مقاعد متبقية} one {يبقى مقعد واحد} two {يبقى مقعدان} few {يبقى {value} مقاعد} many {يبقى {value} مقعدًا} other {يبقى {value} مقعد}}",
       "pointsChip": "+{value} عند الحضور",
       "attendingNowOf": "{count, plural, zero {الآن} one {من مقعد واحد، حاضرًا الآن} two {من مقعدين، حاضرًا الآن} few {من {capacity} حاضرين الآن} many {من {capacity} حاضرًا الآن} other {من {capacity} حاضر الآن}}",
       "attendingNow": "{count, plural, zero {لا أحد حاضر الآن} one {حاضر الآن} two {حاضران الآن} few {حاضرين الآن} many {حاضرًا الآن} other {حاضر الآن}}",

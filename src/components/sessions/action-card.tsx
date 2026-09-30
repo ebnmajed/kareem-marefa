@@ -125,8 +125,10 @@ export async function ActionCard(props: ActionCardProps) {
                 <span className="font-bold text-fg-heading">
                   {t("seatsTaken", { count: rsvp.capacity, value: formatNumber(rsvp.capacity), taken: formatNumber(rsvp.confirmedCount) })}
                 </span>
+                {/* The catalogue's existing words for the seats left (`M10a.md`: a string that exists is used) —
+                    «يتبقى 28 مقعدًا», which `checkin.spec.ts` reads in this region. */}
                 <span className="text-fg-muted">
-                  {t("seatsLeftShort", { count: Math.max(0, rsvp.capacity - rsvp.confirmedCount), value: formatNumber(Math.max(0, rsvp.capacity - rsvp.confirmedCount)) })}
+                  {tRsvp("seatsLeft", { count: Math.max(0, rsvp.capacity - rsvp.confirmedCount), value: formatNumber(Math.max(0, rsvp.capacity - rsvp.confirmedCount)) })}
                 </span>
               </p>
               <ProgressBar value={Math.min(rsvp.confirmedCount, rsvp.capacity)} max={rsvp.capacity} decorative />

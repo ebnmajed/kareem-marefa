@@ -114,7 +114,6 @@
       "shareFailed": "The link could not be copied. Copy it from here:",
       "back": "Back",
       "profileLink": "Profile",
-      "seatsLeftShort": "{count, plural, =0 {No seats left} one {1 seat left} other {{value} seats left}}",
       "pointsChip": "+{value} for attending",
       "attendingNowOf": "of {capacity} here now",
       "attendingNow": "{count, plural, =0 {nobody here yet} one {here now} other {here now}}",
