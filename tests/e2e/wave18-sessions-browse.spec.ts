@@ -182,7 +182,8 @@ test("the regions in the artboard's order, the rows as drawn, and the rule's amo
   await expect(main.getByRole("region", { name: /لاحقًا/ })).toContainText(T.later);
   // ★ The rule's amount, never a literal (§4.45).
   await expect(rows.filter({ hasText: T.mine })).toContainText("+35");
-  await expect(main.locator("ol")).not.toContainText("+50");
+  // Over every row of every group — there is one list per group, so never a single `ol` locator.
+  await expect(rows.filter({ hasText: /\+(50|20)(?!\d)/ })).toHaveCount(0);
   // ★ No sort control (§4.63).
   await expect(main.getByRole("button", { name: /ترتيب|الأعلى تقييمًا/ })).toHaveCount(0);
   // ★ The ended ones behind ONE link, with their count.
