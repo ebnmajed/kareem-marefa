@@ -672,3 +672,21 @@ export async function getCompanyRace(locale: string, opts: { leaders?: number } 
     companies: all.length,
   };
 }
+
+// ── Whether attending raises a company's share in the race (wave 18 PR B, add-only — DEC-210) ──
+//
+// The desktop event page may say «لفريقك» — that a member's attendance raises their company's participation in
+// the race — only when that is the org's rule: `company_attendance_pct` enabled (0081). A sentence about a
+// rule the org has switched off is false (contract 7). `company_scoring_rules` is org-readable, as
+// `getCompanyPointsBreakdown()` already reads it.
+export async function isCompanyAttendanceRuleEnabled(locale: string): Promise<boolean> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
+    .from("company_scoring_rules")
+    .select("enabled")
+    .eq("org_id", session.orgId)
+    .eq("action_key", "company_attendance_pct")
+    .maybeSingle();
+  if (error) throw new Error(`company_scoring_rules (attendance): ${error.message}`);
+  return Boolean(data?.enabled);
+}

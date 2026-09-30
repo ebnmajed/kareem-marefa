@@ -156,3 +156,87 @@ describe("the week's acknowledgement (DEC-207 §1.3)", () => {
     });
   });
 });
+
+// ── wave 18 PR B — the outcome card's narrowing (`getSessionCompletion()`, DEC-209, the lead's request) ──
+//
+// The card plays moment 3 only while THIS session's award row is unseen: written after the ledger entry the
+// member's mark holds. The DAL asks the database with these filters, as the member — so what is proven here is
+// that the query, under `ledger_read_self_or_admin`, finds the row when it is newer than the mark's entry and not
+// when it is older, compares to the microsecond, and never reads another member's award.
+describe("the outcome card's award row — seen or unseen", () => {
+  async function award(tx: Tx) {
+    const { f } = await setup(tx);
+    await tx.asOwner();
+    const [session] = await tx.q<{ id: string }>(`select id from public.sessions where org_id = $1 limit 1`, [f.a.id]);
+    const me = f.a.members[1];
+    const row = async (amount: number, source: string, at: string, key: string) =>
+      (
+        await tx.q<{ id: string }>(
+          `insert into public.points_ledger (org_id, member_id, amount, source, session_id, reason, idempotency_key, occurred_at)
+           values ($1, $2, $3, $4::public.ledger_source, $5, 'اختبار', $6, $7::timestamptz) returning id`,
+          [f.a.id, me.memberId, amount, source, source === "manual_adjustment" ? null : session.id, key, at],
+        )
+      )[0].id;
+    return { f, me, sessionId: session.id, row };
+  }
+
+  /** The DAL's award-row query, with its `gt(occurred_at, seenAt)` narrowing. */
+  const unseenAward = (tx: Tx, memberId: string, sessionId: string, seenEntry: string) =>
+    tx.q<{ id: string }>(
+      `select id from public.points_ledger
+        where member_id = $1 and session_id = $2 and source = 'check_in' and amount > 0
+          and occurred_at > (select occurred_at from public.points_ledger where id = $3)
+        order by occurred_at desc limit 1`,
+      [memberId, sessionId, seenEntry],
+    );
+
+  it("★ unseen: the award row written after the mark's entry is found", async () => {
+    await withTx(async (tx) => {
+      const { me, sessionId, row } = await award(tx);
+      const seen = await row(5, "manual_adjustment", "2026-09-30T10:00:00.000001Z", "w18:seen");
+      const paid = await row(20, "check_in", "2026-09-30T10:00:00.000002Z", "w18:paid");
+      await tx.as(me.claims);
+      expect(await unseenAward(tx, me.memberId, sessionId, seen)).toEqual([{ id: paid }]);
+    });
+  });
+
+  it("★ seen: an award row older than the mark's entry is not — to the microsecond", async () => {
+    await withTx(async (tx) => {
+      const { me, sessionId, row } = await award(tx);
+      await row(20, "check_in", "2026-09-30T10:00:00.000001Z", "w18:paid");
+      const seen = await row(5, "manual_adjustment", "2026-09-30T10:00:00.000002Z", "w18:seen");
+      await tx.as(me.claims);
+      expect(await unseenAward(tx, me.memberId, sessionId, seen)).toEqual([]);
+    });
+  });
+
+  it("the award row itself as the mark's entry is seen", async () => {
+    await withTx(async (tx) => {
+      const { me, sessionId, row } = await award(tx);
+      const paid = await row(20, "check_in", "2026-09-30T10:00:00Z", "w18:paid");
+      await tx.as(me.claims);
+      expect(await unseenAward(tx, me.memberId, sessionId, paid)).toEqual([]);
+    });
+  });
+
+  it("another member cannot read the award row at all", async () => {
+    await withTx(async (tx) => {
+      const { f, me, sessionId, row } = await award(tx);
+      await row(20, "check_in", "2026-09-30T10:00:00Z", "w18:paid");
+      await tx.as(f.a.members[0].claims);
+      expect(await tx.q(`select 1 from public.points_ledger where member_id = $1 and session_id = $2`, [me.memberId, sessionId])).toEqual([]);
+    });
+  });
+});
+
+describe("the company attendance rule, read by a member (DEC-210)", () => {
+  it("a member reads whether the org's company_attendance_pct rule is enabled", async () => {
+    await withTx(async (tx) => {
+      const { f } = await setup(tx);
+      await tx.as(f.a.members[0].claims);
+      const rows = await tx.q<{ enabled: boolean }>(`select enabled from public.company_scoring_rules where action_key = 'company_attendance_pct'`);
+      expect(rows).toHaveLength(1);
+      expect(typeof rows[0].enabled).toBe("boolean");
+    });
+  });
+});
