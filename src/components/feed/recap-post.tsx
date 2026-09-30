@@ -12,9 +12,12 @@ import type { RecapExtra } from "@/lib/dal/feed";
 // material the viewer may open exists — never a download.
 
 export async function RecapPost({ post, extra, locale, now, today }: { post: SessionPost; extra: RecapExtra; locale: string; now: Date; today: string }) {
-  const t = await getTranslations("feed");
+  const [t, tBrowse] = await Promise.all([getTranslations("feed"), getTranslations("browse")]);
   const lead = post.presenters[0] ?? null;
-  const who = lead ? [lead.displayName, lead.company?.name].filter(Boolean).join(" · ") : null;
+  // A co-presented session is not one person's: the lead's name, then browse's «وآخر» / «وآخران» / «و3 آخرون».
+  const others = Math.max(0, post.presenters.length - 1);
+  const name = lead?.displayName ? (others > 0 ? `${lead.displayName} ${tBrowse("card.others", { count: others, value: formatNumber(others) })}` : lead.displayName) : null;
+  const who = lead ? [name, lead.company?.name].filter(Boolean).join(" · ") : null;
   const counts = [
     post.attendedCount !== null ? t("recap.attended", { count: post.attendedCount, value: formatNumber(post.attendedCount) }) : null,
     extra.count > 0 ? t("recap.photos", { count: extra.count, value: formatNumber(extra.count) }) : null,

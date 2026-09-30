@@ -4,10 +4,14 @@ import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import feedAr from "@/messages/ar/feed.json";
+import browseAr from "@/messages/ar/browse.json";
 import type { SessionPost } from "@/components/browse/session-post";
 
 vi.mock("next-intl/server", () => ({
-  getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages: feedAr, namespace: namespace as "feed" }),
+  getTranslations: async (namespace: string) =>
+    namespace === "browse"
+      ? createTranslator({ locale: "ar", messages: browseAr, namespace: "browse" })
+      : createTranslator({ locale: "ar", messages: feedAr, namespace: namespace as "feed" }),
 }));
 vi.mock("@/components/feed/actions", () => ({ toggleSessionLike: vi.fn() }));
 
@@ -27,9 +31,9 @@ const post = {
   likedByMe: false,
 } as unknown as SessionPost;
 
-async function show(hasMaterials: boolean) {
+async function show(hasMaterials: boolean, over: Partial<SessionPost> = {}) {
   const ui = await RecapPost({
-    post,
+    post: { ...post, ...over } as SessionPost,
     extra: { count: 3, photos: [{ id: "p1", url: "https://example.test/1.webp", width: 800, height: 600 }], hasMaterials },
     locale: "ar",
     now: new Date("2026-09-30T12:00:00Z"),
@@ -52,6 +56,17 @@ describe("RecapPost", () => {
     const { container } = await show(true);
     expect(container).toHaveTextContent("محمد الدوسري · جذر · 28 حاضرًا · 3 صور");
     expect(container).toHaveTextContent("أمس");
+  });
+
+  it("★ a co-presented session is not one person's: «وآخر» after the lead, the others unnamed", async () => {
+    const more = (n: number) => Array.from({ length: n }, (_, i) => ({ memberId: `x${i}`, displayName: `مقدّم ${i}`, avatarUrl: null, company: null }));
+    const lead = post.presenters[0]!;
+    const { container, unmount } = await show(true, { presenters: [lead, ...more(1)] });
+    expect(container).toHaveTextContent("محمد الدوسري وآخر · جذر");
+    expect(container).not.toHaveTextContent("مقدّم 0");
+    unmount();
+    const three = await show(true, { presenters: [lead, ...more(2)] });
+    expect(three.container).toHaveTextContent("محمد الدوسري وآخران · جذر");
   });
 
   it("«المواد» links to the materials only when there is one", async () => {

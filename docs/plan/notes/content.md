@@ -5721,8 +5721,8 @@ now was checked against the files as they stand at this note's commit.
 2. **Every presenter but the lead.** The old card drew `AvatarStack` with «و N آخرين»; the post draws the first
    presenter only, as the artboard does. A co-presented session reads as one person's on the home.
    ★ **Ruled: RESTORED in words** — the lead's ring and name, then browse's «وآخر» / «وآخران» / «و3 آخرون»
-   (`browse.card.others`); still one avatar. A case in `session-post.test.tsx`. (A recap's meta line still names the
-   lead presenter alone.)
+   (`browse.card.others`); still one avatar. A case in `session-post.test.tsx`. ★ **And on the recap** (the lead's
+   ruling): its meta line says «محمد الدوسري وآخر · جذر …» with the same string; a case in `recap-post.test.tsx`.
 3. **Tags on the card** (three, as chips). Not drawn on a post; the artboard has none. Tags stay on browse and the
    event page (`REQ-DSC-002`). ★ **Ruled: accepted.**
 4. **The waitlist's length on a full session** («N في قائمة الانتظار»). The post shows the full badge and the seats
