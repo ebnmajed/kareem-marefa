@@ -5107,3 +5107,22 @@ that has a utility») reads as covering them; **I would rename them only if the 
 - **Q4 — is §2·E in the gate?** If `no-raw-palette` counts context variables in brackets, I rename them as the
   table says; if not, I leave them.
 - **Q5 — F1 to F6**, each a ruling.
+
+### Wave 17 — sync 1's rulings, N1 and N4
+
+- **Rulings (the lead, sync 1):** both `.theme-dark`s, F1 and F2 are the lead's in M1 — the hero band and its skeleton
+  become `bg-surface`; I touch neither `event-hero.tsx` nor `loading.tsx`. F3 `bg-surface` · F4 `bg-raised!` · F5
+  `bg-raised` · F6 `var(--color-canvas)` → `var(--bg)`. §2·E is **not** in the gate and stays, except the two hand-built
+  buttons (`me/calendar/page.tsx:95`, `event/ratings.tsx:79`), whose class string becomes `buttonClass("primary", "lg")`
+  — class only, part of N2. §2·B **is** in the gate. The pending dot and the route bar are the spec's. «Follow» in
+  `04-components.md:36` means the face, not the size.
+- **N1 — `eec8d654`.** The ten demos, as planned. `RouteProgressDemo` takes `ground` and mounts the one real bar on the
+  dark ground only: both grounds read one store. `IconsDemo` reads `import * as Icons`, carries the Arabic captions and
+  the prop forms as two additive tables, and marks itself `data-count` and each cell `data-glyph`. Wiring is the lead's;
+  `reorderable-demo.tsx` stays until both imports are off it.
+- **N4 — `tests/e2e/wave17-content-gallery.spec.ts`. ★ Written, never run** — it needs a build with `KAREEM_GALLERY=1`
+  and the demos wired, both the lead's. What it does: each of the twenty-four demos on both grounds at 390 px and
+  desktop; every glyph paints at two sizes and is named; a press alone moves a row (`DEC-093`); and a navigation
+  stalled at the network draws the link's dot and the route bar. **The least certain case is the last**: it assumes
+  `useLinkStatus` reports pending for a navigation to the same path with a different query, and that holding the
+  prefetch holds the navigation. If it does not go pending, the link's target is what to change, not the assertion.
