@@ -1,4 +1,4 @@
--- ── comments_broadcast() — the author's company and whether they present (DEC-209, content) ─────────────────
+-- 0167_comments_broadcast_author_context.sql — proposed by `content` (supabase/proposed/content/comments_broadcast_author_context.sql), promoted by the lead (DEC-209).
 --
 -- `SCR-012`'s discussion draws «name · company · time» on every comment and «· المُقدِّمة» beside a presenter
 -- (`Event.dc.html:110-114`). The DAL's first paint can read both; a comment that arrives LIVE (`REQ-EVT-015`)

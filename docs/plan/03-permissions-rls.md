@@ -1469,6 +1469,7 @@ generated suite is the highest-value test in the product.
 | `POL-avatars_storage_read.stale_version_refused` | An older version's object ✗; ★ clearing `avatar_version` (a decline, anonymisation) makes the current one unreadable at once. (migration `0157`). |
 | `COL-members.avatar_import.no_grant` | A client select of `members.avatar_import` is refused (42501); `avatar_version` is readable through the grant, `members_member_view` and `me()`. (migration `0157`). |
 | `TRG-comments_broadcast.avatar_version` | The comment payload carries `authorAvatarVersion`, and `authorAvatarUrl` stays null — no Google URL on the wire. (migrations `0155`, `0157`). |
+| `TRG-comments_broadcast.author_context` | The payload adds `authorCompanyName`, `authorTeamColor` and `authorIsPresenter` (an **accepted** presenter of the comment's session only) — every earlier key kept, `authorAvatarUrl` still null, nothing about any other member (REQ-EVT-015, DEC-209). (migration `0167`). |
 | `RPC-begin_photo_album_build` | `service_role` only · returns the visible set, never a hidden or removed photograph · a superseded build gets no rows. (migration `0159`, `DEC-182`). |
 | `RPC-mark_points_seen.own_row` | Writes the caller's own mark, inserting it the first time; never another member's. (migration `0163`, `DEC-197`). |
 | `RPC-mark_points_seen.foreign_level` | A level of another org is refused with `22023` and nothing is written. (migration `0163`). |
