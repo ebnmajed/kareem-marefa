@@ -59,7 +59,12 @@ export async function EventHero({ session, phase, seat, closingSoon, dayCount, p
   return (
     <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start lg:gap-8">
       <div className="flex flex-col gap-2">
-        <div className={washed ? "grayscale opacity-45" : undefined}>
+        {/* The ended wash (DEC-123 item 1). A rendered poster is an image and takes the whole wash. The
+            placeholder draws real text, so it drains to grey and keeps its opacity: `opacity-45` took its
+            category and meta to 3.8:1 (the lead's a11y sweep, REQ-NFR-007). Under `grayscale` the ink on
+            the seven team colours and the six sticker fills is 4.68:1 at worst (magenta, the filter taken
+            in sRGB) and the neutral ground is unchanged. */}
+        <div className={washed ? (poster?.imageUrl ? "grayscale opacity-45" : "grayscale") : undefined}>
           <Poster
             src={poster?.imageUrl ?? null}
             width={poster?.width ?? undefined}
