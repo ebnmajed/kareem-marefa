@@ -395,7 +395,9 @@
   --scrim: rgb(11 12 18 / 0.78);
   --team-neutral: var(--color-play-muted);
   --focus-width: 3px;
-  --display-face: var(--font-baloo), var(--font-arabic);
+  /* Arabic, then the Latin file for digits and Latin letters — two families since the faces are
+     self-hosted, one per script (`src/lib/fonts.ts`, DEC-203). */
+  --display-face: var(--font-baloo), var(--font-baloo-latin), var(--font-arabic);
 
   /* The public site's spine and nodes, should a chapter ever sit in a scope. */
   --spine: var(--color-play-line);
