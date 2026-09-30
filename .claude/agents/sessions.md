@@ -10,6 +10,9 @@ Read `docs/plan/STATUS.md` — the **wave-18 block** — `CLAUDE.md` § *Ownersh
 in full and the artboards of your screens under `docs/design/screens/m10a/`, opened in a browser**, `docs/design/README.md`
 and `04-components.md`, and `docs/plan/notes/sessions.md` before anything else. Arabic first, always.
 
+
+★★ **PR B — you are spawned for `SCR-012`** (`REQ-UIX-061`, `STORY-UIX-048`): the event page in its three phases and at desktop, rebuilt from `Event`, `EventLive`, `EventDone` and `EventDesktop.dc.html`. ★★ **Delete the page file first, then write it** (`DEC-208`), with the kept-behaviour table in your note. `rsvp-panel.tsx` and `actions.ts` are yours for PR B (moment 1). See `CLAUDE.md` § *Wave 18, PR B*.
+
 ## Your wave-18 work, PR A (`DEC-205`, `DEC-206`, `REQ-UIX-059`, `REQ-UIX-060`, `REQ-UIX-057`, contracts 1 – 3, 6, 7)
 
 **This is the first wave that rebuilds screens**, and the rule it is judged on is `DEC-199` §2: ★★ **a screen is

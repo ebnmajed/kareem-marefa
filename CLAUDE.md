@@ -430,6 +430,30 @@ that reads «restyle X to match» is written wrong.
 - **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`, `stop`,
   branch switches, pushes and the PRs.
 
+#### Wave 18, PR B — the event (`wave-18b/the-event`, opened against `main` from its first push)
+
+**`SCR-012` in three phases and at desktop, `SCR-014`, `SCR-016`** (`REQ-UIX-061`, `REQ-UIX-062`; `STORY-UIX-048` …
+`050`). The frame, the primitives and `0164`/`0165` are PR A's and stand. ★★ **`DEC-208` binds every screen here: the
+page file and the screen's own markup files are DELETED in one commit, then the screen is written from its artboard in
+the next, and the owner's note carries the kept-behaviour table — each behaviour, where it lives now, the `REQ-*`
+that made it keep it — re-derived from the requirements and the DAL, never from memory.**
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | B's Step 0, this map, the PR against `main`, the gates, the captures beside the artboards, `STATUS` · custodian of every unspawned track's files | as PR A's map, and `ui/index.ts` for any addition a plan names |
+| `sessions` | opus | ★ **`SCR-012`, rebuilt** — the top row, the poster whole at 4:5, the chips, the title, the presenter card, the action card with moment 1, the sub-nav of sections that exist, the sections in the artboards' order; the bottom `action-bar`; the desktop hero band and the full-width action row; the live and completed phases (the outcome card, moment 3 through `scoring`'s existing mechanism, never a copy) | `src/app/[locale]/app/sessions/[id]/{page,loading,error,not-found}.tsx`, `src/components/sessions/**`, ★ `src/components/checkin/{rsvp-panel.tsx,actions.ts}` (**from `checkin`, for PR B**, as in wave 16 — `session-matrix.ts` and `lib/dal/rsvp.ts` stay `checkin`'s), `src/lib/dal/sessions.ts` (add-only), its primitives, `src/messages/*/sessions.json`, its tests, new `tests/e2e/wave18-sessions-event-*.spec.ts`, its note |
+| `checkin` | opus | ★ **`SCR-014` and `SCR-016`, rebuilt** — check-in with moment 2 and the 1.4 s return; the host view with the code in two groups, the rotation countdown, the count with walk-ins, the switch and its ceiling, revoke, marking by hand in a `sheet`, projection with wake-lock. ★ **The refused code does not shake until the owner rules** (`DEC-206` §4.75) | `src/app/[locale]/app/sessions/[id]/{check-in,host}/**`, `src/components/checkin/**` except `rsvp-panel.tsx` and `actions.ts`, `src/lib/dal/{rsvp,checkin}.ts` (add-only), `src/messages/*/{rsvp,checkin}.json`, its tests, new `tests/e2e/wave18-checkin-*.spec.ts`, its note. `code-input` is `sessions'` primitive — a change is a request |
+| `content` | opus | ★ **the event page's slots, rebuilt with it** — materials (the phase gate; ★ the audio row with an in-page player, `REQ-MAT-007`), photos (the add tile for who may upload, the privacy line, «أزلني»), the discussion (the composer, replies one level deep, the like) — each slot renders no heading of its own | `src/components/{materials,photos,viewer,event}/**` for the slots, `src/lib/dal/{materials,photos,comments,reactions}.ts` (add-only), `src/messages/*/{materials,photos,event}.json`, its tests, new `tests/e2e/wave18-content-event-*.spec.ts`, its note |
+
+**PR B's contracts.** (1) **The slot contract stands**: the page owns every `<section>` and `<h2>`; a slot renders none
+and a section whose slot can render nothing is gated by the page. (2) **Delete first** (`DEC-208`). (3) **A member sees
+how many attend, never who** — `session_attendance_count()`; identities only for a viewer RLS answers (A33 rule 3).
+(4) **Every figure is read** — the amount, the rotation, the window. (5) **`DEC-206` §4.66 – §4.77** is the list of
+what the artboards draw and are not built; a new disagreement is written, not picked. (6) **No sixth moment**: moment 1
+on the action card, moment 2 on `SCR-014`, moment 3 on the outcome card, each once, each with its static state.
+**Spawn planning-only; sync 1 approves three plans; nobody deletes a file before the lead posts «B's plans are
+approved».**
+
 ### Ownership map (wave 17 — every primitive, and one visual language, DEC-199) — ★ THE RECORD OF A FINISHED WAVE
 
 > Wave 17 merged as PR #35 (`bf434b01`), and 17b as PR #37 (`badab40e`). Its map is kept as the record; **wave 18's map is directly above** (`DEC-205`, `DEC-206`).

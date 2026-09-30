@@ -100,7 +100,7 @@ is ever found based on A: retarget it to `main` BEFORE A is merged with `--delet
 
 | # | Row | Owner | State |
 |---|---|---|---|
-| B0 | B's Step 0: the branch cut from A's head, **the PR opened against `main`**, `DEC-206` §4.66 – §4.77 re-measured, the map for `sessions`, `checkin` and `content`'s slots | lead | todo — after A's frame is in |
+| B0 | B's Step 0: the branch cut from A's head, **the PR opened against `main`**, `DEC-206` §4.66 – §4.77 re-measured, the map for `sessions`, `checkin` and `content`'s slots | lead | **map written** (`CLAUDE.md` § *Wave 18, PR B*, three agent files); branch `wave-18b/the-event` cut from A's head `db12b9ba`; the PR against `main` at this push; teammates spawn planning-only |
 | B1 | ★ **`SCR-012`, the event page, rebuilt** — three phases and desktop (`REQ-UIX-061`, `STORY-UIX-048`) | `sessions`, `content` | todo |
 | B2 | ★ **`SCR-014`, check-in, rebuilt** (`REQ-UIX-062`, `STORY-UIX-049`) — ★★ the shake waits for the owner | `checkin` | todo |
 | B3 | ★ **`SCR-016`, the host view, rebuilt** (`REQ-UIX-062`, `STORY-UIX-050`) | `checkin` | todo |
