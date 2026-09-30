@@ -47,6 +47,16 @@ export function hasNavRail(pathname: string | null): boolean {
   return !isImmersive(pathname) && !isConsole(pathname);
 }
 
+/** ★ wave 18 (DEC-207 Q2): routes whose PHONE top row is the page's own. `Browse.dc.html` draws the
+ *  page's title and the bell in one row and no wordmark; below `lg` the shell's row gives way to it.
+ *  From `lg` the shell's bar is always there. Exact paths: `/app/sessions/[id]` is immersive already. */
+const OWN_TOP_ROW = /^\/app\/sessions$/;
+
+export function ownsTopRow(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return OWN_TOP_ROW.test(strip(pathname));
+}
+
 /** The path the tab bar and the rail compare their links with. */
 export function shellPath(pathname: string | null): string {
   return strip(pathname ?? "");

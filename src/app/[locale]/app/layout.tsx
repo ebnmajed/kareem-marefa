@@ -9,6 +9,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { FocusClearance } from "@/components/shell/focus-clearance";
 import { NavRail } from "@/components/shell/nav-rail";
+import { ShellHeader } from "@/components/shell/shell-header";
 import { SearchEntry } from "@/components/shell/search-entry";
 import { ShellFooter, ShellMain } from "@/components/shell/shell-frame";
 import { TabBar } from "@/components/shell/tab-bar";
@@ -107,8 +108,9 @@ export default async function AppLayout({
 
         {/* The top bar: 64 px. On a phone — the wordmark at the start, search and
             the bell at the end. From `lg` — the wordmark in the rail's 196 px
-            column, then the search field, then the bell and the account menu. */}
-        <header className="sticky top-0 z-30 border-b border-edge bg-canvas">
+            column, then the search field, then the bell and the account menu. On a route that
+            draws its own phone top row — browse — the bar gives way to it below `lg` (DEC-207). */}
+        <ShellHeader>
           <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-2 px-4 lg:gap-6 lg:px-6">
             {/* Inside the platform the mark leads home, not to the public site (REQ-UIX-027). */}
             <Link
@@ -149,7 +151,7 @@ export default async function AppLayout({
               }}
             />
           </div>
-        </header>
+        </ShellHeader>
 
         {/* ★ `<main>`'s bottom padding clears whichever fixed bar is on the page and
             reads ONE token, `--tabbar-h` (globals.css); the bar and the padding move
