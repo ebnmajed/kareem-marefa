@@ -5853,3 +5853,55 @@ tests: `tests/components/sessions/{event-section,action-card-phases,outcome-card
 | **NB7** | The deadlines row shows the cancellation cut-off to a member with no seat (`Event.dc.html:57`) | the tree shows the cut-off to a held seat only | — |
 | **NB8** | «مباشر · شاهد القصة» as a link in the live top row (`EventLive.dc.html:20`) | `DEC-205` §1 / `DEC-206` §1.5: a ring opens nothing this wave, and «شاهد» promises a viewer | the ring's state, with no «شاهد» and no link |
 | **NB9** | The tasks and ratings sections are drawn in the new look (`Event.dc.html:92-96`) | `components/tasks/**` (content's) and `components/event/ratings.tsx` (event's) are not in PR B's map — they would sit on the rebuilt page in the old look | the lead's |
+
+## W18B.7 · As built — `4a45c008` (delete), `9bf3aced` (write), then `cb1a1317`, `b239cf76`, `25b7518e`, `54fc13b3`
+
+**The files.** Commit 1 deleted the page, its three boundaries, `action-card`, the old `action-bar`, `event-hero`,
+`event-subnav`, `presenter-list`, `gated-section` and `checkin/rsvp-panel`. Commit 2 wrote the four route files,
+`rsvp-panel.tsx`, and `components/sessions/{event-top-row,event-hero,action-card,event-meta,outcome-card,event-recap,event-section,event-subnav,event-aside}.tsx`.
+The phone's own top row, the desktop breadcrumb, the notices and the presenters' bios are drawn by the page itself.
+The add-only changes: `EventPresenter.avatarUrl`/`teamColor`, `EventSession.checkedInAt`, `getEventFigures()`,
+`getEventAttendeeFaces()`, `PhaseSlotProps`, `getAttendanceRulePoints()` (checkin's request, `aa495979`) and
+`CodeInputProps.align` (landed by the lead in `d640d411`).
+
+**Two changes to kept files.** `moment-reserve.tsx`: `ReserveCta`'s card wrapper is no longer `hidden md:block`, so
+the card's reserve shows at every width (DEC-209: two primaries on the phone). How the moment is keyed does not move,
+and neither does which placement the ticket rises from. `slots.ts`: `PhaseSlotProps`, add-only.
+
+**The kept-behaviour table (W18B.2), checked row by row against the new files, `DEC-208` §2.** Every row holds, and
+two were caught by the check itself:
+- ★ **The pending award between a workshop's days.** The old card mounted `AwardState` in every phase (it self-gates);
+  the first write mounted it only while live. Restored in `54fc13b3`.
+- ★ **The phone's bar inside the region «الحضور».** With the primary now in both the card and the bar, every locator
+  scoped to the region would have found two controls. The bar moved outside the region, still inside the moment's
+  host, in `25b7518e`.
+
+**Behaviours dropped on purpose** (for the reviewer, with the reason):
+- the hero's «يقدّمها …» line — the presenter card replaces it;
+- the phone's poster inside «نبذة» — the poster is the hero now (ruling 4);
+- the icon rows on an ENDED session — `EventDone.dc.html` draws the outcome and the certificate there instead;
+  «الحضور في القاعة فقط.» stays on every other phase;
+- the desktop's labelled bookmark and share buttons with the share hint — the row draws the two icons
+  (`EventDesktop.dc.html:49-50`); the hint remains the share control's own;
+- the ended stat «المواد المنشورة» — the recap draws attended of reserved and the photos (`EventDone.dc.html:56-60`);
+- the presenters section for a presenter with no bio.
+
+**The ledger lines** (for `STATUS.md`):
+
+| File | What changed | Why |
+|---|---|---|
+| `tests/components/sessions/gated-section.test.tsx` → `event-section.test.tsx` | **selector** — the subject is renamed; every expectation is unchanged; one new case (the header's note) | `DEC-208`: `gated-section.tsx` deleted and written as `event-section.tsx` |
+| `tests/components/sessions/event-hero-days.test.tsx` | **selector** — the hero's props (no `poster`, `points` added) and `getSessionPoster` mocked; the four expectations are unchanged | the hero reads the poster itself now |
+| `tests/components/checkin/rsvp-panel.test.tsx` | none — 10/10 unchanged, against the rewritten file | the whole panel keeps its seats line and seats chip |
+
+**Predicted to move in specs I cannot run** (each goes to its owner with the line once you run them):
+- On the phone the primary now appears twice on the page (card and bar). A **page-level** locator for it — e.g.
+  `sessions-screens.spec.ts:305` `getByRole("link", { name: "شاشة التقديم" })` — finds two: **selector**. Region-scoped
+  locators are not affected.
+- The card's reserve is named «احجز مقعدك، +35 عند الحضور» (the rule's amount) where it was «احجز مقعدك، 27 من 30»: any
+  exact match on the old chip moves — **expectation** (`DEC-209`: the artboard's chip).
+- `event-page.spec.ts`: the poster's place (**selector**); the hero's «يقدّمها» line, if asserted (**expectation**).
+
+★ **One disagreement I did not pick, found while building:** `EventDone.dc.html` has no icon rows. The ended session
+therefore drops the in-person line, which `REQ-SES-008` asks the product to say. The product still offers no remote
+affordance anywhere, so the requirement's acceptance holds; the sentence is simply not repeated on an ended page.
