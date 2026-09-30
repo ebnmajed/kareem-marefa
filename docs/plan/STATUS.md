@@ -168,6 +168,14 @@ says whether a **selector** moved or an **expectation** did.*
 | `tests/e2e/checkin.spec.ts`, the switch case (`checkin`) | **selector moved**: the «مفتوح/مغلق الآن» text and two buttons → `getByRole("switch")` checked / not, a click on its label | `SCR-016`: the door is a switch |
 | `tests/e2e/wave9-checkin-days.spec.ts:197, 199, 213` (`checkin`) | **selector moved**: as above | as above |
 | `tests/components/sessions/gated-section.test.tsx` → `event-section.test.tsx` (`sessions`) | **selector moved**: the subject renamed; every expectation unchanged; one new case | `DEC-208`: `gated-section.tsx` deleted and written as `event-section.tsx` |
+| `tests/e2e/materials.spec.ts:229` (`content`) | **selector moved**: «فتح العارض» → the row is one link named by the material's title | `SCR-012`'s materials slot rebuilt (`DEC-208`): the whole row is the way in |
+| `tests/e2e/photos.spec.ts:208` (`content`) | **selector moved**: the add control is a labelled file input | the add tile is the label (`Event.dc.html`) |
+| `tests/e2e/photos.spec.ts:222` (`content`) | **selector moved**: the takedown is opened in the lightbox | the takedown moved beside the download in the lightbox |
+| `tests/e2e/wave10-content-photos-takedown.spec.ts:140` (`content`) | **selector moved**: the trigger is measured in the lightbox | as above |
+| `tests/e2e/wave9-content-photo-worker.spec.ts:163` (`content`) | **selector moved**: choosing the file uploads it; no button click | choosing a photo uploads it (content's note, a deliberate difference) |
+| `tests/e2e/tasks.spec.ts:169-174` (`content`) | **selector moved**: «أنجزتها» / «التراجع» → the task's checkbox, checked / unchecked | a task is a checkbox (`Event.dc.html`) |
+| `tests/e2e/wave6-discussion-review.spec.ts:183-184` (`content`) | **expectation moved**: «إلغاء الإعجاب» → «إعجاب N» with `aria-pressed="true"` | the like is `reaction-bar` (`REQ-UIX-034`), one accessible name whose pressed state says liked |
+| the 11 deleted slot suites under `tests/components/{materials,photos,event,tasks}/` (`content`, `45192df2`) | **deleted with their subjects** — every case re-asserted in the four `*-w18.test.tsx` files (89 cases) | `DEC-208`: the slot files were deleted and written again |
 | `tests/components/ui/icons-playground.test.tsx:96` (the lead) | **expectation moved**: the set `52` → `54` glyphs | PR B's two, `PlayIcon` (the audio row, `REQ-MAT-007`) and `MonitorIcon` (projection, `SCR-016`), each named in the gallery — contract 5, last and alone |
 | `tests/components/sessions/event-hero-days.test.tsx` (`sessions`) | **selector moved**: the hero's props (no `poster`, `points` added), `getSessionPoster` mocked; four expectations unchanged | the hero reads the poster itself |
 
