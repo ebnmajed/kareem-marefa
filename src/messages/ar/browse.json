@@ -61,8 +61,11 @@
         "thisWeek": "هذا الأسبوع",
         "nextWeek": "الأسبوع القادم",
         "thisMonth": "هذا الشهر",
-        "later": "لاحقًا"
-      }
+        "later": "لاحقًا",
+        "results": "نتائج",
+        "past": "سابقة"
+      },
+      "showEnded": "{count, plural, zero {لا جلسات مكتملة} one {عرض جلسة مكتملة واحدة} two {عرض جلستين مكتملتين} few {عرض {value} جلسات مكتملة} many {عرض {value} جلسة مكتملة} other {عرض {value} جلسة مكتملة}}"
     },
     "filters": {
       "label": "تصفية الجلسات",
@@ -95,7 +98,12 @@
         "reset": "امسح",
         "close": "أغلق"
       },
-      "when": "الموعد"
+      "when": "الموعد",
+      "moreShort": "المزيد",
+      "statusChip": "الحالة: {value}",
+      "categoryChip": "التصنيف: {value}",
+      "allCategories": "الكل",
+      "tags": "الوسوم الأكثر استخدامًا"
     },
     "emptyState": {
       "upcoming": {
@@ -124,6 +132,17 @@
       "waitlistNoPosition": "في قائمة الانتظار",
       "live": "جارية الآن",
       "poster": "ملصق الجلسة"
+    },
+    "search": {
+      "label": "ابحث في الجلسات",
+      "placeholder": "ابحث عن جلسة أو مُقدِّم أو وسم…"
+    },
+    "row": {
+      "today": "اليوم",
+      "seats": "<bdi>{taken}</bdi> من {capacity, plural, zero {لا مقاعد} one {مقعد واحد} two {مقعدين} few {{capacityValue} مقاعد} many {{capacityValue} مقعدًا} other {{capacityValue} مقعد}}",
+      "full": "ممتلئة، {count, plural, zero {لا أحد في الانتظار} one {واحد في الانتظار} two {اثنان في الانتظار} few {{value} في الانتظار} many {{value} في الانتظار} other {{value} في الانتظار}}",
+      "points": "{count, plural, zero {لا نقاط عند الحضور} one {نقطة واحدة عند الحضور} two {نقطتان عند الحضور} few {{value} نقاط عند الحضور} many {{value} نقطة عند الحضور} other {{value} نقطة عند الحضور}}",
+      "railLabel": "حصيلتك والتالية لك"
     }
   }
 }

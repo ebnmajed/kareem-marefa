@@ -5548,3 +5548,30 @@ The files: `src/components/browse/session-post.ts` (pure — types, `postAction`
 `TimelineSession.presenters[]` gained optional `avatarUrl` and `company` (filled by the readers that pass the org's
 companies); `TimelineData` gained `endedCount` and `attendancePoints`; `getTimeline()` a trailing `{ pin?: boolean }`;
 `getTimelineSessionsByIds()` a trailing `{ withCompanies?: boolean }`. All add-only.
+
+## W18.10 · SCR-007 and SCR-011 as built — the ledger lines, for the lead to copy into `STATUS.md`
+
+**SCR-007** (`f86282dd`): the page and its 404 rebuilt in `components/browse/public-card-frame.tsx`'s frame. A rendered
+poster is the `og` render whole at its own ratio; the placeholder is `ui/poster` at 4:5 with the org's name on its meta
+line, since no company may be named (Q1 to `content` is still open). New strings: `sessions.card.signInEnded`;
+`sessions.card.membersOnly`'s value.
+
+**SCR-011**: `browse-screen.tsx` (regions), `session-row.tsx` (the row; `card` `compact` because its 80 px media is the
+artboard's 76), `filter-chips.tsx` (two `ui/menu`s of links, «المزيد», the applied row), `search-field.tsx`
+(`#browse-search`), `tag-cloud.tsx`, `browse-skeleton.tsx`; `groupBrowse()` and `appliedEntries()` add-only;
+`getTimeline(…, { pin: false })`. The page passes `GameRail` with `NextForMe` to `PageFrame`. Deleted:
+`sessions-timeline.tsx`, `filter-bar.tsx`, `timeline-skeleton.tsx` and their two suites, after `content`'s `8c738af2`.
+`session-card.tsx` stays for `SCR-024` until M10c.
+
+| File | What changed | Why |
+|---|---|---|
+| `tests/e2e/wave7-sessions-public-card.spec.ts` :102 | **selector and expectation** — the placeholder is `[data-slot="poster-placeholder"]` on `bg-raised`, not `CardMedia`'s navy tint, and carries no «+» | `SCR-007` rebuilt on `ui/poster` (`REQ-UIX-059`, `DEC-207` §1.4); the navy tints were the old look |
+| `tests/components/browse/sessions-timeline.test.tsx` | **deleted** — its subject is deleted. Its four cases live on in `browse-screen.test.tsx`: the empty case and filtered-empty unchanged (**selector** — the component); «the committed session is the FIRST item» → **expectation**: it stands once in its group saying «مقعدك محجوز», and `getTimeline` is asked for no pin; «asks for a company» → **expectation**: browse draws no banner, the home does | `DEC-206` §4.64, `DEC-207` §6.1 |
+| `tests/components/browse/filter-bar.test.tsx` | **deleted** — subject deleted. In `filter-chips.test.tsx`: «row A's toggles are links» → **expectation**: two menus whose chip says the applied value, their items links to `/app/sessions?…`, the current one `aria-current="page"`; row B → **selector**, and it now lists the category and status too; the sheet's count → unchanged | `DEC-207` N4 |
+| `tests/e2e/browse.spec.ts` :143 | **selector** (open the category menu, then the item) and **expectation** (the chip reads «التصنيف: ذكاء اصطناعي» where a toggle carried `aria-current`); the × link keeps its name | `DEC-207` N4 |
+| `tests/e2e/timeline.spec.ts` :147 | **expectation** — on `/app/sessions`, the committed session stands once in its group with «مقعدك محجوز»; no pinned first item | ruling 3 (`/app` is the feed), `DEC-206` §4.64 |
+| `tests/e2e/timeline.spec.ts` :171 | **expectation** — «a filter on `/app` lands on `/app/sessions`» is gone with `/app`'s filters; the case now picks a category from browse's menu and lands on `?category=` | ruling 3, `DEC-207` N4 |
+| `tests/e2e/timeline.spec.ts` :182 | **expectation** — the empty case is `/app/sessions`', not `/app`'s | ruling 3 |
+| `tests/components/browse/fixtures.tsx` | the `timeline()` fixture gains `endedCount: 0` and `attendancePoints: 20` — no assertion | `TimelineData`'s two add-only fields |
+
+`bookmarks.spec.ts`, `session-card.test.tsx` and `tests/components/search/**` are untouched and pass.

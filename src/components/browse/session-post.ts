@@ -68,7 +68,7 @@ export interface SessionPost extends Omit<TimelineSession, "presenters"> {
   /** `reactions` of kind `like` on the SESSION (§4.51), under its org-read policy. */
   likeCount: number;
   likedByMe: boolean;
-  /** How many attended — the lead's count function (§4.54). Null until it is published, and never who. */
+  /** How many attended — `session_attendance_count()` (0165, §4.54), for a live or ended post; null otherwise. Never who. */
   attendedCount: number | null;
   action: SessionPostAction;
 }

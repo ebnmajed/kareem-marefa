@@ -3,7 +3,7 @@
 // 6 against the new controls.
 //
 // What this proves against the real page:
-//   · a filter is a URL: a category toggle, a tag chip from the sheet, and
+//   · a filter is a URL: a category from its menu (wave 18), a tag chip from the sheet, and
 //     removing one of two filters keeps the other (REQ-UIX-022);
 //   · applied filters are NAMED, never a raw id;
 //   · the phone's filter sheet opens as a bottom sheet with the house fields;
@@ -140,19 +140,19 @@ test("both sessions are on the unfiltered timeline, under one h1", async ({ cont
   await expect(page.getByText(TIME)).toBeVisible();
 });
 
-test("★ a category toggle is a link to the filtered URL, pressed once applied, and its × removes it", async ({ context, page }) => {
+test("★ a category chosen from its chip's menu is a link to the filtered URL, named on the chip once applied, and its × removes it", async ({ context, page }) => {
   await signIn(context, memberEmail);
   await page.goto("/ar/app/sessions");
   await streamed(page);
   const nav = page.getByRole("navigation", { name: "تصفية الجلسات" });
-  // `exact`: once applied, the chip's × is also a link whose name contains the
-  // category («أزل عامل التصفية: ذكاء اصطناعي»).
-  await nav.getByRole("link", { name: "ذكاء اصطناعي", exact: true }).click();
+  // ★ Wave 18 (DEC-207 N4): the category is a `ui/menu` of links, not a row of toggles.
+  await nav.getByRole("button", { name: "التصنيف: الكل" }).click();
+  await page.getByRole("menuitem", { name: "ذكاء اصطناعي" }).click();
   await expect(page).toHaveURL(new RegExp(`category=${categoryAiId}`));
   await streamed(page);
   await expect(page.getByText(AI)).toBeVisible();
   await expect(page.getByText(TIME)).toHaveCount(0);
-  await expect(nav.getByRole("link", { name: "ذكاء اصطناعي", exact: true })).toHaveAttribute("aria-current", "true");
+  await expect(nav.getByRole("button", { name: "التصنيف: ذكاء اصطناعي" })).toBeVisible();
 
   await page.getByRole("link", { name: "أزل عامل التصفية: ذكاء اصطناعي" }).click();
   await expect(page).toHaveURL(/\/ar\/app\/sessions$/);

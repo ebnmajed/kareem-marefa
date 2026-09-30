@@ -113,9 +113,11 @@ export function FilterSheet({ search, options }: FilterSheetProps) {
         pending={pending}
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        aria-label={applied > 0 ? `${t("more")}، ${t("applied", { count: applied, value: formatNumber(applied) })}` : undefined}
+        // ★ Wave 18: the chip SAYS «المزيد» (`Browse.dc.html`); its name keeps the whole phrase, which
+        // begins with the visible word (SC 2.5.3), so it still names what it opens.
+        aria-label={applied > 0 ? `${t("more")}، ${t("applied", { count: applied, value: formatNumber(applied) })}` : t("more")}
       >
-        {t("more")}
+        {t("moreShort")}
         {applied > 0 ? (
           <span aria-hidden="true" className="ms-1 rounded-field bg-raised px-1.5 text-caption text-fg-heading">
             {formatNumber(applied)}

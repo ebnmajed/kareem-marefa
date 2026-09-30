@@ -444,6 +444,18 @@ export async function getSessionPosts(locale: string, options: { now?: Date } = 
     ),
   );
 
+  // How many attended — `session_attendance_count()` (0165, §4.54): a number, never who. Asked only where
+  // the post can draw it — a live session and an ended one — so an open post costs no round trip.
+  const counted = shown.filter((c) => c.phase === "live" || c.phase === "ended");
+  const attendedCounts = new Map(
+    await Promise.all(
+      counted.map(async (c) => {
+        const { data, error } = await supabase.rpc("session_attendance_count", { p_session: c.id });
+        return [c.id, error || typeof data !== "number" ? null : data] as const;
+      }),
+    ),
+  );
+
   const cards = await finishCards(locale, supabase, shown, attended, now);
   const today = orgDay(now, orgTimeZone);
   const isStaff = session.role === "admin" || session.role === "moderator";
@@ -468,8 +480,7 @@ export async function getSessionPosts(locale: string, options: { now?: Date } = 
       commentCount: commentCounts.get(c.id) ?? 0,
       likeCount: likeCounts.get(c.id) ?? 0,
       likedByMe: likedByMe.has(c.id),
-      // The lead's count function (§4.54) is not published yet; never who.
-      attendedCount: null,
+      attendedCount: attendedCounts.get(c.id) ?? null,
       action: postAction(c, card.seat, {
         isStaff,
         isPresenter,

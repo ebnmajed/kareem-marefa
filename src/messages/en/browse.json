@@ -61,8 +61,11 @@
         "thisWeek": "This week",
         "nextWeek": "Next week",
         "thisMonth": "This month",
-        "later": "Later"
-      }
+        "later": "Later",
+        "results": "Results",
+        "past": "Past"
+      },
+      "showEnded": "{count, plural, =0 {No completed sessions} one {Show 1 completed session} other {Show {value} completed sessions}}"
     },
     "filters": {
       "label": "Filter sessions",
@@ -95,7 +98,12 @@
         "reset": "Clear",
         "close": "Close"
       },
-      "when": "When"
+      "when": "When",
+      "moreShort": "More",
+      "statusChip": "Status: {value}",
+      "categoryChip": "Category: {value}",
+      "allCategories": "All",
+      "tags": "Most-used tags"
     },
     "emptyState": {
       "upcoming": {
@@ -124,6 +132,17 @@
       "waitlistNoPosition": "On the waitlist",
       "live": "Live now",
       "poster": "Session poster"
+    },
+    "search": {
+      "label": "Search sessions",
+      "placeholder": "Search for a session, presenter or tag…"
+    },
+    "row": {
+      "today": "Today",
+      "seats": "<bdi>{taken}</bdi> of {capacity, plural, one {1 seat} other {{capacityValue} seats}}",
+      "full": "Full, {count, plural, =0 {nobody waiting} one {1 waiting} other {{value} waiting}}",
+      "points": "{count, plural, one {1 point for attending} other {{value} points for attending}}",
+      "railLabel": "Your month and what is next"
     }
   }
 }
