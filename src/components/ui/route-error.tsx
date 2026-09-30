@@ -30,7 +30,8 @@ export function RouteError({ title, description, retryLabel, backLabel, backHref
       <p className="mb-3 text-error pg-dark:text-error-on-dark">
         <AlertTriangleIcon aria-hidden className="text-[1.75rem]" />
       </p>
-      <h1 className="text-h2 text-fg-heading">{title}</h1>
+      {/* Wave 17 (DEC-199 §5.26): a heading is the display face inside the scope, as `ui/page-header` sets it. */}
+      <h1 className="text-h2 text-fg-heading pg:font-display pg:font-extrabold pg:text-play-sm">{title}</h1>
       <p className="mt-3 text-body text-fg-body">{description}</p>
       <p className="mt-6 flex flex-wrap gap-3">
         {retryLabel && reset ? (
