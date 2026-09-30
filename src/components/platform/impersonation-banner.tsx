@@ -29,12 +29,12 @@ import { StopImpersonationControl } from "./stop-control";
 // «تنتهي عند 14:32» stays true — including after the session has ended, until
 // the next full request drops the banner.
 //
-// ★ ONE SURFACE IN TWO CONTEXTS. The console is light and `/no-access` is dark
-// (`(auth)/layout.tsx`'s `.theme-dark`). `Panel`'s `live` tone paints a light
-// background, and under `.theme-dark` the semantic text tokens turn light — so
-// the dark context drops the fill and keeps the live border, the way
-// `ui/badge` already treats `live` there. The status itself is the badge: seen
-// before it is read (`16` §3 principle 3).
+// ★ ONE SURFACE, ONE GROUND (wave 17). Every screen is inside the playground's dark
+// scope, so `Panel tone="live"` and `Badge tone="live"` already draw their outline
+// forms there — no fill, the `DEC-073` on-dark amber as the border — and this file
+// adds nothing of its own. It stays unmistakable by what does not depend on a
+// fill: the amber border, the lock glyph on the `live` badge (seen before it is
+// read, `16` §3 principle 3) and the org's name on its own line.
 //
 // ★ WHAT IT SAYS IS WHAT THE SESSION DOES. Under DEC-055 option C a break-glass
 // session opens none of the org's screens, so the banner does not say «you are
@@ -66,7 +66,7 @@ export async function ImpersonationBanner({ locale }: ImpersonationBannerProps) 
     // interruption — an assertive region re-announced on every navigation is
     // how a screen-reader user learns to tune a banner out.
     <div role="status" className="mb-6">
-      <Panel tone="live" className="[.theme-dark_&]:border-live-on-dark/50 [.theme-dark_&]:bg-transparent">
+      <Panel tone="live">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <div className="min-w-0 space-y-1.5 sm:flex-1">
             <Badge tone="live" icon={<LockIcon aria-hidden />}>

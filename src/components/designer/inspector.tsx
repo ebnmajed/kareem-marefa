@@ -651,7 +651,7 @@ function ImageSection({
                   aria-label={t(`points.${FOCAL_NAMES[i] ?? "centre"}`)}
                   disabled={!canEdit}
                   onClick={() => onFocal(layer.id, p, preset)}
-                  className={`flex size-11 items-center justify-center rounded-field border ${checked ? "border-edge-strong bg-silver-100" : "border-edge hover:border-edge-strong"}`}
+                  className={`flex size-11 items-center justify-center rounded-field border ${checked ? "border-edge-strong bg-raised" : "border-edge hover:border-edge-strong"}`}
                 >
                   <span aria-hidden="true" className={`block rounded-full ${checked ? "size-3 bg-fg-heading" : "size-1.5 bg-fg-muted"}`} />
                 </button>

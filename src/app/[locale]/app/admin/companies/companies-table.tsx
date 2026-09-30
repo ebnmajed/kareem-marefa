@@ -45,7 +45,7 @@ function TeamColourCell({ company, locale, t }: { company: AdminCompany; locale:
   return (
     <Menu
       trigger={
-        <button type="button" className="inline-flex items-center gap-2 rounded-field px-2 py-1 text-body-sm text-fg-heading hover:bg-silver-100 pg:hover:bg-hover">
+        <button type="button" className="inline-flex items-center gap-2 rounded-field px-2 py-1 text-body-sm text-fg-heading hover:bg-hover">
           <Swatch hex={current ? TEAM_COLOUR_HEX[current] : null} />
           <bdi>{currentLabel}</bdi>
         </button>

@@ -189,7 +189,7 @@ export default async function AdminLayout({ children, params }: { children: Reac
           position (WebAIM's standard skip-link pattern) — the shell's own
           skip link targets `id="main"` without one; this one adds it for
           correctness rather than silently repeating that gap. */}
-      <a href="#admin-content" className="skip-link rounded-field bg-navy-950 px-4 py-2 text-label text-white">
+      <a href="#admin-content" className="skip-link rounded-field bg-accent px-4 py-2 text-label text-on-accent">
         {t("skipToContent")}
       </a>
       {items.length > 0 ? (

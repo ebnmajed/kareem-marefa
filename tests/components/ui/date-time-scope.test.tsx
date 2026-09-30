@@ -46,18 +46,16 @@ describe("RtlDateTimePicker — the playground's scope, token-only", () => {
     expect(popover).toHaveClass("border", "border-edge");
   });
 
-  it("the selected day keeps its resting fill and gains the scope's accent", () => {
+  it("the selected day wears the accent", () => {
     openPicker("2026-09-16T18:00");
     const popover = screen.getByRole("dialog", { name: LABELS.label });
     const selected = within(popover).getByRole("button", { name: "16 سبتمبر 2026" });
-    expect(selected).toHaveClass("bg-navy-950", "text-white");
-    expect(selected).toHaveClass("pg:bg-accent", "pg:text-on-accent");
+    expect(selected).toHaveClass("bg-accent", "text-on-accent");
   });
 
-  it("the «تم» control keeps its resting fill and gains the scope's accent", () => {
+  it("the «تم» control wears the accent", () => {
     openPicker("");
     const done = screen.getByRole("button", { name: LABELS.doneLabel });
-    expect(done).toHaveClass("bg-navy-950", "text-white");
-    expect(done).toHaveClass("pg:bg-accent", "pg:text-on-accent");
+    expect(done).toHaveClass("bg-accent", "text-on-accent");
   });
 });

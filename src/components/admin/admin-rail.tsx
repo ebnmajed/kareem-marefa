@@ -296,7 +296,7 @@ function useGroupExpanded(groupKey: string, defaultExpanded: boolean): [boolean,
 
 function itemClassName(current: boolean) {
   return `flex min-h-11 items-center gap-3 rounded-field px-3 py-2.5 text-label ${
-    current ? "bg-silver-100 text-fg-heading" : "text-fg-body hover:bg-silver-100 hover:text-fg-heading"
+    current ? "bg-raised text-fg-heading" : "text-fg-body hover:bg-hover hover:text-fg-heading"
   }`;
 }
 

@@ -137,7 +137,7 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
             <div className="space-y-2">
               <p className="text-body-sm text-fg-body">{t("deleteSlugIntro")}</p>
               <p>
-                <code dir="ltr" className="inline-block rounded-field bg-silver-100 px-2 py-1 font-mono text-body-sm text-fg-heading">
+                <code dir="ltr" className="inline-block rounded-field bg-raised px-2 py-1 font-mono text-body-sm text-fg-heading">
                   <bdi>{org.slug}</bdi>
                 </code>
               </p>

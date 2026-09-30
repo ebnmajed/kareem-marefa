@@ -52,10 +52,10 @@ export function VariantStrip({ presets, current, onSelect, flagged, previews }: 
                 // block is outside it escapes the clip and, in RTL, widened a
                 // 390 px page to 822 (measured on this strip).
                 className={`relative flex min-h-11 flex-col items-center gap-1.5 rounded-field border p-2 ${
-                  selected ? "border-edge-strong bg-silver-100" : "border-edge hover:border-edge-strong"
+                  selected ? "border-edge-strong bg-raised" : "border-edge hover:border-edge-strong"
                 }`}
               >
-                <span className="relative block overflow-hidden rounded-sm border border-edge bg-navy-900" style={{ width, height: 56 }}>
+                <span className="relative block overflow-hidden rounded-sm border border-edge bg-canvas" style={{ width, height: 56 }}>
                   {preview ? (
                     // eslint-disable-next-line @next/next/no-img-element -- a signed, short-lived export URL; nothing for next/image to optimise
                     <img src={preview} alt="" className="h-full w-full object-cover" loading="lazy" />

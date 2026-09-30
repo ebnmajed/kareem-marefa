@@ -111,7 +111,7 @@ export default async function AdminSessionsPage({ params }: { params: Promise<{ 
                     <button
                       type="submit"
                       aria-label={`${t("createFromProposal")} — ${p.title}`}
-                      className="inline-flex h-12 items-center rounded-field bg-navy-950 px-6 text-label text-white hover:bg-navy-900"
+                      className="inline-flex h-12 items-center rounded-field bg-accent px-6 text-label text-on-accent hover:bg-accent-deep"
                     >
                       {t("createFromProposal")}
                     </button>

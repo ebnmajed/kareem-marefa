@@ -105,7 +105,7 @@ function QuestionResult({ question, t }: { question: SurveyResultQuestion; t: Re
       ) : question.texts ? (
         <ul className="mt-2 flex flex-col gap-2">
           {question.texts.map((text, index) => (
-            <li key={index} className="rounded-card bg-silver-100 p-3 text-body text-fg-body">
+            <li key={index} className="rounded-card bg-raised p-3 text-body text-fg-body">
               <bdi>{text}</bdi>
             </li>
           ))}
