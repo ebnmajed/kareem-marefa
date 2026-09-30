@@ -37,14 +37,15 @@ export async function BrowseScreen({ locale, searchParams }: { locale: string; s
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader
-        title={t("title")}
-        actions={
-          <div className="lg:hidden">
-            <NotificationBell locale={locale} />
-          </div>
-        }
-      />
+      {/* ★ ONE ROW, as drawn: the title at the start and the bell at the end. `page-header` stacks its
+          actions under the title below `md`, so the bell is its sibling here, not its `actions`. From `lg`
+          the shell's own bar carries the bell, and this one is hidden (DEC-207 Q2). */}
+      <div className="flex items-center justify-between gap-3">
+        <PageHeader title={t("title")} className="min-w-0" />
+        <div className="shrink-0 lg:hidden">
+          <NotificationBell locale={locale} />
+        </div>
+      </div>
       <SearchField locale={locale} query={query} />
       <FilterChips query={query} data={data} locale={locale} />
       <TagCloud query={query} data={data} />

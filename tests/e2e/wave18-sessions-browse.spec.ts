@@ -40,6 +40,7 @@ let userId = "";
 const otherUsers: string[] = [];
 let email = "";
 let categoryId = "";
+const PRESENTER = { sara: "سارة القحطاني", noura: "نورة العتيبي", salma: "سلمى الحربي" };
 const T = {
   live: "العرض في 5 شرائح: كيف تُقنع اللجنة التنفيذية",
   mine: "لوحة تحكم لا يهجرها أحد بعد أسبوع",
@@ -77,11 +78,37 @@ test.beforeAll(async ({}, testInfo) => {
         [orgId, title, categoryId, offset, state, capacity, venue],
       )
     ).rows[0].id;
-  await session(T.live, "published", "-20 minutes", 40);
+  const liveId = await session(T.live, "published", "-20 minutes", 40);
   const mineId = await session(T.mine, "published", "1 day", 40);
   const fullId = await session(T.full, "published", "2 days", 1);
-  await session(T.later, "published", "70 days", 25);
+  const laterId = await session(T.later, "published", "70 days", 25);
   await session(T.ended, "completed", "-3 days", 40);
+
+  // Presenters, each in a company with a team colour, so a row draws «ring + name · seats».
+  // `SAN` has no colour: its presenter wears the neutral ring.
+  for (const [key, name, company, colour, sessions] of [
+    ["sara", PRESENTER.sara, "جذر", "#35d0ff", [liveId, fullId]],
+    ["noura", PRESENTER.noura, "صنف", "#ff9a2e", [mineId]],
+    ["salma", PRESENTER.salma, "سان", null, [laterId]],
+  ] as const) {
+    const companyId = (await db.query<{ id: string }>(`insert into public.companies (org_id, name, team_color) values ($1, $2, $3) returning id`, [orgId, company, colour])).rows[0].id;
+    const presenterEmail = `${key}@${domain}`;
+    const user = await admin.auth.admin.createUser({ email: presenterEmail, password: PASSWORD, email_confirm: true });
+    if (user.error) throw user.error;
+    otherUsers.push(user.data.user.id);
+    const presenter = (
+      await db.query<{ id: string }>(`insert into public.members (org_id, auth_user_id, email, display_name, company_id) values ($1, $2, $3, $4, $5) returning id`, [
+        orgId,
+        user.data.user.id,
+        presenterEmail,
+        name,
+        companyId,
+      ])
+    ).rows[0].id;
+    for (const sessionId of sessions) {
+      await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, presenter]);
+    }
+  }
 
   const tagRow = (await db.query<{ id: string }>(`insert into public.tags (org_id, label, normalised) values ($1, 'تقارير', 'تقارير') returning id`, [orgId])).rows[0].id;
   await db.query(`insert into public.session_tags (org_id, session_id, tag_id) values ($1, $2, $3)`, [orgId, mineId, tagRow]);
@@ -173,11 +200,26 @@ test("the regions in the artboard's order, the rows as drawn, and the rule's amo
   expect(order.every((n) => n >= 0)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
 
+  // ★ The phone's top row is ONE row, as drawn: the title and the bell side by side.
+  if (!desktop) {
+    const sameRow = await main.evaluate((root) => {
+      const h1 = root.querySelector("h1")!.getBoundingClientRect();
+      const bell = (root.querySelector("h1")!.closest("header")!.nextElementSibling as HTMLElement).getBoundingClientRect();
+      return bell.height > 0 && bell.top < h1.bottom && bell.bottom > h1.top;
+    });
+    expect(sameRow).toBe(true);
+  }
+
   const rows = main.locator("ol article");
   // ★ A live session stands in «هذا الأسبوع» under its badge.
   const week = main.getByRole("region", { name: /هذا الأسبوع/ });
   await expect(week.locator("article").filter({ hasText: T.live })).toContainText("جارية الآن");
   await expect(rows.filter({ hasText: T.mine })).toContainText("مقعدك محجوز");
+  // ★ «presenter avatar + name · seats» (`Browse.dc.html`): the lead presenter's name on the row, beside the seats.
+  await expect(rows.filter({ hasText: T.mine })).toContainText(PRESENTER.noura);
+  await expect(rows.filter({ hasText: T.full })).toContainText(PRESENTER.sara);
+  await expect(rows.filter({ hasText: T.later })).toContainText(PRESENTER.salma);
+  await expect(rows.filter({ hasText: T.later })).toContainText("0 من 25 مقعدًا");
   await expect(rows.filter({ hasText: T.full })).toContainText("ممتلئة، 4 في الانتظار");
   await expect(main.getByRole("region", { name: /لاحقًا/ })).toContainText(T.later);
   // ★ The rule's amount, never a literal (§4.45).
