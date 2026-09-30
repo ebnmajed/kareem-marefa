@@ -107,7 +107,8 @@ test("SCR-014 before the check-in: the prompt, the rules line, the rule's amount
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
   await expect(main(page).getByRole("heading", { level: 1 })).toHaveText("تسجيل الحضور");
   const group = main(page).getByRole("group", { name: "أدخل رمز الحضور الذي أعلنه المُقدِّم" });
-  await expect(group.locator("input[maxlength='1']")).toHaveCount(6);
+  // The six boxes replace the no-JS single field once hydrated (`ui/code-input`); a cold first load can outlast 5 s.
+  await expect(group.locator("input[maxlength='1']")).toHaveCount(6, { timeout: 15_000 });
   await expect(main(page).getByText(/الرمز يتغيّر كل 10 دقائق، ويُقبل أثناء الجلسة فقط\. لا حاجة لحجز مسبق\./)).toBeVisible();
 
   // Every figure is read (contract 7): the sticker says what the org's rule says, or nothing.
