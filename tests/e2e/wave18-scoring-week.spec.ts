@@ -203,32 +203,45 @@ async function snapshot() {
   );
 }
 
-/** A paid completion, a level reached, and marks that say the member saw the old figure, the old level and an older rank. */
-async function anOccurrence(amount: number, seenRank: number) {
+/**
+ * A paid completion, a level reached, and marks that say the member saw the old figure, the old level and a rank
+ * two places lower than the one the snapshot gives them — so moment 5 is always a RISE.
+ *
+ * ★ Every case derives its own expectations from the database (the lead's gate at ca1b5b04): a case run on its
+ * own (`:265`) does not inherit the points an earlier case paid, so a rank written into the spec was a rank of a
+ * different run. Returns the new balance and the rank the snapshot gives the member.
+ */
+async function anOccurrence(amount: number): Promise<{ total: number; rank: number }> {
+  await db.query(`update public.members set company_id = $1 where id = $2`, [myCompany, meId]);
   await db.query(
     `insert into public.points_ledger (org_id, member_id, amount, source, reason, idempotency_key) values ($1, $2, $3, 'check_in', 'تسجيل حضور مؤكَّد', $4)`,
     [orgId, meId, amount, `e2e:week:paid:${meId}:${amount}:${Date.now()}`],
   );
   await snapshot();
-  const { rows } = await db.query<{ total_points: number; last_entry_id: string }>(`select total_points, last_entry_id from public.points_balances where member_id = $1`, [meId]);
-  const before = rows[0].total_points - amount;
+  const { rows } = await db.query<{ total_points: number }>(`select total_points from public.points_balances where member_id = $1`, [meId]);
+  const total = rows[0].total_points;
+  const { rows: ranked } = await db.query<{ rank: number }>(
+    `select e.rank from public.leaderboard_entries e join public.leaderboard_snapshots s on s.id = e.snapshot_id
+      where s.org_id = $1 and s.kind = 'monthly' and s.period_start = date_trunc('month', now())::date and e.member_id = $2`,
+    [orgId, meId],
+  );
+  const rank = ranked[0].rank;
   await db.query(`update public.points_balances set current_level_id = $1 where member_id = $2`, [levels[1].id, meId]);
   await db.query(
     `insert into public.member_seen_marks (member_id, org_id, points_total, level_id, monthly_period, monthly_rank)
      values ($1, $2, $3, $4, date_trunc('month', now())::date, $5)
      on conflict (member_id) do update set points_entry_id = null, points_total = excluded.points_total, level_id = excluded.level_id,
        monthly_period = excluded.monthly_period, monthly_rank = excluded.monthly_rank`,
-    [meId, orgId, before, levels[0].id, seenRank],
+    [meId, orgId, total - amount, levels[0].id, rank + 2],
   );
-  return rows[0].total_points;
+  return { total, rank };
 }
 
 const homeTab = (page: Page) => page.getByRole("link", { name: "الرئيسية", exact: true }).filter({ visible: true }).first();
 
 test("★★ the home first: moments 3 and 5 play on the week; SCR-022 and the monthly board are silent for them — and the level card still turns", async ({ browser }) => {
   const one = await anotherPhone(browser);
-  await db.query(`update public.members set company_id = $1 where id = $2`, [myCompany, meId]);
-  const total = await anOccurrence(120, 4);
+  const { total, rank } = await anOccurrence(120);
 
   // ★ A hard load of the home: the truth, painted; nothing plays, nothing is recorded.
   await one.page.goto("/ar/app");
@@ -243,7 +256,7 @@ test("★★ the home first: moments 3 and 5 play on the week; SCR-022 and the m
   await weekReady(one.page);
   await expect.poll(() => animations(one.page), { message: "the week's moments played on the app's own arrival", timeout: 30_000 }).toBeGreaterThan(0);
   await expect.poll(async () => (await mark())?.points_total, { timeout: 20_000 }).toBe(total);
-  await expect.poll(async () => (await mark())?.monthly_rank, { timeout: 20_000 }).toBe(2);
+  await expect.poll(async () => (await mark())?.monthly_rank, { timeout: 20_000 }).toBe(rank);
   expect((await mark())?.level_id, "the week passes the level through (DEC-207 §1.3)").toBe(levels[0].id);
   await capture(one.page, desktop() ? "rail" : "hud", "animated");
 
@@ -264,14 +277,14 @@ test("★★ the home first: moments 3 and 5 play on the week; SCR-022 and the m
 
 test("★★ SCR-022 and the board first: the home is silent for what they showed", async ({ browser }) => {
   const two = await anotherPhone(browser);
-  const total = await anOccurrence(30, 3);
+  const { total, rank } = await anOccurrence(30);
 
   await two.page.goto("/ar/app/me");
   await navigateInApp(two.page, two.page.locator("#main").getByRole("link", { name: "نقاطي", exact: true }).first(), /\/ar\/app\/me\/points$/);
   await expect.poll(async () => (await mark())?.points_total, { timeout: 20_000 }).toBe(total);
   await two.page.goto("/ar/app/leaderboards");
   await navigateInApp(two.page, two.page.getByRole("tab", { name: "هذا الشهر" }), /board=month$/);
-  await expect.poll(async () => (await mark())?.monthly_rank, { timeout: 20_000 }).toBe(2);
+  await expect.poll(async () => (await mark())?.monthly_rank, { timeout: 20_000 }).toBe(rank);
 
   // Now the home, in-app: nothing of the week moves.
   await navigateInApp(two.page, homeTab(two.page), /\/ar\/app$/);
@@ -285,7 +298,7 @@ test("★★ SCR-022 and the board first: the home is silent for what they showe
 
 test("★ the static state under reduced motion is whole — and recorded as seen", async ({ browser }) => {
   const calm = await anotherPhone(browser, "reduce");
-  const total = await anOccurrence(20, 4);
+  const { total } = await anOccurrence(20);
   await calm.page.goto("/ar/app/me");
   await navigateInApp(calm.page, homeTab(calm.page), /\/ar\/app$/);
   await weekReady(calm.page);
