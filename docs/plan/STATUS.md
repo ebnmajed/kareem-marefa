@@ -142,6 +142,8 @@ site's wave) · ★ **the two carried gates, together** (`DEC-194`) · `REQ-REC-
 | `tests/components/checkin/check-in-screen.test.tsx:138-147` | «the whole content sits in the dark scope» (`toHaveClass("theme-play")`) → the content's root is a plain element, no `.theme-play` anywhere in the render, still never transformed | M1: the shell's layout is the scope and scopes do not nest (`DEC-199` §1.3.4); wave 16's own scope on `SCR-014` is removed |
 | `tests/unit/public-graph.test.ts:81-99` | «only the gallery and the five moment surfaces render the scope» (`MOMENT_SURFACES`) → «the scope's class is written in one file, which the public site does not reach» | who renders the scope is `tests/unit/scope-root.test.ts`'s now — five layouts and the gallery. The public graph's own three cases are unchanged |
 | `tests/components/ui/icons-playground.test.tsx:97` | the Arabic names are read from `(dev)/ui/demos/icons.tsx`, was `(dev)/ui/page.tsx` | the gallery page is one playground now; the glyph table and its names moved into `content`'s icons demo. The assertion — fifty glyphs, each named in Arabic — is unchanged |
+| `tests/components/ui/date-time-scope.test.tsx:53` (`console`) | the selected day: `toHaveClass("bg-navy-950", "text-white")` + `toHaveClass("pg:bg-accent", "pg:text-on-accent")` → `toHaveClass("bg-accent", "text-on-accent")` | K2: `rtl-datetime-picker.tsx` is outside `ui/`, where `no-raw-palette` ends at zero, so the raw + `pg:` pair collapses to the semantic name (`DEC-200` §2). `accent` falls back to `--btn-bg` outside a scope — the same navy |
+| `tests/components/ui/date-time-scope.test.tsx:60` (`console`) | the «تم» control: the same two assertions → `toHaveClass("bg-accent", "text-on-accent")` | the same |
 
 ---
 

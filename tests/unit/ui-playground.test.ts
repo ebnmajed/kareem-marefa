@@ -78,7 +78,10 @@ function mismatch(name: string, entry: Entry): string | null {
       } else {
         const path = join(COMPONENTS, `${mod}.tsx`);
         if (!existsSync(path)) return `composes ${mod}, which does not exist`;
-        if (!SCOPED.test(code(read(path)))) return `composes ${mod}, which carries no \`pg:\` class`;
+        // Outside `ui/` a file wears the playground by reading semantic names only (`no-raw-palette`
+        // holds the app to that), or by carrying `pg:` classes beside what it had.
+        const target = code(read(path));
+        if (!SCOPED.test(target) && (RAW_PALETTE.test(target) || HEX.test(target))) return `composes ${mod}, which names a raw colour and carries no \`pg:\` class`;
       }
     }
     return null;
