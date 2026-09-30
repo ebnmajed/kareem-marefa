@@ -5836,7 +5836,7 @@ tests: `tests/components/sessions/{event-section,action-card-phases,outcome-card
 - `tests/e2e/event-page.spec.ts` — the ended ribbon (`ribbonEnded`): **expectation** (NB5); poster placement:
   **selector**.
 - `tests/e2e/{checkin,sessions-screens,wave16-sessions-reserve,wave13-sessions-hub,wave9-sessions-day-views,wave12-checkin-acknowledgement}.spec.ts`
-  — region «الحضور», «احجز مقعدك», «أضِف إلى تقويمك», «إلغاء الحجز», «تسجيل الحضور», «قيّم الجلسة», «شاهد التقديم»
+  — region «الحضور», «احجز مقعدك», «أضِف إلى تقويمك», «إلغاء الحجز», «تسجيل الحضور», «قيّم الجلسة», «شاشة التقديم»
   and «أقسام الجلسة» all keep their names: **none expected**. Whatever moves is found by running them, and each goes
   to its owner with the line.
 
