@@ -261,6 +261,15 @@ function companyMap(rows: CompanyRow[]): Map<string, { id: string; name: string;
   return new Map(rows.map((c) => [c.id, { id: c.id, name: c.name, teamColor: c.team_color ?? null }]));
 }
 
+/**
+ * The org's attendance rule for the caller — one rule, read one way by the feed, the event page and SCR-014
+ * (wave 18, `checkin`'s request, DEC-209 §2). Null when the rule is off or not positive; never a literal.
+ */
+export async function getAttendanceRulePoints(locale: string): Promise<number | null> {
+  const { session, supabase } = await sessionClient(locale);
+  return attendanceRulePoints(supabase, session.orgId);
+}
+
 /** The org's `check_in` rule (`0027:527`, seeded 20) — READ, never a literal (DEC-206 §4.45). Null when off or not positive. */
 async function attendanceRulePoints(supabase: Client, orgId: string): Promise<number | null> {
   const { data, error } = await supabase.from("scoring_rules").select("points, enabled").eq("org_id", orgId).eq("action_key", "check_in").maybeSingle();
