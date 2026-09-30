@@ -144,7 +144,8 @@
       "outcomeLabel": "نتيجة حضورك",
       "recapLabel": "الجلسة بالأرقام",
       "venueLabel": "القاعة",
-      "bookedChip": "مقعدك محجوز"
+      "bookedChip": "مقعدك محجوز",
+      "presenterPoints": "{count, plural, zero {لا نقاط} one {أُضيفت نقطة واحدة إلى رصيدك} two {أُضيفت نقطتان إلى رصيدك} few {أُضيفت {value} نقاط إلى رصيدك} many {أُضيفت {value} نقطة إلى رصيدك} other {أُضيفت {value} نقطة إلى رصيدك}}"
     },
     "card": {
       "presentedBy": "من تنظيم <bdi>{org}</bdi>",

@@ -7,7 +7,7 @@ import { CompletionMoment } from "@/components/scoring/completion-moment";
 import { CompletionFigure } from "@/components/scoring/moment-completion";
 import { DownloadIcon } from "@/components/ui/icons";
 import { listMyCertificates } from "@/lib/dal/certificates";
-import { getSessionCompletion } from "@/lib/dal/points";
+import { getPresenterAward, getSessionCompletion } from "@/lib/dal/points";
 import type { EventSession } from "@/lib/dal/sessions";
 
 // The completed session's outcome — `EventDone.dc.html:40-53`, `M10a.md` §7, REQ-UIX-061, REQ-CHK-018,
@@ -23,15 +23,30 @@ import type { EventSession } from "@/lib/dal/sessions";
 // week share one claim — whichever the member opens first plays. The server draws the figure whole; a hard
 // load, a second visit and reduced motion show it at rest.
 //
-// A presenter's own completed session reads «قدّمت هذه الجلسة», with no amount: the presenter's award is not a
-// DTO this page can read, and a figure is never a literal (contract 7). «شاهد ملخصك» has no screen (DEC-209).
+// A presenter's own completed session reads «قدّمت هذه الجلسة» with scoring's `getPresenterAward()` where one
+// exists — no figure otherwise, never a literal (contract 7). «شاهد ملخصك» has no screen (DEC-209).
 
 export async function OutcomeCard({ session, slot }: { session: EventSession; slot: SlotProps }) {
   const t = await getTranslations("sessions.event");
   const relation = session.viewerRelation;
 
   if (relation === "presenter") {
-    return <p className="text-body font-bold text-fg-heading">{t("presentedIt")}</p>;
+    // «قدّمت» with the presenter's award where one exists (scoring's `getPresenterAward()`, the net of its rows —
+    // null at zero), and no figure otherwise: never a literal (contract 7).
+    const award = await getPresenterAward(slot.locale, session.id).catch(() => null);
+    return (
+      <div role="group" aria-label={t("outcomeLabel")} className="flex items-center gap-3">
+        {award ? (
+          <span aria-hidden="true" dir="ltr" className="flex size-14 shrink-0 items-center justify-center rounded-tile bg-accent font-display text-play-sm font-extrabold text-on-accent">
+            {`+${formatNumber(award.points)}`}
+          </span>
+        ) : null}
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="text-body font-bold text-fg-heading">{t("presentedIt")}</p>
+          {award ? <p className="text-caption text-fg-muted">{t("presenterPoints", { count: award.points, value: formatNumber(award.points) })}</p> : null}
+        </div>
+      </div>
+    );
   }
   if (relation !== "attended" && relation !== "absent") return null;
 

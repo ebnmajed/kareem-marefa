@@ -62,6 +62,8 @@ export function EventSubnav({ label, items }: { label: string; items: EventSubna
                 }`}
               >
                 <span>{item.label}</span>
+                {/* A real space: the count is part of the name, and «النقاش5» is not a word. */}
+                {item.count ? " " : null}
                 {item.count ? <span className={isCurrent ? "" : "text-fg-muted"}>{item.count}</span> : null}
               </a>
             </li>
