@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { MonitorIcon } from "@/components/ui/icons";
 
 // Projection and the screen kept awake — SCR-016 (REQ-UIX-062, REQ-CHK-001; `Host.dc.html`; DEC-209 D4).
 //
@@ -135,6 +136,8 @@ export function ProjectionToggle() {
       size="sm"
       aria-pressed={projecting}
       onClick={toggle}
+      // The artboard's glyph, beside the words and silent: the name is the words.
+      iconStart={<MonitorIcon />}
       className="shrink-0 group-data-[projecting]/project:absolute group-data-[projecting]/project:end-4 group-data-[projecting]/project:top-4"
     >
       {projecting ? t("stop") : t("start")}
