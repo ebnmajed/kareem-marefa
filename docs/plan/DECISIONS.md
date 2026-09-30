@@ -5530,3 +5530,72 @@ The owner's words: **«I can confirm there is only one design system in the link
 **What is known, and it is not an answer.** In the one probe that recorded where the copies stood, the second copy was inside the streamed segment `div[hidden]`, outside `#main`, and a `hidden` element is ordinarily left out of the accessibility tree. That is a reason to expect the announcement is not doubled. **It was observed in the DOM, not in an accessibility tree and not with a screen reader**, and it says nothing about id references, which resolve by document order whatever is hidden. Nobody has tested it.
 
 - **Documents changed:** `STATUS.md` (the finding's line)
+
+---
+
+## DEC-205 — Wave 18 is M10a, not stories: the member screens are rebuilt from thirteen artboards, the shell gains five tabs and two desktop rails, home becomes the feed, and the order after it is amended
+
+- **Date:** 2026-09-30 · **Decided by:** the owner (four rulings, 2026-09-30), scoped and measured by the wave-18 planner from `docs/design/screens/M10a.md`, its thirteen artboards and the tree
+- **Amends:** `DEC-199` §7 (the order), `REQ-UIX-021` (the desktop shell), `DEC-112` (what `/app` renders), `16-ui-redesign.md` §6.1 (four tabs, two rows) and §4.2.2 (the cropped hero band)
+- **Adds:** milestone **M20**; `REQ-UIX-054`+ and `STORY-UIX-039`+ as the wave claims them; one table, `feed_announcements`, at `0164`
+- **Does not touch:** the five frozen public routes, `qa:contract`, the register-form fingerprint
+
+### 1 · The order is amended — M10a first, stories second
+
+`DEC-199` §7 put M20 (session stories) before M21 (the member screens). **The owner reverses it for
+one step.** The reason is inheritance: **the shell and the event page are what every later screen is
+built on**, so they land before anything is built on top of them. Stories become wave 19.
+
+★ **In wave 18 the `story-ring` row on `SCR-010` and «شاهد القصة» on the live `SCR-012` render
+`05-stories.md`'s ring STATES only** — live, unseen, seen, none — computed from session activity that
+already exists. **The ring opens nothing.** The viewer, `story_views` and the frame types land with
+stories. A ring that opens a blank screen would be worse than no ring, so the story that builds it
+says in its own text that the target is wave 19.
+
+**The amended order:** M10a · stories · the rest of M21 · the console · the studio · **the public site
+last** (`DEC-NEXT-5` A, unchanged).
+
+### 2 · The owner's four rulings
+
+| | |
+|---|---|
+| **Wave 18 is M10a** | §1 above |
+| **Five phone tabs, two desktop rails** | الرئيسية · الجلسات · **اقترح** (raised, 56 px) · الترتيب · حسابي; and on desktop a nav rail (start) + content + game rail (end) in a 220/600/340 grid, not `16` §6.1's two-row header. This is `M10a.md` §11's `DEC-NEXT-16`, accepted. **Search stays in the bar and staff links stay in the ruled section** — both kept, not replaced. It supersedes `REQ-UIX-021`'s «two rows on desktop» |
+| **Home is the feed** | `DEC-NEXT-6`, accepted. `/app` becomes its own page carrying session posts, recaps, achievements and announcements grouped by date. ★ Today `/app` *renders* `SessionsTimeline` rather than redirecting; after this wave the timeline is `/app/sessions`' alone. **`/app/sessions` stays the canonical browse URL** (`DEC-112`, `DEC-130` unchanged in that respect) |
+| **The event hero is the whole poster at 4:5** | phone and desktop. `16` §4.2.2's cropped band is retired — the playground's ground is already dark, which is what the band was for. ★ **The «+50 عند الحضور» sticker belongs to the poster TEMPLATE**, not to a component, so the public card, the feed and the event page all show it without anything drawing it (`REQ-UIX-024` unchanged: a rendered poster is never restyled) |
+
+### 3 · Measured before the wave was scoped
+
+`src/components/ui/` holds **50 files** and `tests/unit/ui-playground.test.ts:117` asserts `>= 49`;
+the four new primitives (`week-hud`, `feed-item`, `action-bar`, `attendee-stack`) take it to **54**,
+and that number moves in the same commit (`DEC-199` §5.27). None of the four exists today. The feed's
+sources exist — `member_badges`, `points_balances`, `streak_awards` (`0027`), `company_points_ledger`
+(`0081`), `session_posters` (`0055`) — ★ **except `feed_announcements`, which does not**, and is this
+wave's one table.
+
+### 4 · Two PRs, and the trap between them
+
+Thirteen artboards, nine screens, four primitives and a migration is above `TEAM.md`'s wave size.
+**PR A** is the frame — the shell, `SCR-002`/`003`/`004`, `007`, `010`, `011`, the four primitives,
+`0164`. **PR B** is the event — `SCR-012`'s three phases and desktop, `014`, `016`. B needs A's shell.
+
+★★ **B must be retargeted to `main` BEFORE A is merged with `--delete-branch`, or based on `main`
+from the start.** A stacked PR whose base branch is deleted is **auto-closed by GitHub and cannot be
+reopened or retargeted** — `reopenPullRequest` fails outright and its green CI counts for nothing.
+PR #36 died this way on 2026-09-30 and was recreated as #37.
+
+### 5 · Deviations between the artboards and `docs/plan/`
+
+Each is listed here with which document wins, in the shape `DEC-183` §4 established. The four in §2
+are the ones known at planning time; **the lead appends one line per deviation it finds while
+building, and never picks a side silently.**
+
+### 6 · Carried, and not closed by this wave
+
+`DEC-201` §3 / `DEC-204` — the duplicate on hard loads, 24 % against `main`'s 6 %, cause unknown, the
+assistive-technology question open. ★ **This wave rebuilds three of the routes it was measured on, so
+the rate is re-measured on the rebuilt screens and recorded** — not fixed here, and not allowed to
+vanish into a rewrite. · `DEC-194`'s two gates stay carried together. · `DEC-186` §4's `1.08`
+overshoot ceiling is open with the owner.
+
+- **Documents changed:** `docs/plan/notes/wave-18-lead.md` (new), `STATUS.md`, and by the lead at Step 0: `CLAUDE.md`, the ten agent files, `01-prd.md`, `14-roadmap.md`, `15-backlog.md`, `09-sitemap-screens.md`
