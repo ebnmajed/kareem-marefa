@@ -13,7 +13,9 @@ vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) =>
     namespace.startsWith("sessions")
       ? createTranslator({ locale: "ar", messages: sessionsAr, namespace: namespace as "sessions.days" })
-      : createTranslator({ locale: "ar", messages: feedAr, namespace: namespace as "feed" }),
+      : namespace === "browse"
+        ? createTranslator({ locale: "ar", messages: browseAr, namespace: "browse" })
+        : createTranslator({ locale: "ar", messages: feedAr, namespace: namespace as "feed" }),
 }));
 vi.mock("@/components/feed/actions", () => ({ toggleSessionLike: vi.fn() }));
 vi.mock("@/components/search/bookmark-button", () => ({ BookmarkButton: () => <button type="button">احفظ</button> }));
@@ -133,6 +135,32 @@ describe("SessionPost", () => {
     const poster = screen.getByRole("link", { name: "ملصق جلسة لوحة تحكم لا يهجرها أحد" });
     expect(poster).toHaveAttribute("href", expect.stringContaining("/app/sessions/11111111"));
     expect(poster.getAttribute("aria-label")).not.toMatch(/feed\.|<bdi>/);
+  });
+
+  it("★ a multi-day session says its whole span and how many days — sessions' formatter (REQ-SES-015/016)", async () => {
+    const days = [
+      { id: "d1", position: 1, startsAt: "2026-10-01T15:00:00Z", endsAt: "2026-10-01T17:00:00Z", checkInOpen: false },
+      { id: "d2", position: 2, startsAt: "2026-10-02T15:00:00Z", endsAt: "2026-10-02T17:00:00Z", checkInOpen: false },
+      { id: "d3", position: 3, startsAt: "2026-10-03T15:00:00Z", endsAt: "2026-10-03T17:00:00Z", checkInOpen: false },
+    ];
+    const { container } = await show(post({ days, startsAt: days[0].startsAt, endsAt: days[2].endsAt, day: "2026-10-01" }));
+    const from = new Intl.DateTimeFormat("ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Riyadh" }).format(new Date(days[0].startsAt));
+    const to = new Intl.DateTimeFormat("ar-u-nu-latn", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Riyadh" }).format(new Date(days[2].endsAt));
+    expect(container).toHaveTextContent(`${from} — ${to}`);
+    expect(container).toHaveTextContent("3 أيام");
+  });
+
+  it("★ co-presenters are said in words after the lead's name — one avatar, never a second", async () => {
+    const extra = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({ memberId: `x${i}`, displayName: `مقدّم ${i}`, avatarUrl: null, company: null }));
+    const lead = post().presenters[0]!;
+    const { container, unmount } = await show(post({ presenters: [lead, ...extra(1)] }));
+    expect(container).toHaveTextContent("نورة العتيبي وآخر");
+    expect(container.querySelectorAll('[role="img"][aria-label="نورة العتيبي"]')).toHaveLength(1);
+    expect(container).not.toHaveTextContent("مقدّم 0");
+    unmount();
+    const three = await show(post({ presenters: [lead, ...extra(2)] }));
+    expect(three.container).toHaveTextContent("نورة العتيبي وآخران");
   });
 
   it("the title is the post's heading, and the presenter links to their profile", async () => {

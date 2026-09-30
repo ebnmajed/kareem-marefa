@@ -5711,19 +5711,24 @@ now was checked against the files as they stand at this note's commit.
 | An error boundary | `app/error.tsx` → `RouteBoundary`, unchanged | `REQ-UIX-016` |
 | One `<h1>` | `app/page.tsx`, «الرئيسية», visually hidden (the lead's ledger line moves `session.spec.ts:94`) | `REQ-NFR-007` |
 
-**What the rebuild dropped — flagged, not picked:**
+**What the rebuild dropped — flagged, then ruled by the lead:** 1 and 2 RESTORED; 3 – 6 accepted as dropped.
 
 1. **The date RANGE of a multi-day session.** The old card said «الأربعاء 1 – الجمعة 3 أكتوبر · 3 أيام»
    (`dayRange` + `dayCountLabel`); the post says the start's time and «3 أيام». The artboard draws one time.
    `REQ-SES-015` is met by the count; the range is one call away if the owner wants it.
+   ★ **Ruled: RESTORED** — the post says «<venue> · <from> — <to> · 3 أيام» through `sessions'` `dayRange()` over
+   the stored window (`REQ-SES-016`); a case in `session-post.test.tsx`.
 2. **Every presenter but the lead.** The old card drew `AvatarStack` with «و N آخرين»; the post draws the first
    presenter only, as the artboard does. A co-presented session reads as one person's on the home.
+   ★ **Ruled: RESTORED in words** — the lead's ring and name, then browse's «وآخر» / «وآخران» / «و3 آخرون»
+   (`browse.card.others`); still one avatar. A case in `session-post.test.tsx`. (A recap's meta line still names the
+   lead presenter alone.)
 3. **Tags on the card** (three, as chips). Not drawn on a post; the artboard has none. Tags stay on browse and the
-   event page (`REQ-DSC-002`).
+   event page (`REQ-DSC-002`). ★ **Ruled: accepted.**
 4. **The waitlist's length on a full session** («N في قائمة الانتظار»). The post shows the full badge and the seats
-   line; how long the queue is, is not said.
+   line; how long the queue is, is not said. ★ **Ruled: accepted** — the full badge says full.
 5. **The next committed session as the phone's first item.** On the phone it is first only within its own day; a
    committed session on Thursday stands after today's items. `DEC-206` §4.59 accepts this; noted so the reviewer
-   sees it is deliberate.
+   sees it is deliberate. ★ **Ruled: accepted** (§4.59).
 6. **The page title's intro sentence** («تصفّح الجلسات القادمة…») — gone with the timeline's header; the home has no
-   visible title, as drawn.
+   visible title, as drawn. ★ **Ruled: accepted** — the artboard draws no title.

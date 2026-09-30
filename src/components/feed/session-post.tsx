@@ -4,7 +4,7 @@ import type { SessionPost as SessionPostData } from "@/components/browse/session
 import { dayHeading, daysBetween } from "@/components/feed/relative";
 import { LikeButton } from "@/components/feed/like-button";
 import { BookmarkButton } from "@/components/search/bookmark-button";
-import { dayCountLabel } from "@/components/sessions/day-label";
+import { dayCountLabel, dayRange } from "@/components/sessions/day-label";
 import { formatNumber, formatTime } from "@/components/sessions/numerals";
 import { publicCardPath, siteOrigin } from "@/components/sessions/public-card-metadata";
 import { ShareLink } from "@/components/sessions/share-link";
@@ -50,15 +50,23 @@ function presenterLine(post: SessionPostData) {
 }
 
 export async function SessionPost({ post, locale, today, noCompany }: { post: SessionPostData; locale: string; today: string; noCompany: boolean }) {
-  const [t, tDays, tEvent] = await Promise.all([getTranslations("feed"), getTranslations("sessions.days"), getTranslations("sessions.event")]);
+  const [t, tDays, tEvent, tBrowse] = await Promise.all([getTranslations("feed"), getTranslations("sessions.days"), getTranslations("sessions.event"), getTranslations("browse")]);
   const lead = presenterLine(post);
   const live = post.phase === "live";
   const cancelled = post.phase === "cancelled";
 
   const time = post.startsAt ? formatTime(post.startsAt, post.timeZone, locale) : null;
   const place = post.venueName;
-  const days = post.days.length > 1 ? dayCountLabel(post.days.length, tDays) : null;
-  const when = [place && time ? t.rich("post.placeTime", { place, time, bdi: (c) => <bdi>{c}</bdi> }) : (place ?? time), days];
+  // ★ A multi-day session says its whole span and how many days (REQ-SES-015, REQ-SES-016; the lead's ruling on
+  // content's kept-behaviour table, drop 1): the start alone loses the end. `sessions'` one formatter, over the
+  // session's STORED window — never computed from the day array.
+  const spans = post.days.length > 1 && post.startsAt !== null && post.endsAt !== null;
+  const when = spans
+    ? [place ? <bdi>{place}</bdi> : null, <bdi key="range">{dayRange(post.startsAt!, post.endsAt!, post.timeZone, tDays, locale)}</bdi>, dayCountLabel(post.days.length, tDays)]
+    : [place && time ? t.rich("post.placeTime", { place, time, bdi: (c) => <bdi>{c}</bdi> }) : (place ?? time)];
+  // ★ Co-presenters in words — the lead's ring and name, then «وآخر» / «و3 آخرون» (drop 2), browse's own string.
+  // No second avatar.
+  const others = Math.max(0, post.presenters.length - 1);
 
   const inDays = post.day ? daysBetween(today, post.day) : null;
   const badge =
@@ -90,7 +98,10 @@ export async function SessionPost({ post, locale, today, noCompany }: { post: Se
         <div className="flex min-w-0 flex-1 flex-col leading-tight">
           {lead ? (
             <p className="flex flex-wrap items-center gap-x-1.5 text-label font-bold text-fg-heading">
-              <bdi>{lead.displayName}</bdi>
+              <span>
+                <bdi>{lead.displayName}</bdi>
+                {others > 0 ? <> {tBrowse("card.others", { count: others, value: formatNumber(others) })}</> : null}
+              </span>
               {company ? (
                 // §4.61: the company in words, with its colour as a dot beside it — a colour from data is never
                 // the text's own colour, whose contrast nobody measured.
