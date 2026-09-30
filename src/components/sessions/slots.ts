@@ -1,4 +1,4 @@
-import type { ViewerRelation } from "@/lib/session-status";
+import type { SessionPhase, ViewerRelation } from "@/lib/session-status";
 
 // The event-page slot contract (TEAM.md §2, DEC-040; wave 6, DEC-130).
 //
@@ -31,6 +31,13 @@ export type SlotProps = {
  * rows" survives.
  */
 export type RelationSlotProps = SlotProps & { viewerRelation: ViewerRelation };
+
+/**
+ * ★ Wave 18, PR B (content's plan §5, DEC-209): the photos slot draws its add control differently while the
+ * session runs and after it (`EventLive.dc.html` against `EventDone.dc.html`), so it takes the phase — from
+ * `sessionPhase()` on the page, never re-derived. Add-only: a slot that does not need it takes `SlotProps`.
+ */
+export type PhaseSlotProps = SlotProps & { phase: SessionPhase };
 
 /**
  * ★ What the page must know about a slot BEFORE it renders the slot's section

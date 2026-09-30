@@ -1,4 +1,6 @@
-// The event page's section gate — `16` §5.4.1a(b), REQ-UIX-015, DEC-130.
+// The event page's section gate — `16` §5.4.1a(b), REQ-UIX-015, DEC-130. ★ Wave 18 (DEC-208): the subject was
+// `gated-section.tsx`, deleted and written anew as `event-section.tsx` with the SCR-012 rebuild — a selector
+// move (a ledger line); every expectation below is unchanged, and the header's note is a new case.
 //
 // REQ-UIX-015's acceptance is "an empty slot renders no heading, proven by one
 // component test per slot". This is the page's half: whatever a slot's summary
@@ -8,18 +10,18 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import axe from "axe-core";
-import { GatedSection } from "@/components/sessions/gated-section";
+import { EventSection } from "@/components/sessions/event-section";
 import { EVENT_SECTION_IDS, SLOT_NAMES, isSectionShown, type SlotSummary } from "@/components/sessions/slots";
 
 const shown: SlotSummary = { visible: true, count: 3, outstanding: null };
 const empty: SlotSummary = { visible: false, count: 0, outstanding: null };
 
-async function mount(props: Parameters<typeof GatedSection>[0]) {
-  const element = await GatedSection(props);
+async function mount(props: Parameters<typeof EventSection>[0]) {
+  const element = await EventSection(props);
   return render(<>{element}</>);
 }
 
-describe("GatedSection", () => {
+describe("EventSection", () => {
   it("renders the section, labelled by its own h2, when the summary says there is something to show", async () => {
     const { container } = await mount({ id: "materials", title: "المواد", summary: shown, children: <p>شرائح المقدمة</p> });
     const region = screen.getByRole("region", { name: "المواد" });
@@ -49,6 +51,12 @@ describe("GatedSection", () => {
   it("takes a summary that is still streaming", async () => {
     await mount({ id: "photos", title: "الصور", summary: Promise.resolve(shown), children: <p>صورة</p> });
     expect(screen.getByRole("region", { name: "الصور" })).toBeInTheDocument();
+  });
+
+  it("draws the header's note beside the heading — never inside it, so the region keeps its exact name", async () => {
+    await mount({ id: "discussion", title: "النقاش", summary: shown, note: (s) => `${s?.count} تعليقات`, children: <p>تعليق</p> });
+    expect(screen.getByRole("region", { name: "النقاش" })).toBeInTheDocument();
+    expect(screen.getByText("3 تعليقات")).toBeInTheDocument();
   });
 
   it("renders a section the page fills itself when there is no summary to consult", async () => {
