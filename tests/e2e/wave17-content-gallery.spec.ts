@@ -159,7 +159,8 @@ test("a press alone moves a row, and only in the list that was pressed", async (
   // At an end a control is inert and still focusable: `aria-disabled`, never `disabled`.
   const top = side.locator("ol > li").first().getByRole("button", { name: "انقل لأعلى" });
   await expect(top).toHaveAttribute("aria-disabled", "true");
-  await expect(top).toBeEnabled();
+  // Not `toBeEnabled()`: Playwright reads `aria-disabled` as disabled. What is meant is the property.
+  await expect(top).toHaveJSProperty("disabled", false);
 
   await demo.scrollIntoViewIfNeeded();
   await demo.screenshot({ path: join(SHOTS, "wave17-content-reorderable-list-moved-dark-390.png"), animations: "disabled" });
