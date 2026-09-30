@@ -134,7 +134,15 @@ async function countTickets(page: Page) {
 }
 const tickets = (page: Page) => page.evaluate(() => (window as unknown as { __tickets: number }).__tickets);
 
-const reserveButton = (page: Page) => page.locator("#main").getByRole("button", { name: /احجز مقعدك|انضم لقائمة الانتظار/ }).filter({ visible: true });
+// ★ Wave 18 (DEC-209, a ledger line): on the phone the primary is drawn twice — in the card and in the bottom
+// bar — so the visible match is the LAST in the DOM: the bar below `md`, where moment 1 rises; the card from `md`,
+// where the bar is gone. A selector move; what the moment does is asserted exactly as before.
+const reserveButton = (page: Page) =>
+  page
+    .locator("#main")
+    .getByRole("button", { name: /احجز مقعدك|انضم لقائمة الانتظار/ })
+    .filter({ visible: true })
+    .last();
 const ticket = (page: Page) => page.locator("#main [data-moment='ticket']");
 
 async function capture(page: Page, name: string) {
@@ -248,7 +256,8 @@ test("★ the waitlisted variant — the same ticket, «قائمة الانتظ�
   await page.goto(`/ar/app/sessions/${fullId}`);
   await settled(page);
   const main = page.locator("#main");
-  await main.getByRole("button", { name: /انضم لقائمة الانتظار/ }).filter({ visible: true }).click();
+  // ★ Wave 18 (a ledger line): the phone draws it twice, card and bar — the last visible is the bar's, where the ticket rises.
+  await main.getByRole("button", { name: /انضم لقائمة الانتظار/ }).filter({ visible: true }).last().click();
   await expect(ticket(page)).toHaveCount(1);
   await pauseAtRest(page);
   const stamp = main.locator("[data-moment='stamp']");
@@ -269,7 +278,7 @@ test("★ the waitlisted variant — the same ticket, «قائمة الانتظ�
     await signIn(still, `wait-still-${testInfo.project.name}`);
     await p2.goto(`/ar/app/sessions/${fullId}`);
     await settled(p2);
-    await p2.locator("#main").getByRole("button", { name: /انضم لقائمة الانتظار/ }).filter({ visible: true }).click();
+    await p2.locator("#main").getByRole("button", { name: /انضم لقائمة الانتظار/ }).filter({ visible: true }).last().click();
     await expect(p2.locator("#main").getByText("على قائمة الانتظار")).toBeVisible();
     await expect(p2.getByText(WHISPER_WAITLIST, { exact: true })).toBeVisible();
     await capture(p2, "reserve-waitlist-static");

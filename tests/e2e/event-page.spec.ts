@@ -191,24 +191,30 @@ test("before reserving: one primary «احجز مقعدك», no calendar, the he
   await expect(page.getByText("العربية").first()).toBeVisible();
 
   const region = page.getByRole("region", { name: "الحضور" });
-  // Exactly one visible primary at this width, and it is in the region.
-  await expect(page.getByRole("button", { name: "احجز مقعدك" })).toHaveCount(1);
-  await expect(region.getByRole("button", { name: "احجز مقعدك" })).toBeVisible();
+  // ★ Wave 18 (DEC-209, REQ-UIX-061 — a ledger line): the phone draws the primary twice, in the card and in the
+  // bottom bar; from `lg` once. The region «الحضور» holds exactly one at every width — the bar stands outside it.
+  await expect(page.getByRole("button", { name: /^احجز مقعدك/ })).toHaveCount(testInfo.project.name === "phone" ? 2 : 1);
+  await expect(region.getByRole("button", { name: /^احجز مقعدك/ })).toHaveCount(1);
+  await expect(region.getByRole("button", { name: /^احجز مقعدك/ })).toBeVisible();
   // Commitment before convenience (§5.4): no calendar before a seat.
   await expect(page.getByRole("button", { name: "أضِف إلى تقويمك" })).toHaveCount(0);
 
-  // The presenter, as they wrote themselves — and no rating anywhere (§25 Q5).
-  await expect(page.getByRole("region", { name: "المُقدِّم" }).getByText("مدير التخطيط · الشركة الأولى")).toBeVisible();
+  // The presenter, as they wrote themselves — and no rating anywhere (§25 Q5). ★ Wave 18 (a ledger line): the
+  // presenter is a card linking to the profile (`Event.dc.html:44-48`), the title and the company joined by «،» as
+  // drawn; the «المُقدِّم» section carries the bio alone, and only when there is one.
+  await expect(page.locator("#main").getByRole("link", { name: /مدير التخطيط، الشركة الأولى/ })).toHaveAttribute("href", /\/ar\/app\/members\//);
   await expect(page.getByText(/تقييم \d/)).toHaveCount(0);
 
-  // A tag links to the filtered timeline.
-  await expect(page.getByRole("link", { name: "تقارير" })).toHaveAttribute("href", /\/ar\/app\/sessions\?tag=/);
+  // A tag links to the filtered timeline. ★ Wave 18 (a ledger line): drawn «#تقارير», as the artboard does.
+  await expect(page.getByRole("link", { name: "#تقارير" })).toHaveAttribute("href", /\/ar\/app\/sessions\?tag=/);
 
   expect(await fixedBottomBars(page), "at most one fixed bottom bar").toBeLessThanOrEqual(1);
 
   if (testInfo.project.name === "phone") {
-    // The primary is reachable in the first screen, at every scroll position.
-    const reserve = region.getByRole("button", { name: "احجز مقعدك" });
+    // The primary is reachable in the first screen, at every scroll position. ★ Wave 18 (a ledger line): the poster
+    // is whole at 4:5 above the card now (DEC-205 ruling 4), so what is in the first screen is the bottom bar's copy
+    // of the primary — REQ-SES-013 is met by the bar, as `16` §6.1 note 2 always said.
+    const reserve = page.getByRole("group", { name: "إجراءات الجلسة" }).getByRole("button", { name: "احجز مقعدك" });
     const box = await reserve.boundingBox();
     expect(box!.y + box!.height).toBeLessThanOrEqual(844);
     expect(box!.height).toBeGreaterThanOrEqual(44);

@@ -302,7 +302,9 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await member.goto(`/ar/app/sessions/${sessionId}`);
   await streamed(member);
   await expect(member.getByRole("heading", { level: 1 })).toContainText(title);
-  await expect(member.getByRole("link", { name: "شاشة التقديم" })).toBeVisible();
+  // ★ Wave 18 (DEC-209, a ledger line): at 390 px the primary is drawn in the card and in the bottom bar, so it is
+  // asked for in the card's region «الحضور», which holds exactly one.
+  await expect(member.getByRole("region", { name: "الحضور" }).getByRole("link", { name: "شاشة التقديم" })).toBeVisible();
   await expect(member.getByRole("button", { name: /احجز مقعدك/ })).toHaveCount(0);
 
   // ── SCR-012 · the event page, as any member ───────────────────────────────
@@ -315,7 +317,9 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await expect(attendee.getByRole("region", { name: "الحضور" }).getByText("قاعة الابتكار")).toBeVisible();
   // REQ-SES-008: no remote-attendance affordance anywhere on the page.
   await expect(attendee.getByText(/بث مباشر|رابط الانضمام|عن بعد|أونلاين/)).toHaveCount(0);
-  await expect(attendee.getByText("الحضور في القاعة فقط.")).toBeVisible();
+  // ★ Wave 18 (a ledger line): said in the card's facts, and again in the desktop aside's room card — asked for where
+  // a phone reads it, in the region «الحضور».
+  await expect(attendee.getByRole("region", { name: "الحضور" }).getByText("الحضور في القاعة فقط.")).toBeVisible();
   // Not a presenter, so no host-view entry (OQ-013, REQ-CHK-014).
   await expect(attendee.getByRole("link", { name: "شاشة التقديم" })).toHaveCount(0);
 
@@ -328,7 +332,11 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
 
   // REQ-SES-013: exactly one primary action, in the thumb zone, ≥ 44 px. The
   // control is `checkin`'s; its presence and its size are this page's promise.
-  const rsvp = attendee.getByRole("button", { name: /احجز مقعدك|انضم لقائمة الانتظار|ألغِ حجزي/ });
+  // ★ Wave 18 (DEC-209, a ledger line): the phone draws the primary in the card AND the bottom bar, so «exactly one»
+  // is asked of the region «الحضور», and the first screenful's copy is the bar's.
+  const rsvpName = /احجز مقعدك|انضم لقائمة الانتظار|ألغِ حجزي/;
+  await expect(attendee.getByRole("region", { name: "الحضور" }).getByRole("button", { name: rsvpName })).toHaveCount(1);
+  const rsvp = attendee.getByRole("group", { name: "إجراءات الجلسة" }).getByRole("button", { name: rsvpName });
   await expect(rsvp).toHaveCount(1);
   const rsvpBox = (await rsvp.boundingBox())!;
   expect(rsvpBox.height, "the RSVP action must be at least 44 px tall").toBeGreaterThanOrEqual(44);
