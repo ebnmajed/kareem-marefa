@@ -37,7 +37,11 @@ import { Sticker } from "@/components/ui/sticker";
 // ★ A member sees how many attend, never who (§4.56).
 // ★ A cancelled post keeps its day, its badge and a dimmed poster, and offers nothing.
 
-const WIDE = "@min-[34rem]";
+// ★ Every container-query class is written OUT, never built from a constant: Tailwind generates a class only
+// when it finds its full name in the source. A variant prefix held in a constant and interpolated was never
+// generated, so the poster fell to its min-content width — a 40 px strip — and the copy stayed visually hidden
+// (the lead's 1280 capture, wave 18).
+// `tests/unit/feed-classes.test.ts` refuses a variant built from an interpolation anywhere in the feed.
 
 function presenterLine(post: SessionPostData) {
   const lead = post.presenters[0] ?? null;
@@ -110,8 +114,8 @@ export async function SessionPost({ post, locale, today, noCompany }: { post: Se
         {badge}
       </div>
 
-      <div className={`flex flex-col gap-3 ${WIDE}:flex-row ${WIDE}:items-start`}>
-        <Link href={post.href} quiet aria-label={t("post.posterName", { title: post.title })} className={`block rounded-tile ${live ? `${WIDE}:w-[260px]` : `${WIDE}:w-40`} ${WIDE}:shrink-0`}>
+      <div className="flex flex-col gap-3 @min-[34rem]:flex-row @min-[34rem]:items-start">
+        <Link href={post.href} quiet aria-label={t("post.posterName", { title: post.title })} className={`block rounded-tile @min-[34rem]:shrink-0 ${live ? "@min-[34rem]:w-[260px]" : "@min-[34rem]:w-40"}`}>
           <Poster
             src={post.posterUrl}
             title={post.title}
@@ -126,13 +130,13 @@ export async function SessionPost({ post, locale, today, noCompany }: { post: Se
           />
         </Link>
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <h3 className={`sr-only ${WIDE}:not-sr-only font-display text-play-sm leading-[1.4] font-extrabold text-fg-heading`}>
+          <h3 className="sr-only @min-[34rem]:not-sr-only font-display text-play-sm leading-[1.4] font-extrabold text-fg-heading">
             <Link href={post.href} quiet>
               <bdi>{post.title}</bdi>
             </Link>
           </h3>
           {post.excerpt ? (
-            <p className={`hidden text-body text-fg-muted ${WIDE}:block`}>
+            <p className="hidden text-body text-fg-muted @min-[34rem]:block">
               <bdi>{post.excerpt}</bdi>
             </p>
           ) : null}

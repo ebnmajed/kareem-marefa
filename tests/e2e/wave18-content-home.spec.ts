@@ -227,6 +227,22 @@ test("★ desktop: the week is the game rail's, and the column's copy is not dis
   await expect(rail).toBeVisible();
   // The post lays the poster beside the copy: the title is visible text on a wide card.
   await expect(page.locator("#main").getByRole("heading", { level: 3, name: OPEN })).toBeVisible();
+
+  // ★ The poster stands BESIDE the copy at its drawn width — 260 for the live post, 160 for the open one
+  // (HomeDesktop.dc.html:58, :83) — whole, 4:5. The first build collapsed it to a 40 px strip: its width class
+  // was built from an interpolation and Tailwind never generated it (feed-classes.test.ts now refuses that).
+  for (const [title, width] of [[LIVE, 260], [OPEN, 160]] as const) {
+    const post = page.locator("#main article", { hasText: title }).first();
+    const poster = await post.getByRole("link", { name: `ملصق جلسة ${title}` }).boundingBox();
+    const heading = await post.getByRole("heading", { level: 3 }).boundingBox();
+    expect(poster, title).not.toBeNull();
+    expect(heading, title).not.toBeNull();
+    expect(Math.abs(poster!.width - width), `${title}: poster width ${poster!.width}`).toBeLessThan(2);
+    expect(Math.abs(poster!.width / poster!.height - 0.8), `${title}: poster ratio`).toBeLessThan(0.02);
+    // Side by side: the heading starts beside the poster, not under it.
+    expect(heading!.y, `${title}: the copy is beside the poster`).toBeLessThan(poster!.y + poster!.height);
+    expect(heading!.width, `${title}: the heading has room`).toBeGreaterThan(160);
+  }
   await shot(page, "member", 1280);
 });
 

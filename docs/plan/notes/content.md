@@ -5665,3 +5665,13 @@ home waits on three contracts: `NextForMe` (sessions), `session-cta`'s `rate` st
   `ui/icons` last in the wave, under contract 5's proof; then I swap both.
 - **For `sessions`, answered (Q1):** `poster` is not meant at 76 px — the row keeps `CardMedia` with
   `posterAspect()`; `teamName` optional needs the lead to release `poster.tsx` and the type.
+- ★ **The first 1280 capture's defect, and its cause:** both desktop posts drew the poster as a 40 px strip with
+  the copy column empty. `feed/session-post.tsx` built its container-query classes from a constant
+  (`` `${WIDE}:w-[260px]` ``), and Tailwind generates only class names it finds whole in the source — the one that
+  existed (`@min-[34rem]:flex-row`) came from the card demo. Fixed by writing each class out;
+  `tests/unit/feed-classes.test.ts` refuses the pattern in every file the home renders, and bites on the broken
+  file; the home spec's 1280 case now measures each poster at its drawn width (260, 160), at 4:5, beside its
+  heading.
+- **No «سجّل حضورك» on the member's live post (the 390 capture)** is correct: that member holds no seat and the
+  seeded session does not allow walk-ins, so the affordance matrix offers no check-in (`checkInOffer()`,
+  REQ-CHK-010) and `sessions'` action is `none`. The artboard draws a member who reserved.
