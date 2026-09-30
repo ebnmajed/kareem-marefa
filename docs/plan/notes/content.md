@@ -5990,3 +5990,12 @@ primitive exists) and the add tile's visually-hidden file input inside its own l
 **The SQL for the lead:** `supabase/proposed/content/comments_broadcast_author_context.sql` — `comments_broadcast()`
 gains `authorCompanyName`, `authorTeamColor`, `authorIsPresenter`, add-only; `tests/rls/comments-broadcast-author.test.ts`
 (3 cases, as a member writing, through `applyProposed()`); `comments-no-hotlink` still green beside it.
+
+**Found while diagnosing `wave9-content-photo-worker` on desktop (2026-10-01) — written, not fixed; `src/lib/realtime/**`
+is not in PR B's list.** The first `phx_join` of a private topic (`src/lib/realtime/channel.ts:29`) is sent **without an
+access token**; Realtime answers «Unauthorized: You do not have permissions to read from this Channel topic» about 5 s
+later, and the client's rejoin, now carrying the token, succeeds at about 6.4 s after load. A broadcast in that window
+is lost — for a photo, the gallery then arrives by the upload widget's 20 s fallback, which is what every real-worker
+run measured (the photograph at complete + 20 s). The comments and the reaction totals share the same join. Not a
+wave-18 change: the file is untouched since before it. A likely repair is `await supabase.realtime.setAuth()` before
+`subscribe()`; the owner of the file decides.
