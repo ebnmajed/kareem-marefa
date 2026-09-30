@@ -5742,3 +5742,57 @@ overshoot ceiling is open with the owner.
 `DEC-201` §3 / `DEC-204` — re-measured on `/app` alone (§1.2), not fixed. · `DEC-194`'s two gates, together. · `DEC-186` §4's `1.08` ceiling, the owner's. · F2 and F3 (`DEC-198` §5): the rebuilt screens sit under the same `loading.tsx` boundaries and inherit both.
 
 - **Documents changed:** `01-prd.md` (`REQ-UIX-054` … `REQ-UIX-063`), `14-roadmap.md` (M20; the sequence), `15-backlog.md` (`STORY-UIX-039` … `STORY-UIX-050`), `09-sitemap-screens.md` (the nine screens), `scripts/traceability.mjs` (one cross-cutting row), `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten agent files (the wave-18 map), `STATUS.md` (the wave-18 block), `docs/design/screens/**` (added to the tree)
+
+---
+
+## DEC-207 — Wave 18, sync 1: three plans approved; three readings found five things Step 0 measured wrongly; the rulings every track builds on
+
+- **Date:** 2026-09-30 · **Decided by:** the wave-18 lead, on the plans of `sessions`, `content` and `scoring` (`docs/plan/notes/{sessions,content,scoring}.md` § *Wave 18 — plan*); the owner's gate (`DEC-205` §2) is not re-opened
+- **Corrects:** `DEC-206` §4.47, §4.48, §4.46, §5, and §1.5's claim about `story-ring`
+- **The frame is in:** `58c73336` (the shell), `985aa81a` (the door); contract 1's slot is **`<PageFrame rail={…} railLabel={…}>`** (`src/components/shell/page-frame.tsx`), a server component — the rail is in the HTML at every width and not displayed below `lg`
+
+### 1 · What the three readings found that Step 0 did not — recorded, as `DEC-197`'s table was
+
+| # | Found by | What `DEC-206` said | What is true | Ruling |
+|---|---|---|---|---|
+| 1 | `scoring` (F1) | §4.47: «no rank for a member who opted out» | `REQ-LDR-008`: «an opted-out member still sees their own rank privately»; `boards_read` returns it (`0027:487`); `SCR-027` shows it | ★ **The requirement wins.** The week shows an opted-out member their own rank with «مخفيّ عن غيرك», and they are nobody's neighbour. §4.47 is corrected |
+| 2 | `scoring` (F2) | §4.48: «the total is the count of ranked members», derived from rows every member reads | RLS hides opted-out rows, so the visible count can be smaller than the rank («#4 من 3») | ★ **Option C**: one definer function, count only, `monthly_ranked_count(p_snapshot)` — `scoring` writes it under `proposed/`, the lead promotes it after `0164` with its RLS case. It reveals nothing the gaps in the ranks do not |
+| 3 | `scoring` (F5) | §5: moments 3 and 5 «share one mark» | `mark_points_seen()` writes the entry, the total **and the level** at once: a home that acknowledged moment 3 with the current level would silently eat moment 4 on `SCR-022` | ★ **The week passes the level LAST SEEN through**; the level cursor moves only on `SCR-022`. No schema change |
+| 4 | `sessions` (N1) | §4.42 / §4.46: the public card shows «the poster whole, 4:5» with the RPC unchanged | the only artefact `anon` may read is the **`og` render, 1200 × 630** (`0122:107`, the storage policy) | ★ **The public card shows the `og` render whole, at its own ratio — never cropped** (`REQ-UIX-026` holds). The 4:5 box is the typographic placeholder's. Widening what `anon` reads is `DEC-066`'s and the owner's |
+| 5 | `content` (§6.3) | §1.5: «a ring … is not a button» | `story-ring.tsx` renders a `<button>` in every state, with or without `onOpen` | ★ **`story-ring.tsx` is released to `content` for one render change**: with no `onOpen`, a non-interactive element named by its label. Its one assertion is a ledger line. No prop changes |
+
+★ **Why it matters.** Each of the five is a line the lead wrote from a measurement that stopped one step short. Three independent readings found them in an afternoon; the lead's own would have shipped four of them. **This is why the tracks spawn planning-only.**
+
+### 2 · The rulings — each binding on the track named
+
+**The frame (all three).** The slot is `PageFrame`; a page passes a `rail` fragment and sets no `max-w-*` of its own. Both the phone's week and the rail's cards are in the HTML; the hidden twin **claims nothing and acknowledges nothing** (`scoring`'s gate, §5.3 of its plan — `offsetParent`). **Browse passes the game rail too** (`M10a.md` §0: «browse and the hub use the same frame»). ★ **Browse owns its phone top row** (`sessions` Q2): below `lg` the shell's bar gives way on `/app/sessions` (`ownsTopRow()`), and the page renders `page-header` with the bell (`NotificationBell`) in its actions; from `lg` the shell's bar is always there. The shell's phone search control links to **`/app/sessions#browse-search`**, so the page's search field carries that id.
+
+**`sessions`.**
+- **Contract 3's names are `sessions'`**: `getSessionPosts()` → `SessionPostsData`, `SessionPost`, `SessionPostAction`; `getNextForMe()` and the `NextForMe` server component, which **is** the rail's «التالية لك» (`content` builds no second one). Add to `SessionPost`: `excerpt: string | null` (the desktop post's copy, `content`'s request) and `attendedCount: number | null` from the lead's count function once published (Q5).
+- The feed's window: live and open within **14 days ahead, 10 at most**; ended within **7 days, 5 at most**; a cancelled one the viewer held a seat on, inside either.
+- **N2** — a cancelled public card is the 404, as today; `REQ-UIX-059`'s «offers no action» holds. **N3** — «الحضور في القاعة فقط.» **stays**, one muted line (`REQ-SES-008`'s care, and wave 7's reason). **Q3** — an ended card's action reads «سجّل الدخول لعرض الجلسة» (a new string).
+- **N4** — the two chips are `ui/menu`s of **links**. `/app` does not work without JavaScript today (F3, the owner's), so a menu costs nothing that is not already lost; the applied filters stay visible and removable as links.
+- **N5** — date and venue on one line, joined with the public card's no-break rule. **N7** — a phrase chip is allowed where an artboard draws it at 390 and the capture proves it does not wrap; otherwise it goes. **N8** — the primitives' sizes win. **N10** — `booked` with no `cancel` is approved, add-only.
+- The deletions (`sessions-timeline.tsx`, `filter-bar.tsx`, `timeline-skeleton.tsx`) follow `content`'s commit of `/app`.
+
+**`content`.**
+- The home's regions as the plan lists them; each item groups **under its own day**, and the days read **today · future ascending · past descending** (§6.6, §6.7).
+- **§6.1** — `AvatarImportPrompt` and the no-company banner move to the home, beside each other, above the week (`sessions` Q7 is the same ruling).
+- **§6.2** — the phone's posters are **whole, 4:5**; the artboard's 342 × 300 box loses to `REQ-UIX-026` and ruling 4.
+- **§6.4** — the ring's inside is the primitive's form. **§6.5** — the 24-hour window stands, so the row holds fewer rings than drawn. **§6.8** — 44 px targets. **§6.9** — the open post draws the seats line **and** share and bookmark. **§6.10** — «المواد», no download glyph.
+- The staff strip reads `getShellData(locale).attention` (the lead's, `src/lib/dal/shell.ts`), `null` for a member, never a 404.
+- The week is `scoring`'s three components — `MemberWeekHud`, `CompanyRaceCard`, `GameRail` — placed where the artboard puts them.
+- `feed_announcements`: `published_at` is **not null**, default `now()`; the member policy says `published_at <= now()` and not expired; `feed.ts` applies the same predicate for an admin's own home; `body` is 1 – 500 characters; the index is `(org_id, published_at desc)`. All in `0164`.
+
+**`scoring`.**
+- `week-hud` draws its own tiles and composes `progress-bar` and `link` (W4 — `M10a.md` §10's «`stat`» loses: `stat` takes a string, and moment 3 needs a node).
+- ★ **The rail carries the level line** under the balance (W5): `REQ-UIX-055` lists «the way to the next level» in the week, and a requirement wins over an artboard that omits it.
+- The flame grows where one is drawn — the rail (W6). Phone race: two leaders and the member's own; desktop: four and the own if absent (W7). The streak card states the rule, read (W8). The rank figure links to the monthly board and the neighbour's name to their profile (W9, `SCR-020` exists). No copy says «now» of a nightly figure (W11).
+- `race-bar` gains `layout?: "stacked" | "inline"`, add-only, the metric still said on every row (W3).
+- An opted-out member's own badge appears in their own feed only (Q3). A hard load shows the static state, as `DEC-197` §5 rules (Q4).
+
+### 3 · Contract 2 — how a primitive lands
+
+The four new signatures and `race-bar`'s and `session-cta`'s additive props are in `ui/index.ts` at this entry's commit. ★ **Two additions change a type an existing file satisfies** — `CardDensity`'s `post` and `session-cta`'s `rate` state with an optional `cancel` — so they land **in the same commit as their owner's implementation**, never before: a type that runs ahead of its file breaks `tsc` for everyone. **A new file lands in one commit with its registry entry**: the track tells the lead its paths are ready, and the lead commits them with the entry and the gallery's wiring, so the gate is never red between two commits.
+
+- **Documents changed:** `src/components/ui/index.ts`, `STATUS.md` (S1, P0), `DEC-206` corrected by this entry (the log is append-only)

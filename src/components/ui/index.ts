@@ -959,6 +959,11 @@ export interface SessionCtaProps extends Styleable {
   pendingLabel?: string;
   /** Overrides `useFormStatus`. */
   pending?: boolean;
+  /** ★ wave 18, add-only: `md` is the compact 44 px face `HomeDesktop.dc.html` draws beside the reaction
+   *  pills. Default `lg`. */
+  size?: "lg" | "md";
+  /** ★ wave 18, add-only: `auto` sizes to the label. Default `full`. */
+  width?: "full" | "auto";
 }
 
 /**
@@ -1036,6 +1041,12 @@ export interface RaceBarProps extends Styleable {
   secondary?: { label: string; value: string } | null;
   /** Set on the viewer's own company only — «فريقك». */
   ownLabel?: string | null;
+  /**
+   * ★ wave 18 (DEC-207, `scoring` W3), add-only: `inline` is the one-line row the home's race draws — ring,
+   * name, bar, figure. The metric is still said on every row to a screen reader (REQ-LDR-005). Default
+   * `stacked`, which every call site before wave 18 renders.
+   */
+  layout?: "stacked" | "inline";
 }
 
 /** One face of the level card. */
@@ -1068,4 +1079,116 @@ export interface LevelCardProps extends Styleable {
    * layout every screen has today, both faces readable without the flip.
    */
   flip?: boolean;
+}
+
+// ── wave 18 (DEC-205, DEC-206, DEC-207, REQ-UIX-057) — four primitives for the screens ──────────────
+// Types only, landed by the lead at sync 1 from the three plans (contract 2). The files arrive with their
+// owners' commits, each with its registry entry, its scope test and its demo.
+
+/**
+ * `sessions` · `action-bar.tsx` — the bottom bar of an immersive screen: ONE primary and at most two
+ * secondary controls, padded for the safe area. It decides nothing and holds no state; every control is
+ * the caller's node. It is never transformed, filtered or clipped (DEC-188 §5).
+ */
+export interface ActionBarProps extends Styleable {
+  /** The group's accessible name — «إجراءات الجلسة». Rendered as `role="group"`, never a landmark. */
+  label: string;
+  /** The one primary: a `SessionCta`, a `SubmitButton` or a `ButtonLink`. Takes the free width. */
+  primary: ReactNode;
+  /** After the primary, in reading order. A tuple, so a third is a type error. */
+  secondary?: readonly [ReactNode] | readonly [ReactNode, ReactNode];
+  /** One quiet line under the row — SCR-014's «لم تلتقط الرمز؟». */
+  note?: ReactNode;
+  /** `fixed` (default) pins it to the viewport's block end; `static` is for the gallery. */
+  position?: "fixed" | "static";
+  /** Hide from this breakpoint up — the event page shows its action row instead. */
+  hideFrom?: "md" | "lg";
+}
+
+/** One figure of the week. `value` is a NODE so a screen can hand in a counting figure (moment 3); the
+ *  primitive never formats a number. `valueLabel` is what a screen reader hears for the drawn figure. */
+export interface WeekHudFigure {
+  label: ReactNode;
+  value: ReactNode;
+  valueLabel: string;
+  /** Makes the whole tile a link. */
+  href?: string;
+}
+
+/**
+ * `scoring` · `week-hud.tsx` — three figures and the way to the next level, from props.
+ * ★ A MISSING RANK AND A DISABLED STREAK ARE ABSENCES, NEVER ZEROS: the type has no place for a zero rank.
+ */
+export interface WeekHudProps extends Styleable {
+  /** The group's accessible name — «حصيلتك هذا الشهر». */
+  label: string;
+  /** Ranked: the figure, and a rise shown beside it (never moved by the primitive). Unranked: words. */
+  rank: (WeekHudFigure & { movement?: { riseLabel: string } | null }) | { label: ReactNode; absent: string; href?: string };
+  /** `null`: the org has no streak rule — the tile is not drawn. `absent`: on, none running — words. */
+  streak: WeekHudFigure | { label: ReactNode; absent: string } | null;
+  /** A balance of 0 is a true figure and is drawn. `delta` is the «+N» of moment 3's static state. */
+  points: WeekHudFigure & { delta?: ReactNode | null; deltaLabel?: string | null };
+  /** `null`: no level yet — no bar. */
+  level: { value: number; max: number; line: ReactNode } | { line: ReactNode } | null;
+}
+
+interface FeedItemBase extends Styleable {
+  /** Pre-formatted by the caller, Western digits — «قبل ساعتين», «أمس». */
+  time: string;
+}
+
+/** An achievement: a colleague's badge or completed streak. ★ No reaction slot (DEC-206 §4.53). */
+export interface FeedItemAchievementProps extends FeedItemBase {
+  variant: "achievement";
+  /** The glyph in the tile, from `ui/icons`. */
+  icon: ReactNode;
+  /** The sentence, composed by the caller: the member's name inside `<bdi>`. */
+  children: ReactNode;
+  /** The member's company, drawn before the time. Null draws the time alone. */
+  context?: string | null;
+}
+
+/** An org's announcement (REQ-UIX-056). ★ No author, no action, no reaction. */
+export interface FeedItemAnnouncementProps extends FeedItemBase {
+  variant: "announcement";
+  /** «إعلان من الإدارة» — the visible source line; the megaphone glyph is the primitive's. */
+  sourceLabel: string;
+  /** Plain text, drawn whole in `<bdi dir="auto">`, never clamped. */
+  body: string;
+}
+
+/** A completed session's recap. */
+export interface FeedItemRecapProps extends FeedItemBase {
+  variant: "recap";
+  title: string;
+  href: string;
+  /** «اكتملت» — a word, not a status badge. */
+  doneLabel: string;
+  /** Composed by the caller — who presented, how many attended, how many photos. */
+  meta: ReactNode;
+  /** At most three; more are ignored. Empty draws no strip. */
+  photos: { src: string; alt: string; width?: number | null; height?: number | null }[];
+  /** The row under the strip: the caller's `ReactionBar`. */
+  reactions?: ReactNode;
+  /** A LINK to the session's materials, never a download (DEC-206 §4.55). Absent → not drawn. */
+  materials?: { href: string; label: string } | null;
+}
+
+/** `content` · `feed-item.tsx` — one `<article>`, three variants. */
+export type FeedItemProps = FeedItemAchievementProps | FeedItemAnnouncementProps | FeedItemRecapProps;
+
+/**
+ * `content` · `attendee-stack.tsx` — overlapping avatars with team rings and a count in words.
+ * ★ It draws who it is GIVEN; it never decides who may be seen (A33 rule 3, DEC-206 §4.56).
+ */
+export interface AttendeeStackProps extends Styleable {
+  /** Only people a viewer RLS already answers for. May be empty: the count line stands alone. */
+  people: { memberId: string; displayName: string | null; src?: string | null; teamColor?: string | null }[];
+  /** How many faces at most. Default 4. */
+  max?: number;
+  /** The count IN WORDS, all six plural forms built by the caller. Always drawn. */
+  countLabel: string;
+  /** The group's accessible name — «من يحضر». */
+  label: string;
+  size?: 24 | 32;
 }
