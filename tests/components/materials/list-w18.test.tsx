@@ -124,6 +124,10 @@ describe("Materials slot — rebuilt", () => {
     expect(play.textContent).toBe("");
     // The scrubber reads its place in words, the catalogue's <bdi> dropped from the attribute.
     expect(screen.getByRole("slider", { name: "موضع التشغيل" })).toHaveAttribute("aria-valuetext", "0:00 من —:—");
+    // `EventDone.dc.html:72` draws one row: the disc and the track are siblings, with one time line between.
+    const slider = screen.getByRole("slider", { name: "موضع التشغيل" });
+    expect(slider.parentElement).toBe(play.parentElement);
+    expect(play.parentElement!.querySelectorAll("p")).toHaveLength(2);
     expect(screen.getByTestId("slot").querySelector("audio")).toHaveAttribute("src", "https://storage.test/a.m4a");
   });
 

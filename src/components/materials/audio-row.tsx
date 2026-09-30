@@ -98,36 +98,33 @@ export function AudioRow({ src, title, note, labels }: AudioRowProps) {
       >
         {playing ? <PauseIcon className="text-lg" /> : <PlayIcon className="text-lg" />}
       </button>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      {/* `EventDone.dc.html:72`: one compact row — the disc, the title over ONE time line, the track beside them. */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <p id={titleId} className="text-label font-bold text-fg-heading">
           <bdi>{title}</bdi>
         </p>
         <p className="text-caption text-fg-muted">
+          {/* The duration at rest; once played, where it stands of the whole. */}
           <bdi dir="ltr" className="tabular-nums">
-            {known ? clock(total) : "—:—"}
+            {!known ? "—:—" : elapsed > 0 || playing ? `${clock(elapsed)} / ${clock(total)}` : clock(total)}
           </bdi>
           <span aria-hidden> · </span>
           {note}
         </p>
-        {/* ui-lint-disable-next-line field — the player's scrubber: the system has no slider primitive, and a native range IS the keyboard-operable control REQ-MAT-007 asks for; named by aria-label, valued by aria-valuetext (approved by the lead in writing, wave 18 PR B, DEC-211) */}
-        <input
-          type="range"
-          min={0}
-          max={known ? total : 0}
-          step={1}
-          value={Math.min(elapsed, known ? total : 0)}
-          onChange={seek}
-          disabled={!known}
-          aria-label={labels.seek}
-          aria-valuetext={position}
-          className="w-full accent-accent disabled:opacity-45"
-        />
-        <p className="text-caption text-fg-muted" aria-hidden>
-          <bdi dir="ltr" className="tabular-nums">
-            {clock(elapsed)} / {known ? clock(total) : "—:—"}
-          </bdi>
-        </p>
       </div>
+      {/* ui-lint-disable-next-line field — the player's scrubber: the system has no slider primitive, and a native range IS the keyboard-operable control REQ-MAT-007 asks for; named by aria-label, valued by aria-valuetext (approved by the lead in writing, wave 18 PR B, DEC-211) */}
+      <input
+        type="range"
+        min={0}
+        max={known ? total : 0}
+        step={1}
+        value={Math.min(elapsed, known ? total : 0)}
+        onChange={seek}
+        disabled={!known}
+        aria-label={labels.seek}
+        aria-valuetext={position}
+        className="h-6 w-24 shrink-0 accent-accent disabled:opacity-45"
+      />
     </div>
   );
 }
