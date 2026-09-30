@@ -56,7 +56,10 @@ const exempt = (file: string) => EXEMPT.some((p) => file === p || (p.endsWith("/
 
 const PREFIX = "(?:bg|text|border|ring|outline|fill|stroke|divide|from|to|via|decoration|shadow|accent|caret|placeholder)";
 export const RAW_CLASS = new RegExp(`\\b${PREFIX}-(?:(?:navy|silver|slate)-[a-z0-9]+|white|black)\\b(?:/\\d+)?`, "g");
-export const ROOT_VAR = /var\(--color-[a-z0-9-]+\)/g;
+// The names that are wrong inside the scope: the old palette, and the semantic aliases `@theme inline`
+// resolves at `:root`. A CONSTANT — a team colour, a status colour, the confetti's lime and bone
+// (REQ-UIX-044) — is the same value on every ground and is not refused.
+export const ROOT_VAR = /var\(--color-(?:canvas|surface|fg-[a-z]+|edge(?:-strong)?|spine|node|navy-\d+|silver-\d+|slate-[a-z]+)\)/g;
 
 /** Every raw class and every root-resolved colour variable in a file's code. */
 export function rawIn(source: string): string[] {
@@ -98,6 +101,8 @@ describe("no raw palette name outside the primitives and the public site", () =>
     expect(refuses("bg-[var(--btn-bg)] text-[var(--btn-fg)] border-[var(--edge)]")).toBe(false);
     expect(refuses("text-error bg-success-bg border-live-on-dark/50")).toBe(false);
     expect(refuses("[mask-image:linear-gradient(to_right,black,transparent)]")).toBe(false);
+    expect(refuses("var(--color-play-lime)")).toBe(false);
+    expect(refuses("bg-[var(--color-fg-heading)]")).toBe(true);
     // A comment may quote a class; code may not.
     expect(rawIn("// was `bg-silver-100`\nconst c = \"bg-raised\";")).toEqual([]);
   });
