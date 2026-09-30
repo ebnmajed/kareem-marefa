@@ -42,7 +42,7 @@ export interface TimelineSession {
   capacity: number | null;
   confirmedCount: number;
   waitlistCount: number;
-  presenters: { memberId: string; displayName: string | null }[];
+  presenters: TimelinePresenter[];
   tags: { label: string; normalised: string }[];
   /** The viewer's own seat on it. */
   mine: "confirmed" | "waitlisted" | null;
@@ -53,6 +53,18 @@ export interface TimelineSession {
   posterUrl: string | null;
   /** «تسجيل الحضور» on the pinned card — `checkInWindowAllowed()`, the predicate behind the event page's link (contract 2). */
   canCheckIn: boolean;
+}
+
+/**
+ * One accepted presenter on a card. ★ wave 18 (contract 3, add-only): `avatarUrl` and `company` are
+ * filled only by a reader that passes `CandidateContext.companies` — browse's row rings the lead
+ * presenter in the team colour, and the feed's post names the company. Absent, a card is what it was.
+ */
+export interface TimelinePresenter {
+  memberId: string;
+  displayName: string | null;
+  avatarUrl?: string | null;
+  company?: { id: string; name: string; teamColor: string | null } | null;
 }
 
 /** The sessions a card can show. Drafts and `approved` never appear, even to staff: the console lists those. */
@@ -69,7 +81,7 @@ export const TIMELINE_STATES: SessionState[] = ["published", "in_progress", "com
 export const TIMELINE_SESSION_COLUMNS =
   "id, title, state, level, language, category_id, venue_id, starts_at, ends_at, duration_minutes, time_zone, capacity, rsvp_deadline_at, allow_walk_ins, check_in_open, custom_venue_name, categories(name), venues(name), session_days(id, position, starts_at, ends_at, check_in_open)";
 
-export type PresenterEntry = { memberId: string; displayName: string | null; companyId: string | null };
+export type PresenterEntry = { memberId: string; displayName: string | null; companyId: string | null; avatarUrl?: string | null };
 export type TagEntry = { label: string; normalised: string };
 
 /** A card before its seats, poster and attendance are known — what the timeline's filters match against. */
@@ -86,12 +98,14 @@ export interface TimelineCandidate extends Omit<TimelineSession, "confirmedCount
 /** Accepted presenters per session, with the member-tier name and company (REQ-PRF-004). */
 export function groupPresenters(
   rows: { session_id: string; member_id: string }[],
-  profiles: Map<string, { displayName: string | null; companyId: string | null }>,
+  profiles: Map<string, { displayName: string | null; companyId: string | null; avatarUrl?: string | null }>,
 ): Map<string, PresenterEntry[]> {
   const bySession = new Map<string, PresenterEntry[]>();
   for (const p of rows) {
     const profile = profiles.get(p.member_id);
-    bySession.set(p.session_id, [...(bySession.get(p.session_id) ?? []), { memberId: p.member_id, displayName: profile?.displayName ?? null, companyId: profile?.companyId ?? null }]);
+    const entry: PresenterEntry = { memberId: p.member_id, displayName: profile?.displayName ?? null, companyId: profile?.companyId ?? null };
+    if (profile?.avatarUrl !== undefined) entry.avatarUrl = profile.avatarUrl;
+    bySession.set(p.session_id, [...(bySession.get(p.session_id) ?? []), entry]);
   }
   return bySession;
 }
@@ -113,6 +127,8 @@ export interface CandidateContext {
   bookmarked: Set<string>;
   orgTimeZone: string;
   now: Date;
+  /** wave 18, add-only: the org's companies by id. Passed, a presenter carries its avatar and company. */
+  companies?: Map<string, { id: string; name: string; teamColor: string | null }>;
 }
 
 /** A `TIMELINE_SESSION_COLUMNS` row → a candidate. Phase from `sessionPhase()`, clock included (REQ-UIX-003). */
@@ -154,7 +170,9 @@ export function toTimelineCandidate(row: Record<string, unknown>, ctx: Candidate
     rsvpDeadlineAt: (row.rsvp_deadline_at as string | null) ?? null,
     allowWalkIns: Boolean(row.allow_walk_ins),
     checkInOpen: row.check_in_open === true,
-    presenters: presenters.map(({ memberId, displayName }) => ({ memberId, displayName })),
+    presenters: presenters.map(({ memberId, displayName, companyId, avatarUrl }) =>
+      ctx.companies ? { memberId, displayName, avatarUrl: avatarUrl ?? null, company: (companyId && ctx.companies.get(companyId)) || null } : { memberId, displayName },
+    ),
     presenterCompanyIds: presenters.map((p) => p.companyId).filter((v): v is string => v !== null),
     tags: [...(ctx.tagsBySession.get(id) ?? [])].sort((a, b) => a.label.localeCompare(b.label, "ar")),
     mine: ctx.mine.get(id) ?? null,

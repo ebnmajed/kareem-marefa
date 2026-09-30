@@ -5524,3 +5524,27 @@ Not mine, and likely to move — told to the lead, not edited: `a11y`, `budgets`
 
 **Order once the frame is in**: contract 3's types and `session-post.ts` first (they unblock `content`) → `action-bar`
 and `session-cta` → `SCR-007` → `SCR-011` → the deletions, after `content`'s page.
+
+## W18.9 · Contract 3 as built (after `DEC-207`) — `content` codes against THIS
+
+The files: `src/components/browse/session-post.ts` (pure — types, `postAction`, `postDay`, `compareSessionPosts`) and
+`src/lib/dal/search.ts` (the reads, which re-export the types). Differences from W18.4, all from `DEC-207` §2:
+
+- `SessionPost` gains **`excerpt: string | null`** (the abstract, trimmed) and **`attendedCount: number | null`** — `null`
+  until the lead publishes the count function's name; never who.
+- **`getSessionPosts(locale, options?: { now?: Date }): Promise<SessionPostsData>`** — the window is fixed by the ruling,
+  not a parameter: every live one; open ones starting within 14 days, 10 at most, soonest first; ended within 7 days, 5
+  at most, latest first; a cancelled one the viewer held a seat on, inside either window.
+- **`compareSessionPosts(a, b, today?: string)`** — `today` is "YYYY-MM-DD" on the org's calendar (`orgDay(now, tz)`).
+  With it: today · coming days ascending · past days descending; within a day committed first, then by start. The
+  returned `posts` are already in that order.
+- `SessionPost.presenters[].company` is `{ id, name, teamColor } | null`; `avatarUrl` is `avatarHref()`'s, or null.
+- `SessionPostAction` as W18.4. `checkIn` reads `checkInOffer()` (the event page's own link, per day for a workshop);
+  `rate` reads `getRatingEligibility()` for an ended session the viewer attended, and only when not yet rated.
+- `attendancePoints` is the `check_in` rule's figure for an open or live session the viewer does not present; null
+  otherwise, never 0.
+- **`getNextForMe(locale, limit = 3, now?)`** — live first, then the soonest; `NextForMe` renders it (next commit).
+
+`TimelineSession.presenters[]` gained optional `avatarUrl` and `company` (filled by the readers that pass the org's
+companies); `TimelineData` gained `endedCount` and `attendancePoints`; `getTimeline()` a trailing `{ pin?: boolean }`;
+`getTimelineSessionsByIds()` a trailing `{ withCompanies?: boolean }`. All add-only.
