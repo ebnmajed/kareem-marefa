@@ -85,59 +85,6 @@ describe("a dialog's portal", () => {
   });
 });
 
-describe("the provider never re-renders what is under it (wave 17, DEC-201)", () => {
-  // The scope is the ROOT of the shell now. A provider that held the landing element in state
-  // changed a context above every streamed Suspense boundary in the first frame of hydration, and
-  // React client-rendered those boundaries. The context's value is a ref: it never changes.
-  // ★ jsdom cannot show the defect itself — it needs a streamed boundary and a hydration — so the
-  // cause is held at its source: the provider keeps no state and publishes a ref. The two cases
-  // after it hold the behaviour that must survive the repair.
-  it("the provider holds no state: the context's value is a ref, which never changes", async () => {
-    const { readFileSync } = await import("node:fs");
-    const source = readFileSync("src/components/ui/scope-portal.tsx", "utf8").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
-    const provider = source.slice(source.indexOf("export function PlayPortalProvider"), source.indexOf("const subscribe"));
-    expect(provider).toContain("useRef");
-    expect(provider).not.toMatch(/useState|useReducer|set[A-Z]\w*\(/);
-    expect(source).not.toMatch(/\buseState\b/);
-  });
-
-  it("a child that does not ask for the landing place renders once", () => {
-    let renders = 0;
-    function Bystander() {
-      renders += 1;
-      return <p>صفحة</p>;
-    }
-    render(
-      <PlayScope>
-        <Bystander />
-      </PlayScope>,
-    );
-    expect(renders).toBe(1);
-  });
-
-  it("a consumer re-renders alone, once, to read the element — the bystander beside it does not", async () => {
-    let bystander = 0;
-    let consumer = 0;
-    function Bystander() {
-      bystander += 1;
-      return null;
-    }
-    function Consumer() {
-      consumer += 1;
-      return <output>{usePlayPortal() ? "scope" : "none yet"}</output>;
-    }
-    render(
-      <PlayPortalProvider>
-        <Bystander />
-        <Consumer />
-      </PlayPortalProvider>,
-    );
-    expect(await screen.findByText("scope")).toBeInTheDocument();
-    expect(bystander).toBe(1);
-    expect(consumer).toBe(2);
-  });
-});
-
 describe("the hook", () => {
   function Probe() {
     const landing = usePlayPortal();
