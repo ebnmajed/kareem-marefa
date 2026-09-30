@@ -5657,7 +5657,11 @@ home waits on three contracts: `NextForMe` (sessions), `session-cta`'s `rate` st
   are pure and unit-tested; a source other than the session posts that fails is dropped and logged, never fatal.
 - **Glyphs requested of the lead:** a megaphone (announcement; `InfoIcon` meanwhile) and a speech bubble (the
   comment count; drawn inline in `feed/session-post.tsx` meanwhile).
-- **Copy decided:** the propose band drops «يُجدول في أسبوع» (no rule promises a week). The company is body text
-  with a team-coloured dot (§4.61 — a colour from data is never a text colour).
+- ★ **Two deviations from `Home.dc.html`, approved by the lead:** (1) the propose band's «مقترحك يُجدول في أسبوع»
+  (`:121`) becomes «اقترح جلسة، وتراجعها الإدارة وتجدولها» — no rule promises a week; (2) the presenter's company
+  (`:48`, `:78`) is body-coloured text with a team-coloured dot beside it, not text in the team colour (§4.61: a
+  colour from data is never a text colour, whose contrast nobody measured).
+- **Glyphs:** `InfoIcon` and the inline speech bubble stay until the lead adds a megaphone and a comment glyph to
+  `ui/icons` last in the wave, under contract 5's proof; then I swap both.
 - **For `sessions`, answered (Q1):** `poster` is not meant at 76 px — the row keeps `CardMedia` with
   `posterAspect()`; `teamName` optional needs the lead to release `poster.tsx` and the type.

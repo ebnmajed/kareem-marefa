@@ -366,3 +366,71 @@ export async function recordPhotoAlbumDownload(locale: string, sessionId: string
   if (error) return error.code === "42501" ? { status: "refused" } : { status: "failed" };
   return signDownload(supabase, "photo-albums", data);
 }
+
+// ── Wave 18 — a recap's three photographs, for the home's feed (REQ-UIX-055, DEC-206 §4.55). Add-only. ──────
+
+export interface RecapPhoto {
+  id: string;
+  url: string;
+  width: number | null;
+  height: number | null;
+}
+
+export interface RecapPhotos {
+  /** Every visible photograph of the session — the recap's «3 صور». */
+  count: number;
+  /** The newest three, signed. A signature that fails leaves its photograph out; the count stays. */
+  photos: RecapPhoto[];
+}
+
+const RECAP_PHOTOS = 3;
+
+/**
+ * Per session: how many photographs a viewer may see, and the newest three, signed — the recap's strip.
+ *
+ * `photos_read` (03 §6) is the whole visibility rule, as on the event page; a hidden photograph is left out
+ * for staff too, because a recap is what every member sees. There is no thumbnail derivative yet (§4.55), so
+ * each sign is the stripped image itself, and three is the ceiling: the signs are one call for every recap,
+ * never one per photograph of an album. «Newest» is a display order with `id` as its tiebreak, not «the last
+ * row».
+ */
+export async function getRecapPhotos(locale: string, sessionIds: string[]): Promise<Map<string, RecapPhotos>> {
+  const ids = [...new Set(sessionIds)].filter((id) => z.uuid().safeParse(id).success);
+  const out = new Map<string, RecapPhotos>();
+  if (ids.length === 0) return out;
+  const { supabase } = await sessionClient(locale);
+
+  const { data, error } = await supabase
+    .from("photos")
+    .select("id, session_id, storage_path, width, height, created_at")
+    .in("session_id", ids)
+    .is("removed_at", null)
+    .is("hidden_at", null)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
+  if (error) throw new Error(`photos (recap): ${error.message}`);
+
+  const rows = (data ?? []) as { id: string; session_id: string; storage_path: string; width: number | null; height: number | null }[];
+  const newest = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const bucket = newest.get(row.session_id) ?? [];
+    if (bucket.length < RECAP_PHOTOS) bucket.push(row);
+    newest.set(row.session_id, bucket);
+    out.set(row.session_id, { count: (out.get(row.session_id)?.count ?? 0) + 1, photos: [] });
+  }
+
+  const toSign = [...newest.values()].flat();
+  if (toSign.length === 0) return out;
+  const { data: signed } = await supabase.storage.from("photos").createSignedUrls(
+    toSign.map((row) => row.storage_path),
+    3600,
+  );
+  const urlByPath = new Map((signed ?? []).filter((s) => s.signedUrl && s.path).map((s) => [s.path as string, s.signedUrl]));
+  for (const [sessionId, bucket] of newest) {
+    const photos = bucket
+      .map((row) => ({ id: row.id, url: urlByPath.get(row.storage_path) ?? "", width: row.width ?? null, height: row.height ?? null }))
+      .filter((p) => p.url !== "");
+    out.set(sessionId, { count: out.get(sessionId)?.count ?? 0, photos });
+  }
+  return out;
+}

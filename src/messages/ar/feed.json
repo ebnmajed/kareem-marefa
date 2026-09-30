@@ -1,0 +1,80 @@
+{
+  "feed": {
+    "title": "الرئيسية",
+    "feedLabel": "ما يجري في الساحة",
+    "rings": {
+      "label": "جلسات اليوم وما حوله",
+      "now": "الآن",
+      "state": {
+        "live": "مباشر",
+        "upcoming": "قادمة",
+        "recap": "ملخص"
+      },
+      "name": "{title}، {state}، {caption}"
+    },
+    "days": {
+      "today": "اليوم",
+      "tomorrow": "غدًا",
+      "yesterday": "أمس"
+    },
+    "ago": {
+      "now": "الآن",
+      "minutes": "{count, plural, zero {الآن} one {قبل دقيقة} two {قبل دقيقتين} few {قبل {value} دقائق} many {قبل {value} دقيقة} other {قبل {value} دقيقة}}",
+      "hours": "{count, plural, zero {الآن} one {قبل ساعة} two {قبل ساعتين} few {قبل {value} ساعات} many {قبل {value} ساعة} other {قبل {value} ساعة}}"
+    },
+    "post": {
+      "placeTime": "<bdi>{place}</bdi>، {time}",
+      "posterDate": "{day}، {time}",
+      "inDays": "{count, plural, zero {اليوم} one {غدًا} two {بعد يومين} few {بعد {value} أيام} many {بعد {value} يومًا} other {بعد {value} يوم}}",
+      "seats": "{count, plural, zero {{taken} من 0 مقاعد} one {{taken} من مقعد واحد} two {{taken} من مقعدين} few {{taken} من {value} مقاعد} many {{taken} من {value} مقعدًا} other {{taken} من {value} مقعد}}",
+      "attendedLive": "{count, plural, zero {لم يسجّل أحد حضوره بعد} one {حاضر واحد الآن} two {حاضران الآن} few {{value} حاضرين الآن} many {{value} حاضرًا الآن} other {{value} حاضر الآن}}",
+      "reactions": "التفاعل مع الجلسة",
+      "like": "إعجاب",
+      "comments": "{count, plural, zero {لا تعليقات، افتح النقاش} one {تعليق واحد} two {تعليقان} few {{value} تعليقات} many {{value} تعليقًا} other {{value} تعليق}}",
+      "posterName": "ملصق جلسة <bdi>{title}</bdi>",
+      "points": "+{value}",
+      "shareHint": "رابط عام يعرض العنوان والموعد والمكان واسم الجهة والملصق فقط.",
+      "action": {
+        "reserve": "احجز مقعدك",
+        "waitlist": "انضم لقائمة الانتظار",
+        "bookedSeat": "مقعدك محجوز",
+        "bookedWaitlist": "في قائمة الانتظار",
+        "bookedWaitlistAt": "في قائمة الانتظار، ترتيبك {value}",
+        "checkIn": "سجّل حضورك",
+        "reserved": "مقعدك محجوز",
+        "attended": "حضرت",
+        "rate": "قيّم الجلسة",
+        "noCompany": "اختر شركتك أولًا لتحجز مقعدًا"
+      }
+    },
+    "recap": {
+      "done": "اكتملت",
+      "attended": "{count, plural, zero {لم يُسجَّل حضور} one {حاضر واحد} two {حاضران} few {{value} حاضرين} many {{value} حاضرًا} other {{value} حاضر}}",
+      "photos": "{count, plural, zero {بلا صور} one {صورة واحدة} two {صورتان} few {{value} صور} many {{value} صورة} other {{value} صورة}}",
+      "photoAlt": "صورة من جلسة <bdi>{title}</bdi>",
+      "materials": "المواد"
+    },
+    "announcement": {
+      "source": "إعلان من الإدارة"
+    },
+    "staff": {
+      "title": "يحتاج انتباهك",
+      "proposals": "{count, plural, zero {لا مقترحات} one {مقترح بانتظار القرار} two {مقترحان بانتظار القرار} few {{value} مقترحات بانتظار القرار} many {{value} مقترحًا بانتظار القرار} other {{value} مقترح بانتظار القرار}}",
+      "unscheduled": "{count, plural, zero {لا جلسات} one {جلسة بلا موعد} two {جلستان بلا موعد} few {{value} جلسات بلا موعد} many {{value} جلسة بلا موعد} other {{value} جلسة بلا موعد}}",
+      "photoReports": "{count, plural, zero {لا بلاغات} one {بلاغ عن صورة} two {بلاغان عن صور} few {{value} بلاغات عن صور} many {{value} بلاغًا عن صور} other {{value} بلاغ عن صور}}",
+      "commentReports": "{count, plural, zero {لا بلاغات} one {بلاغ عن تعليق} two {بلاغان عن تعليقات} few {{value} بلاغات عن تعليقات} many {{value} بلاغًا عن تعليقات} other {{value} بلاغ عن تعليقات}}"
+    },
+    "propose": {
+      "title": "عندك موضوع؟",
+      "body": "لست بحاجة لأن تكون خبيرًا. اقترح جلسة، وتراجعها الإدارة وتجدولها.",
+      "action": "اقترح جلسة"
+    },
+    "empty": {
+      "title": "لا شيء في الساحة بعد",
+      "body": "حين تُنشر جلسة أو يُعلَن عن شيء، يظهر هنا. وقد تكون أنت أول من يقترح.",
+      "action": "اقترح موضوعًا",
+      "coming": "الجلسات القادمة",
+      "browse": "كل الجلسات"
+    }
+  }
+}

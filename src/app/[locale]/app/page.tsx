@@ -1,19 +1,32 @@
-import { setRequestLocale } from "next-intl/server";
-import { SessionsTimeline } from "@/components/browse/sessions-timeline";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { NextForMe } from "@/components/browse/next-for-me";
+import { Feed } from "@/components/feed/feed";
+import { GameRail } from "@/components/scoring/game-rail";
+import { PageFrame } from "@/components/shell/page-frame";
 
-// SCR-010 · /app — where a member lands, and it IS the sessions timeline
-// (DEC-112, DEC-130, REQ-UIX-021).
+// SCR-010 · /app — HOME IS THE FEED (DEC-205 §2, DEC-206, DEC-207, REQ-UIX-055, STORY-UIX-044).
 //
-// «The landing page is the sessions list — the user lands on the available
-// ones.» The «أهلًا ريم» dashboard and its rails are withdrawn; a member lands
-// on something they can act on, with no second navigation.
+// Its own page: the rings, the week, the feed by day and the propose band (`components/feed/feed.tsx`); on
+// desktop the week and «التالية لك» are the game rail, passed to the frame's one slot (contract 1). The
+// sessions timeline is `/app/sessions`' alone, the canonical browse URL (REQ-UIX-022); nothing here is it.
 //
-// ★ It renders the timeline rather than redirecting to `/app/sessions`: sign-in
-// lands here, and a redirect would cost every member a round trip on every
-// landing. It shows the default view and ignores its own query string — every
-// filter control links to `/app/sessions?…`, the canonical address.
-export default async function AppHomePage({ params }: { params: Promise<{ locale: string }> }) {
+// The page draws nothing of the shell. Its heading is the screen's name, visually hidden: the artboard names
+// the screen by its tab, and a page still has one `<h1>`.
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <SessionsTimeline locale={locale} />;
+  const [t, tWeek] = await Promise.all([getTranslations("feed"), getTranslations("scoring.week")]);
+  return (
+    <PageFrame
+      railLabel={tWeek("railLabel")}
+      rail={
+        <GameRail locale={locale}>
+          <NextForMe locale={locale} />
+        </GameRail>
+      }
+    >
+      <h1 className="sr-only">{t("title")}</h1>
+      <Feed locale={locale} />
+    </PageFrame>
+  );
 }

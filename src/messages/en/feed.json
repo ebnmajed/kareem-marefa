@@ -1,0 +1,80 @@
+{
+  "feed": {
+    "title": "Home",
+    "feedLabel": "What is happening",
+    "rings": {
+      "label": "Sessions today and around it",
+      "now": "Now",
+      "state": {
+        "live": "Live",
+        "upcoming": "Coming up",
+        "recap": "Recap"
+      },
+      "name": "{title}, {state}, {caption}"
+    },
+    "days": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "yesterday": "Yesterday"
+    },
+    "ago": {
+      "now": "Just now",
+      "minutes": "{count, plural, one {a minute ago} other {{value} minutes ago}}",
+      "hours": "{count, plural, one {an hour ago} other {{value} hours ago}}"
+    },
+    "post": {
+      "placeTime": "<bdi>{place}</bdi>, {time}",
+      "posterDate": "{day}, {time}",
+      "inDays": "{count, plural, =0 {Today} one {Tomorrow} other {In {value} days}}",
+      "seats": "{count, plural, one {{taken} of 1 seat} other {{taken} of {value} seats}}",
+      "attendedLive": "{count, plural, =0 {Nobody has checked in yet} one {1 here now} other {{value} here now}}",
+      "reactions": "Reactions to the session",
+      "like": "Like",
+      "comments": "{count, plural, =0 {No comments, start the discussion} one {1 comment} other {{value} comments}}",
+      "posterName": "Poster of <bdi>{title}</bdi>",
+      "points": "+{value}",
+      "shareHint": "A public link showing only the title, time, place, organiser and poster.",
+      "action": {
+        "reserve": "Reserve your seat",
+        "waitlist": "Join the waitlist",
+        "bookedSeat": "Your seat is reserved",
+        "bookedWaitlist": "On the waitlist",
+        "bookedWaitlistAt": "On the waitlist, number {value}",
+        "checkIn": "Check in",
+        "reserved": "Seat reserved",
+        "attended": "You attended",
+        "rate": "Rate the session",
+        "noCompany": "Choose your company first to reserve a seat"
+      }
+    },
+    "recap": {
+      "done": "Completed",
+      "attended": "{count, plural, =0 {No attendance recorded} one {1 attended} other {{value} attended}}",
+      "photos": "{count, plural, =0 {No photos} one {1 photo} other {{value} photos}}",
+      "photoAlt": "A photo from <bdi>{title}</bdi>",
+      "materials": "Materials"
+    },
+    "announcement": {
+      "source": "From the organisers"
+    },
+    "staff": {
+      "title": "Needs your attention",
+      "proposals": "{count, plural, one {1 proposal awaiting a decision} other {{value} proposals awaiting a decision}}",
+      "unscheduled": "{count, plural, one {1 session without a time} other {{value} sessions without a time}}",
+      "photoReports": "{count, plural, one {1 photo report} other {{value} photo reports}}",
+      "commentReports": "{count, plural, one {1 comment report} other {{value} comment reports}}"
+    },
+    "propose": {
+      "title": "Got a topic?",
+      "body": "You don't need to be an expert. Propose a session; the organisers review and schedule it.",
+      "action": "Propose a session"
+    },
+    "empty": {
+      "title": "Nothing here yet",
+      "body": "When a session is published or something is announced, it shows here. You could be the first to propose one.",
+      "action": "Propose a topic",
+      "coming": "Coming sessions",
+      "browse": "All sessions"
+    }
+  }
+}
