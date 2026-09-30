@@ -3281,3 +3281,20 @@ New files only otherwise: `tests/unit/console-register.test.ts`, a console e2e s
 - **Q5** — `Badge live`'s pulsing dot in console tables (§5.4).
 - **Disagreement with `docs/design/`:** none new. (`04-components.md:23` «no animation» for the console's primitives holds
   with a measured empty set.)
+
+### Wave 17 — result (K1, K2, K4; K3 from the sweep captures)
+
+Commits: `a42fb18f` (K1, `tests/unit/console-register.test.ts`), `cd8d5192` (K2, 12 staff files + `impersonation-banner.tsx` + the two
+`date-time-scope` assertions), `abb1b8d9` and `db6d3017` (K4, `wave17-console-screens.spec.ts`, and the open-menu capture repair in
+`wave15-console-team-colour.spec.ts`).
+
+**K3 — from `wave11-sweep-admin-*` / `wave11-sweep-platform-*` at native size (sessions, members, audit, companies, schedule):**
+nothing of mine is wrong. The card list below `md`, the raised select wells, the `date-time` trigger and the status outlines read on the
+dark ground. **Not judged from the sweep** (it opens none): `menu` edge against a row, `combobox` popup, `sheet` scrim and edge, the
+`date-time` popover, a sticky `<th>` — to be judged from the `wave17-console-*` captures.
+
+**Seen and not mine (listed, not fixed):**
+1. `/app/admin/members` cards: the row-action trigger is a bare «…» with no boundary — faint as a control.
+2. `Badge live`'s pulsing dot in console tables (ruled: stays, `DEC-073`).
+3. Full-page captures show the phone tab bar and the sticky save bar overlaid mid-page — a capture artefact.
+4. `/app/admin/sessions` was an empty state in the sweep, so no data-table rows were seen there.
