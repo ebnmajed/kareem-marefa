@@ -289,7 +289,9 @@ test("★ an ended session: the ribbon, «حضرت», «قيّم الجلسة» 
   // One call to rate on the page, once everything has streamed: while the card
   // carries it, the rating section does not repeat it.
   await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("link", { name: "قيّم الجلسة" })).toHaveCount(1);
+  // ★ Wave 18 (DEC-209, a ledger line): the card's call and, on the phone, the bottom bar's — the region holds one.
+  await expect(page.getByRole("link", { name: "قيّم الجلسة" })).toHaveCount(testInfo.project.name === "phone" ? 2 : 1);
+  await expect(region.getByRole("link", { name: "قيّم الجلسة" })).toHaveCount(1);
   await expect(page.getByRole("region", { name: "التقييم" })).toHaveCount(0);
   for (const name of ["احجز مقعدك", "إلغاء الحجز", "غادر قائمة الانتظار", "أضِف إلى تقويمك"]) {
     await expect(page.getByRole("button", { name })).toHaveCount(0);

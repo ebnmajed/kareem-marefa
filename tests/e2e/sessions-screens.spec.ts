@@ -354,7 +354,8 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
 
   // ── RSVP · REQ-RSV-001, through `checkin`'s slot ──────────────────────────
   await expect(attendee.getByText(/يتبقى \d+ مقعد/)).toBeVisible();
-  await attendee.getByRole("button", { name: "احجز مقعدك" }).click();
+  // ★ Wave 18 (DEC-209, a ledger line): the phone draws the primary in the card and the bar — pressed in the region.
+  await attendee.getByRole("region", { name: "الحضور" }).getByRole("button", { name: /احجز مقعدك/ }).click();
   await expect(attendee.getByText("تم تأكيد حجزك")).toBeVisible();
   await expect(attendee.getByRole("button", { name: "إلغاء الحجز" })).toBeVisible();
 

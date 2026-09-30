@@ -187,7 +187,9 @@ test("★★ moment 1 plays once, on the press — and a reload, a back navigati
   }
   await expect(ticket(page)).toHaveCount(0);
   await expect(region.getByText("تم تأكيد حجزك")).toBeVisible();
-  await expect(main.getByRole("button", { name: "أضِف إلى تقويمك" }).filter({ visible: true })).toHaveCount(1);
+  // ★ Wave 18 (DEC-209, a ledger line): once held, the calendar is the primary in the card at every width and in the
+  // phone's bottom bar too — so «one» is asked of the region «الحضور».
+  await expect(main.getByRole("region", { name: "الحضور" }).getByRole("button", { name: "أضِف إلى تقويمك" }).filter({ visible: true })).toHaveCount(1);
   await expect(page.getByText(WHISPER_MANUAL, { exact: true })).toBeVisible();
   expect(await tickets(page)).toBe(1);
 
