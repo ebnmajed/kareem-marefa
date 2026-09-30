@@ -208,7 +208,10 @@ test("★ the public card says the range, without reading a single day row", asy
   // from `session_public_card()` and not from `session_days`.
   await page.goto(`/ar/s/${sessionId}`);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await expect(page.getByText("ورشة تحليل البيانات على ثلاث أمسيات")).toBeVisible();
-  await expect(page.getByText("3 أيام")).toBeVisible();
+  // ★ Wave 18 (REQ-UIX-059): the rebuilt card draws the title twice, as PublicCard.dc.html does — on the
+  // placeholder poster and in the `h1` — so the title is read from the heading, and the count from the
+  // time-and-place list it belongs to.
+  await expect(page.getByRole("heading", { level: 1, name: "ورشة تحليل البيانات على ثلاث أمسيات" })).toBeVisible();
+  await expect(page.locator("dl").getByText("3 أيام")).toBeVisible();
   await capture(page, "public-card-range");
 });
