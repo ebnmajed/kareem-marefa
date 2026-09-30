@@ -5358,3 +5358,53 @@ A screen inside the scope took the playground's card, button and field, and then
 - `DEC-198` §5's list, unchanged: F2, F3, the 390 px review of overshoot, `REQ-REC-004` in a default org.
 
 - **Documents changed:** `01-prd.md` (`REQ-UIX-049` … `REQ-UIX-053`), `14-roadmap.md` (M19; the sequence), `15-backlog.md` (`STORY-UIX-033` … `STORY-UIX-038`; §24), `scripts/traceability.mjs` (five cross-cutting rows), `TRACEABILITY.md` (generated), `docs/design/04-components.md` and `07-tasks.md` (the eight, named), `CLAUDE.md` and the ten agent files (the wave-17 map), `STATUS.md` (the wave-17 block)
+
+---
+
+## DEC-200 — Wave 17, sync 1: two plans approved; the gate found nineteen files where the brief counted eight; the status constants are remapped once; and what each ground rule means at the edges
+
+- **Date:** 2026-09-30 · **Decided by:** the wave-17 lead, on the plans in `docs/plan/notes/{content,console}.md` (`4828de64`, `a00c6273`), each headline claim checked against the tree
+- **Adds to:** `DEC-199` §3, §4 and §6. **Amends:** `DEC-199` §1.3.5's count, and `docs/design/04-components.md`'s line on the link's pending dot.
+
+### 1 · What the gate found — nineteen files, not eight
+
+`tests/unit/ui-playground.test.ts` was run against the wave's opening tree (`c073ce3b`): **29 failures across 19 files.** The brief's eight are all there. Eleven more were hidden by counting «no `pg:` class» alone:
+
+| Found | Files |
+|---|---|
+| treated in wave 15, with **no test that speaks of the scope** | `dialog`, `skeleton`, `toast`, `route-error`, `route-progress` |
+| born inside the scope, with a test that **never mentions it** | `rank-row`, `race-bar`, `level-card` |
+| **no gallery demo file** | `button`, `route-progress`, and seven of the eight |
+
+It landed red at `8d333434` and was green over all 49 files at `d88acfd0`. ★ **`icons.tsx` needed no edit**: the house set is already what the playground asks of a glyph — a 24 px grid, stroke 2, the text's colour, `1em`. Its treatment is evidence — a test over **every export of the file**, read from the module and never from a list — so contract 5's proof for it is that the file is byte-identical to `main`'s.
+
+**A defect in the gates themselves, found on the way.** `tokens-only.test.ts` stripped block comments before line comments. `ui/skeleton` writes «every `/app/**` route» in a line comment, and `/**` opened a block that swallowed the file to its next JSDoc — so since wave 15 that gate had read `skeleton.tsx` with its one class string removed. Both gates strip line comments first now. Nothing was hiding behind it.
+
+### 2 · Rulings — the mechanism
+
+- ★ **The status constants are remapped once** (contract 4). About 80 status classes on 39 screens are written in their light forms. Inside the dark scope `--color-error`, `--color-success`, `--color-live`, `--color-ended` and `--color-error-border` take `DEC-073`'s on-dark values, in the playground's block of `globals.css`; the four tinted fills (`-bg`) become the raised step, because a cream wash on ink is a light patch. **No screen edits a status class.** The colours, the words and the live dot are `DEC-073`'s still; this is the same constant on the ground it was defined for.
+- ★ **`var(--color-…)` in brackets is a light patch, and the gate refuses it** (`content`'s finding). `--color-canvas` is `var(--bg)` resolved at `:root`, so `bg-[var(--color-canvas)]` stays white inside the scope, and a search for palette names cannot see it. A context variable in brackets (`var(--btn-bg)`) resolves at the element and is allowed.
+- **Inside `ui/` the raw + `pg:` pairs stay** (`DEC-199` §1.3.2); **outside `ui/` a paired raw class collapses to the semantic name**, because `no-raw-palette` ends at zero there. Each assertion that moves is a ledger line.
+- **The gallery is one playground.** Its first half stood outside the scope, in the old design, by wave 15's own promise. It is removed: the old look is on the public site alone. The dark ground is the page's root scope and carries its `h1`; the light ground follows as a sibling.
+
+### 3 · Rulings — `content`
+
+- The ten demos as planned; `icons` enumerates the module and shows the prop forms (`direction`, `filled`) as well as the exports. The pending dot and the route bar cannot be held still from props: **the spec shows them**, by stalling a navigation.
+- ★ **The event hero stays a band** (`bg-surface`), and so does its skeleton: the page was built around a band the action card overlaps, and removing it would rearrange the page (`DEC-199` §2). The lead made both changes with the `.theme-dark` removal.
+- `filter-sheet`'s sticky foot is the sheet's own ground (`bg-surface`), the mention popup floats (`bg-raised`), the «on» cell of the preference matrix is `bg-raised`, and the tab strip's fade reads `var(--bg)`.
+- ★ **Two hand-built buttons take `buttonClass()`** (`me/calendar/page.tsx`, `event/ratings.tsx`): anchors with a hand-written class string that would become lime rectangles beside real pills. A class-only change, and `REQ-UIX-001`'s rule.
+- Context variables in brackets where a utility exists are **not** in the gate: they render the scope's value.
+
+### 4 · Rulings — `console`
+
+- ★ **The console's import graph is clean today**: 292 files from `app/{admin,platform}/**`, none a moment, confetti, an object or a sticker. **The guard forbids exactly what `REQ-UIX-053` names.** `rank-row`, `session-cta`, `poster` and the other game primitives are not added: whether a console screen may ever show one is a layout-pass question, and a test must not decide a design the decision did not.
+- **The six primitives and the staff tree declare no animation at all** — measured empty, so the assertion pins the empty set.
+- ★ **The live badge's pulsing dot stays in console tables.** It is `DEC-073`'s status affordance, `motion-safe`, kept by `DEC-186` §4. «The console does not animate» is about celebration and movement of content; a status dot is neither. The skeleton's pulse likewise.
+- The impersonation banner loses its `[.theme-dark_&]` override: `Panel tone="live"` and the lock badge already do the same on the dark scope. **Whether an outline is loud enough on the dark ground is the lead's to see in the capture.**
+- The studio's thumbnail backing is `bg-canvas`.
+
+### 5 · Listed, not fixed — for the screens waves (`DEC-199` §2)
+
+Both plans list what will look wrong on the dark ground for a reason that is neither a class nor a primitive. They are the screens waves' starting inventory: the event page's band and overlap; «past» sessions' images, dimmed by opacity over ink instead of washed over white; shadows as the only edge; rendered posters and certificates edge to edge on ink; `/legal/**` in the display face; the `/app/me` tab strip beside `ui/tabs`; light documents and mail previews inside dark studio chrome; toned panels become outlines; the brand kit's preview swatches; a dark team colour's swatch on the surface.
+
+- **Documents changed:** `STATUS.md` (the contracts, the checklist, the ledger), `docs/design/04-components.md` (the link's dot)

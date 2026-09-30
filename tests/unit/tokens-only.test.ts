@@ -41,7 +41,9 @@ function walk(dir: string, base = ""): string[] {
 
 /** Comments explain, and an explanation may quote a hex. Code may not. */
 function code(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+  // ★ Line comments first (wave 17): `ui/skeleton` says «every `/app/**` route» in one, and `/**`
+  // read as a block comment's start swallowed the file to its next JSDoc — so its classes went unread.
+  return source.replace(/(^|[^:"'`])\/\/.*$/gm, "$1").replace(/\/\*[\s\S]*?\*\//g, " ");
 }
 
 const HEX = /#[0-9a-fA-F]{3,8}\b/;
