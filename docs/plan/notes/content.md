@@ -5923,8 +5923,8 @@ deleted** (behaviour components the slots compose, not the screen's markup — t
 2. **A download glyph on every material row** (`Event.dc.html:95`, `EventDone.dc.html:71,73`) — the row links to the
    viewer, and the download lives there. A download from the row needs a route, and `REQ-MAT-005` audits admins
    only; `DEC-177`'s «every download through an audited route» was written for posters, certificates and photos.
-3. **The composer has no send button** (`Event.dc.html:104-105`) — the pill field alone. «نشر» is kept: a field
-   with no button fails without a keyboard's Enter and fails SC 3.2.2's expectation of an explicit submit.
+3. **The composer has no send button** (`Event.dc.html:104-105`) — the pill field alone. «نشر» is kept: the field
+   is multi-line (Enter is a new line), a phone's keyboard has no reliable «send», and three suites pin «نشر».
 4. **«أضف صورة» and «أزلني»** are the artboard's words; the suites pin «إضافة صورة» and «احذف الصور التي أظهر
    فيها». Default: the pinned names stay on the controls, the artboard's words in the visible privacy line.
 5. **«افتح الألبوم»** in the photos heading's row (`EventDone.dc.html:77`) — the heading row is the page's, the
