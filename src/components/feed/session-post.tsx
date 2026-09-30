@@ -12,6 +12,7 @@ import type { SessionCtaProps } from "@/components/ui";
 import { Avatar, teamColorOrNull } from "@/components/ui/avatar";
 import { Badge, SessionStatusBadge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { CommentIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { Poster } from "@/components/ui/poster";
 import { SessionCta } from "@/components/ui/session-cta";
@@ -153,7 +154,7 @@ export async function SessionPost({ post, locale, today, noCompany }: { post: Se
             className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-pill border border-edge bg-surface px-3 text-label font-bold text-fg-body hover:bg-hover"
             aria-label={t("post.comments", { count: post.commentCount, value: formatNumber(post.commentCount) })}
           >
-            <CommentGlyph />
+            <CommentIcon className="text-base" />
             {post.commentCount > 0 ? <bdi className="tabular-nums">{formatNumber(post.commentCount)}</bdi> : null}
           </Link>
           <span className="flex-1" />
@@ -176,15 +177,6 @@ export async function SessionPost({ post, locale, today, noCompany }: { post: Se
 
       {cta ? <SessionCta {...cta} /> : null}
     </Card>
-  );
-}
-
-/** The house set has no speech-bubble glyph; the count's accessible name says what it is. */
-function CommentGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" aria-hidden className="shrink-0 text-base">
-      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.6A8 8 0 1 1 21 12z" />
-    </svg>
   );
 }
 

@@ -90,9 +90,10 @@ describe("the playground's nine glyphs", () => {
     expect(svg).not.toHaveClass("rtl:-scale-x-100");
   });
 
-  it("the set is fifty glyphs, and the gallery names every one in Arabic", async () => {
+  // wave 18 (DEC-207): fifty-two — the megaphone and the comment bubble the home needed.
+  it("the set is fifty-two glyphs, and the gallery names every one in Arabic", async () => {
     const glyphs = Object.keys(Icons).filter((n) => n.endsWith("Icon"));
-    expect(glyphs).toHaveLength(50);
+    expect(glyphs).toHaveLength(52);
     const { readFileSync } = await import("node:fs");
     // Wave 17 (DEC-199): the glyphs' names moved with them into the gallery's own demo.
     const page = readFileSync("src/app/[locale]/(dev)/ui/demos/icons.tsx", "utf8");

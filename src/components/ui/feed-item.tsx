@@ -1,5 +1,5 @@
 import type { FeedItemAchievementProps, FeedItemAnnouncementProps, FeedItemProps, FeedItemRecapProps } from "@/components/ui";
-import { InfoIcon } from "@/components/ui/icons";
+import { MegaphoneIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 
 // content's file — REQ-UIX-055, REQ-UIX-056, REQ-UIX-057, DEC-206 §4.52 – §4.55, DEC-207.
@@ -57,9 +57,8 @@ function Announcement({ sourceLabel, body, time, className = "" }: FeedItemAnnou
   return (
     <article data-variant="announcement" className={`${FRAME} flex-col gap-2 bg-raised ${className}`}>
       <div className="flex items-center gap-2">
-        {/* The house set has no megaphone yet (a glyph is the lead's, in `ui/icons`); the
-            source line says what this is in words, so the glyph is decoration either way. */}
-        <InfoIcon className="text-base text-accent" />
+        {/* Decoration: the source line says what this is in words. */}
+        <MegaphoneIcon className="text-base text-accent" />
         <Meta parts={[sourceLabel, time]} />
       </div>
       <p className="whitespace-pre-line break-words text-body font-semibold text-fg-heading">
