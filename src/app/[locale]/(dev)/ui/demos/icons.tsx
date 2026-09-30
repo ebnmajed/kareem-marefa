@@ -63,6 +63,8 @@ const NAMES: Record<string, string> = {
   MoreIcon: "المزيد",
   PaletteIcon: "هوية",
   PauseIcon: "إيقاف مؤقت",
+  PlayIcon: "تشغيل",
+  MonitorIcon: "اعرض على الشاشة",
   PinIcon: "مكان",
   PlusIcon: "إضافة",
   SearchIcon: "بحث",

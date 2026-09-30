@@ -168,6 +168,7 @@ says whether a **selector** moved or an **expectation** did.*
 | `tests/e2e/checkin.spec.ts`, the switch case (`checkin`) | **selector moved**: the «مفتوح/مغلق الآن» text and two buttons → `getByRole("switch")` checked / not, a click on its label | `SCR-016`: the door is a switch |
 | `tests/e2e/wave9-checkin-days.spec.ts:197, 199, 213` (`checkin`) | **selector moved**: as above | as above |
 | `tests/components/sessions/gated-section.test.tsx` → `event-section.test.tsx` (`sessions`) | **selector moved**: the subject renamed; every expectation unchanged; one new case | `DEC-208`: `gated-section.tsx` deleted and written as `event-section.tsx` |
+| `tests/components/ui/icons-playground.test.tsx:96` (the lead) | **expectation moved**: the set `52` → `54` glyphs | PR B's two, `PlayIcon` (the audio row, `REQ-MAT-007`) and `MonitorIcon` (projection, `SCR-016`), each named in the gallery — contract 5, last and alone |
 | `tests/components/sessions/event-hero-days.test.tsx` (`sessions`) | **selector moved**: the hero's props (no `poster`, `points` added), `getSessionPoster` mocked; four expectations unchanged | the hero reads the poster itself |
 
 ---
