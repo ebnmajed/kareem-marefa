@@ -81,6 +81,22 @@ describe("SessionRow", () => {
     expect(screen.getAllByText((_, el) => el?.tagName === "SPAN" && el.textContent === "سعد الحربي وآخران")).toHaveLength(1);
   });
 
+  it("★ a multi-day row says the range and how many days, in Western digits (REQ-SES-015)", async () => {
+    const day = (n: number) => ({
+      id: `d${n}`,
+      position: n,
+      startsAt: `2026-09-2${n}T15:00:00Z`,
+      endsAt: `2026-09-2${n}T17:00:00Z`,
+      checkInOpen: false,
+    });
+    const { container } = await mount({ days: [day(1), day(2), day(3)], startsAt: "2026-09-21T15:00:00Z", endsAt: "2026-09-23T17:00:00Z" });
+    const meta = [...container.querySelectorAll("p")].find((p) => p.textContent?.includes("القاعة الكبرى"))!;
+    expect(meta).toHaveTextContent("3 أيام");
+    expect(meta.textContent).toMatch(/21/);
+    expect(meta.textContent).toMatch(/23/);
+    expect(meta.textContent).not.toMatch(/[\u0660-\u0669]/);
+  });
+
   it("the lead presenter wears the company's team ring", async () => {
     const { container } = await mount({
       presenters: [{ memberId: "m-1", displayName: "سعد الحربي", avatarUrl: null, company: { id: "c", name: "صنف", teamColor: "#FF9A2E" } }],
