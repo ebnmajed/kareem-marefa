@@ -13,6 +13,15 @@ import { Link as LocaleLink } from "@/i18n/navigation";
 //
 // Not `"use client"`: a server page may render it, and the client boundary is
 // the reporter alone.
+//
+// ★★ WAVE 17 — «ساحة اللعب» (DEC-199 §3, §5.25, REQ-UIX-051). THIS FILE DRAWS
+// NOTHING, AND THAT IS ITS PLAYGROUND DESIGN. It adds no class: what a link looks
+// like is its caller's — a card, a breadcrumb, a line of `ui/prose` — and those
+// read semantic names the scope reassigns. So a link can never carry the old look
+// into a scoped screen. Its one drawn part is the pending dot, in the link's own
+// colour; its focus ring is the scope's one rule. ★ If this file ever gains a
+// class, that class needs a design: `tests/unit/ui-playground.test.ts` holds it
+// as a composition, and `link-scope.test.tsx` that it adds nothing.
 
 export function Link({ href, children, quiet, ...props }: UiLinkProps) {
   return (

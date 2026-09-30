@@ -21,6 +21,10 @@ import type { ButtonProps } from "@/components/ui";
 // Pending keeps the label and adds a spinner; the control is `aria-busy` and
 // cannot be submitted twice. `pending` as a prop overrides, for an action that
 // is not this form's.
+//
+// ★ Wave 17 (DEC-199 §3, REQ-UIX-051): it draws nothing of its own, so its
+// playground design is `ui/button`'s — the accent, the display face, the press.
+// `tests/unit/ui-playground.test.ts` holds it as a composition of the button.
 
 export function SubmitButton({ pending, ...props }: ButtonProps) {
   const status = useFormStatus();

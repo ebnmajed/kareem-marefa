@@ -16,6 +16,15 @@ import { Link } from "@/components/ui/link";
 // The title and every breadcrumb label are interpolated values, so each is
 // bidi-isolated (`10` §3): a session title that begins with a Latin word must
 // not reorder the chevron beside it.
+//
+// ★★ WAVE 17 — «ساحة اللعب» (DEC-199 §3, §5.25 – §5.26, REQ-UIX-051). The design's
+// task list never named this file, so every scoped screen drew its title in the
+// old face. Inside the scope the `h1` is the DISPLAY face at display-md, balanced
+// — `02-typography.md`: «headings» are the display face — and everything around
+// it stays the body face: the breadcrumb, the eyebrow, the description. The
+// colours arrive by themselves; the scope reassigns the context variables.
+// Every class that existed is still here, and the scope's are added after.
+const PLAY_TITLE = "pg:font-display pg:font-extrabold pg:text-play-md pg:text-balance";
 
 export function PageHeader({ title, eyebrow, description, breadcrumb, breadcrumbLabel, actions, meta, status, className = "" }: PageHeaderProps) {
   return (
@@ -41,7 +50,7 @@ export function PageHeader({ title, eyebrow, description, breadcrumb, breadcrumb
           </p>
         ) : null}
         {status ? <div className="flex flex-wrap items-center gap-2">{status}</div> : null}
-        <h1 className="text-h1 text-fg-heading">
+        <h1 className={`text-h1 text-fg-heading ${PLAY_TITLE}`}>
           <bdi>{title}</bdi>
         </h1>
         {description ? <p className="max-w-prose text-body text-fg-muted">{description}</p> : null}

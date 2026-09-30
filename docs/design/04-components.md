@@ -34,7 +34,7 @@ Their design is derived from the documents that do speak (`02-typography.md`'s p
 | `page-header` | The page's one `h1` in the display face at display-md; breadcrumb, eyebrow and description in the body face, muted; chevrons mirror. Actions wrap under the text on a phone |
 | `section-header` | `h2` in the display face at display-sm; `h3` in the body face; the count stays body, muted |
 | `prose` | Body face, body line height 1.7; headings inside it follow `section-header`; a link inside it is underlined in the text colour |
-| `link` | The text's colour with an underline as the affordance; **never the accent as the only signal** (lime on the light ground is 1.07:1). The pending dot is the accent |
+| `link` | It draws nothing of its own: a link's colour and underline are its caller's, and `prose` underlines a link in the text's colour. **Never the accent as the only signal** (lime on the light ground is 1.07:1). The pending dot is the link's own colour |
 | `icon-button` | A `button` in a square: its faces, its press, the pill radius; ≥ 44 px; the name on the element |
 | `submit-button` | `button`'s `primary`; pending keeps the label |
 | `reorderable-list` | tokens only; **no animation**; the move buttons are the conforming path (`DEC-093`) |

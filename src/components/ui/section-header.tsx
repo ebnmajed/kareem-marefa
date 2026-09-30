@@ -11,13 +11,21 @@ import { formatNumber } from "@/components/sessions/numerals";
 // ★ A section that can render nothing must not render its header either
 // (`16` §5.4.1a(b)): that is the PAGE's condition to apply, and this component
 // does not try to guess it.
+//
+// ★★ WAVE 17 — «ساحة اللعب» (DEC-199 §3, §5.26, REQ-UIX-051). Inside the scope an
+// `h2` is the display face at display-sm; an `h3` stays the body face, which is
+// how the two levels are told apart without a rule between them. ★ The face is
+// set on the TITLE, not on the heading element: the count beside it is a small
+// muted number in the body face, and the display face has no weight below 700.
+const PLAY_H2 = "pg:text-play-sm";
+const PLAY_H2_TITLE = "pg:font-display pg:font-extrabold";
 
 export function SectionHeader({ title, as: Heading = "h2", id, description, count, actions, className = "" }: SectionHeaderProps) {
   return (
     <div className={`flex flex-wrap items-end justify-between gap-x-6 gap-y-3 ${className}`}>
       <div className="min-w-0">
-        <Heading id={id} className={`${Heading === "h2" ? "text-h2" : "text-h3"} text-fg-heading`}>
-          <bdi>{title}</bdi>
+        <Heading id={id} className={`${Heading === "h2" ? `text-h2 ${PLAY_H2}` : "text-h3"} text-fg-heading`}>
+          <bdi className={Heading === "h2" ? PLAY_H2_TITLE : undefined}>{title}</bdi>
           {/* ★ The count is part of the heading's accessible name, so it needs a
               separator a screen reader can hear: a margin is not one, and
               «هذا الأسبوع» + «1» read as the single word «هذا الأسبوع1». A real

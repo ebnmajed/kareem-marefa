@@ -32,6 +32,12 @@ import type { ReorderableListProps } from "@/components/ui";
 // ★ CONTROLLED. `onReorder` hands back the whole new order; the rows move when
 // the caller's `items` do. The announcement is made here and now, because the
 // move is what the person did — an autosave that fails says so itself.
+//
+// ★ Wave 17 (DEC-199 §3, REQ-UIX-051; `04-components.md`: «tokens only; **no
+// animation**»). The list has no surface of its own: a row is the caller's, and
+// what this file draws is its move buttons, which are `ui/icon-button` — a circle
+// inside the scope. It declares no animation and never will: a row that slides to
+// its new place is the console moving, and the console does not (DEC-199 §1.1).
 
 export function ReorderableList<Item>({
   items,
