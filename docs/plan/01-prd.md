@@ -1780,11 +1780,17 @@ before publishing.
 
 #### REQ-DSG-021 — The brand kit is the single source of brand truth
 **Serves:** DEC-008 · A40 · A25
-**هوية المؤسسة** — logo, colours, fonts — feeds the CSS theme layers, the designer's templates,
-and the email templates. Changing a colour or a face is **one edit in one place**.
+**هوية المؤسسة** — logo, colours, fonts — feeds the designer's templates, the certificates and the
+email templates. Changing a colour or a face is **one edit in one place**.
+★ **Amended by `DEC-201` §1 (the owner, 2026-09-30): the brand kit no longer restyles the app.** The
+app wears one visual language, «ساحة اللعب» (`REQ-UIX-049`), and a per-org app theme is incompatible
+with a fixed direction; an org's identity inside the app is its companies' team colours
+(`REQ-UIX-043`). It read «feeds the CSS theme layers, the designer's templates, and the email
+templates».
 **Acceptance:**
 - Replacing the org logo updates every template at once.
 - No brand colour is hard-coded in a template, an email or a component.
+- The kit's colours reach posters, certificates and mail, and no screen of the app.
 
 #### REQ-DSG-022 — Designer feature set
 **Serves:** A31
