@@ -5482,3 +5482,4 @@ On a hard load of a streamed page, the content sometimes stands in `#main` while
 - **No migration.** Production stays at `0163`; nothing to rehearse or push before the merge. Railway's reconnect after it would be the twelfth.
 
 - **Documents changed:** `01-prd.md` (`REQ-DSG-021`, `REQ-UIX-051`), `messages/*/branding.json` (two sentences), `STATUS.md` (the closing block)
+- **Added at the close:** the public pairs recaptured on a build of `6f870541` — all six at **0.000 %**, `qa` 57/57. The 0.002 % in §2 was one capture's flicker.
