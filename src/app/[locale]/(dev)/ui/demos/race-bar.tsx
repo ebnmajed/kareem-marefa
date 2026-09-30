@@ -49,13 +49,13 @@ function bars(withSecondary: boolean): RaceBarProps[] {
   }));
 }
 
-function Group({ title, rows }: { title: string; rows: RaceBarProps[] }) {
+function Group({ title, rows, layout }: { title: string; rows: RaceBarProps[]; layout?: RaceBarProps["layout"] }) {
   return (
     <figure className="flex max-w-xl flex-col gap-2">
       <figcaption className="text-caption text-fg-muted">{title}</figcaption>
       <ul className="flex flex-col gap-1">
         {rows.map((row) => (
-          <RaceBar key={row.companyName} {...row} />
+          <RaceBar key={row.companyName} {...row} layout={layout} />
         ))}
       </ul>
     </figure>
@@ -67,6 +67,8 @@ export function RaceBarDemo() {
     <div data-demo="race-bar" className="flex flex-col gap-6">
       <Group title="سباق الشركات — الترتيب حسب النقاط لكل عضو نشِط" rows={bars(false)} />
       <Group title="وعلى لوحة الشركات، المقياسان معًا" rows={bars(true)} />
+      {/* wave 18 (DEC-207 W3): the home's race, one line a company; the metric heard on every row, shown once by the card. */}
+      <Group title="في الرئيسية، سطر واحد لكل شركة" rows={bars(false)} layout="inline" />
     </div>
   );
 }

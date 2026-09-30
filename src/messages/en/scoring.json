@@ -265,6 +265,62 @@
         "empty": "No changes yet.",
         "emptyAction": "To the points catalogue"
       }
+    },
+    "week": {
+      "label": "Your month so far",
+      "railLabel": "Your week in play",
+      "rank": {
+        "label": "Rank · <bdi>{month}</bdi>",
+        "labelPlain": "Your rank",
+        "labelHidden": "Your rank · hidden from others",
+        "valueLabel": "Rank <bdi>{rank}</bdi> of <bdi>{total}</bdi> in <bdi>{month}</bdi>",
+        "of": "of <bdi>{total}</bdi>",
+        "hidden": "Hidden from others",
+        "ends": "{count, plural, =0 {Ends today} one {Ends tomorrow} other {Ends in {value} days}}",
+        "final": "Final",
+        "above": "Above you: <b><bdi>{name}</bdi></b>",
+        "gap": "<n>+<bdi>{value}</bdi></n> will do",
+        "gapLabel": "{count, plural, one {One point separates you from the rank above} other {{value} points separate you from the rank above}}",
+        "first": "You're at the top",
+        "noPoints": "Not ranked yet",
+        "noPointsLong": "Not ranked this month yet",
+        "noPointsHint": "Your first point in <bdi>{month}</bdi> puts you on the board.",
+        "noSnapshot": "Counted tonight",
+        "noSnapshotLong": "This month's rank is counted in the next nightly run.",
+        "rise": "{count, plural, =0 {Your rank is unchanged} one {Up one place since your last visit} other {Up {value} places since your last visit}}",
+        "heading": "Your rank in <bdi>{month}</bdi>"
+      },
+      "streak": {
+        "label": "Streak, in months",
+        "none": "Not started",
+        "rule": "{count, plural, =0 {No condition to keep it} one {One session a month keeps it} other {{value} sessions a month keep it}}"
+      },
+      "points": {
+        "label": "Your points",
+        "valueLabel": "{count, plural, one {Your balance is one point} other {Your balance is {value} points}}",
+        "unit": "{count, plural, one {point} other {points}}"
+      },
+      "level": {
+        "remaining": "{count, plural, =0 {You've reached <bdi>{level}</bdi>'s threshold} one {One point to <bdi>{level}</bdi>} other {{value} points to <bdi>{level}</bdi>}}"
+      }
+    },
+    "race": {
+      "title": "The company race",
+      "final": "Final · <bdi>{month}</bdi>",
+      "own": "Your team",
+      "rankLabel": "Place <bdi>{value}</bdi>",
+      "full": "The full board, <bdi>{metric}</bdi>",
+      "noCompany": "Choose your company to join the race",
+      "metric": {
+        "total_points": "total points",
+        "points_per_active_member": "points per active member"
+      }
+    },
+    "feed": {
+      "badge": "<name></name> earned the <b><bdi>{badge}</bdi></b> badge",
+      "badgeSelf": "You earned the <b><bdi>{badge}</bdi></b> badge",
+      "streak": "<name></name> completed the attendance streak for <bdi>{month}</bdi>",
+      "streakSelf": "You completed the attendance streak for <bdi>{month}</bdi>"
     }
   }
 }
