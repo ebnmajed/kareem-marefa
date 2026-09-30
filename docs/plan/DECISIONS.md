@@ -5408,3 +5408,77 @@ It landed red at `8d333434` and was green over all 49 files at `d88acfd0`. ★ *
 Both plans list what will look wrong on the dark ground for a reason that is neither a class nor a primitive. They are the screens waves' starting inventory: the event page's band and overlap; «past» sessions' images, dimmed by opacity over ink instead of washed over white; shadows as the only edge; rendered posters and certificates edge to edge on ink; `/legal/**` in the display face; the `/app/me` tab strip beside `ui/tabs`; light documents and mail previews inside dark studio chrome; toned panels become outlines; the brand kit's preview swatches; a dark team colour's swatch on the surface.
 
 - **Documents changed:** `STATUS.md` (the contracts, the checklist, the ledger), `docs/design/04-components.md` (the link's dot)
+
+---
+
+## DEC-201 — Wave 17's closing record: the brand kit no longer restyles the app, the gate is green over every primitive, the frozen five did not move — and a duplicate the branch makes four times as frequent, which the lead first misdiagnosed
+
+- **Date:** 2026-09-30 · **Decided by:** the owner (§1 and §3's instruction, 2026-09-30, on draft PR #35); the record, the measurements and the lead's errors by the wave-17 lead
+- **Amends in text:** `REQ-DSG-021` (§1), `REQ-UIX-051` (§4). **Confirms:** `DEC-199` §1.3.7's default. **Adds to:** `DEC-199`, `DEC-200`.
+
+### 1 · ★★ The owner's ruling — the brand kit no longer restyles the app
+
+`DEC-199` §1.3.7 stopped the shell emitting the org theme layer as a default and put it to the owner by name. **The owner accepted it, and it is recorded rather than dropped:** per-org app theming and a fixed visual direction are incompatible, and the design already answers tenant identity better — the team colours, the ring on every avatar (`REQ-UIX-043`, `00-direction.md`'s third principle).
+
+**`REQ-DSG-021` is amended: the brand kit remains the single source of brand truth for posters, certificates and mail, and no longer restyles the app.** The entity, `getBrandKit()`, `public.brand_kit()`, `save_brand_kit()`'s contrast guard and `SCR-059` are unchanged; no parity golden and no pinned mail output moved.
+
+**What an admin loses, in one sentence: the colours you choose on «هوية المؤسسة» still appear on your session posters, your certificates and your emails, but the app's own screens no longer change colour to match them.** The screen now says so itself: its two sentences that promised the kit «يغذي واجهة التطبيق» read «ملصقات الجلسات والشهادات ورسائل البريد الإلكتروني … ولا يغيّر ألوان التطبيق نفسه».
+
+A brand-aware playground — a kit's colour as the accent — stays a design `docs/design/` does not contain. It is not scheduled.
+
+### 2 · What was built, and where it was proved
+
+| | |
+|---|---|
+| ★★ The gate | `tests/unit/ui-playground.test.ts` reads `src/components/ui/` itself. Red at `8d333434` (29 failures across 19 files on the opening tree), **green over all 49 files** from `d88acfd0` |
+| The token move | `<PlayScope root>` in five layouts and nowhere else (`scope-root.test.ts`); `.theme-dark` in no app file; no raw palette name outside `ui/` and the public site's files (`no-raw-palette.test.ts`, zero on all three sides); the status constants remapped once |
+| The eight | seven restyled or held as compositions (`51cb5b16`); ★ **`icons.tsx` byte-identical to `main`** — it needed evidence, not an edit: a test over every export of the file, and a gallery entry |
+| The console's register | `console-register.test.ts`: 292 files, no moment, confetti, object or sticker; no animation in its six primitives or the staff tree |
+| ★★ The frozen five | `qa` **57/57**; five public pairs at **0.000 %** and one at 0.002 % on one capture (under the 0.1 % bar, a known one-capture flicker; the recapture is in `STATUS.md`); the register-form fingerprint **byte-identical** to `main.json`; no file the public routes import changed |
+| ★ Accessibility | 62 routes × 2 projects inside the scope: **0 findings at any impact** |
+| Suites | tsc clean · lint 0 errors · `ui-lint --strict` 347 files · `npm test` 3,957 · `trace` 346 · 174 · `policy-diff` ✓ · CI's unconfigured job run locally: 185 passed |
+| e2e, database-backed, on `d79ac2ae` | **853 passed, 12 failed** in the whole suite; rerun alone, **three fail** (§3, §5) |
+
+### 3 · ★★ A finding for the next wave — hard loads show the page twice, four times as often as on `main`
+
+On a hard load of a streamed page, the content sometimes stands in `#main` while the server's streamed segment for the same boundary sits hidden beside it for about 300 ms — two `h1`s, two of every id — before the segment is discarded. Nothing is left behind and nothing is visible; what it costs is a second render, and any reader of the DOM in that window — a test, or a moment's «is this already painted» probe (`DEC-198` §2) — meets two of everything.
+
+**Measured twice. The second measurement is the one to trust: the same probe, the same three routes, 24 hard loads each, two passes, the phone project, production builds of each tree:**
+
+| Route | `main` (`c073ce3b`) | the branch (`d79ac2ae`) |
+|---|---|---|
+| `/app/leaderboards` | 2 of 48 | ★ **22 of 48** |
+| `/app` | 6 of 48 | 7 of 48 |
+| `/app/me/points` | 1 of 48 | 5 of 48 |
+| **all** | **9 of 144 — 6 %** | ★ **34 of 144 — 24 %** |
+
+**So it exists on `main`, and the branch makes it about four times as frequent — eleven times on the boards.** The first measurement, 4 of 36 against 9 of 36, was too small to say either.
+
+**What is known about the cause, and what is not.** It is not the portal provider's state (§4.1: a build without it still showed the duplicate) and not the display face (a build without its variable at the root still showed it). The boards are where wave 16's own scope was removed and where moment 5 probes for a painted copy; **that is a lead, not a diagnosis.** Nobody has found the trigger.
+
+**The owner's ruling: it is a finding for the next wave, not this one.** It goes to that wave's brief with this table, the probe, and two specs that are its likely victims: `certificates.spec.ts:278` and `checkin.spec.ts:136` pass alone on `main`'s build and fail alone on the branch's, each on a strict-mode locator that met a second copy outside `#main`. `checkin.spec.ts:251` fails alone on `main` too.
+
+### 4 · ★ The lead's errors, recorded
+
+1. **A fix committed on an inference, and reverted.** Seeing the duplicate for the first time, the lead concluded that the root scope's portal provider — state set at mount, published by context above every streamed boundary — was making React client-render those boundaries, and committed a change with that claim written as measured fact (`7f1823bc`). It was one build and no control. The control, afterwards: the duplicate was unchanged with the fix, and present with the provider removed. **Reverted at `bd45415c`.** A change whose reason was disproved is not kept.
+2. **And then the opposite error.** Having found it on `main` at 4 of 36, the lead was ready to close it as pre-existing. **The owner refused that reading** — 4 against 9 of 36 is roughly double — and asked for the measurement again. §3's table is the result, and the owner was right.
+3. **A hit area that overflowed.** The `sm` icon button was given a 44 px hit area by a pseudo-element 4 px out on every side. `content`'s gallery spec measured the reorderable list 4 px wider than its box: the pseudo-element is scrollable overflow. Removed at `02766a1e`; `REQ-UIX-051`'s line now says 44 px at the default size, and `sm` stays 36 px.
+4. **A checklist that could not be read.** Six rows still said `todo` after their work had landed; the owner could not tell where the wave was. Every row now opens with its state, and the block carries a count.
+5. **A red gate that stopped nobody, by luck.** The gate landed red in the shared tree, where a teammate's task hook runs the whole unit suite. It was kept off the tracks only by ordering their work around it; a gate that must land red should land on a commit of its own and turn green in the next.
+
+### 5 · What the tracks found
+
+- `content` — the gate's gap: `var(--color-canvas)` in brackets is white inside the scope and no search for palette names finds it (`DEC-200` §2). `card`'s typographic placeholder was a light block for half of all titles (`8f3f85fa`). The `sm` hit area (§4.3).
+- `console` — the console's import graph was clean the day the guard was written, and its primitives declare no animation at all. A spec that scrolled to the top with a menu open had passed only because the page was short.
+- **The inventory for the screens waves** — what looks wrong on the dark ground for a reason that is neither a class nor a primitive, from both notes: the event page's band, with its action card darker than the band it sits on; «past» sessions dimmed by opacity over ink; shadows as the only edge; rendered posters and certificates edge to edge on ink; `/legal/**` and `/verify/**` titles in the body face beside `/app`'s display face; the `/app/me` tab strip beside `ui/tabs`; native unchecked checkboxes and radios as the browser's grey; a missing viewer page as the browser's broken-image glyph; empty lists drawn two ways on one hub; disabled primaries as lime at 45 %; the bare «…» row trigger on the members cards; toned panels as outlines; the brand kit's preview swatches.
+
+### 6 · Carried, for the owner
+
+- ★★ **The acceptance is yours (D4):** open `/ar/ui` on a phone and say whether it reads as one design. The captures are evidence for that review, not a substitute.
+- **§3**, to the next wave's brief.
+- **Self-hosting the display face** (`DEC-199` §8): unanswered. The face is on every screen from this wave, and every build still fetches it from Google.
+- **The derived designs** (`DEC-199` §5.25 – §5.26) — a page's `h1` and a section's `h2` in the display face, a link underlined in the text's colour — are in the gallery and yours to overrule there.
+- From wave 16, unchanged: the phone check of the five moments was never run; F2 and F3; overshoot; `REQ-REC-004` in a default org; `DEC-194`'s two gates.
+- **No migration.** Production stays at `0163`; nothing to rehearse or push before the merge. Railway's reconnect after it would be the twelfth.
+
+- **Documents changed:** `01-prd.md` (`REQ-DSG-021`, `REQ-UIX-051`), `messages/*/branding.json` (two sentences), `STATUS.md` (the closing block)

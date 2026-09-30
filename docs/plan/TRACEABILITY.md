@@ -514,7 +514,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-040` | — | — | `SCR-010` `SCR-048` | — | — | `STORY-UIX-022` | M17 |
 | `REQ-UIX-041` | — | — | `SCR-010` `SCR-012` `SCR-014` +3 | — | — | `STORY-UIX-025` | M17 |
 | `REQ-UIX-042` | — | — | `SCR-012` `SCR-014` `SCR-022` +2 | — | — | `STORY-UIX-025` | M17 |
-| `REQ-UIX-043` | `ENT-companies` | `POL-companies.team_color` | `SCR-014` `SCR-048` | — | — | `STORY-UIX-026` `STORY-UIX-032` | M17, M18 |
+| `REQ-UIX-043` | `ENT-companies` | `POL-companies.team_color` | `SCR-014` `SCR-048` `SCR-059` | — | — | `STORY-UIX-026` `STORY-UIX-032` | M17, M18 |
 | `REQ-UIX-044` | — | — | `SCR-012` `SCR-014` `SCR-022` +2 | — | — | `STORY-UIX-027` `STORY-UIX-028` +3 | M18 |
 | `REQ-UIX-045` | — | — | `SCR-012` | — | — | `STORY-UIX-028` | M18 |
 | `REQ-UIX-046` | `ENT-member_seen_marks` | — | `SCR-014` | — | — | `STORY-UIX-029` | M18 |

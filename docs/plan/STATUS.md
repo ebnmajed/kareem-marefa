@@ -1,11 +1,11 @@
-**Last updated:** 2026-09-30 · **Branch:** `wave-17/every-primitive` (cut from `main` at `4db9f60e`) · **`main`:** wave 16 merged and live (PR #34, `65ca7a7a`); production at **`0163`** · **Phase:** ★★ **WAVE 17 — STEP 0 (`DEC-199`, M19; migrations from `0164`, none expected)**: every primitive, and one visual language. The owner opened the app on a phone after wave 16, called it a Frankenstein, and ruled on 2026-09-30 that **«ساحة اللعب» is the product's only visual language, everywhere** — the console in at the token level, the public site in scope and still last. Two causes were measured: eight primitives the design's own task list never named (`page-header`, `prose`, `link`, `icon-button`, `section-header`, `submit-button`, `reorderable-list`, `icons`) had no playground treatment, and the scope reached five surfaces only. **The wave: a gate that reads `src/components/ui/` itself and lands red; the scope at the root of every layout but the public site's; the eight, `icons` last; the raw palette out of the app; the console's register.** ★★ **A screen is REBUILT to its design, never restyled — and this wave rebuilds none** (`DEC-199` §2). ★★ **`registrations` and the register form's behaviour are untouched, and the five public routes do not move.** Two tracks: `content` and `console`. **The wave's acceptance is the owner opening `/ar/ui` on a phone.** Still owed from wave 16: the phone check of the five moments was never run.
+**Last updated:** 2026-09-30 · **Branch:** `wave-17/every-primitive` (cut from `main` at `4db9f60e`) · **`main`:** wave 16 merged and live (PR #34, `65ca7a7a`); production at **`0163`** · **Phase:** ★★ **WAVE 17 — COMPLETE, PR #35, the owner merges (`DEC-199` … `DEC-201`, M19, NO migration)**: 27 of 28 checklist rows done; the gate that reads `src/components/ui/` is green over all 49 files, having landed red on 19; the frozen five unmoved (`qa` 57/57, the fingerprint byte-identical); the a11y sweep at 0 findings on 62 routes inside the scope. ★ **Open: the owner's phone review of `/ar/ui`.** ★ **Carried to the next wave: hard loads show the page twice four times as often as on `main`** (`DEC-201` §3). What the wave was: every primitive, and one visual language. The owner opened the app on a phone after wave 16, called it a Frankenstein, and ruled on 2026-09-30 that **«ساحة اللعب» is the product's only visual language, everywhere** — the console in at the token level, the public site in scope and still last. Two causes were measured: eight primitives the design's own task list never named (`page-header`, `prose`, `link`, `icon-button`, `section-header`, `submit-button`, `reorderable-list`, `icons`) had no playground treatment, and the scope reached five surfaces only. **The wave: a gate that reads `src/components/ui/` itself and lands red; the scope at the root of every layout but the public site's; the eight, `icons` last; the raw palette out of the app; the console's register.** ★★ **A screen is REBUILT to its design, never restyled — and this wave rebuilds none** (`DEC-199` §2). ★★ **`registrations` and the register form's behaviour are untouched, and the five public routes do not move.** Two tracks: `content` and `console`. **The wave's acceptance is the owner opening `/ar/ui` on a phone.** Still owed from wave 16: the phone check of the five moments was never run.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 17 — IN PROGRESS — on `wave-17/every-primitive` — every primitive, and one visual language (`DEC-199`)
+## ★★★ WAVE 17 — COMPLETE, PR #35, THE OWNER MERGES — on `wave-17/every-primitive` — every primitive, and one visual language (`DEC-199`)
 
 **The programme's third wave.** The brief is `docs/plan/notes/wave-17-lead.md`; the map is `CLAUDE.md` § *Ownership
 map (wave 17)*; the decision is `DEC-199`. Milestone **M19**. Requirements `REQ-UIX-049` … `053`; stories
@@ -71,7 +71,7 @@ for by hand; inside it they are the playground's.
 
 ### The checklist
 
-★ **Count, 2026-09-30: 26 of 28 rows DONE.** Open: **G** (the final gates, in progress) and **D4** (the owner's phone review). Nothing is blocked.
+★ **Count, 2026-09-30: 27 of 28 rows DONE.** Open: **D4**, the owner's phone review of `/ar/ui` — the wave's acceptance.
 
 | # | Row | Owner | State |
 |---|---|---|---|
@@ -102,7 +102,7 @@ for by hand; inside it they are the playground's.
 | D2 | ★★ Demonstrable — `qa:contract` at every commit; `qa:appearance`, `visual`'s public pairs at 0.000 % against T0, the fingerprint byte-identical, the public-graph test green — **not re-baselined** | lead | **DONE on `d79ac2ae`** — `qa` **57/57**; the six public pairs against `wave17-main`: five at **0.000 %**, `phone_en` 0.002 % (under the 0.1 % bar; the same one-capture flicker wave 16 recorded — recaptured at the close); the fingerprint **byte-identical** to `main.json` (`cmp`); `public-graph` green; `git diff main` over every file the public routes import: empty |
 | D3 | ★ Demonstrable — **the a11y sweep at 0 findings over every route, inside the scope** | lead's harness; fixes by owner | **DONE on `d79ac2ae`** — 62 routes × 2 projects, **0 findings at any impact**. The first run, on `d88acfd0`, found one: the studio's `bg-silver-100` tile, replaced in K2 |
 | D4 | ★★ Demonstrable — **the gallery opened by the owner on a phone.** The wave's acceptance is the owner's; the lead's captures are evidence for it | **owner** | **OPEN — the owner's.** Open `/ar/ui` on a phone and say whether it reads as one design |
-| G | The gates — tsc, lint (**grep `problems`**), `npm test`, `test:rls`, e2e, `qa`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict`; ★ **CI read from the run's own conclusion on the head** (`DEC-192`) | lead | **IN PROGRESS** — tsc ✓ · lint 0 errors · `ui-lint --strict` 347 files ✓ · `npm test` **3,957** ✓ · `trace` 346 · 174 ✓ · `policy-diff` ✓ · `qa` 57/57 ✓ · fingerprint ✓ · sweep ✓. **Running:** the full database-backed e2e on `d79ac2ae`. **Owed after it:** the failures rerun alone, CI's unconfigured job run locally, the gallery re-baselined, CI's conclusion on the head (`DEC-192`) |
+| G | The gates — tsc, lint (**grep `problems`**), `npm test`, `test:rls`, e2e, `qa`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict`; ★ **CI read from the run's own conclusion on the head** (`DEC-192`) | lead | **DONE on `d79ac2ae`** (verification worktree, production builds, local Supabase at `0163`): tsc ✓ · lint 0 errors · `ui-lint --strict` 347 ✓ · `npm test` **3,957** ✓ · `trace` 346 · 174 ✓ · `policy-diff` ✓ · `qa` **57/57** · the fingerprint byte-identical · the sweep 0 findings · CI's unconfigured job locally **185 passed** · e2e, database-backed: **853 passed, 12 failed** in the whole suite; alone, three fail — `checkin:251` (fails on `main` too), and ★ `certificates:278` and `checkin:136`, which pass alone on `main` and meet a second copy of the page on the branch (`DEC-201` §3, carried). `bookmarks` and `budgets` as `DEC-190` §6. No SQL changed, so RLS is CI's. ★ **CI: read from the run's own conclusion on the head** (`DEC-192`) |
 
 ### Sync 1 — what the two plans must answer
 
@@ -117,9 +117,10 @@ for by hand; inside it they are the playground's.
 
 - ★★ **Open `/ar/ui` on a phone** when the wave is ready, and say whether it now reads as one design. That is the
   acceptance (D4).
-- ★ **The org theme layer** (`DEC-199` §1.3.7): an org's brand kit no longer restyles the app; it keeps posters,
-  certificates and mail. The default is in force; say if a brand-aware playground is wanted instead — it is a design
-  `docs/design/` does not contain.
+- ✅ **The org theme layer — answered** (`DEC-201` §1): accepted and recorded; `REQ-DSG-021` amended; the brand-kit
+  screen says what the kit reaches.
+- ★★ **A finding for the next wave** (`DEC-201` §3): on a hard load the page stands twice in the DOM for ~300 ms —
+  **34 of 144 loads on the branch against 9 of 144 on `main`**, 22 of 48 on the boards. Invisible, cause not found.
 - ★ **Self-host the display face** (`DEC-199` §8): `next/font/google` failed four CI builds in a row on 2026-09-29,
   and from this wave the face is on every screen. **Cost: `next/font/local` over the files already in
   `packages/fonts/`, about an afternoon.** Not done without your word.
