@@ -121,9 +121,9 @@ for by hand; inside it they are the playground's.
   screen says what the kit reaches.
 - ★★ **A finding for the next wave** (`DEC-201` §3): on a hard load the page stands twice in the DOM for ~300 ms —
   **34 of 144 loads on the branch against 9 of 144 on `main`**, 22 of 48 on the boards. Invisible, cause not found.
-- ★ **Self-host the display face** (`DEC-199` §8): `next/font/google` failed four CI builds in a row on 2026-09-29,
-  and from this wave the face is on every screen. **Cost: `next/font/local` over the files already in
-  `packages/fonts/`, about an afternoon.** Not done without your word.
+- ✅ **Self-hosting — answered and built** (`DEC-203`, branch `wave-17b/self-host-app-faces`, its own PR): Reem Kufi,
+  Amiri and Baloo Bhaijaan 2 are read from `packages/fonts`. ★ **The two Plex faces stay on Google until the public
+  site's wave**, so a build still needs Google for them: two families instead of five, not none.
 - **The derived designs** (`DEC-199` §5.25 – §5.26): a page's `h1` and a section's `h2` in the display face; a link
   underlined in the text colour, never lime. Each is in the gallery, and yours to overrule there.
 - Still carried from wave 16: **the phone check of the five moments was never run**; F2 and F3; overshoot.

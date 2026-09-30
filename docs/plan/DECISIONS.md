@@ -5496,3 +5496,20 @@ The owner's words: **«I can confirm there is only one design system in the link
 **What it does not cover, so nobody reads more into it:** the gallery, not the app's screens. Every screen is inside the scope at the token level and none has been rebuilt (`DEC-199` §2); `DEC-201` §3's duplicate on hard loads is carried to the next wave; self-hosting the display face is unanswered; and wave 16's phone check of the five moments was never run.
 
 - **Documents changed:** `STATUS.md` (row D4, the count, the phase line)
+
+---
+
+## DEC-203 — The three app-only font families are self-hosted; the two Plex faces stay on Google until the public site's wave
+
+- **Date:** 2026-09-30 · **Decided by:** the owner («move the three app-only families now»), after the lead corrected its own cost estimate
+- **Answers:** `DEC-198` §4 and `DEC-199` §8. **Amends:** `DEC-183` §4.5 — the font door is `next/font`, and for three families it is now `next/font/local`.
+- **Branch:** `wave-17b/self-host-app-faces`, its own PR on top of wave 17's. **No migration, no new dependency.**
+
+1. **What the lead had wrong.** `DEC-199` §8 put «self-host the display face» to the owner as one afternoon that would stop builds depending on Google. Read against `src/lib/fonts.ts`, **all five families were fetched from Google at build time**, so moving one removes nothing; and the two Plex faces cannot move, because the public routes render them and the register form's fingerprint records the generated `font-family`. The owner was told before any edit, and chose to move the three that can.
+2. **What moved.** Reem Kufi, Amiri and Baloo Bhaijaan 2 are declared with `next/font/local` over the files already in `packages/fonts`, by SHA-256 name. **The bytes are the same bytes**: `fonts:check` compares what the build emits with the manifest by hash and reads «build matches (17 faces)», and the manifest did not change. One call per script, each carrying Google's own `unicode-range` for that subset, written as a literal because the loader accepts nothing else.
+3. ★ **The Arabic display face carries no metric fallback, and that is load-bearing.** Its subset has no digits (`DEC-185` §5). A generated «… Fallback» family beside it is Arial with adjusted metrics, and Arial has digits, so it would answer for every number before the Latin file is asked. `--display-face` is the Arabic family, then the Latin one with its fallback.
+4. **Proved on a production build of `28d55468`.** `CSS.getPlatformFontsForNode` on the gallery: «730 نقطة» and «لَا إِلَّا الْأُولَى» are drawn entirely by Baloo Bhaijaan 2 as a web font, no system font; lam-alef joins (16.8 px against 29.6 px set apart); **0 requests to Google at run time.** The gallery against the Google-loaded build of `6f870541`: **0.000 % on all 17 parts**. The frozen five: `qa` 57/57, six public pairs 0.000 %, the fingerprint byte-identical.
+5. ★ **What this does not do.** A build still fetches the two Plex faces from Google. The exposure is two families instead of five, not none; a failed fetch is still fixed by rerunning CI. **The Plex faces move with the public site's wave**, where the fingerprint is re-baselined anyway, and that is where the build stops depending on Google.
+6. `fonts:extract` keeps the three families' manifest entries as they are: for them the manifest is the source and the build the copy. Run on this build it leaves `packages/fonts` untouched.
+
+- **Documents changed:** `STATUS.md` (the carried list)
