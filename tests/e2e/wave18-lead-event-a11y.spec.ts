@@ -86,7 +86,8 @@ async function signIn(context: BrowserContext, who: string, asAdmin = false): Pr
   return memberId;
 }
 
-async function scan(page: Page, path: string) {
+/** Scans one page and returns its serious and critical violations as a report line, or "" when clean. */
+async function scan(page: Page, path: string): Promise<string> {
   await page.goto(path);
   await expect(page.locator("#main")).toBeVisible();
   // Every streamed region in place — a scan of a skeleton proves nothing.
@@ -96,8 +97,15 @@ async function scan(page: Page, path: string) {
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   for (const v of results.violations.filter((v) => !blocking.includes(v))) console.log(`a11y advisory ${path}: ${v.id} (${v.impact}) ×${v.nodes.length}`);
-  const report = blocking.map((v) => `${v.id} (${v.impact}) — ${v.help}\n` + v.nodes.slice(0, 5).map((n) => `  ${n.target.join(" ")}`).join("\n")).join("\n");
-  expect(blocking, `${path}\n${report}`).toEqual([]);
+  if (blocking.length === 0) return "";
+  return `${path}\n` + blocking.map((v) => `${v.id} (${v.impact}) — ${v.help}\n` + v.nodes.slice(0, 5).map((n) => `  ${n.target.join(" ")}`).join("\n")).join("\n");
+}
+
+/** Every page is scanned before anything fails, so one finding never hides the next page's. */
+async function sweep(page: Page, paths: string[]) {
+  const reports: string[] = [];
+  for (const path of paths) reports.push(await scan(page, path));
+  expect(reports.filter(Boolean).join("\n\n")).toBe("");
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -113,14 +121,17 @@ test("a member: the event page open, live and ended, and check-in", async ({ con
      values ($1, $2, $3, 'manual', 'حضر الجلسة', $3, 'empty'::tstzrange)`,
     [orgId, ids.done, memberId],
   );
-  for (const path of [`/ar/app/sessions/${ids.open}`, `/ar/app/sessions/${ids.live}`, `/ar/app/sessions/${ids.done}`, `/ar/app/sessions/${ids.live}/check-in`]) {
-    await scan(page, path);
-  }
-  // ★ A refused code: the alert state is a screen of its own.
-  await scan(page, `/ar/app/sessions/${ids.live}/check-in?error=invalid_code&code=ZZZZZZ`);
+  await sweep(page, [
+    `/ar/app/sessions/${ids.open}`,
+    `/ar/app/sessions/${ids.live}`,
+    `/ar/app/sessions/${ids.done}`,
+    `/ar/app/sessions/${ids.live}/check-in`,
+    // ★ A refused code: the alert state is a screen of its own.
+    `/ar/app/sessions/${ids.live}/check-in?error=invalid_code&code=ZZZZZZ`,
+  ]);
 });
 
 test("staff: the host view", async ({ context, page }) => {
   await signIn(context, "staff", true);
-  await scan(page, `/ar/app/sessions/${ids.live}/host`);
+  await sweep(page, [`/ar/app/sessions/${ids.live}/host`]);
 });
