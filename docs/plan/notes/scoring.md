@@ -3177,3 +3177,47 @@ No existing screen, component or spec is edited. Two risks, named so they are no
   until M10b?
 
 **Nothing is built until «the frame is in at `<sha>`».**
+
+## Wave 18 — contract 4 as landed (`782f80d1`, after `DEC-207`)
+
+**The DAL** — add-only, read with the caller's client, nothing stored:
+
+| Function | Module | Returns |
+|---|---|---|
+| `getMemberWeek(locale)` — `cache()`d | `src/lib/dal/points.ts` | `MemberWeek` |
+| `getCompanyRace(locale, { leaders? = 2 })` | `src/lib/dal/leaderboards.ts` | `CompanyRace \| null` (null: no company snapshot, or it ranks nobody) |
+| `getAchievementItems(locale, { since?, until?, limit? = 20, ≤ 50 })` | `src/lib/dal/recognition.ts` | `AchievementItem[]`, newest first by `awardedAt`, then `id` |
+
+`MemberWeek` is §4.1's type **with one change from the plan**: `rankAbsence` is `"no_snapshot" | "no_points" | null` —
+there is no `"opted_out"`, because `DEC-207` §1.1 ruled that an opted-out member sees their own rank; `optedOut: true`
+says «مخفيّ عن غيرك». Added: `levelUpPending: boolean` (the week's bar stands still while `SCR-022`'s card has yet to
+turn). `CompanyRace`, `CompanyRaceRow`, `WeekPeriod`, `WeekNeighbour`, `AchievementItem`, `AchievementMember` are as
+§4.2 – §4.4 wrote them. Also exported, for `getMemberWeek()`'s use: `getMonthlyStanding()`, and the pure rules
+`weekPeriod()`, `raceRows()`, `weekPointsMark()`, `newestFirst()`. `PointsHead` gained two optional fields,
+`seen` and `streak.requiredPerMonth`; `SCR-022` renders nothing differently.
+
+**The components** — server components in `src/components/scoring/`, each reads through the cached DAL:
+
+```tsx
+GameRail({ locale, children? })                 // game-rail.tsx — the frame's `rail`; children = «التالية لك» (NextForMe)
+MemberWeekHud({ locale, className? })            // member-week-hud.tsx — the phone HUD; the page adds `lg:hidden`
+CompanyRaceCard({ locale, leaders? = 2, className? })  // company-race-card.tsx — null when there is no race
+```
+
+The words of an achievement item are `scoring.feed.{badge,badgeSelf,streak,streakSelf}` (rich: `<name></name>`,
+`<b>`, `<bdi>`), read by `content`'s `feed-item`; `scoring.week.*` and `scoring.race.*` are the week's.
+
+**Proposed for the lead:** `supabase/proposed/scoring/0002_monthly_ranked_count.sql` with its `03` §8.2 rows in the
+header; `tests/rls/scoring-week.test.ts` 9 ✓ through `applyProposed()`.
+
+**Held for the lead's commit (contract 2):** `src/components/ui/week-hud.tsx`, `tests/components/ui/week-hud.test.tsx`,
+`tests/components/ui/week-hud-scope.test.tsx`, `src/app/[locale]/(dev)/ui/demos/week-hud.tsx` — then I commit
+`member-week-hud.tsx` and `tests/components/scoring/week-hud-section.test.tsx`, which import it.
+
+**Tests at `782f80d1`:** `week-moments` 15 ✓ (both orders against `MomentPointsHead` and `MomentRank`, the hidden
+copy, reduced motion, a server paint, the unseen level-up), `week-rail` 12 ✓, `week-hud-section` 12 ✓ (uncommitted),
+`week-hud` + `-scope` 18 ✓ (held), `race-bar-inline` 6 ✓ with `race-bar` and `-scope` untouched, `scoring-week`
+(unit) 16 ✓, `scoring-i18n` ✓, the RLS file 9 ✓. `tsc` clean for my files; eslint 0; `ui-lint` strict ✓.
+`ui-playground` is red only on the four unregistered new files, `week-hud.tsx` among them — the lead's commit.
+**No existing assertion moved.** The e2e spec `tests/e2e/wave18-scoring-week.spec.ts` needs `content`'s home in
+place and a production build — the lead's to run.
