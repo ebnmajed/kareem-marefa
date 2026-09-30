@@ -165,8 +165,13 @@ test("the audit filters sheet on the dark ground", async ({ page }) => {
 test("the schedule's date picker popover on the dark ground", async ({ page }) => {
   await goto(page, `/ar/app/admin/sessions/${sessionId}/schedule`);
   await register(page);
-  await page.locator('#main [aria-haspopup="dialog"]').first().click();
-  await expect(page.locator('#main [role="dialog"]').first()).toBeVisible();
+  const trigger = page.locator('#main [aria-haspopup="dialog"]').first();
+  await trigger.click();
+  // The popover is the element the trigger controls; bring it into the frame — a capture of a closed-looking well
+  // proves nothing (the first run's picture showed the trigger only).
+  const popover = page.locator(`#${await trigger.getAttribute("aria-controls")}`);
+  await expect(popover).toBeVisible();
+  await popover.scrollIntoViewIfNeeded();
   await capture(page, "schedule-picker", true);
 });
 

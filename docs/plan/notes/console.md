@@ -3298,3 +3298,14 @@ dark ground. **Not judged from the sweep** (it opens none): `menu` edge against 
 2. `Badge live`'s pulsing dot in console tables (ruled: stays, `DEC-073`).
 3. Full-page captures show the phone tab bar and the sticky save bar overlaid mid-page — a capture artefact.
 4. `/app/admin/sessions` was an empty state in the sweep, so no data-table rows were seen there.
+
+**K3 — from the `wave17-console-*` captures (build `6e5361d7`).** `audit-sheet`: the sheet reads on the dark ground — a `surface`
+panel with a visible top edge and handle over a scrim that dims the page to near-black; the field's lime focus ring is legible on it.
+`rail-drawer`: the drawer's edge holds against the dimmed page; «الجلسات» current is a `raised` well behind the label — present but
+quiet (the rail's class, `admin-rail.tsx`, not mine; `aria-current` is asserted). `companies-menu`: the lead opened it — surface, edge
+and items read. `sessions-table` / `members-table`: the cards and the status outlines read.
+**`schedule-picker` did not show the popover** — the picture is the closed trigger (the spec's locator opened, but did not bring, the
+popover into the frame). The spec is corrected to target the trigger's `aria-controls` element and scroll it into view; the popover's
+edge (`border-edge` on `pg:bg-surface`, no shadow — the same pair as the menu, which reads) is judged from its classes until that
+capture is rerun. **K3 closed** for the five that were seen; the picker popover is one capture from closed.
+Seen, not mine: the rail's current-item well is quiet.
