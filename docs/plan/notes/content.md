@@ -5638,3 +5638,26 @@ reads `app/page.tsx` and keeps matching. No assertion in a file I own moves; `ca
 5. `published_at`'s nullability and the policy's predicate; a length check on `body`.
 6. Who composes the week: `scoring`'s three components, or DTOs for me — and who proves the hidden twin is silent.
 7. The window of sessions the feed holds (14 days ahead, 7 back) is a guess; `sessions` and the lead set it.
+
+## Wave 18 — built (after sync 1, `DEC-207`)
+
+**State at the time of writing:** everything below is on disk, lint-clean and green in its own suites; none of it is
+committed. Contract 2 says a new `ui/` file lands with its registry entry, so the lead commits the primitives. The
+home waits on three contracts: `NextForMe` (sessions), `session-cta`'s `rate` state and a `booked` with no `cancel`
+(sessions), and `CardDensity | "post"` (lead, landing with `card.tsx`).
+
+- **Primitives:** `ui/feed-item.tsx` (three variants; no reaction on an achievement; «المواد» a link),
+  `ui/attendee-stack.tsx` (rings every face, count always in words, a named group; no consumer in PR A),
+  `card` `density="post"` (a `@container` column; `href` ignored), `story-ring` inert with no `onOpen` (an image
+  named by its label — DEC-207 §1.5). Suites: `feed-item{,-scope}`, `attendee-stack{,-scope}`, `card-post-scope`,
+  `story-ring-inert`. Ledger: `story-ring.test.tsx`'s fixture passes `onOpen` (expectation);
+  `wave15-content-gallery.spec.ts:289` `button[data-state]` → `[data-state]` (selector).
+- **The home:** `app/{page,loading}.tsx`; `components/feed/**`; `lib/dal/feed.ts` (`getFeed`); `photos.ts`
+  `getRecapPhotos` (add-only); `messages/*/feed.json`. The merge (`feed-merge.ts`) and the rings (`ring-state.ts`)
+  are pure and unit-tested; a source other than the session posts that fails is dropped and logged, never fatal.
+- **Glyphs requested of the lead:** a megaphone (announcement; `InfoIcon` meanwhile) and a speech bubble (the
+  comment count; drawn inline in `feed/session-post.tsx` meanwhile).
+- **Copy decided:** the propose band drops «يُجدول في أسبوع» (no rule promises a week). The company is body text
+  with a team-coloured dot (§4.61 — a colour from data is never a text colour).
+- **For `sessions`, answered (Q1):** `poster` is not meant at 76 px — the row keeps `CardMedia` with
+  `posterAspect()`; `teamName` optional needs the lead to release `poster.tsx` and the type.
