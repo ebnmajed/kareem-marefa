@@ -263,7 +263,6 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
           figures={figures}
           faces={faces}
           tasks={summaries.tasks}
-          materials={summaries.materials}
           ratingClosesAt={eligibility?.windowClosesAt ?? null}
           certificateHref={certificateHref}
           bookmark={bookmark}

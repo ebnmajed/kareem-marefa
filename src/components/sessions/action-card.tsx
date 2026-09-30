@@ -59,7 +59,6 @@ export interface ActionCardProps {
   figures: EventFigures;
   faces: EventAttendeeFace[];
   tasks?: Promise<SlotSummary>;
-  materials?: Promise<SlotSummary>;
   ratingClosesAt: string | null;
   certificateHref: string | null;
   bookmark: (variant: "icon" | "button") => ReactNode;
@@ -139,7 +138,8 @@ export async function ActionCard(props: ActionCardProps) {
 
           {ended ? <OutcomeCard session={session} slot={slot} /> : null}
 
-          <div className="flex flex-col gap-3 lg:min-w-64 lg:flex-1">
+          {/* From `lg` the primary is compact, as `EventDesktop.dc.html:48` draws it: it takes its own width, never the row's. */}
+          <div className="flex flex-col gap-3 lg:w-auto lg:max-w-sm lg:flex-none">
             <RsvpStatus {...slot} between={calendarInBooked ? <AddToCalendar {...slot} placement="card" /> : undefined} />
             <ReserveRefused />
             {showsAttended(checkIn, can) ? <SessionCta state={{ kind: "attended" }} label={tRsvp("attended")} /> : null}
@@ -169,11 +169,6 @@ export async function ActionCard(props: ActionCardProps) {
               <TasksJump tasks={props.tasks} />
             </Suspense>
           ) : null}
-          {ended && props.materials ? (
-            <Suspense fallback={null}>
-              <MaterialsJump materials={props.materials} label={t("actions.materials")} />
-            </Suspense>
-          ) : null}
           {open && booked ? <p className="text-caption text-fg-muted">{t("actions.confirmedHint")}</p> : null}
 
           {/* From `lg` the card is the action row: bookmark and share beside the primary (`EventDesktop.dc.html:49-50`). */}
@@ -182,8 +177,10 @@ export async function ActionCard(props: ActionCardProps) {
             {props.share("icon")}
           </div>
 
+          {/* The facts: under the primary on the phone; from `lg` the row's other column, at the row's end
+              (`EventDesktop.dc.html:52-56`), so the row stays one row. */}
           {!ended ? (
-            <div className="lg:basis-full">
+            <div className="lg:ms-auto lg:max-w-md lg:flex-1 lg:[&_dl]:gap-1 lg:[&_dl]:text-caption">
               <EventMeta session={session} phase={phase} days={props.days} locale={locale} />
             </div>
           ) : null}
@@ -292,17 +289,6 @@ async function LiveCount({ session, figures, faces }: { session: EventSession; f
       </p>
       {faces.length > 0 ? <AttendeeStack label={t("whoAttends")} people={faces.map((f) => ({ memberId: f.memberId, displayName: f.displayName, src: f.avatarUrl, teamColor: f.teamColor }))} countLabel={t("attendedCount", { count, value: formatNumber(count) })} size={24} /> : null}
     </div>
-  );
-}
-
-async function MaterialsJump({ materials, label }: { materials: Promise<SlotSummary>; label: string }) {
-  const summary = await materials;
-  if (!summary.visible) return null;
-  // Same-page anchors are plain `<a>`: there is no navigation to show progress for.
-  return (
-    <a href="#materials" className={buttonClass("secondary", "md", "w-full")}>
-      {label}
-    </a>
   );
 }
 

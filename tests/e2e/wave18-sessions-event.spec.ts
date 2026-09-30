@@ -149,7 +149,20 @@ async function open(page: Page, id: string, desktop: boolean) {
   await page.evaluate(() => document.fonts.ready);
 }
 
+/**
+ * ★ Every streamed region has landed before a capture (the lead's review of d563ee1c: the recap and the sub-nav
+ * were still skeleton bars). The sections stream behind `<Suspense>`, so the page is settled when no skeleton is
+ * left in #main and the sub-nav is there.
+ */
+async function settled(page: Page) {
+  const main = page.locator("#main");
+  await expect(main.getByRole("navigation", { name: "أقسام الجلسة" })).toBeVisible();
+  await expect(main.locator(".animate-pulse")).toHaveCount(0);
+  await page.evaluate(() => document.fonts.ready);
+}
+
 async function capture(page: Page, name: string) {
+  await settled(page);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   mkdirSync(SHOTS, { recursive: true });
@@ -177,6 +190,9 @@ test("open, phone: the regions in the artboard's order, the rule's amount, and t
     return all.indexOf(chip as Element) < all.indexOf(root.querySelector("section#attend") as Element);
   });
   expect(language).toBe(true);
+
+  // The phone's chips fit one row: the one-day length is drawn from `lg` only (EventDesktop.dc.html).
+  await expect(main.getByText("60 دقيقة")).toBeHidden();
 
   const attend = main.getByRole("region", { name: "الحضور" });
   // ★ The rule's amount, never a literal (§4.45).
@@ -222,6 +238,10 @@ test("ended and attended, phone: the outcome with the amount, «قيّم الج�
   await expect(outcome).toContainText("حضرت");
   await expect(outcome).toContainText("سجّلت حضورك");
   await expect(main.getByRole("link", { name: /قيّم الجلسة/ }).first()).toHaveAttribute("href", /\/rate$/);
+  // The recap: attended of reserved, a count and never who.
+  await expect(main.getByRole("list", { name: "الجلسة بالأرقام" })).toBeVisible();
+  // ★ No «المواد» button in the ended card: the artboard reaches the materials through the sub-nav's chip.
+  await expect(main.getByRole("region", { name: "الحضور" }).getByRole("link", { name: "المواد" })).toHaveCount(0);
   await capture(page, "done-390");
 });
 
@@ -234,6 +254,12 @@ test("desktop: the shell's bar, the hero band, the full-width action row and the
   const row = await main.locator("section#attend").boundingBox();
   const h1 = await main.locator("h1").boundingBox();
   expect(row!.width).toBeGreaterThan(h1!.width);
+  // ★ The primary is compact, as drawn (`EventDesktop.dc.html:48`), and the facts stand in the row's other column:
+  // the row stays one row — the facts' top is not below the primary's bottom.
+  const primary = (await main.locator("section#attend").getByRole("button", { name: /احجز مقعدك/ }).boundingBox())!;
+  expect(primary.width).toBeLessThan(row!.width / 2);
+  const facts = (await main.locator("section#attend dl").boundingBox())!;
+  expect(facts.y).toBeLessThan(primary.y + primary.height);
   // The bar is the phone's.
   await expect(page.getByRole("group", { name: "إجراءات الجلسة" })).toBeHidden();
   // The room, its map a link, beside the sections.

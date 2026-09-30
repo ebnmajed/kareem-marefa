@@ -90,7 +90,18 @@ export async function EventHero({ session, phase, seat, closingSoon, dayCount, p
               <SessionStatusBadge phase={phase} seat={seat} closingSoon={closingSoon} />
               <TagChip label={t(`level.${session.level}`)} />
               <TagChip label={session.language === "ar" ? t("languageAr") : t("languageEn")} />
-              {length ? <TagChip label={length} /> : null}
+              {/* The length: only `EventDesktop.dc.html` draws it (the phone's three chips fit one row at 390) —
+                  except «3 أيام», which says what a member commits to and stays at every width (REQ-SES-015). The
+                  width switch is on a wrapper, never a second display utility on the chip (DEC-111). */}
+              {length ? (
+                dayCount > 1 ? (
+                  <TagChip label={length} />
+                ) : (
+                  <span className="hidden lg:inline-flex">
+                    <TagChip label={length} />
+                  </span>
+                )
+              ) : null}
             </>
           }
         />
