@@ -92,7 +92,9 @@ test.beforeAll(async ({}, testInfo) => {
   ids.live = await session("العرض في 5 شرائح", "-30 minutes", 90, "in_progress", cat[0].id, venue[0].id, presenterId);
   ids.done = await session("الأرقام التي تكذب", "-5 hours", 120, "completed", cat[0].id, venue[0].id, presenterId);
 
-  // Open: one checklist task.
+  // Open: one checklist task — shown to a member who holds a seat (the affordance matrix, §5.3 row 1: tasks are
+  // withheld until a reservation), so the member reserves.
+  await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [orgId, ids.open, memberId]);
   await db.query(`insert into public.session_tasks (org_id, session_id, kind, title) values ($1, $2, 'checklist', 'أحضر جهازك المحمول')`, [orgId, ids.open]);
 
   // Live: the member checked in; one photograph of theirs; the presenter's comment.

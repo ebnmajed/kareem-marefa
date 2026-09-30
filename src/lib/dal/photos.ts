@@ -180,7 +180,7 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
   const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }, days, heading, { data: albumRow }] = await Promise.all([
     supabase
       .from("photos")
-      .select("id, uploader_id, storage_path, created_at, hidden_at, session_day_id, width, height, uploader:members(company:companies(team_color))")
+      .select("id, uploader_id, storage_path, created_at, hidden_at, session_day_id, width, height, uploader:members!photos_uploader_id_fkey(company:companies(team_color))")
       .eq("session_id", sessionId)
       .is("removed_at", null)
       .order("created_at", { ascending: false }),
