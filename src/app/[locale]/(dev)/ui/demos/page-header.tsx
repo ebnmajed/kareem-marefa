@@ -1,49 +1,67 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
-import { Prose } from "@/components/ui/prose";
-import { SectionHeader } from "@/components/ui/section-header";
+import { TagChip } from "@/components/ui/tag-chip";
 
-// The gallery's demo of the three type primitives — `page-header`,
-// `section-header` and `prose` — contract 4. They name only context variables, so
-// the scope reaches them with no class of its own (DEC-186 §2, mechanism A), and
-// this is where that is seen rather than assumed.
+// The gallery's `page-header` demo — contract 3 of wave 17 (DEC-199 §3, §5.26).
+// The page's one `h1`, in the display face inside the scope. Four headers, from
+// the least a page passes to the most: the title alone; a breadcrumb and a
+// description; everything at once; and a long title that begins with a Latin
+// word, which must not reorder the chevron beside it.
 //
-// ★ The titles keep the face they have. `02-typography.md` gives «headings» to the
-// display face on one line and `title` to the body face on another; which wins is
-// the owner's, asked with the first screen (STATUS, carried).
+// ★ A page has ONE `h1` and this demo draws four, on a page that has its own.
+// The gallery is the one place that is right: it shows the primitive, not a page.
+
+const CRUMBS = [
+  { href: "/ui", label: "الرئيسية" },
+  { href: "/ui", label: "الجلسات" },
+];
 
 export function PageHeaderDemo() {
   return (
-    <div data-demo="page-header" className="flex flex-col gap-8">
+    <div data-demo="page-header" className="flex flex-col gap-10">
+      <PageHeader title="نقاطي" />
+      <PageHeader
+        title="المواد"
+        description="كل ما رُفع لهذه الجلسة، مرتّبًا حسب اليوم."
+        breadcrumb={[...CRUMBS, { href: "/ui", label: "ورشة القياس" }]}
+        breadcrumbLabel="مسار الصفحة"
+      />
       <PageHeader
         eyebrow="الجلسات"
         title="لوحة تحكم لا يهجرها أحد بعد أسبوع"
         description="الخميس 6:30 م · قاعة الرياض · 18 من 40 مقعدًا"
-        breadcrumb={[
-          { href: "/app", label: "الرئيسية" },
-          { href: "/app/sessions", label: "الجلسات" },
-        ]}
+        breadcrumb={CRUMBS}
         breadcrumbLabel="مسار الصفحة"
         status={<Badge tone="success">التسجيل مفتوح</Badge>}
+        meta={
+          <>
+            <TagChip label="تحليل البيانات" />
+            <TagChip label="متوسط" />
+            <TagChip label="90 دقيقة" />
+          </>
+        }
         actions={
           <Button variant="primary" size="md">
             احجز مقعدك
           </Button>
         }
       />
-      <SectionHeader title="المواد" count={3} description="تُفتح بعد انتهاء الجلسة." />
-      <SectionHeader as="h3" title="النقاش" />
-      <Prose>
-        <p>تبدأ الجلسة بعرض قصير، ثم نفتح النقاش. أحضر حاسوبك إن أردت أن تجرّب ما نعرضه.</p>
-        <p>
-          المواد في <a href="#top">صفحة الجلسة</a> بعد انتهائها.
-        </p>
-        <ul>
-          <li>عرض من 5 شرائح</li>
-          <li>نقاش مفتوح</li>
-        </ul>
-      </Prose>
+      <PageHeader
+        eyebrow="ورشة من 3 أيام"
+        title="Figma للمبتدئين: من الإطار الأول إلى نموذج يعمل على الهاتف"
+        description="تبدأ الأحد 9:00 ص"
+        actions={
+          <>
+            <Button variant="secondary" size="md">
+              أضف إلى التقويم
+            </Button>
+            <Button variant="primary" size="md">
+              احجز مقعدك
+            </Button>
+          </>
+        }
+      />
     </div>
   );
 }
