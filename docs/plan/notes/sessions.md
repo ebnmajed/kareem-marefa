@@ -5575,3 +5575,82 @@ artboard's 76), `filter-chips.tsx` (two `ui/menu`s of links, «المزيد», t
 | `tests/components/browse/fixtures.tsx` | the `timeline()` fixture gains `endedCount: 0` and `attendancePoints: 20` — no assertion | `TimelineData`'s two add-only fields |
 
 `bookmarks.spec.ts`, `session-card.test.tsx` and `tests/components/search/**` are untouched and pass.
+
+## W18.11 · Kept-behaviour tables for PR A, written retroactively (`DEC-208` §4, STATUS K1)
+
+I checked each row against the files as they stand at `602d3115`: the old files through `git show 572272b7:<path>`, the
+new ones on disk. The format is `DEC-208` §2's: the behaviour, where it lives now, and the requirement that kept it.
+
+### `SCR-007` · `/s/[id]` — `f86282dd`
+
+| Behaviour | Where it lives now | Kept by |
+|---|---|---|
+| Only what `session_public_card()` returns can render (no abstract, presenter, seats, company, address, amount) | `s/[id]/page.tsx` reads `getPublicSessionCard()` alone; the function is unchanged | `DEC-066`, `REQ-UIX-059`, `DEC-206` §4.42 / §4.46 |
+| A real 404: no `loading.tsx` under `s/`, no `<Suspense>` above `notFound()`, `platformConfigured()` then `card(id)` as the first awaits | `page.tsx` header and body; `s/` holds no `loading.tsx` | `DEC-134` item 4, `DEC-038` |
+| A draft, a cancelled session and an unknown id are one neutral page, in Arabic, confirming nothing | `s/[id]/not-found.tsx` (`RouteError`, the three `unavailable*` strings, back to `/{locale}`), now in the card's frame with no org named | `REQ-UIX-059`, `DEC-207` N2 |
+| Open Graph metadata, absolute URLs, `noindex` when unconfigured or missing | `generateMetadata` → `buildPublicCardMetadata()`, unchanged | `REQ-SES-*` public card (`DEC-066`) |
+| The poster first, never cropped, its box reserved at the render's own ratio | `page.tsx`: the `og` `<img>` at `imageWidth / imageHeight`; else `ui/poster` at 4:5 | `REQ-UIX-026`, `DEC-207` §1.4 |
+| The ended wash on the image only, never the badge | `page.tsx`: `grayscale opacity-45` on the `<img>` or the placeholder's wrapper; the badge is outside both | `DEC-123` item 1 |
+| The badge from the clock alone, `live` and `ended` only, with the days passed | `sessionPhase({ …, days })` in `page.tsx` | `DEC-141`, `DEC-206` §4.43, wave 9 contract 9 |
+| A range and «N أيام» for a multi-day session, from the stored window and the count, never `session_days` | `dayRange` / `dayCountLabel` in `page.tsx` | `REQ-SES-015` |
+| The «· حتى …» clause breaks only before its «·»; a time never parts from its «م» | `page.tsx` `<dd>` span, `whitespace-nowrap`, `U+00A0` | wave 7's capture (pinned by `sessions-public-card.spec.ts:168`) |
+| The venue's NAME only, no address or map link | `page.tsx` `<dd>` | `12` T3 |
+| «الحضور في القاعة فقط.» said once | `page.tsx`, `sessions.card.inPersonNote` | `REQ-SES-008`, `DEC-207` N3 |
+| One action, an `<a>` document navigation to sign-in carrying `?next=/{locale}/app/sessions/{id}` | `page.tsx`, `signInHref` | `REQ-AUT-005` (the carried destination) |
+| The ended card promises no seat | `page.tsx`, `sessions.card.signInEnded` | `DEC-207` Q3 |
+| `<bdi>` on the title, the org's name, the time, the day count and the venue | `page.tsx`, each interpolation | `10` §3 |
+| No link off-site | `public-card-frame.tsx`: relative legal links, the wordmark to `/` | `REQ-SES-008` (pinned by `a[href^='http']` = 0) |
+
+**Dropped: nothing.** Two things changed on purpose: the members-only line's wording (the artboard's), and the column
+is 26 rem at every width (§4.36: no 1280 artboard).
+
+### `SCR-011` · `/app/sessions` — `71c25699`, `602d3115`
+
+| Behaviour | Where it lives now | Kept by |
+|---|---|---|
+| The visible set is `sessions_read` through the caller's client, narrowed to `TIMELINE_STATES`; tenancy and tiering are the database's | `getTimeline()` in `lib/dal/search.ts`, unchanged apart from add-only fields | `REQ-TEN-003`, `REQ-DSC-003` |
+| The query string is the state: every filter is `/app/sessions?…`, an invalid value is dropped and never echoed | `timeline-query.ts`, unchanged; `filter-chips.tsx`, `tag-cloud.tsx` and `search-field.tsx` all build `timelineHref()` | `REQ-UIX-022`, `DEC-130`, `REQ-UIX-060` |
+| Search is a GET form that works with no JavaScript, keeping the other filters | `search-field.tsx` (hidden inputs) | `REQ-DSC-003`, `REQ-UIX-060` — new: the old page had no field |
+| Arabic-aware matching and metadata-only material search | `findSessionIdsByTextFilters()` / `arNormalize`, unchanged | `REQ-DSC-004`, `REQ-DSC-007` |
+| The applied filters are visible, NAMED (never an id), each removable on its own as a LINK, and «امسح الكل» clears the lot | `filter-chips.tsx`, the applied row via `appliedEntries()` | `REQ-UIX-022`, `REQ-DSC-005` |
+| The removal link's name «أزل عامل التصفية: <name>» | `filter-chips.tsx` `removeName()` | pinned by `browse.spec.ts:157` |
+| The facet sheet: periods rather than dates, the legacy `from`/`to` still read as chips, its trigger naming the count in words | `filter-sheet.tsx` (visible word now «المزيد»; name unchanged) | `DEC-141` ruling 15, `SC 2.5.3` |
+| Filtered-empty names the one filter that restores the most, FSI-isolated, offers to drop it beside «امسح» | `browse-screen.tsx` `BrowseEmpty`, the old logic word for word | `REQ-UIX-022`, `REQ-UIX-012` |
+| The empty case is the same screen, inviting a proposal; «جارية الآن» / «انتهت» empty lead back | `browse-screen.tsx` `BrowseEmpty` | `REQ-UIX-012` |
+| Groups in the org's time zone, the week starting where the locale says | `groupBrowse()` / `groupEnded()` with `firstDayOfWeek()` | `REQ-UIX-021`'s grouping, `16` §6.2 |
+| The ended view by month, newest first, capped at 60 | `groupEnded()`, `ENDED_LIMIT`, unchanged | `notes/sessions.md` §24.2 |
+| Phase, seat and «closing soon» from `session-status.ts`, clock and days included; one badge for all | `SessionStatusBadge` in `session-row.tsx`, from the DTO | `REQ-UIX-003`, `DEC-073` |
+| The ended/cancelled wash on the poster only | `CardMedia dimmed` in `session-row.tsx` | `DEC-123` |
+| No rating on a row | `session-row.tsx` | `REQ-RAT-004` |
+| The row is one link; the bookmark is a separate control that neither navigates nor opens the row, keeps its name and says its state with `aria-pressed` | `CardActions` + `BookmarkButton` (unchanged, `preventDefault`) | `REQ-DSC-006`, pinned by `browse.spec.ts:238` |
+| The viewer's own seat said before the room's; «حضرت» on an ended session attended | `session-row.tsx` `seatLine` | `16` §6.4 |
+| A multi-day row says the range and «N أيام» | `session-row.tsx` | `REQ-SES-015` |
+| Presenters' names at the member tier; an avatar only as our copy | `presenterProfiles()` via `members_member_view`, `avatarHref()` | `REQ-PRF-004`, `DEC-099` |
+| The time on the room's wall (the session's zone) | `session-row.tsx` formats in `session.timeZone` | `16` §6.4 |
+| `<bdi>` on the title, the time, the venue, the presenter, the seat figures and each chip's value | `session-row.tsx`, `filter-chips.tsx` (`TagChip` wraps), `browse-screen.tsx` | `10` §3 |
+| Western numerals throughout | `formatNumber` / `numerals.ts` | `DEC-124` |
+| A skeleton with no text, `aria-hidden`, in the same frame | `browse-skeleton.tsx`, `sessions/loading.tsx` | `REQ-UIX-005` |
+| One `<h1>` «الجلسات» | `browse-screen.tsx` `PageHeader` | pinned by `browse.spec.ts:138` |
+
+**What the rebuild dropped** (the reviewer's list):
+
+1. ★ **Co-presenters on a row.** The old card drew up to two avatars and «سعد الحربي وآخر» (`browse.card.others`, six
+   plural forms). The row names the lead presenter only, because the artboard draws one. A session with two presenters
+   now shows one name. **No requirement that I can find asks for the others on a card**, so this is recorded rather than
+   decided. It is one line to restore with the existing string. **For the lead to rule; I have not changed it** (this
+   commit is the note only).
+2. **The pinned card's «تسجيل الحضور» link.** Browse no longer offers check-in from the list. It went with the pinned
+   item (`DEC-206` §4.64). Check-in stays reachable from the event page and from the home post's `checkIn` action
+   (contract 3). Dropped by ruling, not by accident.
+3. **The level chip and up to three tags on each card.** The artboard's row draws neither. The level and tag *filters*
+   remain, and the eight top tags are above the list. No requirement puts them on a card.
+4. **The no-JS path for the status and category controls.** They were link toggles and are `ui/menu`s now. Removal and
+   every applied filter are still links, and search is a no-JS form. Accepted by `DEC-207` N4.
+5. **The page's intro line** «ما يمكنك حضوره، مرتّبًا بالتاريخ.» The artboard draws the title only. The string is
+   still in `browse.json`, unread.
+6. **The count inside each group's accessible name.** `SectionHeader`'s `count` used to put «(3)» into the heading, so
+   the region was named «هذا الأسبوع (3)». The count is now «3 جلسات» in the header's actions: it is visible and read
+   after the heading, but it is not part of the region's name. The specs match by regex and pass. Recorded as an
+   accessibility difference, not a defect.
+7. **Moved, not dropped**: the company banner and `AvatarImportPrompt` are on the home (`components/feed/feed.tsx`
+   carries both, `DEC-207` §6.1).
