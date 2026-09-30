@@ -5899,3 +5899,46 @@ standing — nothing a member cannot read. With the rule off, or no company, not
 **Why it is recorded.** The lead's measurement stopped one step short again (`DEC-207` §1's pattern): «attendance is
 points» was checked against the member ledger and not against the company board's own rule. A reading by the track
 that owns the ledger found it.
+
+## DEC-211 — PR B's close: two `ui-lint` escapes approved, four disagreements recorded, and what the real builds found
+
+- **Date:** 2026-10-01 · **Decided by:** the wave-18 lead, at PR B's verification (`STORY-UIX-048` … `050`)
+- **Records:** the lead's written approvals `CLAUDE.md` asks for; four artboard disagreements under `DEC-206` §4's rule
+  (a new one is written, nobody picks a side); the defects only a production build showed
+
+**1. Two `ui-lint` escapes, approved in writing.** `ui-lint --strict` has no allowlist; an escape needs a reason the lead
+approves. Both are the case the escape hatch exists for — a control the system cannot express:
+- `src/components/materials/audio-row.tsx` — the audio player's scrubber is a native `<input type="range">` outside
+  `<Field>`. There is no slider primitive, and a native range **is** the keyboard control `REQ-MAT-007` asks for; it is
+  named by `aria-label` and valued by `aria-valuetext`.
+- `src/components/photos/upload-widget.tsx` — the add tile's file input, visually hidden inside its own `<label>` (the
+  tile **is** the label, «إضافة صورة»); `file-drop`'s zone and button cannot be drawn as one grid square.
+
+**2. Four disagreements between the artboards and the plan — recorded, not picked.**
+1. **The ended poster is washed** (`grayscale opacity-45`) — `DEC-123` item 1. `EventDone.dc.html` draws it in full
+   colour. **The plan wins; the wash stays.**
+2. **The ended poster carries no «حضرت» sticker** — `EventDone.dc.html:30` draws one. On a rendered poster no sticker is
+   drawn (`DEC-206` §4.46); on the placeholder, `REQ-UIX-031` says a sticker is never a status, and the outcome card
+   already says whether the viewer attended (`REQ-UIX-015` ask 4). **Not built.**
+3. **The check-in row draws the rendered poster or nothing** — `CheckIn.dc.html` draws a thumbnail. The typographic
+   placeholder at 44 × 56 would need the presenter's company (a read the screen does not make), would set its title
+   at 9 px, and would make the room's most time-critical input wait on a picture. **Not built.**
+4. **An ended session does not repeat «الحضور في القاعة فقط»** — `EventDone.dc.html` has no icon rows. `REQ-SES-008`'s
+   acceptance holds: no remote affordance is offered anywhere.
+
+**3. What only the real builds found** (every one fixed in PR B, each with its test):
+- **Every event page rendered its error boundary** — `getPhotosPageData()` embedded `members` without naming the
+  foreign key, and `photos` has two (`uploader_id`, `removed_by`); PostgREST refused it as ambiguous. The component
+  suites mock the DAL, so only a real request could see it (`01fc703a`).
+- **A tap on the host's switch before hydration was lost** — the native checkbox flipped and nothing was submitted, so
+  it read «closed» while the door stayed open; 7 of 20 on the phone (`aeb6612c`).
+- **A private realtime channel lost its first ~6 s** — the first `phx_join` went out with no token and was refused; the
+  rejoin landed ~6.4 s after load. A live comment, a photograph (which arrived only by the upload widget's 20 s
+  fallback) and `0166`'s host poke were all lost in that window. `setAuth()` now precedes `subscribe()` (`231677d0`).
+  Found by `content`'s real-worker run; the file predates wave 18.
+- **Focus clearance misread a control straddling the viewport's bottom edge** — its middle below the action bar's, so
+  the bar counted as a cover from above and nothing scrolled (`SC 2.4.11`, `336f710e`). Found by `sessions`.
+
+**Why it is recorded.** Three of the four defects were invisible to every mocked suite and to CI's unit gates, and each
+was found by an owner holding a real build — the reason `DEC-199` §2's rebuilds are verified on a production build and
+never by the component suites alone.
