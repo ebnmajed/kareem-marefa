@@ -5681,3 +5681,49 @@ home waits on three contracts: `NextForMe` (sessions), `session-cta`'s `rate` st
   `FORMATTING_ERROR` and returns the key, so the poster link's accessible name was «feed.post.posterName» and every
   recap photograph's `alt` «feed.recap.photoAlt». An attribute cannot isolate a run anyway, so both strings are
   plain now. `session-post.test.tsx` and a new `recap-post.test.tsx` assert both names in words.
+
+## Wave 18 — `SCR-010`'s kept-behaviour table, retroactively (`DEC-208` §4, `STATUS` K1)
+
+`/app` was rewritten in one commit (`8c738af2`) from `Home.dc.html` and `HomeDesktop.dc.html` — a whole-file rewrite,
+not `DEC-208`'s delete-then-create. What the old page did was read from `main`'s files at `42a14ba0` (`app/page.tsx`
+→ `browse/sessions-timeline.tsx` → `browse/session-card.tsx`, `app/loading.tsx`, `app/error.tsx`); where it lives
+now was checked against the files as they stand at this note's commit.
+
+| Behaviour | Where it lives now | Kept because |
+|---|---|---|
+| The session is checked at the data, never in a layout | `lib/dal/feed.ts` `getFeed()` → `sessionClient()`; every read it composes (`getSessionPosts`, `getAchievementItems`, `getRecapPhotos`, `getShellData`, `getMe`) calls it too | `REQ-NFR-004`, CLAUDE.md «Data access» 3 |
+| RLS is the boundary; only a visible, scheduled session appears, never a draft | `getSessionPosts()` (`TIMELINE_STATES`, the caller's client); `feed-merge.ts` drops a post with no day | `REQ-NFR-001` |
+| «اختر شركتك قبل حجز مقعد…» with «أكمل ملفك» → `/app/me`, inside `role="status"` | `feed/feed.tsx`, above the week; plus a post's control says why it cannot reserve | `REQ-PRF-001`, `REQ-UIX-055` («the banner says so above the week») |
+| «نستخدم صورتك من Google؟», offered once, in its own Suspense | `feed/feed.tsx`, beside the banner (`AvatarImportPrompt`, imported unchanged) | `REQ-PRF-008`, `DEC-207` §6.1 |
+| The member's next committed session first, «التالية لك», not repeated below | **changed shape**: committed first WITHIN its day (`compareSessionPosts`, `feed-merge.ts`); on desktop «التالية لك» is the rail (`NextForMe`, `sessions'`) | `REQ-UIX-021` as amended by `REQ-UIX-055`, `DEC-206` §4.59 |
+| The phase badge — live, closing soon, full, cancelled — from `session-status.ts`, never re-derived | `feed/session-post.tsx` (`SessionStatusBadge` with `phase`, `seat`, `closingSoon`) | `REQ-UIX-003` |
+| A check-in link offered only when the matrix allows it | `session-post.tsx` → `sessions'` `action` (`checkIn`, from `checkInOffer()`); nothing drawn when `none` | `REQ-UIX-015`, `REQ-CHK-010` |
+| The viewer's own seat or waitlist place said first | `session-post.tsx`, the `booked` action («مقعدك محجوز», «في قائمة الانتظار، ترتيبك N») | `REQ-UIX-015`, `REQ-RSV-*` |
+| The bookmark toggle on each session | `session-post.tsx` (`BookmarkButton`, unchanged) | `REQ-DSC-006` |
+| The poster whole, never cropped; the title placeholder when none | `session-post.tsx` → `ui/poster` (`object-contain`, 4:5 box) | `REQ-UIX-026`, `REQ-UIX-032` |
+| A multi-day session says how many days | `session-post.tsx` (`dayCountLabel`) | `REQ-SES-015` |
+| The time on the room's wall (the session's zone); the day on the org's calendar | `session-post.tsx` (`formatTime(…, post.timeZone)`); `feed-merge.ts` (`orgDay(…, orgTimeZone)`) | `REQ-INT-003` |
+| `<bdi>` on every interpolated title, name, company and venue | `session-post.tsx`, `recap-post.tsx` (via `ui/feed-item`), `achievement.tsx`, `empty-feed.tsx`; an announcement in `<bdi dir="auto">` | `REQ-INT-007` |
+| Western numerals, every count through `formatNumber`, never ICU's `#` | every `feed/*` caller; `messages-numerals.test.ts` holds `feed.json` | `REQ-INT-006`, `DEC-124` |
+| `/app` ignores its query string; filters live at `/app/sessions` | `app/page.tsx` reads no `searchParams` | `REQ-UIX-022`, `DEC-130` |
+| An empty case that names the next action — propose | `feed/empty-feed.tsx` (`empty-state` → `/app/propose`) and the propose band on every feed | `REQ-UIX-012`, `DEC-206` §4.60 |
+| A loading state shaped like the content | `app/loading.tsx` → `FeedSkeleton` inside `PageFrame` with `RailSkeleton` | `REQ-UIX-005` |
+| An error boundary | `app/error.tsx` → `RouteBoundary`, unchanged | `REQ-UIX-016` |
+| One `<h1>` | `app/page.tsx`, «الرئيسية», visually hidden (the lead's ledger line moves `session.spec.ts:94`) | `REQ-NFR-007` |
+
+**What the rebuild dropped — flagged, not picked:**
+
+1. **The date RANGE of a multi-day session.** The old card said «الأربعاء 1 – الجمعة 3 أكتوبر · 3 أيام»
+   (`dayRange` + `dayCountLabel`); the post says the start's time and «3 أيام». The artboard draws one time.
+   `REQ-SES-015` is met by the count; the range is one call away if the owner wants it.
+2. **Every presenter but the lead.** The old card drew `AvatarStack` with «و N آخرين»; the post draws the first
+   presenter only, as the artboard does. A co-presented session reads as one person's on the home.
+3. **Tags on the card** (three, as chips). Not drawn on a post; the artboard has none. Tags stay on browse and the
+   event page (`REQ-DSC-002`).
+4. **The waitlist's length on a full session** («N في قائمة الانتظار»). The post shows the full badge and the seats
+   line; how long the queue is, is not said.
+5. **The next committed session as the phone's first item.** On the phone it is first only within its own day; a
+   committed session on Thursday stands after today's items. `DEC-206` §4.59 accepts this; noted so the reviewer
+   sees it is deliberate.
+6. **The page title's intro sentence** («تصفّح الجلسات القادمة…») — gone with the timeline's header; the home has no
+   visible title, as drawn.
