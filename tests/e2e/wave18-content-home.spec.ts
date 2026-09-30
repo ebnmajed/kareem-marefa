@@ -71,7 +71,7 @@ async function newOrg(slug: string, domain: string): Promise<string> {
 async function session(title: string, startOffset: string, minutes: number, state: string, category: string, venue: string, presenter: string): Promise<string> {
   const { rows } = await db.query<{ id: string }>(
     `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at)
-     values ($1, $2, 'خمس شرائح فقط، ولجنة لا تملك أكثر من عشر دقائق.', $3, 'introductory', now() + $4::interval, $5, now() + $4::interval + ($5 || ' minutes')::interval, $6, 40, $7, now() - interval '3 days')
+     values ($1, $2, 'خمس شرائح فقط، ولجنة لا تملك أكثر من عشر دقائق.', $3, 'introductory', now() + $4::interval, $5::int, now() + $4::interval + make_interval(mins => $5::int), $6, 40, $7::public.session_state, now() - interval '3 days')
      returning id`,
     [orgId, title, category, startOffset, minutes, venue, state],
   );
