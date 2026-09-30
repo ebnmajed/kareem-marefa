@@ -5843,3 +5843,36 @@ passed unchanged or with ledger lines. ★ **But their kept-behaviour tables are
 owner's note**, so the reviewer has for PR A what PR B will have by construction.
 
 - **Documents changed:** `CLAUDE.md`, `.claude/agents/*.md`, `docs/plan/TEAM.md`, `15-backlog.md`, `14-roadmap.md`, `STATUS.md`
+
+---
+
+## DEC-209 — Wave 18, PR B, sync 1: three plans approved, each with its kept-behaviour table before any deletion; the rulings the event, check-in and the host view are built on
+
+- **Date:** 2026-09-30 · **Decided by:** the wave-18 lead, on the plans of `sessions` (`c2418391`, `714dbedb`), `content` (`ac2b7516`, `01abc40f`) and `checkin` (`ee275f43`); `DEC-205` and `DEC-208` are not re-opened
+- **Adds, from the plans:** a live producer for the host's count (`REQ-CHK-001`, never built) and the named conflicting session (`REQ-CHK-013`, never read) — both requirements already defined, both behind in the tree
+
+### 1 · What the readings found
+
+| Found by | What | Ruling |
+|---|---|---|
+| `checkin` | ★ **`REQ-CHK-001`'s live count has no producer**: `0016` authorises a `host:` topic and `channel.ts` exports `subscribeToHostTopic()`, but nothing sends and nothing subscribes; the host's code is stale until a reload | **Build it**: a broadcast trigger that sends a poke naming no member, proposed under `supabase/proposed/checkin/`, `security definer`, tested as a member, promoted by the lead; the screen coalesces pokes into a refresh. A one-second display clock for the rotation countdown is a display, not a nudge on a pending control (`DEC-146` holds) |
+| `checkin` | **`REQ-CHK-013`**: `?conflict=` is carried and never read | **Build it**: the refusal names the conflicting session |
+| `content` | ★ «للاستماع فقط» with download off: a member cannot fetch the file, and streaming *is* fetching (`REQ-MAT-005`, `0116`) | **The play control shows only to a viewer who may fetch the file.** A listen-only path for members is new scope, and the owner's |
+| `content` | a live comment's company and «المُقدِّمة» are absent from the realtime payload | **Widen `comments_broadcast()`**, proposed by `content`, promoted by the lead; a company's name is org-readable already |
+| `sessions` | «لفريقك» is not computable — a member cannot read who attends | **Not built** |
+
+### 2 · The rulings
+
+**The shell (the lead's).** At `lg` the shell's bar shows on the event page, check-in and the host view (`EventDesktop.dc.html` draws it); **below `lg` each draws its own top row** and the shell's gives way (`ownsTopRow()` extended). `<main>` clears the bottom `action-bar` on `SCR-012` and `SCR-014`. `media-src` admits the storage origin (`proxy.ts`). A play glyph and a monitor glyph join `ui/icons` **last, alone, under contract 5's proof**.
+
+**`sessions` — `SCR-012`.** Two primaries on the phone are allowed: `REQ-UIX-061` says the primary is also in the bottom bar. Each phase's section order follows its artboard. The ended ribbon keeps `DEC-073`'s status words, not «مكتملة». The deadlines line shows to everyone («stated plainly», `09`). «شاهد القصة» shows its state and opens nothing (`DEC-205`). «شاهد ملخصك» is not built — no screen. The tasks section is `content`'s, rebuilt with the other slots; the rate CTA is `sessions'`; the rate screen stays out. The outcome card's count-up **reuses** `scoring`'s moment-3 mechanism, keyed `completion:<entry>` — never a copy; `scoring`'s add-only `occurrenceId` and `paidAt` on the paid state, and the presenter's award drawn only where it exists. Attendance does not feed the company board.
+
+**`content` — the slots.** The delete boundary is approved: the six files that draw the slots go; the components with their own behaviour and tests (the lightbox, the upload widget and form, the takedown button, the album control, the settings form) stay. Playing is a preview, not a download — **not audited** (`DEC-178`). A string that exists keeps its words («أضف صورة», «أزلني», the like's name) — `M10a.md`: copy from `messages/ar/` first. The composer keeps a visible send. A download glyph only where download is allowed. «افتح الألبوم» opens the lightbox. A video is a link, never an embed.
+
+**`checkin` — `SCR-014`, `SCR-016`.** The defaults of D1 – D11 stand: the rate-limited message states no duration it cannot know (the envelope carries none; `check_in()` is not changed); the mini-row says the start time, not a relative one; the switch works before live as the matrix says; the view stays awake while live, projecting or not; the `h1` and the submit keep the catalogue's words; the walk-in policy sentence goes, and «no reservation needed» stays on the rules line when true (`DEC-206` §4.76); the primitive's accent for a complete code; the code shown while the switch is closed, with its hint. `moment-check-in.tsx` is **kept** — the moments' keying is frozen. `CodeInputProps.align` and `getAttendanceRulePoints()` are `sessions'` add-only changes. ★ **The refused code does not shake** until the owner rules (`DEC-206` §4.75).
+
+### 3 · The order
+
+Every track deletes in its first commit and writes in its second (`DEC-208`); the lead lands the shell's changes and the CSP first; the SQL is promoted before the screens that read it; the glyphs last.
+
+- **Documents changed:** `STATUS.md` (S-B1)
