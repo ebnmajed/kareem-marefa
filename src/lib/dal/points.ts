@@ -239,7 +239,14 @@ export interface AwardDay {
 export type SessionAwardState =
   | { state: "none" }
   | { state: "pending"; points: number; daysAttended: number; daysRequired: number; dayCount: number }
-  | { state: "paid"; points: number }
+  | {
+      state: "paid";
+      points: number;
+      /** wave 18 (add-only), filled by `getSessionCompletion()` only: moment 3's shared occurrence, or null once seen. */
+      occurrenceId?: string | null;
+      /** wave 18 (add-only), filled by `getSessionCompletion()` only: when the award's ledger row was written. */
+      paidAt?: string | null;
+    }
   | { state: "incomplete"; missedDays: AwardDay[]; daysAttended: number; daysRequired: number; dayCount: number };
 
 type AwardStateRow = {
@@ -535,9 +542,12 @@ export function weekPointsMark(head: Pick<PointsHead, "mark" | "levelUp" | "seen
   return { mark, needsMark };
 }
 
+/** `getPointsHead()` once per request, for the week and the event page's outcome card together. */
+const headOnce = cache((locale: string) => getPointsHead(locale));
+
 /** Request-scoped: the phone's HUD and the desktop's rail ask once between them. */
 export const getMemberWeek = cache(async (locale: string): Promise<MemberWeek> => {
-  const [head, standing] = await Promise.all([getPointsHead(locale), getMonthlyStanding(locale)]);
+  const [head, standing] = await Promise.all([headOnce(locale), getMonthlyStanding(locale)]);
   const { mark, needsMark } = weekPointsMark(head);
   return {
     period: standing.period,
@@ -556,3 +566,100 @@ export const getMemberWeek = cache(async (locale: string): Promise<MemberWeek> =
     rankMoment: standing.moment,
   };
 });
+
+// ── The event page's outcome card — moment 3 on a completed session (wave 18 PR B, add-only) ──────────
+//
+// `REQ-UIX-061`, `DEC-206` §5, `DEC-209` (sessions' S1 – S3). The outcome card on `SCR-012` counts up the points
+// a completed session paid. ★ IT IS MOMENT 3, NOT A NEW MOMENT: the occurrence is the one `getPointsHead()`
+// decides for `SCR-022` and the home's week — `completion:<the balance's last entry>` — so whichever of the three
+// surfaces the member opens first plays, and the other two are silent, in the tab and on every device. The card
+// plays it only when THIS session's award is among the rows the member has not seen; a completion elsewhere is
+// the home's to celebrate, not this page's. The mark it acknowledges is the week's — the level last seen passed
+// through (`DEC-207` §1.3), so `SCR-022`'s level card still turns.
+//
+// Nothing here writes; `getSessionAwardState()` is unchanged.
+
+/** The attendance award as the outcome card draws it, with moment 3's props. null: not paid (see the award state). */
+export interface SessionCompletion {
+  award: Extract<SessionAwardState, { state: "paid" }> & { occurrenceId: string | null; paidAt: string | null };
+  /** What the card acknowledges, and whether it differs from the stored mark. */
+  mark: PointsMark;
+  needsMark: boolean;
+}
+
+export async function getSessionCompletion(locale: string, sessionId: string): Promise<SessionCompletion | null> {
+  const state = await getSessionAwardState(locale, sessionId);
+  if (!state || state.state !== "paid") return null;
+  const { session, supabase } = await sessionClient(locale);
+  const head = await headOnce(locale);
+
+  // The award's own row: the caller's, this session's, a positive check-in amount — the newest, should an old one
+  // have been reversed and the member paid again.
+  const awardRow = () =>
+    supabase
+      .from("points_ledger")
+      .select("id, occurred_at")
+      .eq("member_id", session.memberId)
+      .eq("session_id", sessionId)
+      .eq("source", "check_in")
+      .gt("amount", 0)
+      .order("occurred_at", { ascending: false })
+      .limit(1);
+
+  const { data: row, error } = await awardRow().maybeSingle();
+  if (error) throw new Error(`points_ledger (award): ${error.message}`);
+  const paidAt = (row?.occurred_at as string | undefined) ?? null;
+
+  // Unseen means written after the entry the mark holds — compared by the database, to the microsecond, exactly
+  // as `getPointsHead()` compares («a gain with no completion row» is decided there, and this only narrows it).
+  let occurrenceId: string | null = null;
+  if (head.completion && row) {
+    let unseen = true;
+    if (head.seen?.entryId) {
+      const { data: seenEntry, error: seenError } = await supabase.from("points_ledger").select("occurred_at").eq("id", head.seen.entryId).maybeSingle();
+      if (seenError) throw new Error(`points_ledger (seen): ${seenError.message}`);
+      if (seenEntry?.occurred_at) {
+        const { data: after, error: afterError } = await awardRow().gt("occurred_at", seenEntry.occurred_at as string).maybeSingle();
+        if (afterError) throw new Error(`points_ledger (award, unseen): ${afterError.message}`);
+        unseen = Boolean(after);
+      }
+    }
+    if (unseen) occurrenceId = head.completion.occurrenceId;
+  }
+  const { mark, needsMark } = weekPointsMark(head);
+  return { award: { ...state, occurrenceId, paidAt }, mark, needsMark };
+}
+
+// ── A presenter's award for a session (wave 18 PR B, add-only — sessions' S3) ──────────────────────────
+//
+// `session_delivered` and `attendee_bonus` are what a completed session pays its presenters (`REQ-PTS-015`),
+// and a presenter removed after completion is reversed by a compensating row (`0087`'s shape). The figure is
+// the net of the caller's own rows for the session — the ledger's truth, never the catalogue's — and it is
+// returned only where it exists: a net of zero or less is null, so no «+0» is ever drawn.
+
+export const PRESENTER_SOURCES = ["session_delivered", "attendee_bonus"] as const;
+
+/** The net of a presenter's rows and the reversals that name them — pure, exported for its unit test. */
+export function presenterNet(rows: Array<{ id: string; amount: number; source: string; source_id: string | null; occurred_at: string }>): { points: number; paidAt: string } | null {
+  const paid = rows.filter((r) => (PRESENTER_SOURCES as readonly string[]).includes(r.source));
+  if (paid.length === 0) return null;
+  const ids = new Set(paid.map((r) => r.id));
+  const reversed = rows.filter((r) => r.source === "reversal" && r.source_id !== null && ids.has(r.source_id));
+  const points = [...paid, ...reversed].reduce((sum, r) => sum + r.amount, 0);
+  if (points <= 0) return null;
+  const paidAt = paid.map((r) => r.occurred_at).sort().at(-1)!;
+  return { points, paidAt };
+}
+
+export async function getPresenterAward(locale: string, sessionId: string): Promise<{ points: number; paidAt: string } | null> {
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
+    .from("points_ledger")
+    .select("id, amount, source, source_id, occurred_at")
+    .eq("member_id", session.memberId)
+    .eq("session_id", sessionId)
+    .in("source", [...PRESENTER_SOURCES, "reversal"]);
+  if (error) throw new Error(`points_ledger (presenter): ${error.message}`);
+  return presenterNet((data ?? []) as Array<{ id: string; amount: number; source: string; source_id: string | null; occurred_at: string }>);
+}
