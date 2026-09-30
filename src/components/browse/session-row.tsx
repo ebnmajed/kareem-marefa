@@ -35,6 +35,7 @@ export async function SessionRow({ session, locale, points, now = new Date() }: 
   const [t, tDays] = await Promise.all([getTranslations("browse"), getTranslations("sessions.days")]);
   const ended = session.phase === "ended" || session.phase === "cancelled";
   const lead = session.presenters[0];
+  const others = Math.max(0, session.presenters.length - 1);
   const spans = session.days.length > 1;
 
   const when = !session.startsAt
@@ -95,7 +96,12 @@ export async function SessionRow({ session, locale, points, now = new Date() }: 
             {lead ? (
               <>
                 <Avatar memberId={lead.memberId} displayName={lead.displayName} src={lead.avatarUrl ?? null} size={24} teamColor={lead.company?.teamColor ?? null} decorative />
-                <bdi>{lead.displayName ?? ""}</bdi>
+                <span className="min-w-0">
+                  <bdi>{lead.displayName ?? ""}</bdi>
+                  {/* ★ A co-presented session is not credited to one person (the lead's ruling on
+                      W18.11 item 1): the others in words — «وآخر» — never a second avatar. */}
+                  {others > 0 ? <> {t("card.others", { count: others, value: formatNumber(others) })}</> : null}
+                </span>
               </>
             ) : null}
             {lead && seatLine ? <span aria-hidden="true">·</span> : null}

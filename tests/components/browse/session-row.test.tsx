@@ -57,6 +57,30 @@ describe("SessionRow", () => {
     expect(screen.getByText("ممتلئة، 4 في الانتظار")).toBeInTheDocument();
   });
 
+  it("★ a co-presented session names the lead and the others in words — never only the first, never a second avatar", async () => {
+    const { container } = await mount(); // the fixture has two presenters
+    const line = [...container.querySelectorAll("p")].find((p) => p.textContent?.includes("سعد الحربي"))!;
+    expect(line).toHaveTextContent("سعد الحربي وآخر");
+    expect(line.textContent).not.toContain("نورة القحطاني");
+    expect(line.querySelectorAll("[data-slot=avatar], [aria-hidden=true] > span").length).toBeLessThanOrEqual(1);
+  });
+
+  it("a single presenter carries no «وآخر»", async () => {
+    await mount({ presenters: [{ memberId: "m-1", displayName: "سعد الحربي" }] });
+    expect(screen.queryByText(/وآخر/)).toBeNull();
+  });
+
+  it("three presenters: «وآخران»", async () => {
+    await mount({
+      presenters: [
+        { memberId: "m-1", displayName: "سعد الحربي" },
+        { memberId: "m-2", displayName: "نورة القحطاني" },
+        { memberId: "m-3", displayName: "سلمى الحربي" },
+      ],
+    });
+    expect(screen.getAllByText((_, el) => el?.tagName === "SPAN" && el.textContent === "سعد الحربي وآخران")).toHaveLength(1);
+  });
+
   it("the lead presenter wears the company's team ring", async () => {
     const { container } = await mount({
       presenters: [{ memberId: "m-1", displayName: "سعد الحربي", avatarUrl: null, company: { id: "c", name: "صنف", teamColor: "#FF9A2E" } }],

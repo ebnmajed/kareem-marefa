@@ -5639,18 +5639,24 @@ is 26 rem at every width (§4.36: no 1280 artboard).
    now shows one name. **No requirement that I can find asks for the others on a card**, so this is recorded rather than
    decided. It is one line to restore with the existing string. **For the lead to rule; I have not changed it** (this
    commit is the note only).
+   **Ruled: RESTORE** (the lead, after `d52b2e3b`): the lead presenter's ring and name as drawn, then «… وآخر /
+   وآخران / وآخرون» in words from `browse.card.others`, with no second avatar — naming only the first misattributes a
+   co-presented session. Restored in `session-row.tsx`, with three cases in `session-row.test.tsx` (two presenters,
+   one, three).
 2. **The pinned card's «تسجيل الحضور» link.** Browse no longer offers check-in from the list. It went with the pinned
    item (`DEC-206` §4.64). Check-in stays reachable from the event page and from the home post's `checkIn` action
-   (contract 3). Dropped by ruling, not by accident.
+   (contract 3). Dropped by ruling, not by accident. **Ruled: accepted as dropped.**
 3. **The level chip and up to three tags on each card.** The artboard's row draws neither. The level and tag *filters*
-   remain, and the eight top tags are above the list. No requirement puts them on a card.
+   remain, and the eight top tags are above the list. No requirement puts them on a card. **Ruled: accepted as dropped**
+   — the artboard omits them.
 4. **The no-JS path for the status and category controls.** They were link toggles and are `ui/menu`s now. Removal and
-   every applied filter are still links, and search is a no-JS form. Accepted by `DEC-207` N4.
+   every applied filter are still links, and search is a no-JS form. Accepted by `DEC-207` N4. **Ruled: accepted.**
 5. **The page's intro line** «ما يمكنك حضوره، مرتّبًا بالتاريخ.» The artboard draws the title only. The string is
-   still in `browse.json`, unread.
+   still in `browse.json`, unread. **Ruled: accepted as dropped; the key stays** (keys are stable).
 6. **The count inside each group's accessible name.** `SectionHeader`'s `count` used to put «(3)» into the heading, so
    the region was named «هذا الأسبوع (3)». The count is now «3 جلسات» in the header's actions: it is visible and read
    after the heading, but it is not part of the region's name. The specs match by regex and pass. Recorded as an
-   accessibility difference, not a defect.
+   accessibility difference, not a defect. **Ruled: accepted** — the region is named by its heading and the count is
+   read right after it; not worth a primitive change.
 7. **Moved, not dropped**: the company banner and `AvatarImportPrompt` are on the home (`components/feed/feed.tsx`
    carries both, `DEC-207` §6.1).
