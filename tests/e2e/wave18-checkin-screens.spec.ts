@@ -5,7 +5,7 @@
 //      rotation and «no reservation» (walk-ins are on), the earn panel draws the RULE's amount, the one
 //      submit is in the bottom bar.
 //   2. ★ A refused code does not move (DEC-206 §4.75): the alert under the boxes, and no animation
-//      running anywhere on the page.
+//      running anywhere in the check-in form (the live badge's dot, a status, pulses outside it).
 //   3. SCR-016 live: the code in two groups whose text is the six characters, the countdown, the
 //      count, the switch with its auto-close time; projection shows the code alone.
 //
@@ -123,8 +123,27 @@ test("★ SCR-014 a refused code does not move — the alert under the boxes, no
   await page.goto(`/ar/app/sessions/${sessionId}/check-in?error=invalid_code&code=ZZZZZZ`);
   const alert = main(page).getByRole("alert");
   await expect(alert).toContainText("الرمز غير صحيح");
-  const running = await page.evaluate(() => document.getAnimations().filter((a) => a.playState === "running").length);
-  expect(running).toBe(0);
+  // ★ Scoped to the check-in FORM — the boxes, the alert, the rules line, the earn panel and the bar.
+  // The page carries one legitimate loop outside it: the live badge's pulsing dot in the session row
+  // (`SessionStatusBadge`, DEC-073's live dot, off under reduced motion). That is a status, not the
+  // refusal; the rule is that the REFUSAL never moves (REQ-UIX-046, DEC-206 §4.75). Every running
+  // animation inside the form is named by its target, so a failure says what moves.
+  const running = await page.evaluate(() => {
+    const form = document.querySelector("#main form");
+    if (!form) return ["no form on the page"];
+    return document
+      .getAnimations()
+      .filter((a) => a.playState === "running")
+      .filter((a) => {
+        const el = (a.effect as KeyframeEffect | null)?.target as Element | null;
+        return !!el && form.contains(el);
+      })
+      .map((a) => {
+        const el = (a.effect as KeyframeEffect | null)?.target as Element | null;
+        return `${(a as CSSAnimation).animationName ?? "waapi"} on <${el?.tagName.toLowerCase()} class="${el?.getAttribute("class") ?? ""}">`;
+      });
+  });
+  expect(running).toEqual([]);
   await shoot(page, "scr014-refused");
 });
 
