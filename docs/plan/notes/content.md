@@ -5661,8 +5661,9 @@ home waits on three contracts: `NextForMe` (sessions), `session-cta`'s `rate` st
   (`:121`) becomes «اقترح جلسة، وتراجعها الإدارة وتجدولها» — no rule promises a week; (2) the presenter's company
   (`:48`, `:78`) is body-coloured text with a team-coloured dot beside it, not text in the team colour (§4.61: a
   colour from data is never a text colour, whose contrast nobody measured).
-- **Glyphs:** `InfoIcon` and the inline speech bubble stay until the lead adds a megaphone and a comment glyph to
-  `ui/icons` last in the wave, under contract 5's proof; then I swap both.
+- **Glyphs — done (`0b39e29e`):** the lead added `MegaphoneIcon` and `CommentIcon` to `ui/icons` last in the wave,
+  under contract 5's proof; the announcement wears the megaphone, the comment count `CommentIcon`, the inline bubble
+  is deleted, and the gallery names both («إعلان», «تعليقات»).
 - **For `sessions`, answered (Q1):** `poster` is not meant at 76 px — the row keeps `CardMedia` with
   `posterAspect()`; `teamName` optional needs the lead to release `poster.tsx` and the type.
 - ★ **The first 1280 capture's defect, and its cause:** both desktop posts drew the poster as a 40 px strip with
