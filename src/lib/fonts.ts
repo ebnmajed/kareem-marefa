@@ -42,10 +42,9 @@ export const plexArabic = IBM_Plex_Sans_Arabic({
 // which is also what `scripts/fonts/extract.mjs` reads to tell Arabic from Latin.
 // The bytes are the manifest's, by name: `fonts:check` compares what the build
 // emits with the manifest by hash, exactly as it did.
-const ARABIC = "U+6??,U+750-77F,U+870-88E,U+890-891,U+897-8E1,U+8E3-8FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC,U+102E0-102FB,U+10E60-10E7E,U+10EC2-10EC4,U+10EFC-10EFF,U+1EE00-1EE03,U+1EE05-1EE1F,U+1EE21-1EE22,U+1EE24,U+1EE27,U+1EE29-1EE32,U+1EE34-1EE37,U+1EE39,U+1EE3B,U+1EE42,U+1EE47,U+1EE49,U+1EE4B,U+1EE4D-1EE4F,U+1EE51-1EE52,U+1EE54,U+1EE57,U+1EE59,U+1EE5B,U+1EE5D,U+1EE5F,U+1EE61-1EE62,U+1EE64,U+1EE67-1EE6A,U+1EE6C-1EE72,U+1EE74-1EE77,U+1EE79-1EE7C,U+1EE7E,U+1EE80-1EE89,U+1EE8B-1EE9B,U+1EEA1-1EEA3,U+1EEA5-1EEA9,U+1EEAB-1EEBB,U+1EEF0-1EEF1";
-const LATIN = "U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD";
-const arabic = [{ prop: "unicode-range", value: ARABIC }];
-const latin = [{ prop: "unicode-range", value: LATIN }];
+// ★ The ranges are written out in every call: the font loader runs at compile time and
+// refuses anything but a literal («Font loader values must be explicitly written
+// literals»), so they cannot be shared through a constant.
 
 // The two display faces of the designer's baseline library (06 §7.1, §3.3):
 // a Kufi face for posters and a Naskh face for certificates. Declared here so
@@ -61,7 +60,7 @@ export const reemKufi = localFont({
   display: "swap",
   preload: false,
   adjustFontFallback: false,
-  declarations: arabic,
+  declarations: [{ prop: "unicode-range", value: "U+6??,U+750-77F,U+870-88E,U+890-891,U+897-8E1,U+8E3-8FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC,U+102E0-102FB,U+10E60-10E7E,U+10EC2-10EC4,U+10EFC-10EFF,U+1EE00-1EE03,U+1EE05-1EE1F,U+1EE21-1EE22,U+1EE24,U+1EE27,U+1EE29-1EE32,U+1EE34-1EE37,U+1EE39,U+1EE3B,U+1EE42,U+1EE47,U+1EE49,U+1EE4B,U+1EE4D-1EE4F,U+1EE51-1EE52,U+1EE54,U+1EE57,U+1EE59,U+1EE5B,U+1EE5D,U+1EE5F,U+1EE61-1EE62,U+1EE64,U+1EE67-1EE6A,U+1EE6C-1EE72,U+1EE74-1EE77,U+1EE79-1EE7C,U+1EE7E,U+1EE80-1EE89,U+1EE8B-1EE9B,U+1EEA1-1EEA3,U+1EEA5-1EEA9,U+1EEAB-1EEBB,U+1EEF0-1EEF1" }],
 });
 export const reemKufiLatin = localFont({
   src: "../../packages/fonts/99554d5210754377fe095595168cd44ea16fa84c6c21b3a37157f58a5fd66e8a.woff2",
@@ -69,7 +68,7 @@ export const reemKufiLatin = localFont({
   variable: "--font-reem-kufi-latin",
   display: "swap",
   preload: false,
-  declarations: latin,
+  declarations: [{ prop: "unicode-range", value: "U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" }],
 });
 
 export const amiri = localFont({
@@ -81,7 +80,7 @@ export const amiri = localFont({
   display: "swap",
   preload: false,
   adjustFontFallback: false,
-  declarations: arabic,
+  declarations: [{ prop: "unicode-range", value: "U+6??,U+750-77F,U+870-88E,U+890-891,U+897-8E1,U+8E3-8FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC,U+102E0-102FB,U+10E60-10E7E,U+10EC2-10EC4,U+10EFC-10EFF,U+1EE00-1EE03,U+1EE05-1EE1F,U+1EE21-1EE22,U+1EE24,U+1EE27,U+1EE29-1EE32,U+1EE34-1EE37,U+1EE39,U+1EE3B,U+1EE42,U+1EE47,U+1EE49,U+1EE4B,U+1EE4D-1EE4F,U+1EE51-1EE52,U+1EE54,U+1EE57,U+1EE59,U+1EE5B,U+1EE5D,U+1EE5F,U+1EE61-1EE62,U+1EE64,U+1EE67-1EE6A,U+1EE6C-1EE72,U+1EE74-1EE77,U+1EE79-1EE7C,U+1EE7E,U+1EE80-1EE89,U+1EE8B-1EE9B,U+1EEA1-1EEA3,U+1EEA5-1EEA9,U+1EEAB-1EEBB,U+1EEF0-1EEF1" }],
 });
 export const amiriLatin = localFont({
   src: [
@@ -92,7 +91,7 @@ export const amiriLatin = localFont({
   display: "swap",
   preload: false,
   adjustFontFallback: "Times New Roman",
-  declarations: latin,
+  declarations: [{ prop: "unicode-range", value: "U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" }],
 });
 
 // The interface's display face — «ساحة اللعب», DEC-183 §4.4 and §4.5,
@@ -118,7 +117,7 @@ const balooArabic = localFont({
   display: "swap",
   preload: false,
   adjustFontFallback: false,
-  declarations: arabic,
+  declarations: [{ prop: "unicode-range", value: "U+6??,U+750-77F,U+870-88E,U+890-891,U+897-8E1,U+8E3-8FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC,U+102E0-102FB,U+10E60-10E7E,U+10EC2-10EC4,U+10EFC-10EFF,U+1EE00-1EE03,U+1EE05-1EE1F,U+1EE21-1EE22,U+1EE24,U+1EE27,U+1EE29-1EE32,U+1EE34-1EE37,U+1EE39,U+1EE3B,U+1EE42,U+1EE47,U+1EE49,U+1EE4B,U+1EE4D-1EE4F,U+1EE51-1EE52,U+1EE54,U+1EE57,U+1EE59,U+1EE5B,U+1EE5D,U+1EE5F,U+1EE61-1EE62,U+1EE64,U+1EE67-1EE6A,U+1EE6C-1EE72,U+1EE74-1EE77,U+1EE79-1EE7C,U+1EE7E,U+1EE80-1EE89,U+1EE8B-1EE9B,U+1EEA1-1EEA3,U+1EEA5-1EEA9,U+1EEAB-1EEBB,U+1EEF0-1EEF1" }],
 });
 const balooLatin = localFont({
   src: "../../packages/fonts/9716a70e65cec6997acad8a854cf3510169faa76884d70f7c6f043b722c9e0cc.woff2",
@@ -126,7 +125,7 @@ const balooLatin = localFont({
   variable: "--font-baloo-latin",
   display: "swap",
   preload: false,
-  declarations: latin,
+  declarations: [{ prop: "unicode-range", value: "U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" }],
 });
 /** Both scripts' variables, for the one element that carries the scope's class. */
 export const balooBhaijaan = { variable: `${balooArabic.variable} ${balooLatin.variable}` };
