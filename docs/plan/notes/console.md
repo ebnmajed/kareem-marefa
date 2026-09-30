@@ -3119,3 +3119,193 @@ measures its scrim and its own bottom edge directly rather than trusting the pic
 names touch («السبت» «الجمعة» «الخميس» run together, no space) — present outside the scope and on
 `main` too, so not a wave-15 regression. `rtl-datetime-picker.tsx` is mine; this goes on my list for
 whichever screens wave next touches it.
+
+
+---
+
+## Wave 17 — plan (DEC-199, M19; planning only, no code edited)
+
+Measured on `wave-17/every-primitive` at `c073ce3b`, read-only. The walk scripts are throwaway and not committed.
+
+### 1 · K1 — the register's guard, `tests/unit/console-register.test.ts` (C6, `REQ-UIX-053`)
+
+**Dry run of the import graph today — ★ CLEAN.** Walker = `public-graph.test.ts`'s (value imports only, `@/` and relative
+specifiers, `import type` erased), plus dynamic `import()`. Roots `src/app/[locale]/app/{admin,platform}/**` reach **292
+files**, 39 of them `components/ui/*` (every one of the six, plus `icon-button`, `link`, `page-header`, `prose`,
+`reorderable-list`, `route-error`, `route-progress`, `section-header`, `skeleton`, `submit-button`, `toast`, …). Against the
+forbidden set — `src/lib/ui/**` (`confetti`, `count-up`, `duration`, `moment`, `reduced-motion`), `components/ui/objects/**`,
+`components/ui/sticker.tsx`, any `moment-*`, and (my addition, see Q1) `rank-row`, `race-bar`, `level-card`, `session-cta`,
+`code-input`, `story-ring`, `reaction-bar`, `poster` — **the only hit is `components/ui/scope-portal.tsx`**, via
+`sheet.tsx` ← `admin/audit/audit-filters.tsx` (and via `menu.tsx` ← `app/layout.tsx` for the shell). That is the
+portal-landing infrastructure of `DEC-188`, not a celebration: it is **allowed by name**, with the reason. Nothing
+else. No shared component pulls a moment, confetti, an object or a sticker in. The walk from `app/[locale]/app/layout.tsx`
+(39 files) is clean as well, so the shell is not the leak.
+
+**Assertions** (one file, walker copied not imported — `public-graph.test.ts` is the lead's and exports nothing):
+1. *The walk is real*: roots exist; reached set > 150 files and contains `components/admin/admin-rail.tsx`,
+   `components/ui/data-table.tsx`, `components/platform/platform-nav.tsx`.
+2. *Roots*: `src/app/[locale]/app/admin/**`, `src/app/[locale]/app/platform/**`, and `src/app/[locale]/app/layout.tsx`
+   (the shell the console renders in). After M1 the layout will import `ui/scope.tsx` — allowed by name with
+   `scope-portal.tsx`; nothing else.
+3. *Forbidden never reached* — `lib/ui/**`, `components/ui/objects/**`, `components/ui/sticker.tsx`, `/moment-*`, and the
+   five game/celebration primitives above. The failure message prints the **import chain** (a parent map, as in my
+   scratch walk), because «reached via X» is the only actionable fact.
+4. *The console renders no scope of its own*: no reached staff file (under the two roots and `components/{admin,platform,
+   designer,branding,email,survey}`) contains `<PlayScope` — the layout's is theirs (C1). (`theme-dark` is C1's
+   `scope-root` test, not mine; the banner is the one staff file that says it — §2.)
+5. *The six + the picker declare no animation*: with comments stripped, `ui/{data-table,combobox,menu,tabs,sheet,
+   date-time}.tsx` and `components/admin/rtl-datetime-picker.tsx` match none of `animate-`, `transition` (as a class
+   token), `duration-\d`, `ease-(in|out|linear)`, `delay-\d`, `motion-(safe|reduce):`, `@keyframes`, `.animate(`,
+   `useCountUp`. **Measured set today is EMPTY** for all seven files (the one hit, `sheet.tsx:23`, is a comment about the
+   `--dur-*` tokens). So the assertion pins ∅, not «today's» non-empty set.
+6. *The staff tree declares none either*: the same regex over every file under the two roots and the six component
+   dirs. **Measured: zero** (the only `duration-` substring is the `DurationInput` import path in `scoring/rules-table.tsx`
+   and `reminders/reminders-form.tsx`, hence `duration-\d`, and `transition` matched only as a quoted class token —
+   `transitionActions` and `runTransition` are identifiers).
+   `components/designer/**` is included for classes, but its canvas, overlay and the renderer's output are not scanned
+   for anything else (not mine).
+
+### 2 · K2 — the staff side's raw palette (C4)
+
+Measured over `src/app/[locale]/app/{admin,platform}/**` and `src/components/{admin,platform,designer,branding,email,
+survey}/**`: **17 hits in 12 files.** No `theme-dark` class is *applied* anywhere in staff files; the only mention is the
+banner's (below). No `slate-*`, no `[var(--color-navy…)]` brackets outside the six primitives.
+
+| # | file:line | class | role | becomes |
+|---|---|---|---|---|
+| 1 | `admin/sessions/page.tsx:114` | `bg-navy-950 … text-white hover:bg-navy-900` | a primary link-button (create) | `bg-accent text-on-accent hover:bg-accent-deep` |
+| 2 | `admin/layout.tsx:192` | `bg-navy-950 … text-white` | skip-link, filled mark | `bg-accent text-on-accent` |
+| 3 | `platform/layout.tsx:43` | same | skip-link | same |
+| 4 | `admin/companies/companies-table.tsx:48` | `hover:bg-silver-100 pg:hover:bg-hover` | hover ground (already paired) | `hover:bg-hover` (drop the pair) — **lead's row as custodian** (DEC-195 §3 file); I do not touch it unless told |
+| 5 | `platform/orgs/org-actions.tsx:140` | `bg-silver-100` | a code well | `bg-raised` |
+| 6 | `components/admin/admin-rail.tsx:299` (×2 on one line) | `bg-silver-100` current; `hover:bg-silver-100` | current item = raised fill; hover = hover ground | `bg-raised` / `hover:bg-hover` |
+| 7 | `components/platform/platform-nav.tsx:58` (×2) | same | same | same |
+| 8 | `rtl-datetime-picker.tsx:291, 297` | `hover:bg-silver-100 pg:hover:bg-hover` | hover ground | `hover:bg-hover` |
+| 9 | `rtl-datetime-picker.tsx:324` | `bg-navy-950 text-white pg:bg-accent pg:text-on-accent` and `hover:bg-silver-100 pg:hover:bg-hover` | selected day; day hover | `bg-accent text-on-accent` / `hover:bg-hover` |
+| 10 | `rtl-datetime-picker.tsx:386` | `bg-navy-950 … text-white hover:bg-navy-900 pg:…` | «تم» primary | `bg-accent text-on-accent hover:bg-accent-deep` |
+| 11 | `designer/layer-list.tsx:136` | `bg-silver-100` on a selected row | a selected/raised fill | `bg-raised` |
+| 12 | `designer/inspector.tsx:654` | same (checked swatch/toggle) | selected | `bg-raised` |
+| 13 | `designer/variant-strip.tsx:55` | same (selected tile) | selected | `bg-raised` |
+| 14 | `designer/variant-strip.tsx:58` | `bg-navy-900` | **a backing behind a rendered poster thumbnail** (stands in while the image loads / letterboxes it) | ★ **fits none** — it is not a mark or a fill of the UI but the ground artwork sits on. Proposal: `bg-canvas` (the ground). Studio chrome, not the canvas or renderer; I will change it only if you confirm |
+| 15 | `survey/results.tsx:108` | `bg-silver-100` | a well holding a free-text answer | `bg-raised` |
+
+Rows 8–10 sit in a file that already pairs the variant; I collapse pair → semantic name only where C4's table says the
+semantic name falls back correctly outside the scope (it does for `accent` and `hover`; for `raised` see Q2).
+**Not raw palette, listed for completeness:** `branding/colour-field.tsx:65` `"#9ca3af"` (the colour input's fallback
+*value*, data), `admin/companies/swatch.tsx:9` and `branding/brand-preview.tsx` inline `style` colours (a colour from data
+is drawn as itself — `DEC-183` contract 3). Neither is touched.
+
+**★ The impersonation banner** (`components/platform/impersonation-banner.tsx:69`). It stops carrying `.theme-dark`
+without a single class of its own being needed: the `className` `[.theme-dark_&]:border-live-on-dark/50
+[.theme-dark_&]:bg-transparent` is **already what `Panel tone="live"` does in a dark scope** (`panel.tsx:28`,
+`pg-dark:border-live-on-dark/50 pg-dark:bg-transparent`; the file's own comment says so), and `Badge tone="live"` with
+its lock glyph carries `pg-dark:` too (`badge.tsx:67`). Change: delete the `className` override and rewrite the header
+comment (the console is no longer light, `/no-access` is no longer the only dark context). It stays unmistakable by
+three things that are semantic already: the **amber `--color-live-on-dark` border**, the **lock-icon `live` badge**
+(«seen before it is read», `16` §3 principle 3) and the org's name in `text-fg-heading` on its own line, above a
+full-width stop control on a phone. **The one doubt:** the light console had a *filled* amber-cream panel; the dark form is an
+outline at 50 % with no fill, which is quieter on a dark page than a fill was on a light one. If the lead wants it louder
+that is a `panel.tsx` `live` decision (a `pg-dark:bg-live-on-dark/10` tint), content's file — a request, not mine. Its
+test (`tests/components/platform/impersonation-banner.test.tsx`) asserts no class, so nothing moves there.
+
+### 3 · K3 — the six on the dark ground, read from the classes as they stand
+
+All six are `variant` kind and carry `pg:` pairs; each still names raw `silver-*`/`navy-*` beside its pair (10 occurrences:
+`data-table` 2, `combobox` 5, `menu` 3 incl. `bg-canvas`, `tabs` 1, `sheet` 1 bracket `--color-navy-950`, `date-time` 0 — it
+wraps the picker's classes). I expect:
+- **`data-table`** — row rule is `border-edge` (a semantic name; dark value under the scope), hover `pg:hover:bg-hover`
+  (`hover:bg-silver-100/60` is the outside fallback). The bulk bar is `pg:bg-raised` with `border-edge-strong`. **Sticky
+  `<th>`**: its ground is whatever `bg-` it declares; if it is `bg-canvas` it follows `--color-canvas` and is fine — I
+  will check it on a scrolled table in the capture, because a sticky header with the wrong ground shows rows through it.
+  Card mode below `md`: cards are `Card`'s (content's), unaffected.
+- **`combobox`** — chips `pg:bg-raised`, the popup/listbox `pg:bg-surface` with `border-edge-strong` (no shadow on the
+  dark ground, `pg:shadow-none`, so the edge carries the popover — must be visible; I check contrast of
+  `edge-strong` on `surface` in the capture). Highlight `pg:bg-hover` — the option under the pointer vs. the selected one are
+  the same fill, as today.
+- **`menu`** — `pg:bg-surface pg:shadow-none`, `border-edge`: **weaker than combobox's `edge-strong`** — a menu over a table
+  row of near-equal surface may lose its edge. Watch item; if it does, `border-edge-strong` is a one-token change.
+- **`tabs`** — active underline `pg:data-[state=active]:border-accent` (lime): on the dark ground it is high-contrast and
+  fine; the *inactive* text is `text-fg-body`. The count chip is `pg:bg-raised`.
+- **`sheet`** — scrim `pg:bg-scrim`; panel `pg:bg-surface pg:shadow-none` with `border-edge`: the side edge is the only
+  separation from the scrim-darkened page. Portal lands in the scope (`usePlayPortal`) — needs the root scope to carry
+  the landing element for the phone drawer (`admin-rail`), which C1 must not forget.
+- **`date-time`/picker** — see rows 8–10; the weekday-names-touching bug at 320 px is carried (already recorded above).
+None declares an animation (§1.5).
+
+### 4 · Every existing assertion I expect to move
+
+Only class-string assertions in the six primitives' scope tests, **and only if** I collapse a raw+pair to a semantic name
+(Q2). If yes (each becomes a STATUS ledger line, same commit): `tests/components/ui/tabs-scope.test.tsx:31`
+(`bg-silver-100`→`bg-raised`), `combobox-scope.test.tsx:35, 46, 74` (`bg-silver-100`→`bg-raised`,
+`hover:bg-silver-200`→`hover:bg-hover`, highlight `bg-silver-100`→`bg-hover`), `data-table-scope.test.tsx:69, 80`
+(`bg-silver-100`→`bg-raised`; `hover:bg-silver-100/60`→`hover:bg-hover`), `sheet-scope.test.tsx:59`
+(`bg-[var(--color-navy-950)]/60`→`bg-scrim`), `date-time-scope.test.tsx:53, 60` (`bg-navy-950`,`text-white`→`bg-accent`,
+`text-on-accent`), `menu-scope.test.tsx:50` (`bg-silver-100`→`bg-raised`). **If no** (the six keep their raw fallbacks and
+`no-raw-palette` treats `ui/` pairs as allowed, as Step 0 describes), **none of these move** and the wave changes no
+assertion of mine. No component/unit/e2e test under `tests/components/{admin,platform,designer,survey}` or
+`tests/e2e/{admin,console,wave*-console}*` names a raw class (grep clean); `impersonation-banner.test.tsx` names none.
+New files only otherwise: `tests/unit/console-register.test.ts`, a console e2e spec (K4).
+
+### 5 · Looks wrong on the dark ground for a reason that is not a class or one of my six — listed, not fixed
+
+1. **`/app/admin/designer/[documentId]` and `templates/{posters,certificates}`** — the canvas draws a *light* document
+   and `canvas.tsx:478`/`template-preview.tsx:95` are iframes with their own light ground; a light sheet on a dark page is
+   correct (it is the artefact) but its chrome edge needs to read. Renderer/overlay are not mine (`DEC-096`).
+2. **`/app/admin/emails`** — `preview-pane.tsx:114` iframe is a light mail; phone/desktop/forced-dark preview frames.
+3. **`/app/admin/branding`** — `brand-preview.tsx:36–73` paints an org's *light* and *dark* palettes from inline `style`
+   (data, correct) inside a dark page; the swatches' own borders (`colours.edge`) may vanish against the ground. And
+   `colour-field.tsx:58` is a native `<input type="color">`; `color-scheme: dark` is set on the scope
+   (`globals.css:365`) so the native picker follows.
+4. **★ `Badge tone="live"` pulses** (`badge.tsx:140`, `motion-safe:animate-pulse` on the dot). It renders in console
+   tables (`/app/admin/sessions`, the impersonation banner). `REQ-UIX-053`/`03-motion.md:12`: «tables… admin surfaces never
+   animate» — this is a status affordance in a table cell, not one of my six, and content's file. For the lead to rule:
+   accept it as status, or a `console` opt-out. Same for `skeleton`/`progress`'s indeterminate pulse (loading, not
+   celebration; I leave them).
+5. `Panel tone="live"/…` in the dark scope drops its fill (outline form): several admin screens use toned panels as
+   notices (`/app/admin/settings`, `/app/platform` alerts); they become outlines — legible, but flatter than the light
+   console's washed fills.
+6. `text-error`/`text-success` and toned badges throughout tables (`/app/admin/audit`, `exports`, `emails` deliveries)
+   depend entirely on the lead's `globals.css` on-dark remap (C4).
+7. The admin rail's **phone drawer** (`sheet`) — needs the scope's portal landing element (C1).
+8. `/app/admin/companies` — the team-colour swatch (`swatch.tsx`) is data-coloured and now sits on the dark ground;
+   a dark team colour on `surface` may need a visible ring (lead's file as custodian).
+
+### 6 · Questions for the lead (none blocks the plan)
+- **Q1** — may the guard's forbidden set include `rank-row`, `race-bar`, `level-card`, `session-cta`, `code-input`,
+  `story-ring`, `reaction-bar`, `poster` (none is reached today), or only the four the requirement names?
+- **Q2** — do the six collapse `raw + pg:pair` to the semantic name (fewer classes, the `-scope` assertions above move,
+  each a ledger line), or keep the raw fallback as `variant` allows (no assertion moves)? Default if unanswered: **keep** —
+  no behaviour reason to spend six ledger lines.
+- **Q3** — row 14 (`variant-strip.tsx:58`, `bg-navy-900`, «fits none»): `bg-canvas`?
+- **Q4** — the banner's dark form is an outline (quieter than the light fill): accept, or a `panel.tsx` tint request?
+- **Q5** — `Badge live`'s pulsing dot in console tables (§5.4).
+- **Disagreement with `docs/design/`:** none new. (`04-components.md:23` «no animation» for the console's primitives holds
+  with a measured empty set.)
+
+### Wave 17 — result (K1, K2, K4; K3 from the sweep captures)
+
+Commits: `a42fb18f` (K1, `tests/unit/console-register.test.ts`), `cd8d5192` (K2, 12 staff files + `impersonation-banner.tsx` + the two
+`date-time-scope` assertions), `abb1b8d9` and `db6d3017` (K4, `wave17-console-screens.spec.ts`, and the open-menu capture repair in
+`wave15-console-team-colour.spec.ts`).
+
+**K3 — from `wave11-sweep-admin-*` / `wave11-sweep-platform-*` at native size (sessions, members, audit, companies, schedule):**
+nothing of mine is wrong. The card list below `md`, the raised select wells, the `date-time` trigger and the status outlines read on the
+dark ground. **Not judged from the sweep** (it opens none): `menu` edge against a row, `combobox` popup, `sheet` scrim and edge, the
+`date-time` popover, a sticky `<th>` — to be judged from the `wave17-console-*` captures.
+
+**Seen and not mine (listed, not fixed):**
+1. `/app/admin/members` cards: the row-action trigger is a bare «…» with no boundary — faint as a control.
+2. `Badge live`'s pulsing dot in console tables (ruled: stays, `DEC-073`).
+3. Full-page captures show the phone tab bar and the sticky save bar overlaid mid-page — a capture artefact.
+4. `/app/admin/sessions` was an empty state in the sweep, so no data-table rows were seen there.
+
+**K3 — from the `wave17-console-*` captures (build `6e5361d7`).** `audit-sheet`: the sheet reads on the dark ground — a `surface`
+panel with a visible top edge and handle over a scrim that dims the page to near-black; the field's lime focus ring is legible on it.
+`rail-drawer`: the drawer's edge holds against the dimmed page; «الجلسات» current is a `raised` well behind the label — present but
+quiet (the rail's class, `admin-rail.tsx`, not mine; `aria-current` is asserted). `companies-menu`: the lead opened it — surface, edge
+and items read. `sessions-table` / `members-table`: the cards and the status outlines read.
+**`schedule-picker` did not show the popover** — the picture is the closed trigger (the spec's locator opened, but did not bring, the
+popover into the frame). The spec is corrected to target the trigger's `aria-controls` element and scroll it into view; the popover's
+edge (`border-edge` on `pg:bg-surface`, no shadow — the same pair as the menu, which reads) is judged from its classes until that
+capture is rerun. **K3 closed** for the five that were seen; the picker popover is one capture from closed.
+Seen, not mine: the rail's current-item well is quiet.

@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import type { SlotProps } from "@/components/sessions/slots";
 import { getRatingsSummary } from "@/lib/dal/ratings";
 import { formatNumber } from "@/components/sessions/numerals";
+import { buttonClass } from "@/components/ui/button";
 
 // The `Ratings` slot (TEAM.md §2, SCR-012 item 10): a SUMMARY, not the form
 // — SCR-015 (`app/sessions/[id]/rate`) is the form, this is the prompt or
@@ -76,7 +77,7 @@ export async function Ratings({ sessionId, locale }: SlotProps) {
           ) : eligibility.eligible ? (
             <Link
               href={`/app/sessions/${sessionId}/rate`}
-              className="inline-flex h-11 items-center rounded-field bg-[var(--btn-bg)] px-6 text-label text-[var(--btn-fg)] hover:bg-[var(--btn-bg-hover)]"
+              className={buttonClass("primary", "md")}
             >
               {t("prompt.cta")}
             </Link>

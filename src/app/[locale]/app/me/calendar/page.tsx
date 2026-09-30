@@ -7,7 +7,7 @@ import { getPreferenceMatrix } from "@/lib/dal/notifications";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Panel } from "@/components/ui/panel";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Locale } from "@/i18n/routing";
 import { disconnect } from "./actions";
@@ -92,7 +92,7 @@ export default async function CalendarPage({
             // eslint-disable-next-line @next/next/no-html-link-for-pages
             <a
               href="/api/calendar/connect"
-              className="inline-flex h-12 items-center rounded-field bg-[var(--btn-bg)] px-7 text-label text-[var(--btn-fg)] hover:bg-[var(--btn-bg-hover)]"
+              className={buttonClass("primary", "lg")}
             >
               {t("connection.connect")}
             </a>

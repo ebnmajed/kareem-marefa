@@ -40,7 +40,7 @@ export default async function PlatformLayout({
   return (
     <div>
       <ImpersonationBanner locale={locale} />
-      <a href="#platform-content" className="skip-link rounded-field bg-navy-950 px-4 py-2 text-label text-white">
+      <a href="#platform-content" className="skip-link rounded-field bg-accent px-4 py-2 text-label text-on-accent">
         {t("skipToContent")}
       </a>
       <div className="md:grid md:grid-cols-[auto_1fr] md:items-start md:gap-10">

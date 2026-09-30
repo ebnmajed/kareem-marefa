@@ -195,6 +195,13 @@ const CROSS_CUTTING = {
   'REQ-UIX-028': 'every token every primitive reads, on every screen',
   'REQ-UIX-029': 'every heading and every big number inside the scope',
   'REQ-UIX-030': 'all 37 primitives, wherever they render',
+  // Added with wave 17 (DEC-199). Each is a property of every screen or of every primitive: the
+  // playground is the root of every layout but the public site's, and the gate reads a directory.
+  'REQ-UIX-049': 'every surface that is not one of the five public routes',
+  'REQ-UIX-050': 'every file in src/components/ui/',
+  'REQ-UIX-051': 'every screen’s title, headings, text, links, icon buttons and submits',
+  'REQ-UIX-052': 'every glyph on every screen',
+  'REQ-UIX-053': 'every console screen, under /app/admin and /app/platform',
 }
 
 // ── gap reports ───────────────────────────────────────────────────────────

@@ -4912,3 +4912,279 @@ prototype puts «مباشر» inside the live ring; here the ring holds the lett
   clipped), the article draws none, and nothing is set that the card's nested controls inherit. **Lesson: a focus ring
   is proven by pixels, not by geometry** — the gallery spec samples six points inside the edges against the `--ring`
   the scope computes.
+
+---
+
+## Wave 17 — plan (`DEC-199`, M19) — planning only, no code edited
+
+Measured on `wave-17/every-primitive` at `c073ce3b`. Everything below is read from source; nothing was built or
+opened in a browser, so §4 is what the source says will happen, not what was seen.
+
+### 1 · The ten demos (N1, contract 3)
+
+**The shape a demo has today** (`(dev)/ui/playground.tsx`): a named export `<Name>Demo` from
+`demos/<primitive>.tsx`; its root element carries `data-demo="<primitive>"`; it renders **no scope** (the lead's
+`Ground` stands it on both grounds); literals only, Arabic, no DAL, no session, no message catalogue; a Server
+Component unless it needs state; it takes `ground: DemoGround` only when it names an `id` or a radio group. The lead
+adds `{ file, title, node: () => <XDemo /> }` to `DEMOS` — a function, never an element. Mine follow all of it.
+
+| Demo file | Export | Client? | States shown — from `ui/index.ts` as it stands |
+|---|---|---|---|
+| `demos/button.tsx` | `ButtonDemo` | no | the six `ButtonVariant`s (`primary`, `secondary`, `ghost`, `danger`, `signal`, `quiet`) × the three `Size`s; `pending` with the label kept, once with `pendingLabel` and once without; `disabled`; `iconStart` and `iconEnd` (a directional chevron, so the mirror is seen); `trailing` (a capacity figure — the split layout inside the scope); a long two-line label at `lg` in a 326 px box (the `min-h-13` case); `className="w-full"`; `ButtonLink` in `primary` and `secondary`, one with `trailing` |
+| `demos/icon-button.tsx` | `IconButtonDemo` | no | the six variants at `md`; the three sizes in `ghost`; `pending` (the spinner, name kept); `disabled`; `aria-disabled` (the form `reorderable-list` and the lightbox use) |
+| `demos/submit-button.tsx` | `SubmitButtonDemo` | no (it renders a client component with serialisable props) | inside a `<form>` with no action: at rest; `pending` forced by the prop, with `pendingLabel`; `disabled`; a `secondary` one at `md`. `useFormStatus`'s own pending cannot be held still from props — the forced prop is the same render path (`pending ?? status.pending`) |
+| `demos/link.tsx` | `LinkDemo` | no | a link in a sentence; `quiet`; a link with a Latin label in an Arabic run (`<bdi>`); a link carrying a caller's class (the breadcrumb's `hover:underline` form); an external one with `target="_blank"`. ★ **The pending dot is not reachable from props** — question Q2 |
+| `demos/prose.tsx` | `ProseDemo` | no | `size="md"` and `size="sm"`, each with two paragraphs, an `h2`, an `h3`, a `ul`, an `ol`, a link, a Latin run and a figure inside the Arabic, and a paragraph with full tashkeel (line-height and nothing clipped) |
+| `demos/section-header.tsx` | `SectionHeaderDemo` | no | `as="h2"` title only; with `count`; with `description`; with `actions` (a `quiet` button); all four together with a long title that wraps at 390 px; `as="h3"` alone and with `count` |
+| `demos/page-header.tsx` (exists, mine this wave) | `PageHeaderDemo` | no | **split**: it keeps `PageHeader` only and gains states — title only; the full form it has now (breadcrumb, eyebrow, status, description, meta chips, actions); a long title beginning with a Latin word; breadcrumb of three with no eyebrow. `SectionHeader` and `Prose` move to their own files. Its stale header comment («the titles keep the face they have») is rewritten |
+| `demos/reorderable-list.tsx` | `ReorderableListDemo` | **yes** — its props are functions (`DEC-159`) | the three questions as today (`controls="side"`, `md`); `size="sm"`; `renderActions` (a remove `IconButton`); `controls="inline"` with a card-shaped item placing `context.controls` in its header; `disabled`; a one-item list (both arrows inert). The move itself is pressed in the spec |
+| `demos/icons.tsx` | `IconsDemo` | no | every exported glyph, by export name, at the body size (`text-body`) and the display size (`text-play-md`); the prop-driven forms beside the base: `direction` ×4 on the two directional glyphs, `filled` on the four that take it |
+| `demos/route-progress.tsx` | `RouteProgressDemo` | yes | ★ **the visible bar is not reachable from props** (`delayMs` only) — question Q3 |
+
+**`icons` enumerates the module, it keeps no list.** `import * as Icons from "@/components/ui/icons"` and
+`Object.entries(Icons).filter(([name, v]) => name.endsWith("Icon") && typeof v === "function")`. It survives `tsc` and
+the boundary: `(dev)/ui/page.tsx:2` does exactly this today in a Server Component (`icons.tsx` has no `"use client"`),
+and `tests/components/ui/icons-playground.test.tsx:61` does the same. Two things enumeration cannot discover, both
+additive — a missing entry loses a variant or a caption, never a glyph:
+- the props a glyph takes (`direction`, `filled`; `SpinnerIcon`'s required `label`) — a small table keyed by export name;
+- the Arabic caption `DEC-079` asks for. `ICON_NAMES` lives in `page.tsx` (the lead's). I would carry it in the demo
+  as **captions**, with the export name always shown in a `<bdi dir="ltr">` and the Arabic word beside it when the
+  table has one. **Request to the lead:** delete `page.tsx`'s own icons section and `ICON_NAMES` when wiring, so the
+  glyphs stand in one place.
+
+**`reorderable-demo.tsx`.** It is outside `demos/`, has no `data-demo` root, and `page.tsx:17` and `playground.tsx`
+import it. I create `demos/reorderable-list.tsx` and leave `reorderable-demo.tsx` untouched until the lead has
+rewired both imports; then I `rm` it. Nothing breaks in between.
+
+**Titles for `DEMOS`** (the lead's to place): «الزرّ» · «زرّ الأيقونة» · «زرّ الإرسال» · «الرابط» · «النص الطويل» →
+«النص المتصل» (since «النص الطويل» is `textarea`'s) · «عنوان القسم» · «عنوان الصفحة» · «الأيقونات» · «شريط التنقّل».
+
+### 2 · The member side's raw palette (N2, contract 4) — every hit
+
+The measurement: `(navy|silver|slate)-NNN`, `white`/`black` after a colour-utility prefix, and `--color-*` inside
+brackets, over the twenty-four directories of my edit list. **No hex, no `rgb()`, no `slate-*`, no `*-white`,
+no `*-black`.** One `black` is a CSS mask's alpha in `session-settings-strip.tsx:52`, not a colour, and stays.
+
+**A · Raw palette names — 12 classes in 10 files**
+
+| File:line | Class | Role there | Becomes |
+|---|---|---|---|
+| `app/sessions/[id]/loading.tsx:18` | `bg-navy-950` | the skeleton's copy of the hero's dark band | **fits none** — F1 |
+| `app/sessions/[id]/loading.tsx:19` | `[&_.animate-pulse]:bg-navy-800` | recolours the skeleton bars for that band | **fits none** — F1 |
+| `s/[id]/page.tsx:138` | `bg-silver-100` | the well behind the card image while it loads | `bg-raised` |
+| `verify/[code]/page.tsx:104` | `bg-silver-100` | the revoked notice's fill, at rest | `bg-raised` |
+| `components/sessions/event-hero.tsx:77` | `var(--color-navy-950)` and `var(--color-navy-800)` in one `bg-[linear-gradient(…)]` | the hero band's ground on a phone | **fits none** — F2 |
+| `components/sessions/action-card.tsx:324` | `bg-silver-100` | a count chip inside a `secondary` button, at rest | `bg-raised` |
+| `components/browse/filter-sheet.tsx:120` | `bg-silver-100` | the same chip, inside a `secondary` `sm` button | `bg-raised` |
+| `components/event/star-rating.tsx:86` | `hover:bg-silver-100` | a star's hover ground | `hover:bg-hover` |
+| `components/notifications/bell.tsx:28` | `hover:bg-silver-100` | the bell link's hover ground | `hover:bg-hover` |
+| `components/notifications/preference-matrix.tsx:54` | `bg-silver-100` | the «on» cell — a pressed toggle, at rest | `bg-raised` — but see F5 |
+| `components/posters/session-poster.tsx:60` | `bg-silver-100` | the well behind a poster image while it loads | `bg-raised` |
+
+**B · `var(--color-canvas)` in brackets — 3 in 3 files. ★ These are white patches inside the scope, and a regex for
+palette names does not find them.** `--color-canvas` is `var(--bg)` resolved at `:root`, so in brackets it stays
+`#ffffff` inside the scope — the lead's own dialog finding of wave 15 (`wave15-sessions-gallery.spec.ts:127`).
+**Request: `no-raw-palette.test.ts` matches `var(--color-` inside a class too**, or these pass the gate as light patches.
+
+| File:line | Class | Role there | Becomes |
+|---|---|---|---|
+| `components/browse/filter-sheet.tsx:214` | `bg-[var(--color-canvas)]` | the sticky footer's ground, which must equal the sheet's own | **fits none cleanly** — F3 |
+| `components/event/comment-composer.tsx:221` | `bg-[var(--color-canvas)]!` | the mention popup's ground, over `Panel`'s own | **fits none cleanly** — F4 |
+| `components/me/tab-strip.tsx:94` | `var(--color-canvas)` as a gradient stop in an arbitrary `[background:…]` | the fade at the strip's end, into the page's ground | **fits none** — F6 |
+
+**C · `.theme-dark` — 2 in 2 files:** `components/sessions/event-hero.tsx:77` and `components/photos/lightbox.tsx:157`.
+**D · Nested `<PlayScope>` — 5 in 5 files** (the lead's, M1; listed so the count is on the page):
+`app/sessions/[id]/page.tsx:180`, `app/sessions/[id]/check-in/page.tsx:81`, `components/scoring/points-head.tsx:95`,
+`member-board.tsx:93`, `company-board.tsx:84`. See Q1 for who removes C.
+
+**E · Context variables in brackets where a utility exists — 12 in 9 files.** Not raw palette: each reads a variable
+the scope reassigns, so each renders the playground's value. C4's last row («never a `var()` in brackets for a colour
+that has a utility») reads as covering them; **I would rename them only if the lead says they are in the gate.**
+
+| File:line | Class | Would become |
+|---|---|---|
+| `app/me/calendar/page.tsx:95` | `bg-[var(--btn-bg)] text-[var(--btn-fg)] hover:bg-[var(--btn-bg-hover)]` | `bg-accent text-on-accent` + no hover name in the table — and see §4.6 |
+| `components/event/ratings.tsx:79` | the same three | the same |
+| `components/notifications/bell.tsx:41` | `bg-[var(--btn-bg)] text-[var(--btn-fg)]` (the unread count) | `bg-accent text-on-accent` |
+| `components/me/tab-strip.tsx:71` | `border-[var(--btn-bg)]` (the current tab's underline) | `border-accent` |
+| `components/event/comment-composer.tsx:228` | `hover:bg-[var(--btn2-bg-hover)]` | `hover:bg-hover` |
+| `components/event/comment-list.tsx:178`, `:207` | `divide-[var(--edge)]`, `border-[var(--edge)]` | `divide-edge`, `border-edge` |
+| `app/sessions/[id]/page.tsx:365`, `sessions/session-settings-strip.tsx:101`, `event/star-rating.tsx:91`, `photos/lightbox.tsx:237`, `me/tab-strip.tsx:70` | `outline-[var(--ring)]` | nothing in the table; inside the scope the ring is the scope's one rule (`DEC-186` §2), so these are inert or doubled — left |
+
+**The «fits none» cases**
+
+- **F1 — `loading.tsx:18-19`.** The skeleton mirrors a dark band the hero will no longer have once `.theme-dark`
+  leaves. A rename has no right answer (`bg-accent` would paint a lime band); the honest change is **removing both
+  classes**, so the skeleton stands on the page's ground with `skeleton`'s own `pg:` colour. That is a removal, not
+  a replacement, and it must match whatever F2 becomes.
+- **F2 — `event-hero.tsx:77`.** A decorative two-stop gradient; there is no semantic gradient. Options: (a) remove
+  the gradient class with `.theme-dark`, the hero standing on the canvas; (b) `bg-surface`, so the band is still a
+  band. (a) changes nothing else; (b) keeps a structure the page was built around (the action card's `-mt-4` overlap
+  onto the band). **Not mine to pick** — and either way the band's reason is gone (§4.1).
+- **F3 — `filter-sheet.tsx:214`.** The class it spells is `bg-canvas`, but `ui/sheet` is `pg:bg-surface` inside the
+  scope, so `bg-canvas` draws a darker strip across the sheet's foot. The role is «the sheet's own ground» →
+  `bg-surface`. It differs from the literal reading of C4's last row, so it is written here.
+- **F4 — `comment-composer.tsx:221`.** `bg-canvas!` is the literal; on the dark ground a popup the colour of the
+  page, with `shadow-card` that does not show on ink, has no edge but `Panel`'s hairline. `bg-raised!` is the role
+  («floats above»). The lead's.
+- **F5 — `preference-matrix.tsx:54`.** `bg-raised` is the table's answer and I would apply it. But the cell is a
+  pressed toggle, and C4 also has «a filled, selected mark → `bg-accent text-on-accent`». It was deliberately
+  neutral, so `bg-raised`; noted because the «on» and «off» cells then differ by a raised step and a border only.
+- **F6 — `tab-strip.tsx:94`.** A gradient stop inside an arbitrary property. Minimal: `var(--color-canvas)` →
+  `var(--bg)`, the context variable the scope reassigns — one token, but it is a `var()` in brackets. With
+  utilities: `ltr:bg-linear-to-r rtl:bg-linear-to-l from-transparent to-canvas` replacing the arbitrary property and
+  its two direction variables — named, and four classes changed instead of one. The lead's.
+
+### 3 · Existing assertions I expect to move
+
+**For N1 and N2 as planned: none.**
+- No test pins a class string in any file of §2 (grep of `tests/` for `silver-`, `navy-`, `theme-dark`,
+  `color-canvas`, `btn-bg` outside `tests/components/ui/` and the token gates).
+- `tests/e2e/wave7-sessions-public-card.spec.ts:107` asserts `/\bbg-navy-(950|900|800)\b/` on the public card's
+  placeholder. That class is `ui/card`'s own tint (paired with a `pg:` form, which stays — rule 5), not
+  `s/[id]/page.tsx:138`. **It does not move**, and it is why I will not «tidy» `card.tsx`'s tints.
+- `tests/e2e/wave15-lead-gallery.spec.ts:179` expects one `[data-demo="page-header"]` per ground and captures it. The
+  split keeps the attribute and the count; the capture's content changes (the lead's spec, no assertion).
+- The lead's, from M1, for the record: `tests/components/checkin/check-in-screen.test.tsx:143-144` and
+  `tests/e2e/wave16-sessions-reserve.spec.ts:189` pin the nested scopes.
+- **N3 is unknown until the root scope is in a build**: a primitive fix adds cases to its `-scope` test (new cases,
+  the existing test untouched). If one needs an existing assertion changed I name it before the commit.
+
+### 4 · What will look wrong on the dark ground for a reason that is not a class or a primitive — listed, not fixed
+
+1. **`/app/sessions/[id]` — the hero band.** The page is built on a dark band against a light page: the action card
+   overlaps it by `-mt-4` / `md:-mt-10`, the desktop poster sits in it. Without `.theme-dark` and the gradient, band
+   and page are one ground and the overlap reads as a misplaced card. Its loading skeleton the same.
+2. **Ended and cancelled sessions' images** — `grayscale opacity-45` (`s/[id]/page.tsx:138`), `[&_img]:opacity-50
+   [&_img]:grayscale` (`event-hero.tsx:91`). Opacity over white washes an image out; over ink it darkens it. «Past»
+   will read as «dimmed», a different signal.
+3. **Shadows as the only edge.** `shadow-card` on the mention popup (`comment-composer.tsx:221`), and wherever a
+   screen separates by shadow: invisible on ink.
+4. **Rendered artifacts on the ground** — `/app/me/certificates`, the certificates screen's previews, the poster
+   images, `/verify/[code]`: light certificates and posters of any colour sit edge to edge on ink with a hairline.
+   Correct by rule 10 (the playground stops at their edge); it will look abrupt.
+5. **`/legal/**`** — long prose, ink ground, the display face on headings once `prose` moves: a legal page in the
+   game's voice. A design question for its own screen.
+6. **Two hand-built buttons** — `app/me/calendar/page.tsx:95` and `components/event/ratings.tsx:79` are anchors with
+   a hand-written class string (`h-12 rounded-field bg-[var(--btn-bg)] …`). Inside the scope they take the lime and
+   keep the old shape: a rectangle, the body face, no press — beside real pills. The repair is `buttonClass()`, which
+   is a class-only change but more than «a raw class replaced». **Asked, not done.**
+7. **`/app/me` tab strip** — the current tab's underline becomes the accent (lime), 2 px; whether a tab's selection
+   is the accent is `tabs`' design (`console`'s primitive), and this strip is hand-built beside it.
+8. **The lightbox** — `DialogContent size="media"` is `bg-[var(--color-navy-950)]` in `ui/dialog` (the lead's);
+   without `.theme-dark` its controls take the scope's tokens on a navy that is not the playground's ink.
+9. **`preference-matrix`** — see F5: on/off by a raised step.
+
+### 5 · New disagreements with `docs/design/`
+
+1. **`04-components.md:41` — `icons` «shown whole in the gallery».** Two of the glyphs' forms are props, not exports
+   (`direction`, `filled`), and «every export» does not show them. The demo shows both; the gate's sentence («every
+   export of the file») is narrower than the design's «whole».
+2. **`04-components.md:37` — `link`: «the pending dot is the accent».** `route-progress.tsx`'s dot is
+   `bg-current opacity-60` today — the link's own colour (`DEC-079`). The lead's file; noted because the demo cannot
+   show it either way (Q2).
+3. **`04-components.md:36` — `prose`: «headings inside it follow `section-header`».** `prose.tsx:12` sets its `h2` at
+   `text-h3` and its `h3` at `text-label`, one step below `section-header`'s `h2`/`h3`. If «follow» means the face
+   and not the size, there is no disagreement; the line does not say.
+4. **`04-components.md:21` — `toast`/whisper and `:18` «focus ring = 3px accent outline»** are already `DEC-199`
+   §5.28; the five member files in §2·E that declare `outline-[var(--ring)]` at 2 px are where it would show.
+5. **`00-direction.md:80`** («if a screen reads as a spreadsheet with a lime button on it, the direction has been
+   lost») describes what §4 lists, by construction, for this wave. Not a disagreement with `DEC-199` §2 — recorded
+   so nobody reads this wave's captures against that line.
+
+### Questions for the lead
+
+- **Q1 — who removes the two `.theme-dark`s on my side?** `DEC-199` §1.3.5 and row M1 say the token move does; my
+  agent file says I do, «the same way». `event-hero.tsx:77` carries F2 on the same line. Default I will follow:
+  **the lead's M1 removes both; I touch neither.**
+- **Q2 — the link's pending dot.** `LinkPendingReporter` draws it only while a real navigation is pending. The demo
+  cannot show it without copying its classes, which would drift. Either the lead exports the dot as a presentational
+  piece, or it is shown by the spec alone (a navigation stalled with `page.route`). Default: the spec.
+- **Q3 — `route-progress`.** The same, and more: the bar is `fixed` at the viewport's top, so it is outside any
+  demo's box, and a demo on two grounds mounts two bars reading one store. Default: the demo mounts one real
+  `<RouteProgress delayMs={0} />` beside a house `Link`, says what it is, and the spec stalls a navigation and
+  captures the viewport's top edge. A presentational `bar` export would make it a demo in the ordinary sense.
+- **Q4 — is §2·E in the gate?** If `no-raw-palette` counts context variables in brackets, I rename them as the
+  table says; if not, I leave them.
+- **Q5 — F1 to F6**, each a ruling.
+
+### Wave 17 — sync 1's rulings, N1 and N4
+
+- **Rulings (the lead, sync 1):** both `.theme-dark`s, F1 and F2 are the lead's in M1 — the hero band and its skeleton
+  become `bg-surface`; I touch neither `event-hero.tsx` nor `loading.tsx`. F3 `bg-surface` · F4 `bg-raised!` · F5
+  `bg-raised` · F6 `var(--color-canvas)` → `var(--bg)`. §2·E is **not** in the gate and stays, except the two hand-built
+  buttons (`me/calendar/page.tsx:95`, `event/ratings.tsx:79`), whose class string becomes `buttonClass("primary", "lg")`
+  — class only, part of N2. §2·B **is** in the gate. The pending dot and the route bar are the spec's. «Follow» in
+  `04-components.md:36` means the face, not the size.
+- **N1 — `eec8d654`.** The ten demos, as planned. `RouteProgressDemo` takes `ground` and mounts the one real bar on the
+  dark ground only: both grounds read one store. `IconsDemo` reads `import * as Icons`, carries the Arabic captions and
+  the prop forms as two additive tables, and marks itself `data-count` and each cell `data-glyph`. Wiring is the lead's;
+  `reorderable-demo.tsx` stays until both imports are off it.
+- **N4 — `tests/e2e/wave17-content-gallery.spec.ts`. ★ Written, never run** — it needs a build with `KAREEM_GALLERY=1`
+  and the demos wired, both the lead's. What it does: each of the twenty-four demos on both grounds at 390 px and
+  desktop; every glyph paints at two sizes and is named; a press alone moves a row (`DEC-093`); and a navigation
+  stalled at the network draws the link's dot and the route bar. **The least certain case is the last**: it assumes
+  `useLinkStatus` reports pending for a navigation to the same path with a different query, and that holding the
+  prefetch holds the navigation. If it does not go pending, the link's target is what to change, not the assertion.
+- **N2 — the member side's raw palette, a class at a time.** Twelve files, nothing but the class in each: six
+  `bg-silver-100` at rest → `bg-raised`; two on hover → `hover:bg-hover`; the sheet's footer → `bg-surface` (F3); the
+  mention popup → `bg-raised!` (F4); the tab strip's fade → `var(--bg)` (F6); the two hand-built buttons →
+  `buttonClass()` with its import. ★ **`ratings.tsx`'s is `"md"`, not the ruled `"lg"`**: it was `h-11`, and `lg` would
+  have grown it to 52 px inside the scope — a size change, which the ruling's own «class only» excludes. The calendar's
+  was `h-12 px-7`, which is `lg` exactly. **One entry left on my side of the gate and it is not mine:**
+  `lib/ui/confetti.ts: var(--color-play-lime) var(--color-play-bone)` — the lead's file, and the playground's own tokens.
+
+### Wave 17 — N3: my fourteen on the real screens, on the dark ground
+
+Read from the lead's sweep captures (`.qa-shots/rtl/wave11-sweep-*`, production build of `abb1b8d9`), cropped into
+1082 × 1100 bands at native size, never downscaled: `/app`, `/app/sessions/[id]` (+ check-in, rate, materials viewer),
+`/app/me` and its six tabs, `/app/leaderboards`, `/app/propose` and `[id]`, `/s/[id]`, `/verify/[code]`, `/legal/privacy`.
+
+**Seen and right:** `badge` (open, draft, the material's phase), `tag-chip` (the hero's four, the card's one), `avatar`
+(the shell's and the 96 px one on privacy), `progress` (the capacity track at 0), `empty-state` (bookmarks,
+certificates, calendar, rate, leaderboards), `stat` (`/app/me`), `panel` (the profile prompt, the catalogue rows, the
+check-in notice, the preferences), `file-drop` (the proposal's dashed zone), `card` (the timeline's, the public one).
+**Not on any captured screen**, so not seen outside the gallery: `sticker`, `poster`, `reaction-bar`, `progress-bar`,
+`story-ring` (no screen places them yet, or the fixture had no data for the five moment surfaces).
+
+**One defect, fixed in the primitive:** `card`'s typographic placeholder. Three of `MEDIA_TINTS` are silver
+(`bg-silver-200/300/400 text-navy-950`) and had no form inside the scope — a light block on the dark ground for half of
+all titles; the three navy ones are about 1:1 against the scope's surface (visible in the capture as a box with no
+edge). Inside the scope every placeholder is now `pg:bg-raised pg:text-fg-heading`; the tint is still chosen and still
+in the class, so `card.test.tsx` and `wave7-sessions-public-card.spec.ts:107` hold. A case in `card-scope.test.tsx`.
+The fixture's one session hashed to navy, so the silver patch itself was read from the source, not seen.
+
+**Seen, not mine, not fixed** (added to §4's list):
+10. `/app` — the timeline card's media column ends above the card's foot; the strip under it is the card's surface.
+    Geometry, the same on any ground — the row density's layout, for the screen's rebuild.
+11. `/app/sessions/[id]` — the action card is the page's ink on the `bg-surface` band, a dark card on a lighter band,
+    the reverse of every other card on the app. And the material row's «فتح العارض» reads as plain text: no underline,
+    no button.
+12. `/app/me` — an unchecked `checkbox` is a flat grey square, the browser's dark-scheme default showing through
+    (`sessions'` primitive, the lead's custody). The native `select` arrow likewise.
+13. `/app/sessions/[id]/materials/[id]` — the viewer's page box shows the browser's broken-image glyph in its corner
+    (the fixture has no rendered page); on ink it is the brightest thing on the screen. A missing page has no state.
+14. Empty lists are drawn two ways on one hub: `empty-state` (an outline on the ground, display face) on bookmarks,
+    certificates and calendar; a `panel` with muted body text on notifications.
+15. Disabled primaries («نشر», «رفع») are the lime at 45 % — an olive pill that still reads as the brightest control.
+16. `/verify/[code]` and `/legal/**` have no `page-header` look: the title is the body face, while every `/app` title
+    is the display face.
+
+### Wave 17 — the stalled-navigation case at desktop (for the lead; ★ the fix is NOT run)
+
+- **What failed:** `expect(bar).toHaveCount(1)` at 1280 px — 0 elements for five seconds — after the dot had been seen.
+  («Phone passes» is a skip: the spec runs both widths in the desktop project.) It passed at 390 px.
+- **What I read, and did not see:** dot and bar hang on one `pending`. For the dot to be seen once and the bar never,
+  pending rose and fell inside one poll: the navigation was answered without the held request. The spec held only
+  URLs matching `from=route-progress`. The gallery is a static page, and other demos (`link`, `button`'s `ButtonLink`s,
+  `page-header`'s breadcrumbs) link to `/ui`; at 1280 px several stand in the viewport beside the route-progress demo,
+  so their prefetch of the same route passed the filter and the click was served from that cache. At 390 px none
+  shares the viewport. **This is an inference from the code and from which width fails — no trace was opened.**
+- **The fix (spec only):** every `fetch`/`xhr` is held from before the page opens until the captures are taken, so no
+  prefetch of any URL can answer the click; the bar is asserted before the dot, so a failure names the right thing.
+  `tsc` and eslint clean.
+- **If it still fails at desktop, I need the trace**, and two facts from it: whether `[data-link-pending]` is in the
+  DOM at the failure, and the URL the page is at. If the dot is present and the bar is not, the defect is in
+  `ui/route-progress` (the lead's) and not in the spec: the store's count and the dot would then disagree.
+- **The primitive, read again and found right:** the dot is drawn iff `pending && !quiet`; the count rises in the same
+  commit's effect; `RouteProgress` re-renders through `useSyncExternalStore` and its 0 ms timer sets `elapsed`.

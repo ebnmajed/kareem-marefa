@@ -206,20 +206,23 @@ test("★ the error is red, glyphed and bordered — not the colour of a heading
   await expect(title).toHaveAttribute("aria-invalid", "true");
 
   // 1 — the control's border is `--color-error-border`, 1 px.
+  // ★ Wave 17 (DEC-199 §1.3, DEC-200 §2): the screen stands on the playground's dark ground, where the
+  // status constants take DEC-073's on-dark forms — `--color-error-on-dark`, #e08c8f — for the border
+  // and the message alike. They were #c0555a and #9e3b3f on the light ground.
   const border = await title.evaluate((el) => {
     const s = getComputedStyle(el);
     return { color: s.borderBlockStartColor, width: s.borderBlockStartWidth };
   });
-  expect(border.color).toBe("rgb(192, 85, 90)"); // #c0555a
+  expect(border.color).toBe("rgb(224, 140, 143)"); // #e08c8f
   expect(parseFloat(border.width)).toBeCloseTo(1, 1);
 
-  // 2 — the message is `--color-error`, and is NOT `--fg-heading` (#0b1220),
-  // which is what it was until M9.
+  // 2 — the message is `--color-error`, and is NOT the heading's colour, which is what it was until
+  // M9. The heading's colour inside the scope is the bone, #f4f1ea.
   const message = page.locator("#title-error");
   await expect(message).toBeVisible();
   const messageColor = await message.evaluate((el) => getComputedStyle(el).color);
-  expect(messageColor).toBe("rgb(158, 59, 63)"); // #9e3b3f
-  expect(messageColor).not.toBe("rgb(11, 18, 32)");
+  expect(messageColor).toBe("rgb(224, 140, 143)"); // #e08c8f
+  expect(messageColor).not.toBe("rgb(244, 241, 234)");
 
   // 3 — the glyph. Colour is never the only channel.
   await expect(message.locator("svg")).toBeVisible();

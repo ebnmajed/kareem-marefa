@@ -3,7 +3,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { MomentPointsHead } from "@/components/scoring/moment-points-head";
 import { LevelCard } from "@/components/ui/level-card";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { PlayScope } from "@/components/ui/scope";
+// ★ Wave 17 (DEC-199 §1.3.4): the shell's layout is the scope now and scopes do not nest, so this is a plain element.
 import { FlameObject } from "@/components/ui/objects/flame";
 import type { HeadLevel, PointsHead as PointsHeadData } from "@/lib/dal/points";
 
@@ -92,7 +92,7 @@ export async function PointsHead({
 
   const completion = head.completion;
   return (
-    <PlayScope className="mt-6 rounded-panel bg-canvas p-5">
+    <div className="mt-6 rounded-panel bg-canvas p-5">
       <section>
         <MomentPointsHead
           heading={t("heading")}
@@ -110,6 +110,6 @@ export async function PointsHead({
           documentLoad={documentLoad}
         />
       </section>
-    </PlayScope>
+    </div>
   );
 }

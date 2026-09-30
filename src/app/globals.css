@@ -435,6 +435,44 @@
   --index: var(--color-play-paper-muted);
 }
 
+/* ── wave 17 (DEC-199 §1.3): the scope is the root of every layout but the public
+   site's. Two things a root needs that an island did not. ──
+
+   THE DOCUMENT'S GROUND. `<body>` is outside every layout, and a phone shows it on
+   overscroll and behind a short page. While a root scope is on the page the
+   document takes its ground; the public routes carry none, so nothing here ever
+   matches on them (`tests/unit/public-graph.test.ts`). */
+html:has([data-play-root]) {
+  color-scheme: dark;
+  background-color: var(--color-play-ink);
+}
+html:has([data-play-root].theme-play-light) {
+  color-scheme: light;
+  background-color: var(--color-play-paper);
+}
+
+/* THE STATUS CONSTANTS, ON THE DARK GROUND. `text-error`, `bg-success-bg` and the
+   rest are written on about eighty elements of the app's screens, in their light
+   forms — 2.67 to 3.13:1 on the scope's surface (DEC-186 §3). DEC-073 fixed an
+   on-dark form for each; inside the dark scope the NAME takes that form, once,
+   here, so no screen edits a status class (contract 4). The colours, the words
+   and the live dot are still DEC-073's: this is the same constant on the ground
+   it was always defined for, not a playground colour. A tinted fill has no
+   on-dark form — a wash of cream on ink is a light patch — so it becomes the
+   raised step, and the border and the text carry the status. The light variant
+   keeps the light forms, which pass on paper. */
+.theme-play:not(.theme-play-light) {
+  --color-error: var(--color-error-on-dark);
+  --color-error-border: var(--color-error-on-dark);
+  --color-error-bg: var(--color-play-surface-2);
+  --color-success: var(--color-success-on-dark);
+  --color-success-bg: var(--color-play-surface-2);
+  --color-live: var(--color-live-on-dark);
+  --color-live-bg: var(--color-play-surface-2);
+  --color-ended: var(--color-ended-on-dark);
+  --color-ended-bg: var(--color-play-surface-2);
+}
+
 /* The metallic sheen is the public site's — light catching brushed chrome. A
    playground button is a toy, and its feedback is the press. */
 .theme-play .btn-sheen::after {

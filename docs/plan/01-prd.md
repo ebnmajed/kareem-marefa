@@ -1780,11 +1780,17 @@ before publishing.
 
 #### REQ-DSG-021 — The brand kit is the single source of brand truth
 **Serves:** DEC-008 · A40 · A25
-**هوية المؤسسة** — logo, colours, fonts — feeds the CSS theme layers, the designer's templates,
-and the email templates. Changing a colour or a face is **one edit in one place**.
+**هوية المؤسسة** — logo, colours, fonts — feeds the designer's templates, the certificates and the
+email templates. Changing a colour or a face is **one edit in one place**.
+★ **Amended by `DEC-201` §1 (the owner, 2026-09-30): the brand kit no longer restyles the app.** The
+app wears one visual language, «ساحة اللعب» (`REQ-UIX-049`), and a per-org app theme is incompatible
+with a fixed direction; an org's identity inside the app is its companies' team colours
+(`REQ-UIX-043`). It read «feeds the CSS theme layers, the designer's templates, and the email
+templates».
 **Acceptance:**
 - Replacing the org logo updates every template at once.
 - No brand colour is hard-coded in a template, an email or a component.
+- The kit's colours reach posters, certificates and mail, and no screen of the app.
 
 #### REQ-DSG-022 — Designer feature set
 **Serves:** A31
@@ -3133,6 +3139,72 @@ start. What the member last saw is recorded, so the change is real and is shown 
 - The falling row carries no colour, no icon, no shake and no motion of its own beyond the swap.
 - A board opened again with no change plays nothing.
 - Rows are initials in a team ring, never a photograph (`DEC-099`, `DEC-183` §3).
+
+#### REQ-UIX-049 — «ساحة اللعب» is the product's only visual language, and a screen is rebuilt to its design, never restyled
+**Serves:** `DEC-199` §1, §2 · `DEC-183` §1 · `REQ-UIX-028` · `REQ-NFR-019`
+Every surface that is not one of the five public routes renders inside the playground's scope, applied once, at the
+root of its layout: the platform shell with every member, staff and platform screen under it, the three `(auth)`
+screens, the legal pages, the public session card and the certificate's verification page. No screen keeps the old
+look and nothing carries a path back to it. The public site is in scope and moves in the programme's last wave;
+until then it keeps today's values. Entering the scope gives a screen one palette, one type and one set of
+primitives — **it is not the screen's redesign**: each screen is rebuilt from its own document,
+`docs/design/screens/<SCR-id>.md`, in its own wave.
+**Acceptance:**
+- The scope is rendered by a layout, never by a screen or a component, and scopes do not nest.
+- No file outside the public site's carries a raw palette class or `.theme-dark`.
+- The toast region and every portal land inside the scope.
+- The five public routes do not move: `qa:contract`, `qa:appearance`, `visual`'s public pairs and the register
+  form's fingerprint are unchanged and not re-baselined, and no file they import names the scope (`REQ-NFR-019`).
+- `registrations` is never dropped, altered or read; the register form's action, field names, ids, validation and
+  no-JS path are byte-identical.
+- An org's brand kit restyles posters, certificates and mail, and not the app (`DEC-199` §1.3).
+- The accessibility sweep finds nothing on any route inside the scope (`REQ-NFR-007`).
+
+#### REQ-UIX-050 — Every primitive has a playground design, and a gate enumerates the directory
+**Serves:** `DEC-199` §3, §4 · `REQ-UIX-001` · `REQ-UIX-030`
+A test reads `src/components/ui/` itself — never a list of names — and fails on any file that has no declared
+playground treatment, no test that renders it inside the scope, or no gallery entry.
+**Acceptance:**
+- Every `.tsx` file in the directory has exactly one registry entry, and every entry a file.
+- An entry's declared treatment is checked against the source: a variant is present, or the file reads semantic
+  names only, or it composes primitives that themselves pass, or it renders no pixel and says why.
+- A new primitive added with no entry, no scope test or no demo fails the build.
+- The registry has no «pending» kind; an exemption is a visible diff with its reason.
+
+#### REQ-UIX-051 — The page header, the section header, prose, the link, the icon button, the submit button and the reorderable list wear the playground
+**Serves:** `DEC-199` §3, §5 · `REQ-UIX-001` · `REQ-UIX-029` · `REQ-INT-005` · `REQ-UIX-007`
+The seven primitives the design's task list never named take their design from the documents that do speak: a
+page's title and a section's heading are the display face; body text, a breadcrumb, a description and a link are the
+body face; an icon button and a submit button are the button, in its faces; the reorderable list takes tokens and
+no animation.
+**Acceptance:**
+- Each has a test that renders it inside the scope, an RTL check and a gallery entry at 390 px and desktop.
+- A page's `h1` and a section's `h2` are set in the display face; `h3` and below in the body face.
+- A link is told from text by its underline and never by the accent alone.
+- An icon button's target is at least 44 px at its default size and its name is on the element — `sm`, for dense
+  rows, stays 36 px and adds nothing that overflows its box; a submit button keeps its label while pending.
+- The reorderable list keeps its buttons as the conforming path (`DEC-093`) and does not animate.
+- No behaviour, prop or accessible name of the seven changes.
+
+#### REQ-UIX-052 — Every glyph of the house set is drawn for the playground, and the public routes do not move
+**Serves:** `DEC-199` §3 · `REQ-UIX-041` · `DEC-186` §1 · `REQ-NFR-019`
+`ui/icons.tsx` — every glyph on every screen — has a test inside the scope and a gallery entry showing the whole
+set. The five public routes import the file, so it changes last, in one commit, under contract 5's four-part proof.
+**Acceptance:**
+- Every exported glyph appears in the gallery, by name, at the body size and at the display size.
+- A glyph draws in `currentColor`, at `1em`, and a directional one mirrors in RTL.
+- `qa:contract`, `visual`'s public pairs and the register form's fingerprint are equal before and after the commit.
+- No icon library is added.
+
+#### REQ-UIX-053 — The console takes the playground's tokens, and none of its motion, objects or stickers
+**Serves:** `DEC-199` §1.1 · `DEC-183` §2 · `REQ-UIX-020` · `REQ-ADM-020`
+`/app/admin/**` and `/app/platform/**` render inside the scope in a sober register: the palette, the radii and the
+type, and nothing that celebrates. A table, a list, the audit log and an export do not animate.
+**Acceptance:**
+- No file the console renders imports a moment, confetti, an object or a sticker; a test walks the import graph.
+- The six data-dense primitives read tokens only and declare no animation.
+- Every console screen passes the accessibility sweep on the dark ground.
+- A later console pass is about layout — density, tables, the rail — and changes no token.
 
 ---
 

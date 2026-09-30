@@ -215,7 +215,12 @@ export function CardMedia({ src, alt = "", placeholderFrom, placeholderTone, asp
       ) : (
         <div
           aria-hidden
-          className={`flex h-full w-full items-center justify-center text-h2 font-semibold ${mediaTint(placeholderFrom, placeholderTone)} ${wash}`}
+          // ★ Wave 17: inside the scope every placeholder is the raised surface with the heading
+          // colour on it. Three of the six tints are SILVER — a light block on the dark ground,
+          // the one mixture a screen could still draw from this file — and the three navy ones
+          // are 1.0x:1 against the scope's surface. The tint is still chosen and still in the
+          // class (two suites pin it); the scope's pair is drawn over it.
+          className={`flex h-full w-full items-center justify-center text-h2 font-semibold ${mediaTint(placeholderFrom, placeholderTone)} pg:bg-raised pg:text-fg-heading ${wash}`}
         >
           <bdi>{placeholderGlyph(placeholderFrom)}</bdi>
         </div>

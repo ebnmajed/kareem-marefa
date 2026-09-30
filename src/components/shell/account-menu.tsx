@@ -79,7 +79,7 @@ export function AccountMenu({ memberId, displayName, avatarUrl, isStaff, isPlatf
           <button
             type="button"
             aria-label={labels.account}
-            className="inline-flex h-11 items-center gap-1.5 rounded-field px-2 text-fg-heading hover:bg-silver-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
+            className="inline-flex h-11 items-center gap-1.5 rounded-field px-2 text-fg-heading hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             {/* An account with no member row — a platform admin with no org — has no
                 avatar to draw; a lone chevron read as a stray glyph (wave 8, the
@@ -88,7 +88,7 @@ export function AccountMenu({ memberId, displayName, avatarUrl, isStaff, isPlatf
             {memberId ? (
               <Avatar memberId={memberId} displayName={displayName} src={avatarUrl} size={34} decorative />
             ) : (
-              <span aria-hidden className="inline-flex size-[34px] items-center justify-center rounded-field bg-silver-100 text-fg-muted">
+              <span aria-hidden className="inline-flex size-[34px] items-center justify-center rounded-field bg-raised text-fg-muted">
                 <UserIcon />
               </span>
             )}

@@ -15,8 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Loading() {
   return (
     <div aria-hidden="true">
-      <div className="bg-navy-950">
-        <div className="mx-auto max-w-6xl px-4 pb-8 pt-5 md:px-8 md:pb-16 md:pt-6 [&_.animate-pulse]:bg-navy-800">
+      <div className="bg-surface">
+        <div className="mx-auto max-w-6xl px-4 pb-8 pt-5 md:px-8 md:pb-16 md:pt-6">
           <Skeleton variant="text" width="8rem" />
           <Skeleton variant="text" width="7rem" className="mt-5" />
           <Skeleton variant="title" width="70%" className="mt-3" />

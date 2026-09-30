@@ -321,7 +321,7 @@ async function TasksJump({ tasks, label }: { tasks: Promise<SlotSummary>; label:
           `justify-*` utility over `buttonBase`'s own (DEC-111's class). */}
       <span className="flex-1 text-start">{label}</span>
       {outstanding > 0 ? (
-        <span aria-hidden="true" className="min-w-6 rounded-field bg-silver-100 px-1.5 text-center text-caption text-fg-heading">
+        <span aria-hidden="true" className="min-w-6 rounded-field bg-raised px-1.5 text-center text-caption text-fg-heading">
           {formatNumber(outstanding)}
         </span>
       ) : null}

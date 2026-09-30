@@ -1,4 +1,5 @@
 import { setRequestLocale } from "next-intl/server";
+import { PlayScope } from "@/components/ui/scope";
 import { Wordmark } from "@/components/wordmark";
 
 // SCR-005's shell — `/legal/**`, PUBLIC (REQ-NFR-015, 12 §6, DEC-051).
@@ -20,6 +21,8 @@ export default async function LegalLayout({
   const { locale } = await params;
   setRequestLocale(locale);
   return (
+    // Wave 17 (DEC-199 §1.3): inside the playground, at the token level. Not this page's redesign.
+    <PlayScope root className="min-h-dvh">
     <div className="min-h-dvh bg-canvas text-fg-body">
       <header className="border-b border-edge">
         <div className="mx-auto flex h-14 max-w-3xl items-center px-4 md:px-8">
@@ -30,5 +33,6 @@ export default async function LegalLayout({
         {children}
       </main>
     </div>
+    </PlayScope>
   );
 }

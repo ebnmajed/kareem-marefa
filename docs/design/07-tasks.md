@@ -22,6 +22,10 @@ and `DECISIONS.md` as the source of truth).
 - Migrate the primitives in this order, one commit each with a gallery screenshot at 390px and desktop:
   `button` → `chip` → `status-badge` → `avatar` → `card` → `field`/`input`/`select`/`combobox`/
   `date-time` → `sheet` → `tabs` → `toast` → `skeleton` → the console primitives (tokens only).
+- ★ **Corrected by `DEC-199` (wave 17, M19):** this order names about twenty primitives. `page-header`, `prose`,
+  `link`, `icon-button`, `section-header`, `submit-button`, `reorderable-list` and `icons` are absent from it, were
+  not migrated, and are wave 17's. A list cannot notice what it omits; `tests/unit/ui-playground.test.ts` reads the
+  directory instead.
 - New primitives: `sticker`, `poster`, `session-cta`, `reaction-bar`, `code-input`, `progress-bar`,
   `rank-row`, `race-bar`, `level-card`, `story-ring`.
 - New glyphs in `icons.tsx` (from `assets/icons/icons-additions.tsx`).
@@ -44,6 +48,10 @@ and `DECISIONS.md` as the source of truth).
 - Gate: the RLS cases in `05-stories.md` §Tests; Playwright tap/hold/swipe at 390px.
 
 ### Wave 4 — screens
+- ★★ **A screen is REBUILT to its design, never restyled** (`DEC-199` §2). Applying the scope to existing markup
+  produces the right colours on the wrong structure. The screen is built from its document — its layout, its
+  hierarchy, its affordances — not patched until it looks close. Wave 17 (M19) put every screen inside the scope at
+  the token level; that is not any screen's redesign.
 - Waits for the per-screen designs (mobile and desktop per `SCR-*`), delivered in the same folder as
   `docs/design/screens/<SCR-id>.md` with their reference artboards. Milestone order follows
   `09` §8: M10 member screens first, then M11 console, M12 designer and certificates, M13 public.

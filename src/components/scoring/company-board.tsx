@@ -3,7 +3,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { MomentRank } from "@/components/scoring/moment-rank";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RaceBar } from "@/components/ui/race-bar";
-import { PlayScope } from "@/components/ui/scope";
+// ★ Wave 17 (DEC-199 §1.3.4): the shell's layout is the scope now and scopes do not nest, so this is a plain element.
 import { companyFractions } from "@/components/scoring/race-fractions";
 import type { BoardMoment, CompanyBoardRow } from "@/lib/dal/leaderboards";
 
@@ -81,7 +81,7 @@ export async function CompanyBoard({
   );
 
   return (
-    <PlayScope className="rounded-panel bg-canvas p-3">
+    <div className="rounded-panel bg-canvas p-3">
       {acknowledge ? (
         <MomentRank
           occurrenceId={moment?.occurrenceId ?? null}
@@ -97,6 +97,6 @@ export async function CompanyBoard({
       ) : (
         list
       )}
-    </PlayScope>
+    </div>
   );
 }

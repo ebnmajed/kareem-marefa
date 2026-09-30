@@ -1,11 +1,161 @@
-**Last updated:** 2026-09-29 · **Branch:** `wave-16/the-five-moments` (cut from `main` at `526b40ea`) · **`main`:** wave 15 merged and live; production at **`0161`** · **Phase:** ★★ **WAVE 16 — COMPLETE, PR #34, the owner rehearses, pushes and merges (`DEC-195` … `DEC-198`, M18, migrations `0162` – `0163`)**: the five moments, on the real screens. All five play once per occurrence on the surfaces `DEC-195` named, each with a complete static state, verified on a production build of `8043ba74`: RLS 1,368 from a fresh reset, 3,489 unit and component tests, ★★ **the frozen five unmoved** (`qa` 57/57, the six public pairs at 0.000 %, the register-form fingerprint byte-identical to `main`), ★★ **both traces 5/5 at 16.8 ms**, every capture opened at native resolution. ★ **CI concluded `success` on `8043ba74`**, all twelve jobs, after a rerun (Google Fonts failed to fetch four times on the runners — `DEC-198` §4). ★ **Then `failure` on `3c552136`**: the generated matrix was stale after `DEC-198` (fixed `cf2969cc`), and the unconfigured job's gallery specs — which the lead's local gate did not run — caught F1's server-field-to-boxes swap under `wave15-sessions-gallery` (fixed `f279c295`; CI's unconfigured job run locally: 131 passed). **The PR is marked ready only on CI's concluded `success` on the head.** ★ **Three independent readings found seven defects at sync 1 (`DEC-197`); building found more, three in the lead's own mechanism, and the lead's two errors are recorded (`DEC-198` §2).** Carried for the owner: **F3 — `/app` has no working no-JavaScript path** — F2, the build's dependency on Google Fonts, and the 390 px review list. **The owner's order is in the wave-16 block.**
+**Last updated:** 2026-09-30 · **Branch:** `wave-17/every-primitive` (cut from `main` at `4db9f60e`) · **`main`:** wave 16 merged and live (PR #34, `65ca7a7a`); production at **`0163`** · **Phase:** ★★ **WAVE 17 — COMPLETE, PR #35, the owner merges (`DEC-199` … `DEC-201`, M19, NO migration)**: 27 of 28 checklist rows done; the gate that reads `src/components/ui/` is green over all 49 files, having landed red on 19; the frozen five unmoved (`qa` 57/57, the fingerprint byte-identical); the a11y sweep at 0 findings on 62 routes inside the scope. ★★ **ACCEPTED by the owner on a phone, 2026-09-30 (`DEC-202`).** ★ **Carried to the next wave: hard loads show the page twice four times as often as on `main`** (`DEC-201` §3). What the wave was: every primitive, and one visual language. The owner opened the app on a phone after wave 16, called it a Frankenstein, and ruled on 2026-09-30 that **«ساحة اللعب» is the product's only visual language, everywhere** — the console in at the token level, the public site in scope and still last. Two causes were measured: eight primitives the design's own task list never named (`page-header`, `prose`, `link`, `icon-button`, `section-header`, `submit-button`, `reorderable-list`, `icons`) had no playground treatment, and the scope reached five surfaces only. **The wave: a gate that reads `src/components/ui/` itself and lands red; the scope at the root of every layout but the public site's; the eight, `icons` last; the raw palette out of the app; the console's register.** ★★ **A screen is REBUILT to its design, never restyled — and this wave rebuilds none** (`DEC-199` §2). ★★ **`registrations` and the register form's behaviour are untouched, and the five public routes do not move.** Two tracks: `content` and `console`. **The wave's acceptance is the owner opening `/ar/ui` on a phone.** Still owed from wave 16: the phone check of the five moments was never run.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 16 — COMPLETE, PR #34, THE OWNER MERGES — on `wave-16/the-five-moments` — the five moments, on the real screens (`DEC-195`)
+## ★★★ WAVE 17 — COMPLETE, PR #35, THE OWNER MERGES — on `wave-17/every-primitive` — every primitive, and one visual language (`DEC-199`)
+
+**The programme's third wave.** The brief is `docs/plan/notes/wave-17-lead.md`; the map is `CLAUDE.md` § *Ownership
+map (wave 17)*; the decision is `DEC-199`. Milestone **M19**. Requirements `REQ-UIX-049` … `053`; stories
+`STORY-UIX-033` … `038`. Migrations start at `0164`; **none is expected.**
+
+### The owner's rulings — the gate is closed, do not re-open it
+
+| | |
+|---|---|
+| ★★ **One visual language, everywhere** (2026-09-30) | «A full redesign for all the web app and the marketing page and everywhere.» The playground is the product's **only** visual language; no compatibility layer for the old look survives the programme (`DEC-199` §1) |
+| ★ **The console is IN, at the token level** | the palette, the radii and the type; **none** of the motion, objects or stickers. A register, not a second design, and not a carve-out (`DEC-199` §1.1). A later console pass is about **layout** — available, not scheduled |
+| ★★ **The public site is in scope and still moves LAST** | «everywhere» settles *whether*, not *when*. `qa:contract`, `qa:appearance`, `visual`'s public pairs and the register-form fingerprint stay pass/fail and are **not re-baselined** (`DEC-199` §1.2) |
+| ★ **«You can break the app completely if it is needed»** (2026-09-29) | the app behind sign-in may look broken while this lands. ★★ **It does not cover `registrations`** — 20 real signups, invariant 2 — nor the register form's action, names, ids, validation and no-JS path |
+| ★★ **A screen is REBUILT to its design, never restyled** | the sentence every screens brief carries from here (`DEC-199` §2). The token move is **not** any screen's redesign |
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | `4db9f60e` (wave 16 merged at `65ca7a7a`, the brief's three commits after it). Production at **`0163`**; no open PRs |
+| ★ The eight | `page-header` 53 lines, `prose` 18, `link` 24, `icon-button` 47, `section-header` 40, `submit-button` 29, `reorderable-list` 132, `icons` 666 — **all the lead's files**, none with a `pg:` class or a test inside the scope. `04-components.md` and `07-tasks.md` named none of them; both are corrected |
+| ★★ What the count hid | 49 `.tsx` files in `src/components/ui/`, not 37. **Treated, with no test that says so:** `dialog`, `skeleton`, `toast` (no `-scope` test), `route-progress`, `route-error` (a plain test only). **No gallery demo file:** `button`, `link`, `prose`, `icon-button`, `section-header`, `submit-button`, `icons`, `route-progress`, `reorderable-list` (its demo is `reorderable-demo.tsx`, outside `demos/`). `REQ-UIX-001` asks all three of every primitive, and nothing checked the list against the directory |
+| ★ The mechanism | the public site and the app share one `<html>` and one stylesheet, so values at `:root` reach both. **B is built as the scope at the root of every layout but the public site's** — `globals.css` outside the playground's block does not change, and no file the public routes import changes (`DEC-199` §1.3) |
+| ★ Raw palette | 66 occurrences in 17 `ui/` files, each already paired with a `pg:` form; **about 40 in 28 files of screens and the shell** — `bg-silver-100` most of all. 12 of those are in six public files (`header`, `footer`, `intro-sting`, `mobile-cta`, `ornaments`, `registration-form`, `wordmark`) and **stay** (contract 5) |
+| ★ Status classes | **about 80 in 39 files** outside `ui/` — `text-error` 43, `text-success` 9, `bg-error-bg` 8. Their light forms are 2.67 – 3.13:1 on the dark surface (`DEC-186` §3). **Remapped once, in `globals.css`, to `DEC-073`'s on-dark forms inside the dark scope** — no screen edits one (contract 4) |
+| ★ `.theme-dark` under a layout that will be scoped | `(auth)/layout.tsx`, `sessions/event-hero.tsx`, `platform/impersonation-banner.tsx`, `photos/lightbox.tsx`, and the org layer's CSS in `app/layout.tsx` |
+| ★ The org theme layer | `.brand-org` writes the context variables the scope reassigns, from an inline `<style>` that comes later in the document — so it would win, with an org's light palette on the dark ground. **Default in force: the shell stops emitting it**; posters, certificates and mail keep the kit (`DEC-199` §1.3.7). **For the owner, by name, in the PR** |
+| Design vs tree | five new disagreements, `DEC-199` §5.25 – §5.29: seven primitives with no design at all (derived, and shown in the gallery for the owner to overrule); `title` against `display-md` for a page's `h1`; 49 files, not 37; the focus ring; «before M13» |
+| The sequence | this wave claimed M19, which `DEC-195` §5 had pencilled for stories. Stories are M20 when they open; **the member screens M21, still opening with `SCR-002` – `004`** (`14-roadmap.md`) |
+| `trace` | **346 requirements · 174 stories · no gaps** (was 341 · 168). Five cross-cutting rows added to `scripts/traceability.mjs`, each with its reason |
+
+### The contracts
+
+| # | Contract | Owner | State |
+|---|---|---|---|
+| C1 | **The root scope** — `PlayScope` rendered by a layout and by nothing else; scopes do not nest; no `.theme-dark` under it; `tests/unit/scope-root.test.ts`. **Before any track edits code** | lead → all | ★ **landed `d88acfd0`** |
+| C2 | **The gate and its registry** — `tests/unit/ui-playground.test.ts` enumerates `src/components/ui/*.tsx`; `variant` · `tokens` · `composes` · `infrastructure`, checked against the source; a scope test and a demo each; no «pending» kind | lead → all | ★ **landed** `8d333434` (red) → `d88acfd0` (green) |
+| C3 | **The eight's props are frozen** — demos against `ui/index.ts` as it stands; the lead wires them into `page.tsx` | lead → `content` | **published** |
+| C4 | **The raw palette and the status colours** — `tests/unit/no-raw-palette.test.ts` ends at zero; the mapping below; status classes remapped once in `globals.css` | lead → both | mapping **published** below; the test and the status remap **landed `d88acfd0`** |
+| C5 | **The five the public site renders** — `button`, `icons`, `field`, `input`, `textarea`; only `icons` is touched, by the lead, last, under the four-part proof | lead | **published** |
+| C6 | **The console's register** — no moment, confetti, object or sticker in the console's import graph; its six primitives declare no animation | `console` → lead | ★ **landed `a42fb18f`** |
+
+#### C4's mapping — what a raw class becomes
+
+A raw class is replaced by the semantic name of **the role it plays where it stands**; the table is the default, and a
+use that fits none is written in the track's note rather than guessed.
+
+| Raw | Role | Becomes |
+|---|---|---|
+| `bg-silver-100` on hover or focus | a hover ground | `bg-hover` |
+| `bg-silver-100` at rest | a raised fill — a chip, a well, a code | `bg-raised` |
+| `bg-white` | a surface | `bg-surface` |
+| `bg-silver-200`, `bg-silver-300` as a rule or a track | a hairline, a track | `bg-edge` |
+| `border-silver-300`, `border-silver-400` | a boundary | `border-edge` (decoration) or `border-edge-strong` (a control) |
+| `bg-navy-950` + `text-white` | a filled, selected or primary mark | `bg-accent text-on-accent` |
+| `bg-navy-900`, `bg-navy-800` as that mark's hover or press | | `bg-accent-deep` |
+| `text-navy-950`, `border-navy-950` | the heading colour | `text-fg-heading`, `border-fg-heading` |
+| `text-silver-400` | muted text | `text-fg-muted` |
+| `bg-[var(--color-navy-950)]` and the like | as the class it spells | the same names — never a `var()` in brackets for a colour that has a utility |
+
+Outside the scope `accent` is `--btn-bg` and `hover` is `--btn2-bg-hover`, which is what these classes were reaching
+for by hand; inside it they are the playground's.
+
+### The checklist
+
+★ **Count, 2026-09-30: 28 of 28 rows DONE.** The owner opened `/ar/ui` on a phone and accepted the wave (`DEC-202`).
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-199`; `REQ-UIX-049` … `053`; `STORY-UIX-033` … `038`; M19 and the renumbered sequence in `14`; `04-components.md` and `07-tasks.md` corrected; the map in `CLAUDE.md`; the ten agent files; this block; the branch; the draft PR | lead | **DONE** `c073ce3b`; draft **PR #35**. `trace` 346 · 174, no gaps; `policy-diff` ✓. No file under `src/`, `public/`, `supabase/` or `worker/` changed |
+| T0 | ★ **Baselines before any product commit**: `visual`'s public pairs against `main`; the fingerprint's record (`.qa-shots/fingerprint/main.json`); the gallery and six app screens at 390 px as they are today — the «before» the owner's review compares with | lead | **DONE** — a build of `c073ce3b` (identical in `src/` to `main`) captured as `.qa-shots/visual/wave17-main`: the six public pairs and the gallery (390 × 59,376 in 8 parts; 1440 × 47,906 in 6). The fingerprint's record is `.qa-shots/fingerprint/main.json`, unchanged since wave 15. The app's «before» at 390 px is wave 16's set under `.qa-shots/rtl/` |
+| G1 | ★★ **The gate, landed red** (C2, `REQ-UIX-050`, `STORY-UIX-033`) — the test, the registry, and the list of what it fails on, recorded here | lead | ★★ **DONE — landed red at `8d333434`, green over all 49 files at `d88acfd0`.** Against the opening tree (`c073ce3b`): **29 failures across 19 files** — the eight, and eleven the count of eight had hidden (`DEC-200` §1): `dialog`, `skeleton`, `toast`, `route-error`, `route-progress` treated with no scope test; `rank-row`, `race-bar`, `level-card` with tests that never speak of the scope; `button` and `route-progress` with no demo. The gate's own `bites` case refuses eleven wrong declarations |
+| M1 | ★ **The token move** (C1, `REQ-UIX-049`, `STORY-UIX-034`) — the root scope in six layouts; the document's ground; the five surfaces' own scopes removed; `.theme-dark` out of every scoped layout; the org layer retired from the shell; the toast region inside; the status classes' on-dark forms; `scope-root` and `public-graph` | lead | **DONE at `d88acfd0`, verified on a production build of it**: ★★ `qa` **57/57**, the six public pairs **0.000 %** against `wave17-main`, the register-form fingerprint **byte-identical** to `main.json`; the a11y sweep over 62 routes on the phone found **one** serious finding — the studio's `bg-silver-100` tile, which `console`'s K2 then replaced. Built at `d88acfd0` — five layouts render `<PlayScope root>` (`s/` and `verify/` gained one for it); the five moment surfaces are plain elements; `.theme-dark` gone from the `(auth)` cover, the event hero and its skeleton (a band still, `bg-surface`) and the lightbox; the shell emits no org layer; the gallery is one playground. `globals.css` changed **inside the playground's block only** — `tokens-scope`'s hash of the rest still equals `main`'s. No file the public routes import changed (`git diff main` over them: empty). ★ **Verification on a production build: running** |
+| P1 | `page-header` — `h1` in the display face; `-scope` test; RTL | lead | **DONE** `51cb5b16` |
+| P2 | `section-header` — `h2` in the display face, `h3` body; `-scope` test | lead | **DONE** `51cb5b16` |
+| P3 | `prose` — `-scope` test; a link inside it underlined in the text colour | lead | **DONE** `51cb5b16` |
+| P4 | `link` — `-scope` test; the pending dot | lead | **DONE** `51cb5b16` |
+| P5 | `icon-button` — the button's faces in a square; `-scope` test | lead | **DONE** `51cb5b16` |
+| P6 | `submit-button` — `composes` `button`; `-scope` test | lead | **DONE** `51cb5b16` |
+| P7 | `reorderable-list` — tokens only, no animation; `-scope` test | lead | **DONE** `51cb5b16` |
+| P8 | The scope tests `DEC-199` §3 found missing: `dialog`, `skeleton`, `toast`, `route-progress`, `route-error` | lead | **DONE** `876c056f`; and `rank-row`, `race-bar`, `level-card` as `scoring`'s custodian, `b20b89f0` |
+| P9 | ★★ **`icons`, LAST, alone** (C5, `REQ-UIX-052`, `STORY-UIX-036`) — `-scope` test; `qa:contract`, `visual` at 0.000 % and the fingerprint proved equal on both sides of the one commit | lead | **DONE — by evidence, with no commit to the file, on purpose.** `icons.tsx` needs no edit (`DEC-200` §1): the house set is already what `04` asks of a glyph — 24 px grid, stroke 2, `currentColor`, `1em`. What it lacked was proof and a gallery entry: `icons-scope.test.tsx` holds **every export of the file** (50 glyphs, read from the module) to the house shape and to the text's colour (`8d333434`); `content`'s demo shows each by name with its prop forms (`eec8d654`). ★ Contract 5's proof is the strongest available: `git diff main -- src/components/ui/icons.tsx` is **empty** |
+| L1 | The shell's own raw classes (`app/layout.tsx`, `shell/{account-menu,search-entry}.tsx`) and `no-raw-palette.test.ts` | lead | **DONE** `d88acfd0` — the shell's three classes; the gate lists 12 classes on the member side and 17 on the staff side, as the two plans measured |
+| N1 | ★ **The gallery entries** — demos for `button`, `link`, `prose`, `icon-button`, `section-header`, `submit-button`, `reorderable-list`, `icons`, `route-progress`, and `page-header`'s (C3) | `content` | **DONE** `eec8d654`, wired `d88acfd0` |
+| N2 | **The member side's raw palette** — a class at a time, nothing else in the file (C4) | `content` | **DONE** `c4879ab5` — 13 files, 22 lines; the two hand-built buttons take `buttonClass()` (`DEC-200` §3); the member side of `no-raw-palette` reads zero |
+| N3 | Its fourteen primitives on real screens, on the dark ground | `content` | **DONE** `8f3f85fa` — read from the 62 route captures of `abb1b8d9`: one defect, `card`'s typographic placeholder (three silver tints had no form inside the scope), fixed in the primitive with a `-scope` case. Seven things seen that are not its own are in its note, for the screens waves |
+| N4 | The gallery spec, 390 px and desktop | `content` writes, lead runs | **DONE** — spec `56d64f56`, repaired `0d7a72e7` and `d79ac2ae`; run on a build of `6e5361d7`: 54 passed. 101 captures at `.qa-shots/rtl/wave17-content-*`. ★ It found a defect of the lead's: the `sm` icon button's pseudo-element hit area made a list 4 px wider than its box (`02766a1e`) |
+| K1 | ★ **The register's guard** — `tests/unit/console-register.test.ts` (C6, `REQ-UIX-053`, `STORY-UIX-038`) | `console` | **DONE** `a42fb18f` — the console's import graph (292 files) reaches no moment, confetti, object or sticker; its six primitives, the picker and the staff tree declare no animation, measured empty |
+| K2 | **The staff side's raw palette**, and the impersonation banner without `.theme-dark`, still unmistakable (C4) | `console` | **DONE** `cd8d5192` — 13 files; the staff side reads zero; the banner's `[.theme-dark_&]` override is gone. Two assertions moved (the ledger). ★ The banner's capture is the lead's to look at |
+| K3 | Its six data-dense primitives on real console screens, tokens only | `console` | **DONE** `61976ee2` — «nothing of mine is wrong» on sessions, members, audit, companies, schedule; the menu, the sheet and the picker judged from `wave17-console-*`, opened by the lead |
+| K4 | The console spec, 390 px | `console` writes, lead runs | **DONE** — spec `abb1b8d9`, repaired `db6d3017`; run on a build of `6e5361d7`: green, six captures at `.qa-shots/rtl/wave17-console-*` |
+| S1 | **Sync 1** — two plans approved against the six contracts | lead | **DONE** — `DEC-200` |
+| D1 | ★★ Demonstrable — **the gate green over all 49 files**, having been red | lead | ★★ **DONE** — red at `8d333434`, green at `d88acfd0` |
+| D2 | ★★ Demonstrable — `qa:contract` at every commit; `qa:appearance`, `visual`'s public pairs at 0.000 % against T0, the fingerprint byte-identical, the public-graph test green — **not re-baselined** | lead | **DONE on `d79ac2ae`** — `qa` **57/57**; the six public pairs against `wave17-main`: five at **0.000 %**, `phone_en` 0.002 % on that capture — and ★ **recaptured on a build of `6f870541`: all six at 0.000 %, `qa` 57/57** (the flicker wave 16 recorded). ★ **The gallery is re-baselined on purpose: `.qa-shots/visual/wave17-6f870541`** is its baseline from here — the whole page is one playground now, and every primitive of the wave moved it; the fingerprint **byte-identical** to `main.json` (`cmp`); `public-graph` green; `git diff main` over every file the public routes import: empty |
+| D3 | ★ Demonstrable — **the a11y sweep at 0 findings over every route, inside the scope** | lead's harness; fixes by owner | **DONE on `d79ac2ae`** — 62 routes × 2 projects, **0 findings at any impact**. The first run, on `d88acfd0`, found one: the studio's `bg-silver-100` tile, replaced in K2 |
+| D4 | ★★ Demonstrable — **the gallery opened by the owner on a phone.** The wave's acceptance is the owner's; the lead's captures are evidence for it | **owner** | ★★ **DONE — accepted by the owner, 2026-09-30** (`DEC-202`): opened `/ar/ui` on a phone and confirmed «there is only one design system» |
+| G | The gates — tsc, lint (**grep `problems`**), `npm test`, `test:rls`, e2e, `qa`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict`; ★ **CI read from the run's own conclusion on the head** (`DEC-192`) | lead | **DONE on `d79ac2ae`** (verification worktree, production builds, local Supabase at `0163`): tsc ✓ · lint 0 errors · `ui-lint --strict` 347 ✓ · `npm test` **3,957** ✓ · `trace` 346 · 174 ✓ · `policy-diff` ✓ · `qa` **57/57** · the fingerprint byte-identical · the sweep 0 findings · CI's unconfigured job locally **185 passed** · e2e, database-backed: **853 passed, 12 failed** in the whole suite; alone, three fail — `checkin:251` (fails on `main` too), and ★ `certificates:278` and `checkin:136`, which pass alone on `main` and meet a second copy of the page on the branch (`DEC-201` §3, carried). `bookmarks` and `budgets` as `DEC-190` §6. No SQL changed, so RLS is CI's. ★ **CI: read from the run's own conclusion on the head** (`DEC-192`) |
+
+### Sync 1 — what the two plans must answer
+
+1. **Every file it will touch and what changes in it** — for a raw class, the class, the role and the semantic name.
+2. **Every existing assertion that moves**, each to become a ledger line.
+3. `content`: **the states each demo shows.** `console`: **the guard's exact assertions**, and how the impersonation
+   banner stays unmistakable without `.theme-dark`.
+4. **Anything that looks wrong on the dark ground for a reason that is not a class or a primitive** — listed, not fixed.
+5. **Any new disagreement with `docs/design/`**, with the file and the line.
+
+### For the owner
+
+- ★★ **Open `/ar/ui` on a phone** when the wave is ready, and say whether it now reads as one design. That is the
+  acceptance (D4).
+- ✅ **The org theme layer — answered** (`DEC-201` §1): accepted and recorded; `REQ-DSG-021` amended; the brand-kit
+  screen says what the kit reaches.
+- ★★ **A finding for the next wave** (`DEC-201` §3): on a hard load the page stands twice in the DOM for ~300 ms —
+  **34 of 144 loads on the branch against 9 of 144 on `main`**, 22 of 48 on the boards. Invisible, cause not found.
+- ★ **Self-host the display face** (`DEC-199` §8): `next/font/google` failed four CI builds in a row on 2026-09-29,
+  and from this wave the face is on every screen. **Cost: `next/font/local` over the files already in
+  `packages/fonts/`, about an afternoon.** Not done without your word.
+- **The derived designs** (`DEC-199` §5.25 – §5.26): a page's `h1` and a section's `h2` in the display face; a link
+  underlined in the text colour, never lime. Each is in the gallery, and yours to overrule there.
+- Still carried from wave 16: **the phone check of the five moments was never run**; F2 and F3; overshoot.
+
+### Carried — not this wave
+
+Any screen's rebuild · the public site's re-skin · session stories and the viewer · the timeline's new items ·
+proposal voting · the weekly leaderboard · the streak rule · the desktop shell and leagues · the certificates' look ·
+a console layout pass · a brand-aware playground · deleting the `pg:` variants and `:root`'s old values (the public
+site's wave) · ★ **the two carried gates, together** (`DEC-194`) · `REQ-REC-004` in a default org · F2 and F3
+(`DEC-198` §5) · the eleven end-to-end failures `DEC-190` §6 carried · deleting a session with its awarded points.
+
+### Untouched-suite ledger (wave 17)
+
+*Every pre-existing test assertion that changes this wave gets a line here, in the same commit as the change.*
+
+| File | What changed | Why |
+|---|---|---|
+| `tests/components/checkin/check-in-screen.test.tsx:138-147` | «the whole content sits in the dark scope» (`toHaveClass("theme-play")`) → the content's root is a plain element, no `.theme-play` anywhere in the render, still never transformed | M1: the shell's layout is the scope and scopes do not nest (`DEC-199` §1.3.4); wave 16's own scope on `SCR-014` is removed |
+| `tests/unit/public-graph.test.ts:81-99` | «only the gallery and the five moment surfaces render the scope» (`MOMENT_SURFACES`) → «the scope's class is written in one file, which the public site does not reach» | who renders the scope is `tests/unit/scope-root.test.ts`'s now — five layouts and the gallery. The public graph's own three cases are unchanged |
+| `tests/components/ui/icons-playground.test.tsx:97` | the Arabic names are read from `(dev)/ui/demos/icons.tsx`, was `(dev)/ui/page.tsx` | the gallery page is one playground now; the glyph table and its names moved into `content`'s icons demo. The assertion — fifty glyphs, each named in Arabic — is unchanged |
+| `tests/components/ui/date-time-scope.test.tsx:53` (`console`) | the selected day: `toHaveClass("bg-navy-950", "text-white")` + `toHaveClass("pg:bg-accent", "pg:text-on-accent")` → `toHaveClass("bg-accent", "text-on-accent")` | K2: `rtl-datetime-picker.tsx` is outside `ui/`, where `no-raw-palette` ends at zero, so the raw + `pg:` pair collapses to the semantic name (`DEC-200` §2). `accent` falls back to `--btn-bg` outside a scope — the same navy |
+| `tests/components/ui/date-time-scope.test.tsx:60` (`console`) | the «تم» control: the same two assertions → `toHaveClass("bg-accent", "text-on-accent")` | the same |
+| `tests/e2e/forms-propose.spec.ts:213` | the invalid control's border `rgb(192, 85, 90)` → `rgb(224, 140, 143)` | M1: the screen is on the dark ground, where `--color-error-border` takes `DEC-073`'s on-dark form (`DEC-200` §2). Still 1 px, still a glyph beside the message |
+| `tests/e2e/forms-propose.spec.ts:222-223` | the message `rgb(158, 59, 63)`, not `rgb(11, 18, 32)` → `rgb(224, 140, 143)`, not `rgb(244, 241, 234)` | the same: the error's on-dark form, and the heading's colour inside the scope is the bone. The assertion's point — an error is not the colour of a heading — is unchanged |
+| `tests/e2e/branding.spec.ts:171` | after saving `#ff5500`, the shell's `h1` computed `rgb(255, 85, 0)` → it computes `rgb(244, 241, 234)`, and no `.brand-org` rule is in the document | ★ `DEC-199` §1.3.7: the shell stops emitting the org theme layer. The save, the row, `brand_kit()`'s answer and the form's round trip are asserted unchanged |
+| `tests/e2e/branding.spec.ts:198` | after the reset the `h1` computed `rgb(11, 18, 32)` → `rgb(244, 241, 234)` | the same: the kit does not reach the app, before a reset or after it |
+| `tests/e2e/wave15-console-team-colour.spec.ts` `capture()` and `:118` (`console`, `db6d3017`) | harness only: `capture()` gains `open`, and with a menu open it no longer blurs and scrolls to the top before the screenshot | an open menu follows its trigger. On `main` the companies page fitted the phone, so the scroll moved nothing; inside the scope the page is taller, the scroll moved the row, and the menu item was then outside the viewport. No expectation changed |
+
+---
+
+## ★★ WAVE 16 — COMPLETE and LIVE (PR #34, `65ca7a7a`; `0162`–`0163` pushed) — was on `wave-16/the-five-moments` — the five moments, on the real screens (`DEC-195`)
 
 **The programme's second wave.** The brief is `docs/plan/notes/wave-16-lead.md`; the map is `CLAUDE.md` § *Ownership
 map (wave 16)*; the decision is `DEC-195`. Milestone **M18**. Requirements `REQ-UIX-044` … `048` (and `043` amended);

@@ -18,19 +18,33 @@ import { PlayPortalProvider } from "@/components/ui/scope-portal";
 //     render into `<body>`, which is outside the scope; `ui/scope-portal` gives
 //     them an element inside it.
 //
-// ★ THIS WAVE ONLY THE GALLERY RENDERS IT. `tests/unit/public-graph.test.ts`
-// fails if a file the public site imports ever names the scope.
+// ★★ WAVE 17 (DEC-199 §1.3, REQ-UIX-049): THE SCOPE IS THE ROOT OF EVERYTHING
+// THAT IS NOT THE PUBLIC SITE. It is rendered once, by a LAYOUT — the shell,
+// `(auth)`, `legal`, `s`, `verify` — with `root`, and by nothing else: no screen
+// and no component wraps itself any more, because scopes do not nest. The gallery
+// alone renders it twice, side by side, to show both grounds.
+// `tests/unit/scope-root.test.ts` holds who may render it, and
+// `tests/unit/public-graph.test.ts` that no file the public site imports names it.
+//
+// `root` marks the element (`data-play-root`), and `globals.css` paints the
+// document's own ground to match while one is on the page: `<body>` is outside
+// every layout, and a phone shows it on overscroll.
+//
+// ★ The root scope's element is never transformed, filtered or clipped (DEC-188
+// §5): it holds the landing place for every dialog, sheet and menu under it.
 
 export interface PlayScopeProps {
   /** The light variant — supported, not the direction's default. */
   light?: boolean;
+  /** A layout's scope: the whole surface. Marks the element so the document's ground follows it. */
+  root?: boolean;
   className?: string;
   children: ReactNode;
 }
 
-export function PlayScope({ light = false, className = "", children }: PlayScopeProps) {
+export function PlayScope({ light = false, root = false, className = "", children }: PlayScopeProps) {
   return (
-    <div className={`theme-play ${light ? "theme-play-light" : ""} ${balooBhaijaan.variable} ${className}`}>
+    <div data-play-root={root ? "" : undefined} className={`theme-play ${light ? "theme-play-light" : ""} ${balooBhaijaan.variable} ${className}`}>
       <PlayPortalProvider>{children}</PlayPortalProvider>
     </div>
   );

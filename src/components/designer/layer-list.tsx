@@ -133,7 +133,7 @@ export function LayerList({
             const nameId = `${base}-${layer.id}`;
             return (
               <li key={layer.id}>
-                <div className={`flex items-center gap-1 rounded-field border px-2 py-1 ${selected ? "border-edge-strong bg-silver-100" : "border-edge"}`}>
+                <div className={`flex items-center gap-1 rounded-field border px-2 py-1 ${selected ? "border-edge-strong bg-raised" : "border-edge"}`}>
                   <button type="button" onClick={(e) => onSelect(layer.id, { additive: e.shiftKey || multi })} aria-pressed={selected} className="min-h-11 min-w-0 flex-1 px-1 text-start">
                     <span id={nameId} className="block text-body-sm text-fg-heading">
                       <bdi>{layer.name ?? layer.id}</bdi>

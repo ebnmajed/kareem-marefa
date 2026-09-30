@@ -152,9 +152,8 @@ export function PhotoLightbox({ photos, children }: { photos: LightboxPhoto[]; c
         {photo ? (
           <DialogContent
             size="media"
-            // The dark ground is `.theme-dark`'s section: the secondary controls and the
-            // focus ring take its tokens, legible on navy.
-            className="theme-dark"
+            // Wave 17 (DEC-199 §1.3.5): no `.theme-dark` — the frame is inside the scope, whose
+            // dark ground gives the controls and the focus ring their tokens.
             title={t("title")}
             closeLabel={t("close")}
             aria-describedby={undefined}

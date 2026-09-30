@@ -1,7 +1,7 @@
 {
   "branding": {
     "title": "Brand kit",
-    "intro": "The org's logo, colours and fonts — one source that feeds the app UI, designer templates and email templates. Changing a colour or a font here changes it everywhere at once.",
+    "intro": "The org's logo, colours and fonts — one source that feeds session posters, certificates and email. Changing a colour or a font here changes it in all of them at once; it does not change the app's own colours.",
     "logo": {
       "title": "Logo",
       "current": "Current logo",
@@ -46,7 +46,7 @@
     "preview": {
       "title": "Live preview",
       "headingSample": "Kareem Marefa",
-      "bodySample": "This is how body text looks in the app, in designer templates, and in email.",
+      "bodySample": "This is how body text looks on posters, on certificates and in email.",
       "buttonSample": "Action button",
       "cardTitle": "Card title",
       "cardBody": "Explanatory text inside a card, in the colours chosen above.",
