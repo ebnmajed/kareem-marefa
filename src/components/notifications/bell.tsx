@@ -4,41 +4,28 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { BellIcon } from "@/components/ui/icons";
 import { getUnreadCount } from "@/lib/dal/notifications";
 
-// The shell slot (TEAM.md §2): <NotificationBell memberId locale /> — a
-// server component that owns its data through the notifications DAL, takes
-// ids and never rows, and renders NO heading of its own.
+// The bell, in the rebuilt shell's top row (REQ-UIX-054; `Home.dc.html` and
+// `HomeDesktop.dc.html`): a 40 px round control, the glyph alone at every width,
+// and the unread count as a small chip on its corner. Its contract is wave 2's
+// and unchanged — a server component, a link to the inbox, the count in its
+// accessible name for everyone.
 //
-// `memberId` is the shell's statement of whose bell this is. It is NOT the
-// authority: the count is read for the session's own member, because a prop
-// is something the caller chose and `requireSession()` is something the
-// cookie proved. They agree in the shell; if they ever did not, believing the
-// prop would be the bug.
-//
-// REQ-NTF-006 wants the count accurate across devices, so it is counted at
-// the database on every render rather than cached anywhere.
-
-export async function NotificationBell({ locale }: { memberId?: string; locale: string; }) {
+// ★ The count's chip wears `signal`, the playground's attention colour, and not a
+// status colour: unread is not a session's state (DEC-073).
+export async function NotificationBell({ locale }: { memberId?: string; locale: string }) {
   const t = await getTranslations("notifications");
   const unread = await getUnreadCount(locale);
-
   return (
     <Link
       href="/app/me/notifications"
       aria-label={t("bell.unread", { count: unread, value: formatNumber(unread) })}
-      className="relative inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-field px-2.5 text-label text-fg-body hover:bg-hover hover:text-fg-heading md:px-3"
+      className="relative inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-edge bg-surface text-fg-heading hover:bg-hover focus-visible:outline-[length:var(--focus-width)] focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
     >
-      {/* ★ The BELL glyph, at icon size, on every width (DEC-111). It was the
-          house DOT at 8 px below `md` — which read as a stray full stop between
-          the search glyph and the avatar, not as a control. The label joins it
-          from `md` up; the aria-label above names it for everyone. */}
-      <BellIcon aria-hidden="true" className="text-[1.25rem]" />
-      <span aria-hidden="true" className="hidden md:inline">{t("bell.label")}</span>
+      <BellIcon aria-hidden="true" className="text-[1.125rem]" />
       {unread > 0 ? (
         <span
           aria-hidden="true"
-          // A notification count is a dot (DEC-079 condition 2): a small badge
-          // on the bell's inline-end shoulder below `md`, beside the label above it.
-          className="absolute -top-0.5 end-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--btn-bg)] px-1 text-[0.6875rem] leading-none text-[var(--btn-fg)] md:static md:h-6 md:min-w-6 md:px-2 md:text-caption"
+          className="absolute end-0.5 top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-[var(--surface)] bg-signal px-1 text-[0.625rem] leading-none font-extrabold text-on-signal"
         >
           {formatNumber(unread)}
         </span>

@@ -1,16 +1,17 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { Wordmark } from "@/components/wordmark";
+import { PlayWordmark } from "@/components/brand/wordmark";
 import { NotificationBell } from "@/components/notifications/bell";
 import { getSessionState } from "@/lib/dal/session";
 import { getMe } from "@/lib/dal/members";
+import { getShellData } from "@/lib/dal/shell";
+import { formatNumber } from "@/components/sessions/numerals";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { FocusClearance } from "@/components/shell/focus-clearance";
+import { NavRail } from "@/components/shell/nav-rail";
 import { SearchEntry } from "@/components/shell/search-entry";
 import { ShellFooter, ShellMain } from "@/components/shell/shell-frame";
 import { TabBar } from "@/components/shell/tab-bar";
-import { ChevronIcon } from "@/components/ui/icons";
-import { Menu } from "@/components/ui/menu";
 import { RouteProgress } from "@/components/ui/route-progress";
 import { PlayScope } from "@/components/ui/scope";
 import { ToastProvider } from "@/components/ui/toast";
@@ -30,6 +31,22 @@ import { ToastProvider } from "@/components/ui/toast";
 // are unchanged. A brand-aware playground is a design `docs/design/` does not
 // contain, and the owner's to ask for.
 
+// ★★ WAVE 18 (DEC-205 §2, DEC-206, REQ-UIX-054): THE SHELL IS REBUILT from
+// `docs/design/screens/m10a/Home.dc.html` and `HomeDesktop.dc.html`.
+//   · phone: a top row — the wordmark, search, the bell — and a bottom bar of FIVE
+//     tabs, the third raised;
+//   · from `lg`: a 64 px top bar — the wordmark in the rail's column, the search
+//     field, the bell, the account menu — over a navigation rail and the content.
+//     A page that has a game rail passes it through `PageFrame`, the one slot.
+// The one-row header with its «تصفّح» menu is gone: its four links are the rail
+// and the tab bar now, and `/app/members`, which has no index, is linked by neither
+// (DEC-206 §4.31).
+//
+// ★ THE PHONE KEEPS THE ACCOUNT MENU, which the artboard does not draw (DEC-206
+// §4.33, measured): `/app/me` carries neither the console's link nor sign-out
+// today, and it is not rebuilt until batch M10c. Removing the menu now would leave
+// a member on a phone with no way to sign out.
+
 // The platform shell. NO auth check here [v16]: a layout does not re-render
 // on navigation under Partial Rendering, so the check lives in the DAL, at
 // the data, in every page. This shell only knows its links.
@@ -47,7 +64,7 @@ export default async function AppLayout({
   // /app/platform/** has no member row: the bell's unread count would call
   // requireSession() and redirect every console screen to /no-access — the
   // shell bug platform found at wave-4 sync 3 (DEC-057). A non-member
-  // session gets no bell and no org theme, which is also the honest answer.
+  // session gets no bell, no rail and no tab bar, which is also the honest answer.
   const state = await getSessionState();
   const isMember = state.kind === "member";
   const isStaff =
@@ -57,38 +74,17 @@ export default async function AppLayout({
     (isMember && state.session.platformAdmin) ||
     (state.kind === "no_org" && state.platformAdmin);
   // ★ Guarded on `isMember`, and that guard is DEC-057's lesson, not caution:
-  // `getMe()` goes through `sessionClient()`, and a platform admin with no
-  // member row would be redirected to /no-access from EVERY console screen —
-  // which is exactly the shell bug `platform` found at wave-4 sync 3. One
-  // classification, taken once, gates everything that needs a member.
-  //
-  // The avatar itself is M10 (DEC-099): the value already travels the whole
-  // stack and no component has ever drawn it, and drawing it properly means
-  // retiring the Google hotlink first. In M9 this supplies the INITIAL, which
-  // is the permanent fallback and therefore never wasted work.
-  const me = isMember ? await getMe(locale) : null;
-
-  const navLink =
-    "inline-flex h-11 items-center rounded-field px-2 text-label text-fg-body hover:bg-hover hover:text-fg-heading md:px-3";
-
-  // The catalogue entry. A two-column panel of categories with counts is
-  // §6.1's desktop design and belongs with browse in M10; in M9 it is the
-  // link, so nothing is URL-only and the shell is complete.
-  const browse: { href: string; label: string }[] = isMember
-    ? [
-        { href: "/app/sessions", label: t("sessions") },
-        { href: "/app/propose", label: t("propose") },
-        { href: "/app/members", label: t("members") },
-        { href: "/app/leaderboards", label: t("leaderboards") },
-      ]
-    : [];
+  // `getMe()` and `getShellData()` go through `sessionClient()`, and a platform
+  // admin with no member row would be redirected to /no-access from EVERY console
+  // screen. One classification, taken once, gates everything that needs a member.
+  const [me, shell] = isMember ? await Promise.all([getMe(locale), getShellData(locale)]) : [null, null];
+  const attention = shell?.attention?.total ? shell.attention.total : 0;
 
   return (
     // ★ The provider wraps the shell rather than each screen: an action's
     // acknowledgement must survive the navigation the action caused, and a
     // per-screen provider unmounts with the screen that triggered it.
-    // ★ The toast region is inside the scope with the shell (DEC-188 §6 said it would
-    // enter «with the shell and not before»; DEC-199 §1.3.6).
+    // ★ The toast region is inside the scope with the shell (DEC-199 §1.3.6).
     <PlayScope root className="min-h-dvh">
     <ToastProvider closeLabel={t("toastClose")} label={t("toastLabel")}>
       <div className="min-h-dvh bg-canvas text-fg-body">
@@ -97,15 +93,11 @@ export default async function AppLayout({
             fed by every `ui/link`. */}
         <RouteProgress />
         {/* SC 2.4.11 — keeps a focused control out from under the sticky header
-            and the fixed bars, on every route (Chromium's sequential focus
-            scroll ignores scroll-padding). */}
+            and the fixed bars, on every route. */}
         <FocusClearance />
 
         {/* ★ SC 2.4.1 — the first focusable element in the shell. Visually
-          hidden until focused (.skip-link in globals.css). Today it saves a
-          keyboard user three tabs; after the account menu and M11's
-          fifteen-item admin rail it is what stands between them and a long tab
-          trap in front of every console page. */}
+          hidden until focused (.skip-link in globals.css). */}
         <a
           href="#main"
           className="skip-link rounded-field bg-accent px-4 py-2 text-label text-on-accent"
@@ -113,51 +105,33 @@ export default async function AppLayout({
           {t("skipToContent")}
         </a>
 
-        {/* The header. `--header-h` in globals.css is 68px and the scroll padding
-          computes from it, so this row's height and that token move together. */}
+        {/* The top bar: 64 px. On a phone — the wordmark at the start, search and
+            the bell at the end. From `lg` — the wordmark in the rail's 196 px
+            column, then the search field, then the bell and the account menu. */}
         <header className="sticky top-0 z-30 border-b border-edge bg-canvas">
-          <div className="mx-auto flex h-[68px] max-w-6xl items-center gap-2 px-3 md:gap-4 md:px-8">
+          <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-2 px-4 lg:gap-6 lg:px-6">
             {/* Inside the platform the mark leads home, not to the public site (REQ-UIX-027). */}
-            <Wordmark href="/app" />
+            <Link
+              href="/app"
+              aria-label={t("brand")}
+              className="inline-flex items-center text-accent lg:w-[196px] focus-visible:outline-[length:var(--focus-width)] focus-visible:outline-offset-4 focus-visible:outline-[var(--ring)]"
+            >
+              <PlayWordmark height={34} label={null} />
+            </Link>
 
-            {/* تصفّح ▾ — desktop only; the phone reaches all of it from the tab
-              bar and the account menu, which is the point of having them.
-              ★ `ui/menu`, not `<details>` (DEC-111): it closes when a link in
-              it is followed, on an outside click and on Escape, and never
-              stays open over the page it navigated to. The wrapper, not the
-              trigger, carries `hidden md:block`, so no element pairs two
-              `display` utilities. */}
-            {browse.length ? (
-              <div className="hidden md:block">
-                <Menu
-                  trigger={
-                    <button type="button" className={`${navLink} gap-1`}>
-                      {t("browse")}
-                      <ChevronIcon direction="down" className="text-fg-muted" />
-                    </button>
-                  }
-                  items={browse.map((link) => ({ label: link.label, href: link.href }))}
-                />
-              </div>
-            ) : null}
-
-            {/* The spacer that pushes the actions to the inline END on a phone,
-              where the search FIELD (which is `flex-1` from `md`) is only an icon.
-              Without it the search glyph, the bell and the avatar bunched beside
-              the wordmark and left the far side of the bar empty (DEC-111). */}
-            <span aria-hidden className={isMember ? "flex-1 md:hidden" : "flex-1"} />
             {isMember ? <SearchEntry locale={locale} /> : null}
+            {/* Pushes the actions to the inline END. On a phone the search entry brings
+                its own spacer, so search and the bell stand together as drawn. */}
+            <span aria-hidden className={isMember ? "hidden flex-1 lg:block" : "flex-1"} />
 
-            {/* The bell keeps its wave-2 server-component contract and DEC-057's
-              classification: a platform admin with no member row gets no bell
-              and no org theme, because `getSessionState()` answered once for
-              the whole shell. */}
+            {/* A platform admin with no member row gets no bell (DEC-057). */}
             {isMember ? <NotificationBell locale={locale} /> : null}
 
             <AccountMenu
               memberId={me?.id ?? null}
               displayName={me?.displayName ?? null}
               avatarUrl={me?.avatarUrl ?? null}
+              teamColor={shell ? shell.teamColor : undefined}
               isStaff={isStaff}
               isPlatformAdmin={isPlatformAdmin}
               labels={{
@@ -169,7 +143,7 @@ export default async function AppLayout({
                 calendar: t("calendar"),
                 notifications: t("meNotifications"),
                 privacy: t("mePrivacy"),
-                admin: t("admin"),
+                admin: t("adminConsole"),
                 platform: t("platform"),
                 signOut: t("signOut"),
               }}
@@ -177,16 +151,35 @@ export default async function AppLayout({
           </div>
         </header>
 
-        {/* ★★ THE PADDING SHIPS IN THE SAME COMMIT AS THE BAR, and this is why:
-          `<main>` had NO bottom padding, so a fixed, safe-area-padded bottom
-          bar covers the last ~64 px of ALL 49 SCREENS EVER WRITTEN at once —
-          including every one this milestone has not reached yet. The proof
-          capture is a 390 px screenshot of an OLD, UNTOUCHED screen, not a new
-          one (`16` §3.1).
-
-          It is applied only when the bar is actually present, and only below
-          `md`, where the bar is. */}
-        <ShellMain>{children}</ShellMain>
+        {/* ★ `<main>`'s bottom padding clears whichever fixed bar is on the page and
+            reads ONE token, `--tabbar-h` (globals.css); the bar and the padding move
+            together (`16` §3.1). The rail is passed in, not rendered by the frame,
+            because it needs what only the server knows. */}
+        <ShellMain
+          rail={
+            isMember ? (
+              <NavRail
+                isStaff={isStaff}
+                isPlatformAdmin={isPlatformAdmin}
+                attentionCount={attention > 0 ? formatNumber(attention) : null}
+                labels={{
+                  nav: t("primaryNav"),
+                  propose: t("propose"),
+                  home: t("home"),
+                  sessions: t("sessions"),
+                  board: t("leaderboards"),
+                  me: t("account"),
+                  staffSection: t("staffSection"),
+                  admin: t("adminConsole"),
+                  platform: t("platform"),
+                  attention: attention > 0 ? t("attention", { count: attention, value: formatNumber(attention) }) : null,
+                }}
+              />
+            ) : null
+          }
+        >
+          {children}
+        </ShellMain>
 
         <ShellFooter>
           <Link
@@ -208,8 +201,11 @@ export default async function AppLayout({
           <TabBar
             labels={{
               nav: t("primaryNav"),
+              home: t("home"),
               sessions: t("sessions"),
               propose: t("proposeShort"),
+              proposeFull: t("propose"),
+              board: t("board"),
               me: t("account"),
             }}
           />

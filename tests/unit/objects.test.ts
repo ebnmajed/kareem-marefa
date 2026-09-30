@@ -78,10 +78,16 @@ describe("the playground's wordmark", () => {
     expect(wordmark).toContain("aria-hidden={named ? undefined : true}");
   });
 
-  it("★ is built and not yet worn: nothing outside the gallery imports it", () => {
+  // ★ wave 18 (DEC-183 §4.9 → REQ-UIX-054, REQ-UIX-058): «built and not yet worn … until the
+  // screens wave changes the shell». The screens wave has come: the rebuilt shell and the rebuilt
+  // door wear it. What still holds is the other half of §4.9 — the public site keeps its own mark,
+  // so nothing a public route renders imports this one (`public-graph` walks that graph).
+  it("★ is worn by the rebuilt shell and the rebuilt door, and by nothing the public site renders", () => {
     const walk = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${dir}/${e.name}`) : /\.(tsx?|mjs)$/.test(e.name) ? [`${dir}/${e.name}`] : []));
     const importers = walk("src").filter((f) => /components\/brand\/wordmark["']/.test(readFileSync(f, "utf8")));
-    for (const f of importers) expect(f.startsWith("src/app/[locale]/(dev)/"), `${f} wears the new wordmark`).toBe(true);
+    const allowed = ["src/app/[locale]/(dev)/", "src/app/[locale]/app/layout.tsx", "src/app/[locale]/(auth)/door.tsx"];
+    for (const f of importers) expect(allowed.some((a) => f.startsWith(a)), `${f} wears the new wordmark`).toBe(true);
+    expect(importers).toContain("src/app/[locale]/app/layout.tsx");
   });
 });
