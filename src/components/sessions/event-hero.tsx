@@ -74,7 +74,9 @@ export async function EventHero({ session, dayCount, phase, seat, closingSoon, p
   ];
 
   return (
-    <div className="theme-dark bg-[linear-gradient(140deg,var(--color-navy-950),var(--color-navy-800))] md:bg-none">
+    // Wave 17 (DEC-199 §1.3.5): `.theme-dark` and its navy gradient are gone — they cut an
+    // old-look island into a playground page. The band stays a band, one step above the ground.
+    <div className="bg-surface">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 pb-8 pt-5 md:grid-cols-[minmax(0,1fr)_372px] md:items-start md:gap-12 md:px-8 md:pb-16 md:pt-6">
         <div className="flex min-w-0 flex-col gap-5">
           <PageHeader

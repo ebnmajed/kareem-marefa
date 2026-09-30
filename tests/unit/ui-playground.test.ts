@@ -49,7 +49,7 @@ const files = readdirSync(UI)
   .filter((name) => name.endsWith(".tsx"))
   .sort();
 const drawn = files.filter((name) => REGISTRY[name] && REGISTRY[name].treatment.kind !== "infrastructure");
-const imports = (source: string, module: string) => new RegExp(`from\\s+["']@/components/${module.replace(/[/-]/g, "\\$&")}["']`).test(source);
+const imports = (source: string, mod: string) => new RegExp(`from\\s+["']@/components/${mod.replace(/[/-]/g, "\\$&")}["']`).test(source);
 
 /** Why a file's source does not match the treatment its entry declares — or null. */
 function mismatch(name: string, entry: Entry): string | null {
@@ -69,16 +69,16 @@ function mismatch(name: string, entry: Entry): string | null {
     if (SCOPED.test(source)) return "declared `composes`, and carries a `pg:` class of its own — it is a `variant`";
     if (RAW_PALETTE.test(source) || HEX.test(source)) return "declared `composes`, and draws a colour of its own";
     if (!t.of.length) return "declared `composes`, and composes nothing";
-    for (const module of t.of) {
-      if (!imports(source, module)) return `declared \`composes\` ${module}, and does not import it`;
-      if (module.startsWith("ui/")) {
-        const target = REGISTRY[`${module.slice(3)}.tsx`];
-        if (!target) return `composes ${module}, which has no entry`;
-        if (target.treatment.kind === "infrastructure") return `composes ${module}, which draws nothing`;
+    for (const mod of t.of) {
+      if (!imports(source, mod)) return `declared \`composes\` ${mod}, and does not import it`;
+      if (mod.startsWith("ui/")) {
+        const target = REGISTRY[`${mod.slice(3)}.tsx`];
+        if (!target) return `composes ${mod}, which has no entry`;
+        if (target.treatment.kind === "infrastructure") return `composes ${mod}, which draws nothing`;
       } else {
-        const path = join(COMPONENTS, `${module}.tsx`);
-        if (!existsSync(path)) return `composes ${module}, which does not exist`;
-        if (!SCOPED.test(code(read(path)))) return `composes ${module}, which carries no \`pg:\` class`;
+        const path = join(COMPONENTS, `${mod}.tsx`);
+        if (!existsSync(path)) return `composes ${mod}, which does not exist`;
+        if (!SCOPED.test(code(read(path)))) return `composes ${mod}, which carries no \`pg:\` class`;
       }
     }
     return null;
@@ -94,7 +94,7 @@ function testGap(name: string, entry: Entry): string | null {
   const source = read(path);
   const stem = name.replace(/\.tsx$/, "");
   const subjects = [`ui/${stem}`, ...(entry.treatment.kind === "composes" ? entry.treatment.of : [])];
-  if (!subjects.some((module) => imports(source, module))) return `${entry.test} imports neither the primitive nor what it composes`;
+  if (!subjects.some((mod) => imports(source, mod))) return `${entry.test} imports neither the primitive nor what it composes`;
   return SPEAKS_OF_SCOPE.test(source) ? null : `${entry.test} never speaks of the scope`;
 }
 

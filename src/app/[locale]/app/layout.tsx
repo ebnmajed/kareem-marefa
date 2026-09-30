@@ -1,10 +1,8 @@
-import { headers } from "next/headers";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { Wordmark } from "@/components/wordmark";
 import { NotificationBell } from "@/components/notifications/bell";
 import { getSessionState } from "@/lib/dal/session";
-import { getBrandKit, type BrandKit } from "@/lib/brand/kit";
 import { getMe } from "@/lib/dal/members";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { FocusClearance } from "@/components/shell/focus-clearance";
@@ -14,56 +12,23 @@ import { TabBar } from "@/components/shell/tab-bar";
 import { ChevronIcon } from "@/components/ui/icons";
 import { Menu } from "@/components/ui/menu";
 import { RouteProgress } from "@/components/ui/route-progress";
+import { PlayScope } from "@/components/ui/scope";
 import { ToastProvider } from "@/components/ui/toast";
 
-// The org theme layer — 06 §8.3's first consumer, DEC-003's layering, wave 4
-// (DEC-052). The brand kit's tokens are emitted as CSS custom properties
-// scoped to the shell, over globals.css's platform values: `.brand-org`
-// beats `:root` and `.brand-org .theme-dark` beats `.theme-dark`, and the
-// `@theme inline` block resolves `var(--fg-heading)` at use, so every
-// `bg-canvas` / `text-fg-body` utility below picks the org's value up. No
-// row is the identity override: nothing is emitted and every page is
-// byte-identical to today. This is a READ, not an auth check — the pages
-// still gate themselves at the data (the [v16] rule below); the layout only
-// asks whether a member session exists so it never redirects.
-const CSS_VAR: Record<keyof BrandKit["light"], string> = {
-  canvas: "--canvas",
-  surface: "--surface",
-  fgHeading: "--fg-heading",
-  fgBody: "--fg-body",
-  fgMuted: "--fg-muted",
-  edge: "--edge",
-  edgeStrong: "--edge-strong",
-  spine: "--spine",
-  node: "--node",
-  // DEC-127's second gradient stop. No utility reads it yet — the poster
-  // renderer is its consumer — but the org layer carries every token the kit
-  // has, so a later card-media gradient needs no change here. A kit saved
-  // before the column existed has no value, and emits nothing for it.
-  canvasRaise: "--canvas-raise",
-};
-
-function themeCss(kit: BrandKit): string {
-  const block = (set: BrandKit["light"]) =>
-    (Object.keys(CSS_VAR) as (keyof BrandKit["light"])[])
-      .filter((token) => typeof set[token] === "string" && set[token] !== "")
-      .map((token) => `${CSS_VAR[token]}:${set[token]}`)
-      .join(";");
-  return `.brand-org{${block(kit.light)}}.brand-org .theme-dark{${block(kit.dark)}}`;
-}
-
-async function orgTheme(
-  locale: string,
-  state: Awaited<ReturnType<typeof getSessionState>>,
-): Promise<{ css: string; nonce: string | undefined } | null> {
-  if (state.kind !== "member") return null;
-  const kit = await getBrandKit(locale, state.session.orgId);
-  if (!kit.isOverridden) return null;
-  return {
-    css: themeCss(kit),
-    nonce: (await headers()).get("x-nonce") ?? undefined,
-  };
-}
+// ★★ WAVE 17 (DEC-199 §1.3, REQ-UIX-049): THE SHELL IS INSIDE THE PLAYGROUND, AND
+// SO IS EVERY SCREEN UNDER IT. `PlayScope root` wraps the whole shell — the
+// header, the page, the tab bar, the toast region — so no screen and no component
+// wraps itself any more (scopes do not nest), and a dialog, a sheet or a menu
+// opened anywhere lands in the scope through its one landing element (DEC-188).
+//
+// ★ THE ORG THEME LAYER IS NOT EMITTED HERE ANY MORE (DEC-199 §1.3.7). Until wave
+// 17 this layout wrote an org's brand kit as `.brand-org{--fg-heading:…}` over the
+// platform's values. `.brand-org` names the same context variables the scope
+// reassigns, and it was written later in the document, so it would win — an org's
+// light palette on the dark ground. The kit keeps its three other consumers —
+// posters, certificates and mail — and its logo; `getBrandKit()` and `SCR-059`
+// are unchanged. A brand-aware playground is a design `docs/design/` does not
+// contain, and the owner's to ask for.
 
 // The platform shell. NO auth check here [v16]: a layout does not re-render
 // on navigation under Partial Rendering, so the check lives in the DAL, at
@@ -84,7 +49,6 @@ export default async function AppLayout({
   // shell bug platform found at wave-4 sync 3 (DEC-057). A non-member
   // session gets no bell and no org theme, which is also the honest answer.
   const state = await getSessionState();
-  const theme = await orgTheme(locale, state);
   const isMember = state.kind === "member";
   const isStaff =
     isMember &&
@@ -105,7 +69,7 @@ export default async function AppLayout({
   const me = isMember ? await getMe(locale) : null;
 
   const navLink =
-    "inline-flex h-11 items-center rounded-field px-2 text-label text-fg-body hover:bg-silver-100 hover:text-fg-heading md:px-3";
+    "inline-flex h-11 items-center rounded-field px-2 text-label text-fg-body hover:bg-hover hover:text-fg-heading md:px-3";
 
   // The catalogue entry. A two-column panel of categories with counts is
   // §6.1's desktop design and belongs with browse in M10; in M9 it is the
@@ -123,15 +87,11 @@ export default async function AppLayout({
     // ★ The provider wraps the shell rather than each screen: an action's
     // acknowledgement must survive the navigation the action caused, and a
     // per-screen provider unmounts with the screen that triggered it.
+    // ★ The toast region is inside the scope with the shell (DEC-188 §6 said it would
+    // enter «with the shell and not before»; DEC-199 §1.3.6).
+    <PlayScope root className="min-h-dvh">
     <ToastProvider closeLabel={t("toastClose")} label={t("toastLabel")}>
-      <div
-        className={
-          theme
-            ? "brand-org min-h-dvh bg-canvas text-fg-body"
-            : "min-h-dvh bg-canvas text-fg-body"
-        }
-      >
-        {theme ? <style nonce={theme.nonce}>{theme.css}</style> : null}
+      <div className="min-h-dvh bg-canvas text-fg-body">
 
         {/* Layer 1 of the loading model (`16` §7.1.1): a bar only past 150 ms,
             fed by every `ui/link`. */}
@@ -148,7 +108,7 @@ export default async function AppLayout({
           trap in front of every console page. */}
         <a
           href="#main"
-          className="skip-link rounded-field bg-navy-950 px-4 py-2 text-label text-white"
+          className="skip-link rounded-field bg-accent px-4 py-2 text-label text-on-accent"
         >
           {t("skipToContent")}
         </a>
@@ -256,5 +216,6 @@ export default async function AppLayout({
         ) : null}
       </div>
     </ToastProvider>
+    </PlayScope>
   );
 }

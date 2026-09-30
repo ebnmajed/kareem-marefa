@@ -94,7 +94,8 @@ describe("the playground's nine glyphs", () => {
     const glyphs = Object.keys(Icons).filter((n) => n.endsWith("Icon"));
     expect(glyphs).toHaveLength(50);
     const { readFileSync } = await import("node:fs");
-    const page = readFileSync("src/app/[locale]/(dev)/ui/page.tsx", "utf8");
+    // Wave 17 (DEC-199): the glyphs' names moved with them into the gallery's own demo.
+    const page = readFileSync("src/app/[locale]/(dev)/ui/demos/icons.tsx", "utf8");
     for (const name of glyphs) expect(page, `${name} has an Arabic name in the gallery`).toMatch(new RegExp(`\\b${name}: "`));
   });
 });

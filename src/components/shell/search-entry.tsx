@@ -55,7 +55,7 @@ export async function SearchEntry({ locale }: { locale: string }) {
       <a
         href={`/${locale}/app/sessions#shell-search`}
         aria-label={t("searchLabel")}
-        className="inline-flex h-11 w-11 items-center justify-center rounded-field text-fg-heading hover:bg-silver-100 md:hidden"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-field text-fg-heading hover:bg-hover md:hidden"
       >
         <SearchIcon aria-hidden className="text-[1.25rem]" />
       </a>

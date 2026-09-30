@@ -10,7 +10,7 @@ import { CheckInRest } from "@/components/checkin/moment-check-in-rest";
 import { formatNumber } from "@/components/sessions/numerals";
 import { CodeInput } from "@/components/ui/code-input";
 import { Panel } from "@/components/ui/panel";
-import { PlayScope } from "@/components/ui/scope";
+// ★ Wave 17 (DEC-199 §1.3.4): the shell's layout is the scope now and scopes do not nest, so this is a plain element.
 import { SubmitButton } from "@/components/ui/submit-button";
 import { checkInForMoment, submitCheckInForm } from "./actions";
 
@@ -78,7 +78,7 @@ export default async function CheckInPage({
   const positions = Array.from({ length: CODE_LENGTH }, (_, i) => t("codePosition", { position: formatNumber(i + 1), total: formatNumber(CODE_LENGTH) }));
 
   return (
-    <PlayScope className="rounded-card px-4 py-6">
+    <div className="rounded-card px-4 py-6">
       <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
       <p className="mt-1 text-body-sm text-fg-muted">
         <bdi>{data.title}</bdi>
@@ -148,6 +148,6 @@ export default async function CheckInPage({
           </CheckInSurface>
         </>
       )}
-    </PlayScope>
+    </div>
   );
 }

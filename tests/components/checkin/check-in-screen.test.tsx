@@ -136,13 +136,16 @@ describe("the static state replaces the form once checked in to today (REQ-UIX-0
   });
 });
 
-describe("the scope (contract 3)", () => {
-  it("the whole content sits in the dark scope, which is never itself transformed", async () => {
+describe("the scope (wave 17, DEC-199 §1.3.4)", () => {
+  // Wave 16 wrapped this screen in its own scope (contract 3 of that wave). From wave 17 the
+  // shell's layout is the scope and scopes do not nest, so the content's root is a plain element
+  // — still never transformed, because the moment moves elements inside it.
+  it("the content's root is a plain element: the layout's scope is the screen's, and it is never transformed", async () => {
     const { container } = await show(data());
-    const scope = container.firstElementChild as HTMLElement;
-    expect(scope).toHaveClass("theme-play");
-    expect(scope).not.toHaveClass("theme-play-light");
-    expect(scope.getAttribute("style") ?? "").not.toMatch(/transform|filter/);
-    expect(within(scope).getByRole("heading", { level: 1 })).toHaveTextContent("تسجيل الحضور");
+    const root = container.firstElementChild as HTMLElement;
+    expect(root).not.toHaveClass("theme-play");
+    expect(container.querySelector(".theme-play")).toBeNull();
+    expect(root.getAttribute("style") ?? "").not.toMatch(/transform|filter/);
+    expect(within(root).getByRole("heading", { level: 1 })).toHaveTextContent("تسجيل الحضور");
   });
 });

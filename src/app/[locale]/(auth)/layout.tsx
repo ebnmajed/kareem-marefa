@@ -1,23 +1,28 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/components/ui/link";
 import { Panel } from "@/components/ui/panel";
+import { PlayScope } from "@/components/ui/scope";
 import { Wordmark } from "@/components/wordmark";
 
 // The three unauthenticated platform screens — SCR-002 … SCR-004, rebuilt on
 // the design system in wave 6 (DEC-129, DEC-130).
 //
-// ★ ONE DARK SECTION, the brand's cover (`16` §4.2.2, DEC-080): the wordmark
-// and a single card on the navy canvas, and no marketing chrome (DEC-038).
-// `theme-dark` reassigns the semantic tokens, so every primitive inside — the
-// page header, the panel, the button, the radio group — reads the dark values
-// without knowing it is in a dark section.
+// ★ ONE SECTION, the wordmark and a single card, and no marketing chrome
+// (DEC-038). Until wave 17 it was `.theme-dark`'s navy canvas (`16` §4.2.2,
+// DEC-080). ★★ From wave 17 it is inside the playground's scope, at the token
+// level (DEC-199 §1.3, REQ-UIX-049): the scope reassigns the semantic tokens, so
+// every primitive inside reads the playground's values, and `.theme-dark` is gone
+// — it would cut an old-look island into the page. ★ THIS IS NOT THE SCREENS'
+// REDESIGN. `SCR-002` – `SCR-004` open the member-screens milestone and are
+// rebuilt there from their own documents (DEC-195 §5, DEC-199 §2).
 //
 // This is the first screen every member ever sees, and `DEC-126`'s public
 // «تسجيل الدخول» will lead here — so it is the redesign's first impression.
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations("app.shell");
   return (
-    <main id="main" className="theme-dark flex min-h-dvh flex-col items-center bg-canvas px-4 pb-12 pt-10 text-fg-body md:justify-center md:pt-16">
+    <PlayScope root className="min-h-dvh">
+    <main id="main" className="flex min-h-dvh flex-col items-center bg-canvas px-4 pb-12 pt-10 text-fg-body md:justify-center md:pt-16">
       <div className="mb-8 flex w-full max-w-md justify-center">
         <Wordmark />
       </div>
@@ -37,5 +42,6 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
         </Link>
       </p>
     </main>
+    </PlayScope>
   );
 }
