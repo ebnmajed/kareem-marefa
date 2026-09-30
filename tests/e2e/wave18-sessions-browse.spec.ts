@@ -100,7 +100,14 @@ test.beforeAll(async ({}, testInfo) => {
         `عضو ${i + 1}`,
       ])
     ).rows[0].id;
-    await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, $4)`, [orgId, fullId, other, i === 0 ? "confirmed" : "waitlisted"]);
+    // `rsvps_check`: a waitlisted row carries its position (1, 2, …) and a confirmed one none.
+    await db.query(`insert into public.rsvps (org_id, session_id, member_id, status, waitlist_position) values ($1, $2, $3, $4, $5)`, [
+      orgId,
+      fullId,
+      other,
+      i === 0 ? "confirmed" : "waitlisted",
+      i === 0 ? null : i,
+    ]);
   }
   const memberId = await provision();
   await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [orgId, mineId, memberId]);

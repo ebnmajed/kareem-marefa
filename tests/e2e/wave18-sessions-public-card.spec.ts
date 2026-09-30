@@ -51,12 +51,16 @@ test.beforeAll(async ({}, testInfo) => {
     (
       await one<{ id: string }>(
         `insert into public.sessions (org_id, title, abstract, category_id, level, language, starts_at, duration_minutes,
-                                      ends_at, time_zone, venue_id, capacity, state, published_at, completed_at)
+                                      ends_at, time_zone, venue_id, capacity, state, published_at, completed_at,
+                                      cancelled_at, cancellation_reason)
          values ($1, $2, 'نبذة لا تظهر على البطاقة العامة', $3, 'intermediate', 'ar',
                  now() + $5::interval, 60, now() + $5::interval + interval '60 minutes',
                  'Asia/Riyadh', $4, 40, $6::public.session_state,
                  case when $6 <> 'draft' then now() - interval '10 days' end,
-                 case when $6 = 'completed' then now() + $5::interval + interval '60 minutes' end)
+                 case when $6 = 'completed' then now() + $5::interval + interval '60 minutes' end,
+                 case when $6 = 'cancelled' then now() - interval '1 day' end,
+                 -- \`sessions_check5\`: a cancelled session carries its reason.
+                 case when $6 = 'cancelled' then 'أُلغيت لظرف طارئ' end)
          returning id`,
         [orgId, title, category.id, venue.id, startOffset, state],
       )
