@@ -21,7 +21,7 @@ const messages = { ...checkin, ...sessions };
 
 vi.mock("@/lib/fonts", () => ({ balooBhaijaan: { variable: "font-baloo-variable" } }));
 vi.mock("@/lib/dal/session", () => ({ requireSession: async () => ({}) }));
-vi.mock("@/lib/dal/checkin", () => ({ getCheckInScreenData: vi.fn() }));
+vi.mock("@/lib/dal/checkin", () => ({ getCheckInScreenData: vi.fn(), getConflictTitle: vi.fn(async () => null) }));
 vi.mock("next-intl/server", () => ({
   setRequestLocale: () => {},
   getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages, namespace: namespace as "checkin" }),
@@ -33,6 +33,10 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 vi.mock("@/components/checkin/award-state", () => ({ AwardState: () => <section data-testid="award-section" /> }));
 vi.mock("@/components/checkin/moment-check-in-rest", () => ({ CheckInRest: () => <div data-testid="static-state" /> }));
+// ★ Wave 18 (REQ-UIX-062): the rebuilt screen's mini-row and earn panel read the poster and the
+// scoring rule; each has its own suite, and here they are stubbed like the award section.
+vi.mock("@/components/checkin/check-in-session-row", () => ({ CheckInSessionRow: () => <div data-testid="session-row" /> }));
+vi.mock("@/components/checkin/earn-panel", () => ({ EarnPanel: () => <div data-testid="earn-panel" /> }));
 vi.mock("@/app/[locale]/app/sessions/[id]/check-in/actions", () => ({
   submitCheckInForm: Object.assign(async () => {}, { bind: () => async () => {} }),
   checkInForMoment: Object.assign(async () => ({ checkInId: "x" }), { bind: () => async () => ({ checkInId: "x" }) }),
@@ -57,6 +61,10 @@ const data = (over: Partial<CheckInScreenData> = {}): CheckInScreenData => ({
   checkedInToday: false,
   arrivedAt: null,
   teamColor: null,
+  rotationSeconds: 600,
+  venueName: null,
+  startsAt: null,
+  requireAllDays: true,
   ...over,
 });
 
@@ -71,7 +79,7 @@ beforeEach(() => vi.mocked(getCheckInScreenData).mockReset());
 describe("★ code-input adopted (REQ-UIX-035)", () => {
   it("names the group by its visible label and each box by its position; one hidden `code` field posts", async () => {
     const { container } = await show(data());
-    const group = screen.getByRole("group", { name: "رمز الحضور" });
+    const group = screen.getByRole("group", { name: "أدخل رمز الحضور الذي أعلنه المُقدِّم" });
     const boxes = within(group).getAllByRole("textbox");
     expect(boxes).toHaveLength(6);
     expect(boxes[0]).toHaveAccessibleName("الخانة 1 من 6");
@@ -86,7 +94,7 @@ describe("★ code-input adopted (REQ-UIX-035)", () => {
     await show(data(), { error: "invalid_code", code: "ZZZZZZ" });
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("الرمز غير صحيح");
-    const group = screen.getByRole("group", { name: "رمز الحضور" });
+    const group = screen.getByRole("group", { name: "أدخل رمز الحضور الذي أعلنه المُقدِّم" });
     expect(group).toHaveAttribute("aria-describedby", alert.id);
     expect(within(group).getAllByRole("textbox")[0]).toHaveAttribute("aria-invalid", "true");
     expect(within(group).getAllByRole("textbox").map((b) => (b as HTMLInputElement).value).join("")).toBe("ZZZZZZ");
@@ -100,7 +108,7 @@ describe("★ code-input adopted (REQ-UIX-035)", () => {
 
   it("an untouched form is not invalid and describes nothing", async () => {
     await show(data());
-    const group = screen.getByRole("group", { name: "رمز الحضور" });
+    const group = screen.getByRole("group", { name: "أدخل رمز الحضور الذي أعلنه المُقدِّم" });
     expect(group).not.toHaveAttribute("aria-describedby");
     expect(within(group).getAllByRole("textbox")[0]).not.toHaveAttribute("aria-invalid");
   });

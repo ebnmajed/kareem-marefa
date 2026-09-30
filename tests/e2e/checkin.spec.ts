@@ -254,16 +254,20 @@ test("REQ-CHK-015/016: the check-in switch closes and reopens, staying at 390px"
   await signIn(context, staffEmail, true);
   await page.goto(`/ar/app/sessions/${sessionId}/host`);
 
-  await expect(page.getByText("تسجيل الحضور مفتوح الآن")).toBeVisible();
+  // ★ Wave 18 (REQ-UIX-062, ledger — selector): the door is a switch now, and its state is the
+  // switch's, where it was a sentence («…مفتوح الآن») beside two buttons.
+  const door = page.locator("#main").getByRole("switch", { name: "تسجيل الحضور مفتوح" });
+  await expect(door).toBeChecked();
   if (isPhone) {
     mkdirSync(SHOTS, { recursive: true });
     await page.screenshot({ path: join(SHOTS, "wave7-checkin-host-open.png"), fullPage: true });
   }
 
-  await page.getByRole("button", { name: "أغلق تسجيل الحضور" }).click();
+  // The label is the tap target: the input itself is visually hidden (`ui/switch`).
+  await page.locator("#main").getByText("تسجيل الحضور مفتوح", { exact: true }).click();
   await expect(page).toHaveURL(/\?switch=closed$/);
   await expect(page.getByText("تم إغلاق تسجيل الحضور")).toBeVisible();
-  await expect(page.getByText("تسجيل الحضور مغلق الآن")).toBeVisible();
+  await expect(door).not.toBeChecked();
   // DEC-115: closing revokes nothing already recorded — the hint says so,
   // and the code above (still valid the whole time — 0084's own comment:
   // the switch never gates issuance) still shows, unrevoked.
@@ -274,9 +278,9 @@ test("REQ-CHK-015/016: the check-in switch closes and reopens, staying at 390px"
   expect(closedRows[0].check_in_open).toBe(false);
 
   // Reopen it, leaving the session as every earlier test in this file found it.
-  await page.getByRole("button", { name: "افتح تسجيل الحضور" }).click();
+  await page.locator("#main").getByText("تسجيل الحضور مفتوح", { exact: true }).click();
   await expect(page).toHaveURL(/\?switch=opened$/);
-  await expect(page.getByText("تسجيل الحضور مفتوح الآن")).toBeVisible();
+  await expect(door).toBeChecked();
   const { rows: reopenedRows } = await db.query<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [sessionId]);
   expect(reopenedRows[0].check_in_open).toBe(true);
 });

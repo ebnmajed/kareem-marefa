@@ -3017,3 +3017,33 @@ label alone), `wave12…:203, 260, 312`.
 - **D11** `M10a.md` §9 «After close … the code area says «أُغلق التسجيل»». With the switch closed while live the RPC
   still issues a code (`0084`, «the room can see what reopening would accept») and the tree shows it. [The tree: the
   code, the switch off, `closedHint`. After the ceiling there is no code and the `ended` sentence.]
+
+## B.7 · Built (commit 2, after the delete at `60d83d51`)
+
+As planned, with these as-built notes:
+- **The earn panel reads the rule itself** (`getAttendanceRulePoints()`, `sessions'` add-only export), so it streams
+  behind its own `Suspense` and never holds the form. `code-input`'s `align="center"` is `sessions'` `d640d411`.
+- **The host clock** refreshes at the next instant the answer changes by itself: the rotation, and also the day's
+  start. The latter makes `host.notStarted`'s «يظهر رمز الحضور هنا تلقائيًا» true for the first time.
+- **Strings without tags where a primitive takes a `string`** (`Stat`'s hint, `Switch`'s description, the
+  combobox's results label). Their values are isolated by the primitive (`Stat` wraps its value in `<bdi>`) or are
+  plain numbers.
+- `host.walkIns.*` and `host.checkInCount` are deleted from both catalogues, and nothing reads them.
+- **The proposed SQL** `supabase/proposed/checkin/01_host_broadcast.sql` is proven by
+  `tests/rls/checkin-host-broadcast.test.ts` (3/3), as a member calling `check_in()` and as an admin calling
+  `remove_check_in()`. `realtime.send()` stamps its own `id` into the payload, and the test allows for it.
+
+**The ledger lines for `STATUS.md`** (the lead's file). Every one moves a selector, and no expectation changes:
+
+| File:line | Moved | Why |
+|---|---|---|
+| `tests/components/checkin/check-in-screen.test.tsx:74, 89, 103` | selector: the group's name `رمز الحضور` → `أدخل رمز الحضور الذي أعلنه المُقدِّم` | the prompt is the one visible label (`CheckIn.dc.html`) |
+| `check-in-screen.test.tsx` fixture and mocks | scaffolding: four add-only DTO fields; the row and the earn panel stubbed | no expectation changes |
+| `tests/e2e/checkin.spec.ts` (the switch test) | selector: `getByText("…مفتوح/مغلق الآن")` and the two buttons → `getByRole("switch")` checked / not checked, and a click on its label | the door is a switch |
+| `tests/e2e/wave9-checkin-days.spec.ts:197, 199, 213` | selector: as above | as above |
+
+**Gates run by me:** `tsc` is clean for my files. `eslint` reports 0 problems on everything I touched. `npm test` has
+4290 passing, with 1 failure and 1 failing file, both `content`'s work in progress: `tests/unit/content-i18n.test.ts`
+and `tests/components/photos/lightbox.test.tsx`. `npm run test:rls` runs the new case at 3/3. `ui-lint` flags 2
+files, both `content`'s: `materials/audio-row.tsx` and `photos/upload-widget.tsx`. **Not run:**
+`tests/e2e/wave18-checkin-screens.spec.ts` and the two edited specs, which need a production build of this tree.
