@@ -533,7 +533,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-058` | — | — | `SCR-002` `SCR-003` `SCR-004` | — | — | `STORY-UIX-042` | M20 |
 | `REQ-UIX-059` | — | — | `SCR-007` `SCR-020` | — | — | `STORY-UIX-043` | M20 |
 | `REQ-UIX-060` | — | — | `SCR-011` | — | — | `STORY-UIX-045` | M20 |
-| `REQ-UIX-061` | — | — | `SCR-012` | — | — | `STORY-UIX-048` | M20 |
+| `REQ-UIX-061` | — | — | `SCR-012` `SCR-014` `SCR-016` | — | — | `STORY-UIX-048` | M20 |
 | `REQ-UIX-062` | — | — | `SCR-014` `SCR-016` | — | — | `STORY-UIX-049` `STORY-UIX-050` | M20 |
 | `REQ-UIX-063` | — | — | — | — | — | `STORY-UIX-046` | M20 |
 

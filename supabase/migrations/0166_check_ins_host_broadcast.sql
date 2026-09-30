@@ -1,4 +1,4 @@
--- supabase/proposed/checkin/01_host_broadcast.sql — proposed by `checkin`, promoted by the lead.
+-- 0166_check_ins_host_broadcast.sql — proposed by `checkin` (supabase/proposed/checkin/01_host_broadcast.sql), promoted by the lead.
 --
 -- REQ-CHK-001 («the check-in count updates live», A18), REQ-UIX-062, DEC-209 §1.
 --

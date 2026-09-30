@@ -1,4 +1,4 @@
-// TRG-check_ins_host_broadcast — supabase/proposed/checkin/01_host_broadcast.sql (REQ-CHK-001, A18,
+// TRG-check_ins_host_broadcast — supabase/migrations/0166_check_ins_host_broadcast.sql (REQ-CHK-001, A18,
 // REQ-UIX-062, DEC-209 §1). The host view's live count: every check-in and every removal pokes the
 // session's private `host:` topic, naming no member. `realtime.test.ts` already proves who may READ
 // that topic (0016); this proves only that something now writes to it, and what.
@@ -7,7 +7,7 @@
 // is `security definer` precisely because those callers cannot write `realtime.messages` themselves.
 
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, pool, withTx, type Tx } from "./db";
+import { pool, withTx, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
@@ -32,7 +32,6 @@ describe("TRG-check_ins_host_broadcast", () => {
   it(".poke — a member's check-in pokes host:{session} with the day and nothing about who", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "checkin/01_host_broadcast.sql");
       const sessionId = await liveSession(tx, f.a);
       const [code] = await tx.q<{ code: string; session_day_id: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
 
@@ -54,7 +53,6 @@ describe("TRG-check_ins_host_broadcast", () => {
   it(".removal — an admin's removal pokes it again; a refused attempt does not", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "checkin/01_host_broadcast.sql");
       const sessionId = await liveSession(tx, f.a);
       const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
 
@@ -74,7 +72,6 @@ describe("TRG-check_ins_host_broadcast", () => {
   it(".own_topic — never another session's topic", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await applyProposed(tx, "checkin/01_host_broadcast.sql");
       const sessionId = await liveSession(tx, f.a);
       const other = await liveSession(tx, f.a);
       const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
