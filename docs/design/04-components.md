@@ -22,6 +22,27 @@ of the 37 primitives; it changes their look through tokens and adds nine new one
 | `skeleton` | shaped like the content (`REQ-UIX-005`), opacity pulse only |
 | `data-table`, `reorderable-list`, `file-drop` and the rest of the console primitives | tokens only; **no animation** |
 
+### ★ The rows this table never had — added by `DEC-199` (wave 17, M19)
+
+The table above names about twenty primitives, and `07-tasks.md`'s order the same. **Eight were in neither**, so
+wave 15 migrated what was listed and these kept the old design on every scoped screen — the mixture the owner saw.
+Their design is derived from the documents that do speak (`02-typography.md`'s pairing, `01-tokens.md`), and
+`tests/unit/ui-playground.test.ts` now reads the **directory**, so a primitive can no longer be missing from a list.
+
+| Primitive (file) | Change |
+|---|---|
+| `page-header` | The page's one `h1` in the display face at display-md; breadcrumb, eyebrow and description in the body face, muted; chevrons mirror. Actions wrap under the text on a phone |
+| `section-header` | `h2` in the display face at display-sm; `h3` in the body face; the count stays body, muted |
+| `prose` | Body face, body line height 1.7; headings inside it follow `section-header`; a link inside it is underlined in the text colour |
+| `link` | The text's colour with an underline as the affordance; **never the accent as the only signal** (lime on the light ground is 1.07:1). The pending dot is the accent |
+| `icon-button` | A `button` in a square: its faces, its press, the pill radius; ≥ 44 px; the name on the element |
+| `submit-button` | `button`'s `primary`; pending keeps the label |
+| `reorderable-list` | tokens only; **no animation**; the move buttons are the conforming path (`DEC-093`) |
+| `icons` | unchanged drawings, `currentColor`, `1em`; shown whole in the gallery. The public routes import it, so it changes last, alone |
+
+**The console** (`/app/admin/**`, `/app/platform/**`) takes the palette, the radii and the type, and **none of the
+motion, objects or stickers** (`DEC-199` §1.1).
+
 ## New primitives
 
 | Primitive | File | Spec |

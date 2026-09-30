@@ -612,20 +612,51 @@ animated counterpart; and `qa:contract`, `visual`'s public pairs and the registe
 streak rule, any screen beyond the five surfaces, the shell, the public site, the desktop shell, leagues, the
 certificates' look — and the two carried gates, which travel together (`DEC-194`).
 
-### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5)
+---
+
+## M19 — every primitive, and one visual language · wave 17 · `DEC-199`
+
+**The playground is the product's only visual language** — the owner's ruling of 2026-09-30, after opening the app
+on a phone and finding it a mixture. Two causes were measured, and this milestone removes both: eight primitives the
+design's own task list never named had no playground treatment, so every scoped screen drew its title, its text and
+its links in the old design; and the scope reached five surfaces only. **Every surface but the five public routes
+enters the scope at the root of its layout, the console at the token level, and the public site still moves last.**
+★★ **No screen is rebuilt here: a screen is rebuilt to its design in its own wave, never restyled** (`DEC-199` §2).
+
+| Work | Requirements |
+|---|---|
+| The gate that reads `src/components/ui/` and fails on a file with no playground design | `REQ-UIX-050` |
+| The token move — the scope at the root of every layout but the public site's; the raw palette leaves the app | `REQ-UIX-049` |
+| `page-header`, `section-header`, `prose`, `link`, `icon-button`, `submit-button`, `reorderable-list` | `REQ-UIX-051` |
+| `icons`, last, with the public routes proved unmoved | `REQ-UIX-052` |
+| The console's register — tokens, and none of the motion, objects or stickers | `REQ-UIX-053` |
+
+**Demonstrable:** the gate green over all 49 files, having landed red; `qa:contract`, `qa:appearance`, `visual`'s
+public pairs and the register form's fingerprint unmoved and not re-baselined; the accessibility sweep at 0 findings
+over every route inside the scope; and ★ **the gallery opened by the owner on a phone**, which is the milestone's
+acceptance.
+
+**Not this milestone:** any screen's rebuild, the public site's re-skin, session stories, the timeline's new items,
+proposal voting, the weekly leaderboard, the streak rule, the desktop shell, leagues, the certificates' look, a
+console layout pass, deleting the `pg:` variants and `:root`'s old values (the public site's wave) — and the two
+carried gates, which travel together (`DEC-194`).
+
+### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5, renumbered by `DEC-199` §7)
 
 Each wave of the programme claims its milestone number when it opens (`DEC-183` §3). **The positions are fixed now;
-the numbers after M18 are the sequence as it stands, and move with it.**
+the numbers after M19 are the sequence as it stands, and move with it.** `DEC-195` §5 had stories at M19; wave 17
+claimed the number, and every position after it kept its place.
 
 | Order | Milestone | Scope |
 |---|---|---|
 | 1 | **M17** — done, wave 15 | the foundation: tokens as a scope, the display face, the primitives, team colours |
-| 2 | **M18** — this wave, wave 16 | the five moments on their real surfaces |
-| 3 | M19, when it opens | session stories and their viewer (`DEC-093`'s seventh place) |
-| 4 | ★ **M20, when it opens — the member screens** | ★★ **opens with `SCR-002` sign-in, `SCR-003` choose-org and `SCR-004` no-access**, then the member screens in `09` §8's order. The three `(auth)` screens are neither behind sign-in nor public marketing, so a grouping by either skipped them twice (`DEC-129`, `DEC-195` §5); **they are placed here by name** |
-| 5 | when it opens | the console |
-| 6 | when it opens | the studio and the certificates' surroundings — the certificate itself keeps its look |
-| 7 | when it opens, **last** | the public site (`DEC-NEXT-5`, option A; `REQ-NFR-019` holds until then) |
+| 2 | **M18** — done, wave 16 | the five moments on their real surfaces |
+| 3 | **M19** — this wave, wave 17 | every primitive in the playground, a gate that enumerates them, and the scope at the root of every layout but the public site's |
+| 4 | M20, when it opens | session stories and their viewer (`DEC-093`'s seventh place) |
+| 5 | ★ **M21, when it opens — the member screens** | ★★ **opens with `SCR-002` sign-in, `SCR-003` choose-org and `SCR-004` no-access**, then the member screens in `09` §8's order. The three `(auth)` screens are neither behind sign-in nor public marketing, so a grouping by either skipped them twice (`DEC-129`, `DEC-195` §5); **they are placed here by name**. ★ Each screen is **rebuilt** from `docs/design/screens/<SCR-id>.md`, never restyled (`DEC-199` §2) |
+| 6 | when it opens | the console — a rebuild of its **layout**; its visual language arrived in M19 |
+| 7 | when it opens | the studio and the certificates' surroundings — the certificate itself keeps its look |
+| 8 | when it opens, **last** | the public site (`DEC-NEXT-5`, option A; `REQ-NFR-019` holds until then) — and with it the old values at `:root` and the `pg:` variant are deleted (`DEC-199` §1.3) |
 
 ---
 

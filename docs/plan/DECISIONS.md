@@ -5228,3 +5228,133 @@ local Supabase at `0163`:**
 **F2** — the pre-check-in award section on `SCR-014` is inside `<Suspense>` and never appears without JavaScript (since wave 12). ★★ **F3** — **`/app` does not work without JavaScript**: every route streams behind `loading.tsx`, so with JavaScript off the skeleton never swaps out (since M9's loading model); both no-JS specs are `test.fixme` citing it. **The 390 px review:** overshoot (the coin with and without `1.06`; the reaction's and code box's pops), a dark scope beside a light page, and where moment 1's ticket rests on a phone. Also carried: lifting the document-load rule into `useMoment` for all tracks; the pre-existing `.maybeSingle()` in the timeline's pinned card (`SCR-010`, frozen); `REQ-REC-004` in a default org; the level turning over only after the nightly run (D-29); `DEC-190` §6's eleven; `DEC-194`'s two gates.
 
 - **Documents changed:** `STATUS.md` (the closing block, the owner's order)
+
+---
+
+## DEC-199 — Wave 17 opens M19: the playground is the product's only visual language, the admin console takes it at the token level, the public site is in scope and still moves last — and a screen is rebuilt to its design, never restyled
+
+- **Date:** 2026-09-30 · **Decided by:** the owner (the ruling of 2026-09-30, and the licence of 2026-09-29, both recorded in `docs/plan/notes/wave-17-lead.md` before the wave opened); the mechanism, the boundary, the gate and the corrections measured and written by the wave-17 lead
+- ★★ **Amends:** `DEC-183` §4.2(f) and `DEC-195` §1 (which surfaces wear the playground), `DEC-195` §1.2 and §1.3 (the shell, the brand kit), `DEC-188` §6 (the toast region). **Corrects:** `docs/design/04-components.md` and `07-tasks.md`, whose lists never named eight of the primitives (§3).
+- **Adds:** `REQ-UIX-049` … `REQ-UIX-053`; `STORY-UIX-033` … `STORY-UIX-038`; milestone **M19**. Migrations start at **`0164`**; none is expected and this entry cites none (`DEC-180`).
+- **Keeps, unchanged:** `DEC-183` §2 (what survives of `DEC-100`), `DEC-186` §2 (how the scope is built) and §3 (the status colours are `DEC-073`'s), `DEC-188` (a portal lands inside the scope), `DEC-195` §4 (a company has no logo), `DEC-197`, invariant 1 and invariant 2.
+
+### 1 · ★★ The owner's ruling — one visual language, everywhere. The gate is closed
+
+The owner opened the app on a phone after wave 16 and called it a Frankenstein. On 2026-09-30, asked how far the playground goes:
+
+> **«A full redesign for all the web app and the marketing page and everywhere.»**
+
+**«ساحة اللعب» is the product's only visual language.** No screen keeps the old one, and **no compatibility layer for the old look survives this programme.** The narrower option — the playground for `/app` alone, for good — is withdrawn.
+
+And on 2026-09-29: **«All the current members and data is for testing. You can break the app completely if it is needed.»** That licenses one thing: the app behind sign-in may look broken while this lands, and no commit is spent keeping a screen presentable in the middle. ★★ **It does not license touching `registrations`** — 20 real pre-launch signups, invariant 2, `DEC-002`: never dropped, never altered, never read by platform code. **The register form's action, field names, ids, validation and no-JS path are the contract and stay byte-identical**; its appearance moves only in the public site's own wave.
+
+#### 1.1 · The admin console is IN, at the token level
+
+`docs/design/` does not cover the console, and every mention of it there is an **exclusion**, which is a position and not a gap: `04-components.md:23` «`data-table`, `reorderable-list`, `file-drop` and the rest of the console primitives — tokens only; **no animation**»; `03-motion.md:12` and `06-decisions-proposed.md:17` «tables, lists, admin surfaces and error states never animate»; `05-stories.md:94` «Admin: nothing.»
+
+**So the console — `/app/admin/**` and `/app/platform/**` — takes the palette, the radii and the type, and none of the playground's motion, objects or stickers.** That is a difference of register, not a second design (`REQ-UIX-053`).
+
+★ **Why not carve the console out, so nobody revisits it:** freezing it at today's values would need a compatibility layer **for the console** — the same scope mechanism pointed the other way — and staff would work in what reads as another product. One language with a sober register for staff is the ordinary answer and costs nothing extra.
+
+★ **A later console pass is about LAYOUT** — data density, table ergonomics, the rail — and not about visual language. It is available, not scheduled, and blocks nothing.
+
+#### 1.2 · The public site is in scope, and still moves LAST
+
+«Everywhere» settles *whether*, not *when*. `DEC-183` §1 (`DEC-NEXT-5`, option A) stands: the public site is re-skinned in the programme's last wave. It is the only surface with a frozen behavioural contract and real signups behind it. **Until that wave, `qa:contract`, `qa:appearance`, `visual`'s public pairs and the register form's fingerprint all stay pass/fail and none is re-baselined.**
+
+#### 1.3 · The mechanism — the scope becomes the root of everything that is not the public site
+
+The brief put two mechanisms: **A**, the playground's values at `:root`, which re-skins the public site the day it merges, because the five frozen routes import `button`, `field`, `input`, `textarea` and `icons`; and **B**, the playground for everything but the public site, which keeps today's values until its wave. **The owner's ruling — in scope, still last — is B.**
+
+**How B is built, measured against the tree:** the public site and the app share one `<html>` and one stylesheet (`src/app/[locale]/layout.tsx`), so values written to `:root` reach both. Moving them there would need the old values re-declared on a wrapper around the public site — a new element or class in the frozen routes' own HTML, in the one place with a contract. So:
+
+1. **`PlayScope` is rendered once, at the root of every layout that is not the public site's** — the platform shell (`app/layout.tsx`), `(auth)/layout.tsx`, `legal/`, `s/`, `verify/` and the gallery. Every screen under them is inside the playground, the console included.
+2. **`globals.css` outside the playground's block does not change.** `:root`'s old values remain for one reader, the public site, and are **deleted by the public site's wave**, together with the `pg:` variant, which by then means «everywhere». That deletion is the programme's last act and is what «no compatibility layer survives» means. Until then the variants stay: they cost 87 lines of 5,862 in `ui/`.
+3. **The ground is dark**, the direction's default (`00-direction.md`). The light variant stays supported and is used by no screen.
+4. **Scopes do not nest** (`DEC-186` §2), so the five moment surfaces of `DEC-195` §1.1 lose their own `PlayScope`: the layout's is theirs now. The rule of `DEC-188` §5 is kept at the root: the scope's element is never transformed, filtered or clipped.
+5. ★ **`.theme-dark` does not appear under a scoped layout.** It reassigns the context variables to the old navy values and would cut an old-look island into a playground page. Five app files carry it today (`(auth)/layout.tsx`, the event hero, the impersonation banner, the lightbox, the shell). Each is removed in the token move and a test holds it.
+6. ★ **The toast region enters the scope with the shell**, which `DEC-188` §6 said would happen «with the shell and not before».
+7. ★ **An org's brand kit no longer restyles the app.** `.brand-org` writes the same context variables the scope reassigns (`DEC-186` §9), and an org's light palette over the dark ground is unreadable. `DEC-195` §1.3 left the question «to the shell's wave»; this is it. **Default in force: the shell stops emitting the org theme layer; the kit keeps its three other consumers — posters, certificates and mail — and its logo.** `REQ-DSG-021`'s four consumers become three **in the app's appearance only**; nothing about the entity, its screen (`SCR-059`) or its guard changes. ★ **This is the one consequence of the ruling that removes something an org admin can do today, so it is put to the owner by name in the PR**; a brand-aware playground — a kit's colour as the accent — is a design that `docs/design/` does not contain.
+8. **The page behind the scope.** `<body>` is outside every layout, and a phone shows it on overscroll. The root scope marks itself and the document's ground follows it, in the playground's block of `globals.css`.
+
+★ **What this costs the public site: nothing, by construction** — no file the public routes import changes for the move, and `tests/unit/public-graph.test.ts` still finds no scope in their graph.
+
+### 2 · ★★ A screen is REBUILT to its design, never restyled
+
+**This sentence goes into every screens-wave brief from here:**
+
+> **A screen is REBUILT to its design, never restyled.** Applying the scope to existing markup produces the right colours on the wrong structure, which is the Frankenstein the owner saw, made permanent. When the per-screen designs arrive as `docs/design/screens/<SCR-id>.md`, the screen is built from that document — its layout, its hierarchy, its affordances — not patched until it looks close.
+
+**And what that makes of this wave's token move, so the two are never confused.** §1.3 puts every screen inside the scope. **That is not a redesign of any screen, and no screen is «done» by it.** It gives every screen one palette, one type and one set of primitives, on the structure `16-ui-redesign.md` gave it; `09` §8's markers do not change; and each screen is still owed its rebuild in its own wave, from its own document. The move removes the mixture. It does not supply the design.
+
+**So in M19 nobody rearranges a screen.** A change to a screen's markup this wave is one of three things: a raw palette class replaced by a semantic one, a `.theme-dark` removed, a nested scope removed. Anything more is the screens waves'.
+
+### 3 · What was measured — the eight, and what the count hid
+
+`docs/design/07-tasks.md`'s wave-1 order names about twenty of the primitives and `04-components.md`'s migration table the same. **Eight are in neither, and have no playground treatment at all** — no `pg:` class, no reference to the scope, no scope test:
+
+| Primitive | Lines | Where it shows | Owner |
+|---|---|---|---|
+| `page-header` | 53 | every screen's title | lead |
+| `prose` | 18 | every screen's body text | lead |
+| `link` | 24 | every link | lead |
+| `icon-button` | 47 | every icon button | lead |
+| `section-header` | 40 | every section heading | lead |
+| `submit-button` | 29 | every form's submit | lead |
+| `reorderable-list` | 132 | the survey, the email studio | lead |
+| `icons` | 666 | every glyph — ★ **and the five frozen routes import it** | lead |
+
+A screen inside the scope took the playground's card, button and field, and then its heading, its text and its links rendered in the old design. That is the mixture the owner saw, on every screen.
+
+**Measured on `main` at `4db9f60e`, file by file** — 49 `.tsx` files in `src/components/ui/` (the 37, wave 15's ten, `scope` and `scope-portal`):
+
+- **No treatment:** the eight above. `reorderable-list` and `page-header` have a jsdom test written before the scope existed; the other six have none that renders them inside it.
+- ★ **Treated, with no test that says so:** `dialog`, `skeleton` and `toast` carry `pg:` classes and have no `-scope` test; `route-progress` and `route-error` have a plain test only. `button`, `link`, `prose`, `icon-button`, `section-header`, `submit-button`, `icons`, `route-progress` and `reorderable-list` have **no gallery demo file**. `REQ-UIX-001` asks every primitive for a jsdom test, an RTL check and a gallery entry; wave 15's plan covered the primitives it listed and nothing checked the list against the directory.
+- **Raw palette names outside the public site's files:** 66 occurrences in 17 `ui/` files — each already paired with a `pg:` form — and **about 40 in 28 files of screens and the shell**, `bg-silver-100` most of all. Inside a dark scope each is a light patch. They are the token move's real work.
+
+**Why it happened, in one line:** the plan was a list of names, and a list cannot notice what it omits. §4 replaces the list with the directory.
+
+### 4 · ★★ The gate — every file in `src/components/ui/` has a playground design, or the build fails
+
+**This is worth more than the eight repairs.** `tests/unit/ui-playground.test.ts` (the lead's) reads the directory, not a list:
+
+1. **It enumerates `src/components/ui/*.tsx`.** Every file must have exactly one entry in a registry beside the test, and every entry a file. A new primitive with no entry fails; so does an entry whose file is gone.
+2. **An entry declares the file's treatment, and the test checks the declaration against the source:** `variant` — the file carries `pg:` classes; `tokens` — it reads semantic names only, with no raw palette name, no hex and no literal duration anywhere in it; `composes` — it draws nothing of its own and names the primitives it renders, each of which must itself pass; `infrastructure` — it renders no pixel (`scope`, `scope-portal`), with the reason written.
+3. **Every entry but `infrastructure` needs a test that renders the primitive inside the scope** (`<name>-scope.test.tsx`, or the primitive's own test where it was born in the scope) **and a gallery demo** at `(dev)/ui/demos/<name>.tsx`.
+4. **The registry is the lead's and has no «pending» kind.** An exemption is a visible diff with a reason, as `traceability.mjs`'s cross-cutting list is.
+
+`REQ-UIX-050`. It lands **red** — it fails today on the files §3 names — and the wave turns it green.
+
+### 5 · Where `docs/design/` and the tree disagree — continued from `DEC-195` §6
+
+25. ★ **The design names no treatment for seven primitives.** `04-components.md` lists `reorderable-list` («tokens only; no animation») and is silent on `page-header`, `section-header`, `prose`, `link`, `icon-button`, `submit-button` and the existing glyphs. **Their design is derived from the documents that do speak**, and written into `04` by this wave: a page's title and a section's heading are «headings» and take the display face (`02-typography.md`'s pairing); body text, a breadcrumb, a description and a link are the body face; an icon button is a `button` and takes its faces; a link's colour is the text's, its underline the affordance, and the accent is never a link colour (lime on the light variant is 1.07:1, `DEC-186` §2). Each derivation the lead makes is shown in the gallery and is the owner's to overrule there.
+26. **`02-typography.md`'s `title` (28/32, body 700) and `display-md` (30/34, display 800) both claim a page's title.** The pairing table says headings are the display face; the scale's `title` row says body. **A page's `h1` is the display face at `text-play-md`; `h2` is the display face at `text-play-sm`; `h3` and below are the body face.** One place, the gallery, shows all three together.
+27. **«All 37 primitives».** There are 49 files. The gate counts files.
+28. **`04` makes the focus ring «3px accent outline».** On the dark ground that is `--ring`, already; no primitive declares its own (`DEC-186` §2).
+29. **`00-direction.md` says the frozen routes «do not move before M13».** M13 closed in wave 11 (`DEC-183` §4.1). They do not move before the public site's own wave.
+
+### 6 · The wave (M19)
+
+| | |
+|---|---|
+| **lead** | this entry, the map, the ten agent files, `01` / `14` / `15` · ★ **the gate** (§4), landed red, first · ★ **the token move** (§1.3): the root scope, the document's ground, the nested scopes and the `.theme-dark`s removed, the org layer retired from the shell, the toast region · ★ **the eight primitives** (§3), each with a scope test and an RTL check; `icons` **last**, alone, with contract 5's four-part proof · the scope tests §3 found missing on its own files · the gallery page · the a11y sweep · the gates, `STATUS`, the PR |
+| `content` (opus) | the **gallery entries** for the eight and for `button`, from the props as they stand · its fourteen primitives under the whole app's scope · ★ **the member side's raw palette** — every raw class outside `ui/` in a member-facing file, replaced by a semantic name · the 390 px and desktop captures of the gallery |
+| `console` (sonnet) | its six data-dense primitives under the new values, tokens only · ★ **the staff side's raw palette** — `/app/admin/**`, `/app/platform/**`, the studio's chrome · ★ **the register's guard** (`REQ-UIX-053`): a test that no file the console renders imports a moment, an object or a sticker · the 390 px captures of the console's screens the eight reach |
+
+**Two tracks, not four.** The wave is narrow and mostly the lead's; the eight are all the lead's files. **Not spawned:** `sessions`, `checkin`, `scoring`, `designer`, `event`, `notify`, `platform`, `branding` — the lead is custodian.
+
+**The demonstrables.** (1) ★★ **The gate green over all 49 files**, having been red. (2) ★★ **`qa:contract`, `qa:appearance`, `visual`'s public pairs and the register-form fingerprint unmoved** — not re-baselined. (3) ★ **The accessibility sweep at 0 findings over every route, inside the playground** — the token move puts every screen on a new ground, and contrast is where that shows. (4) ★★ **The gallery opened by the owner on a phone.** The wave's acceptance is the owner looking at `/ar/ui` and saying whether it now reads as one design; the lead's captures are evidence for that review and not a substitute for it.
+
+**Not this wave:** session stories and their viewer · the timeline's feed items · proposal voting · the weekly leaderboard · the streak rule · ★ **the screens themselves** — no screen is rebuilt, rearranged or «improved» (§2) · the public site's re-skin · the desktop shell (`DEC-NEXT-15`) · leagues · the certificates' look · a separate console layout pass (§1.1) · deleting the `pg:` variants and `:root`'s old values (§1.3.2 — the public site's wave) · ★ **the two carried gates, together** (`DEC-194`) — the trigger-definer ACL sweep and wave 14's Storage-predicate gate.
+
+### 7 · The programme's sequence, renumbered
+
+`DEC-195` §5 placed session stories at M19 «on the sequence as it stands» and said the number moves and the position does not. **This wave claims M19.** Stories follow at M20 when they open; ★ **the member screens at M21, still opening with `SCR-002`, `SCR-003` and `SCR-004`**; then the console, the studio, and the public site last. `14-roadmap.md` carries the table.
+
+### 8 · Carried to the owner — one line each
+
+- ★ **Self-host the display face for the web build.** `next/font/google` fetches Baloo Bhaijaan 2 at build time, and that fetch failed four CI builds in a row on 2026-09-29 (`DEC-198` §4); from this wave the face is on every screen. The bytes are already in `packages/fonts/` by SHA-256. **Cost: `next/font/local` over those files, one afternoon, and a build that no longer depends on Google being reachable.** Not done without the owner's word, because it changes the font door `DEC-183` §4.5 fixed.
+- **The org theme layer** (§1.3.7) — the default in force, by name.
+- `DEC-198` §5's list, unchanged: F2, F3, the 390 px review of overshoot, `REQ-REC-004` in a default org.
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-049` … `REQ-UIX-053`), `14-roadmap.md` (M19; the sequence), `15-backlog.md` (`STORY-UIX-033` … `STORY-UIX-038`; §24), `scripts/traceability.mjs` (five cross-cutting rows), `TRACEABILITY.md` (generated), `docs/design/04-components.md` and `07-tasks.md` (the eight, named), `CLAUDE.md` and the ten agent files (the wave-17 map), `STATUS.md` (the wave-17 block)

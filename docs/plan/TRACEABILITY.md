@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **341** |
+| Requirements (`REQ-*`) | **346** |
 | Entities (`ENT-*`) | **83** |
-| Stories (`STORY-*`) | **168** |
+| Stories (`STORY-*`) | **174** |
 | Screens cited (`SCR-*`) | 57 |
 | Jobs cited (`JOB-*`) | 40 |
 | Messages cited (`MSG-*`) | 23 |
@@ -52,6 +52,11 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-028` | every token every primitive reads, on every screen |
 | `REQ-UIX-029` | every heading and every big number inside the scope |
 | `REQ-UIX-030` | all 37 primitives, wherever they render |
+| `REQ-UIX-049` | every surface that is not one of the five public routes |
+| `REQ-UIX-050` | every file in src/components/ui/ |
+| `REQ-UIX-051` | every screen’s title, headings, text, links, icon buttons and submits |
+| `REQ-UIX-052` | every glyph on every screen |
+| `REQ-UIX-053` | every console screen, under /app/admin and /app/platform |
 
 ## Matrix
 
@@ -515,5 +520,10 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-046` | `ENT-member_seen_marks` | — | `SCR-014` | — | — | `STORY-UIX-029` | M18 |
 | `REQ-UIX-047` | `ENT-member_seen_marks` `ENT-survey_participations` | — | `SCR-022` | — | — | `STORY-UIX-030` | M18 |
 | `REQ-UIX-048` | `ENT-member_seen_marks` `ENT-survey_participations` | — | `SCR-027` `SCR-028` | — | — | `STORY-UIX-031` | M18 |
+| `REQ-UIX-049` | — | — | — | — | — | `STORY-UIX-034` `STORY-UIX-037` | M19 |
+| `REQ-UIX-050` | — | — | — | — | — | `STORY-UIX-033` | M19 |
+| `REQ-UIX-051` | — | — | — | — | — | `STORY-UIX-035` | M19 |
+| `REQ-UIX-052` | — | — | — | — | — | `STORY-UIX-036` | M19 |
+| `REQ-UIX-053` | — | — | — | — | — | `STORY-UIX-038` | M19 |
 
 <!-- TRACEABILITY:END -->

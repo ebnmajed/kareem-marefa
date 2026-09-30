@@ -14,10 +14,10 @@ plan is in [`docs/plan/`](docs/plan/).
    re-litigate these.**
 3. The document you are about to change — check its status line.
 
-★ **Visual direction lives in [`docs/design/`](docs/design/)** — «ساحة اللعب», accepted by `DEC-183`.
+★ **Visual direction lives in [`docs/design/`](docs/design/)** — «ساحة اللعب», accepted by `DEC-183`, and **the product's only visual language since `DEC-199`** — every surface but the five public routes is inside its scope, and ★★ **a screen is REBUILT to its design, never restyled**.
 Read [`docs/design/README.md`](docs/design/README.md) before any UI work. **`DECISIONS.md` and
-`docs/plan/` win over it**: where the two disagree, the case is listed in `DEC-183` §4 and `DEC-195` §6
-(twenty-four so far) or becomes a new entry — nobody picks a side silently. Its prototypes are behaviour references;
+`docs/plan/` win over it**: where the two disagree, the case is listed in `DEC-183` §4, `DEC-195` §6 and `DEC-199` §5
+(twenty-nine so far) or becomes a new entry — nobody picks a side silently. Its prototypes are behaviour references;
 a prototype's class name never appears in `src/`.
 
 **Before ending a session, update `STATUS.md`**, whether or not you finished what you set out to do.
@@ -324,7 +324,117 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 16 — the five moments, on the real screens, DEC-195) — ★ THE MAP IN FORCE
+### Ownership map (wave 17 — every primitive, and one visual language, DEC-199) — ★ THE MAP IN FORCE
+
+**The programme's third wave** (`DEC-199`, milestone **M19**). The owner opened the app on a phone after wave 16 and
+called it a Frankenstein, and ruled on 2026-09-30: ★★ **«ساحة اللعب» is the product's only visual language —
+everywhere.** The console is in, **at the token level**; the public site is in scope and **still moves last**. Two
+causes were measured. **(1)** Eight primitives the design's own task list never named — `page-header`, `prose`,
+`link`, `icon-button`, `section-header`, `submit-button`, `reorderable-list`, `icons` — had no playground treatment,
+so every scoped screen drew its title, its text and its links in the old design. **(2)** The scope reached five
+surfaces only. This wave removes both: a **gate that reads `src/components/ui/` itself** (`REQ-UIX-050`), the eight
+(`REQ-UIX-051`, `052`), and **the token move** — the scope at the root of every layout but the public site's
+(`REQ-UIX-049`), with the console in its sober register (`REQ-UIX-053`). The checklist is `STATUS.md`'s wave-17
+block. **Four demonstrables:** ★★ the gate green over all 49 files, having landed red; ★★ `qa:contract`,
+`qa:appearance`, `visual`'s public pairs and the register-form fingerprint **unmoved, not re-baselined**; ★ the
+accessibility sweep at 0 findings over every route inside the scope; ★★ **the gallery opened by the owner on a
+phone** — the wave's acceptance is the owner's, not the lead's.
+
+★★ **The sentence every screens brief carries from here (`DEC-199` §2): a screen is REBUILT to its design, never
+restyled.** Applying the scope to existing markup produces the right colours on the wrong structure. **The token move
+is not any screen's redesign and no screen is «done» by it**: this wave nobody rearranges a screen. A change to a
+screen's markup is one of three things — a raw palette class replaced by a semantic one, a `.theme-dark` removed, a
+nested scope removed — and anything more is the screens waves'.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ `DEC-199`, this map, the ten agent files, `01`/`14`/`15`, `docs/design/04` and `07` · ★★ **the gate, first, landed red** — `tests/unit/ui-playground.test.ts` and its registry (contract 2) · ★ **the token move** (contract 1): `PlayScope` at the root of the shell, `(auth)`, `legal`, `s`, `verify` and the gallery; the document's ground; the five moment surfaces' own scopes and every `.theme-dark` under a scoped layout removed; the org theme layer retired from the shell; the toast region inside · ★ **the status constants' on-dark forms inside the scope, once, in `globals.css`** (contract 4) · ★ **the eight primitives**, each with a `-scope` test and an RTL check; `icons` **last, alone**, under contract 5's four-part proof · the scope tests `DEC-199` §3 found missing on `dialog`, `skeleton`, `toast`, `route-progress`, `route-error` · the raw-palette gate and the shell's own raw classes · the gallery page and its baseline · the a11y sweep · the gates, `STATUS`, the PR | the lead-only paths below, `src/app/globals.css`, the lead's fifteen `ui/` files, `ui/scope.tsx`, `ui/scope-portal.tsx`, `ui/objects/**`, `ui/index.ts`, `src/app/[locale]/app/layout.tsx`, `src/app/[locale]/(auth)/**`, `src/components/shell/**`, `src/app/[locale]/(dev)/ui/{page,playground,ground}.tsx` and `(dev)/layout.tsx`, `messages/*/{ui,app,auth}.json`, ★ new `tests/unit/{ui-playground,no-raw-palette,scope-root}*` and the registry beside them, `tests/unit/{tokens-scope,tokens-only,public-graph}.test.ts`, the lead's own `tests/components/ui/*.test.tsx` and new `-scope` tests for its primitives, new `tests/e2e/wave17-{demo,lead}-*.spec.ts`, `tests/e2e/{a11y,frozen-routes}*.spec.ts`, `docs/design/**`. ★ **As custodian, for the token move only** — the layouts of `legal/**`, `s/**` and `verify/**`; the `<PlayScope>` wrappers on the five moment surfaces (`sessions'`, `checkin`'s and `scoring`'s files) and the tests that pin them. **Custodian** of every file of a track not spawned — `sessions`, `checkin`, `scoring`, `designer`, `event`, `notify`, `platform`, `branding` — edited only for its own rows or on a teammate's written request |
+| `content` | opus | ★ **the gallery entries** for the eight and for `button` and `route-progress` — every state, in Arabic, from fixture data, against the props as they stand (contract 3) · its **fourteen primitives under the whole app's scope**: fixes where a real screen shows one wrong on the dark ground · ★ **the member side's raw palette** (contract 4): every raw palette class and every `.theme-dark` in a member-facing file, replaced by a semantic name — **and nothing else in that file** · the gallery captured at 390 px and at desktop width | `src/components/ui/{card,badge,tag-chip,avatar,progress,empty-state,stat,panel,file-drop,sticker,poster,reaction-bar,progress-bar,story-ring}.tsx` and their tests and `-scope` tests · ★ new `src/app/[locale]/(dev)/ui/demos/{button,link,prose,icon-button,section-header,submit-button,reorderable-list,icons,route-progress}.tsx`, and **from the lead, this wave** `demos/page-header.tsx` and `(dev)/ui/reorderable-demo.tsx`; its own wave-15 demos · ★ **for a raw palette class or a `.theme-dark` only**: `src/app/[locale]/app/{sessions,me,propose,members,leaderboards}/**`, `src/app/[locale]/{s,verify,legal}/**` **except their layouts**, `src/components/{sessions,browse,search,checkin,scoring,event,materials,photos,viewer,tasks,me,privacy,notifications,calendar,posters,certificates}/**` · new `tests/e2e/wave17-content-*.spec.ts` · `docs/plan/notes/content.md`. **Nothing else this wave** — its DAL modules, routes, worker tasks and message files are frozen, fixes included |
+| `console` | sonnet | its **six data-dense primitives under the new values** — tokens only, no animation, no behaviour change · ★ **the staff side's raw palette** (contract 4): `/app/admin/**`, `/app/platform/**`, the studio's chrome, the survey's results — a raw class or a `.theme-dark` replaced, **and nothing else in that file** · ★ **the register's guard** (contract 6, `REQ-UIX-053`): a test that walks the console's import graph and finds no moment, confetti, object or sticker · the console's screens captured at 390 px | `src/components/ui/{data-table,combobox,menu,tabs,sheet,date-time}.tsx` and their tests and `-scope` tests, `src/components/admin/rtl-datetime-picker.tsx` · its wave-15 demos · ★ **for a raw palette class or a `.theme-dark` only**: `src/app/[locale]/app/{admin,platform}/**`, `src/components/{admin,platform,designer,branding,email,survey}/**` · ★ new `tests/unit/console-register.test.ts` · new `tests/e2e/wave17-console-*.spec.ts` · `docs/plan/notes/console.md`. **Nothing else this wave** — every admin route's behaviour, its DAL and its messages are frozen |
+
+★ = transferred or changed for this wave by `DEC-199`.
+
+**Wave-17 contracts.**
+
+1. **Lead → everyone — the root scope** (`DEC-199` §1.3). `PlayScope` is rendered **by a layout and by nothing else**:
+   the shell, `(auth)`, `legal`, `s`, `verify`, the gallery. Scopes do not nest, the root scope's element is never
+   transformed, filtered or clipped (`DEC-188` §5), and **`.theme-dark` never appears under a scoped layout** — it
+   cuts an old-look island into the page. `tests/unit/scope-root.test.ts` holds all three. ★ **It lands before any
+   track edits code**; the lead posts «the scope is at the root at `<sha>`», and nobody renders a scope after it.
+2. **Lead → everyone — the gate and its registry** (`DEC-199` §4, `REQ-UIX-050`). `tests/unit/ui-playground.test.ts`
+   enumerates `src/components/ui/*.tsx`. Every file has one registry entry — `variant`, `tokens`, `composes` or
+   `infrastructure` — checked against its source, plus a test inside the scope and a gallery demo. **The registry is
+   the lead's; there is no «pending» kind.** A track that adds or renames a file, or changes how one is treated,
+   writes the request.
+3. **Lead → `content` — the eight's props are frozen.** The demos are written against `ui/index.ts`'s types as they
+   stand today; the lead changes how the eight look, not what they take. The lead wires each demo into `page.tsx` and
+   owns the baseline. **The gallery moves when a demo is wired**, and that commit's row names the primitive.
+4. **Lead → both tracks — the raw palette and the status colours.** `tests/unit/no-raw-palette.test.ts` lists every
+   raw palette class outside `ui/` and the public site's files, by side; **it ends at zero.** The mapping is
+   published in `STATUS.md` on day one — what `bg-silver-100`, `text-white`, `bg-navy-950` and the rest become. ★ **No
+   screen edits a status class**: `text-error`, `bg-success-bg` and the others take `DEC-073`'s on-dark forms inside
+   the scope **once, in `globals.css`**, which is the lead's.
+5. ★ **The five the public site renders** (`DEC-186` §1, unchanged) — `button`, `icons`, `field`, `input`,
+   `textarea`. **Only `icons` is touched this wave, by the lead, last, in one commit**, under the four-part proof:
+   `qa:contract`; `visual` at 0.000 %; the register form's computed-style fingerprint equal on `main`'s build and the
+   branch's; the public-graph test. **No teammate touches a file the public routes import** — the thirteen marketing
+   components, `wordmark.tsx` among them, keep their raw classes until the public site's wave.
+6. **`console` → lead — the register** (`DEC-199` §1.1). The console takes the palette, the radii and the type. **No
+   file it renders imports `src/lib/ui/**`, `ui/objects/**`, `ui/sticker` or a moment's component**, and its six
+   primitives declare no animation. `console` writes the test; it is green the day it lands.
+
+**Wave-17 rules.**
+
+- ★★ **A screen is rebuilt to its design, never restyled — and this wave rebuilds none** (`DEC-199` §2). No markup is
+  rearranged, no hierarchy changed, no affordance added. A track that finds a screen ugly on the new ground writes it
+  in its note; it does not fix the screen.
+- ★★ **`registrations` is never touched** (invariant 2): 20 real signups. The owner's «you can break the app» covers
+  the app behind sign-in and nothing else. **The register form's action, field names, ids, validation and no-JS path
+  are byte-identical.**
+- ★★ **The five frozen public routes do not move**: `qa:contract` green at every commit, `qa:appearance` and
+  `visual`'s public pairs **unchanged and not re-baselined**, the fingerprint byte-identical, the public-graph test
+  green. If the `TaskCompleted` hook falls through to the full `qa` for a teammate, **it edited something that is not
+  its own.**
+- ★ **The app may look broken while this lands** — the owner's licence. No commit is spent keeping a screen
+  presentable mid-move, and no compatibility path for the app's old look is written.
+- ★ **The `pg:` variants stay** (`DEC-199` §1.3.2). They and `:root`'s old values are deleted by the public site's
+  wave. Nobody «tidies» an old class out of a primitive this wave: the existing suites pin those strings.
+- ★ **No primitive gains or loses a behaviour, a prop or an accessible name.** The eight change how they look.
+- ★ **The console does not animate, and nothing scales on hover** (`DEC-183` §2). A failure never animates.
+- ★ **Semantic names only** (`tests/unit/tokens-only.test.ts`): no hex, no literal duration, no raw palette name
+  after `pg:`, `pg-dark:` or `pg-light:`; and after the sweep, no raw palette name outside `ui/` and the public
+  site's files at all.
+- ★ **The status colours are `DEC-073`'s** — colours, words and the live dot; inside the dark scope their on-dark
+  forms.
+- ★ **`docs/plan/` wins over `docs/design/`** — `DEC-183` §4, `DEC-195` §6 and `DEC-199` §5 list twenty-nine
+  disagreements. A new one is written down with the file and the line; nobody picks a side.
+- ★ **The existing suites are evidence.** Each changed assertion is a ledger line in `STATUS.md`, in the same commit
+  as the change. New cases go in new files — `<primitive>-scope.test.tsx` beside the existing test.
+- ★ **No migration is expected.** One is written only if a plan needs it, from `0164`, additive, rehearsed by the
+  owner on a production schema dump.
+- ★ **No new dependency** — no icon library, no motion library. `package.json` is the lead's.
+- **Teammates spawn planning-only**; sync 1 approves two plans against the six contracts, and **no track edits code
+  before the lead posts the root scope's commit.**
+- **One writer per file, specs and demos included. `ui-lint --strict` has no allowlist and never gains one.**
+- **Captures land at `.qa-shots/rtl/wave17-<track>-<surface>-<state>.png`** in the main checkout — the phone project
+  at `390 × 844`, and the gallery at desktop width too — from a production build the row names by commit, honouring
+  `E2E_SHOTS_DIR`. The lead opens every one **in bands, never downscaled**. ★ **They are evidence for the owner's
+  review on a phone, not a substitute for it.**
+- **Not this wave, and never-touch for every teammate:** ★ **any screen's rebuild** — layout, hierarchy, affordances;
+  the public site's re-skin and every file it renders; session stories and their viewer; the timeline's recap,
+  achievement and announcement items; proposal voting; the weekly leaderboard; the streak rule; the desktop shell
+  (`DEC-NEXT-15`); leagues; the certificates' look — **the playground stops at the certificate's edge**, and the
+  rendered poster and certificate are not restyled; the designer's document model and the export pipeline; a console
+  layout pass (`DEC-199` §1.1); a brand-aware playground (`DEC-199` §1.3.7); self-hosting the display face
+  (`DEC-199` §8 — the owner's); deleting the `pg:` variants; a company logo (`DEC-195` §4); ★ **the two carried gates,
+  together** (`DEC-194`); F2 and F3 (`DEC-198` §5); deleting a session with its awarded points; a member uploading
+  their own picture; recurring series (`A14`); replacing the renderer.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`,
+  `stop`, branch switches, pushes and the PR.
+
+### Ownership map (wave 16 — the five moments, on the real screens, DEC-195) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 16 merged as PR #34 (`65ca7a7a`). Its map is kept as the record; **wave 17's map is directly above** (`DEC-199`).
 
 **The programme's second wave** (`DEC-195`, milestone **M18**). ★★ **The moments land on the real screens**, which
 **amends `DEC-183` §4.2(f)**: the surfaces the five moments touch adopt the playground now, ahead of the screens
@@ -1185,6 +1295,7 @@ to hard-fail in M13.
 ★ from wave 10 (`DEC-160`): `worker/Dockerfile`, `worker/package.json` and every `packages/*/{package.json,tsconfig.json}` — a package's manifest is the lead's, its `src/` is its track's.
 ★ from wave 15 (`DEC-183`): `src/lib/fonts.ts`, `packages/fonts/**`, `scripts/fonts/**`, `src/components/ui/objects/**`, `src/components/brand/**` and `docs/design/**` — the font set, the objects and the wordmark have one writer.
 ★ from wave 16 (`DEC-195`): `src/lib/ui/**` — the moments' shared mechanism (confetti, the count-up, the once-per-occurrence keying) has one writer, so the vocabulary cannot drift track by track.
+★ from wave 17 (`DEC-199`): `tests/unit/ui-playground.test.ts` and its registry, `tests/unit/{no-raw-palette,scope-root}.test.ts` — the gate that reads `src/components/ui/` has one writer, and **an exemption in it is a visible diff with a reason**. ★ `PlayScope` is rendered by a layout and by nothing else, and the layouts that render it are the lead's.
 
 ★ **Added by DEC-085, with the design milestone** — none of these was lead-only before, and
 `src/components/ui/**` was in no teammate's edit list *and no teammate's never-touch list*:
@@ -1200,7 +1311,7 @@ the sessions timeline (`DEC-112`), which is no longer a page composed of other t
 **Inside `src/components/ui/` ownership is per FILE, not per directory** — a glob with four writers
 is the exact failure `TEAM.md` exists to prevent. The four literal file lists — the lead's fifteen,
 `sessions'` eight, `console'`s six, `content'`s nine — are in each `.claude/agents/*.md`, and they are
-unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. **Ownership lives in those never-touch paragraphs or
+unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
 it does not exist**, which is why all ten were regenerated in the same commit as this list.
 
 `src/components/ui/index.ts` exports **types only**; implementations are imported **by path**. A
