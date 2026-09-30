@@ -177,8 +177,15 @@ for (const width of WIDTHS) {
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
-    // Installed before the page opens, so the link's prefetch is held too.
-    await page.route(/from=route-progress/, async (route) => {
+    // ★ EVERY fetch is held, not only the link's own URL, and from before the page opens. The
+    // gallery is a static page whose other demos link to `/ui` too: at 1280 px several of them
+    // stand in the viewport beside this one, their prefetch of the same route went through a
+    // filter on `from=route-progress`, and the click was then answered from that cache — pending
+    // for a frame, the dot seen once, the bar never (the desktop failure, locally and in CI). At
+    // 390 px none of them shares the viewport, which is the whole difference between the widths.
+    // The document, scripts, styles and fonts are not fetches and load as usual.
+    await page.route("**/*", async (route) => {
+      if (!["fetch", "xhr"].includes(route.request().resourceType())) return route.continue();
       await held;
       // A test skipped or ended while the request is held closes the page under it.
       await route.continue().catch(() => undefined);
@@ -194,8 +201,8 @@ for (const width of WIDTHS) {
 
     const dot = demo.locator("[data-link-pending]");
     const bar = page.locator("[data-route-progress]");
-    await expect(dot).toBeVisible();
     await expect(bar).toHaveCount(1);
+    await expect(dot).toBeVisible();
     await expect(bar).toBeVisible();
 
     // The bar spans the viewport's top edge and is the scope's accent, not the old navy.

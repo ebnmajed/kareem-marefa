@@ -5169,3 +5169,22 @@ The fixture's one session hashed to navy, so the silver patch itself was read fr
 15. Disabled primaries («نشر», «رفع») are the lime at 45 % — an olive pill that still reads as the brightest control.
 16. `/verify/[code]` and `/legal/**` have no `page-header` look: the title is the body face, while every `/app` title
     is the display face.
+
+### Wave 17 — the stalled-navigation case at desktop (for the lead; ★ the fix is NOT run)
+
+- **What failed:** `expect(bar).toHaveCount(1)` at 1280 px — 0 elements for five seconds — after the dot had been seen.
+  («Phone passes» is a skip: the spec runs both widths in the desktop project.) It passed at 390 px.
+- **What I read, and did not see:** dot and bar hang on one `pending`. For the dot to be seen once and the bar never,
+  pending rose and fell inside one poll: the navigation was answered without the held request. The spec held only
+  URLs matching `from=route-progress`. The gallery is a static page, and other demos (`link`, `button`'s `ButtonLink`s,
+  `page-header`'s breadcrumbs) link to `/ui`; at 1280 px several stand in the viewport beside the route-progress demo,
+  so their prefetch of the same route passed the filter and the click was served from that cache. At 390 px none
+  shares the viewport. **This is an inference from the code and from which width fails — no trace was opened.**
+- **The fix (spec only):** every `fetch`/`xhr` is held from before the page opens until the captures are taken, so no
+  prefetch of any URL can answer the click; the bar is asserted before the dot, so a failure names the right thing.
+  `tsc` and eslint clean.
+- **If it still fails at desktop, I need the trace**, and two facts from it: whether `[data-link-pending]` is in the
+  DOM at the failure, and the URL the page is at. If the dot is present and the bar is not, the defect is in
+  `ui/route-progress` (the lead's) and not in the spec: the store's count and the dot would then disagree.
+- **The primitive, read again and found right:** the dot is drawn iff `pending && !quiet`; the count rises in the same
+  commit's effect; `RouteProgress` re-renders through `useSyncExternalStore` and its 0 ms timer sets `elapsed`.
