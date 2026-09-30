@@ -103,7 +103,7 @@ export default async function HostPage({
 
   return (
     <ProjectionRoot live={live} className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 pb-6 pt-4">
-      <div className="flex items-center justify-between gap-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div className={`flex min-w-0 items-center gap-2.5 ${HIDE_PROJECTING}`}>
           <Link
             href={`/app/sessions/${id}`}
@@ -192,11 +192,12 @@ export default async function HostPage({
         ) : null}
 
         {view.code || staffConsole ? (
-          <div className="flex flex-wrap gap-2">
+          // Two equal halves when both actions are offered, as the artboard draws them; one otherwise.
+          <div className={`grid gap-2 ${view.code && staffConsole ? "grid-cols-2" : ""}`}>
             {view.code ? (
               // REQ-CHK-007: one tap, a new code at once, never accent — a real action on the room.
-              <form action={revokeCodeAction.bind(null, locale, id, dayId)} className="flex flex-1">
-                <Button type="submit" variant="danger" className="flex-1">
+              <form action={revokeCodeAction.bind(null, locale, id, dayId)} className="flex">
+                <Button type="submit" variant="danger" size="md" className="w-full">
                   {t("host.revoke")}
                 </Button>
               </form>

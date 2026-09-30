@@ -68,7 +68,7 @@ export function ManualMark({
 
   if (!hydrated) {
     return (
-      <section aria-labelledby="manual" className="w-full basis-full">
+      <section aria-labelledby="manual" className="col-span-full">
         <h2 id="manual" className="text-h3 text-fg-heading">
           {t("manualTitle")}
         </h2>
@@ -96,7 +96,7 @@ export function ManualMark({
 
   return (
     <>
-      <Button type="button" variant="quiet" className="flex-1" onClick={() => setOpen(true)}>
+      <Button type="button" variant="quiet" size="md" className="w-full" onClick={() => setOpen(true)}>
         {t("manualOpen")}
       </Button>
       <Sheet open={open} onOpenChange={setOpen} title={t("manualTitle")}>
