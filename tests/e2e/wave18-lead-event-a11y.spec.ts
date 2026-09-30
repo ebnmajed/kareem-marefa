@@ -22,7 +22,7 @@ let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
 let orgId = "";
 let domain = "";
-const ids = { open: "", live: "", done: "" };
+const ids = { open: "", live: "", done: "", cancelled: "" };
 const users: string[] = [];
 
 test.beforeAll(async ({}, testInfo) => {
@@ -56,6 +56,9 @@ test.beforeAll(async ({}, testInfo) => {
   ids.open = await session("published", "2 days");
   ids.live = await session("in_progress", "-12 minutes");
   ids.done = await session("completed", "-1 day");
+  // ★ The fade's other sites (DEC-211 §3): a cancelled session's placeholder on the feed and browse.
+  ids.cancelled = await session("published", "3 days");
+  await db.query(`update public.sessions set state = 'cancelled', cancelled_at = now(), cancellation_reason = 'تعذّر حضور المقدّم' where id = $1`, [ids.cancelled]);
 });
 
 test.afterAll(async () => {
@@ -89,10 +92,10 @@ async function signIn(context: BrowserContext, who: string, asAdmin = false): Pr
 /** Scans one page and returns its serious and critical violations as a report line, or "" when clean. */
 async function scan(page: Page, path: string): Promise<string> {
   await page.goto(path);
-  await expect(page.locator("#main")).toBeVisible();
+  await expect(page.locator("main, [role=main]").first()).toBeVisible();
   // Every streamed region in place — a scan of a skeleton proves nothing.
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
-  await expect(page.locator("#main .animate-pulse")).toHaveCount(0);
+  await expect(page.locator("main .animate-pulse")).toHaveCount(0);
   await page.evaluate(() => document.fonts.ready);
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
@@ -128,6 +131,11 @@ test("a member: the event page open, live and ended, and check-in", async ({ con
     `/ar/app/sessions/${ids.live}/check-in`,
     // ★ A refused code: the alert state is a screen of its own.
     `/ar/app/sessions/${ids.live}/check-in?error=invalid_code&code=ZZZZZZ`,
+    // The same placeholders on the screens PR A rebuilt: the feed, browse with its past sessions, the public card.
+    `/ar/app`,
+    `/ar/app/sessions`,
+    `/ar/app/sessions?status=ended`,
+    `/ar/s/${ids.done}`,
   ]);
 });
 
