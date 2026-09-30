@@ -5122,3 +5122,405 @@ spec · `50cc3ff8` `sessions-screens` follows moment 2.
   - `ui-lint` excludes `ui/`, so the field needs no disable comment.
   - The e2e is `tests/e2e/wave16-sessions-code-input-no-js.spec.ts`: JavaScript off, the code typed in lower
     case, `?success=1`, and one `check_ins` row by `code`. It is for the lead to run.
+
+---
+
+# Wave 18 — plan (PR A, `wave-18a/the-frame`) — `REQ-UIX-059`, `REQ-UIX-060`, `REQ-UIX-057`
+
+**Planning only. Nothing is built before «the frame is in at `<sha>`».** Read: the agent file, `STATUS.md`'s wave-18
+block, `DEC-205`, `DEC-206`, `M10a.md`, `PublicCard.dc.html`, `Browse.dc.html`, and the CTA and bottom-bar markup of
+`Home`, `HomeDesktop`, `Event`, `EventLive`, `EventDone`, `EventDesktop`. The artboards were read as HTML source, not
+opened in a browser. The rule: **rebuilt, never restyled** (`DEC-199` §2) — each screen starts from an empty file; the
+DAL calls, the actions, the predicates and the accessible names the suites pin are what survive.
+
+## W18.1 · Sync-1 question 1 — regions in the artboard's order, and the primitive each is built from
+
+### `SCR-007` · `/s/[id]` · `PublicCard.dc.html` (390 × 980)
+
+| # | Region, as drawn | Built from | Note |
+|---|---|---|---|
+| 1 | Brand row: wordmark at the start (links to `/{locale}`), «من تنظيم <org>» at the end, 12 px muted | `brand/wordmark` (`PlayWordmark`, the lead's — imported, never edited) inside `ui/link`; the existing string `sessions.card.presentedBy` with `<bdi>` | the org's name is on `DEC-066`'s allowlist (`orgName`) |
+| 2 | The poster, whole, 4:5, 18 px radius | `ui/poster` | ★ see disagreement N1 (the only public artefact is the 1200 × 630 `og` render) and request Q1 (`teamName` is required and a company is forbidden here). No sticker (§4.46). `dimmed` when ended |
+| 3 | Badge row: the status badge, then the seats line | `SessionStatusBadge`, `live` and `ended` only (§4.43); **no seats line** (§4.42) | an open session draws nothing in this row, so the row is absent |
+| 4 | `h1`, display face, 24 px | plain `<h1>` with `<bdi>`, `font-display text-play-*` | the page's one `h1` |
+| 5 | Icon rows: date, venue, (presenter) | a `<dl>` with visually hidden `<dt>` («الموعد», «المكان» — existing strings) and an `aria-hidden` glyph from `ui/icons` beside each `<dd>`; **no presenter row** (§4.42) | the `<dl>` keeps `dd span` for the «حتى» clause, so the break rule wave 7 fixed and its locator both stand |
+| 6 | The one action, 52 px, display face, full width | `ButtonLink` (`ui/button`, not edited), `primary`, `lg` — an `<a>` to `/{locale}/sign-in?next=…`, a document navigation | string unchanged: `sessions.card.signIn` |
+| 7 | The members-only line, 12 px, centred | `<p>`; ★ new copy: «صفحة الجلسة الكاملة، والتعليقات والصور، لأعضاء <org>. الدخول يعيدك إلى هذه الجلسة.» — replaces `sessions.card.membersOnly`'s value, same key | |
+| 8 | Legal footer, ruled above, pinned to the bottom of the viewport | two `ui/link`s to `/legal/privacy` and `/legal/terms` (both routes exist) in a `<footer>` | relative hrefs, so the spec's «no `http` link» holds |
+
+At 1280: no artboard (§4.36) — the same column centred at its phone width (`max-w` about 26 rem). The layout
+(`s/layout.tsx`, the lead's) already gives `min-h-dvh`; the page is a flex column so the footer sits at the bottom.
+The header's three rules stand unchanged: no `loading.tsx`, no `<Suspense>` above `notFound()`, `platformConfigured()`
+and `card(id)` first — the 404 stays a real 404 (`DEC-134` item 4). `generateMetadata` is untouched.
+
+### `SCR-011` · `/app/sessions` · `Browse.dc.html` (390 × 1460)
+
+| # | Region, as drawn | Built from | Note |
+|---|---|---|---|
+| 1 | Top row: `h1` «الجلسات» at the start, the bell at the end | `ui/page-header`, title only (`M10a.md` §6) | ★ question Q2: the artboard puts the title and the bell in ONE row and draws no wordmark; contract 1 says a page renders nothing of the shell |
+| 2 | The search field, 48 px pill, glyph at the start | a GET `<form role="search" action="/{locale}/app/sessions">` with `ui/input` (`type="search"`, `name="q"`, `size="lg"`, `startIcon`), a visually hidden label, and one hidden input per other active filter | works with no JavaScript; `q` is `timeline-query.ts`'s existing key |
+| 3 | One chip row: «الحالة: القادمة ⌄» · «التصنيف: الكل ⌄» · «المزيد» | a `<nav aria-label="تصفية الجلسات">`; the first two are `ui/menu` (console's, imported) whose items are **links** to `timelineHref(…)`, the trigger a `ui/button` `secondary` `sm` with the chevron; «المزيد» is the existing `FilterSheet` (`ui/sheet`) | ★ N4: today both are link toggles that work before JavaScript. The row may wrap: the artboard's `overflow: hidden; white-space: nowrap` would clip a long category name, which wave 6 already met («جارية الآن» cut to «جارية») |
+| 4 | The eight most-used tags | `ui/tag-chip` with `href` = `withFilter(query, "tag", …)`, `selected` when applied; from `data.options.tags.slice(0, 8)` (already sorted by use) | the artboard prints «#تقارير»; the «#» is decoration in the label string |
+| 5 | Date groups: a heading in the display face at the start, the count in words at the end | `<section aria-labelledby>` + `ui/section-header` (`title`, and the count as `actions`: «3 جلسات», from the existing six-form `browse.count`) + `<ol>` | `count` as a bare number is not what is drawn |
+| 6 | The row card: thumb 76 × 95 · [badge · title · «date · venue» · presenter ring + name · seats line] · [bookmark, amount] | `ui/card` `density="row"` with `href`; `ui/poster` (or `CardMedia`, Q1) at 4:5; `SessionStatusBadge` `sm`; `<h3>` with `<bdi>`; `ui/avatar` size 24 with `teamColor`; `BookmarkButton` (`variant="icon"`, unchanged) inside `CardActions`; the amount as text | the badge wears `DEC-073`'s tones (§4.62). The amount is the rule's (§4.45): absent when the rule is off, for an ended or cancelled row, and for a session the viewer presents |
+| 7 | «سابقة» with «عرض 14 جلسة مكتملة» at the end, and no list | `ui/section-header` with a `ui/link` to `?status=ended` as `actions` | the figure is a new add-only field (W18.4); absent when there is none |
+| 8 | The tab bar | the frame's — nothing of it in the page | |
+
+At 1280: no artboard (§4.36, §4.65) — the same regions in the frame's 600 px content column, the sheet at every width.
+No game rail is passed unless the lead says browse carries one.
+
+### `action-bar` and `session-cta` — W18.2.
+
+## W18.2 · Sync-1 question 2 — the props, as types
+
+### `ui/action-bar.tsx` (new, `sessions'`, the 53-file count's)
+
+Drawn three times, identically: a bar with a rule above it on the `surface` ground, padding `12 16 16`, a row with
+`gap 8`: the primary taking the free width (52 px), then up to two 48 px round controls (`Event`, `EventLive`:
+bookmark, share) — or, on `EventDone`, **one labelled pill «شهادتك»** (N6).
+
+```ts
+/**
+ * `sessions` · `action-bar.tsx` — REQ-UIX-057. The bottom bar of an immersive screen: ONE primary
+ * and at most two secondary controls, padded for the safe area. It decides nothing and holds no
+ * state; every control is the caller's node. It is never transformed, filtered or clipped — a
+ * moment moves an element INSIDE a slot (DEC-188 §5).
+ */
+export interface ActionBarProps extends Styleable {
+  /** The group's accessible name — «إجراءات الجلسة». Rendered as `role="group"`, never a landmark. */
+  label: string;
+  /** The one primary: a `SessionCta`, a `SubmitButton` or a `ButtonLink`. Takes the free width. */
+  primary: ReactNode;
+  /** After the primary, in reading order. A tuple, so a third is a type error. */
+  secondary?: readonly [ReactNode] | readonly [ReactNode, ReactNode];
+  /** One quiet line under the row — SCR-014's «لم تلتقط الرمز؟». */
+  note?: ReactNode;
+  /**
+   * `fixed` (default) pins it to the viewport's block end and pads `env(safe-area-inset-bottom)`.
+   * `static` is for the gallery and for a screen that places it itself.
+   */
+  position?: "fixed" | "static";
+  /** Hide from this breakpoint up — the event page shows its action row instead from `md`. */
+  hideFrom?: "md" | "lg";
+}
+```
+
+- ★ **The shell's contract moves with it**: today `globals.css:685` reads `[data-action-bar]` to set `--tabbar-h: 76px`
+  so `main` clears the bar. The primitive renders the same `data-action-bar=""` hook — a data attribute, not a class —
+  unless the lead names another. With a `note` the bar is taller than 76 px: **request R1**, the lead's `globals.css`.
+- «The only fixed element at the bottom of an immersive screen» (`REQ-UIX-057`) is the caller's to honour; the bar
+  cannot know. The scope test asserts the bar's own element carries no transform, filter or overflow class.
+- `src/components/sessions/action-bar.tsx` is not touched in A (§4.81).
+- Demo `demos/action-bar.tsx` (`position="static"`): reserve + bookmark + share · check-in (signal) + two · rate + one
+  labelled secondary · primary alone · with a note · a long label that wraps. Tests: `action-bar.test.tsx`,
+  `action-bar-scope.test.tsx` (inside `PlayScope`, RTL order, the tuple's limit, the group's name).
+
+### `session-cta` — what the artboards draw that today's six states cannot render
+
+Measured against `session-cta.tsx` and `ui/index.ts:916-962`. **Three additions, each add-only; nothing else.**
+
+| # | Drawn | Where | Today | The addition |
+|---|---|---|---|---|
+| 1 | «قيّم الجلسة» — accent, a link, chip «حتى 13 أكتوبر» | `EventDone` :48 and its bar :97; `M10a.md` §5 | no state names it; `reserve` with an `href` would draw it, under a name that lies to the matrix | `| { kind: "rate"; act: SessionCtaAct }` — drawn as `reserve` is (primary, accent chip) |
+| 2 | A compact action: 44 px, 17 px face, **not full width**, in a row with the reaction pills | `HomeDesktop` :89 | every face is `lg` and `w-full` | `size?: "lg" | "md"` (default `lg`) and `width?: "full" | "auto"` (default `full`) on `SessionCtaProps` |
+| 3 | A held seat shown in a place with **no cancel**: the feed, where the control is a link and nothing is reserved or cancelled (§4.57) | `M10a.md` §5 names reserve / check-in / rate / nothing; «booked, not yet live» is not named and must draw something | `booked.cancel` is required, so the face cannot be drawn without a control | `cancel` becomes optional on `booked`; absent, the face alone is drawn. Every existing caller passes it |
+
+```ts
+export type SessionCtaState =
+  | { kind: "reserve"; act: SessionCtaAct }
+  | { kind: "waitlist"; act: SessionCtaAct }
+  | { kind: "booked"; hold?: "seat" | "waitlist"; cancel?: { label: string; act: SessionCtaAct; note?: string }; between?: ReactNode }
+  | { kind: "checkIn"; act: SessionCtaAct }
+  | { kind: "attended"; note?: string }
+  | { kind: "rate"; act: SessionCtaAct }          // ★ new
+  | { kind: "none"; reason: string };
+
+export interface SessionCtaProps extends Styleable {
+  state: SessionCtaState;
+  label: string;
+  chip?: string;
+  pendingLabel?: string;
+  pending?: boolean;
+  size?: "lg" | "md";            // ★ new, default "lg"
+  width?: "full" | "auto";       // ★ new, default "full"
+}
+```
+
+**What needs no addition**, so nobody adds one: «سجّل حضورك» in coral with the «مقعدك محجوز» pill is `checkIn` + `chip`
+(the `signal` chip exists); «احجز مقعدك» with «+N عند الحضور» is `reserve` + `chip`; the bar's bare «احجز مقعدك» is
+`reserve` with no chip; a link instead of an action is `act.href`, which every acting state already takes. ★ But see
+N7: the two drawn chips are phrases, and `ui/index.ts:953` says a chip is a few characters.
+
+Proof it is add-only: `session-cta.test.tsx` and `session-cta-between.test.tsx` pass untouched; the new cases go in
+`session-cta-phases.test.tsx` and `session-cta-phases-scope.test.tsx`; the demo gains the three.
+
+## W18.3 · Sync-1 question 3 — every state `M10a.md` names that is not drawn
+
+### `SCR-007`
+
+| State | Built as |
+|---|---|
+| Unlisted, a draft, an unknown id, an unconfigured platform | the real 404, unchanged in behaviour. `not-found.tsx` is rebuilt in the same frame — brand row (no org), `ui/route-error` with the three existing strings, the legal footer |
+| ★ Cancelled | **N2** — `M10a.md` §4, `REQ-UIX-059` and `STORY-UIX-043` say «the badge says so and the CTA disappears»; `session_public_card()` returns nothing for a cancelled session and may not change. Not picked. Until ruled: the 404, as today, which the spec pins |
+| Live | `SessionStatusBadge phase="live"`; everything else as drawn |
+| Ended | the badge «انتهت», the poster `dimmed` (never the badge, `DEC-123`). ★ Question Q3: the action still reads «سجّل الدخول لحجز مقعدك» for a session nobody can reserve |
+| Several days | the range from the stored window and «3 أيام» beside it — `dayRange` / `dayCountLabel`, as today; the «حتى» clause only at one day |
+| No rendered poster | `ui/poster`'s typographic placeholder — the title, the date, **no amount** (§4.46), no category (not on the allowlist), no company (Q1) |
+| No time / no venue | `sessions.card.notScheduled` / `noVenue`, as today |
+| ★ «الحضور في القاعة فقط.» | N3 — said today, not drawn |
+
+### `SCR-011`
+
+| State | Built as |
+|---|---|
+| Filters applied | a second row under the chips: one removable `tag-chip` per active filter, **named, never an id**, and «امسح الكل» — `REQ-UIX-022` / `REQ-UIX-060`'s «visible and individually removable». ★ It now lists the category and a non-default status too, since their toggles are gone: the existing link «أزل عامل التصفية: <name>» keeps its name. Through a new `appliedEntries()` beside `chipEntries()`, which is not changed (its unit test pins it) |
+| Empty by filter | `ui/empty-state` with today's `dropOne` logic, word for word: it names the filter, says what dropping it restores, offers that and «امسح كل عوامل التصفية» |
+| Empty, nothing upcoming | `empty-state` inviting a proposal (existing strings); for `status=live` / `ended`, the way back to what is coming |
+| Search results (`q` set) | the groups are replaced by ONE group «نتائج» with its count, in `getTimeline()`'s order; the tag cloud stays. ★ new string `browse.timeline.groups.results` |
+| Loading | `loading.tsx` renders a new `BrowseSkeleton`: the title, the field, three chips, a heading, **six** row skeletons (76 × 95 media, four lines), from `ui/skeleton` |
+| «لاحقًا» | kept after «هذا الشهر» (§4.64) |
+| `status=ended` | one group per month, newest first — `groupEnded()`, unchanged; rows dimmed, «حضرت» where true, no amount |
+| Live | in «هذا الأسبوع», first, under its badge (§4.64) — a new pure `groupBrowse()`; `groupUpcoming()` stays for its unit tests |
+| Row: full | badge «قائمة انتظار»; line «ممتلئة، 4 في الانتظار» ★ new six-form string |
+| Row: my seat / my waitlist place | the line says it first («مقعدك محجوز» / «في قائمة الانتظار», existing strings), before anything about seats |
+| Row: closing soon / registration closed | the badge's own derivations; no seats line when closed |
+| Row: cancelled with my seat | badge «أُلغيت», poster dimmed, no amount |
+| Row: several days | the range and «3 أيام», as the old card |
+| Row: no poster | the placeholder at 76 px — Q1 |
+| Row: no presenter / no capacity | that part of the line is absent; never an empty ring or «0 من» |
+| Row: seats | ★ «12 من 40 مقعدًا» as drawn — today's card says «يتبقى 28 مقعدًا». New six-form string; the artboard's wording |
+| ★ No company set | today the timeline carries the `companyMissing` panel and `AvatarImportPrompt`. `M10a.md` §5 draws the banner on the HOME; browse draws neither. Both go with the home (`content`'s page) and leave browse — **an expectation moves** (W18.5), and `content` must know it inherits them |
+| No pinned item | §4.64. The page stops reading `data.pinned`; `getTimeline()` gains an option so the committed session stays in its group (W18.4) |
+
+## W18.4 · Sync-1 question 4 — contract 3, as real TypeScript
+
+All add-only. The pure parts live in a new `src/components/browse/session-post.ts` (no `server-only`, so `content`'s
+tests can build fixtures); the reads are in `src/lib/dal/search.ts`, which re-exports the types.
+
+```ts
+// src/components/browse/session-post.ts
+import type { TimelineSession } from "@/components/browse/timeline-session";
+
+export interface SessionPostPresenter {
+  memberId: string;
+  displayName: string | null;
+  /** Same-origin `/api/avatars/…` or null — `avatarHref()`, never Google's URL (DEC-099). */
+  avatarUrl: string | null;
+  /** Null when the presenter has no company. `teamColor` is `companies.team_color`: "#rrggbb" or null. */
+  company: { id: string; name: string; teamColor: string | null } | null;
+}
+
+/** Where the post's last row LEADS. Always a link — a feed never reserves (DEC-206 §4.57). */
+export type SessionPostAction =
+  | { kind: "reserve"; href: string }                                   // open, a seat, no hold → the event page
+  | { kind: "waitlist"; href: string }                                  // open, full, no hold → the event page
+  | { kind: "booked"; hold: "seat" | "waitlist"; waitlistPosition: number | null; href: string }
+  | { kind: "checkIn"; href: string; booked: boolean }                  // `checkInWindowAllowed()` → SCR-014
+  | { kind: "attended"; href: string }                                  // checked in, nothing to do yet
+  | { kind: "rate"; href: string; closesAt: string }                    // `getRatingEligibility()` → SCR-015
+  | { kind: "none" };                                                   // cancelled, closed, ended with nothing owed
+
+export interface SessionPost extends Omit<TimelineSession, "presenters"> {
+  presenters: SessionPostPresenter[];
+  /** `/app/sessions/{id}` — locale-less, as the house `Link` takes it. */
+  href: string;
+  /** The org-calendar day the post stands under, "YYYY-MM-DD"; today's for a live session; null if unscheduled. */
+  day: string | null;
+  /** ★ The ordering input: a CONFIRMED seat on an open or live session. A waitlist place is not a commitment. */
+  committed: boolean;
+  /**
+   * `scoring_rules.check_in.points` for this org — READ, never a literal (§4.45, contract 7).
+   * Null = draw nothing: the rule is off or not positive, the session is ended or cancelled, or the
+   * viewer presents it (REQ-CHK-011). A 0 is never returned.
+   */
+  attendancePoints: number | null;
+  /** Visible comments, replies included (`deleted_at is null`), under `comments`' org-read policy. */
+  commentCount: number;
+  /** `reactions` of kind `like` on the SESSION (§4.51), under its org-read policy. */
+  likeCount: number;
+  likedByMe: boolean;
+  action: SessionPostAction;
+}
+
+/** Committed first, then by start within the day; days ascending for what is coming. Pure. */
+export function compareSessionPosts(a: SessionPost, b: SessionPost): number;
+
+// src/lib/dal/search.ts
+export interface SessionPostsData {
+  posts: SessionPost[];            // already in `compareSessionPosts` order
+  orgTimeZone: string;
+  /** The rule's figure itself, for a line that is not about one session. Null as above. */
+  attendanceRulePoints: number | null;
+}
+
+/**
+ * The feed's sessions: every live one, the coming ones (soonest first, `limit`), the ones that ended
+ * in the last `endedWithinDays`, and a cancelled one the viewer held a seat on. Through the caller's
+ * RLS-bound client; `TIMELINE_STATES` only.
+ */
+export async function getSessionPosts(
+  locale: string,
+  options?: { limit?: number /* 20 */; endedWithinDays?: number /* 14 */; now?: Date },
+): Promise<SessionPostsData>;
+
+// «التالية لك»
+export interface NextForMeItem {
+  id: string;
+  title: string;
+  href: string;
+  startsAt: string | null;
+  timeZone: string;
+  phase: "open" | "live";
+  hold: "seat" | "waitlist";
+  /** `rsvps.waitlist_position`, for «قائمة الانتظار 3». */
+  waitlistPosition: number | null;
+  posterUrl: string | null;
+  /** The lead presenter's company colour, for the 34 × 42 placeholder thumb. */
+  teamColor: string | null;
+}
+export async function getNextForMe(locale: string, limit?: number /* 3 */, now?: Date): Promise<NextForMeItem[]>;
+```
+
+```tsx
+// src/components/browse/next-for-me.tsx — a Server Component for the game rail's slot
+export async function NextForMe(props: { locale: string; limit?: number }): Promise<React.JSX.Element | null>;
+```
+
+- `NextForMe` renders a `ui/card` titled «التالية لك» (existing `browse.timeline.pinned`) and one link row per item —
+  thumb, title (`<bdi>`, wrapping, never the artboard's `overflow: hidden` ellipsis on a text line), «الخميس 6:30 م ·
+  محجوز» / «… · قائمة الانتظار 3». **It returns `null` with no items**: a card that says «nothing» is not drawn.
+- **Ordering** (`M10a.md` §5): committed first, then start time within the day. `content` merges three tracks' items,
+  so the comparator is exported as well as applied.
+- **Add-only on what exists**: `TimelineSession.presenters[]` gains optional `avatarUrl?` and `company?` (the browse row
+  needs the ring), so `tests/components/browse/fixtures.tsx` compiles untouched; `TimelineData` gains
+  `endedCount: number` and `attendancePoints: number | null`; `getTimeline()` gains a trailing
+  `options?: { pin?: boolean }` (default `true`, today's behaviour; browse passes `false`).
+- **Cost**, for `n` posts: one `sessions` read; presenters, their `members_member_view` rows and `companies` once each;
+  one `comments` and one `reactions` read with `in (ids)`, counted in memory; `scoring_rules` once;
+  `session_seat_counts()` per open post and the poster per post, as the timeline already does;
+  `getRatingEligibility()` only for an ended post the viewer attended. No new SQL, no policy, no grant.
+- **Not in it**: the attendance COUNT (§4.54) is D2's function, `checkin`'s. If the lead wants it on the post I add
+  `attendedCount: number | null` when the function's name is published — question Q5.
+- `content` never imports `@/lib/supabase` for a session; it calls these and nothing else of mine.
+
+## W18.5 · Sync-1 question 5 — files, and every assertion that moves
+
+**Create**
+
+- `src/components/ui/action-bar.tsx` · `src/app/[locale]/(dev)/ui/demos/action-bar.tsx`
+- `src/components/browse/{browse-screen,session-row,filter-chips,facet-menu,search-field,tag-cloud,browse-skeleton,next-for-me}.tsx`
+  (`facet-menu` is the one new client file) · `src/components/browse/session-post.ts`
+- `tests/components/ui/{action-bar,action-bar-scope,session-cta-phases,session-cta-phases-scope}.test.tsx`
+- `tests/components/browse/{browse-screen,session-row,filter-chips,next-for-me}.test.tsx`
+- `tests/unit/{timeline-browse-groups,search-session-post}.test.ts`
+- `tests/e2e/wave18-sessions-{public-card,browse}.spec.ts` — captures `wave18-sessions-<screen>-<state>-<390|1280>.png`
+
+**Replace, from an empty file**
+
+- `src/app/[locale]/s/[id]/page.tsx` and `not-found.tsx` · `src/app/[locale]/app/sessions/{page,loading}.tsx`
+
+**Edit, add-only**
+
+- `src/components/ui/session-cta.tsx` and its demo · `src/lib/dal/search.ts` · `src/components/browse/timeline-session.ts`
+  (two optional presenter fields) · `timeline-groups.ts` (`groupBrowse`) · `timeline-query.ts` (`appliedEntries`)
+- `src/messages/{ar,en}/browse.json` (new keys; none removed until its reader is) and `sessions.json`'s `card.membersOnly`
+- `filter-sheet.tsx` — its trigger's visible word becomes «المزيد»; the accessible name «المزيد من عوامل التصفية» is kept
+  (it contains the visible word). Nothing inside the sheet changes
+
+**Delete** (`rm`, never `git rm`)
+
+- `src/components/browse/sessions-timeline.tsx`, `filter-bar.tsx`, `timeline-skeleton.tsx` — ★ **only after `content`'s
+  `/app/page.tsx` and `/app/loading.tsx` stop importing the first and the third**. Until then they stay on disk, unused
+  by me. The order is `content`'s commit, then mine.
+
+**Kept, and not rebuilt**: `src/components/browse/session-card.tsx` and its test. `/app/me/bookmarks` (`SCR-024`, batch
+M10c, frozen) imports it and `bookmarks.spec.ts` pins its `h3`. Rebuilding it would restyle a screen outside the wave,
+so browse gets a NEW `session-row.tsx` and the old card is deleted by the wave that rebuilds `SCR-024`.
+`app/sessions/error.tsx`, `search/**`, `bookmarks.ts`, `timeline-match.ts`, `ar-normalize.ts`: untouched.
+
+**Assertions that move** — each becomes a ledger line in the commit that moves it.
+
+| File | Case | Moves | Why |
+|---|---|---|---|
+| `tests/components/browse/sessions-timeline.test.tsx` | «the next committed session is the FIRST item, not repeated» | **expectation** | §4.64: no pinned item. It becomes «a committed session stands once, in its date group, saying «مقعدك محجوز»» |
+| same | «asks for a company before a member tries to reserve» | **expectation** | the banner is the home's (`M10a.md` §5). Removed here; `content` owns the new case |
+| same | the empty case · filtered-empty | selector | the component under test is `BrowseScreen`; the words and the links are the same |
+| `tests/components/browse/filter-bar.test.tsx` | «row A: the default status is pressed, and every toggle links to /app/sessions» | **expectation** | the toggles are two menus: the state is the chip's label («الحالة: القادمة»), and the links are its items — still `/app/sessions?…` |
+| same | row B names every filter · the sheet's trigger counts | selector | the component is `FilterChips`; row B additionally lists the category and status |
+| `tests/e2e/browse.spec.ts` :150 – :155 | a category is applied by one click, then carries `aria-current` | selector (one more click: open the menu) and **expectation** (`aria-current` on a toggle → the chip reads «التصنيف: ذكاء اصطناعي» and the item is `current`) | |
+| same :157 | «أزل عامل التصفية: ذكاء اصطناعي» | none | kept by listing the category in row B |
+| same, the other five cases | | none expected | the `h1`, the `nav`'s name, the applied list's name, the sheet, the bookmark's name and `article` are kept on purpose |
+| `tests/e2e/timeline.spec.ts` :147 | «/app IS the timeline, the committed session first» | **expectation** | ruling 3: `/app` is the feed. Re-pointed to `/app/sessions`, without «first» |
+| same :171 | «a filter applied on /app lands on /app/sessions» | **expectation** — retired | `/app` has no filters |
+| same :182 | the empty case on `/app` | **expectation** | re-pointed to `/app/sessions` |
+| same :194 | filtered-empty | none | |
+| `tests/e2e/wave7-sessions-public-card.spec.ts` :105 | the placeholder, found by `div[class*="bg-"]:has(> bdi)` | selector | `ui/poster`'s placeholder |
+| same :114 – :116, `sessions-public-card.spec.ts` :168 | `dd` / `dd span` | none | the `<dl>` is kept for them |
+| both public-card specs, the rest | the six fields, the absences, the `http` links, the 404s, the OG tags | none | |
+| `tests/components/browse/session-card.test.tsx`, `tests/components/search/**`, `session-cta*.test.tsx`, `bookmarks.spec.ts` | | none | their subjects are untouched or add-only |
+
+Not mine, and likely to move — told to the lead, not edited: `a11y`, `budgets` (`SCR-011` is budgeted), `shell-*`, any
+`wave<N>-{demo,lead}-*` that opens `/app` expecting the timeline, and `wave15-sessions-gallery.spec.ts` if it counts
+`session-cta`'s demo states (mine; checked when the demo changes).
+
+## W18.6 · Sync-1 question 6 — disagreements `DEC-206` §4 does not list. None is picked.
+
+| # | The artboard / the spec | The plan / the tree | Where |
+|---|---|---|---|
+| **N1** | «`poster` whole, 4:5» on the public card (`PublicCard.dc.html:24`, a 457 px box at 366 wide; `M10a.md` §4; `REQ-UIX-059`; `STORY-UIX-043`) | the only artefact `anon` may read is the **`og` render, 1200 × 630**: `session_public_card()` joins `ea.preset = 'og'` (`0122:107`), the storage policy admits `og.png` alone, and the page serves `/api/s/{id}/og`. «The RPC does not change». So a RENDERED poster on this page is landscape; only the placeholder is 4:5 | `0122_public_card_day_windows.sql:99-115`, `sessions.ts:1418`, `public-card-metadata.ts:41`. Without SQL: the `og` render shown whole at its own ratio. With the lead's SQL: a 4:5 public derivative |
+| **N2** | a cancelled card: «the badge says so and the CTA disappears» (`M10a.md` §4; `REQ-UIX-059`'s second acceptance line; `STORY-UIX-043` «not drawn, and built: cancelled») | `session_public_card()` answers `published`, `in_progress`, `completed` only (`0122:115`); a cancelled session is the 404, «indistinguishable from an unknown id» (`sessions.ts:1396`), and `sessions-public-card.spec.ts:225` pins «a cancelled session stops being a card, image included» | the requirement asks for a state the function it forbids changing cannot return |
+| **N3** | no in-person line is drawn (`PublicCard.dc.html`) | the page says «الحضور في القاعة فقط.» «once, plainly, so nobody arrives expecting a link to join from home», citing `REQ-SES-008` (`s/[id]/page.tsx:205-207`). The requirement forbids a remote affordance; it does not require the sentence | |
+| **N4** | «الحالة» and «التصنيف» are two dropdown chips (`Browse.dc.html:33-34`, a chevron in each) | today they are link toggles, and `timeline-query.ts:6-7` says why: «every control on the timeline is a link to the next state of it — so a filter works before JavaScript has loaded». A menu needs JavaScript; `REQ-UIX-022`'s text («visible at all times… individually removable») is still met by the label and row B. `M10a.md` §10 lists `sheet` and no `menu` or `select`, so which primitive opens is unspecified | |
+| **N5** | the row's date and venue on ONE line, «الخميس 2 أكتوبر، 6:30 م · قاعة الرياض» (`Browse.dc.html:53`) | `session-card.tsx:92-93`: «When, then where, each on its own line: joined, a narrow card broke the venue's name in two and left a «·» at a line end» — a defect wave 6 fixed at this width | I would join them with the break rule the public card uses (a no-break space after the dot) and let the venue wrap whole |
+| **N6** | `EventDone`'s bar holds the primary and a **labelled pill «شهادتك»** (`EventDone.dc.html:98`) | `REQ-UIX-057`: «one primary and at most two **icon** buttons»; `M10a.md` §10 says the same | `ActionBarProps.secondary` takes nodes, so either ruling fits; B's screen decides what it passes |
+| **N7** | chips that are phrases on the action: «+50 عند الحضور», «مقعدك محجوز», «حتى 13 أكتوبر» (`Event.dc.html:52`, `EventLive:45`, `EventDone:48`, `Home:64`) | `ui/index.ts:953`: «A FEW CHARACTERS, NEVER A SENTENCE: a chip does not wrap, and one that tried swallowed the control at 326 px» — the lead's own review of wave 15's captures | the artboards are 390 wide; nothing is drawn narrower |
+| **N8** | the row's bookmark is 32 px and the avatar 18 px (`Browse.dc.html:56`, `:54`) | `icon-button` keeps its target size and `avatar`'s smallest is 24. Both primitives win by rule 10; recorded so the capture's difference is expected | |
+| **N9** | «(the bar's search opens the same sheet)» (`M10a.md` §6) | the shell's search is a field that lands on `/app/sessions?q=` (`DEC-205` ruling 2: «search stays in the bar»). Which sheet a search opens is not said anywhere else | the shell's, the lead's |
+| **N10** | the feed post's `session-cta` for a member who holds a seat on a session that is not yet live | `M10a.md` §5 names four faces — reserve, check-in, rate, nothing — and not this one; §4.57 makes it a link | W18.2's third addition draws the booked face with no cancel; the post's own link leads to the event page |
+
+## W18.7 · `DEC-206` §4.42 – §4.46 and §4.63 – §4.65 — what I measured against them
+
+**All eight hold as written.** Four notes, none a contradiction of a ruling:
+
+- **§4.42** is right about seats, presenter and company. It does not reach the poster itself — **N1**: the artefact the
+  public may read is the `og` preset, so «the poster whole at 4:5» and «the RPC does not change» cannot both hold for a
+  rendered poster.
+- **§4.45** — `0027:527` is `check_in`, 20, as cited. One consequence for every surface: the RULE's figure is not what a
+  given viewer is paid. `session_award_state()` also bars a presenter (`REQ-CHK-011`) and needs every day. So
+  `attendancePoints` is null for a session the viewer presents, and a row or a post says «+20» only for an open or
+  live session. One RPC per card for the exact state is not spent on a list.
+- **§4.46** — `ui/poster` requires `teamColor` **and `teamName`**, and draws the name on the placeholder
+  (`poster.tsx`, the meta line). On the public card a company is forbidden (§4.42), so the placeholder there has no
+  honest `teamName` — request Q1. And the placeholder «fits the 4:5 box at every width from 144 px»: at the row's 76 px
+  it grows past 95 px by design (`min-h-fit`).
+- **§4.64** — the link's count needs a figure the DTO lacks (`exists.ended` is a boolean): `endedCount`, add-only. The
+  ended view is capped at 60 (`ENDED_LIMIT`), so past 60 the link's number and the list's length differ.
+- **§4.63**, **§4.65**, **§4.43**, **§4.44**: confirmed — the order is the sort at `search.ts:160-162`; no desktop
+  rail exists in the tree; the page's header says why an open card has no badge; «سجّل الدخول لحجز مقعدك» is
+  `sessions.card.signIn`.
+
+## W18.8 · Requests and questions
+
+**Requests** (none is mine to edit)
+
+- **R1 — lead, `globals.css`**: `[data-action-bar]` sets `--tabbar-h: 76px`; the primitive keeps that hook. If a bar with
+  a `note` is wanted in B (`SCR-014`), the token needs the taller value.
+- **Q1 — `content`, `ui/poster`**: (a) `teamName` optional, for a surface where a company may not be named (the public
+  card); (b) whether `poster` is meant at 76 px — or the row keeps `CardMedia`'s placeholder, as today's card does.
+- **Registry and signatures — lead** (contract 2): `ActionBarProps`; `SessionCtaState`'s `rate`, `booked.cancel`
+  optional, `SessionCtaProps.size` and `width`; the entry for `action-bar` (`composes`: it renders the caller's nodes).
+
+**Questions for the lead**
+
+- **Q2** — `SCR-011`'s top row: is the title the page's `page-header` and the bell the frame's, in one row? Who renders
+  that row on a phone, and does the wordmark show on browse?
+- **Q3** — an ended public card: keep «سجّل الدخول لحجز مقعدك», or a second string («سجّل الدخول لعرض الجلسة»)?
+- **Q4** — N4: `ui/menu` for the two chips (JavaScript needed), or keep links?
+- **Q5** — the attendance count on `SessionPost`: mine to carry once D2 is named, or `content` calls D2 itself?
+- **Q6** — does browse pass anything to the game rail's slot at `lg`?
+- **Q7** — the `companyMissing` panel and `AvatarImportPrompt` leave browse with the old timeline: confirm `content`
+  takes both onto the home.
+- **Q8** — N1 and N2 need a ruling before `SCR-007` is built; everything else on it can start with the frame.
+
+**Order once the frame is in**: contract 3's types and `session-post.ts` first (they unblock `content`) → `action-bar`
+and `session-cta` → `SCR-007` → `SCR-011` → the deletions, after `content`'s page.
