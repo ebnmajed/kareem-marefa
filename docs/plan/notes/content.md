@@ -5675,3 +5675,8 @@ home waits on three contracts: `NextForMe` (sessions), `session-cta`'s `rate` st
 - **No «سجّل حضورك» on the member's live post (the 390 capture)** is correct: that member holds no seat and the
   seeded session does not allow walk-ins, so the affordance matrix offers no check-in (`checkInOffer()`,
   REQ-CHK-010) and `sessions'` action is `none`. The artboard draws a member who reserved.
+- ★ **The 1280 case's missing link (build of `1056ae28`): the MARKUP was wrong, not the spec.** `post.posterName`
+  and `recap.photoAlt` carried `<bdi>` tags but are read with plain `t()` into an attribute; next-intl raises
+  `FORMATTING_ERROR` and returns the key, so the poster link's accessible name was «feed.post.posterName» and every
+  recap photograph's `alt` «feed.recap.photoAlt». An attribute cannot isolate a run anyway, so both strings are
+  plain now. `session-post.test.tsx` and a new `recap-post.test.tsx` assert both names in words.

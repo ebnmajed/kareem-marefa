@@ -128,6 +128,13 @@ describe("SessionPost", () => {
     expect(screen.getByRole("link", { name: /سجّل حضورك/ })).toHaveAttribute("href", "/ar/app/sessions/x/check-in");
   });
 
+  it("the poster is a link to the event page, named in words — an accessible name holds no markup", async () => {
+    await show(post());
+    const poster = screen.getByRole("link", { name: "ملصق جلسة لوحة تحكم لا يهجرها أحد" });
+    expect(poster).toHaveAttribute("href", expect.stringContaining("/app/sessions/11111111"));
+    expect(poster.getAttribute("aria-label")).not.toMatch(/feed\.|<bdi>/);
+  });
+
   it("the title is the post's heading, and the presenter links to their profile", async () => {
     await show(post());
     expect(within(screen.getByRole("heading", { level: 3 })).getByRole("link")).toHaveTextContent("لوحة تحكم لا يهجرها أحد");

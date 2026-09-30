@@ -31,7 +31,7 @@
       "reactions": "التفاعل مع الجلسة",
       "like": "إعجاب",
       "comments": "{count, plural, zero {لا تعليقات، افتح النقاش} one {تعليق واحد} two {تعليقان} few {{value} تعليقات} many {{value} تعليقًا} other {{value} تعليق}}",
-      "posterName": "ملصق جلسة <bdi>{title}</bdi>",
+      "posterName": "ملصق جلسة {title}",
       "points": "+{value}",
       "shareHint": "رابط عام يعرض العنوان والموعد والمكان واسم الجهة والملصق فقط.",
       "action": {
@@ -51,7 +51,7 @@
       "done": "اكتملت",
       "attended": "{count, plural, zero {لم يُسجَّل حضور} one {حاضر واحد} two {حاضران} few {{value} حاضرين} many {{value} حاضرًا} other {{value} حاضر}}",
       "photos": "{count, plural, zero {بلا صور} one {صورة واحدة} two {صورتان} few {{value} صور} many {{value} صورة} other {{value} صورة}}",
-      "photoAlt": "صورة من جلسة <bdi>{title}</bdi>",
+      "photoAlt": "صورة من جلسة {title}",
       "materials": "المواد"
     },
     "announcement": {
