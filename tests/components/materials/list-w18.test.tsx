@@ -128,6 +128,10 @@ describe("Materials slot — rebuilt", () => {
     const slider = screen.getByRole("slider", { name: "موضع التشغيل" });
     expect(slider.parentElement).toBe(play.parentElement);
     expect(play.parentElement!.querySelectorAll("p")).toHaveLength(2);
+    // As drawn, «58:12 · للاستماع والتحميل»: what it is for, and no phase word on a playing row.
+    const timeLine = play.parentElement!.querySelectorAll("p")[1];
+    expect(timeLine).toHaveTextContent("للاستماع والتحميل");
+    expect(timeLine).not.toHaveTextContent("بعد الجلسة");
     expect(screen.getByTestId("slot").querySelector("audio")).toHaveAttribute("src", "https://storage.test/a.m4a");
   });
 

@@ -91,7 +91,9 @@ export function MaterialRow({ m, sessionId, locale, canManage, scope, playbackUr
       <AudioRow
         src={playbackUrl}
         title={m.title}
-        note={join(phase, note)}
+        // As drawn (`EventDone.dc.html`, «58:12 · للاستماع فقط»): no phase word on a playing row. REQ-MAT-006 is
+        // a visibility rule the policy enforces, not a label; staff still see and change the phase in the settings.
+        note={note}
         labels={{ play: t("audio.play"), pause: t("audio.pause"), seek: t("audio.seek") }}
       />
     ) : (
