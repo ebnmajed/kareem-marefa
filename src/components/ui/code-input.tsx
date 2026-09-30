@@ -88,6 +88,7 @@ export function CodeInput({
   invalid,
   "aria-describedby": describedBy,
   disabled,
+  align = "start",
   className = "",
 }: CodeInputProps) {
   const generated = useId();
@@ -98,6 +99,10 @@ export function CodeInput({
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
   const isInvalid = invalid ?? Boolean(error);
   const complete = chars.every(Boolean);
+  // ★ Wave 18 (`checkin`'s request, `SCR-014`): `center` centres the label and the boxes. Add-only; the
+  // default is where they have always stood.
+  const centred = align === "center";
+  const frame = centred ? `text-center ${className}` : className;
   const hydrated = useHydrated();
   const describedByIds = describedIds(error ? errorId : undefined, describedBy);
 
@@ -174,7 +179,7 @@ export function CodeInput({
 
   if (!hydrated) {
     return (
-      <div className={className}>
+      <div className={frame}>
         <label id={labelId} htmlFor={firstId} className="text-label text-fg-heading">
           {label}
         </label>
@@ -207,7 +212,7 @@ export function CodeInput({
   }
 
   return (
-    <div className={className}>
+    <div className={frame}>
       <label id={labelId} htmlFor={firstId} className="text-label text-fg-heading">
         {label}
       </label>
@@ -219,7 +224,7 @@ export function CodeInput({
         aria-labelledby={labelId}
         aria-describedby={describedByIds}
         data-complete={complete || undefined}
-        className="mt-2 flex gap-2"
+        className={centred ? "mt-2 flex justify-center gap-2" : "mt-2 flex gap-2"}
       >
         {chars.map((char, i) => (
           // ui-lint-disable-next-line field — one box of six; the group is the control, named by its label

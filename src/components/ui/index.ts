@@ -1000,6 +1000,8 @@ export interface CodeInputProps extends Styleable {
   /** Merged with the error's id, never replacing it. */
   "aria-describedby"?: string;
   disabled?: boolean;
+  /** Wave 18 (`SCR-014`, add-only): `center` centres the label and the boxes. Default `start` — where they have always stood. */
+  align?: "start" | "center";
 }
 
 // ── scoring (3) ───────────────────────────────────────────────────────────
