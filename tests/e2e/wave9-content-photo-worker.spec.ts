@@ -167,7 +167,9 @@ test("★ T4 — a real upload through the real worker: exif stripped, the galle
   // shell's "إشعار"/"Notification" announcement word (`<span role="status">`), and a substring
   // match is a strict-mode violation against two elements for the one toast (the lead's own
   // real-worker finding, `content.md` §31).
-  await expect(page.getByText("تتم معالجة الصورة الآن…", { exact: true })).toBeVisible();
+  // The toast follows the whole round trip — initiate, the signed PUT, complete — which is 0.5 s alone and
+  // measured at 8 s with two projects and another run sharing the machine; the tile says «جارٍ الرفع…» meanwhile.
+  await expect(page.getByText("تتم معالجة الصورة الآن…", { exact: true })).toBeVisible({ timeout: 30_000 });
 
   // ★ THE POINT OF THIS TEST: no page.reload() anywhere below. The gallery must take its place
   // on its own — the private Realtime broadcast (or the UploadWidget's own bounded fallback
