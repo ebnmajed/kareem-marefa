@@ -147,6 +147,7 @@ whose base branch is deleted is closed by GitHub for good (PR #36, 2026-09-30).
 
 1. ★★ **Rebuilt, never restyled.** Start from the artboard and an empty file. Keep the DAL calls, the actions, the
    gating predicates and the accessible names the suites pin; keep no markup because it was there.
+   ★★ **DELETE THE PAGE FILE FIRST, then write the screen from its artboard** (`DEC-208`, amending `DEC-199` §2) — two commits, a delete then a create — **and re-derive what must survive from the REQs and the DAL, not from memory**: the data calls, the auth boundary, `<bdi>` on every interpolated title and code, `?next=`, the phase gates. **The story lists what it kept and which requirement made it keep it.**
 2. ★★ **`registrations` is never touched** (invariant 2): 20 real pre-launch signups. The register form's action,
    field names, ids, validation and no-JS path are byte-identical.
 3. ★★ **The five frozen public routes do not move**: `qa:contract` green at every commit, `qa:appearance` and

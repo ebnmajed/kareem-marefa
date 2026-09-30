@@ -14,7 +14,7 @@ plan is in [`docs/plan/`](docs/plan/).
    re-litigate these.**
 3. The document you are about to change — check its status line.
 
-★ **Visual direction lives in [`docs/design/`](docs/design/)** — «ساحة اللعب», accepted by `DEC-183`, and **the product's only visual language since `DEC-199`** — every surface but the five public routes is inside its scope, and ★★ **a screen is REBUILT to its design, never restyled**.
+★ **Visual direction lives in [`docs/design/`](docs/design/)** — «ساحة اللعب», accepted by `DEC-183`, and **the product's only visual language since `DEC-199`** — every surface but the five public routes is inside its scope, and ★★ **a screen is REBUILT to its design, never restyled** — ★★ **its page file is DELETED first, then written from its artboard, and the story lists what it kept and the requirement that made it keep it** (`DEC-208`).
 Read [`docs/design/README.md`](docs/design/README.md) before any UI work. **`DECISIONS.md` and
 `docs/plan/` win over it**: where the two disagree, the case is listed in `DEC-183` §4, `DEC-195` §6, `DEC-199` §5 and `DEC-206` §4
 (eighty-one so far) or becomes a new entry — nobody picks a side silently. Its prototypes are behaviour references;
@@ -386,6 +386,7 @@ that reads «restyle X to match» is written wrong.
 
 - ★★ **Rebuilt, never restyled.** Start from the artboard and an empty file. Keep the DAL calls, the actions, the
   gating predicates and the accessible names the suites pin; keep no markup because it was there.
+- ★★ **DELETE THE PAGE FILE FIRST, then write the screen from its artboard** (`DEC-208`, amending `DEC-199` §2) — two commits, a delete then a create — **and re-derive what must survive from the REQs and the DAL, not from memory**: the data calls, the auth boundary, `<bdi>` on every interpolated title and code, `?next=`, the phase gates. **The story lists what it kept and which requirement made it keep it.** From PR B on; PR A's owners write their tables retroactively.
 - ★★ **`registrations` is never touched** (invariant 2). **The five frozen public routes do not move**:
   `qa:contract` green at every commit, `qa:appearance` and `visual`'s public pairs unchanged and not re-baselined,
   the fingerprint byte-identical, the public-graph test green. `/s/[id]` is **not** one of the five; `ui/button`,

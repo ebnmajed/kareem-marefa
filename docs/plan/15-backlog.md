@@ -1153,7 +1153,7 @@ rebuilt in this wave** — a screen is rebuilt to its design in its own wave, ne
 built from its artboard — its regions in the artboard's order, its copy from `messages/ar/` first, its primitives
 by name. **Nothing in the current page file survives by default**; the data layer, the server actions, the
 behaviour tests and every requirement the screen already meets do. A story that reads «restyle X to match» is
-written wrong. Each screen's definition of done: **it matches its artboard at 390 px, and at 1280 where one is
+written wrong. ★★ **From PR B on (`DEC-208`): the page file is DELETED first, then written from its artboard — two commits — and each story's note carries a table of what it kept and the `REQ-*` that made it keep it, re-derived from the requirements and the DAL, never from memory.** Each screen's definition of done: **it matches its artboard at 390 px, and at 1280 where one is
 drawn, in a capture the lead opened**; `ui-lint --strict` passes; its scope tests pass; `qa:contract` is untouched.
 PR A is stories 039 – 047; PR B is 048 – 050.*
 
@@ -1271,6 +1271,7 @@ PR A is stories 039 – 047; PR B is 048 – 050.*
 #### STORY-UIX-048 — The event page, rebuilt around the whole poster
 **Covers:** `REQ-UIX-061` · **M20** · **L** · PR B · `sessions`, with `content` for the materials, photos and discussion slots
 **Built from:** `Event.dc.html` · `EventLive.dc.html` · `EventDone.dc.html` · `EventDesktop.dc.html`; `M10a.md` §7.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`.
 - The top row, the poster whole at 4:5, the chip row, the title, the presenter card, the action card in flow, the
   sub-nav of sections that exist, then the sections in the artboard's order; the bottom `action-bar` on a phone;
   on desktop the hero band, the full-width action row that sticks once scrolled past, and the 1fr / 380 body.
@@ -1285,6 +1286,7 @@ PR A is stories 039 – 047; PR B is 048 – 050.*
 #### STORY-UIX-049 — Check-in, rebuilt
 **Covers:** `REQ-UIX-062` · **M20** · **M** · PR B · `checkin`
 **Built from:** `CheckIn.dc.html`; `M10a.md` §8.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`.
 - The close control, the title, the session's mini-row, the prompt, `code-input`, the rules line, the earn panel,
   the bottom bar with the one submit.
 - ★★ **The wrong-code shake is NOT built until the owner rules** (`DEC-206` §4.75). `M10a.md` calls it input
@@ -1298,6 +1300,7 @@ PR A is stories 039 – 047; PR B is 048 – 050.*
 #### STORY-UIX-050 — The host view, rebuilt
 **Covers:** `REQ-UIX-062` · **M20** · **M** · PR B · `checkin`
 **Built from:** `Host.dc.html`; `M10a.md` §9.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`.
 - The code in two groups of three, the time to rotation, the count with the walk-ins, the open switch and its
   ceiling, the revoke action in coral outline, marking by hand in a `sheet` with a `combobox` and its reason.
 - Projection: the code alone, as large as the viewport allows, the screen kept awake while live.

@@ -5796,3 +5796,50 @@ overshoot ceiling is open with the owner.
 The four new signatures and `race-bar`'s and `session-cta`'s additive props are in `ui/index.ts` at this entry's commit. ★ **Two additions change a type an existing file satisfies** — `CardDensity`'s `post` and `session-cta`'s `rate` state with an optional `cancel` — so they land **in the same commit as their owner's implementation**, never before: a type that runs ahead of its file breaks `tsc` for everyone. **A new file lands in one commit with its registry entry**: the track tells the lead its paths are ready, and the lead commits them with the entry and the gallery's wiring, so the gate is never red between two commits.
 
 - **Documents changed:** `src/components/ui/index.ts`, `STATUS.md` (S1, P0), `DEC-206` corrected by this entry (the log is append-only)
+
+---
+
+## DEC-208 — Amends `DEC-199` §2: a screen's page file is DELETED first, then written from its artboard — and the story lists what it kept, requirement by requirement
+
+- **Date:** 2026-09-30 · **Decided by:** the owner, mid-wave 18, for this wave's PR B and every screens wave after it
+- **Amends:** `DEC-199` §2 («a screen is REBUILT to its design, never restyled») — the rule stands; this is how it is kept
+- **Applies to:** PR B (`SCR-012`, `SCR-014`, `SCR-016`) and every screen rebuilt after M10a; carried into every screens brief, the way «rebuilt, never restyled» already is
+
+### 1 · The rule
+
+> ★★ **DELETE THE PAGE FILE FIRST, then write the screen from its artboard.** Not «edit until it matches» — remove
+> it, then build.
+
+«Nothing survives by default» is a discipline, and a discipline will not hold across fifty screens: a region kept by
+inertia looks exactly like a region kept on purpose. Deleting makes it mechanical — **a region cannot be kept by
+inertia if it is not there** — and the history shows a delete and a create rather than edits a reviewer has to judge
+line by line. So a rebuild lands as **two commits**: the page file (and the screen's own markup files) removed, then the
+screen written from its artboard. A screen that is edited in place is not rebuilt, whatever it looks like afterwards.
+
+### 2 · The guard — what a blank file loses is what nothing tests
+
+After deleting, **re-derive what must survive from the requirements and the DAL, never from memory**: the data calls;
+the auth boundary (`requireSession()` at the data, never in a layout); `<bdi>` on every interpolated title, name and
+code; `?next=` carried where it was carried; the phase gates and the affordance matrix's predicates; the no-JS path
+where one exists; the accessible names the suites pin. **A rebuild that drops one of those will not fail a test — it
+will just stop doing it.**
+
+So **the story lists what it kept and which requirement made it keep it** — a table in the track's note, one row per
+behaviour, `REQ-*` beside each, written before the create commit and checked against the new file after it. The
+reviewer reads that table against the new file, not the old diff.
+
+### 3 · Where the sentence is carried
+
+`CLAUDE.md` (the visual-direction paragraph and the wave-18 rules), the ten agent files (the shared rule 1),
+`TEAM.md` §5, `15-backlog.md` (`STORY-UIX-048` … `050`, and §23g's header for every story after), `14-roadmap.md` (M20
+and the sequence), and `STATUS.md`'s PR B rows. **Every screens brief after M10a carries it verbatim.**
+
+### 4 · PR A, stated plainly
+
+PR A's screens (`SCR-002`/`003`/`004`, `007`, `010`, `011`) were written over their old files in one commit each, from
+their artboards — whole-file rewrites, not edits, but **not** the delete-then-create this entry asks for, and without
+the kept-behaviour table. They are not redone: they were checked against their artboards and their behaviour suites
+passed unchanged or with ledger lines. ★ **But their kept-behaviour tables are written now, retroactively, in each
+owner's note**, so the reviewer has for PR A what PR B will have by construction.
+
+- **Documents changed:** `CLAUDE.md`, `.claude/agents/*.md`, `docs/plan/TEAM.md`, `15-backlog.md`, `14-roadmap.md`, `STATUS.md`

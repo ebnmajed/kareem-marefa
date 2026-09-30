@@ -647,7 +647,9 @@ carried gates, which travel together (`DEC-194`).
 nothing; this one speaks it. Nine screens are rebuilt from thirteen artboards in `docs/design/screens/m10a/`, each
 under `DEC-199` §2 — **rebuilt to its design, never restyled**: the regions in the artboard's order, the copy from
 `messages/ar/`, the primitives by name; the data layer, the actions, the behaviour tests and every requirement the
-screen already meets survive, and the markup does not. ★ The owner put this batch before session stories
+screen already meets survive, and the markup does not. ★★ **From PR B on, and in every screens milestone after it,
+the page file is DELETED first, then written from its artboard, and the story lists what it kept and the requirement
+that made it keep it** (`DEC-208`). ★ The owner put this batch before session stories
 (`DEC-205` §1): **the shell and the event page are what every later screen inherits.** It ships as **two pull
 requests** — the frame, then the event, the second opened against `main` from its first push (`DEC-206` §2).
 
