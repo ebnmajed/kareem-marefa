@@ -5912,3 +5912,16 @@ company for its members' attendance): the desktop aside draws «لفريقك» f
 It is one sentence stating the rule: «حضورك يرفع نسبة مشاركة <company> في سباق الشركات.» — no round, no count of who
 attends, no standing. The member's own company comes from an add-only `getViewerCompany()` in `sessions.ts`.
 
+
+**After the lead's review of the `d563ee1c` captures** (`2e5d0e35`):
+- The desktop action row now matches the drawing: the primary is compact and the facts sit in the row's other column.
+- On the phone the chips fit one row: the one-day length is drawn only from `lg`, and «3 أيام» stays at every width.
+- The spec waits for every streamed region before a capture.
+- ★ **Correcting W18B.2:** the «المواد» jump on the ended card is **removed**. No requirement kept it — the row I wrote
+  cited `REQ-TSK-*`, which is the tasks jump's requirement, not this one's. The artboard reaches the materials through
+  the sub-nav's chip.
+- The ended poster's «حضرت» sticker (`EventDone.dc.html:30`) is **not built**:
+  - a rendered poster carries no sticker (`DEC-206` §4.46);
+  - on the placeholder, a sticker is never a status (`REQ-UIX-031`), and whether the viewer attended is the outcome
+    card's fact (`AttendanceOutcome`, `REQ-UIX-015` ask 4).
+  - Recorded as a disagreement, not picked.
