@@ -172,3 +172,62 @@ rehearses against a production schema dump, pushes, merges, then reconnects Rail
 thirteenth** consecutive time; the durable fix is the dashboard's Settings → Source. ★ Wait for a
 status with **no suffix**. ★ Read CI from the run's own conclusion on the PR head (`DEC-192`).
 ★ And the owner's acceptance is the phone: **the rebuilt screens beside their artboards, on a device.**
+
+---
+
+## Kept-behaviour tables — the lead's screens (`DEC-208`, written retroactively for PR A)
+
+*Re-derived from the requirements and the DAL, then checked against the files as they stand at `940b0a3b`. Each row:
+the behaviour, where it lives now, the requirement that made it keep it.*
+
+### `SCR-002` sign-in — `src/app/[locale]/(auth)/sign-in/page.tsx`
+
+| Behaviour | Where now | Kept because |
+|---|---|---|
+| A signed-in member is redirected to the carried destination before anything renders | `getSessionState()` → `redirect(destination)` | `REQ-AUT-005` |
+| `?next=` validated as an internal path and posted with the form | `safeNextPath()` → `<input type="hidden" name="next">` | `REQ-AUT-005` |
+| One action, a POST to a Route Handler — works with no JavaScript | `<form method="post" action="/api/auth/sign-in">` | `REQ-AUT-001` |
+| No field to type into; nothing intercepts paste | one `Button`, no input but the hidden one | `REQ-UIX-011` (SC 3.3.8) |
+| An error said in the page, above the button, `role="alert"`, `id="sign-in-error"`, never a toast | the `<p role="alert">` inside the panel | `REQ-UIX-058`; `auth-screens.spec` pins the id |
+| The refused domain names no org | `t("domainNotAllowed")` | `REQ-AUT-006` |
+| The Google mark never mirrors | `GoogleMark`, a logo with its own colours | `10` §2.4 |
+| The wordmark leads to `/` outside the platform | `DoorLockup` → `Link href="/"` | `REQ-UIX-027` |
+
+### `SCR-003` choose-org — `src/app/[locale]/(auth)/choose-org/page.tsx`
+
+| Behaviour | Where now | Kept because |
+|---|---|---|
+| Only a genuinely ambiguous, signed-in, org-less visitor sees it; a member goes to `next`; any other state to its own page | the three redirects, `provision()`'s envelope | `REQ-AUT-004` |
+| A provisioned answer refreshes the session before redirecting | `supabase.auth.refreshSession()` | `REQ-AUT-004` (the claim carries `org_id`) |
+| The choice posts through the same Server Action, `name="org"`, first org preselected | `chooseOrg`, `RadioGroup name="org" defaultValue` | `REQ-AUT-004` |
+| `next` travels with the choice | the hidden `next` input | `REQ-AUT-005` |
+| Each org's name isolated | `<bdi>` in the option's label | invariant «bidi-isolate every interpolated value» |
+| The submit keeps its label while pending | `SubmitButton pendingLabel` | `REQ-UIX-007` |
+| ★ **Dropped, and said so:** the privacy and terms links at the foot | — | no requirement places them on this screen; `ChooseOrg.dc.html` draws only «الدخول بحساب آخر». They stay on sign-in and no-access |
+
+### `SCR-004` no-access — `src/app/[locale]/(auth)/no-access/page.tsx`
+
+| Behaviour | Where now | Kept because |
+|---|---|---|
+| Names no org and lists no domain | the copy; the address shown is the visitor's own | `REQ-AUT-006` |
+| Four variants in one frame: no match, suspended, deactivated, a platform admin with no org | the `[title, body]` switch | `REQ-AUT-006`, `REQ-TEN-006` |
+| A dead end with a way out — sign-out (a POST, so another account is one act) and the way home | the two forms, `DoorFooter` | `REQ-AUT-006` |
+| The platform admin's door is the console | `ButtonLink href="/app/platform"` | `DEC-057` |
+| The impersonation banner stands above it for a break-glass operator | `<ImpersonationBanner>` | `DEC-055` option C |
+| `getClaims()` narrowed on `data`, never on `error` | `signedInEmail()` | `CLAUDE.md` Supabase rule |
+| The address isolated left-to-right | `<bdi dir="ltr">` | invariant «bidi-isolate every interpolated value» |
+
+### The shell — `src/app/[locale]/app/layout.tsx`, `src/components/shell/**`
+
+| Behaviour | Where now | Kept because |
+|---|---|---|
+| No auth check in the layout; one classification for the shell, a platform admin with no member row gets no bell, rail or tab bar | `getSessionState()`, `isMember` guard | `CLAUDE.md` (Partial Rendering), `DEC-057` |
+| The skip link is the first focusable element, to `#main` | the `.skip-link` anchor | `REQ-UIX-017` (SC 2.4.1) |
+| The route progress bar and focus clearance on every route | `RouteProgress`, `FocusClearance` | `16` §7.1.1, SC 2.4.11 |
+| The toast region inside the scope, above the navigation | `ToastProvider` inside `PlayScope root` | `DEC-199` §1.3.6 |
+| The wordmark leads to `/app` | the header's `Link href="/app"` | `REQ-UIX-027` |
+| Immersive routes wear neither bar nor rail; the frame follows a client-side navigation | `shell-routes.ts`, the client `ShellMain`, `TabBar`, `NavRail` | `REQ-UIX-002`, `DEC-098` |
+| `<main>`'s padding clears the fixed bar, one token | `--tabbar-h`, `CLEARS_BAR` | `16` §3.1 |
+| Every disclosure closes on navigation, outside press and Escape | the one `ui/menu` (the account menu) | `REQ-UIX-023` |
+| Sign-out, the console and the platform reachable on a phone | the account menu, kept (`DEC-206` §4.33) | `REQ-UIX-054` |
+| The legal links at the foot | `ShellFooter` | carried from the old shell |
