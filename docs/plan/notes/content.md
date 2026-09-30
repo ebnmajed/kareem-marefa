@@ -5188,3 +5188,453 @@ The fixture's one session hashed to navy, so the silver patch itself was read fr
   `ui/route-progress` (the lead's) and not in the spec: the store's count and the dot would then disagree.
 - **The primitive, read again and found right:** the dot is drawn iff `pending && !quiet`; the count rises in the same
   commit's effect; `RouteProgress` re-renders through `useSyncExternalStore` and its 0 ms timer sets `elapsed`.
+
+---
+
+## Wave 18 — plan (`DEC-205`, `DEC-206`, M20, PR A) — planning only, no code edited
+
+**Rows:** N1 (`SCR-010`, `REQ-UIX-055`, `STORY-UIX-044`) · N2 (`feed-item`, `attendee-stack`, `card`'s `post`,
+`REQ-UIX-057`). **Read:** the agent file, `STATUS.md`'s wave-18 block, `DEC-205`, `DEC-206`, `M10a.md`,
+`Home.dc.html`, `HomeDesktop.dc.html`, `EventLive.dc.html:44`, `EventDesktop.dc.html:99-102`, `app/page.tsx`,
+`card` · `avatar` · `story-ring` · `reaction-bar` · `poster` with their types, `dal/photos.ts`, `dal/search.ts`,
+`browse/timeline-session.ts`, `dal/points.ts`, `dal/leaderboards.ts`, `dal/admin-dashboard.ts`, `dal/reactions.ts`.
+**Nothing is built before «the frame is in at `<sha>`».** Answers are numbered as sync 1's six questions.
+
+### 1 · The regions, in the artboard's order, and the primitive each is built from
+
+**Phone (`Home.dc.html`, 390).** The top row and the tab bar are the frame's (contract 1) and the page draws neither.
+
+| # | Region (artboard line) | Built from | Who |
+|---|---|---|---|
+| 0 | page title — **not drawn** | an `sr-only` `<h1>` «الرئيسية» (the artboard has no heading; the a11y sweep needs one) | `content` |
+| 1 | the ring row (`:27-33`) | `story-ring` ×N in a horizontally scrolling list, **no `onOpen`** | `content` |
+| 2 | the no-company banner — not drawn | `panel` inside a `role="status"` wrapper, `app.home.companyMissing` + «أكمل ملفك» | `content` |
+| 3 | the week card (`:35-42`) — rank · streak · points tiles, the level bar and «بقي N لمستوى …» | `week-hud` (three `stat` tiles + `progress-bar`) | `scoring`'s component, placed by `content` |
+| 4 | «يحتاج انتباهك» — not drawn | `panel` with count links | `content`, from the lead's counts |
+| 5 | date heading «اليوم» (`:44`) | `section-header` as an `<h2>` | `content` |
+| 6 | session post, live (`:45-65`) | `card` `density="post"` › presenter row: `avatar` (`teamColor`) + name + company + venue · time + `SessionStatusBadge` › `poster` whole › `reaction-bar` (like) + comment-count link + share + bookmark › `session-cta` as a **link** | `content`, from `sessions'` DTO |
+| 7 | «سباق الشركات» (`:67-72`) — once, after the first date group | `race-bar` ×3 (top 2 + own) in a `card` | `scoring`'s component, placed by `content` |
+| 8 | date heading, then a session post, open (`:74-93`) | as 6; the seats line in place of share/bookmark as drawn | `content` |
+| 9 | achievement (`:95-99`) | `feed-item` `variant="achievement"` — **no reaction** (§4.53) | `content`, from `scoring`'s DTO |
+| 10 | announcement (`:101-104`) | `feed-item` `variant="announcement"` | `content`, from `0164` |
+| 11 | date heading «أمس», the recap (`:106-118`) | `feed-item` `variant="recap"`: head, three photo tiles, `reaction-bar` (like), the materials **link** | `content` |
+| 12 | the propose band (`:120-123`) | `panel` + `ButtonLink` to `/app/propose` | `content` |
+
+**Desktop (`HomeDesktop.dc.html`, 1280).** The bar and the navigation rail are the frame's. The content column
+(600 px) is regions 0 – 2, 5, 6, 8 – 12 in the same order. **Regions 3 and 7 leave the column** and become the game
+rail's cards, with «التالية لك» (`:99-123`): rank · streak + points · the race (four bars) · «التالية لك».
+
+- The post lays the poster beside the copy by a **container query on the card**, not a viewport breakpoint: the
+  column is 600 px at `lg` and ~358 px on a phone, and `poster.tsx` already sizes by `@container`.
+- ★ The artboard draws **two** desktop posts: the live one with a header row above and a 260 × 325 poster
+  (`:51-79`), the open one with a 160 × 200 poster and the presenter row inside the copy (`:82-91`). `M10a.md` §5
+  names only «260 px». **I build both as drawn**: live → 260 with the head above; every other phase → 160.
+- The desktop live post adds the title as text, an abstract excerpt and the live attendance figure («23 من 40
+  حاضرًا الآن», `:66`) — the COUNT of §4.54, never a stack. On the phone the title is on the poster only, so a post
+  carries an `<h3>` that is `sr-only` below the container breakpoint and visible above it.
+- The desktop artboard is clipped at 1040 px: **no achievement, recap or propose band is drawn at 1280.** I build
+  them in the column as on the phone; there is no drawing to hold them beside (the same case as §4.36).
+
+**The slot I need (contract 1).** A layout cannot take a prop from a page, so I need one of:
+
+```ts
+// (a) preferred — a frame component the PAGE renders; the layout keeps the bars and the navigation rail.
+export function PageFrame(props: { rail?: React.ReactNode; children: React.ReactNode }): React.JSX.Element;
+// (b) a parallel route: src/app/[locale]/app/@rail/{page,default,loading}.tsx — then those files are in my list.
+```
+
+What I pass is **a fragment of two parts**: `scoring`'s rail component (rank · streak + points · race) and my
+`<UpNext>` card. What I need to know of the slot: (1) it is `display: none` below `lg`, not unmounted by JS; (2) it
+is sticky and 340 px; (3) the content column's width is the frame's, so the page sets no `max-w-*`; (4) the rail
+may suspend on its own (`<Suspense>` inside what I pass) without holding the feed; (5) `loading.tsx` renders the
+same frame, so I can pass a rail skeleton.
+
+★ **An open point for `scoring` and the lead, not mine to settle:** the week exists twice in the DOM — the phone's
+`week-hud` in the column (hidden from `lg`) and the rail's cards (hidden below `lg`). Both mount. Moments 3 and 5
+are keyed once per occurrence, so **the hidden twin must not play or write the mark**. I place the two components;
+the proof is `scoring`'s.
+
+### 2 · The new primitives' props, and `card`'s `post`
+
+All three are `content`'s files; each renders every state from props, reads no data and no catalogue, declares no
+keyframe, and carries `pg:` classes only over semantic names. A colour from data arrives as `--team`.
+
+```ts
+// ── feed-item.tsx — REQ-UIX-057. One <article>; three variants. Server Component (no state, no handler).
+interface FeedItemBase extends Styleable {
+  /** Pre-formatted by the caller, Western digits — «قبل ساعتين», «أمس». */
+  time: string;
+}
+
+export interface FeedItemAchievementProps extends FeedItemBase {
+  variant: "achievement";
+  /** The glyph in the tile — a badge's star, the streak's flame. From `ui/icons`. */
+  icon: ReactNode;
+  /** The sentence, composed by the caller with `t.rich`: the member's name is a link inside <bdi>. */
+  children: ReactNode;
+  /** The member's company, drawn before the time — «أيك». Null draws the time alone. */
+  context?: string | null;
+  // ★ No reaction slot, by design (DEC-206 §4.53).
+}
+
+export interface FeedItemAnnouncementProps extends FeedItemBase {
+  variant: "announcement";
+  /** «إعلان من الإدارة» — the visible source line; the megaphone glyph is the primitive's. */
+  sourceLabel: string;
+  /** Plain text. Drawn in <bdi dir="auto">, whole, never clamped. */
+  body: string;
+  // ★ No author, no action, no reaction (REQ-UIX-056).
+}
+
+export interface FeedItemRecapProps extends FeedItemBase {
+  variant: "recap";
+  /** The session's title, the link's text. */
+  title: string;
+  href: string;
+  /** «اكتملت» — a word, not a status badge. */
+  doneLabel: string;
+  /** Composed by the caller — «محمد الدوسري، جذر · 28 حاضرًا، 3 صور». Parts it cannot read are left out. */
+  meta: ReactNode;
+  /** At most three; more are ignored. Empty draws no strip. */
+  photos: { src: string; alt: string; width?: number | null; height?: number | null }[];
+  /** The row under the strip: the caller's <ReactionBar>. */
+  reactions?: ReactNode;
+  /** «حمّل المواد» — a LINK to the session's materials, never a download (§4.55). Absent → not drawn. */
+  materials?: { href: string; label: string } | null;
+}
+
+export type FeedItemProps = FeedItemAchievementProps | FeedItemAnnouncementProps | FeedItemRecapProps;
+
+// ── attendee-stack.tsx — REQ-UIX-057. It draws who it is GIVEN; it never decides who may be seen.
+export interface AttendeeStackProps extends Styleable {
+  /** Only the people a viewer RLS already answers for. May be empty: the count line stands alone. */
+  people: { memberId: string; displayName: string | null; src?: string | null; teamColor?: string | null }[];
+  /** How many faces at most. Default 4 (3 on the live card as drawn). */
+  max?: number;
+  /** The count IN WORDS, all six ICU forms built by the caller — «12 محجوزًا». Always drawn, always text. */
+  countLabel: string;
+  /** The group's accessible name — «من يحضر». */
+  label: string;
+  size?: 24 | 32;
+}
+
+// ── card.tsx — add-only.
+export type CardDensity = "grid" | "row" | "compact" | "wide" | "post";
+```
+
+- **`card` `density="post"`**: a column with the scope's 12 px padding and a 10 px gap, the card a `@container`, no
+  media-width rule, **and `href` ignored** — a post holds four links and two buttons, and one wrapping link would
+  nest interactives. The four existing densities render byte-identically; `card.test.tsx` and `card-scope.test.tsx`
+  pass untouched. New cases go in `card-post-scope.test.tsx`.
+- **`attendee-stack` beside `AvatarStack` (§4.78).** They differ in three ways, so **both stand and the old one is
+  not rewritten this wave**: (1) `AvatarStack` draws no team ring, by `DEC-186` §5, and `attendee-stack` rings each
+  face with `teamColor` — `null` the neutral ring, never «no ring»; (2) `AvatarStack`'s overflow is «+N» beside the
+  faces and optional, `attendee-stack`'s count is a required sentence; (3) `AvatarStack` is a bare `<span>`,
+  `attendee-stack` is a named group. `attendee-stack` composes `Avatar` directly (`decorative`, the names are in the
+  group's own list for a screen reader). **Could the old one be the new one's inside?** Not without changing what
+  `AvatarStack`'s call sites render (the ring, the separator), which rule 10 forbids. The reverse is possible later:
+  `AvatarStack` as `attendee-stack` with no rings and no label, in the wave that may move its call sites.
+- ★ **`attendee-stack` has no consumer in PR A.** Neither home artboard draws a stack; the two that do are
+  `EventLive.dc.html:44` and `EventDesktop.dc.html:101`, both PR B. It ships in A with its demo and scope test.
+- **Demos:** `demos/feed-item.tsx` (three variants; a recap with 0, 1 and 3 photos, with and without materials; a
+  long announcement), `demos/attendee-stack.tsx` (0 people with a count, 1, 4, more than `max`, a `null` team colour),
+  and a `post` entry added to `demos/card.tsx`.
+
+### 3 · The states `M10a.md` §5 names that are not drawn
+
+| State | How it is built |
+|---|---|
+| **Empty feed** (new org; §4.60) | no dated item at all → the column is the org's sessions as a date-grouped list of `card` `density="row"` from the same DTO, then `empty-state` inviting a proposal when there are none either. The ring row is absent, not an empty strip. The propose band stays |
+| **No company set** | region 2: `panel` in a `role="status"` wrapper (the accessible shape `session.spec.ts:94` reads today), above the week. A post's control is `session-cta` `{ kind: "none", reason }` with the reason in words — `sessions'` DTO says so, the feed does not decide |
+| **Staff strip** | region 4, staff only: each non-zero count a link to its queue; all zero → not drawn. A member's page never calls the function |
+| **Opted out of leaderboards** | the week's rank tile is an absence (`week-hud`, `scoring`); the rail's rank card is not drawn; the member is nobody's achievement — `scoring`'s DAL honours it, the feed adds no filter |
+| **Streaks off** | the streak tile and the rail's streak half are absent (`scoring`); no streak achievement arrives |
+| **No poster** | `poster` with no `src`: the team-coloured placeholder, title balanced, the computed amount as its `sticker` when the rule pays more than 0 (§4.46). A rendered poster gets no sticker |
+| **Cancelled session** | the post stays in its day with the cancelled badge, `poster` dimmed, **no control and no reaction bar**; it draws no ring |
+| **Waitlisted member** (`STORY-UIX-044`) | the control is `session-cta` `booked` with `hold: "waitlist"` as a link; the waitlist's status tone, never cyan (§4.62) |
+| **Multi-day session** — named nowhere | the post's time line is `sessions'` day label (range + «3 أيام»); it stands in the day of its live or next day |
+| **Ended, no recap material** | a recap with no photos draws no strip; with no material, no «حمّل المواد»; with neither it is the head and the like |
+| **Loading** | `app/loading.tsx`: `skeleton`s in the feed's own shape — five ring discs, the week card's three tiles, two post blocks (head row, a 4:5 box, a pill row). No text, no `getTranslations` |
+| **Error** | `app/error.tsx` stays `RouteBoundary` → `RouteError`. **Inside the page each source fails alone**: a failed recap photo read, achievements read or announcements read drops that source and the feed renders; only the session posts failing throws to the boundary |
+| **A ring's reduced/assistive form** | every ring is its word and its shape (the primitive); see §6.3 for the button |
+
+### 4 · The read model
+
+**`src/lib/dal/feed.ts`** — `import "server-only"`, `requireSession()` first (through `sessionClient`), DTOs out.
+
+```ts
+import "server-only";
+
+/** `seen` is never produced this wave (DEC-206 §1.5). */
+export type FeedRingState = "live" | "upcoming" | "recap";
+
+export interface FeedRing {
+  sessionId: string;
+  title: string;
+  state: FeedRingState;
+  /** The day the caption names — the live or next day's start, or the ended day's end. */
+  at: string;
+  timeZone: string;
+  /** The presenter's company, for the glyph and an upcoming ring's colour. */
+  companyName: string | null;
+  teamColor: string | null;
+}
+
+export interface FeedRecap {
+  session: FeedSessionPost;          // sessions' DTO (contract 3), phase "ended"
+  attendedCount: number | null;      // the lead's definer (D2); null when it answers nothing
+  photoCount: number;
+  photos: RecapPhoto[];              // at most 3
+  hasMaterials: boolean;
+}
+
+export interface FeedAnnouncement {
+  id: string;
+  body: string;
+  publishedAt: string;
+}
+
+export type FeedItem =
+  | { kind: "session"; key: string; at: string; post: FeedSessionPost }
+  | { kind: "recap"; key: string; at: string; recap: FeedRecap }
+  | { kind: "achievement"; key: string; at: string; achievement: FeedAchievement }   // scoring's DTO (contract 4)
+  | { kind: "announcement"; key: string; at: string; announcement: FeedAnnouncement };
+
+export interface FeedGroup {
+  /** The org-zone calendar day, `YYYY-MM-DD`. */
+  day: string;
+  relative: "today" | "tomorrow" | "yesterday" | null;
+  items: FeedItem[];
+}
+
+export interface Feed {
+  viewer: { memberId: string; isStaff: boolean; hasCompany: boolean };
+  rings: FeedRing[];
+  groups: FeedGroup[];
+  /** Only when `groups` is empty: the org's sessions for the inline list (§4.60). */
+  fallback: FeedSessionPost[];
+  /** «التالية لك» — sessions' DTO, passed through for the rail. */
+  upNext: FeedUpNext[];
+  /** Staff only; null for a member (the lead's function is not called). */
+  attention: AttentionCount[] | null;
+  timeZone: string;
+}
+
+export const getFeed: (locale: string) => Promise<Feed>;   // React `cache()`d
+```
+
+`src/lib/dal/photos.ts`, **add-only**:
+
+```ts
+export interface RecapPhoto { id: string; url: string; width: number | null; height: number | null }
+/** Per session: the visible-photo count and its newest three, signed. `photos_read` is the whole rule. */
+export async function getRecapPhotos(locale: string, sessionIds: string[]): Promise<Map<string, { count: number; photos: RecapPhoto[] }>>;
+```
+
+Three signs per recap, never one per photo of the album; ordered by `created_at desc, id desc` — a display order
+with a tiebreak, not «the last row». `hasMaterials` is one `materials` count through RLS inside `feed.ts` (my
+track's table; `materials.ts` is frozen and is not edited).
+
+**The merge — pure, in `src/components/feed/feed-merge.ts`** (no `server-only`, so `tests/unit/feed-merge.test.ts`
+drives it with a fixed `now`):
+
+1. Each item gets its `at`: a session post → the start of its live day, else its next day, else `starts_at`; a
+   recap → the end of its last day; an achievement → its award time; an announcement → `published_at`.
+2. `day` is `at` on the **org's** clock. Groups order: **today · future days ascending · past days descending** —
+   the artboard's اليوم › الخميس 2 أكتوبر › أمس.
+3. Inside a day: **committed first** (a live post the member holds a seat on, then any confirmed seat, then a
+   waitlist place), then session posts by start time, then recaps, then announcements, then achievements, each by
+   `at`; the final tiebreak is `key`, so two rows written in one transaction never swap between renders.
+4. A session is a post **or** a recap, never both: `phase === "ended"` → recap; `cancelled` stays a post.
+5. Bounds, so the page is one screen's worth: achievements of the last 7 days, 10 at most; announcements published
+   and unexpired, 5 at most; the session window is `sessions'` (below).
+
+**Ring states (`src/components/feed/ring-state.ts`, pure; `DEC-206` §1.5).** From the post's `phase`, `state` and
+`days` — the same `DayWindow[]` `session-status.ts` reads, per day for a multi-day session:
+
+- `cancelled` → **no ring**. · `phase === "live"` → `live`.
+- else a day with `start − 24 h ≤ now < start` → `upcoming`. · else a day with `end < now ≤ end + 24 h` → `recap`.
+- else no ring. `seen` is never returned.
+
+Order: live · upcoming by start ascending · recap by end descending. «Live» is `sessionPhase()`'s, clock included
+(`REQ-UIX-003`), not the stored `in_progress` `05-stories.md:38` names. The ring gets `state`, `label` (the
+session's name and its state in words), `stateLabel`, `glyph` (the first letter of the presenter's company, else
+the title's by `card`'s placeholder rule), `caption` (الآن · the weekday · أمس), `teamColor` — **and no `onOpen`**.
+
+**What I expect from `sessions` (contract 3) — their names win; this is the shape the post draws.**
+
+```ts
+export interface FeedSessionPost {
+  id: string; title: string;
+  /** One or two sentences for the desktop copy; null when the session has none. */
+  excerpt: string | null;
+  state: SessionState; phase: SessionPhase;
+  startsAt: string | null; endsAt: string | null; days: readonly DayWindow[]; timeZone: string;
+  venueName: string | null; categoryName: string | null;
+  presenter: { memberId: string; displayName: string | null; avatarUrl: string | null; companyName: string | null; teamColor: string | null } | null;
+  poster: { url: string; width: number; height: number } | null;
+  capacity: number | null; confirmedCount: number; waitlistCount: number; seat: SeatState;
+  /** Live or ended only — the lead's count function; null otherwise. */
+  attendedCount: number | null;
+  likeCount: number; likedByMe: boolean; commentCount: number; bookmarked: boolean;
+  mine: "confirmed" | "waitlisted" | null; attended: boolean;
+  /** The scoring rule's amount for attending. Null when the rule is off or pays 0 — a «+0» is never drawn. */
+  attendancePoints: number | null;
+  /** The matrix's answer, as a LINK target (§4.57). */
+  cta:
+    | { kind: "reserve" | "waitlist"; href: string }
+    | { kind: "booked"; hold: "seat" | "waitlist"; href: string }
+    | { kind: "checkIn"; href: string; reserved: boolean }
+    | { kind: "rate"; href: string }
+    | { kind: "none"; reason: string | null };   // cancelled → null: nothing drawn; otherwise the reason's message key
+}
+export interface FeedUpNext { id: string; title: string; startsAt: string; timeZone: string; status: "confirmed" | "waitlisted"; waitlistPosition: number | null; posterUrl: string | null; teamColor: string | null }
+export async function getFeedSessions(locale: string): Promise<{ posts: FeedSessionPost[]; upNext: FeedUpNext[]; timeZone: string }>;
+```
+
+The window I ask for: live and open sessions starting within 14 days (10 at most), ended within 7 days (5 at
+most), cancelled ones whose start is inside either. **Two requests:** `session-cta` needs a `rate` state with an
+`href` act, and the «مقعدك محجوز» pill on `checkIn` (`chip`) — both are `sessions'` additions to their primitive.
+The like is written by `toggleReaction(locale, { sessionId }, "like")`, which exists; the feed's action lives in
+`src/components/feed/actions.ts` and binds it (`DEC-159`).
+
+**What I expect from `scoring` (contract 4).**
+
+```ts
+export interface FeedAchievement {
+  id: string; kind: "badge" | "streak"; at: string;
+  member: { memberId: string; displayName: string; companyName: string | null };
+  badgeName?: string; streakMonths?: number;
+}
+export async function getFeedAchievements(locale: string, since: string, limit: number): Promise<FeedAchievement[]>; // opt-out honoured inside
+```
+
+And **three components**, each reading its own DAL behind its own `<Suspense>`, so the feed never waits on the
+week: the phone's week (`week-hud` with moments 3 and 5), the rail's cards (rank · streak + points · race), and the
+race widget for the phone's column. The feed calls only the achievements function. If `scoring` would rather hand
+DTOs for me to compose, I need the week and the race as types instead — either works; the moments decide it.
+
+**What I need from the lead.**
+
+- **`feed_announcements`**: `id, org_id, author_id, body, published_at, expires_at` is enough — the item draws the
+  body and the time, never the author. Two questions, no new column: (1) **is `published_at` nullable, and does the
+  member policy say `published_at <= now()`?** An admin reads every row, so `feed.ts` applies the same predicate
+  itself — an admin's own home must not show a draft or an expired row; (2) **a length check on `body`** (I suggest
+  1 – 500 characters): the item never clamps a text line, so the table is where a wall of text is refused.
+  An index on `(org_id, published_at desc)`.
+- **The staff strip**: `AttentionCount = { key: "proposals" | "sessions" | "commentReports" | "photoReports"; count:
+  number; href: string }` and a function returning `AttentionCount[] | null` — ★ **`null` for a member, never
+  `notFound()`**: `requireStaffSession()` 404s a member, and the home would 404 with it.
+- **The attendance count** (D2) reaches me inside `sessions'` post; if it is mine to call, the function's name.
+
+### 5 · Files, and every existing assertion that moves
+
+**Replace** (nothing of today's survives): `src/app/[locale]/app/page.tsx` · `src/app/[locale]/app/loading.tsx`.
+**Keep as is:** `src/app/[locale]/app/error.tsx` (it is already `RouteBoundary`; rebuilt means no change is owed).
+**Delete:** nothing. `SessionsTimeline` and `TimelineSkeleton` stay `sessions'`; `/app` stops importing them.
+
+**Create:**
+- `src/lib/dal/feed.ts`
+- `src/components/feed/`: `feed.tsx` · `ring-row.tsx` · `session-post.tsx` · `recap-post.tsx` · `achievement.tsx` ·
+  `announcement.tsx` · `staff-strip.tsx` · `company-banner.tsx` · `propose-band.tsx` · `up-next.tsx` ·
+  `empty-feed.tsx` · `feed-skeleton.tsx` · `like-button.tsx` (client) · `actions.ts` (`"use server"`, async
+  functions only) · `feed-merge.ts` · `ring-state.ts` · `relative-day.ts`
+- `src/messages/ar/feed.json`, then `src/messages/en/feed.json`, with the line in `src/messages/index.ts` by append,
+  one commit. Top-level key `feed` (no namespace holds one today)
+- `src/components/ui/feed-item.tsx` · `src/components/ui/attendee-stack.tsx`
+- `src/app/[locale]/(dev)/ui/demos/{feed-item,attendee-stack}.tsx`
+- `tests/components/ui/{feed-item,attendee-stack}.test.tsx` · `{feed-item,attendee-stack}-scope.test.tsx` ·
+  `card-post-scope.test.tsx`
+- `tests/unit/feed-merge.test.ts` · `tests/unit/feed-ring-state.test.ts` · `tests/components/feed/*.test.tsx`
+- `tests/e2e/wave18-content-home.spec.ts` — every locator from `#main`; captures at
+  `wave18-content-home-<state>-<390|1280>.png` honouring `E2E_SHOTS_DIR`
+
+**Edit, add-only:** `src/components/ui/card.tsx` (`post`) · `src/lib/dal/photos.ts` (`getRecapPhotos`) ·
+`src/app/[locale]/(dev)/ui/demos/card.tsx` (one entry).
+
+**Existing assertions.** Found by `goto`/`toHaveURL` on `/app` exactly; a landing reached by a click or a sign-in
+redirect was not enumerated. None of these files is mine — each is a line for its writer and for the ledger.
+
+| Spec | What it asserts on `/app` | Moves? |
+|---|---|---|
+| `timeline.spec.ts:147` «/app IS the timeline…» | h1 «الجلسات», first `article` «التالية لك», region «هذا الأسبوع» | **expectation** — the test's premise is withdrawn by `REQ-UIX-055`; `sessions'` |
+| `timeline.spec.ts:171` «a filter applied on /app…» | the filter navigation on `/app` | **expectation** — `/app` has no filter; `sessions'` |
+| `timeline.spec.ts:183` «the empty case is the same screen» | h1 «الجلسات», «لا جلسات قادمة بعد», «اقترح موضوعًا», the filter nav | **expectation** — the empty home is §4.60's; `sessions'` |
+| `session.spec.ts:88` | h1 `toHaveText("الجلسات")`; `role="status"` contains «اختر شركتك» | **expectation** for the h1 (→ «الرئيسية»); the status line **holds** as built. Lead's |
+| `session.spec.ts:113` | `getByRole("status")` has count 0 once a company is set | **holds** — so the home draws no other `role="status"`, and I keep it that way |
+| `session.spec.ts:127` | sign-out through the «حسابي» menu button | the shell's (§4.33), not the home's. Lead's |
+| `wave14-platform-avatar.spec.ts:204, 272` | «نستخدم صورتك من Google؟» inside `#main` on `/app` | **depends on §6.1** — holds if the prompt stays on home; else a **selector** (the route). Lead's |
+| `wave14-platform-avatar.spec.ts:218, 278, 306` | the account image and the «حسابي» button | the shell's. Lead's |
+| `wave12-demo-poster.spec.ts:140` D1 | `#main article` with the title › `[data-slot="media"] img`, 4:5, contained | **may hold** (a post is an `article` and `poster` composes `CardMedia`) if the fixture session is in the feed's window; else a **selector** (the route → `/app/sessions`). Lead's |
+| `wave9-sessions-day-views.spec.ts:186` | a link named by the title containing «3 أيام» | **selector** — on a post «3 أيام» is in the head row, outside the poster's link; the card it names is `/app/sessions`'. `sessions'` |
+| `wave16-sessions-reserve.spec.ts:198` | goes to `/app` and back | holds |
+| `a11y.spec.ts:113`, `wave11-lead-a11y-sweep.spec.ts:175` | axe on `/ar/app` | no assertion moves; findings on the new page are mine |
+| `unconfigured.spec.ts:18`, `auth.spec.ts:43` | 404, and the sign-in redirect | hold |
+
+`tests/components/browse/sessions-timeline.test.tsx` holds (the component is untouched). `scripts/ui-reach.mjs:168`
+reads `app/page.tsx` and keeps matching. No assertion in a file I own moves; `card`, `story-ring`, `avatar`,
+`reaction-bar` and `poster`'s suites pass untouched.
+
+### 6 · Disagreements `DEC-206` §4 does not list — not picked
+
+1. **The Google-photo prompt lives on home and the artboard has no place for it.** `sessions-timeline.tsx:57-59`
+   renders `AvatarImportPrompt` (`REQ-PRF-008`, «offered once») on `/app` today, and
+   `wave14-platform-avatar.spec.ts:207` finds it in `#main` there. `Home.dc.html` draws nothing between the ring row
+   (`:27`) and the week (`:35`). When `/app` stops rendering the timeline the prompt leaves home unless the feed
+   carries it. Default I would build unless told otherwise: imported as it is, beside the company banner.
+2. **The phone's posters are drawn cropped.** `Home.dc.html:51` is 342 × 300 and `:81` is 342 × 220; `REQ-UIX-026`,
+   `M10a.md:81` («`poster` whole») and ruling 4 say 4:5, which at that width is 342 × 427. The desktop boards draw
+   true 4:5 (260 × 325, 160 × 200). `poster.tsx` reserves 4:5 and cannot draw the short box.
+3. ★ **`story-ring` is a `<button>` in every state** (`story-ring.tsx:50-57`), and `DEC-206` §1.5 and `REQ-UIX-055`
+   say «it is not a button». Omitting `onOpen` leaves a focusable button that does nothing. Meeting the requirement
+   is a render change with no prop change — no `onOpen` → a non-interactive element named as an image — but
+   **`story-ring.tsx` is not in my PR A edit list**, and `story-ring.test.tsx:44-46` asserts a button for every
+   state with no `onOpen` passed (an **expectation** move in my own evidence file). I need the file and that one
+   assertion released, or a ruling that the inert button stands until wave 19.
+4. **The ring's inside.** `Home.dc.html:28, 30` write the state's word INSIDE the ring («مباشر», «ملخص») and the day
+   under it; the primitive (`REQ-UIX-040`, `story-ring.tsx:59-72`) draws a glyph inside and the word and the day
+   under. The primitive's props are frozen, so the home will show the primitive's form.
+5. **The ring row draws more than the window allows.** `Home.dc.html:29` is a ring for a session the same board
+   says is «بعد 3 أيام» (`:79`), and `:31-32` are two seen rings for last Tuesday and Sunday. `DEC-206` §1.5's window
+   is 24 h either side, and `seen` is never rendered. With the window, that row is three rings, not five.
+   `05-stories.md:38`'s own order («the rest of the week by start time») also reaches past its 24 h window (`:36`).
+6. **«Grouped by date» against the board's own groups.** `Home.dc.html:95-99` (an achievement «قبل ساعتين») and
+   `:101-104` (an announcement «أمس») both sit under the heading «الخميس 2 أكتوبر» (`:74`), a day three days ahead,
+   and above «أمس» (`:106`). `REQ-UIX-055` says «a feed grouped by date» and `STORY-UIX-044` «merging four sources
+   by date». The merge in my §4 groups each item under its own day, which moves those two items to «اليوم» and «أمس».
+7. **Future days in a feed.** The board's groups run today › a future day › yesterday. `REQ-UIX-055` does not say
+   in which direction a feed that holds both upcoming sessions and past recaps is read. My §4 merge, step 2, is the board's
+   order; a strictly newest-first feed would put Thursday's session above today's live one.
+8. **Touch targets.** The board's reaction pills are about 32 px tall and its share and bookmark 36 px
+   (`Home.dc.html:57-62`); `reaction-bar` and `icon-button` hold 44 px (`REQ-NFR-007`, the primitives' suites).
+9. **The open post's row.** `Home.dc.html:86-91` ends with «12 من 40 مقعدًا» and draws no share and no bookmark;
+   `M10a.md:82` gives every session post «share, bookmark». I would draw the seats line **and** both controls.
+10. **«حمّل المواد» carries a download glyph** (`Home.dc.html:116`) and is a link to a section (§4.55 rules the
+    behaviour; the word and the glyph still say «download»). The words are mine to write; «المواد» with no arrow is
+    what the behaviour is.
+
+**§4.47 – §4.61, read against the tree — four notes, none a reversal.**
+
+- **§4.56** says «the live card's stack» among the home lines. Neither home board draws a stack: the phone's live
+  post has none, and the desktop's draws a count (`HomeDesktop.dc.html:66`). The stack is `EventLive.dc.html:44`
+  and `EventDesktop.dc.html:101`. The ruling is unaffected; `attendee-stack` simply has no consumer in PR A.
+- **§4.57** frames the feed's control as artboard against plan. The artboard already draws links —
+  `Home.dc.html:64` (`href="CheckIn.dc.html"`) and `:92` (`href="Event.dc.html"`). The disagreement is with
+  `M10a.md:83`'s prose alone.
+- **§4.52** holds, with one fact beside it: `member_badges` and `streak_awards` are `p1_org_read`
+  (`0027:193, 273`), so an opted-out member's rows ARE readable by any member. Opt-out is the DAL's filter and
+  nothing else — contract 4 says so; a test should read as a member and find the opted-out member absent.
+- **§4.51** holds: `reactions` is org-readable (`0010:552`) and `kind` is free text (`0010:341`), so the like
+  count needs no new function. Nothing dedupes a session's like against a comment's; the unique index is per target.
+- §4.47 – §4.50, §4.53 – §4.55, §4.58 – §4.61: measured as written. `process_photo.ts` makes no derivative and
+  `session_seat_counts()` has no attended figure.
+
+### Open questions for sync 1
+
+1. The slot: (a) a frame component the page renders, or (b) a parallel route — and if (b), the `@rail` files.
+2. §6.3 — may I edit `story-ring.tsx` and one assertion of its test, or does the inert button stand?
+3. §6.1 — does the Google-photo prompt stay on home?
+4. §6.6 / §6.7 — the grouping rule and the direction of the feed.
+5. `published_at`'s nullability and the policy's predicate; a length check on `body`.
+6. Who composes the week: `scoring`'s three components, or DTOs for me — and who proves the hidden twin is silent.
+7. The window of sessions the feed holds (14 days ahead, 7 back) is a guess; `sessions` and the lead set it.
