@@ -116,6 +116,14 @@
         "restores": "{count, plural, =0 {removing it alone shows nothing} one {removing it alone shows one session} other {removing it alone shows {value} sessions}}",
         "drop": "Remove “{value}”"
       }
+    },
+    "next": {
+      "heading": "Up next for you",
+      "seat": "Booked",
+      "waitlist": "Waitlist <bdi>{position}</bdi>",
+      "waitlistNoPosition": "On the waitlist",
+      "live": "Live now",
+      "poster": "Session poster"
     }
   }
 }
