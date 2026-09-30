@@ -264,6 +264,7 @@ test("REQ-CHK-015/016: the check-in switch closes and reopens, staying at 390px"
   }
 
   // The label is the tap target: the input itself is visually hidden (`ui/switch`).
+  await expect(page.locator("#main").getByRole("switch", { name: "تسجيل الحضور مفتوح" })).toBeEnabled(); // hydrated, and no action pending
   await page.locator("#main").getByText("تسجيل الحضور مفتوح", { exact: true }).click();
   await expect(page).toHaveURL(/\?switch=closed$/);
   await expect(page.getByText("تم إغلاق تسجيل الحضور")).toBeVisible();
@@ -278,6 +279,7 @@ test("REQ-CHK-015/016: the check-in switch closes and reopens, staying at 390px"
   expect(closedRows[0].check_in_open).toBe(false);
 
   // Reopen it, leaving the session as every earlier test in this file found it.
+  await expect(page.locator("#main").getByRole("switch", { name: "تسجيل الحضور مفتوح" })).toBeEnabled(); // hydrated, and no action pending
   await page.locator("#main").getByText("تسجيل الحضور مفتوح", { exact: true }).click();
   await expect(page).toHaveURL(/\?switch=opened$/);
   await expect(door).toBeChecked();

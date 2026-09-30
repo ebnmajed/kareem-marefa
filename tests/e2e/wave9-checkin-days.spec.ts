@@ -195,6 +195,7 @@ test("the host view shows DAY 2's code and DAY 2's switch, and names the day", a
 
   // Closing moves DAY 2's switch and leaves days 1 and 3 alone.
   // ★ Wave 18 (REQ-UIX-062, ledger — selector): the door is a switch; its label is the tap target.
+  await expect(main.getByRole("switch", { name: "تسجيل الحضور مفتوح" })).toBeEnabled(); // hydrated, and no action pending
   await main.getByText("تسجيل الحضور مفتوح", { exact: true }).click();
   await expect(page).toHaveURL(/\?switch=closed$/, { timeout: 15_000 });
   await expect(main.getByRole("switch", { name: "تسجيل الحضور مفتوح" })).not.toBeChecked();
@@ -211,6 +212,7 @@ test("the host view shows DAY 2's code and DAY 2's switch, and names the day", a
   const { rows: shadow } = await db.query<{ check_in_open: boolean }>(`select check_in_open from public.sessions where id = $1`, [sessionId]);
   expect(shadow[0].check_in_open).toBe(true);
 
+  await expect(main.getByRole("switch", { name: "تسجيل الحضور مفتوح" })).toBeEnabled(); // hydrated, and no action pending
   await main.getByText("تسجيل الحضور مفتوح", { exact: true }).click();
   await expect(page).toHaveURL(/\?switch=opened$/, { timeout: 15_000 });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useRef, useSyncExternalStore, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { Switch } from "@/components/ui/switch";
 
@@ -13,10 +13,23 @@ import { Switch } from "@/components/ui/switch";
 // told to a room. While the action runs the switch is disabled (`useFormStatus`), with no timer.
 // ★ `set_check_in_open()` re-derives who may, and the ceiling (REQ-CHK-016) is its to refuse.
 // ★ Without JavaScript the `noScript` submit — today's «أغلق/افتح تسجيل الحضور» — does the same.
+// ★ DISABLED UNTIL HYDRATED. Before React owns the switch, a tap flips the native checkbox and submits
+// nothing — the thumb says «closed» while the door is open, until hydration puts it back. A production
+// run lost 7 taps in 20 that way. So the switch takes a tap only once it can act on one.
+
+const noSubscribe = () => () => {};
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    noSubscribe,
+    () => true,
+    () => false,
+  );
+}
 
 function Control({ open, label, description, onChange }: { open: boolean; label: string; description?: string; onChange: () => void }) {
   const { pending } = useFormStatus();
-  return <Switch checked={open} onCheckedChange={onChange} disabled={pending} label={label} description={description} />;
+  const hydrated = useHydrated();
+  return <Switch checked={open} onCheckedChange={onChange} disabled={pending || !hydrated} label={label} description={description} />;
 }
 
 export function HostSwitch({
