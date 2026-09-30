@@ -1,11 +1,151 @@
-**Last updated:** 2026-09-30 · **Branch:** `main` — ★ **wave 18 PLANNED, NOT STARTED** · **`main`:** `badab40e`; production at **`0163`**; the worker is Online on it · **Phase:** ★★ **WAVE 18 — M10a, THE FIRST SCREENS REBUILT TO A DESIGN (`DEC-205`, M20)**. Waves 15–17 built the visual language and proved it changed nothing: the playground is now the app's only design, every one of the 50 files in `src/components/ui/` has a playground treatment, and a gate enumerates them. **This wave is the first that rebuilds SCREENS** — nine of them, from thirteen artboards in `docs/design/screens/m10a/`, under `DEC-199` §2: **a screen is REBUILT to its design, never restyled.** ★ The owner reversed `DEC-199` §7's order: **M10a first, stories second**, because the shell and the event page are what every later screen inherits. ★ Four rulings recorded in `DEC-205`: five phone tabs and two desktop rails · home is the feed · the event hero is the whole poster at 4:5 · the «+50» sticker belongs to the poster template. **The brief is `docs/plan/notes/wave-18-lead.md`; nothing is built yet.** Migrations start at **`0164`** (one table, `feed_announcements`); the next decision is **`DEC-206`**; the next free ids are **`REQ-UIX-054`** and **`STORY-UIX-039`**. ★★ **Two PRs, and B must be retargeted to `main` before A merges with `--delete-branch`** — a stacked PR whose base is deleted is auto-closed and cannot be reopened (PR #36, 2026-09-30). ★ **Still owed from wave 16:** the phone check of the five moments on the live site, never run.
+**Last updated:** 2026-09-30 · **Branch:** `wave-18a/the-frame` — ★ **wave 18, PR A: Step 0 DONE, nobody spawned yet** · **`main`:** `42a14ba0`; production at **`0163`**; the worker is Online on it · **Phase:** ★★ **WAVE 18 — M10a, THE FIRST SCREENS REBUILT TO A DESIGN (`DEC-205`, `DEC-206`, M20)**. Nine screens from thirteen artboards in `docs/design/screens/m10a/`, under `DEC-199` §2: **a screen is REBUILT to its design, never restyled.** The owner's gate is closed in `DEC-205` §2 — M10a before stories · five phone tabs and two desktop rails · home is the feed · the event hero is the whole poster at 4:5. ★ **Step 0 is written** (`DEC-206`): five corrections to `DEC-205`'s citations, **fifty-two places where the artboards and `docs/plan/` disagree, each with the document that wins**, the map, the ten agent files, `REQ-UIX-054` … `063`, `STORY-UIX-039` … `050`, M20. ★★ **Two PRs: A (`wave-18a/the-frame`, this branch) then B (`wave-18b/the-event`), and B is opened against `main` from its first push** — a stacked PR whose base is deleted is closed for good (PR #36). Migrations start at **`0164`** (`feed_announcements`, with all five parts named in `STORY-UIX-040`); the next decision is **`DEC-207`**; the next free ids are **`REQ-UIX` 064** and **`STORY-UIX` 051**. ★ **Next: T0's baselines, then the frame (F1) and `0164` (D1), then spawn `sessions`, `content` and `scoring` planning-only.** ★ **For the owner before PR B:** whether a refused check-in code may shake (`DEC-206` §4.75). ★ **Still owed from wave 16:** the phone check of the five moments on the live site.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 17 — COMPLETE, PR #35, THE OWNER MERGES — on `wave-17/every-primitive` — every primitive, and one visual language (`DEC-199`)
+## ★★★ WAVE 18 — IN PROGRESS, PR A — on `wave-18a/the-frame` — M10a, the first screens rebuilt to a design (`DEC-205`, `DEC-206`)
+
+**The programme's fourth wave, and the first that rebuilds screens.** The brief is `docs/plan/notes/wave-18-lead.md`;
+the drawing is `docs/design/screens/M10a.md` and the thirteen artboards beside it; the map is `CLAUDE.md` §
+*Ownership map (wave 18)*; the decisions are `DEC-205` (the owner's gate, closed) and `DEC-206` (Step 0). Milestone
+**M20**. Requirements `REQ-UIX-054` … `063`; stories `STORY-UIX-039` … `050`. Migrations start at **`0164`**.
+
+★★ **The rule the wave is judged on — `DEC-199` §2: a screen is REBUILT to its design, never restyled.** Nothing in a
+current page file survives by default; the data layer, the actions, the behaviour tests and the requirements do.
+
+### The owner's rulings — the gate is closed, do not re-open it (`DEC-205` §2)
+
+| | |
+|---|---|
+| **Wave 18 is M10a, not stories** | the shell and the event page are what every later screen inherits. Stories are wave 19; a ring shows its state and opens nothing |
+| **Five phone tabs, two desktop rails** | الرئيسية · الجلسات · اقترح · الترتيب · حسابي; a navigation rail and a game rail from `lg` |
+| **Home is the feed** | `/app` is its own page; `/app/sessions` stays the canonical browse URL |
+| **The event hero is the whole poster at 4:5** | phone and desktop; the «+50» sticker belongs to the poster template |
+
+### ★★ Two pull requests — and the trap between them
+
+**PR A — `wave-18a/the-frame`** (this branch): the shell, `SCR-002`/`003`/`004`, `SCR-007`, `SCR-010`, `SCR-011`, four
+primitives, `0164`. **PR B — `wave-18b/the-event`**: `SCR-012`, `SCR-014`, `SCR-016`. ★★ **B is opened against `main`
+from its first push and carries A's commits until A merges** (`DEC-206` §2) — never stacked on A. A stacked PR whose
+base branch is deleted is closed by GitHub for good and its green CI counts for nothing (PR #36, 2026-09-30). **If B
+is ever found based on A: retarget it to `main` BEFORE A is merged with `--delete-branch`.**
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | `42a14ba0`. Production at **`0163`**; no open PRs |
+| ★ The artboards | all thirteen rendered in Chromium at their board width — 390, and 1280 for the two desktop boards — and opened in bands, never downscaled. The renders are the «beside» every capture is held against |
+| ★ `REQ-UIX-021` was miscited | it defines `/app` as the sessions timeline; «two rows on desktop» is `16` §6.1's sentence. Ruling 2 amends `16` §6.1 and `DEC-130`; ruling 3 amends `REQ-UIX-021` (`DEC-206` §1.1) |
+| ★ The shell today | **three** tabs (`DEC-130`), one desktop row with a «تصفّح» menu, staff links in the account menu. The move is three tabs to five |
+| ★ `src/components/ui/` | **49** `.tsx` files, not the brief's 50 (the fiftieth is `index.ts`). Four new primitives make **53**; the gate's floor moves with the fourth (`DEC-206` §1.3) |
+| ★ The prop additions | two, not three: `avatar` has had `teamColor` since wave 15, and `card`'s `density` already has `row`. `card`'s `post` and `session-cta`'s phases are the additions |
+| ★★ «+50» | the seeded attendance rule is **20** and an org may change it. No figure is a literal (`DEC-206` §4.45) |
+| ★ The week as drawn | a weekly rank, a streak skip and a «round» are drawn; none exists (`DEC-NEXT-8`, `DEC-NEXT-9`, accepted and unbuilt). The HUD shows the monthly rank and the streak in months (§4.47 – §4.50) |
+| ★ The feed's sources | badges and streak awards carry a timestamp; **a level-up and a rank change leave no row**, so neither is a feed item (§4.52). A plain member cannot read an attendance count: one add-only definer function, count only (§4.54) |
+| ★ The public card | the artboard draws seats, the presenter and the company; `DEC-066`'s allowlist forbids all three and wins (§4.42) |
+| ★ Who attends | the artboards draw faces; `rsvps` and `check_ins` are readable by oneself, staff and presenters (A33 rule 3). A member sees a count (§4.56) |
+| ★ `story-ring` | its states are `live · upcoming · recap · seen`, not `DEC-205`'s four; `seen` needs `story_views` and is never rendered this wave (§1.5) |
+| ★★ The shake | `M10a.md` and the brief allow a wrong code to shake; `REQ-UIX-046` says a refused code does not animate. **Not picked — the owner's, before B** (§4.75) |
+| Design vs plan | **fifty-two** disagreements, `DEC-206` §4.30 – §4.81 — eighty-one in the programme |
+| `trace` | **356 requirements · 186 stories · no gaps** (was 346 · 174). One cross-cutting row added, `REQ-UIX-063`. `policy-diff` ✓ |
+
+### The contracts (PR A)
+
+| # | Contract | Owner | State |
+|---|---|---|---|
+| C1 | **The frame** — the layout renders the bars and the navigation rail; a page passes its game rail to one slot; nothing of the shell in a page. **Before any track builds a screen** | lead → all | todo |
+| C2 | **The signatures and the gate** — `ui/index.ts` types for the four primitives, `card`'s `post`, `session-cta`'s addition; registry entries; floor 49 → 53 | lead → all | todo — after sync 1 |
+| C3 | **The session post** — one add-only function in `search.ts`; «التالية لك» | `sessions` → `content`, lead | todo — in `sessions'` note on day one |
+| C4 | **The week** — three add-only DAL functions and the rail's component; computed, opt-out in the DAL | `scoring` → `content`, lead | todo — in `scoring`'s note on day one |
+| C5 | **The announcements** — the lead's table, read through RLS by `feed.ts`; no teammate writes DDL, a policy or a grant | lead → `content` | todo — with `0164` |
+| C6 | **The artboard is the specification; `DEC-206` §4 is what is not built**; no prototype class, no import from `docs/` | everyone | **published** |
+| C7 | **Every figure is read** — never a literal amount, rotation or rank | everyone | **published** |
+
+### The checklist — PR A
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-206`; `REQ-UIX-054` … `063`; `STORY-UIX-039` … `050`; M20 and the re-ordered sequence in `14`; `09`'s nine screens; the map in `CLAUDE.md`; the ten agent files; `docs/design/screens/**` added to the tree; this block; the branch; the draft PR | lead | **DONE** — this commit. `trace` 356 · 186, no gaps; `policy-diff` ✓. No file under `src/`, `public/`, `supabase/` or `worker/` changed |
+| T0 | ★ **Baselines before any product commit**: `visual`'s public pairs against `main`; the fingerprint's record; the nine screens at 390 px and `/app`, `/app/sessions` at 1280 as they are today; ★ **the hard-load probe on `main`'s `/app`**, the control for H1 | lead | todo |
+| F1 | ★★ **The frame** (C1, `REQ-UIX-054`, `STORY-UIX-039`) — five tabs, the top bar, the navigation rail, the game rail's slot; the phone's account-menu question measured first (`DEC-206` §4.33); the attention counts | lead | todo |
+| A1 | ★ **The door** — `SCR-002`, `003`, `004` rebuilt (`REQ-UIX-058`, `STORY-UIX-042`) | lead | todo |
+| D1 | ★★ **`0164` `feed_announcements`** (`REQ-UIX-056`, `STORY-UIX-040`) — **all five, named**: (1) `org_id` not null → `orgs`; (2) RLS enabled; (3) the full policy set — member select of published and unexpired, admin select/insert/update/delete, every other write refused, `anon` and `service_role` revoked, no super-admin disjunct; (4) ★ **a matching grant for every policy**; (5) its test, a fixture row, and **the isolation sweep's line for the table read in the run's output**. `02` and `03` §8.2 in the same commit | lead | todo |
+| D2 | The attendance **count** — one definer function, never who (`DEC-206` §4.54), with its RLS case | lead, as `checkin`'s custodian | todo |
+| G1 | ★ **The design gate** (`REQ-UIX-063`, `STORY-UIX-046`) — `tests/unit/design-files.test.ts`, shown to bite; the built output searched for `.dc.html` | lead | todo |
+| S1 | **Sync 1** — three plans approved against the seven contracts | lead | todo |
+| P0 | Contract 2 — the signatures, the registry, the floor at 53 | lead | todo |
+| E1 | ★ **`SCR-007`, the public card, rebuilt** (`REQ-UIX-059`, `STORY-UIX-043`) | `sessions` | todo — planning first |
+| E2 | ★ **`SCR-011`, browse, rebuilt** (`REQ-UIX-060`, `STORY-UIX-045`) | `sessions` | todo — planning first |
+| E3 | `action-bar`; `session-cta`'s drawn phases, add-only (`REQ-UIX-057`) | `sessions` | todo |
+| E4 | Contract 3 — the session post's data and «التالية لك» | `sessions` | todo |
+| N1 | ★★ **`SCR-010`, home as the feed, phone and desktop** (`REQ-UIX-055`, `STORY-UIX-044`) — the page, `feed.ts`, the items | `content` | todo — planning first |
+| N2 | `feed-item`, `attendee-stack`; `card`'s `post`, add-only (`REQ-UIX-057`) | `content` | todo |
+| R1 | `week-hud` (`REQ-UIX-057`) | `scoring` | todo — planning first |
+| R2 | ★ The member's week and the game rail's cards; the achievement items' source (contract 4) | `scoring` | todo |
+| R3 | ★ Moments 3 and 5 on the week, one mark shared with `SCR-022` and the boards — **a test opens both** | `scoring` | todo |
+| H1 | ★★ **The hard-load duplicate, re-measured on the rebuilt `/app` ONLY** (`STORY-UIX-047`, `DEC-204`) — the rate beside the old 24 % and `main`'s 6 %, the accessibility tree read in the window. ★ **Still owed, by M10c: `/app/me/points` and `/app/leaderboards`** | lead | todo |
+| X1 | ★★ Demonstrable — **every rebuilt screen at 390 px, and at 1280 where an artboard is drawn, opened beside its artboard**: regions in order, primitives by name | lead | todo |
+| X2 | ★ Demonstrable — `qa:contract` at every commit; `qa:appearance`, `visual`'s public pairs at 0.000 %, the fingerprint byte-identical, `public-graph` green — not re-baselined | lead | todo |
+| X3 | ★ Demonstrable — the a11y sweep at 0 findings over every route | lead's harness; fixes by owner | todo |
+| X4 | ★★ Demonstrable — **the owner holds each rebuilt screen beside its artboard on a phone** | **owner** | todo |
+| G | The gates — tsc, lint (**grep `problems`**), `npm test`, `test:rls`, e2e, `qa`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict`; ★ **CI read from the run's own conclusion on the PR head** (`DEC-192`) | lead | todo |
+
+### The checklist — PR B (opens against `main`; its map and Step 0 are written then)
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| B0 | B's Step 0: the branch cut from A's head, **the PR opened against `main`**, `DEC-206` §4.66 – §4.77 re-measured, the map for `sessions`, `checkin` and `content`'s slots | lead | todo — after A's frame is in |
+| B1 | ★ **`SCR-012`, the event page, rebuilt** — three phases and desktop (`REQ-UIX-061`, `STORY-UIX-048`) | `sessions`, `content` | todo |
+| B2 | ★ **`SCR-014`, check-in, rebuilt** (`REQ-UIX-062`, `STORY-UIX-049`) — ★★ the shake waits for the owner | `checkin` | todo |
+| B3 | ★ **`SCR-016`, the host view, rebuilt** (`REQ-UIX-062`, `STORY-UIX-050`) | `checkin` | todo |
+
+### Sync 1 — what the three plans must answer
+
+1. **For each screen or primitive: the regions in the artboard's order, and the primitive each is built from.**
+2. **The props of each new primitive**, as a type — contract 2.
+3. **Every state `M10a.md` names that is not drawn**, and how it is built.
+4. **What the track publishes**, by name and type — contracts 3 and 4.
+5. **Every file created, replaced or deleted; every existing assertion that moves**, and whether a selector or an
+   expectation moves.
+6. **Any disagreement between an artboard and `docs/plan/` that `DEC-206` §4 does not list**, with the file and the
+   line — not picked.
+
+### For the owner — by name, none blocking PR A (`DEC-206` §6)
+
+- ★★ **The wrong-code shake** — `M10a.md` draws it, `REQ-UIX-046` forbids it. Needed before PR B builds `SCR-014`.
+- ★ **Announcements have no authoring screen** — it would be a console route. Until one exists, only SQL writes one.
+- ★ **The public card draws less than its artboard** — no seats, presenter or company, by `DEC-066`.
+- ★ **Members see how many attend, not who** — A33 rule 3.
+- **Level-ups in the feed** need a history table; **learning objectives** need their column. Both are new scope.
+- **The weekly rank, the streak skip and the «round»** are drawn and not built; the week says the month.
+- ★★ **The acceptance**: each rebuilt screen held beside its artboard on a phone.
+- **The owner's order for A**: rehearse `0164` on a production schema dump · push the migration · merge with CI
+  read from the run's own conclusion on the PR head · reconnect Railway and wait for a status with no suffix —
+  ★ **and B is already based on `main`, so deleting A's branch closes nothing.**
+
+### Carried — not this wave
+
+The stories viewer (wave 19) · batches M10b and M10c · ★ **the hard-load re-measure on `/app/me/points` and
+`/app/leaderboards`** (M10c) and the defect itself (`DEC-204`) · every console and studio route · the public site ·
+the weekly leaderboard, the streak rule, proposal voting · ★ the two carried gates, together (`DEC-194`) · F2 and F3
+(`DEC-198` §5) · the overshoot ceiling (`DEC-186` §4) · the phone check of the five moments on the live site, owed
+since wave 16.
+
+### Untouched-suite ledger (wave 18)
+
+*Every pre-existing test assertion that changes this wave gets a line here, in the same commit as the change — and
+says whether a **selector** moved or an **expectation** did.*
+
+| File | What changed | Why |
+|---|---|---|
+| — | none yet | |
+
+---
+
+## ★★ WAVE 17 — COMPLETE and MERGED (PR #35, `bf434b01`; 17b PR #37, `badab40e`) — was on `wave-17/every-primitive` — every primitive, and one visual language (`DEC-199`)
 
 **The programme's third wave.** The brief is `docs/plan/notes/wave-17-lead.md`; the map is `CLAUDE.md` § *Ownership
 map (wave 17)*; the decision is `DEC-199`. Milestone **M19**. Requirements `REQ-UIX-049` … `053`; stories
