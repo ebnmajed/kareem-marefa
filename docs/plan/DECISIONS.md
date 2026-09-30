@@ -5876,3 +5876,26 @@ owner's note**, so the reviewer has for PR A what PR B will have by construction
 Every track deletes in its first commit and writes in its second (`DEC-208`); the lead lands the shell's changes and the CSP first; the SQL is promoted before the screens that read it; the glyphs last.
 
 - **Documents changed:** `STATUS.md` (S-B1)
+
+---
+
+## DEC-210 — A correction to `DEC-209`: attendance DOES feed the company board, so «لفريقك» is drawn — as a rule, never as a figure
+
+- **Date:** 2026-09-30 · **Decided by:** the wave-18 lead, on `scoring`'s reading of `b894a0a8`
+- **Corrects:** `DEC-209` §1 (««لفريقك» is not computable — not built») and §2 («Attendance does not feed the company board»)
+
+**What was wrong.** `DEC-209` ruled that attendance does not feed the company board, and so that the desktop event page's
+«لفريقك» note was not built. **`scoring` measured otherwise:** `snapshot_leaderboard()` (`0081:627–660`) sums each
+company's members' `points_ledger` rows, `check_in` among them; and `company_attendance_pct` (`0081:352, 374`, the
+company-points rule `DEC-060` era) credits a company for the share of its active members who checked in. So the
+artboard's sentence — «حضور صنف لهذه الجلسة يرفع نسبة مشاركتها في سباق الشركات» — is **true whenever that rule is
+enabled**. The lead conflated it with «who attends», which a member cannot read (A33 rule 3) and which stays unbuilt.
+
+**The ruling.** The note is built on the desktop event page for a member who has a company, **only when the org's
+`company_attendance_pct` rule is enabled**, and it says the rule, never a figure: «حضورك يرفع نسبة مشاركة <company> في
+سباق الشركات». **No «الجولة 3»** (there are no rounds, `DEC-206` §4.50), no count of who is attending, no company's
+standing — nothing a member cannot read. With the rule off, or no company, nothing is drawn.
+
+**Why it is recorded.** The lead's measurement stopped one step short again (`DEC-207` §1's pattern): «attendance is
+points» was checked against the member ledger and not against the company board's own rule. A reading by the track
+that owns the ledger found it.
