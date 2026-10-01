@@ -3,7 +3,8 @@ import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { currentStreak } from "@/lib/dal/recognition";
-import { getMonthlyStanding, type BoardMoment, type WeekNeighbour, type WeekPeriod } from "@/lib/dal/leaderboards";
+import { getMonthlyStanding, getWeekStanding, type BoardMoment, type WeekNeighbour, type WeekPeriod, type WeekStanding } from "@/lib/dal/leaderboards";
+import { avatarHref } from "@/components/privacy/avatar-href";
 
 // The member's points history (SCR-022, REQ-PTS-003, `05` §8). The test of
 // this screen is REQ-PTS-003's own wording: a member must be able to
@@ -699,3 +700,81 @@ export async function getMemberLevel(locale: string, memberId: string): Promise<
     next: next ? { name: next.name, threshold: next.threshold_points } : null,
   };
 }
+
+// ── The hub's standing — contract 3 (wave 20, add-only) ─────────────────────────────────────────────────────────
+//
+// `REQ-UIX-070`, `DEC-216` §5.10, `DEC-218` §3.5, §3.7. What `021`'s card and the desktop band draw: the member, the
+// balance, the level and the way to the next, this week's rank (contract 4), the streak in months and the badges
+// held. ★ A33 tier 1 of the caller's own row — never the email, never `members.avatar_url` (DEC-099). Every figure
+// is read: the level the nightly evaluation stored, `levelProgress()`'s fraction, `currentStreak()`. Moments 3 and 5
+// are the SAME occurrences `SCR-022`, the home and the boards decide, and the mark the card acknowledges passes the
+// level last seen through (`weekPointsMark()`, DEC-207 §1.3) — the level-up is `SCR-022`'s alone.
+
+export interface HubStanding {
+  member: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+    jobTitle: string | null;
+    company: { name: string; teamColor: string | null } | null;
+    /** `members.created_at`, ISO. */
+    memberSince: string;
+  };
+  points: number;
+  level: { name: string; tier: number } | null;
+  next: { name: string; threshold: number; remaining: number } | null;
+  progress: { value: number; max: number } | null;
+  week: WeekStanding;
+  /** null: no enabled streak rule. `months` may be 0. */
+  streak: { months: number } | null;
+  badges: number;
+  completion: PointsHead["completion"];
+  /** A level reached and not yet seen on `SCR-022`: the card's bar does not move for it (DEC-207). */
+  levelUpPending: boolean;
+  pointsMark: PointsMark;
+  pointsNeedsMark: boolean;
+}
+
+/** Request-scoped: on `/app/me` the card and the band ask once between them. */
+export const getHubStanding = cache(async (locale: string): Promise<HubStanding> => {
+  const { session, supabase } = await sessionClient(locale);
+  const [head, week, memberRes, badgesRes] = await Promise.all([
+    headOnce(locale),
+    getWeekStanding(locale),
+    supabase.from("members").select("display_name, avatar_version, job_title, company_id, created_at").eq("id", session.memberId).maybeSingle(),
+    supabase.from("member_badges").select("id", { count: "exact", head: true }).eq("member_id", session.memberId),
+  ]);
+  if (memberRes.error) throw new Error(`members (standing): ${memberRes.error.message}`);
+  if (badgesRes.error) throw new Error(`member_badges (standing): ${badgesRes.error.message}`);
+  const m = memberRes.data as { display_name: string | null; avatar_version: number | string | null; job_title: string | null; company_id: string | null; created_at: string } | null;
+
+  let company: HubStanding["member"]["company"] = null;
+  if (m?.company_id) {
+    const { data: c, error } = await supabase.from("companies").select("name, team_color").eq("id", m.company_id).maybeSingle();
+    if (error) throw new Error(`companies (standing): ${error.message}`);
+    if (c) company = { name: c.name as string, teamColor: (c.team_color as string | null) ?? null };
+  }
+
+  const { mark, needsMark } = weekPointsMark(head);
+  return {
+    member: {
+      id: session.memberId,
+      displayName: m?.display_name ?? "",
+      avatarUrl: avatarHref({ id: session.memberId, avatarVersion: m?.avatar_version }, 192),
+      jobTitle: m?.job_title ?? null,
+      company,
+      memberSince: m?.created_at ?? "",
+    },
+    points: head.totalPoints,
+    level: head.level ? { name: head.level.name, tier: head.level.tier } : null,
+    next: head.next ? { ...head.next, remaining: Math.max(0, head.next.threshold - head.totalPoints) } : null,
+    progress: head.progress,
+    week,
+    streak: head.streak.enabled ? { months: head.streak.months } : null,
+    badges: badgesRes.count ?? 0,
+    completion: head.completion,
+    levelUpPending: head.levelUp !== null,
+    pointsMark: mark,
+    pointsNeedsMark: needsMark,
+  };
+});

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { companyFractions } from "@/components/scoring/race-fractions";
@@ -326,7 +327,8 @@ export async function getMemberStanding(locale: string, memberId: string): Promi
 // ★ Only a RISE is an occurrence. A fall, a tie, a new month, a new company or
 // no mark at all is the static state, and the mark moves on quietly.
 
-export type BoardKind = "all_time" | "monthly" | "company";
+/** `weekly` is wave 20's, add-only (DEC-216 §2.2): the live week, its period the week's Saturday. */
+export type BoardKind = "all_time" | "monthly" | "company" | "weekly";
 
 export interface BoardMark {
   board: BoardKind;
@@ -356,6 +358,9 @@ type SeenBoards = {
   company_id: string | null;
   company_rank: number | null;
   company_fraction: number | string | null;
+  /** wave 20 (0169), add-only: the week's pair — absent from a caller that does not read it. */
+  weekly_period?: string | null;
+  weekly_rank?: number | null;
 };
 
 /** The rule, pure — exported for its unit test. */
@@ -367,7 +372,9 @@ export function decideBoardMoment(board: BoardKind, seen: SeenBoards | null, now
       ? { board, period: null, rank: seen.all_time_rank, companyId: null, fraction: null }
       : board === "monthly"
         ? { board, period: seen.monthly_period, rank: seen.monthly_rank, companyId: null, fraction: null }
-        : { board, period: seen.company_period, rank: seen.company_rank, companyId: seen.company_id, fraction: seenFractionNum }
+        : board === "weekly"
+          ? { board, period: seen.weekly_period ?? null, rank: seen.weekly_rank ?? null, companyId: null, fraction: null }
+          : { board, period: seen.company_period, rank: seen.company_rank, companyId: seen.company_id, fraction: seenFractionNum }
     : null;
   const same = (a: number | null, b: number | null) => (a === null || b === null ? a === b : Math.abs(a - b) < 1e-9);
   const needsMark =
@@ -717,3 +724,111 @@ export async function getMemberMonthRank(locale: string, memberId: string): Prom
   const rank = (row as { rank?: number } | null)?.rank;
   return typeof rank === "number" ? rank : null;
 }
+
+// ── This week, live — contract 4 (wave 20, add-only) ─────────────────────────────────────────────────────────────
+//
+// `REQ-UIX-078`, `DEC-216` §2.2, `DEC-217` §3.3 – §3.4, `DEC-218`. The week is summed from `points_ledger` at read
+// time by `weekly_leaderboard()` — no enum value, no snapshot, no job — over `org_week()`: Saturday to Friday in the
+// org's own time zone. Opt-out and the active rule are the DATABASE's (the function follows 0044); this reads what
+// the caller may see. ★ An absence is an absence: no points this week is `rank: null`, never a zero rank.
+//
+// ★ Moment 5 on the week reads the weekly seen pair (0169) through `decideBoardMoment("weekly", …)`. Nothing writes
+// that pair until `mark_board_seen()` learns the week (PR B, `DEC-217` §3.3) — so until then the moment never plays
+// and the surface asks to acknowledge nothing: `WEEKLY_MARK_WRITABLE` is the one switch, turned on in PR B.
+
+/** Whether `mark_board_seen()` accepts `weekly` in this deployment. PR A: no. */
+export const WEEKLY_MARK_WRITABLE = false;
+
+export interface WeekWindow {
+  /** `YYYY-MM-DD` — the Saturday the week starts on. */
+  start: string;
+  /** `YYYY-MM-DD` — the Friday it ends on, inclusive. */
+  end: string;
+  /** Whole days left after today until `end`; 0 on the Friday itself. */
+  daysLeft: number;
+  /** `org_settings.time_zone`. */
+  timeZone: string;
+}
+
+export interface WeekStanding {
+  window: WeekWindow;
+  /** null is an ABSENCE — `absence` says why. Never a zero rank. */
+  rank: { rank: number; points: number; ranked: number; above: WeekNeighbour | null } | null;
+  absence: "no_points" | null;
+  /** `members.leaderboard_opt_out`: the rank is still theirs to see, and hidden from everyone else (REQ-LDR-008). */
+  optedOut: boolean;
+  /** Moment 5 on the week — `decideBoardMoment("weekly", …)`, keyed `weekly:<start>:<seen>-<now>`. */
+  moment: BoardMoment;
+}
+
+type WeekRow = { member_id: string; rank: number | string; points: number };
+type OrgWeekRow = { week_start: string; week_end: string; time_zone: string };
+
+/** The days left in the week, counted in the org's own calendar — pure, exported for its unit test. */
+export function weekDaysLeft(end: string, timeZone: string, now: Date = new Date()): number {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  const ms = Date.parse(`${end}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`);
+  return Math.max(0, Math.round(ms / 86_400_000));
+}
+
+/** The caller's place in the week, from the board's rows — pure, exported for its unit test. The neighbour above is
+ *  the visible row with the greatest rank below the caller's and STRICTLY more points, so a gap is never 0. */
+export function weekPlace(rows: Array<{ memberId: string; rank: number; points: number }>, self: string): { rank: number; points: number; ranked: number; aboveId: string | null; gap: number } | null {
+  const own = rows.find((r) => r.memberId === self);
+  if (!own) return null;
+  const above = rows.filter((r) => r.rank < own.rank && r.points > own.points).sort((a, b) => b.rank - a.rank)[0] ?? null;
+  return { rank: own.rank, points: own.points, ranked: rows.length, aboveId: above?.memberId ?? null, gap: above ? above.points - own.points : 0 };
+}
+
+/** Contract 4. Request-scoped: the card on `021`, the band and `027` ask once between them. */
+export const getWeekStanding = cache(async (locale: string): Promise<WeekStanding> => {
+  const { session, supabase } = await sessionClient(locale);
+  const [weekRes, boardRes, selfRes, seenRes] = await Promise.all([
+    supabase.rpc("org_week"),
+    supabase.rpc("weekly_leaderboard"),
+    supabase.from("members").select("leaderboard_opt_out").eq("id", session.memberId).maybeSingle(),
+    supabase.from("member_seen_marks").select("weekly_period, weekly_rank").eq("member_id", session.memberId).maybeSingle(),
+  ]);
+  if (weekRes.error) throw new Error(`org_week: ${weekRes.error.message}`);
+  if (boardRes.error) throw new Error(`weekly_leaderboard: ${boardRes.error.message}`);
+  if (selfRes.error) throw new Error(`members (weekly): ${selfRes.error.message}`);
+  if (seenRes.error) throw new Error(`member_seen_marks (weekly): ${seenRes.error.message}`);
+
+  const week = ((weekRes.data ?? []) as OrgWeekRow[])[0];
+  if (!week) throw new Error("org_week: no row");
+  const window: WeekWindow = { start: week.week_start, end: week.week_end, daysLeft: weekDaysLeft(week.week_end, week.time_zone), timeZone: week.time_zone };
+
+  const rows = ((boardRes.data ?? []) as WeekRow[]).map((r) => ({ memberId: r.member_id, rank: Number(r.rank), points: r.points }));
+  const place = weekPlace(rows, session.memberId);
+  const seenRow = seenRes.data as { weekly_period: string | null; weekly_rank: number | null } | null;
+  const seen: SeenBoards | null = seenRow
+    ? { all_time_rank: null, monthly_period: null, monthly_rank: null, company_period: null, company_id: null, company_rank: null, company_fraction: null, weekly_period: seenRow.weekly_period, weekly_rank: seenRow.weekly_rank }
+    : null;
+  const decided = decideBoardMoment("weekly", seen, { board: "weekly", period: window.start, rank: place?.rank ?? null, companyId: null, fraction: null });
+  const moment: BoardMoment = WEEKLY_MARK_WRITABLE ? decided : { ...decided, occurrenceId: null, seenRank: null, needsMark: false };
+  const optedOut = Boolean(selfRes.data?.leaderboard_opt_out);
+
+  if (!place) return { window, rank: null, absence: "no_points", optedOut, moment };
+
+  let above: WeekNeighbour | null = null;
+  if (place.aboveId) {
+    const { data: m, error } = await supabase.from("members").select("display_name, company_id").eq("id", place.aboveId).maybeSingle();
+    if (error) throw new Error(`members (weekly, above): ${error.message}`);
+    let company: { name: string; team_color: string | null } | null = null;
+    if (m?.company_id) {
+      const { data: c, error: cError } = await supabase.from("companies").select("name, team_color").eq("id", m.company_id).maybeSingle();
+      if (cError) throw new Error(`companies (weekly, above): ${cError.message}`);
+      company = (c as { name: string; team_color: string | null } | null) ?? null;
+    }
+    const aboveRank = rows.find((r) => r.memberId === place.aboveId)!.rank;
+    above = {
+      memberId: place.aboveId,
+      displayName: (m?.display_name as string | null | undefined) ?? "",
+      company: company?.name ?? null,
+      teamColor: company?.team_color ?? null,
+      rank: aboveRank,
+      gap: place.gap,
+    };
+  }
+  return { window, rank: { rank: place.rank, points: place.points, ranked: place.ranked, above }, absence: null, optedOut, moment };
+});

@@ -321,6 +321,31 @@
       "badgeSelf": "نلت شارة <b><bdi>{badge}</bdi></b>",
       "streak": "<name></name> أكمل سلسلة الحضور في <bdi>{month}</bdi>",
       "streakSelf": "أكملت سلسلة الحضور في <bdi>{month}</bdi>"
+    },
+    "hub": {
+      "label": "مكانتك في الساحة",
+      "seenBy": "هكذا يراك زملاؤك",
+      "since": "عضو منذ <bdi>{month}</bdi>",
+      "level": {
+        "caption": "مستواك",
+        "toNext": "«<bdi>{level}</bdi>» بعد <bdi>{value}</bdi>",
+        "top": "بلغت أعلى مستوى",
+        "none": "يُحدَّد مستواك في التقييم الليلي القادم.",
+        "pointsLine": "{count, plural, zero {<pts></pts> نقطة} one {<pts></pts> نقطة} two {<pts></pts> نقطتان} few {<pts></pts> نقاط} many {<pts></pts> نقطة} other {<pts></pts> نقطة}} · «<bdi>{level}</bdi>» بعد <bdi>{remaining}</bdi>"
+      },
+      "week": {
+        "label": "هذا الأسبوع",
+        "labelHidden": "هذا الأسبوع · مخفيّ عن غيرك",
+        "valueLabel": "المرتبة <bdi>{rank}</bdi> من <bdi>{total}</bdi> هذا الأسبوع",
+        "absent": "لا ترتيب بعد"
+      },
+      "streak": {
+        "label": "السلسلة"
+      },
+      "badges": {
+        "label": "الشارات",
+        "valueLabel": "{count, plural, zero {لا شارات بعد} one {شارة واحدة} two {شارتان} few {{value} شارات} many {{value} شارة} other {{value} شارة}}"
+      }
     }
   }
 }

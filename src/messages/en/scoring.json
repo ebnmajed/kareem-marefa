@@ -321,6 +321,31 @@
       "badgeSelf": "You earned the <b><bdi>{badge}</bdi></b> badge",
       "streak": "<name></name> completed the attendance streak for <bdi>{month}</bdi>",
       "streakSelf": "You completed the attendance streak for <bdi>{month}</bdi>"
+    },
+    "hub": {
+      "label": "Your standing",
+      "seenBy": "How colleagues see you",
+      "since": "Member since <bdi>{month}</bdi>",
+      "level": {
+        "caption": "Your level",
+        "toNext": "“<bdi>{level}</bdi>” in <bdi>{value}</bdi>",
+        "top": "You reached the top level",
+        "none": "Your level is set at the next nightly evaluation.",
+        "pointsLine": "{count, plural, one {<pts></pts> point} other {<pts></pts> points}} · “<bdi>{level}</bdi>” in <bdi>{remaining}</bdi>"
+      },
+      "week": {
+        "label": "This week",
+        "labelHidden": "This week · hidden from others",
+        "valueLabel": "Rank <bdi>{rank}</bdi> of <bdi>{total}</bdi> this week",
+        "absent": "Not ranked yet"
+      },
+      "streak": {
+        "label": "Streak"
+      },
+      "badges": {
+        "label": "Badges",
+        "valueLabel": "{count, plural, =0 {No badges yet} one {One badge} other {{value} badges}}"
+      }
     }
   }
 }
