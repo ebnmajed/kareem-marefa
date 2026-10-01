@@ -40,8 +40,8 @@ import { ToastProvider } from "@/components/ui/toast";
 //     field, the bell, the account menu — over a navigation rail and the content.
 //     A page that has a game rail passes it through `PageFrame`, the one slot.
 // The one-row header with its «تصفّح» menu is gone: its four links are the rail
-// and the tab bar now, and `/app/members`, which has no index, is linked by neither
-// (DEC-206 §4.31).
+// and the tab bar now. `/app/members` (`SCR-019`, wave 19) is the rail's and the
+// account menu's — no sixth tab (DEC-213 §3.3, §3.4).
 //
 // ★ THE PHONE KEEPS THE ACCOUNT MENU, which the artboard does not draw (DEC-206
 // §4.33, measured): `/app/me` carries neither the console's link nor sign-out
@@ -145,6 +145,7 @@ export default async function AppLayout({
                 calendar: t("calendar"),
                 notifications: t("meNotifications"),
                 privacy: t("mePrivacy"),
+                members: t("members"),
                 admin: t("adminConsole"),
                 platform: t("platform"),
                 signOut: t("signOut"),
@@ -169,6 +170,7 @@ export default async function AppLayout({
                   propose: t("propose"),
                   home: t("home"),
                   sessions: t("sessions"),
+                  members: t("members"),
                   board: t("leaderboards"),
                   me: t("account"),
                   staffSection: t("staffSection"),

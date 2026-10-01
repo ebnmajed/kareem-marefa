@@ -2,8 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { CalendarIcon, ChartIcon, HomeIcon, PlusIcon, TrophyIcon, UserIcon } from "@/components/ui/icons";
-import { NAV, type NavKey } from "@/components/shell/nav-items";
+import { CalendarIcon, ChartIcon, HomeIcon, PlusIcon, TrophyIcon, UserIcon, UsersIcon } from "@/components/ui/icons";
+import { MEMBERS, NAV, type NavKey } from "@/components/shell/nav-items";
 import { hasNavRail, shellPath } from "@/components/shell/shell-routes";
 
 // The desktop navigation rail — built from `docs/design/screens/m10a/HomeDesktop.dc.html`
@@ -14,10 +14,10 @@ import { hasNavRail, shellPath } from "@/components/shell/shell-routes";
 // It is not rendered on an immersive route or in the console (`hasNavRail`): the
 // event page owns its width, and the console has its own rail.
 //
-// ★ «الأعضاء» is drawn and absent — the route does not exist yet (DEC-206 §4.31).
+// ★ «الأعضاء» stands after «الجلسات», as drawn — since wave 19 the route exists (DEC-213 §3.3).
 
 export interface NavRailProps {
-  labels: { nav: string; staffSection: string; admin: string; platform: string; attention: string | null } & Record<Exclude<NavKey, "propose">, string> & {
+  labels: { nav: string; staffSection: string; admin: string; platform: string; attention: string | null; members: string } & Record<Exclude<NavKey, "propose">, string> & {
       propose: string;
     };
   isStaff: boolean;
@@ -51,9 +51,9 @@ export function NavRail({ labels, isStaff, isPlatformAdmin, attentionCount }: Na
         {labels.propose}
       </Link>
 
-      {NAV.filter((n) => n.key !== "propose").map(({ key, href, current: isCurrent }) => {
+      {[...NAV.filter((n) => n.key !== "propose").slice(0, 2), MEMBERS, ...NAV.filter((n) => n.key !== "propose").slice(2)].map(({ key, href, current: isCurrent }) => {
         const current = isCurrent(path);
-        const Icon = ICONS[key as Exclude<NavKey, "propose">];
+        const Icon = key === "members" ? UsersIcon : ICONS[key as Exclude<NavKey, "propose">];
         return (
           <Link
             key={key}
@@ -62,7 +62,7 @@ export function NavRail({ labels, isStaff, isPlatformAdmin, attentionCount }: Na
             className={`${item} ${current ? "bg-surface font-bold text-accent" : "text-fg-heading"}`}
           >
             <Icon aria-hidden className="text-[1.375rem]" />
-            {labels[key as Exclude<NavKey, "propose">]}
+            {key === "members" ? labels.members : labels[key as Exclude<NavKey, "propose">]}
           </Link>
         );
       })}

@@ -68,7 +68,7 @@ recorded here, in `CLAUDE.md`'s map and `14`'s sequence now, and verbatim in the
 |---|---|---|---|
 | S0 | `DEC-213`; `REQ-UIX-064` … `069`; `STORY-UIX-051` … `058`; M21 and the sequence in `14`; `09`'s six screens; the map in `CLAUDE.md`; the ten agent files; `docs/design/screens/m10b/**` added to the tree; this block; the branch; the draft PR | lead | **DONE `68332819`**, draft **PR #40** against `main`. `trace` 362 · 194, no gaps; `policy-diff` ✓. No file under `src/`, `public/`, `supabase/` or `worker/` changed |
 | T0 | ★ **Baselines before any product commit**: `visual`'s public pairs against `main`; the fingerprint's record; the six screens at 390 (and `013`, `020` at 1280) as they are today | lead | todo |
-| F1 | ★★ **The frame's four additions** (C1, `STORY-UIX-051`) | lead | todo |
+| F1 | ★★ **The frame's four additions** (C1, `STORY-UIX-051`) | lead | **landed — see the commit after `b0e18503`**, unit-proven (`tests/unit/shell-routes.test.ts`, 13 ✓); the e2e shell specs run on the gate's build. (1) `isFullScreen()` — the viewer has no bar, no rail, no tab bar and no footer at any width, full bleed; (2) `ownsTopRow()` covers rate, propose, `propose/[id]`, `propose/[id]/edit`, `members`, `members/[id]`; rate joins `hasActionBar()`; (3) `MEMBERS` in the rail after «الجلسات» with `UsersIcon` (no new glyph — contract 5 untouched), «حسابي» current on `/app/me` and its children only — ★ **the new test caught `"/app/members".startsWith("/app/me")` in the lead's first draft**; the raised «اقترح» current in bone with the muted drop; (4) the account menu's «الأعضاء». ★ **`PageFrame` needs no change**: with no rail it already returns the content unconstrained (≈ 988 px at 1280); the profile's 964 px was its own `max-w-3xl`. `tsc` 0, `eslint` 0, `ui-lint --strict` ✓ |
 | S1 | **Sync 1** — four plans, **each with its kept-behaviour tables**, approved against the seven contracts | lead | todo |
 | P0 | Contract 2 — the signatures, the registry, the floor at 57 | lead | todo — after S1 |
 | V1 | ★★ **`SCR-013`, the viewer**, deleted then written (`STORY-UIX-053`) — ★ **the direction test that would have caught the live bug**: in `ar`, pressing «الصفحة التالية» moves the page number from N to N + 1 (and «السابقة» back), not merely that a button exists; the no-URL test | `content` | todo |
@@ -146,6 +146,8 @@ a selector moved or an expectation did, and why.*
 
 | File · case | Moved | Why | Commit |
 |---|---|---|---|
+| `tests/e2e/wave18-lead-shell.spec.ts` · «1280: … the rail» (renamed «five destinations, «الأعضاء» among them») | **expectation** — the rail's links gain «الأعضاء» after «الجلسات» | `DEC-213` §3.3: the route exists now; `DEC-206` §4.31's condition is met | F1 |
+| `tests/e2e/shell-disclosures.spec.ts` · the account menu's hrefs | **expectation** — `/app/members` appended | `DEC-213` §3.4: the phone's way to the directory | F1 |
 
 ---
 

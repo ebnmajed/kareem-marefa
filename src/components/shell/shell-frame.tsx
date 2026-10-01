@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { hasActionBar, hasNavRail, isEventPage, isImmersive } from "@/components/shell/shell-routes";
+import { hasActionBar, hasNavRail, isEventPage, isFullScreen, isImmersive } from "@/components/shell/shell-routes";
 
 // The shell's frame (REQ-UIX-054, contract 1 of wave 18).
 //
@@ -30,8 +30,10 @@ const CLEARS_BAR = { paddingBlockEnd: "calc(var(--tabbar-h) + env(safe-area-inse
 
 function useShellRoute() {
   const pathname = usePathname();
-  const fullBleed = isEventPage(pathname);
-  return { fullBleed, framed: hasNavRail(pathname), clearsBottomBar: !isImmersive(pathname) || hasActionBar(pathname) };
+  // ★ wave 19 (DEC-213 §3.1): the viewer is full-screen, so it is full bleed too.
+  const fullScreen = isFullScreen(pathname);
+  const fullBleed = isEventPage(pathname) || fullScreen;
+  return { fullScreen, fullBleed, framed: hasNavRail(pathname), clearsBottomBar: !isImmersive(pathname) || hasActionBar(pathname) };
 }
 
 export function ShellMain({ rail, children }: { rail: ReactNode; children: ReactNode }) {
@@ -57,7 +59,8 @@ export function ShellMain({ rail, children }: { rail: ReactNode; children: React
 }
 
 export function ShellFooter({ children }: { children: ReactNode }) {
-  const { framed, clearsBottomBar } = useShellRoute();
+  const { fullScreen, framed, clearsBottomBar } = useShellRoute();
+  if (fullScreen) return null;
   return (
     <footer
       className={`mx-auto px-4 pb-10 pt-4 text-body-sm text-fg-muted ${framed ? "max-w-[1280px] lg:ps-[268px] lg:pe-6" : "max-w-6xl md:px-8"}`}

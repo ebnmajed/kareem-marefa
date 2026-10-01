@@ -96,6 +96,7 @@ test("the account menu lists each /app/me route once, in the hub's tab order", a
     "/app/me/calendar",
     "/app/me/notifications",
     "/app/me/privacy",
+    "/app/members",
   ]);
   await page.keyboard.press("Escape");
 });

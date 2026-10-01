@@ -53,16 +53,28 @@ export function hasNavRail(pathname: string | null): boolean {
  *  always there (`EventDesktop.dc.html` draws it). */
 const OWN_TOP_ROW = /^\/app\/sessions(\/[^/]+(\/(check-in|host))?)?$/;
 
+/** ★ wave 19 (DEC-213 §3.2): rate, propose and the proposal, the directory and the profile draw their own phone top
+ *  row too — a back control, a title, a sort or a share, and no wordmark (`docs/design/screens/m10b/`). */
+const OWN_TOP_ROW_M10B = /^\/app\/(sessions\/[^/]+\/rate|propose(\/[^/]+(\/edit)?)?|members(\/[^/]+)?)$/;
+
 export function ownsTopRow(pathname: string | null): boolean {
   if (!pathname) return false;
-  return OWN_TOP_ROW.test(strip(pathname));
+  const path = strip(pathname);
+  return OWN_TOP_ROW.test(path) || OWN_TOP_ROW_M10B.test(path);
 }
 
-/** ★ wave 18 (DEC-209): routes that carry a fixed bottom `action-bar` of their own — the event page and
- *  check-in — so `<main>` clears it as it clears the tab bar. */
+/** ★ wave 18 (DEC-209): routes that carry a fixed bottom `action-bar` of their own — the event page,
+ *  check-in, and from wave 19 rate (DEC-213) — so `<main>` clears it as it clears the tab bar. */
 export function hasActionBar(pathname: string | null): boolean {
   if (!pathname) return false;
-  return /^\/app\/sessions\/[^/]+(\/check-in)?$/.test(strip(pathname));
+  return /^\/app\/sessions\/[^/]+(\/(check-in|rate))?$/.test(strip(pathname));
+}
+
+/** ★ wave 19 (DEC-213 §3.1): the material viewer is the whole window at every width — no top bar, no rail, no tab
+ *  bar and no footer (`ViewerDesktop.dc.html` draws none). The page is the brightest thing on screen. */
+export function isFullScreen(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return /^\/app\/sessions\/[^/]+\/materials\/[^/]+$/.test(strip(pathname));
 }
 
 /** The path the tab bar and the rail compare their links with. */
