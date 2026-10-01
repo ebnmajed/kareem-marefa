@@ -81,7 +81,7 @@ recorded here, in `CLAUDE.md`'s map and `14`'s sequence now, and verbatim in the
 | P2 | ★★ **`SCR-018`, my proposal**, deleted then written (`STORY-UIX-056`) | `sessions` | todo |
 | P3 | `ui/stepper`; contract 4 — the sessions presented | `sessions` | todo |
 | M1 | ★★ **`SCR-019`, the directory — new** (`STORY-UIX-057`) | `scoring` | **written `a57cf38b`** — spec and captures at the gate |
-| M2 | ★★ **`SCR-020`, the profile**, deleted then written (`STORY-UIX-058`) | `scoring` | **deleted `d2d538e6`; create pending.** ★ **The lead pushed the delete alone at `5c6c4f1c`** — checking only for the propose pair, not for every unpaired delete — so the remote branch carries no profile page until the create lands. A draft PR, nothing merged, no force-push. The rule for the rest of the wave: before any push, `git log origin..HEAD` is read for every `refactor(...)` delete and each must have its create |
+| M2 | ★★ **`SCR-020`, the profile**, deleted then written (`STORY-UIX-058`) | `scoring` | **written `e96df6f4`** (deleted `d2d538e6`; specs `60567c74`). ★ **The lead pushed the delete alone at `5c6c4f1c`** — checking only for the propose pair, not for every unpaired delete — so the remote branch carried no profile page from `5c6c4f1c` until `e96df6f4` was pushed. A draft PR, nothing merged, no force-push. The rule for the rest of the wave: before any push, `git log origin..HEAD` is read for every `refactor(...)` delete and each must have its create |
 | M3 | `ui/badge-medallion` | `scoring` | todo |
 | K1 | ★★ **Four notes, each with its kept-behaviour tables** — one row per behaviour, its `REQ-*`, read against the new file | `content` · `event` · `sessions` · `scoring` | todo |
 | X1 | ★★ Demonstrable — **every rebuilt screen at 390, and `013`, `020` at 1280, opened beside its artboard** | lead | todo |
@@ -156,6 +156,8 @@ a selector moved or an expectation did, and why.*
 | `tests/components/viewer/page-viewer.test.tsx` · cases 1 – 6 («starts on page 1 of 3», «RTL ← advances», «LTR → advances», «Home/End», «PageDown/Up», «clamps») → `tests/components/ui/page-viewer.test.tsx` | **selector** — `getByTestId("page-indicator")` becomes the scrubber's value and `aria-valuetext`; the provider becomes `labels` built from `ar/materials.json` | the old component is deleted for `ui/page-viewer` (`DEC-213` §4) | `14c6d049`, `286c0038` |
 | `tests/components/viewer/page-viewer.test.tsx` · cases 7 – 8 («thumbnail jumps», «no-pages state») → the same file | **selector** — the provider only; the accessible names unchanged | as above | `14c6d049`, `286c0038` |
 | `tests/components/viewer/page-viewer-direction.test.tsx` · the `it.fails` record | **removed with the file it proved wrong** — run as a plain `it` on `75a1ae26`: expected «صفحة 2 من 3», received «صفحة 1 من 3» | `DEC-214` §1: «next» disabled on page 1 in RTL | `75a1ae26` → `14c6d049` |
+| `tests/unit/sessions-member-profile.test.ts` · «still shows them to the member themselves and to an admin» | **expectation** — the admin's `standing.rank` is `null`, not `3`; the `all_time_leaderboard()` stub now omits an opted-out member for everyone but themselves, as `0044` does | `DEC-214` §1, N8: the database never shows an admin an opted-out member's rank; the stub pinned what no request returns | `e96df6f4` |
+| `tests/e2e/wave7-sessions-profile.spec.ts:145` · `getByText("الشركة الأولى")` | **selector** — scoped to `#main [data-slot="profile-header"]` | the company is drawn twice now (the breadcrumb and the chip); a page-wide locator is a strict-mode violation | `e96df6f4` |
 
 ---
 
