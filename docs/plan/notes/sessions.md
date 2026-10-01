@@ -6301,3 +6301,27 @@ Join them all; never only the first. `<bdi>` each name at the call site.
 the published-or-later ones, each with `attendedCount` (`null` for a published session). `countSessionsPresentedBy(
 locale, memberIds?)` — omitted, the whole org — is one read (`session_presenters` joined `!inner` to `sessions` on the
 delivered states); a member with none is absent from the record. No average anywhere.
+
+### W19.10 · As built — SCR-017 (`fea4db8e` delete, `824391b0` write), the guard (`77c9f829`), SCR-018 (`ce0c4e99` delete; the write after `0168`)
+
+**The kept-behaviour tables, read against the new files.** SCR-017's 34 rows all hold. Two moved place:
+- row 27, the no-schedule note, now sits above the form, as drawn;
+- row 32, the edit route, keeps its URL and is SCR-017's resubmit state. The reason card is pinned above section 1
+  and gives the decision's time, with no name.
+
+SCR-018's 27 rows all hold, with these changes:
+- Row 4 (the state in words): `stepper`'s labels, and the badge for a draft or a rejected proposal.
+- Row 13 (the proposer and the replies): «أنت» on the viewer's own row, «المُقدِّم الرئيسي» on the proposer's, and noun replies.
+- Row 17 (remove): a `sheet` in `components/proposals/remove-co-presenter.tsx`, offered in the open states only (D9).
+- Row 19 (add): built through `addCoPresentersAction` → `addCoPresenters()`.
+
+**Built differently from the plan, and why:**
+- **The earn panel's badge sentence.** It is «وتنال شارة «<badge>» مع أولى جلساتك.», not «وشارة … مع أول جلسة». The seeded
+  badge is named «أول جلسة», and the drawn sentence would repeat it.
+- **`radio-group`'s required word.** It arrives as `requiredLabel`, because a primitive reads no catalogue. The props
+  are a local `RadioGroupWave19Props` until the lead folds them into `ui/index.ts`.
+- **`action-bar`'s bottom.** It reads `var(--stacked-bar-offset, 0px)`, plus the safe area when stacked. That is 0
+  everywhere but `/app/propose` below `lg`.
+- **The `aria-label` and `sheet` title strings.** They isolate a name with FSI…PDI, the `<bdi>` of a plain string.
+- **SCR-017's bar.** It stays fixed at every width. Above `lg` the form pads itself (`lg:pb-28`), because
+  `--tabbar-h` gives the bar no room there. SCR-018's bar gives way at `lg`, where the inline primary stands.
