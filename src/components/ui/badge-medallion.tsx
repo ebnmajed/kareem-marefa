@@ -1,5 +1,4 @@
 import type { BadgeMedallionProps, MedallionFill } from "@/components/ui";
-import { rampStop } from "@/components/ui/level-card";
 
 // scoring's file — REQ-UIX-064, DEC-213 §5.126, DEC-214 §4.
 //
@@ -49,6 +48,13 @@ const NAME = {
   md: "w-[76px] text-caption",
   sm: "w-16 text-caption",
 } as const;
+
+/** `levels.sort_order` → a ramp stop, clamped to 1–5 — the same rule as `level-card`'s `rampStop`, written here so
+ *  `level-card`'s standing layout can compose this file without a cycle. */
+function rampStop(tier: number): 1 | 2 | 3 | 4 | 5 {
+  const t = Number.isFinite(tier) ? Math.round(tier) : 1;
+  return Math.min(5, Math.max(1, t)) as 1 | 2 | 3 | 4 | 5;
+}
 
 /** The fill's class — exported for its test. */
 export function medallionFill(fill: BadgeMedallionProps["fill"]): string {

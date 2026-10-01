@@ -142,7 +142,9 @@ test("member tier: who they are, what they earned, what they presented — and n
   await open(page);
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("ريم العتيبي");
-  await expect(page.getByText("الشركة الأولى")).toBeVisible();
+  // wave 19 (DEC-213, ledger): the company is drawn twice now — the breadcrumb and the header's chip — so the
+  // locator is the header card's; the expectation is unchanged.
+  await expect(page.locator('#main [data-slot="profile-header"]').getByText("الشركة الأولى")).toBeVisible();
   await expect(page.getByText("أحب تبسيط التقارير الشهرية.")).toBeVisible();
   await expect(page.locator("section", { has: page.locator("#standing") })).toContainText("140");
   await expect(page.getByRole("link", { name: /كيف اختصرنا وقت التقارير الشهرية/ })).toBeVisible();

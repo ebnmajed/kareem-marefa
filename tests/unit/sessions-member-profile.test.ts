@@ -46,7 +46,10 @@ const supabase = {
   from: (table: string) => query(table),
   rpc: async (name: string) => {
     state.rpcCalls.push(name);
-    if (name === "all_time_leaderboard") return { data: [{ member_id: MEMBER, rank: 3, total_points: 140 }], error: null };
+    // ★ As `0044` answers: an opted-out member is on the board for themselves alone — an admin included
+    // (DEC-214 §1, N8). The stub used to hand the row to everyone, which pinned a rank the database never gives.
+    if (name === "all_time_leaderboard")
+      return { data: state.optOut && state.memberId !== MEMBER ? [] : [{ member_id: MEMBER, rank: 3, total_points: 140 }], error: null };
     if (name === "admin_member_profile")
       return { data: [{ email: "reem@kareem.example", attended_count: 2, attended: [], no_show_count: 1, late_cancel_count: 0 }], error: null };
     return { data: null, error: null };
@@ -111,7 +114,8 @@ describe("getMemberProfileForViewer — an opted-out member (DEC-141 ruling 5)",
     expect((await getMemberProfileForViewer("ar", MEMBER))?.standing?.totalPoints).toBe(140);
     state.memberId = VIEWER;
     state.role = "admin";
-    expect((await getMemberProfileForViewer("ar", MEMBER))?.standing).toEqual({ totalPoints: 140, rank: 3, levelName: "مستكشف" });
+    // ★ DEC-214 §1 (N8): the admin sees the balance; the rank is the database's to give, and it does not.
+    expect((await getMemberProfileForViewer("ar", MEMBER))?.standing).toEqual({ totalPoints: 140, rank: null, levelName: "مستكشف" });
   });
 });
 

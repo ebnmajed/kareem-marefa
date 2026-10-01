@@ -1,4 +1,5 @@
-import type { LevelCardProps, LevelFace } from "@/components/ui";
+import type { LevelCardProps, LevelFace, LevelStanding } from "@/components/ui";
+import { BadgeMedallion } from "@/components/ui/badge-medallion";
 
 // scoring's file — REQ-UIX-039, REQ-REC-004, DEC-183, DEC-186 §7.
 //
@@ -119,7 +120,40 @@ function Face({
   );
 }
 
-export function LevelCard({ level, reached, shown = "level", unlocksLabel, noUnlocksLabel, flip = false, className = "" }: LevelCardProps) {
+// ★ wave 19 (DEC-214 §3, N10) — `layout="standing"`, add-only: the profile's standing card (`Profile.dc.html:38-50`,
+// `M10b.md` §6). One row — the level's medallion, the caption and the level's name in its ramp colour, and a figure
+// at the inline-end — and the caller's content under it (the progress line, the stats). It draws `level` alone: no
+// unlock list (on a colleague's profile «يفتح لك» would address the wrong person), no reached face, no flip — and so
+// no moment can play on it (DEC-213 §5.117). `"faces"`, the default, is every other screen's card, unchanged.
+// Literal strings, so Tailwind sees every class.
+const RAMP_TEXT = ["text-level-1", "text-level-2", "text-level-3", "text-level-4", "text-level-5"] as const;
+
+function Standing({ level, standing, className }: { level: LevelFace; standing: LevelStanding; className: string }) {
+  const stop = rampStop(level.tier);
+  return (
+    <div role="group" aria-label={level.caption} data-layout="standing" data-tier={stop} className={`flex flex-col gap-3 rounded-panel border border-edge bg-surface p-4 ${className}`}>
+      <div className="flex items-center gap-3">
+        <BadgeMedallion name={level.name} fill={{ level: stop }} glyph={standing.glyph} size="sm" showName={false} />
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="text-caption font-bold text-fg-muted">{level.caption}</p>
+          <p className={`font-display text-play-sm font-extrabold ${RAMP_TEXT[stop - 1]}`}>
+            <bdi>{level.name}</bdi>
+          </p>
+        </div>
+        <div className="shrink-0 text-end leading-tight">
+          <p className="font-display text-play-sm font-extrabold text-fg-heading">
+            <bdi>{standing.figure}</bdi>
+          </p>
+          <p className="text-caption text-fg-muted">{standing.unit}</p>
+        </div>
+      </div>
+      {standing.children}
+    </div>
+  );
+}
+
+export function LevelCard({ level, reached, shown = "level", unlocksLabel, noUnlocksLabel, flip = false, layout = "faces", standing, className = "" }: LevelCardProps) {
+  if (layout === "standing" && standing) return <Standing level={level} standing={standing} className={className} />;
   // «reached» with no reached face shows the level held.
   const showing = shown === "reached" && reached ? "reached" : "level";
   if (flip && reached) {
