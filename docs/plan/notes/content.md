@@ -6738,3 +6738,28 @@ PR A.** Should the e2e run show a second match after all, it is scoped to `#main
 In the `023` create commit I edit only the «صالحة» assertions at `wave7-content-certificates.spec.ts:159` and
 `certificates.spec.ts:314` — nothing else in either file — each with its ledger line (**expectation**, `DEC-216` §2.1 /
 `REQ-UIX-073`) in the same commit, beside `certificates-page.test.tsx:60`'s and the `wave13…:165` selector line.
+
+### `members.ts` at `27afbb3e`, and the PR-B row (the lead)
+
+**Re-read from disk.** `ProfileInput.leaderboardOptOut` is now optional and `updateMyProfile()` writes the column only
+when it is sent; `setLeaderboardOptOut()` is new (`notify`'s `029` calls it). **PR A:** `saveProfile` keeps sending
+`leaderboardOptOut` from edit mode's checkbox, exactly as P3/P5 say. **`getMyInterests()` / `setMyInterests()` go
+BELOW every existing export, add-only**, re-read again from disk and checked with `git log -1 -- src/lib/dal/members.ts`
+before the edit.
+
+**PR B — my row** (contract 5, in the commit that adds `029`'s switch): the checkbox leaves edit mode,
+`PROFILE_FIELDS` loses `leaderboardOptOut`, `saveProfile` stops sending it (so `updateMyProfile` leaves the column
+alone), and `profile.leaderboardOptOut` is removed if nothing else reads it. Assertions that move then, from
+`notify.md` §W6 and my own:
+
+| File:line | Moves | Writer |
+|---|---|---|
+| `tests/components/me/profile-wave20.test.tsx` — the opt-out case (PR A's) | **expectation** — no checkbox in edit mode; a save sends no opt-out | me |
+| `tests/e2e/wave20-content-hub.spec.ts` — the opt-out step, if PR A's spec has one | **expectation**, the same | me |
+| `tests/components/members/profile-page.test.tsx:190` — the self tier's links | **expectation** → `/app/me/settings` (§W6) | the lead (custodian) |
+| `tests/e2e/wave7-content-notifications.spec.ts:99`, `:102`, `:108` – `:116` — the matrix | selector + expectation, moved to `029` (§W6) | `notify`'s screen — the lead names the writer |
+| `tests/e2e/wave7-content-calendar.spec.ts:100`, `:117`, `:118` | selector + expectation, the synced list gone (§W6) | `notify`'s screen (that is PR A's `025`) — the lead names the writer |
+| `tests/components/me/calendar-page.test.tsx` (5 cases) | as §W6 | `tests/components/me/**` is in my list as evidence, but the screen is `notify`'s — the lead names the writer |
+
+Plus D1's PR-B half: the settings link's name becomes `app.shell.settings` and its `href` `/app/me/settings`;
+`wave7-content-me.spec.ts:148` (a link «الخصوصية والبيانات» to privacy) then moves — **expectation**, PR B.
