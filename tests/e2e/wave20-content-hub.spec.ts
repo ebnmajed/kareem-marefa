@@ -202,7 +202,7 @@ test("★ SCR-023: empty, then one list — a revoked row struck with its reason
   await capture(page, "certificates", "empty");
 
   const { rows: tpl } = await db.query<{ id: string }>(
-    `insert into public.design_templates (org_id, scope, purpose, family, name, is_default) values ($1, 'org', 'certificate', 'attendance', 'شهادة الحضور', true) returning id`,
+    `insert into public.design_templates (org_id, scope, purpose, family, name, is_default) values ($1, 'org', 'certificate', 'presenter', 'شهادة التقديم', true) returning id`,
     [orgId],
   );
   const { rows: ver } = await db.query<{ id: string }>(
@@ -211,15 +211,17 @@ test("★ SCR-023: empty, then one list — a revoked row struck with its reason
   );
   await db.query(
     `insert into public.certificates (org_id, member_id, kind, session_id, serial, verification_code, state, template_version_id, recipient_name_snapshot, issued_at)
-     values ($1, $2, 'attendance', $3, 'HUB-2026-000001', 'abcdefghijklmnopqrstuvwx', 'issued', $4, 'عضو الحساب', now())`,
+     values ($1, $2, 'presenter', $3, 'HUB-2026-000001', 'abcdefghijklmnopqrstuvwx', 'issued', $4, 'عضو الحساب', now())`,
     [orgId, memberId, completedSession, ver[0].id],
   );
   await db.query(
     `insert into public.certificates (org_id, member_id, kind, session_id, serial, verification_code, state, template_version_id, recipient_name_snapshot, issued_at, revoked_at, revocation_reason)
-     values ($1, $2, 'attendance', $3, 'HUB-2026-000002', 'yzabcdefghijklmnopqrstuv', 'revoked', $4, 'عضو الحساب', now() - interval '1 day', now(), 'إصدار مكرر بالخطأ')`,
+     values ($1, $2, 'presenter', $3, 'HUB-2026-000002', 'yzabcdefghijklmnopqrstuv', 'revoked', $4, 'عضو الحساب', now() - interval '1 day', now(), 'إصدار مكرر بالخطأ')`,
     [orgId, memberId, revokedSession, ver[0].id],
   );
 
+  // Presenter certificates: an attendance one needs a check-in row (`certificates_attendance_needs_check_in`), and
+  // the list draws every kind the same way.
   await page.reload();
   await expect(main.getByText("الأرقام التي تكذب")).toBeVisible();
   await expect(main.getByText("قريبًا")).toBeVisible();
