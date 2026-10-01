@@ -3466,7 +3466,8 @@ scoring rules.
 - A capped action is explained in place as a row drawn with `0`; it is computed for the screen and **no ledger row,
   view or table holds it** (`05` §8).
 - A manual adjustment shows the admin's reason and name.
-- The empty and the filtered-empty states are built; the desktop table offers the CSV the screen already exports.
+- The empty and the filtered-empty states are built. ★ No CSV is offered: no member-side export of the ledger
+  existed to keep, and a member's ledger leaves through the data export (`REQ-PRF-006`) — `DEC-218` §3.2.
 - Every figure is the ledger's or the rules'; no figure is a literal and no award shows before completion.
 
 #### REQ-UIX-073 — My certificates is one list
