@@ -103,6 +103,8 @@ export const REGISTRY: Record<string, Entry> = {
   "code-input.tsx": variant("code-input", "code-input.test.tsx"),
   // wave 18 (DEC-207): born inside the scope — the bar of an immersive screen; its controls are the caller's.
   "action-bar.tsx": tokens("action-bar", ["bg-surface", "border-edge", "text-fg-muted"], "action-bar-scope.test.tsx"),
+  // wave 19 (DEC-214): the current step coral or lime, a done step by its glyph too; its `pg:` classes make it a variant.
+  "stepper.tsx": variant("stepper"),
 
   // ── `console`'s ──
   "data-table.tsx": variant("data-table"),
@@ -120,4 +122,9 @@ export const REGISTRY: Record<string, Entry> = {
   // wave 18 (DEC-207): it draws its own tiles — a figure is a node, which `stat` cannot take (W4) —
   // and composes `progress-bar`; its accent figures take the light ground's heading through `pg-light:`.
   "week-hud.tsx": variant("week-hud"),
+  // wave 19 (DEC-214): born inside the scope; the drop is `color-mix()` of its own fill, no token per fill.
+  "badge-medallion.tsx": tokens("badge-medallion", ["--color-sticker-", "--color-level-", "color-mix", "text-fg-heading", "rounded-pill"], "badge-medallion-scope.test.tsx"),
+
+  // ── `event`'s — its first (wave 19, DEC-214) ──
+  "star-input.tsx": tokens("star-input", ["text-signal", "text-edge-strong", "text-fg-muted", "text-error"], "star-input-scope.test.tsx"),
 };

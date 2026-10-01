@@ -585,6 +585,9 @@ export interface BadgeProps extends Styleable {
   size?: "sm" | "md";
   icon?: ReactNode;
   children: ReactNode;
+  /** wave 19 (DEC-214 §4), add-only: a level's ramp stop (1–5, `01-tokens.md`) — the directory's level pill.
+   *  Never a status colour (`DEC-073`). */
+  level?: number;
 }
 
 export interface SessionStatusBadgeProps extends Styleable {
@@ -608,6 +611,8 @@ export interface TagChipProps extends Styleable {
   selected?: boolean;
   /** Removal as a LINK, so it works before hydration — the timeline's removable filter chips. */
   removeHref?: string;
+  /** wave 19 (DEC-214 §4), add-only: a company chip's dot in the company's colour, through `--team`. */
+  teamColor?: TeamColor;
 }
 
 /**
@@ -624,7 +629,8 @@ export interface AvatarProps extends Styleable {
   displayName: string | null;
   /** A platform-stored path. Null, or a takedown, falls back to initials. */
   src?: string | null;
-  size?: 24 | 32 | 34 | 40 | 56 | 96 | 160;
+  /** wave 19 (DEC-214 §4), add-only: 44 (the directory's row), 84 (the profile's header), 104 (the desktop header). */
+  size?: 24 | 32 | 34 | 40 | 44 | 56 | 84 | 96 | 104 | 160;
   /** Decorative beside a name that is already rendered. */
   decorative?: boolean;
   /**
@@ -1097,6 +1103,21 @@ export interface LevelCardProps extends Styleable {
    * layout every screen has today, both faces readable without the flip.
    */
   flip?: boolean;
+  /**
+   * wave 19 (DEC-214 §3 N10), add-only: `standing` draws only `level`, as one row — the medallion, the caption and
+   * the name, `standing.figure` at the inline-end and `standing.children` underneath — for the profile's standing
+   * card. No unlock list, no reached face, no flip; `unlocksLabel` and `noUnlocksLabel` go unread. Default `faces`.
+   */
+  layout?: "faces" | "standing";
+  standing?: LevelStanding;
+}
+
+/** `scoring` · what `level-card`'s `standing` layout draws beside the level. */
+export interface LevelStanding {
+  figure: ReactNode;
+  unit: ReactNode;
+  glyph?: ReactNode;
+  children?: ReactNode;
 }
 
 // ── wave 18 (DEC-205, DEC-206, DEC-207, REQ-UIX-057) — four primitives for the screens ──────────────

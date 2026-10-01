@@ -59,6 +59,9 @@ import { TagChipDemo } from "./demos/tag-chip";
 import { TextareaDemo } from "./demos/textarea";
 import { ToastDemo } from "./demos/toast";
 import { WeekHudDemo } from "./demos/week-hud";
+import { StarInputDemo } from "./demos/star-input";
+import { StepperDemo } from "./demos/stepper";
+import { BadgeMedallionDemo } from "./demos/badge-medallion";
 import type { DemoGround } from "./ground";
 
 // «ساحة اللعب» in the gallery — contract 4, DEC-183 §4.2(f), DEC-186 §2.
@@ -137,6 +140,10 @@ const DEMOS: { file: string; title: string; node: (ground: DemoGround) => ReactN
   { file: "week-hud", title: "أسبوعك", node: () => <WeekHudDemo /> },
   { file: "feed-item", title: "عناصر الخلاصة", node: () => <FeedItemDemo /> },
   { file: "attendee-stack", title: "من يحضر", node: () => <AttendeeStackDemo /> },
+  // ── wave 19 (DEC-213, DEC-214): the four batch B needed ──
+  { file: "star-input", title: "تقييم بالنجوم", node: () => <StarInputDemo /> },
+  { file: "stepper", title: "مراحل العملية", node: () => <StepperDemo /> },
+  { file: "badge-medallion", title: "وسام الشارة", node: () => <BadgeMedallionDemo /> },
   { file: "rank-row", title: "صفّ الترتيب", node: () => <RankRowDemo /> },
   { file: "race-bar", title: "سباق الشركات", node: () => <RaceBarDemo /> },
   { file: "level-card", title: "بطاقة المستوى", node: () => <LevelCardDemo /> },

@@ -151,6 +151,8 @@ a selector moved or an expectation did, and why.*
 |---|---|---|---|
 | `tests/e2e/wave18-lead-shell.spec.ts` · «1280: … the rail» (renamed «five destinations, «الأعضاء» among them») | **expectation** — the rail's links gain «الأعضاء» after «الجلسات» | `DEC-213` §3.3: the route exists now; `DEC-206` §4.31's condition is met | F1 |
 | `tests/e2e/shell-disclosures.spec.ts` · the account menu's hrefs | **expectation** — `/app/members` appended | `DEC-213` §3.4: the phone's way to the directory | F1 |
+| `tests/components/event/star-rating.test.tsx` · all 7 cases → `tests/components/ui/star-input.test.tsx` | **selector** — the import, and «مطلوب» passed as `requiredLabel`; no expectation changed | `star-rating.tsx` is replaced by `ui/star-input` (`DEC-213` §5.124) | `ef0c7b48`, `3e5b53e5` |
+| `tests/components/survey/question-field.test.tsx:47` | **neither** — a comment naming `star-rating` | the file it named is gone | `84ee6e7a` |
 
 ---
 
