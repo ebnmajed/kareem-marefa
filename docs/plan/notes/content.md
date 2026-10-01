@@ -6732,3 +6732,9 @@ The spec runs on both projects, but the test sets the viewport to 390 × 844 fir
 desktop project too the layout's strip is `hidden lg:block` → `display: none`, outside the accessibility tree, and
 `getByRole("link", { name: "الخصوصية والبيانات" })` matches the top row's link alone. **No change and no ledger line in
 PR A.** Should the e2e run show a second match after all, it is scoped to `#main`'s top row and becomes a selector line.
+
+### Grant — the two «صالحة» lines (the lead)
+
+In the `023` create commit I edit only the «صالحة» assertions at `wave7-content-certificates.spec.ts:159` and
+`certificates.spec.ts:314` — nothing else in either file — each with its ledger line (**expectation**, `DEC-216` §2.1 /
+`REQ-UIX-073`) in the same commit, beside `certificates-page.test.tsx:60`'s and the `wave13…:165` selector line.
