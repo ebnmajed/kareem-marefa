@@ -4348,3 +4348,28 @@ Untouched and expected green: `moment-rank.test.tsx` (the company board keeps `M
 5. The test file name for the weekly seen cases (§5.4).
 6. ★ **The three rulings I most want at sync 1**: **D26** (where moment 4 plays), **D27** (the CSV: build it or
    not), **D31 with D32** (the company cup card's quarter, and what «بلا ترتيب» means). Close behind: D39 and D42.
+
+## 9 · Amendments after the frame (`ebdde010`, doc `f79f5ee3`) and the lead's notes on contract 3
+
+- **`SCR-022`'s top row and strip**: the page renders `HubTopRow({ title: «نقاطي», back: "/app/me" })` and
+  `<HubStrip />` from `src/components/shell/` below `lg`; from `lg` the lead's `me/layout.tsx` draws the band, then the
+  strip. §1's rows 1 – 2 read so.
+- **The boards draw their own top row** (`ownsTopRow`, no hub strip, not `HubTopRow`): `h1` «لوحات الصدارة», «حتى
+  الجمعة» on the week, then the window chips — a small server component of mine,
+  `src/components/scoring/board-top-row.tsx`, used by `027` and `028` (PR B).
+- **Ruled by the lead**: the band's figures are those of the hub page the member landed on until a hard load or
+  `refresh()` — a known property, not a defect; the page's `HubTopRow` `h1` is the `h1` at every width, the band's
+  name is text (D34 closed that way).
+- ★ **The hidden copy never plays and never writes** (`content`'s requirement 1). On `/app/me` both forms are in the
+  DOM at every width. `HubStanding` wraps its figures in `MomentWeek`, whose `useDisplayed` gate (`use-displayed.ts`)
+  mounts the controller — the only code that claims an occurrence, animates or calls the two bound actions — **only
+  in the copy that has a box**. The `display:none` copy renders the static state, claims nothing and writes nothing
+  to `member_seen_marks`. A resize across `lg` mounts the other copy's controller, which finds the occurrence already
+  claimed. `tests/components/hub/standing.test.tsx` proves it: both forms mounted, one with `display:none` → only
+  the displayed one plays, exactly one acknowledgement per mark; then the re-render test (mount, play, unmount,
+  mount again → silence) on each form, and the hidden form alone → no play, no call.
+- ★ **A skeleton for the card form** (`content`'s requirement 2): `export function HubStandingSkeleton({ form }: {
+  form: "card" | "band"; className?: string })` from `src/components/hub/standing.tsx` — `skeleton` primitives in the
+  card's own geometry (the avatar row, the level row, the bar, three tiles), `aria-hidden`, no text, no data, no
+  `getTranslations`, so `content` wraps `<HubStanding form="card">` in `<Suspense fallback={<HubStandingSkeleton
+  form="card" />}>` and the lead may do the same for the band.
