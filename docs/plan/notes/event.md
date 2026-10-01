@@ -1017,3 +1017,335 @@ least `min` responses by definition. `withheld` → the control is offered; the 
 answered, and the refusal says «لا يمكن إزالة استبانة أجاب عنها أحد». «Attached the wrong template and
 removed it at once» keeps working, which is the case that matters, and the one press a staff member can
 waste costs them a sentence rather than costing a member their anonymity.
+
+---
+
+# Wave 19 — plan (SCR-015 and `ui/star-input`, `DEC-213`, `REQ-UIX-066`, `REQ-UIX-064`)
+
+*Planning only. Nothing is deleted before the lead posts «the plans are approved» and «the frame is in».* Read
+for this plan: STATUS's wave-19 block, `DEC-213` in full, `DEC-199` §2, `DEC-208`, `M10b.md` §2 and §7, `M10a.md` §0
+and §10, `Rate.dc.html` beside its PNG at 390, `01` (`REQ-RAT-001` … `007`, `REQ-SUR-001` … `009`, `REQ-UIX-064`,
+`066`), `09` `SCR-015`, `STORY-UIX-052`/`054`, and — re-derived for the table below — the five files under
+`rate/`, `lib/dal/ratings.ts`, `lib/dal/surveys.ts` (the member's half), `components/event/{star-rating,ratings}.tsx`,
+`components/survey/question-field.tsx`, `ui/action-bar.tsx`, `ui/submit-button.tsx`, and every suite that opens
+`/rate` (listed in §5).
+
+## 1 · The regions, in the artboard's order, and what each is built from
+
+| # | Region (`Rate.dc.html`) | Built from | Data |
+|---|---|---|---|
+| 1 | **Top row**: the back control (40 px round, chevron pointing back) and `h1` «قيّم الجلسة» in the display face | `ui/link` with an `ArrowIcon direction="back"` and an `aria-label` — the shape `event-top-row.tsx` uses, not a copy of it; the `h1` is the page's own. Drawn at every width (one `h1`); below `lg` the shell's bar gives way (frame addition 2), from `lg` the shell's bar stands above it | `getSessionHeading()` (id for the href) |
+| 2 | **The session's mini-row**: the poster at 44 × 56, the title, «presenter، company · date · حضرت» | `ui/card` (`density` compact, no `href`) holding `ui/poster` (the rendered master, else its placeholder in the presenter's company colour as `--team`) and two lines. «حضرت» only when the viewer holds an active check-in (`eligibility.checkInId`) | title from `getSessionHeading()`; poster from `getSessionPoster()` (`posters.ts`, read only); ★ presenter + company + team colour — **not carried by any read the page makes today** (see §7.3 and «needs») |
+| 3 | **`star-input` — تقييم الجلسة**, 48 px stars, the count read back under the row | `ui/star-input` (new, §3), `size="lg"`, `name="sessionStars"` | `existing.sessionStars` or what the round trip handed back |
+| 4 | **`star-input` — تقييم المُقدِّم** | `ui/star-input`, `name="presenterStars"` | as above |
+| 5 | **The comment**: label «ملاحظات» with a muted «(اختياري)», the placeholder, «N من 2000» under it | `ui/field` + `ui/textarea` (`maxLength` read from one constant, §4); the counter is the field's `hint`, updated on input | `existing.comment` / the round trip |
+| 6 | **The anonymity panel**: the shield glyph, `ratings.form.anonymityNotice` with `min` | `ui/panel` (`tone="info"`), the glyph from `ui/icons` if the set has one, else none — no new glyph is drawn by me (a request to the lead if wanted) | `minAggregate` from `org_settings.rating_min_aggregate` via `getRatePageData()` |
+| 6a | ★★ **The survey** — not drawn; kept (`DEC-213` §5.90). See §6 | `<section aria-labelledby>` + `h2` + `components/survey/question-field.tsx` as it is | `getSurveyForMember()` |
+| 7 | **The bottom bar**: the submit, then the window line «يُغلق باب التقييم في … · يمكنك تعديله حتى ذلك الحين» | `ui/action-bar` used as it is (`sessions'`): `primary` = `ui/submit-button`, `note` = the window line. Rendered **inside the `<form>`** so `useFormStatus` sees it (§6) | `eligibility.windowClosesAt` in the org's zone |
+
+Above region 3, inside the form and only when there is one: the error summary (`ui/form-summary`) or the refused
+write's alert. Above the form, only on `?rated=1`: the receipt (§4). Neither is drawn.
+
+## 2 · ★★ The kept-behaviour table (`DEC-208`)
+
+Re-derived from the requirements and the DAL listed above, not from memory. «Lives in» names the file **after** the
+rebuild. `actions.ts` and `state.ts` are the screen's behaviour, not its markup: **they are not deleted** — the delete
+commit removes `page.tsx`, `rate-form.tsx`, `loading.tsx` and `components/event/star-rating.tsx` (§5). Both survive
+untouched except for one add-only constant in `state.ts` (row 14).
+
+| # | Behaviour | Lives in, after | Kept by |
+|---|---|---|---|
+| 1 | Every read goes through the DAL, which calls `sessionClient()`/`requireSession()` at the data — never in a layout | `page.tsx` → `getSessionHeading`, `getRatePageData`, `getSurveyForMember`, `getSessionPoster` (+ the presenter line, §7.3) | `REQ-NFR-001`, CLAUDE.md «Data access» |
+| 2 | An id the viewer cannot see → `notFound()` (from `getSessionHeading()` returning `null` under `sessions_read`), never a rule about a session not there for them | `page.tsx` | `REQ-RAT-001`; `03` `sessions_read` |
+| 3 | Session not `completed` → the explanation `ratings.states.notCompleted` and «العودة إلى الجلسة», no form, no bar — **not a 404** | `page.tsx`, `ui/empty-state` with its `action` | `REQ-RAT-003` (opens at completion), `DEC-213` §2.2 |
+| 4 | Not checked in → `ratings.states.notCheckedIn` and the way back, no form, no bar, no «حضرت» | `page.tsx` | `REQ-RAT-001` |
+| 5 | A presenter is refused **through the check-in requirement**: they cannot check in to their own session, so they land on row 4 | unchanged: `getRatingEligibility()` + `ratings_write_self` | `REQ-RAT-001`, `REQ-CHK-011` |
+| 6 | A removed check-in grants nothing (`removed_at is null` in the DAL's read and in the policy) | `lib/dal/ratings.ts` (untouched) | `REQ-CHK-017`, `0087` |
+| 7 | The window: `completed_at + org_settings.rating_window_days`, computed in the DAL for the explanation and the date; enforced by `rating_window_open()` inside `ratings_write_self`, `ratings_update_self` and `submit_survey_response()` (`0131`, `0137`) — one definition in SQL | `lib/dal/ratings.ts`, SQL (untouched) | `REQ-RAT-003`, `REQ-SUR-003` |
+| 8 | **The window is stated** on the open screen — the date in the org's zone | the bar's `note` | `REQ-RAT-003` («The window is stated in the rating prompt») |
+| 9 | Window closed → «أُغلق باب التقييم لهذه الجلسة», the saved stars **read-only**, the comment in `<bdi>`, «العودة إلى الجلسة»; **no form, no radiogroup, no bar** | `page.tsx`, `ui/panel` + `star-input` read-only face | `REQ-RAT-003` («the form is unavailable and existing ratings are immutable») |
+| 10 | The anonymity notice: the threshold **read** from `rating_min_aggregate`, six ICU forms, a Western digit, **and** «يمكن لمشرفي المؤسسة الاطلاع على التقييمات الفردية» (every form of the key carries it — `DEC-213` §2.5) | region 6 | `REQ-RAT-004`, `REQ-RAT-005`, `REQ-RAT-006`, D36, OQ-009 |
+| 11 | A first rating: `submitRatingAction` bound with the locale, the session id, the active **check-in id** and the survey's shape | `rate-form.tsx` → `actions.ts` (untouched) | `REQ-RAT-001` (the check-in grants it), `REQ-RAT-002` |
+| 12 | An edit: `updateRatingAction` bound with `existing.id`; the form pre-filled from the saved rating; the label «تحديث التقييم» | `rate-form.tsx` | `REQ-RAT-003` (editable within the window) |
+| 13 | Validation: both rows 1 – 5 and required, comment ≤ 2000, **Zod before the DAL**; the database's `check` and `with check` are the authority | `actions.ts`, `lib/dal/ratings.ts` (untouched) | `REQ-RAT-002`, `REQ-NFR-002` |
+| 14 | ★ The 2000 is **read** — one exported constant in `state.ts` used by the textarea's `maxLength`, the counter and `capture()`; the DAL's Zod and `0010:379`'s `check` stay as they are | `state.ts` (add-only), `rate-form.tsx` | contract 6, `REQ-RAT-002` |
+| 15 | A refused WRITE (`already_rated`, `not_permitted`, `window_closed`, `generic`) is a focused `role="alert"` at the top of the form — never the summary | `rate-form.tsx` | `REQ-UIX-010`, `REQ-UIX-007` |
+| 16 | A field error: the summary (`ui/form-summary`) linking to each field, the message adjacent at `#<name>-error`, the group's `id={name}` as the link's target, `aria-invalid` and `aria-describedby` on the group | `rate-form.tsx`, `ui/star-input` | `REQ-UIX-009`, `REQ-UIX-010` |
+| 17 | **What was typed survives** a failed round trip — the stars, the comment, every survey answer — each control remounted by `key={…attempt}` and reading its default back from the returned state; `noValidate` on the form | `rate-form.tsx` | `REQ-UIX-011`, `DEC-149` §1 |
+| 18 | Required rows are positively marked («مطلوب»), `aria-required` | `ui/star-input` (`requiredLabel` prop) | `REQ-UIX-011` |
+| 19 | ★ **`?rated=1` is an in-page receipt**, `role="status"`, never a toast: «تم إرسال تقييمك» — or «تم إرسال تقييمك وإجاباتك» when the survey was answered — `submittedBody`, both ratings read-only, «العودة إلى الجلسة»; shown only when a rating exists; the form stays below it, editable | `page.tsx`, `ui/panel tone="success"` | `DEC-141` ruling 2, `DEC-213` §5.92, `REQ-SUR-001` |
+| 20 | Success redirects to `rate?rated=1` with the locale | `actions.ts` (untouched) | `DEC-141` ruling 2 |
+| 21 | No instant a rating was made is ever shown (`16` §9.2a); `submitted_at`/`edited_at` are day-coarsened in storage | not rendered anywhere on the screen | `REQ-SUR-004`, `REQ-SUR-009` |
+| 22 | ★★ A session with **no survey shows nothing about one**: `getSurveyForMember()` returns `null`, no section, no heading, the bar keeps «إرسال التقييم» / «تحديث التقييم» | `page.tsx`, `rate-form.tsx` | `REQ-SUR-001` |
+| 23 | ★★ **The survey section** after the anonymity panel and before the bar: `h2` «استبانة الجلسة», the intro, each question through `SurveyQuestionField`, answers kept across a round trip | `rate-form.tsx` (§6) | `REQ-SUR-004`, `REQ-SUR-002`, `DEC-213` §5.90 |
+| 24 | An answered survey reads «شكرًا، أجبت عن هذه الاستبانة» and «لا يمكن تعديل الإجابات بعد إرسالها», with no questions — a member never sees their answers back | `rate-form.tsx` | `REQ-SUR-003`, `DEC-160` §3 |
+| 25 | ★★ **Two decorrelated writes, one press**: the rating by the action; the answers by `submit_survey_response()`, which records the register and enqueues the answers with a jittered delay — no shared id, nothing about a queue on the screen, no answer in a log, error or redirect | `actions.ts` (untouched) | `REQ-SUR-004`, `REQ-SUR-009`, `DEC-160` §3 |
+| 26 | The action receives only the survey's **shape** (ids, kinds, `required`) — bound by the form, re-derived in SQL | `rate-form.tsx` → `actions.ts` | `REQ-SUR-003` |
+| 27 | ★★ A required question blocks **the survey, never the rating**; `RATING_SAVED` turns the summary's title into «لم نستطع إرسال إجاباتك» with «حُفظ تقييمك. أكمل الأسئلة المطلوبة لإرسال إجاباتك.» as its description — never the red alert | `rate-form.tsx`, `state.ts`, `actions.ts` | `REQ-SUR-002`, `DEC-164` |
+| 28 | The second press after `RATING_SAVED`: `already_rated` is not a refusal when a survey is on the screen; a changed rating is updated (`ratingChanged()`), an unchanged one is not written; then the survey is sent | `actions.ts`, `state.ts` (untouched) | `DEC-164`; `tests/unit/ratings-second-press.test.ts` |
+| 29 | ★★ **The bar's label follows the survey's state**: unanswered survey → «إرسال التقييم والإجابات» / «تحديث التقييم وإرسال الإجابات»; none or answered → «إرسال التقييم» / «تحديث التقييم» | the `primary` of `ui/action-bar`, in `rate-form.tsx` | `REQ-SUR-004`, `DEC-213` §5.90 |
+| 30 | Pending: the submit shows «جارٍ الإرسال…» through `useFormStatus`, cannot be pressed twice; no nudge, no timer | `ui/submit-button` inside the form | `REQ-UIX-007`, `DEC-146` |
+| 31 | ★ **Stars fill from the right**: star 1 first in DOM in a plain flex row, so the inline start — the right in Arabic; never `row-reverse` | `ui/star-input` | `REQ-UIX-064`, `09` `SCR-015` |
+| 32 | **Five native radios** in one group: one tab stop, the browser's arrow keys (← increases in RTL), a real value in `FormData`, a form reset that restores the rendered default | `ui/star-input` | `REQ-UIX-064`, `DEC-213` §5.124 |
+| 33 | The fill (and now the hover preview and the read-back) is **CSS `:has()`**, right before hydration and right after React resets the form | `ui/star-input` | `REQ-UIX-064`, `DEC-141` |
+| 34 | Each radio is named by the **plural count** («نجمة واحدة», «نجمتان», «5 نجوم»), six ICU forms, Western digits; the group by its legend | strings: `ratings.form.starCount` passed as `starLabels`; markup: `ui/star-input` | `REQ-UIX-064`, `DEC-124`, `10` |
+| 35 | A pointer chooses by pressing the visible star — **the radio's parent is the clickable label** (`radio.locator("xpath=..")` in five specs) | `ui/star-input` | the specs' pointer path (§5) |
+| 36 | `<bdi>` on every interpolated title, name and comment: the session title (mini-row), presenter name and company (mini-row), the comment in the closed state | `page.tsx` | CLAUDE.md i18n rule, `10` |
+| 37 | Dates in the org's zone (`timeZone` from `org_settings`), Western digits, through `components/sessions/numerals.ts` | `page.tsx` | OQ-018, `DEC-124` |
+| 38 | The skeleton: its own, `aria-hidden`, no text, no `getTranslations` — now the new shape (top row, mini-row, two star rows, the field, the panel) | `loading.tsx` (re-written) | `REQ-UIX-005` |
+| 39 | The no-JS path: the native form posts to the bound Server Action, the radios carry their values, the fill is CSS; the counter shows the server-rendered count and simply does not tick | `rate-form.tsx`, `ui/star-input` | `REQ-UIX-064`; progressive enhancement as today |
+| 40 | `?next=` — **none existed on this route**; the sign-in redirect is `proxy.ts`'s, untouched | — | not applicable, recorded so the row is not mistaken for a drop |
+| 41 | The accessible names the suites pin — all kept: `h1` «قيّم الجلسة»; radiogroups named /تقييم الجلسة/, /تقييم المُقدِّم/ and exactly **two** of them; radios «نجمة واحدة» … «5 نجوم»; the label «ملاحظات (اختياري)»; buttons «إرسال التقييم» (exact), «تحديث التقييم», /إرسال التقييم والإجابات/; `status` with «تم إرسال تقييمك»; `img` «تقييم الجلسة: 5 نجوم» / «تقييم المُقدِّم: 5 نجوم»; link «العودة إلى الجلسة» (exactly one per state — so the top row's back control is named «رجوع», not that); `#presenterStars-error`; `form[novalidate] [role=alert]`; the heading «استبانة الجلسة» | the files above | the specs in §5 |
+| 42 | **Dropped, deliberately:** the breadcrumb «الجلسات › title» and the session's date as the header's description. The artboard replaces both with the back control and the mini-row, which names the session (in `<bdi>`) and its date. At `lg` there is no artboard; I build the same top row — **flagged** for the lead (§7.4) | — | `DEC-199` §2, `DEC-213` §3.2 |
+
+**42 rows.** Read against the new files after the create commit, one tick per row, in this note.
+
+## 3 · `StarInputProps` — the type for `ui/index.ts` (contract 2)
+
+The primitive is **server-safe** — no `"use client"`, no hook, no message catalogue, no DAL: markup and CSS. So the
+page (server) can draw its read-only face and the form (client) its input, from one file.
+
+```ts
+/** The five names of a star row, star 1 first — «نجمة واحدة» … «5 نجوم». The caller formats them (six ICU forms). */
+export type StarLabels = readonly [string, string, string, string, string];
+
+interface StarInputShared extends Styleable {
+  /** The visible name of the row — «تقييم الجلسة». */
+  legend: string;
+  /** Each star's accessible name, and the line read back under the row. */
+  starLabels: StarLabels;
+  /** `lg` is the rate screen's 48 px star; `md` (default) a receipt's row. */
+  size?: "md" | "lg";
+}
+
+/** The input: a radio group of five native radios. Star 1 is first in DOM, so it is the inline start — the right in RTL. */
+export interface StarInputEditableProps extends StarInputShared {
+  readOnly?: false;
+  /** The field's name, and the group's `id` — the error summary's link target. */
+  name: string;
+  /** A saved rating, or what a failed round trip handed back. Uncontrolled: the radio is `defaultChecked`. */
+  defaultValue?: 1 | 2 | 3 | 4 | 5;
+  required?: boolean;
+  /** «مطلوب», drawn beside the legend when `required`. */
+  requiredLabel?: string;
+  /** Adjacent, icon-marked, at `#<name>-error`, tied to the group by `aria-describedby`. */
+  error?: ReactNode;
+  disabled?: boolean;
+}
+
+/** The read-only face — the closed window and the receipt. One `role="img"`; no radio, no radiogroup. */
+export interface StarInputReadOnlyProps extends StarInputShared {
+  readOnly: true;
+  value: 1 | 2 | 3 | 4 | 5;
+  /** The image's whole accessible name — «تقييم الجلسة: 5 نجوم». The caller composes it; the primitive joins no words. */
+  label: string;
+}
+
+export type StarInputProps = StarInputEditableProps | StarInputReadOnlyProps;
+```
+
+Behaviour the type cannot say, held by the tests:
+- **Fill, hover and read-back from the right, by CSS.** A star is filled when its radio or a *later* sibling's is
+  checked; while the row is hovered, a star is filled when it or a later sibling is hovered and the stars after the
+  hovered one are not. The read-back is five `aria-hidden` lines, one shown per checked value — the checked radio
+  already speaks its count, so the line is for the eye and is never read twice. Nothing scales on hover; no keyframe.
+- **← increases, → decreases** in RTL because the radios are native and in ascending DOM order — not by a key
+  handler. A key handler would be a second keyboard model to keep in step.
+- No `row-reverse` anywhere; the group is a `fieldset role="radiogroup"` named by its `legend` (one group per row, so
+  `getByRole("radiogroup")` still counts **two** on the screen).
+- The empty row submits nothing — «no opinion» is not zero (`REQ-RAT-002`).
+- The colour of a filled star is a semantic token — see §7.1; the outline is `edge-strong`.
+
+Files: `src/components/ui/star-input.tsx`, `tests/components/ui/star-input.test.tsx` (the RTL check, the six cases
+carried from `star-rating.test.tsx`, the read-only face, the read-back lines, the hover classes present),
+`tests/components/ui/star-input-scope.test.tsx` (inside `PlayScope`), `src/app/[locale]/(dev)/ui/demos/star-input.tsx`
+(empty, chosen at 4, required with an error, disabled, read-only at 3 and 5, `md` and `lg`, all in Arabic from fixture
+strings). The registry entry and the gallery wiring are the lead's.
+
+## 4 · Every state `M10b.md` §2 names (or the tree has) and how it is built
+
+| State | Drawn? | Built as |
+|---|---|---|
+| Open, empty | yes | §1, regions 1 – 7; no star checked; counter «0 من 2000» |
+| Open, editing within the window | no | the same screen pre-filled from `existing`; the bar reads «تحديث التقييم» (or the survey's update label) |
+| Submitted — `?rated=1` | no | ★ the **in-page receipt** (`DEC-213` §5.92 — **not** the toast `M10b.md` draws): between the mini-row and the form, `role="status"` around `ui/panel tone="success"`, the survey-aware title, `submittedBody`, both rows as `star-input readOnly`, «العودة إلى الجلسة» as `ButtonLink`. The form follows, editable |
+| Closed | no | mini-row with «حضرت»; `ui/panel tone="ended"` «أُغلق باب التقييم لهذه الجلسة»; when a rating exists, both rows read-only and the comment in `<bdi>`; «العودة إلى الجلسة». **No form, no radiogroup, no bar** |
+| Not completed · not checked in (incl. a presenter) | no | top row, mini-row **without** «حضرت», `ui/empty-state` with the reason as its title and «العودة إلى الجلسة» as its action. No form, no bar. Never a 404 (`DEC-213` §2.2) |
+| Not visible to the viewer | — | `notFound()` → the event segment's `not-found.tsx` |
+| Error summary (a missing row, a long comment) | no | `ui/form-summary` at the top of the form, links to `#sessionStars` / `#presenterStars` / `#comment`, field messages adjacent; everything typed kept |
+| A refused write | no | the focused `role="alert"` at the top of the form; everything typed kept |
+| Rating saved, survey refused (`RATING_SAVED`) | no | the summary with the survey's title and description (row 27) |
+| Survey present, unanswered / answered | no | §6 |
+| Pending | no | `SubmitButton`'s pending label |
+| Loading | no | `loading.tsx`, the new shape |
+
+## 5 · Files, and every existing assertion that moves
+
+**Created** (after P0 lands the type): `src/components/ui/star-input.tsx` · `tests/components/ui/star-input.test.tsx` ·
+`tests/components/ui/star-input-scope.test.tsx` · `src/app/[locale]/(dev)/ui/demos/star-input.tsx` ·
+`tests/e2e/wave19-event-rate.spec.ts` (the receipt, closed, not eligible, the counter, the read-back after a press,
+hover-free fill order, the bar's label with and without a survey, captures at
+`.qa-shots/rtl/wave19-event-rate-<state>-390.png` honouring `E2E_SHOTS_DIR`).
+
+**Commit A — the delete** (`DEC-208`): `rm` `src/app/[locale]/app/sessions/[id]/rate/{page,rate-form,loading}.tsx` and
+`src/components/event/star-rating.tsx`, with `tests/components/event/star-rating.test.tsx` (its cases move to the
+primitive's test in commit B — one ledger line each, six lines, **selector moved, expectation unchanged**). ★ Between
+A and B `tests/components/survey/rate-form.test.tsx` cannot import its subject; A and B land back to back and the
+hook is judged on B. If the lead wants every commit green, A also removes that test file and B restores it
+byte-identical — the lead's call.
+
+**Commit B — the create**: the three files written from the artboard; `rate/state.ts` gains `RATING_COMMENT_MAX`
+(add-only); `src/messages/ar/ratings.json` then `en/` gain ★ `form.back` «رجوع», ★ `form.attended` «حضرت», ★
+`form.commentOptional` «(اختياري)» with `form.commentName` «ملاحظات» (the label is the two in one `<label>`, so its
+name stays «ملاحظات (اختياري)»; `form.commentLabel` stays for the summary's line), ★ `form.commentPlaceholder` «ما
+الذي نفعك، وما الذي كنت تودّ أن يكون مختلفًا؟», ★ `form.commentCount` «{count} من {max}», ★ `form.windowEditable`
+«يمكنك تعديله حتى ذلك الحين», ★ `form.actionsLabel` «إرسال التقييم» (the bar's group name), ★ `form.presenterLine`
+«{name}، {company}». `form.commentHint` is no longer rendered and stays in the file (keys are stable). No `survey.json`
+key changes.
+
+**Not touched:** `rate/actions.ts`, `lib/dal/{ratings,surveys}.ts` (unless the lead rules the presenter line into
+`ratings.ts`, §7.3), `components/event/ratings.tsx`, `components/survey/**`.
+
+**`ratings.tsx` (the event-page slot) does not move to `star-input`, and nothing of it goes**: it draws no star at all
+— the prompt and edit links for a rater, the two averages as **numbers** and the comments for a presenter or staff.
+There is nothing to replace. **`star-rating.tsx` goes** in commit A: its only importers are `rate/page.tsx`
+(`StarDisplay`) and `rate/rate-form.tsx` (`StarRating`). Two comments still name it — `question-field.tsx:14`, `:115`
+(mine, fixes only: I correct both to `star-input` in commit B), `tests/components/survey/question-field.test.tsx:47`
+(not in my list — left, told to the lead) and `ui/index.ts:275` (the lead's).
+
+**Existing assertions, suite by suite** — every one read; **I expect no expectation to move, and no selector either**
+except the six in `star-rating.test.tsx`:
+
+| Suite | Owner | Expected |
+|---|---|---|
+| `tests/components/event/star-rating.test.tsx` (6 cases) | mine | **moved** to `star-input.test.tsx`: the import and the «مطلوب» now passed as a prop (selector); every expectation identical — including the read-only face's `fill` attributes `currentColor ×3, none ×2` |
+| `tests/components/survey/rate-form.test.tsx` (5 cases) | mine | unchanged — `RateForm` keeps its path and its five props; the new ones (`notice`, `windowNote`) are optional |
+| `tests/components/event/ratings.test.tsx` | mine | unchanged — the slot is not touched |
+| `tests/unit/ratings-second-press.test.ts` | mine | unchanged — `state.ts` keeps `ratingChanged()` |
+| `tests/e2e/wave7-sessions-rate.spec.ts` (6 tests) | mine | unchanged. Note: `filled()` reads the computed `fill` of every `path` in the group, so the read-back lines carry **no** SVG (the error's icon renders only on an error, and `filled()` is never called then); a filled star of any colour is still `!== "none"` |
+| `tests/e2e/event-rate.spec.ts` (4 tests) | mine | unchanged |
+| `tests/e2e/wave10-event-rate-survey.spec.ts` (3 tests) | mine | unchanged — locators are from `#main`, and the bar is rendered inside the form inside `#main` |
+| `tests/e2e/sessions-screens.spec.ts` §SCR-015 | not mine | unchanged expected (radiogroup ×2, label click, «ملاحظات (اختياري)», «إرسال التقييم», the status) |
+| `tests/e2e/wave10-demo-survey.spec.ts`, `wave11-lead-a11y-sweep.spec.ts` | lead | unchanged expected; the sweep re-runs on the new screen |
+
+If a run proves me wrong, each moved assertion is a ledger line in `STATUS.md` in the same commit, through the lead.
+
+## 6 · Where the survey sits, and how the bar carries the submit
+
+**Order inside the one `<form noValidate>`**: the summary or the alert → `star-input` ×2 → the comment → the
+anonymity panel → ★★ **the survey section** (`aria-labelledby`, `h2` «استبانة الجلسة», the intro, the questions, or
+«أجبت» and its note) → `ui/action-bar`. So the survey is after the panel and before the bar, as `DEC-213` §5.90 rules,
+and reading order is the visual order.
+
+**The bar**: `ui/action-bar` is used as it is — no prop added. It is rendered **inside the form** because
+`SubmitButton` reads `useFormStatus()` of its enclosing form, and a `form=` attribute would leave the pending state
+dark. `label` = `ratings.form.actionsLabel`; `primary` = `<SubmitButton pendingLabel=…>` whose label is row 29's four-way
+choice, `size="lg" className="w-full"`, as `action-card`'s primary is; `note` = «يُغلق باب التقييم في {date} · يمكنك تعديله حتى ذلك
+الحين». `position="fixed"`, so the shell's `data-action-bar` contract pads `<main>` and the scroll clears it. **No bar**
+in the closed, not-completed and not-checked-in states, which have nothing to submit. The receipt keeps the bar,
+because the form below it is still live.
+
+`RateForm` gains two optional props for this, so its five existing cases stand: `notice?: ReactNode` (the panel, drawn
+between the comment and the survey) and `windowNote?: ReactNode` (the bar's note). The page composes both on the server.
+
+## 7 · Disagreements `DEC-213` §5 does not list — not picked
+
+1. ★ **The filled star is a company's colour.** `Rate.dc.html` fills stars `#FFD23F`, which `docs/design/01-tokens.md:60`
+   names `--color-team-gold` — «دبابيس», a company — and `globals.css:237` carries as `--color-team-gold` (with an
+   identical `--color-sticker-gold` at `:271`). The plan's rule: a company's colour reaches the DOM only as `--team`
+   from data, and is never an accent (`DEC-183` contract 3, `DEC-206` §4.62's reasoning). There is **no semantic star
+   token**; the tree fills with `fg-heading` (bone). The options I can see: a semantic token for a filled star in
+   `globals.css` (the lead's), the sticker gold, or bone as today. **The lead's ruling.**
+2. **The mini-row's date is relative** («أمس»); the tree prints the absolute date (`formatDate`) and no relative
+   formatter exists in `numerals.ts`. A relative word on a screen open for 14 days also changes under the reader.
+   Not ruled by me.
+3. **The mini-row's presenter and company are read by nothing the page calls.** `getSessionHeading()` carries id, title,
+   state, start and zone. Not a design disagreement — a data gap like `DEC-213` §5.86 for the viewer. The poster is
+   `getSessionPoster()` (read only); the presenter line needs one of: (a) an add-only field on `getSessionHeading()` —
+   `presenters: { displayName, companyName, teamColor }[]` — written by `sessions` (its file), which **`content` could
+   share for §5.86**; (b) an add-only read in my `ratings.ts`; (c) `getSessionForEvent()`, which reads far more than
+   this row needs. I would ask for (a); **the lead decides**.
+4. **`lg` has no artboard.** The phone's own top row is drawn at every width (one `h1`), and `ui/action-bar` fixed at
+   `inset-x-0` spans under the nav rail at desktop width. The other choice — a static row from `lg` — needs either a
+   responsive `position` on `sessions'` primitive or two submit buttons in the DOM (which breaks the exact-name
+   locators and the component test). **I build one fixed bar unless the lead rules otherwise**; flagged, not picked.
+5. **`09-sitemap-screens.md:321` and `:327`** still write the stars' range and the threshold in Eastern Arabic digits
+   (in «Fields» and in the anonymity «Note»). `DEC-213` §2.4 corrected `09`'s numerals for `SCR-013` and `SCR-027`
+   only. A citation, `DEC-124` wins; for the lead's pen.
+6. *(Noted, not a disagreement.)* The artboard's anonymity copy («…؛ تظهر له النتائج…») differs in two words from
+   `ratings.form.anonymityNotice`; `M10b.md`'s own rule is copy from `messages/ar/` where a string exists, so the key
+   is rendered as it is.
+
+## Needs from the lead
+
+- **P0**: `StarInputProps` (§3) in `ui/index.ts`, the registry entry, the gallery wiring.
+- **Ruling on §7.1** (the star's colour) — and the token, if it is a new one, in `globals.css`.
+- **Ruling on §7.3** (who writes the presenter line) — and, if (a), the request carried to `sessions`.
+- **Rulings on §7.2 and §7.4.** And whether commit A may leave `rate-form.test.tsx` red until B (§5).
+- The frame's addition 2 for `/app/sessions/[id]/rate` before I build.
+
+---
+
+## Wave 19 — build log
+
+★ **Sync 1 approved the plan (`DEC-214` §3).** Rulings: a filled star is `--signal`; the mini-row's date is absolute;
+the presenter line is contract 8 (`getSessionHeading().presenters`, every presenter joined); from `lg` the bar is in
+flow at the end of the form; commit A may leave `rate-form.test.tsx` red only if B is pushed with it.
+
+### R2 — `ui/star-input` · the registry request (the lead's file)
+
+```ts
+"star-input.tsx": tokens("star-input", ["text-signal", "text-edge-strong", "text-fg-muted", "text-error"], "star-input-scope.test.tsx"),
+```
+
+and `./demos/star-input` (`StarInputDemo`) wired into the gallery. Files: `src/components/ui/star-input.tsx`,
+`tests/components/ui/star-input.test.tsx` (14 cases — seven carried from `star-rating.test.tsx`, ledger lines
+with commit A), `tests/components/ui/star-input-scope.test.tsx` (4), `src/app/[locale]/(dev)/ui/demos/star-input.tsx`.
+Server-safe: no hook, no `"use client"`. `ui-playground.test.ts` is red for this one file until the entry lands.
+
+### R1 — SCR-015, deleted then written
+
+- **`ef0c7b48`** `ui/star-input` · **`3e5b53e5`** the delete (page, form, skeleton, `star-rating.tsx` and its test) ·
+  **`84ee6e7a`** the create. ★ A and the create are pushed together (`DEC-214` §3); `rate-form.test.tsx` is red only
+  between them.
+- **Ledger lines for `STATUS.md`** (the lead's pen): `tests/components/event/star-rating.test.tsx`, all seven cases
+  (five `StarRating`, one `StarDisplay`, one required/error) → `tests/components/ui/star-input.test.tsx`'s first
+  block — **selector moved** (the import, and «مطلوب» passed as `requiredLabel`), **expectation unchanged**; in
+  `3e5b53e5`/`ef0c7b48`. `tests/components/survey/question-field.test.tsx:47` — a comment only, no assertion
+  (`84ee6e7a`). No other suite changed.
+- `tests/e2e/wave19-event-rate.spec.ts`: eight tests — empty, chosen (read-back, hover from the right on a pointer
+  project, the counter), error, submitted, ★ the survey's place and the bar's label, closed, not eligible, and the
+  bar in flow at 1280. Captures `wave19-event-rate-{empty,chosen,error,submitted,survey,closed,not-eligible}-390.png`
+  and `-open-1280.png`. **The lead runs it** on a production build.
+
+**The kept-behaviour table, read against the new files** (`rate/page.tsx`, `rate/rate-form.tsx`, `rate/loading.tsx`,
+`ui/star-input.tsx`; `actions.ts` and `state.ts` kept):
+
+| Rows | Read |
+|---|---|
+| 1, 2 | ✓ every read through the DAL; `notFound()` on a `null` heading |
+| 3 – 6 | ✓ the two reasons as `EmptyState` with «العودة إلى الجلسة», no form, no bar; the gate is still `getRatingEligibility()` and the policy |
+| 7, 8 | ✓ the DAL and SQL untouched; the window date in the bar's note, in the org's zone |
+| 9 | ✓ closed: the panel, both rows as `star-input` read-only (`role="img"`), the comment in `<bdi>`, the way back; no radiogroup, no bar |
+| 10 | ✓ `anonymityNotice` with `min` read from `getRatePageData()`, between the comment and the survey |
+| 11 – 13, 20, 25, 26, 28 | ✓ `actions.ts` unchanged but for the constant; the two bound actions as before |
+| 14 | ✓ `RATING_COMMENT_MAX` in `state.ts`: `maxLength`, the counter, `capture()` |
+| 15 – 18 | ✓ the focused alert, the summary, `#<name>-error`, `id={name}`, `key={…attempt}`, `noValidate`, «مطلوب» |
+| 19 | ✓ `?rated=1` → `role="status"` panel, survey-aware title, read-only rows, the way back; the form below it |
+| 21 | ✓ no instant shown |
+| 22 – 24, 27, 29 | ✓ the survey section after the panel and before the bar; «أجبت»; `RATING_SAVED`; the four-way label |
+| 30 | ✓ `SubmitButton` inside the form, inside the bar |
+| 31 – 35 | ✓ in `ui/star-input` and its test |
+| 36 | ✓ `<bdi>` on the title, each presenter's name and company, the comment |
+| 37 | ✓ `formatDate` in the session's zone (heading) and the org's (window) |
+| 38 | ✓ the skeleton in the new shape, `aria-hidden`, no text |
+| 39 | ✓ native form and radios, CSS fill; the counter keeps the server's count without JS |
+| 40 | ✓ n/a |
+| 41 | ✓ every pinned name kept; the top row's back control is «رجوع», so «العودة إلى الجلسة» stays one link |
+| 42 | ✓ dropped as planned |
+
+**Found while building — told to the lead, not ruled by me:**
+- The mini-row's thumbnail is `CardMedia` at 44 px: the rendered poster when one exists, otherwise its one-glyph
+  placeholder. The artboard writes the whole title at 9 px inside the tile; at that width a 150-character title can
+  only be clipped (`10` forbids it), and the title is printed beside the tile anyway.
+- The panel's shield glyph is not drawn: `ui/icons` has no shield, and a glyph is the lead's file.

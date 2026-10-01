@@ -453,6 +453,16 @@ export interface ViewerData {
   pages: ViewerPage[];
   /** null for a link kind, or a material with no version yet. */
   currentVersionId: string | null;
+  /** Wave 19, add-only (DEC-214 §1): the material's session — the page `notFound()`s when the URL names another.
+   *  Null for a proposal's own material, which never opens under a session. */
+  sessionId?: string | null;
+  /** Wave 19, add-only: the viewer's relation, read once. An admin's download is the audited one (`0049`); staff
+   *  and the session's presenters are whom `materials_storage_read` signs for whatever `allow_download` says
+   *  (`0116:114-120`), so they get the control (DEC-214 §3, N2); presenters and admins are who can replace a
+   *  failed file (REQ-MAT-008, N4); presenters and staff see the substitution notice (REQ-MAT-011, N9). */
+  viewerIsAdmin?: boolean;
+  viewerIsStaff?: boolean;
+  viewerIsPresenter?: boolean;
 }
 
 /** SCR-013, the viewer (REQ-MAT-003). `materials_read`'s phase gate and
@@ -470,17 +480,19 @@ export interface ViewerData {
  *  is a follow-up, not a correctness requirement. */
 export async function getViewerData(locale: string, materialId: string): Promise<ViewerData | null> {
   if (!z.uuid().safeParse(materialId).success) return null;
-  const { supabase } = await sessionClient(locale);
+  const { session, supabase } = await sessionClient(locale);
 
   const [{ data: material, error }] = await Promise.all([
     supabase
       .from("materials")
-      .select("id, title, kind, allow_download, render_status, font_substitution_warning, external_url, current_version_id")
+      .select("id, title, kind, allow_download, render_status, font_substitution_warning, external_url, current_version_id, session_id")
       .eq("id", materialId)
       .maybeSingle(),
   ]);
   if (error) throw new Error(`materials: ${error.message}`);
   if (!material) return null;
+  const sessionId = (material.session_id as string | null) ?? null;
+  const { data: presents } = sessionId ? await supabase.rpc("is_presenter_of", { p_session: sessionId }) : { data: false };
   const base = {
     id: material.id as string,
     title: material.title as string,
@@ -490,6 +502,10 @@ export async function getViewerData(locale: string, materialId: string): Promise
     fontSubstitutionWarning: (material.font_substitution_warning as string | null) ?? null,
     externalUrl: (material.external_url as string | null) ?? null,
     currentVersionId: (material.current_version_id as string | null) ?? null,
+    sessionId,
+    viewerIsAdmin: session.role === "admin",
+    viewerIsStaff: session.role === "admin" || session.role === "moderator",
+    viewerIsPresenter: !!presents,
   };
 
   if (!material.current_version_id || material.render_status !== "ready") {

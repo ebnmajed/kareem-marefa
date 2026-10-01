@@ -86,8 +86,21 @@
       "sessionCompleted": "لا يمكن للمقدّم إزالة مادة بعد اكتمال الجلسة — تواصل مع مشرف المؤسسة."
     },
     "viewer": {
-      "back": "الرجوع إلى مواد الجلسة",
-      "breadcrumbLabel": "مسار التنقل",
+      "close": "إغلاق العارض",
+      "pageCount": "{count, plural, zero {لا صفحات} one {صفحة واحدة} two {صفحتان} few {{value} صفحات} many {{value} صفحة} other {{value} صفحة}}",
+      "presenter": "<bdi>{name}</bdi>، <bdi>{company}</bdi>",
+      "presenterAnd": "و",
+      "keysLabel": "اختصارات لوحة المفاتيح",
+      "keys": {
+        "next": "التالية",
+        "previous": "السابقة"
+      },
+      "scrubberLabel": "الانتقال إلى صفحة",
+      "position": "<bdi>{current}</bdi> من <bdi>{total}</bdi>",
+      "stageLabel": "الصفحة مكبَّرة",
+      "sourceNote": "الملف الأصلي لا يُحمَّل في المتصفح؛ الصفحات مُصيَّرة مسبقًا",
+      "gestureHint": "اسحب للتنقّل · انقر لإخفاء الأدوات · قرّب بإصبعين",
+      "downloadShort": "تحميل",
       "pageOf": "صفحة <bdi>{current}</bdi> من <bdi>{total}</bdi>",
       "thumbnailsLabel": "الصفحات",
       "thumbnailLabel": "الانتقال إلى الصفحة <bdi>{number}</bdi>",
@@ -105,7 +118,9 @@
         "pending": "جارٍ تجهيز العرض…",
         "rendering": "جارٍ تجهيز العرض…",
         "failed": "تعذّر تجهيز صفحات هذا الملف. تأكد أن الملف PDF سليم وارفعه من جديد.",
-        "noPages": "لا توجد صفحات لعرضها."
+        "noPages": "لا توجد صفحات لعرضها.",
+        "failedShort": "تعذّر تجهيز صفحات هذا الملف.",
+        "retry": "أعد المحاولة"
       }
     }
   }

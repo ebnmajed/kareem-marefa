@@ -11,7 +11,7 @@ import type { SurveyQuestionDTO } from "@/lib/dal/surveys";
 
 // One survey question, as a member answers it (REQ-SUR-002, REQ-UIX-009/010).
 //
-// The four types share one shape, and it is `star-rating.tsx`'s — which is the
+// The four types share one shape, and it is `ui/star-input`'s — which is the
 // shape because `ui/radio-group` cannot carry an error: its `legend` is a
 // `string`, so the «مطلوب» marker cannot be a separate span, and there is no
 // `error` prop to associate an adjacent message with the group. A question that
@@ -112,7 +112,7 @@ export function SurveyQuestionField({
                   ) : (
                     <>
                       {/* The digit is what a scale looks like; the name it is
-                          ANNOUNCED by is the sentence — `star-rating.tsx`'s own
+                          ANNOUNCED by is the sentence — `ui/star-input`'s own
                           split, so «3» is never read as a bare number out of
                           context. */}
                       <span aria-hidden="true">{option.label}</span>

@@ -11,6 +11,13 @@ export const RATE_FIELDS = ["sessionStars", "presenterStars", "comment"] as cons
 export type RatingField = (typeof RATE_FIELDS)[number];
 
 /**
+ * ★ The comment's limit, READ rather than written twice on the screen (wave 19, contract 6): the
+ * textarea's `maxLength`, «N من 2000» and the action's check all use this. The authority is the
+ * column's `check` (`0010:379`) and the DAL's Zod, which say the same number.
+ */
+export const RATING_COMMENT_MAX = 2000;
+
+/**
  * ★ The survey's fields are dynamic: one per question, named for the question.
  *
  * The rating's three are fixed and the survey's are not, so the form's field

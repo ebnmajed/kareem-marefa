@@ -1,58 +1,49 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type ChangeEvent, type FocusEvent } from "react";
+import { useActionState, useEffect, useRef, useState, type ChangeEvent, type FocusEvent, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { formatNumber } from "@/components/sessions/numerals";
 import { checkProposalField, PROPOSAL_LIMITS, PROPOSAL_REQUIRED, type ProposalScalarField } from "@/components/sessions/proposal-rules";
+import { ActionBar } from "@/components/ui/action-bar";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { AlertCircleIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
-import { SectionHeader } from "@/components/ui/section-header";
+import { ProgressBar } from "@/components/ui/progress-bar";
+import { RadioGroup } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { emptyFormState, hasAttempted, summaryErrors, was, wasList } from "@/lib/form-state";
 import { PROPOSAL_FIELDS, emptyProposeState, type ProposalField, type ProposeState } from "./state";
 
-// SCR-017's form. A client component because it renders field errors from
-// `useActionState` and checks a field on blur; everything it needs is passed
-// in, so it holds no data of its own.
+// SCR-017's form — rebuilt from `Propose.dc.html` (REQ-UIX-067, DEC-213, DEC-214), written after the old file was
+// deleted (DEC-208). The kept-behaviour table it answers to is `docs/plan/notes/sessions.md` W19.2.
 //
-// ★ REQ-PRO-001: there is no date input, no time input and no venue input
-// here, and the schema behind it has no key for one either. The note beside
-// the buttons says so out loud, because a member arriving from the pre-launch
-// form will look for a date box and should be told why there isn't one.
+// The artboard's order, inside the form: the summary (only after a failed submit), the progress line, section 1
+// «الموضوع» (title, abstract, category, level as three chips, audience, duration), section 2 «المُقدِّمون
+// والملاحظات» (co-presenters, notes, the materials note), the earn panel the page hands in, and the sticky bar.
 //
-// ★★ WAVE 7 — the form model, finished (`16` §8.2, REQ-UIX-009 … 011):
+// ★ REQ-PRO-001: no date, time or venue control exists here, and the schema has no key for one.
 //
-//   · BLUR CHECKS EVERY FIELD, not only the ones the server already refused.
-//     M9's blur could only re-show a server error, so a field that passed at
-//     submit and was emptied afterwards said nothing until the next submit.
-//     Now blur runs `checkProposalField()` — the browser's mirror of
-//     `proposalInput`, pinned to it by a unit test — and returns the same
-//     message key the action would. Still AFTER THE FIRST SUBMIT ONLY
-//     (REQ-UIX-011): nothing is invalid before the member has tried.
-//   · «REWARD EARLY, PUNISH LATE», unchanged in spirit: typing clears a
-//     showing error the moment the value passes; only blur adds one.
-//   · TWO SECTIONS AND «المتبقّي» (`16` §8.2 item 7, DEC-141 ruling 7). The
-//     canvas's three steps had objectives and tags in the middle, which have no
-//     columns; two sections remain, and the count of required fields still
-//     unfinished sits above them. It is not a live region — a count announced
-//     on every keystroke is noise, and the summary is the announcement.
-//   · THE SUMMARY COUNTS AND REASSURES — «لم نستطع إرسال المقترح — حقلان
-//     يحتاجان تصحيحًا» and «ما كتبته محفوظ كما هو».
+// ★ THE BAR IS INSIDE THE FORM, so its two `name="intent"` buttons submit it with no `form=` attribute; it is
+// fixed below `lg`, standing on the tab bar (`--stacked-bar-offset`, DEC-214 §3), the shell padding `<main>` and the
+// scroll padding for the pair so no focused field sits behind it (REQ-UIX-017); from `lg` it is in flow.
 //
-// Values surviving a failed submit are `lib/form-state`'s `was()`, as before:
-// React 19 resets the form when the action resolves, and every `defaultValue`
-// reads back what the action captured.
+// ★ The form model is unchanged from wave 7 (`16` §8.2, REQ-UIX-009 … 011): blur checks every field after the first
+// submit through `checkProposalField()` (the browser's mirror of `proposalInput`); typing clears an error the moment
+// the value passes; the summary lists exactly the errors on the page, in the page's order, and takes focus once per
+// failed round trip; every typed value comes back through `lib/form-state` because React resets the form.
+//
+// ★ «مطلوب» on the four the schema needs and no «(اختياري)» marker (REQ-UIX-011 wins, DEC-214 D6). The duration's
+// step stays 5 (D5). No autosave and no «مسودة محفوظة» line (DEC-213 §5.93).
 
 const SECTION_TOPIC = "section-topic";
 const SECTION_PEOPLE = "section-people";
 
 export type ProposalFormCategory = { id: string; name: string };
-export type ProposalFormMember = { id: string; displayName: string | null; jobTitle: string | null };
+export type ProposalFormMember = { id: string; displayName: string | null; jobTitle: string | null; teamColor?: string | null };
 
 /** Which catalogue key names each field in the summary. */
 const LABEL_KEY: Record<ProposalField, string> = {
@@ -66,22 +57,20 @@ const LABEL_KEY: Record<ProposalField, string> = {
   adminNotes: "form.notesLabel",
 };
 
-/** The level select's own default, so «المتبقّي» never counts a field that cannot be empty. */
+/** The level's own default, so «المتبقّي» never counts a field that cannot be empty. */
 const LEVEL_DEFAULT = "introductory";
+const LEVELS = [
+  { value: "introductory", key: "form.levelIntroductory" },
+  { value: "intermediate", key: "form.levelIntermediate" },
+  { value: "advanced", key: "form.levelAdvanced" },
+] as const;
 
-/**
- * What the browser has said about each field since the last round trip —
- * a message key, or `null` for «passes now». STAMPED with the attempt it
- * belongs to, so a new round trip makes the whole overlay stale by comparison
- * rather than by an effect that clears it (`react-hooks/set-state-in-effect`).
- */
+/** A value STAMPED with the round trip it belongs to: a new attempt makes it stale by comparison, not by an effect. */
 type Stamped<T> = { attempt: number; value: T };
 
 /**
- * `create` is SCR-017. `edit` is SCR-018's edit path (DEC-141): the same
- * fields, pre-filled, with two differences the database dictates —
- * co-presenters are managed on the proposal's own page, and a change request
- * can only be resubmitted (`allowDraft={false}`), never saved back to a draft.
+ * `create` is SCR-017. `edit` is its resubmit state on `/app/propose/[id]/edit` (DEC-141, `M10b.md` §3): the same
+ * fields pre-filled; co-presenters are managed on the proposal's own page; a change request can only be resubmitted.
  */
 export type ProposalFormMode =
   | { mode: "create"; members: ProposalFormMember[]; maxCoPresenters: number; maxCoPresentersLabel: string }
@@ -90,14 +79,16 @@ export type ProposalFormMode =
 export function ProposalForm({
   action,
   categories,
+  earn,
   ...variant
 }: {
   action: (prev: ProposeState, formData: FormData) => Promise<ProposeState>;
   categories: ProposalFormCategory[];
+  /** The earn panel, built by the page from the scoring rules — absent when it would say zero (DEC-213 §5.96). */
+  earn?: ReactNode;
 } & ProposalFormMode) {
   const t = useTranslations("proposals.propose");
-  // An edit starts from the proposal as saved: attempt 0, so nothing is
-  // invalid, and `was()` hands every field its stored value.
+  const tUi = useTranslations("ui.field");
   const [state, formAction, pending] = useActionState(
     action,
     variant.mode === "edit" ? { ...emptyFormState<ProposalField>(), values: variant.initial } : emptyProposeState,
@@ -128,12 +119,13 @@ export function ProposalForm({
     return field === "level" ? was(state, field) || LEVEL_DEFAULT : was(state, field);
   };
 
-  const onChange = (field: ProposalScalarField) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const value = event.currentTarget.value;
+  const typedValue = (field: ProposalScalarField, value: string) => {
     setTyped((prev) => ({ attempt: state.attempt, value: { ...fresh(prev, {}), [field]: value } }));
     // Reward early: a showing error goes the moment the value passes.
     if (attempted && shownKey(field) && checkProposalField(field, value) === null) record(field, null);
   };
+  const onChange = (field: ProposalScalarField) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    typedValue(field, event.currentTarget.value);
   const onBlur = (field: ProposalScalarField) => (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     // Punish late, and never before a submit (REQ-UIX-011).
     if (!attempted) return;
@@ -144,52 +136,50 @@ export function ProposalForm({
 
   const remaining = PROPOSAL_REQUIRED.filter((field) => checkProposalField(field, current(field)) !== null).length;
 
-  // ★ THE SUMMARY LISTS EXACTLY THE ERRORS ON THE PAGE (sync 2, wave 7). M9 made
-  // it a record of one attempt, so a field the member broke AFTER submitting —
-  // a duration of 5, caught on blur — showed its error while the summary above
-  // still counted two. A summary that disagrees with the fields is worse than
-  // none. So it is built from what is SHOWN: the server's refusals as the
-  // browser has since revised them — added on blur, cleared by a fix.
-  //
-  // It does not churn per keystroke: a field enters it only on blur and leaves
-  // it only when its value first passes, so an update is one field changing
-  // state. Focus moves to it only when a submit mounts it (`key={state.attempt}`).
-  const shown = Object.fromEntries(PROPOSAL_FIELDS.flatMap((field) => {
-    const key = shownKey(field);
-    return key ? [[field, key]] : [];
-  })) as Partial<Record<ProposalField, string>>;
+  // ★ The summary lists exactly the errors on the page (wave 7, sync 2): the server's refusals as the browser has
+  // since revised them. Focus moves to it only when a submit mounts it (`key={state.attempt}`).
+  const shown = Object.fromEntries(
+    PROPOSAL_FIELDS.flatMap((field) => {
+      const key = shownKey(field);
+      return key ? [[field, key]] : [];
+    }),
+  ) as Partial<Record<ProposalField, string>>;
   const summary = summaryErrors(
     { ...state, errors: shown },
-    {
-      fields: PROPOSAL_FIELDS,
-      label: (field) => t(LABEL_KEY[field]),
-      message: (key) => t(`errors.${key}`),
-    },
+    { fields: PROPOSAL_FIELDS, label: (field) => t(LABEL_KEY[field]), message: (key) => t(`errors.${key}`) },
   );
 
-  // Which control the member pressed, so `pending` appears on THAT one.
-  // `useFormStatus` reports the nearest enclosing form and cannot tell two
-  // submit buttons apart; this form has two.
+  // Which control the member pressed, so `pending` appears on THAT one: `useFormStatus` cannot tell two submit
+  // buttons of one form apart.
   const [intent, setIntent] = useState<"submit" | "draft">("submit");
 
   /** «41 من 150» under a text control — its description, never announced as it changes. */
   const counter = (field: "title" | "abstract", max: number) => (
-    <p id={`${field}-count`} className="mt-1.5 text-caption text-fg-muted">
-      {t("form.charCount", { value: formatNumber(current(field).length), max: formatNumber(max) })}
+    <p id={`${field}-count`} className="mt-1.5 text-end text-caption text-fg-muted">
+      {/* Plain digits, no thousands separator — «176 من 1000» as both artboards draw it, and as rate's counter. */}
+      {t("form.charCount", { value: String(current(field).length), max: String(max) })}
     </p>
   );
 
+  /** A section's heading with its number disc — the first in the accent, as drawn. */
+  const heading = (id: string, n: number, label: string) => (
+    <h2 id={id} className="flex items-center gap-2 font-display text-play-sm font-extrabold text-fg-heading">
+      <span
+        aria-hidden
+        className={`inline-flex size-[1.625rem] shrink-0 items-center justify-center rounded-full text-label ${n === 1 ? "bg-accent text-on-accent" : "bg-raised text-fg-heading"}`}
+      >
+        {formatNumber(n)}
+      </span>
+      {label}
+    </h2>
+  );
+
   return (
-    <form action={formAction} noValidate className="mt-8 flex max-w-2xl flex-col gap-10">
+    <form action={formAction} noValidate className="mt-4 flex flex-col gap-6">
       {state.formError ? (
-        // A failed WRITE, not a failed field: there is no control to link to,
-        // so it is its own alert rather than an invented focus target. The two
-        // are mutually exclusive by construction — `submitProposal` returns
-        // field errors from the Zod branch and this from the catch.
+        // A failed WRITE, not a failed field: its own alert, focused.
         <FormError key={state.attempt} message={t(`errors.${state.formError}`)} />
       ) : (
-        // `key` is what moves focus here on every failed round trip, including
-        // two consecutive failures carrying identical errors.
         <FormSummary
           key={state.attempt}
           title={t("form.errorSummaryCount", { count: summary.length, value: formatNumber(summary.length) })}
@@ -198,29 +188,20 @@ export function ProposalForm({
         />
       )}
 
-      {/* The two sections, and how much is left. In-page links, not steps:
-          one form, one submit, nothing hidden. */}
-      <nav aria-label={t("form.progressLabel")} className="flex flex-col gap-3 border-y border-edge py-4">
-        <ol className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          {[
-            [SECTION_TOPIC, t("form.sectionTopic")],
-            [SECTION_PEOPLE, variant.mode === "create" ? t("form.sectionPeople") : t("form.sectionNotes")],
-          ].map(([href, label], i) => (
-            <li key={href}>
-              <a href={`#${href}`} className="inline-flex min-h-11 items-center gap-2.5 text-label text-fg-heading underline-offset-4 hover:underline">
-                <span aria-hidden className="inline-flex size-7 items-center justify-center rounded-md border border-edge-strong text-caption">
-                  {formatNumber(i + 1)}
-                </span>
-                {label}
-              </a>
-            </li>
-          ))}
-        </ol>
-        <p className="text-body-sm text-fg-muted">{t("form.remaining", { count: remaining, value: formatNumber(remaining) })}</p>
-      </nav>
+      {/* The progress line: how many required fields are still unfinished. Not a live region — the summary is the
+          announcement; the bar beside the words is decorative. */}
+      <div className="flex items-center gap-2 text-caption text-fg-muted">
+        {/* ★ The bar's width is its BOX's, not a class on the bar: `ProgressBar` is `w-full`, and a second width
+            class on it lost to that one — the bar took the whole row, could not shrink, and pushed the line 42 px
+            past the viewport at 390 (gate run 2). */}
+        <div className="w-[5.625rem] shrink-0">
+          <ProgressBar decorative size="sm" value={PROPOSAL_REQUIRED.length - remaining} max={PROPOSAL_REQUIRED.length} />
+        </div>
+        <p>{t("form.remaining", { count: remaining, value: formatNumber(remaining) })}</p>
+      </div>
 
-      <section aria-labelledby={SECTION_TOPIC} className="flex flex-col gap-7">
-        <SectionHeader id={SECTION_TOPIC} title={t("form.sectionTopic")} />
+      <section aria-labelledby={SECTION_TOPIC} className="flex flex-col gap-4">
+        {heading(SECTION_TOPIC, 1, t("form.sectionTopic"))}
 
         <Field id="title" label={t("form.titleLabel")} hint={t("form.titleHint")} error={err("title")} required={required("title")}>
           <Input name="title" required maxLength={PROPOSAL_LIMITS.titleMax} defaultValue={was(state, "title")} aria-describedby="title-count" {...validating("title")} />
@@ -231,6 +212,7 @@ export function ProposalForm({
           <Textarea
             name="abstract"
             required
+            rows={4}
             maxLength={PROPOSAL_LIMITS.abstractMax}
             defaultValue={was(state, "abstract")}
             aria-describedby="abstract-count"
@@ -239,40 +221,40 @@ export function ProposalForm({
           {counter("abstract", PROPOSAL_LIMITS.abstractMax)}
         </Field>
 
-        <div className="grid grid-cols-1 gap-7 md:grid-cols-2">
-          <Field id="categoryId" label={t("form.categoryLabel")} error={err("categoryId")} required={required("categoryId")}>
-            <Select name="categoryId" required defaultValue={was(state, "categoryId")} {...validating("categoryId")}>
-              <option value="" disabled>
-                {t("form.categoryPlaceholder")}
+        <Field id="categoryId" label={t("form.categoryLabel")} error={err("categoryId")} required={required("categoryId")}>
+          <Select name="categoryId" required defaultValue={was(state, "categoryId")} {...validating("categoryId")}>
+            <option value="" disabled>
+              {t("form.categoryPlaceholder")}
+            </option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
+            ))}
+          </Select>
+        </Field>
 
-          <Field id="level" label={t("form.levelLabel")} error={err("level")} required={required("level")}>
-            <Select name="level" required defaultValue={was(state, "level") || LEVEL_DEFAULT} {...validating("level")}>
-              <option value="introductory">{t("form.levelIntroductory")}</option>
-              <option value="intermediate">{t("form.levelIntermediate")}</option>
-              <option value="advanced">{t("form.levelAdvanced")}</option>
-            </Select>
-          </Field>
-        </div>
+        {/* Three chips, one real radio each (`Propose.dc.html`). Controlled, so React's form reset never moves it. */}
+        <RadioGroup
+          name="level"
+          legend={t("form.levelLabel")}
+          appearance="chips"
+          required={required("level")}
+          requiredLabel={tUi("required")}
+          options={LEVELS.map((l) => ({ value: l.value, label: t(l.key) }))}
+          value={current("level")}
+          onChange={(value) => typedValue("level", value)}
+          error={err("level")}
+        />
 
         <Field id="targetAudience" label={t("form.audienceLabel")} hint={t("form.audienceHint")} error={err("targetAudience")}>
           <Input name="targetAudience" maxLength={PROPOSAL_LIMITS.audienceMax} defaultValue={was(state, "targetAudience")} {...validating("targetAudience")} />
         </Field>
 
         <Field id="expectedDurationMinutes" label={t("form.durationLabel")} hint={t("form.durationHint")} error={err("expectedDurationMinutes")}>
-          <div className="flex items-center gap-3">
-            {/* The box is dir="ltr" because a typed number enters left to right
-                whatever the surrounding direction; the unit label keeps its
-                place in the reading order because the row is a flex row, not a
-                physical float. ★ This is the field that rules out cloneElement
-                in `<Field>`: the child here is the row, not the control. */}
+          <div className="flex items-center gap-2.5">
+            {/* `dir="ltr"`: a typed number enters left to right whatever the page; the unit keeps its place in the
+                reading order because the row is a flex row, not a float — the number sits to its right in RTL. */}
             <Input
               name="expectedDurationMinutes"
               type="number"
@@ -282,7 +264,7 @@ export function ProposalForm({
               step={5}
               dir="ltr"
               defaultValue={was(state, "expectedDurationMinutes")}
-              className="w-32 text-center"
+              className="w-[7.5rem] text-center"
               {...validating("expectedDurationMinutes")}
             />
             <span className="text-body text-fg-muted">{t("form.durationUnit")}</span>
@@ -290,26 +272,13 @@ export function ProposalForm({
         </Field>
       </section>
 
-      <section aria-labelledby={SECTION_PEOPLE} className="flex flex-col gap-7">
-        <SectionHeader id={SECTION_PEOPLE} title={variant.mode === "create" ? t("form.sectionPeople") : t("form.sectionNotes")} />
+      <section aria-labelledby={SECTION_PEOPLE} className="flex flex-col gap-4">
+        {heading(SECTION_PEOPLE, 2, variant.mode === "create" ? t("form.sectionPeople") : t("form.sectionNotes"))}
 
-        {/* REQ-PRO-003, REQ-UIX-008 — a search box, not a list of everyone. At 40
-            members a checkbox list was a scroll trap and at 400 unusable; the
-            canvas and `16` §9 row 2 ask for `ui/combobox`, which `console`
-            wired for a member form in `654ec91` (R2): Arabic input keeps its
-            direction, the Field's hint and error reach the input, and the
-            invalid border shows. It matches names and job titles through
-            Arabic normalisation (REQ-DSC-004), draws the chosen as removable
-            chips, and stops at the org's limit.
-            ★ The selection is written as hidden inputs named `coPresenters`,
-            so `getAll()`, the action and `state.ts` are unchanged, and it
-            survives a failed round trip: React's form reset does not touch a
-            value-controlled hidden input, and the combobox is not remounted.
-            ★ `id="coPresenters"` is the summary link's target — it lands on
-            the search input. The members come from members_member_view, so
-            nobody outside the org can be offered, and the database refuses one
-            anyway. An edit names nobody new here — co-presenters are managed
-            on the proposal's own page. */}
+        {/* REQ-PRO-003, REQ-UIX-008 — a search, not a list of everyone: Arabic-normalised over names and titles, the
+            chosen as removable chips with their team ring, stopping at the org's limit. The selection is hidden inputs
+            named `coPresenters`, so `getAll()`, the action and `state.ts` are unchanged and it survives a failed round
+            trip. `id="coPresenters"` is the summary link's target. A resubmit names nobody new here. */}
         {variant.mode === "create" ? (
           <Field id="coPresenters" label={t("form.coPresentersLabel")} hint={t("form.coPresentersHint")} error={err("coPresenters")}>
             {variant.members.length === 0 ? (
@@ -319,7 +288,7 @@ export function ProposalForm({
                 name="coPresenters"
                 multiple
                 max={variant.maxCoPresenters}
-                options={variant.members.map((m) => ({ value: m.id, label: m.displayName ?? "", hint: m.jobTitle ?? undefined }))}
+                options={variant.members.map((m) => ({ value: m.id, label: m.displayName ?? "", hint: m.jobTitle ?? undefined, teamColor: m.teamColor ?? null }))}
                 defaultValue={wasList(state, "coPresenters")}
                 placeholder={t("form.coPresentersPlaceholder")}
               />
@@ -333,18 +302,27 @@ export function ProposalForm({
         <Field id="adminNotes" label={t("form.notesLabel")} hint={t("form.notesHint")} error={err("adminNotes")}>
           <Textarea name="adminNotes" maxLength={PROPOSAL_LIMITS.notesMax} rows={3} defaultValue={was(state, "adminNotes")} {...validating("adminNotes")} />
         </Field>
+
+        {/* REQ-PRO-004: where the draft materials go, since this form cannot hold them. */}
+        {variant.mode === "create" ? (
+          <p className="rounded-tile border border-dashed border-edge px-3 py-2.5 text-body-sm text-fg-muted">{t("form.materialsNote")}</p>
+        ) : null}
       </section>
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* ★ Pending keeps the LABEL and adds a spinner beside it (REQ-UIX-007).
-              «جارٍ الإرسال…» is still in use — as what is ANNOUNCED while the
-              action is in flight, rather than as the label that replaces the one
-              the member just pressed. */}
+      {earn}
+
+      {/* Below `lg` fixed and stacked on the tab bar; from `lg` in flow at the end of the form (DEC-214 §3). */}
+      <ActionBar
+        label={t("form.actionsLabel")}
+        className="lg:static lg:border-t-0 lg:bg-transparent lg:px-0"
+        primary={
+          // ★ Pending keeps the LABEL and adds a spinner (REQ-UIX-007); «جارٍ الإرسال…» is what is announced.
           <Button
             type="submit"
             name="intent"
             value="submit"
+            size="lg"
+            className="w-full"
             onClick={() => setIntent("submit")}
             pending={pending && intent === "submit"}
             pendingLabel={t("form.submitting")}
@@ -352,49 +330,43 @@ export function ProposalForm({
           >
             {allowDraft ? t("form.submit") : t("form.resubmit")}
           </Button>
-          {allowDraft ? (
-            <Button
-              type="submit"
-              name="intent"
-              value="draft"
-              variant="secondary"
-              onClick={() => setIntent("draft")}
-              pending={pending && intent === "draft"}
-              pendingLabel={t("form.submitting")}
-              disabled={pending}
-            >
-              {t("form.saveDraft")}
-            </Button>
-          ) : null}
-        </div>
-        {/* REQ-PRO-001, said to the member and not only to the schema — and
-            where the draft materials go, since this form cannot hold them. */}
-        <p className="text-body-sm text-fg-muted">{t("noScheduleNote")}</p>
-        {variant.mode === "create" ? <p className="text-body-sm text-fg-muted">{t("form.materialsNote")}</p> : null}
-      </div>
+        }
+        // The draft button is the drawn quiet one — the body's size, not the CTA's: at 390 px a second display-face
+        // label pushed the fixed bar 42 px past the viewport, and the whole page scrolled sideways with it.
+        secondary={
+          allowDraft
+            ? [
+                <Button
+                  key="draft"
+                  type="submit"
+                  name="intent"
+                  value="draft"
+                  variant="secondary"
+                  size="md"
+                  className="whitespace-nowrap"
+                  onClick={() => setIntent("draft")}
+                  pending={pending && intent === "draft"}
+                  pendingLabel={t("form.submitting")}
+                  disabled={pending}
+                >
+                  {t("form.saveDraft")}
+                </Button>,
+              ]
+            : undefined
+        }
+      />
     </form>
   );
 }
 
-/**
- * The whole-form failure — «تعذّر حفظ مقترحك — حاول مرة أخرى…».
- *
- * Local to this form on purpose: `FormSummaryProps` has no slot for it, and
- * inventing a `fieldId` so it could travel in the summary would mean the link
- * focuses a control that has nothing to do with the failure.
- */
+/** The whole-form failure — «تعذّر حفظ مقترحك…». Its own alert: there is no control to link to. */
 function FormError({ message }: { message: string }) {
   const region = useRef<HTMLDivElement>(null);
   useEffect(() => {
     region.current?.focus();
   }, []);
   return (
-    <div
-      ref={region}
-      role="alert"
-      tabIndex={-1}
-      className="flex items-start gap-2 rounded-field border border-error-border bg-error-bg p-4 text-caption text-error"
-    >
+    <div ref={region} role="alert" tabIndex={-1} className="flex items-start gap-2 rounded-field border border-error-border bg-error-bg p-4 text-caption text-error">
       <AlertCircleIcon className="mt-[0.2em]" />
       <span>{message}</span>
     </div>

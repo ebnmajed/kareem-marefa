@@ -1,6 +1,9 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { avatarHref } from "@/lib/dal/avatars";
+import { getSessionPoster } from "@/lib/dal/posters";
+import type { SessionState } from "@/lib/session-status";
 
 // Proposals — REQ-PRO-001 … REQ-PRO-008, 02 §4.3, 03 §5.2.
 //
@@ -26,6 +29,8 @@ export interface NameableMember {
   id: string;
   displayName: string | null;
   jobTitle: string | null;
+  /** wave 19 (add-only): the company's colour, `#rrggbb` or null — the chosen chip's ring (REQ-UIX-043). */
+  teamColor?: string | null;
 }
 
 export interface ProposalPresenter {
@@ -35,6 +40,9 @@ export interface ProposalPresenter {
   isProposer: boolean;
   accepted: boolean;
   declinedAt: string | null;
+  /** wave 19 (add-only): our copy of the picture (DEC-099) and the company's colour for the ring. */
+  avatarUrl?: string | null;
+  teamColor?: string | null;
 }
 
 export interface ProposalSummary {
@@ -118,9 +126,27 @@ export async function getOrgPrefs(locale: string): Promise<OrgPrefs> {
  */
 export async function listNameableMembers(locale: string): Promise<NameableMember[]> {
   const { session, supabase } = await sessionClient(locale);
-  const { data, error } = await supabase.from("members_member_view").select("id, display_name, job_title").neq("id", session.memberId).order("display_name");
+  const { data, error } = await supabase.from("members_member_view").select("id, display_name, job_title, company_id").neq("id", session.memberId).order("display_name");
   if (error) throw new Error(`members_member_view: ${error.message}`);
-  return (data ?? []).map((m) => ({ id: m.id, displayName: m.display_name, jobTitle: m.job_title }));
+  const colours = await teamColours(supabase, (data ?? []).map((m) => m.company_id as string | null));
+  return (data ?? []).map((m) => ({
+    id: m.id,
+    displayName: m.display_name,
+    jobTitle: m.job_title,
+    teamColor: m.company_id ? (colours.get(m.company_id as string) ?? null) : null,
+  }));
+}
+
+/** Company id → `team_color` (0160), org-readable to every member (`companies_read`). One read. */
+async function teamColours(
+  supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"],
+  companyIds: (string | null)[],
+): Promise<Map<string, string | null>> {
+  const ids = [...new Set(companyIds.filter((v): v is string => v !== null))];
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase.from("companies").select("id, team_color").in("id", ids);
+  if (error) throw new Error(`companies: ${error.message}`);
+  return new Map((data ?? []).map((c) => [c.id as string, (c.team_color as string | null) ?? null]));
 }
 
 /**
@@ -186,18 +212,26 @@ async function presentersOf(
 
   const { data: members, error: mErr } = await supabase
     .from("members_member_view")
-    .select("id, display_name")
+    .select("id, display_name, company_id, avatar_version")
     .in("id", rows.map((r) => r.member_id));
   if (mErr) throw new Error(`members_member_view: ${mErr.message}`);
-  const names = new Map((members ?? []).map((m) => [m.id as string, m.display_name as string | null]));
+  const people = new Map(
+    (members ?? []).map((m) => [m.id as string, m as { id: string; display_name: string | null; company_id: string | null; avatar_version: number | null }]),
+  );
+  const colours = await teamColours(supabase, [...people.values()].map((m) => m.company_id));
 
-  return rows.map((r) => ({
-    memberId: r.member_id,
-    displayName: names.get(r.member_id) ?? null,
-    isProposer: r.member_id === proposerId,
-    accepted: r.accepted,
-    declinedAt: r.declined_at,
-  }));
+  return rows.map((r) => {
+    const m = people.get(r.member_id);
+    return {
+      memberId: r.member_id,
+      displayName: m?.display_name ?? null,
+      isProposer: r.member_id === proposerId,
+      accepted: r.accepted,
+      declinedAt: r.declined_at,
+      avatarUrl: m ? avatarHref({ id: m.id, avatarVersion: m.avatar_version }, 96) : null,
+      teamColor: m?.company_id ? (colours.get(m.company_id) ?? null) : null,
+    };
+  });
 }
 
 const PROPOSAL_COLUMNS = "id, title, abstract, proposer_id, category_id, level, state, decision_reason, expected_duration_minutes, created_at, updated_at, categories(name)";
@@ -353,6 +387,104 @@ export async function removeCoPresenter(locale: string, proposalId: string, memb
   if (memberId === session.memberId) throw new Error("removeCoPresenter: the proposer is not removable");
   const { error } = await supabase.from("proposal_presenters").delete().eq("proposal_id", proposalId).eq("member_id", memberId);
   if (error) throw new Error(`proposal_presenters.delete: ${error.message}`);
+}
+
+// ── Wave 19 (DEC-213, DEC-214) — what SCR-017 and SCR-018 read and write, add-only ─────────────────────────
+
+/** The states a co-presenter may still join in — `proposal_presenters_addable()` (`0012:49-62`). */
+export const OPEN_PROPOSAL_STATES: readonly ProposalState[] = ["draft", "submitted", "in_review", "changes_requested"];
+
+export type AddCoPresentersOutcome = "ok" | "too_many" | "not_open" | "unknown_member" | "failed";
+
+/**
+ * The proposer names more co-presenters on their own proposal, after it was written (SCR-018's «+ أضف مُقدِّمًا
+ * مشاركًا», DEC-213 §5.102, REQ-PRO-003).
+ *
+ * The database decides everything: `proposal_presenters_insert_by_proposer` (only the proposer),
+ * `proposal_presenters_addable` (only while open), `presenters_within_limit` (the org's `max + 1`, every row
+ * counted), `presenter_is_same_org`, and — from `0168` — `proposal_presenters_unanswered`, which writes every new
+ * invitation unanswered whatever is sent. `accepted` is never sent here. Each insert fires
+ * `MSG-copresenter_invited` exactly as `create_proposal()`'s do (`0039`). One statement, so a refusal adds nobody.
+ */
+export async function addCoPresenters(locale: string, proposalId: string, memberIds: readonly string[]): Promise<AddCoPresentersOutcome> {
+  const ids = [...new Set(memberIds)].filter((id) => z.uuid().safeParse(id).success);
+  if (!z.uuid().safeParse(proposalId).success || ids.length === 0) return "failed";
+  const { session, supabase } = await sessionClient(locale);
+  const { error } = await supabase
+    .from("proposal_presenters")
+    .insert(ids.filter((id) => id !== session.memberId).map((id) => ({ org_id: session.orgId, proposal_id: proposalId, member_id: id })));
+  if (!error) return "ok";
+  if (error.message.includes("too_many_presenters")) return "too_many";
+  if (error.message.includes("proposal_not_open_for_presenters")) return "not_open";
+  if (error.message.includes("presenter_not_in_org") || error.code === "23503") return "unknown_member";
+  return "failed";
+}
+
+/** The session an approved proposal became, as SCR-018 shows it — «مُجدوَل» (DEC-213 §5.98, DEC-214 D15). */
+export interface ProposalSessionLink {
+  id: string;
+  title: string;
+  state: SessionState;
+  /** ★ On the schedule: published or later. A draft the proposer can see as its presenter is NOT scheduled. */
+  scheduled: boolean;
+  posterUrl: string | null;
+  posterWidth: number | null;
+  posterHeight: number | null;
+}
+
+const SCHEDULED_SESSION_STATES = new Set(["published", "in_progress", "completed", "archived"]);
+
+/**
+ * The session whose `proposal_id` names this proposal (unique, `0020:18`), through `sessions_read` — or null.
+ * The poster through `designer`'s `getSessionPoster()`, read only.
+ */
+export async function getProposalSession(locale: string, proposalId: string): Promise<ProposalSessionLink | null> {
+  if (!z.uuid().safeParse(proposalId).success) return null;
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.from("sessions").select("id, title, state").eq("proposal_id", proposalId).maybeSingle();
+  if (error) throw new Error(`sessions.select: ${error.message}`);
+  if (!data) return null;
+  const scheduled = SCHEDULED_SESSION_STATES.has(data.state as string);
+  const poster = scheduled ? await getSessionPoster(locale, data.id as string).catch(() => null) : null;
+  return {
+    id: data.id as string,
+    title: data.title as string,
+    state: data.state as ProposalSessionLink["state"],
+    scheduled,
+    posterUrl: poster?.imageUrl ?? null,
+    posterWidth: poster?.width ?? null,
+    posterHeight: poster?.height ?? null,
+  };
+}
+
+/** What proposing earns, read from the org's catalogue — SCR-017's earn panel (DEC-213 §5.96, contract 6). */
+export interface ProposeEarnings {
+  /** The presenter rules paid at completion and not variable, summed when enabled and positive; null when zero. */
+  points: number | null;
+  /** The enabled badge earned by a first delivered session, by its name; null when the org has none. */
+  firstSessionBadge: string | null;
+}
+
+/**
+ * ★ Every figure READ, never a literal: `proposal_accepted` and `session_delivered` — the two presenter rules a
+ * proposer is paid at completion whatever happens in the room (`attendee_bonus`, `rating_bonus` and
+ * `materials_uploaded` depend on it and are not promised). The badge is the one whose rule is a first delivered
+ * session (`0027:546`), not retired. `scoring_rules` and `badges` are org-readable (`p1_org_read`).
+ */
+export async function getProposeEarnings(locale: string): Promise<ProposeEarnings> {
+  const { session, supabase } = await sessionClient(locale);
+  const [rules, badges] = await Promise.all([
+    supabase.from("scoring_rules").select("points, enabled").eq("org_id", session.orgId).in("action_key", ["proposal_accepted", "session_delivered"]),
+    supabase.from("badges").select("name, rule").eq("org_id", session.orgId).is("retired_at", null),
+  ]);
+  if (rules.error) throw new Error(`scoring_rules: ${rules.error.message}`);
+  if (badges.error) throw new Error(`badges: ${badges.error.message}`);
+  const sum = (rules.data ?? []).reduce((total, r) => total + (r.enabled === true && (r.points as number) > 0 ? (r.points as number) : 0), 0);
+  const first = (badges.data ?? []).find((b) => {
+    const rule = b.rule as { metric?: string; gte?: number } | null;
+    return rule?.metric === "sessions_delivered_count" && rule.gte === 1;
+  });
+  return { points: sum > 0 ? sum : null, firstSessionBadge: (first?.name as string | undefined) ?? null };
 }
 
 // ── The admin review queue (SCR-041, REQ-PRO-005) ───────────────────────────

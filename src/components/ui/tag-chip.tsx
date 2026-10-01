@@ -1,8 +1,10 @@
 "use client";
 
-import type { TagChipProps } from "@/components/ui";
+import type { CSSProperties } from "react";
+import type { TagChipProps, TeamColor } from "@/components/ui";
 import { Link } from "@/components/ui/link";
 import { CloseIcon } from "@/components/ui/icons";
+import { teamColorOrNull } from "@/components/ui/avatar";
 
 // content's file — `16` §4.2 Status, §9.4 (ask 11, tags).
 //
@@ -35,8 +37,35 @@ const SCOPE_SELECTED_COUNT = "pg:text-on-accent pg:font-normal";
 // hit area 10 px on every side, and the glyph's visual size does not change.
 const SCOPE_REMOVE = "pg:relative pg:after:absolute pg:after:-inset-2.5 pg:after:content-[''] pg:hover:bg-hover";
 
-export function TagChip({ label, href, count, onRemove, removeLabel, selected, removeHref, className = "" }: TagChipProps) {
-  const labelNode = <bdi>{label}</bdi>;
+// ★ Wave 19, add-only (DEC-214 §4, `scoring`'s R2): a company chip carries its team dot before the label
+// (`Directory.dc.html:29-33`, `Profile.dc.html:31`). THREE values, as the avatar's ring: `undefined` draws no dot —
+// every caller before this wave — `null` the neutral dot of a company with no colour, `"#rrggbb"` the team's. The
+// colour reaches the dot as `--team`, re-checked first. The dot is decoration: the company's NAME is the label, so a
+// colour is never the only channel. `TagChipProps` in `ui/index.ts` is the lead's; the widened type lives here.
+export type TagChipTeamProps = TagChipProps & { teamColor?: TeamColor };
+
+function TeamDot({ teamColor }: { teamColor: TeamColor }) {
+  const colour = teamColorOrNull(teamColor);
+  return (
+    <span
+      aria-hidden="true"
+      data-team-dot={colour ? "team" : "neutral"}
+      className={`inline-block size-2.5 shrink-0 rounded-pill ${colour ? "bg-team" : "bg-team-neutral"}`}
+      style={colour ? ({ "--team": colour } as CSSProperties) : undefined}
+    />
+  );
+}
+
+export function TagChip({ label, href, count, onRemove, removeLabel, selected, removeHref, teamColor, className = "" }: TagChipTeamProps) {
+  const labelNode =
+    teamColor === undefined ? (
+      <bdi>{label}</bdi>
+    ) : (
+      <>
+        <TeamDot teamColor={teamColor} />
+        <bdi>{label}</bdi>
+      </>
+    );
   // ★ Gallery finding (390 px review): with no separator this glued to the
   // label as e.g. «أمنة12», reading as a chip literally named that. Fixed
   // two ways at once — an explicit `gap-1` between label and count (JSX

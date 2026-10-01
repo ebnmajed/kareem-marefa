@@ -1,48 +1,65 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { EarnPanel } from "@/components/proposals/earn-panel";
+import { MyProposals } from "@/components/proposals/my-proposals";
 import { formatNumber } from "@/components/sessions/numerals";
-import { ProposalStatusBadge } from "@/components/sessions/proposal-status-badge";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardBody } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
-import { SectionHeader } from "@/components/ui/section-header";
+import { CalendarIcon } from "@/components/ui/icons";
 import type { Locale } from "@/i18n/routing";
-import { getOrgPrefs, listCategories, listMyProposals, listNameableMembers } from "@/lib/dal/proposals";
+import { getOrgPrefs, getProposeEarnings, listCategories, listMyProposals, listNameableMembers } from "@/lib/dal/proposals";
 import { submitProposal } from "./actions";
 import { ProposalForm } from "./proposal-form";
 
-// SCR-017 · /app/propose — propose a topic (REQ-PRO-001, REQ-PRO-002,
-// REQ-PRO-003), on the M9 system for wave 7 (DEC-137, DEC-141).
+// SCR-017 · /app/propose — propose a topic. REBUILT from `Propose.dc.html` (REQ-UIX-067, DEC-213, DEC-214), written
+// after the old page was deleted (DEC-208); the kept-behaviour table is `docs/plan/notes/sessions.md` W19.2.
 //
-// The page is dynamic because the DAL reads cookies — no `export const
-// dynamic`, per DEC-013 and the Next 16 notes in CLAUDE.md.
+// The artboard's order: the title row («اقترح موضوعًا» and «مقترحاتي N»), the list of the member's proposals when
+// there are any (§5.95), the lead in the display face (§5.105), the body, the no-schedule panel — then the form, which
+// carries the progress line, both sections, the earn panel and the sticky bar.
 //
-// «مقترحاتي» underneath stays, deliberately thin: it is how a named
-// co-presenter REACHES their invitation, which REQ-PRO-003 needs. The
-// pipeline itself — the state, the reason, the edit — is SCR-018.
+// A tab route: the tab bar stays and the bar stands on it (DEC-214 §3); below `lg` the page owns its top row
+// (`ownsTopRow()`, the lead's). Every read is the DAL's, through `requireSession()` at the data (REQ-AUT-001) — the
+// page checks nothing itself. Dynamic because the DAL reads cookies (DEC-013).
 //
-// ★ The canvas's lead line («ما تكتبه هنا هو ما سيظهر في صفحة الجلسة…») is not
-// used: it is untrue until `0084` copies the audience and the duration into
-// the session (DEC-075, DEC-141 ruling 9f). The live site's own argument is.
+// ★ No date, time or venue field exists (REQ-PRO-001) — not hidden, absent — and the page says so out loud.
+// ★ Not built (DEC-213): autosave (§5.93), the hosting-gated card (§5.97).
 
 export default async function ProposePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [categories, members, prefs, mine, t] = await Promise.all([
+  const [categories, members, prefs, mine, earnings, t] = await Promise.all([
     listCategories(locale),
     listNameableMembers(locale),
     getOrgPrefs(locale),
     listMyProposals(locale),
+    getProposeEarnings(locale),
     getTranslations("proposals.propose"),
   ]);
 
+  // A Server Action bound here, never a closure across the boundary (DEC-159).
   const action = submitProposal.bind(null, locale as Locale);
 
   return (
-    <>
-      <PageHeader title={t("title")} description={t("lead")} />
-      <p className="mt-3 max-w-2xl text-body text-fg-body">{t("leadBody")}</p>
+    <div className="mx-auto flex max-w-2xl flex-col gap-4">
+      <div className="flex items-center justify-between gap-3 pt-2">
+        <h1 className="font-display text-play-md font-extrabold text-fg-heading">{t("title")}</h1>
+        {mine.length > 0 ? (
+          <a href="#mine" className="shrink-0 text-caption text-fg-muted hover:text-fg-heading">
+            {t("mine.link", { value: formatNumber(mine.length) })}
+          </a>
+        ) : null}
+      </div>
+
+      <MyProposals proposals={mine} />
+
+      <div className="flex flex-col gap-1.5">
+        <p className="font-display text-play-sm font-extrabold text-accent pg-light:text-fg-heading">{t("lead")}</p>
+        <p className="text-body-sm text-fg-muted">{t("leadBody")}</p>
+        {/* REQ-PRO-001, said to the member and not only to the schema. */}
+        <p className="flex items-center gap-2.5 rounded-panel border border-edge bg-surface px-3 py-2.5 text-body-sm text-fg-muted">
+          <CalendarIcon aria-hidden className="shrink-0 text-accent pg-light:text-fg-heading" />
+          <span>{t("noScheduleNote")}</span>
+        </p>
+      </div>
 
       <ProposalForm
         mode="create"
@@ -51,41 +68,8 @@ export default async function ProposePage({ params }: { params: Promise<{ locale
         members={members}
         maxCoPresenters={prefs.maxCoPresenters}
         maxCoPresentersLabel={t("form.coPresentersLimit", { count: prefs.maxCoPresenters, value: formatNumber(prefs.maxCoPresenters) })}
+        earn={<EarnPanel earnings={earnings} />}
       />
-
-      <section aria-labelledby="mine" className="mt-14 flex max-w-2xl flex-col gap-4 border-t border-edge pt-8">
-        <SectionHeader id="mine" title={t("mine.title")} count={mine.length > 0 ? mine.length : undefined} />
-        {mine.length === 0 ? (
-          <EmptyState size="sm" title={t("mine.empty")} action={{ label: t("mine.emptyAction"), href: "#title" }} />
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {mine.map((p) => (
-              <li key={p.id}>
-                <Card density="row" href={`/app/propose/${p.id}`}>
-                  <CardBody>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <ProposalStatusBadge state={p.state} size="sm" />
-                      {p.viewerIsProposer ? null : (
-                        <Badge tone="info" outline size="sm">
-                          {t("mine.invited")}
-                        </Badge>
-                      )}
-                      {p.viewerInvite === "pending" ? (
-                        <Badge tone="live" size="sm">
-                          {t("mine.awaitingYou")}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <h3 className="text-h3 text-fg-heading">
-                      <bdi>{p.title}</bdi>
-                    </h3>
-                  </CardBody>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </>
+    </div>
   );
 }

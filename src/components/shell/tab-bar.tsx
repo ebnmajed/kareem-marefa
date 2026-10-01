@@ -57,7 +57,13 @@ export function TabBar({ labels }: TabBarProps) {
                   href={href}
                   aria-label={labels.proposeFull}
                   aria-current={current ? "page" : undefined}
-                  className="-mt-[18px] inline-flex size-14 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_5px_0_var(--accent-deep),0_0_0_5px_var(--bg)] focus-visible:outline-[length:var(--focus-width)] focus-visible:outline-offset-4 focus-visible:outline-[var(--ring)]"
+                  className={`-mt-[18px] inline-flex size-14 items-center justify-center rounded-full focus-visible:outline-[length:var(--focus-width)] focus-visible:outline-offset-4 focus-visible:outline-[var(--ring)] ${
+                    // ★ wave 19 (DEC-213 §3.3): current is bone with the muted drop (`Propose.dc.html`) — the raised tab
+                    // has no «active» colour of its own, so it was the same current or not.
+                    current
+                      ? "bg-fg-heading text-canvas shadow-[0_5px_0_var(--fg-muted),0_0_0_5px_var(--bg)]"
+                      : "bg-accent text-on-accent shadow-[0_5px_0_var(--accent-deep),0_0_0_5px_var(--bg)]"
+                  }`}
                 >
                   <PlusIcon aria-hidden className="text-[1.75rem]" />
                 </Link>

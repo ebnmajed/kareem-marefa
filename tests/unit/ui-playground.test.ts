@@ -115,7 +115,8 @@ function demoGap(name: string, entry: Entry): string | null {
 describe("every file in src/components/ui has a playground design", () => {
   it("finds the directory, and it is not a list kept here", () => {
     // wave 18 (DEC-206 §1.3): 49 + `action-bar`, `attendee-stack`, `feed-item`, `week-hud`.
-    expect(files.length).toBeGreaterThanOrEqual(53);
+    // wave 19 (DEC-213 §2.1): 53 + `star-input`, `stepper`, `page-viewer`, `badge-medallion`.
+    expect(files.length).toBeGreaterThanOrEqual(57);
     for (const name of ["page-header.tsx", "prose.tsx", "link.tsx", "icon-button.tsx", "section-header.tsx", "submit-button.tsx", "reorderable-list.tsx", "icons.tsx"]) {
       expect(files, `the eight wave 15 missed: ${name}`).toContain(name);
     }

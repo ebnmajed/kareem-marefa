@@ -44,7 +44,7 @@ describe("SurveyQuestionField", () => {
     expect(radios).toHaveLength(5);
     expect(radios.map((r) => (r as HTMLInputElement).value)).toEqual(["1", "2", "3", "4", "5"]);
     // ★ The digit is what is SEEN — a scale reads as 1 2 3 4 5 — while each
-    // radio is ANNOUNCED as «واحد من 5», the split `star-rating.tsx` uses so a
+    // radio is ANNOUNCED as «واحد من 5», the split `ui/star-input` uses so a
     // bare number is never read out of context. Western digits either way,
     // never ١ (DEC-124).
     expect(within(group).getByText("1", { selector: '[aria-hidden="true"]' })).toBeTruthy();

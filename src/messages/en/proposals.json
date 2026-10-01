@@ -43,7 +43,8 @@
         "resubmit": "Send the proposal again",
         "sectionNotes": "Notes",
         "presentersElsewhere": "Presenters are managed on the proposal's own page.",
-        "coPresentersPlaceholder": "Search by name or job title"
+        "coPresentersPlaceholder": "Search by name or job title",
+        "actionsLabel": "Proposal actions"
       },
       "errors": {
         "titleRequired": "Please enter a title for your proposed topic",
@@ -76,7 +77,13 @@
         "invited": "You were invited to present",
         "awaitingYou": "Waiting for your answer",
         "open": "Open the proposal",
-        "emptyAction": "Write your first proposal"
+        "emptyAction": "Write your first proposal",
+        "link": "My proposals {value}"
+      },
+      "earn": {
+        "points": "+{value}",
+        "body": "for presenting, paid when your session completes.",
+        "badge": "And the «<t>{badge}</t>» badge with your first session."
       }
     },
     "proposal": {
@@ -109,7 +116,7 @@
       "decline": "Decline",
       "remove": "Remove from presenters",
       "removeLabel": "Remove <t>{name}</t> from the presenters",
-      "materialsLabel": "Attached materials",
+      "materialsLabel": "Draft materials",
       "editDraft": "Finish your proposal",
       "editChanges": "Edit your proposal",
       "editTitle": "Edit the proposal",
@@ -124,7 +131,44 @@
         "draftTitle": "Your changes are saved",
         "submittedTitle": "Your proposal is sent for review",
         "submittedBody": "Your proposal <t>{title}</t> is with an admin now, and you'll be notified of the decision."
-      }
+      },
+      "pageTitle": "My proposal",
+      "lastUpdated": "Last updated {date}",
+      "steps": {
+        "label": "Proposal stages",
+        "done": "done",
+        "submitted": "Sent",
+        "in_review": "In review",
+        "changes_requested": "Changes requested",
+        "approved": "Approved",
+        "scheduled": "Scheduled"
+      },
+      "resubmitAction": "Edit and resubmit",
+      "presentersManaged": "Managed here",
+      "presenterYou": "You",
+      "presenterLead": "Lead presenter",
+      "reply": {
+        "accepted": "Accepted",
+        "pending": "Awaiting reply",
+        "declined": "Declined"
+      },
+      "add": {
+        "action": "Add a co-presenter",
+        "title": "Add a co-presenter",
+        "submit": "Add",
+        "full": "This proposal has reached your organisation's presenter limit.",
+        "none": "There is nobody else to add.",
+        "errors": {
+          "too_many": "More presenters than your organisation allows.",
+          "not_open": "The proposal is no longer open for presenters — the reviewer may have just decided.",
+          "unknown_member": "Someone you chose is no longer a member of your organisation.",
+          "failed": "Couldn't add them — try again."
+        }
+      },
+      "openSession": "Open the session",
+      "sessionCancelled": "The session made from this proposal:",
+      "proposeAnother": "Propose another topic",
+      "actionsLabel": "Proposal actions"
     }
   }
 }

@@ -5999,3 +5999,417 @@ is lost — for a photo, the gallery then arrives by the upload widget's 20 s fa
 run measured (the photograph at complete + 20 s). The comments and the reaction totals share the same join. Not a
 wave-18 change: the file is untouched since before it. A likely repair is `await supabase.realtime.setAuth()` before
 `subscribe()`; the owner of the file decides.
+
+---
+
+## Wave 19 — plan (`DEC-213`, M21, `REQ-UIX-065`, `REQ-UIX-064`, `STORY-UIX-053`) — planning only, nothing edited
+
+Read before writing: `STATUS.md`'s wave-19 block; `CLAUDE.md` § *Ownership map (wave 19)*; `DEC-213` in full, `DEC-199` §2,
+`DEC-208`; `M10b.md` §1 and §7 (with `M10a.md` §0 and §10); `Viewer.dc.html` and `ViewerDesktop.dc.html` beside their two
+PNGs; `07` §4.5 – §6 and §10; `09` `SCR-013`; `REQ-MAT-001` … `012`, `REQ-UIX-005`, `016`, `017`, `064`, `065`,
+`REQ-NFR-007`, `008`. **The tree read, not remembered:** the route's four files
+(`src/app/[locale]/app/sessions/[id]/materials/[materialId]/{page,download-button,not-found,actions}.tsx|ts`),
+`src/components/viewer/page-viewer.tsx` (191 lines), `getViewerData()` and `getMaterialDownloadUrl()`
+(`src/lib/dal/materials.ts:432-562`), `materials_storage_read` (`0116:105-125`), `tests/components/viewer/page-viewer.test.tsx`,
+`tests/e2e/materials.spec.ts:236-258`, `materials.viewer.*` in `ar/materials.json`.
+
+### 0 · Three facts the reading turned up before the plan
+
+1. ★★ **The live defect is worse than mirrored labels.** `page-viewer.tsx:160` gives «الصفحة السابقة» `onClick={rtl ? advance : retreat}`
+   and `disabled={rtl ? index === total - 1 : index === 0}`; `:166` gives «الصفحة التالية» `onClick={rtl ? retreat : advance}` and
+   `disabled={rtl ? index === 0 : …}`. **So in Arabic, on page 1, the button named «الصفحة التالية» is DISABLED** — a member
+   who reads by tapping cannot advance at all; only the button named «السابقة» moves forward. The keys (`:62-88`) are right.
+2. **The audited line is untrue for most of the people who read it.** `download-button.tsx:40` shows «سيُسجَّل هذا التحميل في
+   سجل التدقيق.» to everyone allowed to download; `getMaterialDownloadUrl()` audits **the admin only** (`materials.ts:543-546`,
+   `07` §6). A member or a presenter is told a thing that does not happen.
+3. **The URL's session is never checked.** `page.tsx:18` calls `getViewerData(locale, materialId)`; the `[id]` segment is not
+   read. A material of session B opens under `/sessions/A/materials/<B's>` with A's way back. Not a leak (RLS decides the row),
+   but a wrong page — §2 row 3 fixes it.
+
+### 1 · The regions, in the artboards' order, and what each is built from
+
+**Phone — `Viewer.dc.html` (390 × 844), on black.** The chrome overlays the black; the page is centred in the whole
+viewport, so hiding the chrome does not reflow the page.
+
+| # | Region (DOM order) | Built from |
+|---|---|---|
+| 1 | **Chrome bar, top** — close (inline-start) | `ui/link` wrapping `CloseIcon`, named «إغلاق العارض» ★ → `/app/sessions/[id]` |
+| 1a | the title block — `h1` the material's title, then «صفحة N من M» (`data-testid="page-indicator"`, kept — §6) | text in the screen; numbers in `<bdi>` through `materials.viewer.pageOf` |
+| 1b | zoom out · zoom in (not drawn — `DEC-213` §5.83 «in the chrome») | `PageViewerZoom` from `ui/page-viewer` → two `ui/icon-button` |
+| 1c | download, **only when allowed** (§2 rows 25 – 31, §7 N2) | `ui/icon-button` + `DownloadIcon`, named «تحميل الملف الأصلي» (existing key) |
+| 2 | **The page, whole and centred** | `ui/page-viewer`'s stage (`next/image`, the page's own width/height) |
+| 3 | **Bottom chrome** — previous (inline-start) · scrubber with «1 … N من M … M» · **next (inline-end, accent)** | `ui/page-viewer`: `ui/icon-button` `secondary` + `ChevronIcon direction="back"` · a native range · `ui/icon-button` `primary` + `ChevronIcon direction="forward"` (mirrors in RTL, so it points left) |
+| 4 | the hint line «اسحب للتنقّل · انقر لإخفاء الأدوات · قرّب بإصبعين» | **not decided** — §7 N7 |
+
+**Desktop — `ViewerDesktop.dc.html` (1280 × 820), from `lg`.** No shell (the lead's frame, contract 1).
+
+| # | Region | Built from |
+|---|---|---|
+| 1 | **Bar, 64 px** — close · `h1` title + the meta line «<presenters> · 24 صفحة · PDF» (§5.86) | `ui/link` + `CloseIcon`; the line: each presenter's name and company in `<bdi>`, `materials.viewer.pageCount` ★ (six forms), `materials.list.kind.pdf` |
+| 1a | spacer · the keys legend — «← التالية · → السابقة · Home · End» | `<kbd>` in the screen; the glyphs chosen **from `dir`** (`en` reads «→ Next · ← Previous»), the words `materials.viewer.keys.*` ★ |
+| 1b | zoom out · zoom in (not drawn; §5.83) | `PageViewerZoom` |
+| 1c | download «تحميل» with the icon, only when allowed | `ui/button` `secondary` + `DownloadIcon` |
+| 2 | **Thumbnail rail at the inline-start**, 168 px, scrolling vertically, current outlined in the accent, its number under each | `ui/page-viewer`'s rail: `<ul aria-label="الصفحات">` of buttons «الانتقال إلى الصفحة N» (kept names) |
+| 3 | **The stage** — previous (inline-start, 48 px) · the page · **next (inline-end, accent, 48 px)** | `ui/page-viewer` — **the same two buttons as the phone's**, placed by its grid (one DOM node each; §3 note) |
+| 4 | **Footer, 44 px** — «صفحة N من M» · «الملف الأصلي لا يُحمَّل في المتصفح؛ الصفحات مُصيَّرة مسبقًا» ★ | text in the screen |
+
+**Who writes what** (`DEC-213` §4): `ui/page-viewer` = the stage, previous/next, the scrubber, the rail, zoom and the
+keyboard model, from props only. `src/components/viewer/**` = the chrome around it — close, title, the presenter line,
+the keys legend, download, the footer, and the tap-to-toggle of the chrome.
+
+### 2 · ★★ The kept-behaviour table (`DEC-208`) — 44 rows, re-derived from the requirements and the DAL
+
+*«Now» is today's file and line; «after» is where it lives once the create commit lands. Read against the new files after
+it, row by row, before the lead's capture.*
+
+| # | Behaviour | Now | After | Kept by |
+|---|---|---|---|---|
+| 1 | The one data call: `getViewerData(locale, materialId)` | `page.tsx:18` | `page.tsx` (new), in parallel with row 33's read | `REQ-MAT-003` |
+| 2 | **Auth at the data**: `sessionClient()` → `requireSession()` inside the DAL; nothing in a layout | `materials.ts:473` | unchanged | `REQ-NFR-001`, `CLAUDE.md` data access 3 |
+| 3 | A null DTO (bad uuid, absent, or phase-gated out — deliberately indistinguishable) → `notFound()` | `page.tsx:19`, `materials.ts:472,483` | `page.tsx`; ★ **and** `notFound()` when the material's `session_id` is not the URL's `[id]` (§0.3) — an add-only `sessionId` on `ViewerData` | `REQ-MAT-006`, `03` §5.5a |
+| 4 | The phase gate is RLS's (`materials_read`), and page images are Storage's (`material_pages_storage_read`) — the page decides nothing | DAL + `0116` | unchanged | `REQ-MAT-006` |
+| 5 | Members see the **current** version only (`current_version_id`) | `materials.ts:494-500` | unchanged | `REQ-MAT-010` |
+| 6 | `pending` / `rendering` → a waiting state, no pages | `page.tsx:33-36` | the **rendering** state (§4) on black, with the chrome's close and title | `REQ-MAT-003`, `09` `SCR-013` |
+| 7 | `failed` → the failure and the PDF guidance | `page.tsx:37-40` | the **failed** state (§4) — ★ the «retry» `M10b.md` names has nothing behind it (§7 N4) | `REQ-MAT-003`, `REQ-MAT-002` |
+| 8 | `ready` with no page rows, or a non-paged kind (image, audio, link) reached by URL → «لا توجد صفحات لعرضها.» | `page.tsx:56-57`, `page-viewer.tsx:112-114` | the primitive's `labels.noPages` (pinned by the unit suite) and the screen's empty state | `REQ-MAT-007` (those kinds never open here), `REQ-UIX-012` |
+| 9 | The font-substitution warning, the family in `<bdi>` | `page.tsx:43-50`, to **every** viewer | a panel under the bar; **who sees it is §7 N9** | `REQ-MAT-011` |
+| 10 | Page images are signed for 60 min from `material-pages`; **the source is never fetched to render a page** | `materials.ts:507-513` | unchanged; the footer now says so | `REQ-MAT-003`, `07` §6 |
+| 11 | The page's real `width`/`height` reserve its box (no jump at «page 1») | `page-viewer.tsx:150-151` | `ui/page-viewer`'s `<Image>` | `REQ-NFR-008` (wave 11 C3) |
+| 12 | Page 1 loads eagerly | `page-viewer.tsx:154` (`priority`, renamed `preload` in Next 16) | `preload` on the first page shown | `REQ-NFR-008`, `07` §5 |
+| 13 | ±2 pages prefetched with `<link rel="prefetch" as="image">` | `page-viewer.tsx:104-108,120-122` | the primitive, same window | `07` §5, `REQ-NFR-008` |
+| 14 | `unoptimized` — a signed private URL never goes through the image optimiser | `page-viewer.tsx:153,183` | the primitive | `REQ-MAT-005`, `07` §6 |
+| 15 | **← advances and → goes back in RTL; the reverse in LTR** | `page-viewer.tsx:64-71` | `pageViewerKey(key, dir)` in the primitive | `REQ-MAT-003`, `09` `SCR-013`, `REQ-UIX-065` |
+| 16 | Page Down advances, Page Up goes back, in both directions | `:72-79` | the same function | `REQ-MAT-003` |
+| 17 | Home → first, End → last | `:80-87` | the same function | `REQ-MAT-003` |
+| 18 | Navigation clamps at both ends | `:51-56` | the primitive's `goTo` | `REQ-MAT-003` |
+| 19 | The keys work without focusing anything (window listener) — `materials.spec.ts:246` presses after `networkidle` with no focus | `:61-92` | kept window-level; ★ **ignores a key with Alt, Ctrl or Meta** (today Alt+← — the browser's Back — is swallowed, `:62-88`); inside the scrubber the same model is applied by its own `onKeyDown` | `REQ-MAT-003`, `REQ-NFR-007` |
+| 20 | Previous/next disabled at the ends | `:160,166` — **mirrored, the defect** | `ui/page-viewer`: next disabled on the last page, previous on the first, in both directions | `REQ-NFR-007`, `REQ-UIX-065` |
+| 21 | ★ **The buttons' behaviour follows their names** | **broken** (`:160,166`) | «next» always advances and sits at the inline-end by **DOM order inside a `dir` container** — no `rtl ?` on a button anywhere | `REQ-UIX-065`, `DEC-213` §4 |
+| 22 | A polite live region announces «صفحة N من M» on each change | `:94-100,118` | the primitive, `role="status"` | `REQ-NFR-007` |
+| 23 | The visible indicator «صفحة N من M», `data-testid="page-indicator"` (pinned by `materials.spec.ts:241-255`) | `:126-128` | the phone bar's second line — **one element carries the testid** (a second would break Playwright's strict mode on the desktop project); the desktop footer repeats the words without it | `REQ-MAT-003` |
+| 24 | The thumbnail list is labelled «الصفحات» | `:173` | the rail's `<ul>` | `07` §5, `REQ-NFR-007` |
+| 25 | Each thumbnail is a button named «الانتقال إلى الصفحة N», `aria-current` on the current one, its image `alt=""` (pinned by the unit suite) | `:176-184` | the rail | `REQ-NFR-007` |
+| 26 | A thumbnail jumps to its page | `:178` | the rail | `07` §5 |
+| 27 | The page image's alt: «<title> — صفحة N من M» | `:149` | the primitive, from `title` and `labels.pageOfText` | `REQ-NFR-007` |
+| 28 | Zoom: 1 · 1.5 · 2, out/in disabled at the bounds, «تكبير»/«تصغير», the origin at the inline-start top | `:29,110,130-146` | `PAGE_VIEWER_ZOOM_STEPS` + `PageViewerZoom`; the origin from `dir`; ★ the browser's pinch is never disabled (`touch-action: pan-x pan-y pinch-zoom` on the stage) | `DEC-213` §5.83, SC 2.5.1 |
+| 29 | The zoomed page scrolls inside its frame | `:145` (`overflow-auto`) | the stage; ★ focusable (`tabIndex=0`, named) when zoom > 1 so a keyboard can pan it, and arrows pan rather than page while it has focus | `REQ-NFR-007` (SC 2.1.1) |
+| 30 | **No download control when `allow_download` is false** | `download-button.tsx:17` | `src/components/viewer/download-control.tsx`; the predicate is §7 N2's | `REQ-MAT-005`, `07` §6, `DEC-213` §5.88 |
+| 31 | The URL is minted **on click** by the server action, never in page data; `window.location.href = url` | `download-button.tsx:26-29`, `actions.ts` | the same; ★ `actions.ts` **is not deleted** — it is the behaviour, not the markup | `REQ-MAT-005` |
+| 32 | **A denied member receives no URL** — Storage refuses (`0116:116-121`) and the DAL returns `null`; no client fallback | `materials.ts:531-562` | unchanged; ★ **proved by a test of the URL, not of the button** (§6, V1) | `REQ-MAT-005`, `07` §6 |
+| 33 | **An admin's download is audited** through `record_material_download()` **before** signing, and an audit failure yields no URL | `materials.ts:543-546` | unchanged; an e2e case counts the audit row | `REQ-MAT-005`, `0049` |
+| 34 | The download's pending state keeps its label («جارٍ التحضير…») | `download-button.tsx:24-25` | `IconButton`/`Button` `pending` | `REQ-UIX-007` |
+| 35 | A refused or failed download → an error toast «التحميل غير متاح لهذه المادة.» | `:34` | the same | `REQ-MAT-005` |
+| 36 | «سيُسجَّل هذا التحميل في سجل التدقيق.» | `:40`, to **every** downloader | ★ **the admin only** (§0.2); placement §7 N3 | `REQ-MAT-005` — truth |
+| 37 | One `h1`: the material's title | `page.tsx:31` (`PageHeader`) | the chrome bar's `h1` | `REQ-NFR-007` |
+| 38 | The kind as an eyebrow («PDF») | `page.tsx:31` | the desktop meta line's last part; absent on the phone (not drawn) | `09` `SCR-013` |
+| 39 | A way back to the session | `page.tsx:31` (breadcrumb «الرجوع إلى مواد الجلسة») | the close control «إغلاق العارض» ★ → the event page; `back` and `breadcrumbLabel` leave `materials.json` in the create commit | `REQ-NFR-007`, `REQ-UIX-001` |
+| 40 | `<bdi>` around every interpolated value — the page numbers (`pageOf`), the font family | `page-viewer.tsx:127`, `page.tsx:47` | the same, **plus** each presenter's name and company in the meta line; the title is the whole of its `h1` and needs none | `CLAUDE.md` i18n, `REQ-INT-001` |
+| 41 | Western numerals | `formatNumber()` (`page-viewer.tsx:6`) | the screen passes formatted labels; the primitive draws bare page numbers with `String(n)` — `0123456789` | `REQ-INT-006`, `DEC-124` |
+| 42 | The reading direction comes from the locale (`rtl = locale !== "en"`) | `page.tsx:51` | the same, as `dir` | `REQ-INT-001` |
+| 43 | **not-found**: «not found», a retry that is `router.refresh()`, a way back to `/app/sessions` | `not-found.tsx` | rewritten, same behaviour, on black | `REQ-UIX-016`, `16` §7.4 |
+| 44 | **error**: today inherited from `[id]/error.tsx` (back to `/app/sessions`) · **loading**: inherited from `[id]/loading.tsx`, the event page's shape | — | ★ **its own `error.tsx`** (back to the event page, `RouteBoundary`) **and its own `loading.tsx`** (§4) — a segment with a skeleton has a boundary | `REQ-UIX-005`, `REQ-UIX-016`, `DEC-213` §5.89 |
+
+**Not kept, on purpose** (each is `DEC-213`'s): the phone's thumbnail toggle and rail (`page-viewer.tsx:163-165,172`, §5.84);
+`PageHeader` and the in-flow layout (§5.82, the frame's full screen); the Keynote state (never built, §5.85).
+**No-JS path:** today and after, the server renders page 1 whole with its title and the close link; navigation needs
+JavaScript. Nothing in the plan or the artboards asks for a per-page URL, so none is added (the artboard's `#p7` anchors
+are drawing, not specification).
+
+### 3 · `ui/page-viewer` — the props (contract 2)
+
+```ts
+/** content · `page-viewer.tsx` — SCR-013's page, previous/next, scrubber, rail, zoom and keys (DEC-213 §4). */
+export interface PageViewerPage {
+  pageNumber: number;      // as stored (material_pages.page_number); shown under a thumbnail
+  imageUrl: string;        // signed, 60 min — never the source file
+  thumbnailUrl: string;
+  width: number;           // the rendered page's real size: reserves its box
+  height: number;
+}
+
+export interface PageViewerLabels {
+  previous: string;                                   // «الصفحة السابقة»
+  next: string;                                       // «الصفحة التالية»
+  scrubber: string;                                   // «الانتقال إلى صفحة» ★
+  rail: string;                                       // «الصفحات»
+  thumbnail: (pageNumber: number) => string;          // «الانتقال إلى الصفحة 3»
+  pageOf: (position: number, total: number) => ReactNode;   // «صفحة <bdi>7</bdi> من <bdi>24</bdi>» — the live region
+  pageOfText: (position: number, total: number) => string;  // the same, plain — aria-valuetext and the image's alt
+  position: (position: number, total: number) => ReactNode; // «<bdi>7</bdi> من <bdi>24</bdi>» under the scrubber ★
+  zoomIn: string;                                     // «تكبير»
+  zoomOut: string;                                    // «تصغير»
+  stage: string;                                      // the zoomed stage's name, when it is focusable ★
+  noPages: string;                                    // «لا توجد صفحات لعرضها.»
+}
+
+export interface PageViewerProps extends Styleable {
+  pages: PageViewerPage[];
+  /** The reading direction — the ONLY input to the keys, the swipe and the zoom origin. The buttons need none:
+   *  «next» is next in every direction and sits at the inline-end by DOM order. */
+  dir: "rtl" | "ltr";
+  title: string;
+  labels: PageViewerLabels;
+  /** 1-based position in `pages` (not `pageNumber`). Controlled with `onPageChange`, or uncontrolled. */
+  page?: number;
+  defaultPage?: number;
+  onPageChange?: (page: number) => void;
+  /** An index into PAGE_VIEWER_ZOOM_STEPS. Controlled with `onZoomChange`, or uncontrolled. */
+  zoom?: number;
+  defaultZoom?: number;
+  onZoomChange?: (zoom: number) => void;
+  /** Draw the zoom controls inside the viewer (default) or leave them to the screen's chrome (PageViewerZoom). */
+  showZoom?: boolean;
+  /** The rail is drawn from `lg` only, at the inline-start (DEC-213 §5.84). Default true. */
+  showRail?: boolean;
+  /** A tap on the page that was not a swipe — the screen toggles its chrome (DEC-213 §5.87). */
+  onStageTap?: () => void;
+  /** Any key the viewer sees — the screen brings hidden chrome back (§5.87's floor). */
+  onKeyActivity?: () => void;
+}
+
+export interface PageViewerZoomProps extends Styleable {
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
+  labels: Pick<PageViewerLabels, "zoomIn" | "zoomOut">;
+}
+```
+
+By path, not in `index.ts` (it exports types only): `PageViewer`, `PageViewerZoom`, `PAGE_VIEWER_ZOOM_STEPS = [1, 1.5, 2]`,
+and `pageViewerKey(key, dir, modifiers): "next" | "previous" | "first" | "last" | null` — the keyboard model as one pure
+function the tests read directly. **`"use client"`**; it composes `ui/icon-button` and `icons` (`ChevronIcon`), reads no
+DAL, no session, no catalogue. The label functions are why its parent must be a client component — the screen's
+`viewer-screen.tsx` builds them with `useTranslations`, so nothing crosses the server boundary as a closure (`DEC-159`).
+
+**One set of buttons, placed by a grid.** Previous, the stage, the scrubber and next are single DOM nodes in that order:
+below `lg` the grid is the stage over a row «previous · scrubber · next»; from `lg` it is «previous · stage · next» and the
+scrubber is not drawn. Duplicated buttons hidden by a breakpoint would give jsdom two «الصفحة التالية» and Playwright two
+strict matches.
+
+**Swipe** (an enhancement, `DEC-093`): pointer events on the stage, only at zoom 1, |dx| ≥ 48 px and |dx| > |dy|. **The next
+page comes from the left in Arabic, so a finger dragging the page rightward advances**; in LTR a leftward drag advances. A pointer that moved less than the threshold is a tap
+(`onStageTap`). No `setTimeout`, no motion library.
+
+### 4 · Every state `M10b.md` §1 names that is not drawn — and how it is built
+
+| State | How |
+|---|---|
+| **loading** (§5.89) | ★ new `[materialId]/loading.tsx`: the black ground, a bone-coloured page at 4:3 centred, a bar strip top and bottom on the phone, the rail's six thumbnails from `lg`. `ui/skeleton`, `aria-hidden`, no text, no `getTranslations`. **Needs from the lead:** the black token (§8.1) and a bone tone for `ui/skeleton` (§8.2), or the raised fill if refused. Paired with a new `error.tsx` (row 44) |
+| **rendering** (`pending` and `rendering`) | the chrome bar (close, title, no download, no page count), and centred on the black `materials.list.renderStatus.rendering` «جارٍ تجهيز الصفحات…» over an indeterminate `ui/progress`. No polling — the tree has none; a reload is the way, as today |
+| **failed** | the chrome bar, then `materials.viewer.states.failed` («… تأكد أن الملف PDF سليم وارفعه من جديد.») centred in an `error` `panel`. **No retry button** until §7 N4 is ruled; nothing exists to call |
+| **Keynote / download-only** | **not built** (`DEC-213` §5.85) |
+| **audio** | never opens here (`REQ-MAT-007`, the row plays inline); a cold URL lands on row 8's empty state |
+| **no pages** | row 8 |
+| **chrome hidden** (phone) | a tap on the stage hides the two bars by `opacity` + `translateY` (`--duration-*` token); any key (`onKeyActivity`), any focus inside the chrome (`focusin`) or another tap brings them back. **Never `aria-hidden`, never `inert`**: a hidden bar stays in the tree and tabbing into it reveals it, so a focused control is never invisible. From `lg` the chrome is never hidden |
+| **chrome hidden under reduced motion** (§5.87) | the same toggle with no slide and no fade-in time: `motion-reduce:` removes the transform and the transition, the bar is shown or not |
+| **zoomed** | the stage scrolls, is focusable and named, swipe is off, arrows pan while it has focus (row 29) |
+| **download pending / refused** | rows 34, 35 |
+
+### 5 · Contract 3 — photos by uploader, add-only in `src/lib/dal/photos.ts` (for `scoring`)
+
+```ts
+export interface UploaderPhoto {
+  id: string;
+  sessionId: string;       // the profile links a tile to its session; no title is read here (content never queries sessions)
+  url: string;             // signed, 60 min — the EXIF-stripped image (there is no thumbnail derivative yet, DEC-206 §4.55)
+  width: number | null;
+  height: number | null;
+  createdAt: string;       // display order only, never «the last row»
+}
+
+export interface UploaderPhotos {
+  /** Every photograph by this member the CALLER may see — the heading's «9». */
+  count: number;
+  /** The newest `limit`, signed. A failed signature leaves its photograph out; the count stays. */
+  photos: UploaderPhoto[];
+}
+
+/** SCR-020's «صور رفعتها» (DEC-213 §5.119). Through RLS with the caller's client — `photos_read` is the visibility
+ *  rule — plus `removed_at is null` and `hidden_at is null` for EVERY caller, staff included (a profile shows what a
+ *  colleague sees). By `uploader_id`; nothing in the schema tags a member, so a tagged photograph cannot appear. */
+export async function listPhotosByUploader(
+  locale: string,
+  memberId: string,
+  opts?: { limit?: number },   // default 6 (`Profile.dc.html:72`: five tiles and «+4»), at most 48
+): Promise<UploaderPhotos>;
+```
+
+One count query (`count: "exact", head: true`) and one row query ordered `created_at desc, id desc`, one
+`createSignedUrls` batch. A malformed `memberId` returns `{ count: 0, photos: [] }`. Its test is a request (§8.4).
+
+### 6 · Files, commits, and every existing assertion that moves
+
+**Order** (`DEC-208`; nothing before «the plans are approved» **and** «the frame is in»):
+
+- **C0 — the bug, on the record (green).** New `tests/components/viewer/page-viewer-direction.test.tsx`: the direction case
+  below, run against **today's** `components/viewer/page-viewer.tsx` and declared `it.fails(...)`. It is green only while the
+  defect exists — committed green, it documents the failure, and the run's output (expected «صفحة 2 من 3», received
+  «صفحة 1 من 3» — the button is disabled on page 1) is quoted in this note. Deleted in C1 with the file it tests.
+- **C1 — the delete.** `rm`: `src/app/[locale]/app/sessions/[id]/materials/[materialId]/{page.tsx,download-button.tsx,not-found.tsx}`,
+  `src/components/viewer/page-viewer.tsx`, `tests/components/viewer/page-viewer.test.tsx`,
+  `tests/components/viewer/page-viewer-direction.test.tsx`. **Kept:** `actions.ts` (row 31). The ledger lines for the eight
+  cases that leave go in this commit (below).
+- **C2 — the primitive** (with the lead's types and registry entry, contract 2 — the gate fails on a `ui/` file with none):
+  new `src/components/ui/page-viewer.tsx`, `tests/components/ui/page-viewer.test.tsx`, `tests/components/ui/page-viewer-scope.test.tsx`,
+  `src/app/[locale]/(dev)/ui/demos/page-viewer.tsx` (every state in Arabic from fixture pages: first, middle, last, one page,
+  none, zoomed, `ltr`).
+- **C3 — the create.** New: the route's `page.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`;
+  `src/components/viewer/{viewer-screen.tsx,download-control.tsx,viewer-states.tsx}`; `tests/components/viewer/viewer-screen.test.tsx`;
+  `ar/materials.json` then `en/materials.json` (the ★ keys: `close`, `scrubberLabel`, `position`, `pageCount` with six forms,
+  `keys.next`, `keys.previous`, `keysLabel`, `stageLabel`, `sourceNote`, `downloadShort`; `back` and `breadcrumbLabel` removed);
+  `materials.ts` add-only: `ViewerData.sessionId`, `ViewerData.viewerIsAdmin`.
+- **C4 — contract 3.** `photos.ts` add-only (§5) and its test.
+- **C5 — the evidence.** New `tests/e2e/wave19-content-viewer.spec.ts`; the lead runs it.
+
+**`tests/components/viewer/page-viewer.test.tsx` — all eight cases leave with the file and are re-asserted in
+`tests/components/ui/page-viewer.test.tsx`. Each is a ledger line; every one is a SELECTOR move, none an expectation move:**
+
+| Case | Moved | How |
+|---|---|---|
+| starts on page 1 of 3 | selector | `getByTestId("page-indicator")` → the scrubber, `getByRole("slider", { name: "الانتقال إلى صفحة" })`, its `aria-valuetext` «صفحة 1 من 3»; `NextIntlClientProvider` → `labels` built from `ar/materials.json` |
+| ★ RTL: ← advances, → goes back | selector | as above; `rtl` → `dir="rtl"` |
+| ★ LTR: → advances, ← goes back | selector | as above; `dir="ltr"` |
+| Home and End | selector | as above |
+| Page Down / Page Up | selector | as above |
+| clamps at both ends | selector | as above |
+| a thumbnail jumps to its page | selector (provider only) | the name «الانتقال إلى الصفحة 3» is unchanged |
+| the no-pages state | selector (provider only) | «لا توجد صفحات لعرضها.» is unchanged, from `labels.noPages` |
+
+**`tests/e2e/materials.spec.ts` — no assertion moves.** `page-indicator` stays on one element with the same words
+(row 23); the keys stay window-level (row 19); the viewer is still reached by the row link (`:230-233`, the event page's,
+untouched). `review()`'s sideways-scroll check skips fixed layers, which the bars are. If the lead's full-screen frame
+changes `#main` or the stream-settling the spec waits on, that is a frame line, not this track's.
+
+**The two tests the brief names:**
+
+- ★★ **The direction test** — `tests/components/ui/page-viewer.test.tsx`, «★ ar: «الصفحة التالية» moves the page from N to
+  N + 1 and sits at the inline-end; «الصفحة السابقة» moves it back»: `dir="rtl"`, page 1 of 3; click the button named
+  «الصفحة التالية» → `aria-valuetext` «صفحة 2 من 3»; again → 3; «الصفحة السابقة» → 2; next is disabled on page 3 and
+  previous on page 1; and next follows previous in document order inside the `dir="rtl"` row, i.e. it is at the
+  inline-end. ★ **It fails against today's file** — C0 proves it: on page 1 in RTL, «الصفحة التالية» is disabled, so the
+  click does nothing and the page stays at 1. The physical half the jsdom cannot see is in the e2e: in `ar` at 390 and at
+  1280, next's bounding box is **left of** previous's, its chevron's `data-direction` is `forward` and its computed
+  transform is the RTL mirror (it points left), and on desktop `←` advances and `→` goes back.
+- ★★ **The no-URL test** — `tests/e2e/wave19-content-viewer.spec.ts`, «★ REQ-MAT-005: a member denied download receives no
+  signed URL»: against real local Supabase and Storage, a PDF with `allow_download = false`, a checked-in member.
+  (1) The viewer has no control named «تحميل…». (2) The document and its RSC payload contain no `/object/sign/materials/`.
+  (3) **The URL itself:** a supabase-js client signed in as that member makes the exact call `getMaterialDownloadUrl()` makes —
+  `storage.from("materials").createSignedUrl(<the version's storage_path>, 300)` — and receives an error and no URL; the same
+  call as the session's presenter receives one (the control that keeps the test from being vacuous). Beside it, a unit case
+  of `getMaterialDownloadUrl()` with `sessionClient` stubbed (the pattern of `tests/unit/sessions-two-day-check-in.test.ts`):
+  a refused signature → `null`, no audit call for a member; for an admin the audit RPC runs **before** the signature, and an
+  audit error → `null` (§8.4 — the path is a request).
+- **The admin audit** — the same spec: an admin downloads, the navigation to `/object/sign/materials/` is observed, and
+  `audit_log` gains one row for the material.
+
+Captures (production build, `E2E_SHOTS_DIR` honoured): `.qa-shots/rtl/wave19-content-viewer-{ready,chrome-hidden,rendering,failed,denied}-390.png`
+and `wave19-content-viewer-{ready,admin}-1280.png`, each after the streams settle.
+
+### 7 · ★ Disagreements `DEC-213` §5 does not list — with the file and the line, not picked
+
+- **N1 · The phone title is cut with an ellipsis.** `Viewer.dc.html:22` — `white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis` on the title. `10-i18n-rtl.md:187` and `01-prd.md:2324`: never `overflow: hidden` on a text line
+  (it clips stacked tashkeel); `DEC-190` (`DECISIONS.md:4741`) found a clamp's ellipsis drops letters inside an RTL word and
+  ended with no clamp at all. With zoom in the same bar (§5.83) the title has about 176 px at 390. Until ruled, the plan lets
+  the title wrap and the bar grow.
+- **N2 · An admin's download when `allow_download` is false.** `M10b.md` §1 and `DEC-213` §5.88: «absent when
+  `allow_download` is false». `REQ-MAT-005`: «Admins can always download, and that access is audited»; `07` §6's table: admin
+  download «always permitted» in both columns. The tree hides it from the admin too (`download-button.tsx:17`). And Storage
+  signs for **any staff** (`0116:120`, `is_staff()`) while `record_material_download()` audits **the admin only**
+  (`materials.ts:543`) — so showing the control to «staff» would give a moderator an unaudited download; to the presenter
+  (also signed, `0116:118`), an unaudited one by design (`07` §6 audits the admin path only).
+- **N3 · The audited line.** Neither artboard draws «سيُسجَّل هذا التحميل في سجل التدقيق.»; the tree shows it to every
+  downloader (`download-button.tsx:40`) though only an admin's is audited (§0.2). That it goes to the admin only is a truth
+  fix (row 36); **where** it sits — the desktop footer, a description on the phone's icon button — is not drawn.
+- **N4 · «failed (with retry …)».** `M10b.md` §1 and `09` `SCR-013`'s states name a retry; nothing can be retried — no DAL
+  function, RPC or proposed SQL re-enqueues `render_pages`, and a member can neither re-render nor re-upload. The tree shows
+  the message alone (`page.tsx:37-40`). A re-upload (`REQ-MAT-010`'s new version) is the presenter's only recovery today.
+- **N5 · «No motion. `prefers-reduced-motion` removes the page-slide.»** (`M10b.md` §1, its last line). The first sentence
+  rules motion out; the second implies a page-slide exists. Neither artboard nor `DEC-213` §5.87 draws one. The plan builds
+  none, pending a reading.
+- **N6 · Double-tap to fit.** `07` §5's zoom row: «Pinch and buttons; double-tap to fit». Not drawn, not in `DEC-213`
+  §5.83 — and it competes with tap-to-toggle (`DEC-213` §5.87): telling one tap from two needs a delay on every tap.
+- **N7 · The hint line** «اسحب للتنقّل · انقر لإخفاء الأدوات · قرّب بإصبعين» (`Viewer.dc.html:44`, the copy beneath the
+  bottom chrome). Copy or the drawing's annotation, as §5.91 ruled «تُملأ من اليمين»? If copy, it is three ★ strings.
+- **N8 · The presenter line names one presenter and one company** (`ViewerDesktop.dc.html:15`, «محمد الدوسري، جذر»). A session
+  has one or more accepted presenters (`REQ-SES-019`), possibly of different companies; wave 18 found screens that silently
+  dropped co-presenters. The composition for two or more is not drawn.
+- **N9 · Who sees the font-substitution warning in the viewer.** Not drawn. `REQ-MAT-011` warns «the presenter» and tells them
+  to re-export; wave 18 PR B already shows it on the event page's slot to the presenter and staff only (this note, «built»,
+  item 2); today's viewer shows it to every viewer (`page.tsx:43-50`).
+- **N10 · Citations, not rulings.** `M10b.md` §1 cites `REQ-MAT-007` for «the source PDF is never fetched»; that is
+  `REQ-MAT-003`'s acceptance («works without downloading the source file»). `REQ-MAT-003` cites `REQ-INT-004` for the reading
+  direction; `REQ-INT-004` is «Logical properties only». `09` `SCR-013` says «the thumbnail rail runs right to left»; the
+  drawn rail is vertical at the inline-start.
+
+### 8 · What this track needs from the lead
+
+1. **A token for the viewer's black ground** (`DEC-213` §5.82) — `bg-black` is refused by `no-raw-palette`
+   (`tests/unit/no-raw-palette.test.ts:58`) and a hex by `tokens-only`. A semantic name in `globals.css` (yours), e.g.
+   `--color-void`, and whether the bars' «ink at 92 %» is `bg-bg/92` or a name of its own.
+2. **A bone tone on `ui/skeleton`** for the page skeleton («a bone-coloured page skeleton», `M10b.md` §1) — an add-only prop,
+   or a ruling that the raised fill stands.
+3. **Contract 2:** `PageViewerProps`, `PageViewerLabels`, `PageViewerPage`, `PageViewerZoomProps` (§3) in `ui/index.ts`, the
+   registry entry (`composes`: `icon-button`, `icons`), the demo wired — in or before C2.
+4. **Two test paths outside my list:** `tests/unit/materials-download-url.test.ts` (§6, the DAL's own half of the no-URL
+   proof) and `tests/unit/photos-by-uploader.test.ts` (contract 3). If refused, both go under `tests/components/viewer/`.
+5. **The presenter line's source** (§5.86): the plan reads `getSessionForEvent(locale, id)` — `sessions'` DAL, imported, never
+   edited — for its accepted presenters with their companies; it also returns `null` for a session the viewer cannot see. It
+   reads the viewer's seat, check-ins and tags as well, which this page does not need. The lighter alternative is an add-only
+   function from `sessions` — your call; `content` does not query `sessions` itself.
+6. **Rulings on §7 N1 – N9.** None blocks C0 – C2; N2, N3, N7 and N9 decide markup in C3.
+
+---
+
+## Wave 19 — built (after sync 1, `DEC-214`)
+
+**Commits:** `7dee077c` contract 3 and the three primitive additions · `75a1ae26` the live defect on the record
+(`it.fails`, run as a plain `it`: expected «صفحة 2 من 3», received «صفحة 1 من 3») · `14c6d049` the delete · the create
+commit follows (its sha in the lead's message).
+
+### The kept-behaviour table, read against the new files
+
+Every row of «Wave 19 — plan» §2, re-read against `page.tsx`, `viewer-screen.tsx`, `download-control.tsx`,
+`ui/page-viewer.tsx` and `materials.ts` after the create:
+
+- **Kept as planned:** 1, 2, 4, 5, 6, 8, 10 – 18, 20 – 29, 31 – 35, 37 – 44.
+- **3** — `notFound()` also when `data.sessionId !== id` (`page.tsx`); the e2e's last case drives it.
+- **7** — failed: the plain sentence to a member, the re-upload guidance to a presenter or an admin, «أعد المحاولة»
+  is `router.refresh()` (N4).
+- **9** — the substitution notice to presenters and staff only (N9), under the bar.
+- **19** — window-level keys; a key with Alt, Ctrl or Meta is never the viewer's (`pageViewerKey`); a text field owns
+  its keys; the zoomed stage pans with its arrows.
+- **30** — the control shows when `allow_download`, or the viewer presents the session, or is staff (N2).
+- **36** — «سيُسجَّل هذا التحميل» is an admin's alone: beside «تحميل» from `lg`, the phone icon button's
+  `aria-describedby` (N3).
+- **12** — `preload` on page 1 (Next 16's name for `priority`).
+- ★ The page is sized from the stage's container units and the page's own ratio, so it is whole and as large as the
+  stage allows at any size (a 1600 px render and a test's 1 px image alike).
+
+### The ledger lines (for `STATUS.md`, wave 19)
+
+`tests/components/viewer/page-viewer.test.tsx` was deleted in `14c6d049`; its eight cases are re-asserted in
+`tests/components/ui/page-viewer.test.tsx` (the create commit). **Selector moves only, no expectation moved:**
+
+| File · case | Moved | Why |
+|---|---|---|
+| `viewer/page-viewer.test.tsx` · starts on page 1 of 3 | selector | `getByTestId("page-indicator")` → the scrubber's value and `aria-valuetext`, the live region's text; the provider → `labels` from `ar/materials.json` |
+| · ★ RTL: ← advances, → goes back | selector | as above; `rtl` → `dir="rtl"` |
+| · ★ LTR: → advances, ← goes back | selector | as above; `dir="ltr"` |
+| · Home and End | selector | as above |
+| · Page Down / Page Up | selector | as above |
+| · clamps at both ends | selector | as above |
+| · a thumbnail jumps to its page | selector (provider only) | «الانتقال إلى الصفحة 3» unchanged |
+| · the no-pages state | selector (provider only) | «لا توجد صفحات لعرضها.» unchanged |
+| `viewer/page-viewer-direction.test.tsx` (`75a1ae26`, deleted in `14c6d049`) | — | the `it.fails` record of the defect, removed with the file it proves wrong (DEC-214 §1) |
+
+`tests/e2e/materials.spec.ts` — no assertion moves.
+
+### Requests to the lead
+
+1. **The registry entry:** `"page-viewer.tsx": tokens("page-viewer", ["bg-chrome", "outline-accent", "accent-accent"], "page-viewer-scope.test.tsx")`
+   — it draws its own colours from semantic names only (no `pg:`), composing `ui/icon-button` and `ui/icons`. The demo
+   is `src/app/[locale]/(dev)/ui/demos/page-viewer.tsx` (`PageViewerDemo`), to wire into the gallery.
+2. **`ui/index.ts`:** widen `AvatarProps.size` (`44 | 84 | 104`), `TagChipProps.teamColor?: TeamColor`,
+   `BadgeProps.level?: number` — the files export the widened types meanwhile.
+3. **The e2e:** `tests/e2e/wave19-content-viewer.spec.ts`, eight cases, captures
+   `wave19-content-viewer-{ready,chrome-hidden,denied,rendering,failed}-390.png` and `-{ready,admin}-1280.png`.

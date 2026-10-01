@@ -680,7 +680,36 @@ for announcements among them; the five public routes; the weekly leaderboard, th
 learning objectives, a level history, attachments on comments; a sticker layer on the poster templates; and the two
 carried gates, which travel together (`DEC-194`).
 
-### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5, renumbered by `DEC-199` §7, re-ordered by `DEC-205` §1)
+## M21 — the member screens, batch B: reading, rating, proposing, and who people are · wave 19 · `DEC-213`
+
+Six screens rebuilt from eight artboards in `docs/design/screens/m10b/`, each under `DEC-199` §2 and ★★ **`DEC-208`:
+the page file deleted first, then written from its artboard, with a table of what it kept and the requirement that
+made it keep it.** ★ The owner put this batch **before session stories** (`DEC-213` §1) — the second deliberate
+re-ordering after `DEC-205`'s. One pull request, four tracks; no migration.
+
+| Work | Requirements | Track |
+|---|---|---|
+| The frame's four additions — the viewer full-screen, own top rows, the rail's «الأعضاء», the raised tab current, a page that owns its width | `REQ-UIX-054` | lead |
+| `star-input`, `stepper`, `page-viewer`, `badge-medallion` | `REQ-UIX-064` | four tracks |
+| The viewer, `SCR-013`, phone and desktop | `REQ-UIX-065` | `content` |
+| Rate, `SCR-015`, with the survey kept | `REQ-UIX-066` | `event` |
+| Propose and my proposal, `SCR-017`, `SCR-018` | `REQ-UIX-067` | `sessions` |
+| The directory, `SCR-019` — new | `REQ-UIX-068` | `scoring` |
+| The profile, `SCR-020`, phone and desktop | `REQ-UIX-069` | `scoring` |
+
+**Demonstrable:** ★★ every rebuilt screen captured at 390 px — and at 1280 for `SCR-013` and `SCR-020` — **held
+beside its artboard and opened by the lead**; ★★ a kept-behaviour table per screen; ★ the viewer's direction proved
+by a test, not by inspection; ★ a denied member receives no download URL; ★ `qa:contract`, `visual`'s public pairs
+and the register-form fingerprint unmoved; and ★★ **the owner holding each screen beside its artboard on a phone**.
+
+**Not this milestone:** session stories (next); the hub, points and the two boards (M10c, which owes the hard-load
+re-measure on its two routes); every console and studio route; the five public routes; photo tagging; autosave, a
+withdrawn state and a member-readable proposal history (`DEC-213` §6); the hosting gate's enforcement; a weekly board;
+and the two carried gates, together (`DEC-194`).
+
+### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5, renumbered by `DEC-199` §7, re-ordered by `DEC-205` §1 and `DEC-213` §1)
+
+★★ **The standing order (the owner, 2026-10-01, wave 19): WE BUILD WHAT HAS A DESIGN.** As long as the designer session keeps producing screen batches, screens go first; stories lands when the batches run out or when the owner says so. Stories was not demoted — it was overtaken by work that became buildable (`DEC-213` §1).
 
 Each wave of the programme claims its milestone number when it opens (`DEC-183` §3). **The positions are fixed now;
 the numbers after M19 are the sequence as it stands, and move with it.** `DEC-195` §5 had stories at M19; wave 17
@@ -691,9 +720,10 @@ claimed the number, and every position after it kept its place.
 | 1 | **M17** — done, wave 15 | the foundation: tokens as a scope, the display face, the primitives, team colours |
 | 2 | **M18** — done, wave 16 | the five moments on their real surfaces |
 | 3 | **M19** — this wave, wave 17 | every primitive in the playground, a gate that enumerates them, and the scope at the root of every layout but the public site's |
-| 4 | ★ **M20** — this wave, wave 18 (`DEC-205`: the owner put it before stories) | the member screens, batch A — the shell, the door, the public card, home as the feed, browse, the event page, check-in, the host view; each **rebuilt** from `docs/design/screens/m10a/` |
-| 4b | when it opens — wave 19 | session stories and their viewer (`DEC-093`'s seventh place) |
-| 5 | ★ **when it opens — the rest of the member screens** (batches M10b and M10c) | ★ `SCR-002`, `SCR-003` and `SCR-004` moved into M20 with batch A (`DEC-205`); what remains is `SCR-013`, `015`, `017` – `020`, then `021` – `028` in `09` §8's order. The three `(auth)` screens are neither behind sign-in nor public marketing, so a grouping by either skipped them twice (`DEC-129`, `DEC-195` §5); **they are placed here by name**. ★ Each screen is **rebuilt** from `docs/design/screens/<SCR-id>.md`, never restyled (`DEC-199` §2) |
+| 4 | ★ **M20** — done, wave 18 (`DEC-205`: the owner put it before stories) | the member screens, batch A — the shell, the door, the public card, home as the feed, browse, the event page, check-in, the host view; each **rebuilt** from `docs/design/screens/m10a/` |
+| 4a | ★ **M21** — this wave, wave 19 (`DEC-213`: the owner put it before stories) | the member screens, batch B — the viewer, rate, propose, my proposal, the directory, the profile; each **rebuilt** from `docs/design/screens/m10b/`, deleted first (`DEC-208`) |
+| 4b | when it opens — wave 20 | session stories and their viewer (`DEC-093`'s seventh place) |
+| 5 | ★ **when it opens — the rest of the member screens** (batch M10c) | ★ `SCR-002`, `SCR-003` and `SCR-004` moved into M20 with batch A (`DEC-205`), and `SCR-013`, `015`, `017` – `020` into M21 (`DEC-213`); what remains is `021` – `028` in `09` §8's order. The three `(auth)` screens are neither behind sign-in nor public marketing, so a grouping by either skipped them twice (`DEC-129`, `DEC-195` §5); **they are placed here by name**. ★ Each screen is **rebuilt** from `docs/design/screens/<SCR-id>.md`, never restyled (`DEC-199` §2) |
 | 6 | when it opens | the console — a rebuild of its **layout**; its visual language arrived in M19 |
 | 7 | when it opens | the studio and the certificates' surroundings — the certificate itself keeps its look |
 | 8 | when it opens, **last** | the public site (`DEC-NEXT-5`, option A; `REQ-NFR-019` holds until then) — and with it the old values at `:root` and the `pg:` variant are deleted (`DEC-199` §1.3) |

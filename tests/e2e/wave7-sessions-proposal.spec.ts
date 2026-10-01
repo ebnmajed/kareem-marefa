@@ -123,10 +123,13 @@ test("pending: the state badge, what happens next, no edit and no stale reason",
   await signIn(context);
   await open(page, `/ar/app/propose/${ids.submitted}`);
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("كيف اختصرنا وقت التقارير الشهرية");
-  await expect(page.getByText("بانتظار المراجعة", { exact: true })).toBeVisible();
+  // ★ Wave 19 (ledger): SCR-018 rebuilt from `Proposal.dc.html` — the `h1` is «مقترحي» and the title an `h2`; the
+  // state is the line's current step, «أُرسل», not a badge (DEC-214 D3); the edit is «عدّل وأعد الإرسال».
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("مقترحي");
+  await expect(page.getByRole("heading", { level: 2, name: "كيف اختصرنا وقت التقارير الشهرية" })).toBeVisible();
+  await expect(page.locator("#main [aria-current=step]")).toContainText("أُرسل");
   await expect(page.getByText("سيصلك إشعار حين يقرّر المشرف.")).toBeVisible();
-  await expect(page.getByRole("link", { name: /عدّل مقترحك|أكمل مقترحك/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /عدّل وأعد الإرسال|أكمل مقترحك/ })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "ما كتبه المشرف" })).toHaveCount(0);
 
   await capture(page, "pending");
@@ -136,10 +139,15 @@ test("changes requested: the reviewer's reason and the primary edit action", asy
   await signIn(context);
   await open(page, `/ar/app/propose/${ids.changes}`);
 
-  await expect(page.getByText("بانتظار تعديلك", { exact: true })).toBeVisible();
+  // ★ Wave 19 (ledger): the state is the line's current step «طُلب تعديل»; the primary sits in the reason card —
+  // scoped to it, because the phone's bar mirrors it.
+  await expect(page.locator("#main [aria-current=step]")).toContainText("طُلب تعديل");
   await expect(page.getByRole("heading", { name: "ما كتبه المشرف" })).toBeVisible();
   await expect(page.getByText(REASON)).toBeVisible();
-  await expect(page.getByRole("link", { name: "عدّل مقترحك" })).toHaveAttribute("href", `/ar/app/propose/${ids.changes}/edit`);
+  await expect(page.locator("#main section[aria-labelledby=reason]").getByRole("link", { name: "عدّل وأعد الإرسال" })).toHaveAttribute(
+    "href",
+    `/ar/app/propose/${ids.changes}/edit`,
+  );
 
   await capture(page, "changes");
 });
@@ -150,7 +158,7 @@ test("rejected: the reason, and nothing to edit", async ({ context, page }) => {
 
   await expect(page.getByText("غير مقبول", { exact: true })).toBeVisible();
   await expect(page.getByText("الموضوع أوسع من جلسة واحدة.")).toBeVisible();
-  await expect(page.getByRole("link", { name: /عدّل مقترحك|أكمل مقترحك/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /عدّل وأعد الإرسال|أكمل مقترحك/ })).toHaveCount(0);
 
   await capture(page, "rejected");
 });
@@ -174,7 +182,7 @@ test("edit: a change request is answered by resubmitting — pre-filled, one act
   await expect(page).toHaveURL(new RegExp(`/ar/app/propose/${ids.changes}\\?updated=submitted$`));
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
   await expect(page.getByRole("status").filter({ hasText: "أُرسل مقترحك للمراجعة" })).toBeVisible();
-  await expect(page.getByText("بانتظار المراجعة", { exact: true })).toBeVisible();
+  await expect(page.locator("#main [aria-current=step]")).toContainText("أُرسل");
   // ★ `decision_reason` is still in the row — only approval clears it — and the page no longer shows it.
   await expect(page.getByText(REASON)).toHaveCount(0);
 

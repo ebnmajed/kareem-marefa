@@ -39,7 +39,16 @@
       "submittedBody": "You can change it until rating closes.",
       "backToSession": "Back to the session",
       "yourRating": "Your rating",
-      "submitting": "Sending…"
+      "submitting": "Sending…",
+      "back": "Back",
+      "attended": "You attended",
+      "commentName": "Notes",
+      "commentOptional": "(optional)",
+      "commentPlaceholder": "What helped you, and what would you have liked to be different?",
+      "commentCount": "{count} of {max}",
+      "windowEditable": "you can edit it until then",
+      "actionsLabel": "Rating actions",
+      "presenterLine": "<n>{name}</n>, <c>{company}</c>"
     },
     "states": {
       "notCompleted": "Rating opens once the session has ended",

@@ -177,6 +177,8 @@ test("member", async ({ context, page }) => {
     "/ar/app/me", "/ar/app/me/points", "/ar/app/me/certificates", "/ar/app/me/bookmarks", "/ar/app/me/calendar",
     "/ar/app/me/notifications", "/ar/app/me/privacy", "/ar/app/leaderboards", "/ar/app/propose",
     `/ar/app/propose/${ids.proposal}`, `/ar/app/propose/${ids.proposal}/edit`,
+    // wave 19 (DEC-213): the directory, new, and a colleague's profile on the member tier.
+    "/ar/app/members", `/ar/app/members/${ids.admin}`,
   ]) {
     await scan(page, route, "member");
   }
@@ -212,6 +214,8 @@ test("admin", async ({ context, page }) => {
     "/ar/app/admin/emails", "/ar/app/admin/branding", "/ar/app/admin/surveys", `/ar/app/admin/surveys/${ids.surveyTemplate}`,
     "/ar/app/admin/templates/posters", "/ar/app/admin/templates/certificates",
     `/ar/app/sessions/${s}/host`, `/ar/app/members/${ids.admin}`,
+    // wave 19 (DEC-213): the directory as an admin sees it — deactivated members marked.
+    "/ar/app/members",
   ]) {
     await scan(page, route, "admin");
   }

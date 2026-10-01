@@ -5925,3 +5925,403 @@ attends, no standing. The member's own company comes from an add-only `getViewer
   - on the placeholder, a sticker is never a status (`REQ-UIX-031`), and whether the viewer attended is the outcome
     card's fact (`AttendanceOutcome`, `REQ-UIX-015` ask 4).
   - Recorded as a disagreement, not picked.
+
+---
+
+## Wave 19 — plan (`DEC-213`, `REQ-UIX-067`, `REQ-UIX-064`; `STORY-UIX-055`, `056`, `052`) — planning only, nothing deleted
+
+Read for this plan: STATUS's wave-19 block, `DEC-213` in full, `DEC-199` §2, `DEC-208`, `M10b.md`, `Propose.dc.html`
+and `Proposal.dc.html` at 390 beside their PNGs, the two page files, `proposal-form.tsx`, `actions.ts`, `state.ts`,
+`[id]/edit/page.tsx`, `lib/dal/proposals.ts`, `0010`, `0011`, `0012`, `0020`, `0027`, `0039`, `0165`, and the four e2e
+specs and five component/unit suites that pin the two screens. Every row below was re-derived from those, not from
+memory.
+
+### W19.1 · The regions, in each artboard's order, and what each is built from
+
+**`SCR-017` · `Propose.dc.html` (390 × 1980)** — the shell's tab bar stays (a tab route); the phone's top row is the
+page's own (contract 1).
+
+| # | Region (artboard order) | Built from |
+|---|---|---|
+| 1 | Title row: `h1` «اقترح موضوعًا» (display face) · «مقترحاتي N» at the inline-end, a link to `#mine` — **absent when N = 0** | a plain `h1` + `ui/link` (no `page-header`: the artboard's row is a title and a link, nothing else) |
+| 2 | ★ «مقترحاتي» — the list, **above the form, only when non-empty** (§5.95). Each row: the state badge, «دُعيت للتقديم» / «بانتظار ردّك» where they apply, the title | `section-header` (`h2`, count) · `card density="row" href` · `ProposalStatusBadge` · `badge` |
+| 3 | The lead «لست بحاجة لأن تكون خبيرًا.» in the display face, accent (§5.105) | `p` with `font-display`, `text-accent` |
+| 4 | The body `leadBody` | `prose`'s text tokens |
+| 5 | The no-schedule panel (calendar glyph + `noScheduleNote`) | `panel` + `CalendarIcon` |
+| 6 | The progress line: a decorative bar + «المتبقّي: …» (not live). **No «مسودة محفوظة» half** (§5.93) | `progress-bar` (`decorative`, `size="sm"`) + text |
+| 7 | **Section 1 «الموضوع»** — `h2` with its number disc: title `input` (hint + «N من 150»), abstract `textarea` (hint + «N من 2000»), category `select`, **level as three chips** (`radio-group`, see W19.4 R1), audience `input`, duration `number` + «دقيقة» + hint | `field` · `input` · `textarea` · `select` · `radio-group` |
+| 8 | **Section 2 «المُقدِّمون والملاحظات»** — co-presenters `combobox` (chips with the team ring, see R2), hint + the org's limit line; notes `textarea`; the dashed materials note | `field` · `combobox` · `textarea` · a dashed `panel` |
+| 9 | ★ The earn panel — `sticker` «+N» + the sentence, **absent when N = 0** (§5.96) | `panel` + `sticker` (`informative`) |
+| 10 | The sticky bar: «أرسل المقترح» (primary) + «احفظ كمسودة» | `action-bar` (rendered **inside the `<form>`**, so both `name="intent"` buttons submit it; `button`'s `pending`) |
+
+**`SCR-018` · `Proposal.dc.html` (390 × 1440)** — drawn in «طُلب تعديل».
+
+| # | Region (artboard order) | Built from |
+|---|---|---|
+| 1 | Back control (→ `/app/propose`) · `h1` «مقترحي» · the date line under it (see D2) | `icon-button`-shaped `ui/link` with `ChevronIcon`, named «مقترحاتي» |
+| 2 | ★ The five-step `stepper` (§5.98, D3) | **`ui/stepper`, new** |
+| 3 | The reason card (changes requested / rejected): «ما كتبه المشرف» as its `h2`, the time, the reason in a `blockquote`, **no name** (§5.99), then the one primary «عدّل وأعد الإرسال» → `/app/propose/[id]/edit` | `card` (bordered `signal` when changes requested; muted when rejected) + `ButtonLink` |
+| 4 | The summary: the title as `h2`, chips (category · level · duration), the abstract; audience and (proposer only) notes beneath | `h2` · `tag-chip` (static) · text |
+| 5 | «المُقدِّمون» + «تُدار من هنا»: rows with the avatar's team ring, the name (or «أنت»), the reply state; remove on any non-proposer row while open (§5.103, D9); «+ أضف مُقدِّمًا مشاركًا» while open and under the limit (§5.102) | `card density="row"` · `avatar` (`teamColor`) · `badge` · `icon-button` → `sheet` (remove) · `button` → `sheet` + `combobox` (add) |
+| 6 | «مواد مبدئية» — `content`'s `ProposalMaterials`, **used as it is** (D7) | the page owns the `section` and `h2` |
+| — | ~~«السجل»~~ · ~~«اسحب المقترح»~~ — **absent** (§5.100, §5.101) | — |
+| 7 | The bottom bar mirroring the primary (only where there is one) | `action-bar`, `hideFrom="lg"` |
+
+Not drawn, kept in place: the co-presenter's invitation panel (accept / decline) sits **after region 1 and before the
+reason card** — it is what that viewer came to do; and the `?created` / `?updated` receipt (`role="status"`) sits
+above region 1, as today.
+
+### W19.2 · ★★ The kept-behaviour tables (`DEC-208`)
+
+**`SCR-017` — `/app/propose` (and `/app/propose/[id]/edit`, its resubmit state)** — 34 rows.
+
+| # | Behaviour today | Where it lives after the rebuild | Kept by |
+|---|---|---|---|
+| 1 | `listCategories()` — active categories only, for the category select | `page.tsx` → `proposal-form.tsx` | `REQ-PRO-002` |
+| 2 | `listNameableMembers()` — `members_member_view` (member tier), self excluded, for the co-presenter search | `page.tsx` → the combobox; ★ add-only `teamColor` on `NameableMember` for the chip's ring | `REQ-PRO-003`, A33 |
+| 3 | `getOrgPrefs().maxCoPresenters` → `Combobox max` and the «يمكنك تسمية …» line (six forms) | unchanged path | `REQ-PRO-003`, OQ-021 |
+| 4 | `listMyProposals()` — own **and** named-in, newest first | `page.tsx` → the list, now **above** the form, absent when empty | `REQ-PRO-008`, §5.95 |
+| 5 | A list row says «دُعيت للتقديم» / «بانتظار ردّك» — **how a co-presenter reaches their invitation** | the row, unchanged | `REQ-PRO-003` |
+| 6 | `submitProposal` bound in the Server Component (`.bind(null, locale)`), never an inline closure | `page.tsx` | `DEC-159` |
+| 7 | Zod `proposalInput` (`.strict()`) parses before any DAL call; a smuggled schedule key is a parse failure | `actions.ts`, unchanged | `REQ-NFR-002`, `REQ-PRO-001` |
+| 8 | `createProposal()` → `create_proposal()` RPC — proposal, proposer row and co-presenters in one transaction; ids `z.uuid()`-filtered | `actions.ts` / `proposals.ts`, unchanged | `REQ-PRO-003` |
+| 9 | `too_many_presenters` / `presenter_not_in_org` → a field error on `coPresenters`; anything else → the form error «تعذّر حفظ مقترحك…» | `actions.ts`, unchanged | `REQ-UIX-009` |
+| 10 | Success redirects to `/app/propose/[id]?created=1`, **outside** the `try` | `actions.ts`, unchanged (see D4) | `REQ-PRO-008` |
+| 11 | Draft vs submit: `intent=draft` saves a draft, anything else submits | the two buttons in the bar, `name="intent"` | `REQ-PRO-006` |
+| 12 | Pending on the pressed button only, its label kept, «جارٍ الإرسال…» announced | the bar's two `button`s, the same `intent` state | `REQ-UIX-007` |
+| 13 | Every typed value survives a failed round trip (`formStateFrom` / `was` / `wasList`; the combobox's hidden inputs) | `proposal-form.tsx`, the same `lib/form-state` calls; the level chips through `radio-group`'s controlled-reset repair | `REQ-UIX-011`, `DEC-149` §1 |
+| 14 | `noValidate` on the form | the `<form>` | `REQ-UIX-009` (app-side errors) |
+| 15 | The summary: keyed by attempt so focus moves on every failed submit; lists exactly the errors shown, in `PROPOSAL_FIELDS` order; count in six forms; «ما كتبته محفوظ» | `form-summary`, first child of the form | `REQ-UIX-009` |
+| 16 | The write failure: its own `role="alert"`, focused | the same local `FormError` | `REQ-UIX-009` |
+| 17 | Blur checks every field after the first submit (`checkProposalField`); typing clears a fixed error | unchanged logic | `REQ-UIX-010`, `REQ-UIX-011` |
+| 18 | «مطلوب» on the four (title, abstract, category, level), `aria-required`, **no asterisk** | `field`'s `required`; level through the legend (R1) | `REQ-UIX-011`, `REQ-PRO-002` |
+| 19 | The labels for العنوان, النبذة, التصنيف equal the pre-launch form's (`proposal-copy.test.tsx`) | the same keys, values unchanged | `REQ-PRO-002` |
+| 20 | «المتبقّي: …» — the required fields still failing, six forms, **not a live region** | region 6, plus a decorative bar | `REQ-UIX-011`, `DEC-141` r7 |
+| 21 | «N من 150» / «N من 2000» under title and abstract, as the control's description | under each field; the limits from `PROPOSAL_LIMITS` | `DEC-213` §5.94 |
+| 22 | `maxLength` and the duration's `min`/`max` from `PROPOSAL_LIMITS` | unchanged | `REQ-PRO-002` |
+| 23 | Duration: `type="number"`, `inputMode="numeric"`, `dir="ltr"`, the unit after it in a flex row (number to the right in RTL — `sessions-propose.spec.ts:278`) | unchanged (step: D5) | `REQ-INT-004`, `REQ-INT-007` |
+| 24 | Co-presenters: Arabic-normalised search over name and title, removable chips, `dir` follows the text, `id="coPresenters"` is the summary's target, hidden inputs named `coPresenters`, stops at the limit | `combobox`, same props | `REQ-UIX-008`, `REQ-DSC-004`, `REQ-PRO-003` |
+| 25 | «لا يوجد زملاء آخرون في مؤسستك بعد.» when there is nobody to name | unchanged | `REQ-PRO-003` |
+| 26 | ★ **No date, time or venue control** — not hidden, absent; the schema has no such key | the form; `proposal-schema.test.tsx` untouched | `REQ-PRO-001` |
+| 27 | The no-schedule note said out loud | region 5's panel (moved from under the buttons to above the form, as drawn) | `REQ-PRO-001` |
+| 28 | The materials note (create only) | region 8, dashed | `REQ-PRO-004` |
+| 29 | The lead line and the body | regions 3 – 4 (the lead in the display face, §5.105 — it was the page header's description) | `09` `SCR-017` |
+| 30 | `<bdi>` on every interpolated title and name (list rows; the receipt's `<t>`; option labels are text nodes) | everywhere a member's text is drawn | `REQ-INT-007` |
+| 31 | The auth boundary: every read through `sessionClient()` → `requireSession()` at the data; `proxy.ts` carries `?next=` for a cold visit. The page adds none of its own | unchanged — no check in a layout | `REQ-AUT-001`, CLAUDE.md «checks close to the data» |
+| 32 | **The edit route `/app/propose/[id]/edit`** — proposer only, draft or changes requested, else `notFound()`; the same form pre-filled; a change request is resubmit-only (`allowDraft=false`); «تُدار قائمة المُقدِّمين من صفحة المقترح نفسها» instead of the combobox; the reason pinned above the form | **kept as a route** — `SCR-017`'s resubmit state (`M10b.md` §3), rebuilt with the same form; the reason pinned above section 1 | `REQ-PRO-005`, `REQ-PRO-006`, `DEC-141` r1 |
+| 33 | `updateProposalAction` — `allowDraft` bound from the state read; `not_editable` keeps every typed word | `actions.ts`, unchanged | `REQ-PRO-006` |
+| 34 | The route's own boundaries: `error.tsx` (a render failure, never a submission) and the field-shaped `loading.tsx` | `error.tsx` **kept unchanged**; `loading.tsx` rewritten to the artboard's shape | `REQ-UIX-005`, `REQ-UIX-016` |
+
+**`SCR-018` — `/app/propose/[id]`** — 27 rows.
+
+| # | Behaviour today | Where it lives after the rebuild | Kept by |
+|---|---|---|---|
+| 1 | `getProposal(locale, id)` — `proposals_read_own_or_staff` decides who sees it; no row → `notFound()`, never «not yours» | `page.tsx`, unchanged | `REQ-PRO-008` |
+| 2 | `[id]/not-found.tsx` — the house not-found, the way back is «مقترحاتي» | **kept unchanged** | `REQ-UIX-016` |
+| 3 | ★ `admin_notes` withheld from a co-presenter in the DTO (`proposals.ts:268`) | unchanged; the page shows notes only when the DTO carries them | `REQ-PRO-008`, A33 |
+| 4 | The state in words — never colour alone; worded to others for «draft» and «changes requested» (`stateForOthers`) | the stepper's labels for the five; `ProposalStatusBadge` kept for **draft** and **rejected**, which have no place on the line (D3) | `REQ-PRO-006`, `REQ-UIX-003` |
+| 5 | The reason shown **only** in changes requested and rejected (a resubmission keeps last round's `decision_reason`) | the reason card, the same predicate | `REQ-PRO-005` |
+| 6 | The reason's heading «ما كتبه المشرف», `<bdi>` on the reason, line breaks kept | the card's `h2` and `blockquote` | `REQ-PRO-005`, §5.99 |
+| 7 | The edit offered only to the proposer, only in draft / changes requested (`EDITABLE_PROPOSAL_STATES`) | the card's primary (changes requested) and «أكمل مقترحك» (draft); the bar mirrors it | `REQ-PRO-005`, `0010:420-424` |
+| 8 | «المشرف سيتولى تحديد الموعد والمكان وينشر الجلسة.» when approved | under the stepper, approved and not yet scheduled | `REQ-PRO-005` («approving does not publish») |
+| 9 | «سيصلك إشعار حين يقرّر المشرف.» while submitted / in review | under the stepper (★ **not** `M10b.md`'s «يمكنك التعديل…», D1) | `REQ-PRO-008` |
+| 10 | «هذه مسودة عندك — لم تصل المشرف بعد.» for a draft | under the header | `REQ-PRO-006` |
+| 11 | The summary: title, category, level, duration (six forms, `<bdi>`), abstract, audience | region 4 | `REQ-PRO-002`, `REQ-PRO-008` |
+| 12 | The receipt for `?created=1` / `?updated=…` — `role="status"`, draft or submitted wording, the title in `<bdi>` | above region 1 (D4) | `REQ-PRO-008` |
+| 13 | The presenters: every row, the proposer marked, accepted / pending / declined in words | region 5 — «أنت» and «المُقدِّم الرئيسي» for the proposer as drawn; the replies as noun phrases (§5.109) | `REQ-PRO-003` |
+| 14 | A declined co-presenter stays a row | unchanged (§5.104) | `REQ-PRO-003` (as the tree has it) |
+| 15 | The invitation panel for a pending co-presenter: «أوافق على التقديم» / «أعتذر», each a real `<form>` around the bound action (works before hydration) | kept, after region 1 | `REQ-PRO-003` |
+| 16 | `answerPresenterInvite` → `respondToPresenterInvite()` — the write scoped to the caller's own row | `actions.ts`, unchanged | `REQ-PRO-003` |
+| 17 | Remove a co-presenter: proposer only, never the proposer's own row, confirmed naming the person | a `sheet` (§5.103) in a **new** `components/proposals/remove-co-presenter.tsx`; `components/sessions/remove-presenter.tsx` is **not touched** — `SCR-043` uses it and the console is frozen | `REQ-PRO-003`, `REQ-UIX-013` |
+| 18 | `dropCoPresenter` → `removeCoPresenter()`, `revalidatePath` | `actions.ts`, unchanged | `REQ-PRO-003` |
+| 19 | ★ **Add a co-presenter after submission** — new (§5.102) | `actions.ts` `addCoPresenters` → add-only `addCoPresenters()` in `proposals.ts`; the insert fires `MSG-copresenter_invited` exactly as at creation (W19.4) | `REQ-PRO-003` |
+| 20 | The proposal's draft materials — `content`'s `<ProposalMaterials>`, the page owns `section` + `h2` | region 6, the component untouched | `REQ-PRO-004` |
+| 21 | `<bdi>` on the title, the category, every name, the reason, the duration | everywhere | `REQ-INT-007` |
+| 22 | An admin opening the page reads it in the third person and gets no proposer controls | the same `viewerIsProposer` predicate on every control | `REQ-PRO-008`, `DEC-141` |
+| 23 | The auth boundary — `sessionClient()` in every call; `?next=` by `proxy.ts` | unchanged | `REQ-AUT-001` |
+| 24 | The route's error boundary is the segment's (`propose/error.tsx`) | unchanged | `REQ-UIX-016` |
+| 25 | `?updated=submitted` from the edit route lands here with the receipt | unchanged (`wave7-sessions-proposal.spec.ts:174`) | `REQ-PRO-006` |
+| 26 | ★ «مُجدوَل» — new, derived | add-only `getProposalSession()` in `proposals.ts` (W19.4) | `REQ-UIX-067`, §5.98 |
+| 27 | The loading shape — today the segment's form skeleton serves this page too | a **new** `[id]/loading.tsx` shaped like the proposal | `REQ-UIX-005` |
+
+**Behaviours dropped on purpose, each by a ruling:** the empty «مقترحاتي» section with «اكتب أول مقترح» (§5.95: the
+list exists only when non-empty); the page header's breadcrumb on `SCR-018` (the artboard's back control replaces it,
+named «مقترحاتي»); the level as a `select` (three chips, `M10b.md` §3).
+
+### W19.3 · `StepperProps` — contract 2
+
+```ts
+/** sessions · `stepper.tsx` — REQ-UIX-064, DEC-213 §5.125. A process's steps, in order. */
+export type StepperStepStatus = "done" | "current" | "upcoming";
+
+export interface StepperStep {
+  /** Stable key. */
+  id: string;
+  /** The step's name, in the reader's language — «قيد المراجعة». */
+  label: string;
+  status: StepperStepStatus;
+}
+
+export interface StepperProps extends Styleable {
+  /** The `<ol>`'s accessible name — «مراحل المقترح». */
+  label: string;
+  /** In order. At most one `current`; a second is rendered as `upcoming`. */
+  steps: readonly StepperStep[];
+  /** Read after a done step's label by assistive technology — «مكتملة». The check glyph is the visible mark, so a
+   *  done step is never colour alone. */
+  doneLabel: string;
+  /** The current step's fill: `signal` (coral, the drawn «needs you», default) or `accent` (a step reached that asks
+   *  nothing — `M10b.md` §4's approved). A state colour, never a status colour (`DEC-073` untouched). */
+  currentTone?: "signal" | "accent";
+}
+```
+
+An `<ol>` with `aria-label`; each step an `<li>`, the current one `aria-current="step"`; the disc shows the check
+glyph (done) or the step's position in Western digits (`aria-hidden` — the list conveys position); labels wrap, never
+clip; logical properties only; no animation, no hover. Strings arrive as props; no catalogue, no DAL. The demo shows
+the five-step proposal line in every position, both tones, and a three-step line. Tests: `stepper.test.tsx` (the
+`aria-current`, the done text, one current only, RTL order), `stepper-scope.test.tsx` (inside `PlayScope`).
+
+### W19.4 · The states `M10b.md` §3 – §4 names that are not drawn, and how each is built
+
+**`SCR-017`**
+- **Error summary** — as the tree (rows 15 – 16), first in the form; focus moves to it. **Requires** the bar not to
+  cover a focused control: `forms-propose.spec.ts:155-195` walks every summary link and fails if a fixed layer covers
+  the focus target. With a fixed `action-bar` at the bottom that needs `scroll-padding-block-end` on `html` while the
+  bar is shown — `globals.css`, **the lead's** (W19.7 Q3).
+- **Co-presenter limit reached** — `combobox`'s `max` already refuses more; the limit line stays under it; at
+  `max_co_presenters = 0` the field shows the zero form and no search.
+- **Resubmit** — `/app/propose/[id]/edit`, the same form pre-filled, the reason card pinned above section 1, submit
+  «أعد إرسال المقترح», no draft button, no combobox (row 32). `h1` stays «تعديل المقترح» (`wave7-sessions-proposal.spec.ts:162`).
+- **Submitted / draft saved** — the redirect and the receipt on `SCR-018`, as today (D4).
+- **The earn panel** (§5.96) — add-only `getProposeEarnings(locale)` in `proposals.ts`: reads `scoring_rules`
+  (`p1_org_read`, `0027:91`) for the presenter rules **paid at completion and not variable** — `proposal_accepted` and
+  `session_delivered` (seeded 10 + 50; `attendee_bonus`, `rating_bonus` and `materials_uploaded` depend on what
+  happens and are not promised) — summing each only when `enabled` and `points > 0`; and `badges` for the one whose
+  `rule` is `{"metric":"sessions_delivered_count","gte":1}` and `retired_at is null` (seeded «أول جلسة», `0027:546`).
+  Returns `{ points: number | null; firstSessionBadge: string | null }`. Points null → **no panel at all**; a badge
+  with no points → no panel either (the panel is a promise of points). Copy: «+{value}» on the sticker,
+  «للتقديم، تُدفع عند اكتمال جلستك.» and, only with a badge, «وشارة <t>{badge}</t> مع أول جلسة.» — the badge's name
+  **read**, not «مُقدِّم».
+- **Not built**: autosave and «مسودة محفوظة قبل …» (§5.93); the hosting-gated card (§5.97).
+
+**`SCR-018`** — the stepper's five steps, one mapping in `components/proposals/proposal-steps.ts` (a pure function,
+unit-tested):
+
+| State | Stepper | Below it |
+|---|---|---|
+| draft | **no stepper** (before step 1, §5.98); `ProposalStatusBadge` «مسودة عندك» | «هذه مسودة عندك…»; primary «أكمل مقترحك» → edit |
+| submitted | 1 current (`accent`), 2 – 5 upcoming | «سيصلك إشعار حين يقرّر المشرف.» |
+| in_review | 1 done, 2 current (`accent`) | the same line |
+| changes_requested | 1 – 2 done, 3 current (`signal`) — as drawn | the reason card + «عدّل وأعد الإرسال» |
+| approved, no visible scheduled session | 1 – 2 done, 3 per D3, 4 current (`accent`) | «المشرف سيتولى تحديد الموعد…» |
+| approved + a scheduled session | 1 – 4 done (3 per D3), 5 current (`accent`) | the session's `poster` + «افتح الجلسة» → `/app/sessions/[id]` (the card replaces the line) |
+| rejected | **no stepper** (no place on the line); `ProposalStatusBadge` «غير مقبول» | the reason card, muted, no primary; «اقترح موضوعًا آخر» → `/app/propose` |
+
+- **«مُجدوَل» derived** — add-only `getProposalSession(locale, proposalId)` in `proposals.ts`: one read of `sessions`
+  where `proposal_id = $1` (unique, `0020:18`) through `sessions_read`, returning `{ id, title, state, posterUrl } |
+  null`; the poster through `getSessionPoster()` (`designer`'s, read only). **Scheduled = the session's state is
+  `published`, `in_progress`, `completed` or `archived`** — see D15 for why not «visible».
+- **Adding a co-presenter after submission** (§5.102) — add-only `addCoPresenters(locale, proposalId, memberIds)` in
+  `proposals.ts`: `insert into proposal_presenters (org_id, proposal_id, member_id)` with `org_id` from the session and
+  **`accepted` left to its default `false`**. The database does the rest: `proposal_presenters_insert_by_proposer`
+  (`0010:437`) — only the proposer; `proposal_presenters_addable` (`0012:49-62`) — only draft, submitted, in review or
+  changes requested (`proposal_not_open_for_presenters`); `presenters_within_limit` (`0010:125-143`) — the org's
+  `max + 1`, counting **every** row, declined included (D10); `presenter_is_same_org` (`0012`). Outcomes mapped to
+  `ok · too_many · not_open · unknown_member`. ★ **The invitation fires for the added row**: `proposal_presenters_notify`
+  (`0039`) is `after insert … for each row`, and for any `member_id <> proposer_id` it calls `notify(…,
+  'MSG-copresenter_invited')` with the same payload as at creation — nothing new, an RLS test proves the `notifications`
+  row. UI: «+ أضف مُقدِّمًا مشاركًا» opens a `sheet` with the `combobox` (members not already on the proposal, `max` =
+  the slots left) and a `SubmitButton`; the action re-derives nothing from the form but the ids (`z.uuid()`), then
+  `revalidatePath`. Shown to the proposer in the four open states while a slot is left; otherwise the limit line.
+- **The co-presenter's own view** — the stepper (the same states, worded for them where the badge would be), the
+  invitation panel while pending, the summary **without** the notes (row 3), the presenters without controls, the
+  materials slot as `content`'s component decides, no bar.
+- **Not built**: the reviewer's name (§5.99), «السجل» (§5.100), «اسحب المقترح» (§5.101).
+
+### W19.5 · Contract 4 — the sessions presented (`sessions` → `scoring`), add-only in `src/lib/dal/sessions.ts`
+
+```ts
+/** One presented session, with how many attended. `attendedCount` is `session_attendance_count()` (0165) — a number,
+ *  never who (A33 rule 3); `null` for a session that has not started (`published`), where nothing can be counted. */
+export interface PresentedSessionWithAttendance extends PresentedSession {
+  attendedCount: number | null;
+}
+
+export interface SessionsPresented {
+  /** ★ A COUNT, from `count: "exact"` over the same filter as the rows — never `sessions.length` (§5.120). */
+  count: number;
+  /** Of those, the ones that have happened (`completed`, `archived`) — for «N جلسات مقدَّمة» if `scoring` reads
+   *  «presented» as past (D16). */
+  deliveredCount: number;
+  /** Newest first, at most `limit` (default 12). */
+  sessions: PresentedSessionWithAttendance[];
+}
+
+export async function getSessionsPresented(locale: string, memberId: string, limit?: number): Promise<SessionsPresented>;
+
+/** The directory's sort key (§5.106) for a page of members in one round trip: member id → the same `count`.
+ *  Members with none are absent. */
+export async function countSessionsPresentedBy(locale: string, memberIds: readonly string[]): Promise<Record<string, number>>;
+```
+
+The filter is `listSessionsPresentedBy()`'s exactly — accepted `session_presenters` rows (`p1_org_read`) and sessions
+in `published`, `in_progress`, `completed`, `archived` through `sessions_read` — with the caller's client.
+**No average and no rating in either** (§5.115); the profile reads `getPresenterAggregate()` itself on the self and
+admin tiers. `listSessionsPresentedBy()` stays as it is. Proved by a new RLS test (W19.7 Q5).
+
+### W19.6 · Files, and the assertions that move
+
+**Commit 1 — delete** (`rm`, never `git rm`): `src/app/[locale]/app/propose/{page,proposal-form,loading}.tsx`,
+`src/app/[locale]/app/propose/[id]/page.tsx`, `src/app/[locale]/app/propose/[id]/edit/page.tsx`. **Kept, not
+markup:** `actions.ts` (add-only: `addCoPresenters`), `state.ts`, `error.tsx`, `[id]/not-found.tsx`. ★ The tree is red
+between the two commits by construction (`proposal-form.test.tsx` imports the deleted form); commit 2 follows at once.
+
+**Commit 2 — write:** the five above, at the same paths (so `proposal-form.test.tsx`'s import does not move); new
+`src/app/[locale]/app/propose/[id]/loading.tsx`; new `src/components/proposals/{my-proposals,earn-panel,proposal-steps,reason-card,presenter-list,add-co-presenter,remove-co-presenter,scheduled-session}.tsx` (+ `proposal-steps.ts`);
+`src/lib/dal/proposals.ts` (add-only: `addCoPresenters`, `getProposalSession`, `getProposeEarnings`, `teamColor` on
+`NameableMember`, `teamColor` + `avatarUrl` on `ProposalPresenter`); `src/messages/{ar,en}/proposals.json` (ar first;
+keys added, values changed only where the artboard's copy differs; no key another track reads is removed).
+
+**Separately:** `src/components/ui/stepper.tsx`, `tests/components/ui/stepper{,-scope}.test.tsx`,
+`src/app/[locale]/(dev)/ui/demos/stepper.tsx`; `src/lib/dal/sessions.ts` (contract 4, add-only); new tests
+`tests/components/sessions/proposal-{steps,earn,page,list}.test.tsx`, `tests/rls/proposals-add-copresenter.test.ts`,
+new `tests/e2e/wave19-sessions-{propose,proposal}.spec.ts` (captures `wave19-sessions-scr017-*`, `-scr018-*`).
+
+**Untouched:** `components/sessions/{proposal-rules,proposal-status-badge,remove-presenter}.*` (the first two read
+as they are), `tests/unit/sessions-proposal-rules.test.ts`, `proposal-schema.test.tsx`, `proposal-status-badge.test.tsx`.
+
+**Assertions that move** (each a ledger line in the same commit):
+
+| File:line | Moves | Why |
+|---|---|---|
+| `forms-propose.spec.ts:109-112` | **selector** — `label` → `label, legend` for «مستوى الجلسة»; still four «مطلوب» | the level is a `radio-group` (legend), R1 |
+| `wave7-sessions-proposal.spec.ts:126` | **expectation** — `h1` «مقترحي»; the title is `h2` | the artboard |
+| `wave7-sessions-proposal.spec.ts:127, :177` | **expectation** — «بانتظار المراجعة» → the stepper's current step «أُرسل» | the badge is gone for the stepper's states |
+| `wave7-sessions-proposal.spec.ts:139` | **expectation** — «بانتظار تعديلك» → «طُلب تعديل» `[aria-current=step]` | same |
+| `wave7-sessions-proposal.spec.ts:129, :153` | **selector** — the edit link's name «عدّل وأعد الإرسال» / «أكمل مقترحك» (the count-0 cases stay meaningful) | the artboard's primary |
+| `wave7-sessions-proposal.spec.ts:142` | **selector** — «عدّل وأعد الإرسال», scoped to `#main`'s reason card (the bar mirrors it — two matches on the phone); href unchanged | the artboard |
+| `sessions-propose.spec.ts:303` | **expectation** — «صاحب المقترح» → «المُقدِّم الرئيسي» | the artboard |
+| `sessions-propose.spec.ts:327` | **expectation** — «وافق» → the noun form | `DEC-213` §5.109 |
+| `proposal-form.test.tsx` | **none expected** — same props, same names; the bar is inside the form | — |
+
+**Owned by others, predicted unmoved:** `sessions-admin-proposals.spec.ts:100, :198-200` (`?created=1`; «ما كتبه
+المشرف», «غير مقبول» on a rejected proposal — both kept); `proposal-materials.spec.ts`,
+`wave10-content-proposal-material.spec.ts` (they locate the upload form by its labels, which are `content`'s); the
+a11y sweeps' `/edit` route (kept).
+
+### W19.7 · What I need from the lead
+
+- **R1 — `radio-group`, add-only** (frozen for me this wave): `appearance?: "rows" | "chips"` (default `rows`, every
+  caller unchanged) — three equal segmented chips, the checked one in accent, a visible focus ring, 44 px; and
+  `required?: boolean` — «مطلوب» on the legend exactly as `field` draws it, `aria-required` on the group. Not in the
+  public graph (the register form hand-rolls its chips). Either the lead lands it, or the file is transferred to me
+  add-only for the wave with its `-scope` test.
+- **R2 — `combobox`, add-only** (`console`'s, held by the lead): `ComboboxOption.teamColor?: TeamColor`, the chip
+  drawing the ring (`Propose.dc.html`'s chip). Absent → today's chip.
+- **Q3 — the frame:** on `/app/propose` the `action-bar` sits above the raised tab bar; `Proposal.dc.html` draws **no
+  tab bar** on `/app/propose/[id]` — is that route immersive like rate? And `scroll-padding-block-end` while a fixed bar
+  is shown (W19.4).
+- **Q4 — `?created=1`** (D4) and the date line (D2) need a ruling before the create commit.
+- **Q5 — a test file for contract 4**: `tests/rls/sessions-presented*.test.ts` (my standing `tests/rls/sessions*` is
+  frozen this wave).
+- ★ **F1 — a defect found, not a disagreement:** `grant select, insert, delete on public.proposal_presenters to
+  authenticated` (`0010:448`) with a policy that checks only the proposer (`0010:437`) lets a proposer **insert a
+  co-presenter already `accepted = true`** through PostgREST — a colleague on the session's presenter list without
+  ever answering (`create_session_from_proposal` copies accepted rows, `0020:90`). `create_proposal()` itself writes
+  `accepted` only on the proposer's row. My add path leaves the default, but the hole is the database's: a
+  `before insert` guard (`accepted` may be true only on `member_id = proposer_id`) is a migration — the lead's, from
+  `0168`, `REQ-PRO-003`. I will write the failing case under `supabase/proposed/sessions/` and prove it with
+  `applyProposed()` if you want it this wave.
+
+### W19.8 · Disagreements `DEC-213` §5 does not list — none is picked
+
+- **D1 · «يمكنك التعديل حتى يبدأ المشرف المراجعة»** (`M10b.md` §4, submitted / in review ★). **Untrue**: a proposer may
+  edit only draft and changes requested (`proposals_update_own_editable`, `0010:420-424`); `0011:41-44` has no
+  `submitted → draft`. The tree's «سيصلك إشعار حين يقرّر المشرف.» is planned in its place.
+- **D2 · «أُرسل الاثنين 28 سبتمبر»** (`Proposal.dc.html`, under the `h1`). No `submitted_at` exists (`0010`
+  `proposals`); `updated_at` is the send time only while the state is `submitted`, and `audit_log` is staff-only. In
+  changes requested the drawn date cannot be read. Options: a column (a migration), the creation date with a
+  different verb, or no date. ★ (The reason card's **time**, by contrast, is sound: in changes requested and rejected
+  the last write to the row is the reviewer's — the proposer cannot update either state, and presenter changes do not
+  touch `proposals` — so `updatedAt` is the decision's time.)
+- **D3 · The line is not linear.** «طُلب تعديل» is a branch, and rejection has no place. After approval the database
+  cannot say whether changes were requested (`decision_reason` is cleared, `0013`; the history is staff-only), so
+  step 3 drawn «done» on an approved proposal may be false and drawn «upcoming» is false. Planned: draft and rejected
+  have no stepper; step 3 on approved / scheduled needs a ruling — a fourth status («passed», no check, no number), or
+  four steps outside changes requested.
+- **D4 · The confirmation.** `M10b.md` §3: «a full-screen `empty-state`-shaped confirmation with «افتح مقترحك» → 018».
+  The tree lands on `018` with a `role="status"` receipt, pinned by `sessions-propose.spec.ts:156-157`,
+  `wave7-sessions-propose.spec.ts:159` and `sessions-admin-proposals.spec.ts:100` (`?created=1`). Planned as the
+  tree until ruled; the drawing's version moves those three.
+- **D5 · The duration's step.** `Propose.dc.html` `step="15"`; the tree `step={5}`; the schema takes any integer
+  15 – 480 (`0010`). A step of 15 makes the browser's arrows skip 20 and 50.
+- **D6 · Optional, not required, is marked.** The artboard writes «(اختياري)» on audience, duration, co-presenters
+  and notes, and nothing on the four required; `REQ-UIX-011` marks required positively («مطلوب», pinned by
+  `forms-propose.spec.ts:105-121`). Both can be drawn; the artboard draws only one.
+- **D7 · The draft materials as drawn** («مسودة الشرائح · 9 صفحات · يراها المشرف فقط الآن», «+ أرفق ملفًا (PDF)»).
+  `ProposalMaterials` is `content`'s and frozen; a proposal's material is never rendered, so it has no page count; and
+  «PDF» only is not the tree's rule — a proposal accepts an image (`proposal-materials.spec.ts` uploads one), as
+  `DEC-058` allows. Planned: the component as it is.
+- **D8 · The reply pills «قبلت» / «اعتذر»** are gendered verbs; §5.109 rules none about a member «anywhere in this
+  batch», and the tree's «وافق», «اعتذر», «لن يظهر اسمه» are gendered too. Applied (noun phrases, six forms where a
+  count appears) — listed because §5.104 says «drawn as the tree has it».
+- **D9 · Remove after the decision.** §5.103 says a proposer «may still drop an accepted colleague **before review**».
+  The tree and the policy (`0010:444-447`) allow it in **every** state, and after approval it changes nothing that
+  matters — the session's presenters were copied at creation (`0020:90`). Planned: the four open states only — needs a
+  ruling, since it narrows what the tree does.
+- **D10 · A declined co-presenter still takes a slot** (`presenters_within_limit` counts every row, `0010:131-133`), so
+  after a decline the proposer must remove the row before naming someone else. A consequence of §5.104 for §5.102.
+- **D15 · «Visible to the proposer»** (§5.98) includes a **draft** session: a proposer is a presenter of it and
+  `sessions_read` admits presenters (`0010:454-458`), so the step would light the moment an admin creates the session,
+  with no date. Planned: published or later. A cancelled session — step 5 off, or a line saying so — needs a word.
+- **D16 · «Presented»** in the directory and the profile — a published session not yet held is in today's list. Contract
+  4 returns both counts; `scoring` picks.
+
+### W19.9 · Published — contracts 4 and 8, as landed in `a9d1d53d` (`src/lib/dal/sessions.ts`, add-only)
+
+**Contract 8 (`sessions` → `event`, `content`)** — `getSessionHeading(locale, id)` now also returns:
+
+```ts
+export interface HeadingPresenter {
+  displayName: string | null;
+  companyName: string | null;
+  /** `#rrggbb` or null — the avatar's ring (REQ-UIX-043). */
+  teamColor: string | null;
+}
+// SessionHeading gains:  presenters: HeadingPresenter[];
+```
+
+Every **accepted** presenter (`session_presenters.accepted`), in the order they joined (`created_at`, then the member
+id), from the member tier (`members_member_view` + `companies`) — the same read the event page's presenter card makes.
+Join them all; never only the first. `<bdi>` each name at the call site.
+
+**Contract 4 (`sessions` → `scoring`)** — as planned in W19.5, with `DEC-214`'s ruling: **`count` and
+`deliveredCount` are both the delivered sessions** (`completed`, `archived`); `sessions` lists up to `limit` (12) of
+the published-or-later ones, each with `attendedCount` (`null` for a published session). `countSessionsPresentedBy(
+locale, memberIds?)` — omitted, the whole org — is one read (`session_presenters` joined `!inner` to `sessions` on the
+delivered states); a member with none is absent from the record. No average anywhere.
+
+### W19.10 · As built — SCR-017 (`fea4db8e` delete, `824391b0` write), the guard (`77c9f829`), SCR-018 (`ce0c4e99` delete; the write after `0168`)
+
+**The kept-behaviour tables, read against the new files.** SCR-017's 34 rows all hold. Two moved place:
+- row 27, the no-schedule note, now sits above the form, as drawn;
+- row 32, the edit route, keeps its URL and is SCR-017's resubmit state. The reason card is pinned above section 1
+  and gives the decision's time, with no name.
+
+SCR-018's 27 rows all hold, with these changes:
+- Row 4 (the state in words): `stepper`'s labels, and the badge for a draft or a rejected proposal.
+- Row 13 (the proposer and the replies): «أنت» on the viewer's own row, «المُقدِّم الرئيسي» on the proposer's, and noun replies.
+- Row 17 (remove): a `sheet` in `components/proposals/remove-co-presenter.tsx`, offered in the open states only (D9).
+- Row 19 (add): built through `addCoPresentersAction` → `addCoPresenters()`.
+
+**Built differently from the plan, and why:**
+- **The earn panel's badge sentence.** It is «وتنال شارة «<badge>» مع أولى جلساتك.», not «وشارة … مع أول جلسة». The seeded
+  badge is named «أول جلسة», and the drawn sentence would repeat it.
+- **`radio-group`'s required word.** It arrives as `requiredLabel`, because a primitive reads no catalogue. The props
+  are a local `RadioGroupWave19Props` until the lead folds them into `ui/index.ts`.
+- **`action-bar`'s bottom.** It reads `var(--stacked-bar-offset, 0px)`, plus the safe area when stacked. That is 0
+  everywhere but `/app/propose` below `lg`.
+- **The `aria-label` and `sheet` title strings.** They isolate a name with FSI…PDI, the `<bdi>` of a plain string.
+- **SCR-017's bar.** It stays fixed at every width. Above `lg` the form pads itself (`lg:pb-28`), because
+  `--tabbar-h` gives the bar no room there. SCR-018's bar gives way at `lg`, where the inline primary stands.

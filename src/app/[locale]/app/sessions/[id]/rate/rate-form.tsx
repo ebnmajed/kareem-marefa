@@ -1,12 +1,15 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { StarRating } from "@/components/event/star-rating";
+import { formatNumber } from "@/components/sessions/numerals";
 import { SurveyQuestionField } from "@/components/survey/question-field";
+import type { StarLabels } from "@/components/ui";
+import { ActionBar } from "@/components/ui/action-bar";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
 import { AlertCircleIcon } from "@/components/ui/icons";
+import { StarInput } from "@/components/ui/star-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/textarea";
 import type { Locale } from "@/i18n/routing";
@@ -16,6 +19,7 @@ import type { MemberSurveyDTO } from "@/lib/dal/surveys";
 import { submitRatingAction, updateRatingAction } from "./actions";
 import {
   RATE_FIELDS,
+  RATING_COMMENT_MAX,
   RATING_SAVED,
   SURVEY_KEY,
   emptyRateFormState,
@@ -26,31 +30,29 @@ import {
   type SurveyFormShape,
 } from "./state";
 
-// SCR-015's form, on the form model (REQ-UIX-009 … 011, `16` §8.2, DEC-141).
+// SCR-015's form, rebuilt from `Rate.dc.html` (wave 19, DEC-213, DEC-214 §3) on the form model
+// (REQ-UIX-009 … 011, `16` §8.2). In the artboard's order: two `star-input` rows, the comment with
+// «N من 2000», the anonymity panel — then ★★ the survey, which the artboard does not draw and
+// REQ-SUR-004 keeps (DEC-213 §5.90) — then the bottom `action-bar` with the submit and the window line.
 //
-// Two star rows, both required, an optional comment — and, when the session
-// carries one, the survey below them (REQ-SUR-004). The submit button is
-// ENABLED: a missing row or an unanswered required question is a field error
-// and a summary line that links to it, not a button that stays grey and says
-// nothing about why.
+// ★ THE BAR IS INSIDE THE FORM: `SubmitButton` reads `useFormStatus()` of its enclosing form, so a
+// bar outside it would never show the pending state. Below `lg` it is fixed to the viewport (the
+// shell clears it — `hasActionBar()`); from `lg` it sits in flow at the end of the form (DEC-214 §3).
 //
-// ★ Every value survives a failed round trip. React 19 resets the form when the
-// action resolves and the controls are native, so each one reads its default
-// back out of what the action captured — the stars, the comment, and every
-// survey answer with them.
+// ★ Every value survives a failed round trip (REQ-UIX-011, DEC-149 §1). React 19 resets the form when
+// the action resolves and the controls are native, so each one reads its default back out of what the
+// action captured — the stars, the comment, and every survey answer — remounted by `key={…attempt}`.
 //
-// ★ ONE SCREEN, ONE ACTION, TWO WRITES. The member presses one button; the
-// rating is written by the action and the answers are enqueued by the database
-// with a jittered delay (DEC-160 §3.2). There is nothing here about a queue —
-// no «قيد المعالجة», no spinner after the receipt, no poll. The member's part
-// is over, and a progress indicator would be a second surface announcing that
-// something about them is in flight.
+// ★ ONE SCREEN, ONE ACTION, TWO WRITES (REQ-SUR-004, DEC-160 §3). The member presses one button; the
+// rating is written by the action and the answers are enqueued by the database with a jittered delay.
+// There is nothing here about a queue — no «قيد المعالجة», no spinner after the receipt, no poll.
 //
-// ★ A SESSION WITH NO SURVEY RENDERS EXACTLY WHAT IT RENDERED BEFORE THIS WAVE:
-// `survey` is `null`, the survey section is absent, and the submit button keeps
-// its own label. `tests/e2e/{event-rate,wave7-sessions-rate}.spec.ts` pass with
-// their assertions untouched, which is REQ-SUR-001's «shows nothing about one,
-// anywhere» on this screen.
+// ★ A SESSION WITH NO SURVEY RENDERS NOTHING ABOUT ONE (REQ-SUR-001): `survey` is `null`, the section
+// is absent, and the submit keeps its own label.
+//
+// ★ A REQUIRED QUESTION BLOCKS THE SURVEY, NEVER THE RATING (DEC-164): `RATING_SAVED` is not the red
+// alert — it is the summary's description, above the questions still to answer, and the title stops
+// claiming the rating did not go through.
 
 const LABEL_KEY: Record<"sessionStars" | "presenterStars" | "comment", string> = {
   sessionStars: "sessionLabel",
@@ -64,6 +66,8 @@ export function RateForm({
   checkInId,
   existing,
   survey,
+  notice,
+  windowNote,
 }: {
   locale: Locale;
   sessionId: string;
@@ -71,14 +75,18 @@ export function RateForm({
   existing: RatingDTO | null;
   /** `null` when the session has no survey, or the viewer may not answer it. */
   survey: MemberSurveyDTO | null;
+  /** The anonymity panel, drawn between the comment and the survey (`Rate.dc.html`). */
+  notice?: ReactNode;
+  /** The window line under the submit — «يُغلق باب التقييم في … · يمكنك تعديله حتى ذلك الحين» (REQ-RAT-003). */
+  windowNote?: ReactNode;
 }) {
   const t = useTranslations("ratings.form");
   const tErrors = useTranslations("ratings.errors");
+  const tField = useTranslations("ui.field");
   const tSurvey = useTranslations("survey.rate");
   const tSurveyErrors = useTranslations("survey.errors");
 
-  // What the action needs to read the form. Only ids, kinds and `required` —
-  // never a prompt or an answer.
+  // What the action needs to read the form. Only ids, kinds and `required` — never a prompt or an answer.
   const shape: SurveyFormShape | null = survey
     ? { surveyId: survey.surveyId, answered: survey.answered, questions: survey.questions.map((q) => ({ id: q.id, kind: q.kind, required: q.required })) }
     : null;
@@ -96,16 +104,15 @@ export function RateForm({
     : emptyRateFormState;
   const [state, formAction] = useActionState(action, initial);
 
+  const starLabels = [1, 2, 3, 4, 5].map((n) => t("starCount", { count: n, value: formatNumber(n) })) as unknown as StarLabels;
   const stars = (field: "sessionStars" | "presenterStars") => {
-    const raw = was(state, field);
-    return raw === "" ? undefined : Number(raw);
+    const raw = Number(was(state, field));
+    return raw >= 1 && raw <= 5 ? (raw as 1 | 2 | 3 | 4 | 5) : undefined;
   };
-  // A key from the survey's namespace is marked; everything else is the
-  // rating's, exactly as it was.
+  // A key from the survey's namespace is marked; everything else is the rating's.
   const message = (key: string) => (key.startsWith(SURVEY_KEY) ? tSurveyErrors(key.slice(SURVEY_KEY.length)) : tErrors(key));
   const err = (field: RateField) => (state.errors[field] ? message(state.errors[field]!) : undefined);
-  /** The rating is stored and the survey is not (`DEC-164`) — the one whole-form
-   *  key that is news rather than a failure. */
+  /** The rating is stored and the survey is not (`DEC-164`) — the one whole-form key that is news rather than a failure. */
   const ratingSaved = state.formError === RATING_SAVED;
 
   const askable = survey && !survey.answered ? survey.questions : [];
@@ -118,13 +125,11 @@ export function RateForm({
     message,
   });
 
+  // The bar's label follows the survey's state (REQ-SUR-004, DEC-213 §5.90).
+  const submitLabel = survey && !survey.answered ? (existing ? tSurvey("submitUpdate") : tSurvey("submit")) : existing ? t("update") : t("submit");
+
   return (
-    <form action={formAction} noValidate className="flex flex-col gap-7">
-      {/* ★ «حُفظ تقييمك…» is not a failed write, so it is not the red alert —
-          it is the summary's DESCRIPTION, above the questions still to answer,
-          and the title stops claiming the rating did not go through, which
-          would be untrue (`DEC-164`). Any other whole-form key is still the
-          alert: those are writes that did not happen. */}
+    <form action={formAction} noValidate className="flex flex-col gap-6">
       {state.formError && !ratingSaved ? (
         <FormError key={state.attempt} message={message(state.formError)} />
       ) : (
@@ -136,17 +141,39 @@ export function RateForm({
         />
       )}
 
-      {/* `key` on each row: a round trip that changes the default must remount
-          the radios so `defaultChecked` is read again. */}
-      <StarRating key={`s-${state.attempt}`} name="sessionStars" legend={t("sessionLabel")} defaultValue={stars("sessionStars")} required error={err("sessionStars")} />
-      <StarRating key={`p-${state.attempt}`} name="presenterStars" legend={t("presenterLabel")} defaultValue={stars("presenterStars")} required error={err("presenterStars")} />
+      {(["sessionStars", "presenterStars"] as const).map((name) => (
+        <StarInput
+          key={`${name}-${state.attempt}`}
+          name={name}
+          legend={t(LABEL_KEY[name])}
+          starLabels={starLabels}
+          size="lg"
+          defaultValue={stars(name)}
+          required
+          requiredLabel={tField("required")}
+          error={err(name)}
+        />
+      ))}
 
-      <Field id="comment" label={t("commentLabel")} hint={t("commentHint")} error={err("comment")}>
-        <Textarea name="comment" maxLength={2000} rows={4} defaultValue={was(state, "comment")} />
-      </Field>
+      <Comment
+        key={`comment-${state.attempt}`}
+        defaultValue={was(state, "comment")}
+        error={err("comment")}
+        label={
+          <>
+            {t("commentName")} <span className="font-normal text-fg-muted">{t("commentOptional")}</span>
+          </>
+        }
+        placeholder={t("commentPlaceholder")}
+        // A character count, drawn as the artboard draws it — «0 من 2000», no grouping separator
+        // (`formatNumber` would write «2,000»). `String()` of a number is Western digits (DEC-124).
+        count={(n) => t("commentCount", { count: String(n), max: String(RATING_COMMENT_MAX) })}
+      />
+
+      {notice}
 
       {survey ? (
-        <section aria-labelledby="survey-heading" className="border-t border-edge pt-7">
+        <section aria-labelledby="survey-heading" className="border-t border-edge pt-6">
           <h2 id="survey-heading" className="text-h3 text-fg-heading">
             {tSurvey("heading")}
           </h2>
@@ -175,12 +202,48 @@ export function RateForm({
         </section>
       ) : null}
 
-      <div>
-        <SubmitButton pendingLabel={t("submitting")}>
-          {survey && !survey.answered ? (existing ? tSurvey("submitUpdate") : tSurvey("submit")) : existing ? t("update") : t("submit")}
-        </SubmitButton>
-      </div>
+      <ActionBar
+        label={t("actionsLabel")}
+        primary={
+          <SubmitButton size="lg" className="w-full" pendingLabel={t("submitting")}>
+            {submitLabel}
+          </SubmitButton>
+        }
+        note={windowNote ?? undefined}
+        // Fixed below `lg`; from `lg` in flow at the end of the form (DEC-214 §3). The shell's padding
+        // for a fixed bar stops at `lg` too (`globals.css`), so nothing is reserved for a bar in flow.
+        className="lg:static lg:border-t-0 lg:bg-transparent lg:px-0"
+      />
     </form>
+  );
+}
+
+/** The comment, with «N من 2000» under it, counted as the member types. Without JavaScript the count is the one the server drew. */
+function Comment({
+  defaultValue,
+  error,
+  label,
+  placeholder,
+  count,
+}: {
+  defaultValue: string;
+  error?: string;
+  label: ReactNode;
+  placeholder: string;
+  count: (n: number) => string;
+}) {
+  const [length, setLength] = useState(defaultValue.length);
+  return (
+    <Field id="comment" label={label} hint={count(length)} error={error}>
+      <Textarea
+        name="comment"
+        maxLength={RATING_COMMENT_MAX}
+        rows={3}
+        placeholder={placeholder}
+        defaultValue={defaultValue}
+        onInput={(e) => setLength(e.currentTarget.value.length)}
+      />
+    </Field>
   );
 }
 

@@ -48,6 +48,14 @@ export function BadgeDemo() {
           خطأ
         </Badge>
       </div>
+      {/* Wave 19 (DEC-214 §4): a level as a pill — the ramp's text on the raised fill, never a status tone. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge level={1}>مشارِك</Badge>
+        <Badge level={2}>مشارِك نشِط</Badge>
+        <Badge level={3}>صاحب أثر</Badge>
+        <Badge level={4}>كريم معرفة</Badge>
+        <Badge level={5}>سفير المعرفة</Badge>
+      </div>
       <div className="max-w-48">
         <Badge tone="ended" size="sm">
           مخفية — بانتظار المراجعة من فريق الإشراف

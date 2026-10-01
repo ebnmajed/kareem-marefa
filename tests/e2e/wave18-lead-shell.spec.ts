@@ -8,7 +8,7 @@
 //   · phone: FIVE tabs, by name, the third raised and named «اقترح جلسة»; the
 //     current one carries `aria-current`; the bar clears the page's last line;
 //   · 1280: no tab bar; the navigation rail with «اقترح جلسة» and four
-//     destinations — and ★ NO «الأعضاء», whose route does not exist (DEC-206 §4.31);
+//     destinations — ★ and from wave 19 «الأعضاء» after «الجلسات», now its route exists (DEC-213 §3.3);
 //   · staff: the ruled section with the console's link; a member: no section;
 //   · an immersive route wears neither (`shell-routes.ts`, unchanged);
 //   · nothing under the root scope is transformed, and the frame causes no
@@ -134,7 +134,7 @@ test("phone: five tabs by name, the third raised, and the bar clears the page", 
   await shot(page, "phone-390");
 });
 
-test("1280: no tab bar; the rail with «اقترح جلسة» and four destinations, and no «الأعضاء»", async ({ context, page }, testInfo) => {
+test("1280: no tab bar; the rail with «اقترح جلسة» and five destinations, «الأعضاء» among them", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "the rail is the desktop's");
   await signIn(context, "member");
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -144,7 +144,7 @@ test("1280: no tab bar; the rail with «اقترح جلسة» and four destinati
   const rail = page.getByRole("navigation", { name: NAV });
   await expect(rail).toHaveCount(1); // the tab bar is in the DOM and not displayed: one landmark, not two
   const names = await rail.getByRole("link").evaluateAll((links) => links.map((a) => a.textContent?.trim()));
-  expect(names).toEqual(["اقترح جلسة", "الرئيسية", "الجلسات", "لوحة الصدارة", "حسابي"]);
+  expect(names).toEqual(["اقترح جلسة", "الرئيسية", "الجلسات", "الأعضاء", "لوحة الصدارة", "حسابي"]);
   await expect(rail.getByRole("link", { name: "لوحة الصدارة" })).toHaveAttribute("aria-current", "page");
   await expect(rail.getByText("الإدارة")).toHaveCount(0); // a member has no staff section
 

@@ -55,6 +55,14 @@ export function AvatarDemo() {
         <Avatar memberId="demo-member-3" displayName="نورة الشهري" size={96} />
       </div>
 
+      {/* Wave 19 (DEC-214 §4): the directory's 44 and the profile's 84 and 104, their rings 3, 5 and 6 px. */}
+      <div className="flex flex-wrap items-end gap-3">
+        {([44, 84, 104] as const).map((size) => (
+          <Avatar key={size} memberId="demo-member-2" displayName="سارة القحطاني" size={size} teamColor="#3BE8B0" />
+        ))}
+        <Avatar memberId="demo-member-2" displayName="سارة القحطاني" size={84} teamColor={null} />
+      </div>
+
       <AvatarStack
         members={NAMES.map((name, i) => ({ memberId: `demo-member-${i + 1}`, displayName: name }))}
         size={32}

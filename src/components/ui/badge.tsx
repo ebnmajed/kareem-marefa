@@ -95,7 +95,31 @@ const SIZE: Record<"sm" | "md", string> = {
 // "match the mockups"; `docs/plan/notes/content.md` §8's own note). Was
 // `rounded-full` through M9; no test asserted the pill shape, so nothing
 // else moves.
-export function Badge({ tone = "neutral", outline, size = "md", icon, children, className = "" }: BadgeProps) {
+// ★ Wave 19, add-only (DEC-214 §4, `scoring`'s R3): a member's LEVEL as a pill — the directory's row
+// (`Directory.dc.html:38-45`). A level is not a status (`DEC-073`), so it takes no tone: the ramp's text colour on the
+// raised fill, `01-tokens.md`'s ramp and never an artboard's paint (DEC-214 §3, N4). `levels.sort_order` is clamped
+// to 1–5, exactly as `level-card`'s `rampStop()`. The level's NAME is the children, so colour is never the only
+// channel. Literal strings, so Tailwind sees every class. `BadgeProps` in `ui/index.ts` is the lead's; the widened
+// type lives here.
+const LEVEL_TEXT = ["text-level-1", "text-level-2", "text-level-3", "text-level-4", "text-level-5"] as const;
+
+export type BadgeLevelProps = BadgeProps & { level?: number };
+
+function levelStop(level: number): 1 | 2 | 3 | 4 | 5 {
+  const t = Number.isFinite(level) ? Math.round(level) : 1;
+  return Math.min(5, Math.max(1, t)) as 1 | 2 | 3 | 4 | 5;
+}
+
+export function Badge({ tone = "neutral", outline, size = "md", icon, level, children, className = "" }: BadgeLevelProps) {
+  if (level !== undefined) {
+    const stop = levelStop(level);
+    return (
+      <span data-level={stop} className={`inline-flex w-fit items-center rounded-field border border-edge bg-raised font-bold ${SIZE[size]} ${LEVEL_TEXT[stop - 1]} pg:rounded-pill ${className}`}>
+        {icon}
+        <bdi>{children}</bdi>
+      </span>
+    );
+  }
   const filled = FILLED_TONE[tone];
   const outlined = outline || !filled;
   const toneClass = outlined ? OUTLINE_TONE[tone] : filled;

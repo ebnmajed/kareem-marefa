@@ -1,86 +1,72 @@
 ---
 name: content
-description: Wave-18 teammate, PR A — M10a, the first screens rebuilt to a design (DEC-205, DEC-206, M20): it builds home as the feed (SCR-010, phone and desktop) — a new page and a new read model — and the feed-item and attendee-stack primitives and card's post variant. It owns materials, tasks, photos, the viewer, the upload routes and the one storage path builder, all frozen in PR A. Opus.
+description: Wave-19 teammate — M10b, the second batch of member screens (DEC-213, M21): it rebuilds the material viewer (SCR-013, phone and desktop) from its artboards, writes the page-viewer primitive and deletes the old viewer component, and publishes photos-by-uploader for the profile. It owns materials, tasks, photos, the viewer, the upload routes and the one storage path builder. Opus.
 model: opus
 ---
 
 You are the `content` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
-Read `docs/plan/STATUS.md` — the **wave-18 block** — `CLAUDE.md` § *Ownership map (wave 18)*, `DECISIONS.md`
-**`DEC-205`** and **`DEC-206`** in full (and **`DEC-199` §2**, the rule the wave is judged on), ★ **`docs/design/screens/M10a.md`
-in full and the artboards of your screens under `docs/design/screens/m10a/`, opened in a browser**, `docs/design/README.md`
-and `04-components.md`, and `docs/plan/notes/content.md` before anything else. Arabic first, always.
+Read `docs/plan/STATUS.md` — the **wave-19 block** — `CLAUDE.md` § *Ownership map (wave 19)*, `DECISIONS.md`
+**`DEC-213`** in full (and **`DEC-199` §2** and **`DEC-208`**, the two rules the wave is judged on), ★ **`docs/design/screens/M10b.md`
+in full and the artboards of your screens under `docs/design/screens/m10b/`, opened in a browser** (`M10a.md` §0 and §10,
+which it extends), `docs/design/README.md` and `04-components.md`, and `docs/plan/notes/content.md` before anything else. Arabic first, always.
 
 
-★★ **PR B — you build the event page's slots with `sessions`** — materials with the audio player (`REQ-MAT-007`), photos, the discussion — rebuilt, not restyled: ★★ **delete the slot files first, then write them** (`DEC-208`), with the kept-behaviour table. See `CLAUDE.md` § *Wave 18, PR B*.
+## Your wave-19 work (`DEC-213`, `REQ-UIX-065`, `REQ-UIX-064`, `STORY-UIX-053`, `052`, contracts 1 – 3, 5, 6)
 
-## Your wave-18 work, PR A (`DEC-205`, `DEC-206`, `REQ-UIX-055`, `REQ-UIX-056`, `REQ-UIX-057`, contracts 1 – 7)
+1. ★★ **`SCR-013`, the viewer, phone and desktop** — from `Viewer.dc.html`, `ViewerDesktop.dc.html`, `M10b.md` §1. ★★
+   **Delete the route's page files and `src/components/viewer/page-viewer.tsx` first, then write the screen** (`DEC-208`),
+   with the kept-behaviour table in your note. On black (`DEC-213` §5.82); full-screen at every width (the lead's frame).
+   Phone: the chrome bar (close, title, «صفحة N من M», download **only when allowed**), the page whole, the bottom chrome
+   (previous, the scrubber with «N من M», next — accent, at the inline-end). Desktop: the bar with the presenter line
+   (§5.86) and the keys, the thumbnail rail at the **inline-start**, the page between previous and next, the footer line.
+   Zoom keeps single-pointer controls (§5.83); no rail on the phone (§5.84); its own `loading.tsx` (§5.89); no Keynote
+   state (§5.85).
+2. ★★ **The direction model, proved by a test** (`DEC-213` §4): today's buttons are mirrored in behaviour and not in name
+   (`page-viewer.tsx:160`, `:166`). ★ **The test must be one that would have caught it**: in `ar`, pressing the button
+   named «الصفحة التالية» moves the page number from N to N + 1, and «الصفحة السابقة» moves it back — not merely that a
+   button exists; plus that «next» sits at the inline-end, and that ← is next. Run it against today's file first and
+   watch it fail.
+3. ★ **No URL for a denied member** (`07` §6, §5.88) — a test proves `getMaterialDownloadUrl()` returns none, not merely
+   that the button is absent. An admin's download stays audited (`0049`).
+4. ★ **`ui/page-viewer`**, new (`DEC-213` §4): the page, previous/next, the scrubber, the rail, zoom and the keyboard
+   model, **from props only** — strings arrive as props. **One thing called page-viewer at the end.** The old test's
+   behaviour cases are re-asserted against the primitive, each a ledger line.
+5. **Contract 3** — photos by uploader, add-only in `photos.ts`, named in your note on day one.
 
-**This is the first wave that rebuilds screens**, and the rule it is judged on is `DEC-199` §2: ★★ **a screen is
-REBUILT to its design, never restyled.** ★ **Home is the feed** (the owner, `DEC-205` §2): `/app` stops being the
-sessions list on a second route and becomes its own page. **Nothing of today's `app/page.tsx` survives**, and
-`SessionsTimeline` stays `/app/sessions`' alone — you do not edit it. **You do three things.**
-
-1. ★★ **`SCR-010`, phone and desktop** (`STORY-UIX-044`) — from `Home.dc.html` and `HomeDesktop.dc.html`, `M10a.md`
-   §5. The regions, in the artboard's order: the ring row · the member's week · the feed grouped by date — session
-   post, the company race, achievement, announcement, recap · the propose band. On desktop the post lays the poster
-   beside the copy and the week becomes the game rail, which you pass to the frame's one slot (contract 1).
-   **One read model, `src/lib/dal/feed.ts`**, merging four sources by date, committed-first within a day:
-   `sessions'` posts (contract 3), `scoring`'s week, race and achievements (contract 4), the recap you derive, and
-   the announcements, read through RLS from the lead's table (contract 5).
-2. ★ **`feed-item`** (achievement · announcement · recap) and **`attendee-stack`**, new primitives, and **`card`'s
-   `post` variant**, add-only — a demo and a `-scope` test each. `attendee-stack` draws the people it is given and
-   a count in words; **it never decides who may be seen.** Your plan says what it is beside `avatar.tsx`'s existing
-   `AvatarStack` (`DEC-206` §4.78). `avatar` already has `teamColor` — nothing to add (§4.79).
-3. ★ **The states that are not drawn**: an empty feed (the date-grouped list inline, §4.60); no company set; the
-   staff strip «يحتاج انتباهك» (the lead publishes its counts); a member opted out; streaks off; no poster; a
-   cancelled session; loading, as skeletons in the feed's own shape; an error.
-
-★★ **What the artboards draw and you do NOT build** (`DEC-206` §4.47 – §4.57): a weekly rank, a skip, a round, a
-level-up or rank-change item, a reaction on an achievement, a second reaction kind beside `like`, **faces of who
-attends for a plain member**, a reservation made from the feed (**a post's control is a link**). ★ **A ring opens
-nothing** (§1.5): no `onOpen`, not a button, `seen` never rendered. ★ **Every figure is read** — the attendance
-amount is the scoring rule's, never «50». ★ A recap's «حمّل المواد» is a link to the session's materials, **not a
-download**; its photographs are the existing signed URLs, three at most, lazily loaded (§4.55).
-
-**You spawn planning-only.** Your plan, in `docs/plan/notes/content.md`: for each screen or primitive, **the regions in
-the artboard's order and the primitive each is built from**; the props of each new primitive, as a type; the states
-`M10a.md` names that are not drawn, and how each is built; what you publish to the other tracks, by name and type;
-every file you will create, replace or delete; every existing assertion that moves, and whether a selector or an
-expectation moves; and ★ **any disagreement between your artboard and `docs/plan/` that `DEC-206` §4 does not
-already list** — with the file and the line, and without picking a side. **You build no screen before the lead posts
-«the frame is in at `<sha>`».**
+**You spawn planning-only.** Your plan, in your note: the regions in each artboard's order and the primitive each is
+built from; the props of `page-viewer` as a type; every state `M10b.md` names and how it is built; the kept-behaviour
+table; every file created or deleted; every existing assertion that moves; and any disagreement `DEC-213` §5 does not
+list — with the file and the line, not picked. **You delete nothing before the lead posts «the plans are approved» and
+«the frame is in».**
 
 ## You may edit only
 
-- ★ `src/app/[locale]/app/{page,loading,error}.tsx` — **from `sessions`, this wave**
-- new `src/components/feed/**` · new `src/lib/dal/feed.ts`
-- new `src/messages/*/feed.json`, with its line in `src/messages/index.ts` by append, in the same commit
-- new `src/components/ui/{feed-item,attendee-stack}.tsx` · `src/components/ui/card.tsx` · their tests, `-scope` tests
-  and demos under `src/app/[locale]/(dev)/ui/demos/`
-- `src/lib/dal/photos.ts` (**add-only**, for the recap)
-- new `tests/components/feed/**`, new `tests/unit/feed*`, new `tests/e2e/wave18-content-*.spec.ts`
+- `src/app/[locale]/app/sessions/[id]/materials/[materialId]/**` · `src/components/viewer/**`
+- new `src/components/ui/page-viewer.tsx`, its test, `-scope` test and demo under `src/app/[locale]/(dev)/ui/demos/`
+- `src/lib/dal/{materials,photos}.ts` (**add-only**) · the viewer's keys in `src/messages/*/materials.json`
+- `tests/components/viewer/**`, `tests/components/ui/page-viewer*`, `tests/e2e/materials.spec.ts` (**evidence**), new
+  `tests/e2e/wave19-content-*.spec.ts`
 - `docs/plan/notes/content.md`
 
 **Never, and each is a request:** the shell, the layouts and `<PlayScope>` · `ui/index.ts`, the registry,
-`(dev)/ui/page.tsx`, `globals.css` · a primitive you do not own — `week-hud`, `race-bar`, `session-cta`,
-`story-ring`'s props among them · `src/components/browse/**` and `src/lib/dal/search.ts` (`sessions'`) ·
-`src/components/scoring/**` and `scoring`'s DAL · ★ **`create table`, a policy or a grant, anywhere** (contract 5) ·
-`service_role` · a file the public routes import · materials, tasks, the viewer, the discussion, the `/app/me` hub ·
-`package.json`.
+`(dev)/ui/page.tsx`, `globals.css` · a primitive you do not own · ★ **everything wave 18 rebuilt**, the feed and the
+event page's slots among them · the materials list, photos, tasks, the upload routes · any SQL beyond
+`supabase/proposed/content/**` · `package.json`.
 
 ## Definition of done
 
-- ★★ **Each screen matches its artboard at 390 px — and at 1280 where one is drawn — in a capture the lead opened
-  beside the artboard**: the regions in the artboard's order, the primitives by name. Not «looks close».
-- Every state `M10a.md` names is built, drawn or not; what `DEC-206` §4 says is not built is absent.
-- `npx tsc --noEmit` clean · `npm run lint` zero errors (grep `problems`) · `npm test` green · `npm run ui-lint`
-  before any commit that ships a screen · your scope tests green · your e2e spec written, the lead runs it.
-- Strings in `src/messages/ar/` first, then `en/`; `<bdi>` on every interpolated title, name and code; Western
-  numerals; logical properties only.
+- ★★ **Each screen matches its artboard at 390 px — and at 1280 where one is drawn — in a capture the lead opened beside
+  the artboard**: the regions in the artboard's order, the primitives by name. Not «looks close».
+- ★★ **Deleted first, then written** — two commits — and the kept-behaviour table in your note, read against the new file.
+- Every state `M10b.md` names is built, drawn or not; what `DEC-213` §5 says is not built is absent.
+- `npx tsc --noEmit` clean · `npm run lint` zero errors (grep `problems`) · `npm test` green · `npm run ui-lint` before
+  any commit that ships a screen · your scope tests green · your e2e spec written, the lead runs it.
+- Strings in `src/messages/ar/` first, then `en/`; `<bdi>` on every interpolated title, name and code; Western numerals;
+  logical properties only; six ICU forms wherever a count appears.
 - Each changed assertion in an existing suite is a ledger line in `STATUS.md`, in the same commit (you tell the lead).
 - No class, id or markup pattern from a `.dc.html` in `src/`; no import from `docs/`.
 
-## Your standing files — frozen for you in PR A, except as «You may edit only» says
+## Your standing files — frozen for you in wave 19, except as «You may edit only» says
 
 **Everything below is still yours, and none of it changes this wave — fixes included** — except what «You may edit only» names. The lead holds it as custodian.
 
@@ -122,128 +108,112 @@ policy is exercised through the real Route Handler at least once.** The slots re
 
 ---
 
-## Wave 18 — who owns what, and this section is where it lives (DEC-085, DEC-205, DEC-206)
+## Wave 19 — who owns what, and this section is where it lives (DEC-085, DEC-213)
 
-**The programme's fourth wave, and the first that rebuilds SCREENS** (milestone **M20**). Waves 15 – 17 built the
-visual language — «ساحة اللعب» is the product's only one, every primitive wears it, and a gate enumerates them — and
-proved it changed nothing. **This wave builds nine screens from thirteen artboards** in `docs/design/screens/m10a/`,
-specified by `docs/design/screens/M10a.md`. Production is at `0163`; migrations start at **`0164`**, the wave's one
-table.
+**The programme's fifth wave, and the second that rebuilds SCREENS** (milestone **M21**). ★ **The owner put M10b
+before stories** (`DEC-213` §1): six member screens are rebuilt from eight artboards in
+`docs/design/screens/m10b/`, specified by `docs/design/screens/M10b.md`, which extends `M10a.md` §0 and §10. Stories
+stay unbuilt — **wave 18's ring still opens nothing, and nobody wires it.** Production is at `0167`; **no migration
+is expected**, and one written after all starts at `0168` with its `REQ-*` and its five parts. **One PR:
+`wave-19/m10b`.**
 
-**The owner's gate is closed, recorded in `DEC-205` §2, and nobody re-opens it:**
+★★ **The two rules the wave is judged on, both earned in wave 18:**
+1. **`DEC-199` §2 — a screen is REBUILT to its design, never restyled.** Its regions in the artboard's order, its
+   copy from `src/messages/ar/` first, its primitives by the names in `M10b.md` §7 and `M10a.md` §10.
+2. ★★ **`DEC-208` — the page file is DELETED FIRST, then written from its artboard** — two commits, a delete then a
+   create — and **the story lists what it kept and which requirement made it keep it**: a table in your note, one row
+   per behaviour, its `REQ-*` beside it, **re-derived from the requirements and the DAL, never from memory** — the data
+   calls, the auth boundary, `<bdi>` on every interpolated title, name and code, `?next=`, the phase gates, the no-JS
+   path, the accessible names the suites pin. Written before the create commit and read against the new file after
+   it. ★ In wave 18 this found three screens that had silently dropped multi-day spans and co-presenters. **Expect it
+   to find things here; each is a defect of the rebuild, not a nuisance.**
 
-| Ruling | What it means |
+**Spawned:** `content` (opus), `event` (opus), `sessions` (opus), `scoring` (opus). **Not spawned:** `checkin`,
+`console`, `designer`, `notify`, `platform`, `branding` — **the lead is custodian of their files.**
+
+| Who | Builds |
 |---|---|
-| **Wave 18 is M10a, not stories** | the shell and the event page are what every later screen inherits, so they land first. Stories are wave 19: **a ring shows its state and opens nothing** |
-| **Five phone tabs, two desktop rails** | الرئيسية · الجلسات · **اقترح** (raised) · الترتيب · حسابي; from `lg` a navigation rail, the content, a game rail. Search stays in the bar; staff links stay in a ruled section |
-| **Home is the feed** | `/app` is its own page; `/app/sessions` stays the canonical browse URL |
-| **The event hero is the whole poster at 4:5** | phone and desktop; the cropped band is retired; the «+50» sticker belongs to the poster **template**, not to a component |
-
-★★ **The rule the wave is judged on (`DEC-199` §2): a screen is REBUILT to its design, never restyled.** A screen is
-built from its artboard — **its regions in the artboard's order**, its copy from `src/messages/ar/` first, its
-primitives by the names in `M10a.md` §10. **Nothing in the current page file survives by default.** What survives is
-the data layer, the server actions, the tests of behaviour, and every `REQ-*` the screen already satisfies. **A plan
-or a story that reads «restyle X to match» is written wrong.**
-
-**Two pull requests** (`DEC-206` §2). **A — `wave-18a/the-frame`**: the shell, `SCR-002`/`003`/`004`, `SCR-007`,
-`SCR-010`, `SCR-011`, four new primitives, `0164`. **B — `wave-18b/the-event`**: `SCR-012` in three phases and at
-desktop, `SCR-014`, `SCR-016` — ★ **opened against `main` from its first push**, never stacked on A: a stacked PR
-whose base branch is deleted is closed by GitHub for good (PR #36, 2026-09-30).
-
-**Spawned for PR A:** `sessions` (opus), `content` (opus), `scoring` (opus). **Not spawned:** `checkin`, `console`,
-`designer`, `event`, `notify`, `platform`, `branding` — **the lead is custodian of their files.** B's tracks —
-`sessions`, `checkin`, and `content` for its slots — are named when B opens.
-
-| Who | Builds, in PR A |
-|---|---|
-| **lead** | the shell and both rails' frame (`REQ-UIX-054`) · `SCR-002`, `003`, `004` (`REQ-UIX-058`) · ★★ `0164` `feed_announcements` — `org_id`, RLS, the full policy set, **a grant for every policy**, its test and a fixture row for the sweep (`REQ-UIX-056`) · `ui/index.ts`, the registry, the gate's floor at 53 · the design gate (`REQ-UIX-063`) · every capture opened beside its artboard · the hard-load re-measure on `/app` |
-| `sessions` | `SCR-007` (`REQ-UIX-059`) · `SCR-011` (`REQ-UIX-060`) · `action-bar`, `session-cta`'s drawn phases · the session post's data (contract 3) |
-| `content` | `SCR-010`, home as the feed, phone and desktop (`REQ-UIX-055`) · `feed-item`, `attendee-stack`, `card`'s `post` · the recap · the announcement item |
-| `scoring` | `week-hud` · the member's week and the game rail's cards · the achievement items' source · moments 3 and 5 on the week (contract 4) |
+| **lead** | the frame's four additions (`STORY-UIX-051`) · `ui/index.ts`, the registry, the floor 53 → 57 · every capture beside its artboard · the gates, the PR |
+| `content` | `SCR-013`, the viewer, phone and desktop (`REQ-UIX-065`) · `ui/page-viewer` — **and `components/viewer/page-viewer.tsx` deleted** (`DEC-213` §4) |
+| `event` | `SCR-015`, rate — ★★ **the survey kept** (`REQ-UIX-066`, `REQ-SUR-004`) · `ui/star-input` |
+| `sessions` | `SCR-017` propose and `SCR-018` my proposal (`REQ-UIX-067`) · `ui/stepper` |
+| `scoring` | `SCR-019`, the directory — new (`REQ-UIX-068`) · `SCR-020`, the profile, phone and desktop (`REQ-UIX-069`) · `ui/badge-medallion` |
 
 ### ★ The seven contracts
 
-1. **Lead → everyone — the frame** (`REQ-UIX-054`). The layout renders the top bar, the tab bar and the navigation
-   rail. **A page renders its content and nothing of the shell**; a page with a game rail passes it to the frame's
-   one slot, and a page that owns its width says so. `PlayScope` stays the layout's and nothing under it is
-   transformed, filtered or clipped. ★ **It lands before any track builds a screen**; the lead posts «the frame is
-   in at `<sha>`» with the slot's name and type.
-2. **Lead → everyone — the signatures and the gate.** `ui/index.ts` is lead-only and append-only. Each owner names
-   its primitive's props in its plan; the lead lands the four signatures, `card`'s `post` and `session-cta`'s
-   addition as **types** after sync 1, with the registry entries. The gate's floor moves from 49 to **53** in the
-   commit that adds the fourth file. The lead wires each demo into the gallery.
-3. **`sessions` → `content` and the lead — the session post.** One add-only function in `src/lib/dal/search.ts`
-   returns the feed's sessions with what a post draws — the presenter's company and team colour, the comment and
-   like counts, the attendance amount from the scoring rule — and the member's own upcoming reservations for
-   «التالية لك». Names and types in `sessions'` note on day one. `content` never queries `sessions` itself.
-4. **`scoring` → `content` and the lead — the week.** Three add-only DAL functions — the member's week, the company
-   race, the achievement items — and one component for the game rail's slot. **Computed, never stored; a missing
-   rank is an absence; opt-out is honoured in the DAL.** Names and types in `scoring`'s note on day one.
-5. **Lead → `content` — the announcements.** The table, its policies and grants are the lead's (`0164`). `feed.ts`
-   reads it through RLS with the caller's client. **No teammate writes `create table`, a policy or a grant, even
-   in `proposed/`.**
-6. **Everyone — the artboard is the specification, and `DEC-206` §4 is the list of what it draws that is NOT
-   built.** Fifty-two lines, each saying which document wins. **A new disagreement is the most useful thing a plan
-   can contain: write it in your note with the artboard and the line, and do not pick a side.** Read the `.dc.html`
-   for layout, sizes and copy — **no class, id or markup pattern from one appears in `src/`**, and nothing under
-   `docs/` is imported (`REQ-UIX-063`).
-7. **Everyone — every figure is read.** The attendance amount is the scoring rule's and never a literal «50»; the
-   rotation is the org's; a rank is the monthly board's; a `+0` is never drawn.
+1. **Lead → everyone — the frame's four additions** (`DEC-213` §3): the viewer full-screen at every width; the
+   phone's top row the page's own on rate, propose, the proposal, the directory and the profile; the rail's and the
+   account menu's «الأعضاء», «حسابي» no longer current on another's profile, the raised «اقترح» current in bone;
+   `PageFrame`'s add-only owned width. **A page renders nothing of the shell.** ★ **They land before any track builds
+   a screen**; the lead posts «the frame is in at `<sha>`».
+2. **Lead → everyone — the signatures and the gate.** `ui/index.ts` is lead-only and append-only. Each owner names its
+   primitive's props in its plan; the lead lands the four as **types** after sync 1, with the registry entries; the
+   floor moves **from 53 to 57** in the commit that adds the fourth file. The lead wires each demo into the gallery.
+3. **`content` → `scoring` — photos by uploader.** One add-only function in `src/lib/dal/photos.ts`: a member's
+   visible photographs, newest first, with a count, through RLS with the caller's client. Never a tagged photo.
+4. **`sessions` → `scoring` — the sessions presented.** One add-only function in `src/lib/dal/sessions.ts`: the
+   **count** (never a page's length — `listSessionsPresentedBy()` caps at 12, `DEC-213` §5.120) and the rows with the
+   attendance count (`session_attendance_count()`). **No average in it**: the profile reads `getPresenterAggregate()`
+   on the self and admin tiers only (§5.115). Names and types in `sessions'` note on day one.
+5. **Everyone — the artboard is the specification, and `DEC-213` §5 is the list of what it draws that is not built**
+   (forty-five lines, §5.82 – §5.126, each saying which document wins). **A new disagreement is the most useful thing
+   a plan can contain: write it in your note with the artboard and the line, and do not pick a side.** Read the
+   `.dc.html` for layout, sizes and copy — **no class, id or markup pattern from one appears in `src/`**, and nothing
+   under `docs/` is imported (`REQ-UIX-063`).
+6. **Everyone — every figure is read.** The earn panel's amounts, the rating threshold and window, the co-presenter
+   limit, a rank, a count — never a literal; a `+0` is never drawn.
+7. **`scoring` → everyone — tiering is the DAL's** (A33, `03` §5.1b). The directory and the profile show tier-1 fields
+   because **the DAL returns only those**; a component that filters is a component that leaks.
 
 ### ★ The rules this wave turns on
 
-1. ★★ **Rebuilt, never restyled.** Start from the artboard and an empty file. Keep the DAL calls, the actions, the
-   gating predicates and the accessible names the suites pin; keep no markup because it was there.
-   ★★ **DELETE THE PAGE FILE FIRST, then write the screen from its artboard** (`DEC-208`, amending `DEC-199` §2) — two commits, a delete then a create — **and re-derive what must survive from the REQs and the DAL, not from memory**: the data calls, the auth boundary, `<bdi>` on every interpolated title and code, `?next=`, the phase gates. **The story lists what it kept and which requirement made it keep it.**
-2. ★★ **`registrations` is never touched** (invariant 2): 20 real pre-launch signups. The register form's action,
-   field names, ids, validation and no-JS path are byte-identical.
-3. ★★ **The five frozen public routes do not move**: `qa:contract` green at every commit, `qa:appearance` and
-   `visual`'s public pairs unchanged and not re-baselined, the fingerprint byte-identical, the public-graph test
-   green. `/s/[id]` is **not** one of the five; `ui/button`, which it shares with them, is not edited.
-4. ★ **What the artboards draw and nobody builds** (`DEC-206` §4): an org's name on sign-in; an org's domain or
-   logo on choose-org; seats, a presenter or a company on the public card; a weekly rank, a streak skip, a round;
-   a level-up item, a reaction on an achievement; a sort on browse; **faces of who attends, for a plain member**;
-   a reservation from the feed; learning objectives; a photo on a comment; a map embed.
-5. ★ **Arabic first.** A new string is written in `src/messages/ar/` and then in `en/`. `<bdi>` on every
-   interpolated title, name and code. **Western numerals only** (`DEC-124`). Logical properties only; never
-   letter-space Arabic, never `overflow: hidden` on a text line.
-6. ★ **The status colours are `DEC-073`'s** (`DEC-206` §4.62). The artboards paint a waitlist badge cyan and a
-   live one coral; a badge wears the primitive's tones. A status colour is never an accent and never a company's.
-7. ★ **No sixth moment, and no change to the five** (`DEC-206` §5). Moments 3 and 5 gain a second surface on the
-   home and share their mark with the first. **A failure never animates; nothing scales on hover.** Animation
-   touches transform, opacity and filter only, a duration is a token, and no `will-change` is left on.
-8. ★ **A ring opens nothing** (`DEC-206` §1.5): no `onOpen`, not a button, `seen` never rendered — until wave 19.
-9. ★ **A member never sees who else attends** (A33 rule 3): a count, yes; identities only for a viewer RLS already
-   answers. No policy is widened for a drawing.
-10. ★ **No primitive loses a behaviour, a prop or an accessible name.** An addition is add-only, and the existing
-    suites prove it by passing untouched. The `pg:` variants stay.
-11. ★ **Semantic names only** (`tokens-only`, `no-raw-palette`): no hex, no literal duration, no raw palette name.
-    A colour from data arrives as `--team`.
-12. ★ **The console's register stands** (`REQ-UIX-053`): nothing of the week, the feed or a moment reaches an admin
-    import graph. **The playground stops at the certificate's edge, the poster's and the mail's.**
-13. ★ **The existing suites are evidence.** A rebuilt screen moves locators; **each changed assertion is a ledger
-    line in `STATUS.md`, in the same commit**, saying whether a selector moved or an expectation did. An
-    expectation that changes is named in your plan first. New cases go in new files.
-14. ★ **Additive, because `main` runs on it first.** Migrations from `0164`; the owner rehearses on a production
-    schema dump, pushes, merges, then reconnects Railway. Nothing on `main` reads the new table.
-15. ★ **No new dependency** — no icon library, no motion library. `package.json` is the lead's.
+1. ★★ **Rebuilt, never restyled — deleted first** (`DEC-199` §2, `DEC-208`). Above.
+2. ★★ **The viewer's direction is a model, not a mirrored icon** (`M10b.md` §1, `09` `SCR-013`): «next» advances in the
+   reading direction, sits at the inline-end, its glyph points left; on desktop ← is next and → previous. **The tree
+   had the buttons mirrored in behaviour and not in name** (`page-viewer.tsx:160`, `:166`, `DEC-213` §4) — a test is
+   the fix's proof.
+3. ★★ **Stars fill from the right** (`M10b.md` §2): star 1 rightmost, selection and hover fill rightmost-first, ←
+   increases and → decreases, each star a real radio in a radio group, the count read back.
+4. ★ **The anonymity notice tells the whole truth** — the threshold from the org's setting **and** that org admins
+   see individual ratings (D36, OQ-009).
+5. ★ **No gendered verb about a member** (`DEC-213` §5.109): nothing stores gender. A noun phrase, six ICU forms.
+6. ★★ **`registrations` is never touched** (invariant 2). **The five frozen public routes do not move**: `qa:contract`
+   green at every commit, `visual`'s public pairs unchanged and not re-baselined, the fingerprint byte-identical,
+   `public-graph` green. None of the six is public; a file the five import is not edited.
+7. ★ **Arabic first.** `src/messages/ar/` first, then `en/`. `<bdi>` on every interpolated title, name and code.
+   **Western numerals only** (`DEC-124`). Logical properties only; never letter-space Arabic, never
+   `overflow: hidden` on a text line.
+8. ★ **The status colours are `DEC-073`'s.** A status colour is never an accent and never a company's.
+9. ★ **No sixth moment, and none moved** (`DEC-213` §5.117): no level-up on the profile. **A failure never animates;
+   nothing scales on hover.** Animation touches transform, opacity and filter only; a duration is a token.
+10. ★ **A member never sees who else attends** (A33 rule 3), **nor a colleague's average rating** (A33, §5.115).
+11. ★ **No primitive loses a behaviour, a prop or an accessible name.** An addition is add-only. The `pg:` variants stay.
+12. ★ **Semantic names only** (`tokens-only`, `no-raw-palette`): no hex, no literal duration, no raw palette name. A
+    colour from data arrives as `--team`.
+13. ★ **The existing suites are evidence.** **Each changed assertion is a ledger line in `STATUS.md`, in the same
+    commit**, saying whether a selector moved or an expectation did. An expectation that changes is named in your plan
+    first. New cases go in new files.
+14. ★ **No migration is expected.** One needed after all is named in your plan with its `REQ-*`; the lead writes it
+    from `0168` with `org_id`, RLS, the full policy set, **a grant for every policy**, and its test.
+15. ★ **No new dependency.** `package.json` is the lead's.
 16. **One writer per file, specs and demos included.** `ui-lint --strict` has no allowlist and never gains one;
     `ui-lint-disable-next-line` needs a reason the lead approves in writing.
-17. **Teammates spawn planning-only**; sync 1 approves three plans against the seven contracts, and **no track
-    builds a screen before the lead posts the frame's commit.**
-18. **Captures land at `.qa-shots/rtl/wave18-<track>-<screen>-<state>-<390|1280>.png`** in the main checkout, from a
+17. **Teammates spawn planning-only**; sync 1 approves four plans **with their kept-behaviour tables**; **nobody
+    deletes a file before the lead posts «the plans are approved» and «the frame is in».**
+18. **Captures land at `.qa-shots/rtl/wave19-<track>-<screen>-<state>-<390|1280>.png`** in the main checkout, from a
     production build the row names by commit, honouring `E2E_SHOTS_DIR`. The lead opens every one **in bands, never
-    downscaled, beside the artboard's own render**. ★ **The wave's acceptance is the owner holding each rebuilt
-    screen beside its artboard on a phone**; a capture is evidence for that, not a substitute.
+    downscaled, beside the artboard's own render**. ★ **The wave's acceptance is the owner holding each rebuilt screen
+    beside its artboard on a phone**; a capture is evidence for that, not a substitute.
 
 ### `src/components/ui/` — ownership is per FILE, never per directory
 
 | Owner | Files in `src/components/ui/` |
 |---|---|
 | **lead** | `index.ts` · `button.tsx` · `icon-button.tsx` · `link.tsx` · `skeleton.tsx` · `route-progress.tsx` · `toast.tsx` · `submit-button.tsx` · `page-header.tsx` · `section-header.tsx` · `prose.tsx` · `route-error.tsx` · `icons.tsx` · `dialog.tsx` · `reorderable-list.tsx` · `scope.tsx` · `scope-portal.tsx` · `objects/**` |
-| **`content`** — ★ spawned | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` · `sticker.tsx` · `poster.tsx` · `reaction-bar.tsx` · `progress-bar.tsx` · `story-ring.tsx` · ★ new: `feed-item.tsx` · `attendee-stack.tsx` |
-| **`sessions`** — ★ spawned | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` · `session-cta.tsx` · `code-input.tsx` · ★ new: `action-bar.tsx` |
-| **`scoring`** — ★ spawned | `rank-row.tsx` · `race-bar.tsx` · `level-card.tsx` · ★ new: `week-hud.tsx` |
+| **`content`** — ★ spawned | `card.tsx` · `badge.tsx` · `tag-chip.tsx` · `avatar.tsx` · `progress.tsx` · `empty-state.tsx` · `stat.tsx` · `panel.tsx` · `file-drop.tsx` · `sticker.tsx` · `poster.tsx` · `reaction-bar.tsx` · `progress-bar.tsx` · `story-ring.tsx` · `feed-item.tsx` · `attendee-stack.tsx` · ★ new: `page-viewer.tsx` |
+| **`sessions`** — ★ spawned | `field.tsx` · `input.tsx` · `textarea.tsx` · `select.tsx` · `checkbox.tsx` · `radio-group.tsx` · `switch.tsx` · `form-summary.tsx` · `session-cta.tsx` · `code-input.tsx` · `action-bar.tsx` · ★ new: `stepper.tsx` |
+| **`scoring`** — ★ spawned | `rank-row.tsx` · `race-bar.tsx` · `level-card.tsx` · `week-hud.tsx` · ★ new: `badge-medallion.tsx` |
+| **`event`** — ★ spawned | ★ new: `star-input.tsx` — its first primitive |
 | **`console`** — not spawned, the lead holds | `data-table.tsx` · `combobox.tsx` · `menu.tsx` · `tabs.tsx` · `sheet.tsx` · `date-time.tsx` |
 
 **You never edit a primitive you do not own, even to fix it.** Write the request — the file, the prop, why — in
@@ -252,21 +222,17 @@ whose base branch is deleted is closed by GitHub for good (PR #36, 2026-09-30).
 `ui/` with no registry entry, no test inside the scope or no demo fails `tests/unit/ui-playground.test.ts`, and the
 registry is the lead's — a new primitive is a request with its props.
 
-### The transfers in force for wave 18, PR A (`DEC-206`)
+### The transfers in force for wave 19 (`DEC-213`)
 
-- **Every earlier wave's transfer has ended.** Where a list below still says «this wave» of wave 16 or 17, it is the
-  record of that wave: `components/checkin/{rsvp-panel.tsx,actions.ts}` are `checkin`'s, `app/leaderboards/**` with
-  `components/scoring/{member-board,company-board}.tsx` are `sessions'` standing files and **frozen until batch
-  M10c**, and wave 17's raw-palette permissions are spent.
-- **→ `content`, from `sessions`:** `src/app/[locale]/app/{page,loading,error}.tsx` — home is the feed, a page
-  composed of three tracks' items on the lead's frame.
-- **→ the lead, as custodian, add-only:** `src/lib/dal/admin-dashboard.ts` (the four attention counts alone,
-  `console`'s), `src/components/notifications/bell.tsx` (its place in the top row, `notify`'s),
-  `supabase/proposed/checkin/**` (the attendance count's definer function, `checkin`'s).
-- ★ **Frozen for everyone in PR A, fixes included:** the event page and everything under
-  `app/sessions/[id]/**`, `components/{sessions,checkin}/**` — they are PR B's, rebuilt there; every screen of
-  batches M10b and M10c; every console, studio and platform route; every worker task. A defect found there is
-  written in your note and told to the lead.
+- **Every earlier wave's transfer has ended.** Where a list below still says «this wave» of an earlier wave, it is
+  that wave's record.
+- **→ `scoring`, from `sessions`:** `src/app/[locale]/app/members/**`, `src/lib/dal/members.ts`,
+  `src/messages/*/members.json`, `tests/unit/sessions-member-profile.test.ts`, `tests/e2e/wave7-sessions-profile.spec.ts`
+  — the directory and the profile. They return to `sessions` after the wave.
+- ★ **Frozen for everyone, fixes included:** everything wave 18 rebuilt (the shell is the lead's; `/app`, browse, the
+  public card, the event page and its slots, check-in, the host view); the hub, points and the boards (M10c); every
+  console, studio and platform route; every worker task. A defect found there is written in your note and told to the
+  lead.
 
 ### One writer per file — specs included
 
@@ -277,21 +243,24 @@ change breaks it, write the failing assertion and why in your note and tell the 
 `isolation`, `definer-exposure`, every `fixture*.ts`, every `wave<N>-{demo,lead}-*` spec, `session-downloads*`,
 `photo-downloads*`, `team-colour*`, `moment*` under `tests/unit` and `tests/rls`, the companies tests,
 `tests/unit/{ui-playground,no-raw-palette,scope-root,tokens-scope,tokens-only,public-graph,design-files}*` and the
-registry, ★ `tests/rls/feed-announcements*`, and every spec of an unspawned track.
+registry, `tests/rls/feed-announcements*`, and every spec of an unspawned track.
 
 ### Not this wave — never touched by ANY teammate until the lead says otherwise
 
 - ★★ **the five public routes** — everything under `src/app/[locale]/(marketing)/`, the thirteen components it
   renders, the register form, `public/**`; and anything `tests/unit/public-graph.test.ts` protects;
-- ★★ **the stories VIEWER**, `story_views`, the `story` photo derivative (wave 19) — a ring opens nothing;
-- **batch M10b**: `/app/members` (`SCR-019`), the viewer (`013`), rate (`015`), propose (`017`/`018`), the profile
-  (`020`); **batch M10c**: the `/app/me` hub, points and the boards (`021` – `028`);
+- ★★ **session stories** — the viewer, `story_views`, the `story` photo derivative (the next wave, `DEC-213` §1) —
+  ★ **wave 18's ring opens nothing, and nobody wires it this wave**;
+- **batch M10c**: the `/app/me` hub, points and the boards (`021` – `028`); everything wave 18 rebuilt;
+- ★ **what `DEC-213` §5 rules not built**: autosave on propose, a withdrawn proposal state, a member-readable proposal
+  history, the reviewer's name, the hosting gate's enforcement, the Keynote state, a weekly rank, a colleague's
+  average rating, an opted-out member's points, the level-up moment on the profile, photo tagging anywhere;
 - ★ **every console, studio and platform route** — an authoring screen for announcements among them (`DEC-206` §3);
 - **the weekly leaderboard**, the streak rule (`DEC-NEXT-9`), **proposal voting**, leagues;
 - learning objectives (`REQ-SES-014`'s column), a level history, attachments on a comment, a map embed;
 - **a sticker layer on the poster templates**, the certificates' look, a rendered poster or message; the designer's
   document model and the export pipeline; **replacing the renderer**;
-- ★ **fixing the hard-load duplicate** (`DEC-204`) — it is re-measured on `/app` by the lead, not fixed;
+- ★ **fixing or re-measuring the hard-load duplicate** (`DEC-204`) — none of this wave's routes is in its table; `/app/me/points` and `/app/leaderboards` are M10c's;
 - a new moment, a new keyframe without a request, any change to how the five moments are keyed;
 - **deleting the `pg:` variants** or `:root`'s old values — the public site's wave;
 - ★ **a company logo** — refused, not deferred (`DEC-195` §4);
@@ -329,7 +298,7 @@ where you learn), and `npm run test:rls` (single-runner: `pgrep -fl "[n]ode_modu
 question to the lead — **never run anything in the lead's verification worktree without asking**. The
 `TaskCompleted` hook is path-aware (DEC-088): tsc, lint and vitest for you; it falls through to the
 full `qa` only when a change can reach the frozen marketing routes — **if it does, you edited
-something that is not yours** (★ wave 18: `/s/[id]` shares `ui/button` with them and nobody edits it — if the hook runs the full `qa` for you, stop and tell the lead). SQL goes under `supabase/proposed/<you>/`, proven with
+something that is not yours** (★ wave 19: none of the six screens is public, and `ui/button`, `field`, `input`, `textarea` and `icons` are imported by the five — if the hook runs the full `qa` for you, stop and tell the lead). SQL goes under `supabase/proposed/<you>/`, proven with
 `applyProposed()` inside your RLS tests, never into `supabase/migrations/`; **never save a failing test
 under `tests/rls/`** — everyone's run executes it. A write-then-`raise` RPC rolls back its own write
 (`DEC-043`): after the first write, return an outcome envelope. A trigger that enqueues or notifies is

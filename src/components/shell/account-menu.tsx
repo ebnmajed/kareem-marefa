@@ -43,6 +43,7 @@ export interface AccountMenuProps {
     calendar: string;
     notifications: string;
     privacy: string;
+    members: string;
     admin: string;
     platform: string;
     signOut: string;
@@ -67,6 +68,8 @@ export function AccountMenu({ memberId, displayName, avatarUrl, teamColor, isSta
         { label: labels.calendar, href: "/app/me/calendar" },
         { label: labels.notifications, href: "/app/me/notifications" },
         { label: labels.privacy, href: "/app/me/privacy" },
+        // ★ wave 19 (DEC-213 §3.4): the phone's way to the directory — no sixth tab.
+        { label: labels.members, href: "/app/members", startsGroup: true },
       ]
     : [];
   const staff: MenuItem[] = [

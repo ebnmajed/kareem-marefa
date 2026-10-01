@@ -106,10 +106,12 @@ test("★ required is «مطلوب» on the label, and there is no asterisk anyw
 
   // REQ-UIX-011: an asterisk collides with the RTL run, so required is marked
   // positively — and the four the schema refuses to do without are the four.
-  const markers = proposalForm(page).locator("label", { hasText: "مطلوب" });
+  // ★ Wave 19 (ledger): the level is a chips radio group now, named by its <legend>, so the selector reads
+  // `label, legend`; the expectation — four «مطلوب», one per required field — is unchanged.
+  const markers = proposalForm(page).locator("label, legend", { hasText: "مطلوب" });
   await expect(markers).toHaveCount(4);
   for (const label of ["عنوان الموضوع المقترح", "نبذة عن موضوعك", "تصنيف الموضوع", "مستوى الجلسة"]) {
-    await expect(proposalForm(page).locator("label", { hasText: label })).toContainText("مطلوب");
+    await expect(proposalForm(page).locator("label, legend", { hasText: label })).toContainText("مطلوب");
   }
 
   // Not «the asterisk is styled away» — absent.

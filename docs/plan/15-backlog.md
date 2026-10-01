@@ -1307,6 +1307,105 @@ PR A is stories 039 – 047; PR B is 048 – 050.*
 - ★ **Not drawn, and built:** before the session is live; after check-in closed; a rotation, by a cut and never a
   fade; a day of a multi-day session; a presenter who is not staff, who is not offered marking by hand.
 
+
+## 23h. Wave 19 — `M21`, the member screens, batch B (`DEC-213`)
+
+*Six screens rebuilt from eight artboards in `docs/design/screens/m10b/`, specified by `M10b.md`. ★★ **Every story
+below is a REBUILD** (`DEC-199` §2), and ★★ **every screen is DELETED first, then written from its artboard**
+(`DEC-208`) — two commits — with a kept-behaviour table in the owner's note. What `DEC-213` §5 says is not built is
+absent; what it says is built, drawn or not, is built. Each screen's definition of done: **it matches its artboard
+at 390 px, and at 1280 for `SCR-013` and `SCR-020`, in a capture the lead opened beside it**; `ui-lint --strict`
+passes; `qa:contract` is untouched. One PR, `wave-19/m10b`.*
+
+#### STORY-UIX-051 — The frame's four additions for batch B
+**Covers:** `REQ-UIX-054` · **M21** · **S** · lead
+- A full-screen route for the viewer: no bar, no rail, no tab bar and no footer, at every width (`DEC-213` §3.1).
+- The phone's top row is the page's own on rate, propose, the proposal, the directory and the profile; from `lg` the
+  shell's bar stands.
+- The rail links «الأعضاء», current on the directory and on a profile; «حسابي» is no longer current on another
+  member's profile; the account menu on the phone links the directory.
+- The raised «اقترح» tab shows it is current — bone, the drawn muted shadow — with `aria-current` unchanged.
+- `PageFrame` gains an add-only way for a page with no game rail to own its width.
+- The shell's existing specs are evidence; each changed assertion is a ledger line.
+
+#### STORY-UIX-052 — Four new primitives
+**Covers:** `REQ-UIX-064` · **M21** · **L** · `event` (`star-input`), `sessions` (`stepper`), `content` (`page-viewer`), `scoring` (`badge-medallion`)
+- Each: its signature in `ui/index.ts` (the lead's, types only, after sync 1), a registry entry, a test inside the
+  scope, an RTL check, a gallery section with every state in Arabic from fixture data.
+- ★ `page-viewer` is written in `ui/` and `src/components/viewer/page-viewer.tsx` is deleted (`DEC-213` §4); its
+  behaviour cases are re-asserted against the primitive, each a ledger line.
+- The gate's floor moves from 53 to 57 in the commit that adds the fourth file.
+
+#### STORY-UIX-053 — The viewer, rebuilt
+**Covers:** `REQ-UIX-065` · **M21** · **M** · `content`
+**Built from:** `Viewer.dc.html` · `ViewerDesktop.dc.html`; `M10b.md` §1.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it.
+- Phone: the chrome bar (close, title, «صفحة N من M», download only when allowed), the page whole on black, the
+  bottom chrome (previous, the scrubber with «N من M», next — the accent one, at the inline-end). Desktop: the bar
+  with the presenter line and the keys, the rail at the inline-start, the page between previous and next, the footer
+  line saying the original is never fetched.
+- ★ **The direction test** (`DEC-213` §4): «next» advances and sits at the inline-end in `ar`; ← is next on desktop.
+  Today's buttons are mirrored in behaviour and not in name — the rebuild fixes it and the test holds it.
+- ★ **The URL test**: a member denied the download receives no signed URL.
+- ★ **Drawn, and not built** (`DEC-213` §5.85): the Keynote state.
+- ★ **Not drawn, and built:** loading (its own skeleton), rendering, failed with the PDF guidance, the font
+  substitution notice, a single page, hidden chrome, reduced motion.
+
+#### STORY-UIX-054 — Rate, rebuilt
+**Covers:** `REQ-UIX-066` · **M21** · **M** · `event`
+**Built from:** `Rate.dc.html`; `M10b.md` §2.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it.
+- The back control and the title, the session's mini-row with «حضرت», two `star-input` rows with the count read
+  back, the comment with «N من 2000», the anonymity panel, the bottom `action-bar` with the submit and the window
+  line.
+- ★★ **The survey stays** (`DEC-213` §5.90, `REQ-SUR-004`): its section after the panel, its own write, the bar's
+  label following its state; `wave10-event-rate-survey.spec.ts` is evidence.
+- ★ **Not drawn, and built:** submitted (the in-page receipt), editing within the window, closed (read-only stars, no
+  bar), not checked in and not completed (the explanation, not a 404), the error summary with what was typed kept.
+
+#### STORY-UIX-055 — Propose, rebuilt
+**Covers:** `REQ-UIX-067` · **M21** · **M** · `sessions`
+**Built from:** `Propose.dc.html`; `M10b.md` §3.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it.
+- The title with «مقترحاتي N», the list above the form when non-empty, the lead line in the display face, the body,
+  the no-schedule panel, the remaining count, section 1 (title, abstract, category, level as three chips, audience,
+  duration), section 2 (co-presenters with their team rings, notes, the materials note), the earn panel read from
+  the rules, the sticky `action-bar` with submit and save as draft. The tab bar's raised tab current.
+- ★ **Drawn, and not built** (`DEC-213` §5.93, §5.97): autosave and its «saved» line; the hosting-gated card.
+- ★ **Not drawn, and built:** the error summary with focus; the co-presenter limit reached; resubmit, with the
+  reason pinned above section 1; the submitted confirmation; a draft saved.
+
+#### STORY-UIX-056 — My proposal, rebuilt
+**Covers:** `REQ-UIX-067` · **M21** · **M** · `sessions`
+**Built from:** `Proposal.dc.html`; `M10b.md` §4.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it.
+- The back control, «مقترحي» and the date, the `stepper`, the reason card with the one primary, the summary, the
+  presenters with their reply states and «+ أضف مُقدِّمًا مشاركًا», the draft materials (PDF only), the bottom bar.
+- ★ **Drawn, and not built** (`DEC-213` §5.99 – §5.101): the reviewer's name, «السجل», «اسحب المقترح».
+- ★ **Not drawn, and built:** submitted and in review, approved, scheduled (derived, with the session's poster and
+  «افتح الجلسة»), rejected, a draft; the co-presenter's own view, answering an invitation.
+
+#### STORY-UIX-057 — The directory, built
+**Covers:** `REQ-UIX-068` · **M21** · **M** · `scoring`
+**Built from:** `Directory.dc.html`; `M10b.md` §5. **A new page**: `/app/members` had boundaries and no page.
+- The title with the count and the order («الأنشط أولًا» — sessions presented — or the name), search, the company
+  chips with their dot, the rows, the «more» link with «N من M».
+- One add-only DAL function: tier-1 fields only, the org's members, active by default, paged.
+- ★ **Not drawn, and built:** an empty search with «clear», a member with no company, an opted-out member (level,
+  never a rank), an interests row when the org has any, deactivated members marked for an admin, loading as a list.
+
+#### STORY-UIX-058 — The profile, rebuilt
+**Covers:** `REQ-UIX-069` · **M21** · **L** · `scoring`, with `content` (photos) and `sessions` (the presented count)
+**Built from:** `Profile.dc.html` · `ProfileDesktop.dc.html`; `M10b.md` §6.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it.
+- The top row (back, the breadcrumb, share), the header card, the standing card (`level-card`, the progress line,
+  the month's rank, the all-time rank, the streak), the badges as `badge-medallion`s with «N من M», the sessions
+  presented, the photos uploaded; desktop at 964 px with a 1fr / 380 body.
+- ★ **Drawn, and not built** (`DEC-213` §5.114 – §5.117): a weekly rank, a colleague's average rating, points for an
+  opted-out member, the level-up moment.
+- ★ **Not drawn, and built:** the self tier (the note, the two actions, the six sections as links), the admin tier
+  («للمشرفين»), opted out, no badges, no bio, nothing presented, no photos.
+
 ---
 
 ## 24. Coverage check
@@ -1314,12 +1413,12 @@ PR A is stories 039 – 047; PR B is 048 – 050.*
 Regenerated by `scripts/traceability.mjs`; the table is in `TRACEABILITY.md`. The invariants this
 backlog must satisfy:
 
-1. **Every `REQ-*` in `01-prd.md` is covered by at least one story** — 336 of 336 since `DEC-183`, 346 of 346 since `DEC-199`, 356 of 356 since `DEC-206`.
+1. **Every `REQ-*` in `01-prd.md` is covered by at least one story** — 336 of 336 since `DEC-183`, 346 of 346 since `DEC-199`, 356 of 356 since `DEC-206`, 362 of 362 since `DEC-213`.
 5. ★ **A story may cover a REQ that an EARLIER milestone already satisfied** — `STORY-UIX-016`
    redesigns screens `STORY-AUT-001` built. `trace` cannot see that gap, because it checks
    REQ→story, not decision→story; `DEC-129` is why it is written down.
 2. **Every story cites at least one `REQ-*`.**
-3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183`, M18 since `DEC-195` and M19 since `DEC-199`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
+3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183`, M18 since `DEC-195`, M19 since `DEC-199`, M20 since `DEC-205` and M21 since `DEC-213`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
 4. **No story cites a requirement that does not exist.**
 
 A violation of any of the five **fails CI** (`13` §10). That gate is the only thing that keeps this
