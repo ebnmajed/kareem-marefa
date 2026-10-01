@@ -28,8 +28,8 @@ import { PROPOSAL_FIELDS, emptyProposeState, type ProposalField, type ProposeSta
 // ★ REQ-PRO-001: no date, time or venue control exists here, and the schema has no key for one.
 //
 // ★ THE BAR IS INSIDE THE FORM, so its two `name="intent"` buttons submit it with no `form=` attribute; it is
-// `fixed`, standing on the tab bar on `/app/propose` (`--stacked-bar-offset`, DEC-214 §3), and the shell pads
-// `<main>` and the scroll padding for the pair, so no focused field sits behind it (REQ-UIX-017).
+// fixed below `lg`, standing on the tab bar (`--stacked-bar-offset`, DEC-214 §3), the shell padding `<main>` and the
+// scroll padding for the pair so no focused field sits behind it (REQ-UIX-017); from `lg` it is in flow.
 //
 // ★ The form model is unchanged from wave 7 (`16` §8.2, REQ-UIX-009 … 011): blur checks every field after the first
 // submit through `checkProposalField()` (the browser's mirror of `proposalInput`); typing clears an error the moment
@@ -174,7 +174,7 @@ export function ProposalForm({
   );
 
   return (
-    <form action={formAction} noValidate className="mt-4 flex flex-col gap-6 lg:pb-28">
+    <form action={formAction} noValidate className="mt-4 flex flex-col gap-6">
       {state.formError ? (
         // A failed WRITE, not a failed field: its own alert, focused.
         <FormError key={state.attempt} message={t(`errors.${state.formError}`)} />
@@ -305,8 +305,10 @@ export function ProposalForm({
 
       {earn}
 
+      {/* Below `lg` fixed and stacked on the tab bar; from `lg` in flow at the end of the form (DEC-214 §3). */}
       <ActionBar
         label={t("form.actionsLabel")}
+        className="lg:static lg:border-t-0 lg:bg-transparent lg:px-0"
         primary={
           // ★ Pending keeps the LABEL and adds a spinner (REQ-UIX-007); «جارٍ الإرسال…» is what is announced.
           <Button

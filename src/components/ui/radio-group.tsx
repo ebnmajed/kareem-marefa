@@ -46,18 +46,9 @@ import { AlertCircleIcon } from "@/components/ui/icons";
 // the group fell back to the option it mounted with while its state held
 // another. After every commit the radio matching `value` is re-checked and made
 // the default.
-/**
- * ★ WAVE 19 (DEC-214 §5, `Propose.dc.html`'s «مستوى الجلسة»), add-only — every caller before it is unchanged.
- * `appearance="chips"` draws the options as equal segmented chips, the native radio kept (visually hidden, still
- * focused and still the form's value); `required` marks the group positively (REQ-UIX-011): `aria-required` on the
- * radiogroup, and `requiredLabel` — the caller's «مطلوب», since a primitive reads no catalogue — after the legend,
- * exactly as `<Field>` draws it. To be folded into `RadioGroupProps` in `ui/index.ts` by the lead.
- */
-export type RadioGroupWave19Props = RadioGroupProps & {
-  appearance?: "rows" | "chips";
-  required?: boolean;
-  requiredLabel?: string;
-};
+/** wave 19 (DEC-214 §5): `appearance`, `required` and `requiredLabel` are `RadioGroupProps`' own since the lead
+ *  folded them in (`0b1f00b2`); the old name stays as an alias. */
+export type RadioGroupWave19Props = RadioGroupProps;
 
 // The chip: the whole label is the target (44 px), the checked one in the accent, the keyboard focus drawn on the
 // chip because the radio inside it is visually hidden.
