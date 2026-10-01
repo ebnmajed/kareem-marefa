@@ -234,7 +234,8 @@ export function PageViewer({
                       height={p.height}
                       unoptimized
                       loading="lazy"
-                      className={`block h-auto w-full rounded-field ${isCurrent ? "outline-3 outline-offset-2 outline-accent" : "opacity-80"}`}
+                      style={{ aspectRatio: `${p.width} / ${Math.max(p.height, 1)}` }}
+                      className={`block h-auto w-full rounded-field bg-surface ${isCurrent ? "outline-3 outline-offset-2 outline-accent" : "opacity-80"}`}
                     />
                     <span aria-hidden="true" className="text-caption">
                       {String(p.pageNumber)}
@@ -286,6 +287,9 @@ export function PageViewer({
             style={{
               width: `min(100cqw, calc(100cqh * ${current.width / Math.max(current.height, 1)}))`,
               height: "auto",
+              // The page's own ratio holds the box before the image paints and after (REQ-NFR-008): an image whose
+              // pixels disagree with `material_pages` never reshapes the page.
+              aspectRatio: `${current.width} / ${Math.max(current.height, 1)}`,
               ...(zoomed ? { transform: `scale(${scale})`, transformOrigin: dir === "rtl" ? "top right" : "top left" } : null),
             }}
             className="block shrink-0 select-none rounded-field bg-surface"

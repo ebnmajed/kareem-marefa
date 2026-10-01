@@ -169,19 +169,35 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+const main = (page: Page) => page.locator("#main");
+const indicator = (page: Page) => main(page).getByTestId("page-indicator");
+
+const PAGES = { open: 24, denied: 3, rendering: 0, failed: 0 } as const;
+
 async function open(page: Page, key: keyof typeof material) {
   await page.goto(`/ar/app/sessions/${sessionId}/materials/${material[key].id}`);
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
-  // The keys and the buttons are attached on hydration.
-  await page.waitForLoadState("networkidle");
+  const total = PAGES[key];
+  if (total > 0) await hydrated(page, total);
+}
+
+/** The keys and the buttons are attached on hydration, and `networkidle` never arrives on this page (the gate's
+ *  first run, `02cca532`). So wait for what hydration DOES: End and Home are idempotent, and once End reaches the
+ *  last page the viewer is live; Home then puts it back on page 1 for the case. */
+async function hydrated(page: Page, total: number) {
+  const at = (n: number) => new RegExp(`(^|\\D)${n}\\D+${total}(\\D|$)`);
+  await expect(async () => {
+    await page.keyboard.press("End");
+    await expect(indicator(page)).toHaveText(at(total), { timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
+  await page.keyboard.press("Home");
+  await expect(indicator(page)).toHaveText(at(1));
 }
 
 async function shoot(page: Page, state: string, width: 390 | 1280) {
   await page.screenshot({ path: join(SHOTS, `wave19-content-viewer-${state}-${width}.png`), fullPage: false });
 }
 
-const main = (page: Page) => page.locator("#main");
-const indicator = (page: Page) => main(page).getByTestId("page-indicator");
 
 test("★★ ar at 390: «الصفحة التالية» moves the page from 1 to 2, sits LEFT of «السابقة» and points left", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
@@ -202,7 +218,9 @@ test("★★ ar at 390: «الصفحة التالية» moves the page from 1 to
   // The forward chevron mirrors in RTL: it points left.
   const glyph = next.locator("svg");
   await expect(glyph).toHaveAttribute("data-direction", "forward");
-  expect(await glyph.evaluate((el) => getComputedStyle(el).transform)).toMatch(/^matrix\(-1, 0, 0, 1/);
+  // Tailwind 4's `-scale-x-100` writes the individual `scale` property, not `transform`; either is a mirror.
+  const mirror = await glyph.evaluate((el) => ({ scale: getComputedStyle(el).scale, transform: getComputedStyle(el).transform }));
+  expect(/^-1(\s|$)/.test(mirror.scale) || /^matrix\(-1, 0, 0, 1/.test(mirror.transform), JSON.stringify(mirror)).toBe(true);
 
   await next.click();
   await expect(indicator(page)).toHaveText(/2.*24/);
@@ -326,8 +344,7 @@ test("an admin's download is audited, and offered even with download off (DEC-21
 
   const after = await db.query<{ n: string }>(`select count(*)::text as n from public.audit_log where org_id = $1 and action = 'material.downloaded' and subject_id = $2`, [orgId, material.denied.id]);
   expect(Number(after.rows[0].n)).toBe(Number(before.rows[0].n) + 1);
-  await page.goto(`/ar/app/sessions/${sessionId}/materials/${material.denied.id}`);
-  await page.waitForLoadState("networkidle");
+  await open(page, "denied");
   await shoot(page, "admin", 1280);
 });
 
@@ -355,6 +372,10 @@ test("the rendering and failed states, at 390", async ({ context, page }) => {
 test("★ a material of another session is not found under this one (DEC-214 §1)", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, emails.member);
-  const res = await page.goto(`/ar/app/sessions/${randomUUID()}/materials/${material.open.id}`);
-  expect(res?.status()).toBe(404);
+  // The segment has its own loading.tsx, so the response streams and its status is already 200 when `notFound()`
+  // runs — the boundary's page is the evidence, and the material's pages are not.
+  await page.goto(`/ar/app/sessions/${randomUUID()}/materials/${material.open.id}`);
+  await expect(page.getByText("لم نعثر على ما تبحث عنه").first()).toBeVisible();
+  await expect(page.locator(`img[alt^="الشرائح"]`)).toHaveCount(0);
+  await expect(page.getByTestId("page-indicator")).toHaveCount(0);
 });
