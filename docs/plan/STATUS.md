@@ -127,7 +127,7 @@ mentions §0b once, in §10, and never defines it — so the copy trim has no li
 | B2 | ★★ `SCR-027` and `SCR-028` — the weekly seen pair through `mark_board_seen()`; `leaderboards.ts:512` fixed | `scoring` | todo |
 | H1 | ★ **The owed measurement** — the hard-load duplicate on `/app/me/points` and `/app/leaderboards`, 2 × 24 each, after the rebuild, against `DEC-204`'s table | lead | todo — after A2 and B2 |
 | X1 | ★★ Every screen at 390, and the hub at 1280, opened beside its artboard | lead | todo |
-| X2 | ★ `qa:contract`, `visual`'s public pairs, the fingerprint, `public-graph` — unmoved, not re-baselined | lead | todo |
+| X2 | ★ `qa:contract`, `visual`'s public pairs, the fingerprint, `public-graph` — unmoved, not re-baselined | lead | **DONE for PR A on a build of `a6f32723`** (it carries `SettingsIcon` in `icons.tsx`, which the five import): `qa:contract` **38/38**; `visual` `wave20a-a6f32723` against `wave19-f55454cc` — the six public pairs **0.000 %** but `phone_en` **0.002 %** (the anti-aliasing flicker waves 18 and 19 measured; not a move, **not re-baselined**); the register-form fingerprint **byte-identical** to `main.json` (`cmp`, `.qa-shots/fingerprint/branch-a6f32723.json`); `public-graph` ✓. The gallery moved on purpose — the three new primitives: **its baseline is now `wave20a-a6f32723`** |
 | X3 | ★ The a11y sweep at 0 findings, the nine routes added | lead | todo |
 | X4 | ★★ **The owner holds each rebuilt screen beside its artboard on a phone** | **owner** | todo |
 | G | The gates; ★ CI read from the run's own conclusion on each PR's head (`DEC-192`) | lead | todo |
