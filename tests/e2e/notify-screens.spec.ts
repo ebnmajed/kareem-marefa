@@ -163,7 +163,8 @@ test("SCR-026 — the three not-switchable categories render as a statement with
     ["إشعارات الإشراف", "ما أُزيل دون علمك"],
     ["الحساب", "تغيّر في حسابك"],
   ] as const) {
-    const row = page.locator("li", { hasText: name });
+    // ★ wave 20 (ledger): from #main (DEC-145) — on a hard load DEC-204's hidden streamed copy can stand outside it.
+    const row = page.locator("#main li", { hasText: name });
     await expect(row).toContainText("يصلك دائمًا");
     await expect(row).toContainText(why);
     // No toggle at all, rather than one that silently does nothing.
@@ -171,7 +172,7 @@ test("SCR-026 — the three not-switchable categories render as a statement with
   }
 
   // A switchable category that still holds non-optional messages says which.
-  await expect(page.locator("li", { hasText: "جلساتي" })).toContainText("بعض إشعارات هذا النوع تصلك مهما كان الإعداد");
+  await expect(page.locator("#main li", { hasText: "جلساتي" })).toContainText("بعض إشعارات هذا النوع تصلك مهما كان الإعداد");
 });
 
 test("REQ-CAL-001 — the ICS downloads as UTF-8 text/calendar, folded at 75 octets", async ({ context, page }) => {
