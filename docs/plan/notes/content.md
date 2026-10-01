@@ -6678,3 +6678,25 @@ from `lg` the layout's band and strip stand and my pages render neither strip. T
 `Link` to `/app/me/privacy` (PR A, `DEC-217` §3.2) wearing the lead's `SettingsIcon` (`ui/icons.tsx:316`), its
 accessible name per D1. `ownsTopRow()` covers all three of my routes, so none renders the shell's phone row. Nothing
 else in the plan moves.
+
+### Sync 1, provisional rulings (the lead, 2026-10-02) — and one consequence for D8
+
+- **D5:** `docs/plan` wins (`REQ-CRT-013`). A revoked row keeps its **reason** as a quiet second line after «ملغاة»;
+  every row keeps its **serial** as a quiet line in `<bdi dir="ltr">`. No certificate page this wave. **The row is one
+  link to `designer`'s audited route** (the `downloadHref`) and the end glyph is decorative — no second link. So C2's
+  accessible name changes: the row's link name is its text, and `wave13-designer-certificates-download.spec.ts:165`
+  (`getByRole("link", { name: "نزّل الشهادة", exact: true })`) becomes a **selector** ledger line; the `href` assertion
+  holds. A row with no `downloadHref` (D6, «قريبًا») is not a link. C10 and C11 now read: the serial kept; the code and
+  the `/verify` link leave the list. `certificates-page.test.tsx:56-66` and `wave7-content-certificates.spec.ts:158-164`
+  keep their serial and reason expectations; only «صالحة» moves.
+- **D2:** (a), categories. Add-only `getMyInterests()` / `setMyInterests()` in `src/lib/dal/members.ts`, the lead's
+  written grant for this wave; the setter takes category ids only and writes the session's own member, never one from
+  the payload. The chip list offers the org's categories; no migration (`0004:339-348`).
+- **D4:** Save is **enabled in the server HTML** and becomes «enabled only when changed» after hydration; the early-save
+  spec is unchanged.
+- **D8:** `onChange` on `BookmarkButton`, add-only, granted. ★ **Consequence:** `SessionRow` is a Server Component and
+  renders `BookmarkButton` itself, so a page cannot hand it a function through `SessionRow` (`DEC-159`: no closure
+  crosses the RSC boundary). The add-only addition that reaches it is a **context in `bookmark-button.tsx`** —
+  `BookmarkChangeProvider` / `useContext` read inside `BookmarkButton`, a no-op when absent — which my client list
+  provides around the rows. `SessionRow` is untouched. Asked of the lead in place of the prop.
+- **`?edit`:** approved — Cancel a link to `/app/me`; «leaving asks» is the client enhancement on top.
