@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-01 · **Branch:** `wave-18b/the-event` — ★★ **wave 18, PR B (#39): BUILT AND VERIFIED, for the owner to merge after PR A** · PR A (#38) is ready and unmerged · **`main`:** `42a14ba0`; production at **`0163`**. PR A carries **`0164`** (`feed_announcements`) and **`0165`** (two counts); ★ PR B carries **`0166`** (the host view's live count: a `{dayId}` poke on `host:<session>`, naming no member) and **`0167`** (a live comment's author company and presenter mark) — both additive, trigger and function only · **Phase:** ★★ **WAVE 18 — M10a (`DEC-205` … `DEC-211`, M20)**. PR B rebuilt the event page (`SCR-012`, three phases and desktop), check-in (`SCR-014`) and the host view (`SCR-016`) from their artboards, **each deleted first and then written** (`DEC-208`), with a kept-behaviour table per requirement. ★ **The owner's order:** rehearse `0164` – `0167` on a production schema dump; push; **merge A, then B** (B is based on `main` and carries A's commits until A merges); reconnect Railway. ★ **Owed by the owner:** may a refused check-in code shake (`DEC-206` §4.75)? Until ruled, it does not. **The next decision is `DEC-212`; migrations continue at `0168`.**
+**Last updated:** 2026-10-01 · **Branch:** `wave-18b/the-event` — ★★ **wave 18: PR A (#38) MERGED (`65d3dec7`); PR B (#39) is finishing the one change the owner ruled** · **`main`:** `65d3dec7`; ★ **production at `0167`** — the owner pushed `0164` – `0167` after the rehearsal (`supabase migration list --linked` reads `0167` on both sides), so `0166`'s trigger and `0167`'s payload keys are live under `main`'s app, which is the gap the rehearsal proved harmless · **Phase:** ★★ **WAVE 18 — M10a (`DEC-205` … `DEC-212`, M20)**. ★ **The owner ruled `DEC-206` §4.75 (`DEC-212`): a mistyped check-in code shakes the boxes once** — input feedback, not a failure animation; reduced motion keeps the coral border and the message; every other refusal stays still. `REQ-UIX-046` is amended by name; the keyframe is in (`8d362089`); `checkin` builds the screen, and **#39 merges after it is verified**. `DEC-212` §2 also records what the wave's four migrations are — ★ `0166` puts a trigger inside the check-in path, and why it cannot break one. **The next decision is `DEC-213`; migrations continue at `0168`.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -198,10 +198,9 @@ is ever found based on A: retarget it to `main` BEFORE A is merged with `--delet
    - ★ **CI read with `gh pr checks`, not local gates** (`DEC-192`): **#38** at `db12b9ba` — 13 checks pass, its run
      `36773681949` **concluded `success`**; **#39** at `d284c29b` — 13 checks pass, its run `36788853455` **concluded
      `success`**. Both heads are the branches' remote heads; both PRs `MERGEABLE`, base `main`.
-2. **Push `0164` – `0167`**: `supabase db push --linked`, then `supabase migration list --linked` must read `0167` on both
-   sides.
-3. **Merge #38**: `gh pr checks 38` all pass, then merge, with the branch deleted.
-4. **Merge #39** — after #38, so its diff is B's alone: `gh pr checks 39` on its head after GitHub rebases the diff, then
+2. ✅ **Pushed `0164` – `0167`** (the owner): `supabase migration list --linked` reads `0167` on both sides.
+3. ✅ **Merged #38** (the owner) at `65d3dec7`. ★ The `git pull` that followed ran with `wave-18b/the-event` checked out and made a merge commit there (`338a55c1`) — content-neutral, A's head was already in B.
+4. **Merge #39** — ★ **after `DEC-212`'s shake is built and verified** — its diff is B's alone now #38 is in: `gh pr checks 39` on its head after GitHub rebases the diff, then
    merge, with the branch deleted.
 5. **Reconnect Railway**: `railway service source connect`, then `railway status` until it reads `● Online` with **no
    suffix**, and the worker's log says «LISTEN/NOTIFY probe OK».
