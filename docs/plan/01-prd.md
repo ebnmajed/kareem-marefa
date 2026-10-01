@@ -3351,6 +3351,79 @@ and nothing in them is a component.
   or if a class name an artboard declares appears in `src/`.
 - The built output contains no `.dc.html` file.
 
+
+#### REQ-UIX-064 — Four primitives for batch B: star input, stepper, page viewer, badge medallion
+**Serves:** `DEC-213` §4, §5.124 – §5.126 · `REQ-UIX-001` · `REQ-UIX-050`
+`star-input`, `stepper`, `page-viewer` and `badge-medallion` join `src/components/ui/`, for `SCR-015`, `SCR-018`,
+`SCR-013` and `SCR-020` respectively. Each renders every state from props, reads no data and no message catalogue, and is born inside the playground.
+**Acceptance:**
+- Each new file has a registry entry, a test that renders it inside the scope, an RTL check and a gallery entry
+  showing every state in Arabic; the gate's count moves from 53 to 57 in the commit that adds the fourth.
+- `star-input` is a radio group of five real radios: star 1 is the rightmost in RTL, selection and hover fill from
+  the right, ← increases and → decreases, the count is read back in words, and a read-only face exists.
+- `stepper` is an ordered list; the current step carries `aria-current="step"` and a done step is marked by more
+  than colour.
+- `page-viewer` is the page, previous and next, a scrubber, a thumbnail rail and zoom, with a keyboard model in
+  which «next» advances in the reading direction; ★ there is exactly one thing called page-viewer in `src/`.
+- `badge-medallion` draws a badge's disc and its name; nothing scales on hover and none declares a keyframe of its
+  own (`REQ-UIX-020`).
+
+#### REQ-UIX-065 — The viewer is rebuilt: the page is the brightest thing, and «next» goes the way a reader reads
+**Serves:** `DEC-213` · `REQ-MAT-003`, `REQ-MAT-005`, `REQ-MAT-007` · `09` `SCR-013`
+`SCR-013` is rebuilt from `Viewer.dc.html` and `ViewerDesktop.dc.html`: on black, the chrome bar, the page whole and
+centred, and on a phone the scrubber with previous and next; on desktop the thumbnail rail at the inline-start and
+the keys listed in the bar. The route is full-screen at every width.
+**Acceptance:**
+- ★ In Arabic «next» advances the page, sits at the inline-end and points left; on desktop ← is next and → is
+  previous; Page Down/Up and Home/End work. A test asserts each, against the buttons and the keys.
+- Previous and next are always-visible tap targets; swipe is an enhancement; zoom has single-pointer controls and
+  the browser's own pinch is never disabled.
+- With `allow_download` false there is no download control **and no URL** — a test proves a denied member receives
+  no signed URL. The source file is never fetched to render a page.
+- Loading, rendering and failed are built as states; hidden chrome comes back on any key, focus or tap.
+
+#### REQ-UIX-066 — Rate is rebuilt, and the survey stays on it
+**Serves:** `DEC-213` · `REQ-RAT-001` … `REQ-RAT-004`, `REQ-RAT-006` · `REQ-SUR-004` · `09` `SCR-015`
+`SCR-015` is rebuilt from `Rate.dc.html`: the back control and the title, the session's mini-row, two star inputs,
+the comment with its count, the honest anonymity panel, and a bottom action bar with the submit and the window line.
+**Acceptance:**
+- Stars fill from the right; each row is a radio group whose count is read back.
+- The anonymity notice states the threshold from the org's setting and that org admins see individual ratings.
+- A session with a survey shows it on the same screen, written separately from the rating, exactly as before.
+- Submitted, editable within the window, closed, and not eligible are built; a member not checked in is told why.
+
+#### REQ-UIX-067 — Propose and my proposal are rebuilt
+**Serves:** `DEC-213` · `REQ-PRO-001` … `REQ-PRO-004`, `REQ-PRO-008` · `09` `SCR-017`, `SCR-018`
+`SCR-017` is rebuilt from `Propose.dc.html` and `SCR-018` from `Proposal.dc.html`. The member's own proposals are a
+list above the form on `/app/propose` (`DEC-NEXT-18`), not a route.
+**Acceptance:**
+- No date, time or venue field exists, in the form or the schema (`REQ-PRO-001`).
+- The proposal's state is a five-step stepper; «scheduled» is derived from a session that names the proposal.
+- The reason for changes requested is shown with the one primary action to resubmit; nobody's name is invented.
+- A co-presenter can be added after submission while the proposal is open, within the org's limit.
+- Every figure on the earn panel is read from the scoring rules; the panel is absent when it would say zero.
+
+#### REQ-UIX-068 — The member directory exists
+**Serves:** `DEC-213` · `REQ-PRF-005` · `REQ-TEN-003` · `09` `SCR-019`
+`/app/members` is built from `Directory.dc.html`: the title with the count and the order, search by name or job
+title, the company chips with their dot, and rows with the avatar's team ring, the name, the title, the company,
+the sessions presented and the level.
+**Acceptance:**
+- Only tier-1 fields leave the DAL; the component decides nothing about who may see what.
+- Never a member of another org; deactivated members excluded, and marked when an admin is shown them.
+- No rank is shown, for anyone; no verb about a member is gendered.
+- The list pages through the query string, so it works without JavaScript and a cold URL renders the same list.
+
+#### REQ-UIX-069 — The profile is rebuilt, in its three tiers
+**Serves:** `DEC-213` · `REQ-PRF-004` · `REQ-RAT-006` · `REQ-LDR-008` · A33 · `09` `SCR-020`
+`SCR-020` is rebuilt from `Profile.dc.html` and `ProfileDesktop.dc.html`: the header card, the standing card, the
+badges, the sessions presented and the photos uploaded; on desktop a 1fr / 380 body with no game rail.
+**Acceptance:**
+- Tiering is the DAL's: a colleague receives the member tier's fields and no others.
+- An average rating is shown on the self and admin tiers only, from three ratings.
+- An opted-out member's points and ranks read «—» to a colleague; level, badges and streak still show.
+- No level-up moment plays here; photos are uploaded ones, never tagged.
+
 ---
 
 ## 24. Survey — `SUR`

@@ -5991,3 +5991,258 @@ clean.
   `0157` left it **plus three payload keys** (the author's company, its team colour, whether the author presents the
   session), so a comment that arrives live draws what a reloaded one does. No key removed; `main`'s client reads only
   the keys it knew.
+
+---
+
+## DEC-213 — Wave 19 is M10b, ahead of stories: six member screens rebuilt from eight artboards, one PR, four tracks; `page-viewer` becomes the primitive and the old file goes; and forty places the artboards and `docs/plan/` disagree
+
+- **Date:** 2026-10-01 · **Decided by:** the owner (§1, the order, 2026-10-01); everything else by the wave-19 lead at Step 0, from `docs/design/screens/M10b.md`, the eight artboards opened at their board width (390, and 1280 for the two desktop boards) beside their PNGs, and three independent readings of the tree; `DEC-205`'s rulings, `DEC-206`'s list and `DEC-208` are not re-opened
+- **Amends:** `DEC-205` §1 (the order, a second time); `09-sitemap-screens.md` §4 (the six screens' notes); `REQ-UIX-054`'s frame (§3 below, add-only). **Corrects:** the wave-19 brief and `M10b.md`'s citations (§2)
+- **Adds:** milestone **M21**; `REQ-UIX-064` … `REQ-UIX-069`; `STORY-UIX-051` … `STORY-UIX-058`; **no migration** — none is expected, and one written after all starts at `0168` with its `REQ-*` and its five parts
+- **Does not touch:** the five frozen public routes, `qa:contract`, the register-form fingerprint, `registrations`
+
+### 1 · The order is amended again — M10b before stories (the owner)
+
+`DEC-205` §1 set **M10a · stories · the rest of M21 · console · studio · public site last.** **The owner now takes
+M10b before stories.** ★ **The owner's reason is not yet recorded** — the brief (`notes/wave-19-lead.md`) carries
+the ruling and asks for the reason the owner gives; the lead asked at Step 0 and writes it here, verbatim, in the
+entry that follows, rather than supplying one. The log therefore shows **two deliberate re-orderings, not drift**:
+
+**The order now:** M10a (done, M20) · **M10b (this wave, M21)** · stories · M10c (the hub, points, the boards) ·
+the console · the studio · **the public site last** (`DEC-NEXT-5` A, unchanged).
+
+★ **Stories remains unbuilt.** Wave 18's `story-ring` row on `/app` still opens nothing, by design (`DEC-205` §1,
+`DEC-206` §1.5). **Nobody wires it in this wave.**
+
+### 2 · Corrections to the brief and to `M10b.md` — citations, not rulings
+
+1. **`src/components/ui/` holds 53 `.tsx` files, not 54** (`ls`, 2026-10-01; the brief counted `index.ts`, the same
+   slip `DEC-206` §1.3 corrected). `tests/unit/ui-playground.test.ts:118` asserts `>= 53` and is already met. The
+   four new primitives take it to **57**, and the floor moves from 53 to **57** in the commit that adds the fourth.
+2. **«The route 404s otherwise, `REQ-RAT-002`»** (`M10b.md` §2). `REQ-RAT-002` is the rating's *structure*; the
+   gate is **`REQ-RAT-001`**. And the tree does not 404: a member who is not checked in, or a session not yet
+   completed, gets an explanatory state with a way back (`rate/page.tsx:78-85`, pinned by
+   `wave7-sessions-rate.spec.ts:241` and `event-rate.spec.ts`). **The tree's behaviour is kept** — a link followed
+   from an old notification deserves a sentence, not a 404 — and `09`'s «not reachable» means the event page offers
+   no link, which stays true.
+3. **«autosave, `REQ-PRO-003`»** (`M10b.md` §3). `REQ-PRO-003` is co-presenters. Autosave is in `09` `SCR-017`'s
+   states only and in no requirement (§4.93 below).
+4. **«page numbers use the org numeral setting»** (`09` `SCR-013`, `SCR-027`) is stale since `DEC-124`: there is no
+   setting, and numerals are Western everywhere. Corrected in `09` with this entry.
+5. **«`ratings.form.anonymityNotice` … including the org-admin exception»** — measured: every plural form of the key
+   already carries «يمكن لمشرفي المؤسسة الاطلاع على التقييمات الفردية.» Nothing to add; the rebuild keeps it.
+
+### 3 · One PR, four tracks, and the frame's four additions
+
+**Measured against `TEAM.md` §1 and wave 18.** Wave 18's PR A carried six screens, the shell, four primitives and a
+table; this wave carries **six screens and four primitives, no table and no new frame** — each track's files are
+disjoint, and no screen here is a dependency of another. **One PR: `wave-19/m10b`**, against `main` from its first
+push. The split the brief offered (`013` + `015` + `019` / `017` + `018` + `020`) would put one track in both; it was
+measured and not needed.
+
+| Track | Builds | Its primitive |
+|---|---|---|
+| `content` (opus) | `SCR-013`, the viewer, phone and desktop (`REQ-UIX-065`) | `page-viewer` |
+| `event` (opus) | `SCR-015`, rate, with the survey kept (`REQ-UIX-066`) | `star-input` |
+| `sessions` (opus) | `SCR-017` propose and `SCR-018` my proposal (`REQ-UIX-067`) | `stepper` |
+| `scoring` (opus) | `SCR-019` the directory, new, and `SCR-020` the profile, phone and desktop (`REQ-UIX-068`, `REQ-UIX-069`) | `badge-medallion` |
+| **lead** | the frame's four additions below, `ui/index.ts`, the registry and the floor, the gallery, the captures beside the artboards, the gates, the PR | — |
+
+★ **`scoring` takes the members' route for this wave**: `src/app/[locale]/app/members/**`, `src/lib/dal/members.ts`
+and `src/messages/*/members.json` move from `sessions` (where `DEC-141` put them) to `scoring` for wave 19 — the
+profile's heaviest region is the standing card, the badges and the level, which are `scoring`'s data, and `sessions`
+carries the two proposal screens. They return to `sessions` after the wave.
+
+**The frame's four additions — the lead's, add-only to `REQ-UIX-054`:**
+1. **A full-screen route.** `ViewerDesktop.dc.html` draws no shell bar, no rail and no footer: the viewer is the
+   whole window at every width. `shell-routes.ts` gains it for `/app/sessions/[id]/materials/[materialId]` only.
+2. **Own top rows on the phone** for rate, propose, the proposal, the directory and the profile — each artboard draws
+   its own first row (a back control, a title, a sort or a share) and no wordmark. From `lg` the shell's bar stands,
+   as `DEC-209` §2 ruled for the event page.
+3. **The rail links «الأعضاء»** now that `/app/members` exists (`DEC-206` §4.31's condition met), current on
+   `/app/members` and `/app/members/[id]`; **«حسابي» stops being current on another member's profile**
+   (`nav-items.ts:14` lit it on any `/app/members/*`). **The raised «اقترح» tab shows it is current** — bone fill,
+   the drawn muted shadow — where today it looks the same current or not (`tab-bar.tsx:60`); `aria-current` is
+   unchanged. **And a width for a page with no game rail** (`ProfileDesktop.dc.html`: 964 px, a 1fr / 380 body):
+   `PageFrame` gains an add-only way to say «this page owns its width».
+4. **On the phone the directory is reached** from the account menu («الأعضاء», the menu the phone keeps until M10c,
+   `DEC-206` §4.33), from every profile's breadcrumb, and from the desktop rail. No sixth tab (`DEC-205` §2).
+
+### 4 · `page-viewer` — the relationship, settled before anyone writes code
+
+`src/components/viewer/page-viewer.tsx` (191 lines) exists and `M10b.md` §7 asks for a `ui/page-viewer` primitive.
+**Ruled: the primitive is written in `src/components/ui/page-viewer.tsx` from the artboards, and the old file is
+DELETED in `content`'s delete commit** — never moved, never kept beside it. The primitive is the page, previous and
+next, the scrubber, the thumbnail rail, the zoom controls and the keyboard model, **from props only**: no DAL, no
+session, no message catalogue (its strings arrive as props, as every primitive's do). The screen composes the chrome
+around it — close, title, the presenter line, download — in `src/components/viewer/**`. **The wave ends with one
+thing called page-viewer.** The existing component test's behaviour cases (the RTL keys, Home/End, Page Up/Down,
+clamping, the thumbnail's name) are re-asserted against the primitive in its own test — evidence carried, a ledger
+line each.
+
+★★ **The reading found a live defect, and the rebuild is the fix.** `page-viewer.tsx:160` and `:166`: in RTL the
+button **named «الصفحة السابقة» advances and the one named «الصفحة التالية» goes back** — the behaviour is mirrored
+and the labels are not, exactly the failure `09` `SCR-013` names as the product's most-missed RTL detail. No test
+covers the buttons. **`REQ-UIX-065`'s acceptance requires a test asserting that «next» advances the page and sits at
+the inline-end in `ar`, and that `←` is next on desktop.**
+
+### 5 · Where the artboards and `docs/plan/` disagree — continued from `DEC-206` §4 (81) and `DEC-211` §2
+
+*One line each: what is drawn, what the plan or the tree says, which wins, why. «Flagged» means the owner is told by
+name in the PR.*
+
+**The viewer — `SCR-013`**
+
+82. **Black, not ink** (`DEC-NEXT-17`). **The artboard wins**: the viewer's ground is the one black surface in the
+    app, a named exception like the print surfaces — the page must be the brightest thing on screen.
+83. **No zoom control is drawn; «قرّب بإصبعين» is.** Pinch is a multipoint gesture; SC 2.5.1 asks a single-pointer
+    path for it, and the tree has zoom buttons today. **The plan wins: the zoom buttons stay**, in the chrome, and
+    the browser's own pinch is never disabled. Swipe pages and is an enhancement; previous and next are always-visible
+    tap targets (`DEC-093`).
+84. **The phone draws no thumbnail rail; the tree shows one under a toggle.** **The artboard wins**: on the phone the
+    scrubber is the overview; the rail is desktop's, at the inline-start.
+85. **«هذا الملف متاح للتحميل فقط» (Keynote).** `REQ-MAT-004` is withdrawn (`DEC-058`): no Keynote can be uploaded
+    and the database refuses one. **The plan wins: the state is not built.** A non-paged material never opens here;
+    its row on `SCR-012` is the place.
+86. **The presenter and company under the title on desktop.** `getViewerData()` carries neither. **The artboard
+    wins**, from the session heading the event page already reads — add-only, `content`'s.
+87. **Tap toggles the chrome.** **The artboard wins, with a floor**: hidden chrome returns on any key, focus or tap,
+    is never hidden from assistive technology while a control inside it has focus, and under reduced motion it
+    appears and disappears without sliding.
+88. **The download control.** **Both agree** (`07` §6): absent when `allow_download` is false — and **no URL either**:
+    `getMaterialDownloadUrl()` is refused by storage RLS for a denied member (`0116:114-119`). The test proves the
+    URL, not the button (brief, DoD 4). An admin's download stays audited (`0049`).
+89. **The viewer route has no `loading.tsx`** — it inherits the event page's skeleton (`[id]/loading.tsx`), a page
+    shape that is not this one. **Built**: its own, the bone page skeleton the artboard's state list names.
+
+**Rate — `SCR-015`**
+
+90. ★★ **The survey is not drawn.** `REQ-SUR-004`: the rating and the survey are one screen and two decorrelated
+    writes, and wave 10 built it on this page (`rate-form.tsx:148-176`). **The plan wins: the survey section stays**,
+    after the anonymity panel and before the bar, with its `h2`; the bar's label follows the survey's state exactly as
+    today (`wave10-event-rate-survey.spec.ts` is evidence). A rebuild from the artboard alone would drop it silently —
+    `DEC-208`'s case exactly.
+91. **«4 نجوم · تُملأ من اليمين»** under the row. The second half is the drawing's annotation, not copy.
+    **The plan wins**: the count is read back (`ratings.form.starCount`); the direction is behaviour, not a sentence.
+92. **`ratings.form.submitted` as a toast** (`M10b.md` §2). The tree shows an in-page receipt with `role="status"`
+    (`?rated=1`), pinned by two specs. **The tree wins**: a fact the member returns to is a state on the page, not a
+    toast that has gone (`REQ-CHK-018`'s reasoning).
+
+**Propose and my proposal — `SCR-017`, `SCR-018`**
+
+93. **«مسودة محفوظة قبل دقيقة» — autosave.** Nothing autosaves a proposal, `09` lists it as a state and no requirement
+    defines it; a Server Action is the wrong transport and a route handler is new behaviour. **The plan wins: not
+    built**; «احفظ كمسودة» stays the one way to keep a draft. Flagged.
+94. **«41 من 120», «176 من 1000».** The schema is 150 and 2000 (`0010:30-46`, `DEC-141`). **The plan wins**; the
+    counter reads the limits from `proposal-rules.ts`.
+95. **«مقترحاتي N» above the form** (`DEC-NEXT-18`, accepted). The list exists and sits *below* the form today
+    (`propose/page.tsx:56-88`). **The artboard wins**: the link in the title row, the list above the form when
+    non-empty, no new route.
+96. **«+100 للتقديم، تُدفع عند اكتمال جلستك. وشارة «مُقدِّم» مع أول جلسة».** No seeded value is 100
+    (`proposal_accepted` 10, `session_delivered` 50) and an org may change both. **The plan wins: every figure is
+    read** (`DEC-206` §4.45) — the sum of the enabled presenter rules paid at completion, through the DAL; the badge
+    clause only when an enabled badge is earned by a first presented session; the panel absent when the sum is zero.
+97. **The hosting gate** (`REQ-REC-008`) — a state `M10b.md` names. **Measured: not enforced anywhere** — `can_host`
+    is seeded and nothing reads it. Drawing a refusal the database does not make would be a lie, and enforcing it is
+    a `create_proposal()` change. **Not built this wave; flagged** as a defined requirement behind in the tree.
+98. **A five-step stepper with «مُجدوَل».** `proposal_state` has no `scheduled` (`0010:16`); a scheduled proposal is
+    an `approved` one with a session whose `proposal_id` names it (`0020:18`). **The artboard wins, derived**: step 5
+    is reached when that session is visible to the proposer, and the card becomes its poster with «افتح الجلسة».
+    `draft` sits before step 1 and is not a step.
+99. **The reviewer's name, avatar and role on the reason card.** No column records who decided; the actor is in
+    `audit_log`, which a member cannot read. **The plan wins**: the card says «ما كتبه المشرف» and the time, no name.
+100. **«السجل» — dated events.** `audit_log` is staff-only (`0004:422-425`); no member-readable history exists.
+     **The plan wins: the section is absent.** Flagged.
+101. **«اسحب المقترح».** No `withdrawn` state, no action (`proposal_state`, `0010:16`). **The plan wins: not built**;
+     a withdrawn state is a migration and the owner's. Flagged. (A draft can already be deleted by its author —
+     `proposals_delete_draft` — and nothing exposes it; not added either.)
+102. **«+ أضف مُقدِّمًا مشاركًا» after submission.** The insert policy and the addable trigger allow it
+     (`0010:437`, `0012:49-62`); no UI or action does. **Both agree (`REQ-PRO-003`); the tree is behind. Built**,
+     add-only in `proposals.ts`, the org's limit read.
+103. **Remove only on a pending co-presenter.** The tree offers remove on every non-proposer row behind a confirm, and
+     the policy allows it. **The tree wins** — a proposer may still drop an accepted colleague before review; the
+     confirm becomes the `sheet`.
+104. **«اعتذر» stays a row.** `REQ-PRO-003` says a decline removes the co-presenter; the tree keeps the row with
+     `declined_at`. **Drawn as the tree has it**, the discrepancy recorded, not fixed here.
+105. **The lead line «لست بحاجة لأن تكون خبيرًا.»** `09` `SCR-017` carries it and the artboard draws it in the
+     display face; the tree left it out (`propose/page.tsx:24-26`). **The artboard and `09` win.**
+
+**The directory — `SCR-019`**
+
+106. **«الأنشط أولًا».** No metric is defined anywhere. Sorting by points would rank opted-out members by what
+     `DEC-141` hides from colleagues. **Ruled: «الأنشط أولًا» orders by sessions presented, then by name**; the
+     other order is the name. Flagged.
+107. **Filters: companies only.** `REQ-PRF-005` asks for companies **and interests**; no screen writes an interest,
+     so every org has none. **The plan wins, without an empty control**: an interests row is drawn only when the org
+     has any interest recorded.
+108. **Deactivated members.** `REQ-PRF-005`: excluded by default, marked when shown to an admin. **Built as the
+     requirement says**; the artboard draws neither.
+109. **«قدّمت 6 جلسات», «قدّم جلستين».** No gender is stored, and a verb about a third person must choose one.
+     **Ruled: no gendered verb about another member, anywhere in this batch** — a noun phrase with all six plural
+     forms («6 جلسات مقدَّمة»). The same for the profile's «الجلسات التي قدّمتها» heading.
+110. **Infinite scroll, «8 من 212».** **The artboard wins, with a floor**: a «more» link carries the page in the
+     query string, so the list works without JavaScript and a cold URL renders the same list; scrolling only
+     triggers it.
+111. **The level badge on a row.** **Both agree** (`M10b.md` §8): level is tier 1 (A33). Never a rank, and nothing
+     for points.
+112. **«بلا شركة».** **Built.**
+113. **`/app/members/loading.tsx` is the profile's skeleton** and sits at the segment root, so it is also the
+     directory's. **Built**: a list skeleton for the directory, the profile's own under `[id]/`.
+
+**The profile — `SCR-020`**
+
+114. ★ **«هذا الأسبوع #3».** There is no weekly board (`leaderboard_kind`, `0027:60`; `DEC-206` §4.47).
+     **The plan wins: the month**, from the monthly board's rows every member reads, beside the all-time rank.
+115. ★★ **«★ 4.8» on a colleague's presented sessions.** A33 lists *aggregate ratings received* as **not**
+     member-visible, and `session_rating_aggregates` answers only staff and the session's presenters. **The plan
+     wins: the average is drawn on the self and admin tiers only**, from ≥ 3 ratings (`REQ-RAT-006`). A colleague
+     sees the date and the attendance count. Flagged.
+116. **Opted out: «ranks show —, level and points still show»** (`M10b.md` §6). `DEC-141` rules an opted-out member's
+     **points and rank** hidden on the member tier. **The plan wins**: level, badges and streak show; points and both
+     ranks read «—»; the progress line is absent. The member sees their own (`REQ-LDR-008`).
+117. **The level-up moment on the profile's standing card.** `DEC-207` §1.3: the level cursor moves **only on
+     `SCR-022`**, so the week never eats moment 4. **The plan wins: no moment on the profile**; the level card is
+     static there. There is no sixth surface for moment 4 (`DEC-206` §5).
+118. **The share control.** None exists for a profile. **The artboard wins**: the native share sheet where there is
+     one, a copied link otherwise — and the link is members-only, so sharing it shows a colleague nothing new.
+119. **«صور رفعتها».** No DAL lists photos by uploader; `photos_read` lets a colleague see every visible photo of the
+     org. **The artboard and A33 agree: built**, add-only in `photos.ts` (`content`'s, contract 3), visible photos
+     only, never a tagged one.
+120. **The presented count is capped at 12** (`listSessionsPresentedBy()`'s default limit, read as the count).
+     **A defect, fixed**: the count is a count (contract 4).
+121. **«5 من 14» badges.** **Built**: held over the org's enabled catalogue; a retired badge still held is shown and
+     not counted in M.
+122. **The self tier's six sections** (attended, the ledger, ratings given, no-shows, email, notification
+     preferences) **as links into the hub** (batch M10c). **The artboard wins**: links, no new data on this page;
+     the admin's «للمشرفين» section keeps `admin_member_profile()`'s record.
+123. **Desktop: 964 px with a 1fr / 380 body and no game rail.** **The artboard wins** — §3.3's `PageFrame` addition.
+
+**The primitives**
+
+124. **`star-input` beside `components/event/star-rating.tsx`.** **One stays**: the primitive replaces it on the rate
+     screen, with a read-only face for the closed window; `event`'s plan says whether the event-page slot moves too
+     and the old file goes. Native radios keep the arrow keys the browser gives — ← increases in RTL, already pinned
+     by `wave7-sessions-rate.spec.ts:181`.
+125. **`stepper`**: an ordered list with `aria-current="step"`; a done step marked by more than colour; the current
+     step coral as drawn — **a state colour that is not a status**, so `DEC-073` is not touched.
+126. **`badge-medallion`**: a disc with its 4 px drop and the name below; no hover scale (`DEC-183` §2); a badge's
+     colour is the badge's, never a company's.
+
+### 6 · For the owner — by name, none blocking
+
+1. ★ **The average rating on a colleague's profile** (115) — drawn, refused by A33. Widening it is the owner's.
+2. **Withdrawing a proposal** (101), **a member-readable history** (100), **autosave** (93) — new scope.
+3. **The hosting gate** (97) — defined in `REQ-REC-008`, enforced nowhere.
+4. **«الأنشط أولًا»** (106) — ruled as sessions presented; the owner may name another measure.
+5. ★★ **The acceptance**: each rebuilt screen held beside its artboard on a phone.
+
+### 7 · Carried, unchanged
+
+`DEC-201` §3 / `DEC-204` — none of this wave's six routes is in `DEC-204`'s table; **not re-measured here**, and
+`/app/me/points` and `/app/leaderboards` stay owed by M10c. · `DEC-194`'s two gates, together. · `DEC-186` §4's
+overshoot ceiling, the owner's. · Wave 16's phone check of the five moments, owed by the owner.
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-064` … `069`), `14-roadmap.md` (M21; the sequence), `15-backlog.md`
+  (`STORY-UIX-051` … `058`), `09-sitemap-screens.md` (the six screens), `TRACEABILITY.md` (generated), `CLAUDE.md`
+  and the ten agent files (the wave-19 map), `STATUS.md` (the wave-19 block), `docs/design/screens/m10b/**` (added
+  to the tree)

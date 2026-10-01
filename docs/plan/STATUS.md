@@ -1,11 +1,134 @@
-**Last updated:** 2026-10-01 · **Branch:** `main` — ★ **WAVE 18 MERGED AND LIVE** · **`main`:** `38181edd`; production at **`0167`**; the worker rebuilt and `● Online` (probe 8 ms) · **Phase:** ★★ **M10a IS LIVE — the first screens rebuilt to a design (`DEC-205` … `DEC-212`, M20)**. **PR #38** (the frame) merged at `65d3dec7` and **PR #39** (the event) at `38181edd`, both 12/12 green, both based on `main` — ★ **the stacking trap that killed PR #36 was avoided by basing B on `main` from the start.** Migrations **`0164`–`0167`** rehearsed on a production schema dump and pushed before the merges. Railway needed the manual reconnect for the **thirteenth** consecutive merge. ★ **Nine screens rebuilt from their artboards**, not restyled: the shell (five phone tabs, nav + game rails), `SCR-002`/`003`/`004`, `007`, `010` as the feed, `011`, `012` in three phases plus desktop, `014` with the shake, `016`. Four new primitives, `feed_announcements` with all five parts, seven decisions. ★★ **`DEC-208` is the wave's most durable output:** a screen's page file is **deleted first, then written from its artboard**, and the story lists what it kept and which requirement made it keep it. Applied retroactively mid-wave, it immediately found three screens that had silently dropped multi-day spans and co-presenters. ★ **Owed by the owner:** the phone check — each rebuilt screen beside its artboard (`docs/design/screens/m10a/png/`), including a deliberately wrong check-in code. ★ **Still owed from wave 16:** the phone check of the five moments, never run. ★ **Carried:** the hard-load duplicate, re-measured at **26 of 48 on the rebuilt `/app`** against `main`'s 4 of 48 — **worse, not better** — with the accessibility tree clean on both (`DEC-204`); `/app/me/points` and the boards owed by M10c. `DEC-194`'s two gates. `DEC-186` §4's overshoot ceiling, open.
+**Last updated:** 2026-10-01 · **Branch:** `wave-19/m10b` — ★ **WAVE 19 STEP 0 DONE** · **`main`:** `3a0be28d`; production at **`0167`** · **Phase:** ★★ **M10b — the second batch of member screens (`DEC-213`, M21)**: the viewer, rate, propose, my proposal, the directory (new) and the profile, each **deleted first and written from its artboard** (`DEC-208`). One PR; four tracks (`content`, `event`, `sessions`, `scoring`), spawned planning-only next. ★ The owner put M10b before stories; **the reason is not yet recorded**. ★ Step 0 found **a live RTL defect in the viewer's buttons** and three drawn things the plan refuses (a colleague's average rating, the survey's absence from rate, a weekly rank). ★ **Wave 18 is merged and live** (`38181edd`, `0164`–`0167`); its phone check and wave 16's are owed by the owner. ★ **Carried:** the hard-load duplicate (`DEC-204`, M10c's routes), `DEC-194`'s two gates, `DEC-186` §4.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 18 — IN PROGRESS, PR A — on `wave-18a/the-frame` — M10a, the first screens rebuilt to a design (`DEC-205`, `DEC-206`)
+## ★★★ WAVE 19 — STEP 0 DONE, teammates not yet spawned — on `wave-19/m10b` — M10b, the second batch of member screens (`DEC-213`)
+
+**The programme's fifth wave, and the second that rebuilds screens.** The brief is `docs/plan/notes/wave-19-lead.md`;
+the drawing is `docs/design/screens/M10b.md` and the eight artboards in `docs/design/screens/m10b/` (now in the tree);
+the map is `CLAUDE.md` § *Ownership map (wave 19)*; the decision is `DEC-213`. Milestone **M21**. Requirements
+`REQ-UIX-064` … `069`; stories `STORY-UIX-051` … `058`. **No migration expected**; one written after all starts at
+**`0168`**. **One PR**, `wave-19/m10b`, against `main`.
+
+★★ **The two rules the wave is judged on — both earned in wave 18:** `DEC-199` §2, a screen is **REBUILT** to its
+design, never restyled; and `DEC-208`, **its page file is DELETED FIRST, then written from its artboard**, with a
+kept-behaviour table — each behaviour and the `REQ-*` that made it survive.
+
+### The owner's ruling — the order (`DEC-213` §1)
+
+**M10b before stories.** The order now: M10a (done) · **M10b (this wave)** · stories · M10c · the console · the studio
+· the public site last. ★ **Wave 18's ring stays inert — nobody wires it.** ★ **The owner's reason is not yet recorded**:
+`DEC-213` §1 says so rather than supply one; it is written verbatim in the next entry once given.
+
+### Step 0 — measured before anyone was spawned
+
+| | |
+|---|---|
+| `main` | `3a0be28d` (the brief on top of `8b104683`). Production at **`0167`**; no open PRs |
+| ★ The artboards | all eight read at their board width — 390, and 1280 for `ViewerDesktop` and `ProfileDesktop` — beside their PNGs. **Committed in Step 0**, with the PNGs; they were untracked |
+| ★ `src/components/ui/` | **53** `.tsx` files, not the brief's 54 (it counted `index.ts`). Four new make **57**; the floor moves 53 → 57 with the fourth (`DEC-213` §2.1) |
+| ★★ The viewer's buttons | **a live defect**: in RTL «الصفحة السابقة» advances and «الصفحة التالية» goes back (`page-viewer.tsx:160`, `:166`), and no test covers them. The keys are right. The rebuild fixes it; a test holds it (`DEC-213` §4) |
+| ★ `page-viewer` | the primitive is written in `ui/` and `components/viewer/page-viewer.tsx` is **deleted** — one thing called page-viewer (`DEC-213` §4) |
+| ★★ The survey on rate | not drawn on `Rate.dc.html`; `REQ-SUR-004` puts it on this screen and wave 10 built it. **It stays** (§5.90) — exactly the drop `DEC-208` exists to catch |
+| ★★ A colleague's average rating | drawn on the profile; **A33 forbids it** and `session_rating_aggregates` answers staff and presenters only. Self and admin tiers only (§5.115). Flagged |
+| ★ The proposal | no `scheduled` or `withdrawn` state, no reviewer column, no member-readable history, no autosave, no enforced hosting gate. «مُجدوَل» is derived; the other five are not built (§5.93 – §5.101) |
+| ★ The directory | `/app/members` has `error.tsx` and `loading.tsx` and no page; the loading file is the profile's skeleton and serves both (§5.113). No DAL lists members for a directory. Nothing stores gender (§5.109) |
+| ★ The profile | the presented count is `presented.length`, capped at 12 (§5.120); no weekly board exists (§5.114); `DEC-141` hides an opted-out member's points and rank from colleagues (§5.116); the level cursor moves only on `SCR-022` (§5.117) |
+| ★ `REQ-RAT-002` was miscited | the gate is `REQ-RAT-001`, and the tree explains rather than 404s — kept (§2.2) |
+| The frame | the viewer and rate are already immersive (no tab bar) but wear the shell's top bar; the desktop viewer draws none. Four additions, the lead's (§3) |
+| One PR or two | **one** — six screens, four primitives, no table, no new frame, disjoint files (§3) |
+| Design vs plan | **forty-five** disagreements, `DEC-213` §5.82 – §5.126 — one hundred and twenty-six in the programme |
+| `trace` | **362 requirements · 194 stories · no gaps** (was 356 · 186). `policy-diff` ✓ |
+
+### The contracts
+
+| # | Contract | Owner | State |
+|---|---|---|---|
+| C1 | **The frame's four additions** — the viewer full-screen; own phone top rows on five screens; «الأعضاء» in the rail and the account menu, «حسابي» not current on another's profile, the raised tab current in bone; `PageFrame`'s owned width. **Before any track builds a screen** | lead → all | todo |
+| C2 | **The signatures and the gate** — four types in `ui/index.ts`, registry entries, floor 53 → 57 | lead → all | todo — after sync 1 |
+| C3 | **Photos by uploader** — one add-only function in `photos.ts`, visible photos only | `content` → `scoring` | todo — in `content`'s note on day one |
+| C4 | **The sessions presented** — a count and the rows with the attendance count, no average | `sessions` → `scoring` | todo — in `sessions'` note on day one |
+| C5 | **The artboard is the specification; `DEC-213` §5 is what is not built** | everyone | **published** |
+| C6 | **Every figure is read** | everyone | **published** |
+| C7 | **Tiering is the DAL's** (A33) | `scoring` → everyone | **published** |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | `DEC-213`; `REQ-UIX-064` … `069`; `STORY-UIX-051` … `058`; M21 and the sequence in `14`; `09`'s six screens; the map in `CLAUDE.md`; the ten agent files; `docs/design/screens/m10b/**` added to the tree; this block; the branch; the draft PR | lead | **DONE** — this commit. `trace` 362 · 194, no gaps; `policy-diff` ✓. No file under `src/`, `public/`, `supabase/` or `worker/` changed |
+| T0 | ★ **Baselines before any product commit**: `visual`'s public pairs against `main`; the fingerprint's record; the six screens at 390 (and `013`, `020` at 1280) as they are today | lead | todo |
+| F1 | ★★ **The frame's four additions** (C1, `STORY-UIX-051`) | lead | todo |
+| S1 | **Sync 1** — four plans, **each with its kept-behaviour tables**, approved against the seven contracts | lead | todo |
+| P0 | Contract 2 — the signatures, the registry, the floor at 57 | lead | todo — after S1 |
+| V1 | ★★ **`SCR-013`, the viewer**, deleted then written (`STORY-UIX-053`) — the direction test, the no-URL test | `content` | todo |
+| V2 | `ui/page-viewer`, and the old component deleted | `content` | todo |
+| V3 | Contract 3 — photos by uploader | `content` | todo |
+| R1 | ★★ **`SCR-015`, rate**, deleted then written, **the survey kept** (`STORY-UIX-054`) | `event` | todo |
+| R2 | `ui/star-input` | `event` | todo |
+| P1 | ★★ **`SCR-017`, propose**, deleted then written (`STORY-UIX-055`) | `sessions` | todo |
+| P2 | ★★ **`SCR-018`, my proposal**, deleted then written (`STORY-UIX-056`) | `sessions` | todo |
+| P3 | `ui/stepper`; contract 4 — the sessions presented | `sessions` | todo |
+| M1 | ★★ **`SCR-019`, the directory — new** (`STORY-UIX-057`) | `scoring` | todo |
+| M2 | ★★ **`SCR-020`, the profile**, deleted then written (`STORY-UIX-058`) | `scoring` | todo |
+| M3 | `ui/badge-medallion` | `scoring` | todo |
+| K1 | ★★ **Four notes, each with its kept-behaviour tables** — one row per behaviour, its `REQ-*`, read against the new file | `content` · `event` · `sessions` · `scoring` | todo |
+| X1 | ★★ Demonstrable — **every rebuilt screen at 390, and `013`, `020` at 1280, opened beside its artboard** | lead | todo |
+| X2 | ★ Demonstrable — `qa:contract`, `visual`'s public pairs at 0.000 %, the fingerprint byte-identical, `public-graph` green — not re-baselined | lead | todo |
+| X3 | ★ Demonstrable — the a11y sweep at 0 findings over the six routes and the shell | lead's harness; fixes by owner | todo |
+| X4 | ★★ Demonstrable — **the owner holds each rebuilt screen beside its artboard on a phone** | **owner** | todo |
+| G | The gates — tsc, lint (**grep `problems`**), `npm test`, `test:rls`, e2e, `qa`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict`; ★ **CI read from the run's own conclusion on the PR head** (`DEC-192`) | lead | todo |
+
+### Sync 1 — what the four plans must answer
+
+1. **For each screen: the regions in the artboard's order, and the primitive each is built from.**
+2. ★★ **The kept-behaviour table** (`DEC-208`): each behaviour the screen has today, where it lives after, and the
+   `REQ-*` that made it survive — re-derived from the requirements and the DAL, never from memory.
+3. **The props of the new primitive**, as a type — contract 2.
+4. **Every state `M10b.md` names that is not drawn**, and how it is built.
+5. **What the track publishes**, by name and type — contracts 3 and 4.
+6. **Every file created or deleted; every existing assertion that moves**, and whether a selector or an expectation moves.
+7. **Any disagreement between an artboard and `docs/plan/` that `DEC-213` §5 does not list**, with the file and the
+   line — not picked.
+
+### For the owner — by name, none blocking (`DEC-213` §6)
+
+- ★ **The reason for putting M10b before stories** — `DEC-213` §1 records the ruling; the reason is yours to give.
+- ★ **A colleague's average rating** is drawn on the profile and A33 refuses it; widening A33 is yours.
+- **Withdrawing a proposal, a member-readable history, autosave** — drawn, new scope.
+- **The hosting gate** (`REQ-REC-008`) — defined, enforced nowhere.
+- **«الأنشط أولًا»** — ruled as sessions presented; name another measure if you want one.
+- ★★ **The acceptance**: each rebuilt screen beside its artboard on a phone.
+
+### The owner's order (wave 19)
+
+★ **No migration is expected, so there is nothing to rehearse** — if that changes, this section gains the rehearsal
+step before any push. Otherwise: (1) CI read from the run's own conclusion on the PR head; (2) merge the PR, the branch
+deleted; (3) **reconnect Railway** — `railway service source connect`, then `railway status` until `● Online` with **no
+suffix** (the fourteenth consecutive time); (4) the phone check — each rebuilt screen beside its artboard.
+
+### Carried — not this wave
+
+Stories (next) · batch M10c, and with it ★ **the hard-load re-measure on `/app/me/points` and `/app/leaderboards`**
+(`DEC-204`; none of this wave's routes is in its table — not re-measured here) · every console and studio route · the
+public site · the weekly board, the streak rule, proposal voting · ★ the two carried gates, together (`DEC-194`) · F2 and
+F3 (`DEC-198` §5) · the overshoot ceiling (`DEC-186` §4) · ★ **wave 16's phone check of the five moments, still owed
+by the owner** · wave 18's phone check, owed by the owner.
+
+### Untouched-suite ledger (wave 19)
+
+*One line per changed assertion in a pre-existing suite, in the same commit as the change: the file, the case, whether
+a selector moved or an expectation did, and why.*
+
+| File · case | Moved | Why | Commit |
+|---|---|---|---|
+
+---
+
+## ★★ WAVE 18 — COMPLETE and LIVE (PR #38, `65d3dec7`; PR #39, `38181edd`; `0164`–`0167` pushed) — was on `wave-18a/the-frame` — M10a, the first screens rebuilt to a design (`DEC-205`, `DEC-206`)
 
 **The programme's fourth wave, and the first that rebuilds screens.** The brief is `docs/plan/notes/wave-18-lead.md`;
 the drawing is `docs/design/screens/M10a.md` and the thirteen artboards beside it; the map is `CLAUDE.md` §

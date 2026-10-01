@@ -245,6 +245,7 @@ opens with an RTL-aware label. Mixed-script titles are wrapped in `<bdi>` (`REQ-
 **Realtime (A18):** comments · reactions · RSVP count · waitlist position · check-in count.
 
 ### SCR-013 · `/app/sessions/[id]/materials/[materialId]` — the viewer
+★ **Wave 19 (`DEC-213`) — `REQ-UIX-065`:** rebuilt from `docs/design/screens/m10b/Viewer.dc.html` and `ViewerDesktop.dc.html`, full-screen at every width, on black. «Next» sits at the inline-end and advances; a test holds it — the tree had the buttons mirrored in behaviour and not in name (`DEC-213` §4). The Keynote state below is withdrawn with `REQ-MAT-004` (`DEC-058`); zoom keeps its buttons (`DEC-213` §5.83).
 **Purpose:** read slides in-browser. **Serves:** `REQ-MAT-003`, `REQ-MAT-004`, `REQ-MAT-005`
 **Primary action:** page navigation.
 **States:** loading (page 1 eager, ±2 prefetched) · rendering («جارٍ تجهيز العرض…») · ready ·
@@ -254,7 +255,7 @@ opens with an RTL-aware label. Mixed-script titles are wrapped in `<bdi>` (`REQ-
 **RTL:** ★ **the arrow keys follow the reading direction** — a deck reads right-to-left in Arabic,
 so "next" advances the way the reader expects. This is a **navigation model, not a mirrored icon**,
 and it is the single most-missed RTL detail in the product. The thumbnail rail runs right to left;
-page numbers use the org numeral setting.
+page numbers are Western numerals (`DEC-124`; the org setting is gone).
 **Note:** the source file is never fetched. `allow_download` decides whether a download button
 exists at all, and a denied member never receives a URL (`07` §6).
 
@@ -313,6 +314,7 @@ the expected orientation here, not an afterthought.
 invalidates check-ins already recorded (`REQ-CHK-007`).
 
 ### SCR-015 · `/app/sessions/[id]/rate`
+★ **Wave 19 (`DEC-213`) — `REQ-UIX-066`:** rebuilt from `Rate.dc.html`. ★ **The survey stays on this screen** (`REQ-SUR-004`, `DEC-213` §5.90) though the artboard does not draw it. A member not checked in is told why rather than shown a 404 (`DEC-213` §2.2).
 **Purpose:** rate the session and the presenter. **Roles:** checked-in attendees only.
 **Serves:** `REQ-RAT-001` … `REQ-RAT-003`, `REQ-RAT-006`
 **Primary action:** submit.
@@ -326,6 +328,7 @@ reads as "1 star" when the member meant 5 — a silent, systematic data error.
 (D36), because a promise that omits the exception is not a promise.
 
 ### SCR-017 · `/app/propose`
+★ **Wave 19 (`DEC-213`) — `REQ-UIX-067`:** rebuilt from `Propose.dc.html`. «مقترحاتي» is a list above the form, not a route (`DEC-NEXT-18`). Autosave and the hosting-gated card below are **not built** (`DEC-213` §5.93, §5.97).
 **Purpose:** propose a topic. **Serves:** `REQ-PRO-001`, `REQ-PRO-002`, `REQ-PRO-003`
 **Primary action:** «أرسل المقترح»
 **Fields:** العنوان · النبذة · التصنيف · المستوى · الفئة المستهدفة · المدة المتوقعة · مقدّمون
@@ -338,7 +341,25 @@ form and in the schema. The Arabic labels for العنوان, النبذة and �
 registration form** members have already seen.
 **Copy above the form**, carried from the live site's own argument: «لست بحاجة لأن تكون خبيرًا.»
 
+### SCR-018 · `/app/propose/[id]` — my proposal
+★ **Wave 19 (`DEC-213`) — `REQ-UIX-067`:** rebuilt from `Proposal.dc.html`.
+**Purpose:** where a proposal stands, and what to do about it. **Serves:** `REQ-PRO-006`, `REQ-PRO-008`, `REQ-PRO-003`, `REQ-PRO-004`
+**Primary action:** resubmit, when changes are requested.
+**States:** draft · submitted · in review · changes requested (the reason, the one primary) · approved · scheduled
+(derived from the session that names the proposal) · rejected (the reason, «اقترح موضوعًا آخر»).
+**Note:** five steps; the reviewer is not named (no column records one); no history and no withdraw (`DEC-213`
+§5.99 – §5.101). A co-presenter can be added while the proposal is open.
+
+### SCR-019 · `/app/members` — the directory
+★ **Wave 19 (`DEC-213`) — `REQ-UIX-068`:** built from `Directory.dc.html` — the page that never existed.
+**Purpose:** find a colleague. **Serves:** `REQ-PRF-005`
+**Primary action:** open a profile.
+**States:** the list · an empty search · a member with no company · opted out (a level, never a rank) · paged.
+**Note:** the member tier only, from the DAL; «الأنشط أولًا» orders by sessions presented (`DEC-213` §5.106); no
+gendered verb about a member (§5.109).
+
 ### SCR-020 · `/app/members/[id]` ★ — profile, two tiers
+★ **Wave 19 (`DEC-213`) — `REQ-UIX-069`:** rebuilt from `Profile.dc.html` and `ProfileDesktop.dc.html`. A colleague never sees an average rating (A33, `DEC-213` §5.115); the rank is the month's and the all-time (§5.114); no level-up moment here (§5.117).
 **Purpose:** who someone is. **Serves:** `REQ-PRF-004`, D69, DEC-011, A33
 **Primary action:** none.
 
@@ -405,7 +426,7 @@ not as toggles that silently do nothing (`08` §1.7).
 **Note:** the member's **own rank is always visible**, even outside the displayed range
 (`REQ-LDR-001`). The company board shows **both** metrics at once with the ranking one marked
 (`REQ-LDR-004`). An opted-out member sees their own row and nobody else does.
-**RTL:** rank numerals in the org's system; bars grow from the **inline-start**.
+**RTL:** rank numerals Western (`DEC-124`); bars grow from the **inline-start**.
 
 ---
 
