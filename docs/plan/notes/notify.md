@@ -3731,7 +3731,10 @@ The seventeen non-optional keys match `08` §1.7 exactly (counted: 5 + 3 + 2 + 1
   either card. The type keeps `title` as the accessible name and `showTitle` to draw it; which the screen passes is
   the ruling.
 - **D12 · `029` sits under `me/layout.tsx`**, so from `lg` it gets the hub's desktop strip with no item current, and
-  no artboard draws `029` at 1280. The lead's frame decides whether the layout skips `settings`.
+  no artboard draws `029` at 1280. The lead's frame decides whether the layout skips `settings`. ★ **Re-read against
+  contract 1 as amended (the frame in at `ebdde010`):** below `lg`, `025` and `026` render `HubTopRow` + `<HubStrip />`
+  and `029` renders `HubTopRow` alone — `Settings.dc.html` draws back + «الإعدادات» and no strip; I read it the same.
+  The question left is only the `lg` half: the layout's strip above `029` with nothing current.
 - **D13 · the 36 px category tile is an empty square with a coloured ring** in seven colours. `08` assigns no colour
   to a category, `DEC-073`'s status colours are never accents, and the tile carries no glyph — decoration only,
   `aria-hidden`. A category → semantic-token map is a choice for the ruling, or one neutral ring.
