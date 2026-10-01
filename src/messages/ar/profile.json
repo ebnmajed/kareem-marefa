@@ -6,7 +6,6 @@
     "companyNone": "— اختر شركتك —",
     "jobTitle": "المسمى الوظيفي",
     "bio": "نبذة",
-    "bioHint": "حتى 600 حرف",
     "leaderboardOptOut": "لا تُظهرني في لوحات المتصدرين",
     "save": "حفظ",
     "saving": "جارٍ الحفظ…",
@@ -41,6 +40,28 @@
       "removed": "أُزيلت من المحفوظات",
       "undo": "تراجع",
       "undoFailed": "تعذّر إرجاعها إلى المحفوظات. حاول مرة أخرى."
+    },
+    "hubTitle": "حسابي",
+    "interests": "الاهتمامات",
+    "read": {
+      "edit": "عدّل ملفك",
+      "chooseCompany": "اختر شركتك"
+    },
+    "edit": {
+      "title": "تعديل ملفي",
+      "unsaved": "{count, plural, zero {لا تغييرات} one {تغيير واحد غير محفوظ} two {تغييران غير محفوظين} few {{value} تغييرات غير محفوظة} many {{value} تغييرًا غير محفوظ} other {{value} تغيير غير محفوظ}}",
+      "changed": "(معدّل)",
+      "cancel": "إلغاء",
+      "actions": "حفظ ملفي",
+      "bioCount": "{count} من {max}",
+      "emailSource": "من Google",
+      "addInterest": "أضف اهتمامًا",
+      "removeInterest": "أزل {name}",
+      "leave": {
+        "title": "تجاهل التغييرات؟",
+        "confirm": "تجاهل",
+        "stay": "تابع التعديل"
+      }
     }
   }
 }

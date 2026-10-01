@@ -450,3 +450,68 @@ export async function listDirectory(locale: string, query: DirectoryQuery): Prom
     page,
   };
 }
+
+// ── SCR-021 — my interests (wave 20, DEC-218 §4.2; `content`, add-only, the lead's grant as custodian) ──────────────
+//
+// `REQ-PRF-001`: «اهتماماتي — topics of interest, from the org's تصنيفات». `member_interests` (0004:326) has had its
+// self-write policies and grant since M1 and NO writer in `src/` until now — the rebuild found it (`DEC-208`).
+
+export interface MyInterests {
+  /** The member's own, by name — a deactivated category still shows, so nothing they chose silently vanishes. */
+  chosen: { id: string; name: string }[];
+  /** What may be chosen: the org's active categories, by name. */
+  options: { id: string; name: string }[];
+}
+
+export async function getMyInterests(locale: string): Promise<MyInterests> {
+  const { session, supabase } = await sessionClient(locale);
+  const [chosenRes, optionsRes] = await Promise.all([
+    supabase.from("member_interests").select("category_id, categories(name)").eq("member_id", session.memberId),
+    supabase.from("categories").select("id, name").eq("org_id", session.orgId).is("deactivated_at", null).order("name"),
+  ]);
+  if (chosenRes.error) throw new Error(`member_interests (mine): ${chosenRes.error.message}`);
+  if (optionsRes.error) throw new Error(`categories (interests): ${optionsRes.error.message}`);
+  const collator = new Intl.Collator(locale);
+  const chosen = ((chosenRes.data ?? []) as { category_id: string; categories: { name: string } | { name: string }[] | null }[])
+    .flatMap((row) => {
+      const joined = Array.isArray(row.categories) ? row.categories[0] : row.categories;
+      return joined ? [{ id: row.category_id, name: joined.name }] : [];
+    })
+    .sort((a, b) => collator.compare(a.name, b.name));
+  return { chosen, options: (optionsRes.data ?? []).map((c) => ({ id: c.id as string, name: c.name as string })) };
+}
+
+export const interestsInput = z.array(z.uuid()).max(50);
+
+/**
+ * Replaces the member's interests with `categoryIds`. Authority is not in the input: the rows are the SESSION's
+ * member's (`p3_self_*`), and an id that is not one of the org's active categories is dropped here — the policy checks
+ * the member and the org, not the category's org, so this filter is what keeps another org's id out.
+ */
+export async function setMyInterests(locale: string, categoryIds: string[]): Promise<void> {
+  const ids = [...new Set(interestsInput.parse(categoryIds))];
+  const { session, supabase } = await sessionClient(locale);
+  const [valid, current] = await Promise.all([
+    ids.length ? supabase.from("categories").select("id").eq("org_id", session.orgId).is("deactivated_at", null).in("id", ids) : Promise.resolve({ data: [], error: null }),
+    supabase.from("member_interests").select("category_id").eq("member_id", session.memberId),
+  ]);
+  if (valid.error) throw new Error(`categories (interests): ${valid.error.message}`);
+  if (current.error) throw new Error(`member_interests (mine): ${current.error.message}`);
+  const held = new Set(((current.data ?? []) as { category_id: string }[]).map((r) => r.category_id));
+  // An active category of the org, or one already held — a category deactivated since it was chosen is kept while
+  // the member keeps it, and never added anew.
+  const wanted = new Set([...((valid.data ?? []) as { id: string }[]).map((c) => c.id), ...ids.filter((id) => held.has(id))]);
+
+  const add = [...wanted].filter((id) => !held.has(id));
+  const drop = [...held].filter((id) => !wanted.has(id));
+  if (drop.length) {
+    const { error } = await supabase.from("member_interests").delete().eq("member_id", session.memberId).in("category_id", drop);
+    if (error) throw new Error(`member_interests.delete: ${error.message}`);
+  }
+  if (add.length) {
+    const { error } = await supabase
+      .from("member_interests")
+      .insert(add.map((category_id) => ({ org_id: session.orgId, member_id: session.memberId, category_id })));
+    if (error) throw new Error(`member_interests.insert: ${error.message}`);
+  }
+}
