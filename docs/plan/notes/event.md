@@ -1283,3 +1283,22 @@ between the comment and the survey) and `windowNote?: ReactNode` (the bar's note
 - **Ruling on §7.3** (who writes the presenter line) — and, if (a), the request carried to `sessions`.
 - **Rulings on §7.2 and §7.4.** And whether commit A may leave `rate-form.test.tsx` red until B (§5).
 - The frame's addition 2 for `/app/sessions/[id]/rate` before I build.
+
+---
+
+## Wave 19 — build log
+
+★ **Sync 1 approved the plan (`DEC-214` §3).** Rulings: a filled star is `--signal`; the mini-row's date is absolute;
+the presenter line is contract 8 (`getSessionHeading().presenters`, every presenter joined); from `lg` the bar is in
+flow at the end of the form; commit A may leave `rate-form.test.tsx` red only if B is pushed with it.
+
+### R2 — `ui/star-input` · the registry request (the lead's file)
+
+```ts
+"star-input.tsx": tokens("star-input", ["text-signal", "text-edge-strong", "text-fg-muted", "text-error"], "star-input-scope.test.tsx"),
+```
+
+and `./demos/star-input` (`StarInputDemo`) wired into the gallery. Files: `src/components/ui/star-input.tsx`,
+`tests/components/ui/star-input.test.tsx` (14 cases — seven carried from `star-rating.test.tsx`, ledger lines
+with commit A), `tests/components/ui/star-input-scope.test.tsx` (4), `src/app/[locale]/(dev)/ui/demos/star-input.tsx`.
+Server-safe: no hook, no `"use client"`. `ui-playground.test.ts` is red for this one file until the entry lands.
