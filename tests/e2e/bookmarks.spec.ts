@@ -241,7 +241,7 @@ test.describe("M9 restyle: SessionCard, and un-bookmarking drops the card", () =
 
     await page.goto("/ar/app/me/bookmarks");
     await expect(page.getByRole("heading", { name: "المحفوظات", level: 1 })).toBeVisible();
-    await expect(page.getByText("لم تحفظ أي جلسة بعد.")).toBeVisible();
+    await expect(page.getByText("لم تحفظ شيئًا بعد")).toBeVisible(); // ★ wave 20: SCR-024's empty state (REQ-UIX-074, B5)
     await capture(page, "empty");
 
     await db.query(`insert into public.bookmarks (org_id, member_id, session_id) values ($1, $2, $3), ($1, $2, $4)`, [

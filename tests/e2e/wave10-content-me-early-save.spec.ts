@@ -99,9 +99,11 @@ test("★ T2·2: a save pressed the instant the field is visible — no wait for
   // The confirmation is the FAST path's own evidence — asserted, but not the only proof (a full
   // reload below re-reads from the database, independent of whatever the client's `useActionState`
   // did or didn't display before this assertion even started).
-  await expect(page.getByRole("status")).toContainText("تم الحفظ");
-  await expect(nameField).toHaveValue("عضو الحفظ الفوري");
+  // ★ wave 20 (SCR-021, DEC-218 §4.3): a save returns to read mode — the toast once, then the saved name as a row.
+  await expect(page.getByText("تم الحفظ", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/ar\/app\/me$/);
 
+  // The proof is a fresh load, never client state: the read row is the database's value.
   await page.reload();
-  await expect(page.getByLabel("الاسم", { exact: false })).toHaveValue("عضو الحفظ الفوري");
+  await expect(page.locator("#main").getByText("عضو الحفظ الفوري")).toBeVisible();
 });
