@@ -87,6 +87,8 @@ async function PresentedRow({ s, locale, now }: { s: Row; locale: string; now: D
           </p>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
+            {/* phase-days: on the DTO — `PresentedSession.days`, embedded by `listSessionsPresentedBy()` because this
+                is a list (DEC-151 r3); contract 4's rows carry it through. */}
             <SessionStatusBadge phase={sessionPhase(s, now)} size="sm" />
             {s.startsAt ? <span className="text-caption text-fg-muted">{formatDate(s.startsAt, s.timeZone, locale)}</span> : null}
           </div>
