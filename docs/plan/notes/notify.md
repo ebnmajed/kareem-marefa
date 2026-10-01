@@ -3827,3 +3827,12 @@ copy trim.
 - **D13 — one neutral ring** (`border-edge-strong`) for every category, `aria-hidden`.
 - **C18 — fixed in PR A, with `025`.** `api/calendar/{connect,callback}` take the locale from the request rather than `/ar`: a `locale` query parameter set by `025`'s «اربط» link and carried through the OAuth `state` cookie. Unit test: an `en` start returns to `/en/app/me/calendar`. Today `/en/app/*` then redirects to Arabic in `proxy.ts`, which is the proxy's job and not this route's. `src/app/api/calendar/{connect,callback}/route.ts` join my edit list for this fix only.
 - **C7, C16, P17** stay as listed and go to the copy trim, for the lead once the owner answers.
+
+**W10 confirmed by the lead.** All three readings stand: D7's control on an item without a session, `leading` dropped, and the C18 approach.
+
+One condition applies to C18, and it guards against an open redirect.
+- **The locale is checked.** The `?locale=` on `/api/calendar/connect` and the locale stored in the state cookie are each parsed against `routing.locales` (`ar | en`, from `src/i18n/routing`). Anything else falls back to `routing.defaultLocale`.
+- **Only checked values reach a redirect.** The redirect path is built from that checked value alone, never from the raw string.
+- **New unit cases:** an `en` start returns to `/en/app/me/calendar`, and a junk value returns to the default locale's calendar on the same origin. Example junk values are `//evil.example`, `ar/../x` and `https:`.
+
+`api/calendar/{connect,callback}/route.ts` are mine for this fix only.
