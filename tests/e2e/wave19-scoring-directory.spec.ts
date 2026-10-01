@@ -89,6 +89,9 @@ test.beforeAll(async ({}, testInfo) => {
   await delivered(sara, "الجلسة الأولى");
   await delivered(sara, "الجلسة الثانية");
   await delivered(fahd, "جلسة فهد");
+  // Sara holds a level (the nightly evaluation, by hand — level 4 «كريم معرفة» at 700); the others hold none.
+  await db.query(`insert into public.points_ledger (org_id, member_id, amount, source, reason, idempotency_key) values ($1, $2, 900, 'manual_adjustment', 'اختبار', $3)`, [orgId, sara, `e2e:w19-dir:${sara}`]);
+  await db.query(`update public.points_balances set current_level_id = (select id from public.levels where org_id = $1 and sort_order = 4) where member_id = $2`, [orgId, sara]);
   // Enough members to page: 24 a page, so 26 «آخرون» and the four above make two pages (with the viewer, 30).
   for (let i = 1; i <= 26; i += 1) await member(orgId, `عضو تجريبي ${String(i).padStart(2, "0")}`);
 
@@ -149,6 +152,10 @@ test("a member: the regions in order, the most active first, a noun phrase, no o
   const rows = main.getByRole("region", { name: "قائمة الأعضاء" }).getByRole("listitem");
   await expect(rows.first()).toContainText("سارة القحطاني");
   await expect(rows.first()).toContainText("جلستان مقدَّمتان");
+  // ★ The level badge on a row (DEC-213 §5.111), in its ramp stop; a member with no level has none.
+  await expect(rows.first().locator("[data-level]")).toHaveText("كريم معرفة");
+  await expect(rows.first().locator("[data-level]")).toHaveAttribute("data-level", "4");
+  await expect(rows.nth(1).locator("[data-level]")).toHaveCount(0);
   await expect(rows.nth(1)).toContainText("فهد العنزي");
   await expect(main.getByText("غريب من مؤسسة أخرى")).toHaveCount(0);
   await expect(main.getByText("عضو معطَّل")).toHaveCount(0);
@@ -218,10 +225,17 @@ test("an admin can show the deactivated, marked in words and not linked", async 
   await capture(page, "admin");
 });
 
-test("a row opens the profile", async ({ context, page }) => {
+test("★ a row opens the profile, and the two screens say the same «presented» and the same level (DEC-214 §2)", async ({ context, page }) => {
   await signIn(context, emails.viewer);
   await open(page);
-  await page.locator("#main").getByRole("link", { name: /سارة القحطاني/ }).click();
+  const row = page.locator("#main").getByRole("link", { name: /سارة القحطاني/ });
+  await expect(row).toContainText("جلستان مقدَّمتان");
+  await row.click();
   await expect(page).toHaveURL(/\/ar\/app\/members\/[0-9a-f-]{36}$/);
-  await expect(page.locator("#main").getByRole("heading", { level: 1 })).toHaveText("سارة القحطاني");
+  const main = page.locator("#main");
+  await expect(main.getByRole("heading", { level: 1 })).toHaveText("سارة القحطاني");
+  // The heading's figure: the same delivered count the row said.
+  await expect(main.locator("section", { has: page.locator("#presented") }).locator("h2 + span")).toHaveText("2");
+  if (desktop()) await expect(main.locator('[data-slot="profile-header"]')).toContainText("جلستان مقدَّمتان");
+  await expect(main.locator("section", { has: page.locator("#standing") })).toContainText("كريم معرفة");
 });
