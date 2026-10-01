@@ -4412,3 +4412,44 @@ commit; it is read back against the new files after the create commit.
 | · the turned card names the new level and its perk | `points-head-card.test.tsx` · the level row turns in place, both faces named (DEC-218 §3.1) — ★ no perk list: the row draws none |
 | · at the top the bar is full and says so | `points-head-card.test.tsx` · the same |
 | · no streak in words / no streak rule draws nothing | ★ retired: the streak left `022`'s head with the artboard and lives on the standing card (`standing.test.tsx` covers both) |
+
+## `SCR-022` — commit 2, the create (`bf268172`, `8815a4a7`), and §2.1 read back against the new files
+
+| # | §2.1 behaviour | Read back in |
+|---|---|---|
+| 1 | Read at the data | `getPointsLedger()` / `getPointsHead()` → `sessionClient()` ✓ |
+| 2 | The caller's rows only | `.eq("member_id", session.memberId)` on the page, and again on the reversed rows fetched by id ✓ |
+| 3 | Each row its own reason in `<bdi>` | `points-ledger.tsx` `entryText()` ✓ |
+| 4 | The signed figure in `<bdi dir="ltr">`, sign first, Western digits | `ledger-row` + `signedFigure()` (`−` U+2212) ✓ |
+| 5 | A reversal: «إلغاء نقاط سابقة» + its fixed reason, never the admin's text | `rowFor()` reversal ✓ — `points-ledger.test.tsx` |
+| 6 | A manual adjustment: the tag, its reason — and now the admin's name | `entryText()` + `actorName` ✓ |
+| 7 | A link to the session | the title is the link ✓ (the accessible name moved — ledger lines below) |
+| 8 | The missed-day notice | `ledger-row` `notice` ✓ |
+| 9 | The empty state with its next action | `PointsLedger` ✓; notices beat it ✓ |
+| 10 | GET filters, unfiltered options, «مسح التصفية» | `PointsFilters` ✓; ★ filtered empty built ✓ |
+| 11 | ★ The org's month (the defect) | `orgMonthRange()` ✓ — `scoring-ledger-pairs.test.ts` |
+| 12 | The catalogue live, `id="catalogue"`, zero rules hidden, a disabled rule marked | `PointsCatalogueList` ✓; a disabled rule draws `0` (D37) |
+| 13 | The balance the page's one `<strong>` | `MomentPointsHead` `row` ✓; the band's figure is no `<strong>` ✓ |
+| 14 | Moment 3, bound mark, a hard load static | `PointsHeadGate` → `MomentPointsHead`, unchanged mechanism ✓ |
+| 15 | ★ Moment 4 | the level row turns in place (`points-level-turn.tsx`) ✓ — ★ and the head shows at every width (below) |
+| 16 | The streak | on the standing card (`HubStanding`) ✓ |
+| 17 | One fraction for bar and line | `levelProgress()`; the line is threshold − balance ✓ |
+| 18 | `#history` | the phone list ✓; the table `#history-table` ✓ |
+| 19 | No running total | ✓ |
+| 20 | `presenterNet()` untouched | ✓ |
+| 21 | Nothing of the shell | `HubTopRow` + `HubStrip` are the frame's ✓ |
+
+★ **A deviation found while reading back** — written to the lead: `HubDesktop.dc.html` draws no head card from `lg`.
+Hiding it there would leave moment 4 (`DEC-218` §3.1) with no desktop surface and the level cursor unmoved for a
+desktop member, because the band acknowledges the level last seen. **The head shows at every width** (`8815a4a7`)
+until the lead rules otherwise.
+
+**Ledger lines** (sent to the lead for `STATUS.md`):
+
+| File:line | Assertion | Kind |
+|---|---|---|
+| `tests/e2e/points.spec.ts` first test | `#main #history` → `#main #history-table` with `tr` on the desktop project | selector |
+| `tests/e2e/points.spec.ts` first test | link «فتح الجلسة» → the session's title | selector |
+| `tests/e2e/points.spec.ts` reversal test | link «فتح الجلسة» → «جلسة اختبار الإلغاء» | selector |
+| `tests/e2e/wave9-scoring-missed-day.spec.ts:241` | the notice's link «فتح الجلسة» → the workshop's title | selector |
+| `tests/e2e/wave16-scoring-moments.spec.ts:268-270` | the bar's slot holds «صاحب أثر» and «120 من 300» → `#points-head` holds «صاحب أثر» بعد 180 | expectation (copy); `scaleX(0.4)` holds |
