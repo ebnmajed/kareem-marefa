@@ -26,7 +26,7 @@ import { Link } from "@/components/ui/link";
 // Every class that existed is still here, and the scope's are added after.
 const PLAY_TITLE = "pg:font-display pg:font-extrabold pg:text-play-md pg:text-balance";
 
-export function PageHeader({ title, eyebrow, description, breadcrumb, breadcrumbLabel, actions, meta, status, className = "" }: PageHeaderProps) {
+export function PageHeader({ title, eyebrow, description, breadcrumb, breadcrumbLabel, actions, meta, status, count, className = "" }: PageHeaderProps) {
   return (
     <header className={`flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-8 ${className}`}>
       <div className="flex min-w-0 flex-col gap-1.5">
@@ -52,6 +52,8 @@ export function PageHeader({ title, eyebrow, description, breadcrumb, breadcrumb
         {status ? <div className="flex flex-wrap items-center gap-2">{status}</div> : null}
         <h1 className={`text-h1 text-fg-heading ${PLAY_TITLE}`}>
           <bdi>{title}</bdi>
+          {/* wave 19 (DEC-214 §4): «الأعضاء 212» — part of the heading's text, so it is read with it. */}
+          {count ? <span className="ms-2 align-baseline text-body font-semibold text-fg-muted"><bdi>{count}</bdi></span> : null}
         </h1>
         {description ? <p className="max-w-prose text-body text-fg-muted">{description}</p> : null}
         {meta ? <div className="mt-1 flex flex-wrap items-center gap-2">{meta}</div> : null}

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CloseIcon } from "@/components/ui/icons";
@@ -257,6 +258,16 @@ export function Combobox({
             return (
               <li key={v}>
                 <span className="inline-flex items-center gap-1 rounded-field border border-edge-strong bg-silver-100 py-1 ps-2.5 pe-1 text-body-sm text-fg-heading pg:bg-raised">
+                  {/* wave 19 (DEC-214 §4), add-only: the person's company colour as a ringed dot, through
+                      `--team` — the one place a colour from data becomes a style (wave 15, contract 3). */}
+                  {opt?.teamColor ? (
+                    <span
+                      aria-hidden
+                      data-team-dot
+                      className="size-3.5 shrink-0 rounded-full border-2 border-[var(--team)]"
+                      style={{ "--team": opt.teamColor } as CSSProperties}
+                    />
+                  ) : null}
                   <bdi>{label}</bdi>
                   <button
                     type="button"

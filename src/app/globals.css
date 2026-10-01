@@ -301,6 +301,11 @@
   --color-signal-deep: var(--signal-deep, var(--color-live));
   --color-on-signal: var(--on-signal, #ffffff);
   --color-scrim: var(--scrim, rgb(11 18 32 / 0.6));
+  /* ★ wave 19 (DEC-213 §5.82, DEC-214 §4): the viewer's ground is black — the one black surface in the app, so the
+     page is the brightest thing on screen — and its two bars are the ink at 92 %. Named, so no screen writes
+     `bg-black` or a hex. */
+  --color-void: var(--void, #000000);
+  --color-chrome: var(--chrome, rgb(11 12 18 / 0.92));
   /* `--team` is set on the element, from data, by the primitive that draws it. */
   --color-team: var(--team, var(--team-neutral, var(--edge-strong)));
   --color-team-neutral: var(--team-neutral, var(--edge-strong));
@@ -615,6 +620,17 @@ html:has([data-play-root].theme-play-light) {
 @media (min-width: 768px) and (max-width: 1023.98px) {
   :root:has([data-action-bar]) {
     --tabbar-h: 76px;
+  }
+}
+
+/* ★ Wave 19 (DEC-214 §3): `/app/propose` carries its sticky `action-bar` ABOVE the tab bar, so below `lg` the
+   two stack. `--tabbar-h` is then both — `<main>`'s padding and the scroll padding clear the pair, and a focused
+   field is never under either (`forms-propose`' SC 2.4.11 check) — and `--stacked-bar-offset` is where the
+   action bar stands: on top of the tab bar. Unset everywhere else — read it as `var(--stacked-bar-offset, 0px)`. */
+@media (max-width: 1023.98px) {
+  :root:has([data-tab-bar]):has([data-action-bar]) {
+    --tabbar-h: 156px;
+    --stacked-bar-offset: 80px;
   }
 }
 

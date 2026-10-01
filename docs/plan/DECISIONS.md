@@ -6246,3 +6246,50 @@ overshoot ceiling, the owner's. · Wave 16's phone check of the five moments, ow
   (`STORY-UIX-051` … `058`), `09-sitemap-screens.md` (the six screens), `TRACEABILITY.md` (generated), `CLAUDE.md`
   and the ten agent files (the wave-19 map), `STATUS.md` (the wave-19 block), `docs/design/screens/m10b/**` (added
   to the tree)
+
+---
+
+## DEC-214 — Wave 19, sync 1: four plans approved with their kept-behaviour tables; a security defect in proposal co-presenters fixed by `0168`; the rulings the six screens are built on
+
+- **Date:** 2026-10-01 · **Decided by:** the wave-19 lead, on the plans of `event` (`68f03ccb`), `sessions` (`c4b78c19`), `content` (`f264410f`) and `scoring` (`0daff393`) — `docs/plan/notes/{event,sessions,content,scoring}.md` § *Wave 19 — plan*. `DEC-213` and the owner's four answers (recorded in `STATUS.md`) are not re-opened
+- **Adds:** `0168` — a guard on `proposal_presenters` (`REQ-PRO-003`, §1); the frame is in at `2ff7c946` (`STORY-UIX-051`)
+- **Tables:** `event` 42 rows · `sessions` 34 + 27 · `content` 44 · `scoring` 28 + 9 — **184 kept rows before a single deletion**
+
+### 1 · What the readings found that Step 0 did not
+
+| Found by | What | Ruling |
+|---|---|---|
+| `sessions` (F1) | ★★ **A proposer can insert a co-presenter row with `accepted = true` directly through PostgREST**: the insert grant covers the whole table (`0010:448`), the policy checks only the proposer (`0010:437`), and `0020:90` copies accepted rows onto the session — a colleague becomes a presenter, earns presenter points and a certificate, without ever answering | ★ **Fixed this wave**: a `before insert` guard — a row for anyone but the proposer is inserted with `accepted = false` and no `declined_at`, whatever the client sent; `create_proposal()`'s own row unchanged. `sessions` proves it under `supabase/proposed/sessions/` with a test as the proposer through PostgREST; the lead promotes it as **`0168`**, rehearsed on a production schema dump before the push. **The wave now carries a migration**, so the owner's order gains the rehearsal |
+| `content` | ★ **The live defect is worse than mirrored labels**: `page-viewer.tsx:166` disables «الصفحة التالية» on page 1 in RTL — a member who reads by tapping cannot move forward at all | The rebuild fixes it; the direction test is proven red against today's file by a committed `it.fails` case, deleted with the old file |
+| `content` | the material's `[id]` is never checked against its session; the key handler swallows Alt+← (the browser's Back); «سيُسجَّل هذا التحميل» is shown to every downloader though only an admin's is audited | **All three fixed in the rebuild** (`notFound()` on a mismatch; modifiers ignored; the line for an admin only — §3.3) |
+| `scoring` | an admin never sees an opted-out member's rank — `0044` and `boards_read` refuse it — while `sessions-member-profile.test.ts:113` pins `rank: 3` through a stub | **The database wins**: the admin tier reads «—» for that rank; the stubbed expectation moves, with a ledger line |
+| `sessions` (D1) | `M10b.md`'s «يمكنك التعديل حتى يبدأ المشرف المراجعة» is untrue: a submitted proposal is not editable (`0010:420-424`) | **Not drawn**; the existing «سيصلك إشعار حين يقرّر المشرف.» |
+
+### 2 · Contracts, as published
+
+- **Contract 3 (`content`):** `listPhotosByUploader(locale, memberId, { limit? })` → `{ count, photos: UploaderPhoto[] }`, through RLS, hidden and removed left out for every caller. **One name**: `scoring`'s draft `listPhotosUploadedBy` is not written. A tile links to its photograph's session (`/app/sessions/<id>#photos`); «+N» is a count, not a link.
+- **Contract 4 (`sessions`):** `getSessionsPresented(locale, memberId, limit?)` → `{ count, deliveredCount, sessions }`, no average. ★ **One predicate for «presented», everywhere a number is said: the DELIVERED sessions** (`completed`, `archived`) — the directory's «N جلسات مقدَّمة», its «الأنشط أولًا» order and the profile's heading count agree (D16). Upcoming ones are listed with their phase, never counted. ★ **One batch function**: `countSessionsPresentedBy(locale, memberIds?)` — omitted, the whole org — so `scoring`'s draft `countSessionsPresentedByMember` is not written.
+- ★ **Contract 8, new (`sessions` → `event`, `content`): the presenter line.** An add-only `presenters: { displayName, companyName, teamColor }[]` on `getSessionHeading()`, so rate's mini-row and the viewer's desktop line read one light function — every presenter, joined, never only the first (`content` N8).
+
+### 3 · Rulings on the new disagreements — one line each
+
+**Rate (`event`).** (1) A filled star is **`--signal`**, never `--color-team-gold` — a company's colour is never another meaning. (2) The mini-row's date is **absolute**, as the tree has it (`DEC-209`'s check-in precedent). (3) Contract 8. (4) From `lg` the bar is **in flow at the end of the form**, not fixed. The delete commit may leave `rate-form.test.tsx` red **only if** the create commit is pushed with it.
+
+**Propose and my proposal (`sessions`).** D2: the header's date is **`updated_at`, labelled «آخر تحديث»** — no `submitted_at` is invented. D3: **«طُلب تعديل» is a step only while it is the state**; otherwise the line has four steps, so a passed step is never claimed; a draft and a rejected proposal show their status badge, not the line. D4: **success lands on `SCR-018` with the `role="status"` receipt** — the tree and its three specs win over the full-screen confirmation. D5: **the duration's step stays 5** — a step of 15 would make stored values like 50 invalid in the browser. D6: **`REQ-UIX-011` wins** — required fields say «مطلوب»; no «(اختياري)» marker. D7: the draft materials are **`content`'s component as it is**. D8: noun phrases, approved. D9: remove in the **four open states** only (the addable trigger's states). D10: a declined row still takes a slot — recorded with `DEC-213` §5.104, not fixed. D15: «مُجدوَل» lights from **published**; a cancelled session leaves step «معتمد» current and names the session with its status badge. **Frame:** on `/app/propose` the action bar sits above the raised tab; ★ **`/app/propose/[id]` is immersive** — no tab bar, its own bottom bar — as drawn; `globals.css` gains `scroll-padding-block-end` while a fixed bar shows (the lead's).
+
+**The viewer (`content`).** N1: the title **wraps** — no ellipsis, no `overflow: hidden` on a text line (`10`, `DEC-190`). N2: ★ **the download control shows to a viewer who may fetch the file** — `allow_download`, or a presenter or staff, whom storage signs for (`0116:114-120`, `REQ-MAT-005`) — exactly `DEC-209`'s rule for the audio row; a denied member gets neither control nor URL. N3: the audited line is **an admin's alone**, beside the control from `lg` and as its description on the phone. N4: «أعد المحاولة» **reloads**; the PDF guidance is shown to who can re-upload. N5: **no page-slide at all** — a page changes by a cut. N6: no double-tap; tap toggles the chrome; zoom has its buttons. N7: the hint line is **copy**, phone only. N8: contract 8. N9: the substitution notice shows to **presenters and staff** — the ones it asks to act. ★ **A function cannot cross the server–client boundary** (`DEC-159`): `PageViewerLabels`' formatters are built in the screen's client component, never passed from a server page.
+
+**The directory and the profile (`scoring`).** N1: a badge's colour and glyph are **derived from its rule's metric** — no columns. N2: §2's contract 3. N3: «عرض الجلسات الأربع الأخرى» reveals in place (`<details>`). N4: **`01-tokens.md`'s ramp wins** over an artboard's paint. N5: share is **phone only**, as drawn. N6: a live session wears **the status badge** (`REQ-UIX-003`). N7: the self tier links **only to pages that exist**; attended, ratings given and no-shows wait for M10c's pages — carried. N8: §1. N9: wave 18's gendered feed strings («نال», «أكمل») — **carried to the next wave that touches `/app`**. N10: ★ **`level-card` gains an add-only `layout`** for the standing card — `scoring`'s own primitive, so the screen keeps the primitive `M10b.md` names. `PageFrame`: **no change** — with no rail it already leaves the content unconstrained (`2ff7c946`); the profile drops its own `max-w-3xl`.
+
+### 4 · Requests between tracks — granted
+
+- **The lead lands**: the four signatures in `ui/index.ts` (from the four notes, with §3's boundary rule on `PageViewerLabels`), each registry entry with its file, the floor at 57; `page-header`'s add-only `count`; `combobox`'s add-only `ComboboxOption.teamColor` (as `console`'s custodian); `globals.css`' `void` ground and the bars' 92 % ink as semantic tokens, and the scroll padding; `/app/propose/[id]` immersive; `/ar/app/members` and the five other routes in the a11y sweep. The medallion's drop is **`color-mix()` of its own fill with the ground** — no new token per fill. The skeleton's raised fill stands on black (no bone tone).
+- **`sessions`**: an add-only `appearance: "rows" | "chips"` and `required` on its own `radio-group` (not a public-site file; the lead proves the fingerprint at the gate); contract 8; `tests/rls/sessions-presented*.test.ts`.
+- **`content`**: add-only on its own primitives for `scoring` — `avatar` sizes 44, 84, 104; `tag-chip`'s team dot; `badge`'s level-ramp tone; and `tests/unit/{materials-download-url,photos-by-uploader}.test.ts`.
+- **`event`**: `tests/components/survey/question-field.test.tsx`'s stale comment.
+
+### 5 · The order
+
+The lead lands contract 2 and its own requests first and posts «the plans are approved». Each track then **deletes in one commit and writes in the next** (`DEC-208`), the two pushed together. `0168` is promoted before `sessions'` create commit for `SCR-018`.
+
+- **Documents changed:** `STATUS.md` (S1, the checklist, the owner's order with the rehearsal)

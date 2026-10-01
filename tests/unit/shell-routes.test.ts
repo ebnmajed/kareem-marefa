@@ -35,6 +35,13 @@ describe("wave 19 — five screens draw their own phone top row (DEC-213 §3.2)"
     expect(ownsTopRow("/ar/app/leaderboards")).toBe(false);
     expect(ownsTopRow("/ar/app/members/m1/x")).toBe(false);
   });
+  it("my proposal is immersive with its own bottom bar; propose and the resubmit form keep the tab bar (DEC-214 §3)", () => {
+    expect(isImmersive("/ar/app/propose/p1")).toBe(true);
+    expect(hasActionBar("/ar/app/propose/p1")).toBe(true);
+    expect(isImmersive("/ar/app/propose")).toBe(false);
+    expect(isImmersive("/ar/app/propose/p1/edit")).toBe(false);
+    expect(hasNavRail("/ar/app/propose")).toBe(true);
+  });
   it("rate carries a bottom action bar; the viewer does not", () => {
     expect(hasActionBar(`${S}/rate`)).toBe(true);
     expect(hasActionBar(`${S}/check-in`)).toBe(true);

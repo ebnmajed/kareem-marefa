@@ -188,6 +188,9 @@ export interface PageHeaderProps extends Styleable {
   /** Rendered ABOVE the title — a status badge, so state is seen before it is read (`16` §3
    *  principle 3, the canvas's hero). Not a string, unlike `eyebrow`. */
   status?: ReactNode;
+  /** wave 19 (DEC-214 §4), add-only: a count drawn after the title in the muted face — the directory's
+   *  «الأعضاء 212». Already formatted by the caller (Western numerals). Part of the `h1`'s text, so it is read. */
+  count?: string;
 }
 
 /** lead · `prose.tsx` — long-form text with the typography tokens applied. */
@@ -303,6 +306,9 @@ export interface ComboboxOption {
   /** Second line — a company, a job title, a count. */
   hint?: string;
   disabled?: boolean;
+  /** wave 19 (DEC-214 §4), add-only: the person's company colour, `#rrggbb`. A chosen chip draws it as the
+   *  ring of its dot, reaching the DOM as `--team` (wave 15, contract 3). `null` or absent draws no ring. */
+  teamColor?: string | null;
 }
 
 export interface ComboboxProps extends Styleable {
@@ -1203,4 +1209,169 @@ export interface AttendeeStackProps extends Styleable {
   /** The group's accessible name — «من يحضر». */
   label: string;
   size?: 24 | 32;
+}
+
+
+// ── wave 19 (DEC-213, DEC-214, REQ-UIX-064) — four primitives for batch B ────────────────────────────
+// Types only, landed by the lead at sync 1 from the four plans (contract 2). The files arrive with their
+// owners' commits, each with its registry entry, its scope test and its demo; the floor moves to 57 with the
+// fourth.
+
+/** The five names of a star row, star 1 first — «نجمة واحدة» … «5 نجوم». The caller formats them (six ICU forms). */
+export type StarLabels = readonly [string, string, string, string, string];
+
+interface StarInputShared extends Styleable {
+  /** The visible name of the row — «تقييم الجلسة». */
+  legend: string;
+  /** Each star's accessible name, and the line read back under the row. */
+  starLabels: StarLabels;
+  /** `lg` is the rate screen's 48 px star; `md` (default) a receipt's row. */
+  size?: "md" | "lg";
+}
+
+/** The input: a radio group of five native radios. Star 1 is first in DOM, so it is the inline start — the right
+ *  in RTL — and ← increases, natively. Fill and hover from the right, by CSS. */
+export interface StarInputEditableProps extends StarInputShared {
+  readOnly?: false;
+  /** The field's name, and the group's `id` — the error summary's link target. */
+  name: string;
+  /** A saved rating, or what a failed round trip handed back. Uncontrolled: the radio is `defaultChecked`. */
+  defaultValue?: 1 | 2 | 3 | 4 | 5;
+  required?: boolean;
+  /** «مطلوب», drawn beside the legend when `required`. */
+  requiredLabel?: string;
+  /** Adjacent, icon-marked, at `#<name>-error`, tied to the group by `aria-describedby`. */
+  error?: ReactNode;
+  disabled?: boolean;
+}
+
+/** The read-only face — the closed window and the receipt. One `role="img"`; no radio, no radiogroup. */
+export interface StarInputReadOnlyProps extends StarInputShared {
+  readOnly: true;
+  value: 1 | 2 | 3 | 4 | 5;
+  /** The image's whole accessible name — «تقييم الجلسة: 5 نجوم». The caller composes it. */
+  label: string;
+}
+
+/** `event` · `star-input.tsx` — server-safe: no hook, no `"use client"`. */
+export type StarInputProps = StarInputEditableProps | StarInputReadOnlyProps;
+
+/** `sessions` · `stepper.tsx` — a process's steps, in order (DEC-213 §5.125). */
+export type StepperStepStatus = "done" | "current" | "upcoming";
+
+export interface StepperStep {
+  /** Stable key. */
+  id: string;
+  /** The step's name, in the reader's language — «قيد المراجعة». */
+  label: string;
+  status: StepperStepStatus;
+}
+
+export interface StepperProps extends Styleable {
+  /** The `<ol>`'s accessible name — «مراحل المقترح». */
+  label: string;
+  /** In order. At most one `current`; a second is rendered as `upcoming`. */
+  steps: readonly StepperStep[];
+  /** Read after a done step's label by assistive technology — «مكتملة». The check glyph is the visible mark. */
+  doneLabel: string;
+  /** The current step's fill: `signal` (coral, «needs you», default) or `accent`. A state colour, never a
+   *  status colour (`DEC-073` untouched). */
+  currentTone?: "signal" | "accent";
+}
+
+/** One rendered page of a material — never the source file (`REQ-MAT-007`). */
+export interface PageViewerPage {
+  /** As stored; shown under a thumbnail. */
+  pageNumber: number;
+  /** Signed, short-lived. */
+  imageUrl: string;
+  thumbnailUrl: string;
+  /** The rendered page's real size: reserves its box. */
+  width: number;
+  height: number;
+}
+
+/**
+ * The viewer's words. ★ The formatters are FUNCTIONS, so `PageViewerLabels` is built in a CLIENT component — the
+ * screen's chrome — and never handed across the server–client boundary (`DEC-159`, `DEC-214` §3).
+ */
+export interface PageViewerLabels {
+  previous: string;
+  next: string;
+  /** The scrubber's name — «الانتقال إلى صفحة». */
+  scrubber: string;
+  /** The rail's name — «الصفحات». */
+  rail: string;
+  thumbnail: (pageNumber: number) => string;
+  /** The live region — «صفحة <bdi>7</bdi> من <bdi>24</bdi>». */
+  pageOf: (position: number, total: number) => ReactNode;
+  /** The same, plain — `aria-valuetext` and the image's alt. */
+  pageOfText: (position: number, total: number) => string;
+  /** Under the scrubber — «<bdi>7</bdi> من <bdi>24</bdi>». */
+  position: (position: number, total: number) => ReactNode;
+  zoomIn: string;
+  zoomOut: string;
+  /** The zoomed stage's name, when it is focusable. */
+  stage: string;
+  noPages: string;
+}
+
+/**
+ * `content` · `page-viewer.tsx` — the page, previous and next, the scrubber, the rail, zoom and the keys
+ * (DEC-213 §4). ★ «Next» advances in the reading direction and sits at the inline-end by DOM order; on desktop
+ * in RTL ← is next. The one thing called page-viewer in `src/`.
+ */
+export interface PageViewerProps extends Styleable {
+  pages: PageViewerPage[];
+  /** The reading direction — the only input to the keys, the swipe and the zoom origin. */
+  dir: "rtl" | "ltr";
+  title: string;
+  labels: PageViewerLabels;
+  /** 1-based position in `pages`. Controlled with `onPageChange`, or uncontrolled. */
+  page?: number;
+  defaultPage?: number;
+  onPageChange?: (page: number) => void;
+  /** An index into the zoom steps. Controlled with `onZoomChange`, or uncontrolled. */
+  zoom?: number;
+  defaultZoom?: number;
+  onZoomChange?: (zoom: number) => void;
+  /** Draw the zoom controls inside the viewer (default) or leave them to the screen's chrome. */
+  showZoom?: boolean;
+  /** The rail, from `lg` only, at the inline-start (DEC-213 §5.84). Default true. */
+  showRail?: boolean;
+  /** A tap on the page that was not a swipe — the screen toggles its chrome (DEC-213 §5.87). */
+  onStageTap?: () => void;
+  /** Any key the viewer sees — the screen brings hidden chrome back. */
+  onKeyActivity?: () => void;
+}
+
+/** The zoom controls, for a screen that draws them in its own chrome. */
+export interface PageViewerZoomProps extends Styleable {
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
+  labels: Pick<PageViewerLabels, "zoomIn" | "zoomOut">;
+}
+
+/** The fills a badge medallion may take — the stickers' allowed set (`DEC-183` §2). Never a company's colour, never
+ *  a status's (`DEC-073`). */
+export type MedallionFill = "accent" | "signal" | "cyan" | "gold" | "violet" | "bone";
+
+/**
+ * `scoring` · `badge-medallion.tsx` — a disc with its 4 px drop and the name below it (DEC-213 §5.126). Reads no
+ * data; static — no hover scale, no transition, no keyframe of its own. The drop is `color-mix()` of the fill with
+ * the ground (DEC-214 §4), not a token per fill.
+ */
+export interface BadgeMedallionProps extends Styleable {
+  /** The badge's name, drawn under the disc inside `<bdi>`. */
+  name: string;
+  /** A badge's own fill — or a level's ramp stop (clamped 1–5, as `level-card`'s). */
+  fill: MedallionFill | { level: number };
+  /** Decorative and `aria-hidden`: a glyph from `ui/icons`, chosen by the caller. Absent → a plain disc. */
+  glyph?: ReactNode;
+  /** `md` 64 px, `sm` 52 px. Default `md`. */
+  size?: "md" | "sm";
+  /** `false` beside a name already drawn: the name is not drawn and the block is `aria-hidden`. Default `true`. */
+  showName?: boolean;
+  /** Read after the name, never drawn (`sr-only`). */
+  description?: string;
 }
