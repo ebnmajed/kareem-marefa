@@ -87,7 +87,7 @@ describe("SCR-017 — the rebuilt form", () => {
     draw();
     expect(screen.getByRole("spinbutton", { name: new RegExp(form.durationLabel) })).toHaveAttribute("step", "5");
     expect(screen.getByText("0 من 150")).toBeInTheDocument();
-    expect(screen.getByText(/^0 من 2,?000$/)).toBeInTheDocument();
+    expect(screen.getByText("0 من 2000")).toBeInTheDocument();
   });
 });
 

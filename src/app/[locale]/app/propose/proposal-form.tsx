@@ -156,7 +156,8 @@ export function ProposalForm({
   /** «41 من 150» under a text control — its description, never announced as it changes. */
   const counter = (field: "title" | "abstract", max: number) => (
     <p id={`${field}-count`} className="mt-1.5 text-end text-caption text-fg-muted">
-      {t("form.charCount", { value: formatNumber(current(field).length), max: formatNumber(max) })}
+      {/* Plain digits, no thousands separator — «176 من 1000» as both artboards draw it, and as rate's counter. */}
+      {t("form.charCount", { value: String(current(field).length), max: String(max) })}
     </p>
   );
 
