@@ -3103,7 +3103,8 @@ pending figure, never stored and never a constant; when nothing is earned the co
 returns to the event page, whose action reads «حضرت».
 **Acceptance:**
 - The static state — the coin at rest and the three lines, no particles — is complete.
-- A refused code does not animate.
+- ★ A mistyped code shakes the boxes once — input feedback (`DEC-212`); under reduced motion it is the coral border and
+  the message alone. Every other refusal does not animate.
 - The code is entered in `code-input`: each box named, the refusal tied to the group, the posted field and the no-JS
   path unchanged.
 - A checked-in member is not offered the check-in link again during the session.

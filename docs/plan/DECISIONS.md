@@ -5942,3 +5942,52 @@ approves. Both are the case the escape hatch exists for — a control the system
 **Why it is recorded.** Three of the four defects were invisible to every mocked suite and to CI's unit gates, and each
 was found by an owner holding a real build — the reason `DEC-199` §2's rebuilds are verified on a production build and
 never by the component suites alone.
+
+## DEC-212 — The wrong check-in code shakes, once; and what wave 18's four migrations are
+
+- **Date:** 2026-10-01 · **Decided by:** the owner (§1); recorded by the wave-18 lead (§2)
+- **Amends:** `REQ-UIX-046`'s acceptance, by name, as `DEC-206` §4.75 said a yes would · **Resolves:** `DEC-206` §4.75
+
+**1. The ruling (the owner).** A wrong code **may shake**. `M10a.md` §8 specifies it and the brief already ruled it: a
+system failure is the server refusing, a typo is the member mistyping, and **the shake is input feedback, not a failure
+animation**. `REQ-UIX-053` (the console takes none of the playground's motion) is not touched by it, and neither is
+`DEC-183` §2's rule that a failure never animates — a typo is not the system failing. The screen is built to its
+drawing **before #39 merges**, because the wave's acceptance is each screen held beside its artboard.
+
+What is built, from `M10a.md` §8 and the house's motion rules:
+- On a **refused code** (`invalid_code`), the six boxes **shake once**, horizontally: `transform` only, a duration from
+  the tokens, no overshoot of scale, and nothing else on the screen moves.
+- **Under reduced motion there is no shake**: the coral border and the message — which is what was built before this
+  ruling, and stays the complete static state.
+- **Only the mistyped code shakes.** A rate limit (`DEC-090`), a closed door, an ended session, a conflict
+  (`REQ-CHK-013`), a network failure or any server error does **not** — those are the system refusing, and wave 16's rule
+  stands for them.
+- It plays **once per refused submission**: a second wrong code shakes again; a re-render, a reload of the refused page
+  or a back navigation does not replay it.
+
+`REQ-UIX-046`'s acceptance line «A refused code does not animate» now reads: «**A mistyped code shakes the boxes once —
+input feedback (`DEC-212`); under reduced motion it is the coral border and the message alone. Every other refusal does
+not animate.**»
+
+**2. Wave 18's four migrations, for a later reader.** The brief planned one (`0164`); the wave carries four. All four
+are additive, rehearsed on the production schema dump on 2026-10-01 (`STATUS.md`, «The owner's order (wave 18)»), and
+clean.
+- **`0164_feed_announcements`** (PR A, the lead, `REQ-UIX-056`) — **the one new table**: an org's announcements for the
+  home feed. `org_id`, RLS, five policies (members read the published, admins write), a grant per policy, `UPDATE` on
+  three columns only. Nothing writes it yet; there is no authoring screen (`DEC-206` §3).
+- **`0165_home_counts`** (PR A, the lead as `checkin`'s custodian, with `scoring`'s function) — **two read-only
+  `security definer` counts**: `session_attendance_count(session)`, how many attended, never who (A33 rule 3,
+  `DEC-206` §4.54, for the feed's recap and the event page); and `monthly_ranked_count(snapshot)`, how many members a
+  monthly board ranks, for «#4 من 31» on the week (`DEC-206` §4.47). Neither writes; both are `authenticated` only.
+- **`0166_check_ins_host_broadcast`** (PR B, `checkin`, `REQ-CHK-001`) — ★ **a trigger inside the check-in path**, the
+  product's most sensitive write. After every insert on `check_ins`, and every update of its `removed_at`, it calls
+  `realtime.send()` with `{dayId}` on the private topic `host:<session>`, so the host view's count updates live (`0016`
+  authorised the topic and nothing ever sent to it). **Why it cannot break a check-in:** it is `AFTER … FOR EACH ROW`,
+  writes nothing to any `public` table, names no member, and `realtime.send()` catches every error itself and raises
+  only a `WARNING` — proved on the rehearsed schema, where a member's real `check_in()` ran through it. Its function
+  is `security definer`, `search_path = ''`, executable by no client role. Only staff and that session's presenters
+  may read the topic (`0016`'s `realtime_host_select`).
+- **`0167_comments_broadcast_author_context`** (PR B, `content`, `REQ-EVT-015`) — `comments_broadcast()` re-created as
+  `0157` left it **plus three payload keys** (the author's company, its team colour, whether the author presents the
+  session), so a comment that arrives live draws what a reloaded one does. No key removed; `main`'s client reads only
+  the keys it knew.
