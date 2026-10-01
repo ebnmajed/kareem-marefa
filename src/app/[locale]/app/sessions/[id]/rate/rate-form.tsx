@@ -165,7 +165,9 @@ export function RateForm({
           </>
         }
         placeholder={t("commentPlaceholder")}
-        count={(n) => t("commentCount", { count: formatNumber(n), max: formatNumber(RATING_COMMENT_MAX) })}
+        // A character count, drawn as the artboard draws it — «0 من 2000», no grouping separator
+        // (`formatNumber` would write «2,000»). `String()` of a number is Western digits (DEC-124).
+        count={(n) => t("commentCount", { count: String(n), max: String(RATING_COMMENT_MAX) })}
       />
 
       {notice}
