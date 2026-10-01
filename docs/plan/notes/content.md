@@ -6711,3 +6711,17 @@ else in the plan moves.
   `/app/me/privacy`; PR B `app.shell.settings` («الإعدادات») to `/app/me/settings`. `profile.read.settings` is not added.
   `wave7-content-me.spec.ts:148` then keeps its expectation — a link named «الخصوصية والبيانات» to privacy — and its
   ledger line becomes «none» in PR A.
+
+### D8 granted as a context, and the spec line (the lead)
+
+- **D8:** `BookmarkChangeProvider`, add-only in `src/components/search/bookmark-button.tsx` — `BookmarkButton` reads it
+  through `useContext` and calls it with `(sessionId, bookmarked)` after its optimistic flip; a no-op with no provider.
+  `SessionRow` untouched. Replaces the `onChange` grant. **Its test:** a new
+  `tests/components/me/bookmarks-wave20.test.tsx` case renders `BookmarkButton` with no provider and asserts the press,
+  the `aria-pressed` flip, the action call and the failure rollback with its toast — exactly as before.
+- **The spec:** in the `023` create commit, `wave13-designer-certificates-download.spec.ts:165`'s selector becomes the
+  row link's name; the `href` assertion is unchanged. Its ledger line in `STATUS.md`'s wave-20 table, same commit:
+  **selector**, `REQ-UIX-073` / D5. The «صالحة» moves (`certificates-page.test.tsx:60`,
+  `wave7-content-certificates.spec.ts:159`, `certificates.spec.ts:314`) get their lines the same way, as **expectation**
+  moves under `DEC-216` §2.1. `wave7-content-certificates.spec.ts` and `certificates.spec.ts` are the lead's to edit
+  unless granted; I name the lines.
