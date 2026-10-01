@@ -4453,3 +4453,15 @@ until the lead rules otherwise.
 | `tests/e2e/points.spec.ts` reversal test | link «فتح الجلسة» → «جلسة اختبار الإلغاء» | selector |
 | `tests/e2e/wave9-scoring-missed-day.spec.ts:241` | the notice's link «فتح الجلسة» → the workshop's title | selector |
 | `tests/e2e/wave16-scoring-moments.spec.ts:268-270` | the bar's slot holds «صاحب أثر» and «120 من 300» → `#points-head` holds «صاحب أثر» بعد 180 | expectation (copy); `scaleX(0.4)` holds |
+
+## Closing PR A
+
+- ★ **Disagreement recorded, ruled by the lead** (the closing entry carries it): `HubDesktop.dc.html` draws no head card
+  on `SCR-022` from `lg`. **The head shows at every width** — `DEC-195` places moment 4 there and `DEC-218` §3.1 keeps
+  it; hidden, a desktop member would never see a level-up and the level cursor would stay where it was.
+- **The month filter's defect fixed where it was found** (`DEC-218`, the lead's exception to add-only for those lines):
+  `getPointsHistory()` now bounds a month in the org's zone through `orgMonthRange()`; `monthRange()` is gone. Unit
+  case: a row at 23:30 in Riyadh on 30 September stays in September.
+- **The hidden standing copy renders no «+N» node** (`displayed-only.tsx`): the server renders none, and the copy on
+  screen renders it after hydration. Covered by `standing.test.tsx` and `wave20-scoring-standing.spec.ts`.
+- `avatar` size 64 (`040a89aa`, `content`'s) on the card and the podium.

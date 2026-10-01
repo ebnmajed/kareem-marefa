@@ -70,6 +70,16 @@ describe("the ORG's month", () => {
     expect(r.gte).toBe("2026-06-30T23:00:00.000Z");
   });
 
+  it("★ a row at 23:30 in Riyadh on the last day of a month stays in that month (the lead's boundary case)", () => {
+    // 2026-09-30 23:30 in Riyadh is 20:30 UTC.
+    const at = "2026-09-30T20:30:00.000Z";
+    expect(orgMonthOf(at, "Asia/Riyadh")).toBe("2026-09");
+    const september = orgMonthRange("2026-09", "Asia/Riyadh")!;
+    expect(at >= september.gte && at < september.lt).toBe(true);
+    const october = orgMonthRange("2026-10", "Asia/Riyadh")!;
+    expect(at >= october.gte && at < october.lt).toBe(false);
+  });
+
   it("refuses a malformed key", () => {
     expect(orgMonthRange("2026-13", "Asia/Riyadh")).toBeNull();
     expect(orgMonthRange("x", "Asia/Riyadh")).toBeNull();

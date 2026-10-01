@@ -39,7 +39,7 @@ function Place({ place, position }: { place: PodiumPlace; position: number }) {
   return (
     <li className={`relative flex w-26 min-w-0 flex-col items-center gap-1.5 ${look.order}`}>
       {position === 0 ? <CupObject size={36} shadow={false} /> : null}
-      <Avatar memberId={place.memberId} displayName={place.displayName} size={56} decorative teamColor={place.teamColor} />
+      <Avatar memberId={place.memberId} displayName={place.displayName} size={64} decorative teamColor={place.teamColor} />
       <span className="flex max-w-full flex-col items-center text-center">
         <span className="text-body-sm font-bold text-fg-heading">
           {place.href ? (

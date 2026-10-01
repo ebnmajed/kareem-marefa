@@ -202,6 +202,26 @@ describe("★★ moments 3 and 5 — the displayed copy alone", () => {
     expect(ackRank).not.toHaveBeenCalled();
   });
 
+  it("★ the hidden copy renders NO «+N» node at all — not a hidden one — and the displayed copy animates its own", async () => {
+    current = standing(withCompletion());
+    const card = await HubStanding({ locale: "ar", form: "card" });
+    const band = await HubStanding({ locale: "ar", form: "band" });
+    const { container } = render(
+      intl(
+        <>
+          <div data-hidden-copy="">{card}</div>
+          {band}
+        </>,
+      ),
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(container.querySelector("[data-hidden-copy] [data-slot=delta]")).toBeNull();
+    expect(container.querySelectorAll("[data-slot=delta]")).toHaveLength(1);
+    expect(made.some((a) => a.el.getAttribute("data-slot") === "delta")).toBe(true);
+  });
+
   it("the hidden form alone plays nothing and writes nothing", async () => {
     current = standing(withCompletion());
     const card = await HubStanding({ locale: "ar", form: "card" });

@@ -42,7 +42,7 @@ export interface SessionOption {
 
 export interface PointsHistoryFilters {
   sessionId?: string;
-  /** `YYYY-MM`, the org's own month — 05 §8 asks for filtering by month. */
+  /** `YYYY-MM`, the org's own month, in its time zone — 05 §8 asks for filtering by month. */
   month?: string;
 }
 
@@ -83,19 +83,14 @@ export interface PointsHistory {
   timeZone: string;
 }
 
-function monthRange(month: string): { gte: string; lt: string } | null {
-  const match = /^(\d{4})-(\d{2})$/.exec(month);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const m = Number(match[2]);
-  if (m < 1 || m > 12) return null;
-  const start = new Date(Date.UTC(year, m - 1, 1));
-  const end = new Date(Date.UTC(year, m, 1));
-  return { gte: start.toISOString(), lt: end.toISOString() };
-}
-
+// ★ wave 20 (DEC-218, the lead's exception to add-only for these lines): the month was computed in UTC here while it
+// claimed to be «the org's own month» — a row at 23:30 in Riyadh on the last day of a month fell into the next one.
+// The bounds are the org's now: `orgMonthRange()`, below, which the rebuilt `getPointsLedger()` reads too.
 export async function getPointsHistory(locale: string, filters: PointsHistoryFilters = {}): Promise<PointsHistory> {
   const { session, supabase } = await sessionClient(locale);
+
+  const settingsRes = await supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle();
+  const zone = (settingsRes.data?.time_zone as string | undefined) ?? "Asia/Riyadh";
 
   let query = supabase
     .from("points_ledger")
@@ -104,16 +99,15 @@ export async function getPointsHistory(locale: string, filters: PointsHistoryFil
     .order("occurred_at", { ascending: false });
 
   if (filters.sessionId) query = query.eq("session_id", filters.sessionId);
-  const range = filters.month ? monthRange(filters.month) : null;
+  const range = filters.month ? orgMonthRange(filters.month, zone) : null;
   if (range) query = query.gte("occurred_at", range.gte).lt("occurred_at", range.lt);
 
-  const [ledgerRes, balanceRes, allRes, settingsRes, rulesRes, missedRes] = await Promise.all([
+  const [ledgerRes, balanceRes, allRes, rulesRes, missedRes] = await Promise.all([
     query,
     supabase.from("points_balances").select("total_points").eq("member_id", session.memberId).maybeSingle(),
     // Unfiltered pass, session id and title only — the filter control's own
     // option list must not shrink just because a filter is applied.
     supabase.from("points_ledger").select("session_id, sessions(title)").eq("member_id", session.memberId).not("session_id", "is", null),
-    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
     supabase
       .from("scoring_rules")
       .select("action_key, points, enabled, reason_ar, cap_per_session")
@@ -204,7 +198,7 @@ export async function getPointsHistory(locale: string, filters: PointsHistoryFil
     catalogue: ((rulesRes.data ?? []) as Array<{ action_key: string; points: number; enabled: boolean; reason_ar: string; cap_per_session: number | null }>).map(
       (r) => ({ actionKey: r.action_key, points: r.points, enabled: r.enabled, reasonAr: r.reason_ar, capPerSession: r.cap_per_session }),
     ),
-    timeZone: settingsRes.data?.time_zone ?? "Asia/Riyadh",
+    timeZone: zone,
   };
 }
 
@@ -786,8 +780,8 @@ export const getHubStanding = cache(async (locale: string): Promise<HubStanding>
 //   · `sourceId` — a reversal's link to the row it reverses (`source = 'reversal'`, 0149's key), so the pair is drawn
 //     in one card; and `actorName` — the admin who made a manual adjustment, from `actor_id` (REQ-PTS-009);
 //   · the cap explanation from `capped_award_explanations()` — ★ an EXPLANATION, never a ledger row, view or table;
-//   · ★ the month filter in the ORG's time zone. `monthRange()` above computes it in UTC though it says «the org's
-//     own month» — a defect `DEC-208`'s table found; this read does not repeat it;
+//   · ★ the month filter in the ORG's time zone (`getPointsHistory()` above computed it in UTC though it said «the org's
+//     own month» — a defect `DEC-208`'s table found, fixed there too in wave 20);
 //   · paging by `rows`, with the count of ledger rows that match the filters («14 سطرًا»).
 //
 // ★ EVERY LEDGER ROW IS DRAWN EXACTLY ONCE: a reversed row moves INTO its reversal's item and leaves its own place;

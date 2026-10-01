@@ -4,6 +4,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { isDocumentLoad } from "@/components/scoring/document-load";
 import { MomentWeek, WeekFigure, type MomentWeekProps } from "@/components/scoring/moment-week";
 import { acknowledgeWeekPoints, acknowledgeWeekRank } from "@/components/scoring/week-actions";
+import { DisplayedOnly } from "@/components/hub/displayed-only";
 import { Avatar } from "@/components/ui/avatar";
 import { BadgeMedallion } from "@/components/ui/badge-medallion";
 import { ArrowIcon, StarIcon } from "@/components/ui/icons";
@@ -113,11 +114,14 @@ function levelLine(s: HubStandingData, t: T): ReactNode {
 function delta(s: HubStandingData, t: T): ReactNode {
   const c = s.completion;
   if (!c) return null;
+  // ★ Only in the copy on screen: the hidden form renders no «+N» node at all (DEC-218 §3.7, `displayed-only.tsx`).
   return (
-    <span data-slot="delta" className="ms-1.5 font-bold text-accent pg-light:text-fg-heading">
-      <span className="sr-only">{t("points.head.deltaLabel", { count: c.delta, value: formatNumber(c.delta) })}</span>
-      <bdi dir="ltr" aria-hidden="true">{`+${formatNumber(c.delta)}`}</bdi>
-    </span>
+    <DisplayedOnly>
+      <span data-slot="delta" className="ms-1.5 font-bold text-accent pg-light:text-fg-heading">
+        <span className="sr-only">{t("points.head.deltaLabel", { count: c.delta, value: formatNumber(c.delta) })}</span>
+        <bdi dir="ltr" aria-hidden="true">{`+${formatNumber(c.delta)}`}</bdi>
+      </span>
+    </DisplayedOnly>
   );
 }
 
@@ -136,7 +140,7 @@ function Card({ s, t, seenRank }: { s: HubStandingData; t: T; seenRank: number |
   return (
     <section aria-label={t("hub.label")} data-form="card" className="flex flex-col gap-3.5 rounded-panel border border-edge bg-surface p-4">
       <div className="flex items-center gap-3">
-        <Avatar memberId={m.id} displayName={m.displayName} src={m.avatarUrl} size={56} decorative teamColor={m.company?.teamColor ?? null} />
+        <Avatar memberId={m.id} displayName={m.displayName} src={m.avatarUrl} size={64} decorative teamColor={m.company?.teamColor ?? null} />
         <div className="min-w-0 flex-1 leading-snug">
           <p className="font-display text-play-sm font-extrabold text-fg-heading">
             <bdi>{m.displayName}</bdi>
@@ -293,7 +297,7 @@ export function HubStandingSkeleton({ form, className = "" }: { form: "card" | "
   return (
     <div aria-hidden="true" className={`flex flex-col gap-3.5 rounded-panel border border-edge bg-surface p-4 ${className}`}>
       <div className="flex items-center gap-3">
-        <Skeleton variant="media" className="size-14 shrink-0 rounded-full" />
+        <Skeleton variant="media" className="size-16 shrink-0 rounded-full" />
         <div className="flex-1">
           <Skeleton variant="title" width="50%" />
           <Skeleton variant="text" width="70%" className="mt-2" />
