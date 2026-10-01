@@ -1,3 +1,4 @@
+-- 0172 · wave 20 (DEC-218 §3, REQ-UIX-072, REQ-PTS-006) — proposed by `scoring`, promoted by the lead.
 -- scoring · wave 20 (DEC-216 §5.5, DEC-218, REQ-UIX-072, REQ-PTS-003, REQ-PTS-006) — the cap, EXPLAINED.
 --
 -- ★★ This is an explanation, never a ledger row, a view or a table. `award_points()` refuses an award once the

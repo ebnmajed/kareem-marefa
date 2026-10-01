@@ -1498,6 +1498,10 @@ generated suite is the highest-value test in the product.
 | `RPC-retry_calendar_sync.not_others` | Another member's row, an admin's attempt on it, and another org's, answer `not_found` and change nothing (migration `0170`). |
 | `RPC-retry_calendar_sync.only_failed` | A row that is not `failed` answers `not_failed`; nothing is enqueued (migration `0170`). |
 | `RPC-retry_calendar_sync.definer_only_callers` | `authenticated` may execute; `anon` and `public` may not (migration `0170`). |
+| `RPC-capped_award_explanations.own` | Explains the caller's own comments only; another member's capped session never appears (migration `0172`). |
+| `RPC-capped_award_explanations.full_now` | An unpaid comment while the cap is not full (a cooldown) is not explained (migration `0172`). |
+| `RPC-capped_award_explanations.deleted` | A deleted comment is never explained as capped (migration `0172`). |
+| `RPC-capped_award_explanations.anon` | anon cannot execute it (migration `0172`). |
 | `RPC-monthly_ranked_count.anon` | `anon` cannot execute it. (migration `0165`). |
 | `TRG-check_ins_host_broadcast.poke` | A member's check-in sends `{dayId}` on `host:{session_id}` (event `check_in_count`) — the day alone, no member id, name or time; the topic `0016` authorises to staff and that session's presenters (REQ-CHK-001, DEC-209 §1). (migration `0166`). |
 | `TRG-check_ins_host_broadcast.removal` | An admin's removal pokes the topic again; a refused attempt does not. (migration `0166`). |
