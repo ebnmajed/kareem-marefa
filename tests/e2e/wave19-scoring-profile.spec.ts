@@ -89,8 +89,8 @@ test.beforeAll(async ({}, testInfo) => {
     (
       await db.query<{ id: string }>(
         `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at, completed_at)
-         values ($1, $2, 'ملخص', $3, 'introductory', now() + ($5 || ' days')::interval, 60, now() + ($5 || ' days')::interval + interval '1 hour', $4, 30, $6, now() - interval '10 days',
-                 case when $6 = 'completed' then now() + ($5 || ' days')::interval + interval '1 hour' end)
+         values ($1, $2, 'ملخص', $3, 'introductory', now() + ($5 || ' days')::interval, 60, now() + ($5 || ' days')::interval + interval '1 hour', $4, 30, $6::public.session_state, now() - interval '10 days',
+                 case when $6::public.session_state = 'completed' then now() + ($5 || ' days')::interval + interval '1 hour' end)
          returning id`,
         [orgId, title, category.rows[0].id, venue.rows[0].id, String(days), state],
       )
