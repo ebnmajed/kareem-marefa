@@ -3920,7 +3920,7 @@ three tiles — the same component, `form="band"`.
 | 4 | Column headers: # · الشركة · «لكل عضو ✓» · المجموع | a visible header row (presentation; each row still says its metric to a screen reader) |
 | 5 | A row per company: rank · team ring + name + «فريقك» + «N نشطًا» · the bar under the name from the inline-start · the ranking metric in display face · the other muted | `race-bar` — ★ with an add-only `layout="grid"` (§3.3) |
 | 6 | The own company: accent border | `race-bar`'s `ownLabel` |
-| 7 | «كيف حصلت شركتك على نقاطها» card: «رصيد <bdi>company</bdi> …: N نقطة» · one row per `source.*` with its `meta.*` line (★ D48) · «ماذا يمنح شركتك نقاطًا؟» | `card` · `ledger-row` `kind="entry"` (the same signed-amount form) · `link` to `#company-catalogue` |
+| 7 | «كيف حصلت شركتك على نقاطها» card: «رصيد <bdi>company</bdi> …: N نقطة» · one row per `source.*` with its `meta.*` line (★ D44) · «ماذا يمنح شركتك نقاطًا؟» | `card` · `ledger-row` `kind="entry"` (the same signed-amount form) · `link` to `#company-catalogue` |
 | 8 | (below the fold) the company catalogue | `card` + `<ul>`, kept from today |
 
 ## 2 · Sync-1 Q2 — ★★ the kept-behaviour tables (`DEC-208`), re-derived from the `REQ-*` and the DAL
@@ -3938,13 +3938,13 @@ file after the create commit.
 | 2 | Only the caller's rows: `.eq("member_id", session.memberId)` — necessary, because `POL-points_ledger.select` lets an **admin** read everyone's | kept in every new ledger query, and in `capped_award_explanations()` by `auth_member_id()` | `REQ-PTS-003` (A33: no one else's ledger) |
 | 3 | Every row shows **its own reason** in `<bdi>`, never a label in its place | `ledger-row`'s `title`, the row's `reason` | `REQ-PTS-003`, `05` §8 |
 | 4 | The signed amount in `<bdi dir="ltr">`, sign first, Western digits (`formatNumber`) | `ledger-row` draws it; the caller formats it with «+» / «−» | `09` SCR-022 · `DEC-124` · `REQ-NFR-007` |
-| 5 | A reversal: «إلغاء نقاط سابقة» + its **fixed** reason «أُلغي تسجيل الحضور»; the admin's free text never shown | the reversal card's title and meta — ★ the artboard draws a free-text reason (D47); the test at `points.spec.ts:289` keeps it off | `REQ-CHK-017` · wave 7 contract 3 |
+| 5 | A reversal: «إلغاء نقاط سابقة» + its **fixed** reason «أُلغي تسجيل الحضور»; the admin's free text never shown | the reversal card's title and meta — ★ the artboard draws a free-text reason (D43); the test at `points.spec.ts:289` keeps it off | `REQ-CHK-017` · wave 7 contract 3 |
 | 6 | A manual adjustment: «تعديل يدوي من الإدارة» + its reason | kept, and the **admin's name** added from `actor_id` (null name → no name, never «undefined») | `REQ-PTS-009` · `REQ-UIX-072` |
 | 7 | A link from the row to `/app/sessions/<id>` | the session title IS the link (artboard); its accessible name becomes the title (§6, a moved selector) | `REQ-PTS-003` («a link to the session») |
 | 8 | ★ The missed-day notice: interleaved at the session's completion, no amount, the days in the locale's conjunction, held to the same filters | `ledger-row` `kind="notice"`, the same DTO (`MissedAttendance`), the same filter rule | `REQ-SES-017` |
 | 9 | The empty state names the next action (browse) — and a notice beats it | `empty-state` «لا نقاط بعد» + the catalogue below (M10c §2) | `REQ-UIX-012` |
 | 10 | Filters by session and month are plain GET params — a shareable URL; the session options come from an **unfiltered** pass; «مسح التصفية» when filtered | kept; ★ the filtered-empty state added («لا سطور في هذه التصفية» + `filters.clear`) | `05` §8 · `REQ-UIX-012` |
-| 11 | ★ **A defect found here**: «the org's own month» is computed in **UTC** (`points.ts:85-94`), and the 12 options are UTC dates labelled in the org's zone | the new read computes the month's bounds in `org_settings.time_zone`; `monthRange()` stays for nothing else to break | `REQ-LDR-002`'s rule for a period, applied to the member's own filter · D42 |
+| 11 | ★ **A defect found here**: «the org's own month» is computed in **UTC** (`points.ts:85-94`), and the 12 options are UTC dates labelled in the org's zone | the new read computes the month's bounds in `org_settings.time_zone`; `monthRange()` stays for nothing else to break | `REQ-LDR-002`'s rule for a period, applied to the member's own filter · D41 |
 | 12 | The catalogue is read live from `scoring_rules`; zero-point rules hidden; the cap in its plural forms; a disabled rule marked; `id="catalogue"` | kept; a disabled rule drawn with `0` (D37) | `REQ-PTS-014` · `05` §8 |
 | 13 | The balance from `points_balances`, the page's one `<strong>` | the head card's figure; the band's is **not** a `<strong>` | `REQ-PTS-003` · `points.spec.ts:161` |
 | 14 | Moment 3: the balance counts from the last-seen figure, «+N» and its words, the bar fills; the mark bound on the server; a hard load is static | `MomentPointsHead`, unchanged, around the new head card | `REQ-UIX-047` · `DEC-195` · `DEC-197` §5 |
@@ -3979,7 +3979,7 @@ file after the create commit.
 | 6 | A name links to `/app/members/<id>` | rows and podium places | `09` |
 | 7 | Initials in the team ring, never a photograph | `rank-row` takes no `src`; `podium` takes none either | `DEC-099` · `DEC-183` §3 |
 | 8 | An empty board names the next action | `empty-state` `leaderboards.empty` + `emptyAction` | `REQ-UIX-012` |
-| 9 | Moment 5: only a rise plays; a fall is static; the arrow never pulses; bound acknowledgement; a hard load static | the rank card (`MomentWeek`), per window kind — ★ whether the list's FLIP also stays is D43 | `REQ-UIX-048` · `DEC-197` §2, §5 |
+| 9 | Moment 5: only a rise plays; a fall is static; the arrow never pulses; bound acknowledgement; a hard load static | the rank card (`MomentWeek`), per window kind — ★ whether the list's FLIP also stays is D42 | `REQ-UIX-048` · `DEC-197` §2, §5 |
 | 10 | 20 rows shown | 3 on the podium, 4 – 10 as rows, «عرض 11 إلى 50» | `Board.dc.html` |
 | 11 | The section ids `#all-time`, `#monthly` | kept; `#weekly` added | evidence |
 | 12 | `description` «… live» under the all-time title | ★ removed — explainer copy (`REQ-UIX-080`) | — |
@@ -3994,7 +3994,7 @@ file after the create commit.
 | 4 | Signed totals and per-member figures in `<bdi dir="ltr">` | kept | `boards.test.tsx:113-127` |
 | 5 | `takenAt` and provisional / final | kept, in the chip row and the cup card | `REQ-LDR-006` |
 | 6 | Moment 5 on the company: the own bar grows by `scaleX` from where it was seen, after a swap if it rose | `MomentRank`, unchanged, around the list | `REQ-UIX-048` |
-| 7 | The breakdown: own company only, `#company-breakdown`, the heading, the balance with the company in `<bdi>`, the enabled company rules, every row signed, the meta lines | kept — **its rows' form is D48** | `notes/scoring.md` «Company points rules» · `REQ-PTS-003` extended |
+| 7 | The breakdown: own company only, `#company-breakdown`, the heading, the balance with the company in `<bdi>`, the enabled company rules, every row signed, the meta lines | kept — **its rows' form is D44** | `notes/scoring.md` «Company points rules» · `REQ-PTS-003` extended |
 | 8 | No company → the breakdown absent | ★ now the «اختر شركتك» prompt → `/app/me` (M10c §8) | `REQ-UIX-079` |
 | 9 | «company.asOf» line under the board | ★ removed — explainer copy | `REQ-UIX-080` |
 
@@ -4060,8 +4060,8 @@ export interface PodiumPlace {
 export interface PodiumProps extends Styleable {
   /** The group's accessible name — «المراكز الأولى». */
   label: string;
-  /** In rank order, one to three. Ties keep their ranks (two «1»s draw two first blocks' heights? — no: the block
-   *  height follows the POSITION, the number follows the rank). */
+  /** In rank order, one to three. A block's height follows its POSITION; the number on it is the rank, so a tie
+   *  draws two «1»s on the first two blocks. */
   places: readonly PodiumPlace[];
 }
 ```
@@ -4125,7 +4125,7 @@ $$;
 -- weekly_leaderboard(): the week summed LIVE from points_ledger (DEC-216 §2.2) — no enum value, no snapshot, no job.
 -- Definer because points_ledger's RLS is self-or-admin, exactly as all_time_leaderboard() (0044) is. It mirrors
 -- 0044's rule: active members only, an opted-out member absent from everyone's call but their own, the rank
--- computed over what that caller may see (★ D41), and the snapshot's rule that a net of 0 or less is not ranked.
+-- computed over what that caller may see (★ D40), and the snapshot's rule that a net of 0 or less is not ranked.
 create function public.weekly_leaderboard()
 returns table (member_id uuid, rank bigint, points int)
 language sql stable security definer set search_path = '' as $$
@@ -4298,7 +4298,7 @@ the transfer back to `sessions` names the same files) and `src/components/scorin
 | `tests/e2e/wave16-scoring-moments.spec.ts:174-176`, `:225`, `:267` | the level card on `SCR-022` turns, «مستوى جديد» | ★ D26 | expectation — **only if** D26 rules moment 4 off `022` |
 | `tests/e2e/wave16-scoring-moments.spec.ts:268`, `:270` | the bar's line «صاحب أثر», «120 من 300» | the line is «"صاحب أثر" بعد 180» (artboard) | expectation (copy); `:271`'s `scaleX(0.4)` holds |
 | `tests/e2e/wave16-scoring-moments.spec.ts:298`, `:328`, `:340` | tab «كل الأوقات» → URL `/leaderboards$` | all-time is `?board=all` | expectation |
-| `tests/e2e/wave16-scoring-moments.spec.ts:301-304`, `:321`, `:329`, `:333`, `:341-342` | `#all-time ul li` nth(1) carries the rise | the podium takes 1 – 3; the rise is on the rank card (and the own row) — D43 | selector |
+| `tests/e2e/wave16-scoring-moments.spec.ts:301-304`, `:321`, `:329`, `:333`, `:341-342` | `#all-time ul li` nth(1) carries the rise | the podium takes 1 – 3; the rise is on the rank card (and the own row) — D42 | selector |
 | `tests/e2e/wave7-sessions-leaderboards.spec.ts:114-118` | the default tab is «كل الأوقات» | ★ the default is «هذا الأسبوع» (`REQ-UIX-078`) | expectation |
 | `tests/e2e/wave7-sessions-leaderboards.spec.ts:120-121` | `#all-time li a` in order | the first three are podium places | selector |
 | `tests/e2e/leaderboards.spec.ts:110-116` | `#all-time` on the bare URL | `?board=all` | expectation |
@@ -4309,7 +4309,7 @@ the transfer back to `sessions` names the same files) and `src/components/scorin
 
 Untouched and expected green: `moment-rank.test.tsx` (the company board keeps `MomentRank`), `week-*.test.tsx`,
 `moment-points-head.test.tsx` (unless D26), `scoring-company-points.spec.ts:157-160` (the breakdown still says
-«استضافة جلسة» and «42» — D48 permitting), `scoring-screens.spec.ts` (an `h1` and no sideways scroll).
+«استضافة جلسة» and «42» — D44 permitting), `scoring-screens.spec.ts` (an `h1` and no sideways scroll).
 
 ## 7 · Sync-1 Q7 — disagreements `DEC-216` §5 and `DEC-217` §4 do not list (numbered on from 25; none picked)
 
@@ -4328,12 +4328,12 @@ Untouched and expected green: `moment-rank.test.tsx` (the company board keeps `M
 | 36 | M10c §1 «وصلت أمس» | No level history exists (out of scope); `Me.dc.html` does not draw it | not built |
 | 37 | `Points.dc.html` «تفاعل (إعجاب) · غير مُفعَّل حاليًا · 0» | Reactions are **structurally** never points (`REQ-PTS-010`) and have no rule row; today a disabled rule shows its value and a badge | a disabled rule: «غير مُفعَّل حاليًا» and `0`; no reactions row, because no rule exists |
 | 38 | M10c §7 «opted out (own row only)» | Ambiguous against `REQ-LDR-008` (the member still sees the board; only others stop seeing them) | the board, and the own row privately — today's behaviour |
-| 40 | `DEC-216` §5.17 «this wave is where that stops» | The fix of `leaderboards.ts:512` has two readings | (a) the labels say «month»; the home's week stays on the monthly rank (`DEC-206` §4.47, wave 18's frozen surface); (b) the home's HUD and the game rail read contract 4 — add-only in `week-*` (the agent file allows it), and their «this month» copy moves |
-| 41 | `weekly_leaderboard()` | Rank over what the caller may see (`0044`, no gaps) or over everyone (the snapshots, gaps) | `0044`'s, the live precedent |
-| 42 | `points.ts:85-94` | The member's month filter is UTC (a defect); the monthly **snapshot** is UTC too (`0042`) while `REQ-LDR-002` says the org's zone | the filter fixed in the new read; the snapshot is frozen and not mine this wave — written for the owner |
-| 43 | `DEC-217` rule 7 vs wave 16 | Moment 5 on the board: the rank card's count and arrow **instead of** the rows' FLIP, or **as well as** | card only / card + FLIP |
-| 47 | `Points.dc.html` reversal meta «أُلغي حضورك: الرمز أُدخل من خارج القاعة» | The artboard draws the admin's free-text reason; wave 7's ruling keeps it on `check_ins.removal_reason` and `audit_log` only (`points.spec.ts:289`) | the fixed reason, as built |
-| 48 | `Companies.dc.html` breakdown | One row **per source** with an aggregate («3 جلسات × 30», «17 من 24 · 71%»); the ledger is per session, and a percentage is per session | (a) per source: the sum, the count of sessions, and no percentage line for the two percentage rules; (b) per row, as today |
+| 39 | `DEC-216` §5.17 «this wave is where that stops» | The fix of `leaderboards.ts:512` has two readings | (a) the labels say «month»; the home's week stays on the monthly rank (`DEC-206` §4.47, wave 18's frozen surface); (b) the home's HUD and the game rail read contract 4 — add-only in `week-*` (the agent file allows it), and their «this month» copy moves |
+| 40 | `weekly_leaderboard()` | Rank over what the caller may see (`0044`, no gaps) or over everyone (the snapshots, gaps) | `0044`'s, the live precedent |
+| 41 | `points.ts:85-94` | The member's month filter is UTC (a defect); the monthly **snapshot** is UTC too (`0042`) while `REQ-LDR-002` says the org's zone | the filter fixed in the new read; the snapshot is frozen and not mine this wave — written for the owner |
+| 42 | `DEC-217` rule 7 vs wave 16 | Moment 5 on the board: the rank card's count and arrow **instead of** the rows' FLIP, or **as well as** | card only / card + FLIP |
+| 43 | `Points.dc.html` reversal meta «أُلغي حضورك: الرمز أُدخل من خارج القاعة» | The artboard draws the admin's free-text reason; wave 7's ruling keeps it on `check_ins.removal_reason` and `audit_log` only (`points.spec.ts:289`) | the fixed reason, as built |
+| 44 | `Companies.dc.html` breakdown | One row **per source** with an aggregate («3 جلسات × 30», «17 من 24 · 71%»); the ledger is per session, and a percentage is per session | (a) per source: the sum, the count of sessions, and no percentage line for the two percentage rules; (b) per row, as today |
 
 ## 8 · Requests and questions for the lead
 
@@ -4347,4 +4347,4 @@ Untouched and expected green: `moment-rank.test.tsx` (the company board keeps `M
 4. `definer-exposure` gains `weekly_leaderboard()` if it enumerates definers (§5.1).
 5. The test file name for the weekly seen cases (§5.4).
 6. ★ **The three rulings I most want at sync 1**: **D26** (where moment 4 plays), **D27** (the CSV: build it or
-   not), **D31 with D32** (the company cup card's quarter, and what «بلا ترتيب» means). Close behind: D40 and D43.
+   not), **D31 with D32** (the company cup card's quarter, and what «بلا ترتيب» means). Close behind: D39 and D42.
