@@ -74,15 +74,32 @@ export function tintIndex(memberId: string): number {
   return Math.abs(hash) % TINTS.length;
 }
 
-const DIMENSION: Record<NonNullable<AvatarProps["size"]>, string> = {
+// ★ Wave 19, add-only (DEC-214 §4, `scoring`'s R1): 44 for the directory's rows, 84 for the profile's header on the
+// phone, 104 on desktop (`Directory.dc.html:38`, `Profile.dc.html:27`, `ProfileDesktop.dc.html:40`). The union in
+// `ui/index.ts` is the lead's; until it gains the three, the widened type lives here and callers import it by path.
+export type AvatarSize = NonNullable<AvatarProps["size"]> | 44 | 84 | 104;
+export type AvatarSizedProps = Omit<AvatarProps, "size"> & { size?: AvatarSize };
+
+const DIMENSION: Record<AvatarSize, string> = {
   24: "h-6 w-6 text-[0.6875rem]",
   32: "h-8 w-8 text-[0.8125rem]",
   34: "h-[34px] w-[34px] text-[0.8125rem]",
   40: "h-10 w-10 text-[0.9375rem]",
+  44: "h-11 w-11 text-[1rem]",
   56: "h-14 w-14 text-[1.375rem]",
+  84: "h-[84px] w-[84px] text-[2rem]",
   96: "h-24 w-24 text-[2.25rem]",
+  104: "h-[104px] w-[104px] text-[2.5rem]",
   160: "h-40 w-40 text-[3.75rem]",
 };
+
+// The ring grows with the large avatars as drawn — 5 px at 84, 6 px at 104 — and stays 3 px everywhere else, so
+// no existing caller moves. Literal strings, so Tailwind sees every class.
+function ringWidth(size: AvatarSize): string {
+  if (size === 104) return "border-[6px]";
+  if (size === 84) return "border-[5px]";
+  return "border-[3px]";
+}
 
 function initial(displayName: string | null): string {
   return displayName?.trim().charAt(0) || "؟"; // Arabic question mark: no name on record.
@@ -106,15 +123,15 @@ function initial(displayName: string | null): string {
 // rather than reading `--team`, because `--team` inherits: an avatar with no
 // colour inside a team-coloured poster must not wear the poster's team. The
 // ring never touches the fill — the tint stays the member's (REQ-PRF-009).
-function ring(teamColor: string | null | undefined): { className: string; style?: CSSProperties } {
+function ring(teamColor: string | null | undefined, size: AvatarSize): { className: string; style?: CSSProperties } {
   if (teamColor === undefined) return { className: "" };
   const colour = teamColorOrNull(teamColor);
-  if (colour === null) return { className: "border-[3px] border-team-neutral" };
-  return { className: "border-[3px] border-team", style: { "--team": colour } as CSSProperties };
+  if (colour === null) return { className: `${ringWidth(size)} border-team-neutral` };
+  return { className: `${ringWidth(size)} border-team`, style: { "--team": colour } as CSSProperties };
 }
 
-export function Avatar({ memberId, displayName, src, size = 40, decorative, teamColor, className = "" }: AvatarProps) {
-  const team = ring(teamColor);
+export function Avatar({ memberId, displayName, src, size = 40, decorative, teamColor, className = "" }: AvatarSizedProps) {
+  const team = ring(teamColor, size);
   const shared = `inline-flex shrink-0 items-center justify-center overflow-hidden rounded-field font-medium ${DIMENSION[size]} pg:rounded-pill ${team.className} ${className}`;
   const a11y = decorative ? { "aria-hidden": true as const } : { role: "img" as const, "aria-label": displayName ?? undefined };
 

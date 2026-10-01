@@ -439,3 +439,76 @@ export async function getRecapPhotos(locale: string, sessionIds: string[]): Prom
   }
   return out;
 }
+
+// ── Wave 19 — a member's photographs, for the profile's «صور رفعتها» (DEC-213 §5.119, contract 3). Add-only. ──
+
+export interface UploaderPhoto {
+  id: string;
+  /** The profile links a tile to its photograph's session (`/app/sessions/<id>#photos`, DEC-214 §2). No title is
+   *  read here — `content` never queries `sessions` itself. */
+  sessionId: string;
+  /** Signed for an hour — the EXIF-stripped image; there is no thumbnail derivative yet (DEC-206 §4.55). */
+  url: string;
+  width: number | null;
+  height: number | null;
+  /** Display order only, never «the last row». */
+  createdAt: string;
+}
+
+export interface UploaderPhotos {
+  /** Every photograph by this member the CALLER may see — the heading's figure. */
+  count: number;
+  /** The newest `limit`, signed. A signature that fails leaves its photograph out; the count stays. */
+  photos: UploaderPhoto[];
+}
+
+const UPLOADER_PHOTOS_DEFAULT = 6; // `Profile.dc.html:72` — five tiles and «+N»
+const UPLOADER_PHOTOS_MAX = 48;
+
+/**
+ * SCR-020's «صور رفعتها». Through RLS with the caller's client: `photos_read` (03 §6) is the visibility rule, and
+ * `removed_at is null` and `hidden_at is null` hold for EVERY caller, staff included — a profile shows what a
+ * colleague sees. By `uploader_id`; nothing in the schema tags a member, so a tagged photograph cannot appear here.
+ * Two reads — the count, then the newest rows ordered `created_at desc, id desc` — and one signing batch.
+ */
+export async function listPhotosByUploader(locale: string, memberId: string, opts: { limit?: number } = {}): Promise<UploaderPhotos> {
+  if (!z.uuid().safeParse(memberId).success) return { count: 0, photos: [] };
+  const limit = Math.min(UPLOADER_PHOTOS_MAX, Math.max(0, Math.floor(opts.limit ?? UPLOADER_PHOTOS_DEFAULT)));
+  const { supabase } = await sessionClient(locale);
+
+  const [{ count, error: countError }, { data, error }] = await Promise.all([
+    supabase.from("photos").select("id", { count: "exact", head: true }).eq("uploader_id", memberId).is("removed_at", null).is("hidden_at", null),
+    limit === 0
+      ? Promise.resolve({ data: [], error: null })
+      : supabase
+          .from("photos")
+          .select("id, session_id, storage_path, width, height, created_at")
+          .eq("uploader_id", memberId)
+          .is("removed_at", null)
+          .is("hidden_at", null)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(limit),
+  ]);
+  if (countError) throw new Error(`photos (by uploader, count): ${countError.message}`);
+  if (error) throw new Error(`photos (by uploader): ${error.message}`);
+
+  const rows = (data ?? []) as { id: string; session_id: string; storage_path: string; width: number | null; height: number | null; created_at: string }[];
+  if (rows.length === 0) return { count: count ?? 0, photos: [] };
+  const { data: signed } = await supabase.storage.from("photos").createSignedUrls(
+    rows.map((row) => row.storage_path),
+    3600,
+  );
+  const urlByPath = new Map((signed ?? []).filter((s) => s.signedUrl && s.path).map((s) => [s.path as string, s.signedUrl]));
+  const photos = rows
+    .map((row) => ({
+      id: row.id,
+      sessionId: row.session_id,
+      url: urlByPath.get(row.storage_path) ?? "",
+      width: row.width ?? null,
+      height: row.height ?? null,
+      createdAt: row.created_at,
+    }))
+    .filter((p) => p.url !== "");
+  return { count: count ?? rows.length, photos };
+}

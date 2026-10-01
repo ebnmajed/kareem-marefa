@@ -20,6 +20,13 @@ export function TagChipDemo() {
         <TagChip label="مبيعات" onRemove={() => {}} removeLabel="أزل الوسم: مبيعات" />
         <TagChip label="الوسم: فني" removeHref="/ar/ui" removeLabel="أزل عامل التصفية: فني" selected />
       </div>
+      {/* Wave 19 (DEC-214 §4): a company chip with its team dot; a company with no colour; the current one. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <TagChip label="الكل" href="/ar/ui" selected />
+        <TagChip label="جذر" href="/ar/ui" teamColor="#3BE8B0" />
+        <TagChip label="مواهب" href="/ar/ui" teamColor="#35D0FF" />
+        <TagChip label="شركة بلا لون" href="/ar/ui" teamColor={null} />
+      </div>
     </div>
   );
 }
