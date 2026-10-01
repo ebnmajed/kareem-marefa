@@ -57,6 +57,21 @@
           "top": "بلغت أعلى مستوى",
           "none": "يُحدَّد مستواك في التقييم الليلي القادم."
         }
+      },
+      "ledger": {
+        "count": "{count, plural, zero {لا سطور} one {سطر واحد} two {سطران} few {{value} أسطر} many {{value} سطرًا} other {{value} سطر}}",
+        "shownOf": "<bdi>{shown}</bdi> من {count, plural, zero {لا سطور} one {سطر واحد} two {سطرين} few {<bdi>{value}</bdi> أسطر} many {<bdi>{value}</bdi> سطرًا} other {<bdi>{value}</bdi> سطر}}",
+        "more": "المزيد",
+        "older": "عرض الأقدم",
+        "filteredEmpty": "لا سطور في هذه التصفية",
+        "submit": "تصفية",
+        "gain": "{count, plural, zero {صفر نقطة} one {نقطة واحدة} two {نقطتان} few {{value} نقاط} many {{value} نقطة} other {{value} نقطة}}",
+        "loss": "{count, plural, zero {لم تُخصم نقاط} one {خُصمت نقطة واحدة} two {خُصمت نقطتان} few {خُصمت {value} نقاط} many {خُصمت {value} نقطة} other {خُصمت {value} نقطة}}",
+        "capComment": "الحد: {count, plural, zero {بلا حد} one {تعليق واحد لكل جلسة} two {تعليقان لكل جلسة} few {{value} تعليقات لكل جلسة} many {{value} تعليقًا لكل جلسة} other {{value} تعليق لكل جلسة}}",
+        "manualBy": "«<bdi>{reason}</bdi>» — <bdi>{name}</bdi>",
+        "manualReason": "«<bdi>{reason}</bdi>»",
+        "reverses": "(يلغي سطر <bdi>{date}</bdi>)",
+        "noSession": "—"
       }
     },
     "admin": {

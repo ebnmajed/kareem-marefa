@@ -57,6 +57,21 @@
           "top": "You have reached the top level",
           "none": "Your level is set in the next nightly evaluation."
         }
+      },
+      "ledger": {
+        "count": "{count, plural, =0 {No lines} one {One line} other {{value} lines}}",
+        "shownOf": "<bdi>{shown}</bdi> of {count, plural, one {one line} other {<bdi>{value}</bdi> lines}}",
+        "more": "More",
+        "older": "Show older",
+        "filteredEmpty": "No lines in this filter",
+        "submit": "Filter",
+        "gain": "{count, plural, one {One point} other {{value} points}}",
+        "loss": "{count, plural, one {One point taken off} other {{value} points taken off}}",
+        "capComment": "Cap: {count, plural, one {one comment per session} other {{value} comments per session}}",
+        "manualBy": "“<bdi>{reason}</bdi>” — <bdi>{name}</bdi>",
+        "manualReason": "“<bdi>{reason}</bdi>”",
+        "reverses": "(cancels the line of <bdi>{date}</bdi>)",
+        "noSession": "—"
       }
     },
     "admin": {

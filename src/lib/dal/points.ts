@@ -778,3 +778,278 @@ export const getHubStanding = cache(async (locale: string): Promise<HubStanding>
     pointsNeedsMark: needsMark,
   };
 });
+
+// ── SCR-022's ledger, rebuilt (wave 20, add-only) ────────────────────────────────────────────────────────────────
+//
+// `REQ-UIX-072`, `REQ-PTS-003`, `DEC-216` §5.5, §5.6, §5.9, `DEC-218` §3.2. The page's one read. `getPointsHistory()`
+// above stays byte-identical. What this adds, each add-only:
+//   · `sourceId` — a reversal's link to the row it reverses (`source = 'reversal'`, 0149's key), so the pair is drawn
+//     in one card; and `actorName` — the admin who made a manual adjustment, from `actor_id` (REQ-PTS-009);
+//   · the cap explanation from `capped_award_explanations()` — ★ an EXPLANATION, never a ledger row, view or table;
+//   · ★ the month filter in the ORG's time zone. `monthRange()` above computes it in UTC though it says «the org's
+//     own month» — a defect `DEC-208`'s table found; this read does not repeat it;
+//   · paging by `rows`, with the count of ledger rows that match the filters («14 سطرًا»).
+//
+// ★ EVERY LEDGER ROW IS DRAWN EXACTLY ONCE: a reversed row moves INTO its reversal's item and leaves its own place;
+// one fetched from outside the page or the filter is drawn there and nowhere else. `pairReversals()` is pure and
+// its unit test counts ids.
+
+export interface LedgerEntry extends PointsLedgerRow {
+  /** `points_ledger.source_id` — on a reversal, the id of the row it reverses. */
+  sourceId: string | null;
+  /** A manual adjustment's admin, by display name; null otherwise, or when they have none. */
+  actorName: string | null;
+}
+
+/** ★ Not a ledger row: the comment cap, reached, with a comment it left unpaid. */
+export interface CapExplanation {
+  sessionId: string;
+  sessionTitle: string | null;
+  ruleKey: string;
+  /** The rule's own reason — «تعليق». */
+  reason: string;
+  capPerSession: number;
+  /** The first unpaid comment — where it sits. */
+  at: string;
+}
+
+export type LedgerItem =
+  | { kind: "entry"; at: string; entry: LedgerEntry }
+  | { kind: "reversal"; at: string; entry: LedgerEntry; reversed: LedgerEntry | null }
+  | { kind: "cap"; at: string; cap: CapExplanation }
+  | { kind: "missed"; at: string; notice: MissedAttendance };
+
+export interface PointsLedgerPage {
+  /** Newest first. Every ledger row exactly once. */
+  items: LedgerItem[];
+  /** Ledger rows matching the filters. Explanations are not rows and are not counted. */
+  rowCount: number;
+  /** How many of `rowCount` this page shows — «9 من 14». A reversed row fetched from outside is not counted. */
+  shown: number;
+  /** The `rows` the page was read with — «المزيد» asks for more. */
+  rows: number;
+  sessionOptions: SessionOption[];
+  /** `YYYY-MM`, the last 12 months in the ORG's zone, newest first. */
+  monthOptions: string[];
+  catalogue: CatalogueEntry[];
+  timeZone: string;
+  filters: { sessionId: string | null; month: string | null };
+}
+
+export const LEDGER_PAGE = 50;
+const LEDGER_MAX = 500;
+
+/** The UTC offset of `timeZone` at `at`, in minutes — pure. */
+function zoneOffsetMinutes(timeZone: string, at: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(at);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return Math.round((asUtc - at.getTime()) / 60_000);
+}
+
+/** The instant a wall-clock midnight in `timeZone` falls on — pure. */
+function zonedMidnight(year: number, month: number, timeZone: string): Date {
+  const guess = new Date(Date.UTC(year, month - 1, 1));
+  const first = new Date(guess.getTime() - zoneOffsetMinutes(timeZone, guess) * 60_000);
+  // A second pass absorbs a zone whose offset differs on either side of the guess.
+  return new Date(guess.getTime() - zoneOffsetMinutes(timeZone, first) * 60_000);
+}
+
+/** `YYYY-MM` → the month's bounds in the ORG's zone, or null for a malformed key — pure, exported for its test. */
+export function orgMonthRange(month: string, timeZone: string): { gte: string; lt: string } | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const m = Number(match[2]);
+  if (m < 1 || m > 12) return null;
+  const next = m === 12 ? { y: year + 1, m: 1 } : { y: year, m: m + 1 };
+  return { gte: zonedMidnight(year, m, timeZone).toISOString(), lt: zonedMidnight(next.y, next.m, timeZone).toISOString() };
+}
+
+/** The month an instant falls in, in the ORG's zone — `YYYY-MM`. Pure, exported for its test. */
+export function orgMonthOf(iso: string, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit" }).formatToParts(new Date(iso));
+  return `${parts.find((p) => p.type === "year")!.value}-${parts.find((p) => p.type === "month")!.value}`;
+}
+
+/** The last `n` months in the org's zone, newest first — pure, exported for its test. */
+export function lastOrgMonths(timeZone: string, n = 12, now: Date = new Date()): string[] {
+  const [y, m] = orgMonthOf(now.toISOString(), timeZone).split("-").map(Number);
+  return Array.from({ length: n }, (_, i) => {
+    const total = y * 12 + (m - 1) - i;
+    return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`;
+  });
+}
+
+/** Pair each reversal with the row it reverses — pure, exported for its unit test. `rows` are the page, newest first;
+ *  `outside` are reversed rows fetched from beyond the page or the filter. A reversed row on the page leaves its own
+ *  place and is drawn inside its reversal; every row is drawn exactly once. */
+export function pairReversals(rows: LedgerEntry[], outside: LedgerEntry[] = []): Array<Extract<LedgerItem, { kind: "entry" | "reversal" }>> {
+  const onPage = new Map(rows.map((r) => [r.id, r]));
+  const fetched = new Map(outside.map((r) => [r.id, r]));
+  const consumed = new Set<string>();
+  for (const r of rows) {
+    if (r.isReversal && r.sourceId && onPage.has(r.sourceId) && !consumed.has(r.sourceId)) consumed.add(r.sourceId);
+  }
+  const items: Array<Extract<LedgerItem, { kind: "entry" | "reversal" }>> = [];
+  const used = new Set<string>();
+  for (const r of rows) {
+    if (consumed.has(r.id)) continue;
+    if (r.isReversal) {
+      const reversed = r.sourceId ? (onPage.get(r.sourceId) ?? fetched.get(r.sourceId) ?? null) : null;
+      const take = reversed && !used.has(reversed.id) ? reversed : null;
+      if (take) used.add(take.id);
+      items.push({ kind: "reversal", at: r.occurredAt, entry: r, reversed: take });
+    } else {
+      items.push({ kind: "entry", at: r.occurredAt, entry: r });
+    }
+  }
+  return items;
+}
+
+const sortNewestFirst = (a: { at: string }, b: { at: string }) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0);
+
+type LedgerSelectRow = {
+  id: string;
+  occurred_at: string;
+  amount: number;
+  reason: string;
+  rule_key: string | null;
+  source: string;
+  source_id: string | null;
+  actor_id: string | null;
+  session_id: string | null;
+  sessions: { title: string } | { title: string }[] | null;
+};
+
+export async function getPointsLedger(locale: string, opts: { sessionId?: string; month?: string; rows?: number } = {}): Promise<PointsLedgerPage> {
+  const { session, supabase } = await sessionClient(locale);
+  const sessionId = opts.sessionId && z.uuid().safeParse(opts.sessionId).success ? opts.sessionId : null;
+  const rows = Math.min(LEDGER_MAX, Math.max(LEDGER_PAGE, Math.floor(Number(opts.rows) || LEDGER_PAGE)));
+
+  const { data: settings, error: settingsError } = await supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle();
+  if (settingsError) throw new Error(`org_settings: ${settingsError.message}`);
+  const timeZone = (settings?.time_zone as string | undefined) ?? "Asia/Riyadh";
+  const range = opts.month ? orgMonthRange(opts.month, timeZone) : null;
+  const month = range ? opts.month! : null;
+
+  const SELECT = "id, occurred_at, amount, reason, rule_key, source, source_id, actor_id, session_id, sessions(title)";
+  // ★ `.eq("member_id", …)` is load-bearing: `POL-points_ledger.select` lets an ADMIN read everyone's rows (A33).
+  let query = supabase.from("points_ledger").select(SELECT, { count: "exact" }).eq("member_id", session.memberId).order("occurred_at", { ascending: false }).order("id", { ascending: false });
+  if (sessionId) query = query.eq("session_id", sessionId);
+  if (range) query = query.gte("occurred_at", range.gte).lt("occurred_at", range.lt);
+
+  const [ledgerRes, allRes, rulesRes, missedRes, cappedRes] = await Promise.all([
+    query.range(0, rows - 1),
+    supabase.from("points_ledger").select("session_id, sessions(title)").eq("member_id", session.memberId).not("session_id", "is", null),
+    supabase.from("scoring_rules").select("action_key, points, enabled, reason_ar, cap_per_session").eq("org_id", session.orgId).order("action_key"),
+    supabase.rpc("missed_attendance_days"),
+    supabase.rpc("capped_award_explanations"),
+  ]);
+  if (ledgerRes.error) throw new Error(`points_ledger: ${ledgerRes.error.message}`);
+  if (allRes.error) throw new Error(`points_ledger (sessions): ${allRes.error.message}`);
+  if (rulesRes.error) throw new Error(`scoring_rules: ${rulesRes.error.message}`);
+  if (missedRes.error) throw new Error(`missed_attendance_days: ${missedRes.error.message}`);
+  if (cappedRes.error) throw new Error(`capped_award_explanations: ${cappedRes.error.message}`);
+
+  const titleOf = (s: LedgerSelectRow["sessions"]): string | null => (Array.isArray(s) ? (s[0]?.title ?? null) : (s?.title ?? null));
+  const page = (ledgerRes.data ?? []) as LedgerSelectRow[];
+
+  // The rows a reversal on this page names that are not on it — the member's own, by id.
+  const pageIds = new Set(page.map((r) => r.id));
+  const missingIds = [...new Set(page.filter((r) => r.source === "reversal" && r.source_id && !pageIds.has(r.source_id)).map((r) => r.source_id!))];
+  let outsideRaw: LedgerSelectRow[] = [];
+  if (missingIds.length > 0) {
+    const { data, error } = await supabase.from("points_ledger").select(SELECT).eq("member_id", session.memberId).in("id", missingIds);
+    if (error) throw new Error(`points_ledger (reversed): ${error.message}`);
+    outsideRaw = (data ?? []) as LedgerSelectRow[];
+  }
+
+  // The admins behind manual adjustments, by display name — org-readable, tier 1.
+  const actorIds = [...new Set([...page, ...outsideRaw].filter((r) => r.source === "manual_adjustment" && r.actor_id).map((r) => r.actor_id!))];
+  const actorName = new Map<string, string>();
+  if (actorIds.length > 0) {
+    const { data, error } = await supabase.from("members").select("id, display_name").in("id", actorIds);
+    if (error) throw new Error(`members (actors): ${error.message}`);
+    for (const a of (data ?? []) as Array<{ id: string; display_name: string | null }>) if (a.display_name) actorName.set(a.id, a.display_name);
+  }
+
+  const toEntry = (r: LedgerSelectRow): LedgerEntry => ({
+    id: r.id,
+    occurredAt: r.occurred_at,
+    amount: r.amount,
+    reason: r.reason,
+    ruleKey: r.rule_key,
+    source: r.source,
+    sessionId: r.session_id,
+    sessionTitle: titleOf(r.sessions),
+    isReversal: r.source === "reversal",
+    isManualAdjustment: r.source === "manual_adjustment",
+    sourceId: r.source_id,
+    actorName: r.source === "manual_adjustment" && r.actor_id ? (actorName.get(r.actor_id) ?? null) : null,
+  });
+  const pageEntries = page.map(toEntry);
+  const paired = pairReversals(pageEntries, outsideRaw.map(toEntry));
+
+  const seen = new Set<string>();
+  const sessionOptions: SessionOption[] = [];
+  const titleById = new Map<string, string>();
+  for (const r of (allRes.data ?? []) as Array<{ session_id: string | null; sessions: LedgerSelectRow["sessions"] }>) {
+    if (!r.session_id || seen.has(r.session_id)) continue;
+    seen.add(r.session_id);
+    const title = titleOf(r.sessions);
+    if (title) {
+      sessionOptions.push({ id: r.session_id, title });
+      titleById.set(r.session_id, title);
+    }
+  }
+
+  // Explanations sit among the rows shown: held to the same filters, and — when there are older rows not shown — to
+  // the span the page covers, so «المزيد» never leaves an explanation stranded above rows it does not explain.
+  const total = ledgerRes.count ?? page.length;
+  const oldest = page.length > 0 && total > page.length ? page[page.length - 1].occurred_at : null;
+  const inView = (at: string, sid: string) =>
+    (!sessionId || sid === sessionId) && (!range || (at >= range.gte && at < range.lt)) && (!oldest || at >= oldest);
+
+  type MissedRow = { session_id: string; session_title: string; session_completed_at: string; day_count: number; day_position: number; day_starts_at: string };
+  const missedBySession = new Map<string, MissedAttendance>();
+  for (const r of (missedRes.data ?? []) as MissedRow[]) {
+    if (!inView(r.session_completed_at, r.session_id)) continue;
+    const day = { position: r.day_position, startsAt: r.day_starts_at };
+    const existing = missedBySession.get(r.session_id);
+    if (existing) existing.days.push(day);
+    else missedBySession.set(r.session_id, { sessionId: r.session_id, sessionTitle: r.session_title, completedAt: r.session_completed_at, dayCount: r.day_count, days: [day] });
+  }
+
+  const rules = (rulesRes.data ?? []) as Array<{ action_key: string; points: number; enabled: boolean; reason_ar: string; cap_per_session: number | null }>;
+  const reasonOf = new Map(rules.map((r) => [r.action_key, r.reason_ar]));
+  type CappedRow = { session_id: string; rule_key: string; cap_per_session: number; first_unpaid_at: string };
+  const caps: CapExplanation[] = ((cappedRes.data ?? []) as CappedRow[])
+    .filter((r) => inView(r.first_unpaid_at, r.session_id))
+    .map((r) => ({
+      sessionId: r.session_id,
+      sessionTitle: titleById.get(r.session_id) ?? null,
+      ruleKey: r.rule_key,
+      reason: reasonOf.get(r.rule_key) ?? r.rule_key,
+      capPerSession: r.cap_per_session,
+      at: r.first_unpaid_at,
+    }));
+
+  const items: LedgerItem[] = [
+    ...paired,
+    ...[...missedBySession.values()].map((notice): LedgerItem => ({ kind: "missed", at: notice.completedAt, notice })),
+    ...caps.map((cap): LedgerItem => ({ kind: "cap", at: cap.at, cap })),
+  ].sort(sortNewestFirst);
+
+  return {
+    items,
+    rowCount: total,
+    shown: page.length,
+    rows,
+    sessionOptions,
+    monthOptions: lastOrgMonths(timeZone),
+    catalogue: rules.map((r) => ({ actionKey: r.action_key, points: r.points, enabled: r.enabled, reasonAr: r.reason_ar, capPerSession: r.cap_per_session })),
+    timeZone,
+    filters: { sessionId, month },
+  };
+}

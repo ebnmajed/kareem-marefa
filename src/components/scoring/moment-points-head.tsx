@@ -54,6 +54,12 @@ export interface MomentPointsHeadProps {
   acknowledge: () => Promise<void>;
   /** The server rendered this head for the document — a hard load: it never plays on this page load. */
   documentLoad?: boolean;
+  /**
+   * ★ wave 20 (DEC-218 §3.1), add-only: `row` is the rebuilt `SCR-022` head (`Points.dc.html`) — the balance with its
+   * visible label at the inline-start and `card` (the level row that turns, moment 4) at the inline-end, the bar under
+   * both. `stacked`, the default, is every caller before wave 20, unchanged.
+   */
+  layout?: "stacked" | "row";
 }
 
 export function MomentPointsHead(props: MomentPointsHeadProps) {
@@ -169,27 +175,50 @@ export function MomentPointsHead(props: MomentPointsHeadProps) {
       ref={root}
       data-moment={playThree || playFour ? "playing" : "static"}
       data-moment-keys={momentKeys([["completion", completion?.occurrenceId], ["level", levelUp?.occurrenceId]])}
-      className="flex flex-col gap-5"
+      className={props.layout === "row" ? "flex flex-col gap-3" : "flex flex-col gap-5"}
     >
       <h2 className="sr-only">{props.heading}</h2>
-      <p className="flex flex-wrap items-baseline gap-x-3">
-        <span className="sr-only">{props.balanceLabel}</span>
-        <strong className="font-display text-play-xl font-extrabold text-fg-heading">
-          <bdi>{figure}</bdi>
-        </strong>
-        {latched.delta ? (
-          <span data-slot="delta" className="font-display text-play-sm font-extrabold text-accent pg-light:text-fg-heading">
-            {/* ★ A signed figure reads left to right: «+120», never «120+» (the lead's 390 px finding). */}
-            <bdi aria-hidden="true" dir="ltr">
-              {latched.delta}
-            </bdi>
-            <span className="sr-only">{latched.deltaLabel}</span>
-          </span>
-        ) : null}
-      </p>
+      {props.layout === "row" ? (
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <p className="flex flex-col leading-tight">
+            <span className="text-caption font-bold text-fg-muted">{props.balanceLabel}</span>
+            <span className="flex flex-wrap items-baseline gap-x-2">
+              <strong className="font-display text-play-lg font-extrabold text-accent pg-light:text-fg-heading">
+                <bdi>{figure}</bdi>
+              </strong>
+              {latched.delta ? (
+                <span data-slot="delta" className="font-display text-play-sm font-extrabold text-accent pg-light:text-fg-heading">
+                  {/* ★ A signed figure reads left to right: «+120», never «120+» (the lead's 390 px finding). */}
+                  <bdi aria-hidden="true" dir="ltr">
+                    {latched.delta}
+                  </bdi>
+                  <span className="sr-only">{latched.deltaLabel}</span>
+                </span>
+              ) : null}
+            </span>
+          </p>
+          {latched.card}
+        </div>
+      ) : (
+        <p className="flex flex-wrap items-baseline gap-x-3">
+          <span className="sr-only">{props.balanceLabel}</span>
+          <strong className="font-display text-play-xl font-extrabold text-fg-heading">
+            <bdi>{figure}</bdi>
+          </strong>
+          {latched.delta ? (
+            <span data-slot="delta" className="font-display text-play-sm font-extrabold text-accent pg-light:text-fg-heading">
+              {/* ★ A signed figure reads left to right: «+120», never «120+» (the lead's 390 px finding). */}
+              <bdi aria-hidden="true" dir="ltr">
+                {latched.delta}
+              </bdi>
+              <span className="sr-only">{latched.deltaLabel}</span>
+            </span>
+          ) : null}
+        </p>
+      )}
       {props.streak}
       {props.bar}
-      {latched.card}
+      {props.layout === "row" ? null : latched.card}
     </div>
   );
 }
