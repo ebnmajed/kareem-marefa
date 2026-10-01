@@ -6366,3 +6366,163 @@ security fix found at sync 1 (`DEC-214` §1), rehearsed on the owner's productio
 reason was written before the owner gave it, and replaced at once (`DEC-213` §1).
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-216 — Wave 20 is M10c, the last designed batch of the member app: nine screens from eleven artboards, two PRs, three primitives; `status-mark` stays withdrawn, the weekly board computes live, and twenty-two places the artboards and `docs/plan/` disagree
+
+- **Date:** 2026-10-02 · **Decided by:** the owner (§2, two rulings, 2026-10-02); everything else by the wave-20 planner, from `docs/design/screens/M10c.md`, the eleven artboards, and measurement of the tree at `c5a4cf9a`. `DEC-205`'s rulings, `DEC-206`'s list, `DEC-208`, `DEC-213` §5 and `DEC-215` §1 are not re-opened
+- **Amends:** `09-sitemap-screens.md` (SCR-021 and SCR-024 gain the sections they never had; SCR-029 is added); `08-notifications-calendar.md` §2's preferences move to a route of their own (§5.7). **Corrects:** the wave-20 planning prompt and `M10c.md` §9 on two counts of fact (§5.1, §5.2)
+- **Adds:** milestone **M22**; requirements from **`REQ-UIX-070`**; stories from **`STORY-UIX-059`**; **one migration, `0169`** — two nullable columns, named in §2.2
+- **Does not touch:** the five frozen public routes, `qa:contract`, the register-form fingerprint, `registrations`
+
+### 1 · The batch, and what follows it
+
+Nine screens — `SCR-021` · `022` · `023` · `024` · `025` · `026` · `027` · `028` · `029` — from
+**eleven** artboards in `docs/design/screens/m10c/`, phone at 390 and the hub also at 1280. `021` has
+three boards (read, edit, desktop); `029` is a new route; the rest have one each.
+
+★ **This is the last designed batch of the member app.** `DEC-215` §1's standing order is «WE BUILD
+WHAT HAS A DESIGN», and when this merges it has no screens left. **Stories land next** — `05-stories.md`
+entered the tree 2026-09-28 and has been overtaken twice — **unless the owner says otherwise.** Wave 18's
+story ring stays inert until then; nobody wires it in this wave.
+
+### 2 · The owner's two rulings, 2026-10-02
+
+**2.1 — `status-mark` stays withdrawn; there are three new primitives, not four.** `M10c.md`
+contradicts itself: §1.3 and `DEC-NEXT-23` require a `status-mark`, **§5 withdraws it** («a glyph is
+never a vocabulary the person has to learn»), and §9's new-primitive list has only three. The planning
+prompt took the first side and asked for a five-state glyph replacing the status pills on `023`, `024`
+and `025` — which §4 («the same badge the row has on `011`») and §5 («nothing is shown when nothing
+needs doing») reverse. **The owner ruled §5 wins.** So `023` is a struck, dimmed row with the word
+«ملغاة»; `024` keeps `011`'s existing badge; `025` is one row. §1.3's ✓✓ «محفوظ» is **plain inline text
+with a glyph, not a primitive.** The new primitives are **`podium`, `settings-group`, `ledger-row`**, and
+the gate's floor moves **57 → 60**.
+
+**2.2 — the weekly board computes live, and its movement is «since you last looked».** There is no
+weekly window in the schema: `leaderboard_kind` is `('all_time','monthly','seasonal','topic','company')`
+(`0027:60`) and `05-scoring-engine.md` never mentions a week. The owner ruled the board **computes this
+week live from `points_ledger`**, as `all_time` already computes from `points_balances` — no enum value,
+no snapshot, no crontab entry. ★ **The artboard's movement glyph cannot survive that unchanged**: a live
+sum has no record of last Monday's ranks. So the movement is **«منذ زيارتك الأخيرة», not «since the window
+opened»**, and it reads `member_seen_marks` (`0162`) — the same baseline moment 4 already animates
+against. ★ **That table is one row per member with a column per surface**, so the reuse costs
+**`0169`: `weekly_period date` and `weekly_rank int check (weekly_rank > 0)`, both nullable, mirroring
+`monthly_period` / `monthly_rank`.** Its grant is **table-level** (`grant select, insert, update on
+public.member_seen_marks to authenticated`, `0162:66`), so invariant 6 needs **no new grant** — the
+migration story says so rather than leaving it assumed — and the cases go in
+`tests/rls/scoring-seen.test.ts`.
+
+### 3 · Two PRs, and the order they merge in
+
+**A — `wave-20a/the-hub`**: the hub frame, `021`, `022`, `023`, `024`, `025`, the three primitives,
+`0169`, and `STORY-UIX-copy-trim`. **B — `wave-20b/the-boards`**: `026`, `029`, `027`, `028`. Both
+against `main`. `TEAM.md` carries no PR-size rule, so the precedent is the measure: wave 18's nine
+screens took two PRs, wave 19's six took one.
+
+★ **B is retargeted to `main` before A merges with `--delete-branch`** — wave 17b's lesson, and the way
+PR #36 died: a PR whose base is deleted on merge is auto-closed, cannot be reopened or retargeted, and
+its green CI counts for nothing.
+
+### 4 · What `docs/plan/` must gain, because the screens outran it
+
+- **`/app/me/settings` (`SCR-029`) exists nowhere in `docs/plan/`.** It needs its `REQ-UIX-0xx` in
+  `01-prd.md` — the only file that may define one — a section in `09`, a `shell-routes.ts` entry, the
+  gear link from `/app/me` and from the inbox's «ما يصلني», and the leaderboard opt-out moved out of
+  `021`'s form. `Settings.dc.html` carries `aria-label="حسابي"`, the navigation rail and the raised
+  «اقترح», so it **wears the tab bar** and draws its own `h1`.
+- **`SCR-021` and `SCR-024` are in `09` but have no `###` section** — the sitemap at lines 41 and 44 and
+  the requirement table at 622 and 625 only. They gain sections in this wave. `SCR-021` carries
+  `REQ-PRF-001`, `002`, `006`, `007`, `008`, `010`, `011`, `REQ-NFR-013`; `SCR-024` carries `REQ-DSC-006`.
+
+### 5 · Where the artboards and `docs/plan/` disagree — twenty-two lines, continued from `DEC-213` §5 (126)
+
+1. **`M10c.md` §9 says «63 files».** The tree has **57** `.tsx` in `src/components/ui/`, and the gate's
+   floor at `tests/unit/ui-playground.test.ts:119` reads 57. **The tree wins**; three new make 60.
+2. **`M10c.md`'s header says «10 artboards»; the planning prompt says twelve.** There are **eleven**
+   `.dc.html` and eleven PNGs; both directories also carry a `README.md`, which is where twelve came
+   from. **The tree wins.**
+3. **`status-mark`** — §2.1. The owner's ruling.
+4. **The weekly window and its movement** — §2.2. The owner's ruling.
+5. **§2's dashed `0` cap row.** `points.ts:52-55` is already law: «This is NOT a ledger row and never
+   will be… `05` §8 set the precedent: a capped sixth comment writes no row either, and the cap is
+   explained in place.» **The plan wins: the cap row is an EXPLANATION**, built the way
+   `MissedAttendance` is — a second non-ledger shape the DAL returns and the screen interleaves. No
+   view, no table, no migration. §2's «nothing here ever shows a figure the ledger does not hold» is
+   about figures, and the cap row holds none, which is why it is drawn as `0`.
+6. **§2's reversal pair needs a field the DTO does not return.** There is no `reverses_row_id`: the link
+   is **`source_id` with `source = 'reversal'`** (`0149`'s key `reversal:<id>:v1`), and `points.ts:647`
+   already uses it. The ledger DTO at `points.ts:146-156` stops at `isReversal`. **Both agree; the tree
+   is behind.** Add-only in `src/lib/dal/points.ts`.
+7. **`DEC-NEXT-19` — the weekly window is a board tab, there are no leagues, and the category filter is
+   a header `menu`.** `09` names الكل · هذا الشهر · حسب التصنيف · سباق الشركات. **The design wins**, by
+   the owner's decision.
+8. **`DEC-NEXT-20` — the hub has no game rail on desktop.** `16` §6.1 puts it on every content page; on
+   the hub it would repeat the standing band beside itself. **The design wins.**
+9. **`DEC-NEXT-21` — the reversal pair is one card.** `05` lists reversals as rows. **The design wins**;
+   it is presentation, and the explanation needs no cross-reference.
+10. **Moments 3 and 5 render on the hub's standing card.** `DEC-195`'s first surfaces are unchanged;
+    this names the second. **No sixth moment — the podium is static.** `DEC-213` §5.117 keeps the
+    level-up off the profile.
+11. **`DEC-NEXT-22` — state lives in the row; nothing is shown when nothing needs doing.** The owner's
+    ruling, reaffirmed by §2.1. A healthy integration is one row; a synced session is absent.
+12. **`DEC-NEXT-23` — read by default, edit on intent.** `021` renders values with one «عدّل ملفك»; edit
+    mode names its state, counts unsaved changes, marks each changed field, and restores on Cancel.
+    **The design wins.** It applies to every screen in the app whose purpose is to *hold* values;
+    `017` propose, `015` rate and `014` check-in are forms and stay forms. The retrofit list is
+    `M10c.md` §1's and is **not** this wave's.
+13. **`DEC-NEXT-24` — `/app/me/settings` is a route.** `09` put preferences on `026` and the opt-out on
+    `021`. **The design wins**, by the owner's comment, and §4 records what the plan must gain.
+14. **`DEC-NEXT-25` — no explainer copy.** A line exists only if it changes what the person does next.
+    **The design wins**, and `M10c.md` §0b's list is `STORY-UIX-copy-trim` in **this** wave's PR A,
+    because the M10a and M10b boards were trimmed the same day.
+15. **§6b draws three switches; `08` is the list.** §1.7 names **seventeen** non-optional keys —
+    corrected from «eleven» under `DEC-047`, and the list is authoritative — and they are **one
+    sentence, never rows**. The optional ones are `08` §2's: `new_sessions`, `my_sessions`, `reminders`,
+    `ratings`, `social`, `recognition`, `proposals`, `admin_queue` (admins and moderators only).
+    `certificates`, `moderation` and `account` are marked «on (not switchable)» and are not rows either.
+    **The plan wins.**
+16. **§9 says `settings-group` replaces `preference-matrix`, which exists.**
+    `src/components/notifications/preference-matrix.tsx`, imported by
+    `src/app/[locale]/app/me/notifications/page.tsx`, pinned by
+    `tests/components/notifications/preference-matrix.test.tsx`. **The design wins and `DEC-208`
+    binds**: its behaviour goes in `029`'s kept-behaviour table with the `REQ-*` that keeps each row,
+    its test is evidence, and each changed assertion is a ledger line in `STATUS.md` in the same commit.
+17. ★ **A defect in the tree, not a disagreement: `leaderboards.ts:512` reads
+    `monthly_period, monthly_rank` under the error label `member_seen_marks (week)`.** The surface
+    called «week» reads a month today. This wave is where that stops being true.
+18. **§9 lists `menu` twice**, the second with a parenthetical about the desktop standing band. The
+    standing band is the hub's own region, not a form of `menu`. **A spec slip; built as §0 describes
+    it.**
+19. **`SCR-024` is المحفوظات and `SCR-025` is التقويم** in both `09` (line 44, line 413) and `M10c.md`
+    (§4, §5). **Checked, and they agree** — recorded because the numbers are adjacent and easy to
+    transpose.
+20. **`025`'s page holds only the connection and what failed.** `09`'s calendar screen is fuller. **The
+    design wins**: no synced list, no legend, no marks.
+21. **`/app/me/privacy` is drawn in neither batch and stays M13's.** It remains in `profile.nav` and in
+    the desktop strip as a link.
+22. ★ **`M10c.md`, `M10c-PLANNING-PROMPT.md` and `m10c/` are untracked at `c5a4cf9a`.** Step 0 commits
+    the spec and the artboards, as wave 19's did; the planning prompt is not a specification and the
+    lead records in writing whether it is committed. `tests/unit/design-files.test.ts` keeps the
+    `.dc.html` out of the build.
+
+### 6 · For the owner — by name, none blocking
+
+1. **Folding `025` into `029`'s row entirely**, so the calendar has no page of its own (`M10c.md` §5,
+   §10). Proposed by the design, not taken here; the hub strip keeps «التقويم».
+2. ★ **The hard-load duplicate's rate on `/app/me/points` and `/app/leaderboards`** will be recorded by
+   this wave (`DEC-204`). The **fix** is still unscheduled, and after this batch there is no screens
+   wave left to carry it.
+3. **The `railway.json`** that would pin the worker's builder and its watch patterns — one file that
+   retires a manual step taken fourteen times and nearly shipped the wrong image on 2026-10-01.
+4. ★★ **The acceptance**: each rebuilt screen held beside its artboard on a phone.
+
+### 7 · Carried, unchanged
+
+`DEC-215`'s four: the hosting gate wired to nothing (`REQ-REC-008`), withdraw + a proposal history +
+the reviewer's name as one wave, autosave behind a new `REQ-*`. · `DEC-194`'s two gates, together. ·
+`DEC-186` §4's overshoot ceiling, the owner's. · F2 and F3 (`DEC-198` §5). · The hard-load duplicate
+itself (`DEC-204`). · A company logo, refused (`DEC-195` §4). · Recurring series (`A14`).
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-070` …), `09-sitemap-screens.md` (SCR-021, SCR-024,
+  SCR-029), `14-roadmap.md` (M22), `15-backlog.md` (`STORY-UIX-059` …), `TRACEABILITY.md` (generated),
+  `CLAUDE.md` and the ten agent files (the wave-20 map), `STATUS.md` (the wave-20 head),
+  `docs/design/screens/M10c.md` and `m10c/**` (added to the tree)

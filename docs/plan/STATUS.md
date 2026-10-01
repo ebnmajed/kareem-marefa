@@ -1,11 +1,79 @@
-**Last updated:** 2026-10-01 · **Branch:** `main` — ★★ **WAVE 19 IS LIVE** — PR #40 merged at `2333276b`, `0168` on production · **`main`:** `2333276b`; production at **`0168`** · **Phase:** ★★ **M10b — six member screens rebuilt, each deleted first and written from its artboard (`DEC-213` … `DEC-215`, M21)**: the viewer, rate (the survey kept), propose, my proposal, the directory (new), the profile. Four primitives (floor 57), the frame's four additions, and ★ **`0168`, a security fix found at sync 1** — a proposer could make a colleague an accepted co-presenter without asking. ★★ **The standing order (the owner): WE BUILD WHAT HAS A DESIGN** — screens before stories while the designer produces batches (`DEC-215` §1). ★ The builds found what no suite did: the viewer's «next» disabled on page 1 in RTL, a 42 px overflow, a focus landing under the bar (`DEC-215` §4). ★ **Pushed, merged and deployed 2026-10-01.** ★★ **The phone check PASSED 2026-10-01 — the owner reports the screens match their artboards (X4): the wave is ACCEPTED.** ★★ **Wave 18's and wave 16's phone checks PASSED 2026-10-01 as well, on the owner's confirmation — every phone check the programme owed is now run, including the five moments nobody had seen on a real device.** ★ **Railway is reconnected** (step 3 below): the step needed `--branch`, and it silently reset the builder. ★ **Nothing is owed by the owner.** ★ **Carried:** the hosting gate wired to nothing (`REQ-REC-008`), withdraw + history + the reviewer's name (one wave), autosave (a REQ first), F3, the hard-load duplicate (M10c), `DEC-194`'s two gates.
+**Last updated:** 2026-10-02 · **Branch:** `main` — ★★ **WAVE 20 IS PLANNED, NOT STARTED** · **`main`:** `c5a4cf9a`; production at **`0168`** · **Phase:** ★★ **M10c — the LAST designed batch of the member app (`DEC-216`, M22)**: the hub and its five pages, the two boards, and `/app/me/settings` — nine screens from eleven artboards, each **deleted first and written from its artboard** (`DEC-208`). Two PRs; three primitives (floor **57 → 60**); one migration, **`0169`** — two nullable columns. The brief is `docs/plan/notes/wave-20-lead.md`. ★★ **WHEN THIS MERGES THE STANDING ORDER HAS NO SCREENS LEFT, SO STORIES LAND NEXT** (`05-stories.md`, designed 2026-09-28 and twice overtaken) — **unless the owner says otherwise**; wave 18's ring stays inert until then. ★ **The owner ruled twice on 2026-10-02** (`DEC-216` §2): `status-mark` stays **withdrawn**, and the weekly board **computes live** with its movement read «منذ زيارتك الأخيرة». ★ **Wave 19 is merged, live and ACCEPTED** (`2333276b`, `0168`); every phone check the programme owed — waves 16, 18 and 19 — is run and passed. ★ **Owed by the owner:** nothing. ★ **Carried:** the hosting gate wired to nothing (`REQ-REC-008`), withdraw + history + the reviewer's name (one wave), autosave (a REQ first), F2/F3, the hard-load duplicate (`DEC-204` — **recorded by this wave, never fixed, and after it no screens wave is left to carry it**), `DEC-194`'s two gates, `DEC-186` §4, and the `railway.json` that would pin the worker's builder.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 19 — BUILT AND VERIFIED, PR #40 ready for the owner — on `wave-19/m10b` — M10b, the second batch of member screens (`DEC-213`)
+## ★★★ WAVE 20 — PLANNED, NOT STARTED — M10c, the last designed batch of the member app (`DEC-216`)
+
+**The programme's sixth wave, and the third that rebuilds screens.** The brief is
+`docs/plan/notes/wave-20-lead.md`; the drawing is `docs/design/screens/M10c.md` with the **eleven** artboards in
+`docs/design/screens/m10c/`; the decision is `DEC-216`. Milestone **M22**. Requirements from **`REQ-UIX-070`**;
+stories from **`STORY-UIX-059`**. **One migration, `0169`** — `weekly_period` and `weekly_rank` on
+`member_seen_marks`, both nullable, mirroring the monthly pair; the grant is table-level so invariant 6 needs no new
+one. **Two PRs**, `wave-20a/the-hub` and `wave-20b/the-boards`, both against `main`.
+
+★★ **The two rules it is judged on:** `DEC-199` §2, a screen is **REBUILT** to its design, never restyled; and
+`DEC-208`, **its page file is DELETED FIRST, then written from its artboard**, with a kept-behaviour table naming each
+behaviour and the `REQ-*` that made it survive. The hub's six pages were «re-skinned onto the system» in M10 rather
+than rebuilt, so they hold the oldest markup in the member app — **expect rule 2 to find several dropped behaviours,
+and treat each as a defect of the rebuild.**
+
+### ★★ What comes after this batch — written down so it is not re-decided
+
+`DEC-215` §1's standing order is **WE BUILD WHAT HAS A DESIGN.** M10c is the last designed batch. **When it merges
+the standing order has no screens left, so STORIES LAND NEXT** — `05-stories.md` entered the tree 2026-09-28 and has
+been overtaken twice, by `DEC-205` and `DEC-213` — **unless the owner says otherwise.** Nothing of stories is built
+here and **wave 18's story ring stays inert; nobody wires it.**
+
+### The owner's two rulings, 2026-10-02 (`DEC-216` §2)
+
+1. ★★ **`status-mark` stays WITHDRAWN.** `M10c.md` contradicts itself — §1.3 and `DEC-NEXT-23` require it, **§5
+   withdraws it**, §9 lists three new primitives — and the planning prompt took the side the owner had reversed. **§5
+   wins**: no glyph vocabulary, state lives in the row, nothing shown when nothing needs doing. `023` is a struck,
+   dimmed row with «ملغاة»; `024` keeps `011`'s existing badge; `025` is one row. §1.3's ✓✓ «محفوظ» is **plain inline
+   text with a glyph, not a primitive.** The three are **`podium`, `settings-group`, `ledger-row`**; the floor moves
+   **57 → 60**.
+2. ★★ **The weekly board computes LIVE, and its movement is «منذ زيارتك الأخيرة».** `leaderboard_kind` is
+   `('all_time','monthly','seasonal','topic','company')` (`0027:60`) and `05` never mentions a week, so the window is
+   summed from `points_ledger` as `all_time` is from `points_balances` — no enum value, no snapshot, no crontab entry.
+   A live sum has no record of last Monday's ranks, so the movement reads `member_seen_marks` (`0162`), moment 4's own
+   baseline, and **the copy changes from «since the window opened»**. That is what `0169` is for.
+
+### Step 0 — measured before anyone is spawned, and four corrections to the planning prompt
+
+| | |
+|---|---|
+| `main` | **`c5a4cf9a`**, clean, in sync. Production **`0168`**; next migration **`0169`**; next decision was **`DEC-216`** — all four as the prompt said |
+| ★ `src/components/ui/` | **57 `.tsx`, NOT 63.** The prompt and `M10c.md` §9 both say 63; the gate's floor at `tests/unit/ui-playground.test.ts:119` reads **57** and matches the tree. Three new make **60**, not 61 |
+| ★ The artboards | **eleven, not twelve and not ten.** `M10c.md`'s header says «10 artboards»; the prompt says twelve. Both `m10c/` and `m10c/png/` carry a `README.md` — that is the twelfth file. Eleven boards, eleven PNGs, matched |
+| ★ They are untracked | `M10c.md`, `M10c-PLANNING-PROMPT.md` and `m10c/` are all `??` at `c5a4cf9a`. **Step 0 commits the spec and the artboards**, as wave 19's did; the planning prompt is not a specification and the lead records whether it is committed |
+| ★ Screen numbers | **`SCR-021` and `SCR-024` are in `09`** (sitemap 41, 44; requirement table 622, 625) **with no `###` section**, and **`SCR-029` is nowhere in `docs/plan/`**. `SCR-021`: `REQ-PRF-001`/`002`/`006`/`007`/`008`/`010`/`011`, `REQ-NFR-013`. `SCR-024`: `REQ-DSC-006`. All three gain their entries this wave |
+| The two data questions | **answered without a schema change.** The cap row is **not a ledger row and never will be** (`points.ts:52-55`; `05` §8's precedent) — it is an explanation built the way `MissedAttendance` is. The reversal pair links through **`source_id` with `source = 'reversal'`** (`0149`), which the DTO at `points.ts:146-156` does not return — add-only |
+| ★ A defect found while measuring | `leaderboards.ts:512` reads `monthly_period, monthly_rank` under the error label `member_seen_marks (week)`. **The surface called «week» reads a month today.** This wave ends that |
+
+### ★ The owed measurement — it does not vanish into a rewrite
+
+`DEC-204` leaves **`/app/me/points` and `/app/leaderboards`** owed by this batch. Re-measure both **after** the
+rebuild by `wave18-lead-hard-load.spec.ts`'s method — phone, 2 × 24 hard loads each, production builds — record the DOM
+duplicate rate **and what the accessibility tree holds**, and write it against `DEC-204`'s table. The controls:
+`main`'s `/app` measured **4 of 48 on an empty feed and 32 of 48 on a seeded one**, with the accessibility tree **0 of
+48 in both sittings across 192 loads**. **Recorded, not fixed** — and ★ **after this wave no screens wave is left to
+carry the fix**, which is why it is named for the owner in `DEC-216` §6.
+
+### Out, and not to be re-litigated
+
+`/app/me/privacy` (M13) · every console and studio route · the five frozen public routes · stories and the ring ·
+leagues · a sixth moment, and the podium is static · photo tagging · the hard-load **fix** · `DEC-194`'s two gates ·
+`DEC-186` §4 · `DEC-215`'s four carried items · a company logo. **Not re-litigated:** `DEC-124` numerals · `DEC-186`
+§4's `1.08` · `DEC-206` §4.56 — the boards show ranked members by design, which is not attendance · `DEC-099` on
+avatars · `DEC-213` §5.117, which keeps the level-up off the profile.
+
+---
+
+
+## ★★ WAVE 19 — COMPLETE, LIVE and ACCEPTED (PR #40, `2333276b`; `0168` pushed; the owner's phone check passed) — was on `wave-19/m10b` — M10b, the second batch of member screens (`DEC-213` … `DEC-215`)
 
 **The programme's fifth wave, and the second that rebuilds screens.** The brief is `docs/plan/notes/wave-19-lead.md`;
 the drawing is `docs/design/screens/M10b.md` and the eight artboards in `docs/design/screens/m10b/` (now in the tree);
