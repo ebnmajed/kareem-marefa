@@ -922,6 +922,15 @@ the new mark once the moment has shown it. **No timestamp of any kind** — a `s
 opened their points page; `ENT-survey_participations` is the precedent. The worker never touches it, and a member's
 anonymisation deletes it: every value is a copy of source data.
 
+#### `ENT-feed_announcements`
+**Serves:** `REQ-UIX-056`, `REQ-UIX-055` · added by `DEC-206` §3 (`0164`)
+★ **An org's announcement — the feed's one stored item.** `id`, `org_id` (not null, cascading with the org),
+`author_id` (the admin who published it), `body` (plain text, 1 – 500 characters), `published_at` (default now; a
+later instant schedules it), `expires_at` (nullable, after `published_at`), `created_at`, `updated_at`. Every other
+item of the feed on `SCR-010` is derived from rows that already exist. **It is not** a member's post, a poll, a
+thread or a reaction target, and nothing here notifies. Expiry is a predicate of the read policy, not a deletion.
+`org_id` and `author_id` are never updatable. The worker never touches it.
+
 ### 4.12 Certificates
 
 **Amended under DEC-148 (wave 8):** `certificates.scheme brand_scheme not null default 'light'` pins the

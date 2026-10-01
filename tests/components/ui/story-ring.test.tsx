@@ -25,6 +25,9 @@ function ring(state: StoryRingState, extra: Partial<React.ComponentProps<typeof 
       glyph="ع"
       caption="اليوم"
       teamColor="#35D0FF"
+      // Wave 18 (DEC-207 §1.5): a ring with no `onOpen` is no longer a button. This suite is about the button,
+      // so every ring here opens something; the inert ring's cases are `story-ring-inert.test.tsx`.
+      onOpen={() => {}}
       {...extra}
     />
   );

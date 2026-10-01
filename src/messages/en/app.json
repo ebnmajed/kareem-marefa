@@ -29,7 +29,11 @@
       "proposeShort": "Propose",
       "toastClose": "Dismiss notification",
       "toastLabel": "Notification",
-      "primaryNav": "Primary navigation"
+      "primaryNav": "Primary navigation",
+      "board": "Ranking",
+      "adminConsole": "Admin console",
+      "attention": "{count, plural, one {{value} item needs you} other {{value} items need you}}",
+      "gameRail": "Your week"
     },
     "home": {
       "welcome": "Welcome, <name>{value}</name>",

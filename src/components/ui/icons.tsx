@@ -505,6 +505,29 @@ export function BellIcon(props: IconProps) {
 }
 
 /**
+ * إعلان — the megaphone: an org's announcement in the feed (wave 18, REQ-UIX-056). Drawn from the
+ * house's straight lines; not directional, so it does not mirror.
+ */
+export function MegaphoneIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 10v4h3l7 4.5v-13L7 10H4z" />
+      <path d="M17.5 9.5a3.5 3.5 0 0 1 0 5" />
+      <path d="M8 14.5l1 4.5" />
+    </Svg>
+  );
+}
+
+/** تعليقات — a speech bubble: a post's comment count (wave 18, REQ-UIX-055). */
+export function CommentIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+    </Svg>
+  );
+}
+
+/**
  * الرئيسية — home. Two additions the §4.2.1 list does not name and the shell
  * needs (DEC-106): this and the bell. A house is not on the brief's forbidden
  * list — that bans education clichés: books, caps, lightbulbs, mortarboards.

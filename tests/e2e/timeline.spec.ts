@@ -1,10 +1,13 @@
-// SCR-010 · /app — where a member lands, and it is the sessions timeline
-// (DEC-112, DEC-130, REQ-UIX-021, REQ-UIX-022, REQ-UIX-012).
+// The sessions list — `/app/sessions` (DEC-112, DEC-130, REQ-UIX-022, REQ-UIX-012).
+//
+// ★ Wave 18 (DEC-205 ruling 3, DEC-206 §4.64): `/app` is the home FEED now, its own
+// page (content's), and the list is `/app/sessions`' alone, rebuilt as browse
+// (REQ-UIX-060). Three cases moved with it, each a ledger line in STATUS.md.
 //
 // What this proves against the real page:
-//   · `/app` renders the timeline itself — no redirect — and a member's next
-//     confirmed session is the FIRST item, not repeated in its group;
-//   · a filter applied on `/app` lands on `/app/sessions?…`;
+//   · a member's confirmed session stands ONCE, in its own date group, saying
+//     «مقعدك محجوز» — there is no pinned first item any more;
+//   · a category chosen from the chip's menu lands on `/app/sessions?category=…`;
 //   · the empty case is the same screen, with an invitation to propose;
 //   · the filtered-empty state names the filter and «أزل» restores results.
 //
@@ -144,23 +147,22 @@ async function capture(p: Page, name: string) {
   await p.screenshot({ path: join(SHOTS, `wave6-sessions-${name}.png`), fullPage: true });
 }
 
-test("★ /app IS the timeline, and the member's next committed session is the first item — not repeated below", async ({ context, page }, testInfo) => {
+test("★ a committed session stands once, in its date group, saying so — no pinned item (§4.64)", async ({ context, page }, testInfo) => {
   const memberId = await signIn(context, memberEmail);
   if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
   await db.query(`delete from public.rsvps where session_id = $1 and member_id = $2`, [committedId, memberId]);
   await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [orgId, committedId, memberId]);
 
-  await page.goto("/ar/app");
+  await page.goto("/ar/app/sessions");
   await streamed(page);
-  await expect(page).toHaveURL(/\/ar\/app$/);
-  await streamed(page);
-  await expect(page.getByRole("heading", { level: 1, name: "الجلسات" })).toBeVisible();
+  await expect(page.locator("#main").getByRole("heading", { level: 1, name: "الجلسات" })).toBeVisible();
 
-  const cards = page.locator("article");
-  await expect(cards.first()).toContainText(COMMITTED);
-  await expect(cards.first()).toContainText("التالية لك");
-  await expect(page.getByText(COMMITTED)).toHaveCount(1);
-  await expect(page.getByText(SOON)).toBeVisible();
+  // The rail's «التالية لك» is in the HTML at every width (the frame's rail), so the rows are read from the list.
+  const rows = page.locator("#main ol article");
+  await expect(rows.filter({ hasText: COMMITTED })).toHaveCount(1);
+  await expect(rows.filter({ hasText: COMMITTED })).toContainText("مقعدك محجوز");
+  await expect(rows.filter({ hasText: "التالية لك" })).toHaveCount(0);
+  await expect(page.getByText(SOON).first()).toBeVisible();
   // «هذا الأسبوع» with its count, as a labelled group.
   await expect(page.getByRole("region", { name: /هذا الأسبوع/ })).toContainText(SOON);
 
@@ -168,11 +170,12 @@ test("★ /app IS the timeline, and the member's next committed session is the f
   await db.query(`delete from public.rsvps where session_id = $1 and member_id = $2`, [committedId, memberId]);
 });
 
-test("★ a filter applied on /app lands on the canonical /app/sessions (DEC-130)", async ({ context, page }) => {
+test("★ a category chosen from its chip's menu lands on the canonical /app/sessions (DEC-130, DEC-207 N4)", async ({ context, page }) => {
   await signIn(context, memberEmail);
-  await page.goto("/ar/app");
+  await page.goto("/ar/app/sessions");
   await streamed(page);
-  await page.getByRole("navigation", { name: "تصفية الجلسات" }).getByRole("link", { name: "فني" }).click();
+  await page.getByRole("navigation", { name: "تصفية الجلسات" }).getByRole("button", { name: /^التصنيف: / }).click();
+  await page.getByRole("menuitem", { name: "فني" }).click();
   await expect(page).toHaveURL(new RegExp(`/ar/app/sessions\\?category=${catId}$`));
   await streamed(page);
   await expect(page.getByText(SOON)).toBeVisible();
@@ -182,9 +185,9 @@ test("★ a filter applied on /app lands on the canonical /app/sessions (DEC-130
 test("★ the empty case is the same screen, inviting a proposal (REQ-UIX-021, REQ-UIX-012)", async ({ context, page }, testInfo) => {
   await signIn(context, emptyEmail);
   if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
-  await page.goto("/ar/app");
+  await page.goto("/ar/app/sessions");
   await streamed(page);
-  await expect(page.getByRole("heading", { level: 1, name: "الجلسات" })).toBeVisible();
+  await expect(page.locator("#main").getByRole("heading", { level: 1, name: "الجلسات" })).toBeVisible();
   await expect(page.getByText("لا جلسات قادمة بعد")).toBeVisible();
   await expect(page.getByRole("link", { name: "اقترح موضوعًا" })).toHaveAttribute("href", "/ar/app/propose");
   await expect(page.getByRole("navigation", { name: "تصفية الجلسات" })).toBeVisible();

@@ -114,7 +114,10 @@ test("empty, then an issued and a revoked certificate, serial and code isolated 
 
   await page.goto("/ar/app/me/certificates");
   await expect(page.getByRole("heading", { name: "شهاداتي", level: 1 })).toBeVisible();
-  await expect(page.getByText("لا شهادات بعد")).toBeVisible();
+  // ★ wave 18: every page-level locator from `#main` (DEC-145). Unscoped, «صالحة» met the hidden streamed
+  // copy of a hard load beside the page (DEC-201 §3, DEC-204) — the duplicate H1 measures, not this screen.
+  const main = page.locator("#main");
+  await expect(main.getByText("لا شهادات بعد")).toBeVisible();
   await capture(page, "empty");
 
   const { rows: sessRows } = await db.query<{ id: string; title: string }>(
@@ -148,16 +151,16 @@ test("empty, then an issued and a revoked certificate, serial and code isolated 
   );
 
   await page.reload();
-  await expect(page.getByText("جلسة الشهادات").first()).toBeVisible();
-  await expect(page.getByText("صالحة")).toBeVisible();
+  await expect(main.getByText("جلسة الشهادات").first()).toBeVisible();
+  await expect(main.getByText("صالحة")).toBeVisible();
   // ★ Sync-4b: unscoped, this matched both the revoked cert's own Badge
   // (whose text IS exactly "ملغاة") and the OTHER session's title
   // «جلسة الشهادة الملغاة», which contains it as a substring — exact
   // matching excludes the longer title.
-  await expect(page.getByText("ملغاة", { exact: true })).toBeVisible();
-  await expect(page.getByText("إصدار مكرر بالخطأ")).toBeVisible();
+  await expect(main.getByText("ملغاة", { exact: true })).toBeVisible();
+  await expect(main.getByText("إصدار مكرر بالخطأ")).toBeVisible();
   // The serial is dir="ltr" inside its own <bdi> (09 SCR-023).
-  const serial = page.getByText("CRT-2026-000001");
+  const serial = main.getByText("CRT-2026-000001");
   await expect(serial).toHaveAttribute("dir", "ltr");
   await capture(page, "issued-and-revoked");
 });

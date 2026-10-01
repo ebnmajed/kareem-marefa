@@ -26,6 +26,13 @@ import { CheckIcon } from "@/components/ui/icons";
 // The accessible name is the caller's `label`, naming the session; everything
 // drawn inside is `aria-hidden`, so nothing is read twice. The button is at
 // least 44 px in both directions.
+//
+// ★ Wave 18 (DEC-206 §1.5, DEC-207 §1.5, REQ-UIX-055): until session stories
+// exist a ring opens nothing, and a button that does nothing is a lie to a
+// keyboard and a screen reader. So with no `onOpen` the ring is NOT a button:
+// the same box, the same drawing, a non-interactive element named by `label` as
+// an image, out of the tab order. With `onOpen` it is the button above,
+// unchanged. No prop changes.
 
 const RING: Record<StoryRingState, string> = {
   live: "border-[3px] border-signal",
@@ -40,15 +47,9 @@ export function StoryRing({ state, label, stateLabel, glyph, caption, teamColor,
   const upcoming = state === "upcoming" ? (colour ? "border-team" : "border-team-neutral") : "";
   const style = colour ? ({ "--team": colour } as CSSProperties) : undefined;
 
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      data-state={state}
-      onClick={onOpen}
-      style={style}
-      className={`inline-flex min-h-11 w-[4.25rem] shrink-0 flex-col items-center gap-1 rounded-tile p-0.5 ${className}`}
-    >
+  const box = `inline-flex min-h-11 w-[4.25rem] shrink-0 flex-col items-center gap-1 rounded-tile p-0.5 ${className}`;
+  const drawing = (
+    <>
       <span aria-hidden className={`relative inline-flex size-15 items-center justify-center rounded-pill bg-surface ${RING[state]} ${upcoming}`}>
         {state === "live" ? <span data-slot="outer-ring" className="absolute -inset-[7px] rounded-pill border-2 border-signal" /> : null}
         <span className={`font-display text-2xl font-extrabold leading-none ${state === "seen" ? "text-fg-muted" : "text-fg-heading"}`}>
@@ -66,6 +67,18 @@ export function StoryRing({ state, label, stateLabel, glyph, caption, teamColor,
         <bdi className="font-bold text-fg-heading">{stateLabel}</bdi>
         <bdi className="text-fg-muted">{caption}</bdi>
       </span>
+    </>
+  );
+  if (!onOpen) {
+    return (
+      <div role="img" aria-label={label} data-state={state} style={style} className={box}>
+        {drawing}
+      </div>
+    );
+  }
+  return (
+    <button type="button" aria-label={label} data-state={state} onClick={onOpen} style={style} className={box}>
+      {drawing}
     </button>
   );
 }

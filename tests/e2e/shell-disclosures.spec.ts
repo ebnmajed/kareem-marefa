@@ -131,23 +131,25 @@ test("★ an outside click closes the menu", async ({ context, page }, testInfo)
   }).toPass({ timeout: 5000 });
 });
 
-test("★ desktop: «تصفّح» closes on navigation, and never two menus are open at once", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "«تصفّح» is a desktop control; the phone reaches it from the tab bar");
+// ★ wave 18 (REQ-UIX-054, DEC-205 §2): «تصفّح» is gone — its four links are the navigation rail
+// now, which is a list of links and not a disclosure, so there is nothing of it to close. What
+// REQ-UIX-023 still asks of the desktop shell is held on the one menu that remains: it closes
+// when a link inside it is followed, and the rail beside it navigates without opening anything.
+test("★ desktop: the account menu closes on navigation, and the rail is links — no second disclosure exists", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "the rail is a desktop control; the phone reaches the same places from the tab bar");
   await signIn(context);
   await page.goto("/ar/app/me/points");
-  // Measured BEFORE a menu opens: a modal menu hides the rest of the page from
-  // the accessibility tree, so the other trigger cannot be found by role after.
-  const account = await header(page).getByRole("button", { name: "حسابي" }).boundingBox();
-  await header(page).getByRole("button", { name: "تصفّح" }).click();
+  await expect(header(page).getByRole("button", { name: "تصفّح" })).toHaveCount(0);
+
+  await header(page).getByRole("button", { name: "حسابي" }).click();
   await expect(page.getByRole("menu")).toHaveCount(1);
-  // One open at a time: pressing the OTHER trigger while a menu is open is an
-  // outside press, so it dismisses the open menu — it can never stack a second.
-  await page.mouse.click(account!.x + account!.width / 2, account!.y + account!.height / 2);
-  await expect.poll(() => page.getByRole("menu").count()).toBeLessThanOrEqual(1);
-  await page.keyboard.press("Escape");
+  await page.getByRole("menuitem", { name: "شهاداتي" }).click();
+  await expect(page).toHaveURL(/\/ar\/app\/me\/certificates$/);
   await expect(page.getByRole("menu")).toHaveCount(0);
-  await header(page).getByRole("button", { name: "تصفّح" }).click();
-  await page.getByRole("menuitem", { name: "لوحة الصدارة" }).click();
+
+  const rail = page.getByRole("navigation", { name: "التنقّل الرئيسي" });
+  await expect(rail.getByRole("button")).toHaveCount(0);
+  await rail.getByRole("link", { name: "لوحة الصدارة" }).click();
   await expect(page).toHaveURL(/\/ar\/app\/leaderboards$/);
   await expect(page.getByRole("menu")).toHaveCount(0);
 });

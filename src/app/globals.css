@@ -575,6 +575,21 @@ html:has([data-play-root].theme-play-light) {
   }
 }
 
+/* ★ Wave 18 (REQ-UIX-054, DEC-206 §4.34): the rebuilt tab bar is 80 px and stays until
+   `lg`, where the navigation rail replaces it. Keyed on the bar's own presence, so a
+   page with no tab bar — every public route among them — reads exactly what it read
+   before: the two `:root` declarations of `--tabbar-h` further down are untouched.
+   It lives in the playground's block because only the app has this bar. */
+:root:has([data-tab-bar]) {
+  --tabbar-h: 80px;
+}
+
+@media (min-width: 1024px) {
+  :root:has([data-tab-bar]) {
+    --tabbar-h: 0px;
+  }
+}
+
 /* --------------------------------- typography ---------------------------
    AR runs slightly larger with taller line-height at equal hierarchy.
    Mobile values by default; desktop overrides ≥768px. Body sizes hold. */

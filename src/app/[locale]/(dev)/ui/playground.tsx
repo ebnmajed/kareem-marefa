@@ -8,6 +8,8 @@ import { TicketObject } from "@/components/ui/objects/ticket";
 import { PageHeader } from "@/components/ui/page-header";
 import { PlayScope } from "@/components/ui/scope";
 import { PlayWordmark } from "@/components/brand/wordmark";
+import { ActionBarDemo } from "./demos/action-bar";
+import { AttendeeStackDemo } from "./demos/attendee-stack";
 import { AvatarDemo } from "./demos/avatar";
 import { BadgeDemo } from "./demos/badge";
 import { ButtonDemo } from "./demos/button";
@@ -19,6 +21,7 @@ import { DataTableDemo } from "./demos/data-table";
 import { DateTimeDemo } from "./demos/date-time";
 import { DialogDemo } from "./demos/dialog";
 import { EmptyStateDemo } from "./demos/empty-state";
+import { FeedItemDemo } from "./demos/feed-item";
 import { FieldDemo } from "./demos/field";
 import { FileDropDemo } from "./demos/file-drop";
 import { FormSummaryDemo } from "./demos/form-summary";
@@ -55,6 +58,7 @@ import { TabsDemo } from "./demos/tabs";
 import { TagChipDemo } from "./demos/tag-chip";
 import { TextareaDemo } from "./demos/textarea";
 import { ToastDemo } from "./demos/toast";
+import { WeekHudDemo } from "./demos/week-hud";
 import type { DemoGround } from "./ground";
 
 // «ساحة اللعب» in the gallery — contract 4, DEC-183 §4.2(f), DEC-186 §2.
@@ -128,6 +132,11 @@ const DEMOS: { file: string; title: string; node: (ground: DemoGround) => ReactN
   { file: "form-summary", title: "ملخّص الأخطاء", node: () => <FormSummaryDemo /> },
   { file: "code-input", title: "رمز الحضور", node: (ground) => <CodeInputDemo ground={ground} /> },
   { file: "session-cta", title: "زرّ الجلسة", node: () => <SessionCtaDemo /> },
+  // ── wave 18 (DEC-207): the four the screens needed ──
+  { file: "action-bar", title: "شريط الإجراء السفلي", node: () => <ActionBarDemo /> },
+  { file: "week-hud", title: "أسبوعك", node: () => <WeekHudDemo /> },
+  { file: "feed-item", title: "عناصر الخلاصة", node: () => <FeedItemDemo /> },
+  { file: "attendee-stack", title: "من يحضر", node: () => <AttendeeStackDemo /> },
   { file: "rank-row", title: "صفّ الترتيب", node: () => <RankRowDemo /> },
   { file: "race-bar", title: "سباق الشركات", node: () => <RaceBarDemo /> },
   { file: "level-card", title: "بطاقة المستوى", node: () => <LevelCardDemo /> },

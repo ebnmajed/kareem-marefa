@@ -109,6 +109,27 @@ export function groupUpcoming<T extends Groupable>(items: T[], now: Date, timeZo
   return UPCOMING_ORDER.filter((key) => buckets.has(key)).map((key) => ({ key, items: buckets.get(key)! }));
 }
 
+/** Browse's groups (wave 18, `Browse.dc.html`, DEC-206 §4.64): no «جارية الآن» group of its own. */
+export type BrowseGroupKey = Exclude<UpcomingGroupKey, "live">;
+
+const BROWSE_ORDER: BrowseGroupKey[] = ["thisWeek", "nextWeek", "thisMonth", "later"];
+
+/**
+ * Upcoming sessions, sorted by the caller, into browse's non-empty groups: this week · next week ·
+ * this month · later. ★ A live session stands in THIS WEEK under its badge, first because the caller
+ * sorts live first — the artboard has no live group, and `later` is kept so a session two months out
+ * still stands somewhere (§4.64).
+ */
+export function groupBrowse<T extends Groupable>(items: T[], now: Date, timeZone: string, weekStartsOn = 7): TimelineGroup<T>[] {
+  const buckets = new Map<BrowseGroupKey, T[]>();
+  for (const item of items) {
+    const found = upcomingGroupOf(item, now, timeZone, weekStartsOn);
+    const key: BrowseGroupKey = found === null ? "later" : found === "live" ? "thisWeek" : found;
+    buckets.set(key, [...(buckets.get(key) ?? []), item]);
+  }
+  return BROWSE_ORDER.filter((key) => buckets.has(key)).map((key) => ({ key, items: buckets.get(key)! }));
+}
+
 /** Ended sessions, most recent first, one group per calendar month of their end. */
 export function groupEnded<T extends Groupable>(items: T[], timeZone: string): TimelineGroup<T>[] {
   const groups: TimelineGroup<T>[] = [];

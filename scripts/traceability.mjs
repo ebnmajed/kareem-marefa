@@ -202,6 +202,7 @@ const CROSS_CUTTING = {
   'REQ-UIX-051': 'every screen’s title, headings, text, links, icon buttons and submits',
   'REQ-UIX-052': 'every glyph on every screen',
   'REQ-UIX-053': 'every console screen, under /app/admin and /app/platform',
+  'REQ-UIX-063': 'the source tree and the built output — docs/design/screens/ is a reference, never an input',
 }
 
 // ── gap reports ───────────────────────────────────────────────────────────

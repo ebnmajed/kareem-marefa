@@ -5599,3 +5599,247 @@ vanish into a rewrite. · `DEC-194`'s two gates stay carried together. · `DEC-1
 overshoot ceiling is open with the owner.
 
 - **Documents changed:** `docs/plan/notes/wave-18-lead.md` (new), `STATUS.md`, and by the lead at Step 0: `CLAUDE.md`, the ten agent files, `01-prd.md`, `14-roadmap.md`, `15-backlog.md`, `09-sitemap-screens.md`
+
+---
+
+## DEC-206 — Wave 18, Step 0: what `DEC-205` left open, five corrections to it, the two PRs and who builds them, and fifty-two places where the thirteen artboards and `docs/plan/` disagree
+
+- **Date:** 2026-09-30 · **Decided by:** the wave-18 lead, from `docs/design/screens/M10a.md`, the thirteen artboards opened in a browser (390 and 1280, in bands), and three independent readings of the tree; **the owner's four rulings in `DEC-205` §2 are not re-opened** — every line below is either a correction of a citation, a consequence of those rulings, or a default in force until the owner says otherwise
+- **Amends:** `REQ-UIX-021` and `DEC-130` (what `/app` renders; three tabs → five), `16-ui-redesign.md` §6.1, §6.3, §6.6, `09-sitemap-screens.md` §3 and §4 (the nine screens' notes). **Corrects:** `DEC-205` §2, §3, §6 and `M10a.md`'s citations (§1 below)
+- **Adds:** `REQ-UIX-054` … `REQ-UIX-063`; `STORY-UIX-039` … `STORY-UIX-050`; milestone **M20**, under `14-roadmap.md`'s own heading; the table `feed_announcements` at **`0164`** (its `ENT-` entry is written into `02` in the migration's own commit), which is on disk when this wave's closing entry names it (`DEC-180`'s rule: this entry cites the number the brief reserved and nothing later)
+- **Does not touch:** the five frozen public routes, `qa:contract`, the register-form fingerprint, `registrations`
+
+### 1 · Five corrections to `DEC-205` and to `M10a.md` — citations, not rulings
+
+1. **`REQ-UIX-021` does not say «two rows on desktop».** It says `/app` renders the sessions timeline in one column (`01-prd.md:2744`). «Two rows on desktop» is `16` §6.1's sentence and no requirement's. So **ruling 2 (the rails) amends `16` §6.1 and `DEC-130`'s «three tabs»**, and **ruling 3 (home is the feed) is what amends `REQ-UIX-021`**, `DEC-112` and `DEC-130`'s «one component on two routes». The requirement text follows in `01-prd.md` as `REQ-UIX-054` and `REQ-UIX-055`.
+2. **`DEC-205` §6 says «three of the routes»; this wave rebuilds ONE of `DEC-204`'s three — `/app`.** `/app/me/points` and `/app/leaderboards` are batch M10c. The hard-load duplicate is re-measured on the rebuilt `/app` only, recorded beside the old figure, and **the other two are owed by the wave that rebuilds them.**
+3. **`src/components/ui/` holds 49 `.tsx` files, not 50** (`ls`, 2026-09-30; the fiftieth entry is `index.ts`). The four new primitives take it to **53**, and `tests/unit/ui-playground.test.ts:117` moves from `>= 49` to `>= 53` in the commit that adds the fourth.
+4. **Six ids in `M10a.md` point at nothing or at something else.** `REQ-AUTH-004` → the prefix is `AUT`, and the carried destination is `REQ-AUT-005` · an id in a `REQ-SCR` series, numbered 021 → no such series exists; «reactions earn nothing» is `REQ-EVT-004` · a `REQ-SES` id numbered 023 → the last is `REQ-SES-020`; the read-only outcome is `16` §5.3 under `REQ-UIX-015` · `REQ-RAT-005` is «admins see who rated what», not a «top rated» order · `DEC-090` is the affordance rule; the check-in rate limit is `DEC-015` / `REQ-CHK-006`, and it is **10 attempts per 10 minutes**, not 5 · the deferral of objectives and tags is `DEC-171`, not `DEC-076`.
+5. **The ring's states are the primitive's, not `DEC-205` §1's.** `story-ring.tsx` takes `live · upcoming · recap · seen` (`ui/index.ts:892`, `REQ-UIX-040`); `DEC-205` wrote «live · unseen · seen · none». **The primitive's names stand** — its props are not changed by a sentence. «Unseen» is `upcoming` or `recap`; «none» is no ring at all; ★ **`seen` is never rendered this wave**, because what a member has seen is `story_views`, which is wave 19's. A ring is drawn for a session inside `05-stories.md`'s window (24 h before `starts_at` to 24 h after `ends_at`, never a cancelled one), in its order, **with no `onOpen`: it is not a button and says so to assistive technology.**
+
+### 2 · Two PRs, and how the second is based
+
+**PR A — `wave-18a/the-frame`**, cut from `main` at `42a14ba0`: the shell, `SCR-002` / `003` / `004`, `SCR-007`, `SCR-010`, `SCR-011`, the four primitives, `0164`. **PR B — `wave-18b/the-event`**: `SCR-012` in its three phases and at desktop, `SCR-014`, `SCR-016`.
+
+★★ **PR B is opened against `main` from its first push and carries A's commits until A merges.** It is never based on `wave-18a/the-frame`. A stacked PR whose base is deleted is closed by GitHub for good (PR #36, 2026-09-30); basing on `main` removes the step somebody could forget. Its diff is large until A merges and shrinks by itself afterwards. **One PR was considered and refused**: nine screens, four primitives and a table in one review is above every wave in `TEAM.md` §1, and B's three screens are `checkin`'s and `sessions'` most guarded code.
+
+**A's team — three tracks, and the lead.** `sessions` (opus): `SCR-007`, `SCR-011`, `action-bar`, `session-cta`'s drawn phases, and the session-post DTO. `content` (opus): `SCR-010`'s feed, `feed-item`, `attendee-stack`, `card`'s `post` variant, the recap. `scoring` (opus): `week-hud`, the game rail's three cards, the achievement items, moments 3 and 5 on the HUD. **The lead**: the shell and both rails' frame, the three `(auth)` screens, `0164` with its five parts, `ui/index.ts` and the registry, the design gate, the captures beside the artboards, the re-measure. **B's team is named when B opens**: `sessions` and `checkin`, with `content` for the materials, photos and discussion slots.
+
+### 3 · `feed_announcements` — what is decided here, and what is not
+
+**Decided:** the requirement (`REQ-UIX-056`), and the table's five parts, which its story names one by one — `org_id` not null to `orgs`; RLS enabled; the full policy set (members of the org read a published, unexpired row; an admin reads every row of the org and inserts, updates and deletes; a moderator and a member write nothing; `anon` and `service_role` get nothing; no super-admin disjunct, invariant 8); ★ **a grant for every policy**, in the same file; and its test, with a fixture row so the generated isolation sweep is not vacuous over it.
+
+**An announcement is** a short text an org admin publishes to the whole org, with `published_at` and an optional `expires_at`. **It is not** a member's post, a poll, a comment thread or a thing that can be reacted to, and it notifies nobody.
+
+★ **Not decided, and the owner's:** **there is no screen that writes one.** Every console route is outside this wave (`DEC-205`, the brief), so the feed reads rows that only SQL can create. The default in force: the table, the policies and the feed item ship; the authoring screen is the console wave's, with its own requirement then. If the owner wants announcements usable on the day A merges, a one-field form under `/app/admin` is a small story — but it is a console route, and adding it is the owner's word, not the lead's.
+
+### 4 · Where the artboards and `docs/plan/` disagree — continued from `DEC-199` §5
+
+*One line each: what the artboard draws, what the plan or the tree says, which wins, why. «Flagged» means the owner is told by name in the PR.*
+
+**The shell**
+
+30. **Five tabs against three.** `tab-bar.tsx:41` says «THREE TABS, NOT FOUR (DEC-130)»; `16` §6.1 drew four. **The artboard wins** (ruling 2). «الرئيسية» returns because `/app` is no longer the sessions list, which is the reason `DEC-130` removed it.
+31. **The nav rail links «الأعضاء».** `/app/members` has no index on disk (`09`:722) and `SCR-019` is batch M10b. **The plan wins: the rail omits the link until the route exists.** Today's browse menu already links there (`app/layout.tsx:81`), a dead link the rebuilt shell does not carry over.
+32. **«لوحة الإدارة 4» — a queue count in the rail.** Nothing the shell can read returns it; the only source is the whole dashboard read (`admin-dashboard.ts:114`). **The artboard wins**, from a new add-only function returning the four attention counts alone, staff only. The same figure feeds «يحتاج انتباهك» on the home (37).
+33. **The phone's top row has no account menu** — search and the bell only — and the staff links live in the account menu today (`account-menu.tsx:67`). **The artboard wins**; on the phone a staff member reaches the console through «يحتاج انتباهك» on the home and through «حسابي». ★ Whether `/app/me` (not rebuilt this wave) carries the console link and sign-out today is measured in the shell's own plan before the menu is removed; if it does not, the phone keeps the account menu behind the «حسابي» tab's screen until M10c.
+34. **`--tabbar-h` is 64 px; the raised «اقترح» is 56 px and stands above the bar.** **The artboard wins**; `main`'s `padding-block-end` moves in the same commit (`16` §3.1's rule, unchanged).
+35. **«Content max 1200 px» (`09` §2) against a 1280 container.** **The artboard wins** for the member shell; the console keeps its own width.
+36. **The desktop frame for screens with no 1280 artboard.** Only `SCR-010` and `SCR-012` have one. `M10a.md` §0 says browse «uses the same frame». **`SCR-011` and the three `(auth)` screens and `SCR-007` are built in the frame (or, for the four outside the shell, centred at their phone width) and captured at 1280 with no drawing to hold beside them** — the record says so, and the owner's review of those five is the phone's.
+
+**Sign-in, choose-org, no-access**
+
+37. **«من شبه الجزيرة» under the wordmark on sign-in.** The screen does not know the org: the org is resolved from the domain after Google answers, and `09` `SCR-004` «names no org». **The plan wins: no org's name on `SCR-002` or `SCR-004`.**
+38. **The sticker «أول حضور = شارة».** `first_check_in` is seeded for every org (`0027:544`), so it is true by default. **The artboard wins.** Flagged: an org that removes the badge makes the door's one promise false.
+39. **Each org's domain and a mark on choose-org.** The DTO is `{ id, name, slug }` (`flow.ts:15`), and the domain is the visitor's own — identical on every row, since the rows exist *because* one domain is on more than one list. **The plan wins: the name and an initial in a tile; no domain, no logo, no change to the RPC.**
+40. **The signed-in address, masked, on no-access.** Today it is not shown. `REQ-AUT-006` forbids naming an org or a listed domain; the visitor's own address is neither. **The artboard wins** — read from the session, masked to the first character, inside `<bdi dir="ltr">`.
+41. **«الدخول بحساب آخر» at the foot of choose-org.** New. **The artboard wins**; it is the action no-access already has.
+
+**The public card**
+
+42. ★ **Seats («28 من 40 مقعدًا متاحة»), the presenter's name, avatar and company.** `DEC-066`'s allowlist: «no abstract, presenters, capacity, comments, materials or attendee counts leave the org», and `session_public_card()` returns none of them. **`DEC-066` wins; none is drawn and the RPC does not change.** `09`:142's «beyond the presenters» contradicts `DEC-066` and loses to it. The presenter's name on the poster itself is the rendered artefact, already public as the OG image. Flagged: widening the allowlist is a `DECISIONS.md` entry the owner takes.
+43. **«التسجيل مفتوح» as a badge.** The function returns no state; the badge is clock-derived and exists for `live` and `ended` only. **The plan wins.**
+44. **«افتح الجلسة» (`09`) against «سجّل الدخول لحجز مقعدك».** The second is what the tree already says. **The artboard wins**; `09` is corrected.
+
+**The «+50», everywhere**
+
+45. ★ **The amount is never a literal.** The artboards print «+50» on the poster, the rows, the button and the check-in panel; the seeded rule is **20** (`scoring_rules`, `0027:527`) and an org may change it. **The plan wins: every figure is the rule's, read through the DAL; a `+0` is never drawn** (`REQ-CHK-018`).
+46. **«The sticker belongs to the poster template» (ruling 4) — and no template has it.** Adding a layer to the baseline templates moves parity goldens and is the studio's wave. **So this wave a RENDERED poster shows no sticker**, and `ui/poster`'s own `sticker` prop draws the computed amount on the **typographic placeholder** only, for a signed-in viewer. The public card's placeholder shows none (42: the amount is not on the allowlist).
+
+**Home**
+
+47. ★ **«ترتيبك هذا الأسبوع · ينتهي الجمعة».** `leaderboard_kind` has no `weekly`; `DEC-NEXT-8` is accepted and unbuilt, and «the weekly leaderboard» is on every wave's not-this-wave list. **The plan wins: the HUD shows the MONTHLY rank**, labelled as the month, ending when the month ends. No rank for a member who opted out.
+48. **«#4 من 212», and «فوقك: سارة · 30+ تكفي».** No function returns a total or a neighbour. **The artboard wins**, derived from the monthly board's rows — which every member already reads on `SCR-027`. The total is the count of ranked members; an opted-out member is nobody's neighbour.
+49. ★ **«سلسلة 7× · تخطٍّ واحد متاح».** The rule is three check-ins in a calendar month, counted in months; no skip exists (`DEC-NEXT-9`, accepted, unbuilt). **The plan wins: the streak in months as `getPointsHead()` has it, no skip line, nothing at all when streaks are off.** The same for «مع الجلسة الثامنة في سلسلتك» on `SCR-014`.
+50. **«الجولة 3، تنتهي بعد 26 يومًا».** There is no round or season table; the company board is a calendar month. **The plan wins: the month, and the days left in it.**
+51. **❤ and 🔥 on a session post.** `REQ-EVT-003` lets any member react to a session and `reactions` accepts a `session_id`; no screen has ever written one and only `like` is in use. **The artboard wins for `like`**; the second kind waits for the house set to be chosen with stories. `REQ-EVT-004` holds: it earns nothing.
+52. ★ **An achievement item for a level-up or a rank change.** `member_badges` and `streak_awards` carry a timestamp; **a level change and a rank change leave no row** — `points_balances.updated_at` moves on every ledger insert. **The plan wins: badges and streak awards only**, for members who have not opted out (`DEC-NEXT-6`). A level history is a table, and this wave has one table. Flagged.
+53. **«⚡ 9» — a reaction on an achievement.** `reactions` targets a comment or a session. **The plan wins: an achievement item carries no reaction.**
+54. **«28 حاضرًا» on a recap, and «23 من 40 حاضرًا الآن» on a live post.** `check_ins` is readable by oneself, staff and presenters; members get `session_seat_counts()`, which has no attended figure. `09` `SCR-012` already lists «check-in count» as a member-visible realtime value. **The artboard wins, as a COUNT**: one add-only definer function returning the number for a session the caller may see, written by `checkin`'s custodian and promoted after `0164`. **Never who** (56).
+55. **Three photo tiles on a recap.** No thumbnail derivative exists; `getPhotosPageData()` signs the full image. **The artboard wins with what exists**, lazily loaded, three at most; a small derivative arrives with wave 19's `story` derivative. «حمّل المواد» is a link to the session's materials, **not a download** — a download is an audited route (`DEC-177`).
+56. ★ **Avatars of who is attending — the live card's stack, «من يحضر · 12 محجوزًا من 4 شركات».** `rsvps_read` and `checkins_read` are self, staff and presenter; `0010:508` says why: «a member cannot see who else attended (A33 rule 3)». **The plan wins: a member sees the count; `attendee-stack` renders identities only for a viewer RLS already answers — staff and the session's presenters.** The per-company figure does not exist and is not built. Flagged.
+57. **`session-cta` on a feed post.** Moment 1 belongs to `SCR-012`'s action card and plays from the reserve action's own result (`DEC-195` §2.1). **The plan wins: in the feed the control is a LINK** — to the event page to reserve, to `SCR-014` to check in, to `SCR-015` to rate — so a reservation is never made where its moment cannot play.
+58. **«يحتاج انتباهك» on the home.** `DEC-112` moved it to the admin dashboard. **The artboard wins** (`M10a.md` §5): counts as links, staff only, the same function as 32.
+59. **«التالية لك» in the game rail.** `REQ-UIX-021` made the next committed session the first item of the timeline, «not a separate hero». **The artboard wins on desktop; on the phone the feed is committed-first**, which is that requirement's intent.
+60. **An empty feed.** `DEC-112` superseded `16` §6.6 («home becomes browse»); `M10a.md` brings it back. **The artboard wins**: a new org's home is the date-grouped list inline.
+61. **The presenter's company as text in the team colour.** A colour from data has no guaranteed contrast as text. **The artboard wins if it passes**: the seven named colours are measured on the playground's surface, and one that fails 4.5:1 as text is drawn as the ring and a dot with the name in the body colour. The sweep decides, not the eye.
+
+**Status colours**
+
+62. **«قائمة انتظار» in cyan, «جارية الآن» as a coral fill.** Cyan is a team colour. **`DEC-073` wins, as `DEC-186` §3 and `DEC-195` §6.21 already ruled**: a badge wears the status constants the primitive has, in their on-dark forms. Nobody edits a status class.
+
+**Browse**
+
+63. **A sort, and «الأعلى تقييمًا» for staff.** No sort exists; the order is fixed in `search.ts:159`; `REQ-RAT-004` keeps ratings off cards and `REQ-RAT-005` is another thing (§1.4). **The plan wins: no sort control.**
+64. **The groups.** The tree has `live · thisWeek · nextWeek · thisMonth · later · month:…` and lifts one pinned session; the artboard has هذا الأسبوع · الأسبوع القادم · هذا الشهر · سابقة. **The artboard wins, with `later` kept** — a session two months out must stand somewhere — a live session sits in this week under its badge, and ended sessions collapse behind one link with their count. No pinned item: the home carries it now.
+65. **The desktop filter rail (`09` `SCR-011`).** The nav rail is on that side now. **The artboard wins**: the chip row and the sheet at every width.
+
+**The event page, check-in and the host view — PR B; each is re-measured at B's own Step 0**
+
+66. **«ماذا ستتعلّم؟».** `sessions.objectives` does not exist (`slots.ts:65`); `REQ-SES-014` is defined and unbuilt, and `DEC-171` left it to the owner. **The plan wins: the section is absent**, which is also what the artboard says of an empty one. Flagged.
+67. **«قدّمت 4 جلسات» on the presenter card.** `presenter-list.tsx:15`: «no rating and no computed history». **The plan wins.** Flagged.
+68. **The dashed locked row for after-phase materials.** RLS returns no such row to a member, so the page cannot know one exists, and promising material that may never come is a lie. **The plan wins unless B adds a count**, decided there.
+69. **The audio row with a player.** `REQ-MAT-007` asks for one and none was built. **Both agree; the tree is behind.** B builds it.
+70. **A photo button on the comment composer.** `comments` has no attachment column — the owner's schema decision since wave 6. **The plan wins.**
+71. **A map in the venue card.** A venue has a `map_url` and no coordinates; an embed is a third-party frame the CSP does not admit. **The plan wins: the link.**
+72. **The date, time and venue after the action, inside its card.** `09`'s order has them before it. **The artboard wins**; `REQ-SES-011`'s language-before-action is met by the chip row (`DEC-045`).
+73. **The desktop action row.** `09` says a sticky rail, the tree has a sticky 372 px column, `16` §6.3 and the artboard say a full-width row that sticks once scrolled past. **The artboard wins.**
+74. **«أعلى تفاعل 41», and the «paid since 8:02» timestamp.** No reaction aggregate exists; the award DTO carries no time. **The plan wins for the first; the second is an add-only field**, `scoring`'s.
+75. ★★ **The wrong-code shake.** `M10a.md` and the brief call it input feedback. `REQ-UIX-046`'s acceptance says «a refused code does not animate», `code-input.tsx:33` says «a wrong code never animates», `DEC-183` §2 and wave 16's rule say a failure never animates, and `globals.css` has no such keyframe. **This is a requirement against a drawing, and the lead does not pick.** Default in force: **the requirement stands** — coral border and the message, which is also the drawing's own reduced-motion form. **The owner rules before B builds `SCR-014`**; a yes amends `REQ-UIX-046` by name.
+76. **«يتغيّر كل 10 دقائق» and «لا حاجة لحجز مسبق».** The rotation is an org setting (60 – 3600 s) and walk-ins are a session's (`REQ-CHK-010`). **The plan wins: both lines are computed**, and the second appears only when it is true. `09`:280's «no RSVP required» is stale and corrected with B.
+77. **Projection, wake-lock, a countdown, a walk-in count, a manual-mark sheet.** `09` `SCR-016` asks for the first three and the tree has none; the last two are derivable. **Both agree; B builds them.**
+
+**The primitives**
+
+78. **`attendee-stack` beside `AvatarStack`.** `avatar.tsx` already exports a stack. **Both stand**: the new file composes `avatar` with team rings and a count line; `AvatarStack` keeps its call sites. `content`'s plan says whether the old one can simply be the new one's inside.
+79. **«`avatar` gains the team ring».** It has `teamColor` since wave 15. **Nothing to add** — two prop additions, not three.
+80. **«`card` gains `post` and `row`».** `density` already has `row`. **`post` is the one addition**, add-only, no call site's rendering changed.
+81. **`action-bar` and `src/components/sessions/action-bar.tsx`.** One name, two things. The primitive lands in A, in the gallery; the screen's own file is deleted when B rebuilds `SCR-012` on it.
+
+### 5 · The five moments in this wave — confirmed, none added
+
+| Moment | Where, in wave 18 | Its key, unchanged | Its static state |
+|---|---|---|---|
+| 1 · الحجز | `SCR-012`'s action card (B) — **never the feed** (57) | the reserve action's own result | the booked face |
+| 2 · تسجيل الحضور | `SCR-014` (B), then the 1.4 s return `DEC-197` §1 kept | the check-in action's own result | the coin at rest, the three lines |
+| 3 · the count-up and the flame | the HUD on `SCR-010` (A), and `SCR-012`'s outcome card (B) | `member_seen_marks`' points mark | the balance and the delta, no motion |
+| 4 · the level | not on any screen of this wave | — | — |
+| 5 · the rank change | the HUD's rank tile on `SCR-010` (A) | `member_seen_marks`' monthly mark (47) | the rank and the arrow, shown and never pulsed (`DEC-197` §2) |
+
+**There is no sixth.** ★ One consequence the artboards do not draw: **moments 3 and 5 now have two surfaces each** — the HUD, and `SCR-022` / the boards. They share one mark, so whichever the member opens first plays and the other is silent. That is `DEC-195`'s once-per-occurrence, and `scoring`'s plan proves it with a test that opens both.
+
+### 6 · For the owner — by name, none blocking PR A
+
+1. **The shake** (75) — before B builds `SCR-014`.
+2. **An authoring screen for announcements** (§3).
+3. **`DEC-066`'s allowlist** (42) — the public card draws less than the artboard.
+4. **Who is attending** (56) — members see a count, not faces.
+5. **Level-ups in the feed** (52) need a history table; **learning objectives** (66) need their column; both are new scope.
+6. **The weekly rank, the skip and the round** (47, 49, 50) are drawn and not built; the HUD says the month.
+
+### 7 · Carried, unchanged
+
+`DEC-201` §3 / `DEC-204` — re-measured on `/app` alone (§1.2), not fixed. · `DEC-194`'s two gates, together. · `DEC-186` §4's `1.08` ceiling, the owner's. · F2 and F3 (`DEC-198` §5): the rebuilt screens sit under the same `loading.tsx` boundaries and inherit both.
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-054` … `REQ-UIX-063`), `14-roadmap.md` (M20; the sequence), `15-backlog.md` (`STORY-UIX-039` … `STORY-UIX-050`), `09-sitemap-screens.md` (the nine screens), `scripts/traceability.mjs` (one cross-cutting row), `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten agent files (the wave-18 map), `STATUS.md` (the wave-18 block), `docs/design/screens/**` (added to the tree)
+
+---
+
+## DEC-207 — Wave 18, sync 1: three plans approved; three readings found five things Step 0 measured wrongly; the rulings every track builds on
+
+- **Date:** 2026-09-30 · **Decided by:** the wave-18 lead, on the plans of `sessions`, `content` and `scoring` (`docs/plan/notes/{sessions,content,scoring}.md` § *Wave 18 — plan*); the owner's gate (`DEC-205` §2) is not re-opened
+- **Corrects:** `DEC-206` §4.47, §4.48, §4.46, §5, and §1.5's claim about `story-ring`
+- **The frame is in:** `58c73336` (the shell), `985aa81a` (the door); contract 1's slot is **`<PageFrame rail={…} railLabel={…}>`** (`src/components/shell/page-frame.tsx`), a server component — the rail is in the HTML at every width and not displayed below `lg`
+
+### 1 · What the three readings found that Step 0 did not — recorded, as `DEC-197`'s table was
+
+| # | Found by | What `DEC-206` said | What is true | Ruling |
+|---|---|---|---|---|
+| 1 | `scoring` (F1) | §4.47: «no rank for a member who opted out» | `REQ-LDR-008`: «an opted-out member still sees their own rank privately»; `boards_read` returns it (`0027:487`); `SCR-027` shows it | ★ **The requirement wins.** The week shows an opted-out member their own rank with «مخفيّ عن غيرك», and they are nobody's neighbour. §4.47 is corrected |
+| 2 | `scoring` (F2) | §4.48: «the total is the count of ranked members», derived from rows every member reads | RLS hides opted-out rows, so the visible count can be smaller than the rank («#4 من 3») | ★ **Option C**: one definer function, count only, `monthly_ranked_count(p_snapshot)` — `scoring` writes it under `proposed/`, the lead promotes it after `0164` with its RLS case. It reveals nothing the gaps in the ranks do not |
+| 3 | `scoring` (F5) | §5: moments 3 and 5 «share one mark» | `mark_points_seen()` writes the entry, the total **and the level** at once: a home that acknowledged moment 3 with the current level would silently eat moment 4 on `SCR-022` | ★ **The week passes the level LAST SEEN through**; the level cursor moves only on `SCR-022`. No schema change |
+| 4 | `sessions` (N1) | §4.42 / §4.46: the public card shows «the poster whole, 4:5» with the RPC unchanged | the only artefact `anon` may read is the **`og` render, 1200 × 630** (`0122:107`, the storage policy) | ★ **The public card shows the `og` render whole, at its own ratio — never cropped** (`REQ-UIX-026` holds). The 4:5 box is the typographic placeholder's. Widening what `anon` reads is `DEC-066`'s and the owner's |
+| 5 | `content` (§6.3) | §1.5: «a ring … is not a button» | `story-ring.tsx` renders a `<button>` in every state, with or without `onOpen` | ★ **`story-ring.tsx` is released to `content` for one render change**: with no `onOpen`, a non-interactive element named by its label. Its one assertion is a ledger line. No prop changes |
+
+★ **Why it matters.** Each of the five is a line the lead wrote from a measurement that stopped one step short. Three independent readings found them in an afternoon; the lead's own would have shipped four of them. **This is why the tracks spawn planning-only.**
+
+### 2 · The rulings — each binding on the track named
+
+**The frame (all three).** The slot is `PageFrame`; a page passes a `rail` fragment and sets no `max-w-*` of its own. Both the phone's week and the rail's cards are in the HTML; the hidden twin **claims nothing and acknowledges nothing** (`scoring`'s gate, §5.3 of its plan — `offsetParent`). **Browse passes the game rail too** (`M10a.md` §0: «browse and the hub use the same frame»). ★ **Browse owns its phone top row** (`sessions` Q2): below `lg` the shell's bar gives way on `/app/sessions` (`ownsTopRow()`), and the page renders `page-header` with the bell (`NotificationBell`) in its actions; from `lg` the shell's bar is always there. The shell's phone search control links to **`/app/sessions#browse-search`**, so the page's search field carries that id.
+
+**`sessions`.**
+- **Contract 3's names are `sessions'`**: `getSessionPosts()` → `SessionPostsData`, `SessionPost`, `SessionPostAction`; `getNextForMe()` and the `NextForMe` server component, which **is** the rail's «التالية لك» (`content` builds no second one). Add to `SessionPost`: `excerpt: string | null` (the desktop post's copy, `content`'s request) and `attendedCount: number | null` from the lead's count function once published (Q5).
+- The feed's window: live and open within **14 days ahead, 10 at most**; ended within **7 days, 5 at most**; a cancelled one the viewer held a seat on, inside either.
+- **N2** — a cancelled public card is the 404, as today; `REQ-UIX-059`'s «offers no action» holds. **N3** — «الحضور في القاعة فقط.» **stays**, one muted line (`REQ-SES-008`'s care, and wave 7's reason). **Q3** — an ended card's action reads «سجّل الدخول لعرض الجلسة» (a new string).
+- **N4** — the two chips are `ui/menu`s of **links**. `/app` does not work without JavaScript today (F3, the owner's), so a menu costs nothing that is not already lost; the applied filters stay visible and removable as links.
+- **N5** — date and venue on one line, joined with the public card's no-break rule. **N7** — a phrase chip is allowed where an artboard draws it at 390 and the capture proves it does not wrap; otherwise it goes. **N8** — the primitives' sizes win. **N10** — `booked` with no `cancel` is approved, add-only.
+- The deletions (`sessions-timeline.tsx`, `filter-bar.tsx`, `timeline-skeleton.tsx`) follow `content`'s commit of `/app`.
+
+**`content`.**
+- The home's regions as the plan lists them; each item groups **under its own day**, and the days read **today · future ascending · past descending** (§6.6, §6.7).
+- **§6.1** — `AvatarImportPrompt` and the no-company banner move to the home, beside each other, above the week (`sessions` Q7 is the same ruling).
+- **§6.2** — the phone's posters are **whole, 4:5**; the artboard's 342 × 300 box loses to `REQ-UIX-026` and ruling 4.
+- **§6.4** — the ring's inside is the primitive's form. **§6.5** — the 24-hour window stands, so the row holds fewer rings than drawn. **§6.8** — 44 px targets. **§6.9** — the open post draws the seats line **and** share and bookmark. **§6.10** — «المواد», no download glyph.
+- The staff strip reads `getShellData(locale).attention` (the lead's, `src/lib/dal/shell.ts`), `null` for a member, never a 404.
+- The week is `scoring`'s three components — `MemberWeekHud`, `CompanyRaceCard`, `GameRail` — placed where the artboard puts them.
+- `feed_announcements`: `published_at` is **not null**, default `now()`; the member policy says `published_at <= now()` and not expired; `feed.ts` applies the same predicate for an admin's own home; `body` is 1 – 500 characters; the index is `(org_id, published_at desc)`. All in `0164`.
+
+**`scoring`.**
+- `week-hud` draws its own tiles and composes `progress-bar` and `link` (W4 — `M10a.md` §10's «`stat`» loses: `stat` takes a string, and moment 3 needs a node).
+- ★ **The rail carries the level line** under the balance (W5): `REQ-UIX-055` lists «the way to the next level» in the week, and a requirement wins over an artboard that omits it.
+- The flame grows where one is drawn — the rail (W6). Phone race: two leaders and the member's own; desktop: four and the own if absent (W7). The streak card states the rule, read (W8). The rank figure links to the monthly board and the neighbour's name to their profile (W9, `SCR-020` exists). No copy says «now» of a nightly figure (W11).
+- `race-bar` gains `layout?: "stacked" | "inline"`, add-only, the metric still said on every row (W3).
+- An opted-out member's own badge appears in their own feed only (Q3). A hard load shows the static state, as `DEC-197` §5 rules (Q4).
+
+### 3 · Contract 2 — how a primitive lands
+
+The four new signatures and `race-bar`'s and `session-cta`'s additive props are in `ui/index.ts` at this entry's commit. ★ **Two additions change a type an existing file satisfies** — `CardDensity`'s `post` and `session-cta`'s `rate` state with an optional `cancel` — so they land **in the same commit as their owner's implementation**, never before: a type that runs ahead of its file breaks `tsc` for everyone. **A new file lands in one commit with its registry entry**: the track tells the lead its paths are ready, and the lead commits them with the entry and the gallery's wiring, so the gate is never red between two commits.
+
+- **Documents changed:** `src/components/ui/index.ts`, `STATUS.md` (S1, P0), `DEC-206` corrected by this entry (the log is append-only)
+
+---
+
+## DEC-208 — Amends `DEC-199` §2: a screen's page file is DELETED first, then written from its artboard — and the story lists what it kept, requirement by requirement
+
+- **Date:** 2026-09-30 · **Decided by:** the owner, mid-wave 18, for this wave's PR B and every screens wave after it
+- **Amends:** `DEC-199` §2 («a screen is REBUILT to its design, never restyled») — the rule stands; this is how it is kept
+- **Applies to:** PR B (`SCR-012`, `SCR-014`, `SCR-016`) and every screen rebuilt after M10a; carried into every screens brief, the way «rebuilt, never restyled» already is
+
+### 1 · The rule
+
+> ★★ **DELETE THE PAGE FILE FIRST, then write the screen from its artboard.** Not «edit until it matches» — remove
+> it, then build.
+
+«Nothing survives by default» is a discipline, and a discipline will not hold across fifty screens: a region kept by
+inertia looks exactly like a region kept on purpose. Deleting makes it mechanical — **a region cannot be kept by
+inertia if it is not there** — and the history shows a delete and a create rather than edits a reviewer has to judge
+line by line. So a rebuild lands as **two commits**: the page file (and the screen's own markup files) removed, then the
+screen written from its artboard. A screen that is edited in place is not rebuilt, whatever it looks like afterwards.
+
+### 2 · The guard — what a blank file loses is what nothing tests
+
+After deleting, **re-derive what must survive from the requirements and the DAL, never from memory**: the data calls;
+the auth boundary (`requireSession()` at the data, never in a layout); `<bdi>` on every interpolated title, name and
+code; `?next=` carried where it was carried; the phase gates and the affordance matrix's predicates; the no-JS path
+where one exists; the accessible names the suites pin. **A rebuild that drops one of those will not fail a test — it
+will just stop doing it.**
+
+So **the story lists what it kept and which requirement made it keep it** — a table in the track's note, one row per
+behaviour, `REQ-*` beside each, written before the create commit and checked against the new file after it. The
+reviewer reads that table against the new file, not the old diff.
+
+### 3 · Where the sentence is carried
+
+`CLAUDE.md` (the visual-direction paragraph and the wave-18 rules), the ten agent files (the shared rule 1),
+`TEAM.md` §5, `15-backlog.md` (`STORY-UIX-048` … `050`, and §23g's header for every story after), `14-roadmap.md` (M20
+and the sequence), and `STATUS.md`'s PR B rows. **Every screens brief after M10a carries it verbatim.**
+
+### 4 · PR A, stated plainly
+
+PR A's screens (`SCR-002`/`003`/`004`, `007`, `010`, `011`) were written over their old files in one commit each, from
+their artboards — whole-file rewrites, not edits, but **not** the delete-then-create this entry asks for, and without
+the kept-behaviour table. They are not redone: they were checked against their artboards and their behaviour suites
+passed unchanged or with ledger lines. ★ **But their kept-behaviour tables are written now, retroactively, in each
+owner's note**, so the reviewer has for PR A what PR B will have by construction.
+
+- **Documents changed:** `CLAUDE.md`, `.claude/agents/*.md`, `docs/plan/TEAM.md`, `15-backlog.md`, `14-roadmap.md`, `STATUS.md`

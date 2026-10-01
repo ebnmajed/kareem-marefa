@@ -641,7 +641,46 @@ proposal voting, the weekly leaderboard, the streak rule, the desktop shell, lea
 console layout pass, deleting the `pg:` variants and `:root`'s old values (the public site's wave) — and the two
 carried gates, which travel together (`DEC-194`).
 
-### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5, renumbered by `DEC-199` §7)
+## M20 — the member screens, batch A: the frame and the event · wave 18 · `DEC-205`, `DEC-206`
+
+**The first milestone that rebuilds SCREENS.** Waves 15 – 17 built the visual language and proved it changed
+nothing; this one speaks it. Nine screens are rebuilt from thirteen artboards in `docs/design/screens/m10a/`, each
+under `DEC-199` §2 — **rebuilt to its design, never restyled**: the regions in the artboard's order, the copy from
+`messages/ar/`, the primitives by name; the data layer, the actions, the behaviour tests and every requirement the
+screen already meets survive, and the markup does not. ★★ **From PR B on, and in every screens milestone after it,
+the page file is DELETED first, then written from its artboard, and the story lists what it kept and the requirement
+that made it keep it** (`DEC-208`). ★ The owner put this batch before session stories
+(`DEC-205` §1): **the shell and the event page are what every later screen inherits.** It ships as **two pull
+requests** — the frame, then the event, the second opened against `main` from its first push (`DEC-206` §2).
+
+| Work | Requirements | PR |
+|---|---|---|
+| The shell — five phone tabs; a navigation rail and a game rail on desktop | `REQ-UIX-054` | A |
+| The door — `SCR-002`, `SCR-003`, `SCR-004` | `REQ-UIX-058` | A |
+| The public session card, `SCR-007` | `REQ-UIX-059` | A |
+| Home is the feed, `SCR-010`, phone and desktop | `REQ-UIX-055` | A |
+| `feed_announcements` — the wave's one table, at `0164` | `REQ-UIX-056` | A |
+| Browse, `SCR-011` | `REQ-UIX-060` | A |
+| `week-hud`, `feed-item`, `action-bar`, `attendee-stack`; `card`'s `post`; `session-cta`'s phases | `REQ-UIX-057` | A |
+| The design files never reach the build | `REQ-UIX-063` | A |
+| The event page, `SCR-012`, three phases and desktop | `REQ-UIX-061` | B |
+| Check-in and the host view, `SCR-014`, `SCR-016` | `REQ-UIX-062` | B |
+
+**Demonstrable:** ★★ every rebuilt screen captured at 390 px — and at 1280 where an artboard exists — **held beside
+its artboard and opened by the lead**, the regions in the artboard's order and the primitives by name; `qa:contract`,
+`visual`'s public pairs and the register-form fingerprint unmoved and not re-baselined; `0164` with its five parts
+and the isolation sweep covering the table; the rate of the hard-load duplicate re-measured on the rebuilt `/app`
+beside `DEC-204`'s figure; and ★★ **the owner holding each screen beside its artboard on a phone**, which is the
+milestone's acceptance.
+
+**Not this milestone:** session stories and their viewer — a ring shows its state and opens nothing; `/app/members`
+(`SCR-019`), the viewer, rate, propose, the profile (batch M10b); the `/app/me` hub, points and the boards (batch
+M10c, which owes the hard-load re-measure on its two routes); every console and studio route, an authoring screen
+for announcements among them; the five public routes; the weekly leaderboard, the streak rule and proposal voting;
+learning objectives, a level history, attachments on comments; a sticker layer on the poster templates; and the two
+carried gates, which travel together (`DEC-194`).
+
+### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5, renumbered by `DEC-199` §7, re-ordered by `DEC-205` §1)
 
 Each wave of the programme claims its milestone number when it opens (`DEC-183` §3). **The positions are fixed now;
 the numbers after M19 are the sequence as it stands, and move with it.** `DEC-195` §5 had stories at M19; wave 17
@@ -652,8 +691,9 @@ claimed the number, and every position after it kept its place.
 | 1 | **M17** — done, wave 15 | the foundation: tokens as a scope, the display face, the primitives, team colours |
 | 2 | **M18** — done, wave 16 | the five moments on their real surfaces |
 | 3 | **M19** — this wave, wave 17 | every primitive in the playground, a gate that enumerates them, and the scope at the root of every layout but the public site's |
-| 4 | M20, when it opens | session stories and their viewer (`DEC-093`'s seventh place) |
-| 5 | ★ **M21, when it opens — the member screens** | ★★ **opens with `SCR-002` sign-in, `SCR-003` choose-org and `SCR-004` no-access**, then the member screens in `09` §8's order. The three `(auth)` screens are neither behind sign-in nor public marketing, so a grouping by either skipped them twice (`DEC-129`, `DEC-195` §5); **they are placed here by name**. ★ Each screen is **rebuilt** from `docs/design/screens/<SCR-id>.md`, never restyled (`DEC-199` §2) |
+| 4 | ★ **M20** — this wave, wave 18 (`DEC-205`: the owner put it before stories) | the member screens, batch A — the shell, the door, the public card, home as the feed, browse, the event page, check-in, the host view; each **rebuilt** from `docs/design/screens/m10a/` |
+| 4b | when it opens — wave 19 | session stories and their viewer (`DEC-093`'s seventh place) |
+| 5 | ★ **when it opens — the rest of the member screens** (batches M10b and M10c) | ★ `SCR-002`, `SCR-003` and `SCR-004` moved into M20 with batch A (`DEC-205`); what remains is `SCR-013`, `015`, `017` – `020`, then `021` – `028` in `09` §8's order. The three `(auth)` screens are neither behind sign-in nor public marketing, so a grouping by either skipped them twice (`DEC-129`, `DEC-195` §5); **they are placed here by name**. ★ Each screen is **rebuilt** from `docs/design/screens/<SCR-id>.md`, never restyled (`DEC-199` §2) |
 | 6 | when it opens | the console — a rebuild of its **layout**; its visual language arrived in M19 |
 | 7 | when it opens | the studio and the certificates' surroundings — the certificate itself keeps its look |
 | 8 | when it opens, **last** | the public site (`DEC-NEXT-5`, option A; `REQ-NFR-019` holds until then) — and with it the old values at `:root` and the `pg:` variant are deleted (`DEC-199` §1.3) |

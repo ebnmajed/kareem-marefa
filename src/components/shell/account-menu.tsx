@@ -30,6 +30,8 @@ export interface AccountMenuProps {
   memberId: string | null;
   displayName: string | null;
   avatarUrl: string | null;
+  /** The member's company colour, for the ring (REQ-UIX-043). `undefined` draws none. */
+  teamColor?: string | null;
   isStaff: boolean;
   isPlatformAdmin: boolean;
   labels: {
@@ -47,7 +49,10 @@ export interface AccountMenuProps {
   };
 }
 
-export function AccountMenu({ memberId, displayName, avatarUrl, isStaff, isPlatformAdmin, labels }: AccountMenuProps) {
+export function AccountMenu({ memberId, displayName, avatarUrl, teamColor, isStaff, isPlatformAdmin, labels }: AccountMenuProps) {
+  // The first name beside the avatar, from `lg` (`HomeDesktop.dc.html`). It is decoration for
+  // the eye: the control's name is «حسابي» at every width.
+  const firstName = displayName?.trim().split(/\s+/)[0] ?? null;
   const signOutFormId = useId();
 
   // The seven `/app/me` routes, in the hub's own tab order (`me/layout.tsx`).
@@ -79,20 +84,23 @@ export function AccountMenu({ memberId, displayName, avatarUrl, isStaff, isPlatf
           <button
             type="button"
             aria-label={labels.account}
-            className="inline-flex h-11 items-center gap-1.5 rounded-field px-2 text-fg-heading hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-edge bg-surface p-1 text-fg-heading hover:bg-hover lg:pe-3 focus-visible:outline-[length:var(--focus-width)] focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             {/* An account with no member row — a platform admin with no org — has no
-                avatar to draw; a lone chevron read as a stray glyph (wave 8, the
-                lead's review of the platform console captures). The person glyph
-                keeps the control recognisable as the account. */}
+                avatar to draw; the person glyph keeps the control recognisable. */}
             {memberId ? (
-              <Avatar memberId={memberId} displayName={displayName} src={avatarUrl} size={34} decorative />
+              <Avatar memberId={memberId} displayName={displayName} src={avatarUrl} size={34} teamColor={teamColor} decorative />
             ) : (
-              <span aria-hidden className="inline-flex size-[34px] items-center justify-center rounded-field bg-raised text-fg-muted">
+              <span aria-hidden className="inline-flex size-[34px] items-center justify-center rounded-full bg-raised text-fg-muted">
                 <UserIcon />
               </span>
             )}
-            <ChevronIcon direction="down" className="text-fg-muted" />
+            {firstName ? (
+              <span aria-hidden className="hidden text-[0.8125rem] font-bold lg:inline">
+                <bdi>{firstName}</bdi>
+              </span>
+            ) : null}
+            <ChevronIcon direction="down" className="hidden text-fg-muted lg:inline" />
           </button>
         }
         items={items}

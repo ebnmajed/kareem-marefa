@@ -826,6 +826,7 @@ for insert and update, so "opens at completion, closes 14 days later" is one rul
 | `member_badges`, `member_perks`, `streak_awards` | P1 | — | — | — | Awarded by job or admin RPC. |
 | `leaderboard_snapshots`, `leaderboard_entries` | §5.7b | — | — | — | Job-written. |
 | `member_seen_marks` | §5.7c | §5.7c | §5.7c | — | A member's own bookmark of what they have seen (`0162`, `DEC-197`). No timestamp; no delete; the worker never touches it. |
+| `feed_announcements` | §5.7d | §5.7d | §5.7d | §5.7d | An org's announcements in the feed (`0164`, `DEC-206` §3, `REQ-UIX-056`). Members read what is published and unexpired; an admin reads and writes all of the org's. The update grant is by column. The worker never touches it. |
 
 #### §5.7a — `points_ledger`, read
 ```sql
@@ -866,6 +867,25 @@ revoke all on member_seen_marks from anon, service_role;
 Nobody reads another member's marks — not an admin, not a moderator: what a member has looked at is theirs. No
 delete: the member's deletion cascades. `service_role` holds nothing; moments 3 to 5 are acknowledged by the client
 that showed them, never by a job.
+
+
+#### §5.7d — `feed_announcements` — an org's announcements (`0164`, `DEC-206` §3, `REQ-UIX-056`)
+
+Expiry is a predicate, not a deletion: the member's read policy stops answering for an expired row and no job runs.
+`org_id` and `author_id` are never updatable — the update grant names three columns. No super-admin disjunct;
+`service_role` holds nothing. Cases: `POL-feed_announcements.read`, `POL-feed_announcements.write` in
+`tests/rls/feed-announcements.test.ts`.
+
+```sql
+create policy "feed_announcements_read_published" on feed_announcements for select to authenticated;  -- org_id = auth_org_id() and published_at <= now() and not expired
+create policy "feed_announcements_admin_read"     on feed_announcements for select to authenticated;  -- org_id = auth_org_id() and is_org_admin()
+create policy "feed_announcements_admin_insert"   on feed_announcements for insert to authenticated;  -- the same, and author_id = auth_member_id()
+create policy "feed_announcements_admin_update"   on feed_announcements for update to authenticated;  -- the same, both sides
+create policy "feed_announcements_admin_delete"   on feed_announcements for delete to authenticated;  -- org_id = auth_org_id() and is_org_admin()
+grant select, insert, delete on feed_announcements to authenticated;
+grant update (body, published_at, expires_at) on feed_announcements to authenticated;
+revoke all on feed_announcements from anon, service_role;
+```
 
 ### 5.8 Certificates
 
@@ -1455,6 +1475,13 @@ generated suite is the highest-value test in the product.
 | `RPC-mark_board_seen.one_board` | Touches only the named board's columns; the others and the points cursor are unchanged. (migration `0163`). |
 | `RPC-mark_board_seen.unknown_board` | A board other than `all_time`, `monthly` or `company` is refused with `22023`. (migration `0163`). |
 | `RPC-mark_board_seen.fraction_clamped` | A company fraction outside 0–1 is stored clamped. (migration `0163`). |
+| `RPC-session_attendance_count.count_not_who` | A member reads how many attended a session and no `check_ins` row of anyone else. (migration `0165`). |
+| `RPC-session_attendance_count.removed` | A check-in an admin removed does not count; a member is counted once across days. (migration `0165`). |
+| `RPC-session_attendance_count.foreign_org` | Another org's session counts zero; `anon` cannot execute it. (migration `0165`). |
+| `RPC-monthly_ranked_count.counts_hidden` | Counts every member entry of the snapshot, an opted-out member's included, though the caller cannot read that row. (migration `0165`). |
+| `RPC-monthly_ranked_count.members_only` | Company entries are not counted. (migration `0165`). |
+| `RPC-monthly_ranked_count.foreign_org` | A snapshot of another org answers null, as an unknown id does. (migration `0165`). |
+| `RPC-monthly_ranked_count.anon` | `anon` cannot execute it. (migration `0165`). |
 | `RPC-mark_seen.anon` | `anon` cannot execute either function. (migration `0163`). |
 | `RPC-record_photo_album_built` | Ready + `MSG-photo_album_ready` to who asked + the expiry enqueued · `stale` when a photograph was hidden mid-build · `superseded` for a replaced build · a part outside its build's prefix refused. (migration `0159`). |
 | `RPC-fail_photo_album` | The current build only, `failed` with its error. (migration `0159`). |

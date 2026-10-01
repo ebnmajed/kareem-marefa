@@ -1,13 +1,15 @@
-// A route skeleton for `/app` — which IS the sessions timeline (DEC-112,
-// DEC-130), so it draws the timeline's own skeleton and the swap does not jump.
+// The home's route skeleton — SCR-010 (REQ-UIX-005, `16` §7.1 layer 2): the feed's own shape inside the same
+// frame, the rail's cards included from `lg`, so the swap does not jump. It covers this segment and any child
+// without a boundary of its own.
 //
-// It covers this segment AND its children — "at or above" is what makes a
-// dozen files enough for forty-nine pages (REQ-UIX-005, `16` §7.1 layer 2).
-//
-// ★ No text and no `getTranslations`: this renders before `setRequestLocale`
-// does for the real page.
-import { TimelineSkeleton } from "@/components/browse/timeline-skeleton";
+// ★ No text and no `getTranslations`: this renders before `setRequestLocale` does for the real page.
+import { FeedSkeleton, RailSkeleton } from "@/components/feed/feed-skeleton";
+import { PageFrame } from "@/components/shell/page-frame";
 
 export default function Loading() {
-  return <TimelineSkeleton />;
+  return (
+    <PageFrame rail={<RailSkeleton />}>
+      <FeedSkeleton />
+    </PageFrame>
+  );
 }

@@ -286,7 +286,7 @@ for (const width of WIDTHS) {
     for (const ground of GROUNDS) {
       const found = await page.locator(demoOn("story-ring", ground.scope)).evaluate((demo) => {
         const box = demo.getBoundingClientRect();
-        return [...demo.querySelectorAll<HTMLElement>("button[data-state]")].map((ring) => {
+        return [...demo.querySelectorAll<HTMLElement>("[data-state]")].map((ring) => {
           const r = ring.getBoundingClientRect();
           return {
             state: ring.dataset.state!,

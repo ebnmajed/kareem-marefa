@@ -2711,3 +2711,513 @@ not in them) · `ui-lint` strict clean · `npm test` 3458 passed, 2 failed — `
 | the level shots were the completion frame twice | the card sat inside the first viewport | the level shots are the turned card itself (`captureCard`), asserting the turn and no shine |
 | cold phone, final gate at `751618c5`: the head replayed on a hard load, first run only | on a slow hydration React can discard the streamed boundary and render it afresh without a moment render ever seeing the server's DOM — no DOM probe is reliable | ★ **the server says it**: `isDocumentLoad()` (`components/scoring/document-load.ts`) reads Fetch Metadata's `Sec-Fetch-Dest` — `document` or absent is the document, the router's `fetch()` sends `empty`. (The first attempt, `1d0688e3`, read Next's `rsc` header, which Next strips before a page's `headers()`: nothing ever played — the lead's gate found it.) A moment rendered for the document never plays on that page load, stays unclaimed, and tells the server nothing; the DOM probe stays as a second line. jsdom: a client mount with `documentLoad` in an empty document stays static, unclaimed, untold; the next in-app mount plays |
 | `src/components/ui/tabs.tsx`'s double mount (moment 5) | every panel rendered the same children, and Radix keeps the outgoing panel for a commit | the lead's `751618c5` |
+
+---
+
+# Wave 18 — plan (PR A, `wave-18a/the-frame`, planning only — nothing is built)
+
+`REQ-UIX-055`, `REQ-UIX-057` · `STORY-UIX-041`, `STORY-UIX-044` · `DEC-205`, `DEC-206` §4.47 – §4.53 and §5 · contracts
+1, 2, 4, 6, 7. Read for this plan: `Home.dc.html` and `HomeDesktop.dc.html` (source), `M10a.md` §0, §5, §10, the three DAL
+modules, `points-head.tsx`, `moment-points-head.tsx`, `moment-rank.tsx`, `use-seen-moment.ts`, `document-load.ts`,
+`src/lib/ui/**`, `0027`, `0042`, `0081`, `0162`, `0163`, `worker/src/tasks/snapshot_leaderboards.ts`.
+
+**What a balance, a level, a rank or a streak IS does not change.** No worker task, no ledger code, no existing SQL
+function, no existing screen file is touched. **No migration and no SQL is required** (one optional six-line function,
+§4.3, only if the lead wants it). **No schema change**: `member_seen_marks` as `0162` left it suffices (§5).
+
+## 0 · Six things the lead should read first
+
+| # | Finding | Evidence | Where it is answered |
+|---|---|---|---|
+| F1 | ★★ **`DEC-206` §4.47 says «no rank for a member who opted out»; `REQ-LDR-008` says the opposite for the member's OWN view** — «An opted-out member still sees their own rank privately» | `01-prd.md:1417`; `boards_read` returns the caller's own row (`0027:487-493`); `member-board.tsx` shows it on `SCR-027` today | §6 W1 — **not picked**; the props carry either |
+| F2 | ★★ **«#4 من 212» cannot be «the count of ranked members» from what a member reads.** RLS hides other members' opted-out rows, so the visible count can be **smaller than the rank** («#4 من 3»: ranks 1, 2 (hidden), 3, 4) | `0027:487-493`; the snapshot writes every member's row (`0042` header, `opt_out_at_write`) | §4.3 — three ways, one recommended |
+| F3 | ★ **The monthly board holds only members with points THIS month** (`where totals.total > 0`). On the first days of every month most members have **no monthly rank at all** — the commonest absence, not an edge | `0081:614-625` | §3 state S6, and the HUD's unranked tile |
+| F4 | ★ **«The monthly snapshot mid-month»: yes, but it is last night's** — the nightly job replaces the provisional one. Rank, total, neighbour and gap are up to 24 h old while the points tile is live. **A new org has none until its first night. And for one day after a month closes, the newest snapshot by `taken_at` is LAST month's FINAL** (the job writes this month's provisional first, then finalises the previous) — so the label and «ends in» come from the snapshot's own period, never from today's date | `snapshot_leaderboards.ts` (order of the two calls); `leaderboards.ts:53-60` (`order taken_at desc limit 1`) | §4.1 `period`, §3 S7 |
+| F5 | ★★ **Sharing the points mark would silently eat moment 4.** `mark_points_seen(p_entry, p_total, p_level)` writes all three columns at once. If the HUD acknowledges moment 3 with the current level, `SCR-022`'s level card never turns. **The HUD passes the level LAST SEEN straight through**, so the level cursor moves only on `SCR-022` | `0163` (`set … level_id = excluded.level_id`); `points.ts:435,446` | §5.1 — no schema change, one add-only optional DTO field |
+| F6 | ★ **The phone HUD and the desktop rail are both in the server's HTML** (the server does not know the viewport). Two mounts with one occurrence key: the first to mount claims it — possibly the one CSS hides, leaving the visible one static | `moment.ts` `claimMoment`; `use-seen-moment.ts` `visibleKeys()` tests `[hidden]` only, not `display: none` | §5.3 — a gate; and a question to the lead about the frame (Q1) |
+
+## 1 · Sync-1 Q1 — the regions, in the artboard's order, and what each is built from
+
+### 1.1 The phone HUD — `Home.dc.html:35-42` → `week-hud` (new primitive)
+
+One card (panel radius, surface, hairline), 12 px from the screen's edges, **after the ring row and before the first
+date heading**. Two rows:
+
+| # | Region | Drawn | Built from | Arabic, after the monthly substitution |
+|---|---|---|---|---|
+| 1a | rank tile — **a link** to the monthly board (`/app/leaderboards?board=month`) | 11 px muted label; 28 px display figure in the accent | `week-hud`'s own tile through `ui/link`; the rise marker is `rank-row`'s arrow shape, shown and never moved | label «ترتيب <bdi>سبتمبر</bdi>» · figure «#4» in `<bdi dir="ltr">` · heard: «المرتبة 4 من 212 في سبتمبر» |
+| 1b | streak tile | same, figure in the signal (coral) colour | `week-hud`'s tile | label «سلسلتك بالأشهر» · figure «×7» in `<bdi dir="ltr">` · heard: «سلسلة 7 أشهر متتالية» (the existing `points.head.streak` plural) |
+| 1c | points tile | same, figure in the heading colour | `week-hud`'s tile; the figure is a node so moment 3 can count it | label «نقاطك» · «680» · heard: «رصيدك 680 نقطة» |
+| 2 | the way to the next level | an 8 px bar, then one 12 px line | `progress-bar` (`fill="accent"`, `decorative` — the line says the value) | «بقي <b>20</b> لمستوى <bdi>كريم معرفة</bdi>» — six plural forms on the noun: «بقيت نقطة واحدة لمستوى …», «بقيت نقطتان …», «بقيت {value} نقاط …», «بقيت {value} نقطة …» |
+
+**The bar's fraction is `levelProgress()` as it stands** (`points.ts:343`): balance ÷ the next threshold. The artboard's
+97 % beside «بقي 20» is 680 ÷ 700 — the same rule `SCR-022` already draws. One fraction, two screens.
+
+★ **Why the tiles are not `stat`** (`M10a.md:77` says «three `stat` tiles» — §6 W4): `stat.tsx` takes `value: string`,
+draws a bordered panel at `text-h2`, and tones a value with the `DEC-073` status tones only. The HUD's tile is a
+borderless raised tile at 28 px with an accent, a signal and a neutral figure, **and moment 3 needs the figure to be a
+node**. `week-hud` draws its own tiles from semantic names and **composes `progress-bar` and `link`**.
+
+### 1.2 The race on the phone — `Home.dc.html:67-72` → `CompanyRaceCard` (scoring's component, placed by `content` in the feed)
+
+| # | Region | Built from | Arabic |
+|---|---|---|---|
+| 1 | head: the title, a link to the company board; a pill at the end | `ui/link`; `badge` (`neutral`, `sm`) | «سباق الشركات» · pill, provisional: «ينتهي بعد 26 يومًا» (six forms: «ينتهي اليوم» · «ينتهي غدًا» · «ينتهي بعد يومين» · «… {value} أيام» · «… {value} يومًا» · «… {value} يوم») · pill, final: «نهائي · <bdi>سبتمبر</bdi>» |
+| 2 | rows: **top two and the member's own, always**; own row outlined | `race-bar` in a `<ul>` | own row's word: «فريقك» (`ownLabel`, as on `SCR-028`); the metric's name as `race-bar` already draws it |
+
+«الجولة 3» is not built (§4.50): the pill says the month's end and nothing else.
+
+### 1.3 The game rail — `HomeDesktop.dc.html:99-123` → `GameRail` (scoring's component, for the frame's slot)
+
+Four cards, 12 px apart. **Three are scoring's; the fourth is a slot.**
+
+| # | Card | Regions, in order | Built from | Arabic |
+|---|---|---|---|---|
+| 1 | **rank** | (a) a 12 px row: label at the start, a pill at the end · (b) the figure at 56 px display in the accent, then «من N» at 20 px muted · (c) a raised row: the neighbour's initials in the team ring, «فوقك: name», the gap at the end in the accent | `card`; `badge` for the pill; `avatar` (`teamColor`, initials, never a photo — `DEC-099`); `ui/link` on the name | (a) «ترتيبك في <bdi>سبتمبر</bdi>» · pill «ينتهي بعد N يومًا» (the six forms above) or «نهائي» · (b) «#4» · «من <bdi>212</bdi>» · (c) «فوقك: <b><bdi>سارة القحطاني</bdi></b>» · «<bdi dir="ltr">+30</bdi> تكفي» · heard: «تفصلك 30 نقطة عن المرتبة التي فوقك» (six forms) |
+| 2 | **streak and points** | the flame object 40 × 50 · the streak title at 24 px display in the signal colour with one muted line under it · at the end the balance at 22 px display over «نقطة» | `card`; `FlameObject` (`ui/objects/flame`, the lead's, as `points-head.tsx` uses it); text | title: the existing plural «سلسلة 7 أشهر متتالية» · line: «<bdi>3</bdi> جلسات في الشهر تُبقيها» (six forms; the figure is `streak_rules.required_count`, read) · «680» · «نقطة» (six forms) |
+| 3 | **the race** | as §1.2, with four bars and a last line linking to the board | `CompanyRaceCard` with `leaders={4}` | link: «اللوحة الكاملة» + the metric's name from `leaderboards.company.rankedMetricLabel.*` (read, not rewritten) |
+| 4 | «التالية لك» | — | **`children`**: `sessions'` data (contract 3), rendered by `content`. scoring draws nothing of it | — |
+
+★ **The rail draws no level line** — `HomeDesktop.dc.html` has none, while `M10a.md:93-95` says «the HUD moves into the
+game rail» and `REQ-UIX-055` lists «the way to the next level» in the week. §6 W5, not picked. **Default: as drawn.**
+
+«جلسة الليلة تجعلها ثماني، تخطٍّ واحد متاح» (`HomeDesktop.dc.html:107`) is §4.49's family: no skip exists, and «tonight
+makes it eight» is not computable — a streak month is `required_count` check-ins, and re-deriving how many the member
+has so far would be a second definition of a streak. **The line states the rule, read from `streak_rules`.**
+
+## 2 · Sync-1 Q2 — `week-hud`'s props (contract 2, for `ui/index.ts`)
+
+```ts
+/** One figure of the week. `value` is a NODE so the screen can hand in a counting figure (moment 3); the primitive
+ *  never formats a number. `valueLabel` is what a screen reader hears in place of the drawn figure. */
+export interface WeekHudFigure {
+  label: ReactNode;
+  value: ReactNode;
+  valueLabel: string;
+  /** Makes the whole tile a link (`ui/link`). */
+  href?: string;
+}
+
+/** `scoring` · `week-hud.tsx` — REQ-UIX-057. Three figures and the way to the next level, from props.
+ *  ★ A MISSING RANK AND A DISABLED STREAK ARE ABSENCES, NEVER ZEROS — the type has no place to put a zero rank. */
+export interface WeekHudProps extends Styleable {
+  /** The group's accessible name — «حصيلتك هذا الشهر». */
+  label: string;
+  /** Ranked: the figure, and a rise shown beside it (never moved by the primitive).
+   *  Unranked: the tile stays and says why in WORDS — `text` stands where the figure would. */
+  rank:
+    | (WeekHudFigure & { movement?: { riseLabel: string } | null })
+    | { label: ReactNode; absent: string; href?: string };
+  /** `null`: the org has no streak rule — the tile is NOT DRAWN and the row is two tiles.
+   *  `absent`: streaks are on and the member has none running — words, never «×0». */
+  streak: WeekHudFigure | { label: ReactNode; absent: string } | null;
+  /** A balance of 0 is a true figure and is drawn. `delta` is the «+N» of moment 3's static state. */
+  points: WeekHudFigure & { delta?: ReactNode | null; deltaLabel?: string | null };
+  /** `null`: no level yet (before the first nightly evaluation) — no bar; `line` alone is drawn if given. */
+  level: { value: number; max: number; line: ReactNode } | { line: ReactNode } | null;
+}
+```
+
+Registry: kind **`composes`** (`progress-bar`, `link`). No `"use client"`, no data, no catalogue, no keyframe, nothing on
+hover but `link`'s own. `data-slot`s for the moment to find: `rank`, `rise`, `points`, `delta`, `level-bar` (the
+`progress-bar`'s own `fill` inside it). Demo `demos/week-hud.tsx`: ranked with a rise · unranked · streak absent ·
+streak `null` (two tiles) · zero balance · top level (full bar, «بلغت أعلى مستوى») · no level · a long month name and a
+four-digit rank at 390 px. `week-hud.test.tsx` + `week-hud-scope.test.tsx` (inside the scope, RTL, the absence cases
+asserting **no «0», no «#0», no «×0» in the DOM**).
+
+## 3 · Sync-1 Q3 — the states nobody drew
+
+| # | State | What the DAL says | HUD (phone) | Rail (desktop) |
+|---|---|---|---|---|
+| S1 | **opted out of leaderboards** | `optedOut: true`; `rank` per F1's ruling | **pending F1.** If `REQ-LDR-008` stands: the rank as for anyone, with the word «مخفيّ عن غيرك» under it. If §4.47 stands: the unranked tile, «مخفيّ عن اللوحات». Either way: **nobody's neighbour** (RLS hides the row from everyone else — nothing to add), and no achievement item for others | the same, in the rank card; no neighbour row is removed — it is the viewer's neighbour, who is visible |
+| S2 | **streaks disabled** (no enabled `streak_rules` row) | `streak: null` | the streak tile is not drawn; two tiles | card 2 shows the balance alone: no flame, no title, no rule line |
+| S2b | streaks on, none running | `streak.months = 0` | the tile says «لم تبدأ بعد» — never «×0» | the title is «لا سلسلة جارية بعد» (existing `streakNone`), the rule line stays, **no flame** (as `SCR-022`) |
+| S3 | **no company** | race `own: null`; the week is unaffected (a member's rank needs no company) | the HUD is whole. `app.home.companyMissing` above it is `content`'s / the page's (`M10a.md:98`) | the race shows the leaders only, no outlined row, and one line «اختر شركتك لتدخل السباق» linking to `/app/me` |
+| S4 | **top level** | `next: null`, `progress: {1, 1}` | the bar full; «بلغت أعلى مستوى» (existing `level.top`) | — (no level line on the rail, W5) |
+| S4b | no level yet | `level: null` | no bar; «يُحدَّد مستواك في التقييم الليلي القادم.» (existing `level.none`) | — |
+| S5 | **rank 1** | `rank.above: null` | the figure «#1»; nothing else differs | the neighbour row is replaced by «أنت في الصدارة» — **no gap, no «+0»** |
+| S6 | **brand-new member / no points this month** (F3) | `rank: null`, `rankAbsence: "no_points"`; `points: 0` | rank tile: «لا ترتيب بعد» (still a link to the board); points «0» (a true zero); streak per S2/S2b; level per S4b or «بقي 100 لمستوى مشارِك نشِط» | rank card: «لا ترتيب بعد هذا الشهر» and «أول نقطة في <bdi>سبتمبر</bdi> تُدخلك اللوحة»; no «من N», no neighbour |
+| S7 | **no snapshot at all** (a new org before its first night) | `period: null`, `rankAbsence: "no_snapshot"`; race `null` | rank tile: «يُحسب الليلة» | rank card the same; **the race card is not rendered** |
+| S8 | **provisional** (`is_final = false`) | `period.isFinal: false`, `daysLeft: n` | the label names the month; no pill on the phone (none is drawn) | pill «ينتهي بعد N يومًا»; on the last day «ينتهي اليوم» |
+| S9 | **final** (the day after a month closes, F4) | `period.isFinal: true`, `daysLeft: null` | the label names **that** month («ترتيب <bdi>سبتمبر</bdi>») — true, because it is the snapshot's | pill «نهائي»; the race's pill «نهائي · <bdi>سبتمبر</bdi>» |
+| S10 | the race has one or two companies, or the member's is among the leaders | `rows` has no duplicate | the rows there are; the own row outlined where it stands | the same |
+| S11 | a company's value is negative or zero | `fraction: 0` | an empty track and the signed figure, as `race-bar` already does | the same |
+| S12 | a tie above | `above` is the visible row with the greatest rank **below** the member's number, so `gap > 0` always | — | «+N تكفي» with N ≥ 1; never «+0» |
+
+`daysLeft` is measured to the snapshot's `period_end` **as the job computed it** — `date_trunc('month', now())` in the
+database's zone, UTC, compared as `::timestamptz` (`0081:617-618`). The month therefore closes at 03:00 Riyadh time on
+the 1st. That is what a monthly board IS today and it does not change; the figure counts to the real boundary.
+
+## 4 · Sync-1 Q4 — contract 4: what scoring publishes
+
+All add-only. All read with the caller's client, under RLS as it stands. **None stores anything.**
+
+### 4.1 The member's week — `src/lib/dal/points.ts`
+
+```ts
+export interface WeekPeriod {
+  /** `YYYY-MM-DD`, the snapshot's own month — NOT today's. */
+  start: string;
+  end: string;
+  isFinal: boolean;
+  takenAt: string;
+  /** Whole days until `end`; 0 on the last day; null when final. */
+  daysLeft: number | null;
+}
+
+export interface WeekNeighbour {
+  memberId: string;
+  displayName: string;
+  company: string | null;
+  /** `companies.team_color`; reaches the DOM only as `--team`. */
+  teamColor: string | null;
+  rank: number;
+  /** Their monthly points minus the viewer's, from the SAME snapshot. Always > 0. */
+  gap: number;
+}
+
+export interface MemberWeek {
+  /** null: the org has no monthly snapshot yet. */
+  period: WeekPeriod | null;
+  /** null is an ABSENCE — `rankAbsence` says which. Never 0. */
+  rank: { rank: number; monthPoints: number; total: number; above: WeekNeighbour | null } | null;
+  rankAbsence: "no_snapshot" | "no_points" | "opted_out" | null;
+  optedOut: boolean;
+  /** null: no enabled streak rule. `months` may be 0 (on, none running). */
+  streak: { months: number; requiredPerMonth: number } | null;
+  /** The live balance — `points_balances.total_points`. */
+  points: number;
+  level: { name: string; tier: number } | null;
+  next: { name: string; threshold: number; remaining: number } | null;
+  progress: { value: number; max: number } | null;
+  /** Moment 3 — `decideCompletion()`'s answer, unchanged. */
+  completion: PointsHead["completion"];
+  /** What the week acknowledges: entry and total as shown, and the level LAST SEEN, passed through (F5). */
+  pointsMark: PointsMark;
+  pointsNeedsMark: boolean;
+  /** Moment 5 — `decideBoardMoment("monthly", …)`'s answer, unchanged. */
+  rankMoment: BoardMoment;
+  timeZone: string;
+}
+
+/** Request-scoped `cache()`: the phone HUD and the rail ask once between them. */
+export const getMemberWeek: (locale: string) => Promise<MemberWeek>;
+```
+
+It calls `getPointsHead()` (unchanged in behaviour) for the balance, the level, the streak and moment 3, and a narrow
+monthly read for the rest. ★ **It does not call `getLeaderboards()`**: that reads the all-time RPC, every entry of two
+snapshots and three member lists — eight round trips for a figure the home needs four rows for. The narrow read:
+the newest monthly snapshot (`order taken_at desc limit 1`, **the same rule `SCR-027` uses, so the two can never name
+different months**) · the caller's own entry · the one visible entry with the greatest `rank` below it
+(`.lt("rank", mine).order("rank", desc).limit(1)`) · the total (§4.3) · that neighbour's `members` row and company.
+
+**Two add-only edits to existing exports, both optional fields:** `PointsHead.seen?: { entryId, total, levelId } | null`
+(what the mark held, so the week can pass the level through and compute its own `needsMark` — F5), and
+`streak.requiredPerMonth?: number` on `PointsHead.streak`. Neither changes what `SCR-022` renders.
+
+**RLS, read by read:** `leaderboard_snapshots` — `p1_org_read` (`0027:448`) ✓ · `leaderboard_entries` — `boards_read`
+(`0027:487`): own row always, another's unless they opted out ✓, **which is exactly «an opted-out member is nobody's
+neighbour» with no code** · `members (id, display_name, company_id, leaderboard_opt_out)` — `members_read_org` and the
+column grant (`0004:297-307`) ✓ · `companies (name, team_color)` — read by `getLeaderboards()` today ✓ ·
+`points_balances`, `levels`, `streak_rules`, `streak_awards`, `member_seen_marks` — as `getPointsHead()` reads them ✓.
+
+### 4.2 The company race — `src/lib/dal/leaderboards.ts`
+
+```ts
+export interface CompanyRaceRow {
+  companyId: string;
+  companyName: string;
+  teamColor: string | null;
+  rank: number;
+  totalPoints: number;
+  pointsPerActiveMember: number | null;
+  /** 0 – 1 against the leader over ALL companies — `companyFractions()`, the board's own function. */
+  fraction: number;
+  isOwn: boolean;
+}
+
+export interface CompanyRace {
+  metric: "total_points" | "points_per_active_member";
+  period: WeekPeriod;
+  /** The leaders in rank order, then the viewer's own company if it is not among them. No duplicate. */
+  rows: CompanyRaceRow[];
+  /** null: the member has no company. */
+  ownCompanyId: string | null;
+  /** How many companies the snapshot ranks. */
+  companies: number;
+}
+
+/** null: no company snapshot yet, or it ranks nobody. `leaders` defaults to 2. */
+export function getCompanyRace(locale: string, opts?: { leaders?: number }): Promise<CompanyRace | null>;
+```
+
+Fractions are computed over every row **before** the slice, so a bar on the home is the length it is on `SCR-028`.
+RLS: company rows have `member_id is null` and pass `boards_read` for every member of the org ✓; `org_settings`
+(`company_metric`, `time_zone`) is read by `getLeaderboards()` today ✓. ★ **It neither reads nor writes the company
+mark**: the race on the home has no moment (§5), so `SCR-028`'s bar still grows at first sight there.
+
+### 4.3 «من N» — three ways, and what each costs (F2)
+
+| | N is | SQL | Truth |
+|---|---|---|---|
+| A | the count of entries the caller can read | none | **wrong when a member above opted out** — can print «#4 من 3» |
+| B | `leaderboard_snapshots.active_member_count`, frozen at the snapshot (`0042`) | none | always ≥ the rank, stable; but it is «من 212 عضوًا نشطًا», **not** «ranked members» — on the 3rd of a month it reads «#4 من 212» when nine people have points |
+| C | the exact count of entries in the snapshot | **one function**, `supabase/proposed/scoring/0002_monthly_ranked_count.sql`: `monthly_ranked_count(p_snapshot uuid) returns int`, `stable`, `security definer`, `search_path = ''`, refuses a snapshot of another org, returns a number and nothing else; `revoke … from public, anon`, `grant execute to authenticated`; `03` §8.2 rows and `tests/rls/scoring-week-count.test.ts` through `applyProposed()` | exact. It reveals how many opted-out members have points — which the gaps in the ranks already reveal |
+
+**Recommended: C**, because §4.48 asks for «the count of ranked members» and only C is that. **If the lead wants no SQL
+in PR A: B**, with the copy saying what it is. A is not offered. `main` on a schema with C: nothing names it.
+
+### 4.4 The achievement items — `src/lib/dal/recognition.ts`
+
+```ts
+export interface AchievementMember {
+  memberId: string;
+  displayName: string;
+  company: string | null;
+  teamColor: string | null;
+  isSelf: boolean;
+}
+
+export type AchievementItem =
+  | { kind: "badge"; id: string; awardedAt: string; member: AchievementMember; badge: { name: string; description: string | null } }
+  | { kind: "streak"; id: string; awardedAt: string; member: AchievementMember; /** `YYYY-MM-DD`, the month completed. */ periodStart: string };
+
+/** Newest first by `awardedAt`, then `id` — see the note on ties. `limit` defaults to 20 and is capped at 50. */
+export function getAchievementItems(locale: string, opts?: { since?: string; until?: string; limit?: number }): Promise<AchievementItem[]>;
+```
+
+- **Sources:** `member_badges` and `streak_awards`, each by `awarded_at`, merged. **No level-up and no rank change**
+  (§4.52): neither leaves a row. No reaction field (§4.53).
+- ★ **Opt-out is enforced HERE**, in the query, not by the component: an inner embed on the member with
+  `leaderboard_opt_out = false` and `status = 'active'` — so an opted-out colleague's row never leaves the DAL, and an
+  anonymised member (whose `display_name` is null) never appears as a nameless item. `member_badges` has two foreign
+  keys to `members` (`member_id`, `awarded_by`), so the embed names its constraint.
+- **The viewer's own item** when the viewer has opted out: Q3 below. Default: included **for themselves only**,
+  mirroring `boards_read`; `isSelf` lets the feed say «نلت» instead of a name.
+- **RLS:** `member_badges`, `badges`, `streak_awards` are `p1_org_read` (`0027:165,193,273`) ✓; nothing is widened —
+  `getMemberRecognition()` already shows the same rows on every profile.
+- ★ **Ties:** `awarded_at` defaults to `now()`, the transaction's start, so every badge one `evaluate_badges` run
+  writes carries the same instant. This is a feed's order, not «the last row», and `id` makes it stable. **A seeding
+  run — `first_check_in` to forty members at once — arrives as forty items with one timestamp**: `content`'s feed
+  decides how a burst is folded; the DAL caps it.
+- `award_reason` (an admin's note on a manual badge) is **not** returned.
+
+**The item's words are scoring's, in `scoring.json`, read by `content`'s `feed-item`:**
+«<name></name> نال شارة <b><bdi>{badge}</bdi></b>» · «<name></name> أكمل سلسلة الحضور في <bdi>{month}</bdi>» · for oneself:
+«نلت شارة <b><bdi>{badge}</bdi></b>» · «أكملت سلسلة الحضور في <bdi>{month}</bdi>». The line under it — the company and the
+relative time («أيك، قبل ساعتين») — is `feed-item`'s.
+
+### 4.5 The components — all server components in `src/components/scoring/`, new files
+
+```tsx
+/** The frame's game-rail slot (contract 1). `children` is «التالية لك», which is not scoring's. */
+export async function GameRail(props: { locale: string; children?: ReactNode }): Promise<JSX.Element>;
+
+/** The phone HUD: `getMemberWeek()` → `week-hud`, with moments 3 and 5. */
+export async function MemberWeekHud(props: { locale: string }): Promise<JSX.Element>;
+
+/** The race card — in the feed on the phone, inside `GameRail` on desktop. Renders nothing when there is no race. */
+export async function CompanyRaceCard(props: { locale: string; leaders?: number }): Promise<JSX.Element | null>;
+```
+
+`content`'s page renders `<MemberWeekHud>` and `<CompanyRaceCard>` where the artboard puts them and passes
+`<GameRail>` to the frame's slot. **Who hides which at which width is the frame's** (Q1). Each reads through the
+`cache()`d DAL, so the two surfaces cost one read.
+
+## 5 · Sync-1 Q5 — moments 3 and 5 on the week
+
+**No new moment, no new keyframe, no change to `src/lib/ui/`, no schema change.** Both go through `useSeenMoment` as it
+stands, with the SAME `kind` and the SAME id the first surface uses — that identity is the whole sharing mechanism.
+
+### 5.1 Moment 3 — the count-up
+
+| | |
+|---|---|
+| **Key** | `useSeenMoment("completion", completion.occurrenceId)` — `points_balances.last_entry_id`, from `decideCompletion()` through `getPointsHead()`. **Byte-identical to `SCR-022`'s**: one function decides for both |
+| **Shared, in one tab** | `moment.ts`'s claim: whichever surface mounts first claims `completion:<entry>`; the other finds it claimed and is static |
+| **Shared, across devices and visits** | `member_seen_marks.points_entry_id / points_total`: once either surface acknowledges, `decideCompletion()` returns null for both |
+| **The writer** | `markPointsSeen()` → `mark_points_seen()` (`0163`), unchanged, called from a **new** bound action in `src/components/scoring/week-actions.ts` (the existing one lives under `app/me/points/`, which is frozen) |
+| ★ **The level is passed through** (F5) | the week's mark is `{ entryId, total, levelId: <the level last SEEN> }` — `head.levelUp ? head.levelUp.held.id : head.mark.levelId`. The points cursor moves; the level cursor does not. **Moment 4 stays `SCR-022`'s**, and turns there even after the home played moment 3. With no mark at all, the baseline takes the current level, exactly as `SCR-022`'s first sight does («the first level is where they start») |
+| **What moves** | the points figure counts from `from` to `to` (`useCountUp`, `party`) · «+N» fades in beside it (`base`) · the level bar's fill by `scaleX` from `fromProgress` (`party`) · on desktop the flame grows to rest (`slow`), its flicker the existing `.moment-flicker` class. `element.animate()`, `fill: "backwards"`, transform and opacity only, no `will-change` — `moment-points-head.tsx`'s sequence, on the HUD's slots |
+| ★ **The bar when a level-up is unseen** | it does **not** move. On `SCR-022` the bar fills and the card turns; the HUD has no card, and the bar's true new value can be *shorter* than the old (280 of 300 → 310 of 700). A bar running backwards in a celebration is a lie about progress; the figure counts and the bar stands at the truth |
+| ★ **The flame on the phone** | `M10a.md:99-101` says «the points count-up + flame plays on the HUD»; `Home.dc.html:38` draws **no flame** in the streak tile. §6 W6, not picked. Default: the flame grows where one is drawn — the rail |
+| **Static state** | the new balance; «+N» beside it on the first sight and only then; the bar at the truth; the flame at rest. Complete under reduced motion, on a reload and on another phone. **A decrease, or a gain with no completion row, is not an occurrence** — nothing, and the mark moves on quietly |
+
+### 5.2 Moment 5 — the rank change, on the rank tile
+
+| | |
+|---|---|
+| **Key** | `useSeenMoment("rank", "monthly:<period>:<seenRank>-<rank>")` — `decideBoardMoment("monthly", …)`, the pure function `SCR-027`'s monthly tab already calls. One function, one id |
+| ★ **The monthly mark suffices** | `monthly_period` + `monthly_rank` is exactly the week's question: «the rank I last saw, in this month». A new month, a fall, a tie, no mark — not an occurrence, as today. **No column is added.** |
+| **Shared** | in a tab by the claim; across devices by `member_seen_marks.monthly_*` |
+| **The writer** | `markBoardSeen()` → `mark_board_seen('monthly', period, rank, null, null)` (`0163`), unchanged — it touches the monthly columns only (`RPC-mark_board_seen.one_board`), so the all-time board and the company race keep their own first sights on `SCR-027` / `SCR-028` |
+| **What moves** | the figure counts from the old rank to the new (`useCountUp`, `slow` — downward, «#7» to «#4») and the rise arrow fades in (`base`). **No FLIP**: there are no rows on a tile. **The arrow does not pulse** (`DEC-197` §2) |
+| **Static state** | «#4» and the rise arrow with its words («تقدّمت 3 مراكز منذ زيارتك الأخيرة»), shown and still. **A fall shows the new rank and nothing else** — no colour, no icon, no motion |
+| **Opted out** | per F1. If the rank is absent, there is no occurrence and **nothing is acknowledged** — the monthly mark is left for `SCR-027`, where the member still sees their own row |
+
+### 5.3 The three rules both inherit, and one new one
+
+1. **A hard load never plays** (`DEC-197` §5): `MemberWeekHud` and `GameRail` read `isDocumentLoad()` and pass it, as
+   the two existing pages do. ★ **`/app` is where a member lands** — most first sights of the home are document loads,
+   so the moment shows its static state there, tells the server nothing, and plays at the next in-app arrival on
+   either surface. That is the rule as ruled; the lead should know it is the common path here (Q4).
+2. **The server is told only by the client that showed it**, through a Server Action bound on the server with the mark
+   the page rendered; never by a render.
+3. **Latched for the visit**: the delta and the arrow a member was shown do not vanish when the acknowledgement lands.
+4. ★ **New — one of two copies plays** (F6). A small client gate around the week's moment controller measures, in a
+   layout effect before paint, whether its own element is displayed (`offsetParent !== null`). **Only the displayed
+   copy mounts the controller**; the hidden one is the static state, claims nothing and acknowledges nothing. The
+   controller renders no DOM of its own: it animates the slots of the server-drawn HUD and feeds the counting figure
+   through context. Proven in jsdom (a hidden ancestor, a visible sibling: one plays, the hidden one is never claimed).
+
+### 5.4 The test that opens both
+
+- **jsdom — `tests/components/scoring/week-moments.test.tsx`** (new): (a) mount the week with a completion occurrence →
+  plays, acknowledges with the level passed through; unmount; mount **`MomentPointsHead`** with the same occurrence →
+  static, silent. (b) the reverse order. (c) and (d) the same pair for moment 5 against **`MomentRank`**. (e) each
+  moment's mount → play → unmount → mount → silence. (f) reduced motion: the static state whole, acknowledged at once.
+  (g) `documentLoad`: static, unclaimed, untold; the next in-app mount plays. (h) the hidden copy. (i) a level-up
+  unseen: the figure counts, the bar's fill is not animated, and the acknowledged `levelId` is the OLD level.
+  (j) transform and opacity only, tokens only, no `will-change`. It imports the lead's
+  `tests/components/lib-ui/motion-env.ts` and copies nothing.
+- **unit — `tests/unit/scoring-week.test.ts`** (new): the week's pure rules — the neighbour and the gap (a tie, rank 1,
+  a hidden row above), `daysLeft` at the month's edges, the absences, the pass-through mark, `needsMark`.
+- **RLS — `tests/rls/scoring-week.test.ts`** (new): as member A, acknowledge through the week's mark → `level_id`
+  unchanged and the monthly columns alone moved; an opted-out member B is absent from A's neighbour read and from A's
+  achievement read; B reads their own row; a member of another org reads nothing. With option C, the count's cases.
+- **e2e — `tests/e2e/wave18-scoring-week.spec.ts`** (new, the lead runs it; phone and desktop): ★ **award → arrive at
+  `/app` in-app → the HUD plays → go to `/app/me/points` in-app → silent, the balance and no delta animation; and a
+  second member the other way round — `SCR-022` first, then the home, silent.** The same pair for the monthly rank
+  against `/app/leaderboards?board=month`. A level-up: the home plays 3, then `SCR-022` turns the card. Captures:
+  `wave18-scoring-home-{hud,rail}-{animated,static}-{390,1280}.png`, and the states of §3 that a fixture can reach.
+
+## 6 · Sync-1 Q6 — files, assertions, disagreements
+
+### 6.1 Files created — nothing is replaced or deleted
+
+| File | What |
+|---|---|
+| `src/components/ui/week-hud.tsx` | the primitive (§2) |
+| `src/app/[locale]/(dev)/ui/demos/week-hud.tsx` | its demo; the lead wires it |
+| `tests/components/ui/week-hud.test.tsx`, `week-hud-scope.test.tsx` | |
+| `src/components/scoring/member-week-hud.tsx` | the phone HUD |
+| `src/components/scoring/game-rail.tsx` | the rail's three cards and the slot |
+| `src/components/scoring/company-race-card.tsx` | the race |
+| `src/components/scoring/moment-week.tsx` | the client controller and its gate (§5.3) |
+| `src/components/scoring/week-actions.ts` | `"use server"`: two bound acknowledgements, async exports only |
+| `tests/components/scoring/week-hud-section.test.tsx`, `week-rail.test.tsx`, `week-race.test.tsx`, `week-moments.test.tsx` | |
+| `tests/unit/scoring-week.test.ts` · `tests/rls/scoring-week.test.ts` · `tests/e2e/wave18-scoring-week.spec.ts` | |
+| `supabase/proposed/scoring/0002_monthly_ranked_count.sql` | **only under option C** |
+
+**Edited, add-only:** `src/lib/dal/points.ts` (`getMemberWeek`, its types, two optional fields on `PointsHead`) ·
+`src/lib/dal/leaderboards.ts` (`getCompanyRace`, its types) · `src/lib/dal/recognition.ts` (`getAchievementItems`, its
+types) · `src/messages/{ar,en}/scoring.json` (a new `scoring.week` and `scoring.feed` group, Arabic first, **no digit
+typed in a message** — `tests/unit/scoring-i18n.test.ts` holds that).
+
+**Requests to the lead (contract 2):** `WeekHudProps` and `WeekHudFigure` in `ui/index.ts`; the registry entry
+(`composes`); the demo wired. **One add-only request on my own primitive, pending W3:** `RaceBarProps.layout?: "stacked" | "inline"`.
+
+### 6.2 Existing assertions that move — **none planned**
+
+No existing screen, component or spec is edited. Two risks, named so they are not found at the gate:
+
+- `tests/components/scoring/points-head.test.tsx` and `tests/unit/scoring-seen.test.ts` build `PointsHead` objects by
+  hand; the two new fields are optional, so they compile and pass untouched. If one asserts `toEqual` on
+  `getPointsHead()`'s whole result it would move — **I have found none**; it is checked before the first commit.
+- ★ **Any e2e that reaches `/app/me/points` or a board by in-app navigation FROM `/app` will now find the moment
+  already played.** `wave16-scoring-moments.spec.ts` starts from `/app/me` and from a board URL (lines 218 – 345), so
+  it is unaffected. The lead's `wave16-{demo,lead}-*` specs are not mine to read for this; **the lead should check
+  them.** If one moves, it is an expectation, not a selector.
+
+### 6.3 Disagreements `DEC-206` §4 does not list — not picked
+
+| # | The artboard / the design | The plan / the tree | Default I build on, until ruled |
+|---|---|---|---|
+| W1 | — (`DEC-206` §4.47: «No rank for a member who opted out») | `REQ-LDR-008`, `01-prd.md:1417`: «An opted-out member still sees their own rank privately»; `0027:487-493` returns it; `SCR-027` shows it | **none — F1 needs a ruling.** The DTO carries `optedOut` and the rank separately, so it is one line either way |
+| W2 | `HomeDesktop.dc.html:102`: «من 212» | the exact count is not readable by a member (F2) | §4.3, option C recommended |
+| W3 | `Home.dc.html:69-71`, `HomeDesktop.dc.html:112-115`: a race row is ONE line — ring, name, bar, figure — with the metric named once, in the card's last link | `race-bar.tsx:16-18, 42-46`: three lines, and **«the ranking metric is marked … on every bar» (`REQ-LDR-005`)**; `M10a.md` §10 lists `race-bar` as «used as-is» | `race-bar` as it is (three lines). The one-line row is an add-only `layout="inline"` that still says the metric to a screen reader on every row and shows it once in the card |
+| W4 | `M10a.md:77`: «three `stat` tiles» | `stat.tsx`: `value: string`, a bordered panel, status tones only | `week-hud` draws its own tiles (§1.1). The other way is three add-only props on `content`'s `stat` |
+| W5 | `HomeDesktop.dc.html:99-123`: the rail has **no level line** | `M10a.md:93-95` «the HUD moves into the game rail»; `REQ-UIX-055` lists «the way to the next level» in the week | as drawn: none on desktop |
+| W6 | `Home.dc.html:38`: the streak tile draws no flame | `M10a.md:99-101`: «the points count-up + flame plays on the HUD» | the flame grows where it is drawn — the rail only |
+| W7 | `HomeDesktop.dc.html:112-115`: **four** bars, the member's third among them; `M10a.md:95`: «the race widget (4 bars)» | `M10a.md:85` and the brief: «top 2 + your company always» | phone: two leaders and the own. Desktop: four leaders, and the own appended if it is not among them. `getCompanyRace({ leaders })` serves both |
+| W8 | `HomeDesktop.dc.html:107`: «جلسة الليلة تجعلها ثماني» | §4.49 covers the skip and `SCR-014`'s line, not this one; not computable without a second definition of a streak | the rule, read: «N جلسات في الشهر تُبقيها» |
+| W9 | `Home.dc.html:37`: the rank tile is a link («#board»); `HomeDesktop.dc.html:101-103`: the rank card is not, and its neighbour is not | — | phone: the tile links to the monthly board. Desktop: the figure links there and the neighbour's name to their profile (`SCR-020` exists; `/app/members` index does not, §4.31) |
+| W10 | `Home.dc.html:97`: an achievement names the member's company and a relative time | — | the DTO carries `company`, `teamColor` and `awardedAt`; `feed-item` draws them |
+| W11 | the artboards draw the rank and the «+30» as **live** | the snapshot is nightly (F4) | the figures are last night's; the rail's pill says when it ends, and **no copy says «now»** |
+
+### 6.4 What I believe §4.47 – §4.53 and §5 measured wrongly — with evidence
+
+1. **§4.47** — «no rank for a member who opted out» contradicts `REQ-LDR-008`'s acceptance (W1).
+2. **§4.48** — «the total is the count of ranked members»: not readable (F2). And «derived from the monthly board's
+   rows» is true **and nightly**, absent for a new org, and last month's on the 1st (F4) — so «labelled as the month,
+   ending when the month ends» must read the snapshot, not the calendar.
+3. **§4.48 / §4.47, unsaid** — the monthly board ranks only members with points this month (F3). «A missing rank» is
+   most members in a month's first days, not a corner.
+4. **§5's table** — «moments 3 and 5 share one mark»: for moment 3 the mark is one RPC over three columns, the level
+   among them (F5). Shared as written, the home eats moment 4. Passed through, it does not — no schema change.
+5. **§4.50** — «the month, and the days left in it»: the month is the database's UTC month (`0081:617`), which closes
+   at 03:00 in Riyadh. Correct as built; the figure counts to that instant.
+6. **§4.49, §4.51, §4.52, §4.53** — verified as written: `currentStreak()` counts months; `member_badges.awarded_at`
+   and `streak_awards.awarded_at` exist; nothing records a level change or a rank change; `reactions` has no
+   achievement target.
+
+## 7 · Questions for the lead
+
+- **Q1 (contract 1).** How does the frame hide the rail below `lg` and where does the phone HUD stand at `lg` and up —
+  CSS on two copies that are both in the HTML? §5.3's gate assumes yes. If the frame can tell me its slot is not
+  displayed, the gate reads that instead of `offsetParent`.
+- **Q2 (F1).** An opted-out member's OWN rank on the week: `REQ-LDR-008` or §4.47?
+- **Q3.** An opted-out member's own badge in their own feed: shown to themselves (my default, mirroring `boards_read`)
+  or to nobody?
+- **Q4.** `/app` is a landing page, so most first sights there are hard loads, which by `DEC-197` §5 show the static
+  state and play on the next in-app arrival. Confirm that is wanted on the home as ruled — I change nothing of it.
+- **Q5 (F2).** «من N»: option C (one proposed function, exact) or option B (no SQL, the org's active members)?
+- **Q6 (W3, W5, W6, W7).** The four artboard-against-spec rows that change what is drawn.
+- **Q7.** The rail's neighbour row links to a member's profile (`SCR-020`, batch M10b, not rebuilt). Link, or plain text
+  until M10b?
+
+**Nothing is built until «the frame is in at `<sha>`».**
+
+## Wave 18 — contract 4 as landed (`782f80d1`, after `DEC-207`)
+
+**The DAL** — add-only, read with the caller's client, nothing stored:
+
+| Function | Module | Returns |
+|---|---|---|
+| `getMemberWeek(locale)` — `cache()`d | `src/lib/dal/points.ts` | `MemberWeek` |
+| `getCompanyRace(locale, { leaders? = 2 })` | `src/lib/dal/leaderboards.ts` | `CompanyRace \| null` (null: no company snapshot, or it ranks nobody) |
+| `getAchievementItems(locale, { since?, until?, limit? = 20, ≤ 50 })` | `src/lib/dal/recognition.ts` | `AchievementItem[]`, newest first by `awardedAt`, then `id` |
+
+`MemberWeek` is §4.1's type **with one change from the plan**: `rankAbsence` is `"no_snapshot" | "no_points" | null` —
+there is no `"opted_out"`, because `DEC-207` §1.1 ruled that an opted-out member sees their own rank; `optedOut: true`
+says «مخفيّ عن غيرك». Added: `levelUpPending: boolean` (the week's bar stands still while `SCR-022`'s card has yet to
+turn). `CompanyRace`, `CompanyRaceRow`, `WeekPeriod`, `WeekNeighbour`, `AchievementItem`, `AchievementMember` are as
+§4.2 – §4.4 wrote them. Also exported, for `getMemberWeek()`'s use: `getMonthlyStanding()`, and the pure rules
+`weekPeriod()`, `raceRows()`, `weekPointsMark()`, `newestFirst()`. `PointsHead` gained two optional fields,
+`seen` and `streak.requiredPerMonth`; `SCR-022` renders nothing differently.
+
+**The components** — server components in `src/components/scoring/`, each reads through the cached DAL:
+
+```tsx
+GameRail({ locale, children? })                 // game-rail.tsx — the frame's `rail`; children = «التالية لك» (NextForMe)
+MemberWeekHud({ locale, className? })            // member-week-hud.tsx — the phone HUD; the page adds `lg:hidden`
+CompanyRaceCard({ locale, leaders? = 2, className? })  // company-race-card.tsx — null when there is no race
+```
+
+The words of an achievement item are `scoring.feed.{badge,badgeSelf,streak,streakSelf}` (rich: `<name></name>`,
+`<b>`, `<bdi>`), read by `content`'s `feed-item`; `scoring.week.*` and `scoring.race.*` are the week's.
+
+**Proposed for the lead:** `supabase/proposed/scoring/0002_monthly_ranked_count.sql` with its `03` §8.2 rows in the
+header; `tests/rls/scoring-week.test.ts` 9 ✓ through `applyProposed()`.
+
+**Held for the lead's commit (contract 2):** `src/components/ui/week-hud.tsx`, `tests/components/ui/week-hud.test.tsx`,
+`tests/components/ui/week-hud-scope.test.tsx`, `src/app/[locale]/(dev)/ui/demos/week-hud.tsx` — then I commit
+`member-week-hud.tsx` and `tests/components/scoring/week-hud-section.test.tsx`, which import it.
+
+**Tests at `782f80d1`:** `week-moments` 15 ✓ (both orders against `MomentPointsHead` and `MomentRank`, the hidden
+copy, reduced motion, a server paint, the unseen level-up), `week-rail` 12 ✓, `week-hud-section` 12 ✓ (uncommitted),
+`week-hud` + `-scope` 18 ✓ (held), `race-bar-inline` 6 ✓ with `race-bar` and `-scope` untouched, `scoring-week`
+(unit) 16 ✓, `scoring-i18n` ✓, the RLS file 9 ✓. `tsc` clean for my files; eslint 0; `ui-lint` strict ✓.
+`ui-playground` is red only on the four unregistered new files, `week-hud.tsx` among them — the lead's commit.
+**No existing assertion moved.** The e2e spec `tests/e2e/wave18-scoring-week.spec.ts` needs `content`'s home in
+place and a production build — the lead's to run.

@@ -1147,6 +1147,166 @@ rebuilt in this wave** — a screen is rebuilt to its design in its own wave, ne
 - The six data-dense primitives under the new values: tokens only, no animation; the console's screens captured at
   390 px.
 
+## 23g. Wave 18 — `M20`, the member screens, batch A (`DEC-205`, `DEC-206`)
+
+*Nine screens rebuilt from thirteen artboards. ★★ **Every story below is a REBUILD** (`DEC-199` §2): the screen is
+built from its artboard — its regions in the artboard's order, its copy from `messages/ar/` first, its primitives
+by name. **Nothing in the current page file survives by default**; the data layer, the server actions, the
+behaviour tests and every requirement the screen already meets do. A story that reads «restyle X to match» is
+written wrong. ★★ **From PR B on (`DEC-208`): the page file is DELETED first, then written from its artboard — two commits — and each story's note carries a table of what it kept and the `REQ-*` that made it keep it, re-derived from the requirements and the DAL, never from memory.** Each screen's definition of done: **it matches its artboard at 390 px, and at 1280 where one is
+drawn, in a capture the lead opened**; `ui-lint --strict` passes; its scope tests pass; `qa:contract` is untouched.
+PR A is stories 039 – 047; PR B is 048 – 050.*
+
+#### STORY-UIX-039 — The shell: five tabs, and two rails on desktop
+**Covers:** `REQ-UIX-054` · **M20** · **L** · PR A · lead
+**Built from:** `Home.dc.html` (the phone's top row and tab bar), `HomeDesktop.dc.html` (the bar and the three columns); `M10a.md` §0.
+- The tab bar is rebuilt with five links, the third raised; `main`'s `padding-block-end` moves in the same commit.
+- From `lg`: the top bar; a sticky navigation rail with «اقترح جلسة», the four destinations that exist and a ruled
+  staff section with its count; the content column; a named game-rail region that screens fill through a slot.
+- ★ **Not drawn, and built:** the account menu on the phone (`DEC-206` §4.33 — measured first); the frame at
+  `md`, between the phone and `lg`; the rail with no staff role; an immersive route, which renders neither bar nor
+  rails (`shell-routes.ts`, unchanged); the bell with no unread; the shell's disclosures closing (`REQ-UIX-023`).
+- **Primitives:** `icon-button`, `button`, `avatar`, `link`, `menu`, `badge`.
+- The scope stays the layout's and nothing under it is transformed (`scope-root`); the shell specs that exist are
+  evidence, each changed assertion a ledger line.
+
+#### STORY-UIX-040 — `0164`: the announcements table, with all five parts
+**Covers:** `REQ-UIX-056` · **M20** · **M** · PR A · lead
+- ★★ **Named one by one, because `0002` exists solely because `0001` forgot the fourth:**
+  1. **`org_id`**, not null, referencing `orgs`, cascading;
+  2. **RLS enabled** on the table;
+  3. **the full policy set** — a member of the org selects a published, unexpired row; an admin of the org selects
+     every row of it, and inserts, updates and deletes with the author held to the caller; a moderator and a member
+     are refused every write; `anon` and `service_role` are revoked; no super-admin disjunct;
+  4. ★ **a matching `grant` for every policy**, in the same file — `select, insert, update, delete` to
+     `authenticated`, and nothing else;
+  5. **its test**, `tests/rls/feed-announcements.test.ts`, one case per policy as the role it names, a `42501`
+     for each refused write — **and a fixture row in `tests/rls/fixture.ts`, so the generated isolation sweep is
+     non-vacuous over the table**, with the sweep's own line for it read in the run's output.
+- `02` gains `feed_announcements`; `03` §8.2 gains its row and its policy block; `policy-diff` is green.
+- Additive: nothing on `main` names the table, so `main`'s app and worker on the new schema do nothing different.
+  The owner rehearses on a production schema dump, pushes, then merges.
+
+#### STORY-UIX-041 — Four new primitives, and two add-only props
+**Covers:** `REQ-UIX-057` · **M20** · **L** · PR A · `scoring` (`week-hud`), `content` (`feed-item`, `attendee-stack`, `card`'s `post`), `sessions` (`action-bar`, `session-cta`)
+- Each new file: its signature in `ui/index.ts` (the lead's, types only), a registry entry, a test inside the
+  scope, an RTL check, and **a gallery section showing every state in Arabic from fixture data**.
+- `week-hud`: three figures and the way to the next level; a missing rank and a disabled streak as absences.
+- `feed-item`: achievement, announcement and recap; none takes a reaction.
+- `action-bar`: one primary and up to two icon buttons, safe-area padded.
+- `attendee-stack`: the people it is given, with team rings, and a count in words.
+- `card`'s `post` and `session-cta`'s phases are add-only: the existing suites pass with no assertion changed.
+- The gate's floor moves from 49 to 53 in the commit that adds the fourth file (`DEC-206` §1.3).
+
+#### STORY-UIX-042 — The door: sign-in, choose-org and no-access, rebuilt
+**Covers:** `REQ-UIX-058` · **M20** · **M** · PR A · lead
+**Built from:** `Main.dc.html` · `ChooseOrg.dc.html` · `NoAccess.dc.html`; `M10a.md` §1 – §3.
+- `SCR-002`: the wordmark lockup, the card with the one Google action and its explanatory line, the panel about
+  the carried destination, the sticker, the legal links. **No org is named** (`DEC-206` §4.37).
+- `SCR-003`: the radio group of names with an initial in a tile, the panel saying why the choice is permanent, the
+  submit, «الدخول بحساب آخر».
+- `SCR-004`: the lock tile, the explanation, the visitor's own address masked, the two actions, the way home.
+- ★ **Not drawn, and built:** `SCR-002`'s error in the page and its redirecting state; `SCR-003` pending, its
+  error, three or more orgs; `SCR-004`'s suspended, deactivated and platform variants and the impersonation banner.
+- **Primitives:** `card`, `button`, `panel`, `sticker`, `radio-group`, `submit-button`, `route-error`, `link`.
+- The new strings are written in `messages/ar/auth.json` first. The `auth*` specs pass with no expectation changed.
+
+#### STORY-UIX-043 — The public session card, rebuilt
+**Covers:** `REQ-UIX-059` · **M20** · **S** · PR A · `sessions`
+**Built from:** `PublicCard.dc.html`; `M10a.md` §4.
+- The brand row, the poster whole at 4:5, the clock's badge, the title, the date and the place, the one action
+  into sign-in with the session carried, the members-only line, the legal footer.
+- ★ **Drawn, and not built** (`DEC-066`, `DEC-206` §4.42): seats, the presenter, the company.
+- ★ **Not drawn, and built:** a session that is unlisted or a draft; cancelled; live; ended; several days; no
+  rendered poster (the typographic placeholder, with no amount).
+- **Primitives:** `poster`, `badge`, `button`, `link`. `session_public_card()` is not changed.
+- ★ Confirmed before the first edit: `/s/[id]` is not one of the five frozen routes and `public-graph` does not
+  root at it; the file it shares with them, `ui/button`, is not edited.
+
+#### STORY-UIX-044 — Home is the feed, phone and desktop
+**Covers:** `REQ-UIX-055`, `REQ-UIX-056` · **M20** · **L** · PR A · `content` (the page and the feed), `scoring` (the week, the race, the achievements), `sessions` (the session post's data)
+**Built from:** `Home.dc.html` · `HomeDesktop.dc.html`; `M10a.md` §5.
+- `/app` is a new page; `SessionsTimeline` stays `/app/sessions`' alone. Regions, in the artboard's order: the ring
+  row · the week · the feed by date — session post, the company race, achievement, announcement, recap · the
+  propose band. On desktop the post lays the poster beside the copy and the week becomes the game rail's cards
+  with «التالية لك».
+- One read model, `src/lib/dal/feed.ts`, merging four sources by date, committed-first within a day.
+- ★ **Drawn, and not built** (`DEC-206` §4.47 – §4.57): a weekly rank, a skip, a round, a level-up item, a
+  reaction on an achievement, a second reaction kind, faces of who attends, a reservation made from the feed.
+- ★ **Not drawn, and built:** an empty feed; no company set; the staff strip; a member opted out of
+  leaderboards; streaks switched off; no poster; a cancelled session; a waitlisted member; loading, as skeletons
+  in the feed's own shape; an error.
+- **Primitives:** `story-ring`, `week-hud`, `stat`, `progress-bar`, `card` (`post`), `avatar`, `badge`, `poster`,
+  `reaction-bar`, `session-cta`, `race-bar`, `feed-item`, `button`, `empty-state`, `panel`.
+- Moments 3 and 5 play on the week once per occurrence and share their mark with `SCR-022` and the boards: a test
+  opens both surfaces and asserts the second is silent.
+
+#### STORY-UIX-045 — Browse, rebuilt
+**Covers:** `REQ-UIX-060` · **M20** · **M** · PR A · `sessions`
+**Built from:** `Browse.dc.html`; `M10a.md` §6. **No 1280 artboard exists**: it is built in the shell's content column and captured there (`DEC-206` §4.36).
+- The title, the search field in the page, the chip row with «المزيد», the eight tags, the date groups with their
+  counts, the row card, the ended sessions behind one link.
+- ★ **Drawn, and not built** (`DEC-206` §4.63): a sort, «الأعلى تقييمًا».
+- ★ **Not drawn, and built:** empty by filter, naming the filter; search results as one group; loading as six row
+  skeletons; the «later» group; a row that is full, waitlisted, closed, cancelled, multi-day, with no poster.
+- **Primitives:** `page-header`, `input`, `tag-chip`, `sheet`, `section-header`, `card` (`row`), `poster`, `badge`,
+  `avatar`, `icon-button`, `empty-state`, `skeleton`.
+- `getTimeline()`'s filters, the query string and the bookmark action are unchanged; a field the row needs is
+  add-only on the DTO.
+
+#### STORY-UIX-046 — The design files never reach the build
+**Covers:** `REQ-UIX-063` · **M20** · **S** · PR A · lead
+- `tests/unit/design-files.test.ts`: no import from `docs/` under `src/`; no `.dc.html` under `src/` or `public/`;
+  no class name an artboard or a prototype declares anywhere in `src/`. It is shown to bite on a planted case.
+- After a production build, the output is searched for `.dc.html` and the count, zero, is recorded.
+
+#### STORY-UIX-047 — The hard-load duplicate, re-measured on the rebuilt home
+**Covers:** `REQ-UIX-055` · **M20** · **S** · PR A · lead
+- `DEC-204`'s probe, on a production build, on the rebuilt `/app` alone, with `main` as the control in the same
+  sitting: the rate the page stands twice in the DOM, beside the old 24 % and 6 %.
+- ★ The accessibility tree is read in that window, as `DEC-204` asked: how many `h1`s, and what an id resolves to.
+- **Recorded as still owed:** `/app/me/points` and `/app/leaderboards`, by the wave that rebuilds them. The defect
+  is not fixed here and is not allowed to vanish into a rewrite.
+
+#### STORY-UIX-048 — The event page, rebuilt around the whole poster
+**Covers:** `REQ-UIX-061` · **M20** · **L** · PR B · `sessions`, with `content` for the materials, photos and discussion slots
+**Built from:** `Event.dc.html` · `EventLive.dc.html` · `EventDone.dc.html` · `EventDesktop.dc.html`; `M10a.md` §7.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`.
+- The top row, the poster whole at 4:5, the chip row, the title, the presenter card, the action card in flow, the
+  sub-nav of sections that exist, then the sections in the artboard's order; the bottom `action-bar` on a phone;
+  on desktop the hero band, the full-width action row that sticks once scrolled past, and the 1fr / 380 body.
+- The slot contract stands: the page owns every `<section>` and `<h2>`; a slot renders no heading.
+- ★ **Drawn, and not built** (`DEC-206` §4.66 – §4.74): objectives, «قدّمت N جلسات», a composer photo button, a map
+  embed, faces of who attends for a plain member, «أعلى تفاعل».
+- ★ **Not drawn, and built:** full → waitlist and the position; reserved, with its calendar and its cancel and
+  the late-cancel warning; the deadline passed; did not attend; the presenter viewing; cancelled; several days;
+  the matrix's every cell, asserted by the suite that already does.
+- Moment 1 on the action card and moment 3 on the outcome card, each once, each with its static state.
+
+#### STORY-UIX-049 — Check-in, rebuilt
+**Covers:** `REQ-UIX-062` · **M20** · **M** · PR B · `checkin`
+**Built from:** `CheckIn.dc.html`; `M10a.md` §8.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`.
+- The close control, the title, the session's mini-row, the prompt, `code-input`, the rules line, the earn panel,
+  the bottom bar with the one submit.
+- ★★ **The wrong-code shake is NOT built until the owner rules** (`DEC-206` §4.75). `M10a.md` calls it input
+  feedback rather than a system failure animating; `REQ-UIX-046` says a refused code does not animate. If the
+  owner says yes, this story's text says why it is not `REQ-UIX-053`'s business — it is feedback on one input, on
+  a member screen — and its reduced-motion form is the coral border and the message.
+- ★ **Not drawn, and built:** rate-limited (10 in 10 minutes); already checked in; success, moment 2 and the
+  1.4 s return; not open; a reservation required; the presenter, who is not offered it; an overlapping session.
+- The posted field and the no-JS path are byte-identical.
+
+#### STORY-UIX-050 — The host view, rebuilt
+**Covers:** `REQ-UIX-062` · **M20** · **M** · PR B · `checkin`
+**Built from:** `Host.dc.html`; `M10a.md` §9.
+- ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, `?next=`, phase gates, the no-JS path, pinned names — each with its `REQ-*`.
+- The code in two groups of three, the time to rotation, the count with the walk-ins, the open switch and its
+  ceiling, the revoke action in coral outline, marking by hand in a `sheet` with a `combobox` and its reason.
+- Projection: the code alone, as large as the viewport allows, the screen kept awake while live.
+- ★ **Not drawn, and built:** before the session is live; after check-in closed; a rotation, by a cut and never a
+  fade; a day of a multi-day session; a presenter who is not staff, who is not offered marking by hand.
+
 ---
 
 ## 24. Coverage check
@@ -1154,7 +1314,7 @@ rebuilt in this wave** — a screen is rebuilt to its design in its own wave, ne
 Regenerated by `scripts/traceability.mjs`; the table is in `TRACEABILITY.md`. The invariants this
 backlog must satisfy:
 
-1. **Every `REQ-*` in `01-prd.md` is covered by at least one story** — 336 of 336 since `DEC-183`, 346 of 346 since `DEC-199`.
+1. **Every `REQ-*` in `01-prd.md` is covered by at least one story** — 336 of 336 since `DEC-183`, 346 of 346 since `DEC-199`, 356 of 356 since `DEC-206`.
 5. ★ **A story may cover a REQ that an EARLIER milestone already satisfied** — `STORY-UIX-016`
    redesigns screens `STORY-AUT-001` built. `trace` cannot see that gap, because it checks
    REQ→story, not decision→story; `DEC-129` is why it is written down.

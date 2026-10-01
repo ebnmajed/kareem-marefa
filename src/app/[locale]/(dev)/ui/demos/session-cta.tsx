@@ -3,7 +3,8 @@
 import { SessionCta } from "@/components/ui/session-cta";
 
 // The gallery's `session-cta` demo — contract 4 (DEC-183 §5, DEC-186 §6). All six
-// states of REQ-UIX-033 — reserve, the waitlist, booked (a seat, and a place on the
+// states of REQ-UIX-033 and wave 18's phases (rate, the compact action, a held seat
+// with no cancel) — reserve, the waitlist, booked (a seat, and a place on the
 // waitlist), check in, attended, none with its reason — and a reservation in flight,
 // from literal fixtures. The lead renders it inside the playground's scope.
 //
@@ -36,6 +37,12 @@ export function SessionCtaDemo() {
       {/* A chip is a few characters; the sentence is the state's note, beneath it. */}
       <SessionCta state={{ kind: "attended", note: "تصل النقاط عند انتهاء الجلسة." }} label="حضرت" chip="+50" />
       <SessionCta state={{ kind: "none", reason: "انتهى وقت الحجز لهذه الجلسة." }} label="الحجز مغلق" />
+      {/* wave 18 (REQ-UIX-057): the phases as SCR-010 and SCR-012 draw them. */}
+      <SessionCta state={{ kind: "rate", act: { href: "/app/sessions/demo/rate" } }} label="قيّم الجلسة" chip="حتى 13 أكتوبر" />
+      <SessionCta state={{ kind: "checkIn", act: { href: "/app/sessions/demo/check-in" } }} label="سجّل حضورك" chip="مقعدك محجوز" />
+      <SessionCta state={{ kind: "reserve", act: { href: "/app/sessions/demo" } }} label="احجز مقعدك" size="md" width="auto" />
+      {/* The feed's held seat: the fact, and no cancel — a feed never reserves (DEC-206 §4.57). */}
+      <SessionCta state={{ kind: "booked" }} label="مقعدك محجوز" chip="الخميس 6:30 م" />
     </div>
   );
 }

@@ -236,6 +236,8 @@ test("★ the bar and <main> follow a CLIENT-SIDE navigation too — a layout is
   // request path, so browse → a session kept the tab bar and the container. Both are
   // now client components reading the pathname; this proves it both ways without a
   // full load in between.
+  // ★ wave 18 (REQ-UIX-054): the frame is named by `data-frame`, not by the class that drew the
+  // old container — the rebuilt member frame has no `max-w-6xl`. The behaviour held is the same.
   test.skip(!sessionId, "needs the published session the contextual test creates");
   await signIn(context);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -244,17 +246,17 @@ test("★ the bar and <main> follow a CLIENT-SIDE navigation too — a layout is
 
   await page.goto(`/ar/app/sessions/${sessionId}`);
   await expect(bar).toHaveCount(0);
-  await expect(main).not.toHaveClass(/max-w-6xl/);
+  await expect(main).toHaveAttribute("data-frame", "bleed");
 
   // OUT through an in-app link to browse — a client-side navigation.
   await page.locator('main a[href$="/app/sessions"]').first().click();
   await expect(page).toHaveURL(/\/ar\/app\/sessions$/);
   await expect(bar).toBeVisible();
-  await expect(main).toHaveClass(/max-w-6xl/);
+  await expect(main).toHaveAttribute("data-frame", "member");
 
   // BACK in with the history stack — also client-side under the App Router.
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`/ar/app/sessions/${sessionId}$`));
   await expect(bar).toHaveCount(0);
-  await expect(main).not.toHaveClass(/max-w-6xl/);
+  await expect(main).toHaveAttribute("data-frame", "bleed");
 });

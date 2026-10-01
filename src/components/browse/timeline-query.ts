@@ -126,3 +126,12 @@ export function timelineHref(query: TimelineQuery): string {
 export function chipEntries(query: TimelineQuery): ReadonlyArray<readonly [FilterKey, string]> {
   return query.entries.filter(([k]) => !TOGGLE_KEYS.includes(k));
 }
+
+/**
+ * Every applied filter browse lists as a removable chip, in application order — wave 18
+ * (REQ-UIX-060, DEC-207 N4). The status and the category are menus now, not toggles, so they
+ * are listed too, each removable on its own; the default status (`open`) is not a filter.
+ */
+export function appliedEntries(query: TimelineQuery): ReadonlyArray<readonly [FilterKey, string]> {
+  return query.entries.filter(([k, v]) => !(k === "status" && v === "open"));
+}

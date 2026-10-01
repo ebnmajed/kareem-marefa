@@ -3,6 +3,7 @@ import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { currentStreak } from "@/lib/dal/recognition";
+import { getMonthlyStanding, type BoardMoment, type WeekNeighbour, type WeekPeriod } from "@/lib/dal/leaderboards";
 
 // The member's points history (SCR-022, REQ-PTS-003, `05` §8). The test of
 // this screen is REQ-PTS-003's own wording: a member must be able to
@@ -327,7 +328,8 @@ export interface PointsHead {
   next: { name: string; threshold: number } | null;
   /** The bar's truth: points into the level held, out of the level's span. Full at the top. */
   progress: { value: number; max: number } | null;
-  streak: { enabled: boolean; months: number };
+  /** `requiredPerMonth` is wave 18's, add-only: the enabled rule's `required_count` — what keeps a month in the run. */
+  streak: { enabled: boolean; months: number; requiredPerMonth?: number };
   /** Moment 3's occurrence, or null (`DEC-197` §7). */
   completion: { occurrenceId: string; from: number; to: number; delta: number; fromProgress: number } | null;
   /** Moment 4's occurrence, or null: the level last seen, now left behind. */
@@ -335,6 +337,8 @@ export interface PointsHead {
   /** Whether the stored mark differs from `mark` — the client acknowledges only then. */
   needsMark: boolean;
   mark: PointsMark;
+  /** wave 18 (add-only): what the stored mark holds — null with no mark. The week passes its level through (DEC-207 §1.3). */
+  seen?: PointsMark | null;
 }
 
 /** The bar's value — the balance out of the next level's threshold, EXACTLY the numbers its line says («120 من 300»).
@@ -376,7 +380,7 @@ export async function getPointsHead(locale: string): Promise<PointsHead> {
     supabase.from("points_balances").select("total_points, last_entry_id, current_level_id").eq("member_id", session.memberId).maybeSingle(),
     supabase.from("levels").select("id, name, threshold_points, sort_order").eq("org_id", session.orgId).order("threshold_points"),
     supabase.from("perks").select("key, required_level_id").eq("org_id", session.orgId).eq("enabled", true).not("required_level_id", "is", null),
-    supabase.from("streak_rules").select("id").eq("org_id", session.orgId).eq("enabled", true).limit(1),
+    supabase.from("streak_rules").select("id, required_count").eq("org_id", session.orgId).eq("enabled", true).order("required_count").limit(1),
     supabase.from("streak_awards").select("period_start").eq("member_id", session.memberId).order("period_start", { ascending: false }).limit(36),
     supabase.from("member_seen_marks").select("points_entry_id, points_total, level_id").eq("member_id", session.memberId).maybeSingle(),
   ]);
@@ -449,11 +453,16 @@ export async function getPointsHead(locale: string): Promise<PointsHead> {
     level,
     next,
     progress: levelProgress(total, level, next),
-    streak: { enabled: (streakRulesRes.data ?? []).length > 0, months: currentStreak((streaksRes.data ?? []).map((r) => r.period_start as string)) },
+    streak: {
+      enabled: (streakRulesRes.data ?? []).length > 0,
+      months: currentStreak((streaksRes.data ?? []).map((r) => r.period_start as string)),
+      requiredPerMonth: (streakRulesRes.data?.[0]?.required_count as number | undefined) ?? undefined,
+    },
     completion: decided ? { ...decided, fromProgress: fromProgressOf(decided.from) } : null,
     levelUp,
     needsMark: !seen || seen.points_entry_id !== entryId || seen.points_total !== total || seen.level_id !== currentLevelId,
     mark,
+    seen: seen ? { entryId: seen.points_entry_id, total: seen.points_total ?? 0, levelId: seen.level_id } : null,
   };
 }
 
@@ -471,3 +480,79 @@ export async function markPointsSeen(locale: string, input: PointsMark): Promise
   const { error } = await supabase.rpc("mark_points_seen", { p_entry: parsed.entryId, p_total: parsed.total, p_level: parsed.levelId });
   if (error) throw new Error(`mark_points_seen: ${error.message}`);
 }
+
+// ── The member's week, for the home (wave 18, add-only) ──────────────────────
+//
+// `REQ-UIX-055`, `DEC-206` §4.47 – §4.49 and §5, `DEC-207` §1 — contract 4. Rank,
+// streak, points and the way to the next level, for the phone's HUD and the
+// desktop's game rail. ★ COMPUTED, NEVER STORED, and what each figure IS is
+// unchanged: the rank is the MONTHLY board's (there is no weekly one), the streak
+// is `streak_awards` counted in months (there is no skip), the level is the one the
+// nightly evaluation stored.
+//
+// ★ Moments 3 and 5 on the week are the SAME occurrences `SCR-022` and the monthly
+// board decide — one function each, one id each — so whichever surface a member
+// opens first plays and the other is silent (`DEC-206` §5).
+//
+// ★★ The level is PASSED THROUGH (`DEC-207` §1.3). `mark_points_seen()` writes the
+// entry, the total and the level at once; were the week to acknowledge moment 3
+// with the level held now, `SCR-022`'s level card would never turn. So the week's
+// mark carries the level LAST SEEN — the one a pending level-up is measured from —
+// and the level cursor moves only on `SCR-022`, where moment 4 plays.
+
+export interface MemberWeek {
+  /** null: the org has no monthly snapshot yet. */
+  period: WeekPeriod | null;
+  /** null is an ABSENCE — `rankAbsence` says which. Never 0. */
+  rank: { rank: number; monthPoints: number; total: number; above: WeekNeighbour | null } | null;
+  rankAbsence: "no_snapshot" | "no_points" | null;
+  /** Opted out of leaderboards: the rank is still theirs to see, and hidden from everyone else (REQ-LDR-008). */
+  optedOut: boolean;
+  /** null: no enabled streak rule. `months` may be 0 — on, none running. */
+  streak: { months: number; requiredPerMonth: number } | null;
+  /** The live balance — `points_balances.total_points`. */
+  points: number;
+  level: { name: string; tier: number } | null;
+  next: { name: string; threshold: number; remaining: number } | null;
+  progress: { value: number; max: number } | null;
+  /** Moment 3 — `decideCompletion()`'s answer through `getPointsHead()`, unchanged. */
+  completion: PointsHead["completion"];
+  /** A level reached and not yet seen on `SCR-022`: the week's bar does not move for it. */
+  levelUpPending: boolean;
+  /** What the week acknowledges: the entry and total shown, and the level LAST SEEN. */
+  pointsMark: PointsMark;
+  pointsNeedsMark: boolean;
+  /** Moment 5 — `decideBoardMoment("monthly", …)`, the monthly tab's own rule. */
+  rankMoment: BoardMoment;
+}
+
+/** The week's mark and whether it differs from the stored one — pure, exported for its unit test (DEC-207 §1.3). */
+export function weekPointsMark(head: Pick<PointsHead, "mark" | "levelUp" | "seen">): { mark: PointsMark; needsMark: boolean } {
+  const levelId = head.levelUp ? head.levelUp.held.id : head.mark.levelId;
+  const mark: PointsMark = { entryId: head.mark.entryId, total: head.mark.total, levelId };
+  const seen = head.seen ?? null;
+  const needsMark = !seen || seen.entryId !== mark.entryId || seen.total !== mark.total || seen.levelId !== mark.levelId;
+  return { mark, needsMark };
+}
+
+/** Request-scoped: the phone's HUD and the desktop's rail ask once between them. */
+export const getMemberWeek = cache(async (locale: string): Promise<MemberWeek> => {
+  const [head, standing] = await Promise.all([getPointsHead(locale), getMonthlyStanding(locale)]);
+  const { mark, needsMark } = weekPointsMark(head);
+  return {
+    period: standing.period,
+    rank: standing.rank,
+    rankAbsence: standing.rankAbsence,
+    optedOut: standing.optedOut,
+    streak: head.streak.enabled ? { months: head.streak.months, requiredPerMonth: head.streak.requiredPerMonth ?? 0 } : null,
+    points: head.totalPoints,
+    level: head.level ? { name: head.level.name, tier: head.level.tier } : null,
+    next: head.next ? { ...head.next, remaining: Math.max(0, head.next.threshold - head.totalPoints) } : null,
+    progress: head.progress,
+    completion: head.completion,
+    levelUpPending: head.levelUp !== null,
+    pointsMark: mark,
+    pointsNeedsMark: needsMark,
+    rankMoment: standing.moment,
+  };
+});

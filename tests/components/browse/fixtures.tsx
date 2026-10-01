@@ -80,6 +80,8 @@ export function timeline(over: Partial<TimelineData> = {}): TimelineData {
       presenters: ["سعد الحربي"],
     },
     orgTimeZone: "Asia/Riyadh",
+    endedCount: 0,
+    attendancePoints: 20,
     ...over,
   };
 }

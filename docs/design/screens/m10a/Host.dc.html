@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>SCR-016 · شاشة التقديم</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#C6FF3D}a:hover{color:#E8FF8A}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@700;800&amp;family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;display=swap">
+</helmet>
+<div dir="rtl" style="width: 390px; height: 844px; box-sizing: border-box; background: #0B0C12; color: #F4F1EA; font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; font-size: 15px; line-height: 1.6; position: relative; overflow: hidden; display: flex; flex-direction: column">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 16px 6px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <a href="EventLive.dc.html" aria-label="رجوع" style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2A2E40; background: #151724; color: #F4F1EA; display: inline-flex; align-items: center; justify-content: center; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></a>
+      <h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 24px; line-height: 1">شاشة التقديم</h1>
+    </div>
+    <a href="#project" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; background: #151724; border: 1px solid #2A2E40; color: #F4F1EA; font-size: 12px; font-weight: 700; text-decoration: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>اعرض على الشاشة</a>
+  </div>
+
+  <div style="margin: 6px 16px 0; font-size: 12px; color: #A7ABBE; text-align: center">العرض في 5 شرائح: كيف تُقنع اللجنة التنفيذية · قاعة الرياض</div>
+
+  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 0 16px">
+    <div style="font-size: 13px; font-weight: 700; color: #A7ABBE">رمز الحضور الآن</div>
+    <div dir="ltr" style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 84px; line-height: 1; color: #F4F1EA; display: flex; gap: 14px"><span>M7K</span><span>2QX</span></div>
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #A7ABBE">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span>يتغيّر بعد <b style="color: #F4F1EA">6:12</b> · الرمز السابق يُقبل لدقيقتين</span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 10px; padding: 12px 18px; border-radius: 18px; background: #151724; border: 1px solid #2A2E40">
+      <span style="font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 40px; line-height: 1; color: #C6FF3D">23</span>
+      <span style="font-size: 15px; font-weight: 700">من 40 حاضرًا</span>
+      <span style="font-size: 12px; color: #A7ABBE">· 3 حضور بلا حجز</span>
+    </div>
+  </div>
+
+  <div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 16px; background: #151724; border: 1px solid #2A2E40">
+      <label for="open" style="font-size: 14px; font-weight: 700; cursor: pointer">تسجيل الحضور مفتوح</label>
+      <span style="display: inline-flex; align-items: center; gap: 8px"><span style="font-size: 12px; color: #A7ABBE">يُغلق تلقائيًا 9:30 م</span><input id="open" type="checkbox" role="switch" checked style="width: 44px; height: 24px; margin: 0; accent-color: #C6FF3D"></span>
+    </div>
+    <div style="display: flex; gap: 8px">
+      <button type="button" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 14px; border-radius: 999px; border: 2px solid #FF6E4F; background: transparent; color: #FF6E4F; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 17px; cursor: pointer">أبطل هذا الرمز الآن</button>
+      <a href="#manual" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 14px; border-radius: 999px; border: 1px solid #2A2E40; background: #1E2130; color: #F4F1EA; font-size: 14px; font-weight: 700; text-decoration: none">تسجيل يدوي</a>
+    </div>
+    <div style="font-size: 12px; color: #A7ABBE; text-align: center">الإبطال يُصدر رمزًا جديدًا فورًا ولا يلغي حضورًا مسجَّلًا. تبقى الشاشة مضاءة أثناء الجلسة.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

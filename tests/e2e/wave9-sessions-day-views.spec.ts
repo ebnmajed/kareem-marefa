@@ -187,10 +187,12 @@ test("★ a timeline card says a range and how many days", async ({ context, pag
   test.slow();
   await page.setViewportSize(PHONE);
   await signIn(context, memberEmail);
-  await page.goto("/ar/app");
+  // ★ Wave 18 (DEC-205 ruling 3): `/app` is the home feed now, and the timeline's card is browse's row on
+  // `/app/sessions` (REQ-UIX-060). Read from the list, not the rail's «التالية لك», which also links there.
+  await page.goto("/ar/app/sessions");
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 
-  const card = page.getByRole("link", { name: /ورشة تحليل البيانات/ }).first();
+  const card = page.locator("#main ol").getByRole("link", { name: /ورشة تحليل البيانات/ }).first();
   await expect(card).toBeVisible();
   // «3 أيام» beside the span: a range alone does not say whether a member is
   // committing to two evenings or to a week. Western digits (DEC-124).
@@ -206,7 +208,10 @@ test("★ the public card says the range, without reading a single day row", asy
   // from `session_public_card()` and not from `session_days`.
   await page.goto(`/ar/s/${sessionId}`);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await expect(page.getByText("ورشة تحليل البيانات على ثلاث أمسيات")).toBeVisible();
-  await expect(page.getByText("3 أيام")).toBeVisible();
+  // ★ Wave 18 (REQ-UIX-059): the rebuilt card draws the title twice, as PublicCard.dc.html does — on the
+  // placeholder poster and in the `h1` — so the title is read from the heading, and the count from the
+  // time-and-place list it belongs to.
+  await expect(page.getByRole("heading", { level: 1, name: "ورشة تحليل البيانات على ثلاث أمسيات" })).toBeVisible();
+  await expect(page.locator("dl").getByText("3 أيام")).toBeVisible();
   await capture(page, "public-card-range");
 });

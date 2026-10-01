@@ -3206,6 +3206,150 @@ type, and nothing that celebrates. A table, a list, the audit log and an export 
 - Every console screen passes the accessibility sweep on the dark ground.
 - A later console pass is about layout — density, tables, the rail — and changes no token.
 
+#### REQ-UIX-054 — The member shell has five phone tabs and, on desktop, a navigation rail and a game rail
+**Serves:** owner 2026-09-30 · `DEC-205` §2 · `DEC-206` §4.30 – §4.36 · `REQ-UIX-023` · `REQ-UIX-027`
+Every non-immersive screen under `/app` — `SCR-010`, `SCR-011` and each screen after them — sits in one frame. On a
+phone: a top row and a bottom bar of five tabs, الرئيسية · الجلسات · اقترح · الترتيب · حسابي, the third raised. From
+`lg`: a top bar with the wordmark, the search entry, the bell and the account menu, over three columns — a
+navigation rail at the start, the content, and a game rail at the end. The immersive routes keep hiding the bar
+exactly as they do today.
+**Acceptance:**
+- The five tabs are links with their names on them; the current one is marked by more than colour; the bar pads
+  for the safe area and `main` gains the matching `padding-block-end` in the same commit.
+- The rail links only to routes that exist; staff links sit in a ruled section, shown to staff alone, with the
+  count of what needs attention.
+- Search stays in the bar, and every disclosure in the shell still closes as `REQ-UIX-023` says.
+- The rails are sticky and never transformed, filtered or clipped — the root scope is their ancestor.
+- The game rail is a region with a name; a screen that owns its width (`SCR-012`) renders without it.
+- Rebuilt from `docs/design/screens/m10a/Home.dc.html` and `HomeDesktop.dc.html`, not restyled (`REQ-UIX-049`).
+
+#### REQ-UIX-055 — Home is the feed
+**Serves:** owner 2026-09-30 · `DEC-205` §2 · `DEC-NEXT-6` · `DEC-206` §4.47 – §4.61 · amends `REQ-UIX-021`
+`SCR-010`, `/app`, is its own page and no longer the sessions list on a second route: the rings of the sessions in
+their window, the member's week — rank, streak, points and the way to the next level — and a feed grouped by date
+of session posts, recaps of completed sessions, colleagues' badges and streak awards, and the org's announcements.
+`/app/sessions` stays the canonical, filterable browse URL (`REQ-UIX-022`).
+**Acceptance:**
+- The feed is one column of content; on desktop the week moves into the game rail and «التالية لك» joins it.
+- A session the member has committed to comes first within its day; a cancelled session offers no action.
+- Every figure is read, never typed: the rank is the monthly board's, the streak is in months, the attendance
+  amount is the scoring rule's, and a `+0` is never drawn.
+- A post's control is a link to where the action happens; nothing is reserved from the feed.
+- A ring says its state in words and opens nothing until session stories exist; it is not a button.
+- An achievement is shown only for a member who has not opted out of leaderboards, and carries no reaction.
+- A new org's empty feed is the date-grouped session list, with an invitation to propose.
+- With no company set, the banner says so above the week and a post's control states the reason.
+- The rank change and the points count-up play once per occurrence, here or on `SCR-022`, never both
+  (`REQ-UIX-044`), and each has its static state.
+- No frame of the hard load is left unmeasured: the rate at which the page stands twice in the DOM is recorded
+  for this route beside `DEC-204`'s figure.
+
+#### REQ-UIX-056 — An org's announcements
+**Serves:** `DEC-NEXT-6` · `DEC-206` §3 · `REQ-NFR-001` · `REQ-TEN-003`
+An announcement is a short text an org admin publishes to every member of the org, shown as an item of the feed on
+`SCR-010` from its `published_at` until its `expires_at`, or for good when it has none. It is stored in
+`feed_announcements`. **It is not** a member's post, a poll, a comment thread, a thing that can be reacted to,
+or a notification: it sends nothing.
+**Acceptance:**
+- The table carries `org_id`, not null, referencing `orgs`, and has RLS enabled.
+- A member reads the published, unexpired announcements of their own org and no other row; an admin reads every
+  row of their org.
+- Only an admin of the org inserts, updates or deletes one, and the author recorded is the caller. A moderator and
+  a member are refused on all three; `anon` and `service_role` hold nothing; no policy names a super admin.
+- Every policy has its grant in the same migration, and a test exercises each policy as the role it names.
+- The generated isolation sweep covers the table from a fixture row: a member of another org sees nothing.
+- The body is plain text, bidi-isolated where a name is interpolated around it, with Western numerals.
+- An expired announcement leaves the feed without a job: expiry is a predicate, not a deletion.
+
+#### REQ-UIX-057 — Four primitives for the screens: the week, a feed item, the action bar, the attendee stack
+**Serves:** `DEC-205` §3 · `DEC-206` §4.78 – §4.81 · `REQ-UIX-001` · `REQ-UIX-050`
+`week-hud`, `feed-item`, `action-bar` and `attendee-stack` join `src/components/ui/`; `card` gains a `post`
+variant and `session-cta` renders its phases as `SCR-010` and `SCR-012` draw them. Each renders every state from
+props, reads no data and no message catalogue, and is born inside the playground.
+**Acceptance:**
+- Each new file has a registry entry, a test that renders it inside the scope, an RTL check and a gallery entry
+  showing every state in Arabic; the gate's count moves to 53 in the commit that adds the fourth.
+- An addition to an existing primitive is add-only: no existing call site renders differently, proven by the
+  existing suites passing untouched.
+- `action-bar` holds one primary and at most two icon buttons, pads for the safe area, and is the only fixed
+  element at the bottom of an immersive screen.
+- `attendee-stack` draws the people it is given and a count in words; it never decides who may be seen.
+- `week-hud` shows a missing rank or a disabled streak as an absence, never as a zero.
+- Nothing scales on hover, and none declares a keyframe of its own (`REQ-UIX-020`).
+
+#### REQ-UIX-058 — The door is rebuilt: sign-in, choose-org, no-access
+**Serves:** `DEC-205` · `DEC-195` §5 · `DEC-206` §4.37 – §4.41 · `REQ-AUT-001`, `REQ-AUT-004`, `REQ-AUT-005`, `REQ-AUT-006`
+`SCR-002`, `SCR-003` and `SCR-004` are rebuilt from `Main.dc.html`, `ChooseOrg.dc.html` and `NoAccess.dc.html`.
+What each does — the one Google action, the carried destination, the permanent choice, the explanation that names
+no org — is unchanged.
+**Acceptance:**
+- `SCR-002` names no org; an error is shown in the page above the button, never a toast; `?next=` survives.
+- `SCR-003` is a radio group of names, the chosen one marked by more than colour, with the reason the choice is
+  permanent; the submit keeps its label while pending.
+- `SCR-004` shows the visitor their own address, masked and bidi-isolated, and names no org and no listed domain;
+  its suspended, deactivated and platform variants use the same frame.
+- The three screens' existing behaviour suites pass with no expectation changed.
+
+#### REQ-UIX-059 — The public session card is rebuilt, and shows nothing `DEC-066` does not allow
+**Serves:** `DEC-205` · `DEC-066` · `DEC-206` §4.42 – §4.46 · `REQ-UIX-026`
+`SCR-007`, `/s/[id]`, is rebuilt from `PublicCard.dc.html`: the org's line, the poster whole at 4:5, the title,
+the time and the place, one action into sign-in that carries the session, and the line saying the full page is for
+members.
+**Acceptance:**
+- No seat count, presenter, company, abstract or attendance figure is drawn; `session_public_card()` is unchanged.
+- The status badge is the clock's — live or ended — and a cancelled session offers no action.
+- The route is not one of the five frozen ones, and no file they import changes.
+
+#### REQ-UIX-060 — Browse is rebuilt
+**Serves:** `DEC-205` · `DEC-206` §4.63 – §4.65 · `REQ-DSC-003`, `REQ-DSC-005` · `REQ-UIX-022`
+`SCR-011`, `/app/sessions`, is rebuilt from `Browse.dc.html`: the search field in the page, one row of chips with
+the rest of the facets behind «المزيد», the eight most-used tags, and the sessions as rows in date groups — this
+week, next week, this month, later, and the ended ones behind one link.
+**Acceptance:**
+- A row shows the poster scaled whole, the status badge, the title, the date, the place, the presenter, and the
+  seats or the waitlist line; its bookmark is a separate control that does not open the row.
+- The active filters stay visible and individually removable; an empty result names the filter that emptied it
+  and offers to drop it.
+- Search results replace the groups with one group. There is no sort control.
+- The query string is the state: a filtered URL opened cold renders the same list.
+
+#### REQ-UIX-061 — The event page is rebuilt around the whole poster
+**Serves:** owner 2026-09-30 · `DEC-205` §2 · `DEC-206` §4.66 – §4.74 · `REQ-UIX-026` · `REQ-UIX-015` · `REQ-SES-011`
+`SCR-012` is rebuilt from `Event.dc.html`, `EventLive.dc.html`, `EventDone.dc.html` and `EventDesktop.dc.html`.
+The hero is the poster, whole, at 4:5 on a phone and at desktop width; the cropped band is retired. The action
+card, the sub-nav and every section follow in the artboards' order, and the affordance matrix decides what a
+viewer is offered exactly as it does today.
+**Acceptance:**
+- The language is stated before the action; the date, time and place sit with the action.
+- On a phone the one primary action is also in the bottom action bar; on desktop the action row sticks once
+  scrolled past.
+- Live: the count of who is present, as a number; identities only for a viewer the database already answers.
+- Completed: the outcome is a read-only fact, the rating is offered inside its window, the certificate is a row.
+- A section with nothing in it renders no heading, and the sub-nav lists only sections that exist.
+- Moment 1 plays on the action card once, from the reserve action's own result.
+
+#### REQ-UIX-062 — Check-in and the host view are rebuilt
+**Serves:** `DEC-205` · `DEC-206` §4.75 – §4.77 · `REQ-CHK-003`, `REQ-CHK-010`, `REQ-CHK-015`, `REQ-CHK-016`, `REQ-UIX-046`
+`SCR-014` is rebuilt from `CheckIn.dc.html` and `SCR-016` from `Host.dc.html`. Both are immersive. What a code
+accepts, when check-in is open, who may mark by hand and what is awarded are unchanged.
+**Acceptance:**
+- `SCR-014`: six boxes, left to right inside a right-to-left page; the rules line says the org's rotation and says
+  «no reservation needed» only when the session allows walk-ins; the amount is the rule's and arrives at completion.
+- A refused code is answered by the border, the glyph and the message; whether it may also move is the owner's
+  ruling (`DEC-206` §4.75), and until then it does not.
+- `SCR-016`: the code in two groups of three, the time to the next rotation, the count, the open switch with its
+  ceiling, the revoke action, and marking by hand in a sheet with its mandatory reason.
+- Projection shows the code alone and keeps the screen awake while the session is live.
+
+#### REQ-UIX-063 — The design files never reach the build, and no prototype's class reaches the source
+**Serves:** `DEC-183` · `docs/design/README.md` · wave 18's definition of done
+`docs/design/screens/` holds the artboards a screen is rebuilt from. They are references for layout, size and copy,
+and nothing in them is a component.
+**Acceptance:**
+- A test fails if any file under `src/` imports from `docs/`, if a `.dc.html` file is under `src/` or `public/`,
+  or if a class name an artboard declares appears in `src/`.
+- The built output contains no `.dc.html` file.
+
 ---
 
 ## 24. Survey — `SUR`

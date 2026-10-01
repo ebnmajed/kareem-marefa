@@ -265,6 +265,62 @@
         "empty": "لا تعديلات بعد.",
         "emptyAction": "إلى كتالوج النقاط"
       }
+    },
+    "week": {
+      "label": "حصيلتك هذا الشهر",
+      "railLabel": "أسبوعك في الساحة",
+      "rank": {
+        "label": "ترتيب <bdi>{month}</bdi>",
+        "labelPlain": "ترتيبك",
+        "labelHidden": "ترتيبك · مخفيّ عن غيرك",
+        "valueLabel": "المرتبة <bdi>{rank}</bdi> من <bdi>{total}</bdi> في <bdi>{month}</bdi>",
+        "of": "من <bdi>{total}</bdi>",
+        "hidden": "مخفيّ عن غيرك",
+        "ends": "{count, plural, zero {ينتهي اليوم} one {ينتهي غدًا} two {ينتهي بعد يومين} few {ينتهي بعد {value} أيام} many {ينتهي بعد {value} يومًا} other {ينتهي بعد {value} يوم}}",
+        "final": "نهائي",
+        "above": "فوقك: <b><bdi>{name}</bdi></b>",
+        "gap": "<n>+<bdi>{value}</bdi></n> تكفي",
+        "gapLabel": "{count, plural, zero {لا نقاط تفصلك عن المرتبة التي فوقك} one {تفصلك نقطة واحدة عن المرتبة التي فوقك} two {تفصلك نقطتان عن المرتبة التي فوقك} few {تفصلك {value} نقاط عن المرتبة التي فوقك} many {تفصلك {value} نقطة عن المرتبة التي فوقك} other {تفصلك {value} نقطة عن المرتبة التي فوقك}}",
+        "first": "أنت في الصدارة",
+        "noPoints": "لا ترتيب بعد",
+        "noPointsLong": "لا ترتيب بعد هذا الشهر",
+        "noPointsHint": "أول نقطة في <bdi>{month}</bdi> تُدخلك اللوحة.",
+        "noSnapshot": "يُحسب الليلة",
+        "noSnapshotLong": "يُحسب ترتيب الشهر في التقييم الليلي القادم.",
+        "rise": "{count, plural, zero {لم يتغيّر مركزك} one {تقدّمت مركزًا واحدًا منذ زيارتك الأخيرة} two {تقدّمت مركزين منذ زيارتك الأخيرة} few {تقدّمت {value} مراكز منذ زيارتك الأخيرة} many {تقدّمت {value} مركزًا منذ زيارتك الأخيرة} other {تقدّمت {value} مركز منذ زيارتك الأخيرة}}",
+        "heading": "ترتيبك في <bdi>{month}</bdi>"
+      },
+      "streak": {
+        "label": "سلسلتك",
+        "none": "لم تبدأ بعد",
+        "rule": "{count, plural, zero {لا شرط لإبقائها} one {جلسة واحدة في الشهر تُبقيها} two {جلستان في الشهر تُبقيانها} few {{value} جلسات في الشهر تُبقيها} many {{value} جلسة في الشهر تُبقيها} other {{value} جلسة في الشهر تُبقيها}}"
+      },
+      "points": {
+        "label": "نقاطك",
+        "valueLabel": "{count, plural, zero {رصيدك صفر نقطة} one {رصيدك نقطة واحدة} two {رصيدك نقطتان} few {رصيدك {value} نقاط} many {رصيدك {value} نقطة} other {رصيدك {value} نقطة}}",
+        "unit": "{count, plural, zero {نقطة} one {نقطة} two {نقطتان} few {نقاط} many {نقطة} other {نقطة}}"
+      },
+      "level": {
+        "remaining": "{count, plural, zero {بلغت عتبة <bdi>{level}</bdi>} one {بقيت نقطة واحدة لمستوى <bdi>{level}</bdi>} two {بقيت نقطتان لمستوى <bdi>{level}</bdi>} few {بقيت {value} نقاط لمستوى <bdi>{level}</bdi>} many {بقيت {value} نقطة لمستوى <bdi>{level}</bdi>} other {بقيت {value} نقطة لمستوى <bdi>{level}</bdi>}}"
+      }
+    },
+    "race": {
+      "title": "سباق الشركات",
+      "final": "نهائي · <bdi>{month}</bdi>",
+      "own": "فريقك",
+      "rankLabel": "المركز <bdi>{value}</bdi>",
+      "full": "اللوحة الكاملة، <bdi>{metric}</bdi>",
+      "noCompany": "اختر شركتك لتدخل السباق",
+      "metric": {
+        "total_points": "مجموع النقاط",
+        "points_per_active_member": "نقاط لكل عضو نشط"
+      }
+    },
+    "feed": {
+      "badge": "<name></name> نال شارة <b><bdi>{badge}</bdi></b>",
+      "badgeSelf": "نلت شارة <b><bdi>{badge}</bdi></b>",
+      "streak": "<name></name> أكمل سلسلة الحضور في <bdi>{month}</bdi>",
+      "streakSelf": "أكملت سلسلة الحضور في <bdi>{month}</bdi>"
     }
   }
 }

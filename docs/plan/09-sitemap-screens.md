@@ -105,6 +105,7 @@ Notes below cover only what is **specific** to the screen.
 ## 3. Unauthenticated
 
 ### SCR-002 · `/sign-in`
+★ **Wave 18 (`DEC-205`, `DEC-206`) — `REQ-UIX-058`:** rebuilt from `docs/design/screens/m10a/Main.dc.html`. No org is named on it (`DEC-206` §4.37).
 **Purpose:** the only way into the platform. **Roles:** anyone. **Serves:** `REQ-AUT-001`,
 `REQ-AUT-005`
 **Primary action:** «الدخول عبر Google»
@@ -116,6 +117,7 @@ Notes below cover only what is **specific** to the screen.
 on **that session** (`REQ-AUT-005`). The value is validated as an internal path before use.
 
 ### SCR-003 · `/choose-org`
+★ **Wave 18 — `REQ-UIX-058`:** rebuilt from `ChooseOrg.dc.html`: a radio group of names with an initial, no domain and no logo (`DEC-206` §4.39).
 **Purpose:** resolve an email domain listed by more than one org. **Serves:** `REQ-AUT-004`, A2
 **Primary action:** choose a مؤسسة
 **Copy:** «بريدك مسجَّل لدى أكثر من مؤسسة. اختر مؤسستك — هذا الاختيار نهائي ولا يمكن تغييره لاحقًا.»
@@ -123,12 +125,15 @@ on **that session** (`REQ-AUT-005`). The value is validated as an internal path 
 after the choice — the permanence is enforced by `org_id`'s immutability, not by hiding this page.
 
 ### SCR-004 · `/no-access`
+★ **Wave 18 — `REQ-UIX-058`:** rebuilt from `NoAccess.dc.html`; it shows the visitor their own address, masked, and still names no org and no listed domain (`DEC-206` §4.40).
 **Purpose:** a Google account on no org's list. **Serves:** `REQ-AUT-006`
 **Copy:** «كريم معرفة منصة خاصة بمؤسسات محددة. إن كنت تعتقد أن هذا خطأ، تواصل مع مسؤول مؤسستك.»
 **Note:** **names no org and lists no domains.** A dead end with an explanation, not a blank screen
 and not a redirect loop. No account, member row or audit subject is created.
 
 ### SCR-007 · `/s/[id]` — the public session card
+
+★ **Wave 18 — `REQ-UIX-059`:** rebuilt from `PublicCard.dc.html`. ★ **`DEC-066`'s allowlist wins over the artboard and over the note below**: no seats, no presenter, no company (`DEC-206` §4.42). The action reads «سجّل الدخول لحجز مقعدك».
 
 ★ **Wave 12 (`DEC-172`) — `REQ-UIX-026`:** the public card's media never crops a poster.
 **Purpose:** a shareable preview of one session. **Roles:** anyone, unauthenticated.
@@ -173,6 +178,7 @@ returns not-found (`REQ-CRT-009`).
 ## 4. Member app
 
 ### SCR-010 · `/app`
+★ **Wave 18 (`DEC-205` §2, `DEC-206`) — `REQ-UIX-055`, `REQ-UIX-054`, `REQ-UIX-056`:** ★★ **home is the feed.** Rebuilt from `Home.dc.html` and `HomeDesktop.dc.html`: the ring row, the member's week, and a feed by date of session posts, recaps, achievements and announcements; on desktop the week moves into the game rail. **The sections listed below are superseded**; what is drawn and not built is `DEC-206` §4.47 – §4.61.
 **Purpose:** what is next for me. **Serves:** `REQ-SES-013`, `REQ-PTS-003`
 **Primary action:** the nearest upcoming session's RSVP state.
 **Sections:** جلساتي القادمة · جلسات جديدة · نقاطي ومستواي · مهام تحضيرية معلّقة · شهادات جديدة
@@ -182,6 +188,8 @@ returns not-found (`REQ-CRT-009`).
 **Realtime:** points and RSVP counts.
 
 ### SCR-011 · `/app/sessions`
+
+★ **Wave 18 — `REQ-UIX-060`:** rebuilt from `Browse.dc.html`: search in the page, one chip row with «المزيد», the eight tags, rows in date groups. **No filter rail on desktop** — the navigation rail is on that side (`DEC-206` §4.65) — and no sort (§4.63).
 
 ★ **Wave 12 (`DEC-172`) — `REQ-UIX-026`:** a timeline card's poster is shown whole at 390 px and at desktop width — never cropped.
 **Purpose:** browse and find. **Serves:** `REQ-DSC-003`, `REQ-DSC-005`
@@ -195,6 +203,8 @@ results.
 from a separate rule. Date range pickers run right-to-left.
 
 ### SCR-012 · `/app/sessions/[id]` ★ — the event page
+
+★ **Wave 18, PR B — `REQ-UIX-061`:** rebuilt from `Event.dc.html`, `EventLive.dc.html`, `EventDone.dc.html` and `EventDesktop.dc.html`. **The poster is whole at 4:5** — the «4:5 crop» below is retired — the date, time and place sit with the action, and on desktop the action is a full-width row that sticks once scrolled past (`DEC-206` §4.72, §4.73).
 
 ★ **Wave 12 (`DEC-172`) — `REQ-CHK-018`, `REQ-UIX-026`:** the attendance outcome shows the pending award until the session completes; the poster is shown whole.
 ★ **Wave 14 (`DEC-180`) — `REQ-EVT-016`, `REQ-ADM-021`:** «الصور» opens each photograph whole in a lightbox moved through by always-visible previous/next tap targets; each photograph has an audited download, and staff see «تنزيل الكل» in the photo group's header, which queues the album and says it will be ready shortly.
@@ -250,6 +260,8 @@ exists at all, and a denied member never receives a URL (`07` §6).
 
 ### SCR-014 · `/app/sessions/[id]/check-in` ★
 
+★ **Wave 18, PR B — `REQ-UIX-062`:** rebuilt from `CheckIn.dc.html`. «No reservation needed» is said only when the session allows walk-ins (`REQ-CHK-010`; the note at the foot of this section is stale). ★ Whether a refused code may shake is the owner's (`DEC-206` §4.75); until ruled, it does not.
+
 ★ **Wave 12 (`DEC-172`) — `REQ-CHK-018`, `REQ-PTS-015`:** after a verified check-in the screen shows what the member has earned and that it arrives when the session ends — a state read from the data, the same on reload, never a toast. No ledger row is written here any more.
 **Purpose:** the only proof of attendance. **Serves:** `REQ-CHK-003`, `REQ-CHK-006`,
 `REQ-CHK-010`, `REQ-CHK-011`
@@ -280,6 +292,7 @@ moment.
 **Note:** no RSVP required (`REQ-CHK-010`) — a walk-in checks in like anyone else.
 
 ### SCR-016 · `/app/sessions/[id]/host` ★ — the presenter host view
+★ **Wave 18, PR B — `REQ-UIX-062`:** rebuilt from `Host.dc.html`: the code in two groups of three, the time to rotation, the switch, marking by hand in a sheet, and projection with the screen kept awake.
 **Purpose:** run the room. **Roles:** the session's presenters, org admins, moderators — **and
 nobody else** (OQ-013, `REQ-CHK-014`). **Serves:** `REQ-CHK-001`, `REQ-CHK-007`
 **Primary action:** display the **رمز الحضور**.

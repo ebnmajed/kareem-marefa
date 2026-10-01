@@ -371,6 +371,7 @@ Then, before spawning anyone:
 
 ## 5. What the lead must not forget
 
+- ★★ **Every screens brief after M10a carries, verbatim:** «a screen is REBUILT to its design, never restyled» and ★★ **DELETE THE PAGE FILE FIRST, then write the screen from its artboard** (`DEC-208`, amending `DEC-199` §2) — two commits, a delete then a create — **and re-derive what must survive from the REQs and the DAL, not from memory**: the data calls, the auth boundary, `<bdi>` on every interpolated title and code, `?next=`, the phase gates. **The story lists what it kept and which requirement made it keep it.**
 - `supabase start` hangs on a macOS Keychain dialog for "Supabase CLI" (STATUS.md); the owner clicks
   Always Allow.
 - Another session may switch `gh` to `devyaden`; `gh auth switch --user ebnmajed` before `gh`.

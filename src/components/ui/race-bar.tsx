@@ -28,12 +28,39 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 // (DEC-186 §4). On the light ground the accent outline takes the heading ink
 // (DEC-186 §2).
 
-export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, rank, rankLabel, secondary, ownLabel, className = "" }: RaceBarProps) {
+export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, rank, rankLabel, secondary, ownLabel, layout = "stacked", className = "" }: RaceBarProps) {
   const own = Boolean(ownLabel);
   const colour = teamColorOrNull(teamColor);
   const ring = colour ? "border-team" : "border-team-neutral";
   const ringStyle = colour ? ({ "--team": colour } as CSSProperties) : undefined;
   const frame = own ? "border-accent pg-light:border-fg-heading" : "border-transparent";
+
+  // ★ wave 18 (DEC-207 W3, add-only): ONE line — the ring, the name, the bar, the value — as the home's race draws it
+  // (`SCR-010`). The metric is still said on every row, to a screen reader, beside the value (REQ-LDR-005); the card
+  // that holds the rows shows it once, visibly. The rank, when given, is heard and not drawn: the order is the rank.
+  if (layout === "inline") {
+    return (
+      <li className={`flex items-center gap-2 rounded-tile border-2 px-2 py-1.5 ${frame} ${className}`}>
+        {rank != null ? <span className="sr-only">{rankLabel}</span> : null}
+        <span aria-hidden="true" data-slot="ring" style={ringStyle} className={`size-5 shrink-0 rounded-pill border-[3px] bg-canvas ${ring}`} />
+        {/* The name and «فريقك» run on as one line, as the artboard sets «صنف، فريقك»; a long name may still wrap. */}
+        <span className="min-w-0 max-w-[45%] shrink-0 text-caption leading-snug">
+          <bdi className="font-bold text-fg-heading">{companyName}</bdi>
+          {own ? <span className="ms-1.5 font-semibold text-fg-body">{ownLabel}</span> : null}
+        </span>
+        <ProgressBar value={fraction} max={1} fill="team" teamColor={colour} decorative className="min-w-0 flex-1" />
+        <span className="shrink-0 font-display font-extrabold text-fg-heading">
+          <bdi dir="ltr">{value}</bdi>
+          <span className="sr-only">{metricLabel}</span>
+          {secondary ? (
+            <span className="sr-only">
+              {secondary.label} <bdi dir="ltr">{secondary.value}</bdi>
+            </span>
+          ) : null}
+        </span>
+      </li>
+    );
+  }
 
   // Three lines, so the row fits the box it is given — 326 px in the gallery at
   // 390, less inside a card: the ring, the name and the number; the bar across

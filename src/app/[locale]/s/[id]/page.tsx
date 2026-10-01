@@ -2,65 +2,53 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { PublicCardFooter, PublicCardFrame, PublicCardHeader } from "@/components/browse/public-card-frame";
 import { dayCountLabel, dayRange } from "@/components/sessions/day-label";
-import { formatDateTime, formatTime, sameDay } from "@/components/sessions/numerals";
+import { formatDate, formatDateTime, formatTime, sameDay } from "@/components/sessions/numerals";
 import { buildPublicCardMetadata, publicCardImagePath, siteOrigin } from "@/components/sessions/public-card-metadata";
 import { SessionStatusBadge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
-import { Card, CardBody, CardMedia } from "@/components/ui/card";
+import { CalendarIcon, PinIcon } from "@/components/ui/icons";
+import { Poster } from "@/components/ui/poster";
 import { getPublicSessionCard } from "@/lib/dal/sessions";
 import { platformConfigured } from "@/lib/supabase/env";
 import { sessionPhase } from "@/lib/session-status";
 
-// `/{locale}/s/{id}` — THE PUBLIC SESSION CARD. The owner's decision of
-// 2026-09-15, and the only page of the platform a stranger may read about a
-// session.
+// `/{locale}/s/{id}` — SCR-007, THE PUBLIC SESSION CARD — rebuilt in wave 18
+// from `PublicCard.dc.html` (`M10a.md` §4, REQ-UIX-059, STORY-UIX-043). The
+// only page of the platform a stranger may read about a session.
 //
-// ★ WHY THIS IS NOT THE EVENT PAGE'S URL, which is the question anyone
-// reading this will ask first:
+// ★ WHY THIS IS NOT THE EVENT PAGE'S URL. The event page is a MEMBER'S page —
+// the abstract, the presenters, the seats, the discussion. Two URLs make the
+// boundary a ROUTE instead of a conditional: this file can only render what
+// `session_public_card()` returns, because nothing else is reachable from here.
+// A link-preview crawler fetching the event page gets the sign-in redirect; this
+// page is what a pasted link previews.
 //
-//   The event page (`/app/sessions/{id}`) is a MEMBER'S page. It carries the
-//   abstract, the presenters by name, the capacity and the seats left, the
-//   RSVP panel, the pre-session tasks, the materials, the photos, every
-//   comment and the ratings. None of that was opened. Making the same URL
-//   serve two different documents depending on who asks is how a page ends up
-//   leaking one of them: every later addition to the event page — a slot, a
-//   count, a name — would have to be re-audited against «what does the signed
-//   out branch render», forever, by whoever adds it.
+// ★ DEC-066's ALLOWLIST WINS OVER THE ARTBOARD (DEC-206 §4.42, REQ-UIX-059). The
+// artboard draws the seats, the presenter and the company; none is drawn, and
+// `session_public_card()` is not changed — they never arrive.
 //
-//   Two URLs make the boundary a ROUTE instead of a conditional. This file
-//   can only render what `session_public_card()` returns, because nothing
-//   else is reachable from here; the event page can only be reached with a
-//   session, because the proxy and `requireSession()` say so. Neither has a
-//   branch that can be got wrong.
+// Regions, in the artboard's order: the brand row (the wordmark, «من تنظيم …») ·
+// the poster · the clock's badge · the `h1` · the time and the place · the one
+// action · the members-only line · the legal footer.
 //
-//   It also survives being pasted. A link-preview crawler fetching
-//   `/app/sessions/{id}` gets the sign-in redirect and previews the sign-in
-//   page — which is exactly what the owner asked us to fix.
+// ★ THE POSTER IS WHOLE, AT ITS OWN RATIO (DEC-207 §1.4). The only rendered
+// artefact `anon` may read is the `og` render, 1200 × 630 — so a rendered poster
+// is shown whole at that ratio, never cropped to the artboard's 4:5
+// (REQ-UIX-026). The 4:5 box is the typographic placeholder's, before a render
+// exists; it carries no amount (§4.46) and names no company (§4.42).
 //
-// ★ SIX FIELDS, AND THE REST IS NOT IN THE DTO (REQ-SES-008 included: no
-// stream link, no join affordance, because there is none in the product).
-// The abstract, the presenters and the attendance are not withheld by this
-// component — they never arrive.
-//
-// ★★ THE 404 IS A REAL 404, AND THIS FILE IS WHAT KEEPS IT ONE (DEC-134 item
-// 4). Under `/app`, a `loading.tsx` wraps every page in Suspense, the response
-// has started streaming before any gate runs, and `notFound()` can only answer
-// 200 with `noindex`. A crawler reads the STATUS, so this route must not stream
-// before it knows the card exists:
-//
+// ★★ THE 404 IS A REAL 404, AND THIS FILE IS WHAT KEEPS IT ONE (DEC-134 item 4):
 //   · no `loading.tsx` anywhere under `src/app/[locale]/s/`, ever;
 //   · no `<Suspense>` in this page above the `notFound()`;
 //   · `platformConfigured()` and `card(id)` are the first two awaits.
+// A draft, a cancelled session and an unknown id are the same 404 (DEC-207, N2).
 //
-// `not-found.tsx` beside this file is not a Suspense boundary; it renders the
-// Arabic page without changing the status.
-//
-// ★ THE BADGE COMES FROM THE CLOCK ALONE (DEC-141). The function returns no
-// state and no seats — DEC-066's allowlist — so the phase is `sessionPhase()`
-// over a `published` session's times: `live` and `ended` are said; `open`
-// shows nothing, because «التسجيل مفتوح» would be a claim about seats the card
-// cannot see.
+// ★ THE BADGE COMES FROM THE CLOCK ALONE (DEC-141, DEC-206 §4.43). The function
+// returns no state and no seats, so the phase is `sessionPhase()` over a
+// published session's times: `live` and `ended` are said; an open card shows no
+// badge, because «التسجيل مفتوح» would be a claim about seats it cannot see.
 
 const card = cache(getPublicSessionCard);
 
@@ -77,23 +65,19 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  // Defence in depth, the same line `/verify/[code]` carries: the proxy
-  // answers 404 for the public platform routes while the platform is
-  // unconfigured (DEC-038), and this page must never reach `supabaseEnv()`
-  // and serve a 500 on a public URL of a live site whatever the matcher does.
+  // Defence in depth: the proxy answers 404 for the public platform routes while
+  // the platform is unconfigured (DEC-038); this page never reaches
+  // `supabaseEnv()` and serves a 500 on a public URL of a live site.
   if (!platformConfigured()) notFound();
 
   const data = await card(id);
-  // A draft, a cancelled session and a uuid that names nothing are the same
-  // page — the function gave the same answer for all three.
   if (!data) notFound();
 
-  const [t, tDays] = await Promise.all([getTranslations("sessions.card"), getTranslations("sessions.days")]);
-  // ★ A RANGE WHEN THE SESSION SPANS SEVERAL DAYS (REQ-SES-015). The span is
-  // the session's own STORED window — contract 1 makes `starts_at` the first
-  // day's start and `ends_at` the last day's end — so this page needs only the
-  // COUNT, which `session_public_card()` returns. It never reads `session_days`:
-  // this page answers `anon`, and that table is granted to `authenticated`.
+  const [t, tDays, shell] = await Promise.all([getTranslations("sessions.card"), getTranslations("sessions.days"), getTranslations("app.shell")]);
+
+  // ★ A RANGE WHEN THE SESSION SPANS SEVERAL DAYS (REQ-SES-015), from the stored
+  // window and the COUNT the function returns — never `session_days`, which is
+  // granted to `authenticated` and this page answers `anon`.
   const spans = data.dayCount > 1;
   const when = !data.startsAt
     ? null
@@ -106,116 +90,115 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
         ? formatTime(data.endsAt, data.timeZone, locale)
         : formatDateTime(data.endsAt, data.timeZone, locale)
       : null;
-  // «3 أيام» beside the range: a stranger reading a shared link is deciding
-  // whether to ask for three evenings off, and a range alone does not say so.
   const dayCount = spans ? dayCountLabel(data.dayCount, tDays) : null;
-  const signInHref = `/${locale}/sign-in?next=${encodeURIComponent(`/${locale}/app/sessions/${data.id}`)}`;
-  // Clock only, over a published session's times — see the header.
-  // ★ THE DAYS ARE PASSED, and this line is the defect that made them
-  // necessary: with the stored window alone a three-day workshop read «جارية
-  // الآن» to the public through both of its nights, while the event page and
-  // the browse card — which pass days — said «التسجيل مفتوح» for the same
-  // session at the same instant. One implementation of the rule, fed
-  // everywhere (contract 9).
+
+  // The days are PASSED (contract 9 of wave 9): with the stored window alone a
+  // three-day workshop read «جارية الآن» through both of its nights.
   const phase = sessionPhase({ state: "published", startsAt: data.startsAt, endsAt: data.endsAt, days: data.days });
   const ended = phase === "ended";
+  const signInHref = `/${locale}/sign-in?next=${encodeURIComponent(`/${locale}/app/sessions/${data.id}`)}`;
 
   return (
-    <main className="mx-auto w-full max-w-xl px-4 py-10 sm:py-16">
-      <Card density="grid">
+    <PublicCardFrame>
+      <PublicCardHeader homeLabel={shell("brand")} aside={t.rich("presentedBy", { org: data.orgName, bdi: (c) => <bdi>{c}</bdi> })} />
+
+      <main className="flex flex-col gap-3 px-3 pt-1">
         {data.hasImage ? (
-          // The poster first — it is the thing that was shared. A plain <img>,
-          // not next/image: the bytes come from a Route Handler that reads a
-          // private bucket, so there is nothing for the optimiser to cache.
-          // Not `CardMedia` either: it crops to three fixed ratios, and the
-          // `og` render is designed at its own. The box is reserved at that
-          // ratio so the card does not jump when it lands. The ended wash is
-          // on the IMAGE only; the badge below is never dimmed (DEC-123).
+          // The poster first — it is the thing that was shared. A plain <img>, not
+          // next/image: the bytes come from a Route Handler over a private bucket,
+          // so there is nothing for the optimiser to cache. The box is reserved at
+          // the render's own ratio so the card does not jump when it lands. The
+          // ended wash is on the IMAGE only; the badge below is never dimmed (DEC-123).
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={publicCardImagePath(data.id)}
             alt={t("posterAlt")}
-            className={`block w-full bg-raised ${ended ? "grayscale opacity-45" : ""}`}
+            className={`block w-full rounded-tile bg-raised ${ended ? "grayscale opacity-45" : ""}`}
             width={data.imageWidth ?? undefined}
             height={data.imageHeight ?? undefined}
             style={{ aspectRatio: data.imageWidth && data.imageHeight ? `${data.imageWidth} / ${data.imageHeight}` : "1200 / 630" }}
           />
         ) : (
-          // No render yet: the house typographic placeholder, never nothing —
-          // navy-only (R7): posters are dark (DEC-125), and the first thing a
-          // stranger sees of a shared link should not be a silver block.
-          <CardMedia placeholderFrom={data.title} placeholderTone="dark" aspect="16/9" dimmed={ended} />
+          <div className={ended ? "grayscale opacity-45" : undefined}>
+            {/* No company may be named here (§4.42), so the placeholder's name line is the org's —
+                the one name on the allowlist — and it carries no amount (§4.46). */}
+            <Poster
+              title={data.title}
+              date={data.startsAt ? formatDate(data.startsAt, data.timeZone, locale) : undefined}
+              teamColor={null}
+              teamName={data.orgName}
+            />
+          </div>
         )}
-        <CardBody className="gap-3 p-5 sm:p-6">
-          {phase === "live" || ended ? <SessionStatusBadge phase={phase} /> : null}
-          <p className="text-body-sm text-fg-muted">{t.rich("presentedBy", { org: data.orgName, bdi: (c) => <bdi>{c}</bdi> })}</p>
-          <h1 className="text-h1 text-fg-heading">
-            <bdi>{data.title}</bdi>
-          </h1>
 
-          <dl className="mt-2 flex flex-col gap-4 border-t border-edge pt-4">
-            <div>
-              <dt className="text-label text-fg-heading">{t("whenLabel")}</dt>
-              <dd className="mt-1 text-body text-fg-body">
-                {when ? (
-                  <>
-                    <bdi>{when}</bdi>
-                    {/* ★ Where the line may break, and nowhere else. A time is
-                        joined to its «م» at the source (`numerals.ts`, U+00A0);
-                        «· حتى 8:27 م» is one unbreakable clause; and the ONLY
-                        break opportunity is the ordinary space BEFORE the «·»,
-                        which sits outside the clause. Wave 7's capture showed
-                        «… في 6:57» / «م · حتى 8:27 م» — the clause had its
-                        leading space inside it, so the line broke inside the
-                        start time instead. */}
-                    {until ? (
-                      <>
-                        {" "}
-                        <span className="whitespace-nowrap text-fg-muted">
-                          {"·\u00A0"}
-                          {t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}
-                        </span>
-                      </>
-                    ) : null}
-                    {/* The count rides on the same break rule as «· حتى …»: an
-                        ordinary space before the «·», nothing breakable after. */}
-                    {dayCount ? (
-                      <>
-                        {" "}
-                        <span className="whitespace-nowrap text-fg-muted">
-                          {"·\u00A0"}
-                          <bdi>{dayCount}</bdi>
-                        </span>
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  t("notScheduled")
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-label text-fg-heading">{t("whereLabel")}</dt>
-              {/* The NAME, and no address and no map link: a stranger is told
-                  which hall, never how to find the side door (12 T3). */}
-              <dd className="mt-1 text-body text-fg-body">{data.venueName ? <bdi>{data.venueName}</bdi> : t("noVenue")}</dd>
-            </div>
-          </dl>
+        {phase === "live" || ended ? (
+          <div className="flex items-center gap-2">
+            <SessionStatusBadge phase={phase} />
+          </div>
+        ) : null}
 
-          {/* ★ REQ-SES-008. Said once, plainly, so nobody arrives expecting a
-              link to join from home. */}
-          <p className="text-body-sm text-fg-muted">{t("inPersonNote")}</p>
-        </CardBody>
-      </Card>
+        <h1 className="font-display text-play-sm leading-[1.4] font-extrabold text-fg-heading">
+          <bdi>{data.title}</bdi>
+        </h1>
 
-      {/* ONE primary action, and it is honest about what is behind it. An
-          anchor, not the house Link: sign-in is a document navigation. */}
-      <div className="mt-8 flex flex-col gap-4">
-        <p className="text-body text-fg-body">{t.rich("membersOnly", { org: data.orgName, bdi: (c) => <bdi>{c}</bdi> })}</p>
-        <a href={signInHref} className={buttonClass("primary", "lg", "w-full sm:w-fit")}>
-          {t("signIn")}
+        {/* The icon rows. A `<dl>` whose terms are for a screen reader: the glyph says it to the eye. */}
+        <dl className="flex flex-col gap-2 text-body-sm text-fg-body">
+          <div className="flex items-start gap-2.5">
+            <dt className="sr-only">{t("whenLabel")}</dt>
+            <CalendarIcon aria-hidden="true" className="mt-1 shrink-0 text-[1.125rem] text-fg-muted" />
+            <dd>
+              {when ? (
+                <>
+                  <bdi>{when}</bdi>
+                  {/* ★ Where the line may break, and nowhere else: the ordinary space BEFORE
+                      the «·», outside the clause; «· حتى 8:27 م» is one unbreakable clause
+                      (wave 7's capture broke inside the start time otherwise). */}
+                  {until ? (
+                    <>
+                      {" "}
+                      <span className="whitespace-nowrap text-fg-muted">
+                        {"· "}
+                        {t.rich("toTime", { value: until, bdi: (c) => <bdi>{c}</bdi> })}
+                      </span>
+                    </>
+                  ) : null}
+                  {dayCount ? (
+                    <>
+                      {" "}
+                      <span className="whitespace-nowrap text-fg-muted">
+                        {"· "}
+                        <bdi>{dayCount}</bdi>
+                      </span>
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                t("notScheduled")
+              )}
+            </dd>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <dt className="sr-only">{t("whereLabel")}</dt>
+            <PinIcon aria-hidden="true" className="mt-1 shrink-0 text-[1.125rem] text-fg-muted" />
+            {/* The NAME, and no address and no map link: a stranger is told which hall,
+                never how to find the side door (12 T3). */}
+            <dd>{data.venueName ? <bdi>{data.venueName}</bdi> : t("noVenue")}</dd>
+          </div>
+        </dl>
+
+        {/* ★ REQ-SES-008, kept by DEC-207 (N3): said once, plainly, so nobody arrives expecting a link. */}
+        <p className="text-caption text-fg-muted">{t("inPersonNote")}</p>
+
+        {/* ONE primary action, honest about what is behind it — and after the session has
+            ended it no longer promises a seat (DEC-207, Q3). An anchor, not the house Link:
+            sign-in is a document navigation. */}
+        <a href={signInHref} className={buttonClass("primary", "lg", "mt-1 w-full")}>
+          {ended ? t("signInEnded") : t("signIn")}
         </a>
-      </div>
-    </main>
+        <p className="text-center text-caption text-fg-muted">{t.rich("membersOnly", { org: data.orgName, bdi: (c) => <bdi>{c}</bdi> })}</p>
+      </main>
+
+      <PublicCardFooter privacy={shell("privacy")} terms={shell("terms")} />
+    </PublicCardFrame>
   );
 }
