@@ -93,7 +93,9 @@ export const profileInput = z.object({
   companyId: z.uuid().nullable(),
   jobTitle: z.string().trim().max(120).nullable(),
   bio: z.string().trim().max(600).nullable(),
-  leaderboardOptOut: z.boolean(),
+  // ★ wave 20 (DEC-218): optional. The opt-out leaves the profile form for `/app/me/settings`; a profile save that
+  // does not send it must not write it, or every save after the move would opt the member back in.
+  leaderboardOptOut: z.boolean().optional(),
 });
 export type ProfileInput = z.infer<typeof profileInput>;
 
@@ -111,10 +113,21 @@ export async function updateMyProfile(locale: string, input: ProfileInput): Prom
       company_id: input.companyId,
       job_title: input.jobTitle || null,
       bio: input.bio || null,
-      leaderboard_opt_out: input.leaderboardOptOut,
+      ...(input.leaderboardOptOut === undefined ? {} : { leaderboard_opt_out: input.leaderboardOptOut }),
     })
     .eq("id", session.memberId);
   if (error) throw new Error(`members.update: ${error.message}`);
+}
+
+/**
+ * ★ wave 20 (DEC-218, REQ-LDR-008, REQ-UIX-077): the leaderboard opt-out alone — `/app/me/settings`' switch. Add-only.
+ * The row is the session's own member; the same column grant and `members_update_self` policy (0004) are the
+ * boundary. One column, so a member with no display name can still switch it, and nothing else is rewritten.
+ */
+export async function setLeaderboardOptOut(locale: string, optOut: boolean): Promise<void> {
+  const { session, supabase } = await sessionClient(locale);
+  const { error } = await supabase.from("members").update({ leaderboard_opt_out: z.boolean().parse(optOut) }).eq("id", session.memberId);
+  if (error) throw new Error(`members.update (opt-out): ${error.message}`);
 }
 
 // ── SCR-020 — a profile, at the viewer's tier (wave 7, DEC-141 ruling 4) ────
