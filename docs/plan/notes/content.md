@@ -6700,3 +6700,14 @@ else in the plan moves.
   `BookmarkChangeProvider` / `useContext` read inside `BookmarkButton`, a no-op when absent — which my client list
   provides around the rows. `SessionRow` is untouched. Asked of the lead in place of the prop.
 - **`?edit`:** approved — Cancel a link to `/app/me`; «leaving asks» is the client enhancement on top.
+
+### Correction to the addendum (the lead) — and D1 ruled
+
+- **`HubTopRow` renders at every width** (it hides its own back control from `lg`; its `h1` is the page's heading at
+  desktop too, under the layout's band and strip). **`<HubStrip />` is placed unconditionally** — it carries its own
+  `lg:hidden`. My pages add no breakpoint class to either. On `/app/me` at desktop: band, strip (layout), then `h1`
+  «حسابي», `h2` «ملفي», the rows; the phone standing card stays the only thing I hide from `lg`.
+- **D1 ruled:** the settings link is named by where it goes — PR A `profile.nav.privacy` («الخصوصية والبيانات») to
+  `/app/me/privacy`; PR B `app.shell.settings` («الإعدادات») to `/app/me/settings`. `profile.read.settings` is not added.
+  `wave7-content-me.spec.ts:148` then keeps its expectation — a link named «الخصوصية والبيانات» to privacy — and its
+  ledger line becomes «none» in PR A.
