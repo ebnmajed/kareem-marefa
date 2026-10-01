@@ -325,6 +325,8 @@ export function ProposalForm({
             {allowDraft ? t("form.submit") : t("form.resubmit")}
           </Button>
         }
+        // The draft button is the drawn quiet one — the body's size, not the CTA's: at 390 px a second display-face
+        // label pushed the fixed bar 42 px past the viewport, and the whole page scrolled sideways with it.
         secondary={
           allowDraft
             ? [
@@ -334,7 +336,8 @@ export function ProposalForm({
                   name="intent"
                   value="draft"
                   variant="secondary"
-                  size="lg"
+                  size="md"
+                  className="whitespace-nowrap"
                   onClick={() => setIntent("draft")}
                   pending={pending && intent === "draft"}
                   pendingLabel={t("form.submitting")}

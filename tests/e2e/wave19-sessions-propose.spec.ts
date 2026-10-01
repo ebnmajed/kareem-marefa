@@ -100,7 +100,27 @@ async function open(p: Page) {
 
 async function capture(p: Page, state: string) {
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
-  expect(await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  // Which element is responsible, named, rather than a bare number (TEAM.md §5's layout-viewport measurement).
+  const offenders = await p.evaluate(() => {
+    if (document.documentElement.scrollWidth <= document.documentElement.clientWidth) return [];
+    const limit = document.documentElement.clientWidth;
+    const out: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      const box = el.getBoundingClientRect();
+      if (box.width === 0 || (box.right <= limit + 1 && box.left >= -1)) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el.parentElement; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.overflowX === "auto" || cs.overflowX === "scroll" || cs.overflowX === "hidden" || cs.overflowX === "clip") {
+          contained = true;
+          break;
+        }
+      }
+      if (!contained) out.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 80)} — ${Math.round(box.left)}..${Math.round(box.right)}`);
+    }
+    return out.slice(0, 8);
+  });
+  expect(offenders, "the page must not scroll sideways at 390 px").toEqual([]);
   mkdirSync(SHOTS, { recursive: true });
   await p.screenshot({ path: join(SHOTS, `wave19-sessions-propose-${state}-390.png`), fullPage: true });
 }

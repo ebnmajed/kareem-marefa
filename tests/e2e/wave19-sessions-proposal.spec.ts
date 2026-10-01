@@ -38,8 +38,16 @@ let admin: ReturnType<typeof createClient>;
 let db: pg.Client;
 let orgId = "";
 let categoryId = "";
+let venueId = "";
 const users: { id: string; email: string; memberId: string; cookies: { name: string; value: string }[] }[] = [];
-const ids: Record<"changes" | "submitted" | "scheduled" | "rejected" | "draft", string> = { changes: "", submitted: "", scheduled: "", rejected: "", draft: "" };
+const ids: Record<"changes" | "submitted" | "scheduled" | "cancelled" | "rejected" | "draft", string> = {
+  changes: "",
+  submitted: "",
+  scheduled: "",
+  cancelled: "",
+  rejected: "",
+  draft: "",
+};
 let sessionId = "";
 
 async function person(domain: string, local: string, name: string) {
@@ -99,6 +107,8 @@ test.beforeAll(async ({}, testInfo) => {
   await db.query(`insert into public.org_settings (org_id) values ($1)`, [orgId]);
   await db.query(`insert into public.org_domains (org_id, domain) values ($1, $2)`, [orgId, domain]);
   categoryId = (await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'إداري') returning id`, [orgId])).rows[0].id;
+  // A published session needs a place and a capacity (`sessions_check3`, `sessions_check4`).
+  venueId = (await db.query<{ id: string }>(`insert into public.venues (org_id, name) values ($1, 'قاعة الرياض') returning id`, [orgId])).rows[0].id;
 
   const me = await person(domain, "member", "يمان رضا");
   const mate = await person(domain, "mate", "سارة القحطاني");
@@ -107,6 +117,7 @@ test.beforeAll(async ({}, testInfo) => {
   ids.changes = await proposal(me.memberId, "changes_requested", REASON);
   ids.submitted = await proposal(me.memberId, "submitted", null);
   ids.scheduled = await proposal(me.memberId, "approved", null);
+  ids.cancelled = await proposal(me.memberId, "approved", null);
   ids.rejected = await proposal(me.memberId, "rejected", "الموضوع أوسع من جلسة واحدة.");
   ids.draft = await proposal(me.memberId, "draft", null);
   // The colleague is named on the changes-requested proposal and has not answered.
@@ -115,12 +126,21 @@ test.beforeAll(async ({}, testInfo) => {
   // A published session naming the approved proposal — «مُجدوَل» is derived from it.
   sessionId = (
     await db.query<{ id: string }>(
-      `insert into public.sessions (org_id, proposal_id, title, abstract, category_id, level, state, starts_at, duration_minutes, ends_at, time_zone, published_at)
-       values ($1, $2, $3, 'نبذة.', $4, 'introductory', 'published', now() + interval '3 days', 60, now() + interval '3 days 1 hour', 'Asia/Riyadh', now()) returning id`,
-      [orgId, ids.scheduled, TITLE, categoryId],
+      `insert into public.sessions (org_id, proposal_id, title, abstract, category_id, level, state, starts_at, duration_minutes, ends_at, capacity, venue_id, time_zone, published_at)
+       values ($1, $2, $3, 'نبذة.', $4, 'introductory', 'published', now() + interval '3 days', 60, now() + interval '3 days 1 hour', 40, $5, 'Asia/Riyadh', now()) returning id`,
+      [orgId, ids.scheduled, TITLE, categoryId, venueId],
     )
   ).rows[0].id;
   await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, me.memberId]);
+  // A second approved proposal whose session was cancelled (D15) — its own row, so no state is walked backwards.
+  const cancelledSession = (
+    await db.query<{ id: string }>(
+      `insert into public.sessions (org_id, proposal_id, title, abstract, category_id, level, state, starts_at, duration_minutes, ends_at, capacity, venue_id, time_zone, published_at, cancellation_reason)
+       values ($1, $2, $3, 'نبذة.', $4, 'introductory', 'cancelled', now() + interval '4 days', 60, now() + interval '4 days 1 hour', 40, $5, 'Asia/Riyadh', now(), 'تعذّر الحجز') returning id`,
+      [orgId, ids.cancelled, TITLE, categoryId, venueId],
+    )
+  ).rows[0].id;
+  await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, cancelledSession, me.memberId]);
 });
 
 test.afterAll(async () => {
@@ -142,7 +162,27 @@ async function open(p: Page, id: string) {
 
 async function capture(p: Page, state: string) {
   await expect(p.locator("html")).toHaveAttribute("dir", "rtl");
-  expect(await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  // Which element is responsible, named, rather than a bare number (TEAM.md §5's layout-viewport measurement).
+  const offenders = await p.evaluate(() => {
+    if (document.documentElement.scrollWidth <= document.documentElement.clientWidth) return [];
+    const limit = document.documentElement.clientWidth;
+    const out: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+      const box = el.getBoundingClientRect();
+      if (box.width === 0 || (box.right <= limit + 1 && box.left >= -1)) continue;
+      let contained = false;
+      for (let n: HTMLElement | null = el.parentElement; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.overflowX === "auto" || cs.overflowX === "scroll" || cs.overflowX === "hidden" || cs.overflowX === "clip") {
+          contained = true;
+          break;
+        }
+      }
+      if (!contained) out.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 80)} — ${Math.round(box.left)}..${Math.round(box.right)}`);
+    }
+    return out.slice(0, 8);
+  });
+  expect(offenders, "the page must not scroll sideways at 390 px").toEqual([]);
   mkdirSync(SHOTS, { recursive: true });
   await p.screenshot({ path: join(SHOTS, `wave19-sessions-proposal-${state}-390.png`), fullPage: true });
 }
@@ -210,14 +250,9 @@ test("★ scheduled: derived from the published session — «مُجدوَل» c
   await capture(page, "scheduled");
 
   // A cancelled session leaves «معتمد» current and names the session (D15).
-  await db.query(`update public.sessions set state = 'cancelled' where id = $1`, [sessionId]);
-  try {
-    await open(page, ids.scheduled);
-    await expect(page.locator("#main [aria-current=step]")).toContainText("معتمد");
-    await expect(page.locator("#main").getByText("الجلسة التي أُنشئت من هذا المقترح:")).toBeVisible();
-  } finally {
-    await db.query(`update public.sessions set state = 'published' where id = $1`, [sessionId]);
-  }
+  await open(page, ids.cancelled);
+  await expect(page.locator("#main [aria-current=step]")).toContainText("معتمد");
+  await expect(page.locator("#main").getByText("الجلسة التي أُنشئت من هذا المقترح:")).toBeVisible();
 });
 
 test("rejected and draft: the badge, not the line", async ({ context, page }) => {
