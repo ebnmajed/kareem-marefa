@@ -46,7 +46,38 @@ import { AlertCircleIcon } from "@/components/ui/icons";
 // the group fell back to the option it mounted with while its state held
 // another. After every commit the radio matching `value` is re-checked and made
 // the default.
-export function RadioGroup({ name, options, legend, defaultValue, value, onChange, invalid, error, className = "" }: RadioGroupProps) {
+/**
+ * ★ WAVE 19 (DEC-214 §5, `Propose.dc.html`'s «مستوى الجلسة»), add-only — every caller before it is unchanged.
+ * `appearance="chips"` draws the options as equal segmented chips, the native radio kept (visually hidden, still
+ * focused and still the form's value); `required` marks the group positively (REQ-UIX-011): `aria-required` on the
+ * radiogroup, and `requiredLabel` — the caller's «مطلوب», since a primitive reads no catalogue — after the legend,
+ * exactly as `<Field>` draws it. To be folded into `RadioGroupProps` in `ui/index.ts` by the lead.
+ */
+export type RadioGroupWave19Props = RadioGroupProps & {
+  appearance?: "rows" | "chips";
+  required?: boolean;
+  requiredLabel?: string;
+};
+
+// The chip: the whole label is the target (44 px), the checked one in the accent, the keyboard focus drawn on the
+// chip because the radio inside it is visually hidden.
+const CHIP =
+  "flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-pill border border-edge bg-raised px-3 text-label text-fg-heading has-[:checked]:border-transparent has-[:checked]:bg-accent has-[:checked]:text-on-accent has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--ring)]";
+
+export function RadioGroup({
+  name,
+  options,
+  legend,
+  defaultValue,
+  value,
+  onChange,
+  invalid,
+  error,
+  className = "",
+  appearance = "rows",
+  required,
+  requiredLabel,
+}: RadioGroupWave19Props) {
   const legendId = useId();
   const hintId = useId();
   const errorId = useId();
@@ -71,45 +102,73 @@ export function RadioGroup({ name, options, legend, defaultValue, value, onChang
       role="radiogroup"
       aria-labelledby={legendId}
       aria-invalid={isInvalid || undefined}
+      aria-required={required || undefined}
       aria-describedby={error ? errorId : undefined}
       className={className}
     >
       <legend id={legendId} className="text-label text-fg-heading">
         {legend}
+        {required && requiredLabel ? (
+          <>
+            {" "}
+            <span className="ms-2 text-caption font-normal text-fg-muted">{requiredLabel}</span>
+          </>
+        ) : null}
       </legend>
-      <div className="mt-2">
-        {options.map((option, index) => (
-          <div key={option.value}>
-            <label
-              className={`flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body pg:rounded-input ${option.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-[var(--btn2-bg-hover)]"}`}
-            >
+      {appearance === "chips" ? (
+        <div data-appearance="chips" className="mt-2 flex gap-2">
+          {options.map((option) => (
+            <label key={option.value} className={`${CHIP} ${option.disabled ? "cursor-not-allowed opacity-60" : ""}`}>
               {/* ui-lint-disable-next-line field — the label IS the wrapper (`16` §17) */}
               <input
                 type="radio"
                 name={name}
                 value={option.value}
                 disabled={option.disabled}
-                aria-describedby={option.hint ? `${hintId}-${index}` : undefined}
-                className="size-5 shrink-0 accent-[var(--btn-bg)]"
+                className="sr-only"
                 {...(controlled
                   ? { checked: value === option.value, onChange: () => onChange?.(option.value) }
                   : { defaultChecked: option.value === defaultValue, onChange: () => onChange?.(option.value) })}
               />
               <span>{option.label}</span>
             </label>
-            {/* ★ THE HINT SITS OUTSIDE THE `<label>`. Inside it, the hint joins
-                the radio's ACCESSIBLE NAME as well as its description, so a
-                screen reader reads the whole sentence twice and the option is
-                no longer findable by its own name. `ps-10` is the box plus the
-                gap plus the row padding, in logical units. */}
-            {option.hint ? (
-              <p id={`${hintId}-${index}`} className="ps-10 pb-1.5 text-caption text-fg-muted">
-                {option.hint}
-              </p>
-            ) : null}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-2">
+          {options.map((option, index) => (
+            <div key={option.value}>
+              <label
+                className={`flex min-h-11 items-center gap-3 rounded-field px-2 text-body text-fg-body pg:rounded-input ${option.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-[var(--btn2-bg-hover)]"}`}
+              >
+                {/* ui-lint-disable-next-line field — the label IS the wrapper (`16` §17) */}
+                <input
+                  type="radio"
+                  name={name}
+                  value={option.value}
+                  disabled={option.disabled}
+                  aria-describedby={option.hint ? `${hintId}-${index}` : undefined}
+                  className="size-5 shrink-0 accent-[var(--btn-bg)]"
+                  {...(controlled
+                    ? { checked: value === option.value, onChange: () => onChange?.(option.value) }
+                    : { defaultChecked: option.value === defaultValue, onChange: () => onChange?.(option.value) })}
+                />
+                <span>{option.label}</span>
+              </label>
+              {/* ★ THE HINT SITS OUTSIDE THE `<label>`. Inside it, the hint joins
+                  the radio's ACCESSIBLE NAME as well as its description, so a
+                  screen reader reads the whole sentence twice and the option is
+                  no longer findable by its own name. `ps-10` is the box plus the
+                  gap plus the row padding, in logical units. */}
+              {option.hint ? (
+                <p id={`${hintId}-${index}`} className="ps-10 pb-1.5 text-caption text-fg-muted">
+                  {option.hint}
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
       {/* The same shape as `<Field>`'s error, and for the same reason no `role="alert"`: the form's
           summary is the announcement; this is what is read on ARRIVAL, through the group's
           `aria-describedby`. */}
