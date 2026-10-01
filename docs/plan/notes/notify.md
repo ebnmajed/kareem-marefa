@@ -3347,3 +3347,410 @@ F1's scheme and F4's stack. **No test file in the diff; the 120 pinned files byt
 `toHtml()`») and `mail-day-words.test.ts:45`'s title («toParagraphs() then drops») — left as they are
 because N2's proof is that it touches no test; each is a one-line ledger item whenever the lead wants
 them corrected. **Next: N3**, on the lead's L6 rows for `/app/admin/emails` and `/app/me/{notifications,calendar}`.
+
+---
+
+# Wave 20 plan — `SCR-025`, `ui/settings-group` (PR A) · `SCR-026`, ★ `SCR-029` (PR B)
+
+**Planning-only. Nothing is deleted and no product file is written until the lead posts «the plans are approved»
+AND «the frame is in».** Measured on `wave-20a/the-hub` at `aed4601e` (the lead's frame is in progress in the tree:
+`HubTopRow`, `HubStrip`, `ownsTopRow` already matches `/app/me/settings`). Cites `DEC-216`, `DEC-217`, `DEC-208`,
+`REQ-UIX-075`, `076`, `077`, `080`, `081`, `REQ-NTF-001` … `006`, `REQ-CAL-003` … `008`, `REQ-LDR-008`, `08` §1.7, §2.
+
+Answers STATUS.md's «Sync 1 — what the three plans must answer», items 1 – 7, in that order (§W1 – §W7), then the
+three rulings I most need (§W8).
+
+## W1. The regions, in each artboard's order, and the primitive each is built from
+
+### `SCR-025` · `Calendar.dc.html` (PR A)
+
+| # | Region (artboard order) | Built from | Notes |
+|---|---|---|---|
+| 1 | Top row: back → `/app/me` («حسابي»), `h1` «التقويم» | lead's `HubTopRow` (`shell/hub-top-row.tsx`), `back` | the page passes its title; nothing of the shell |
+| 2 | Hub strip, «التقويم» current | lead's `HubStrip` (phone, `lg:hidden`) | the layout draws the desktop one |
+| 3 | The connection — one list card, one row: «تقويم Google» · «متصل» · «افصل» / «غير متصل» · «اربط» | ★ `ui/settings-group`, one `action` row (§W3) | «افصل» is a `<form action>` with `ui/button` `quiet`; «اربط» a plain `<a href="/api/calendar/connect">` (a Route Handler — never client navigation) |
+| 4 | «لم تُضف» — only when a session failed | `section-header` (`h2`) | absent when nothing failed (`DEC-216` §5.11) |
+| 5 | The failed list — one row per failed DAY: poster swatch, title, day/time, «أعد المحاولة» | ★ `ui/settings-group`, `action` rows with `detail` | the swatch — see D4; the retry — see D1 |
+| 6 | Tab bar, «حسابي» current | the shell (lead) | |
+
+Plus, outside the artboard and kept (§W2): the one-line outcome after OAuth or disconnect, in a `panel` with
+`role="status"` / `role="alert"`, between rows 2 and 3.
+
+### `ui/settings-group` (PR A) — §W3.
+
+### `SCR-026` · `Notifications.dc.html` (PR B)
+
+| # | Region | Built from | Notes |
+|---|---|---|---|
+| 1 | Top row: back, `h1` «الإشعارات» | `HubTopRow` | |
+| 2 | Hub strip, «الإشعارات» current | `HubStrip` | |
+| 3 | Toolbar: «غير المقروء فقط» checkbox · «تعليم الكل كمقروء» · «ما يصلني» with the gear → `/app/me/settings` | `ui/checkbox` (in a `method="get"` form) · `ui/button` `quiet` in a `<form action>` · `ui/link` + `GearIcon` | «لا شيء غير مقروء» replaces the mark-all control when nothing is unread (`REQ-UIX-076`) |
+| 4 | Date groups — «اليوم», «هذا الأسبوع», then older | `section-header` (`h2`) per group | boundaries in the org's zone; the week is `DEC-217` §3.4's, Saturday – Friday |
+| 5 | Items — unread dot + `surface` fill; the 36 px category tile with its ring; title; detail; change lines; time; «فتح الجلسة» | new `src/components/notifications/inbox-item.tsx` — **`feed-item`-shaped, not `feed-item`** (D9) | the dot is `aria-hidden`; «غير مقروء» stays in the item's text for AT (SC 1.4.1) |
+| 6 | «عرض الأقدم» | `ui/link` to `?before=<cursor>` | D8 |
+| 7 | Tab bar | the shell | |
+
+States: empty (`inbox.empty`, `empty-state`) · unread-only with nothing unread (`inbox.allRead`) · all read
+(mark-all replaced) · a page of older items.
+
+### ★ `SCR-029` · `Settings.dc.html` (PR B) — a new route `/app/me/settings`
+
+| # | Region | Built from | Notes |
+|---|---|---|---|
+| 1 | Top row: back → `/app/me`, `h1` «الإعدادات» | `HubTopRow` | **no hub strip** — the artboard draws none (D12 for desktop) |
+| 2 | Switches — «إشعارات البريد» (master), ★ the optional categories of `08` §2 (§W6), «الظهور في لوحات الصدارة» | ★ `ui/settings-group`, `switch` rows, composing `ui/switch` unchanged | each saves on change, reverts with `preferences.error` beside it |
+| 3 | The non-optional sentence — **one sentence**, never rows (`DEC-216` §5.15) | a `p` under group 2 | the seventeen of `08` §1.7 and the three «on (not switchable)» categories |
+| 4 | Links — «تقويم Google · متصل/غير متصل» → `/app/me/calendar` · «اللغة · العربية» · «البيانات والخصوصية» → `/app/me/privacy` | ★ `ui/settings-group`, `link` rows | «اللغة» — D6 |
+| 5 | Footer — «تسجيل الخروج» and the email in `<bdi>` | `ui/button` `quiet` in `<form method="post" action="/api/auth/sign-out">` — the account menu's own endpoint | the email is `getMe().email`, the address `021` shows |
+| 6 | Tab bar, «حسابي» current | the shell | `Settings.dc.html` wears it |
+
+Plus `loading.tsx` (the two group cards as `skeleton`) and `error.tsx` (`route-error`).
+
+## W2. ★★ The kept-behaviour tables (`DEC-208`) — re-derived from the `REQ-*`, the DAL and the SQL
+
+Columns: what the screen does today · where it lives after · the `REQ-*` (or decision) that keeps it — or **DROPPED**
+with the ruling that drops it. A **DEFECT** is something today's file gets wrong that the rebuild must not copy.
+
+### `SCR-025` — `me/calendar/{page,actions}.tsx`, `lib/dal/calendar.ts`
+
+| # | Behaviour today | After | Kept by |
+|---|---|---|---|
+| C1 | Connection read through `getCalendarConnection()` — four named columns; a `select *` is 42501, so no token can reach the page | unchanged, called as is | `REQ-CAL-003`, A33, `03` §5.9c |
+| C2 | «Connected» = a row with `disconnectedAt === null` | unchanged | `REQ-CAL-003` |
+| C3 | Connect is a plain `<a href="/api/calendar/connect">`, never `<Link>` (a Route Handler would be client-navigated into) | the `action` row's control, «اربط» | `REQ-CAL-003` |
+| C4 | Disconnect: `<form action={disconnect.bind(null, locale)}>` → `disconnectCalendar()` **deletes** the row → `?disconnected=1` | unchanged action, the control «افصل» | `REQ-CAL-007` |
+| C5 | After a disconnect the member is told existing events stay and will not update (`connection.afterDisconnect`, `role="status"`) | kept, one line in a `panel` | `REQ-CAL-007` acceptance 2 — **not explainer copy** |
+| C6 | OAuth return: `?error=` (`unconfigured`, `state`, `exchange`, `disconnect`) → one `role="alert"` line | kept | `REQ-UIX-075` («a calendar failure never blocks anything else on the page») |
+| C7 | `?connected=1` → «تم ربط تقويمك. ستُضاف جلساتك القادمة تلقائيًا.» | **for the copy trim** — the row already says «متصل» (`DEC-NEXT-22`: a saved form says nothing) | `REQ-UIX-080` decides; I keep it unless ruled out |
+| C8 | `?cancelled=1` is typed and **rendered by nothing** | unchanged (nothing to say: the member chose not to) | — |
+| C9 | «متصل منذ <bdi>date</bdi>» | **DROPPED** — the artboard's row is «متصل» | `DEC-216` §5.20 |
+| C10 | `connection.scope` and `connection.privacy` lines | **DROPPED** — explainer copy; C1 is the guarantee, not the sentence | `REQ-UIX-080`, `DEC-216` §5.14 |
+| C11 | The synced list: every entry, its state label, «آخر مزامنة», the empty state with «تصفّح الجلسات» | **DROPPED** — «no synced list» | `DEC-216` §5.11, §5.20, `REQ-UIX-075` |
+| C12 | A failed sync is shown to the member (`state = 'failed'`) | ★ the «لم تُضف» list — the **only** rows this page lists | `REQ-CAL-005` («surfaced to the member, not silently dropped»), `REQ-CAL-008` («reported») |
+| C13 | One entry **per day** since wave 9; the day labelled in `sessions.days`' words only when the session has more than one day | kept in the failed rows: a three-day workshop failing on day 2 lists day 2 | `REQ-SES-015`, `REQ-SES-018` (first rule), contract 7 of wave 9 |
+| C14 | The title in `<bdi>`, linking to `/app/sessions/<id>` | kept | `09` §bidi, `REQ-UIX` bdi rule |
+| C15 | Times in the **org's** zone (`formatDateTime(…, settings.timeZone, locale)`) | kept — but the zone comes from an add-only read, not from `getPreferenceMatrix()` (which the page calls today only for the zone) | A20 |
+| C16 | `synced.failedHint` — «سنعيد المحاولة تلقائيًا. حجزك قائم في كل الأحوال.» | **for the ruling** — it is `REQ-CAL-008`'s promise, which «أعد المحاولة» partly replaces; I keep «حجزك قائم» unless ruled out | `REQ-CAL-008` |
+| C17 | Locale-bound redirects (the action is bound, never `/ar/...`) | kept | wave 9 fix |
+| C18 | **DEFECT, not mine to fix this wave:** `api/calendar/{connect,callback}` hard-code `/ar/app/me/calendar` and `requireSession("ar")` | written here, told to the lead | — |
+
+★ **What «failed» reads today (the lead's question).** It IS recorded per session, per **day**:
+`calendar_events.state = 'failed'` with `error` (raw provider text, ≤ 500 chars), written by
+`record_calendar_sync()` from `worker/src/tasks/calendar_upsert.ts:180` on every failed attempt, before the rethrow
+that makes graphile-worker retry (**8 attempts**, exponential from 30 s — `0034:257`, `11` §1.3). `p7_self_read`
+lets the member read their own rows (`0026:383`). So **no new table is needed and none is proposed.** Two facts the
+screen must live with:
+- a row reads `failed` from the first failed attempt, while the worker is still retrying — «لم تُضف» is honest
+  (it is not in the calendar), but the job may land on its own;
+- after the eighth attempt nothing re-tries it, ever. **There is no member-callable re-enqueue**: `enqueue_job()` is
+  `service_role` only (`0025:68`), `resync_calendars()` is `service_role` only (`0109:256`). → **D1.**
+
+The failed rows I propose to list (add-only `listCalendarFailures(locale)` in `lib/dal/calendar.ts`): `state =
+'failed'`, the session `published` or `in_progress`, the day not yet ended. A failed row for a past day or a
+cancelled session needs no hand.
+
+### `SCR-026` — `me/notifications/{page,actions}.tsx`, `notification-list.tsx`, `lib/dal/notifications.ts`
+
+| # | Behaviour today | After | Kept by |
+|---|---|---|---|
+| N1 | `listNotifications(locale, { unreadOnly })` — own rows, `p7_self_read` the boundary, newest first, limit 50 | kept; ★ plus a cursor for «عرض الأقدم» (D8) — add-only | `REQ-NTF-006` |
+| N2 | Unread-only filter works **without JavaScript** (a link to `?unread=1`, `aria-current`) | the artboard's checkbox in a `method="get"` form, submitted on change, a `<noscript>` submit | `REQ-NTF-006`; the no-JS path |
+| N3 | Mark all read: `<form action>` → `markAllRead()` | kept; replaced by «لا شيء غير مقروء» when nothing is unread | `REQ-NTF-006`, `REQ-UIX-076` |
+| N4 | **Mark one read**: a per-item `<form>` with «تعليم كمقروء» | ★ **the artboard draws none** → D7 | `REQ-NTF-006` («read/unread state») |
+| N5 | The title is the catalogue's string for the `MSG-*` key — **never the payload** | kept | `REQ-NTF-002`, the file's own rule |
+| N6 | The payload's `title`/`session_title`/`name` as a detail line in `<bdi>`; no line when absent; never raw payload | kept | `<bdi>` rule, `notification-list.test` |
+| N7 | Change lines for a multi-day session, the day in `sessions.days`' words; **none** for a one-day session | kept, unchanged logic moved into `inbox-item` | `REQ-SES-009`, `REQ-SES-018`, `change-lines.test` |
+| N8 | «فتح الجلسة» only when `sessionId` is set → `/app/sessions/<id>` | kept — **not** on an item without a session, whatever the artboard's points row draws (D10) | `REQ-UIX-076` |
+| N9 | Unread marked twice: tone and a «غير مقروء» badge | the dot + `surface` fill, **and** «غير مقروء» kept as text for AT — colour is never the only mark | SC 1.4.1, `REQ-UIX-076` |
+| N10 | Times in the org's zone | kept — ★ **DEFECT**: today `formatDateTime(item.createdAt, timeZone)` drops `locale`; fixed | A20 |
+| N11 | Empty inbox announced (`role="status"`) | `empty-state` inside a `role="status"` | `REQ-UIX-012` |
+| N12 | The bell's unread count (`getUnreadCount()`, counted at the database) | untouched — the bell is the lead's placement, the DAL mine and unchanged | `REQ-NTF-006` |
+| N13 | `?error=1` → «تعذّر حفظ التفضيل» — ★ **DEFECT**: a failed mark-read shows the *preference* error | a mark-read failure gets its own line (`inbox.error`, ★ new) | — |
+| N14 | `markAllNotificationsRead` has no `try` — a failure throws to the boundary | caught, `inbox.error` | — |
+| N15 | The preference matrix in a second section, the in-page tabs, `preferences.intro` | **MOVED** to `029` (N-rows → §`029`); the tabs and intro **DROPPED** | `DEC-216` §5.13, `REQ-UIX-076` |
+| N16 | Locale-bound actions | kept | wave 9 fix |
+
+### ★★ `SCR-029` — every row `preference-matrix.tsx` has, and the opt-out from `021`
+
+| # | `preference-matrix` / `getPreferenceMatrix` / `setPreference` today | After, on `029` | Kept by |
+|---|---|---|---|
+| P1 | The categories come from `public.notification_matrix()` (`0156`), never a TS copy of `08` §1 | kept — `getPreferenceMatrix()` called unchanged | `REQ-NTF-002` |
+| P2 | Ordered as `08` §2 (`CATEGORIES`) | kept | `08` §2 |
+| P3 | `admin_queue` only for `admin` / `moderator` (`STAFF_ONLY`) | kept | `08` §2, `REQ-UIX-077` |
+| P4 | `certificates`, `moderation`, `account` render as a **statement with a reason**, never a disabled switch | **one sentence** with the non-optional seventeen (P5) — no reason per category | `REQ-NTF-003` («marked as such»), `DEC-216` §5.15 |
+| P5 | A switchable category lists its non-optional keys («بعض إشعارات هذا النوع تصلك مهما كان الإعداد: …») — `my_sessions` keeps a cancellation | folded into the **same** sentence | `REQ-NTF-003`, `08` §1.7 |
+| P6 | A channel no message in the category uses says «لا يُرسل على هذه القناة» — never a dead toggle | ★ kept as a rule: **no switch is drawn that writes nothing a send reads** — and that rule removes `proposals` from an email-only list (§W6, D3) | `08` §2 («not a toggle that silently does nothing») |
+| P7 | **Absence means on**: no row → `true`; `_notify_wants()` reads the same default | kept | `08` §2, `0026` |
+| P8 | Writes through `setPreference()` — update-then-insert, the 23505 retry, the `enabled`-only column grant | ★ **every switch writes through it, unchanged — the function that writes today** | `REQ-NTF-003`, `REQ-UIX-077` |
+| P9 | `NOT_SWITCHABLE` refused in the DAL, and by the table's check (23514 → `not_switchable`) | kept, untouched | `0026:261` |
+| P10 | Zod (`preferenceInput`) before the DAL | kept — the new action parses with it | `REQ-NFR-002` |
+| P11 | The form posts the value switched **to**, so a double submit is idempotent | kept — the switch posts its own checked state | — |
+| P12 | **Per channel**: `in_app` **and** `email` cells per category | ★★ **D2** — `REQ-UIX-077` says «in-app notifications are not a setting» | `REQ-NTF-003` («per category and per channel»), `REQ-NTF-001` |
+| P13 | Works **without JavaScript** — each cell its own form | kept: each switch row is a `<form>` whose `useActionState` action posts; a `<noscript>` «حفظ» submits it | the no-JS path |
+| P14 | State announced: `aria-pressed`, name «<category> — <channel> — مُفعّل/موقوف» | `role="switch"` + checked, name = the row's label | SC 4.1.2 |
+| P15 | `?saved=1` → «حُفظت تفضيلاتك» (`role="status"`) | **DROPPED** — saves on change; a saved form says nothing | `DEC-NEXT-22`, `REQ-UIX-077` |
+| P16 | `?error=1` → `preferences.error` (`role="alert"`) at the page top | **beside the switch that failed**, which reverts | `REQ-UIX-077` acceptance 2 |
+| P17 | Each category's `hint` line | **for the copy trim** — the artboard draws none | `REQ-UIX-080` |
+| P18 | `preferences.intro` («لديك قناتان فقط…») | **DROPPED** | `REQ-UIX-080` |
+| P19 | Locale-bound action | kept | wave 9 fix |
+| O1 | ★ The leaderboard opt-out, in `021`'s form, written by `updateMyProfile()` — **five columns in one update** | the switch «الظهور في لوحات الصدارة», **inverted** (`checked = !leaderboard_opt_out`) | `REQ-LDR-008`, contract 5, `DEC-217` §3.1 |
+| O2 | An opted-out member still sees their own rank; company totals unchanged | untouched — the boards' DAL, not this screen | `REQ-LDR-008` |
+| L1 | (new) Google calendar's state | `getCalendarConnection()` — the same read as `025` | `REQ-CAL-003` |
+| L2 | (new) sign-out | the account menu's POST to `/api/auth/sign-out` | — |
+
+★★ **The test that proves every preference is still written** (`tests/components/settings/settings-writes.test.tsx`,
+new, plus one case in `tests/e2e/wave20-notify-settings.spec.ts`): for each row `getPreferenceMatrix()` returns for a
+member and for an admin, toggling it calls `setPreference()` with that `category` and the channel(s) D2 rules — and the
+e2e reads `notification_preferences` back through the page after a reload. A category in the matrix with no switch on
+`029` fails the unit test unless it is in the sentence's set.
+
+## W3. `ui/settings-group` — the props, as a type (contract 2)
+
+A titled list card of rows. Reads no data and no catalogue; every string arrives as a prop. Composes `ui/switch` and
+`ui/link` **as they are** — no request to either. `"use client"` (it owns the save-on-change of a switch row).
+
+```ts
+/** What a switch row's action returns — the server-confirmed value, and whether this save failed. */
+export interface SettingsSwitchState {
+  checked: boolean;
+  failed: boolean;
+}
+
+/** A bound `"use server"` export (DEC-159) — never an inline closure from a Server Component. */
+export type SettingsSwitchAction = (previous: SettingsSwitchState, formData: FormData) => Promise<SettingsSwitchState>;
+
+interface SettingsRowBase {
+  /** Stable key; the root of the row's ids. */
+  id: string;
+  label: string;
+  /** A second line under the label — a date, a day. Plain text, drawn in `<bdi>`. */
+  detail?: string | null;
+}
+
+/** Saves on change. Without JavaScript the row is an ordinary form and `saveLabel` submits it. */
+export interface SettingsSwitchRow extends SettingsRowBase {
+  kind: "switch";
+  checked: boolean;
+  action: SettingsSwitchAction;
+  /** Posted as the switch's `name`: "on" when checked, absent when not. Default "enabled". */
+  name?: string;
+  /** Posted beside it — e.g. `{ category: "reminders", channel: "email" }`. */
+  hidden?: Readonly<Record<string, string>>;
+  disabled?: boolean;
+  /** Shown beside the switch, `role="alert"`, when the action returns `failed`; the switch is already reverted. */
+  errorLabel: string;
+  /** The `<noscript>` submit's label. */
+  saveLabel: string;
+}
+
+/** Navigates. `value` is drawn before the chevron («متصل», «العربية»). */
+export interface SettingsLinkRow extends SettingsRowBase {
+  kind: "link";
+  href: string;
+  value?: string | null;
+  /** A Route Handler or another origin: a plain `<a>`, never client navigation. */
+  external?: boolean;
+}
+
+/** A row whose control the screen composes — a disconnect form, a retry, a connect link. */
+export interface SettingsActionRow extends SettingsRowBase {
+  kind: "action";
+  value?: string | null;
+  control: ReactNode;
+  /** Decorative and `aria-hidden` — a poster swatch on `025`'s failed rows. */
+  leading?: ReactNode;
+}
+
+export type SettingsRow = SettingsSwitchRow | SettingsLinkRow | SettingsActionRow;
+
+export interface SettingsGroupProps extends Styleable {
+  /** The group's name — always its accessible name (`aria-labelledby`). */
+  title: string;
+  /** Draw the title above the card. `Settings.dc.html` draws none; default `true` — D11. */
+  showTitle?: boolean;
+  /** Default `h2`. */
+  headingLevel?: "h2" | "h3";
+  rows: SettingsRow[];
+}
+```
+
+**Behaviour:** a `section` (`aria-labelledby` the title) holding a `ul`; one `li` per row, divided by `border-edge`.
+A switch row is a `<form action>` driven by `useActionState(action, { checked, failed: false })` and `useOptimistic`
+for the flip while pending — **no timer, no nudge** (`DEC-146`); the switch is controlled, so `ui/switch`'s repaired
+reset pattern holds it across React's form reset (`DEC-149` §1). A refused save renders the state the action returned
+(the old value) and `errorLabel` beside it. A link row is the whole row as `ui/link` with `ChevronIcon` `forward`
+(left in RTL, logical by construction). **Tokens only**; no keyframe, no hover scale; 44 px rows (`min-h-11`).
+**Tests:** `tests/components/ui/settings-group.test.tsx` (every kind, revert on `failed`, no-JS markup, RTL chevron,
+axe), `settings-group-scope.test.tsx`; demo `src/app/[locale]/(dev)/ui/demos/settings-group.tsx` — every state in
+Arabic from fixture data. **I ask the lead** for the type in `ui/index.ts`, the registry entry (`composes`: `switch`,
+`link`), and the demo's wiring.
+
+## W4. Every state `M10c.md` names that is not drawn, and how it is built
+
+| Screen | State | How |
+|---|---|---|
+| `025` | not connected | the one row reads «غير متصل», control «اربط» (C3); no failed list (nothing can fail without a connection — the disconnect trigger sets every row `removed`, `0038:226-227`) |
+| `025` | connected, nothing failed | the one row — nothing else (`DEC-NEXT-22`) |
+| `025` | after disconnect / OAuth error | C5, C6 |
+| `025` | a retry pending / refused | `useActionState` on each retry form; refusal beside the row — only if D1 builds the retry |
+| `025` | the OAuth client unconfigured (dev, CI) | `?error=unconfigured` → C6 |
+| `026` | empty | `inbox.empty` in `empty-state` (action → `/app/sessions`) |
+| `026` | unread-only, nothing unread | `inbox.allRead`, and the mark-all control is gone |
+| `026` | older page | `?before=` cursor; the date groups recompute on the page |
+| `026` | a mark-read / mark-all failure | N13, N14 |
+| `029` | member vs staff | `admin_queue` row for `admin`/`moderator` only (P3) |
+| `029` | master off | D5 decides whether the category rows remain, dim, or hide |
+| `029` | a switch's save refused | reverted, `preferences.error` beside it (P16) |
+| `029` | no JavaScript | each switch a form, `<noscript>` «حفظ» (P13) |
+| `029` | calendar connected / not | the link row's `value` |
+| `029` | loading / error | `loading.tsx` (two `skeleton` cards), `error.tsx` (`route-error`) |
+
+## W5. What I publish
+
+Nothing another track reads, **except** `ui/settings-group`'s type (§W3). Add-only DAL, mine:
+- `lib/dal/calendar.ts` — `listCalendarFailures(locale): Promise<CalendarFailureDTO[]>` (the failed rows of C12 – C14,
+  with `{ id, sessionId, sessionTitle, startsAt, dayPosition, dayCount }`). The org's zone comes from
+  `getOrgPrefs()` (`proposals.ts`, a read-only call), not from `getPreferenceMatrix()`.
+- `lib/dal/notifications.ts` — `listInbox(locale, { unreadOnly, before? }): Promise<{ items: NotificationDTO[];
+  timeZone: string; nextCursor: string | null }>` keyed on `(created_at, id)` — a page boundary, not «the last row».
+  `listNotifications`, `getPreferenceMatrix`, `setPreference` unchanged.
+
+**What I need from others** (requests, not edits):
+- ★ **lead, as `sessions'` custodian** — `lib/dal/members.ts`, add-only: `setLeaderboardOptOut(locale, optOut:
+  boolean)`, one column, the session's own row (the `members` column grant already allows it, `0004:310`). And, in
+  `content`'s PR-B commit that removes the field from `021`: `profileInput.leaderboardOptOut` and
+  `updateMyProfile()` must **stop writing `leaderboard_opt_out`** — otherwise every profile save after the move writes
+  `false` and silently opts the member back in (D-O1, below).
+- **lead** — `src/messages/index.ts` gains `"settings"` (append-only) with `ar/settings.json` and `en/settings.json`;
+  `/app/me/settings` in `tests/e2e/{a11y,shell-disclosures,wave11-lead-a11y-sweep}`; `members/self-panel.tsx`'s
+  «تفضيلات الإشعارات» link → `/app/me/settings` in PR B (`tests/components/members/profile-page.test.tsx:190` moves).
+- **`content`** — `021`'s settings glyph (`DEC-217` §3.2) and the opt-out's removal, both in PR B with my `029`.
+
+## W6. Files created or deleted; every existing assertion that moves; `08` §2 row by row
+
+### ★ The optional categories, as `08` §2 and `notification_matrix()` (`0156`) define them today
+
+(`in` = in-app, `em` = email; «opt» = the message is optional; «fixed» = in `08` §1.7)
+
+| Category | `08` §2 | Optional messages | Optional **email** | Non-optional messages it also holds |
+|---|---|---|---|---|
+| `new_sessions` | on | `session_published` (in, em) · `rsvp_nudge` (in) · `priority_window` (in) | `session_published` | — |
+| `my_sessions` | on | `rsvp_confirmed` · `rsvp_waitlisted` · `rsvp_deadline_soon` · `check_in_confirmed` (in) · `materials_added` (in, em) | `materials_added` | `session_changed` · `session_cancelled` · `rsvp_promoted` |
+| `reminders` | on | `reminder_7d` · `_1d` · `_2h` · `_generic` (in, em) | all four | — |
+| `ratings` | on | `rating_prompt` (in, em) | `rating_prompt` | — |
+| `social` | on | `comment_reply` · `mentioned` (in, em) | both | — |
+| `recognition` | on | `badge_earned` · `level_reached` (in, em) · `streak_completed` · `leaderboard_closed` (in) | `badge_earned`, `level_reached` | `points_adjusted` |
+| `proposals` | on | `copresenter_declined` (**in only**) | ★ **none** | `copresenter_invited` · `proposal_changes` · `_approved` · `_rejected` · `presenter_assigned` |
+| `admin_queue` | on, staff only | `proposal_submitted` (in, em) · `report_filed` · `photo_album_ready` (in) | `proposal_submitted` | — |
+| `certificates` | on (not switchable) | — | — | `certificate_issued` · `_revoked` |
+| `moderation` | on (not switchable) | — | — | `photo_hidden` · `content_removed` |
+| `account` | on (not switchable) | — | — | `role_changed` · `account_deactivated` · `calendar_disconnected` · `export_ready` |
+
+The seventeen non-optional keys match `08` §1.7 exactly (counted: 5 + 3 + 2 + 1 + 2 + 4). The TS list
+(`CATEGORIES`, `notifications.ts:23`) and the table's check (`0026:248`) both hold the same eleven.
+
+### Created
+- PR A: `src/components/ui/settings-group.tsx` · `tests/components/ui/settings-group{,-scope}.test.tsx` ·
+  `src/app/[locale]/(dev)/ui/demos/settings-group.tsx` · `src/app/[locale]/app/me/calendar/page.tsx` (re-created) ·
+  `tests/components/calendar/calendar-page.test.tsx` · `tests/e2e/wave20-notify-calendar.spec.ts`
+- PR B: `src/app/[locale]/app/me/notifications/page.tsx` (re-created) · `src/components/notifications/inbox-item.tsx` ·
+  `src/app/[locale]/app/me/settings/{page,loading,error,actions,state}.tsx|ts` · `src/components/settings/**` (the
+  page's switch rows and its sentence) · `src/messages/{ar,en}/settings.json` · `tests/components/settings/**` ·
+  `tests/components/notifications/inbox-page.test.tsx` · `tests/e2e/wave20-notify-{inbox,settings}.spec.ts`
+
+### Deleted (each in its own commit, before its create — `DEC-208`)
+- PR A: `src/app/[locale]/app/me/calendar/page.tsx` (`actions.ts` stays — C4)
+- PR B: `src/app/[locale]/app/me/notifications/page.tsx` · `src/components/notifications/notification-list.tsx`
+  (its logic moves into `inbox-item.tsx`) · ★★ `src/components/notifications/preference-matrix.tsx` ·
+  `savePreference` from `me/notifications/actions.ts` (moves to `me/settings/actions.ts`)
+
+### Existing assertions that move (each a ledger line in `STATUS.md`, in the same commit)
+
+| File | Case(s) | Selector or expectation | Who edits |
+|---|---|---|---|
+| `tests/components/notifications/preference-matrix.test.tsx` | all 4 | **expectation** — the component is deleted; each case's fact re-asserted in `tests/components/settings/**` (fixed → the sentence; «not available» → no row) | me (evidence) |
+| `tests/components/notifications/notification-list.test.tsx` | all 5 | **selector** — `inbox-item`; «تعليم كمقروء» per item → D7 | me |
+| `tests/components/notifications/change-lines.test.tsx` | all 7 | **selector** only — the logic moves unchanged | me |
+| `tests/components/calendar/synced-days.test.tsx` | 4 | **expectation** — the synced list is gone; the per-day rule re-asserted on failed rows | me |
+| `tests/components/me/calendar-page.test.tsx` | 5 | 1 selector («اربط»), 2 expectations (connected «متصل منذ», synced list), 1 kept (failed), 1 axe | **content's file? — the lead names the writer** |
+| `tests/e2e/notify-screens.spec.ts` | `:108` mark one read + switch a category (selector, D7, `?saved` dropped) · `:157` three fixed categories (expectation → one sentence) · `:195` «اربط تقويم Google», «لا جلسات متزامنة بعد» (expectation) · `:227` «افصل التقويم» (selector) · `:297` captures | **frozen for me this wave → a request to the lead** |
+| `tests/e2e/wave7-content-calendar.spec.ts` | `:100`, `:117`, `:118` | selector + expectation (synced) | `content` / lead |
+| `tests/e2e/wave7-content-notifications.spec.ts` | `:99`, `:102`, `:108` – `:116` (the matrix) | selector + expectation (moved to `029`) | `content` / lead |
+| `tests/e2e/wave9-notify-days.spec.ts` | `:189`, `:213` — the synced three-day list | **expectation** — no synced list; re-asserted on a failed day only if the stub can fail one | lead (frozen for me) |
+| `tests/components/members/profile-page.test.tsx` | `:190` the self-links' hrefs | expectation → `/app/me/settings` | lead (custodian) |
+| `tests/unit/notify-i18n.test.ts` | — | not moved; every new interpolation in `notifications`/`calendar`/`settings` sits in `<bdi>` | — |
+
+`tests/rls/notify*` — **no assertion moves**: no SQL changes, and `notify-contract` still pins the seventeen.
+
+## W7. ★ Disagreements `DEC-216` §5 and `DEC-217` §4 do not list — written, not picked
+
+- **D1 · «أعد المحاولة» has nothing to call.** `Calendar.dc.html` row «أعد المحاولة»; `REQ-UIX-075`. No member-callable
+  function re-enqueues `calendar_upsert` (`0025:68`, `0109:256`); after 8 attempts a failed day stays failed forever.
+  Options: (a) the lead writes `0170` — a definer `retry_calendar_sync(p_session uuid)` that re-derives the caller's
+  confirmed reservation and their connection and enqueues under the existing key `cal:{rsvp_id}` (replace mode, so no
+  second job), its RLS case and `03` row, `REQ-CAL-005`; (b) no button — the row says it failed and links to the
+  session; (c) the retry is reconnecting. I can write (a) under `supabase/proposed/notify/` **only if** the lead puts
+  that path back on my list.
+- **D2 · ★★ `REQ-UIX-077` («in-app notifications are not a setting») vs `REQ-NTF-003` («per category and per
+  channel … including to the in-app inbox if the member disabled it there») and `08` §2 («email off, in-app on, is the
+  common case»).** `preference-matrix` writes `in_app` rows; members may hold `in_app = false` today, and `notify()`
+  honours them (`_notify_wants`, `0026:426-431`). If `029` writes email only, a member who turned the inbox off for a
+  category **can never turn it back on** — the failure rule 3 exists to catch. Options: (a) each category switch
+  writes **both** channels; (b) email only, and the lead removes stored `in_app = false` rows by a scoped data fix
+  (never a migration); (c) email only, and the stored rows are left as they are. `REQ-NTF-003` needs an amending entry
+  under any choice but (a).
+- **D3 · `proposals` has no optional email message** (table above). On an email-only `029`, its switch writes a row
+  no send ever reads — a dead toggle `08` §2 forbids. Under D2(a) it governs one in-app message
+  (`copresenter_declined`). The row exists or not by D2's answer.
+- **D4 · the failed row's 32×40 swatch** (`Calendar.dc.html`, the row's leading `span`) is a poster colour block. No
+  calendar DTO carries a poster; reading one is `designer`'s DAL. Options: a `poster` thumbnail through
+  `posters.ts` (read), the team colour as `--team`, or no swatch.
+- **D5 · the master switch «إشعارات البريد» has no column.** Preferences are `(member, category, channel)`.
+  Options: (a) the master writes `email = false|true` on every optional category the member has (its state derived:
+  on if any is on) — turning it back on erases per-category choices; (b) a column or row the lead adds from `0170`,
+  read by `_notify_wants` — `public.notify()` changes, which the brief freezes; (c) no master — the category rows only.
+  And: with it off, the non-optional mails still arrive; the sentence (row 3) must say so.
+- **D6 · «اللغة · العربية» goes nowhere.** `/en/app/*` redirects to Arabic (`proxy.ts:26-28`, `STORY-INT-004`), and
+  the artboard's `href="#lang"`. Options: no row until the English catalogue exists; a non-interactive value row; or a
+  link that will redirect back. `REQ-UIX-080` reads (a).
+- **D7 · marking ONE notification read is not drawn.** `Notifications.dc.html` has no per-item control; `REQ-NTF-006`
+  keeps read/unread state, and only «تعليم الكل» remains. Options: (a) «فتح الجلسة» becomes a form that marks the item
+  read and redirects to the session (works without JS); (b) a quiet per-item control kept; (c) only mark-all. An item
+  with no session can be read only by (b) or (c).
+- **D8 · «عرض الأقدم» needs paging the DAL lacks** (`limit 50`, nothing past it). A keyset cursor on
+  `(created_at, id)` — add-only. Two rows written in one transaction share `created_at`; the `id` tiebreak is why.
+- **D9 · «`feed-item`-shaped rows»** (`M10c.md` §6). `feed-item` has three variants (`achievement`, `announcement`,
+  `recap`), none a notification, and it is `content`'s. I propose my own `components/notifications/inbox-item.tsx`
+  shaped like it; the alternative is a `notification` variant requested from `content`.
+- **D10 · the artboard's sample items are not the matrix.** «بدأت …» and «دُفعت 50 نقطة» have no `MSG-*` in `08` §1
+  («No notification is sent that is not in this table», `REQ-NTF-002`); the points item's «فتح الجلسة» opens نقاطي;
+  each item's body sentence is richer than any payload (`08` §5.3 stores a key and a payload, not a body). Built: the
+  catalogue's title, the payload's detail line, the change lines — no new body string per key. And «أمس 8:02 م» sits
+  under «اليوم» — the group follows the item's day.
+- **D11 · `settings-group` is «titled» (`REQ-UIX-081`, `M10c.md` §9) and `Settings.dc.html` draws no title** over
+  either card. The type keeps `title` as the accessible name and `showTitle` to draw it; which the screen passes is
+  the ruling.
+- **D12 · `029` sits under `me/layout.tsx`**, so from `lg` it gets the hub's desktop strip with no item current, and
+  no artboard draws `029` at 1280. The lead's frame decides whether the layout skips `settings`.
+- **D13 · the 36 px category tile is an empty square with a coloured ring** in seven colours. `08` assigns no colour
+  to a category, `DEC-073`'s status colours are never accents, and the tile carries no glyph — decoration only,
+  `aria-hidden`. A category → semantic-token map is a choice for the ruling, or one neutral ring.
+- **D14 · carried, frozen this wave, told to the lead:** every mail's preferences link is
+  `/ar/app/me/notifications` (`packages/mail-runtime/src/render.ts:464`), so after PR B it lands on the inbox, one
+  tap from `029` via «ما يصلني». Moving it moves the 120 pinned files (reviewed-diff rule). And
+  `api/calendar/{connect,callback}` hard-code `/ar` (C18).
+- **D-O1 · contract 5's «the write stays the function that writes it today» cannot hold as written.**
+  `updateMyProfile()` writes five columns at once and validates `displayName` `min(1)`; calling it from `029` is a
+  read-modify-write that can overwrite a concurrent profile edit, and fails outright for a member with no display
+  name. A one-column add-only writer (§W5) is what I ask for; the other half of the risk is `021`'s save writing
+  `false` once the field is gone.
+
+## W8. The three things I most want ruled at sync 1
+
+1. **D2 + D5 — what a switch on `029` writes.** Both channels or email only; what «إشعارات البريد» stores; and, if
+   email only, what happens to members' stored `in_app = false` rows. This decides whether `proposals` is a row (D3)
+   and the shape of the proof that every preference is still written.
+2. **D-O1 — the opt-out's writer.** An add-only `setLeaderboardOptOut()` in `members.ts` from the lead, and
+   `updateMyProfile()` no longer writing the column in the PR-B commit that removes it from `021`.
+3. **D1 — «أعد المحاولة».** `0170` with a member-callable retry (and `supabase/proposed/notify/` back on my list), or
+   no button.
