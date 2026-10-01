@@ -59,7 +59,7 @@ kept-behaviour table — each behaviour and the `REQ-*` that made it survive.
 
 | # | Row | Owner | State |
 |---|---|---|---|
-| S0 | `DEC-213`; `REQ-UIX-064` … `069`; `STORY-UIX-051` … `058`; M21 and the sequence in `14`; `09`'s six screens; the map in `CLAUDE.md`; the ten agent files; `docs/design/screens/m10b/**` added to the tree; this block; the branch; the draft PR | lead | **DONE** — this commit. `trace` 362 · 194, no gaps; `policy-diff` ✓. No file under `src/`, `public/`, `supabase/` or `worker/` changed |
+| S0 | `DEC-213`; `REQ-UIX-064` … `069`; `STORY-UIX-051` … `058`; M21 and the sequence in `14`; `09`'s six screens; the map in `CLAUDE.md`; the ten agent files; `docs/design/screens/m10b/**` added to the tree; this block; the branch; the draft PR | lead | **DONE `68332819`**, draft **PR #40** against `main`. `trace` 362 · 194, no gaps; `policy-diff` ✓. No file under `src/`, `public/`, `supabase/` or `worker/` changed |
 | T0 | ★ **Baselines before any product commit**: `visual`'s public pairs against `main`; the fingerprint's record; the six screens at 390 (and `013`, `020` at 1280) as they are today | lead | todo |
 | F1 | ★★ **The frame's four additions** (C1, `STORY-UIX-051`) | lead | todo |
 | S1 | **Sync 1** — four plans, **each with its kept-behaviour tables**, approved against the seven contracts | lead | todo |
