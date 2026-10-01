@@ -43,7 +43,8 @@
         "resubmit": "أعد إرسال المقترح",
         "sectionNotes": "الملاحظات",
         "presentersElsewhere": "تُدار قائمة المُقدِّمين من صفحة المقترح نفسها.",
-        "coPresentersPlaceholder": "ابحث بالاسم أو المسمّى الوظيفي"
+        "coPresentersPlaceholder": "ابحث بالاسم أو المسمّى الوظيفي",
+        "actionsLabel": "إجراءات المقترح"
       },
       "errors": {
         "titleRequired": "فضلًا أدخل عنوان موضوعك المقترح",
@@ -76,7 +77,13 @@
         "invited": "دُعيت للتقديم",
         "awaitingYou": "بانتظار ردّك",
         "open": "افتح المقترح",
-        "emptyAction": "اكتب أول مقترح"
+        "emptyAction": "اكتب أول مقترح",
+        "link": "مقترحاتي {value}"
+      },
+      "earn": {
+        "points": "+{value}",
+        "body": "للتقديم، تُدفع عند اكتمال جلستك.",
+        "badge": "وتنال شارة «<t>{badge}</t>» مع أولى جلساتك."
       }
     },
     "proposal": {
@@ -117,14 +124,51 @@
       "nextDraft": "هذه مسودة عندك — لم تصل المشرف بعد.",
       "detailsLabel": "تفاصيل المقترح",
       "removeConfirmTitle": "إزالة <t>{name}</t> من المُقدِّمين؟",
-      "removeConfirmBody": "لن يظهر اسمه بين مُقدِّمي هذا المقترح.",
+      "removeConfirmBody": "لن يظهر الاسم بين مُقدِّمي هذا المقترح.",
       "removeConfirm": "أزل",
       "cancel": "تراجع",
       "updated": {
         "draftTitle": "حُفظت تعديلاتك",
         "submittedTitle": "أُرسل مقترحك للمراجعة",
         "submittedBody": "مقترحك <t>{title}</t> عند المشرف الآن، وسيصلك إشعار بقراره."
-      }
+      },
+      "pageTitle": "مقترحي",
+      "lastUpdated": "آخر تحديث {date}",
+      "steps": {
+        "label": "مراحل المقترح",
+        "done": "مكتملة",
+        "submitted": "أُرسل",
+        "in_review": "قيد المراجعة",
+        "changes_requested": "طُلب تعديل",
+        "approved": "معتمد",
+        "scheduled": "مُجدوَل"
+      },
+      "resubmitAction": "عدّل وأعد الإرسال",
+      "presentersManaged": "تُدار من هنا",
+      "presenterYou": "أنت",
+      "presenterLead": "المُقدِّم الرئيسي",
+      "reply": {
+        "accepted": "تمّت الموافقة",
+        "pending": "بانتظار الرد",
+        "declined": "اعتذار"
+      },
+      "add": {
+        "action": "أضف مُقدِّمًا مشاركًا",
+        "title": "أضف مُقدِّمًا مشاركًا",
+        "submit": "أضف",
+        "full": "بلغ المقترح الحدّ الأعلى للمُقدِّمين في مؤسستك.",
+        "none": "لا يوجد زملاء آخرون يمكن إضافتهم.",
+        "errors": {
+          "too_many": "عدد المُقدِّمين أكثر مما تسمح به مؤسستك.",
+          "not_open": "لم يعد المقترح مفتوحًا لإضافة مُقدِّمين — ربما قرّر المشرف للتو.",
+          "unknown_member": "أحد من اخترتهم لم يعد عضوًا في مؤسستك.",
+          "failed": "تعذّرت الإضافة — حاول مرة أخرى."
+        }
+      },
+      "openSession": "افتح الجلسة",
+      "sessionCancelled": "الجلسة التي أُنشئت من هذا المقترح:",
+      "proposeAnother": "اقترح موضوعًا آخر",
+      "actionsLabel": "إجراءات المقترح"
     }
   }
 }
