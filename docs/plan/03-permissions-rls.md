@@ -867,6 +867,9 @@ revoke all on member_seen_marks from anon, service_role;
 Nobody reads another member's marks — not an admin, not a moderator: what a member has looked at is theirs. No
 delete: the member's deletion cascades. `service_role` holds nothing; moments 3 to 5 are acknowledged by the client
 that showed them, never by a job.
+★ `0169` (`DEC-216` §2.2) adds `weekly_period` / `weekly_rank`. **No policy and no grant changes**: the policies are
+row predicates that name no column, and the grant above is table-level, so it covers columns added after it —
+invariant 6 holds by that, and `tests/rls/scoring-seen.test.ts` proves the pair is the member's own.
 
 
 #### §5.7d — `feed_announcements` — an org's announcements (`0164`, `DEC-206` §3, `REQ-UIX-056`)
