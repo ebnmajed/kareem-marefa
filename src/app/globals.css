@@ -551,6 +551,20 @@ html:has([data-play-root].theme-play-light) {
   to { transform: none; opacity: 1; }
 }
 
+/* ★ Wave 18 (DEC-212, M10a.md §8): a MISTYPED check-in code shakes the boxes once — input
+   feedback, not a failure animation, so not a moment and not wave 16's «a failure never
+   animates». Horizontal, transform only, damped, no scale. It runs only when motion is
+   welcome (the block below); under reduced motion the coral border and the message are the
+   whole state. Every other refusal stays still. */
+@keyframes code-shake {
+  0%, 100% { transform: none; }
+  15% { transform: translateX(-0.5rem); }
+  35% { transform: translateX(0.4375rem); }
+  55% { transform: translateX(-0.3125rem); }
+  75% { transform: translateX(0.1875rem); }
+  90% { transform: translateX(-0.0625rem); }
+}
+
 /* Moments 3 to 5 (scoring). */
 @keyframes moment-flicker {
   0%, 100% { transform: scale(1); }
@@ -572,6 +586,11 @@ html:has([data-play-root].theme-play-light) {
 @media (prefers-reduced-motion: no-preference) {
   .moment-flicker {
     animation: moment-flicker var(--duration-loop) ease-in-out infinite;
+  }
+  /* DEC-212: once per refused submission — the element is re-keyed per submission, so a
+     second wrong code shakes again and a re-render does not. */
+  .code-shake {
+    animation: code-shake var(--duration-slow) ease-out 1 both;
   }
 }
 
