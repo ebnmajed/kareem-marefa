@@ -1,4 +1,4 @@
--- wave 19 (DEC-214 §1, REQ-PRO-003) — proposed by `sessions`, to be promoted by the lead as `0168`.
+-- 0168 — wave 19 (DEC-214 §1, REQ-PRO-003) — proposed by `sessions`, promoted by the lead.
 --
 -- ★ THE DEFECT. `proposal_presenters` grants `insert` on the WHOLE row to `authenticated` (`0010:448`), and
 -- `proposal_presenters_insert_by_proposer` (`0010:437`) checks only that the caller owns the proposal. So a
@@ -22,6 +22,13 @@ create function public.proposal_presenters_unanswered() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare v_proposer uuid;
 begin
+  -- ★ The lead, at promotion: only a request that carries a member's session is coerced. Every client path —
+  -- PostgREST, `create_proposal()`, any definer called by a member — has `auth.uid()`; a direct connection with
+  -- no claims (the migration role, the test fixtures that seed an answered co-presenter as `postgres`) is
+  -- already trusted with every write and is left alone, so fixtures keep stating the state they test.
+  if auth.uid() is null then
+    return new;
+  end if;
   select p.proposer_id into v_proposer from public.proposals p where p.id = new.proposal_id;
   if new.member_id is distinct from v_proposer then
     new.accepted := false;
