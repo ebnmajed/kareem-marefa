@@ -103,10 +103,14 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
   // Empty: a fresh member's Google name, no company/job title/bio yet — the
   // acceptance criterion REQ-PRF-001 states directly (a member with no
   // company set is prompted before they can reserve or propose).
-  await expect(page.getByRole("heading", { name: "ملفي", level: 1 })).toBeVisible();
+  // ★ wave 20 (SCR-021 rebuilt, REQ-UIX-071): the page's `h1` is «حسابي» and «ملفي» its `h2`; the profile is read by
+  // default, so the fields are reached through «عدّل ملفك» (`/app/me?edit`).
+  await expect(page.locator("#main").getByRole("heading", { name: "حسابي", level: 1 })).toBeVisible();
+  await expect(page.locator("#main").getByRole("heading", { name: "ملفي", level: 2 })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "صفحاتي" })).toBeVisible();
+  await page.locator("#main").getByRole("link", { name: "عدّل ملفك" }).click();
   await expect(page.getByLabel("الاسم", { exact: false })).toHaveValue("عضو الملف");
-  await expect(page.getByLabel("المسمى الوظيفي")).toHaveValue("");
+  await expect(page.getByLabel("المسمى الوظيفي", { exact: false })).toHaveValue("");
   await capture(page, "empty");
 
   // A field error: clear the required name and submit.
@@ -127,12 +131,13 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
 
   // Populated + saved: fill every field and submit.
   await page.getByLabel("الاسم", { exact: false }).fill("عضو الملف المُحدَّث");
-  await page.getByLabel("الشركة").selectOption({ label: "شركة الاختبار" });
-  await page.getByLabel("المسمى الوظيفي").fill("مهندس حلول");
-  await page.getByLabel("نبذة").fill("أعمل على المنصة التعليمية.");
+  await page.getByLabel("الشركة", { exact: false }).selectOption({ label: "شركة الاختبار" });
+  await page.getByLabel("المسمى الوظيفي", { exact: false }).fill("مهندس حلول");
+  await page.getByLabel("نبذة", { exact: false }).fill("أعمل على المنصة التعليمية.");
   await page.getByRole("button", { name: "حفظ" }).click();
-  await expect(page.getByRole("status")).toContainText("تم الحفظ");
-  await expect(page.getByLabel("الاسم", { exact: false })).toHaveValue("عضو الملف المُحدَّث");
+  // ★ wave 20: «تم الحفظ» is a toast once, and the page returns to read mode — the saved values are rows.
+  await expect(page.getByText("تم الحفظ", { exact: true })).toBeVisible();
+  await expect(main.getByText("عضو الملف المُحدَّث")).toBeVisible();
   // ★ The lead's real-capture finding (wave7-content-me-populated-saved.png):
   // this went unchecked before — only displayName's value was asserted —
   // and the company select showed the placeholder after a save that DID
@@ -140,7 +145,10 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
   // uncontrolled `<select defaultValue>` never re-syncs on a re-render, so
   // the just-saved company never reached the DOM even once `value()` itself
   // computed correctly (fixed by keying the field on its own value).
-  await expect(page.getByLabel("الشركة")).toHaveValue(companyId);
+  // ★ wave 20: read mode shows the saved company by name (no select is on the page), and the row holds its id.
+  await expect(main.getByText("شركة الاختبار")).toBeVisible();
+  const { rows: saved } = await db.query<{ company_id: string }>(`select company_id from public.members where email = $1`, [memberEmail]);
+  expect(saved[0]?.company_id).toBe(companyId);
   await capture(page, "populated-saved");
 
   // The tab strip is real navigation — every route stays reachable, and a

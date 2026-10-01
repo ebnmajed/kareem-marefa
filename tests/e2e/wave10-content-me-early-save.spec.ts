@@ -85,7 +85,7 @@ async function signIn(context: BrowserContext, email: string) {
 test("★ T2·2: a save pressed the instant the field is visible — no wait for streams, no wait for hydration — still persists after a reload", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, memberEmail);
-  await page.goto("/ar/app/me");
+  await page.goto("/ar/app/me?edit"); // ★ wave 20: the fields live in edit mode (SCR-021, DEC-218 §4.3)
 
   // Deliberately no `waitForStreamsToSettle`/`waitForLoadState("networkidle")` here — the entire
   // point is to race the click against hydration, not to wait it out. Playwright's own locator

@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getMe, getMyInterests, listCompanies } from "@/lib/dal/members";
+import { HubStanding, HubStandingSkeleton } from "@/components/hub/standing";
 import { ProfileEdit } from "@/components/me/profile-edit";
 import { ProfileRead } from "@/components/me/profile-read";
 import { HubStrip } from "@/components/shell/hub-strip";
@@ -62,6 +64,10 @@ export default async function MePage({
           </Link>
         }
       />
+      {/* Contract 3 — `scoring`'s standing, the phone's card; from `lg` the layout draws the band instead. */}
+      <Suspense fallback={<HubStandingSkeleton form="card" className="lg:hidden" />}>
+        <HubStanding locale={locale} form="card" className="lg:hidden" />
+      </Suspense>
       <HubStrip />
       {editing ? (
         <ProfileEdit locale={locale as Locale} me={me} companies={companies} interests={interests} />

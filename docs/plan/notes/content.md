@@ -6771,3 +6771,16 @@ Plus D1's PR-B half: the settings link's name becomes `app.shell.settings` and i
   custodian.
 - ~~`wave7-content-notifications.spec.ts`, `wave7-content-calendar.spec.ts`, `tests/components/me/calendar-page.test.tsx`~~
   — **struck from my list: `notify`'s**, in the commits that rebuild `025` and `026`, each with its ledger line.
+
+### Wave 20 — built (after sync 1, `DEC-218`)
+
+| Screen | Delete | Create |
+|---|---|---|
+| `SCR-024` | `b9c4c54e` | `0d9c6930` |
+| `SCR-023` | `c7767962` | `8b53e1ed` |
+| `SCR-021` | `b63968ea` | `c1908361`, then `7e03f0ac` (the company's team dot) and the standing card's placement |
+
+E2E: `tests/e2e/wave20-content-hub.spec.ts` (`dd6a1fdd`), the lead runs it. **D10 ruled: dropped** — no `REQ-*` keeps the
+member's own role on `/app/me` and no artboard draws it (the lead, after sync 1). Kept-behaviour tables read back
+against the new files: every row holds; P14's standing card is placed (contract 3, `HubStanding form="card"` inside
+`Suspense` with its skeleton, `lg:hidden`).
