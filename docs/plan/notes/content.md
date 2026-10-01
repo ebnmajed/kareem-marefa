@@ -6763,3 +6763,11 @@ alone), and `profile.leaderboardOptOut` is removed if nothing else reads it. Ass
 
 Plus D1's PR-B half: the settings link's name becomes `app.shell.settings` and its `href` `/app/me/settings`;
 `wave7-content-me.spec.ts:148` (a link «الخصوصية والبيانات» to privacy) then moves — **expectation**, PR B.
+
+### PR-B writers named (the lead)
+
+- `tests/components/members/profile-page.test.tsx:190` — **mine**, in the PR-B commit that moves the settings link:
+  that assertion only (the self tier's links → `/app/me/settings`), with its ledger line. The lead's written grant as
+  custodian.
+- ~~`wave7-content-notifications.spec.ts`, `wave7-content-calendar.spec.ts`, `tests/components/me/calendar-page.test.tsx`~~
+  — **struck from my list: `notify`'s**, in the commits that rebuild `025` and `026`, each with its ledger line.
