@@ -3732,3 +3732,119 @@ colleague for an opted-out member (§5.116), and the presented figure as the del
 ★ **The full `npm test` could not be read on this machine**: four tracks running suites at once pushed unrelated
 component cases past the 5 s timeout (`menu`, `stat`, `report-card`, …) — none touches a file of mine. The e2e specs
 `wave19-scoring-{directory,profile}.spec.ts` are the lead's to run.
+
+# Wave 20 — plan (M10c, `DEC-216`, `DEC-217`; planning only — nothing is built, nothing is deleted)
+
+`SCR-022` my points, the hub's standing card and band, this week live, `ui/ledger-row` and `ui/podium` in **PR A**
+(`wave-20a/the-hub`); `SCR-027` the boards and `SCR-028` the company race in **PR B** (`wave-20b/the-boards`).
+Measured on `3156ad36`. Answers `STATUS.md`'s «Sync 1 — what the three plans must answer», items 1 – 7.
+
+## 0 · ★ Published on day one — contracts 3 and 4, by name and type
+
+Both live in my add-only DAL modules; nothing in them writes. **Computed, never stored; an absence is an absence,
+never a zero; opt-out is the database's and the DAL's, never a component's** (contract 7, A33).
+
+### Contract 4 — this week, live (`src/lib/dal/leaderboards.ts`, add-only; PR A)
+
+```ts
+/** The org's current week: Saturday to Friday in the org's own time zone (`DEC-217` §3.4), from `org_week()`. */
+export interface WeekWindow {
+  /** `YYYY-MM-DD` — the Saturday the week starts on. */
+  start: string;
+  /** `YYYY-MM-DD` — the Friday it ends on, inclusive («حتى الجمعة» is formatted from this, never typed). */
+  end: string;
+  /** Whole days left after today until `end`; 0 on the Friday itself. */
+  daysLeft: number;
+  /** `org_settings.time_zone` — what every date on these surfaces is formatted in. */
+  timeZone: string;
+}
+
+/** The caller's standing this week — what `021`'s card, the desktop band and `027`'s rank card read. */
+export interface WeekStanding {
+  window: WeekWindow;
+  /** null is an ABSENCE — `absence` says which. Never `{ rank: 0 }`. */
+  rank: {
+    rank: number;
+    /** The caller's points this week — the live sum of their `points_ledger` rows in the window. */
+    points: number;
+    /** How many the week ranks for this viewer — «#4 من 38». */
+    ranked: number;
+    /** The visible member ranked directly above with STRICTLY more points (the gap is never 0); null at #1. */
+    above: WeekNeighbour | null; // the existing type, unchanged: memberId, displayName, company, teamColor, rank, gap
+  } | null;
+  absence: "no_points" | null;
+  /** `members.leaderboard_opt_out`: the rank is still theirs to see, and hidden from everyone else (REQ-LDR-008). */
+  optedOut: boolean;
+  /** Moment 5 on the week — `decideBoardMoment("weekly", …)`, keyed `rank:weekly:<start>:<seen>-<now>`.
+   *  ★ PR A: always `{ occurrenceId: null, needsMark: false }` — `mark_board_seen()` learns the week in PR B
+   *  (`DEC-217` §3.3), so until then nothing writes the weekly pair and nothing plays. */
+  moment: BoardMoment;
+}
+
+/** Request-scoped: the card on `021`, the band and `027` ask once between them. */
+export const getWeekStanding: (locale: string) => Promise<WeekStanding>;
+```
+
+`BoardKind` gains `"weekly"` and `BoardMark.period` carries the week's `start` — add-only to the union, used by PR B.
+
+### Contract 3 — the standing (`src/components/hub/standing.tsx` + `getHubStanding()` in `src/lib/dal/points.ts`; PR A)
+
+```ts
+// src/lib/dal/points.ts (add-only)
+export interface HubStanding {
+  /** A33 tier 1, the caller's own row: never the email, never `members.avatar_url`. */
+  member: {
+    id: string;
+    displayName: string;
+    /** `avatarHref()`'s same-origin path or null — initials then (DEC-099, REQ-PRF-009). */
+    avatarUrl: string | null;
+    jobTitle: string | null;
+    /** null: no company — the card says so in words, never an empty slot. */
+    company: { name: string; teamColor: string | null } | null;
+    /** `members.created_at`, ISO — «عضو منذ أغسطس 2026» on the band. */
+    memberSince: string;
+  };
+  /** The live balance — `points_balances.total_points`. A 0 is a true figure and is drawn. */
+  points: number;
+  /** The level the nightly evaluation stored — null until it has run once. Never recomputed here. */
+  level: { name: string; tier: number } | null;
+  /** null at the top level, or with no level. `remaining` is `threshold − points`, floored at 0. */
+  next: { name: string; threshold: number; remaining: number } | null;
+  /** `levelProgress()`'s truth — the bar and its line state one fraction. */
+  progress: { value: number; max: number } | null;
+  /** Contract 4, whole. */
+  week: WeekStanding;
+  /** null: no enabled streak rule — the tile is not drawn. `months` may be 0 — on, none running: words. */
+  streak: { months: number } | null;
+  /** How many badges the caller holds — `member_badges`, retired badges included (REQ-REC-001). */
+  badges: number;
+  /** Moment 3 — `getPointsHead()`'s `completion`, the same occurrence `SCR-022` and the home decide. */
+  completion: PointsHead["completion"];
+  /** What the card acknowledges for moment 3 — `weekPointsMark()`: the level LAST SEEN passed through (`DEC-207` §1.3). */
+  pointsMark: PointsMark;
+  pointsNeedsMark: boolean;
+}
+export const getHubStanding: (locale: string) => Promise<HubStanding>; // request-scoped `cache()`
+
+// src/components/hub/standing.tsx — one server component, two forms
+export async function HubStanding(props: {
+  locale: string;
+  /** `card`: the phone's card on `021` (`Me.dc.html`), placed by `content`'s page.
+   *  `band`: the desktop band (`HubDesktop.dc.html`), placed by the lead's `me/layout.tsx`. */
+  form: "card" | "band";
+  /** The placing owner's visibility class — `lg:hidden` for the card, `hidden lg:block` for the band. */
+  className?: string;
+}): Promise<JSX.Element>;
+```
+
+- **It reads its own data** (`getHubStanding()` → `sessionClient()` → `requireSession()`), so the layout passes
+  nothing and checks nothing. It binds its own two Server Actions from `src/components/hub/actions.ts`
+  (`acknowledgeHubPoints`, `acknowledgeHubWeek`, both `"use server"`, both bound on the server — `DEC-159`).
+- **Moments 3 and 5 through the existing keying**: it wraps its figures in `MomentWeek` (`moment-week.tsx`,
+  unchanged), whose displayed-copy gate already handles two copies in one document — on `/app/me` at `lg` the
+  card is in the HTML and not displayed, the band is displayed, and only the displayed one claims.
+- ★ **For the lead's layout**: a layout does not re-render on navigation, so the band's figures are those of the
+  first hub page the member arrived on until they leave the hub. Moment 3 is decided once per arrival in the hub,
+  not per tab. I think that is right (the strip is one place); it is written so it is not a surprise.
+- ★ **The band draws the name as text, not as a heading.** `HubDesktop.dc.html` draws it as an `h1` and «نقاطي»
+  as an `h2` — §7, line 34, not picked.
