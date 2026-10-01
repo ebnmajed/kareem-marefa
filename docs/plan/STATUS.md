@@ -130,9 +130,82 @@ is ever found based on A: retarget it to `main` BEFORE A is merged with `--delet
 - **Level-ups in the feed** need a history table; **learning objectives** need their column. Both are new scope.
 - **The weekly rank, the streak skip and the «round»** are drawn and not built; the week says the month.
 - ★★ **The acceptance**: each rebuilt screen held beside its artboard on a phone.
-- **The owner's order for A**: rehearse `0164` on a production schema dump · push the migration · merge with CI
-  read from the run's own conclusion on the PR head · reconnect Railway and wait for a status with no suffix —
-  ★ **and B is already based on `main`, so deleting A's branch closes nothing.**
+- **The owner's order** for A and B is the section below.
+
+### ★ The owner's order (wave 18) — step 1 DONE 2026-10-01
+
+1. ✅ **Rehearsed 2026-10-01 by the lead on the owner's production schema dump** (taken at `0163`; `public` +
+   `graphile_worker`, 84 public tables, **no data rows** — zero `COPY`/`INSERT`; `member_seen_marks` present,
+   nothing of `0164`–`0167`).
+   - **Setup.** A throwaway database, `rehearse18`, in the local cluster, owned by `postgres` with `public` owned by
+     `pg_database_owner` **as in production**, over the local `extensions` (the nine, created as `supabase_admin`),
+     `auth`, `storage`, `realtime` and `vault` schemas. The 16 `storage`/`realtime` policies that name `public`
+     objects were re-applied once the dump had loaded (17 there, as local). Copied, because a schema-only dump drops
+     them and production has them: 8 bucket rows, `graphile_worker.migrations`' 20, `retention_periods`' 7.
+   - **Loading the dump: one error, platform-only** — the `supabase_realtime` publication, as in waves 12 – 16.
+   - **Migrations:** `0164`, then `0165`, `0166` and `0167`, **each applied in one transaction with `ON_ERROR_STOP`,
+     as `postgres` — all four ok.**
+   - **End state against the fully migrated local database (`0167`):**
+
+     | Compared | local | rehearsed |
+     |---|---|---|
+     | Public function bodies, by hash | 310 | 311 |
+     | Policies in `public`, `storage`, `realtime` | 277 | 277, identical |
+     | Triggers in `public`, `storage`, `auth`, `realtime` | 116 | 116, identical |
+     | Client-role table grants (`public`, `storage`, `graphile_worker`) | 264 | 264, identical |
+     | Client-role column grants | 2,091 | 2,091, identical |
+     | Function execute grants (three client roles and `PUBLIC`) | 349 | 350 |
+     | Buckets | 8 | 8, identical |
+
+     ★ **The only difference is production-only and expected:** `rls_auto_enable()`, Supabase's own event-trigger
+     function, in no migration — one body and its default `PUBLIC` execute grant, as in waves 15 and 16. (The counts
+     differ from wave 16's because this comparison reads every policy row and column grant in the three schemas, the
+     same query on both sides.) Every body `0164` – `0167` creates or replaces **hashes identically** to local.
+   - ★★ **`feed_announcements`' five parts, proved on the REHEARSED schema** — the first new table in four waves:
+     1. **`org_id uuid not null`**, `references orgs(id) on delete cascade`; `author_id` not null, `references members`.
+     2. **RLS enabled.**
+     3. **The full policy set, every command answered**: `SELECT` — `read_published` (a member, own org, published and
+        unexpired) and `admin_read` (an admin, own org, everything); `INSERT` — `admin_insert` (own org, admin, the
+        author is the caller); `UPDATE` — `admin_update` (own org, admin, using and check); `DELETE` — `admin_delete`.
+        `anon` has no policy at all.
+     4. **A grant for every policy**: `authenticated` holds `SELECT`, `INSERT`, `DELETE` and **`UPDATE` on three columns
+        only** (`body`, `published_at`, `expires_at`); `anon` and `service_role` hold **nothing**. Production's
+        default ACL hands every new table `Dxtm` to the three client roles; `0164`'s `revoke all` removed it — proved.
+        ★ **And by its absence — `42501`, never an empty result**: `anon` `SELECT` → `42501`; `anon` `INSERT` →
+        `42501`; `service_role` `SELECT` (it bypasses RLS, but holds no grant) → `42501`; `authenticated`
+        `UPDATE … set org_id` → `42501`; `UPDATE … set author_id` → `42501`. Against them, the granted paths answer
+        quietly: `authenticated` `SELECT` → 0 rows; `UPDATE … set body` → 0 rows under RLS.
+     5. **Its test, green on the rehearsed schema**: `tests/rls/feed-announcements.test.ts`, 10/10.
+   - ★ **The isolation sweep picked it up with nobody adding a case** — it is generated over `pg_tables`:
+     `isolation.test.ts > a member of org A selecting with no org predicate > feed_announcements: sees zero rows of
+     org B` ✓ on `rehearse18`.
+   - **The wave's database suites against the rehearsed end state: 150 of 151** (`feed-announcements`, `isolation`,
+     `definer-exposure`, `tenancy`, `attendance-count`, `checkin-host-broadcast`, `comments-broadcast-author`,
+     `realtime`, `scoring-week`). The one red is `definer-exposure` listing `rls_auto_enable()`, the production-only
+     difference above.
+   - ★ **The gap — push before merge — proved, not asserted.** On `origin/main` (`42a14ba0`), `feed_announcements`,
+     `session_attendance_count`, `monthly_ranked_count`, `check_ins_host_broadcast` and the three new comment-payload
+     keys appear in **zero** files of `src`, `worker`, `packages`, `supabase`, `scripts` or `tests`. On the rehearsed
+     schema `feed_announcements` has **no function that names it, no dependent view, no foreign key pointing at it**,
+     and one trigger of its own (`updated_at`, on its own updates); it holds **0 rows**. Its keys cascade from `orgs`
+     and `members`, so `main`'s `delete_org` in the gap deletes from an empty table. **On `/app` in the gap a member
+     sees exactly today's screen**: `main`'s `app/page.tsx` renders `SessionsTimeline` — the sessions timeline, no
+     feed, no announcement. `0166`'s trigger fires inside `main`'s own `check_in()`, and `realtime.send()` catches any
+     error as a `WARNING`, so **a check-in on `main` cannot fail by it** (and `checkin-host-broadcast` drove a real
+     `check_in()` on the rehearsed schema, green); its poke lands on a topic `main` subscribes to nothing on. `0167`
+     adds payload keys `main`'s client never reads.
+   - **Cleaned up:** the dump, `rehearse18` and the rehearsal's copies of the local schemas are deleted.
+   - ★ **CI read with `gh pr checks`, not local gates** (`DEC-192`): **#38** at `db12b9ba` — 13 checks pass, its run
+     `36773681949` **concluded `success`**; **#39** at `d284c29b` — 13 checks pass, its run `36788853455` **concluded
+     `success`**. Both heads are the branches' remote heads; both PRs `MERGEABLE`, base `main`.
+2. **Push `0164` – `0167`**: `supabase db push --linked`, then `supabase migration list --linked` must read `0167` on both
+   sides.
+3. **Merge #38**: `gh pr checks 38` all pass, then merge, with the branch deleted.
+4. **Merge #39** — after #38, so its diff is B's alone: `gh pr checks 39` on its head after GitHub rebases the diff, then
+   merge, with the branch deleted.
+5. **Reconnect Railway**: `railway service source connect`, then `railway status` until it reads `● Online` with **no
+   suffix**, and the worker's log says «LISTEN/NOTIFY probe OK».
+6. **The phone check — the acceptance**: on the deployed build, each rebuilt screen held beside its artboard.
 
 ### Carried — not this wave
 
