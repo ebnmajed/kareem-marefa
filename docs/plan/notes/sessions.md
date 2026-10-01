@@ -6277,3 +6277,27 @@ a11y sweeps' `/edit` route (kept).
   with no date. Planned: published or later. A cancelled session — step 5 off, or a line saying so — needs a word.
 - **D16 · «Presented»** in the directory and the profile — a published session not yet held is in today's list. Contract
   4 returns both counts; `scoring` picks.
+
+### W19.9 · Published — contracts 4 and 8, as landed in `a9d1d53d` (`src/lib/dal/sessions.ts`, add-only)
+
+**Contract 8 (`sessions` → `event`, `content`)** — `getSessionHeading(locale, id)` now also returns:
+
+```ts
+export interface HeadingPresenter {
+  displayName: string | null;
+  companyName: string | null;
+  /** `#rrggbb` or null — the avatar's ring (REQ-UIX-043). */
+  teamColor: string | null;
+}
+// SessionHeading gains:  presenters: HeadingPresenter[];
+```
+
+Every **accepted** presenter (`session_presenters.accepted`), in the order they joined (`created_at`, then the member
+id), from the member tier (`members_member_view` + `companies`) — the same read the event page's presenter card makes.
+Join them all; never only the first. `<bdi>` each name at the call site.
+
+**Contract 4 (`sessions` → `scoring`)** — as planned in W19.5, with `DEC-214`'s ruling: **`count` and
+`deliveredCount` are both the delivered sessions** (`completed`, `archived`); `sessions` lists up to `limit` (12) of
+the published-or-later ones, each with `attendedCount` (`null` for a published session). `countSessionsPresentedBy(
+locale, memberIds?)` — omitted, the whole org — is one read (`session_presenters` joined `!inner` to `sessions` on the
+delivered states); a member with none is absent from the record. No average anywhere.
