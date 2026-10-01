@@ -3682,3 +3682,53 @@ export interface LevelStanding {
 
 `unlocksLabel` and `noUnlocksLabel` stay required and are unread in `standing`, so no caller of `faces` changes.
 Existing `level-card` tests are untouched; the new layout gets `tests/components/ui/level-card-standing.test.tsx`.
+
+### W19.B3 · The commits
+
+| sha | what |
+|---|---|
+| `720f04f7` | `ui/badge-medallion`, its two tests and its demo |
+| `a57cf38b` | ★ `SCR-019`, the directory — a new page; `listDirectory()`; the segment's loading state is the list's and the profile's moves under `[id]/`; the profile's DAL fields, add-only |
+| `d2d538e6` | ★ `SCR-020` deleted first (`DEC-208`) — `members/[id]/page.tsx` alone |
+| `e96df6f4` | ★ `SCR-020` written from its two artboards; `level-card`'s standing layout; the two moved assertions |
+| (this) | the two e2e specs and this note |
+
+**The two assertions that moved — the ledger lines (the lead writes them in `STATUS.md`):**
+
+| File · case | Moved | Why | Commit |
+|---|---|---|---|
+| `tests/unit/sessions-member-profile.test.ts` · «still shows them to the member themselves and to an admin» | ★ **expectation** (and the stub): the admin's `standing.rank` is `null`, not `3`; `all_time_leaderboard()`'s stub now omits an opted-out member for everyone but themselves | the stub handed the row to everyone and so pinned a rank `0044` never gives an admin — `DEC-214` §1, N8: the database wins | `e96df6f4` |
+| `tests/e2e/wave7-sessions-profile.spec.ts` · «member tier: …» (`:145`) | **selector**: `getByText("الشركة الأولى")` → scoped to `#main [data-slot="profile-header"]` | the company is drawn twice now (the breadcrumb and the chip), a strict-mode violation page-wide; the expectation (visible) is unchanged | `e96df6f4` |
+
+### W19.B4 · The kept table, read against the new files (`DEC-208` §2)
+
+Every row of W19.2 read against `members/[id]/page.tsx` and `components/members/**` at `e96df6f4`:
+
+- **K1 – K6, K8, K10, K16, K18, K23, K27** — in the DAL, unchanged or extended add-only; pinned by `sessions-member-profile`
+  (all cases green, one expectation moved as N8 rules) and `members-profile-standing` (new, 9 ✓).
+- **K5** — `notFound()` on a null view (`[id]/page.tsx`), case «a missing member is not-found».
+- **K7, K9** — the level reaches every tier; `monthRank`, `progress` null when `standing` is; `members-profile-standing`.
+- **K11 – K14** — `admin-record.tsx` («للمشرفين», `admin.note`, the email `dir="ltr"`); `self-panel.tsx` (the note,
+  `/app/me`, `/app/me/points`); no email anywhere else; `profile-page` cases and the e2e specs.
+- **K15** — three links, to pages that exist (N7); case «the self tier».
+- **K17** — `<bdi>` on the name, title, company (chip and breadcrumb), bio, interests (`tag-chip`), badge and level
+  names, session titles, attended titles, the date in «عضو منذ».
+- **K19** — `SessionStatusBadge` with `sessionPhase(s, now)` from `days` on a row not yet held (N6).
+- **K20** — each row a `ui/card` link to `/app/sessions/{id}`.
+- **K21** — `getPresenterAggregate()` only when `tier !== "member"`; `members-profile-standing` proves the view is never
+  queried for a colleague or a moderator.
+- **K22** — «عضو منذ مارس 2026» in the org's zone (`profile-format.ts`), Western digits.
+- **K24 – K26, K28** — the role beside the title; `noBio` / `noBadges` / `noPresented` / `noPhotos`; a held retired
+  badge drawn and counted in neither N nor M; one `h1`, exactly the name; no sideways scroll (the e2e `capture`).
+- The error boundary is untouched; both skeletons carry no text and no `getTranslations`.
+
+**Nothing the table names was dropped.** Two changes the table records as new, not kept: the level shown to a
+colleague for an opted-out member (§5.116), and the presented figure as the delivered count (§5.120, `DEC-214` §2).
+
+**Tests at `e96df6f4`:** `members-directory` 17 ✓, `members-i18n` 11 ✓, `members-profile-standing` 9 ✓,
+`members-no-moment` 3 ✓, `sessions-member-profile` 9 ✓, `directory-page` 12 ✓, `profile-page` 15 ✓,
+`level-card-standing` 5 ✓, `badge-medallion` + `-scope` 18 ✓; `level-card`, `ui-playground`, `tokens-only`,
+`no-raw-palette`, `scope-root`, `tests/components/scoring/**` green. `tsc` clean, eslint 0, `ui-lint` strict ✓.
+★ **The full `npm test` could not be read on this machine**: four tracks running suites at once pushed unrelated
+component cases past the 5 s timeout (`menu`, `stat`, `report-card`, …) — none touches a file of mine. The e2e specs
+`wave19-scoring-{directory,profile}.spec.ts` are the lead's to run.
