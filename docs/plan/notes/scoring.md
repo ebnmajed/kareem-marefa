@@ -3632,3 +3632,53 @@ N10. **`M10b.md` §6 names `level-card` for the standing card; its face is not t
 **Order once approved and the frame is in:** the DAL (add-only, with its unit tests) → `badge-medallion` + its tests
 and demo, held for the lead → the delete commit → the create commit → the e2e specs, run by the lead → the kept table
 read against the new files and written here.
+
+---
+
+## Wave 19 — build (after `DEC-214`, the frame at `2ff7c946`)
+
+### W19.B1 · `badge-medallion` — and the registry request (contract 2)
+
+`src/components/ui/badge-medallion.tsx`, `tests/components/ui/badge-medallion{,-scope}.test.tsx`,
+`src/app/[locale]/(dev)/ui/demos/badge-medallion.tsx` (`BadgeMedallionDemo`, `data-demo="badge-medallion"`). The
+props are `ui/index.ts`'s as landed. The fill is set once as `--medallion` (a sticker constant by name, or
+`--color-level-N` through `level-card`'s `rampStop`), and the drop is
+`shadow-[0_4px_0_color-mix(in_oklab,var(--medallion)_62%,var(--bg))]` — `DEC-214` §4's rule, no token per fill.
+Tests: 14 ✓ and 4 ✓.
+
+**Registry request (the lead's file, `tests/unit/ui-playground.registry.ts`, under `scoring`'s):**
+
+```ts
+// wave 19 (DEC-213 §5.126, DEC-214 §4): born inside the scope — a disc on a sticker or level constant, its drop
+// color-mix()ed with the ground; the name in the scope's heading colour.
+"badge-medallion.tsx": tokens("badge-medallion", ["--color-sticker-", "--color-level-", "color-mix", "text-fg-heading", "rounded-pill"], "badge-medallion-scope.test.tsx"),
+```
+
+and `BadgeMedallionDemo` wired into the gallery. The floor moves to 57 with the fourth file, which is yours to count.
+
+### W19.B2 · `level-card`'s `layout` — the type for `LevelCardProps` (N10, `DEC-214` §3)
+
+```ts
+/** wave 19 (DEC-214 §3, N10): the profile's standing card — a row of the level's medallion, the caption and the
+ *  level's name, and a figure at the inline-end; the caller's content under it. Add-only. */
+export interface LevelStanding {
+  /** The figure at the inline-end — the balance, pre-formatted, or «—» when it is withheld. */
+  figure: ReactNode;
+  /** Under the figure — «نقطة» in its plural form. */
+  unit: ReactNode;
+  /** Decorative, in the level's medallion — the caller's glyph from `ui/icons`. */
+  glyph?: ReactNode;
+  /** Under the row — the progress line and the stats. */
+  children?: ReactNode;
+}
+
+// on LevelCardProps:
+  /** wave 19: `"faces"` (default) is every screen's card as it is; `"standing"` draws `level` only, as one row,
+   *  with `standing`'s figure — no unlock list, no `reached`, no flip. */
+  layout?: "faces" | "standing";
+  /** With `layout="standing"`. */
+  standing?: LevelStanding;
+```
+
+`unlocksLabel` and `noUnlocksLabel` stay required and are unread in `standing`, so no caller of `faces` changes.
+Existing `level-card` tests are untouched; the new layout gets `tests/components/ui/level-card-standing.test.tsx`.
