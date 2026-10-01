@@ -126,6 +126,11 @@ export const REGISTRY: Record<string, Entry> = {
   "week-hud.tsx": variant("week-hud"),
   // wave 19 (DEC-214): born inside the scope; the drop is `color-mix()` of its own fill, no token per fill.
   "badge-medallion.tsx": tokens("badge-medallion", ["--color-sticker-", "--color-level-", "color-mix", "text-fg-heading", "rounded-pill"], "badge-medallion-scope.test.tsx"),
+  // wave 20 (DEC-218, REQ-UIX-081): `scoring`'s two.
+  "ledger-row.tsx": variant("ledger-row"),
+  "podium.tsx": variant("podium"),
+  // wave 20 (DEC-218, REQ-UIX-081): `notify`'s first — it composes `switch` and `link` as they are.
+  "settings-group.tsx": composes("settings-group", ["ui/switch", "ui/link"]),
 
   // ── `event`'s — its first (wave 19, DEC-214) ──
   "star-input.tsx": tokens("star-input", ["text-signal", "text-edge-strong", "text-fg-muted", "text-error"], "star-input-scope.test.tsx"),

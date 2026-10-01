@@ -63,6 +63,9 @@ import { StarInputDemo } from "./demos/star-input";
 import { StepperDemo } from "./demos/stepper";
 import { PageViewerDemo } from "./demos/page-viewer";
 import { BadgeMedallionDemo } from "./demos/badge-medallion";
+import { LedgerRowDemo } from "./demos/ledger-row";
+import { PodiumDemo } from "./demos/podium";
+import { SettingsGroupDemo } from "./demos/settings-group";
 import type { DemoGround } from "./ground";
 
 // «ساحة اللعب» in the gallery — contract 4, DEC-183 §4.2(f), DEC-186 §2.
@@ -146,6 +149,9 @@ const DEMOS: { file: string; title: string; node: (ground: DemoGround) => ReactN
   { file: "stepper", title: "مراحل العملية", node: () => <StepperDemo /> },
   { file: "page-viewer", title: "عارض الصفحات", node: () => <PageViewerDemo /> },
   { file: "badge-medallion", title: "وسام الشارة", node: () => <BadgeMedallionDemo /> },
+  { file: "ledger-row", title: "سطر النقاط", node: () => <LedgerRowDemo /> },
+  { file: "podium", title: "منصة التتويج", node: () => <PodiumDemo /> },
+  { file: "settings-group", title: "مجموعة الإعدادات", node: () => <SettingsGroupDemo /> },
   { file: "rank-row", title: "صفّ الترتيب", node: () => <RankRowDemo /> },
   { file: "race-bar", title: "سباق الشركات", node: () => <RaceBarDemo /> },
   { file: "level-card", title: "بطاقة المستوى", node: () => <LevelCardDemo /> },
