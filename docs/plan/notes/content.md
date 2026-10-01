@@ -6669,3 +6669,12 @@ lead edits each, or hands it to me for the commit**, with its ledger line.
 1. **D5** — where a member reads a revocation's reason, and what a certificate row opens.
 2. **D2** — interests: categories with a writer (the lead's add-only DAL), read-only, or off.
 3. **D4 with D8** — Save's disabled state against the pre-hydration save, and the hook the bookmark undo needs.
+
+### Addendum — contract 1 as amended (`ebdde010`, `f79f5ee3`)
+
+Re-read from disk. §1 already planned against it; made exact here. Below `lg` each of my three pages renders
+`HubTopRow` then `<HubStrip />` (on `/app/me`: `HubTopRow back={false}`, then contract 3's card, then `<HubStrip />`);
+from `lg` the layout's band and strip stand and my pages render neither strip. The settings action on `/app/me` is a
+`Link` to `/app/me/privacy` (PR A, `DEC-217` §3.2) wearing the lead's `SettingsIcon` (`ui/icons.tsx:316`), its
+accessible name per D1. `ownsTopRow()` covers all three of my routes, so none renders the shell's phone row. Nothing
+else in the plan moves.
