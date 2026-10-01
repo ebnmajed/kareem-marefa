@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { sessionClient } from "@/lib/dal/session";
+import { calendarReturnUrl, LOCALE_COOKIE, returnLocale } from "@/components/calendar/return-locale";
 import { exchangeCode, oauthClient, STATE_COOKIE } from "../oauth";
 
 // GET /api/calendar/callback — REQ-CAL-003.
@@ -16,16 +17,16 @@ import { exchangeCode, oauthClient, STATE_COOKIE } from "../oauth";
 
 export const runtime = "nodejs";
 
-const back = (request: Request, params: Record<string, string> = {}) => {
-  const url = new URL("/ar/app/me/calendar", request.url);
-  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
-  return NextResponse.redirect(url);
-};
-
 export async function GET(request: Request) {
-  const { supabase } = await sessionClient("ar");
-  const url = new URL(request.url);
   const store = await cookies();
+  // ★ wave 20 (C18): back to the locale the member started in — the cookie the connect route set, checked against
+  // the routing's list, so a forged cookie returns to the default locale on this origin and nowhere else.
+  const locale = returnLocale(store.get(LOCALE_COOKIE)?.value);
+  store.delete(LOCALE_COOKIE);
+  const back = (_request: Request, params: Record<string, string> = {}) => NextResponse.redirect(calendarReturnUrl(request, locale, params));
+
+  const { supabase } = await sessionClient(locale);
+  const url = new URL(request.url);
 
   const expected = store.get(STATE_COOKIE)?.value;
   store.delete(STATE_COOKIE);

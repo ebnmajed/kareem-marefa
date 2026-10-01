@@ -1,103 +1,75 @@
-// notify (wave 9) — `/app/me/calendar` with one entry per DAY (REQ-SES-015).
+// notify — `/app/me/calendar` at n days (REQ-SES-015, REQ-SES-018).
 //
-// A NEW file: `tests/components/me/calendar-page.test.tsx` is the evidence
-// that the one-day screen did not move, and its assertions are untouched.
-// What is proven here is the other half — that a three-day workshop is three
-// entries, each named in `sessions`' own words (contract 7), and that a
-// one-day session shows no day concept at all (`REQ-SES-018`, first rule).
+// ★ Wave 20 (DEC-216 §5.20, DEC-208): the synced list is gone, so the per-day rule this file proved moves to the one
+// list SCR-025 still has — «لم تُضف». Ledger: four cases → three, each an EXPECTATION change of subject (a failed day,
+// not a synced entry); the rule itself is unchanged — a three-day workshop that failed on two days is two rows, each
+// named in `sessions`' own words (contract 7 of wave 9), and a one-day session shows no day concept at all.
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import arCalendar from "@/messages/ar/calendar.json";
 import arSessions from "@/messages/ar/sessions.json";
-import type { SyncedEventDTO } from "@/lib/dal/calendar";
+import type { CalendarFailureDTO } from "@/lib/dal/calendar";
 
-// Each namespace file already wraps its own key, so the merge IS the message
-// tree next-intl expects: { calendar: …, sessions: … }.
 const messages = { ...arCalendar, ...arSessions };
 
 vi.mock("@/lib/dal/calendar", () => ({
   getCalendarConnection: vi.fn(),
-  listSyncedEvents: vi.fn(),
+  listCalendarFailures: vi.fn(),
   disconnectCalendar: vi.fn(),
+  retryCalendarSync: vi.fn(),
 }));
-vi.mock("@/lib/dal/notifications", () => ({
-  getPreferenceMatrix: vi.fn().mockResolvedValue({ timeZone: "Asia/Riyadh", rows: [] }),
-}));
+vi.mock("@/lib/dal/proposals", () => ({ getOrgPrefs: vi.fn().mockResolvedValue({ timeZone: "Asia/Riyadh", maxCoPresenters: 4 }) }));
+vi.mock("@/app/[locale]/app/me/calendar/actions", () => ({ disconnect: vi.fn(), retry: vi.fn() }));
+vi.mock("@/components/shell/hub-top-row", () => ({ HubTopRow: ({ title }: { title: string }) => <h1>{title}</h1> }));
+vi.mock("@/components/shell/hub-strip", () => ({ HubStrip: () => null }));
 vi.mock("next-intl/server", () => ({
-  // Both namespaces, because the screen reads `calendar` for its own strings
-  // and `sessions.days` for the label every surface shares.
-  getTranslations: async (namespace: string) =>
-    createTranslator({ locale: "ar", messages, namespace: namespace as "calendar" }),
+  getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages, namespace: namespace as "calendar" }),
   setRequestLocale: () => {},
 }));
 
-const { getCalendarConnection, listSyncedEvents } = await import("@/lib/dal/calendar");
+const { getCalendarConnection, listCalendarFailures } = await import("@/lib/dal/calendar");
 const { default: CalendarPage } = await import("@/app/[locale]/app/me/calendar/page");
 
-const entry = (over: Partial<SyncedEventDTO>): SyncedEventDTO => ({
+const failure = (over: Partial<CalendarFailureDTO>): CalendarFailureDTO => ({
   id: "ce-1",
   sessionId: "s1",
   sessionTitle: "ورشة الذكاء الاصطناعي",
-  startsAt: "2026-10-01T15:00:00Z",
+  startsAt: "2099-10-01T15:00:00Z",
   dayPosition: 1,
   dayCount: 1,
-  state: "synced",
-  error: null,
-  lastSyncedAt: null,
   ...over,
 });
 
-async function renderPage(events: SyncedEventDTO[]) {
+async function renderPage(failures: CalendarFailureDTO[]) {
   vi.mocked(getCalendarConnection).mockResolvedValue({ provider: "google", connectedAt: "2026-09-01T00:00:00Z", disconnectedAt: null });
-  vi.mocked(listSyncedEvents).mockResolvedValue(events);
+  vi.mocked(listCalendarFailures).mockResolvedValue(failures);
   const element = await CalendarPage({ params: Promise.resolve({ locale: "ar" }), searchParams: Promise.resolve({}) });
-  return render(
-    <NextIntlClientProvider locale="ar" messages={messages}>
-      {element}
-    </NextIntlClientProvider>,
-  );
+  return render(<NextIntlClientProvider locale="ar" messages={messages}>{element}</NextIntlClientProvider>);
 }
 
-describe("/app/me/calendar at n days", () => {
-  it("a three-day workshop is THREE entries, each named in sessions' own words", async () => {
+describe("/app/me/calendar's failed days at n days", () => {
+  it("a three-day workshop that failed on two days is TWO rows, each naming its own day", async () => {
     await renderPage([
-      entry({ id: "ce-1", dayPosition: 1, dayCount: 3, startsAt: "2026-10-01T15:00:00Z" }),
-      entry({ id: "ce-2", dayPosition: 2, dayCount: 3, startsAt: "2026-10-02T15:00:00Z" }),
-      entry({ id: "ce-3", dayPosition: 3, dayCount: 3, startsAt: "2026-10-03T15:00:00Z" }),
+      failure({ id: "ce-1", dayPosition: 1, dayCount: 3, startsAt: "2099-10-01T15:00:00Z" }),
+      failure({ id: "ce-3", dayPosition: 3, dayCount: 3, startsAt: "2099-10-03T15:00:00Z" }),
     ]);
-
-    // One entry per DAY — a member's calendar holds three, and so does this.
-    expect(screen.getAllByRole("link", { name: "ورشة الذكاء الاصطناعي" })).toHaveLength(3);
-    // «اليوم الأول» … «اليوم الثالث», the words `dayLabel()` produces.
-    expect(screen.getByText(/اليوم الأول/)).toBeInTheDocument();
-    expect(screen.getByText(/اليوم الثاني/)).toBeInTheDocument();
-    expect(screen.getByText(/اليوم الثالث/)).toBeInTheDocument();
+    const rows = screen.getAllByRole("button", { name: "أعد المحاولة" });
+    expect(rows).toHaveLength(2);
+    const details = screen.getAllByText(/·/).map((el) => el.textContent ?? "");
+    expect(details).toHaveLength(2);
+    expect(details[0]).toMatch(/^اليوم الأول · /);
+    expect(details[1]).toMatch(/^اليوم الثالث · /);
   });
 
   it("★ a ONE-day session shows no day label at all — there is nothing to tell apart", async () => {
-    await renderPage([entry({ dayPosition: 1, dayCount: 1 })]);
-
-    expect(screen.getByRole("link", { name: "ورشة الذكاء الاصطناعي" })).toBeInTheDocument();
-    expect(screen.queryByText(/اليوم الأول/)).not.toBeInTheDocument();
+    await renderPage([failure({ dayCount: 1 })]);
+    expect(screen.queryByText(/·/)).not.toBeInTheDocument();
   });
 
-  it("an entry whose day was deleted from the session still lists, with no label", async () => {
-    // `0101`'s foreign key keeps the row when its day goes, so the provider
-    // event can still be removed — and until the job runs the member can see
-    // that the entry is on its way out.
-    await renderPage([entry({ dayPosition: null, dayCount: 2, state: "removed" })]);
-
-    expect(screen.getByRole("link", { name: "ورشة الذكاء الاصطناعي" })).toBeInTheDocument();
-    expect(screen.queryByText(/اليوم/)).not.toBeInTheDocument();
-  });
-
-  it("the count in the section heading is the number of ENTRIES, which is days not sessions", async () => {
-    await renderPage([
-      entry({ id: "ce-1", dayPosition: 1, dayCount: 2, startsAt: "2026-10-01T15:00:00Z" }),
-      entry({ id: "ce-2", dayPosition: 2, dayCount: 2, startsAt: "2026-10-02T15:00:00Z" }),
-    ]);
-    expect(screen.getByRole("heading", { name: new RegExp(arCalendar.calendar.synced.heading) })).toBeInTheDocument();
-    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  it("a failed row whose day was deleted from the session still lists, with no label", async () => {
+    await renderPage([failure({ dayPosition: null, dayCount: 2 })]);
+    expect(screen.getByText("ورشة الذكاء الاصطناعي")).toBeInTheDocument();
+    expect(screen.queryByText(/·/)).not.toBeInTheDocument();
   });
 });

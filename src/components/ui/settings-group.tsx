@@ -45,7 +45,10 @@ export function SettingsGroup({ title, showTitle = true, headingLevel = "h2", ro
 function Text({ label, detail }: { label: string; detail?: string | null }) {
   return (
     <span className="flex min-w-0 flex-1 flex-col leading-[1.35]">
-      <span className="text-label font-bold text-fg-heading">{label}</span>
+      <span className="text-label font-bold text-fg-heading">
+        {/* A label may be a session's title (`025`'s failed rows): isolated, so a Latin acronym cannot reorder it. */}
+        <bdi>{label}</bdi>
+      </span>
       {detail ? (
         <span className="text-caption text-fg-muted">
           <bdi>{detail}</bdi>

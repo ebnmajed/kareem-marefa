@@ -3836,3 +3836,22 @@ One condition applies to C18, and it guards against an open redirect.
 - **New unit cases:** an `en` start returns to `/en/app/me/calendar`, and a junk value returns to the default locale's calendar on the same origin. Example junk values are `//evil.example`, `ar/../x` and `https:`.
 
 `api/calendar/{connect,callback}/route.ts` are mine for this fix only.
+
+## W11. `025` built — read against its table (C1 – C18)
+
+All the rows of §W2's `025` table hold in the new file except two, both said here:
+- **C14:** the failed row's title is **not a link** any more. `SettingsActionRow.label` is a string, and the artboard draws
+  the title alone, with «أعد المحاولة» as the row's one action. It is in `<bdi>` (the primitive isolates every label).
+- **C9 – C11** are dropped as ruled. **C7** (`justConnected`) and **C16** (now `failed.seatStands`, under the list)
+  are kept, pending the copy trim.
+
+Two additions:
+- **The retry's outcome:** `?retried=1` gives one status line, «أُعيدت المحاولة.» Any refusal gives
+  `failed.retryError` as an alert.
+- **The return locale:** `src/components/calendar/return-locale.ts` checks the locale against `routing.locales`, and the
+  connect and callback routes use it (C18). It is tested in `tests/components/calendar/return-locale.test.tsx`, which
+  covers `en`, junk values, the same origin, and both routes.
+
+**Unrelated, seen in `npm test`:** `tests/components/ui/icons-playground.test.tsx` expects 54 glyphs. The tree has 55
+since the lead's `SettingsIcon` (`ebdde010`). That test is the lead's. Two designer and browse cases timed out under
+load and pass alone.

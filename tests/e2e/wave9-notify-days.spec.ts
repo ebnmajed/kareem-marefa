@@ -173,20 +173,21 @@ async function captureOf(page: Page, locator: ReturnType<Page["locator"]>, name:
 /** A confirmed seat, and a synced calendar entry for every day of the session.
  *  The Google call itself is the worker's and is stubbed, so the rows stand in
  *  for what `calendar_upsert` writes. */
-async function seatAndSync(sessionId: string) {
+async function seatAndSync(sessionId: string, state: "synced" | "failed" = "synced") {
   await db.query(
     `insert into public.rsvps (org_id, session_id, member_id, status, reserved_at) values ($1, $2, $3, 'confirmed', now())`,
     [orgId, sessionId, memberId],
   );
   await db.query(
     `insert into public.calendar_events (org_id, member_id, session_id, session_day_id, provider_event_id, state, last_synced_at)
-     select $1, $2, $3, d.id, 'stub_' || d.position, 'synced', now()
+     select $1, $2, $3, d.id, 'stub_' || d.position, $4::public.calendar_sync_state, now()
        from public.session_days d where d.session_id = $3`,
-    [orgId, memberId, sessionId],
+    [orgId, memberId, sessionId, state],
   );
 }
 
-test("SCR-025 — a three-day workshop is THREE entries, each naming its own day", async ({ context, page }) => {
+// ★ wave 20 (ledger, DEC-216 §5.20): SCR-025 lists only what failed, so the per-day rule is proven on FAILED days.
+test("SCR-025 — a three-day workshop that failed is THREE rows, each naming its own day", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   memberId = await signIn(context, memberEmail);
 
@@ -195,19 +196,20 @@ test("SCR-025 — a three-day workshop is THREE entries, each naming its own day
      values ($1, $2, 'enc-access', 'enc-refresh', 'https://www.googleapis.com/auth/calendar.events')`,
     [orgId, memberId],
   );
-  await seatAndSync(workshopId);
-  await seatAndSync(oneDayId);
+  await seatAndSync(workshopId, "failed");
+  await seatAndSync(oneDayId, "failed");
 
   await page.goto("/ar/app/me/calendar");
   await expect(page.getByRole("heading", { name: "التقويم", level: 1 })).toBeVisible();
 
   // One entry per DAY — which is what the member's calendar actually holds.
-  const entries = page.getByRole("link", { name: workshopTitle });
+  const failed = page.locator("#main").getByRole("region", { name: "لم تُضف" });
+  const entries = failed.locator("li", { hasText: workshopTitle });
   await expect(entries).toHaveCount(3);
   for (const label of ["اليوم الأول", "اليوم الثاني", "اليوم الثالث"]) {
-    await expect(page.getByText(label, { exact: false }).first()).toBeVisible();
+    await expect(failed.getByText(label, { exact: false }).first()).toBeVisible();
   }
-  await captureOf(page, page.locator('section[aria-labelledby="synced-heading"] ul'), "calendar-three-days");
+  await captureOf(page, failed.locator("ul"), "calendar-three-days");
 });
 
 test("★ SCR-025 — the ONE-day session beside it shows no day concept at all", async ({ context, page }) => {
@@ -216,7 +218,7 @@ test("★ SCR-025 — the ONE-day session beside it shows no day concept at all"
   await page.goto("/ar/app/me/calendar");
 
   // One entry, one title, and nothing that says «اليوم …» anywhere near it.
-  const row = page.locator("li", { hasText: oneDayTitle });
+  const row = page.locator("#main").getByRole("region", { name: "لم تُضف" }).locator("li", { hasText: oneDayTitle });
   await expect(row).toHaveCount(1);
   await expect(row).not.toContainText("اليوم");
   // The card ALONE, so the claim in the file's name is the thing a reviewer
