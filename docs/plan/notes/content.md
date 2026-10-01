@@ -6357,3 +6357,59 @@ and `wave19-content-viewer-{ready,admin}-1280.png`, each after the streams settl
    reads the viewer's seat, check-ins and tags as well, which this page does not need. The lighter alternative is an add-only
    function from `sessions` — your call; `content` does not query `sessions` itself.
 6. **Rulings on §7 N1 – N9.** None blocks C0 – C2; N2, N3, N7 and N9 decide markup in C3.
+
+---
+
+## Wave 19 — built (after sync 1, `DEC-214`)
+
+**Commits:** `7dee077c` contract 3 and the three primitive additions · `75a1ae26` the live defect on the record
+(`it.fails`, run as a plain `it`: expected «صفحة 2 من 3», received «صفحة 1 من 3») · `14c6d049` the delete · the create
+commit follows (its sha in the lead's message).
+
+### The kept-behaviour table, read against the new files
+
+Every row of «Wave 19 — plan» §2, re-read against `page.tsx`, `viewer-screen.tsx`, `download-control.tsx`,
+`ui/page-viewer.tsx` and `materials.ts` after the create:
+
+- **Kept as planned:** 1, 2, 4, 5, 6, 8, 10 – 18, 20 – 29, 31 – 35, 37 – 44.
+- **3** — `notFound()` also when `data.sessionId !== id` (`page.tsx`); the e2e's last case drives it.
+- **7** — failed: the plain sentence to a member, the re-upload guidance to a presenter or an admin, «أعد المحاولة»
+  is `router.refresh()` (N4).
+- **9** — the substitution notice to presenters and staff only (N9), under the bar.
+- **19** — window-level keys; a key with Alt, Ctrl or Meta is never the viewer's (`pageViewerKey`); a text field owns
+  its keys; the zoomed stage pans with its arrows.
+- **30** — the control shows when `allow_download`, or the viewer presents the session, or is staff (N2).
+- **36** — «سيُسجَّل هذا التحميل» is an admin's alone: beside «تحميل» from `lg`, the phone icon button's
+  `aria-describedby` (N3).
+- **12** — `preload` on page 1 (Next 16's name for `priority`).
+- ★ The page is sized from the stage's container units and the page's own ratio, so it is whole and as large as the
+  stage allows at any size (a 1600 px render and a test's 1 px image alike).
+
+### The ledger lines (for `STATUS.md`, wave 19)
+
+`tests/components/viewer/page-viewer.test.tsx` was deleted in `14c6d049`; its eight cases are re-asserted in
+`tests/components/ui/page-viewer.test.tsx` (the create commit). **Selector moves only, no expectation moved:**
+
+| File · case | Moved | Why |
+|---|---|---|
+| `viewer/page-viewer.test.tsx` · starts on page 1 of 3 | selector | `getByTestId("page-indicator")` → the scrubber's value and `aria-valuetext`, the live region's text; the provider → `labels` from `ar/materials.json` |
+| · ★ RTL: ← advances, → goes back | selector | as above; `rtl` → `dir="rtl"` |
+| · ★ LTR: → advances, ← goes back | selector | as above; `dir="ltr"` |
+| · Home and End | selector | as above |
+| · Page Down / Page Up | selector | as above |
+| · clamps at both ends | selector | as above |
+| · a thumbnail jumps to its page | selector (provider only) | «الانتقال إلى الصفحة 3» unchanged |
+| · the no-pages state | selector (provider only) | «لا توجد صفحات لعرضها.» unchanged |
+| `viewer/page-viewer-direction.test.tsx` (`75a1ae26`, deleted in `14c6d049`) | — | the `it.fails` record of the defect, removed with the file it proves wrong (DEC-214 §1) |
+
+`tests/e2e/materials.spec.ts` — no assertion moves.
+
+### Requests to the lead
+
+1. **The registry entry:** `"page-viewer.tsx": tokens("page-viewer", ["bg-chrome", "outline-accent", "accent-accent"], "page-viewer-scope.test.tsx")`
+   — it draws its own colours from semantic names only (no `pg:`), composing `ui/icon-button` and `ui/icons`. The demo
+   is `src/app/[locale]/(dev)/ui/demos/page-viewer.tsx` (`PageViewerDemo`), to wire into the gallery.
+2. **`ui/index.ts`:** widen `AvatarProps.size` (`44 | 84 | 104`), `TagChipProps.teamColor?: TeamColor`,
+   `BadgeProps.level?: number` — the files export the widened types meanwhile.
+3. **The e2e:** `tests/e2e/wave19-content-viewer.spec.ts`, eight cases, captures
+   `wave19-content-viewer-{ready,chrome-hidden,denied,rendering,failed}-390.png` and `-{ready,admin}-1280.png`.

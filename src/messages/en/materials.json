@@ -86,8 +86,21 @@
       "sessionCompleted": "A presenter cannot remove a material after the session is complete — contact the org admin."
     },
     "viewer": {
-      "back": "Back to session materials",
-      "breadcrumbLabel": "Breadcrumb",
+      "close": "Close the viewer",
+      "pageCount": "{count, plural, =0 {No pages} one {1 page} other {{value} pages}}",
+      "presenter": "<bdi>{name}</bdi>, <bdi>{company}</bdi>",
+      "presenterAnd": "and ",
+      "keysLabel": "Keyboard shortcuts",
+      "keys": {
+        "next": "Next",
+        "previous": "Previous"
+      },
+      "scrubberLabel": "Go to page",
+      "position": "<bdi>{current}</bdi> of <bdi>{total}</bdi>",
+      "stageLabel": "The page, zoomed",
+      "sourceNote": "The original file is never loaded in the browser; the pages are rendered in advance",
+      "gestureHint": "Swipe to turn · tap to hide the controls · pinch to zoom",
+      "downloadShort": "Download",
       "pageOf": "Page <bdi>{current}</bdi> of <bdi>{total}</bdi>",
       "thumbnailsLabel": "Pages",
       "thumbnailLabel": "Go to page <bdi>{number}</bdi>",
@@ -105,7 +118,9 @@
         "pending": "Preparing the deck…",
         "rendering": "Preparing the deck…",
         "failed": "This file’s pages could not be prepared. Check that the PDF is valid and upload it again.",
-        "noPages": "No pages to show."
+        "noPages": "No pages to show.",
+        "failedShort": "This file’s pages could not be prepared.",
+        "retry": "Try again"
       }
     }
   }
