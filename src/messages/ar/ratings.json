@@ -39,7 +39,16 @@
       "submittedBody": "يمكنك تعديله حتى يُغلق باب التقييم.",
       "backToSession": "العودة إلى الجلسة",
       "yourRating": "تقييمك",
-      "submitting": "جارٍ الإرسال…"
+      "submitting": "جارٍ الإرسال…",
+      "back": "رجوع",
+      "attended": "حضرت",
+      "commentName": "ملاحظات",
+      "commentOptional": "(اختياري)",
+      "commentPlaceholder": "ما الذي نفعك، وما الذي كنت تودّ أن يكون مختلفًا؟",
+      "commentCount": "{count} من {max}",
+      "windowEditable": "يمكنك تعديله حتى ذلك الحين",
+      "actionsLabel": "إجراءات التقييم",
+      "presenterLine": "<n>{name}</n>، <c>{company}</c>"
     },
     "states": {
       "notCompleted": "التقييم متاح بعد انتهاء الجلسة",

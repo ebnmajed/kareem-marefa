@@ -5,7 +5,7 @@ import type { Locale } from "@/i18n/routing";
 import { getRatingEligibility, submitRating, submitRatingInput, updateRating, updateRatingInput } from "@/lib/dal/ratings";
 import { submitSurveyResponse, type AnswerInput } from "@/lib/dal/surveys";
 import { formStateFrom, was, wasList, withErrors, withFormError } from "@/lib/form-state";
-import { RATE_FIELDS, RATING_SAVED, isRatingField, ratingChanged, surveyField, surveyKey, type RateField, type RateFormState, type SurveyFormShape } from "./state";
+import { RATE_FIELDS, RATING_COMMENT_MAX, RATING_SAVED, isRatingField, ratingChanged, surveyField, surveyKey, type RateField, type RateFormState, type SurveyFormShape } from "./state";
 
 // SCR-015's Server Actions. Zod first (REQ-NFR-002), then the DAL — the
 // `with check` on `ratings_write_self` (0010, 0087) is the real authority
@@ -75,7 +75,7 @@ function capture(prev: RateFormState, formData: FormData, survey: SurveyFormShap
   const errors: Partial<Record<RateField, string>> = {};
   if (!(stars("sessionStars") >= 1 && stars("sessionStars") <= 5)) errors.sessionStars = "starsRequired";
   if (!(stars("presenterStars") >= 1 && stars("presenterStars") <= 5)) errors.presenterStars = "starsRequired";
-  if (comment.trim().length > 2000) errors.comment = "commentTooLong";
+  if (comment.trim().length > RATING_COMMENT_MAX) errors.comment = "commentTooLong";
 
   // The survey's own shape. Answered questions become answers; a required one
   // left empty is a field error and a summary line (REQ-UIX-009, 010) — and
