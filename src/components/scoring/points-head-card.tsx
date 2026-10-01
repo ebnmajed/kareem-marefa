@@ -13,7 +13,7 @@ import type { PointsHead } from "@/lib/dal/points";
 // ★ Moments 3 and 4 are `MomentPointsHead`'s, unchanged in what they do: the balance counts from the figure last seen
 // with «+N» beside it, the bar fills — and the level row turns in place when a level reached is unseen (DEC-218
 // §3.1). The server draws the END frame; the moment moves it once. It sits behind the displayed-copy gate, because
-// from `lg` this card is `lg:hidden` and the band holds the same occurrence.
+// from `lg` the band holds the same occurrence beside it, and only the copy on screen may claim it.
 //
 // ★ Every figure is read: the level the nightly evaluation stored, never recomputed; `levelProgress()`'s fraction,
 // which the line beside the bar states in the same numbers («"<next>" بعد N» is threshold − balance).
@@ -48,7 +48,8 @@ export async function PointsHeadCard({ head, acknowledge, documentLoad = false }
   const completion = head.completion;
   return (
     // The heading is `MomentPointsHead`'s own (`sr-only`), so the card adds none.
-    <div className="rounded-panel border border-edge bg-surface p-4">
+    // `id="points-head"`: a spec scopes to the head, which shares its words with the hub's band.
+    <div id="points-head" className="rounded-panel border border-edge bg-surface p-4">
       <PointsHeadGate
         heading={t("heading")}
         balanceLabel={t("balanceLabel")}

@@ -16,8 +16,8 @@ import { acknowledgePointsSeen } from "./actions";
 // explains every point without asking anyone.
 //
 // In the artboard's order: the page's own top row (`HubTopRow`, the `h1` at every width) and the phone strip — from
-// `lg` the hub's layout draws the band and the strip above this — then the head card (balance, level, bar; `lg:hidden`,
-// the band carries them there), the filters, the ledger grouped by month (a table from `lg`), «المزيد», and «ماذا
+// `lg` the hub's layout draws the band and the strip above this — then the head card (balance, level, bar — at every width,
+// for moment 4), the filters, the ledger grouped by month (a table from `lg`), «المزيد», and «ماذا
 // يمنحك نقاطًا؟».
 //
 // ★ The data is read at the data (`sessionClient` → `requireSession()`), never in a layout. The filters are plain GET
@@ -56,9 +56,10 @@ export default async function PointsPage({
       <HubTopRow title={t("title")} />
       <HubStrip />
 
-      <div className="lg:hidden">
-        <PointsHeadCard head={head} acknowledge={acknowledgePointsSeen.bind(null, locale, head.mark)} documentLoad={documentLoad} />
-      </div>
+      {/* ★ At every width, though `HubDesktop.dc.html` draws none from `lg`: moment 4 stays on `SCR-022` (DEC-218 §3.1)
+          and turns this head's level row — with the head hidden from `lg`, a desktop member would never see a level-up
+          and the level cursor would never move (the band passes the level last seen through). Written to the lead. */}
+      <PointsHeadCard head={head} acknowledge={acknowledgePointsSeen.bind(null, locale, head.mark)} documentLoad={documentLoad} />
 
       <PointsFilters
         sessions={ledger.sessionOptions.map((s) => ({ value: s.id, label: s.title }))}

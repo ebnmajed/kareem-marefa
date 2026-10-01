@@ -346,7 +346,8 @@
         "toNext": "«<bdi>{level}</bdi>» بعد <bdi>{value}</bdi>",
         "top": "بلغت أعلى مستوى",
         "none": "يُحدَّد مستواك في التقييم الليلي القادم.",
-        "pointsLine": "{count, plural, zero {<pts></pts> نقطة} one {<pts></pts> نقطة} two {<pts></pts> نقطتان} few {<pts></pts> نقاط} many {<pts></pts> نقطة} other {<pts></pts> نقطة}} · «<bdi>{level}</bdi>» بعد <bdi>{remaining}</bdi>"
+        "pointsLine": "{count, plural, zero {<pts></pts> نقطة} one {<pts></pts> نقطة} two {<pts></pts> نقطتان} few {<pts></pts> نقاط} many {<pts></pts> نقطة} other {<pts></pts> نقطة}} · «<bdi>{level}</bdi>» بعد <bdi>{remaining}</bdi>",
+        "pointsOnly": "{count, plural, zero {<pts></pts> نقطة} one {<pts></pts> نقطة} two {<pts></pts> نقطتان} few {<pts></pts> نقاط} many {<pts></pts> نقطة} other {<pts></pts> نقطة}}"
       },
       "week": {
         "label": "هذا الأسبوع",

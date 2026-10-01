@@ -238,7 +238,8 @@ test("★ missing one day earns nothing, and the history NAMES the day rather th
   await expect(notice).toBeVisible();
   await expect(notice).toContainText("اليوم الثاني");
   await expect(notice).toContainText("نقاط الحضور تُمنح مرة واحدة عند حضور جميع أيام الجلسة.");
-  await expect(notice.getByRole("link", { name: "فتح الجلسة" })).toHaveAttribute("href", `/ar/app/sessions/${workshopId}`);
+  // ★ wave 20 (DEC-218, `SCR-022` rebuilt): the session's title is the link — a selector that moved.
+  await expect(notice.getByRole("link", { name: /ورشة ثلاثة أيام/ })).toHaveAttribute("href", `/ar/app/sessions/${workshopId}`);
   // DEC-124 — Western numerals everywhere, including a day the member missed.
   await expect(notice).not.toContainText(/[٠-٩]/);
 

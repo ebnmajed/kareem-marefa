@@ -188,22 +188,27 @@ function Band({ s, t, seenRank, locale }: { s: HubStandingData; t: T; seenRank: 
   const since = m.memberSince
     ? new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { month: "long", year: "numeric", timeZone: s.week.window.timeZone }).format(new Date(m.memberSince))
     : null;
-  const line = s.level
-    ? s.next
-      ? t.rich("hub.level.pointsLine", {
-          count: s.points,
-          level: s.next.name,
-          remaining: formatNumber(s.next.remaining),
-          // The balance is the counting figure of moment 3 — a node, so it is handed in as a tag, never as text.
-          pts: () => (
-            <bdi dir="ltr">
-              <WeekFigure slot="points" text={formatNumber(s.points)} />
-            </bdi>
-          ),
-          bdi: (c) => <bdi>{c}</bdi>,
-        })
-      : t("hub.level.top")
-    : t("hub.level.none");
+  // The balance is always said — it is the band's one figure — and it is moment 3's counting figure, a node, so it is
+  // handed in as a tag, never as text. The way to the next follows it when there is one.
+  const pts = () => (
+    <bdi dir="ltr">
+      <WeekFigure slot="points" text={formatNumber(s.points)} />
+    </bdi>
+  );
+  const balance = t.rich("hub.level.pointsOnly", { count: s.points, pts });
+  const line = s.level ? (
+    s.next ? (
+      t.rich("hub.level.pointsLine", { count: s.points, level: s.next.name, remaining: formatNumber(s.next.remaining), pts, bdi: (c) => <bdi>{c}</bdi> })
+    ) : (
+      <>
+        {balance} · {t("hub.level.top")}
+      </>
+    )
+  ) : (
+    <>
+      {balance} · {t("hub.level.none")}
+    </>
+  );
 
   return (
     <section aria-label={t("hub.label")} data-form="band" className="flex flex-wrap items-center gap-5 rounded-panel border border-edge bg-surface px-5 py-4">

@@ -346,7 +346,8 @@
         "toNext": "“<bdi>{level}</bdi>” in <bdi>{value}</bdi>",
         "top": "You reached the top level",
         "none": "Your level is set at the next nightly evaluation.",
-        "pointsLine": "{count, plural, one {<pts></pts> point} other {<pts></pts> points}} · “<bdi>{level}</bdi>” in <bdi>{remaining}</bdi>"
+        "pointsLine": "{count, plural, one {<pts></pts> point} other {<pts></pts> points}} · “<bdi>{level}</bdi>” in <bdi>{remaining}</bdi>",
+        "pointsOnly": "{count, plural, one {<pts></pts> point} other {<pts></pts> points}}"
       },
       "week": {
         "label": "This week",
