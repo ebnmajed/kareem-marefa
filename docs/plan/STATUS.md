@@ -153,6 +153,9 @@ a selector moved or an expectation did, and why.*
 | `tests/e2e/shell-disclosures.spec.ts` · the account menu's hrefs | **expectation** — `/app/members` appended | `DEC-213` §3.4: the phone's way to the directory | F1 |
 | `tests/components/event/star-rating.test.tsx` · all 7 cases → `tests/components/ui/star-input.test.tsx` | **selector** — the import, and «مطلوب» passed as `requiredLabel`; no expectation changed | `star-rating.tsx` is replaced by `ui/star-input` (`DEC-213` §5.124) | `ef0c7b48`, `3e5b53e5` |
 | `tests/components/survey/question-field.test.tsx:47` | **neither** — a comment naming `star-rating` | the file it named is gone | `84ee6e7a` |
+| `tests/components/viewer/page-viewer.test.tsx` · cases 1 – 6 («starts on page 1 of 3», «RTL ← advances», «LTR → advances», «Home/End», «PageDown/Up», «clamps») → `tests/components/ui/page-viewer.test.tsx` | **selector** — `getByTestId("page-indicator")` becomes the scrubber's value and `aria-valuetext`; the provider becomes `labels` built from `ar/materials.json` | the old component is deleted for `ui/page-viewer` (`DEC-213` §4) | `14c6d049`, `286c0038` |
+| `tests/components/viewer/page-viewer.test.tsx` · cases 7 – 8 («thumbnail jumps», «no-pages state») → the same file | **selector** — the provider only; the accessible names unchanged | as above | `14c6d049`, `286c0038` |
+| `tests/components/viewer/page-viewer-direction.test.tsx` · the `it.fails` record | **removed with the file it proved wrong** — run as a plain `it` on `75a1ae26`: expected «صفحة 2 من 3», received «صفحة 1 من 3» | `DEC-214` §1: «next» disabled on page 1 in RTL | `75a1ae26` → `14c6d049` |
 
 ---
 

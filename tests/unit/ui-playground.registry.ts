@@ -88,6 +88,8 @@ export const REGISTRY: Record<string, Entry> = {
   "feed-item.tsx": tokens("feed-item", ["bg-surface", "bg-raised", "rounded-tile", "text-accent"], "feed-item-scope.test.tsx"),
   // Its faces are `avatar`'s; what it draws itself is the gap between them and the count line.
   "attendee-stack.tsx": tokens("attendee-stack", ["ring-canvas", "text-fg-muted"], "attendee-stack-scope.test.tsx"),
+  // wave 19 (DEC-214): born inside the scope — the viewer's page, controls and rail; its ground is the screen's.
+  "page-viewer.tsx": tokens("page-viewer", ["bg-chrome", "outline-accent", "accent-accent"], "page-viewer-scope.test.tsx"),
 
   // ── `sessions'` ──
   "field.tsx": variant("field"),
