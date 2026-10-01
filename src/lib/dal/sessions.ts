@@ -766,6 +766,18 @@ export interface SessionHeading {
   startsAt: string | null;
   /** The session's zone, else the org's — the room's clock (OQ-018). */
   timeZone: string;
+  /**
+   * ★ wave 19, contract 8 (add-only, DEC-214): EVERY accepted presenter, in the order they joined — rate's
+   * mini-row and the viewer's desktop line join them; never only the first. Member tier only (A33).
+   */
+  presenters: HeadingPresenter[];
+}
+
+/** One presenter on a heading line — contract 8. `teamColor` is `#rrggbb` or null (REQ-UIX-043). */
+export interface HeadingPresenter {
+  displayName: string | null;
+  companyName: string | null;
+  teamColor: string | null;
 }
 
 /**
@@ -783,12 +795,27 @@ export async function getSessionHeading(locale: string, id: string): Promise<Ses
   ]);
   if (error) throw new Error(`sessions.select: ${error.message}`);
   if (!data) return null;
+  // Contract 8: the accepted presenters, the order they joined, a tie broken by id so the line never reshuffles.
+  const { data: rows, error: pErr } = await supabase
+    .from("session_presenters")
+    .select("member_id, created_at")
+    .eq("session_id", id)
+    .eq("accepted", true)
+    .order("created_at")
+    .order("member_id");
+  if (pErr) throw new Error(`session_presenters: ${pErr.message}`);
+  const ids = (rows ?? []).map((r) => r.member_id as string);
+  const profiles = await presenterProfiles(supabase, ids);
   return {
     id: data.id as string,
     title: data.title as string,
     state: data.state as SessionState,
     startsAt: (data.starts_at as string | null) ?? null,
     timeZone: (data.time_zone as string | null) ?? (settings?.time_zone as string | undefined) ?? "Asia/Riyadh",
+    presenters: ids.flatMap((memberId) => {
+      const p = profiles.get(memberId);
+      return p ? [{ displayName: p.displayName, companyName: p.companyName, teamColor: p.teamColor ?? null }] : [];
+    }),
   };
 }
 
@@ -855,6 +882,90 @@ export async function listSessionsPresentedBy(locale: string, memberId: string, 
       }))
       .sort((a, b) => a.position - b.position),
   }));
+}
+
+// ── Contract 4 — the sessions a member presented, counted (wave 19, DEC-213 §5.120, DEC-214) ──────────────
+
+/** ★ «Presented», everywhere a NUMBER is said: the sessions that happened (DEC-214, D16). */
+const PRESENTED_DELIVERED_STATES = ["completed", "archived"] as const;
+
+/** One presented session, with how many attended. */
+export interface PresentedSessionWithAttendance extends PresentedSession {
+  /** `session_attendance_count()` (0165) — a number, never who (A33 rule 3); null for a session not yet held. */
+  attendedCount: number | null;
+}
+
+export interface SessionsPresented {
+  /** ★ The DELIVERED sessions (`completed`, `archived`), counted with `count: "exact"` — never a page's length. */
+  count: number;
+  /** The same figure, named for what it is; kept beside `count` so a reader never has to guess. */
+  deliveredCount: number;
+  /** Newest first, at most `limit` (default 12) — the delivered ones and the ones on the schedule, with their phase. */
+  sessions: PresentedSessionWithAttendance[];
+}
+
+/** The ids of the sessions a member presents (accepted rows, `p1_org_read`), or of every presenter row in the org. */
+async function presenterRows(
+  supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"],
+  memberIds?: readonly string[],
+): Promise<{ session_id: string; member_id: string }[]> {
+  let query = supabase.from("session_presenters").select("session_id, member_id").eq("accepted", true);
+  if (memberIds) query = query.in("member_id", [...memberIds]);
+  const { data, error } = await query;
+  if (error) throw new Error(`session_presenters: ${error.message}`);
+  return (data ?? []) as { session_id: string; member_id: string }[];
+}
+
+/**
+ * Contract 4 (`sessions` → `scoring`) — the profile's «الجلسات التي قدّمها»: a COUNT and the rows, each with its
+ * attendance count. ★ No average and no rating: the profile reads `getPresenterAggregate()` itself, on the self and
+ * admin tiers only (DEC-213 §5.115). Through RLS with the caller's client.
+ */
+export async function getSessionsPresented(locale: string, memberId: string, limit = 12): Promise<SessionsPresented> {
+  if (!z.uuid().safeParse(memberId).success) return { count: 0, deliveredCount: 0, sessions: [] };
+  const { supabase } = await sessionClient(locale);
+  const ids = [...new Set((await presenterRows(supabase, [memberId])).map((r) => r.session_id))];
+  if (ids.length === 0) return { count: 0, deliveredCount: 0, sessions: [] };
+
+  const [listed, delivered] = await Promise.all([
+    listSessionsPresentedBy(locale, memberId, limit),
+    supabase.from("sessions").select("id", { count: "exact", head: true }).in("id", ids).in("state", [...PRESENTED_DELIVERED_STATES]),
+  ]);
+  if (delivered.error) throw new Error(`sessions.count: ${delivered.error.message}`);
+  const count = delivered.count ?? 0;
+
+  const sessions = await Promise.all(
+    listed.map(async (s): Promise<PresentedSessionWithAttendance> => {
+      if (s.state === "published") return { ...s, attendedCount: null };
+      const { data, error } = await supabase.rpc("session_attendance_count", { p_session: s.id });
+      return { ...s, attendedCount: error || typeof data !== "number" ? null : data };
+    }),
+  );
+  return { count, deliveredCount: count, sessions };
+}
+
+/**
+ * Contract 4's batch — member id → how many sessions they DELIVERED, for the directory's figure and its
+ * «الأنشط أولًا» order (DEC-213 §5.106). `memberIds` omitted covers the whole org. A member with none is absent.
+ * One read, whatever the number of members.
+ */
+export async function countSessionsPresentedBy(locale: string, memberIds?: readonly string[]): Promise<Record<string, number>> {
+  const { supabase } = await sessionClient(locale);
+  const wanted = memberIds?.filter((id) => z.uuid().safeParse(id).success);
+  if (wanted && wanted.length === 0) return {};
+  // One read: the presenter rows joined to their session, kept only where the session was delivered. `!inner`
+  // drops a row whose session `sessions_read` hides or whose state is not delivered.
+  let query = supabase
+    .from("session_presenters")
+    .select("member_id, sessions!inner(state)")
+    .eq("accepted", true)
+    .in("sessions.state", [...PRESENTED_DELIVERED_STATES]);
+  if (wanted) query = query.in("member_id", wanted);
+  const { data, error } = await query;
+  if (error) throw new Error(`session_presenters: ${error.message}`);
+  const counts: Record<string, number> = {};
+  for (const r of (data ?? []) as { member_id: string }[]) counts[r.member_id] = (counts[r.member_id] ?? 0) + 1;
+  return counts;
 }
 
 // ── The event page (SCR-012, REQ-SES-013, REQ-SES-008, REQ-SES-010) ─────────
