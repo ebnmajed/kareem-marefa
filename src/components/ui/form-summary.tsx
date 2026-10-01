@@ -67,8 +67,11 @@ export function FormSummary({ errors, title, description, className = "" }: Form
     // there. `scrollIntoView({ block: "nearest" })` measures against the viewport less the scroll padding
     // (`--tabbar-h`, `--header-h`, REQ-UIX-017), so it moves the control clear of both bars, and does nothing when it
     // is already clear. Focus first without its own scroll, so the two never fight.
+    // ★ `behavior: "instant"`: `globals.css` makes the document scroll smoothly where motion is allowed, and a
+    // smooth scroll lands focus at once on a control still sliding out from under the bar. A summary link is a
+    // FOCUS MOVE — the control is clear when focus arrives, not after an animation (SC 2.4.11, gate run 4).
     control.focus({ preventScroll: true });
-    control.scrollIntoView?.({ block: "nearest" });
+    control.scrollIntoView?.({ block: "nearest", behavior: "instant" });
   };
 
   return (
