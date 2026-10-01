@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
+import { HubStanding, HubStandingSkeleton } from "@/components/hub/standing";
 import { HubStrip } from "@/components/shell/hub-strip";
 
 // The `/app/me` hub's frame — `REQ-UIX-070`, `STORY-UIX-059`, `HubDesktop.dc.html`; rebuilt in wave 20 (`DEC-208`).
@@ -16,6 +17,9 @@ export default async function MeLayout({ children, params }: { children: ReactNo
   setRequestLocale(locale);
   return (
     <>
+      <Suspense fallback={<HubStandingSkeleton form="band" className="mb-4 hidden lg:block" />}>
+        <HubStanding locale={locale} form="band" className="mb-4 hidden lg:block" />
+      </Suspense>
       <div className="mb-6 hidden lg:block">
         <HubStrip desktop />
       </div>
