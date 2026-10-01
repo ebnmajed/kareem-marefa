@@ -263,7 +263,8 @@ test("moments 3 and 4 — the static state under reduced motion is complete, and
   await expect(calm.page.locator("#main strong", { hasText: "120" })).toBeVisible();
   // The new balance, its delta and its words, the flame's line, the bar's line, the new face — and no motion.
   await expect(calm.page.locator("#main [data-slot=delta] bdi[dir=ltr]").first()).toHaveText("+120");
-  await expect(calm.page.getByText("120 نقطة جديدة منذ زيارتك الأخيرة")).toBeAttached();
+  // ★ wave 20: from `lg` the hub's band beside the head says it too — scoped to the head, a selector move.
+  await expect(calm.page.locator("#main #points-head").getByText("120 نقطة جديدة منذ زيارتك الأخيرة")).toBeAttached();
   await expect(calm.page.getByRole("group", { name: "مستوى جديد" })).toContainText("مشارِك نشِط");
   // ★ wave 20 (DEC-218, `SCR-022` rebuilt from `Points.dc.html`): the bar's line is the head's «"<next>" بعد N», beside
   // the level row, not inside the bar's slot — an expectation of copy that moved; the fraction below is unchanged.

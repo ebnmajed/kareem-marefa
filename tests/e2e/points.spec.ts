@@ -298,7 +298,8 @@ test.describe("M9 restyle: empty state and the reversal entry", () => {
     // proves the attribute made it into a real render, which a jsdom test
     // alone can't, regardless of why it's there.
     const reversalRow = history.locator("li", { hasText: "أُلغي تسجيل الحضور" });
-    await expect(reversalRow.locator("bdi[dir='ltr']")).toBeVisible();
+    // ★ wave 20 (DEC-216 §5.9): the reversal card holds the pair's two figures — the reversal's own is the first.
+    await expect(reversalRow.locator("[data-slot=figure] bdi[dir='ltr']").first()).toBeVisible();
     // The reversal readable next to what it reverses — never a number that
     // quietly changed (`REQ-CHK-017`).
     // ★ wave 20: the session's title is the link — a selector that moved.
