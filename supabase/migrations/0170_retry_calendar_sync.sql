@@ -1,3 +1,4 @@
+-- 0170 · wave 20 (DEC-218 §2.3, REQ-UIX-075, REQ-CAL-008) — proposed by `notify`, promoted by the lead.
 -- ═══════════════════════════════════════════════════════════════════════════
 -- retry_calendar_sync — «أعد المحاولة» on SCR-025 (wave 20, DEC-218 §2.3).
 --
