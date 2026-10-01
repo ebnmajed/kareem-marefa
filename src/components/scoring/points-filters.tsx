@@ -44,7 +44,7 @@ export function PointsFilters({
 
   return (
     <form ref={form} method="get" role="search" aria-label={labels.heading} className={`flex flex-wrap items-center gap-2 ${className}`}>
-      <Select name="session" aria-label={labels.session} defaultValue={session ?? ""} onChange={submit} className="w-auto max-w-44 rounded-pill">
+      <Select name="session" aria-label={labels.session} defaultValue={session ?? ""} onChange={submit} className="w-auto max-w-36 rounded-pill">
         <option value="">{labels.allSessions}</option>
         {sessions.map((s) => (
           <option key={s.value} value={s.value}>
@@ -52,7 +52,7 @@ export function PointsFilters({
           </option>
         ))}
       </Select>
-      <Select name="month" aria-label={labels.month} defaultValue={month ?? ""} onChange={submit} className="w-auto max-w-40 rounded-pill">
+      <Select name="month" aria-label={labels.month} defaultValue={month ?? ""} onChange={submit} className="w-auto max-w-36 rounded-pill">
         <option value="">{labels.allMonths}</option>
         {months.map((m) => (
           <option key={m.value} value={m.value}>
