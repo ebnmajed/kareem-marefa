@@ -4,6 +4,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { isDocumentLoad } from "@/components/scoring/document-load";
 import { MomentWeek, WeekFigure, type MomentWeekProps } from "@/components/scoring/moment-week";
 import { acknowledgeWeekPoints, acknowledgeWeekRank } from "@/components/scoring/week-actions";
+import { BandMoments } from "@/components/hub/band-moments";
 import { DisplayedOnly } from "@/components/hub/displayed-only";
 import { Avatar } from "@/components/ui/avatar";
 import { BadgeMedallion } from "@/components/ui/badge-medallion";
@@ -273,10 +274,15 @@ export async function HubStanding({ locale, form, className = "" }: { locale: st
     documentLoad,
   };
 
-  return (
+  // ★ The band yields moment 3 to a page that plays it on its own head (`band-moments.tsx`, DEC-195).
+  return form === "card" ? (
     <MomentWeek {...moment} className={className}>
-      {form === "card" ? <Card s={s} t={t} seenRank={seenRank} /> : <Band s={s} t={t} seenRank={seenRank} locale={locale} />}
+      <Card s={s} t={t} seenRank={seenRank} />
     </MomentWeek>
+  ) : (
+    <BandMoments {...moment} className={className}>
+      <Band s={s} t={t} seenRank={seenRank} locale={locale} />
+    </BandMoments>
   );
 }
 

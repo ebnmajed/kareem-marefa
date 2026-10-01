@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import scoring from "@/messages/ar/scoring.json";
 import type { HubStanding as HubStandingData } from "@/lib/dal/points";
 import { resetPaintedForTests } from "@/components/scoring/use-seen-moment";
-import { resetMomentsForTests } from "@/lib/ui/moment";
+import { isMomentClaimed, momentKey, resetMomentsForTests } from "@/lib/ui/moment";
 import { fakeAnimate, removeFakeAnimate, setDurationTokens, setReducedMotion, type FakeAnimation } from "../lib-ui/motion-env";
 
 vi.mock("@/lib/fonts", () => ({ balooBhaijaan: { variable: "font-baloo-variable" } }));
@@ -27,6 +27,8 @@ vi.mock("@/components/scoring/week-actions", () => ({
   acknowledgeWeekPoints: (...args: unknown[]) => ackPoints(...(args as [])),
   acknowledgeWeekRank: (...args: unknown[]) => ackRank(...(args as [])),
 }));
+let currentPath = "/ar/app/me";
+vi.mock("next/navigation", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/navigation")>()), usePathname: () => currentPath }));
 let current: HubStandingData;
 vi.mock("@/lib/dal/points", () => ({ getHubStanding: async () => current }));
 
@@ -116,6 +118,7 @@ beforeEach(() => {
   });
   ackPoints.mockClear();
   ackRank.mockClear();
+  currentPath = "/ar/app/me";
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -220,6 +223,17 @@ describe("★★ moments 3 and 5 — the displayed copy alone", () => {
     expect(container.querySelector("[data-hidden-copy] [data-slot=delta]")).toBeNull();
     expect(container.querySelectorAll("[data-slot=delta]")).toHaveLength(1);
     expect(made.some((a) => a.el.getAttribute("data-slot") === "delta")).toBe(true);
+  });
+
+  it("★★ on /app/me/points the band yields moment 3 to the page's own head: its static «+N», no claim, no acknowledgement", async () => {
+    currentPath = "/ar/app/me/points";
+    current = standing(withCompletion());
+    const { container } = render(intl(await HubStanding({ locale: "ar", form: "band" })));
+    await finishAll();
+    expect(made.filter((a) => a.el.getAttribute("data-slot") === "delta")).toHaveLength(0);
+    expect(ackPoints).not.toHaveBeenCalled();
+    expect(container.querySelector("[data-slot=delta] bdi")!.textContent).toBe("+50");
+    expect(isMomentClaimed(momentKey("completion", "e-730"))).toBe(false);
   });
 
   it("the hidden form alone plays nothing and writes nothing", async () => {

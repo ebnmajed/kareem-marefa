@@ -91,16 +91,21 @@ async function signIn(context: BrowserContext): Promise<string> {
 
 async function countAnimations(context: BrowserContext) {
   await context.addInitScript(() => {
-    const w = window as unknown as { __deltaAnimations: number };
+    const w = window as unknown as { __deltaAnimations: number; __deltaInHead: number };
     w.__deltaAnimations = 0;
+    w.__deltaInHead = 0;
     const original = Element.prototype.animate;
     Element.prototype.animate = function (...args: Parameters<Element["animate"]>) {
-      if ((this as Element).getAttribute("data-slot") === "delta") w.__deltaAnimations += 1;
+      if ((this as Element).getAttribute("data-slot") === "delta") {
+        w.__deltaAnimations += 1;
+        if ((this as Element).closest("#points-head")) w.__deltaInHead += 1;
+      }
       return original.apply(this, args);
     };
   });
 }
 const deltaAnimations = (page: Page) => page.evaluate(() => (window as unknown as { __deltaAnimations: number }).__deltaAnimations);
+const deltaInHead = (page: Page) => page.evaluate(() => (window as unknown as { __deltaInHead: number }).__deltaInHead);
 
 async function navigateInApp(page: Page, link: ReturnType<Page["locator"]>, url: RegExp) {
   await expect.poll(() => link.evaluate((el) => Object.keys(el).some((k) => k.startsWith("__reactFiber") || k.startsWith("__reactProps"))), { timeout: 15_000 }).toBe(true);
@@ -155,5 +160,29 @@ test("★★ one copy visible; the hidden one renders no «+N» node; moment 3 p
   await page.waitForTimeout(3000);
   await expect(page.locator("#main [data-slot=delta]")).toHaveCount(0);
   expect(await deltaAnimations(page)).toBe(0);
+  await context.close();
+});
+
+test("★★ /app/me/points at 1280: the head and the band are both visible, and moment 3 plays ONCE — on the head", async ({ browser }) => {
+  test.skip(!desktop(), "the band and the head share the screen from lg only");
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await countAnimations(context);
+  meId = await signIn(context);
+  // The occurrence unseen again: the mark back to nothing, the completion row still the newest.
+  await db.query(`update public.member_seen_marks set points_total = 0, points_entry_id = null where member_id = $1`, [meId]);
+
+  // From outside the hub, so the layout — and the band in it — mounts fresh with the points page: the band would play
+  // moment 3 here were it not yielding it to the head. The home's own copies are a server paint: silent, unclaimed.
+  const page = await context.newPage();
+  await page.goto("/ar/app");
+  await navigateInApp(page, page.locator("#main a[href$='/app/me/points']").filter({ visible: true }).first(), /\/ar\/app\/me\/points$/);
+
+  await expect(page.locator("#main [data-form=band]")).toBeVisible();
+  await expect(page.locator("#main #points-head")).toBeVisible();
+  await expect.poll(() => deltaAnimations(page), { timeout: 15_000 }).toBe(1);
+  await page.waitForTimeout(3000);
+  expect(await deltaAnimations(page), "★ one occurrence, one moment").toBe(1);
+  expect(await deltaInHead(page), "it plays on the page's own head").toBe(1);
+  await expect.poll(mark, { timeout: 20_000 }).toBe(120);
   await context.close();
 });
