@@ -3855,3 +3855,7 @@ Two additions:
 **Unrelated, seen in `npm test`:** `tests/components/ui/icons-playground.test.tsx` expects 54 glyphs. The tree has 55
 since the lead's `SettingsIcon` (`ebdde010`). That test is the lead's. Two designer and browse cases timed out under
 load and pass alone.
+
+**`025` accepted by the lead** (`6695dd34` → `4b2ccdff`), C14 as recorded. The lead runs the three edited e2e specs on
+the gate's production build. «حجزك قائم في كل الأحوال.» (`failed.seatStands`, C16) is on the copy-trim list for the
+owner and stays until the ruling. Holding for PR B.
