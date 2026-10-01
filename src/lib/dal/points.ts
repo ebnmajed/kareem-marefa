@@ -540,6 +540,10 @@ export function weekPointsMark(head: Pick<PointsHead, "mark" | "levelUp" | "seen
 /** `getPointsHead()` once per request, for the week and the event page's outcome card together. */
 const headOnce = cache((locale: string) => getPointsHead(locale));
 
+/** wave 20, add-only: the same request-scoped head for `SCR-022`'s page, which the hub's band in its layout reads
+ *  too — one read of the head per request, not two (the PR A gate saw the local gateway time out under the fan-out). */
+export const getPointsHeadOnce = headOnce;
+
 /** Request-scoped: the phone's HUD and the desktop's rail ask once between them. */
 export const getMemberWeek = cache(async (locale: string): Promise<MemberWeek> => {
   const [head, standing] = await Promise.all([headOnce(locale), getMonthlyStanding(locale)]);

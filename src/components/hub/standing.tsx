@@ -180,7 +180,20 @@ function Card({ s, t, seenRank }: { s: HubStandingData; t: T; seenRank: number |
           }}
         />
       ) : (
-        bar
+        // No level yet (the nightly evaluation has not run for this member): the balance is still the card's figure,
+        // and moment 3's «+N» still has a place — a member's first points must not vanish for want of a level.
+        <div className="flex flex-col gap-1">
+          <p className="flex items-baseline gap-1.5">
+            <span className="font-display text-play-sm font-extrabold text-fg-heading">
+              <bdi>
+                <WeekFigure slot="points" text={formatNumber(s.points)} />
+              </bdi>
+            </span>
+            <span className="text-caption text-fg-muted">{t("week.points.unit", { count: s.points })}</span>
+            {delta(s, t)}
+          </p>
+          {bar}
+        </div>
       )}
 
       <Tiles s={s} t={t} seenRank={seenRank} />
@@ -249,7 +262,10 @@ function Band({ s, t, seenRank, locale }: { s: HubStandingData; t: T; seenRank: 
           </div>
         </div>
       ) : (
-        <p className="text-caption text-fg-muted">{line}</p>
+        <p className="text-caption text-fg-muted">
+          {line}
+          {delta(s, t)}
+        </p>
       )}
       <div className="w-full max-w-sm xl:w-80">
         <Tiles s={s} t={t} seenRank={seenRank} />

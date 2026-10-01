@@ -7,7 +7,7 @@ import { PointsFilters } from "@/components/scoring/points-filters";
 import { PointsHeadCard } from "@/components/scoring/points-head-card";
 import { PointsLedger } from "@/components/scoring/points-ledger";
 import { formatNumber } from "@/components/sessions/numerals";
-import { getPointsHead, getPointsLedger, LEDGER_PAGE } from "@/lib/dal/points";
+import { getPointsHeadOnce, getPointsLedger, LEDGER_PAGE } from "@/lib/dal/points";
 import { acknowledgePointsSeen } from "./actions";
 
 // SCR-022 · «نقاطي» — `/app/me/points`. Written from `docs/design/screens/m10c/Points.dc.html` (phone) and
@@ -37,7 +37,7 @@ export default async function PointsPage({
   const [t, ledger, head, documentLoad] = await Promise.all([
     getTranslations("scoring.points"),
     getPointsLedger(locale, { sessionId: query.session, month: query.month, rows: Number(query.rows) || undefined }),
-    getPointsHead(locale),
+    getPointsHeadOnce(locale),
     isDocumentLoad(),
   ]);
 

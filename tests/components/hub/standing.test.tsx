@@ -158,6 +158,17 @@ describe("the card — every figure read", () => {
     expect(c.querySelector("[data-slot=rank]")).toBeNull();
   });
 
+  it("★ no level yet: the balance is still drawn, and moment 3's «+N» still has its place — in both forms", async () => {
+    for (const form of ["card", "band"] as const) {
+      const c = await draw(form, { level: null, next: null, progress: null, completion: { occurrenceId: "e-120", from: 0, to: 120, delta: 120, fromProgress: 0 }, points: 120 });
+      expect(c.textContent).toContain("120");
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(c.querySelector("[data-slot=delta] bdi")!.textContent).toBe("+120");
+    }
+  });
+
   it("no streak rule: the tile is not drawn", async () => {
     const c = await draw("card", { streak: null });
     expect(c.textContent).not.toContain("السلسلة");
