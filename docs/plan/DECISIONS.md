@@ -6594,3 +6594,92 @@ track's write and every contract between tracks is a read. Three teammates, all 
    `scoring`'s PR-B commit.
 
 - **Documents changed:** listed under **Amends**, and `STATUS.md` (the wave-20 head, Step 0 done)
+
+## DEC-218 — Wave 20, sync 1: three plans approved with their kept-behaviour tables; the frame's two halves; what the settings switches write; the rulings the nine screens are built on
+
+- **Date:** 2026-10-02 · **Decided by:** the wave-20 lead, at sync 1, from the plans of `content`, `notify` and `scoring` (their notes, wave-20 sections). The owner's rulings (`DEC-216` §2) are not re-opened; two questions go to the owner (§6)
+- **Amends:** `REQ-UIX-072` (the CSV clause, §3.2); `DEC-216` §5.17 (§3.6); `CLAUDE.md`'s contract 1 (§1, already landed at `f79f5ee3`); `src/components/ui/index.ts` (contract 2's types); `src/app/globals.css` (`--color-podium-{1,2,3}`)
+- **Adds:** migration **`0170`** in PR A — `retry_calendar_sync()`, drafted by `notify` under `supabase/proposed/notify/`, promoted by the lead with its grant and a definer-exposure row (§2.3)
+- **Does not touch:** the five frozen public routes, `registrations`, `qa:contract`
+
+### 1 · The plans, and the frame
+
+**Approved:** `content` (`021` 22 kept rows, `023` 15, `024` 8), `notify` (`025` 18, `026` 16, `029` 22 — every
+behaviour of `preference-matrix` among them), `scoring` (`022`, the standing, `027`, `028`, §2.1 – §2.4). **Contract
+1 is amended** (`ebdde010`, `f79f5ee3`): the phone strip sits under a page's title and the desktop strip above it, so
+the layout renders the desktop band and strip and **a page renders `HubTopRow` and `<HubStrip />`** at every width —
+the top row's `h1` is the page's heading on desktop too; the strip hides itself from `lg`. `029` renders `HubTopRow`
+alone, and from `lg` sits under the hub's desktop strip with nothing current — no layout exception.
+
+### 2 · `notify` — the settings page and the calendar
+
+1. **A category row is that category's EMAIL switch**, and every write also sets `in_app = true`: in-app is not a
+   setting (`REQ-UIX-077`), and a member who switched the inbox off under the old matrix is restored the first time
+   they touch the row. Per-channel in-app control is **withdrawn**, said so in the kept-behaviour table. No data fix.
+   `proposals` has no optional email message and is **not a row**; `admin_queue` is a row for staff only.
+2. **The opt-out has its own writer**: `setLeaderboardOptOut()` (`27afbb3e`, the lead's as `sessions'` custodian),
+   one column. In the same commit `updateMyProfile()`'s opt-out became optional and is written only when sent, so the
+   field leaving `021` in PR B cannot opt anyone back in.
+3. **«أعد المحاولة» is built** (`REQ-UIX-075`): failed syncs are recorded per session-day today, but nothing a member
+   may call re-queues one. `0170`'s `retry_calendar_sync()` re-derives the member, checks the row is theirs and
+   `failed`, and enqueues under the existing `cal:{rsvp_id}` key; it returns an outcome after the enqueue (`DEC-043`).
+4. **One form per inbox item** marks it read; an item with a session then opens it, one without stays. «عرض الأقدم»
+   pages by a keyset on `(created_at, id)`. `notify`'s own `inbox-item.tsx`, shaped like `feed-item`. One neutral
+   ring on every category tile. No «اللغة» row (English is not served); no poster swatch on a failed calendar row.
+5. **The calendar connect and callback routes** return to the member's locale — parsed against `ar | en`, never
+   interpolated raw (an open redirect otherwise). **The mails' preference link** moves to `/app/me/settings` in PR B,
+   as one reviewed diff of the pinned mail.
+
+### 3 · `scoring` — the ledger and the boards
+
+1. **Moment 4 stays on `SCR-022`** (`DEC-195`): the head's level row turns in place. Moving it to the standing card
+   would move a moment; the artboard draws the level as text and the turn is that text's.
+2. **No «تنزيل CSV»**: no member-side CSV exists in `src/`, and `REQ-UIX-072`'s «the CSV the screen already exports»
+   was written wrong by the lead. **The clause is withdrawn**; a member's ledger leaves through the data export
+   (`REQ-PRF-006`).
+3. **The cup card draws only what exists**: the company race's monthly state — provisional or final, the ranked
+   metric, when it was taken. «كأس الربع», «الجولة 3 من 4» and «تُسلَّم في اللقاء السنوي» have no data (company
+   snapshots are monthly; seasonal is unbuilt) and are **not drawn**. **«بلا ترتيب» is not built**: no ranking
+   minimum exists (`min_active_members` gates the percentage rules only).
+4. **Moment 5 on the board**: the «ترتيبك» card's figure and the rows' existing FLIP, through the unchanged keying,
+   once per change. The podium is static.
+5. **The hub band's staleness is accepted**: a layout does not re-render on navigation, so the band shows the
+   figures of the hub page the member arrived on; the authoritative figures and the moments are the page's. The
+   page's `h1` stays the heading at every width and the band's name is text (`HubDesktop.dc.html` draws the name as
+   the `h1` — recorded, not picked).
+6. **`leaderboards.ts:512` is a mislabelled error, not a misread**: the home's week card shows the MONTHLY rank by
+   `DEC-206` §4.47. The label is corrected; the read stays. `DEC-216` §5.17 called it a defect of the read.
+7. **The podium's colours** are `--color-podium-{1,2,3}`: the sticker's gold (an object colour, never a team's) and
+   the level ramp's silver and bronze. **The hidden standing form** (the card from `lg`, the band below it) plays no
+   moment and writes no mark — it acts only when displayed, with a re-render test.
+
+### 4 · `content` — the profile, certificates and bookmarks
+
+1. **The plan wins on certificates** (`REQ-CRT-013`): a revoked row keeps its **reason** as a quiet line after
+   «ملغاة», every row its **serial** in `<bdi dir="ltr">`. No certificate page is built; a row is one link to
+   `designer`'s audited download route; a row with no PDF («قريبًا») is not a link.
+2. **Interests are categories** (`REQ-PRF-001`, `member_interests.category_id`): add-only `getMyInterests()` and
+   `setMyInterests()` in `members.ts`, the setter writing the session's member only. **Delete-first found them never
+   built** — no writer existed in `src/`.
+3. **Edit mode is a URL**, `/app/me?edit`; «عدّل ملفك» and Cancel are links. Save is enabled in the server's HTML and
+   «enabled only when changed» after hydration, so the early-save spec holds unchanged.
+4. **The bookmark undo** is an add-only `BookmarkChangeProvider` in `search/bookmark-button.tsx`; `SessionRow`, a
+   Server Component, is untouched (a function cannot cross into it, `DEC-159`).
+5. **The settings link on `/app/me`** is named by where it goes: «الخصوصية والبيانات» to privacy in PR A,
+   «الإعدادات» to settings in PR B.
+
+### 5 · Grants of files held by the lead, each for the named lines only, each with its ledger line
+
+`content`: `members.ts` (the two interests functions), `search/bookmark-button.tsx` (the provider),
+`wave13-designer-certificates-download.spec.ts:165`, `wave7-content-certificates.spec.ts:159`,
+`certificates.spec.ts:314`, `profile-page.test.tsx:190`. `notify`: `wave7-content-{notifications,calendar}.spec.ts`,
+`tests/components/me/calendar-page.test.tsx`, the named lines of `notify-screens` and `wave9-notify-days`,
+`api/calendar/{connect,callback}/route.ts` (the locale fix), `supabase/proposed/notify/` (`retry_calendar_sync()`).
+`scoring`: the weekly seen cases go in `tests/rls/scoring-seen.test.ts`, which is its own again.
+
+### 6 · For the owner — neither blocks the build
+
+1. **«إشعارات البريد», the master switch**, is not built: preferences are per category and channel, it has no column,
+   and a bulk write has no honest state when the rows differ. Building it needs a column read by `public.notify()`.
+2. **The quarterly cup** that `Companies.dc.html` draws has no data behind it — a seasonal company snapshot would be
+   new scoring scope.

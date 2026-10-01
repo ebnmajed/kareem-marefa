@@ -108,11 +108,12 @@ mentions §0b once, in §10, and never defines it — so the copy trim has no li
 |---|---|---|---|
 | S0 | The spec and the eleven artboards in the tree; the branch; the draft PR; every number re-measured | lead | **DONE** — `2b7a5970`, `wave-20a/the-hub`, draft **PR #41** against `main` |
 | S0b | `DEC-217`; `REQ-UIX-070` … `081` (★ `SCR-029`'s is `077`); `09`'s `SCR-021`, `SCR-024`, `SCR-029` sections, the requirement table and route coverage; M22 in `14`; `STORY-UIX-059` … `071` in `15`; `REQ-UIX-080` cross-cutting in `traceability.mjs`; the map in `CLAUDE.md`; the ten agent files regenerated | lead | **DONE** — see the commit after `0169`'s. `trace` **374 · 207, no gaps**; `policy-diff` ✓ |
+| D2 | ★ **`0170` — `retry_calendar_sync()`** (`DEC-218` §2.3), drafted by `notify`, promoted by the lead with its grant and a definer-exposure row; ★ **a second migration for the owner to rehearse** | `notify` → lead | todo |
 | D1 | ★★ **`0169`** — `weekly_period date`, `weekly_rank int check (> 0)` on `member_seen_marks`, nullable. **No new grant: `0162:66` is table-level**, said in the migration's header and in `03` §5.7c; `02`'s entity gains the pair | lead | **landed locally** — `supabase db reset` applied it (the reset's storage health check timed out; `worker-schema` and the Kong check were run by hand after it); `scoring-seen` **4 new cases** and `isolation` **99 ✓**. ★ **The owner rehearses it on a production schema dump and pushes it** |
 | T0 | Baselines before any product commit: the public pairs, the fingerprint, the nine screens at 390 (and the hub at 1280) as they are today | lead | todo |
 | F1 | ★★ **The hub frame** (C1, `STORY-UIX-059`) — `me/layout.tsx` and `tab-strip.tsx` deleted, then written; `shell-routes.ts` | lead | ★ **IN — deleted `aed4601e`, written `ebdde010`** (table `63fdd6c0`). ★ **A ruling the artboards force**: the phone strip sits under a page's title and the desktop strip above it, so the layout renders the desktop band and strip and **a page renders `HubTopRow` and `<HubStrip />`** (contract 1 amended). `ownsTopRow()` takes the hub, settings and the boards (not privacy); `SettingsIcon` added to `icons.tsx` — ★ the four-part public proof is owed at X2. `tsc` 0, 350 ✓, `ui-lint --strict` ✓. **The band waits on C3** |
-| S1 | **Sync 1** — three plans, each with its kept-behaviour tables, approved against the seven contracts | lead | todo |
-| P0 | Contract 2 — the signatures, the registry, the floor at 60 | lead | todo |
+| S1 | **Sync 1** — three plans, each with its kept-behaviour tables, approved against the seven contracts | lead | **DONE — `DEC-218`**: `content` 22 + 15 + 8, `notify` 18 + 16 + 22, `scoring` §2.1 – §2.4. ★ Found: **interests were never built** (`REQ-PRF-001`); the revoke reason had nowhere to go but the list; **a profile save would have re-opted every member in** once the opt-out left `021` (fixed `27afbb3e`); «أعد المحاولة» had nothing to call (`0170`); the calendar's connect/callback hard-code `/ar`; `REQ-UIX-072`'s CSV clause was the lead's error. Two questions for the owner (`DEC-218` §6) |
+| P0 | Contract 2 — the signatures, the registry, the floor at 60 | lead | **signatures landed** with `DEC-218`: `LedgerRowProps`, `PodiumPlace`/`PodiumProps`, `SettingsGroupProps` and its row types; add-only `LevelStanding.frame`, `RaceBarProps.layout: "grid"`; `--color-podium-{1,2,3}`. Registry entries and the floor: with each file |
 | A1 | ★★ `SCR-021`, my profile — deleted, then written | `content` | todo |
 | A2 | ★★ `SCR-022`, my points — deleted, then written; `ui/ledger-row` | `scoring` | todo |
 | A3 | ★ `SCR-023` and `SCR-024` — deleted, then written | `content` | todo |
@@ -140,11 +141,15 @@ mentions §0b once, in §10, and never defines it — so the copy trim has no li
 6. **Every file created or deleted; every existing assertion that moves**, selector or expectation.
 7. **Any disagreement `DEC-216` §5 and `DEC-217` §4 do not list**, with the file and the line — not picked.
 
-### For the owner — one question, not blocking the spawn
+### For the owner — three questions, none blocking the build (`DEC-217` §4.2, `DEC-218` §6)
 
 1. ★ **The copy trim's list** (`DEC-217` §4.2). `M10c.md` cites «§0b» and never defines it. Does the design session hold
    the list of lines trimmed from the M10a and M10b boards? If not, the lead derives it from the committed artboards
    and brings it to you before any string is removed.
+2. **«إشعارات البريد», the master switch** — not built: no column, and no honest state over mixed rows. Build it (a
+   column read by `public.notify()`), or leave it?
+3. **The quarterly cup** `Companies.dc.html` draws has no data — company snapshots are monthly. New scoring scope, or
+   the monthly race's state as built?
 
 ### Untouched-suite ledger (wave 20)
 

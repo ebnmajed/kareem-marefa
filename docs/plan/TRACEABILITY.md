@@ -324,7 +324,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRF-003` | `ENT-companies` | — | `SCR-020` `SCR-028` `SCR-048` | — | — | `STORY-PRF-001` | M1 |
 | `REQ-PRF-004` | `ENT-calendar_connections` | — | `SCR-007` `SCR-020` `SCR-043` +5 | `JOB-zip_session_photos` | — | `STORY-PRF-002` | M1 |
 | `REQ-PRF-005` | — | — | `SCR-012` `SCR-013` `SCR-015` +5 | — | — | `STORY-PRF-003` | M2 |
-| `REQ-PRF-006` | `ENT-data_export_requests` `ENT-platform_audit_log` `ENT-retention_periods` | `POL-data_export_requests.select.self` | `SCR-005` `SCR-020` `SCR-021` +3 | `JOB-anonymise_members` `JOB-build_data_export` +2 | — | `STORY-PRF-004` | M8 |
+| `REQ-PRF-006` | `ENT-data_export_requests` `ENT-platform_audit_log` `ENT-retention_periods` | `POL-data_export_requests.select.self` | `SCR-005` `SCR-020` `SCR-021` +4 | `JOB-anonymise_members` `JOB-build_data_export` +2 | — | `STORY-PRF-004` | M8 |
 | `REQ-PRF-007` | — | — | `SCR-020` `SCR-021` `SCR-029` +1 | `JOB-anonymise_members` `JOB-enforce_retention` +1 | — | `STORY-PRF-004` | M8 |
 | `REQ-PRF-008` | — | — | `SCR-012` `SCR-020` `SCR-021` +1 | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-009` | `ENT-companies` | — | `SCR-016` `SCR-020` `SCR-048` | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
