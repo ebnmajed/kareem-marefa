@@ -160,9 +160,11 @@ test("★ SCR-021: read by default, no company, edit on intent, a refused save s
   await expect(page.getByText("تم الحفظ", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/ar\/app\/me$/);
 
-  await expect(main.getByText("عضو الحساب المُحدَّث")).toBeVisible();
-  await expect(main.getByText("شركة الاختبار")).toBeVisible();
-  await expect(main.getByText("حوكمة")).toBeVisible();
+  // The standing card and the desktop band carry the name and the company too: the profile's own region, never #main.
+  const profile = main.getByRole("region", { name: "ملفي" });
+  await expect(profile.getByText("عضو الحساب المُحدَّث")).toBeVisible();
+  await expect(profile.getByText("شركة الاختبار")).toBeVisible();
+  await expect(profile.getByText("حوكمة")).toBeVisible();
   const { rows } = await db.query(`select category_id from public.member_interests where member_id = $1`, [memberId]);
   expect(rows.map((r) => r.category_id)).toEqual([categoryA]);
   await capture(page, "me", "read");

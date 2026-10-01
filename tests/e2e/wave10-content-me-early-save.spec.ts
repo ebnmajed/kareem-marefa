@@ -105,5 +105,6 @@ test("★ T2·2: a save pressed the instant the field is visible — no wait for
 
   // The proof is a fresh load, never client state: the read row is the database's value.
   await page.reload();
-  await expect(page.locator("#main").getByText("عضو الحفظ الفوري")).toBeVisible();
+  // The profile's own region: the standing card and the desktop band name the member too.
+  await expect(page.locator("#main").getByRole("region", { name: "ملفي" }).getByText("عضو الحفظ الفوري")).toBeVisible();
 });

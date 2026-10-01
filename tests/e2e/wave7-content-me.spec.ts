@@ -137,7 +137,7 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
   await page.getByRole("button", { name: "حفظ" }).click();
   // ★ wave 20: «تم الحفظ» is a toast once, and the page returns to read mode — the saved values are rows.
   await expect(page.getByText("تم الحفظ", { exact: true })).toBeVisible();
-  await expect(main.getByText("عضو الملف المُحدَّث")).toBeVisible();
+  await expect(main.getByRole("region", { name: "ملفي" }).getByText("عضو الملف المُحدَّث")).toBeVisible(); // ★ the profile's region: the standing card names the member too
   // ★ The lead's real-capture finding (wave7-content-me-populated-saved.png):
   // this went unchecked before — only displayName's value was asserted —
   // and the company select showed the placeholder after a save that DID
@@ -146,7 +146,7 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
   // the just-saved company never reached the DOM even once `value()` itself
   // computed correctly (fixed by keying the field on its own value).
   // ★ wave 20: read mode shows the saved company by name (no select is on the page), and the row holds its id.
-  await expect(main.getByText("شركة الاختبار")).toBeVisible();
+  await expect(main.getByRole("region", { name: "ملفي" }).getByText("شركة الاختبار")).toBeVisible();
   const { rows: saved } = await db.query<{ company_id: string }>(`select company_id from public.members where email = $1`, [memberEmail]);
   expect(saved[0]?.company_id).toBe(companyId);
   await capture(page, "populated-saved");
