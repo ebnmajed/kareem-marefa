@@ -33,7 +33,8 @@
       "board": "Ranking",
       "adminConsole": "Admin console",
       "attention": "{count, plural, one {{value} item needs you} other {{value} items need you}}",
-      "gameRail": "Your week"
+      "gameRail": "Your week",
+      "settings": "Settings"
     },
     "home": {
       "welcome": "Welcome, <name>{value}</name>",

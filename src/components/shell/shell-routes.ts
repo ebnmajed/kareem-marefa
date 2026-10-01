@@ -58,10 +58,15 @@ const OWN_TOP_ROW = /^\/app\/sessions(\/[^/]+(\/(check-in|host))?)?$/;
  *  row too — a back control, a title, a sort or a share, and no wordmark (`docs/design/screens/m10b/`). */
 const OWN_TOP_ROW_M10B = /^\/app\/(sessions\/[^/]+\/rate|propose(\/[^/]+(\/edit)?)?|members(\/[^/]+)?)$/;
 
+/** ★ wave 20 (DEC-217, REQ-UIX-070): the hub, its pages and settings, and the two boards draw their own phone top row —
+ *  a title in the display face, a back control on a sub-page, the settings link on `/app/me`, and no wordmark
+ *  (`docs/design/screens/m10c/`). `/app/me/privacy` is not drawn in any batch (M13's) and keeps the shell's row. */
+const OWN_TOP_ROW_M10C = /^\/app\/(me(\/(points|certificates|bookmarks|calendar|notifications|settings))?|leaderboards(\/companies)?)$/;
+
 export function ownsTopRow(pathname: string | null): boolean {
   if (!pathname) return false;
   const path = strip(pathname);
-  return OWN_TOP_ROW.test(path) || OWN_TOP_ROW_M10B.test(path);
+  return OWN_TOP_ROW.test(path) || OWN_TOP_ROW_M10B.test(path) || OWN_TOP_ROW_M10C.test(path);
 }
 
 /** ★ wave 18 (DEC-209): routes that carry a fixed bottom `action-bar` of their own — the event page,
