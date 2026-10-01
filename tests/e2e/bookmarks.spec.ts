@@ -274,7 +274,13 @@ test.describe("M9 restyle: SessionCard, and un-bookmarking drops the card", () =
     // transition without knowing which of the two it hides).
     const [actionResponse] = await Promise.all([
       page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/app/me/bookmarks")),
-      toggles.first().click(),
+      // ★ wave 20 (e2e run 1): the toggle INSIDE the first session's row — both bookmarks are inserted together, so
+      // their order is a tie, and `toggles.first()` removed whichever came first.
+      page
+        .getByRole("listitem")
+        .filter({ has: page.getByRole("heading", { name: "جلسة أولى محفوظة", level: 3 }) })
+        .getByRole("button", { name: "احفظ الجلسة" })
+        .click(),
     ]);
     expect(actionResponse.ok(), "the un-bookmark POST itself must succeed").toBe(true);
     await expect(page.getByRole("heading", { name: "جلسة أولى محفوظة", level: 3 })).toHaveCount(0, { timeout: 10_000 });
