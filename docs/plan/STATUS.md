@@ -110,7 +110,7 @@ mentions §0b once, in §10, and never defines it — so the copy trim has no li
 | S0b | `DEC-217`; `REQ-UIX-070` … `081` (★ `SCR-029`'s is `077`); `09`'s `SCR-021`, `SCR-024`, `SCR-029` sections, the requirement table and route coverage; M22 in `14`; `STORY-UIX-059` … `071` in `15`; `REQ-UIX-080` cross-cutting in `traceability.mjs`; the map in `CLAUDE.md`; the ten agent files regenerated | lead | **DONE** — see the commit after `0169`'s. `trace` **374 · 207, no gaps**; `policy-diff` ✓ |
 | D1 | ★★ **`0169`** — `weekly_period date`, `weekly_rank int check (> 0)` on `member_seen_marks`, nullable. **No new grant: `0162:66` is table-level**, said in the migration's header and in `03` §5.7c; `02`'s entity gains the pair | lead | **landed locally** — `supabase db reset` applied it (the reset's storage health check timed out; `worker-schema` and the Kong check were run by hand after it); `scoring-seen` **4 new cases** and `isolation` **99 ✓**. ★ **The owner rehearses it on a production schema dump and pushes it** |
 | T0 | Baselines before any product commit: the public pairs, the fingerprint, the nine screens at 390 (and the hub at 1280) as they are today | lead | todo |
-| F1 | ★★ **The hub frame** (C1, `STORY-UIX-059`) — `me/layout.tsx` and `tab-strip.tsx` deleted, then written; `shell-routes.ts` | lead | todo |
+| F1 | ★★ **The hub frame** (C1, `STORY-UIX-059`) — `me/layout.tsx` and `tab-strip.tsx` deleted, then written; `shell-routes.ts` | lead | ★ **IN — deleted `aed4601e`, written `ebdde010`** (table `63fdd6c0`). ★ **A ruling the artboards force**: the phone strip sits under a page's title and the desktop strip above it, so the layout renders the desktop band and strip and **a page renders `HubTopRow` and `<HubStrip />`** (contract 1 amended). `ownsTopRow()` takes the hub, settings and the boards (not privacy); `SettingsIcon` added to `icons.tsx` — ★ the four-part public proof is owed at X2. `tsc` 0, 350 ✓, `ui-lint --strict` ✓. **The band waits on C3** |
 | S1 | **Sync 1** — three plans, each with its kept-behaviour tables, approved against the seven contracts | lead | todo |
 | P0 | Contract 2 — the signatures, the registry, the floor at 60 | lead | todo |
 | A1 | ★★ `SCR-021`, my profile — deleted, then written | `content` | todo |
@@ -151,6 +151,9 @@ mentions §0b once, in §10, and never defines it — so the copy trim has no li
 | File | Assertion | Why it moves | Commit |
 |---|---|---|---|
 | `tests/rls/scoring-seen.test.ts` | — | **Added to, nothing changed**: four cases for `0169`'s pair | Step 0 |
+| `tests/unit/shell-routes.test.ts` | `ownsTopRow("/ar/app/me")` and `("/ar/app/leaderboards")` were `false` | ★ **Expectation moved, by design** (`REQ-UIX-070`): the hub and the boards draw their own phone top row; the new `describe` pins all ten paths and privacy's exception | `ebdde010` |
+| `tests/components/me/tab-strip.test.tsx` | the whole file | **Deleted with its component**; its three cases (one current page, the landmark's name, axe) live in `tests/components/shell/hub-strip.test.tsx` with a fourth | `aed4601e`, `ebdde010` |
+| `tests/e2e/wave7-content-me.spec.ts` | `:107` «صفحاتي» visible; `:148` the privacy link | ★ **Expected to move with `021`** (`content`): on a phone the strip is the page's, and privacy is a desktop-strip link | — |
 | `tests/rls/scoring-seen.test.ts` | «an unknown board is refused» lists `weekly` | ★ **Expected in PR B** (`DEC-217` §4.3): `mark_board_seen()` learns the week | — |
 
 ---

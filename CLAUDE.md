@@ -366,8 +366,10 @@ change to either is a request, held by the lead as custodian.
 
 **Wave-20 contracts.**
 
-1. **Lead → everyone — the hub frame** (`REQ-UIX-070`, `STORY-UIX-059`). A hub page draws its own phone top row — the
-   title, the back control, the settings link — and the layout renders the strip and, from `lg`, the standing band. **A page renders nothing of the shell and nothing of the frame.** `shell-routes.ts`
+1. **Lead → everyone — the hub frame** (`REQ-UIX-070`, `STORY-UIX-059`). A hub page draws its own phone top row and the
+   phone strip through the lead's `HubTopRow` and `HubStrip` (`src/components/shell/`); from `lg` the layout renders
+   the standing band and the strip above the page — the artboards put the strip under the title on a phone and above
+   it on desktop, so one strip in the layout would read out of order (the lead's note, F1). **A page renders nothing of the shell and nothing of the frame.** `shell-routes.ts`
    gives `/app/me/**` and `/app/leaderboards/**` their own phone top row; no hub page passes a game rail.
    ★ **It lands before any track builds a screen**; the lead posts «the frame is in at `<sha>`».
 2. **Lead → everyone — the signatures and the gate.** Each owner names its primitive's props in its plan; the lead

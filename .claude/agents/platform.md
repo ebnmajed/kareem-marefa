@@ -95,8 +95,10 @@ all is named in a plan and written by the lead from `0170`.
 
 ### ★ The seven contracts
 
-1. **Lead → everyone — the hub frame** (`REQ-UIX-070`). A hub page draws its own phone top row — the title, the back
-   control, the settings link — and the layout renders the strip and, from `lg`, the standing band. **A page renders
+1. **Lead → everyone — the hub frame** (`REQ-UIX-070`). A hub page draws its own phone top row and the phone strip
+   through the lead's `HubTopRow` and `<HubStrip />` (`src/components/shell/`); from `lg` the layout renders the
+   standing band and the strip above the page — the artboards put the strip under the title on a phone and above it
+   on desktop (the lead's note, F1). On `/app/me` the phone strip sits under the standing card. **A page renders
    nothing of the shell and nothing of the frame**, and no hub page passes a game rail. ★ **It lands before any track
    builds a screen**; the lead posts «the frame is in at `<sha>`».
 2. **Lead → everyone — the signatures and the gate.** `ui/index.ts` is lead-only and append-only. Each owner names its
