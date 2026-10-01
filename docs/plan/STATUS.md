@@ -1,11 +1,11 @@
-**Last updated:** 2026-10-02 · **Branch:** `main` — ★★ **WAVE 20 IS PLANNED, NOT STARTED** · **`main`:** `c5a4cf9a`; production at **`0168`** · **Phase:** ★★ **M10c — the LAST designed batch of the member app (`DEC-216`, M22)**: the hub and its five pages, the two boards, and `/app/me/settings` — nine screens from eleven artboards, each **deleted first and written from its artboard** (`DEC-208`). Two PRs; three primitives (floor **57 → 60**); one migration, **`0169`** — two nullable columns. The brief is `docs/plan/notes/wave-20-lead.md`. ★★ **WHEN THIS MERGES THE STANDING ORDER HAS NO SCREENS LEFT, SO STORIES LAND NEXT** (`05-stories.md`, designed 2026-09-28 and twice overtaken) — **unless the owner says otherwise**; wave 18's ring stays inert until then. ★ **The owner ruled twice on 2026-10-02** (`DEC-216` §2): `status-mark` stays **withdrawn**, and the weekly board **computes live** with its movement read «منذ زيارتك الأخيرة». ★ **Wave 19 is merged, live and ACCEPTED** (`2333276b`, `0168`); every phone check the programme owed — waves 16, 18 and 19 — is run and passed. ★ **Owed by the owner:** nothing. ★ **Carried:** the hosting gate wired to nothing (`REQ-REC-008`), withdraw + history + the reviewer's name (one wave), autosave (a REQ first), F2/F3, the hard-load duplicate (`DEC-204` — **recorded by this wave, never fixed, and after it no screens wave is left to carry it**), `DEC-194`'s two gates, `DEC-186` §4, and the `railway.json` that would pin the worker's builder.
+**Last updated:** 2026-10-02 · **Branch:** `wave-20a/the-hub` (draft **PR #41** against `main`) — ★★ **WAVE 20 IS IN PROGRESS: STEP 0 DONE (`DEC-217`)** · **`main`:** `5e1fabdc`; production at **`0168`**; ★ **`0169` landed locally, not pushed** · **Phase:** ★★ **M10c — the LAST designed batch of the member app (`DEC-216`, M22)**: nine screens from eleven artboards, each **deleted first and written from its artboard** (`DEC-208`). Two PRs; three primitives (floor **57 → 60**); one migration, **`0169`**. ★ **The map is in `CLAUDE.md` and the ten agent files**: `content` (`021`, `023`, `024`), `notify` (`025`, `026`, `029`), `scoring` (`022`, `027`, `028`), the lead (the frame, `0169`, the gate, the copy trim). ★ **Next: spawn the three planning-only; build the frame while they plan; sync 1.** ★ **A third correction**: `M10c.md` has no §0b, so the copy trim has no list — one question for the owner. ★★ **WHEN THIS MERGES, STORIES LAND NEXT** unless the owner says otherwise. ★ **Owed by the owner:** the copy-trim question; at the end, `0169`'s rehearsal and push, the merges (A, then B — B retargeted first), Railway's reconnect, the phone check. ★ **Carried:** as `DEC-216` §7.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 20 — PLANNED, NOT STARTED — M10c, the last designed batch of the member app (`DEC-216`)
+## ★★★ WAVE 20 — IN PROGRESS, Step 0 DONE (`DEC-217`) — on `wave-20a/the-hub`, draft PR #41 — M10c, the last designed batch of the member app (`DEC-216`)
 
 **The programme's sixth wave, and the third that rebuilds screens.** The brief is
 `docs/plan/notes/wave-20-lead.md`; the drawing is `docs/design/screens/M10c.md` with the **eleven** artboards in
@@ -69,6 +69,89 @@ leagues · a sixth moment, and the podium is static · photo tagging · the hard
 `DEC-186` §4 · `DEC-215`'s four carried items · a company logo. **Not re-litigated:** `DEC-124` numerals · `DEC-186`
 §4's `1.08` · `DEC-206` §4.56 — the boards show ranked members by design, which is not attendance · `DEC-099` on
 avatars · `DEC-213` §5.117, which keeps the level-up off the profile.
+
+### ★ Step 0 — DONE (`DEC-217`), and a third correction
+
+Every number above **re-measured and held** on `5e1fabdc`: 57 primitives and the floor at 57, eleven boards and
+eleven PNGs, `0168` the last migration, `REQ-UIX-069` / `STORY-UIX-058` the last ids, no week in `leaderboard_kind`,
+`leaderboards.ts:512`, the DTO at `points.ts:145-157`, the grant at `0162:66`. ★ **The third correction: `M10c.md` has
+no §0b.** The brief, the planning prompt and `DEC-216` §5.14 cite «§0b's list» as the copy trim's scope; `M10c.md`
+mentions §0b once, in §10, and never defines it — so the copy trim has no list, and the owner is asked (below).
+**The planning prompt is committed unedited, as a record** (`2b7a5970`), as M10a's was in wave 18.
+
+### The map (`CLAUDE.md` § *Ownership map (wave 20)*, `DEC-217` §2) — divided by who owns each screen's data
+
+| Track | PR A | PR B |
+|---|---|---|
+| **lead** | `0169` · the hub frame · the gate 57 → 60 · the copy trim | the gates, captures, the hard-load re-measure |
+| `content` (opus) | `021` my profile · `023` my certificates (★ from `designer`) · `024` bookmarks | the opt-out removed from `021` (contract 5) |
+| `notify` (opus) | `025` the calendar · `ui/settings-group` | `026` the inbox · ★ `029` settings, `preference-matrix` deleted |
+| `scoring` (opus) | `022` my points · the standing card and band · this week, live · `ui/ledger-row`, `ui/podium` | `027` the boards (★ from `sessions`) · `028` the company race |
+
+**Not spawned:** `sessions`, `checkin`, `console`, `designer`, `event`, `platform`, `branding` — the lead is custodian.
+
+### The contracts
+
+| # | Contract | Owner | State |
+|---|---|---|---|
+| C1 | **The hub frame** — a page's own phone top row on the hub, settings and the boards; the strip; the desktop standing band from C3; no game rail. **Before any track builds a screen** | lead → all | todo — built while the plans are written |
+| C2 | **The signatures and the gate** — three types in `ui/index.ts`, registry entries, floor 57 → 60, **all in PR A** | lead → all | todo — after sync 1 |
+| C3 | **The standing** — one component, two forms (the phone card on `021`, the desktop band in the layout), its DAL read | `scoring` → lead, `content` | todo — in `scoring`'s note on day one |
+| C4 | **This week, live** — rank and points over Saturday – Friday in the org's time zone; opt-out in the DAL; a missing rank an absence. **PR A** | `scoring` → `content`, lead | todo — in `scoring`'s note on day one |
+| C5 | **The opt-out moves once** — stays in `021`'s edit mode until `029` lands it, in PR B (`DEC-217` §3.1) | `notify` ↔ `content` | **published** |
+| C6 | **The artboard is the specification; `DEC-216` §5 and `DEC-217` §4 are what is not built** | everyone | **published** |
+| C7 | **Every figure is read** | everyone | **published** |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | The spec and the eleven artboards in the tree; the branch; the draft PR; every number re-measured | lead | **DONE** — `2b7a5970`, `wave-20a/the-hub`, draft **PR #41** against `main` |
+| S0b | `DEC-217`; `REQ-UIX-070` … `081` (★ `SCR-029`'s is `077`); `09`'s `SCR-021`, `SCR-024`, `SCR-029` sections, the requirement table and route coverage; M22 in `14`; `STORY-UIX-059` … `071` in `15`; `REQ-UIX-080` cross-cutting in `traceability.mjs`; the map in `CLAUDE.md`; the ten agent files regenerated | lead | **DONE** — see the commit after `0169`'s. `trace` **374 · 207, no gaps**; `policy-diff` ✓ |
+| D1 | ★★ **`0169`** — `weekly_period date`, `weekly_rank int check (> 0)` on `member_seen_marks`, nullable. **No new grant: `0162:66` is table-level**, said in the migration's header and in `03` §5.7c; `02`'s entity gains the pair | lead | **landed locally** — `supabase db reset` applied it (the reset's storage health check timed out; `worker-schema` and the Kong check were run by hand after it); `scoring-seen` **4 new cases** and `isolation` **99 ✓**. ★ **The owner rehearses it on a production schema dump and pushes it** |
+| T0 | Baselines before any product commit: the public pairs, the fingerprint, the nine screens at 390 (and the hub at 1280) as they are today | lead | todo |
+| F1 | ★★ **The hub frame** (C1, `STORY-UIX-059`) — `me/layout.tsx` and `tab-strip.tsx` deleted, then written; `shell-routes.ts` | lead | todo |
+| S1 | **Sync 1** — three plans, each with its kept-behaviour tables, approved against the seven contracts | lead | todo |
+| P0 | Contract 2 — the signatures, the registry, the floor at 60 | lead | todo |
+| A1 | ★★ `SCR-021`, my profile — deleted, then written | `content` | todo |
+| A2 | ★★ `SCR-022`, my points — deleted, then written; `ui/ledger-row` | `scoring` | todo |
+| A3 | ★ `SCR-023` and `SCR-024` — deleted, then written | `content` | todo |
+| A4 | ★ `SCR-025` — deleted, then written; `ui/settings-group` | `notify` | todo |
+| A5 | ★ The standing card and band; this week, live; `ui/podium` | `scoring` | todo |
+| A6 | ★ **The copy trim** (`STORY-UIX-067`) — the list derived from the M10a/M10b artboards, ★ **confirmed by the owner before any string is removed** | lead, owners | todo — waiting on the owner's answer |
+| B0 | PR B: `wave-20b/the-boards` cut from A's head, a draft against A; ★★ **retargeted to `main` before A merges** | lead | todo |
+| B1 | ★★ `SCR-026` and ★★ `SCR-029` — `preference-matrix` deleted, every preference still written; the opt-out moved | `notify`, `content` | todo |
+| B2 | ★★ `SCR-027` and `SCR-028` — the weekly seen pair through `mark_board_seen()`; `leaderboards.ts:512` fixed | `scoring` | todo |
+| H1 | ★ **The owed measurement** — the hard-load duplicate on `/app/me/points` and `/app/leaderboards`, 2 × 24 each, after the rebuild, against `DEC-204`'s table | lead | todo — after A2 and B2 |
+| X1 | ★★ Every screen at 390, and the hub at 1280, opened beside its artboard | lead | todo |
+| X2 | ★ `qa:contract`, `visual`'s public pairs, the fingerprint, `public-graph` — unmoved, not re-baselined | lead | todo |
+| X3 | ★ The a11y sweep at 0 findings, the nine routes added | lead | todo |
+| X4 | ★★ **The owner holds each rebuilt screen beside its artboard on a phone** | **owner** | todo |
+| G | The gates; ★ CI read from the run's own conclusion on each PR's head (`DEC-192`) | lead | todo |
+
+### Sync 1 — what the three plans must answer
+
+1. **For each screen: the regions in the artboard's order, and the primitive each is built from.**
+2. ★★ **The kept-behaviour table** (`DEC-208`) — each behaviour the screen has today, where it lives after, its `REQ-*`.
+   ★ `notify`'s for `029` carries **every row `preference-matrix` has**.
+3. **The props of the new primitive**, as a type — contract 2.
+4. **Every state `M10c.md` names that is not drawn**, and how it is built.
+5. **What the track publishes**, by name and type — contracts 3 and 4.
+6. **Every file created or deleted; every existing assertion that moves**, selector or expectation.
+7. **Any disagreement `DEC-216` §5 and `DEC-217` §4 do not list**, with the file and the line — not picked.
+
+### For the owner — one question, not blocking the spawn
+
+1. ★ **The copy trim's list** (`DEC-217` §4.2). `M10c.md` cites «§0b» and never defines it. Does the design session hold
+   the list of lines trimmed from the M10a and M10b boards? If not, the lead derives it from the committed artboards
+   and brings it to you before any string is removed.
+
+### Untouched-suite ledger (wave 20)
+
+| File | Assertion | Why it moves | Commit |
+|---|---|---|---|
+| `tests/rls/scoring-seen.test.ts` | — | **Added to, nothing changed**: four cases for `0169`'s pair | Step 0 |
+| `tests/rls/scoring-seen.test.ts` | «an unknown board is refused» lists `weekly` | ★ **Expected in PR B** (`DEC-217` §4.3): `mark_board_seen()` learns the week | — |
 
 ---
 

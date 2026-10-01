@@ -1406,6 +1406,112 @@ passes; `qa:contract` is untouched. One PR, `wave-19/m10b`.*
 - ★ **Not drawn, and built:** the self tier (the note, the two actions, the six sections as links), the admin tier
   («للمشرفين»), opted out, no badges, no bio, nothing presented, no photos.
 
+#### STORY-UIX-059 — The hub frame
+**Covers:** `REQ-UIX-070` · **M22** · **M** · lead, with `scoring` (the standing card and band)
+**Built from:** `Me.dc.html` · `HubDesktop.dc.html`; `M10c.md` §0.
+- ★★ **Deleted first** (`DEC-208`): `me/layout.tsx` and `components/me/tab-strip.tsx` removed in one commit, the frame
+  written from its artboards in the next; the kept-behaviour table in the lead's note.
+- The phone's top row is the page's own on every hub page and on `/app/me/settings` and `/app/leaderboards/**`
+  (`shell-routes.ts`); the tab bar stays, «حسابي» current under `/app/me` and «الترتيب» under `/app/leaderboards`.
+- The strip: six links on a phone, seven from `lg` with «بياناتي وخصوصيتي»; `aria-current="page"`; sideways scroll,
+  never clipped.
+- Desktop: no game rail, and the standing band drawn once by the frame from `scoring`'s component.
+- The shell's existing specs are evidence; each changed assertion is a ledger line.
+
+#### STORY-UIX-060 — Three new primitives
+**Covers:** `REQ-UIX-081` · **M22** · **M** · `scoring` (`podium`, `ledger-row`), `notify` (`settings-group`)
+- Each: its signature in `ui/index.ts` (the lead's, types only, after sync 1), a registry entry, a test inside the
+  scope, an RTL check, a gallery section with every state in Arabic from fixture data.
+- The gate's floor moves from 57 to 60 in the commit that adds the third file. All three land in PR A.
+
+#### STORY-UIX-061 — `0169`: the week's seen mark
+**Covers:** `REQ-UIX-078` · **M22** · **S** · lead
+- `weekly_period date` and `weekly_rank int check (weekly_rank > 0)` on `member_seen_marks`, both nullable,
+  mirroring the monthly pair (`DEC-216` §2.2). No new table, policy or grant: the grant at `0162:66` is table-level
+  and covers the columns, which the migration's header says so invariant 6 is not left assumed.
+- Cases in `tests/rls/scoring-seen.test.ts`: a member writes and reads their own weekly mark, cannot write another's,
+  and cannot write a rank of zero.
+- `main`'s app and worker on the new schema do nothing different.
+
+#### STORY-UIX-062 — My profile, rebuilt
+**Covers:** `REQ-UIX-071` · **M22** · **L** · `content`, with `scoring` (the standing card)
+**Built from:** `Me.dc.html` · `MeEdit.dc.html` · `HubDesktop.dc.html`; `M10c.md` §1.
+- ★★ **Deleted first** (`DEC-208`), with the kept-behaviour table — `saveProfile`'s fields and validation, the
+  company choice, the avatar consent, the opt-out until `SCR-029` exists, the pinned names.
+- Read mode as label/value rows and one «عدّل ملفك»; edit mode with its header, the count, the changed borders and a
+  bottom `action-bar`; Cancel restores; leaving with changes asks.
+- States: no company, errors, saved once.
+
+#### STORY-UIX-063 — My points, rebuilt
+**Covers:** `REQ-UIX-072` · **M22** · **L** · `scoring`
+**Built from:** `Points.dc.html` · `HubDesktop.dc.html`; `M10c.md` §2.
+- ★★ **Deleted first** (`DEC-208`), with the kept-behaviour table — `MissedAttendance`, the filters, the CSV, the
+  presenter net, the catalogue's live read.
+- `ledger-row`; the reversal pair through an add-only `sourceId` on the ledger DTO; the cap explanation computed, never
+  stored; the manual adjustment with its reason and name; desktop as a `data-table`.
+- ★ The hard-load duplicate re-measured after the rebuild (`DEC-204`) — recorded, not fixed.
+
+#### STORY-UIX-064 — My certificates, rebuilt
+**Covers:** `REQ-UIX-073` · **M22** · **S** · `content`
+**Built from:** `Certificates.dc.html`; `M10c.md` §3.
+- ★★ **Deleted first** (`DEC-208`), with the kept-behaviour table — the audited download route (`DEC-177`), the
+  revoked state, the not-yet-issued state.
+- One list: title, kind, date; revoked struck and dimmed with «ملغاة»; not issued dimmed with «قريبًا».
+
+#### STORY-UIX-065 — Bookmarks, rebuilt
+**Covers:** `REQ-UIX-074` · **M22** · **S** · `content`
+**Built from:** `Bookmarks.dc.html`; `M10c.md` §4.
+- ★★ **Deleted first** (`DEC-208`), with the kept-behaviour table.
+- Browse's row with its badge, the filled bookmark at the end, an optimistic removal with undo.
+
+#### STORY-UIX-066 — The calendar page, rebuilt
+**Covers:** `REQ-UIX-075` · **M22** · **S** · `notify`
+**Built from:** `Calendar.dc.html`; `M10c.md` §5.
+- ★★ **Deleted first** (`DEC-208`), with the kept-behaviour table — connect, disconnect and its token deletion, the
+  failure state.
+- One row for the connection; the failed sessions with «أعد المحاولة» only when there are any.
+
+#### STORY-UIX-067 — No explainer copy
+**Covers:** `REQ-UIX-080` · **M22** · **M** · lead, with each owner for its own namespace
+- The list: every line the built M10a and M10b screens render that their committed artboards no longer draw, and
+  that does not change what the person does next. ★ `M10c.md` cites a «§0b» list that does not exist (`DEC-217`), so
+  the lead derives the list from the artboards and the owner confirms it before any string is removed.
+- Each removed line is named in the story with its key; a fact that is still needed moves to its state.
+
+#### STORY-UIX-068 — The inbox, rebuilt
+**Covers:** `REQ-UIX-076` · **M22** · **M** · `notify`
+**Built from:** `Notifications.dc.html`; `M10c.md` §6.
+- ★★ **Deleted first** (`DEC-208`), with the kept-behaviour table — mark one read, mark all read, unread-only, a
+  change notice, the session link.
+- The page holds no preference; «ما يصلني» opens `/app/me/settings`.
+
+#### STORY-UIX-069 — Settings, a new route
+**Covers:** `REQ-UIX-077` · **M22** · **M** · `notify`
+**Built from:** `Settings.dc.html`; `M10c.md` §6b.
+- ★★ `preference-matrix.tsx` is **deleted** and its behaviour goes in this story's kept-behaviour table with the
+  `REQ-*` that keeps each row; its test is evidence and each changed assertion a ledger line (`DEC-216` §5.16).
+- `settings-group`s: the email master switch, `08` §2's optional categories, the leaderboard visibility; the
+  links; sign-out and the email. The non-optional categories are one sentence.
+- ★ The opt-out leaves `SCR-021`'s edit mode in the same commit it appears here (`REQ-UIX-071`).
+- Its `loading.tsx` and `error.tsx`, its route in `09` §8.
+
+#### STORY-UIX-070 — The boards, rebuilt, with this week live
+**Covers:** `REQ-UIX-078` · **M22** · **L** · `scoring`
+**Built from:** `Board.dc.html`; `M10c.md` §7.
+- ★★ **Deleted first** (`DEC-208`), with the kept-behaviour table — own rank always visible, opt-out, the
+  provisional chip, the category, moment 5's keying.
+- This week summed live from `points_ledger` over the org's calendar week, by an add-only definer function; the
+  movement read against `member_seen_marks`' weekly pair; ★ `leaderboards.ts:512`'s «week» stops reading the month.
+- The «ترتيبك» card, the static `podium`, `rank-row`s 4 – 10, the own row in place or pinned, the category `menu`.
+- ★ The hard-load duplicate re-measured after the rebuild (`DEC-204`) — recorded, not fixed.
+
+#### STORY-UIX-071 — The company race, rebuilt
+**Covers:** `REQ-UIX-079` · **M22** · **M** · `scoring`
+**Built from:** `Companies.dc.html`; `M10c.md` §8.
+- ★★ **Deleted first** (`DEC-208`), with the kept-behaviour table.
+- The cup card, both metrics with the ranking one marked, the `race-bar`s, the own company, the breakdown; no company;
+  below the minimum.
+
 ---
 
 ## 24. Coverage check
@@ -1418,7 +1524,7 @@ backlog must satisfy:
    redesigns screens `STORY-AUT-001` built. `trace` cannot see that gap, because it checks
    REQ→story, not decision→story; `DEC-129` is why it is written down.
 2. **Every story cites at least one `REQ-*`.**
-3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183`, M18 since `DEC-195`, M19 since `DEC-199`, M20 since `DEC-205` and M21 since `DEC-213`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
+3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183`, M18 since `DEC-195`, M19 since `DEC-199`, M20 since `DEC-205`, M21 since `DEC-213` and M22 since `DEC-216`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
 4. **No story cites a requirement that does not exist.**
 
 A violation of any of the five **fails CI** (`13` §10). That gate is the only thing that keeps this

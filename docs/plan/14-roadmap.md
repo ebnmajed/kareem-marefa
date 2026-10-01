@@ -707,6 +707,40 @@ re-measure on its two routes); every console and studio route; the five public r
 withdrawn state and a member-readable proposal history (`DEC-213` §6); the hosting gate's enforcement; a weekly board;
 and the two carried gates, together (`DEC-194`).
 
+## M22 — the member screens, batch C: the hub, the ledger, the boards and the settings · wave 20 · `DEC-216`, `DEC-217`
+
+Nine screens rebuilt from eleven artboards in `docs/design/screens/m10c/`, each under `DEC-199` §2 and `DEC-208`:
+the page file deleted first, then written from its artboard, with a table of what it kept and the requirement that
+made it keep it. ★ **The last designed batch of the member app** — after it the standing order has no screens left,
+and **session stories land next unless the owner says otherwise** (`DEC-216` §1). Two pull requests, three tracks,
+one migration (`0169`, two nullable columns).
+
+| Work | Requirements | PR | Track |
+|---|---|---|---|
+| The hub frame — the phone's own top row, the strip, the desktop standing band, no game rail; `/app/me/settings` in the route table | `REQ-UIX-070` | A | lead |
+| `podium`, `settings-group`, `ledger-row`; the gate 57 → 60 | `REQ-UIX-081` | A | `scoring`, `notify`, `scoring` |
+| `0169` — `weekly_period`, `weekly_rank` on `member_seen_marks` | `REQ-UIX-078` | A | lead |
+| My profile, `SCR-021`, read and edit, phone and desktop | `REQ-UIX-071` | A | `content` |
+| My points, `SCR-022`, phone and desktop | `REQ-UIX-072` | A | `scoring` |
+| My certificates, `SCR-023` | `REQ-UIX-073` | A | `content` |
+| Bookmarks, `SCR-024` | `REQ-UIX-074` | A | `content` |
+| The calendar, `SCR-025` | `REQ-UIX-075` | A | `notify` |
+| No explainer copy — the M10a and M10b screens trimmed | `REQ-UIX-080` | A | lead |
+| The inbox, `SCR-026` | `REQ-UIX-076` | B | `notify` |
+| Settings, `SCR-029` — new | `REQ-UIX-077` | B | `notify` |
+| The boards, `SCR-027` — this week, live | `REQ-UIX-078` | B | `scoring` |
+| The company race, `SCR-028` | `REQ-UIX-079` | B | `scoring` |
+
+**Demonstrable:** ★★ every rebuilt screen captured at 390 px — and at 1280 for the hub — **held beside its artboard
+and opened by the lead**; ★★ a kept-behaviour table per screen; ★ every preference `preference-matrix` wrote still
+written, by a test; ★ this week's rank summed live and its movement read against the member's last visit, by a test;
+★ the hard-load duplicate re-measured on `/app/me/points` and `/app/leaderboards` and recorded against `DEC-204`;
+★ `qa:contract`, `visual`'s public pairs and the register-form fingerprint unmoved; ★★ **the owner holding each
+screen beside its artboard on a phone**.
+
+**Not this milestone:** session stories (next); `/app/me/privacy` (M13's); every console and studio route; the five
+public routes; leagues; a sixth moment; the hard-load defect's fix; `DEC-194`'s two gates; `DEC-215`'s carried four.
+
 ### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5, renumbered by `DEC-199` §7, re-ordered by `DEC-205` §1 and `DEC-213` §1)
 
 ★★ **The standing order (the owner, 2026-10-01, wave 19): WE BUILD WHAT HAS A DESIGN.** As long as the designer session keeps producing screen batches, screens go first; stories lands when the batches run out or when the owner says so. Stories was not demoted — it was overtaken by work that became buildable (`DEC-213` §1).
@@ -721,8 +755,9 @@ claimed the number, and every position after it kept its place.
 | 2 | **M18** — done, wave 16 | the five moments on their real surfaces |
 | 3 | **M19** — this wave, wave 17 | every primitive in the playground, a gate that enumerates them, and the scope at the root of every layout but the public site's |
 | 4 | ★ **M20** — done, wave 18 (`DEC-205`: the owner put it before stories) | the member screens, batch A — the shell, the door, the public card, home as the feed, browse, the event page, check-in, the host view; each **rebuilt** from `docs/design/screens/m10a/` |
-| 4a | ★ **M21** — this wave, wave 19 (`DEC-213`: the owner put it before stories) | the member screens, batch B — the viewer, rate, propose, my proposal, the directory, the profile; each **rebuilt** from `docs/design/screens/m10b/`, deleted first (`DEC-208`) |
-| 4b | when it opens — wave 20 | session stories and their viewer (`DEC-093`'s seventh place) |
+| 4a | ★ **M21** — done, wave 19 (`DEC-213`: the owner put it before stories) | the member screens, batch B — the viewer, rate, propose, my proposal, the directory, the profile; each **rebuilt** from `docs/design/screens/m10b/`, deleted first (`DEC-208`) |
+| 4b | ★ **M22** — this wave, wave 20 (`DEC-216`) | the member screens, batch C — the hub and its five pages, the two boards, and `/app/me/settings`; the **last** designed batch |
+| 4c | when it opens — wave 21, unless the owner says otherwise | session stories and their viewer (`DEC-093`'s seventh place) |
 | 5 | ★ **when it opens — the rest of the member screens** (batch M10c) | ★ `SCR-002`, `SCR-003` and `SCR-004` moved into M20 with batch A (`DEC-205`), and `SCR-013`, `015`, `017` – `020` into M21 (`DEC-213`); what remains is `021` – `028` in `09` §8's order. The three `(auth)` screens are neither behind sign-in nor public marketing, so a grouping by either skipped them twice (`DEC-129`, `DEC-195` §5); **they are placed here by name**. ★ Each screen is **rebuilt** from `docs/design/screens/<SCR-id>.md`, never restyled (`DEC-199` §2) |
 | 6 | when it opens | the console — a rebuild of its **layout**; its visual language arrived in M19 |
 | 7 | when it opens | the studio and the certificates' surroundings — the certificate itself keeps its look |
