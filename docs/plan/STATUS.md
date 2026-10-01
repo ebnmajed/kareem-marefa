@@ -77,7 +77,7 @@ recorded here, in `CLAUDE.md`'s map and `14`'s sequence now, and verbatim in the
 | V3 | Contract 3 — photos by uploader | `content` | todo |
 | R1 | ★★ **`SCR-015`, rate**, deleted then written, **the survey kept** (`STORY-UIX-054`) | `event` | **written `84ee6e7a`** (deleted `3e5b53e5`; spec `6f5d2ae7`) — 42/42 kept rows read against the new files; spec and captures at the gate |
 | R2 | `ui/star-input` | `event` | todo |
-| P1 | ★★ **`SCR-017`, propose**, deleted then written (`STORY-UIX-055`) | `sessions` | **written `824391b0`** (deleted `fea4db8e`) |
+| P1 | ★★ **`SCR-017`, propose**, deleted then written (`STORY-UIX-055`) | `sessions` | **written `824391b0`** (deleted `fea4db8e`, with `0c32d2da`) |
 | P2 | ★★ **`SCR-018`, my proposal**, deleted then written (`STORY-UIX-056`) | `sessions` | todo |
 | P3 | `ui/stepper`; contract 4 — the sessions presented | `sessions` | todo |
 | M1 | ★★ **`SCR-019`, the directory — new** (`STORY-UIX-057`) | `scoring` | **written `a57cf38b`** — spec and captures at the gate |
@@ -158,6 +158,7 @@ a selector moved or an expectation did, and why.*
 | `tests/components/viewer/page-viewer-direction.test.tsx` · the `it.fails` record | **removed with the file it proved wrong** — run as a plain `it` on `75a1ae26`: expected «صفحة 2 من 3», received «صفحة 1 من 3» | `DEC-214` §1: «next» disabled on page 1 in RTL | `75a1ae26` → `14c6d049` |
 | `tests/unit/sessions-member-profile.test.ts` · «still shows them to the member themselves and to an admin» | **expectation** — the admin's `standing.rank` is `null`, not `3`; the `all_time_leaderboard()` stub now omits an opted-out member for everyone but themselves, as `0044` does | `DEC-214` §1, N8: the database never shows an admin an opted-out member's rank; the stub pinned what no request returns | `e96df6f4` |
 | `tests/e2e/wave7-sessions-profile.spec.ts:145` · `getByText("الشركة الأولى")` | **selector** — scoped to `#main [data-slot="profile-header"]` | the company is drawn twice now (the breadcrumb and the chip); a page-wide locator is a strict-mode violation | `e96df6f4` |
+| `tests/e2e/forms-propose.spec.ts:109-112` · the four «مطلوب» markers | **selector** — `label` becomes `label, legend`: the level is a chips `radio-group` named by its `<legend>` | `SCR-017` rebuilt (`DEC-213`, `DEC-214` §4); the expectation, four «مطلوب», unchanged | `824391b0` |
 
 ---
 

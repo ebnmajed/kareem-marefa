@@ -275,9 +275,16 @@ export interface RadioGroupProps extends Styleable {
   /**
    * The group's error, under its options — adjacent, red, icon-marked, and never the only channel:
    * it sets `aria-invalid` on the group and joins its description, exactly as `<Field>`'s does
-   * (wave 11; SCR-015's question fieldset and `star-rating` hand-rolled this).
+   * (wave 11; SCR-015's question fieldset hand-rolled this, and so did `star-rating`, which wave 19 replaced with
+   * `star-input`).
    */
   error?: ReactNode;
+  /** wave 19 (DEC-214 §4), add-only: `chips` draws the options as a row of segmented chips — propose's level.
+   *  Default `rows`. */
+  appearance?: "rows" | "chips";
+  /** wave 19, add-only: the group is required; `requiredLabel` («مطلوب») is drawn beside the legend. */
+  required?: boolean;
+  requiredLabel?: string;
 }
 
 export interface SwitchProps extends Styleable {
