@@ -300,7 +300,8 @@ test("naming a co-presenter invites them, and they answer for themselves (REQ-PR
   await expect(page).toHaveURL(/\/ar\/app\/propose\/[0-9a-f-]{36}\?created=1$/);
 
   // The proposer is accepted; the named colleague has not answered.
-  await expect(page.getByText("صاحب المقترح")).toBeVisible();
+  // ★ Wave 19 (ledger): the proposer's row reads «المُقدِّم الرئيسي» (`Proposal.dc.html`).
+  await expect(page.getByText("المُقدِّم الرئيسي")).toBeVisible();
   await expect(page.getByText("بانتظار الرد")).toBeVisible();
   // The proposer is not offered an accept button — proposing was accepting.
   await expect(page.getByRole("button", { name: "أوافق على التقديم" })).toHaveCount(0);
@@ -324,7 +325,8 @@ test("naming a co-presenter invites them, and they answer for themselves (REQ-PR
   await streamed(matePage);
   // Scoped to her own row: «وافق» is a substring of «أوافق على التقديم» and of
   // the invitation copy, so an unscoped text match is ambiguous, not a finding.
-  await expect(matePage.getByRole("listitem").filter({ hasText: "زميلة الاختبار" })).toContainText("وافق");
+  // ★ Wave 19 (ledger): her own row reads «أنت», and the reply is a noun phrase (DEC-213 §5.109).
+  await expect(matePage.getByRole("listitem").filter({ hasText: "أنت" })).toContainText("تمّت الموافقة");
   await expect(matePage.getByText("دُعيت للتقديم في هذا الموضوع")).toHaveCount(0);
   await mateContext.close();
 

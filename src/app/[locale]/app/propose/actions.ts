@@ -3,7 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
-import { createProposal, proposalInput, removeCoPresenter, respondToPresenterInvite, updateProposal, type ProposalInput } from "@/lib/dal/proposals";
+import {
+  addCoPresenters,
+  createProposal,
+  proposalInput,
+  removeCoPresenter,
+  respondToPresenterInvite,
+  updateProposal,
+  type AddCoPresentersOutcome,
+  type ProposalInput,
+} from "@/lib/dal/proposals";
 import { formStateFrom, was, wasList, withErrors, withFormError, zodErrors } from "@/lib/form-state";
 import { proposalErrorKey } from "@/components/sessions/proposal-rules";
 import { PROPOSAL_VALUE_FIELDS, type ProposalField, type ProposeState } from "./state";
@@ -146,4 +155,26 @@ export async function dropCoPresenter(locale: Locale, proposalId: string, member
   if (!z.uuid().safeParse(proposalId).success || !z.uuid().safeParse(memberId).success) return;
   await removeCoPresenter(locale, proposalId, memberId);
   revalidatePath(`/${locale}/app/propose/${proposalId}`);
+}
+
+/**
+ * The proposer names more co-presenters after the proposal was written — SCR-018's «+ أضف مُقدِّمًا مشاركًا»
+ * (DEC-213 §5.102, REQ-PRO-003). Zod on the ids, nothing else read from the form; the database decides who may add,
+ * while the proposal is open, within the org's limit, and writes each invitation unanswered (`0168`). The outcome is
+ * returned to the sheet, which says it where the member pressed; success refreshes the page under it.
+ */
+export async function addCoPresentersAction(
+  locale: Locale,
+  proposalId: string,
+  _prev: { outcome: AddCoPresentersOutcome | null },
+  formData: FormData,
+): Promise<{ outcome: AddCoPresentersOutcome | null }> {
+  const ids = formData
+    .getAll("coPresenters")
+    .map(String)
+    .filter((v) => z.uuid().safeParse(v).success);
+  if (!z.uuid().safeParse(proposalId).success || ids.length === 0) return { outcome: "failed" };
+  const outcome = await addCoPresenters(locale, proposalId, ids);
+  if (outcome === "ok") revalidatePath(`/${locale}/app/propose/${proposalId}`);
+  return { outcome };
 }
