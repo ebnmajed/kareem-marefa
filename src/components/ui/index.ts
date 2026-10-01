@@ -637,7 +637,8 @@ export interface AvatarProps extends Styleable {
   /** A platform-stored path. Null, or a takedown, falls back to initials. */
   src?: string | null;
   /** wave 19 (DEC-214 §4), add-only: 44 (the directory's row), 84 (the profile's header), 104 (the desktop header). */
-  size?: 24 | 32 | 34 | 40 | 44 | 56 | 84 | 96 | 104 | 160;
+  // ★ wave 20 (DEC-218), add-only: 64 — the podium's first place and the hub's standing (`Me.dc.html`).
+  size?: 24 | 32 | 34 | 40 | 44 | 56 | 64 | 84 | 96 | 104 | 160;
   /** Decorative beside a name that is already rendered. */
   decorative?: boolean;
   /**
