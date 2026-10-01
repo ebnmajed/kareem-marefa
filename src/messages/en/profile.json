@@ -35,6 +35,12 @@
       "jobTitleTooLong": "Job title is too long — shorten it a little",
       "bioTooLong": "Bio is too long — shorten it a little",
       "failed": "Could not save your profile — try again. Your data is still in the form."
+    },
+    "bookmarks": {
+      "empty": "Nothing saved yet",
+      "removed": "Removed from saved",
+      "undo": "Undo",
+      "undoFailed": "Couldn't put it back in saved. Try again."
     }
   }
 }
