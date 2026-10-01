@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { CodeInputProps } from "@/components/ui";
-import { useSubmissions } from "@/components/checkin/moment-check-in";
+import { useSubmissions } from "@/components/checkin/submissions";
 import { CodeInput } from "@/components/ui/code-input";
 
 // SCR-014's code, and the mistyped code's shake — DEC-212 (the owner's ruling on DEC-206 §4.75), REQ-UIX-046 as
@@ -13,20 +13,21 @@ import { CodeInput } from "@/components/ui/code-input";
 // rate limit, a closed door, an ended session, a conflict or any error is the system refusing, and does not move
 // (wave 16's rule stands for them). The class lands on the six boxes' group alone — never the label or the alert.
 //
-// ★ ONCE PER REFUSED SUBMISSION, FROM THIS CLIENT. The cue is a submission this client made (`useSubmissions()`)
-// that the form has finished answering (`useFormStatus()` no longer pending) — never a render. A re-render changes
-// neither; a reload, a back navigation or another phone mounts with nothing submitted, so a refused page loaded that
-// way shows the coral border and the sentence, still. A second wrong code is a second submission and shakes again.
+// ★ ONCE PER REFUSED SUBMISSION, FROM THIS CLIENT. The cue is a submission this client made (`useSubmissions()`,
+// counted in the route's layout) that is not yet answered, once the form is no longer pending and a refusal is on
+// the page — never a render. A re-render changes neither; a reload, a cold `?error=` link or an arrival from
+// another screen mounts the layout afresh with nothing submitted, so a refused page reached that way shows the coral
+// border and the sentence, still. A second wrong code is a second submission and shakes again.
 //
 // ★ THE MOTION IS THE LEAD'S (`globals.css`, 8d362089): `.code-shake` — transform only, a token's duration, no
 // scale — carries its animation only under `prefers-reduced-motion: no-preference`, so under reduced motion the
 // class is inert and the static state is the whole state. Nothing here sets a duration or a keyframe.
 
 export function CodeEntry({ refusal, ...props }: CodeInputProps & { refusal: string | null }) {
-  const submissions = useSubmissions();
+  // ★ Both live in the route's layout (submissions.tsx): a refusal is a redirect, and the redirect remounts the page,
+  // so this component is NEW when the refused page arrives. The shared mark is what makes a submission answered once.
+  const { submissions, answered } = useSubmissions();
   const { pending } = useFormStatus();
-  // The last submission this instance has answered; a fresh mount answers nothing.
-  const answered = useRef(submissions);
   const [shaking, setShaking] = useState(false);
 
   // The latest refusal on the page, read a frame after the form is done: the refused page's props may trail the
@@ -53,7 +54,7 @@ export function CodeEntry({ refusal, ...props }: CodeInputProps & { refusal: str
         frames.current.push(requestAnimationFrame(() => setShaking(true)));
       }),
     );
-  }, [pending, submissions, refusal]);
+  }, [pending, submissions, refusal, answered]);
 
   return (
     <div onAnimationEnd={(event) => event.animationName === "code-shake" && setShaking(false)} data-shaking={shaking || undefined}>

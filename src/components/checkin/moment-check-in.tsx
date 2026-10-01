@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/navigation";
 import { burstConfetti } from "@/lib/ui/confetti";
 import { readDuration } from "@/lib/ui/duration";
 import { useMoment } from "@/lib/ui/moment";
+import { useSubmissions } from "@/components/checkin/submissions";
 
 // Moment 2, تسجيل الحضور — SCR-014 (REQ-UIX-046, REQ-UIX-044, DEC-195 §2.1, DEC-197 §1).
 //
@@ -44,18 +45,6 @@ const HIDDEN = { opacity: 0 } as const;
 type Occurrence = { checkInId: string | null; announce: boolean };
 const OccurrenceContext = createContext<Occurrence>({ checkInId: null, announce: false });
 const ResultContext = createContext<(result: CheckInMomentResult) => void>(() => {});
-/**
- * ★ DEC-212 — how many times THIS client has submitted the code. Not a moment and not a moment's key: the
- * mistyped code's shake reads it, once the form is no longer pending, so the boxes move once per refused
- * submission and never on a re-render, a reload or a back navigation (a fresh mount counts from zero). Which
- * refusal it was is the page's to say.
- */
-const SubmissionContext = createContext<{ submissions: number; submitted: () => void }>({ submissions: 0, submitted: () => {} });
-
-/** How many times this client has submitted the code (DEC-212). */
-export function useSubmissions(): number {
-  return useContext(SubmissionContext).submissions;
-}
 
 /**
  * The screen's client surface. `rest` is the server's static state, present
@@ -65,17 +54,14 @@ export function useSubmissions(): number {
  */
 export function CheckInSurface({ rest, announce, children }: { rest: ReactNode; announce: boolean; children: ReactNode }) {
   const [checkInId, setCheckInId] = useState<string | null>(null);
-  const [submissions, setSubmissions] = useState(0);
   // `refresh()` sends the rest in the same response as the result; until both
   // are here, the form stays on screen in its pending state.
   const showRest = rest !== null && rest !== undefined;
   return (
     <ResultContext.Provider value={(result) => setCheckInId(result.checkInId)}>
-      <SubmissionContext.Provider value={{ submissions, submitted: () => setSubmissions((n) => n + 1) }}>
-        <OccurrenceContext.Provider value={{ checkInId: showRest ? checkInId : null, announce: announce || checkInId !== null }}>
-          {showRest ? rest : children}
-        </OccurrenceContext.Provider>
-      </SubmissionContext.Provider>
+      <OccurrenceContext.Provider value={{ checkInId: showRest ? checkInId : null, announce: announce || checkInId !== null }}>
+        {showRest ? rest : children}
+      </OccurrenceContext.Provider>
     </ResultContext.Provider>
   );
 }
@@ -93,7 +79,8 @@ export function CheckInForm({
   children: ReactNode;
 }) {
   const report = useContext(ResultContext);
-  const { submitted } = useContext(SubmissionContext);
+  // ★ DEC-212: counted in the route's layout, so the count outlives the refused page's remount (submissions.tsx).
+  const { submitted } = useSubmissions();
   const [, start] = useTransition();
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {

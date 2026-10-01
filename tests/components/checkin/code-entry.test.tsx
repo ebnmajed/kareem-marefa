@@ -8,20 +8,26 @@ import { describe, expect, it, vi } from "vitest";
 import checkin from "@/messages/ar/checkin.json";
 import { CheckInForm, CheckInSurface } from "@/components/checkin/moment-check-in";
 import { CodeEntry } from "@/components/checkin/code-entry";
+import { SubmissionsProvider } from "@/components/checkin/submissions";
 
 vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
 
 const positions = Array.from({ length: 6 }, (_, i) => `الخانة ${i + 1} من 6`);
 
-function Screen({ refusal, momentAction }: { refusal: string | null; momentAction: (fd: FormData) => Promise<{ checkInId: string }> }) {
+// ★ As on the real route: the count lives in the route's layout (SubmissionsProvider), and the PAGE remounts after a
+// refusal, because Next keys a page segment by its search params (measured on a production build). `page` is that
+// key: a different value is the refused page arriving as a new mount.
+function Screen({ refusal, momentAction, page = refusal ?? "fresh" }: { refusal: string | null; momentAction: (fd: FormData) => Promise<{ checkInId: string }>; page?: string }) {
   return (
     <NextIntlClientProvider locale="ar" messages={checkin}>
-      <CheckInSurface rest={null} announce={false}>
+      <SubmissionsProvider>
+      <CheckInSurface key={page} rest={null} announce={false}>
         <CheckInForm action={async () => {}} momentAction={momentAction}>
           <CodeEntry refusal={refusal} id="code-0" name="code" label="أدخل رمز الحضور" positionLabels={positions} invalid={refusal !== null} />
           <button type="submit">تسجيل الحضور</button>
         </CheckInForm>
       </CheckInSurface>
+      </SubmissionsProvider>
     </NextIntlClientProvider>
   );
 }
@@ -83,7 +89,7 @@ describe("CodeEntry — the mistyped code's shake (DEC-212)", () => {
     expect(group()).toHaveClass("code-shake");
   });
 
-  it("★ a fresh mount on a refused page — a reload, a back navigation — does not shake", async () => {
+  it("★ a fresh LAYOUT on a refused page — a reload, a cold `?error=` link — does not shake", async () => {
     render(<Screen refusal="invalid_code" momentAction={refused} />);
     await frames();
     expect(group()).not.toHaveClass("code-shake");
@@ -100,5 +106,18 @@ describe("CodeEntry — the mistyped code's shake (DEC-212)", () => {
     view.rerender(<Screen refusal="invalid_code" momentAction={refused} />);
     await frames();
     expect(group()).toHaveClass("code-shake");
+  });
+
+  it("★ the refused page arriving as a NEW mount (the redirect's) still shakes — the count lives above it", async () => {
+    const view = render(<Screen refusal={null} momentAction={refused} page="before" />);
+    await submit();
+    view.rerender(<Screen refusal="invalid_code" momentAction={refused} page="after" />);
+    await frames();
+    expect(group()).toHaveClass("code-shake");
+    // …and a re-render of that page, or another remount with nothing new submitted, does not replay it.
+    animationEnd(group());
+    view.rerender(<Screen refusal="invalid_code" momentAction={refused} page="after-again" />);
+    await frames();
+    expect(group()).not.toHaveClass("code-shake");
   });
 });
