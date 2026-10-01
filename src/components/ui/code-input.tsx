@@ -89,6 +89,7 @@ export function CodeInput({
   "aria-describedby": describedBy,
   disabled,
   align = "start",
+  boxesClassName,
   className = "",
 }: CodeInputProps) {
   const generated = useId();
@@ -224,7 +225,9 @@ export function CodeInput({
         aria-labelledby={labelId}
         aria-describedby={describedByIds}
         data-complete={complete || undefined}
-        className={centred ? "mt-2 flex justify-center gap-2" : "mt-2 flex gap-2"}
+        // Wave 18 (DEC-212, add-only): `boxesClassName` reaches the six boxes' group and nothing else — the
+        // refused code's one shake. Unset, the class string is exactly what it always was.
+        className={`${centred ? "mt-2 flex justify-center gap-2" : "mt-2 flex gap-2"}${boxesClassName ? ` ${boxesClassName}` : ""}`}
       >
         {chars.map((char, i) => (
           // ui-lint-disable-next-line field — one box of six; the group is the control, named by its label
