@@ -6293,3 +6293,76 @@ overshoot ceiling, the owner's. · Wave 16's phone check of the five moments, ow
 The lead lands contract 2 and its own requests first and posts «the plans are approved». Each track then **deletes in one commit and writes in the next** (`DEC-208`), the two pushed together. `0168` is promoted before `sessions'` create commit for `SCR-018`.
 
 - **Documents changed:** `STATUS.md` (S1, the checklist, the owner's order with the rehearsal)
+
+---
+
+## DEC-215 — Wave 19's close: the standing order is «we build what has a design»; four answered rulings carried with their measurements; and what the builds found that no suite did
+
+- **Date:** 2026-10-01 · **Decided by:** the owner (§1, §2 — answers given 2026-10-01, recorded here at the owner's direction as the wave's closing entry, not as an amendment); recorded by the wave-19 lead (§3, §4)
+- **Closes:** `DEC-213` §1's open reason and §6's four questions; `STATUS.md` row Z1
+
+### 1 · The standing order (the owner), verbatim in substance
+
+**We build what has a design.** When `DEC-199` set the order on 30 September, stories was the only part of the programme
+with one — `05-stories.md` entered the tree 28 September 13:16, `DEC-199` set the order 30 September 11:26, `M10a.md`
+arrived that evening at 18:46, `M10b.md` the next day at 12:24. **Stories has not been demoted; it was overtaken by
+work that became buildable.** As long as the designer session keeps producing screen batches, screens go first;
+stories lands when the batches run out or when the owner says so. This is `DEC-213` §1's missing reason and **the
+order for every wave after this one**.
+
+### 2 · The four rulings of `DEC-213` §6 — answered, each confirming the entry, carried with its home
+
+*Nothing in the map changed. An answered ruling must not read as open, or the next lead asks it again — so each is
+here with its measurement, its blocker and where it goes next (`DEC-180`'s lesson: a thing that is only a sentence
+vanishes without an error).*
+
+1. **A colleague's average rating — not widened.** A colleague never sees it; `★ 4.8` on a colleague's card is not
+   built; A33 and `session_rating_aggregates` stand; the self and admin tiers read it from ≥ 3 ratings (`REQ-RAT-006`).
+   Settled; no home needed.
+2. **The hosting gate's enforcement** (`REQ-REC-008`, `DEC-213` §5.97). *Measured:* `can_host` is seeded
+   `enabled = false` (`0027:581`, re-seeded `0083`) at level 4, «كريم معرفة», 700 points, and **nothing outside
+   `/app/admin/recognition` reads it** — three places in `src/` (`perks-table.tsx`, `scoring-admin.ts:439`,
+   `recognition.json:178`). ★ **So the admin toggle is wired to nothing: an admin can turn the gate on and every member
+   still proposes — a live defect in the console, not a missing screen.** *Blocker:* a change to `create_proposal()`
+   that refuses a gated member in the database, plus the gated card on `SCR-017`. *Home:* **a carried gate, named with
+   `REQ-REC-008`**, which already exists.
+3. **Withdraw, the proposal's history, the reviewer's name — one later wave, together** (all three touch the
+   proposal's record; two need the same kind of ruling). *Withdraw* (§5.101): no `withdrawn` value in
+   `proposal_state` (`0010:16`) — a migration. *The history* (§5.100): `audit_log` is staff-only (`0004:422-425`) and
+   append-only evidence; opening it is not an option, so a new member-readable table or nothing. *The reviewer's
+   name* (§5.99): no column records who decided, **and** a ruling that a member may see a staff actor's identity is
+   needed — a privacy decision, not a screen.
+4. **Autosave on propose — a requirement first, then a wave** (§5.93). **No requirement defines it** (`REQ-PRO-003`
+   is co-presenters; `09` lists a state only). It needs a `REQ-*` in `01-prd.md`, then a route handler — Server
+   Actions cap at 1 MB and are the wrong transport.
+
+And: **«الأنشط أولًا» orders by sessions presented** (`DEC-213` §5.106) — settled.
+
+### 3 · What the wave built
+
+Six screens, each **deleted first and written from its artboard** with a kept-behaviour table (`DEC-208`; 184 rows
+at sync 1, each read back against its new file): `SCR-013` (`content`), `SCR-015` with the survey kept (`event`),
+`SCR-017` and `SCR-018` (`sessions`), `SCR-019` new and `SCR-020` (`scoring`). Four primitives — `page-viewer`,
+`star-input`, `stepper`, `badge-medallion` — the gate's floor at 57. The frame's four additions. ★ **`0168`**, a
+security fix found at sync 1 (`DEC-214` §1), rehearsed on the owner's production schema dump.
+
+### 4 · What only the real builds found — the reason screens are verified on a production build
+
+1. ★ **The viewer's «next» was disabled on page 1 in RTL** (`DEC-214` §1) — no test had ever pressed the button.
+2. **The rate counter read «0 من 2,000»** — `formatNumber()` groups thousands; the drawing does not. Propose had the
+   same; both now draw plain digits.
+3. ★ **Propose scrolled 42 px sideways at 390.** The first fix (a smaller draft button) was a lesser cause; the real
+   one was `ProgressBar`'s own `w-full` silently beating a width class passed to it — a trap for any caller, now noted
+   for `content`.
+4. ★★ **SC 2.4.11: a summary link focused a field still under the fixed bar.** `focus()` does not scroll a control
+   that is on screen; the first fix added `scrollIntoView`, which **passed once and then failed consistently** —
+   `html` scrolls smoothly unless motion is reduced, so focus landed mid-animation. The jump is now instant
+   (`39499701`). One green run had proved nothing.
+5. A spec waited on `networkidle`, which the viewer's ±2 prefetch never allows; two SQL seeds broke check
+   constraints; the directory's no-JS case is F3 (`DEC-198` §5), not the directory.
+
+**The lead's own errors, recorded:** a teammate's delete commit was pushed without its create (`5c6c4f1c` → fixed by
+`ab931b0a`); the same name in two specs' orgs was read as one member's disagreeing counts; a sentence of the owner's
+reason was written before the owner gave it, and replaced at once (`DEC-213` §1).
+
+- **Documents changed:** `STATUS.md`
