@@ -169,6 +169,13 @@ describe("the card — every figure read", () => {
     }
   });
 
+  it("★ «· company» never breaks after the dot: a no-break space glues the separator to the company", async () => {
+    for (const form of ["card", "band"] as const) {
+      const c = await draw(form);
+      expect(c.textContent).toContain("أمين السر التنفيذي \u00B7\u00A0صنف");
+    }
+  });
+
   it("no streak rule: the tile is not drawn", async () => {
     const c = await draw("card", { streak: null });
     expect(c.textContent).not.toContain("السلسلة");

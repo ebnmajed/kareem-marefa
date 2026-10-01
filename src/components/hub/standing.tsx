@@ -35,6 +35,9 @@ import { getHubStanding, type HubStanding as HubStandingData } from "@/lib/dal/p
 // (DEC-218 §3.5). A layout does not re-render on navigation, so the band keeps the figures of the hub page the member
 // arrived on — a known property; the authoritative figures and the moments are the page's.
 
+/** « · » with a no-break space after the dot: a line may break before the separator, never after it. */
+const SEP = " \u00B7\u00A0";
+
 const TILE = "flex min-w-0 flex-col gap-0.5 rounded-tile bg-raised px-3 py-2.5";
 const FIGURE = "font-display text-play-sm font-extrabold leading-none";
 
@@ -149,7 +152,9 @@ function Card({ s, t, seenRank }: { s: HubStandingData; t: T; seenRank: number |
           <p className="text-caption text-fg-muted">
             {[m.jobTitle, m.company?.name].filter(Boolean).map((part, i) => (
               <span key={i}>
-                {i > 0 ? " · " : null}
+                {/* ★ «· company» is one unit: a no-break space glues the separator to what follows, so a wrap breaks
+                    BEFORE the «·», never leaving it dangling at a line's end (the lead's 390 px finding). */}
+                {i > 0 ? SEP : null}
                 <bdi className={i > 0 ? "font-semibold text-fg-body" : undefined}>{part}</bdi>
               </span>
             ))}
@@ -238,13 +243,13 @@ function Band({ s, t, seenRank, locale }: { s: HubStandingData; t: T; seenRank: 
         <p className="text-caption text-fg-muted">
           {[m.jobTitle, m.company?.name].filter(Boolean).map((part, i) => (
             <span key={i}>
-              {i > 0 ? " · " : null}
+              {i > 0 ? SEP : null}
               <bdi className={i > 0 ? "font-semibold text-fg-body" : undefined}>{part}</bdi>
             </span>
           ))}
           {since ? (
             <span>
-              {m.jobTitle || m.company ? " · " : null}
+              {m.jobTitle || m.company ? SEP : null}
               {t.rich("hub.since", { month: since, bdi: (c) => <bdi>{c}</bdi> })}
             </span>
           ) : null}
