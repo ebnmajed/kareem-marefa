@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-01 · **Branch:** `wave-19/m10b` — ★ **WAVE 19 STEP 0 DONE** · **`main`:** `3a0be28d`; production at **`0167`** · **Phase:** ★★ **M10b — the second batch of member screens (`DEC-213`, M21)**: the viewer, rate, propose, my proposal, the directory (new) and the profile, each **deleted first and written from its artboard** (`DEC-208`). One PR; four tracks (`content`, `event`, `sessions`, `scoring`), spawned planning-only next. ★ The owner put M10b before stories; **the reason is not yet recorded**. ★ Step 0 found **a live RTL defect in the viewer's buttons** and three drawn things the plan refuses (a colleague's average rating, the survey's absence from rate, a weekly rank). ★ **Wave 18 is merged and live** (`38181edd`, `0164`–`0167`); its phone check and wave 16's are owed by the owner. ★ **Carried:** the hard-load duplicate (`DEC-204`, M10c's routes), `DEC-194`'s two gates, `DEC-186` §4.
+**Last updated:** 2026-10-01 · **Branch:** `wave-19/m10b` — ★ **WAVE 19 STEP 0 DONE** · **`main`:** `3a0be28d`; production at **`0167`** · **Phase:** ★★ **M10b — the second batch of member screens (`DEC-213`, M21)**: the viewer, rate, propose, my proposal, the directory (new) and the profile, each **deleted first and written from its artboard** (`DEC-208`). One PR; four tracks (`content`, `event`, `sessions`, `scoring`), spawned planning-only next. ★ The owner put M10b before stories — ★★ **the standing order: WE BUILD WHAT HAS A DESIGN**; the owner answered all four of `DEC-213` §6, each confirming the entry. ★ Step 0 found **a live RTL defect in the viewer's buttons** and three drawn things the plan refuses (a colleague's average rating, the survey's absence from rate, a weekly rank). ★ **Wave 18 is merged and live** (`38181edd`, `0164`–`0167`); its phone check and wave 16's are owed by the owner. ★ **Carried:** the hard-load duplicate (`DEC-204`, M10c's routes), `DEC-194`'s two gates, `DEC-186` §4.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -20,8 +20,15 @@ kept-behaviour table — each behaviour and the `REQ-*` that made it survive.
 ### The owner's ruling — the order (`DEC-213` §1)
 
 **M10b before stories.** The order now: M10a (done) · **M10b (this wave)** · stories · M10c · the console · the studio
-· the public site last. ★ **Wave 18's ring stays inert — nobody wires it.** ★ **The owner's reason is not yet recorded**:
-`DEC-213` §1 says so rather than supply one; it is written verbatim in the next entry once given.
+· the public site last. ★ **Wave 18's ring stays inert — nobody wires it.**
+
+★★ **The owner's reason, 2026-10-01 — and the standing order for every wave after this one: WE BUILD WHAT HAS A
+DESIGN.** When `DEC-199` set the order on 30 September, stories was the only part of the programme with one —
+`05-stories.md` entered the tree 28 September 13:16, `DEC-199` set the order 30 September 11:26, `M10a.md` arrived that
+evening at 18:46, `M10b.md` the next day at 12:24. **Stories has not been demoted; it was overtaken by work that became
+buildable.** As long as the designer session keeps producing screen batches, screens go first; stories lands when the
+batches run out or when the owner says so. (`DEC-213` §1 left the reason open; the owner ruled no new entry — it is
+recorded here, in `CLAUDE.md`'s map and `14`'s sequence now, and verbatim in the wave's closing entry.)
 
 ### Step 0 — measured before anyone was spawned
 
@@ -64,7 +71,7 @@ kept-behaviour table — each behaviour and the `REQ-*` that made it survive.
 | F1 | ★★ **The frame's four additions** (C1, `STORY-UIX-051`) | lead | todo |
 | S1 | **Sync 1** — four plans, **each with its kept-behaviour tables**, approved against the seven contracts | lead | todo |
 | P0 | Contract 2 — the signatures, the registry, the floor at 57 | lead | todo — after S1 |
-| V1 | ★★ **`SCR-013`, the viewer**, deleted then written (`STORY-UIX-053`) — the direction test, the no-URL test | `content` | todo |
+| V1 | ★★ **`SCR-013`, the viewer**, deleted then written (`STORY-UIX-053`) — ★ **the direction test that would have caught the live bug**: in `ar`, pressing «الصفحة التالية» moves the page number from N to N + 1 (and «السابقة» back), not merely that a button exists; the no-URL test | `content` | todo |
 | V2 | `ui/page-viewer`, and the old component deleted | `content` | todo |
 | V3 | Contract 3 — photos by uploader | `content` | todo |
 | R1 | ★★ **`SCR-015`, rate**, deleted then written, **the survey kept** (`STORY-UIX-054`) | `event` | todo |
@@ -80,6 +87,7 @@ kept-behaviour table — each behaviour and the `REQ-*` that made it survive.
 | X2 | ★ Demonstrable — `qa:contract`, `visual`'s public pairs at 0.000 %, the fingerprint byte-identical, `public-graph` green — not re-baselined | lead | todo |
 | X3 | ★ Demonstrable — the a11y sweep at 0 findings over the six routes and the shell | lead's harness; fixes by owner | todo |
 | X4 | ★★ Demonstrable — **the owner holds each rebuilt screen beside its artboard on a phone** | **owner** | todo |
+| Z1 | ★ **The closing entry** carries, verbatim, the standing order «WE BUILD WHAT HAS A DESIGN» (the reason `DEC-213` §1 left open) and the four answered rulings with their measurements, blockers and homes — the table under «Carried» | lead | todo — at the close |
 | G | The gates — tsc, lint (**grep `problems`**), `npm test`, `test:rls`, e2e, `qa`, `visual`, parity, `policy-diff`, `trace`, `ui-lint --strict`; ★ **CI read from the run's own conclusion on the PR head** (`DEC-192`) | lead | todo |
 
 ### Sync 1 — what the four plans must answer
@@ -94,14 +102,16 @@ kept-behaviour table — each behaviour and the `REQ-*` that made it survive.
 7. **Any disagreement between an artboard and `docs/plan/` that `DEC-213` §5 does not list**, with the file and the
    line — not picked.
 
-### For the owner — by name, none blocking (`DEC-213` §6)
+### For the owner — ★ ANSWERED 2026-10-01: all four of `DEC-213` §6 confirm the entry; the map does not change
 
-- ★ **The reason for putting M10b before stories** — `DEC-213` §1 records the ruling; the reason is yours to give.
-- ★ **A colleague's average rating** is drawn on the profile and A33 refuses it; widening A33 is yours.
-- **Withdrawing a proposal, a member-readable history, autosave** — drawn, new scope.
-- **The hosting gate** (`REQ-REC-008`) — defined, enforced nowhere.
-- **«الأنشط أولًا»** — ruled as sessions presented; name another measure if you want one.
-- ★★ **The acceptance**: each rebuilt screen beside its artboard on a phone.
+1. **A colleague's average rating — NOT widened.** A colleague never sees it; the artboard's «★ 4.8» on a colleague's
+   card is not built; a colleague sees the date and the attendance count. A33 and `session_rating_aggregates` stand;
+   contract 4 unchanged — `getPresenterAggregate()` on the self and admin tiers, from ≥ 3 ratings (`REQ-RAT-006`).
+2. **Withdraw, the history, the reviewer's name, autosave — NOT built** (§5.93, §5.99 – §5.101). «احفظ كمسودة» stays the
+   one way to keep a draft; «ما كتبه المشرف» and the time, no name; no «السجل»; no «اسحب المقترح». Carried below.
+3. **The hosting gate — NOT built this wave** (§5.97). Carried below as a named gate, with the defect the owner found.
+4. **«الأنشط أولًا» sorts by sessions presented** (§5.106). Settled.
+5. ★★ **The acceptance** remains the owner's: each rebuilt screen beside its artboard on a phone.
 
 ### The owner's order (wave 19)
 
@@ -112,7 +122,18 @@ suffix** (the fourteenth consecutive time); (4) the phone check — each rebuilt
 
 ### Carried — not this wave
 
-Stories (next) · batch M10c, and with it ★ **the hard-load re-measure on `/app/me/points` and `/app/leaderboards`**
+★ **The owner's answered rulings, each with its measurement, its blocker and its home** (`DEC-213` §5, §6 — `DEC-180`'s
+lesson: a thing that is only a sentence vanishes without an error):
+
+| Item | Measured | Blocker | Home |
+|---|---|---|---|
+| ★★ **The hosting gate's enforcement** (`REQ-REC-008`, §5.97) | `can_host` is seeded `enabled = false` (`0027:581`, re-seeded `0083`) at level 4, «كريم معرفة», 700 points; **nothing outside `/app/admin/recognition` reads it** — three places in `src/` (`perks-table.tsx`, `scoring-admin.ts:439`, `recognition.json:178`). ★ **So the admin toggle is WIRED TO NOTHING: an admin can turn the gate on today and every member still proposes — a live defect in the console, not a missing screen** | a change to `create_proposal()` (refuse a gated member, in the database) plus the gated card on `SCR-017` | **a carried gate**, named with `REQ-REC-008`, which exists |
+| **Withdraw** (§5.101) | no `withdrawn` value in `proposal_state` (`0010:16`) | a migration | **one later wave, with the next two** — all three touch the proposal's record |
+| **The proposal's history** (§5.100) | `audit_log` is staff-only (`0004:422-425`) and append-only evidence; opening it is not an option | a new member-readable table, or nothing | the same wave |
+| **The reviewer's name** (§5.99) | no column records who decided; the actor is only in `audit_log` | a column **and** a ruling that a member may see a staff actor's identity — a privacy decision, not a screen | the same wave |
+| **Autosave on propose** (§5.93) | **no requirement defines it** (`REQ-PRO-003` is co-presenters; `09` lists it as a state only) | a `REQ-*` in `01-prd.md` first; then a route handler — Server Actions cap at 1 MB and are the wrong transport | **a requirement first, then a wave** |
+
+Stories (next · batch M10c, and with it ★ **the hard-load re-measure on `/app/me/points` and `/app/leaderboards`**
 (`DEC-204`; none of this wave's routes is in its table — not re-measured here) · every console and studio route · the
 public site · the weekly board, the streak rule, proposal voting · ★ the two carried gates, together (`DEC-194`) · F2 and
 F3 (`DEC-198` §5) · the overshoot ceiling (`DEC-186` §4) · ★ **wave 16's phone check of the five moments, still owed

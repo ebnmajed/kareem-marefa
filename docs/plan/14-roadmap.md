@@ -709,6 +709,8 @@ and the two carried gates, together (`DEC-194`).
 
 ### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5, renumbered by `DEC-199` §7, re-ordered by `DEC-205` §1 and `DEC-213` §1)
 
+★★ **The standing order (the owner, 2026-10-01, wave 19): WE BUILD WHAT HAS A DESIGN.** As long as the designer session keeps producing screen batches, screens go first; stories lands when the batches run out or when the owner says so. Stories was not demoted — it was overtaken by work that became buildable (`DEC-213` §1).
+
 Each wave of the programme claims its milestone number when it opens (`DEC-183` §3). **The positions are fixed now;
 the numbers after M19 are the sequence as it stands, and move with it.** `DEC-195` §5 had stories at M19; wave 17
 claimed the number, and every position after it kept its place.

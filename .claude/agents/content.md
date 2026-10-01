@@ -22,7 +22,10 @@ which it extends), `docs/design/README.md` and `04-components.md`, and `docs/pla
    Zoom keeps single-pointer controls (§5.83); no rail on the phone (§5.84); its own `loading.tsx` (§5.89); no Keynote
    state (§5.85).
 2. ★★ **The direction model, proved by a test** (`DEC-213` §4): today's buttons are mirrored in behaviour and not in name
-   (`page-viewer.tsx:160`, `:166`). A case asserts «next» advances and sits at the inline-end in `ar`, and ← is next.
+   (`page-viewer.tsx:160`, `:166`). ★ **The test must be one that would have caught it**: in `ar`, pressing the button
+   named «الصفحة التالية» moves the page number from N to N + 1, and «الصفحة السابقة» moves it back — not merely that a
+   button exists; plus that «next» sits at the inline-end, and that ← is next. Run it against today's file first and
+   watch it fail.
 3. ★ **No URL for a denied member** (`07` §6, §5.88) — a test proves `getMaterialDownloadUrl()` returns none, not merely
    that the button is absent. An admin's download stays audited (`0049`).
 4. ★ **`ui/page-viewer`**, new (`DEC-213` §4): the page, previous/next, the scrubber, the rail, zoom and the keyboard
