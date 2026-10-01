@@ -160,6 +160,11 @@ mentions §0b once, in §10, and never defines it — so the copy trim has no li
 | `tests/components/me/tab-strip.test.tsx` | the whole file | **Deleted with its component**; its three cases (one current page, the landmark's name, axe) live in `tests/components/shell/hub-strip.test.tsx` with a fourth | `aed4601e`, `ebdde010` |
 | `tests/e2e/wave7-content-me.spec.ts` | `:107` «صفحاتي» visible; `:148` the privacy link | ★ **Expected to move with `021`** (`content`): on a phone the strip is the page's, and privacy is a desktop-strip link | — |
 | `tests/rls/scoring-seen.test.ts` | «an unknown board is refused» lists `weekly` | ★ **Expected in PR B** (`DEC-217` §4.3): `mark_board_seen()` learns the week | — |
+| `tests/components/me/certificates-page.test.tsx` | `:60` `getByText("صالحة")` | ★ **Expectation moved** (`DEC-216` §2.1, `REQ-UIX-073`): a valid certificate carries no status word — now `queryByText("صالحة")` absent. The serial's `<bdi dir="ltr">` beside it is unchanged | `023`'s create (`content`) |
+| `tests/components/me/certificates-page.test.tsx` | `:69-72` «الشهادة قيد التجهيز», no «نزّل الشهادة» | ★ **Expectation moved** (`DEC-218` §4.1, D6): «قريبًا», and the row is not a link. The mock gains `setRequestLocale` and stubs for the lead's `HubTopRow` / `HubStrip` — no assertion | `023`'s create (`content`) |
+| `tests/e2e/wave7-content-certificates.spec.ts` | `:155` «صالحة» visible (the grant said `:159`; the assertion is at `:155`) | ★ **Expectation moved** (`DEC-216` §2.1): `toHaveCount(0)`. The reason and the serial's `dir=ltr` at `:156-164` hold | `023`'s create (`content`, the lead's grant) |
+| `tests/e2e/certificates.spec.ts` | `:314` «صالحة» visible on the member's list | ★ **Expectation moved** (`DEC-216` §2.1): `toHaveCount(0)` inside `#main`. `:313`, the serial visible, holds | `023`'s create (`content`, the lead's grant) |
+| `tests/e2e/wave13-designer-certificates-download.spec.ts` | `:165` the link named «نزّل الشهادة», exact | **Selector moved** (`REQ-UIX-073`, D5 / `DEC-218` §4.1): the row is the one link, found by its serial; the `href` and no-`download` assertions are unchanged | `023`'s create (`content`, the lead's grant) |
 
 ---
 

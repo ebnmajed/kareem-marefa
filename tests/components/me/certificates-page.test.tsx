@@ -15,7 +15,11 @@ vi.mock("@/lib/dal/certificates", () => ({
 }));
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages: ar, namespace: namespace as "certificates" }),
+  setRequestLocale: () => {},
 }));
+// ★ wave 20: the hub frame's two server components are the lead's and read other namespaces; stubbed here.
+vi.mock("@/components/shell/hub-top-row", () => ({ HubTopRow: ({ title }: { title: string }) => <h1>{title}</h1> }));
+vi.mock("@/components/shell/hub-strip", () => ({ HubStrip: () => null }));
 
 const { listMyCertificates } = await import("@/lib/dal/certificates");
 const { default: MyCertificatesPage } = await import("@/app/[locale]/app/me/certificates/page");
@@ -57,7 +61,9 @@ describe("MyCertificatesPage", () => {
     await renderPage([cert()]);
     const serial = screen.getByText("KM-2026-000123");
     expect(serial.closest("bdi")).toHaveAttribute("dir", "ltr");
-    expect(screen.getByText("صالحة")).toBeInTheDocument();
+    // ★ wave 20 (DEC-216 §2.1, REQ-UIX-073): a valid certificate carries no status word — nothing is shown when
+    // nothing needs doing. Was `getByText("صالحة")`.
+    expect(screen.queryByText("صالحة")).not.toBeInTheDocument();
   });
 
   it("shows a revoked certificate's reason — the one place a member sees it", async () => {
@@ -68,8 +74,9 @@ describe("MyCertificatesPage", () => {
 
   it("shows 'preparing' rather than a broken download when the PDF has not rendered yet", async () => {
     await renderPage([cert({ pdfPath: null })]);
-    expect(screen.getByText("الشهادة قيد التجهيز")).toBeInTheDocument();
-    expect(screen.queryByText("نزّل الشهادة")).not.toBeInTheDocument();
+    // ★ wave 20 (DEC-218 §4.1, D6): «قريبًا», and the row is not a link. Was «الشهادة قيد التجهيز» and no «نزّل الشهادة».
+    expect(screen.getByText("قريبًا")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("is axe-clean with a mixed list", async () => {

@@ -152,7 +152,7 @@ test("empty, then an issued and a revoked certificate, serial and code isolated 
 
   await page.reload();
   await expect(main.getByText("جلسة الشهادات").first()).toBeVisible();
-  await expect(main.getByText("صالحة")).toBeVisible();
+  await expect(main.getByText("صالحة")).toHaveCount(0); // ★ wave 20: no status word on a valid certificate (DEC-216 §2.1)
   // ★ Sync-4b: unscoped, this matched both the revoked cert's own Badge
   // (whose text IS exactly "ملغاة") and the OTHER session's title
   // «جلسة الشهادة الملغاة», which contains it as a substring — exact
