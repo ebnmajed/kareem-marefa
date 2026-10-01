@@ -78,6 +78,7 @@ const NAMES: Record<string, string> = {
   TrophyIcon: "كأس",
   UploadIcon: "رفع",
   UserIcon: "عضو",
+  SettingsIcon: "الإعدادات",
   UsersIcon: "حضور",
 };
 

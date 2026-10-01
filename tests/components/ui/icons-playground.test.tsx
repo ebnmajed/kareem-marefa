@@ -92,9 +92,9 @@ describe("the playground's nine glyphs", () => {
 
   // wave 18 (DEC-207): fifty-two — the megaphone and the comment bubble the home needed.
   // wave 18, PR B (DEC-209): fifty-four — play for the audio row, the monitor for projection.
-  it("the set is fifty-four glyphs, and the gallery names every one in Arabic", async () => {
+  it("the set is fifty-five glyphs, and the gallery names every one in Arabic", async () => {
     const glyphs = Object.keys(Icons).filter((n) => n.endsWith("Icon"));
-    expect(glyphs).toHaveLength(54);
+    expect(glyphs).toHaveLength(55); // wave 20 (DEC-217): + `SettingsIcon`, the settings link on `/app/me`.
     const { readFileSync } = await import("node:fs");
     // Wave 17 (DEC-199): the glyphs' names moved with them into the gallery's own demo.
     const page = readFileSync("src/app/[locale]/(dev)/ui/demos/icons.tsx", "utf8");
