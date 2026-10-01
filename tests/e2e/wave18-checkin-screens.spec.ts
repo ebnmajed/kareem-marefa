@@ -4,8 +4,8 @@
 //   1. SCR-014 before the check-in: the prompt names the six boxes, the rules line says the org's
 //      rotation and «no reservation» (walk-ins are on), the earn panel draws the RULE's amount, the one
 //      submit is in the bottom bar.
-//   2. ★ A refused code does not move (DEC-206 §4.75): the alert under the boxes, and no animation
-//      running anywhere in the check-in form (the live badge's dot, a status, pulses outside it).
+//   2. ★ A mistyped code shakes the six boxes once (DEC-212); under reduced motion, and for every other
+//      refusal (the rate limit), nothing moves — the coral border and the message.
 //   3. SCR-016 live: the code in two groups whose text is the six characters, the countdown, the
 //      count, the switch with its auto-close time; projection shows the code alone.
 //
@@ -123,33 +123,104 @@ test("SCR-014 before the check-in: the prompt, the rules line, the rule's amount
   await shoot(page, "scr014-form");
 });
 
-test("★ SCR-014 a refused code does not move — the alert under the boxes, nothing animating", async ({ context, page }) => {
+// ★ DEC-212 (the owner's ruling on DEC-206 §4.75; ledger — an EXPECTATION changed): a MISTYPED code shakes the six
+// boxes once — input feedback; under reduced motion it is the coral border and the message alone; every other
+// refusal is the system refusing and does not move. Each case submits for real, because the shake answers a
+// submission this client made, never a render: a refused page loaded cold stays still.
+
+/** Records every animation that starts or ends in the document, from before the first paint. */
+async function watchAnimations(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __anims: { type: string; name: string; role: string | null; at: number }[] };
+    w.__anims = [];
+    for (const type of ["animationstart", "animationend"]) {
+      document.addEventListener(
+        type,
+        (event) => {
+          const e = event as AnimationEvent;
+          const el = e.target as Element;
+          w.__anims.push({ type, name: e.animationName, role: el.getAttribute("role"), at: performance.now() });
+        },
+        true,
+      );
+    }
+  });
+}
+type Anim = { type: string; name: string; role: string | null; at: number };
+const anims = (page: Page) => page.evaluate(() => (window as unknown as { __anims: Anim[] }).__anims);
+/** The form's own animations only — the session row's live dot (DEC-073) pulses outside it, as a status. */
+const shakes = async (page: Page) => (await anims(page)).filter((a) => a.name === "code-shake");
+
+async function submitCode(page: Page, code: string): Promise<void> {
+  const boxes = main(page).locator("input[maxlength='1']");
+  await expect(boxes).toHaveCount(6, { timeout: 15_000 });
+  const assembled = main(page).locator('input[type="hidden"][name="code"]');
+  await expect(async () => {
+    for (const [i, ch] of Array.from(code).entries()) await boxes.nth(i).fill(ch);
+    await expect(assembled).toHaveValue(code, { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+  await main(page).getByRole("group", { name: "إرسال رمز الحضور" }).getByRole("button", { name: "تسجيل الحضور" }).click();
+}
+
+test("★ SCR-014 a mistyped code shakes the six boxes once — and only them (DEC-212)", async ({ context, page }) => {
   await signIn(context, "wrong");
-  await page.goto(`/ar/app/sessions/${sessionId}/check-in?error=invalid_code&code=ZZZZZZ`);
+  await watchAnimations(page);
+  await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  // A refused page is not a shake: nothing has been submitted yet.
+  expect(await shakes(page)).toEqual([]);
+  await submitCode(page, "ZZZZZZ");
+  await expect(page).toHaveURL(/error=invalid_code&code=ZZZZZZ$/, { timeout: 15_000 });
+  await expect(main(page).getByRole("alert")).toContainText("الرمز غير صحيح");
+  // One animation, named code-shake, on the boxes' group (role="group"), and it ends within its token (420 ms) and a frame's slack.
+  await expect.poll(async () => (await shakes(page)).filter((a) => a.type === "animationend").length, { timeout: 5_000 }).toBe(1);
+  const shake = await shakes(page);
+  expect(shake.map((a) => `${a.type}:${a.role}`)).toEqual(["animationstart:group", "animationend:group"]);
+  expect(shake[1].at - shake[0].at).toBeLessThan(420 + 150);
+  await shoot(page, "scr014-refused");
+
+  // A re-render — here, a reload of the refused page — does not replay it.
+  await page.reload();
+  await expect(main(page).getByRole("alert")).toContainText("الرمز غير صحيح");
+  await page.waitForTimeout(800);
+  expect(await shakes(page)).toEqual([]);
+});
+
+test("★ SCR-014 under reduced motion a mistyped code does not move: the coral border and the message", async ({ context, page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await signIn(context, "wrong-reduced");
+  await watchAnimations(page);
+  await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  await submitCode(page, "ZZZZZZ");
+  await expect(page).toHaveURL(/error=invalid_code&code=ZZZZZZ$/, { timeout: 15_000 });
   const alert = main(page).getByRole("alert");
   await expect(alert).toContainText("الرمز غير صحيح");
-  // ★ Scoped to the check-in FORM — the boxes, the alert, the rules line, the earn panel and the bar.
-  // The page carries one legitimate loop outside it: the live badge's pulsing dot in the session row
-  // (`SessionStatusBadge`, DEC-073's live dot, off under reduced motion). That is a status, not the
-  // refusal; the rule is that the REFUSAL never moves (REQ-UIX-046, DEC-206 §4.75). Every running
-  // animation inside the form is named by its target, so a failure says what moves.
-  const running = await page.evaluate(() => {
-    const form = document.querySelector("#main form");
-    if (!form) return ["no form on the page"];
-    return document
-      .getAnimations()
-      .filter((a) => a.playState === "running")
-      .filter((a) => {
-        const el = (a.effect as KeyframeEffect | null)?.target as Element | null;
-        return !!el && form.contains(el);
-      })
-      .map((a) => {
-        const el = (a.effect as KeyframeEffect | null)?.target as Element | null;
-        return `${(a as CSSAnimation).animationName ?? "waapi"} on <${el?.tagName.toLowerCase()} class="${el?.getAttribute("class") ?? ""}">`;
-      });
-  });
-  expect(running).toEqual([]);
-  await shoot(page, "scr014-refused");
+  await expect(main(page).locator("input[maxlength='1']").first()).toHaveAttribute("aria-invalid", "true");
+  await page.waitForTimeout(800);
+  expect(await shakes(page)).toEqual([]);
+  await shoot(page, "scr014-refused-reduced");
+});
+
+test("★ SCR-014 a refusal that is not a typo — the rate limit — does not move", async ({ context, page }) => {
+  await signIn(context, "limited");
+  // Ten attempts in the window already (REQ-CHK-006): the next is refused as rate_limited, before any code is read.
+  const { rows } = await db.query<{ member_id: string; day_id: string }>(
+    `select m.id as member_id, d.id as day_id from public.members m, public.session_days d
+      where m.email = $1 and d.session_id = $2 order by d.position limit 1`,
+    [`limited@${domain}`, sessionId],
+  );
+  for (let i = 0; i < 10; i++) {
+    await db.query(
+      `insert into public.check_in_attempts (org_id, session_id, session_day_id, member_id, submitted_code, succeeded) values ($1, $2, $3, $4, 'ZZZZZZ', false)`,
+      [orgId, sessionId, rows[0].day_id, rows[0].member_id],
+    );
+  }
+  await watchAnimations(page);
+  await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
+  await submitCode(page, "ZZZZZZ");
+  await expect(page).toHaveURL(/error=rate_limited/, { timeout: 15_000 });
+  await expect(main(page).getByRole("alert")).toContainText("محاولات كثيرة");
+  await page.waitForTimeout(800);
+  expect(await shakes(page)).toEqual([]);
 });
 
 test("SCR-016 live: two groups, the countdown, the count, the switch; projection shows the code alone", async ({ context, page }) => {

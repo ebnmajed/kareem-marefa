@@ -5,13 +5,13 @@ import { requireSession } from "@/lib/dal/session";
 import { getCheckInScreenData, getConflictTitle } from "@/lib/dal/checkin";
 import { AwardState } from "@/components/checkin/award-state";
 import { CheckInSessionRow } from "@/components/checkin/check-in-session-row";
+import { CodeEntry } from "@/components/checkin/code-entry";
 import { dayName } from "@/components/checkin/day-name";
 import { EarnPanel } from "@/components/checkin/earn-panel";
 import { CheckInForm, CheckInSurface } from "@/components/checkin/moment-check-in";
 import { CheckInRest } from "@/components/checkin/moment-check-in-rest";
 import { formatNumber } from "@/components/sessions/numerals";
 import { ActionBar } from "@/components/ui/action-bar";
-import { CodeInput } from "@/components/ui/code-input";
 import { AlertCircleIcon, CloseIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { Panel } from "@/components/ui/panel";
@@ -28,9 +28,10 @@ import { checkInForMoment, submitCheckInForm } from "./actions";
 // (REQ-UIX-046, DEC-195 §2.1 — the mechanism is `moment-check-in.tsx`, kept by DEC-209); the award
 // after the form (REQ-CHK-018, DEC-174 Q6).
 //
-// ★ A REFUSED CODE DOES NOT MOVE (REQ-UIX-046, DEC-206 §4.75 — the owner's ruling is pending). It is
-// answered by the boxes' border, the glyph and the sentence, under the boxes: the artboard's own
-// reduced-motion form, and the only form this screen has.
+// ★ A MISTYPED CODE SHAKES THE BOXES ONCE — input feedback, the owner's ruling (DEC-212, REQ-UIX-046 as
+// amended). Every refusal is answered by the boxes' border, the glyph and the sentence under the boxes, which
+// is also the whole state under reduced motion; only `invalid_code` adds the shake, from `CodeEntry`, once per
+// submission this client made. Every other refusal is the system refusing, and does not move.
 //
 // ★ Used standing, one-handed, reading six characters across a room: the code is the screen's
 // middle, the one action is at the thumb, and nothing streams in front of the input.
@@ -141,7 +142,8 @@ export default async function CheckInPage({
             <CheckInForm action={submitCheckInForm.bind(null, locale, id)} momentAction={checkInForMoment.bind(null, locale, id)} className="flex flex-1 flex-col justify-center gap-4 py-6">
               {/* ★ REQ-UIX-035: the prompt IS the group's visible label; each box is named by its
                   position; the posted field is `code`, as it always was. */}
-              <CodeInput
+              <CodeEntry
+                refusal={errorKey}
                 id="code-0"
                 name="code"
                 align="center"

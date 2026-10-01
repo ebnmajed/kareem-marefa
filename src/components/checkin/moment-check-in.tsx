@@ -44,6 +44,18 @@ const HIDDEN = { opacity: 0 } as const;
 type Occurrence = { checkInId: string | null; announce: boolean };
 const OccurrenceContext = createContext<Occurrence>({ checkInId: null, announce: false });
 const ResultContext = createContext<(result: CheckInMomentResult) => void>(() => {});
+/**
+ * ★ DEC-212 — how many times THIS client has submitted the code. Not a moment and not a moment's key: the
+ * mistyped code's shake reads it, once the form is no longer pending, so the boxes move once per refused
+ * submission and never on a re-render, a reload or a back navigation (a fresh mount counts from zero). Which
+ * refusal it was is the page's to say.
+ */
+const SubmissionContext = createContext<{ submissions: number; submitted: () => void }>({ submissions: 0, submitted: () => {} });
+
+/** How many times this client has submitted the code (DEC-212). */
+export function useSubmissions(): number {
+  return useContext(SubmissionContext).submissions;
+}
 
 /**
  * The screen's client surface. `rest` is the server's static state, present
@@ -53,14 +65,17 @@ const ResultContext = createContext<(result: CheckInMomentResult) => void>(() =>
  */
 export function CheckInSurface({ rest, announce, children }: { rest: ReactNode; announce: boolean; children: ReactNode }) {
   const [checkInId, setCheckInId] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState(0);
   // `refresh()` sends the rest in the same response as the result; until both
   // are here, the form stays on screen in its pending state.
   const showRest = rest !== null && rest !== undefined;
   return (
     <ResultContext.Provider value={(result) => setCheckInId(result.checkInId)}>
-      <OccurrenceContext.Provider value={{ checkInId: showRest ? checkInId : null, announce: announce || checkInId !== null }}>
-        {showRest ? rest : children}
-      </OccurrenceContext.Provider>
+      <SubmissionContext.Provider value={{ submissions, submitted: () => setSubmissions((n) => n + 1) }}>
+        <OccurrenceContext.Provider value={{ checkInId: showRest ? checkInId : null, announce: announce || checkInId !== null }}>
+          {showRest ? rest : children}
+        </OccurrenceContext.Provider>
+      </SubmissionContext.Provider>
     </ResultContext.Provider>
   );
 }
@@ -78,11 +93,13 @@ export function CheckInForm({
   children: ReactNode;
 }) {
   const report = useContext(ResultContext);
+  const { submitted } = useContext(SubmissionContext);
   const [, start] = useTransition();
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    submitted();
     // Synchronously, inside the submit event: React then marks this form pending.
     start(async () => {
       const result = await momentAction(formData);
