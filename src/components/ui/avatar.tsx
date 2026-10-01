@@ -87,6 +87,8 @@ const DIMENSION: Record<AvatarSize, string> = {
   40: "h-10 w-10 text-[0.9375rem]",
   44: "h-11 w-11 text-[1rem]",
   56: "h-14 w-14 text-[1.375rem]",
+  // ★ Wave 20, add-only (`scoring`'s request): the hub standing card's avatar, 64 px with a 4 px ring (`Me.dc.html`).
+  64: "h-16 w-16 text-[1.625rem]",
   84: "h-[84px] w-[84px] text-[2rem]",
   96: "h-24 w-24 text-[2.25rem]",
   104: "h-[104px] w-[104px] text-[2.5rem]",
@@ -98,6 +100,7 @@ const DIMENSION: Record<AvatarSize, string> = {
 function ringWidth(size: AvatarSize): string {
   if (size === 104) return "border-[6px]";
   if (size === 84) return "border-[5px]";
+  if (size === 64) return "border-4";
   return "border-[3px]";
 }
 
