@@ -261,7 +261,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-MAT-002` | `ENT-materials` | `POL-materials.kind_pdf_only` | `SCR-013` | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-001` | M5 |
 | `REQ-MAT-003` | `ENT-material_pages` `ENT-materials` | — | `SCR-013` | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-002` | M5 |
 | `REQ-MAT-004` | `ENT-materials` | `POL-materials.kind_pdf_only` | `SCR-012` `SCR-013` `SCR-015` +5 | `JOB-convert_document` `JOB-render_pages` | — | `STORY-MAT-003` | M5 |
-| `REQ-MAT-005` | `ENT-materials` | — | `SCR-013` | — | — | `STORY-MAT-004` | M5 |
+| `REQ-MAT-005` | `ENT-materials` | — | `SCR-013` `SCR-018` | — | — | `STORY-MAT-004` | M5 |
 | `REQ-MAT-006` | `ENT-materials` `ENT-session_days` | — | `SCR-012` `SCR-013` | `JOB-award_points` | — | `STORY-MAT-004` | M5 |
 | `REQ-MAT-007` | `ENT-materials` | — | `SCR-002` `SCR-004` `SCR-007` +9 | — | — | `STORY-MAT-005` | M5 |
 | `REQ-MAT-008` | `ENT-materials` | — | `SCR-063` | — | — | `STORY-MAT-005` | M5 |
@@ -336,7 +336,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 |---|---|---|---|---|---|---|---|
 | `REQ-PRO-001` | `ENT-proposals` | — | `SCR-017` `SCR-018` | — | — | `STORY-PRO-001` | M2 |
 | `REQ-PRO-002` | `ENT-proposals` | — | `SCR-017` `SCR-018` | — | — | `STORY-PRO-001` | M2 |
-| `REQ-PRO-003` | `ENT-proposal_presenters` `ENT-session_presenters` | — | `SCR-012` `SCR-013` `SCR-015` +6 | — | — | `STORY-PRO-002` | M2 |
+| `REQ-PRO-003` | `ENT-proposal_presenters` `ENT-session_presenters` | `POL-proposal_presenters.insert.unanswered` | `SCR-012` `SCR-013` `SCR-015` +6 | — | — | `STORY-PRO-002` | M2 |
 | `REQ-PRO-004` | — | — | `SCR-011` `SCR-012` `SCR-017` +3 | — | — | `STORY-PRO-002` | M2 |
 | `REQ-PRO-005` | — | — | `SCR-018` `SCR-041` | — | — | `STORY-PRO-003` | M2 |
 | `REQ-PRO-006` | `ENT-proposals` `ENT-session_state_transitions` | `POL-proposals.transition.audit` | `SCR-018` `SCR-041` | — | — | `STORY-PRO-003` | M2 |
@@ -475,7 +475,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 |---|---|---|---|---|---|---|---|
 | `REQ-UIX-001` | — | — | `SCR-010` `SCR-012` `SCR-013` +4 | — | — | `STORY-UIX-001` `STORY-UIX-016` | M10, M9 |
 | `REQ-UIX-002` | — | — | `SCR-010` `SCR-011` `SCR-012` | — | — | `STORY-UIX-002` | M9 |
-| `REQ-UIX-003` | — | — | `SCR-007` `SCR-011` `SCR-012` | — | — | `STORY-UIX-003` | M9 |
+| `REQ-UIX-003` | — | — | `SCR-007` `SCR-011` `SCR-012` +1 | — | — | `STORY-UIX-003` | M9 |
 | `REQ-UIX-004` | — | — | `SCR-012` `SCR-014` `SCR-016` | — | `MSG-rsvp_promoted` | `STORY-UIX-003` | M9 |
 | `REQ-UIX-005` | — | — | `SCR-011` `SCR-013` | — | — | `STORY-UIX-004` | M9 |
 | `REQ-UIX-006` | — | — | — | — | — | `STORY-UIX-004` | M9 |
@@ -483,7 +483,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-008` | — | — | `SCR-017` | — | — | `STORY-UIX-009` | M10 |
 | `REQ-UIX-009` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-017` +3 | `JOB-award_points` | `MSG-reminder_` | `STORY-UIX-006` | M9 |
 | `REQ-UIX-010` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-017` +3 | `JOB-award_points` | `MSG-reminder_` | `STORY-UIX-006` | M9 |
-| `REQ-UIX-011` | — | — | `SCR-002` `SCR-017` `SCR-043` +4 | — | — | `STORY-UIX-006` | M9 |
+| `REQ-UIX-011` | — | — | `SCR-002` `SCR-017` `SCR-018` +5 | — | — | `STORY-UIX-006` | M9 |
 | `REQ-UIX-012` | — | — | `SCR-010` `SCR-011` | — | — | `STORY-UIX-007` | M9 |
 | `REQ-UIX-013` | — | — | `SCR-057` | — | — | `STORY-UIX-007` | M9 |
 | `REQ-UIX-014` | — | — | `SCR-012` `SCR-014` `SCR-022` +4 | — | — | `STORY-UIX-011` | M10 |
