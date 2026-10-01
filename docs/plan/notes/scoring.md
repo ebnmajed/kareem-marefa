@@ -4373,3 +4373,42 @@ Untouched and expected green: `moment-rank.test.tsx` (the company board keeps `M
   card's own geometry (the avatar row, the level row, the bar, three tiles), `aria-hidden`, no text, no data, no
   `getTranslations`, so `content` wraps `<HubStanding form="card">` in `<Suspense fallback={<HubStandingSkeleton
   form="card" />}>` and the lead may do the same for the band.
+
+# Wave 20 — build (after `DEC-218`; the frame at `ebdde010`)
+
+Landed so far: `ui/ledger-row` and `ui/podium` (`28d325e0`); the week's SQL, proposed (`b0320d91`); contracts 3 and 4
+— `getWeekStanding()`, `getHubStanding()`, `<HubStanding>` and its skeleton, `level-card`'s `frame="none"`
+(`82c945bd`).
+
+## `SCR-022` — commit 1, the delete (`DEC-208`)
+
+Deleted: `src/app/[locale]/app/me/points/page.tsx` · `src/components/scoring/{points-head,points-history-list,points-catalogue}.tsx`
+· their four test files. Kept: `me/points/actions.ts` (the Server Action), `moment-points-head.tsx` (moments 3 and 4's
+mechanism), `getPointsHistory()` (the DAL is add-only). The kept-behaviour table is §2.1 above, written before this
+commit; it is read back against the new files after the create commit.
+
+**Where each retired case goes** (each a ledger line in `STATUS.md`, sent to the lead):
+
+| Retired case | Re-homed in |
+|---|---|
+| `points-history-list` · the empty state names its next action | `points-ledger.test.tsx` · empty |
+| · a plain award has no reversal or manual tag | `points-ledger.test.tsx` · a plain award |
+| · the reversal entry: a Western minus, `<bdi>` on both fields | `points-ledger.test.tsx` · the reversal pair, and `ledger-row.test.tsx` |
+| · never the admin's free text on a reversal | `points-ledger.test.tsx` · the fixed reason only |
+| · no running total per row | `points-ledger.test.tsx` · no total |
+| · a manual adjustment's tag and its session link | `points-ledger.test.tsx` · manual, now with the admin's name |
+| · axe-clean with a mixed history | `points-ledger.test.tsx` · axe |
+| `points-history-days` · the notice names the day, states the rule, no amount | `points-ledger.test.tsx` · the missed-day notice |
+| · several days in the locale's conjunction, Western numerals | `points-ledger.test.tsx` · the same |
+| · a one-day history never renders a notice | `points-ledger.test.tsx` · one-day |
+| · a notice beats the empty state | `points-ledger.test.tsx` · the same |
+| · the notice interleaved by completion time | `points-ledger.test.tsx` · and the DAL's sort (`scoring-ledger-pairs.test.ts`) |
+| · axe-clean with a notice | `points-ledger.test.tsx` · axe |
+| `points-catalogue` · nothing when every rule is zero | `points-catalogue-list.test.tsx` · the same |
+| · an enabled rule with its cap, a disabled one marked | `points-catalogue-list.test.tsx` · now a disabled rule draws `0` (`M10c` §2, D37) — ★ an expectation that moves |
+| · axe | `points-catalogue-list.test.tsx` · axe |
+| `points-head` · the bar's fill is the fraction its line states | `points-head-card.test.tsx` · the same |
+| · the delta isolated left to right | `points-head-card.test.tsx` · the same |
+| · the turned card names the new level and its perk | `points-head-card.test.tsx` · the level row turns in place, both faces named (DEC-218 §3.1) — ★ no perk list: the row draws none |
+| · at the top the bar is full and says so | `points-head-card.test.tsx` · the same |
+| · no streak in words / no streak rule draws nothing | ★ retired: the streak left `022`'s head with the artboard and lives on the standing card (`standing.test.tsx` covers both) |
