@@ -15,6 +15,11 @@ export interface MemberBadge {
   name: string;
   description: string | null;
   awardedAt: string;
+  /** wave 19, add-only: the badge has been retired — still held and shown, not counted in «N من M» (DEC-213 §5.121). */
+  retired?: boolean;
+  /** wave 19, add-only: `badges.rule->>'metric'` — what the profile derives the medallion's fill and glyph from
+   *  (DEC-214 §3, N1). A fixed vocabulary even for a badge an admin made (`REQ-REC-001`); null when absent. */
+  metric?: string | null;
 }
 
 export interface MemberRecognition {
@@ -39,18 +44,29 @@ export async function getMemberRecognition(locale: string, memberId: string): Pr
   if (!z.uuid().safeParse(memberId).success) return { badges: [], streakMonths: 0 };
   const { supabase } = await sessionClient(locale);
   const [badgesRes, streaksRes] = await Promise.all([
-    supabase.from("member_badges").select("id, awarded_at, badges(name, description, retired_at)").eq("member_id", memberId).order("awarded_at", { ascending: false }),
+    supabase.from("member_badges").select("id, awarded_at, badges(name, description, retired_at, rule)").eq("member_id", memberId).order("awarded_at", { ascending: false }),
     supabase.from("streak_awards").select("period_start").eq("member_id", memberId).order("period_start", { ascending: false }).limit(36),
   ]);
   if (badgesRes.error) throw new Error(`member_badges: ${badgesRes.error.message}`);
   if (streaksRes.error) throw new Error(`streak_awards: ${streaksRes.error.message}`);
 
-  type BadgeJoin = { name: string; description: string | null; retired_at: string | null };
+  type BadgeJoin = { name: string; description: string | null; retired_at: string | null; rule?: { metric?: unknown } | null };
   const badges = (badgesRes.data ?? []).flatMap((row) => {
     const joined = row.badges as BadgeJoin | BadgeJoin[] | null;
     const badge = Array.isArray(joined) ? joined[0] : joined;
     // A retired badge was still earned; it stays on the profile.
-    return badge ? [{ id: row.id as string, name: badge.name, description: badge.description, awardedAt: row.awarded_at as string }] : [];
+    return badge
+      ? [
+          {
+            id: row.id as string,
+            name: badge.name,
+            description: badge.description,
+            awardedAt: row.awarded_at as string,
+            retired: Boolean(badge.retired_at),
+            metric: typeof badge.rule?.metric === "string" ? badge.rule.metric : null,
+          },
+        ]
+      : [];
   });
   return { badges, streakMonths: currentStreak((streaksRes.data ?? []).map((r) => r.period_start as string)) };
 }
@@ -183,4 +199,16 @@ export async function getAchievementItems(locale: string, opts: AchievementOptio
     if (member) items.push({ kind: "streak", id: r.id, awardedAt: r.awarded_at, member, periodStart: r.period_start });
   }
   return newestFirst(items).slice(0, limit);
+}
+
+// ── The org's badge catalogue, counted — the profile's «N من M» (SCR-020, wave 19, add-only) ─────────────────
+//
+// `DEC-213` §5.121: M is the badges an org has not retired. `badges` is `p1_org_read` (0027). A count, never a
+// page's length.
+
+export async function countActiveBadges(locale: string): Promise<number> {
+  const { session, supabase } = await sessionClient(locale);
+  const { count, error } = await supabase.from("badges").select("id", { count: "exact", head: true }).eq("org_id", session.orgId).is("retired_at", null);
+  if (error) throw new Error(`badges (count): ${error.message}`);
+  return count ?? 0;
 }

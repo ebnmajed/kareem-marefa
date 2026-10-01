@@ -663,3 +663,39 @@ export async function getPresenterAward(locale: string, sessionId: string): Prom
   if (error) throw new Error(`points_ledger (presenter): ${error.message}`);
   return presenterNet((data ?? []) as Array<{ id: string; amount: number; source: string; source_id: string | null; occurred_at: string }>);
 }
+
+// ── Another member's level, for their profile (SCR-020, wave 19, add-only) ──────────────────────────────────
+//
+// `REQ-UIX-069`, `DEC-213` §5.116. A33 tier 1: every tier sees a member's LEVEL, opted out or not — so this
+// function answers for any member of the caller's org, through `points_balances` and `levels` (both `p1_org_read`).
+// It returns the balance too, because the bar's truth is `levelProgress()`'s; whether the balance and the bar are
+// SHOWN is the profile reader's decision (`getMemberProfileForViewer`, `DEC-141` r5) — never a component's.
+// ★ It moves no cursor: the level-up moment is `SCR-022`'s alone (`DEC-207` §1.3, `DEC-213` §5.117).
+
+export interface MemberLevel {
+  totalPoints: number;
+  /** `levels.sort_order` and the name — null until the nightly evaluation has run once for this member. */
+  level: { tier: number; name: string; threshold: number } | null;
+  /** The next level above the one held; null at the top, or with no level. */
+  next: { name: string; threshold: number } | null;
+}
+
+export async function getMemberLevel(locale: string, memberId: string): Promise<MemberLevel> {
+  if (!z.uuid().safeParse(memberId).success) return { totalPoints: 0, level: null, next: null };
+  const { session, supabase } = await sessionClient(locale);
+  const [balanceRes, levelsRes] = await Promise.all([
+    supabase.from("points_balances").select("total_points, current_level_id").eq("member_id", memberId).maybeSingle(),
+    supabase.from("levels").select("id, name, threshold_points, sort_order").eq("org_id", session.orgId).order("threshold_points"),
+  ]);
+  if (balanceRes.error) throw new Error(`points_balances (level): ${balanceRes.error.message}`);
+  if (levelsRes.error) throw new Error(`levels: ${levelsRes.error.message}`);
+  const balance = balanceRes.data as { total_points?: number; current_level_id?: string | null } | null;
+  const levels = (Array.isArray(levelsRes.data) ? levelsRes.data : []) as Array<{ id: string; name: string; threshold_points: number; sort_order: number }>;
+  const held = levels.find((l) => l.id === balance?.current_level_id) ?? null;
+  const next = held ? (levels.find((l) => l.threshold_points > held.threshold_points) ?? null) : null;
+  return {
+    totalPoints: balance?.total_points ?? 0,
+    level: held ? { tier: held.sort_order, name: held.name, threshold: held.threshold_points } : null,
+    next: next ? { name: next.name, threshold: next.threshold_points } : null,
+  };
+}

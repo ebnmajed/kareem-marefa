@@ -690,3 +690,30 @@ export async function isCompanyAttendanceRuleEnabled(locale: string): Promise<bo
   if (error) throw new Error(`company_scoring_rules (attendance): ${error.message}`);
   return Boolean(data?.enabled);
 }
+
+// ── Another member's rank this month, for their profile (SCR-020, wave 19, add-only) ────────────────────────
+//
+// `DEC-213` §5.114: the profile's ranks are the MONTH's and the all-time — there is no weekly board. The month's is
+// the member's row in the latest monthly snapshot (by `taken_at`, as `getMonthlyStanding()` reads it), through
+// `boards_read`: an opted-out member's row is invisible to everyone but themselves, admins included (`0027:487-491`,
+// `REQ-LDR-008`, `DEC-214` §1). Null is an absence — no snapshot, no points this month, or withheld — never a zero.
+
+export async function getMemberMonthRank(locale: string, memberId: string): Promise<number | null> {
+  if (!z.uuid().safeParse(memberId).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  const { data: snap, error } = await supabase
+    .from("leaderboard_snapshots")
+    .select("id")
+    .eq("org_id", session.orgId)
+    .eq("kind", "monthly")
+    .order("taken_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`leaderboard_snapshots (profile): ${error.message}`);
+  const snapshotId = (snap as { id?: string } | null)?.id;
+  if (!snapshotId) return null;
+  const { data: row, error: rowError } = await supabase.from("leaderboard_entries").select("rank").eq("snapshot_id", snapshotId).eq("member_id", memberId).maybeSingle();
+  if (rowError) throw new Error(`leaderboard_entries (profile): ${rowError.message}`);
+  const rank = (row as { rank?: number } | null)?.rank;
+  return typeof rank === "number" ? rank : null;
+}
