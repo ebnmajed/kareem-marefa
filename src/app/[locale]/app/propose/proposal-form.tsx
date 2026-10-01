@@ -190,7 +190,12 @@ export function ProposalForm({
       {/* The progress line: how many required fields are still unfinished. Not a live region — the summary is the
           announcement; the bar beside the words is decorative. */}
       <div className="flex items-center gap-2 text-caption text-fg-muted">
-        <ProgressBar decorative size="sm" value={PROPOSAL_REQUIRED.length - remaining} max={PROPOSAL_REQUIRED.length} className="w-[5.625rem] shrink-0" />
+        {/* ★ The bar's width is its BOX's, not a class on the bar: `ProgressBar` is `w-full`, and a second width
+            class on it lost to that one — the bar took the whole row, could not shrink, and pushed the line 42 px
+            past the viewport at 390 (gate run 2). */}
+        <div className="w-[5.625rem] shrink-0">
+          <ProgressBar decorative size="sm" value={PROPOSAL_REQUIRED.length - remaining} max={PROPOSAL_REQUIRED.length} />
+        </div>
         <p>{t("form.remaining", { count: remaining, value: formatNumber(remaining) })}</p>
       </div>
 

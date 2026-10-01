@@ -62,9 +62,13 @@ export function FormSummary({ errors, title, description, className = "" }: Form
     const control = controlFor(fieldId);
     if (!control) return; // nothing to focus — let the anchor do what it can
     event.preventDefault();
-    // `focus()` scrolls the control into view honouring scroll-margin, which is
-    // what keeps it out from under the sticky header. See the note above.
-    control.focus();
+    // ★ Wave 19 (SC 2.4.11, gate run 2): `focus()` scrolls only when the control is OUT of the viewport. A control
+    // already on screen but under a FIXED bottom bar — propose's action bar, standing on the tab bar — was left
+    // there. `scrollIntoView({ block: "nearest" })` measures against the viewport less the scroll padding
+    // (`--tabbar-h`, `--header-h`, REQ-UIX-017), so it moves the control clear of both bars, and does nothing when it
+    // is already clear. Focus first without its own scroll, so the two never fight.
+    control.focus({ preventScroll: true });
+    control.scrollIntoView?.({ block: "nearest" });
   };
 
   return (
