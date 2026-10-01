@@ -3805,3 +3805,7 @@ copy trim.
 | `tests/e2e/wave7-content-notifications.spec.ts:102-103` | per-item «تعليم كمقروء» | depends on D7 | expectation | B |
 | `tests/e2e/wave7-content-notifications.spec.ts:108-118` | `#preferences` on the inbox, three «يصلك دائمًا», buttons named `/مُفعّل$/` | **moved** to `/ar/app/me/settings`: the one sentence visible once; switches (`role="switch"`) checked by default — absence means on | expectation | B |
 | `tests/components/members/profile-page.test.tsx:190` | hrefs end `"/app/me/notifications"` | `"/app/me/settings"` (with `self-panel.tsx`'s link, the lead's custodian edit) | expectation | B |
+
+**Two more from the lead.**
+- **D12, final:** `029` wears the layout's desktop strip from `lg` with nothing current. There's no layout exception, because settings is not one of the hub's pages.
+- **Grant:** three test files are mine this wave: `tests/e2e/wave7-content-notifications.spec.ts`, `tests/e2e/wave7-content-calendar.spec.ts` and `tests/components/me/calendar-page.test.tsx`. In each I change only the assertions §W6 and §W9 name. Each change lands in the commit that rebuilds `025` (PR A) or `026` (PR B), with its ledger line in `STATUS.md` in the same commit. `profile-page.test.tsx:190` stays content's.
