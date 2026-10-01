@@ -6725,3 +6725,10 @@ else in the plan moves.
   `wave7-content-certificates.spec.ts:159`, `certificates.spec.ts:314`) get their lines the same way, as **expectation**
   moves under `DEC-216` §2.1. `wave7-content-certificates.spec.ts` and `certificates.spec.ts` are the lead's to edit
   unless granted; I name the lines.
+
+### `wave7-content-me.spec.ts:148` under strict mode — checked
+
+The spec runs on both projects, but the test sets the viewport to 390 × 844 first (`:99`, `PHONE` at `:29`), so on the
+desktop project too the layout's strip is `hidden lg:block` → `display: none`, outside the accessibility tree, and
+`getByRole("link", { name: "الخصوصية والبيانات" })` matches the top row's link alone. **No change and no ledger line in
+PR A.** Should the e2e run show a second match after all, it is scoped to `#main`'s top row and becomes a selector line.
