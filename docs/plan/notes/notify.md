@@ -3809,3 +3809,21 @@ copy trim.
 **Two more from the lead.**
 - **D12, final:** `029` wears the layout's desktop strip from `lg` with nothing current. There's no layout exception, because settings is not one of the hub's pages.
 - **Grant:** three test files are mine this wave: `tests/e2e/wave7-content-notifications.spec.ts`, `tests/e2e/wave7-content-calendar.spec.ts` and `tests/components/me/calendar-page.test.tsx`. In each I change only the assertions §W6 and §W9 name. Each change lands in the commit that rebuilds `025` (PR A) or `026` (PR B), with its ledger line in `STATUS.md` in the same commit. `profile-page.test.tsx:190` stays content's.
+
+### W10. The lead's rulings on the open D-items (provisional until sync 1 closes)
+
+- **D4 — no swatch.** No calendar DTO carries a poster, and a failed row reads without one. Recorded against `Calendar.dc.html`'s leading block. Because the `action` row's `leading` slot now has no caller, I drop it from `SettingsActionRow` rather than ship an unused prop.
+- **D7 — (a), extended.** Each item is one `<form>` whose button marks that notification read.
+  - An item with a session then redirects to `/app/sessions/<id>`, under the label «فتح الجلسة».
+  - An item without a session stays on the inbox, marked read. ★ My reading of the label: while unread, the button is «تعليم كمقروء» (the existing `inbox.markRead`). Once read, an item without a session has no control at all, because nothing is left to do.
+  - It works without JS (a `useActionState`-free plain action, redirect on success), and «تعليم الكل كمقروء» stays.
+  - This decides `wave7-content-notifications.spec.ts:99` and `:102-103`. The «غير مقروء» text stays for assistive tech, so `:99` keeps passing as a selector. `:102`'s click on «تعليم كمقروء» still finds the button, because the seeded item carries no session. Both get named in the PR-B ledger lines.
+- **D8 — build the paging.** It adds `listInbox(locale, { unreadOnly, before })`, an add-only keyset on `(created_at, id)` with a `nextCursor`.
+  - «عرض الأقدم» is a link carrying `?before=<cursor>`, and it keeps `unread=1` when that is set.
+  - Unit test: two rows that share a `created_at`, split across the page boundary, each listed exactly once.
+- **D9 — my own `components/notifications/inbox-item.tsx`,** shaped like `feed-item`. No request to `content`, and no change to any primitive.
+- **D10 — as written.** The catalogue title, the payload's detail line, and the change lines. No new body string per key. The date group follows the item's own day in the org's zone.
+- **D11 — `title` stays the accessible name.** `029` passes `showTitle={false}`. `025` passes `false` for the connection row's group too, because its artboard draws no title over it. The «لم تُضف» list is titled by its own `section-header`, so that group also takes `showTitle={false}` and `aria-labelledby` points at the section's `h2`.
+- **D13 — one neutral ring** (`border-edge-strong`) for every category, `aria-hidden`.
+- **C18 — fixed in PR A, with `025`.** `api/calendar/{connect,callback}` take the locale from the request rather than `/ar`: a `locale` query parameter set by `025`'s «اربط» link and carried through the OAuth `state` cookie. Unit test: an `en` start returns to `/en/app/me/calendar`. Today `/en/app/*` then redirects to Arabic in `proxy.ts`, which is the proxy's job and not this route's. `src/app/api/calendar/{connect,callback}/route.ts` join my edit list for this fix only.
+- **C7, C16, P17** stay as listed and go to the copy trim, for the lead once the owner answers.
