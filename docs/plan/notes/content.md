@@ -6589,7 +6589,7 @@ certificates,certificates-empty,bookmarks,bookmarks-undo,bookmarks-empty}-390.pn
 | `tests/components/me/profile-form.test.tsx` (all six cases) | imports `ProfileForm` | **the file goes with the component**; each case re-asserted against `profile-edit` in `profile-wave20.test.tsx`, one ledger line each | `DEC-208` |
 | `tests/components/me/certificates-page.test.tsx:56-60` | serial in `<bdi dir="ltr">`; «صالحة» | **expectation** — no serial, no «صالحة» | C10, C13 |
 | `…:63-66` | the reason is shown | **expectation if D5 rules the reason off the list** | C5 |
-| `…:69-72` | «الشركة قيد التجهيز» | **expectation** → «قريبًا» | C4, D6 |
+| `…:69-72` | «الشهادة قيد التجهيز» | **expectation** → «قريبًا» | C4, D6 |
 | `tests/e2e/wave7-content-me.spec.ts:106` | `h1` «ملفي» | **expectation** → `h1` «حسابي», `h2` «ملفي» | P17 |
 | `…:108-109`, `:122-145` | fields filled on load; «حفظ» | **selector** — press «عدّل ملفك» first | read mode has no input |
 | `…:144-145` | `getByLabel("الشركة")` has the saved value | **expectation** → the read row shows the company's name | P9 |
