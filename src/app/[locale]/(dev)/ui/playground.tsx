@@ -142,7 +142,7 @@ const DEMOS: { file: string; title: string; node: (ground: DemoGround) => ReactN
   { file: "feed-item", title: "عناصر الخلاصة", node: () => <FeedItemDemo /> },
   { file: "attendee-stack", title: "من يحضر", node: () => <AttendeeStackDemo /> },
   // ── wave 19 (DEC-213, DEC-214): the four batch B needed ──
-  { file: "star-input", title: "تقييم بالنجوم", node: () => <StarInputDemo /> },
+  { file: "star-input", title: "تقييم بالنجوم", node: (ground) => <StarInputDemo ground={ground} /> },
   { file: "stepper", title: "مراحل العملية", node: () => <StepperDemo /> },
   { file: "page-viewer", title: "عارض الصفحات", node: () => <PageViewerDemo /> },
   { file: "badge-medallion", title: "وسام الشارة", node: () => <BadgeMedallionDemo /> },
