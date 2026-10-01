@@ -5843,3 +5843,151 @@ passed unchanged or with ledger lines. ★ **But their kept-behaviour tables are
 owner's note**, so the reviewer has for PR A what PR B will have by construction.
 
 - **Documents changed:** `CLAUDE.md`, `.claude/agents/*.md`, `docs/plan/TEAM.md`, `15-backlog.md`, `14-roadmap.md`, `STATUS.md`
+
+---
+
+## DEC-209 — Wave 18, PR B, sync 1: three plans approved, each with its kept-behaviour table before any deletion; the rulings the event, check-in and the host view are built on
+
+- **Date:** 2026-09-30 · **Decided by:** the wave-18 lead, on the plans of `sessions` (`c2418391`, `714dbedb`), `content` (`ac2b7516`, `01abc40f`) and `checkin` (`ee275f43`); `DEC-205` and `DEC-208` are not re-opened
+- **Adds, from the plans:** a live producer for the host's count (`REQ-CHK-001`, never built) and the named conflicting session (`REQ-CHK-013`, never read) — both requirements already defined, both behind in the tree
+
+### 1 · What the readings found
+
+| Found by | What | Ruling |
+|---|---|---|
+| `checkin` | ★ **`REQ-CHK-001`'s live count has no producer**: `0016` authorises a `host:` topic and `channel.ts` exports `subscribeToHostTopic()`, but nothing sends and nothing subscribes; the host's code is stale until a reload | **Build it**: a broadcast trigger that sends a poke naming no member, proposed under `supabase/proposed/checkin/`, `security definer`, tested as a member, promoted by the lead; the screen coalesces pokes into a refresh. A one-second display clock for the rotation countdown is a display, not a nudge on a pending control (`DEC-146` holds) |
+| `checkin` | **`REQ-CHK-013`**: `?conflict=` is carried and never read | **Build it**: the refusal names the conflicting session |
+| `content` | ★ «للاستماع فقط» with download off: a member cannot fetch the file, and streaming *is* fetching (`REQ-MAT-005`, `0116`) | **The play control shows only to a viewer who may fetch the file.** A listen-only path for members is new scope, and the owner's |
+| `content` | a live comment's company and «المُقدِّمة» are absent from the realtime payload | **Widen `comments_broadcast()`**, proposed by `content`, promoted by the lead; a company's name is org-readable already |
+| `sessions` | «لفريقك» is not computable — a member cannot read who attends | **Not built** |
+
+### 2 · The rulings
+
+**The shell (the lead's).** At `lg` the shell's bar shows on the event page, check-in and the host view (`EventDesktop.dc.html` draws it); **below `lg` each draws its own top row** and the shell's gives way (`ownsTopRow()` extended). `<main>` clears the bottom `action-bar` on `SCR-012` and `SCR-014`. `media-src` admits the storage origin (`proxy.ts`). A play glyph and a monitor glyph join `ui/icons` **last, alone, under contract 5's proof**.
+
+**`sessions` — `SCR-012`.** Two primaries on the phone are allowed: `REQ-UIX-061` says the primary is also in the bottom bar. Each phase's section order follows its artboard. The ended ribbon keeps `DEC-073`'s status words, not «مكتملة». The deadlines line shows to everyone («stated plainly», `09`). «شاهد القصة» shows its state and opens nothing (`DEC-205`). «شاهد ملخصك» is not built — no screen. The tasks section is `content`'s, rebuilt with the other slots; the rate CTA is `sessions'`; the rate screen stays out. The outcome card's count-up **reuses** `scoring`'s moment-3 mechanism, keyed `completion:<entry>` — never a copy; `scoring`'s add-only `occurrenceId` and `paidAt` on the paid state, and the presenter's award drawn only where it exists. Attendance does not feed the company board.
+
+**`content` — the slots.** The delete boundary is approved: the six files that draw the slots go; the components with their own behaviour and tests (the lightbox, the upload widget and form, the takedown button, the album control, the settings form) stay. Playing is a preview, not a download — **not audited** (`DEC-178`). A string that exists keeps its words («أضف صورة», «أزلني», the like's name) — `M10a.md`: copy from `messages/ar/` first. The composer keeps a visible send. A download glyph only where download is allowed. «افتح الألبوم» opens the lightbox. A video is a link, never an embed.
+
+**`checkin` — `SCR-014`, `SCR-016`.** The defaults of D1 – D11 stand: the rate-limited message states no duration it cannot know (the envelope carries none; `check_in()` is not changed); the mini-row says the start time, not a relative one; the switch works before live as the matrix says; the view stays awake while live, projecting or not; the `h1` and the submit keep the catalogue's words; the walk-in policy sentence goes, and «no reservation needed» stays on the rules line when true (`DEC-206` §4.76); the primitive's accent for a complete code; the code shown while the switch is closed, with its hint. `moment-check-in.tsx` is **kept** — the moments' keying is frozen. `CodeInputProps.align` and `getAttendanceRulePoints()` are `sessions'` add-only changes. ★ **The refused code does not shake** until the owner rules (`DEC-206` §4.75).
+
+### 3 · The order
+
+Every track deletes in its first commit and writes in its second (`DEC-208`); the lead lands the shell's changes and the CSP first; the SQL is promoted before the screens that read it; the glyphs last.
+
+- **Documents changed:** `STATUS.md` (S-B1)
+
+---
+
+## DEC-210 — A correction to `DEC-209`: attendance DOES feed the company board, so «لفريقك» is drawn — as a rule, never as a figure
+
+- **Date:** 2026-09-30 · **Decided by:** the wave-18 lead, on `scoring`'s reading of `b894a0a8`
+- **Corrects:** `DEC-209` §1 (««لفريقك» is not computable — not built») and §2 («Attendance does not feed the company board»)
+
+**What was wrong.** `DEC-209` ruled that attendance does not feed the company board, and so that the desktop event page's
+«لفريقك» note was not built. **`scoring` measured otherwise:** `snapshot_leaderboard()` (`0081:627–660`) sums each
+company's members' `points_ledger` rows, `check_in` among them; and `company_attendance_pct` (`0081:352, 374`, the
+company-points rule `DEC-060` era) credits a company for the share of its active members who checked in. So the
+artboard's sentence — «حضور صنف لهذه الجلسة يرفع نسبة مشاركتها في سباق الشركات» — is **true whenever that rule is
+enabled**. The lead conflated it with «who attends», which a member cannot read (A33 rule 3) and which stays unbuilt.
+
+**The ruling.** The note is built on the desktop event page for a member who has a company, **only when the org's
+`company_attendance_pct` rule is enabled**, and it says the rule, never a figure: «حضورك يرفع نسبة مشاركة <company> في
+سباق الشركات». **No «الجولة 3»** (there are no rounds, `DEC-206` §4.50), no count of who is attending, no company's
+standing — nothing a member cannot read. With the rule off, or no company, nothing is drawn.
+
+**Why it is recorded.** The lead's measurement stopped one step short again (`DEC-207` §1's pattern): «attendance is
+points» was checked against the member ledger and not against the company board's own rule. A reading by the track
+that owns the ledger found it.
+
+## DEC-211 — PR B's close: two `ui-lint` escapes approved, four disagreements recorded, and what the real builds found
+
+- **Date:** 2026-10-01 · **Decided by:** the wave-18 lead, at PR B's verification (`STORY-UIX-048` … `050`)
+- **Records:** the lead's written approvals `CLAUDE.md` asks for; four artboard disagreements under `DEC-206` §4's rule
+  (a new one is written, nobody picks a side); the defects only a production build showed
+
+**1. Two `ui-lint` escapes, approved in writing.** `ui-lint --strict` has no allowlist; an escape needs a reason the lead
+approves. Both are the case the escape hatch exists for — a control the system cannot express:
+- `src/components/materials/audio-row.tsx` — the audio player's scrubber is a native `<input type="range">` outside
+  `<Field>`. There is no slider primitive, and a native range **is** the keyboard control `REQ-MAT-007` asks for; it is
+  named by `aria-label` and valued by `aria-valuetext`.
+- `src/components/photos/upload-widget.tsx` — the add tile's file input, visually hidden inside its own `<label>` (the
+  tile **is** the label, «إضافة صورة»); `file-drop`'s zone and button cannot be drawn as one grid square.
+
+**2. Four disagreements between the artboards and the plan — recorded, not picked.**
+1. **The ended poster is washed** (`grayscale opacity-45`) — `DEC-123` item 1. `EventDone.dc.html` draws it in full
+   colour. **The plan wins; the wash stays.**
+2. **The ended poster carries no «حضرت» sticker** — `EventDone.dc.html:30` draws one. On a rendered poster no sticker is
+   drawn (`DEC-206` §4.46); on the placeholder, `REQ-UIX-031` says a sticker is never a status, and the outcome card
+   already says whether the viewer attended (`REQ-UIX-015` ask 4). **Not built.**
+3. **The check-in row draws the rendered poster or nothing** — `CheckIn.dc.html` draws a thumbnail. The typographic
+   placeholder at 44 × 56 would need the presenter's company (a read the screen does not make), would set its title
+   at 9 px, and would make the room's most time-critical input wait on a picture. **Not built.**
+4. **An ended session does not repeat «الحضور في القاعة فقط»** — `EventDone.dc.html` has no icon rows. `REQ-SES-008`'s
+   acceptance holds: no remote affordance is offered anywhere.
+
+**3. What only the real builds found** (every one fixed in PR B, each with its test):
+- **Every event page rendered its error boundary** — `getPhotosPageData()` embedded `members` without naming the
+  foreign key, and `photos` has two (`uploader_id`, `removed_by`); PostgREST refused it as ambiguous. The component
+  suites mock the DAL, so only a real request could see it (`01fc703a`).
+- **A tap on the host's switch before hydration was lost** — the native checkbox flipped and nothing was submitted, so
+  it read «closed» while the door stayed open; 7 of 20 on the phone (`aeb6612c`).
+- **A private realtime channel lost its first ~6 s** — the first `phx_join` went out with no token and was refused; the
+  rejoin landed ~6.4 s after load. A live comment, a photograph (which arrived only by the upload widget's 20 s
+  fallback) and `0166`'s host poke were all lost in that window. `setAuth()` now precedes `subscribe()` (`231677d0`).
+  Found by `content`'s real-worker run; the file predates wave 18.
+- **Focus clearance misread a control straddling the viewport's bottom edge** — its middle below the action bar's, so
+  the bar counted as a cover from above and nothing scrolled (`SC 2.4.11`, `336f710e`). Found by `sessions`.
+
+**Why it is recorded.** Three of the four defects were invisible to every mocked suite and to CI's unit gates, and each
+was found by an owner holding a real build — the reason `DEC-199` §2's rebuilds are verified on a production build and
+never by the component suites alone.
+
+## DEC-212 — The wrong check-in code shakes, once; and what wave 18's four migrations are
+
+- **Date:** 2026-10-01 · **Decided by:** the owner (§1); recorded by the wave-18 lead (§2)
+- **Amends:** `REQ-UIX-046`'s acceptance, by name, as `DEC-206` §4.75 said a yes would · **Resolves:** `DEC-206` §4.75
+
+**1. The ruling (the owner).** A wrong code **may shake**. `M10a.md` §8 specifies it and the brief already ruled it: a
+system failure is the server refusing, a typo is the member mistyping, and **the shake is input feedback, not a failure
+animation**. `REQ-UIX-053` (the console takes none of the playground's motion) is not touched by it, and neither is
+`DEC-183` §2's rule that a failure never animates — a typo is not the system failing. The screen is built to its
+drawing **before #39 merges**, because the wave's acceptance is each screen held beside its artboard.
+
+What is built, from `M10a.md` §8 and the house's motion rules:
+- On a **refused code** (`invalid_code`), the six boxes **shake once**, horizontally: `transform` only, a duration from
+  the tokens, no overshoot of scale, and nothing else on the screen moves.
+- **Under reduced motion there is no shake**: the coral border and the message — which is what was built before this
+  ruling, and stays the complete static state.
+- **Only the mistyped code shakes.** A rate limit (`DEC-090`), a closed door, an ended session, a conflict
+  (`REQ-CHK-013`), a network failure or any server error does **not** — those are the system refusing, and wave 16's rule
+  stands for them.
+- It plays **once per refused submission**: a second wrong code shakes again; a re-render, a reload of the refused page
+  or a back navigation does not replay it.
+
+`REQ-UIX-046`'s acceptance line «A refused code does not animate» now reads: «**A mistyped code shakes the boxes once —
+input feedback (`DEC-212`); under reduced motion it is the coral border and the message alone. Every other refusal does
+not animate.**»
+
+**2. Wave 18's four migrations, for a later reader.** The brief planned one (`0164`); the wave carries four. All four
+are additive, rehearsed on the production schema dump on 2026-10-01 (`STATUS.md`, «The owner's order (wave 18)»), and
+clean.
+- **`0164_feed_announcements`** (PR A, the lead, `REQ-UIX-056`) — **the one new table**: an org's announcements for the
+  home feed. `org_id`, RLS, five policies (members read the published, admins write), a grant per policy, `UPDATE` on
+  three columns only. Nothing writes it yet; there is no authoring screen (`DEC-206` §3).
+- **`0165_home_counts`** (PR A, the lead as `checkin`'s custodian, with `scoring`'s function) — **two read-only
+  `security definer` counts**: `session_attendance_count(session)`, how many attended, never who (A33 rule 3,
+  `DEC-206` §4.54, for the feed's recap and the event page); and `monthly_ranked_count(snapshot)`, how many members a
+  monthly board ranks, for «#4 من 31» on the week (`DEC-206` §4.47). Neither writes; both are `authenticated` only.
+- **`0166_check_ins_host_broadcast`** (PR B, `checkin`, `REQ-CHK-001`) — ★ **a trigger inside the check-in path**, the
+  product's most sensitive write. After every insert on `check_ins`, and every update of its `removed_at`, it calls
+  `realtime.send()` with `{dayId}` on the private topic `host:<session>`, so the host view's count updates live (`0016`
+  authorised the topic and nothing ever sent to it). **Why it cannot break a check-in:** it is `AFTER … FOR EACH ROW`,
+  writes nothing to any `public` table, names no member, and `realtime.send()` catches every error itself and raises
+  only a `WARNING` — proved on the rehearsed schema, where a member's real `check_in()` ran through it. Its function
+  is `security definer`, `search_path = ''`, executable by no client role. Only staff and that session's presenters
+  may read the topic (`0016`'s `realtime_host_select`).
+- **`0167_comments_broadcast_author_context`** (PR B, `content`, `REQ-EVT-015`) — `comments_broadcast()` re-created as
+  `0157` left it **plus three payload keys** (the author's company, its team colour, whether the author presents the
+  session), so a comment that arrives live draws what a reloaded one does. No key removed; `main`'s client reads only
+  the keys it knew.

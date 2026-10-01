@@ -1,4 +1,4 @@
-**Last updated:** 2026-09-30 · **Branch:** `wave-18a/the-frame` — ★★ **wave 18, PR A (#38): BUILT AND VERIFIED — for the owner to rehearse, push, merge** · **`main`:** `42a14ba0`; production at **`0163`**; this PR carries **`0164`** (`feed_announcements`) and **`0165`** (two counts) · **Phase:** ★★ **WAVE 18 — M10a (`DEC-205` … `DEC-208`, M20)**. PR A rebuilt the shell (five tabs, the rails), the door (`SCR-002`/`003`/`004`), the public card (`SCR-007`), home as the feed (`SCR-010`) and browse (`SCR-011`) from their artboards, with four new primitives. ★ **`DEC-208` (the owner, mid-wave): from PR B on, a screen's page file is DELETED first, then written — with a kept-behaviour table per requirement.** ★★ **PR B (`SCR-012`, `014`, `016`) is next and is opened against `main` from its first push.** ★ **For the owner, before PR B builds `SCR-014`:** may a refused check-in code shake (`DEC-206` §4.75)? The next decision is **`DEC-209`**; migrations continue at **`0166`**.
+**Last updated:** 2026-10-01 · **Branch:** `wave-18b/the-event` — ★★ **wave 18: PR A (#38) MERGED (`65d3dec7`); PR B (#39) is finishing the one change the owner ruled** · **`main`:** `65d3dec7`; ★ **production at `0167`** — the owner pushed `0164` – `0167` after the rehearsal (`supabase migration list --linked` reads `0167` on both sides), so `0166`'s trigger and `0167`'s payload keys are live under `main`'s app, which is the gap the rehearsal proved harmless · **Phase:** ★★ **WAVE 18 — M10a (`DEC-205` … `DEC-212`, M20)**. ★ **The owner ruled `DEC-206` §4.75 (`DEC-212`): a mistyped check-in code shakes the boxes once** — input feedback, not a failure animation; reduced motion keeps the coral border and the message; every other refusal stays still. `REQ-UIX-046` is amended by name; the keyframe is in (`8d362089`); `checkin` builds the screen, and **#39 merges after it is verified**. `DEC-212` §2 also records what the wave's four migrations are — ★ `0166` puts a trigger inside the check-in path, and why it cannot break one. **The next decision is `DEC-213`; migrations continue at `0168`.**
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -100,10 +100,15 @@ is ever found based on A: retarget it to `main` BEFORE A is merged with `--delet
 
 | # | Row | Owner | State |
 |---|---|---|---|
-| B0 | B's Step 0: the branch cut from A's head, **the PR opened against `main`**, `DEC-206` §4.66 – §4.77 re-measured, the map for `sessions`, `checkin` and `content`'s slots | lead | todo — after A's frame is in |
-| B1 | ★ **`SCR-012`, the event page, rebuilt** — three phases and desktop (`REQ-UIX-061`, `STORY-UIX-048`) | `sessions`, `content` | todo |
-| B2 | ★ **`SCR-014`, check-in, rebuilt** (`REQ-UIX-062`, `STORY-UIX-049`) — ★★ the shake waits for the owner | `checkin` | todo |
-| B3 | ★ **`SCR-016`, the host view, rebuilt** (`REQ-UIX-062`, `STORY-UIX-050`) | `checkin` | todo |
+| B0 | B's Step 0: the branch cut from A's head, **the PR opened against `main`**, `DEC-206` §4.66 – §4.77 re-measured, the map for `sessions`, `checkin` and `content`'s slots | lead | **map written** (`CLAUDE.md` § *Wave 18, PR B*, three agent files); branch `wave-18b/the-event` cut from A's head `db12b9ba`; the PR against `main` at this push; teammates spawn planning-only |
+| S-B1 | **PR B's sync 1** — three plans with their kept-behaviour tables | lead | **DONE — `DEC-209`**: 37 + 37 + 31 kept rows; two requirements found never built (`REQ-CHK-001`'s live count, `REQ-CHK-013`'s named conflict) — built in B |
+| B1 | ★ **`SCR-012`, the event page, rebuilt** — three phases and desktop (`REQ-UIX-061`, `STORY-UIX-048`) | `sessions`, `content` | **DONE** — `sessions`: deleted `4a45c008`, written `9bf3aced`, then `cb1a1317` … `2e5d0e35` (the desktop action row as drawn, the duration chip from `lg`, no materials jump), `5aeb22f2` (the ended wash keeps a placeholder's text at AA); «لفريقك» as a rule (`DEC-210`). `content`: its slots deleted `45192df2`, written `32d9e258`, the photos embed `01fc703a`, the audio row as drawn `e62d83a3`/`eee15943`, the dimmed placeholder `46ab140b`. Held beside `Event`, `EventLive`, `EventDone`, `EventDesktop` at CSS size, in bands; what differs is `DEC-211` §2 |
+| B2 | ★ **`SCR-014`, check-in, rebuilt** (`REQ-UIX-062`, `STORY-UIX-049`) | `checkin` | **DONE** — deleted `60d83d51`, written `ccdf98d4`; `REQ-CHK-013` names the conflicting session. ★ **The owner ruled the shake (`DEC-212`)**: a mistyped code shakes the six boxes once — `globals.css`' `code-shake` (`8d362089`), `code-input`'s add-only `boxesClassName` (`c4fe2d18`, `d1d5517a`), the screen (`e18f9425`), and ★ the count moved into the route's layout (`ec672b6b`) because the refusal's redirect remounts the page — **only a real build showed it**. Verified on a build of `ec672b6b`: `wave18-checkin-screens` **10/10**, `wave16-checkin-moment` 6, `checkin` 12, `wave9-checkin-days` 6, the a11y sweep 4. Under reduced motion: the coral border and the message. Held beside `CheckIn.dc.html`; the row draws the rendered poster or nothing (`DEC-211` §2.3) |
+| B3 | ★ **`SCR-016`, the host view, rebuilt** (`REQ-UIX-062`, `STORY-UIX-050`) | `checkin` | **DONE** `ccdf98d4` → `26843652`, `eb976fb5`, `aeb6612c` (the switch takes a tap only once hydrated — a tap before was lost, 7 of 20); the monitor glyph `c46d586b`. ★ **`REQ-CHK-001`'s live count has its producer, `0166`, and it now arrives**: `231677d0` gives the private join its token. Held beside `Host.dc.html` at 390 and 1280 |
+| B-X | ★ **Contract 5 for PR B's glyphs** — `e7017f71` (`PlayIcon`, `MonitorIcon`), the one public-site file B touches, last and alone | lead | **DONE on a production build of `aa85b6ee`**: `qa` **57/57**; `public-graph` green; the register-form fingerprint **byte-identical** to `main.json` (`cmp`, `.qa-shots/fingerprint/branch-e7017f71.json`); `git diff 42a14ba0` over `(marketing)/**`, `public/**`, the thirteen marketing components, `button`, `field`, `input`, `textarea`: empty. `visual` `wave18b-e7017f71`: the six public pairs **0.000 %** against PR A's `wave18-0b39e29e`, and against `main`'s `wave18-main` the same as PR A — four at 0.000 %, `phone_ar`/`phone_en` at 0.002 % (the anti-aliasing PR A measured). **Not re-baselined.** The gallery moved on purpose — two glyph tiles, `code-input`'s `align` — desktop `+244 px`, phone `+574 px`; the icon tiles opened at native resolution. **The gallery's baseline is now `wave18b-e7017f71`** |
+| B-E | **PR B's specs on the build** — `wave18-{sessions-event,checkin-screens,content-event-slots}` and the evidence specs they move | owners, lead | ★ **GREEN on a production build of `f05e4cf5`, every spec run SERIALLY by the lead** (`--workers=1`, nothing else on the worktree): the three wave-18 specs; `event-page` 9, `sessions-screens` 2, `wave16-sessions-reserve` 9, `checkin` 12 (`:251` then 20/20 alone), `wave9-checkin-days` 6, `materials` 6, `photos` 4, `tasks` 4, `wave10-content-photos-takedown` 2, `wave6-discussion-review` 1, ★ `event-comments` **6/6** (its `:116` failed on `main` too and is fixed by `231677d0`), and ★ `wave9-content-photo-worker` **6/6 with the REAL worker** (`kareem-worker:wave18b`, built from this branch) — the photograph now arrives in 2–3 s by the broadcast, where it came by the 20 s fallback before `231677d0`. The one `?switchError=unknown` in the loop was a Kong `502` (`Connection reset by peer`) at the same second, across unrelated reads — the machine ran THREE Supabase stacks. What the builds found is `DEC-211` §3. ★ **The runs are the lead's alone**: three teammates' concurrent runs had restarted the one server on port 3000 under each other |
+| B-A | **The a11y sweep over PR B's screens** — `tests/e2e/wave18-lead-event-a11y.spec.ts` (new): the event page open, live and ended, check-in with and without a refused code, the host view, the feed, browse's past and the public card, with a cancelled session, at 390 and at desktop, after every streamed region | lead, `sessions`, `content` | **DONE — 0 serious or critical on every page, both projects**, on a build of `e7058e64`. It found one: the ended wash (`opacity-45`) faded a placeholder poster's text to 3.83 – 3.97 : 1 — fixed on the event page and the public card (`5aeb22f2`) and on `card`'s `dimmed` and the cancelled feed post (`46ab140b`): an image keeps `DEC-123`'s wash, a placeholder is `grayscale` only |
+| B-L | **Two `ui-lint` escapes, approved in writing** — `materials/audio-row.tsx` (the scrubber: no slider primitive; a native range is `REQ-MAT-007`'s keyboard control) and `photos/upload-widget.tsx` (the add tile's file input hidden inside its own label — the case the escape hatch exists for) | lead | **approved — `DEC-211` §1**; both comments cite it (`17e2a6a8`) |
 
 ### Sync 1 — what the three plans must answer
 
@@ -125,9 +130,81 @@ is ever found based on A: retarget it to `main` BEFORE A is merged with `--delet
 - **Level-ups in the feed** need a history table; **learning objectives** need their column. Both are new scope.
 - **The weekly rank, the streak skip and the «round»** are drawn and not built; the week says the month.
 - ★★ **The acceptance**: each rebuilt screen held beside its artboard on a phone.
-- **The owner's order for A**: rehearse `0164` on a production schema dump · push the migration · merge with CI
-  read from the run's own conclusion on the PR head · reconnect Railway and wait for a status with no suffix —
-  ★ **and B is already based on `main`, so deleting A's branch closes nothing.**
+- **The owner's order** for A and B is the section below.
+
+### ★ The owner's order (wave 18) — step 1 DONE 2026-10-01
+
+1. ✅ **Rehearsed 2026-10-01 by the lead on the owner's production schema dump** (taken at `0163`; `public` +
+   `graphile_worker`, 84 public tables, **no data rows** — zero `COPY`/`INSERT`; `member_seen_marks` present,
+   nothing of `0164`–`0167`).
+   - **Setup.** A throwaway database, `rehearse18`, in the local cluster, owned by `postgres` with `public` owned by
+     `pg_database_owner` **as in production**, over the local `extensions` (the nine, created as `supabase_admin`),
+     `auth`, `storage`, `realtime` and `vault` schemas. The 16 `storage`/`realtime` policies that name `public`
+     objects were re-applied once the dump had loaded (17 there, as local). Copied, because a schema-only dump drops
+     them and production has them: 8 bucket rows, `graphile_worker.migrations`' 20, `retention_periods`' 7.
+   - **Loading the dump: one error, platform-only** — the `supabase_realtime` publication, as in waves 12 – 16.
+   - **Migrations:** `0164`, then `0165`, `0166` and `0167`, **each applied in one transaction with `ON_ERROR_STOP`,
+     as `postgres` — all four ok.**
+   - **End state against the fully migrated local database (`0167`):**
+
+     | Compared | local | rehearsed |
+     |---|---|---|
+     | Public function bodies, by hash | 310 | 311 |
+     | Policies in `public`, `storage`, `realtime` | 277 | 277, identical |
+     | Triggers in `public`, `storage`, `auth`, `realtime` | 116 | 116, identical |
+     | Client-role table grants (`public`, `storage`, `graphile_worker`) | 264 | 264, identical |
+     | Client-role column grants | 2,091 | 2,091, identical |
+     | Function execute grants (three client roles and `PUBLIC`) | 349 | 350 |
+     | Buckets | 8 | 8, identical |
+
+     ★ **The only difference is production-only and expected:** `rls_auto_enable()`, Supabase's own event-trigger
+     function, in no migration — one body and its default `PUBLIC` execute grant, as in waves 15 and 16. (The counts
+     differ from wave 16's because this comparison reads every policy row and column grant in the three schemas, the
+     same query on both sides.) Every body `0164` – `0167` creates or replaces **hashes identically** to local.
+   - ★★ **`feed_announcements`' five parts, proved on the REHEARSED schema** — the first new table in four waves:
+     1. **`org_id uuid not null`**, `references orgs(id) on delete cascade`; `author_id` not null, `references members`.
+     2. **RLS enabled.**
+     3. **The full policy set, every command answered**: `SELECT` — `read_published` (a member, own org, published and
+        unexpired) and `admin_read` (an admin, own org, everything); `INSERT` — `admin_insert` (own org, admin, the
+        author is the caller); `UPDATE` — `admin_update` (own org, admin, using and check); `DELETE` — `admin_delete`.
+        `anon` has no policy at all.
+     4. **A grant for every policy**: `authenticated` holds `SELECT`, `INSERT`, `DELETE` and **`UPDATE` on three columns
+        only** (`body`, `published_at`, `expires_at`); `anon` and `service_role` hold **nothing**. Production's
+        default ACL hands every new table `Dxtm` to the three client roles; `0164`'s `revoke all` removed it — proved.
+        ★ **And by its absence — `42501`, never an empty result**: `anon` `SELECT` → `42501`; `anon` `INSERT` →
+        `42501`; `service_role` `SELECT` (it bypasses RLS, but holds no grant) → `42501`; `authenticated`
+        `UPDATE … set org_id` → `42501`; `UPDATE … set author_id` → `42501`. Against them, the granted paths answer
+        quietly: `authenticated` `SELECT` → 0 rows; `UPDATE … set body` → 0 rows under RLS.
+     5. **Its test, green on the rehearsed schema**: `tests/rls/feed-announcements.test.ts`, 10/10.
+   - ★ **The isolation sweep picked it up with nobody adding a case** — it is generated over `pg_tables`:
+     `isolation.test.ts > a member of org A selecting with no org predicate > feed_announcements: sees zero rows of
+     org B` ✓ on `rehearse18`.
+   - **The wave's database suites against the rehearsed end state: 150 of 151** (`feed-announcements`, `isolation`,
+     `definer-exposure`, `tenancy`, `attendance-count`, `checkin-host-broadcast`, `comments-broadcast-author`,
+     `realtime`, `scoring-week`). The one red is `definer-exposure` listing `rls_auto_enable()`, the production-only
+     difference above.
+   - ★ **The gap — push before merge — proved, not asserted.** On `origin/main` (`42a14ba0`), `feed_announcements`,
+     `session_attendance_count`, `monthly_ranked_count`, `check_ins_host_broadcast` and the three new comment-payload
+     keys appear in **zero** files of `src`, `worker`, `packages`, `supabase`, `scripts` or `tests`. On the rehearsed
+     schema `feed_announcements` has **no function that names it, no dependent view, no foreign key pointing at it**,
+     and one trigger of its own (`updated_at`, on its own updates); it holds **0 rows**. Its keys cascade from `orgs`
+     and `members`, so `main`'s `delete_org` in the gap deletes from an empty table. **On `/app` in the gap a member
+     sees exactly today's screen**: `main`'s `app/page.tsx` renders `SessionsTimeline` — the sessions timeline, no
+     feed, no announcement. `0166`'s trigger fires inside `main`'s own `check_in()`, and `realtime.send()` catches any
+     error as a `WARNING`, so **a check-in on `main` cannot fail by it** (and `checkin-host-broadcast` drove a real
+     `check_in()` on the rehearsed schema, green); its poke lands on a topic `main` subscribes to nothing on. `0167`
+     adds payload keys `main`'s client never reads.
+   - **Cleaned up:** the dump, `rehearse18` and the rehearsal's copies of the local schemas are deleted.
+   - ★ **CI read with `gh pr checks`, not local gates** (`DEC-192`): **#38** at `db12b9ba` — 13 checks pass, its run
+     `36773681949` **concluded `success`**; **#39** at `d284c29b` — 13 checks pass, its run `36788853455` **concluded
+     `success`**. Both heads are the branches' remote heads; both PRs `MERGEABLE`, base `main`.
+2. ✅ **Pushed `0164` – `0167`** (the owner): `supabase migration list --linked` reads `0167` on both sides.
+3. ✅ **Merged #38** (the owner) at `65d3dec7`. ★ The `git pull` that followed ran with `wave-18b/the-event` checked out and made a merge commit there (`338a55c1`) — content-neutral, A's head was already in B.
+4. **Merge #39** — ★ **after `DEC-212`'s shake is built and verified** — its diff is B's alone now #38 is in: `gh pr checks 39` on its head after GitHub rebases the diff, then
+   merge, with the branch deleted.
+5. **Reconnect Railway**: `railway service source connect`, then `railway status` until it reads `● Online` with **no
+   suffix**, and the worker's log says «LISTEN/NOTIFY probe OK».
+6. **The phone check — the acceptance**: on the deployed build, each rebuilt screen held beside its artboard.
 
 ### Carried — not this wave
 
@@ -162,6 +239,35 @@ says whether a **selector** moved or an **expectation** did.*
 | `tests/e2e/timeline.spec.ts` :171 | **expectation** — «a filter on `/app` lands on `/app/sessions`» is gone with `/app`'s filters; the case now picks a category from browse's menu and lands on `?category=` | ruling 3, `DEC-207` N4 |
 | `tests/e2e/timeline.spec.ts` :182 | **expectation** — the empty case is `/app/sessions`', not `/app`'s | ruling 3 |
 | `tests/components/browse/fixtures.tsx` | the `timeline()` fixture gains `endedCount: 0` and `attendancePoints: 20` — no assertion | `TimelineData`'s two add-only fields |
+| `tests/rls/realtime.test.ts:60,62` (the lead, promoting `0166`) | **selector moved**: the host topic's count reads `event = 'probe'` | `0166` makes the fixture's own check-in poke `host:<session>`, so the topic now holds the probe and a `check_in_count` message. Who may read the topic — the presenter and staff, never a checked-in member or org B — is unchanged |
+| `tests/components/checkin/check-in-screen.test.tsx:74, 89, 103` (`checkin`) | **selector moved**: the group's name `رمز الحضور` → `أدخل رمز الحضور الذي أعلنه المُقدِّم` | `SCR-014` rebuilt: the prompt is the one visible label (`CheckIn.dc.html`) |
+| `tests/e2e/checkin.spec.ts`, the switch case (`checkin`) | **selector moved**: the «مفتوح/مغلق الآن» text and two buttons → `getByRole("switch")` checked / not, a click on its label | `SCR-016`: the door is a switch |
+| `tests/e2e/wave9-checkin-days.spec.ts:197, 199, 213` (`checkin`) | **selector moved**: as above | as above |
+| `tests/components/sessions/gated-section.test.tsx` → `event-section.test.tsx` (`sessions`) | **selector moved**: the subject renamed; every expectation unchanged; one new case | `DEC-208`: `gated-section.tsx` deleted and written as `event-section.tsx` |
+| `tests/e2e/materials.spec.ts:229` (`content`) | **selector moved**: «فتح العارض» → the row is one link named by the material's title | `SCR-012`'s materials slot rebuilt (`DEC-208`): the whole row is the way in |
+| `tests/e2e/photos.spec.ts:208` (`content`) | **selector moved**: the add control is a labelled file input | the add tile is the label (`Event.dc.html`) |
+| `tests/e2e/photos.spec.ts:222` (`content`) | **selector moved**: the takedown is opened in the lightbox | the takedown moved beside the download in the lightbox |
+| `tests/e2e/wave10-content-photos-takedown.spec.ts:140` (`content`) | **selector moved**: the trigger is measured in the lightbox | as above |
+| `tests/e2e/wave9-content-photo-worker.spec.ts:163` (`content`) | **selector moved**: choosing the file uploads it; no button click | choosing a photo uploads it (content's note, a deliberate difference) |
+| `tests/e2e/tasks.spec.ts:169-174` (`content`) | **selector moved**: «أنجزتها» / «التراجع» → the task's checkbox, checked / unchecked | a task is a checkbox (`Event.dc.html`) |
+| `tests/e2e/wave6-discussion-review.spec.ts:183-184` (`content`) | **expectation moved**: «إلغاء الإعجاب» → «إعجاب N» with `aria-pressed="true"` | the like is `reaction-bar` (`REQ-UIX-034`), one accessible name whose pressed state says liked |
+| the 11 deleted slot suites under `tests/components/{materials,photos,event,tasks}/` (`content`, `45192df2`) | **deleted with their subjects** — every case re-asserted in the four `*-w18.test.tsx` files (89 cases) | `DEC-208`: the slot files were deleted and written again |
+| `tests/e2e/event-page.spec.ts:195` (`sessions`, `6436cf26`) | **expectation moved**: the page-level «احجز مقعدك» count is 2 on the phone and 1 on desktop; region «الحضور» holds exactly 1 | `DEC-209`: the phone draws the primary in the card and in the bar |
+| `tests/e2e/event-page.spec.ts:203` (`sessions`) | **selector and expectation**: the presenter is a card link «مدير التخطيط، الشركة الأولى» to `/app/members/`, with «،» as drawn — was region «المُقدِّم» with «·» | `REQ-UIX-061`, `Event.dc.html:44-48` |
+| `tests/e2e/event-page.spec.ts:207` (`sessions`) | **expectation moved**: the tag link is named «#تقارير» | the artboard's tags |
+| `tests/e2e/event-page.spec.ts:215` (`sessions`) | **selector moved**: the first-screen primary is the bar's | `DEC-205` ruling 4 — the poster is whole above the card; `REQ-SES-013` is met by the bar |
+| `tests/e2e/event-page.spec.ts:255` (`sessions`, `83b3870b`) | **expectation moved**: «أضِف إلى تقويمك» counts 2 on the page on the phone and 1 from `lg`; region «الحضور» holds exactly 1, now asserted | `DEC-209`: once a seat is held, the calendar is the primary in both the card and the bar |
+| `tests/e2e/wave16-sessions-reserve.spec.ts:137, :259, :281` (`sessions`) | **selector moved**: `.last()` of the visible matches — the bar on the phone, the card on desktop | `DEC-209` |
+| `tests/e2e/sessions-screens.spec.ts:305, :320, :336` (`sessions`) | **selector moved**: «شاشة التقديم», «الحضور في القاعة فقط.» and «exactly one» read inside region «الحضور»; the first-screen check uses the bar's button | `DEC-209`; the desktop aside says the in-person line too |
+| `tests/e2e/checkin.spec.ts` and `tests/e2e/wave9-checkin-days.spec.ts`, the switch's taps (`checkin`, `aeb6612c`) | **selector (a wait)**: `await expect(switch).toBeEnabled()` before each existing tap; no expectation changed | the switch takes a tap only once hydrated — a tap before hydration flipped the checkbox and submitted nothing (7 of 20 on the phone), a defect found and fixed |
+| `tests/e2e/wave9-content-photo-worker.spec.ts:172` (`content`, `2fc3381d`) | **a timing line** — neither a selector nor an expectation: the processing toast's wait 5 s → 30 s | the toast follows the upload's three-request round trip (initiate, the signed PUT, complete) — 0.46 s idle, ~8 s measured under parallel load; its presence and words are unchanged from the button-click path |
+| `tests/e2e/event-page.spec.ts:~292`, the ended case (`sessions`, `bd9e7ff5`) | **expectation moved**: «قيّم الجلسة» counts `phone ? 2 : 1` on the page; region «الحضور» holds exactly 1, a new assertion | `DEC-209`: the card and the bar |
+| `tests/e2e/sessions-screens.spec.ts:357` (`sessions`) | **selector moved**: the reserve press is scoped to region «الحضور» | its `phone()` context is 390 px on BOTH projects, so the bar is drawn there too (`DEC-209`); at 1280 the bar is hidden from `lg` |
+| `tests/e2e/wave16-sessions-reserve.spec.ts:~190` (`sessions`) | **selector moved**: the one «أضِف إلى تقويمك» is asked of region «الحضور», not `#main` | `DEC-209` |
+| `tests/e2e/wave18-checkin-screens.spec.ts`, «a refused code does not move» (`checkin`, `e18f9425`) | **expectation moved** — split into three: under no-preference a real wrong code plays exactly one `code-shake` on the boxes' group, ending within its token, and a reload replays nothing; under `reducedMotion: 'reduce'` no shake, the coral border and the alert; a rate-limited refusal does not shake | `DEC-212`: the owner ruled a mistyped code is input feedback (`M10a.md` §8); `REQ-UIX-046` amended by name |
+| `tests/e2e/wave16-checkin-moment.spec.ts:186` (`checkin`) | **expectation moved**: «a wrong code animates nothing» → «plays no moment and no confetti, only the boxes' one shake»; its no-running-animation check is scoped to the form and excludes `code-shake` | `DEC-212`; the session row's live dot (`DEC-073`) pulses inside `#main` and was never the refusal |
+| `tests/components/ui/icons-playground.test.tsx:96` (the lead) | **expectation moved**: the set `52` → `54` glyphs | PR B's two, `PlayIcon` (the audio row, `REQ-MAT-007`) and `MonitorIcon` (projection, `SCR-016`), each named in the gallery — contract 5, last and alone |
+| `tests/components/sessions/event-hero-days.test.tsx` (`sessions`) | **selector moved**: the hero's props (no `poster`, `points` added), `getSessionPoster` mocked; four expectations unchanged | the hero reads the poster itself |
 
 ---
 

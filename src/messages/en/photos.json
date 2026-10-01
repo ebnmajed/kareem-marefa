@@ -41,7 +41,8 @@
       "previous": "Previous photo",
       "next": "Next photo",
       "close": "Close",
-      "download": "Download photo"
+      "download": "Download photo",
+      "openAlbum": "Open the album"
     },
     "download": {
       "photoFailed": "The photo could not be downloaded. Try again.",

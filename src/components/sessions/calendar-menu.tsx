@@ -62,11 +62,11 @@ export function CalendarMenu({ label, links, labels, groups, placement, variant 
           { label: labels.google, onSelect: away(links.google) },
           { label: labels.outlook, onSelect: away(links.outlook) },
         ];
-  // The width switch is on a wrapper, never on the button: `hidden` on top of
-  // the button's own `inline-flex` would be two display utilities resolved by
-  // emit order (DEC-111's class of bug).
+  // ★ Wave 18 (DEC-209, REQ-UIX-061): the card's copy shows at every width — the phone draws the primary in the
+  // card AND in the bottom bar, and the booked state carries the calendar between its face and its cancel. The
+  // placement stays on the wrapper as data, never as a second display utility on the button (DEC-111).
   return (
-    <div className={placement === "card" ? "hidden md:block" : "min-w-0"}>
+    <div data-placement={placement} className="min-w-0">
       <Menu
         align="start"
         trigger={

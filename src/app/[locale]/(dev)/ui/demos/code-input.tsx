@@ -28,6 +28,8 @@ export function CodeInputDemo({ ground }: { ground: DemoGround }) {
         error="الرمز غير صحيح — تأكد من الرمز المعروض الآن"
       />
       <CodeInput name={`demo-code-disabled-${ground}`} id={`demo-code-disabled-${ground}`} label="رمز الحضور — مغلق" positionLabels={POSITIONS} disabled />
+      {/* wave 18 (SCR-014): the label and the boxes centred. */}
+      <CodeInput name={`demo-code-centred-${ground}`} id={`demo-code-centred-${ground}`} label="رمز الحضور — في الوسط" positionLabels={POSITIONS} defaultValue="M7K" align="center" />
     </div>
   );
 }

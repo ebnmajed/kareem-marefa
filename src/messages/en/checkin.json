@@ -23,12 +23,12 @@
       "cancelled": "This session was cancelled",
       "not_started_day": "{day} has not started yet.",
       "session_ended_day": "Check-in for {day} has closed.",
-      "check_in_closed_day": "Check-in is closed for {day}."
+      "check_in_closed_day": "Check-in is closed for {day}.",
+      "overlap_named": "You're checked in to <link><bdi>{title}</bdi></link> at the same time."
     },
     "host": {
       "title": "Check-in code",
       "notAuthorized": "This page is for the session's presenters and staff only",
-      "checkInCount": "{count, plural, =0 {No one has checked in yet} one {{value} person checked in} other {{value} people checked in}}",
       "revoke": "Burn this code now",
       "revoked": "Code revoked — a new one has been issued",
       "manualTitle": "Manual attendance",
@@ -50,10 +50,6 @@
       "ended": "The session has ended and its check-in code is no longer valid.",
       "notPublished": "This session hasn't been published yet. The check-in code appears once it's published and scheduled.",
       "cancelled": "This session was cancelled. There is no check-in code.",
-      "walkIns": {
-        "on": "Allowed: the code is accepted from any member in the room.",
-        "off": "Not allowed: the code is accepted from confirmed reservations only."
-      },
       "checkInSwitch": {
         "statusOpen": "Check-in is open now",
         "statusClosed": "Check-in is closed now",
@@ -68,10 +64,36 @@
           "not_open": "Check-in can't be controlled for this session in its current state",
           "ceiling_passed": "This session is past the window for reopening check-in",
           "unknown": "Something went wrong — try again"
-        }
+        },
+        "label": "Check-in open",
+        "closesAt": "Closes automatically at {time}"
       },
       "dayLine": "You are in {day}.",
-      "nextDay": "Next: {day}."
+      "nextDay": "Next: {day}.",
+      "back": "Back to the session",
+      "project": {
+        "start": "Show on screen",
+        "stop": "Stop showing",
+        "mayDim": "This device's screen may sleep while showing."
+      },
+      "rotation": {
+        "in": "Changes in <b>{time}</b>",
+        "now": "The code is renewing",
+        "graceMinutes": "{count, plural, =0 {the previous code is not accepted after} one {the previous code is accepted for a minute} other {the previous code is accepted for <bdi>{value}</bdi> minutes}}",
+        "graceSeconds": "{count, plural, =0 {the previous code is not accepted after} one {the previous code is accepted for a second} other {the previous code is accepted for <bdi>{value}</bdi> seconds}}"
+      },
+      "count": {
+        "label": "Checked in",
+        "of": "{count, plural, one {of one seat} other {of {value} seats}}",
+        "walkIns": "{count, plural, =0 {no walk-ins} one {one walk-in} other {{value} walk-ins}}"
+      },
+      "manualOpen": "Mark by hand",
+      "manualSearch": "Search by member name",
+      "manualResults": "{count, plural, =0 {No results} one {One result} other {{value} results}}",
+      "footnote": {
+        "revoke": "Burning issues a new code at once and cancels no recorded check-in.",
+        "awake": "The screen stays on during the session."
+      }
     },
     "attendance": {
       "title": "Attendance report",
@@ -184,6 +206,22 @@
       "noPoints": "This session carries no attendance points.",
       "recordedAt": "Checked in at <bdi>{time}</bdi>",
       "toSession": "To the session page"
-    }
+    },
+    "close": "Close",
+    "row": {
+      "startedAt": "Started <bdi>{time}</bdi>",
+      "startsAt": "Starts <bdi>{time}</bdi>"
+    },
+    "rules": {
+      "rotationMinutes": "{count, plural, one {The code changes every minute} other {The code changes every <bdi>{value}</bdi> minutes}} and is accepted only during the session.",
+      "rotationSeconds": "{count, plural, one {The code changes every second} other {The code changes every <bdi>{value}</bdi> seconds}} and is accepted only during the session.",
+      "walkIns": "No reservation needed."
+    },
+    "earn": {
+      "when": "Added to your balance when the session ends.",
+      "whenAllDays": "Added to your balance when the session ends, if you attend every day."
+    },
+    "barLabel": "Send the check-in code",
+    "note": "Missed the code? Ask the presenter or any organiser in the room."
   }
 }

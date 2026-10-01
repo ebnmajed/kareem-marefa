@@ -2765,3 +2765,304 @@ plays, rests, returns and never replays, with `data-bound` unset — every part 
 the reset race fix 1 closed and the bound is only the net. Wrong code, reduced motion and all of `checkin.spec` pass
 (`:184` was collateral). The trace's «0 frames» swap annotation is now measured mark to mark (`2d93d3be`; it gates
 nothing). **Moment 2 is done**, pending the captures' retake at the lead's final run.
+
+---
+
+# Wave 18, PR B — plan (`REQ-UIX-062`, `STORY-UIX-049`, `STORY-UIX-050`; `DEC-205` … `DEC-208`)
+
+Planning only. Read: `DEC-205` … `DEC-208` in full (§4.75 – §4.77 twice), `M10a.md` §8 – §9, both artboards rendered at
+390 in Playwright's Chromium and their HTML read for sizes and copy, the two pages, their actions, every file in
+`components/checkin/`, `lib/dal/{checkin,rsvp}.ts`, `ui/{code-input,action-bar,switch,sheet,combobox,button}`,
+`01-prd.md` `REQ-CHK-001` … `018`, `REQ-UIX-046`, `REQ-UIX-062`, `0015`, `0016`, `0101`, `0105`, `0120`, and every
+spec and suite that pins the two screens. **The wrong-code shake is not built** (§4.75; `STATUS.md` still lists it as
+the owner's): the refused state is the border, the glyph and the message — §3 below.
+
+## B.0 · Measured first — four facts the brief does not state
+
+1. ★ **`REQ-CHK-001`'s live count has no producer.** `0016:68-89` authorises a private `host:{session}` topic for staff
+   and the session's presenters, and `src/lib/realtime/channel.ts` exports `subscribeToHostTopic()` for this screen —
+   but **no trigger ever sends to `host:`** (`grep` over `supabase/migrations/`) and nothing subscribes. Today's count
+   is a server read, stale until reload. And `REQ-CHK-001`'s «time until it rotates» does not exist either: the page
+   has no client part at all, so the code on the wall is stale until someone reloads (the RPC mints on read,
+   `0105:139-146`). §4 proposes both.
+2. ★ **`REQ-CHK-013` is behind.** «rejected with a message naming the conflicting session»: `check-in/actions.ts:33`
+   carries `&conflict=<id>` into the URL and the page never reads it; `error.overlap` names nothing. Built in B (§2).
+3. **The ceiling has a TS twin already**: `checkInCeiling(ordered, index)` (`session-status.ts:256`, the lead's),
+   documented as `public.check_in_ceiling()`'s twin. The switch's «يُغلق تلقائيًا 9:30 م» reads it through the DAL —
+   no third copy of the formula, and no grant on the SQL function (it is revoked from `authenticated`, `0101:139`).
+4. **Four specs outside my list pin these screens**, so their locators are contract: `sessions-screens.spec.ts:385-386`
+   (host `h1` «رمز الحضور», code = first `p[dir='ltr']`'s text) and `wave16-sessions-code-input-no-js.spec.ts:94-128`
+   (the same code locator; the no-JS field `input[name='code']`; the submit named «تسجيل الحضور») — both `sessions'`;
+   `wave11-lead-a11y-sweep` and `budgets` (the lead's) visit both routes.
+
+## B.1 · The regions, in the artboards' order, and what each is built from
+
+### `SCR-014` — check-in (`CheckIn.dc.html`, `M10a.md` §8). Immersive; phone at 390; no 1280 artboard
+
+| # | Region (artboard order) | Built from |
+|---|---|---|
+| 1 | Top row: close (to the event page) · `h1` «تسجيل الحضور» | `ui/link` wrapping `CloseIcon`, `aria-label` «إغلاق» (`ui.json`'s existing key), 44 px target — or `icon-button` if the lead gives it an `href` for `sessions'` back control (§4) · `h1` from `checkin.title` |
+| 2 | Session mini-row: poster thumb · `<bdi>` title · «phase · venue · start» · live pill | new `check-in-session-row.tsx` (server): `ui/poster` at thumb size, **streamed in `Suspense`** (decoration: the room's input never waits on a poster read) with an empty tile of the same box as fallback · `SessionStatusBadge` (`DEC-073` tones, §4.62) · the day's venue name and start time |
+| 3 | The day line, only when `dayCount > 1` | `checkin.dayLine` — kept (`DEC-119`) |
+| 4 | The prompt, centred, **as the code's visible label** | `ui/code-input`'s `label` = `checkin.ready`; the group is named by it (`REQ-UIX-035`) |
+| 5 | `code-input`: six 48 × 60 boxes, `dir="ltr"`, display face | `ui/code-input`, `id="code-0"`, `name="code"`, `positionLabels`, `defaultValue={?code}` — unchanged props |
+| 6 | The refusal, under the boxes (not drawn) | §3 |
+| 7 | The rules line: «الرمز يتغيّر كل N دقائق، ويُقبل أثناء الجلسة فقط.» + «لا حاجة لحجز مسبق.» **only when `allowWalkIns`** | two new keys; N from `org_settings.check_in_rotation_seconds` (§4.76), ICU plural in minutes, seconds when not whole |
+| 8 | The earn panel: sticker «+N» · «تصل عند انتهاء الجلسة» | new `earn-panel.tsx` (server): `ui/panel` + `ui/sticker` (`fill="accent"`, `rotate={-4}`, `informative`). Renders **only** when `getSessionAwardState()` is `none` and the rule's amount is > 0; the figure is the rule's, read (§4.45, contract 4), never a literal; the multi-day, all-days line when `requireAllDays && dayCount > 1`. **No streak line** (§4.49). ★ **Not a region named «نقاط هذه الجلسة»** — `wave12-checkin-acknowledgement.spec.ts:203` asserts that region is absent before the check-in |
+| 8′ | …or, once the member holds a pending/paid/incomplete award (day 2 of 3), the existing `AwardState variant="section"` in its place | kept, streamed as today (`DEC-174` Q6: the form leads, the award follows) |
+| 9 | Bottom bar: the one submit · «لم تلتقط الرمز؟ اسأل المُقدِّم أو أي مُنظِّم في القاعة.» | `ui/action-bar` (`label`, `primary={<SubmitButton>}`, `note`), rendered **inside** the `<form>` so `useFormStatus()` sees it — `fixed` does not care where it sits in the DOM |
+
+The screen's root is a plain element (never transformed — `DEC-188` §5); the form wraps regions 4 – 9. At 1280 the
+screen is centred at its phone width (`DEC-206` §4.36's pattern for a screen with no desktop artboard) and captured.
+
+### `SCR-016` — host view (`Host.dc.html`, `M10a.md` §9). Immersive; phone at 390; no 1280 artboard
+
+| # | Region | Built from |
+|---|---|---|
+| 1 | Top row: back · `h1` · «اعرض على الشاشة» | back as SCR-014's close (`ArrowIcon`) · `h1` `checkin.host.title` (§6 D5) · new `host-projection.tsx` (client) — a `ui/button` `variant="quiet"` with `aria-pressed`, **rendered only once hydrated** (no dead control without JS) |
+| 2 | Session line: `<bdi>` title · venue; the day line when `dayCount > 1` | `host.dayLine` / `host.nextDay` kept |
+| 3 | The code in two groups of three, display 84, `dir="ltr"` | **one `<p dir="ltr" aria-live="polite">` holding two `<span>`s with a CSS gap and no space character** — so its `textContent` stays the six characters every spec reads (B.0.4). A rotation is a cut, never a fade (`STORY-UIX-050`) |
+| 3′ | No code: before live / ended / cancelled / not published | `noCodeMessageKey(phase)` kept (bug (d)) |
+| 4 | Rotation line: «يتغيّر بعد 6:12 · الرمز السابق يُقبل لدقيقتين» | new `host-clock.tsx` (client) — §4; the grace clause from `org_settings.check_in_grace_seconds`, absent at 0 |
+| 5 | The count: «23 من 40 حاضرًا · 3 حضور بلا حجز» | `ui/stat` (`value` pre-formatted, `label`, `hint` = walk-ins) — the primitive's layout wins over the drawing (`DEC-207` N8). «من M» only when `capacity` is set; walk-ins only when `allowWalkIns` and > 0; plurals in all six forms |
+| 6 | The switch «تسجيل الحضور مفتوح» + «يُغلق تلقائيًا 9:30 م» | new `host-switch.tsx` (client): `ui/switch` (controlled by the server's `checkInOpen`) inside a `<form>` bound to the existing `setCheckInOpenAction`; a change calls `requestSubmit()`; `description` = the auto-close time, plus `closedHint` when closed. **No-JS**: a `<noscript>` submit with today's «أغلق/افتح تسجيل الحضور» |
+| 7 | «أبطل هذا الرمز الآن» · «تسجيل يدوي» | revoke: `ui/button variant="danger"` (the outline, not accent — `button.tsx:71-78`) in its existing bound form · manual: new `manual-mark.tsx` (client), `variant="quiet"`, **staff only** |
+| 8 | The footnote: «الإبطال يُصدر رمزًا جديدًا فورًا ولا يلغي حضورًا مسجَّلًا.» + «تبقى الشاشة مضاءة أثناء الجلسة.» | first sentence always (`REQ-CHK-007`); the second **only when a wake lock was granted** (§4) |
+| — | The manual sheet (not drawn) | `ui/sheet` (`side="bottom"`, titled `host.manualTitle`) holding the form: `ui/combobox name="memberId"` over the day's candidates, `Field` + `Input name="reason"` `maxLength={300}`, `SubmitButton`; `noValidate`. ★ **No-JS**: before hydration (and without JS) the same form renders inline with `ui/select`, exactly today's; once hydrated it is swapped for the trigger and the sheet (`code-input`'s hydrated-swap pattern) — one form in the DOM at a time. The sheet closes on `?manualSuccess` (keyed on it) and stays open with the carried values on an error |
+
+## B.2 · ★ The kept-behaviour table (`DEC-208` §2) — written before any deletion
+
+Re-derived from `01-prd.md` and the DAL; «now» is the file that goes, «then» is where it lives after the create commit.
+
+### `SCR-014`
+
+| Behaviour | Now | Then | Why kept |
+|---|---|---|---|
+| The session gate: `requireSession(locale, "/<locale>/app/sessions/<id>/check-in")` — the auth boundary at the data, and `?next=` back to this URL | `check-in/page.tsx:48` | the new `page.tsx`, first line after `setRequestLocale` | `REQ-AUT-005`, `DEC-208` §2 |
+| Unknown, malformed or unreadable session → the 404 (`notFound()`); the DAL refuses a non-uuid before any read | `page.tsx:50`, `checkin.ts:247` | unchanged DAL; page | bug (c), `16` §5.4.1 row 4b |
+| The eligibility reason renders **in place of the form**, as a `role="status"` panel holding only its sentence; day-aware words for `not_started` / `session_ended` / `check_in_closed` when `dayCount > 1` | `page.tsx:61-66, 88-97` | page, same keys | `REQ-CHK-004`, `REQ-CHK-016`, `DEC-141`, `DEC-151`; `wave12…:312` pins the exact text |
+| ★ **The presenter is not offered the field** — `presenter_cannot_check_in` is an ineligibility reason | `session-matrix.ts` via `getCheckInScreenData()` | unchanged | `REQ-CHK-011` |
+| ★ **Walk-ins only when the session allows** — `reservation_required` is a reason before the code, and a refusal with its own sentence after it | matrix + `actions.ts:10` | unchanged; the rules line says «لا حاجة لحجز مسبق» only when true | `REQ-CHK-010`, `DEC-117`, `DEC-197` §4, §4.76 |
+| ★ **The posted field is `code`, one field**; the six boxes are entered, the hidden field posts; **without JS one labelled field posts**; the form posts `submitCheckInForm` without JS and `checkInForMoment` once hydrated | `code-input.tsx` (sessions'), `moment-check-in.tsx:69-99`, `actions.ts` | **unchanged** — `actions.ts` is not deleted; `CheckInForm` is kept (B.5) | `REQ-CHK-003`, `DEC-186` §6, `REQ-UIX-035` |
+| The attempt path: Zod shape first, then `check_in()`; unknown statuses collapse to `unknown`; the submitted code (6 chars, upper-cased) carried back in `?code=` and read as `defaultValue` (React resets the form) | `actions.ts:24-39`, `page.tsx:140` | unchanged | `DEC-149` §1, `REQ-UIX-011` |
+| ★ **The rate limit**: 10 attempts per 10 minutes, per member and day, the attempt row written before the limit is read, every path after it returning an envelope | `0120:128-139` (SQL, untouched) | untouched; the screen renders `rate_limited` | `REQ-CHK-006`, `DEC-015`, `DEC-043` |
+| `?error=` is an allowlist (`KNOWN_ERRORS`); anything else reads «حدث خطأ»; never a reflected parameter | `page.tsx:35, 53` | page | defence in depth |
+| ★ **Per-day codes**: the member is never asked which day — `check_in()` resolves it from the code; the screen only says which (`dayName()`) | `page.tsx:55-59`, `checkin.ts:281-285` | unchanged | `DEC-119`, `DEC-150` contract 4 |
+| «Already checked in» is its own status (`?already=1`), beside the static state | `page.tsx:100-106` | page | `REQ-CHK-005`, `09` SCR-014 |
+| ★ **Moment 2**: played only from the check-in's own id in the client that made it; a reload, back, another phone and `?success=1` render the static state; `useMoment` claims the id; armed two frames late; a token-derived bound so it never hangs | `moment-check-in.tsx` | **kept as is** (B.5 — how a moment is keyed is frozen this wave) | `REQ-UIX-046`, `DEC-195` §2.1, `DEC-197` §5 |
+| ★ **The 1.4 s return** to the event page after the lines are in, only for a fresh result; the link stays on screen throughout | `moment-check-in.tsx:39, 213-221` | kept | `DEC-197` §1 (the recorded SC 2.2.1 exception) |
+| The static state is **not** behind `Suspense` (a no-JS `?success=1` would show nothing); it awaits the award read | `page.tsx:107-113` | page | `REQ-UIX-046`, wave-16 F1 |
+| ★ **The pending-award state**: `AwardState` read on every render (`getSessionAwardState()`, `cache()`d), streamed before today's check-in and placed **after** the form; line 2 of the static state; the coin's figure only for pending/paid and > 0, never `+0` | `page.tsx:68-76, 147`, `moment-check-in-rest.tsx` | page; the rest recreated from the same reads | `REQ-CHK-018`, `REQ-PTS-015`, `DEC-174` Q6; `wave12…:260` pins the order |
+| The static state's three lines: «أنت هنا!» · the award · «حضورك مسجَّل، <time>» (`<bdi>`, the session's zone, Western digits) and «إلى صفحة الجلسة» | `moment-check-in-rest.tsx` | recreated | `REQ-UIX-046`, `DEC-124` |
+| The confetti's colour is the member's company colour or null; a failed read is null, never a broken screen | `checkin.ts:259, 286` | unchanged | `DEC-195` §6.22, `REQ-UIX-043` |
+| `<bdi>` on the title, the day, the time, the code's echo | `page.tsx:84`, rest | every interpolation | `DEC-208` §2, `10` §2 |
+| The only `role="status"` is the one that announces (the reason, `?already`, the moment's lines on a fresh result) | page, rest | page, rest, the new row and panel carry none | `wave16…:182`, `checkin.spec:181` |
+| Positions «الخانة N من 6» through `formatNumber` | `page.tsx:78` | page | `REQ-UIX-035`, `DEC-124` |
+| The screen's root is a plain element, never transformed or filtered | `page.tsx:81` | page | `DEC-188` §5, `DEC-199` §1.3.4 |
+
+### `SCR-016`
+
+| Behaviour | Now | Then | Why kept |
+|---|---|---|---|
+| `requireSession(locale, "/<locale>/app/sessions/<id>/host")` | `host/page.tsx:58` | new `page.tsx` | `REQ-AUT-005` |
+| ★ **Host access is the RPC's**: `getHostView()` returns null on `not_authorized` / `not_found` from `ensure_check_in_code()`, and the page renders only the `h1` «هذه الصفحة متاحة لمقدِّمي الجلسة والمشرفين فقط» | `checkin.ts:99-102`, `page.tsx:64-66` | unchanged | `REQ-CHK-014`, `checkin.spec:187` |
+| The code exists only in the window; no code → the phase's own sentence (not published / cancelled / not started / ended) | `page.tsx:18-33, 97-108` | page | `REQ-CHK-004`, bug (d) |
+| The code as the first `p[dir='ltr']`, its text exactly six characters, `aria-live="polite"` | `page.tsx:98-100` | page (B.1 row 3) | B.0.4 — four specs read it |
+| ★ **Per day**: the code's own day names the console; `dayId` is **bound at the call site from the code on the wall** into revoke, the switch and manual marking; the candidates are the day's | `page.tsx:68-74`, `actions.ts:6-9`, `checkin.ts:113-124` | unchanged | `DEC-119`, `DEC-150`, `DEC-151` |
+| ★ **Revoke**: one tap, a new code at once, audited in SQL, no confirmation (a leaked code is burned fast); `?revoked=1` status | `page.tsx:153-159`, `actions.ts:10-13` | page; `actions.ts` kept | `REQ-CHK-007`, `DEC-015` |
+| ★ **The switch**: gated on `consoleActive` (open pre-flight and live), authorised in SQL for the session's presenter or staff; `?switch=opened|closed` and an allowlisted `?switchError=`; `closedHint` when closed | `page.tsx:117-151`, `actions.ts:18-34` | `host-switch.tsx` + page; `actions.ts` kept | `REQ-CHK-015`, `DEC-141`, `DEC-115` |
+| ★ **The ceiling**: `ceiling_passed` refused by `set_check_in_open()`; now also **shown** as the auto-close time | SQL | SQL untouched; `closesAt` from `checkInCeiling()` | `REQ-CHK-016`, `DEC-151` |
+| ★ **Manual marking**: staff only (`isStaff`, and `mark_checked_in_manually()` re-derives it), mandatory reason (Zod `min(1).max(300)`, then the RPC), `noValidate`, member and reason carried back on an error, allowlisted `?manualError=`, `?manualSuccess=1`, the empty-candidates sentence | `page.tsx:60-81, 161-203`, `actions.ts:36-67` | `manual-mark.tsx` + page; `actions.ts` kept | `REQ-CHK-008`, `STORY-CHK-004`, `DEC-149` §1 |
+| The count is the **day's** active check-ins (`removed_at is null`) | `checkin.ts:94, 124` | unchanged, plus walk-ins by the attendance report's definition (no RSVP row at all, `checkin.ts:691-711`) | `REQ-CHK-017`, `REQ-CHK-012` |
+| Every server action works without JS (revoke, switch via `<noscript>`, manual via the inline form) | the two pages' forms | as B.1 | `REQ-NFR-007`'s no-JS floor for forms |
+| **Dropped, and why**: the walk-in *policy* sentence (`host.walkIns.on/off`, `DEC-117`'s comment «the room still benefits…»). No requirement asks for it and the artboard replaces it with the walk-in count, which appears only when walk-ins are allowed. Flagged (D7), not silently gone | `page.tsx:112-115` | — | — |
+
+## B.3 · The states `M10a.md` names and does not draw, and how each is built
+
+**`SCR-014`**
+- ★ **Refused code** (`invalid_code` and every other refusal after a submit): the boxes' border in the error colour
+  (`code-input`'s `invalid`), and under them **one `<div role="alert" id="check-in-error">`** holding
+  `AlertCircleIcon` and the sentence, in `code-input`'s own error-line classes; the group's `aria-describedby` points
+  at it. That is the artboard's own reduced-motion form and `REQ-UIX-062`'s «border, glyph, message». **Nothing
+  moves** — no keyframe exists and none is requested (§4.75). The code comes back in the boxes. This keeps
+  `check-in-screen.test.tsx:85-99` as they stand.
+- **Rate-limited**: the same alert with `error.rate_limited`. **The boxes are not locked** and no wait is shown — see
+  D1.
+- **Already checked in**: the static state with `?already=1`'s status.
+- **Success**: moment 2, then the 1.4 s return; without JS, `?success=1` and the static state.
+- **Not open / not started / ended / closed / a reservation required / the presenter**: the reason panel in place of
+  regions 4 – 9, the award after it; no bottom bar.
+- ★ **An overlapping session** (`REQ-CHK-013`): `?conflict=<uuid>` validated, its title read through RLS (add-only
+  `getConflictTitle()` in `checkin.ts`), and a new `error.overlap_named` «أنت مسجَّل في <bdi>…</bdi> في الوقت نفسه»
+  linking to it; the existing sentence when the title is not readable.
+
+**`SCR-016`**
+- **Before live**: the code area's `notStarted` sentence; the switch as the matrix says (D3).
+- **After close** (the ceiling): no code, the `ended` sentence, the count frozen (no subscription, no clock).
+- **Switch closed while live**: the tree keeps showing the code (`0084` issues it while closed) — D11.
+- **A rotation**: the clock reaches zero → one `router.refresh()`; the new code replaces the old by a cut.
+- **A day of a multi-day session**: the day line; everything is the day's.
+- **A presenter who is not staff**: no «تسجيل يدوي»; revoke takes the row.
+- **Projection**: §4.
+
+## B.4 · What I need from others, as types
+
+**From `sessions`** (`ui/code-input`, their primitive — requests, not edits):
+1. `align?: "start" | "center"` on `CodeInputProps`, add-only, default `"start"` — centres the label and the boxes
+   (`justify-center`); today the boxes sit at the group's left with `pg:flex-none` (`code-input.tsx:143, 248`). The
+   type in `ui/index.ts` is the lead's, landed with `sessions'` implementation (`DEC-207` §3).
+2. Optional, `sessions'` call: the artboard borders **each filled box** in the accent; the primitive borders all six
+   only when complete (`:248`). If declined, the primitive stands (D8).
+3. Nothing from `action-bar`: `label`, `primary`, `note` suffice.
+4. ★ **The prospective amount**: `search.ts:265`'s `attendanceRulePoints()` is private. I ask for one add-only export,
+   `getAttendanceRulePoints(locale: string): Promise<number | null>` (null when the rule is off or not positive),
+   so the feed, the event page and SCR-014 read one rule one way. I never read `scoring_rules` myself.
+
+**From the lead:**
+1. `shell-routes.ts`: `ownsTopRow()` true for `/app/sessions/[id]/check-in` and `/host` below `lg` — both artboards draw
+   no shell row (today `shell-header.tsx:13` draws it on every immersive route but browse).
+2. `clearsBottomBar` true for `/check-in` (it carries a fixed `action-bar`), or I pad the screen myself — the lead's
+   call.
+3. `icons.tsx`: a monitor glyph for «اعرض على الشاشة», or the button goes without one.
+4. `icon-button` with an `href`, if `sessions` asks for one for SCR-012's back; else `ui/link` + `CloseIcon`.
+5. **`ui/index.ts`**: `CodeInputProps.align` only. No new primitive.
+6. ★ **Promotion of one proposed SQL file** (next number after `0165`): `checkin_host_broadcast()`, `security definer`,
+   `search_path = ''`, an `after insert or update of removed_at on check_ins` trigger that calls
+   `realtime.send(jsonb_build_object('dayId', new.session_day_id), 'check_in_count', 'host:' || new.session_id, true)`.
+   **The payload names no member** — a poke, not a row; the topic is already staff-and-presenter only (`0016`). No
+   table, policy or grant. `main`'s app on it: nothing subscribes, nothing moves. Proven in a new
+   `tests/rls/checkin-host-broadcast.test.ts` with `applyProposed()`, **as a member** performing `check_in()`.
+7. Rulings on D1 – D11 (§6), and whether `moment-check-in.tsx` is kept (B.5).
+
+**Projection and wake-lock** (`host-projection.tsx`, the Screen Wake Lock API, no dependency):
+- The toggle sets `data-projecting` on the screen's root; CSS shows the code alone at `min(28vw, 40vh)` in the display
+  face (≥ 160 px at 390), the toggle itself staying as a small 44 px «إنهاء العرض» so a touch can leave. Where
+  `requestFullscreen()` exists it is called on the root; iPhone Safari has no element fullscreen and gets the in-page
+  layout alone. Escape and `fullscreenchange` leave projection. The root element is stable, so `router.refresh()` at
+  a rotation keeps both the state and the fullscreen element.
+- **Wake lock while the view is live** (D4): `navigator.wakeLock.request("screen")` when `phase === "live"` and a code
+  is shown; re-requested on `visibilitychange` to visible (the browser releases it when hidden); released on unmount,
+  on leaving live, at the ceiling. **Unsupported** (`!("wakeLock" in navigator)`) or **refused** (a rejected promise —
+  battery saver, a policy): no lock, **and the footnote's second sentence is not rendered**, so the screen never
+  claims what it does not do; in projection one quiet line says the screen may sleep on this device. No looping-video
+  hack. `permissions-policy` (`proxy.ts:135`) does not block `screen-wake-lock` or `fullscreen`.
+
+**The clock** (`host-clock.tsx`): the DTO carries `rotatesAt` and `readAt` (the server's instant), so the remaining
+time is computed against the server's clock and counted down with `performance.now()` — no skew. A one-second
+`setInterval` updates the text; the text is **not** `aria-live`. At zero: one `router.refresh()`. The subscription to
+`host:<id>` coalesces pokes into at most one refresh in flight plus one trailing. ★ **Not a pending-control nudge
+(`DEC-146`)** — it is a display clock and a data refresh; named here so the lead rules, not me.
+
+## B.5 · The files — DELETE (commit 1), CREATE (commit 2)
+
+**Commit 1 — delete** (`rm`, never `git rm`): `src/app/[locale]/app/sessions/[id]/check-in/page.tsx`,
+`src/app/[locale]/app/sessions/[id]/host/page.tsx`, `src/components/checkin/moment-check-in-rest.tsx`.
+
+**Kept, not deleted, and why:** both `actions.ts` (server actions survive, `DEC-199` §2); `award-state.tsx`,
+`day-name.ts`, `session-matrix.ts`, `attendance-outcome.tsx` (shared with the event page and SCR-044, not these
+screens' markup); ★ **`moment-check-in.tsx`** — it is moment 2's mechanism (the occurrence, `CheckInForm`'s two paths,
+arming, the bound, the 1.4 s hold) with one wrapper `<div>`, and «any change to how the five moments are keyed» is
+frozen this wave. **I ask the lead to rule it kept**; if it must go, it is recreated from the table above line by line.
+
+**Commit 2 — create:** the two `page.tsx`; ★ new `check-in/loading.tsx` and `host/loading.tsx` (today a slow read
+under either shows **the event page's** skeleton, `[id]/loading.tsx`); `components/checkin/{moment-check-in-rest,
+check-in-session-row,earn-panel,host-clock,host-projection,host-switch,manual-mark}.tsx`; add-only in
+`lib/dal/checkin.ts` — `CheckInScreenData.{rotationSeconds, venueName, startsAt, requireAllDays}`,
+`HostViewData.{title, venueName, rotatesAt, readAt, graceSeconds, closesAt, capacity, walkInCount}`,
+`getConflictTitle()`; strings in `ar/checkin.json` first, then `en/`; `supabase/proposed/checkin/host_broadcast.sql`.
+Tests: new `tests/components/checkin/{host-screen,host-clock,host-projection,host-switch,manual-mark,earn-panel,
+check-in-session-row}.test.tsx` (wake lock supported / absent / refused / re-acquired on visibility), new
+`tests/unit/checkin-host-view-fields.test.ts`, the RLS case above, new `tests/e2e/wave18-checkin-{screen,host}.spec.ts`
+with captures `.qa-shots/rtl/wave18-checkin-<scr014|scr016>-<state>-<390|1280>.png`.
+
+**Every existing assertion that moves — each a `STATUS.md` ledger line in the commit that moves it:**
+
+| File:line | Moves | Why |
+|---|---|---|
+| `tests/components/checkin/check-in-screen.test.tsx:74, 89, 103` | **selector** — the group's name «رمز الحضور» → the prompt | the artboard's prompt is the one visible label (region 4). If the lead keeps `codeLabel` visible, none moves |
+| `check-in-screen.test.tsx` fixture `data()` and its `vi.mock`s | scaffolding — the add-only DTO fields; mocks for the row and the earn panel | no expectation changes |
+| `tests/e2e/checkin.spec.ts:257, 266` | **selector** — `getByText("…مفتوح/مغلق الآن")` → `getByRole("switch", { name: "تسجيل الحضور مفتوح" })` checked / not checked | the status sentence becomes the switch's state |
+| `checkin.spec.ts:263, 277` | **selector** — the buttons «أغلق/افتح تسجيل الحضور» → a click on the switch | the same; the URL assertions (`?switch=`) and the result panels do not move |
+| `tests/e2e/wave9-checkin-days.spec.ts:197, 213` | **selector** — as above | as above |
+| `wave9-checkin-days.spec.ts:199` | **selector** — `getByText("تسجيل الحضور مغلق")` → the switch not checked | as above |
+
+Not moving, by construction: the host `h1`, the first `p[dir='ltr']`, the submit's name «تسجيل الحضور», the prompt's
+text, every `role="status"`/`alert` count, `[data-moment]`, `input[maxlength='1']`, the hidden `code` field, the no-JS
+`input[name='code']`, `wave9-checkin-one-day.spec.ts:163` (`getByText("تسجيل الحضور مفتوح")` now matches the switch's
+label alone), `wave12…:203, 260, 312`.
+
+## B.6 · ★ Disagreements `DEC-206` §4 does not list — written, not picked (default in force in brackets)
+
+- **D1** `M10a.md` §8: «rate-limited — the boxes lock with the wait time». A member cannot read the wait:
+  `check_in_attempts` is staff-read (`0010:519`) and the envelope is bare `{status: 'rate_limited'}` (`0120:137-138`).
+  Also `error.rate_limited` says «انتظر دقيقة» when the wait can be ten. [The message; no lock, no time. An add-only
+  `retry_at` in the envelope is possible and is a change to `check_in()` — the lead's call.]
+- **D2** `CheckIn.dc.html` mini-row «بدأت قبل 12 دقيقة»: a relative time on a screen that never re-renders goes wrong
+  while the member types. [The start time, «بدأت 6:30 م».]
+- **D3** `M10a.md` §9: «Before live … the switch is disabled». The matrix gives the console to `open` (pre-flight) as
+  well as `live` (`session-matrix.ts`, `hostConsole`), so the switch works before the start today. [The tree.]
+- **D4** `Host.dc.html` footnote «تبقى الشاشة مضاءة أثناء الجلسة» (the whole view) vs `REQ-UIX-062` «Projection … keeps
+  the screen awake». [Awake while live on the view, projecting or not — a superset of both; the sentence only when
+  granted.]
+- **D5** `Host.dc.html` `h1` «شاشة التقديم» vs `checkin.host.title` «رمز الحضور», pinned by
+  `sessions-screens.spec.ts:385` (`sessions'`) and three of mine. [The catalogue's — «copy from `messages/ar/` first»;
+  and the artboard's «رمز الحضور الآن» label is then redundant and omitted.]
+- **D6** `CheckIn.dc.html`: submit «سجّل حضورك» vs `checkin.submit` «تسجيل الحضور» (pinned by six specs, two of them
+  `sessions'`), prompt «أدخل الرمز الذي…» vs `checkin.ready` «أدخل رمز الحضور الذي…». [The catalogue's.]
+- **D7** The walk-in policy sentence dropped (B.2). [Dropped.]
+- **D8** Filled-box accent vs the primitive's complete-only accent (`code-input.tsx:248`). [The primitive.]
+- **D9** `REQ-CHK-001` «updates live (A18)» — no producer exists (B.0.1). Both agree; the tree is behind; B builds it
+  with the lead's promotion.
+- **D10** `REQ-CHK-013` names the conflicting session; the tree does not (B.0.2). Both agree; B builds it.
+- **D11** `M10a.md` §9 «After close … the code area says «أُغلق التسجيل»». With the switch closed while live the RPC
+  still issues a code (`0084`, «the room can see what reopening would accept») and the tree shows it. [The tree: the
+  code, the switch off, `closedHint`. After the ceiling there is no code and the `ended` sentence.]
+
+## B.7 · Built (commit 2, after the delete at `60d83d51`)
+
+As planned, with these as-built notes:
+- **The earn panel reads the rule itself** (`getAttendanceRulePoints()`, `sessions'` add-only export), so it streams
+  behind its own `Suspense` and never holds the form. `code-input`'s `align="center"` is `sessions'` `d640d411`.
+- **The host clock** refreshes at the next instant the answer changes by itself: the rotation, and also the day's
+  start. The latter makes `host.notStarted`'s «يظهر رمز الحضور هنا تلقائيًا» true for the first time.
+- **Strings without tags where a primitive takes a `string`** (`Stat`'s hint, `Switch`'s description, the
+  combobox's results label). Their values are isolated by the primitive (`Stat` wraps its value in `<bdi>`) or are
+  plain numbers.
+- `host.walkIns.*` and `host.checkInCount` are deleted from both catalogues, and nothing reads them.
+- **The proposed SQL** `supabase/proposed/checkin/01_host_broadcast.sql` is proven by
+  `tests/rls/checkin-host-broadcast.test.ts` (3/3), as a member calling `check_in()` and as an admin calling
+  `remove_check_in()`. `realtime.send()` stamps its own `id` into the payload, and the test allows for it.
+
+**The ledger lines for `STATUS.md`** (the lead's file). Every one moves a selector, and no expectation changes:
+
+| File:line | Moved | Why |
+|---|---|---|
+| `tests/components/checkin/check-in-screen.test.tsx:74, 89, 103` | selector: the group's name `رمز الحضور` → `أدخل رمز الحضور الذي أعلنه المُقدِّم` | the prompt is the one visible label (`CheckIn.dc.html`) |
+| `check-in-screen.test.tsx` fixture and mocks | scaffolding: four add-only DTO fields; the row and the earn panel stubbed | no expectation changes |
+| `tests/e2e/checkin.spec.ts` (the switch test) | selector: `getByText("…مفتوح/مغلق الآن")` and the two buttons → `getByRole("switch")` checked / not checked, and a click on its label | the door is a switch |
+| `tests/e2e/wave9-checkin-days.spec.ts:197, 199, 213` | selector: as above | as above |
+
+**Gates run by me:** `tsc` is clean for my files. `eslint` reports 0 problems on everything I touched. `npm test` has
+4290 passing, with 1 failure and 1 failing file, both `content`'s work in progress: `tests/unit/content-i18n.test.ts`
+and `tests/components/photos/lightbox.test.tsx`. `npm run test:rls` runs the new case at 3/3. `ui-lint` flags 2
+files, both `content`'s: `materials/audio-row.tsx` and `photos/upload-widget.tsx`. **Not run:**
+`tests/e2e/wave18-checkin-screens.spec.ts` and the two edited specs, which need a production build of this tree.
+
+## B.8 · Verified (the lead's serial run on `fb85f1ca`)
+
+`checkin.spec.ts` 12/12 on both projects, `:251` (the switch) included · `wave18-checkin-screens.spec.ts` 6/6 ·
+`wave9-checkin-days.spec.ts` 6/6. The captures `wave18-checkin-{scr014-form,scr014-refused,scr016-live,scr016-projecting}-{390,1280}.png`
+were opened beside the artboards.
+
+**Found and fixed after the first builds** (each by pathspec):
+- `a4110d43` — the refused-code check is scoped to the form. The live badge's dot, `DEC-073`'s, pulses outside it.
+- `26843652`, `eb976fb5` — the host's top row wraps the toggle, the projected code fits at `min(19vw, 40vh)`, and the
+  actions are equal halves. `21eae440` asserts no overlap.
+- ★ `aeb6612c` — **the switch is disabled until hydrated.** Before that, a tap flipped the native checkbox and
+  submitted nothing, so the thumb read «closed» while the door stayed open.
+- `c46d586b` — the monitor glyph on the projection toggle. `9d517cb9` — a 15 s wait for hydration.
+
+**Traced and not mine:** the switch's `switchError=unknown` was Kong returning 502 «Connection reset by peer» from
+PostgREST (ten times in an hour, across four RPCs). Another track's runs were also restarting port 3000. The CSP
+reports are report-only, a carry since wave 6. The poster thumbnail is drawn only when a poster has rendered, and
+never a placeholder (the lead records this in `DEC-211`).

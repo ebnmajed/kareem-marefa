@@ -47,14 +47,22 @@ export function hasNavRail(pathname: string | null): boolean {
   return !isImmersive(pathname) && !isConsole(pathname);
 }
 
-/** ★ wave 18 (DEC-207 Q2): routes whose PHONE top row is the page's own. `Browse.dc.html` draws the
- *  page's title and the bell in one row and no wordmark; below `lg` the shell's row gives way to it.
- *  From `lg` the shell's bar is always there. Exact paths: `/app/sessions/[id]` is immersive already. */
-const OWN_TOP_ROW = /^\/app\/sessions$/;
+/** ★ wave 18 (DEC-207 Q2, DEC-209): routes whose PHONE top row is the page's own. `Browse.dc.html` draws
+ *  the page's title and the bell in one row and no wordmark; the event page, check-in and the host view draw
+ *  their own back or close control. Below `lg` the shell's row gives way to it; from `lg` the shell's bar is
+ *  always there (`EventDesktop.dc.html` draws it). */
+const OWN_TOP_ROW = /^\/app\/sessions(\/[^/]+(\/(check-in|host))?)?$/;
 
 export function ownsTopRow(pathname: string | null): boolean {
   if (!pathname) return false;
   return OWN_TOP_ROW.test(strip(pathname));
+}
+
+/** ★ wave 18 (DEC-209): routes that carry a fixed bottom `action-bar` of their own — the event page and
+ *  check-in — so `<main>` clears it as it clears the tab bar. */
+export function hasActionBar(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return /^\/app\/sessions\/[^/]+(\/check-in)?$/.test(strip(pathname));
 }
 
 /** The path the tab bar and the rail compare their links with. */

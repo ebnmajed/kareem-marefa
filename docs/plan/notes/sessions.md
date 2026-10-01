@@ -5660,3 +5660,268 @@ is 26 rem at every width (§4.36: no 1280 artboard).
    read right after it; not worth a primitive change.
 7. **Moved, not dropped**: the company banner and `AvatarImportPrompt` are on the home (`components/feed/feed.tsx`
    carries both, `DEC-207` §6.1).
+
+---
+
+# Wave 18, PR B — plan (`wave-18b/the-event`) — `SCR-012`, `REQ-UIX-061`, `STORY-UIX-048`
+
+**Planning only. Nothing is deleted or built before «B's plans are approved».** Read: the agent file's PR B paragraph,
+`CLAUDE.md` § *Wave 18, PR B*, `DEC-206` §4.66 – §4.74, `DEC-207`, `DEC-208` in full, `M10a.md` §7. I read the four
+event artboards as HTML (`Event`, `EventLive`, `EventDone`, `EventDesktop`) and looked at `Event` in its rendered PNG.
+I also read the current page, everything it composes, and the specs that pin it. ★★ **`DEC-208`**: the page file and
+the screen's own markup files are deleted in commit 1 and written in commit 2. The table in W18B.2 was written BEFORE
+any deletion, from the requirements and the DAL, and is re-checked against the new files after commit 2.
+
+## W18B.1 · The regions, in the artboards' order, and the primitive each uses
+
+Copy: `M10a.md`'s rule — **a string that exists in `src/messages/ar/` is used as it is**, so «تسجيل الحضور»,
+«مهام ما قبل الجلسة», «احجز مقعدك», «قيّم الجلسة» and «المُقدِّم(ون)» keep their words and their pinned accessible
+names. Only an absent string is new (★).
+
+### Open (`Event.dc.html`, 390)
+
+| # | Region | Built from |
+|---|---|---|
+| 1 | Top row: back · breadcrumb «الجلسات › <category>» · bookmark · share | `ui/icon-button` link (back → `/app/sessions`), `ui/link` ×2 (the root; the category → `?category=`), `BookmarkButton` (icon), `ShareLink` (icon, the public card's URL only for `published`/`in_progress`/`completed`) |
+| 2 | The poster, whole, 4:5 | `ui/poster`: `src` from `getSessionPoster()` (designer's DAL, read), `width`/`height` of the artifact; the placeholder with the lead presenter's `teamColor` and company as `teamName`, the category, the date, and the `sticker` = the rule's amount for a member only (§4.46). Staff: the «pending N of M» / stale caption `SessionPoster` draws today |
+| 3 | Chips: the phase badge · level · language | `SessionStatusBadge` (seat + closing soon) · `ui/tag-chip` ×2 — ★ **language before the action** (`REQ-SES-011`); at one day the duration «60 دقيقة» is added and at several days «3 أيام» (`REQ-SES-015`) |
+| 4 | `h1` | `ui/page-header` title only (the page's one `<h1>`, `<bdi>`) |
+| 5 | Presenter card(s): ring · name · title · company · «الملف» | a `card`-framed `ui/link` per presenter → `/app/members/{id}`; `ui/avatar` (`teamColor`, our copy); no «قدّمت N جلسات» (§4.67) |
+| 6 | The action card: seats bar «12 من 40 مقعدًا / يبقى 28» · `session-cta` · icon rows (date–time · venue + «الخريطة» · deadlines · the certificate line) | `section#attend` named «الحضور» (sr-only `h2`); `ui/progress-bar`; `session-cta` via the rebuilt `rsvp-panel` (moment 1, unchanged); `ui/icons` rows in a `<dl>` |
+| 7 | Sub-nav: only sections that render, a count where the slot has one («النقاش 3») | rebuilt `event-subnav.tsx` (`ui/tag-chip`-shaped links, scroll-spy) |
+| 8 | Objectives | **absent** (§4.66) |
+| 9 | Tags row | `ui/tag-chip` links → `/app/sessions?tag=` |
+| 10 | Sections: نبذة · المهام · المواد · النقاش | `event-section.tsx` (was `gated-section`) + `ui/section-header` with the header note at its end («0 من 2، تذكير فقط», «3 تعليقات») · `ui/prose` · the slots |
+| 11 | Bottom bar: the primary + bookmark + share | `ui/action-bar` (`hideFrom="md"`), moment 1's bar anchor inside `primary` |
+
+### Live (`EventLive.dc.html`)
+
+1 top row — the story ring's **state** in place of the breadcrumb (`ui/story-ring`, `live`, opens nothing, `DEC-205`
+§1; see NB8) · 2 poster · 3 chips (the live badge, `DEC-073`'s tone, §4.62) · 4 `h1` · 6 the action card, bordered in
+the live tone: **«23 من 40 حاضرًا الآن»** as a display figure (`session_attendance_count()` over `capacity`) +
+`attendee-stack` **for staff and presenters only** (§4.56) · `session-cta` `checkIn` → `SCR-014` with the chip «مقعدك
+محجوز» when a seat is held (N7) · the rotation line from the org's `check_in_rotation_seconds` and the rule's amount,
+«…تصل عند انتهاء الجلسة» (`REQ-CHK-018`) · venue row · the time row «بدأت · تنتهي» · 7 sub-nav · 10 sections in the
+artboard's order: **الصور · النقاش · نبذة · المواد** (NB2) · 11 bar: check-in + bookmark + share.
+
+### Completed (`EventDone.dc.html`)
+
+1 top row (breadcrumb) · 2 poster (the ended wash on the image only, `DEC-123`) · 3 chips (the ended badge) · 4 `h1` ·
+6 ★ **the outcome card**: the coin with the amount, «حضرت، ودُفعت نقاطك» or the pending line, «سجّلت حضورك 6:41 م»
+(add-only `checkedInAt`, mine), «… منذ 8:02 م» (scoring's add-only field, §4.74), **moment 3** on the figure through
+scoring's mechanism (W18B.4) · `session-cta` `rate` with «حتى <date>» · the certificate row (bone, serial in `<bdi>`,
+the audited download route) · recap `stat`s: attended of registered, photos (the third, «أعلى تفاعل», is §4.74) ·
+7 sub-nav · 10 **المواد · الصور · النقاش · نبذة** · 11 bar: «قيّم الجلسة» + «شهادتك» (N6).
+
+### Desktop (`EventDesktop.dc.html`, 1280) — no game rail; the page owns its width
+
+The shell's top bar (the lead's, Q-L1) · the breadcrumb · **hero band**: the poster 360 × 450 at the start · at the end
+the chips (+ duration), `h1`, the abstract, the presenter card, tags · ★ **the full-width action row**: seats · the
+primary · bookmark · share · the icon rows, sticky once scrolled past (§4.73) · sub-nav under a rule, scroll-spy ·
+**body grid 1fr / 380**: sections at the start (no «نبذة» section: the hero carries it); at the end an `aside`: the
+venue card (name, address, the map LINK §4.71, capacity, «الحضور في القاعة فقط»), «من يحضر» (a count; the stack for
+staff and presenters, §4.56), «لفريقك» (NB4).
+
+## W18B.2 · ★ The kept-behaviour table (`DEC-208` §2), written before the deletion
+
+| Behaviour | Where it lives after the rebuild | Kept by |
+|---|---|---|
+| The auth boundary at the data, with `?next=/{locale}/app/sessions/{id}` | `page.tsx`: `requireSession(locale, next)` first | `REQ-AUT-005`, CLAUDE «checks close to the data» |
+| Who may see it is `sessions_read`; no row is `notFound()` | `getSessionForEvent()` (unchanged) | `REQ-TEN-003`, `DEC-134` |
+| The phase is `sessionPhase({ …session, days })`: between two days a workshop is `open` | `page.tsx` | `REQ-UIX-003`, wave 9 contract 9 |
+| **Every gate is the matrix's**: `affordancesFor(phase, relation)` for rsvp, calendar, tasks, the materials window, host console, the outcome | `page.tsx` → props; nothing re-derived | `REQ-UIX-015`, `DEC-090` |
+| One primary per width: `primaryActionFor()` → `primaryAfterCheckIn()`; «حضرت» via `showsAttended()` | `event-actions.ts` (kept, tested) | `REQ-SES-013`, `DEC-195` §2.5 |
+| The check-in link from the raw facts, per day: `eventCheckInLink()` / `checkInOfferFor()` | `event-check-in.ts` (kept), the action card | `REQ-CHK-015`, `REQ-CHK-016`, contracts 2 and 4 |
+| Reserve only on `canReserve` and not `closed`; waitlist when `full`; «ترتيبك N» (`<bdi>`); leave the waitlist; cancel, relabelled and warned after the cut-off, still a form; nothing for live, ended, cancelled, presenter, invisible | the rebuilt `rsvp-panel.tsx`, from `getRsvpPanelData()` (unchanged, `checkin`'s) | `REQ-RSV-001`, `005`, `006`, `010`, `16` §5.3 |
+| «أُغلق باب الحجز» (`rsvp.deadlinePassed`) as a status once the deadline has passed | `rsvp-panel.tsx` | `REQ-RSV-005` |
+| Never optimistic: nothing is booked on a press | `session-cta` + `rsvp-panel` | `REQ-UIX-007` |
+| ★ **Moment 1**: the action returns the result and `refresh()`es, never `redirect()`; the stage is keyed on the fresh occurrence; a refusal is static (`ReserveRefused`); the whisper says sync or manual; the thud moves an inner element, never the fixed bar | `checkin/actions.ts` (kept as is), `moment-reserve.tsx` (kept as is, no change to the five), the card and the bar as anchors | `REQ-UIX-045`, `DEC-195` §2.1, `DEC-197` §4 / §7, `DEC-188` §5 |
+| The calendar: in the booked state between the face and the cancel; a secondary while live for a confirmed member or the presenter | `AddToCalendar` (notify's) placed by the card | `16` §5.4.2, `REQ-CAL-*` |
+| Language before the action | the chips row above the action card, at every width | `REQ-SES-011` |
+| The certificate mode line when certificates are on | the card's icon rows (add-only `certificateMode` on `EventSession`, or `CertificateModeBadge` as today) | `REQ-CRT-002` |
+| The slot contract: the page owns every `<section>` and `<h2>`; a slot renders none; a section that can be empty is gated by the page through `isSectionShown()`; the sub-nav lists exactly what renders | `slots.ts` (kept, add-only), `event-section.tsx`, `event-subnav.tsx` | `16` §5.4.1a(b), `REQ-UIX-017` |
+| The section ids and `h2` names other tracks' specs select on («المواد», «الصور», «النقاش», «مهام ما قبل الجلسة», «التقييم», «المُقدِّم») | `event-section.tsx` from `EVENT_SECTION_IDS` | slot contract |
+| «شاشة التقديم»: the primary for a presenter or staff when the host console is granted, otherwise a link in the staff links | the card | `REQ-CHK-014` |
+| Staff links: schedule (admin), attendance (staff), certificates (admin) | the card's «إدارة الجلسة» nav | `REQ-SES-020` |
+| Cancelled: a `role="alert"` with the reason in `<bdi>`, no actions, comments frozen (content's slot) | the page's notice + `primaryActionFor` → null | `REQ-SES-010`, `REQ-EVT-*` |
+| A draft seen by staff or its presenter says it is unpublished | the page's notice | `09` `SCR-012` |
+| **Downloads are audited routes**: the poster for staff and presenters (`SessionDownload`), the member's certificate (`myCertificateHref()` → designer's route) | the card | `DEC-177`, `DEC-178`, `REQ-DSG-027` |
+| Share offers the PUBLIC card's URL, only where the public card answers | top row + bar | `DEC-066` |
+| Bookmark on open, live and ended | top row + bar | `REQ-DSC-006` |
+| The sub-nav's scroll-spy, sticky from `md`, `data-event-subnav` for the scroll padding, `aria-current="true"`, hidden under two items, scrolling never clipping | `event-subnav.tsx` | `REQ-UIX-017`, `SC 2.4.11`, `10` §1 |
+| `<bdi>` on the title, abstract, names, company, job title, bio, venue, address, reason, tags, dates, serial | every new file | `10` §3 |
+| **The outcome and its pending state**: `AwardState` (never a status role; `none` renders nothing) and `AttendanceOutcome` for ended attended/absent | the outcome card composes both (`checkin`'s, unchanged) | `REQ-CHK-018`, `REQ-PTS-015`, `REQ-UIX-015` ask 4 |
+| «قيّم الجلسة» only when `rateAllowed && canGrantOn && eligible && !existing`, with the window's end; the rating section returns once there is something else to say | `page.tsx`, the card | `REQ-RAT-001`, `REQ-RAT-003` |
+| «المهام التحضيرية (N)» jump for a confirmed member; «المواد» jump once ended | the card | `REQ-TSK-*` |
+| Several days: the day list in the time row, «placeVaries», the chip «3 أيام» instead of the first day's minutes | the card's time row, the chips | `REQ-SES-015`, `DEC-151` §4 |
+| In person only, said once; no stream link | the venue row | `REQ-SES-008` |
+| The map is a link, `rel="noreferrer noopener"`, new tab | the venue row / the desktop venue card | §4.71 |
+| The deadlines row while open; the cut-off for a held seat | the card | `REQ-SES-013` |
+| Presenters: name → profile, title · company, bio, **no rating, no history** | presenter card + «المُقدِّمون» when a bio exists | `REQ-PRF-004`, §25 Q5 |
+| The ended wash on the image only | `ui/poster`'s wrapper | `DEC-123` |
+| The recap figures link to their sections | recap `stat`s | `16` §5.3 |
+| The skeleton: no text, `aria-hidden`, covering check-in, host and rate too | `loading.tsx` | `REQ-UIX-005` |
+| `data-action-bar` → `--tabbar-h`, so nothing hides behind the bar | `ui/action-bar` | `16` §3.1 |
+| Western numerals | `numerals.ts` | `DEC-124` |
+| A member sees how many attend, never who | `session_attendance_count()`; `attendee-stack` only where RLS answers | A33 rule 3, contract 3 |
+
+**Behaviours dropped on purpose** (for the reviewer): the ended ribbon «انتهت هذه الجلسة يوم …» (NB5); the phone's
+poster inside «نبذة» (the poster is the hero now, ruling 4); the hero's «يقدّمها …» line (the presenter card replaces
+it); the presenter section for a presenter with no bio.
+
+## W18B.3 · The states `M10a.md` names and the artboards do not draw
+
+| State | Built as |
+|---|---|
+| Full → waitlist | `session-cta` `waitlist` «انضم لقائمة الانتظار» with the chip, then `booked` `hold: "waitlist"` «على قائمة الانتظار» + «ترتيبك N» + «غادر قائمة الانتظار» |
+| Reserved | `booked`: «تم تأكيد حجزك», the calendar between, «إلغاء الحجز» (+ the late warning after the cut-off) |
+| Deadline passed | no CTA; `rsvp.deadlinePassed` as a status in the card |
+| Did not attend | the outcome card muted, «لم تُسجّل حضورك» (`AttendanceOutcome`), no rate, no certificate; the materials still unlocked (the slot's window) |
+| Presenter viewing, completed | «قدّمت» with scoring's amount if published (Q-S3), never a literal; no «شاهد ملخصك» (NB6) |
+| Cancelled | the badge, the alert with the reason, no actions, no sticker, the discussion frozen (the slot's) |
+| Checked in, still live | `session-cta` `attended` «حضرت» + `AwardState` pending |
+| Staff / a presenter, open or live | the host view primary or link; the poster download; `attendee-stack` with faces |
+| A draft (staff) | the unpublished notice; no share |
+| Several days | the day list, «3 أيام», check-in per day |
+| No poster yet | `ui/poster`'s placeholder |
+| No company on the member | the banner is the home's (`DEC-207` §6.1); reserving is refused by the RPC as today |
+| Reduced motion | moment 1 and moment 3's static states, as they are |
+
+## W18B.4 · What I need
+
+**From `content`** (the slots): props stay `SlotProps` (ids, never rows). Each summary's `count` feeds the sub-nav's
+figure. ★ **One add-only field on `SlotSummary`** (my `slots.ts`): `headerNote?: string | null` and `headerLink?: {
+href: string; label: string } | null`, for what the artboards print at the end of a section's header («3 تعليقات ·
+رد واحد لكل تعليق», «للحاضرين المسجَّلين · تُعرض لكل المؤسسة», «افتح الألبوم»). The page draws them, since it owns
+the header. Photos self-gate to live and completed.
+
+**From `scoring`**: (S1) moment 3 on the outcome card through its mechanism, **reused, never copied** — a component
+beside `MomentWeek` (e.g. `MomentCompletion`) that animates a server-drawn figure keyed `completion:<ledger entry>`
+through `useSeenMoment()`, so the event page and `SCR-022` share one claim; (S2) add-only on the `paid`
+`SessionAwardState`: `occurrenceId` (the ledger entry) and `paidAt` (§4.74); (S3) the presenter's award for a
+completed session (`session_delivered` plus bonus), if it is to be drawn at all; (S4) whether attending counts toward
+the company board — the «لفريقك» note is drawn only if it is true.
+
+**From the lead**: (L1) whether the shell draws its top bar on the event page at `lg` (the desktop artboard shows it,
+with no rails); (L2) nothing new in `ui/index.ts` — `ui/poster`, `action-bar`, `attendee-stack`, `story-ring`,
+`progress-bar`, `stat`, `session-cta` suffice as they stand; (L3) `[id]/loading.tsx` also covers `checkin`'s
+check-in and host screens: I rebuild it as the event's skeleton, and `checkin` can add its own boundaries if it wants
+different ones.
+
+**From my own DAL** (add-only, `sessions.ts`): `EventPresenter.avatarUrl` and `teamColor`; `EventSession.checkedInAt`,
+`certificateMode` and `rotationSeconds` (`org_settings.check_in_rotation_seconds`); the attendance count and the
+registered count for the live and recap figures.
+
+## W18B.5 · Files, and the assertions that move
+
+**Commit 1 — DELETE** (`rm`): `src/app/[locale]/app/sessions/[id]/{page,loading,error,not-found}.tsx` ·
+`src/components/sessions/{action-card,action-bar,event-hero,event-subnav,presenter-list,gated-section}.tsx` ·
+`src/components/checkin/rsvp-panel.tsx`. **Kept**, because they are behaviour and not the screen's markup:
+`event-actions.ts`, `event-check-in.ts`, `slots.ts`, `moment-reserve.tsx` (moment 1 is not changed), `checkin/actions.ts`,
+`share-link.tsx`, `session-download.tsx` (the hub uses it), `calendar-menu.tsx`, `numerals.ts`, `day-label.ts`.
+
+**Commit 2 — CREATE**: the four route files · `components/sessions/{event-top-row,event-hero,presenter-card,action-card,event-meta,outcome-card,live-count,recap-stats,certificate-row,event-subnav,event-section,event-aside}.tsx` · `checkin/rsvp-panel.tsx` · strings in `sessions.json` (★ «يبقى N مقعدًا», «حاضرًا الآن», «الرمز يُعرض في القاعة ويتغيّر كل …», «حضرت، ودُفعت نقاطك», «سجّلت حضورك …», «شهادتك جاهزة», «من يحضر», the recap labels) ·
+tests: `tests/components/sessions/{event-section,action-card-phases,outcome-card,event-subnav}.test.tsx`,
+`tests/e2e/wave18-sessions-event-{open,live,done,desktop}.spec.ts` with captures at 390 and 1280.
+
+**Assertions that move** (each a ledger line in the commit that moves it):
+
+- `tests/components/sessions/gated-section.test.tsx` — the subject is renamed `event-section.tsx`: **selector**. Its
+  order and ids case holds as long as NB2 keeps the ids.
+- `tests/components/sessions/event-hero-days.test.tsx` — the duration chip moves into the chips row: **selector**; the
+  expectations («60 دقيقة» at one day, «3 أيام» / «يومان») hold.
+- `tests/components/sessions/action-card-attended.test.tsx` — it tests `event-actions.ts`, which is kept: none expected.
+- `tests/components/checkin/rsvp-panel.test.tsx` — the panel is rewritten with the same gates: **selector** only,
+  every expectation held (the ten cases are the table's rows).
+- `tests/e2e/event-page.spec.ts` — the ended ribbon (`ribbonEnded`): **expectation** (NB5); poster placement:
+  **selector**.
+- `tests/e2e/{checkin,sessions-screens,wave16-sessions-reserve,wave13-sessions-hub,wave9-sessions-day-views,wave12-checkin-acknowledgement}.spec.ts`
+  — region «الحضور», «احجز مقعدك», «أضِف إلى تقويمك», «إلغاء الحجز», «تسجيل الحضور», «قيّم الجلسة», «شاشة التقديم»
+  and «أقسام الجلسة» all keep their names: **none expected**. Whatever moves is found by running them, and each goes
+  to its owner with the line.
+
+## W18B.6 · New disagreements with `docs/plan/` — none is picked
+
+| # | The artboard | The plan / the tree | Where |
+|---|---|---|---|
+| **NB1** | On the phone the action card AND the bottom bar each draw «احجز مقعدك» (`Event.dc.html:52` and `:122`; `EventLive:45` and `:85`) — two primaries on one screen | `16` §3 principle 2 (one primary); the tree keeps one per width (`action-card.tsx:290`, the bar on the phone and the card from `md`); moment 1's anchors assume one | my default: one per width, as the tree does |
+| **NB2** | The sections reorder by phase — live: الصور · النقاش · نبذة · المواد (`EventLive.dc.html:38-41`); done: المواد · الصور · النقاش · نبذة (`EventDone:59-62`) | `slots.ts` `EVENT_SECTION_IDS` is one fixed order, «stable» for deep links and specs; `09` `SCR-012` gives one order | the ids stay; only the order changes by phase |
+| **NB3** | Desktop: the abstract is in the hero, with no «نبذة» section (`EventDesktop:30`) | the phone draws «نبذة» as a section; the sub-nav then differs by width | — |
+| **NB4** | «لفريقك: حضور صنف لهذه الجلسة يرفع نسبة مشاركتها في سباق الشركات» (`EventDesktop:112`) | whether attendance feeds the company board is scoring's rule; a claim the rule does not make is false (contract 7) | S4 |
+| **NB5** | No ended ribbon; the badge reads «مكتملة» (`EventDone:30`) | `16` §5.3 (ask 6) put the ribbon there; the badge's word for `ended` is «انتهت» (`DEC-073`) | the badge's own word |
+| **NB6** | «شاهد ملخصك» for a presenter (`M10a.md` §7) | no summary screen exists | not built |
+| **NB7** | The deadlines row shows the cancellation cut-off to a member with no seat (`Event.dc.html:57`) | the tree shows the cut-off to a held seat only | — |
+| **NB8** | «مباشر · شاهد القصة» as a link in the live top row (`EventLive.dc.html:20`) | `DEC-205` §1 / `DEC-206` §1.5: a ring opens nothing this wave, and «شاهد» promises a viewer | the ring's state, with no «شاهد» and no link |
+| **NB9** | The tasks and ratings sections are drawn in the new look (`Event.dc.html:92-96`) | `components/tasks/**` (content's) and `components/event/ratings.tsx` (event's) are not in PR B's map — they would sit on the rebuilt page in the old look | the lead's |
+
+## W18B.7 · As built — `4a45c008` (delete), `9bf3aced` (write), then `cb1a1317`, `b239cf76`, `25b7518e`, `54fc13b3`
+
+**The files.** Commit 1 deleted the page, its three boundaries, `action-card`, the old `action-bar`, `event-hero`,
+`event-subnav`, `presenter-list`, `gated-section` and `checkin/rsvp-panel`. Commit 2 wrote the four route files,
+`rsvp-panel.tsx`, and `components/sessions/{event-top-row,event-hero,action-card,event-meta,outcome-card,event-recap,event-section,event-subnav,event-aside}.tsx`.
+The phone's own top row, the desktop breadcrumb, the notices and the presenters' bios are drawn by the page itself.
+The add-only changes: `EventPresenter.avatarUrl`/`teamColor`, `EventSession.checkedInAt`, `getEventFigures()`,
+`getEventAttendeeFaces()`, `PhaseSlotProps`, `getAttendanceRulePoints()` (checkin's request, `aa495979`) and
+`CodeInputProps.align` (landed by the lead in `d640d411`).
+
+**Two changes to kept files.** `moment-reserve.tsx`: `ReserveCta`'s card wrapper is no longer `hidden md:block`, so
+the card's reserve shows at every width (DEC-209: two primaries on the phone). How the moment is keyed does not move,
+and neither does which placement the ticket rises from. `slots.ts`: `PhaseSlotProps`, add-only.
+
+**The kept-behaviour table (W18B.2), checked row by row against the new files, `DEC-208` §2.** Every row holds, and
+two were caught by the check itself:
+- ★ **The pending award between a workshop's days.** The old card mounted `AwardState` in every phase (it self-gates);
+  the first write mounted it only while live. Restored in `54fc13b3`.
+- ★ **The phone's bar inside the region «الحضور».** With the primary now in both the card and the bar, every locator
+  scoped to the region would have found two controls. The bar moved outside the region, still inside the moment's
+  host, in `25b7518e`.
+
+**Behaviours dropped on purpose** (for the reviewer, with the reason):
+- the hero's «يقدّمها …» line — the presenter card replaces it;
+- the phone's poster inside «نبذة» — the poster is the hero now (ruling 4);
+- the icon rows on an ENDED session — `EventDone.dc.html` draws the outcome and the certificate there instead;
+  «الحضور في القاعة فقط.» stays on every other phase;
+- the desktop's labelled bookmark and share buttons with the share hint — the row draws the two icons
+  (`EventDesktop.dc.html:49-50`); the hint remains the share control's own;
+- the ended stat «المواد المنشورة» — the recap draws attended of reserved and the photos (`EventDone.dc.html:56-60`);
+- the presenters section for a presenter with no bio.
+
+**The ledger lines** (for `STATUS.md`):
+
+| File | What changed | Why |
+|---|---|---|
+| `tests/components/sessions/gated-section.test.tsx` → `event-section.test.tsx` | **selector** — the subject is renamed; every expectation is unchanged; one new case (the header's note) | `DEC-208`: `gated-section.tsx` deleted and written as `event-section.tsx` |
+| `tests/components/sessions/event-hero-days.test.tsx` | **selector** — the hero's props (no `poster`, `points` added) and `getSessionPoster` mocked; the four expectations are unchanged | the hero reads the poster itself now |
+| `tests/components/checkin/rsvp-panel.test.tsx` | none — 10/10 unchanged, against the rewritten file | the whole panel keeps its seats line and seats chip |
+
+**Predicted to move in specs I cannot run** (each goes to its owner with the line once you run them):
+- On the phone the primary now appears twice on the page (card and bar). A **page-level** locator for it — e.g.
+  `sessions-screens.spec.ts:305` `getByRole("link", { name: "شاشة التقديم" })` — finds two: **selector**. Region-scoped
+  locators are not affected.
+- The card's reserve is named «احجز مقعدك، +35 عند الحضور» (the rule's amount) where it was «احجز مقعدك، 27 من 30»: any
+  exact match on the old chip moves — **expectation** (`DEC-209`: the artboard's chip).
+- `event-page.spec.ts`: the poster's place (**selector**); the hero's «يقدّمها» line, if asserted (**expectation**).
+
+★ **One disagreement I did not pick, found while building:** `EventDone.dc.html` has no icon rows. The ended session
+therefore drops the in-person line, which `REQ-SES-008` asks the product to say. The product still offers no remote
+affordance anywhere, so the requirement's acceptance holds; the sentence is simply not repeated on an ended page.
+
+**After DEC-210** (`scoring`'s evidence: check-in points feed the company board, and `company_attendance_pct` credits a
+company for its members' attendance): the desktop aside draws «لفريقك» for a member with a company, **only** while
+`isCompanyAttendanceRuleEnabled()` (scoring's, `2c68e625`) says the rule is on, and only on an open or live session.
+It is one sentence stating the rule: «حضورك يرفع نسبة مشاركة <company> في سباق الشركات.» — no round, no count of who
+attends, no standing. The member's own company comes from an add-only `getViewerCompany()` in `sessions.ts`.
+
+
+**After the lead's review of the `d563ee1c` captures** (`2e5d0e35`):
+- The desktop action row now matches the drawing: the primary is compact and the facts sit in the row's other column.
+- On the phone the chips fit one row: the one-day length is drawn only from `lg`, and «3 أيام» stays at every width.
+- The spec waits for every streamed region before a capture.
+- ★ **Correcting W18B.2:** the «المواد» jump on the ended card is **removed**. No requirement kept it — the row I wrote
+  cited `REQ-TSK-*`, which is the tasks jump's requirement, not this one's. The artboard reaches the materials through
+  the sub-nav's chip.
+- The ended poster's «حضرت» sticker (`EventDone.dc.html:30`) is **not built**:
+  - a rendered poster carries no sticker (`DEC-206` §4.46);
+  - on the placeholder, a sticker is never a status (`REQ-UIX-031`), and whether the viewer attended is the outcome
+    card's fact (`AttendanceOutcome`, `REQ-UIX-015` ask 4).
+  - Recorded as a disagreement, not picked.

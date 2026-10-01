@@ -1,125 +1,168 @@
-import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
-import { PageHeader } from "@/components/ui/page-header";
-import { SessionStatusBadge } from "@/components/ui/badge";
-import { TagChip } from "@/components/ui/tag-chip";
-import { AvatarStack } from "@/components/ui/avatar";
 import { dayCountLabel } from "@/components/sessions/day-label";
-import { formatNumber } from "@/components/sessions/numerals";
+import { formatDate, formatNumber } from "@/components/sessions/numerals";
+import { Avatar } from "@/components/ui/avatar";
+import { SessionStatusBadge } from "@/components/ui/badge";
+import { Link } from "@/components/ui/link";
+import { PageHeader } from "@/components/ui/page-header";
+import { Poster } from "@/components/ui/poster";
+import { Prose } from "@/components/ui/prose";
+import { Sticker } from "@/components/ui/sticker";
+import { TagChip } from "@/components/ui/tag-chip";
+import { getSessionPoster } from "@/lib/dal/posters";
 import type { EventSession } from "@/lib/dal/sessions";
 import type { SeatState, SessionPhase } from "@/lib/session-status";
 
-// The event page's hero — `16` §4.2.2, §6.3, REQ-SES-011, REQ-SES-013,
-// REQ-UIX-003, DEC-080.
+// The event page's hero — rebuilt in wave 18 from `Event.dc.html` and `EventDesktop.dc.html` (REQ-UIX-061,
+// ruling 4 of DEC-205). In the artboards' order: the poster, WHOLE at 4:5 · the chips — the phase, the level,
+// ★ the language (REQ-SES-011: before the action, at every width) and the length · the `h1` · the presenter
+// card · and from `lg`, beside the poster, the abstract and the tags (the phone reads them in «نبذة»).
 //
-// ONE dark band per screen, at the top, where the session's identity lives: the
-// status badge ABOVE the title (state seen before it is read, `16` §3
-// principle 3), the title as the page's one `<h1>`, who presents it, and the
-// chips — category, level, **language**, duration. The language chip is here
-// and not further down because REQ-SES-011 wants it before the reservation
-// action, and the action card follows this band at every width.
+// ★ THE POSTER IS THE ARTIFACT WHOLE, NEVER CROPPED (REQ-UIX-026). A render at its own size; before one exists,
+// `ui/poster`'s typographic placeholder in the lead presenter's team colour, with the rule's amount as its
+// sticker for a member — the «+50» belongs to the poster template, so a RENDERED poster carries none of its
+// own (DEC-206 §4.46). The ended wash is on the poster alone, never the badge (DEC-123).
 //
-// ★ Phone and desktop differ in one thing, the lead's ruling on §25 Q3: from
-// `md` the poster sits in the band's second column; on the phone the band is a
-// dark gradient carrying the badge, the title, the presenters and the chips,
-// and the full poster opens «نبذة» instead — a 4:5 poster above the card would
-// push the one primary action out of the first screen. The gradient is page
-// styling over the existing navy tokens, not a poster fill (DEC-127 is not this
-// wave).
+// ★ THE LENGTH: «60 دقيقة» at one day, «3 أيام» at several — the column is day one's length (DEC-151 §4), and
+// «120 دقيقة» on a three-evening workshop would read as «this takes two hours» (REQ-SES-015).
 //
-// ★ The poster is exactly as wide as its column (`DEC-122`: the canvas's
-// overspill is a missing `box-sizing` reset in the mockup), and an ended
-// session's wash is on the IMAGE only — nothing here dims the badge (`DEC-123`).
+// Presenters: a card per presenter — the ring in the company's colour, the name, the title and the company,
+// «الملف» — linking to their profile. No rating and no computed history (§25 Q5, DEC-206 §4.67).
 
 export interface EventHeroProps {
   session: EventSession;
-  /**
-   * ★ How many days the session has (`REQ-SES-015`). The duration chip is the
-   * one place on this page where `sessions.duration_minutes` is shown as the
-   * WHOLE of what a member is committing to — and at several days it is not:
-   * it is day one's length (`DEC-151` ruling 4), so «120 دقيقة» on a
-   * three-evening workshop reads as «this takes two hours».
-   */
-  dayCount: number;
   phase: SessionPhase;
   seat: SeatState | undefined;
   closingSoon: boolean;
-  /** `SessionPoster` for the band's second column — rendered by the page, shown from `md`. */
-  poster: ReactNode;
+  dayCount: number;
+  /** The rule's amount for this viewer — the placeholder's sticker. Null draws none. */
+  points: number | null;
   locale: string;
 }
 
-export async function EventHero({ session, dayCount, phase, seat, closingSoon, poster, locale }: EventHeroProps) {
-  const [t, tUi, tDays] = await Promise.all([getTranslations("sessions.event"), getTranslations("ui.pageHeader"), getTranslations("sessions.days")]);
-
-  const breadcrumb = [{ href: "/app/sessions", label: t("breadcrumbRoot") }];
-  if (session.categoryId && session.categoryName) {
-    breadcrumb.push({ href: `/app/sessions?category=${session.categoryId}`, label: session.categoryName });
-  }
-
-  const chips: string[] = [
-    ...(session.categoryName ? [session.categoryName] : []),
-    t(`level.${session.level}`),
-    session.language === "ar" ? t("languageAr") : t("languageEn"),
-    // ★ «3 أيام» in place of «120 دقيقة» once there is more than one day. The
-    // COLUMN keeps meaning day one's length, which is what every clock job and
-    // every check-in window needs; this chip is what a member reads as «how
-    // much of my week is this», and the honest answer is the day count. At one
-    // day it is the minutes, exactly as today.
-    ...(dayCount > 1
-      ? [dayCountLabel(dayCount, tDays)]
+export async function EventHero({ session, phase, seat, closingSoon, dayCount, points, locale }: EventHeroProps) {
+  const [t, tDays, tPoster, poster] = await Promise.all([
+    getTranslations("sessions.event"),
+    getTranslations("sessions.days"),
+    getTranslations("designer.poster"),
+    getSessionPoster(locale, session.id).catch(() => null),
+  ]);
+  const lead = session.presenters[0];
+  const washed = phase === "ended" || phase === "cancelled";
+  const length =
+    dayCount > 1
+      ? dayCountLabel(dayCount, tDays)
       : session.durationMinutes
-        ? [t("duration", { count: session.durationMinutes, value: formatNumber(session.durationMinutes) })]
-        : []),
-  ];
+        ? t("duration", { count: session.durationMinutes, value: formatNumber(session.durationMinutes) })
+        : null;
 
   return (
-    // Wave 17 (DEC-199 §1.3.5): `.theme-dark` and its navy gradient are gone — they cut an
-    // old-look island into a playground page. The band stays a band, one step above the ground.
-    <div className="bg-surface">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 pb-8 pt-5 md:grid-cols-[minmax(0,1fr)_372px] md:items-start md:gap-12 md:px-8 md:pb-16 md:pt-6">
-        <div className="flex min-w-0 flex-col gap-5">
-          <PageHeader
-            breadcrumb={breadcrumb}
-            breadcrumbLabel={tUi("breadcrumb")}
-            status={<SessionStatusBadge phase={phase} seat={seat} closingSoon={closingSoon} />}
+    <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start lg:gap-8">
+      <div className="flex flex-col gap-2">
+        {/* The ended wash (DEC-123 item 1). A rendered poster is an image and takes the whole wash. The
+            placeholder draws real text, so it drains to grey and keeps its opacity: `opacity-45` took its
+            category and meta to 3.8:1 (the lead's a11y sweep, REQ-NFR-007). Under `grayscale` the ink on
+            the seven team colours and the six sticker fills is 4.68:1 at worst (magenta, the filter taken
+            in sRGB) and the neutral ground is unchanged. */}
+        <div className={washed ? (poster?.imageUrl ? "grayscale opacity-45" : "grayscale") : undefined}>
+          <Poster
+            src={poster?.imageUrl ?? null}
+            width={poster?.width ?? undefined}
+            height={poster?.height ?? undefined}
             title={session.title}
-            meta={chips.map((label) => (
-              <TagChip key={label} label={label} />
-            ))}
+            category={session.categoryName ?? undefined}
+            date={session.startsAt ? formatDate(session.startsAt, session.timeZone, locale) : undefined}
+            teamColor={lead?.teamColor ?? null}
+            teamName={lead?.companyName ?? lead?.displayName ?? t("presenterFallback")}
+            sticker={!poster?.imageUrl && points !== null && points > 0 ? <Sticker rotate={6}>{t("pointsChip", { value: formatNumber(points) })}</Sticker> : undefined}
+            priority
           />
-          {session.presenters.length > 0 ? <Presenters session={session} locale={locale} label={phase === "ended" ? t("presentedByPast") : t("presentedBy")} fallback={t("presenterFallback")} /> : null}
         </div>
-        <div className={`hidden min-w-0 md:block ${phase === "ended" || phase === "cancelled" ? "[&_img]:opacity-50 [&_img]:grayscale" : ""}`}>{poster}</div>
+        {/* Staff learn when details moved under a detached poster (DEC-012) — said once, quietly. */}
+        {session.viewerIsStaff && poster?.staleSince ? (
+          <p role="status" className="text-body-sm text-fg-heading">
+            {tPoster("stale")}
+          </p>
+        ) : null}
       </div>
-    </div>
-  );
-}
 
-/**
- * «يقدّمها سعد الحربي ونورة القحطاني». Every name is its own `<bdi>` — a Latin
- * name inside the Arabic run must not reorder the conjunction around it — and
- * the conjunction comes from `Intl.ListFormat`, so three presenters read as
- * Arabic lists do, not as «و» typed between each pair.
- */
-function Presenters({ session, locale, label, fallback }: { session: EventSession; locale: string; label: string; fallback: string }) {
-  const names = session.presenters.map((p) => p.displayName ?? fallback);
-  const parts = new Intl.ListFormat(locale, { type: "conjunction" }).formatToParts(names);
-  return (
-    <div className="flex items-center gap-3">
-      <AvatarStack size={32} max={3} members={session.presenters.map((p) => ({ memberId: p.memberId, displayName: p.displayName }))} />
-      <p className="min-w-0 text-body text-fg-body">
-        {label}{" "}
-        {parts.map((part, i) =>
-          part.type === "element" ? (
-            <bdi key={i} className="font-medium text-fg-heading">
-              {part.value}
-            </bdi>
-          ) : (
-            <span key={i}>{part.value}</span>
-          ),
-        )}
-      </p>
+      <div className="flex min-w-0 flex-col gap-3">
+        <PageHeader
+          className="gap-3"
+          title={session.title}
+          status={
+            <>
+              <SessionStatusBadge phase={phase} seat={seat} closingSoon={closingSoon} />
+              <TagChip label={t(`level.${session.level}`)} />
+              <TagChip label={session.language === "ar" ? t("languageAr") : t("languageEn")} />
+              {/* The length: only `EventDesktop.dc.html` draws it (the phone's three chips fit one row at 390) —
+                  except «3 أيام», which says what a member commits to and stays at every width (REQ-SES-015). The
+                  width switch is on a wrapper, never a second display utility on the chip (DEC-111). */}
+              {length ? (
+                dayCount > 1 ? (
+                  <TagChip label={length} />
+                ) : (
+                  <span className="hidden lg:inline-flex">
+                    <TagChip label={length} />
+                  </span>
+                )
+              ) : null}
+            </>
+          }
+        />
+
+        {/* From `lg` the abstract and the tags stand in the band (`EventDesktop.dc.html`); the phone reads them in «نبذة». */}
+        <Prose className="hidden lg:block">
+          <p className="whitespace-pre-line">
+            <bdi>{session.abstract}</bdi>
+          </p>
+        </Prose>
+
+        {session.presenters.length > 0 ? (
+          <ul className="flex flex-col gap-2">
+            {session.presenters.map((p) => {
+              const role = [p.jobTitle, p.companyName].filter((v): v is string => Boolean(v));
+              return (
+                <li key={p.memberId}>
+                  <Link
+                    href={`/app/members/${p.memberId}`}
+                    quiet
+                    className="flex items-center gap-3 rounded-panel border border-edge bg-surface p-3 text-fg-heading no-underline"
+                  >
+                    <Avatar memberId={p.memberId} displayName={p.displayName} src={p.avatarUrl ?? null} size={40} teamColor={p.teamColor ?? null} decorative />
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="text-body font-bold">
+                        <bdi>{p.displayName ?? t("presenterFallback")}</bdi>
+                      </span>
+                      {role.length > 0 ? (
+                        <span className="text-caption text-fg-muted">
+                          {role.map((part, i) => (
+                            <span key={i}>
+                              {i > 0 ? "، " : null}
+                              <bdi>{part}</bdi>
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="shrink-0 text-caption text-fg-muted">{t("profileLink")}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+
+        {session.tags.length > 0 ? (
+          <ul aria-label={t("tagsLabel")} className="hidden flex-wrap gap-1.5 lg:flex">
+            {session.tags.map((tag) => (
+              <li key={tag.normalised}>
+                <TagChip label={`#${tag.label}`} href={`/app/sessions?tag=${encodeURIComponent(tag.normalised)}`} />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
     </div>
   );
 }

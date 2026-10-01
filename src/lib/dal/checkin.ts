@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { listSessionDays, type SessionDay } from "@/lib/dal/sessions";
-import { resolveDay, sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
+import { checkInCeiling, resolveDay, sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
 import { affordancesFor, checkInIneligibleReason, checkInOffer, type CheckInIneligibleReason, type CheckInOffer, type CheckInOfferViewer } from "@/components/checkin/session-matrix";
 import type { RsvpStatus } from "@/lib/dal/rsvp";
 
@@ -77,6 +77,28 @@ export interface HostViewData {
   dayCount: number;
   /** The SESSION's zone: a day of a workshop is a fact about the room (OQ-018). */
   timeZone: string;
+  // ── wave 18, PR B (REQ-UIX-062, REQ-CHK-001) — add-only; nothing above changes ──
+  title: string;
+  /** The day's place, else nowhere. */
+  venueName: string | null;
+  /** When the code on the wall stops being current — `valid_from + rotation` (`0105`). Null with no code. */
+  rotatesAt: string | null;
+  /** The instant this read was made, so a client counts down against the SERVER's clock, never its own. */
+  readAt: string;
+  /** `org_settings.check_in_grace_seconds` (REQ-CHK-002): how long the previous code is still accepted. */
+  graceSeconds: number;
+  /**
+   * When the day stops taking attendance at all — `checkInCeiling()`, the twin of
+   * `public.check_in_ceiling()` (REQ-CHK-016, DEC-151). Never a third copy of the rule.
+   */
+  closesAt: string | null;
+  /** `sessions.capacity` — the planning limit; null reads as «no limit». */
+  capacity: number | null;
+  /**
+   * The day's active check-ins by a member with no reservation at all — the attendance report's own
+   * definition of a walk-in (`getAttendanceReport()` below: no RSVP row, any status). A count, never who.
+   */
+  walkInCount: number;
 }
 
 /** The live code and count for the host view. Null when the caller isn't the presenter or staff (REQ-CHK-014). */
@@ -84,17 +106,20 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   if (!z.uuid().safeParse(sessionId).success) return null;
   const { supabase } = await sessionClient(locale);
 
-  const [codeRes, countRes, settingsRes, sessionRes, days] = await Promise.all([
+  const [codeRes, countRes, settingsRes, sessionRes, days, rsvpsRes] = await Promise.all([
     // `p_day` left null on purpose: the RPC resolves it, and the row it returns
     // NAMES the day it minted for. Resolving here and passing it would put the
     // app's clock and the database's on either side of a day boundary.
     supabase.rpc("ensure_check_in_code", { p_session: sessionId }),
     // The ids, not a `head: true` count — one round trip answers «how many on
     // THIS day», and the day is not known until the RPC above returns.
-    supabase.from("check_ins").select("session_day_id").eq("session_id", sessionId).is("removed_at", null),
-    supabase.from("org_settings").select("check_in_rotation_seconds").maybeSingle(),
-    supabase.from("sessions").select("state, starts_at, ends_at, duration_minutes, time_zone, allow_walk_ins, check_in_open").eq("id", sessionId).maybeSingle(),
+    supabase.from("check_ins").select("session_day_id, member_id").eq("session_id", sessionId).is("removed_at", null),
+    supabase.from("org_settings").select("check_in_rotation_seconds, check_in_grace_seconds").maybeSingle(),
+    supabase.from("sessions").select("title, state, starts_at, ends_at, duration_minutes, time_zone, allow_walk_ins, check_in_open, capacity").eq("id", sessionId).maybeSingle(),
     listSessionDays(locale, sessionId),
+    // Who holds a reservation of any status — the walk-in count's other half. Readable by exactly the
+    // viewers this screen serves (`rsvps_read`: staff and the session's presenters, 0010).
+    supabase.from("rsvps").select("member_id").eq("session_id", sessionId),
   ]);
   // Authorisation is the RPC's (REQ-CHK-014): a member gets `not_authorized`
   // whatever the state, so the window is never revealed to someone who may
@@ -102,6 +127,7 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   if (codeRes.error && (codeRes.error.message.includes("not_authorized") || codeRes.error.message.includes("not_found"))) return null;
   if (codeRes.error && !codeRes.error.message.includes("not_open")) throw new Error(`ensure_check_in_code: ${codeRes.error.message}`);
   if (countRes.error) throw new Error(`check_ins count: ${countRes.error.message}`);
+  if (rsvpsRes.error) throw new Error(`rsvps: ${rsvpsRes.error.message}`);
   if (!sessionRes.data) return null;
 
   const s = sessionRes.data;
@@ -121,7 +147,14 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   // `bool_or` shadow of the days (DEC-150 contract 2) and is the right answer
   // only at one day — it is the fallback for a session with no days at all.
   const checkInOpen = day ? day.checkInOpen : s.check_in_open === true;
-  const checkInCount = (countRes.data ?? []).filter((r) => !day || r.session_day_id === day.id).length;
+  const todays = (countRes.data ?? []).filter((r) => !day || r.session_day_id === day.id);
+  const checkInCount = todays.length;
+  const reserved = new Set((rsvpsRes.data ?? []).map((r) => r.member_id as string));
+  const walkInCount = todays.filter((r) => !reserved.has(r.member_id as string)).length;
+  const graceSeconds = settingsRes.data?.check_in_grace_seconds ?? 120;
+  const dayIndex = day ? days.findIndex((d) => d.id === day.id) : -1;
+  const ceiling = dayIndex >= 0 ? checkInCeiling(days, dayIndex) : null;
+  const rotatesAt = c ? new Date(new Date(c.valid_from).getTime() + rotationSeconds * 1000).toISOString() : null;
 
   // "staff" and "presenter" carry an identical cell (both are the console's
   // two eligible viewers) — `getHostView()` already only reaches this point
@@ -144,6 +177,14 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
     day: day ? asCheckInDay(day) : null,
     dayCount: days.length,
     timeZone: s.time_zone,
+    title: s.title,
+    venueName: day?.venue?.name ?? null,
+    rotatesAt,
+    readAt: new Date().toISOString(),
+    graceSeconds,
+    closesAt: ceiling === null ? null : new Date(ceiling).toISOString(),
+    capacity: (s.capacity as number | null) ?? null,
+    walkInCount,
   };
 }
 
@@ -227,6 +268,15 @@ export interface CheckInScreenData {
    * ★ Decoration: a failed read is null (lime and bone), never a broken check-in screen.
    */
   teamColor: string | null;
+  // ── wave 18, PR B (REQ-UIX-062) — add-only; nothing above changes ──
+  /** `org_settings.check_in_rotation_seconds` — the rules line says the org's rotation, never «10» (DEC-206 §4.76). */
+  rotationSeconds: number;
+  /** The day's place, else nowhere — the session's mini-row. */
+  venueName: string | null;
+  /** The day's start, else the session's — «بدأت 6:30 م». */
+  startsAt: string | null;
+  /** `sessions.require_all_days` (REQ-SES-017) — whether the amount needs every day. */
+  requireAllDays: boolean;
 }
 
 /**
@@ -247,8 +297,8 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
   if (!z.uuid().safeParse(sessionId).success) return null;
   const { session, supabase } = await sessionClient(locale);
 
-  const [sessionRes, presenterRes, rsvpRes, checkInRes, days, memberRes] = await Promise.all([
-    supabase.from("sessions").select("id, title, state, starts_at, ends_at, duration_minutes, time_zone, allow_walk_ins, check_in_open").eq("id", sessionId).maybeSingle(),
+  const [sessionRes, presenterRes, rsvpRes, checkInRes, days, memberRes, settingsRes] = await Promise.all([
+    supabase.from("sessions").select("id, title, state, starts_at, ends_at, duration_minutes, time_zone, allow_walk_ins, check_in_open, require_all_days").eq("id", sessionId).maybeSingle(),
     supabase.from("session_presenters").select("member_id").eq("session_id", sessionId).eq("member_id", session.memberId).eq("accepted", true).maybeSingle(),
     supabase.from("rsvps").select("status").eq("session_id", sessionId).eq("member_id", session.memberId).maybeSingle(),
     // Every day, not one: «already checked in» is per day (REQ-CHK-005 per
@@ -261,6 +311,8 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
     // and this is the MEMBER's screen: the call was refused 42501 on every
     // render and its result never read. What the member has earned is
     // contract 1's `getSessionAwardState()`, which the page reads beside this.
+    // The rotation, for the rules line. Org-readable (`p1_org_read`, 0004); a failed read is the default.
+    supabase.from("org_settings").select("check_in_rotation_seconds").maybeSingle(),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
   if (!sessionRes.data) return null;
@@ -305,7 +357,24 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
     checkedInToday: checkedIn,
     arrivedAt: (today?.arrived_at as string | undefined) ?? null,
     teamColor: company?.team_color ?? null,
+    rotationSeconds: (settingsRes.error ? null : settingsRes.data?.check_in_rotation_seconds) ?? 600,
+    venueName: day?.venue?.name ?? null,
+    startsAt: day?.startsAt ?? s.starts_at ?? null,
+    requireAllDays: s.require_all_days !== false,
   };
+}
+
+/**
+ * ★ REQ-CHK-013 — the session a refused check-in overlaps, by its title. `check_in()` names it by id
+ * (`conflict_session_id`); this reads it through RLS, so a session the member may not see is null and
+ * the refusal falls back to the sentence that names none. A malformed id never reaches the database.
+ */
+export async function getConflictTitle(locale: string, sessionId: string): Promise<string | null> {
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.from("sessions").select("title").eq("id", sessionId).maybeSingle();
+  if (error || !data) return null;
+  return data.title as string;
 }
 
 /**

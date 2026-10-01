@@ -41,6 +41,21 @@
       "rescope": {
         "trigger": "Change the material's scope: <bdi>{label}</bdi>",
         "failed": "Could not change the material's scope. Try again."
+      },
+      "row": {
+        "viewer": "Read in the viewer",
+        "viewerAndDownload": "Read in the viewer or download",
+        "leaves": "Opens outside the platform"
+      },
+      "audio": {
+        "tile": "Audio",
+        "play": "Play the recording",
+        "pause": "Pause",
+        "seek": "Playback position",
+        "position": "<bdi>{elapsed}</bdi> of <bdi>{total}</bdi>",
+        "listenOnly": "Listen only",
+        "listenAndDownload": "Listen or download",
+        "unavailable": "Listening is unavailable: download is off for this item"
       }
     },
     "upload": {

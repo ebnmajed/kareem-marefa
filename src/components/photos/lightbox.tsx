@@ -36,6 +36,7 @@ export interface LightboxPhoto {
 
 interface LightboxContext {
   open: (photoId: string, opener: HTMLElement) => void;
+  openFirst: (opener: HTMLElement) => void;
   positionOf: (photoId: string) => number;
   total: number;
 }
@@ -50,7 +51,12 @@ const plain = (chunks: string) => chunks;
 /** A horizontal travel shorter than this is a tap, not a swipe. */
 const SWIPE_PX = 48;
 
-export function PhotoLightbox({ photos, children }: { photos: LightboxPhoto[]; children: ReactNode }) {
+/**
+ * `extra` — wave 18, add-only (DEC-209): what stands beside «تنزيل الصورة» for the photograph on screen. The event
+ * page's album passes the takedown there (`album.tsx`), since the tiles carry no button of their own now. A render
+ * function, so it is a client-to-client prop; absent, the dialog is exactly as before.
+ */
+export function PhotoLightbox({ photos, children, extra }: { photos: LightboxPhoto[]; children: ReactNode; extra?: (photo: LightboxPhoto) => ReactNode }) {
   const t = useTranslations("photos.lightbox");
   const rtl = useLocale() === "ar";
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -134,6 +140,7 @@ export function PhotoLightbox({ photos, children }: { photos: LightboxPhoto[]; c
 
   const context: LightboxContext = {
     open,
+    openFirst: (from) => (photos[0] ? open(photos[0].id, from) : undefined),
     positionOf: (photoId) => photos.findIndex((p) => p.id === photoId),
     total: photos.length,
   };
@@ -171,10 +178,13 @@ export function PhotoLightbox({ photos, children }: { photos: LightboxPhoto[]; c
               {/* A route, never a signed URL in page data and never `download`: it
                   audits, then 303s (REQ-ADM-021, DEC-177). A plain <a> so nothing
                   prefetches it. */}
-              <a href={`/api/photos/${photo.id}/download`} className={buttonClass("secondary", "md", "gap-2")}>
-                <DownloadIcon aria-hidden />
-                {t("download")}
-              </a>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {extra ? extra(photo) : null}
+                <a href={`/api/photos/${photo.id}/download`} className={buttonClass("secondary", "md", "gap-2")}>
+                  <DownloadIcon aria-hidden />
+                  {t("download")}
+                </a>
+              </div>
             </div>
             <div
               data-testid="lightbox-stage"
@@ -236,6 +246,18 @@ export function LightboxTile({ photoId, children }: { photoId: string; children:
       className="block w-full rounded-field focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
     >
       {children}
+    </button>
+  );
+}
+
+/** «افتح الألبوم» — wave 18 (`EventDone.dc.html:77`, DEC-209): opens the lightbox at the first photograph. Renders
+ *  nothing when there is none to open. The same dialog the tiles open; focus returns here on close. */
+export function LightboxOpenFirst({ label }: { label: string }) {
+  const context = useContext(Context);
+  if (!context || context.total === 0) return null;
+  return (
+    <button type="button" aria-haspopup="dialog" onClick={(event) => context.openFirst(event.currentTarget)} className="text-label font-bold text-fg-muted underline-offset-4 hover:text-fg-heading hover:underline">
+      {label}
     </button>
   );
 }

@@ -1,100 +1,47 @@
 import { getTranslations } from "next-intl/server";
-import type { SlotProps, SlotSummary } from "@/components/sessions/slots";
-import { getMaterialsPageData, type MaterialSummary } from "@/lib/dal/materials";
-import type { SessionDay } from "@/lib/dal/sessions";
-import { dayLabel, dayShortLabel, type DayLabelT } from "@/components/sessions/day-label";
-import { formatNumber } from "@/components/sessions/numerals";
-import { Card, CardBody } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Panel } from "@/components/ui/panel";
-import { Link } from "@/components/ui/link";
-import { LinkIcon } from "@/components/ui/icons";
-import { SettingsForm } from "@/components/materials/settings-form";
-import { UploadForm } from "@/components/materials/upload-form";
-import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
-import { rescopeMaterialAction } from "@/components/materials/actions";
-import { phaseLabelKey } from "@/components/materials/phase-label";
 import { GroupDisclosure } from "@/components/materials/group-disclosure";
+import { MaterialRow } from "@/components/materials/material-row";
+import type { RescopeOption } from "@/components/materials/rescope-chip";
+import { UploadForm } from "@/components/materials/upload-form";
+import { dayLabel, dayShortLabel } from "@/components/sessions/day-label";
+import type { SlotProps, SlotSummary } from "@/components/sessions/slots";
+import { getMaterialPlaybackUrl, getMaterialsPageData, type MaterialSummary } from "@/lib/dal/materials";
 
-// The `Materials` slot — `id="materials"`, «المواد» (`sessions.md` §22.2) —
-// the session's materials list, phase-gated entirely by `materials_read`
-// (03 §5.5a): this component never adds its own phase filter, so what it
-// receives from the DAL is already exactly what the viewer is allowed to
-// see.
+// The `Materials` slot — SCR-012's «المواد», written from `Event.dc.html:93-97`, `EventDone.dc.html:69-74` and
+// `EventDesktop.dc.html:81-84` (DEC-208: this file was deleted and written anew; its kept-behaviour table is
+// `docs/plan/notes/content.md` § PR B). REQ-MAT-002 … REQ-MAT-011, REQ-SES-018.
 //
-// No <section>/<h2> of its own — the event page owns the landmark and the
-// heading. `materialsSummary()` below shares this same cache()d read
-// (`sessions.md` §22.4 R-C3) and its `visible` mirrors this component's own
-// `null` return exactly (`16` §5.4.1a(b)).
-//
-// A `pdf` material links to SCR-013 (the viewer) once it has finished
-// rendering; links never get a viewer link (REQ-MAT-007) — they render their
-// own affordance instead. Uploads are PDF-only for the document kind
-// (DEC-058); the uploader states the org's per-kind size limit before a
-// file is chosen (REQ-UIX-024).
-//
-// ★ REQ-SES-018/DEC-121, contract 7. The branch below is `days.length <= 1`,
-// never "every group happens to be empty right now" — at one day (or none)
-// EVERY item renders flat, in exactly today's markup, whatever its own
-// `sessionDayId`: a session cut back from two days to one may still hold
-// content scoped to the day that remains (its `session_day_id` is untouched
-// by that edit), and a bucket-count check would wrongly hide it. Only with
-// more than one day does the grouped branch exist at all — the rule the
-// sync-1 review caught before this shipped once already, and the reason it
-// is spelled out here rather than left to be re-derived by the next reader.
+// ★ No `<section>`, no `<h2>`: the page owns the landmark and the heading (slot contract).
+// ★ No phase filter of its own: `materials_read` (0116) is the gate, so what arrives is exactly what this
+// viewer may see — a day-scoped «بعد» item appears when its own day ends (REQ-MAT-006, DEC-121).
+// ★ `null` exactly when `materialsSummary()` says not visible: nothing to show and no right to add.
+// ★ The dashed «يظهران هنا بعد انتهاء الجلسة» row is not drawn (DEC-206 §4.68): RLS returns no row to say so.
+// ★ At one day (or none) every item is flat, whatever its own scope; groups exist only above one day.
+
 export async function Materials({ sessionId, locale }: SlotProps) {
-  const t = await getTranslations("materials.list");
-  const tDays = await getTranslations("sessions.days");
+  const [t, tUpload, tDays] = await Promise.all([getTranslations("materials.list"), getTranslations("materials.upload"), getTranslations("sessions.days")]);
   const { materials, canManageAll, presenterOfSession, uploadLimits, days: rawDays, timeZone } = await getMaterialsPageData(locale, sessionId);
   const days = rawDays ?? [];
   const canManage = canManageAll || presenterOfSession;
-
-  // ★ visible === false exactly when this returns null (sessions.md §22.4):
-  // nothing to show and no manage right, so there is genuinely no next
-  // action `EmptyState` could offer this viewer (REQ-UIX-012's own limit).
   if (materials.length === 0 && !canManage) return null;
 
-  // ★ REQ-SES-018/DEC-121 — the lead's real-build finding on the wave's demonstrable, met by
-  // starting from an empty session the way a person actually does: this used to return the FLAT
-  // empty state whenever there was nothing yet, even at `days.length > 1` — a brand-new workshop's
-  // manager had no group header to press, so the very first material could only ever land
-  // session-scoped (ruling 3's "pressing the control is the choice" has nothing to press when the
-  // only control is the flat one). Gated on `days.length <= 1` too, matching the flat/grouped split
-  // every other branch below already makes. A manager with nothing yet at `days.length > 1` falls
-  // through to the grouped branch, whose own group filter already keeps every (empty) group for a
-  // manager — this fix is entirely in what does NOT return here.
-  if (materials.length === 0 && days.length <= 1) {
-    const uploader = canManage ? (
-      <div id="materials-upload-form" className="scroll-mt-4">
-        <UploadForm locale={locale} sessionId={sessionId} uploadLimits={uploadLimits} />
-      </div>
-    ) : null;
-    return (
-      <div>
-        <EmptyState title={t("empty")} action={{ label: t("addAction"), href: "#materials-upload-form" }} size="sm" />
-        {uploader}
-      </div>
-    );
-  }
+  const playback = new Map(
+    await Promise.all(materials.filter((m) => m.kind === "audio").map(async (m) => [m.id, await getMaterialPlaybackUrl(locale, m.id)] as const)),
+  );
 
-  // ★ At n <= 1 there is no scope concept anywhere (REQ-SES-018's first acceptance bullet) — the
-  // flat branch never imports RescopeChip's props and never renders a group heading, so this is
-  // byte-for-byte what materials-schema's own e2e/component suites already assert.
+  const row = (m: MaterialSummary, scope: { currentLabel: string; options: RescopeOption[] } | null) => (
+    <li key={m.id}>
+      <MaterialRow m={m} sessionId={sessionId} locale={locale} canManage={canManage} scope={scope} playbackUrl={playback.get(m.id) ?? null} t={t} />
+    </li>
+  );
+
   if (days.length <= 1) {
     return (
-      <div>
-        <p className="text-body-sm text-fg-muted">{t("count", { count: materials.length, value: formatNumber(materials.length) })}</p>
-        <ul className="mt-4 flex flex-col gap-3">
-          {materials.map((m) => (
-            <li key={m.id}>
-              <MaterialCard m={m} sessionId={sessionId} locale={locale} canManage={canManage} t={t} scope={null} />
-            </li>
-          ))}
-        </ul>
+      <div className="flex flex-col gap-3">
+        {materials.length === 0 ? <p className="text-body text-fg-muted">{t("empty")}</p> : <ul className="flex flex-col gap-2">{materials.map((m) => row(m, null))}</ul>}
         {canManage ? (
-          <div id="materials-upload-form" className="mt-4 scroll-mt-4">
+          <div id="materials-upload-form" className="scroll-mt-4">
+            <p className="mb-2 text-caption text-fg-muted">{tUpload("notice")}</p>
             <UploadForm locale={locale} sessionId={sessionId} uploadLimits={uploadLimits} />
           </div>
         ) : null}
@@ -102,177 +49,35 @@ export async function Materials({ sessionId, locale }: SlotProps) {
     );
   }
 
-  const sessionScopeLabel = tDays("sessionScope");
-  const groups = groupByDay(materials, days, sessionScopeLabel, timeZone ?? "Asia/Riyadh", tDays);
-  const options: RescopeOption[] = [
-    { id: null, label: sessionScopeLabel },
-    ...days.map((d) => ({ id: d.id, label: dayShortLabel(d, tDays) })),
-  ];
+  const sessionScope = tDays("sessionScope");
+  const options: RescopeOption[] = [{ id: null, label: sessionScope }, ...days.map((d) => ({ id: d.id, label: dayShortLabel(d, tDays) }))];
+  const groups = [
+    { dayId: null as string | null, heading: sessionScope, short: sessionScope, items: materials.filter((m) => (m.sessionDayId ?? null) === null) },
+    ...days.map((d) => ({ dayId: d.id as string | null, heading: dayLabel(d, timeZone ?? "Asia/Riyadh", tDays, locale), short: dayShortLabel(d, tDays), items: materials.filter((m) => m.sessionDayId === d.id) })),
+  ].filter((g) => g.items.length > 0 || canManage);
 
   return (
-    <div>
-      {/* ★ A brand-new workshop reaches here too now (the fix above) — one line saying so, the
-          same sentence the flat empty state uses, above every (closed, empty) group's own header
-          and control. Never `ui/empty-state`: its `action` is required by design (REQ-UIX-012 —
-          no "empty, full stop"), and there is no single action here any more, only each group's
-          own. */}
-      {materials.length === 0 ? <p className="text-body-sm text-fg-muted">{t("empty")}</p> : null}
-      {groups
-        .filter((g) => g.items.length > 0 || canManage)
-        .map((g) => (
-          <div key={g.dayId ?? "session"} className="mt-6 first:mt-0">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <h3 className="text-body font-medium text-fg-heading">{g.heading}</h3>
-              {/* ★ The lead's finding against the real build: mounting every group's form OPEN
-                  made a three-day presenter page 9,000 CSS px tall. The form now sits behind
-                  this native disclosure, closed by default — `GroupDisclosure`'s own header
-                  explains the mechanics. */}
-              {canManage ? (
-                <GroupDisclosure summary={t("addAction")} summaryAriaLabel={t.markup("group.addAria", { scope: g.shortLabel, bdi: (chunks) => chunks })}>
-                  <UploadForm locale={locale} sessionId={sessionId} uploadLimits={uploadLimits} sessionDayId={g.dayId} />
-                </GroupDisclosure>
-              ) : null}
-            </div>
-            {g.items.length > 0 ? (
-              <ul className="mt-2 flex flex-col gap-3">
-                {g.items.map((m) => (
-                  <li key={m.id}>
-                    <MaterialCard m={m} sessionId={sessionId} locale={locale} canManage={canManage} t={t} scope={{ currentLabel: g.shortLabel, options }} />
-                  </li>
-                ))}
-              </ul>
+    <div className="flex flex-col gap-6">
+      {materials.length === 0 ? <p className="text-body text-fg-muted">{t("empty")}</p> : null}
+      {groups.map((g) => (
+        <div key={g.dayId ?? "session"} className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <h3 className="text-label font-bold text-fg-heading">{g.heading}</h3>
+            {canManage ? (
+              <GroupDisclosure summary={t("addAction")} summaryAriaLabel={t.markup("group.addAria", { scope: g.short, bdi: (chunks) => chunks })}>
+                <UploadForm locale={locale} sessionId={sessionId} uploadLimits={uploadLimits} sessionDayId={g.dayId} />
+              </GroupDisclosure>
             ) : null}
           </div>
-        ))}
+          {g.items.length > 0 ? <ul className="flex flex-col gap-2">{g.items.map((m) => row(m, canManage ? { currentLabel: g.short, options } : null))}</ul> : null}
+        </div>
+      ))}
     </div>
   );
 }
 
-interface MaterialGroup {
-  dayId: string | null;
-  heading: string;
-  shortLabel: string;
-  items: MaterialSummary[];
-}
-
-/** The session's own content first, then days in order (REQ-SES-018). An empty group is filtered
- *  by the caller for a plain member and kept for a manager, whose own «أضف» needs it. */
-function groupByDay(materials: MaterialSummary[], days: SessionDay[], sessionScopeLabel: string, timeZone: string, tDays: DayLabelT): MaterialGroup[] {
-  return [
-    { dayId: null, heading: sessionScopeLabel, shortLabel: sessionScopeLabel, items: materials.filter((m) => (m.sessionDayId ?? null) === null) },
-    ...days.map((d) => ({
-      dayId: d.id,
-      heading: dayLabel(d, timeZone, tDays),
-      shortLabel: dayShortLabel(d, tDays),
-      items: materials.filter((m) => m.sessionDayId === d.id),
-    })),
-  ];
-}
-
-interface MaterialCardProps {
-  m: MaterialSummary;
-  sessionId: string;
-  locale: string;
-  canManage: boolean;
-  t: Awaited<ReturnType<typeof getTranslations<"materials.list">>>;
-  /** `null` at n <= 1 (REQ-SES-018: no scope concept at all); populated at n > 1, where every
-   *  viewer sees the current scope and only a manager gets the interactive chip. */
-  scope: { currentLabel: string; options: RescopeOption[] } | null;
-}
-
-/** One `<Card>`, shared by the flat and grouped branches so they can never drift apart — the
- *  flat branch always passes `scope={null}`, which renders nothing extra, so its output is
- *  identical to what this file rendered before REQ-SES-018. */
-function MaterialCard({ m, sessionId, locale, canManage, t, scope }: MaterialCardProps) {
-  return (
-    <Card density="row">
-      <CardBody>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-body font-medium text-fg-heading">
-              <bdi>{m.title}</bdi>
-            </p>
-            <p className="text-body-sm text-fg-muted">{t(`kind.${m.kind}`)}</p>
-          </div>
-          {/* قبل/بعد — never colour alone: the two phases keep
-              distinct Arabic text on top of the distinct tone. REQ-MAT-006 as amended (DEC-121):
-              phase is relative to the item's own SCOPE, never to the session, so a day-scoped
-              material reads «قبل اليوم»/«بعد اليوم», never «…الجلسة» — the lead's own finding
-              against the real build (the day-scoped chip still said «بعد الجلسة» while the
-              workshop had two more days to run). */}
-          <Badge tone={m.phase === "before" ? "info" : "neutral"} outline size="sm" className="shrink-0">
-            {t(phaseLabelKey(m.phase, m.sessionDayId))}
-          </Badge>
-        </div>
-
-        {/* The group heading already says which day/scope this card is under — a plain member
-            gets no repeated label here, only a manager gets the chip that can move it. */}
-        {scope && canManage ? (
-          <RescopeChip
-            currentLabel={scope.currentLabel}
-            options={scope.options}
-            triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
-            failedLabel={t("rescope.failed")}
-            rescopeAction={rescopeMaterialAction.bind(null, locale, sessionId, m.id)}
-            className="mt-2"
-          />
-        ) : null}
-
-        {m.renderStatus === "pending" || m.renderStatus === "rendering" ? (
-          <div className="mt-2 max-w-xs">
-            <Progress label={t("renderStatus.pending")} />
-          </div>
-        ) : null}
-        {m.renderStatus === "failed" ? (
-          <Badge tone="error" size="sm" className="mt-2">
-            {t("renderStatus.failed")}
-          </Badge>
-        ) : null}
-
-        {m.fontSubstitutionWarning ? (
-          <Panel tone="info" className="mt-2 p-3">
-            <p className="text-body-sm text-fg-heading">
-              {t.rich("substitutionWarning.body", { family: m.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}
-            </p>
-          </Panel>
-        ) : null}
-
-        {m.kind === "pdf" && m.renderStatus === "ready" ? (
-          // ★ `ui/link` prefixes the locale itself (`/app/…` arrives
-          // at `/ar/app/…`) — the old raw `next/link` import needed
-          // the manual `/${locale}` prefix this file used to carry;
-          // keeping it here would have doubled it.
-          <Link href={`/app/sessions/${sessionId}/materials/${m.id}`} className="mt-2 inline-block text-body-sm text-fg-body hover:text-fg-heading">
-            {t("openViewer")}
-          </Link>
-        ) : null}
-
-        {m.externalUrl ? (
-          <a
-            href={m.externalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1 text-body-sm text-fg-body hover:text-fg-heading"
-          >
-            <LinkIcon aria-hidden className="text-[0.85em]" />
-            {t("openExternal")}
-          </a>
-        ) : null}
-
-        {canManage ? <SettingsForm locale={locale} materialId={m.id} phase={m.phase} allowDownload={m.allowDownload} sessionDayId={m.sessionDayId} /> : null}
-      </CardBody>
-    </Card>
-  );
-}
-
-/**
- * `sessions.md` §22.3's `SlotSummaryReader` — the page ANDs this with its
- * own `can.materials !== "none"` gate (§22.2) before rendering the
- * `<section>`/`<h2>` at all. Shares `getMaterialsPageData`'s `cache()`d
- * read.
- */
+/** The page's gate for the section and the sub-nav's count — the same `cache()`d read. */
 export async function materialsSummary({ sessionId, locale }: SlotProps): Promise<SlotSummary> {
   const { materials, canManageAll, presenterOfSession } = await getMaterialsPageData(locale, sessionId);
-  const canManage = canManageAll || presenterOfSession;
-  return { visible: materials.length > 0 || canManage, count: materials.length, outstanding: null };
+  return { visible: materials.length > 0 || canManageAll || presenterOfSession, count: materials.length, outstanding: null };
 }

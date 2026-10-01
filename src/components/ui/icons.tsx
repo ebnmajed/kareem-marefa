@@ -687,3 +687,25 @@ export function PauseIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/**
+ * تشغيل — a recording's play control (wave 18, SCR-012's audio row, REQ-MAT-007). A media transport
+ * control keeps its direction in RTL, as a clock does, so it never mirrors.
+ */
+export function PlayIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 5.5v13l10-6.5-10-6.5z" />
+    </Svg>
+  );
+}
+
+/** اعرض على الشاشة — a screen on its stand: the host view's projection (wave 18, SCR-016). Never mirrors. */
+export function MonitorIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="M12 16v4M8 20h8" />
+    </Svg>
+  );
+}

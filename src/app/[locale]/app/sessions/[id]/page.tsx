@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { affordancesFor, rateAllowed } from "@/components/checkin/session-matrix";
@@ -6,150 +6,149 @@ import { Comments, commentsSummary } from "@/components/event/comments";
 import { Ratings } from "@/components/event/ratings";
 import { Materials, materialsSummary } from "@/components/materials/list";
 import { Photos, photosSummary } from "@/components/photos/gallery";
-import { SessionPoster } from "@/components/posters/session-poster";
+import { BookmarkButton } from "@/components/search/bookmark-button";
 import { ActionCard } from "@/components/sessions/action-card";
+import { EventAside } from "@/components/sessions/event-aside";
 import { eventCheckInLink } from "@/components/sessions/event-check-in";
 import { EventHero } from "@/components/sessions/event-hero";
 import { primaryActionFor } from "@/components/sessions/event-actions";
-import { EventSubnav } from "@/components/sessions/event-subnav";
-import { GatedSection } from "@/components/sessions/gated-section";
-import { formatDate } from "@/components/sessions/numerals";
-import { PresenterList } from "@/components/sessions/presenter-list";
+import { EventRecap } from "@/components/sessions/event-recap";
+import { EventSection } from "@/components/sessions/event-section";
+import { EventSubnav, type EventSubnavItem } from "@/components/sessions/event-subnav";
+import { EventTopRow } from "@/components/sessions/event-top-row";
+import { formatDate, formatNumber } from "@/components/sessions/numerals";
+import { myCertificateHref } from "@/components/sessions/outcome-card";
 import { publicCardPath, siteOrigin } from "@/components/sessions/public-card-metadata";
-import { isSectionShown, type SlotProps, type SlotSummary } from "@/components/sessions/slots";
+import { ShareLink } from "@/components/sessions/share-link";
+import { isSectionShown, type EventSectionId, type SlotProps, type SlotSummary } from "@/components/sessions/slots";
 import { Tasks, tasksSummary } from "@/components/tasks/panel";
+import { AlertCircleIcon, InfoIcon } from "@/components/ui/icons";
+import { Link } from "@/components/ui/link";
 import { Panel } from "@/components/ui/panel";
 import { Prose } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Stat } from "@/components/ui/stat";
 import { TagChip } from "@/components/ui/tag-chip";
-import { AlertCircleIcon, InfoIcon } from "@/components/ui/icons";
-import { formatNumber } from "@/components/sessions/numerals";
+import { Avatar } from "@/components/ui/avatar";
 import { isSessionBookmarked } from "@/lib/dal/bookmarks";
-import { listMyCertificates } from "@/lib/dal/certificates";
 import { getRatingEligibility } from "@/lib/dal/ratings";
 import { getRsvpPanelData } from "@/lib/dal/rsvp";
+import { getAttendanceRulePoints } from "@/lib/dal/search";
 import { requireSession } from "@/lib/dal/session";
-import { getSessionForEvent, listSessionDays, type EventSession } from "@/lib/dal/sessions";
-import { canGrantOn, closingSoon, sessionPhase, type ViewerRelation } from "@/lib/session-status";
+import { isCompanyAttendanceRuleEnabled } from "@/lib/dal/leaderboards";
+import { getEventAttendeeFaces, getEventFigures, getSessionForEvent, getViewerCompany, listSessionDays, type EventSession } from "@/lib/dal/sessions";
+import { canGrantOn, closingSoon, sessionPhase, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
 
-// SCR-012 · /app/sessions/[id] ★ — the event page, rebuilt in wave 6 to
-// `Main.dc.html`, `EventPhone.dc.html` and `EventEnded.dc.html` (DEC-130).
+// SCR-012 · /app/sessions/[id] ★ — the event page, rebuilt in wave 18 from `Event.dc.html`,
+// `EventLive.dc.html`, `EventDone.dc.html` and `EventDesktop.dc.html` (REQ-UIX-061, STORY-UIX-048, DEC-205,
+// DEC-206 §4.66 – §4.74, DEC-209). ★ DEC-208: this file was deleted and written anew; what it had to keep is the
+// kept-behaviour table in `docs/plan/notes/sessions.md` (W18B.2), re-derived from the requirements and the DAL.
 //
-// The one surface several tracks share. The contract — section order, ids,
-// headings, who renders what and who gates what — is `slots.ts` and
-// `docs/plan/notes/sessions.md` §22. In one breath: this page owns the frame,
-// the hero, the action card, the sub-nav and every `<section>` and `<h2>`; the
-// slots render their bodies and no heading; a slot that can render nothing
-// takes its section with it, decided by the slot's summary (`16` §5.4.1a(b)).
+// The one surface several tracks share (the slot contract, `slots.ts`): this page owns the frame, the hero, the
+// action card, the sub-nav and every `<section>` and `<h2>`; the slots render their bodies and no heading; a
+// slot that can render nothing takes its section with it (`16` §5.4.1a(b)).
 //
-// Order, at every width (the grid moves the card beside the sections from
-// `md`; nothing is rendered twice for layout):
-//   ribbon / notices · hero (status, title, presenters, chips — language before
-//   the action, REQ-SES-011) · the action card (REQ-SES-013; its primary moves
-//   to the bottom action bar on the phone) · sub-nav · نبذة · المُقدِّمون ·
-//   المهام · المواد · الصور · النقاش · التقييم
+// In the artboards' order: the phone's own top row (the shell's bar gives way below `lg`) · the poster whole at
+// 4:5, the chips (the phase, the level, ★ the language before the action — REQ-SES-011), the `h1`, the presenter
+// card · the action card (moment 1, or the outcome with moment 3) · the recap once ended · the sub-nav · the
+// sections, IN EACH PHASE'S ORDER (DEC-209 §2) · the bottom `action-bar` on the phone. From `lg`: the shell's
+// bar, the hero band (the poster at the start, the abstract and the tags beside it), the full-width action
+// row, and the body with the room and «من يحضر» at its end.
 //
-// ★ REQ-SES-008: no stream URL, no join link, no remote-attendance affordance.
-// There is none in the DTO either, because there is none in the product.
-//
-// ★ One-day sessions only: this is the schema in the database. Multi-day
-// sessions (DEC-119 … DEC-121) and the manual check-in switch (DEC-113 …
-// DEC-118) are decided and not built; nothing here anticipates them.
-//
-// Who may see this is `sessions_read`, not a check here: a draft is visible to
-// staff and its own presenters and to nobody else, and no row is a 404.
+// ★ REQ-SES-008: no stream URL, no join link, no remote attendance — none exists in the DTO or the product.
+// Who may see this is `sessions_read`: a draft is visible to staff and its own presenters, and no row is a 404.
 
-/** The states `session_public_card()` answers for — the share affordance
- *  and the public card agree on this list or one of them lies. */
+/** The states `session_public_card()` answers for — share offers the public card only where it answers. */
 const CARD_STATES: string[] = ["published", "in_progress", "completed"];
+
+/** The sections the page may render, in each phase's artboard order. The ids are stable; only the order moves. */
+type Gated = Exclude<EventSectionId, "attend" | "objectives">;
+const ORDER: Record<"open" | "live" | "ended", Gated[]> = {
+  open: ["about", "presenters", "tasks", "materials", "discussion", "photos", "rating"],
+  live: ["photos", "discussion", "about", "presenters", "materials", "tasks", "rating"],
+  ended: ["materials", "photos", "discussion", "about", "presenters", "tasks", "rating"],
+};
+
+const ratingRelations: ViewerRelation[] = ["attended", "presenter", "staff"];
 
 export default async function EventPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
 
+  // The auth boundary at the data, carrying the page back after sign-in (REQ-AUT-005).
   const [me, session, rsvp, days, t] = await Promise.all([
     requireSession(locale, `/${locale}/app/sessions/${id}`),
     getSessionForEvent(locale, id),
     getRsvpPanelData(locale, id),
-    // ★ Contract 3. `cache()`d, so the action card's day list and anything else
-    // on this page that needs days share this one read. At one day it returns
-    // one day and nothing below branches on the count (rule 1).
     listSessionDays(locale, id),
     getTranslations("sessions.event"),
   ]);
   if (!session) notFound();
 
-  // ★ The affordance gates for THIS viewer on THIS session, derived once from
-  // `checkin`'s 42-cell matrix rather than re-written at each call site (`16`
-  // §5.3, REQ-UIX-015, DEC-090). RLS and the RPCs remain authoritative
-  // (REQ-NFR-001): a hidden control is a courtesy, and the database refuses the
-  // write regardless. What these fix is offering an action it would refuse.
-  // ★ The days are PASSED, never re-derived (contract 9). Between two days of a
-  // workshop a session is `open`, not `live` — a member who reads «جارية» on
-  // Thursday morning for a Wednesday-and-Friday workshop has been told the
-  // wrong thing about a room they might walk to.
+  // ★ One phase, knowing the days (wave 9 contract 9): between two days of a workshop a session is `open`.
   const phase = sessionPhase({ ...session, days });
   const relation = session.viewerRelation;
+  // ★ Every gate is the matrix's (REQ-UIX-015, DEC-090) — derived once, never re-written at a call site.
   const can = affordancesFor(phase, relation);
-  // Contract 2: the room's switch and the `ends_at + 2 h` ceiling, from the raw
-  // facts rather than the relation — see `event-check-in.ts`.
   const canCheckIn = eventCheckInLink(session);
-
-  // Read only for the viewer they concern: an attendee of an ended session.
   const endedAttendee = phase === "ended" && relation === "attended";
-  const [eligibility, certificateHref, bookmarked] = await Promise.all([
+  const staffOrPresenter = session.viewerIsStaff || session.viewerIsPresenter;
+  const counted = phase === "live" || phase === "ended";
+  const facesPhase = phase === "open" || phase === "live" || phase === "ended" ? phase : null;
+
+  const [eligibility, certificateHref, bookmarked, rulePoints, figures, faces, team] = await Promise.all([
     endedAttendee ? getRatingEligibility(locale, id) : Promise.resolve(null),
     endedAttendee ? myCertificateHref(locale, id) : Promise.resolve(null),
     isSessionBookmarked(locale, id),
+    getAttendanceRulePoints(locale).catch(() => null),
+    counted ? getEventFigures(locale, id) : Promise.resolve({ attendedCount: null, rotationSeconds: null }),
+    staffOrPresenter && facesPhase ? getEventAttendeeFaces(locale, id, facesPhase) : Promise.resolve([]),
+    // «لفريقك» (DEC-210): the viewer's company, only when the org's company attendance rule is on — scoring's gate.
+    phase === "open" || phase === "live" ? teamForRule(locale) : Promise.resolve(null),
   ]);
-  // The card offers «قيّم الجلسة» only to someone who has not rated yet; an
-  // edit, or the window having closed, is the rating section's to say.
+  // «قيّم الجلسة» only to someone who may and has not yet (REQ-RAT-001, REQ-RAT-003).
   const canRate = rateAllowed(session, relation) && canGrantOn(session, "rate") && Boolean(eligibility?.eligible) && !eligibility?.existing;
-
   const primary = primaryActionFor({ phase, relation, can, canReserve: rsvp?.canReserve ?? false, seat: rsvp?.seat ?? null, canCheckIn, canRate });
+  // The rule's amount (§4.45): a member's, for a session they can still attend — never the presenter's (REQ-CHK-011).
+  const points = !session.viewerIsPresenter && (phase === "open" || phase === "live") ? rulePoints : null;
 
   const slot: SlotProps = { sessionId: session.id, memberId: me.memberId, locale };
-
-  // The page's own conditions, one per gated section. The sub-nav and the
-  // sections read the SAME gates through `isSectionShown()`.
-  const gates: Record<GatedId, boolean> = {
+  const gates: Record<Gated, boolean> = {
     about: true,
-    presenters: session.presenters.length > 0,
+    presenters: session.presenters.some((p) => Boolean(p.bio)),
     tasks: can.tasks,
     materials: can.materials !== "none",
     photos: true,
     discussion: true,
-    // The Ratings slot renders nothing for a viewer with no stake, so the
-    // section is gated by the relations that have one — and by the stored
-    // state, never the clock (DEC-090 corollary 2). ★ And not while the action
-    // card carries «قيّم الجلسة»: the slot's own call to rate would be a second
-    // primary for the same act on one page (`16` §3 principle 2). The section
-    // returns once there is something else to say — the edit link, or that the
-    // window has closed.
+    // By the stored state, never the clock (DEC-090 corollary 2), and not while the card carries «قيّم الجلسة».
     rating: session.state === "completed" && ratingRelations.includes(relation) && !canRate,
   };
-
-  // The slots' own answers (`slots.ts`, `notes/sessions.md` §22.3), each from
-  // the same request-cached read its slot renders from. ★ Asked only where the
-  // page's own gate is open: a promise nobody awaits would be a read nobody
-  // needs, and a rejection nobody handles.
-  const summaries: Partial<Record<GatedId, Promise<SlotSummary>>> = {
+  const summaries: Partial<Record<Gated, Promise<SlotSummary>>> = {
     tasks: gates.tasks ? tasksSummary(slot) : undefined,
     materials: gates.materials ? materialsSummary(slot) : undefined,
     photos: gates.photos ? photosSummary(slot) : undefined,
     discussion: gates.discussion ? commentsSummary(slot) : undefined,
   };
 
-  const published = ["published", "in_progress", "completed", "archived", "cancelled"].includes(session.state);
   const shareUrl = CARD_STATES.includes(session.state) ? `${siteOrigin()}${publicCardPath(locale, session.id)}` : null;
-  const seat = phase === "open" ? rsvp?.seat : undefined;
-  const poster = <SessionPoster sessionId={session.id} locale={locale} />;
+  const bookmarkable = phase === "open" || phase === "live" || phase === "ended";
+  const bookmark = (variant: "icon" | "button") => (bookmarkable ? <BookmarkButton locale={locale} sessionId={session.id} initialBookmarked={bookmarked} variant={variant} /> : null);
+  const share = (variant: "icon" | "button") =>
+    shareUrl ? (
+      <ShareLink url={shareUrl} title={session.title} label={t("actions.share")} copiedLabel={t("shareCopied")} hint={t("shareHint")} failedLabel={t("shareFailed")} variant={variant} />
+    ) : null;
 
-  // The sub-nav names a section as its heading does: one presenter is «المُقدِّم»
-  // in both places, never «المُقدِّمون» above «المُقدِّم».
   const presentersTitle = session.presenters.length > 1 ? t("presentersLabel") : t("presenterLabel");
-  const navLabels: Record<GatedId, string> = {
+  const order = ORDER[phase === "live" ? "live" : phase === "ended" ? "ended" : "open"];
+  const titles: Record<Gated, string> = {
+    about: t("aboutLabel"),
+    presenters: presentersTitle,
+    tasks: t("tasksLabel"),
+    materials: t("materialsLabel"),
+    photos: t("photosLabel"),
+    discussion: t("commentsLabel"),
+    rating: t("ratingLabel"),
+  };
+  const navLabels: Record<Gated, string> = {
     about: t("nav.about"),
     presenters: presentersTitle,
     tasks: t("nav.tasks"),
@@ -159,179 +158,241 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
     rating: t("nav.rating"),
   };
 
+  const sections: Record<Gated, ReactNode> = {
+    about: (
+      // From `lg` the abstract and the tags are in the hero band (`EventDesktop.dc.html`).
+      <EventSection key="about" id="about" title={titles.about} className="lg:hidden">
+        {session.tags.length > 0 ? (
+          <ul aria-label={t("tagsLabel")} className="mb-3 flex flex-wrap gap-1.5">
+            {session.tags.map((tag) => (
+              <li key={tag.normalised}>
+                <TagChip label={`#${tag.label}`} href={`/app/sessions?tag=${encodeURIComponent(tag.normalised)}`} />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <Prose>
+          <p className="whitespace-pre-line">
+            <bdi>{session.abstract}</bdi>
+          </p>
+        </Prose>
+      </EventSection>
+    ),
+    presenters: (
+      <EventSection key="presenters" id="presenters" title={titles.presenters} gate={gates.presenters}>
+        <PresenterBios session={session} />
+      </EventSection>
+    ),
+    tasks: (
+      <Suspense key="tasks" fallback={<SectionSkeleton />}>
+        <EventSection
+          id="tasks"
+          title={titles.tasks}
+          gate={gates.tasks}
+          summary={summaries.tasks}
+          note={(s) => (s ? t("tasksNote", { done: formatNumber(s.count - (s.outstanding ?? 0)), count: formatNumber(s.count) }) : null)}
+        >
+          <Tasks {...slot} />
+        </EventSection>
+      </Suspense>
+    ),
+    materials: (
+      <Suspense key="materials" fallback={<SectionSkeleton />}>
+        <EventSection id="materials" title={titles.materials} gate={gates.materials} summary={summaries.materials}>
+          <Materials {...slot} />
+        </EventSection>
+      </Suspense>
+    ),
+    photos: (
+      <Suspense key="photos" fallback={<SectionSkeleton />}>
+        <EventSection id="photos" title={titles.photos} gate={gates.photos} summary={summaries.photos} note={phase === "live" ? t("photosNoteLive") : undefined}>
+          <Photos {...slot} phase={phase} />
+        </EventSection>
+      </Suspense>
+    ),
+    discussion: (
+      <Suspense key="discussion" fallback={<SectionSkeleton />}>
+        <EventSection
+          id="discussion"
+          title={titles.discussion}
+          gate={gates.discussion}
+          summary={summaries.discussion}
+          note={(s) => (s ? t("commentsNote", { count: s.count, value: formatNumber(s.count) }) : null)}
+        >
+          <Comments {...slot} />
+        </EventSection>
+      </Suspense>
+    ),
+    rating: (
+      <Suspense key="rating" fallback={<SectionSkeleton />}>
+        <EventSection id="rating" title={titles.rating} gate={gates.rating}>
+          <Ratings {...slot} />
+        </EventSection>
+      </Suspense>
+    ),
+  };
+
   return (
-    <article>
-      <Notices session={session} phase={phase} published={published} locale={locale} />
+    <article className="mx-auto w-full max-w-6xl px-3 pb-12 lg:px-8">
+      <EventTopRow session={session} phase={phase} bookmark={bookmark("icon")} share={share("icon")} />
+      <DesktopBreadcrumb session={session} />
+      <Notices session={session} phase={phase} locale={locale} />
 
-      <EventHero session={session} dayCount={days.length} phase={phase} seat={seat} closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)} poster={poster} locale={locale} />
+      <EventHero
+        session={session}
+        phase={phase}
+        seat={phase === "open" ? rsvp?.seat : undefined}
+        closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)}
+        dayCount={days.length}
+        points={points}
+        locale={locale}
+      />
 
-      <div className="mx-auto max-w-6xl px-4 pb-12 md:px-8 md:pb-16">
-        <div className="md:grid md:grid-cols-[minmax(0,1fr)_372px] md:items-start md:gap-12">
-          {/* The card first in the DOM — in flow straight after the hero on the
-              phone (REQ-SES-013) — and in the second column from `md`, lifted
-              onto the band's bottom edge only, never over the poster. */}
-          {/* ★ Wave 17 (DEC-199 §1.3.4): the shell's layout is the scope now, and
-              scopes do not nest — wave 16's own scope around this card is gone.
-              The element stays the grid item it was: sticky, never transformed,
-              filtered or clipped, so the phone's fixed bar stays fixed. */}
-          <div className="-mt-4 rounded-card md:sticky md:top-[calc(var(--header-h)+1.5rem)] md:col-start-2 md:row-start-1 md:-mt-10">
-            <ActionCard
-              days={days}
-              session={session}
-              phase={phase}
-              can={can}
-              rsvp={rsvp}
-              primary={primary}
-              slot={slot}
-              tasks={summaries.tasks}
-              materials={summaries.materials}
-              ratingClosesAt={eligibility?.windowClosesAt ?? null}
-              certificateHref={certificateHref}
-              bookmarked={bookmarked}
-              shareUrl={shareUrl}
-              isAdmin={me.role === "admin"}
-              locale={locale}
-            />
-          </div>
+      {/* The card first after the hero, in flow (DEC-045); from `lg` the full-width action row, sticky once
+          scrolled past (§4.73). The element is never transformed, filtered or clipped — moment 1 thuds INSIDE it. */}
+      <div className="mt-4 lg:sticky lg:top-[var(--header-h)] lg:z-20">
+        <ActionCard
+          session={session}
+          phase={phase}
+          days={days}
+          can={can}
+          rsvp={rsvp}
+          primary={primary}
+          slot={slot}
+          points={points}
+          figures={figures}
+          faces={faces}
+          tasks={summaries.tasks}
+          ratingClosesAt={eligibility?.windowClosesAt ?? null}
+          certificateHref={certificateHref}
+          bookmark={bookmark}
+          share={share}
+          isAdmin={me.role === "admin"}
+          locale={locale}
+        />
+      </div>
 
-          <div className="mt-8 flex min-w-0 flex-col gap-10 md:col-start-1 md:row-start-1 md:mt-8">
-            {/* The sub-nav lists exactly the sections that render, so it waits on
-                the same summaries; a row-high placeholder holds its place. */}
-            <Suspense fallback={<div aria-hidden="true" className="h-11 border-b border-edge md:h-[52px]" />}>
-              <SubnavFor gates={gates} summaries={summaries} label={t("sectionsNav")} labels={navLabels} />
-            </Suspense>
-
-            <GatedSection id="about" title={t("aboutLabel")}>
-              {/* On the phone the poster opens «نبذة»; from `md` it is in the hero. */}
-              <div className={`mb-5 md:hidden ${phase === "ended" || phase === "cancelled" ? "[&_img]:opacity-50 [&_img]:grayscale" : ""}`}>{poster}</div>
-              <Prose>
-                <p className="whitespace-pre-line">
-                  <bdi>{session.abstract}</bdi>
-                </p>
-              </Prose>
-              {session.tags.length > 0 ? (
-                <div className="mt-5 flex flex-wrap items-center gap-2">
-                  <span className="text-body-sm text-fg-muted">{t("tagsLabel")}</span>
-                  {session.tags.map((tag) => (
-                    <TagChip key={tag.normalised} label={tag.label} href={`/app/sessions?tag=${encodeURIComponent(tag.normalised)}`} />
-                  ))}
-                </div>
-              ) : null}
-            </GatedSection>
-
-            <GatedSection id="presenters" title={presentersTitle} gate={gates.presenters}>
-              <PresenterList presenters={session.presenters} />
-            </GatedSection>
-
-            <Suspense fallback={<SectionSkeleton />}>
-              <GatedSection id="tasks" title={t("tasksLabel")} gate={gates.tasks} summary={summaries.tasks}>
-                <Tasks {...slot} />
-              </GatedSection>
-            </Suspense>
-
-            <Suspense fallback={<SectionSkeleton />}>
-              <GatedSection id="materials" title={t("materialsLabel")} gate={gates.materials} summary={summaries.materials}>
-                <Materials {...slot} />
-              </GatedSection>
-            </Suspense>
-
-            {phase === "ended" ? (
-              <Suspense fallback={null}>
-                <EndedStats materials={summaries.materials} photos={summaries.photos} labels={{ materials: t("stats.materials"), photos: t("stats.photos") }} />
-              </Suspense>
-            ) : null}
-
-            <Suspense fallback={<SectionSkeleton />}>
-              <GatedSection id="photos" title={t("photosLabel")} gate={gates.photos} summary={summaries.photos}>
-                <Photos {...slot} />
-              </GatedSection>
-            </Suspense>
-
-            <Suspense fallback={<SectionSkeleton />}>
-              <GatedSection id="discussion" title={t("commentsLabel")} gate={gates.discussion} summary={summaries.discussion}>
-                <Comments {...slot} />
-              </GatedSection>
-            </Suspense>
-
-            <Suspense fallback={<SectionSkeleton />}>
-              <GatedSection id="rating" title={t("ratingLabel")} gate={gates.rating}>
-                <Ratings {...slot} />
-              </GatedSection>
-            </Suspense>
-          </div>
+      {phase === "ended" ? (
+        <div className="mt-3">
+          <Suspense fallback={null}>
+            <EventRecap attended={figures.attendedCount} registered={rsvp?.confirmedCount ?? null} photos={summaries.photos} />
+          </Suspense>
         </div>
+      ) : null}
+
+      <div className="mt-5">
+        {/* The sub-nav lists exactly the sections that render; a row-high placeholder holds its place. */}
+        <Suspense fallback={<div aria-hidden="true" className="h-14 border-b border-edge" />}>
+          <SubnavFor order={order} gates={gates} summaries={summaries} label={t("sectionsNav")} labels={navLabels} />
+        </Suspense>
+      </div>
+
+      <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8">
+        <div className="flex min-w-0 flex-col gap-10">{order.map((sectionId) => sections[sectionId])}</div>
+        <EventAside session={session} phase={phase} reserved={rsvp?.confirmedCount ?? null} attended={figures.attendedCount} faces={faces} team={team} />
       </div>
     </article>
   );
 }
 
-const ratingRelations: ViewerRelation[] = ["attended", "presenter", "staff"];
-
-/** The page's gated sections, in render order — `EVENT_SECTION_IDS` less the action card. */
-const GATED_IDS = ["about", "presenters", "tasks", "materials", "photos", "discussion", "rating"] as const;
-type GatedId = (typeof GATED_IDS)[number];
+/** The viewer's company for «لفريقك», or null when the rule is off or the member has none (DEC-210). */
+async function teamForRule(locale: string): Promise<{ name: string } | null> {
+  const [enabled, company] = await Promise.all([isCompanyAttendanceRuleEnabled(locale).catch(() => false), getViewerCompany(locale).catch(() => null)]);
+  return enabled && company ? { name: company.name } : null;
+}
 
 async function SubnavFor({
+  order,
   gates,
   summaries,
   label,
   labels,
 }: {
-  gates: Record<GatedId, boolean>;
-  summaries: Partial<Record<GatedId, Promise<SlotSummary>>>;
+  order: Gated[];
+  gates: Record<Gated, boolean>;
+  summaries: Partial<Record<Gated, Promise<SlotSummary>>>;
   label: string;
-  labels: Record<GatedId, string>;
+  labels: Record<Gated, string>;
 }) {
-  const resolved = await Promise.all(GATED_IDS.map((sectionId) => summaries[sectionId] ?? Promise.resolve(undefined)));
-  const items = GATED_IDS.filter((sectionId, i) => isSectionShown(gates[sectionId], resolved[i])).map((sectionId) => ({ id: sectionId, label: labels[sectionId] }));
+  const resolved = await Promise.all(order.map((sectionId) => summaries[sectionId] ?? Promise.resolve(undefined)));
+  const items: EventSubnavItem[] = order
+    .map((sectionId, i) => ({ sectionId, summary: resolved[i] }))
+    .filter(({ sectionId, summary }) => isSectionShown(gates[sectionId], summary))
+    .map(({ sectionId, summary }) => ({
+      id: sectionId,
+      label: labels[sectionId],
+      // A count where the slot has one, drawn beside the word (`Event.dc.html:68` «النقاش 3»); tasks say theirs in the section.
+      count: summary && sectionId !== "tasks" && summary.count > 0 ? formatNumber(summary.count) : undefined,
+      lgHidden: sectionId === "about",
+    }));
   return <EventSubnav label={label} items={items} />;
 }
 
-/** The cancelled alert (REQ-SES-010: shown prominently), the unpublished note, or the ended ribbon — above the band, on light. */
-async function Notices({ session, phase, published, locale }: { session: EventSession; phase: string; published: boolean; locale: string }) {
+/** From `lg`: «الجلسات › <category>» above the hero band (`EventDesktop.dc.html:30`); the phone's is its top row. */
+async function DesktopBreadcrumb({ session }: { session: EventSession }) {
+  const [t, tUi] = await Promise.all([getTranslations("sessions.event"), getTranslations("ui.pageHeader")]);
+  return (
+    <nav aria-label={tUi("breadcrumb")} className="hidden pt-6 pb-4 lg:block">
+      <ol className="flex items-center gap-2 text-caption text-fg-muted">
+        <li>
+          <Link href="/app/sessions" quiet className="underline-offset-4 hover:text-fg-heading hover:underline">
+            {t("breadcrumbRoot")}
+          </Link>
+        </li>
+        {session.categoryId && session.categoryName ? (
+          <li className="flex items-center gap-2">
+            <span aria-hidden="true">›</span>
+            <Link href={`/app/sessions?category=${session.categoryId}`} quiet className="underline-offset-4 hover:text-fg-heading hover:underline">
+              <bdi>{session.categoryName}</bdi>
+            </Link>
+          </li>
+        ) : null}
+      </ol>
+    </nav>
+  );
+}
+
+/** The cancelled alert (REQ-SES-010: shown prominently), the unpublished note, or the ended ribbon in `DEC-073`'s words. */
+async function Notices({ session, phase, locale }: { session: EventSession; phase: SessionPhase; locale: string }) {
   const t = await getTranslations("sessions.event");
+  const published = ["published", "in_progress", "completed", "archived", "cancelled"].includes(session.state);
   if (session.state === "cancelled") {
     return (
-      <div className="mx-auto max-w-6xl px-4 pt-5 md:px-8">
-        <div role="alert">
-          <Panel tone="error" className="flex gap-3">
-            <AlertCircleIcon className="mt-1 text-[1.25rem] text-error" />
-            <div className="min-w-0">
-              <p className="text-h3 text-fg-heading">{t("cancelledTitle")}</p>
-              {session.cancellationReason ? (
-                <>
-                  <p className="mt-2 text-label text-fg-heading">{t("cancelledReason")}</p>
-                  <p className="mt-1 text-body text-fg-body">
-                    <bdi>{session.cancellationReason}</bdi>
-                  </p>
-                </>
-              ) : null}
-              <p className="mt-2 text-body-sm text-fg-muted">{t("cancelledNote")}</p>
-            </div>
-          </Panel>
-        </div>
+      <div role="alert" className="mb-3">
+        <Panel tone="error" className="flex gap-3">
+          <AlertCircleIcon className="mt-1 text-[1.25rem] text-error" />
+          <div className="min-w-0">
+            <p className="text-h3 text-fg-heading">{t("cancelledTitle")}</p>
+            {session.cancellationReason ? (
+              <>
+                <p className="mt-2 text-label text-fg-heading">{t("cancelledReason")}</p>
+                <p className="mt-1 text-body text-fg-body">
+                  <bdi>{session.cancellationReason}</bdi>
+                </p>
+              </>
+            ) : null}
+            <p className="mt-2 text-body-sm text-fg-muted">{t("cancelledNote")}</p>
+          </div>
+        </Panel>
       </div>
     );
   }
   if (!published) {
     return (
-      <div className="mx-auto max-w-6xl px-4 pt-5 md:px-8">
-        <div role="status">
-          <Panel tone="info" className="flex gap-3 text-body-sm text-fg-body">
-            <InfoIcon className="mt-0.5 text-[1.125rem] text-fg-muted" />
-            <p>
-              {t("unpublishedNote")} · {t("stateLabel")}: {t(`state.${session.state}`)}
-            </p>
-          </Panel>
-        </div>
+      <div role="status" className="mb-3">
+        <Panel tone="info" className="flex gap-3 text-body-sm text-fg-body">
+          <InfoIcon className="mt-0.5 text-[1.125rem] text-fg-muted" />
+          <p>
+            {t("unpublishedNote")} · {t("stateLabel")}: {t(`state.${session.state}`)}
+          </p>
+        </Panel>
       </div>
     );
   }
   if (phase === "ended" && session.endsAt) {
-    // «انتهت هذه الجلسة يوم …» — legible from across the room, scrolling fast
-    // (`16` §5.3, ask 6). Full-width, quiet, and never over the status badge.
+    // «انتهت هذه الجلسة يوم …» — the status words of DEC-073, not the artboard's «مكتملة» (DEC-209 §2).
     return (
-      <Panel tone="ended" className="rounded-none border-x-0 border-t-0 text-center text-body font-medium text-fg-body">
+      <Panel tone="ended" className="mb-3 text-center text-body-sm font-medium text-fg-body">
         {t("ribbonEnded", { date: formatDate(session.endsAt, session.timeZone, locale) })}
       </Panel>
     );
@@ -339,31 +400,29 @@ async function Notices({ session, phase, published, locale }: { session: EventSe
   return null;
 }
 
-/** The ended page's strip — materials and photos only (the lead's ruling on §25 Q8). */
-async function EndedStats({
-  materials,
-  photos,
-  labels,
-}: {
-  materials?: Promise<SlotSummary>;
-  photos?: Promise<SlotSummary>;
-  labels: { materials: string; photos: string };
-}) {
-  if (!materials && !photos) return null;
-  const [m, p] = await Promise.all([materials, photos]);
-  const stats = [
-    m && m.visible && m.count > 0 ? { href: "#materials", label: labels.materials, value: m.count } : null,
-    p && p.visible && p.count > 0 ? { href: "#photos", label: labels.photos, value: p.count } : null,
-  ].filter((s): s is { href: string; label: string; value: number } => s !== null);
-  if (stats.length === 0) return null;
+/** «المُقدِّمون» — the bio as each presenter wrote it (REQ-PRF-001), for a presenter who wrote one. No rating, no history (§25 Q5). */
+async function PresenterBios({ session }: { session: EventSession }) {
+  const t = await getTranslations("sessions.event");
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {stats.map((s) => (
-        <a key={s.href} href={s.href} className="block rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]">
-          <Stat label={s.label} value={formatNumber(s.value)} />
-        </a>
-      ))}
-    </div>
+    <ul className="flex flex-col gap-5">
+      {session.presenters
+        .filter((p) => p.bio)
+        .map((p) => (
+          <li key={p.memberId} className="flex items-start gap-3">
+            <Avatar memberId={p.memberId} displayName={p.displayName} src={p.avatarUrl ?? null} size={40} teamColor={p.teamColor ?? null} decorative />
+            <div className="flex min-w-0 flex-col gap-1">
+              <Link href={`/app/members/${p.memberId}`} className="w-fit text-body font-bold text-fg-heading underline-offset-4 hover:underline">
+                <bdi>{p.displayName ?? t("presenterFallback")}</bdi>
+              </Link>
+              <Prose>
+                <p className="whitespace-pre-line">
+                  <bdi>{p.bio}</bdi>
+                </p>
+              </Prose>
+            </div>
+          </li>
+        ))}
+    </ul>
   );
 }
 
@@ -374,16 +433,4 @@ function SectionSkeleton() {
       <Skeleton variant="text" count={3} className="mt-4" />
     </div>
   );
-}
-
-/**
- * The member's own issued certificate for this session, once its PDF has
- * rendered — as `designer`'s audited download route, never a URL signed at
- * render time: a member's own download writes an audit row too (DEC-177,
- * DEC-178). `null` while it has not rendered, so no link can 404.
- */
-async function myCertificateHref(locale: string, sessionId: string): Promise<string | null> {
-  const { certificates } = await listMyCertificates(locale);
-  const mine = certificates.find((c) => c.sessionId === sessionId && c.state === "issued" && c.downloadHref);
-  return mine?.downloadHref ?? null;
 }

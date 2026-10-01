@@ -47,8 +47,11 @@ function coverOf(el: HTMLElement): { above: number; below: number } | null {
         if (n.contains(el)) break; // a control inside the layer is not covered by it
         const layer = n.getBoundingClientRect();
         covered = true;
-        // A layer whose middle is above the control's middle covers it from above.
-        if (layer.top + layer.height / 2 < r.top + r.height / 2) above = Math.max(above, layer.bottom);
+        // A layer in the viewport's upper half covers from above, one in its lower half from below — a pinned
+        // bar covers from the edge it is pinned to. ★ Not against the control's middle (wave 18, found by
+        // `sessions`): a control straddling the bottom edge under the action bar has its middle BELOW the
+        // bar's, so the bar was counted as a cover from above and nothing scrolled.
+        if (layer.top + layer.height / 2 < window.innerHeight / 2) above = Math.max(above, layer.bottom);
         else below = Math.min(below, layer.top);
         break;
       }

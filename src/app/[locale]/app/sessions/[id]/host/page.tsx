@@ -1,20 +1,40 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireSession } from "@/lib/dal/session";
 import { getHostView, listUncheckedConfirmedRsvps } from "@/lib/dal/checkin";
-import { formatNumber } from "@/components/sessions/numerals";
-import { dayName } from "@/components/checkin/day-name";
 import type { SessionPhase } from "@/lib/session-status";
+import { dayName } from "@/components/checkin/day-name";
+import { HostClock } from "@/components/checkin/host-clock";
+import { AwakeNote, DimNote, ProjectionRoot, ProjectionToggle } from "@/components/checkin/host-projection";
+import { HostSwitch } from "@/components/checkin/host-switch";
+import { ManualMark } from "@/components/checkin/manual-mark";
+import { formatNumber, formatTime } from "@/components/sessions/numerals";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { ArrowIcon } from "@/components/ui/icons";
+import { Link } from "@/components/ui/link";
 import { Panel } from "@/components/ui/panel";
+import { Stat } from "@/components/ui/stat";
 import { markManuallyAction, revokeCodeAction, setCheckInOpenAction } from "./actions";
+
+// SCR-016 — the host view, rebuilt from `Host.dc.html` (REQ-UIX-062, STORY-UIX-050; `M10a.md` §9).
+// Written from the artboard after the old file was deleted (DEC-208). What it had to keep, and why, is
+// `docs/plan/notes/checkin.md` § B.2 — among them: the session gate with `?next=`; ★ access decided by
+// `ensure_check_in_code()`, never by hiding UI (REQ-CHK-014); no code outside the window, and each
+// phase's own sentence (REQ-CHK-004, bug (d)); the day bound at the call site from the code on the
+// wall (DEC-119); one-tap revoke (REQ-CHK-007); the switch on a live or pre-flight console, for the
+// session's presenter or staff (REQ-CHK-015, -016, DEC-141, DEC-209 D3); marking by hand for staff
+// only, with its mandatory reason (REQ-CHK-008); every action working without JavaScript.
+//
+// ★ New in the rebuild because the requirement always asked for it (REQ-CHK-001, DEC-209): the time
+// to the next rotation, and a count that updates live — `HostClock`.
+//
+// ★ THE CODE IS ONE `<p dir="ltr">`, two groups of three drawn by a gap and no space character, so
+// its text is the six characters every spec reads and a rotation is a cut, never a fade. Projection
+// grows this same element; it never draws a second one.
 
 const KNOWN_MANUAL_ERRORS = new Set(["not_authorized", "reason_required", "not_found", "not_open", "member_not_found", "presenter_cannot_check_in", "unknown"]);
 const KNOWN_SWITCH_ERRORS = new Set(["not_found", "not_authorized", "not_open", "ceiling_passed", "unknown"]);
 
-/** The paragraph under the missing code — bug (d), 16 §5.4.1 row 6: this used to have no phase condition at all, so a presenter saw a live-attendance console for a talk that ended in March. Now every one of the six phases says something true. */
+/** What stands where the code would — bug (d), 16 §5.4.1 row 6: every phase says something true. */
 function noCodeMessageKey(phase: SessionPhase): "notPublished" | "cancelled" | "notStarted" | "ended" {
   switch (phase) {
     case "draft":
@@ -25,27 +45,14 @@ function noCodeMessageKey(phase: SessionPhase): "notPublished" | "cancelled" | "
     case "ended":
       return "ended";
     default:
-      // "open" is the pre-flight case, and a clock-derived "live" with the
-      // row still `published` (the RPC's own not_open — start_session
-      // hasn't run yet) reads the same way: accurate, not confusing.
+      // `open` is the pre-flight; a clock-derived `live` whose row is still `published` reads the same.
       return "notStarted";
   }
 }
 
-// SCR-016 — the host view (REQ-CHK-001, REQ-CHK-014, OQ-013, REQ-UIX-015,
-// DEC-090). Presenters, admins and moderators only — getHostView() returns
-// null for anyone else, by policy (ensure_check_in_code's authorization
-// check), not merely by hiding this page's UI.
-//
-// ★ Bug (d) fix (16 §5.4.1 row 6): the walk-in toggle and manual-marking
-// sections used to render for any staff viewer regardless of phase — a
-// presenter of a draft or a cancelled session got the same operational
-// console as one running live. Both now gate on `view.consoleActive`
-// (`affordancesFor(phase, "staff").hostConsole` — true only for `open`, the
-// pre-flight, and `live`). Manual marking is narrower still (REQ-CHK-008):
-// admins and moderators only, not presenters — mark_checked_in_manually()
-// enforces this itself, and the session's own org_role decides whether this
-// page even fetches the candidate list.
+/** Hidden while projecting: the code alone is shown then. */
+const HIDE_PROJECTING = "group-data-[projecting]/project:hidden";
+
 export default async function HostPage({
   params,
   searchParams,
@@ -56,151 +63,171 @@ export default async function HostPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
   const session = await requireSession(locale, `/${locale}/app/sessions/${id}/host`);
-  const { revoked, manualSuccess, manualError, memberId: submittedMemberId, reason: submittedReason, switch: switchResult, switchError } = await searchParams;
+  const { revoked, manualSuccess, manualError, memberId, reason, switch: switchResult, switchError } = await searchParams;
   const isStaff = session.role === "admin" || session.role === "moderator";
 
   const [view, t, tDays] = await Promise.all([getHostView(locale, id), getTranslations("checkin"), getTranslations("sessions.days")]);
-
+  // REQ-CHK-014: a member — checked in or not — is refused by the RPC, and sees only this.
   if (!view) {
-    return <h1 className="text-h1 text-fg-heading">{t("host.notAuthorized")}</h1>;
+    return <h1 className="px-4 pt-6 text-h1 text-fg-heading">{t("host.notAuthorized")}</h1>;
   }
 
-  // ★ THE DAY, and only when the session has more than one (DEC-119). At one
-  // day `label` is null and nothing below renders — the screen wave 7 shipped.
-  // The candidates are THIS day's: a member marked present yesterday is still
-  // a candidate today.
+  // ★ THE DAY (DEC-119): the code's own, and everything below is that day's. Null at one day.
   const label = dayName({ day: view.day, dayCount: view.dayCount, timeZone: view.timeZone }, tDays, locale);
   const dayId = view.day?.id ?? null;
-  const candidates = isStaff ? await listUncheckedConfirmedRsvps(locale, id, dayId) : [];
-
+  // REQ-CHK-008: marking by hand is staff's, on a console the phase allows — never a presenter's.
+  const staffConsole = view.consoleActive && isStaff;
+  const candidates = staffConsole ? await listUncheckedConfirmedRsvps(locale, id, dayId) : [];
   const manualErrorKey = manualError && KNOWN_MANUAL_ERRORS.has(manualError) ? manualError : manualError ? "unknown" : null;
   const switchErrorKey = switchError && KNOWN_SWITCH_ERRORS.has(switchError) ? switchError : switchError ? "unknown" : null;
-  // `view.consoleActive` only knows the PHASE is eligible (open/live) — a
-  // presenter reaches this far too (REQ-CHK-014's broader auth check), but
-  // manual marking stays admin/moderator-only, as before (REQ-CHK-008).
-  const staffConsoleActive = view.consoleActive && isStaff;
+
+  // Awake, listening and counting down only while the day can take attendance and a code is out.
+  const live = view.code !== null && view.phase === "live";
+  // The next instant the answer changes by itself: the rotation, else the day's start (the pre-flight).
+  const dayStart = view.day?.startsAt ?? view.startsAt;
+  const nextChangeAt = view.rotatesAt ?? (view.phase === "open" && dayStart && Date.parse(dayStart) > Date.parse(view.readAt) ? dayStart : null);
+
+  const count = formatNumber(view.checkInCount);
+  const countHint = [
+    view.capacity !== null ? t("host.count.of", { count: view.capacity, value: formatNumber(view.capacity) }) : null,
+    view.allowWalkIns && view.walkInCount > 0 ? t("host.count.walkIns", { count: view.walkInCount, value: formatNumber(view.walkInCount) }) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const switchDescription = [
+    view.checkInOpen && view.closesAt ? t("host.checkInSwitch.closesAt", { time: formatTime(view.closesAt, view.timeZone, locale) }) : null,
+    view.checkInOpen ? null : t("host.checkInSwitch.closedHint"),
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <>
-      <h1 className="text-h1 text-fg-heading">{t("host.title")}</h1>
+    <ProjectionRoot live={live} className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 pb-6 pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className={`flex min-w-0 items-center gap-2.5 ${HIDE_PROJECTING}`}>
+          <Link
+            href={`/app/sessions/${id}`}
+            aria-label={t("host.back")}
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-edge bg-surface text-fg-heading"
+          >
+            <ArrowIcon direction="back" className="text-[1.125rem]" />
+          </Link>
+          <h1 className="whitespace-nowrap font-display text-play-sm font-extrabold text-fg-heading">{t("host.title")}</h1>
+        </div>
+        {/* The toggle is not hidden with the row's start: it stays in reach while projecting. */}
+        {view.code ? <ProjectionToggle /> : null}
+      </div>
+
+      <p className={`text-center text-caption text-fg-muted ${HIDE_PROJECTING}`}>
+        <bdi>{view.title}</bdi>
+        {view.venueName ? (
+          <>
+            {" · "}
+            <bdi>{view.venueName}</bdi>
+          </>
+        ) : null}
+      </p>
       {label ? (
-        <p className="mt-1 text-body-sm text-fg-muted">
+        <p className={`text-center text-body-sm text-fg-heading ${HIDE_PROJECTING}`}>
           {view.code || view.phase === "live" ? t("host.dayLine", { day: label }) : t("host.nextDay", { day: label })}
         </p>
       ) : null}
+
       {revoked ? (
-        <div role="status" className="mt-4">
+        <div role="status" className={HIDE_PROJECTING}>
           <Panel tone="info">{t("host.revoked")}</Panel>
         </div>
       ) : null}
 
-      {view.code ? (
-        <p aria-live="polite" dir="ltr" className="mt-8 text-center font-bold leading-none text-fg-heading text-[length:var(--fs-display)] tracking-[0.35em]">
-          {view.code}
-        </p>
-      ) : (
-        /* REQ-CHK-004 at issuance (0078): no code exists outside the live window. */
-        <div role="status" className="mt-8">
-          <Panel tone="info" className="text-center">
-            {t(`host.${noCodeMessageKey(view.phase)}`)}
-          </Panel>
-        </div>
-      )}
-
-      <p className="mt-6 text-center text-body text-fg-muted">{t("host.checkInCount", { count: view.checkInCount, value: formatNumber(view.checkInCount) })}</p>
-
-      {/* DEC-117: no toggle here anymore — walk-ins are decided at
-          publishing, on the schedule form (`sessions`'). The room still
-          benefits from knowing the policy while running it. */}
-      <p className="mt-2 text-center text-body-sm text-fg-muted">{view.allowWalkIns ? t("host.walkIns.on") : t("host.walkIns.off")}</p>
-
-      {/* DEC-141/REQ-CHK-015 — the manual switch. Gated on `view.consoleActive`
-          alone, not `staffConsoleActive`: `set_check_in_open()` authorizes the
-          session's own presenter OR staff, the same broader set the console
-          itself is already scoped to (REQ-CHK-014), unlike manual marking
-          (admin/moderator only). Closing admits nobody new and revokes
-          nothing already recorded (DEC-115) — `closedHint` says so, so a
-          presenter closing the door mid-session isn't guessing what it does. */}
-      {view.consoleActive ? (
-        <section className="mt-6 flex flex-col items-center gap-2 border-y border-edge py-6">
-          {switchResult === "opened" ? (
-            <div role="status">
-              <Panel tone="info">{t("host.checkInSwitch.opened")}</Panel>
+      <div className="flex flex-col items-center gap-3.5 py-6">
+        {view.code ? (
+          <>
+            {/* Projected, six display-face characters and the gap fit the viewport at 19vw: 26vw overflowed 390. */}
+            <p dir="ltr" aria-live="polite" className="flex gap-3.5 font-display text-[5.25rem] font-extrabold leading-none text-fg-heading group-data-[projecting]/project:text-[min(19vw,40vh)]">
+              <span>{view.code.slice(0, 3)}</span>
+              <span>{view.code.slice(3)}</span>
+            </p>
+            <DimNote>{t("host.project.mayDim")}</DimNote>
+            <div className={HIDE_PROJECTING}>
+              <HostClock sessionId={id} readAt={view.readAt} rotatesAt={view.rotatesAt} nextChangeAt={nextChangeAt} graceSeconds={view.graceSeconds} listen={live} />
             </div>
-          ) : null}
-          {switchResult === "closed" ? (
-            <div role="status">
-              <Panel tone="info">{t("host.checkInSwitch.closed")}</Panel>
-            </div>
-          ) : null}
-          {switchErrorKey ? (
-            <div role="alert">
-              <Panel tone="error">{t(`host.checkInSwitch.error.${switchErrorKey}`)}</Panel>
-            </div>
-          ) : null}
+          </>
+        ) : (
+          // REQ-CHK-004 at issuance: no code exists outside the window.
+          <div role="status" className="w-full">
+            <Panel tone="info" className="text-center">
+              {t(`host.${noCodeMessageKey(view.phase)}`)}
+            </Panel>
+            <HostClock sessionId={id} readAt={view.readAt} rotatesAt={null} nextChangeAt={nextChangeAt} graceSeconds={view.graceSeconds} listen={false} />
+          </div>
+        )}
+        <Stat label={t("host.count.label")} value={count} hint={countHint || undefined} className={`min-w-48 text-center ${HIDE_PROJECTING}`} />
+      </div>
 
-          <p className="text-body text-fg-heading">{view.checkInOpen ? t("host.checkInSwitch.statusOpen") : t("host.checkInSwitch.statusClosed")}</p>
-          {!view.checkInOpen ? <p className="max-w-sm text-center text-body-sm text-fg-muted">{t("host.checkInSwitch.closedHint")}</p> : null}
+      <div className={`flex flex-col gap-2.5 ${HIDE_PROJECTING}`}>
+        {view.consoleActive ? (
+          <section aria-label={t("host.checkInSwitch.label")} className="rounded-panel border border-edge bg-surface px-3.5 py-1">
+            {switchResult === "opened" || switchResult === "closed" ? (
+              <div role="status" className="pt-2">
+                <Panel tone="info">{t(`host.checkInSwitch.${switchResult}`)}</Panel>
+              </div>
+            ) : null}
+            {switchErrorKey ? (
+              <div role="alert" className="pt-2">
+                <Panel tone="error">{t(`host.checkInSwitch.error.${switchErrorKey}`)}</Panel>
+              </div>
+            ) : null}
+            <HostSwitch
+              open={view.checkInOpen}
+              action={setCheckInOpenAction.bind(null, locale, id, !view.checkInOpen, dayId)}
+              label={t("host.checkInSwitch.label")}
+              description={switchDescription || undefined}
+              noScript={
+                <Button type="submit" variant="secondary" size="sm" className="mb-2">
+                  {view.checkInOpen ? t("host.checkInSwitch.close") : t("host.checkInSwitch.open")}
+                </Button>
+              }
+            />
+          </section>
+        ) : null}
 
-          <form action={setCheckInOpenAction.bind(null, locale, id, !view.checkInOpen, dayId)} className="mt-1">
-            <Button type="submit" variant={view.checkInOpen ? "secondary" : "primary"}>
-              {view.checkInOpen ? t("host.checkInSwitch.close") : t("host.checkInSwitch.open")}
-            </Button>
-          </form>
-        </section>
-      ) : null}
+        {view.code || staffConsole ? (
+          // Two equal halves when both actions are offered, as the artboard draws them; one otherwise.
+          <div className={`grid gap-2 ${view.code && staffConsole ? "grid-cols-2" : ""}`}>
+            {view.code ? (
+              // REQ-CHK-007: one tap, a new code at once, never accent — a real action on the room.
+              <form action={revokeCodeAction.bind(null, locale, id, dayId)} className="flex">
+                <Button type="submit" variant="danger" size="md" className="w-full">
+                  {t("host.revoke")}
+                </Button>
+              </form>
+            ) : null}
+            {staffConsole ? (
+              <ManualMark
+                key={`${manualSuccess ?? ""}|${manualError ?? ""}`}
+                action={markManuallyAction.bind(null, locale, id, dayId)}
+                candidates={candidates}
+                memberId={manualError ? memberId : undefined}
+                reason={manualError ? reason : undefined}
+                error={manualErrorKey ? t(`host.manualError.${manualErrorKey}`) : undefined}
+              />
+            ) : null}
+          </div>
+        ) : null}
 
-      {view.code ? (
-        <form action={revokeCodeAction.bind(null, locale, id, dayId)} className="mt-8 flex justify-center">
-          <Button type="submit" variant="secondary">
-            {t("host.revoke")}
-          </Button>
-        </form>
-      ) : null}
+        {manualSuccess ? (
+          <div role="status">
+            <Panel tone="info">{t("host.manualSuccess")}</Panel>
+          </div>
+        ) : null}
 
-      {staffConsoleActive ? (
-        <section className="mt-12 max-w-sm">
-          <h2 className="text-h3 text-fg-heading">{t("host.manualTitle")}</h2>
-
-          {manualSuccess ? (
-            <div role="status" className="mt-3">
-              <Panel tone="info">{t("host.manualSuccess")}</Panel>
-            </div>
-          ) : null}
-          {manualErrorKey ? (
-            <div role="alert" className="mt-3">
-              <Panel tone="error">{t(`host.manualError.${manualErrorKey}`)}</Panel>
-            </div>
-          ) : null}
-
-          {/* `noValidate` below: renders `manualErrorKey`'s own Panel above
-              (the app's Arabic error) — content's bug class (7f4809f):
-              without it, the Select/Input's own `required` blocks the
-              submit silently and neither the RPC's refusal nor this banner
-              is ever reached. */}
-          {candidates.length === 0 ? (
-            <p className="mt-3 text-body text-fg-muted">{t("host.manualNoCandidates")}</p>
-          ) : (
-            <form action={markManuallyAction.bind(null, locale, id, dayId)} noValidate className="mt-4 space-y-4">
-              <Field id="memberId" label={t("host.manualMember")}>
-                <Select name="memberId" required defaultValue={submittedMemberId ?? ""}>
-                  {candidates.map((c) => (
-                    <option key={c.memberId} value={c.memberId}>
-                      {c.displayName ?? c.memberId}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field id="reason" label={t("host.manualReason")}>
-                <Input name="reason" required maxLength={300} defaultValue={submittedReason ?? ""} />
-              </Field>
-              <Button type="submit" variant="secondary">
-                {t("host.manualSubmit")}
-              </Button>
-            </form>
-          )}
-        </section>
-      ) : null}
-    </>
+        {view.code ? (
+          <p className="text-center text-caption text-fg-muted">
+            {t("host.footnote.revoke")}
+            <AwakeNote>{t("host.footnote.awake")}</AwakeNote>
+          </p>
+        ) : null}
+      </div>
+    </ProjectionRoot>
   );
 }

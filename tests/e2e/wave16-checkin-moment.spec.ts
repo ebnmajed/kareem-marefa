@@ -9,7 +9,7 @@
 //      event page 1.4 s after the lines are in — where no check-in link is offered;
 //   2. ★ back → the check-in screen's static state, and NO layer;
 //   3. ★ reload → the static state, and NO layer;
-//   4. ★ a wrong code → an error, NO layer and no running animation;
+//   4. ★ a wrong code → an error, NO layer, no moment — only the boxes' one shake (DEC-212);
 //   5. ★ reduced motion → the complete static state, NO layer, and the same return;
 //   6. ★ no JavaScript → the no-JS action still checks in, to `?success=1`, static.
 //      `test.fixme` — F3: /app streams behind loading.tsx; without JS the content
@@ -183,7 +183,10 @@ test("★ the moment plays from the check-in's own result, rests, and returns �
   await expect(page).toHaveURL(/\/check-in$/);
 });
 
-test("★ a wrong code animates nothing — not the boxes, not the screen", async ({ context, page }) => {
+// ★ Wave 18 (DEC-212, ledger — an EXPECTATION changed): a mistyped code now shakes the six boxes once, as input
+// feedback; it still plays no moment and no confetti, and nothing else in the form moves. The scope is the form:
+// the rebuilt screen's session row carries the live badge's dot (DEC-073), a status, outside it.
+test("★ a wrong code plays no moment and no confetti — only the boxes' one shake (DEC-212)", async ({ context, page }) => {
   await countLayers(page);
   await signIn(context, "omar");
   await page.goto(`/ar/app/sessions/${sessionId}/check-in`);
@@ -191,8 +194,14 @@ test("★ a wrong code animates nothing — not the boxes, not the screen", asyn
   await expect(page).toHaveURL(/error=invalid_code&code=ZZZZZZ$/, { timeout: 15_000 });
   await expect(page.locator("#main").getByRole("alert").filter({ hasText: "الرمز غير صحيح" })).toBeVisible();
   expect(await layers(page)).toBe(0);
-  const running = await page.evaluate(() => document.getAnimations().filter((a) => (a.effect as KeyframeEffect | null)?.target?.closest?.("#main")).length);
-  expect(running).toBe(0);
+  const running = await page.evaluate(() =>
+    document
+      .getAnimations()
+      .filter((a) => (a.effect as KeyframeEffect | null)?.target?.closest?.("#main form"))
+      .map((a) => (a as CSSAnimation).animationName ?? "waapi")
+      .filter((name) => name !== "code-shake"),
+  );
+  expect(running).toEqual([]);
   await expect(moment(page)).toHaveCount(0);
 });
 

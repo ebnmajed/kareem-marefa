@@ -129,8 +129,10 @@ export function ReserveCta({ kind, label, chip, placement, action }: { kind: "re
   const host = useContext(Host);
   const submit = host?.formAction ?? ((formData: FormData) => void action(null, formData));
   return (
-    // The width switch is on a wrapper, never on the control (DEC-111's class of bug).
-    <div className={placement === "card" ? "hidden md:block" : undefined}>
+    // ★ Wave 18 (DEC-209 §2, REQ-UIX-061): the card's reserve shows at every width — the phone draws it in
+    // the card AND in the bottom bar. Which one the ticket rises from is unchanged: the card from `md`, the bar
+    // below it (`host` above). Nothing about how the moment is keyed moves.
+    <div data-placement={placement}>
       <SessionCta state={{ kind, act: { action: submit } }} label={label} chip={chip} />
     </div>
   );

@@ -27,12 +27,25 @@ export type Unsubscribe = () => void;
 function subscribeToTopic(topic: `session:${string}` | `host:${string}`, onMessage: (message: BroadcastMessage) => void): Unsubscribe {
   const supabase = createBrowserClient();
   const channel = supabase.channel(topic, { config: { private: true } });
-  channel
-    .on("broadcast", { event: "*" }, (message) => {
-      onMessage({ event: message.event, payload: (message.payload as Record<string, unknown>) ?? {} });
-    })
-    .subscribe();
+  channel.on("broadcast", { event: "*" }, (message) => {
+    onMessage({ event: message.event, payload: (message.payload as Record<string, unknown>) ?? {} });
+  });
+  // ★ The socket carries the member's token BEFORE the private join (wave 18, found by `content`'s real-worker
+  // run): subscribed at once, the first `phx_join` went out with no token, Realtime refused it as
+  // «Unauthorized», and the rejoin with the token landed ~6.4 s after load — every broadcast in that window
+  // (a live comment, a photograph, the host's check-in count, REQ-EVT-015, REQ-CHK-001) was lost. `setAuth()`
+  // with no argument reads the session through the client's own `accessToken` callback.
+  let closed = false;
+  void supabase.realtime.setAuth().then(
+    () => {
+      if (!closed) channel.subscribe();
+    },
+    () => {
+      if (!closed) channel.subscribe();
+    },
+  );
   return () => {
+    closed = true;
     supabase.removeChannel(channel);
   };
 }

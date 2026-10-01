@@ -15,12 +15,16 @@ import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import ar from "@/messages/ar/sessions.json";
 import ui from "@/messages/ar/ui.json";
+import designer from "@/messages/ar/designer.json";
 import type { EventSession } from "@/lib/dal/sessions";
 
-const messages = { ...ar, ...ui };
+const messages = { ...ar, ...ui, ...designer };
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages, namespace: namespace as never }),
 }));
+
+// Wave 18 (SCR-012 rebuilt, a ledger line): the hero reads the poster itself now — no render in this suite.
+vi.mock("@/lib/dal/posters", () => ({ getSessionPoster: vi.fn(async () => null) }));
 
 const { EventHero } = await import("@/components/sessions/event-hero");
 
@@ -54,7 +58,7 @@ const SESSION = {
 } as unknown as EventSession;
 
 async function mount(dayCount: number) {
-  const element = await EventHero({ session: SESSION, dayCount, phase: "open", seat: "available", closingSoon: false, poster: null, locale: "ar" });
+  const element = await EventHero({ session: SESSION, dayCount, phase: "open", seat: "available", closingSoon: false, points: null, locale: "ar" });
   return render(
     <NextIntlClientProvider locale="ar" messages={messages}>
       {element}

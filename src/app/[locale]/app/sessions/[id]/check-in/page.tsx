@@ -1,47 +1,55 @@
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireSession } from "@/lib/dal/session";
-import { getCheckInScreenData } from "@/lib/dal/checkin";
+import { getCheckInScreenData, getConflictTitle } from "@/lib/dal/checkin";
 import { AwardState } from "@/components/checkin/award-state";
+import { CheckInSessionRow } from "@/components/checkin/check-in-session-row";
+import { CodeEntry } from "@/components/checkin/code-entry";
 import { dayName } from "@/components/checkin/day-name";
+import { EarnPanel } from "@/components/checkin/earn-panel";
 import { CheckInForm, CheckInSurface } from "@/components/checkin/moment-check-in";
 import { CheckInRest } from "@/components/checkin/moment-check-in-rest";
 import { formatNumber } from "@/components/sessions/numerals";
-import { CodeInput } from "@/components/ui/code-input";
+import { ActionBar } from "@/components/ui/action-bar";
+import { AlertCircleIcon, CloseIcon } from "@/components/ui/icons";
+import { Link } from "@/components/ui/link";
 import { Panel } from "@/components/ui/panel";
-// ★ Wave 17 (DEC-199 §1.3.4): the shell's layout is the scope now and scopes do not nest, so this is a plain element.
 import { SubmitButton } from "@/components/ui/submit-button";
 import { checkInForMoment, submitCheckInForm } from "./actions";
 
-// SCR-014 — check-in (REQ-CHK-003, REQ-CHK-006, REQ-CHK-010, REQ-CHK-011,
-// REQ-UIX-015, DEC-090). "The most operationally important input in the
-// product" (09): used standing, one-handed, under time pressure, reading six
-// characters off a screen across a room.
+// SCR-014 — check-in, rebuilt from `CheckIn.dc.html` (REQ-UIX-062, STORY-UIX-049; `M10a.md` §8).
+// Written from the artboard after the old file was deleted (DEC-208). What it had to keep, and the
+// requirement that kept each, is the table in `docs/plan/notes/checkin.md` § B.2 — among them:
+// the session gate with `?next=` (REQ-AUT-005); the 404 for a session this member cannot see; the
+// eligibility reason IN PLACE of the form, day-aware (REQ-CHK-004, -011, -016, DEC-141, DEC-151);
+// the one posted `code` field and the no-JS path (REQ-CHK-003, DEC-186 §6); the code carried back
+// after a refusal (DEC-149 §1); moment 2 from the check-in's own result and its static state
+// (REQ-UIX-046, DEC-195 §2.1 — the mechanism is `moment-check-in.tsx`, kept by DEC-209); the award
+// after the form (REQ-CHK-018, DEC-174 Q6).
 //
-// ★ Bug (c) fix (16 §5.4.1 row 4b): this used to render the code form for
-// ANY session id — no title, no phase read, no RSVP read — and the member
-// found out after typing six characters. `getCheckInScreenData()` reads the
-// session first; when `canAttemptCheckIn` is false, the reason renders IN
-// PLACE OF the form. The RPC stays authoritative (submitCheckInForm still
-// calls it and still handles every one of its refusals) — this screen just
-// stops lying before the member starts typing.
+// ★ A MISTYPED CODE SHAKES THE BOXES ONCE — input feedback, the owner's ruling (DEC-212, REQ-UIX-046 as
+// amended). Every refusal is answered by the boxes' border, the glyph and the sentence under the boxes, which
+// is also the whole state under reduced motion; only `invalid_code` adds the shake, from `CodeEntry`, once per
+// submission this client made. Every other refusal is the system refusing, and does not move.
 //
-// ★ Wave 16 (DEC-195 §1.1, REQ-UIX-046): the screen's content is the
-// playground's dark scope — never itself transformed — and moment 2 plays on it
-// from the check-in's own result (`moment-check-in.tsx`). A member checked in to
-// the day this screen is about sees the static state: the coin at rest and the
-// three lines, in place of a form they have no use for.
+// ★ Used standing, one-handed, reading six characters across a room: the code is the screen's
+// middle, the one action is at the thumb, and nothing streams in front of the input.
+
 const KNOWN_ERRORS = new Set(["not_found", "presenter_cannot_check_in", "rate_limited", "not_started", "session_ended", "not_open", "check_in_closed", "reservation_required", "invalid_code", "overlap", "unknown"]);
+/** Three refusals read differently inside a workshop: «انتهت الجلسة» is wrong while day 3 is ahead. */
+const DAY_AWARE = new Set(["not_started", "session_ended", "check_in_closed"]);
 const CODE_LENGTH = 6;
 const ERROR_ID = "check-in-error";
+
+const bdi = (chunks: ReactNode) => <bdi>{chunks}</bdi>;
 
 export default async function CheckInPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ success?: string; already?: string; error?: string; code?: string }>;
+  searchParams: Promise<{ success?: string; already?: string; error?: string; code?: string; conflict?: string }>;
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
@@ -49,26 +57,31 @@ export default async function CheckInPage({
   const [data, t, tDays] = await Promise.all([getCheckInScreenData(locale, id), getTranslations("checkin"), getTranslations("sessions.days")]);
   if (!data) notFound();
 
-  const { success, already, error, code } = await searchParams;
+  const { success, already, error, code, conflict } = await searchParams;
   const errorKey = error && KNOWN_ERRORS.has(error) ? error : error ? "unknown" : null;
+  // REQ-CHK-013: the refusal names the session it collides with — when this member may see it.
+  const conflictTitle = errorKey === "overlap" && conflict ? await getConflictTitle(locale, conflict) : null;
 
-  // ★ THE DAY (DEC-119), null at one — so a talk reads exactly as it did.
-  // The member is never ASKED which day: the code belongs to one, and
-  // `check_in()` resolves it from the code. The screen only SAYS which, which
-  // is the honest half of not asking.
+  // The member is never ASKED which day: `check_in()` resolves it from the code. The screen says which.
   const label = dayName({ day: data.day, dayCount: data.dayCount, timeZone: data.timeZone }, tDays, locale);
+  const say = (key: string): ReactNode => {
+    if (key === "overlap" && conflictTitle && conflict) {
+      return t.rich("error.overlap_named", {
+        title: conflictTitle,
+        bdi,
+        link: (chunks) => (
+          <Link href={`/app/sessions/${conflict}`} className="underline underline-offset-4">
+            {chunks}
+          </Link>
+        ),
+      });
+    }
+    return label && DAY_AWARE.has(key) ? t(`error.${key}_day`, { day: label }) : t(`error.${key}`);
+  };
 
-  // Three refusals read differently inside a workshop: «انتهت الجلسة» is wrong
-  // when day 3 is still ahead. The envelope status the RPC returns is
-  // unchanged (contract 4) — only the words are the day's, and only when
-  // there is a day to name.
-  const DAY_AWARE = new Set(["not_started", "session_ended", "check_in_closed"]);
-  const say = (key: string) => (label && DAY_AWARE.has(key) ? t(`error.${key}_day`, { day: label }) : t(`error.${key}`));
-
-  // ★ REQ-CHK-018: what this session has earned the member, read from the data
-  // on every render — so the reload, and tomorrow's visit, say what the moment
-  // after the code said. It renders nothing unless there is something to say.
-  // Streamed: the room's most time-critical input never waits on a points read.
+  // REQ-CHK-018: what this session has earned the member, read on every render and streamed — the
+  // room's most time-critical input never waits on a points read. It renders nothing when there is
+  // nothing to say.
   const award = (
     <Suspense fallback={null}>
       <AwardState sessionId={id} locale={locale} variant="section" />
@@ -76,75 +89,89 @@ export default async function CheckInPage({
   );
 
   const positions = Array.from({ length: CODE_LENGTH }, (_, i) => t("codePosition", { position: formatNumber(i + 1), total: formatNumber(CODE_LENGTH) }));
+  // The org's rotation, in whole minutes when it is whole minutes (DEC-206 §4.76) — never «10».
+  const minutes = data.rotationSeconds % 60 === 0 ? data.rotationSeconds / 60 : null;
+  const rotation =
+    minutes !== null
+      ? t.rich("rules.rotationMinutes", { count: minutes, value: formatNumber(minutes), bdi })
+      : t.rich("rules.rotationSeconds", { count: data.rotationSeconds, value: formatNumber(data.rotationSeconds), bdi });
 
   return (
-    <div className="rounded-card px-4 py-6">
-      <h1 className="text-h1 text-fg-heading">{t("title")}</h1>
-      <p className="mt-1 text-body-sm text-fg-muted">
-        <bdi>{data.title}</bdi>
-      </p>
-      {label ? <p className="mt-1 text-body-sm text-fg-heading">{t("dayLine", { day: label })}</p> : null}
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 pb-6 pt-4">
+      <div className="flex items-center gap-2.5">
+        <Link
+          href={`/app/sessions/${id}`}
+          aria-label={t("close")}
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-edge bg-surface text-fg-heading"
+        >
+          <CloseIcon className="text-[1.125rem]" />
+        </Link>
+        <h1 className="font-display text-play-sm font-extrabold text-fg-heading">{t("title")}</h1>
+      </div>
+
+      <CheckInSessionRow locale={locale} sessionId={id} title={data.title} phase={data.phase} venueName={data.venueName} startsAt={data.startsAt} timeZone={data.timeZone} />
+      {label ? <p className="text-body-sm text-fg-heading">{t("dayLine", { day: label })}</p> : null}
 
       {data.ineligibleReason ? (
-        <div role="status">
-          <Panel tone="info" className="mt-4 max-w-prose text-body text-fg-heading">
-            {say(data.ineligibleReason)}
-          </Panel>
-        </div>
-      ) : null}
-      {/* No form to fill: the state follows the reason — «the window has
-          closed» and «what you earned» are both true tomorrow. */}
-      {data.ineligibleReason ? award : null}
-      {data.ineligibleReason ? null : (
+        <>
+          {/* No form to fill: the reason leads, and «what you earned» follows — both true tomorrow. */}
+          <div role="status">
+            <Panel tone="info" className="text-body text-fg-heading">
+              {say(data.ineligibleReason)}
+            </Panel>
+          </div>
+          {award}
+        </>
+      ) : (
         <>
           {already ? (
             <div role="status">
-              <Panel tone="info" className="mt-4 text-body text-fg-heading">
+              <Panel tone="info" className="text-body text-fg-heading">
                 {t("alreadyCheckedIn")}
               </Panel>
             </div>
           ) : null}
           <CheckInSurface
             announce={Boolean(success)}
-            // ★ NOT behind `Suspense`: a streamed boundary is swapped in by a script, so
-            // without JS the static state would stay in a hidden `<div>` and a no-JS
-            // `?success=1` would show nothing. A checked-in member has no form to wait
-            // for, so the page awaits the award read here instead of streaming it.
+            // ★ NOT behind `Suspense`: a streamed boundary is swapped in by a script, so without JS a
+            // `?success=1` would show nothing. A checked-in member has no form to wait for.
             rest={data.checkedInToday ? <CheckInRest sessionId={id} locale={locale} arrivedAt={data.arrivedAt} timeZone={data.timeZone} teamColor={data.teamColor} /> : null}
           >
-            <p className="mt-2 max-w-prose text-body text-fg-muted">{t("ready")}</p>
-            {errorKey ? (
-              <div role="alert" id={ERROR_ID}>
-                <Panel tone="error" className="mt-4 text-body text-fg-heading">
-                  {say(errorKey)}
-                </Panel>
-              </div>
-            ) : null}
-
-            {/* `noValidate`: renders `errorKey`'s own Panel above (the app's
-                Arabic error, post-submit) — content's bug class (7f4809f):
-                without it, a native-blocking field would silently stop the
-                submit and neither this banner nor the RPC's own refusal
-                would ever run. The form posts `submitCheckInForm` without JS
-                and `checkInForMoment` once hydrated (moment-check-in.tsx). */}
-            <CheckInForm action={submitCheckInForm.bind(null, locale, id)} momentAction={checkInForMoment.bind(null, locale, id)} className="mt-8 max-w-sm space-y-4">
-              {/* ★ REQ-UIX-035 (DEC-195 §2.4): the group is named by its visible
-                  label, each box by its position, and a refusal is tied to the
-                  boxes — the Panel above says it, once. The posted field is
-                  `code`, as it always was. */}
-              <CodeInput
+            {/* `noValidate`: the refusal below is the app's own sentence (7f4809f). The form posts
+                `submitCheckInForm` without JS and `checkInForMoment` once hydrated. */}
+            <CheckInForm action={submitCheckInForm.bind(null, locale, id)} momentAction={checkInForMoment.bind(null, locale, id)} className="flex flex-1 flex-col justify-center gap-4 py-6">
+              {/* ★ REQ-UIX-035: the prompt IS the group's visible label; each box is named by its
+                  position; the posted field is `code`, as it always was. */}
+              <CodeEntry
+                refusal={errorKey}
                 id="code-0"
                 name="code"
-                label={t("codeLabel")}
+                align="center"
+                label={t("ready")}
                 positionLabels={positions}
                 defaultValue={code}
                 invalid={errorKey !== null}
                 aria-describedby={errorKey ? ERROR_ID : undefined}
               />
-              <SubmitButton className="w-full">{t("submit")}</SubmitButton>
-            </CheckInForm>
+              {errorKey ? (
+                <div role="alert" id={ERROR_ID} className="flex items-start justify-center gap-2 text-center text-body-sm text-error pg-dark:text-error-on-dark">
+                  <AlertCircleIcon className="mt-[0.3em] shrink-0" />
+                  <span>{say(errorKey)}</span>
+                </div>
+              ) : null}
 
-            {award}
+              <p className="text-center text-caption text-fg-muted">
+                {rotation}
+                {data.allowWalkIns ? <> {t("rules.walkIns")}</> : null}
+              </p>
+
+              <Suspense fallback={null}>
+                <EarnPanel sessionId={id} locale={locale} allDays={data.requireAllDays && data.dayCount > 1} />
+              </Suspense>
+              {award}
+
+              <ActionBar label={t("barLabel")} primary={<SubmitButton className="w-full">{t("submit")}</SubmitButton>} note={t("note")} />
+            </CheckInForm>
           </CheckInSurface>
         </>
       )}

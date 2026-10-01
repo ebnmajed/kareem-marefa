@@ -119,7 +119,10 @@ export default async function PublicSessionCardPage({ params }: { params: Promis
             style={{ aspectRatio: data.imageWidth && data.imageHeight ? `${data.imageWidth} / ${data.imageHeight}` : "1200 / 630" }}
           />
         ) : (
-          <div className={ended ? "grayscale opacity-45" : undefined}>
+          // The placeholder draws real text, so its wash drains the colour and keeps the opacity:
+          // `opacity-45` takes its lines under 4.5:1 (the lead's a11y sweep on the event page's
+          // twin, REQ-NFR-007). With no team colour the ground is neutral and `grayscale` moves nothing.
+          <div className={ended ? "grayscale" : undefined}>
             {/* No company may be named here (§4.42), so the placeholder's name line is the org's —
                 the one name on the allowlist — and it carries no amount (§4.46). */}
             <Poster

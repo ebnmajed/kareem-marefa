@@ -136,8 +136,11 @@ test("★ T2·1: the takedown label «احذف الصور التي أظهر في
   await page.goto(`/ar/app/sessions/${sessionId}`);
   await waitForStreamsToSettle(page);
 
+  // Wave 18 (DEC-209): the takedown lives in the lightbox, beside the download — the same label, the same
+  // wrap-not-clip rule, measured where it now stands.
   const main = page.locator("#main");
-  const trigger = main.getByRole("button", { name: "احذف الصور التي أظهر فيها", exact: true });
+  await main.getByRole("button", { name: /^افتح الصورة 1 من / }).click();
+  const trigger = page.getByRole("dialog", { name: "صور الجلسة" }).getByRole("button", { name: "احذف الصور التي أظهر فيها", exact: true });
   await expect(trigger).toBeVisible();
 
   // The wrap-vs-clip question is a LAYOUT one: the trigger's own box must be

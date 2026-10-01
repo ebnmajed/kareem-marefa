@@ -2,30 +2,34 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { subscribeToSessionTopic } from "@/lib/realtime/channel";
-import { Panel } from "@/components/ui/panel";
 import { CommentComposer } from "@/components/event/comment-composer";
 import { CommentItem } from "@/components/event/comment-item";
-import type { CommentDTO } from "@/lib/dal/comments";
 import { avatarHref } from "@/components/privacy/avatar-href";
+import { subscribeToSessionTopic } from "@/lib/realtime/channel";
+import type { CommentAuthor, CommentDTO } from "@/lib/dal/comments";
 import type { ReactionSummary } from "@/lib/dal/reactions";
 
-// The live thread (REQ-EVT-015, A18): server-rendered on first paint
-// (DEC-020's fallback — correct even if the socket never connects), kept
-// live after that by the session topic's comment and reaction_totals
-// broadcasts (03 §7.3/§7.4). One level of replies only — the schema has
-// nothing deeper to render (REQ-EVT-002).
+// The live thread — REQ-EVT-002, REQ-EVT-015, DEC-020 (DEC-208: written anew). Painted by the server, so it is
+// correct with no socket; kept live by the session topic's `comment` and `reaction_totals` broadcasts.
+//
+// ★ One level: top-level comments, each with its replies indented under it. A deleted comment with no replies is
+// not drawn; with replies it stands as its tombstone, so the thread keeps its shape (REQ-EVT-005).
+// ★ A comment that arrives live carries its author's company and whether they present when the widened
+// `comments_broadcast()` is on the database (DEC-209); on one that predates it, an author already on the page
+// lends what the page knows, and a new author shows their name alone until the next paint.
+// ★ No URL from the payload is ever drawn (DEC-099): the avatar is our own copy, through the one resolver.
 
-type CommentBroadcastPayload = {
+type Payload = {
   id: string;
   sessionId: string;
   parentId: string | null;
   authorId: string;
   authorDisplayName: string | null;
-  /** Always null (0155) — kept for `main`'s client; never read. */
   authorAvatarUrl: string | null;
-  /** `members.avatar_version` (0157) — absent on a database that predates it, which reads as none. */
   authorAvatarVersion?: number | string | null;
+  authorCompanyName?: string | null;
+  authorTeamColor?: string | null;
+  authorIsPresenter?: boolean | null;
   body: string;
   mentions: string[] | null;
   createdAt: string;
@@ -33,189 +37,141 @@ type CommentBroadcastPayload = {
   deletedAt: string | null;
 };
 
-type ReactionTotalsPayload = { commentId: string | null; sessionId: string | null; totals: Record<string, number> };
+type Totals = { commentId: string | null; sessionId: string | null; totals: Record<string, number> };
 
-function fromBroadcast(payload: CommentBroadcastPayload, viewerMemberId: string, isStaffViewer: boolean, editWindowMs: number | null): CommentDTO {
-  const isMine = payload.authorId === viewerMemberId;
-  const withinWindow = editWindowMs != null && Date.now() - new Date(payload.createdAt).getTime() < editWindowMs;
+function fromPayload(p: Payload, known: Map<string, CommentAuthor>, viewer: string, staff: boolean, windowMs: number | null): CommentDTO {
+  const before = known.get(p.authorId);
+  const company = p.authorCompanyName !== undefined ? (p.authorCompanyName ? { name: p.authorCompanyName, teamColor: p.authorTeamColor ?? null } : null) : (before?.company ?? null);
+  const mine = p.authorId === viewer;
   return {
-    id: payload.id,
-    sessionId: payload.sessionId,
-    parentId: payload.parentId,
-    // ★ DEC-099: the payload's `authorAvatarUrl` is ignored even where an old
-    // database still fills it with Google's URL (0155 nulls it at the source).
-    // Contract 4: the payload carries a VERSION, never a URL, and the one
-    // resolver builds our same-origin href from it here — SQL never builds it.
+    id: p.id,
+    sessionId: p.sessionId,
+    parentId: p.parentId,
     author: {
-      id: payload.authorId,
-      displayName: payload.authorDisplayName,
-      avatarUrl: avatarHref({ id: payload.authorId, avatarVersion: payload.authorAvatarVersion }),
+      id: p.authorId,
+      displayName: p.authorDisplayName,
+      avatarUrl: avatarHref({ id: p.authorId, avatarVersion: p.authorAvatarVersion }),
+      company,
+      isPresenter: p.authorIsPresenter ?? before?.isPresenter ?? false,
     },
-    body: payload.body,
-    mentions: payload.mentions ?? [],
-    createdAt: payload.createdAt,
-    editedAt: payload.editedAt,
-    deletedAt: payload.deletedAt,
-    isMine,
-    canEditNow: isMine && !payload.deletedAt && withinWindow,
-    isStaffViewer,
+    body: p.body,
+    mentions: p.mentions ?? [],
+    createdAt: p.createdAt,
+    editedAt: p.editedAt,
+    deletedAt: p.deletedAt,
+    isMine: mine,
+    canEditNow: mine && !p.deletedAt && windowMs !== null && Date.now() - Date.parse(p.createdAt) < windowMs,
+    isStaffViewer: staff,
   };
 }
 
 export function CommentList({
   locale,
   sessionId,
-  viewerMemberId,
+  viewer,
   isStaffViewer,
   editWindowMinutes,
   initialComments,
   initialReactions,
   initialReported,
   frozen,
+  now,
+  timeZone,
 }: {
   locale: string;
   sessionId: string;
-  viewerMemberId: string;
+  viewer: CommentAuthor;
   isStaffViewer: boolean;
   editWindowMinutes: number | null;
   initialComments: CommentDTO[];
   initialReactions: Record<string, ReactionSummary>;
   initialReported: string[];
-  /** The session is cancelled — comments are read-only (REQ-SES-010). */
   frozen: boolean;
+  now: string;
+  timeZone: string;
 }) {
   const t = useTranslations("event.comments");
-  const [comments, setComments] = useState<CommentDTO[]>(initialComments);
-  const [reactions, setReactions] = useState<Record<string, ReactionSummary>>(initialReactions);
-  const [reported, setReported] = useState<Set<string>>(new Set(initialReported));
-  const [openReplyFor, setOpenReplyFor] = useState<string | null>(null);
-  const editWindowMs = editWindowMinutes != null ? editWindowMinutes * 60_000 : null;
+  const [comments, setComments] = useState(initialComments);
+  const [reactions, setReactions] = useState(initialReactions);
+  const [reported, setReported] = useState(() => new Set(initialReported));
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const windowMs = editWindowMinutes != null ? editWindowMinutes * 60_000 : null;
 
-  // ★ `useState(initialComments)` only reads the prop at MOUNT — a real bug,
-  // not a defensive guard: `router.refresh()` (comment-composer.tsx,
-  // comment-item.tsx) re-runs the server component and passes a fresh
-  // `initialComments` array, but an already-mounted client component never
-  // re-reads its own useState initializer, so the poster's own new comment
-  // never appeared even though the server had it and the count next to the
-  // heading updated — the two were rendering from different data. Caught by
-  // tests/e2e/event-comments.spec.ts flaking exactly on this composer/list
-  // mismatch. Adjusted DURING render (React's own pattern for "reset state
-  // when a prop changes", not an effect — an effect here would be a second,
-  // visibly-delayed render on every refresh), one prop at a time so a prop
-  // that happens to change alone can't leave another's tracker stale.
-  const [prevComments, setPrevComments] = useState(initialComments);
-  if (prevComments !== initialComments) {
-    setPrevComments(initialComments);
+  // A refresh hands fresh props; state follows them (React's «adjust during render», no effect).
+  const [seen, setSeen] = useState({ initialComments, initialReactions, initialReported });
+  if (seen.initialComments !== initialComments || seen.initialReactions !== initialReactions || seen.initialReported !== initialReported) {
+    setSeen({ initialComments, initialReactions, initialReported });
     setComments(initialComments);
-  }
-  const [prevReactions, setPrevReactions] = useState(initialReactions);
-  if (prevReactions !== initialReactions) {
-    setPrevReactions(initialReactions);
     setReactions(initialReactions);
-  }
-  const [prevReported, setPrevReported] = useState(initialReported);
-  if (prevReported !== initialReported) {
-    setPrevReported(initialReported);
     setReported(new Set(initialReported));
   }
 
   useEffect(() => {
-    const unsubscribe = subscribeToSessionTopic(sessionId, (message) => {
+    return subscribeToSessionTopic(sessionId, (message) => {
       if (message.event === "INSERT" || message.event === "UPDATE") {
-        const dto = fromBroadcast(message.payload as unknown as CommentBroadcastPayload, viewerMemberId, isStaffViewer, editWindowMs);
+        const payload = message.payload as unknown as Payload;
         setComments((prev) => {
-          const index = prev.findIndex((c) => c.id === dto.id);
-          if (index === -1) return [...prev, dto].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+          const known = new Map(prev.map((c) => [c.author.id, c.author]));
+          const dto = fromPayload(payload, known, viewer.id, isStaffViewer, windowMs);
+          const at = prev.findIndex((c) => c.id === dto.id);
+          if (at === -1) return [...prev, dto].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
           const next = prev.slice();
-          next[index] = dto;
+          next[at] = dto;
           return next;
         });
       } else if (message.event === "reaction_totals") {
-        const payload = message.payload as unknown as ReactionTotalsPayload;
-        if (!payload.commentId) return;
-        setReactions((prev) => ({ ...prev, [payload.commentId as string]: { totals: payload.totals, mine: prev[payload.commentId as string]?.mine ?? [] } }));
+        const payload = message.payload as unknown as Totals;
+        const id = payload.commentId;
+        if (!id) return;
+        setReactions((prev) => ({ ...prev, [id]: { totals: payload.totals, mine: prev[id]?.mine ?? [] } }));
       }
     });
-    return unsubscribe;
-    // editWindowMs is derived from a prop that does not change per session.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, viewerMemberId, isStaffViewer]);
+  }, [sessionId, viewer.id, isStaffViewer, windowMs]);
 
-  const topLevel = comments.filter((c) => c.parentId === null);
-  const repliesByParent = new Map<string, CommentDTO[]>();
-  for (const c of comments) {
-    if (c.parentId) repliesByParent.set(c.parentId, [...(repliesByParent.get(c.parentId) ?? []), c]);
-  }
-
-  function visible(comment: CommentDTO, replyCount: number): boolean {
-    return !comment.deletedAt || replyCount > 0;
-  }
-
-  const emptySummary: ReactionSummary = { totals: {}, mine: [] };
+  const top = comments.filter((c) => c.parentId === null);
+  const replies = new Map<string, CommentDTO[]>();
+  for (const c of comments) if (c.parentId) replies.set(c.parentId, [...(replies.get(c.parentId) ?? []), c]);
+  const none: ReactionSummary = { totals: {}, mine: [] };
+  const item = (c: CommentDTO, extra: Partial<Parameters<typeof CommentItem>[0]> = {}) => (
+    <CommentItem
+      locale={locale}
+      comment={c}
+      reactions={reactions[c.id] ?? none}
+      reported={reported.has(c.id)}
+      onReported={() => setReported((prev) => new Set(prev).add(c.id))}
+      frozen={frozen}
+      now={now}
+      timeZone={timeZone}
+      {...extra}
+    />
+  );
 
   return (
-    <div>
+    <div className="flex flex-col gap-3">
       {frozen ? (
-        <Panel tone="neutral">
-          <p className="text-body-sm text-fg-muted">{t("frozenOnCancelled")}</p>
-        </Panel>
+        <p className="text-body-sm text-fg-muted">{t("frozenOnCancelled")}</p>
       ) : (
-        <div className="mb-4">
-          <CommentComposer locale={locale} sessionId={sessionId} parentId={null} />
-        </div>
+        <CommentComposer locale={locale} sessionId={sessionId} parentId={null} viewer={viewer} />
       )}
-
-      {topLevel.length === 0 ? (
-        // ★ Not `EmptyState` — the lead's 390 px review of the live build
-        // caught this: the composer is ALREADY the visible, primary next
-        // action right above this (it is unconditional whenever this branch
-        // is reachable at all — frozen+empty never gets here, `Comments()`
-        // returns null first), so a SECOND card offering "write the first
-        // comment" duplicated the one action into two, and the one that
-        // looked primary was not the composer. A quiet sentence, no button.
+      {top.length === 0 ? (
         frozen ? null : <p className="text-body text-fg-muted">{t("empty")}</p>
       ) : (
-        <ul className="divide-y divide-[var(--edge)]">
-          {topLevel.map((comment) => {
-            const replies = repliesByParent.get(comment.id) ?? [];
-            if (!visible(comment, replies.length)) return null;
+        <ul className="flex flex-col">
+          {top.map((c) => {
+            const under = replies.get(c.id) ?? [];
+            if (c.deletedAt && under.length === 0) return null;
             return (
-              <li key={comment.id}>
-                <CommentItem
-                  locale={locale}
-                  comment={comment}
-                  reactions={reactions[comment.id] ?? emptySummary}
-                  reported={reported.has(comment.id)}
-                  onReply={frozen ? undefined : () => setOpenReplyFor((v) => (v === comment.id ? null : comment.id))}
-                  isReplyOpen={openReplyFor === comment.id}
-                  onReported={() => setReported((prev) => new Set(prev).add(comment.id))}
-                  frozen={frozen}
-                />
-                {openReplyFor === comment.id ? (
-                  <div className="ms-8 mb-3">
-                    <CommentComposer
-                      locale={locale}
-                      sessionId={sessionId}
-                      parentId={comment.id}
-                      onPosted={() => setOpenReplyFor(null)}
-                      onCancel={() => setOpenReplyFor(null)}
-                      autoFocus
-                    />
+              <li key={c.id}>
+                {item(c, { onReply: frozen ? undefined : () => setReplyTo((v) => (v === c.id ? null : c.id)), isReplyOpen: replyTo === c.id })}
+                {replyTo === c.id ? (
+                  <div className="ms-10 mb-2">
+                    <CommentComposer locale={locale} sessionId={sessionId} parentId={c.id} onPosted={() => setReplyTo(null)} onCancel={() => setReplyTo(null)} autoFocus />
                   </div>
                 ) : null}
-                {replies.length > 0 ? (
-                  <ul className="ms-8 divide-y divide-[var(--edge)] border-s border-[var(--edge)] ps-4">
-                    {replies.map((reply) => (
-                      <li key={reply.id}>
-                        <CommentItem
-                          locale={locale}
-                          comment={reply}
-                          reactions={reactions[reply.id] ?? emptySummary}
-                          reported={reported.has(reply.id)}
-                          onReported={() => setReported((prev) => new Set(prev).add(reply.id))}
-                          frozen={frozen}
-                        />
-                      </li>
+                {under.length > 0 ? (
+                  <ul className="ms-10 flex flex-col">
+                    {under.map((r) => (
+                      <li key={r.id}>{item(r)}</li>
                     ))}
                   </ul>
                 ) : null}

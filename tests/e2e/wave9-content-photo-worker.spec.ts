@@ -160,14 +160,16 @@ test("★ T4 — a real upload through the real worker: exif stripped, the galle
 
   await expect(page.locator("img")).toHaveCount(0); // nothing seeded — this run creates the only photo
 
-  await page.locator('input[name="file"]').setInputFiles({ name: "photo.jpg", mimeType: "image/jpeg", buffer: jpegWithExif() });
-  await page.getByRole("button", { name: "إضافة صورة" }).click();
+  // Wave 18 (DEC-209): choosing the photograph IS the upload — the tile is one labelled file control.
+  await page.locator("#main").getByLabel("إضافة صورة").setInputFiles({ name: "photo.jpg", mimeType: "image/jpeg", buffer: jpegWithExif() });
   // REQ-EVT-010: told AT ONCE that it is processing, never that it was posted.
   // ★ Exact match only — Radix's own live region duplicates the toast's text prefixed with the
   // shell's "إشعار"/"Notification" announcement word (`<span role="status">`), and a substring
   // match is a strict-mode violation against two elements for the one toast (the lead's own
   // real-worker finding, `content.md` §31).
-  await expect(page.getByText("تتم معالجة الصورة الآن…", { exact: true })).toBeVisible();
+  // The toast follows the whole round trip — initiate, the signed PUT, complete — which is 0.5 s alone and
+  // measured at 8 s with two projects and another run sharing the machine; the tile says «جارٍ الرفع…» meanwhile.
+  await expect(page.getByText("تتم معالجة الصورة الآن…", { exact: true })).toBeVisible({ timeout: 30_000 });
 
   // ★ THE POINT OF THIS TEST: no page.reload() anywhere below. The gallery must take its place
   // on its own — the private Realtime broadcast (or the UploadWidget's own bounded fallback

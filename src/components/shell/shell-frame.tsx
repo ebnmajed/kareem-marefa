@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { hasNavRail, isEventPage, isImmersive } from "@/components/shell/shell-routes";
+import { hasActionBar, hasNavRail, isEventPage, isImmersive } from "@/components/shell/shell-routes";
 
 // The shell's frame (REQ-UIX-054, contract 1 of wave 18).
 //
@@ -31,7 +31,7 @@ const CLEARS_BAR = { paddingBlockEnd: "calc(var(--tabbar-h) + env(safe-area-inse
 function useShellRoute() {
   const pathname = usePathname();
   const fullBleed = isEventPage(pathname);
-  return { fullBleed, framed: hasNavRail(pathname), clearsBottomBar: !isImmersive(pathname) || fullBleed };
+  return { fullBleed, framed: hasNavRail(pathname), clearsBottomBar: !isImmersive(pathname) || hasActionBar(pathname) };
 }
 
 export function ShellMain({ rail, children }: { rail: ReactNode; children: ReactNode }) {

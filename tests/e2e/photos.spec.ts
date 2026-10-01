@@ -205,7 +205,8 @@ test("★ REQ-EVT-010/013: the gallery shows the seeded photo, and the upload no
   // it as presentation, not role=img — a plain CSS locator, not getByRole.
   await expect(page.locator("img").first()).toBeVisible();
   await expect(page.getByText(/ستظهر هذه الصور لجميع أعضاء المؤسسة/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "إضافة صورة" })).toBeVisible();
+  // Wave 18 (DEC-209): live, the add control is the grid's first tile — a labelled file input.
+  await expect(page.locator("#main").getByLabel("إضافة صورة")).toBeAttached();
   await review(page, "photos-event-page");
 });
 
@@ -219,8 +220,10 @@ test("★ REQ-EVT-012/REQ-UIX-013: a bystander's takedown request confirms in a 
   // dialog naming the object). Open it, then confirm inside it — the
   // trigger and the dialog's own confirm button share the exact same label
   // by design, so the second click is scoped to the dialog.
-  await page.getByRole("button", { name: "احذف الصور التي أظهر فيها" }).click();
-  const dialog = page.getByRole("dialog");
+  // Wave 18 (DEC-209): the takedown is in the lightbox now — open the photograph, then ask.
+  await page.locator("#main").getByRole("button", { name: /^افتح الصورة 1 من / }).click();
+  await page.getByRole("dialog", { name: "صور الجلسة" }).getByRole("button", { name: "احذف الصور التي أظهر فيها" }).click();
+  const dialog = page.getByRole("dialog", { name: "إخفاء هذه الصورة؟" });
   await expect(dialog.getByRole("heading", { name: "إخفاء هذه الصورة؟" })).toBeVisible();
 
   // Wait for the Server Action's own POST to actually complete (a real

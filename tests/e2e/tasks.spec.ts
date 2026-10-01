@@ -166,12 +166,13 @@ test("★ REQ-TSK-004: a member marks a checklist task done, and it persists acr
   const tasksSection = page.locator("#main").locator("#tasks");
   await expect(tasksSection.getByText("أحضر جهازك المحمول")).toBeVisible();
 
-  await tasksSection.getByRole("button", { name: "أنجزتها" }).click();
-  await expect(tasksSection.getByRole("button", { name: "التراجع عن الإنجاز" })).toBeVisible();
+  // Wave 18 (DEC-208): a checklist task is a checkbox, as the artboard draws it.
+  await tasksSection.getByRole("checkbox", { name: /أحضر جهازك المحمول/ }).check();
+  await expect(tasksSection.getByRole("checkbox", { name: /أحضر جهازك المحمول/ })).toBeChecked();
   await review(page, "tasks-event-page");
 
   await page.reload();
-  await expect(page.getByRole("button", { name: "التراجع عن الإنجاز" })).toBeVisible();
+  await expect(page.locator("#main").getByRole("checkbox", { name: /أحضر جهازك المحمول/ })).toBeChecked();
 
   const { rows } = await db.query(`select 1 from public.task_completions where task_id = $1`, [checklistTaskId]);
   expect(rows.length).toBe(1);

@@ -1,69 +1,51 @@
-import { getTranslations } from "next-intl/server";
+import { CommentList } from "@/components/event/comment-list";
 import type { SlotProps, SlotSummary } from "@/components/sessions/slots";
 import { getCommentsPageData } from "@/lib/dal/comments";
 import { getReactionTotalsForComments } from "@/lib/dal/reactions";
 import { getReportedCommentIds } from "@/lib/dal/reports";
-import { formatNumber } from "@/components/sessions/numerals";
-import { CommentList } from "@/components/event/comment-list";
+import { getSessionHeading } from "@/lib/dal/sessions";
 
-// The `Comments` slot — the discussion, `REQ-UIX-024` (`REQ-EVT-001` …
-// `REQ-EVT-008`, `REQ-EVT-015`, live). A server component that fetches its
-// own data and hands a plain client component the DTOs plus the org's
-// edit-window setting — nothing here receives a row, only what
-// src/lib/dal/comments.ts already shaped.
+// The `Comments` slot — SCR-012's «النقاش», written from `Event.dc.html:99-117`, `EventLive.dc.html:70-81`,
+// `EventDone.dc.html:86-92` and `EventDesktop.dc.html:86-89` (DEC-208: deleted and written anew; its kept-behaviour
+// table is `docs/plan/notes/content.md` § PR B). REQ-EVT-001 … REQ-EVT-008, REQ-EVT-014, REQ-EVT-015.
 //
-// No <section>/<h2> of its own: the event page owns the landmark and the
-// heading («النقاش», `id="discussion"` — `sessions.md` §22.2). A slot that
-// can render nothing must have its whole section gated WITH it (`16`
-// §5.4.1a(b)) — that gate is `commentsSummary()` below, sharing this same
-// cache()d read, and this component's own `null` return (the empty,
-// non-frozen thread still renders — REQ-EVT-003, any member may post at any
-// time) mirrors it exactly, per `sessions.md` §22.4's invariant.
-export async function Comments({ sessionId, memberId, locale }: SlotProps) {
-  const { comments, editWindowMinutes, frozen, isStaffViewer } = await getCommentsPageData(locale, sessionId);
-  const activeCount = comments.filter((c) => !c.deletedAt).length;
+// ★ No `<section>`, no `<h2>`: the page owns both, and the heading row's «N تعليقات» from `commentsSummary()`.
+// ★ `null` exactly when `commentsSummary()` says not visible: a cancelled session with nothing ever said.
+// ★ The server paints the thread with the viewer, the reaction totals and what the viewer reported; the client
+// list keeps it live.
 
-  // Frozen (the session was cancelled, REQ-SES-010) AND nothing was ever
-  // posted: there is nothing to read and no composer worth showing over a
-  // "comments are closed" notice with no comments under it.
-  if (activeCount === 0 && frozen) return null;
+export async function Comments({ sessionId, locale }: SlotProps) {
+  const { comments, editWindowMinutes, frozen, isStaffViewer, viewer } = await getCommentsPageData(locale, sessionId);
+  const active = comments.filter((c) => !c.deletedAt).length;
+  if (active === 0 && frozen) return null;
 
-  const t = await getTranslations("event.comments");
-  const [reactions, reportedIds] = await Promise.all([
-    getReactionTotalsForComments(locale, comments.map((c) => c.id)),
-    getReportedCommentIds(locale, comments.map((c) => c.id)),
+  const ids = comments.map((c) => c.id);
+  const [reactions, reportedIds, heading] = await Promise.all([
+    getReactionTotalsForComments(locale, ids),
+    getReportedCommentIds(locale, ids),
+    getSessionHeading(locale, sessionId),
   ]);
 
   return (
-    <div>
-      {activeCount > 0 ? <p className="text-body-sm text-fg-muted">{t("count", { count: activeCount, value: formatNumber(activeCount) })}</p> : null}
-      <div className="mt-4">
-        <CommentList
-          locale={locale}
-          sessionId={sessionId}
-          viewerMemberId={memberId}
-          isStaffViewer={isStaffViewer}
-          editWindowMinutes={editWindowMinutes}
-          initialComments={comments}
-          initialReactions={reactions}
-          initialReported={Array.from(reportedIds)}
-          frozen={frozen}
-        />
-      </div>
-    </div>
+    <CommentList
+      locale={locale}
+      sessionId={sessionId}
+      viewer={viewer ?? { id: "", displayName: null, avatarUrl: null }}
+      isStaffViewer={isStaffViewer}
+      editWindowMinutes={editWindowMinutes}
+      initialComments={comments}
+      initialReactions={reactions}
+      initialReported={Array.from(reportedIds)}
+      frozen={frozen}
+      now={new Date().toISOString()}
+      timeZone={heading?.timeZone ?? "Asia/Riyadh"}
+    />
   );
 }
 
-/**
- * `sessions.md` §22.3's `SlotSummaryReader` — the page gates the discussion
- * `<section>` and its `<h2>` («النقاش») on this before rendering `Comments`
- * at all. Shares `getCommentsPageData`'s `cache()`d read (§22.4 R-C3), so
- * this costs no second round trip. `visible === false` exactly when
- * `Comments` returns `null` above — the same two-value test, proven in
- * `tests/components/event/comments.test.tsx`.
- */
+/** The page's gate and the heading row's count — the same `cache()`d read. */
 export async function commentsSummary({ sessionId, locale }: SlotProps): Promise<SlotSummary> {
   const { comments, frozen } = await getCommentsPageData(locale, sessionId);
-  const activeCount = comments.filter((c) => !c.deletedAt).length;
-  return { visible: activeCount > 0 || !frozen, count: activeCount, outstanding: null };
+  const active = comments.filter((c) => !c.deletedAt).length;
+  return { visible: active > 0 || !frozen, count: active, outstanding: null };
 }

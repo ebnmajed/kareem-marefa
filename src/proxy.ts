@@ -147,6 +147,9 @@ function contentSecurityPolicy(nonce: string | null): string {
     `style-src 'self' ${styles}`,
     "img-src 'self' blob: data:", // DEC-099: no Google hotlink — the entry `0089` was meant to remove (DEC-180)
     "font-src 'self'",
+    // wave 18 (DEC-209): a material's audio plays in the page (REQ-MAT-007) from a short-lived signed URL on the
+    // storage origin — the same origin `connect-src` already admits. Nothing else is media.
+    `media-src 'self' blob:${supabase ? ` ${supabase}` : ""}`,
     `connect-src 'self'${supabase ? ` ${supabase} ${supabase.replace(/^http/, "ws")}` : ""}`,
     "object-src 'none'",
     "base-uri 'self'",

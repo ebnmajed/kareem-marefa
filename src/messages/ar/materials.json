@@ -41,6 +41,21 @@
       "rescope": {
         "trigger": "تغيير نطاق المادة: <bdi>{label}</bdi>",
         "failed": "تعذّر تغيير نطاق المادة. حاول مرة أخرى."
+      },
+      "row": {
+        "viewer": "للقراءة في العارض",
+        "viewerAndDownload": "للقراءة في العارض والتحميل",
+        "leaves": "يفتح خارج المنصة"
+      },
+      "audio": {
+        "tile": "صوت",
+        "play": "تشغيل التسجيل الصوتي",
+        "pause": "إيقاف مؤقت",
+        "seek": "موضع التشغيل",
+        "position": "<bdi>{elapsed}</bdi> من <bdi>{total}</bdi>",
+        "listenOnly": "للاستماع فقط",
+        "listenAndDownload": "للاستماع والتحميل",
+        "unavailable": "الاستماع غير متاح لك، فالتحميل مغلق لهذه المادة"
       }
     },
     "upload": {

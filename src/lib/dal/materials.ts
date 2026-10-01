@@ -552,4 +552,25 @@ export async function getMaterialDownloadUrl(locale: string, materialId: string)
   return data.signedUrl;
 }
 
+/**
+ * Wave 18 (REQ-MAT-007, DEC-209): a signed URL an in-page audio player streams from — or null.
+ *
+ * ★ PLAYING IS A PREVIEW, NOT A DOWNLOAD (DEC-178, DEC-209): no audit row is written, for anyone. ★ And it is
+ * not a way round `allow_download`: `materials_storage_read` (0116) signs the object only for a viewer who may
+ * fetch it — download allowed, or the session's presenter, or staff — so a member of a listen-disabled
+ * recording gets null here and the row draws no player. The same short life as a download's URL would cut a
+ * long recording off mid-play, so it lives an hour.
+ */
+export async function getMaterialPlaybackUrl(locale: string, materialId: string): Promise<string | null> {
+  if (!z.uuid().safeParse(materialId).success) return null;
+  const { supabase } = await sessionClient(locale);
+  const { data: material } = await supabase.from("materials").select("kind, current_version_id").eq("id", materialId).maybeSingle();
+  if (!material?.current_version_id || material.kind !== "audio") return null;
+  const { data: version } = await supabase.from("material_versions").select("storage_path").eq("id", material.current_version_id).maybeSingle();
+  if (!version?.storage_path) return null;
+  const { data, error } = await supabase.storage.from("materials").createSignedUrl(version.storage_path as string, 3600);
+  if (error || !data) return null;
+  return data.signedUrl;
+}
+
 export type { SniffedKind };

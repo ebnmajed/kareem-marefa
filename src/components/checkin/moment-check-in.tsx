@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/navigation";
 import { burstConfetti } from "@/lib/ui/confetti";
 import { readDuration } from "@/lib/ui/duration";
 import { useMoment } from "@/lib/ui/moment";
+import { useSubmissions } from "@/components/checkin/submissions";
 
 // Moment 2, تسجيل الحضور — SCR-014 (REQ-UIX-046, REQ-UIX-044, DEC-195 §2.1, DEC-197 §1).
 //
@@ -78,11 +79,14 @@ export function CheckInForm({
   children: ReactNode;
 }) {
   const report = useContext(ResultContext);
+  // ★ DEC-212: counted in the route's layout, so the count outlives the refused page's remount (submissions.tsx).
+  const { submitted } = useSubmissions();
   const [, start] = useTransition();
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    submitted();
     // Synchronously, inside the submit event: React then marks this form pending.
     start(async () => {
       const result = await momentAction(formData);

@@ -10,6 +10,9 @@ Read `docs/plan/STATUS.md` — the **wave-18 block** — `CLAUDE.md` § *Ownersh
 in full and the artboards of your screens under `docs/design/screens/m10a/`, opened in a browser**, `docs/design/README.md`
 and `04-components.md`, and `docs/plan/notes/content.md` before anything else. Arabic first, always.
 
+
+★★ **PR B — you build the event page's slots with `sessions`** — materials with the audio player (`REQ-MAT-007`), photos, the discussion — rebuilt, not restyled: ★★ **delete the slot files first, then write them** (`DEC-208`), with the kept-behaviour table. See `CLAUDE.md` § *Wave 18, PR B*.
+
 ## Your wave-18 work, PR A (`DEC-205`, `DEC-206`, `REQ-UIX-055`, `REQ-UIX-056`, `REQ-UIX-057`, contracts 1 – 7)
 
 **This is the first wave that rebuilds screens**, and the rule it is judged on is `DEC-199` §2: ★★ **a screen is

@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { avatarHref } from "@/lib/dal/avatars";
 import { createServerClient } from "@/lib/supabase/server";
 import { sessionPhase, viewerRelation as deriveRelation, type DayWindow, type ViewerRelation } from "@/lib/session-status";
 
@@ -82,16 +83,16 @@ async function presenterProfiles(
   memberIds: string[],
 ): Promise<Map<string, EventPresenter>> {
   if (memberIds.length === 0) return new Map();
-  const { data, error } = await supabase.from("members_member_view").select("id, display_name, job_title, bio, company_id").in("id", memberIds);
+  const { data, error } = await supabase.from("members_member_view").select("id, display_name, job_title, bio, company_id, avatar_version").in("id", memberIds);
   if (error) throw new Error(`members_member_view: ${error.message}`);
-  const rows = (data ?? []) as { id: string; display_name: string | null; job_title: string | null; bio: string | null; company_id: string | null }[];
+  const rows = (data ?? []) as { id: string; display_name: string | null; job_title: string | null; bio: string | null; company_id: string | null; avatar_version: number | null }[];
 
   const companyIds = [...new Set(rows.map((r) => r.company_id).filter((v): v is string => v !== null))];
-  const companies = new Map<string, string>();
+  const companies = new Map<string, { name: string; teamColor: string | null }>();
   if (companyIds.length > 0) {
-    const { data: found, error: cErr } = await supabase.from("companies").select("id, name").in("id", companyIds);
+    const { data: found, error: cErr } = await supabase.from("companies").select("id, name, team_color").in("id", companyIds);
     if (cErr) throw new Error(`companies: ${cErr.message}`);
-    for (const c of found ?? []) companies.set(c.id as string, c.name as string);
+    for (const c of found ?? []) companies.set(c.id as string, { name: c.name as string, teamColor: (c.team_color as string | null) ?? null });
   }
 
   return new Map(
@@ -101,8 +102,11 @@ async function presenterProfiles(
         memberId: r.id,
         displayName: r.display_name,
         jobTitle: r.job_title,
-        companyName: r.company_id ? (companies.get(r.company_id) ?? null) : null,
+        companyName: r.company_id ? (companies.get(r.company_id)?.name ?? null) : null,
         bio: r.bio,
+        // wave 18 (SCR-012, add-only): our copy of the picture, never Google's (DEC-099), and the team ring.
+        avatarUrl: avatarHref({ id: r.id, avatarVersion: r.avatar_version }, 96),
+        teamColor: r.company_id ? (companies.get(r.company_id)?.teamColor ?? null) : null,
       },
     ]),
   );
@@ -979,6 +983,10 @@ export interface EventPresenter {
   companyName: string | null;
   /** As the member wrote it (REQ-PRF-001). Never a computed history or a rating (§25 Q5). */
   bio: string | null;
+  /** wave 18 (add-only): `avatarHref()`'s same-origin path, or null — initials then (REQ-PRF-009). */
+  avatarUrl?: string | null;
+  /** wave 18 (add-only): the company's `team_color`, `#rrggbb`, or null — the avatar's ring (REQ-UIX-043). */
+  teamColor?: string | null;
 }
 
 export interface EventSessionTag {
@@ -1053,6 +1061,11 @@ export interface EventSession {
    * answered by day 1's check-in. Empty when `checkedIn` is false.
    */
   checkedInDayIds: string[];
+  /**
+   * wave 18 (SCR-012's outcome card, add-only): when the viewer's latest ACTIVE check-in arrived —
+   * «سجّلت حضورك 6:41 م». Null when there is none.
+   */
+  checkedInAt?: string | null;
 }
 
 /**
@@ -1105,7 +1118,7 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     // check-in PER DAY (wave 9), so a member checked in on two days holds two
     // rows; `.maybeSingle()` errored on them, the error went unchecked, and
     // the member read as NOT checked in from day 2 on.
-    supabase.from("check_ins").select("id, session_day_id").eq("session_id", id).eq("member_id", session.memberId).is("removed_at", null),
+    supabase.from("check_ins").select("id, session_day_id, arrived_at").eq("session_id", id).eq("member_id", session.memberId).is("removed_at", null),
     supabase.from("session_tags").select("tags(label, normalised)").eq("session_id", id),
   ]);
   const { data: presenters, error: pErr } = presentersRes;
@@ -1140,7 +1153,7 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
   });
   const rsvpStatus = (mineRes.data?.status as EventSession["rsvpStatus"] | undefined) ?? null;
   if (checkInRes.error) throw new Error(`check_ins: ${checkInRes.error.message}`);
-  const activeCheckIns = (checkInRes.data ?? []) as { id: string; session_day_id: string | null }[];
+  const activeCheckIns = (checkInRes.data ?? []) as { id: string; session_day_id: string | null; arrived_at: string }[];
   const checkedIn = activeCheckIns.length > 0;
   const checkedInDayIds = activeCheckIns.map((c) => c.session_day_id).filter((d): d is string => d !== null);
   const relation = deriveRelation({ isStaff: viewerIsStaff, isPresenter: viewerIsPresenter, rsvpStatus, checkedIn }, phase);
@@ -1175,7 +1188,71 @@ export async function getSessionForEvent(locale: string, id: string): Promise<Ev
     rsvpStatus,
     checkedIn,
     checkedInDayIds,
+    checkedInAt: activeCheckIns.map((c) => c.arrived_at).sort().at(-1) ?? null,
   };
+}
+
+// ── wave 18 · SCR-012's figures (add-only, REQ-UIX-061) ─────────────────────
+
+export interface EventFigures {
+  /**
+   * How many hold an ACTIVE check-in — `session_attendance_count()` (0165): a number, never who (A33 rule 3,
+   * DEC-206 §4.54). Null when the read fails; the page then draws no figure.
+   */
+  attendedCount: number | null;
+  /** `org_settings.check_in_rotation_seconds` — «يتغيّر كل 10 دقائق» is read, never typed (DEC-206 §4.76). */
+  rotationSeconds: number | null;
+}
+
+/** The live and recap figures, read only where a phase draws them. */
+export const getEventFigures = cache(async (locale: string, sessionId: string): Promise<EventFigures> => {
+  if (!z.uuid().safeParse(sessionId).success) return { attendedCount: null, rotationSeconds: null };
+  const { session, supabase } = await sessionClient(locale);
+  const [countRes, settingsRes] = await Promise.all([
+    supabase.rpc("session_attendance_count", { p_session: sessionId }),
+    supabase.from("org_settings").select("check_in_rotation_seconds").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  return {
+    attendedCount: countRes.error || typeof countRes.data !== "number" ? null : countRes.data,
+    rotationSeconds: (settingsRes.data?.check_in_rotation_seconds as number | undefined) ?? null,
+  };
+});
+
+export interface EventAttendeeFace {
+  memberId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  teamColor: string | null;
+}
+
+/**
+ * ★ WHO attends — for a viewer RLS already answers for, and for nobody else (A33 rule 3, DEC-206 §4.56):
+ * staff and the session's accepted presenters. `rsvps_read` returns a member their own row only, so a member
+ * asking here would see a stack of one — themselves — which says nothing true about the room. So the caller's
+ * standing is checked first and a member gets an empty list; the count is `getEventFigures()`'s.
+ * `phase` picks the rows: who reserved before the session, who checked in once it runs.
+ */
+export async function getEventAttendeeFaces(locale: string, sessionId: string, phase: "open" | "live" | "ended", limit = 4): Promise<EventAttendeeFace[]> {
+  if (!z.uuid().safeParse(sessionId).success) return [];
+  const { session, supabase } = await sessionClient(locale);
+  const isStaff = session.role === "admin" || session.role === "moderator";
+  if (!isStaff) {
+    const { data: presents } = await supabase
+      .from("session_presenters")
+      .select("member_id")
+      .eq("session_id", sessionId)
+      .eq("member_id", session.memberId)
+      .eq("accepted", true)
+      .maybeSingle();
+    if (!presents) return [];
+  }
+  const { data, error } =
+    phase === "open"
+      ? await supabase.from("rsvps").select("member_id").eq("session_id", sessionId).eq("status", "confirmed").limit(limit)
+      : await supabase.from("check_ins").select("member_id").eq("session_id", sessionId).is("removed_at", null).limit(limit);
+  if (error || !data) return [];
+  const profiles = await presenterProfiles(supabase, [...new Set((data as { member_id: string }[]).map((r) => r.member_id))]);
+  return [...profiles.values()].map((p) => ({ memberId: p.memberId, displayName: p.displayName, avatarUrl: p.avatarUrl ?? null, teamColor: p.teamColor ?? null }));
 }
 
 // ── Manual transitions (SCR-042, REQ-SES-003, REQ-SES-005, REQ-SES-012) ─────
@@ -1437,3 +1514,16 @@ export async function getPublicCardImage(id: string): Promise<{ bytes: ArrayBuff
   if (error || !data) return null;
   return { bytes: await data.arrayBuffer(), contentType: "image/png" };
 }
+
+/**
+ * wave 18 (DEC-210, add-only): the viewer's own company — its name and colour — for the event page's «لفريقك».
+ * Null when the member has none. Read from the caller's own row, so it names no one else.
+ */
+export const getViewerCompany = cache(async (locale: string): Promise<{ id: string; name: string; teamColor: string | null } | null> => {
+  const { session, supabase } = await sessionClient(locale);
+  const { data: me } = await supabase.from("members").select("company_id").eq("id", session.memberId).maybeSingle();
+  const companyId = (me?.company_id as string | null | undefined) ?? null;
+  if (!companyId) return null;
+  const { data } = await supabase.from("companies").select("id, name, team_color").eq("id", companyId).maybeSingle();
+  return data ? { id: data.id as string, name: data.name as string, teamColor: (data.team_color as string | null) ?? null } : null;
+});

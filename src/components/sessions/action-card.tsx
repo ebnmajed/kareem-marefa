@@ -1,230 +1,201 @@
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { RsvpReserve, RsvpStatus, reserveMomentLabels } from "@/components/checkin/rsvp-panel";
 import { reserveSeatAction } from "@/components/checkin/actions";
-import { AttendanceOutcome } from "@/components/checkin/attendance-outcome";
 import { AwardState } from "@/components/checkin/award-state";
 import { AddToCalendar } from "@/components/calendar/add-to-calendar";
-import { CertificateModeBadge } from "@/components/certificates/mode-badge";
-import { BookmarkButton } from "@/components/search/bookmark-button";
-import { ActionBar } from "@/components/sessions/action-bar";
+import { EventMeta } from "@/components/sessions/event-meta";
 import { MomentPart, ReserveMoment, ReserveRefused } from "@/components/sessions/moment-reserve";
-import { dayLabel } from "@/components/sessions/day-label";
-import { formatDate, formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
+import { formatDate, formatNumber } from "@/components/sessions/numerals";
+import { CertificateRow, OutcomeCard } from "@/components/sessions/outcome-card";
 import { primaryAfterCheckIn, showsAttended, type PrimaryAction } from "@/components/sessions/event-actions";
 import { SessionDownload } from "@/components/sessions/session-download";
-import { ShareLink } from "@/components/sessions/share-link";
 import type { SlotProps, SlotSummary } from "@/components/sessions/slots";
-import { buttonClass } from "@/components/ui/button";
+import { ActionBar } from "@/components/ui/action-bar";
+import { AttendeeStack } from "@/components/ui/attendee-stack";
+import { ButtonLink, buttonClass } from "@/components/ui/button";
+import { Link } from "@/components/ui/link";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { SessionCta } from "@/components/ui/session-cta";
 import { checkInOfferFor } from "@/lib/dal/checkin";
-import { ClockIcon, DownloadIcon, PinIcon } from "@/components/ui/icons";
-import { Link } from "@/components/ui/link";
-import { Progress } from "@/components/ui/progress";
 import type { AffordanceCell } from "@/components/checkin/session-matrix";
 import type { RsvpPanelData } from "@/lib/dal/rsvp";
-import type { EventSession, SessionDay } from "@/lib/dal/sessions";
+import type { EventAttendeeFace, EventFigures, EventSession, SessionDay } from "@/lib/dal/sessions";
 import type { SessionPhase } from "@/lib/session-status";
 
-// The action card — `16` §5.4.2, §6.3, REQ-SES-013, REQ-UIX-004, REQ-UIX-015.
+// The action card — rebuilt in wave 18 from `Event.dc.html:48-61`, `EventLive.dc.html:43-51`,
+// `EventDone.dc.html:39-55` and `EventDesktop.dc.html:46-58` (REQ-UIX-061, REQ-SES-013, REQ-UIX-015, DEC-045).
 //
-// ★ TWO STATES, ONE CARD, AND IT IS A SERVER RENDER. Before a seat is held the
-// one primary is «احجز مقعدك»; once it is held, «أضِف إلى تقويمك» takes that
-// place, because it was never offered before there was a seat. The swap is the
-// server rendering `viewerRelation` — so the member who arrives from the
-// confirmation email sees the after state, and so does one with no JavaScript.
+// ★ IT DECIDES NOTHING. The primary is `primaryActionFor()` over the matrix, narrowed by `primaryAfterCheckIn()`
+// (contract 4: a recorded check-in is never offered again); the reservation's parts gate themselves on
+// `getRsvpPanelData()`'s `canReserve` / `canCancel`; the calendar is `can.calendar`; the staff links are the
+// viewer's role. An ended session offers no register control anywhere — the matrix gives none.
 //
-// Nothing here decides permission. Every control renders on a predicate that
-// already exists: `RsvpPanel`'s parts gate themselves on `canReserve`/
-// `canCancel`, the primary is `primaryActionFor()` over the matrix, the calendar
-// is `can.calendar`, the staff links are the viewer's role. For an ended session
-// there is no register control anywhere — the matrix gives none (ask 4).
+// ★ THE REGION IS «الحضور» (a visually hidden `h2`) — `checkin.spec.ts` and friends select on it.
 //
-// The region is «الحضور» (visually hidden — the card needs no heading on screen,
-// and `checkin.spec.ts` finds the reservation controls inside it). Sticky beside
-// the sections from `md`; in flow after the hero on the phone, where its primary
-// moves to the bottom action bar.
+// In the artboards' order, by phase:
+//   · open — the seats bar («12 من 40 مقعدًا · يبقى 28»), the primary (with the rule's amount as its chip),
+//     the held seat with the calendar and the cancel, the icon rows;
+//   · live — how many are here, as a figure (a count, never who — faces only for staff and presenters, A33
+//     rule 3), «تسجيل الحضور» with «مقعدك محجوز» when a seat is held, the code's rotation and when the points
+//     arrive, the icon rows;
+//   · ended — the outcome (moment 3), «قيّم الجلسة» with the window's end, the certificate.
+// Then, for staff and presenters, the poster download (audited) and «إدارة الجلسة».
 //
-// ★ Wave 16 — moment 1, الحجز (REQ-UIX-045, DEC-195, DEC-197). The card's
-// content sits in `ReserveMoment`, which holds the reserve action's result, so
-// the ticket and the stamp play once, in the client that pressed, and never on
-// a render. The page wraps this card in the playground's scope. Inside, the
-// thud moves the INNER content wrapper (`MomentPart thud`), which holds
-// everything but `ActionBar`: a transformed ancestor would pin the fixed bar
-// to the card instead of the viewport.
+// ★ TWO PRIMARIES ON THE PHONE (DEC-209 §2, REQ-UIX-061): the card's and the bottom `action-bar`'s. From `lg`
+// the bar is gone and the card is the full-width action row. Moment 1's ticket rises from the card from `md`
+// and from the bar below it — `ReserveMoment` holds the reserve action's result; nothing here is keyed.
 
 export interface ActionCardProps {
   session: EventSession;
   phase: SessionPhase;
-  /**
-   * ★ The session's days (contract 3, `REQ-SES-015`). Always at least one for a
-   * scheduled session, so the «الموعد» row below reads a LIST and is right at
-   * `n = 1` because 1 is a value of `n` — there is no multi-day branch here.
-   */
   days: readonly SessionDay[];
   can: AffordanceCell;
   rsvp: RsvpPanelData | null;
   primary: PrimaryAction | null;
   slot: SlotProps;
-  /** Tasks' summary, for «المهام التحضيرية (N)» once a seat is held. */
+  /** The rule's amount for this viewer — null draws none (never a literal, §4.45). */
+  points: number | null;
+  figures: EventFigures;
+  faces: EventAttendeeFace[];
   tasks?: Promise<SlotSummary>;
-  /** Materials' summary: the ended card's «المواد» jumps to them when the section renders. */
-  materials?: Promise<SlotSummary>;
-  /** When `primary` is `rate`: the day the org's rating window closes. */
   ratingClosesAt: string | null;
-  /** A signed link to this member's issued certificate for this session. */
   certificateHref: string | null;
-  bookmarked: boolean;
-  /** The PUBLIC card's URL, or null where the public card would not answer. */
-  shareUrl: string | null;
+  bookmark: (variant: "icon" | "button") => ReactNode;
+  share: (variant: "icon" | "button") => ReactNode;
   isAdmin: boolean;
   locale: string;
 }
 
 export async function ActionCard(props: ActionCardProps) {
-  const { session, phase, can, rsvp, slot, locale } = props;
-  // ★ Contract 4 (DEC-195 §2.5): the matrix's answer for a member already checked in to today — with the
-  // days, so a workshop's day 2 is not answered by day 1's check-in.
+  const { session, phase, can, rsvp, slot, locale, figures } = props;
   const checkIn = checkInOfferFor(
     { ...session, days: props.days },
-    {
-      isPresenter: session.viewerIsPresenter,
-      isStaff: session.viewerIsStaff,
-      rsvpStatus: session.rsvpStatus,
-      checkedIn: session.checkedIn,
-      checkedInDayIds: session.checkedInDayIds,
-    },
+    { isPresenter: session.viewerIsPresenter, isStaff: session.viewerIsStaff, rsvpStatus: session.rsvpStatus, checkedIn: session.checkedIn, checkedInDayIds: session.checkedInDayIds },
     session.allowWalkIns,
     session.checkInOpen,
   );
   const primary = primaryAfterCheckIn(props.primary, checkIn);
   const [t, tRsvp, momentLabels] = await Promise.all([getTranslations("sessions.event"), getTranslations("rsvp"), reserveMomentLabels(slot)]);
 
-  const showSeats =
-    phase === "open" && rsvp !== null && rsvp.capacity !== null && (session.viewerRelation === "none" || session.viewerRelation === "presenter" || session.viewerRelation === "staff");
-  const confirmedOpen = phase === "open" && session.viewerRelation === "confirmed";
-  const bookmarkable = phase === "open" || phase === "live" || phase === "ended";
+  const open = phase === "open";
+  const live = phase === "live";
+  const ended = phase === "ended";
+  const booked = rsvp?.relation === "confirmed" || session.rsvpStatus === "confirmed";
+  const calendarInBooked = primary === "calendar" && rsvp !== null && rsvp.canCancel && !rsvp.canReserve;
   const hostViewSecondary = primary !== "hostView" && (session.viewerIsPresenter || session.viewerIsStaff) && can.hostConsole;
 
-  const bookmark = (variant: "icon" | "button") =>
-    bookmarkable ? <BookmarkButton locale={locale} sessionId={session.id} initialBookmarked={props.bookmarked} variant={variant} /> : null;
-  const share = (variant: "icon" | "button") =>
-    props.shareUrl ? (
-      <ShareLink
-        url={props.shareUrl}
-        title={session.title}
-        label={t("actions.share")}
-        copiedLabel={t("shareCopied")}
-        hint={t("shareHint")}
-        failedLabel={t("shareFailed")}
-        variant={variant}
-        hintId="share-hint"
-      />
-    ) : null;
+  const control = (placement: "card" | "bar") => (primary ? <Primary action={primary} placement={placement} {...props} booked={booked} /> : null);
 
-  const labels = { checkIn: t("checkIn"), hostView: t("hostView"), rate: t("actions.rate") };
-  // ★ Once a seat is held the calendar is the primary (`16` §5.4.2) and sits INSIDE the booked state,
-  // between the face and the cancel, so the order is status → calendar → cancel in the tab order too.
-  const calendarInBooked = primary === "calendar" && rsvp !== null && rsvp.canCancel && !rsvp.canReserve;
-
-  const barSecondary = bookmarkable || props.shareUrl ? (
-    <>
-      {bookmark("icon")}
-      {share("icon")}
-    </>
-  ) : null;
+  // The bar's secondaries: bookmark and share (`Event.dc.html:123-124`) — or, once rated-for, the certificate as a
+  // labelled pill (`EventDone.dc.html:98`, N6). Never a third.
+  const icons = [props.bookmark("icon"), props.share("icon")].filter((node): node is Exclude<ReactNode, null | undefined | false> => Boolean(node));
+  const barSecondary: readonly [ReactNode] | readonly [ReactNode, ReactNode] | undefined =
+    primary === "rate" && props.certificateHref
+      ? [
+          <a key="cert" href={props.certificateHref} className={buttonClass("secondary", "md")}>
+            {t("certificateShort")}
+          </a>,
+        ]
+      : icons.length >= 2
+        ? [icons[0], icons[1]]
+        : icons.length === 1
+          ? [icons[0]]
+          : undefined;
 
   return (
-    <section id="attend" aria-labelledby="attend-heading" className="rounded-card border border-edge bg-canvas p-5 shadow-card md:p-6">
-      <ReserveMoment action={reserveSeatAction.bind(null, locale, session.id)} labels={momentLabels}>
-        <MomentPart thud="card" className="flex flex-col gap-4">
+    // ★ The moment's host wraps the card AND the bar, so the ticket can rise from either; the bar stands OUTSIDE
+    // the region «الحضور» — it is fixed to the viewport anyway — so the region holds one primary and a locator
+    // inside it finds one control, while the phone still shows the primary twice (DEC-209).
+    <ReserveMoment action={reserveSeatAction.bind(null, locale, session.id)} labels={momentLabels}>
+      <section
+        id="attend"
+        aria-labelledby="attend-heading"
+        className={`rounded-panel border bg-surface p-4 lg:p-5 ${live ? "border-signal" : ended && session.viewerRelation === "attended" ? "border-accent" : "border-edge"}`}
+      >
+        <MomentPart thud="card" className="flex flex-col gap-3.5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-5">
           <h2 id="attend-heading" className="sr-only">
             {tRsvp("title")}
           </h2>
 
-          {showSeats && rsvp?.capacity != null ? (
-            <div className="flex flex-col gap-2.5">
-              <p className="text-h3 text-fg-heading">
-                <bdi>{t("seatsTaken", { count: rsvp.capacity, value: formatNumber(rsvp.capacity), taken: formatNumber(rsvp.confirmedCount) })}</bdi>
+          {open && rsvp?.capacity != null && (session.viewerRelation === "none" || session.viewerRelation === "presenter" || session.viewerRelation === "staff") ? (
+            <div className="flex flex-col gap-2 lg:w-56">
+              <p className="flex items-baseline justify-between gap-3 text-body-sm">
+                <span className="font-bold text-fg-heading">
+                  {t("seatsTaken", { count: rsvp.capacity, value: formatNumber(rsvp.capacity), taken: formatNumber(rsvp.confirmedCount) })}
+                </span>
+                {/* The catalogue's existing words for the seats left (`M10a.md`: a string that exists is used) —
+                    «يتبقى 28 مقعدًا», which `checkin.spec.ts` reads in this region. */}
+                <span className="text-fg-muted">
+                  {tRsvp("seatsLeft", { count: Math.max(0, rsvp.capacity - rsvp.confirmedCount), value: formatNumber(Math.max(0, rsvp.capacity - rsvp.confirmedCount)) })}
+                </span>
               </p>
-              <Progress
-                value={Math.min(rsvp.confirmedCount, rsvp.capacity)}
-                max={rsvp.capacity}
-                label={t("seatsProgress")}
-                valueText={t("seatsTaken", { count: rsvp.capacity, value: formatNumber(rsvp.capacity), taken: formatNumber(rsvp.confirmedCount) })}
-              />
+              <ProgressBar value={Math.min(rsvp.confirmedCount, rsvp.capacity)} max={rsvp.capacity} decorative />
             </div>
           ) : null}
 
-          <RsvpStatus {...slot} between={calendarInBooked ? <PrimaryControl action="calendar" placement="card" session={session} slot={slot} labels={labels} /> : undefined} />
-          <ReserveRefused />
-          {showsAttended(checkIn, can) ? <SessionCta state={{ kind: "attended" }} label={tRsvp("attended")} /> : null}
-          {can.attendanceOutcome ? <AttendanceOutcome {...slot} /> : null}
-          {/* `checkin`'s acknowledgement (REQ-CHK-018, contract 1): self-gated on
-              its own DTO, so the card mounts it unconditionally — `checkin` owns
-              when it says something and the card owns only where. */}
-          <AwardState sessionId={slot.sessionId} locale={slot.locale} variant="inline" />
+          {live ? <LiveCount session={session} figures={figures} faces={props.faces} /> : null}
 
-          {primary && !calendarInBooked ? <PrimaryControl action={primary} placement="card" session={session} slot={slot} labels={labels} /> : null}
+          {ended ? <OutcomeCard session={session} slot={slot} /> : null}
 
-          {/* The calendar the matrix offers, when it is not the primary: a running
-              session keeps it for a confirmed member and its presenter (`16` §5.3),
-              as a secondary action beside «تسجيل الحضور». */}
-          {can.calendar && primary !== "calendar" ? <AddToCalendar {...slot} placement="inline" variant="secondary" /> : null}
+          {/* From `lg` the primary is compact, as `EventDesktop.dc.html:48` draws it: it takes its own width, never the row's. */}
+          <div className="flex flex-col gap-3 lg:w-auto lg:max-w-sm lg:flex-none">
+            <RsvpStatus {...slot} between={calendarInBooked ? <AddToCalendar {...slot} placement="card" /> : undefined} />
+            <ReserveRefused />
+            {showsAttended(checkIn, can) ? <SessionCta state={{ kind: "attended" }} label={tRsvp("attended")} /> : null}
+            {/* `checkin`'s acknowledgement (REQ-CHK-018): self-gated on its own DTO — `none` renders nothing — so it is
+                mounted in every phase but the ended one, where the outcome card carries it. Between two days of a
+                workshop the phase is `open` and a member checked in on day one is still told what is pending. */}
+            {!ended ? <AwardState sessionId={slot.sessionId} locale={slot.locale} variant="inline" /> : null}
+            {!calendarInBooked ? control("card") : null}
+            {can.calendar && primary !== "calendar" ? <AddToCalendar {...slot} placement="inline" variant="secondary" /> : null}
+          </div>
 
-          {primary === "rate" && props.ratingClosesAt ? (
-            <p className="text-body-sm text-fg-muted">{t("actions.ratingWindow", { date: formatDate(props.ratingClosesAt, session.timeZone, locale) })}</p>
+          {live && (primary === "checkIn" || booked) && figures.rotationSeconds ? (
+            <p className="text-caption text-fg-muted">
+              {t("rotation", { count: Math.round(figures.rotationSeconds / 60), value: formatNumber(Math.round(figures.rotationSeconds / 60)) })}
+              {props.points !== null && props.points > 0 ? <> {t("rotationPoints", { count: props.points, value: formatNumber(props.points) })}</> : null}
+            </p>
           ) : null}
 
-          {confirmedOpen && props.tasks ? (
+          {ended && session.viewerRelation === "attended" ? (
             <Suspense fallback={null}>
-              <TasksJump tasks={props.tasks} label={t("actions.tasks")} />
+              <CertificateRow sessionId={session.id} locale={locale} />
             </Suspense>
           ) : null}
 
-          {props.certificateHref ? (
-            <a href={props.certificateHref} className={buttonClass("secondary", "md", "w-full")}>
-              <DownloadIcon className="text-[1.125rem]" />
-              <span>{t("actions.certificate")}</span>
-            </a>
-          ) : null}
-
-          {phase === "ended" && props.materials ? (
+          {open && booked && props.tasks ? (
             <Suspense fallback={null}>
-              <MaterialsJump materials={props.materials} label={t("actions.materials")} />
+              <TasksJump tasks={props.tasks} />
             </Suspense>
           ) : null}
+          {open && booked ? <p className="text-caption text-fg-muted">{t("actions.confirmedHint")}</p> : null}
 
-          {confirmedOpen ? <p className="text-body-sm text-fg-muted">{t("actions.confirmedHint")}</p> : null}
+          {/* From `lg` the card is the action row: bookmark and share beside the primary (`EventDesktop.dc.html:49-50`). */}
+          <div className="hidden items-center gap-2 lg:flex">
+            {props.bookmark("icon")}
+            {props.share("icon")}
+          </div>
 
-          {bookmarkable || props.shareUrl ? (
-            <div className="hidden flex-col gap-2 md:flex">
-              <div className="grid grid-cols-2 gap-2 [&>*]:w-full">
-                {bookmark("button")}
-                {share("button")}
-              </div>
-              {props.shareUrl ? (
-                <p id="share-hint" className="text-caption text-fg-muted">
-                  {t("shareHint")}
-                </p>
-              ) : null}
+          {/* The facts: under the primary on the phone; from `lg` the row's other column, at the row's end
+              (`EventDesktop.dc.html:52-56`), so the row stays one row. */}
+          {!ended ? (
+            <div className="lg:ms-auto lg:max-w-md lg:flex-1 lg:[&_dl]:gap-1 lg:[&_dl]:text-caption">
+              <EventMeta session={session} phase={phase} days={props.days} locale={locale} />
             </div>
           ) : null}
 
-          <Meta session={session} phase={phase} days={props.days} locale={locale} />
-          <CertificateRow sessionId={session.id} locale={locale} />
-
-          {/* «تنزيل الملصق» (REQ-DSG-027, DEC-178) — for staff and the session's own
-              presenters, once, here: the poster itself renders twice (the hero from
-              `md`, «نبذة» on the phone), and a download beside each would be two. */}
+          {/* «تنزيل الملصق» (REQ-DSG-027, DEC-178) — for staff and the session's own presenters, through the audited route. */}
           {session.viewerIsStaff || session.viewerIsPresenter ? (
-            <Suspense fallback={null}>
-              <SessionDownload sessionId={session.id} locale={locale} placement="event" />
-            </Suspense>
+            <div className="lg:basis-full">
+              <Suspense fallback={null}>
+                <SessionDownload sessionId={session.id} locale={locale} placement="event" />
+              </Suspense>
+            </div>
           ) : null}
 
           {session.viewerIsStaff || hostViewSecondary ? (
-            <nav aria-label={t("actions.staffHeading")} className="border-t border-edge pt-4">
+            <nav aria-label={t("actions.staffHeading")} className="border-t border-edge pt-3 lg:basis-full">
               <p className="text-caption text-fg-muted" aria-hidden="true">
                 {t("actions.staffHeading")}
               </p>
@@ -261,205 +232,84 @@ export async function ActionCard(props: ActionCardProps) {
             </nav>
           ) : null}
         </MomentPart>
+      </section>
 
-        <ActionBar primary={primary ? <PrimaryControl action={primary} placement="bar" session={session} slot={slot} labels={labels} /> : null} secondary={barSecondary} />
-      </ReserveMoment>
-    </section>
+      {primary || barSecondary ? (
+          <ActionBar
+            label={t("actionsLabel")}
+            hideFrom="lg"
+            primary={
+              <MomentPart thud="bar" anchor="bar">
+                <MomentPart reveal="bar">{control("bar")}</MomentPart>
+              </MomentPart>
+            }
+            secondary={barSecondary}
+          />
+        ) : null}
+    </ReserveMoment>
   );
 }
 
-/** The one primary action, drawn for the card (from `md`) or the phone's bar. */
-function PrimaryControl({
-  action,
-  placement,
-  session,
-  slot,
-  labels,
-}: {
-  action: PrimaryAction;
-  placement: "card" | "bar";
-  session: EventSession;
-  slot: SlotProps;
-  labels: { checkIn: string; hostView: string; rate: string };
-}) {
-  if (action === "reserve") return <RsvpReserve {...slot} placement={placement} />;
+/** The one primary, drawn for the card or the phone's bar — the same answer in both, so they cannot disagree. */
+async function Primary({ action, placement, session, slot, points, ratingClosesAt, booked, locale }: ActionCardProps & { action: PrimaryAction; placement: "card" | "bar"; booked: boolean }) {
+  if (action === "reserve") return <RsvpReserve {...slot} placement={placement} points={points} />;
   if (action === "calendar") return <AddToCalendar {...slot} placement={placement} />;
-  const href = action === "checkIn" ? `/app/sessions/${session.id}/check-in` : action === "hostView" ? `/app/sessions/${session.id}/host` : `/app/sessions/${session.id}/rate`;
-  const label = action === "checkIn" ? labels.checkIn : action === "hostView" ? labels.hostView : labels.rate;
+  const t = await getTranslations("sessions.event");
+  if (action === "checkIn") {
+    // «مقعدك محجوز» beside it when a seat is held (N7: a phrase, where the artboard draws it) — never in the bar.
+    return <SessionCta state={{ kind: "checkIn", act: { href: `/app/sessions/${session.id}/check-in` } }} label={t("checkIn")} chip={placement === "card" && booked ? t("bookedChip") : undefined} />;
+  }
+  if (action === "rate") {
+    const chip = placement === "card" && ratingClosesAt ? t("untilChip", { value: formatDate(ratingClosesAt, session.timeZone, locale) }) : undefined;
+    return <SessionCta state={{ kind: "rate", act: { href: `/app/sessions/${session.id}/rate` } }} label={t("actions.rate")} chip={chip} />;
+  }
   return (
-    <div className={placement === "card" ? "hidden md:block" : undefined}>
-      <Link href={href} className={buttonClass("primary", "lg", "w-full")}>
-        {label}
-      </Link>
+    <ButtonLink href={`/app/sessions/${session.id}/host`} variant="primary" size="lg" className="w-full">
+      {t("hostView")}
+    </ButtonLink>
+  );
+}
+
+/** «23 من 40 حاضرًا الآن» — a count, never who (A33 rule 3, DEC-206 §4.54); faces only for staff and presenters. */
+async function LiveCount({ session, figures, faces }: { session: EventSession; figures: EventFigures; faces: EventAttendeeFace[] }) {
+  if (figures.attendedCount === null) return null;
+  const t = await getTranslations("sessions.event");
+  const count = figures.attendedCount;
+  return (
+    <div className="flex items-center gap-3">
+      <p className="flex min-w-0 flex-1 items-baseline gap-2">
+        <span className="font-display text-play-md font-extrabold text-signal" dir="ltr">
+          {formatNumber(count)}
+        </span>
+        <span className="text-body-sm font-bold text-fg-heading">
+          {session.capacity !== null
+            ? t("attendingNowOf", { count: session.capacity, capacity: formatNumber(session.capacity) })
+            : t("attendingNow", { count, value: formatNumber(count) })}
+        </span>
+      </p>
+      {faces.length > 0 ? <AttendeeStack label={t("whoAttends")} people={faces.map((f) => ({ memberId: f.memberId, displayName: f.displayName, src: f.avatarUrl, teamColor: f.teamColor }))} countLabel={t("attendedCount", { count, value: formatNumber(count) })} size={24} /> : null}
     </div>
   );
 }
 
-async function MaterialsJump({ materials, label }: { materials: Promise<SlotSummary>; label: string }) {
-  const summary = await materials;
-  if (!summary.visible) return null;
-  return (
-    <a href="#materials" className={buttonClass("secondary", "md", "w-full")}>
-      {label}
-    </a>
-  );
-}
-
-async function TasksJump({ tasks, label }: { tasks: Promise<SlotSummary>; label: string }) {
+async function TasksJump({ tasks }: { tasks: Promise<SlotSummary> }) {
   const [summary, t] = await Promise.all([tasks, getTranslations("sessions.event.actions")]);
   if (!summary.visible) return null;
   const outstanding = summary.outstanding ?? 0;
+  const label = t("tasks");
   return (
-    // Drawn as a figure, spoken as words: the name starts with the visible label
-    // (SC 2.5.3) and adds «مهمتان متبقيتان».
+    // Drawn as a figure, spoken as words: the name starts with the visible label (SC 2.5.3).
     <a
       href="#tasks"
       aria-label={outstanding > 0 ? `${label}، ${t("tasksOutstanding", { count: outstanding, value: formatNumber(outstanding) })}` : undefined}
       className={buttonClass("secondary", "md", "w-full")}
     >
-      {/* The label takes the free width rather than the link taking a second
-          `justify-*` utility over `buttonBase`'s own (DEC-111's class). */}
       <span className="flex-1 text-start">{label}</span>
       {outstanding > 0 ? (
-        <span aria-hidden="true" className="min-w-6 rounded-field bg-raised px-1.5 text-center text-caption text-fg-heading">
+        <span aria-hidden="true" className="min-w-6 rounded-pill bg-raised px-1.5 text-center text-caption text-fg-heading">
           {formatNumber(outstanding)}
         </span>
       ) : null}
     </a>
   );
-}
-
-/** الموعد · المكان · the deadlines · the certificate mode — REQ-SES-013's facts, as icon rows. */
-async function Meta({ session, phase, days, locale }: { session: EventSession; phase: SessionPhase; days: readonly SessionDay[]; locale: string }) {
-  const [t, tDays] = await Promise.all([getTranslations("sessions.event"), getTranslations("sessions.days")]);
-  const when = (iso: string) => formatDateTime(iso, session.timeZone, locale);
-  const until =
-    session.startsAt && session.endsAt
-      ? sameDay(session.startsAt, session.endsAt, session.timeZone)
-        ? formatTime(session.endsAt, session.timeZone, locale)
-        : when(session.endsAt)
-      : null;
-
-  // ★ NO BRANCH ON THE COUNT (wave-9 rule 1). `days.length > 1` is not «is this
-  // a multi-day session» — it is «is there a second row to render», which is
-  // the same question a list always asks. At one day `more` is empty, the
-  // `<ol>` is not rendered, and the DOM is what wave 6 shipped.
-  const more = days.length > 1 ? days : [];
-  // The session's own window is DERIVED AND STORED (contract 1): the first
-  // day's start and the last day's end are already on the row above. Nothing
-  // here computes a minimum or a maximum over `days`.
-  const dayVenue = (day: SessionDay) => day.venue?.name ?? null;
-  const placeVaries = more.some((day) => dayVenue(day) !== (session.venue?.name ?? null));
-
-  return (
-    // ★ A `<dl>`'s `<div>` holds its `<dt>`/`<dd>` pair and NOTHING else — axe's
-    // `definition-list`/`dlitem` (sync 4b) refused the old icon-beside-a-wrapper
-    // row. The glyph rides inside the `<dt>`, pinned into the row's start inset,
-    // so the picture is unchanged: 1.125rem glyph + 0.75rem gap = the 1.875rem
-    // every row below already indents by.
-    <dl className="flex flex-col divide-y divide-edge border-t border-edge">
-      <div className="relative py-3 ps-[1.875rem]">
-        <dt className="text-caption text-fg-muted">
-          <ClockIcon className="absolute start-0 top-4 text-[1.125rem] text-fg-muted" />
-          {t("whenLabel")}
-        </dt>
-        <dd className="text-body text-fg-heading">
-          {session.startsAt ? (
-            <>
-              <bdi>{when(session.startsAt)}</bdi>
-              {/* No-break space after the dot: a line may break before «·», never after it. */}
-              {until ? <span className="text-fg-muted"> ·{"\u00A0"}{t("toTime", { value: until })}</span> : null}
-              {/* ★ The days themselves, INSIDE the `<dd>`: a `<dl>`'s `<div>`
-                  holds its `<dt>`/`<dd>` pair and NOTHING else — axe's
-                  `definition-list` refused an icon-beside-a-wrapper row at wave
-                  6's sync 4b, and a sibling `<ol>` here would fail the same
-                  rule. Each line is contract 7's label and the day's own clock;
-                  a place is named only where it differs from the session's. */}
-              {more.length > 0 ? (
-                <ol className="mt-3 space-y-2 border-t border-edge pt-3">
-                  {more.map((day) => (
-                    <li key={day.id} className="text-body-sm">
-                      <span className="text-fg-heading">
-                        <bdi>{dayLabel(day, session.timeZone, tDays, locale)}</bdi>
-                      </span>
-                      <span className="text-fg-muted">
-                        {" ·"}
-                        {"\u00A0"}
-                        <bdi>{formatTime(day.startsAt, session.timeZone, locale)}</bdi>
-                        {" — "}
-                        <bdi>{formatTime(day.endsAt, session.timeZone, locale)}</bdi>
-                      </span>
-                      {dayVenue(day) && dayVenue(day) !== (session.venue?.name ?? null) ? (
-                        <span className="block text-fg-muted">
-                          <bdi>{dayVenue(day)}</bdi>
-                        </span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ol>
-              ) : null}
-            </>
-          ) : (
-            t("notScheduled")
-          )}
-        </dd>
-      </div>
-      <div className="relative py-3 ps-[1.875rem]">
-        <dt className="text-caption text-fg-muted">
-          <PinIcon className="absolute start-0 top-4 text-[1.125rem] text-fg-muted" />
-          {t("whereLabel")}
-        </dt>
-        <dd className="text-body text-fg-heading">
-          {session.venue ? (
-            <>
-              <bdi>{session.venue.name}</bdi>
-              {session.venue.address ? (
-                <span className="text-fg-muted">
-                  {"، "}
-                  <bdi>{session.venue.address}</bdi>
-                </span>
-              ) : null}
-            </>
-          ) : (
-            t("noVenue")
-          )}
-          {session.venue?.mapUrl ? (
-            <a href={session.venue.mapUrl} rel="noreferrer noopener" target="_blank" className="mt-1 block w-fit text-body-sm text-fg-heading underline underline-offset-4">
-              {t("mapLink")}
-            </a>
-          ) : null}
-          {/* ★ The row shows the FIRST day's place, because that is what the
-              session's own venue columns mean (contract 1). When a later day
-              meets somewhere else, the row says so and the day list above
-              names where — rather than silently showing one room for three. */}
-          {placeVaries ? <span className="mt-1 block text-body-sm text-fg-muted">{t("placeVaries")}</span> : null}
-          {/* REQ-SES-008, said plainly and once. */}
-          <span className="mt-1 block text-body-sm text-fg-muted">{t("inPersonNote")}</span>
-        </dd>
-      </div>
-      {phase === "open" && session.rsvpDeadlineAt ? (
-        <div className="py-3 ps-[1.875rem]">
-          <dt className="text-caption text-fg-muted">{t("rsvpDeadlineLabel")}</dt>
-          <dd className="text-body text-fg-heading">
-            <bdi>{when(session.rsvpDeadlineAt)}</bdi>
-          </dd>
-        </div>
-      ) : null}
-      {phase === "open" && session.viewerRelation === "confirmed" && session.cancellationCutoffAt ? (
-        <div className="py-3 ps-[1.875rem]">
-          <dt className="text-caption text-fg-muted">{t("cutoffLabel")}</dt>
-          <dd className="text-body text-fg-heading">
-            <bdi>{when(session.cancellationCutoffAt)}</bdi>
-          </dd>
-        </div>
-      ) : null}
-    </dl>
-  );
-}
-
-/** `CertificateModeBadge` renders nothing when certificates are off (D50), so the row goes with it. */
-async function CertificateRow({ sessionId, locale }: { sessionId: string; locale: string }) {
-  const badge = await CertificateModeBadge({ sessionId, locale });
-  if (!badge) return null;
-  return <div className="-mt-3 border-b border-edge pb-3 ps-[1.875rem]">{badge}</div>;
 }

@@ -57,9 +57,9 @@ describe("POL-realtime.messages", () => {
       expect(await tx.q(`select id from realtime.messages where topic = $1`, [hostTopic])).toEqual([]);
       // members[0] is the published session's presenter (fixture-m2.ts).
       await tx.as(f.a.members[0].claims);
-      expect((await tx.q(`select id from realtime.messages where topic = $1`, [hostTopic])).length).toBe(1);
+      expect((await tx.q(`select id from realtime.messages where topic = $1 and event = 'probe'`, [hostTopic])).length).toBe(1);
       await tx.as(f.a.admin.claims);
-      expect((await tx.q(`select id from realtime.messages where topic = $1`, [hostTopic])).length).toBe(1);
+      expect((await tx.q(`select id from realtime.messages where topic = $1 and event = 'probe'`, [hostTopic])).length).toBe(1);
     });
   });
 

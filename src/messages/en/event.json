@@ -33,7 +33,8 @@
       },
       "reactions": {
         "like": "Like",
-        "unlike": "Remove like"
+        "unlike": "Remove like",
+        "label": "Reactions to the comment"
       },
       "toasts": {
         "reactionFailed": "Could not record your reaction"
@@ -59,7 +60,8 @@
         "already_reacted": "You already reacted with this",
         "generic": "Something went wrong. Please try again.",
         "network": "Connection failed. Check your internet and try again."
-      }
+      },
+      "presenter": "Presenter"
     }
   }
 }

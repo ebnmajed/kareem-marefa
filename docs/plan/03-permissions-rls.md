@@ -1469,6 +1469,7 @@ generated suite is the highest-value test in the product.
 | `POL-avatars_storage_read.stale_version_refused` | An older version's object ✗; ★ clearing `avatar_version` (a decline, anonymisation) makes the current one unreadable at once. (migration `0157`). |
 | `COL-members.avatar_import.no_grant` | A client select of `members.avatar_import` is refused (42501); `avatar_version` is readable through the grant, `members_member_view` and `me()`. (migration `0157`). |
 | `TRG-comments_broadcast.avatar_version` | The comment payload carries `authorAvatarVersion`, and `authorAvatarUrl` stays null — no Google URL on the wire. (migrations `0155`, `0157`). |
+| `TRG-comments_broadcast.author_context` | The payload adds `authorCompanyName`, `authorTeamColor` and `authorIsPresenter` (an **accepted** presenter of the comment's session only) — every earlier key kept, `authorAvatarUrl` still null, nothing about any other member (REQ-EVT-015, DEC-209). (migration `0167`). |
 | `RPC-begin_photo_album_build` | `service_role` only · returns the visible set, never a hidden or removed photograph · a superseded build gets no rows. (migration `0159`, `DEC-182`). |
 | `RPC-mark_points_seen.own_row` | Writes the caller's own mark, inserting it the first time; never another member's. (migration `0163`, `DEC-197`). |
 | `RPC-mark_points_seen.foreign_level` | A level of another org is refused with `22023` and nothing is written. (migration `0163`). |
@@ -1482,6 +1483,9 @@ generated suite is the highest-value test in the product.
 | `RPC-monthly_ranked_count.members_only` | Company entries are not counted. (migration `0165`). |
 | `RPC-monthly_ranked_count.foreign_org` | A snapshot of another org answers null, as an unknown id does. (migration `0165`). |
 | `RPC-monthly_ranked_count.anon` | `anon` cannot execute it. (migration `0165`). |
+| `TRG-check_ins_host_broadcast.poke` | A member's check-in sends `{dayId}` on `host:{session_id}` (event `check_in_count`) — the day alone, no member id, name or time; the topic `0016` authorises to staff and that session's presenters (REQ-CHK-001, DEC-209 §1). (migration `0166`). |
+| `TRG-check_ins_host_broadcast.removal` | An admin's removal pokes the topic again; a refused attempt does not. (migration `0166`). |
+| `TRG-check_ins_host_broadcast.own_topic` | A check-in never pokes another session's topic. (migration `0166`). |
 | `RPC-mark_seen.anon` | `anon` cannot execute either function. (migration `0163`). |
 | `RPC-record_photo_album_built` | Ready + `MSG-photo_album_ready` to who asked + the expiry enqueued · `stale` when a photograph was hidden mid-build · `superseded` for a replaced build · a part outside its build's prefix refused. (migration `0159`). |
 | `RPC-fail_photo_album` | The current build only, `failed` with its error. (migration `0159`). |

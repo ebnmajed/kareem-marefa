@@ -120,6 +120,10 @@ export interface PhotoSummary {
    *  its box from these (REQ-EVT-016). OPTIONAL for the same reason as `sessionDayId`. */
   width?: number | null;
   height?: number | null;
+  /** Wave 18, add-only (DEC-209): the uploader's company colour, drawn as a ring dot on the tile
+   *  (`EventLive.dc.html:64`) — `#rrggbb` or null; reaches the DOM only as `--team`. OPTIONAL for the same
+   *  reason as `width`. */
+  uploaderTeamColor?: string | null;
 }
 
 /** The session's album for staff (`photo_albums`, 0156; DEC-182) — the state «تنزيل الكل» reads,
@@ -176,7 +180,7 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
   const [{ data: rows, error }, { data: checkedIn }, { data: presents }, { data: settings }, days, heading, { data: albumRow }] = await Promise.all([
     supabase
       .from("photos")
-      .select("id, uploader_id, storage_path, created_at, hidden_at, session_day_id, width, height")
+      .select("id, uploader_id, storage_path, created_at, hidden_at, session_day_id, width, height, uploader:members!photos_uploader_id_fkey(company:companies(team_color))")
       .eq("session_id", sessionId)
       .is("removed_at", null)
       .order("created_at", { ascending: false }),
@@ -205,6 +209,7 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
         sessionDayId: (p.session_day_id as string | null) ?? null,
         width: (p.width as number | null) ?? null,
         height: (p.height as number | null) ?? null,
+        uploaderTeamColor: (p.uploader as unknown as { company: { team_color: string | null } | null } | null)?.company?.team_color ?? null,
       };
     }),
   );

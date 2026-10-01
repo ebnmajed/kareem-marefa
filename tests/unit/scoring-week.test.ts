@@ -100,3 +100,19 @@ describe("monthName — the snapshot's month, in UTC and Latin digits", () => {
     expect(monthName("2026-12-01", "en")).toBe("December");
   });
 });
+
+describe("presenterNet — a presenter's award, the ledger's net (wave 18 PR B, sessions' S3)", () => {
+  const row = (id: string, amount: number, source: string, source_id: string | null = null, occurred_at = "2026-09-30T18:00:00Z") => ({ id, amount, source, source_id, occurred_at });
+  it("session_delivered plus the attendee bonus, at the latest of the two", () => {
+    expect(points.presenterNet([row("a", 100, "session_delivered"), row("b", 30, "attendee_bonus", null, "2026-09-30T18:05:00Z")])).toEqual({ points: 130, paidAt: "2026-09-30T18:05:00Z" });
+  });
+  it("★ a presenter removed after completion is reversed — nothing to draw, never «+0»", () => {
+    expect(points.presenterNet([row("a", 100, "session_delivered"), row("r", -100, "reversal", "a")])).toBeNull();
+  });
+  it("a reversal of another row does not count against the presenter's award", () => {
+    expect(points.presenterNet([row("a", 100, "session_delivered"), row("r", -20, "reversal", "someone-else")])?.points).toBe(100);
+  });
+  it("no presenter row: null", () => {
+    expect(points.presenterNet([])).toBeNull();
+  });
+});
