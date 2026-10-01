@@ -230,7 +230,7 @@ from a separate rule. Date range pickers run right-to-left.
 |---|---|
 | `published`, seats free | «احجز مقعدك» |
 | `published`, full | «انضم لقائمة الانتظار» + waitlist length |
-| waitlisted | «موقعك في قائمة الانتظار: ٣» + «غادر القائمة» |
+| waitlisted | «موقعك في قائمة الانتظار: 3» + «غادر القائمة» |
 | after the RSVP deadline | the action is disabled **with the reason stated**, not hidden |
 | `in_progress` | the action becomes **«سجّل حضورك»** → SCR-014 |
 | `completed` | rating prompt for checked-in attendees; `after` materials appear |
@@ -308,7 +308,7 @@ kept on while live.
 **Desktop:** designed to be **projected** — very large type, high contrast, no chrome. Landscape is
 the expected orientation here, not an afterthought.
 **RTL:** the code is **Latin, `dir="ltr"`**; every label around it is RTL. The count reads
-«٢٣ من ٤٠ حاضرًا» in the org's numeral system.
+«23 من 40 حاضرًا» in Western numerals (`DEC-124`).
 **Realtime:** the check-in count, live.
 **Note:** revoking issues a new code immediately, affects the next attempt only, and never
 invalidates check-ins already recorded (`REQ-CHK-007`).
@@ -318,13 +318,13 @@ invalidates check-ins already recorded (`REQ-CHK-007`).
 **Purpose:** rate the session and the presenter. **Roles:** checked-in attendees only.
 **Serves:** `REQ-RAT-001` … `REQ-RAT-003`, `REQ-RAT-006`
 **Primary action:** submit.
-**Fields:** تقييم الجلسة ١–٥ · تقييم المُقدِّم ١–٥ · ملاحظات (اختياري)
+**Fields:** تقييم الجلسة 1–5 · تقييم المُقدِّم 1–5 · ملاحظات (اختياري)
 **States:** not eligible (no check-in — the screen is not reachable) · open · submitted ·
 editable-within-window · closed after 14 days
 **RTL:** ★ **star ratings fill from the right** in an RTL layout. A star row that fills left-to-right
 reads as "1 star" when the member meant 5 — a silent, systematic data error.
 **Note:** the form states the anonymity promise honestly (OQ-009): «تقييمك مجهول للمُقدِّم. تظهر
-النتائج له بعد ٣ تقييمات على الأقل.» — **including** that org admins can see per-rater ratings
+النتائج له بعد 3 تقييمات على الأقل.» — **including** that org admins can see per-rater ratings
 (D36), because a promise that omits the exception is not a promise.
 
 ### SCR-017 · `/app/propose`
