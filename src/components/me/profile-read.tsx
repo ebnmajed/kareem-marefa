@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { getTranslations } from "next-intl/server";
 import type { MyInterests, SelfProfile } from "@/lib/dal/members";
+import { teamColorOrNull } from "@/components/ui/avatar";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
@@ -25,6 +26,8 @@ type ProfileT = Awaited<ReturnType<typeof getTranslations<"profile">>>;
 export interface ProfileReadProps {
   me: SelfProfile;
   companyName: string | null;
+  /** The company's team colour (`listCompanies()`), drawn as the row's dot through `--team`; null → the neutral dot. */
+  companyTeamColor?: string | null;
   interests: MyInterests["chosen"];
   t: ProfileT;
   /** `members.profile.noBio` — read from `members`' namespace, not written. */
@@ -33,13 +36,21 @@ export interface ProfileReadProps {
   companyMissing: string;
 }
 
-export function ProfileRead({ me, companyName, interests, t, noBio, companyMissing }: ProfileReadProps) {
+export function ProfileRead({ me, companyName, companyTeamColor = null, interests, t, noBio, companyMissing }: ProfileReadProps) {
+  const team = teamColorOrNull(companyTeamColor);
   const rows: { label: string; value: ReactNode; muted?: boolean }[] = [
     { label: t("displayName"), value: <bdi>{me.displayName ?? ""}</bdi> },
     {
       label: t("company"),
       value: companyName ? (
-        <bdi>{companyName}</bdi>
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className={`inline-block size-2.5 shrink-0 rounded-pill ${team ? "bg-team" : "bg-team-neutral"}`}
+            style={team ? ({ "--team": team } as CSSProperties) : undefined}
+          />
+          <bdi>{companyName}</bdi>
+        </span>
       ) : (
         <Link href="/app/me?edit" className="font-bold text-fg-heading underline underline-offset-4">
           {t("read.chooseCompany")}

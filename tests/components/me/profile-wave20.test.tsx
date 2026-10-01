@@ -83,6 +83,18 @@ describe("SCR-021 — read mode", () => {
     expect(screen.getByText("لا توجد نبذة بعد")).toBeInTheDocument();
   });
 
+  it("the company row carries its team dot through `--team`, never a class or a hex in markup", () => {
+    const { container } = render(
+      <NextIntlClientProvider locale="ar" messages={messages}>
+        <ProfileRead me={{ ...ME, companyId: "c1" }} companyName="صنف" companyTeamColor="#ff9a2e" interests={[]} t={t as never} noBio="—" companyMissing="—" />
+      </NextIntlClientProvider>,
+    );
+    const dot = container.querySelector(".bg-team") as HTMLElement;
+    expect(dot).not.toBeNull();
+    expect(dot.style.getPropertyValue("--team")).toBe("#ff9a2e");
+    expect(dot).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("★ no company: says what it blocks, and the company row is the way to choose one", () => {
     renderRead();
     expect(screen.getByRole("status")).toHaveTextContent("اختر شركتك قبل حجز مقعد");

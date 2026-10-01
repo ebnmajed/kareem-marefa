@@ -34,6 +34,8 @@ export interface SelfProfile extends MemberTier {
 export interface Company {
   id: string;
   name: string;
+  /** ★ wave 20, add-only (the lead's grant): `#rrggbb` or null — reaches the DOM only as `--team` (SCR-021's dot). */
+  teamColor?: string | null;
 }
 
 export async function getMe(locale: string): Promise<SelfProfile> {
@@ -83,9 +85,9 @@ export async function getMemberProfile(locale: string, id: string): Promise<Memb
 
 export async function listCompanies(locale: string): Promise<Company[]> {
   const { supabase } = await sessionClient(locale);
-  const { data, error } = await supabase.from("companies").select("id, name").is("deactivated_at", null).order("name");
+  const { data, error } = await supabase.from("companies").select("id, name, team_color").is("deactivated_at", null).order("name");
   if (error) throw new Error(`companies: ${error.message}`);
-  return (data ?? []).map((c) => ({ id: c.id, name: c.name }));
+  return (data ?? []).map((c) => ({ id: c.id, name: c.name, teamColor: (c.team_color as string | null) ?? null }));
 }
 
 export const profileInput = z.object({

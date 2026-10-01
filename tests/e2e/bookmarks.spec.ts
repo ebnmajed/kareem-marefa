@@ -163,7 +163,7 @@ test("★ REQ-DSC-006: SCR-024 lists the member's own bookmarked session, and li
 test("★ REQ-DSC-006: private to the member — another member's own bookmarks page is empty", async ({ context, page }) => {
   await signIn(context, otherEmail);
   await page.goto(`/ar/app/me/bookmarks`);
-  await expect(page.getByText("لم تحفظ أي جلسة بعد.")).toBeVisible();
+  await expect(page.getByText("لم تحفظ شيئًا بعد")).toBeVisible(); // ★ wave 20: SCR-024's empty state (REQ-UIX-074, B5)
   await expect(page.getByText("جلسة تستحق الحفظ")).not.toBeVisible();
 });
 

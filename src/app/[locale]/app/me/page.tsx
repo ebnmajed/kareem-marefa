@@ -45,7 +45,7 @@ export default async function MePage({
     listCompanies(locale),
     getMyInterests(locale),
   ]);
-  const companyName = companies.find((c) => c.id === me.companyId)?.name ?? null;
+  const company = companies.find((c) => c.id === me.companyId) ?? null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,7 +66,7 @@ export default async function MePage({
       {editing ? (
         <ProfileEdit locale={locale as Locale} me={me} companies={companies} interests={interests} />
       ) : (
-        <ProfileRead me={me} companyName={companyName} interests={interests.chosen} t={t} noBio={tMembers("noBio")} companyMissing={tHome("companyMissing")} />
+        <ProfileRead me={me} companyName={company?.name ?? null} companyTeamColor={company?.teamColor ?? null} interests={interests.chosen} t={t} noBio={tMembers("noBio")} companyMissing={tHome("companyMissing")} />
       )}
     </div>
   );
