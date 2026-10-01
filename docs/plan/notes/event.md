@@ -1302,3 +1302,50 @@ and `./demos/star-input` (`StarInputDemo`) wired into the gallery. Files: `src/c
 `tests/components/ui/star-input.test.tsx` (14 cases — seven carried from `star-rating.test.tsx`, ledger lines
 with commit A), `tests/components/ui/star-input-scope.test.tsx` (4), `src/app/[locale]/(dev)/ui/demos/star-input.tsx`.
 Server-safe: no hook, no `"use client"`. `ui-playground.test.ts` is red for this one file until the entry lands.
+
+### R1 — SCR-015, deleted then written
+
+- **`ef0c7b48`** `ui/star-input` · **`3e5b53e5`** the delete (page, form, skeleton, `star-rating.tsx` and its test) ·
+  **`84ee6e7a`** the create. ★ A and the create are pushed together (`DEC-214` §3); `rate-form.test.tsx` is red only
+  between them.
+- **Ledger lines for `STATUS.md`** (the lead's pen): `tests/components/event/star-rating.test.tsx`, all seven cases
+  (five `StarRating`, one `StarDisplay`, one required/error) → `tests/components/ui/star-input.test.tsx`'s first
+  block — **selector moved** (the import, and «مطلوب» passed as `requiredLabel`), **expectation unchanged**; in
+  `3e5b53e5`/`ef0c7b48`. `tests/components/survey/question-field.test.tsx:47` — a comment only, no assertion
+  (`84ee6e7a`). No other suite changed.
+- `tests/e2e/wave19-event-rate.spec.ts`: eight tests — empty, chosen (read-back, hover from the right on a pointer
+  project, the counter), error, submitted, ★ the survey's place and the bar's label, closed, not eligible, and the
+  bar in flow at 1280. Captures `wave19-event-rate-{empty,chosen,error,submitted,survey,closed,not-eligible}-390.png`
+  and `-open-1280.png`. **The lead runs it** on a production build.
+
+**The kept-behaviour table, read against the new files** (`rate/page.tsx`, `rate/rate-form.tsx`, `rate/loading.tsx`,
+`ui/star-input.tsx`; `actions.ts` and `state.ts` kept):
+
+| Rows | Read |
+|---|---|
+| 1, 2 | ✓ every read through the DAL; `notFound()` on a `null` heading |
+| 3 – 6 | ✓ the two reasons as `EmptyState` with «العودة إلى الجلسة», no form, no bar; the gate is still `getRatingEligibility()` and the policy |
+| 7, 8 | ✓ the DAL and SQL untouched; the window date in the bar's note, in the org's zone |
+| 9 | ✓ closed: the panel, both rows as `star-input` read-only (`role="img"`), the comment in `<bdi>`, the way back; no radiogroup, no bar |
+| 10 | ✓ `anonymityNotice` with `min` read from `getRatePageData()`, between the comment and the survey |
+| 11 – 13, 20, 25, 26, 28 | ✓ `actions.ts` unchanged but for the constant; the two bound actions as before |
+| 14 | ✓ `RATING_COMMENT_MAX` in `state.ts`: `maxLength`, the counter, `capture()` |
+| 15 – 18 | ✓ the focused alert, the summary, `#<name>-error`, `id={name}`, `key={…attempt}`, `noValidate`, «مطلوب» |
+| 19 | ✓ `?rated=1` → `role="status"` panel, survey-aware title, read-only rows, the way back; the form below it |
+| 21 | ✓ no instant shown |
+| 22 – 24, 27, 29 | ✓ the survey section after the panel and before the bar; «أجبت»; `RATING_SAVED`; the four-way label |
+| 30 | ✓ `SubmitButton` inside the form, inside the bar |
+| 31 – 35 | ✓ in `ui/star-input` and its test |
+| 36 | ✓ `<bdi>` on the title, each presenter's name and company, the comment |
+| 37 | ✓ `formatDate` in the session's zone (heading) and the org's (window) |
+| 38 | ✓ the skeleton in the new shape, `aria-hidden`, no text |
+| 39 | ✓ native form and radios, CSS fill; the counter keeps the server's count without JS |
+| 40 | ✓ n/a |
+| 41 | ✓ every pinned name kept; the top row's back control is «رجوع», so «العودة إلى الجلسة» stays one link |
+| 42 | ✓ dropped as planned |
+
+**Found while building — told to the lead, not ruled by me:**
+- The mini-row's thumbnail is `CardMedia` at 44 px: the rendered poster when one exists, otherwise its one-glyph
+  placeholder. The artboard writes the whole title at 9 px inside the tile; at that width a 150-character title can
+  only be clipped (`10` forbids it), and the title is printed beside the tile anyway.
+- The panel's shield glyph is not drawn: `ui/icons` has no shield, and a glyph is the lead's file.
