@@ -1,3 +1,4 @@
+-- 0171 · wave 20 — proposed by `scoring`, promoted by the lead. (`0170` is reserved for `retry_calendar_sync()`, which `DEC-218` named first.)
 -- scoring · wave 20 (DEC-216 §2.2, DEC-217 §3.3 – §3.4, DEC-218, REQ-UIX-078, REQ-LDR-007, REQ-LDR-008) — this week, live.
 --
 -- The owner ruled on 2026-10-02 that the boards' new first window, «هذا الأسبوع», is summed LIVE from

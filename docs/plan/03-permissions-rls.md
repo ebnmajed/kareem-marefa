@@ -1487,6 +1487,13 @@ generated suite is the highest-value test in the product.
 | `RPC-monthly_ranked_count.counts_hidden` | Counts every member entry of the snapshot, an opted-out member's included, though the caller cannot read that row. (migration `0165`). |
 | `RPC-monthly_ranked_count.members_only` | Company entries are not counted. (migration `0165`). |
 | `RPC-monthly_ranked_count.foreign_org` | A snapshot of another org answers null, as an unknown id does. (migration `0165`). |
+| `RPC-org_week.boundary` | The week starts at Saturday 00:00 in the org's zone and ends before the next Saturday 00:00; a Friday 23:59 is in it (migration `0171`, `DEC-217` §3.4). |
+| `RPC-weekly_leaderboard.window` | Only rows written inside the current `org_week()` count; last week's do not (migration `0171`). |
+| `RPC-weekly_leaderboard.opt_out` | An opted-out member is absent from another member's call and present in their own (migration `0171`). |
+| `RPC-weekly_leaderboard.active` | A deactivated member never appears (migration `0171`). |
+| `RPC-weekly_leaderboard.org` | Another org's ledger never appears (migration `0171`). |
+| `RPC-weekly_leaderboard.net_positive` | A net of 0 or less this week is not ranked (migration `0171`). |
+| `RPC-week.anon` | anon cannot execute either function (migration `0171`). |
 | `RPC-monthly_ranked_count.anon` | `anon` cannot execute it. (migration `0165`). |
 | `TRG-check_ins_host_broadcast.poke` | A member's check-in sends `{dayId}` on `host:{session_id}` (event `check_in_count`) — the day alone, no member id, name or time; the topic `0016` authorises to staff and that session's presenters (REQ-CHK-001, DEC-209 §1). (migration `0166`). |
 | `TRG-check_ins_host_broadcast.removal` | An admin's removal pokes the topic again; a refused attempt does not. (migration `0166`). |
