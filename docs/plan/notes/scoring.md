@@ -3221,3 +3221,414 @@ copy, reduced motion, a server paint, the unseen level-up), `week-rail` 12 ✓, 
 `ui-playground` is red only on the four unregistered new files, `week-hud.tsx` among them — the lead's commit.
 **No existing assertion moved.** The e2e spec `tests/e2e/wave18-scoring-week.spec.ts` needs `content`'s home in
 place and a production build — the lead's to run.
+
+---
+
+## Wave 19 — plan
+
+*`SCR-019` the directory (new), `SCR-020` the profile (phone and desktop), `ui/badge-medallion` — `REQ-UIX-068`,
+`REQ-UIX-069`, `REQ-UIX-064`, `STORY-UIX-057`, `058`, `DEC-213`. Planning only: nothing is deleted before the lead
+posts «the plans are approved» and «the frame is in». Read at `b0e18503`: `M10b.md` §5–§7, `Directory.dc.html`,
+`Profile.dc.html`, `ProfileDesktop.dc.html` and their three PNGs, `DEC-213` §3–§7, `DEC-208`, `DEC-141`, `DEC-207`
+§1.3, A33, `03` §5.1b, `09` `SCR-019`/`SCR-020`, and the tree: `members/[id]/page.tsx`, `members/loading.tsx`,
+`members/error.tsx`, `lib/dal/members.ts`, `getMemberStanding()`, `getMemberRecognition()`, `listSessionsPresentedBy()`,
+`getPresenterAggregate()`, `members.json`, `0004:294-323`, `0027:147-225`, `0027:469-491`, `0044`, `0157:55-70`.*
+
+### W19.0 · Six things to read first
+
+1. ★★ **The tree's own tests pin a rank the database never gives.** `sessions-member-profile.test.ts:113` asserts an
+   admin sees an opted-out member's rank (`rank: 3`). The stub says so; **the database does not**:
+   `all_time_leaderboard()` (`0044`) drops an opted-out member for everyone but themselves, admins included, and
+   `boards_read` (`0027:487-491`) does the same for the monthly rows. So on a real page an admin sees the points and
+   «—» for both ranks. Not a rebuild defect — a pinned expectation the product never met. N8 below; not picked.
+2. ★ **Today an opted-out member's LEVEL is hidden from colleagues too** — `standing: null` takes `levelName` with
+   it (`members.ts:197`). §5.116 rules level, badges and streak shown. The plan keeps `standing`'s rule exactly
+   (points and rank withheld) and adds the level beside it, so **no existing assertion moves** (W19.6).
+3. ★ **The badges table has no colour and no glyph** (`0027:147-159`): the artboards draw a colour and a glyph per
+   badge. N1 — the one disagreement that blocks `badge-medallion`'s callers, not the primitive.
+4. ★ **Three of the self tier's six hub links have no destination in the tree** (attended, ratings given, no-shows).
+   N7.
+5. ★ **No migration and no SQL.** The directory is assembled in the DAL from reads every member already has
+   (W19.5); the RPC alternative is named for the lead, not proposed.
+6. ★ **Requests to three primitive owners and the lead** (W19.8): `avatar` sizes, `tag-chip`'s dot, `badge`'s
+   level ramp (`content`); `page-header`'s count and the medallion's drop tokens (lead); contract 4's batch count
+   (`sessions`).
+
+### W19.1 · Sync-1 Q1 — the regions, in each artboard's order, and the primitive each is built from
+
+**`Directory.dc.html` (390 × 1380) — `SCR-019`, `/app/members`.** Desktop is not drawn: the same column in the frame's
+content area, rows two-up from `lg` (`M10b.md` §5).
+
+| # | Region (artboard line) | Built from |
+|---|---|---|
+| D1 | Title row: «الأعضاء» + the count «212» · the order «الأنشط أولًا ⌄» (`:18-21`) — the page's own phone top row, no wordmark (contract 1) | `ui/page-header` (`title`, `actions`) — ★ the count needs an add-only `count` (W19.8 R4); the order is `ui/menu` whose trigger is `ui/button` (quiet, pill) and whose two items are **links** (`href` `?order=active` / `?order=name`, `current`) |
+| D2 | Search pill «بالاسم أو المسمّى الوظيفي», hidden label «ابحث في الأعضاء» (`:23-26`) | `browse/search-field.tsx`'s pattern, not its file: a GET `<form role="search">` to `/app/members`, `ui/input` `type="search"` `size="lg"` with `startIcon` `SearchIcon` (`ui/icons`), the label `sr-only`, the other filters as hidden fields |
+| D3 | Company chips: «الكل» current, then each company with its team dot (`:28-34`) | `ui/tag-chip` with `href` and `selected` — ★ the dot needs `teamColor` add-only (W19.8 R2). A horizontal scroller with `overflow-x-auto` on the ROW, never on a text line |
+| D3b | ★ Interests chips — not drawn; only when the org has any interest recorded (§5.107) | `ui/tag-chip`, the same row shape, `?interest=` |
+| D4 | The rows (`:37-45`): avatar with the team ring · name (+ the staff role label) · «title · company · N جلسات مقدَّمة» · the level pill at the inline-end | `ui/card` `density="row"` with `href` → `/app/members/[id]` · `ui/avatar` (`teamColor`; ★ 44 px drawn — W19.8 R1) · the role label as text from `members.profile.role.*` · `ui/badge` for the level — ★ in its ramp colour (W19.8 R3) |
+| D5 | «8 من 212 · تُحمَّل البقية عند التمرير» (`:46`) | text + a «more» `ui/link` carrying `?page=N+1` (§5.110); a client island `auto-more.tsx` follows it when it scrolls into view (`IntersectionObserver`, no timer) |
+| — | The tab bar (`:49-55`) | the frame's — nothing of the shell in the page |
+
+**`Profile.dc.html` (390) — `SCR-020`, member tier.**
+
+| # | Region (artboard line) | Built from |
+|---|---|---|
+| P1 | Top row: back · «الأعضاء › مواهب» · share (`:18-23`) — the page's own phone top row (contract 1) | back: `ui/link` + `ChevronIcon direction="back"` (`ui/icons`), `aria-label` «رجوع إلى الأعضاء» → `/app/members`; breadcrumb: `<nav aria-label>` + `<ol>`, «الأعضاء» a `ui/link`, the company `<bdi>`; share: `ui/icon-button` (`share-profile.tsx`, client) |
+| P2 | Header card: 84 px avatar with a 5 px ring · `h1` name · job title · company chip with dot + «عضو منذ …» · bio · interests (`:25-36`) | `ui/card` · `ui/avatar` (`teamColor`; ★ 84 px — R1) · `h1` in the display face, `<bdi>` · `ui/tag-chip` (company, dot — R2) · `members.profile.memberSince` · bio or `noBio` · `ui/tag-chip` per interest |
+| P3 | Standing card: level medallion (star) · «المستوى» + the level name in its ramp colour · the points «1,240 نقطة» · the progress line «بقي 760 لـ «سفير المعرفة»» · three stats: **this month** · all time · streak (`:38-50`) | `ui/card` · `ui/badge-medallion` (`fill={{ level }}`, `glyph` `StarIcon filled`, `showName={false}`) · the name `text-level-N` · `ui/progress-bar` (`fill="accent"`, `decorative`; the line beside it is the text) · three `ui/stat`. ★ Not `ui/level-card` — N10. The heading «النقاط والمستوى» is `sr-only` on the phone (`id="standing"`, pinned) and drawn on desktop |
+| P4 | «الشارات» + «5 من 14» · a row of 64 px medallions with names (`:52-61`) | `ui/section-header` (`count` is a number; «N من M» goes in `actions` as text) · `<ul>` of `ui/badge-medallion` `size="md"`, `overflow-x-auto` on the list |
+| P5 | «الجلسات التي قدّمتها» + 6 · rows: poster thumb · title · «date · N حاضرًا · ★ 4.8» · «عرض الجلسات الأربع الأخرى» (`:63-68`) | `ui/section-header` (heading ★ a noun phrase — §5.109) · `ui/card` `row` + `CardMedia` `aspect="4/5"` (the poster, or its placeholder) · `ui/badge` `SessionStatusBadge` while not completed (N6) · the line from contract 4 · the «more» as `<details>` (N3) |
+| P6 | «صور رفعتها» + 9 · a 3-up grid, the sixth tile «+4» (`:70-73`) | `ui/section-header` · a grid of `next/image` thumbnails from contract 3 · the «+N» tile as text (N2) |
+| — | The tab bar (`:75-81`) | the frame's |
+
+**`ProfileDesktop.dc.html` (1280 × 900).** The shell's bar and rail (`:13-35`, «الأعضاء» current) are the frame's. The
+page owns 964 px (contract 1's `PageFrame` addition):
+
+| # | Region (artboard line) | Built from |
+|---|---|---|
+| PD1 | Breadcrumb row «الأعضاء › مواهب» (`:37`) — no back, **no share** (N5) | the P1 breadcrumb, alone, from `lg` |
+| PD2 | Header card: 104 px avatar · `h1` + job title on one baseline · company chip + «عضو منذ» + «· N جلسات مقدَّمة» · bio · interests · **at its end** the level medallion 52 px, the level name, «1,240 نقطة · #3 هذا الأسبوع · ×12» (`:38-49`) | P2's parts (★ 104 px — R1) + a `hidden lg:flex` summary block (`ui/badge-medallion` `size="sm"`). The phone's P3 top row is `lg:hidden`; each is `display:none` at the other width, so a screen reader meets one |
+| PD3 | Body `grid-cols-[1fr_380px]`: the start column — «الجلسات …» two-up (`:52-60`), «صور رفعتها» six-up (`:62-65`) | P5, P6, the grids widened |
+| PD4 | The end column (380): «الشارات» card, five 52 px discs, **no glyph** (`:67-76`); «النقاط والمستوى» card: the progress line and the three stats, **no level, no points** (`:77-85`) | P4 in a `ui/card` (`size="sm"`, glyph omitted at `lg`); P3 minus its top row |
+
+★ **One DOM, the phone's order** — header, standing, badges, presented, photos, then the tier sections. Desktop places
+them with `grid-template-areas` (badges above standing in the end column). The reading order on desktop is therefore
+standing → badges → presented → photos, not the visual start-column-first; each is its own labelled `<section>`, so
+nothing reads out of context. The alternative — desktop's order in the DOM, the phone re-ordered by CSS — puts the
+phone, which is the acceptance, out of order instead.
+
+**The tiers' additions** (not drawn): **self** — `members.profile.selfNote` + «عدّل ملفك» (`ui/button`'s `ButtonLink`, primary)
+and «سجل نقاطي» (secondary) in a `ui/panel` under the header card; the six hub links (§5.122) as a `<ul>` of
+`ui/link` rows in a `ui/card` after the photos, full width on desktop. **admin** — «للمشرفين» after every public
+section, `border-t`, `ui/section-header` with `description={admin.note}`, a `<dl>` for the email, three `ui/stat`s and
+the attended list (as today).
+
+### W19.2 · Sync-1 Q2 — ★★ the kept-behaviour tables (`DEC-208`)
+
+*Re-derived from `REQ-PRF-004`, `REQ-PRF-005`, `REQ-LDR-008`, `REQ-RAT-006`, A33, `03` §5.1b and the DAL as it stands —
+then checked against what `sessions-member-profile.test.ts`, `wave7-sessions-profile.spec.ts`, `session.spec.ts:117`,
+`wave14-platform-avatar.spec.ts:241` and `wave11-lead-a11y-sweep.spec.ts:214` pin. Read against the new files after
+the create commit, row by row, and the result written here.*
+
+**The profile — `SCR-020` (28 rows)**
+
+| # | Behaviour | Where it lives after | Kept by |
+|---|---|---|---|
+| K1 | The route needs a session: every read goes through `sessionClient()` → `requireSession()`; a signed-out visitor is sent to sign-in with `?next=` by the proxy | `members.ts` (unchanged); `proxy.ts` (the lead's, untouched) | `REQ-AUT-005`, `REQ-NFR-004` |
+| K2 | ★ **The tier is decided in the DAL, never in a component**: `getMemberProfileForViewer()` returns `self` / `member` / `admin`, and a field a tier may not see never leaves it | `members.ts` — kept, extended add-only (W19.5) | `REQ-PRF-004`, A33, `03` §5.1b, `REQ-UIX-069`, contract 7 |
+| K3 | ★ **A moderator is the member tier**; `admin_member_profile()` is never called for one | `members.ts` (`tier` from `session.role === "admin"` only) | A33 («moderators see the member tier»), `REQ-PRF-004`; pinned `sessions-member-profile.test.ts:79-85`, `wave7…:180-188` |
+| K4 | Someone else's row is read from `members_member_view` — the column set IS the member tier, `status = 'active'` | `getMemberProfile()` (unchanged) | `03` §5.1b, A33 |
+| K5 | ★ `notFound()` for one answer to all: a malformed id, a missing one, another org's, a deactivated member's | `[id]/page.tsx` (`if (!view) notFound()`) ← `getMemberProfile()`'s `z.uuid()` and the view's predicate | `REQ-TEN-003`, `REQ-PRF-007`, `DEC-134` |
+| K6 | ★ **Opted out: points and the all-time rank withheld from the member tier** (`standing: null`); the member and an admin get them | `members.ts` — the same predicate, unchanged | `DEC-141` r5, `REQ-LDR-008`; pinned `sessions-member-profile.test.ts:103-117` |
+| K7 | ★ **Opted out: level, badges and streak still shown; the month's rank «—»; no progress line** — new, not kept: today the level goes with `standing` | `members.ts` — the new `level` field is filled for every tier; `progress` and `monthRank` are null whenever `standing` is | `DEC-213` §5.116, `REQ-UIX-069` |
+| K8 | The all-time rank comes only from `all_time_leaderboard()` — the database decides who has one | `getMemberStanding()` (unchanged) | `REQ-LDR-008` (`0044`) |
+| K9 | ★ The month's rank comes only from the latest monthly snapshot's row, through `boards_read` — an opted-out member's row is invisible to others | new `getMemberMonthRank()` in `leaderboards.ts` (add-only) | `REQ-LDR-008`, `DEC-213` §5.114 (`0027:487-491`) |
+| K10 | ★ **The admin record comes from `admin_member_profile()`** — email, the attended count and list, no-shows, late cancellations — and only on the admin tier | `members.ts` (unchanged) → `components/members/admin-record.tsx` | A33 rules 2–3, `REQ-PRF-004`, `03` §5.1b; pinned `sessions-member-profile.test.ts:87-92`, `wave7…:174-177` |
+| K11 | The admin section is headed «للمشرفين», says `admin.note`, and is absent for everyone else | `admin-record.tsx` | `REQ-PRF-004`; pinned `wave7…:150`, `:164`, `:174`, `:186` |
+| K12 | ★ **No email on a member's or a self page** — the self tier links to `/app/me` for it | `[id]/page.tsx` renders none; the «البريد» hub link | A33; pinned `wave7…:151`, `:187`, `session.spec.ts:122` |
+| K13 | ★ Attended sessions never on the member tier | only inside `admin-record.tsx` | A33 rule 3; pinned `wave7…:152` |
+| K14 | The self tier says «هكذا يرى زملاؤك ملفك.» and offers «عدّل ملفك» → `/app/me` and «سجل نقاطي» → `/app/me/points` | `components/members/self-panel.tsx` | `REQ-PRF-004` (self-only fields live in `/app/me`); pinned `wave7…:153`, `:162-163` |
+| K15 | The self tier's six sections are **links into the hub**, no new data on this page | `self-panel.tsx` — three of six have no destination today (N7) | `DEC-213` §5.122 |
+| K16 | ★ **The avatar is our stored copy through `avatarHref()`**, never Google's URL; initials over the member-id tint otherwise | `getMemberProfile()` (unchanged), the new directory read, `ui/avatar` | `REQ-PRF-008`, `REQ-PRF-009`, `DEC-099`; pinned `wave14-platform-avatar.spec.ts:241-247` |
+| K17 | ★ `<bdi>` on every interpolated name, title and code: the name, job title, company (chip and breadcrumb), bio, interests, badge names, level names, session titles, the attended titles, «عضو منذ»'s date; the email `<bdi dir="ltr">` | every component in `components/members/` | `REQ-INT-007` |
+| K18 | Presented sessions: **accepted** presenter rows, only `published` / `in_progress` / `completed` / `archived`, newest first | contract 4 (`sessions.ts`) — the same predicate, **and a count that is a count** | A33 rule 3, `DEC-213` §5.120 |
+| K19 | ★ A presented session's status is the one every surface shows, from its **days** (`sessionPhase(s, now)`, `PresentedSession.days`) — so between two days of a workshop it reads «التسجيل مفتوح» | `presented-sessions.tsx` — `SessionStatusBadge` while not completed (N6) | `REQ-UIX-003`, `DEC-151` r3 |
+| K20 | Each presented row links to `/app/sessions/{id}`, its title the link's name | `presented-sessions.tsx` (`ui/card` `href`) | `REQ-PRF-004`; pinned `wave7…:148` |
+| K21 | ★ **An average rating only on the self and admin tiers, from ≥ 3 ratings**; nothing for a colleague, a moderator included | `members.ts` calls `getPresenterAggregate()` only when `tier !== "member"`; `session_rating_aggregates` withholds below the org's minimum | A33 («aggregate ratings received»), `REQ-RAT-006`, `DEC-213` §5.115 — new behaviour |
+| K22 | «عضو منذ» in the **org's** zone, not the server's | `members.ts` `timeZone` (unchanged) → `formatDate` | `REQ-INT-003` (`sessions.md` §36.1's finding) |
+| K23 | Interests are the member's `member_interests` → `categories` | `members.ts` (unchanged) | `REQ-PRF-001` |
+| K24 | A staff member carries a role label («مشرف المؤسسة», «مُنظِّم»); a member none | `profile-header.tsx`, `members.profile.role.*` | A33 tier 1 (`org_role` is in the view), `DEC-141` r4 |
+| K25 | Empty states: `noBio`, `noBadges`, `noPresented` (and a new `noPhotos`) | each section | `REQ-UIX-005`'s sibling rule — never an empty box |
+| K26 | A retired badge still held is still shown | `getMemberRecognition()` (unchanged); not counted in M (§5.121) | `REQ-REC-001`, `DEC-213` §5.121 |
+| K27 | The streak is consecutive months ending this month or last (`currentStreak`) | `recognition.ts` (unchanged) | `REQ-REC-005`; pinned `sessions-member-profile.test.ts:119-129` |
+| K28 | Western numerals everywhere (`formatNumber`, `formatDate`); the page never scrolls sideways at 390; one `h1`, exactly the name | every component; `[id]/page.tsx` | `REQ-INT-006`, `DEC-124`, `REQ-NFR-009`; pinned `wave7…:134`, `:144` |
+
+Two kept from the tree's frame, not the page: the route's **error boundary** `members/error.tsx` is kept **untouched**
+(it renders the shared `RouteBoundary`, `REQ-UIX-016`) and is not in the delete commit; the **skeleton rules** — no
+text, no `getTranslations`, `aria-hidden` (`REQ-UIX-005`) — carry into both new `loading.tsx` files.
+
+**The directory — `SCR-019` (9 rows; a new page, so these are what it inherits and what `REQ-PRF-005` asks)**
+
+| # | Behaviour | Where | Kept by |
+|---|---|---|---|
+| KD1 | Session required; reads through `sessionClient()` | `listDirectory()` in `members.ts` | `REQ-NFR-004`, `REQ-AUT-005` |
+| KD2 | ★ **Never a member of another org** — RLS (`members_read_org`) is the boundary; `.eq("org_id", session.orgId)` is defence in depth | `listDirectory()` | `REQ-PRF-005`, `REQ-TEN-003` |
+| KD3 | ★ **Tier-1 fields only leave the DAL**: id, name, avatar href, job title, role, company (name, team colour), level (tier, name), the presented count — never email, points, a rank, the opt-out flag | `DirectoryMember` (W19.5); a unit test reads the JSON | `REQ-UIX-068`, A33, contract 7 |
+| KD4 | ★ **Deactivated members excluded by default; an admin can show them, each marked** «معطَّل» (a `ui/badge`, neutral). A non-admin's `?inactive=1` is ignored by the DAL, which reads `members_member_view` for them. An anonymised member (no name) is left out even for an admin | `listDirectory()` | `REQ-PRF-005` |
+| KD5 | Filter by company **and** by interest — the interests row only when the org has any interest recorded | `listDirectory()` returns `interests: []` → the row is not drawn | `REQ-PRF-005`, `DEC-213` §5.107 |
+| KD6 | No rank and no points on a row, for anyone; the level badge shown, opted out or not | `DirectoryMember` carries neither | `REQ-UIX-068`, `DEC-213` §5.111 |
+| KD7 | «الأنشط أولًا» = sessions presented, then the name; «الاسم» = the name (Arabic collation) | `listDirectory()` — ordering is the DAL's, the component draws | `DEC-213` §5.106 |
+| KD8 | ★ Paging through the query string: `?page=N` renders the first N × 24 matches, so a cold URL and a no-JS reader see the same list | `listDirectory()` + `directory-query.ts` | `REQ-UIX-068`, `DEC-213` §5.110 |
+| KD9 | The error boundary (kept, untouched) and a list skeleton of its own | `members/error.tsx`; new `members/loading.tsx` | `REQ-UIX-016`, `REQ-UIX-005`, `DEC-213` §5.113 |
+
+### W19.3 · Sync-1 Q3 — `BadgeMedallionProps` (contract 2, for `ui/index.ts`)
+
+```ts
+/** The fills a badge medallion may take — the stickers' allowed set (`DEC-183` §2). Never a company's colour (that is
+ *  `--team`), never a status's (`DEC-073`). */
+export type MedallionFill = "accent" | "signal" | "cyan" | "gold" | "violet" | "bone";
+
+/**
+ * `scoring` · `badge-medallion.tsx` — REQ-UIX-064, DEC-213 §5.126. A disc with its 4 px drop and the name below it.
+ * Reads no data and no catalogue; every string arrives as a prop. Static: no hover scale, no transition, no keyframe
+ * of its own (`REQ-UIX-020`). Renders a `<span>`-rooted block, so the caller places it in an `<li>` or beside a name.
+ */
+export interface BadgeMedallionProps extends Styleable {
+  /** The badge's name, drawn under the disc inside `<bdi>`; the block's accessible text. */
+  name: string;
+  /** A badge's own fill — or a level's ramp stop (`levels.sort_order`, clamped 1–5 exactly as `level-card`'s `rampStop`). */
+  fill: MedallionFill | { level: number };
+  /** Decorative and `aria-hidden`: an icon from `ui/icons`, chosen by the caller. Absent → a plain disc (the desktop shelf). */
+  glyph?: ReactNode;
+  /** `md` 64 px (the phone shelf), `sm` 52 px (the desktop shelf, the desktop header). Default `md`. */
+  size?: "md" | "sm";
+  /** `false` beside a level name already drawn: the name is not drawn and the whole block is `aria-hidden`. Default `true`. */
+  showName?: boolean;
+  /** Read after the name and never drawn (`sr-only`) — `badges.description`, which today's page shows and the artboard does not. */
+  description?: string;
+}
+```
+
+The 4 px drop is a deeper shade of the fill — W19.8 R5. Registry kind: `variant` (it composes nothing; tokens only).
+Test: every fill, both sizes, `showName={false}` hides it from the accessibility tree, the glyph is `aria-hidden`,
+`description` is `sr-only`, a `{ level: 9 }` clamps to stop 5, no `hover:scale`, no `animate-`, no `transition`; the
+`-scope` test inside `PlayScope`; an RTL check (the name centred, no physical property). Demo: the eight seeded badges
+at both sizes, the five level stops, a long name wrapping on two lines.
+
+### W19.4 · Sync-1 Q4 — every state `M10b.md` names that is not drawn, and how it is built
+
+**The directory**
+
+| State | Built as |
+|---|---|
+| Empty search (§5) | `ui/empty-state` «لا أحد بهذا الاسم» ★ with `clearFilter` → the same URL without `q`; the filters stay (`REQ-UIX-022`) |
+| A filter that matches nobody | `ui/empty-state` «لا أعضاء هنا بعد» ★ with «امسح عامل التصفية» |
+| A member with no company | the company slot reads «بلا شركة» ★, muted; the ring is `teamColor={null}`'s neutral ring (§5.112) |
+| Opted out | the level badge still shows; nothing on a row is a rank, for anyone (KD6) |
+| An org with no interest recorded | the interests row is not rendered (§5.107) |
+| An org with no company | the chip row is not rendered |
+| Deactivated, for an admin (§5.108) | a chip «أظهر المعطَّلين» ★ (`?inactive=1`) on the admin's list only; each such row marked «معطَّل» ★ (`ui/badge`, neutral, with a word — not colour), and **not a link** (their profile is `notFound()` for everyone, K5) |
+| A staff member | «مشرف المؤسسة» / «مُنظِّم» after the name (`members.profile.role.*`) |
+| Zero sessions presented | the clause is omitted, not «0 جلسات» |
+| Paged (§5.110) | `?page=N`, cumulative; «24 من 212» ★ + a «المزيد» ★ link to `?page=N+1` carrying every filter; `auto-more.tsx` follows it on scroll; absent when all are shown |
+| Loading (§5.113) | `members/loading.tsx`: the title bar, the search pill, a chip row, eight row skeletons — no text, `aria-hidden` |
+| Desktop | the same column; rows `lg:grid-cols-2` |
+
+**The profile**
+
+| State | Built as |
+|---|---|
+| ★ The member tier (drawn) | as W19.1 |
+| ★ The self tier | + `self-panel.tsx`: the note, the two buttons; the six hub links (N7); the standing card shows the member's own figures, opted out or not (`REQ-LDR-008`) |
+| ★ The admin tier | + `admin-record.tsx` after the public sections; points shown for an opted-out member; ranks «—» because the database withholds them (N8) |
+| A moderator | the member tier exactly (K3) |
+| ★ Opted out, seen by a colleague (§5.116) | points «—», the month's and the all-time rank «—» (`members.profile.none`), **no progress line**; the level, its medallion, the badges and the streak shown. The desktop header summary reads the same «—» |
+| ★ The month's rank + the all-time rank (§5.114) | two `ui/stat`s: «هذا الشهر» ★ and «كل الأوقات» ★, each «#N» or «—» (no snapshot, no points this month, withheld). **No weekly figure anywhere** |
+| The streak | `ui/stat` «السلسلة»: «×N» with an `sr-only` «N أشهر متتالية» (six forms); 0 → «—» |
+| No level yet (before the first nightly evaluation) | no medallion, «لا مستوى بعد» ★, no progress line |
+| The top level | the bar full, «أعلى مستوى» ★ in place of «بقي …» |
+| ★ An average (§5.115) | on the self and admin tiers, on a completed row, «★ 4.8» when the aggregate exists (≥ the org's minimum, `REQ-RAT-006`); nothing below it; **never computed for a colleague** (K21) |
+| A presented session not yet completed | `SessionStatusBadge` + its date, no attendance figure (N6) |
+| A completed one | «date · N حاضرًا» — the count from `session_attendance_count()` via contract 4 (six forms: «حاضر واحد», «حاضران», «3 حاضرين», «11 حاضرًا», «100 حاضر») |
+| More presented than shown | «عرض الجلسات الـN الأخرى» ★ — N3 |
+| No sessions presented / no photos / no badges | `noPresented` / «لا صور بعد.» ★ / `noBadges`; «N من M» still shows M |
+| ★ «N من M» badges (§5.121) | N = held badges not retired; M = the org's badges not retired; a held retired badge is drawn, not counted |
+| ★ No level-up moment (§5.117) | the page imports nothing from `src/lib/ui/` and no `moment-*`; it never reads or writes `member_seen_marks`. A test walks the import graph (W19.6) |
+| ★ Share (§5.118) | `share-profile.tsx`: `navigator.share({ url, title })` where it exists, else the clipboard and a toast «نُسخ رابط الملف» ★; the URL is the members-only page itself. Phone top row only (N5) |
+| No company | breadcrumb «الأعضاء» alone; the chip «بلا شركة», muted, neutral ring |
+| No bio / no interests | `noBio`, muted / the row absent |
+| ★ Desktop at 964 px, 1fr / 380, no game rail | the frame's owned width (contract 1) + the page's grid (W19.1) |
+| ★ No gendered verb (§5.109) | every string about another member is a noun phrase: «جلسات مقدَّمة» (the heading, on every tier), «6 جلسات مقدَّمة» (the row and the desktop summary — six forms), «جلسات الحضور» replacing `admin.attended`'s «الجلسات التي حضرها». A unit test fails on a list of third-person verb forms in `members.json` |
+| Loading | `[id]/loading.tsx`: the header card, the standing card, a medallion row, three rows — no text, `aria-hidden` |
+| Not found | `notFound()` (K5) |
+
+### W19.5 · Sync-1 Q5 — what I build in the DAL, and what I need
+
+**The directory — one add-only function in `members.ts`:**
+
+```ts
+export const DIRECTORY_PAGE_SIZE = 24;
+export type DirectoryOrder = "active" | "name";
+
+export interface DirectoryQuery {
+  q?: string;            // name or job title; Arabic folded (hamzas, tā' marbūṭa, alif maqṣūra, tashkīl, tatwīl)
+  companyId?: string;    // z.uuid()
+  interestId?: string;   // z.uuid()
+  order: DirectoryOrder; // default "active"
+  page: number;          // ≥ 1, capped
+  includeDeactivated?: boolean; // honoured for an admin only
+}
+
+/** A row — A33's tier 1 and nothing else. */
+export interface DirectoryMember {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;                                   // avatarHref(), 96
+  jobTitle: string | null;
+  role: "admin" | "moderator" | "member";
+  company: { id: string; name: string; teamColor: string | null } | null;
+  level: { tier: number; name: string } | null;               // null until evaluated
+  presentedCount: number;
+  deactivated?: true;                                         // an admin's list only
+}
+
+export interface DirectoryPage {
+  members: DirectoryMember[];      // the first page × size matches, in order
+  matched: number;                 // «N من M»'s M
+  total: number;                   // the title's count: every member this viewer may list
+  companies: { id: string; name: string; teamColor: string | null }[]; // with ≥ 1 listed member
+  interests: { id: string; name: string }[];                // [] → no row (§5.107)
+  canShowDeactivated: boolean;
+  page: number;
+}
+
+export async function listDirectory(locale: string, query: DirectoryQuery): Promise<DirectoryPage>;
+```
+
+**Assembled from reads every member already has, no SQL**: `members_member_view` (or, for an admin who asked,
+`members` with `status`, inside the column grant), `companies` (`name, team_color`), `points_balances` →
+`levels(sort_order, name)` (P1), `member_interests` → `categories` (P1), and **contract 4's org-wide count**. Filtered,
+ordered and paged in the DAL — the component receives a page and decides nothing. ★ **The cost is one org's member
+list per request** (the pilot has a few hundred); `REQ-NFR-008`'s budget is measured at sync 2. **The alternative,
+named and not proposed:** a `security invoker` `directory_page(...)` function under `supabase/proposed/scoring/`,
+which would make this a migration from `0168` with `REQ-UIX-068` — only if the lead prefers it or the budget fails.
+
+**The profile — add-only fields on `MemberProfileView`** (the existing ones unchanged, so `sessions-member-profile`
+keeps every assertion):
+
+```ts
+level: { tier: number; name: string } | null;                 // every tier, opted out or not (§5.116)
+progress: { value: number; max: number; remaining: number; next: string | null } | null; // null when `standing` is
+monthRank: number | null;                                     // null when `standing` is, or absent
+company: { name: string; teamColor: string | null } | null;   // `companyName` stays
+badgeCatalogue: number;                                       // M — badges not retired
+presentedCount: number;                                       // contract 4's count
+presentedRows: PresentedProfileRow[];                         // contract 4's rows, ≤ 4, + `average` on self/admin
+photos: { count: number; items: UploadedPhoto[] };            // contract 3
+```
+
+With add-only helpers: `getMemberMonthRank(locale, memberId)` in `leaderboards.ts` (the latest monthly snapshot by
+`taken_at`, as `getMonthlyStanding()` reads it — not `created_at`); `getMemberLevel(locale, memberId)` in `points.ts`
+(the level, the next one, `levelProgress()` reused); `MemberBadge.retired` and `MemberBadge.metric` (from
+`badges.rule->>'metric'`) and `countActiveBadges(locale)` in `recognition.ts`.
+
+**From `content` — contract 3** (in `photos.ts`, add-only, the caller's client, RLS):
+
+```ts
+export interface UploadedPhoto { id: string; sessionId: string; thumbUrl: string; width: number | null; height: number | null }
+export async function listPhotosUploadedBy(locale: string, memberId: string, opts?: { limit?: number }): Promise<{ count: number; photos: UploadedPhoto[] }>;
+```
+Visible photographs only (not hidden, not removed, not «أزلني»'d), newest first, **`count` a count and never
+`photos.length`**, never a tagged photo. I ask for `limit` 5 (the sixth tile is «+N»). And one answer: **what a tile
+opens** — N2.
+
+**From `sessions` — contract 4** (in `sessions.ts`, add-only):
+
+```ts
+export interface PresentedRow extends PresentedSession { attendanceCount: number | null; posterUrl: string | null }
+export async function getSessionsPresented(locale: string, memberId: string, opts?: { limit?: number }): Promise<{ count: number; rows: PresentedRow[] }>;
+/** ★ For the directory: the same predicate, every member of the org at once. */
+export async function countSessionsPresentedByMember(locale: string): Promise<Map<string, number>>;
+```
+`attendanceCount` from `session_attendance_count()` on completed rows, `null` otherwise. **No average in it** — I
+call `getPresenterAggregate()` myself on the self and admin tiers only (§5.115). ★ The batch count is the one thing
+beyond the brief's contract 4: without it the directory would count «presented» by a second predicate, and the row
+and the profile could disagree. If `sessions` would rather not, I need the predicate exported (`PRESENTED_STATES`)
+and a test that the two counts agree.
+
+**From the lead — contract 1:** `PageFrame`'s owned width for the profile (964 px, no rail; the page draws its own
+1fr / 380 inside); `ownsTopRow` for `/app/members` and `/app/members/[id]` below `lg`; «الأعضاء» current on both;
+«حسابي» not current on another's profile. **Contract 2:** `BadgeMedallionProps` and `MedallionFill` in `ui/index.ts`,
+the registry entry, the demo wired.
+
+### W19.6 · Sync-1 Q6 — files, and every existing assertion that moves
+
+**Commit 1 — the delete (`DEC-208`):** `src/app/[locale]/app/members/[id]/page.tsx`, `src/app/[locale]/app/members/loading.tsx`.
+`members/error.tsx` is **kept** (K-note above).
+
+**Commit 2 — the create:**
+- `src/app/[locale]/app/members/{page,loading}.tsx` (new), `src/app/[locale]/app/members/[id]/{page,loading}.tsx`
+- `src/components/members/` (new): `directory-query.ts` (parse/serialise, pure), `arabic-fold.ts` (pure),
+  `directory-row.tsx`, `directory-filters.tsx`, `directory-sort.tsx` (client — the menu), `auto-more.tsx` (client),
+  `profile-top-row.tsx`, `share-profile.tsx` (client), `profile-header.tsx`, `standing-card.tsx`, `badge-shelf.tsx`,
+  `badge-look.ts` (N1's mapping, if ruled), `presented-sessions.tsx`, `uploaded-photos.tsx`, `self-panel.tsx`,
+  `admin-record.tsx`
+- `src/lib/dal/members.ts` (add-only), `leaderboards.ts`, `points.ts`, `recognition.ts` (add-only each)
+- `src/messages/ar/members.json` then `en/members.json` — new keys; `presented` and `admin.attended` re-worded (§5.109)
+- **Held for the lead's contract-2 commit:** `src/components/ui/badge-medallion.tsx`,
+  `tests/components/ui/badge-medallion{,-scope}.test.tsx`, `src/app/[locale]/(dev)/ui/demos/badge-medallion.tsx`
+- Tests (new): `tests/components/members/{directory,profile}-page.test.tsx`, `tests/unit/members-directory.test.ts`
+  (tier-1 JSON, order, paging, fold, `?inactive=1` ignored for a non-admin, anonymised left out),
+  `tests/unit/members-profile-standing.test.ts` (opt-out: level shown, points/ranks/progress null; the aggregate never
+  read for `member`; count ≠ length), `tests/unit/members-no-moment.test.ts` (the import graph), `tests/unit/members-i18n.test.ts`
+  (ar/en key parity, six forms, the gendered-verb list), `tests/e2e/wave19-scoring-directory.spec.ts` (+ a no-JS
+  context: `?page=2` cold, the «more» href), `tests/e2e/wave19-scoring-profile.spec.ts` (three tiers, opted out, the
+  average's absence for a colleague, 390 and 1280 captures `wave19-scoring-{directory,profile}-<state>-<390|1280>.png`)
+
+**Assertions that move — named before the change:**
+
+| File · line | Moves | Why |
+|---|---|---|
+| `tests/e2e/wave7-sessions-profile.spec.ts:145` `page.getByText("الشركة الأولى")` | ★ **selector** — scoped to the header card (`page.locator("#main [data-slot=profile-header]")`) | the company is now drawn twice (the breadcrumb and the chip): a page-wide `getByText` is a strict-mode violation. The expectation (visible) is unchanged |
+| `wave7…:144` `toHaveText("ريم العتيبي")` | none expected | the `h1` holds only the name; the role label sits outside it |
+| `wave7…:148` presented link | none | the row is one `ui/card` link named by its title |
+| `wave7…:150-153`, `:162-164`, `:174-177`, `:186-187` | none | K11–K14 keep the headings, the hrefs and the absence of the email |
+| `wave7…:147` `section:has(#standing)` contains «140» | none expected | the standing card's heading keeps `id="standing"`; at 1280 the points sit in the header summary and the card's `lg:hidden` top row still holds them in `textContent`. If the desktop project disagrees, it is a selector line here, not an expectation |
+| `tests/unit/sessions-member-profile.test.ts` — every case | none expected | the design is add-only. ★ Risk: the stub answers `from()` with `[]` and `rpc()` with `null`; if contract 3 signs thumbnails through `supabase.storage`, the stub lacks it — that would be a **stub** line (the file changes, no assertion), written in the ledger in the same commit |
+| `tests/e2e/session.spec.ts:117-123` (the lead's) | none | self tier, no email on the page (K12) |
+
+### W19.7 · Sync-1 Q7 — disagreements `DEC-213` §5 does not list (not picked)
+
+N1. **A badge's colour and glyph have no source.** `Profile.dc.html:55-59` and `ProfileDesktop.dc.html:71-75` give each
+    badge its own fill (gold, coral, lime, cyan, violet) and, on the phone, a glyph; `badges` stores neither
+    (`0027:147-159`), and an admin can create a badge (`REQ-REC-001`). §5.126 says «a badge's colour is the badge's»,
+    which presumes one. Options: (a) derived on the screen from `rule->>'metric'` — a fixed vocabulary even for an
+    admin's badge — with a fixed fallback; (b) two columns and an admin control — a migration and a console change.
+    The primitive is the same either way; only `badge-look.ts` depends on the ruling.
+N2. **«+4» photos and the photo tiles lead nowhere that exists.** `Profile.dc.html:72`, `ProfileDesktop.dc.html:64`.
+    No route lists a member's photographs; the lightbox lives on the event page (`REQ-EVT-016`). Options: tiles link
+    to their session's photos section; or nothing links and «+N» is a count. Contract 3's question.
+N3. **«عرض الجلسات الأربع الأخرى» leads nowhere that exists.** `Profile.dc.html:67` (`href="#more"`); no route lists a
+    member's presented sessions. Options: a `<details>` that reveals the rest in place (server-rendered, no JS, contract
+    4 with no limit); or `/app/sessions?presenter=` if browse can filter by presenter (it cannot today). Desktop draws
+    four and no «more» (`ProfileDesktop.dc.html:55-60`).
+N4. ★ **The level ramp on the directory is not `01-tokens.md`'s.** `Directory.dc.html:39-40` paint «صاحب أثر» (level 3)
+    `#9B7CFF` and `:41-43` «مشارِك نشِط» (level 2) `#D9DEE8`; the tokens are level 2 `#C8875A`, level 3 `#D9DEE8`
+    (`01-tokens.md:71-72`, `globals.css:250-251`). Level 1 and 4 agree. `REQ-REC-003` keys the ramp on `sort_order`.
+N5. **Share is drawn on the phone and not on desktop.** `Profile.dc.html:22` vs `ProfileDesktop.dc.html:37`. §5.118 says
+    the artboard wins; the desktop artboard has no share. Default: phone top row only.
+N6. **A live presented session is drawn as words, not the status badge.** `Profile.dc.html:65` «اليوم · جارية الآن» in
+    the muted line; `REQ-UIX-003` asks a session's status to look the same on every surface, and the tree draws
+    `SessionStatusBadge`. Default: the badge while not completed (K19), the artboard's line once completed.
+N7. **Three of the self tier's six hub links have no destination.** §5.122 lists attended, the ledger, ratings given,
+    no-shows, email, notification preferences. The tree has `/app/me/points` (the ledger), `/app/me` (the email),
+    `/app/me/notifications` (preferences) — and **no page** for attended sessions, ratings given or no-shows. Options:
+    the three that exist now and the rest with M10c; or a sentence where a link would be.
+N8. ★ **An admin never sees an opted-out member's rank — the database refuses it**, while `DEC-141` r5 reads as if the
+    admin does, and `sessions-member-profile.test.ts:113` pins `rank: 3` through a stub. `0044` and `boards_read`
+    exempt only the member themself. Built as the database answers («—»); widening is a definer change, not this wave.
+N9. **A gendered verb about a member already ships, in my own catalogue, outside this batch.** `scoring.json`
+    `scoring.feed.badge` «نال» and `scoring.feed.streak` «أكمل» (wave 18's achievement items on `/app`). §5.109 is
+    ruled for this batch; the feed is frozen. Written for the lead; not touched.
+N10. **`M10b.md` §6 names `level-card` for the standing card; its face is not the drawn card.** `level-card`'s face is
+    a centred caption, the level name and «يفتح لك»'s list of privileges (`level-card.tsx:83-112`); the drawn card is
+    a medallion, the level name and the points in a row, a progress line and three stats (`Profile.dc.html:38-50`), and
+    on a colleague's profile «يفتح لك» would address the wrong person. Options: compose the card (W19.1 P3, my
+    default); or an add-only `layout` on `level-card` (mine to add, a type in `ui/index.ts`).
+
+### W19.8 · Requests
+
+| # | To | Request | Why |
+|---|---|---|---|
+| R1 | `content` (`avatar`) | add-only sizes **44, 84, 104** to `AvatarProps.size`, the ring 3 / 5 / 6 px | `Directory.dc.html:38`, `Profile.dc.html:27`, `ProfileDesktop.dc.html:40`; the set today is 24 … 160 without them. Fallback if refused: 40 / 96 / 96 |
+| R2 | `content` (`tag-chip`) | add-only `teamColor?: TeamColor` — a 10 px dot from `--team`, before the label | the company chips (`Directory.dc.html:29-33`), the profile's company chip (`Profile.dc.html:31`) |
+| R3 | `content` (`badge`) | add-only `level?: number` — the ramp's text colour on the raised fill, not a status tone | the row's level pill (`Directory.dc.html:38-45`); a level is not a status (`DEC-073`) |
+| R4 | lead (`page-header`) | add-only `count?: string` — pre-formatted, drawn after the title, muted | «الأعضاء 212» (`Directory.dc.html:19`) |
+| R5 | lead (`globals.css`) | a 4 px drop in a deeper shade for each medallion fill and each level stop — 11 tokens, or one rule | the drawn drops (`#B8901A`, `#C2472C`, `#78AD12`, `#1F8FB3`, `#6A4FC7`); only `--accent-deep` and `--signal-deep` exist |
+| R6 | `sessions` | contract 4 as W19.5, with the org-wide batch count | the directory's order and its rows' «N جلسات مقدَّمة» |
+| R7 | `content` | contract 3 as W19.5, and N2's answer | the photos section |
+| R8 | lead | `/ar/app/members` added to the a11y sweep beside `/ar/app/members/${ids.admin}` (`wave11-lead-a11y-sweep.spec.ts:214`) | the new route |
+
+**Order once approved and the frame is in:** the DAL (add-only, with its unit tests) → `badge-medallion` + its tests
+and demo, held for the lead → the delete commit → the create commit → the e2e specs, run by the lead → the kept table
+read against the new files and written here.
