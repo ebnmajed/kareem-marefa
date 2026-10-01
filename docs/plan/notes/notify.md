@@ -3757,3 +3757,51 @@ The seventeen non-optional keys match `08` §1.7 exactly (counted: 5 + 3 + 2 + 1
    `updateMyProfile()` no longer writing the column in the PR-B commit that removes it from `021`.
 3. **D1 — «أعد المحاولة».** `0170` with a member-callable retry (and `supabase/proposed/notify/` back on my list), or
    no button.
+
+## W9. The lead's provisional sync-1 rulings, recorded (become final at sync 1)
+
+1. **D2 + D5 — a category row is that category's EMAIL switch.** «In-app is not a setting» stands (`REQ-UIX-077`).
+   Each save from `029` writes the email value **and `in_app = true`** for that category — two `setPreference()`
+   calls inside one action, the function unchanged — so touching a row restores a stuck inbox; an untouched row keeps
+   what it holds. No data fix, no migration.
+   - ★ **P12 restated plainly: per-channel in-app control is WITHDRAWN**, by `REQ-UIX-077` («In-app notifications
+     are not a setting»). `REQ-NTF-003`'s «per channel … including the in-app inbox» is no longer offered on any
+     screen; a member's stored `in_app = false` stays honoured by `notify()` until they touch that row.
+   - **`proposals` is not a row** (D3) — no optional email message. The rows are therefore `new_sessions`,
+     `my_sessions`, `reminders`, `ratings`, `social`, `recognition`, and `admin_queue` for admins and moderators.
+   - **«إشعارات البريد» is NOT built this wave** — no column, and a bulk write has no honest state over mixed rows.
+     **Recorded as a disagreement for the owner** (`Settings.dc.html`'s first switch; `M10c.md` §6b; `REQ-UIX-077`
+     acceptance 1 names it). The proof in §W2 tests the rows that remain.
+2. **D-O1 — done by the lead at `27afbb3e`:** `setLeaderboardOptOut(locale, optOut)` in `members.ts`, one column,
+   the session's own row; `updateMyProfile()` writes the opt-out only when sent. `029`'s action calls it with
+   `optOut = !checked`.
+3. **D1 — «أعد المحاولة» is built, PR A.** `supabase/proposed/notify/` is back on my list for this one function:
+   `retry_calendar_sync()` — definer, the member from `auth_member_id()`/`auth_org_id()`, the session-day's
+   `calendar_events` row must be theirs and `failed`, enqueued through `enqueue_job('calendar_upsert', …,
+   'cal:' || rsvp_id, …, 8)`. Proven with `applyProposed()` in new `tests/rls/notify-calendar-retry*.test.ts`: the
+   owner, another member, another org, a non-failed row, `anon`. The lead promotes it as `0170` with its grant and a
+   definer-exposure row. A write-then-raise rolls back: after the enqueue the function returns an outcome, never
+   raises (`DEC-043`).
+4. **D6 — no «اللغة» row.** English is not served (`proxy.ts:26-28`); a row that goes nowhere fails `REQ-UIX-080`.
+   **Recorded** against `Settings.dc.html`'s `#lang` row.
+5. **D12 — kept:** `029` under `me/layout.tsx` wears the desktop strip from `lg`, consistent with the hub.
+6. **D14 — PR B:** the mails' preferences link → `/app/me/settings` (`packages/mail-runtime/src/render.ts:464`), one
+   reviewed diff of `tests/unit/mail-pinned/**` that the lead opens, **the URL change only**.
+7. **Specs:** I edit the assertions §W6 names in `notify-screens.spec.ts` and `wave9-notify-days.spec.ts`, in the
+   commit that moves them, each with its ledger line.
+
+**Still open for sync 1:** D4 (the swatch), D7 (marking one item read), D8 (paging), D9 (`inbox-item` vs a
+`feed-item` variant), D10 (sample items), D11 (`showTitle`), D13 (the tile's colour), and C7 / C16 / P17 for the
+copy trim.
+
+### The exact lines in `content`'s files, for the lead to route
+
+| File:line | Today | After | Kind | PR |
+|---|---|---|---|---|
+| `tests/e2e/wave7-content-calendar.spec.ts:100` | link «اربط تقويم Google» → `/api/calendar/connect` | link «اربط» (same href) | selector | A |
+| `tests/e2e/wave7-content-calendar.spec.ts:117` | button «افصل التقويم» | button «افصل» | selector | A |
+| `tests/e2e/wave7-content-calendar.spec.ts:118` | text «جلسة متزامنة» visible | **removed** — no synced list (`DEC-216` §5.20); the row's «متصل» asserted instead | expectation | A |
+| `tests/e2e/wave7-content-notifications.spec.ts:99` | «غير مقروء» visible | unchanged if D7 keeps it as text for AT; otherwise scoped to `#main` | selector | B |
+| `tests/e2e/wave7-content-notifications.spec.ts:102-103` | per-item «تعليم كمقروء» | depends on D7 | expectation | B |
+| `tests/e2e/wave7-content-notifications.spec.ts:108-118` | `#preferences` on the inbox, three «يصلك دائمًا», buttons named `/مُفعّل$/` | **moved** to `/ar/app/me/settings`: the one sentence visible once; switches (`role="switch"`) checked by default — absence means on | expectation | B |
+| `tests/components/members/profile-page.test.tsx:190` | hrefs end `"/app/me/notifications"` | `"/app/me/settings"` (with `self-panel.tsx`'s link, the lead's custodian edit) | expectation | B |
