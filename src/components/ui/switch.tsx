@@ -32,7 +32,10 @@ import type { SwitchProps } from "@/components/ui";
 // after the reset in the same commit and puts both back to `checked`. An
 // uncontrolled switch's `defaultChecked` is React's to keep (it follows the
 // prop, which a refused form echoes from its state).
-export function Switch({ label, description, checked, defaultChecked, onCheckedChange, disabled, name, className = "" }: SwitchProps) {
+// ★ `labelHidden` (wave 22, DEC-232 §6, add-only) — a switch in a table cell, whose row already names it on screen.
+// The label stays INSIDE the `<label>`, so it is still the input's accessible name; only its drawing goes. `sr-only` is
+// absolutely positioned, so it leaves the flex row and the track sits alone.
+export function Switch({ label, labelHidden = false, description, checked, defaultChecked, onCheckedChange, disabled, name, className = "" }: SwitchProps) {
   const descriptionId = useId();
   const controlled = checked !== undefined;
   const input = useRef<HTMLInputElement>(null);
@@ -86,7 +89,7 @@ export function Switch({ label, description, checked, defaultChecked, onCheckedC
         >
           <span className="size-5 rounded-full bg-canvas" />
         </span>
-        <span className="text-label text-fg-heading">{label}</span>
+        <span className={labelHidden ? "sr-only" : "text-label text-fg-heading"}>{label}</span>
       </label>
       {/* ★ OUTSIDE the `<label>`. Inside it, the description joins the switch's
           ACCESSIBLE NAME as well as its description — read twice, and the

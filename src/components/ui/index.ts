@@ -297,6 +297,8 @@ export interface SwitchProps extends Styleable {
   onCheckedChange?: (checked: boolean) => void;
   disabled?: boolean;
   label: string;
+  /** Wave 22 (DEC-232 §6), add-only: the label is the accessible name but is not drawn — a switch in a table cell. */
+  labelHidden?: boolean;
   description?: string;
 }
 
