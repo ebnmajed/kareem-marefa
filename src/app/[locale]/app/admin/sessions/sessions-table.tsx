@@ -176,8 +176,9 @@ export function SessionsTable({
     <div>
       {selected.length === 0 ? <Toolbar query={query} total={total} categories={categories} months={months} statusLabel={statusLabel} monthLabel={monthLabel} /> : null}
 
+      {/* The artboard sets the table in a rounded card at a desk; under `md` the rows are already cards. */}
       <DataTable
-        className="mt-4"
+        className="mt-4 md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
         label={t("tableLabel")}
         columns={columns}
         rows={rows}
@@ -187,6 +188,7 @@ export function SessionsTable({
         onSortChange={(next) => router.push(sessionsHref(query, { sort: next.key as SessionQuery["sort"], dir: next.direction, page: 1 }))}
         stickyHeader
         renderCard={card}
+        hiddenHeaders={["actions"]}
         selection={
           admin
             ? {

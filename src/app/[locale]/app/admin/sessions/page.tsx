@@ -4,7 +4,6 @@ import { pageSessions, parseSessionQuery, sessionsHref } from "@/components/admi
 import { Button, ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
-import { PlusIcon } from "@/components/ui/icons";
 import type { Locale } from "@/i18n/routing";
 import { getConsoleSessions } from "@/lib/dal/admin-sessions";
 import { listCategories, listNameableMembers } from "@/lib/dal/proposals";
@@ -65,11 +64,12 @@ export default async function AdminSessionsPage({
   return (
     <>
       <PageHeader
+        // The artboards keep «جديدة» on the h1's row at 390 too — the header's own phone stack is overridden here.
+        className="flex-row! items-center! justify-between! gap-4!"
         title={t("title")}
         actions={
           admin ? (
-            <ButtonLink href={`${sessionsHref(query)}${sessionsHref(query).includes("?") ? "&" : "?"}new=1#new-session`}>
-              <PlusIcon aria-hidden />
+            <ButtonLink href={`${sessionsHref(query)}${sessionsHref(query).includes("?") ? "&" : "?"}new=1#new-session`} size="md">
               <span className="hidden md:inline">{t("newSession")}</span>
               <span className="md:hidden">{t("newSessionShort")}</span>
             </ButtonLink>

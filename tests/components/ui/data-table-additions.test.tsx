@@ -111,3 +111,13 @@ describe("data-table — renderCard (add-only)", () => {
     expect(within(table).getAllByRole("columnheader", { hidden: true }).map((h) => h.textContent)).toEqual(["العنوان", "الحجوزات"]);
   });
 });
+
+describe("data-table — hiddenHeaders (add-only)", () => {
+  it("a listed column's header is read but not drawn; the others are untouched", () => {
+    const { container } = render(<Table hiddenHeaders={["seats"]} />);
+    const ths = container.querySelectorAll("th");
+    expect(ths[0].querySelector(".sr-only")).toBeNull();
+    expect(ths[1].querySelector(".sr-only")?.textContent).toBe("الحجوزات");
+    expect(within(container.querySelector("table")!).getByRole("columnheader", { name: "الحجوزات", hidden: true })).toBeInTheDocument();
+  });
+});
