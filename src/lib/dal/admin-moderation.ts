@@ -101,30 +101,6 @@ function groupBy<T>(rows: T[], key: (row: T) => string | null): Map<string, T[]>
   return out;
 }
 
-// ── the old three-queue strip's counts — read only by `components/admin/moderation-tabs.tsx` (`console`'s), which
-// renders nowhere since wave 22 and is deleted on `content`'s written request; this goes with it. ─────────────────
-
-export interface ModerationQueueCounts {
-  comments: number;
-  photos: number;
-  reports: number;
-}
-
-export async function listModerationCounts(locale: string): Promise<ModerationQueueCounts | null> {
-  const client = await requireStaff(locale);
-  if (!client) return null;
-  const { supabase } = client;
-  const [comments, photos, reports] = await Promise.all([
-    supabase.from("reports").select("id", { count: "exact", head: true }).eq("target", "comment").eq("status", "open"),
-    supabase.from("photo_takedowns").select("id", { count: "exact", head: true }).is("resolved_at", null),
-    supabase.from("reports").select("id", { count: "exact", head: true }).eq("target", "photo").eq("status", "open"),
-  ]);
-  if (comments.error) throw new Error(`reports (comment count): ${comments.error.message}`);
-  if (photos.error) throw new Error(`photo_takedowns (count): ${photos.error.message}`);
-  if (reports.error) throw new Error(`reports (photo count): ${reports.error.message}`);
-  return { comments: comments.count ?? 0, photos: photos.count ?? 0, reports: reports.count ?? 0 };
-}
-
 // ── SCR-050/052 — reported comments ─────────────────────────────────────────────────────────────────────────────
 
 export type ReportState = "open" | "closed";
