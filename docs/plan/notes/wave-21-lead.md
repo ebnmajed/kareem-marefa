@@ -71,14 +71,20 @@ adds the third**. Read item 1 below before you write `admin-rail`.
    Its comments already record behaviour you must not lose — a plain member gets an **empty** rail, and
    **`built: false` items are left out on purpose** because «a dead link that 404s is worse than a nav
    item that appears».
-2. ★★ **The rail's grouping is a DECISION, and the design changes it — this is the owner's, not yours.**
-   The built rail is the **fourteen-group IA** (`DEC-137`, wave 7; `16` §6.7 names fifteen labels and
-   the wave-7 lead's sync-1 ruling made «لوحة» the root plus fourteen groups) over the **twenty**
-   `admin.shell.nav.*` keys that exist in `messages/ar/admin.json`. **`M11a.md` §0 says «six ruled
-   groups».** ★ **That is an information-architecture change, not a visual one**, so `docs/plan/` wins
-   by default and **nobody regroups anything until the owner rules.** Collapsing fourteen groups into
-   six changes how every admin finds every page. Put it to the owner at Step 0 with both lists side by
-   side, and build the rail on the fourteen until the answer comes.
+2. ★★ **The rail's grouping — ANSWERED: six ruled groups, approved by the owner 2026-10-02 (`DEC-226`), on the
+   phone as well as at 1280.** Build on six from the start; `DEC-225` §4.2's «build on the fourteen meanwhile» is
+   lifted. ★ **And read what the collapse IS before you touch the file, because «fourteen to six» reads worse than
+   it is:** `AdminDashboard.dc.html`'s rail draws **twenty** items, which is **exactly the twenty**
+   `admin.shell.nav.*` keys in `messages/ar/admin.json`. **Nothing is orphaned.** What changes is the rail's SHAPE —
+   `DEC-137`'s fourteen were top-level items **with children**; the design puts all twenty on **one level divided by
+   six rules**, and the group headings are rules that render no text. So: **`AdminRailChild` may have no remaining
+   use** — if nothing nests, the type goes, but it goes **named in the kept-behaviour table** with what replaced it,
+   never quietly. ★ **Prove it with a count, not a glance**: the rail renders all **twenty** keys for an admin who
+   may reach them, **none** for a plain member, and **no `built: false` item** — the three behaviours the old file's
+   comments record. ★ The sheet under `lg` keeps the six groups and their rules; a sheet that flattens them back
+   into one list is not what was approved. ★ One label to check, not build: the artboard says
+   «التصنيفات والوسوم» — categories **and tags** — while the key is `categories` alone and tags are on
+   `DEC-076`'s deferred list. **The plan wins: it reads «التصنيفات» until tags exist.**
 3. ★★ **`data-table`'s phone stack and its selection are ALREADY BUILT — do not rebuild either.**
    `src/components/ui/data-table.tsx:10-11` says it outright: «the phone treatment is the
    **REQUIREMENT**, not a nicety (`16` §6.7): below `md` this is a stacked card list, never a

@@ -7065,3 +7065,50 @@ the reviewer's name as one wave, autosave behind a new `REQ-*`. · `DEC-194`'s t
   `14-roadmap.md` (M23; the sequence), `15-backlog.md` (`STORY-UIX-074` …), `TRACEABILITY.md`
   (generated), `CLAUDE.md` and the ten agent files (the wave-21 map), `STATUS.md` (the wave-21 head),
   `docs/design/screens/M11a.md` and `m11a/**` (added to the tree)
+
+## DEC-226 — The console rail's grouping: the owner approves six ruled groups, and the measurement shows what that is — twenty items on one level with rules, not fourteen with children, and no key dropped
+
+- **Date:** 2026-10-02 · **Decided by:** the owner («yes I am aware of the admin groups collapse and it is approved»), answering `DEC-225` §5.1
+- **Amends:** `DEC-137`'s fourteen-group rail IA; `16-ui-redesign.md` §6.7's rail. **Resolves:** `DEC-225` §5.1 and `DEC-225` §4.2, which held the rail on the fourteen until this answer
+- **Does not change:** the twenty routes, their roles, or `built: false`'s exclusion rule
+
+### 1 · The ruling
+
+**Six ruled groups, as `M11a.md` §0 draws them.** The rail is built on six from the start; `DEC-225` §4.2's
+instruction to build on the fourteen meanwhile is lifted.
+
+★ **The owner checked it on a phone as well**, so the ruling covers **both forms**: the 220 px rail at 1280 and
+the **sheet behind ≡ under `lg`** (`DEC-NEXT-26`). The six groups and their rules survive into the sheet — a sheet
+that flattens them back into one list is not what was approved.
+
+### 2 · What the collapse actually is — measured, because «fourteen to six» reads worse than it is
+
+★ **No navigation item is removed.** `AdminDashboard.dc.html`'s rail draws **twenty** items —
+لوحة التحكم · المقترحات · الجلسات · الاستبانات · الأعضاء · الشركات · التصنيفات والوسوم · الأماكن ·
+التعليقات · الصور · البلاغات · النقاط · الشارات والمستويات · التذكيرات · القوالب · البريد ·
+الهوية البصرية · التصدير · سجل التدقيق · الإعدادات — which is **exactly the twenty
+`admin.shell.nav.*` keys** that `messages/ar/admin.json` holds. Nothing is orphaned.
+
+★ **So the change is the rail's SHAPE, not its contents: a two-level nav becomes a one-level nav.**
+`DEC-137`'s fourteen were fourteen top-level items **with children** (`AdminRailChild` exists for them);
+the design puts all twenty on one level, divided by **six rules** rather than by nesting. The group
+headings are rules, not labels — they render no text, which is why a reader counting labels finds twenty
+and a reader counting groups finds six.
+
+★ **Two consequences the lead carries into `admin-rail`'s rebuild** (`DEC-225` §4.1, the primitive written
+in `ui/` and `src/components/admin/admin-rail.tsx` deleted):
+
+1. **`AdminRailChild` may have no remaining use.** If nothing nests, the type goes — but it goes **named in
+   the kept-behaviour table**, with what replaced it, not quietly.
+2. **The proof is a count, not a glance**: a test that the rail renders **all twenty** keys for an admin
+   who may reach them, still **none** for a plain member (`DEC-225` §4.1), and still **no `built: false`
+   item** — the three behaviours the old file's own comments record.
+
+### 3 · One thing to check while rebuilding, not a ruling
+
+The artboard labels one item **«التصنيفات والوسوم»** — categories **and tags**. The built key is
+`categories` alone, and tags are on `DEC-076`'s deferred list. **The plan wins**: the label names what the
+screen does, so it reads «التصنيفات» until tags exist, and the deviation is recorded rather than built.
+
+- **Documents changed:** `16-ui-redesign.md` §6.7 (the rail's shape), `docs/plan/notes/wave-21-lead.md`
+  (item 2 answered), `STATUS.md` (the open question closed)

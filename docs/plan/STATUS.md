@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-02 · **Branch:** `main` · ★★ **WAVE 21 IS PLANNED, NOT STARTED** · **`main`:** `51db9898`; production and local both at **`0178`** · **Phase:** ★★ **M11a — the FIRST CONSOLE BATCH (`DEC-225`, M23)**: the org dashboard, the proposal queue as a split view, the sessions table with its phone stack and bulk bar, and the session hub's الجدولة and الحضور tabs — five screens from six artboards, each **deleted first and written from its artboard** (`DEC-208`). Two PRs; three primitives (floor **60 → 63**); **no migration expected** (one after all starts at `0179`). The brief is `docs/plan/notes/wave-21-lead.md`. ★★ **THE OWNER RULES THE CONSOLE BEFORE STORIES** (`DEC-225` §1), superseding `DEC-224`'s closing sentence — the third deliberate re-ordering; the story ring stays inert and nobody wires it. ★ **The console is not the party** (`REQ-UIX-053`): palette, radii and type, no motion, no objects, no stickers, and its test stays green and untouched. ★ **Open for the owner, wanted during PR A:** the rail's grouping — fourteen groups or six (`DEC-225` §5.1). ★ **Wave 20 is complete, live and accepted** (`DEC-224`; `0169`–`0178` on production; the phone check passed). ★ **Carried:** the hosting gate wired to nothing, withdraw + history + the reviewer's name (one wave), autosave (a REQ first), F2/F3, the hard-load duplicate (`DEC-204`), `DEC-194`'s two gates, `DEC-186` §4, session stories, M11b (`046`–`065`), and the `railway.json` that would pin the worker's builder.
+**Last updated:** 2026-10-02 · **Branch:** `main` · ★★ **WAVE 21 IS PLANNED, NOT STARTED** · **`main`:** `51db9898`; production and local both at **`0178`** · **Phase:** ★★ **M11a — the FIRST CONSOLE BATCH (`DEC-225`, M23)**: the org dashboard, the proposal queue as a split view, the sessions table with its phone stack and bulk bar, and the session hub's الجدولة and الحضور tabs — five screens from six artboards, each **deleted first and written from its artboard** (`DEC-208`). Two PRs; three primitives (floor **60 → 63**); **no migration expected** (one after all starts at `0179`). The brief is `docs/plan/notes/wave-21-lead.md`. ★★ **THE OWNER RULES THE CONSOLE BEFORE STORIES** (`DEC-225` §1), superseding `DEC-224`'s closing sentence — the third deliberate re-ordering; the story ring stays inert and nobody wires it. ★ **The console is not the party** (`REQ-UIX-053`): palette, radii and type, no motion, no objects, no stickers, and its test stays green and untouched. ★★ **The rail's grouping is ANSWERED — six ruled groups, approved 2026-10-02 on the phone as well as at 1280 (`DEC-226`); all twenty nav keys survive, on one level divided by rules instead of fourteen with children.** ★ **Nothing is open for the owner.** ★ **Wave 20 is complete, live and accepted** (`DEC-224`; `0169`–`0178` on production; the phone check passed). ★ **Carried:** the hosting gate wired to nothing, withdraw + history + the reviewer's name (one wave), autosave (a REQ first), F2/F3, the hard-load duplicate (`DEC-204`), `DEC-194`'s two gates, `DEC-186` §4, session stories, M11b (`046`–`065`), and the `railway.json` that would pin the worker's builder.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -61,13 +61,17 @@ already existed, and `DEC-158` forbids editing an entry — so it is **`DEC-225`
 3. ★ **`details` is not a primitive** — §6 lists it «as built» and there is no `ui/details.tsx`. It is the HTML
    `<details>` element. **Three new files, not four.**
 
-### ★★ Open for the owner — wanted during PR A
+### ★★ ANSWERED 2026-10-02 — the rail's grouping (`DEC-226`)
 
 **The rail's grouping: fourteen groups or six?** The built rail is the **fourteen-group IA** (`DEC-137`; `16` §6.7
 names fifteen labels, and wave 7's sync-1 ruling made «لوحة» the root plus fourteen) over the **twenty**
-`admin.shell.nav.*` keys that exist. `M11a.md` §0 says **six ruled groups**. ★ **That is an information-architecture
-change, not a visual one**, so `docs/plan/` wins by default and **nothing is regrouped until the owner answers**; the
-rail is built on the fourteen meanwhile. An answer during PR A costs nothing; one after it costs a rebuild of the frame.
+`admin.shell.nav.*` keys that exist. `M11a.md` §0 says **six ruled groups**, and ★★ **the owner approved them on 2026-10-02, on the phone as well as at
+1280** (`DEC-226`). ★ **The collapse drops nothing**: the artboard's rail draws **twenty** items, exactly the twenty
+`admin.shell.nav.*` keys. What changes is the SHAPE — `DEC-137`'s fourteen top-level items **with children** become
+**twenty on one level divided by six rules**, the headings being rules that render no text. **`AdminRailChild` may
+therefore have no remaining use**, and if it goes it goes named in the kept-behaviour table. The proof is a count:
+twenty keys for an admin, **none** for a plain member, **no `built: false` item**. The sheet under `lg` keeps the six
+groups; one that flattens them is not what was approved.
 
 ### Out, and not to be re-litigated
 
