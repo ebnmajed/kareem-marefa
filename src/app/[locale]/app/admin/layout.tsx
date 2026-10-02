@@ -5,6 +5,7 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { adminRailGroups, type AdminNavCounts, type AdminRole } from "@/components/shell/admin-nav";
 import { ConsoleFrame } from "@/components/shell/console-frame";
+import { getAdminAttention, type AttentionQueue } from "@/lib/dal/admin-dashboard";
 import { getMe } from "@/lib/dal/members";
 import { requireSession } from "@/lib/dal/session";
 import { getShellData } from "@/lib/dal/shell";
@@ -22,9 +23,9 @@ import { getShellData } from "@/lib/dal/shell";
 // strings, numbers and booleans, and each badge's accessible text is pluralised here. An icon component crossing it
 // crashed every admin page in wave 6.
 //
-// The badges follow the data, not the artboard (`DEC-228` §3.2): المقترحات ← proposals awaiting a decision; الجلسات ←
-// sessions not scheduled; البلاغات ← open photo reports; التعليقات ← open comment reports. A moderator reaches neither
-// proposals nor the sessions' management, so a moderator's rail carries the two report badges only.
+// The badges follow the data, not the artboard (`DEC-228` §3.2), through `console`'s `getAdminAttention()` — the one
+// read the dashboard's tiles use: المقترحات ← proposals awaiting a decision; الجلسات ← sessions not scheduled;
+// البلاغات ← open photo reports; التعليقات ← open comment reports. A moderator gets the two report badges only.
 
 export default async function AdminLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -40,18 +41,21 @@ export default async function AdminLayout({ children, params }: { children: Reac
   ]);
 
   const role: AdminRole = session.role === "admin" ? "admin" : session.role === "moderator" ? "moderator" : "member";
-  const attention = shell.attention;
-  const badge = (key: "proposals" | "sessions" | "photoReports" | "commentReports", count: number) => ({
-    count,
-    label: tApp(`badge.${key}`, { count, value: formatNumber(count) }),
-  });
-  const counts: AdminNavCounts = attention
-    ? {
-        ...(role === "admin" ? { proposals: badge("proposals", attention.proposals), sessions: badge("sessions", attention.unscheduled) } : {}),
-        moderationReports: badge("photoReports", attention.photoReports),
-        moderationComments: badge("commentReports", attention.commentReports),
-      }
-    : {};
+  // Contract 3: the same read as the dashboard's tiles, filtered by role at the data — so a badge never counts a
+  // queue its reader cannot open. A failed read draws no badge; it never takes the console down with it.
+  const attention = role === "member" ? null : await getAdminAttention(locale).catch(() => null);
+  const BADGE: Record<AttentionQueue, "proposals" | "sessions" | "photoReports" | "commentReports"> = {
+    proposals: "proposals",
+    unscheduledSessions: "sessions",
+    photoReports: "photoReports",
+    commentReports: "commentReports",
+  };
+  const counts: AdminNavCounts = Object.fromEntries(
+    (attention?.items ?? []).map((item) => [
+      item.navKey,
+      { count: item.count, label: tApp(`badge.${BADGE[item.queue]}`, { count: item.count, value: formatNumber(item.count) }) },
+    ]),
+  );
   const groups = adminRailGroups(role, (key) => t(`nav.${key}`), counts);
   const isStaff = role !== "member";
 
