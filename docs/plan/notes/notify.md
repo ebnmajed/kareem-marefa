@@ -3987,3 +3987,33 @@ form. `markNotificationRead` is deleted; the item's one form replaced it. `markR
 
 **Not drawn:** relative times («قبل 14 دقيقة»). They would need new strings per unit; the clock carries the same
 fact.
+
+## W14. `029` built — read against its table (P1 – P19, O1, L1 – L2, M1 – M6)
+
+**Holds:**
+- P1 – P3 and P7 – P11: through `getPreferenceMatrix()`, `getNotificationMatrix()` and `setPreference()`, all unchanged.
+- P4 and P5: the one sentence `settings.alwaysOn`.
+- P6: `categoryRows()` draws only categories with an optional email message, so `proposals` is not a row.
+- P12: withdrawn, as ruled (`DEC-218` §2.1); every write sets `in_app = true`.
+- P13: a form per switch, with a `<noscript>` «حفظ».
+- P14: `role="switch"`, named by its label.
+- P15: dropped.
+- P16: `settings.error` beside the switch.
+- P17 and P18: no hints and no intro.
+- P19: the actions are bound to the locale.
+- O1: `setLeaderboardOptOut(locale, !visible)`.
+- L1: the calendar row's value. L2: the account menu's POST.
+- M1 – M6: `masterCategories()`, `writeEmail()` (compensating), `emailMasterOn()`. `settings-group` adopts a changed `checked` prop.
+
+**Where the code sits:**
+- `emailMasterOn` lives in `src/components/settings/email-master.ts`, not in `notifications.ts`. It is pure and tested
+  where it is written, and the DAL module is `server-only`.
+- The writes live in `src/components/settings/preference-writes.ts` (`server-only`). They call only `setPreference()`.
+
+**Tests:**
+- `tests/components/settings/email-master.test.tsx` covers the derived state: all on, no rows, each category off,
+  `proposals`, staff versus member, and the fixed categories.
+- `settings-writes.test.tsx` covers every write call by call, compensation, M5, and the opt-out.
+- `settings-page.test.tsx` covers the rows, the sentence, staff-only `admin_queue`, the links, the footer, and axe.
+- `tests/e2e/wave20-notify-settings.spec.ts` reads `notification_preferences` and `members.leaderboard_opt_out` back
+  after a reload.

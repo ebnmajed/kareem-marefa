@@ -67,11 +67,19 @@ function SwitchRow({ row }: { row: SettingsSwitchRow }) {
   // new answer — adopted once, during render («storing information from previous renders», React's own pattern).
   const [shown, setShown] = useState(row.checked);
   const [answered, setAnswered] = useState(state);
+  const [given, setGiven] = useState(row.checked);
   const [refusals, setRefusals] = useState(0);
   if (answered !== state) {
     setAnswered(state);
     setShown(state.checked);
     if (state.failed) setRefusals((n) => n + 1);
+  }
+  // ★ A changed `checked` from the screen is adopted too (wave 20, `DEC-219` §1): after «إشعارات البريد» writes every
+  // category, the page re-renders with new values, and each category row must show them — as the master must after a
+  // category write turns it off.
+  if (given !== row.checked) {
+    setGiven(row.checked);
+    setShown(row.checked);
   }
 
   return (

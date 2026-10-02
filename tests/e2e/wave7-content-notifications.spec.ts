@@ -106,18 +106,14 @@ test("the inbox, an unread notification marked read, and the preference matrix's
   await expect(page.locator('#main article[data-unread="true"]')).toHaveCount(0);
   await expect(page.locator("#main article").getByText("غير مقروء")).toHaveCount(0);
 
-  // «absence means on» — a member with no rows in notification_preferences
-  // sees every switchable channel already enabled, straight from the DAL's
-  // own default, not a seeded row.
-  await page.locator("#preferences").scrollIntoViewIfNeeded();
-  // ★ Sync-3 finding: `08` §2's fixed categories are three, not one — every
-  // one of them renders "يصلك دائمًا", so an unscoped `getByText` resolves
-  // to three elements. `.first()` proves the statement renders at all; the
-  // count proves all three are actually fixed, not just one of them.
-  const fixedStatements = page.getByText("يصلك دائمًا");
-  await expect(fixedStatements.first()).toBeVisible();
-  expect(await fixedStatements.count()).toBeGreaterThanOrEqual(3);
-  const onToggles = page.getByRole("button", { name: /مُفعّل$/ });
-  await expect(onToggles.first()).toBeVisible();
+  // «absence means on» — a member with no rows in notification_preferences sees every switch already on, straight
+  // from the DAL's own default, not a seeded row. ★ wave 20 (ledger, DEC-216 §5.13 / §5.15): on /app/me/settings, and
+  // the three fixed categories are ONE sentence there, not three statements.
+  await page.goto("/ar/app/me/settings");
+  const main = page.locator("#main");
+  await expect(main.getByText(/تصلك دائمًا رسائل لا تُطفأ/)).toHaveCount(1);
+  const switches = main.getByRole("switch");
+  expect(await switches.count()).toBeGreaterThanOrEqual(7);
+  for (const s of await switches.all()) await expect(s).toBeChecked();
   await capture(page, "preferences");
 });

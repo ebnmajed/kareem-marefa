@@ -76,6 +76,15 @@ describe("SettingsGroup", () => {
     expect(screen.getByRole("switch", { name: "تذكيرات الجلسات" })).toBeChecked();
   });
 
+  it("★ adopts a changed `checked` from the screen — a category row follows the master's write (DEC-219 §1)", () => {
+    const action = vi.fn();
+    const { rerender } = render(<SettingsGroup title="الإشعارات" rows={[switchRow(action, true)]} />);
+    expect(screen.getByRole("switch", { name: "تذكيرات الجلسات" })).toBeChecked();
+    rerender(<SettingsGroup title="الإشعارات" rows={[switchRow(action, false)]} />);
+    expect(screen.getByRole("switch", { name: "تذكيرات الجلسات" })).not.toBeChecked();
+    expect(action).not.toHaveBeenCalled();
+  });
+
   it("works without JavaScript: the row is a form with a <noscript> submit and the switch's name", () => {
     const { container } = render(<SettingsGroup title="الإشعارات" rows={[switchRow(vi.fn())]} />);
     const form = container.querySelector("form")!;
