@@ -4632,3 +4632,44 @@ too, each retired case re-homed:
 | · a negative row in the company's own ledger | same, in the breakdown's rows |
 
 The kept-behaviour tables are §2.3 and §2.4 of the plan, read back after the create commit.
+
+## `SCR-027` / `SCR-028` — commit 2, the create (`4d2bab69`), §2.3 and §2.4 read back
+
+| # | Behaviour | Read back in |
+|---|---|---|
+| 027.1 | Linked tabs, server-rendered, shareable — now four, the week the default | `page.tsx` `boardFrom()`, `ui/tabs` navigation mode ✓ |
+| 027.2 | All time live, opt-out in the database | `getLeaderboards()` → `all_time_leaderboard()` ✓ |
+| 027.3 | Month from its snapshot, provisional / final | the month window's badge ✓ (the month's snapshot by `kind`; the company race's by PERIOD) |
+| 027.4 | ★ The own rank always visible | `BoardRankCard` (always) + the pinned own row ✓ |
+| 027.5 | «أنت», outlined | `rank-row` and the podium place ✓ |
+| 027.6 | Names link to profiles | rows and podium ✓ |
+| 027.7 | Initials, no photograph | `rank-row`, `podium` ✓ — a spec asserts `img` count 0 |
+| 027.8 | An empty board names the next action | `MemberBoard` ✓, the card stays |
+| 027.9 | Moment 5: a rise only, once, static on a hard load, the arrow never pulsing | `MomentRank` with `count` — the card's figure and the rows' FLIP in ONE claim (DEC-218 §3.4) ✓ |
+| 027.10 | 3 on the podium, 4 – 10 as rows, «عرض 11 إلى 50» | ✓ |
+| 027.11 | `#all-time`, `#monthly` | ✓; `#weekly` added |
+| 027.12 | The all-time explainer line | removed (`REQ-UIX-080`) ✓ |
+| 028.1 | Both metrics per row, the ranking one marked | `race-bar` `grid` (sr per row) + the visible header with ✓ |
+| 028.2 | Bars from the inline-start, `companyFractions()` | ✓ unchanged |
+| 028.3 | «فريقك» | ✓ |
+| 028.4 | Signed figures left to right | ✓ |
+| 028.5 | `takenAt`, provisional / final | the cup card ✓ |
+| 028.6 | Moment 5 on the company: the bar grows | `MomentRank`, `listSelector` ✓ |
+| 028.7 | The breakdown: own company only, `#company-breakdown`, the heading, the balance, the rules, signed rows, meta | ✓ in `ledger-row`s; one row per ledger row (D44 not ruled) |
+| 028.8 | ★ No company → the prompt | ✓ |
+| 028.9 | The «asOf» explainer | removed ✓ |
+
+**Pending, built to a default and named to the lead**: D30 (the category menu on «كل الأوقات» only — option (a));
+the 028 table is the cup's quarter, falling back to the month's race with a label (option (a)); «N نشطًا» waits for
+`RaceBarProps.note` (requested), derived and tested already (`derivedActive()`).
+
+**Ledger lines** (to the lead for `STATUS.md`):
+
+| File | Assertion | Kind |
+|---|---|---|
+| `tests/rls/scoring-seen.test.ts` | «an unknown board» no longer lists `weekly` | expectation (`DEC-217` §4.3) |
+| `tests/unit/scoring-week-window.test.ts` | `WEEKLY_MARK_WRITABLE` `false` → `true` | expectation (PR B) |
+| `tests/components/leaderboards/boards.test.tsx` | re-written at its path; each case re-homed (table above) | file re-written |
+| `tests/e2e/leaderboards.spec.ts` | all time at `?board=all`; «أنت» `.first()`; the company seed names its month | expectation ×2, selector ×1 |
+| `tests/e2e/wave7-sessions-leaderboards.spec.ts` | the default tab is «هذا الأسبوع»; all time at `?board=all`; names from podium + rows; the seed names its month | expectation ×3, selector ×1 |
+| `tests/e2e/wave16-scoring-moments.spec.ts` (moment 5) | URL `/board=all$/`; the viewer on the podium; the rise on the rank card; the reload at `?board=all` | selector ×4 |
