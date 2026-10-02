@@ -50,7 +50,7 @@
       "badge": {
         "proposals": "{count, plural, zero {لا مقترحات} one {مقترح واحد بانتظار القرار} two {مقترحان بانتظار القرار} few {{value} مقترحات بانتظار القرار} many {{value} مقترحًا بانتظار القرار} other {{value} مقترح بانتظار القرار}}",
         "sessions": "{count, plural, zero {لا جلسات} one {جلسة واحدة لم تُجدول} two {جلستان لم تُجدولا} few {{value} جلسات لم تُجدول} many {{value} جلسة لم تُجدول} other {{value} جلسة لم تُجدول}}",
-        "photoReports": "{count, plural, zero {لا بلاغات} one {بلاغ واحد على الصور} two {بلاغان على الصور} few {{value} بلاغات على الصور} many {{value} بلاغًا على الصور} other {{value} بلاغ على الصور}}",
+        "photoReports": "{count, plural, zero {لا قرارات معلّقة على الصور} one {قرار واحد معلّق على الصور} two {قراران معلّقان على الصور} few {{value} قرارات معلّقة على الصور} many {{value} قرارًا معلّقًا على الصور} other {{value} قرار معلّق على الصور}}",
         "commentReports": "{count, plural, zero {لا بلاغات} one {بلاغ واحد على التعليقات} two {بلاغان على التعليقات} few {{value} بلاغات على التعليقات} many {{value} بلاغًا على التعليقات} other {{value} بلاغ على التعليقات}}"
       }
     }

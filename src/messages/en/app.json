@@ -50,7 +50,7 @@
       "badge": {
         "proposals": "{count, plural, one {{value} proposal awaiting a decision} other {{value} proposals awaiting a decision}}",
         "sessions": "{count, plural, one {{value} session not scheduled} other {{value} sessions not scheduled}}",
-        "photoReports": "{count, plural, one {{value} report on photos} other {{value} reports on photos}}",
+        "photoReports": "{count, plural, one {{value} decision waiting on photos} other {{value} decisions waiting on photos}}",
         "commentReports": "{count, plural, one {{value} report on comments} other {{value} reports on comments}}"
       }
     }
