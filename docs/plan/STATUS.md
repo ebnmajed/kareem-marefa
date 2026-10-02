@@ -1,11 +1,11 @@
-**Last updated:** 2026-10-02 · **Branch:** `wave-21a/the-console-frame` (draft PR **#44** against `main`) · ★★ **WAVE 21 IS IN PROGRESS — STEP 0 DONE, SYNC 1 PENDING** · **`main`:** `8b6a9630`; production and local both at **`0178`** · **Phase:** ★★ **M11a — the FIRST CONSOLE BATCH (`DEC-225`, `DEC-227`, M23).** ★★ **THE GOAL (`DEC-227` §0, the owner's): build the console an admin can run the org from** — see what needs attention and reach it in one move; decide a proposal without leaving the list; act on sessions in bulk at a desk and as cards on a phone; run attendance live; the sober register. Step 0 landed `143fdfb9` (spec + artboards + the prompt, unedited), `4df9568d` (`DEC-227`, `REQ-UIX-084`…`090`, `STORY-UIX-074`…`080`, `SCR-042`'s section, M23, the trace gate's `ERRATA`), `c126c55d` (the map + ten agent files). ★ **The owner ruled twice at Step 0**: `console-register.test.ts` is amended once and made stricter; «التصنيفات» loses «والوسوم». ★ **`console`, `sessions`, `checkin` are spawned PLANNING-ONLY**; nobody deletes a file before «the plans are approved» and «the frame is in». ★ **Open for sync 1:** `REQ-PRO-009`'s diff has no data behind it (`DEC-227` §5.1) — `sessions` measures first; a migration, if any, is the lead's from `0179` and the owner's rehearsal. ★ **Carried:** as `DEC-225` §6.
+**Last updated:** 2026-10-02 · **Branch:** `wave-21a/the-console-frame` (draft PR **#44**) and `wave-21b/the-queues` (draft PR **#45**, in the worktree `../kareem-marefa-wave21b`), both against `main` · ★★ **WAVE 21 IS IN PROGRESS — SYNC 1 DONE (`DEC-228`), THE FRAME IS IN (`fa18b414`), THE SCREENS ARE BEING BUILT** · **`main`:** `8b6a9630`; production and local both at **`0178`** · **Phase:** ★★ **M11a — the FIRST CONSOLE BATCH (`DEC-225`, `DEC-227`, M23).** ★★ **THE GOAL (`DEC-227` §0, the owner's): build the console an admin can run the org from** — see what needs attention and reach it in one move; decide a proposal without leaving the list; act on sessions in bulk at a desk and as cards on a phone; run attendance live; the sober register. Step 0 landed `143fdfb9` (spec + artboards + the prompt, unedited), `4df9568d` (`DEC-227`, `REQ-UIX-084`…`090`, `STORY-UIX-074`…`080`, `SCR-042`'s section, M23, the trace gate's `ERRATA`), `c126c55d` (the map + ten agent files). ★ **The owner ruled twice at Step 0**: `console-register.test.ts` is amended once and made stricter; «التصنيفات» loses «والوسوم». ★ **`console`, `sessions`, `checkin` are spawned PLANNING-ONLY**; nobody deletes a file before «the plans are approved» and «the frame is in». ★ **Open for sync 1:** `REQ-PRO-009`'s diff has no data behind it (`DEC-227` §5.1) — `sessions` measures first; a migration, if any, is the lead's from `0179` and the owner's rehearsal. ★ **Carried:** as `DEC-225` §6.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 21 — IN PROGRESS: STEP 0 DONE, SYNC 1 PENDING — M11a, the first console batch (`DEC-225`, `DEC-227`)
+## ★★★ WAVE 21 — IN PROGRESS: SYNC 1 DONE, THE FRAME IN, THE SCREENS BEING BUILT — M11a, the first console batch (`DEC-225`, `DEC-227`)
 
 ### ★ Where it stands (2026-10-02) — read this first
 
@@ -22,8 +22,12 @@
 | **Sync 1** — four plans approved against the goal and the seven contracts | ⏳ |
 | Sync 1 — `DEC-228`; «the plans are approved» posted | ✅ `0ed1dc6a` |
 | Contract 2 — `admin-rail` (full), `split-view` and `kv-card` (stubs, `sessions'` to fill), the floor 60 → 63 | ✅ `f9a0a209` |
-| The frame — deleted (`ae42d2b2`), then written | ⏳ this commit |
-| PR B `wave-21b/the-queues` opened against `main` on its first push | ⏳ |
+| The frame — deleted (`ae42d2b2`), then written (`fa18b414`); «the frame is in» posted | ✅ — ⏳ seen on a production build and captured beside the artboard (blocked by `console`'s `70ecf2b7` type error in a test) |
+| PR B `wave-21b/the-queues` opened against `main` on its first push | ✅ **#45** — ★ B is built in its own worktree, `../kareem-marefa-wave21b` (`node_modules` symlinked to the main checkout's; `npm ci` there before B's first production build); the lead merges A into B as A moves |
+| `sessions`' `split-view` keyboard model and `kv-card` edit twin | ✅ `50bbebed` |
+| `console` — `data-table` add-only props (`70ecf2b7`, ★ its test fails `tsc`), the export's `?ids=` (`66750058`) | 🔧 |
+| `0179` — `sessions` writes it under `proposed/`, the lead promotes it in B; ★ the owner rehearses on a dump at `0178` before the push | ⏳ |
+| 040, 042 (A) · 041, 043, 044 (B) — each deleted then written | ⏳ |
 
 ★ **If this session ends before sync 1:** the next lead reads the three teammates' «Wave 21 plan» sections and the lead's,
 judges each against `DEC-227` §0 — **a plan that reads like screens with green gates goes back** — checks every
