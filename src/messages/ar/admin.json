@@ -526,7 +526,6 @@
       "systemActor": "النظام",
       "unknownActor": "عضو غير معروف",
       "noSubject": "—",
-      "followSubject": "كل ما جرى على هذا العنصر",
       "roles": {
         "admin": "مشرف المؤسسة",
         "moderator": "مُنظِّم",
@@ -848,7 +847,10 @@
       "filterAction": "الفعل: {value}",
       "filterPeriod": "المدة: {value}",
       "filterSubject": "العنصر: {value}",
-      "customRange": "مدة مخصّصة"
+      "customRange": "مدة مخصّصة",
+      "today": "اليوم {time}",
+      "yesterday": "أمس {time}",
+      "onDay": "{date} {time}"
     },
     "settings": {
       "title": "إعدادات المؤسسة",

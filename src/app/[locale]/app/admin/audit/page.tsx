@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ExportDownloadButton } from "@/components/admin/export-download-button";
 import { KeysetPager } from "@/components/admin/keyset-pager";
 import { actionText, fieldText, scopeText, subjectText, valueText, type AuditMessages } from "@/components/admin/audit/audit-text";
-import { formatNumber } from "@/components/sessions/numerals";
+import { formatDateTime, formatNumber, formatTime } from "@/components/sessions/numerals";
 import type { EmptyStateProps } from "@/components/ui";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
@@ -67,14 +67,35 @@ export default async function AuditLogPage({
     subjectTypes: options.subjectTypes.map((value) => ({ value, label: subjectText(m, value) })),
   };
 
+  // «اليوم 6:45 م» · «أمس 9:10 م» · «28 سبتمبر 4:10 م» — the day on the org's clock, said relative to today, as the board
+  // draws it; computed here, on the server, so the client never renders a different «today». The full instant stays the
+  // `<time>`'s title.
+  const dayOf = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: prefs.timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  const now = new Date();
+  const today = dayOf(now);
+  const yesterday = dayOf(new Date(now.getTime() - 86_400_000));
+  const when = (iso: string) => {
+    const day = dayOf(new Date(iso));
+    const time = formatTime(iso, prefs.timeZone, locale);
+    const date = new Intl.DateTimeFormat(`${locale}-u-nu-latn`, {
+      timeZone: prefs.timeZone,
+      day: "numeric",
+      month: "long",
+      ...(day.slice(0, 4) === today.slice(0, 4) ? {} : { year: "numeric" }),
+    }).format(new Date(iso));
+    const label = day === today ? t("today", { time }) : day === yesterday ? t("yesterday", { time }) : t("onDay", { date, time });
+    return { label, iso, full: formatDateTime(iso, prefs.timeZone, locale) };
+  };
+
   const rows: AuditTableRow[] = page.rows.map((r) =>
     r.kind === "log"
       ? {
           id: r.id,
           kind: "log",
-          occurredAt: r.occurredAt,
+          when: when(r.occurredAt),
+          actorId: r.actorId,
           actorName: r.actorName,
-          actorRole: r.actorRole,
+          actorFace: r.actorFace,
           isSystem: r.actorId === null,
           action: actionText(m, r.action),
           detail: null,
@@ -85,9 +106,10 @@ export default async function AuditLogPage({
       : {
           id: r.id,
           kind: "config",
-          occurredAt: r.occurredAt,
+          when: when(r.occurredAt),
+          actorId: r.actorId,
           actorName: r.actorName,
-          actorRole: r.actorId === null ? null : "admin",
+          actorFace: r.actorFace,
           isSystem: r.actorId === null,
           action: `${scopeText(m, r.scope)} · ${fieldText(m, r.field)}`,
           detail: { from: valueText(m, r.oldValue), to: valueText(m, r.newValue) },
@@ -147,7 +169,7 @@ export default async function AuditLogPage({
           </Panel>
         ) : null}
 
-        <AuditTable rows={rows} timeZone={prefs.timeZone} locale={locale} empty={empty} />
+        <AuditTable rows={rows} empty={empty} />
 
         <KeysetPager
           label={t("pagerLabel")}

@@ -526,7 +526,6 @@
       "systemActor": "System",
       "unknownActor": "Unknown member",
       "noSubject": "—",
-      "followSubject": "Everything that happened to this subject",
       "roles": {
         "admin": "Org admin",
         "moderator": "Moderator",
@@ -848,7 +847,10 @@
       "filterAction": "Action: {value}",
       "filterPeriod": "Period: {value}",
       "filterSubject": "Subject: {value}",
-      "customRange": "Custom period"
+      "customRange": "Custom period",
+      "today": "Today {time}",
+      "yesterday": "Yesterday {time}",
+      "onDay": "{date} {time}"
     },
     "settings": {
       "title": "Organisation settings",

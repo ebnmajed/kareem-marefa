@@ -148,9 +148,12 @@ test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role 
   // email back on both, which is exactly why a bare `getByText` now matches
   // both copies. Scoped to whichever of the two roles is actually present,
   // the same pattern used elsewhere for this DataTable dual render.
-  await expect(page.getByRole("table").or(page.getByRole("list")).getByText(memberEmail)).toBeVisible();
+  // ★ wave 22: the row draws no email (the lead's ruling, a ledger line) — the search still finds a member by it.
+  await goto(page, `/ar/app/admin/members?q=${encodeURIComponent(memberEmail)}`);
+  await expect(page.locator("#main").getByRole("table").getByText("عضو تحت الاختبار")).toBeVisible();
+  await goto(page, "/ar/app/admin/members");
 
-  const row = page.getByRole("row", { name: new RegExp(`عضو تحت الاختبار.*${memberEmail}`) });
+  const row = page.getByRole("row", { name: /عضو تحت الاختبار/ });
   // ★ wave 22: the role changes from the row's ⋯, confirmed naming the member and the role (a ledger line).
   await row.getByRole("button", { name: /مزيد من الإجراءات على عضو تحت الاختبار/ }).click();
   await page.getByRole("menuitem", { name: "غيّر الدور إلى مُنظِّم" }).click();

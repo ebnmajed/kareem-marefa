@@ -4222,3 +4222,19 @@ Every row of §2 – §7 above holds in the new files, with these notes:
 5. Carried, not built: «آخر نشاط» on `049` (nothing stores it); the free-text search on `062` (D13); relative times on
    `061` (absolute, as before); actor avatars on `062` (no avatar version on the log's read).
 6. `recognition-page.test.tsx` (scoring's) fails tsc against `HeldCertificateRow` — not mine, seen in passing.
+
+### Wave 22 — after the lead held the 1280 captures beside the boards
+
+- Every table on `046` – `049`, `061`, `062` wears `042`'s surface card at `md`+ (the lead's ruling); cards below.
+- `062`: the time is the day said relative to today on the org's clock («اليوم 6:45 م», «أمس 9:10 م», «28 سبتمبر
+  4:10 م»), computed on the server, the full instant the `<time>`'s title; the target is one line and itself the link to
+  its history (the «كل ما جرى» line is gone); the actor is a face through the one resolver with the company ring, the
+  role badge gone.
+- `049`: the email is not drawn in the row — the board does not and no requirement asks it of the row; `REQ-ADM-009`'s
+  «full record» is the profile (⋯ «عرض الملف الكامل»); the search still finds by email and the CSV carries it.
+  ★ «المستوى» showed «—» at 0 points: **the read's defect, not the fixture's** — the org has its five levels from 0; a
+  member with no balance row, or none the nightly evaluation stored, read null. Now the stored level, else the one the
+  balance meets (`tests/unit/admin-members-console.test.ts`).
+- `046`'s capture waits for the five saves' toasts to clear.
+- ★ **D13 ruled absent** (the lead): `062` has no free-text search — `REQ-ADM-018`'s «searchable by actor, subject, action
+  and date range» is met by the chips.

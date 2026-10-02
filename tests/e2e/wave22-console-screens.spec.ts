@@ -121,6 +121,8 @@ test("046 at 1280: the owner sets a venue's company in one move, and the row say
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(main.getByRole("row", { name: new RegExp(venue) }).getByText(company, { exact: true })).toBeVisible();
   }
+  // The five saves' toasts clear before the capture — a toast is the save's acknowledgement, not the screen.
+  await expect(page.getByText("حُفظ المكان.", { exact: true })).toHaveCount(0, { timeout: 20_000 });
   await shot(page, "046-default-1280");
   const { rows } = await db.query(`select count(*)::int as n from public.venues where org_id = $1 and company_id is not null`, [orgId]);
   expect(rows[0].n).toBe(5);
