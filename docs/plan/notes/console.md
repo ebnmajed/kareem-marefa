@@ -3309,3 +3309,338 @@ popover into the frame). The spec is corrected to target the trigger's `aria-con
 edge (`border-edge` on `pg:bg-surface`, no shadow — the same pair as the menu, which reads) is judged from its classes until that
 capture is rerun. **K3 closed** for the five that were seen; the picker popover is one capture from closed.
 Seen, not mine: the rail's current-item well is quiet.
+
+---
+
+## Wave 21 plan — SCR-040 the dashboard, SCR-042 the sessions table (`DEC-225`, `DEC-226`, `DEC-227`, `REQ-UIX-086`, `REQ-UIX-087`) — planning only, nothing edited but this note
+
+Measured on `wave-21a/the-console-frame` at `c126c55d`. Read: the regenerated `.claude/agents/console.md`, STATUS's
+wave-21 block, `DEC-225` – `DEC-227`, `DEC-199` §2, `DEC-208`, `notes/wave-21-lead.md`, `M11a.md`, the three artboards
+(`AdminDashboard`, `AdminSessions`, `AdminSessionsPhone`) beside their PNGs, `REQ-ADM-004/005/010/017/020`,
+`REQ-UIX-084` – `087`, `STORY-UIX-076/077`, `09` `SCR-040`/`042`, and every file and test named below.
+
+### 0 · The two jobs, in one line each — and how a person does them
+
+**`SCR-040` — an admin opens `/app/admin` and reaches whatever is waiting in one move.**
+1. The admin lands on the console's home; the first thing under the `h1` is «يحتاج انتباهك»: four tiles, each a count,
+   its label, and how long the oldest item has waited.
+2. One click on a tile lands on **its queue, already narrowed to exactly what the tile counted** — the count the admin
+   clicked is the number of rows they arrive at (one predicate feeds both; §3, contract 3). «جلسات لم تُجدول بعد» opens
+   the sessions table filtered to undated sessions, not the whole table.
+3. When nothing waits, the four tiles are one line and the admin reads on: the month's six figures, the pipeline bar,
+   the next sessions, the three top lists — **every figure a link to the list behind it** (`REQ-ADM-004`).
+
+**`SCR-042` — a session is found, filtered and acted on in bulk at 1280; the same rows are cards on a phone.**
+- *Find* (1280): type in «بحث» (title or presenter name) → Enter. The URL carries the query, so the result survives
+  a reload, is shareable, and **works with no JS** (a GET form; today's search is client-only).
+- *Filter*: «الحالة: الكل» · «التصنيف: الكل» · «الشهر: الكل» — each chip shows its current value; choosing a value
+  is a link to the same URL with that param. The count beside them («41 جلسة») is the filtered total.
+- *Sort*: any header; the default order is §2.6's (a disagreement, D6).
+- *Act on one*: the row's ⋯ — open the hub, the event page, attendance, certificates, survey, and the state machine's
+  own actions for that row (`actionsFor()`), cancel through the named confirmation dialog.
+- *Act on many*: tick rows (or «تحديد الكل» for the page) → the toolbar is replaced by the bulk bar «N محدّدة» with
+  only the actions §4 measured → the result is a toast from the action naming what succeeded and what did not; failed
+  rows stay selected.
+- *Phone (390)*: the same URL, the same rows as cards (title + status, date · venue, presenter, seats), chips in one
+  scrolling row, «جديدة» on the `h1` row; a card's title opens the session hub; its ⋯ keeps the row's actions
+  (D8 — the artboard draws no ⋯; the wave-6 phone defect says dropping it leaves no way to act on a phone).
+
+---
+
+### 1 · `SCR-040` — regions in the artboard's order, and the primitive each uses
+
+| # | Region (artboard order) | Primitive / element | Data (all read, never literal) |
+|---|---|---|---|
+| 1 | `h1` «لوحة المؤسسة» + the month («أكتوبر 2026») at the row's end; **no primary action** (the artboard draws none) | the frame's `h1` row (contract 1) — **`ui/page-header`** with `actions` holding the month as plain text | the month from the org's time zone (`getOrgPrefs()`), `Intl` with `numberingSystem: "latn"` |
+| 2 | «يحتاج انتباهك» — four tiles in one row of four at 1280 (2×2 below `md`): count, label, «أقدمها منذ …» | **`ui/card`** `href` (whole tile is the link, as today), `<h2>` from **`ui/section-header`** | `getAdminAttention()` — contract 3, §3 |
+| 2′ | nothing waits → **one line** `attention.empty` in place of the four | plain `<p>` | — |
+| 3 | six figures, one row of six at 1280 (3×2 at `md`, 2×3 at 390) | **`ui/stat`** ×6, each `href` | sessions this month · confirmed reservations · check-ins · attendance rate · active members · points issued (D3: month or all-time) |
+| 4 | «مسار المقترحات» — one segmented bar, the six counts in its caption | a `<figure>`: the bar `aria-hidden` (segments sized by `flex-grow` from the counts, token colours, no transition), the caption the text; **each count a `ui/link`** to the proposals queue filtered to that state (request R3) | `proposalPipeline` |
+| 5 | «القادمة» + «كل الجلسات» link at the row's end; a table of the next sessions — الجلسة · الموعد · المُقدِّم · الحجوزات · الحالة | **`ui/section-header`** (`actions` = `ui/link`), **`ui/data-table`** (`rowHref` → the hub), **`ui/avatar`** with `teamColor`, **`SessionStatusBadge`** (`ui/badge`) | §2.3's `listSessionsForConsole()` with `upcoming` and a row limit |
+| 6 | three top lists in one panel: أكثر المُقدِّمين · أكثر التصنيفات · أكثر الشركات — name, count at the edge | **`ui/panel`**, three `<section>`s each with an `<h2>` (`ui/section-header`), `<ol>` as today (the two-children rule, kept) | `topPresenters` (→ `/app/members/:id`), `topCategories` (→ **`/app/admin/sessions?category=<id>`**, new: the list behind the figure), `topCompanies` (→ `/app/admin/companies`) |
+
+- Headings: the artboard draws no heading over the six figures; a **visually hidden `<h2>` «نظرة عامة»** keeps the
+  landmark and the pinned locator (`admin-dashboard.spec.ts:248`).
+- **Dropped as explainer copy** (`REQ-UIX-080`, `DEC-NEXT-25`): `dashboard.intro` («نظرة سريعة على مؤسستك…»),
+  `attendanceRateEmpty` as a hint (the value «—» stays — an expectation change, §7), `attention.emptyAction`.
+- No chart but the one bar; nothing transitions; `h1` is the only display use (D1 is the open tension).
+- Files after: `src/app/[locale]/app/admin/page.tsx` (rewritten), new `src/components/admin/dashboard/{attention-tiles,pipeline-bar,top-lists}.tsx`
+  (server components, no `"use client"`), `src/lib/dal/admin-dashboard.ts` (add-only: contract 3, `sessionsThisMonth`).
+  `admin/loading.tsx` and `admin/error.tsx` are kept unchanged — they cover every console route, not this screen.
+
+### 2 · `SCR-042` — regions in the artboard's order, and the primitive each uses
+
+| # | Region | Primitive / element | Notes |
+|---|---|---|---|
+| 1 | `h1` «الجلسات» + «جلسة جديدة» (primary) at the row's end; phone: «جديدة» | **`ui/page-header`** `actions` = **`ui/button`**'s `ButtonLink` to `?new=1#new-session` | a link, so it works with no JS (§2.5). Admin only |
+| 2 | toolbar: search (280 px) · three chips with their value · the count at the end | a GET `<form role="search">` with **`ui/field`** + **`ui/input`** `type="search"` (accessible name `searchLabel`, **pinned**); each chip a **`ui/menu`** whose trigger reads «الحالة: <value>» and whose items are `href`s; the count `<p>` with ★ `sessions.count` (six forms) | phone: chips in one `overflow-x-auto` row **of chips only** — the page never scrolls sideways |
+| 2′ | rows selected → **the bulk bar replaces the toolbar** | `data-table`'s built `selection` bar (`data-table.tsx:126-131`); the page stops rendering its toolbar while `selected.length > 0`, so the bar sits where the toolbar was | §4 |
+| 3 | the table: ☐ · العنوان · الحالة · الموعد · المكان · المُقدِّم · الحجوزات · ⋯ ; sticky header | **`ui/data-table`** with `selection`, `sort`/`onSortChange`, `rowHref` → `/app/admin/sessions/<id>` (the hub, `DEC-178`'s redirect); `SessionStatusBadge`; **`ui/avatar`** `size={24}` `teamColor`; **`ui/menu`** + **`ui/icon-button`** for ⋯ | sticky header is an add-only request (R1) |
+| 4 | footer «1 – 9 من 41» + السابقة / التالية; phone «6 من 41 · المزيد» | page-composed `<nav>` of **`ButtonLink`**s (`?page=`); phone «المزيد» a link to `?show=<n + page size>` | D7; no JS needed |
+| 5 | creation region (not drawn — D10), rendered **only with `?new=1`**, above the table | `ui/panel`: «جاهزة للجدولة» (each approved proposal, `<form action={makeSessionFromProposal…}>` with the pinned accessible name «أنشئ الجلسة — <title>») and the direct form (`DirectSessionForm`, same path and export) | today both live on the page permanently; §2.5 |
+
+**2.3 · The read.** A new add-only module `src/lib/dal/admin-sessions.ts` (mine — `admin*.ts`):
+`listSessionsForConsole(locale, query: ConsoleSessionQuery): Promise<ConsoleSessionPage | null>` — admin → every
+session; moderator → the same rows with no selection, no menu actions, no creation (`REQ-ADM-020`); member → `null`.
+Each row: id, title, state, `phase` + `seat` (from `sessionPhase()`/`seatState()` — `@/lib/session-status`, read only),
+`startsAt`, `endsAt`, day count, venue name (`venues.name` or `custom_venue_name`), capacity, confirmed and waitlisted
+counts, category id, presenters (`displayName`, `avatarUrl` through `avatarHref()`, `teamColor`, `accepted`,
+`declinedAt`). Filtering, sorting and paging are **pure functions in the same module**, unit-tested
+(`tests/unit/admin-sessions-query.test.ts`, new). An org's sessions are few — the module folds in TS, the same call
+`admin-dashboard.ts`'s header already made. `src/lib/dal/sessions.ts` is **read, never edited**: its writes
+(`transitionSession`, `createSessionFromProposal`, `createSessionDirect`, `actionsFor`, `listSchedulableProposals`)
+are called unchanged. Nothing needed from `sessions` in its DAL.
+
+**2.4 · Status.** `SessionStatusBadge` with the derived `phase` and `seat` — the same vocabulary as every surface
+(`REQ-UIX-003`); today's table reads `storedPhase()` only, so «جارية الآن» / «قائمة انتظار» / «أُغلق التسجيل» are new
+here (an expectation change only where a stored `published` past its start would now read `live`; named in §7).
+
+**2.5 · «جلسة جديدة».** One link, `?new=1#new-session`: the server renders the creation region above the table —
+the approved proposals waiting (`REQ-PRO-007`, the per-proposal form with its accessible name) and the direct form,
+which needs no toggle any more (the old toggle was JS-only, so with no JS the direct form never appeared — a find).
+A direct create redirects **to the new session's schedule** (`/app/admin/sessions/<id>/schedule`) instead of to
+`?created=<id>`, which no file reads (a find — the confirmation was dropped silently). This is my recommendation and
+an expectation change; the lead rules (Q6).
+
+**2.6 · Phone (390).** The same page; `data-table`'s card list (built). The artboard's card has no labels, no ⋯, no
+checkbox; to draw it the primitive needs an add-only card body (R1). Without R1 the cards read «label · value» as
+today and the screen does not match its artboard.
+
+---
+
+### 3 · ★ Contract 3 — the attention counts (day one)
+
+```ts
+// src/lib/dal/admin-dashboard.ts — add-only
+export type AttentionQueue = "proposals" | "unscheduledSessions" | "photoReports" | "commentReports";
+
+export interface AttentionItem {
+  queue: AttentionQueue;
+  /** The `admin.shell.nav.*` key of the rail item whose screen IS this queue. */
+  navKey: "proposals" | "sessions" | "moderationReports" | "moderationComments";
+  count: number;
+  /** The oldest open item's age in whole days; `null` exactly when `count === 0`. */
+  oldestAgeDays: number | null;
+  /** The queue, narrowed to exactly what `count` counts. */
+  href: string;
+}
+
+export interface AdminAttention {
+  /** Role-filtered, in the artboard's order. An admin: all four. A moderator: photoReports, commentReports. */
+  items: AttentionItem[];
+  total: number;
+}
+
+/** `cache()`-wrapped: the layout's badges and the dashboard's tiles share one read per request.
+ *  `null` for a plain member (no badge, no tile). Never gates — the layout calls it, the page gates. */
+export const getAdminAttention: (locale: string) => Promise<AdminAttention | null>;
+```
+
+- **Verified against `admin-dashboard.ts:81-86`**: the artboard's four tiles are the four rows, in the same order —
+  مقترحات بانتظار قرار (`submitted` + `in_review`), جلسات لم تُجدول بعد (`starts_at` null, not `cancelled`/`archived`),
+  بلاغات على الصور (`reports` `photo` `open`), بلاغات على التعليقات (`reports` `comment` `open`). The predicates move
+  verbatim; `getAdminDashboardData()`'s `attention` field reads through the new function (its type unchanged).
+- **Role filtering** (`REQ-ADM-020`): a moderator reaches the three moderation queues and not proposals or
+  scheduling, so a moderator gets the two report items only — **a badge never leads to a page that 404s**.
+- **`href`s**: proposals → `/app/admin/proposals` + `sessions'` «awaiting decision» filter once published (R3);
+  unscheduled → `/app/admin/sessions?month=none` (my own filter, the same predicate); photo reports →
+  `/app/admin/moderation/reports`; comment reports → `/app/admin/moderation/comments`.
+- **Which rail items carry which count** — by `navKey`, the item whose screen holds the queue: المقترحات ← proposals;
+  الجلسات ← unscheduled; البلاغات (`/moderation/reports`, the photo-report queue) ← photo reports; التعليقات
+  (`/moderation/comments`, the comment-report queue) ← comment reports. **No badge at 0.** ★ This is NOT what the
+  artboard draws — D2.
+- Oldest age is computed as today (`oldestAge()`, the max of whole-day ages over the open rows' `created_at`) — not
+  an «order by created_at to find the last row».
+- A known imprecision, kept: a proposal's age counts from `proposals.created_at` — there is no `submitted_at`
+  column (`0010`), so a draft written a week before submission reads a week older. Recorded, not fixed.
+- ★ **A third copy exists**: `src/lib/dal/shell.ts:48-62` (the lead's) counts the same four for the member home's
+  «يحتاج انتباهك», and gives a **moderator** the proposals and unscheduled counts, which link to pages a moderator
+  cannot open. Not mine and the home is frozen; written for the lead (F1).
+
+---
+
+### 4 · ★ The bulk bar — each action measured against the single row
+
+| Bulk action offered | The same action on one row today | Function | Rule |
+|---|---|---|---|
+| ★ «ألغِ الجلسات» (only when **every** selected row admits `cancel`) | ⋯ → cancel: a reason, then `ui/dialog`'s named confirmation (`session-controls.tsx:110-149`) | `runTransition` → `transitionSession` → `transition_session()` (`sessions.ts:1398`), which re-checks a fresh admin of the org and the `02` §6.2 edge per call | one dialog naming the count and listing the titles (`<bdi>`), one reason (required, ≤ 2000 — the same Zod), confirm; a new action `runBulkTransition(locale, prev, formData)` in `actions.ts` loops the **same** `transitionSession` sequentially inside one action (actions serialise; parallel work goes inside one), collects `{ done: id[], failed: { id, title }[] }`, toasts from the action, `revalidatePath` as today |
+| «صدّر CSV» | none per row; the org-wide «الجلسات» export on `/app/admin/exports` | `exportSessionsCsv()` (`admin-exports.ts:276`) through `GET /api/admin/exports/sessions`, audited by `write_admin_export_audit('sessions')` (`REQ-ADM-017`) | add-only: `exportSessionsCsv(locale, ids?)` restricts the rows to the selection, same headers, same audit row; the route must pass `?ids=` — **the route is frozen for me (R2)**. A link, not a client-built file |
+| «ألغِ التحديد» | — | `selection.onChange([])` | clears the bar; the toolbar returns |
+| ✗ «أغلق» — **not offered** | no single-row «close» exists: registration closes by `rsvp_deadline_at`, written only by `schedule_session()` on the hub | — | D9 |
+| ✗ start / complete / archive / reopen — not offered | per row in ⋯ | `runTransition` | not drawn; one row at a time is right for a live room |
+
+**A failed bulk action** (not drawn, built): the toast names «أُلغيت N · تعذّر M» (★ six forms each); the failed rows
+stay selected so the bar still offers the retry; the succeeded rows leave the selection. All failed → an error toast,
+the selection unchanged. Nothing animates.
+
+`data-table`'s selection is composed as built (`:70-85`, the bar `:126-131`); its select-all covers the visible page.
+
+---
+
+### 5 · ★★ Kept-behaviour tables (`DEC-208`) — re-derived from the REQs and the DAL
+
+#### 5.1 · `SCR-040`
+
+| # | Behaviour | Today | After | Kept by |
+|---|---|---|---|---|
+| 1 | **Admin only; a moderator and a member get the page-level `notFound()`** — the streamed contract: 200, `noindex`, the not-found page | `page.tsx:98-99`, `admin-dashboard.ts:116`; pinned `admin-dashboard.spec.ts:214,220` | unchanged, from the page (the layout never gates) — unless Q1 rules a moderator's dashboard | `REQ-ADM-020`, `DEC-134` |
+| 2 | `setRequestLocale()` before any read | `page.tsx:96` | unchanged | `REQ-INT-002` |
+| 3 | The four attention queues, photo and comment reports **kept apart** | `admin-dashboard.ts:81-86,206-218` | `getAdminAttention()` (§3), same predicates | `REQ-ADM-010`, `DEC-005` |
+| 4 | Unscheduled excludes `cancelled` and `archived` | `admin-dashboard.ts:208-210` | same predicate, shared with the sessions filter | `REQ-ADM-010` |
+| 5 | Each tile shows the oldest item's age; six ICU forms; «اليوم» at 0 | `admin-dashboard.ts:93-99`, `attention.oldestSince` | unchanged string; `<bdi>` around the number | `REQ-ADM-010`, `REQ-INT-006` |
+| 6 | The whole tile is one link (`ui/card` `href`, not a styled `Link`); its accessible name contains the label, its text the count | `page.tsx:76-89`; pinned `admin-dashboard.spec.ts:236,262` | unchanged | `REQ-UIX-001`, `REQ-UIX-086` |
+| 7 | Tiles open their queues | `page.tsx:129-160` | same queues, **narrowed** to what they count (unscheduled → `?month=none`) | `REQ-UIX-086` |
+| 8 | Nothing waits → one line | `page.tsx:125-126` (with an action to the sessions list) | one line; the action dropped (explainer) | `REQ-UIX-086` |
+| 9 | Every figure is a link | `page.tsx:169-178` (`Stat href`) | unchanged, plus the pipeline's counts and the next sessions' rows | `REQ-ADM-004` |
+| 10 | Western numerals through `formatNumber()` | `page.tsx:101` | unchanged | `DEC-124`, `REQ-INT-006` |
+| 11 | Attendance rate «—» when nothing has started, «{value}٪» otherwise | `page.tsx:113,171-176`; pinned `admin-dashboard-page.test.tsx:59-78`, e2e `:250` | the value kept; the hint sentence dropped (§7, L1) | `REQ-ADM-004` |
+| 12 | Its denominator is confirmed reservations of **started** sessions | `admin-dashboard.ts:191-201` | unchanged — but see F2 | `REQ-ADM-004` |
+| 13 | A removed check-in stops counting | `admin-dashboard.ts:134-138` | unchanged | `REQ-CHK-017` |
+| 14 | Points issued sums positive rows; a reversal does not net against it | `admin-dashboard.ts:204`; pinned e2e `:254` | unchanged | `REQ-ADM-004`, invariant 9 |
+| 15 | Active members = `status = 'active'` | `admin-dashboard.ts:203`; pinned e2e `:252` | unchanged | `REQ-ADM-004` |
+| 16 | The pipeline's six states in order | `page.tsx:104-111`, `admin-dashboard.ts:167-189` | the caption in the same order; the bar mirrors it | `REQ-ADM-004` |
+| 17 | The pipeline opens the proposals list — «عرض القائمة — مسار المقترحات» | `page.tsx:189`; pinned e2e `:282` | each count a link (finer); the pinned link's name changes (§7, L3) | `REQ-ADM-004` |
+| 18 | Top presenters by accepted presenter slots, each a link to `/app/members/:id` | `page.tsx:209`, `admin-dashboard.ts:220-226`; pinned e2e `:286` | unchanged | `REQ-ADM-004` |
+| 19 | Top categories by session count; top companies by accepted presenter slots | `admin-dashboard.ts:228-254` | unchanged (D4 is the open question) | `REQ-ADM-004` |
+| 20 | `topEmpty` when a list is empty | `page.tsx:23` | unchanged | `REQ-UIX-012` |
+| 21 | A top-list row: the name and the count are **two children**, the count at the edge, never inside the link | `page.tsx:14-41`; pinned `admin-dashboard-page.test.tsx:90`, e2e `:336` | unchanged | `REQ-ADM-004` (wave 6 row 10) |
+| 22 | `<bdi>` on every name and label | `page.tsx:30,34,83` | unchanged; added on the month, titles in «القادمة», every count | `REQ-INT-001` |
+| 23 | No horizontal scroll at 390 | pinned e2e `:290` | unchanged | `REQ-NFR-007` |
+| 24 | The console's error boundary: one sentence, retry, back to `/app/admin`; the skeleton under `loading.tsx` | `error.tsx`, `loading.tsx` | **kept, not rewritten** | `REQ-UIX-005`, `REQ-UIX-016` |
+| 25 | A staff gate shared by every console page (`requireStaffSession`, `requireAdminSession`) | `admin-dashboard.ts:25-38` | unchanged; other routes import it | `REQ-ADM-020` |
+
+#### 5.2 · `SCR-042`
+
+| # | Behaviour | Today | After | Kept by |
+|---|---|---|---|---|
+| 1 | A member gets the page-level `notFound()`; a moderator gets a **different, read-only render**; an admin the full page | `page.tsx:38-40,147-158` | the same three branches in the new page | `REQ-ADM-020`, `DEC-134` |
+| 2 | The moderator's list: title, status, date; **the title links to the session's attendance** (the link's name is the title); a survey link `aria-describedby` the title — no copy of the title inside it | `sessions-table.tsx:220-275`; pinned `admin-attendance.spec.ts:156-185` | the same table without selection, menu or creation; `rowHref` → attendance; the survey link as built | `REQ-ADM-020`, `REQ-CHK-012`, `DEC-163` |
+| 3 | The moderator's list is sorted by start, newest first, undated last | `sessions.ts:180-184` | the moderator's default order — D6 applies | `REQ-ADM-020` |
+| 4 | No pipeline, no creation, no transition for a moderator — absent, not hidden | pinned `admin-attendance.spec.ts:168-169` | unchanged | `REQ-ADM-020` |
+| 5 | The admin's list is every session of the org (`listSessionsForAdmin`, newest first) | `sessions.ts:122-155` | `listSessionsForConsole()` (§2.3), add-only; `listSessionsForAdmin` stays for the CSV | `REQ-ADM-005` |
+| 6 | **«جاهزة للجدولة»: an approved proposal with no session yet becomes one in one press**; the button's accessible name names the proposal | `page.tsx:75-124`, `sessions.ts:192-230`; pinned `sessions-screens.spec.ts:226-238` | inside the `?new=1` region (§2.5) — **reached by «جلسة جديدة», no longer on load** (L7) | `REQ-PRO-007`, `REQ-NFR-007` |
+| 7 | An invalid proposal id is ignored, not thrown | `actions.ts:26-30` | unchanged | `REQ-PRO-007` |
+| 8 | **The direct form**: title, abstract, category, level, language, presenters (multi `ui/combobox`); `FormSummary` with links to the controls' ids; values survive a failed round trip; required marked; `noValidate`; no date, venue or capacity | `direct-session-form.tsx:55-147`, `state.ts`, `actions.ts:55-86`; pinned `form-summary-links.test.tsx:84` | rewritten at **the same path with the same export name and field ids** (`direct-title` …), so that test stays untouched | `REQ-PRO-007`, `REQ-UIX-008` – `011` |
+| 9 | The direct form's level labels are `proposals.propose`'s, read | `direct-session-form.tsx:65-68` | unchanged | `REQ-INT-002` |
+| 10 | After a direct create the admin is redirected with `?created=<id>` — **which nothing reads** | `actions.ts:85` | ★ a find: the confirmation was dropped in wave 6; Q6 | `REQ-PRO-007` |
+| 11 | With no JS the direct form never shows (the toggle is a JS button) | `direct-session-form.tsx:155-182` | ★ a find: fixed by `?new=1` | `REQ-NFR-007` |
+| 12 | Search by title **or presenter name**, normalised | `sessions-table.tsx:72-76`; pinned `sessions-table.test.tsx:64`, e2e `admin-sessions.spec.ts:460` (`searchbox` «ابحث في جلسات المؤسسة») | server-side, GET; the same accessible name | `REQ-ADM-005` |
+| 13 | Empty org: «لا جلسات بعد.» with «افتح المقترحات»; a search with none: «لا جلسات مطابقة لبحثك.» with the same short action label | `sessions-table.tsx:193-196`; pinned `sessions-table.test.tsx:79,91`, e2e `:461` | unchanged strings; a filter with none reads the search string | `REQ-UIX-012` |
+| 14 | Sorting on title, status, start; undated sorts last in either direction | `sessions-table.tsx:78-93` | every column sortable; the undated rule kept | `REQ-UIX-087` |
+| 15 | Status reads through the shared badge, never a raw state | `sessions-table.tsx:112`; pinned e2e `:454` («التسجيل مفتوح») | `SessionStatusBadge` with phase **and seat** (§2.4) | `REQ-UIX-003` |
+| 16 | Undated reads «بلا موعد بعد» | `sessions-table.tsx:123` | unchanged | `REQ-SES-001` |
+| 17 | **A declined or pending presenter is visible in the row** («اعتذر المُقدِّم», «بانتظار رد المُقدِّم») | `sessions-table.tsx:126-137` | a badge beside the presenter's name in المُقدِّم (D14) | `REQ-SES-019`, `REQ-PRO-007` |
+| 18 | The row menu: فتح الجلسة · الجدولة والنشر · الحضور · الشهادات · الاستبانة, locale-aware `href`s; the trigger is named «مزيد من الإجراءات على <title>» | `sessions-table.tsx:150-166`; pinned `sessions-table.test.tsx:99`, e2e `:472-476` | unchanged, plus the row's transitions (#19) | `REQ-SES-020`, `REQ-NFR-007` |
+| 19 | **The state machine's actions per row, from `actionsFor()`**, computed on the server and handed down as a **map of bound actions, not a factory** | `page.tsx:56-69`, `sessions-table.tsx:206-215` | the same map; the actions move **into ⋯** (L5) | `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-012` |
+| 20 | Cancel needs a written reason and a dialog naming the session; «تراجع» changes nothing; the confirm submits the same form across the portal | `session-controls.tsx:110-149`; pinned `session-controls.test.tsx:25,48`, `sessions-table.test.tsx:122`, e2e `:479-495` | ⋯ «ألغِ الجلسة» opens the dialog with the reason **inside it**; same title, same buttons, same error key (L6) | `REQ-UIX-013`, `REQ-SES-005` |
+| 21 | «الإنهاء المبكر يغلق تسجيل الحضور فورًا.» beside «أنهِ الجلسة» | `session-controls.tsx:108` | carried into a confirm on «أنهِ الجلسة» before the scheduled end (a menu has no room for a note) | `REQ-SES-005`, `DEC-141` |
+| 22 | **The toast fires from the action**, never from an effect in a component that unmounts | `session-controls.tsx:46-64` | unchanged, and the bulk action does the same | wave 6's lesson |
+| 23 | The confirm dialog closes from the **result**, adjusted during render, not on click | `session-controls.tsx:68-85` | unchanged | `DEC-146` |
+| 24 | `transitionDone` / `actionFailed` / `cancelReasonRequired` toasts and the `role="alert"` line | `session-controls.tsx:96-100`; pinned e2e `:494` | unchanged strings | `REQ-UIX-007` |
+| 25 | `revalidatePath` of the list and of the event page after a transition | `actions.ts:122-123` | unchanged; the bulk action revalidates each | `REQ-SES-005` |
+| 26 | Every check is in `transition_session()` and `create_session()` (definer, `assert_fresh_admin()`) | `actions.ts:11-16,90-96` | unchanged — the bulk loop calls the same function per id | `REQ-SES-005`, invariant 8 |
+| 27 | Zod before the DAL on every action | `actions.ts:27,73,102-115` | unchanged; the bulk action validates `ids` (uuid, 1 – 100) and the reason | CLAUDE.md «Validation» |
+| 28 | `<bdi>` on every title and presenter name | `page.tsx:88-98`, `sessions-table.tsx:103,211,229` | unchanged; added on every number in الحجوزات and the count | `REQ-INT-001` |
+| 29 | The phone stack: `onCard` columns, the actions column **on the card** (wave 6's real phone defect: without it a phone had no way in) | `sessions-table.tsx:142-149` | kept — D8 | `REQ-UIX-087` |
+| 30 | A `"use server"` module exports async functions alone; types come from `state.ts` | `actions.ts:18-24` | unchanged | `DEC-159` |
+
+---
+
+### 6 · States not drawn, that I will build
+
+**`040`:** an empty org (attention one line; figures `0` — a read zero, not hidden; attendance «—»; the bar an empty
+track with its zero counts in the caption; «القادمة» `data-table`'s empty state ★ «لا جلسات قادمة» with «جلسة جديدة»;
+`topEmpty`) · nothing waiting (one line) · a short top list (fewer rows, no padding) · a moderator (Q1).
+**`042`:** an empty org · a search or filter with no result · a moderator's read-only list · rows selected · a failed
+bulk action (partial, total) · `?new=1` with no approved proposals (the region shows the direct form only — no
+«nothing to schedule» sentence) · the last page (no «التالية») · one page (no pager).
+
+---
+
+### 7 · Assertions I expect to change — each a ledger line, written in the same commit
+
+**Mine (evidence):**
+- **L1** `admin-dashboard-page.test.tsx:59` — the attendance-rate hint sentence is dropped (expectation).
+- **L2** `admin-dashboard.spec.ts:248-254` — «الأعضاء النشطون», «النقاط الممنوحة» become the artboard's «عضو نشط»,
+  «نقطة ممنوحة» **if** the copy follows the artboard (selector); `:336`'s «أكثر المُقدِّمين مشاركة» → «أكثر المُقدِّمين» likewise.
+- **L3** `admin-dashboard.spec.ts:282` — «عرض القائمة — مسار المقترحات» → a count link (selector).
+- **L4** `sessions-table.test.tsx:64` — search moves server-side; the case tests the pure filter (selector moved).
+- **L5** `sessions-table.test.tsx:114` and `admin-sessions.spec.ts:464-470` — «ابدأ الجلسة الآن» is no longer visible
+  on load; it is a `menuitem` under ⋯ (**expectation** — wave 6 made it always-visible on purpose).
+- **L6** `sessions-table.test.tsx:122`, `session-controls.test.tsx:25,48`, `admin-sessions.spec.ts:479-495` — the reason
+  moves inside the dialog; «أكّد الإلغاء» disappears (selector and flow).
+
+**Not mine — written for their owners through the lead:**
+- **L7** `sessions-screens.spec.ts:226-238` — «جاهزة للجدولة» and «أنشئ الجلسة — <title>» are reached after «جلسة
+  جديدة»; `:372` «ابدأ الجلسة الآن» and `:460` «أنهِ الجلسة» / «أرشف» are under ⋯ (expectation).
+- `admin-attendance.spec.ts:156-185` — **unchanged** by design (#2, #4 of 5.2).
+- `form-summary-links.test.tsx:84` — **unchanged** by design (#8).
+- `a11y`, `second-org`, `wave11-lead-a11y-sweep`, `wave17-console-screens:132`, `wave18-content-home:218` — unchanged
+  (routes, gates and the `h1` stay).
+
+---
+
+### 8 · Disagreements — artboard (or spec) against `docs/plan/` and the tree; no side picked
+
+- **D1** `AdminDashboard.dc.html` / `M11a.md` §1: the tiles' counts «in coral display face» — and the six figures in
+  the display face — against `REQ-UIX-053` / `DEC-227` §0.5: «`h1` in the display face the only display use».
+- **D2** `AdminDashboard.dc.html` rail: badges on **الصور (1)** and **البلاغات (2)** — the photo-report and comment-report
+  counts. In the tree, photo reports are **البلاغات** (`/moderation/reports`), comment reports **التعليقات**
+  (`/moderation/comments`), and **الصور** is the takedown queue (`listModerationCounts().photos`), which is none of the
+  four. A badge on the wrong item is a hunt. Contract 3 maps by the screen; the lead's rail decides.
+- **D3** `AdminDashboard.dc.html`: the `h1` row carries the month and the first figure is «جلسة هذا الشهر»; `M11a.md` §1
+  and `REQ-ADM-004` do not say the other five are monthly, and today all five are all-time. Month or all-time?
+- **D4** «أكثر الشركات» draws **9.4 · 8.7 · 7.3** — a decimal, not today's integer count of presenter slots
+  (`admin-dashboard.ts:236-254`); and each top list draws **3** rows against today's **5**.
+- **D5** Status words: the artboards draw «ممتلئة», «مكتملة», «ملغاة»; `16` §5.2 / `REQ-UIX-003` give «قائمة انتظار»,
+  «انتهت», «أُلغيت» through `SessionStatusBadge`, in `DEC-073`'s tones.
+- **D6** Default order: `REQ-UIX-087` / `M11a.md` §3 «date ascending, live first»; `AdminSessions.dc.html` draws
+  live → upcoming ascending → undated → past **descending**.
+- **D7** Pager: 1280 «1 – 9 من 41 · السابقة / التالية»; 390 «6 من 41 · المزيد». Two models for one list.
+- **D8** `AdminSessionsPhone.dc.html`: a card with no labels, no ⋯ and no checkbox; `data-table`'s card renders
+  «label · value» rows (wave 7, sync 6: a label always renders) and the wave-6 phone defect put the actions on the card.
+- **D9** The bulk bar «N محدّدة · ألغِ · صدّر CSV · أغلق» (`M11a.md` §3): «ألغِ» reads as cancel-the-sessions or
+  clear-the-selection; «أغلق» has no single-row action to mirror (contract 7).
+- **D10** Neither artboard draws «جاهزة للجدولة» nor the direct form; `REQ-PRO-007` needs both.
+- **D11** «sticky header» (`M11a.md` §3, `09` `SCR-042`) against `data-table.tsx:144-155`, which is non-sticky on
+  purpose: inside its `overflow-x-auto` wrapper a sticky `<th>` covered row 1 (wave 6).
+- **D12** No place for the always-visible lifecycle buttons wave 6 pinned (`sessions-table.test.tsx:114`).
+- **D13** `STORY-UIX-076`: «not drawn, and built: a moderator's dashboard» — against the pinned moderator 404
+  (`admin-dashboard.spec.ts:220`), `layout.tsx:83` (`dashboard` `adminOnly`) and the agent file's «keep what a moderator
+  sees today».
+- **D14** The presenter's declined / pending state is not drawn; it is state that belongs in the row.
+
+---
+
+### 9 · Requests
+
+- **R1 → the lead (`ui/index.ts`, the frame).** `DataTableProps`, add-only: `stickyHeader?: boolean` — when set the
+  desktop wrapper uses `overflow-x: clip` (not a scroll container, so `position: sticky` sticks to the page) and the
+  header sticks under the console bar; I need the bar's height as a token or custom property from the frame. And
+  `renderCard?: (row: Row) => ReactNode` — the card's body for a caller that draws its own card, the selection checkbox
+  and `rowHref` unchanged (D8). Both default to today's behaviour; `data-table.tsx` itself is mine.
+- **R2 → the lead (`src/app/api/admin/exports/[type]/route.ts`, frozen for me).** Pass `?ids=` (comma-separated uuids,
+  capped) to `exportSessionsCsv(locale, ids)`; `null` ids is today's export. The audit row is unchanged.
+- **R3 → `sessions` (`admin/proposals/**`, this wave theirs).** Publish the URL that narrows the queue to «awaiting a
+  decision» (`submitted` + `in_review`) and one per pipeline state, so a tile's count equals the rows it opens. Until
+  then the links go to `/app/admin/proposals`.
+- No request to `content`: `card`, `stat`, `badge`, `avatar`, `panel`, `empty-state` are composed as they are.
+
+### 10 · Findings for the lead (not mine to fix)
+
+- **F1** `src/lib/dal/shell.ts:48-62` gives a moderator proposals and unscheduled counts on the member home, linking to
+  pages that 404 for them. Contract 3's read is role-filtered and could serve the shell later.
+- **F2** The attendance rate divides **every** non-removed check-in by confirmed reservations of started sessions
+  (`admin-dashboard.ts:195-201`): a multi-day session (one check-in per day) or a walk-in without a reservation lifts it
+  past 100 %. It is my file; I fix it only if the lead says so (Q4).
+
+### 11 · Open questions
+
+- **Q1** A moderator at `/app/admin`: the streamed 404 as today, or two tiles (D13)?
+- **Q2** D2 — which rail items carry which badge?
+- **Q3** D3 — are the six figures this month's?
+- **Q4** F2 — fix the rate (distinct member × session among the started reservations) in this rebuild?
+- **Q5** D6 / D7 — the default order and the pager model.
+- **Q6** After a direct create: redirect to the new session's schedule (my recommendation), or honour `?created`?
+- **Q7** D9 — what «ألغِ» and «أغلق» mean in the bulk bar.
+- **Q8** Copy: the artboard's «عضو نشط», «نقطة ممنوحة», «أكثر المُقدِّمين» over today's keys (L2)?
