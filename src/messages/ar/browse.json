@@ -1,7 +1,6 @@
 {
   "browse": {
     "title": "الجلسات",
-    "intro": "ما يمكنك حضوره، مرتّبًا بالتاريخ.",
     "empty": "لا جلسات تطابق بحثك",
     "clearFilters": "امسح كل عوامل التصفية",
     "count": "{count, plural, zero {لا جلسات} one {جلسة واحدة} two {جلستان} few {{value} جلسات} many {{value} جلسة} other {{value} جلسة}}",

@@ -39,7 +39,6 @@
     "home": {
       "welcome": "أهلًا <name>{value}</name>",
       "welcomeAnon": "أهلًا بك",
-      "intro": "مرحبًا بك في المنصة. تصفّح الجلسات القادمة واحجز مقعدك.",
       "completeProfile": "أكمل ملفك",
       "companyMissing": "اختر شركتك قبل حجز مقعد أو اقتراح جلسة.",
       "org": "مؤسستك: <org>{value}</org>",

@@ -247,7 +247,7 @@ export function ProposalForm({
           error={err("level")}
         />
 
-        <Field id="targetAudience" label={t("form.audienceLabel")} hint={t("form.audienceHint")} error={err("targetAudience")}>
+        <Field id="targetAudience" label={t("form.audienceLabel")} error={err("targetAudience")}>
           <Input name="targetAudience" maxLength={PROPOSAL_LIMITS.audienceMax} defaultValue={was(state, "targetAudience")} {...validating("targetAudience")} />
         </Field>
 
@@ -299,7 +299,7 @@ export function ProposalForm({
           <p className="text-body-sm text-fg-muted">{t("form.presentersElsewhere")}</p>
         )}
 
-        <Field id="adminNotes" label={t("form.notesLabel")} hint={t("form.notesHint")} error={err("adminNotes")}>
+        <Field id="adminNotes" label={t("form.notesLabel")} error={err("adminNotes")}>
           <Textarea name="adminNotes" maxLength={PROPOSAL_LIMITS.notesMax} rows={3} defaultValue={was(state, "adminNotes")} {...validating("adminNotes")} />
         </Field>
 
