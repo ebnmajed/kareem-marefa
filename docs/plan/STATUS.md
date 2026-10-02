@@ -1,11 +1,11 @@
-**Last updated:** 2026-10-02 · **Branch:** `main` · ★★ **WAVE 22 IS PLANNED, NOT STARTED** · **`main`:** `584abdd0`; production and local both at **`0179`** · **Phase:** ★★ **M11b — THE REST OF THE CONSOLE (`DEC-230`, M24)**: the four tables, the two moderation queues, the four read-mode pages, reminders, exports, the audit log, settings and the two survey screens — **fifteen screens from fourteen artboards**, each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; ★★ **NO new primitive, so the gate's floor stays 63 and `tests/unit/ui-playground.test.ts` is untouched** — the first wave since 15 to add none. **One migration, `0180`** — one nullable column. The brief is `docs/plan/notes/wave-22-lead.md`. ★★ **THE OWNER RULES M11b BEFORE STORIES** (`DEC-230` §1), answering `DEC-229` §5's open question — stories have now been overtaken FOUR times and the ring stays inert. ★★ **Two owner rulings settle the wave's only hard questions:** hosting points move to **the venue's owning company** — the presenter's company earns presenting, the building's owner earns hosting, and a venue owned by nobody rewards nobody — which **answers the objection `0081` recorded rather than ignoring it** (§2); and moderation becomes **two screens**, so `moderationComments` flips to `built: false` and **the rail drops from twenty items to nineteen** (§3). ★ **Owed by the owner:** set each existing venue's company on `046` before the hosting rule's first evaluation; the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-045` and `055`–`059` with the studio and the brand kit, and session stories.
+**Last updated:** 2026-10-02 · ★★ **WAVE 22 — STEP 0 DONE, SYNC 1 OPEN** · **Branch:** `wave-22a/the-tables` (draft #47) · **`main`:** `5494ea50`; production and local both at **`0179`** · **Phase:** ★★ **M11b — THE REST OF THE CONSOLE (`DEC-230`, M24)**: the four tables, the two moderation queues, the four read-mode pages, reminders, exports, the audit log, settings and the two survey screens — **fifteen screens from fourteen artboards**, each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; ★★ **NO new primitive, so the gate's floor stays 63 and `tests/unit/ui-playground.test.ts` is untouched** — the first wave since 15 to add none. **One migration, `0180`** — one nullable column. The brief is `docs/plan/notes/wave-22-lead.md`. ★★ **THE OWNER RULES M11b BEFORE STORIES** (`DEC-230` §1), answering `DEC-229` §5's open question — stories have now been overtaken FOUR times and the ring stays inert. ★★ **Two owner rulings settle the wave's only hard questions:** hosting points move to **the venue's owning company** — the presenter's company earns presenting, the building's owner earns hosting, and a venue owned by nobody rewards nobody — which **answers the objection `0081` recorded rather than ignoring it** (§2); and moderation becomes **two screens**, so `moderationComments` flips to `built: false` and **the rail drops from twenty items to nineteen** (§3). ★ **Owed by the owner:** set each existing venue's company on `046` before the hosting rule's first evaluation; the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-045` and `055`–`059` with the studio and the brand kit, and session stories.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 22 — PLANNED, NOT STARTED — M11b, the rest of the console (`DEC-230`)
+## ★★★ WAVE 22 — STEP 0 DONE, SYNC 1 OPEN — M11b, the rest of the console (`DEC-230`)
 
 **The programme's eighth wave, and the largest batch it has attempted: fifteen screens.** The brief is
 `docs/plan/notes/wave-22-lead.md`; the drawing is `docs/design/screens/M11b.md` with the **fourteen** artboards in
@@ -23,6 +23,59 @@ child type with no remaining use, an i18n defect printing `{value}`, and a pager
 ★★ **NO NEW PRIMITIVE.** `M11b.md` says so outright, and the three `data-table` cells — a switch cell, a two-button
 action cell, a swatch cell — are **stories, add-only**, proven by every existing suite passing untouched. **The
 floor stays 63.**
+
+### ★★ Step 0 — DONE (2026-10-02, `DEC-231`) · sync 1 — OPEN
+
+| | |
+|---|---|
+| Branch · PR A | `wave-22a/the-tables` from `5494ea50`; ★ **draft PR #47 against `main` from its first push** |
+| Step 0's numbers | ui/ **63**, floor **63** at `ui-playground.test.ts:121`, `0179` → next `0180`, `REQ-UIX-091` / `STORY-UIX-081` / `DEC-231` next — **all re-read, all as `DEC-230` says** |
+| The artboards | `M11b.md`, `m11b/**` and ★ **the planning prompt, unedited, as the record** — `a0bc20e7` |
+| Documents | `DEC-231`; `REQ-UIX-091` – `106`, `REQ-ADM-022`, `023`, `REQ-PTS-016`; `STORY-UIX-081` – `096`, `STORY-ADM-010`, `011`, `STORY-PTS-008`; M24 in `14`; `09`'s moderation; ★ `05` §6.3 (`0081`'s company rules were never documented); `trace` **red at `5494ea50`, green now** |
+| The map | `CLAUDE.md` § *Ownership map (wave 22)* and **all ten agent files in the same commit** (`DEC-085`) |
+| Spawned, planning-only | `console`, `scoring`, `notify`, `content`, `event` — all opus |
+
+★★ **What Step 0 found that the brief did not** (`DEC-231`):
+
+1. ★★ **The audit rule has quietly not held since wave 6.** Six kinds of mutation on these screens write **nothing**:
+   venues, categories, companies (but the team colour), report dismissals (only `reports.resolved_by` on the row), the
+   stopgap host-company form, survey templates. They close **in the database** — a definer trigger per table, the lead's,
+   in one migration after `0180`, its number named when it is on disk (`DEC-180`'s rule). Scoring, recognition and
+   org-settings changes are answered by `scoring_config_history` by design (`DEC-148`); ★ **`062` reads both stores**.
+2. ★★ **The moderation routes hold the opposite queues to their names**: `/reports` lists PHOTO reports, `/comments`
+   COMMENT reports. The rebuild moves photo reports to `/photos` and comment reports to `/reports`; the attention rows and
+   the rail's badges move with them.
+3. ★ **Comment resolution is two DAL writes** (`admin-moderation.ts:152`) — a failure between them leaves a removed
+   comment under an open report. One function, `content`'s, PR C.
+4. ★ `DEC-230`'s «`05` §5.4» pointed at **Perks**, whose «hosting» is the level-gated right to host — not hosting points.
+5. ★ **A company has no domain** (`048` draws one) and **no badge revoke exists** — drawn, not built.
+6. ★ **A multi-day session may meet at venues of different owners** — `scoring`'s plan answers it.
+
+### ★ The lead's audit enumeration — one line per mutation per screen (`DEC-231` §4 is the full table)
+
+| Screen | Mutation → record |
+|---|---|
+| `046` | create → `venue.created` ★new · edit → `venue.changed` ★new · company → `venue.company_changed` ★new · (de)activate → `venue.deactivated` / `venue.reactivated` ★new |
+| `047` | create → `category.created` ★new · edit → `category.changed` ★new · (de)activate → `category.deactivated` / `category.reactivated` ★new |
+| `048` | create → `company.created` ★new · rename → `company.changed` ★new · (de)activate → `company.deactivated` / `company.reactivated` ★new · colour → `company.team_color_changed` |
+| `049` | role → `member.role_changed` · deactivate → `member.deactivated` · reactivate → `member.reactivated` · CSV → `export.created` |
+| `050/052` | hide → `comment.removed` · restore → `comment.restored` · dismiss → `report.resolved` ★new |
+| `051` | delete → `photo.removed` · restore → `photo.restored` · dismiss a photo report → `report.resolved` ★new |
+| `053` | rule → `scoring_config_history` (scoring) · company rule → history (company_scoring) · manual → `points.manual_adjustment` · ~~host company~~ removed |
+| `054` | level · badge · perk · streak → history · manual badge → `badge.manual_award` · release → `certificate.released` |
+| `060` · `063` | → history (`org_settings`) · domains → `domain.added` / `changed` / `removed` |
+| `061` · `062` · `064` | every CSV → `export.created`; ★ the audit log's CSV a new export type; an admin's ratings read → `ratings.read_admin` |
+| `064` | attach / detach → `survey.attached` / `survey.detached` |
+| `065` | create / save / delete → `survey_template.created` / `changed` / `deleted` ★new |
+
+### The order of work
+
+1. **Sync 1** — five plans, each with its kept-behaviour tables and its audit lines, judged against `DEC-231` §0. ★
+   Nobody deletes a file before «the plans are approved».
+2. **PR A** — `0180` and the audit migration (lead) · the cells (`console`, first) · `046` – `049`, `061`, `062`
+   (`console`) · `060` (`notify`) · the hosting rule and the stopgap form's removal (`scoring`).
+3. **B and C cut from A's head after the cells**, each in its own worktree, each opened against `main` on its first push.
+4. **PR C carries the rail 20 → 19** in the commit with `content`'s redirect.
 
 ### ★★ The owner's three rulings
 

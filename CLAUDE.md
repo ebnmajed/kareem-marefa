@@ -325,7 +325,101 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 21 — M11a, the console's first batch, DEC-225 · DEC-226 · DEC-227) — ★ THE MAP IN FORCE
+### Ownership map (wave 22 — M11b, the rest of the console, DEC-230 · DEC-231) — ★ THE MAP IN FORCE
+
+**The programme's eighth wave, and its largest batch: fifteen screens** (milestone **M24**). ★★ **The owner put M11b
+before stories** (`DEC-230` §1) — the fourth deliberate re-ordering; wave 18's ring stays inert and nobody wires it.
+Fifteen screens from fourteen artboards in `docs/design/screens/m11b/` (`050/052` share one), specified by
+`docs/design/screens/M11b.md` and corrected by the brief (`docs/plan/notes/wave-22-lead.md`), `DEC-230` and `DEC-231`.
+★★ **NO new primitive** — the floor stays **63** and `tests/unit/ui-playground.test.ts` is untouched, the first wave
+since 15. **Two migrations, both the lead's**: `0180` (`venues.company_id`) and the audit migration after it
+(`DEC-231` §4).
+
+★★ **THE GOAL, above the process** (`DEC-231` §0, the owner's words): **finish the console, so an admin can run the
+whole organisation from it.** ★ An admin changes something and **KNOWS IT SAVED** — a setting that silently did or did
+not write is the worst outcome on any page; ★ moderation is **ACTIONED, not listed** — content in context, reporter,
+age, and a resolution that records the outcome **and** the actor; ★ the catalogue is editable **without breaking the
+promise `SCR-022` makes** (`REQ-PTS-003`); ★ an export **opens in Excel in Arabic**, and every export is audited; ★ the
+audit log answers **who, when and why** for everything these screens can do; ★ and it stays **the sober register**
+(`REQ-UIX-053`), its test green **and untouched**. **«Good» is not «the gates are green».**
+
+★★ **Three PRs, each against `main` from its FIRST push** (`DEC-230`): **A — `wave-22a/the-tables`** (draft #47):
+`046`, `047`, `048`, `049`, `060`, `061`, `062`, the three `data-table` cells, `0180`, the audit migration, the hosting
+rule. **B — `wave-22b/the-read-pages`**: `053`, `054`, `063`. **C — `wave-22c/moderation-and-the-survey`**: `050/052`,
+`051`, `064`, `065`, the rail 20 → 19. ★ **A is built in the main checkout; B and C are cut from A's head once the cells
+land, each in its own worktree** (`../kareem-marefa-wave22b`, `../kareem-marefa-wave22c`). **A teammate edits a PR's
+files only in that PR's tree**; the lead posts each path when it exists.
+
+★ **Why it is divided this way** (`DEC-231` §2): **each screen goes to the track that owns what it writes**, so every
+contract is a read. The console's own DAL sits behind twelve of the fifteen, so the split follows the data
+**underneath**: `scoring` owns the rules and the ledgers, so it takes `053`, `054` and the hosting rule; `060` and
+`063` both write **one row, `org_settings`**, whose الربط card is calendar and mail, so `notify` takes them; `content`
+owns `comments`, `reports` and `photos`, so it takes moderation; `event` owns the survey; `console` keeps the four
+tables, exports, the audit log and its own `data-table`. The frame, the rail and the migrations are the lead's.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ `DEC-231`, this map, the ten agent files, `01`/`05`/`09`/`14`/`15`, `STATUS` · ★★ **`0180`** (`STORY-ADM-010`) · ★★ **the audit migration** (`STORY-ADM-011`): a definer trigger per table, the action strings `DEC-231` §4 fixes · ★ **the rail 20 → 19** in PR C — `admin-nav.ts`'s `moderationComments` to `built: false`, its count test · the read-mode spec over all four pages · every capture beside its artboard · the gates, three PRs, two worktrees | the lead-only paths below, ★ `src/components/shell/admin-nav.ts` and `tests/unit/admin-nav.test.ts`, `src/app/[locale]/app/admin/layout.tsx`, `src/components/ui/admin-rail.tsx`, `tests/unit/console-register.test.ts` (**untouched this wave**), new `tests/e2e/wave22-{demo,lead}-*.spec.ts`, new `tests/rls/{venue-company,console-audit}*.test.ts`. **Custodian** of every file of a track not spawned — `sessions` (**except** the venue functions of `lib/dal/sessions.ts`, `console`'s this wave), `checkin`, `designer`, `platform`, `branding` |
+| `console` | opus | ★ **the three `data-table` cells** (`REQ-UIX-092`, PR A, first — B and C are cut after them) · ★★ **`046` venues with the owning company** (`REQ-UIX-093`) · `047` (`094`) · `048` (`095`) · `049` (`096`) · `061` exports (`098`) · ★ **`062` the audit log, reading both stores** (`099`, `DEC-231` §4.3) — all PR A · in PR C, `admin-dashboard.ts`'s two moderation attention rows re-pointed on `content`'s written request | `src/app/[locale]/app/admin/{venues,categories,companies,members,exports,audit}/**`, `src/lib/dal/{admin-lists,admin-members,admin-exports,admin-audit,admin-dashboard,admin-sessions}.ts`, ★ **the venue functions of `src/lib/dal/sessions.ts`, add-only** (`listVenuesForAdmin`, `createVenue`, `setVenueActive` and their schemas), `src/app/api/admin/exports/**`, `src/components/admin/**` **except** `delivery-reason.ts`, its six `ui/` files (`data-table` **add-only**) with their tests, `-scope` tests and demos, `src/messages/*/admin.json`, `supabase/proposed/console/**` (functions only), `tests/components/admin/**` **except** `{emails-page,scoring-page,recognition-page,reminders-form,report-card,comment-report-card,takedown-card}.test.tsx`, `tests/unit/admin*` **except** `admin-{emails,nav,scoring-actions,recognition-actions,reminders-action}.test.ts`, `tests/rls/{admin-export-audit,team-colour-audit}.test.ts`, `tests/e2e/admin-{audit,exports,members,dashboard,sessions}.spec.ts` and `tests/e2e/wave{17,21}-console-*.spec.ts` (evidence), new `tests/e2e/wave22-console-*.spec.ts`, `docs/plan/notes/console.md`. **Nothing else** — the dashboard and the sessions table (wave 21) are frozen but for the two attention rows |
+| `scoring` | opus | ★★ **the hosting rule onto the venue's owner, and the stopgap form and `setSessionHostCompany()` removed in the same PR** (`REQ-PTS-016`, `STORY-PTS-008`, PR A) · ★ **`053` the points catalogue** (`REQ-UIX-100`, PR B) — ★ a test that edits a rule and reads `SCR-022`'s explanation after · ★ **`054` badges and levels with the held certificates** (`REQ-UIX-101`, PR B) · the read-mode pattern on both (`REQ-UIX-091`) · `05` §6.3's last word on a multi-day session's venues (`DEC-231` §6.3) | ★ `src/app/[locale]/app/admin/{scoring,recognition}/**` and `src/lib/dal/scoring-admin.ts` (**from `console`, this wave**), presentation-only `src/components/certificates/held-achievements.tsx`, `src/components/scoring/**` except the three boards, `src/lib/dal/{points,leaderboards,recognition}.ts` (add-only), `src/messages/*/{scoring,recognition}.json`, `supabase/proposed/scoring/**` (functions only), `worker/src/tasks/{award_points,award_presenter_points,evaluate_no_shows,evaluate_streaks,evaluate_badges,evaluate_levels_perks,snapshot_leaderboards,audit_balances}.ts` (fixes only), ★ `tests/components/admin/{scoring-page,recognition-page}.test.tsx` and `tests/unit/admin-{scoring,recognition}-actions.test.ts` (**from `console`**, evidence), `tests/components/scoring/**`, `tests/unit/scoring*`, `tests/rls/{scoring,points,award,leaderboards,recognition,audit-balances,manual-adjustment,snapshot,all-time,company-min-active}*.test.ts` (evidence), `tests/e2e/{points,scoring-screens,scoring-company-points,wave8-console-scoring,wave8-console-recognition}.spec.ts` (evidence), new `tests/e2e/wave22-scoring-*.spec.ts`, `docs/plan/notes/scoring.md`. **Nothing else** — the member app's points and boards, the ledger's shape and what a balance, level or rank **is** are frozen |
+| `notify` | opus | ★ **`060` reminders** (`REQ-UIX-097`, PR A) · ★ **`063` settings, four `kv-card`s** (`REQ-UIX-102`, PR B) — the read-mode pattern on both, ★ **the saved mark read from the `org_settings` history row the save wrote** | ★ `src/app/[locale]/app/admin/{reminders,settings}/**` and `src/lib/dal/admin-settings.ts` (**from `console`, this wave**), `src/lib/dal/{notifications,calendar}.ts` (add-only), `src/messages/*/{notifications,settings,calendar}.json` (★ the two pages' strings move here from `admin.settings.*`; `console` deletes the old keys on request), `supabase/proposed/notify/**` (functions only), ★ `tests/components/admin/reminders-form.test.tsx` and `tests/unit/admin-reminders-action.test.ts` (**from `console`**, evidence), `tests/components/{notifications,calendar,settings}/**`, `tests/unit/notify*`, `tests/rls/{notify,notifications}*.test.ts` (evidence), `tests/e2e/{wave8-console-reminders,admin-settings}.spec.ts` (evidence), new `tests/e2e/wave22-notify-*.spec.ts`, `docs/plan/notes/notify.md`. **Nothing else** — `notify()`, the mail, the email studio, the inbox, `/app/me/settings` and every worker task are frozen |
+| `content` | opus | ★★ **`050/052` reports** (`REQ-UIX-103`, PR C) — comment reports, moved here from `/comments`, and `/comments` redirecting · ★★ **`051` photos on `split-view`** (`REQ-UIX-104`, PR C) — takedowns and photo reports, moved here from `/reports` · ★ **report resolution as one audited function** (`STORY-ADM-011`, `DEC-231` §4.2) · the two counts the rail's badges read, named in its note | ★ `src/app/[locale]/app/admin/moderation/**` and `src/lib/dal/admin-moderation.ts` (**from `console`, this wave**), `src/lib/dal/{comments,reports,photos}.ts` (add-only), `src/messages/*/{event,photos}.json` (★ moderation's strings move here from `admin.moderation.*`; `console` deletes the old keys on request), `supabase/proposed/content/**` (functions only), ★ `tests/components/admin/{report-card,comment-report-card,takedown-card}.test.tsx` (**from `console`**, evidence) and new `tests/components/moderation/**`, `tests/rls/{moderation,photos}*.test.ts` (evidence), `tests/e2e/admin-moderation.spec.ts` (evidence), new `tests/e2e/wave22-content-*.spec.ts`, `docs/plan/notes/content.md`. **Nothing else** — the member app, the feed, materials, the viewer and the upload routes are frozen |
+| `event` | opus | ★ **`064` the survey tab** (`REQ-UIX-105`, PR C) — the withhold on every question type, screen and CSV · ★ **`065` survey templates** (`REQ-UIX-106`, PR C) — the two panes, reordered by buttons, every template mutation audited by the lead's trigger | `src/app/[locale]/app/admin/surveys/**`, `src/app/[locale]/app/admin/sessions/[id]/survey/**`, `src/components/survey/**`, `src/lib/dal/surveys.ts` (add-only), `src/messages/*/survey.json`, `supabase/proposed/event/**` (functions only), `tests/components/survey/**`, `tests/unit/survey*`, `tests/rls/survey*.test.ts` (evidence), `tests/e2e/wave10-event-*.spec.ts` (evidence; `wave10-demo-survey` is the lead's), new `tests/e2e/wave22-event-*.spec.ts`, `docs/plan/notes/event.md`. **Nothing else** — rate, the ratings, `star-input` and the hub's header are frozen |
+
+**Wave-22 contracts.**
+
+1. **Lead → everyone — the frame stands, and the rail drops one item.** Wave 21's frame is unchanged: a page renders its
+   `h1` row with its one primary action and its content, nothing of the frame. ★ In PR C the lead flips
+   `moderationComments` to `built: false` — **twenty items to nineteen** — in the same commit as `content`'s redirect.
+2. **`console` → everyone — the three cells, first.** The switch cell, the two-button action cell and the swatch cell,
+   **add-only on `data-table`, every existing suite untouched**. Their props in `console`'s note **on day one**; they
+   land in PR A before any screen that uses them, and **B and C are cut after them**.
+3. **Lead → everyone — the audit rows.** `DEC-231` §4's table is the list; a track's plan names every mutation its screens
+   perform and the row each writes — **one line per mutation per screen**. A gap is a definer trigger the lead writes;
+   **no track writes `audit_log` from the DAL**, and nothing is written twice.
+4. **`scoring` ↔ `console` — the venue's company.** `0180` is the lead's; `046` writes it (`console`); the rule reads it
+   (`scoring`). **No screen and no rule reads `sessions.host_company_id` after PR A.**
+5. **`content` → `console` and the lead — the moderation counts.** `content` names the two counts its screens show; the
+   two attention rows in `admin-dashboard.ts` re-point (`console`, on `content`'s written request) and the badges follow
+   (the lead). A badge is never drawn at 0.
+6. **`scoring` + `notify` — the read-mode pattern** (`DEC-231` §3). `profile-edit.tsx` is the reference, read and never
+   imported; **the saved mark comes from the server's answer and the history row**, never from the client's clock;
+   leaving with changes asks. The lead's `wave22-lead-read-mode` spec walks all four pages with the same steps.
+7. **Everyone — the artboard is the specification, and `DEC-230` with `DEC-231` §5 – §6 is the list of what it draws
+   that is not built.** A new disagreement is written in your note with the artboard and the line; nobody picks a side.
+   No class, id or markup pattern from a `.dc.html` in `src/`.
+8. **Everyone — every figure is read, and every action keeps its authority.** A count, an age, a value, a threshold —
+   never a literal. An export goes through the audited path; a removal through the existing function.
+
+**Wave-22 rules.**
+
+- ★★ **Rebuilt, never restyled; deleted first** (`DEC-199` §2, `DEC-208`). Two commits per screen — a delete, then a
+  create — and the kept-behaviour table in the note **before** the create commit, **with every audit row the screen
+  writes**, read against the new file after it. ★ **Never push an unpaired delete** — check the head before every push.
+- ★★ **The console is not the party** (`REQ-UIX-053`): no motion, no `transition`, no object, no sticker, no moment;
+  `h1` in the display face the only display use. `console-register.test.ts` **is not edited this wave**.
+- ★★ **No new primitive.** `ui/` stays 63 files; `ui-playground.test.ts` is untouched. A pattern three pages share is a
+  contract, not a file in `ui/`.
+- ★ **No explainer copy** (`DEC-NEXT-25`): a word or a number; state in the row; nothing shown when nothing needs doing.
+- ★★ **`registrations` is never touched; the five public routes do not move.** None of the fifteen screens is public.
+- ★ **The existing suites are evidence**; each changed assertion is a ledger line in `STATUS.md`, in the same commit.
+- ★ **No new dependency.** **No migration beyond the lead's two**; a function a plan needs goes under
+  `supabase/proposed/<you>/`, promoted by the lead.
+- **Teammates spawn planning-only**; sync 1 approves five plans with their kept-behaviour tables and audit rows;
+  **nobody deletes a file before the lead posts «the plans are approved».**
+- **One writer per file, specs and demos included. `ui-lint --strict` has no allowlist and never gains one.**
+- **Captures land at `.qa-shots/rtl/wave22-<track>-<screen>-<state>-<1280|390>.png`** from a production build the row
+  names by commit, honouring `E2E_SHOTS_DIR`; the lead opens every one beside the artboard, in bands, never downscaled.
+- **Not this wave, and never-touch for every teammate:** `SCR-045` and `055` – `059` with the studio, the email studio
+  and the brand kit; `/app/platform/**`; the five public routes; ★ stories, their viewer and `story_views` — the ring
+  stays inert; the member app's screens; the hard-load fix (`DEC-204`); `DEC-194`'s two gates; `DEC-186` §4;
+  `DEC-215`'s carried four; a company logo or domain; a badge revoke; dropping `sessions.host_company_id`.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`, `stop`,
+  branch switches, worktrees, pushes and the PRs.
+
+### Ownership map (wave 21 — M11a, the console's first batch, DEC-225 · DEC-226 · DEC-227) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 21 merged as PRs #44 (`8ba2554b`) and #45 (`69438aa2`). Its map is kept as the record; **wave 22's map is directly above** (`DEC-230`, `DEC-231`).
 
 **The programme's seventh wave, and the first that rebuilds the CONSOLE** (milestone **M23**). ★★ **The owner put the
 console before stories** (`DEC-225` §1) — the third deliberate re-ordering; wave 18's ring stays inert and nobody wires
@@ -1717,6 +1811,7 @@ to hard-fail in M13.
 ★ from wave 19 (`DEC-213`): `src/app/[locale]/app/members/**`, `src/lib/dal/members.ts` and `members.json` are `scoring`'s for the wave, back to `sessions` after it.
 ★ from wave 20 (`DEC-217`): `src/app/[locale]/app/me/{layout,loading,error}.tsx` and `src/components/me/tab-strip.tsx` are the lead's — the hub frame has one writer; `me/certificates/**` is `content`'s and `leaderboards/**` `scoring`'s for the wave, back to `designer` and `sessions` after it.
 ★ from wave 21 (`DEC-227`): `src/app/[locale]/app/admin/layout.tsx` is the lead's — the console frame has one writer; `admin/proposals/**` is `sessions'` for the wave, back to `console` after it. `tests/unit/console-register.test.ts` is the lead's, amended once (`DEC-227` §2).
+★ from wave 22 (`DEC-231`): `admin/{scoring,recognition}/**` and `scoring-admin.ts` are `scoring`'s, `admin/{reminders,settings}/**` and `admin-settings.ts` `notify`'s, `admin/moderation/**` and `admin-moderation.ts` `content`'s — **for the wave**, back to `console` after it. `src/components/shell/admin-nav.ts` stays the lead's.
 ★ from wave 18 (`DEC-206`): `tests/unit/design-files.test.ts` — the gate that keeps `docs/design/screens/` out of the build has one writer. `src/app/[locale]/app/page.tsx` is `content`'s for the wave: home is the feed, a page composed of three tracks' items on the lead's frame.
 
 ★ **Added by DEC-085, with the design milestone** — none of these was lead-only before, and
@@ -1733,7 +1828,7 @@ the sessions timeline (`DEC-112`), which is no longer a page composed of other t
 **Inside `src/components/ui/` ownership is per FILE, not per directory** — a glob with four writers
 is the exact failure `TEAM.md` exists to prevent. The four literal file lists — the lead's fifteen,
 `sessions'` eight, `console'`s six, `content'`s nine — are in each `.claude/agents/*.md`, and they are
-unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 18 adds four** (`DEC-206`): `week-hud` is `scoring`'s, `feed-item` and `attendee-stack` are `content`'s, `action-bar` is `sessions'` — 53 files. ★ **Wave 19 adds four** (`DEC-213`): `page-viewer` is `content`'s, `star-input` `event`'s — its first — `stepper` `sessions'`, `badge-medallion` `scoring`'s — 57 files. ★ **Wave 20 adds three** (`DEC-216` §2.1): `podium` and `ledger-row` are `scoring`'s, `settings-group` `notify`'s — its first — 60 files; `status-mark` is withdrawn. ★ **Wave 21 adds three** (`DEC-225` §2, `DEC-227` §2): `admin-rail` is the lead's — and `src/components/admin/admin-rail.tsx` is deleted, so there is one — `split-view` and `kv-card` `sessions'` — 63 files. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
+unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 18 adds four** (`DEC-206`): `week-hud` is `scoring`'s, `feed-item` and `attendee-stack` are `content`'s, `action-bar` is `sessions'` — 53 files. ★ **Wave 19 adds four** (`DEC-213`): `page-viewer` is `content`'s, `star-input` `event`'s — its first — `stepper` `sessions'`, `badge-medallion` `scoring`'s — 57 files. ★ **Wave 20 adds three** (`DEC-216` §2.1): `podium` and `ledger-row` are `scoring`'s, `settings-group` `notify`'s — its first — 60 files; `status-mark` is withdrawn. ★ **Wave 21 adds three** (`DEC-225` §2, `DEC-227` §2): `admin-rail` is the lead's — and `src/components/admin/admin-rail.tsx` is deleted, so there is one — `split-view` and `kv-card` `sessions'` — 63 files. ★ **Wave 22 adds none** (`DEC-230`): the three `data-table` cells are stories on `console`'s file — 63 files, the floor unmoved. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
 it does not exist**, which is why all ten were regenerated in the same commit as this list.
 
 `src/components/ui/index.ts` exports **types only**; implementations are imported **by path**. A
