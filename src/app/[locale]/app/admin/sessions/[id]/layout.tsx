@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 import { AttendanceHeaderAction } from "@/components/checkin/attendance-header-action";
+import { SurveyHeaderAction } from "@/components/survey/survey-header-action";
 import { SessionSettingsNav, SessionSettingsNavSkeleton } from "@/components/sessions/session-settings-nav";
 import { HubHeader, HubHeaderSkeleton } from "./_hub/hub-header";
 
@@ -20,7 +21,11 @@ export default async function SessionHubLayout({ children, params }: { children:
   return (
     <>
       <Suspense fallback={<HubHeaderSkeleton />}>
-        <HubHeader locale={locale} sessionId={id} tabActions={{ attendance: <AttendanceHeaderAction locale={locale} sessionId={id} /> }} />
+        <HubHeader locale={locale} sessionId={id} tabActions={{
+          attendance: <AttendanceHeaderAction locale={locale} sessionId={id} />,
+          // wave 22 (DEC-232 §6): the survey tab's CSV, `event`'s action, placed by the lead as `sessions'` custodian.
+          survey: <SurveyHeaderAction locale={locale} sessionId={id} />,
+        }} />
       </Suspense>
       <Suspense fallback={<SessionSettingsNavSkeleton />}>
         <SessionSettingsNav locale={locale} sessionId={id} />
