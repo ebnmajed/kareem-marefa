@@ -4017,3 +4017,323 @@ fact.
 - `settings-page.test.tsx` covers the rows, the sentence, staff-only `admin_queue`, the links, the footer, and axe.
 - `tests/e2e/wave20-notify-settings.spec.ts` reads `notification_preferences` and `members.leaderboard_opt_out` back
   after a reload.
+
+---
+
+## Wave 22 — the plan (sync 1)
+
+Measured at `d17406f1` on `wave-22a/the-tables`, planning-only. Read: the regenerated `.claude/agents/notify.md`,
+`STATUS.md`'s wave-22 block, `DEC-230`, `DEC-231` (§0 – §7), `M11b.md`, `M10c.md` §1, `M11a.md` §0, both artboards beside
+their PNGs, `notes/wave-22-lead.md`, `profile-edit.tsx` (read, never imported), `kv-card.tsx`, `data-table`'s props, every
+file under `admin/{reminders,settings}/`, `admin-settings.ts`, `notifications.ts:792-839`, `0004` (`org_settings`,
+`org_domains`, `orgs`, `scoring_config_history`, `audit_log`), `0005:16` and `:300-334`, `0026`, `0034`, `0040`, `0062`,
+`0069`, `0101`, `0156`, the four evidence suites and every other test that names either route.
+
+### N0 · The goal, one line per screen (`DEC-231` §0.1)
+
+- **`060`**: an admin reads the reminders the org sends — when, on which channels — presses «عدّل», changes a timing,
+  sees «تغيير واحد غير محفوظ» and the field marked, presses «احفظ», and the page returns to read mode with
+  **«✓✓ حُفظ · 14:05 · ريم»** read from the `scoring_config_history` rows that save wrote; a save that changed nothing
+  says **«لم يتغيّر شيء»** and the mark keeps the previous save's time.
+- **`063`**: the same, over four cards; the mark is read from **both** stores, because a domain change lands in
+  `audit_log` (`domain.*`) and a setting in `scoring_config_history` — one save, one transaction, one instant, one mark.
+
+★ **The receipt is the mechanism that makes «knows it saved» true rather than asserted** (N3 below): the save returns
+the instant its transaction wrote (`org_settings.updated_at`, set to `now()` by `org_settings_updated_at`), and the
+history rows **with `changed_at` equal to that instant and `entity_id` = the settings row** are exactly the rows this save
+wrote — no client clock, no ordering by time to «find the last row» (the wave-9 trap), and an empty set means nothing
+changed. Both triggers run in the save's transaction, so `now()` is identical by definition.
+
+### N1 · `060` التذكيرات — PR A (`REQ-UIX-097`, `STORY-UIX-087`)
+
+**Regions, in the artboard's order** (`AdminReminders.dc.html:55-63`): the `h1` row — «التذكيرات» in the display face,
+«عدّل» at its end (a `link`-styled `button`, the page's one primary) · ★ the saved mark under the `h1` row, plain text and
+a glyph (`DEC-230` §4), only when a save exists · one `data-table` (`console`'s, **composed as it is** — no new cell
+needed in read mode): التذكير · التوقيت · القناة · مفعّل; under `lg` its own phone stack. Edit mode: the same page with
+«تعديل التذكيرات», the unsaved count, the editable timings, and an `action-bar` with «احفظ» naming the count and «إلغاء».
+`data-table` is `"use client"`, so the table lives in a client file of mine (`reminders-table.tsx`) that receives plain
+rows — **no closure crosses the RSC boundary** (`DEC-159`).
+
+**What «channels» reads today** — ★ **nothing org-level.** Channels are the specification's, not the org's:
+`public.notification_matrix()` (`0026:79`, last redefined `0156`, granted to `authenticated`) returns `in_app` and
+`email` per `MSG-*` key. The column is therefore **read from that function**, never typed: for `MSG-reminder_7d`, `_1d`,
+`_2h` and `_generic` alike it answers **in-app · email** (the four are identical, so a row's channels never depend on
+which message an offset maps to, and `reminder_message_key()` — `service_role` only — need not be called);
+`MSG-rating_prompt` in-app · email; `MSG-rsvp_nudge` in-app. A member's own per-category opt-out (`08` §2) narrows what
+**they** receive; the column says what the org sends on, and that is what the admin controls nothing of — so it is
+read-only in edit mode too.
+
+**The rows, measured against the data** (the drawn six, line by line):
+
+| Artboard row (line) | Drawn | What stores or sends it | This plan |
+|---|---|---|---|
+| قبل الجلسة · 7 أيام (`:58`) | in-app · بريد · on | an element of `org_settings.reminder_offsets_minutes` (`0004:116`) → `MSG-reminder_7d` | **built** — a row per stored offset |
+| قبل الجلسة · يوم (`:59`) | in-app · بريد · on | same → `MSG-reminder_1d` | **built** |
+| قبل الجلسة · ساعتان (`:60`) | ★ **in-app only** · on | same → `MSG-reminder_2h`, which the matrix sends **in-app · email** | **built**, channels read → «داخل التطبيق · بريد» (disagreement R-D3) |
+| دعوة التقييم · بعد ساعة (`:61`) | in-app · بريد · on | `org_settings.rating_prompt_delay_minutes` → `MSG-rating_prompt` | **built**; ★ nothing stores «off» for it (R-D2) |
+| أُضيفت مواد · فورًا (`:62`) | ★ in-app only · on | ★★ **nothing sends it.** `MSG-materials_added` is in the matrix (in-app · email), has a binding (`0133:99`), a design and a subject — and **no `notify()` call anywhere** in `supabase/migrations/`, `worker/src` or `src/` | **absent** — drawn, not built; ★ defect D-N1 |
+| إغلاق التسجيل · قبل 6 ساعات · off (`:63`) | in-app · off | `MSG-rsvp_deadline_soon` — in the matrix, **no job schedules it** (`08` §1.3, DEC-047); nothing stores «6 hours» | **absent** — drawn, not built |
+| — not drawn — | | `MSG-rsvp_nudge`, in-app, **once at −7 d** to non-responders, a constant in `schedule_session_reminders()` (`0034:147`) — `08` §4.2's | ★ question R-Q2: a read-only row or absent |
+
+★★ **R-D1 — the one disagreement the lead must rule before I build `060`, and I do not pick a side.**
+`REQ-UIX-097` and `M11b.md` §060 say «the set is `08`'s; a row is never added here», and the board draws three fixed
+pre-session reminders each with an **enabled** switch. **The data is not a fixed set**: `reminder_offsets_minutes` is a
+free `int[]` of 1 – 6 offsets (`reminderScheduleInput`, `notifications.ts:812`), `REQ-NTF-004` says
+«org-configurable», and `DEC-047` / `0062` built `MSG-reminder_generic` **precisely so an org can add an offset**. Today's
+screen adds and removes offsets. Two readings, each buildable without a column:
+- **(a) the data's set.** Read mode: one row per stored offset (1 – 6), then the prompt. Edit mode: each timing editable;
+  add and remove stay (≤ 6, ≥ 1), because «the set» an admin edits is the org's offsets and `08` §4.1 row 4 is the
+  mechanism. «مفعّل» reads ✓ «مفعّل» on every row, because a stored offset **is** on — it is not a control.
+- **(b) the board's set.** Three fixed rows (7 d, 1 d, 2 h) and the prompt; «مفعّل» a real switch whose «off» removes
+  that offset from the array; timing edits clamped to the message's ±20 % band (`0062:28-30`) so a row never silently
+  becomes `MSG-reminder_generic`; at least one stays on. **An org with a custom 4th – 6th offset loses its way to see or
+  edit it** (production: every org is on the default `{10080,1440,120}` — I have not read production; the lead would).
+Either way the write is `setReminderSchedule()`'s one UPDATE and the reschedule is `0040`'s trigger, unchanged
+(`STORY-UIX-087`: «the offsets written by the function that writes them today»).
+
+### N2 · `063` الإعدادات — PR B (`REQ-UIX-102`, `STORY-UIX-092`)
+
+**Regions, in the artboard's order** (`AdminSettings.dc.html:55-83`): the `h1` row — «الإعدادات», «عدّل» · the saved mark
+· four `kv-card`s (`sessions'`, **composed as they are**, `mode="read"|"edit"`, each row's `edit` a `field` +
+`input`/`select`/`switch`/`combobox`), two columns from `lg`, DOM order المؤسسة · الجلسات · الخصوصية · الربط, one column
+under `lg`. ★ The board draws **no card titles**; `kv-card` requires `title` **or** `label` — R-D6. One `<form>` wraps the
+four cards in edit mode (the card renders none, by design), with the `action-bar`.
+
+**Every drawn row, measured — what stores it, and what the page does:**
+
+| Card · row (line) | Drawn value | Source today | Kind | Plan |
+|---|---|---|---|---|
+| المؤسسة · الاسم (`:59`) | شبه الجزيرة | `orgs.name`; `grant update (name)` to an admin (`0004:55`) | stored | read; edit ★ **only if** the lead lands an audit trigger — today a rename writes **no record** (A-G1) |
+| · النطاقات (`:60`) | 7 domains | `org_domains`, admin-only even to read (`0004:95`); audited by `org_domains_audit` (`0005:315-334`) | stored | read; edit — add and remove, `domain.added` / `domain.removed` from the trigger |
+| · اللغة الافتراضية (`:61`) | العربية | ★ **nothing** — no column holds an org language | drawn, not built | **absent** |
+| · المنطقة الزمنية (`:62`) | الرياض | `org_settings.time_zone` (`0004:112`) | stored | read as the zone's name in the locale (`Intl`, computed — R-D7); edit — a `combobox` over the runtime's IANA list (defect D-N3) |
+| الجلسات · السعة الافتراضية (`:65`) | 40 | ★ **nothing** — `sessions.capacity` is per session (`0010:85`); no org default | drawn, not built | **absent** |
+| · إغلاق التسجيل (`:66`) | قبل الموعد بيوم | ★ **nothing** — `sessions.rsvp_deadline_at`, per session | drawn, not built | **absent** |
+| · آخر إلغاء (`:67`) | قبل الموعد بـ 6 ساعات | ★ **nothing** — `sessions.cancellation_cutoff_at`, per session | drawn, not built | **absent** |
+| · رمز الحضور (`:68`) | يتغيّر كل 10 دقائق · يُغلق بعد ساعتين | rotation = `check_in_rotation_seconds` ✓; «closes after two hours» = `check_in_ceiling()`'s **constant** `ends_at + 2 h` (`0101:142`, `DEC-151`) — not a setting | stored + rule | read: rotation from the row; ★ the grace (`check_in_grace_seconds`, stored, **not drawn**) beside it — R-D4. The ceiling is not shown as a value nobody can change |
+| · قائمة الانتظار (`:69`) | مفعّلة | ★ **nothing** — a waitlist always exists (`rsvps.waitlist_position`) | a rule, not a setting | **absent** |
+| · اعتماد المقترحات (`:70`) | يدوي | ★ **nothing** — approval is always an admin's act (`REQ-PRO-*`) | a rule | **absent** |
+| الخصوصية · الصور (`:75`) | تُجرَّد من بيانات الموقع · تُحذف بعد سنتين | EXIF is always stripped (`REQ-EVT-011`) — a rule; ★★ **«deleted after two years» is FALSE**: photos are `sessions_and_content`, kept **for the life of the org** (`0069:161`), and `retention_periods` has no grant at all | a rule; a false value | **absent** — showing it would state a policy that does not exist (R-D5) |
+| · التقييمات (`:76`) | مجهولة · يراها المشرفون | anonymity to the presenter is a rule (`REQ-RAT-005`, D36); the stored part is `rating_min_aggregate` (`REQ-RAT-006`) | rule + stored | read: «يظهر المتوسط بعد <bdi>3</bdi> تقييمات» from `rating_min_aggregate`; edit that number |
+| · تصدير بيانات العضو (`:77`) | خلال 30 يومًا | ★ **nothing** — no «30 days» in the plan or the schema; archives expire after 7 days (`0069:160`) | drawn, not built | **absent** |
+| · إيقاف الحساب (`:78`) | يحتفظ بالسجل | a rule — deactivated members are **anonymised after 365 days** (`0069:159`), so «keeps the record» is half the truth | a rule | **absent** (R-D5) |
+| الربط · تقويم Google (`:81`) | مفعّل للأعضاء | a **deployment** fact: `oauthClient()` is non-null when `GOOGLE_CALENDAR_CLIENT_ID`/`_SECRET` are set (`api/calendar/oauth.ts:30`) — not an org setting | derived | read-only row: «متاح للأعضاء» / «غير مُعدّ», no edit |
+| · البريد (`:82`) | noreply@pp.sa | the **address** is the worker's `MAIL_FROM_ADDRESS` (`worker/src/mail/transport.ts:50-60`) — not readable on Vercel; the org stores `email_from_name` and `email_reply_to` (`OQ-016`) | stored | read and edit **the name and the reply-to**; the address is absent (R-D5) |
+| · التحقّق من الشهادات (`:83`) | pp.sa/verify | `SITE_URL` + `/verify` — deployment | derived | read-only row, `dir="ltr"` in `<bdi>` |
+
+★★ **What `REQ-TEN-008` requires and the board does not draw** — eleven stored, editable settings that the page writes
+today. **Dropping any of them silently breaks `REQ-TEN-008`** («each org configures, at minimum …») and `REQ-MAT-009`.
+They are kept, placed where their meaning sits — R-D4 says it is a placement the board does not draw, not a side picked:
+
+| Kept setting | `REQ-*` | Card |
+|---|---|---|
+| `check_in_grace_seconds` | `REQ-TEN-008` (A7), `REQ-CHK-002` | الجلسات, in the رمز الحضور row's value and edit |
+| `max_co_presenters` | `REQ-TEN-008` (OQ-021), `REQ-PRO-003` | الجلسات |
+| `priority_rsvp_hours` | `REQ-RSV-009`, `REQ-REC-007` | الجلسات |
+| `company_metric` | `REQ-TEN-008` (A11), `REQ-LDR-005` | المؤسسة |
+| `limit_document_mb` · `limit_audio_mb` · `limit_image_mb` · `limit_poster_mb` | `REQ-TEN-008` (A16), `REQ-MAT-009` | الجلسات, one row «حدود الملفات» reading the four |
+| `allow_jpeg_export` | `REQ-DSG-011` | الربط? — ★ R-Q4 |
+| `email_from_name` · `email_reply_to` | `REQ-TEN-008` (OQ-016) | الربط · البريد |
+| `rating_min_aggregate` | `REQ-RAT-006` | الخصوصية · التقييمات |
+| ★ `company_min_active_members` | `DEC-220` §1.3, carried by `DEC-224` §6 «on `/app/admin/settings`» | ★ **not in `DEC-230`/`DEC-231` at all** — R-Q3 |
+
+`rating_window_days`, `comment_edit_window_minutes` and `survey_min_responses` are stored, have **no screen today**, and
+are not drawn; I add none of them (a setting nobody asked for on this page is scope).
+
+### N3 · Every mutation, its record, and the read that makes the mark (contract 3, `DEC-231` §4)
+
+| Screen | Mutation | Writer | Record | Status |
+|---|---|---|---|---|
+| `060` | an offset changed, added, removed | `setReminderSchedule()` → one UPDATE (`notifications.ts:828`) | `scoring_config_history` `scope='org_settings'`, `field='reminder_offsets_minutes'`, old and new array, actor = `auth_member_id()` — `org_settings_history()` (`0004:377`) | ✓ exists — `DEC-231` §4 confirmed |
+| `060` | the prompt delay | same UPDATE | history, `field='rating_prompt_delay_minutes'` | ✓ |
+| `060` | (side effect) pending reminders moved | `org_settings_reschedule()` (`0040`) | the queue itself — no audit row, by design | ✓ unchanged |
+| `063` | any `org_settings` column | the update (N3.2) | one history row **per changed column** | ✓ |
+| `063` | a domain added · edited · removed | insert / update / delete on `org_domains` | `domain.added` · `domain.changed` · `domain.removed` from `org_domains_audit` (`0005:315-334`), actor and role from the claims | ✓ — `DEC-231` §4 confirmed |
+| `063` | ★ the org renamed | `update orgs set name` | ★★ **NOTHING.** No trigger on `orgs` writes `audit_log`; `orgs_updated_at` only bumps the time | ★ **A-G1 — a seventh gap `DEC-231` §4 does not list.** Either the lead writes a definer trigger (`org.renamed`, `before`/`after` `{name}`, in the audit migration) or the name is a read-only row on `063`. **I do not edit the name until one of the two is ruled** |
+
+★ **The page never writes `audit_log` or the history** — every record comes from a trigger, so nothing is written twice
+and a direct write under the policy is covered too.
+
+**N3.1 — the receipt (the save's answer).** Add-only in `admin-settings.ts`:
+
+```ts
+export type OrgSettingsColumn = "time_zone" | "check_in_rotation_seconds" | … | "reminder_offsets_minutes" | "rating_prompt_delay_minutes";
+export interface SaveReceipt {
+  at: string;                         // the save's transaction instant — org_settings.updated_at, never the client's clock
+  wrote: OrgSettingsColumn[];         // the history rows with changed_at = at; [] ⇒ «لم يتغيّر شيء»
+  domainsAdded: string[]; domainsRemoved: string[];   // 063 only, from audit_log rows with occurred_at = at
+}
+export interface SavedMark { at: string; actor: { id: string; displayName: string | null } | null }
+/** The last save that touched these columns (or these audit actions): the newest changed_at among them, and the rows
+ *  sharing it — a group, so the «rows written together share a time» trap is the property used, not fallen into. */
+export async function getLastSave(locale: string, columns: readonly OrgSettingsColumn[], actions?: readonly string[]): Promise<SavedMark | null>;
+```
+
+The actor's name through `members_member_view.display_name` (the column grant cannot leak an address). Admin-only: both
+stores' read policies are admin's (`0004:369`, `:422`), and a moderator never reaches either page. **No row ⇒ no mark** —
+an org that has never saved shows nothing (`DEC-NEXT-25`: nothing is shown when nothing needs doing).
+
+**N3.2 — the writes.**
+- **`060`**: `setReminderSchedule()` keeps its one UPDATE and gains `.select("id, updated_at")` and the receipt
+  read; ★ **its return widens `void → SaveReceipt`** (no caller reads the void; R-Q1 asks whether that counts as
+  add-only — the alternative is a second function writing the same two columns, which I think is worse). ★ **0 rows
+  matched now throws `not_found`** instead of returning as if saved (D-N2).
+- **`063`**: ★ **only the columns the admin changed are sent** — the form posts each field's opened value beside its
+  edited value, and the action diffs. Today `updateOrgSettings()` writes all fourteen columns on every save, so a save
+  by admin A overwrites a change admin B made to another field a minute earlier **and the history records A as having
+  made it** (D-N4). A field whose opened value no longer equals the stored value is refused at the field
+  («تغيّرت هذه القيمة منذ فتحت الصفحة»), never overwritten.
+- ★ **One transaction for `063`** (settings, name, domains): `supabase/proposed/notify/save_org_settings.sql`, **`security
+  invoker`** — RLS, the column grants and both audit triggers apply exactly as for a direct write; it checks
+  `is_org_admin()` before its first write (a raise before any write is safe, `DEC-043`), validates every domain before
+  writing, and returns the receipt as an envelope. Without it a refused domain after a settings update leaves half a save
+  — truthful in the receipt, but not what the admin pressed. Proven with `applyProposed()` in
+  `tests/rls/notify-admin-settings.test.ts`, **as a member** (the admin fixture, never the owner): each mutation leaves its
+  history or audit row; a moderator is refused with no row; a no-change save returns `wrote: []`; a stale field is
+  refused. ★ Removing the **last** domain is refused (R-Q5).
+
+**N3.3 — the read-mode contract on both pages** (`DEC-231` §3, `M10c.md` §1): «عدّل» is a link to `?edit` (works without
+JS); edit mode names itself, counts unsaved changes in six ICU forms, marks each changed field by an accent outline
+**and** «(معدّل)» to a screen reader; «احفظ» names the count and is **enabled in the server's HTML** (a save before
+hydration still writes); «إلغاء» is a link to read mode; leaving with changes asks — a dialog for an in-app link, the
+browser's own question on reload (the profile's pattern, written fresh). On the action's answer: `wrote.length > 0` → one
+`status` announcement «حُفظ» and back to read mode, where the mark is read from the history; `wrote: []` → «لم يتغيّر
+شيء», back to read mode, the old mark unchanged; a refusal → edit mode kept, the error at the field, the summary's links
+focusing the control. **Shared accessible names with `scoring`'s `053`/`054` so `wave22-lead-read-mode` walks four pages
+with one set of steps** — I propose «عدّل», «احفظ», «إلغاء», the mark's leading «✓✓ حُفظ»; to align at sync 1.
+
+### N4 · Kept-behaviour tables — re-derived from the requirements and the DAL
+
+**`060` (R)** — `src/app/[locale]/app/admin/reminders/{page,actions,state,reminders-form}.tsx` deleted first.
+
+| # | Behaviour | Now | After | `REQ-*` |
+|---|---|---|---|---|
+| R1 | admin only; anyone else gets the streamed not-found | `getReminderSchedule()` → null → `notFound()` | same read, same `notFound()` | `REQ-ADM-020`, `DEC-134` |
+| R2 | the database refuses a moderator's write regardless | `p2_admin_update` (`0004:141`) | unchanged | `REQ-ADM-020` |
+| R3 | the stored offsets and prompt are what is shown | `org_settings` select | same | `REQ-NTF-004`, `REQ-ADM-016` |
+| R4 | ★ defaults shown when the org has no settings row | `?? [10080,1440,120]` / `?? 60` | **kept for read**, but a save with no row is refused (D-N2) | A19 |
+| R5 | offsets shown largest first, each in the largest unit that divides it | `splitDuration` | same | `REQ-NTF-004` |
+| R6 | prompt `0` reads «فور انتهاء الجلسة» | `promptImmediate` | same, in the timing cell | `REQ-RAT-007` |
+| R7 | every number in `<bdi>`, six ICU forms | `before.*`, `promptAfter.*` | new timing keys, same forms | `REQ-INT-006`, `10` §3 |
+| R8 | bounds: 5 min – 30 d, ≤ 6, ≥ 1, no duplicate, prompt 0 – 7 d, each refused **at its row** | `actions.ts:33-50`, `reminderScheduleInput` | same rules in edit mode (R-D1 decides add/remove) | `REQ-NTF-004`, `REQ-UIX-009` |
+| R9 | a duplicate is refused on the **later** row, across units | `actions.ts:39` | same | `REQ-UIX-009` |
+| R10 | the error summary's links focus the control | `summaryErrors` + `fieldId` | same | `REQ-UIX-009` |
+| R11 | a refused save keeps what was typed (controlled rows) | `reminders-form.tsx:66-78` | same | `DEC-149` §1 |
+| R12 | focus follows add / remove; the last row is not removable | `:80-109`, `:150` | kept under R-D1 (a) | `16` §3 principle 7 |
+| R13 | one UPDATE; pending reminders **move**, never duplicate | `setReminderSchedule` + `0040` trigger | same function, same trigger | `REQ-NTF-004` |
+| R14 | every change in the configuration history | `org_settings_history()` | same — and now **read back** for the mark | `REQ-TEN-008`, `REQ-ADM-023` |
+| R15 | the confirmation | toast «حُفظ الجدول وحُرّكت التذكيرات المعلّقة» from `saved: true` | ★ the mark from the history + one announcement from the receipt; «لم يتغيّر شيء» for `wrote: []` | `REQ-UIX-091` |
+| R16 | `noValidate`; the no-JS path writes | the form posts to the action | «عدّل» a link; the edit form posts; Save enabled in the server's HTML | `REQ-UIX-091`, `16` §8 |
+| R17 | `revalidatePath` after a save | `actions.ts:59` | same | — |
+| R18 | the generic-message note («أي موعد آخر … برسالة عامة») | `genericNote` panel | ★ dropped as explainer copy (`DEC-NEXT-25`) **only under R-D1 (b)**; under (a) an admin typing 3 days needs to know — R-Q6 | `DEC-047` |
+| R19 | the intro sentence | `intro` | dropped — the mark says what was saved | `DEC-NEXT-25` |
+| R20 | no sideways scroll at 390 | `notify-screens.spec.ts:331`, wave-8 spec | the table's phone stack | `10` §2 |
+
+**`063` (S)** — `src/app/[locale]/app/admin/settings/{page,actions,state,settings-form,saved-toast}.tsx` deleted first.
+
+| # | Behaviour | Now | After | `REQ-*` |
+|---|---|---|---|---|
+| S1 | admin only; streamed not-found otherwise | `requireAdmin` → null → `notFound()` | same | `REQ-ADM-020`, `DEC-134` |
+| S2 | the column grant and `p2_admin_update` refuse a moderator's write | `0004:141-152` | unchanged; the RPC is `invoker` so they still apply | `REQ-ADM-020` |
+| S3 | ★ **no numeral setting** — `getByLabel("نظام الترقيم")` has count 0 | absent | absent | `DEC-124`, `REQ-INT-006` |
+| S4 – S14 | the fourteen columns read and editable, each with its bounds (`orgSettingsInput`, `.strict()`) | `admin-settings.ts:76-93` | the same bounds, the same columns, placed per N2's table | `REQ-TEN-008`, `REQ-MAT-009`, `REQ-LDR-005`, `REQ-RAT-006`, `REQ-RSV-009`, `REQ-DSG-011`, `REQ-CHK-002`, `REQ-PRO-003` |
+| S15 | an empty from-name / reply-to stores `null`; reply-to must be an address | `actions.ts:54` | same | OQ-016 |
+| S16 | errors per field, the summary's links focus the **control id** | `FIELD_ID` map — wave 8's F4 fix | same, ids kept stable where a field survives | `REQ-UIX-009` |
+| S17 | a refused save keeps what was typed | `was()` after an attempt | controlled fields | `DEC-149` §1 |
+| S18 | every change in the history with old and new value | trigger | same; **only changed columns written** (D-N4) | `REQ-TEN-008` |
+| S19 | the confirmation | redirect `?saved=1` → `SavedToast` fires once, strips the param | ★ removed — the mark is the history's; a typed `?saved=1` today shows «saved» with no save (D-N5) | `REQ-UIX-091` |
+| S20 | the intro «كل تغيير هنا يُسجَّل …» and `priorityRsvpHint` | explainers | dropped (`DEC-NEXT-25`) | — |
+| S21 | required markers | `SETTINGS_REQUIRED_FIELDS` | `field`'s `required` in edit mode | `REQ-UIX-009` |
+| S22 | no sideways scroll at 390 | `admin-settings.spec.ts:153` | one column of cards under `lg` | `10` §2 |
+| S23 | ★ new: name and domains read; domains edited through `org_domains`' audited path | — (platform-only UI today) | N2, N3 | `REQ-TEN-007`, `STORY-UIX-092` |
+
+### N5 · Strings
+
+- **`063`**: new subtree `settings.admin.*` in `src/messages/{ar,en}/settings.json` (mine; `settings.*` today is
+  `/app/me/settings`'s, so no key collides): `title` «الإعدادات», `edit` «عدّل», `editing` «تعديل الإعدادات», `unsaved`
+  (six forms), `changed` «(معدّل)», `save` (with the count), `cancel`, `saved` «✓✓ حُفظ <bdi>{time}</bdi> · <bdi>{actor}</bdi>»,
+  `unchanged` «لم يتغيّر شيء», `leave.*`, `cards.{org,sessions,privacy,integrations}`, one key per row label and value
+  form, `errors.*` (the fifteen of today, moved, plus `stale`, `domainInvalid`, `domainLast`).
+- **`060`**: `notifications.admin.reminders.*` rewritten in place (it is already mine): `title` «التذكيرات», the four
+  column headers, `rows.{before,prompt,nudge}`, `timing.*` (★ nominative standalone forms the board draws — «7 أيام»,
+  «يوم», «ساعتان», «بعد ساعة من الانتهاء» — not today's «قبل يومين» genitive), `channels.{inApp,email}`, `enabled`, and the
+  read-mode set shared in form with `063`'s.
+- ★ **For `console` to delete once nothing reads them — the whole `admin.settings` subtree in `ar` and `en`:** `title`,
+  `intro`, `timeZoneLabel`, `checkinTitle`, `checkInRotationLabel`, `checkInGraceLabel`, `proposalsTitle`,
+  `maxCoPresentersLabel`, `priorityRsvpHoursLabel`, `priorityRsvpHint`, `recognitionTitle`, `companyMetricLabel`,
+  `companyMetricTotal`, `companyMetricPerActive`, `uploadsTitle`, `limitDocumentLabel`, `limitAudioLabel`,
+  `limitImageLabel`, `limitPosterLabel`, `allowJpegExportLabel`, `ratingsTitle`, `ratingMinAggregateLabel`, `emailTitle`,
+  `emailFromNameLabel`, `emailReplyToLabel`, `save`, `saved`, `errorSummaryTitle`, `errors.{timeZoneRequired,
+  timeZoneTooLong, checkInRotationInvalid, checkInGraceInvalid, maxCoPresentersInvalid, companyMetricInvalid,
+  priorityRsvpHoursInvalid, limitDocumentInvalid, limitAudioInvalid, limitImageInvalid, limitPosterInvalid,
+  emailFromNameTooLong, emailReplyToInvalid, ratingMinAggregateInvalid, failed}` — 43 keys. Readers today: only the two
+  deleted files and `tests/components/admin/form-summary-links.test.tsx` (`console`'s, which spreads `admin.json`). The
+  request goes in PR B's create commit for `063`.
+
+### N6 · Existing tests that change — each a ledger line in the commit that changes it
+
+| File | Owner | What moves | Selector or expectation |
+|---|---|---|---|
+| `tests/components/admin/reminders-form.test.tsx` | mine (evidence) | deleted with `reminders-form.tsx`; its six cases re-said in a new `tests/components/notifications/admin-reminders*.test.tsx` — the unit display, the row-level refusal, the summary's focus, axe | selectors (the cases survive) |
+| `tests/unit/admin-reminders-action.test.ts` | mine (evidence) | the five cases keep their expectations; `saved: true` becomes a receipt | ★ **expectation** — `saved` → `{ wrote, at }` |
+| `tests/e2e/wave8-console-reminders.spec.ts` | mine (evidence) | h1 «جدول التذكيرات» → «التذكيرات»; «الجدول الحالي» list → the table's cells; edit through «عدّل»; «احفظ الجدول» → «احفظ»; the toast text → the mark; the moderator case and the two DB read-backs **unchanged** | selectors; the DB assertions untouched |
+| `tests/e2e/admin-settings.spec.ts` | mine (evidence) | h1 «إعدادات المؤسسة» → «الإعدادات»; «احفظ الإعدادات» → «احفظ»; status «حُفظت الإعدادات.» → the mark; edit through «عدّل»; ★ the history assertion `[{old_value:"Asia/Riyadh", new_value:"Asia/Dubai"}]` **unchanged** — it now also proves only one row was written | selectors; one expectation strengthened |
+| ★ `tests/components/admin/form-summary-links.test.tsx` «settings» case | **`console`'s** | imports `SettingsForm`, which is deleted | ★ **a request**: `console` removes that one case in the same PR; the behaviour moves to my new component test (S16) |
+| `tests/e2e/notify-screens.spec.ts:331` · `wave11-lead-a11y-sweep.spec.ts:212-213` | mine (standing) · lead's | only `h1` visible, no sideways scroll, axe — **untouched** | — |
+
+New: `tests/components/settings/admin-settings*.test.tsx`, `tests/components/notifications/admin-reminders*.test.tsx`,
+`tests/rls/notify-admin-settings.test.ts` (N3.2), `tests/e2e/wave22-notify-{reminders,settings}.spec.ts` — each walks the
+job: read, «عدّل», change one field, see «تغيير واحد غير محفوظ», save, see the mark with the admin's name, read the
+history row back from the database, save again unchanged and see «لم يتغيّر شيء»; captures at 1280 and 390.
+
+### N7 · Disagreements — the artboard, the line, and no side picked
+
+- **R-D1** (`AdminReminders.dc.html:58-63`, `M11b.md` §060, `REQ-UIX-097`) — a fixed set with switches vs the free offset
+  list `REQ-NTF-004` and `DEC-047` built. N1.
+- **R-D2** (`:61`) — the prompt drawn with an «enabled» switch; nothing stores «off» for it, and `REQ-RAT-007` sends it.
+- **R-D3** (`:60`, `:62`, `:63`) — channels drawn per row differ from `notification_matrix()` (2 h in-app only; the
+  materials row in-app only). The matrix is `08` §1's and wins unless ruled; the column is read.
+- **R-D4** (`AdminSettings.dc.html:59-83`) — eleven `REQ-TEN-008` settings the page writes today are not drawn; N2 places
+  them. Dropping them is the rule-2 failure this wave is warned about.
+- **R-D5** (`:75`, `:77`, `:78`, `:82`) — four drawn values state a policy that is not true or not stored (two-year photo
+  deletion; a 30-day export; «keeps the record» for an account anonymised at 365 days; a sender address the app cannot
+  read). Absent, not invented.
+- **R-D6** (`:57`, `:64`, `:73`, `:80`) — the cards have no titles; `M11b.md` names them and `kv-card` needs `title` or
+  `label`. I propose visible titles (المؤسسة · الجلسات · الخصوصية · الربط) — four values with no heading read as one list
+  to a screen reader; the lead rules visible or `label`-only.
+- **R-D7** (`:62`) — «الرياض» is a city; `time_zone` is an IANA id. A localised zone name is computed by `Intl`; there is
+  no exemplar-city API, and a hand-written city table would be a literal.
+- **R-D8** (`AdminReminders.dc.html:58`) — the «مفعّل» cell is `<input type="checkbox" role="switch">` **in read mode**: a
+  control that does nothing until «عدّل». Read mode shows ✓ and a word.
+- (Not a disagreement, recorded) both boards put `overflow: hidden; text-overflow: ellipsis; white-space: nowrap` on text
+  cells — forbidden for Arabic (`10`); values wrap.
+
+### N8 · Defects rule 2 found — each a defect of the rebuild until the lead says otherwise
+
+- **D-N1** ★ `MSG-materials_added` is specified (`08` §1.4), in the matrix, bound and designed, and **never sent** — no
+  caller anywhere. Not this wave's to fix (it would be `content`'s upload path calling `notify()`); written for the lead.
+- **D-N2** `setReminderSchedule()` and `updateOrgSettings()` report success when **0 rows** match (no settings row, or a
+  role the policy filters) — a silent non-write, the outcome `DEC-231` §0.1 calls the worst. Fixed by the receipt.
+- **D-N3** `time_zone` accepts any 64-character string; an invalid zone is stored and every `Intl` call that formats with it
+  then throws. Edit mode offers only zones the runtime supports, and the action re-checks.
+- **D-N4** every save writes all fourteen columns, so a concurrent edit by another admin is overwritten **and attributed to
+  the wrong actor** in the history. Fixed by sending only changed columns and refusing a stale one.
+- **D-N5** `?saved=1` typed into the URL shows «حُفظت الإعدادات.» with no save.
+- **A-G1** an org rename writes no record (N3) — a seventh gap for `DEC-231` §4.
+
+### N9 · Questions for the lead
+
+1. **R-Q1** — may `setReminderSchedule()`'s return widen `void → SaveReceipt` under «add-only», or must the receipt be a
+   second function?
+2. **R-D1** — (a) the data's set or (b) the board's set for `060`. And **R-Q2**: the −7 d nudge as a read-only row?
+3. **R-Q3** — `company_min_active_members`' control, carried to «the console wave, on `/app/admin/settings`» by
+   `DEC-220` §1.3 and `DEC-224` §6, is in neither `DEC-230` nor `DEC-231`. On `063` (my default — it is an `org_settings`
+   column and lands in the same history) or on `scoring`'s `053`?
+4. **R-Q4** — `allow_jpeg_export`'s card (none fits; الربط is my default).
+5. **R-Q5** — refuse removing the org's last domain? `create_org` requires one; `REQ-TEN-007` is silent.
+6. **R-Q6** — under (a), does the generic-message line stay as one word in the timing cell («رسالة عامة») rather than a
+   paragraph?
+7. **A-G1** — the `org.renamed` trigger in the audit migration, or the name read-only on `063`?
+8. **`save_org_settings`** (N3.2) — approve a proposed `security invoker` function for the one-transaction save, promoted
+   by you; it adds no table, column or grant.
+9. The shared accessible names for `wave22-lead-read-mode` (N3.3) — fix them with `scoring` at sync 1.
