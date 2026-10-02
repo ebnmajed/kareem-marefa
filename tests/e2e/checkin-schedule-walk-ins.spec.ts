@@ -100,8 +100,11 @@ async function signIn(context: BrowserContext) {
 test("DEC-117/DEC-118: a session with allow_walk_ins already on renders the checkbox CHECKED, at 390px", async ({ context, page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signIn(context);
+  // ★ wave 21 (SCR-043 read by default, ledger L21-S7, a selector): the read card says it, and the form is at `?edit`.
   await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule`);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(page.locator("#main").getByText("يُسمح بالحضور دون حجز")).toBeVisible();
+  await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule?edit`);
 
   // ★ The whole point: `initial.allowWalkIns` reading the stored `true`
   // back, not the `false` fallback the hazard shipped. A checkbox that

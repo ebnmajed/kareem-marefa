@@ -141,10 +141,12 @@ test("★ SCR-043: pre-filled from the proposal, the end follows, a relation err
 
   // ── What an admin first meets ─────────────────────────────────────────────
   await expect(page.getByRole("heading", { level: 1 })).toContainText("كيف اختصرنا وقت التقارير الشهرية");
-  await expect(page.getByText("من مقترح سعد الحربي")).toBeVisible();
+  // ★ wave 21 (SCR-043 read by default, ledger L21-S5 — expectations named in W21.7): the tab opens as the read
+  // card; «عدّل» is the way into the form. The provenance line and «المحتوى — كما كتبه المُقترِح» are gone — the
+  // session's log says where it came from and links to the proposal, where the audience lives (S27, S28).
+  await page.locator("#main").getByRole("link", { name: "عدّل" }).click();
+  await page.waitForURL(/\/schedule\?edit/);
   await expect(page.getByLabel("المدة بالدقائق")).toHaveValue("45"); // REQ-PRO-009
-  await expect(page.getByText("المحتوى — كما كتبه المُقترِح")).toBeVisible();
-  await expect(page.getByText("من يُعدّ تقارير دورية")).toBeVisible();
   await expect(page.getByText("لا يمكن النشر بعد — ينقص:")).toBeVisible();
   await expect(page.getByRole("button", { name: "انشر الجلسة" })).toBeDisabled();
   await capture(page, "from-proposal");
@@ -175,14 +177,12 @@ test("★ SCR-043: pre-filled from the proposal, the end follows, a relation err
   await capture(page, "ready");
 
   // ── One press ─────────────────────────────────────────────────────────────
-  const hall = await venue.inputValue();
   await page.getByRole("button", { name: "انشر الجلسة" }).click();
   await expect(page.getByRole("status").filter({ hasText: "نُشرت الجلسة" })).toBeVisible({ timeout: 15_000 });
-  // ★ React resets a `<form action>` after every submission; the controlled
-  // selects must still show what was chosen, or the next «احفظ» would post
-  // the page's first values back (REQ-UIX-011, the sync-2 primitives fix).
-  await expect(venue).toHaveValue(hall);
-  await expect(page.getByLabel("آخر موعد للإلغاء", { exact: true })).toHaveValue("dayBefore");
+  // ★ wave 21 (ledger L21-S6, an expectation): a save that lands returns to the read card (`?published=1`), so the
+  // form is no longer on screen to be read back; what was chosen is read from the card and, below, the database.
+  await page.waitForURL(/\/schedule\?published=1/);
+  await expect(page.locator("#main").getByText("القاعة الكبرى", { exact: false })).toBeVisible();
   const { rows } = await db.query<{ state: string; minutes: number; capacity: number; walk_ins: boolean }>(
     `select state, extract(epoch from (ends_at - starts_at))::int / 60 as minutes, capacity, allow_walk_ins as walk_ins
        from public.sessions where id = $1`,
@@ -190,7 +190,7 @@ test("★ SCR-043: pre-filled from the proposal, the end follows, a relation err
   );
   expect(rows[0]).toEqual({ state: "published", minutes: 60, capacity: 40, walk_ins: false });
 
-  await page.reload();
+  await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule?edit`);
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
   await expect(page.getByRole("button", { name: "احفظ التعديلات" })).toBeVisible();
   await expect(page.getByRole("button", { name: "انشر الجلسة" })).toHaveCount(0);

@@ -92,54 +92,48 @@ async function signIn(context: BrowserContext, email: string) {
 // of `<body>` holding a second copy of the same text, and a page-wide
 // `getByText` matched both (the final gate at 5bf0327, phone). Dialogs and
 // toasts are portalled outside `#main` and stay page-wide.
-test("the page header carries the title and intro, and the queue count reads correctly", async ({ context, page }) => {
+// ★ wave 21 (SCR-041 rebuilt as a split view, ledger L21-P1 … P3): the queue and the open proposal sit side by side
+// from `lg`, so these two cases run at 1280. Selectors moved (`li` cards → the split view's rows and detail; one
+// message box); the expectations stand — the dialog names the proposal, cancel changes nothing, confirm submits.
+const DESK = { width: 1280, height: 900 };
+
+test("the h1 and the state chip carry the queue's count, and the open proposal reads its state", async ({ context, page }) => {
+  await page.setViewportSize(DESK);
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/proposals");
   const main = page.locator("#main");
-  await expect(main.getByRole("heading", { name: "مراجعة المقترحات", level: 1 })).toBeVisible();
-  // ★ Two separate strings, not one combined sentence: the queue count under
-  // the intro is a plain number ("admin.proposals.count", every ICU form),
-  // deliberately not "N awaiting review" — the queue mixes submitted and
-  // in_review proposals, and only the per-card line ("state.submitted" ·
-  // "age") names a specific proposal's own state. This test's old combined
-  // string never existed after the wave-6 rebuild; checking both separately
-  // is what the page actually renders.
-  await expect(main.getByText("مقترح واحد")).toBeVisible();
-  const card = main.locator("li", { has: page.getByRole("heading", { name: "مقترح للمراجعة" }) });
-  await expect(card.getByText("بانتظار المراجعة", { exact: false })).toBeVisible();
+  // L21-P1 (an expectation, named in W21.7): «مراجعة المقترحات» → «المقترحات»; «مقترح واحد» → the chip's count.
+  await expect(main.getByRole("heading", { name: "المقترحات", level: 1 })).toBeVisible();
+  await expect(main.getByRole("link", { name: /بانتظار قرار/ })).toContainText("1");
+  const detail = main.getByRole("region", { name: "مقترح للمراجعة" });
+  await expect(detail.getByText("بانتظار المراجعة", { exact: false })).toBeVisible();
 });
 
 test("★ rejecting confirms in a dialog naming the proposal — cancel changes nothing, confirm submits", async ({ context, page }) => {
+  await page.setViewportSize(DESK);
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/proposals");
   const main = page.locator("#main");
-  const card = main.locator("li", { has: page.getByRole("heading", { name: "مقترح للمراجعة" }) });
-  await card.getByText("ارفض المقترح").click();
-  // ★ A real build's own run found this a strict-mode violation: both the
-  // reject AND request-changes boxes shared one label. Each now names its
-  // own decision (review-card.tsx's `reasonLabelReject`/
-  // `reasonLabelRequestChanges`), so this resolves to exactly one.
-  await card.getByLabel("سبب الرفض الذي سيصل صاحب المقترح").fill("سبب الرفض لهذا الاختبار");
-  await card.getByRole("button", { name: "أرسل" }).last().click();
+  const detail = main.getByRole("region", { name: "مقترح للمراجعة" });
+  // L21-P2 (a selector): one box, «رسالة للمقترِح», for all three decisions; «ارفض» opens the dialog directly.
+  await detail.getByLabel("رسالة للمقترِح").fill("سبب الرفض لهذا الاختبار");
+  await detail.getByRole("button", { name: "ارفض" }).click();
 
   const dialog = page.getByRole("dialog", { name: "رفض «مقترح للمراجعة»؟" });
   await expect(dialog).toBeVisible();
 
-  // Cancel: the dialog closes, nothing was submitted, the proposal is still in the queue.
+  // Cancel: the dialog closes, nothing was submitted, the proposal is still open.
   await dialog.getByRole("button", { name: "تراجع" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(main.getByRole("heading", { name: "مقترح للمراجعة" })).toBeVisible();
   expect((await db.query<{ state: string }>(`select state from public.proposals where org_id = $1`, [orgId])).rows[0].state).toBe("submitted");
 
-  // Confirm: submits the SAME form (the dialog's button is portalled outside
-  // the <details> it opened from — form={id} is what makes this work at all).
-  // The <details> itself is untouched by cancelling the dialog — still open
-  // from the click above, its typed reason still in the textarea — so this
-  // does NOT re-click the summary (that would toggle it closed).
-  await card.getByRole("button", { name: "أرسل" }).last().click();
+  // Confirm: submits the SAME form across the dialog's portal (`form={id}`).
+  await detail.getByRole("button", { name: "ارفض" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "تأكيد الرفض" }).click();
-  await expect(main.getByRole("heading", { name: "مقترح للمراجعة" })).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("سُجّل قرارك ووصل صاحب المقترح");
+  // L21-P3 (an expectation): the decided proposal leaves the «بانتظار قرار» queue; its row is gone.
+  await expect(main.getByRole("list", { name: "المقترحات" })).toHaveCount(0);
   expect((await db.query<{ state: string }>(`select state from public.proposals where org_id = $1`, [orgId])).rows[0].state).toBe("rejected");
 });
 
