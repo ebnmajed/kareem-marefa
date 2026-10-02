@@ -6866,3 +6866,18 @@ to run, read-only, if wanted. PR C's award is not built until this is pushed.
 From the day PR C's award migration is pushed, **photographs start earning in production, before PR C's screens
 merge** — today's screens draw a photo award's own reason and a reversal as any other (`scoring` measured it). The
 migrations to rehearse: `0169` – `0175`, and PR C's award after it.
+
+## DEC-223 — The copy trim's «§0b» never existed; the list is derived from the artboards and shown to the owner first
+
+- **Date:** 2026-10-02 · **Decided by:** the owner, answering `DEC-217` §4.2
+- **Amends:** `DEC-216` §5.14 and `DEC-217` §4.2 (the citation), read with this entry. ★ The owner asked for this to be recorded in `DEC-222`; the log is append-only, so it is recorded here instead
+
+★ **`M10c.md` has no §0b and never had one.** The file goes from «## 0. The hub frame» to «## 1.»; the only mention of
+«§0b» is `DEC-NEXT-25`'s citation of it in §10. The owner does not hold the list, and neither, as far as the owner
+knows, does the design session. The wave-20 brief repeated the citation without checking it — **the planner's error**.
+**No later wave should look for this section.**
+
+**The rule stands without the list** (`REQ-UIX-080`, `DEC-NEXT-25`): a line exists only if it changes what the person
+does next. `STORY-UIX-067` proceeds as `DEC-217` §4.2 proposed: **the lead derives the list** — every line the built
+M10a and M10b screens render that their committed artboards no longer draw and that changes nothing the person does
+next — and ★ **shows it to the owner before a single string is removed.**

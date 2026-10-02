@@ -53,6 +53,69 @@ here and **wave 18's story ring stays inert; nobody wires it.**
 | The two data questions | **answered without a schema change.** The cap row is **not a ledger row and never will be** (`points.ts:52-55`; `05` §8's precedent) — it is an explanation built the way `MissedAttendance` is. The reversal pair links through **`source_id` with `source = 'reversal'`** (`0149`), which the DTO at `points.ts:146-156` does not return — add-only |
 | ★ A defect found while measuring | `leaderboards.ts:512` reads `monthly_period, monthly_rank` under the error label `member_seen_marks (week)`. **The surface called «week» reads a month today.** This wave ends that |
 
+### ★★ The owner's order (wave 20) — `0169` – `0176` REHEARSED 2026-10-02 on the owner's production schema dump
+
+✅ **Rehearsed by the lead** on `/tmp/prod-schema-0168.sql` (`public` + `graphile_worker`, taken at `0168`, **0 data rows** —
+zero `COPY`/`INSERT`; `photos_insert_checked_in` present, nothing of `0169` – `0176`).
+- **Setup**, wave 18's method: a throwaway database, `rehearse20`, in the local cluster, `public` owned by
+  `pg_database_owner` as in production, the nine extensions created as `supabase_admin`, the local `auth`, `storage` and
+  `realtime` schemas loaded under it. **The dump loaded with one error, platform-only** — the `supabase_realtime`
+  publication, as in waves 12 – 19. The 16 `storage`/`realtime` policies that name `public` re-applied after it, 0 other
+  errors. Copied, because a schema-only dump drops them: 8 buckets, `graphile_worker.migrations`' 20,
+  `retention_periods`' 7 — each equal to local.
+- ★ **`0169` – `0176` applied in ONE transaction with `ON_ERROR_STOP`, as `postgres`** (the role a push uses) — **exit 0,
+  0 errors.**
+- **End state against the fully migrated local database**, the same query on both sides:
+
+  | Compared | local | rehearsed |
+  |---|---|---|
+  | Public function bodies, by hash | 315 | 316 |
+  | Policies in `public`, `storage`, `realtime` | 194 | 194, identical |
+  | Triggers in `public`, `storage`, `auth`, `realtime` | 117 | 117, identical |
+  | Client-role table grants | 263 | 263, identical |
+  | Client-role column grants | 2,083 | 2,083, identical |
+  | Function execute grants | 353 | 354 |
+  | Public columns (type, nullability, default) | 890 | 890, identical |
+  | Buckets | 8 | 8, identical |
+
+  ★ **The only difference is production-only and expected: `rls_auto_enable()`**, Supabase's event-trigger function,
+  in no migration — its body and its default `PUBLIC` execute grant, as in waves 15 – 19.
+- ★ **The wave's database suites ON THE REHEARSED SCHEMA: 180 of 181** — `photos-insert-closed`, `photos-schema`,
+  `storage-content`, `photos-days`, `photos-broadcast`, `moderation`, `isolation`, `definer-exposure`,
+  `notify-calendar-retry`, `scoring-week-live`, `scoring-capped`, `scoring-seen`, `company-min-active`,
+  `scoring-company-minimum`, `snapshot-leaderboards`, `scoring-cup`. The one red is `definer-exposure` listing
+  `rls_auto_enable()`, the difference above.
+- ★★ **`0174` — the first NON-additive migration of the run — proved on the rehearsed schema, not read from the code:**
+  1. **`record_photo_upload()` still inserts after the revoke, as the worker's own role.** The worker calls it over its
+     `DATABASE_URL` connection with graphile-worker's `helpers.query` (`worker/src/tasks/process_photo.ts:95`) — as
+     **`postgres`**, not through PostgREST. New `tests/rls/photos-insert-closed.test.ts`: as `postgres` (asserted by
+     `current_user`), a stripped row is recorded; as `service_role` through the RPC path, likewise; and **no client role
+     holds `INSERT` on `photos`, and no insert policy exists** — 3 ✓ local, 3 ✓ rehearsed.
+  2. **No path under `src/`, `worker/` or `packages/` inserts into `photos` directly — measured on both this branch and
+     `origin/main` (`5e1fabdc`)**: zero `.insert`/`.upsert` on `from("photos")`, zero SQL `insert into photos`. Every
+     `from("photos")` is a `select`, a storage call, or the restore's `update` of `hidden_at` (its column grant is
+     unchanged). **The only function that inserts into `photos` is `record_photo_upload()`, a definer** — queried on
+     `rehearse20`.
+  3. **`main`'s current app and worker in the gap, push → merges** (measured on `origin/main`):
+     - **Photos:** `main` uploads through a signed URL, then `initiate_photo_processing()` (a definer that enqueues),
+       then the worker's `record_photo_upload()` as `postgres` — **unchanged by `0174`**. The restore's column update is
+       unchanged. **Nothing on `main` loses a capability it uses.**
+     - **`0173`:** `main` calls `mark_board_seen` with `all_time`, `monthly` and `company` only — branches `0173` keeps
+       byte-for-byte (`scoring-seen`'s `0163` cases green on the rehearsed schema).
+     - **`0175`:** `main`'s settings save writes named columns; the new one keeps its default, 3.
+     - ★ **`0176` — the one visible change in the gap:** `main`'s nightly `snapshot_leaderboards` calls the replaced
+       `snapshot_leaderboard()`, so **new** company snapshots put companies at the minimum first. `main` draws a rank
+       number on every row (it has no «بلا ترتيب»), so a company below 3 active members **shows a lower number** until
+       PR C merges. That is the monthly reordering the owner accepted (`DEC-220` §1.5); a final snapshot never moves.
+     - `0169`, `0170`, `0171`, `0172`: nothing on `main` names them.
+- **Cleaned up:** `rehearse20` dropped; the scratch copies of the dump deleted. ★ `/tmp/prod-schema-0168.sql` is the
+  owner's own file and is left for the owner to delete.
+
+★★ **The owner's order now:** (1) **push `0169` – `0176`** — from `wave-20c/the-award`, which holds all eight
+(`supabase db push --linked`); (2) merge **#41, then #42, then #43**, each with `--delete-branch` (each is opened
+against `main`, so no retarget); (3) reconnect Railway with `railway service source connect --repo
+ebnmajed/kareem-marefa --branch main` and check its builder before the deployment lands; (4) the phone check.
+
 ### ★ The owed measurement — it does not vanish into a rewrite
 
 `DEC-204` leaves **`/app/me/points` and `/app/leaderboards`** owed by this batch. Re-measure both **after** the
