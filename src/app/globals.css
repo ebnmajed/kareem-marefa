@@ -1587,3 +1587,16 @@ html[data-sting="done"] {
   animation: none !important;
   transition: none !important;
 }
+
+/* ★ The display face is the console's `h1` alone (the owner's rule, DEC-228 §6). `font-display` reads `--display-face`
+   at the element (`@theme inline`), so beneath the frame the variable names the body face and only an `h1` restores
+   it — a shared primitive (`ui/stat`'s figure, a tile's count) cannot carry the display face into the console. */
+[data-console] {
+  --display-face: var(--font-arabic);
+}
+html[lang="en"] [data-console] {
+  --display-face: var(--font-sans);
+}
+[data-console] h1 {
+  --display-face: var(--font-baloo), var(--font-baloo-latin), var(--font-arabic);
+}
