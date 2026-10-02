@@ -3674,3 +3674,32 @@ artboard's yellow would be a raw palette name.
 **Open, for the lead:** «عضو نشط» counts members whose status is active, which no month narrows; and «نقطة ممنوحة»
 links to `/app/admin/scoring`, which has no month filter (frozen). The pipeline's counts link to `/app/admin/proposals`
 until `sessions` publishes the per-state URL (R3).
+
+### Wave 21 — `SCR-042` built, and its kept-behaviour table read against the new file
+
+**Delete `b9c2dda0`, then create (the next commit).** These are the rows of §5.2 as they read in `sessions/{page,sessions-table,session-controls,direct-session-form,actions,state}`,
+`components/admin/sessions/*` and `lib/dal/admin-sessions.ts`:
+
+- **1** three readers from the data (`getConsoleSessions` → `null` for a member, `role` for the rest) ✓. **2** a
+  moderator's title opens attendance, its link named by the title; the survey link is `aria-describedby` the title ✓.
+  **3** ★ a moderator's order is now the artboard's default, not «start, newest first» (`DEC-228` §3.5: one order).
+  **4** no selection, menu, creation or transition for a moderator — absent ✓. **5** every session of the org ✓
+  (`listSessionsForAdmin` stays for the CSV). **6** «جاهزة للجدولة» with its named button ✓, inside `?new=1`.
+  **7** the invalid id is ignored ✓ (`actions.ts` untouched there). **8** the direct form ✓ — same path, export and
+  ids; `form-summary-links.test.tsx` passes untouched. **9** ✓. **10** ★ a direct create lands on the session's
+  الجدولة (`DEC-228` §3.6). **11** ★ the form works without JS. **12** the search by title or presenter, now
+  normalised for hamza and taa marbuta, through a GET form with the pinned name ✓. **13** both empty strings and the
+  short action ✓. **14** every column sorts; undated last by date in either direction ✓. **15** `SessionStatusBadge`
+  with phase **and** seat ✓. **16** «بلا موعد بعد» ✓. **17** the declined / pending presenter in the row ✓.
+  **18** the row menu's five routes ✓ plus the transitions. **19** `actionsFor` and the map of bound actions ✓.
+  **20** cancel: the dialog names the session, the reason is inside it (L6) ✓. **21** the early-completion sentence
+  in a confirm before the scheduled end ✓. **22 – 25** the toast from the action, the dialog closing from the result,
+  the strings, `revalidatePath` ✓ — the bulk action does the same. **26 – 27** the RPC decides, Zod first ✓.
+  **28** `<bdi>` on titles, names, venues, numbers ✓. **29** ★ the ⋯ stays on the phone card. **30** ✓.
+
+**Built and not drawn:** the creation region; the bulk cancel's dialog listing the titles; a failed bulk (the toast
+counts both; failed rows stay selected); an empty org; a search or filter with nothing; a moderator.
+**The URL is the list's state**: `q`, `status`, `category`, `month` (`YYYY-MM` or `none`), `sort`, `dir`, `page` — the
+search is a GET form; chips, sort and pager are links (the chips' menu and the sort header need JS, as before).
+**Known, carried:** the phone's «المزيد» is the next page, not rows appended — one URL model (`DEC-228` §3.5) means
+one row set for both widths, and `data-table` draws both from it.

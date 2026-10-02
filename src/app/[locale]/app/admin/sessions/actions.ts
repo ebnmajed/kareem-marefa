@@ -6,7 +6,7 @@ import { createSessionDirect, createSessionFromProposal, directSessionInput, tra
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { formStateFrom, was, wasList, withErrors, withFormError, zodErrors } from "@/lib/form-state";
-import { SESSION_VALUE_FIELDS, type CreateSessionState, type SessionField } from "./state";
+import { SESSION_VALUE_FIELDS, type BulkCancelState, type CreateSessionState, type SessionField } from "./state";
 
 // SCR-042's Server Actions (REQ-PRO-007). Zod first, then the DAL.
 //
@@ -80,9 +80,11 @@ export async function makeSessionDirectly(locale: Locale, prev: CreateSessionSta
     return withFormError(state, "failed");
   }
   revalidatePath(`/${locale}/app/admin/sessions`);
-  // `return` because next-intl's redirect is destructured, so TypeScript does
-  // not read it as never-returning.
-  return redirect({ href: { pathname: "/app/admin/sessions", query: { created: id } }, locale });
+  // ★ Wave 21 (`DEC-228` §3.6): the admin lands on the new session's الجدولة —
+  // scheduling is the next act (D13/D14) — instead of on `?created=<id>`, which
+  // nothing ever read. `return` because next-intl's redirect is destructured,
+  // so TypeScript does not read it as never-returning.
+  return redirect({ href: `/app/admin/sessions/${id}/schedule`, locale });
 }
 
 export type TransitionState = { error: string | null; done: boolean };
@@ -122,4 +124,39 @@ export async function runTransition(locale: Locale, sessionId: string, _prev: Tr
   revalidatePath(`/${locale}/app/admin/sessions`);
   revalidatePath(`/${locale}/app/sessions/${sessionId}`);
   return { error: null, done: true };
+}
+
+/**
+ * ★ Wave 21 — SCR-042's bulk «ألغِ الجلسات» (`DEC-228` §3.7, contract 7): the
+ * SAME `transition_session()` the row's cancel calls, once per selected
+ * session, with one written reason. Nothing is decided here that the RPC does
+ * not decide again per row — a fresh admin of the session's own org, `02`
+ * §6.2's edge, a non-empty reason — so a bulk cancel can do no more than the
+ * single one. Sequential on purpose: Server Actions serialise per client, and
+ * the parallel work lives inside this one action. A failure on one row does
+ * not stop the others; the result names which failed, so the screen keeps
+ * them selected.
+ */
+export async function runBulkCancel(locale: Locale, prev: BulkCancelState, formData: FormData): Promise<BulkCancelState> {
+  const parsed = z
+    .object({ ids: z.array(z.uuid()).min(1).max(100), reason: z.string().trim().min(1).max(2000) })
+    .safeParse({ ids: formData.getAll("ids").map(String), reason: formData.get("reason")?.toString() ?? "" });
+  if (!parsed.success) {
+    const reasonMissing = parsed.error.issues.some((i) => i.path[0] === "reason");
+    return { error: reasonMissing ? "cancelReasonRequired" : "actionFailed", done: [], failed: [], attempt: prev.attempt + 1 };
+  }
+
+  const done: string[] = [];
+  const failed: string[] = [];
+  for (const id of [...new Set(parsed.data.ids)]) {
+    try {
+      await transitionSession(locale, id, "cancel", parsed.data.reason);
+      done.push(id);
+      revalidatePath(`/${locale}/app/sessions/${id}`);
+    } catch {
+      failed.push(id);
+    }
+  }
+  revalidatePath(`/${locale}/app/admin/sessions`);
+  return { error: null, done, failed, attempt: prev.attempt + 1 };
 }
