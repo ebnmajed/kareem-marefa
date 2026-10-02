@@ -744,6 +744,33 @@ screen beside its artboard on a phone**.
 **Not this milestone:** session stories (next); `/app/me/privacy` (M13's); every console and studio route; the five
 public routes; leagues; a sixth moment; the hard-load defect's fix; `DEC-194`'s two gates; `DEC-215`'s carried four.
 
+## M23 — the console, batch A: the frame, the dashboard, the queues, the session hub · wave 21 · `DEC-225`, `DEC-226`, `DEC-227`
+
+★★ **The owner put the console before stories** (`DEC-225` §1), the third deliberate re-ordering. Five screens rebuilt
+from six artboards in `docs/design/screens/m11a/`, each under `DEC-199` §2 and `DEC-208`. **The goal** (`DEC-227` §0):
+an admin sees what needs them and reaches it in one move; decides a proposal without leaving the queue; acts on
+sessions in bulk at a desk and as cards on a phone; runs attendance live — in the sober register (`REQ-UIX-053`).
+Two pull requests, three teammates, no migration expected.
+
+| Work | Requirements | PR | Track |
+|---|---|---|---|
+| The console frame — the bar, the rail of six ruled groups, the sheet | `REQ-UIX-084` | A | lead |
+| `admin-rail`, `split-view`, `kv-card`; the gate 60 → 63 | `REQ-UIX-085` | A | lead, `sessions` |
+| The dashboard, `SCR-040` | `REQ-UIX-086` | A | `console` |
+| The sessions table, its bulk bar and phone stack, `SCR-042` | `REQ-UIX-087` | A | `console` |
+| The proposal queue as a split view, `SCR-041` | `REQ-UIX-088` | B | `sessions` |
+| The session hub's header and الجدولة, `SCR-043` | `REQ-UIX-089` | B | `sessions` |
+| Attendance, live, `SCR-044` | `REQ-UIX-090` | B | `checkin` |
+
+**Demonstrable:** ★★ every rebuilt screen captured at **1280** — and `SCR-042` at 390 — **held beside its artboard
+and opened by the lead**; ★★ a kept-behaviour table per screen; ★ the rail counted, not glanced at; ★
+`console-register` green, amended once and stricter; ★ `qa:contract`, `visual`'s public pairs and the register-form
+fingerprint unmoved; ★★ **the owner holding each screen beside its artboard at 1280 on a real screen, and at 390**.
+
+**Not this milestone:** `SCR-045` (M12); `046` – `065`, the rest of the console, with `company_min_active_members`'
+control (M11b); the studio and `/app/platform/**`; the five public routes; session stories; the hard-load fix;
+`DEC-194`'s two gates; `DEC-215`'s carried four.
+
 ### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5, renumbered by `DEC-199` §7, re-ordered by `DEC-205` §1 and `DEC-213` §1)
 
 ★★ **The standing order (the owner, 2026-10-01, wave 19): WE BUILD WHAT HAS A DESIGN.** As long as the designer session keeps producing screen batches, screens go first; stories lands when the batches run out or when the owner says so. Stories was not demoted — it was overtaken by work that became buildable (`DEC-213` §1).
@@ -759,8 +786,9 @@ claimed the number, and every position after it kept its place.
 | 3 | **M19** — this wave, wave 17 | every primitive in the playground, a gate that enumerates them, and the scope at the root of every layout but the public site's |
 | 4 | ★ **M20** — done, wave 18 (`DEC-205`: the owner put it before stories) | the member screens, batch A — the shell, the door, the public card, home as the feed, browse, the event page, check-in, the host view; each **rebuilt** from `docs/design/screens/m10a/` |
 | 4a | ★ **M21** — done, wave 19 (`DEC-213`: the owner put it before stories) | the member screens, batch B — the viewer, rate, propose, my proposal, the directory, the profile; each **rebuilt** from `docs/design/screens/m10b/`, deleted first (`DEC-208`) |
-| 4b | ★ **M22** — this wave, wave 20 (`DEC-216`) | the member screens, batch C — the hub and its five pages, the two boards, and `/app/me/settings`; the **last** designed batch |
-| 4c | when it opens — wave 21, unless the owner says otherwise | session stories and their viewer (`DEC-093`'s seventh place) |
+| 4b | ★ **M22** — done, wave 20 (`DEC-216`) | the member screens, batch C — the hub and its five pages, the two boards, and `/app/me/settings`; the **last** designed batch |
+| 4b′ | ★ **M23** — this wave, wave 21 (`DEC-225`: the owner put the console before stories) | the console, batch A — the frame, `SCR-040` – `044`; batch B (`046` – `065`) follows |
+| 4c | when it opens — after the console's batches, unless the owner says otherwise | session stories and their viewer (`DEC-093`'s seventh place) |
 | 5 | ★ **when it opens — the rest of the member screens** (batch M10c) | ★ `SCR-002`, `SCR-003` and `SCR-004` moved into M20 with batch A (`DEC-205`), and `SCR-013`, `015`, `017` – `020` into M21 (`DEC-213`); what remains is `021` – `028` in `09` §8's order. The three `(auth)` screens are neither behind sign-in nor public marketing, so a grouping by either skipped them twice (`DEC-129`, `DEC-195` §5); **they are placed here by name**. ★ Each screen is **rebuilt** from `docs/design/screens/<SCR-id>.md`, never restyled (`DEC-199` §2) |
 | 6 | when it opens | the console — a rebuild of its **layout**; its visual language arrived in M19 |
 | 7 | when it opens | the studio and the certificates' surroundings — the certificate itself keeps its look |

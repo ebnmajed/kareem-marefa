@@ -7112,3 +7112,105 @@ screen does, so it reads «التصنيفات» until tags exist, and the deviat
 
 - **Documents changed:** `16-ui-redesign.md` §6.7 (the rail's shape), `docs/plan/notes/wave-21-lead.md`
   (item 2 answered), `STATUS.md` (the open question closed)
+
+## DEC-227 — Wave 21's Step 0 and its map: the console is divided by the data each screen owns, `REQ-UIX-053`'s test is amended ONCE so the register gets stricter, «التصنيفات» loses «والوسوم», and five more things the brief did not measure
+
+- **Date:** 2026-10-02 · **Decided by:** the owner (§2, §3 — answering the lead's two questions at Step 0); the rest by the wave-21 lead, measured at `8b6a9630`
+- **Amends:** `DEC-225` §4.1 (the test the deletion breaks), `DEC-226` §3 (its premise), `REQ-UIX-053`'s test (§2, the one edit it will ever have had for this), `04-architecture.md` (one route)
+- **Adds:** `REQ-UIX-084` … `090`; `STORY-UIX-074` … `080`; `SCR-042`'s section in `09`; the wave-21 map in `CLAUDE.md` and the ten agent files
+- **Does not touch:** the five frozen public routes, `qa:contract`, `registrations`, `DEC-172`'s reversal, `DEC-178`'s redirect. **No migration**
+
+### 0 · The goal, as the owner wrote it — above the process, not beside it
+
+Build the console an admin can run the org from. **Good is not «the gates are green»:**
+
+1. An admin opens `/app/admin` and **sees what needs their attention, and reaches it in one move** — four tiles, a
+   count, the oldest item's age, each a link to its queue. If an admin has to hunt for what is waiting, the dashboard
+   has failed, whatever the capture shows.
+2. A proposal is **decided without leaving the list** — ↑↓ walks it, Enter opens it, the decision card sits beside the
+   abstract, and **the content-edit diff shows what changed** so a reviewer never decides on stale text.
+3. A session is found, filtered and **acted on in bulk** at 1280, and the same rows are **usable on a phone** as cards.
+4. Attendance is **run live**: the code, its rotation, the open/closed switch, a manual check-in with its reason, and a
+   revoke that writes `DEC-172`'s reversal.
+5. The console is the **sober register** (`REQ-UIX-053`): the same product as the member app, behaving like a tool,
+   not a game.
+
+**A plan that reads like five screens with green gates has not absorbed this.** Sync 1 judges plans against it.
+
+### 1 · Step 0 — every number re-measured
+
+`main` is **`8b6a9630`** (`DEC-226` on the brief's `51db9898`). Migrations end at **`0178`** (the tree; production is
+the owner's record — the lead does not query it); next **`0179`**. **60** `.tsx` in `src/components/ui/`, the floor
+at `tests/unit/ui-playground.test.ts:120` reading 60. `REQ-UIX-083` and `STORY-UIX-073` are the last ids; `DEC-226` the
+last entry. Twenty `admin.shell.nav.*` keys. ★ **One id was wrong, and it reached the log: `REQ-ORG-017` does not
+exist.** `M11a.md` §7, the brief and `DEC-225` §3 cite it for «counts are links»; the requirement is **`REQ-ADM-004`**'s
+acceptance — «every figure is clickable through to the underlying list». `DEC-225` cannot be edited, so `trace` was red
+on `main` at `8b6a9630`; `scripts/traceability.mjs` gains an `ERRATA` list naming that one citation and this entry. Six `.dc.html`, six PNGs. `data-table.tsx:10-13` and the select-all at
+`:70-83` as the brief says. **Every number in the brief holds.** The spec, the artboards and the planning prompt were
+committed at `143fdfb9` — **the prompt unedited, as a record**, as wave 20 did.
+
+### 2 · ★★ The deletion breaks the register's test — the owner amends the test, once (the owner)
+
+`DEC-225` §4.1 deletes `src/components/admin/admin-rail.tsx`. **`tests/unit/console-register.test.ts:105` asserts the
+console's import graph reaches that exact path**, so the deletion turns the test red — and the brief says the test
+stays green **and untouched**. The two instructions cannot both hold. Worse, and silent: the rail is covered by the
+test's no-animation sweep today **only because `components/admin/` is a staff directory**; written in `ui/`, it would
+leave the sweep with nothing failing.
+
+★ **The owner rules: amend the test, in one commit, with a ledger line.** Line 105's path becomes
+`components/ui/admin-rail.tsx`, and **`admin-rail`, `split-view` and `kv-card` join the primitives the no-animation
+case reads** — the register gets stricter, not looser. The «reaches no celebration» and «renders no scope» assertions
+are **not changed by a character**. This is the lead's edit, in PR A, in the commit that deletes the old rail.
+
+### 3 · ★ `DEC-226` §3's premise was wrong — «التصنيفات» it is (the owner)
+
+`DEC-226` §3 says the built key is «التصنيفات» and should stay so until tags exist. **The key has read
+«التصنيفات والوسوم» since wave 7** (`421db5ce`), matching the artboard and `16` §6.7 — and the categories screen manages
+no tags (the `tags` table exists since `0037`; no admin screen writes it). **The owner rules by §3's own reasoning — a
+label names what its screen does — so `admin.shell.nav.categories` becomes «التصنيفات»**, a copy change in PR A, the
+lead's.
+
+### 4 · The map — each screen goes to the track that owns its data
+
+`DEC-217` §2's rule, applied to the console: **no screen needs another track's write**, so every contract is a read.
+
+| Track | Takes | Why |
+|---|---|---|
+| **lead** | the console frame (`REQ-UIX-084`) · `ui/admin-rail` · the gate 60 → 63 · §2 and §3 | the frame touches every screen; the rail is the frame |
+| `console` (opus) | `SCR-040` and `SCR-042` with its bulk bar and phone stack — **PR A** | it owns `admin-dashboard.ts` — whose four `attention` rows (`:81`) **are** the artboard's four tiles — `data-table` and the sessions list's own files |
+| `sessions` (opus) | `split-view` and `kv-card` — **PR A** · `SCR-041` and `SCR-043` with the hub's header — **PR B** | it owns `proposals.ts` (the decision, the diff) and the schedule, the hub layout and its strip (`DEC-178`); ★ `admin/proposals/**` comes to it from `console` for the wave |
+| `checkin` (opus) | `SCR-044` — **PR B** | it owns attendance, the code, the switch, the manual mark and the removal that writes the reversal (`REQ-CHK-017`) |
+
+**Four plans** — the lead's frame plan and three teammates' — are approved at sync 1. `designer`, `event`, `notify`,
+`scoring`, `content`, `platform`, `branding` are not spawned; the lead is their custodian.
+
+### 5 · Five things the brief did not measure
+
+1. ★★ **`REQ-PRO-009`'s diff has no data behind it today, and it is not the diff the artboard draws.** `REQ-PRO-009`
+   specifies a diff of **admin edits after approval** («the change is recorded with who changed what»), and
+   `sessions.ts:408` records that its recording «is not this wave». The artboard draws «تعديلات على المحتوى منذ
+   الإرسال» — **the proposer's edits since submission** — which is what the owner's goal asks for. Nothing stores
+   either. **`sessions`' plan measures first** what `audit_log` (staff-readable, `0004:422-425`) already holds for a
+   proposal's edits; if a migration is needed it is named in the plan and is the lead's from `0179`. **Nobody builds a
+   member-readable history** — that is `DEC-215`'s carried item, untouched.
+2. ★ **The hub's header is not the layout's today.** `sessions/[id]/layout.tsx` renders the strip and nothing else, and
+   each page draws its own title; the artboards put breadcrumb · `h1` · badge · the tab's actions **above** the tabs.
+   The header moves into the hub, `sessions'`; **`044`'s «شاشة التقديم» reaches it through a mechanism `sessions`
+   publishes**, and `checkin`'s page renders nothing of it (contract 4).
+3. ★ **«المحتوى» is the strip's link to the event page.** `REQ-SES-020` says materials, tasks and photos are reached
+   from the sub-nav and managed on the event page. Today's last item, «صفحة الجلسة», becomes the المحتوى tab, and
+   «صفحة الجلسة» moves into the header as `043`'s artboard draws it. **No content tab screen is built** (`DEC-225` §4.7).
+4. ★ **«التذكيرات» changes neighbours.** The six groups are dashboard · proposals · sessions · surveys | members ·
+   companies · categories · venues | comments · photos · reports | scoring · recognition · reminders | templates ·
+   emails · branding | exports · audit · settings — 4 + 4 + 3 + 3 + 3 + 3 = 20. `DEC-137`'s «الإشعارات» group
+   (emails + reminders) dissolves. Recorded so a reader does not think a key moved by mistake.
+5. ★ **The split view's phone detail is a route that does not exist.** `/app/admin/proposals` has no `[id]`;
+   `DEC-NEXT-27` keeps «the detail route under `lg`». `04`'s route table gains `proposals/[id]/` in this commit
+   (`DEC-083`: a route exists in `04` before it exists in `src/`).
+
+★ **And one carry that is not this batch:** `DEC-220` §1.3 put `company_min_active_members`'s admin control «in the
+console wave». Its screen is the scoring or settings screen — **M11b** (`046`–`065`), not M11a.
+
+- **Documents changed:** `01-prd.md`, `04-architecture.md`, `09-sitemap-screens.md`, `14-roadmap.md`,
+  `15-backlog.md`, `TRACEABILITY.md`, `16-ui-redesign.md` §6.7 (a pointer), `CLAUDE.md`, the ten agent files,
+  `notes/wave-21-lead.md` (a pointer to this entry), `STATUS.md`

@@ -495,6 +495,23 @@ is a number nobody trusts.
 **Primary action:** approve · request changes · reject — the latter two requiring a **written
 reason** the proposer receives.
 
+### SCR-042 · `/app/admin/sessions` — sessions
+★ **Added by `DEC-225` §4.6** — the screen shipped in wave 6 and never had a section.
+**Purpose:** find a session, see its state, act on one or many. **Roles:** مشرف المؤسسة; a **مُنظِّم** sees a
+read-only list focused on attendance.
+**Serves:** `REQ-ADM-005`, `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-012`, `REQ-UIX-087`
+**Primary action:** «جلسة جديدة»
+**States:** empty · a search with no result · rows · rows selected (the bulk bar replaces the toolbar)
+**Mobile:** the same rows as cards — never a horizontally scrolling table; the chips scroll in one row.
+**Desktop:** `data-table` with a sticky header, sorting on every column, a pager; the default order is by date with a
+live session first.
+**RTL:** the row menu at the inline-end; numerals Western (`DEC-124`).
+
+★ **Wave 21 (`DEC-225`, `DEC-227`) — the console's batch A:** `SCR-040`, `041`, `042`, `043` and `044` are rebuilt
+from `docs/design/screens/m11a/` — `REQ-UIX-086` … `090` — inside the console's frame (`REQ-UIX-084`), on its three new primitives — `admin-rail`, `split-view`, `kv-card`
+(`REQ-UIX-085`). `043` and `044`
+share one header above five tabs; «المحتوى» opens the event page.
+
 ### SCR-043 · `/app/admin/sessions/[id]/schedule` ★
 
 ★ **Wave 13 (`DEC-176`, `DEC-178`) — `REQ-SES-020`, `REQ-DSG-027`:** SCR-043 sits under the session's settings sub-nav («الجدولة» · «الحضور» · «الشهادات» · «الاستبانة» · «صفحة الجلسة»), shared with SCR-044, SCR-045 and SCR-064. **وضع الشهادات leaves this screen** and is written on SCR-045 only. Under the poster picker, **«تنزيل الملصق»** gives the 4:5 master; the other formats are behind «صيغ أخرى», and a render still in progress reads as pending, never as a link.

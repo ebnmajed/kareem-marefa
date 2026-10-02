@@ -807,6 +807,10 @@ inline — rather than five empty rails with a greeting on top.
 
 ### 6.7 The admin console
 
+> ★ **Wave 21 (`DEC-225` §3, `DEC-226`, `DEC-227`):** the console's chrome is a 52 px bar and a 220 px rail of
+> twenty items on one level in six ruled groups (`REQ-UIX-084`); the fourteen-group IA below is superseded in its shape,
+> not its routes. The table treatment below stands and is built (`data-table.tsx`).
+
 `/app/admin` gains a **left rail** (collapsible, icons + labels) rather than living in the account
 menu: لوحة · المقترحات · الجلسات · الأعضاء · الشركات · التصنيفات والوسوم ★ · الأماكن · الإشراف ·
 النقاط والتقدير · التصاميم ★ · الهوية · الإشعارات · التصدير · السجل · الإعدادات.
