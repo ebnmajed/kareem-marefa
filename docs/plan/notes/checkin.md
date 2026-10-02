@@ -3454,3 +3454,14 @@ and the page's own empty line is gone. The proof is `tests/components/checkin/at
 - **The 1280 capture was the phone's.** The phone project is a Pixel 7 at 412 CSS px, so `shoot()`, which read the
   viewport, named the phone capture `-1280`. It now takes the width from the project and sets it (1280 × 880, or
   390 × 844) before the screenshot.
+
+**Carried risk (after the lead's runs of `e891d707` and `56f6f6c2`):** under heavy load (about 15), a read after the
+door's action once threw. The phone run of `e891d707` ended in the admin error boundary, digest `2685982618`, and its
+server log line was never captured, so the error is unread.
+- **Since `56f6f6c2`:** the tab survives a failed code read. `getHostView()` is caught and logged, and the card reads
+  «تعذّر عرض الرمز». The spec checks each door tap in order: the database, then the error boundary, then the switch.
+- **Not reproduced:** four phone runs back to back at `56f6f6c2`, with the server log on, passed 4/4 with no digest,
+  no error and no 502.
+- **Still open:** `getAttendanceReport()` is **not** guarded. A throw there still replaces the tab. That is right for the
+  tab's core read, but it is also the half of the cause not ruled out. A recurrence with the server log kept will name
+  the line.
