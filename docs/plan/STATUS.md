@@ -99,6 +99,17 @@ floor stays 63.**
 `0183_resolve_report` (`content`). Full RLS sweep at `0181`: 1513 passed, 2 failed — both the expected wave-15 cases
 below; green after. The owner rehearses all four on a dump taken at `0179` before the push.
 
+### ★ Verification, 2026-10-03 — production builds, specs, captures held beside the artboards
+
+| PR | Build | Specs | Captures beside the boards — sent back |
+|---|---|---|---|
+| A (`17837124` → `be811650`) | verify worktree, real `npm ci` | ★ green — `console`'s six screens, managed lists, members, exports, audit, team colour, wave-17 screens; `notify`'s reminders ×2; `scoring`'s company points | ★ wave-wide: **every table in 042's surface card** (all bare); `062` full dates and a second link line per row, role badges where the board draws faces; `049` emails drawn, «—» for level at 0 points; `046` capture under five toasts |
+| B (`baec9578`) | real `npm ci` | 26 passed, 2 red — `notify`'s stale-form refusal not shown (★ possibly the owner's worst outcome), `scoring`'s badge switch intercepted by its row | ★★ `053`'s deductions read «✓ مفعّل» under a heading that says «مغلق افتراضيًا»; each action drawn twice; `054` «مفعّل» wraps, held certificates uncaptured; `063` card order and title size |
+| C (`27342c69` → `43928498`) | real `npm ci` | ★ green — `event`'s 3 specs 24/24, `content`'s 3 specs 26/26 | `065` questions belong **below** (the lead's `REQ-UIX-106` «beside» corrected); `064`'s standing explainer dropped; `050/052` actions stacked, short cells wrap; `051`'s primary inverted |
+
+Load produced reds that did not reproduce alone (C's first runs, one gateway `me()` 502); each was re-run before being called load.
+The `stat` primitive draws label-above-value where `064`'s board draws value-above-label — `content`'s primitive, recorded, not changed.
+
 ### ★ Found by the verification builds, carried to the owner
 
 - ★★ **A real no-JS path is impossible under `/app` while `app/loading.tsx` streams** (`console`, 2026-10-03). Every
