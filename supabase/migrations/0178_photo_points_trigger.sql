@@ -1,3 +1,4 @@
+-- 0178 · wave 20, PR C (DEC-220 §2.5, DEC-222 §1.1, REQ-UIX-083) — proposed by `content`, promoted by the lead. Calls 0177.
 -- content · wave 20, PR C — the photo award's trigger on `photos` (DEC-220 §2, DEC-222 §1.1). Applies AFTER
 -- `scoring`'s file, whose two functions it calls. The migration number is the lead's, at promotion.
 --

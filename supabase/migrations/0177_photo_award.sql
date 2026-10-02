@@ -1,3 +1,4 @@
+-- 0177 · wave 20, PR C (DEC-220 §2, DEC-222, REQ-UIX-083) — proposed by `scoring`, promoted by the lead. The award and its reversal; the trigger that calls them is 0178.
 -- scoring · wave 20, PR C (DEC-220 §2, DEC-221, DEC-222, REQ-UIX-083, STORY-UIX-073, REQ-PTS-002, REQ-PTS-006,
 -- REQ-PTS-012, REQ-PTS-013) — the photo award, with its reversal designed first.
 --
