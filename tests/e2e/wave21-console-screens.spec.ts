@@ -127,7 +127,7 @@ test("SCR-040 at 1280: what waits is one move away — the undated tile opens ex
   await expect(table.getByText("الأقمشة: كيف تقرأ العيّنة قبل أن تشتريها")).toBeVisible();
   await expect(table.getByText("محضر الاجتماع الذي يُقرأ")).toBeVisible();
   await expect(table.getByRole("row")).toHaveCount(3); // the header and the two it counted
-  await expect(main.getByText("جلستان")).toBeVisible();
+  await expect(main.getByText("جلستان", { exact: true })).toBeVisible(); // the toolbar's count, not «جلستان محدّدتان»
 });
 
 test("SCR-042 at 1280: found, filtered, and two sessions cancelled in bulk with one reason", async ({ context, page }, testInfo) => {
