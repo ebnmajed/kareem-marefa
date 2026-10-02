@@ -3724,3 +3724,423 @@ one row set for both widths, and `data-table` draws both from it.
 - **:372** «ابدأ الجلسة الآن» is asserted as a menu item under the row's ⋯, not a visible button (an expectation moved, L5).
 - **:460** completing: ⋯ → «أنهِ الجلسة» → the dialog's «أنهِ الجلسة» (early, so it confirms); «أرشف» is then a
   menu item under ⋯ (a selector and a flow moved, L5).
+
+---
+
+## Wave 22 — the plan (sync 1) — `046`, `047`, `048`, `049`, `061`, `062` and the three `data-table` cells (`DEC-230`, `DEC-231`, `REQ-UIX-092` … `096`, `098`, `099`, `REQ-ADM-022`, `REQ-ADM-023`) — planning only, nothing edited but this note
+
+Measured on `wave-22a/the-tables` at `a6c0345a`, every file named below re-read from disk. Nothing is deleted before the
+lead posts «the plans are approved».
+
+### 0 · ★ Day one — the three cells (contract 2, `REQ-UIX-092`)
+
+**Add-only, in `src/components/ui/data-table.tsx`, no new file.** Each is an exported component a column's `cell` returns
+— so it renders in the table AND in the phone card, because `data-table.tsx` already calls `col.cell(row)` in both
+(`:246` and `:298`). No change to `DataTableColumn`, `DataTableProps`, `DataTableAdditions` or any render path; every
+existing `data-table` suite (`data-table.test.tsx`, `data-table-additions.test.tsx`, `data-table-scope.test.tsx`)
+passes untouched. Their types are exported from `data-table.tsx` beside `DataTableAdditions`, as wave 21's were;
+mirroring them in `ui/index.ts` is the lead's if wanted. New cases go in a new `tests/components/ui/data-table-cells.test.tsx`,
+one case each in the scope test's new file `data-table-cells-scope.test.tsx` (or a case appended to the existing scope
+test — the lead says which, since an edit to an evidence file is a ledger line), and three states in my demo
+`(dev)/ui/demos/data-table.tsx`. Registry: `data-table.tsx` stays `variant`, untouched.
+
+```ts
+/** A switch whose change is a named action on the row (053 «مفعّل», 054, 060). */
+export interface DataTableSwitchCellProps {
+  /** The server's truth. The cell never flips itself ahead of the answer. */
+  checked: boolean;
+  /** The column's word — «مفعّل». */
+  label: string;
+  /** The row's name — joins the switch's accessible name: «مفعّل — تسجيل الحضور». */
+  rowName: string;
+  /** Called with the next value; resolves `true` only when the server says it WROTE. */
+  onCheckedChange: (next: boolean) => Promise<boolean>;
+  /** Announced in the cell's polite region after the answer — «تسجيل الحضور: مفعّل» / «… لم يُحفظ». */
+  announce: { on: string; off: string; failed: string };
+  disabled?: boolean;
+}
+
+/** Two decisions on one row, side by side (050/052 «أخفِ» · «تجاهل»). */
+export interface DataTableActionPairProps {
+  rowName: string;
+  primary: DataTableCellAction;
+  secondary: DataTableCellAction;
+}
+export interface DataTableCellAction {
+  /** The visible word — «أخفِ». The accessible name is «أخفِ — {rowName}». */
+  label: string;
+  onAction: () => Promise<unknown> | void;
+  tone?: "danger" | "neutral";
+}
+
+/** A colour shown as a swatch AND named in words (048, 046's company). */
+export interface DataTableSwatchCellProps {
+  /** `#rrggbb` from data, or null — reaches the DOM only as `--team` on the swatch, never as a class or a hex in source. */
+  color: string | null;
+  /** The colour in words — «سماوي», «بلا لون». Always drawn: a swatch never carries meaning alone. */
+  colorName: string;
+  /** Optional primary text beside it — the company's name (`<bdi>` inside the cell). */
+  children?: ReactNode;
+}
+```
+
+- **Switch cell.** Composes `ui/switch` (`sessions'` primitive, the lead custodian). While the promise runs, the switch
+  is disabled and `aria-busy` on the cell; on `false` it stays at `checked` (the server's value — props did not move)
+  and announces `failed`. ★ **Request to the lead as custodian (R1)**: `ui/switch` takes **add-only `labelHidden?:
+  boolean`** — the label stays the accessible name and is not drawn (`sr-only`), because in a cell the column header is
+  the visible word and «مفعّل» ×30 drawn per row is noise. Without it, the fallback is a `role="group"` named by
+  `rowName` around a switch labelled by the header — weaker, since a group name is not reliably read on focus. **Phone
+  stack:** the card's «label · value» row renders the column header as the label and the switch as the value; the
+  accessible name carries the row, so thirty cards are thirty distinct names. `ui/switch` declares
+  `transition-colors`; `DEC-228`'s «motion off under the console frame» cancels it there, and `console-register` reads
+  `data-table.tsx` itself, which declares none.
+- **Action-pair cell.** Two `ui/button`s `size="sm"` in a `role="group"` named by `rowName`; the primary in its tone,
+  the secondary quiet. **Both disable while either runs** — one decision per row — and the caller's action toasts from
+  its own result (wave 6). A caller that needs a confirmation passes an `onAction` that opens its `ConfirmDialog`; the
+  cell holds no dialog. **Phone stack:** the pair wraps under its label and keeps both buttons at 44 px.
+- **Swatch cell.** A 16 px rounded square, `aria-hidden`, painted by `--team` set on that element (the one place a value
+  from data becomes a style, `DEC-183` contract 3); `null` draws the neutral outlined ring the companies screen draws
+  today (`companies/swatch.tsx`). Then `children` (if any) and `colorName` in words, muted. **Phone stack:** identical —
+  it is inline content.
+
+★ **`console`'s own screens use only the swatch cell** (`048`, and `046`'s company column). The switch cell is
+`scoring`'s and `notify`'s to compose, the pair `content`'s.
+
+### 1 · The jobs, one line each — how a person does them (`DEC-231` §0)
+
+| Screen | The job, done |
+|---|---|
+| `046` الأماكن | The owner opens the list, sees «لا شركة» on every venue not yet assigned, opens a row's ⋯ → «عدّل», picks the company in the sheet's `select`, saves — **one move per row**, the row now shows the swatch and the company, and the audit log shows `venue.company_changed` with before and after. Done for every venue before the hosting rule first runs (`DEC-230` §2.4). |
+| `047` التصنيفات | An admin adds or renames a category in a sheet, sees how many sessions use each, and retires one through ⋯ → «عطّل» — the menu never offers what the schema cannot do. |
+| `048` الشركات | An admin reads each company's colour (swatch and word), members and the quarter's points, adds one, renames one or changes its colour in one sheet. |
+| `049` الأعضاء | An admin finds a member by name, email, company or role, changes a role or suspends from ⋯ with the consequence named first, and the last remaining admin's menu says why it cannot be demoted — before the click, not after. |
+| `061` التصدير | An admin presses «CSV» on the row they need; the file opens in Excel in Arabic; the row then shows their name and «الآن» — read back from the audit row the download wrote. |
+| `062` سجل التدقيق | An admin answers «who changed this, when, and why» from one table: the log's actions and the configuration history side by side, marked by kind, narrowed by actor, action and period, and exported as CSV. A moderator sees their own actions only, as today. |
+
+### 2 · `046` الأماكن — `AdminVenues.dc.html`
+
+**Regions, the artboard's order:** `h1` «الأماكن» with «مكان جديد» (primary) at its end (`PageHeader`'s `inlineActions`,
+wave 21) · `data-table` (`stickyHeader`): المكان (name; a «معطّل» `badge` beside it only when deactivated — nothing drawn
+when active) · الشركة (**swatch cell**: the company's colour and name; «لا شركة» muted, no swatch, when none) · العنوان ·
+السعة · الجلسات · ⋯ (`ui/menu`: «عدّل» · «عطّل» / «أعد التفعيل», `hiddenHeaders`). The edit sheet (`ui/sheet`,
+inline-end): name · **company `select`** («لا شركة» first and a real choice, then the org's active companies, plus the
+current one if deactivated) · address · map link · capacity · time zone · notes · «احفظ». Phone: the same rows as cards.
+
+**The venue's company (`REQ-ADM-022`, contract 4) — what I add to `sessions.ts`'s venue section, add-only:**
+- `AdminVenue` gains `company: { id: string; name: string; teamColor: string | null; deactivated: boolean } | null`
+  and `sessionCount: number`; `upcomingSessions` stays.
+- `listVenuesForAdmin` selects `company_id, companies(name, team_color, deactivated_at)` (one FK, so the embed is
+  unambiguous once `0180` lands) and counts sessions **by `session_days.venue_id`, each session once** — today's count
+  reads `sessions.venue_id` only, the first day's (`DEC-119`), so a venue used on day 2 of a workshop counts nothing.
+- `venueInput` gains `companyId: z.uuid().nullable().optional()` (`.strict()` keeps refusing anything else);
+  `createVenue` writes it when present.
+- new `updateVenue(locale, venueId, input): Promise<{ ok: boolean }>` — one `update … .select("id")`, every column the
+  sheet holds, `company_id` included; `ok` is «exactly one row came back».
+- `23514` from `0180`'s `venues_company_same_org()` maps to the field error `companyInvalid`.
+- **Empty and «لا شركة» states:** no venues → `EmptyState` with «مكان جديد»; an org with no companies → the `select`
+  holds «لا شركة» alone; a venue with none → «لا شركة» in the row (REQ-UIX-093: nothing implies it hosts for anyone);
+  a venue whose company is deactivated → its name and «معطّلة» (Q7).
+
+**Kept-behaviour table** (re-derived from `REQ-ADM-006`, `REQ-SES-006`, `REQ-ADM-020`, `REQ-ADM-022/023` and `sessions.ts:1406-1494`):
+
+| Behaviour | Now | After | REQ |
+|---|---|---|---|
+| Admin only; anyone else gets the streamed not-found | `page.tsx:29` (`listVenuesForAdmin` → null → `notFound()`) | the same call, the same `notFound()` | `REQ-ADM-020`, `DEC-134` |
+| A write is gated by policy, not by the action | `p2_admin_insert/update` (0004); `actions.ts` has no role check | unchanged — and ★ the write now checks it touched a row (`.select("id")`), so a refused write says «لم يُحفظ» instead of a success toast | `REQ-ADM-020`, `DEC-231` §0.1 |
+| ★ A refused/no-op toggle is reported as done | `DeactivateToggle` toasts «تم التعطيل.» whatever `setVenueActive` did (0 rows → no error) | **defect fixed**: the toast comes from `{ ok }` | `DEC-231` §0.1 |
+| No delete, in use or not | no delete grant or policy (0004) | unchanged; the menu offers «عطّل» only | `REQ-SES-006`, `REQ-ADM-006` |
+| Deactivate confirms, naming the venue and the consequence | `DeactivateToggle` + `ConfirmDialog` | ⋯ «عطّل» → `ConfirmDialog` (kept component) | `REQ-UIX-013` |
+| Deactivated venues sort last | `.order("deactivated_at", { nullsFirst: true })` | unchanged | — |
+| Create: name required (≤120), address ≤300, `https://` map, capacity 1–10000, notes ≤2000, tz ≤64 | `venueInput` + `addVenue` | the same schema, in the sheet's form, on `lib/form-state` with the summary and `noValidate` | `REQ-SES-006`, `REQ-UIX-009` |
+| The summary's links focus the control | `FIELD_ID` map (wave 8, F4) | kept; ids prefixed per sheet | `REQ-UIX-009` |
+| The map link types LTR | `dir="ltr"` | kept | `REQ-INT-*` |
+| ★ No edit path at all | (only create and toggle exist) | **new**: «عدّل» in the sheet → `updateVenue` | `REQ-UIX-093` |
+| `<bdi>` on name, address, counts | `venues-table.tsx:33-50` | kept on every interpolated name, address, company and number | `10` §bidi |
+| Six ICU forms on counts | `seats`, `upcoming` | `sessions` count with six forms | `REQ-INT-*` |
+| The phone card carries the actions | `onCard: true` on actions (wave 8, F1) | the ⋯ menu is in the card | `16` §6.7 |
+| Page intro and «لا يمكن حذف…» note | `page.tsx:34-35` | **dropped** (no explainer copy); the privilege stands | `DEC-NEXT-25` |
+| No-JS: the add form posts without JS | a page-level `<form action>` | **Q2** — `?new=1` / `?edit=<id>` render the form server-side (042's precedent) or the sheet (artboard) | — |
+
+**Every mutation and its record (`DEC-231` §4 confirmed — all ★new, none today):**
+
+| Mutation | Path | Record |
+|---|---|---|
+| create | `createVenue` insert | `venue.created` — lead's trigger (none today ✓) |
+| edit name / address / map / capacity / tz / notes | `updateVenue` update | `venue.changed` (none today ✓ — and no edit path existed) |
+| set or clear the company | `updateVenue` update of `company_id` | `venue.company_changed` (new) — **Q3**: a save that changes the name AND the company is one update; one row or two? |
+| deactivate / reactivate | `setVenueActive` update of `deactivated_at` | `venue.deactivated` / `venue.reactivated` (none today ✓) |
+
+### 3 · `047` التصنيفات — `AdminCategories.dc.html`
+
+**Regions:** `h1` «التصنيفات» + «تصنيف جديد» · `data-table`: التصنيف (+ «معطّل» badge when deactivated) · الجلسات · ⋯
+(«عدّل» · «عطّل»/«أعد التفعيل») · the sheet: name · «احفظ». No tags, no «والوسوم» (`DEC-227` §3).
+
+**Kept-behaviour table:**
+
+| Behaviour | Now | After | REQ |
+|---|---|---|---|
+| Admin only, streamed not-found otherwise | `listCategoriesForAdmin` → null (`admin-lists.ts:38`) | kept | `REQ-ADM-020` |
+| No delete | no grant, no policy (0004) | kept — see D3/Q-delete | `REQ-ADM-007`, `REQ-UIX-094` |
+| Deactivate confirms | `DeactivateToggle` | ⋯ → `ConfirmDialog` | `REQ-UIX-013` |
+| Name required, ≤80 | `categoryInput` | kept | `REQ-ADM-007` |
+| ★ Session count | `sessions.select("category_id")` with no range | **defect**: capped at PostgREST's `max_rows = 1000` (`supabase/config.toml:18`) — an org past 1000 sessions undercounts. A head count per category, or paged reads | `REQ-UIX-094` |
+| ★ A category used only by a proposal | not counted | counted too: `category_id` is `not null` on both tables, so «in use» is both (`admin-lists.ts:18`) | `REQ-ADM-006` |
+| ★ No rename | — | **new** «عدّل» → `updateCategory(locale, id, input): { ok }` (new, `admin-lists.ts`) | `REQ-UIX-094` |
+| Toggle reports success regardless | as venues | `{ ok }` | `DEC-231` §0.1 |
+| `<bdi>`, six ICU forms, phone card actions | `categories-table.tsx` | kept | — |
+
+**Mutations:** create → `category.created` ★ · rename → `category.changed` ★ · (de)activate → `category.deactivated` /
+`category.reactivated` ★ — **all nothing today ✓**.
+
+### 4 · `048` الشركات — `AdminCompanies.dc.html`
+
+**Regions:** `h1` «الشركات» + «شركة جديدة» · `data-table`: الشركة (**swatch cell** — the colour, the name, the colour in
+words; «معطّلة» badge when deactivated) · الأعضاء · النشطون (D7) · الربع (the quarter's company points, read) · ⋯
+(«عدّل» · «عطّل»/«أعد التفعيل») · the count line under the table («7 شركات» — six ICU forms); ★ **no domain column, no
+domains field, no logo, no «الشعارات من الهوية البصرية» line** (`DEC-231` §6.1, `DEC-195` §4). The sheet: name ·
+team colour (the existing seven names + «بلا لون» radio group, swatch and word) · «احفظ».
+
+**Data:** `listCompaniesForAdmin` (mine) gains, add-only, `activeMemberCount` (D7) and `quarterPoints: number | null`.
+The quarter is **read, never a literal**: `getCompanyCup()` (`leaderboards.ts:970`, `scoring`'s, read only) — its rows'
+`totalPoints` by `companyId`; `null` → «—» until the nightly task has taken a quarter snapshot, and for a company not in
+it. ★ `scoring` is spawned and may change that function this wave; I read it as it stands at `a6c0345a` and say so to
+them. New `updateCompany(locale, id, { name, teamColorHex }): { ok }` — one update for both, so the sheet is one save.
+
+**Kept-behaviour table:**
+
+| Behaviour | Now | After | REQ |
+|---|---|---|---|
+| Admin only | `listCompaniesForAdmin` → null | kept | `REQ-ADM-020` |
+| The colour is one of seven NAMES or «بلا لون», never a hex from the client; the name is validated against the closed enum, then mapped | `team-colours.ts`, `actions.ts:27,62` | kept — `team-colours.ts` is **not deleted** (`admin-lists-team-colour.test.ts` pins it against `globals.css`) | `REQ-UIX-043`, `DEC-186` §8 |
+| Colour never the only channel | `Swatch` + name in words | swatch cell's `colorName` | `REQ-UIX-095` |
+| A colour change is audited | `companies_team_color_audit` (0161) on update | unchanged; ★ a rename + colour in one update writes `company.changed` and `company.team_color_changed` — Q3 | `REQ-UIX-043` |
+| A colour chosen at creation | insert with `team_color` (`createCompany`), **not audited** | `company.created` ★ carries it in `after` (the lead's trigger) | `REQ-ADM-023` |
+| No logo, no hex field | `company-form.tsx` header | kept (the add-colour test's case stands) | `DEC-195` §4 |
+| No delete; deactivate confirms | 0004; `DeactivateToggle` | kept | `REQ-ADM-008` |
+| ★ Member count | `members.select("company_id")`, no range | **defect**: `max_rows` 1000 — head counts or paged | `REQ-UIX-095` |
+| The colour menu on the row | `TeamColourCell` (`ui/menu`) | **moves into the sheet** — one place to edit a company | `REQ-UIX-095` |
+| Toggle success regardless | as venues | `{ ok }` | `DEC-231` §0.1 |
+
+**Mutations:** create → `company.created` ★ · rename → `company.changed` ★ · (de)activate → `company.deactivated` /
+`company.reactivated` ★ (all nothing today ✓) · colour → `company.team_color_changed` (0161, today ✓).
+
+### 5 · `049` الأعضاء — `AdminMembers.dc.html`
+
+**Regions:** `h1` «الأعضاء» + «CSV» (the audited export, `ExportDownloadButton` → `/api/admin/exports/members`) ·
+toolbar: search · chips «الشركة: الكل» · «الدور: الكل» (`ui/menu`, the current value in the chip — 042's `Toolbar`
+shape, a GET form, the URL is the state) · the count «212 عضوًا» (six forms) · `data-table`: العضو (`ui/avatar` with the
+team ring through `avatarHref()` — never `members.avatar_url`, `DEC-099` — name, and the email on its second line) ·
+الشركة · الدور (a `badge` for مشرف المؤسسة / مُنظِّم and for a deactivated member; plain text for عضو — D9) · المستوى ·
+النقاط · آخر نشاط (D10) · ⋯ · the pager «1 – 9 من 212» + السابقة / التالية.
+
+**Data — a new read for this screen alone**, `listMembersForConsole(locale, query)` in `admin-members.ts`:
+`admin_list_members()` (unchanged; the scoring, recognition and schedule pages keep calling `listMembersForAdmin`,
+untouched) + `members(id, avatar_version, companies(name, team_color))` + `points_balances(member_id, total_points,
+current_level_id)` (`0027:382`, org-readable) + `levels(id, name)`. Filtered, sorted and paged in the DAL, every read
+**paged past `max_rows`** (the RPC returns a set and is capped at 1000 too). No SQL.
+
+**Kept-behaviour table** (`REQ-ADM-009`, `REQ-TEN-005`, `REQ-AUT-007/008`, `REQ-ADM-020`, `admin-members.ts`):
+
+| Behaviour | Now | After | REQ |
+|---|---|---|---|
+| Admin only — a moderator would read `members_read_org`, so the screen is gated | `listMembersForAdmin` → null (`page.tsx:31`) | kept in the new read | `REQ-ADM-020` |
+| The email, to the admin alone, through the definer list | `admin_list_members()` (0056) | kept; `dir="ltr"` `<bdi>` | `REQ-ADM-009` |
+| Every write through 0005's RPCs — `assert_fresh_admin()`, claims bump, audit row | `setMemberRole`, `deactivateMember`, `reactivateMember` | unchanged functions | `REQ-TEN-005` |
+| The last admin cannot be demoted or deactivated | RPC raises `last_admin`; the row shows it **after** the attempt | the RPC stays the boundary; ★ the menu **disables** «اجعله عضوًا/مُنظِّمًا» and «عطّل» on the last active admin and says why (computed from the list) | `REQ-UIX-096`, `REQ-ADM-009` |
+| The viewer's own row: no role control, no deactivate | `isSelf` (`members-table.tsx:61,123`) | kept — no ⋯ on the own row (a «—» value in the card) | `REQ-ADM-009` |
+| Deactivation needs a reason (3–300), shown in a dialog naming the member | `deactivateInput`, dialog + `Field` | kept, in `ConfirmDialog` with the reason field; `noValidate` | `REQ-AUT-007` |
+| `stale_claims`, `member_not_found`, `cannot_deactivate_self` read as sentences | `classify()` + `error.*` | kept | `REQ-ADM-009` |
+| ★ Reactivation toasts success even when the RPC refused | `reactivate()` returns `void`; `handleReactivate` toasts done | **defect fixed**: returns its state; toast from it | `DEC-231` §0.1 |
+| ★ Role change has no confirmation | select + «غيّر الدور» | ⋯ → «اجعله …» → `ConfirmDialog` naming member and role | `REQ-UIX-013` |
+| The deactivated note — date and reason | `deactivatedNote` | kept under the name | `REQ-ADM-009` |
+| A link to the member's full profile | «عرض الملف الكامل» | kept, ⋯ «الملف الكامل» (`REQ-ADM-009` «view a member's full record») | `REQ-ADM-009` |
+| Search by name or email | client-side `useState` | URL `?q=` (works without JS), name and email | `REQ-UIX-096` |
+| Bound actions handed down as maps, never factories | `page.tsx:44-52` | kept (wave 6's Flight trap) | — |
+| No invite | none | none | `REQ-UIX-096` |
+| Phone card carries the actions | `onCard` (wave 8, F1) | kept | `16` §6.7 |
+
+**Mutations:** role → `member.role_changed` (0005 ✓) · deactivate → `member.deactivated` (0005 ✓) · reactivate →
+`member.reactivated` (0005 ✓) · CSV → `export.created` (0058 ✓).
+
+### 6 · `061` التصدير — `AdminExports.dc.html`
+
+**Regions:** `h1` «التصدير» with the caption «CSV · UTF-8 · كل تصدير مسجَّل» at its end — «كل تصدير مسجَّل» the link to
+`/app/admin/audit?action=export.created` (today's Panel sentence, kept as a link and a word) · `data-table`: التصدير ·
+آخر مرة (actor · relative time, `<time>` carrying the absolute) · «CSV» (`ExportDownloadButton`, its accessible name
+«نزِّل ملف … بصيغة CSV» kept). ★ **Eight rows**: the seven of today and «سجل التدقيق» (D12).
+
+**Kept-behaviour table:**
+
+| Behaviour | Now | After | REQ |
+|---|---|---|---|
+| Admin only, page and route | `listRecentExports` → null; every `export*Csv` → null → 404 | kept | `REQ-ADM-020` |
+| UTF-8 BOM, CRLF, RFC 4180 quoting | `buildCsv` | kept; ★ a new test opens one file's bytes: BOM, an Arabic header, a Western numeral | `REQ-ADM-017` |
+| Formula neutralisation | `neutraliseFormula` | kept | `DEC-160` |
+| Dates `YYYY-MM-DD HH:mm`, the zone in the header | `csvDateTime`, `whenHeader` | kept | `DEC-148` |
+| Arabic enum values | the `*_AR` maps | kept | `REQ-ADM-017` |
+| The audit row is written before the file is served | `auditExport` before `return` | kept | `REQ-UIX-098` |
+| «آخر مرة» read from `export.created` | `listRecentExports` | kept; ★ its `.limit(500)` is honest only while no single type has been exported 500 times since another — a per-type query instead | `REQ-UIX-098` |
+| The download fetches, names the file, toasts, refreshes | `ExportDownloadButton` | kept unchanged | `REQ-UIX-007` |
+| ★★ **Exports are silently truncated at 1000 rows** | every `.from(...)` read has no `.range()`; `max_rows = 1000` | **defect fixed in `admin-exports.ts`**: each read pages by 1000 until short — the points ledger and the attendance list cross 1000 first | `REQ-ADM-017` |
+
+**Mutations:** none but the exports — each → `export.created` (0058 ✓).
+
+### 7 · `062` سجل التدقيق — `AdminAudit.dc.html`, over both stores
+
+**Regions:** `h1` «سجل التدقيق» + «CSV» (admin only) · toolbar: search (D14) · chips «الفاعل: الكل» (admin only) ·
+«الفعل: الكل» · the period chip («30 يومًا», with «مدة مخصّصة» opening a sheet with the two date-only `ui/date-time`
+pickers — today's custom range kept) · «العنصر» when a subject is followed (D15) · the count «1,284 سجلًا» · `data-table`:
+الوقت · الفاعل (avatar, name, the role badge) · الفعل (the Arabic label; a «إعداد» badge on a history row; the reason
+appended «· «وصل متأخرًا»»; a history row's old → new) · الهدف (the subject's name where readable, else its type, and
+«كل ما جرى على هذا العنصر») · the keyset pager (kept; D15).
+
+**How both stores are read and marked (`DEC-231` §4.3) — no SQL, nothing written twice:**
+- `audit_log` as today (`admin-audit.ts`), and `scoring_config_history` (`0004:354`; scopes `scoring`, `org_settings`,
+  `badges`, `levels`, `perks`, `streaks`, `branding`, `company_scoring`) **only for an admin** — its policy is
+  `config_history_read_admin`, so a moderator reads none by RLS and the DAL does not ask (`REQ-ADM-020`: own actions only).
+- One DTO, `kind: "log" | "config"`. A history row is one changed field: `field`, `oldValue`, `newValue`, `actorId`
+  (null → «النظام»), `scope`, `entityId`. Not grouped per save: a group would straddle a page boundary, and «one field,
+  old → new» is what the row honestly holds.
+- **The merged page is a merge of two keyset streams on one cursor**: both ordered `(at desc, id desc)`, both asked for
+  51 rows strictly older than `at~id`, merged in the DAL, cut at 50; the cursor is the last row's. Correct because the
+  two orderings agree (`uuid` order in Postgres is the lowercase hex order JS compares).
+- **Filters**: actor and period apply to both. The action chip lists the log's actions grouped by domain **and** a
+  group «الإعدادات» of the history's scopes as `config.<scope>` (the existing `^[a-z_]+\.[a-z_]+$` already admits it;
+  no `audit_log` action starts with `config.`); choosing a log action drops the history, choosing a scope drops the
+  log. Subject follow works on both (`subject_id` / `entity_id`).
+- **The count**: two `count: "exact", head: true` reads under the same filters, summed.
+- **Labels**: every history scope and every field a history trigger can write gets an Arabic and English label under
+  `admin.audit.config.*`, with a unit test shaped like `admin-audit-labels.test.ts` reading the scopes and fields from
+  the migrations — `org_settings_history()` writes every column, so the test reads `org_settings`' columns. A field
+  with no label falls back to its key and the test fails, as for actions.
+- **The audit CSV — a new export type through the same path**: `/api/admin/exports/audit` (`[type]/route.ts`, add-only:
+  an `audit` entry; its query parsed by `auditFiltersFrom()`, as `ids` is parsed for sessions only) →
+  `exportAuditCsv(locale, filters)` in `admin-exports.ts`: both stores, every page (no cursor), columns الوقت (zone) ·
+  الفاعل · الدور · النوع · الفعل · العنصر · السبب · القيمة السابقة · القيمة الجديدة; `auditExport(locale, "audit")`
+  before it is served. ★ **No function change**: `write_admin_export_audit(p_export_type text, …)` (`0058`) takes a free
+  label, so nothing goes under `supabase/proposed/console/`. Its `after` records the type only, not the filters (Q8).
+
+**Kept-behaviour table** (`REQ-ADM-018`, `REQ-NFR-006`, `03` §5.10a, `admin-audit.ts`):
+
+| Behaviour | Now | After | REQ |
+|---|---|---|---|
+| Staff only; a member gets the streamed not-found | `requireStaff` → null | kept | `DEC-134` |
+| A moderator sees their own actions; no actor filter | RLS (`audit_read_moderator_own`); `actors: null` | kept; and no history, no CSV | `REQ-ADM-020`, `09` coverage |
+| Nothing edits a row | no control; revoke incl. `service_role` | kept | `REQ-NFR-006` |
+| The org's days for a range, half-open, DST-safe | `periodBounds`, `dayStartInZone` | kept; `admin-audit-filters.test.ts` untouched | `DEC-147` K1 |
+| Unparseable query values dropped, an inverted range reported | `auditFiltersFrom`, `rangeInverted` | kept | — |
+| Fifty a page, keyset, never an offset | `AUDIT_PAGE_SIZE`, `before` | kept, merged cursor | `DEC-147` K1 |
+| One subject followable | `subjectId` | kept | `REQ-ADM-018` |
+| Former staff and «النظام» filterable | `listAuditFilterOptions` | kept; ★ its `.limit(5000)` is really 1000 (`max_rows`) — paged | `REQ-ADM-018` |
+| Every action in Arabic, the key never shown | `actions.*`, `admin-audit-labels.test.ts` | kept; ★ the lead's new actions (`venue.*`, `category.*`, `company.*`, `report.resolved`, `survey_template.*`) need labels in the commit that adds them — the test fails otherwise; ★ I write those keys in `admin.json` on the lead's list | `REQ-ADM-018` |
+| The scoring note sends the admin to the points screen's history | `scoringNote` | **dropped** — the history is on this screen now | `REQ-UIX-099` |
+| Filters in a sheet on a phone | `AuditFilterPanel` + `ui/sheet` | the chips scroll in one row (042's); the custom range in a sheet | `16` §6.7 |
+
+**Mutations:** none on the screen; the CSV → `export.created` with `export_type: "audit"` ★ (the type is new; the action is 0058's).
+
+### 8 · Every existing test that changes — ledger lines (each in the commit that moves it)
+
+`tests/components/admin/` (mine):
+- `companies-add-colour.test.tsx` — `CompanyForm` is rewritten as the sheet's form: **selectors move**; every
+  expectation (seven names + «بلا لون», «بلا لون» default, no hex, no logo, the hex mapping, refusals) **stands**.
+- `companies-table.test.tsx` — the colour moves from a row menu into the sheet: «the menu offers seven colours and
+  marks the current one» and «choosing posts its NAME» **move to the sheet** (an expectation moved); «name not just
+  swatch» and «بلا لون» stand.
+- `managed-lists-status-badge.test.tsx` — **an expectation changes**: an active row shows nothing (no «نشط»/«نشطة»); a
+  deactivated row shows «معطّل»/«معطّلة» (`DEC-NEXT-25`, the artboards draw no status column).
+- `phone-card-actions.test.tsx` — «عطّل»/«أعد التفعيل» are items under the card's ⋯, not buttons (a selector moved);
+  the members case stands (⋯; the own card a «—»), its reactivation becomes a menu item.
+- `members-table.test.tsx` — search through the URL (a selector moved); role change through ⋯ and a confirmation (a
+  flow moved); ★ «the last-admin guard's error reads as a sentence» **becomes** «the menu says why before the click» (an
+  expectation moved; the RPC's error path keeps a case); self row and axe stand.
+- `form-summary-links.test.tsx` — venues, categories, companies: the forms live in the sheet (selectors move). ★ Its
+  **settings** case imports `admin/settings/settings-form.tsx`, which is `notify`'s this wave — Q5.
+- `audit-page.test.tsx` — the filter panel becomes chips (selectors move); Arabic labels, «النظام», the subject link,
+  the moderator's no-actor-filter, the pager and the date-only pickers **stand**; the moderator's intro sentence is
+  dropped (an expectation moved — the empty state still names their queues).
+- `exports-page.test.tsx` — «seven exports» → **eight** (an expectation moved); the note's link moves into the caption.
+- `confirm-dialog.test.tsx` — **untouched** (`DeactivateToggle` stays: `recognition/badges-table.tsx` uses it).
+
+`tests/unit/` (mine): `admin-audit-filters`, `admin-exports-csv*`, `admin-exports-days`, `admin-exports-sessions-ids`,
+`admin-lists-team-colour` — **untouched**; new files for the paging, the merged feed and the config labels.
+
+`tests/e2e/` (mine, evidence): `admin-members.spec.ts` — `h1` «الأعضاء والأدوار» → «الأعضاء» (`:145`, `:117`); the
+role `<select>` + «غيّر الدور» → ⋯ (`:154-165`); «مزيد من الإجراءات على …» kept as the ⋯'s name. `admin-exports.spec.ts`
+— «all seven» → eight (`:107`). `admin-audit.spec.ts` — `getByLabel("الإجراء").selectOption` → the action chip (`:176`,
+`:228`); «تصفية» on a phone → the chips (`:226`). `wave17-console-screens.spec.ts` — the companies «بلا لون» trigger
+button (`:150`) → the row's ⋯ «عدّل» and the sheet; the audit «تصفية» (`:160`) → the period chip's sheet.
+
+★ **Not mine, and they break** (Q5): `tests/e2e/admin-managed-lists.spec.ts` (the add forms «أضف التصنيف»/«أضف الشركة»
+→ the sheets; «عطّل» buttons → ⋯) and `tests/e2e/wave15-console-team-colour.spec.ts` (the row's colour menu → the sheet).
+
+### 9 · Disagreements — artboard (or spec) against `docs/plan/` and the tree; no side picked
+
+- **D1** `AdminVenues` draws no status column and no venue without a company; `REQ-UIX-093` «a venue with no company
+  says so in the row».
+- **D2** `AdminVenues` «الجلسات» (27 — all-time) vs today's «الجلسات القادمة» (`upcomingSessions`, why deactivation is
+  the only exit). The plan carries `sessionCount` (all, by day) and keeps `upcomingSessions` for the confirm's body.
+- **D3** `M11b.md` §046–049 «delete is blocked while sessions use it» and `REQ-UIX-094` «a category in use cannot be
+  deleted, and the row menu says why» imply an unused category CAN be deleted; `categories` has no delete grant and no
+  delete policy (0004) and `REQ-ADM-006` says «deactivate, not delete». A delete is a policy, a grant and a migration —
+  the lead's. Until ruled, the menu offers «عطّل» only.
+- **D4** Every m11b artboard's rail says «التصنيفات والوسوم»; `DEC-227` §3 says «التصنيفات». Already ruled — noted.
+- **D5** `AdminCompanies` draws النطاق and «الشعارات من الهوية البصرية»; `DEC-231` §6.1, `DEC-195` §4 — already ruled.
+- **D6** `AdminCompanies` draws the swatch with no word; `REQ-UIX-095` / `REQ-UIX-092` «and its value in words».
+- **D7** `AdminCompanies` «النشطون» (7 of 9) is undefined: members whose `status` is active, or the cup's active members
+  (`derivedActive()`, the race's divisor)? The plan reads `status = active` unless told otherwise.
+- **D8** «الربع» is the newest quarter snapshot (`getCompanyCup`), so it is «—» until the nightly task takes one — the
+  artboard draws a figure for every company.
+- **D9** `AdminMembers` role words «مشرف» / «مُشرِف إشراف» / «موقوف»; `REQ-ADM-009`, the glossary and today's strings say
+  «مشرف المؤسسة» / «مُنظِّم» / «عضو» and status «معطَّل». The plan keeps today's.
+- **D10** `AdminMembers` «آخر نشاط» — **nothing stores a member's last activity** (no column in any migration). Drawn,
+  not built — unless the lead names a proxy (the newest ledger row, the newest check-in) or a column (the lead's).
+- **D11** `AdminExports` drops «الحجوزات» and adds «سجل التدقيق»; `REQ-ADM-017` lists RSVPs. The plan keeps both: eight.
+- **D12** `AdminExports` draws no line of what each file holds; `REQ-UIX-098`'s title is «what each holds». Today's
+  notes are sentences (`DEC-NEXT-25`). The plan drops them unless told to keep.
+- **D13** `AdminAudit` draws a free-text «بحث»; `REQ-ADM-018` asks actor, subject, action, date — all chips. Search
+  over what? Not built unless named.
+- **D14** `AdminAudit` draws no subject chip, no reason column and no pager; the plan keeps the subject follow as a chip,
+  the reason inside the action cell (as the artboard's «· «وصل متأخرًا»» does), and the keyset pager.
+- **D15** `AdminAudit` «دفع نقاط · 50 × 28» by «النظام» — an award; neither store records awards (the ledger does).
+  Not shown.
+- **D16** `AdminAudit` «أبطلت رمز الحضور» — a gendered verb (`DEC-213` §5.109's spirit); today's label is the noun
+  «إلغاء رمز الحضور». Kept.
+- **D17** `M11b.md` header «every table stacks to cards under `lg`»; `data-table` stacks below `md`. Between 768 and
+  1023 the rail is a sheet and the table is a table — as in wave 21.
+- **D18** `M11b.md` lists the companies sheet with «domains, colour, logo (`REQ-ORG-*`)» — `REQ-ORG-*` does not exist
+  (`DEC-227` §1 found the same id); ruled by `DEC-231` §6.1 for domain and logo.
+
+### 10 · Findings for the lead (not a screen's, but mine to fix where the file is mine)
+
+- ★★ **`max_rows = 1000`** (`supabase/config.toml:18`; production's API setting is the owner's to read) silently
+  truncates every unbounded read: all seven exports (`REQ-ADM-017` — an export that drops rows is worse than none),
+  `admin_list_members()` (also read by the scoring, recognition and schedule pages), the category and company counts,
+  `listAuditFilterOptions`' «5000». I fix it in my files by paging; other tracks' unbounded reads are not measured here.
+- ★ The silent-success toggles (venues, categories, companies, member reactivation) — `DEC-231` §0.1's worst outcome,
+  today, on these screens.
+- ★ `export.created`'s `after` names the type only: a 042 selection export and a filtered audit export are
+  indistinguishable from the whole file (Q8).
+
+### 11 · Requests
+
+- **R1** (lead, custodian of `ui/switch`): add-only `labelHidden?: boolean` — §0.
+- **R2** (lead): the action labels of the audit migration's new rows in the list for `admin.json`, so they land in
+  the same commit as the triggers (`admin-audit-labels.test.ts`).
+
+### 12 · Questions for the lead
+
+- **Q1** R1, or the group fallback?
+- **Q2** The no-JS path. Today's add forms post without JS; a `ui/sheet` cannot open without it. 042's precedent is the
+  URL as state (`?new=1` renders the creation region in the page). Sheet (artboard) or region (042, no-JS kept)?
+- **Q3** The audit triggers: one sheet save that changes a venue's name and its company (or a company's name and its
+  colour) is one `update`. Two rows (`venue.changed` + `venue.company_changed`) or one? Either way the DAL writes no
+  audit row (contract 3).
+- **Q4** `createVenue` / `setVenueActive` returning `{ ok }` instead of `void` — compatible with their one caller, but
+  is it «add-only» enough for `sessions.ts`, or do I add checked siblings and leave them?
+- **Q5** Who writes `tests/e2e/admin-managed-lists.spec.ts`, `tests/e2e/wave15-console-team-colour.spec.ts`, and the
+  settings case of `tests/components/admin/form-summary-links.test.tsx` (mine, but `notify` rebuilds that form)?
+- **Q6** The `max_rows` paging in `admin-exports.ts` — in PR A with `061`? (I propose yes.)
+- **Q7** A venue owned by a **deactivated** company: may the `select` offer it, and does hosting award it (`scoring`)?
+- **Q8** Record the export's slice (`ids`, filters) in `export.created`'s `after` — a trailing defaulted
+  `p_detail jsonb` on `write_admin_export_audit()` under `supabase/proposed/console/` — or leave it?
+- **Q9** `049`'s «CSV»: the whole member list (today's export) or the chips' slice (an add-only `?company=&role=`)?
