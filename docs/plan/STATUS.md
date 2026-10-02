@@ -68,6 +68,17 @@ floor stays 63.**
 | `064` | attach / detach → `survey.attached` / `survey.detached` |
 | `065` | create / save / delete → `survey_template.created` / `changed` / `deleted` ★new |
 
+### ★ Where it stands (2026-10-02, end of Step 0)
+
+- **Five plans in flight**, planning-only, each writing `docs/plan/notes/<track>.md` § «Wave 22 — the plan (sync 1)».
+- ★ **`0180` is WRITTEN AND STAGED, NOT APPLIED**: `supabase/proposed/lead/0180_venue_company.sql` and its cases in
+  `supabase/proposed/lead/venue-company.test.ts.pending` (`9fea9a91`). Applying it to the shared local stack was
+  declined by the session's permission check while five teammates were on the machine (load average ~245). **Promotion**:
+  move the SQL to `supabase/migrations/0180_venue_company.sql`, the test to `tests/rls/venue-company.test.ts`, reset,
+  run the sweep.
+- ★ **An orphaned `next-server` from wave 21** (parent gone, no port, ~30 h, ~40 % CPU, cwd this repo) is still running;
+  stopping it was declined by the permission check. **The owner stops it**, or allows the lead to.
+
 ### The order of work
 
 1. **Sync 1** — five plans, each with its kept-behaviour tables and its audit lines, judged against `DEC-231` §0. ★
