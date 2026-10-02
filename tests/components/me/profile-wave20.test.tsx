@@ -177,13 +177,14 @@ describe("SCR-021 — edit mode", () => {
     expect(posted.getAll("interests")).toEqual([C2]);
   });
 
-  it("★ PR A keeps the leaderboard opt-out here and posts it (contract 5, REQ-LDR-008)", async () => {
+  it("★ PR B: the leaderboard opt-out is not here and is never posted — it lives on /app/me/settings (contract 5)", async () => {
     saveProfile.mockResolvedValue({ ...base, saved: true } as ProfileState);
     renderEdit();
-    fireEvent.click(screen.getByLabelText(profileAr.profile.leaderboardOptOut, { exact: false }));
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    fireEvent.change(name(), { target: { value: "ريم" } });
     save();
     await waitFor(() => expect(saveProfile).toHaveBeenCalled());
-    expect(saveProfile.mock.calls[0][2].get("leaderboardOptOut")).toBe("on");
+    expect(saveProfile.mock.calls[0][2].has("leaderboardOptOut")).toBe(false);
   });
 
   it("★ «إلغاء» is a link back to read mode; with changes, leaving asks first", async () => {

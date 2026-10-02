@@ -18,7 +18,8 @@ import { PROFILE_FIELDS, type ProfileField, type ProfileState } from "./state";
 // structurally in the action's own returned state.
 //
 // ★ wave 20 (SCR-021 rebuilt, DEC-218 §4.2): the interests travel with the profile — one «حفظ» for the whole edit
-// mode — as repeated `interests` values (category ids). `setMyInterests()` writes the session's own rows only. Edit
+// mode — as repeated `interests` values (category ids). ★ PR B: the leaderboard opt-out is not sent — it lives on
+// `/app/me/settings` (contract 5), and `updateMyProfile` leaves the column alone when it is absent. `setMyInterests()` writes the session's own rows only. Edit
 // mode is `/app/me?edit`; a success returns `saved` and the client goes back to read mode.
 
 function errorKey(field: ProfileField, code: string, empty: boolean): string {
@@ -45,7 +46,6 @@ export async function saveProfile(locale: Locale, prev: ProfileState, formData: 
     companyId: was(state, "companyId") || null,
     jobTitle: was(state, "jobTitle") || null,
     bio: was(state, "bio") || null,
-    leaderboardOptOut: was(state, "leaderboardOptOut") === "on",
   };
 
   const parsed = profileInput.safeParse(raw);

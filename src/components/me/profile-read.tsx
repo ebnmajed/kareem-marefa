@@ -16,7 +16,7 @@ import { TagChip } from "@/components/ui/tag-chip";
 //
 // In the artboard's order: «ملفي» as a section heading · one list card — الاسم · الشركة · المسمى الوظيفي · نبذة (or
 // «لا توجد نبذة بعد») · الاهتمامات as chips · البريد, Google's, read-only and in `<bdi>` · then the one primary.
-// Leaderboard visibility is not a row: it lives in edit mode in PR A and on `/app/me/settings` from PR B (contract 5).
+// Leaderboard visibility is not a row: it lives on `/app/me/settings` (contract 5).
 //
 // ★ NO COMPANY (REQ-PRF-001, `M10c.md` §1): the hub says what is blocked — `app.home.companyMissing` — and the
 // company row is the way to choose one, a link into edit mode.

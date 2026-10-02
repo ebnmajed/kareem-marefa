@@ -8,11 +8,11 @@ import { emptyFormState, type FormState } from "@/lib/form-state";
 
 /**
  * Every field the profile form can fail on, in the order the page renders
- * them. `leaderboardOptOut` is captured the same way as every other field —
- * `FormState` reads FormData as strings regardless of the control's type, so
- * a checkbox is `"on"` or absent, same as everything else.
+ * them. ★ wave 20, PR B (contract 5, DEC-217 §3.1): the leaderboard opt-out
+ * left the profile for `/app/me/settings`' switch, which writes it through
+ * `setLeaderboardOptOut()` — the profile neither shows nor sends it.
  */
-export const PROFILE_FIELDS = ["displayName", "companyId", "jobTitle", "bio", "leaderboardOptOut"] as const;
+export const PROFILE_FIELDS = ["displayName", "companyId", "jobTitle", "bio"] as const;
 export type ProfileField = (typeof PROFILE_FIELDS)[number];
 
 /**
