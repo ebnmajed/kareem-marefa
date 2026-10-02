@@ -182,7 +182,8 @@ test("★ REQ-SES-016: one day costs nothing, and three evenings are three taps"
   test.slow();
   await page.setViewportSize(PHONE);
   await signIn(context);
-  await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule`);
+  // ★ wave 21 (ledger L21-S7, a selector): the form is SCR-043's edit twin, at `?edit`.
+  await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule?edit`);
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
 

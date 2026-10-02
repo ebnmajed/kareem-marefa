@@ -246,10 +246,13 @@ test("an admin: the hub's address lands on the schedule, the strip follows the r
   await expectFocusNotOnSkipLink(page, "after the hub's redirect");
 
   const links = strip(page).getByRole("link");
-  await expect(links).toHaveText(["الجدولة", "الحضور", "الشهادات", "الاستبانة", "صفحة الجلسة"]);
+  // wave 21 (ledger L21-S4, an expectation named in W21.7): REQ-SES-020's order, the event page as «المحتوى» — and
+  // «صفحة الجلسة» in the hub's one header, still to the event page.
+  await expect(links).toHaveText(["الجدولة", "المحتوى", "الحضور", "الاستبانة", "الشهادات"]);
+  await expect(main(page).getByRole("link", { name: "صفحة الجلسة" })).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
   await expect(strip(page).getByRole("link", { name: "الجدولة" })).toHaveAttribute("aria-current", "page");
   await expect(strip(page).locator('[aria-current="page"]')).toHaveCount(1);
-  await expect(strip(page).getByRole("link", { name: "صفحة الجلسة" })).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
+  await expect(strip(page).getByRole("link", { name: "المحتوى" })).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
   await expectTargets(page);
   // ★ The mode's one writer is SCR-045 (DEC-178); SCR-043 does the schedule's job.
   await expect(main(page).locator('[name="certificateMode"]')).toHaveCount(0);
@@ -286,7 +289,8 @@ test("a moderator: the hub's address lands on attendance, and the schedule is no
   await page.goto(`/ar/app/admin/sessions/${sessionId}`);
   await page.waitForURL(`**/ar/app/admin/sessions/${sessionId}/attendance`);
   await settle(page);
-  await expect(strip(page).getByRole("link")).toHaveText(["الحضور", "الشهادات", "الاستبانة", "صفحة الجلسة"]);
+  // wave 21 (ledger L21-S4): the same order and label.
+  await expect(strip(page).getByRole("link")).toHaveText(["المحتوى", "الحضور", "الاستبانة", "الشهادات"]);
   await expect(strip(page).getByRole("link", { name: "الحضور" })).toHaveAttribute("aria-current", "page");
   await expectTargets(page);
   await capture(page, "hub-moderator");

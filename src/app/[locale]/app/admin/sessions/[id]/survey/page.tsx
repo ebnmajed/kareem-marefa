@@ -4,7 +4,7 @@ import { DetachControl } from "@/components/survey/detach-control";
 import { SurveyResults } from "@/components/survey/results";
 import { formatNumber } from "@/components/sessions/numerals";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -39,31 +39,27 @@ export default async function SessionSurveyPage({
   setRequestLocale(locale);
   const flags = await searchParams;
 
-  const [heading, results, templates, role, t, tErrors, tUi, tAdmin] = await Promise.all([
+  const [heading, results, templates, role, t, tErrors] = await Promise.all([
     getSessionHeading(locale, id),
     getSurveyResults(locale, id),
     listSurveyTemplates(locale),
     requireSession(locale),
     getTranslations("survey.session"),
     getTranslations("survey.errors"),
-    getTranslations("ui.pageHeader"),
-    getTranslations("admin.sessions"),
   ]);
   // A presenter, a member, another org's staff and a session that is not there
   // are one answer.
   if (!heading || !results) notFound();
 
-  const sessionHref = `/app/admin/sessions/${id}`;
   const isAdmin = role.role === "admin";
 
   return (
     <>
-      <PageHeader
-        breadcrumb={[
-          { href: "/app/admin/sessions", label: tAdmin("title") },
-          { href: sessionHref, label: heading.title },
-        ]}
-        breadcrumbLabel={tUi("breadcrumb")}
+      {/* ★ wave 21 (DEC-227 §5.2, contract 4): the hub draws the breadcrumb, the session's `h1` and its status above
+          the tabs, so this tab's title is a section heading and its action stays beside it. The lead's edit, as
+          `event`'s custodian; nothing else in the file moved. */}
+      <SectionHeader
+        as="h2"
         title={t("title")}
         actions={
           // ★ A PLAIN DOWNLOAD ANCHOR, not `ButtonLink`: a Route Handler that

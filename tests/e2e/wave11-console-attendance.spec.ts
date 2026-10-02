@@ -181,56 +181,45 @@ test.afterAll(async () => {
   await db.end();
 });
 
+// ★ Wave 21 (SCR-044 rebuilt, DEC-208): the table is `ui/data-table` — a `<table>` from `md` up and a card list below
+// it, never a sideways scroll — and above one day the DAY is the page's chip (`?day=`), the list showing that day with
+// a «الأيام» column. The title is the hub header's `h1`. Each changed assertion is a ledger line in STATUS.
 for (const count of [1, 2, 3]) {
-  test(`the attendance report at ${count} day(s): no sideways scroll on a phone, the table unchanged on a desktop`, async ({ context, page }, testInfo) => {
+  test(`the attendance tab at ${count} day(s): no sideways scroll on a phone, the table on a desktop`, async ({ context, page }, testInfo) => {
     const isPhone = testInfo.project.name === "phone";
     const main = inMain(page);
     await signIn(context, emails.staff, true);
     await page.goto(`/ar/app/admin/sessions/${sessions[count].id}/attendance`);
-    await expect(main.getByRole("heading", { level: 1 })).toContainText("تقرير الحضور");
+    await expect(main.getByRole("heading", { level: 1 })).toContainText(`جلسة ${count} أيام`);
 
-    const table = main.getByRole("table");
-    const sara = table.getByRole("row", { name: /سارة العتيبي/ });
-    const khalid = table.getByRole("row", { name: /خالد الحربي/ });
+    const rowOf = (name: string) => main.getByRole("row", { name: new RegExp(name) }).or(main.getByRole("listitem").filter({ hasText: name }));
+    const sara = rowOf("سارة العتيبي");
+    const khalid = rowOf("خالد الحربي");
     await expect(sara).toBeVisible();
     await expect(khalid).toBeVisible();
 
-    const headers = count === 1 ? ["الاسم", "الحالة", "وقت الوصول", "الطريقة"] : ["الاسم", "الحالة", ...DAY_LABELS.slice(0, count), "الأيام"];
-    for (const name of headers) {
-      const header = table.getByRole("columnheader", { name, exact: true });
-      // On the phone the header row is in the tree, not on screen (the header comment).
-      if (isPhone) await expect(header).toBeAttached();
-      else await expect(header).toBeVisible();
-    }
+    // The day chips exist above one day and not at one (DEC-150 contract 7).
+    const days = main.getByRole("group", { name: "اليوم" });
+    if (count > 1) for (const label of DAY_LABELS.slice(0, count)) await expect(days.getByRole("link", { name: label })).toBeVisible();
+    else await expect(days).toHaveCount(0);
 
     if (count > 1) {
-      await expect(sara.getByRole("cell", { name: `${count} من ${count}` })).toBeVisible();
-      await expect(khalid.getByRole("cell", { name: `${count - 1} من ${count}` })).toBeVisible();
+      await expect(sara).toContainText(`${count} من ${count}`);
+      await expect(khalid).toContainText(`${count - 1} من ${count}`);
     } else {
-      await expect(sara.getByRole("cell", { name: "يدوي", exact: true })).toBeVisible();
+      await expect(sara).toContainText("يدوي · مشرف الحضور");
     }
 
     if (isPhone) {
-      // The page does not scroll sideways, and neither does the list's region.
-      const overflow = await page.evaluate(() => ({
-        page: document.documentElement.scrollWidth - window.innerWidth,
-        region: (() => {
-          const region = document.querySelector('#main [role="region"][aria-labelledby="list"]') as HTMLElement | null;
-          return region ? region.scrollWidth - region.clientWidth : -1;
-        })(),
-      }));
-      expect(overflow.page).toBeLessThanOrEqual(0);
-      expect(overflow.region).toBe(0);
-
-      // Each day is a line of its own card, labelled with the day's name — the
-      // card grows downwards with the day count, never sideways.
-      if (count > 1) for (const label of DAY_LABELS.slice(0, count)) await expect(khalid.getByText(label, { exact: true })).toBeVisible();
-
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow).toBeLessThanOrEqual(0);
       mkdirSync(SHOTS, { recursive: true });
       await page.screenshot({ path: join(SHOTS, `wave11-console-attendance-${count === 1 ? "1day" : `${count}days`}.png`), fullPage: true });
     } else {
-      // From `md` up the header row is on screen and is one row of the table.
-      await expect(table.getByRole("row").first()).toContainText("الاسم");
+      const table = main.getByRole("table");
+      const headers = ["العضو", "الحجز", "وقت الحضور", "الطريقة", "الحالة", ...(count > 1 ? ["الأيام"] : [])];
+      for (const name of headers) await expect(table.getByRole("columnheader", { name, exact: true })).toBeVisible();
+      if (count === 1) await expect(table.getByRole("columnheader", { name: "الأيام", exact: true })).toHaveCount(0);
     }
   });
 }

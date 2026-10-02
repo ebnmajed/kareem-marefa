@@ -68,7 +68,9 @@ describe("REQ-INT-002 / REQ-INT-006 — the catalogue", () => {
     // `#` would render in the locale's default numbering system (arab for ar),
     // which can disagree with org_settings.numerals. The count still drives
     // the plural branch; the digits come from formatNumber().
-    for (const key of ["propose.duration", "admin.proposals.age", "admin.proposals.count", "admin.sessions.readyCount", "sessions.event.seats", "admin.venues.upcoming", "admin.venues.seats"]) {
+    // wave 21 (ledger L21-P7, a selector): SCR-041's strings moved from `admin.proposals.*` to `proposals.review.*`;
+    // the queue's count went with the old page (the chips carry it), so `admin.proposals.count` has no successor.
+    for (const key of ["propose.duration", "review.age", "admin.sessions.readyCount", "sessions.event.seats", "admin.venues.upcoming", "admin.venues.seats"]) {
       expect(arFlat[key], key).toContain("{value}");
       expect(arFlat[key], key).not.toContain("#");
     }

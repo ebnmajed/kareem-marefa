@@ -139,10 +139,19 @@ test("an admin approves, and approving does not publish (REQ-PRO-005)", async ({
   await signIn(bossContext, adminEmail);
   const boss = await bossContext.newPage();
   await goto(boss, "/ar/app/admin/proposals");
-  await expect(boss.getByRole("heading", { name: title })).toBeVisible();
-  await expect(boss.getByText("الاعتماد لا ينشر الجلسة").first()).toBeVisible();
-  await boss.getByRole("button", { name: "اعتمد المقترح" }).first().click();
-  await expect(boss.getByRole("heading", { name: title })).toHaveCount(0);
+  // ★ wave 21 (SCR-041 as a split view, ledger L21-P4): the proposal is opened from its row and decided beside the
+  // queue. «الاعتماد لا ينشر الجلسة» is gone as explainer copy (an expectation, named in W21.7) — the rule is the
+  // RPC's and is still proved below, by the database.
+  await boss.locator("#main").getByRole("link", { name: new RegExp(title) }).click();
+  // ★ Wait for the proposal's OWN route before touching its card. At 1280 the queue's route already draws the first
+  // proposal beside the list — the same region name — and a click that lands on that card just before the navigation
+  // replaces it is a click on a card about to unmount (the lead's production run, wave 21).
+  await boss.waitForURL(/\/app\/admin\/proposals\/[0-9a-f-]{36}/);
+  const detail = boss.locator("#main").getByRole("region", { name: title });
+  await detail.getByRole("button", { name: "اعتمد" }).click();
+  // ★ The decision is waited for by what it says, not by the row leaving a list: below `lg` the list is hidden on a
+  // proposal's route, so «no such row» was true at once and the context closed before the approval landed.
+  await expect(boss.getByRole("status")).toContainText("سُجّل قرارك", { timeout: 15_000 });
   await bossContext.close();
 
   // Scoped to this worker's org: both device projects run in parallel
@@ -163,35 +172,26 @@ test("a rejection needs a written reason, and that reason is what the proposer r
   await signIn(bossContext, adminEmail);
   const boss = await bossContext.newPage();
   await goto(boss, "/ar/app/admin/proposals");
-  const card = boss.locator("li", { has: boss.getByRole("heading", { name: title }) });
-  // ★ Reject's final submit is behind `ui/dialog` now (REQ-UIX-013): «أرسل»
-  // inside the reason box opens a confirmation NAMING the proposal rather
-  // than submitting directly — `rejectConfirmTitle` interpolates the title,
-  // so the dialog's own accessible name is proposal-specific.
+  // ★ wave 21 (ledger L21-P5): opened from its row; ONE message box; «ارفض» opens the dialog naming the proposal
+  // (REQ-UIX-013). The refusal of an empty message is said AT THE BOX now, in the box's words — the expectation (the
+  // proposal does not move) stands.
+  await boss.locator("#main").getByRole("link", { name: new RegExp(title) }).click();
+  await boss.waitForURL(/\/app\/admin\/proposals\/[0-9a-f-]{36}/);
+  const detail = boss.locator("#main").getByRole("region", { name: title });
   const dialog = boss.getByRole("dialog", { name: `رفض «${title}»؟` });
 
-  // Sending with the box empty is refused, and the proposal does not move —
-  // the reason still travels empty into the dialog's own submit, which the
-  // server still refuses.
-  await card.getByRole("group").filter({ hasText: "ارفض المقترح" }).getByText("ارفض المقترح").click();
-  await card.getByRole("button", { name: "أرسل" }).last().click();
+  await detail.getByRole("button", { name: "ارفض" }).click();
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "تأكيد الرفض" }).click();
-  // The confirm button closes the dialog on click, before the round trip
-  // resolves — the alert then lands back in the card itself, not the dialog.
   await expect(boss.getByRole("dialog")).toHaveCount(0);
-  // Scoped: Next's route announcer is also role="alert".
-  await expect(card.locator("[role=alert]")).toContainText("اكتب السبب أولًا");
+  await expect(detail.getByText("اكتب الرسالة أولًا", { exact: false })).toBeVisible();
   expect((await db.query<{ state: string }>(`select state from public.proposals where title = $1 and org_id = $2`, [title, orgId])).rows[0].state).toBe("submitted");
 
-  // f44d339 split the shared label into one per decision — this is the
-  // reject flow, so `reasonLabelReject` (no `.last()` needed anymore, the
-  // two boxes no longer share a name).
-  await card.getByLabel("سبب الرفض الذي سيصل صاحب المقترح").fill(reason);
-  await card.getByRole("button", { name: "أرسل" }).last().click();
+  await detail.getByLabel("رسالة للمقترِح").fill(reason);
+  await detail.getByRole("button", { name: "ارفض" }).click();
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "تأكيد الرفض" }).click();
-  await expect(boss.getByRole("heading", { name: title })).toHaveCount(0);
+  await expect(boss.getByRole("status")).toContainText("سُجّل قرارك", { timeout: 15_000 });
   await bossContext.close();
 
   // The proposer reads the admin's own words, on their own proposal.
@@ -260,7 +260,10 @@ test("SCR-041 at 390 px RTL: the queue reads down the page and never sideways", 
   });
 
   expect(overflow, "the queue must not scroll sideways at 390 px").toEqual([]);
-  const box = await boss.getByRole("button", { name: "اعتمد المقترح" }).first().boundingBox();
+  // ★ wave 21 (ledger L21-P6): under `lg` the queue is the page and a proposal opens at its own route.
+  await boss.locator("#main").getByRole("link", { name: /مقترح للقياس البصري/ }).click();
+  await boss.waitForURL(/\/app\/admin\/proposals\/[0-9a-f-]{36}/);
+  const box = await boss.locator("#main").getByRole("button", { name: "اعتمد" }).boundingBox();
   expect(box!.height).toBeGreaterThanOrEqual(44);
 
   await boss.screenshot({ path: ".qa-shots/rtl/scr-041-review-390-rtl.png", fullPage: true });

@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { reviewProposal } from "@/lib/dal/proposals";
+import { redirect } from "@/i18n/navigation";
+import { getProposalSession, reviewProposal } from "@/lib/dal/proposals";
+import { createSessionFromProposal } from "@/lib/dal/sessions";
 import type { Locale } from "@/i18n/routing";
 
 // SCR-041's Server Action (REQ-PRO-005). Zod first, then the DAL.
@@ -14,6 +16,7 @@ import type { Locale } from "@/i18n/routing";
 // message a person can read.
 
 export type ReviewState = {
+  /** `reasonRequired`, `approveWithMessage` (DEC-228 §4.1 — said at the box), or `failed`. */
   error: string | null;
   done: boolean;
   /**
@@ -42,10 +45,10 @@ const input = z
   });
 
 export async function decideProposal(locale: Locale, _prev: ReviewState, formData: FormData): Promise<ReviewState> {
-  // The reason box is named for its own decision: the three buttons share one
-  // form, so a single `reason` field would hand back whichever box came first.
+  // ★ wave 21: ONE box, «رسالة للمقترِح», for all three decisions (AdminProposals.dc.html). The old two-box naming
+  // hazard — a filled reason replaced by an empty one sharing its name — went with the second box.
   const action = formData.get("action")?.toString() ?? "";
-  const typed = formData.get(`reason-${action}`)?.toString() ?? "";
+  const typed = formData.get("reason")?.toString() ?? "";
   const parsed = input.safeParse({
     proposalId: formData.get("proposalId")?.toString() ?? "",
     action,
@@ -55,6 +58,12 @@ export async function decideProposal(locale: Locale, _prev: ReviewState, formDat
     const reasonMissing = parsed.error.issues.some((i) => i.path[0] === "reason");
     return { error: reasonMissing ? "reasonRequired" : "failed", done: false, reason: typed };
   }
+  // ★ DEC-228 §4.1 (b): approval carries no message — `review_proposal('approve')` clears `decision_reason` and
+  // `MSG-proposal_approved` reads it (`0013`, `0039:156`) — so a message typed and then «اعتمد» would be lost in
+  // silence. Refused at the box instead; nothing typed is lost. Carrying it is (a), carried.
+  if (parsed.data.action === "approve" && parsed.data.reason !== null) {
+    return { error: "approveWithMessage", done: false, reason: typed };
+  }
 
   try {
     await reviewProposal(locale, parsed.data.proposalId, parsed.data.action, parsed.data.reason);
@@ -63,6 +72,21 @@ export async function decideProposal(locale: Locale, _prev: ReviewState, formDat
     return { error: message.includes("reason_required") ? "reasonRequired" : "failed", done: false, reason: typed };
   }
 
-  revalidatePath(`/${locale}/app/admin/proposals`);
+  // The queue is the LAYOUT's list as well as the page's detail: both refresh.
+  revalidatePath(`/${locale}/app/admin/proposals`, "layout");
   return { error: null, done: true, reason: "" };
+}
+
+/**
+ * «افتح كجلسة» (REQ-PRO-007, REQ-SES-001) — the same `create_session(p_proposal)` SCR-042's button calls
+ * (`DEC-228` §3.11 keeps that one); authority is the RPC's (`assert_fresh_admin()`, an approved proposal, one session
+ * per proposal, `0020`). A session that already exists is opened, not made twice. Lands on its الجدولة.
+ */
+export async function openAsSession(locale: Locale, proposalId: string): Promise<void> {
+  if (!z.uuid().safeParse(proposalId).success) return;
+  const existing = await getProposalSession(locale, proposalId);
+  const id = existing?.id ?? (await createSessionFromProposal(locale, proposalId));
+  revalidatePath(`/${locale}/app/admin/proposals`, "layout");
+  revalidatePath(`/${locale}/app/admin/sessions`);
+  return redirect({ href: `/app/admin/sessions/${id}/schedule`, locale });
 }

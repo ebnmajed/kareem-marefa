@@ -169,7 +169,26 @@
         "attendance": "Attendance",
         "certificates": "Certificates",
         "survey": "Survey",
-        "event": "Session page"
+        "event": "Session page",
+        "content": "Content"
+      },
+      "breadcrumb": "Sessions",
+      "breadcrumbLabel": "Breadcrumb",
+      "lifecycle": {
+        "publish": "Publish",
+        "pending": "Working…",
+        "missing": "Missing: {list}",
+        "cancel": "Cancel session",
+        "cancelTitle": "Cancel “<t>{title}</t>”?",
+        "cancelBody": "Everyone booked or waiting receives the reason, and the session leaves their calendars.",
+        "reasonLabel": "Reason for cancelling",
+        "confirm": "Confirm cancellation",
+        "keep": "Keep it",
+        "close": "Close",
+        "reasonRequired": "Write the reason first.",
+        "failed": "That didn't work — try again.",
+        "published": "Session published.",
+        "cancelled": "Session cancelled."
       }
     },
     "download": {

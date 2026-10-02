@@ -49,13 +49,15 @@ describe("the hub's strip", () => {
     await mount();
     const nav = screen.getByRole("navigation", { name: "إعدادات الجلسة" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((a) => a.textContent)).toEqual(["الجدولة", "الحضور", "الشهادات", "الاستبانة", "صفحة الجلسة"]);
+    // wave 21 (ledger L21-S3, an expectation named in W21.7): REQ-SES-020's order, and the event page is «المحتوى» —
+    // «صفحة الجلسة» moved into the hub's header (DEC-227 §5.3).
+    expect(links.map((a) => a.textContent)).toEqual(["الجدولة", "المحتوى", "الحضور", "الاستبانة", "الشهادات"]);
     expect(links.map((a) => a.getAttribute("href"))).toEqual([
       `/app/admin/sessions/${SESSION}/schedule`,
-      `/app/admin/sessions/${SESSION}/attendance`,
-      `/app/admin/sessions/${SESSION}/certificates`,
-      `/app/admin/sessions/${SESSION}/survey`,
       `/app/sessions/${SESSION}`,
+      `/app/admin/sessions/${SESSION}/attendance`,
+      `/app/admin/sessions/${SESSION}/survey`,
+      `/app/admin/sessions/${SESSION}/certificates`,
     ]);
     // Links, not a tablist (REQ-SES-020 names aria-current).
     expect(screen.queryByRole("tablist")).toBeNull();
@@ -77,7 +79,8 @@ describe("the hub's strip", () => {
   it("shows only what the DAL says the viewer may open", async () => {
     state.nav = { items: ["attendance", "certificates", "event"] };
     await mount();
-    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(["الحضور", "الشهادات", "صفحة الجلسة"]);
+    // wave 21 (ledger L21-S3): the same order and label change.
+    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(["المحتوى", "الحضور", "الشهادات"]);
   });
 
   it("renders nothing for a viewer the DAL does not answer for", async () => {

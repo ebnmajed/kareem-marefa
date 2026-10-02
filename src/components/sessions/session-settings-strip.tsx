@@ -99,7 +99,7 @@ export function SessionSettingsStrip({ label, items }: { label: string; items: S
                 href={item.href}
                 aria-current={isCurrent ? "page" : undefined}
                 className={`inline-flex h-11 items-center whitespace-nowrap px-3 text-body outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)] ${
-                  isCurrent ? "font-medium text-fg-heading shadow-[inset_0_-2px_0_var(--fg-heading)]" : "text-fg-muted hover:text-fg-heading"
+                  isCurrent ? "font-medium text-fg-heading shadow-[inset_0_-2px_0_var(--color-accent)]" : "text-fg-muted hover:text-fg-heading"
                 }`}
               >
                 {item.label}

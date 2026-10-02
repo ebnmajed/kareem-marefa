@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { avatarHref } from "@/lib/dal/avatars";
@@ -548,4 +549,212 @@ export async function reviewProposal(locale: string, proposalId: string, action:
   const { supabase } = await sessionClient(locale);
   const { error } = await supabase.rpc("review_proposal", { p_proposal: proposalId, p_action: action, p_reason: reason });
   if (error) throw new Error(`review_proposal: ${error.message}`);
+}
+
+// ── wave 21 · SCR-041 as a split view (add-only, REQ-UIX-088, DEC-228) ──────────────────────────────────────────────
+
+/** The queue's filters, as the URL names them (`?state=`). An unknown value reads as `pending`. */
+export type ProposalQueueFilter = "pending" | "changes" | "approved" | "all";
+
+const FILTER_STATES: Record<ProposalQueueFilter, readonly ProposalState[]> = {
+  pending: ["submitted", "in_review"],
+  changes: ["changes_requested"],
+  approved: ["approved"],
+  all: ["submitted", "in_review", "changes_requested", "approved", "rejected"],
+};
+
+export function proposalQueueFilter(raw: string | string[] | undefined): ProposalQueueFilter {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value === "changes" || value === "approved" || value === "all" ? value : "pending";
+}
+
+export function inProposalFilter(state: ProposalState, filter: ProposalQueueFilter): boolean {
+  return FILTER_STATES[filter].includes(state);
+}
+
+/** One row of the queue — the title, who proposed it and from where, how long it has waited. */
+export interface ProposalQueueItem {
+  id: string;
+  title: string;
+  state: ProposalState;
+  proposerName: string | null;
+  companyName: string | null;
+  /** Whole days since it last moved (`updated_at` — a resubmission resets it), for «منذ …». */
+  ageDays: number;
+}
+
+export interface ProposalQueue {
+  /** Every proposal past `draft`, oldest first — «a queue, not a feed». Filtered by the screen. */
+  items: ProposalQueueItem[];
+  counts: Record<ProposalQueueFilter, number>;
+}
+
+/**
+ * The whole queue, once per request (a layout and a page both read it). Admin only, and enforced HERE — a moderator
+ * may read proposals under `03` §5.2a but `09` §7.1 gives them no queue, and `review_proposal()` refuses them — so
+ * `null` lets every route answer the streamed not-found (`DEC-134`). A draft is the proposer's alone and never listed.
+ */
+export const listProposalQueue = cache(async (locale: string): Promise<ProposalQueue | null> => {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+  const { data, error } = await supabase
+    .from("proposals")
+    .select("id, title, state, proposer_id, updated_at")
+    .neq("state", "draft")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+  if (error) throw new Error(`proposals.select: ${error.message}`);
+  const rows = (data ?? []) as { id: string; title: string; state: ProposalState; proposer_id: string; updated_at: string }[];
+
+  const proposerIds = [...new Set(rows.map((r) => r.proposer_id))];
+  const people = new Map<string, { name: string | null; companyId: string | null }>();
+  if (proposerIds.length > 0) {
+    const { data: members, error: mErr } = await supabase.from("members_member_view").select("id, display_name, company_id").in("id", proposerIds);
+    if (mErr) throw new Error(`members_member_view: ${mErr.message}`);
+    for (const m of members ?? []) people.set(m.id as string, { name: (m.display_name as string | null) ?? null, companyId: (m.company_id as string | null) ?? null });
+  }
+  const companyIds = [...new Set([...people.values()].map((p) => p.companyId).filter((v): v is string => v !== null))];
+  const companies = new Map<string, string>();
+  if (companyIds.length > 0) {
+    const { data: found, error: cErr } = await supabase.from("companies").select("id, name").in("id", companyIds);
+    if (cErr) throw new Error(`companies: ${cErr.message}`);
+    for (const c of found ?? []) companies.set(c.id as string, c.name as string);
+  }
+
+  const day = 24 * 60 * 60 * 1000;
+  const items = rows.map((r) => {
+    const person = people.get(r.proposer_id);
+    return {
+      id: r.id,
+      title: r.title,
+      state: r.state,
+      proposerName: person?.name ?? null,
+      companyName: person?.companyId ? (companies.get(person.companyId) ?? null) : null,
+      ageDays: Math.max(0, Math.floor((Date.now() - new Date(r.updated_at).getTime()) / day)),
+    };
+  });
+  const count = (filter: ProposalQueueFilter) => items.filter((i) => inProposalFilter(i.state, filter)).length;
+  return { items, counts: { pending: count("pending"), changes: count("changes"), approved: count("approved"), all: items.length } };
+});
+
+/** One proposal as the reviewer reads it — every field the proposer wrote (REQ-PRO-002). */
+export interface ProposalForReview {
+  id: string;
+  title: string;
+  abstract: string;
+  state: ProposalState;
+  categoryName: string | null;
+  level: ProposalLevel;
+  expectedDurationMinutes: number | null;
+  targetAudience: string | null;
+  adminNotes: string | null;
+  /** The reason sent with a change-request or a rejection. */
+  decisionReason: string | null;
+  proposer: { memberId: string; displayName: string | null; avatarUrl: string | null; teamColor: string | null } | null;
+  /** Accepted and pending co-presenters with the proposer; a DECLINED row is not a presenter (found at wave 21). */
+  presenters: ProposalPresenter[];
+  /** When it was first sent — the baseline audit row (`0179`), else when it was created. */
+  submittedAt: string;
+}
+
+/** Admin only; `null` otherwise, for an unknown id, or for a draft. */
+export async function getProposalForReview(locale: string, id: string): Promise<ProposalForReview | null> {
+  if (!z.uuid().safeParse(id).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+  const { data, error } = await supabase.from("proposals").select(`${PROPOSAL_COLUMNS}, target_audience, admin_notes`).eq("id", id).neq("state", "draft").maybeSingle();
+  if (error) throw new Error(`proposals.select: ${error.message}`);
+  if (!data) return null;
+  const row = data as unknown as ProposalRow & { target_audience: string | null; admin_notes: string | null };
+  const presenters = (await presentersOf(supabase, row.id, row.proposer_id)).filter((p) => p.declinedAt === null);
+  const proposer = presenters.find((p) => p.isProposer) ?? null;
+  const { data: baseline } = await supabase
+    .from("audit_log")
+    .select("occurred_at, before")
+    .eq("subject_type", "proposal")
+    .eq("subject_id", row.id)
+    .eq("action", "proposal.submitted");
+  const first = (baseline ?? []).find((b) => b.before === null || (b.before as { state?: string }).state === "draft");
+  const category = row.categories as { name: string } | null;
+  return {
+    id: row.id,
+    title: row.title,
+    abstract: row.abstract,
+    state: row.state as ProposalState,
+    categoryName: category?.name ?? null,
+    level: row.level as ProposalLevel,
+    expectedDurationMinutes: row.expected_duration_minutes,
+    targetAudience: row.target_audience,
+    adminNotes: row.admin_notes,
+    decisionReason: row.decision_reason,
+    proposer: proposer ? { memberId: proposer.memberId, displayName: proposer.displayName, avatarUrl: proposer.avatarUrl ?? null, teamColor: proposer.teamColor ?? null } : null,
+    presenters,
+    submittedAt: (first?.occurred_at as string | undefined) ?? row.created_at,
+  };
+}
+
+/** The content columns `0179` captures, in the order the diff lists them. */
+export const PROPOSAL_EDIT_FIELDS = ["title", "abstract", "category_id", "level", "target_audience", "expected_duration_minutes", "admin_notes"] as const;
+export type ProposalEditField = (typeof PROPOSAL_EDIT_FIELDS)[number];
+
+/** One field that changed since the proposal was first sent — for the category, its NAMES, never ids. */
+export interface ProposalEdit {
+  field: ProposalEditField;
+  before: string | null;
+  after: string | null;
+  /** The latest resubmission that changed it. */
+  at: string;
+}
+
+/**
+ * What changed since the proposal was first submitted (contract 5, `DEC-228` §2) — admin only, `null` otherwise.
+ *
+ * ★ The baseline is the ONE `proposal.submitted` row that left `draft` (no edge returns to draft, so it is unique and
+ * no ordering finds it). ★ A proposal submitted before `0179` has a baseline with no content: there is nothing honest
+ * to compare against, so the answer is `[]` and the screen draws nothing — never «unchanged» when we cannot know.
+ * Each field's «when» is the latest resubmission whose `before` and `after` differ on it: rows from different
+ * transactions, so their `occurred_at` order is real (the `created_at` trap is about rows written together).
+ */
+export async function getProposalEdits(locale: string, proposalId: string): Promise<ProposalEdit[] | null> {
+  if (!z.uuid().safeParse(proposalId).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+  const [rows, current] = await Promise.all([
+    supabase.from("audit_log").select("occurred_at, before, after").eq("subject_type", "proposal").eq("subject_id", proposalId).eq("action", "proposal.submitted"),
+    supabase.from("proposals").select(PROPOSAL_EDIT_FIELDS.join(", ")).eq("id", proposalId).maybeSingle(),
+  ]);
+  if (rows.error) throw new Error(`audit_log: ${rows.error.message}`);
+  if (current.error) throw new Error(`proposals.select: ${current.error.message}`);
+  if (!current.data) return null;
+  type Snapshot = Partial<Record<ProposalEditField, unknown>> & { state?: string };
+  const audit = (rows.data ?? []) as { occurred_at: string; before: Snapshot | null; after: Snapshot }[];
+  const baseline = audit.find((r) => r.before === null || r.before.state === "draft");
+  if (!baseline || !("abstract" in baseline.after)) return [];
+
+  const now = current.data as unknown as Record<ProposalEditField, unknown>;
+  const asText = (v: unknown) => (v === null || v === undefined ? null : String(v));
+  const changed = PROPOSAL_EDIT_FIELDS.filter((f) => asText(baseline.after[f]) !== asText(now[f]));
+  if (changed.length === 0) return [];
+
+  const resubmissions = audit.filter((r) => r.before?.state === "changes_requested");
+  const when = (field: ProposalEditField) =>
+    resubmissions
+      .filter((r) => asText(r.before?.[field]) !== asText(r.after[field]))
+      .map((r) => r.occurred_at)
+      .sort()
+      .at(-1) ?? baseline.occurred_at;
+
+  // A category is shown by name — both the old one and the new, which may since have been renamed or archived.
+  const categoryIds = changed.includes("category_id") ? [asText(baseline.after.category_id), asText(now.category_id)].filter((v): v is string => v !== null) : [];
+  const names = new Map<string, string>();
+  if (categoryIds.length > 0) {
+    const { data: cats, error: cErr } = await supabase.from("categories").select("id, name").in("id", categoryIds);
+    if (cErr) throw new Error(`categories: ${cErr.message}`);
+    for (const c of cats ?? []) names.set(c.id as string, c.name as string);
+  }
+  const shown = (field: ProposalEditField, v: unknown) => {
+    const text = asText(v);
+    return field === "category_id" && text ? (names.get(text) ?? null) : text;
+  };
+  return changed.map((field) => ({ field, before: shown(field, baseline.after[field]), after: shown(field, now[field]), at: when(field) }));
 }

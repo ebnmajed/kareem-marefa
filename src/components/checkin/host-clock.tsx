@@ -24,6 +24,10 @@ import { ClockIcon } from "@/components/ui/icons";
 // remaining time is `rotatesAt − readAt` and elapses by `performance.now()` — a phone whose clock is
 // wrong still shows the right minutes. A one-second tick changes TEXT only, never `aria-live` (it
 // would speak every second). DEC-209: a display, not a nudge on a pending control (DEC-146 holds).
+//
+// ★ `variant="console"` (wave 21, DEC-228 §4.6, add-only): SCR-044's code card draws the same countdown as a bare
+// `m:ss` — no icon, no grace, no sentence — and keeps every refresh above. The default is the host view's output,
+// byte for byte. The console never animates: the number changes, nothing moves.
 
 const TICK_MS = 1000;
 
@@ -44,6 +48,7 @@ export function HostClock({
   nextChangeAt,
   graceSeconds,
   listen,
+  variant = "host",
 }: {
   sessionId: string;
   /** The server's instant of the read. */
@@ -55,6 +60,8 @@ export function HostClock({
   graceSeconds: number;
   /** Subscribe to the room's pokes — while the day can still take attendance. */
   listen: boolean;
+  /** `"host"` (the default) is SCR-016's sentence; `"console"` is the bare time, for SCR-044's code card. */
+  variant?: "host" | "console";
 }) {
   const t = useTranslations("checkin.host.rotation");
   const router = useRouter();
@@ -116,6 +123,13 @@ export function HostClock({
 
   if (remainingAtRead === null) return null;
   const remaining = remainingAtRead - elapsed;
+  if (variant === "console") {
+    return (
+      <bdi className="tabular-nums" data-host-clock="">
+        {clock(remaining)}
+      </bdi>
+    );
+  }
   const graceMinutes = graceSeconds % 60 === 0 ? graceSeconds / 60 : null;
   const grace =
     graceMinutes !== null

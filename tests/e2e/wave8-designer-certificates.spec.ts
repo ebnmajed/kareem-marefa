@@ -259,7 +259,7 @@ test("★ DEC-148: a design chosen before completion is saved with its scheme, a
   await signIn(context, emails.admin);
   await page.setViewportSize(DESKTOP);
   await page.goto(screen(sessions.future));
-  await expect(main(page).getByRole("heading", { name: "شهادات الجلسة", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "شهادات الجلسة", level: 2 })).toBeVisible();
   await expect(main(page).getByText("الوضع مراجعة", { exact: false })).toBeVisible();
 
   const panel = designPanel(page, "attendance");
@@ -405,7 +405,7 @@ test("a moderator sees the design and who is eligible, and no certificate and no
   await signIn(context, emails.mod);
   if (onPhone()) await page.setViewportSize(PHONE);
   await page.goto(screen(sessions.review));
-  await expect(main(page).getByRole("heading", { name: "شهادات الجلسة", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "شهادات الجلسة", level: 2 })).toBeVisible();
   await expect(main(page).getByText("من صلاحيات مشرف المؤسسة", { exact: false }).first()).toBeVisible();
   await expect(main(page).getByRole("button", { name: "احفظ التصميم" })).toHaveCount(0);
   await expect(main(page).getByRole("button", { name: "أطلِق المحدَّدة" })).toHaveCount(0);

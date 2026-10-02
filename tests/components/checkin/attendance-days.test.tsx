@@ -1,148 +1,73 @@
-// SCR-044's two forms at three days, and at one — DEC-119, DEC-150 contract 4.
-//
-// ★ What this file guards is the rule the whole track turns on: the day
-// controls EXIST above one day and DO NOT below it. A regression in either
-// direction is invisible in a screenshot of the common case — a stray «اليوم»
-// select on a talk reads as a bug to every admin in the product, and a missing
-// one on a workshop makes Tuesday uncorrectable.
-//
-// The existing files stay as they are (rule 4): `remove-check-in-form.test.tsx`
-// is the one-day form and every assertion in it is unchanged.
-import type { ReactNode } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+// SCR-044 at three days, and at one — DEC-119, DEC-150 contract 4. ★ Re-pointed in wave 21 (DEC-208): the day is now
+// the page's chip (`?day=`), not a select inside each form, so the rule this file guards becomes: the mark and the
+// revoke SEND the day the page is showing, at one day too (a hidden field, never the clock's answer), and the lists
+// are that day's. Each changed case is a ledger line in STATUS.
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
-import { ManualMarkForm } from "@/app/[locale]/app/admin/sessions/[id]/attendance/manual-mark-form";
-import { RemoveCheckInForm } from "@/app/[locale]/app/admin/sessions/[id]/attendance/remove-check-in-form";
 import type { ManualMarkState, RemoveState } from "@/app/[locale]/app/admin/sessions/[id]/attendance/actions";
-import type { UncheckedAttendee } from "@/lib/dal/checkin";
-import checkinAr from "@/messages/ar/checkin.json";
-import uiAr from "@/messages/ar/ui.json";
+import { KHALID, SARA, renderBoard, row } from "./attendance-board-fixture";
 
-const ar = { ...checkinAr, ...uiAr };
-
-const SARA: UncheckedAttendee = { memberId: "m1", displayName: "سارة العتيبي" };
-const KHALID: UncheckedAttendee = { memberId: "m2", displayName: "خالد الحربي" };
-const NOURA: UncheckedAttendee = { memberId: "m3", displayName: "نورة القحطاني" };
-
-const THREE_DAYS = [
-  { id: "d1", label: "اليوم الأول" },
-  { id: "d2", label: "اليوم الثاني" },
-  { id: "d3", label: "اليوم الثالث" },
-];
-const ONE_DAY = [{ id: "d1", label: "اليوم الأول" }];
-
-const wrap = (node: ReactNode) => render(<NextIntlClientProvider locale="ar" messages={ar}>{node}</NextIntlClientProvider>);
-
-// Day 2 is the one nobody attended — the shape the demonstrable uses.
-const MARKABLE = { d1: [NOURA], d2: [SARA, KHALID, NOURA], d3: [NOURA] };
-const REMOVABLE = { d1: [SARA, KHALID], d2: [], d3: [SARA, KHALID] };
-
-function markForm(days = THREE_DAYS, action: (p: ManualMarkState, f: FormData) => Promise<ManualMarkState> = vi.fn()) {
-  return wrap(
-    <ManualMarkForm
-      action={action}
-      unchecked={[SARA, KHALID, NOURA]}
-      days={days}
-      defaultDayId="d2"
-      candidatesByDay={days.length > 1 ? MARKABLE : { d1: [SARA, KHALID, NOURA] }}
-    />,
-  );
-}
-
-function removeForm(days = THREE_DAYS, action: (p: RemoveState, f: FormData) => Promise<RemoveState> = vi.fn()) {
-  return wrap(
-    <RemoveCheckInForm
-      action={action}
-      candidates={[SARA, KHALID]}
-      sessionTitle="ورشة ثلاثة أيام"
-      days={days}
-      defaultDayId="d1"
-      candidatesByDay={days.length > 1 ? REMOVABLE : { d1: [SARA, KHALID] }}
-    />,
-  );
-}
-
-describe("the manual mark at three days", () => {
-  it("offers the day, opens on the day the room is on, and lists THAT day's missing members", () => {
-    markForm();
-    const day = screen.getByLabelText("اليوم", { exact: false }) as HTMLSelectElement;
-    expect(day.value).toBe("d2");
-    const members = screen.getByLabelText("العضو المراد تسجيل حضوره", { exact: false }) as HTMLSelectElement;
-    expect([...members.options].map((o) => o.textContent).filter((x) => x !== "اختر عضوًا")).toEqual(["سارة العتيبي", "خالد الحربي", "نورة القحطاني"]);
+describe("the day travels with every write (DEC-119)", () => {
+  it("the manual mark sends the day the page shows, and offers only that day's missing members", async () => {
+    const action = vi.fn<(p: ManualMarkState, f: FormData) => Promise<ManualMarkState>>(async () => ({ error: null, done: true }));
+    renderBoard({ dayId: "d2", markAction: action, candidates: [{ value: "m2", label: "خالد الحربي" }] });
+    await userEvent.click(screen.getByRole("button", { name: "تسجيل يدوي" }));
+    const sheet = await screen.findByRole("dialog", { name: "تسجيل حضور يدوي" });
+    const combo = within(sheet).getByRole("combobox");
+    await userEvent.click(combo);
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["خالد الحربي"]);
+    await userEvent.click(screen.getByRole("option", { name: "خالد الحربي" }));
+    await userEvent.type(within(sheet).getByLabelText("السبب", { exact: false }), "حضر ولم يُسجَّل رمزه");
+    await userEvent.click(within(sheet).getByRole("button", { name: "سجّل حضوره" }));
+    await vi.waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    const fd = action.mock.calls[0][1];
+    expect(fd.get("dayId")).toBe("d2");
+    expect(fd.get("memberId")).toBe("m2");
   });
 
-  it("★ switching the day switches the list — an admin correcting Tuesday sees TUESDAY's missing members", async () => {
-    markForm();
-    await userEvent.selectOptions(screen.getByLabelText("اليوم", { exact: false }), "d1");
-    const members = screen.getByLabelText("العضو المراد تسجيل حضوره", { exact: false }) as HTMLSelectElement;
-    await waitFor(() => expect([...members.options].map((o) => o.textContent).filter((x) => x !== "اختر عضوًا")).toEqual(["نورة القحطاني"]));
+  it("the row menu's «سجّل حضوره» opens the sheet with that member already chosen", async () => {
+    const action = vi.fn<(p: ManualMarkState, f: FormData) => Promise<ManualMarkState>>(async () => ({ error: null, done: true }));
+    renderBoard({ markAction: action });
+    await userEvent.click(screen.getAllByRole("button", { name: "إجراءات خالد الحربي" })[0]);
+    await userEvent.click(await screen.findByRole("menuitem", { name: "سجّل حضوره" }));
+    const sheet = await screen.findByRole("dialog", { name: "تسجيل حضور يدوي" });
+    await userEvent.type(within(sheet).getByLabelText("السبب", { exact: false }), "سبب");
+    await userEvent.click(within(sheet).getByRole("button", { name: "سجّل حضوره" }));
+    await vi.waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    expect(action.mock.calls[0][1].get("memberId")).toBe("m2");
   });
 
-  it("sends the chosen day with the mark", async () => {
-    const seen: FormData[] = [];
-    const action = vi.fn(async (_p: ManualMarkState, f: FormData) => {
-      seen.push(f);
-      return { error: null, done: true };
-    });
-    markForm(THREE_DAYS, action);
-    await userEvent.selectOptions(screen.getByLabelText("اليوم", { exact: false }), "d3");
-    await userEvent.selectOptions(screen.getByLabelText("العضو المراد تسجيل حضوره", { exact: false }), "m3");
-    await userEvent.type(screen.getByLabelText("السبب", { exact: false }), "حضر بلا هاتف");
-    await userEvent.click(screen.getByRole("button", { name: "سجّل حضوره" }));
-    await waitFor(() => expect(seen).toHaveLength(1));
-    expect(seen[0].get("dayId")).toBe("d3");
-    expect(seen[0].get("memberId")).toBe("m3");
-  });
-});
-
-describe("the removal at three days", () => {
-  it("offers the day and lists only members with an ACTIVE check-in on it", async () => {
-    removeForm();
-    expect((screen.getByLabelText("اليوم", { exact: false }) as HTMLSelectElement).value).toBe("d1");
-    const members = screen.getByLabelText("العضو المراد إلغاء تسجيل حضوره", { exact: false }) as HTMLSelectElement;
-    expect([...members.options].map((o) => o.value).filter(Boolean)).toEqual(["m1", "m2"]);
-
-    // Day 2: nobody attended, so there is nobody to remove.
-    await userEvent.selectOptions(screen.getByLabelText("اليوم", { exact: false }), "d2");
-    await waitFor(() => expect([...(screen.getByLabelText("العضو المراد إلغاء تسجيل حضوره", { exact: false }) as HTMLSelectElement).options].map((o) => o.value).filter(Boolean)).toEqual([]));
-  });
-
-  it("sends the chosen day with the removal", async () => {
-    const seen: FormData[] = [];
-    const action = vi.fn(async (_p: RemoveState, f: FormData) => {
-      seen.push(f);
-      return { error: null, done: true };
-    });
-    removeForm(THREE_DAYS, action);
-    await userEvent.selectOptions(screen.getByLabelText("اليوم", { exact: false }), "d3");
-    await userEvent.selectOptions(screen.getByLabelText("العضو المراد إلغاء تسجيل حضوره", { exact: false }), "m1");
-    await userEvent.type(screen.getByLabelText("سبب الإلغاء", { exact: false }), "سُجّل خطأً");
-    await userEvent.click(screen.getByRole("button", { name: "ألغِ تسجيل الحضور" }));
-    const dialog = await screen.findByRole("dialog", { name: "تأكيد إلغاء تسجيل الحضور" });
+  it("the revoke sends the day the page shows", async () => {
+    const action = vi.fn<(p: RemoveState, f: FormData) => Promise<RemoveState>>(async () => ({ error: null, done: true }));
+    renderBoard({ dayId: "d3", removeAction: action });
+    await userEvent.click(screen.getAllByRole("button", { name: "إجراءات سارة العتيبي" })[0]);
+    await userEvent.click(await screen.findByRole("menuitem", { name: "ألغِ الحضور" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("سبب الإلغاء", { exact: false }), "خطأ");
     await userEvent.click(within(dialog).getByRole("button", { name: "ألغِ تسجيل الحضور" }));
-    await waitFor(() => expect(seen).toHaveLength(1));
-    expect(seen[0].get("dayId")).toBe("d3");
-  });
-});
-
-describe("★ at ONE day neither form says a word about days", () => {
-  it("the manual mark has no day select, and the day still travels in a hidden field", () => {
-    // ★ The helper hands it `defaultDayId="d2"`, which is NOT a day of this
-    // one-day session — a stale default, the shape a page rendered before a
-    // day was deleted would produce. The form falls back to a real day rather
-    // than sending the RPC an id it will refuse `not_found`.
-    const { container } = markForm(ONE_DAY);
-    expect(screen.queryByLabelText("اليوم", { exact: false })).toBeNull();
-    expect(screen.queryByText("اليوم الأول")).toBeNull();
-    const hidden = container.querySelector('input[type="hidden"][name="dayId"]') as HTMLInputElement | null;
-    expect(hidden?.value).toBe("d1");
+    await vi.waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    expect(action.mock.calls[0][1].get("dayId")).toBe("d3");
   });
 
-  it("the removal has no day select either", () => {
-    const { container } = removeForm(ONE_DAY);
-    expect(screen.queryByLabelText("اليوم", { exact: false })).toBeNull();
-    expect((container.querySelector('input[type="hidden"][name="dayId"]') as HTMLInputElement | null)?.value).toBe("d1");
+  it("above one day the table carries «الأيام» and «مكتمل»; at one day it carries neither", () => {
+    const { unmount } = renderBoard({ manyDays: true, rows: [{ ...SARA, days: "2 من 3", complete: true }, KHALID] });
+    expect(screen.getAllByRole("columnheader", { name: "الأيام" })).toHaveLength(1);
+    expect(screen.getAllByText("مكتمل").length).toBeGreaterThan(0);
+    unmount();
+    renderBoard();
+    expect(screen.queryByRole("columnheader", { name: "الأيام" })).toBeNull();
+  });
+
+  it("before the day begins a confirmed member reads «—», not «لم يحضر» (D7)", () => {
+    renderBoard({ rows: [row({ memberId: "m4", name: "ريم", status: "none" })] });
+    const table = screen.getByRole("table");
+    expect(within(table).queryByText("لم يحضر")).toBeNull();
+  });
+
+  it("the sheet and the dialog are noValidate", async () => {
+    renderBoard();
+    await userEvent.click(screen.getByRole("button", { name: "تسجيل يدوي" }));
+    expect((await screen.findByRole("dialog", { name: "تسجيل حضور يدوي" })).querySelector("form")).toHaveAttribute("novalidate");
   });
 });

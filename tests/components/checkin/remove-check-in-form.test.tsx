@@ -1,147 +1,83 @@
-// REQ-CHK-017, C3 — the removal control's fast jsdom check. The lead's own
-// note on why this replaces an e2e pass here: the local e2e build is a
-// point-in-time `.next` (Playwright's `webServer` never rebuilds), so it
-// cannot see same-session UI work until the lead's next sync build — this
-// file is what actually exercises the wiring in the meantime, the same
-// role `tests/components/admin/members-table.test.tsx` plays for its own
-// dialog-confirmed destructive action.
-//
-// `RemoveCheckInForm` differs from that precedent's shape on purpose: the
-// member and reason are chosen in the OUTER form (not inside the dialog),
-// because the confirmation dialog's own text needs to read the current
-// selection before the member ever submits anything (REQ-UIX-013: naming
-// who AND which session). The dialog's own button is what actually
-// triggers the request via `formRef.current?.requestSubmit()`.
-import { render, screen, waitFor, within } from "@testing-library/react";
+// REQ-CHK-017, REQ-UIX-013 — SCR-044's revoke. ★ Re-pointed in wave 21 (DEC-208): the removal form was deleted and the
+// revoke is now the row menu's «ألغِ الحضور» → a dialog naming the member and the session, with the mandatory reason
+// inside it. Every case the old file held is kept, against the new control; each change is a ledger line in STATUS.
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
-import { RemoveCheckInForm } from "@/app/[locale]/app/admin/sessions/[id]/attendance/remove-check-in-form";
 import type { RemoveState } from "@/app/[locale]/app/admin/sessions/[id]/attendance/actions";
-import type { UncheckedAttendee } from "@/lib/dal/checkin";
-import checkinAr from "@/messages/ar/checkin.json";
-import uiAr from "@/messages/ar/ui.json";
-
-// `ui/field.tsx` (sessions' primitive, consumed by `Field`/`Select`/
-// `Textarea` here) reads `ui.field.required` for the «مطلوب» marker it
-// appends to every required label's own accessible name — a second
-// namespace this form does not otherwise touch, merged in so
-// `getByLabelText` sees the real Arabic word (`members-table.test.tsx`'s
-// own established pattern for the identical reason).
-const ar = { ...checkinAr, ...uiAr };
-
-const CANDIDATES: UncheckedAttendee[] = [
-  { memberId: "m1", displayName: "سارة العتيبي" },
-  { memberId: "m2", displayName: "خالد الحربي" },
-];
+import { KHALID, SARA, renderBoard, row } from "./attendance-board-fixture";
 
 type RemoveAction = (prev: RemoveState, formData: FormData) => Promise<RemoveState>;
 
-// ★ Wave 9 (DEC-119): the form takes a day. ONE day here, which is what
-// every case in this file was already about — the day select does not render
-// below two, so every assertion below is unchanged. The multi-day form is
-// `tests/components/checkin/attendance-days.test.tsx`'s.
-const ONE_DAY = [{ id: "d1", label: "اليوم الأول" }];
-
-function renderForm(action: RemoveAction, candidates: UncheckedAttendee[] = CANDIDATES) {
-  return render(
-    <NextIntlClientProvider locale="ar" messages={ar}>
-      <RemoveCheckInForm
-        action={action}
-        candidates={candidates}
-        sessionTitle="جلسة اختبار"
-        days={ONE_DAY}
-        defaultDayId="d1"
-        candidatesByDay={{ d1: candidates }}
-      />
-    </NextIntlClientProvider>,
-  );
+async function openRevoke(name = "سارة العتيبي") {
+  await userEvent.click(screen.getAllByRole("button", { name: `إجراءات ${name}` })[0]);
+  await userEvent.click(await screen.findByRole("menuitem", { name: "ألغِ الحضور" }));
+  return screen.findByRole("dialog");
 }
 
-async function fillAndOpen() {
-  // `{ exact: false }`: `<Field required>` appends «مطلوب» to the label's
-  // own accessible name (REQ-UIX-011) — a real, permanent suffix, not
-  // something to match verbatim here.
-  await userEvent.selectOptions(screen.getByLabelText("العضو المراد إلغاء تسجيل حضوره", { exact: false }), "m1");
-  await userEvent.type(screen.getByLabelText("سبب الإلغاء", { exact: false }), "خطأ في التسجيل");
-  await userEvent.click(screen.getByRole("button", { name: "ألغِ تسجيل الحضور" }));
-  return screen.findByRole("dialog", { name: "تأكيد إلغاء تسجيل الحضور" });
-}
-
-describe("RemoveCheckInForm", () => {
-  it("shows the empty state and no controls when no one is currently checked in", () => {
-    renderForm(vi.fn(), []);
-    expect(screen.getByText("لا أحد مسجَّل حضوره حاليًا لإلغاء تسجيله.")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+describe("SCR-044's revoke (REQ-CHK-017)", () => {
+  it("offers no revoke when no one is checked in — the row menu holds nothing to revoke", async () => {
+    renderBoard({ rows: [KHALID] });
+    await userEvent.click(screen.getAllByRole("button", { name: "إجراءات خالد الحربي" })[0]);
+    expect(screen.queryByRole("menuitem", { name: "ألغِ الحضور" })).toBeNull();
   });
 
-  it("the submit trigger stays disabled until both a member and a reason are given", async () => {
-    renderForm(vi.fn<RemoveAction>());
-    const trigger = screen.getByRole("button", { name: "ألغِ تسجيل الحضور" });
-    expect(trigger).toBeDisabled();
-
-    await userEvent.selectOptions(screen.getByLabelText("العضو المراد إلغاء تسجيل حضوره", { exact: false }), "m1");
-    expect(trigger).toBeDisabled(); // a member alone is not enough
-
-    await userEvent.type(screen.getByLabelText("سبب الإلغاء", { exact: false }), "خطأ في التسجيل");
-    expect(trigger).toBeEnabled();
+  it("a row with nothing to do draws no menu at all", () => {
+    renderBoard({ rows: [row({ memberId: "m3", name: "نورة", status: "none" })] });
+    expect(screen.queryByRole("button", { name: "إجراءات نورة" })).toBeNull();
   });
 
-  it("★ the confirm dialog names both the member and the session (REQ-UIX-013)", async () => {
-    renderForm(vi.fn<RemoveAction>());
-    const dialog = await fillAndOpen();
-    expect(within(dialog).getByText("سارة العتيبي")).toBeInTheDocument();
-    expect(within(dialog).getByText("جلسة اختبار")).toBeInTheDocument();
+  it("the confirm stays disabled until a reason is given", async () => {
+    renderBoard();
+    const dialog = await openRevoke();
+    const confirm = within(dialog).getByRole("button", { name: "ألغِ تسجيل الحضور" });
+    expect(confirm).toBeDisabled();
+    await userEvent.type(within(dialog).getByLabelText("سبب الإلغاء", { exact: false }), "خطأ في التسجيل");
+    expect(confirm).toBeEnabled();
+  });
+
+  it("★ the dialog names both the member and the session (REQ-UIX-013)", async () => {
+    renderBoard();
+    const dialog = await openRevoke();
+    expect(within(dialog).getByText("سارة العتيبي", { exact: false })).toBeInTheDocument();
+    expect(within(dialog).getByText("جلسة اختبار", { exact: false })).toBeInTheDocument();
   });
 
   it("cancelling the dialog never calls the action", async () => {
-    const action = vi.fn<RemoveAction>().mockResolvedValue({ error: null, done: true });
-    renderForm(action);
-    const dialog = await fillAndOpen();
-    // Two controls answer to the accessible name "تراجع" here — `ui/dialog`'s
-    // own icon close button (`closeLabel`) and this form's explicit Cancel
-    // button share the same word by design (`takedown-button.tsx`'s
-    // identical shape). `getByText` finds only the labelled one: the icon
-    // button carries "تراجع" as an `aria-label`, never as visible text.
-    await userEvent.click(within(dialog).getByText("تراجع"));
+    const action = vi.fn<RemoveAction>(async () => ({ error: null, done: true }));
+    renderBoard({ removeAction: action });
+    const dialog = await openRevoke();
+    await userEvent.type(within(dialog).getByLabelText("سبب الإلغاء", { exact: false }), "خطأ");
+    await userEvent.click(within(dialog).getByRole("button", { name: "تراجع" }));
     expect(action).not.toHaveBeenCalled();
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("confirming submits the chosen member and reason, and shows the done message", async () => {
-    const action = vi.fn<RemoveAction>().mockResolvedValue({ error: null, done: true });
-    renderForm(action);
-    const dialog = await fillAndOpen();
-    // The trigger (now hidden behind the dialog) and the dialog's own
-    // confirm button share a label on purpose — REQ-UIX-013's whole point
-    // is that the SAME action reads the same either place; scoped to the
-    // dialog is what a member actually clicks last.
+  it("confirming submits the member, the day and the reason, and closes on success", async () => {
+    const action = vi.fn<RemoveAction>(async () => ({ error: null, done: true }));
+    renderBoard({ removeAction: action });
+    const dialog = await openRevoke();
+    await userEvent.type(within(dialog).getByLabelText("سبب الإلغاء", { exact: false }), "خطأ في التسجيل");
     await userEvent.click(within(dialog).getByRole("button", { name: "ألغِ تسجيل الحضور" }));
-
-    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
-    const submitted = action.mock.calls[0][1] as FormData;
-    expect(submitted.get("memberId")).toBe("m1");
-    expect(submitted.get("reason")).toBe("خطأ في التسجيل");
-    expect(await screen.findByText("أُلغي تسجيل الحضور")).toBeInTheDocument();
+    await vi.waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    const fd = action.mock.calls[0][1];
+    expect(fd.get("memberId")).toBe(SARA.memberId);
+    expect(fd.get("dayId")).toBe("d1");
+    expect(fd.get("reason")).toBe("خطأ في التسجيل");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  // content's real-build bug class (7f4809f): a form with a `required`
-  // field and no `noValidate` never reaches the action at all on an empty
-  // value — the browser blocks it silently. Proven here the same way
-  // `members-table.test.tsx` proves the other half: the round trip DOES
-  // happen and the app's own Arabic refusal renders.
   it("shows the app's own refusal, not a silently blocked submission, when the RPC refuses", async () => {
-    const action = vi.fn<RemoveAction>().mockResolvedValue({ error: "not_found", done: false });
-    renderForm(action);
-    const dialog = await fillAndOpen();
+    renderBoard({ removeAction: async () => ({ error: "not_an_admin", done: false }) });
+    const dialog = await openRevoke();
+    await userEvent.type(within(dialog).getByLabelText("سبب الإلغاء", { exact: false }), "خطأ");
     await userEvent.click(within(dialog).getByRole("button", { name: "ألغِ تسجيل الحضور" }));
-
-    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText("لا يوجد تسجيل حضور نشط لهذا العضو لإلغائه")).toBeInTheDocument();
+    expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent("إلغاء تسجيل الحضور متاح للمشرف العام فقط");
   });
 
-  it("the form has noValidate — the app's own error is the only validator, never a native bubble", () => {
-    const { container } = renderForm(vi.fn<RemoveAction>());
-    expect(container.querySelector("form")).toHaveAttribute("novalidate", "");
+  it("the form has noValidate — the app's own error is the only validator, never a native bubble", async () => {
+    renderBoard();
+    const dialog = await openRevoke();
+    expect(dialog.querySelector("form")).toHaveAttribute("novalidate");
   });
 });

@@ -310,40 +310,40 @@ test("the attendance report shows a column per day, one member missing day 2, an
   await attend(regularMemberId, dayIds[2]);
 
   await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
-  await expect(main.getByRole("heading", { level: 1 })).toContainText("تقرير الحضور");
-
-  // One column per day, and the summary line that says what completeness means.
+  // ★ Wave 21 (SCR-044 rebuilt, DEC-208): the title is the hub header's; the DAY is the page's chip, the list shows
+  // that day with a «الأيام» column, and the require-all-days line sits under «أكملوا كل الأيام». Ledger lines in STATUS.
+  await expect(main.getByRole("heading", { level: 1 })).toContainText("ورشة ثلاثة أيام");
+  const dayChips = main.getByRole("group", { name: "اليوم" });
   for (const label of ["اليوم الأول", "اليوم الثاني", "اليوم الثالث"]) {
-    await expect(main.getByRole("columnheader", { name: label })).toBeVisible();
+    await expect(dayChips.getByRole("link", { name: label })).toBeVisible();
   }
-  // Anchored to the region as well as to `#main`: the claim worth asserting is
-  // that the SUMMARY SECTION says what completeness means, not that the
-  // sentence exists somewhere in the document.
-  await expect(main.getByRole("region", { name: "ملخّص الحضور" }).getByText("النقاط والشهادة تتطلّب حضور كل الأيام.")).toBeVisible();
+  await expect(main.getByText("النقاط والشهادة تتطلّب حضور كل الأيام.")).toBeVisible();
+  const rowOf = (name: string) => main.getByRole("row", { name: new RegExp(name) }).or(main.getByRole("listitem").filter({ hasText: name }));
   // خالد: two of three. سارة: one of three.
-  await expect(main.getByRole("cell", { name: "2 من 3" })).toBeVisible();
-  await expect(main.getByRole("cell", { name: "1 من 3" })).toBeVisible();
+  await expect(rowOf("خالد الحربي")).toContainText("2 من 3");
+  await expect(rowOf("سارة العتيبي")).toContainText("1 من 3");
   await shoot(page, "wave9-checkin-attendance-3days", isPhone);
 
-  // ★ SCOPED BY SECTION, on top of `#main`. Both forms carry a `dayId` select
-  // labelled «اليوم», so even within the landmark a page-level locator would
-  // resolve to two — a real ambiguity, unlike the orphaned copy the landmark
-  // deals with.
-  const markSection = main.locator('section[aria-labelledby="manual"]');
-  const removeSection = main.locator('section[aria-labelledby="remove"]');
-
-  // The manual mark is per day: choosing day 2 offers خالد, who is missing it.
-  await markSection.locator('select[name="dayId"]').selectOption(dayIds[1]);
-  await expect(markSection.locator('select[name="memberId"]')).toContainText("خالد الحربي");
+  // The manual mark is per day: the page opens on day 2 — the room's — and خالد, missing it, is offered.
+  await main.getByRole("button", { name: "تسجيل يدوي" }).click();
+  const sheet = page.getByRole("dialog", { name: "تسجيل حضور يدوي" });
+  await expect(sheet.locator('input[type="hidden"][name="dayId"]')).toHaveValue(dayIds[1]);
+  await sheet.getByRole("combobox").click();
+  await expect(page.getByRole("option", { name: "خالد الحربي" })).toBeVisible();
   await shoot(page, "wave9-checkin-attendance-mark-day", isPhone);
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
 
-  // The removal is per day too, and its confirm names the member and session.
-  await removeSection.locator('select[name="dayId"]').selectOption(dayIds[0]);
-  await removeSection.locator('select[name="memberId"]').selectOption(regularMemberId);
-  await removeSection.locator('textarea[name="reason"]').fill("سُجّل خطأً");
-  await removeSection.getByRole("button", { name: "ألغِ تسجيل الحضور" }).first().click();
-  const dialog = page.getByRole("dialog", { name: "تأكيد إلغاء تسجيل الحضور" });
-  await expect(dialog).toBeVisible();
+  // The revoke is per day too: on day 1, خالد's row menu revokes DAY 1 alone, and the dialog names member and session.
+  await dayChips.getByRole("link", { name: "اليوم الأول" }).click();
+  await expect(page).toHaveURL(new RegExp(`day=${dayIds[0]}`));
+  await main.getByRole("button", { name: "إجراءات خالد الحربي" }).click();
+  await page.getByRole("menuitem", { name: "ألغِ الحضور" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("خالد الحربي");
+  await expect(dialog).toContainText("ورشة ثلاثة أيام");
+  await expect(dialog.locator('input[type="hidden"][name="dayId"]')).toHaveValue(dayIds[0]);
+  await dialog.getByLabel("سبب الإلغاء", { exact: false }).fill("سُجّل خطأً");
   await shoot(page, "wave9-checkin-attendance-remove-day", isPhone);
   await dialog.getByRole("button", { name: "ألغِ تسجيل الحضور" }).click();
 

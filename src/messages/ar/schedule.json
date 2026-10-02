@@ -194,6 +194,59 @@
       "minutes": "{count, plural, zero {0 دقيقة} one {دقيقة واحدة} two {دقيقتان} few {{value} دقائق} many {{value} دقيقة} other {{value} دقيقة}}",
       "none": "لم يُحدَّد",
       "note": "يبقى المحتوى كما اعتُمد؛ هذه الصفحة للموعد والمكان والإعدادات."
+    },
+    "read": {
+      "label": "الجدولة",
+      "empty": "—",
+      "rows": {
+        "when": "الموعد",
+        "where": "المكان",
+        "capacity": "السعة",
+        "rsvpDeadline": "إغلاق التسجيل",
+        "cutoff": "آخر إلغاء",
+        "presenters": "المُقدِّمون",
+        "checkIn": "تسجيل الحضور",
+        "certificate": "الشهادة",
+        "language": "اللغة",
+        "poster": "الملصق"
+      },
+      "edit": "عدّل",
+      "reschedule": "أعد الجدولة",
+      "cancelEdit": "إلغاء",
+      "changePresenters": "غيّر",
+      "presentersSheet": "المُقدِّمون",
+      "pendingPresenter": "بانتظار الرد",
+      "rotation": "{count, plural, zero {رمز ثابت} one {رمز يتغيّر كل دقيقة} two {رمز يتغيّر كل دقيقتين} few {رمز يتغيّر كل {value} دقائق} many {رمز يتغيّر كل {value} دقيقة} other {رمز يتغيّر كل {value} دقيقة}}",
+      "walkIns": "يُسمح بالحضور دون حجز",
+      "everyDay": "النقاط والشهادة لمن حضر كل الأيام",
+      "venueSeats": "{count, plural, zero {<t>{name}</t>} one {<t>{name}</t> · مقعد واحد} two {<t>{name}</t> · مقعدان} few {<t>{name}</t> · {value} مقاعد} many {<t>{name}</t> · {value} مقعدًا} other {<t>{name}</t> · {value} مقعد}}",
+      "certificateMode": {
+        "off": "لا شهادة",
+        "automatic": "تلقائية",
+        "review": "بعد المراجعة"
+      },
+      "closes": "يُغلق {time}"
+    },
+    "side": {
+      "reservations": "الحجوزات",
+      "waitlist": "قائمة الانتظار",
+      "poster": "الملصق",
+      "log": "السجل",
+      "ofCapacity": "{confirmed} / {capacity}"
+    },
+    "log": {
+      "proposalApproved": "اعتُمد المقترح",
+      "createdFromProposal": "أُنشئت من المقترح",
+      "createdDirect": "أُنشئت مباشرة",
+      "scheduled": "جُدولت",
+      "published": "نُشرت",
+      "start": "بدأت",
+      "complete": "اكتملت",
+      "cancel": "أُلغيت",
+      "archive": "أُرشفت",
+      "reopen": "أُعيد فتحها",
+      "presenterAdded": "أُضيف مُقدِّم",
+      "presenterRemoved": "أُزيل مُقدِّم"
     }
   }
 }

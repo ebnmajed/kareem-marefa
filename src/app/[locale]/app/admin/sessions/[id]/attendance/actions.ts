@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
-import { markCheckedInManually, manualCheckInInput, removeCheckIn, removeCheckInInput } from "@/lib/dal/checkin";
+import { markCheckedInManually, manualCheckInInput, removeCheckIn, removeCheckInInput, revokeCodeResult, setCheckInOpen } from "@/lib/dal/checkin";
 import type { Locale } from "@/i18n/routing";
 
 // ★ The day both forms send (DEC-119). An admin corrects Tuesday's list on
@@ -62,4 +63,39 @@ export async function removeCheckInAction(locale: Locale, sessionId: string, _pr
 
   revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/attendance`);
   return { error: null, done: true };
+}
+
+// ── wave 21 (SCR-044 rebuilt, REQ-UIX-090), add-only — everything above is unchanged ──────────────────────────────
+//
+// The code card's two controls and the manual mark's no-JS twin. Each redirects back to the tab, so each works
+// without JavaScript, and each keeps the day it was SHOWN (DEC-119) in `?day=` — never the clock's.
+
+function base(locale: Locale, sessionId: string, dayId: string | null, query = ""): string {
+  const params = new URLSearchParams(query);
+  if (dayId) params.set("day", dayId);
+  const qs = params.toString();
+  return `/${locale}/app/admin/sessions/${sessionId}/attendance${qs ? `?${qs}` : ""}`;
+}
+
+/** «أبطل» (REQ-CHK-007): one tap; the RPC re-derives who may and issues the replacement at once. */
+export async function revokeCodeAction(locale: Locale, sessionId: string, dayId: string | null) {
+  const result = await revokeCodeResult(locale, sessionId, dayId);
+  redirect(base(locale, sessionId, dayId, result.ok ? "" : `revokeError=${result.error}`));
+}
+
+/** The door (REQ-CHK-015, -016, DEC-141): `open` is bound at the call site; `set_check_in_open()` owns the ceiling. */
+export async function setCheckInOpenAction(locale: Locale, sessionId: string, open: boolean, dayId: string | null) {
+  const result = await setCheckInOpen(locale, sessionId, open, dayId);
+  redirect(base(locale, sessionId, dayId, result.ok ? "" : `switchError=${result.error}`));
+}
+
+/** The manual mark without JavaScript (K34): the same validation and RPC as `markManually`, answered by redirect. */
+export async function markManuallyNoScript(locale: Locale, sessionId: string, formData: FormData) {
+  const dayId = dayOf(formData);
+  const parsed = manualCheckInInput.safeParse({ memberId: formData.get("memberId")?.toString(), reason: formData.get("reason")?.toString() ?? "" });
+  if (!parsed.success) redirect(base(locale, sessionId, dayId, "manualError=reason_required"));
+  const result = await markCheckedInManually(locale, sessionId, parsed.data.memberId, parsed.data.reason, dayId);
+  if (!result.ok) redirect(base(locale, sessionId, dayId, `manualError=${result.error}`));
+  revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/attendance`);
+  redirect(base(locale, sessionId, dayId));
 }

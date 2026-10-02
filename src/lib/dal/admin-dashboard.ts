@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { notFound } from "next/navigation";
+import { attendanceRate } from "@/components/checkin/attendance-rate";
 import { sessionClient, type Session } from "@/lib/dal/session";
 import { getConsoleSessions } from "@/lib/dal/admin-sessions";
 import { monthKeyOf, sortSessions, type ConsoleSessionRow } from "@/components/admin/sessions/session-query";
@@ -128,19 +129,8 @@ function topN(counts: Map<string, { label: string; count: number }>, n: number):
 /** How many of the next sessions «القادمة» shows. */
 export const UPCOMING_ROWS = 5;
 
-/**
- * The one attendance rate (`DEC-228` §3.4) — `checkin`'s definition, as
- * `getAttendanceReport()` computes it for one session (`checkin.ts`,
- * `attendanceRate`): of the confirmed reservations, how many members were
- * checked in. Pairs are `session:member`; a check-in without a confirmed
- * reservation (a walk-in) is in neither side. Pure, so a test computes it and
- * `checkin`'s figure from one fixture.
- */
-export function attendanceRateOf(confirmed: readonly { session_id: string; member_id: string }[], checkedIn: readonly { session_id: string; member_id: string }[]): number | null {
-  if (confirmed.length === 0) return null;
-  const present = new Set(checkedIn.map((c) => `${c.session_id}:${c.member_id}`));
-  return confirmed.filter((r) => present.has(`${r.session_id}:${r.member_id}`)).length / confirmed.length;
-}
+/** One key per reservation or check-in across sessions — `checkin`'s `attendanceRate()` takes `session:member`. */
+const pairKey = (r: { session_id: string; member_id: string }) => `${r.session_id}:${r.member_id}`;
 
 /** SCR-040 — every figure below is meant to be clicked through: the page
  *  pairs each one with a link to the list it summarises (`REQ-ADM-004`'s own
@@ -284,10 +274,11 @@ export async function getAdminDashboardData(locale: string, nowDate: Date = new 
     sessionsThisMonth: monthSessions.length,
     rsvpsConfirmed: confirmed.length,
     checkInsTotal: checkIns.length,
-    attendanceRate: attendanceRateOf(
-      confirmed.filter((r) => startedIds.has(r.session_id)),
-      checkIns.filter((c) => startedIds.has(c.session_id)),
-    ),
+    // ★ THE attendance rate (`DEC-228` §3.4) — `checkin`'s one definition, over the month's started sessions.
+    attendanceRate: attendanceRate(
+      confirmed.filter((r) => startedIds.has(r.session_id)).map(pairKey),
+      checkIns.filter((c) => startedIds.has(c.session_id)).map(pairKey),
+    ).rate,
     activeMembers,
     pointsIssued,
     topPresenters: topN(presenterCounts, 5),

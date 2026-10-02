@@ -1,8 +1,10 @@
 import "server-only";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
+import { avatarHref } from "@/lib/dal/avatars";
 import { listSessionDays, type SessionDay } from "@/lib/dal/sessions";
 import { checkInCeiling, resolveDay, sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
+import { attendanceRate } from "@/components/checkin/attendance-rate";
 import { affordancesFor, checkInIneligibleReason, checkInOffer, type CheckInIneligibleReason, type CheckInOffer, type CheckInOfferViewer } from "@/components/checkin/session-matrix";
 import type { RsvpStatus } from "@/lib/dal/rsvp";
 
@@ -471,7 +473,7 @@ export async function listUncheckedConfirmedRsvps(locale: string, sessionId: str
 
 export const manualCheckInInput = z.object({ memberId: z.uuid(), reason: z.string().trim().min(1).max(300) });
 
-export type ManualCheckInError = "not_authorized" | "reason_required" | "not_found" | "not_open" | "member_not_found" | "presenter_cannot_check_in" | "unknown";
+export type ManualCheckInError = "not_authorized" | "reason_required" | "not_found" | "not_open" | "member_not_found" | "presenter_cannot_check_in" | "overlap" | "unknown";
 
 /**
  * `dayId` is the day the mark is FOR — SCR-044 always sends it, because an
@@ -489,6 +491,9 @@ export async function markCheckedInManually(
   const { supabase } = await sessionClient(locale);
   const { data, error } = await supabase.rpc("mark_checked_in_manually", { p_session: sessionId, p_member: memberId, p_reason: reason, p_day: dayId });
   if (error) {
+    // ★ wave 21 (D12, REQ-CHK-013): `overlapping_session:<id>` — the member is in another room at the same time. It
+    // fell through to «unknown» before; it is its own answer now. The other session is the caller's to name.
+    if (error.message.includes("overlapping_session")) return { ok: false, error: "overlap" };
     const known: ManualCheckInError[] = ["not_authorized", "reason_required", "not_found", "not_open", "member_not_found", "presenter_cannot_check_in"];
     return { ok: false, error: known.find((k) => error.message.includes(k)) ?? "unknown" };
   }
@@ -516,6 +521,8 @@ export interface AttendanceCell {
   removedAt: string | null;
   removalReason: string | null;
   removedByName: string | null;
+  /** wave 21, add-only: who marked this day's check-in by hand (`marked_by`); null for a code check-in. */
+  markedByName?: string | null;
 }
 
 export interface AttendanceRow {
@@ -569,6 +576,28 @@ export interface AttendanceRow {
    * gated set function is how a staff screen reaches it, in one call.
    */
   attendanceComplete: boolean;
+  // ── wave 21 (REQ-UIX-090), add-only — the CSV reads none of these ──
+  /** The one resolver's same-origin href (`DEC-099`'s host placement: faces are in scope on SCR-044), or null. */
+  avatarUrl?: string | null;
+  /** The company's team colour (`#rrggbb`), null with no company or no colour. */
+  teamColor?: string | null;
+  /** Who marked the representative check-in by hand; null for a code check-in or none. */
+  markedByName?: string | null;
+}
+
+/** wave 21 (REQ-UIX-090, REQ-CHK-012), add-only: one day's figures, read once here and never on the page. */
+export interface AttendanceDayCounts {
+  dayId: string;
+  /** Active check-ins on this day — the host view's count. */
+  present: number;
+  /** Of those, with no RSVP row at all — the report's walk-in. */
+  walkedIn: number;
+  /** Of those, marked by hand. */
+  manual: number;
+  /** Confirmed reservations with no active check-in on this day — the day's no-shows. */
+  noShowed: number;
+  /** `attendanceRate()` over this day's check-ins (DEC-228 §3.4). */
+  rate: number | null;
 }
 
 export interface AttendanceReport {
@@ -596,11 +625,15 @@ export interface AttendanceReport {
      * different sentences and a report must not confuse them.
      */
     completedAllDays: number | null;
+    /** wave 21, add-only: active check-ins (any day) marked by hand. */
+    manual?: number;
   };
   /** Checked-in **among confirmed RSVPs**, divided by confirmed — a walk-in
    *  inflates check-ins without ever having promised to come, so it stays
    *  out of both sides of this fraction. Null with zero confirmed RSVPs. */
   attendanceRate: number | null;
+  /** wave 21, add-only: one entry per day, in day order. */
+  byDay?: AttendanceDayCounts[];
 }
 
 /**
@@ -651,7 +684,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
 
   const [sessionRes, rsvpsRes, checkInsRes, days, completeRes] = await Promise.all([
     supabase.from("sessions").select("id, title, state, time_zone, require_all_days").eq("id", sessionId).maybeSingle(),
-    supabase.from("rsvps").select("member_id, status, members(display_name)").eq("session_id", sessionId),
+    supabase.from("rsvps").select("member_id, status, members(display_name, avatar_version, companies(team_color))").eq("session_id", sessionId),
     // `!check_ins_member_id_fkey` / `remover:...!check_ins_removed_by_fkey`:
     // `check_ins` has THREE foreign keys into `members` now (`member_id`,
     // `marked_by`, `removed_by`) — an unqualified `members(...)` embed is
@@ -670,7 +703,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
     supabase
       .from("check_ins")
       .select(
-        "member_id, session_day_id, arrived_at, method, removed_at, removal_reason, members!check_ins_member_id_fkey(display_name), remover:members!check_ins_removed_by_fkey(display_name)",
+        "member_id, session_day_id, arrived_at, method, removed_at, removal_reason, members!check_ins_member_id_fkey(display_name, avatar_version, companies(team_color)), remover:members!check_ins_removed_by_fkey(display_name), marker:members!check_ins_marked_by_fkey(display_name)",
       )
       .eq("session_id", sessionId),
     listSessionDays(locale, sessionId),
@@ -689,6 +722,13 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
 
   type MemberEmbed = { display_name: string | null } | { display_name: string | null }[] | null;
   const nameOf = (m: MemberEmbed) => (Array.isArray(m) ? (m[0]?.display_name ?? null) : (m?.display_name ?? null));
+  // wave 21: the face and the team ring, from the same embed (the one resolver, `DEC-099`).
+  type FaceEmbed = { avatar_version?: number | string | null; companies?: { team_color: string | null } | { team_color: string | null }[] | null };
+  const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
+  const faceOf = (memberId: string, m: unknown) => {
+    const f = one(m as FaceEmbed | FaceEmbed[] | null);
+    return { avatarUrl: avatarHref({ id: memberId, avatarVersion: f?.avatar_version ?? null }, 96), teamColor: one(f?.companies)?.team_color ?? null };
+  };
 
   type CheckInJoinRow = NonNullable<typeof checkInsRes.data>[number] & { member_id: string; session_day_id?: string | null };
   const allCheckIns = (checkInsRes.data ?? []) as unknown as CheckInJoinRow[];
@@ -727,6 +767,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
         removedAt: c?.removed_at ?? null,
         removalReason: c?.removal_reason ?? null,
         removedByName: removed ? nameOf(c?.remover as MemberEmbed) : null,
+        markedByName: c?.method === "manual" ? nameOf((c as { marker?: MemberEmbed }).marker ?? null) : null,
       };
     });
 
@@ -755,6 +796,8 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
       days: cells,
       daysAttended: cells.filter((c) => c.checkedIn).length,
       attendanceComplete: complete?.has(r.member_id) ?? false,
+      ...faceOf(r.member_id, r.members),
+      markedByName: ci?.method === "manual" ? nameOf((ci as { marker?: MemberEmbed }).marker ?? null) : null,
     });
   }
   for (const [memberId, c] of checkInByMember) {
@@ -777,13 +820,31 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
       days: cells,
       daysAttended: cells.filter((cell) => cell.checkedIn).length,
       attendanceComplete: complete?.has(memberId) ?? false,
+      ...faceOf(memberId, c.members),
+      markedByName: c.method === "manual" ? nameOf((c as { marker?: MemberEmbed }).marker ?? null) : null,
     });
   }
   rows.sort((a, b) => (a.displayName ?? "").localeCompare(b.displayName ?? "", "ar"));
 
-  const confirmedRows = rows.filter((r) => r.rsvpStatus === "confirmed");
-  const confirmed = confirmedRows.length;
-  const checkedInAmongConfirmed = confirmedRows.filter((r) => r.checkedIn).length;
+  // ★ The one rate (DEC-228 §3.4) — `components/checkin/attendance-rate.ts`, never re-derived here.
+  const rate = attendanceRate(
+    rows.filter((r) => r.rsvpStatus === "confirmed").map((r) => r.memberId),
+    rows.filter((r) => r.checkedIn).map((r) => r.memberId),
+  );
+  const confirmed = rate.confirmed;
+  const confirmedIds = rows.filter((r) => r.rsvpStatus === "confirmed").map((r) => r.memberId);
+  const byDay: AttendanceDayCounts[] = days.map((d) => {
+    const on = rows.filter((r) => r.days.find((c) => c.dayId === d.id)?.checkedIn);
+    const dayRate = attendanceRate(confirmedIds, on.map((r) => r.memberId));
+    return {
+      dayId: d.id,
+      present: on.length,
+      walkedIn: on.filter((r) => r.isWalkIn).length,
+      manual: on.filter((r) => r.days.find((c) => c.dayId === d.id)?.method === "manual").length,
+      noShowed: dayRate.confirmed - dayRate.attended,
+      rate: dayRate.rate,
+    };
+  });
 
   return {
     sessionId,
@@ -800,8 +861,10 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
       walkedIn: rows.filter((r) => r.isWalkIn && r.checkedIn).length,
       noShowed: rows.filter((r) => r.isNoShow).length,
       completedAllDays: complete === null ? null : complete.size,
+      manual: rows.filter((r) => r.checkedIn && r.method === "manual").length,
     },
-    attendanceRate: confirmed > 0 ? checkedInAmongConfirmed / confirmed : null,
+    attendanceRate: rate.rate,
+    byDay,
   };
 }
 
@@ -833,6 +896,44 @@ export async function removeCheckIn(
   const { error } = await supabase.rpc("remove_check_in", { p_session: sessionId, p_member: memberId, p_reason: reason, p_day: dayId });
   if (error) {
     const known: RemoveCheckInError[] = ["not_a_member", "stale_claims", "not_an_admin", "reason_required", "not_found"];
+    return { ok: false, error: known.find((k) => error.message.includes(k)) ?? "unknown" };
+  }
+  return { ok: true };
+}
+
+// ── wave 21 (REQ-UIX-090, DEC-228 §4.6) — add-only; nothing above changes ──
+
+/**
+ * The hub header's «شاشة التقديم» (contract 4): whether the host view is worth offering from the الحضور tab — staff
+ * only, and only while the session can still take attendance, so NOT once it is completed, archived or cancelled, nor
+ * before it is published. The host view's own gate stays `ensure_check_in_code()`'s (REQ-CHK-014); this decides only
+ * whether a link is drawn. It never throws: the header renders inside the hub layout, so a failed read is `false`.
+ */
+export async function offersHostScreen(locale: string, sessionId: string): Promise<boolean> {
+  if (!z.uuid().safeParse(sessionId).success) return false;
+  try {
+    const { session, supabase } = await sessionClient(locale);
+    if (session.role !== "admin" && session.role !== "moderator") return false;
+    const { data, error } = await supabase.from("sessions").select("state").eq("id", sessionId).maybeSingle();
+    if (error || !data) return false;
+    return data.state === "published" || data.state === "in_progress";
+  } catch {
+    return false;
+  }
+}
+
+export type RevokeCodeError = "not_found" | "not_authorized" | "no_active_code" | "unknown";
+
+/**
+ * wave 21 (SCR-044, REQ-CHK-007), add-only: `revokeCode()` with its refusal returned rather than thrown. The host view
+ * keeps `revokeCode()`; the console's «أبطل» answers `no_active_code` — the code expired between render and tap — on
+ * the card instead of an error boundary.
+ */
+export async function revokeCodeResult(locale: string, sessionId: string, dayId: string | null = null): Promise<{ ok: true } | { ok: false; error: RevokeCodeError }> {
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("revoke_check_in_code", { p_session: sessionId, p_day: dayId });
+  if (error) {
+    const known: RevokeCodeError[] = ["not_found", "not_authorized", "no_active_code"];
     return { ok: false, error: known.find((k) => error.message.includes(k)) ?? "unknown" };
   }
   return { ok: true };

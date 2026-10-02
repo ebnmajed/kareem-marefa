@@ -61,14 +61,16 @@ describe("SCR-043 no longer writes the certificate mode", () => {
       expect(screen.queryByText(label)).toBeNull();
     }
     expect(screen.queryByRole("heading", { name: "الشهادة واللغة" })).toBeNull();
-    expect(screen.getByRole("heading", { name: "اللغة" })).toBeInTheDocument();
+    // wave 21 (ledger L21-S1): the form's sections are the read card's rows now — «اللغة» is a group, not a heading.
+    expect(screen.getByRole("group", { name: "اللغة" })).toBeInTheDocument();
   });
 
   it("puts REQ-SES-017's «every day» beside walk-ins, in the attendance section", async () => {
     const user = userEvent.setup();
     mount();
     await user.click(screen.getByRole("switch", { name: scheduleAr.schedule.days.switch }));
-    const attendance = screen.getByRole("region", { name: scheduleAr.schedule.sections.attendance });
+    // wave 21 (ledger L21-S2): the attendance section is the card's «تسجيل الحضور» row — a group; the expectation stands.
+    const attendance = screen.getByRole("group", { name: scheduleAr.schedule.read.rows.checkIn });
     expect(within(attendance).getByRole("switch", { name: scheduleAr.schedule.requireAllDays.label })).toBeInTheDocument();
     expect(within(attendance).getByRole("switch", { name: scheduleAr.schedule.walkIns.label })).toBeInTheDocument();
   });

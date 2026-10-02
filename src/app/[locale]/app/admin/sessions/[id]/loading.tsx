@@ -1,17 +1,11 @@
-// A route skeleton for the per-session admin screens.
-//
-// It covers this segment AND its children — "at or above" is what makes a
-// dozen files enough for forty-nine pages (REQ-UIX-005, `16` §7.1 layer 2).
-//
-// ★ No text and no `getTranslations`: this renders before `setRequestLocale`
-// does for the real page.
-import { Skeleton, SkeletonPageHeader } from "@/components/ui/skeleton";
+// A tab's skeleton under the hub — REQ-UIX-005. The header and the strip are the layout's and stay on screen, so this
+// draws the tab's body alone. No text and no `getTranslations`: it renders before `setRequestLocale` does.
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
   return (
     <div aria-hidden="true">
-      <SkeletonPageHeader />
-      <Skeleton variant="row" count={6} className="mt-8" />
+      <Skeleton variant="row" count={6} />
     </div>
   );
 }

@@ -6896,3 +6896,79 @@ export interface KvCardProps extends Styleable {
 | one proposal (the phone's detail route; the log's link from SCR-043) | `/app/admin/proposals/<id>` — `?state=` carried for the back link |
 
 An unknown `state` reads as `pending`. A moderator gets the streamed not-found at every one of them.
+
+## W21.11 · As built (PR B, worktree `wave-21b/the-queues`)
+
+**Commits:**
+
+| Screen | Delete | Create |
+|---|---|---|
+| SCR-043 | `70aab7ff` | `abb09c51` |
+| SCR-041 | `a7500063` | `62540b9b` |
+
+The specs are `7aa72220`. The primitives are PR A's, `50bbebed`.
+
+**The jobs, as built:**
+- **SCR-041:** the queue is the proposals layout's `split-view`, so it stays mounted while the detail changes. ↓ walks
+  the queue, Enter opens, the edits are in a `<details>` before the decision card, and after a decision
+  `useSplitView().focusNext()` puts focus on the next row. `wave21-sessions-queues` shows each step.
+- **SCR-043:** the hub layout draws one header and the strip. الجدولة is a `kv-card` read by default. «عدّل» is a
+  link to `?edit`, where the card's edit twin is the existing form regrouped into the same rows. A landed save
+  returns to the card with `?saved=1` / `?published=1`.
+
+**The kept-behaviour tables, read back against the new files.**
+
+SCR-041 (W21.3): all 29 rows hold.
+- Row 5 (what was typed survives) and rows 6 – 9 (the dialog, `form=`, close by result, toast from the wrapper) are in
+  `_components/decision-card.tsx`, and its test proves them.
+- Row 22 is fixed: a declined co-presenter is filtered out in `getProposalForReview()`.
+- Row 23 is fixed: `_components/material-link.tsx` uses `content`'s audited download.
+- Row 28: the explainer sentence is gone; the RPC rule stands.
+- Row 29: «افتح كجلسة» calls `openAsSession()`, which opens an existing session or calls `create_session()`.
+
+SCR-043 (W21.4): all 38 rows hold, with these notes:
+- S7: the header's «انشر» publishes the stored schedule, and edit mode's «انشر الجلسة» saves and then publishes. The
+  header hides its lifecycle action while `?edit`.
+- S13 – S24: the form component's internals did not change; only its grouping did. All 20 form component tests still
+  pass, two with moved selectors (L21-S1, S2).
+- S27, S28: the log links «اعتُمد المقترح» to `/app/admin/proposals/<id>`.
+- S29: presenters change in a `sheet` from the read row (`schedule/presenters-row.tsx`).
+- S31: the poster picker is in edit mode, outside the form.
+- S32: the download stays `SessionDownload placement="hub"` inside `section[aria-labelledby="poster"]` in the side
+  card. It does not use the artboard's «16:9 · A4 · 9:16» links, so that the audited route, the disclosure and the
+  pinned assertions do not move. **D16, new:** the artboard draws the formats as links; the built form is one primary
+  file plus a disclosure (DEC-178's «simple» ruling).
+- **One change found while building:** a **cancelled** session shows no «عدّل» and no «غيّر». Both RPCs refuse a
+  cancelled session, so the old page offered a form that could only fail.
+
+**Ledger lines, for `STATUS.md` (each in the commit named):**
+
+| Line | Commit | File | Selector or expectation |
+|---|---|---|---|
+| L21-S1 | `abb09c51` | `schedule-no-certificate-mode.test.tsx` | Selector: heading «اللغة» → group «اللغة» |
+| L21-S2 | `abb09c51` | same file | Selector: region «الحضور» → group «تسجيل الحضور»; the expectation stands |
+| L21-S3 | `abb09c51` | `session-settings-nav.test.tsx` | **Expectation** (named in W21.7): the strip's order is الجدولة · المحتوى · الحضور · الاستبانة · الشهادات; «صفحة الجلسة» → «المحتوى» |
+| L21-S4 | `7aa72220` | `wave13-sessions-hub.spec.ts` | The same order and label (an expectation); «صفحة الجلسة» asserted in the header |
+| L21-S5 | `7aa72220` | `wave8-lead-schedule.spec.ts` | **Expectation:** the page opens in read mode, so the spec presses «عدّل»; the provenance line and «المحتوى — كما كتبه المُقترِح» are gone |
+| L21-S6 | `7aa72220` | `wave8-lead-schedule.spec.ts` | **Expectation:** after «انشر الجلسة» the page returns to the read card (`?published=1`); the venue is read from the card instead of the form |
+| L21-S7 | `7aa72220` | `wave9-sessions-schedule-days.spec.ts`, `checkin-schedule-walk-ins.spec.ts` | Selector: the form is at `?edit`; the walk-ins spec also reads the row |
+| L21-P1 | `7aa72220` | `admin-proposals.spec.ts` | **Expectation:** h1 «مراجعة المقترحات» → «المقترحات»; «مقترح واحد» → the chip's count |
+| L21-P2 | `7aa72220` | `admin-proposals.spec.ts` | Selector: one box «رسالة للمقترِح»; «ارفض» opens the dialog |
+| L21-P3 | `7aa72220` | `admin-proposals.spec.ts` | **Expectation:** after the decision the row leaves the queue; the detail stays open |
+| L21-P4 | `7aa72220` | `sessions-admin-proposals.spec.ts` | **Expectation:** «الاعتماد لا ينشر الجلسة» is gone (no explainer copy); the proposal is opened from its row |
+| L21-P5 | `7aa72220` | `sessions-admin-proposals.spec.ts` | **Expectation:** an empty message is refused at the box, as «اكتب الرسالة أولًا…» |
+| L21-P6 | `7aa72220` | `sessions-admin-proposals.spec.ts` | Selector: at 390 px the proposal opens at `/app/admin/proposals/[id]`, and «اعتمد» is measured there |
+| — | `a7500063` | `tests/components/admin/proposals-review-card.test.tsx` | **Deleted** with the card. Its four cases return in `tests/components/proposals/decision-card.test.tsx`, plus two new |
+
+**Owed:**
+- the e2e runs, through the lead;
+- the captures at 1280;
+- `AttendanceHeaderAction`'s line in the layout, once `checkin`'s file exists;
+- `admin.proposals.*`'s deletion, a request to `console` (R6): nothing reads those keys now;
+- D7's ruling (the pure `checkInCeiling()`), still open.
+
+**After the lead's three rulings:**
+- D7 is drawn. The «تسجيل الحضور» row says «يُغلق <time>», from the pure `checkInCeiling()` over the page's own day
+  set. It is shown for one-day sessions only, because each day of a multi-day session closes on its own.
+- `AttendanceHeaderAction` (`checkin`'s, at 6aeff6f0) is in the layout's map under `attendance`.
+- «افتح كجلسة» stays on 041.
