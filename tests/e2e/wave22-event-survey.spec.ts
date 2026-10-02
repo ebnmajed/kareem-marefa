@@ -172,12 +172,12 @@ test("★ 064 — an admin reads the room in one screen: four figures naming the
 
   // The survey's two figures and the rating's two, each saying which it is (DEC-074, DEC-232).
   await expect(main(page).getByText("استجابات الاستبانة")).toBeVisible();
-  await expect(main(page).getByText("3 / 3")).toBeVisible();
-  await expect(main(page).getByText("100%")).toBeVisible();
+  await expect(main(page).getByText("3 / 3", { exact: true })).toBeVisible();
+  await expect(main(page).getByText("100%", { exact: true })).toBeVisible();
   await expect(main(page).getByText("متوسط تقييم الجلسة")).toBeVisible();
-  await expect(main(page).getByText("4.67")).toBeVisible();
+  await expect(main(page).getByText("4.67", { exact: true })).toBeVisible();
   await expect(main(page).getByText("متوسط تقييم المُقدِّم")).toBeVisible();
-  await expect(main(page).getByText("4.33")).toBeVisible();
+  await expect(main(page).getByText("4.33", { exact: true })).toBeVisible();
 
   // The stars are the survey's own 1–5 question, five first, each bar with its words and its count.
   const scale = main(page).getByRole("article", { name: /ما مدى وضوح المحتوى؟/ });
@@ -210,8 +210,8 @@ test("★ 064 — «CSV» is the header's one action, and taking it writes expor
 test("064 — a moderator reads the same results and is offered no CSV", async ({ context, page }) => {
   await signIn(context, people.moderator.email);
   await open(page, `/ar/app/admin/sessions/${sessionId}/survey`);
-  await expect(main(page).getByText("3 / 3")).toBeVisible();
-  await expect(main(page).getByText("4.67")).toBeVisible();
+  await expect(main(page).getByText("3 / 3", { exact: true })).toBeVisible();
+  await expect(main(page).getByText("4.67", { exact: true })).toBeVisible();
   await expect(main(page).getByRole("link", { name: /CSV/ })).toHaveCount(0);
 });
 
