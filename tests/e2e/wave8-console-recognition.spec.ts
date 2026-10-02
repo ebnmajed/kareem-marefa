@@ -186,7 +186,12 @@ test("REQ-REC-001: an admin creates a badge with its rule, then retires it in ed
   await expect(page.getByRole("row", { name: /حاضر مخلص/ }).first()).toContainText("بعد 25 تسجيل حضور");
 
   await goto(page, "/ar/app/admin/recognition?edit");
-  await page.locator("#main").getByRole("switch", { name: "مفعّل — حاضر مخلص" }).click();
+  // The switch's input is `sr-only`: its 1-px box sits under the row, so a click aimed at the input's centre lands on the
+  // fieldset. A mouse user clicks the DRAWN track, which is inside the input's <label> — so the click goes there, and
+  // proves the track itself is not covered (the lead's question (a)).
+  const retire = page.locator("#main").getByRole("switch", { name: "مفعّل — حاضر مخلص" });
+  await page.locator("#main label").filter({ has: retire }).click();
+  await expect(page.locator("#main").getByRole("switch", { name: "مفعّل (معدّل) — حاضر مخلص" })).not.toBeChecked();
   await page.locator("#main").getByRole("button", { name: /^احفظ/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "حُفظ" })).toBeVisible();
   const { rows: after } = await db.query<{ retired_at: string | null }>(`select retired_at from public.badges where org_id = $1 and name = 'حاضر مخلص'`, [orgId]);
