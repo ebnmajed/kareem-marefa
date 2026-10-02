@@ -6866,3 +6866,33 @@ export interface KvCardProps extends Styleable {
 3. R2 — where the console-only components live.
 4. D10 — presenters in a `sheet` from read mode: acceptable as «edited on intent»?
 5. D7 — draw «يُغلق …» through R1, or leave it out?
+
+## W21.10 · After sync 1 (`DEC-228`) — what changes in my plan, and the queue's URLs
+
+**Rulings taken in:**
+- D3 is (b): while the message box holds text, «اعتمد» is refused at the field.
+- D5: no lifecycle action for completed, archived or cancelled; 042's menu is untouched.
+- R2: the console-only components go under `admin/proposals/_components/**` and `admin/sessions/[id]/_hub/**`.
+  Shared code stays in `components/sessions/`. `components/proposals/diff.ts` is shared and pure, so it stays there.
+- D10 is accepted.
+- D7: «يُغلق» is drawn only if `checkin`'s DAL already gives it to staff. I have asked them.
+- The display face is on `h1` alone.
+- `DEC-228` §3.11: the approved-to-session button stays on 042. SCR-041's «افتح كجلسة» is the artboard's and calls
+  the same `create_session(p_proposal)`, so the same authority sits in two places, not two mechanisms.
+
+**`0179`, handed to the lead:**
+- the SQL is `supabase/proposed/sessions/0179-proposal-audit.sql`;
+- the proof is `tests/rls/proposals-diff.test.ts`, four cases, green with `proposals-review` beside it. The two cases
+  that timed out in the first run were the 20 s limit under load; the rerun was clean.
+
+**The queue's URLs — published for `console` (R3) and the dashboard's tile.** Each is stable from PR B:
+
+| What | URL |
+|---|---|
+| awaiting a decision (`submitted` + `in_review`) — the default, the tile's target | `/app/admin/proposals` (`?state=pending` is the same) |
+| waiting on the proposer (`changes_requested`) | `/app/admin/proposals?state=changes` |
+| approved | `/app/admin/proposals?state=approved` |
+| everything but drafts, rejected included | `/app/admin/proposals?state=all` |
+| one proposal (the phone's detail route; the log's link from SCR-043) | `/app/admin/proposals/<id>` — `?state=` carried for the back link |
+
+An unknown `state` reads as `pending`. A moderator gets the streamed not-found at every one of them.
