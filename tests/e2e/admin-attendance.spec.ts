@@ -142,6 +142,13 @@ async function signIn(context: BrowserContext, email: string) {
 // what is asserted: the not-found page is the only `h1`, and nothing the
 // page guards rendered (the pattern `dd03094` set for branding/exports/
 // designer/platform).
+// ★ Wave 21 (SCR-044 rebuilt, DEC-208): a row is a `<tr>` from `md` up and a card `<li>` below it — `data-table`
+// draws both and CSS hides one, so the accessibility tree holds exactly one of the two at any width.
+const main = (page: Page) => page.locator("#main");
+const rowOf = (page: Page, name: string) => main(page).getByRole("row", { name: new RegExp(name) }).or(main(page).getByRole("listitem").filter({ hasText: name }));
+/** A figure's value — the `stat` whose label reads exactly `label`. */
+const figure = (page: Page, label: string) => main(page).locator("span", { hasText: new RegExp(`^${label}$`) }).locator("xpath=following-sibling::strong[1]");
+
 async function expectGatedNotFound(page: Page) {
   await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 })).toBeVisible();
   await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
@@ -169,72 +176,53 @@ test("REQ-ADM-020: a moderator reaches attendance through /admin/sessions, with 
   await expect(page.getByText("جاهزة للجدولة")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "أنشئ الجلسة" })).toHaveCount(0);
 
-  // ★ `sessions-table.tsx`'s `ModeratorSessionsTable` wraps the whole row's
-  // title cell in the link to attendance (`DataTable`'s own `rowHref`), so
-  // the link's accessible name is the session's own title, not a separate
-  // "تقرير الحضور" label — that string is only the empty-state's fallback
-  // action, never a per-row one. A stale expectation here (name: "تقرير
-  // الحضور") from before the DataTable rebuild timed out finding nothing.
-  await visibleRows.getByRole("link", { name: "جلسة قيد الحضور" }).click();
+  await visibleRows.getByRole("link", { name: "جلسة قيد الحضور" }).first().click();
   await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}/attendance$`));
-  await expect(page.getByRole("heading", { name: /تقرير الحضور/ })).toBeVisible();
-  // Export and per-rater ratings are admin-only, even on this shared screen.
-  await expect(page.getByRole("link", { name: "صدِّر كملف CSV" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "التقييمات — لكل مُقيِّم" })).toHaveCount(0);
+  // ★ Wave 21: the title is the hub header's `h1` (contract 4), no longer «تقرير الحضور — …» on the page.
+  await expect(main(page).getByRole("heading", { level: 1 })).toContainText("جلسة قيد الحضور");
+  // Export, revoke and per-rater ratings are admin-only, even on this shared screen.
+  await expect(main(page).getByRole("link", { name: "CSV", exact: true })).toHaveCount(0);
+  await expect(main(page).getByRole("heading", { name: "التقييمات — لكل مُقيِّم" })).toHaveCount(0);
+  // A present row offers a moderator nothing (no revoke, nothing to mark), so it carries no menu at all.
+  await expect(main(page).getByRole("button", { name: "إجراءات حاضر مسجَّل" })).toHaveCount(0);
 });
 
-test("REQ-CHK-012: the summary counts and the per-member table are correct", async ({ context, page }) => {
+test("REQ-CHK-012: the figures and the per-member table are correct", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
-  const summary = page.locator("section", { has: page.getByRole("heading", { name: "ملخّص الحضور" }) });
 
-  // One confirmed RSVP checked in via code, one waitlisted RSVP not yet
-  // checked in — reserved 2, confirmed 1, checked in 1, no walk-ins, no
-  // no-shows (the waitlisted one is not a no-show: it was never confirmed).
-  const ddFor = (label: string) => summary.locator("dt", { hasText: label }).locator("xpath=following-sibling::dd[1]");
-  await expect(ddFor("الحجوزات").first()).toHaveText("2");
-  await expect(ddFor("الحجوزات المؤكَّدة")).toHaveText("1");
-  await expect(ddFor("سجَّلوا حضورهم")).toHaveText("1");
-  await expect(ddFor("حضور بلا حجز")).toHaveText("0");
-  await expect(ddFor("لم يحضروا رغم الحجز")).toHaveText("0");
-  await expect(ddFor("معدّل الحضور")).toHaveText("100٪");
+  // One confirmed RSVP checked in via code, one waitlisted RSVP not yet checked in. ★ Wave 21 (D1): «محجوز» counts
+  // CONFIRMED reservations — 1, where «الحجوزات» counted every RSVP row (2). The rate is DEC-228 §3.4's.
+  await expect(figure(page, "محجوز")).toHaveText("1");
+  await expect(figure(page, "حاضر")).toHaveText("1");
+  await expect(figure(page, "المعدّل")).toHaveText("100٪");
+  await expect(figure(page, "بلا حجز")).toHaveText("0");
+  await expect(figure(page, "يدوي")).toHaveText("0");
+  // No-showed lives on the chip: the waitlisted member is not a no-show — they were never confirmed.
+  await expect(main(page).getByRole("link", { name: /لم يحضر/ })).toContainText("0");
 
-  // `getByRole("cell", …)`, not a bare `getByText`: the member's name now
-  // ALSO appears as an `<option>` in the "Remove attendance" section's
-  // select below (C3, `bfe8e2a`) — a real second occurrence on the page,
-  // not a markup duplicate to fix. A `<select><option>` carries no `cell`
-  // role, so scoping to the table cell is what the next line already does
-  // for the other member; this just matches it.
-  await expect(page.getByRole("cell", { name: "حاضر مسجَّل" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "بانتظار الحجز" })).toBeVisible();
-  // Scoped to the cell role, not a bare `getByText` — sync 6 (phone): Next's
-  // dynamic-route streaming (this page touches `cookies()`, so it is
-  // dynamic) can transiently duplicate a matching text node elsewhere in
-  // the document during hydration, the same class of flake
-  // `checkin.spec.ts`'s own RsvpPanel test already documents for this
-  // reason. A `<td>` carries `cell`; a transient streamed copy does not.
-  await expect(page.getByRole("cell", { name: "رمز الحضور" })).toBeVisible();
+  await expect(rowOf(page, "حاضر مسجَّل")).toContainText("رمز");
+  await expect(rowOf(page, "حاضر مسجَّل")).toContainText("حاضر");
+  await expect(rowOf(page, "بانتظار الحجز")).toContainText("قائمة انتظار");
 });
 
 test("REQ-CHK-008: a manual mark records a check-in with the manual method, and a written reason is required", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
 
-  // ★ Sync 6 (desktop): a bare "العضو" ambiguously matched BOTH this
-  // select and C3's own removal select, because Playwright's default
-  // string matching is a substring search — the removal select's longer
-  // label ("العضو المراد إلغاء تسجيل حضوره") still CONTAINS "العضو".
-  // Targeting the full, distinguishing label avoids that regardless of
-  // substring semantics, and `checkin.json`'s own two labels no longer
-  // read as the same control to a screen reader either.
-  await page.getByLabel("العضو المراد تسجيل حضوره").selectOption({ label: "بانتظار الحجز" });
-  await page.getByRole("button", { name: "سجّل حضوره" }).click();
-  await expect(page.getByText("اكتب السبب أولًا")).toBeVisible();
+  // ★ Wave 21: «تسجيل يدوي» opens a sheet with the member combobox and the reason (`M11a.md` §5).
+  await main(page).getByRole("button", { name: "تسجيل يدوي" }).click();
+  const sheet = page.getByRole("dialog", { name: "تسجيل حضور يدوي" });
+  await sheet.getByRole("combobox").fill("بانتظار");
+  await page.getByRole("option", { name: "بانتظار الحجز" }).click();
+  await sheet.getByRole("button", { name: "سجّل حضوره" }).click();
+  await expect(sheet.getByText("اكتب السبب أولًا")).toBeVisible();
 
-  await page.getByLabel("السبب").fill("حضر ولم يُسجَّل رمزه");
-  await page.getByRole("button", { name: "سجّل حضوره" }).click();
-  // The method column says «يدوي» on the marked member's row (the code path says «رمز الحضور»).
-  await expect(page.getByRole("row", { name: /بانتظار الحجز/ }).getByRole("cell", { name: "يدوي", exact: true })).toBeVisible();
+  await sheet.getByLabel("السبب", { exact: false }).fill("حضر ولم يُسجَّل رمزه");
+  await sheet.getByRole("button", { name: "سجّل حضوره" }).click();
+  await expect(sheet).toHaveCount(0);
+  // ★ Wave 21: the method names who marked it — «يدوي · <name>», where it read «يدوي».
+  await expect(rowOf(page, "بانتظار الحجز")).toContainText("يدوي · مشرفة الحضور");
 
   const { rows } = await db.query<{ method: string; manual_reason: string }>(`select method, manual_reason from public.check_ins where session_id = $1 and member_id = $2`, [
     sessionId,
@@ -307,22 +295,10 @@ test("SCR-044 at 390 px RTL: the report reads down the page, never sideways, wit
   await page.screenshot({ path: join(SHOTS, `scr-044-attendance-390-rtl-${test.info().project.name}.png`), fullPage: true });
 });
 
-// ★ REQ-CHK-017, C3 — last in the file (not fetch order — Playwright's
-// serial mode runs it after everything above): removes `attendeeMemberId`'s
-// still-active code check-in from `beforeAll`, so no earlier test's
-// assertions (all already run by this point) depend on it staying checked
-// in. Proves the whole reversal end to end, through the RPC, not a mock —
-// the SQL (0087) already has its own RLS coverage for the exceptions;
-// this is the one thing only a real build can show: the confirmation
-// dialog actually gates the submit (REQ-UIX-013), and the report reflects
-// the removal afterward.
-test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and the report shows it removed", async ({ context, page }) => {
-  // 390 × 844, unconditionally — this test's own assertions don't depend on
-  // viewport size, so there's no cost to shaping it for the capture. The
-  // captures themselves are taken only on the phone PROJECT (matching
-  // SCR-044's own reasoning above: a desktop context at 390 px still
-  // carries a classic scrollbar a real phone doesn't), named for the
-  // lead's sync build: wave7-checkin-attendance-{populated,remove-dialog,removed}.png.
+// ★ REQ-CHK-017, C3 — last in the file: removes `attendeeMemberId`'s still-active code check-in from `beforeAll`, so no
+// earlier test depends on it staying checked in. ★ Wave 21: the revoke is the row menu's «ألغِ الحضور», and its dialog
+// carries the reason; the RPC — and so the reversal — is the same `remove_check_in()`.
+test("REQ-CHK-017: an admin revokes a check-in from the row menu, and the table shows it revoked with its reason", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   const isPhone = test.info().project.name === "phone";
   await signIn(context, adminEmail);
@@ -332,35 +308,26 @@ test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and t
     await page.screenshot({ path: join(SHOTS, "wave7-checkin-attendance-populated.png"), fullPage: true });
   }
 
-  const removeSection = page.locator("section", { has: page.getByRole("heading", { name: "إلغاء تسجيل حضور" }) });
-  await removeSection.getByLabel("العضو المراد إلغاء تسجيل حضوره").selectOption({ label: "حاضر مسجَّل" });
-  await removeSection.getByLabel("سبب الإلغاء").fill("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ");
-
-  // The submit button OPENS the confirmation dialog (REQ-UIX-013) — it must
-  // not submit on its own.
-  await removeSection.getByRole("button", { name: "ألغِ تسجيل الحضور" }).click();
-  const dialog = page.getByRole("dialog", { name: "تأكيد إلغاء تسجيل الحضور" });
+  await main(page).getByRole("button", { name: "إجراءات حاضر مسجَّل" }).click();
+  await page.getByRole("menuitem", { name: "ألغِ الحضور" }).click();
+  const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  // Names both the member AND the session (the lead's own restated
-  // constraint) — not just "this check-in", which a staff member managing
-  // several sessions could too easily confuse.
-  await expect(dialog.getByText("حاضر مسجَّل")).toBeVisible();
-  await expect(dialog.getByText("جلسة قيد الحضور")).toBeVisible();
+  // Names both the member AND the session (REQ-UIX-013).
+  await expect(dialog).toContainText("حاضر مسجَّل");
+  await expect(dialog).toContainText("جلسة قيد الحضور");
+  await expect(dialog.getByRole("button", { name: "ألغِ تسجيل الحضور" })).toBeDisabled();
+  await dialog.getByLabel("سبب الإلغاء", { exact: false }).fill("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ");
   if (isPhone) await page.screenshot({ path: join(SHOTS, "wave7-checkin-attendance-remove-dialog.png"), fullPage: true });
 
   await dialog.getByRole("button", { name: "ألغِ تسجيل الحضور" }).click();
-  await expect(page.getByText("أُلغي تسجيل الحضور")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
-  // The report's own list now shows the removal, with the reason — not a
-  // bare "no-show" indistinguishable from never having checked in.
-  const row = page.getByRole("row", { name: /حاضر مسجَّل/ });
-  await expect(row.getByText("أُلغي تسجيل حضوره")).toBeVisible();
-  await expect(row.getByText("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ")).toBeVisible();
+  // The table shows the revocation with its reason — not a bare no-show.
+  const row = rowOf(page, "حاضر مسجَّل");
+  await expect(row).toContainText("أُلغي");
+  await expect(row).toContainText("خطأ في تسجيل الحضور — سُجِّل حضور شخص آخر بالخطأ");
   if (isPhone) await page.screenshot({ path: join(SHOTS, "wave7-checkin-attendance-removed.png"), fullPage: true });
 
-  // The reversal itself, in the database — the RPC's own work, not this
-  // page's: the check-in is soft-deleted, its points award (if any) is
-  // compensated, and the removal is audited.
   const { rows: ciRows } = await db.query<{ removed_at: string | null; removal_reason: string | null }>(
     `select removed_at, removal_reason from public.check_ins where session_id = $1 and member_id = $2 and removed_at is not null`,
     [sessionId, attendeeMemberId],
@@ -371,8 +338,7 @@ test("REQ-CHK-017: an admin removes a check-in through the confirm dialog, and t
   const audit = await db.query(`select action from public.audit_log where action = 'check_in.removed' and org_id = $1`, [orgId]);
   expect(audit.rowCount).toBe(1);
 
-  // Removed, not deleted: they are offered again as a manual-mark
-  // candidate, the same "not checked in" state a fresh member would be in.
-  await expect(page.getByLabel("العضو المراد تسجيل حضوره", { exact: false }).locator("option", { hasText: "حاضر مسجَّل" })).toHaveCount(1);
+  // Removed, not deleted: they are offered again for a manual mark.
+  await main(page).getByRole("button", { name: "إجراءات حاضر مسجَّل" }).click();
+  await expect(page.getByRole("menuitem", { name: "سجّل حضوره" })).toBeVisible();
 });
-

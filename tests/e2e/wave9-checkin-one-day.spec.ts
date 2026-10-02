@@ -190,20 +190,25 @@ test("the attendance report has no day column, no day select and no completeness
   );
 
   await page.goto(`/ar/app/admin/sessions/${sessionId}/attendance`);
-  await expect(main.getByRole("heading", { level: 1 })).toContainText("تقرير الحضور");
-
-  // The four columns wave 7 shipped, and only those.
-  for (const label of ["الاسم", "الحالة", "وقت الوصول", "الطريقة"]) {
-    await expect(main.getByRole("columnheader", { name: label })).toBeVisible();
+  // ★ Wave 21 (SCR-044 rebuilt, DEC-208): the title is the hub header's; the columns are the artboard's. Ledger lines.
+  await expect(main.getByRole("heading", { level: 1 })).toContainText("جلسة ليوم واحد");
+  // The table's header row is on screen from `md` up; on the phone it is a card list (`data-table`).
+  if (testInfo.project.name !== "phone") {
+    for (const label of ["العضو", "الحجز", "وقت الحضور", "الطريقة", "الحالة"]) {
+      await expect(main.getByRole("columnheader", { name: label, exact: true })).toBeVisible();
+    }
   }
   await expect(main.getByRole("columnheader", { name: "الأيام" })).toHaveCount(0);
-  // Neither form offers a day. The hidden `input[name="dayId"]` still carries
-  // one — the day travels, it is just never a question.
-  await expect(main.locator('select[name="dayId"]')).toHaveCount(0);
-  await expect(main.locator('input[type="hidden"][name="dayId"]')).not.toHaveCount(0);
+  // No day chip, no completeness figure — but the day still TRAVELS with every write, in a hidden field.
+  await expect(main.getByRole("group", { name: "اليوم" })).toHaveCount(0);
   await expect(main.getByText("أكملوا كل الأيام")).toHaveCount(0);
   await expect(main.getByText("النقاط والشهادة تتطلّب", { exact: false })).toHaveCount(0);
   await expect(main).not.toContainText(DAY_WORDS);
+  await main.getByRole("button", { name: "إجراءات نورة القحطاني" }).click();
+  await page.getByRole("menuitem", { name: "ألغِ الحضور" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.locator('input[type="hidden"][name="dayId"]')).not.toHaveValue("");
+  await dialog.getByRole("button", { name: "تراجع" }).click();
 
   await shoot(page, "wave9-checkin-attendance-one-day", testInfo.project.name === "phone");
 });
