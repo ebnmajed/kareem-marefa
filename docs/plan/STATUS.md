@@ -22,11 +22,12 @@
 | **Sync 1** — four plans approved against the goal and the seven contracts | ⏳ |
 | Sync 1 — `DEC-228`; «the plans are approved» posted | ✅ `0ed1dc6a` |
 | Contract 2 — `admin-rail` (full), `split-view` and `kv-card` (stubs, `sessions'` to fill), the floor 60 → 63 | ✅ `f9a0a209` |
-| The frame — deleted (`ae42d2b2`), then written (`fa18b414`); «the frame is in» posted | ✅ — ⏳ seen on a production build and captured beside the artboard (blocked by `console`'s `70ecf2b7` type error in a test) |
+| The frame — deleted (`ae42d2b2`), then written (`fa18b414`, badges from `getAdminAttention()` at `229eb28d`) | ✅ **seen on a production build** (a verification worktree at `229eb28d` + `70e874b7`'s two files): `console.spec.ts` 8/8 at 1280 and 390, the captures `.qa-shots/rtl/wave21-lead-frame-*` opened beside `AdminDashboard.dc.html` and `AdminSessionsPhone.dc.html` — the bar's five parts, the 220 px rail with six rules, the sheet keeping them, no tab bar on the phone. ★ One difference recorded, not forked: the account trigger shows the first name and a chevron (the member shell's shared `AccountMenu`, `HomeDesktop.dc.html`); the artboard draws the avatar alone — for the owner's acceptance |
 | PR B `wave-21b/the-queues` opened against `main` on its first push | ✅ **#45** — ★ B is built in its own worktree, `../kareem-marefa-wave21b` (`node_modules` symlinked to the main checkout's; `npm ci` there before B's first production build); the lead merges A into B as A moves |
 | `sessions`' `split-view` keyboard model and `kv-card` edit twin | ✅ `50bbebed` |
 | `console` — `data-table` add-only props (`70ecf2b7`, ★ its test fails `tsc`), the export's `?ids=` (`66750058`) | 🔧 |
-| `0179` — `sessions` writes it under `proposed/`, the lead promotes it in B; ★ the owner rehearses on a dump at `0178` before the push | ⏳ |
+| `0179` — promoted in B at `f1bdf438` from `sessions`' `0f051fd7`; applied to the local database with `create or replace` (no reset under running teammates); `proposals-diff` + `proposals-review` 14/14, `policy-diff` green, `03` §8.2 gains its two rows | ✅ — ★ **the owner rehearses it on a production schema dump at `0178` before any `supabase db push`** |
+| `DEC-228` addenda for the next entry: D7 drawn with the pure `checkInCeiling()` over `listSessionDays()` (no grant); «افتح كجلسة» stays on `041` beside `042`'s | 📝 |
 | 040, 042 (A) · 041, 043, 044 (B) — each deleted then written | ⏳ |
 
 ★ **If this session ends before sync 1:** the next lead reads the three teammates' «Wave 21 plan» sections and the lead's,
