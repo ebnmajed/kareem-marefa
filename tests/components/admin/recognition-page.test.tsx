@@ -9,7 +9,7 @@ import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast";
 import { formStateFrom, withErrors } from "@/lib/form-state";
-import type { CertificateRow } from "@/lib/dal/certificates";
+import type { HeldCertificateRow } from "@/lib/dal/certificates";
 import type { RecognitionAdminData } from "@/lib/dal/scoring-admin";
 import adminAr from "@/messages/ar/admin.json";
 import recognitionAr from "@/messages/ar/recognition.json";
@@ -54,7 +54,7 @@ const DATA: RecognitionAdminData = {
   streakRules: [{ id: "s1", key: "monthly_3", requiredCount: 3, bonusPoints: 15, enabled: true }],
 };
 
-const cert = (id: string, name: string, extra: Partial<CertificateRow>): CertificateRow => ({
+const cert = (id: string, name: string, extra: Partial<HeldCertificateRow>): HeldCertificateRow => ({
   id,
   kind: "achievement",
   state: "held",
@@ -69,10 +69,12 @@ const cert = (id: string, name: string, extra: Partial<CertificateRow>): Certifi
   achievementName: null,
   documentId: null,
   pdfPath: null,
+  memberId: `m-${id}`,
+  createdAt: "2026-09-30T10:00:00Z",
   ...extra,
 });
 
-async function renderPage(held: CertificateRow[] = []) {
+async function renderPage(held: HeldCertificateRow[] = []) {
   vi.mocked(getRecognitionAdminData).mockResolvedValue(DATA);
   vi.mocked(listHeldAchievements).mockResolvedValue({ certificates: held, canRelease: true });
   vi.mocked(listMembersForAdmin).mockResolvedValue([{ id: "m1", displayName: "سارة العتيبي", email: "sara@example.com" }] as never);
