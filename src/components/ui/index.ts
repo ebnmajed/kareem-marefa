@@ -1081,6 +1081,8 @@ export interface RaceBarProps extends Styleable {
   /** ★ wave 20 (DEC-218), add-only: `grid` — `Companies.dc.html`'s row: rank · ring, name, the bar under the name ·
    *  the ranking value · the other, muted; the metric's words `sr-only` on every row (`REQ-LDR-005`). */
   layout?: "stacked" | "inline" | "grid";
+  /** ★ wave 20, PR B (DEC-219 §2), add-only: a quiet note after the name — «18 نشطًا», already worded by the caller. */
+  note?: string | null;
 }
 
 /** One face of the level card. */
