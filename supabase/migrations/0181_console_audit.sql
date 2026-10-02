@@ -1,4 +1,4 @@
--- wave 22 (DEC-231 §4, DEC-232 §2, REQ-ADM-023, STORY-ADM-011) — the console's audit gaps, closed in the database.
+-- 0181 · wave 22 (DEC-231 §4, DEC-232 §2, REQ-ADM-023, STORY-ADM-011) — the console's audit gaps, closed in the database.
 --
 -- ★ THE RULE HAD QUIETLY NOT HELD SINCE WAVE 6. Measured at wave 22's Step 0: creating, renaming and (de)activating a
 -- venue, a category or a company wrote nothing; dismissing a report wrote only `reports.resolved_by` on the row;

@@ -39,14 +39,16 @@ describe("POL-companies.team_color on insert", () => {
     });
   });
 
-  it("★ measured: an insert with a colour writes no audit row (0161 is on update)", async () => {
+  // ★ wave 22 (0181, DEC-232 §2.2): the gap this case measured is closed — creation is `company.created`, carrying the
+  // colour in `after`; 0161 still writes nothing on insert.
+  it("an insert with a colour writes company.created carrying the colour, and no team_color_changed", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.as(f.a.admin.claims);
       const [c] = await tx.q<{ id: string }>(`insert into public.companies (org_id, name, team_color) values ($1, 'بيت الألوان', '#ffd23f') returning id`, [f.a.id]);
       await tx.asOwner();
-      const rows = await tx.q(`select 1 from public.audit_log where org_id = $1 and subject_id = $2`, [f.a.id, c.id]);
-      expect(rows).toEqual([]);
+      const rows = await tx.q(`select action, after from public.audit_log where org_id = $1 and subject_id = $2`, [f.a.id, c.id]);
+      expect(rows).toEqual([{ action: "company.created", after: { name: "بيت الألوان", team_color: "#ffd23f" } }]);
     });
   });
 });

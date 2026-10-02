@@ -89,6 +89,39 @@ floor stays 63.**
 - ★ **An orphaned `next-server` from wave 21** (parent gone, no port, ~30 h, ~40 % CPU, cwd this repo) is still running;
   stopping it was declined by the permission check. **The owner stops it**, or allows the lead to.
 
+### ★ Migrations — on disk and applied locally (owner approved 2026-10-03)
+
+`0180_venue_company` · `0181_console_audit` (the seven gaps) · `0182_hosting_follows_the_venue` (`scoring`) ·
+`0183_resolve_report` (`content`). Full RLS sweep at `0181`: 1513 passed, 2 failed — both the expected wave-15 cases
+below; green after. The owner rehearses all four on a dump taken at `0179` before the push.
+
+### ★ The untouched-suite ledger — wave 22
+
+| Suite | Change | Kind | Why |
+|---|---|---|---|
+| `rls/team-colour.test.ts` «main's own UPDATE» | no row → `company.deactivated`, still no colour row | expectation | `0181` audits deactivation (`DEC-231` §4) |
+| `rls/team-colour-insert.test.ts` «insert with a colour» | no row → `company.created` carrying the colour | expectation | `DEC-232` §2.2 |
+| `unit/admin-nav.test.ts` | 20 → 19 for an admin; 6 → 5 for a moderator; one unbuilt leaf | expectation | `DEC-230` §3 (C, `99e69692`) |
+| `rls/scoring-company-points.test.ts:244` | hosting credited to the venue's owner | expectation | `REQ-PTS-016` (`scoring`) |
+| `unit/admin-scoring-actions` | the `saveSessionHostCompany` describe removed | removed with its subject | `DEC-230` §2.3 |
+| `components/admin/scoring-page.test` | dead mocks and the fixture's companies removed; six cases unchanged | fixture | same |
+| `e2e/scoring-company-points.spec:128-141` | the stopgap form's steps removed | removed with its subject | same |
+| `e2e/wave8-console-reminders.spec.ts` | selectors moved (h1, table, «عدّل», row names, «احفظ», «حُفظ»); add/remove → band timing + prompt | selector; one expectation | `DEC-232` §1.3 (`notify`) |
+| `components/admin/reminders-form.test.tsx` | deleted with its file; re-said in `notifications/admin-reminders-edit.test.tsx` | moved | `DEC-208` |
+| `unit/admin-reminders-action.test.ts` | deleted; re-said in `notify-admin-reminders-action.test.ts`; `saved: true` → a receipt | moved; expectation | `DEC-232` §3 |
+| `components/admin/form-summary-links.test.tsx` | venues, categories, companies cases → each screen's test | selector | `console` |
+| `components/admin/phone-card-actions.test.tsx` | the three lists' cases removed; «عطّل» under ⋯ | selector | `console` |
+| `components/admin/managed-lists-status-badge.test.tsx` | deleted; «نشط» no longer drawn, «معطّل» asserted per screen | expectation | `console` |
+| `components/admin/companies-table.test.tsx` | colour chosen in the edit form | expectation | `console` |
+| `components/admin/companies-add-colour.test.tsx` · `unit/admin-lists-team-colour.test.ts` | `addCompany`/`setCompanyTeamColour` → `saveCompany`; empty colour = «بلا لون» | selector | `console` |
+| `e2e/admin-managed-lists.spec.ts` | rebuilt flows, a venue-company case, a no-JS case, captures renamed | selector; new cases | `console` |
+| `e2e/wave15-console-team-colour.spec.ts` · `e2e/wave17-console-screens.spec.ts:150` | the colour via ⋯ → «عدّل»; the trigger is the row's ⋯ | selector | `console` |
+| `components/survey/results.test.tsx` (E1–E6) | the rate «33%»; bars 5→1; star words; withheld string; quoted answers; «nobody eligible» on the reachable state | expectation | `event` |
+| `e2e/wave10-event-survey-results.spec.ts` (E7–E9) | heading → text; «تصدير CSV» → «CSV» in the header; first bar «5 نجوم» | selector; expectation | `event` |
+| `e2e/wave10-event-templates.spec.ts:157-159` (E10) | the phone card's «الأسئلة 3» / «الجلسات 0» | expectation | `event` |
+| `components/admin/{report-card,comment-report-card,takedown-card}.test.tsx` | deleted (14 cases); re-said in `moderation/{reports-table,photo-decide}.test.tsx` | moved | `content` |
+| `e2e/wave10-demo-survey.spec.ts:389-392, :402` | the lead's — moves with `064` | selector | pending, the lead |
+
 ### The order of work
 
 1. **Sync 1** — five plans, each with its kept-behaviour tables and its audit lines, judged against `DEC-231` §0. ★

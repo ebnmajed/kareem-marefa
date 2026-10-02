@@ -1,3 +1,4 @@
+-- 0182 · promoted by the lead (wave 22, DEC-232 §1.1–§1.2) from supabase/proposed/scoring/hosting_follows_the_venue.sql, unchanged below this line.
 -- proposed by `scoring` (wave 22, PR A) · DEC-230 §2, DEC-232 §1.1–1.2, REQ-PTS-016, STORY-PTS-008 —
 -- hosting points follow THE OWNER OF THE PLACE.
 --
