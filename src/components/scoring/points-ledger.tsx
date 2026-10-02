@@ -104,7 +104,7 @@ async function rowFor(item: LedgerItem, t: T, td: T, timeZone: string, locale: s
         figureLabel={t("ledger.gain", { count: 0, value: "0" })}
         title={<bdi>{cap.reason}</bdi>}
         meta={joinMeta([
-          t("ledger.capComment", { count: cap.capPerSession, value: formatNumber(cap.capPerSession) }),
+          t(cap.ruleKey === "photo" ? "ledger.capPhoto" : "ledger.capComment", { count: cap.capPerSession, value: formatNumber(cap.capPerSession) }),
           sessionLink({ sessionId: cap.sessionId, sessionTitle: cap.sessionTitle }),
           when(cap.at, timeZone, locale),
         ])}
@@ -160,7 +160,7 @@ function tableRows(items: LedgerItem[], t: T, td: T, timeZone: string, locale: s
         figure: "0",
         figureLabel: t("ledger.gain", { count: 0, value: "0" }),
         tone: "none",
-        reason: `${cap.reason} · ${t("ledger.capComment", { count: cap.capPerSession, value: formatNumber(cap.capPerSession) })}`,
+        reason: `${cap.reason} · ${t(cap.ruleKey === "photo" ? "ledger.capPhoto" : "ledger.capComment", { count: cap.capPerSession, value: formatNumber(cap.capPerSession) })}`,
         session: cap.sessionTitle ? { href: `/app/sessions/${cap.sessionId}`, title: cap.sessionTitle } : null,
         look: "muted",
       });

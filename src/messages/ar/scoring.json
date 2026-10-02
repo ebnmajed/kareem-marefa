@@ -68,6 +68,7 @@
         "gain": "{count, plural, zero {صفر نقطة} one {نقطة واحدة} two {نقطتان} few {{value} نقاط} many {{value} نقطة} other {{value} نقطة}}",
         "loss": "{count, plural, zero {لم تُخصم نقاط} one {خُصمت نقطة واحدة} two {خُصمت نقطتان} few {خُصمت {value} نقاط} many {خُصمت {value} نقطة} other {خُصمت {value} نقطة}}",
         "capComment": "الحد: {count, plural, zero {بلا حد} one {تعليق واحد لكل جلسة} two {تعليقان لكل جلسة} few {{value} تعليقات لكل جلسة} many {{value} تعليقًا لكل جلسة} other {{value} تعليق لكل جلسة}}",
+        "capPhoto": "الحد: {count, plural, zero {بلا حد} one {صورة واحدة لكل جلسة} two {صورتان لكل جلسة} few {{value} صور لكل جلسة} many {{value} صورة لكل جلسة} other {{value} صورة لكل جلسة}}",
         "manualBy": "«<bdi>{reason}</bdi>» — <bdi>{name}</bdi>",
         "manualReason": "«<bdi>{reason}</bdi>»",
         "reverses": "(يلغي سطر <bdi>{date}</bdi>)",
