@@ -29,6 +29,11 @@ import { SettingsEdit, type DerivedValues } from "./settings-edit";
 // Admin only: `getOrgSettingsView()` answers null for anyone else and the page answers with the streamed not-found
 // (`DEC-134`); a moderator never reaches it (`REQ-ADM-020`), and every write is refused by policy regardless.
 
+// The card's title is a heading for a screen reader and a small section label to the eye (the lead's ruling at the
+// artboard review): `kv-card` draws it at h2 scale, which competed with the page's h1, so it is set at label scale
+// from here — the primitive itself is composed as it is.
+const CARD = "[&_h2]:text-label [&_h2]:font-bold [&_h2]:text-fg-muted";
+
 const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
 
 function zoneName(timeZone: string, locale: string): string {
@@ -108,72 +113,80 @@ export default async function SettingsPage({
       {markLine ? <p className="mt-2 text-caption text-fg-muted">{markLine}</p> : null}
 
       <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
-        <KvCard
-          title={t("cards.org")}
-          emptyValue={t("empty")}
-          rows={[
-            { id: "name", label: t("rows.name"), value: <bdi>{view.name}</bdi> },
-            {
-              id: "domains",
-              label: t("rows.domains"),
-              value: view.domains.length ? (
-                <span className="inline-flex flex-wrap gap-x-2 gap-y-1">
-                  {view.domains.map((d, i) => (
-                    <span key={d.id}>
-                      {ltr(d.domain)}
-                      {i < view.domains.length - 1 ? " ·" : null}
-                    </span>
-                  ))}
-                </span>
-              ) : null,
-            },
-            { id: "timeZone", label: t("rows.timeZone"), value: t.rich("values.timeZone", { name: zoneName(view.timeZone, locale), id: view.timeZone, bdi }) },
-            { id: "companyMetric", label: t("rows.companyMetric"), value: t(`values.metric.${view.companyMetric}`) },
-            { id: "companyMinActiveMembers", label: t("rows.companyMinActiveMembers"), value: count("values.minActive", view.companyMinActiveMembers) },
-          ]}
-        />
-        <KvCard
-          title={t("cards.sessions")}
-          emptyValue={t("empty")}
-          rows={[
-            {
-              id: "checkIn",
-              label: t("rows.checkIn"),
-              value: t.rich(view.checkInGraceSeconds === 0 ? "values.checkInNoGrace" : "values.checkIn", {
-                rotation: () => duration(view.checkInRotationSeconds),
-                grace: () => duration(view.checkInGraceSeconds),
-              }),
-            },
-            { id: "maxCoPresenters", label: t("rows.maxCoPresenters"), value: count("values.coPresenters", view.maxCoPresenters) },
-            { id: "priorityRsvpHours", label: t("rows.priorityRsvpHours"), value: count("values.priority", view.priorityRsvpHours) },
-            {
-              id: "limits",
-              label: t("rows.limits"),
-              value: t.rich("values.limits", {
-                document: formatNumber(view.limitDocumentMb),
-                audio: formatNumber(view.limitAudioMb),
-                image: formatNumber(view.limitImageMb),
-                poster: formatNumber(view.limitPosterMb),
-                bdi,
-              }),
-            },
-          ]}
-        />
-        <KvCard
-          title={t("cards.privacy")}
-          emptyValue={t("empty")}
-          rows={[{ id: "ratings", label: t("rows.ratings"), value: count("values.ratings", view.ratingMinAggregate) }]}
-        />
-        <KvCard
-          title={t("cards.integrations")}
-          emptyValue={t("empty")}
-          rows={[
-            { id: "calendar", label: t("rows.calendar"), value: derived.calendar },
-            { id: "email", label: t("rows.email"), value: email },
-            { id: "jpeg", label: t("rows.jpeg"), value: view.allowJpegExport ? t("values.jpegOn") : t("values.jpegOff") },
-            { id: "verify", label: t("rows.verify"), value: ltr(derived.verify) },
-          ]}
-        />
+        <div className="flex min-w-0 flex-col gap-4">
+          <KvCard
+            className={CARD}
+            title={t("cards.org")}
+            emptyValue={t("empty")}
+            rows={[
+              { id: "name", label: t("rows.name"), value: <bdi>{view.name}</bdi> },
+              {
+                id: "domains",
+                label: t("rows.domains"),
+                value: view.domains.length ? (
+                  <span className="inline-flex flex-wrap gap-x-2 gap-y-1">
+                    {view.domains.map((d, i) => (
+                      <span key={d.id}>
+                        {ltr(d.domain)}
+                        {i < view.domains.length - 1 ? " ·" : null}
+                      </span>
+                    ))}
+                  </span>
+                ) : null,
+              },
+              { id: "timeZone", label: t("rows.timeZone"), value: t.rich("values.timeZone", { name: zoneName(view.timeZone, locale), id: view.timeZone, bdi }) },
+              { id: "companyMetric", label: t("rows.companyMetric"), value: t(`values.metric.${view.companyMetric}`) },
+              { id: "companyMinActiveMembers", label: t("rows.companyMinActiveMembers"), value: count("values.minActive", view.companyMinActiveMembers) },
+            ]}
+          />
+          <KvCard
+            className={CARD}
+            title={t("cards.sessions")}
+            emptyValue={t("empty")}
+            rows={[
+              {
+                id: "checkIn",
+                label: t("rows.checkIn"),
+                value: t.rich(view.checkInGraceSeconds === 0 ? "values.checkInNoGrace" : "values.checkIn", {
+                  rotation: () => duration(view.checkInRotationSeconds),
+                  grace: () => duration(view.checkInGraceSeconds),
+                }),
+              },
+              { id: "maxCoPresenters", label: t("rows.maxCoPresenters"), value: count("values.coPresenters", view.maxCoPresenters) },
+              { id: "priorityRsvpHours", label: t("rows.priorityRsvpHours"), value: count("values.priority", view.priorityRsvpHours) },
+              {
+                id: "limits",
+                label: t("rows.limits"),
+                value: t.rich("values.limits", {
+                  document: formatNumber(view.limitDocumentMb),
+                  audio: formatNumber(view.limitAudioMb),
+                  image: formatNumber(view.limitImageMb),
+                  poster: formatNumber(view.limitPosterMb),
+                  bdi,
+                }),
+              },
+            ]}
+          />
+        </div>
+        <div className="flex min-w-0 flex-col gap-4">
+          <KvCard
+            className={CARD}
+            title={t("cards.privacy")}
+            emptyValue={t("empty")}
+            rows={[{ id: "ratings", label: t("rows.ratings"), value: count("values.ratings", view.ratingMinAggregate) }]}
+          />
+          <KvCard
+            className={CARD}
+            title={t("cards.integrations")}
+            emptyValue={t("empty")}
+            rows={[
+              { id: "calendar", label: t("rows.calendar"), value: derived.calendar },
+              { id: "email", label: t("rows.email"), value: email },
+              { id: "jpeg", label: t("rows.jpeg"), value: view.allowJpegExport ? t("values.jpegOn") : t("values.jpegOff") },
+              { id: "verify", label: t("rows.verify"), value: ltr(derived.verify) },
+            ]}
+          />
+        </div>
       </div>
     </>
   );

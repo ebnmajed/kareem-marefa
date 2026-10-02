@@ -45,6 +45,11 @@ type Values = Record<(typeof FORM_FIELDS)[number], string>;
 
 const asText = (v: string | number | boolean | null): string => (typeof v === "boolean" ? (v ? "on" : "") : v === null ? "" : String(v));
 
+// The card's title is a heading for a screen reader and a small section label to the eye (the lead's ruling at the
+// artboard review): `kv-card` draws it at h2 scale, which competed with the page's h1, so it is set at label scale
+// from here — the primitive itself is composed as it is.
+const CARD = "[&_h2]:text-label [&_h2]:font-bold [&_h2]:text-fg-muted";
+
 const noop = () => () => {};
 const useHydrated = () => useSyncExternalStore(noop, () => true, () => false);
 
@@ -188,168 +193,176 @@ export function SettingsEdit({
         )}
 
         <div className="grid items-start gap-4 lg:grid-cols-2">
-          <KvCard
-            mode="edit"
-            title={t("cards.org")}
-            emptyValue={t("empty")}
-            rows={[
-              {
-                id: "name",
-                label: t("rows.name"),
-                value: null,
-                edit: (
-                  <Field id={controlId("name")} label={label(t("rows.name"), changed("name"))} error={err("name")}>
-                    <div className={mark(changed("name"))}>
-                      <Input name="name" maxLength={120} value={values.name} onChange={(e) => set("name")(e.target.value)} />
+          <div className="flex min-w-0 flex-col gap-4">
+            <KvCard
+              className={CARD}
+              mode="edit"
+              title={t("cards.org")}
+              emptyValue={t("empty")}
+              rows={[
+                {
+                  id: "name",
+                  label: t("rows.name"),
+                  value: null,
+                  edit: (
+                    <Field id={controlId("name")} label={label(t("rows.name"), changed("name"))} error={err("name")}>
+                      <div className={mark(changed("name"))}>
+                        <Input name="name" maxLength={120} value={values.name} onChange={(e) => set("name")(e.target.value)} />
+                      </div>
+                    </Field>
+                  ),
+                },
+                {
+                  id: "domains",
+                  label: t("rows.domains"),
+                  value: null,
+                  edit: (
+                    <div className={`flex flex-col gap-2 ${mark(domainsChanged)}`}>
+                      {view.domains.map((d) => (
+                        <Checkbox
+                          key={d.id}
+                          name="removeDomain"
+                          value={d.id}
+                          checked={removed.includes(d.id)}
+                          onChange={(e) => {
+                            const on = e.target.checked;
+                            setRemoved((r) => (on ? [...r, d.id] : r.filter((x) => x !== d.id)));
+                          }}
+                          label={t.markup("labels.removeDomain", { domain: d.domain, bdi: plain })}
+                        />
+                      ))}
+                      {err("domains") ? <p className="text-caption text-error">{err("domains")}</p> : null}
+                      <Field id={controlId("addDomains")} label={label(t("labels.addDomains"), parseDomains(adding).length > 0, true)} error={err("addDomains")}>
+                        <Input name="addDomains" dir="ltr" value={adding} onChange={(e) => setAdding(e.target.value)} />
+                      </Field>
                     </div>
-                  </Field>
-                ),
-              },
-              {
-                id: "domains",
-                label: t("rows.domains"),
-                value: null,
-                edit: (
-                  <div className={`flex flex-col gap-2 ${mark(domainsChanged)}`}>
-                    {view.domains.map((d) => (
-                      <Checkbox
-                        key={d.id}
-                        name="removeDomain"
-                        value={d.id}
-                        checked={removed.includes(d.id)}
-                        onChange={(e) => {
-                          const on = e.target.checked;
-                          setRemoved((r) => (on ? [...r, d.id] : r.filter((x) => x !== d.id)));
-                        }}
-                        label={t.markup("labels.removeDomain", { domain: d.domain, bdi: plain })}
+                  ),
+                },
+                {
+                  id: "timeZone",
+                  label: t("rows.timeZone"),
+                  value: null,
+                  edit: (
+                    <Field id={controlId("timeZone")} label={label(t("rows.timeZone"), changed("timeZone"))} error={err("timeZone")}>
+                      <div className={mark(changed("timeZone"))}>
+                        <Select name="timeZone" dir="ltr" value={values.timeZone} onChange={(e) => set("timeZone")(e.target.value)}>
+                          {timeZones.map((z) => (
+                            <option key={z} value={z}>
+                              {z}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </Field>
+                  ),
+                },
+                {
+                  id: "companyMetric",
+                  label: t("rows.companyMetric"),
+                  value: null,
+                  edit: (
+                    <Field id={controlId("companyMetric")} label={label(t("rows.companyMetric"), changed("companyMetric"))} error={err("companyMetric")}>
+                      <div className={mark(changed("companyMetric"))}>
+                        <Select name="companyMetric" value={values.companyMetric} onChange={(e) => set("companyMetric")(e.target.value)}>
+                          <option value="total_points">{t("values.metric.total_points")}</option>
+                          <option value="points_per_active_member">{t("values.metric.points_per_active_member")}</option>
+                        </Select>
+                      </div>
+                    </Field>
+                  ),
+                },
+                { id: "companyMinActiveMembers", label: t("rows.companyMinActiveMembers"), value: null, edit: number("companyMinActiveMembers", t("rows.companyMinActiveMembers")) },
+              ]}
+            />
+            <KvCard
+              className={CARD}
+              mode="edit"
+              title={t("cards.sessions")}
+              emptyValue={t("empty")}
+              rows={[
+                {
+                  id: "checkIn",
+                  label: t("rows.checkIn"),
+                  value: null,
+                  edit: (
+                    <div className="flex flex-wrap gap-4">
+                      {number("checkInRotationSeconds", t("labels.checkInRotation"), true)}
+                      {number("checkInGraceSeconds", t("labels.checkInGrace"), true)}
+                    </div>
+                  ),
+                },
+                { id: "maxCoPresenters", label: t("rows.maxCoPresenters"), value: null, edit: number("maxCoPresenters", t("rows.maxCoPresenters")) },
+                { id: "priorityRsvpHours", label: t("rows.priorityRsvpHours"), value: null, edit: number("priorityRsvpHours", t("rows.priorityRsvpHours")) },
+                {
+                  id: "limits",
+                  label: t("rows.limits"),
+                  value: null,
+                  edit: (
+                    <div className="flex flex-wrap gap-4">
+                      {number("limitDocumentMb", t("labels.limitDocument"), true)}
+                      {number("limitAudioMb", t("labels.limitAudio"), true)}
+                      {number("limitImageMb", t("labels.limitImage"), true)}
+                      {number("limitPosterMb", t("labels.limitPoster"), true)}
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </div>
+          <div className="flex min-w-0 flex-col gap-4">
+            <KvCard
+              className={CARD}
+              mode="edit"
+              title={t("cards.privacy")}
+              emptyValue={t("empty")}
+              rows={[{ id: "ratings", label: t("rows.ratings"), value: null, edit: number("ratingMinAggregate", t("rows.ratings")) }]}
+            />
+            <KvCard
+              className={CARD}
+              mode="edit"
+              title={t("cards.integrations")}
+              emptyValue={t("empty")}
+              rows={[
+                { id: "calendar", label: t("rows.calendar"), value: derived.calendar },
+                {
+                  id: "email",
+                  label: t("rows.email"),
+                  value: null,
+                  edit: (
+                    <div className="flex flex-col gap-3">
+                      <Field id={controlId("emailFromName")} label={label(t("labels.emailFromName"), changed("emailFromName"), true)} error={err("emailFromName")}>
+                        <div className={mark(changed("emailFromName"))}>
+                          <Input name="emailFromName" maxLength={120} value={values.emailFromName} onChange={(e) => set("emailFromName")(e.target.value)} />
+                        </div>
+                      </Field>
+                      <Field id={controlId("emailReplyTo")} label={label(t("labels.emailReplyTo"), changed("emailReplyTo"), true)} error={err("emailReplyTo")}>
+                        <div className={mark(changed("emailReplyTo"))}>
+                          <Input name="emailReplyTo" type="email" dir="ltr" value={values.emailReplyTo} onChange={(e) => set("emailReplyTo")(e.target.value)} />
+                        </div>
+                      </Field>
+                    </div>
+                  ),
+                },
+                {
+                  id: "jpeg",
+                  label: t("rows.jpeg"),
+                  value: null,
+                  edit: (
+                    <div className={`w-fit ${mark(changed("allowJpegExport"))}`}>
+                      <Switch
+                        name="allowJpegExport"
+                        label={`${t("rows.jpeg")}${changed("allowJpegExport") ? ` ${t("changed")}` : ""}`}
+                        labelHidden
+                        checked={values.allowJpegExport === "on"}
+                        onCheckedChange={(on) => set("allowJpegExport")(on ? "on" : "")}
                       />
-                    ))}
-                    {err("domains") ? <p className="text-caption text-error">{err("domains")}</p> : null}
-                    <Field id={controlId("addDomains")} label={label(t("labels.addDomains"), parseDomains(adding).length > 0, true)} error={err("addDomains")}>
-                      <Input name="addDomains" dir="ltr" value={adding} onChange={(e) => setAdding(e.target.value)} />
-                    </Field>
-                  </div>
-                ),
-              },
-              {
-                id: "timeZone",
-                label: t("rows.timeZone"),
-                value: null,
-                edit: (
-                  <Field id={controlId("timeZone")} label={label(t("rows.timeZone"), changed("timeZone"))} error={err("timeZone")}>
-                    <div className={mark(changed("timeZone"))}>
-                      <Select name="timeZone" dir="ltr" value={values.timeZone} onChange={(e) => set("timeZone")(e.target.value)}>
-                        {timeZones.map((z) => (
-                          <option key={z} value={z}>
-                            {z}
-                          </option>
-                        ))}
-                      </Select>
                     </div>
-                  </Field>
-                ),
-              },
-              {
-                id: "companyMetric",
-                label: t("rows.companyMetric"),
-                value: null,
-                edit: (
-                  <Field id={controlId("companyMetric")} label={label(t("rows.companyMetric"), changed("companyMetric"))} error={err("companyMetric")}>
-                    <div className={mark(changed("companyMetric"))}>
-                      <Select name="companyMetric" value={values.companyMetric} onChange={(e) => set("companyMetric")(e.target.value)}>
-                        <option value="total_points">{t("values.metric.total_points")}</option>
-                        <option value="points_per_active_member">{t("values.metric.points_per_active_member")}</option>
-                      </Select>
-                    </div>
-                  </Field>
-                ),
-              },
-              { id: "companyMinActiveMembers", label: t("rows.companyMinActiveMembers"), value: null, edit: number("companyMinActiveMembers", t("rows.companyMinActiveMembers")) },
-            ]}
-          />
-          <KvCard
-            mode="edit"
-            title={t("cards.sessions")}
-            emptyValue={t("empty")}
-            rows={[
-              {
-                id: "checkIn",
-                label: t("rows.checkIn"),
-                value: null,
-                edit: (
-                  <div className="flex flex-wrap gap-4">
-                    {number("checkInRotationSeconds", t("labels.checkInRotation"), true)}
-                    {number("checkInGraceSeconds", t("labels.checkInGrace"), true)}
-                  </div>
-                ),
-              },
-              { id: "maxCoPresenters", label: t("rows.maxCoPresenters"), value: null, edit: number("maxCoPresenters", t("rows.maxCoPresenters")) },
-              { id: "priorityRsvpHours", label: t("rows.priorityRsvpHours"), value: null, edit: number("priorityRsvpHours", t("rows.priorityRsvpHours")) },
-              {
-                id: "limits",
-                label: t("rows.limits"),
-                value: null,
-                edit: (
-                  <div className="flex flex-wrap gap-4">
-                    {number("limitDocumentMb", t("labels.limitDocument"), true)}
-                    {number("limitAudioMb", t("labels.limitAudio"), true)}
-                    {number("limitImageMb", t("labels.limitImage"), true)}
-                    {number("limitPosterMb", t("labels.limitPoster"), true)}
-                  </div>
-                ),
-              },
-            ]}
-          />
-          <KvCard
-            mode="edit"
-            title={t("cards.privacy")}
-            emptyValue={t("empty")}
-            rows={[{ id: "ratings", label: t("rows.ratings"), value: null, edit: number("ratingMinAggregate", t("rows.ratings")) }]}
-          />
-          <KvCard
-            mode="edit"
-            title={t("cards.integrations")}
-            emptyValue={t("empty")}
-            rows={[
-              { id: "calendar", label: t("rows.calendar"), value: derived.calendar },
-              {
-                id: "email",
-                label: t("rows.email"),
-                value: null,
-                edit: (
-                  <div className="flex flex-col gap-3">
-                    <Field id={controlId("emailFromName")} label={label(t("labels.emailFromName"), changed("emailFromName"), true)} error={err("emailFromName")}>
-                      <div className={mark(changed("emailFromName"))}>
-                        <Input name="emailFromName" maxLength={120} value={values.emailFromName} onChange={(e) => set("emailFromName")(e.target.value)} />
-                      </div>
-                    </Field>
-                    <Field id={controlId("emailReplyTo")} label={label(t("labels.emailReplyTo"), changed("emailReplyTo"), true)} error={err("emailReplyTo")}>
-                      <div className={mark(changed("emailReplyTo"))}>
-                        <Input name="emailReplyTo" type="email" dir="ltr" value={values.emailReplyTo} onChange={(e) => set("emailReplyTo")(e.target.value)} />
-                      </div>
-                    </Field>
-                  </div>
-                ),
-              },
-              {
-                id: "jpeg",
-                label: t("rows.jpeg"),
-                value: null,
-                edit: (
-                  <div className={`w-fit ${mark(changed("allowJpegExport"))}`}>
-                    <Switch
-                      name="allowJpegExport"
-                      label={`${t("rows.jpeg")}${changed("allowJpegExport") ? ` ${t("changed")}` : ""}`}
-                      labelHidden
-                      checked={values.allowJpegExport === "on"}
-                      onCheckedChange={(on) => set("allowJpegExport")(on ? "on" : "")}
-                    />
-                  </div>
-                ),
-              },
-              { id: "verify", label: t("rows.verify"), value: <bdi dir="ltr">{derived.verify}</bdi> },
-            ]}
-          />
+                  ),
+                },
+                { id: "verify", label: t("rows.verify"), value: <bdi dir="ltr">{derived.verify}</bdi> },
+              ]}
+            />
+          </div>
         </div>
 
         <ActionBar
