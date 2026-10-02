@@ -4396,3 +4396,46 @@ owner's ruling** (the switch replaces them; the row's switch keeps focus); R18 t
 row's one word «رسالة عامة»; ★ R13 the write gains `expected` — the update matches only when the stored schedule equals
 what the page opened with, so a concurrent edit is refused as «stale» instead of overwritten (D-N4), and 0 rows is never
 a success (D-N2); R15 the toast becomes the receipt.
+
+### N12 · `060` built — read against R1 – R20 and N11
+
+| # | Where it lives now |
+|---|---|
+| R1 · R2 | `page.tsx` — `getReminderSchedule()` null → `notFound()`; `p2_admin_update` untouched; `wave8-console-reminders` moderator case |
+| R3 · R5 · R6 · R7 | `page.tsx` — the stored array through `viewOf()`, `splitDuration`, `after.now`; every value in `<bdi>`, six forms in `timing.*` / `after.*` |
+| R4 | read keeps the defaults; a save with no row throws `not_written` (D-N2) |
+| R8 · R9 | `actions.ts` — the band per row (`rows.ts`, tied to `0062` by `tests/rls/notify-reminder-receipt.test.ts`), `noneOn`, the prompt's 0 – 7 d; a duplicate cannot arise |
+| R10 · R11 | `reminders-edit.tsx` — the summary's link focuses the control; every field controlled. ★ An in-page anchor no longer opens the leave dialog (found by the component test — **`profile-edit.tsx` has the same defect**, `content`'s, told to the lead) |
+| R12 | add / remove gone by the owner's ruling; the row's switch stages |
+| R13 | `setReminderSchedule()` — one UPDATE, `expected` guard, `0040`'s trigger unchanged |
+| R14 · R15 | the receipt (`SaveReceipt`) and `getLastSave()`; «حُفظ» / «لم يتغيّر شيء» from the action's result; the mark in read mode with the actor |
+| R16 | «عدّل» a link to `?edit`; «احفظ» enabled in the server's HTML. ★ The staged switch has no meaning without JS — recorded, as the old add / remove had none |
+| R17 · R19 | `revalidatePath`; the intro dropped |
+| R18 | the other offset's one word «رسالة عامة» |
+| R20 | `data-table`'s phone stack in read mode; edit mode one fieldset per row, stacking under `md` |
+
+★ **A finding for `scoring` and the lead (`DEC-232` §3.4):** `data-table` renders the table **and** the phone stack in
+the DOM, one hidden by CSS, so a form control placed in a cell exists **twice** — two inputs posting one name, two
+elements with one id (the component test found it). Edit mode here is therefore not a `data-table`; read mode is.
+
+### N13 · `063` built in PR B (`wave-22b/the-read-pages`, delete `3ae98d6a`, create `477c99cf`) — read against S1 – S23
+
+| # | Where it lives now |
+|---|---|
+| S1 · S2 | `page.tsx` — `getOrgSettingsView()` null → `notFound()`; `save_org_settings()` is SECURITY INVOKER, so `p2_admin_update`, the column grant, `orgs_update_own` and the domain policies still refuse a moderator (`tests/rls/notify-admin-settings.test.ts`) |
+| S3 | no numeral control in read or edit mode (`admin-settings.spec.ts`) |
+| S4 – S14 | `fields.ts` (`BOUNDS`, read from the columns' checks) and `settingsFieldSchemas`; placed per N2; `company_min_active_members` added (`DEC-220` §1.3) |
+| S15 | `actions.ts` — an empty sender name or reply-to stores `null` |
+| S16 · S17 | `settings-edit.tsx` — the summary's links focus `setting-<field>`; every field controlled |
+| S18 | only changed fields sent; the stale guard in SQL; the history proves one row (`admin-settings.spec.ts`) |
+| S19 | `?saved=1` and `saved-toast.tsx` gone; the receipt and `getLastSettingsSave()` (both stores) |
+| S20 · S21 | the explainers dropped; bounds said at the field on refusal |
+| S22 | one column of cards under `lg` |
+| S23 | name and domains read; edited in the same transaction; `org.renamed` / `domain.*` from the triggers; the last domain kept |
+
+★ `audit_log.occurred_at` defaults to `clock_timestamp()`, not `now()` — so the receipt finds a save's audit rows by the
+subjects it touched (the org, the domain rows it wrote) from the transaction's start, not by an equal instant; the
+history's `changed_at` is `now()` and is matched exactly. Both are also filtered to this actor.
+
+★ The receipt's types reach PR B as the same bytes as PR A's (`583eedbc`); `admin-settings.ts` will show a trivial
+merge where A's tail meets B's rewritten head — take B's.

@@ -1,49 +1,71 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { EditorSurface } from "@/components/admin/editor-surface";
+import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
-import { SectionHeader } from "@/components/ui/section-header";
 import type { Locale } from "@/i18n/routing";
+import { listCompaniesForAdmin } from "@/lib/dal/admin-lists";
 import { listVenuesForAdmin } from "@/lib/dal/sessions";
-import { addVenue } from "./actions";
+import { saveVenue } from "./actions";
 import { VenueForm } from "./venue-form";
 import { VenuesTable } from "./venues-table";
 
-// SCR-046 · /app/admin/venues (REQ-SES-006, REQ-ADM-006), rebuilt onto the
-// system for wave 7 (`16` §6.7, `DEC-137`).
+// SCR-046 · /app/admin/venues (`REQ-ADM-006`, `REQ-SES-006`, `REQ-ADM-022`, `REQ-UIX-093`), written for wave 22 from
+// `AdminVenues.dc.html` (`DEC-208`: deleted first). The job (`DEC-231` §0, `DEC-230` §2.4): the owner sets every
+// venue's owning company — one move per row: ⋯ → «عدّل» → the company → «احفظ» — before the hosting rule first runs.
 //
-// ★ There is no delete button, and that is not a UI decision. `venues` has
-// `grant select, insert, update` and no delete grant and no delete policy
-// (0004), so a venue cannot be deleted by anyone through PostgREST, in use or
-// not. REQ-SES-006's "cannot be deleted, only deactivated" is therefore a
-// privilege rather than a code path — the page only explains it.
+// Admin only, decided at the data: `listVenuesForAdmin` answers null to anyone else and the page answers with the
+// streamed not-found (`DEC-134`, `REQ-ADM-020`). The layout never gates; the page renders nothing of the frame.
 //
-// DAL owned by `sessions` (`lib/dal/sessions.ts`, DEC-042's original hand-off
-// to `console`, unchanged this wave) — consumed as-is, no request: the
-// existing `AdminVenue` DTO already carries every column this rebuild needs.
+// «مكان جديد» and «عدّل» are LINKS — `?new=1`, `?edit=<id>` — so the form renders on the server and works without JS
+// (`042`'s precedent, `DEC-232` §5.5); with JS it opens in the sheet. No delete exists: `venues` has no delete grant
+// and no delete policy (0004), so deactivating is the only exit (`REQ-SES-006`).
 
-export default async function VenuesPage({ params }: { params: Promise<{ locale: string }> }) {
+const PATH = "/app/admin/venues";
+
+export default async function VenuesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const sp = await searchParams;
 
-  const [venues, t] = await Promise.all([listVenuesForAdmin(locale), getTranslations("admin.venues")]);
+  const [venues, companies, t] = await Promise.all([listVenuesForAdmin(locale), listCompaniesForAdmin(locale), getTranslations("admin.venues")]);
   if (venues === null) notFound();
+
+  const editing = typeof sp.edit === "string" ? (venues.find((v) => v.id === sp.edit) ?? null) : null;
+  const creating = !editing && sp.new === "1";
 
   return (
     <>
-      <PageHeader title={t("title")} description={t("intro")} />
-      <p className="mt-2 max-w-2xl text-body-sm text-fg-muted">{t("noDeleteNote")}</p>
+      <PageHeader
+        inlineActions
+        title={t("title")}
+        actions={
+          <ButtonLink href={`${PATH}?new=1#venue-editor`} size="md">
+            {t("newVenue")}
+          </ButtonLink>
+        }
+      />
 
-      <section aria-labelledby="add" className="mt-10 max-w-2xl">
-        <SectionHeader as="h2" id="add" title={t("addTitle")} />
-        <VenueForm action={addVenue.bind(null, locale as Locale)} />
-      </section>
+      {creating || editing ? (
+        <EditorSurface key={editing?.id ?? "new"} id="venue-editor" title={editing ? t("editTitle") : t("newVenue")} closeHref={PATH} closeLabel={t("closeEditor")}>
+          <VenueForm
+            action={saveVenue.bind(null, locale as Locale, editing?.id ?? null)}
+            venue={editing}
+            companies={(companies ?? []).map((c) => ({ id: c.id, name: c.name, deactivated: c.deactivatedAt !== null }))}
+            closeHref={PATH}
+          />
+        </EditorSurface>
+      ) : null}
 
-      <section aria-labelledby="list" className="mt-12 border-t border-edge pt-8">
-        <SectionHeader as="h2" id="list" title={t("listTitle")} />
-        <div className="mt-4">
-          <VenuesTable venues={venues} locale={locale as Locale} />
-        </div>
-      </section>
+      <div className="mt-6">
+        <VenuesTable venues={venues} locale={locale as Locale} />
+      </div>
     </>
   );
 }

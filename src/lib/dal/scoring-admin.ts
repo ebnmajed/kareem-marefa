@@ -59,7 +59,6 @@ export interface ScoringAdminData {
   companyRules: CompanyScoringRule[];
   /** Both scopes, newest first — one history, each row naming its rule and its author. */
   history: ConfigHistoryRow[];
-  companies: CompanyOption[];
   timeZone: string;
 }
 
@@ -88,7 +87,6 @@ export async function getScoringAdminData(locale: string): Promise<ScoringAdminD
     { data: rules, error },
     { data: history, error: historyError },
     { data: companyRules, error: companyRulesError },
-    { data: companies, error: companiesError },
     { data: settings, error: settingsError },
   ] = await Promise.all([
     supabase
@@ -112,13 +110,11 @@ export async function getScoringAdminData(locale: string): Promise<ScoringAdminD
       .select("id, action_key, enabled, points, points_per_percent, cap_points, min_active_members, reason_ar, version")
       .eq("org_id", session.orgId)
       .order("action_key"),
-    supabase.from("companies").select("id, name").eq("org_id", session.orgId).is("deactivated_at", null).order("name"),
     supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
   ]);
   if (error) throw new Error(`scoring_rules: ${error.message}`);
   if (historyError) throw new Error(`scoring_config_history: ${historyError.message}`);
   if (companyRulesError) throw new Error(`company_scoring_rules: ${companyRulesError.message}`);
-  if (companiesError) throw new Error(`companies: ${companiesError.message}`);
   if (settingsError) throw new Error(`org_settings: ${settingsError.message}`);
 
   const actionByEntity = new Map<string, string>();
@@ -167,7 +163,6 @@ export async function getScoringAdminData(locale: string): Promise<ScoringAdminD
       actorName: h.actor_id ? (names.get(h.actor_id as string) ?? null) : null,
       changedAt: h.changed_at as string,
     })),
-    companies: companies ?? [],
     timeZone: (settings?.time_zone as string | undefined) ?? "Asia/Riyadh",
   };
 }
@@ -296,27 +291,6 @@ export async function updateCompanyPercentRule(locale: string, input: CompanyPer
   if (error) throw new Error(`company_scoring_rules: ${error.message}`);
 }
 
-// Stopgap: the scheduling screen (console's app/admin/sessions/**) has no
-// "host company" field yet — this is a session ID typed into a text field,
-// the same stopgap the manual point adjustment form already uses for a
-// member ID (docs/plan/notes/scoring.md flags both for whoever builds the
-// real pickers). The write itself is a plain column-grant UPDATE on
-// sessions.host_company_id (0001's grant), gated by sessions' own
-// sessions_update_admin RLS policy — this module never re-implements that
-// check, only 404s the screen early like assertAdmin() does everywhere else.
-export const sessionHostCompanyInput = z.object({
-  sessionId: z.uuid(),
-  companyId: z.uuid().nullable(),
-});
-export type SessionHostCompanyInput = z.infer<typeof sessionHostCompanyInput>;
-
-export async function setSessionHostCompany(locale: string, input: SessionHostCompanyInput): Promise<void> {
-  const client = await assertAdmin(locale);
-  if (!client) throw new Error("not_an_admin");
-  const { error } = await client.supabase.from("sessions").update({ host_company_id: input.companyId }).eq("id", input.sessionId);
-  if (error) throw new Error(`sessions: ${error.message}`);
-}
-
 export interface CompanyOption {
   id: string;
   name: string;
@@ -359,39 +333,6 @@ export async function submitManualAdjustment(locale: string, input: ManualAdjust
   if (error.message.includes("amount_required")) throw new Error("amount_required");
   if (error.code === "P0002") throw new Error("member_not_found");
   throw new Error(`adjust_points_manually: ${error.message}`);
-}
-
-export interface HostableSession {
-  id: string;
-  title: string;
-  startsAt: string | null;
-  hostCompanyId: string | null;
-}
-
-/**
- * The org's sessions, for the host-company picker — newest first, cancelled
- * and archived ones left out. The picker replaced a session id typed into a
- * text field; the company-hosting rule pays on completion, so any session that
- * can still complete, or has, is a candidate.
- */
-export async function listHostableSessions(locale: string): Promise<HostableSession[] | null> {
-  const client = await assertAdmin(locale);
-  if (!client) return null;
-  const { session, supabase } = client;
-  const { data, error } = await supabase
-    .from("sessions")
-    .select("id, title, starts_at, host_company_id, state")
-    .eq("org_id", session.orgId)
-    .not("state", "in", "(cancelled,archived)")
-    .order("starts_at", { ascending: false, nullsFirst: false })
-    .limit(500);
-  if (error) throw new Error(`sessions: ${error.message}`);
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    title: r.title as string,
-    startsAt: r.starts_at as string | null,
-    hostCompanyId: r.host_company_id as string | null,
-  }));
 }
 
 // ── Recognition (SCR-054) ───────────────────────────────────────────────────

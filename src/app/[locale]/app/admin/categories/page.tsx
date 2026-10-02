@@ -1,42 +1,62 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { EditorSurface } from "@/components/admin/editor-surface";
+import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
-import { SectionHeader } from "@/components/ui/section-header";
 import type { Locale } from "@/i18n/routing";
 import { listCategoriesForAdmin } from "@/lib/dal/admin-lists";
-import { addCategory } from "./actions";
+import { saveCategory } from "./actions";
 import { CategoriesTable } from "./categories-table";
 import { CategoryForm } from "./category-form";
 
-// SCR-047 · /app/admin/categories (REQ-ADM-007, REQ-DSC-001, REQ-DSC-002,
-// REQ-DSC-004), rebuilt onto the system for wave 7 (`16` §6.7, `DEC-137`).
-// Same shape as the inherited `admin/venues/page.tsx`: no delete button, and
-// that is a privilege fact (`categories` has no delete grant and no delete
-// policy, 0004), not a UI decision.
+// SCR-047 · /app/admin/categories (`REQ-ADM-007`, `REQ-UIX-094`), written for wave 22 from `AdminCategories.dc.html`
+// (`DEC-208`: deleted first). Categories alone — no tags, and no label says «والوسوم» (`DEC-227` §3). The job: an
+// admin adds or renames a category, sees how much uses it, and retires one by deactivating it.
+//
+// Admin only, decided at the data (`listCategoriesForAdmin` → null → the streamed not-found, `DEC-134`). «تصنيف جديد»
+// and «عدّل» are LINKS — `?new=1`, `?edit=<id>` — so the form works without JS; with JS it is the sheet (`DEC-232`
+// §5.5). No delete exists: there is no delete grant and no delete policy (0004).
 
-export default async function CategoriesPage({ params }: { params: Promise<{ locale: string }> }) {
+const PATH = "/app/admin/categories";
+
+export default async function CategoriesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const sp = await searchParams;
 
   const [categories, t] = await Promise.all([listCategoriesForAdmin(locale), getTranslations("admin.categories")]);
   if (categories === null) notFound();
 
+  const editing = typeof sp.edit === "string" ? (categories.find((c) => c.id === sp.edit) ?? null) : null;
+  const creating = !editing && sp.new === "1";
+
   return (
     <>
-      <PageHeader title={t("title")} description={t("intro")} />
-      <p className="mt-2 max-w-2xl text-body-sm text-fg-muted">{t("noDeleteNote")}</p>
+      <PageHeader
+        inlineActions
+        title={t("title")}
+        actions={
+          <ButtonLink href={`${PATH}?new=1#category-editor`} size="md">
+            {t("newCategory")}
+          </ButtonLink>
+        }
+      />
 
-      <section aria-labelledby="add" className="mt-10 max-w-md">
-        <SectionHeader as="h2" id="add" title={t("addTitle")} />
-        <CategoryForm action={addCategory.bind(null, locale as Locale)} />
-      </section>
+      {creating || editing ? (
+        <EditorSurface key={editing?.id ?? "new"} id="category-editor" title={editing ? t("editTitle") : t("newCategory")} closeHref={PATH} closeLabel={t("closeEditor")}>
+          <CategoryForm action={saveCategory.bind(null, locale as Locale, editing?.id ?? null)} category={editing} closeHref={PATH} />
+        </EditorSurface>
+      ) : null}
 
-      <section aria-labelledby="list" className="mt-12 border-t border-edge pt-8">
-        <SectionHeader as="h2" id="list" title={t("listTitle")} />
-        <div className="mt-4">
-          <CategoriesTable categories={categories} locale={locale as Locale} />
-        </div>
-      </section>
+      <div className="mt-6">
+        <CategoriesTable categories={categories} locale={locale as Locale} />
+      </div>
     </>
   );
 }

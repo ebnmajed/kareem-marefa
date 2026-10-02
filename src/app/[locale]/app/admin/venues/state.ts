@@ -1,15 +1,17 @@
-import { emptyFormState, type FormState } from "@/lib/form-state";
+import { emptySavedState, type SavedFormState } from "@/components/admin/saved-form-state";
 
-// A "use server" module may export async functions and nothing else — same
-// rule `admin/sessions/state.ts` documents.
+// A "use server" module may export async functions and nothing else — the
+// fields, the empty state and the «no company» value live here.
 //
-// ★ Replaces the old `VenueState = { error: string | null }` — the add form
-// moved onto `lib/form-state`'s shared model for wave 7 (`DEC-137`), same as
-// `admin/sessions/direct-session-form.tsx` already did in wave 6.
+// ★ wave 22 (`REQ-ADM-022`): `companyId` — the owning company, or «لا شركة»,
+// a real and final choice, posted as `NO_COMPANY`.
 
-export const VENUE_FIELDS = ["name", "address", "mapUrl", "capacity", "notes", "timeZone"] as const;
+export const VENUE_FIELDS = ["name", "companyId", "address", "mapUrl", "capacity", "timeZone", "notes"] as const;
 export type VenueField = (typeof VENUE_FIELDS)[number];
 export const VENUE_REQUIRED_FIELDS: readonly VenueField[] = ["name"];
 
-export type VenueState = FormState<VenueField>;
-export const emptyVenueState: VenueState = emptyFormState<VenueField>();
+export type VenueState = SavedFormState<VenueField>;
+export const emptyVenueState: VenueState = emptySavedState<VenueField>();
+
+/** The `select`'s value for «لا شركة». */
+export const NO_COMPANY = "none";

@@ -1,42 +1,66 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { EditorSurface } from "@/components/admin/editor-surface";
+import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
-import { SectionHeader } from "@/components/ui/section-header";
 import type { Locale } from "@/i18n/routing";
 import { listCompaniesForAdmin } from "@/lib/dal/admin-lists";
-import { addCompany } from "./actions";
+import { getCompanyCup } from "@/lib/dal/leaderboards";
+import { saveCompany } from "./actions";
 import { CompaniesTable } from "./companies-table";
 import { CompanyForm } from "./company-form";
 
-// SCR-048 · /app/admin/companies (REQ-ADM-008, REQ-PRF-002), rebuilt onto
-// the system for wave 7 (`16` §6.7, `DEC-137`). Same shape as
-// `admin/categories/page.tsx` and the inherited `admin/venues/page.tsx`: no
-// delete button, and that is a privilege fact (`companies` has no delete
-// grant and no delete policy, 0004), not a UI decision.
+// SCR-048 · /app/admin/companies (`REQ-ADM-008`, `REQ-UIX-095`, `REQ-UIX-043`), written for wave 22 from
+// `AdminCompanies.dc.html` (`DEC-208`: deleted first). The job: an admin reads each company's colour, members and the
+// quarter's points, and adds, renames, recolours or retires one from its row.
+//
+// Admin only, decided at the data (`listCompaniesForAdmin` → null → the streamed not-found, `DEC-134`). The quarter's
+// points are read from the quarter's company snapshot (`getCompanyCup()`, `scoring`'s, read only) — never a literal.
+// «شركة جديدة» and «عدّل» are LINKS — `?new=1`, `?edit=<id>` — the form a region without JS and the sheet with it.
 
-export default async function CompaniesPage({ params }: { params: Promise<{ locale: string }> }) {
+const PATH = "/app/admin/companies";
+
+export default async function CompaniesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const sp = await searchParams;
 
   const [companies, t] = await Promise.all([listCompaniesForAdmin(locale), getTranslations("admin.companies")]);
   if (companies === null) notFound();
+  const cup = await getCompanyCup(locale);
+  const quarter = new Map((cup?.rows ?? []).map((r) => [r.companyId, r.totalPoints]));
+  const rows = companies.map((c) => ({ ...c, quarterPoints: quarter.get(c.id) ?? null }));
+
+  const editing = typeof sp.edit === "string" ? (companies.find((c) => c.id === sp.edit) ?? null) : null;
+  const creating = !editing && sp.new === "1";
 
   return (
     <>
-      <PageHeader title={t("title")} description={t("intro")} />
-      <p className="mt-2 max-w-2xl text-body-sm text-fg-muted">{t("noDeleteNote")}</p>
+      <PageHeader
+        inlineActions
+        title={t("title")}
+        actions={
+          <ButtonLink href={`${PATH}?new=1#company-editor`} size="md">
+            {t("newCompany")}
+          </ButtonLink>
+        }
+      />
 
-      <section aria-labelledby="add" className="mt-10 max-w-md">
-        <SectionHeader as="h2" id="add" title={t("addTitle")} />
-        <CompanyForm action={addCompany.bind(null, locale as Locale)} />
-      </section>
+      {creating || editing ? (
+        <EditorSurface key={editing?.id ?? "new"} id="company-editor" title={editing ? t("editTitle") : t("newCompany")} closeHref={PATH} closeLabel={t("closeEditor")}>
+          <CompanyForm action={saveCompany.bind(null, locale as Locale, editing?.id ?? null)} company={editing} closeHref={PATH} />
+        </EditorSurface>
+      ) : null}
 
-      <section aria-labelledby="list" className="mt-12 border-t border-edge pt-8">
-        <SectionHeader as="h2" id="list" title={t("listTitle")} />
-        <div className="mt-4">
-          <CompaniesTable companies={companies} locale={locale as Locale} />
-        </div>
-      </section>
+      <div className="mt-6">
+        <CompaniesTable companies={rows} locale={locale as Locale} />
+      </div>
     </>
   );
 }

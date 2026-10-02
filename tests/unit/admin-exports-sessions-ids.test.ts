@@ -52,11 +52,17 @@ describe("exportSessionsCsv — by ids", () => {
     expect(csv).toContain("الثالثة");
   });
 
-  it("with ids: the selection only, and the same audit row as the whole export", async () => {
+  // ★ wave 22 (DEC-232 §2.8): the audit row now records the selection it read — `p_detail.ids` (a ledger line).
+  it("with ids: the selection only, and an audit row that records the selection", async () => {
     const csv = (await exportSessionsCsv("ar", [A, C]))!;
     expect(csv).toContain("الأولى");
     expect(csv).not.toContain("الثانية");
     expect(csv).toContain("الثالثة");
+    expect(rpc).toHaveBeenCalledWith("write_admin_export_audit", { p_export_type: "sessions", p_subject_type: null, p_subject_id: null, p_detail: { ids: [A, C] } });
+  });
+
+  it("without ids, the audit call is exactly main's — no slice", async () => {
+    await exportSessionsCsv("ar");
     expect(rpc).toHaveBeenCalledWith("write_admin_export_audit", { p_export_type: "sessions", p_subject_type: null, p_subject_id: null });
   });
 

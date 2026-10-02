@@ -1,98 +1,76 @@
 "use client";
 
-import { useActionState } from "react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { ListEditorForm } from "@/components/admin/list-editor-form";
+import { DataTableSwatchCell } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
-import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
 import { RadioGroup } from "@/components/ui/radio-group";
+import type { AdminCompany } from "@/lib/dal/admin-lists";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
-import { COMPANY_FIELDS, COMPANY_REQUIRED_FIELDS, NO_TEAM_COLOUR, emptyCompanyState, type CompanyField, type CompanyState } from "./state";
-import { Swatch } from "./swatch";
-import { TEAM_COLOUR_HEX, TEAM_COLOUR_NAMES } from "./team-colours";
-import { FormAlert } from "@/components/admin/form-alert";
+import { COMPANY_FIELDS, NO_TEAM_COLOUR, emptyCompanyState, type CompanyField, type CompanyState } from "./state";
+import { TEAM_COLOUR_HEX, TEAM_COLOUR_NAMES, teamColourNameOf } from "./team-colours";
 
-// SCR-048's add form, onto `lib/form-state`'s shared model for wave 7
-// (`16` §8.2, `DEC-137`).
-//
-// ★ wave 16 (DEC-195 §3, REQ-UIX-043): the team colour is chosen here, while
-// the company is added — the owner's model. The same seven names and «بلا لون»
-// as the row's menu, each a swatch AND its name in words, never a hex field.
-// «بلا لون» is the default: a company may have none.
-//
-// ★★ There is no logo field, and there will not be one (DEC-195 §4): a company
-// is a name, a team colour, and active-or-deactivated.
+// SCR-048's one form — create (`?new=1`) and edit (`?edit=<id>`), written for wave 22 from `AdminCompanies.dc.html`'s
+// edit sheet. The name and the team colour: the seven named colours and «بلا لون», each a swatch AND its name in
+// words, never a hex field (`REQ-UIX-043`). ★★ No logo field and no domain field (`DEC-195` §4, `DEC-231` §6.1).
 
 const LABEL_KEY: Record<CompanyField, string> = { name: "nameLabel", teamColour: "teamColourLabel" };
+const FIELD_ID: Record<CompanyField, string> = { name: "company-name", teamColour: "company-team-colour" };
 
-const FIELD_ID: Record<CompanyField, string> = {
-  name: "co-name",
-  teamColour: "co-team-colour",
-};
-
-export function CompanyForm({ action }: { action: (prev: CompanyState, formData: FormData) => Promise<CompanyState> }) {
+export function CompanyForm({
+  action,
+  company,
+  closeHref,
+}: {
+  action: (prev: CompanyState, formData: FormData) => Promise<CompanyState>;
+  company: AdminCompany | null;
+  closeHref: string;
+}) {
   const t = useTranslations("admin.companies");
-  const [state, formAction, pending] = useActionState(action, emptyCompanyState);
-  const err = (field: CompanyField) => (state.errors[field] ? t(`errors.${state.errors[field]}`) : undefined);
-  const required = (field: CompanyField) => COMPANY_REQUIRED_FIELDS.includes(field);
-
-  const summary = summaryErrors(state, {
-    fields: COMPANY_FIELDS,
-    label: (field) => t(LABEL_KEY[field]),
-    message: (key) => t(`errors.${key}`),
-    // ★ The summary's links target the CONTROL's id, which is the `<Field id>`
-    // below — not the field's name. Without this map every link pointed at an
-    // element that does not exist and focused nothing (wave 8, F4; REQ-UIX-009).
-    fieldId: (field) => FIELD_ID[field],
-  });
+  const stored = company ? (teamColourNameOf(company.teamColor) ?? NO_TEAM_COLOUR) : NO_TEAM_COLOUR;
 
   return (
-    <form action={formAction} noValidate className="mt-4 max-w-md space-y-5">
-      {hasAttempted(state) ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
-      {state.formError ? (
-        <FormAlert>
-          {t(`errors.${state.formError}`)}
-        </FormAlert>
-      ) : null}
-
-      <Field id="co-name" label={t("nameLabel")} required={required("name")} error={err("name")}>
-        <Input name="name" defaultValue={was(state, "name")} maxLength={120} />
-      </Field>
-
-      <div id={FIELD_ID.teamColour} tabIndex={-1}>
-        <RadioGroup
-          name="teamColour"
-          legend={t("teamColourLabel")}
-          defaultValue={was(state, "teamColour") || NO_TEAM_COLOUR}
-          invalid={Boolean(err("teamColour"))}
-          error={err("teamColour")}
-          options={[
-            ...TEAM_COLOUR_NAMES.map((name) => ({
-              value: name,
-              label: (
-                <span className="inline-flex items-center gap-2">
-                  <Swatch hex={TEAM_COLOUR_HEX[name]} />
-                  {t(`teamColourNames.${name}`)}
-                </span>
-              ),
-            })),
-            {
-              value: NO_TEAM_COLOUR,
-              label: (
-                <span className="inline-flex items-center gap-2">
-                  <Swatch hex={null} />
-                  {t("teamColourNone")}
-                </span>
-              ),
-            },
-          ]}
-        />
-      </div>
-
-      <Button type="submit" pending={pending}>
-        {t("add")}
-      </Button>
-    </form>
+    <ListEditorForm<CompanyState>
+      action={action}
+      emptyState={emptyCompanyState}
+      closeHref={closeHref}
+      savedLabel={t("saved")}
+      failedMessage={(key) => t(`errors.${key}`)}
+      summaryTitle={t("errorSummaryTitle")}
+      summary={(state) =>
+        summaryErrors(state, { fields: COMPANY_FIELDS, label: (f) => t(LABEL_KEY[f]), message: (key) => t(`errors.${key}`), fieldId: (f) => FIELD_ID[f] })
+      }
+      submitLabel={t("save")}
+      pendingLabel={t("saving")}
+    >
+      {(state) => {
+        const attempted = hasAttempted(state) && !state.saved;
+        const err = (field: CompanyField) => (state.errors[field] ? t(`errors.${state.errors[field]}`) : undefined);
+        return (
+          <>
+            <Field id={FIELD_ID.name} label={t("nameLabel")} required error={err("name")}>
+              <Input name="name" defaultValue={attempted ? was(state, "name") : (company?.name ?? "")} maxLength={120} />
+            </Field>
+            <div id={FIELD_ID.teamColour} tabIndex={-1}>
+              <RadioGroup
+                name="teamColour"
+                legend={t("teamColourLabel")}
+                defaultValue={attempted ? was(state, "teamColour") || NO_TEAM_COLOUR : stored}
+                invalid={Boolean(err("teamColour"))}
+                error={err("teamColour")}
+                options={[
+                  ...TEAM_COLOUR_NAMES.map((name) => ({
+                    value: name,
+                    label: <DataTableSwatchCell color={TEAM_COLOUR_HEX[name]} colorName={t(`teamColourNames.${name}`)} />,
+                  })),
+                  { value: NO_TEAM_COLOUR, label: <DataTableSwatchCell color={null} colorName={t("teamColourNone")} /> },
+                ]}
+              />
+            </div>
+          </>
+        );
+      }}
+    </ListEditorForm>
   );
 }

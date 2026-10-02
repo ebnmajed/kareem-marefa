@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+import { parseMemberQuery } from "@/components/admin/members/member-query";
+import { auditFiltersFrom } from "@/lib/dal/admin-audit";
 import {
   sessionsExportIds,
   exportAllAttendanceCsv,
   exportCertificatesCsv,
+  exportAuditCsv,
   exportMembersCsv,
   exportPointsCsv,
   exportRatingsCsv,
@@ -26,6 +29,8 @@ const EXPORTS: Record<string, { fn: (locale: string) => Promise<string | null>; 
   points: { fn: exportPointsCsv, filenameAr: "النقاط" },
   certificates: { fn: exportCertificatesCsv, filenameAr: "الشهادات" },
   members: { fn: exportMembersCsv, filenameAr: "الأعضاء" },
+  // ★ wave 22 (`REQ-UIX-099`): the audit log, both stores, through the same audited path.
+  audit: { fn: (locale) => exportAuditCsv(locale), filenameAr: "سجل التدقيق" },
 };
 
 function contentDisposition(type: string, filenameAr: string): string {
@@ -52,7 +57,23 @@ export async function GET(request: Request, { params }: { params: Promise<{ type
     ids = parsed.data;
   }
 
-  const csv = ids ? await exportSessionsCsv("ar", ids) : await entry.fn("ar");
+  // ★ Wave 22 (`DEC-232` §2.8, add-only): SCR-049's «CSV» is the list the screen shows — its `q`, `company` and
+  // `role`, parsed by the screen's own parser, so a value the screen would drop is dropped here too. Absent, it is
+  // today's whole roster.
+  const sp = new URL(request.url).searchParams;
+  const memberQuery = type === "members" && ["q", "company", "role"].some((k) => sp.has(k)) ? parseMemberQuery(Object.fromEntries(sp)) : null;
+
+  // ★ Wave 22 (`DEC-232` §2.8, add-only): SCR-062's «CSV» is the log its filters show — parsed by the screen's own
+  // parser, so a value the screen drops is dropped here too, and the cursor is never honoured (the file is every page).
+  const auditFilters = type === "audit" ? auditFiltersFrom(Object.fromEntries(sp)).filters : null;
+
+  const csv = ids
+    ? await exportSessionsCsv("ar", ids)
+    : memberQuery
+      ? await exportMembersCsv("ar", memberQuery)
+      : auditFilters
+        ? await exportAuditCsv("ar", { ...auditFilters, before: undefined })
+        : await entry.fn("ar");
   if (csv === null) return new NextResponse("not_found", { status: 404 });
 
   return new NextResponse(csv, {
