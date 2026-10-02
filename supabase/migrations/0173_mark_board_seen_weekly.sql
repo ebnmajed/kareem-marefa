@@ -1,3 +1,4 @@
+-- 0173 · wave 20 (DEC-216 §2.2, DEC-218, REQ-UIX-078) — proposed by `scoring`, promoted by the lead. The week's seen mark gains its writer.
 -- scoring · wave 20, PR B (DEC-216 §2.2, DEC-217 §3.3, §4.3, REQ-UIX-078) — `mark_board_seen()` learns the week.
 --
 -- The boards' first window, «هذا الأسبوع», is summed live (0171); its movement is «منذ زيارتك الأخيرة», read against

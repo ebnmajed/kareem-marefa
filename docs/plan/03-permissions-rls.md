@@ -1479,7 +1479,9 @@ generated suite is the highest-value test in the product.
 | `RPC-mark_points_seen.own_row` | Writes the caller's own mark, inserting it the first time; never another member's. (migration `0163`, `DEC-197`). |
 | `RPC-mark_points_seen.foreign_level` | A level of another org is refused with `22023` and nothing is written. (migration `0163`). |
 | `RPC-mark_board_seen.one_board` | Touches only the named board's columns; the others and the points cursor are unchanged. (migration `0163`). |
-| `RPC-mark_board_seen.unknown_board` | A board other than `all_time`, `monthly` or `company` is refused with `22023`. (migration `0163`). |
+| `RPC-mark_board_seen.unknown_board` | A board other than `all_time`, `monthly`, `company` or ★ `weekly` (from `0173`) is refused with `22023`. (migration `0163`, amended by `0173`). |
+| `RPC-mark_board_seen.weekly` | Writes the caller's own weekly period and rank, touching no other board's columns (migration `0173`). |
+| `RPC-mark_board_seen.weekly_current` | A weekly period other than the current `org_week()` start — or none — is refused with `22023`, and nothing is written (migration `0173`). |
 | `RPC-mark_board_seen.fraction_clamped` | A company fraction outside 0–1 is stored clamped. (migration `0163`). |
 | `RPC-session_attendance_count.count_not_who` | A member reads how many attended a session and no `check_ins` row of anyone else. (migration `0165`). |
 | `RPC-session_attendance_count.removed` | A check-in an admin removed does not count; a member is counted once across days. (migration `0165`). |
