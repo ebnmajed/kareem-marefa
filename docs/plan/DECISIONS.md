@@ -7301,3 +7301,56 @@ and transition off beneath it** — one rule, the lead's, so a shared primitive 
 the attendance code in it; they render in the body face, bold. Recorded for the owner's acceptance.
 
 - **Documents changed:** `01-prd.md`, `15-backlog.md` (§5), `CLAUDE.md` (§3.10's transfer), `STATUS.md`
+
+## DEC-229 — Wave 21's close: M11a is merged and live; what the wave found that no suite did, what it carries, and the next scope left to the next session
+
+- **Date:** 2026-10-02 · **Decided by:** the wave-21 lead, recording; the owner merged #44 and #45, pushed `0179` and reconnected Railway
+- **Amends:** nothing. **Records:** the rulings made after sync 1 that `DEC-228` did not carry
+- **Does not decide:** the next scope — ★ **the owner leaves M11b (`046` – `065`) or session stories to the next session**
+
+### 1 · Merged and live
+
+PR A #44 (`8ba2554b`) and PR B #45 (`69438aa2`), each merged on CI `success` read from the run on its own head.
+★ **`0179` rehearsed by the lead** on the owner's production schema dump taken at `0178` (0 data rows; exit 0; the end state
+identical to local but `rls_auto_enable()`; 111 / 112 on the rehearsed schema), **pushed by the owner**, production at
+`0179`. Railway reconnected with `--repo … --branch main`; **the builder held `DOCKERFILE` / `worker/Dockerfile`**;
+`69438aa2` deployed; «LISTEN/NOTIFY probe OK — round trip 8 ms». Wave 21 changed nothing under `worker/` or `packages/`.
+
+### 2 · Rulings after sync 1, recorded here because `DEC-228` predates them
+
+1. **D7** — 043's «يُغلق» is drawn from the pure `checkInCeiling()` over the page's own days; no grant on
+   `check_in_ceiling()`; one-day sessions only.
+2. **«افتح كجلسة»** stays on 041 beside 042's door — both `create_session(p_proposal)`.
+3. **The display face and motion under the console are one rule each** in `globals.css` beneath `[data-console]`
+   (inside the playground's block), so a shared primitive (`ui/stat`, `ui/switch`, `ui/badge`) cannot bring either in.
+4. **`PageHeader` gains `inlineActions`; `data-table` gains `stickyHeader`, `renderCard`, `hiddenHeaders`** — all add-only.
+5. **`kv-card`'s edit rows are `<fieldset><legend>`**, not `role=group` + `aria-labelledby`, which named a control twice.
+6. **`EmptyState.action` stays required**; 044's empty list offers the next move by state.
+7. **A zero count is never drawn in the attention colour.**
+
+### 3 · What the wave found that no suite had
+
+The rebuild rule (`DEC-208`) found, among others: a create confirmation lost since wave 6; the approved-proposal door on
+042 alone; preliminary materials absent from the review; a declined co-presenter listed; a dashboard attendance rate past
+100 % (now one definition, `attendanceRate()`); per-rater ratings audited on every read; a message typed before «اعتمد»
+discarded; a phone pager drawn twice; a moderator's rail counting queues that 404 for them; and `REQ-ORG-017`, cited three
+times and never defined. ★ **And two of the lead's own**: `tokens-scope` red from `fa18b414` to `94aaf04a` (CSS outside
+the playground's block, a hand-picked test set), and the gallery specs not re-run after three demos were added — CI
+caught both.
+
+### 4 · Carried
+
+- At `lg`, re-clicking the open proposal remounts its card and drops a typed message.
+- Under heavy load a read after 044's door once threw (digest unread; unreproduced in 141 runs); the code's read is
+  guarded, `getAttendanceReport()` is not.
+- «قرار خلال 7 أيام» — no requirement defines a review window.
+- `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, F2/F3, the hard-load duplicate (`DEC-204`), and ★ a committed
+  `railway.json` pinning the worker's builder — still owed.
+
+### 5 · The next scope — the next session's
+
+**M11b** (`046` – `065`, the rest of the console, on this wave's frame and primitives, with `company_min_active_members`'
+control) **or session stories** (overtaken three times; wave 18's ring still inert). **The owner decides at the next
+session's start**; nothing here pre-empts it.
+
+- **Documents changed:** `STATUS.md`
