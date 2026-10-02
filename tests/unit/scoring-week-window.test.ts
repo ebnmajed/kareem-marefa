@@ -79,7 +79,9 @@ describe("moment 5 on the week — decideBoardMoment('weekly', …)", () => {
     expect(decideBoardMoment("weekly", null, now(4)).occurrenceId).toBeNull();
   });
 
-  it("★ PR A: the weekly mark has no writer yet, so the surfaces must not ask to write it", () => {
-    expect(WEEKLY_MARK_WRITABLE).toBe(false);
+  // ★ wave 20, PR B (DEC-217 §3.3, the ledger line the lead named): `mark_board_seen()` learns the week, so the surfaces
+  // write the weekly pair. In PR A this read `false`.
+  it("★ PR B: the weekly mark has its writer, so the surfaces write it", () => {
+    expect(WEEKLY_MARK_WRITABLE).toBe(true);
   });
 });
