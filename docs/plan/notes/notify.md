@@ -3859,3 +3859,98 @@ load and pass alone.
 **`025` accepted by the lead** (`6695dd34` → `4b2ccdff`), C14 as recorded. The lead runs the three edited e2e specs on
 the gate's production build. «حجزك قائم في كل الأحوال.» (`failed.seatStands`, C16) is on the copy-trim list for the
 owner and stays until the ruling. Holding for PR B.
+
+## W12. PR-B addendum — «إشعارات البريد» is built (`DEC-219` §1, the owner's ruling)
+
+**What it is.** It is the first row of `029`'s switch group, «إشعارات البريد». It writes `channel = 'email'` for the
+**optional categories only**:
+- for a member: `new_sessions`, `my_sessions`, `reminders`, `ratings`, `social`, `recognition`, `proposals`;
+- for an admin or moderator: the same seven plus `admin_queue`.
+
+`proposals` is written by the master even though it is not a row of its own (`DEC-218` §2.1). The master never touches
+`certificates`, `moderation` or `account`, nor any of `08` §1.7's seventeen keys. Those keys are ignored by
+`notify()` anyway, and the table's check constraint refuses the three fixed categories.
+
+**The set comes from the database.** It is the matrix rows `getPreferenceMatrix()` returns for the viewer with
+`switchable === true`. That function already drops `admin_queue` for a member and drops the three fixed categories,
+so the master's set is *derived from the matrix*, never typed into the screen. One addition is needed: a category
+counts only if it has at least one optional **email** message. Today that is all eight, so the condition is a guard
+against a future category, not a filter that removes one.
+
+### The write — the existing path, one call per row, inside ONE action
+
+The action is `setEmailMaster(locale, previous, formData)` in `me/settings/actions.ts`, bound and passed to the
+switch row as its `SettingsSwitchAction`. Zod first: `enabled` is a boolean. Then:
+1. **Snapshot.** Read the member's stored rows for the set from `getPreferenceMatrix()`: `enabled.email` and
+   `enabled.inApp` per category. Absence counts as on.
+2. **Write.** For each category in the set, `setPreference(locale, { category, channel: "email", enabled })`, then
+   `setPreference(locale, { category, channel: "in_app", enabled: true })`. The second call is `DEC-218` §2.1's rule:
+   every write from `029` restores the inbox. This is the function that writes preferences today, unchanged, with its
+   update-then-insert and its 23505 retry. A member's set is seven categories and a staff member's eight, so at most
+   16 calls. Server Actions serialise per client, so no write races another from the same tab.
+3. **Revert as one** (`DEC-219` §1: «a failure reverts it as one»). If any call throws, the action restores the
+   snapshot. For each category already written, `setPreference` is called back to the snapshot's email and in-app
+   values, compensation in reverse order. It then returns `{ checked: <derived from a fresh read>, failed: true }`,
+   so the switch shows what the database holds and `preferences.error` appears beside it.
+4. **Success.** `revalidatePath('/[locale]/app/me/settings')` and return `{ checked: enabled, failed: false }`.
+
+★ **What this is not.** Four `setPreference` calls are not a database transaction. A compensating write can itself
+fail: a dead connection mid-revert would leave the rows mixed. The switch still cannot lie in that case, because its
+state is re-derived from a fresh read and a mixed set reads «off». The error line says the save failed. A truly atomic
+write needs a definer RPC that writes every row in one transaction. That is SQL from `0173` and touches the
+preference tables but not `notify()`, so it is **not proposed** unless the lead or owner wants it. The owner ruled a
+bulk write; compensation is the bulk write on the existing path.
+
+### The state — derived, never stored
+
+A pure function, add-only in `src/lib/dal/notifications.ts`:
+
+```ts
+/** DEC-219 §1: «إشعارات البريد» is on only when every optional email row the member may hold is on. */
+export function emailMasterOn(rows: CategoryPreference[]): boolean
+```
+
+It takes `getPreferenceMatrix(locale).rows`, which is already filtered by role, so staff and member differ by input,
+not by a flag. It returns `rows.filter(optionalEmail).every((r) => r.enabled.email)`.
+- A member with no stored rows gets `true` (absence means on).
+- A category the member cannot hold never reaches it. A demoted moderator's stale `admin_queue` row is invisible,
+  because `getPreferenceMatrix` drops `admin_queue` for a member.
+
+### ★ Kept-behaviour rows added to `029`'s table (§W2)
+
+| # | Behaviour | Kept by |
+|---|---|---|
+| M1 | «إشعارات البريد» writes `email` for the optional categories the member may hold (seven, or eight for staff, `proposals` included), and `in_app = true` with each | `DEC-219` §1, `DEC-218` §2.1, `REQ-NTF-003` |
+| M2 | It never writes `certificates`, `moderation` or `account`, nor any of the seventeen | `DEC-219` §1, `08` §1.7, `0026:261` |
+| M3 | Its state is derived (`emailMasterOn`), with no column and no migration | `DEC-219` §1 |
+| M4 | One action; a failure compensates every write it made and shows `preferences.error` beside the switch, whose state is re-read | `DEC-219` §1, `REQ-UIX-077` acceptance 2 |
+| ★ M5 | **Switching the master ON turns back on every optional category the member had silenced — by design, the owner's accepted trade, NOT a bug.** No session «fixes» it | `DEC-219` §1 |
+| M6 | Switching one category off turns the master off (derived), and switching the master changes every category row under it on the next render | `DEC-219` §1 |
+
+### What M6 needs from `settings-group` (my primitive, PR B, add-only behaviour)
+
+Today a switch row adopts its `checked` prop **once**, at mount. After the master's write, the page re-renders with
+new `checked` values for every category row, and each row must take them. The change: the row also adopts a changed
+`checked` prop, using the same «previous render» pattern it already uses for the action's answer. The props are
+unchanged, the registry entry is unchanged, and a case is added to `settings-group.test.tsx`: re-render with a
+different `checked` and the switch follows. The reverse also holds: a category write revalidates the page, so the
+master's derived state follows it.
+
+### Tests (PR B)
+
+- **`tests/components/settings/email-master.test.ts` (new) — `emailMasterOn`:**
+  - all on: true; no stored rows at all: true;
+  - one category off: false, for each of the seven;
+  - `proposals` email off (not a row of its own): false;
+  - staff with `admin_queue` email off: false;
+  - a member's matrix, which carries no `admin_queue` row even when a stale row is stored: true;
+  - the three fixed categories in the input are ignored.
+- **`tests/components/settings/settings-actions.test.ts` (new) — `setEmailMaster` with `setPreference` mocked:**
+  - OFF calls it once per category in the set with `email=false`, and with `in_app=true` beside each;
+  - it never calls it with `certificates`, `moderation` or `account`;
+  - a throw on the fourth call compensates the three before it back to the snapshot (asserted call by call) and returns
+    `failed: true` with the re-derived state;
+  - ON after three were silenced writes all of them `true` (M5, named as the accepted trade).
+- **`tests/e2e/wave20-notify-settings.spec.ts`:** master off, reload, every optional email row in
+  `notification_preferences` is `false` and the fixed categories have no row; master on, and the reload shows every
+  category switch on.
