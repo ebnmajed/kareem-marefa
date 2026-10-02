@@ -54,8 +54,8 @@ export function QueueView({ queue, children }: { queue: PhotoQueue; children: Re
           session: item.sessionTitle,
           line: (
             <>
-              {t.rich(filter === "takedowns" ? "requested" : "reported", { name: item.first?.name ?? t("member"), t: bdi })}
-              {item.more > 0 ? ` ${t("more", { value: formatNumber(item.more) })}` : null}
+              {t.rich(filter === "takedowns" ? "requested" : "reported", { name: item.first?.name ?? t("member"), bdi })}
+              {item.more > 0 ? ` +${formatNumber(item.more)}` : null}
               {" · "}
               {age(item.ageDays)}
             </>
@@ -99,7 +99,7 @@ export function QueueView({ queue, children }: { queue: PhotoQueue; children: Re
               <span aria-hidden="true" className="size-14 shrink-0 rounded-field bg-raised" />
             )}
             <span className="flex min-w-0 flex-col gap-1">
-              <span className="text-body font-semibold text-fg-heading">{t.rich("row", { session: item.session, t: bdi })}</span>
+              <span className="text-body font-semibold text-fg-heading">{t.rich("row", { session: item.session, bdi })}</span>
               <span className="text-caption text-fg-muted">{item.line}</span>
             </span>
           </span>

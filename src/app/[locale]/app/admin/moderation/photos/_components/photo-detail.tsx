@@ -45,14 +45,14 @@ export async function PhotoDetail({ locale, photo }: { locale: string; photo: Ph
     <article className="space-y-4">
       {/* The page's h1 is the only display-face heading; this one names the detail for the split view's section. */}
       <h2 id="photo-title" className="sr-only">
-        {t("imageAlt", { session: photo.sessionTitle })}
+        {t.markup("imageAlt", { session: photo.sessionTitle, bdi: (chunks) => chunks })}
       </h2>
       {photo.imageUrl ? (
         // A signed preview of the stripped photo (REQ-EVT-011) — a preview, not a download (DEC-178).
         // eslint-disable-next-line @next/next/no-img-element -- a signed, short-lived preview; next/image would re-host it
         <img
           src={photo.imageUrl}
-          alt={t("imageAlt", { session: photo.sessionTitle })}
+          alt={t.markup("imageAlt", { session: photo.sessionTitle, bdi: (chunks) => chunks })}
           className="max-h-[28rem] w-full rounded-tile bg-raised object-contain"
         />
       ) : (

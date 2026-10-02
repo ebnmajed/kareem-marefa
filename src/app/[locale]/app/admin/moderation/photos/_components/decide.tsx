@@ -53,7 +53,7 @@ export function Decide({
         <Button type="button" variant="danger" disabled={busy} onClick={() => setOpen(true)}>
           {t("remove")}
         </Button>
-        <DialogContent title={t.rich("removeTitle", { session: sessionTitle, t: (chunks) => <bdi>{chunks}</bdi> })} closeLabel={t("close")}>
+        <DialogContent title={t.rich("removeTitle", { session: sessionTitle, bdi: (chunks) => <bdi>{chunks}</bdi> })} closeLabel={t("close")}>
           {/* `noValidate` — the reason is said at the field, and checked again in the action and in `remove_photo()`. */}
           <form action={formAction} noValidate>
             <Field id={reasonId} label={t("reasonLabel")} required error={state.error === "reason_required" ? t("error.reason_required") : undefined}>
