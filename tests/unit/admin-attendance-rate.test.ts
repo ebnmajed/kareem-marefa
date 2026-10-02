@@ -48,28 +48,28 @@ vi.mock("@/lib/dal/session", () => ({
   sessionClient: async () => ({ session: { memberId: ADMIN, orgId: ORG, role: "admin" }, supabase: client }),
 }));
 
-const { getAdminDashboardData, attendanceRateOf } = await import("@/lib/dal/admin-dashboard");
+const { getAdminDashboardData } = await import("@/lib/dal/admin-dashboard");
+const { attendanceRate } = await import("@/components/checkin/attendance-rate");
 const { getAttendanceReport } = await import("@/lib/dal/checkin");
 
 describe("one attendance rate — the dashboard's is checkin's", () => {
-  it("both readers give 1 / 3 from the same fixture: the walk-in, the removed check-in and the waitlist are outside it", async () => {
+  it("both readers give 1 / 3 from the same fixture, and it is the shared function's: the walk-in, the removed check-in and the waitlist are outside it", async () => {
     const [dashboard, report] = await Promise.all([getAdminDashboardData("ar"), getAttendanceReport("ar", SESSION)]);
+    // ★ Since PR B, the dashboard computes it THROUGH `attendanceRate()` (`DEC-228` §3.4): one definition in code.
+    const shared = attendanceRate([`${SESSION}:${m(1)}`, `${SESSION}:${m(2)}`, `${SESSION}:${m(3)}`], [`${SESSION}:${m(1)}`, `${SESSION}:${m(5)}`]);
+    expect(shared).toEqual({ confirmed: 3, attended: 1, outsideConfirmed: 1, rate: 1 / 3 });
     expect(report?.attendanceRate).toBeCloseTo(1 / 3);
-    expect(dashboard?.attendanceRate).toBeCloseTo(1 / 3);
+    expect(dashboard?.attendanceRate).toBe(shared.rate);
     expect(dashboard?.attendanceRate).toBe(report?.attendanceRate);
   });
 
-  it("never passes 100 %: more check-ins than reservations still divides attendees-with-a-seat by seats", () => {
-    const confirmed = [{ session_id: "s", member_id: "a" }];
-    const checkedIn = [
-      { session_id: "s", member_id: "a" },
-      { session_id: "s", member_id: "walk-in-1" },
-      { session_id: "s", member_id: "walk-in-2" },
-    ];
-    expect(attendanceRateOf(confirmed, checkedIn)).toBe(1);
+  it("never passes 100 %: walk-ins sit beside the rate, never inside it", () => {
+    const r = attendanceRate(["s:a"], ["s:a", "s:walk-in-1", "s:walk-in-2"]);
+    expect(r.rate).toBe(1);
+    expect(r.outsideConfirmed).toBe(2);
   });
 
   it("is null when nothing has a confirmed reservation", () => {
-    expect(attendanceRateOf([], [{ session_id: "s", member_id: "a" }])).toBeNull();
+    expect(attendanceRate([], ["s:a"]).rate).toBeNull();
   });
 });
