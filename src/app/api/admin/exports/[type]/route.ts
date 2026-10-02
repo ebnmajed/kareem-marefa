@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  sessionsExportIds,
   exportAllAttendanceCsv,
   exportCertificatesCsv,
   exportMembersCsv,
@@ -32,14 +33,26 @@ function contentDisposition(type: string, filenameAr: string): string {
   return `attachment; filename="${type}.csv"; filename*=UTF-8''${utf8}`;
 }
 
-export async function GET(_request: Request, { params }: { params: Promise<{ type: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ type: string }> }) {
   // [v16] params is async. Always await.
   const { type } = await params;
 
   const entry = EXPORTS[type];
   if (!entry) return new NextResponse("not_found", { status: 404 });
 
-  const csv = await entry.fn("ar");
+  // ★ Wave 21 (`DEC-228` §3.7, add-only): SCR-042's bulk bar exports its
+  // selection — `?ids=` on the sessions export only, comma-separated uuids.
+  // Absent, it is today's whole export; malformed, it is refused, never
+  // widened to everything.
+  const rawIds = type === "sessions" ? new URL(request.url).searchParams.get("ids") : null;
+  let ids: string[] | undefined;
+  if (rawIds !== null) {
+    const parsed = sessionsExportIds.safeParse(rawIds.split(",").filter(Boolean));
+    if (!parsed.success) return new NextResponse("bad_request", { status: 400 });
+    ids = parsed.data;
+  }
+
+  const csv = ids ? await exportSessionsCsv("ar", ids) : await entry.fn("ar");
   if (csv === null) return new NextResponse("not_found", { status: 404 });
 
   return new NextResponse(csv, {

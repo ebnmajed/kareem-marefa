@@ -273,11 +273,25 @@ async function requireAdmin(locale: string) {
   return client.session.role === "admin" ? client : null;
 }
 
-export async function exportSessionsCsv(locale: string): Promise<string | null> {
+/** The most sessions one selection may export by id (SCR-042's bulk bar). */
+export const SESSIONS_EXPORT_MAX_IDS = 200;
+
+/** `?ids=` as the export route receives it: comma-separated uuids, capped. Anything else is refused as `null`. */
+export const sessionsExportIds = z.array(z.uuid()).min(1).max(SESSIONS_EXPORT_MAX_IDS);
+
+/**
+ * ★ Wave 21 (`DEC-228` §3.7, add-only): `ids` restricts the rows to SCR-042's
+ * selection. Same headers, same audit row — a selection is still a sessions
+ * export (`REQ-ADM-017`). Ids outside the org are not in `listSessionsForAdmin`'s
+ * answer, so they select nothing; RLS is the boundary, the filter only narrows.
+ */
+export async function exportSessionsCsv(locale: string, ids?: readonly string[]): Promise<string | null> {
   const client = await requireAdmin(locale);
   if (!client) return null;
-  const [sessions, prefs] = await Promise.all([listSessionsForAdmin(locale), getOrgPrefs(locale)]);
-  if (sessions === null) return null;
+  const [all, prefs] = await Promise.all([listSessionsForAdmin(locale), getOrgPrefs(locale)]);
+  if (all === null) return null;
+  const wanted = ids ? new Set(ids) : null;
+  const sessions = wanted ? all.filter((s) => wanted.has(s.id)) : all;
 
   const rows = sessions.map((s) => [
     s.title,
