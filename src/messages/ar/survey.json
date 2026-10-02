@@ -2,17 +2,26 @@
   "survey": {
     "templates": {
       "title": "الاستبانات",
-      "description": "قوالب الأسئلة التي تعيد مؤسستك استخدامها",
       "new": "قالب جديد",
       "emptyTitle": "لا قوالب بعد",
       "emptyBody": "اكتب أسئلتك مرة واحدة، ثم أضفها إلى أي جلسة.",
-      "questionCount": "{count, plural, zero {لا أسئلة} one {سؤال واحد} two {سؤالان} few {{value} أسئلة} many {{value} سؤالًا} other {{value} سؤال}}",
-      "sessionCount": "{count, plural, zero {لم تُستخدم بعد} one {في جلسة واحدة} two {في جلستين} few {في {value} جلسات} many {في {value} جلسة} other {في {value} جلسة}}",
-      "updatedAt": "آخر تعديل {date}",
-      "open": "فتح القالب",
       "delete": "احذف القالب",
       "deleteConfirm": "هل تحذف هذا القالب؟ الاستبانات المضافة إلى الجلسات لن تتأثر.",
-      "deleted": "حُذف القالب"
+      "deleted": "حُذف القالب",
+      "tableLabel": "قوالب الاستبانات",
+      "colTemplate": "القالب",
+      "colQuestions": "الأسئلة",
+      "colSessions": "الجلسات",
+      "colActions": "إجراءات",
+      "rowActions": "إجراءات القالب {title}",
+      "edit": "عدّل",
+      "questionsTable": "أسئلة القالب {title}",
+      "colQuestion": "السؤال",
+      "colKind": "النوع",
+      "colRequired": "مطلوب",
+      "yes": "نعم",
+      "no": "لا",
+      "cancel": "تراجع"
     },
     "editor": {
       "newTitle": "قالب جديد",
