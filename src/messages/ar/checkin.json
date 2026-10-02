@@ -145,7 +145,8 @@
         "not_open": "التسجيل اليدوي متاح أثناء الجلسة فقط.",
         "member_not_found": "تعذّر العثور على العضو.",
         "presenter_cannot_check_in": "مُقدِّم الجلسة لا يسجّل حضوره فيها.",
-        "unknown": "تعذّر تسجيل الحضور — حاول مرة أخرى."
+        "unknown": "تعذّر تسجيل الحضور — حاول مرة أخرى.",
+        "overlap": "مسجَّل حضوره في جلسة أخرى في الوقت نفسه."
       },
       "removeTitle": "إلغاء تسجيل حضور",
       "removeIntro": "لتصحيح خطأ في تسجيل الحضور. يُعكس هذا أي نقاط مُنحت بسببه، وتُلغى أي شهادة صدرت — لا يُحذف تسجيل الحضور نفسه، بل يُسجَّل أنه أُلغي ومتى ولماذا. يمكن للعضو تسجيل حضوره من جديد لاحقًا إذا لزم الأمر.",
@@ -181,7 +182,74 @@
       "markDayHint": "اختر اليوم الذي تسجّل الحضور فيه — يمكنك تصحيح يوم سابق في أي وقت.",
       "removeDayHint": "اختر اليوم الذي تُلغي تسجيل الحضور فيه.",
       "complete": "مكتمل",
-      "hostScreen": "شاشة التقديم"
+      "hostScreen": "شاشة التقديم",
+      "figures": {
+        "reserved": "محجوز",
+        "present": "حاضر",
+        "rate": "المعدّل",
+        "walkIns": "بلا حجز",
+        "manual": "يدوي",
+        "finalRate": "المعدّل النهائي"
+      },
+      "code": {
+        "region": "رمز الحضور",
+        "revoke": "أبطل",
+        "open": "مفتوح",
+        "rotatesIn": "يتغيّر بعد",
+        "startsAt": "يبدأ {time}",
+        "closed": "مغلق",
+        "ended": "انتهى",
+        "error": {
+          "not_found": "تعذّر العثور على الجلسة",
+          "not_authorized": "لا تملك صلاحية إبطال الرمز",
+          "no_active_code": "انتهى هذا الرمز — صدر رمز جديد",
+          "unknown": "تعذّر إبطال الرمز — حاول مرة أخرى"
+        }
+      },
+      "filter": {
+        "label": "عرض",
+        "all": "الكل",
+        "present": "حاضر",
+        "absent": "لم يحضر"
+      },
+      "manualOpen": "تسجيل يدوي",
+      "csv": "CSV",
+      "tableLabel": "الحضور",
+      "col": {
+        "member": "العضو",
+        "reservation": "الحجز",
+        "time": "وقت الحضور",
+        "method": "الطريقة",
+        "status": "الحالة",
+        "actions": "إجراءات"
+      },
+      "reservation": {
+        "confirmed": "محجوز",
+        "waitlisted": "قائمة انتظار",
+        "cancelled": "ملغى",
+        "late_cancelled": "إلغاء متأخر",
+        "none": "بلا حجز"
+      },
+      "method": {
+        "code": "رمز",
+        "manualBy": "يدوي · <bdi>{name}</bdi>",
+        "manual": "يدوي"
+      },
+      "status": {
+        "present": "حاضر",
+        "absent": "لم يحضر",
+        "removed": "أُلغي"
+      },
+      "removedBy": "<bdi>{reason}</bdi> · <bdi>{name}</bdi>",
+      "rowMenu": "إجراءات <bdi>{name}</bdi>",
+      "rowMenuPlain": "إجراءات {name}",
+      "rowMark": "سجّل حضوره",
+      "rowRevoke": "ألغِ الحضور",
+      "sheetMember": "العضو",
+      "sheetEmpty": "لا أحد بلا تسجيل حضور",
+      "revokeTitle": "إلغاء حضور <bdi>{name}</bdi>",
+      "revokeBody": "في <bdi>{session}</bdi>. تُعكس نقاطه وتُلغى شهادته.",
+      "revokeBodyOpen": "في <bdi>{session}</bdi>. لن تُحتسب له نقاط الحضور."
     },
     "dayLine": "تسجيل حضور {day}",
     "award": {

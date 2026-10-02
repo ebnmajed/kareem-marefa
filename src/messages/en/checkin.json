@@ -145,7 +145,8 @@
         "not_open": "Manual marking is available only while the session is running.",
         "member_not_found": "That member could not be found.",
         "presenter_cannot_check_in": "A session's presenter does not check in to it.",
-        "unknown": "That could not be recorded — try again."
+        "unknown": "That could not be recorded — try again.",
+        "overlap": "Already checked in to another session at the same time."
       },
       "removeTitle": "Remove a check-in",
       "removeIntro": "To correct a mistaken check-in. This reverses any points it earned and revokes any certificate issued from it — the check-in record itself is never deleted, only marked removed, with when and why. The member can check in again later if needed.",
@@ -181,7 +182,74 @@
       "markDayHint": "Choose the day you are recording attendance for — an earlier day can be corrected at any time.",
       "removeDayHint": "Choose the day whose attendance record you are removing.",
       "complete": "Complete",
-      "hostScreen": "Presenter screen"
+      "hostScreen": "Presenter screen",
+      "figures": {
+        "reserved": "Reserved",
+        "present": "Present",
+        "rate": "Rate",
+        "walkIns": "No reservation",
+        "manual": "Manual",
+        "finalRate": "Final rate"
+      },
+      "code": {
+        "region": "Check-in code",
+        "revoke": "Revoke",
+        "open": "Open",
+        "rotatesIn": "Changes in",
+        "startsAt": "Starts {time}",
+        "closed": "Closed",
+        "ended": "Ended",
+        "error": {
+          "not_found": "Session not found",
+          "not_authorized": "You can't revoke this code",
+          "no_active_code": "That code had expired — a new one is out",
+          "unknown": "Couldn't revoke the code — try again"
+        }
+      },
+      "filter": {
+        "label": "Show",
+        "all": "All",
+        "present": "Present",
+        "absent": "Absent"
+      },
+      "manualOpen": "Mark manually",
+      "csv": "CSV",
+      "tableLabel": "Attendance",
+      "col": {
+        "member": "Member",
+        "reservation": "Reservation",
+        "time": "Arrived",
+        "method": "Method",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "reservation": {
+        "confirmed": "Reserved",
+        "waitlisted": "Waitlist",
+        "cancelled": "Cancelled",
+        "late_cancelled": "Late cancel",
+        "none": "No reservation"
+      },
+      "method": {
+        "code": "Code",
+        "manualBy": "Manual · <bdi>{name}</bdi>",
+        "manual": "Manual"
+      },
+      "status": {
+        "present": "Present",
+        "absent": "Absent",
+        "removed": "Revoked"
+      },
+      "removedBy": "<bdi>{reason}</bdi> · <bdi>{name}</bdi>",
+      "rowMenu": "Actions for <bdi>{name}</bdi>",
+      "rowMenuPlain": "Actions for {name}",
+      "rowMark": "Mark present",
+      "rowRevoke": "Revoke attendance",
+      "sheetMember": "Member",
+      "sheetEmpty": "Everyone is checked in",
+      "revokeTitle": "Revoke <bdi>{name}</bdi>'s attendance",
+      "revokeBody": "At <bdi>{session}</bdi>. Their points are reversed and their certificate revoked.",
+      "revokeBodyOpen": "At <bdi>{session}</bdi>. They won't earn attendance points."
     },
     "dayLine": "Check-in for {day}",
     "award": {
