@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **374** |
+| Requirements (`REQ-*`) | **376** |
 | Entities (`ENT-*`) | **84** |
-| Stories (`STORY-*`) | **207** |
+| Stories (`STORY-*`) | **209** |
 | Screens cited (`SCR-*`) | 58 |
 | Jobs cited (`JOB-*`) | 40 |
 | Messages cited (`MSG-*`) | 23 |
@@ -361,7 +361,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PTS-009` | — | — | `SCR-022` | — | — | `STORY-PTS-005` | M4 |
 | `REQ-PTS-010` | `ENT-reactions` `ENT-scoring_rules` | `POL-scoring_rules.catalogue` | `SCR-045` `SCR-053` `SCR-054` | — | — | `STORY-PTS-005` | M4 |
 | `REQ-PTS-011` | `ENT-points_balances` | — | `SCR-016` `SCR-044` | `JOB-audit_balances` | — | `STORY-PTS-006` | M4 |
-| `REQ-PTS-012` | `ENT-points_ledger` `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-043` +2 | `JOB-award_points` `JOB-award_presenter_points` | `MSG-reminder_` | `STORY-PTS-002` | M4 |
+| `REQ-PTS-012` | `ENT-points_ledger` `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-022` +3 | `JOB-award_points` `JOB-award_presenter_points` | `MSG-reminder_` | `STORY-PTS-002` | M4 |
 | `REQ-PTS-013` | — | — | `SCR-022` | — | `MSG-presenter_assigned` | `STORY-PTS-005` | M4 |
 | `REQ-PTS-014` | — | — | `SCR-053` | — | — | `STORY-PTS-003` | M4 |
 | `REQ-PTS-015` | — | `POL-check_in.award_points_hook` | `SCR-012` `SCR-014` `SCR-022` +2 | — | `MSG-presenter_assigned` | `STORY-PTS-007` | M14 |
@@ -555,5 +555,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-079` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-UIX-071` | M22 |
 | `REQ-UIX-080` | `ENT-member_seen_marks` | — | `SCR-021` `SCR-024` `SCR-029` | — | — | `STORY-UIX-067` | M22 |
 | `REQ-UIX-081` | — | — | `SCR-022` `SCR-027` `SCR-029` | — | — | `STORY-UIX-060` | M22 |
+| `REQ-UIX-082` | — | — | `SCR-022` `SCR-028` | — | — | `STORY-UIX-072` | M22 |
+| `REQ-UIX-083` | — | — | `SCR-022` | — | — | `STORY-UIX-073` | M22 |
 
 <!-- TRACEABILITY:END -->

@@ -713,7 +713,7 @@ Nine screens rebuilt from eleven artboards in `docs/design/screens/m10c/`, each 
 the page file deleted first, then written from its artboard, with a table of what it kept and the requirement that
 made it keep it. ★ **The last designed batch of the member app** — after it the standing order has no screens left,
 and **session stories land next unless the owner says otherwise** (`DEC-216` §1). Two pull requests, three tracks,
-one migration (`0169`, two nullable columns).
+one migration (`0169`, two nullable columns) — ★ grown to three PRs and `0169` – `0174` and beyond (`DEC-220`, `DEC-221`).
 
 | Work | Requirements | PR | Track |
 |---|---|---|---|
@@ -730,6 +730,9 @@ one migration (`0169`, two nullable columns).
 | Settings, `SCR-029` — new | `REQ-UIX-077` | B | `notify` |
 | The boards, `SCR-027` — this week, live | `REQ-UIX-078` | B | `scoring` |
 | The company race, `SCR-028` | `REQ-UIX-079` | B | `scoring` |
+| ★ `0174` — the photos insert door closed (a live privacy hole, `DEC-221`) | `REQ-EVT-011` | B | lead |
+| «بلا ترتيب» — a minimum of active members, frozen into each snapshot | `REQ-UIX-082` | C | lead, `scoring` |
+| The photo award and its reversal | `REQ-UIX-083` | C | `scoring`, `content` |
 
 **Demonstrable:** ★★ every rebuilt screen captured at 390 px — and at 1280 for the hub — **held beside its artboard
 and opened by the lead**; ★★ a kept-behaviour table per screen; ★ every preference `preference-matrix` wrote still
