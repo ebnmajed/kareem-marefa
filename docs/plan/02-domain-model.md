@@ -260,6 +260,7 @@ constraint violation rather than a runtime surprise.
 | Column | Type | Default |
 |---|---|---|
 | `time_zone` | `text not null` | `'Asia/Riyadh'` |
+| ★ `company_min_active_members` | `int not null`, 1 – 50 | `3` — the company ranking's minimum of active members (`0175`, `DEC-220` §1, `REQ-UIX-082`); no admin control until the console wave |
 | ~~`numerals`~~ | ~~`numeral_system not null`~~ | **✗ dropped — `DEC-124`.** Numerals are Western everywhere; no row was ever `arabic_indic`, so the drop changes no output |
 | `check_in_rotation_seconds` | `int not null` | `600` |
 | `check_in_grace_seconds` | `int not null` | `120` |
@@ -898,7 +899,7 @@ unless an org turns the gate on.
 **Serves:** `REQ-LDR-002`, `REQ-LDR-006`, A11, DEC-016
 `leaderboard_snapshots`: `kind leaderboard_kind not null`, `period_start`, `period_end`,
 `category_id` (topic boards), `metric company_metric` (company boards),
-`active_member_count int` (**the frozen denominator**), `taken_at`, `is_final boolean`.
+`active_member_count int` (**the frozen denominator**), `taken_at`, `is_final boolean`. ★ `min_active_members int` (nullable, `0175`) — the org's minimum frozen at snapshot time; a company below it is unranked, and a final snapshot never moves (`REQ-UIX-082`).
 `unique (org_id, kind, period_start, period_end, category_id)`.
 `leaderboard_entries`: `snapshot_id`, `member_id` **or** `company_id`, `rank int not null`,
 `points int not null`, `points_per_active_member numeric`.

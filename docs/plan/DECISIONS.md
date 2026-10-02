@@ -6836,3 +6836,33 @@ cases green. **`main` does nothing different**: its app never inserts a photos r
 merges** — the programme's usual order (push precedes merge), only sooner. Whether anyone has used the door cannot be
 read from the schema; a read of `photos` rows whose object was never written by `record_photo_upload()` is the owner's
 to run, read-only, if wanted. PR C's award is not built until this is pushed.
+
+## DEC-222 — PR C, sync: both plans approved; `0175` lands the setting; the award waits on `0174` in production
+
+- **Date:** 2026-10-02 · **Decided by:** the wave-20 lead, from `content`'s plan (`3f60fa15`) and `scoring`'s (`3d0102b4`)
+- **Adds:** migration **`0175`** (the two columns of `DEC-220` §1, with the admin's column grant); `tests/rls/company-min-active.test.ts`
+- **Does not touch:** any console route; `points_ledger`'s append-only rule
+
+### 1 · Approved, with these rulings binding
+
+1. **The trigger is `content`'s, the functions `scoring`'s** (`DEC-220` §2.5): `award_photo_points(p_photo uuid,
+   p_restore boolean default false)` and `reverse_photo_points(p_photo uuid, p_reason text)`, definer, granted to no
+   client. The trigger fires after insert (a row exists only after the strip, `0174`) and after a change of
+   `hidden_at` **while `removed_at` is null**; a removal is `0059`'s path alone, replaced by `scoring` to call
+   `reverse_photo_points(…, 'حُذف المحتوى')` and keep the `photo_removed` penalty — one writer per transition.
+2. **A hide's reversal reads «أُخفيت الصورة»**, so a member tells a hide from a deletion (`REQ-PTS-003`);
+   `moderation.test.ts:101-104` moves (ledger).
+3. **A restore pays only what a takedown reversed** — a photograph never paid, hidden and restored, earns nothing.
+   **No backfill**: photographs recorded before PR C's migrations never pay.
+4. **The home's race draws «بلا ترتيب» too** (add-only `unranked` on `getCompanyRace()`): two surfaces never disagree.
+5. ★ **`0175`'s column joins the admin's column-level update grant** (`0004:146`, «everything except identity and
+   timestamps»), so the console wave builds only the control. Until then an org admin could set it through the API and
+   the owner sets it by SQL; **no screen exists**.
+6. ★ **The award is not built until the owner has pushed `0174`** (`DEC-221`): with the insert door open, an award on
+   insert would pay a member for an unstripped photo they inserted themselves. «بلا ترتيب» is built now.
+
+### 2 · For the owner
+
+From the day PR C's award migration is pushed, **photographs start earning in production, before PR C's screens
+merge** — today's screens draw a photo award's own reason and a reversal as any other (`scoring` measured it). The
+migrations to rehearse: `0169` – `0175`, and PR C's award after it.

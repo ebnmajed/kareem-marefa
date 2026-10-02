@@ -555,7 +555,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-079` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-UIX-071` | M22 |
 | `REQ-UIX-080` | `ENT-member_seen_marks` | — | `SCR-021` `SCR-024` `SCR-029` | — | — | `STORY-UIX-067` | M22 |
 | `REQ-UIX-081` | — | — | `SCR-022` `SCR-027` `SCR-029` | — | — | `STORY-UIX-060` | M22 |
-| `REQ-UIX-082` | — | — | `SCR-022` `SCR-028` | — | — | `STORY-UIX-072` | M22 |
+| `REQ-UIX-082` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | — | `SCR-022` `SCR-028` | — | — | `STORY-UIX-072` | M22 |
 | `REQ-UIX-083` | — | — | `SCR-022` | — | — | `STORY-UIX-073` | M22 |
 
 <!-- TRACEABILITY:END -->
