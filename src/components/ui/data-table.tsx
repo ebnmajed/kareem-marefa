@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef } from "react";
+import { useEffect, useId, useMemo, useRef, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -18,6 +18,26 @@ import type { DataTableColumn, DataTableProps } from "@/components/ui";
 // and pagination are the calling screen's composition (filter `rows` before
 // handing them here, render its own pager), never this primitive's job.
 // Documented at length in `docs/plan/notes/console.md`.
+//
+// ★ Wave 21 (`DEC-228` §3.9), two ADD-ONLY props, both off by default so every
+// existing caller renders byte for byte as before:
+//  · `stickyHeader` — the header row sticks under the console bar
+//    (`--console-bar`, the frame's). A sticky `<th>` inside an `overflow-x-auto`
+//    wrapper sticks to the WRAPPER and covers row 1 (wave 6, the comment on the
+//    `<thead>` below), so with the prop the wrapper clips instead of scrolling:
+//    `overflow: clip` makes no scroll container, and the header sticks to the
+//    page. The table is `border-separate` then, because a collapsed border does
+//    not travel with a sticky cell.
+//  · `renderCard` — the phone card's body, for a caller that draws its own card
+//    (`AdminSessionsPhone.dc.html`'s has no «label · value» rows). The checkbox
+//    and the `<li>` stay the primitive's; the caller puts `titleId` on its title
+//    so the row's checkbox is still named by it.
+
+/** Wave 21's add-only props. `ui/index.ts`'s `DataTableProps` does not carry them yet. */
+export interface DataTableAdditions<Row> {
+  stickyHeader?: boolean;
+  renderCard?: (row: Row, card: { titleId: string }) => ReactNode;
+}
 
 function IndeterminateCheckbox({
   id,
@@ -61,7 +81,9 @@ export function DataTable<Row>({
   empty,
   pending,
   className = "",
-}: DataTableProps<Row>) {
+  stickyHeader = false,
+  renderCard,
+}: DataTableProps<Row> & DataTableAdditions<Row>) {
   const tableId = useId();
   const t = useTranslations("admin.dataTable");
   const selectAllLabelId = `${tableId}-select-all-label`;
@@ -103,6 +125,9 @@ export function DataTable<Row>({
     return `${col.header}: ${sort.direction === "asc" ? t("sortAscending") : t("sortDescending")}`;
   }, [sort, columns, t]);
 
+  // `top` reads the frame's bar height; outside the console frame it is 0.
+  const stickyTh = stickyHeader ? " sticky top-[var(--console-bar,0px)] z-10" : "";
+
   const cardColumns = columns.filter((c) => c.onCard);
   // The card's title is always `columns[0]`, `onCard` or not — a card with
   // no heading at all is a worse reading than one extra field the caller
@@ -139,8 +164,8 @@ export function DataTable<Row>({
           {/* Desktop / wide: a real table. A too-wide table may still scroll
               horizontally in its OWN container here — the banned pattern is
               a scrolling table on the PHONE, which is the card list below. */}
-          <div className="hidden overflow-x-auto md:block">
-            <table aria-label={label} className="w-full border-collapse text-body-sm">
+          <div className={`hidden md:block ${stickyHeader ? "overflow-x-clip" : "overflow-x-auto"}`}>
+            <table aria-label={label} className={`w-full text-body-sm ${stickyHeader ? "border-separate border-spacing-0" : "border-collapse"}`}>
               {/* ★ NOT `position: sticky` — a real build's own run found it
                   covering row 1's own controls, not just on scroll: the
                   wrapper above (`overflow-x-auto`) is itself a scroll
@@ -156,7 +181,7 @@ export function DataTable<Row>({
               <thead>
                 <tr>
                   {selection ? (
-                    <th scope="col" className="w-10 border-b border-edge bg-canvas px-3 py-2.5">
+                    <th scope="col" className={`w-10 border-b border-edge bg-canvas px-3 py-2.5${stickyTh}`}>
                       <span id={selectAllLabelId} className="sr-only">
                         {t("selectAll")}
                       </span>
@@ -173,7 +198,7 @@ export function DataTable<Row>({
                       key={col.key}
                       scope="col"
                       aria-sort={ariaSort(col)}
-                      className={`border-b border-edge bg-canvas px-3 py-2.5 font-medium text-fg-muted ${col.align === "end" ? "text-end" : "text-start"}`}
+                      className={`border-b border-edge bg-canvas px-3 py-2.5 font-medium text-fg-muted ${col.align === "end" ? "text-end" : "text-start"}${stickyTh}`}
                     >
                       {col.sortable ? (
                         <button
@@ -243,28 +268,32 @@ export function DataTable<Row>({
                         labelledBy={`${selectRowLabelId} ${primaryCellId}`}
                       />
                     ) : null}
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      <div id={primaryCellId} className="text-label text-fg-heading">
-                        {rowHref && primaryColumn ? (
-                          <Link href={rowHref(row)} className="hover:underline">
-                            {primaryColumn.cell(row)}
-                          </Link>
-                        ) : (
-                          primaryColumn?.cell(row)
-                        )}
+                    {renderCard ? (
+                      <div className="min-w-0 flex-1">{renderCard(row, { titleId: primaryCellId })}</div>
+                    ) : (
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <div id={primaryCellId} className="text-label text-fg-heading">
+                          {rowHref && primaryColumn ? (
+                            <Link href={rowHref(row)} className="hover:underline">
+                              {primaryColumn.cell(row)}
+                            </Link>
+                          ) : (
+                            primaryColumn?.cell(row)
+                          )}
+                        </div>
+                        {cardColumns
+                          .filter((c) => c.key !== primaryColumn?.key)
+                          .map((col) => (
+                            // The label keeps its line and the value wraps
+                            // beside it: a capture found «آخر تصدير» broken over
+                            // two lines by a long value (wave 8).
+                            <div key={col.key} className="flex justify-between gap-3 text-body-sm text-fg-muted">
+                              <span className="shrink-0">{col.header}</span>
+                              <span className="min-w-0 text-end text-fg-body">{col.cell(row)}</span>
+                            </div>
+                          ))}
                       </div>
-                      {cardColumns
-                        .filter((c) => c.key !== primaryColumn?.key)
-                        .map((col) => (
-                          // The label keeps its line and the value wraps
-                          // beside it: a capture found «آخر تصدير» broken over
-                          // two lines by a long value (wave 8).
-                          <div key={col.key} className="flex justify-between gap-3 text-body-sm text-fg-muted">
-                            <span className="shrink-0">{col.header}</span>
-                            <span className="min-w-0 text-end text-fg-body">{col.cell(row)}</span>
-                          </div>
-                        ))}
-                    </div>
+                    )}
                   </div>
                 </li>
               );
