@@ -1,18 +1,18 @@
-**Last updated:** 2026-10-02 · **Branch:** `wave-21a/the-console-frame` (draft PR **#44** against `main`) · ★★ **WAVE 21 IS IN PROGRESS — STEP 0 DONE, SYNC 1 PENDING** · **`main`:** `8b6a9630`; production and local both at **`0178`** · **Phase:** ★★ **M11a — the FIRST CONSOLE BATCH (`DEC-225`, `DEC-227`, M23).** ★★ **THE GOAL (`DEC-227` §0, the owner's): build the console an admin can run the org from** — see what needs attention and reach it in one move; decide a proposal without leaving the list; act on sessions in bulk at a desk and as cards on a phone; run attendance live; the sober register. Step 0 landed `143fdfb9` (spec + artboards + the prompt, unedited), `4df9568d` (`DEC-227`, `REQ-UIX-084`…`090`, `STORY-UIX-074`…`080`, `SCR-042`'s section, M23, the trace gate's `ERRATA`), `c126c55d` (the map + ten agent files). ★ **The owner ruled twice at Step 0**: `console-register.test.ts` is amended once and made stricter; «التصنيفات» loses «والوسوم». ★ **`console`, `sessions`, `checkin` are spawned PLANNING-ONLY**; nobody deletes a file before «the plans are approved» and «the frame is in». ★ **Open for sync 1:** `REQ-PRO-009`'s diff has no data behind it (`DEC-227` §5.1) — `sessions` measures first; a migration, if any, is the lead's from `0179` and the owner's rehearsal. ★ **Carried:** as `DEC-225` §6.
+**Last updated:** 2026-10-02 · **Branch:** `wave-21a/the-console-frame` (draft PR **#44**) and `wave-21b/the-queues` (draft PR **#45**, in the worktree `../kareem-marefa-wave21b`), both against `main` · ★★ **WAVE 21 IS IN PROGRESS — SYNC 1 DONE (`DEC-228`), THE FRAME IS IN (`fa18b414`), THE SCREENS ARE BEING BUILT** · **`main`:** `8b6a9630`; production and local both at **`0178`** · **Phase:** ★★ **M11a — the FIRST CONSOLE BATCH (`DEC-225`, `DEC-227`, M23).** ★★ **THE GOAL (`DEC-227` §0, the owner's): build the console an admin can run the org from** — see what needs attention and reach it in one move; decide a proposal without leaving the list; act on sessions in bulk at a desk and as cards on a phone; run attendance live; the sober register. Step 0 landed `143fdfb9` (spec + artboards + the prompt, unedited), `4df9568d` (`DEC-227`, `REQ-UIX-084`…`090`, `STORY-UIX-074`…`080`, `SCR-042`'s section, M23, the trace gate's `ERRATA`), `c126c55d` (the map + ten agent files). ★ **The owner ruled twice at Step 0**: `console-register.test.ts` is amended once and made stricter; «التصنيفات» loses «والوسوم». ★ **`console`, `sessions`, `checkin` are spawned PLANNING-ONLY**; nobody deletes a file before «the plans are approved» and «the frame is in». ★ **Open for sync 1:** `REQ-PRO-009`'s diff has no data behind it (`DEC-227` §5.1) — `sessions` measures first; a migration, if any, is the lead's from `0179` and the owner's rehearsal. ★ **Carried:** as `DEC-225` §6.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 21 — IN PROGRESS: STEP 0 DONE, SYNC 1 PENDING — M11a, the first console batch (`DEC-225`, `DEC-227`)
+## ★★★ WAVE 21 — IN PROGRESS: SYNC 1 DONE, THE FRAME IN, THE SCREENS BEING BUILT — M11a, the first console batch (`DEC-225`, `DEC-227`)
 
 ### ★ Where it stands (2026-10-02) — read this first
 
 | Step | State |
 |---|---|
 | Step 0 — branch `wave-21a/the-console-frame`, draft PR **#44** against `main` | ✅ |
-| Every number in the brief re-measured | ✅ all hold — ★ **plus a fourth wrong id: `REQ-ORG-017` never existed** (`DEC-227` §1); `trace` was red on `main` at `8b6a9630`, fixed by an `ERRATA` entry in `scripts/traceability.mjs` |
+| Every number in the brief re-measured | ✅ all hold — ★ **plus a fourth wrong id: the cited «ORG-017» never existed** (`DEC-227` §1); `trace` was red on `main` at `8b6a9630`, fixed by an `ERRATA` entry in `scripts/traceability.mjs` |
 | The spec, the artboards, the planning prompt committed | ✅ `143fdfb9` — the prompt **unedited, as a record** |
 | `DEC-227`, `REQ-UIX-084`…`090`, `STORY-UIX-074`…`080`, `SCR-042`'s `09` section, M23, `proposals/[id]/` in `04` | ✅ `4df9568d` |
 | The map in `CLAUDE.md` + all ten agent files, one commit (`DEC-085`) | ✅ `c126c55d` |
@@ -22,8 +22,13 @@
 | **Sync 1** — four plans approved against the goal and the seven contracts | ⏳ |
 | Sync 1 — `DEC-228`; «the plans are approved» posted | ✅ `0ed1dc6a` |
 | Contract 2 — `admin-rail` (full), `split-view` and `kv-card` (stubs, `sessions'` to fill), the floor 60 → 63 | ✅ `f9a0a209` |
-| The frame — deleted (`ae42d2b2`), then written | ⏳ this commit |
-| PR B `wave-21b/the-queues` opened against `main` on its first push | ⏳ |
+| The frame — deleted (`ae42d2b2`), then written (`fa18b414`, badges from `getAdminAttention()` at `229eb28d`) | ✅ **seen on a production build** (a verification worktree at `229eb28d` + `70e874b7`'s two files): `console.spec.ts` 8/8 at 1280 and 390, the captures `.qa-shots/rtl/wave21-lead-frame-*` opened beside `AdminDashboard.dc.html` and `AdminSessionsPhone.dc.html` — the bar's five parts, the 220 px rail with six rules, the sheet keeping them, no tab bar on the phone. ★ One difference recorded, not forked: the account trigger shows the first name and a chevron (the member shell's shared `AccountMenu`, `HomeDesktop.dc.html`); the artboard draws the avatar alone — for the owner's acceptance |
+| PR B `wave-21b/the-queues` opened against `main` on its first push | ✅ **#45** — ★ B is built in its own worktree, `../kareem-marefa-wave21b` (`node_modules` symlinked to the main checkout's; `npm ci` there before B's first production build); the lead merges A into B as A moves |
+| `sessions`' `split-view` keyboard model and `kv-card` edit twin | ✅ `50bbebed` |
+| `console` — `data-table` add-only props (`70ecf2b7`, ★ its test fails `tsc`), the export's `?ids=` (`66750058`) | 🔧 |
+| `0179` — promoted in B at `f1bdf438` from `sessions`' `0f051fd7`; applied to the local database with `create or replace` (no reset under running teammates); `proposals-diff` + `proposals-review` 14/14, `policy-diff` green, `03` §8.2 gains its two rows | ✅ — ★ **the owner rehearses it on a production schema dump at `0178` before any `supabase db push`** |
+| `DEC-228` addenda for the next entry: D7 drawn with the pure `checkInCeiling()` over `listSessionDays()` (no grant); «افتح كجلسة» stays on `041` beside `042`'s | 📝 |
+| 040, 042 (A) · 041, 043, 044 (B) — each deleted then written | ⏳ |
 
 ★ **If this session ends before sync 1:** the next lead reads the three teammates' «Wave 21 plan» sections and the lead's,
 judges each against `DEC-227` §0 — **a plan that reads like screens with green gates goes back** — checks every
@@ -41,6 +46,10 @@ approved». **Nobody deletes a file before that post and «the frame is in».**
 | L21-4 | `tests/e2e/console.spec.ts` | the collapse, the fourteen-group disclosure and flyout, and the drawer-disclosed captures **replaced** by the count: twenty in six lists for an admin, six for a moderator, the sheet keeping six lists | expectation | kept-behaviour rows 9–11 dropped by name; rows 3, 6 asserted on the new shape |
 | L21-5 | `tests/e2e/console.spec.ts` | the «untouched screen» capture moves from `proposals` to `venues` | selector | `proposals` is rebuilt in PR B |
 | L21-6 | `tests/unit/ui-playground.test.ts` | floor 60 → 63 | expectation | `DEC-225` §2 |
+| L21-7 | `tests/components/admin/admin-dashboard-page.test.tsx` | rewritten: the rate's «—» kept, its hint sentence gone; new cases for the one move, the one line, the month's links, the moderator's not-found, axe | expectation | `040` rebuilt (`68f267b7`); no explainer copy (`DEC-NEXT-25`) |
+| L21-8 | `tests/e2e/admin-dashboard.spec.ts:248-254, :340` and the component test's top-list case | «عضو نشط», «نقطة ممنوحة», «أكثر المُقدِّمين / التصنيفات / الشركات» | selector | the artboard's copy (`DEC-228` §3.8) |
+| L21-9 | `tests/e2e/admin-dashboard.spec.ts:282` | «عرض القائمة — مسار المقترحات» → the pipeline's count link | selector | the pipeline is one bar whose counts are links (`REQ-ADM-004`) |
+| L21-10 | `tests/unit/admin-removed-check-in.test.ts` | the fixture gains a session starting this month; expectations untouched | fixture | the figures are the month's (`DEC-228` §3.3) |
 
 ★ **Three seams found at Step 0 that the brief did not name** (`DEC-227` §5): the hub's header is not the layout's today,
 so `sessions` moves it there and the survey and certificates tabs lose their own (the lead, as custodian); «المحتوى» is

@@ -1,6 +1,9 @@
 import { emptyFormState, type FormState } from "@/lib/form-state";
 import type { TransitionState } from "./actions";
 
+/** SCR-042's bulk cancel: which ids the RPC accepted and which it refused. `attempt` changes on every result, so the dialog closes on any answer. */
+export type BulkCancelState = { error: string | null; done: string[]; failed: string[]; attempt: number };
+
 // A "use server" module may export async functions and nothing else — Next 16
 // refuses a non-function export from a server-action module at BUILD time,
 // where `tsc` cannot see it. Same rule, same fix as the review route's
@@ -29,3 +32,5 @@ export type CreateSessionState = FormState<SessionField>;
 export const emptyCreateState: CreateSessionState = emptyFormState<SessionField>();
 
 export const emptyTransitionState: TransitionState = { error: null, done: false };
+
+export const emptyBulkCancelState: BulkCancelState = { error: null, done: [], failed: [], attempt: 0 };

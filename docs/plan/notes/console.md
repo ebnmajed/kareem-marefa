@@ -3644,3 +3644,83 @@ bulk action (partial, total) · `?new=1` with no approved proposals (the region 
 - **Q6** After a direct create: redirect to the new session's schedule (my recommendation), or honour `?created`?
 - **Q7** D9 — what «ألغِ» and «أغلق» mean in the bulk bar.
 - **Q8** Copy: the artboard's «عضو نشط», «نقطة ممنوحة», «أكثر المُقدِّمين» over today's keys (L2)?
+
+### Wave 21 — `SCR-040` built, and its kept-behaviour table read against the new file
+
+**Delete `ec356113`, then create (this commit).** These are the rows of §5.1 as they read in `admin/page.tsx`,
+`components/admin/dashboard/*` and `admin-dashboard.ts` after the create:
+
+- **1** admin only, a page-level `notFound()` for anyone else ✓ (`page.tsx`, `getAdminDashboardData` → `null`). **2**
+  `setRequestLocale` first ✓. **3 / 4** the four queues kept apart, with the unscheduled predicate ✓ — now through
+  `getAdminAttention()` (`ac25efc8`). **5** the oldest age, six forms, «اليوم» at 0 ✓, with `<bdi>` on the count. **6** the
+  whole tile is one `ui/card` link ✓. **7** each tile opens its queue, narrowed (`?month=none`) ✓. **8** one line when
+  nothing waits ✓; the action is gone (explainer). **9** every figure is a link ✓, and so is every pipeline count, every
+  row of «القادمة» (to the hub) and every top-list name (a category → `?category=`). **10** `formatNumber` ✓.
+  **11** «—» kept as the rate's value; the hint sentence dropped (L1). **12** ★ the rate is now `checkin`'s
+  (`DEC-228` §3.4, `attendanceRateOf()`), over the month's started sessions — `tests/unit/admin-attendance-rate.test.ts`
+  computes it and `getAttendanceReport()`'s from one fixture. **13** removed check-ins excluded ✓. **14** positive
+  ledger rows only ✓, now the month's (`occurred_at`). **15** active members ✓ — a stock, not narrowed by the month (Q
+  for the lead below). **16** the six states in order ✓. **17** the pinned «عرض القائمة» link replaced by the counts (L3).
+  **18 – 21** top lists, `topEmpty`, the two-children row ✓. **22** `<bdi>` on every name, count and the month ✓.
+  **23** the 390 spec is unchanged. **24** `error.tsx` and `loading.tsx` untouched. **25** the two staff gates untouched.
+
+**Not built, by ruling:** the display face on the tiles and figures (`DEC-228` §6 — body face, bold); a moderator's
+dashboard (§3.1). **Built differently from the plan:** the six figures are `ui/card` tiles, not `ui/stat` —
+`stat.tsx` sets its value in the display face (`pg:font-display`) and its label above it, both against the ruling and
+the artboard; `stat` is `content`'s, so the tile composes `card` rather than asking for a prop mid-wave. The pipeline's
+segments wear `edge-strong`, `fg-muted`, `fg-body`, `signal`, `accent`, `edge` — there is no semantic yellow, and the
+artboard's yellow would be a raw palette name.
+
+**Open, for the lead:** «عضو نشط» counts members whose status is active, which no month narrows; and «نقطة ممنوحة»
+links to `/app/admin/scoring`, which has no month filter (frozen). The pipeline's counts link to `/app/admin/proposals`
+until `sessions` publishes the per-state URL (R3).
+
+### Wave 21 — `SCR-042` built, and its kept-behaviour table read against the new file
+
+**Delete `b9c2dda0`, then create (the next commit).** These are the rows of §5.2 as they read in `sessions/{page,sessions-table,session-controls,direct-session-form,actions,state}`,
+`components/admin/sessions/*` and `lib/dal/admin-sessions.ts`:
+
+- **1** three readers from the data (`getConsoleSessions` → `null` for a member, `role` for the rest) ✓. **2** a
+  moderator's title opens attendance, its link named by the title; the survey link is `aria-describedby` the title ✓.
+  **3** ★ a moderator's order is now the artboard's default, not «start, newest first» (`DEC-228` §3.5: one order).
+  **4** no selection, menu, creation or transition for a moderator — absent ✓. **5** every session of the org ✓
+  (`listSessionsForAdmin` stays for the CSV). **6** «جاهزة للجدولة» with its named button ✓, inside `?new=1`.
+  **7** the invalid id is ignored ✓ (`actions.ts` untouched there). **8** the direct form ✓ — same path, export and
+  ids; `form-summary-links.test.tsx` passes untouched. **9** ✓. **10** ★ a direct create lands on the session's
+  الجدولة (`DEC-228` §3.6). **11** ★ the form works without JS. **12** the search by title or presenter, now
+  normalised for hamza and taa marbuta, through a GET form with the pinned name ✓. **13** both empty strings and the
+  short action ✓. **14** every column sorts; undated last by date in either direction ✓. **15** `SessionStatusBadge`
+  with phase **and** seat ✓. **16** «بلا موعد بعد» ✓. **17** the declined / pending presenter in the row ✓.
+  **18** the row menu's five routes ✓ plus the transitions. **19** `actionsFor` and the map of bound actions ✓.
+  **20** cancel: the dialog names the session, the reason is inside it (L6) ✓. **21** the early-completion sentence
+  in a confirm before the scheduled end ✓. **22 – 25** the toast from the action, the dialog closing from the result,
+  the strings, `revalidatePath` ✓ — the bulk action does the same. **26 – 27** the RPC decides, Zod first ✓.
+  **28** `<bdi>` on titles, names, venues, numbers ✓. **29** ★ the ⋯ stays on the phone card. **30** ✓.
+
+**Built and not drawn:** the creation region; the bulk cancel's dialog listing the titles; a failed bulk (the toast
+counts both; failed rows stay selected); an empty org; a search or filter with nothing; a moderator.
+**The URL is the list's state**: `q`, `status`, `category`, `month` (`YYYY-MM` or `none`), `sort`, `dir`, `page` — the
+search is a GET form; chips, sort and pager are links (the chips' menu and the sort header need JS, as before).
+**Known, carried:** the phone's «المزيد» is the next page, not rows appended — one URL model (`DEC-228` §3.5) means
+one row set for both widths, and `data-table` draws both from it.
+
+### Wave 21 — the lead's answers on `040` (2026-10-02), recorded
+
+- **D15** «عضو نشط» counts members whose status is active — a stock, not a flow — so its label never claims the month,
+  and its link is `/app/admin/members` unnarrowed. Accepted.
+- **D16** «نقطة ممنوحة» counts the month's positive ledger rows and links to `/app/admin/scoring` unnarrowed: that route
+  is frozen and M11b's, and has no month filter. Accepted.
+- The pipeline's counts link to `sessions'` queue URLs (W21.10): submitted and in review → `/app/admin/proposals`
+  (awaiting a decision, the default); changes requested → `?state=changes`; approved → `?state=approved`; draft and
+  rejected → `?state=all`, having no queue of their own. Exact once PR B lands; until then the page shows its default.
+- `ui/card` tiles rather than `ui/stat` stand; no prop is asked of `stat`.
+- ★ Owed on PR B after A merges: the dashboard imports `checkin`'s `attendanceRate()`
+  (`src/components/checkin/attendance-rate.ts`, `6aeff6f0`) in place of `attendanceRateOf()`, so the one rate has one
+  definition in code, not only in a test.
+
+### Wave 21 — L7, `tests/e2e/sessions-screens.spec.ts` (transferred to `console` for the wave), three cases and nothing else
+
+- **:226** SCR-042's «جاهزة للجدولة» is opened at `/ar/app/admin/sessions?new=1` — the link «جلسة جديدة» is (a selector moved).
+- **:372** «ابدأ الجلسة الآن» is asserted as a menu item under the row's ⋯, not a visible button (an expectation moved, L5).
+- **:460** completing: ⋯ → «أنهِ الجلسة» → the dialog's «أنهِ الجلسة» (early, so it confirms); «أرشف» is then a
+  menu item under ⋯ (a selector and a flow moved, L5).

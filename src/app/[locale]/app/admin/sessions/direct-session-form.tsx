@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
@@ -9,30 +9,22 @@ import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { FormAlert } from "@/components/admin/form-alert";
 import { hasAttempted, summaryErrors, was, wasList } from "@/lib/form-state";
 import { emptyCreateState, SESSION_FIELDS, SESSION_REQUIRED_FIELDS, type CreateSessionState, type SessionField } from "./state";
-import { FormAlert } from "@/components/admin/form-alert";
 
-// SCR-042's «أنشئ جلسة مباشرة» (REQ-PRO-007), onto the system for wave 6
-// (`16` §8.2, `DEC-130`).
+// SCR-042's direct create (`REQ-PRO-007`), written again for wave 21 (`DEC-208`)
+// and reached from «جلسة جديدة» (`?new=1`) beside the approved proposals.
 //
-// ★ No date, no venue, no capacity — and not because they are hidden. Creating
-// a session and scheduling it are two acts (D13/D14), `create_session()` has
-// no parameter for any of them, and `directSessionInput` is `.strict()` so one
-// arriving here would be a parse failure.
-//
-// ★ The presenter field was every org member as a checkbox list — a scroll
-// trap at 40 members, unusable at 400, the exact pattern `ui/combobox` was
-// built to fix (`16` §4.2 ★). It is now a multi-select combobox with the
-// same Arabic-normalised typeahead the member picker uses.
-//
-// ★ This form adopts `lib/form-state` (the model `app/propose/proposal-form.tsx`
-// established) — `<FormSummary>`, values surviving a failed round trip, «مطلوب»
-// on the label. What it does NOT adopt is that form's live reward/punish
-// on-blur error-clearing: this is a secondary action (DEC-130 — «إنشاء بدون
-// مقترح» stays secondary), not the flagship form, and the summary/adjacent
-// error/required-marking/value-survival set is REQ-UIX-009/010/011's full
-// acceptance criteria on its own.
+// ★ No toggle any more: the form is in the server-rendered region, so it works
+// without JS (`DEC-228` §3.11) — the old JS-only toggle hid it from a browser
+// without scripts. ★ No date, venue or capacity: creating and scheduling are
+// two acts (D13/D14) and `directSessionInput` is `.strict()`; a created session
+// lands on its الجدولة (`DEC-228` §3.6). Kept: `lib/form-state`'s model —
+// `FormSummary` linking each failure to its control's id, values surviving a
+// failed round trip, «مطلوب» on the label (`REQ-UIX-009` – `011`), the
+// multi-select member combobox (`REQ-UIX-008`), and the field ids the suites
+// pin («direct-title» …).
 
 const LABEL_KEY: Record<SessionField, string> = {
   title: "titleLabel",
@@ -62,34 +54,23 @@ export function DirectSessionForm({
   members: { id: string; displayName: string | null }[];
 }) {
   const t = useTranslations("admin.sessions");
-  // The three level labels are `proposals.propose`'s own copy (`sessions`'
-  // namespace, read-only) — reused rather than duplicated, same as the
-  // original version of this form already did.
+  // The level labels are `proposals.propose`'s own copy, read (`sessions`' namespace).
   const tp = useTranslations("proposals.propose");
   const [state, formAction, pending] = useActionState(action, emptyCreateState);
   const err = (field: SessionField) => (state.errors[field] ? t(`errors.${state.errors[field]}`) : undefined);
   const required = (field: SessionField) => SESSION_REQUIRED_FIELDS.includes(field);
-
   const summary = summaryErrors(state, {
     fields: SESSION_FIELDS,
     label: (field) => t(LABEL_KEY[field]),
     message: (key) => t(`errors.${key}`),
-    // ★ The summary's links target the CONTROL's id, which is the `<Field id>`
-    // below — not the field's name. Without this map every link pointed at an
-    // element that does not exist and focused nothing (wave 8, F4; REQ-UIX-009).
     fieldId: (field) => FIELD_ID[field],
   });
 
-  const memberOptions = members.map((m) => ({ value: m.id, label: m.displayName ?? "" }));
-
   return (
-    <form action={formAction} noValidate className="mt-4 max-w-2xl space-y-6">
+    // `noValidate`: the app shows its own errors (`16` §8.2).
+    <form action={formAction} noValidate className="max-w-2xl space-y-6">
       {hasAttempted(state) ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
-      {state.formError ? (
-        <FormAlert>
-          {t(`errors.${state.formError}`)}
-        </FormAlert>
-      ) : null}
+      {state.formError ? <FormAlert>{t(`errors.${state.formError}`)}</FormAlert> : null}
 
       <Field id="direct-title" label={t("titleLabel")} required={required("title")} error={err("title")}>
         <Input name="title" defaultValue={was(state, "title")} maxLength={150} />
@@ -132,52 +113,15 @@ export function DirectSessionForm({
           id="direct-presenters"
           name="presenterIds"
           multiple
-          options={memberOptions}
+          options={members.map((m) => ({ value: m.id, label: m.displayName ?? "" }))}
           defaultValue={wasList(state, "presenterIds")}
           placeholder={t("presentersPlaceholder")}
         />
       </Field>
 
-      <p className="text-body-sm text-fg-muted">{t("scheduleNote")}</p>
       <Button type="submit" pending={pending} pendingLabel={t("creating")}>
         {t("create")}
       </Button>
     </form>
-  );
-}
-
-/**
- * «إنشاء بدون مقترح» stays a SECONDARY action (`DEC-130`'s own wording) —
- * collapsed behind this toggle rather than a permanently-visible section, so
- * the page's primary flow (proposals → sessions) is not competing with a
- * form most admins will rarely open.
- */
-export function DirectSessionSection({
-  action,
-  categories,
-  members,
-  title,
-}: {
-  action: (prev: CreateSessionState, formData: FormData) => Promise<CreateSessionState>;
-  categories: { id: string; name: string }[];
-  members: { id: string; displayName: string | null }[];
-  title: string;
-}) {
-  const t = useTranslations("admin.sessions");
-  const [open, setOpen] = useState(false);
-  const regionId = "direct-session-region";
-  return (
-    <div>
-      <Button id="direct-session-toggle" type="button" variant="secondary" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-controls={regionId}>
-        {open ? t("directToggleHide") : t("directToggleShow")}
-      </Button>
-      {open ? (
-        <div id={regionId} className="mt-4">
-          <h2 className="text-h2 text-fg-heading">{title}</h2>
-          <p className="mt-2 text-body-sm text-fg-muted">{t("directIntro")}</p>
-          <DirectSessionForm action={action} categories={categories} members={members} />
-        </div>
-      ) : null}
-    </div>
   );
 }

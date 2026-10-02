@@ -1,60 +1,77 @@
-// SCR-042's SessionControls — the cancel flow's confirm dialog (REQ-UIX-013),
-// proved in jsdom against a fake action, the same shape
-// `proposals-review-card.test.tsx` already established for the sibling form.
-// No test file existed for this component before — added alongside the
-// `noValidate` sweep (`16` §8.2) rather than assumed still covered elsewhere.
+// SCR-042's row actions (REQ-SES-005, REQ-UIX-013) — the cancel confirmation
+// and the early-completion confirmation, proved in jsdom against a fake action.
+//
+// ★ Wave 21 (DEC-208), ledger L6: `SessionControls` (buttons under the table,
+// the reason behind a `<details>`, «أكّد الإلغاء» before the dialog) became
+// `SessionRowActions` (the row's ⋯, the reason inside the dialog). The two
+// behaviours this file pinned are kept: the dialog names the session and
+// submits the typed reason; an empty reason shows the app's own error.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
-import { SessionControls } from "@/app/[locale]/app/admin/sessions/session-controls";
+import { SessionRowActions } from "@/app/[locale]/app/admin/sessions/session-controls";
 import ar from "@/messages/ar/admin.json";
 
 type TransitionState = { error: string | null; done: boolean };
 type TransitionAction = (prev: TransitionState, fd: FormData) => Promise<TransitionState>;
 
-function renderControls(action: TransitionAction) {
+function renderActions(action: TransitionAction, actions: ("cancel" | "complete")[] = ["cancel"], endsAt: string | null = null) {
   render(
     <NextIntlClientProvider locale="ar" messages={ar}>
-      <SessionControls action={action} actions={["cancel"]} sessionTitle="جلسة تجريبية" />
+      <SessionRowActions title="جلسة تجريبية" links={[]} actions={actions} action={action} endsAt={endsAt} />
     </NextIntlClientProvider>,
   );
 }
 
-describe("SessionControls — cancel confirmation", () => {
-  it("★ the dialog names the session, and confirming submits the SAME form across the portal with the typed reason", async () => {
+async function choose(name: string) {
+  await userEvent.click(screen.getByRole("button", { name: /مزيد من الإجراءات على جلسة تجريبية/ }));
+  await userEvent.click(await screen.findByRole("menuitem", { name }));
+}
+
+describe("SessionRowActions — cancel confirmation", () => {
+  it("★ the dialog names the session, and confirming submits the typed reason", async () => {
     const action = vi.fn<TransitionAction>().mockResolvedValue({ error: null, done: true });
-    renderControls(action);
-
-    await userEvent.click(screen.getByText("ألغِ الجلسة"));
-    await userEvent.type(screen.getByLabelText("سبب الإلغاء الذي سيصل الحاضرين"), "تعارض في الجدول");
-    await userEvent.click(screen.getByRole("button", { name: "أكّد الإلغاء" }));
-
+    renderActions(action);
+    await choose("ألغِ الجلسة");
     const dialog = await screen.findByRole("dialog", { name: "إلغاء «جلسة تجريبية»؟" });
+    expect(action).not.toHaveBeenCalled();
+    await userEvent.type(within(dialog).getByLabelText(/سبب الإلغاء الذي سيصل الحاضرين/), "انقطاع الكهرباء");
     await userEvent.click(within(dialog).getByRole("button", { name: "تأكيد الإلغاء" }));
-
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
-    const submitted = action.mock.calls[0][1] as FormData;
-    expect(submitted.get("action")).toBe("cancel");
-    expect(submitted.get("reason")).toBe("تعارض في الجدول");
+    const fd = action.mock.calls[0][1];
+    expect(fd.get("action")).toBe("cancel");
+    expect(fd.get("reason")).toBe("انقطاع الكهرباء");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  // ★ The reason box has no `required` attribute at all (the component's own
-  // header comment: it would sit inside a collapsed `<details>` and silently
-  // block the whole form) — `noValidate` on the form is a house-convention
-  // addition (`16` §8.2), not a fix for an active bug here. This proves the
-  // round trip's own error still reaches the screen once the RPC refuses an
-  // empty reason.
-  it("an empty cancel reason shows the app's own error", async () => {
+  it("an empty cancel reason shows the app's own error, at the field", async () => {
     const action = vi.fn<TransitionAction>().mockResolvedValue({ error: "cancelReasonRequired", done: false });
-    renderControls(action);
-
-    await userEvent.click(screen.getByText("ألغِ الجلسة"));
-    await userEvent.click(screen.getByRole("button", { name: "أكّد الإلغاء" }));
-    const dialog = await screen.findByRole("dialog", { name: "إلغاء «جلسة تجريبية»؟" });
+    renderActions(action);
+    await choose("ألغِ الجلسة");
+    const dialog = await screen.findByRole("dialog");
     await userEvent.click(within(dialog).getByRole("button", { name: "تأكيد الإلغاء" }));
+    expect(await within(dialog).findByText("اكتب سبب الإلغاء أولًا.")).toBeInTheDocument();
+  });
+});
 
+describe("SessionRowActions — completing early", () => {
+  it("before the scheduled end, «أنهِ الجلسة» confirms with what it does to check-in", async () => {
+    const action = vi.fn<TransitionAction>().mockResolvedValue({ error: null, done: true });
+    renderActions(action, ["complete"], new Date(Date.now() + 3_600_000).toISOString());
+    await choose("أنهِ الجلسة");
+    const dialog = await screen.findByRole("dialog", { name: "إنهاء «جلسة تجريبية»؟" });
+    expect(within(dialog).getByText("الإنهاء المبكر يغلق تسجيل الحضور فورًا.")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "أنهِ الجلسة" }));
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText("اكتب سبب الإلغاء أولًا.")).toBeVisible();
+    expect(action.mock.calls[0][1].get("action")).toBe("complete");
+  });
+
+  it("after the scheduled end, one press", async () => {
+    const action = vi.fn<TransitionAction>().mockResolvedValue({ error: null, done: true });
+    renderActions(action, ["complete"], new Date(Date.now() - 3_600_000).toISOString());
+    await choose("أنهِ الجلسة");
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

@@ -107,19 +107,25 @@ test("the page header, the status badge and the search box all render for real d
   // field: both used to read «ابحث في الجلسات», a real a11y defect (two
   // identically-named searchboxes on one page) as well as a spec one — this
   // route's own field now reads «ابحث في جلسات المؤسسة».
-  await page.locator("#main").getByRole("searchbox", { name: "ابحث في جلسات المؤسسة" }).fill("لا يوجد شيء بهذا الاسم");
-  await expect(page.getByText("لا جلسات مطابقة لبحثك.")).toBeVisible();
+  // ★ Wave 21 (L4, a selector): the search is a GET form — Enter submits it,
+  // and the URL carries the query.
+  const box = page.locator("#main").getByRole("searchbox", { name: "ابحث في جلسات المؤسسة" });
+  await box.fill("لا يوجد شيء بهذا الاسم");
+  await box.press("Enter");
+  await expect(page).toHaveURL(/[?&]q=/);
+  await expect(page.locator("#main").getByText("لا جلسات مطابقة لبحثك.")).toBeVisible();
 });
 
-test("★ the row menu navigates locale-aware, and start/cancel stay ALWAYS visible — not gated behind the menu", async ({ context, page }) => {
+test("★ the row menu navigates locale-aware, and holds the row's transitions", async ({ context, page }) => {
   await signIn(context);
   await goto(page, "/ar/app/admin/sessions");
 
-  // The regression this guards: an earlier draft hid these behind a row-menu
-  // click, which would have broken sessions-screens.spec.ts's own assumption.
-  await expect(page.getByRole("button", { name: "ابدأ الجلسة الآن" })).toBeVisible();
-
+  // ★ Wave 21 (L5, an expectation): «ابدأ الجلسة الآن» is no longer a button
+  // under the table — the artboard has no room for one — but a menu item under
+  // the row's ⋯, beside the routes it always held.
+  await expect(page.locator("#main").getByRole("button", { name: "ابدأ الجلسة الآن" })).toHaveCount(0);
   await page.getByRole("button", { name: /مزيد من الإجراءات على جلسة قابلة للبدء/ }).click();
+  await expect(page.getByRole("menuitem", { name: "ابدأ الجلسة الآن" })).toBeVisible();
   const open = page.getByRole("menuitem", { name: "فتح الجلسة" });
   await expect(open).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
   await open.click();
@@ -129,18 +135,23 @@ test("★ the row menu navigates locale-aware, and start/cancel stay ALWAYS visi
 test("★ cancelling confirms in a dialog naming the session — cancel changes nothing in the database, confirm does", async ({ context, page }) => {
   await signIn(context);
   await goto(page, "/ar/app/admin/sessions");
-  await page.getByText("ألغِ الجلسة").click();
-  await page.getByLabel("سبب الإلغاء الذي سيصل الحاضرين").fill("سبب الإلغاء لهذا الاختبار");
-  await page.getByRole("button", { name: "أكّد الإلغاء" }).click();
-
+  // ★ Wave 21 (L6, a selector and a flow): ⋯ → «ألغِ الجلسة» opens the dialog
+  // naming the session, and the reason is written inside it.
+  const openCancel = async () => {
+    await page.getByRole("button", { name: /مزيد من الإجراءات على جلسة قابلة للبدء/ }).click();
+    await page.getByRole("menuitem", { name: "ألغِ الجلسة" }).click();
+  };
+  await openCancel();
   const dialog = page.getByRole("dialog", { name: "إلغاء «جلسة قابلة للبدء»؟" });
   await expect(dialog).toBeVisible();
+  await dialog.getByLabel(/سبب الإلغاء الذي سيصل الحاضرين/).fill("سبب الإلغاء لهذا الاختبار");
   await dialog.getByRole("button", { name: "تراجع" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect((await db.query<{ state: string }>(`select state from public.sessions where id = $1`, [sessionId])).rows[0].state).toBe("published");
 
-  await page.getByRole("button", { name: "أكّد الإلغاء" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "تأكيد الإلغاء" }).click();
+  await openCancel();
+  await dialog.getByLabel(/سبب الإلغاء الذي سيصل الحاضرين/).fill("سبب الإلغاء لهذا الاختبار");
+  await dialog.getByRole("button", { name: "تأكيد الإلغاء" }).click();
   await expect(page.getByRole("status")).toContainText("تم تنفيذ الإجراء");
   expect((await db.query<{ state: string }>(`select state from public.sessions where id = $1`, [sessionId])).rows[0].state).toBe("cancelled");
 });

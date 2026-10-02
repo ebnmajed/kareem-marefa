@@ -33,7 +33,7 @@ function Table(props: Partial<React.ComponentProps<typeof DataTable<Row>>>) {
   return (
     <NextIntlClientProvider locale="ar" messages={ar}>
       <main>
-        <DataTable<Row> label="الجلسات" columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} empty={{ title: "لا جلسات بعد." }} {...props} />
+        <DataTable<Row> label="الجلسات" columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} empty={{ title: "لا جلسات بعد.", action: { label: "افتح المقترحات" } }} {...props} />
       </main>
     </NextIntlClientProvider>
   );
