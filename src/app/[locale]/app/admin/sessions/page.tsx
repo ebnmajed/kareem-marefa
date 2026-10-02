@@ -64,8 +64,8 @@ export default async function AdminSessionsPage({
   return (
     <>
       <PageHeader
-        // The artboards keep «جديدة» on the h1's row at 390 too — the header's own phone stack is overridden here.
-        className="flex-row! items-center! justify-between! gap-4!"
+        // The artboards keep «جديدة» on the h1's row at 390 too.
+        inlineActions
         title={t("title")}
         actions={
           admin ? (
