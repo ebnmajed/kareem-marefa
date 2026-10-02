@@ -62,10 +62,13 @@ test.beforeAll(async ({}, testInfo) => {
     );
     ids[key] = r[0].id;
   };
+  // `0010`'s checks: past `approved` a session names a place, and a cancelled one its reason — even undated.
   const undated = async (key: string, title: string, state: string) => {
+    const cancelled = state === "cancelled";
     const { rows: r } = await db.query<{ id: string }>(
-      `insert into public.sessions (org_id, title, abstract, category_id, level, state) values ($1, $2, 'ملخص', $3, 'introductory', $4) returning id`,
-      [orgId, title, cat[0].id, state],
+      `insert into public.sessions (org_id, title, abstract, category_id, level, state, venue_id, cancelled_at, cancellation_reason)
+       values ($1, $2, 'ملخص', $3, 'introductory', $4, $5, $6, $7) returning id`,
+      [orgId, title, cat[0].id, state, cancelled ? venue[0].id : null, cancelled ? new Date().toISOString() : null, cancelled ? "أُلغيت للاختبار" : null],
     );
     ids[key] = r[0].id;
   };
