@@ -37,11 +37,18 @@ function world() {
       { org_id: ORG, state: "archived", starts_at: null, created_at: daysAgo(60) }, // excluded
       { org_id: ORG, state: "published", starts_at: daysAgo(-3), created_at: daysAgo(10) }, // dated
     ],
+    // ★ wave 22 (contract 5): one decision per reported thing — c1 reported twice counts once.
     reports: [
-      { org_id: ORG, target: "photo", status: "open", created_at: daysAgo(0) },
-      { org_id: ORG, target: "photo", status: "resolved", created_at: daysAgo(9) },
-      { org_id: ORG, target: "comment", status: "open", created_at: daysAgo(3) },
-      { org_id: ORG, target: "comment", status: "open", created_at: daysAgo(1) },
+      { org_id: ORG, target: "photo", photo_id: "p1", status: "open", created_at: daysAgo(0) },
+      { org_id: ORG, target: "photo", photo_id: "p2", status: "resolved", created_at: daysAgo(9) },
+      { org_id: ORG, target: "comment", comment_id: "c1", status: "open", created_at: daysAgo(3) },
+      { org_id: ORG, target: "comment", comment_id: "c2", status: "open", created_at: daysAgo(1) },
+      { org_id: ORG, target: "comment", comment_id: "c1", status: "open", created_at: daysAgo(2) },
+    ],
+    // ★ wave 22: an open takedown request waits on الصور too; a decided one does not.
+    photo_takedowns: [
+      { org_id: ORG, photo_id: "p3", requested_at: daysAgo(4), resolved_at: null },
+      { org_id: ORG, photo_id: "p4", requested_at: daysAgo(8), resolved_at: daysAgo(7) },
     ],
     rsvps: [],
     check_ins: [],
@@ -59,10 +66,12 @@ describe("getAdminAttention — contract 3", () => {
     expect(a?.items).toEqual([
       { queue: "proposals", navKey: "proposals", count: 2, oldestAgeDays: 6, href: "/app/admin/proposals" },
       { queue: "unscheduledSessions", navKey: "sessions", count: 2, oldestAgeDays: 3, href: UNSCHEDULED_SESSIONS_HREF },
-      { queue: "photoReports", navKey: "moderationReports", count: 1, oldestAgeDays: 0, href: "/app/admin/moderation/reports" },
-      { queue: "commentReports", navKey: "moderationComments", count: 2, oldestAgeDays: 3, href: "/app/admin/moderation/comments" },
+      // ★ wave 22 (contract 5, DEC-231 §5): the queues follow the screens — الصور holds the photo reports and the
+      // takedowns, البلاغات the comment reports (an expectation moved — a ledger line).
+      { queue: "photoReports", navKey: "moderationPhotos", count: 2, oldestAgeDays: 4, href: "/app/admin/moderation/photos" },
+      { queue: "commentReports", navKey: "moderationReports", count: 2, oldestAgeDays: 3, href: "/app/admin/moderation/reports" },
     ]);
-    expect(a?.total).toBe(7);
+    expect(a?.total).toBe(8);
   });
 
   it("agrees with the dashboard's own attention rows, figure for figure", async () => {
@@ -83,7 +92,7 @@ describe("getAdminAttention — contract 3", () => {
     world();
     const a = await getAdminAttention("ar");
     expect(a?.items.map((i) => i.queue)).toEqual(["photoReports", "commentReports"]);
-    expect(a?.total).toBe(3);
+    expect(a?.total).toBe(4);
   });
 
   it("gives a plain member nothing", async () => {
@@ -94,10 +103,22 @@ describe("getAdminAttention — contract 3", () => {
 
   it("an empty queue is a zero with no age, never a missing item", async () => {
     state.role = "admin";
-    state.client = memorySupabase({ proposals: [], sessions: [], reports: [] });
+    state.client = memorySupabase({ proposals: [], sessions: [], reports: [], photo_takedowns: [] });
     const a = await getAdminAttention("ar");
     expect(a?.items.every((i) => i.count === 0 && i.oldestAgeDays === null)).toBe(true);
     expect(a?.items).toHaveLength(4);
     expect(a?.total).toBe(0);
+  });
+
+  it("★ with no takedown open, the photos tile opens the photo reports' chip", async () => {
+    state.role = "admin";
+    state.client = memorySupabase({
+      proposals: [],
+      sessions: [],
+      reports: [{ org_id: ORG, target: "photo", photo_id: "p1", status: "open", created_at: daysAgo(1) }],
+      photo_takedowns: [],
+    });
+    const a = await getAdminAttention("ar");
+    expect(a?.items.find((i) => i.queue === "photoReports")).toMatchObject({ count: 1, href: "/app/admin/moderation/photos?kind=reports" });
   });
 });

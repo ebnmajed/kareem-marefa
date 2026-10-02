@@ -42,7 +42,7 @@
         "empty": "لا شيء يحتاج انتباهك الآن",
         "proposals": "مقترحات بانتظار قرار",
         "sessions": "جلسات لم تُجدول بعد",
-        "photoReports": "بلاغات على الصور",
+        "photoReports": "صور تنتظر قرارًا",
         "commentReports": "بلاغات على التعليقات",
         "oldestSince": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ {value} أيام} many {منذ {value} يومًا} other {منذ {value} يوم}}"
       },

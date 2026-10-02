@@ -69,8 +69,9 @@ const waiting: AdminAttention = {
   items: [
     { queue: "proposals", navKey: "proposals", count: 4, oldestAgeDays: 6, href: "/app/admin/proposals" },
     { queue: "unscheduledSessions", navKey: "sessions", count: 2, oldestAgeDays: 2, href: "/app/admin/sessions?month=none" },
-    { queue: "photoReports", navKey: "moderationReports", count: 1, oldestAgeDays: 0, href: "/app/admin/moderation/reports" },
-    { queue: "commentReports", navKey: "moderationComments", count: 2, oldestAgeDays: 3, href: "/app/admin/moderation/comments" },
+    // ★ wave 22 (contract 5): the queues follow the screens (a ledger line).
+    { queue: "photoReports", navKey: "moderationPhotos", count: 1, oldestAgeDays: 0, href: "/app/admin/moderation/photos" },
+    { queue: "commentReports", navKey: "moderationReports", count: 2, oldestAgeDays: 3, href: "/app/admin/moderation/reports" },
   ],
   total: 9,
 };
@@ -95,8 +96,8 @@ describe("SCR-040 — what waits is one move away", () => {
     expect(links.map((l) => l.getAttribute("href"))).toEqual([
       expect.stringContaining("/app/admin/proposals"),
       expect.stringContaining("/app/admin/sessions?month=none"),
+      expect.stringContaining("/app/admin/moderation/photos"),
       expect.stringContaining("/app/admin/moderation/reports"),
-      expect.stringContaining("/app/admin/moderation/comments"),
     ]);
     const proposals = within(section).getByRole("link", { name: /مقترحات بانتظار قرار/ });
     expect(proposals).toHaveTextContent("4");
@@ -108,7 +109,7 @@ describe("SCR-040 — what waits is one move away", () => {
     await renderPage(dashboardData(), some);
     const section = screen.getByRole("heading", { name: "يحتاج انتباهك" }).closest("section")!;
     expect(within(section).getAllByRole("link")).toHaveLength(4);
-    const zero = within(section).getByRole("link", { name: /بلاغات على الصور/ });
+    const zero = within(section).getByRole("link", { name: /صور تنتظر قرارًا/ });
     expect(zero.querySelector(".text-signal")).toBeNull();
     expect(within(section).getByRole("link", { name: /مقترحات بانتظار قرار/ }).querySelector(".text-signal")).not.toBeNull();
   });
