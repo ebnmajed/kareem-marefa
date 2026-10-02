@@ -157,8 +157,9 @@ test("the companies row menu is legible over the table", async ({ page }) => {
 test("the audit filters sheet on the dark ground", async ({ page }) => {
   await goto(page, "/ar/app/admin/audit");
   await register(page);
-  await page.locator("#main").getByRole("button", { name: /تصفية/ }).first().click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  // ★ wave 22: SCR-062's filters are chips, not a sheet (a selector moved — a ledger line); the chip's menu is captured.
+  await page.locator("#main").getByRole("button", { name: /^المدة:/ }).first().click();
+  await expect(page.getByRole("menu")).toBeVisible();
   await capture(page, "audit-sheet", true);
 });
 

@@ -76,7 +76,7 @@ export function VenueForm({
                 <option value={NO_COMPANY}>{t("noCompany")}</option>
                 {options.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.deactivated ? t("companyInactiveOption", { name: c.name }) : c.name}
+                    {c.deactivated ? t.markup("companyInactiveOption", { name: c.name, t: (chunks) => chunks }) : c.name}
                   </option>
                 ))}
               </Select>

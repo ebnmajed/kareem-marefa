@@ -65,7 +65,7 @@ export function CompaniesTable({ companies, locale }: { companies: CompanyRow[];
           active={c.deactivatedAt === null}
           onSetActive={(active) => setCompanyActiveAction(locale, c.id, active)}
           labels={{
-            trigger: t("moreActions", { name: c.name }),
+            trigger: t.markup("moreActions", { name: c.name, t: (chunks) => chunks }),
             edit: t("edit"),
             deactivate: t("deactivate"),
             reactivate: t("activate"),
