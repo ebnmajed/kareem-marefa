@@ -103,6 +103,16 @@ describe("SCR-040 — what waits is one move away", () => {
     expect(proposals).toHaveTextContent("منذ 6 أيام");
   });
 
+  it("a queue with nothing in it keeps its tile and link, its zero drawn plain — coral is for what waits", async () => {
+    const some: AdminAttention = { items: waiting.items.map((i) => (i.queue === "photoReports" ? { ...i, count: 0, oldestAgeDays: null } : i)), total: 8 };
+    await renderPage(dashboardData(), some);
+    const section = screen.getByRole("heading", { name: "يحتاج انتباهك" }).closest("section")!;
+    expect(within(section).getAllByRole("link")).toHaveLength(4);
+    const zero = within(section).getByRole("link", { name: /بلاغات على الصور/ });
+    expect(zero.querySelector(".text-signal")).toBeNull();
+    expect(within(section).getByRole("link", { name: /مقترحات بانتظار قرار/ }).querySelector(".text-signal")).not.toBeNull();
+  });
+
   it("when nothing waits, the four tiles are one line", async () => {
     await renderPage(dashboardData(), nothing);
     const section = screen.getByRole("heading", { name: "يحتاج انتباهك" }).closest("section")!;
