@@ -74,7 +74,13 @@ floor stays 63.**
 
 - ★ **Sync 1 is done — `DEC-232`.** Five plans approved; the owner ruled hosting across days (each owner once), an inactive
   owner (earns nothing), reminders (the artboard's set, no column) and the survey tab's bars (the survey's own questions).
-  PR A builds; B and C wait for their worktrees.
+  PR A builds in the main checkout.
+- ★ **The cells landed at `e611e992`; B and C are cut from it**: `../kareem-marefa-wave22b` (`wave-22b/the-read-pages`) and
+  `../kareem-marefa-wave22c` (`wave-22c/moderation-and-the-survey`) — `node_modules` and `packages/*/dist` symlinked,
+  `.env.local` and `supabase/.temp` copied. **Neither is pushed yet.**
+- ★ **A lead's slip, recorded**: A's push of `b81ac2a6`'s parent carried `e0dce842` (`060` deleted) **without its create**
+  — the unpaired delete the rules forbid. Draft PR, `main` untouched. **A is not pushed again until `060`'s and `046`'s
+  creates are in, and B and C's first pushes wait for the same.** Check the head before every push.
 - ★ **`0180` is WRITTEN AND STAGED, NOT APPLIED**: `supabase/proposed/lead/0180_venue_company.sql` and its cases in
   `supabase/proposed/lead/venue-company.test.ts.pending` (`9fea9a91`). Applying it to the shared local stack was
   declined by the session's permission check while five teammates were on the machine (load average ~245). **Promotion**:
