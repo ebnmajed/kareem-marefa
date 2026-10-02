@@ -334,6 +334,42 @@ export async function getSurveyResults(locale: string, sessionId: string): Promi
   };
 }
 
+/**
+ * ★ Wave 22 (`REQ-UIX-105`, `DEC-232`), add-only. `getSurveyResults()` throws
+ * the two refusals `survey_results()` raises — the session's presenter (an
+ * admin who presented included) and a session that is not the caller's org's —
+ * and the tab rendered the error boundary for both, where its own comment
+ * promised `notFound()`. This reads the same function and answers `null` for
+ * either refusal, so the page has one «nothing here»; anything else still throws.
+ */
+export async function getSurveyResultsOrNull(locale: string, sessionId: string): Promise<SurveyResultsDTO | null> {
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  try {
+    return await getSurveyResults(locale, sessionId);
+  } catch (error) {
+    if (error instanceof Error && (error.message === "not_permitted" || error.message === "not_found")) return null;
+    throw error;
+  }
+}
+
+/**
+ * ★ Wave 22 — whether the hub's header offers SCR-064's CSV (`REQ-SUR-007`).
+ * An admin only (the export asserts a fresh admin, `DEC-161`), and only while a
+ * survey is attached. It never throws: the header renders inside a layout,
+ * where a throw takes the whole hub down. Reading `survey_results()` writes no
+ * record — the CSV's `export.created` is written by the download, never here.
+ */
+export async function offersSurveyExport(locale: string, sessionId: string): Promise<boolean> {
+  try {
+    const { session } = await sessionClient(locale);
+    if (session.role !== "admin") return false;
+    const results = await getSurveyResultsOrNull(locale, sessionId);
+    return results !== null && results.status !== "no_survey";
+  } catch {
+    return false;
+  }
+}
+
 // ── SCR-015 — the member's half ────────────────────────────────────────────
 
 export async function getSurveyForMember(locale: string, sessionId: string): Promise<MemberSurveyDTO | null> {
