@@ -293,15 +293,15 @@
         "companies": "Companies",
         "company": {
           "hosting": "hosting <bdi>{value}</bdi>",
-          "attendance": "attendance <bdi>{per}</bdi> per 1%, capped at <bdi>{cap}</bdi>",
-          "presenting": "presenting <bdi>{per}</bdi> per 1%, capped at <bdi>{cap}</bdi>"
+          "attendance": "attendance <bdi>{per}</bdi> per percentage point, capped at <bdi>{cap}</bdi>",
+          "presenting": "presenting <bdi>{per}</bdi> per percentage point, capped at <bdi>{cap}</bdi>"
         },
         "valueOf": "Value — <bdi>{name}</bdi>",
         "costOf": "Deduction — <bdi>{name}</bdi>",
         "capOf": "Cap — <bdi>{name}</bdi>",
         "cooldownOf": "Cooldown — <bdi>{name}</bdi>",
         "reasonOf": "What the member reads — <bdi>{name}</bdi>",
-        "perPercentOf": "Per 1% — <bdi>{name}</bdi>",
+        "perPercentOf": "Per percentage point — <bdi>{name}</bdi>",
         "minActiveOf": "Fewest active members — <bdi>{name}</bdi>",
         "errorSummaryTitle": "The points were not saved",
         "errors": {

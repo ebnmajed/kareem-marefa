@@ -143,7 +143,7 @@ describe("ScoringAdminPage — read mode", () => {
     await renderPage();
     const line = screen.getByText(/^الشركات:/).closest("p") as HTMLElement;
     expect(line).toHaveTextContent("استضافة 30");
-    expect(line).toHaveTextContent("حضور 1 لكل 1% بحد 50");
+    expect(line).toHaveTextContent("حضور 1 لكل نقطة مئوية بحد 50");
     expect(within(line).getByRole("link", { name: "عدّل" })).toHaveAttribute("href", "/app/admin/scoring?edit#company-rules");
     expect(document.body).not.toHaveTextContent("الشركة المستضيفة");
   });

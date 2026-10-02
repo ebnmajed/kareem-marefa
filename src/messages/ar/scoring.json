@@ -293,15 +293,15 @@
         "companies": "الشركات",
         "company": {
           "hosting": "استضافة <bdi>{value}</bdi>",
-          "attendance": "حضور <bdi>{per}</bdi> لكل 1% بحد <bdi>{cap}</bdi>",
-          "presenting": "تقديم <bdi>{per}</bdi> لكل 1% بحد <bdi>{cap}</bdi>"
+          "attendance": "حضور <bdi>{per}</bdi> لكل نقطة مئوية بحد <bdi>{cap}</bdi>",
+          "presenting": "تقديم <bdi>{per}</bdi> لكل نقطة مئوية بحد <bdi>{cap}</bdi>"
         },
         "valueOf": "القيمة — <bdi>{name}</bdi>",
         "costOf": "الخصم — <bdi>{name}</bdi>",
         "capOf": "الحد — <bdi>{name}</bdi>",
         "cooldownOf": "التبريد — <bdi>{name}</bdi>",
         "reasonOf": "ما يقرؤه العضو — <bdi>{name}</bdi>",
-        "perPercentOf": "لكل 1% — <bdi>{name}</bdi>",
+        "perPercentOf": "لكل نقطة مئوية — <bdi>{name}</bdi>",
         "minActiveOf": "أقل عدد أعضاء نشطين — <bdi>{name}</bdi>",
         "errorSummaryTitle": "لم تُحفظ النقاط",
         "errors": {
