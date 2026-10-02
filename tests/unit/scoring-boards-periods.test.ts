@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/session", () => ({ sessionClient: async () => ({}) }));
 
-const { isMonthPeriod, isQuarterPeriod, latestMonthly, derivedActive, quarterOf, boardPlace } = await import("@/lib/dal/leaderboards");
+const { isMonthPeriod, isQuarterPeriod, latestMonthly, derivedActive, quarterOf, boardPlace, isUnranked } = await import("@/lib/dal/leaderboards");
 
 describe("a snapshot's period", () => {
   it("a calendar month, and the year's turn", () => {
@@ -72,5 +72,16 @@ describe("boardPlace", () => {
   it("first place has nobody above; not ranked is null", () => {
     expect(boardPlace([row("me", 1, 10, true)])).toEqual({ rank: 1, points: 10, above: null });
     expect(boardPlace([row("a", 1, 10)])).toBeNull();
+  });
+});
+
+describe("«بلا ترتيب» — isUnranked (REQ-UIX-082)", () => {
+  it("below the snapshot's frozen minimum, by the count the frozen pair implies", () => {
+    expect(isUnranked(3, 20, "10")).toBe(true); // 2 active
+    expect(isUnranked(3, 30, "10")).toBe(false); // 3 active
+  });
+  it("no active member at all is below any minimum; a snapshot with no minimum ranks everyone", () => {
+    expect(isUnranked(1, 40, null)).toBe(true);
+    expect(isUnranked(null, 40, null)).toBe(false);
   });
 });

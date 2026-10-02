@@ -329,7 +329,8 @@
       "metric": {
         "total_points": "مجموع النقاط",
         "points_per_active_member": "نقاط لكل عضو نشط"
-      }
+      },
+      "unranked": "بلا ترتيب"
     },
     "feed": {
       "badge": "<name></name> نال شارة <b><bdi>{badge}</bdi></b>",

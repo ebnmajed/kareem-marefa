@@ -47,6 +47,7 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
         <span className="min-w-0 max-w-[45%] shrink-0 text-caption leading-snug">
           <bdi className="font-bold text-fg-heading">{companyName}</bdi>
           {own ? <span className="ms-1.5 font-semibold text-fg-body">{ownLabel}</span> : null}
+          {note ? <span className="ms-1.5 font-semibold text-fg-muted">{note}</span> : null}
         </span>
         <ProgressBar value={fraction} max={1} fill="team" teamColor={colour} decorative className="min-w-0 flex-1" />
         <span className="shrink-0 font-display font-extrabold text-fg-heading">

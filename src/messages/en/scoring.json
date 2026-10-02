@@ -329,7 +329,8 @@
       "metric": {
         "total_points": "total points",
         "points_per_active_member": "points per active member"
-      }
+      },
+      "unranked": "Unranked"
     },
     "feed": {
       "badge": "<name></name> earned the <b><bdi>{badge}</bdi></b> badge",

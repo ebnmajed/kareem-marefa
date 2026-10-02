@@ -58,3 +58,14 @@ describe("RaceBar — grid", () => {
     expect(one({ teamColor: null }).querySelector("[data-slot=ring]")!.getAttribute("class")).toContain("border-team-neutral");
   });
 });
+
+describe("RaceBar — inline, the note (wave 20, PR C)", () => {
+  it("draws the note after the name in the inline row too — «بلا ترتيب» on the home", () => {
+    const c = render(
+      <ul>
+        <RaceBar companyName="صنف" teamColor={null} value="7.3" metricLabel="m" fraction={0.5} layout="inline" note="بلا ترتيب" />
+      </ul>,
+    ).container;
+    expect(c.querySelector("li")!.textContent).toContain("بلا ترتيب");
+  });
+});
