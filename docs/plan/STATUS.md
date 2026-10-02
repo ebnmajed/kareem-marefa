@@ -99,6 +99,14 @@ floor stays 63.**
 `0183_resolve_report` (`content`). Full RLS sweep at `0181`: 1513 passed, 2 failed — both the expected wave-15 cases
 below; green after. The owner rehearses all four on a dump taken at `0179` before the push.
 
+### ★ Found by the verification builds, carried to the owner
+
+- ★★ **A real no-JS path is impossible under `/app` while `app/loading.tsx` streams** (`console`, 2026-10-03). Every
+  console page sits in that Suspense boundary; the streamed content is revealed by an inline script, so a browser with
+  JavaScript off sees only the skeleton (the CSP log shows the script blocked). `DEC-232` §5.5's `?new=1` / `?edit=` holds
+  for the server's HTML only — the specs now prove that half. Wave 21's `042` is in the same state. Not this wave's to
+  change: the loading model is the shell's, and every route depends on it.
+
 ### ★ The untouched-suite ledger — wave 22
 
 | Suite | Change | Kind | Why |
