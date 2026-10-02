@@ -4605,3 +4605,30 @@ component test, and `wave20-scoring-boards.spec.ts`'s cup case.
 - **`main`'s worker in the gap** (it runs the old `snapshot_leaderboards.ts` until the merge): it takes no quarter
   snapshot, so the cup card reads none and shows its empty state; the month's snapshots are taken exactly as today and
   every reader selects them as today. Nothing breaks, and no row `main` writes is one the new code misreads.
+
+# Wave 20, PR B — build
+
+Landed before the delete: `mark_board_seen()` learns the week (`a17858b2`, proposed); the boards' reads — the week
+live, the quarter's cup, the month chosen by its period, the `:512` relabel, the weekly mark written (`7ba2c84a`); the
+nightly task takes the quarter (`8696536b`).
+
+## `SCR-027` / `SCR-028` — commit 1, the delete (`DEC-208`)
+
+Deleted: `src/app/[locale]/app/leaderboards/{page,loading}.tsx` · `src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`
+· `tests/components/leaderboards/boards.test.tsx`. Kept: `leaderboards/{error,actions}.tsx|ts` (the boundary and the
+Server Action), `moment-rank.tsx` (moment 5's FLIP — `DEC-218` §3.4 keeps it), the DAL. The components are re-written
+at the SAME paths, so the transfer back to `sessions` names the same files; `boards.test.tsx` is re-written at its path
+too, each retired case re-homed:
+
+| Retired case | Re-homed |
+|---|---|
+| `MemberBoard` · the viewer's row under «ترتيبك» when below the rows shown | the pinned own row — same expectation |
+| · not repeated when among the rows | same |
+| · a name links to the profile, no avatar image (DEC-099) | same, the podium included |
+| · an empty board names what to do next | same |
+| `CompanyBoard` · both metrics on every row, the ranking one marked | ★ the metric is said per row to a screen reader and once, visibly, in the column header (`Companies.dc.html`) — selector |
+| · follows the org's metric when it is total points | same |
+| signed numbers · a negative company total and its per-member figure | same |
+| · a negative row in the company's own ledger | same, in the breakdown's rows |
+
+The kept-behaviour tables are §2.3 and §2.4 of the plan, read back after the create commit.
