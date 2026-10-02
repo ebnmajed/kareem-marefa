@@ -1,3 +1,4 @@
+-- 0186 · promoted by the lead (wave 22, DEC-232) from supabase/proposed/scoring/save_recognition.sql, unchanged below this line.
 -- proposed by `scoring` (wave 22, PR B) · DEC-231 §3, DEC-232 §3, §5.2, REQ-UIX-091, REQ-UIX-101, REQ-REC-001, -003,
 -- -005, -006 — SCR-054's one Save: levels, badges (created or edited, retired or restored), perks and streak rules, in
 -- ONE transaction, answering with what it wrote. And `badge_holder_counts()`, the «مُنحت» column.

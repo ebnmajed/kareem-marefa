@@ -1,3 +1,4 @@
+-- 0187 · promoted by the lead (wave 22, DEC-232) from supabase/proposed/notify/save_org_settings.sql, unchanged below this line.
 -- notify (wave 22, SCR-063) — one save of the settings page, in one transaction, answering what it wrote.
 --
 -- Serves:  REQ-UIX-102, REQ-UIX-091 (the saved mark from the record the save wrote), REQ-TEN-008 (every change in the

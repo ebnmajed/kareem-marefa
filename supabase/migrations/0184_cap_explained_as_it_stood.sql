@@ -1,3 +1,4 @@
+-- 0184 · promoted by the lead (wave 22, DEC-232) from supabase/proposed/scoring/cap_explained_as_it_stood.sql, unchanged below this line.
 -- proposed by `scoring` (wave 22, PR B) · DEC-232 §4.1, REQ-PTS-003, REQ-PTS-006, REQ-UIX-100 — the cap, explained by
 -- the rule AS IT STOOD when the content was posted, not as it stands today.
 --

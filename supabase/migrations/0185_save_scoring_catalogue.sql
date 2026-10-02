@@ -1,3 +1,4 @@
+-- 0185 · promoted by the lead (wave 22, DEC-232) from supabase/proposed/scoring/save_scoring_catalogue.sql, unchanged below this line.
 -- proposed by `scoring` (wave 22, PR B) · DEC-231 §3, DEC-232 §3, REQ-UIX-091, REQ-UIX-100, REQ-PTS-004, REQ-PTS-005 —
 -- SCR-053's one Save: the catalogue and the company rules, in ONE transaction, answering with what it wrote.
 --
