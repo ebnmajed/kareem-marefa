@@ -11,9 +11,9 @@ import type { ModerationState } from "../state";
 
 async function decide(locale: Locale, reportId: string, outcome: "removed" | "dismissed", reason?: string): Promise<ModerationState> {
   const result = await decideReport(locale, { reportId, outcome, reason });
-  if (!result.done) return { error: result.error, done: false };
-  revalidatePath(`/${locale}/app/admin/moderation/reports`);
-  return { error: null, done: true };
+  // Decided already, elsewhere: the row is stale, so the list is refreshed with the refusal.
+  if (result.done || result.error === "already_resolved") revalidatePath(`/${locale}/app/admin/moderation/reports`);
+  return result.done ? { error: null, done: true } : { error: result.error, done: false };
 }
 
 /** «أزل» — from the dialog's form: the reason travels with it (REQ-EVT-014). */

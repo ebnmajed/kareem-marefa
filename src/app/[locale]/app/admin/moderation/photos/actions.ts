@@ -10,9 +10,9 @@ import type { ModerationState } from "../state";
 // The queue is the layout's, so the layout is revalidated with the page.
 
 function answer(locale: Locale, result: ModerationResult): ModerationState {
-  if (!result.done) return { error: result.error, done: false };
-  revalidatePath(`/${locale}/app/admin/moderation/photos`, "layout");
-  return { error: null, done: true };
+  // Decided already, elsewhere: the queue is stale, so it is refreshed with the refusal.
+  if (result.done || result.error === "already_resolved") revalidatePath(`/${locale}/app/admin/moderation/photos`, "layout");
+  return result.done ? { error: null, done: true } : { error: result.error, done: false };
 }
 
 /** «احذف نهائيًا» — from the dialog's form, with its reason (REQ-EVT-014). */
