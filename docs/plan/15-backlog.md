@@ -1711,7 +1711,8 @@ screen writes** — each with its `REQ-*`, written before the create commit and 
 #### STORY-UIX-096 — Survey templates, rebuilt
 **Covers:** `REQ-UIX-106` · **M24** · **M** · `event` · PR C
 **Built from:** `AdminSurveys.dc.html`.
-- The two panes; reordering by buttons; every template mutation audited.
+- The templates, then the selected template's questions below them, as drawn; reordering by buttons; every template
+  mutation audited.
 
 ## 24. Coverage check
 

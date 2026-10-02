@@ -1,3 +1,4 @@
+-- 0188 · promoted by the lead (wave 22, DEC-232 §2.8) from supabase/proposed/console/export_slice.sql, unchanged below this line. ★ Numbered after PR B's 0184–0187: the owner pushes 0180–0188 together, before merging A.
 -- console · wave 22 (DEC-232 §2.8, REQ-ADM-017, REQ-ADM-023) — `export.created` records the SLICE that left.
 --
 -- `write_admin_export_audit()` (0058) wrote `{ "export_type": … }` and nothing else, so a 042 selection, a 049 list

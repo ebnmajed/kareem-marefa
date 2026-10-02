@@ -81,6 +81,10 @@ floor stays 63.**
 - ★ **A lead's slip, recorded**: A's push of `b81ac2a6`'s parent carried `e0dce842` (`060` deleted) **without its create**
   — the unpaired delete the rules forbid. Draft PR, `main` untouched. **A is not pushed again until `060`'s and `046`'s
   creates are in, and B and C's first pushes wait for the same.** Check the head before every push.
+- ★ **The slip, repeated (2026-10-03)**: B's first push (draft **#48**) carried three unpaired deletes — `053` (`6cbedead`)
+  and `054` (`2d53a14f`), committed by `scoring` between the lead's check and the push, and `062` (`01b51903`) from A.
+  The command listed the deletes and pushed in the same step. ★ **The rule now: the head is read in one step, the push
+  is a separate step, and nothing is pushed while a teammate is mid-screen in that tree.**
 - ★ **`0180` is WRITTEN AND STAGED, NOT APPLIED**: `supabase/proposed/lead/0180_venue_company.sql` and its cases in
   `supabase/proposed/lead/venue-company.test.ts.pending` (`9fea9a91`). Applying it to the shared local stack was
   declined by the session's permission check while five teammates were on the machine (load average ~245). **Promotion**:
