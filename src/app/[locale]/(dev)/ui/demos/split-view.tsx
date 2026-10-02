@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { SplitView } from "@/components/ui/split-view";
 
 // `split-view`'s gallery entry — REQ-UIX-085, REQ-UIX-088. `sessions'`; the lead's stub (contract 2), which
@@ -19,22 +20,26 @@ const CHIPS = (
   </div>
 );
 
-const DETAIL = (
-  <div className="space-y-2">
-    <h2 id="demo-split-detail" className="text-h2 text-fg-heading">
-      لوحة تحكم لا يهجرها أحد
-    </h2>
-    <p className="text-body text-fg-body">قبل سنة كان تقرير الأداء الشهري يأخذ أربعة أيام من شخصين.</p>
-  </div>
-);
+// The heading's id is the demo's own: the gallery renders every demo on two grounds, and an id is written once.
+function Detail({ id }: { id: string }) {
+  return (
+    <div className="space-y-2">
+      <h2 id={id} className="text-h2 text-fg-heading">
+        لوحة تحكم لا يهجرها أحد
+      </h2>
+      <p className="text-body text-fg-body">قبل سنة كان تقرير الأداء الشهري يأخذ أربعة أيام من شخصين.</p>
+    </div>
+  );
+}
 
 export function SplitViewDemo() {
+  const headingId = useId();
   return (
     <div className="flex flex-col gap-8">
       {/* The open row, the chips above the list, the detail beside it from lg. */}
-      <SplitView label="المقترحات" narrow="list" currentId="b" items={ITEMS} toolbar={CHIPS} detail={DETAIL} detailLabelledBy="demo-split-detail" />
+      <SplitView label="المقترحات" narrow="list" currentId="b" items={ITEMS} toolbar={CHIPS} detail={<Detail id={headingId} />} detailLabelledBy={headingId} />
       {/* An item's own route below lg: the detail and its back link. */}
-      <SplitView label="المقترحات" narrow="detail" currentId="c" items={ITEMS} detail={DETAIL} back={{ href: "/app/admin/proposals", label: "المقترحات" }} />
+      <SplitView label="المقترحات" narrow="detail" currentId="c" items={ITEMS} detail={<Detail id={`${headingId}-route`} />} back={{ href: "/app/admin/proposals", label: "المقترحات" }} />
       {/* Nothing in the filter. */}
       <SplitView label="المقترحات" narrow="list" currentId={null} items={[]} toolbar={CHIPS} empty={<p className="text-body text-fg-muted">لا مقترحات بانتظار القرار</p>} detail={null} />
     </div>
