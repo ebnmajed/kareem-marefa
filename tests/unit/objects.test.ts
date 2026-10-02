@@ -87,7 +87,8 @@ describe("the playground's wordmark", () => {
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${dir}/${e.name}`) : /\.(tsx?|mjs)$/.test(e.name) ? [`${dir}/${e.name}`] : []));
     const importers = walk("src").filter((f) => /components\/brand\/wordmark["']/.test(readFileSync(f, "utf8")));
     // The public session card (`/s/[id]`) is not one of the five frozen routes (`REQ-UIX-059`); it wears it too.
-    const allowed = ["src/app/[locale]/(dev)/", "src/app/[locale]/app/layout.tsx", "src/app/[locale]/(auth)/door.tsx", "src/components/browse/public-card-frame.tsx"];
+    // ★ wave 21 (REQ-UIX-084): the console draws its own bar, and the bar wears the mark (`AdminDashboard.dc.html`).
+    const allowed = ["src/app/[locale]/(dev)/", "src/app/[locale]/app/layout.tsx", "src/app/[locale]/app/admin/layout.tsx", "src/app/[locale]/(auth)/door.tsx", "src/components/browse/public-card-frame.tsx"];
     for (const f of importers) expect(allowed.some((a) => f.startsWith(a)), `${f} wears the new wordmark`).toBe(true);
     expect(importers).toContain("src/app/[locale]/app/layout.tsx");
   });

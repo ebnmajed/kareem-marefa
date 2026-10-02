@@ -62,10 +62,13 @@ test.beforeAll(async ({}, testInfo) => {
     );
     ids[key] = r[0].id;
   };
+  // `0010`'s checks: past `approved` a session names a place, and a cancelled one its reason — even undated.
   const undated = async (key: string, title: string, state: string) => {
+    const cancelled = state === "cancelled";
     const { rows: r } = await db.query<{ id: string }>(
-      `insert into public.sessions (org_id, title, abstract, category_id, level, state) values ($1, $2, 'ملخص', $3, 'introductory', $4) returning id`,
-      [orgId, title, cat[0].id, state],
+      `insert into public.sessions (org_id, title, abstract, category_id, level, state, venue_id, cancelled_at, cancellation_reason)
+       values ($1, $2, 'ملخص', $3, 'introductory', $4, $5, $6, $7) returning id`,
+      [orgId, title, cat[0].id, state, cancelled ? venue[0].id : null, cancelled ? new Date().toISOString() : null, cancelled ? "أُلغيت للاختبار" : null],
     );
     ids[key] = r[0].id;
   };
@@ -124,7 +127,7 @@ test("SCR-040 at 1280: what waits is one move away — the undated tile opens ex
   await expect(table.getByText("الأقمشة: كيف تقرأ العيّنة قبل أن تشتريها")).toBeVisible();
   await expect(table.getByText("محضر الاجتماع الذي يُقرأ")).toBeVisible();
   await expect(table.getByRole("row")).toHaveCount(3); // the header and the two it counted
-  await expect(main.getByText("جلستان")).toBeVisible();
+  await expect(main.getByText("جلستان", { exact: true })).toBeVisible(); // the toolbar's count, not «جلستان محدّدتان»
 });
 
 test("SCR-042 at 1280: found, filtered, and two sessions cancelled in bulk with one reason", async ({ context, page }, testInfo) => {

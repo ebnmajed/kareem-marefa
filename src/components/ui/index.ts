@@ -191,6 +191,9 @@ export interface PageHeaderProps extends Styleable {
   /** wave 19 (DEC-214 §4), add-only: a count drawn after the title in the muted face — the directory's
    *  «الأعضاء 212». Already formatted by the caller (Western numerals). Part of the `h1`'s text, so it is read. */
   count?: string;
+  /** ★ wave 21 (add-only): keep `actions` on the title's row at every width — a console list's one primary, as
+   *  `AdminSessionsPhone.dc.html` draws «جديدة» beside the `h1`. Default `false`: the phone stacks them, as before. */
+  inlineActions?: boolean;
 }
 
 /** lead · `prose.tsx` — long-form text with the typography tokens applied. */

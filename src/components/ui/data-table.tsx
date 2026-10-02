@@ -28,6 +28,7 @@ import type { DataTableColumn, DataTableProps } from "@/components/ui";
 //    `overflow: clip` makes no scroll container, and the header sticks to the
 //    page. The table is `border-separate` then, because a collapsed border does
 //    not travel with a sticky cell.
+//  · `hiddenHeaders` — a column whose header is read and not drawn (a ⋯ column).
 //  · `renderCard` — the phone card's body, for a caller that draws its own card
 //    (`AdminSessionsPhone.dc.html`'s has no «label · value» rows). The checkbox
 //    and the `<li>` stay the primitive's; the caller puts `titleId` on its title
@@ -37,6 +38,8 @@ import type { DataTableColumn, DataTableProps } from "@/components/ui";
 export interface DataTableAdditions<Row> {
   stickyHeader?: boolean;
   renderCard?: (row: Row, card: { titleId: string }) => ReactNode;
+  /** Column keys whose header is read but not drawn — a ⋯ column the artboard leaves blank keeps its name. */
+  hiddenHeaders?: readonly string[];
 }
 
 function IndeterminateCheckbox({
@@ -83,6 +86,7 @@ export function DataTable<Row>({
   className = "",
   stickyHeader = false,
   renderCard,
+  hiddenHeaders,
 }: DataTableProps<Row> & DataTableAdditions<Row>) {
   const tableId = useId();
   const t = useTranslations("admin.dataTable");
@@ -208,6 +212,8 @@ export function DataTable<Row>({
                         >
                           {col.header}
                         </button>
+                      ) : hiddenHeaders?.includes(col.key) ? (
+                        <span className="sr-only">{col.header}</span>
                       ) : (
                         col.header
                       )}

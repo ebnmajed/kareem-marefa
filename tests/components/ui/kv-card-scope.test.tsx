@@ -28,7 +28,8 @@ describe("ui/kv-card — inside the scope", () => {
 
   it("renders the edit twin as one group per editable row and no form", () => {
     const { container } = render(<KvCard label="الجدولة" rows={ROWS} emptyValue="—" mode="edit" />);
-    expect(container.querySelectorAll('[role="group"]')).toHaveLength(1);
+    // wave 21 (ledger L21-K1, a selector): each editable row is a <fieldset>, whose role is group without the attribute.
+    expect(container.querySelectorAll("fieldset")).toHaveLength(1);
     expect(container.querySelector("form")).toBeNull();
   });
 });
@@ -57,5 +58,14 @@ describe("ui/kv-card — `sessions'` cases", () => {
   it("renders the actions under the rows", () => {
     render(<KvCard label="الجدولة" rows={ROWS} emptyValue="—" actions={<button type="button">عدّل</button>} />);
     expect(screen.getByRole("button", { name: "عدّل" })).toBeTruthy();
+  });
+});
+
+describe("ui/kv-card — one accessible name per control", () => {
+  it("★ a row's control that shares the row's word is the ONLY element labelled by it (a fieldset's legend names, it does not label)", () => {
+    const { container } = render(<KvCard label="الجدولة" rows={[{ id: "venue", label: "المكان", value: null, edit: <select aria-label="المكان" /> }]} emptyValue="—" mode="edit" />);
+    expect(container.querySelector("fieldset > legend")!.textContent).toBe("المكان");
+    expect(container.querySelectorAll("[aria-labelledby]")).toHaveLength(0);
+    expect(screen.getByRole("group", { name: "المكان" }).tagName).toBe("FIELDSET");
   });
 });

@@ -116,7 +116,9 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             {t("upcoming.all")}
           </Link>
         </div>
-        <div className="mt-3">
+        {/* The artboard sets the table in a rounded card at a desk; under `md` the rows are
+            `data-table`'s own cards, so the frame would be a card around cards. */}
+        <div className="mt-3 md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1">
           <UpcomingTable rows={data.upcoming} timeZone={data.timeZone} locale={locale} />
         </div>
       </section>

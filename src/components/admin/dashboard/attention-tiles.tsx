@@ -26,7 +26,9 @@ export function AttentionTiles({
           <li key={item.queue}>
             <Card density="row" href={item.href} className="h-full">
               <span className="flex w-full flex-col gap-1 p-4">
-                <span className="text-h2 font-bold text-signal">
+                {/* Coral says «waiting»; a queue with nothing in it is not urgent, so its zero is plain
+                    (DEC-NEXT-22). The tile and its link stay — four tiles, one stable layout. */}
+                <span className={`text-h2 font-bold ${item.count > 0 ? "text-signal" : "text-fg-muted"}`}>
                   <bdi>{formatNumber(item.count)}</bdi>
                 </span>
                 <span className="text-label text-fg-heading">

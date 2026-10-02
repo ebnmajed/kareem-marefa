@@ -176,8 +176,9 @@ export function SessionsTable({
     <div>
       {selected.length === 0 ? <Toolbar query={query} total={total} categories={categories} months={months} statusLabel={statusLabel} monthLabel={monthLabel} /> : null}
 
+      {/* The artboard sets the table in a rounded card at a desk; under `md` the rows are already cards. */}
       <DataTable
-        className="mt-4"
+        className="mt-4 md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
         label={t("tableLabel")}
         columns={columns}
         rows={rows}
@@ -187,6 +188,7 @@ export function SessionsTable({
         onSortChange={(next) => router.push(sessionsHref(query, { sort: next.key as SessionQuery["sort"], dir: next.direction, page: 1 }))}
         stickyHeader
         renderCard={card}
+        hiddenHeaders={["actions"]}
         selection={
           admin
             ? {
@@ -311,12 +313,18 @@ function Pager({ query, total, from, to, page, pageCount }: { query: SessionQuer
           ) : null}
           {next ? (
             <>
-              <ButtonLink href={next} variant="secondary" size="sm" className="hidden md:inline-flex">
-                {t("next")}
-              </ButtonLink>
-              <ButtonLink href={next} variant="secondary" size="sm" className="md:hidden">
-                {t("more")}
-              </ButtonLink>
+              {/* The width decides on a wrapper, never on the link: `ButtonLink` carries its own
+                  `inline-flex`, and a `hidden` beside it loses to it — the phone showed both. */}
+              <span className="hidden md:inline-flex">
+                <ButtonLink href={next} variant="secondary" size="sm">
+                  {t("next")}
+                </ButtonLink>
+              </span>
+              <span className="inline-flex md:hidden">
+                <ButtonLink href={next} variant="secondary" size="sm">
+                  {t("more")}
+                </ButtonLink>
+              </span>
             </>
           ) : null}
         </div>

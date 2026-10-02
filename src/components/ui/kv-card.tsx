@@ -5,7 +5,7 @@ import type { KvCardProps } from "@/components/ui";
 //
 // ★ A STUB, landed by the lead with its signature and registry entry (contract 2, `DEC-227`) so the gate stays green
 // while `sessions` writes it to its plan (`notes/sessions.md` W21.2). Read mode is a `<dl>`; the edit twin is one
-// `role="group"` per row and renders no `<form>` — the screen owns its forms. No animation.
+// `<fieldset>` per row and renders no `<form>` — the screen owns its forms. No animation.
 //
 // ★ NO `<form>`, ON PURPOSE. A card can hold controls of more than one form (SCR-043's presenters have their own two,
 // which HTML forbids nesting in the schedule's), so the page wraps what it submits and the card only lays rows out.
@@ -32,12 +32,14 @@ export function KvCard({ title, headingLevel = 2, label, rows, mode = "read", em
         <div className="divide-y divide-edge">
           {rows.map((row) =>
             row.edit ? (
-              <div key={row.id} role="group" aria-labelledby={`${id}-${row.id}`} className="py-3">
-                <p id={`${id}-${row.id}`} className="mb-2 text-label text-fg-muted">
-                  {row.label}
-                </p>
+              // ★ A <fieldset> named by its <legend>, not a role="group" with aria-labelledby: a row's own control
+              // often carries the row's word as its label («المكان», «السعة»), and an aria-labelledby group is a
+              // second element answering to that label — two elements with one accessible name (wave 21, the lead's
+              // production-build finding). A legend names the group without labelling it as a control.
+              <fieldset key={row.id} className="min-w-0 py-3">
+                <legend className="mb-2 text-label text-fg-muted">{row.label}</legend>
                 {row.edit}
-              </div>
+              </fieldset>
             ) : (
               <dl key={row.id} className="grid gap-1 py-3 md:grid-cols-[12rem_1fr]">
                 <dt className="text-label text-fg-muted">{row.label}</dt>
