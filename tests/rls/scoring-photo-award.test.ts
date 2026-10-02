@@ -1,23 +1,22 @@
 // Wave 20, PR C — the photo award, with its reversal first (DEC-220 §2, DEC-222, REQ-UIX-083, STORY-UIX-073,
 // REQ-PTS-002, REQ-PTS-006, REQ-PTS-012, REQ-PTS-013).
 //
-// supabase/proposed/scoring/w20c_0001_photo_award.sql. `content`'s trigger on `photos` (its own file) decides WHEN and
-// calls these; here they are called directly, as that trigger would, and the job `award_points` would run is run
-// the way the worker runs it — so what is paid is proven apart from when.
+// `0177_photo_award.sql`. `content`'s trigger on `photos` (`0178`) decides WHEN and calls these; here they are also
+// called directly, as that trigger would, and the job `award_points` would run is run the way the worker runs it —
+// so what is paid is proven apart from when. A photo the trigger must not see (one «from before the migration», or
+// one already hidden) is inserted hidden: `0178`'s insert trigger fires for a visible photo only.
 //
 // 03 §8.2 rows proven here: RPC-reverse_photo_points.{compensating, frees_cap}; RPC-award_photo_points.{visible_only,
 // epoch, restore_only_reversed, cap, grants}; RPC-award_points.photo_epoch.
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, pool, withTx, type Tx } from "./db";
+import { errorCode, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const FILE = "scoring/w20c_0001_photo_award.sql";
 const SHA = "a".repeat(64);
 
 async function setup(tx: Tx) {
-  await applyProposed(tx, FILE);
   const f = await seed(tx);
   await tx.asOwner();
   const uploader = f.a.members[1];
@@ -25,12 +24,12 @@ async function setup(tx: Tx) {
 }
 
 let n = 0;
-async function photo(tx: Tx, orgId: string, sessionId: string, uploaderId: string) {
+async function photo(tx: Tx, orgId: string, sessionId: string, uploaderId: string, hidden = false) {
   n += 1;
   const [p] = await tx.q<{ id: string }>(
-    `insert into public.photos (org_id, session_id, uploader_id, storage_path, width, height, byte_size, sha256, exif_stripped)
-     values ($1, $2, $3, $4, 1200, 800, 2048, $5, true) returning id`,
-    [orgId, sessionId, uploaderId, `${orgId}/sessions/${sessionId}/photos/award-${n}-${Math.random()}.jpg`, SHA],
+    `insert into public.photos (org_id, session_id, uploader_id, storage_path, width, height, byte_size, sha256, exif_stripped, hidden_at, hidden_reason)
+     values ($1, $2, $3, $4, 1200, 800, 2048, $5, true, case when $6 then now() end, case when $6 then 'takedown_requested' end) returning id`,
+    [orgId, sessionId, uploaderId, `${orgId}/sessions/${sessionId}/photos/award-${n}-${Math.random()}.jpg`, SHA, hidden],
   );
   return p.id;
 }
@@ -72,8 +71,7 @@ describe("RPC-award_photo_points", () => {
   it("★ visible_only: a hidden or removed photo enqueues nothing; a late job after a hide writes nothing", async () => {
     await withTx(async (tx) => {
       const { f, uploader, session } = await setup(tx);
-      const hidden = await photo(tx, f.a.id, session, uploader.memberId);
-      await tx.q(`update public.photos set hidden_at = now(), hidden_reason = 'takedown_requested' where id = $1`, [hidden]);
+      const hidden = await photo(tx, f.a.id, session, uploader.memberId, true);
       expect(await award(tx, hidden)).toEqual([]);
       const late = await photo(tx, f.a.id, session, uploader.memberId);
       await tx.q(`select public.award_photo_points($1, false)`, [late]);
@@ -105,8 +103,7 @@ describe("RPC-award_photo_points", () => {
   it("★ restore_only_reversed: a photo never paid (from before the migration), hidden and restored, is paid nothing", async () => {
     await withTx(async (tx) => {
       const { f, uploader, session } = await setup(tx);
-      const p = await photo(tx, f.a.id, session, uploader.memberId);
-      await tx.q(`update public.photos set hidden_at = now(), hidden_reason = 'takedown_requested' where id = $1`, [p]);
+      const p = await photo(tx, f.a.id, session, uploader.memberId, true);
       await tx.q(`update public.photos set hidden_at = null, hidden_reason = null where id = $1`, [p]);
       expect(await award(tx, p, true)).toEqual([]);
       expect(await ledger(tx, p)).toEqual([]);
