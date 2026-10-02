@@ -69,7 +69,8 @@ export function RankRow({
           ) : (
             name
           )}
-          {self ? <span className="text-caption font-semibold text-fg-body">{selfLabel}</span> : null}
+          {/* wave 20 (Board.dc.html): «أنت» as the accent pill — still a word, still beside the name. */}
+          {self ? <span className="rounded-pill bg-accent px-2 text-caption font-bold text-on-accent pg-light:bg-fg-heading pg-light:text-canvas">{selfLabel}</span> : null}
         </span>
         {company ? (
           <span className="text-caption font-semibold text-fg-muted">

@@ -51,7 +51,7 @@ function Place({ place, position }: { place: PodiumPlace; position: number }) {
             name
           )}
         </span>
-        {self ? <span className="text-caption font-semibold text-fg-body">{place.selfLabel}</span> : null}
+        {self ? <span className="rounded-pill bg-accent px-2 text-caption font-bold text-on-accent pg-light:bg-fg-heading pg-light:text-canvas">{place.selfLabel}</span> : null}
         {place.company ? (
           <span className="text-caption font-semibold text-fg-muted">
             <bdi>{place.company}</bdi>
