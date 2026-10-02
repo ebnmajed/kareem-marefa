@@ -1016,3 +1016,64 @@ export async function getCompanyCup(locale: string): Promise<CompanyCup | null> 
     })),
   };
 }
+
+/** A per-category board (REQ-LDR-003) — the newest `topic` snapshot for the category, all time (the nightly task's,
+ *  `snapshot_leaderboards.ts`). Opt-out is `boards_read`'s. null: no snapshot for it yet, or a category of no org. */
+export interface TopicBoard {
+  categoryId: string;
+  categoryName: string;
+  rows: MemberBoardRow[];
+  takenAt: string;
+}
+
+export async function listBoardCategories(locale: string): Promise<Array<{ id: string; name: string }>> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.from("categories").select("id, name").eq("org_id", session.orgId).order("name");
+  if (error) throw new Error(`categories (boards): ${error.message}`);
+  return (data ?? []) as Array<{ id: string; name: string }>;
+}
+
+export async function getTopicBoard(locale: string, categoryId: string): Promise<TopicBoard | null> {
+  if (!z.uuid().safeParse(categoryId).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  const [catRes, snapRes] = await Promise.all([
+    supabase.from("categories").select("id, name").eq("org_id", session.orgId).eq("id", categoryId).maybeSingle(),
+    supabase
+      .from("leaderboard_snapshots")
+      .select("id, taken_at")
+      .eq("org_id", session.orgId)
+      .eq("kind", "topic")
+      .eq("category_id", categoryId)
+      .order("taken_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (catRes.error) throw new Error(`categories (topic): ${catRes.error.message}`);
+  if (snapRes.error) throw new Error(`leaderboard_snapshots (topic): ${snapRes.error.message}`);
+  if (!catRes.data) return null;
+  const snap = snapRes.data as { id: string; taken_at: string } | null;
+  if (!snap) return { categoryId, categoryName: catRes.data.name as string, rows: [], takenAt: "" };
+  const { data: entries, error } = await supabase.from("leaderboard_entries").select("member_id, rank, points").eq("snapshot_id", snap.id).not("member_id", "is", null).order("rank");
+  if (error) throw new Error(`leaderboard_entries (topic): ${error.message}`);
+  const list = (entries ?? []) as Array<{ member_id: string; rank: number; points: number }>;
+  const { data: members, error: mError } = list.length
+    ? await supabase.from("members").select("id, display_name, company_id").in("id", list.map((e) => e.member_id))
+    : { data: [] as Array<{ id: string; display_name: string | null; company_id: string | null }>, error: null };
+  if (mError) throw new Error(`members (topic): ${mError.message}`);
+  const byId = new Map(((members ?? []) as Array<{ id: string; display_name: string | null; company_id: string | null }>).map((m) => [m.id, m]));
+  const companyIds = [...new Set([...byId.values()].map((m) => m.company_id).filter((id): id is string => Boolean(id)))];
+  const { data: companies } = companyIds.length
+    ? await supabase.from("companies").select("id, name, team_color").in("id", companyIds)
+    : { data: [] as Array<{ id: string; name: string; team_color: string | null }> };
+  const companyOf = new Map(((companies ?? []) as Array<{ id: string; name: string; team_color: string | null }>).map((c) => [c.id, c]));
+  return {
+    categoryId,
+    categoryName: catRes.data.name as string,
+    takenAt: snap.taken_at,
+    rows: list.map((e) => {
+      const m = byId.get(e.member_id);
+      const c = m?.company_id ? companyOf.get(m.company_id) : undefined;
+      return { memberId: e.member_id, displayName: m?.display_name ?? "", rank: e.rank, points: e.points, isSelf: e.member_id === session.memberId, company: c?.name ?? null, teamColor: c?.team_color ?? null };
+    }),
+  };
+}

@@ -62,6 +62,45 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
     );
   }
 
+  // ★ wave 20, PR B (DEC-218 §3.3, add-only): `grid` is `Companies.dc.html`'s row — the rank; the ring, the name and
+  // «فريقك» with the bar under the name, growing from the inline-start; the ranking metric's value in the display face;
+  // the other metric, quieter. The two metrics' names are said on every row to a screen reader (REQ-LDR-004, -005)
+  // and shown once, visibly, by the table's own header — the caller's.
+  if (layout === "grid") {
+    return (
+      <li className={`grid grid-cols-[1.75rem_minmax(0,1fr)_auto_auto] items-center gap-x-3 rounded-tile border-2 bg-surface px-3 py-2.5 ${own ? frame : "border-edge"} ${className}`}>
+        <span className="text-center font-display text-play-sm font-extrabold text-fg-muted">
+          {rank != null ? (
+            <>
+              <span className="sr-only">{rankLabel}</span>
+              <bdi aria-hidden="true">{String(rank)}</bdi>
+            </>
+          ) : null}
+        </span>
+        <span className="flex min-w-0 flex-col gap-1.5">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-body font-bold leading-snug text-fg-heading">
+            <span aria-hidden="true" data-slot="ring" style={ringStyle} className={`size-5 shrink-0 rounded-pill border-[3px] bg-canvas ${ring}`} />
+            <bdi>{companyName}</bdi>
+            {own ? <span className="rounded-pill bg-accent px-2 text-caption font-bold text-on-accent pg-light:bg-fg-heading pg-light:text-canvas">{ownLabel}</span> : null}
+          </span>
+          <ProgressBar value={fraction} max={1} fill="team" teamColor={colour} decorative />
+        </span>
+        <span className="font-display text-play-sm font-extrabold text-fg-heading">
+          <bdi dir="ltr">{value}</bdi>
+          <span className="sr-only">{metricLabel}</span>
+        </span>
+        <span className="text-body-sm text-fg-muted">
+          {secondary ? (
+            <>
+              <bdi dir="ltr">{secondary.value}</bdi>
+              <span className="sr-only">{secondary.label}</span>
+            </>
+          ) : null}
+        </span>
+      </li>
+    );
+  }
+
   // Three lines, so the row fits the box it is given — 326 px in the gallery at
   // 390, less inside a card: the ring, the name and the number; the bar across
   // the whole row; then the metric and the other one. Nothing on the first line

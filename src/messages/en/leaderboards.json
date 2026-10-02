@@ -5,7 +5,8 @@
       "allTime": "All time",
       "monthly": "This month",
       "company": "Company race",
-      "companyBreakdown": "My company's points"
+      "companyBreakdown": "My company's points",
+      "weekly": "This week"
     },
     "you": "You",
     "empty": "Not enough data yet to show this board.",
@@ -27,7 +28,15 @@
         "total_points": "Ranked by: total points",
         "points_per_active_member": "Ranked by: points per active member"
       },
-      "ownLabel": "Your team"
+      "ownLabel": "Your team",
+      "active": "{count, plural, =0 {No active members} one {One active} other {<bdi>{value}</bdi> active}}",
+      "columns": {
+        "rank": "#",
+        "company": "Company",
+        "perActiveMember": "Per member",
+        "totalPoints": "Total",
+        "ranked": "Ranked by"
+      }
     },
     "companyBreakdown": {
       "heading": "How your company earned its points",
@@ -50,7 +59,10 @@
         "attended": "<bdi>{attended}</bdi> of <bdi>{active}</bdi> active members attended (<bdi>{percent}</bdi>%)",
         "presenting": "<bdi>{presenting}</bdi> of <bdi>{active}</bdi> active members presented (<bdi>{percent}</bdi>%)"
       },
-      "balanceLabel": "Your company's balance from the company rules"
+      "balanceLabel": "Your company's balance from the company rules",
+      "noCompany": "Choose your company to see how it earned its points.",
+      "chooseCompany": "Choose your company",
+      "sessions": "{count, plural, one {one session} other {<bdi>{value}</bdi> sessions}}"
     },
     "description": "Who leads your organisation this month and since the start, and how the companies compare.",
     "emptyAction": "Browse sessions",
@@ -59,6 +71,39 @@
     "allTime": {
       "live": "Updates live with every point"
     },
-    "riseLabel": "{count, plural, zero {Your rank has not changed} one {Up one place since your last visit} two {Up two places since your last visit} few {Up {value} places since your last visit} many {Up {value} places since your last visit} other {Up {value} places since your last visit}}"
+    "riseLabel": "{count, plural, zero {Your rank has not changed} one {Up one place since your last visit} two {Up two places since your last visit} few {Up {value} places since your last visit} many {Up {value} places since your last visit} other {Up {value} places since your last visit}}",
+    "week": {
+      "until": "Until <bdi>{day}</bdi>"
+    },
+    "rankCard": {
+      "label": "Your rank",
+      "above": "Above you: <b><bdi>{name}</bdi></b> · <n>+<bdi>{gap}</bdi></n>",
+      "first": "You lead",
+      "absent": "Not ranked yet",
+      "hidden": "Hidden from others",
+      "windowPoints": {
+        "week": "This week",
+        "month": "This month",
+        "all": "All time"
+      }
+    },
+    "podium": {
+      "label": "The top places"
+    },
+    "more": "Show <bdi>{from}</bdi> to <bdi>{to}</bdi> · {count, plural, one {one member} other {<bdi>{value}</bdi> members}}",
+    "category": {
+      "trigger": "By category",
+      "all": "All categories",
+      "current": "Category: <bdi>{name}</bdi>"
+    },
+    "cup": {
+      "title": "{quarter, select, first {First-quarter cup} second {Second-quarter cup} third {Third-quarter cup} other {Fourth-quarter cup}}",
+      "round": "Round <bdi>{round}</bdi> of <bdi>{rounds}</bdi>",
+      "days": "{count, plural, =0 {Last day} one {One day} other {<bdi>{value}</bdi> days}}",
+      "awarded": "Awarded at the annual meeting",
+      "provisional": "Provisional — updated nightly until the quarter ends",
+      "empty": "This quarter's race has not been counted yet",
+      "monthFallback": "This month's race"
+    }
   }
 }
