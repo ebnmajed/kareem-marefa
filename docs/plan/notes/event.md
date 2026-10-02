@@ -1349,3 +1349,218 @@ Server-safe: no hook, no `"use client"`. `ui-playground.test.ts` is red for this
   placeholder. The artboard writes the whole title at 9 px inside the tile; at that width a 150-character title can
   only be clipped (`10` forbids it), and the title is printed beside the tile anyway.
 - The panel's shield glyph is not drawn: `ui/icons` has no shield, and a glyph is the lead's file.
+
+---
+
+## Wave 22 — the plan (sync 1)
+
+`SCR-064` (the hub's الاستبانة tab) and `SCR-065` (survey templates), PR C (`wave-22c/moderation-and-the-survey`),
+`REQ-UIX-105`, `REQ-UIX-106`, `STORY-UIX-095`, `096`. Measured at `a6c0345a`. Planning only: nothing below is built,
+and nothing is deleted before «the plans are approved» and C's worktree exists.
+
+### 0 · The job, one line per screen (`DEC-231` §0)
+
+- **`064`** — an admin or a moderator opens a completed session's الاستبانة tab and **reads what the room thought in
+  one screen**: how many answered of how many could, the rating's two averages, the stars, every question's result,
+  the written answers — each withheld below its own minimum and saying so — and the admin takes the CSV from the
+  header in one press, which leaves an `export.created` row.
+- **`065`** — staff see **every template with its size and its use** in one table, select one and read its questions
+  beside it without opening anything, and reach «قالب جديد», «عدّل» and «احذف» in one move; **each of the three writes
+  its audit row** (`survey_template.created` · `changed` · `deleted`).
+
+### 1 · `064` — the regions, in the artboard's order
+
+The hub draws the breadcrumb, the `h1`, the status badge, the strip and **the tab's primary** (contract 4, `DEC-228`).
+**This page renders nothing of it.** Its first heading is an `h2`.
+
+| # | Region (artboard) | Built from | Source of the figure |
+|---|---|---|---|
+| — | «CSV» in the header, beside the status | a plain `<a download>` with `buttonClass("secondary","md")` — **never** `ButtonLink` (prefetch would take an audited bulk read on hover, `REQ-ADM-017`) | ★ a new `SurveyHeaderAction` (`src/components/survey/survey-header-action.tsx`, mine) under the hub's `tabActions.survey` key — returns the link for an admin when a survey exists, `null` otherwise, **never throws**. ★ **The one line in `[id]/layout.tsx` is `sessions'` file: a request to the lead as custodian** |
+| 1 | four `ui/stat`s in a row — أجاب · الجلسة · المُقدِّم · نسبة الرد | `Stat` ×4 (`value`, `label`) | **أجاب** = `survey_results().response_count / eligible_count` (**the survey's**, `REQ-SUR-008`) · **الجلسة**, **المُقدِّم** = `session_rating_aggregates.session_avg / presenter_avg` (**the rating's**) · **نسبة الرد** = the survey's count over eligible, rounded, Western digits. Withheld → «—» in the value, never `0` |
+| 2 | «تقييم الجلسة» — a bar per star count, 5 → 1 | `Panel` + five rows of label · `Progress` · count (the label and the count visible text, as `results.tsx` learned) | ★ **see §1.1** — no reader exists today |
+| 3 | the free-text answers, with «N إجابات» and the anonymity line | `Panel` per question, `<ul>` of `<bdi>` answers, the line as `text-caption` | the survey's `texts` per `free_text` question; ★ **and every other question type the survey holds** — scale and choice bars, each withheld on its own (`REQ-SUR-006`) — the artboard draws one text question, the survey may hold four types |
+| 4 | (not drawn) attach / detach | the existing attach form (`Field` + `Select` + `SubmitButton`, a bound server action) and `DetachControl` unchanged | `survey_attach()` / `survey_detach()` |
+
+#### 1.1 · Which figures are the rating's, and how the page reads them — measured
+
+- **`session_rating_aggregates`** (`0010`, re-cut `0130`) is readable by **staff — admin AND moderator — and the
+  session's presenter**, and returns **no row below `org_settings.rating_min_aggregate`**. Columns: `rating_count`,
+  `session_avg`, `presenter_avg`, `comments` (unattributed). **It has no star distribution.** `getPresenterAggregate()`
+  (`ratings.ts:165`) reads it; the event page's slot already does this for staff today, and **it writes no audit row,
+  because it is not a per-rater read**.
+- **`ratings.read_admin`** is written by `list_session_ratings_admin()` (`0017`) — **per-rater** rows, **admin only**
+  (`assert_fresh_admin()`), one audit row per call (`REQ-RAT-005`, `DEC-044`).
+- ★ **So the two averages come from the view, unaudited, for both staff roles, withheld below the rating's own minimum
+  — and `064` writes no `ratings.read_admin` row.** `STATUS.md`'s audit table (`:67`) lists «an admin's ratings read
+  → `ratings.read_admin`» against `064`; under this plan there is no such read on the page, and I say so rather than
+  add one.
+- ★ **The star bars need a reader that does not exist.** Three ways, the lead's ruling (Q1):
+  - **(a)** a new `session_rating_distribution(p_session uuid) returns jsonb`, `security definer`, **staff only**
+    (the survey's own `assert_survey_staff()`), **refusing the session's presenter** as `survey_results()` does, and
+    **`null` below `rating_min_aggregate`** — counts per star of `session_stars`, no member, no audit (an aggregate,
+    the view's class). Written in `supabase/proposed/event/`, proved by `applyProposed()` in a new
+    `tests/rls/survey-rating-distribution.test.ts`, promoted by the lead (a function — so a migration this wave did not
+    expect).
+  - **(b)** build the bars from `list_session_ratings_admin()`: per-rater rows read to draw an aggregate, **an audit
+    row on every page view**, and **a moderator sees no bars** (`REQ-ADM-020`). I would not.
+  - **(c)** the artboard's bars are a **survey scale question's** distribution — which `survey_results()` already
+    returns and `results.tsx` already draws. No new SQL. See D1: in the artboard's own model the default template
+    *contains* «تقييم الجلسة» as a 1–5 question, so this reading is what the drawing means; in ours the rating is not
+    a survey question.
+
+#### 1.2 · The withhold — every type, screen and CSV alike (`DEC-160` §3, `REQ-SUR-006`, `REQ-SUR-007`)
+
+Unchanged and not re-implemented: **`survey_results()` is the only exit**, and both the screen and
+`getSurveyExportRows()` call it, so the two cannot drift. Below `survey_min_responses` (floor 3, `DEC-161`): **status
+`withheld`, no count, no mean, no distribution, no text** — the screen says withheld and why (`REQ-SUR-006`'s
+acceptance), أجاب and نسبة الرد show «—», the CSV is one row saying so. Above it, **each question** is withheld on its
+own `answered_count`, with **no count published** for a withheld question (`DEC-163`). The rating's figures carry
+**their own** minimum (`rating_min_aggregate`); the two are read, never `3`.
+
+### 2 · `065` — the regions, in the artboard's order
+
+| # | Region | Built from |
+|---|---|---|
+| 1 | `h1` «الاستبانات» and its one primary «قالب جديد» | the frame's `h1` row; `ButtonLink` → `/app/admin/surveys/new` |
+| 2 | the templates table — القالب · الأسئلة · الجلسات · افتراضي · ⋯ | `ui/data-table` (a `"use client"` wrapper in `src/components/survey/templates-table.tsx`, because columns take render functions — `DEC-159`); the name a `Link` to `?template=<id>` (selection survives a reload, no JS); the counts `<bdi>`, Western; ⋯ is `ui/menu` with «عدّل» (`href` → the editor) and «احذف القالب» (`href` → `?delete=<id>`, the server-side two-step `DetachControl` already uses); the phone stack is the primitive's, below `lg` |
+| 3 | the selected template's name as a section heading, and its questions — السؤال · النوع · مطلوب | an `h2` with `<bdi>`, `ui/data-table` read-only: prompt `<bdi>`, the kind's label, نعم / لا. Selected = `?template`, else the first row (the artboard's) |
+| — | the editor (not drawn) | `/app/admin/surveys/[templateId]` and `template-editor.tsx` **kept as they are** — `ui/reorderable-list`, ▲▼ by taps (`REQ-SUR-002`, `REQ-UIX-106`'s acceptance). See Q4 |
+
+### 3 · ★★ The kept-behaviour tables (`DEC-208`) — re-derived from the REQs and the DAL
+
+#### 3.1 · `064` — `src/app/[locale]/app/admin/sessions/[id]/survey/{page,actions}.tsx`, `components/survey/results.tsx`
+
+| # | Behaviour | Now | After | REQ |
+|---|---|---|---|---|
+| 1 | Results read only through `survey_results()` via `getSurveyResults()` | `page.tsx:44` | same call | `REQ-SUR-005`, `REQ-SUR-009` |
+| 2 | Staff = admin **and** moderator; a member gets `notFound()` | `requireStaff()` → `null` → `notFound()` | same | `REQ-SUR-005`, `REQ-ADM-020` |
+| 3 | ★ The session's presenter — **an admin who presented included** — is refused by the database | `survey_results()` raises `not_authorized` … ★★ **and `getSurveyResults()` THROWS it, so the page renders the ERROR BOUNDARY, not `notFound()`** — the header comment says «renders `notFound()` for anyone the function refuses»; the e2e case only covers a plain member (refused earlier, by `requireStaff`). **A defect the rule found.** Same for another org's session (`not_found` throws) | the page catches the two mapped refusals (`not_permitted`, `not_found`) and renders `notFound()`; anything else still throws. No change to the DAL's contract | `REQ-SUR-005` |
+| 4 | Another org's session / a missing one is the presenter's answer | `getSessionHeading()` → `null` (but see #3) | `getSessionHeading()` is **no longer needed for the title** (the hub draws it); kept only if #12 stays | `REQ-TEN-*` |
+| 5 | No survey → «لا استبانة على هذه الجلسة» + the attach form (templates exist) or an empty state linking `/app/admin/surveys/new` | `:99-125` | kept, in the survey region, below the rating's figures if Q2 says they render without a survey | `REQ-SUR-001` |
+| 6 | Attach: a bound server action, Zod first, the outcome in the URL (`?attached=1` / `?error=<key>`), no client state, works without JS | `actions.ts` | unchanged file | `REQ-SUR-001`, `REQ-NFR-002` |
+| 7 | Detach: two steps server-side (`?confirm=1`), offered only while it can work, the refusal path kept | `DetachControl` | **component unchanged**, placed after the results | `REQ-SUR-001`, `DEC-163` |
+| 8 | `?attached`/`?detached` → `role="status"`; `?error` → `role="alert"` with a message key | `:83-97` | kept; no explainer, the word only | `REQ-UIX-009` |
+| 9 | Withheld: says withheld and why, never an empty chart; the min read and plural | `Panel` `:131-138` | kept — **the «why» line is required by `REQ-SUR-006`, so it survives `DEC-NEXT-25`** | `REQ-SUR-006` |
+| 10 | Response rate over **eligible** attendees; zero eligible says so, no divide by zero | `results.tsx:49-67` | the أجاب and نسبة الرد stats; zero eligible → «—» and the word | `REQ-SUR-008` |
+| 11 | Per question: answered count + mean, withheld panel with **no count**, free text list, bars with label **and** count as visible text, `<bdi>` on prompt, option label, answer | `results.tsx` | rebuilt as the artboard's cards, every behaviour kept | `REQ-SUR-006`, `DEC-163` |
+| 12 | «attached after the session ended» sentence | `:128-130` (compares to `startsAt`, though its comment says completion) | ★ **an explainer sentence (`DEC-NEXT-25`), not drawn** — Q3 | `16` §9 case 4 |
+| 13 | CSV: admin only, a plain `<a download>` (no prefetch), shown only when a survey exists | `SectionHeader.actions` `:62-76` | ★ **moves into the hub's header** through `tabActions.survey` (§1). Label «CSV» (artboard) vs «تصدير CSV» today — the link's name moves (ledger) | `REQ-ADM-017`, `REQ-SUR-007` |
+| 14 | A moderator sees no CSV, and «التصدير لمشرفي المؤسسة» says why | `:143` | the link is absent; ★ the sentence is explainer copy and not drawn — **proposed dropped** (Q3); the route still answers a moderator as a stranger | `REQ-ADM-020`, `DEC-163` |
+| 15 | The tab's title is an `h2` (wave 21) | `SectionHeader as="h2"` | the first `h2` is the rating panel's «تقييم الجلسة» (or «نتائج الاستبانة» if the figures need a section name for SR — decided in the create commit) | `REQ-UIX-089` |
+| 16 | Western digits through `formatNumber` | throughout | same | `DEC-124` |
+| 17 | The two writes' records | `survey.attached` / `survey.detached` in SQL (`0132:214`, `:242`) | unchanged | `REQ-ADM-023` |
+| 18 | The CSV's record | `export.created` via `write_admin_export_audit()` (`0058`), fresh admin | unchanged, the route untouched | `REQ-ADM-017` |
+| 19 | No-JS path | every control is a link or a native form | same; the ⋯ menu is not on this page | `REQ-UIX-*` |
+
+#### 3.2 · `065` — `src/app/[locale]/app/admin/surveys/page.tsx`
+
+| # | Behaviour | Now | After | REQ |
+|---|---|---|---|---|
+| 1 | Staff only, both roles; a member gets `notFound()`; the tables are staff-select with no write policy | `listSurveyTemplates()` → `null` | same | `REQ-SUR-001`, `REQ-ADM-020` |
+| 2 | A moderator authors templates | the e2e «a moderator writes a template» | same | `REQ-ADM-020` |
+| 3 | «قالب جديد» → `/app/admin/surveys/new` | `PageHeader.actions` | the `h1` row's one primary | `REQ-UIX-106` |
+| 4 | Empty: «لا قوالب بعد» and the way out | `EmptyState` | kept (in place of the table) | `REQ-SUR-001` |
+| 5 | Each template: its name `<bdi>`, question count, session count (copies made) | `Card` with two plural sentences | table cells, numbers `<bdi>` and Western; the sentences' six-form plurals stay for the phone card's labels | `REQ-SUR-001` |
+| 6 | Editing a template changes no attached survey (the copy) | stated in the header comment, guaranteed by `0124` | unchanged — and ★ «الجلسات» counts copies made | `REQ-SUR-001` |
+| 7 | «آخر تعديل» per template, in the org's zone (`getOrgPrefs`) | `:62` | ★ **not drawn** — dropped with the read of `getOrgPrefs` (Q3) | — |
+| 8 | The page's description line | `PageHeader.description` | ★ explainer, not drawn — dropped (`DEC-NEXT-25`) | — |
+| 9 | Open a template → the editor | the card is the link | ⋯ → «عدّل»; the name now selects (Q4) | `REQ-UIX-106` |
+| 10 | Delete asks first, then deletes; attached surveys survive (`set null`) | inside the editor, client two-step | **kept in the editor**, and ⋯ → «احذف القالب» adds the same two-step server-side (`?delete=<id>` → a bound action → `?deleted=1`) | `REQ-SUR-001` |
+| 11 | Questions reorder by taps alone | the editor's `ui/reorderable-list` | unchanged (editor kept) | `REQ-SUR-002`, `REQ-UIX-106` |
+| 12 | Accessible names the suites pin | heading «الاستبانات», «لا قوالب بعد», the editor's «اسم القالب» · «أضف سؤالًا» · «انقل لأسفل» · «حفظ القالب» · list «أسئلة الاستبانة» | all kept (editor untouched); the list's text assertions move (§5) | — |
+
+### 4 · ★★ Every mutation, with its record (contract 3)
+
+| Screen | Mutation | Path | Record | Today |
+|---|---|---|---|---|
+| `064` | attach | `survey_attach()` | `audit_log` `survey.attached`, subject `session` | ✓ `0132:214`, proved `tests/rls/survey-authoring.test.ts:225` |
+| `064` | detach | `survey_detach()` | `survey.detached` | ✓ `0132:242`, same test |
+| `064` | the CSV | `/api/admin/exports/survey/[sessionId]` → `exportSurveyCsv()` → `write_admin_export_audit()` | `export.created`, subject `session`, fresh admin only | ✓ `0058`; proved only in the lead's demo spec — my wave-22 spec asserts the row too |
+| `064` | an admin's ratings read | — | **none — the page makes no per-rater read** (§1.1) | — |
+| `065` | create | `survey_template_save(null, …)` | ★ `survey_template.created`, subject `survey_template` | ★★ **nothing** |
+| `065` | save | `survey_template_save(id, …)` | ★ `survey_template.changed` | ★★ **nothing** |
+| `065` | delete (editor and ⋯) | `survey_template_delete(id)` | ★ `survey_template.deleted` | ★★ **nothing** |
+
+★ **The lead's trigger sits on `public.survey_templates` ALONE** — `after insert or update or delete, for each row`, the
+`org_domains_audit()` shape (`0005:315`). Measured why one table is enough:
+
+1. **The six authoring tables have a `select` policy and no write policy** (`0124:242-246`); the only writers are
+   `survey_template_save()` and `survey_template_delete()`.
+2. **Every save updates the template row** — `update … set title = v_title` runs whether the title changed or not
+   (`0132:116`) — so a questions-only save still fires `changed`. **A trigger on `survey_template_questions` or
+   `_options` would write N rows per save**, because a save deletes and re-inserts the whole set (`0132:119`): that is
+   «written twice». Delete cascades the questions under the one template row: one `deleted`.
+3. ★ **The `DELETE` arm must return early when the parent org is gone**, as every append-only guard does
+   (`perform_org_deletion()`, `0069:960-970` — «each return early when the parent org is already gone»). Without it
+   `delete_org` cascades into `survey_templates`, the trigger inserts an `audit_log` row for an org already deleted, and
+   **the org's deletion fails on the foreign key**. ★ **The same holds for the venue, category and company triggers.**
+4. `before`/`after`: `{title}`. **The question set is not on the row** — the update runs before the delete and
+   re-insert. If the lead wants the count or the prompts in `after`, an `after update` **constraint trigger,
+   `deferrable initially deferred`**, sees the final set at commit; otherwise the row says «changed» and the title.
+   (Q5.)
+5. Actor: `write_audit()`'s own `coalesce` from the claims; `actor_role` the member's `org_role` — so a moderator's save
+   is recorded as `moderator`. A save that changed nothing still writes `changed` (`updated_at` moves, so `old is
+   distinct from new` is always true).
+
+**Proof** (DoD): new `tests/rls/survey-template-audit.test.ts` — as an admin **and** as a moderator through the RPCs
+(never as the owner): one `created`, one `changed` per save, one `deleted`, `actor_id` the caller; a refused save
+(`title_taken`, `invalid`) writes nothing; a cascade from `perform_org_deletion()` succeeds. It lands after the lead's
+migration (a trigger is not mine to propose).
+
+### 5 · Existing tests that change — ledger lines (each in the commit that moves it)
+
+| File | Owner | Line | Moves |
+|---|---|---|---|
+| `tests/e2e/wave10-event-survey-results.spec.ts` | mine | `:183`, `:205` heading «نسبة الاستجابة» | selector → the stat «نسبة الرد» (an expectation if a stat is not a heading: named here first) |
+| ″ | mine | `:186` link «تصدير CSV» in `#main` | **expectation**: the link is in the hub header and named «CSV» (Q6) |
+| ″ | mine | `:151`, `:158` «أضف الاستبانة», `:150`, `:170-174`, `:184`, `:189-195` | unchanged if the article/progressbar structure holds — the target |
+| `tests/e2e/wave10-event-templates.spec.ts` | mine | `:157-159` «3 أسئلة», «لم تُستخدم بعد» | **expectation**: table cells «3» and «0» |
+| `tests/components/survey/results.test.tsx` | mine | all seven cases import `results.tsx` | the file is deleted with the screen; its seven cases re-pointed at the new component, one ledger line each (heading, stat label) |
+| `tests/components/survey/{detach-control,template-editor}.test.tsx` | mine | — | **untouched** |
+| `tests/e2e/wave10-demo-survey.spec.ts` | **the lead's** | `:262`, `:389-392` (heading, «3 / 3», «من 3 حاضرين مؤهلين»), `:402` «تصدير CSV» | the lead's ledger lines — the hint «من N…» goes if §3.1 #10 drops it |
+| `tests/e2e/wave11-lead-a11y-sweep.spec.ts` | the lead's | `:210`, `:214` routes | unchanged routes |
+
+New: `tests/components/survey/{survey-figures,templates-table}.test.tsx`, `tests/rls/survey-template-audit.test.ts`,
+(a) `tests/rls/survey-rating-distribution.test.ts`, `tests/e2e/wave22-event-survey.spec.ts` (the two jobs of §0, the
+CSV's and the template's audit rows read back, the presenter-admin 404).
+
+### 6 · New disagreements — artboard and line; not picked
+
+- **D1 · The artboards treat the rating as part of the survey.** `AdminSurveys.dc.html:65-66`: the default template's
+  first two questions are «تقييم الجلسة» and «تقييم المُقدِّم», type «نجوم 1–5». `AdminSurveyResults.dc.html`: the
+  star bars (12 + 6 + 1) sum to «أجاب 19». **`DEC-074` and `REQ-SUR-004` make them two instruments** — different
+  audiences (per-rater ratings are admin-only and audited; survey results are staff and never per-respondent),
+  different minimums (`rating_min_aggregate` vs `survey_min_responses`), decorrelated writes. A merged figure would
+  either show a moderator the rating's per-star data under the survey's rule, or apply the wrong minimum.
+- **D2 · The anonymity line is false for the survey.** `AdminSurveyResults.dc.html`: «مجهولة · يراها المشرفون
+  والمُقدِّم بعد 3 ردود». **A presenter never reads survey results** (`REQ-SUR-005`, `survey_results():60`). It is true
+  of the **rating's** comments (`REQ-RAT-004`, `-006`). And «3» is a literal of two different settings.
+- **D3 · «افتراضي».** `AdminSurveys.dc.html:57-58` draws a default column and badge. **No column holds it**
+  (`survey_templates`: id, org, title, timestamps), and nothing attaches a survey by default (`REQ-SUR-001`: «optional;
+  most sessions have none»). Drawn, not built — `DEC-231` §6.1's shape.
+- **D4 · The question types' names.** The artboard writes «نجوم 1–5» and «نص»; `REQ-SUR-002` names «مقياس 1–5»
+  and «نص حر», which the editor and the CSV use.
+- **D5 · The selected template's questions are drawn BELOW the list**, not beside it (`AdminSurveys.dc.html`: two
+  stacked tables in one column), where the agent file and `REQ-UIX-106` say «beside». I build the artboard's order.
+- **D6 · No free-text for the rating's comments.** The artboard draws one text card; the rating's unattributed
+  `comments` (the view's) are a second free-text list staff can read. Whether they appear on this tab is D1's ruling.
+
+### 7 · Questions for the lead
+
+1. **Q1 — the star bars** (§1.1): (a) a new staff-only `session_rating_distribution()` (a function, so a promotion
+   this wave), (b) per-rater rows through the audited admin read, or (c) the survey's scale questions only. With (c)
+   the page needs no new SQL.
+2. **Q2 — a session with no survey.** «Shows what it shows today» (the attach state). Do the rating's two averages
+   (and bars) render above it, since they are the rating's and exist without a survey? Today they do not.
+3. **Q3 — four sentences under `DEC-NEXT-25`**: «attached after the session ended» (`16` §9 case 4), «التصدير لمشرفي
+   المؤسسة», the list's description, «آخر تعديل». I propose all four dropped; the withheld «why» stays (`REQ-SUR-006`).
+4. **Q4 — the editor.** No artboard draws it. I keep `/app/admin/surveys/[templateId]` and `template-editor.tsx`
+   untouched (its suites green) and reach it from ⋯ «عدّل» and «قالب جديد». The alternative — «عدّل» in place on `065`,
+   the read-mode pattern — is a rebuild with nothing to rebuild from.
+5. **Q5 — `changed`'s `after`**: the title only, or a deferred constraint trigger for the question count (§4.4).
+6. **Q6 — the header link's name**: «CSV» (artboard) or «تصدير CSV» (today, pinned twice, once in your spec).
+7. **Requests, as custodian:** the `survey:` line in `admin/sessions/[id]/layout.tsx`'s `tabActions`; and, after your
+   migration, the RLS case in §4.
+
+Nothing in `DEC-160` §3 moves: no member and no instant on a response, results only through `survey_results()`,
+`record_survey_response` and the rate screen untouched.
