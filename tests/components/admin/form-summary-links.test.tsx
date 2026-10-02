@@ -10,7 +10,6 @@ import type React from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
-import { CategoryForm } from "@/app/[locale]/app/admin/categories/category-form";
 import { CompanyForm } from "@/app/[locale]/app/admin/companies/company-form";
 import { DirectSessionForm } from "@/app/[locale]/app/admin/sessions/direct-session-form";
 import { SettingsForm } from "@/app/[locale]/app/admin/settings/settings-form";
@@ -44,11 +43,6 @@ async function submitAndFollow(container: HTMLElement, controlId: string) {
 }
 
 describe("the error summary's links focus the control on this track's forms (F4)", () => {
-  it("categories", async () => {
-    const { container } = render(<Wrap><main><CategoryForm action={refusing("name", "nameRequired")} /></main></Wrap>);
-    await submitAndFollow(container, "c-name");
-  });
-
   it("companies", async () => {
     const { container } = render(<Wrap><main><CompanyForm action={refusing("name", "nameRequired")} /></main></Wrap>);
     await submitAndFollow(container, "co-name");

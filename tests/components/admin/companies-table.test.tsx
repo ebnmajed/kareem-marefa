@@ -20,8 +20,8 @@ function Wrap({ children }: { children: React.ReactNode }) {
 }
 
 const COMPANIES: AdminCompany[] = [
-  { id: "co1", name: "شركة الأولى", deactivatedAt: null, memberCount: 3, teamColor: "#35d0ff" },
-  { id: "co2", name: "شركة الثانية", deactivatedAt: null, memberCount: 0, teamColor: null },
+  { id: "co1", name: "شركة الأولى", deactivatedAt: null, memberCount: 3, activeMemberCount: 3, teamColor: "#35d0ff" },
+  { id: "co2", name: "شركة الثانية", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null },
 ];
 
 describe("CompaniesTable — the team colour", () => {

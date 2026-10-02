@@ -15,13 +15,11 @@ import { render, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast";
-import type { AdminCategory, AdminCompany } from "@/lib/dal/admin-lists";
+import type { AdminCompany } from "@/lib/dal/admin-lists";
 import ar from "@/messages/ar/admin.json";
 
-vi.mock("@/app/[locale]/app/admin/categories/actions", () => ({ toggleCategory: vi.fn() }));
 vi.mock("@/app/[locale]/app/admin/companies/actions", () => ({ toggleCompany: vi.fn() }));
 
-const { CategoriesTable } = await import("@/app/[locale]/app/admin/categories/categories-table");
 const { CompaniesTable } = await import("@/app/[locale]/app/admin/companies/companies-table");
 
 function withProviders(children: React.ReactNode) {
@@ -46,21 +44,10 @@ function cardStatusText(cardList: HTMLElement, cardIndex: number): string {
 }
 
 describe("managed lists — the phone card view's status column", () => {
-  it("categories: an active category's card shows «نشط», not an empty value", () => {
-    const categories: AdminCategory[] = [
-      { id: "c1", name: "تصنيف نشط", deactivatedAt: null, sessionCount: 0 },
-      { id: "c2", name: "تصنيف معطّل", deactivatedAt: "2026-09-01T00:00:00Z", sessionCount: 0 },
-    ];
-    const { container } = render(withProviders(<CategoriesTable categories={categories} locale="ar" />));
-    const cardList = container.querySelector("ul")!;
-    expect(cardStatusText(cardList, 0)).toBe("نشط");
-    expect(cardStatusText(cardList, 1)).toBe("معطّل");
-  });
-
   it("companies: an active company's card shows «نشطة» (feminine, REQ-ADM-008's own noun), not an empty value", () => {
     const companies: AdminCompany[] = [
-      { id: "co1", name: "شركة نشطة", deactivatedAt: null, memberCount: 0, teamColor: null },
-      { id: "co2", name: "شركة معطّلة", deactivatedAt: "2026-09-01T00:00:00Z", memberCount: 0, teamColor: null },
+      { id: "co1", name: "شركة نشطة", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null },
+      { id: "co2", name: "شركة معطّلة", deactivatedAt: "2026-09-01T00:00:00Z", memberCount: 0, activeMemberCount: 0, teamColor: null },
     ];
     const { container } = render(withProviders(<CompaniesTable companies={companies} locale="ar" />));
     const cardList = container.querySelector("ul")!;
