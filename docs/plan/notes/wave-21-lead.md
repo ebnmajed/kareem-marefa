@@ -1,5 +1,9 @@
 # Wave 21 — M11a, the first console batch
 
+> ★ **Step 0 is done — read `DEC-227` with this brief.** It records the owner's goal (§0), which sits above
+> everything below; the two rulings the lead asked for (the register test amended once, «التصنيفات»); a fourth wrong id
+> (`REQ-ORG-017` does not exist — `REQ-ADM-004` is the source); the diff with no data behind it; and the map.
+
 **You are the implementing lead.** This brief is measured, not estimated: every number was read from
 the tree at `51db9898`, and where it disagrees with the planning prompt or with `M11a.md`, the
 disagreement is named. Read it, then `docs/design/screens/M11a.md`, then the six artboards at 1280
