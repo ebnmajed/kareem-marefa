@@ -16,13 +16,10 @@ import { describe, expect, it, vi } from "vitest";
 import { MembersTable } from "@/app/[locale]/app/admin/members/members-table";
 import { ToastProvider } from "@/components/ui/toast";
 import type { AdminMemberRow } from "@/lib/dal/admin-members";
-import type { AdminCompany } from "@/lib/dal/admin-lists";
 import adminAr from "@/messages/ar/admin.json";
 import uiAr from "@/messages/ar/ui.json";
 
-vi.mock("@/app/[locale]/app/admin/companies/actions", () => ({ toggleCompany: vi.fn() }));
 
-const { CompaniesTable } = await import("@/app/[locale]/app/admin/companies/companies-table");
 
 const messages = { ...adminAr, ...uiAr };
 
@@ -41,12 +38,6 @@ function cards(container: HTMLElement): HTMLElement[] {
 }
 
 describe("the phone card list carries each row's actions (wave 8, F1)", () => {
-  it("companies: the card offers «عطّل»", () => {
-    const companies: AdminCompany[] = [{ id: "co1", name: "شركة نشطة", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null }];
-    const { container } = render(withProviders(<CompaniesTable companies={companies} locale="ar" />));
-    expect(within(cards(container)[0]).getByRole("button", { name: "عطّل" })).toBeTruthy();
-  });
-
   it("members: another member's card offers the actions menu, a deactivated member's a worded reactivation, and the viewer's own card a dash rather than an empty slot", () => {
     const base: Omit<AdminMemberRow, "id" | "displayName" | "email" | "status" | "deactivatedAt"> = {
       companyId: null,

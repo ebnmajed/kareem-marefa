@@ -292,17 +292,9 @@
     },
     "companies": {
       "title": "الشركات",
-      "intro": "شركات مجموعتك. يختار كل عضو شركته من هذه القائمة عند إكمال ملفه.",
-      "noDeleteNote": "لا يمكن حذف شركة — تُعطَّل فقط، حتى يبقى الأعضاء القدامى قادرين على ذكر شركتهم.",
       "nameLabel": "الاسم",
-      "addTitle": "أضف شركة",
-      "add": "أضف الشركة",
-      "listTitle": "شركات مجموعتك",
       "empty": "لا شركات بعد.",
-      "emptyAction": "انتقل إلى النموذج أعلاه",
-      "nameColumn": "الاسم",
       "memberCountColumn": "الأعضاء",
-      "teamColourColumn": "لون الفريق",
       "teamColourNone": "بلا لون",
       "teamColourNames": {
         "silver": "فضي",
@@ -313,11 +305,8 @@
         "violet": "بنفسجي",
         "mint": "نعناعي"
       },
-      "statusColumn": "الحالة",
-      "actionsColumn": "الإجراءات",
       "deactivate": "عطّل",
       "activate": "أعد التفعيل",
-      "active": "نشطة",
       "deactivated": "معطّلة",
       "deactivateConfirmTitle": "تعطيل «<t>{name}</t>»؟",
       "deactivateConfirmBody": "لن تظهر هذه الشركة عند إكمال ملف عضو جديد. الأعضاء الحاليون يحتفظون بذكرها، ويمكنك إعادة تفعيلها في أي وقت.",
@@ -326,7 +315,6 @@
       "reactivateDone": "تمت إعادة التفعيل.",
       "closeDialog": "إغلاق",
       "cancelDialogCancel": "تراجع",
-      "memberCount": "{count, plural, zero {لا أعضاء} one {عضو واحد} two {عضوان} few {{value} أعضاء} many {{value} عضوًا} other {{value} عضو}}",
       "errorSummaryTitle": "يرجى تصحيح الأخطاء التالية:",
       "errors": {
         "nameRequired": "اسم الشركة مطلوب.",
@@ -334,7 +322,22 @@
         "failed": "تعذّر الحفظ — حاول مرة أخرى.",
         "teamColourInvalid": "اختر لونًا من القائمة."
       },
-      "teamColourLabel": "لون الفريق"
+      "teamColourLabel": "لون الفريق",
+      "newCompany": "شركة جديدة",
+      "editTitle": "عدّل الشركة",
+      "columnCompany": "الشركة",
+      "columnActive": "النشطون",
+      "columnQuarter": "الربع",
+      "columnActions": "إجراءات",
+      "noValue": "—",
+      "countLine": "{count, plural, zero {لا شركات} one {شركة واحدة} two {شركتان} few {<bdi>{value}</bdi> شركات} many {<bdi>{value}</bdi> شركة} other {<bdi>{value}</bdi> شركة}}",
+      "moreActions": "مزيد من الإجراءات على {name}",
+      "edit": "عدّل",
+      "save": "احفظ",
+      "saving": "جارٍ الحفظ…",
+      "saved": "حُفظت الشركة.",
+      "closeEditor": "أغلق",
+      "notWritten": "لم يُحفظ — حاول مرة أخرى."
     },
     "members": {
       "title": "الأعضاء والأدوار",

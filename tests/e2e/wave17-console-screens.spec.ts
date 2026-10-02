@@ -146,8 +146,8 @@ test("the members table on the dark ground", async ({ page }) => {
 test("the companies row menu is legible over the table", async ({ page }) => {
   await goto(page, "/ar/app/admin/companies");
   await register(page);
-  // The row's button is named by its colour (`wave15-console-team-colour.spec.ts`): a new company has none.
-  const trigger = page.locator("#main").getByRole("button", { name: /بلا لون/ }).first();
+  // ★ wave 22: the row's ⋯, named by the company (SCR-048 written again, `DEC-208`) — a ledger line.
+  const trigger = page.locator("#main").getByRole("button", { name: /مزيد من الإجراءات على/ }).filter({ visible: true }).first();
   test.skip((await trigger.count()) === 0, "no company row in this org — the menu has nothing to open on");
   await trigger.click();
   await expect(page.getByRole("menu")).toBeVisible();

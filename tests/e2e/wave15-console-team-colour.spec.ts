@@ -98,29 +98,32 @@ async function capture(page: Page, name: string, open = false) {
   await page.screenshot({ path: join(SHOTS, `wave15-console-${name}.png`) });
 }
 
-test("K2: a company starts with «بلا لون», the menu offers the seven named colours and no free hex, and a choice is audited", async ({ page, context }) => {
+// ★ Wave 22: the colour is chosen in the company's edit form (⋯ → «عدّل»), not a per-row menu — SCR-048 was written
+// again from `AdminCompanies.dc.html` (`DEC-208`). The seven names and «بلا لون», no free hex, and the change audited:
+// what the case proves is unchanged; where the choice lives moved (a ledger line).
+test("K2: a company starts with «بلا لون», the form offers the seven named colours and no free hex, and a choice is audited", async ({ page, context }) => {
   await signIn(context);
   await page.setViewportSize(PHONE);
   await goto(page, "/ar/app/admin/companies");
 
   const main = page.locator("#main");
-  const row = main.getByRole("button", { name: /بلا لون/ }).first();
-  await expect(row).toBeVisible();
-  await row.click();
+  await expect(main.getByText("بلا لون", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await main.getByRole("button", { name: "مزيد من الإجراءات على شركة الاختبار" }).filter({ visible: true }).click();
+  await page.getByRole("menuitem", { name: "عدّل" }).click();
 
-  const menu = page.getByRole("menu");
-  await expect(menu).toBeVisible();
-  // The seven named colours, and only those — never a free hex field or a
-  // native colour input.
+  const sheet = page.getByRole("dialog", { name: "عدّل الشركة" });
+  await expect(sheet).toBeVisible();
   for (const name of ["فضي", "يوسفي", "فوشي", "سماوي", "ذهبي", "بنفسجي", "نعناعي", "بلا لون"]) {
-    await expect(menu.getByRole("menuitem", { name })).toBeVisible();
+    await expect(sheet.getByRole("radio", { name })).toBeVisible();
   }
+  await expect(sheet.getByRole("radio", { name: "بلا لون" })).toBeChecked();
   await expect(page.locator('input[type="color"]')).toHaveCount(0);
 
   await capture(page, "team-colour", true);
 
-  await menu.getByRole("menuitem", { name: "سماوي" }).click();
-  await expect(page.getByRole("button", { name: /سماوي/ }).first()).toBeVisible();
+  await sheet.getByRole("radio", { name: "سماوي" }).check();
+  await sheet.getByRole("button", { name: "احفظ" }).click();
+  await expect(main.getByText("سماوي", { exact: true }).filter({ visible: true }).first()).toBeVisible();
 
   await expect
     .poll(async () => {

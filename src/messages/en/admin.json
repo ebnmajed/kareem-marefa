@@ -292,17 +292,9 @@
     },
     "companies": {
       "title": "Companies",
-      "intro": "Your group's companies. A member picks theirs from this list when completing their profile.",
-      "noDeleteNote": "A company cannot be deleted, only deactivated, so existing members can still say where they work.",
       "nameLabel": "Name",
-      "addTitle": "Add a company",
-      "add": "Add the company",
-      "listTitle": "Your companies",
       "empty": "No companies yet.",
-      "emptyAction": "Go to the form above",
-      "nameColumn": "Name",
       "memberCountColumn": "Members",
-      "teamColourColumn": "Team colour",
       "teamColourNone": "No colour",
       "teamColourNames": {
         "silver": "Silver",
@@ -313,11 +305,8 @@
         "violet": "Violet",
         "mint": "Mint"
       },
-      "statusColumn": "Status",
-      "actionsColumn": "Actions",
       "deactivate": "Deactivate",
       "activate": "Reactivate",
-      "active": "Active",
       "deactivated": "Deactivated",
       "deactivateConfirmTitle": "Deactivate “<t>{name}</t>”?",
       "deactivateConfirmBody": "This company will no longer appear when a new member completes their profile. Existing members keep it on record, and you can reactivate it at any time.",
@@ -326,7 +315,6 @@
       "reactivateDone": "Reactivated.",
       "closeDialog": "Close",
       "cancelDialogCancel": "Cancel",
-      "memberCount": "{count, plural, =0 {no members} one {one member} other {{value} members}}",
       "errorSummaryTitle": "Please correct the following:",
       "errors": {
         "nameRequired": "A company name is required.",
@@ -334,7 +322,22 @@
         "failed": "That could not be saved — try again.",
         "teamColourInvalid": "Choose a colour from the list."
       },
-      "teamColourLabel": "Team colour"
+      "teamColourLabel": "Team colour",
+      "newCompany": "New company",
+      "editTitle": "Edit the company",
+      "columnCompany": "Company",
+      "columnActive": "Active",
+      "columnQuarter": "Quarter",
+      "columnActions": "Actions",
+      "noValue": "—",
+      "countLine": "{count, plural, =0 {no companies} one {one company} other {<bdi>{value}</bdi> companies}}",
+      "moreActions": "More actions for {name}",
+      "edit": "Edit",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Company saved.",
+      "closeEditor": "Close",
+      "notWritten": "Not saved — try again."
     },
     "members": {
       "title": "Members and roles",
