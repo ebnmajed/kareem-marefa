@@ -3,6 +3,7 @@ import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { listSessionDays, type SessionDay } from "@/lib/dal/sessions";
 import { checkInCeiling, resolveDay, sessionPhase, viewerRelation, type PhaseInput, type SessionPhase, type ViewerRelation } from "@/lib/session-status";
+import { attendanceRate } from "@/components/checkin/attendance-rate";
 import { affordancesFor, checkInIneligibleReason, checkInOffer, type CheckInIneligibleReason, type CheckInOffer, type CheckInOfferViewer } from "@/components/checkin/session-matrix";
 import type { RsvpStatus } from "@/lib/dal/rsvp";
 
@@ -781,9 +782,12 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
   }
   rows.sort((a, b) => (a.displayName ?? "").localeCompare(b.displayName ?? "", "ar"));
 
-  const confirmedRows = rows.filter((r) => r.rsvpStatus === "confirmed");
-  const confirmed = confirmedRows.length;
-  const checkedInAmongConfirmed = confirmedRows.filter((r) => r.checkedIn).length;
+  // ★ The one rate (DEC-228 §3.4) — `components/checkin/attendance-rate.ts`, never re-derived here.
+  const rate = attendanceRate(
+    rows.filter((r) => r.rsvpStatus === "confirmed").map((r) => r.memberId),
+    rows.filter((r) => r.checkedIn).map((r) => r.memberId),
+  );
+  const confirmed = rate.confirmed;
 
   return {
     sessionId,
@@ -801,7 +805,7 @@ export async function getAttendanceReport(locale: string, sessionId: string): Pr
       noShowed: rows.filter((r) => r.isNoShow).length,
       completedAllDays: complete === null ? null : complete.size,
     },
-    attendanceRate: confirmed > 0 ? checkedInAmongConfirmed / confirmed : null,
+    attendanceRate: rate.rate,
   };
 }
 
@@ -836,4 +840,25 @@ export async function removeCheckIn(
     return { ok: false, error: known.find((k) => error.message.includes(k)) ?? "unknown" };
   }
   return { ok: true };
+}
+
+// ── wave 21 (REQ-UIX-090, DEC-228 §4.6) — add-only; nothing above changes ──
+
+/**
+ * The hub header's «شاشة التقديم» (contract 4): whether the host view is worth offering from the الحضور tab — staff
+ * only, and only while the session can still take attendance, so NOT once it is completed, archived or cancelled, nor
+ * before it is published. The host view's own gate stays `ensure_check_in_code()`'s (REQ-CHK-014); this decides only
+ * whether a link is drawn. It never throws: the header renders inside the hub layout, so a failed read is `false`.
+ */
+export async function offersHostScreen(locale: string, sessionId: string): Promise<boolean> {
+  if (!z.uuid().safeParse(sessionId).success) return false;
+  try {
+    const { session, supabase } = await sessionClient(locale);
+    if (session.role !== "admin" && session.role !== "moderator") return false;
+    const { data, error } = await supabase.from("sessions").select("state").eq("id", sessionId).maybeSingle();
+    if (error || !data) return false;
+    return data.state === "published" || data.state === "in_progress";
+  } catch {
+    return false;
+  }
 }
