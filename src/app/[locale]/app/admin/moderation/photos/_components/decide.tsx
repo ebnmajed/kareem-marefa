@@ -10,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { emptyModerationState, type ModerationState } from "../../state";
 
-// SCR-051's decision — REQ-UIX-104, REQ-EVT-012, REQ-EVT-014. «احذف نهائيًا» confirms in `ui/dialog` naming the session,
-// with its reason at the field (REQ-UIX-013); the other is one press — «أعدها للعرض» for a takedown, «تجاهل» for a
+// SCR-051's decision — REQ-UIX-104, REQ-EVT-012, REQ-EVT-014. «احذف نهائيًا» is the primary, as the board draws it
+// (the house rule for a destructive action is the confirmation, REQ-UIX-013, not a weaker button); it confirms in
+// `ui/dialog` naming the session, with its reason at the field; the other is one press — «أعدها للعرض» for a takedown, «تجاهل» for a
 // report (D6: a reported photo was never hidden, so there is nothing to restore). After a decision focus lands on the
 // next row (`split-view`'s `focusNext()`), and the toast fires inside the action — never from an effect.
 
@@ -50,7 +51,7 @@ export function Decide({
   return (
     <div className="flex flex-wrap gap-3">
       <Dialog open={open} onOpenChange={setOpen}>
-        <Button type="button" variant="danger" disabled={busy} onClick={() => setOpen(true)}>
+        <Button type="button" variant="primary" disabled={busy} onClick={() => setOpen(true)}>
           {t("remove")}
         </Button>
         <DialogContent title={t.rich("removeTitle", { session: sessionTitle, bdi: (chunks) => <bdi>{chunks}</bdi> })} closeLabel={t("close")}>

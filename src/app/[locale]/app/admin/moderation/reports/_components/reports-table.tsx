@@ -34,7 +34,7 @@ function excerpt(text: string, max = 60): string {
 function Person({ who, fallback, more = 0 }: { who: ModerationPerson | null; fallback: string; more?: number }) {
   if (!who) return <span>{fallback}</span>;
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex items-center gap-2 md:whitespace-nowrap">
       <Avatar memberId={who.memberId} displayName={who.name} src={who.avatarUrl} teamColor={who.teamColor} size={24} decorative />
       <bdi>{who.name ?? fallback}</bdi>
       {more > 0 ? <span className="text-caption text-fg-muted">+{formatNumber(more)}</span> : null}
@@ -88,7 +88,8 @@ export function ReportsTable({
       key: "session",
       header: t("col.session"),
       onCard: true,
-      cell: (r) => <bdi>{r.sessionTitle}</bdi>,
+      // A short title stays on one line, as drawn; a long one still wraps past its width.
+      cell: (r) => <bdi className="inline-block min-w-[9rem]">{r.sessionTitle}</bdi>,
     },
     {
       key: "reporter",
@@ -106,17 +107,20 @@ export function ReportsTable({
 
   if (state === "open") {
     columns.push(
-      { key: "age", header: t("col.age"), onCard: true, cell: (r) => age(r.ageDays) },
+      { key: "age", header: t("col.age"), onCard: true, cell: (r) => <span className="md:whitespace-nowrap">{age(r.ageDays)}</span> },
       {
         key: "actions",
         header: t("col.decision"),
         onCard: true,
+        // `w-max`: the pair is never squeezed into a column narrower than both buttons, so it stays on one line.
         cell: (r) => (
-          <DataTableActionPair
-            rowName={excerpt(r.body, 30)}
-            primary={{ label: t("remove"), tone: "danger", onAction: () => setRemoving(r) }}
-            secondary={{ label: t("dismiss"), onAction: async () => report(await dismiss(r.reportId)) }}
-          />
+          <div className="md:w-max">
+            <DataTableActionPair
+              rowName={excerpt(r.body, 30)}
+              primary={{ label: t("remove"), tone: "danger", onAction: () => setRemoving(r) }}
+              secondary={{ label: t("dismiss"), onAction: async () => report(await dismiss(r.reportId)) }}
+            />
+          </div>
         ),
       },
     );
@@ -130,7 +134,7 @@ export function ReportsTable({
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-fg-heading">{t(`outcome.${r.decision.outcome === "removed" ? "removed" : "dismissed"}`)}</span>
             <Person who={r.decision.by} fallback={t("member")} />
-            <span className="text-caption text-fg-muted">{age(r.decision.ageDays)}</span>
+            <span className="text-caption text-fg-muted md:whitespace-nowrap">{age(r.decision.ageDays)}</span>
           </span>
         ) : null,
     });
@@ -143,6 +147,7 @@ export function ReportsTable({
         columns={columns}
         rows={rows}
         rowKey={(r) => r.commentId}
+        className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
         hiddenHeaders={state === "open" ? ["actions"] : []}
         empty={
           state === "open"
