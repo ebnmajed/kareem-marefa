@@ -321,6 +321,6 @@ test("SCR-045 at 390 px, and a moderator sees the lists with no controls", async
   await signIn(context, adminEmail);
   await page.setViewportSize(PHONE);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
-  await expect(page.locator("#main").getByRole("heading", { name: "شهادات الجلسة", level: 1 })).toBeVisible();
+  await expect(page.locator("#main").getByRole("heading", { name: "شهادات الجلسة", level: 2 })).toBeVisible();
   await review(page, "scr-045-certificates");
 });

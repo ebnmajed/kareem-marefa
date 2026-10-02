@@ -15,11 +15,9 @@ import { EligibleList } from "@/components/certificates/eligible-list";
 import { CertificateIssuance } from "@/components/certificates/issuance";
 import { CertificateModeControl } from "@/components/certificates/mode-control";
 import { formatNumber } from "@/components/sessions/numerals";
-import { Badge, SessionStatusBadge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/ui/page-header";
-import { Panel } from "@/components/ui/panel";
+import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
-import { storedPhase, type SessionState } from "@/lib/session-status";
+import { Panel } from "@/components/ui/panel";
 
 // SCR-045 · `/app/admin/sessions/[id]/certificates` — REQ-CRT-001,
 // REQ-CRT-004, REQ-CRT-011, REQ-DSG-031, D50, DEC-128, DEC-148.
@@ -65,10 +63,9 @@ export default async function SessionCertificatesPage({
   const downloadFailed = ((await (searchParams ?? Promise.resolve({}))) as { download?: string | string[] }).download === "failed";
   setRequestLocale(locale);
 
-  const [t, tc, ui, data, design, eligible, timeZone, faces, estimate, headerList] = await Promise.all([
+  const [t, tc, data, design, eligible, timeZone, faces, estimate, headerList] = await Promise.all([
     getTranslations("certificates.session"),
     getTranslations("certificates"),
-    getTranslations("ui"),
     getSessionCertificatesWithRender(locale, id),
     getCertificateDesign(locale, id),
     listEligibleRecipients(locale, id),
@@ -189,12 +186,12 @@ export default async function SessionCertificatesPage({
 
   return (
     <div className="space-y-12">
-      <PageHeader
-        title={t("title")}
-        breadcrumb={[{ href: "/app/admin/sessions", label: t("breadcrumb") }]}
-        breadcrumbLabel={ui("pageHeader.breadcrumb")}
-        status={<SessionStatusBadge phase={storedPhase(data.state as SessionState)} />}
-        meta={
+      {/* ★ wave 21 (DEC-227 §5.2, contract 4): the hub draws the breadcrumb, the session's `h1` and its status above
+          the tabs, so this tab's title is a section heading; the session and mode lines stay under it. The lead's
+          edit, as `designer`'s custodian; nothing else in the file moved. */}
+      <div className="flex flex-col gap-3">
+        <SectionHeader as="h2" title={t("title")} />
+        {
           <div className="flex flex-col gap-3">
             <p className="text-body text-fg-body">{t.rich("sessionLine", { title: data.sessionTitle, bdi: (c) => <bdi>{c}</bdi> })}</p>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -211,7 +208,7 @@ export default async function SessionCertificatesPage({
             <p className="max-w-prose text-body-sm text-fg-muted">{t(`modeExplain.${data.mode}`)}</p>
           </div>
         }
-      />
+      </div>
 
       {downloadFailed ? (
         <Panel tone="error">
