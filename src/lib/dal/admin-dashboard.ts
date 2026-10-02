@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { sessionClient, type Session } from "@/lib/dal/session";
 
@@ -266,3 +267,85 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
     attention,
   };
 }
+
+// ── Contract 3 (wave 21, `DEC-227`, `DEC-228` §3.2) — what waits, for whom ──
+//
+// ONE read feeds the dashboard's «يحتاج انتباهك» tiles (`REQ-UIX-086`) and the
+// console rail's badges (`REQ-UIX-084`: «a badge's count is read from the same
+// source as the dashboard's attention tiles»). The predicates are the four
+// `attention` rows above, moved verbatim, so a tile, its badge and the queue it
+// opens can never disagree about a number.
+//
+// ★ Filtered by ROLE, at the data (`REQ-ADM-020`): a moderator reaches the
+// moderation queues and neither the proposal queue nor scheduling, so a
+// moderator gets the two report items and nothing else — a badge never leads
+// to a page that 404s for its reader. A plain member gets `null`.
+//
+// ★ It never gates. The admin layout calls it for the badges and must not
+// `notFound()` (its header says why: a layout's not-found streams a 200); the
+// page that renders the tiles does its own check.
+//
+// ★ `cache()`: the layout and the dashboard page both call it in one request,
+// and React's per-request cache makes that one set of queries, not two.
+
+export type AttentionQueue = "proposals" | "unscheduledSessions" | "photoReports" | "commentReports";
+
+export interface AttentionItem {
+  queue: AttentionQueue;
+  /** The `admin.shell.nav.*` key of the rail item whose screen IS this queue — the badge goes there (`DEC-228` §3.2). */
+  navKey: "proposals" | "sessions" | "moderationReports" | "moderationComments";
+  count: number;
+  /** The oldest open item's age in whole days; `null` exactly when `count === 0`. */
+  oldestAgeDays: number | null;
+  /** The queue, narrowed to what `count` counts. */
+  href: string;
+}
+
+export interface AdminAttention {
+  /** In the artboard's order. An admin: all four. A moderator: `photoReports` and `commentReports`. */
+  items: AttentionItem[];
+  total: number;
+}
+
+/** The sessions list narrowed to undated sessions — the same predicate as `unscheduledSessions` below. */
+export const UNSCHEDULED_SESSIONS_HREF = "/app/admin/sessions?month=none";
+
+export const getAdminAttention = cache(async (locale: string): Promise<AdminAttention | null> => {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin" && session.role !== "moderator") return null;
+  const isAdmin = session.role === "admin";
+  const now = Date.now();
+
+  const none = Promise.resolve({ data: [] as { state?: string; created_at: string }[], error: null });
+  const [proposals, unscheduled, photoReports, commentReports] = await Promise.all([
+    isAdmin ? supabase.from("proposals").select("state, created_at").eq("org_id", session.orgId).in("state", ["submitted", "in_review"]) : none,
+    // Filtered in TS, as `getAdminDashboardData()` does — the same predicate, the same place.
+    isAdmin ? supabase.from("sessions").select("state, created_at").eq("org_id", session.orgId).is("starts_at", null) : none,
+    supabase.from("reports").select("created_at").eq("org_id", session.orgId).eq("target", "photo").eq("status", "open"),
+    supabase.from("reports").select("created_at").eq("org_id", session.orgId).eq("target", "comment").eq("status", "open"),
+  ]);
+  if (proposals.error) throw new Error(`proposals (attention): ${proposals.error.message}`);
+  if (unscheduled.error) throw new Error(`sessions (attention): ${unscheduled.error.message}`);
+  if (photoReports.error) throw new Error(`reports (photo attention): ${photoReports.error.message}`);
+  if (commentReports.error) throw new Error(`reports (comment attention): ${commentReports.error.message}`);
+
+  const ats = (rows: { created_at: string }[] | null) => (rows ?? []).map((r) => r.created_at);
+  const item = (queue: AttentionQueue, navKey: AttentionItem["navKey"], href: string, createdAts: string[]): AttentionItem => ({
+    queue,
+    navKey,
+    count: createdAts.length,
+    oldestAgeDays: oldestAge(createdAts, now),
+    href,
+  });
+
+  const items: AttentionItem[] = [];
+  if (isAdmin) {
+    items.push(item("proposals", "proposals", "/app/admin/proposals", ats(proposals.data as { created_at: string }[] | null)));
+    const undated = ((unscheduled.data ?? []) as { state: string; created_at: string }[]).filter((r) => r.state !== "cancelled" && r.state !== "archived");
+    items.push(item("unscheduledSessions", "sessions", UNSCHEDULED_SESSIONS_HREF, ats(undated)));
+  }
+  items.push(item("photoReports", "moderationReports", "/app/admin/moderation/reports", ats(photoReports.data as { created_at: string }[] | null)));
+  items.push(item("commentReports", "moderationComments", "/app/admin/moderation/comments", ats(commentReports.data as { created_at: string }[] | null)));
+
+  return { items, total: items.reduce((sum, i) => sum + i.count, 0) };
+});
