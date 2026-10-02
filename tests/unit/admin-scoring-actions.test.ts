@@ -7,16 +7,14 @@ vi.mock("@/lib/dal/session", () => ({ sessionClient: vi.fn() }));
 
 const updateScoringRule = vi.fn();
 const submitManualAdjustment = vi.fn();
-const setSessionHostCompany = vi.fn();
 vi.mock("@/lib/dal/scoring-admin", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/dal/scoring-admin")>()),
   updateScoringRule: (...args: unknown[]) => updateScoringRule(...args),
   submitManualAdjustment: (...args: unknown[]) => submitManualAdjustment(...args),
-  setSessionHostCompany: (...args: unknown[]) => setSessionHostCompany(...args),
 }));
 
 const { intervalToSeconds } = await import("@/lib/dal/scoring-admin");
-const { saveManualAdjustment, saveScoringRule, saveSessionHostCompany } = await import("@/app/[locale]/app/admin/scoring/actions");
+const { saveManualAdjustment, saveScoringRule } = await import("@/app/[locale]/app/admin/scoring/actions");
 const { emptySavedState } = await import("@/components/admin/saved-form-state");
 
 const RULE = "11111111-1111-4111-8111-111111111111";
@@ -97,16 +95,5 @@ describe("saveManualAdjustment", () => {
     submitManualAdjustment.mockRejectedValueOnce(new Error("member_not_found"));
     const result = await saveManualAdjustment("ar", emptySavedState(), form({ memberId: MEMBER, direction: "add", amount: "5", reason: "تصحيح" }));
     expect(result.errors).toEqual({ memberId: "memberNotFound" });
-  });
-});
-
-describe("saveSessionHostCompany", () => {
-  beforeEach(() => setSessionHostCompany.mockReset());
-
-  it("no session is refused at the session; «بلا شركة» clears the host", async () => {
-    expect((await saveSessionHostCompany("ar", emptySavedState(), form({ sessionId: "", companyId: "" }))).errors).toEqual({ sessionId: "sessionRequired" });
-    const saved = await saveSessionHostCompany("ar", emptySavedState(), form({ sessionId: MEMBER, companyId: "" }));
-    expect(saved.saved).toBe(true);
-    expect(setSessionHostCompany).toHaveBeenCalledWith("ar", { sessionId: MEMBER, companyId: null });
   });
 });

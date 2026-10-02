@@ -5282,3 +5282,28 @@ add-only select in `listHeldAchievements()` (`certificates.ts:712`). Without it 
   (h1 + no horizontal scroll at 390) passes untouched.
 - **Requests**: `console` — the switch cell's staged form (D1); delete `components/admin/held-achievements-table.tsx`
   once mine replaces it; keep the `#history-heading` link on `062`. The lead — Q1 – Q7, the add-only certificate fields.
+
+## Wave 22 — PR A built: hosting follows the venue's owner (`DEC-232` §1.1, §1.2)
+
+- `supabase/proposed/scoring/hosting_follows_the_venue.sql` — `evaluate_company_points()` re-created from `0113:563`,
+  rule 1 alone changed (rules 2 and 3 diffed byte-identical against `0113:602-670`). Each distinct owner of the days'
+  venues once; a deactivated owner earns nothing; no owner or a custom venue earns nothing, by rule;
+  `host_company_id` never read; a session already holding a hosting row is not credited again.
+- `tests/rls/scoring-venue-hosting.test.ts` — 9 cases, **green now**: it applies `lead/0180_venue_company.sql` and my
+  file inside its own transaction, so it needs no local `0180`, and both calls become no-ops at promotion. Control run
+  without my file: 4 of the 9 fail (the venue owner, `host_company_id` not read, replay, multi-day) — the cases bite.
+- The stopgap form removed: `host-company-form.tsx` (rm), its section, `saveSessionHostCompany`,
+  `setSessionHostCompany` + schema, `listHostableSessions` + `HostableSession`, `ScoringAdminData.companies` (only the
+  form read it), `scoring.admin.hostCompany.*` (ar, en). `listCompaniesForAdmin`/`CompanyOption` in `scoring-admin.ts`
+  had no caller before this change either (the console reads `admin-lists.ts`'s) — left for `053`'s rebuild in B.
+
+**Ledger lines (for `STATUS.md`, the lead's):**
+- `tests/rls/scoring-company-points.test.ts:244` «hosting — awards exactly one…» — **expectation moves**: the credited
+  company is the venue's owner (the fixture venue is given `f.a.companyId`), not `host_company_id`; it applies both
+  proposed files, so it is green before and after promotion.
+- `tests/unit/admin-scoring-actions.test.ts` — `describe("saveSessionHostCompany")` and its mock **removed** with the
+  action.
+- `tests/components/admin/scoring-page.test.tsx:25,31,40,72,78` — the mocks of `listHostableSessions` /
+  `saveSessionHostCompany` and the fixture's `companies` **removed** (a selector-level removal; the six cases unchanged).
+- `tests/e2e/scoring-company-points.spec.ts:128-141` — the host-company form's steps **removed**; the rule edit above
+  them unchanged.
