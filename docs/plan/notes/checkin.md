@@ -3385,3 +3385,54 @@ console is inactive; and whether the wave-9 specs are re-pointed by the lead or 
   `tsc` in `console`'s own `data-table-additions.test.tsx` on the branch now). Attendance's empty state has no action
   to offer, so I will either pass none, if `console` makes `action` optional add-only, or render the empty line
   outside the table. That is a question to `console`.
+
+## W21.11 · Built — delete `bdbfb502`, create `6f9c35f8`, evidence `f8029b3d` — and the table read back against the new files
+
+| K | Where it lives now |
+|---|---|
+| K1 | `page.tsx`: `getAttendanceReport()` → `notFound()` |
+| K2 | `page.tsx`: `isAdmin` gates the CSV href, `canRevoke` and the ratings. A moderator keeps the code, «أبطل» and the switch (`code-card.tsx`) |
+| K3 | the five `stat`s, the chip «لم يحضر» (no-showed), `attendanceRate()` |
+| K4, K6, K7 | the day chips (`?day=`, validated against `report.days`). The sheet and the dialog both carry `<input type="hidden" name="dayId">` = the selected day |
+| K5 | the «أكملوا كل الأيام» `stat`, em dash on failure, above one day only |
+| K8 – K12 | `actions.ts`, unchanged above its add-only tail. The sheet and the dialog use controlled fields, `noValidate`, close on `done` |
+| K13, K14 | `canMark` per row: a seat (confirmed or waitlisted), not present on the day. A removed member is offered again |
+| K15 | ★ replaced by DEC-228 §4.6: an admin from the day's start, at any state but cancelled; a moderator inside the RPC's window |
+| K16 – K20 | the row menu's «ألغِ الحضور» → `removeCheckInAction` → `remove_check_in()`, unchanged; the dialog names member and session; the two bodies branch on the stored state |
+| K21, K22 | status «أُلغي» with `<bdi>` reason · `<bdi>` who removed it; the DAL's active-wins rule is untouched |
+| K23 | reservation «بلا حجز» |
+| K24 | `noShowed` per day from the same confirmed-without-active-check-in rule; D7's «—» before the day starts |
+| K25 | reservation column keeps «ملغى» and «إلغاء متأخر» |
+| K26, K27 | time in the session's zone (D8), `<bdi>` on every name, time, reason |
+| K28 | unchanged (DAL) |
+| K29 | «CSV» is a plain `<a>` to the same Route Handler, admin only; the DAL changes are optional fields, so the CSV is byte-identical |
+| K30 | ratings for an admin, below the table, completed or archived only |
+| K31 | the require-all-days line is the «أكملوا كل الأيام» figure's hint |
+| K32 | the empty line is the page's (`EmptyState` requires an action) |
+| K33 | `data-table`'s card stack under `md` |
+| K34 | `<noscript>` form → `markManuallyNoScript` |
+| K35 | the revoke still needs JavaScript, as it always has |
+| K36 | the day is the page's, so a day switch is a navigation and no selection survives it |
+| K37 | `revalidatePath` kept; the code card's actions redirect back to the tab |
+| K38 | new keys under `checkin.attendance.*`. ★ The keys the old page used and nothing reads now (`summaryTitle`, `manualIntro`, `removeIntro*`, `removeConfirm*`, `listTitle`, `colName`, `colArrival` …) are still in the JSON. Deleting them is a follow-up commit once the lead's e2e run is green |
+
+**Ledger lines for `STATUS.md`** (the lead's file):
+- `admin-attendance.spec.ts`:
+  - **Selectors:** the `h1` is the header's; the CSV link is now «CSV»; the manual mark goes through the sheet and the combobox; the revoke goes through the row menu and the dialog; the 390 rows are `data-table`'s cards.
+  - **Expectations:** «الحجوزات» 2 becomes «محجوز» 1 (D1). The method reads «يدوي · <marker>». No «أُلغي تسجيل الحضور» done-line follows a revoke; the row shows «أُلغي». The title test is renamed «the figures …».
+- `wave11-console-attendance.spec.ts`:
+  - **Selectors:** headers العضو · الحجز · وقت الحضور · الطريقة · الحالة (· الأيام).
+  - **Expectations:** the day is a chip, not a column per day. The phone check is the page's own overflow, because the old region no longer exists.
+- `wave9-checkin-days.spec.ts`:
+  - **Selectors:** the `h1`, the day chips, the sheet, the row menu.
+  - **Expectation:** the mark and the revoke act on the page's day, not a per-form select.
+- `wave9-checkin-one-day.spec.ts`:
+  - **Selectors:** the `h1`, the columns.
+  - **Unchanged:** the hidden `dayId` assertion, now read inside the revoke dialog.
+- `tests/components/checkin/{attendance-days,remove-check-in-form,remove-check-in-copy}.test.tsx`: re-pointed at `AttendanceBoard`.
+  - ★ One case has no subject left: «without the prop the form keeps its old copy», because `paysOnCompletion` is required now.
+
+**Open, for the lead:** `ui/stat` draws its value in `pg:font-display` (`stat.tsx:41`), while `DEC-228` §6 says the
+figures render in the body face. `stat` is `content`'s file, which the lead holds. Either the console frame's CSS
+covers it (as it does for motion) or `stat` gets an add-only prop. Until then my five figures are in the display face.
+The code itself is already in the body face.
