@@ -46,6 +46,10 @@ approved». **Nobody deletes a file before that post and «the frame is in».**
 | L21-4 | `tests/e2e/console.spec.ts` | the collapse, the fourteen-group disclosure and flyout, and the drawer-disclosed captures **replaced** by the count: twenty in six lists for an admin, six for a moderator, the sheet keeping six lists | expectation | kept-behaviour rows 9–11 dropped by name; rows 3, 6 asserted on the new shape |
 | L21-5 | `tests/e2e/console.spec.ts` | the «untouched screen» capture moves from `proposals` to `venues` | selector | `proposals` is rebuilt in PR B |
 | L21-6 | `tests/unit/ui-playground.test.ts` | floor 60 → 63 | expectation | `DEC-225` §2 |
+| L21-7 | `tests/components/admin/admin-dashboard-page.test.tsx` | rewritten: the rate's «—» kept, its hint sentence gone; new cases for the one move, the one line, the month's links, the moderator's not-found, axe | expectation | `040` rebuilt (`68f267b7`); no explainer copy (`DEC-NEXT-25`) |
+| L21-8 | `tests/e2e/admin-dashboard.spec.ts:248-254, :340` and the component test's top-list case | «عضو نشط», «نقطة ممنوحة», «أكثر المُقدِّمين / التصنيفات / الشركات» | selector | the artboard's copy (`DEC-228` §3.8) |
+| L21-9 | `tests/e2e/admin-dashboard.spec.ts:282` | «عرض القائمة — مسار المقترحات» → the pipeline's count link | selector | the pipeline is one bar whose counts are links (`REQ-ADM-004`) |
+| L21-10 | `tests/unit/admin-removed-check-in.test.ts` | the fixture gains a session starting this month; expectations untouched | fixture | the figures are the month's (`DEC-228` §3.3) |
 
 ★ **Three seams found at Step 0 that the brief did not name** (`DEC-227` §5): the hub's header is not the layout's today,
 so `sessions` moves it there and the survey and certificates tabs lose their own (the lead, as custodian); «المحتوى» is
