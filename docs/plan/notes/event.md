@@ -1564,3 +1564,22 @@ CSV's and the template's audit rows read back, the presenter-admin 404).
 
 Nothing in `DEC-160` §3 moves: no member and no instant on a response, results only through `survey_results()`,
 `record_survey_response` and the rate screen untouched.
+
+### 8 · Sync 1's rulings (`DEC-232`, `9a956ae4`) — what the build follows
+
+- **Q1 = (c), the owner's**: the star bars are **the survey's own 1 – 5 questions** — `survey_results()`'s
+  distributions, no new SQL. `DEC-074` stands: الجلسة and المُقدِّم are the rating's (`session_rating_aggregates`,
+  as today), and **each figure says which instrument it is** (the stat's label names it). D1 closed that way.
+- **`064` writes no `ratings.read_admin`** (STATUS corrected). The `notFound()` defect (§3.1 #3) is fixed in PR C.
+- **Q2**: on a session with no survey the tab shows **exactly what it shows today** — the attach state, no rating
+  figures.
+- **Q3**: the four explainer sentences are dropped; the withheld «why» stays (`REQ-SUR-006`).
+- **Q4**: the editor is kept untouched, reached from the row's ⋯. **Q5**: `after` carries the title only.
+- **Q6**: the header link's word is «CSV»; the lead moves the demo spec's line.
+- **D2**: the anonymity line tells the truth (`REQ-SUR-005` — staff only, never the presenter), its threshold read.
+  **D3**: «افتراضي» absent. **D4**: `REQ-SUR-002`'s type names. **D5**: the questions **beside** the list
+  (`REQ-UIX-106`), not below it.
+- `data-table` stacks below `md` as built (`DEC-232` §6.6). No gendered verb in a new string (§6.7).
+- The trigger on `survey_templates` with the org-gone return is the lead's. ★ **I tell the lead when
+  `SurveyHeaderAction` exists**, and the lead adds the `survey:` key to `[id]/layout.tsx` as custodian.
+- Build in C's worktree only, once its path is posted.
