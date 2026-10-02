@@ -37,11 +37,9 @@
     },
     "dashboard": {
       "title": "Organisation dashboard",
-      "intro": "A quick look at your organisation. Every figure here links to the list it summarises.",
       "attention": {
         "title": "Needs your attention",
         "empty": "Nothing needs your attention right now",
-        "emptyAction": "View all sessions",
         "proposals": "Proposals awaiting a decision",
         "sessions": "Sessions not yet scheduled",
         "photoReports": "Open photo reports",
@@ -62,15 +60,22 @@
       "rsvpsConfirmed": "Confirmed RSVPs",
       "checkInsTotal": "Check-ins",
       "attendanceRateLabel": "Attendance rate",
-      "attendanceRateEmpty": "No sessions have started yet to compute a rate.",
       "attendanceRateValue": "{value}%",
       "activeMembersTitle": "Active members",
       "pointsIssuedTitle": "Points issued",
-      "topPresentersTitle": "Most active presenters",
-      "topCategoriesTitle": "Busiest categories",
-      "topCompaniesTitle": "Most active companies",
+      "topPresentersTitle": "Top presenters",
+      "topCategoriesTitle": "Top categories",
+      "topCompaniesTitle": "Top companies",
       "topEmpty": "Not enough data yet.",
-      "viewList": "View the list"
+      "sessionsThisMonth": "Sessions this month",
+      "pipelineCount": "{value} {label}",
+      "upcoming": {
+        "title": "Upcoming",
+        "all": "All sessions",
+        "empty": "No upcoming sessions",
+        "newSession": "New session",
+        "columnSession": "Session"
+      }
     },
     "proposals": {
       "title": "Review proposals",
@@ -202,7 +207,13 @@
       "createFromProposalLabel": "Create the session from <t>{title}</t>",
       "certificates": "Certificates",
       "survey": "Survey",
-      "attendance": "Attendance"
+      "attendance": "Attendance",
+      "columnVenue": "Venue",
+      "columnPresenter": "Presenter",
+      "columnSeats": "Reservations",
+      "seats": "{confirmed} / {capacity}",
+      "seatsWaitlist": "{confirmed} / {capacity} · {waitlisted}",
+      "noValue": "—"
     },
     "venues": {
       "title": "Venues",

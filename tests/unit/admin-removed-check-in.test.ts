@@ -49,7 +49,10 @@ function world(checkIns: Record<string, unknown>[]) {
     members: [],
     points_ledger: [],
     session_presenters: [],
-    sessions: [],
+    // ★ Wave 21 (`DEC-228` §3.3): the dashboard's figures are the MONTH's, so the
+    // check-in must belong to a session that starts this month — the session
+    // starts at the instant the test runs, which is always the current month.
+    sessions: [{ org_id: ORG, id: SESSION, title: "جلسة", state: "completed", starts_at: new Date().toISOString(), ends_at: new Date().toISOString() }],
     reports: [],
     org_settings: [],
   });

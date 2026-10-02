@@ -37,11 +37,9 @@
     },
     "dashboard": {
       "title": "لوحة المؤسسة",
-      "intro": "نظرة سريعة على مؤسستك. كل رقم هنا رابط إلى القائمة التي يلخّصها.",
       "attention": {
         "title": "يحتاج انتباهك",
         "empty": "لا شيء يحتاج انتباهك الآن",
-        "emptyAction": "عرض كل الجلسات",
         "proposals": "مقترحات بانتظار قرار",
         "sessions": "جلسات لم تُجدول بعد",
         "photoReports": "بلاغات على الصور",
@@ -62,15 +60,22 @@
       "rsvpsConfirmed": "حجوزات مؤكَّدة",
       "checkInsTotal": "تسجيلات حضور",
       "attendanceRateLabel": "معدّل الحضور",
-      "attendanceRateEmpty": "لا جلسات بدأت بعد لحساب المعدّل.",
       "attendanceRateValue": "{value}٪",
-      "activeMembersTitle": "الأعضاء النشطون",
-      "pointsIssuedTitle": "النقاط الممنوحة",
-      "topPresentersTitle": "أكثر المُقدِّمين مشاركة",
-      "topCategoriesTitle": "أكثر التصنيفات جلسات",
-      "topCompaniesTitle": "أكثر الشركات مشاركة",
+      "activeMembersTitle": "عضو نشط",
+      "pointsIssuedTitle": "نقطة ممنوحة",
+      "topPresentersTitle": "أكثر المُقدِّمين",
+      "topCategoriesTitle": "أكثر التصنيفات",
+      "topCompaniesTitle": "أكثر الشركات",
       "topEmpty": "لا بيانات كافية بعد.",
-      "viewList": "عرض القائمة"
+      "sessionsThisMonth": "جلسة هذا الشهر",
+      "pipelineCount": "{value} {label}",
+      "upcoming": {
+        "title": "القادمة",
+        "all": "كل الجلسات",
+        "empty": "لا جلسات قادمة",
+        "newSession": "جلسة جديدة",
+        "columnSession": "الجلسة"
+      }
     },
     "proposals": {
       "title": "مراجعة المقترحات",
@@ -202,7 +207,13 @@
       "createFromProposalLabel": "أنشئ الجلسة من مقترح <t>{title}</t>",
       "certificates": "الشهادات",
       "survey": "الاستبانة",
-      "attendance": "الحضور"
+      "attendance": "الحضور",
+      "columnVenue": "المكان",
+      "columnPresenter": "المُقدِّم",
+      "columnSeats": "الحجوزات",
+      "seats": "{confirmed} / {capacity}",
+      "seatsWaitlist": "{confirmed} / {capacity} · {waitlisted}",
+      "noValue": "—"
     },
     "venues": {
       "title": "الأماكن",

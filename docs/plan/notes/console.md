@@ -3644,3 +3644,33 @@ bulk action (partial, total) · `?new=1` with no approved proposals (the region 
 - **Q6** After a direct create: redirect to the new session's schedule (my recommendation), or honour `?created`?
 - **Q7** D9 — what «ألغِ» and «أغلق» mean in the bulk bar.
 - **Q8** Copy: the artboard's «عضو نشط», «نقطة ممنوحة», «أكثر المُقدِّمين» over today's keys (L2)?
+
+### Wave 21 — `SCR-040` built, and its kept-behaviour table read against the new file
+
+**Delete `ec356113`, then create (this commit).** These are the rows of §5.1 as they read in `admin/page.tsx`,
+`components/admin/dashboard/*` and `admin-dashboard.ts` after the create:
+
+- **1** admin only, a page-level `notFound()` for anyone else ✓ (`page.tsx`, `getAdminDashboardData` → `null`). **2**
+  `setRequestLocale` first ✓. **3 / 4** the four queues kept apart, with the unscheduled predicate ✓ — now through
+  `getAdminAttention()` (`ac25efc8`). **5** the oldest age, six forms, «اليوم» at 0 ✓, with `<bdi>` on the count. **6** the
+  whole tile is one `ui/card` link ✓. **7** each tile opens its queue, narrowed (`?month=none`) ✓. **8** one line when
+  nothing waits ✓; the action is gone (explainer). **9** every figure is a link ✓, and so is every pipeline count, every
+  row of «القادمة» (to the hub) and every top-list name (a category → `?category=`). **10** `formatNumber` ✓.
+  **11** «—» kept as the rate's value; the hint sentence dropped (L1). **12** ★ the rate is now `checkin`'s
+  (`DEC-228` §3.4, `attendanceRateOf()`), over the month's started sessions — `tests/unit/admin-attendance-rate.test.ts`
+  computes it and `getAttendanceReport()`'s from one fixture. **13** removed check-ins excluded ✓. **14** positive
+  ledger rows only ✓, now the month's (`occurred_at`). **15** active members ✓ — a stock, not narrowed by the month (Q
+  for the lead below). **16** the six states in order ✓. **17** the pinned «عرض القائمة» link replaced by the counts (L3).
+  **18 – 21** top lists, `topEmpty`, the two-children row ✓. **22** `<bdi>` on every name, count and the month ✓.
+  **23** the 390 spec is unchanged. **24** `error.tsx` and `loading.tsx` untouched. **25** the two staff gates untouched.
+
+**Not built, by ruling:** the display face on the tiles and figures (`DEC-228` §6 — body face, bold); a moderator's
+dashboard (§3.1). **Built differently from the plan:** the six figures are `ui/card` tiles, not `ui/stat` —
+`stat.tsx` sets its value in the display face (`pg:font-display`) and its label above it, both against the ruling and
+the artboard; `stat` is `content`'s, so the tile composes `card` rather than asking for a prop mid-wave. The pipeline's
+segments wear `edge-strong`, `fg-muted`, `fg-body`, `signal`, `accent`, `edge` — there is no semantic yellow, and the
+artboard's yellow would be a raw palette name.
+
+**Open, for the lead:** «عضو نشط» counts members whose status is active, which no month narrows; and «نقطة ممنوحة»
+links to `/app/admin/scoring`, which has no month filter (frozen). The pipeline's counts link to `/app/admin/proposals`
+until `sessions` publishes the per-state URL (R3).
