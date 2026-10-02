@@ -193,7 +193,10 @@ test("★★ the company race is the quarter's cup — and the month's snapshot 
   await expect(page.locator("#main")).toContainText(/الجولة \d من 3/);
   await expect(page.locator("#main")).toContainText("تُسلَّم في اللقاء السنوي");
   await expect(page.locator("#main")).toContainText("الترتيب حسبه: نقاط لكل عضو نشط");
-  await expect(page.locator("#main")).not.toContainText("بلا ترتيب");
+  // ★ PR C (REQ-UIX-082): the org's minimum is 3 by default. مواهب holds two active members — «بلا ترتيب», no rank;
+  // صنف holds three (two colleagues and the viewer) and keeps its rank.
+  await expect(page.locator("#main #company [data-slot=board-rows] > li", { hasText: "مواهب" })).toContainText("بلا ترتيب");
+  await expect(page.locator("#main #company [data-slot=board-rows] > li", { hasText: "صنف" })).not.toContainText("بلا ترتيب");
   await expect(page.locator("#main #company-breakdown").getByRole("heading", { name: "كيف حصلت شركتك على نقاطها" })).toBeVisible();
   await capture(page, "028", "cup");
   await context.close();

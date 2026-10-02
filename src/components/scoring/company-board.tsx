@@ -61,14 +61,19 @@ export async function CompanyBoard({
             layout="grid"
             companyName={row.companyName}
             teamColor={row.teamColor ?? null}
-            rank={row.rank}
-            rankLabel={t.markup("rankValue", { value: formatNumber(row.rank), bdi: (chunks) => chunks })}
+            // ★ wave 20, PR C (REQ-UIX-082): below the snapshot's frozen minimum — no rank, «بلا ترتيب» in its note.
+            rank={row.unranked ? undefined : row.rank}
+            rankLabel={row.unranked ? undefined : t.markup("rankValue", { value: formatNumber(row.rank), bdi: (chunks) => chunks })}
             value={ranked ? perMember(row.pointsPerActiveMember) : formatNumber(row.totalPoints)}
             metricLabel={t(`company.rankedMetricLabel.${metric}`)}
             fraction={fractions.get(row.companyId) ?? 0}
             secondary={ranked ? { label: t("company.totalPoints"), value: formatNumber(row.totalPoints) } : { label: t("company.perActiveMember"), value: perMember(row.pointsPerActiveMember) }}
             ownLabel={row.isOwn ? t("company.ownLabel") : null}
-            note={row.active != null ? t.markup("company.active", { count: row.active, value: formatNumber(row.active), bdi: (chunks) => chunks }) : null}
+            note={
+              [row.unranked ? t("company.unranked") : null, row.active != null ? t.markup("company.active", { count: row.active, value: formatNumber(row.active), bdi: (chunks) => chunks }) : null]
+                .filter(Boolean)
+                .join(" · ") || null
+            }
           />
         ))}
       </ul>

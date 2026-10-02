@@ -1483,6 +1483,23 @@ generated suite is the highest-value test in the product.
 | `RPC-mark_board_seen.unknown_board` | A board other than `all_time`, `monthly`, `company` or ★ `weekly` (from `0173`) is refused with `22023`. (migration `0163`, amended by `0173`). |
 | `RPC-mark_board_seen.weekly` | Writes the caller's own weekly period and rank, touching no other board's columns (migration `0173`). |
 | `RPC-mark_board_seen.weekly_current` | A weekly period other than the current `org_week()` start — or none — is refused with `22023`, and nothing is written (migration `0173`). |
+| `POL-org_settings.company_min_active_members` | Every member reads it; an org admin sets it within 1 – 50 (`23514` outside); a member changes nothing; no one reaches another org's row (migration `0175`). |
+| `POL-leaderboard_snapshots.min_active_members` | No client writes it — `42501` (migration `0175`). |
+| `RPC-snapshot_leaderboard.min_frozen` | A company snapshot stores the org's minimum; changing the setting later changes no snapshot (migration `0176`). |
+| `RPC-snapshot_leaderboard.eligible_first` | Below-minimum companies rank after every eligible one; every rank stays > 0 (migration `0176`). |
+| `RPC-snapshot_leaderboard.final_untouched` | A final company snapshot taken before the change keeps its order and its null minimum (migration `0176`). |
+| `RPC-reverse_photo_points.compensating` | One `reversal` row per standing photo award, `-amount`, 0149's key and its own reason; none written twice (migration `0177`). |
+| `RPC-reverse_photo_points.frees_cap` | A reversed award frees its place: the next visible photo on that session is paid (migration `0177`). |
+| `RPC-award_photo_points.visible_only` | A hidden or removed photo enqueues nothing; a late job after a hide writes nothing (migration `0177`). |
+| `RPC-award_photo_points.epoch` | award → hide → restore → award nets ONE award; a second hide reverses the second (migration `0177`). |
+| `RPC-award_photo_points.restore_only_reversed` | A photo with no earlier award, hidden and restored, is paid nothing (migration `0177`). |
+| `RPC-award_photo_points.cap` | The sixth visible photo on one session writes nothing, and `capped_award_explanations()` names that session (migration `0177`). |
+| `RPC-award_photo_points.grants` | Neither function is callable by anon or authenticated (migration `0177`). |
+| `RPC-award_points.photo_epoch` | `award_points()`'s photo branch keys by epoch; every other source's key is unchanged (migration `0177`). |
+| `POL-photos.points.insert`  | a stripped photo inserted by `record_photo_upload()` pays its uploader one `photo` award (migration `0178`). |
+| `POL-photos.points.hide`    | a visible photo hidden (takedown or staff) reverses the standing award once, «أُخفيت الصورة» (migration `0178`). |
+| `POL-photos.points.restore` | a hidden photo restored is paid again — once more, never twice net (migration `0178`). |
+| `POL-photos.points.removal` | a removal never reaches this trigger; `scoring`'s path reverses it (migration `0178`). |
 | `RPC-mark_board_seen.fraction_clamped` | A company fraction outside 0–1 is stored clamped. (migration `0163`). |
 | `RPC-session_attendance_count.count_not_who` | A member reads how many attended a session and no `check_ins` row of anyone else. (migration `0165`). |
 | `RPC-session_attendance_count.removed` | A check-in an admin removed does not count; a member is counted once across days. (migration `0165`). |

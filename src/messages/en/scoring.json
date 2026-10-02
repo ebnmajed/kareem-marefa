@@ -68,6 +68,7 @@
         "gain": "{count, plural, one {One point} other {{value} points}}",
         "loss": "{count, plural, one {One point taken off} other {{value} points taken off}}",
         "capComment": "Cap: {count, plural, one {one comment per session} other {{value} comments per session}}",
+        "capPhoto": "Cap: {count, plural, one {one photo per session} other {{value} photos per session}}",
         "manualBy": "“<bdi>{reason}</bdi>” — <bdi>{name}</bdi>",
         "manualReason": "“<bdi>{reason}</bdi>”",
         "reverses": "(cancels the line of <bdi>{date}</bdi>)",
@@ -329,7 +330,8 @@
       "metric": {
         "total_points": "total points",
         "points_per_active_member": "points per active member"
-      }
+      },
+      "unranked": "Unranked"
     },
     "feed": {
       "badge": "<name></name> earned the <b><bdi>{badge}</bdi></b> badge",

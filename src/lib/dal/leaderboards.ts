@@ -61,6 +61,8 @@ export interface CompanyBoardRow {
   teamColor?: string | null;
   /** wave 16 (add-only): the viewer's own company — «فريقك». */
   isOwn?: boolean;
+  /** wave 20, PR C (add-only, REQ-UIX-082): below the snapshot's frozen minimum of active members — «بلا ترتيب». */
+  unranked?: boolean;
 }
 
 export interface Leaderboards {
@@ -90,7 +92,7 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
     // `company` snapshot too, so «the newest» is chosen among the MONTH's — `latestMonthly()` reads the period.
     supabase
       .from("leaderboard_snapshots")
-      .select("id, is_final, taken_at, period_start, period_end")
+      .select("id, is_final, taken_at, period_start, period_end, min_active_members")
       .eq("org_id", session.orgId)
       .eq("kind", "company")
       .order("taken_at", { ascending: false })
@@ -154,7 +156,7 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
   }
 
   if (companySnapRes.error) throw new Error(`leaderboard_snapshots (company): ${companySnapRes.error.message}`);
-  const companySnap = latestMonthly((companySnapRes.data ?? []) as Array<{ id: string; is_final: boolean; taken_at: string; period_start: string | null; period_end: string | null }>);
+  const companySnap = latestMonthly((companySnapRes.data ?? []) as Array<{ id: string; is_final: boolean; taken_at: string; period_start: string | null; period_end: string | null; min_active_members: number | null }>);
   let company: Leaderboards["company"] = null;
   if (companySnap) {
     const { data: entries, error } = await supabase
@@ -183,6 +185,7 @@ export async function getLeaderboards(locale: string): Promise<Leaderboards> {
           pointsPerActiveMember: e.points_per_active_member,
           teamColor: companyColourOf.get(e.company_id) ?? null,
           isOwn: viewerCompanyId !== null && e.company_id === viewerCompanyId,
+          unranked: isUnranked(companySnap.min_active_members, e.points, e.points_per_active_member),
         })),
     };
   }
@@ -622,6 +625,8 @@ export interface CompanyRaceRow {
   /** 0 – 1 against the leader over ALL companies — `companyFractions()`, `SCR-028`'s own function. */
   fraction: number;
   isOwn: boolean;
+  /** wave 20, PR C (add-only, REQ-UIX-082): below the snapshot's frozen minimum — the home draws «بلا ترتيب». */
+  unranked?: boolean;
 }
 
 export interface CompanyRace {
@@ -650,7 +655,7 @@ export async function getCompanyRace(locale: string, opts: { leaders?: number } 
     // ★ wave 20, PR B (the lead's exception): the month's company snapshot, never the quarter's (`latestMonthly()`).
     supabase
       .from("leaderboard_snapshots")
-      .select("id, period_start, period_end, is_final, taken_at")
+      .select("id, period_start, period_end, is_final, taken_at, min_active_members")
       .eq("org_id", session.orgId)
       .eq("kind", "company")
       .order("taken_at", { ascending: false })
@@ -660,7 +665,7 @@ export async function getCompanyRace(locale: string, opts: { leaders?: number } 
   ]);
   if (snapRes.error) throw new Error(`leaderboard_snapshots (race): ${snapRes.error.message}`);
   if (viewerRes.error) throw new Error(`members (race): ${viewerRes.error.message}`);
-  const snap = latestMonthly((snapRes.data ?? []) as Array<{ id: string; period_start: string | null; period_end: string | null; is_final: boolean; taken_at: string }>);
+  const snap = latestMonthly((snapRes.data ?? []) as Array<{ id: string; period_start: string | null; period_end: string | null; is_final: boolean; taken_at: string; min_active_members: number | null }>);
   if (!snap || !snap.period_start || !snap.period_end) return null;
   const metric = (settingsRes.data?.company_metric as CompanyRace["metric"] | undefined) ?? "points_per_active_member";
   const ownCompanyId = (viewerRes.data?.company_id as string | null | undefined) ?? null;
@@ -688,6 +693,7 @@ export async function getCompanyRace(locale: string, opts: { leaders?: number } 
     pointsPerActiveMember: e.points_per_active_member === null ? null : Number(e.points_per_active_member),
     teamColor: byId.get(e.company_id)?.team_color ?? null,
     isOwn: ownCompanyId !== null && e.company_id === ownCompanyId,
+    unranked: isUnranked(snap.min_active_members, e.points, e.points_per_active_member),
   }));
   const fractions = companyFractions(board, metric);
   const all: CompanyRaceRow[] = board.map((r) => ({
@@ -699,6 +705,7 @@ export async function getCompanyRace(locale: string, opts: { leaders?: number } 
     pointsPerActiveMember: r.pointsPerActiveMember,
     fraction: fractions.get(r.companyId) ?? 0,
     isOwn: Boolean(r.isOwn),
+    unranked: Boolean(r.unranked),
   }));
 
   return {
@@ -927,6 +934,14 @@ export function derivedActive(points: number, perMember: number | string | null)
   return n > 0 ? n : null;
 }
 
+/** «بلا ترتيب»: a company below its snapshot's FROZEN minimum of active members (0175, 0176). A snapshot taken before
+ *  the minimum existed (null) ranks everyone. The count is recovered exactly from the frozen pair; none (no active
+ *  member) is 0, which is below any minimum. Pure, exported for its test. */
+export function isUnranked(minimum: number | null | undefined, points: number, perMember: number | string | null): boolean {
+  if (minimum == null) return false;
+  return (derivedActive(points, perMember) ?? 0) < minimum;
+}
+
 /** The quarter of a period: its number (1 – 4) and year; and, mid-quarter, which month of three today is. Pure. */
 export function quarterOf(start: string, today: string): { quarter: number; year: number; round: number } {
   const [y, m] = start.split("-").map(Number);
@@ -957,7 +972,7 @@ export async function getCompanyCup(locale: string): Promise<CompanyCup | null> 
   const [snapRes, settingsRes, viewerRes] = await Promise.all([
     supabase
       .from("leaderboard_snapshots")
-      .select("id, period_start, period_end, is_final, taken_at, metric")
+      .select("id, period_start, period_end, is_final, taken_at, metric, min_active_members")
       .eq("org_id", session.orgId)
       .eq("kind", "company")
       .order("taken_at", { ascending: false })
@@ -967,7 +982,7 @@ export async function getCompanyCup(locale: string): Promise<CompanyCup | null> 
   ]);
   if (snapRes.error) throw new Error(`leaderboard_snapshots (cup): ${snapRes.error.message}`);
   if (viewerRes.error) throw new Error(`members (cup): ${viewerRes.error.message}`);
-  type Snap = { id: string; period_start: string | null; period_end: string | null; is_final: boolean; taken_at: string; metric: CompanyCup["metric"] | null };
+  type Snap = { id: string; period_start: string | null; period_end: string | null; is_final: boolean; taken_at: string; metric: CompanyCup["metric"] | null; min_active_members: number | null };
   const snap = ((snapRes.data ?? []) as Snap[]).find((r) => isQuarterPeriod(r.period_start, r.period_end)) ?? null;
   if (!snap || !snap.period_start || !snap.period_end) return null;
   const timeZone = (settingsRes.data?.time_zone as string | undefined) ?? "Asia/Riyadh";
@@ -1013,6 +1028,7 @@ export async function getCompanyCup(locale: string): Promise<CompanyCup | null> 
       teamColor: byId.get(e.company_id)?.team_color ?? null,
       isOwn: viewerCompany !== null && e.company_id === viewerCompany,
       active: derivedActive(e.points, e.points_per_active_member),
+      unranked: isUnranked(snap.min_active_members, e.points, e.points_per_active_member),
     })),
   };
 }

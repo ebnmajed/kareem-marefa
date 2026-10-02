@@ -6836,3 +6836,48 @@ cases green. **`main` does nothing different**: its app never inserts a photos r
 merges** — the programme's usual order (push precedes merge), only sooner. Whether anyone has used the door cannot be
 read from the schema; a read of `photos` rows whose object was never written by `record_photo_upload()` is the owner's
 to run, read-only, if wanted. PR C's award is not built until this is pushed.
+
+## DEC-222 — PR C, sync: both plans approved; `0175` lands the setting; the award waits on `0174` in production
+
+- **Date:** 2026-10-02 · **Decided by:** the wave-20 lead, from `content`'s plan (`3f60fa15`) and `scoring`'s (`3d0102b4`)
+- **Adds:** migration **`0175`** (the two columns of `DEC-220` §1, with the admin's column grant); `tests/rls/company-min-active.test.ts`
+- **Does not touch:** any console route; `points_ledger`'s append-only rule
+
+### 1 · Approved, with these rulings binding
+
+1. **The trigger is `content`'s, the functions `scoring`'s** (`DEC-220` §2.5): `award_photo_points(p_photo uuid,
+   p_restore boolean default false)` and `reverse_photo_points(p_photo uuid, p_reason text)`, definer, granted to no
+   client. The trigger fires after insert (a row exists only after the strip, `0174`) and after a change of
+   `hidden_at` **while `removed_at` is null**; a removal is `0059`'s path alone, replaced by `scoring` to call
+   `reverse_photo_points(…, 'حُذف المحتوى')` and keep the `photo_removed` penalty — one writer per transition.
+2. **A hide's reversal reads «أُخفيت الصورة»**, so a member tells a hide from a deletion (`REQ-PTS-003`);
+   `moderation.test.ts:101-104` moves (ledger).
+3. **A restore pays only what a takedown reversed** — a photograph never paid, hidden and restored, earns nothing.
+   **No backfill**: photographs recorded before PR C's migrations never pay.
+4. **The home's race draws «بلا ترتيب» too** (add-only `unranked` on `getCompanyRace()`): two surfaces never disagree.
+5. ★ **`0175`'s column joins the admin's column-level update grant** (`0004:146`, «everything except identity and
+   timestamps»), so the console wave builds only the control. Until then an org admin could set it through the API and
+   the owner sets it by SQL; **no screen exists**.
+6. ★ **The award is not built until the owner has pushed `0174`** (`DEC-221`): with the insert door open, an award on
+   insert would pay a member for an unstripped photo they inserted themselves. «بلا ترتيب» is built now.
+
+### 2 · For the owner
+
+From the day PR C's award migration is pushed, **photographs start earning in production, before PR C's screens
+merge** — today's screens draw a photo award's own reason and a reversal as any other (`scoring` measured it). The
+migrations to rehearse: `0169` – `0175`, and PR C's award after it.
+
+## DEC-223 — The copy trim's «§0b» never existed; the list is derived from the artboards and shown to the owner first
+
+- **Date:** 2026-10-02 · **Decided by:** the owner, answering `DEC-217` §4.2
+- **Amends:** `DEC-216` §5.14 and `DEC-217` §4.2 (the citation), read with this entry. ★ The owner asked for this to be recorded in `DEC-222`; the log is append-only, so it is recorded here instead
+
+★ **`M10c.md` has no §0b and never had one.** The file goes from «## 0. The hub frame» to «## 1.»; the only mention of
+«§0b» is `DEC-NEXT-25`'s citation of it in §10. The owner does not hold the list, and neither, as far as the owner
+knows, does the design session. The wave-20 brief repeated the citation without checking it — **the planner's error**.
+**No later wave should look for this section.**
+
+**The rule stands without the list** (`REQ-UIX-080`, `DEC-NEXT-25`): a line exists only if it changes what the person
+does next. `STORY-UIX-067` proceeds as `DEC-217` §4.2 proposed: **the lead derives the list** — every line the built
+M10a and M10b screens render that their committed artboards no longer draw and that changes nothing the person does
+next — and ★ **shows it to the owner before a single string is removed.**

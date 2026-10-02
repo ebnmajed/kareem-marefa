@@ -4694,3 +4694,176 @@ the 028 table is the cup's quarter, falling back to the month's race with a labe
 
 The lead shows the owner this as a disagreement with `M10c.md` §8's last line («هذا الشهر» on this tab is the monthly
 race) at the phone check.
+
+# Wave 20, PR C — plan (`wave-20c/the-award`, `DEC-220`) — planning only, no SQL written
+
+★ **Numbers** (`DEC-221`): `0174` is PR B's — `content`'s fix of a live hole, by which a checked-in member could insert a
+`photos` row directly, claiming `exif_stripped`. **PR C's migrations start at `0175`**: the two columns first (the
+lead's), then `w20c_0001` (the award) and `w20c_0002` (the minimum) as promoted. ★ Since `0174` a `photos` row is written
+ONLY by `record_photo_upload()`, already stripped — so «an insert is a photo becoming visible» holds, and paying on
+insert is safe. **The award is not built until the owner has pushed `0174`.**
+
+## 0 · ★ Published on day one, for `content` — the two functions its trigger on `photos` calls
+
+```sql
+-- Pays a VISIBLE photo, once per epoch. Enqueues the existing `award_points` job; writes nothing itself.
+-- `p_restore` true: a photo made visible again — paid ONLY when an earlier award of it was reversed (the lead's ruling 3).
+public.award_photo_points(p_photo uuid, p_restore boolean default false) returns void   -- security definer; revoked from public, anon, authenticated
+
+-- Compensates every standing photo award of that photo — 0149's shape, one row per award, its own reason.
+public.reverse_photo_points(p_photo uuid, p_reason text) returns void   -- security definer; same grants
+```
+
+`content`'s trigger function is `security definer` (it calls service-only functions) and decides only WHEN:
+
+| Transition on `public.photos` | Call |
+|---|---|
+| `after insert` with `hidden_at` and `removed_at` both null — the row exists only after `process_photo`'s EXIF strip (`0115:234`) | `award_photo_points(new.id)` |
+| `after update`: visible → `hidden_at` set (a takedown, `0037:329`) | `reverse_photo_points(new.id, 'أُخفيت الصورة')` |
+| `after update`: hidden → visible again (`hidden_at` cleared, `photos.ts:275`) | `award_photo_points(new.id, true)` |
+| `after update`: `removed_at` set | ★ **nothing from content** — the removal path is `_reverse_photo_points()` (`0059:122`), which I replace to call `reverse_photo_points(new.id, 'حُذف المحتوى')` and keep its `photo_removed` penalty. One writer per transition |
+
+## 1 · The photo award (`REQ-UIX-083`, `REQ-PTS-002`, `REQ-PTS-006`, `REQ-PTS-012`, `REQ-PTS-013`)
+
+**The rule is the seed**: `('photo', 'attendee', 3, true, 5, null, 'صورة من الجلسة')` (`0027:530`) — 3 points, cap 5
+per session, read at award time from `scoring_rules`, never a literal. `ledger_source` has `'photo'`.
+
+1. ★ **The reversal first.** `reverse_photo_points(p_photo, p_reason)`: under an advisory lock on the photo, for each
+   `points_ledger` row with `source = 'photo' and source_id = p_photo` that no `reversal` row names, insert
+   `(org, member, -amount, 'reversal', l.id, l.session_id, p_reason, 'photo', 'reversal:' || l.id || ':v1')` with
+   `on conflict do nothing` — exactly `0149:179`'s shape. The `rule_key` is `'photo'`, so a reversed award FREES its
+   place under the cap (`award_points()`'s sum, `0148:209-214`). It fixes the `limit 1` in today's
+   `_reverse_photo_points()`, which with a second epoch would compensate the FIRST award again (a no-op by its key) and
+   leave the second standing.
+2. **The award.** `award_photo_points(p_photo, p_restore)`: reads the photo; returns unless it exists, `hidden_at` and
+   `removed_at` are null, and its session is in the uploader's org; ★ with `p_restore`, returns unless a `reversal`
+   row names an earlier `photo` award of this photo — **a restore re-awards only what was reversed** (the lead's ruling):
+   a photo uploaded BEFORE the migration was never paid, so hiding and restoring it after pays nothing; computes the epoch as
+   `presenter_award_epoch(uploader, 'photo', 'photo', p_photo)` (`0149`, «1 + the reversals of matching awards» — the
+   name is the presenters' but the function is generic); and enqueues through `public.enqueue_job('award_points',
+   {rule: 'photo', member_id, source: 'photo', source_id: photo, session_id}, 'pts:photo:' || photo || ':v' || epoch)`.
+3. ★ **The epoch reaches the key.** `award_points()` (`0148:93`, mine) is `create or replace`d with ONE added branch:
+   `if p_source = 'photo' then` — re-derive visibility (a late job after a hide pays nothing, as `0088`'s check-in race
+   does) and `v_epoch := public.presenter_award_epoch(p_member, p_rule, p_source, p_source_id)`. Every other branch
+   byte-for-byte. The ledger key is the existing shape `photo:photo:<photo>:<member>:v<epoch>`.
+   **Award → takedown → restore → award nets ONE**: `+3` (v1), `−3` (reversal of v1), `+3` (v2, the epoch is 2 because
+   v1 was reversed); a second hide reverses v2. A replayed job writes nothing (`REQ-PTS-012`).
+4. **The cap** is `award_points()`'s, unchanged: the sixth visible photo on a session finds `sum ≥ 5 × 3` and writes
+   nothing — and ★ `0172`'s `capped_award_explanations()` learns photos: today it explains comments only, because
+   nothing paid a photo (§5.3 of the wave-20 plan). Its `items` CTE gains the uploader's visible photos (`photos.uploader_id`,
+   `hidden_at` and `removed_at` null) for `rule_key = 'photo'` — a `create or replace`, same signature.
+5. **`main`'s worker in the gap** (the migration lands before the merge): content's trigger enqueues the EXISTING
+   `award_points` job with the existing payload; `main`'s `award_points` task calls the same `award_points()` SQL,
+   which is the new one. So **photos start paying on `main` the day the migration is pushed** — the catalogue's line
+   becomes true then, not at the merge. No `main` code is wrong in the gap. ★ No backfill: photos uploaded before
+   are not paid (a data fix is never a migration); written for the owner.
+6. **Grants**: both new functions `revoke execute … from public, anon, authenticated` and `grant … to service_role`
+   (the trigger runs them as its owner); a `definer-exposure` row is the lead's if the gate lists them (anon cannot
+   call either).
+
+## 2 · «بلا ترتيب» (`REQ-UIX-082`, `REQ-UIX-079`, `REQ-LDR-005`, `REQ-LDR-006`)
+
+The lead writes the two columns (`org_settings.company_min_active_members int not null default 3 check (between 1 and
+50)`, `leaderboard_snapshots.min_active_members int` nullable). Mine:
+
+1. **`snapshot_leaderboard()` — `create or replace`, the company branch only** (`0081:638-668`), same signature:
+   - read `v_min := company_min_active_members` beside `v_metric` (`0081:598`);
+   - write it on the snapshot row for `kind = 'company'` (null for every other kind);
+   - compute each company's active count once (the denominator it already computes inline, `0081:643-647`), and rank
+     `rank() over (order by (active >= v_min) desc, <metric> desc nulls last)` — **eligible companies first**, the
+     ineligible after them, every rank still `> 0` (`0027:475`); `points_per_active_member` unchanged.
+   - The monthly and topic branches byte-for-byte.
+2. **The reads** (`leaderboards.ts`, add-only fields): the company snapshots' `min_active_members`; each row gains
+   `unranked: boolean` = the snapshot has a minimum AND the derived active count (`derivedActive()`, exact — §H) is
+   below it, or there is none. `CompanyBoardRow.unranked?` add-only; the cup reads it too.
+3. **The drawing**: an ineligible row on 028 draws no rank — `race-bar` given no `rank` — and its `note` reads
+   «بلا ترتيب · N نشطًا» (★ new `company.unranked` key, ar first). No type change needed. Old snapshots (null minimum)
+   draw every rank, as today.
+4. ★ **The home's race** (`getCompanyRace()`, wave 18's rail and HUD, frozen) shows the own company's STORED rank. With
+   eligible-first ranking, the leaders it shows are eligible; an ineligible own company would show «#5» where 028 says
+   «بلا ترتيب». **A question for the lead**: an add-only `unranked` there too (one field, and the HUD's line), or leave
+   the home as it is this wave.
+5. **The monthly reordering**: from the migration on, every new company snapshot — the month's and the quarter's —
+   ranks eligible-first; provisional rows only; a final snapshot never moves (`0027:453`, `:497`).
+
+## 3 · 03 §8.2 rows
+
+| Row | Proof |
+|---|---|
+| `RPC-reverse_photo_points.compensating` | One `reversal` row per standing photo award, `-amount`, `0149`'s key and its own reason; none written twice |
+| `RPC-reverse_photo_points.frees_cap` | A reversed award frees its place: the next visible photo on that session is paid |
+| `RPC-award_photo_points.visible_only` | A hidden or removed photo enqueues nothing; a late job after a hide writes nothing |
+| `RPC-award_photo_points.epoch` | award → hide → restore → award nets ONE award; a second hide reverses the second |
+| `RPC-award_photo_points.restore_only_reversed` | ★ A photo with no earlier award (uploaded before the migration), hidden and restored, is paid nothing |
+| `RPC-award_photo_points.cap` | The sixth visible photo on one session writes nothing, and `capped_award_explanations()` names that session |
+| `RPC-award_photo_points.grants` | Neither function is callable by anon or authenticated |
+| `RPC-award_points.photo_epoch` | `award_points()`'s photo branch keys by epoch; every other source's key is unchanged |
+| `RPC-snapshot_leaderboard.min_frozen` | A company snapshot stores the org's minimum; changing the setting later changes no snapshot |
+| `RPC-snapshot_leaderboard.eligible_first` | Below-minimum companies rank after every eligible one; every rank stays > 0 |
+| `RPC-snapshot_leaderboard.final_untouched` | A final company snapshot taken before the change keeps its order and its null minimum |
+
+## 4 · Files and every assertion that moves
+
+**Files**: `supabase/proposed/scoring/w20c_0001_photo_award.sql` (the two functions, `award_points()`'s photo branch,
+`_reverse_photo_points()` replaced, `capped_award_explanations()` taught photos); `w20c_0002_company_minimum.sql`
+(`snapshot_leaderboard()` replaced) — both after the lead's columns; `tests/rls/scoring-photo-award.test.ts`,
+`tests/rls/scoring-company-minimum.test.ts`; `leaderboards.ts` (add-only), `company-board.tsx`, `leaderboards.json`;
+`tests/components/leaderboards/boards.test.tsx` (new cases); `tests/e2e/wave20-scoring-boards.spec.ts` and
+`wave20-scoring-points.spec.ts` (new cases: the cup with «بلا ترتيب»; one photo past the cap → the dashed row).
+
+**Assertions that move**:
+
+| File | Assertion | Kind |
+|---|---|---|
+| `tests/rls/moderation.test.ts:101-104` (the lead's, as custodian) | the photo's reversal reason is «حُذف المحتوى» — ★ the takedown inserted at `:78` now HIDES the photo first, so the award is reversed at the hide with «أُخفيت الصورة»; the removal then finds nothing standing | expectation — unless the hide uses «حُذف المحتوى» too (§5) |
+| `tests/rls/scoring-capped.test.ts` «comments only» | photos are explained too | addition, no change |
+| `tests/rls/snapshot-leaderboards.test.ts` | the company snapshot's ranks with one company per fixture org are unchanged; a snapshot row now carries `min_active_members` | none expected — named to be checked |
+| `tests/rls/scoring-company-points.test.ts:452` | a final company snapshot's ranks | none expected — the fixture's one company is rank 1 either way |
+
+## 4b · The lead's rulings (provisional until `content`'s trigger plan; final at PR C's sync)
+
+1. A hide's reversal reads **«أُخفيت الصورة»** — a member tells a hide from a deletion (`REQ-PTS-003`). Granted:
+   `tests/rls/moderation.test.ts:101-104` only, an expectation move with its ledger line.
+2. **`getCompanyRace()` gains `unranked`, add-only**, and the home's rail draws «بلا ترتيب» for an ineligible company —
+   two surfaces never disagree about one company's rank.
+3. **No backfill**, and a restore re-awards only what was reversed (§1.2).
+
+**For the entry's draft — photos pay in PRODUCTION before PR C merges.** The owner pushes migrations before merging, so
+from the day PR C's migrations (`0175`+) are pushed, `main`'s app enqueues photo awards through the new trigger and `main`'s worker pays them
+through the new `award_points()`. Measured, `main`'s screens draw such a row correctly: the ledger read
+(`getPointsLedger()`, PR A — and before it `PointsHistoryList`) treats every source alike, drawing the row's OWN reason
+(«صورة من الجلسة») with its session's link; a photo reversal is `source = 'reversal'`, which both pair or tag
+generically; `COMPLETION_SOURCES` excludes `photo`, so no moment plays for it; the cap explanation draws the session's
+dashed row once `capped_award_explanations()` learns photos. Nothing on `main` names `photo` specially, so nothing draws
+it badly.
+
+**`content`'s ordering point, agreed** (its plan, uncommitted): `remove_photo()` sets `removed_at` AND `hidden_at` in one
+update, so `content`'s hide and restore clauses both require `new.removed_at is null` — a removal is `_reverse_photo_points()`'s
+alone and reads «حُذف المحتوى»; an unhide of a removed photo never calls the award. ★ `reverse_photo_points()` is a
+NO-OP when nothing is standing (it selects only awards no reversal names, and inserts with `on conflict do nothing`), so
+a takedown followed by a removal writes ONE reversal, the hide's. That is the expectation move at
+`moderation.test.ts:101-104` the lead granted.
+
+## 5 · New disagreements, not picked
+
+1. **The hide's reason.** `REQ-PTS-013` says a removed photo's reversal reads «حُذف المحتوى». A HIDDEN photo (a takedown
+   pending) is not removed; I propose «أُخفيت الصورة», which moves `moderation.test.ts`'s expectation. The alternative
+   keeps «حُذف المحتوى» for both and moves nothing.
+2. **No backfill** of photos uploaded before the migration — the owner's call.
+3. **The home's race and «بلا ترتيب»** — §2.4.
+
+## 6 · The photo award, built (2026-10-02)
+
+| Commit | What |
+|---|---|
+| `c8b2e1ef` | `supabase/proposed/scoring/w20c_0001_photo_award.sql` (unnumbered) — `reverse_photo_points()`, `award_photo_points()`, `award_points()`'s photo branch (re-checks visibility, keys by epoch), `_reverse_photo_points()` reversing every standing award through the one function and keeping the penalty, `capped_award_explanations()` for photos · `tests/rls/scoring-photo-award.test.ts`, 10/10 through `applyProposed()`; the eight §3 rows |
+| `2fed7433` | SCR-022's cap row picks `ledger.capPhoto` for a photo cap (phone list and desktop table); six Arabic forms · `tests/components/scoring/points-ledger-photo-cap.test.tsx` |
+| `0d5fd63e` | `tests/e2e/wave20-scoring-award.spec.ts` — one photo past a cap of 2 through the real path, SCR-022's `0` row; **runs only after promotion** |
+
+- Neighbouring RLS suites green with the file unapplied (award-*, moderation, scoring-capped, presenter awards,
+  definer-exposure: 11 files, 85 cases) — nothing moves until promotion.
+- ★ `moderation.test.ts:101-104` **does not move yet**: with my file alone a removal still reverses with
+  «حُذف المحتوى». It moves to «أُخفيت الصورة» when `content`'s hide trigger is applied with it (the takedown hides
+  first, so the removal finds nothing standing) — the ledger line goes in that commit.
+- `content` was told at `c8b2e1ef`: both functions, their grants, the restore flag, and to list my file before its own
+  in `applyProposed()`.

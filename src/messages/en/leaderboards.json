@@ -36,7 +36,8 @@
         "perActiveMember": "Per member",
         "totalPoints": "Total",
         "ranked": "Ranked by"
-      }
+      },
+      "unranked": "Unranked"
     },
     "companyBreakdown": {
       "heading": "How your company earned its points",

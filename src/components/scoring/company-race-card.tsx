@@ -49,9 +49,12 @@ export async function CompanyRaceCard({ locale, leaders = 2, className = "" }: {
             value={metricValue(race, row)}
             metricLabel={metric}
             fraction={row.fraction}
-            rank={row.rank}
-            rankLabel={t.markup("race.rankLabel", { value: formatNumber(row.rank), bdi: (chunks) => chunks })}
+            // ★ wave 20, PR C (REQ-UIX-082): a company below the snapshot's minimum has no rank — here as on 028, so two
+            // surfaces never disagree about one company's rank.
+            rank={row.unranked ? undefined : row.rank}
+            rankLabel={row.unranked ? undefined : t.markup("race.rankLabel", { value: formatNumber(row.rank), bdi: (chunks) => chunks })}
             ownLabel={row.isOwn ? t("race.own") : null}
+            note={row.unranked ? t("race.unranked") : null}
           />
         ))}
       </ul>

@@ -36,7 +36,8 @@
         "perActiveMember": "لكل عضو",
         "totalPoints": "المجموع",
         "ranked": "الترتيب حسبه"
-      }
+      },
+      "unranked": "بلا ترتيب"
     },
     "companyBreakdown": {
       "heading": "كيف حصلت شركتك على نقاطها",
