@@ -760,18 +760,19 @@ Moderator removal is P6 with its own column grant — a moderator can set `delet
 touch `body`.
 
 #### §5.6c — `photos`, insert — the check-in gate
+★ **No direct insert since `0174` (`DEC-221`).** The policy below stood from `0037` until wave 20, and with the
+storage policies it let a checked-in member PUT an **unstripped** original and insert a row claiming
+`exif_stripped = true` — the org could then read the photograph's GPS and device data (`REQ-EVT-011`). It is dropped
+and `insert` is revoked from `authenticated`. **The only writer is `record_photo_upload()`** (`0050`, `security
+definer`, service_role-only), called by the worker after it has stripped the bytes. The check-in gate (D33, D24) is
+`initiate_photo_processing()`'s, which refuses a member who has not checked in before anything is queued (`0050`). Kept here as the record of what was removed:
 ```sql
-create policy "photos_insert_checked_in" on photos for insert to authenticated
-  with check (org_id = auth_org_id()
-              and uploader_id = auth_member_id()
-              and exif_stripped                                  -- REQ-EVT-011
-              and (has_checked_in(session_id)                    -- D33 / D24
-                   or is_presenter_of(session_id)
-                   or is_staff()));
+-- removed by 0174:
+-- create policy "photos_insert_checked_in" on photos for insert to authenticated
+--   with check (org_id = auth_org_id() and uploader_id = auth_member_id() and exif_stripped
+--               and (has_checked_in(session_id) or is_presenter_of(session_id) or is_staff()));
+-- grant insert on photos to authenticated;   -- revoked by 0174
 ```
-**This is D33 and D24 in one clause.** A member with a confirmed RSVP and no check-in fails it. The
-`exif_stripped` conjunct pairs with the table's check constraint so an unstripped image cannot be
-recorded even by a code path that forgot to strip it.
 
 #### §5.6d — `ratings`, read — where D36 lives
 ```sql
@@ -1553,7 +1554,7 @@ generated suite is the highest-value test in the product.
 | `POL-photos.restore.audited` | `hidden_at` going from set to null writes one `audit_log` row naming the photo. (migration `0051`). |
 | `POL-photos.removal.audited` | `removed_at` going from null to set writes one `audit_log` row naming the photo and `removed_by`. (migration `0051`). |
 | `POL-task_form_responses.select` | A moderator reading form responses gets nothing (`REQ-ADM-020`). (migration `0037`). |
-| `POL-photos.insert.checked_in` | A member with a confirmed RSVP and no check-in is rejected; the same member, after checking in, succeeds. (migration `0037`). |
+| `POL-photos.insert.checked_in` | ★ No direct insert: a checked-in member, the presenter and an admin are all refused `42501`; a row is written only by `record_photo_upload()`, the gate is `initiate_photo_processing()`'s (migration `0037`, closed by `0174`, `DEC-221`). |
 | `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the table constraint. (migration `0037`). |
 | `POL-photo_takedowns.insert` | Inserting hides the photo in the same transaction, before any other read. (migration `0037`). |
 | `POL-photo_takedowns.restore` | A moderator resolving with `restored` unhides the photo; `resolved_by` is stamped, never trusted from the client. (migration `0037`). |
@@ -1621,8 +1622,7 @@ generated suite is the highest-value test in the product.
 | `POL-comments.update.window` | Editing at 14 minutes succeeds; at 16 minutes is rejected. |
 | `POL-comments.update.moderator` | A moderator can set `deleted_at` and **cannot** change `body`. |
 | `POL-comments.depth` | A reply to a reply attaches to the parent thread. |
-| `POL-photos.insert.checked_in` | A member with a confirmed RSVP and **no check-in** is rejected. |
-| `POL-photos.insert.checked_in` | The same member, after checking in, succeeds. |
+| `POL-photos.insert.checked_in` | ★ Since `0174` **no member inserts directly** — checked in or not, presenter or admin; the check-in gate is `initiate_photo_processing()`'s. |
 | `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the constraint. |
 | `POL-photo_takedowns.insert` | Inserting hides the photo **in the same transaction**. |
 | `POL-ratings.insert.check_in` | A member with an RSVP and no check-in cannot rate. |

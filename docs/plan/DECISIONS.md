@@ -6802,3 +6802,37 @@ nobody can review**, and would hold four rebuilt screens behind a scoring change
 
 The migrations to rehearse grow to **`0169` – `0173` and PR C's `0174` onward**. PR C is planned before it is built;
 nothing of it is written until its plans are approved.
+
+## DEC-221 — A live privacy defect: since `0037` a checked-in member could publish an unstripped photograph; `0174` closes the door, and PR C's numbers move to `0175`
+
+- **Date:** 2026-10-02 · **Found by:** `content`, measuring the photo award for PR C · **Verified and fixed by:** the wave-20 lead
+- **Amends:** `03` §5.6c (the insert policy, removed); `DEC-220` (PR C's migrations start at **`0175`**, not `0174`)
+- **Adds:** migration **`0174`** — `drop policy "photos_insert_checked_in"` and `revoke insert on public.photos from authenticated`, on PR B's branch because it is the one checked out, **for the owner to push as soon as it is rehearsed**
+
+### 1 · The defect — live in production since M5
+
+`grant insert on photos to authenticated` (`0037:522`) and `photos_insert_checked_in` (`0037:510`) admitted a direct
+insert from any checked-in member, presenter or staff, and **`exif_stripped` was a boolean the caller sends**.
+`photos_storage_write` (`0037:657`) lets the same member PUT any object under the session's photo prefix, and
+`photos_storage_read` (`0037:646`, amended `0156`) serves an object once a photos row names it. So a member could PUT an
+**original** image, insert a row with its id claiming `exif_stripped = true`, and the whole org could read the
+photograph **with its GPS position and device data** — what `REQ-EVT-011` and `REQ-EVT-010` forbid.
+`tests/rls/photos-schema.test.ts` asserted that the direct insert **succeeds**. Verified by the lead: no later
+migration revoked the grant; no storage `update` policy exists, so this was the whole door; nothing under `src/` inserts
+a photos row. With PR C's award on top it would also have been a points farm.
+
+### 2 · The fix — `0174`
+
+The policy is dropped and the grant revoked. **The only writer is `record_photo_upload()`** (`0050`, `security
+definer`, service_role-only), called by the worker after the strip; **the check-in gate is
+`initiate_photo_processing()`'s**, before anything is queued. `select` and the moderation column grants are unchanged.
+`photos-schema`'s two cases now assert the refusal (ledger); 149 photo, storage, moderation, isolation and definer
+cases green. **`main` does nothing different**: its app never inserts a photos row, and its worker uses the definer.
+
+### 3 · For the owner — this is the urgent one
+
+**The hole is open in production now.** All five migrations before it (`0169` – `0173`) are additive and safe for
+`main`'s app and worker, so the fastest honest path is to **rehearse and push `0169` – `0174` together, ahead of the
+merges** — the programme's usual order (push precedes merge), only sooner. Whether anyone has used the door cannot be
+read from the schema; a read of `photos` rows whose object was never written by `record_photo_upload()` is the owner's
+to run, read-only, if wanted. PR C's award is not built until this is pushed.
