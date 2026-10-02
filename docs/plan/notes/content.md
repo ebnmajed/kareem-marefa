@@ -6791,3 +6791,162 @@ The checkbox leaves `021`'s edit mode, `PROFILE_FIELDS` loses `leaderboardOptOut
 (so `updateMyProfile` leaves the column alone), `profile.leaderboardOptOut` is removed from `ar`/`en`; the settings
 glyph is «الإعدادات» → `/app/me/settings` (`app.shell.settings`). `profile-page.test.tsx:190` and `self-panel.tsx`'s
 link were the lead's, in `ae22f53a`.
+
+---
+
+## Wave 20, PR C — plan: the trigger on `photos` (`DEC-220` §2.5, `REQ-UIX-083`) — planning only, no SQL
+
+Measured on `b3c75098`. `scoring` writes the award and reversal functions; `content` writes the trigger on `photos`.
+★ **scoring's signatures are not published yet** — §3 names the shape I need and is re-read when they are.
+
+### 0 · ★★ A defect found while measuring — before the award, and live in production
+
+**A checked-in member can insert a `photos` row directly**, through PostgREST, with `exif_stripped = true`:
+`grant select, insert on public.photos to authenticated` (`0037:522`) and `photos_insert_checked_in` (`0037:510`)
+admit it, and `tests/rls/photos-schema.test.ts:23-99` **asserts that it succeeds**. `exif_stripped` is a boolean the
+caller asserts, not a fact. With `photos_storage_write` (`0037:657`, a checked-in member may PUT any object under
+`photos/{org}/sessions/{session}/…`) and `photos_storage_read` (`0037:646`, readable once a `photos` row with the
+object's file-name uuid exists), the sequence is: PUT the **original, unstripped** image at `…/photos/<uuid>.jpg`;
+insert a `photos` row with that `id`, that `storage_path` and `exif_stripped = true` → the org reads the original with
+its GPS and device data. **That defeats `REQ-EVT-011` and `REQ-EVT-010`'s «never retrievable before its strip».** The
+only legitimate writer is `record_photo_upload()` (`0115:234`, `service_role`, called by `process_photo`); nothing in
+`src/` inserts into `photos` (measured).
+
+★ **With PR C it also becomes a points farm**: a direct insert would be paid like a processed photo (up to the cap,
+per session). **So PR C cannot pay on insert until the insert is closed.** The fix is the lead's (a migration):
+`revoke insert on public.photos from authenticated` and drop `photos_insert_checked_in`, so only the definer path
+writes a row; `photos-schema.test.ts`'s «POL-photos.insert.*» successes move to «refused» (expectations, ledger lines)
+and `03` §5.6c changes with it. Told to the lead at once; not picked here.
+
+### 1 · A photo's lifecycle, measured
+
+- **There is no «processing» row.** `check (exif_stripped)` (`0037:169`): the row is inserted by `record_photo_upload()`
+  only after the worker has stripped the bytes. Before that the upload is an object and a `process_photo` job
+  (`initiate_photo_processing()`, `0050`). **An insert is the moment a photo becomes visible** — `hidden_at` and
+  `removed_at` null — once §0 is fixed.
+- **Hidden**: `hidden_at` set — by a takedown request (`photo_takedowns_hide()`, `0037:325`, definer, «hides instantly»,
+  `REQ-EVT-012`), or by staff directly (`p6_staff_update`, the column grant `0037:523`).
+- **Unhidden**: a takedown resolved `restored` (`photo_takedowns_guard()`, `0037:340`) or staff clearing `hidden_at`.
+- **Removed**: `remove_photo()` (`0059`, admin/moderator) sets `removed_at` **and** `hidden_at` (if null) in one update;
+  it is final — nothing clears `removed_at`.
+- **Deleted**: no member or staff path deletes a row (no delete grant). Rows go only by cascade — the session's
+  (`photos.session_id … on delete cascade`) or the org's. **The uploader cannot delete their own photo**; a member who
+  wants one gone uses the takedown («أزلني»), which hides it.
+- ★ **A reversal already exists, and conflicts with the design**: `photos_reverse_points` (`0059:147`,
+  `_reverse_photo_points()`) fires on `removed_at` only, writes the ledger **directly**, picks the original with
+  `limit 1` (wrong once a photo has been paid twice), and calls `award_points('photo_removed', …)` (a 0-point rule).
+  Today it reverses nothing, because nothing ever paid `photo` (no `award_points('photo', …)` anywhere — measured).
+  `tests/rls/moderation.test.ts:74-106` pins it with a hand-inserted award.
+
+### 2 · Which transitions fire what — one rule: the award follows VISIBILITY
+
+`visible(row) := row.hidden_at is null and row.removed_at is null` (`exif_stripped` is always true by the constraint).
+
+| Transition | Fires |
+|---|---|
+| insert, visible (the only insert there is, after §0) | **award** |
+| insert, not visible (none today; a future path) | nothing |
+| «still processing» | nothing — no row exists (§1) |
+| visible → hidden (takedown request, or staff) | **reversal** |
+| hidden → visible (restored) | **award** — the next epoch (`DEC-220` §2.3: once more, never twice net) |
+| visible → removed (`remove_photo()`, which also hides) | **reversal** |
+| hidden → removed | nothing — already reversed |
+| removed → anything | nothing — `removed_at` is never cleared; an unhide of a removed photo leaves it not visible |
+| `hidden_reason` / `removal_reason` / `session_day_id` (re-scope, `0115`) changes | nothing |
+| the uploader deletes their own photo | **no such path** (§1) — nothing to fire |
+| a session or org deleted (cascade) | **nothing** — no reversal on delete: the ledger is append-only and «deleting a session with its awarded points» is carried, not this wave (`DEC-216` §7). An `after delete` trigger here would also run inside a cascade whose ledger rows' `session_id` the same delete may be removing |
+
+★ The **cap** is the rule's (`cap_per_session`, read by `scoring`) — the trigger never counts.
+
+### 3 · What the trigger passes — the shape I need from `scoring`
+
+The trigger passes **the photo's id and nothing else it could get wrong**: `scoring`'s functions re-derive the uploader,
+the session, the org and the visibility **from the row under a lock** when they run (wave 12's contract-2 shape, and
+`award_points()`'s own «re-derived when the job runs, never trusted from the payload»). So, provisionally:
+
+- `scoring.photo_award(p_photo uuid)` — called on the award transitions; pays only if the photo is visible **when it
+  runs**, under its epoch key. Whether it enqueues `award_points` or writes in-transaction is `scoring`'s.
+- `scoring.photo_reverse(p_photo uuid, p_reason text)` — called on the reversal transitions; compensates the standing
+  award, if any, in `0149`'s shape. `p_reason` distinguishes a hide («أُخفيت الصورة») from a removal («حُذف المحتوى»),
+  **if `scoring` wants the distinction** — otherwise one argument.
+
+Or one `photo_points_sync(p_photo uuid)` that re-derives and does either — **`scoring` chooses**; my trigger calls
+whatever is published, with the photo id. ★ **The trigger replaces `photos_reverse_points`** (dropped in the same
+migration, with `_reverse_photo_points()`), so one trigger owns a photo's points; whether `photo_removed`'s 0-point
+`award_points` call survives is `scoring`'s to say.
+
+### 4 · The trigger
+
+- **`after insert`** and **`after update of hidden_at, removed_at`** on `public.photos`, `for each row`, one
+  `security definer` function `public.photos_points()` (`set search_path = ''`), comparing `visible(old)` with
+  `visible(new)` — **no** trigger on other columns, so a re-scope or a reason edit never reaches it. No `after delete`.
+- Definer because the actor of a hide is a requester or staff (not the uploader), and of an insert the worker's
+  `service_role`; it is tested **as a member**, not as the owner (the rule for an enqueuing trigger).
+- `when (…)` clauses in the trigger definition keep it from calling the function at all when visibility did not change.
+- It writes **no** ledger row itself; `scoring`'s functions do.
+
+### 5 · RLS cases (`tests/rls/photos-points*.test.ts`, new, `applyProposed()`)
+
+1. **As the uploader** — after §0, a direct insert is refused (`42501`); a photo inserted through
+   `record_photo_upload()` (as `service_role`) pays exactly one `photo` award to the uploader, for its session.
+2. **As a member requesting a takedown** (not the uploader) — the photo is hidden in the same transaction and the
+   uploader's award is reversed once; the requester gets nothing and sees no ledger row of the uploader's.
+3. **As a moderator** — `remove_photo()` reverses the standing award once; on a photo already hidden by a takedown, no
+   second reversal. A moderator resolving a takedown `restored` → paid again, epoch 2; hidden again → reversed again;
+   the net is one award (`DEC-220` §2.3).
+4. **As another member** — cannot update `hidden_at`/`removed_at` (the column grant plus `p6_staff_update`) and so
+   cannot reach the trigger's reversal; cannot see another member's ledger rows.
+5. **The cap** — the sixth photo on one session pays nothing, and `SCR-022` shows its cap row (`0172`).
+6. **Re-scope** (`rescope_photo`, `0115`) and a reason edit fire nothing.
+7. **A session deleted** — the cascade raises nothing and writes no reversal.
+
+### 6 · `main`'s worker in the gap
+
+`main`'s worker runs the new schema before the new code. **`process_photo` on `main`** calls `record_photo_upload()`,
+whose insert fires the new trigger — the award then runs as SQL or as an `award_points` job; **`main`'s
+`award_points` task already calls `public.award_points(rule, member, source, source_id, session)` with that exact
+signature**, so if `scoring` keeps the job and the signature, `main`'s worker pays a photo correctly in the gap, and the
+epoch logic lives in SQL where `main` cannot miss it. Reversals are synchronous SQL in the hiding/removing transaction
+and need no worker. **If `scoring` adds a new job name, `main`'s worker does not have it** — the job waits until the
+new worker deploys (graphile keeps it), which is a delay, not a loss. Nothing in `src/` changes for the trigger.
+
+### 7 · Files
+
+`supabase/proposed/content/<n>_photos_points.sql` (the trigger and its function, the drop of `photos_reverse_points`),
+`tests/rls/photos-points.test.ts`; the §0 fix is the lead's migration. Assertions that move:
+`tests/rls/photos-schema.test.ts:23-99` (§0, expectations → refused, the lead's), `tests/rls/moderation.test.ts:74-106`
+(the reversal's reason and source if a hide reverses first — `console`'s, the lead holds it).
+
+### §3 and §4 amended — `scoring`'s published signatures
+
+`public.award_photo_points(p_photo uuid, p_restore boolean default false)` and
+`public.reverse_photo_points(p_photo uuid, p_reason text)`, both definer and `service_role`-only — so
+`public.photos_points()` is `security definer`. **Removal stays `scoring`'s**: `0059`'s `photos_reverse_points` is
+kept, its body replaced by `scoring` to call `reverse_photo_points(new.id, 'حُذف المحتوى')` with the `photo_removed`
+penalty. So §3's «replaces `photos_reverse_points`» is withdrawn. My trigger, exactly:
+
+| Event | `when` | Calls |
+|---|---|---|
+| `after insert` | `new.hidden_at is null and new.removed_at is null` | `award_photo_points(new.id)` |
+| `after update of hidden_at, removed_at` — hidden | `old.hidden_at is null and new.hidden_at is not null and new.removed_at is null` | `reverse_photo_points(new.id, 'أُخفيت الصورة')` |
+| `after update of hidden_at, removed_at` — restored | `old.hidden_at is not null and new.hidden_at is null and new.removed_at is null` | `award_photo_points(new.id, true)` |
+
+★ **`and new.removed_at is null` on the hide is load-bearing**: `remove_photo()` sets `removed_at` **and** `hidden_at`
+in one update, so without it both triggers would fire on a removal and the reversal's reason would depend on trigger
+order (alphabetical); with it, a removal is `scoring`'s alone and reads «حُذف المحتوى». The same clause on the restore
+keeps an unhide of a removed photo from paying. `moderation.test.ts:74-106` (takedown first, then removal): the hide
+reverses with «أُخفيت الصورة» and the removal finds nothing standing — **its expected reason moves** unless `scoring`'s
+removal reverses with the removal's reason regardless; a ledger line either way, the lead's file.
+
+`scoring` confirmed: `reverse_photo_points()` selects only photo awards no reversal names and inserts `on conflict
+(idempotency_key) do nothing` — a no-op when nothing stands, safe twice. A takedown then a removal writes one reversal,
+the hide's «أُخفيت الصورة»; the `photo_removed` penalty still goes through `award_points`. `moderation.test.ts:101-104`
+is `scoring`'s to move, by the lead's grant.
+
+### §0 closed — `0174` (`DEC-221`, PR B)
+
+The lead verified the hole and closed it: `photos_insert_checked_in` dropped, insert revoked from `authenticated`;
+`record_photo_upload()` is the only writer and the check-in gate stays `initiate_photo_processing()`'s.
+`photos-schema.test.ts`'s two cases assert the refusal (the lead's ledger line). PR C's migrations start at **`0175`**,
+and the award is built only after `0174` is pushed — so §5's case 1 («a direct insert is refused») asserts `0174`, and
+the trigger pays on insert because an insert is now always the stripped, definer-written row.
