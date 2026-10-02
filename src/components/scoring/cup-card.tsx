@@ -40,16 +40,18 @@ export async function CupCard({ cup, locale }: { cup: CompanyCup; locale: string
           </p>
           <p className="text-caption font-semibold text-fg-body">{t("cup.awarded")}</p>
         </div>
+      </div>
+      {/* The state, the ranked-by chip and when it was taken, on their own row under the title — the artboard's stack;
+          beside the title the long provisional chip squeezed the text column to a word a line at 390 (the lead's X1). */}
+      <div className="flex flex-wrap items-center gap-2 text-caption text-fg-muted">
         <Badge tone={cup.isFinal ? "success" : "info"} size="sm">
           {cup.isFinal ? t("company.final") : t("cup.provisional")}
         </Badge>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 text-caption text-fg-muted">
         <span className="inline-flex items-center gap-1.5 rounded-pill border border-edge bg-raised px-3 py-1 font-bold text-fg-heading">
           <CheckIcon />
           {t(`company.rankedMetricLabel.${cup.metric}`)}
         </span>
-        <span>{t.rich("company.takenAt", { date: formatDateTime(cup.takenAt, cup.timeZone, locale), bdi: (c) => <bdi>{c}</bdi> })}</span>
+        <span className="ms-auto">{t.rich("company.takenAt", { date: formatDateTime(cup.takenAt, cup.timeZone, locale), bdi: (c) => <bdi>{c}</bdi> })}</span>
       </div>
     </section>
   );
