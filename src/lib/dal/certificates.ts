@@ -702,20 +702,29 @@ export async function estimateNextSerial(locale: string): Promise<{ prefix: stri
  * same way as the three event-page slots (TEAM.md §2) so the wiring is one
  * import rather than a new route in somebody else's folder.
  */
-export async function listHeldAchievements(locale: string): Promise<{ certificates: CertificateRow[]; canRelease: boolean }> {
+/** A held achievement certificate as the recognition screen draws it — wave 22 (DEC-232 §6), add-only: the member, for
+ *  the face through the one avatar resolver (`DEC-099`), and when the certificate came to be held, for «منذ». */
+export interface HeldCertificateRow extends CertificateRow {
+  memberId: string;
+  createdAt: string;
+}
+
+export async function listHeldAchievements(locale: string): Promise<{ certificates: HeldCertificateRow[]; canRelease: boolean }> {
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin") return { certificates: [], canRelease: false };
 
   const { data } = await supabase
     .from("certificates")
-    .select("id, kind, state, serial, verification_code, recipient_name_snapshot, issued_at, revoked_at, revocation_reason, session_id, sessions(title), badges(name), design_documents(id), leaderboard_snapshots(kind, period_start, period_end)")
+    .select("id, member_id, created_at, kind, state, serial, verification_code, recipient_name_snapshot, issued_at, revoked_at, revocation_reason, session_id, sessions(title), badges(name), design_documents(id), leaderboard_snapshots(kind, period_start, period_end)")
     .eq("kind", "achievement")
     .eq("state", "held")
     .order("serial");
 
-  type Raw = RawRow & { leaderboard_snapshots: { kind: string; period_start: string | null; period_end: string | null } | null };
+  type Raw = RawRow & { member_id: string; created_at: string; leaderboard_snapshots: { kind: string; period_start: string | null; period_end: string | null } | null };
   const rows = ((data ?? []) as unknown as Raw[]).map((r) => ({
     ...toRow(r),
+    memberId: r.member_id,
+    createdAt: r.created_at,
     // The achievement's own name when it is a badge; the period when it is a
     // leaderboard, because «الشهر الماضي» is what an admin recognises and a
     // snapshot uuid is not.
