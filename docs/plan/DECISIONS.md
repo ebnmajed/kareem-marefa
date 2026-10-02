@@ -6734,3 +6734,71 @@ exists and only the schedule is missing:
 ### 3 · Still open for the owner
 
 The copy trim's list (`DEC-217` §4.2) and the photo rule nothing pays (`STATUS.md`, question 4).
+
+## DEC-220 — The owner's two expansions, «بلا ترتيب» with a setting of its own and the photo award with its reversal, become a THIRD pull request, measured first
+
+- **Date:** 2026-10-02 · **Decided by:** the owner (both rulings, 2026-10-02); the split, the default and the seams by the wave-20 lead, from measurement of the tree at `371fceca`
+- **Amends:** `DEC-216` §3 (two PRs become three); `DEC-219` §2 (the cup's «بلا ترتيب», held there, is built); `DEC-218` §3.3 (likewise); the copy of `SCR-022`'s catalogue stops being false by becoming true
+- **Adds:** two migrations expected, **from `0174`** — ★ the owner's note said «`0173` freezes the value»; **`0173` is already this wave's weekly seen-mark writer** (`41b6ccaf`), so the numbers move on and no file is renamed. **`REQ-UIX-082`, `REQ-UIX-083`** and their stories land in `01`/`15` with the PR's Step 0
+- **Does not touch:** any console route — ★ the admin control for the new setting is CARRIED (§1.3); `registrations`; the five public routes
+
+### 0 · Why a third pull request
+
+`TEAM.md` has no size rule; the precedent is the measure (`DEC-216` §3). After PR B the wave holds **five migrations,
+nine screens, three primitives** — already wave 18's size, which took two PRs. The owner's two rulings add a column, a
+change to how the company board ranks, a new award **with its reversal** on an append-only ledger, a trigger on another
+track's table, and a job's behaviour in the gap. **PR B is finished and green; folding this into it would make one PR
+nobody can review**, and would hold four rebuilt screens behind a scoring change. So:
+
+- **PR B — `wave-20b/the-boards` (#42)**: as built — `026`, `029`, `027`, `028` with the cup, **without «بلا ترتيب»**.
+- ★ **PR C — `wave-20c/the-award`**: cut from B's head, **opened against `main` from its first push** (nothing to
+  retarget; A's and B's `--delete-branch` cannot close it). «بلا ترتيب» and the photo award, each **planned and approved
+  before any SQL**. Merge order: A, B, C.
+
+### 1 · «بلا ترتيب» — a setting of its own (`REQ-UIX-082`)
+
+1. **One additive column on `org_settings`**, beside its sibling `company_metric` (`0004:109-123` — the table is
+   COLUMNS, not key-value): ★ **`company_min_active_members int not null default 3 check (… between 1 and 50)`**, in
+   the pattern `max_co_presenters` and `priority_rsvp_hours` set. The owner chose an explicit setting over reusing
+   `company_scoring_rules.min_active_members` **so the two cannot drift**.
+2. ★ **The default is 3, and it decides who competes.** It equals what the company rules already seed (`0081:47`,
+   `company_scoring_rules.min_active_members`, seeded 3), so the ranking and the attendance rule start from the same
+   bar without being tied to it; and it stops a one- or two-person company topping a **per-active-member** board on a
+   single member's points — the metric the cup ranks by default (`company_metric`'s default).
+3. ★ **The admin control is CARRIED, not built.** The screen that sets an org setting is `/app/admin/settings`
+   (`SCR-0xx`, the console), and `DEC-216` freezes every console route this wave; **no exception is made.** Until the
+   console wave builds the control, **the owner changes the value by SQL** — `update public.org_settings set
+   company_min_active_members = … where org_id = …` — **and no UI exists for it**; nobody should assume one.
+4. **The snapshot freezes the value** (`scoring`'s addendum §F): `leaderboard_snapshots` gains a nullable
+   `min_active_members`, written at snapshot time, so a final quarter's board never changes when the setting does
+   (`0027:453`, `:497`). The company ranking puts **eligible companies first**; an ineligible one is drawn «بلا ترتيب»
+   with no rank.
+5. ★ **The consequence the owner accepted: this reorders the MONTHLY race going forward** — provisional rows only. A
+   final snapshot — a month or a quarter — never moves.
+
+### 2 · The photo award — the catalogue becomes true (`REQ-UIX-083`)
+
+1. **No seed, rule or enum change**: `scoring_rules` already seeds `('photo', 'attendee', 3, true, 5, null, 'صورة من
+   الجلسة')` (`0027:530`) — **3 points, enabled, cap 5 per session**, measured: the insert's column list is `(org_id, action_key, actor, points,
+   enabled, cap_per_session, cooldown, reason_ar)` (`0027:527`). ★ The owner's note read the tuple as five points, cap
+   three; the column list says otherwise, and `SCR-022`'s catalogue already draws «3 · 5 مرات لكل جلسة». `ledger_source` already has `'photo'` (`0027:55`). The uploader
+   column is **`photos.uploader_id`** (`0037`).
+2. **It fires on a VISIBLE photo** — processed, `hidden_at` and `removed_at` both null — through a `security definer`
+   function, never a raw write, **one idempotency key per photo and epoch**.
+3. ★ **The reversal is designed first.** A hidden or removed photo writes a compensating row in `0149`'s shape —
+   `'reversal:' || l.id || ':v1'`, its own reason (`0149:180`). ★ **A photo restored after a takedown pays once more,
+   never twice net**: the award's key carries an epoch counted from that photo's reversals (`0087`'s re-added-presenter
+   pattern), so award → reverse → restore → award nets one award; a second hide reverses that one.
+4. **The cap is the rule's**, read from `scoring_rules`, never a literal — and ★ it makes `0172`'s cap row REAL: a
+   case drives one photo past the cap on one session and sees `SCR-022`'s dashed row.
+5. ★ **The seam — wave 12's contract-2 shape, one writer per function.** The trigger sits on `photos`, `content`'s
+   table: **`content` writes the trigger** (it knows when a photo becomes visible — after `process_photo`'s EXIF strip,
+   `REQ-EVT-011` — and when it is hidden or removed). **`scoring` writes the award and reversal functions** the trigger
+   calls, and decides what is paid. Neither edits the other's.
+6. **`main`'s worker runs the new schema before the new code**: the plans prefer SQL that enqueues the existing
+   `award_points` job under an existing key shape. Each plan says what `main`'s worker does in the gap.
+
+### 3 · For the owner
+
+The migrations to rehearse grow to **`0169` – `0173` and PR C's `0174` onward**. PR C is planned before it is built;
+nothing of it is written until its plans are approved.

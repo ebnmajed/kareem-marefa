@@ -152,16 +152,13 @@ mentions §0b once, in §10, and never defines it — so the copy trim has no li
    and brings it to you before any string is removed.
 2. ~~«إشعارات البريد»~~ — ★ **ANSWERED (`DEC-219` §1): built in PR B as a bulk write of the optional email rows, its state derived.** The owner accepted that a member who silenced three categories gets them back on by using it — **not a bug**.
 3. ~~The quarterly cup~~ — ★ **ANSWERED (`DEC-219` §2): built in PR B on the existing `seasonal` snapshot**; no enum, no table; a quarter-end enqueue, the DAL read, the card. `scoring` checks `is_final`'s immutability first.
-4. ★ **A rule nothing pays** (found by `scoring`, `0172`'s header): the catalogue lists «صورة من الجلسة» at 3 points, and
-   **no trigger or job anywhere awards the `photo` rule**. A member reading `SCR-022`'s catalogue is promised points the
-   product never writes. The awards are frozen this wave; fix the award (new scope), or disable the rule's seed?
-5. ★ **«بلا ترتيب» on the cup** (`scoring`'s addendum §F, `09156f37`). Honest only with **`0173`**: the snapshot freezes the
-   minimum of active members and the company ranking puts eligible companies first. ★ **That also reorders the
-   MONTHLY race going forward** (provisional rows only — a final one never moves). Yes (and which minimum: the
-   attendance rule's `min_active_members` whether or not it is enabled, or a new org setting), or leave «بلا ترتيب»
-   undrawn? Until answered the cup is built without it. ★ Also recorded: `DEC-219` §2's «seasonal» is corrected by
-   measurement — a `seasonal` snapshot ranks members; the cup is a `company` snapshot with a quarter's period; still
-   no schema, and a final quarter cannot move (`0027:453`, `:497`).
+4. ~~A rule nothing pays~~ — ★ **ANSWERED (`DEC-220` §2): BUILD the photo award** — the catalogue becomes true. **PR C.**
+5. ~~«بلا ترتيب»~~ — ★ **ANSWERED (`DEC-220` §1): yes, with a setting of its own** (`org_settings.company_min_active_members`,
+   default 3); it reorders the monthly race going forward, accepted. ★ **Its admin control is CARRIED to the console
+   wave** — until then the value is changed by SQL, and no UI exists. **PR C.**
+6. ★ **PR C — `wave-20c/the-award`** (`DEC-220` §0): both expansions in a third pull request, cut from B's head, against
+   `main` from its first push, **planned before any SQL**. Merge order A, B, C.
+
 
 ### Untouched-suite ledger (wave 20)
 
