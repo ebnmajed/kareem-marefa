@@ -1,9 +1,85 @@
-**Last updated:** 2026-10-02 · **Branch:** `main` · ★★ **WAVE 20 IS COMPLETE, LIVE AND ACCEPTED** — the owner's phone check passed 2026-10-02; the closing entry is `DEC-224` · **`main`:** `a405abff` (#41 `a3d2308b`, #42 `04cb8023`, #43 `a405abff`) · **production at `0178`**, every migration rehearsed first · the worker redeployed on `a405abff`, builder `DOCKERFILE` held, «LISTEN/NOTIFY probe OK — round trip 14 ms». ★ **Owed by the owner: nothing.** ★★ **NEXT: SESSION STORIES** (`05-stories.md`, designed 2026-09-28) — M10c was the last designed batch, so the standing order has no screens left (`DEC-224` §7), **unless the owner says otherwise**; wave 18's story ring is still inert and the next wave wires it. ★ **Carried** (`DEC-224` §6): the admin control for `company_min_active_members` (console wave; set by SQL meanwhile), the live per-category week, UTC quarter boundaries, no photo backfill, the hard-load duplicate's fix (measured on every owed route, never fixed, now the owner's to schedule), `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, F2/F3, the `railway.json`.
+**Last updated:** 2026-10-02 · **Branch:** `main` · ★★ **WAVE 21 IS PLANNED, NOT STARTED** · **`main`:** `51db9898`; production and local both at **`0178`** · **Phase:** ★★ **M11a — the FIRST CONSOLE BATCH (`DEC-225`, M23)**: the org dashboard, the proposal queue as a split view, the sessions table with its phone stack and bulk bar, and the session hub's الجدولة and الحضور tabs — five screens from six artboards, each **deleted first and written from its artboard** (`DEC-208`). Two PRs; three primitives (floor **60 → 63**); **no migration expected** (one after all starts at `0179`). The brief is `docs/plan/notes/wave-21-lead.md`. ★★ **THE OWNER RULES THE CONSOLE BEFORE STORIES** (`DEC-225` §1), superseding `DEC-224`'s closing sentence — the third deliberate re-ordering; the story ring stays inert and nobody wires it. ★ **The console is not the party** (`REQ-UIX-053`): palette, radii and type, no motion, no objects, no stickers, and its test stays green and untouched. ★ **Open for the owner, wanted during PR A:** the rail's grouping — fourteen groups or six (`DEC-225` §5.1). ★ **Wave 20 is complete, live and accepted** (`DEC-224`; `0169`–`0178` on production; the phone check passed). ★ **Carried:** the hosting gate wired to nothing, withdraw + history + the reviewer's name (one wave), autosave (a REQ first), F2/F3, the hard-load duplicate (`DEC-204`), `DEC-194`'s two gates, `DEC-186` §4, session stories, M11b (`046`–`065`), and the `railway.json` that would pin the worker's builder.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
+
+## ★★★ WAVE 21 — PLANNED, NOT STARTED — M11a, the first console batch (`DEC-225`)
+
+**The programme's seventh wave, and the first that rebuilds the CONSOLE.** The brief is
+`docs/plan/notes/wave-21-lead.md`; the drawing is `docs/design/screens/M11a.md` with the **six** artboards in
+`docs/design/screens/m11a/`; the decision is `DEC-225`. Milestone **M23**. Requirements from **`REQ-UIX-084`**;
+stories from **`STORY-UIX-074`**. **No migration expected** — one written after all starts at **`0179`**, additive,
+rehearsed by the owner on a dump taken at `0178`. **Two PRs**, `wave-21a/the-console-frame` and
+`wave-21b/the-queues`, **both against `main` from their first push** so neither can be closed by the other's
+`--delete-branch`.
+
+★★ **The two rules it is judged on:** `DEC-199` §2, a screen is **REBUILT** to its design, never restyled; and
+`DEC-208`, **its page file is DELETED FIRST, then written from its artboard**, with a kept-behaviour table naming each
+behaviour and the `REQ-*` that made it survive. **The console holds the oldest surviving markup in the product** —
+`/app/admin` and its queues were built in wave 6, regrouped in wave 7, and touched since only by the token sweep — so
+**rule 2 will find more here than in any member batch.**
+
+★ **And the console is not the party** (`REQ-UIX-053`): the palette, the radii and the type, with `h1` in the display
+face the only display use, and **none** of the motion, objects or stickers. `tests/unit/console-register.test.ts`
+walks its import graph and stays green **and untouched**.
+
+### ★★ The owner's ruling — the console before stories (`DEC-225` §1)
+
+`DEC-224` closed wave 20 with «session stories come next». **The owner rules otherwise.** The order now:
+M10a · M10b · M10c (all done) · **M11a (this wave)** · M11b · stories · the studio · the public site last. Stories are
+**not demoted and not started** — `05-stories.md` has been overtaken three times, by `DEC-205`, `DEC-216` and this —
+and **wave 18's story ring stays inert; nobody wires it.**
+
+★ **A correction the planning prompt forced:** it asked for the ruling to be logged «as `DEC-224` §1». `DEC-224`
+already existed, and `DEC-158` forbids editing an entry — so it is **`DEC-225` §1**, amending `DEC-224` from outside.
+
+### Step 0 — to measure before anyone is spawned, and three corrections already made
+
+| | |
+|---|---|
+| ★ `main` | **`51db9898`**, not the prompt's `2ac08172`, which is its parent (the STATUS commit; `51db9898` is `DEC-224`). Clean, in sync |
+| Migrations | end at **`0178`**, production and local both there; the next is **`0179`** — as the prompt said |
+| ★★ The next decision | **`DEC-225`, not `DEC-224`** — `DEC-224` already existed as wave 20's close, so the order ruling amends it from outside rather than colliding with it |
+| ★ `src/components/ui/` | **60 `.tsx`, not 66.** The floor at `tests/unit/ui-playground.test.ts:120` reads **60** and matches the tree. Three new make **63**; `M11a.md` §6's «66 → 69» is wrong at both ends |
+| The artboards | **six** `.dc.html` and **six** PNGs, as the prompt said; `m11a/png/` holds a seventh entry, `README.md` |
+| ★ They are untracked | `M11a.md`, `M11a-PLANNING-PROMPT.md` and `m11a/` are all `??`. **Step 0 commits the spec and the artboards**; wave 20 committed the planning prompt unedited as a record (`2b7a5970`) and the lead says which it chose |
+| ★ `09` | **`SCR-042` has no `###` section** — 040, 041, 043, 044 and 045 all do; `042` is in the sitemap only. It gains one this wave |
+| New ids | requirements from **`REQ-UIX-084`**; stories from **`STORY-UIX-074`** |
+
+### ★ Three things measured that the spec and the prompt both got wrong
+
+1. ★★ **`admin-rail` ALREADY EXISTS** at `src/components/admin/admin-rail.tsx`, exporting three types and imported by
+   the admin layout — and `M11a.md` §6 calls it **new**. This is `page-viewer`'s case: **`DEC-213` §4 applies, so the
+   primitive is written in `ui/` and the old file is DELETED**, with its kept-behaviour table. Its own comments record
+   what must survive: a plain member gets an **empty** rail, and **`built: false` items are left out on purpose**.
+2. ★★ **`data-table`'s phone stack and selection are already built** — `data-table.tsx:10-11` calls the phone stack
+   «the **REQUIREMENT**, not a nicety», and selection with an indeterminate select-all is at `:70-83`. **Neither is a
+   story.** What is **not** built is the **bulk bar**, which `M11a.md` §3 itself calls «annotated, not drawn»: a story
+   on `042` composing the existing selection API.
+3. ★ **`details` is not a primitive** — §6 lists it «as built» and there is no `ui/details.tsx`. It is the HTML
+   `<details>` element. **Three new files, not four.**
+
+### ★★ Open for the owner — wanted during PR A
+
+**The rail's grouping: fourteen groups or six?** The built rail is the **fourteen-group IA** (`DEC-137`; `16` §6.7
+names fifteen labels, and wave 7's sync-1 ruling made «لوحة» the root plus fourteen) over the **twenty**
+`admin.shell.nav.*` keys that exist. `M11a.md` §0 says **six ruled groups**. ★ **That is an information-architecture
+change, not a visual one**, so `docs/plan/` wins by default and **nothing is regrouped until the owner answers**; the
+rail is built on the fourteen meanwhile. An answer during PR A costs nothing; one after it costs a rebuild of the frame.
+
+### Out, and not to be re-litigated
+
+`SCR-045` (M12) · `046`–`065`, the rest of the console (M11b) · the studio and every `/app/platform` route · the five
+frozen public routes · stories and the ring · the member app's screens · the hard-load **fix** (`DEC-204`; none of this
+wave's routes is in its table, so **nothing is re-measured here**) · `DEC-194`'s two gates · `DEC-186` §4 · `DEC-215`'s
+four carried items. **Not re-litigated:** `DEC-124` numerals · `DEC-099` on avatars — **except `044`**, where the host
+placement already allows faces · `DEC-172`'s ledger reversal, which `044`'s revoke CALLS rather than re-implements ·
+`DEC-178`'s redirect · `DEC-137`'s rail IA until the owner rules · `REQ-UIX-053`, whose test is never edited.
+
+---
+
 
 ## ★★★ WAVE 20 — COMPLETE, LIVE AND ACCEPTED (PRs #41 `a3d2308b`, #42 `04cb8023`, #43 `a405abff`; `0169` – `0178` pushed; the owner's phone check passed; `DEC-224`) — M10c, the last designed batch of the member app (`DEC-216`)
 
