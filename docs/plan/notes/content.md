@@ -6950,3 +6950,353 @@ The lead verified the hole and closed it: `photos_insert_checked_in` dropped, in
 `photos-schema.test.ts`'s two cases assert the refusal (the lead's ledger line). PR C's migrations start at **`0175`**,
 and the award is built only after `0174` is pushed — so §5's case 1 («a direct insert is refused») asserts `0174`, and
 the trigger pays on insert because an insert is now always the stripped, definer-written row.
+
+---
+
+## Wave 22 — the plan (sync 1) (`DEC-230` §3, `DEC-231` §4 – §5, `REQ-UIX-103`, `REQ-UIX-104`, `REQ-ADM-023`) — planning only, nothing edited
+
+Read at `a6c0345a` on `wave-22a/the-tables`. Built later in PR C's worktree (`../kareem-marefa-wave22c`) once the lead
+posts it, «the plans are approved» and the cells' commit. Nothing below is deleted before then.
+
+### W22.0 — the job, one line per screen (`DEC-231` §0.2)
+
+- **`050/052` البلاغات** — a moderator reads the reported comment, its author, the session, who reported it, why and
+  how long ago **in one row**, and decides it **in that row**: «تجاهل», or «أخفِ» with a reason and a confirmation that
+  quotes the comment whole. The row leaves مفتوحة and appears under مغلقة with the outcome, **who** decided and **when**
+  — the first screen in the product that shows a resolved report at all.
+- **`051` الصور** — a moderator walks the queue with ↑ ↓, Enter opens the photograph large beside it with who uploaded
+  it, who asked or reported, and **whether it is hidden right now**; «أعدها للعرض» / «تجاهل» or «احذف نهائيًا» (reason,
+  confirmation) decides it, and focus lands on the next photo (`useSplitView().focusNext()`), so a queue is cleared
+  without leaving it.
+
+### W22.1 — measured: what the three routes list today
+
+| Route | Lists | Read | A moderator may (`REQ-ADM-020`, `is_staff()`) |
+|---|---|---|---|
+| `/moderation/comments` (SCR-050) | ★ **open COMMENT reports**, one row per report, oldest first | `listCommentReports()` `admin-moderation.ts:89` — `reports where target='comment' and status='open'` | dismiss (one click); remove with a reason (dialog) — `resolveCommentReport()` `:152` |
+| `/moderation/photos` (SCR-051) | open **takedown requests** (photo already hidden), one row per takedown | `listPhotoTakedowns()` `:189` — `photo_takedowns where resolved_at is null` | restore (one click) — `restorePhoto()` `photos.ts:271`; remove with a reason — `remove_photo()` (`0059`) |
+| `/moderation/reports` (SCR-052) | ★ **open PHOTO reports**, one row per report | `listPhotoReports()` `:278` — `reports where target='photo' and status='open'` | dismiss — a plain `p6_staff_update` `:358`; remove with a reason — `remove_photo()` |
+
+**The lead's reading is confirmed** — `admin-moderation.ts`'s own header (`:7-17`) says so in words: `/reports` is
+photo-only and `/comments` is the comment queue. Admin and moderator see exactly the same on all three (`requireStaff`
+`:26`); a member gets `null` → the streamed not-found (`admin-moderation.spec.ts:180` pins it).
+
+- **Other report kinds: none.** `report_target` is `('comment', 'photo')` (`0010:23`), and `0010:362-363` ties each to its
+  column.
+- **«مغلقة» lists, measured:** `reports.status <> 'open'`. ★ **Every closed row in the tree is `status = 'resolved'`**
+  with `resolution` `removed` or `dismissed` — `report_status`'s third value `'dismissed'` (`0010:24`) **is written by no
+  code** (`admin-moderation.ts:166,363`, `0059`'s `remove_photo()` all write `resolved`). So مغلقة = `status <> 'open'`,
+  shown by `resolution`; the data shape does not change. ★ **Today no screen lists a closed report at all** — the
+  outcome and actor `REQ-ADM-010` records have never been visible.
+- ★ **Photo reports can be filed by nobody** (F1 below): no code inserts `target = 'photo'` — `reports.ts` has
+  `reportComment()` alone, and the member's photo tile offers a takedown, not a report. The بلاغات الصور chip is fed
+  only by a direct insert (the e2e seeds). `REQ-EVT-008` «any member can report a comment **or photo**» is half built.
+
+### W22.2 — findings the delete-first rule turned up (each a defect of the old pages, fixed or routed)
+
+| # | Finding | Where | This plan |
+|---|---|---|---|
+| F1 | No path files a photo report | `reports.ts`, `components/photos/**` | **not mine to build this wave** (member app frozen) — to the lead/owner; the chip is built and is empty until it is |
+| F2 | ★ **Takedowns are counted nowhere** but the old tab strip: no dashboard row, no rail badge (`admin-dashboard.ts:350-351`, `shell.ts:60-63` count photo **reports** and comment reports only). A photo hidden by a member waits invisibly | contract 5 | the `051` count includes them (W22.6) |
+| F3 | ★ `restorePhoto()` unhides the photo and **then** resolves the takedown in a second write whose error is ignored (`photos.ts:278-286`) — an unhidden photo under an open takedown | `photos.ts` | `051` restores with **one** write to `photo_takedowns`; `0037`'s `photo_takedowns_guard()` already unhides in the same statement (`0037:344-353`). `restorePhoto()` itself is untouched (the member side calls it; `photos.ts` is add-only) |
+| F4 | Removing a comment its author already deleted **re-stamps** `deleted_at`, and `comments_guard()` rewrites `deleted_by` to the moderator — the author's own delete is overwritten | `admin-moderation.ts:162` | the function touches a comment only while `deleted_at is null` |
+| F5 | Removing a comment resolves **one** report; a second member's report on the same comment stays open in the queue | `:164-167` | the function resolves every open report on the same target |
+| F6 | Staff removing a comment inline on the event page (`moderateComment()`, `comments.ts:256`) records **no reason** and leaves its reports open | `components/event/**` (frozen) | to the lead — written, not fixed |
+| F7 | The old pages render explainer sentences as intros (`commentsIntro`, `photosTakedownIntro`, `photosReportsIntro`) | `admin.json` | dropped (`DEC-NEXT-25`) |
+| F8 | The feed's staff strip links **both** report kinds to `/moderation/reports` (`components/feed/staff-strip.tsx:14-15`) | mine, frozen this wave | request: `photoReports` → `/moderation/photos?kind=reports` in PR C, the lead's edit as custodian or mine on licence |
+
+### W22.3 — `050/052` البلاغات (`REQ-UIX-103`, `STORY-UIX-093`) — `AdminModerationReports.dc.html`
+
+**Files.** Deleted: `moderation/{comments,reports}/**` (8 files) and, by `console` on my request, `components/admin/moderation-tabs.tsx`.
+Created: `moderation/reports/{page,actions,state}.ts(x)`, `moderation/reports/_components/{reports-table,decide-cell}.tsx`
+(client — `data-table` takes `cell` functions, so the table is built in a client component from DTO rows and **bound**
+`"use server"` actions, never an inline closure, `DEC-159`), and `moderation/comments/page.tsx` — **the redirect alone**.
+
+**Regions, in the artboard's order:**
+1. The `h1` row — «الإشراف — البلاغات», `page-header`, **no primary action** (none is drawn).
+2. The chips — `tag-chip` links, `?state=open|closed` (the client reads `useSearchParams`, as `041`'s queue does); the
+   open count inside the chip («مفتوحة 2»). ★ The third chip «التعليقات» is **D1**, held for the ruling.
+3. `data-table` (`console`'s) — المحتوى · الجلسة · المُبلِّغ · السبب · منذ · the actions cell:
+   - **المحتوى**: «excerpt…» — author, `<bdi>` both; the excerpt cut **in the component by grapheme**
+     (`Intl.Segmenter`, 60), never by CSS (`overflow: hidden` clips tashkeel); the cell is a link to the event page's
+     `#discussion` (`sessions/[id]/page.tsx:216`) — «reachable from the row» (`REQ-UIX-103`). A comment already deleted
+     reads «محذوف» in the row (today's `commentDeletedNote`, now state in the row).
+   - **الجلسة**: title, `<bdi>`.
+   - **المُبلِّغ**: `avatar` + name of the oldest report's reporter, «+N» when more reported it (D9 on faces).
+   - **السبب**: the oldest report's text, `<bdi>`, grapheme-cut (D3).
+   - **منذ**: the oldest open report's age, six ICU forms, Western numerals.
+   - **actions** (open): «تجاهل» — one `<form>`, one click · «أخفِ» (D2) — opens `ui/dialog`: the comment **whole**,
+     every reporter with their reason, `field` + `textarea` for the reason (required, 3 – 300), confirm. Composed on
+     `console`'s two-button cell **if its props take a node** (a dialog trigger is not a plain form button) — else a
+     plain `cell`; both are add-only for nobody.
+   - **closed**: the actions column becomes the outcome — «أُخفي» / «تُجوهل» · who · when — read from `resolution`,
+     `resolved_by`, `resolved_at`.
+4. Empty: `empty-state` with a title and nothing else.
+5. Under `lg`: `data-table`'s own card stack (`onCard` on every column, the actions on the card — wave 6's phone defect).
+
+★ **One row per reported COMMENT, not per report** (Q4): a decision is about the content, and the function resolves
+every open report on it (F5), so a per-report list would leave a sibling row behind after each decision.
+
+**The redirect.** `moderation/comments/page.tsx` = `redirect("/app/admin/moderation/reports")` through
+`@/i18n/navigation` (locale kept, 307 not 308 — a permanent redirect is cached by the browser and the route may be reused).
+It gates nothing: a member is redirected and then answered by `/reports`' own not-found.
+
+#### Kept-behaviour table — `050/052` (re-derived from `REQ-*` and the DAL, not from memory)
+
+| # | Behaviour | Now | After | REQ |
+|---|---|---|---|---|
+| 1 | Admin **and moderator** reach it; a member gets the streamed not-found | `requireStaff()` `:26` → `null` → `notFound()` `comments/page.tsx:28` | same read, same `null`, the page's `notFound()`; the layout never gates | `REQ-ADM-020`, `DEC-134` |
+| 2 | Open comment reports, oldest first | `listCommentReports()` `:95-99` | `listCommentReportQueue(locale, state)`, grouped by comment, ordered by the oldest open report | `REQ-ADM-010` |
+| 3 | The comment's text, author, session, reporter, reason, age | `comments/page.tsx:46-77` | the table's columns; the full text and every reporter in the dialog | `REQ-ADM-010`, `REQ-EVT-008` |
+| 4 | A comment already deleted says so | `commentDeletedNote` `:51` | «محذوف» in the row; no reason owed to hide it (F4) | `REQ-ADM-010` |
+| 5 | Dismiss is one click and records outcome + actor + time | plain update `:163-167` | `resolve_report(id, 'dismissed')` | `REQ-EVT-008`, `REQ-ADM-010` |
+| 6 | Remove confirms in a dialog naming the session | `report-card.tsx:96-99` | the dialog names the session, quotes the comment | `REQ-UIX-013` |
+| 7 | Remove requires a reason (3 – 300); «اكتب السبب أولًا» at the field; the dialog stays open on error | `:158`, `:105-111`, `:62-66` | same, checked in Zod **and** the function | `REQ-EVT-014`, `REQ-UIX-008` |
+| 8 | Removal soft-deletes, stores `removal_reason`, `deleted_by` stamped by `comments_guard()` | `:162` | inside `resolve_report()`; the guard unchanged | `REQ-EVT-014` |
+| 9 | ★ Removal and resolution — **two writes** | `:162` then `:163` | ★ **one function, one transaction** | `REQ-UIX-103`, `REQ-ADM-023`, `DEC-231` §4.2 |
+| 10 | `comment.removed` with the reason (trigger `0059`) | unchanged | unchanged; ★ **`report.resolved` per report** from the lead's trigger | `REQ-EVT-014`, `REQ-ADM-023` |
+| 11 | The point reversal on removal (`0032` trigger) | unchanged | unchanged — proved by a case | `REQ-PTS-013` |
+| 12 | An already-resolved report is a harmless no-op | `:159` | `already_resolved` → treated as done | idempotency |
+| 13 | The toast fires **inside** the action, not from an effect (the row unmounts in the same commit) | `report-card.tsx:44-49` | same | wave 6 note §12 |
+| 14 | `noValidate` on every form; pending disables; no nudge | `:79`, `:80` | same | `16` §8.2, `DEC-146` |
+| 15 | `revalidatePath` after a decision | `actions.ts:19` | same path (`/reports`) | — |
+| 16 | `<bdi>` on title, name, body, reason; Western numerals; six ICU forms on the age | throughout | same | CLAUDE.md, `DEC-124` |
+| 17 | The reason never reaches the comment's author | `reasonHint` — nothing is sent | nothing sent; the hint sentence dropped (`DEC-NEXT-25`) | `REQ-EVT-008` |
+| 18 | The reported member never learns who reported | RLS `reports_read_staff_or_reporter` (`0010:563`) | unchanged — structural | `REQ-EVT-008` |
+| 19 | Zod before the write (uuid, action enum, reason ≤ 300) | `:146` | same | CLAUDE.md |
+| 20 | At 390 px nothing scrolls sideways | e2e `:225` | `data-table`'s stack | `REQ-UIX-087`'s rule |
+| 21 | The three-queue tab strip with counts | `moderation-tabs.tsx` | ★ **removed** — the chips here and the rail's two badges (`DEC-230` §3, `DEC-NEXT-30`) | `DEC-137` superseded |
+| 22 | Intro sentence; empty-state «back to the dashboard» | `PageHeader description`, `EmptyState action` | dropped — a title only | `DEC-NEXT-25` |
+| 23 | Photo reports on this route | `/reports` | ★ **moved to `051`** | `DEC-231` §5 |
+| 24 | `/comments` answers | the comment queue | ★ a redirect to `/reports` | `DEC-230` §3 |
+
+### W22.4 — `051` الصور (`REQ-UIX-104`, `STORY-UIX-094`) — `AdminModerationPhotos.dc.html`, on `split-view`
+
+**Files.** Deleted: `moderation/photos/**` (4 files). Created, on `041`'s proven shape: `photos/layout.tsx` (the queue,
+mounted while the detail changes; **never gates** — a `null` queue renders `children` alone), `photos/page.tsx` (the
+filter's first photo beside it from `lg`), `photos/[photoId]/page.tsx` (one photo; the narrow route), `photos/actions.ts`,
+`photos/state.ts`, `photos/_components/{queue-view,photo-detail,decide}.tsx`.
+
+**Regions, in the artboard's order:**
+1. The `h1` row — «الإشراف — الصور». The drawn subtitle is **D4**.
+2. `split-view` (`sessions'`, as it is), `narrow` `list` on `/photos`, `detail` on `/photos/[photoId]`, `back` «القائمة»:
+   - **toolbar**: two `tag-chip` links — «طلبات الإخفاء N» (`?kind=takedowns`, default) · «بلاغات الصور N»
+     (`?kind=reports`). ★ Two lists, never one: `DEC-005`'s rule survives as the chips.
+   - **rows** — one per **photo** with an open item of that kind: a 56 px thumbnail (signed, 1 h, as today), «صورة من
+     «session»», «طلب: name · age» / «بلاغ: name · age», «+N» when more asked.
+   - **detail**: the photograph large (`<img>`, alt «صورة من «session»»), then label/value pairs — الجلسة (title, a
+     link to the event page `#photos`) · رفعها (`avatar` + name) · طلب الإخفاء **or** المُبلِّغ + السبب (every one) ·
+     الحالة (`badge`: «مخفية بانتظار المراجعة» for a takedown, «ظاهرة» for a report, «محذوفة» / «معروضة» after a decision,
+     `DEC-073`'s tones, not the board's) · the decision: «احذف نهائيًا» (dialog: reason 3 – 300, confirmation naming the
+     session) and «أعدها للعرض» (takedown, one click) **or** «تجاهل» (report, one click — **D6**). A decided photo keeps
+     its detail with its new status and no buttons; focus moves to the next row.
+3. Empty: `empty-state`, a title.
+
+#### Kept-behaviour table — `051`
+
+| # | Behaviour | Now | After | REQ |
+|---|---|---|---|---|
+| 1 | Admin and moderator; member → streamed not-found | `requireStaff()`; `photos/page.tsx:28` | the queue read and the detail read each `null` for a member; each page `notFound()`s; the layout renders `children` alone | `REQ-ADM-020`, `DEC-134` |
+| 2 | Open takedowns, oldest first: photo, uploader, requester, session, age | `listPhotoTakedowns()` `:189` | `listPhotoQueue()` grouped by photo, per kind | `REQ-EVT-012`, `REQ-ADM-010` |
+| 3 | Open photo reports, oldest first: photo, uploader, reporter, reason, session, age | `/reports`, `listPhotoReports()` `:278` | ★ **moved here**, the second chip | `REQ-EVT-008`, `DEC-231` §5 |
+| 4 | Takedowns and reports are never one list | three routes | two chips, two lists; the detail says hidden or not | `DEC-005`, `REQ-UIX-104` |
+| 5 | The photograph shown, signed for an hour, from the stripped object | `signedUrls()` `:241` | same, thumbnail and large (no derivative exists, `DEC-206` §4.55); a preview, not a download | `REQ-EVT-011`, `DEC-178` |
+| 6 | Restore: one click, no dialog | `takedown-card.tsx:82-86` | same, «أعدها للعرض» | `REQ-EVT-012` |
+| 7 | ★ Restore unhides **then** resolves in a second, unchecked write | `photos.ts:278-286` | ★ **one** `update photo_takedowns set resolution='restored'…` for the photo's open rows; `0037`'s guard unhides in the same statement (F3) | `REQ-EVT-012` |
+| 8 | Restore is audited | `photo.restored` (`0051` trigger on `hidden_at`) | unchanged | `REQ-EVT-012` |
+| 9 | Remove: dialog naming the session, reason required | `takedown-card.tsx:88-118`, `report-card.tsx` | same | `REQ-UIX-013`, `REQ-EVT-014` |
+| 10 | Remove hides + removes, resolves the photo's open takedowns **and** reports, in one transaction | `remove_photo()` `0059` | unchanged — called directly for a takedown, through `resolve_report()` for a report | `REQ-EVT-014` |
+| 11 | `photo.removed` with actor and reason; the point reversal | `0059` triggers | unchanged; ★ plus `report.resolved` per resolved report (lead's trigger) | `REQ-EVT-014`, `REQ-PTS-013`, `REQ-ADM-023` |
+| 12 | Dismiss a photo report: one click | plain update `:358-363` | `resolve_report(id, 'dismissed')` | `REQ-EVT-008`, `REQ-ADM-023` |
+| 13 | Error words: not_authorized · reason_required · not_found · unknown | `:327`, `:355` | same four, plus `already_resolved` treated as done | — |
+| 14 | Toast inside the action; dialog closes derived in render; `noValidate`; pending disables | the three cards | same | wave 6 §12, `DEC-146` |
+| 15 | `<bdi>`, Western numerals, six ICU forms | throughout | same | CLAUDE.md |
+| 16 | At 390 px nothing sideways | e2e `:225` | `split-view`'s one pane | — |
+| 17 | Intro sentences, the tab strip | `PageHeader`, `ModerationTabs` | dropped / replaced by the chips and the rail badge | `DEC-NEXT-25`, `DEC-230` §3 |
+
+### W22.5 — every mutation and its record (contract 3)
+
+| Screen | Mutation | Write | Record(s) — one each, none twice |
+|---|---|---|---|
+| `050/052` | «أخفِ» a visible comment | `resolve_report(r, 'removed', reason)` | `comment.removed` (`0059`, reason) · `report.resolved` × every open report on it (**lead's trigger**, resolution in `after`) · the ledger reversal (`0032`, a scoring record) |
+| `050/052` | «أخفِ» a comment already deleted | same; the comment untouched | `report.resolved` × n |
+| `050/052` | «تجاهل» | `resolve_report(r, 'dismissed')` | `report.resolved` × n |
+| `051` | «احذف نهائيًا» (takedown) | `remove_photo(p, reason)` | `photo.removed` (`0059`, reason) · the reversal · `report.resolved` × any open report it closes |
+| `051` | «احذف نهائيًا» (report) | `resolve_report(r, 'removed', reason)` → `remove_photo()` | as above |
+| `051` | «أعدها للعرض» | one update of `photo_takedowns` (`resolution = 'restored'`) | `photo.restored` (`0051`, via the guard's unhide) — the takedown's resolution has no row of its own (Q6) |
+| `051` | «تجاهل» (report) | `resolve_report(r, 'dismissed')` | `report.resolved` × n |
+
+★ **Confirmed against `DEC-231` §4**: the resolution's row is the lead's trigger, so **`resolve_report()` never calls
+`write_audit()`** — and `remove_photo()`'s own resolution of a photo's reports fires the same trigger, which is the
+point: one writer per fact. **No DAL function writes `audit_log`.**
+
+#### The function — `supabase/proposed/content/0001_resolve_report.sql` (functions only; the trigger is the lead's)
+
+```sql
+-- REQ-UIX-103, REQ-ADM-010, REQ-ADM-023, DEC-231 §4.2 — one decision on reported content, in one transaction.
+-- Replaces admin-moderation.ts:162-167's two writes. Never writes audit_log: report.resolved is the lead's trigger
+-- on reports, comment.removed / photo.removed are 0059's — one writer per fact.
+create function public.resolve_report(p_report uuid, p_outcome public.moderation_action, p_reason text default null)
+returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  actor public.members := public.assert_active_member();
+  rep   public.reports;
+  why   text := nullif(btrim(coalesce(p_reason, '')), '');
+  n     int;
+begin
+  if actor.org_role not in ('admin', 'moderator') then return jsonb_build_object('outcome', 'not_authorized'); end if;
+  if p_outcome not in ('removed', 'dismissed') then return jsonb_build_object('outcome', 'invalid'); end if;
+
+  select * into rep from public.reports where id = p_report and org_id = actor.org_id for update;
+  if not found then return jsonb_build_object('outcome', 'not_found'); end if;
+  if rep.status <> 'open' then
+    return jsonb_build_object('outcome', 'already_resolved', 'resolution', rep.resolution);
+  end if;
+
+  -- Every refusal is above this line: nothing is written before a return (DEC-043).
+  if p_outcome = 'removed' then
+    if rep.target = 'comment' then
+      if exists (select 1 from public.comments where id = rep.comment_id and deleted_at is null) then
+        if why is null or char_length(why) < 3 then return jsonb_build_object('outcome', 'reason_required'); end if;
+        update public.comments set deleted_at = now(), removal_reason = why
+         where id = rep.comment_id and deleted_at is null;           -- F4: an author's own delete is never re-stamped
+      end if;
+    else
+      if why is null or char_length(why) < 3 then return jsonb_build_object('outcome', 'reason_required'); end if;
+      perform public.remove_photo(rep.photo_id, why);                -- also closes its takedowns and open reports
+    end if;
+  end if;
+
+  -- F5: the decision is about the content, so every open report on it closes with it.
+  update public.reports
+     set status = 'resolved', resolution = p_outcome, resolved_by = actor.id, resolved_at = now()
+   where org_id = actor.org_id and status = 'open' and target = rep.target
+     and (case when rep.target = 'comment' then comment_id = rep.comment_id else photo_id = rep.photo_id end);
+  get diagnostics n = row_count;
+  return jsonb_build_object('outcome', p_outcome::text, 'target', rep.target::text, 'resolved', n);
+end $$;
+revoke execute on function public.resolve_report from public, anon;
+grant  execute on function public.resolve_report to authenticated;
+```
+
+**Envelope:** `{ outcome: 'removed' | 'dismissed' | 'already_resolved' | 'not_found' | 'not_authorized' |
+'reason_required' | 'invalid', target?, resolved? }`. The DAL maps it 1:1 to today's four error words.
+`remove_photo()` can still `raise` — only on the three refusals already checked above it, so no write of this function
+precedes a raise. **`main`'s code in the gap** (push before merge) never calls it; the reports column grant stays, so
+`main`'s two writes keep working and the lead's trigger audits them too.
+
+**Tests — `tests/rls/moderation-resolve-report.test.ts`** (new; `applyProposed(tx, "content/0001_resolve_report.sql")`;
+every call **as a member**, never as the owner):
+1. an admin removes a visible comment with two open reports → comment `deleted_at`, `deleted_by` = admin, `removal_reason`;
+   **both** reports `resolved/removed/resolved_by = admin`; exactly **one** `comment.removed` with the reason; the reversal
+   row when the comment had been awarded; envelope `{removed, resolved: 2}`;
+2. a moderator does the same (`REQ-ADM-020`);
+3. a member → `not_authorized`; nothing changed; no audit row;
+4. no reason / two characters on a visible comment → `reason_required`; comment and reports untouched;
+5. the author deleted it first → no reason needed, `deleted_by` still the author, no second `comment.removed`, reports resolved;
+6. dismiss → reports `resolved/dismissed`, comment untouched, no comment audit row;
+7. an already-resolved report → `already_resolved`, nothing written;
+8. another org's report → `not_found`;
+9. a photo report removed → the photo `removed_at` and hidden, its open takedown and every open report resolved, one `photo.removed`;
+10. a photo report dismissed → the photo still visible;
+11. ★ **atomicity**: inside the transaction, as the owner, a temporary trigger that raises on `update of deleted_at on
+    comments`; the call raises and the report is **still open** — the proof the two writes are one;
+12. `anon` cannot execute.
+`report.resolved`'s rows are asserted by the lead's `console-audit` test once the trigger lands; I add one case there on
+request if the lead wants it in mine. **The restore's one write** gets `tests/rls/moderation-restore.test.ts`: as a
+moderator, one update of a photo's two open takedowns → both resolved, the photo unhidden, **one** `photo.restored`;
+as a member the update matches zero rows.
+
+### W22.6 — contract 5: the two counts
+
+| Rail item (`navKey`) | Counts | Predicate | Oldest | `href` |
+|---|---|---|---|---|
+| `moderationReports` · البلاغات | **reported comments awaiting a decision** | `count(distinct comment_id)` over `reports where org_id = me and target = 'comment' and status = 'open'` | `min(created_at)` | `/app/admin/moderation/reports` |
+| `moderationPhotos` · الصور | ★ **photos awaiting a decision** = photos with an open takedown **+** photos with an open report (a photo in both counts in both — two rows, two chips) | `distinct photo_id` over `photo_takedowns where resolved_at is null` ∪-summed with `distinct photo_id` over `reports where target = 'photo' and status = 'open'` | `min(requested_at, created_at)` | `/app/admin/moderation/photos`, or `?kind=reports` when no takedown is open — one move lands on what waits |
+
+Both shown to a moderator (`REQ-ADM-020`); never drawn at 0. **Written request to `console`**: `admin-dashboard.ts`'s
+`getAdminAttention()` (`:350-351`, `:379-380`) re-points — `commentReports` → `navKey: "moderationReports"`, the
+`/reports` href, distinct comments; `photoReports` becomes the photos queue above → `navKey: "moderationPhotos"`,
+takedowns included (F2); the tile's word «بلاغات على الصور» is `console`'s to change. **To the lead**: the rail's
+badges follow, `moderationComments` → `built: false`, and `src/lib/dal/shell.ts:60-63`'s counts follow the same predicates.
+
+### W22.7 — strings
+
+**New, `ar` first** — `event.json` → `event.moderation.*` (050/052): `title` «الإشراف — البلاغات» · `filtersLabel`
+«حالة البلاغ» · `filter.open` «مفتوحة» · `filter.comments` «التعليقات» (D1) · `filter.closed` «مغلقة» · `tableLabel`
+«البلاغات» · `col.{content,session,reporter,reason,age,decision}` «المحتوى · الجلسة · المُبلِّغ · السبب · منذ · القرار» ·
+`excerpt` ««{text}» — {author}» · `deleted` «محذوف» · `more` «+{count}» · `age` (six forms: «اليوم · يوم · يومان ·
+{value} أيام · {value} يومًا · {value} يوم») · `hide` «أخفِ» (D2) · `dismiss` «تجاهل» · `hideTitle` «إخفاء تعليق من
+«<t>{session}</t>»؟» · `reasonLabel` «السبب — يُسجَّل في سجل التدقيق» · `confirm` «أخفِ» · `cancel` «تراجع» · `close`
+«إغلاق» · `outcome.{removed,dismissed}` «أُخفي · تُجوهل» · `by` «{name} · {when}» · `emptyOpen` «لا بلاغات مفتوحة» ·
+`emptyClosed` «لا بلاغات مغلقة» · `done` «سُجّل القرار» · `error.{not_authorized,reason_required,not_found,unknown}`
+(today's four, carried). `photos.json` → `photos.moderation.*` (051): `title` «الإشراف — الصور» · `filtersLabel` ·
+`filter.{takedowns,reports}` «طلبات الإخفاء · بلاغات الصور» · `listLabel` «صور بانتظار القرار» · `row` «صورة من
+«{session}»» · `requested` «طلب: {name} · {age}» · `reported` «بلاغ: {name} · {age}» · `label.{session,uploader,requester,reporter,reason,status}`
+«الجلسة · رفعها · طلب الإخفاء · المُبلِّغ · السبب · الحالة» · `status.{hidden,visible,removed,restored}` «مخفية بانتظار
+المراجعة · ظاهرة · محذوفة · معروضة» · `remove` «احذف نهائيًا» · `restore` «أعدها للعرض» · `dismiss` «تجاهل» ·
+`removeTitle`, `reasonLabel`, `confirm`, `cancel`, `close`, `back` «القائمة», `empty.{takedowns,reports}`, `age`,
+`done`, `error.*`. Each tested against «does it change what the person does next»; no sentence among them.
+
+**To delete — written request to `console` once nothing reads them (after the create commits):** the whole
+`admin.moderation` subtree in `ar` and `en` — `tabsLabel`, `tabComments`, `tabPhotos`, `tabReports`, `commentsTitle`,
+`commentsIntro`, `commentsEmpty`, `commentsEmptyAction`, `photosTakedownTitle`, `photosTakedownIntro`, `photosTakedownEmpty`,
+`photosTakedownEmptyAction`, `photosReportsTitle`, `photosReportsIntro`, `photosReportsEmpty`, `photosReportsEmptyAction`,
+`removeConfirmTitle`, `removeCommentConfirmTitle`, `removeConfirmBody`, `removeConfirmAction`, `closeDialog`,
+`cancelDialogCancel`, `reporterLabel`, `requesterLabel`, `uploaderLabel`, `sessionLabel`, `reasonGiven`, `age`,
+`commentDeletedNote`, `remove`, `dismiss`, `restore`, `reasonLabel`, `reasonHint`, `send`, `done`, `error.{not_authorized,reason_required,not_found,unknown}`
+— with `components/admin/moderation-tabs.tsx`, its only other reader. `admin.shell.nav.moderation*` and
+`admin.dashboard.attention.*` stay (the rail and `040` read them). `console`'s `062` links «to moderation» at
+`/moderation/comments` (`audit/page.tsx:135`) — it should read `/reports`.
+
+### W22.8 — existing tests that change (ledger lines, in the same commits)
+
+| File | Owner | Change | Selector or expectation |
+|---|---|---|---|
+| `tests/components/admin/{report-card,comment-report-card,takedown-card}.test.tsx` (4 + 5 + 5 cases) | mine (evidence) | **deleted with their components**; their behaviours re-asserted in new `tests/components/moderation/{reports-table,photo-detail}.test.tsx` (toast from the action, dialog stays open on `reason_required`, `noValidate`, axe) | moved |
+| `tests/e2e/admin-moderation.spec.ts` | mine (evidence) | `:180` three not-found routes → two, plus `/comments` redirecting then not-found · `:195` headings → «الإشراف — البلاغات» / «الإشراف — الصور», and «`/reports` shows no requester» becomes «`/photos` keeps takedowns and reports in two chips» · `:225` 390 px per route, same assertion · `:281` the tab strip — **removed** (the strip is gone, `DEC-230` §3) · `:298` remove flow: «أزل» → «أخفِ» (D2), the dialog's name, the reason label; its DB assertions **unchanged** plus `report.resolved` | selectors moved at `:195`, `:298`; ★ expectations changed at `:180`, `:195` (the photo-report queue moved), `:281` (removed) |
+| `tests/e2e/admin-reports.spec.ts` | ★ **not in my list** (console's, wave 6) | every case is the old `/reports` photo queue — it breaks wholesale | Q5 |
+| `tests/unit/admin-attention.test.ts`, `tests/components/admin/admin-dashboard-page.test.tsx` | `console`'s | the two moderation rows' `navKey`, `href`, counts | contract 5 |
+| `tests/e2e/wave11-lead-a11y-sweep.spec.ts:211`, `scripts/ui-reach.mjs:91,112-113`, the rail's count test | the lead's | `/comments` is a redirect; 20 → 19 | the lead's |
+| `tests/components/ui/tabs.test.tsx:49-50` | `console`'s | literal hrefs, not the routes — **unaffected** | — |
+
+New: `tests/rls/moderation-resolve-report.test.ts`, `tests/rls/moderation-restore.test.ts`,
+`tests/components/moderation/**`, `tests/e2e/wave22-content-moderation.spec.ts` — as a moderator: the row's «تجاهل» then
+مغلقة showing outcome and actor; «أخفِ» with a reason → the audit rows; `/comments` → `/reports`; on `051` ↑ ↓ Enter, «أعدها
+للعرض» → the photo visible and `photo.restored`, «احذف نهائيًا» → removed and focus on the next row; captures
+`wave22-content-{050,051}-{open,closed,detail,empty}-{1280,390}.png`.
+
+### W22.9 — disagreements (artboard · line), no side picked
+
+| # | Artboard · line | Says | Against |
+|---|---|---|---|
+| D1 | `AdminModerationReports.dc.html` chips «مفتوحة 2 · التعليقات · مغلقة» | a kind chip | once photo reports move to `051` (`DEC-231` §5), every report here is a comment: «التعليقات» = «مفتوحة». Drawn for a merged inbox that no longer exists |
+| D2 | same, the row's «أخفِ» inline, beside «تجاهل» | one-click hide | `REQ-EVT-014` (removal **with a reason**), `REQ-UIX-013` (a named confirmation for a destructive action); and a comment has no hide — removal is a soft-delete that reverses points; «أخفِ» is the takedown's word. The plan keeps the dialog; the label is the ruling |
+| D3 | same, السبب «إساءة» / «دعاية» | a reason category | `reports.reason` is free text, 3 – 1000 (`0010:356`); there is no category |
+| D4 | `AdminModerationPhotos.dc.html`, beside the `h1`: «الإخفاء فوري؛ المراجعة تحذف أو تعيد» | a subtitle | a sentence — `DEC-NEXT-25` |
+| D5 | same, «احذف نهائيًا» as the lime primary | the accent on a destructive action | `REQ-UIX-013`; `button`'s danger tone exists |
+| D6 | same — only the takedown detail is drawn | «أعدها للعرض» | a reported photo is **not** hidden (`REQ-EVT-008`): «أعدها للعرض» means nothing; a dismissal does. The report detail is undrawn |
+| D7 | same, the rail «الصور 1» beside «طلبات الإخفاء 2 · بلاغات الصور 1» | three figures | the board disagrees with itself; contract 5 says the badge is what the screen shows |
+| D8 | both, the rail's «التعليقات» and «التصنيفات والوسوم» | twenty items | `DEC-230` §3 (nineteen), `DEC-227` |
+| D9 | both, an avatar with a ring for reporter, uploader, requester | faces | wave 21 put the console's one photograph on `044` (`DEC-099` host placement); initials-only or the resolver — Q3 |
+| D10 | `051` «منذ ساعة» · «أمس»; `050` «3 أيام» · «اليوم» | hours on one, days on the other | one age formatter; the plan uses days with «اليوم» for zero |
+| D11 | `051` الجلسة «الأرقام التي تكذب · أمس» | a date | ambiguous — the session's day or the upload's |
+| D12 | `050/052` — no way from the row to the comment in place | — | `REQ-UIX-103` «reachable from the row»: the plan links the content cell to `#discussion` |
+
+### W22.10 — questions for the lead
+
+1. **D1** — keep «التعليقات» as a chip equal to مفتوحة, or not. **D2** — «أخفِ» or «أزل» on the button (the dialog and
+   reason stay either way).
+2. **Q3, faces**: `ui/avatar` with a photograph through the resolver on these two screens, or initials only?
+3. **Q4**: one row per reported **comment / photo** (my plan, because one decision closes every report on the content),
+   not per report — confirm; the counts in W22.6 follow it.
+4. **Q5**: `tests/e2e/admin-reports.spec.ts` is not in my list and breaks wholesale — transfer it to me as evidence
+   (re-pointed at `/photos?kind=reports`), or retire it with a ledger line.
+5. **Q6**: a takedown's restoration is recorded as `photo.restored` and nothing else; a dismissal has no «why». Enough
+   for `REQ-ADM-023`, or does the lead want `photo_takedown.resolved` from its trigger set and an optional dismissal note?
+6. **Q7**: `051` draws no closed list, so a decided photo report is visible nowhere once its detail is left. Acceptable
+   (the audit log shows it), or a «مغلقة» there too?
+7. **F1** (no member can report a photo) and **F6** (the event page's inline removal: no reason, reports left open) — to
+   the owner's list; not this wave's.
+8. **F8**: the feed staff strip's link — your edit as custodian, or mine on licence in PR C?
