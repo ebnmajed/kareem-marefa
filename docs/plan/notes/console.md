@@ -3703,3 +3703,17 @@ counts both; failed rows stay selected); an empty org; a search or filter with n
 search is a GET form; chips, sort and pager are links (the chips' menu and the sort header need JS, as before).
 **Known, carried:** the phone's «المزيد» is the next page, not rows appended — one URL model (`DEC-228` §3.5) means
 one row set for both widths, and `data-table` draws both from it.
+
+### Wave 21 — the lead's answers on `040` (2026-10-02), recorded
+
+- **D15** «عضو نشط» counts members whose status is active — a stock, not a flow — so its label never claims the month,
+  and its link is `/app/admin/members` unnarrowed. Accepted.
+- **D16** «نقطة ممنوحة» counts the month's positive ledger rows and links to `/app/admin/scoring` unnarrowed: that route
+  is frozen and M11b's, and has no month filter. Accepted.
+- The pipeline's counts link to `sessions'` queue URLs (W21.10): submitted and in review → `/app/admin/proposals`
+  (awaiting a decision, the default); changes requested → `?state=changes`; approved → `?state=approved`; draft and
+  rejected → `?state=all`, having no queue of their own. Exact once PR B lands; until then the page shows its default.
+- `ui/card` tiles rather than `ui/stat` stand; no prop is asked of `stat`.
+- ★ Owed on PR B after A merges: the dashboard imports `checkin`'s `attendanceRate()`
+  (`src/components/checkin/attendance-rate.ts`, `6aeff6f0`) in place of `attendanceRateOf()`, so the one rate has one
+  definition in code, not only in a test.

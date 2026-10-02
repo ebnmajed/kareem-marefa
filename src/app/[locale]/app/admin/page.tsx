@@ -56,14 +56,16 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
     { key: "points", label: t("pointsIssuedTitle"), value: num(data.pointsIssued), href: "/app/admin/scoring" },
   ];
 
+  // `sessions'` queue URLs (its note, W21.10): the bare route is «awaiting a decision» — submitted and in review —
+  // and `?state=changes|approved|all` the others. Draft and rejected have no queue of their own, so they open all.
   const p = data.proposalPipeline;
   const segments: PipelineSegment[] = [
-    { key: "draft", label: t("pipeline.draft"), count: p.draft, fill: "bg-edge-strong", href: "/app/admin/proposals" },
+    { key: "draft", label: t("pipeline.draft"), count: p.draft, fill: "bg-edge-strong", href: "/app/admin/proposals?state=all" },
     { key: "submitted", label: t("pipeline.submitted"), count: p.submitted, fill: "bg-fg-muted", href: "/app/admin/proposals" },
     { key: "inReview", label: t("pipeline.inReview"), count: p.inReview, fill: "bg-fg-body", href: "/app/admin/proposals" },
-    { key: "changesRequested", label: t("pipeline.changesRequested"), count: p.changesRequested, fill: "bg-signal", href: "/app/admin/proposals" },
-    { key: "approved", label: t("pipeline.approved"), count: p.approved, fill: "bg-accent", href: "/app/admin/proposals" },
-    { key: "rejected", label: t("pipeline.rejected"), count: p.rejected, fill: "bg-edge", href: "/app/admin/proposals" },
+    { key: "changesRequested", label: t("pipeline.changesRequested"), count: p.changesRequested, fill: "bg-signal", href: "/app/admin/proposals?state=changes" },
+    { key: "approved", label: t("pipeline.approved"), count: p.approved, fill: "bg-accent", href: "/app/admin/proposals?state=approved" },
+    { key: "rejected", label: t("pipeline.rejected"), count: p.rejected, fill: "bg-edge", href: "/app/admin/proposals?state=all" },
   ];
 
   return (
