@@ -34,7 +34,11 @@ function drawnClasses(html: string): Set<string> {
 function sourceClasses(code: string): Set<string> {
   const out = new Set<string>();
   for (const m of code.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\}|'([^']*)')/g)) {
-    for (const c of (m[1] ?? m[2] ?? m[3] ?? "").split(/\s+/)) if (CLASS_NAME.test(c)) out.add(c);
+    // ★ wave 20: a template literal's `${…}` is an expression, not class text — `${own ? frame : "border-edge"}` names
+    // a variable, and a quoted value in it may be a comparison (`side === "end"`). It is dropped before splitting,
+    // exactly as its quoted strings always were (a token with its quotes never matched CLASS_NAME).
+    const text = (m[1] ?? m[2] ?? m[3] ?? "").replace(/\$\{[^}]*\}/g, " ");
+    for (const c of text.split(/\s+/)) if (CLASS_NAME.test(c)) out.add(c);
   }
   return out;
 }
