@@ -129,7 +129,7 @@ test("SCR-063 at 1280: four cards, «عدّل», three staged changes, «احف�
   await page.screenshot({ path: `${SHOTS}/wave22-notify-063-edit-1280.png`, fullPage: true });
 
   await main.getByRole("button", { name: /^احفظ/ }).click();
-  await expect(page.getByRole("status").filter({ hasText: /^حُفظ$/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /إشعار/ }).getByText("حُفظ", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/ar\/app\/admin\/settings$/);
   await expect(main.getByText(/^✓✓ حُفظ · .+ · مشرفة الإعدادات$/)).toBeVisible();
   await expect(main).toContainText("second-w22.example");

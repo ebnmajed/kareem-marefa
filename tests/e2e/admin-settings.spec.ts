@@ -135,7 +135,7 @@ test("REQ-TEN-008: an admin changes the time zone, it persists, and the history 
   await expect(page.getByLabel("نظام الترقيم")).toHaveCount(0);
   await main.getByRole("combobox", { name: "المنطقة الزمنية" }).selectOption("Asia/Dubai");
   await main.getByRole("button", { name: /^احفظ/ }).click();
-  await expect(page.getByRole("status").filter({ hasText: /^حُفظ$/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /إشعار/ }).getByText("حُفظ", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/ar\/app\/admin\/settings$/);
 
   const { rows } = await db.query<{ time_zone: string }>(`select time_zone from public.org_settings where org_id = $1`, [orgId]);
