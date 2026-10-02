@@ -4337,3 +4337,62 @@ history row back from the database, save again unchanged and see «لم يتغي
 8. **`save_org_settings`** (N3.2) — approve a proposed `security invoker` function for the one-transaction save, promoted
    by you; it adds no table, column or grant.
 9. The shared accessible names for `wave22-lead-read-mode` (N3.3) — fix them with `scoring` at sync 1.
+
+## Wave 22 — after sync 1 (`DEC-232`)
+
+### N10 · ★ The receipt — its exact shape, for `scoring`'s `053` / `054` to match (`DEC-232` §3.2)
+
+Published in `src/lib/dal/admin-settings.ts` (types; import them, do not redeclare):
+
+```ts
+/** What one save wrote — the server's answer, never the client's. */
+export interface SaveReceipt {
+  /** The save's transaction instant (`org_settings.updated_at`, which `org_settings_updated_at` sets to now()), or
+   *  null when nothing was sent because nothing changed. */
+  at: string | null;
+  /** The history `field`s (or audit `action`s) whose rows carry `changed_at = at` — exactly what this save wrote.
+   *  [] ⇒ «لم يتغيّر شيء». */
+  wrote: string[];
+}
+/** The read-mode mark: the newest save touching these fields, with its actor. null ⇒ nothing is drawn. */
+export interface SavedMark {
+  at: string;
+  timeZone: string;            // the org's, to format `at` in (REQ-INT-003)
+  actor: { id: string; displayName: string | null } | null;
+}
+export async function getLastSave(locale: string, fields: readonly string[]): Promise<SavedMark | null>;
+```
+
+The rule behind it: the history trigger (`0004:377`) and `set_updated_at()` run in the save's transaction, so they share
+`now()`; `wrote` is **`select field from scoring_config_history where entity_id = <row> and changed_at = <at>`**. For a
+table whose history rows are written by a definer trigger with `changed_at default now()` — `scoring_rules`, the
+recognition tables (`0123`) — the same identity holds with that table's own `updated_at` (or the invoker function's
+returned `now()`). `getLastSave` reads `order by changed_at desc limit 1` **among the page's own fields** — a group's
+rows share the time by design, so «the newest group» is the property used, not the wave-9 trap. A failed save is a
+thrown `not_written` / `stale`, never a receipt.
+
+Read-mode strings `notify` uses, so `wave22-lead-read-mode` walks four pages with one set of steps: «عدّل» (a link to
+`?edit`), the edit heading «تعديل …», the count «N تغييرات غير محفوظة» (six forms), «(معدّل)» to a screen reader on each
+changed field, «احفظ» and «إلغاء», the mark «✓✓ حُفظ · <time> · <name>», and «لم يتغيّر شيء».
+
+### N11 · `060` as ruled — (b), the artboard's set (`DEC-232` §1.3)
+
+| Row | Read | Edit | Writes |
+|---|---|---|---|
+| قبل الجلسة · ≈7 d | the stored offset in 8064 – 12096 min, or «متوقف» | `switch` (staged, never a write) + `DurationInput`, refused outside the band | the offset in / out of `reminder_offsets_minutes` |
+| قبل الجلسة · ≈1 d | 1152 – 1728 | same | same |
+| قبل الجلسة · ≈2 h | 96 – 144 | same | same |
+| دعوة التقييم | `rating_prompt_delay_minutes`, «مفعّل» as text | `DurationInput` 0 – 7 d, no switch | `rating_prompt_delay_minutes` |
+| any other stored offset | read-only, below, «رسالة عامة» | read-only — kept in the write untouched | — |
+
+The bands are `0062:28-30`'s and live in TS beside the page; ★ an RLS case calls `reminder_message_key()` at each band's
+edges so the two can never drift. At least one offset stays stored (the DAL's `min(1)`). A second stored offset inside
+one band is the row's «other» and shows read-only, so nothing stored is hidden. «أُضيفت مواد», «إغلاق التسجيل» and the
+−7 d nudge are absent.
+
+**Kept-behaviour deltas from N4 under (b)** — R8 the bounds become the bands (5 min – 30 d is subsumed); R9 a duplicate
+cannot arise among the three rows, an extra is never re-posted; R12 add / remove and their focus moves are **gone by the
+owner's ruling** (the switch replaces them; the row's switch keeps focus); R18 the generic-message note becomes the extra
+row's one word «رسالة عامة»; ★ R13 the write gains `expected` — the update matches only when the stored schedule equals
+what the page opened with, so a concurrent edit is refused as «stale» instead of overwritten (D-N4), and 0 rows is never
+a success (D-N2); R15 the toast becomes the receipt.
