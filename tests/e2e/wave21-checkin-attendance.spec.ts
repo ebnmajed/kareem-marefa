@@ -59,6 +59,20 @@ async function signIn(context: BrowserContext, email: string) {
 // ★ The width is the PROJECT's, set here, never read back: the phone project is a Pixel 7 (412 CSS px), so reading the
 // viewport named a phone capture «-1280» and it overwrote the desktop one. Desktop is captured at 1280 — the width the
 // owner accepts this batch at — and the phone at 390 × 844.
+/** The card holds its content: the code (or the final rate) lies wholly inside it, and from `lg` the card is wider than
+ *  a figure — the lead's review of the first 1280 capture, where «MXG ANV» ran out past the card's inline-end edge. */
+async function expectCardHolds(page: Page, region: string, content: ReturnType<Page["locator"]>) {
+  const card = await main(page).getByRole("region", { name: region }).boundingBox();
+  const inner = await content.boundingBox();
+  expect(card && inner, "both boxes are on screen").toBeTruthy();
+  expect(inner!.x).toBeGreaterThanOrEqual(card!.x - 0.5);
+  expect(inner!.x + inner!.width).toBeLessThanOrEqual(card!.x + card!.width + 0.5);
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    const figure = await main(page).locator("span", { hasText: /^محجوز$/ }).first().locator("xpath=..").boundingBox();
+    expect(card!.width, "the code card is wider than a figure").toBeGreaterThan(figure!.width);
+  }
+}
+
 async function shoot(page: Page, state: string) {
   const phone = test.info().project.name === "phone";
   const width = phone ? 390 : 1280;
@@ -132,6 +146,7 @@ test("the code, its rotation, «أبطل» and the door — run from the console
   // The rotation is a bare m:ss — a number that changes, never a motion (REQ-UIX-053).
   await expect(main(page).locator("[data-host-clock]")).toHaveText(/^\d+:\d{2}$/);
   await shoot(page, "live");
+  await expectCardHolds(page, "رمز الحضور", code);
 
   const before = (await code.textContent()) ?? "";
   await main(page).getByRole("button", { name: "أبطل" }).click();
@@ -206,6 +221,7 @@ test("completed: the card is the final rate, and a revoke writes DEC-172's rever
   await expect(main(page).getByRole("region", { name: "المعدّل النهائي" })).toContainText("100٪");
   await expect(main(page).getByRole("heading", { name: "التقييمات — لكل مُقيِّم" })).toBeVisible();
   await shoot(page, "completed");
+  await expectCardHolds(page, "المعدّل النهائي", main(page).getByRole("region", { name: "المعدّل النهائي" }).locator("strong"));
 
   await main(page).getByRole("button", { name: "إجراءات ريم الشهري" }).click();
   await page.getByRole("menuitem", { name: "ألغِ الحضور" }).click();

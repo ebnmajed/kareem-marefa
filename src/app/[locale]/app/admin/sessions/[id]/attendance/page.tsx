@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Locale } from "@/i18n/routing";
@@ -159,18 +160,23 @@ export default async function AttendancePage({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2.5">
+      {/* ★ Five figures at 1fr and the code card at 2fr from `lg` — never narrower than its own one line, so the code
+          never runs out of it (the lead's review of the 1280 capture). Two, then three, columns below, the card on its
+          own full-width row. Above one day a sixth figure joins the 1fr run (`--figures`). */}
+      <div
+        className={`grid grid-cols-2 gap-2.5 sm:grid-cols-3 ${cancelled ? "lg:grid-cols-[repeat(var(--figures),minmax(0,1fr))]" : "lg:grid-cols-[repeat(var(--figures),minmax(0,1fr))_minmax(max-content,2fr)]"}`}
+        style={{ "--figures": manyDays ? 6 : 5 } as CSSProperties}
+      >
         {/* ★ Every figure is read (contract 7). «محجوز» counts confirmed (D1); the rate is `attendanceRate()`'s, the
             one definition (DEC-228 §3.4); «حاضر», «بلا حجز» and «يدوي» are the selected day's. */}
-        <Stat className="min-w-[calc(50%-0.3125rem)] flex-1 sm:min-w-28" label={t("figures.reserved")} value={num(report.counts.confirmed)} />
-        <Stat className="min-w-[calc(50%-0.3125rem)] flex-1 sm:min-w-28" label={t("figures.present")} value={num(counts?.present ?? 0)} />
-        <Stat className="min-w-[calc(50%-0.3125rem)] flex-1 sm:min-w-28" label={t("figures.rate")} value={pct(counts ? counts.rate : report.attendanceRate)} />
-        <Stat className="min-w-[calc(50%-0.3125rem)] flex-1 sm:min-w-28" label={t("figures.walkIns")} value={num(counts?.walkedIn ?? 0)} />
-        <Stat className="min-w-[calc(50%-0.3125rem)] flex-1 sm:min-w-28" label={t("figures.manual")} value={num(counts?.manual ?? 0)} />
+        <Stat label={t("figures.reserved")} value={num(report.counts.confirmed)} />
+        <Stat label={t("figures.present")} value={num(counts?.present ?? 0)} />
+        <Stat label={t("figures.rate")} value={pct(counts ? counts.rate : report.attendanceRate)} />
+        <Stat label={t("figures.walkIns")} value={num(counts?.walkedIn ?? 0)} />
+        <Stat label={t("figures.manual")} value={num(counts?.manual ?? 0)} />
         {manyDays ? (
           // K5: «I could not ask» is an em dash, never a zero.
           <Stat
-            className="min-w-[calc(50%-0.3125rem)] flex-1 sm:min-w-28"
             label={t("completedAllDays")}
             value={report.counts.completedAllDays === null ? "—" : num(report.counts.completedAllDays)}
             hint={report.requireAllDays ? t("requireAllDaysOn") : t("requireAllDaysOff")}

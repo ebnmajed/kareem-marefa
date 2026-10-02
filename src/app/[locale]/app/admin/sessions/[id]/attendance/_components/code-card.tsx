@@ -25,7 +25,11 @@ import { revokeCodeAction, setCheckInOpenAction } from "../actions";
 const KNOWN_SWITCH = new Set(["not_found", "not_authorized", "not_open", "ceiling_passed", "unknown"]);
 const KNOWN_REVOKE = new Set(["not_found", "not_authorized", "no_active_code", "unknown"]);
 
-const CARD = "flex min-w-full flex-[1.4] flex-wrap items-center gap-x-3.5 gap-y-2 rounded-card border border-edge bg-surface p-4 pg:rounded-panel lg:min-w-0";
+// ★ The card's share of the row is the PAGE's grid (twice a figure's, and never narrower than its own content from
+// `lg`); inside, the code, the countdown, «أبطل» and the door are ONE line from `lg`, as the artboard draws them, and
+// wrap below it. The code never breaks and is never clipped (`whitespace-nowrap`, no overflow rule).
+const CARD = "col-span-2 flex flex-col justify-center gap-2 rounded-card border border-edge bg-surface p-4 pg:rounded-panel sm:col-span-3 lg:col-span-1";
+const LINE = "flex flex-wrap items-center gap-x-3.5 gap-y-2 lg:flex-nowrap";
 
 export async function CodeCard({
   locale,
@@ -76,73 +80,77 @@ export async function CodeCard({
 
   return (
     <section aria-label={t("attendance.code.region")} className={CARD}>
-      {roomDay && view.code ? (
-        <>
-          <p dir="ltr" className="flex gap-2 text-h1 font-bold leading-none text-fg-heading">
-            <span>{view.code.slice(0, 3)}</span>
-            <span>{view.code.slice(3)}</span>
-          </p>
-          <span className="text-caption text-fg-muted">
-            <span className="sr-only">{t("attendance.code.rotatesIn")} </span>
-            <HostClock
-              variant="console"
-              sessionId={sessionId}
-              readAt={view.readAt}
-              rotatesAt={view.rotatesAt}
-              nextChangeAt={nextChangeAt}
-              graceSeconds={view.graceSeconds}
-              listen={view.consoleActive}
-            />
-          </span>
-          <span className="flex-1" />
-          <form action={revokeCodeAction.bind(null, locale, sessionId, dayId)}>
-            <SubmitButton variant="secondary" size="sm">
-              {t("attendance.code.revoke")}
-            </SubmitButton>
-          </form>
-        </>
-      ) : (
-        <>
-          <span className="text-label text-fg-heading">
-            {!dayStarted && startsAt ? t("attendance.code.startsAt", { time: startsAt }) : ceilingPassed || !roomDay ? t("attendance.code.ended") : t("attendance.code.closed")}
-          </span>
-          {/* Still listening before the day begins: the code appears the instant it does, and the room's check-ins
-              keep the table current. */}
-          {view ? (
-            <HostClock
-              variant="console"
-              sessionId={sessionId}
-              readAt={view.readAt}
-              rotatesAt={null}
-              nextChangeAt={roomDay ? nextChangeAt : null}
-              graceSeconds={view.graceSeconds}
-              listen={view.consoleActive}
-            />
-          ) : null}
-          <span className="flex-1" />
-        </>
-      )}
+      <div className={LINE}>
+        {roomDay && view.code ? (
+          <>
+            <p dir="ltr" className="flex shrink-0 gap-2 whitespace-nowrap text-h1 font-bold leading-none text-fg-heading">
+              <span>{view.code.slice(0, 3)}</span>
+              <span>{view.code.slice(3)}</span>
+            </p>
+            <span className="shrink-0 text-caption text-fg-muted">
+              <span className="sr-only">{t("attendance.code.rotatesIn")} </span>
+              <HostClock
+                variant="console"
+                sessionId={sessionId}
+                readAt={view.readAt}
+                rotatesAt={view.rotatesAt}
+                nextChangeAt={nextChangeAt}
+                graceSeconds={view.graceSeconds}
+                listen={view.consoleActive}
+              />
+            </span>
+            <span className="flex-1" />
+            <form action={revokeCodeAction.bind(null, locale, sessionId, dayId)} className="shrink-0">
+              <SubmitButton variant="secondary" size="sm">
+                {t("attendance.code.revoke")}
+              </SubmitButton>
+            </form>
+          </>
+        ) : (
+          <>
+            <span className="text-label text-fg-heading">
+              {!dayStarted && startsAt ? t("attendance.code.startsAt", { time: startsAt }) : ceilingPassed || !roomDay ? t("attendance.code.ended") : t("attendance.code.closed")}
+            </span>
+            {/* Still listening before the day begins: the code appears the instant it does, and the room's check-ins
+                keep the table current. */}
+            {view ? (
+              <HostClock
+                variant="console"
+                sessionId={sessionId}
+                readAt={view.readAt}
+                rotatesAt={null}
+                nextChangeAt={roomDay ? nextChangeAt : null}
+                graceSeconds={view.graceSeconds}
+                listen={view.consoleActive}
+              />
+            ) : null}
+            <span className="flex-1" />
+          </>
+        )}
 
-      {roomDay && view.consoleActive && !ceilingPassed ? (
-        <HostSwitch
-          open={view.checkInOpen}
-          action={setCheckInOpenAction.bind(null, locale, sessionId, !view.checkInOpen, dayId)}
-          label={t("attendance.code.open")}
-          noScript={
-            <Button type="submit" variant="secondary" size="sm">
-              {view.checkInOpen ? t("host.checkInSwitch.close") : t("host.checkInSwitch.open")}
-            </Button>
-          }
-        />
-      ) : null}
+        {roomDay && view.consoleActive && !ceilingPassed ? (
+          <div className="shrink-0">
+            <HostSwitch
+              open={view.checkInOpen}
+              action={setCheckInOpenAction.bind(null, locale, sessionId, !view.checkInOpen, dayId)}
+              label={t("attendance.code.open")}
+              noScript={
+                <Button type="submit" variant="secondary" size="sm">
+                  {view.checkInOpen ? t("host.checkInSwitch.close") : t("host.checkInSwitch.open")}
+                </Button>
+              }
+            />
+          </div>
+        ) : null}
+      </div>
 
       {switchError ? (
-        <p role="alert" className="basis-full text-body-sm text-fg-heading">
+        <p role="alert" className="text-body-sm text-fg-heading">
           {t(`host.checkInSwitch.error.${KNOWN_SWITCH.has(switchError) ? switchError : "unknown"}`)}
         </p>
       ) : null}
       {revokeError ? (
-        <p role="alert" className="basis-full text-body-sm text-fg-heading">
+        <p role="alert" className="text-body-sm text-fg-heading">
           {t(`attendance.code.error.${KNOWN_REVOKE.has(revokeError) ? revokeError : "unknown"}`)}
         </p>
       ) : null}
