@@ -65,7 +65,21 @@ export default async function AttendancePage({
   const cancelled = state === "cancelled";
   // The live card's read — only while the room can still be run. `ensure_check_in_code()` issues no code outside the
   // window (REQ-CHK-004), and the host view's gate is its own (REQ-CHK-014).
-  const view = finished || cancelled ? null : await getHostView(locale, id);
+  //
+  // ★ A failed READ of the code does not take the tab down with it (the lead's phone run of `e891d707`): the list,
+  // the figures, the manual mark and the revoke stand on `getAttendanceReport()` alone, and running the room is
+  // exactly when a transient upstream error must not blank them. The card says the code could not be shown; the
+  // error is still logged, and refusals (`not_authorized`, `not_open`) were never thrown — they are `null` / no code.
+  let codeUnavailable = false;
+  let view: Awaited<ReturnType<typeof getHostView>> = null;
+  if (!finished && !cancelled) {
+    try {
+      view = await getHostView(locale, id);
+    } catch (error) {
+      console.error("SCR-044: the code card's read failed", error);
+      codeUnavailable = true;
+    }
+  }
 
   // ── the day (DEC-119) — the form's answer, validated, never the clock's alone ──
   const manyDays = namesDays(report.days.length);
@@ -191,6 +205,7 @@ export default async function AttendancePage({
             finalRate={finished ? pct(report.attendanceRate) : null}
             startsAt={selected ? formatTime(selected.startsAt, tz, locale) : null}
             dayStarted={dayStarted}
+            codeUnavailable={codeUnavailable}
             switchError={sp.switchError}
             revokeError={sp.revokeError}
           />

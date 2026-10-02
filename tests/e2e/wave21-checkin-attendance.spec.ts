@@ -162,13 +162,18 @@ test("the code, its rotation, «أبطل» and the door — run from the console
     (await db.query<{ open: boolean }>(`select check_in_open as open from public.session_days where session_id = $1`, [sessionId])).rows[0].open;
   await expect(door).toBeChecked();
   await expect(door).toBeEnabled(); // hydrated: `HostSwitch` takes a tap only once it can act on one
+  // ★ Each tap is read in order — the database first, then the page — so a failure says WHICH it was: the action never
+  // ran (the database did not flip), or it ran and the page did not come back (the UI's state, or an error page).
+  const errorPage = page.getByRole("heading", { name: "تعذّر عرض هذه الصفحة" });
   await track.click();
+  await expect.poll(dayOpen, { message: "the door's action reached the database" }).toBe(false);
+  await expect(errorPage, "the page came back, not the error boundary").toHaveCount(0);
   await expect(door).not.toBeChecked();
-  expect(await dayOpen()).toBe(false);
   await expect(door).toBeEnabled();
   await track.click();
+  await expect.poll(dayOpen, { message: "the door's action reached the database" }).toBe(true);
+  await expect(errorPage, "the page came back, not the error boundary").toHaveCount(0);
   await expect(door).toBeChecked();
-  expect(await dayOpen()).toBe(true);
 });
 
 test("a member checks in from their phone, and the row turns «حاضر» without a reload", async ({ context, page }) => {

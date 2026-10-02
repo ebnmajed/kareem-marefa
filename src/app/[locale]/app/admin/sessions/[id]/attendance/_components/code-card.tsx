@@ -39,6 +39,7 @@ export async function CodeCard({
   finalRate,
   startsAt,
   dayStarted,
+  codeUnavailable = false,
   switchError,
   revokeError,
 }: {
@@ -53,6 +54,8 @@ export async function CodeCard({
   /** The selected day's start, already formatted in the session's zone. */
   startsAt: string | null;
   dayStarted: boolean;
+  /** The host view's read threw — a transient upstream failure. The card says so; the rest of the tab stands. */
+  codeUnavailable?: boolean;
   switchError?: string;
   revokeError?: string;
 }) {
@@ -109,7 +112,13 @@ export async function CodeCard({
         ) : (
           <>
             <span className="text-label text-fg-heading">
-              {!dayStarted && startsAt ? t("attendance.code.startsAt", { time: startsAt }) : ceilingPassed || !roomDay ? t("attendance.code.ended") : t("attendance.code.closed")}
+              {codeUnavailable
+              ? t("attendance.code.unavailable")
+              : !dayStarted && startsAt
+                ? t("attendance.code.startsAt", { time: startsAt })
+                : ceilingPassed || !roomDay
+                  ? t("attendance.code.ended")
+                  : t("attendance.code.closed")}
             </span>
             {/* Still listening before the day begins: the code appears the instant it does, and the room's check-ins
                 keep the table current. */}

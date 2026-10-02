@@ -204,7 +204,8 @@
           "not_authorized": "You can't revoke this code",
           "no_active_code": "That code had expired — a new one is out",
           "unknown": "Couldn't revoke the code — try again"
-        }
+        },
+        "unavailable": "Couldn't show the code"
       },
       "filter": {
         "label": "Show",
