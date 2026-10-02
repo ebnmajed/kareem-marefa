@@ -640,6 +640,39 @@ html:has([data-play-root].theme-play-light) {
   }
 }
 
+/* ★ Wave 21 (REQ-UIX-084, REQ-UIX-053, DEC-228 §6): the org console's frame. `ConsoleFrame` carries
+   `data-console`. Its bar is 52 px, and everything that clears a sticky header — the scroll padding, an anchor's
+   margin, a sticky side column — reads it through `--header-h`; there is no tab bar. Keyed on the frame's presence,
+   so no other route reads anything different. */
+:root:has([data-console]) {
+  --console-bar: 52px;
+  --header-h: 52px;
+  --tabbar-h: 0px;
+}
+
+/* ★ The console is not the party: no motion beneath the frame, whoever's primitive it is — `ui/switch`'s colour
+   transition and `ui/badge`'s live pulse reach the console through shared files `console-register` does not sweep.
+   One rule here, so a later primitive cannot bring motion in either. */
+[data-console] *,
+[data-console] *::before,
+[data-console] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ★ The display face is the console's `h1` alone (the owner's rule, DEC-228 §6). `font-display` reads `--display-face`
+   at the element (`@theme inline`), so beneath the frame the variable names the body face and only an `h1` restores
+   it — a shared primitive (`ui/stat`'s figure, a tile's count) cannot carry the display face into the console. */
+[data-console] {
+  --display-face: var(--font-arabic);
+}
+html[lang="en"] [data-console] {
+  --display-face: var(--font-sans);
+}
+[data-console] h1 {
+  --display-face: var(--font-baloo), var(--font-baloo-latin), var(--font-arabic);
+}
+
 /* --------------------------------- typography ---------------------------
    AR runs slightly larger with taller line-height at equal hierarchy.
    Mobile values by default; desktop overrides ≥768px. Body sizes hold. */
@@ -1566,37 +1599,4 @@ html[data-sting="done"] {
   .btn-sheen::after {
     display: none;
   }
-}
-
-/* ★ Wave 21 (REQ-UIX-084, REQ-UIX-053, DEC-228 §6): the org console's frame. `ConsoleFrame` carries
-   `data-console`. Its bar is 52 px, and everything that clears a sticky header — the scroll padding, an anchor's
-   margin, a sticky side column — reads it through `--header-h`; there is no tab bar. Keyed on the frame's presence,
-   so no other route reads anything different. */
-:root:has([data-console]) {
-  --console-bar: 52px;
-  --header-h: 52px;
-  --tabbar-h: 0px;
-}
-
-/* ★ The console is not the party: no motion beneath the frame, whoever's primitive it is — `ui/switch`'s colour
-   transition and `ui/badge`'s live pulse reach the console through shared files `console-register` does not sweep.
-   One rule here, so a later primitive cannot bring motion in either. */
-[data-console] *,
-[data-console] *::before,
-[data-console] *::after {
-  animation: none !important;
-  transition: none !important;
-}
-
-/* ★ The display face is the console's `h1` alone (the owner's rule, DEC-228 §6). `font-display` reads `--display-face`
-   at the element (`@theme inline`), so beneath the frame the variable names the body face and only an `h1` restores
-   it — a shared primitive (`ui/stat`'s figure, a tile's count) cannot carry the display face into the console. */
-[data-console] {
-  --display-face: var(--font-arabic);
-}
-html[lang="en"] [data-console] {
-  --display-face: var(--font-sans);
-}
-[data-console] h1 {
-  --display-face: var(--font-baloo), var(--font-baloo-latin), var(--font-arabic);
 }

@@ -54,6 +54,7 @@ approved». **Nobody deletes a file before that post and «the frame is in».**
 | L21-11 | `tests/e2e/certificates.spec.ts:324` | «شهادات الجلسة» `level: 1` → `level: 2` | expectation | ★ PR B: the hub's header owns the session's `h1` (contract 4); the tab's title is a section heading |
 | L21-12 | `tests/e2e/wave8-designer-certificates.spec.ts:262, :408` | the same, twice | expectation | as L21-11 |
 | L21-13 | `tests/e2e/sessions-screens.spec.ts:226-238, :372, :460-463` | `?new=1`; the lifecycle under ⋯ | selector | ★ transferred to `console` for the wave (`042`'s behaviour); lines in `console`'s note |
+| L21-14 | `tests/unit/objects.test.ts` | the new wordmark's allowed wearers gain `admin/layout.tsx` | expectation | the console's own bar wears it (`REQ-UIX-084`); the public site still does not |
 | — | PR B's own ledger lines (`041`, `043`, `044`) | — | — | in `notes/{sessions,checkin}.md`, so `STATUS.md` keeps one writer across the two branches |
 
 ★ **Three seams found at Step 0 that the brief did not name** (`DEC-227` §5): the hub's header is not the layout's today,
