@@ -122,18 +122,22 @@ export default async function SessionSurveyPage({
       ) : null}
 
       {/* ★ Offered only while it can work: `survey_detach()` refuses once anyone has answered, and a released result
-          has at least `min` responses. The withheld state still offers it, because its count is withheld too. */}
-      <div className="mt-8 border-t border-edge pt-6">
-        <DetachControl
-          canDetach={results.status !== "ok"}
-          confirming={Boolean(flags.confirm)}
-          confirmHref={`/app/admin/sessions/${id}/survey?confirm=1`}
-          action={detach.bind(null, locale as Locale, id)}
-          detachLabel={t("detach")}
-          confirmText={t("detachConfirm")}
-          blockedText={tErrors("has_responses")}
-        />
-      </div>
+          has at least `min` responses — so a released result shows NO detach and no sentence about one (DEC-NEXT-25:
+          nothing is shown when nothing can be done). The withheld state still offers it, because its count is withheld
+          too. A press that races an answer still lands on `?error=has_responses`, the alert above. */}
+      {results.status !== "ok" ? (
+        <div className="mt-8 border-t border-edge pt-6">
+          <DetachControl
+            canDetach
+            confirming={Boolean(flags.confirm)}
+            confirmHref={`/app/admin/sessions/${id}/survey?confirm=1`}
+            action={detach.bind(null, locale as Locale, id)}
+            detachLabel={t("detach")}
+            confirmText={t("detachConfirm")}
+            blockedText={tErrors("has_responses")}
+          />
+        </div>
+      ) : null}
     </>
   );
 }

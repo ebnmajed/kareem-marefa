@@ -13,8 +13,9 @@ import { deleteFromList } from "./actions";
 // (REQ-UIX-106, REQ-SUR-001, REQ-SUR-002, DEC-160, DEC-232). Deleted first, then written (`DEC-208`); the
 // kept-behaviour table is `docs/plan/notes/event.md` § Wave 22 §3.2.
 //
-// The `h1` and its one primary, «قالب جديد»; then the templates — name, questions, sessions — with the selected one's
-// questions BESIDE them (`REQ-UIX-106`, `DEC-232`), read on the server from `?template=<id>`, the first by default.
+// The `h1` and its one primary, «قالب جديد»; then the templates — name, questions, sessions — and BELOW them, full
+// width, the selected one's questions (`REQ-UIX-106` as corrected to the drawing), read on the server from
+// `?template=<id>`, the first by default.
 // The artboard's «افتراضي» has no column and is absent (`DEC-232`).
 //
 // ★ STAFF — ADMIN AND MODERATOR — AND THE DATABASE SAYS SO. The six authoring tables carry a `select` policy for
@@ -95,7 +96,7 @@ export default async function SurveyTemplatesPage({
         </section>
       ) : null}
 
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="mt-6 flex flex-col gap-6">
         <TemplatesTable rows={templates} selectedId={selectedId} />
 
         {selected ? (

@@ -192,10 +192,12 @@ test("★ the third response draws it — the rate, the scale's bars, the writte
   await expect(bars).toHaveCount(5);
   // ★ wave 22 (ledger W22-E9): a scale reads from its top, five stars first, the label in words.
   await expect(bars.first()).toHaveText(/^5 نجوم\s*\d+$/);
-  // ★ And the detach is GONE once anyone has answered — the sentence is there
-  // instead of a button that the database would refuse.
+  // ★ And the detach is GONE once anyone has answered — never a button that the
+  // database would refuse.
   await expect(main(page).getByRole("link", { name: "أزل الاستبانة" })).toHaveCount(0);
-  await expect(main(page).getByText("لا يمكن إزالة استبانة أجاب عنها أحد")).toBeVisible();
+  // ★ wave 22 (ledger W22-E11): and no standing sentence in its place — nothing is shown when nothing can be done
+  // (DEC-NEXT-25); a press that races an answer still gets the refusal as an alert.
+  await expect(main(page).getByText("لا يمكن إزالة استبانة أجاب عنها أحد")).toHaveCount(0);
   // Every number on the screen is Western (DEC-124).
   expect(await main(page).innerText()).not.toMatch(/[٠-٩]/);
   await capture(page, "survey-results");

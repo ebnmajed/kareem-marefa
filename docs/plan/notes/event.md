@@ -1605,3 +1605,16 @@ header · 14 dropped · 15 the first `h2` is the figures' (`sr-only`), each ques
 
 **Waiting on the lead:** the `survey:` key in `[id]/layout.tsx`; the trigger on `survey_templates` — then
 `tests/rls/survey-template-audit.test.ts` (not written before it: a failing RLS file runs in everyone's suite).
+
+**After the lead opened the captures (three corrections):**
+- **065 — the questions BELOW the templates, full width**, as `AdminSurveys.dc.html` draws them. `REQ-UIX-106` said
+  «beside» and `DEC-232`'s D5 ruled by it; the lead corrected both to the board.
+- **Both tables in the console's surface card at a desk** — `042`'s own treatment, `md:rounded-panel md:border
+  md:border-edge md:bg-surface`, on `data-table`'s `className`; no new primitive. `064`'s question cards were already
+  `ui/panel` (neutral = the same surface).
+- **`064`'s «لا يمكن إزالة استبانة أجاب عنها أحد» — dropped as a standing line.** Measured: it was not the only place
+  the refusal is said. A released result has no detach control at all, so the line stood alone at the foot explaining
+  an absence (`DEC-NEXT-25`). The detach region now renders only while it can work (no survey answered yet: withheld);
+  a press that races an answer still lands on `?error=has_responses`, the `role="alert"` above — the refusal stays,
+  where it happens. `DetachControl` itself is unchanged and its suite untouched. Ledger W22-E11:
+  `wave10-event-survey-results.spec.ts:198` — the sentence `toBeVisible()` → `toHaveCount(0)` (expectation changed).

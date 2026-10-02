@@ -10,11 +10,11 @@ import { Link } from "@/components/ui/link";
 import { Menu } from "@/components/ui/menu";
 import type { SurveyQuestionKind } from "@/lib/dal/surveys";
 
-// SCR-065's two tables (REQ-UIX-106, `AdminSurveys.dc.html`) — the templates, and the selected one's questions beside
-// them. A client island only because `ui/data-table` takes render functions (DEC-159); the page reads the data and
+// SCR-065's two tables (REQ-UIX-106, `AdminSurveys.dc.html`) — the templates, and the selected one's questions below
+// them. Each sits in the console's surface card at a desk, as `042`'s table does; under `md` the rows are already cards. A client island only because `ui/data-table` takes render functions (DEC-159); the page reads the data and
 // hands it over plain, and nothing here writes.
 //
-// ★ SELECTION IS A LINK, not state: the template's name goes to `?template=<id>`, so the questions beside the list are
+// ★ SELECTION IS A LINK, not state: the template's name goes to `?template=<id>`, so the questions below the list are
 // read on the server, survive a reload and work without JS. The selected row's link says so (`aria-current`).
 //
 // ★ The row's ⋯ holds the two moves the list does not show: «عدّل» opens the editor (kept untouched, DEC-232), and
@@ -87,6 +87,7 @@ export function TemplatesTable({ rows, selectedId }: { rows: TemplateRow[]; sele
 
   return (
     <DataTable
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
       label={t("tableLabel")}
       columns={columns}
       rows={rows}
@@ -110,6 +111,7 @@ export function TemplateQuestionsTable({ templateId, title, rows }: { templateId
 
   return (
     <DataTable
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
       label={t("questionsTable", { title })}
       columns={columns}
       rows={rows}
