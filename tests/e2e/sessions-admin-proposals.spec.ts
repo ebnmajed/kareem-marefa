@@ -143,9 +143,15 @@ test("an admin approves, and approving does not publish (REQ-PRO-005)", async ({
   // queue. «الاعتماد لا ينشر الجلسة» is gone as explainer copy (an expectation, named in W21.7) — the rule is the
   // RPC's and is still proved below, by the database.
   await boss.locator("#main").getByRole("link", { name: new RegExp(title) }).click();
+  // ★ Wait for the proposal's OWN route before touching its card. At 1280 the queue's route already draws the first
+  // proposal beside the list — the same region name — and a click that lands on that card just before the navigation
+  // replaces it is a click on a card about to unmount (the lead's production run, wave 21).
+  await boss.waitForURL(/\/app\/admin\/proposals\/[0-9a-f-]{36}/);
   const detail = boss.locator("#main").getByRole("region", { name: title });
   await detail.getByRole("button", { name: "اعتمد" }).click();
-  await expect(boss.locator("#main").getByRole("list", { name: "المقترحات" }).getByRole("link", { name: new RegExp(title) })).toHaveCount(0);
+  // ★ The decision is waited for by what it says, not by the row leaving a list: below `lg` the list is hidden on a
+  // proposal's route, so «no such row» was true at once and the context closed before the approval landed.
+  await expect(boss.getByRole("status")).toContainText("سُجّل قرارك", { timeout: 15_000 });
   await bossContext.close();
 
   // Scoped to this worker's org: both device projects run in parallel
@@ -170,6 +176,7 @@ test("a rejection needs a written reason, and that reason is what the proposer r
   // (REQ-UIX-013). The refusal of an empty message is said AT THE BOX now, in the box's words — the expectation (the
   // proposal does not move) stands.
   await boss.locator("#main").getByRole("link", { name: new RegExp(title) }).click();
+  await boss.waitForURL(/\/app\/admin\/proposals\/[0-9a-f-]{36}/);
   const detail = boss.locator("#main").getByRole("region", { name: title });
   const dialog = boss.getByRole("dialog", { name: `رفض «${title}»؟` });
 
@@ -184,7 +191,7 @@ test("a rejection needs a written reason, and that reason is what the proposer r
   await detail.getByRole("button", { name: "ارفض" }).click();
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "تأكيد الرفض" }).click();
-  await expect(boss.locator("#main").getByRole("list", { name: "المقترحات" }).getByRole("link", { name: new RegExp(title) })).toHaveCount(0);
+  await expect(boss.getByRole("status")).toContainText("سُجّل قرارك", { timeout: 15_000 });
   await bossContext.close();
 
   // The proposer reads the admin's own words, on their own proposal.
