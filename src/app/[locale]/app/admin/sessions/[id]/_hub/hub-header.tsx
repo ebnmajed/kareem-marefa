@@ -41,9 +41,11 @@ export async function HubHeader({ locale, sessionId, tabActions }: { locale: str
       title={header.title}
       breadcrumb={[{ href: "/app/admin/sessions", label: t("breadcrumb") }]}
       breadcrumbLabel={t("breadcrumbLabel")}
-      status={<SessionStatusBadge phase={storedPhase(header.state)} />}
       actions={
-        <HubTabAction
+        <>
+          {/* The status beside the actions, at the end of the row, as AdminSessionHub.dc.html draws it. */}
+          <SessionStatusBadge phase={storedPhase(header.state)} />
+          <HubTabAction
           actions={tabActions}
           page={
             <ButtonLink href={`/app/sessions/${sessionId}`} variant="quiet" size="md">
@@ -51,7 +53,8 @@ export async function HubHeader({ locale, sessionId, tabActions }: { locale: str
             </ButtonLink>
           }
           lifecycle={lifecycle}
-        />
+          />
+        </>
       }
     />
   );

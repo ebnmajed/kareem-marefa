@@ -8,10 +8,10 @@ import { dayLabel } from "@/components/sessions/day-label";
 import { formatDateTime, formatNumber, formatTime } from "@/components/sessions/numerals";
 import { SessionDownload } from "@/components/sessions/session-download";
 import { ButtonLink } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { KvCard } from "@/components/ui/kv-card";
 import { Panel } from "@/components/ui/panel";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
+import { getSessionPosterDownloads } from "@/lib/dal/posters";
 import { checkInCeiling } from "@/lib/session-status";
 import { getScheduleContent, getScheduleRead, getSessionForSchedule, getSessionLog, listSessionPresentersForAdmin, listVenues } from "@/lib/dal/sessions";
 import { addPresenter, removePresenter, saveSchedule } from "./actions";
@@ -91,7 +91,12 @@ export default async function SchedulePage({
     getTranslations("sessions.days"),
   ]);
   if (!session || !read || !content || !presenters) notFound();
-  const log = (await getSessionLog(locale, id, read.proposalId)) ?? [];
+  const [logRows, posterDownloads] = await Promise.all([
+    getSessionLog(locale, id, read.proposalId),
+    // `designer`'s DTO, read only to know whether there is a file at all: no poster yet reads as «—», not a blank.
+    getSessionPosterDownloads(locale, id).catch(() => null),
+  ]);
+  const log = logRows ?? [];
 
   const zone = session.timeZone;
   const here = `/app/admin/sessions/${session.id}/schedule`;
@@ -144,7 +149,7 @@ export default async function SchedulePage({
 
   const side = (
     <aside className="space-y-4">
-      <Card>
+      <Panel>
         <dl className="space-y-2 text-body-sm">
           <div className="flex items-center justify-between gap-3">
             <dt className="text-fg-muted">{t("side.reservations")}</dt>
@@ -168,13 +173,17 @@ export default async function SchedulePage({
           <h2 id="poster" className="text-label text-fg-muted">
             {t("side.poster")}
           </h2>
-          <Suspense fallback={null}>
-            <SessionDownload sessionId={session.id} locale={locale} placement="hub" />
-          </Suspense>
+          {posterDownloads ? (
+            <Suspense fallback={null}>
+              <SessionDownload sessionId={session.id} locale={locale} placement="hub" />
+            </Suspense>
+          ) : (
+            <p className="text-body-sm text-fg-body">{t("read.empty")}</p>
+          )}
         </section>
-      </Card>
+      </Panel>
       {log.length > 0 ? (
-        <Card>
+        <Panel>
           <section aria-labelledby="session-log">
             <h2 id="session-log" className="mb-2 text-label text-fg-muted">
               {t("side.log")}
@@ -210,7 +219,7 @@ export default async function SchedulePage({
               })}
             </ul>
           </section>
-        </Card>
+        </Panel>
       ) : null}
     </aside>
   );
@@ -307,23 +316,22 @@ export default async function SchedulePage({
             { id: "certificate", label: t("read.rows.certificate"), value: certificate },
             { id: "language", label: t("read.rows.language"), value: t(`language.${session.language}`) },
           ]}
-          actions={
-            cancelled ? null : (
-              <>
-                <ButtonLink href={`${here}?edit`} size="md">
-                  {t("read.edit")}
-                </ButtonLink>
-                {/* ★ «أعد الجدولة» once published (REQ-SES-009 — it notifies and moves reminders): the same form, at
-                    the date (D9). */}
-                {live && session.state !== "completed" && session.state !== "archived" ? (
-                  <ButtonLink href={`${here}?edit#startsAt`} variant="quiet" size="md">
-                    {t("read.reschedule")}
-                  </ButtonLink>
-                ) : null}
-              </>
-            )
-          }
         />
+        {/* «عدّل» and «أعد الجدولة» under the card, as drawn — the card holds what is set, not what to do. */}
+        {cancelled ? null : (
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink href={`${here}?edit`} size="md">
+              {t("read.edit")}
+            </ButtonLink>
+            {/* ★ «أعد الجدولة» once published (REQ-SES-009 — it notifies and moves reminders): the same form, at the
+                date (D9). */}
+            {live && session.state !== "completed" && session.state !== "archived" ? (
+              <ButtonLink href={`${here}?edit#startsAt`} variant="quiet" size="md">
+                {t("read.reschedule")}
+              </ButtonLink>
+            ) : null}
+          </div>
+        )}
       </div>
       {side}
     </div>

@@ -67,7 +67,7 @@ test.beforeAll(async ({}, testInfo) => {
     if (error) throw error;
     userIds.push(data.user.id);
   }
-  await provision(adminEmail);
+  const adminMember = await provision(adminEmail);
   const proposer = await provision(proposerEmail);
 
   // Three proposals waiting, oldest first. The FIRST was sent back once and resubmitted with a new abstract and a
@@ -101,6 +101,13 @@ test.beforeAll(async ({}, testInfo) => {
     [orgId, SESSION_TITLE, cat[0].id, venue[0].id],
   );
   sessionId = s[0].id;
+  // The session's log, as the RPCs would have written it (a direct insert writes none): «جُدولت», then «نُشرت» by the admin.
+  await db.query(
+    `insert into public.audit_log (org_id, actor_id, actor_role, action, subject_type, subject_id, occurred_at)
+     values ($1, $2, 'admin', 'session.scheduled', 'session', $3, now() - interval '2 days'),
+            ($1, $2, 'admin', 'session.published', 'session', $3, now() - interval '1 day')`,
+    [orgId, adminMember, sessionId],
+  );
   await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, proposer]);
 });
 
@@ -178,6 +185,17 @@ test("★ SCR-041: the queue is walked by keyboard, the edits are read, and the 
   const { rows } = await db.query<{ state: string }>(`select state from public.proposals where org_id = $1 and title = $2`, [orgId, P.second]);
   expect(rows[0].state).toBe("approved");
   await capture(page, "scr041-after-decision");
+
+  // ★ Under `lg` the queue is the page and a proposal opens at its own route, with a way back.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/ar/app/admin/proposals");
+  await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
+  await row(P.third).click();
+  await page.waitForURL(/\/app\/admin\/proposals\/[0-9a-f-]{36}/);
+  await expect(main(page).getByRole("region", { name: P.third })).toBeVisible();
+  await expect(main(page).getByRole("link", { name: "المقترحات", exact: true })).toBeVisible();
+  mkdirSync(SHOTS, { recursive: true });
+  await page.screenshot({ path: join(SHOTS, "wave21-sessions-scr041-detail-390.png"), fullPage: true });
 });
 
 test("★ SCR-043: one header above five tabs; الجدولة reads by default and «عدّل» opens the same card as the form", async ({ context, page }) => {
@@ -196,6 +214,12 @@ test("★ SCR-043: one header above five tabs; الجدولة reads by default a
   const card = main(page).getByRole("region", { name: "الجدولة" });
   await expect(card.getByText("قاعة الرياض", { exact: false })).toBeVisible();
   await expect(main(page).getByLabel("المدة بالدقائق")).toHaveCount(0);
+  // The side column: the reservations read whole — nothing wider than its card — and the log says what happened.
+  const side = main(page).getByRole("complementary").last();
+  await expect(side.getByText("0 / 40")).toBeVisible();
+  const clipped = await side.evaluate((el) => [...el.querySelectorAll<HTMLElement>("*")].filter((n) => n.scrollWidth > n.clientWidth + 1 && getComputedStyle(n).overflowX !== "visible").length);
+  expect(clipped, "nothing in the side column is clipped").toBe(0);
+  await expect(side.getByText("نُشرت", { exact: false })).toBeVisible();
   await capture(page, "scr043-read");
 
   // «عدّل»: the same rows as the form; the lifecycle action steps aside while editing.

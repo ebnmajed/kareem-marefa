@@ -56,10 +56,10 @@ export function QueueView({
           <ul className="flex gap-2 overflow-x-auto pb-1">
             {FILTERS.map((f) => (
               <li key={f} className="shrink-0">
+                {/* The count inside the label, «بانتظار قرار 4», as drawn — `tag-chip`'s own `count` brackets it. */}
                 <TagChip
-                  label={t(`filters.${f}`)}
+                  label={f === "all" ? t(`filters.${f}`) : `${t(`filters.${f}`)} ${formatNumber(counts[f])}`}
                   href={f === "pending" ? "/app/admin/proposals" : `/app/admin/proposals?state=${f}`}
-                  count={f === "all" ? undefined : counts[f]}
                   selected={f === filter}
                 />
               </li>

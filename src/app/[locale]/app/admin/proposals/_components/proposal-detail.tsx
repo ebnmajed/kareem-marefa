@@ -44,7 +44,9 @@ export async function ProposalDetail({ locale, proposal }: { locale: string; pro
     <article className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-2">
-          <h2 id="proposal-title" className="text-h2 text-fg-heading">
+          {/* The page's h1 «المقترحات» is the only display-face heading (DEC-228 §6); this h2 sits under it, in the body
+              face, as the artboard draws it. */}
+          <h2 id="proposal-title" className="text-body-lg font-bold text-fg-heading">
             <bdi>{proposal.title}</bdi>
           </h2>
           <p className="flex flex-wrap items-center gap-2 text-body-sm text-fg-muted">

@@ -73,7 +73,7 @@ export function DecisionCard({
           </Button>
           <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <DialogTrigger asChild>
-              <Button type="button" variant="ghost" size="md" className="ms-auto text-error" disabled={pending}>
+              <Button type="button" variant="ghost" size="md" className="ms-auto text-error!" disabled={pending}>
                 {t("reject")}
               </Button>
             </DialogTrigger>
