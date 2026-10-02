@@ -7300,3 +7300,43 @@ New: `tests/rls/moderation-resolve-report.test.ts`, `tests/rls/moderation-restor
 7. **F1** (no member can report a photo) and **F6** (the event page's inline removal: no reason, reports left open) — to
    the owner's list; not this wave's.
 8. **F8**: the feed staff strip's link — your edit as custodian, or mine on licence in PR C?
+
+## Wave 22 — after sync 1 (`DEC-232`): the rulings, the function proven, the written request to `console`
+
+**Rulings taken into the plan** (`DEC-232` §5.3): one row per reported comment or photo · `050/052`'s chips are
+مفتوحة · مغلقة («التعليقات» dropped — D1) · the action word is **«أزل»** with its reason dialog (D2) · `051` gains
+**مغلقة** too (Q7) · faces through `ui/avatar` and the one resolver (D9) · `photo.restored` is enough for an undone
+takedown (Q6) · `tests/e2e/admin-reports.spec.ts` is mine, as evidence (Q5) · F2 – F5 fixed as planned · ★ **F1 and F6
+are the owner's, not built.** String changes from W22.7: `event.moderation.filter.comments` is not written;
+`hide` / `hideTitle` / `confirm` become `remove` «أزل» / `removeTitle` «إزالة تعليق من «<t>{session}</t>»؟» / `confirm`
+«أزل»; `outcome.removed` «أُزيل»; `photos.moderation.filter.closed` «مغلقة» and `emptyClosed` added.
+
+**`resolve_report()` written and proven** before any screen file: `supabase/proposed/content/0001_resolve_report.sql`,
+`tests/rls/moderation-resolve-report.test.ts` (12 cases, every call as a member, ★ including the atomicity proof — a
+forced failure on the reports write leaves the comment **not** removed and no `comment.removed`) and
+`tests/rls/moderation-restore.test.ts` (2 cases — F3's one write, through `0037`'s guard, no new SQL). Green with the
+existing `moderation.test.ts`: 18 / 18. One change from the W22.5 draft: the envelope's `resolved` is counted
+**before** the writes, because `remove_photo()` closes a photo's reports itself.
+
+### ★ Written request to `console` (contract 5, `DEC-232` §4.6) — `src/lib/dal/admin-dashboard.ts`, `getAdminAttention()`
+
+1. **The comment row** (`:351`, `:380`): `queue: "commentReports"`, `navKey: "moderationReports"` (was
+   `moderationComments`), `href: "/app/admin/moderation/reports"` (was `/comments`). **Count = distinct `comment_id`**
+   over `reports where org_id = me and target = 'comment' and status = 'open'` (today it counts report rows); oldest
+   age = `min(created_at)` over the same rows.
+2. **The photo row** (`:350`, `:379`): `navKey: "moderationPhotos"` (was `moderationReports`). **Count = distinct
+   `photo_id` over `photo_takedowns where org_id = me and resolved_at is null` PLUS distinct `photo_id` over `reports
+   where org_id = me and target = 'photo' and status = 'open'`** — a photo in both counts twice, as it shows in both
+   chips. Oldest age = the min of `requested_at` and `created_at` across both. `href` =
+   `/app/admin/moderation/photos`, or `/app/admin/moderation/photos?kind=reports` when no takedown is open. ★ This adds
+   the takedowns, which no count read before (F2); the queue key and the tile's word («بلاغات على الصور» → e.g. «الصور»)
+   are yours.
+3. Both rows for a moderator as today; a row at 0 draws no badge (the rail's rule).
+4. **Delete** — after PR C's create commits, when nothing reads them — `src/components/admin/moderation-tabs.tsx` and
+   the whole `admin.moderation` subtree in `ar` and `en` (the key list is W22.7).
+5. **Point** `src/app/[locale]/app/admin/audit/page.tsx:135`'s «to moderation» link at `/app/admin/moderation/reports`.
+6. Your `tests/unit/admin-attention.test.ts:62-63` and `tests/components/admin/admin-dashboard-page.test.tsx:72-73,98-99`
+   move with 1 – 2 (ledger lines, yours).
+
+**To the lead** (as `shell.ts`'s and the rail's owner): `src/lib/dal/shell.ts:60-63` follows the same two predicates;
+`moderationComments` → `built: false`.
