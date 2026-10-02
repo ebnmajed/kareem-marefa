@@ -461,7 +461,8 @@ export function renderEmail(input: RenderInput): RenderedEmail {
     palette: compilePalette(input.brand),
     logoUrl: input.logoUrl ?? null,
     appOrigin: input.appUrl ?? null,
-    preferencesUrl: input.appUrl ? `${input.appUrl.replace(/\/+$/, "")}/ar/app/me/notifications` : null,
+    // ★ wave 20 (DEC-218 §2.5, D14): preferences live on `/app/me/settings` (SCR-029), no longer on the inbox.
+    preferencesUrl: input.appUrl ? `${input.appUrl.replace(/\/+$/, "")}/ar/app/me/settings` : null,
     org: input.org.name,
   });
   return {
