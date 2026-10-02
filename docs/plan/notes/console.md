@@ -3717,3 +3717,10 @@ one row set for both widths, and `data-table` draws both from it.
 - ★ Owed on PR B after A merges: the dashboard imports `checkin`'s `attendanceRate()`
   (`src/components/checkin/attendance-rate.ts`, `6aeff6f0`) in place of `attendanceRateOf()`, so the one rate has one
   definition in code, not only in a test.
+
+### Wave 21 — L7, `tests/e2e/sessions-screens.spec.ts` (transferred to `console` for the wave), three cases and nothing else
+
+- **:226** SCR-042's «جاهزة للجدولة» is opened at `/ar/app/admin/sessions?new=1` — the link «جلسة جديدة» is (a selector moved).
+- **:372** «ابدأ الجلسة الآن» is asserted as a menu item under the row's ⋯, not a visible button (an expectation moved, L5).
+- **:460** completing: ⋯ → «أنهِ الجلسة» → the dialog's «أنهِ الجلسة» (early, so it confirms); «أرشف» is then a
+  menu item under ⋯ (a selector and a flow moved, L5).
