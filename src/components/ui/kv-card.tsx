@@ -6,6 +6,11 @@ import type { KvCardProps } from "@/components/ui";
 // ★ A STUB, landed by the lead with its signature and registry entry (contract 2, `DEC-227`) so the gate stays green
 // while `sessions` writes it to its plan (`notes/sessions.md` W21.2). Read mode is a `<dl>`; the edit twin is one
 // `role="group"` per row and renders no `<form>` — the screen owns its forms. No animation.
+//
+// ★ NO `<form>`, ON PURPOSE. A card can hold controls of more than one form (SCR-043's presenters have their own two,
+// which HTML forbids nesting in the schedule's), so the page wraps what it submits and the card only lays rows out.
+// ★ A row with no `edit` stays read in edit mode — the certificate mode, whose one writer is SCR-045 (DEC-178).
+// The label sits at the inline-start from `md`, above its value on a phone; values wrap, never clip (`10` §RTL).
 
 export function KvCard({ title, headingLevel = 2, label, rows, mode = "read", emptyValue, actions, className = "" }: KvCardProps) {
   const id = useId();
@@ -36,7 +41,7 @@ export function KvCard({ title, headingLevel = 2, label, rows, mode = "read", em
             ) : (
               <dl key={row.id} className="grid gap-1 py-3 md:grid-cols-[12rem_1fr]">
                 <dt className="text-label text-fg-muted">{row.label}</dt>
-                <dd className="text-body text-fg-body">{row.value ?? emptyValue}</dd>
+                <dd className="min-w-0 break-words text-body text-fg-body">{row.value ?? emptyValue}</dd>
               </dl>
             ),
           )}
@@ -46,7 +51,7 @@ export function KvCard({ title, headingLevel = 2, label, rows, mode = "read", em
           {rows.map((row) => (
             <div key={row.id} className="grid gap-1 py-3 md:grid-cols-[12rem_1fr]">
               <dt className="text-label text-fg-muted">{row.label}</dt>
-              <dd className="text-body text-fg-body">{row.value ?? emptyValue}</dd>
+              <dd className="min-w-0 break-words text-body text-fg-body">{row.value ?? emptyValue}</dd>
             </div>
           ))}
         </dl>
