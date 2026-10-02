@@ -130,13 +130,18 @@ describe("POL-companies.team_color_audit — a write with no session", () => {
     });
   });
 
-  it("main's own UPDATE — `{ deactivated_at }` — with no session writes no audit row at all", async () => {
+  // ★ wave 22 (0181, DEC-231 §4): a deactivation is audited now — `company.deactivated`, by its own trigger. What this
+  // case still proves is that 0161's colour trigger stays silent: no `company.team_color_changed` row for it.
+  it("main's own UPDATE — `{ deactivated_at }` — with no session writes company.deactivated and no colour row", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.asOwner();
-      const before = await tx.q(`select count(*)::int as n from public.audit_log where org_id = $1`, [f.a.id]);
       await tx.q(`update public.companies set deactivated_at = now() where id = $1`, [f.a.companyId]);
-      expect(await tx.q(`select count(*)::int as n from public.audit_log where org_id = $1`, [f.a.id])).toEqual(before);
+      const rows = await tx.q<{ action: string; actor_role: string }>(
+        `select action, actor_role from public.audit_log where org_id = $1 and subject_id = $2 and action like 'company.%' and action <> 'company.created'`,
+        [f.a.id, f.a.companyId],
+      );
+      expect(rows).toEqual([{ action: "company.deactivated", actor_role: "system" }]);
     });
   });
 

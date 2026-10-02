@@ -1,65 +1,58 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { ExportDownloadButton } from "@/components/admin/export-download-button";
+import { memberQueryParams, parseMemberQuery } from "@/components/admin/members/member-query";
 import { PageHeader } from "@/components/ui/page-header";
-import { listCompaniesForAdmin } from "@/lib/dal/admin-lists";
-import { listMembersForAdmin } from "@/lib/dal/admin-members";
+import { listMembersForConsole } from "@/lib/dal/admin-members";
 import { getOrgPrefs } from "@/lib/dal/proposals";
-import type { Locale } from "@/i18n/routing";
 import { requireSession } from "@/lib/dal/session";
-import { changeRole, deactivate, reactivate } from "./actions";
 import { MembersTable } from "./members-table";
 
-// SCR-049 · /app/admin/members (REQ-ADM-009, REQ-TEN-005, REQ-AUT-007,
-// REQ-AUT-008), rebuilt onto the system for wave 6 (`16` §6.7, `DEC-130`) —
-// one of the three lists DEC-130 names for `ui/data-table`'s phone card
-// stack. Admin only — a moderator is `is_staff()` and would otherwise read
-// the org's member rows under `members_read_org`, but role and status
-// changes are exactly the "member-management endpoint" REQ-ADM-020 keeps out
-// of a moderator's reach, so this whole screen 404s for one rather than
-// showing a list with every button refused.
+// SCR-049 · /app/admin/members (`REQ-ADM-009`, `REQ-TEN-005`, `REQ-AUT-007`, `REQ-AUT-008`, `REQ-UIX-096`), written for
+// wave 22 from `AdminMembers.dc.html` (`DEC-208`: deleted first). The job: an admin finds a member by name, email,
+// company or role, and changes a role or suspends from the row — the consequence named first, the last admin's menu
+// saying why it cannot be demoted. No invite: members arrive by sign-in.
+//
+// Admin only, decided at the data (`listMembersForConsole` → null → the streamed not-found, `DEC-134`): a moderator is
+// staff and would otherwise read `members_read_org`, but role and status are the «member-management endpoint»
+// `REQ-ADM-020` keeps from them. ★ «CSV» is the audited export of THE LIST THE SCREEN SHOWS — the same query, the same
+// predicate (`DEC-232` §2.8), its slice recorded in the audit row.
 
-export default async function MembersPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function MembersPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const query = parseMemberQuery(await searchParams);
 
-  const [members, companies, session, prefs, t] = await Promise.all([
-    listMembersForAdmin(locale),
-    listCompaniesForAdmin(locale),
-    requireSession(locale),
-    getOrgPrefs(locale),
-    getTranslations("admin.members"),
-  ]);
-  if (members === null) notFound();
+  const [data, session, prefs, t] = await Promise.all([listMembersForConsole(locale, query), requireSession(locale), getOrgPrefs(locale), getTranslations("admin.members")]);
+  if (data === null) notFound();
 
-  const companyNames = new Map((companies ?? []).map((c) => [c.id, c.name]));
-  const localeTyped = locale as Locale;
-
-  // ★ MAPS of bound actions, not factory functions — see `members-table.tsx`'s
-  // own comment on `changeRoleActions` for the full reasoning (the same real
-  // React-Flight serialisation trap `sessions/page.tsx`'s `transitionActions`
-  // documents and was fixed for at the same time as this file).
-  const changeRoleActions = Object.fromEntries(members.map((m) => [m.id, changeRole.bind(null, localeTyped, m.id)]));
-  const deactivateActions = Object.fromEntries(members.map((m) => [m.id, deactivate.bind(null, localeTyped, m.id)]));
-  // `.bind()`, not a wrapping arrow function — `reactivate(locale, memberId)`
-  // takes no `FormData` at all, but the same rule applies: only an actual
-  // bound Server Action reference crosses the boundary, never a closure that
-  // merely calls one.
-  const reactivateActions = Object.fromEntries(members.map((m) => [m.id, reactivate.bind(null, localeTyped, m.id)]));
+  const slice = memberQueryParams(query, { page: 1 }).toString();
 
   return (
     <>
-      <PageHeader title={t("title")} description={t("intro")} />
-      <div className="mt-8">
-        <MembersTable
-          members={members}
-          companyNames={companyNames}
-          selfId={session.memberId}
-          timeZone={prefs.timeZone}
-          locale={locale}
-          changeRoleActions={changeRoleActions}
-          deactivateActions={deactivateActions}
-          reactivateActions={reactivateActions}
-        />
+      <PageHeader
+        inlineActions
+        title={t("title")}
+        actions={
+          <ExportDownloadButton
+            href={`/api/admin/exports/members${slice ? `?${slice}` : ""}`}
+            fallbackName="members.csv"
+            label={t("csv")}
+            accessibleName={t("csvLabel")}
+            pendingLabel={t("csvPending")}
+            doneLabel={t("csvDone")}
+            failedLabel={t("csvFailed")}
+          />
+        }
+      />
+      <div className="mt-6">
+        <MembersTable data={data} query={query} selfId={session.memberId} timeZone={prefs.timeZone} locale={locale} />
       </div>
     </>
   );

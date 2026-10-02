@@ -1,267 +1,52 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { formatDateTime } from "@/components/sessions/numerals";
+import { MEMBER_ROLE_FILTERS, membersHref, NO_COMPANY, type MemberQuery, type MemberRoleFilter } from "@/components/admin/members/member-query";
+import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import type { DataTableColumn } from "@/components/ui";
-import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { IconButton } from "@/components/ui/icon-button";
+import { ChevronIcon, SearchIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
-import { Link } from "@/components/ui/link";
 import { Menu } from "@/components/ui/menu";
-import { MoreIcon } from "@/components/ui/icons";
-import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/toast";
-import type { AdminMemberRow } from "@/lib/dal/admin-members";
-import type { RowState } from "./actions";
-import { emptyRowState } from "./state";
+import type { DataTableColumn, MenuItem } from "@/components/ui";
+import type { ConsoleMemberRow, ConsoleMembers } from "@/lib/dal/admin-members";
+import type { Locale } from "@/i18n/routing";
+import { MemberRowMenu } from "./member-row-menu";
 
-// SCR-049 · /app/admin/members, onto `ui/data-table` for wave 6 (`16` §6.7,
-// `DEC-130`) — one of the three lists that most need the phone card stack.
+// SCR-049's table, written for wave 22 from `AdminMembers.dc.html` (`DEC-208`: deleted first): the toolbar — search,
+// «الشركة» and «الدور» chips carrying their value, the count — then العضو · الشركة · الدور · المستوى · النقاط · ⋯ and
+// the pager. The toolbar is a GET form and the chips and pager are links: the URL is the state, so a filtered list is
+// a link and works without JS (`042`'s shape).
 //
-// ★ Bound actions are PROPS, not imports: `./actions.ts` transitively pulls
-// in `lib/dal/admin-members.ts`, which starts `import "server-only"` — that
-// throws the instant this "use client" module (or its own test) imports it,
-// even just to reference a name. `page.tsx` (server) binds each action per
-// row and hands the bound function down, the same shape `sessions-table.
-// tsx`'s `runTransitionAction` already established for the identical reason.
-//
-// `src` stays `null` on every `Avatar` this wave, per the spawn note: avatar
-// storage (`16` §6.8, `REQ-PRF-008`…`011`) is a different track's story, not
-// this one. Every row still gets its initials-and-tint fallback for free —
-// that IS `Avatar`'s default rendering, not a special case here.
-//
-// No `rowHref`: the row hosts a `<Select>` and a `Menu`, so a whole-row link
-// would be a nested-interactive-inside-clickable-row trap — the name cell's
-// own "عرض الملف الكامل" link is the one way in. No `selection`/bulk bar
-// either: nothing backs a bulk role-change or a bulk deactivate that would
-// share one typed reason across several members.
+// ★ The role column is the role's badge for staff and for a deactivated member, plain «عضو» otherwise (the artboard);
+// the words are `REQ-ADM-009`'s, not the artboard's (D9). ★ «آخر نشاط» is absent — nothing stores it (`DEC-232` §4).
+// The viewer's own row has no ⋯: self-demotion and self-deactivation have no path (`REQ-ADM-009`).
 
-function normalize(s: string): string {
-  return s.toLowerCase().trim();
-}
-
-function RoleCell({ member, action, isSelf }: { member: AdminMemberRow; action: (prev: RowState, fd: FormData) => Promise<RowState>; isSelf: boolean }) {
+export function MembersTable({ data, query, selfId, timeZone, locale }: { data: ConsoleMembers; query: MemberQuery; selfId: string; timeZone: string; locale: string }) {
   const t = useTranslations("admin.members");
-  const toast = useToast();
-  const [state, formAction, pending] = useActionState(action, emptyRowState);
 
-  useEffect(() => {
-    if (state.done) toast.show({ title: t("roleChanged"), tone: "success" });
-    else if (state.error) toast.show({ title: t(`error.${state.error}`), tone: "error" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `toast`/`t` are stable; re-running on them would re-fire the same acknowledgement.
-  }, [state]);
-
-  if (isSelf) {
-    return <span className="text-fg-body">{t(`role.${member.role}`)}</span>;
-  }
-
-  return (
-    // ★ A real capture at 390 px found «غيّر الدور» wrapping onto two lines
-    // inside a button sized for one, clipped top and bottom: the desktop
-    // table cell can scroll the row horizontally if it must
-    // (`data-table.tsx`'s own `overflow-x-auto`), but the phone card's
-    // label:value row cannot, and a side-by-side `<Select>` + `<Button>`
-    // simply didn't fit. Stacked below `md` (the same breakpoint
-    // `DataTable` itself switches the card stack on), side by side at and
-    // above it — unchanged on desktop, where the table already had room.
-    // `noValidate` — this form has no `required` control today (a `<select>`
-    // always carries a value), but it fires a toast from `state.error` below,
-    // which `16` §8.2's rule covers too; matches the dialog form's own note.
-    <form action={formAction} noValidate className="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
-      <Select name="role" aria-label={t("roleLabel")} defaultValue={member.role} disabled={pending} className="h-9 w-full text-body-sm md:w-auto">
-        <option value="admin">{t("role.admin")}</option>
-        <option value="moderator">{t("role.moderator")}</option>
-        <option value="member">{t("role.member")}</option>
-      </Select>
-      <Button type="submit" variant="secondary" size="sm" disabled={pending}>
-        {t("changeRole")}
-      </Button>
-    </form>
-  );
-}
-
-function ActionsCell({
-  member,
-  deactivateAction,
-  onReactivate,
-  isSelf,
-  label,
-}: {
-  member: AdminMemberRow;
-  deactivateAction: (prev: RowState, fd: FormData) => Promise<RowState>;
-  onReactivate: () => Promise<void>;
-  isSelf: boolean;
-  label: string;
-}) {
-  const t = useTranslations("admin.members");
-  const toast = useToast();
-  const [state, formAction, pending] = useActionState(deactivateAction, emptyRowState);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [reactivatePending, setReactivatePending] = useState(false);
-
-  // ★ Closing the dialog is DERIVED from `state`, adjusted DURING RENDER
-  // (react.dev's own pattern for this, and what `ui/combobox.tsx` already
-  // does for an identical reason) — not a `setState` call inside the
-  // `useEffect` below, which `react-hooks/set-state-in-effect` refuses. The
-  // toast stays in the effect: showing it is a genuine side effect (an
-  // imperative call to an external system), not a state adjustment.
-  const [lastHandledState, setLastHandledState] = useState(state);
-  if (state !== lastHandledState) {
-    setLastHandledState(state);
-    if (state.done) setConfirmOpen(false);
-  }
-
-  useEffect(() => {
-    if (state.done) toast.show({ title: t("deactivateDone"), tone: "success" });
-    else if (state.error) toast.show({ title: t(`error.${state.error}`), tone: "error" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `toast`/`t` are stable; re-running on them would re-fire the same acknowledgement.
-  }, [state]);
-
-  async function handleReactivate() {
-    setReactivatePending(true);
-    try {
-      await onReactivate();
-      toast.show({ title: t("reactivateDone"), tone: "success" });
-    } finally {
-      setReactivatePending(false);
-    }
-  }
-
-  // A value, never `null`: the phone card renders this column's label
-  // whatever the cell returns (wave 7, sync 6), and an empty slot beside
-  // «الإجراءات» reads as a missing control rather than «nothing to do here».
-  if (isSelf) return <span className="text-fg-muted">—</span>;
-
-  if (member.status === "deactivated") {
-    // A worded button, not the «⋯» glyph: this control reactivates on the
-    // click, and the «more» icon promises a menu it never opens.
-    return (
-      <Button
-        variant="secondary"
-        size="sm"
-        aria-label={`${t("reactivate")} — ${member.displayName ?? member.email}`}
-        pending={reactivatePending}
-        onClick={handleReactivate}
-      >
-        {t("reactivate")}
-      </Button>
-    );
-  }
-
-  return (
-    <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-      <Menu
-        align="end"
-        trigger={
-          <IconButton label={label} size="sm">
-            <MoreIcon />
-          </IconButton>
-        }
-        items={[{ label: t("deactivate"), onSelect: () => setConfirmOpen(true), tone: "error" }]}
-      />
-      <DialogContent
-        title={t.rich("deactivateConfirmTitle", { name: member.displayName ?? member.email, t: (chunks) => <bdi>{chunks}</bdi> })}
-        closeLabel={t("closeDialog")}
-      >
-        {/* `noValidate` — `16` §8.2's own rule for every form that renders the
-            app's own error: even though this reason field's `required` is
-            `<Field>`-context-only (never a native attribute here), a future
-            edit that passes `required` straight to `<Textarea>` too — exactly
-            `content`'s 7f4809f — must not silently block this dialog's
-            submission ahead of it. */}
-        <form action={formAction} noValidate>
-          <Field id={`deactivate-reason-${member.id}`} label={t("reasonLabel")} hint={t("reasonHint")} required error={state.error === "reason_required" ? t("error.reason_required") : undefined}>
-            <Textarea name="reason" rows={3} maxLength={300} />
-          </Field>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button type="submit" variant="danger" disabled={pending}>
-              {t("send")}
-            </Button>
-            <DialogClose asChild>
-              <Button type="button" variant="secondary">
-                {t("cancelDialogCancel")}
-              </Button>
-            </DialogClose>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-export function MembersTable({
-  members,
-  companyNames,
-  selfId,
-  timeZone,
-  locale,
-  changeRoleActions,
-  deactivateActions,
-  reactivateActions,
-}: {
-  members: AdminMemberRow[];
-  companyNames: Map<string, string>;
-  selfId: string;
-  timeZone: string;
-  locale: string;
-  /** Each a `changeRole.bind(null, locale, memberId)` etc., bound ONCE per
-   *  row in `page.tsx` and handed down as maps — never a factory function
-   *  returning a bound action. A factory is a plain closure crossing the
-   *  server/client boundary as a prop, which React Flight cannot serialise
-   *  (only an actual bound Server Action reference survives the crossing) —
-   *  `sessions-table.tsx`'s own `transitionActions` carries the full
-   *  reasoning, found and fixed here for the same shape at the same time. */
-  changeRoleActions: Record<string, (prev: RowState, fd: FormData) => Promise<RowState>>;
-  deactivateActions: Record<string, (prev: RowState, fd: FormData) => Promise<RowState>>;
-  reactivateActions: Record<string, () => Promise<void>>;
-}) {
-  const t = useTranslations("admin.members");
-  const [query, setQuery] = useState("");
-
-  const filtered = useMemo(() => {
-    const needle = normalize(query);
-    if (!needle) return members;
-    return members.filter((m) => normalize(m.displayName ?? "").includes(needle) || normalize(m.email).includes(needle));
-  }, [members, query]);
-
-  const columns: DataTableColumn<AdminMemberRow>[] = [
+  const columns: DataTableColumn<ConsoleMemberRow>[] = [
     {
       key: "member",
       header: t("columnMember"),
       onCard: true,
       cell: (m) => (
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar memberId={m.id} displayName={m.displayName} src={null} size={32} decorative />
+          <Avatar memberId={m.id} displayName={m.displayName} src={m.avatarUrl} teamColor={m.teamColor} size={32} decorative />
           <div className="min-w-0">
             <p className="text-label text-fg-heading">
               <bdi>{m.displayName ?? m.email}</bdi>
             </p>
-            {/* ★ REQ-ADM-009: the admin sees every member's email — a real
-                build's own run found it missing entirely once `displayName`
-                is set, since it only ever appeared as THAT field's fallback.
-                A second, always-visible line, matching the deleted
-                `member-row.tsx`'s own shape — `dir="ltr"` because an email
-                stays Latin-script regardless of locale. */}
+            {/* ★ REQ-ADM-009: the admin sees every member's email — always its own line. */}
             <p className="mt-0.5 text-caption text-fg-muted">
               <bdi dir="ltr">{m.email}</bdi>
             </p>
-            <Link href={`/app/members/${m.id}`} quiet className="text-caption text-fg-muted underline underline-offset-4 hover:text-fg-heading">
-              {t("viewProfile")}
-            </Link>
             {m.status === "deactivated" && m.deactivatedAt ? (
               <p className="mt-1 text-caption text-fg-muted">
-                {t.rich("deactivatedNote", {
-                  date: formatDateTime(m.deactivatedAt, timeZone, locale),
-                  reason: m.deactivatedReason ?? "",
-                  bdi: (chunks) => <bdi>{chunks}</bdi>,
-                })}
+                {t.rich("deactivatedNote", { date: formatDateTime(m.deactivatedAt, timeZone, locale), reason: m.deactivatedReason ?? "", bdi: (chunks) => <bdi>{chunks}</bdi> })}
               </p>
             ) : null}
           </div>
@@ -272,57 +57,136 @@ export function MembersTable({
       key: "company",
       header: t("columnCompany"),
       onCard: true,
-      cell: (m) => (m.companyId ? <bdi>{companyNames.get(m.companyId) ?? ""}</bdi> : <span className="text-fg-muted">—</span>),
+      cell: (m) => (m.companyName ? <bdi>{m.companyName}</bdi> : <span className="text-fg-muted">{t("noValue")}</span>),
     },
     {
       key: "role",
       header: t("columnRole"),
       onCard: true,
-      cell: (m) => <RoleCell member={m} action={changeRoleActions[m.id]} isSelf={m.id === selfId} />,
+      cell: (m) =>
+        m.status === "deactivated" ? (
+          <Badge tone="neutral" outline size="sm">
+            {t("statusDeactivated")}
+          </Badge>
+        ) : m.role === "member" ? (
+          <span>{t("role.member")}</span>
+        ) : (
+          // Words, not colour: a role is not a status (`DEC-073`), so both staff roles wear the neutral tone.
+          <Badge tone="neutral" size="sm">
+            {t(`role.${m.role}`)}
+          </Badge>
+        ),
     },
     {
-      key: "status",
-      header: t("columnStatus"),
+      key: "level",
+      header: t("columnLevel"),
       onCard: true,
-      cell: (m) => (
-        <Badge tone={m.status === "active" ? "success" : "neutral"} outline={m.status !== "active"} size="sm">
-          {t(m.status === "active" ? "statusActive" : "statusDeactivated")}
-        </Badge>
-      ),
+      cell: (m) => (m.levelName ? <bdi>{m.levelName}</bdi> : <span className="text-fg-muted">{t("noValue")}</span>),
     },
+    { key: "points", header: t("columnPoints"), onCard: true, cell: (m) => <bdi>{formatNumber(m.points)}</bdi> },
     {
       key: "actions",
       header: t("columnActions"),
       align: "end",
-      // ★ `onCard` — without it the phone card list drops this column: no
-      // deactivation and no reactivation at 390 px (wave 8, F1; the same
-      // defect `sessions-table.tsx` fixed in wave 6).
       onCard: true,
-      cell: (m) => (
-        <ActionsCell
-          member={m}
-          deactivateAction={deactivateActions[m.id]}
-          onReactivate={reactivateActions[m.id]}
-          isSelf={m.id === selfId}
-          label={t.markup("moreActions", { name: m.displayName ?? m.email, t: (chunks) => chunks })}
-        />
-      ),
+      // A value, never `null`: the phone card renders this column's label whatever the cell returns (wave 7, sync 6).
+      cell: (m) =>
+        m.id === selfId ? (
+          <span className="text-fg-muted">{t("noValue")}</span>
+        ) : (
+          <MemberRowMenu member={m} locale={locale as Locale} lastAdmin={m.role === "admin" && m.status === "active" && data.activeAdmins <= 1} />
+        ),
     },
   ];
 
   return (
-    <div>
-      <Field id="members-search" label={t("searchLabel")} className="max-w-sm">
-        <Input type="search" placeholder={t("searchPlaceholder")} value={query} onChange={(e) => setQuery(e.target.value)} />
-      </Field>
+    <div className="space-y-4">
+      <Toolbar data={data} query={query} />
       <DataTable
-        className="mt-4"
+        stickyHeader
+        hiddenHeaders={["actions"]}
         label={t("tableLabel")}
         columns={columns}
-        rows={filtered}
+        rows={data.rows}
         rowKey={(m) => m.id}
-        empty={{ title: t("searchEmpty"), action: { label: t("searchLabel"), onClick: () => setQuery("") } }}
+        empty={{ title: t("searchEmpty"), action: { label: t("clearFilters"), href: "/app/admin/members" } }}
       />
+      <Pager data={data} query={query} />
     </div>
+  );
+}
+
+/** Search · the two chips, each showing its value · the count. A GET form, so it works without JS. */
+function Toolbar({ data, query }: { data: ConsoleMembers; query: MemberQuery }) {
+  const t = useTranslations("admin.members");
+  const all = t("filterAll");
+  const roleLabel = (r: MemberRoleFilter) => (r === "deactivated" ? t("statusDeactivated") : t(`role.${r}`));
+  const company = query.company === NO_COMPANY ? t("noCompany") : data.companies.find((c) => c.id === query.company)?.name;
+  const chip = (label: string, items: MenuItem[]) => (
+    <Menu
+      trigger={
+        <Button type="button" variant="secondary" size="sm" className="shrink-0" iconEnd={<ChevronIcon direction="down" aria-hidden />}>
+          <bdi>{label}</bdi>
+        </Button>
+      }
+      items={items}
+    />
+  );
+
+  return (
+    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center">
+        <form role="search" action="/app/admin/members" method="get" className="md:w-70">
+          <Field id="members-search" label={<span className="sr-only">{t("searchLabel")}</span>}>
+            <Input type="search" name="q" defaultValue={query.q} placeholder={t("searchPlaceholder")} startIcon={<SearchIcon aria-hidden />} />
+          </Field>
+          {query.company ? <input type="hidden" name="company" value={query.company} /> : null}
+          {query.role ? <input type="hidden" name="role" value={query.role} /> : null}
+        </form>
+        {/* One row of chips that scrolls on its own on a phone — the page never does. */}
+        <nav aria-label={t("filtersLabel")} className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {chip(t("filterCompany", { value: company ?? all }), [
+            { label: all, href: membersHref(query, { company: null, page: 1 }), current: !query.company },
+            ...data.companies.map((c) => ({ label: c.name, href: membersHref(query, { company: c.id, page: 1 }), current: query.company === c.id })),
+            { label: t("noCompany"), href: membersHref(query, { company: NO_COMPANY, page: 1 }), current: query.company === NO_COMPANY, startsGroup: true },
+          ])}
+          {chip(t("filterRole", { value: query.role ? roleLabel(query.role) : all }), [
+            { label: all, href: membersHref(query, { role: null, page: 1 }), current: !query.role },
+            ...MEMBER_ROLE_FILTERS.map((r) => ({ label: roleLabel(r), href: membersHref(query, { role: r, page: 1 }), current: query.role === r })),
+          ])}
+        </nav>
+      </div>
+      <p className="shrink-0 text-caption text-fg-muted">{t.rich("count", { count: data.total, value: formatNumber(data.total), bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
+    </div>
+  );
+}
+
+/** «1 – 9 من 212» with السابقة / التالية. Links, so no JS is needed. */
+function Pager({ data, query }: { data: ConsoleMembers; query: MemberQuery }) {
+  const t = useTranslations("admin.members");
+  if (data.total === 0) return null;
+  const n = formatNumber;
+  const prev = data.page > 1 ? membersHref(query, { page: data.page - 1 }) : null;
+  const next = data.page < data.pageCount ? membersHref(query, { page: data.page + 1 }) : null;
+  return (
+    <nav aria-label={t("pagerLabel")} className="flex flex-wrap items-center justify-between gap-3 text-caption text-fg-muted">
+      <p>
+        <bdi>{t("pageRange", { from: n(data.from), to: n(data.to), total: n(data.total) })}</bdi>
+      </p>
+      {data.pageCount > 1 ? (
+        <div className="flex gap-2">
+          {prev ? (
+            <ButtonLink href={prev} variant="secondary" size="sm">
+              {t("previous")}
+            </ButtonLink>
+          ) : null}
+          {next ? (
+            <ButtonLink href={next} variant="secondary" size="sm">
+              {t("next")}
+            </ButtonLink>
+          ) : null}
+        </div>
+      ) : null}
+    </nav>
   );
 }

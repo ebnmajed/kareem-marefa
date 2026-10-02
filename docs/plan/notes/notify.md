@@ -4396,3 +4396,24 @@ owner's ruling** (the switch replaces them; the row's switch keeps focus); R18 t
 row's one word «رسالة عامة»; ★ R13 the write gains `expected` — the update matches only when the stored schedule equals
 what the page opened with, so a concurrent edit is refused as «stale» instead of overwritten (D-N4), and 0 rows is never
 a success (D-N2); R15 the toast becomes the receipt.
+
+### N12 · `060` built — read against R1 – R20 and N11
+
+| # | Where it lives now |
+|---|---|
+| R1 · R2 | `page.tsx` — `getReminderSchedule()` null → `notFound()`; `p2_admin_update` untouched; `wave8-console-reminders` moderator case |
+| R3 · R5 · R6 · R7 | `page.tsx` — the stored array through `viewOf()`, `splitDuration`, `after.now`; every value in `<bdi>`, six forms in `timing.*` / `after.*` |
+| R4 | read keeps the defaults; a save with no row throws `not_written` (D-N2) |
+| R8 · R9 | `actions.ts` — the band per row (`rows.ts`, tied to `0062` by `tests/rls/notify-reminder-receipt.test.ts`), `noneOn`, the prompt's 0 – 7 d; a duplicate cannot arise |
+| R10 · R11 | `reminders-edit.tsx` — the summary's link focuses the control; every field controlled. ★ An in-page anchor no longer opens the leave dialog (found by the component test — **`profile-edit.tsx` has the same defect**, `content`'s, told to the lead) |
+| R12 | add / remove gone by the owner's ruling; the row's switch stages |
+| R13 | `setReminderSchedule()` — one UPDATE, `expected` guard, `0040`'s trigger unchanged |
+| R14 · R15 | the receipt (`SaveReceipt`) and `getLastSave()`; «حُفظ» / «لم يتغيّر شيء» from the action's result; the mark in read mode with the actor |
+| R16 | «عدّل» a link to `?edit`; «احفظ» enabled in the server's HTML. ★ The staged switch has no meaning without JS — recorded, as the old add / remove had none |
+| R17 · R19 | `revalidatePath`; the intro dropped |
+| R18 | the other offset's one word «رسالة عامة» |
+| R20 | `data-table`'s phone stack in read mode; edit mode one fieldset per row, stacking under `md` |
+
+★ **A finding for `scoring` and the lead (`DEC-232` §3.4):** `data-table` renders the table **and** the phone stack in
+the DOM, one hidden by CSS, so a form control placed in a cell exists **twice** — two inputs posting one name, two
+elements with one id (the component test found it). Edit mode here is therefore not a `data-table`; read mode is.

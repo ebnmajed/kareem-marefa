@@ -1,5 +1,6 @@
-// SCR-061 · /app/admin/exports on the M9 system (wave 8, K2) — REQ-ADM-017.
-// The seven exports as a list with who took each last, the audit note linking
+// SCR-061 · /app/admin/exports — REQ-ADM-017, REQ-UIX-098. ★ Wave 22 (`DEC-208`): written again from
+// `AdminExports.dc.html` — eight exports (the audit log's is new), the note a caption on the h1's row.
+// The exports as a list with who took each last, the audit note linking
 // to those rows, and a download that shows it is working and says when it
 // fails — the async page awaited with a mocked DAL and the real catalogue.
 import { createTranslator, NextIntlClientProvider } from "next-intl";
@@ -16,7 +17,7 @@ const refresh = vi.fn();
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/dal/admin-exports", async () => ({
-  EXPORT_TYPES: ["sessions", "rsvps", "attendance", "ratings", "points", "certificates", "members"],
+  EXPORT_TYPES: ["sessions", "rsvps", "attendance", "ratings", "points", "certificates", "members", "audit"],
   listRecentExports: vi.fn(),
 }));
 vi.mock("@/lib/dal/proposals", () => ({ getOrgPrefs: async () => ({ timeZone: "Asia/Riyadh", maxCoPresenters: 4 }) }));
@@ -53,14 +54,15 @@ describe("ExportsPage", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  it("lists the seven exports, who took each last, and links the note to those rows in the audit log", async () => {
+  it("lists the eight exports, who took each last, and links the caption to those rows in the audit log", async () => {
     const { container } = await renderPage();
-    expect(cards(container)).toHaveLength(7);
+    expect(cards(container)).toHaveLength(8);
+    expect(cards(container).some((c) => c.textContent?.includes("سجل التدقيق"))).toBe(true);
     const members = cards(container).find((c) => c.textContent?.includes("الأعضاء"))!;
     expect(members).toHaveTextContent("مشرفة التصدير");
     const sessions = cards(container).find((c) => c.textContent?.includes("العنوان والحالة"))!;
     expect(sessions).toHaveTextContent("لم يُصدَّر بعد");
-    expect(screen.getByRole("link", { name: "عمليات التصدير في سجل التدقيق" })).toHaveAttribute("href", "/ar/app/admin/audit?action=export.created");
+    expect(screen.getByRole("link", { name: "كل تصدير مسجَّل" })).toHaveAttribute("href", "/ar/app/admin/audit?action=export.created");
   });
 
   it("each download names its file, downloads under the handler's name, says so, and refreshes «آخر تصدير»", async () => {

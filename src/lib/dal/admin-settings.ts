@@ -120,3 +120,62 @@ export async function updateOrgSettings(locale: string, input: OrgSettingsInput)
   if (error) throw new Error(`org_settings: ${error.message}`);
   return { error: null };
 }
+
+// ── Wave 22 (`DEC-231` §3, `DEC-232` §3) — what a save wrote, and the last one ─
+//
+// ★ «It saved» is the server's answer, read from the record the save wrote — never the client's clock and never a URL
+// flag. `org_settings_history()` (0004) writes one `scoring_config_history` row per CHANGED column, and it and
+// `set_updated_at()` run in the save's transaction, so both read the same `now()`: the rows a save wrote are exactly
+// those with `entity_id` = the settings row and `changed_at` = the row's new `updated_at`. An empty set is a save that
+// changed nothing, and the page says so. `scoring`'s `053` / `054` share these types (notes/notify.md N10).
+
+/** What one save wrote. `at` is null when nothing was sent because nothing changed. `wrote` [] ⇒ «لم يتغيّر شيء». */
+export interface SaveReceipt {
+  at: string | null;
+  wrote: string[];
+}
+
+/** The read-mode mark: the newest save that touched these fields. */
+export interface SavedMark {
+  at: string;
+  /** The org's, to format `at` in (REQ-INT-003). */
+  timeZone: string;
+  actor: { id: string; displayName: string | null } | null;
+}
+
+/**
+ * `REQ-UIX-091`: the last save among `fields`, with its actor. Ordered by `changed_at` on purpose: the rows one save
+ * wrote share it, and the newest of them is the save — the group, not «the last row» (wave 9's trap is about telling
+ * rows written together apart, which this never does). Admin only, as the history's own policy is (`0004:369`).
+ */
+export async function getLastSave(locale: string, fields: readonly string[]): Promise<SavedMark | null> {
+  const client = await requireAdmin(locale);
+  if (!client || fields.length === 0) return null;
+  const { session, supabase } = client;
+
+  const [history, settings] = await Promise.all([
+    supabase
+      .from("scoring_config_history")
+      .select("changed_at, actor_id")
+      .eq("org_id", session.orgId)
+      .eq("scope", "org_settings")
+      .in("field", [...fields])
+      .order("changed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  if (history.error) throw new Error(`scoring_config_history: ${history.error.message}`);
+  if (settings.error) throw new Error(`org_settings: ${settings.error.message}`);
+  if (!history.data) return null;
+
+  const actorId = history.data.actor_id as string | null;
+  let actor: SavedMark["actor"] = null;
+  if (actorId) {
+    // The member tier only — the column grant cannot leak an address (0004).
+    const { data, error } = await supabase.from("members_member_view").select("display_name").eq("id", actorId).maybeSingle();
+    if (error) throw new Error(`members_member_view: ${error.message}`);
+    actor = { id: actorId, displayName: (data?.display_name as string | null | undefined) ?? null };
+  }
+  return { at: history.data.changed_at as string, timeZone: (settings.data?.time_zone as string | undefined) ?? "Asia/Riyadh", actor };
+}

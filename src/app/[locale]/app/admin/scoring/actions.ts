@@ -10,8 +10,6 @@ import {
   companyPercentRuleUpdateInput,
   manualAdjustmentInput,
   scoringRuleUpdateInput,
-  sessionHostCompanyInput,
-  setSessionHostCompany,
   submitManualAdjustment,
   updateCompanyHostingRule,
   updateCompanyPercentRule,
@@ -138,26 +136,6 @@ export async function saveCompanyPercentRule(locale: Locale, previous: State, fo
   if (!parsed.success) return { ...withFormError(captured, "failed"), saved: false };
   try {
     await updateCompanyPercentRule(locale, parsed.data);
-  } catch {
-    return { ...withFormError(captured, "failed"), saved: false };
-  }
-  revalidatePath(SCREEN(locale));
-  return savedState();
-}
-
-export async function saveSessionHostCompany(locale: Locale, previous: State, formData: FormData): Promise<State> {
-  const captured = formStateFrom<string>(formData, { fields: ["sessionId", "companyId"], previous });
-  const sessionId = was(captured, "sessionId");
-  const companyId = was(captured, "companyId");
-  if (sessionId === "") return { ...withErrors(captured, { sessionId: "sessionRequired" }), saved: false };
-
-  const parsed = sessionHostCompanyInput.safeParse({ sessionId, companyId: companyId === "" ? null : companyId });
-  if (!parsed.success) {
-    const onCompany = parsed.error.issues.some((issue) => issue.path[0] === "companyId");
-    return { ...withErrors(captured, onCompany ? { companyId: "companyInvalid" } : { sessionId: "sessionRequired" }), saved: false };
-  }
-  try {
-    await setSessionHostCompany(locale, parsed.data);
   } catch {
     return { ...withFormError(captured, "failed"), saved: false };
   }

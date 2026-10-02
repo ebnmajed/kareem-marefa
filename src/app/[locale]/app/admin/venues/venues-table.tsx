@@ -1,95 +1,90 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { ListRowMenu } from "@/components/admin/list-row-menu";
 import { formatNumber } from "@/components/sessions/numerals";
-import { DeactivateToggle } from "@/components/admin/deactivate-toggle";
 import { Badge } from "@/components/ui/badge";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable, DataTableSwatchCell } from "@/components/ui/data-table";
 import type { DataTableColumn } from "@/components/ui";
 import type { AdminVenue } from "@/lib/dal/sessions";
 import type { Locale } from "@/i18n/routing";
-import { toggleVenue } from "./actions";
+import { setVenueActiveAction } from "./actions";
 
-// SCR-046 · onto `ui/data-table` for wave 7 — "one list pattern three
-// times," `DEC-137`'s own framing (`docs/plan/notes/console.md`'s "Wave 7
-// plan" §2), the same treatment `admin/members/members-table.tsx` already
-// proved in wave 6. `src` stays server-computed props (no bound Server
-// Action prop trap here — `toggleVenue` takes plain scalar arguments, not a
-// row-bound closure, so it is imported directly rather than threaded down
-// from `page.tsx`, unlike `sessions-table.tsx`/`members-table.tsx`'s own
-// per-row bound actions).
+// SCR-046's table, written for wave 22 from `AdminVenues.dc.html` (`DEC-208`: deleted first): المكان · الشركة ·
+// العنوان · السعة · الجلسات · ⋯. State lives in the row — a «معطّل» badge beside a deactivated venue's name, nothing
+// beside an active one — and the row's decisions in its ⋯ (`ListRowMenu`).
+//
+// ★ The company is a swatch AND its name (`REQ-UIX-092`); a venue owned by nobody says «لا شركة» and draws no swatch,
+// so nothing implies it hosts for anyone (`REQ-UIX-093`). A deactivated owner is named as inactive: it earns no hosting
+// points while it is (`DEC-232` §1.2).
 
 export function VenuesTable({ venues, locale }: { venues: AdminVenue[]; locale: Locale }) {
   const t = useTranslations("admin.venues");
-  const num = (n: number) => formatNumber(n);
+  const num = (n: number) => <bdi>{formatNumber(n)}</bdi>;
 
   const columns: DataTableColumn<AdminVenue>[] = [
     {
       key: "name",
-      header: t("nameColumn"),
+      header: t("columnVenue"),
       onCard: true,
       cell: (v) => (
-        <div className="min-w-0">
-          <p className="text-label text-fg-heading">
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <span className="text-label text-fg-heading">
             <bdi>{v.name}</bdi>
-          </p>
-          {v.address ? (
-            <p className="mt-0.5 text-body-sm text-fg-muted">
-              <bdi>{v.address}</bdi>
-            </p>
+          </span>
+          {v.deactivatedAt !== null ? (
+            <Badge tone="neutral" outline size="sm">
+              {t("deactivated")}
+            </Badge>
           ) : null}
-        </div>
+        </span>
       ),
     },
     {
-      key: "capacity",
-      header: t("capacityColumn"),
+      key: "company",
+      header: t("columnCompany"),
       onCard: true,
-      cell: (v) => <span>{v.capacity !== null ? <bdi>{t("seats", { count: v.capacity, value: num(v.capacity) })}</bdi> : t("noCapacity")}</span>,
+      cell: (v) =>
+        v.company ? (
+          <DataTableSwatchCell color={v.company.teamColor} colorName={v.company.deactivated ? t("companyInactive") : ""}>
+            <bdi>{v.company.name}</bdi>
+          </DataTableSwatchCell>
+        ) : (
+          <span className="text-fg-muted">{t("noCompany")}</span>
+        ),
     },
     {
-      key: "upcoming",
-      header: t("upcomingColumn"),
+      key: "address",
+      header: t("columnAddress"),
       onCard: true,
-      cell: (v) => <bdi>{t("upcoming", { count: v.upcomingSessions, value: num(v.upcomingSessions) })}</bdi>,
+      cell: (v) => (v.address ? <bdi>{v.address}</bdi> : <span className="text-fg-muted">{t("noValue")}</span>),
     },
-    {
-      key: "status",
-      header: t("statusColumn"),
-      onCard: true,
-      // ★ Always a Badge, never `null` for the active case (sync 6's own
-      // finding): the phone card list always renders the `statusColumn`
-      // label (`ui/data-table.tsx`'s card mode has no notion of "skip this
-      // field"), so a `null` cell left an "الحالة" row with no value beside
-      // it. Same tone/outline convention as `admin/members/members-table.tsx`'s
-      // own status cell.
-      cell: (v) => (
-        <Badge tone={v.deactivatedAt === null ? "success" : "neutral"} outline={v.deactivatedAt !== null}>
-          {t(v.deactivatedAt === null ? "active" : "deactivated")}
-        </Badge>
-      ),
-    },
+    { key: "capacity", header: t("columnCapacity"), onCard: true, cell: (v) => (v.capacity !== null ? num(v.capacity) : <span className="text-fg-muted">{t("noValue")}</span>) },
+    { key: "sessions", header: t("columnSessions"), onCard: true, cell: (v) => num(v.sessionCount) },
     {
       key: "actions",
-      header: t("actionsColumn"),
-      // ★ `onCard` — without it the phone card list drops this column, and
-      // an admin at 390 px cannot deactivate anything (wave 8, F1; the same
-      // defect `sessions-table.tsx` fixed in wave 6).
+      header: t("columnActions"),
+      align: "end",
       onCard: true,
       cell: (v) => (
-        <DeactivateToggle
+        <ListRowMenu
+          editHref={`/app/admin/venues?edit=${v.id}#venue-editor`}
           active={v.deactivatedAt === null}
-          activateLabel={t("activate")}
-          deactivateLabel={t("deactivate")}
-          confirmTitle={t.rich("deactivateConfirmTitle", { name: v.name, t: (chunks) => <bdi>{chunks}</bdi> })}
-          confirmBody={t("deactivateConfirmBody")}
-          confirmAction={t("deactivateConfirmAction")}
-          cancelLabel={t("cancelDialogCancel")}
-          closeLabel={t("closeDialog")}
-          deactivateDoneLabel={t("deactivateDone")}
-          reactivateDoneLabel={t("reactivateDone")}
-          onActivate={() => toggleVenue(locale, v.id, true)}
-          onDeactivate={() => toggleVenue(locale, v.id, false)}
+          onSetActive={(active) => setVenueActiveAction(locale, v.id, active)}
+          labels={{
+            trigger: t("moreActions", { name: v.name }),
+            edit: t("edit"),
+            deactivate: t("deactivate"),
+            reactivate: t("activate"),
+            confirmTitle: t.rich("deactivateConfirmTitle", { name: v.name, t: (chunks) => <bdi>{chunks}</bdi> }),
+            confirmBody: t("deactivateConfirmBody"),
+            confirmAction: t("deactivateConfirmAction"),
+            cancel: t("cancelDialogCancel"),
+            close: t("closeDialog"),
+            deactivated: t("deactivateDone"),
+            reactivated: t("reactivateDone"),
+            notWritten: t("notWritten"),
+          }}
         />
       ),
     },
@@ -97,16 +92,13 @@ export function VenuesTable({ venues, locale }: { venues: AdminVenue[]; locale: 
 
   return (
     <DataTable
-      label={t("listTitle")}
+      stickyHeader
+      hiddenHeaders={["actions"]}
+      label={t("title")}
       columns={columns}
       rows={venues}
       rowKey={(v) => v.id}
-      // ★ Not `t("addTitle")` — a real sync-3 finding: the add form sits
-      // directly above this table, so an empty-state action reading "أضف
-      // مكانًا" duplicated the form's own submit button on one screen. The
-      // action still moves focus to the form's first field; it just no
-      // longer claims to be a second, independent way to add one.
-      empty={{ title: t("empty"), action: { label: t("emptyAction"), onClick: () => document.getElementById("v-name")?.focus() } }}
+      empty={{ title: t("empty"), action: { label: t("newVenue"), href: "/app/admin/venues?new=1#venue-editor" } }}
     />
   );
 }

@@ -12,13 +12,11 @@ import {
   REWARD_PRESENTER_ACTIONS,
   getScoringAdminData,
   intervalToSeconds,
-  listHostableSessions,
   type ConfigHistoryRow,
 } from "@/lib/dal/scoring-admin";
-import { saveCompanyHostingRule, saveCompanyPercentRule, saveManualAdjustment, saveScoringRule, saveSessionHostCompany } from "./actions";
+import { saveCompanyHostingRule, saveCompanyPercentRule, saveManualAdjustment, saveScoringRule } from "./actions";
 import { CompanyRulesTable } from "./company-rules-table";
 import { HistoryTable, type HistoryDisplayRow } from "./history-table";
-import { HostCompanyForm } from "./host-company-form";
 import { ManualAdjustmentForm } from "./manual-adjustment-form";
 import { RulesTable } from "./rules-table";
 
@@ -45,8 +43,8 @@ export default async function ScoringAdminPage({ params }: { params: Promise<{ l
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [t, data, members, sessions] = await Promise.all([getTranslations("scoring.admin"), getScoringAdminData(locale), listMembersForAdmin(locale), listHostableSessions(locale)]);
-  if (!data || !sessions) notFound();
+  const [t, data, members] = await Promise.all([getTranslations("scoring.admin"), getScoringAdminData(locale), listMembersForAdmin(locale)]);
+  if (!data) notFound();
 
   const byGroup = (keys: readonly string[]) => keys.map((key) => data.rules.find((r) => r.actionKey === key)).filter((r): r is NonNullable<typeof r> => r !== undefined);
   const bound = locale as Locale;
@@ -110,12 +108,6 @@ export default async function ScoringAdminPage({ params }: { params: Promise<{ l
         <div className="mt-4">
           <CompanyRulesTable rules={data.companyRules} hostingAction={saveCompanyHostingRule.bind(null, bound)} percentAction={saveCompanyPercentRule.bind(null, bound)} />
         </div>
-        <section aria-labelledby="host-company-heading" className="mt-8">
-          <SectionHeader as="h3" id="host-company-heading" title={t("hostCompany.heading")} description={t("hostCompany.intro")} />
-          <div className="mt-4">
-            <HostCompanyForm action={saveSessionHostCompany.bind(null, bound)} sessions={sessions} companies={data.companies} timeZone={data.timeZone} locale={locale} />
-          </div>
-        </section>
       </section>
 
       <section aria-labelledby="manual-heading" className="mt-12">

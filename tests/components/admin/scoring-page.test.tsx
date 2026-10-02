@@ -22,13 +22,11 @@ vi.mock("@/lib/dal/admin-members", () => ({ listMembersForAdmin: vi.fn() }));
 vi.mock("@/lib/dal/scoring-admin", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/dal/scoring-admin")>()),
   getScoringAdminData: vi.fn(),
-  listHostableSessions: vi.fn(),
 }));
 const actions = {
   saveScoringRule: vi.fn(),
   saveCompanyHostingRule: vi.fn(),
   saveCompanyPercentRule: vi.fn(),
-  saveSessionHostCompany: vi.fn(),
   saveManualAdjustment: vi.fn(),
 };
 vi.mock("@/app/[locale]/app/admin/scoring/actions", () => actions);
@@ -37,7 +35,7 @@ vi.mock("next-intl/server", () => ({
   setRequestLocale: () => {},
 }));
 
-const { getScoringAdminData, listHostableSessions } = await import("@/lib/dal/scoring-admin");
+const { getScoringAdminData } = await import("@/lib/dal/scoring-admin");
 const { listMembersForAdmin } = await import("@/lib/dal/admin-members");
 const { default: ScoringAdminPage } = await import("@/app/[locale]/app/admin/scoring/page");
 
@@ -69,13 +67,11 @@ const DATA: ScoringAdminData = {
     { id: "h1", scope: "scoring", actionKey: "comment", field: "points", oldValue: 1, newValue: 2, actorId: "a1", actorName: "مشرفة النقاط", changedAt: "2026-09-17T09:00:00Z" },
     { id: "h2", scope: "scoring", actionKey: "comment", field: "cooldown", oldValue: null, newValue: "00:01:00", actorId: "a1", actorName: "مشرفة النقاط", changedAt: "2026-09-17T09:00:00Z" },
   ],
-  companies: [{ id: "co1", name: "شركة المعرفة" }],
   timeZone: "Asia/Riyadh",
 };
 
 async function renderPage() {
   vi.mocked(getScoringAdminData).mockResolvedValue(DATA);
-  vi.mocked(listHostableSessions).mockResolvedValue([]);
   vi.mocked(listMembersForAdmin).mockResolvedValue([{ id: "m1", displayName: "سارة العتيبي", email: "sara@example.com" }] as never);
   const element = await ScoringAdminPage({ params: Promise.resolve({ locale: "ar" }) });
   return render(

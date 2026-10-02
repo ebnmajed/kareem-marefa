@@ -1,3 +1,4 @@
+-- 0183 · promoted by the lead (wave 22, DEC-232 §4.5) from supabase/proposed/content/0001_resolve_report.sql, unchanged below this line.
 -- content · wave 22, PR C — one decision on reported content, in one transaction.
 --
 -- Serves:  01 §20 REQ-ADM-010, REQ-ADM-023 · §12 REQ-EVT-008, REQ-EVT-014 · REQ-UIX-103, REQ-UIX-104

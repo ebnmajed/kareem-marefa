@@ -1,135 +1,102 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { ListRowMenu } from "@/components/admin/list-row-menu";
 import { formatNumber } from "@/components/sessions/numerals";
-import { DeactivateToggle } from "@/components/admin/deactivate-toggle";
 import { Badge } from "@/components/ui/badge";
-import { DataTable } from "@/components/ui/data-table";
-import { Menu } from "@/components/ui/menu";
-import type { DataTableColumn, MenuItem } from "@/components/ui";
+import { DataTable, DataTableSwatchCell } from "@/components/ui/data-table";
+import type { DataTableColumn } from "@/components/ui";
 import type { AdminCompany } from "@/lib/dal/admin-lists";
 import type { Locale } from "@/i18n/routing";
-import { toggleCompany, setCompanyTeamColour } from "./actions";
-import { Swatch } from "./swatch";
-import { TEAM_COLOUR_HEX, TEAM_COLOUR_NAMES, teamColourNameOf } from "./team-colours";
+import { setCompanyActiveAction } from "./actions";
+import { teamColourNameOf } from "./team-colours";
 
-// SCR-048 · onto `ui/data-table` for wave 7 — see `venues-table.tsx`'s
-// header for the shared reasoning ("one list pattern three times").
-//
-// ★ wave 15 (`REQ-UIX-043`, `DEC-183` §4.11, `DEC-186` §8) — the team colour
-// column. There is no per-row edit form on this screen (the only editable
-// field beyond `name` is this one), so it is a `ui/menu` trigger: the seven
-// named colours plus «بلا لون», never a free hex — colour is never the only
-// channel, so every choice carries a swatch AND its name in words.
+// SCR-048's table, written for wave 22 from `AdminCompanies.dc.html` (`DEC-208`: deleted first): الشركة · الأعضاء ·
+// النشطون · الربع · ⋯. ★ The company's colour is a swatch AND its name in words (`REQ-UIX-095`, `DEC-232`'s D6 ruling);
+// none says «بلا لون». The quarter's points are READ — the quarter's company snapshot — and «—» before one exists.
+// ★ No domain column and no logo (`DEC-231` §6.1, `DEC-195` §4): the artboard draws both; nothing stores either.
 
-function TeamColourCell({ company, locale, t }: { company: AdminCompany; locale: Locale; t: ReturnType<typeof useTranslations> }) {
-  const current = teamColourNameOf(company.teamColor);
-  const currentLabel = current ? t(`teamColourNames.${current}`) : t("teamColourNone");
-
-  const items: MenuItem[] = [
-    ...TEAM_COLOUR_NAMES.map<MenuItem>((name) => ({
-      label: t(`teamColourNames.${name}`),
-      icon: <Swatch hex={TEAM_COLOUR_HEX[name]} />,
-      current: current === name,
-      onSelect: () => setCompanyTeamColour(locale, company.id, name),
-    })),
-    {
-      label: t("teamColourNone"),
-      icon: <Swatch hex={null} />,
-      current: current === null,
-      startsGroup: true,
-      onSelect: () => setCompanyTeamColour(locale, company.id, null),
-    },
-  ];
-
-  return (
-    <Menu
-      trigger={
-        <button type="button" className="inline-flex items-center gap-2 rounded-field px-2 py-1 text-body-sm text-fg-heading hover:bg-hover">
-          <Swatch hex={current ? TEAM_COLOUR_HEX[current] : null} />
-          <bdi>{currentLabel}</bdi>
-        </button>
-      }
-      items={items}
-    />
-  );
+export interface CompanyRow extends AdminCompany {
+  /** The quarter's company points, read from its snapshot; null before one exists or for a company not in it. */
+  quarterPoints: number | null;
 }
 
-export function CompaniesTable({ companies, locale }: { companies: AdminCompany[]; locale: Locale }) {
+export function CompaniesTable({ companies, locale }: { companies: CompanyRow[]; locale: Locale }) {
   const t = useTranslations("admin.companies");
-  const num = (n: number) => formatNumber(n);
+  const num = (n: number) => <bdi>{formatNumber(n)}</bdi>;
 
-  const columns: DataTableColumn<AdminCompany>[] = [
+  const columns: DataTableColumn<CompanyRow>[] = [
     {
       key: "name",
-      header: t("nameColumn"),
+      header: t("columnCompany"),
       onCard: true,
-      cell: (c) => (
-        <span className="text-label text-fg-heading">
-          <bdi>{c.name}</bdi>
-        </span>
-      ),
+      cell: (c) => {
+        const colour = teamColourNameOf(c.teamColor);
+        return (
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <DataTableSwatchCell color={c.teamColor} colorName={colour ? t(`teamColourNames.${colour}`) : t("teamColourNone")}>
+              <bdi>{c.name}</bdi>
+            </DataTableSwatchCell>
+            {c.deactivatedAt !== null ? (
+              <Badge tone="neutral" outline size="sm">
+                {t("deactivated")}
+              </Badge>
+            ) : null}
+          </span>
+        );
+      },
     },
+    { key: "members", header: t("memberCountColumn"), onCard: true, cell: (c) => num(c.memberCount) },
+    { key: "active", header: t("columnActive"), onCard: true, cell: (c) => num(c.activeMemberCount) },
     {
-      key: "memberCount",
-      header: t("memberCountColumn"),
+      key: "quarter",
+      header: t("columnQuarter"),
       onCard: true,
-      cell: (c) => <bdi>{t("memberCount", { count: c.memberCount, value: num(c.memberCount) })}</bdi>,
-    },
-    {
-      key: "teamColor",
-      header: t("teamColourColumn"),
-      onCard: true,
-      cell: (c) => <TeamColourCell company={c} locale={locale} t={t} />,
-    },
-    {
-      key: "status",
-      header: t("statusColumn"),
-      onCard: true,
-      // ★ Always a Badge, never `null` for the active case — same sync-6
-      // finding and fix as venues-table.tsx's own status cell.
-      cell: (c) => (
-        <Badge tone={c.deactivatedAt === null ? "success" : "neutral"} outline={c.deactivatedAt !== null}>
-          {t(c.deactivatedAt === null ? "active" : "deactivated")}
-        </Badge>
-      ),
+      cell: (c) => (c.quarterPoints !== null ? num(c.quarterPoints) : <span className="text-fg-muted">{t("noValue")}</span>),
     },
     {
       key: "actions",
-      header: t("actionsColumn"),
-      // ★ `onCard` — without it the phone card list drops this column, and
-      // an admin at 390 px cannot deactivate anything (wave 8, F1; the same
-      // defect `sessions-table.tsx` fixed in wave 6).
+      header: t("columnActions"),
+      align: "end",
       onCard: true,
       cell: (c) => (
-        <DeactivateToggle
+        <ListRowMenu
+          editHref={`/app/admin/companies?edit=${c.id}#company-editor`}
           active={c.deactivatedAt === null}
-          activateLabel={t("activate")}
-          deactivateLabel={t("deactivate")}
-          confirmTitle={t.rich("deactivateConfirmTitle", { name: c.name, t: (chunks) => <bdi>{chunks}</bdi> })}
-          confirmBody={t("deactivateConfirmBody")}
-          confirmAction={t("deactivateConfirmAction")}
-          cancelLabel={t("cancelDialogCancel")}
-          closeLabel={t("closeDialog")}
-          deactivateDoneLabel={t("deactivateDone")}
-          reactivateDoneLabel={t("reactivateDone")}
-          onActivate={() => toggleCompany(locale, c.id, true)}
-          onDeactivate={() => toggleCompany(locale, c.id, false)}
+          onSetActive={(active) => setCompanyActiveAction(locale, c.id, active)}
+          labels={{
+            trigger: t("moreActions", { name: c.name }),
+            edit: t("edit"),
+            deactivate: t("deactivate"),
+            reactivate: t("activate"),
+            confirmTitle: t.rich("deactivateConfirmTitle", { name: c.name, t: (chunks) => <bdi>{chunks}</bdi> }),
+            confirmBody: t("deactivateConfirmBody"),
+            confirmAction: t("deactivateConfirmAction"),
+            cancel: t("cancelDialogCancel"),
+            close: t("closeDialog"),
+            deactivated: t("deactivateDone"),
+            reactivated: t("reactivateDone"),
+            notWritten: t("notWritten"),
+          }}
         />
       ),
     },
   ];
 
   return (
-    <DataTable
-      label={t("listTitle")}
-      columns={columns}
-      rows={companies}
-      rowKey={(c) => c.id}
-      // ★ Not `t("addTitle")` — sync-3's own finding: the add form sits
-      // directly above this table, so an empty-state action reading "أضف
-      // شركة" duplicated the form's own submit button on one screen.
-      empty={{ title: t("empty"), action: { label: t("emptyAction"), onClick: () => document.getElementById("co-name")?.focus() } }}
-    />
+    <>
+      <DataTable
+        stickyHeader
+        hiddenHeaders={["actions"]}
+        label={t("title")}
+        columns={columns}
+        rows={companies}
+        rowKey={(c) => c.id}
+        empty={{ title: t("empty"), action: { label: t("newCompany"), href: "/app/admin/companies?new=1#company-editor" } }}
+      />
+      {companies.length > 0 ? (
+        <p className="mt-3 text-caption text-fg-muted">{t.rich("countLine", { count: companies.length, value: formatNumber(companies.length), bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
+      ) : null}
+    </>
   );
 }

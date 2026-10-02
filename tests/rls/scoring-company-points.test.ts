@@ -244,8 +244,13 @@ describe("RPC-evaluate_company_points", () => {
   it("hosting — awards exactly one company_hosting row, idempotent on replay", async () => {
     await withTx(async (tx) => {
       const f = await ready(tx);
-      await tx.asOwner();
-      const sessionId = await completedSession(tx, f.a, f.a.companyId);
+      // ★ wave 22 (REQ-PTS-016, DEC-230 §2): hosting is credited to the company that OWNS THE VENUE, no longer to
+      // sessions.host_company_id — the venue names its owner (0180) and the rule reads it. Both proposed files are
+      // no-ops once promoted. tests/rls/scoring-venue-hosting.test.ts holds the rule's own cases.
+      await applyProposed(tx, "lead/0180_venue_company.sql");
+      await applyProposed(tx, "scoring/hosting_follows_the_venue.sql");
+      await tx.q(`update public.venues set company_id = $2 where id = $1`, [f.a.venueId, f.a.companyId]);
+      const sessionId = await completedSession(tx, f.a, null);
 
       await tx.asServiceRole();
       await tx.q(`select public.evaluate_company_points($1)`, [sessionId]);
