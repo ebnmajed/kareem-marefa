@@ -1,3 +1,8 @@
+-- 0179 — a proposal's content is captured at submission (wave 21, M23). Promoted by the lead from
+-- supabase/proposed/sessions/0179-proposal-audit.sql (`sessions`, 0f051fd7). Forward-only; additive in behaviour —
+-- one function body, no table, column, policy or grant. Rehearsed by the owner on a dump at 0178 before the push
+-- (DEC-228 §2).
+--
 -- proposed by `sessions` (wave 21, M23) — a proposal's content is captured at submission, so SCR-041 can draw
 -- what changed since it was sent back (contract 5)
 --

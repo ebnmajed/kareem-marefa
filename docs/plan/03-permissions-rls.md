@@ -1597,6 +1597,8 @@ generated suite is the highest-value test in the product.
 | `POL-reactions.select.member` · `POL-reactions.write.self` | Org-readable; a member adds and removes only their own; a duplicate `(member, comment, kind)` is rejected. |
 | `POL-reports.select.staff_or_reporter` · `POL-reports.insert.self` · `POL-reports.update.staff` | The reporter and staff read; a member cannot read another's report; a member cannot resolve; a moderator resolves through the column grant. |
 | `POL-proposals.update.own` | A proposer cannot write `decision_reason`; cannot edit an `approved` proposal. |
+| `POL-proposals.transition.content` | ★ wave 21 (`DEC-228` §2, migration `0179`): a transition INTO `submitted` records the seven content columns in the audit row's `after`; `changes_requested → submitted` also records them, as they were, in `before`; every other transition's row is unchanged (`tests/rls/proposals-diff.test.ts`). |
+| `POL-proposals.edits.private` | ★ wave 21 (`0179`): those rows are readable by the org's admin only — never by the proposer, a co-presenter, a moderator who did not act, or another org's admin (`audit_read_admin`). |
 | `POL-proposals.transition.audit` | Creating a proposal and submitting it each write an `audit_log` row; a member cannot suppress either, and cannot write one directly (`REQ-PRO-006`, migration `0011`). |
 | `POL-proposals.transition.legal` | `changes_requested → draft` and `submitted → approved` are refused with `23514`; `draft → submitted` and `in_review → approved` succeed (`02` §6.1, migration `0011`). |
 | `POL-sessions.select.member` | A `draft` session is invisible to members, visible to its presenter. |

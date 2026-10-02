@@ -134,7 +134,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CHK-014` | — | — | `SCR-016` | — | — | `STORY-CHK-006` | M2 |
 | `REQ-CHK-015` | `ENT-session_days` | — | `SCR-014` `SCR-016` `SCR-040` +2 | — | — | `STORY-CHK-006` | M9 |
 | `REQ-CHK-016` | — | — | `SCR-014` `SCR-016` `SCR-044` | `JOB-start_session` | `MSG-session_changed` | `STORY-CHK-006` | M9 |
-| `REQ-CHK-017` | — | — | `SCR-016` `SCR-022` `SCR-044` +1 | `JOB-start_session` | `MSG-session_changed` | `STORY-CHK-007` | M9 |
+| `REQ-CHK-017` | — | — | `SCR-016` `SCR-022` `SCR-044` +1 | `JOB-start_session` | `MSG-proposal_approved` `MSG-session_changed` | `STORY-CHK-007` | M9 |
 | `REQ-CHK-018` | — | — | `SCR-002` `SCR-004` `SCR-007` +16 | — | — | `STORY-CHK-008` | M14 |
 
 ### CRT
@@ -343,7 +343,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRO-006` | `ENT-proposals` `ENT-session_state_transitions` | `POL-proposals.transition.audit` | `SCR-018` `SCR-041` | — | — | `STORY-PRO-003` | M2 |
 | `REQ-PRO-007` | — | `POL-session_presenters.assigned_notice` `POL-sessions.transition.legal` | `SCR-041` | — | — | `STORY-PRO-004` | M2 |
 | `REQ-PRO-008` | — | — | `SCR-017` `SCR-018` | — | — | `STORY-PRO-004` | M2 |
-| `REQ-PRO-009` | — | — | `SCR-041` `SCR-043` | — | — | `STORY-PRO-005` | M11 |
+| `REQ-PRO-009` | — | — | `SCR-041` `SCR-042` `SCR-043` | — | — | `STORY-PRO-005` | M11 |
 | `REQ-PRO-010` | — | — | `SCR-017` `SCR-043` | — | — | `STORY-PRO-005` | M11 |
 
 ### PTS
@@ -563,6 +563,6 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-087` | — | — | `SCR-040` `SCR-042` | — | — | `STORY-UIX-077` | M23 |
 | `REQ-UIX-088` | — | — | `SCR-007` `SCR-041` `SCR-043` +5 | `JOB-zip_session_photos` | — | `STORY-UIX-078` | M23 |
 | `REQ-UIX-089` | — | — | `SCR-043` | — | — | `STORY-UIX-079` | M23 |
-| `REQ-UIX-090` | — | — | `SCR-044` | — | — | `STORY-UIX-080` | M23 |
+| `REQ-UIX-090` | — | — | `SCR-044` | — | `MSG-proposal_approved` | `STORY-UIX-080` | M23 |
 
 <!-- TRACEABILITY:END -->
