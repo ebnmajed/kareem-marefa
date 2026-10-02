@@ -4851,3 +4851,19 @@ a takedown followed by a removal writes ONE reversal, the hide's. That is the ex
    keeps «حُذف المحتوى» for both and moves nothing.
 2. **No backfill** of photos uploaded before the migration — the owner's call.
 3. **The home's race and «بلا ترتيب»** — §2.4.
+
+## 6 · The photo award, built (2026-10-02)
+
+| Commit | What |
+|---|---|
+| `c8b2e1ef` | `supabase/proposed/scoring/w20c_0001_photo_award.sql` (unnumbered) — `reverse_photo_points()`, `award_photo_points()`, `award_points()`'s photo branch (re-checks visibility, keys by epoch), `_reverse_photo_points()` reversing every standing award through the one function and keeping the penalty, `capped_award_explanations()` for photos · `tests/rls/scoring-photo-award.test.ts`, 10/10 through `applyProposed()`; the eight §3 rows |
+| `2fed7433` | SCR-022's cap row picks `ledger.capPhoto` for a photo cap (phone list and desktop table); six Arabic forms · `tests/components/scoring/points-ledger-photo-cap.test.tsx` |
+| `0d5fd63e` | `tests/e2e/wave20-scoring-award.spec.ts` — one photo past a cap of 2 through the real path, SCR-022's `0` row; **runs only after promotion** |
+
+- Neighbouring RLS suites green with the file unapplied (award-*, moderation, scoring-capped, presenter awards,
+  definer-exposure: 11 files, 85 cases) — nothing moves until promotion.
+- ★ `moderation.test.ts:101-104` **does not move yet**: with my file alone a removal still reverses with
+  «حُذف المحتوى». It moves to «أُخفيت الصورة» when `content`'s hide trigger is applied with it (the takedown hides
+  first, so the removal finds nothing standing) — the ledger line goes in that commit.
+- `content` was told at `c8b2e1ef`: both functions, their grants, the restore flag, and to list my file before its own
+  in `applyProposed()`.
