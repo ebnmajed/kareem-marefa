@@ -147,11 +147,16 @@ test("SCR-063 at 1280: four cards, «عدّل», three staged changes, «احف�
   await page.screenshot({ path: `${SHOTS}/wave22-notify-063-saved-1280.png`, fullPage: true });
 
   // A stale page: another admin changes the co-presenters while this one edits — refused at the field, not overwritten.
+  // ★ The edit page must be OPEN before the other admin writes: a write that lands while «عدّل» is still navigating is
+  // simply the value the page opens with — and saving over a value you were shown is not stale (it was this spec's red
+  // on baec9578: the page opened at 7, the admin changed 7 → 2, correctly).
   await main.getByRole("link", { name: "عدّل" }).click();
+  await expect(main.getByRole("spinbutton", { name: "المقدّمون المشاركون" })).toHaveValue("4");
   await db.query(`update public.org_settings set max_co_presenters = 7 where org_id = $1`, [orgId]);
   await main.getByRole("spinbutton", { name: "المقدّمون المشاركون" }).fill("2");
   await main.getByRole("button", { name: /^احفظ/ }).click();
   await expect(main.getByRole("alert").filter({ hasText: "لم تُحفظ الإعدادات" })).toBeVisible();
+  await expect(main.getByRole("spinbutton", { name: /المقدّمون المشاركون/ })).toHaveAccessibleDescription("غيّر مشرف آخر هذا الحقل بعد فتحك الصفحة. افتحها من جديد.");
   const { rows } = await db.query<{ n: number }>(`select max_co_presenters as n from public.org_settings where org_id = $1`, [orgId]);
   expect(rows[0].n).toBe(7);
 });
