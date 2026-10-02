@@ -56,8 +56,14 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+// ★ The width is the PROJECT's, set here, never read back: the phone project is a Pixel 7 (412 CSS px), so reading the
+// viewport named a phone capture «-1280» and it overwrote the desktop one. Desktop is captured at 1280 — the width the
+// owner accepts this batch at — and the phone at 390 × 844.
 async function shoot(page: Page, state: string) {
-  const width = page.viewportSize()?.width === 390 ? 390 : 1280;
+  const phone = test.info().project.name === "phone";
+  const width = phone ? 390 : 1280;
+  await page.setViewportSize(phone ? { width: 390, height: 844 } : { width: 1280, height: 880 });
+  await expect(main(page).getByRole("table").or(main(page).getByRole("list")).first()).toBeVisible();
   mkdirSync(SHOTS, { recursive: true });
   await page.screenshot({ path: join(SHOTS, `wave21-checkin-044-${state}-${width}.png`), fullPage: true });
 }

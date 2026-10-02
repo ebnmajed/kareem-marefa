@@ -3445,3 +3445,12 @@ The code itself is already in the body face.
 
 A chip that filtered the list to nothing also offers «الكل» as `clearFilter`. `data-table`'s `empty` carries it all,
 and the page's own empty line is gone. The proof is `tests/components/checkin/attendance-empty.test.tsx`.
+
+**After the lead's production run of B (`06628c91`):**
+- **The door-switch timeout was the test, not the page.** The error context resolves the locator to
+  `<input role="switch" class="peer sr-only">`, and every retry reports the code card's `<section>` «intercepts pointer
+  events». The click aimed at the 1 px clipped input. The visible label and track toggle it, as the lead's 390 capture
+  shows. `eadc8455` clicks the label, waits for hydration, and reads `session_days.check_in_open` after each tap.
+- **The 1280 capture was the phone's.** The phone project is a Pixel 7 at 412 CSS px, so `shoot()`, which read the
+  viewport, named the phone capture `-1280`. It now takes the width from the project and sets it (1280 × 880, or
+  390 × 844) before the screenshot.
