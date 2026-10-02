@@ -4144,3 +4144,81 @@ button (`:150`) → the row's ⋯ «عدّل» and the sheet; the audit «تصف
 - **Q8** Record the export's slice (`ids`, filters) in `export.created`'s `after` — a trailing defaulted
   `p_detail jsonb` on `write_admin_export_audit()` under `supabase/proposed/console/` — or leave it?
 - **Q9** `049`'s «CSV»: the whole member list (today's export) or the chips' slice (an add-only `?company=&role=`)?
+
+## Wave 22 — built (PR A), and each kept-behaviour table read against the new file
+
+The lead's rulings (`DEC-232`, `9a956ae4`) applied: no-JS is `042`'s `?new=1` / `?edit=<id>` with the sheet as the
+enhancement (Q2); one save changing a name and an owner is two audit rows, the lead's triggers (Q3); `{ ok }` returns
+are add-only (Q4); the two e2e specs are mine (Q5); paging everywhere in my files (Q6); a deactivated owner earns no
+hosting and is shown as inactive (Q7); `export.created` records the slice (Q8); `049`'s CSV is the filtered list (Q9);
+swatch always with its word (D6); `data-table` stacks below `md` (D17); no gendered verb (D16).
+
+| Commit | What |
+|---|---|
+| `e611e992` | the three `data-table` cells (`REQ-UIX-092`) — B and C cut after it |
+| `b81ac2a6` · `f5ebd54c` | `046` deleted · written |
+| `8c131498` · `976262a8` | `047` deleted · written |
+| `66c603e9` · `539af038` | `048` deleted · written |
+| `1e478e52` · `c44f0453` | `049` deleted · written (with the members CSV's slice and every export paged) |
+| `2fb31bfe` · `da4c709e` | `061` deleted · written (with the audit log's export type and the merged feed) |
+| `01b51903` · `34fb3597` | `062` deleted · written |
+| `87ff0ef5` | ★ proposed: `supabase/proposed/console/export_slice.sql` + `tests/rls/admin-export-slice.test.ts` (green) — **the lead promotes** |
+| `6d1a09e3` | `DeactivateToggle` honours `{ ok: false }` (add-only; `scoring`'s badges table can pass it) |
+| `b6e1d847` | `tests/e2e/wave22-console-screens.spec.ts` — the jobs and the captures; **the lead runs it** |
+
+Shared, new: `components/admin/{editor-surface,list-row-menu,list-editor-form}.tsx`, `components/admin/members/member-query.ts`,
+`components/admin/audit/audit-text.ts`, `lib/dal/admin-paging.ts` (`readAll` — pages until an EMPTY page, so a production
+`max_rows` below 1000 cannot end it early).
+
+### The jobs, as built (`DEC-231` §0)
+
+- **`046`** — ⋯ → «عدّل» → the company `select` → «احفظ»; the row shows the swatch and the company, or «لا شركة»; five venues
+  in five moves (`wave22-console-screens` walks all five).
+- **`047`** — «تصنيف جديد» / ⋯ «عدّل» in the sheet; ⋯ «عطّل» confirmed; no delete is offered; a category a proposal alone
+  carries shows «N مقترحات».
+- **`048`** — the colour as a swatch and its word, the quarter's points read from the quarter snapshot («—» before one);
+  one form for name and colour.
+- **`049`** — search and the two chips narrow the list by URL; ⋯ changes the role (confirmed, naming member and role),
+  deactivates with a reason, reactivates; the last active admin's ⋯ holds one disabled line saying why; «CSV» = the list shown.
+- **`061`** — eight rows; «CSV» downloads and the row then names who and when, read from the audit row.
+- **`062`** — the log and the configuration history side by side, «إعداد» on the latter with «القديم ← الجديد»; chips;
+  the count of both; «CSV» = what the chips show; a moderator sees their own actions only.
+
+### Kept-behaviour tables, read against the new files
+
+Every row of §2 – §7 above holds in the new files, with these notes:
+
+- **046** ✓ admin-only `notFound()` (`page.tsx`, `listVenuesForAdmin` → null) · ✓ no delete · ✓ deactivate confirms
+  (`ListRowMenu` → `ConfirmDialog`) · ✓ the schema and its errors (`saveVenue`) · ✓ summary links focus (`venue-<field>`) ·
+  ✓ `dir="ltr"` map, tz, capacity · ✓ `<bdi>` on names, address, company, numbers · ✓ phone card ⋯ · ★ fixed: the silent
+  toggle; ★ new: edit, the company, sessions counted by day · dropped: the intro and the no-delete sentence (the privilege
+  stands) · the time-zone hint kept (it changes what is typed).
+- **047** ✓ as 046, `listCategoriesForAdmin` · ★ new: rename, proposals counted · ★ fixed: counts paged.
+- **048** ✓ the seven names / «بلا لون», never a hex (`saveCompany`, `team-colours.ts` kept) · ✓ no logo, no domain ·
+  ✓ 0161's audit on a colour change · ★ moved: the colour from the row's menu into the form · ★ fixed: counts paged.
+- **049** ✓ admin-only (`listMembersForConsole`) · ✓ the email to the admin · ✓ the three RPCs unchanged · ✓ self row has
+  no ⋯ · ✓ reason 3–300 in a dialog naming the member, `noValidate`, the inline error · ✓ the RPCs' errors as sentences ·
+  ✓ the deactivated note · ✓ the profile link (⋯ «عرض الملف الكامل») · ✓ bound/imported actions — no factory crosses ·
+  ★ fixed: reactivation's silent success · ★ new: the role change confirms; the last admin's ⋯ says why; search in the URL ·
+  `listMembersForAdmin` unchanged for its three other readers, now paged.
+- **061** ✓ admin-only, the routes 404 · ✓ BOM, CRLF, quoting, formula guard, dates, Arabic enums (`buildCsv` untouched) ·
+  ✓ audit before the file is served · ✓ `ExportDownloadButton` unchanged · ★ fixed: every export paged (2345 rows in
+  `admin-exports-bytes.test`), «آخر مرة» one newest row per type · ★ new: the audit log's export.
+- **062** ✓ staff only; a moderator's own actions, no actor chip, no history, no CSV · ✓ the org's days, half-open,
+  inverted range reported · ✓ keyset fifty a page, merged cursor · ✓ one subject followed · ✓ «النظام» and former staff ·
+  ✓ every action in words (`audit-text.ts`) · ✓ nothing editable · dropped: the scoring note (the history is here now),
+  the filter panel/sheet (chips) · ★ new: both stores, the count, target names, the CSV.
+
+### Still open — for the lead
+
+1. ★ **`0180` and the audit triggers** must be applied locally before `046`'s page (it selects `venues.company_id`), the
+   managed-lists venue case and `wave22-console-screens` can run.
+2. ★ **Promote `supabase/proposed/console/export_slice.sql`**: until then a whole-file export works unchanged and a
+   sliced one (`042` ids, `049` filters, `062` filters) fails loudly with the function's signature error.
+3. **`tests/unit/sessions-memory-supabase.ts` needs `range()`** (requested): `admin-removed-check-in.test`'s two export
+   cases fail until it slices.
+4. The new audit actions' labels are in `admin.json` (R2); `admin-audit-labels.test` will need nothing more once the
+   triggers' literals are on disk.
+5. Carried, not built: «آخر نشاط» on `049` (nothing stores it); the free-text search on `062` (D13); relative times on
+   `061` (absolute, as before); actor avatars on `062` (no avatar version on the log's read).
+6. `recognition-page.test.tsx` (scoring's) fails tsc against `HeldCertificateRow` — not mine, seen in passing.
