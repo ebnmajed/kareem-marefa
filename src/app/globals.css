@@ -1567,3 +1567,23 @@ html[data-sting="done"] {
     display: none;
   }
 }
+
+/* ★ Wave 21 (REQ-UIX-084, REQ-UIX-053, DEC-228 §6): the org console's frame. `ConsoleFrame` carries
+   `data-console`. Its bar is 52 px, and everything that clears a sticky header — the scroll padding, an anchor's
+   margin, a sticky side column — reads it through `--header-h`; there is no tab bar. Keyed on the frame's presence,
+   so no other route reads anything different. */
+:root:has([data-console]) {
+  --console-bar: 52px;
+  --header-h: 52px;
+  --tabbar-h: 0px;
+}
+
+/* ★ The console is not the party: no motion beneath the frame, whoever's primitive it is — `ui/switch`'s colour
+   transition and `ui/badge`'s live pulse reach the console through shared files `console-register` does not sweep.
+   One rule here, so a later primitive cannot bring motion in either. */
+[data-console] *,
+[data-console] *::before,
+[data-console] *::after {
+  animation: none !important;
+  transition: none !important;
+}

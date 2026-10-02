@@ -26,6 +26,8 @@ export interface ShellAttention {
 
 export interface ShellData {
   teamColor: string | null;
+  /** ★ wave 21 (REQ-UIX-084): the org's name, for the console's bar. Add-only. */
+  orgName?: string | null;
   /** `null` for a member who is not staff: the section is not rendered at all. */
   attention: ShellAttention | null;
 }
@@ -45,8 +47,9 @@ export const getShellData = cache(async (locale: string): Promise<ShellData> => 
     return error ? 0 : (n ?? 0);
   };
 
-  const [me, proposals, unscheduled, photoReports, commentReports] = await Promise.all([
+  const [me, org, proposals, unscheduled, photoReports, commentReports] = await Promise.all([
     company,
+    supabase.from("orgs").select("name").eq("id", session.orgId).maybeSingle(),
     isStaff
       ? count(supabase.from("proposals").select("id", { count: "exact", head: true }).eq("org_id", session.orgId).in("state", ["submitted", "in_review"]))
       : 0,
@@ -64,6 +67,7 @@ export const getShellData = cache(async (locale: string): Promise<ShellData> => 
   const teamColor = (me.data as { companies: { team_color: string | null } | null } | null)?.companies?.team_color ?? null;
   return {
     teamColor,
+    orgName: (org.data as { name: string } | null)?.name ?? null,
     attention: isStaff
       ? { proposals, unscheduled, photoReports, commentReports, total: proposals + unscheduled + photoReports + commentReports }
       : null,

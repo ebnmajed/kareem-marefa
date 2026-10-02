@@ -20,7 +20,9 @@
 | `console`, `sessions`, `checkin` spawned planning-only | ✅ — their plans land in `docs/plan/notes/{console,sessions,checkin}.md` |
 | The lead's own plan — the frame and `ui/admin-rail`, with its kept-behaviour table | ✅ `docs/plan/notes/wave-21-lead.md` § «The lead's plan» |
 | **Sync 1** — four plans approved against the goal and the seven contracts | ⏳ |
-| The frame in; the three signatures; the floor 60 → 63 | ⏳ (after sync 1) |
+| Sync 1 — `DEC-228`; «the plans are approved» posted | ✅ `0ed1dc6a` |
+| Contract 2 — `admin-rail` (full), `split-view` and `kv-card` (stubs, `sessions'` to fill), the floor 60 → 63 | ✅ `f9a0a209` |
+| The frame — deleted (`ae42d2b2`), then written | ⏳ this commit |
 | PR B `wave-21b/the-queues` opened against `main` on its first push | ⏳ |
 
 ★ **If this session ends before sync 1:** the next lead reads the three teammates' «Wave 21 plan» sections and the lead's,
@@ -28,6 +30,17 @@ judges each against `DEC-227` §0 — **a plan that reads like screens with gree
 kept-behaviour table against the current files, answers `sessions`' contract 5 finding (the diff's data; a migration
 from `0179` is the lead's and needs the owner's rehearsal on a dump at `0178`), and only then posts «the plans are
 approved». **Nobody deletes a file before that post and «the frame is in».**
+
+### ★ The untouched-suite ledger — wave 21 (every changed assertion in an existing suite, in the commit that changes it)
+
+| # | Suite | Change | Selector or expectation | Why |
+|---|---|---|---|---|
+| L21-1 | `tests/components/admin/admin-rail.test.tsx` | **deleted** with its file | expectation | `DEC-213` §4: one thing called admin-rail; replaced by `admin-rail-scope.test.tsx` and the count in `admin-nav.test.ts` |
+| L21-2 | `tests/components/admin/admin-rail-groups.test.tsx` | **deleted** | expectation | the disclosure groups it tested are gone (`DEC-226` §2, kept-behaviour row 11) |
+| L21-3 | `tests/unit/console-register.test.ts` | `:105`'s path → `components/ui/admin-rail.tsx`; the no-animation primitives gain `admin-rail`, `split-view`, `kv-card` | expectation — stricter | `DEC-227` §2, the owner's one amendment |
+| L21-4 | `tests/e2e/console.spec.ts` | the collapse, the fourteen-group disclosure and flyout, and the drawer-disclosed captures **replaced** by the count: twenty in six lists for an admin, six for a moderator, the sheet keeping six lists | expectation | kept-behaviour rows 9–11 dropped by name; rows 3, 6 asserted on the new shape |
+| L21-5 | `tests/e2e/console.spec.ts` | the «untouched screen» capture moves from `proposals` to `venues` | selector | `proposals` is rebuilt in PR B |
+| L21-6 | `tests/unit/ui-playground.test.ts` | floor 60 → 63 | expectation | `DEC-225` §2 |
 
 ★ **Three seams found at Step 0 that the brief did not name** (`DEC-227` §5): the hub's header is not the layout's today,
 so `sessions` moves it there and the survey and certificates tabs lose their own (the lead, as custodian); «المحتوى» is

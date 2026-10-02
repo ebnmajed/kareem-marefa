@@ -1,0 +1,105 @@
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
+import { PlayWordmark } from "@/components/brand/wordmark";
+import { formatNumber } from "@/components/sessions/numerals";
+import { AccountMenu } from "@/components/shell/account-menu";
+import { adminRailGroups, type AdminNavCounts, type AdminRole } from "@/components/shell/admin-nav";
+import { ConsoleFrame } from "@/components/shell/console-frame";
+import { getMe } from "@/lib/dal/members";
+import { requireSession } from "@/lib/dal/session";
+import { getShellData } from "@/lib/dal/shell";
+
+// The org console's frame — REQ-UIX-084, DEC-225 §3, DEC-226, DEC-227. Rebuilt in wave 21 from
+// `AdminDashboard.dc.html` and `AdminSessionsPhone.dc.html`: deleted first, then written (`DEC-208`); the table of what
+// it kept is in `docs/plan/notes/wave-21-lead.md`.
+//
+// ★ THE LAYOUT NEVER GATES. A `notFound()` raised in a layout under a `loading.tsx` boundary can no longer set the
+// status once streaming has begun — the request answers 200 with the not-found body inside it (wave 6). So the staff
+// and admin gates stay every page's own, at the data; a plain member gets no rail and the page answers its own
+// streamed not-found (`DEC-134`).
+//
+// ★ PLAIN DATA ACROSS THE BOUNDARY. `ConsoleFrame` and `AdminRail` are client components: the rail's groups are
+// strings, numbers and booleans, and each badge's accessible text is pluralised here. An icon component crossing it
+// crashed every admin page in wave 6.
+//
+// The badges follow the data, not the artboard (`DEC-228` §3.2): المقترحات ← proposals awaiting a decision; الجلسات ←
+// sessions not scheduled; البلاغات ← open photo reports; التعليقات ← open comment reports. A moderator reaches neither
+// proposals nor the sessions' management, so a moderator's rail carries the two report badges only.
+
+export default async function AdminLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  const session = await requireSession(locale);
+  const [t, tApp, tShell, shell, me] = await Promise.all([
+    getTranslations("admin.shell"),
+    getTranslations("app.console"),
+    getTranslations("app.shell"),
+    getShellData(locale),
+    getMe(locale),
+  ]);
+
+  const role: AdminRole = session.role === "admin" ? "admin" : session.role === "moderator" ? "moderator" : "member";
+  const attention = shell.attention;
+  const badge = (key: "proposals" | "sessions" | "photoReports" | "commentReports", count: number) => ({
+    count,
+    label: tApp(`badge.${key}`, { count, value: formatNumber(count) }),
+  });
+  const counts: AdminNavCounts = attention
+    ? {
+        ...(role === "admin" ? { proposals: badge("proposals", attention.proposals), sessions: badge("sessions", attention.unscheduled) } : {}),
+        moderationReports: badge("photoReports", attention.photoReports),
+        moderationComments: badge("commentReports", attention.commentReports),
+      }
+    : {};
+  const groups = adminRailGroups(role, (key) => t(`nav.${key}`), counts);
+  const isStaff = role !== "member";
+
+  return (
+    <ConsoleFrame
+      groups={groups}
+      railLabel={t("brand")}
+      openLabel={t("openRail")}
+      skipLabel={t("skipToContent")}
+      title={tApp("title")}
+      orgName={shell.orgName ?? null}
+      brand={
+        // Inside the platform the mark leads home, not to the public site (REQ-UIX-027).
+        <Link href="/app" aria-label={tShell("brand")} className="inline-flex items-center text-accent">
+          <PlayWordmark height={26} label={null} />
+        </Link>
+      }
+      toApp={
+        <Link href="/app" className="text-label text-fg-muted hover:text-fg-heading">
+          {tApp("toApp")}
+        </Link>
+      }
+      account={
+        <AccountMenu
+          memberId={me?.id ?? null}
+          displayName={me?.displayName ?? null}
+          avatarUrl={me?.avatarUrl ?? null}
+          teamColor={shell.teamColor}
+          isStaff={isStaff}
+          isPlatformAdmin={session.platformAdmin}
+          labels={{
+            account: tShell("account"),
+            profile: tShell("profile"),
+            points: tShell("points"),
+            certificates: tShell("certificates"),
+            bookmarks: tShell("bookmarks"),
+            calendar: tShell("calendar"),
+            notifications: tShell("meNotifications"),
+            privacy: tShell("mePrivacy"),
+            members: tShell("members"),
+            admin: tShell("adminConsole"),
+            platform: tShell("platform"),
+            signOut: tShell("signOut"),
+          }}
+        />
+      }
+    >
+      {children}
+    </ConsoleFrame>
+  );
+}

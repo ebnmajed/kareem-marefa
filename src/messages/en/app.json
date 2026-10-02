@@ -43,6 +43,16 @@
       "companyMissing": "Choose your company before reserving a seat or proposing a session.",
       "org": "Your organisation: <org>{value}</org>",
       "pointsStrip": "My points"
+    },
+    "console": {
+      "title": "Admin",
+      "toApp": "App",
+      "badge": {
+        "proposals": "{count, plural, one {# proposal awaiting a decision} other {{value} proposals awaiting a decision}}",
+        "sessions": "{count, plural, one {# session not scheduled} other {{value} sessions not scheduled}}",
+        "photoReports": "{count, plural, one {# report on photos} other {{value} reports on photos}}",
+        "commentReports": "{count, plural, one {# report on comments} other {{value} reports on comments}}"
+      }
     }
   }
 }
