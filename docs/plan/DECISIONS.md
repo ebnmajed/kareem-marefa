@@ -6683,3 +6683,54 @@ alone, and from `lg` sits under the hub's desktop strip with nothing current —
    and a bulk write has no honest state when the rows differ. Building it needs a column read by `public.notify()`.
 2. **The quarterly cup** that `Companies.dc.html` draws has no data behind it — a seasonal company snapshot would be
    new scoring scope.
+
+## DEC-219 — The owner's two answers to `DEC-218` §6: «إشعارات البريد» is built as a bulk write with a derived state; «كأس الربع» is built on the seasonal snapshot that already exists
+
+- **Date:** 2026-10-02 · **Decided by:** the owner (both rulings), recorded by the wave-20 lead with the measurement the owner supplied
+- **Amends:** `DEC-218` §2.1 (the master switch, withdrawn there, is built), §3.3 and §6 (the cup card's quarter is built); `REQ-UIX-077`, `REQ-UIX-079` are read with this entry
+- **Adds:** no migration expected for either. If one is needed after all it starts at **`0173`** (production's next after this wave's `0169` – `0172`), additive, with its `REQ-*` and its five parts, and the owner rehearses it
+- **Does not touch:** `public.notify()`, the preference matrix's SQL, `leaderboard_kind`, the five frozen public routes
+
+### 1 · «إشعارات البريد» — BUILT, writing every optional category at once (PR B, `SCR-029`, `notify`)
+
+The owner chose this over a real master column and over dropping the switch, **with the consequence stated and
+accepted**:
+
+> ★★ **A MEMBER WHO HAD DELIBERATELY SILENCED THREE CATEGORIES AND THEN USES THE MASTER SWITCH GETS THEM BACK ON.**
+
+That sentence is **the owner's accepted trade** — the reason the honest alternatives were offered. **The next session
+must not «fix» it as a bug.**
+
+- It writes `channel = 'email'` rows for **the optional categories only** — `08` §2's eight: `new_sessions`,
+  `my_sessions`, `reminders`, `ratings`, `social`, `recognition`, `proposals`, and `admin_queue` (admins and moderators
+  only). `certificates`, `moderation` and `account` are «on (not switchable)» and the switch never touches them, nor
+  any of `08` §1.7's seventeen. (`proposals` is written by the master though it is not a row of its own, `DEC-218` §2.1.)
+- ★ **Its displayed state is DERIVED, not stored**: on only when every optional email row the member may hold is on;
+  otherwise off. Deterministic, so the switch never lies about what it reads.
+- No column, no migration. It is one bulk write in one action, so a failure reverts it as one, with
+  `preferences.error` inline (`M10c.md` §6b).
+
+### 2 · «كأس الربع» — BUILT (PR B, `SCR-028`, `scoring`). The owner: «yes lets add it since it creates competition.»
+
+★ **It needs no schema change.** `DEC-218` §6.2 called it «new scoring scope»; the measurement says the capability
+exists and only the schedule is missing:
+
+- `leaderboard_snapshots` already carries `kind`, `period_start`, `period_end`, `metric company_metric`,
+  `active_member_count` and `is_final` (`0027:431-445`).
+- `snapshot_leaderboard()` already branches on `p_kind in ('monthly','seasonal')` (`0042:62`; the company board's own
+  `0081:613`). **A quarter is a `seasonal` snapshot whose period is a quarter.**
+- ★ **The precedent is written down**: `0066:24-28` — «'annual' as a `seasonal` snapshot whose period is a year needs
+  no» new enum value. **No enum value is invented.**
+- ★ **What is missing: nothing ever takes a seasonal snapshot** — `seasonal` appears nowhere under `worker/src/`. The
+  work is a quarter-end enqueue, the DAL read, and `028`'s cup card.
+- The artboard's figures map to columns that exist: `company.provisional` / `company.final` to `is_final`, «N نشطًا»
+  to `active_member_count`, «بلا ترتيب» to the minimum-active rule — which `DEC-218` §3.3 found gates only the
+  percentage rules; `scoring`'s plan says how a ranking uses it.
+- ★ **The one check before building** (a cup is handed over and cannot be taken back): `05-scoring-engine.md:383` warns
+  that adding a member retroactively raises that company's score for every past period. `scoring`'s plan says what
+  `is_final` does for a quarter already awarded, and whether «تُسلَّم في اللقاء السنوي» means a final row must be
+  immutable. If it must, that is the one place this may need SQL — from `0173`, as above.
+
+### 3 · Still open for the owner
+
+The copy trim's list (`DEC-217` §4.2) and the photo rule nothing pays (`STATUS.md`, question 4).

@@ -143,15 +143,13 @@ mentions §0b once, in §10, and never defines it — so the copy trim has no li
 6. **Every file created or deleted; every existing assertion that moves**, selector or expectation.
 7. **Any disagreement `DEC-216` §5 and `DEC-217` §4 do not list**, with the file and the line — not picked.
 
-### For the owner — four questions, none blocking the build (`DEC-217` §4.2, `DEC-218` §6)
+### For the owner — two of four answered (`DEC-219`); two open, none blocking the build (`DEC-217` §4.2, `DEC-218` §6)
 
 1. ★ **The copy trim's list** (`DEC-217` §4.2). `M10c.md` cites «§0b» and never defines it. Does the design session hold
    the list of lines trimmed from the M10a and M10b boards? If not, the lead derives it from the committed artboards
    and brings it to you before any string is removed.
-2. **«إشعارات البريد», the master switch** — not built: no column, and no honest state over mixed rows. Build it (a
-   column read by `public.notify()`), or leave it?
-3. **The quarterly cup** `Companies.dc.html` draws has no data — company snapshots are monthly. New scoring scope, or
-   the monthly race's state as built?
+2. ~~«إشعارات البريد»~~ — ★ **ANSWERED (`DEC-219` §1): built in PR B as a bulk write of the optional email rows, its state derived.** The owner accepted that a member who silenced three categories gets them back on by using it — **not a bug**.
+3. ~~The quarterly cup~~ — ★ **ANSWERED (`DEC-219` §2): built in PR B on the existing `seasonal` snapshot**; no enum, no table; a quarter-end enqueue, the DAL read, the card. `scoring` checks `is_final`'s immutability first.
 4. ★ **A rule nothing pays** (found by `scoring`, `0172`'s header): the catalogue lists «صورة من الجلسة» at 3 points, and
    **no trigger or job anywhere awards the `photo` rule**. A member reading `SCR-022`'s catalogue is promised points the
    product never writes. The awards are frozen this wave; fix the award (new scope), or disable the rule's seed?
