@@ -4587,3 +4587,21 @@ keys in `leaderboards.json`; with the lead's grant, `snapshot_leaderboards.ts`'s
 `0173` from my draft under `supabase/proposed/scoring/`; tests: a new `tests/rls/scoring-cup*.test.ts` (the quarter's
 snapshot taken, finalised once, frozen), unit cases for the quarter arithmetic and the derived count, the cup card's
 component test, and `wave20-scoring-boards.spec.ts`'s cup case.
+
+## H · The lead's rulings on the addendum (after `09156f37`), and two answers
+
+- **Accepted**: §A (no SQL; the UTC caveat carried), §B (a `company` snapshot with a quarter period; `getLeaderboards()`
+  and `getCompanyRace()` select the month by its period length, add-only exception granted, a unit case each), §C
+  (granted on `snapshot_leaderboards.ts` for the added statements only, with its test), §D («الجولة N من 3»).
+- **«بلا ترتيب» is NOT built this wave** — option (b) also reorders the monthly race, beyond `DEC-219`; it goes to the
+  owner. `DEC-218` §3.3 stands for that line. (b) stays drafted in §F, to land from `0173` if the owner says yes.
+- **§E — is the division exact? Measured: the stored ratio is NOT rounded, so the derivation is safe.**
+  `leaderboard_entries.points_per_active_member` is an unconstrained `numeric` (`format_type` = `numeric`), and the
+  snapshot writes `sum(...)::numeric / count(...)` into it unrounded: Postgres keeps 16 fractional digits for such a
+  quotient — `170/18` is stored `9.4444444444444444`. `round(points ÷ stored)` then recovers the count: measured
+  `170 → 18`, `7/3 → 3`, `−25/7 → 7`, `99999/9973 → 9973`. The error of the round trip is far below 0.5 for any count
+  an org can hold; read into a JavaScript double it is still exact to the integer. **So «N نشطًا» is drawn**, from
+  `round(points / ppam)`, and nothing is drawn when either is null or `0`. A unit case pins the four measured pairs.
+- **`main`'s worker in the gap** (it runs the old `snapshot_leaderboards.ts` until the merge): it takes no quarter
+  snapshot, so the cup card reads none and shows its empty state; the month's snapshots are taken exactly as today and
+  every reader selects them as today. Nothing breaks, and no row `main` writes is one the new code misreads.
