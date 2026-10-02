@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import type { DataTableColumn, DataTableProps } from "@/components/ui";
 
 // `console`'s file — the phone treatment is the REQUIREMENT, not a nicety
@@ -40,6 +42,129 @@ export interface DataTableAdditions<Row> {
   renderCard?: (row: Row, card: { titleId: string }) => ReactNode;
   /** Column keys whose header is read but not drawn — a ⋯ column the artboard leaves blank keeps its name. */
   hiddenHeaders?: readonly string[];
+}
+
+// ★ Wave 22 (`REQ-UIX-092`, `DEC-230` §4, `DEC-232` §3.4), three CELLS, add-only.
+// Each is a component a column's `cell` returns — so it draws in the table and
+// in the phone card alike, because both call `col.cell(row)`. Nothing above or
+// below changes: no prop, no render path, no class.
+//  · `DataTableSwitchCell` — a switch whose change is a named action on the row.
+//    It never flips itself: `checked` is the server's (or, on a read-mode page,
+//    the page's staged) truth, and `onCheckedChange` resolves `true` only when
+//    the change was written or staged. The answer is announced with the row.
+//  · `DataTableActionPair` — two decisions on one row; one runs at a time.
+//  · `DataTableSwatchCell` — a colour as a swatch AND in words, never alone. The
+//    colour reaches the swatch as `--team`, the one place data becomes a style.
+
+export interface DataTableSwitchCellProps {
+  /** The server's truth (or the page's staged value). The cell never flips itself ahead of the answer. */
+  checked: boolean;
+  /** The column's word — «مفعّل». */
+  label: string;
+  /** The row's name — joins the switch's accessible name: «مفعّل — تسجيل الحضور». */
+  rowName: string;
+  /** Called with the next value; resolves `true` only when the change was written (or staged). */
+  onCheckedChange: (next: boolean) => Promise<boolean>;
+  /** Announced after the answer, after the row's name — «تسجيل الحضور: مفعّل». */
+  announce: { on: string; off: string; failed: string };
+  disabled?: boolean;
+}
+
+export function DataTableSwitchCell({ checked, label, rowName, onCheckedChange, announce, disabled = false }: DataTableSwitchCellProps) {
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function change(next: boolean) {
+    setPending(true);
+    setMessage("");
+    let ok = false;
+    try {
+      ok = await onCheckedChange(next);
+    } catch {
+      ok = false;
+    }
+    setPending(false);
+    setMessage(`${rowName}: ${ok ? (next ? announce.on : announce.off) : announce.failed}`);
+  }
+
+  return (
+    <div aria-busy={pending || undefined}>
+      <Switch label={`${label} — ${rowName}`} labelHidden checked={checked} onCheckedChange={change} disabled={disabled || pending} />
+      <span aria-live="polite" className="sr-only">
+        {message}
+      </span>
+    </div>
+  );
+}
+
+export interface DataTableCellAction {
+  /** The visible word — «أخفِ». The accessible name is «أخفِ — {rowName}». */
+  label: string;
+  onAction: () => Promise<unknown> | void;
+  tone?: "danger" | "neutral";
+}
+
+export interface DataTableActionPairProps {
+  rowName: string;
+  primary: DataTableCellAction;
+  secondary: DataTableCellAction;
+}
+
+export function DataTableActionPair({ rowName, primary, secondary }: DataTableActionPairProps) {
+  const [running, setRunning] = useState<"primary" | "secondary" | null>(null);
+
+  async function run(which: "primary" | "secondary", action: DataTableCellAction) {
+    setRunning(which);
+    try {
+      await action.onAction();
+    } finally {
+      setRunning(null);
+    }
+  }
+
+  const button = (which: "primary" | "secondary", action: DataTableCellAction) => (
+    <Button
+      type="button"
+      size="sm"
+      variant={action.tone === "danger" ? "danger" : which === "primary" ? "secondary" : "quiet"}
+      aria-label={`${action.label} — ${rowName}`}
+      pending={running === which}
+      disabled={running !== null}
+      onClick={() => run(which, action)}
+    >
+      {action.label}
+    </Button>
+  );
+
+  return (
+    <div role="group" aria-label={rowName} className="flex flex-wrap items-center gap-2">
+      {button("primary", primary)}
+      {button("secondary", secondary)}
+    </div>
+  );
+}
+
+export interface DataTableSwatchCellProps {
+  /** `#rrggbb` from data, or null — reaches the DOM only as `--team` on the swatch. */
+  color: string | null;
+  /** The colour in words — «سماوي», «بلا لون». Always drawn. */
+  colorName: string;
+  /** Primary text beside it — a company's name. The caller isolates it (`<bdi>`). */
+  children?: ReactNode;
+}
+
+export function DataTableSwatchCell({ color, colorName, children }: DataTableSwatchCellProps) {
+  return (
+    <span className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+      <span
+        aria-hidden="true"
+        className={`inline-block size-4 shrink-0 rounded-field ${color ? "bg-team" : "border border-edge-strong"}`}
+        style={color ? ({ "--team": color } as CSSProperties) : undefined}
+      />
+      {children ? <span className="text-fg-heading">{children}</span> : null}
+      <span className={children ? "text-caption text-fg-muted" : "text-fg-body"}>{colorName}</span>
+    </span>
+  );
 }
 
 function IndeterminateCheckbox({
