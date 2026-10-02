@@ -175,7 +175,7 @@ test("member", async ({ context, page }) => {
     "/ar/app", "/ar/app/sessions", `/ar/app/sessions/${s}`, `/ar/app/sessions/${s}/check-in`, `/ar/app/sessions/${s}/rate`,
     `/ar/app/sessions/${s}/materials/${ids.material}`,
     "/ar/app/me", "/ar/app/me/points", "/ar/app/me/certificates", "/ar/app/me/bookmarks", "/ar/app/me/calendar",
-    "/ar/app/me/notifications", "/ar/app/me/privacy", "/ar/app/leaderboards", "/ar/app/propose",
+    "/ar/app/me/notifications", "/ar/app/me/settings", "/ar/app/me/privacy", "/ar/app/leaderboards", "/ar/app/leaderboards?board=companies", "/ar/app/propose",
     `/ar/app/propose/${ids.proposal}`, `/ar/app/propose/${ids.proposal}/edit`,
     // wave 19 (DEC-213): the directory, new, and a colleague's profile on the member tier.
     "/ar/app/members", `/ar/app/members/${ids.admin}`,
