@@ -1,9 +1,80 @@
-**Last updated:** 2026-10-02 · **Branch:** `main` · ★★ **WAVE 21 IS MERGED AND LIVE** — PR A #44 (`8ba2554b`), PR B #45 (`69438aa2`); **`0179` pushed to production by the owner after the lead's rehearsal on a dump at `0178`** (`supabase migration list --linked` reads `0179` on both sides); Railway reconnected with `--repo … --branch main`, **the builder held `DOCKERFILE` / `worker/Dockerfile`**, `69438aa2` deployed SUCCESS, the boot line «LISTEN/NOTIFY probe OK — round trip 8 ms» (wave 21 changed nothing under `worker/` or `packages/`). **Phase:** M11a — the console's first batch — **done**: the frame, `admin-rail`, `split-view`, `kv-card`, `040` – `044`. ★ **Closed by `DEC-229`. The next scope — M11b (`046` – `065`) or session stories — is the NEXT SESSION's, decided by the owner at its start**; the next decision is `DEC-230`, the next migration `0180`. ★ **Carried** (in the wave-21 block): the dropped typed message on re-clicking an open proposal at `lg`; the door's one-off error under heavy load (unreproduced in 141 runs, the code read now guarded, `getAttendanceReport()` not); «قرار خلال 7 أيام» not built; and as before `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, F2/F3, the hard-load duplicate, and the `railway.json` that would pin the worker's builder.
+**Last updated:** 2026-10-02 · **Branch:** `main` · ★★ **WAVE 22 IS PLANNED, NOT STARTED** · **`main`:** `584abdd0`; production and local both at **`0179`** · **Phase:** ★★ **M11b — THE REST OF THE CONSOLE (`DEC-230`, M24)**: the four tables, the two moderation queues, the four read-mode pages, reminders, exports, the audit log, settings and the two survey screens — **fifteen screens from fourteen artboards**, each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; ★★ **NO new primitive, so the gate's floor stays 63 and `tests/unit/ui-playground.test.ts` is untouched** — the first wave since 15 to add none. **One migration, `0180`** — one nullable column. The brief is `docs/plan/notes/wave-22-lead.md`. ★★ **THE OWNER RULES M11b BEFORE STORIES** (`DEC-230` §1), answering `DEC-229` §5's open question — stories have now been overtaken FOUR times and the ring stays inert. ★★ **Two owner rulings settle the wave's only hard questions:** hosting points move to **the venue's owning company** — the presenter's company earns presenting, the building's owner earns hosting, and a venue owned by nobody rewards nobody — which **answers the objection `0081` recorded rather than ignoring it** (§2); and moderation becomes **two screens**, so `moderationComments` flips to `built: false` and **the rail drops from twenty items to nineteen** (§3). ★ **Owed by the owner:** set each existing venue's company on `046` before the hosting rule's first evaluation; the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-045` and `055`–`059` with the studio and the brand kit, and session stories.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
+
+## ★★★ WAVE 22 — PLANNED, NOT STARTED — M11b, the rest of the console (`DEC-230`)
+
+**The programme's eighth wave, and the largest batch it has attempted: fifteen screens.** The brief is
+`docs/plan/notes/wave-22-lead.md`; the drawing is `docs/design/screens/M11b.md` with the **fourteen** artboards in
+`docs/design/screens/m11b/` (`050/052` share one board); the decision is `DEC-230`. Milestone **M24**. Requirements
+from **`REQ-UIX-091`**; stories from **`STORY-UIX-081`**. **One migration, `0180`** — `venues.company_id`, nullable.
+**Three PRs**, `wave-22a/the-tables`, `wave-22b/the-read-pages` and `wave-22c/moderation-and-the-survey`, **each
+opened against `main` on its first push** — three PRs means two chances to repeat PR #36's death, so the chance is
+never created.
+
+★★ **The two rules it is judged on:** `DEC-199` §2, a screen is **REBUILT** to its design, never restyled; and
+`DEC-208`, **its page file is DELETED FIRST, then written from its artboard**, with a kept-behaviour table. At fifteen
+screens **rule 2 is the only thing that will keep this batch honest** — on the console's older half it found a rail
+child type with no remaining use, an i18n defect printing `{value}`, and a pager duplicated across widths.
+
+★★ **NO NEW PRIMITIVE.** `M11b.md` says so outright, and the three `data-table` cells — a switch cell, a two-button
+action cell, a swatch cell — are **stories, add-only**, proven by every existing suite passing untouched. **The
+floor stays 63.**
+
+### ★★ The owner's three rulings
+
+1. **M11b before stories** (`DEC-230` §1), answering `DEC-229` §5, which left the scope open on purpose. The order
+   now: the member app (done) · M11a (done) · **M11b (this wave)** · stories · the studio · the public site last.
+   Stories have been overtaken **four** times; the ring stays inert.
+2. ★★ **Hosting points move to the venue's owning company.** In the owner's words: a presenter from company A
+   presenting in a meeting room owned by company B earns **A the presenting points and B the hosting points**, and
+   **a location owned by no company rewards no company.** ★ **This answers an objection `0081` recorded rather than
+   ignoring it:** that header rejected `venues.company_id` by name because «a venue is often reused by many different
+   hosting companies over time» — reading «hosting» as *whose session is this*, which varies. The owner means *whose
+   building is this*, which does not. Ownership is a property of the place, so the column is in its right home. See
+   `DEC-230` §2 for `0180`, the null-awards-nothing rule, and why `sessions.host_company_id` is **superseded but not
+   dropped**.
+3. ★ **Moderation becomes two screens** — الصور (takedowns) and البلاغات, absorbing comments — against `09`'s three.
+   `admin-nav.ts:44` carries `moderationComments` as `built: true` with a live route, so it **flips to
+   `built: false`** (the exclusion mechanism wave 21 kept on purpose), **the rail goes twenty items to nineteen**, and
+   `/app/admin/moderation/comments` **redirects**. ★ `REQ-ADM-010` still names four queues: **the presentation
+   merges, the queue does not.**
+
+### Step 0 — to measure before anyone is spawned, and two corrections already made
+
+| | |
+|---|---|
+| `main`, migrations, the next decision | **`584abdd0`**, **`0179`** on both sides, next **`0180`**, next **`DEC-230`** — all four as the planning prompt said |
+| ★ `src/components/ui/` | **63 `.tsx`, not 69.** The tree holds 63 and the floor **is** 63. ★★ **Third consecutive wave whose prompt overstated this** — wave 20's said 63 for 57, wave 21's said 66 for 60, each from the design pack's header. **The tree is the authority** |
+| ★ The floor's line | **`tests/unit/ui-playground.test.ts:121`**, not 120 — it moved by one in wave 21 |
+| The artboards | **fourteen** boards, **fourteen** PNGs, **fifteen** screens; `m11b/png/` holds a fifteenth entry, `README.md` |
+| ★ They are untracked | `M11b.md` and `m11b/` are `??`. **Step 0 commits the spec and the artboards**, and the lead says what it chose for the planning prompt |
+
+### ★ The audit rule, which this batch tests harder than any before it
+
+Every mutation on these fifteen screens writes its row through **the one writer**,
+`public.write_audit()` (`0005:16`), and **`audit_log` is append-only with `service_role` revoked** (invariant 9).
+These screens create, rename, deactivate and re-point venues, categories and companies; change a member's role and
+status; resolve a report; hide and restore a photo; edit a scoring rule; grant and revoke a badge; write a manual
+adjustment (`REQ-PTS-010`); change an org setting; and run every export. ★ **`REQ-ADM-017` is explicit that an export
+is audited «because an export is a bulk read of personal data»**, and fixes the file too: UTF-8 **with a BOM**, Arabic
+headers and enum values, **Western numerals** (`DEC-124`). **The lead's plan enumerates them, one line per mutation.**
+
+### Out, and not to be re-litigated
+
+`SCR-045` (M12) · `055`–`059` — the template screens, the studio, the email studio, the brand kit · every
+`/app/platform` route · the five frozen public routes · stories and the ring · the member app's screens · the
+hard-load **fix** (`DEC-204`; no route of this wave is in its table, so **nothing is re-measured here**) ·
+`DEC-194`'s two gates · `DEC-186` §4 · `DEC-215`'s four. **Not re-litigated:** `DEC-124` · `DEC-099` · `DEC-216`
+§2.1's withdrawal of `status-mark` · `DEC-226`'s six ruled groups · `DEC-227`'s categories without tags ·
+`REQ-UIX-053`, whose test is never edited · ★ **and `0081`'s venue objection, which `DEC-230` §2 ANSWERS** — a later
+session must find the answer in the log, not re-open the question.
+
+---
+
 
 ## ★★★ WAVE 21 — MERGED AND LIVE (#44 `8ba2554b`, #45 `69438aa2`; `0179` on production) — M11a, the first console batch (`DEC-225`, `DEC-227`)
 

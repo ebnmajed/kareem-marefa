@@ -7354,3 +7354,109 @@ control) **or session stories** (overtaken three times; wave 18's ring still ine
 session's start**; nothing here pre-empts it.
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-230 — Wave 22 is M11b, the rest of the console, and it comes before stories: fifteen screens from fourteen artboards, three PRs, NO new primitive; hosting points move to the venue's owner and `0081`'s objection is answered, not ignored; moderation becomes two screens and the rail drops to nineteen items
+
+- **Date:** 2026-10-02 · **Decided by:** the owner (§1 the order; §2 the hosting model; §3 moderation); everything else by the wave-22 planner, from `docs/design/screens/M11b.md`, the fourteen artboards, and measurement of the tree at `584abdd0`. `DEC-199` §2, `DEC-208`, `DEC-216` §2.1, `DEC-226`, `DEC-227` and `REQ-UIX-053` are not re-opened
+- **Amends:** ★ **`0081`'s header**, which rejected `venues.company_id` by name (§2); `09-sitemap-screens.md` §62's three moderation screens (§3); `DEC-229` §5, which left this scope open
+- **Adds:** milestone **M24**; requirements from **`REQ-UIX-091`**; stories from **`STORY-UIX-081`**; **one migration, `0180`** — one nullable column, named in §2
+- **Does not add:** a primitive. ★ **The gate's floor stays 63** and `tests/unit/ui-playground.test.ts` is untouched — the first wave since 15 to add none
+- **Does not touch:** the five frozen public routes, `qa:contract`, the register-form fingerprint, `registrations`, `REQ-UIX-053`'s test
+
+### 1 · The order — M11b now, stories after (the owner)
+
+`DEC-229` §5 left the next scope open by design: «the owner leaves M11b (`046` – `065`) or session
+stories to the next session». **The owner rules M11b.** Stories are **not demoted and not started** —
+`05-stories.md` entered the tree 2026-09-28 and has now been overtaken **four** times, by `DEC-205`,
+`DEC-216`, `DEC-225` and this — and **wave 18's story ring stays inert; nobody wires it.**
+
+### 2 · The hosting model — the owner's, and it answers what `0081` recorded
+
+★ **`0081`'s header considered `venues.company_id` BY NAME and rejected it**: «a venue is often reused
+by many different hosting companies over time… This migration adds a nullable
+`sessions.host_company_id`, set per session rather than permanently on the venue, so a session at a
+generic meeting room can still name its host, and a venue's ownership never has to be guessed from its
+history.»
+
+★★ **That objection read «hosting» as *whose session is this*, which varies per session. The owner means
+*whose building is this*, which does not.** In the owner's words: a presenter from company A presenting
+in a meeting room owned by company B earns **A the presenting points and B the hosting points**, and
+**if the location is owned by no company, no company is rewarded.** Ownership is a property of the
+place, not of the event, so `venues.company_id` is its correct home and `0081`'s objection does not
+survive the distinction. **It is answered here so no later session re-opens it.**
+
+1. **`0180`** — `venues.company_id uuid references public.companies(id)`, **nullable**, with its
+   `REQ-*` in `01-prd.md`, its RLS case, and a same-org trigger in the shape of
+   `sessions_host_company_same_org()`.
+2. **The `company_hosting` rule reads the venue's company.** ★ **A null awards nothing, and that is the
+   ruling rather than a gap** — «no company is rewarded» is correct behaviour and the story says so, so
+   nobody later treats it as a defect.
+3. ★ **`sessions.host_company_id` is SUPERSEDED and NOT dropped.** It is live on production and
+   `company_hosting` reads it today. The column stays, stops being read, and **the stopgap form on
+   `/app/admin/scoring` is removed** — the one `0081` itself flagged as temporary («a session ID typed
+   in… until console builds a proper picker»). Its removal waits for a wave that can drop a column
+   safely. **Two sources of truth for hosting is the one outcome to avoid.**
+4. ★ **Awarded rows do not move.** `points_ledger` is append-only (invariant 9); every
+   `company_hosting` row already written stays. The change is forward-only, and ★ **the owner sets each
+   existing venue's company on `046` before the rule's first evaluation after the merge.**
+
+### 3 · Moderation becomes two screens, and the rail drops an item
+
+`09`'s sitemap (`:62`) gives three — `/moderation/{comments,photos,reports}` as `SCR-050 · 051 · 052`.
+**The owner approves the design's two**: الصور (takedowns) and البلاغات, which absorbs comments
+(`DEC-NEXT-30`).
+
+★ **`src/components/shell/admin-nav.ts:44` carries `moderationComments` as its own item with
+`built: true` and a live route**, so the merge orphans it. It is handled, not left:
+**flipped to `built: false`**, which the rail already honours by exclusion — the mechanism wave 21
+preserved deliberately — taking the rail from **twenty items to nineteen**, with the count test moving
+with it; and **`/app/admin/moderation/comments` redirects to the reports screen** so no bookmark 404s.
+
+★ **`REQ-ADM-010` still names four queues** — proposals, comments, photos, reports. **It is the
+presentation that merges, not the queue.** A comment report still shows «the content in context» and
+resolving still records «the outcome and the actor»; a merged screen that loses either has broken the
+requirement rather than simplified the IA.
+
+### 4 · The other deltas of `M11b.md`, adopted
+
+- **`DEC-NEXT-29`** — `053`, `054`, `060` and `063` are **read-mode pages** with one «عدّل»
+  (`DEC-NEXT-23`). ★ The saved mark is **plain text with a glyph, not a primitive**: `status-mark`
+  was withdrawn by `DEC-216` §2.1 and stays withdrawn.
+- **`DEC-NEXT-31`** — `048` carries the **company colour**; the brand kit keeps the logo (`DEC-201`).
+- **No new primitive.** The switch cell, the two-button action cell and the swatch cell are **stories**
+  on `data-table`, add-only, with every existing suite passing untouched as the proof.
+
+### 5 · Measured corrections to the planning prompt
+
+1. ★ **`src/components/ui/` holds 63 `.tsx`, not 69.** The prompt gives 69 with a floor of 63; the tree
+   holds 63 and the floor **is** 63. ★ **This is the third consecutive wave whose prompt overstated the
+   count** — wave 20's said 63 for 57, wave 21's said 66 for 60 — and each time the number came from the
+   design pack's header. **The tree is the authority.**
+2. ★ **The floor's line is `tests/unit/ui-playground.test.ts:121`**, not 120; it moved by one in wave 21.
+3. **Fourteen artboards, fifteen screens** — `050/052` share one board. `m11b/png/` holds a fifteenth
+   entry, `README.md`.
+4. **`main` `584abdd0`, production and local at `0179`, next `0180`, next decision `DEC-230`** — all four
+   as the prompt says.
+
+### 6 · For the owner
+
+1. ★ **Set each existing venue's company on `046`** before the hosting rule's first evaluation (§2.4).
+   Until then no hosting points are awarded, which is correct and not a fault.
+2. **The `railway.json`** pinning the worker's builder and watch patterns — still owed.
+3. ★★ **The acceptance**: each rebuilt screen beside its artboard, **at 1280 on a real screen as well
+   as 390**.
+4. ★ **What comes after M11b.** Stories is the only designed thing left unbuilt, and that sentence has
+   been overtaken four times — so it is recorded as **the owner's to confirm**, not as a plan.
+
+### 7 · Carried, unchanged
+
+`DEC-215`'s four. · `DEC-194`'s two gates, together. · `DEC-186` §4's overshoot ceiling. · F2 and F3
+(`DEC-198` §5). · The hard-load duplicate (`DEC-204`) — **no route of this wave is in its table, so
+nothing is re-measured here**. · `SCR-045` and `055`–`059`, with the studio, the email studio and the
+brand kit. · A company logo, refused (`DEC-195` §4). · Recurring series (`A14`).
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-091` …, and the venue's company), `09-sitemap-screens.md`
+  (moderation's two screens), `14-roadmap.md` (M24), `15-backlog.md` (`STORY-UIX-081` …),
+  `05-scoring-engine.md` (§5.4's hosting source), `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten
+  agent files (the wave-22 map), `STATUS.md` (the wave-22 head), `docs/design/screens/M11b.md` and
+  `m11b/**` (added to the tree)
