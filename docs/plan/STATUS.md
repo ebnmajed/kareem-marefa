@@ -143,7 +143,7 @@ mentions §0b once, in §10, and never defines it — so the copy trim has no li
 6. **Every file created or deleted; every existing assertion that moves**, selector or expectation.
 7. **Any disagreement `DEC-216` §5 and `DEC-217` §4 do not list**, with the file and the line — not picked.
 
-### For the owner — two of four answered (`DEC-219`); two open, none blocking the build (`DEC-217` §4.2, `DEC-218` §6)
+### For the owner — two of five answered (`DEC-219`); three open, none blocking the build (`DEC-217` §4.2, `DEC-218` §6)
 
 1. ★ **The copy trim's list** (`DEC-217` §4.2). `M10c.md` cites «§0b» and never defines it. Does the design session hold
    the list of lines trimmed from the M10a and M10b boards? If not, the lead derives it from the committed artboards
@@ -153,6 +153,13 @@ mentions §0b once, in §10, and never defines it — so the copy trim has no li
 4. ★ **A rule nothing pays** (found by `scoring`, `0172`'s header): the catalogue lists «صورة من الجلسة» at 3 points, and
    **no trigger or job anywhere awards the `photo` rule**. A member reading `SCR-022`'s catalogue is promised points the
    product never writes. The awards are frozen this wave; fix the award (new scope), or disable the rule's seed?
+5. ★ **«بلا ترتيب» on the cup** (`scoring`'s addendum §F, `09156f37`). Honest only with **`0173`**: the snapshot freezes the
+   minimum of active members and the company ranking puts eligible companies first. ★ **That also reorders the
+   MONTHLY race going forward** (provisional rows only — a final one never moves). Yes (and which minimum: the
+   attendance rule's `min_active_members` whether or not it is enabled, or a new org setting), or leave «بلا ترتيب»
+   undrawn? Until answered the cup is built without it. ★ Also recorded: `DEC-219` §2's «seasonal» is corrected by
+   measurement — a `seasonal` snapshot ranks members; the cup is a `company` snapshot with a quarter's period; still
+   no schema, and a final quarter cannot move (`0027:453`, `:497`).
 
 ### Untouched-suite ledger (wave 20)
 
