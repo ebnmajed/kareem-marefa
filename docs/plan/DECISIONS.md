@@ -6881,3 +6881,79 @@ knows, does the design session. The wave-20 brief repeated the citation without 
 does next. `STORY-UIX-067` proceeds as `DEC-217` §4.2 proposed: **the lead derives the list** — every line the built
 M10a and M10b screens render that their committed artboards no longer draw and that changes nothing the person does
 next — and ★ **shows it to the owner before a single string is removed.**
+
+## DEC-224 — Wave 20's close: M10c is merged, live and accepted; the last designed batch is built, so session stories come next; what the wave found that no suite did, and what it carries
+
+- **Date:** 2026-10-02 · **Decided by:** the owner (the acceptance — «phone check passed», 2026-10-02); recorded by the wave-20 lead
+- **Closes:** `DEC-216` … `DEC-223`, milestone **M22**
+- **Merged:** #41 `wave-20a/the-hub` → `a3d2308b`; #42 `wave-20b/the-boards` → `04cb8023`; #43 `wave-20c/the-award` → `a405abff` — each CI 11/11 on its own head (`DEC-192`), merged A → B → C with `--delete-branch`, each opened against `main` from its first push so none was closed by its predecessor's merge
+- **Production:** `0169` – `0178`, every migration rehearsed on a production schema dump before its push (`0169` – `0176` on the dump at `0168`; `0177` – `0178` on the dump at `0176`); the worker redeployed from `a405abff` with its `DOCKERFILE` builder held and «LISTEN/NOTIFY probe OK — round trip 14 ms»
+
+### 1 · What was built
+
+Ten screens — the nine of `DEC-216` and `/app/me/settings` — each **deleted first and written from its artboard**
+(`DEC-208`), with a kept-behaviour table per screen: the hub frame and `021` – `025` (PR A); `026`, `029`, `027` with
+this week computed live, `028` with the quarterly cup (PR B); «بلا ترتيب» and the photo award (PR C). Three primitives
+(`ledger-row`, `podium`, `settings-group`; the gate's floor 57 → 60). Ten migrations. ★ **The acceptance is the owner's,
+on a phone, and it passed.**
+
+### 2 · ★★ What the wave found that no suite did — each a defect fixed in the wave
+
+1. ★★ **A live privacy hole since `0037`** (`DEC-221`): a checked-in member could insert a `photos` row claiming
+   `exif_stripped` beside an UNSTRIPPED original, and the org could read its GPS and device data. Found by `content`
+   measuring the photo award; closed by `0174`, rehearsed with the worker's real role (`postgres`, not `service_role`),
+   and verified closed in production by the owner. **The suite had asserted the direct insert succeeded.**
+2. **Interests were never built** (`REQ-PRF-001`) — no writer existed in `src/`; delete-first found it (`DEC-218` §4.2).
+3. **A profile save would have opted every member back into the boards** once the opt-out left the form — fixed before
+   it could ship (`27afbb3e`).
+4. **«أعد المحاولة» had nothing to call** — `0170`.
+5. **The calendar's Google connect and callback always returned to Arabic** — fixed, the locale parsed against `ar | en`
+   so it cannot become an open redirect.
+6. **The month filter on my points cut months at UTC**, not the org's zone.
+7. **The removal reversal reversed one photo award** (`limit 1`) — wrong after a restore; `0177` reverses every
+   standing award.
+8. ★ **On desktop, `SCR-022`'s head never wrote the points mark** — the layout's band, persisting across an in-app step,
+   kept advertising the occurrence; a desktop member would have seen the same «+N» every visit. Only a desktop e2e found
+   it (`34ec1008`).
+9. **A rebuilt board dropped its moment root** when it had nothing to record; **the cup card squeezed its text to one
+   word a line at 390**; **a dangling «·»** in the standing card — each caught on a capture held beside its artboard.
+10. **The catalogue promised three points for a photograph nothing paid** — now true (`0177`, `0178`), and `0172`'s
+    cap row is real.
+
+### 3 · Departures from the artboards, accepted by the owner on the phone
+
+`022`'s head kept at desktop (moment 4's surface, `DEC-218` §3.1) · the boards' windows as `tabs` · `023`'s serial and
+revocation reason (`REQ-CRT-013`) · `028`'s table is the quarter's race, the month its labelled fallback · the event
+aside's team line kept — ★ **the copy trim's derived list wrongly named it** (the artboard draws it in other words), so
+six lines were removed and that one kept (`DEC-223`) · `025`'s failed row without a swatch, its retry outlined.
+
+### 4 · The owed measurement (`DEC-204`) — recorded, not fixed
+
+On production builds, phone, 2 × 24 hard loads each: **`/app/me/points` 28 of 48 duplicated in the DOM, `/app/leaderboards`
+37 of 48; the accessibility tree 0 of 48 on both** (controls on the same builds: `/app` 18 of 48). The inbox's probe: 1 of
+24 at load, gone within a second. **The duplicate stays a DOM-only defect, now measured on every route the programme
+owed. ★ No screens wave is left to carry its fix; scheduling it is the owner's.**
+
+### 5 · The lead's own errors in this wave, written down so they are not repeated
+
+- `DEC-218` cited `0170` before its file existed — the number was held rather than the entry made false.
+- `DEC-220` cited `REQ-UIX-082`/`083` before they existed — CI's plan gate failed; defined at `a61d2934`.
+- The wave's early STATUS said «additive and safe» over `0174`, which drops a policy and revokes a grant — **the owner
+  required, and got, a rehearsal and a proof as the worker's role before the push.**
+- A copy-trim candidate and a capture's figure side were misread; a teammate checked before changing code.
+
+### 6 · Carried, unchanged unless noted
+
+- ★ **The admin control for `company_min_active_members`** — the console wave, on `/app/admin/settings` (`DEC-220` §1.3);
+  until then the value is set by SQL.
+- **The live per-category week** (D30 (b)) — a `weekly_leaderboard(p_category)`; not built.
+- **The quarter's periods are UTC boundaries**, as the month's have been since M4.
+- **No backfill of photo awards** — photographs recorded before `0177` never pay.
+- `DEC-215`'s four; `DEC-194`'s two gates; `DEC-186` §4's overshoot ceiling; F2 and F3; the hard-load fix (§4); a
+  company logo (refused); recurring series (`A14`); the `railway.json` that would pin the worker's builder.
+
+### 7 · ★★ What comes next
+
+**M10c was the last designed batch of the member app.** `DEC-215` §1's standing order — «WE BUILD WHAT HAS A DESIGN» —
+has no screens left, so **session stories land next** (`05-stories.md`, designed 2026-09-28), **unless the owner says
+otherwise.** Wave 18's story ring is still inert; the next wave wires it.

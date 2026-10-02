@@ -319,7 +319,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-PRF-001` | `ENT-member_interests` `ENT-members` | — | `SCR-010` `SCR-011` `SCR-012` +4 | `JOB-anonymise_members` | — | `STORY-PRF-001` | M1 |
+| `REQ-PRF-001` | `ENT-member_interests` `ENT-members` | — | `SCR-010` `SCR-011` `SCR-012` +5 | `JOB-anonymise_members` | — | `STORY-PRF-001` | M1 |
 | `REQ-PRF-002` | `ENT-companies` | — | `SCR-020` `SCR-021` `SCR-029` +1 | — | — | `STORY-PRF-001` | M1 |
 | `REQ-PRF-003` | `ENT-companies` | — | `SCR-020` `SCR-028` `SCR-048` | — | — | `STORY-PRF-001` | M1 |
 | `REQ-PRF-004` | `ENT-calendar_connections` | — | `SCR-007` `SCR-020` `SCR-043` +5 | `JOB-zip_session_photos` | — | `STORY-PRF-002` | M1 |
