@@ -96,6 +96,11 @@ test.beforeAll(async ({}, testInfo) => {
     orgId,
     modMemberId,
   ]);
+  // ★ wave 22: one configuration change, in the other store — read beside the log, marked by kind (DEC-231 §4.3).
+  await db.query(
+    `insert into public.scoring_config_history (org_id, scope, entity_id, field, old_value, new_value, actor_id) values ($1, 'scoring', gen_random_uuid(), 'points', '10', '15', $2)`,
+    [orgId, adminMemberId],
+  );
   // Forty days old: outside «آخر سبعة أيام» and outside a range ending today.
   await db.query(
     `insert into public.audit_log (org_id, actor_id, actor_role, action, subject_type, reason, occurred_at) values ($1, $2, 'moderator', 'photo.removed', 'photo', 'صورة قديمة', now() - interval '40 days')`,
@@ -161,25 +166,42 @@ test("REQ-ADM-018: an admin sees the whole org's log, each action in Arabic", as
   await expect(shown(page, "إزالة تعليق")).toBeVisible();
 });
 
+test("★ REQ-UIX-099: the configuration history is beside the log, marked «إعداد», with its old and new value — and a moderator sees none of it", async ({ context, page }) => {
+  await signIn(context, adminEmail);
+  await goto(page, "/ar/app/admin/audit");
+  await expect(shown(page, "قواعد النقاط · النقاط")).toBeVisible();
+  await expect(page.locator("#main").getByText("10 ← 15").filter({ visible: true })).toBeVisible();
+  await expect(page.locator("#main").getByText("إعداد", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+
+  await context.clearCookies();
+  await signIn(context, modEmail);
+  await goto(page, "/ar/app/admin/audit");
+  await expect(page.getByText("قواعد النقاط · النقاط", { exact: true })).toHaveCount(0);
+});
+
 test("03 §5.10a: a moderator sees only their own actions, never the admin's, and no actor filter", async ({ context, page }) => {
   await signIn(context, modEmail);
   await goto(page, "/ar/app/admin/audit?period=30d");
   await expect(shown(page, "محتوى مسيء")).toBeVisible();
   await expect(page.getByText("ترقية عضو", { exact: true })).toHaveCount(0);
-  await expect(page.getByLabel("الفاعل", { exact: true })).toHaveCount(0);
+  // ★ wave 22: the filters are chips (a selector moved); a moderator has no actor chip and no CSV.
+  await expect(page.locator("#main").getByRole("button", { name: /^الفاعل:/ })).toHaveCount(0);
+  await expect(page.locator("#main").getByRole("button", { name: "نزِّل السجل الظاهر بصيغة CSV" })).toHaveCount(0);
 });
 
+// ★ wave 22: the filter is a chip whose menu items are links; «الكل» removes it (a selector moved — a ledger line).
 test("the action filter narrows the list, and its chip removes it", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "the panel form is the desktop treatment; the sheet is captured on the phone");
+  test.skip(testInfo.project.name !== "desktop", "one walk is enough");
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/audit");
-  await page.getByLabel("الإجراء", { exact: true }).selectOption("comment.removed");
-  await page.getByRole("button", { name: "طبّق" }).click();
+  await page.locator("#main").getByRole("button", { name: "الفعل: الكل" }).click();
+  await page.getByRole("menuitem", { name: "إزالة تعليق" }).click();
   await expect(page).toHaveURL(/action=comment\.removed/);
   await expect(shown(page, "محتوى مسيء")).toBeVisible();
   await expect(page.getByText("ترقية عضو", { exact: true })).toHaveCount(0);
 
-  await page.getByRole("group", { name: "الفلاتر المطبّقة" }).getByRole("link", { name: /أزل الفلتر/ }).click();
+  await page.locator("#main").getByRole("button", { name: "الفعل: إزالة تعليق" }).click();
+  await page.getByRole("menuitem", { name: "الكل" }).click();
   await expect(page).not.toHaveURL(/action=/);
   await expect(shown(page, "ترقية عضو")).toBeVisible();
 });
@@ -204,8 +226,8 @@ test("★ a custom range includes the day it ends on, in the org's own days; «�
 test("the log pages fifty at a time, and the older page holds the rest", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/audit?action=session.published");
-  // Fifty is Arabic's «many» form: «50 إجراءً».
-  await expect(page.getByText(/50 إجراءً، الأحدث أولًا/)).toBeVisible();
+  // ★ wave 22: the count is the filtered total across both stores — 55, Arabic's «many» form (an expectation moved).
+  await expect(page.locator("#main").getByText("55 سجلًا", { exact: true })).toBeVisible();
   await expect(shown(page, "نشر رقم 1")).toBeVisible();
   await expect(page.getByText("نشر رقم 55", { exact: true })).toHaveCount(0);
 
@@ -216,25 +238,23 @@ test("the log pages fifty at a time, and the older page holds the rest", async (
   await expect(page.getByRole("navigation", { name: "صفحات السجل" }).getByRole("link", { name: "عُد إلى الأحدث" })).toBeVisible();
 });
 
-test("SCR-062 at 390 px RTL: the filters in a sheet, the log as cards, never sideways — as an admin", async ({ context, page }, testInfo) => {
+test("SCR-062 at 390 px RTL: the chips in one scrolling row, the log as cards, never sideways — as an admin", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/audit");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
 
-  await page.getByRole("button", { name: "تصفية", exact: true }).click();
-  const sheet = page.getByRole("dialog", { name: "تصفية السجل" });
-  await sheet.getByLabel("الإجراء", { exact: true }).selectOption("member.role_changed");
-  await sheet.getByLabel("المدة", { exact: true }).selectOption("7d");
-  await page.screenshot({ path: `${SHOTS}/wave8-console-audit-filters-sheet.png` });
-  await sheet.getByRole("button", { name: "طبّق" }).click();
-
+  await page.locator("#main").getByRole("button", { name: "الفعل: الكل" }).click();
+  await page.getByRole("menuitem", { name: "تغيير دور عضو" }).click();
   await expect(page).toHaveURL(/action=member\.role_changed/);
-  await expect(page.getByRole("button", { name: "تصفية (2)" })).toBeVisible();
+  await page.locator("#main").getByRole("button", { name: "المدة: كل الأوقات" }).click();
+  await page.screenshot({ path: `${SHOTS}/wave22-console-audit-chips-390.png` });
+  await page.getByRole("menuitem", { name: "آخر سبعة أيام" }).click();
+  await expect(page).toHaveURL(/period=7d/);
   await expect(shown(page, "ترقية عضو")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "the log must not scroll sideways at 390 px").toBe(true);
-  await page.screenshot({ path: `${SHOTS}/wave8-console-audit-filtered-admin.png` });
+  await page.screenshot({ path: `${SHOTS}/wave22-console-audit-filtered-admin-390.png` });
 });
 
 test("SCR-062 at 390 px RTL: filtered, as a moderator", async ({ context, page }, testInfo) => {
@@ -245,5 +265,5 @@ test("SCR-062 at 390 px RTL: filtered, as a moderator", async ({ context, page }
   await expect(shown(page, "محتوى مسيء")).toBeVisible();
   await expect(page.getByText("إجراءاتك أنت وحدها", { exact: false })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
-  await page.screenshot({ path: `${SHOTS}/wave8-console-audit-filtered-moderator.png` });
+  await page.screenshot({ path: `${SHOTS}/wave22-console-audit-filtered-moderator-390.png` });
 });

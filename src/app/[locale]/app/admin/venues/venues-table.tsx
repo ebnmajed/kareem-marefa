@@ -72,7 +72,7 @@ export function VenuesTable({ venues, locale }: { venues: AdminVenue[]; locale: 
           active={v.deactivatedAt === null}
           onSetActive={(active) => setVenueActiveAction(locale, v.id, active)}
           labels={{
-            trigger: t("moreActions", { name: v.name }),
+            trigger: t.markup("moreActions", { name: v.name, t: (chunks) => chunks }),
             edit: t("edit"),
             deactivate: t("deactivate"),
             reactivate: t("activate"),

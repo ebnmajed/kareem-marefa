@@ -1,61 +1,32 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { ExportDownloadButton } from "@/components/admin/export-download-button";
 import { KeysetPager } from "@/components/admin/keyset-pager";
+import { actionText, fieldText, scopeText, subjectText, valueText, type AuditMessages } from "@/components/admin/audit/audit-text";
 import { formatNumber } from "@/components/sessions/numerals";
 import type { EmptyStateProps } from "@/components/ui";
-import { Link } from "@/components/ui/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
-import { TagChip } from "@/components/ui/tag-chip";
-import { auditFiltersFrom, listAuditFilterOptions, listAuditLog, type AuditFilters } from "@/lib/dal/admin-audit";
+import { auditFiltersFrom, listAuditFeed, listAuditFilterOptions } from "@/lib/dal/admin-audit";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { requireSession } from "@/lib/dal/session";
-import { AuditFilterPanel, type AuditFilterChoices } from "./audit-filters";
+import ar from "@/messages/ar/admin.json";
+import en from "@/messages/en/admin.json";
+import { auditHref, auditParams, auditWithout } from "./audit-query";
 import { AuditTable, type AuditTableRow } from "./audit-table";
+import { AuditToolbar, type AuditToolbarChoices } from "./audit-toolbar";
 
-// SCR-062 · /app/admin/audit (REQ-ADM-018), on the M9 system for wave 8 (K1).
-// Staff — an admin sees the whole org's log, a moderator sees only their own
-// actions (`audit_read_admin`/`audit_read_moderator_own`, 0004, 03 §5.10a);
-// `listAuditLog()` adds no role filter of its own, RLS pre-scopes the same
-// query for either role. A plain member gets the streamed not-found (DEC-134).
+// SCR-062 · /app/admin/audit (`REQ-ADM-018`, `REQ-ADM-023`, `REQ-UIX-099`, `REQ-NFR-006`), written for wave 22 from
+// `AdminAudit.dc.html` (`DEC-208`: deleted first). The job: an admin answers «who changed this, when, and why» from
+// one table — the log's actions and the configuration history side by side, marked by kind (`DEC-231` §4.3) —
+// narrowed by actor, action, period and subject, and exported as «CSV» through the audited path.
 //
-// Searchable by actor, subject, action and date range — the date range in
-// the org's own days (`lib/dal/admin-audit.ts` says why that was wrong
-// before) — a page of fifty at a time with a way to the older ones, every
-// action and subject in Arabic, and one subject followable from any row.
-// Nothing here edits a row: the log is evidence.
+// Staff, decided at the data: an admin reads the org's log and its configuration history; ★ a moderator reads their
+// own actions and nothing else — no history, no actor chip, no CSV — exactly as before (`REQ-ADM-020`, `09`'s coverage:
+// «SCR-062 (own actions)»); a member gets the streamed not-found (`DEC-134`). The layout never gates.
 //
-// ★ `REQ-ADM-018` lists «scoring configuration changes» among what the log
-// holds; those are written to `scoring_config_history`, which the points
-// screen reads — the admin is told so, with the link, rather than shown a log
-// that looks complete and is not.
-
-const PATH = "/app/admin/audit";
-const PARAM: Record<keyof AuditFilters, string> = {
-  actor: "actor",
-  action: "action",
-  subjectType: "subject",
-  subjectId: "subjectId",
-  period: "period",
-  from: "from",
-  to: "to",
-  before: "before",
-};
-
-function href(filters: AuditFilters): string {
-  const query = new URLSearchParams();
-  for (const [key, param] of Object.entries(PARAM) as [keyof AuditFilters, string][]) {
-    const value = filters[key];
-    if (value) query.set(param, value);
-  }
-  const qs = query.toString();
-  return qs ? `${PATH}?${qs}` : PATH;
-}
-
-const domainOf = (action: string) => {
-  const domain = action.split(".")[0];
-  return domain === "check_in_code" ? "check_in" : domain;
-};
+// Kept from wave 8 (K1): the org's own days for a range, half-open; fifty a page with a keyset cursor, never an offset;
+// one subject followable; former staff and «النظام» filterable; every action in Arabic and never its key.
 
 export default async function AuditLogPage({
   params,
@@ -69,120 +40,122 @@ export default async function AuditLogPage({
   const { filters, rangeInverted } = auditFiltersFrom(await searchParams);
 
   const [session, prefs, t] = await Promise.all([requireSession(locale), getOrgPrefs(locale), getTranslations("admin.audit")]);
-  const [page, options] = await Promise.all([listAuditLog(locale, filters, prefs.timeZone), listAuditFilterOptions(locale)]);
+  const [page, options] = await Promise.all([listAuditFeed(locale, filters, prefs.timeZone), listAuditFilterOptions(locale)]);
   if (page === null || options === null) notFound();
 
   const isAdmin = session.role === "admin";
-  const actionLabel = (action: string) => {
-    const key = `actions.${action}`;
-    return t.has(key) ? t(key) : action;
+  const m = (locale === "en" ? en : ar).admin.audit as unknown as AuditMessages;
+  const domainLabel = (action: string) => {
+    const domain = action.split(".")[0] === "check_in_code" ? "check_in" : action.split(".")[0];
+    return t.has(`domains.${domain}`) ? t(`domains.${domain}`) : t("domains.other");
   };
-  const subjectLabel = (type: string) => (t.has(`subjects.${type}`) ? t(`subjects.${type}`) : type);
-  const domainLabel = (domain: string) => (t.has(`domains.${domain}`) ? t(`domains.${domain}`) : t("domains.other"));
 
   const groups = new Map<string, { value: string; label: string }[]>();
   for (const action of options.actions) {
-    const group = domainLabel(domainOf(action));
-    groups.set(group, [...(groups.get(group) ?? []), { value: action, label: actionLabel(action) }]);
+    const group = domainLabel(action);
+    groups.set(group, [...(groups.get(group) ?? []), { value: action, label: actionText(m, action) }]);
   }
-  const choices: AuditFilterChoices = {
+  const choices: AuditToolbarChoices = {
     actors: options.actors?.map((a) => ({ id: a.id, label: a.displayName ?? t("unknownActor") })) ?? null,
-    actionGroups: Array.from(groups, ([label, actions]) => ({ label, actions: actions.sort((a, b) => a.label.localeCompare(b.label, "ar")) })).sort((a, b) =>
-      a.label.localeCompare(b.label, "ar"),
-    ),
-    subjectTypes: options.subjectTypes.map((value) => ({ value, label: subjectLabel(value) })),
+    actionGroups: [
+      ...Array.from(groups, ([label, actions]) => ({ label, actions: actions.sort((a, b) => a.label.localeCompare(b.label, "ar")) })).sort((a, b) => a.label.localeCompare(b.label, "ar")),
+      // ★ The configuration history's scopes, an admin's only — `config.<scope>` (`DEC-231` §4.3).
+      ...((options.configScopes ?? []).length > 0
+        ? [{ label: t("config.group"), actions: (options.configScopes ?? []).map((s) => ({ value: `config.${s}`, label: scopeText(m, s) })) }]
+        : []),
+    ],
+    subjectTypes: options.subjectTypes.map((value) => ({ value, label: subjectText(m, value) })),
   };
 
-  const rows: AuditTableRow[] = page.rows.map((r) => ({
-    id: r.id,
-    actionLabel: actionLabel(r.action),
-    actorName: r.actorName,
-    actorRole: r.actorRole,
-    isSystem: r.actorId === null,
-    subjectLabel: r.subjectType ? subjectLabel(r.subjectType) : null,
-    subjectHref: r.subjectType && r.subjectId && r.subjectId !== filters.subjectId ? href({ subjectType: r.subjectType, subjectId: r.subjectId }) : null,
-    reason: r.reason,
-    occurredAt: r.occurredAt,
-  }));
+  const rows: AuditTableRow[] = page.rows.map((r) =>
+    r.kind === "log"
+      ? {
+          id: r.id,
+          kind: "log",
+          occurredAt: r.occurredAt,
+          actorName: r.actorName,
+          actorRole: r.actorRole,
+          isSystem: r.actorId === null,
+          action: actionText(m, r.action),
+          detail: null,
+          reason: r.reason,
+          target: r.subjectType ? [subjectText(m, r.subjectType), r.subjectName].filter(Boolean).join(" · ") : null,
+          targetHref: r.subjectType && r.subjectId && r.subjectId !== filters.subjectId ? auditHref({ subjectType: r.subjectType, subjectId: r.subjectId }) : null,
+        }
+      : {
+          id: r.id,
+          kind: "config",
+          occurredAt: r.occurredAt,
+          actorName: r.actorName,
+          actorRole: r.actorId === null ? null : "admin",
+          isSystem: r.actorId === null,
+          action: `${scopeText(m, r.scope)} · ${fieldText(m, r.field)}`,
+          detail: { from: valueText(m, r.oldValue), to: valueText(m, r.newValue) },
+          reason: null,
+          target: r.entityName ?? scopeText(m, r.scope),
+          targetHref: r.entityId && r.entityId !== filters.subjectId ? auditHref({ subjectId: r.entityId }) : null,
+        },
+  );
 
-  // The chips: each active filter, removable on its own. Removing the period
-  // removes its dates; every removal starts again from the newest rows.
-  const chip = (name: string, value: string) => t.markup("chip", { name, value, t: (chunks) => chunks, bdi: (chunks) => chunks });
-  const without = (...keys: (keyof AuditFilters)[]) => {
-    const next: AuditFilters = { ...filters, before: undefined };
-    for (const key of keys) next[key] = undefined;
-    return href(next);
-  };
-  const actorName = filters.actor === "system" ? t("systemActor") : choices.actors?.find((a) => a.id === filters.actor)?.label;
-  const chips = [
-    filters.actor && actorName ? { label: chip(t("actorLabel"), actorName), removeHref: without("actor") } : null,
-    filters.action ? { label: chip(t("actionLabel"), actionLabel(filters.action)), removeHref: without("action") } : null,
-    filters.subjectType ? { label: chip(t("subjectTypeLabel"), subjectLabel(filters.subjectType)), removeHref: without("subjectType", "subjectId") } : null,
-    filters.subjectId && !filters.subjectType ? { label: t("oneSubject"), removeHref: without("subjectId") } : null,
-    filters.subjectId && filters.subjectType ? { label: chip(t("colSubject"), t("oneSubject")), removeHref: without("subjectId") } : null,
-    filters.period ? { label: chip(t("periodLabel"), t(`periods.${filters.period}`)), removeHref: without("period", "from", "to") } : null,
-  ].filter((c): c is { label: string; removeHref: string } => c !== null);
-  const filtered = chips.length > 0;
-
+  const actorLabel = filters.actor === "system" ? t("systemActor") : choices.actors?.find((a) => a.id === filters.actor)?.label ?? null;
+  const filtered = Object.entries(filters).some(([k, v]) => k !== "before" && v);
   const empty: EmptyStateProps = filtered
-    ? {
-        title: t("emptyFilteredTitle"),
-        description: t("emptyFilteredDescription"),
-        action: { label: t("clearAll"), href: PATH },
-      }
+    ? { title: t("emptyFilteredTitle"), description: t("emptyFilteredDescription"), action: { label: t("clearAll"), href: "/app/admin/audit" } }
     : isAdmin
       ? { title: t("emptyTitle"), description: t("emptyDescription"), action: { label: t("toDashboard"), href: "/app/admin" } }
-      : { title: t("emptyModeratorTitle"), description: t("emptyModeratorDescription"), action: { label: t("toModeration"), href: "/app/admin/moderation/comments" } };
+      : { title: t("emptyModeratorTitle"), description: t("emptyModeratorDescription"), action: { label: t("toModeration"), href: "/app/admin/moderation/reports" } };
+  const csvQuery = auditParams(auditWithout(filters)).toString();
 
   return (
     <>
-      <PageHeader title={t("title")} description={t(isAdmin ? "introAdmin" : "introModerator")} />
-      {isAdmin ? (
-        <p className="mt-2 max-w-2xl text-body-sm text-fg-muted">
-          {t("scoringNote")}{" "}
-          <Link href="/app/admin/scoring#history-heading" className="text-fg-heading underline underline-offset-4">
-            {t("scoringNoteLink")}
-          </Link>
-        </p>
-      ) : null}
+      <PageHeader
+        inlineActions
+        title={t("title")}
+        description={isAdmin ? undefined : t("introModerator")}
+        actions={
+          isAdmin ? (
+            <ExportDownloadButton
+              href={`/api/admin/exports/audit${csvQuery ? `?${csvQuery}` : ""}`}
+              fallbackName="audit.csv"
+              label={t("csv")}
+              accessibleName={t("csvLabel")}
+              pendingLabel={t("csvPending")}
+              doneLabel={t("csvDone")}
+              failedLabel={t("csvFailed")}
+            />
+          ) : null
+        }
+      />
 
-      <div className="mt-6 flex flex-col gap-6 md:flex-row md:items-start">
-        <AuditFilterPanel choices={choices} filters={filters} activeCount={chips.length} />
+      <div className="mt-6 space-y-4">
+        <AuditToolbar
+          filters={filters}
+          choices={choices}
+          count={t.markup("count", { count: page.total, value: formatNumber(page.total), bdi: (chunks) => chunks })}
+          labels={{
+            actor: actorLabel,
+            action: filters.action ? (filters.action.startsWith("config.") ? scopeText(m, filters.action.slice(7)) : actionText(m, filters.action)) : null,
+            subject: filters.subjectId ? t("oneSubject") : filters.subjectType ? subjectText(m, filters.subjectType) : null,
+          }}
+        />
 
-        <div className="min-w-0 flex-1">
-          {rangeInverted ? (
-            <Panel tone="error" className="mb-4">
-              <p role="alert" className="text-body-sm text-fg-heading">
-                {t("rangeInverted")}
-              </p>
-            </Panel>
-          ) : null}
+        {rangeInverted ? (
+          <Panel tone="error">
+            <p role="alert" className="text-body-sm text-fg-heading">
+              {t("rangeInverted")}
+            </p>
+          </Panel>
+        ) : null}
 
-          {filtered ? (
-            <div role="group" aria-label={t("activeFilters")} className="mb-4 flex flex-wrap items-center gap-2">
-              {chips.map((c) => (
-                <TagChip key={c.removeHref} label={c.label} removeHref={c.removeHref} removeLabel={t.markup("removeFilter", { label: c.label, bdi: (chunks) => chunks })} />
-              ))}
-              <Link href={PATH} className="text-body-sm text-fg-heading underline underline-offset-4">
-                {t("clearAll")}
-              </Link>
-            </div>
-          ) : null}
+        <AuditTable rows={rows} timeZone={prefs.timeZone} locale={locale} empty={empty} />
 
-          {rows.length > 0 ? (
-            <p className="mb-3 text-body-sm text-fg-muted">{t.rich("pageCaption", { count: rows.length, value: formatNumber(rows.length), bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
-          ) : null}
-
-          <AuditTable rows={rows} timeZone={prefs.timeZone} locale={locale} empty={empty} />
-
-          <KeysetPager
-            label={t("pagerLabel")}
-            olderHref={page.nextBefore ? href({ ...filters, before: page.nextBefore }) : null}
-            olderLabel={t("older")}
-            newestHref={filters.before ? without() : null}
-            newestLabel={t("newest")}
-          />
-        </div>
+        <KeysetPager
+          label={t("pagerLabel")}
+          olderHref={page.nextBefore ? auditHref({ ...filters, before: page.nextBefore }) : null}
+          olderLabel={t("older")}
+          newestHref={filters.before ? auditHref(auditWithout(filters)) : null}
+          newestLabel={t("newest")}
+        />
       </div>
     </>
   );

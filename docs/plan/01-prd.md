@@ -3854,8 +3854,9 @@ the presenter's average, the response rate — a bar per star count, the free-te
 
 #### REQ-UIX-106 — Survey templates, and the selected one's questions
 **Serves:** `REQ-SUR-001`, `REQ-SUR-002` · `REQ-ADM-023` · `09` `SCR-065`
-`SCR-065` is rebuilt from `AdminSurveys.dc.html`: the templates — name, questions, sessions, default — beside the
-selected template's questions — question, type, required; «قالب جديد».
+`SCR-065` is rebuilt from `AdminSurveys.dc.html`: the templates — name, questions, sessions — and, below them, the
+selected template's questions — question, type, required; «قالب جديد». (Corrected in wave 22: this text first said
+«beside», which the lead wrote without reading the artboard, which draws the questions below.)
 **Acceptance:**
 - Questions reorder without dragging (`ui/reorderable-list`).
 - Creating, saving and deleting a template are audited.
