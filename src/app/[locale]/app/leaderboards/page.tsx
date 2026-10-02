@@ -171,7 +171,9 @@ export default async function LeaderboardsPage({
           limit={limit}
           moreHref={moreHref}
           moment={moment}
-          acknowledge={moment.needsMark ? acknowledgeBoardSeen.bind(null, locale, moment.mark) : null}
+          // Always bound, as before the rebuild: `MomentRank` decides from `needsMark` whether to send it, and its root
+          // (`data-moment`) is on the board whether or not a moment plays — the suites wait on it.
+          acknowledge={acknowledgeBoardSeen.bind(null, locale, moment.mark)}
           documentLoad={documentLoad}
         />
       </section>

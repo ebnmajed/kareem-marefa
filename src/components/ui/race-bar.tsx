@@ -33,14 +33,14 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
   const colour = teamColorOrNull(teamColor);
   const ring = colour ? "border-team" : "border-team-neutral";
   const ringStyle = colour ? ({ "--team": colour } as CSSProperties) : undefined;
-  const frame = own ? "border-accent pg-light:border-fg-heading" : "border-transparent";
+  const ownEdge = own ? "border-accent pg-light:border-fg-heading" : "border-transparent";
 
   // ★ wave 18 (DEC-207 W3, add-only): ONE line — the ring, the name, the bar, the value — as the home's race draws it
   // (`SCR-010`). The metric is still said on every row, to a screen reader, beside the value (REQ-LDR-005); the card
   // that holds the rows shows it once, visibly. The rank, when given, is heard and not drawn: the order is the rank.
   if (layout === "inline") {
     return (
-      <li className={`flex items-center gap-2 rounded-tile border-2 px-2 py-1.5 ${frame} ${className}`}>
+      <li className={`flex items-center gap-2 rounded-tile border-2 px-2 py-1.5 ${ownEdge} ${className}`}>
         {rank != null ? <span className="sr-only">{rankLabel}</span> : null}
         <span aria-hidden="true" data-slot="ring" style={ringStyle} className={`size-5 shrink-0 rounded-pill border-[3px] bg-canvas ${ring}`} />
         {/* The name and «فريقك» run on as one line, as the artboard sets «صنف، فريقك»; a long name may still wrap. */}
@@ -68,7 +68,7 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
   // and shown once, visibly, by the table's own header — the caller's.
   if (layout === "grid") {
     return (
-      <li className={`grid grid-cols-[1.75rem_minmax(0,1fr)_auto_auto] items-center gap-x-3 rounded-tile border-2 bg-surface px-3 py-2.5 ${own ? frame : "border-edge"} ${className}`}>
+      <li className={`grid grid-cols-[1.75rem_minmax(0,1fr)_auto_auto] items-center gap-x-3 rounded-tile border-2 bg-surface px-3 py-2.5 ${own ? ownEdge : "border-edge"} ${className}`}>
         <span className="text-center font-display text-play-sm font-extrabold text-fg-muted">
           {rank != null ? (
             <>
@@ -108,7 +108,7 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
   // is fixed-width but the rank and the ring, so the name wraps and the number
   // stays whole.
   return (
-    <li className={`flex flex-col gap-1.5 rounded-tile border-2 px-2 py-2 ${frame} ${className}`}>
+    <li className={`flex flex-col gap-1.5 rounded-tile border-2 px-2 py-2 ${ownEdge} ${className}`}>
       <div className="flex items-center gap-2">
         {rank != null ? (
           <span className="w-6 shrink-0 text-center font-display font-extrabold text-fg-muted">

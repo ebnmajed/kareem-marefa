@@ -112,7 +112,8 @@ test("a member sees the all-time board, and both metrics on the company race", a
   await streamed(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("لوحات الصدارة");
   const allTimeSection = page.locator("#all-time");
-  await expect(allTimeSection.getByText("قائد اللوحة")).toBeVisible();
+  // ★ wave 20: the leader stands on the podium; the name is scoped there (a selector that moved).
+  await expect(allTimeSection.locator("[data-slot=podium]").getByText("قائد اللوحة")).toBeVisible();
   await expect(allTimeSection).toContainText("65");
   // ★ wave 20: «أنت» is on the viewer's podium place and their rank card names them — scoped to the first.
   await expect(allTimeSection.getByText("أنت").first()).toBeVisible();
