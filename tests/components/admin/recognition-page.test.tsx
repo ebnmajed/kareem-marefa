@@ -38,6 +38,7 @@ vi.mock("@/lib/dal/scoring-admin", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/dal/scoring-admin")>()),
   getRecognitionAdminData: vi.fn(),
   getConfigLastSave: vi.fn(),
+  listAvatarHrefs: async (_l: string, ids: string[]) => Object.fromEntries(ids.map((id) => [id, null])),
 }));
 const actions = {
   saveRecognitionEdit: vi.fn(),

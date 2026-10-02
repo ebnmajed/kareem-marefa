@@ -15,11 +15,14 @@ import type { HeldCertificateRow } from "@/lib/dal/certificates";
 // The host page reads `listHeldAchievements()` and gates the section (`16` §5.4.1a(b)); this renders the list.
 export function HeldAchievements({
   certificates,
+  avatars,
   locale,
   now,
   release,
 }: {
   certificates: HeldCertificateRow[];
+  /** memberId → the one resolver's href (`DEC-099`), or null for initials. */
+  avatars: Record<string, string | null>;
   locale: string;
   now: string;
   release: (certificateId: string) => Promise<{ ok: boolean }>;
@@ -29,6 +32,7 @@ export function HeldAchievements({
       rows={certificates.map((c) => ({
         id: c.id,
         memberId: c.memberId,
+        avatarUrl: avatars[c.memberId] ?? null,
         recipientName: c.recipientName,
         serial: c.serial,
         badgeName: c.badgeName ?? null,

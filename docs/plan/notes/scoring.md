@@ -5332,8 +5332,9 @@ the two create commits. Proposed for the lead: `cap_explained_as_it_stood.sql` (
   hosting gate's warning beside its switch · #11 the streak: count and switch only, ★ `bonus_points` not offered (F2)
   · #12 manual award in its sheet `?award=1`, already-held at the member ✓ · «أوقف» = `revokeCertificate()` at `?revoke=<id>`
   with its mandatory reason (`certificate.revoked`).
-- The avatar on a held row draws initials (`src={null}`): `listHeldAchievements()` returns the member, not a resolved
-  avatar href. The artboard draws initials too.
+- The face on a held row goes through the one resolver (`avatarHref()`, `DEC-099`): `listHeldAchievements()` returns the
+  member but not the copy's version, so `listAvatarHrefs()` (scoring-admin.ts, admin-only) reads `avatar_version` for
+  exactly those members. A member with no copy draws initials.
 
 **Ledger lines (for `STATUS.md`):**
 - `tests/rls/scoring-capped.test.ts` — fixture moved: comments posted after the rule the test sets; applies F1's file.

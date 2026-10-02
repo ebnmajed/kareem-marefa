@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { SaveReceipt, SavedMark } from "@/lib/dal/admin-settings";
+import { avatarHref } from "@/lib/dal/avatars";
 import { sessionClient } from "@/lib/dal/session";
 
 // SCR-053 (scoring) and SCR-054 (recognition) admin screens — DEC-046's
@@ -534,4 +535,17 @@ export async function getConfigLastSave(locale: string, scopes: readonly ("scori
     timeZone: (settings.data?.time_zone as string | undefined) ?? "Asia/Riyadh",
     actor: { id: actorId, displayName: (actor?.display_name as string | null | undefined) ?? null },
   };
+}
+
+/**
+ * The faces of the members on SCR-054's held certificates (`DEC-099`): each member's same-origin avatar href through
+ * the one resolver, or null — never Google's source. `listHeldAchievements()` (designer's) returns the member, not the
+ * copy's version, so it is read here, admin-only, for exactly those members.
+ */
+export async function listAvatarHrefs(locale: string, memberIds: readonly string[]): Promise<Record<string, string | null>> {
+  const client = await assertAdmin(locale);
+  if (!client || memberIds.length === 0) return {};
+  const { data, error } = await client.supabase.from("members").select("id, avatar_version").in("id", [...new Set(memberIds)]);
+  if (error) throw new Error(`members: ${error.message}`);
+  return Object.fromEntries((data ?? []).map((m) => [m.id as string, avatarHref({ id: m.id as string, avatarVersion: m.avatar_version as number | string | null }, 96)]));
 }

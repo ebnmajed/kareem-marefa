@@ -26,6 +26,8 @@ import { useRouter } from "@/i18n/navigation";
 export interface HeldCertificateView {
   id: string;
   memberId: string;
+  /** The one resolver's same-origin href (`DEC-099`), or null for initials. */
+  avatarUrl: string | null;
   recipientName: string;
   serial: string;
   badgeName: string | null;
@@ -80,7 +82,7 @@ export function HeldCertificates({
       onCard: true,
       cell: (r) => (
         <span className="flex items-center gap-2">
-          <Avatar memberId={r.memberId} displayName={r.recipientName} src={null} size={32} decorative />
+          <Avatar memberId={r.memberId} displayName={r.recipientName} src={r.avatarUrl} size={32} decorative />
           <span className="flex flex-col">
             <bdi className="text-label text-fg-heading">{r.recipientName}</bdi>
             <bdi dir="ltr" className="text-caption text-fg-muted">

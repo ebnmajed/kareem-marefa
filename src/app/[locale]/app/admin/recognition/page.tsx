@@ -10,7 +10,7 @@ import type { Locale } from "@/i18n/routing";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
 import { listHeldAchievements } from "@/lib/dal/certificates";
 import { getOrgPrefs } from "@/lib/dal/proposals";
-import { getConfigLastSave, getRecognitionAdminData } from "@/lib/dal/scoring-admin";
+import { getConfigLastSave, getRecognitionAdminData, listAvatarHrefs } from "@/lib/dal/scoring-admin";
 import { awardBadge, releaseHeldCertificate, revokeHeldCertificate, saveBadgeSheet, saveRecognitionEdit } from "./actions";
 import { AwardForm } from "./award-sheet";
 import { BadgeSheet } from "./badge-sheet";
@@ -91,6 +91,7 @@ export default async function RecognitionAdminPage({
     );
   }
 
+  const avatars = held.certificates.length > 0 ? await listAvatarHrefs(locale, held.certificates.map((c) => c.memberId)) : {};
   const badgeSheet = sp.badge === "new" ? null : sp.badge ? data.badges.find((b) => b.id === sp.badge) : undefined;
   const revoking = sp.revoke ? held.certificates.find((c) => c.id === sp.revoke) : undefined;
 
@@ -155,7 +156,7 @@ export default async function RecognitionAdminPage({
         <section aria-labelledby="held-heading" className="mt-10">
           <SectionHeader as="h2" id="held-heading" title={t("held.heading")} count={held.certificates.length} />
           <div className="mt-3">
-            <HeldAchievements certificates={held.certificates} locale={locale} now={new Date().toISOString()} release={releaseHeldCertificate.bind(null, bound)} />
+            <HeldAchievements certificates={held.certificates} avatars={avatars} locale={locale} now={new Date().toISOString()} release={releaseHeldCertificate.bind(null, bound)} />
           </div>
         </section>
       ) : null}
