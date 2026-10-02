@@ -3066,3 +3066,273 @@ were opened beside the artboards.
 PostgREST (ten times in an hour, across four RPCs). Another track's runs were also restarting port 3000. The CSP
 reports are report-only, a carry since wave 6. The poster thumbnail is drawn only when a poster has rendered, and
 never a placeholder (the lead records this in `DEC-211`).
+
+---
+
+# Wave 21 — plan (`SCR-044`, `REQ-UIX-090`, `STORY-UIX-080`; `DEC-225` … `DEC-227`) — PR B
+
+Measured on `c126c55d`. Planning only: no file is edited or deleted until the lead posts «the plans are approved», «the
+frame is in», and `sessions'` hub header has landed.
+
+## W21.0 · The job, in one line, and how it is done
+
+★ **An admin or a moderator runs a session's attendance from the الحضور tab without leaving it.** They can see the code
+and when it rotates, burn it, close or reopen the door, mark someone present by hand with a reason, see who is in the
+room as it happens, and an admin can revoke a check-in, which writes `DEC-172`'s reversal through `remove_check_in()`.
+
+**At 1280, live, step by step:**
+
+1. The admin opens `/app/admin/sessions/[id]` (`DEC-178` sends a moderator here) or the الحضور tab. `sessions'` header
+   is above the tab: breadcrumb, `h1`, status badge, and «شاشة التقديم» as the primary, which links to
+   `/app/sessions/[id]/host` for projection.
+2. Five figures can be read at a glance: محجوز · حاضر · المعدّل · بلا حجز · يدوي. Beside them is the code card. It shows
+   the code in the display face and the time left before rotation as `m:ss`, a number that changes once a second with no
+   motion. It also holds «أبطل» and the switch «مفتوح».
+3. **A member enters the code** → the database pokes `host:<session>` (as it does today for the host view) → the page
+   calls `router.refresh()` once, coalesced → حاضر, المعدّل and the chip counts change, and the row's status becomes
+   «حاضر» with its time. No reload, and nothing animates.
+4. **A leaked code**: «أبطل» is one tap → `revoke_check_in_code()`. A new code is on the card at once, and the action
+   is audited (`REQ-CHK-007`).
+5. **The door**: the switch → `set_check_in_open()`. The thumb moves only when the server's answer comes back
+   (`HostSwitch`, reused unchanged). Past the ceiling the RPC refuses it with `ceiling_passed` (`REQ-CHK-016`).
+6. **Someone whose phone died**: either the row's ⋯ → «سجّل حضوره», which opens the sheet with that member already
+   chosen, or «تسجيل يدوي» → the sheet, where the member is picked in the `combobox` and a reason is written in the
+   `textarea` → `mark_checked_in_manually()`. The method is `manual`, the action is audited and flagged in the CSV
+   (`REQ-CHK-008`). The row reads «يدوي · <who marked it>».
+7. **A wrong check-in** (admin only): the row's ⋯ → «ألغِ الحضور» → a dialog names the member and the session and asks
+   for a reason → `remove_check_in()`. The row reads «أُلغي» with the reason, the figures fall, and the reversal is the
+   one the database already writes (W21.3).
+8. Chips: الكل · حاضر · لم يحضر narrow the table. «CSV» (admin only) downloads through the audited route that exists
+   today.
+
+**At 390, what still works:** everything above. The figures wrap two to a row, the code card goes full width under
+them, `data-table` becomes its stacked cards (built, `data-table.tsx:10-13`), the sheet opens from the bottom, and the
+row menu stays the same `menu`. Running the room from a phone is the projection's job, and «شاشة التقديم» reaches it.
+
+## W21.1 · The regions, in the artboard's order, and what each is built from
+
+`AdminAttendance.dc.html` beside `png/SCR-044 · … مباشر@1x.png`, read at 1280. The page renders **nothing of the frame
+or the header** (contracts 1 and 4). That means no `h1`, no breadcrumb, no tab strip and no «شاشة التقديم».
+
+| # | Region (artboard order) | Built from | Notes |
+|---|---|---|---|
+| 0 | *(only above one day)* the day: one chip per day, the current one selected | `ui/tag-chip` with `href` + `selected` (`?day=<id>`) | Not drawn. Without JS it is a link. It is absent at one day (wave 9's «flat at n ≤ 1») |
+| 1 | The figures row: محجوز · حاضر · المعدّل · بلا حجز · يدوي | `ui/stat` ×5 (`value` already formatted, Western numerals) | Every figure comes from the DAL (contract 7). See W21.6 D1 – D3 for what each one counts |
+| 2 | The code card, beside the figures (flex 1.4) | a `<section aria-labelledby>` composing: the code in `font-display`, `dir="ltr"`, two groups drawn by a gap (as the host view does, so its text is the six characters); the countdown; «أبطل» (`ui/button` secondary, `<form action>`); the switch (`HostSwitch` → `ui/switch`, reused unchanged) | `ui/card` is not used, because the artboard's card is `stat`'s ground. Which states replace it is in W21.4 |
+| 3 | The toolbar: chips الكل · حاضر · لم يحضر with counts · «تسجيل يدوي» · «CSV» | `ui/tag-chip` (`href`, `selected`, `count`) · `ui/button` secondary opening `ui/sheet` · a plain link to `/api/admin/exports/attendance/[id]` | The chips are server links (`?show=present\|absent`), so there is no client state and they work without JS |
+| 4 | The table: العضو · الحجز · وقت الحضور · الطريقة · الحالة · ⋯ | `ui/data-table` (`label`, `columns`, `rowKey`, `empty`). The member cell is `ui/avatar` size 24 with `src` from `avatarHref()` and `teamColor`, beside a `<bdi>` name. The status is `ui/badge` (`DEC-073` tones; ★ never `live`, which pulses). ⋯ is `ui/menu` (`trigger` = `ui/icon-button`, named «إجراءات <name>») | Phone: `onCard` on name, status, time and method |
+| — | The manual-mark sheet | `ui/sheet` (`side` inline-end at `lg`, bottom under it) · `ui/combobox` (single, `name="memberId"`) inside `ui/field` · `ui/textarea` inside `ui/field` (required, `maxLength` 300) · `ui/submit-button` | Not drawn. The artboard names it in `M11a.md` §5 |
+| — | The revoke dialog | `ui/dialog` (lead's), with the reason `ui/textarea` inside it and a danger `ui/button` | `REQ-UIX-013`: a destructive action confirms in a dialog that names the object. A sheet is not a confirmation |
+
+Register (`REQ-UIX-053`): no `transition`, no keyframe and no moment in any file I write. The countdown changes text
+once a second. Both new files import nothing from `lib/ui/` or `moment-*`.
+
+## W21.2 · ★★ The kept-behaviour table (`DEC-208`), re-derived from the files and the RPCs
+
+Read on disk at `c126c55d`: `attendance/{page.tsx,actions.ts,state.ts,manual-mark-form.tsx,remove-check-in-form.tsx}`,
+`lib/dal/checkin.ts`, `lib/dal/admin-exports.ts:228-240`, the RPCs as they last stand (`0120` `mark_checked_in_manually`
+and `remove_check_in`, `0148` `attendance_removed` and `evaluate_member_attendance`, `0105` `revoke_check_in_code` and
+`set_check_in_open`, `0084` `ensure_check_in_code`, `0017` `list_session_ratings_admin`), and the suites that pin them.
+★ marks a row that nobody's brief named.
+
+| # | Behaviour | Where it is today | Where it lives after | Why it is kept |
+|---|---|---|---|---|
+| K1 | Staff-only: a plain member gets **404**. `getAttendanceReport()` returns null for anyone who is neither admin nor moderator, and the page calls `notFound()` | `page.tsx:67`, `checkin.ts:650` | `page.tsx`, the same call. **The layout never gates** (rule 7) | `REQ-ADM-020`, `REQ-CHK-014` · `admin-attendance.spec.ts:151` |
+| K2 | A moderator sees the page, the figures and the manual mark. They get **no CSV, no removal and no ratings** | `page.tsx:92,153,191,358` | The same gates: no «CSV», no «ألغِ الحضور» item, and no row menu on a present row. ★ A moderator **does** get the code card's «أبطل» and the switch (W21.4) | `REQ-ADM-020`, `REQ-RAT-005`, `REQ-CHK-017` («not a moderator») · `admin-attendance.spec.ts:157-183` |
+| K3 | The figures are read, never derived on the page. They are reserved, confirmed, checked in, walked in, no-showed and the rate. The rate is checked-in **among confirmed** over confirmed, null with no confirmed RSVP, shown as «لا حجوزات…» | `checkin.ts:790-803`, `page.tsx:122-150` | Five `stat`s from `report.counts` plus the add-only counts (W21.5). ★ What each artboard figure counts is W21.6 D1 – D3, and it is not picked here | `REQ-CHK-012` · `admin-attendance.spec.ts:186-200` (an expectation that changes, W21.7) |
+| K4 | **Per-day model** (`DEC-119`): `report.days`, one cell per member per day, the flat fields being the summary across days (`has_checked_in()`'s «any day») | `checkin.ts:506-570, 714-731` | Unchanged in the DAL. The page shows **the selected day**, defaulting to the code's day or `resolveDay()`: its figures, its list and its code card. A «الأيام» column shows «2 من 3» and «مكتمل» | `REQ-SES-017`, `DEC-150` contract 4 · `wave9-checkin-days.spec.ts:271` |
+| K5 | ★ «مكتمل» comes from `session_complete_attendees()` (contract 6) and is **never re-derived**. On failure the count shows **«—», not 0** | `checkin.ts:679, 688`, `page.tsx:140-145, 332` | The same read, the same em dash, as a figure **above one day only** | `REQ-SES-017` («I could not ask» ≠ «nobody») |
+| K6 | At one day there is **no day select, no day column and no completeness stat**, yet the day still **travels in a hidden field** so the RPC never resolves it from a clock that may have moved | `manual-mark-form.tsx:78-83`, `remove-check-in-form.tsx:115-117`, `page.tsx:79` | The sheet and the dialog each carry `<input type="hidden" name="dayId">` = the selected day | `DEC-150` · `wave9-checkin-one-day.spec.ts:182-205` · `attendance-days.test.tsx:131-150` |
+| K7 | The day a form sends is **validated against the list** and never trusted. A stale `defaultDayId` falls back to the first day instead of a `not_found` that nobody can act on | `manual-mark-form.tsx:47`, `remove-check-in-form.tsx:68` | The page validates `?day=` against `report.days` the same way | `DEC-119` |
+| K8 | `actions.ts`' `dayOf()`: a non-uuid day becomes null, never an error, and the RPC refuses a forged id from another session as `not_found` | `actions.ts:15-18` | Kept, **in the file that is not deleted** (W21.8) | `DEC-119`, shape vs authority |
+| K9 | Manual mark: Zod first, a **mandatory reason** (a blank one gets its own sentence), and the RPC re-derives the role, the window and the presenter refusal | `actions.ts:27-44`, `checkin.ts:472-497`, `0120` | `markManually` kept, same signature, same `useActionState` | `REQ-CHK-008`, `REQ-CHK-011` · `admin-attendance.spec.ts:219-237` |
+| K10 | ★ What was typed **survives a failed submit**. React resets a `<form action>`, so the action hands back `memberId` and `reason`, and the fields read them as defaults | `actions.ts:32-37`, `manual-mark-form.tsx:89,108` | The sheet's combobox `defaultValue` and textarea `defaultValue` come from `state` | `DEC-149` §1 |
+| K11 | ★ A successful mark **clears the form for the next attendee** | `manual-mark-form.tsx:53-55` | The sheet closes on `done` and reopens empty | `REQ-CHK-008` (live use) |
+| K12 | `noValidate` on both forms, so the app's own Arabic error is the only validator | `manual-mark-form.tsx:67`, `remove-check-in-form.tsx:97` | Both forms | content's `7f4809f` · `remove-check-in-form.test.tsx:143` |
+| K13 | ★ Who the manual mark may pick is **confirmed + waitlisted, missing on THAT day**. It is broader than the host view's confirmed-only list, because a waitlisted member who simply turned up was unpickable before (a real e2e finding) | `checkin.ts:604-640`, `page.tsx:88` | The same population as the combobox's options, per selected day. ★ W21.6 D6 | `REQ-CHK-008` |
+| K14 | ★ A member removed and then **offered again** for a manual mark (re-add after removal) | `page.tsx:88` (reads active check-ins only) · `admin-attendance.spec.ts:376` | The same filter | `REQ-CHK-017` |
+| K15 | The page hides the manual mark unless the session is **`in_progress`** and shows «التسجيل اليدوي متاح أثناء الجلسة فقط» instead | `page.tsx:166-171` | ★ **Not carried as is**: the RPC is wider (W21.6 D4). Built per `REQ-UIX-090` (no add on a completed session) until ruled | `REQ-CHK-008` vs `REQ-CHK-017` |
+| K16 | Removal is **admin-only** (`assert_fresh_admin()`), needs a reason, is **idempotent** (a second attempt is `not_found`), and the error names `not_a_member`, `stale_claims`, `not_an_admin`, `reason_required` and `not_found` separately | `actions.ts:53-65`, `checkin.ts:808-839`, `0120:302-355` | `removeCheckInAction` kept unchanged. The row menu's dialog posts to it | `REQ-CHK-017` |
+| K17 | ★★ The removal **soft-deletes** (`removed_at`, `removed_by`, `removal_reason`), then calls `attendance_removed()` and then `attendance_certificate_sync()`, **in that order** (both hooks read `removed_at is null`), and writes `check_in.removed` to the audit log | `0120:302-355` | **Called, not touched** (W21.3) | `REQ-CHK-017`, `DEC-172`, invariant 9 |
+| K18 | The confirmation **names the member and the session** in `ui/dialog`. Confirming calls `requestSubmit()` from a plain button, never `DialogClose` wrapping a pending submit (the takedown-button timeout) | `remove-check-in-form.tsx:134-165` | The revoke dialog, built the same way | `REQ-UIX-013` · `remove-check-in-form.test.tsx:90-131` |
+| K19 | ★ Before completion the dialog says «won't earn», never «reversed» (`paysOnCompletion` comes from the **stored** state, never the clock) | `page.tsx:101`, `remove-check-in-form.tsx:142` | The dialog's two bodies, chosen the same way | `REQ-PTS-015`, `DEC-174` Q3 · `remove-check-in-copy.test.tsx` |
+| K20 | ★ The admin's free-text reason stays on `check_ins` and the audit log. The **member** sees only the fixed phrase «أُلغي تسجيل الحضور» | `0120:343-347` | Unchanged (SQL). The page shows the reason to staff only, as today | `REQ-CHK-017` |
+| K21 | A removed row is **shown as removed with its reason**, never as a plain no-show. The reports keep removed rows (a report must show them); «checked in» means an active row | `checkin.ts:664-705`, `page.tsx:276-285` | Status «أُلغي», the reason under it, and ★ who removed it (`removedByName`, read today and never drawn) | `REQ-CHK-017` · `admin-attendance.spec.ts:356-358` |
+| K22 | ★ An active row wins over a removed one; between two removed rows, the most recently removed wins. This holds per cell and per row | `checkin.ts:700-713` | Unchanged | `REQ-CHK-017` |
+| K23 | Walk-ins: a check-in with **no RSVP row** is its own row, `isWalkIn`, and stays a walk-in after removal | `checkin.ts:757-780` | Reservation column «بلا حجز» | `REQ-CHK-010` («distinguishable in admin reporting») |
+| K24 | ★ No-show = a confirmed RSVP with no active check-in. It is the same definition as `evaluate_no_shows`, so the report and the points job never disagree | `checkin.ts:743` | Unchanged in the DAL. ★ W21.6 D7 covers how it is shown before the day starts | `REQ-CHK-012`, `REQ-PTS-*` |
+| K25 | ★ The reservation states shown include **cancelled and late-cancelled** («ملغى», «إلغاء متأخر») | `page.tsx:32-37, 291` | Kept until ruled. W21.6 D2 | `REQ-CHK-012` |
+| K26 | The arrival time, method «رمز الحضور» / «يدوي», and `<bdi>` on every name, time and reason | `page.tsx:271, 306, 340-345, 284` | The time and method columns. `<bdi>` on name, time, reason and the marker's name | `REQ-CHK-012`, `10` bidi |
+| K27 | ★ Time is formatted in the **org's** zone (`getOrgPrefs().timeZone`), although the report carries the session's | `page.tsx:62, 306, 340` | Kept as today. W21.6 D8 | `OQ-018` |
+| K28 | Rows sorted by name with an Arabic collation | `checkin.ts:782` | Unchanged | — |
+| K29 | The CSV is **admin-only**, goes through the **Route Handler** `/api/admin/exports/attendance/[id]` (`exportAttendanceCsv`: admin re-check, `auditExport`, a 404 for anyone else) and keeps the manual flag. It reads the report's **flat fields**, which do not move | `page.tsx:153-157`, `admin-exports.ts:228-240` | «CSV» is a plain link to the same URL. The DAL changes are add-only, so the CSV is byte-identical | `REQ-CHK-012`, `REQ-ADM-017` · `admin-attendance.spec.ts:246` |
+| K30 | ★★ **Per-rater ratings live here and nowhere else** (`getRatingsForAdmin` → `list_session_ratings_admin()`, audited `ratings.read_admin` on **every read**, admin-only) | `page.tsx:93, 358-388` (`grep` finds no other reader) | ★ **Not drawn.** W21.6 D5: dropping it leaves `REQ-RAT-005` with no screen, and a live page that refreshes on every check-in would write **one audit row per check-in**. Not picked | `REQ-RAT-005` · `admin-attendance.spec.ts:183` |
+| K31 | ★ «أكملوا كل الأيام» and the sentence on whether points need every day, shown above one day only | `page.tsx:137-152` | The figure is kept (K5). The sentence is W21.6 D9 | `REQ-SES-017` |
+| K32 | An empty session: «لا حجوزات ولا تسجيلات حضور بعد.» | `page.tsx:215-216` | `data-table`'s `empty` (`EmptyStateProps`) | — |
+| K33 | ★ The phone treatment: below `md` the table becomes stacked cards, a card grows downward one line per day and never sideways, and the scroll region is a keyboard stop | `page.tsx:39-53, 218-235` (wave 11, K2) | `data-table`'s own stack | `REQ-NFR-007` · `wave11-console-attendance.spec.ts:185`, `admin-attendance.spec.ts:271` |
+| K34 | The manual mark **works without JavaScript** (a native select, a textarea, `<form action>` with progressive enhancement) | `manual-mark-form.tsx` | ★ A `<noscript>` inline form (the `HostSwitch` pattern), because `sheet` and `combobox` need JS. It posts to an add-only redirect-style action | `16` §8 no-JS path |
+| K35 | ★ The removal has **never** worked without JS: its submit is behind a `Dialog` | `remove-check-in-form.tsx:134` | Unchanged, and recorded rather than regressed | — |
+| K36 | The day select's `key` keeps a previous day's member from surviving a day switch | `manual-mark-form.tsx:84-89` | The sheet takes its day from `?day=`, and the combobox's options and key are per day | `DEC-119` · `attendance-days.test.tsx:76` |
+| K37 | Revalidation after a mark or a removal (`revalidatePath` of the attendance route) | `actions.ts:42, 63` | Kept | — |
+| K38 | Strings in `checkin.attendance` (`DEC-137`). `admin.attendance` is dead in `admin.json` and is `console`'s to delete on request | `page.tsx:27-30` | New keys under `checkin.attendance.*`, `ar` first. W21.9 has the request to `console` | one writer per file |
+
+**From the host view (not this file, composed here — frozen, read):** `getHostView()` (`checkin.ts:105-190`) is the
+code card's read. `ensure_check_in_code()` **mints** a code on read, which is idempotent and issues no code outside the
+window (`REQ-CHK-004`). The day is the **code's** day. The countdown runs against the server's `readAt`, never the phone's
+clock (`DEC-209`). `revoke_check_in_code()` lets a presenter, admin or moderator issue a replacement at once, audited
+(`REQ-CHK-007`). The switch is `set_check_in_open()`: presenter or staff, `ceiling_passed`, audited (`REQ-CHK-015`, `016`,
+`DEC-141`, `DEC-151`). Its client is `HostSwitch`, disabled until hydrated (7 taps in 20 were lost on a production run).
+The host topic poke carries no member.
+
+## W21.3 · ★★ The revoke is `remove_check_in()`, and it already writes `DEC-172`'s row
+
+The row menu's «ألغِ الحضور» → `removeCheckInAction` (`attendance/actions.ts:53`, kept) → `removeCheckIn()`
+(`lib/dal/checkin.ts:825`, kept) → **`public.remove_check_in(p_session, p_member, p_reason, p_day)`**
+(`supabase/migrations/0120_contract_5_switch.sql:302`). That function soft-deletes the row, then
+`perform public.attendance_removed(target.id)` (`:335`), then `attendance_certificate_sync()` (`:352`), then
+`write_audit('check_in.removed')`.
+
+`attendance_removed()` as it last stands (`0148_award_at_completion.sql`) first calls
+`evaluate_member_attendance(…, 'أُلغي تسجيل الحضور')`. While attendance is no longer complete, that function inserts, for
+each standing `check_in` award:
+
+```sql
+insert into public.points_ledger (org_id, member_id, amount, source, source_id, session_id, reason, rule_key, idempotency_key)
+values (l.org_id, l.member_id, -l.amount, 'reversal', l.id, l.session_id, p_reversal_reason, l.rule_key, 'reversal:' || l.id || ':v1')
+on conflict (idempotency_key) do nothing;
+```
+
+`attendance_removed()` then does the same for each unreversed `attendee_bonus` and writes the no-show after completion.
+**That is `DEC-172`'s compensating row in `0087`'s shape**: its own key `reversal:<ledger_id>:v1`, its own reason, never a
+delete. Before completion there is nothing to reverse (`REQ-PTS-015`), which is why the dialog's copy branches (K19).
+**No new reversal, no new SQL, no change to the DAL wrapper.**
+
+## W21.4 · The states the artboard does not draw — all built
+
+| State | Code card | Rows and actions |
+|---|---|---|
+| **Live** (drawn) | the code, `m:ss`, «أبطل», the switch | the manual mark and the row menu |
+| **Before the window** (`phase` `open` / `published` before the day's start) | No code (`ensure_check_in_code` returns `not_open`). The card reads «يبدأ <bdi>6:30 م</bdi>». The switch is shown while `affordancesFor(phase,'staff').hostConsole`, open by default (`DEC-116`) | The manual mark is hidden (the RPC refuses before `d.starts_at`). ★ The status reads «—», not «لم يحضر» (W21.6 D7) |
+| **Closed by hand** | The code is still shown (the RPC issues it while closed, so the room sees what reopening would accept) and the switch is off | as live |
+| **Past the ceiling, not completed** | «مغلق» and no switch (a reopen is `ceiling_passed`) | as live for an admin. For a moderator the manual mark is hidden (the RPC refuses past the ceiling for a moderator) |
+| **Completed / archived** | ★ **Replaced by the final rate** (`REQ-UIX-090`): `stat` at the card's size. Above one day it shows «أكملوا كل الأيام» too | **Read-only except revoke**: no «تسجيل يدوي». The row menu holds only «ألغِ الحضور», and only for an admin. The live subscription is off. ★ W21.6 D4 |
+| **Cancelled** | none | no manual mark; revoke for an admin (the RPC has no state gate) |
+| **Multi-day** | the **selected day's** code card. On a day that is not the code's day, the card shows that day's state (before, past, or the day's rate) | day chips; the list, the figures and both forms on the selected day; «الأيام» «2 من 3 · مكتمل» |
+| **Moderator** | the code, «أبطل» and the switch (`revoke_check_in_code()` and `set_check_in_open()` admit staff) | figures, list and manual mark. No CSV, no «ألغِ الحضور», no ratings. A row menu only where it holds «سجّل حضوره» |
+| **Empty** (no RSVP, no check-in) | as its phase | `data-table` `empty` |
+| **Errors** | `?switchError=` / `?revokeError=` → a `role="alert"` line in the card, using the host's existing keys (`checkin.host.checkInSwitch.error.*`) plus `no_active_code` | the sheet and the dialog show their `error.*` / `removeError.*` inline |
+
+## W21.5 · What I need, as types
+
+**From `sessions` — contract 4, the hub header.** My page renders nothing of it. I need:
+1. «شاشة التقديم» as the header's **primary** on the الحضور tab, linking to `/app/sessions/[id]/host`, for every viewer
+   of this tab (all staff). I ask that it is shown while `affordancesFor(phase, "staff").hostConsole` holds (`open`,
+   `live`), so it is absent on a completed or cancelled session. That is the header's phase read; whether the tab or the
+   header supplies it is `sessions'` mechanism, and I write against whatever their note publishes on day one.
+2. The `h1` (the session title in `<bdi>`), the breadcrumb and the status badge are theirs. ★ The page's own
+   «تقرير الحضور — <title>» `h1` and its «كل الجلسات» back link go, so three of my specs and two wave-9 specs move
+   (W21.7).
+3. The header must not render a `live` badge with a pulse inside the console (`badge.tsx` `motion-safe:animate-pulse`,
+   W21.6 D10). That is a question for the lead and `sessions`, not a request I can make of `content`'s file.
+
+**From the lead (custodian of `content`'s `avatar`, `stat`, `tag-chip`, `badge` and of `ui/dialog`):** nothing new.
+Each is composed as it is.
+**From `console`:** nothing new from `data-table`, `combobox`, `menu` or `sheet`, which are composed as they are. ★ One
+string request: delete the dead `admin.attendance.*` in `admin.json` once nothing reads it (`page.tsx:27-30` has
+recorded it since wave 7).
+
+**My own add-only DAL** (`lib/dal/checkin.ts`, nothing above changes, and the CSV's flat fields do not move):
+`AttendanceRow.avatarUrl: string | null` (`avatarHref({id, avatarVersion}, 96)`), `AttendanceRow.teamColor: string |
+null`, `AttendanceRow.markedByName` and `AttendanceCell.markedByName: string | null` (the `marker:members!check_ins_marked_by_fkey`
+embed, the same qualification `remover:` needs), `AttendanceReport.counts.manual: number`, and
+`AttendanceReport.byDay: { dayId: string; present: number; walkedIn: number; manual: number; absent: number }[]`. One
+add-only function, `revokeCodeResult()`, which returns `{ok} | {ok:false; error}` (the existing `revokeCode()` throws on
+`no_active_code` and stays as the host view's). **No SQL, no migration, nothing in `supabase/proposed/checkin/`.**
+
+★ **One question to the lead, on a frozen component:** the countdown and the live refresh are `HostClock`'s
+(`components/checkin/host-clock.tsx`, the host view's). I propose an **add-only** `variant?: "host" | "console"`. The
+default is the host's DOM byte for byte, proven by `host-clock.test.tsx` untouched. `"console"` renders only `m:ss` in a
+`<span>`. The alternative is a second copy of the coalesced refresh and the server-clock tick, which I would rather not
+write. Which do you want?
+
+## W21.6 · ★ New disagreements — written, not picked (the default in force is in brackets)
+
+- **D1 — «محجوز».** The artboard's 34 matches the rows marked «محجوز», which means confirmed. Today «الحجوزات» is
+  `rsvpsRes.data.length` (`checkin.ts:796`): **every RSVP row, cancelled and waitlisted included**. [Default: the
+  confirmed count, labelled «محجوز». The all-rows count disappears from the screen; the CSV keeps its rows.]
+- **D2 — Cancelled reservations in the table.** The artboard's الحجز column has three values (محجوز / بلا حجز / قائمة
+  انتظار). Today's table includes cancelled and late-cancelled RSVPs (K25). [Default: kept, with their words.]
+- **D3 — The rate and «حاضر».** The artboard reads الكل 37 = 34 + 3 walk-ins, حاضر 23, لم يحضر 14, 68% = 23/34. That puts
+  walk-ins **inside** the numerator of a rate whose denominator is confirmed. Today the rate excludes walk-ins from both
+  sides on purpose (`checkin.ts:600-603`), so with these figures it would read 59%. ★ And `REQ-CHK-012` lists confirmed
+  and no-showed, which the five figures drop. [Default: today's rate. «حاضر» counts every active check-in on the day, as
+  the host count does. Confirmed and no-showed go to the CSV only.]
+- **D4 — Adding after completion.** `REQ-CHK-017` says an admin may «add to and remove from» the list **at any time**,
+  and `mark_checked_in_manually()` allows an admin from the day's start through completed and archived (`0120`, «SCR-044
+  is a reconciliation screen an admin may visit long after archiving»). ★ Yet today's page hides the form unless the
+  session is `in_progress` (K15), and `REQ-UIX-090` says a completed session is «read-only except revoke». The tree has
+  been stricter than the RPC since wave 7. [Default: `REQ-UIX-090`, so no add after completion.] ★ The same gate also
+  hides the mark from a moderator on a clock-live session whose row is still `published`, which the RPC allows.
+- **D5 — Per-rater ratings (K30).** They are not drawn, and this is the only screen `REQ-RAT-005` has. If they stay on a
+  page that refreshes on every check-in, each refresh calls `list_session_ratings_admin()` and writes an audit row.
+  [Default: kept for an admin, **below the table and only on a completed session**, where the live refresh is off. The
+  alternative is moving them to the الاستبانة tab, which is `event`'s, held by the lead.]
+- **D6 — Who the manual mark offers.** `manualIntro` says «أو حضر بلا حجز», but the picker has never offered a member
+  without a reservation (K13). The RPC accepts any member of the org and does not read `allow_walk_ins`. [Default: the
+  population is unchanged, and the sentence goes with the no-explainer rule.]
+- **D7 — «لم يحضر» before the day starts.** `isNoShow` is time-blind (`checkin.ts:743`), so before the session begins
+  every confirmed member reads «لم يحضر». [Default: the DAL is unchanged; the page shows «—» until the selected day's
+  start and leaves the «لم يحضر» chip uncounted until then.]
+- **D8 — Two time zones.** The page formats in the org's zone (K27). The report carries the session's, and the host view
+  uses the session's. [Default: the org's, as today.]
+- **D9 — The require-all-days sentence** (K31). It is explainer copy under `DEC-NEXT-25`, but it is what makes «مكتمل»
+  readable. [Default: kept, above one day only.]
+- **D10 — Motion in composed primitives.** `ui/switch` declares `transition-colors` and `ui/badge`'s live tone declares
+  `motion-safe:animate-pulse`. `console-register.test.ts` sweeps only the six data-dense primitives and the staff
+  directories, so neither is caught while the console renders the switch. [Default: composed as it is. The status
+  column uses no `live` tone. The lead's amendment of the test is the place to decide.]
+- **D11 — The artboard draws ⋯ on absent rows too.** [Reading: the absent row's menu is «سجّل حضوره», which opens the
+  sheet with that member chosen. A removed row has no menu, because nothing on it can be done.]
+- **D12 — `overlapping_session:<id>`.** `mark_checked_in_manually()` raises it (`REQ-CHK-013`), and `ManualCheckInError`
+  does not know it, so the admin reads «تعذّر تسجيل الحضور — حاول مرة أخرى» for a member who is in another room.
+  [Default: an add-only `overlap` error key, naming the other session as `check_in()` does.]
+
+## W21.7 · Existing assertions I expect to change (each a ledger line, in the same commit)
+
+- `admin-attendance.spec.ts` (mine, evidence). `:180` «تقرير الحضور» in the `h1` → the header's title (**an
+  expectation**). `:182` the CSV link's name (**a selector**). `:189-200` the «ملخّص الحضور» `dt/dd` → `stat` labels;
+  «الحجوزات» and «الحجوزات المؤكَّدة» become «محجوز», per D1 (**an expectation**). `:230-237` the member `select` →
+  `combobox`, «العضو المراد تسجيل حضوره» → «العضو», «يدوي» → «يدوي · <name>» (**selectors**, and the method cell's
+  text is **an expectation**). `:329-358` the removal section → the row menu and the dialog (**selectors**). `:376`
+  (**a selector**).
+- `wave11-console-attendance.spec.ts` (mine). The `h1` (**an expectation**). The «الاسم» header → «العضو»
+  (**expectation**). The day columns → day chips (**an expectation**, per K4).
+- ★ **Not mine, requests to the lead:** `wave9-checkin-days.spec.ts:271-350` (the columns per day, `select[name=dayId]`,
+  `removeSection`) and `wave9-checkin-one-day.spec.ts:182-205` (the `h1`; ★ its `input[type=hidden][name=dayId]` holds,
+  K6). `tests/unit/tasks-never-read-by-check-in.test.ts` reads the directory and holds as long as the new files import no
+  task module. `wave13-sessions-hub.spec.ts:283` holds (the URL is unchanged).
+- `tests/components/checkin/{attendance-days,remove-check-in-form,remove-check-in-copy}.test.tsx` import the two deleted
+  forms. They are re-pointed at the sheet and the dialog **case by case, no case dropped**, each under a ledger line.
+  `host-*` tests stay untouched.
+
+## W21.8 · The files
+
+**Delete (commit 1):** `attendance/page.tsx`, `attendance/manual-mark-form.tsx`, `attendance/remove-check-in-form.tsx`.
+`actions.ts` and `state.ts` are behaviour, not markup, so they **stay** and gain add-only actions (`revokeCodeAction`,
+`setCheckInOpenAction`, and `markManuallyNoScript`, which redirects back to the attendance route).
+**Create (commit 2):** `attendance/page.tsx`, `attendance/code-card.tsx`, `attendance/manual-sheet.tsx`,
+`attendance/row-menu.tsx`, the DAL's add-only fields, `checkin.attendance.*` in `ar` and then `en`, and
+`tests/e2e/wave21-checkin-attendance.spec.ts`. That spec shows the job: the code is read and rotated and «أبطل» changes
+it; the switch closes and reopens; a check-in from a second context appears in the table without a reload; a manual mark
+from the sheet shows «يدوي · <name>»; an admin revokes and the ledger has the `reversal:<id>:v1` row (a completed
+session); a moderator sees no revoke and no CSV; it runs at three days, at 1280 and at 390.
+
+**New strings, `ar` first, each tested against «does it change what the person does next».** The figures محجوز · حاضر
+· المعدّل · بلا حجز · يدوي. The card's «أبطل», «مفتوح», «يبدأ {time}», «مغلق», «المعدّل النهائي». The chips الكل · حاضر ·
+لم يحضر (a bare number beside a word, so there is no counted noun and no ICU form). «تسجيل يدوي», «CSV». The columns
+العضو · الحجز · وقت الحضور · الطريقة · الحالة. «رمز», «يدوي · {name}», «أُلغي». The menu's «ألغِ الحضور», «سجّل حضوره»
+and «إجراءات {name}». The dialog's two bodies, trimmed to one sentence each («تُعكس نقاطه وتُلغى شهادته» /
+«لن تُحتسب له نقاط الحضور»). `manualIntro`, `removeIntro*` and `summaryTitle` are deleted under `DEC-NEXT-25`.
+
+**Open questions for sync 1:** D1 – D12 above; the `HostClock` variant (W21.5); whether «شاشة التقديم» hides when the
+console is inactive; and whether the wave-9 specs are re-pointed by the lead or handed to me for the wave.

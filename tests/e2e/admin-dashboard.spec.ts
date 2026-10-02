@@ -248,10 +248,11 @@ test("REQ-ADM-004: every figure is correct and the built ones click through", as
   const overview = page.locator("section", { has: page.getByRole("heading", { name: "نظرة عامة" }) });
   await expect(overview.getByText("حجوزات مؤكَّدة")).toBeVisible();
   await expect(overview.getByText("50٪")).toBeVisible();
-  await expect(overview.getByText("الأعضاء النشطون")).toBeVisible();
-  await expect(overview.getByRole("link", { name: "الأعضاء النشطون" })).toHaveText(/4/); // 4 of 5 seeded — one deactivated
-  await expect(overview.getByText("النقاط الممنوحة")).toBeVisible();
-  await expect(overview.getByRole("link", { name: "النقاط الممنوحة" })).toHaveText(/10/); // 10, not 5 — the -5 reversal does not net against it
+  // ★ Wave 21 (L2, a selector): the artboard's labels — «عضو نشط», «نقطة ممنوحة».
+  await expect(overview.getByText("عضو نشط")).toBeVisible();
+  await expect(overview.getByRole("link", { name: "عضو نشط" })).toHaveText(/4/); // 4 of 5 seeded — one deactivated
+  await expect(overview.getByText("نقطة ممنوحة")).toBeVisible();
+  await expect(overview.getByRole("link", { name: "نقطة ممنوحة" })).toHaveText(/10/); // 10, not 5 — the -5 reversal does not net against it
 
   // Top presenters/categories/companies show the one row each seeded.
   await expect(page.getByText("المُقدِّم الأول")).toBeVisible();
@@ -275,11 +276,9 @@ test("REQ-ADM-004: every figure is correct and the built ones click through", as
   await expect(page.getByRole("table").or(page.getByRole("list")).getByText("جلسة انتهت للتو")).toBeVisible();
 
   await page.goBack();
-  // The pipeline section's heading is no longer itself the link — a
-  // separate «عرض القائمة» action carries the click-through now, and it is
-  // disambiguated from the identically-worded actions on the two
-  // top-categories/top-companies sections by its own accessible name.
-  await pipeline.getByRole("link", { name: "عرض القائمة — مسار المقترحات" }).click();
+  // ★ Wave 21 (L3, a selector): the pipeline's counts ARE its links — each
+  // opens the proposals — so «عرض القائمة — مسار المقترحات» is gone.
+  await pipeline.getByRole("link", { name: /بانتظار المراجعة/ }).click();
   await expect(page.getByRole("heading", { name: "مراجعة المقترحات", level: 1 })).toBeVisible();
 
   await page.goBack();
@@ -338,7 +337,7 @@ test("F2 at 390 px: the «أكثر …» cards set the count at the edge, like t
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin");
-  const section = page.locator("section", { has: page.getByRole("heading", { name: "أكثر المُقدِّمين مشاركة" }) });
+  const section = page.locator("section", { has: page.getByRole("heading", { name: "أكثر المُقدِّمين" }) });
   const row = section.locator("li").first();
   // Centred, so neither the sticky header nor the fixed tab bar covers the cards.
   await section.evaluate((el) => el.scrollIntoView({ block: "center" }));

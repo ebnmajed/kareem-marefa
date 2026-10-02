@@ -166,7 +166,8 @@ src/
 │   │       ├── admin/                # org admin + moderator
 │   │       │   ├── layout.tsx        # shell only — NO auth check here [v16]
 │   │       │   ├── page.tsx          # dashboard
-│   │       │   ├── proposals/
+│   │       │   ├── proposals/            # SCR-041 — the split view [REQ-UIX-088]
+│   │       │   ├── proposals/[id]/       # SCR-041's detail under lg only [DEC-NEXT-27, DEC-227 §5.5]
 │   │       │   ├── sessions/[id]/layout.tsx  # the settings hub's sub-nav — NO auth decision [REQ-SES-020, DEC-176, DEC-178]
 │   │       │   ├── sessions/[id]/page.tsx    # redirect only: admin → schedule, moderator → attendance, else 404
 │   │       │   ├── sessions/[id]/schedule/   # SCR-043 — no certificate mode since wave 13 (DEC-178)

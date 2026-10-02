@@ -6325,3 +6325,574 @@ SCR-018's 27 rows all hold, with these changes:
 - **The `aria-label` and `sheet` title strings.** They isolate a name with FSI…PDI, the `<bdi>` of a plain string.
 - **SCR-017's bar.** It stays fixed at every width. Above `lg` the form pads itself (`lg:pb-28`), because
   `--tabbar-h` gives the bar no room there. SCR-018's bar gives way at `lg`, where the inline primary stands.
+
+---
+
+# Wave 21 — plan (`DEC-225`, `DEC-226`, `DEC-227`; `REQ-UIX-085`, `088`, `089`; `STORY-UIX-075`, `078`, `079`) — planning only, nothing deleted
+
+Measured at `c126c55d`. Read: the regenerated agent file, STATUS's wave-21 block, `DEC-225`–`227`, `DEC-199` §2,
+`DEC-208`, `DEC-178`, `DEC-213` §4, `notes/wave-21-lead.md`, `M11a.md`, `AdminProposals`, `AdminSessionHub` and
+`AdminAttendance` (the markup and the PNGs side by side), REQ-PRO-002 – 010, REQ-SES-009/010/016/019/020,
+REQ-UIX-085/088/089, REQ-ADM-020. Then the current files and their suites.
+
+**The jobs, in one line each (the goal, `DEC-227` §0):**
+- **SCR-041:** the admin opens «المقترحات». The oldest proposal waiting is open beside the queue. They read the abstract
+  and, if it changed since it was sent back, the field-by-field diff. They type one message and press «اعتمد», «اطلب
+  تعديلًا» or «ارفض». Focus then lands on the next row, and Enter opens it. They never leave the page or scroll back to
+  find their place.
+- **SCR-043:** the admin opens a session. One header names it, gives its state and its next lifecycle step, and links
+  to «صفحة الجلسة». The الجدولة tab shows everything that is set, as text, on one card. «عدّل» turns that card into the
+  existing form. «احفظ» returns to the card, and «ألغِ» returns to it unchanged.
+
+## W21.1 · ★★ Contract 5 first — what the diff can read (`DEC-227` §5.1)
+
+**Finding, in three lines.**
+1. Today nothing stores a proposal's content as it was submitted. The audit trigger `proposals_audit_transition()`
+   (`0011:72-108`) writes `before = {state}` and `after = {state, title}` on each transition. Only the **title** is
+   ever recorded, and only at a transition.
+2. **A proposer can edit content after submission in exactly one way, and that way is a state transition.**
+   `proposals_update_own_editable` (`0010:420-424`) admits an update only from `draft` or `changes_requested`. Its
+   `with check` allows only `draft` or `submitted`, and `0011`'s guard refuses `changes_requested → draft`. So
+   «edited since submission» is always a resubmission: a single UPDATE, `changes_requested → submitted`, carrying the
+   new content. `updateProposal()` (`proposals.ts:327`) forces `submit` for a change request. Nobody else writes
+   content: `proposals` has no admin update policy, and `review_proposal()` (`0013`) writes `state` and
+   `decision_reason` only.
+3. **So the diff needs no table, no column and no new trigger. It needs one `create or replace` of the existing trigger
+   function, the lead's `0179`.** Without it the diff cannot be drawn, and I will not draw one from the title alone.
+
+**`0179` — named exactly (the lead writes it; I prove it with `applyProposed()` in `tests/rls/proposals-diff.test.ts`):**
+- `create or replace function public.proposals_audit_transition()` keeps the same signature, the same `security
+  definer`, the same `search_path` and the same trigger. **Only `before` and `after` gain content:**
+  - When the new state is `submitted` (an INSERT born submitted, `draft → submitted`, `changes_requested →
+    submitted`): `after` = `{state, title, abstract, category_id, level, target_audience, expected_duration_minutes,
+    admin_notes}`. Those are the seven content columns of `0010`'s update grant.
+  - On `changes_requested → submitted`: `before` = the same seven, read from `OLD`, plus `state`.
+  - Every other transition is byte-identical to today.
+- No grant changes (trigger-only). `audit_log` stays append-only.
+- **Who reads it:** `audit_read_admin` (`0004:422`), so an admin of the org. A moderator's policy is
+  `actor_id = self`, and a member has no policy. A proposer cannot read the rows, so **no member-readable history
+  exists** (`DEC-215` untouched).
+- `main`'s app on `0179` does nothing different: no reader of `audit_log` parses a proposal's `before`/`after` keys.
+  `admin-audit.ts` renders them generically; I check its JSON rendering does not choke on a 2000-character abstract
+  before promotion.
+
+**What the split view reads** — a new add-only `getProposalEdits(locale, proposalId)` in `proposals.ts`, admin only,
+returning `null` otherwise:
+- **Baseline:** the ONE audit row `proposal.submitted` whose `before` is null or `{"state":"draft"}`. A proposal
+  leaves `draft` exactly once (no edge back), so the row is unique. **No ordering is used to find it.** If it carries
+  no content (a proposal submitted before `0179`), there is **no baseline and nothing is drawn**: the reviewer is never
+  told «unchanged» when we cannot know.
+- **Current:** the proposal row.
+- **The diff:** each of the seven fields where baseline ≠ current. Each field gets a «when»: the latest `occurred_at`
+  of a resubmission row whose `before` and `after` differ on it. That compares rows from different transactions, which
+  is safe (the `created_at` trap is about rows written together). A category is shown by name, through `categories`.
+- `REQ-UIX-088`: «when it did not change, nothing is drawn» means **0 changed fields → no `<details>` at all**.
+- **Not this:** `REQ-PRO-009`'s *admin edits after approval* are edits to the **session**, and `sessions.ts:408` still
+  says their recording is not built. That stays carried; the diff above is the proposer's.
+
+## W21.2 · The two primitives (PR A) — the props, for the lead to land as types
+
+Both are **born in the scope and declare no animation**: no `transition*`, `animate-*`, `duration-*` or keyframe.
+That way `console-register`'s amended case (`DEC-227` §2) reads them green from day one. Both read no data and no
+catalogue; every string arrives as a prop.
+
+### `ui/split-view.tsx` (`"use client"`)
+
+```ts
+export interface SplitViewItem {
+  /** Stable key — the proposal's id. */
+  id: string;
+  /** Where Enter or a tap goes. A real link: the no-JS path and the phone's detail route. */
+  href: string;
+  /** The row's visible content (title, proposer · company, age). Plain nodes; no interactive element inside. */
+  children: ReactNode;
+}
+
+export interface SplitViewProps extends Styleable {
+  /** The list's accessible name — «المقترحات». */
+  label: string;
+  items: readonly SplitViewItem[];
+  /** The OPEN item: `aria-current="page"` and the accent border. Null when nothing is open. */
+  currentId: string | null;
+  /** Above the list — the state chips. */
+  toolbar?: ReactNode;
+  /** In place of the list when `items` is empty — an `EmptyState`. */
+  empty?: ReactNode;
+  /** The open item's detail. The pane is a `<section>` labelled by `detailLabelledBy`. */
+  detail: ReactNode;
+  /** The id of the detail's own heading (its `h2`). */
+  detailLabelledBy?: string;
+  /** Below `lg` only one shows: `list` on the queue's own route, `detail` on an item's route. From `lg`, both. */
+  narrow: "list" | "detail";
+  /** The detail's back link below `lg` — label and href, so the filter survives. */
+  back?: { href: string; label: string };
+}
+
+/** For a detail's control, after a decision: focus the row AFTER the open one (or the one now at its place). */
+export function useSplitView(): { focusNext: () => void };
+```
+
+**The keyboard model (`REQ-UIX-085`, `REQ-UIX-088`):**
+- The list is a `<ul>` of row links with a **roving tabindex**. Only the focused row is in the Tab order; Tab leaves
+  the list for the detail.
+- ↑ / ↓ move focus by one row and do not wrap. Home / End go to the first / last row. **Arrows move focus, not the open
+  item.**
+- **Enter opens** the focused row. It is native link activation (`Link`, `scroll={false}`), so a click, a tap and
+  no-JS all do the same. `scroll={false}` matters: Next's layout-router otherwise scrolls the changed segment into view
+  and focuses it (`layout-router.js:236`), which would take focus off the row. A test pins focus staying on the row.
+- **Focus is never lost.** If the focused row's key leaves `items` (a decided proposal leaves the «بانتظار قرار»
+  filter), focus moves to the row now at its index, or the last row. `focusNext()` covers the case where focus was in
+  the detail: the decision card's buttons unmount once the proposal is decided. A reviewer is therefore always one
+  Enter from the next proposal (`REQ-UIX-088`).
+- The open row carries `aria-current="page"`. The focused row has the visible focus ring (`--ring`). The two are
+  separate on purpose.
+- **Below `lg`** the list is the page and the detail is a route (`DEC-NEXT-27`). With `narrow="list"` the detail pane
+  is `hidden` below `lg`; with `narrow="detail"` the list is, and `back` renders as a `Link`. From `lg`, a 360 px list
+  sits at the inline-start beside the detail, sticky under the bar. Logical properties only.
+- Every state comes from props: empty list, one row, many rows (the list scrolls inside itself, never sideways), open
+  vs focused, `narrow` both ways. No motion: the border colour changes with no transition.
+- `ui/link`, `data-table`, `tabs` and `menu` already import `@/i18n/navigation`, so a primitive linking through it is
+  the existing practice.
+
+### `ui/kv-card.tsx` (server-safe; no hooks)
+
+```ts
+export interface KvRow {
+  /** Stable key; also the row label's id suffix. */
+  id: string;
+  /** «الموعد». In edit mode it names the row's group (`role="group"` + `aria-labelledby`). */
+  label: string;
+  /** Read mode. Already formatted by the screen (dates, `<bdi>`). `null` renders `emptyValue`. */
+  value: ReactNode | null;
+  /** Edit mode: the row's controls, each inside its own `<Field>` with its own label. Absent = the row stays read in edit mode. */
+  edit?: ReactNode;
+}
+
+export interface KvCardProps extends Styleable {
+  /** A visible title (`h2`/`h3`). The الجدولة card draws none, so either `title` or `label` is required. */
+  title?: string;
+  headingLevel?: 2 | 3;
+  /** The accessible name when there is no visible title. */
+  label?: string;
+  rows: readonly KvRow[];
+  mode?: "read" | "edit";
+  /** «—». A prop, because the primitive reads no catalogue. */
+  emptyValue: string;
+  /** Under the rows: «عدّل» · «أعد الجدولة» in read mode; save · cancel (and publish) in edit mode. */
+  actions?: ReactNode;
+}
+```
+
+- **Read mode:** a `<dl>`, one `<div>` per row with its `<dt>` and `<dd>`. At `md` and up the label column sits at
+  the inline-start and the value beside it; on a phone the label is above the value. Rows are ruled, as drawn.
+- **Edit twin:** the same rows in the same order, each a `role="group"` labelled by its row label, holding the
+  screen's own `Field`s. **The primitive renders no `<form>`.** The screen owns its form, because a card may hold
+  controls belonging to several forms, and HTML forbids nesting them (see W21.4, the presenters row).
+- States: read; read with empty rows; edit; edit with a row that has no `edit` (shown read); a field error inside a
+  row (the `Field`'s own). No animation.
+
+## W21.3 · SCR-041 — the proposal queue as a split view (PR B)
+
+### The routes and the structure
+
+- `admin/proposals/layout.tsx`: the `h1` row, then `SplitView` with the list. **The layout never gates.** Its read
+  returns `null` for a non-admin, and then the layout renders `children` only. Each page 404s on its own data, as
+  today (`DEC-134`).
+- `admin/proposals/page.tsx`: the detail of the **first row of the current filter**. It is `hidden` below `lg`, where
+  the queue is the page.
+- `admin/proposals/[id]/page.tsx`: **new**. One proposal's detail at every width. Below `lg` the list is hidden, with a
+  back link to `/app/admin/proposals?state=…`. `04` gains the route by `DEC-227` §5.5.
+- **The filter is `?state=` (`pending` default · `changes` · `approved` · `all`).** A layout cannot read
+  `searchParams`, so the list is filtered on the client from `useSearchParams()`. The layout's one read returns every
+  non-draft proposal with the four counts. The pages read the same `cache()`'d function, so there is one query per
+  request. `all` includes rejected proposals; there is no «مرفوضة» chip, as drawn.
+- The chips are links (`aria-current` on the current one) carrying their counts. The rows are `split-view` items.
+  ★ **The dashboard's attention tile lands on `pending`, the default.**
+
+### Regions, in the artboard's order → primitive
+
+1. `h1` «المقترحات» (the lead's `page-header`, in the frame's `h1` row). ★ The artboard's «قرار خلال 7 أيام» is **not
+   built**: no column or setting stores a review window, and rule 7 forbids the literal. **New disagreement D1.**
+2. The list (`split-view`):
+   - the chips: `tag-chip`-styled links «بانتظار قرار N», «بانتظار تعديل N», «معتمدة», «الكل»;
+   - each row: title (`<bdi>`), proposer · company (`<bdi>` each), age («منذ 6 أيام», the existing six-form plural).
+3. The detail head: `h2` title (`<bdi>`), the proposer's `avatar` with the team ring · «أُرسل» + date · the
+   `ProposalStatusBadge`, and «افتح كجلسة» at the end, approved only.
+4. Chips (`tag-chip`): category · level · duration. These are not links.
+5. The abstract (`prose`, `<bdi>`).
+6. Three columns: «المُقدِّمون» (each an `avatar` with the ring + name), «مواد مبدئية», «ملاحظات للمشرف» (or «—»).
+7. ★ The `<details>` «تعديلات على المحتوى منذ الإرسال · N»:
+   - one line per field, «<field> · <when>», then `<del>` old and `<ins>` new;
+   - the abstract gets a word-level diff, an LCS over whitespace tokens, in `src/components/proposals/diff.ts`;
+   - `<del>`/`<ins>` carry visually-hidden «حُذف»/«أُضيف», because screen readers do not announce them;
+   - absent when nothing changed (W21.1).
+8. The decision card (`panel`):
+   - one `textarea` «رسالة للمقترِح» in a `Field`;
+   - «اعتمد» (primary `button`), «اطلب تعديلًا» (secondary), and at the inline-end «ارفض» (a text button in the
+     coral/danger tone);
+   - **shown only while the proposal is `submitted` or `in_review`**.
+
+### ★ The decision card's mechanics
+
+- **One box now, named `reason`.** The old two-box naming hazard (`review-card.tsx:112-116`) disappears with the
+  second box.
+- «ارفض» still opens `ui/dialog` naming the proposal (`REQ-UIX-013`). Its confirm submits the same form across the
+  portal with `form={formId}`, and the dialog closes from the result, not on click (`review-card.tsx:150-168`).
+- **An empty message on «اطلب تعديلًا»/«ارفض» is a field error on the textarea.** It is checked in the action and again
+  in the RPC. The textarea is not `required`, `noValidate`.
+- The toast fires from inside the action wrapper, never from an effect (`review-card.tsx:53-70`). Then
+  `useSplitView().focusNext()`.
+- «افتح كجلسة» works two ways. If `getProposalSession()` already names a session, it is a link to
+  `/app/admin/sessions/<id>`. Otherwise it is a form calling `create_session(p_proposal)` through
+  `createSessionFromProposal()`, then a redirect to the hub. That action is mine, in `admin/proposals/actions.ts`.
+- **Preliminary materials** compose `content`'s audited path as it is. The rows come from
+  `getProposalMaterialsPageData()` (read only), and the download goes through `requestProposalMaterialDownload()` →
+  `getMaterialDownloadUrl()`, which writes `record_material_download` for an admin (`materials.ts:555-563`). My own
+  small link-styled client control calls that exported action; **nothing of `content`'s is edited.** ★ The artboard's
+  «PDF · 9»: a proposal's material is never rendered, so it has no pages (`proposal-list.tsx:20-26`). I draw
+  title · kind. **D2.**
+
+### ★★ The kept-behaviour table — SCR-041 (re-derived from REQ-PRO-*, the DAL and `0013`, then checked against the files)
+
+| # | Behaviour | Where today | Where after | Kept by |
+|---|---|---|---|---|
+| 1 | Admin only; a moderator and a member get the streamed not-found, not a message | `proposals.ts:509-511`, `page.tsx:35` | the new list read returns null for non-admin; each page `notFound()`s; the layout never gates | REQ-ADM-020, `09` §7.1, DEC-134 |
+| 2 | A decision's authority is `review_proposal()` alone (fresh-admin re-read, org scope) | `actions.ts:8-14`, `0013` | unchanged: same action shape, same DAL call | REQ-PRO-005, `03` §1.3 |
+| 3 | Zod first; `.strict()`; the action enum includes `open` (unused by the UI) | `actions.ts:30-42` | unchanged; `open` stays unused. **Opening a proposal never writes `in_review`**: no write on a read | REQ-PRO-006 |
+| 4 | Reject and request-changes require a written reason, checked in the action AND the RPC | `actions.ts:37-42`, `0013` | the same two checks, against one box | REQ-PRO-005 |
+| 5 | What was typed survives a failed round trip (`ReviewState.reason`) | `actions.ts:19-27` | kept: the box's `defaultValue` is `state.reason` | `16` §8.2 item 6 |
+| 6 | Reject confirms in a dialog naming the proposal (`<bdi>`); cancel calls nothing | `review-card.tsx:186-211` | kept, opened from «ارفض» | REQ-UIX-013 |
+| 7 | The dialog's confirm submits the same form across the portal by `form=` | `review-card.tsx:124-130` | kept | REQ-UIX-013 |
+| 8 | The dialog closes from the result, never on click (the race a real build found) | `review-card.tsx:150-168` | kept | DEC-135 lineage |
+| 9 | The toast fires from inside the action wrapper (the card unmounts in the same commit) | `review-card.tsx:53-70` | kept, plus `focusNext()` | REQ-UIX-007 |
+| 10 | The inline `role=alert` stays as a record beside the toast | `review-card.tsx:82-86` | the field's error for a missing reason; a `FormAlert` for `failed` | REQ-UIX-007 |
+| 11 | `noValidate`; the reason box is never `required` | `review-card.tsx:88-93, 118-122` | kept | `16` §8.2 |
+| 12 | A decision on `submitted` walks through `in_review` (both audited) | `0013` | unchanged (the RPC's) | REQ-PRO-006 |
+| 13 | Approval clears a previous change-request's reason | `0013` | unchanged — and see **D3** (the message box on approve) | REQ-PRO-005 |
+| 14 | The queue is oldest first — «a queue, not a feed» | `proposals.ts:519` | kept in every filter; `all` is the same order | REQ-PRO-005 |
+| 15 | Age «منذ …» from `updated_at` (a resubmission resets it), six plural forms | `proposals.ts:530`, `admin.json` `age` | kept, moved to `proposals.json` | `10` §plurals |
+| 16 | `<bdi>` on title, proposer, category, presenters, abstract, audience, notes | `page.tsx:56-125` | kept on each, plus company and the diff's values | `10` bidi |
+| 17 | Level shown in words through the propose form's keys | `page.tsx:39,79` | kept (a chip) | REQ-PRO-002 |
+| 18 | Duration shown with its plural form, only when set | `page.tsx:81-88` | kept (a chip), only when set | REQ-PRO-002 |
+| 19 | ★ **Target audience shown to the reviewer** | `page.tsx:112-117` | **kept as a line under the chips — the artboard does not draw it (D4)** | REQ-PRO-002 |
+| 20 | The proposer's notes to the reviewer shown when present | `page.tsx:118-127` | «ملاحظات للمشرف», as drawn | REQ-PRO-002 |
+| 21 | Presenters listed when more than the proposer | `page.tsx:91-103` | always listed, as drawn — ★ **and see row 22** | REQ-PRO-003 |
+| 22 | ★ **Found: a DECLINED co-presenter is listed as a presenter** (`presenters` is unfiltered) | `page.tsx:95` | accepted listed; pending marked «بانتظار الرد»; **declined not listed** | REQ-PRO-003 |
+| 23 | ★ **Found: preliminary materials are NOT shown on the review screen at all** — an admin sees them only by opening `/app/propose/[id]` | `page.tsx` (absent) | «مواد مبدئية», through `content`'s audited path | REQ-PRO-004 («visible to admins») |
+| 24 | Empty: «لا مقترحات تنتظر المراجعة الآن.» with «العودة إلى اللوحة» | `page.tsx:45-48` | kept for `pending`; the other filters get the same `EmptyState` without the action | REQ-UIX-* empty states |
+| 25 | `revalidatePath` of the queue after a decision | `actions.ts:66` | `revalidatePath(…/proposals, "layout")`, so the list in the layout refreshes | — |
+| 26 | Every `Field` id is the Field's own `useId` (a hand-written id repeated across cards, wave 11 K1) | `review-card.tsx:180-182` | kept: one card now, ids still the Field's | REQ-NFR-007 |
+| 27 | The decision's audit row and the proposer's notification are triggers (`0011`, `0039`), not the screen | migrations | unchanged | REQ-PRO-006, REQ-PRO-005 |
+| 28 | «Approving does not publish» | `0013`, copy `approveNote` | **the behaviour is the RPC's and stands; the sentence goes** (no explainer copy). «افتح كجلسة» is the next step, shown after approval | REQ-PRO-005, REQ-UIX-080 |
+| 29 | ★ **Found: an approved proposal becomes a session only from SCR-042** (`makeSessionFromProposal`, `admin/sessions/actions.ts:26`, `console`'s) | console's list | also «افتح كجلسة» on SCR-041, through `createSessionFromProposal()` (mine). **Whether 042 keeps its own list is `console`'s: a request, R3** | REQ-PRO-007, REQ-SES-001 |
+
+### States not drawn that I will build
+
+- each filter empty;
+- a `changes_requested` proposal: no decision card, and the reason sent, «ما كتبه المشرف», in a muted `panel`;
+- `approved`: «افتح كجلسة», or «افتح الجلسة» once one exists;
+- `rejected`: the reason, no actions;
+- a proposal id that is not visible or not admin: not-found;
+- a decision refused (`failed`);
+- the phone detail route with its back link;
+- a pre-`0179` proposal: no diff.
+
+## W21.4 · SCR-043 — the hub's header (contract 4) and الجدولة, read by default (PR B)
+
+### ★ Contract 4 — the mechanism, published today
+
+**The hub layout draws the header; a tab's page draws nothing of it.** `admin/sessions/[id]/layout.tsx`:
+
+```
+<Suspense fallback={<HubHeaderSkeleton/>}>  <HubHeader locale id tabActions={{ attendance: <AttendanceHeaderAction locale={locale} sessionId={id} /> }} />  </Suspense>
+<Suspense fallback={<SessionSettingsNavSkeleton/>}>  <SessionSettingsNav … />  </Suspense>
+{children}
+```
+
+- **`HubHeader` (server)** reads a new add-only `getSessionHubHeader(locale, id)` in `sessions.ts`. It returns the
+  title, state, `missing` (REQ-SES-001's gate, as `getSessionForSchedule` computes it) and `viewerRole`. It returns
+  `null` for anyone not staff, and **catches**, like `getSessionSettingsNav()`: a layout that throws replaces every tab
+  with the error boundary. `null` renders nothing.
+- It composes the lead's `page-header`: breadcrumb «الجلسات» → `/app/admin/sessions`, the `h1` (the title, `<bdi>`),
+  and `status` = `SessionStatusBadge` (`DEC-073`). Its `actions` hold, in this order:
+  - the tab's primary;
+  - «صفحة الجلسة» (a secondary link to `/app/sessions/<id>`);
+  - the lifecycle action.
+- **The tab's actions travel by URL segment, not by a portal or a context.** The layout renders every tab's action on
+  the server and passes them to a small client `HubTabAction` as a map. `HubTabAction` shows
+  `actions[useSelectedLayoutSegment()]`, the same reading the strip already uses (`session-settings-strip.tsx:15-18`).
+  A layout is not re-rendered between tabs, but the segment is current on the client, so the right action shows after
+  every soft navigation.
+- **Rejected: a parallel `@actions` slot.** On soft navigation an unmatched slot keeps its previous subpage
+  (`parallel-routes.md:98-101`), so «شاشة التقديم» would linger on الجدولة. Next 16 also fails the build without a
+  `default.js` per slot (`version-16.md:931-933`). Five tabs, one catch-all and that behaviour are more risk than a map
+  and a segment.
+- ★ **`checkin`'s side (044):** export `AttendanceHeaderAction({ locale, sessionId }): Promise<ReactNode>` from a file
+  of `checkin`'s (I suggest `src/components/checkin/hub-header-action.tsx`). Its rules:
+  - it is a server component;
+  - it reads its own data with its own DAL;
+  - it returns **one** button-link («شاشة التقديم» → `/app/sessions/<id>/host`) or `null`;
+  - **it never calls `notFound()` or `redirect()` and never throws.** It catches, because it renders inside a layout;
+  - it renders no heading and no landmark;
+  - no motion.
+
+  `checkin`'s `attendance/page.tsx` then renders nothing of the header: no `PageHeader`, no `h1`. Its first heading is
+  an `h2`. ★ **I import their export by path**, the event page's slot pattern. Until it exists, the map entry is
+  absent. The survey and certificates pages lose their own `PageHeader` by the lead's hand as custodian.
+- **The lifecycle action by state (admin only; a moderator sees none):**
+
+  | State | Action |
+  |---|---|
+  | `draft` · `submitted` · `in_review` · `changes_requested` · `approved` | «انشر» (primary) — `publish_session()` through `publishSession()`. Disabled while the stored schedule misses something, with the existing one line «لا يمكن النشر بعد — ينقص: …» (it changes what the person does next) |
+  | `published` · `in_progress` | «ألغِ الجلسة» (quiet) — a `ui/dialog` naming the session, with a required reason (REQ-SES-010), `REQ-UIX-013`; `transition_session('cancel')` through `transitionSession()` |
+  | `completed` · `archived` · `cancelled` | none |
+
+  The action is a new `"use server"` module of mine, `src/components/sessions/hub-actions.ts` (the precedent is
+  `components/checkin/actions.ts`). It revalidates `/…/admin/sessions/<id>` as a **layout**, so the header, strip and
+  tab all redraw. ★ The RPC allows cancel from `completed` and `archived` (`actionsFor`, `sessions.ts:1380`); the
+  artboard says none. **D5.** «ابدأ», «أنهِ», «أرشِف» and «أعِد فتحها» are **not** in the header: they stay on 042's
+  row menu (R3).
+- ★ **While الجدولة is in edit mode (`?edit`) the lifecycle action is hidden.** Otherwise «انشر» in the header would
+  publish the stored schedule while unsaved typing sits in the form. `HubTabAction`'s sibling reads `useSearchParams()`
+  inside the header's Suspense.
+- **The strip:** five tabs in `REQ-SES-020`'s order, الجدولة · المحتوى · الحضور · الاستبانة · الشهادات.
+  - المحتوى is the old `event` key, relabelled through a new `sessions.hub.items.content`. «صفحة الجلسة» keeps
+    `items.event` for the header link.
+  - The order is set in `session-settings-nav.tsx`. `SESSION_SETTINGS_KEYS` is not touched (the DAL is add-only), and
+    neither are the role filters: schedule is admin only, and survey is hidden from a presenter of the session
+    (`sessions.ts:716-720`, a rule nobody remembers).
+- **`DEC-178`'s redirect (`[id]/page.tsx`) is unchanged, byte for byte.** `[id]/loading.tsx` drops its
+  `SkeletonPageHeader`: the header has its own skeleton above it now.
+- The lone `h1` comes from the layout, and every tab's first heading is an `h2`. While the header streams there is no
+  `h1`, which is acceptable.
+
+### الجدولة — regions in the artboard's order → primitive
+
+1. *(header and strip, above)*
+2. `kv-card` (no visible title; `label` «الجدولة») in read mode. Its rows:
+   - **الموعد:** `formatDateTime` range in the session's zone, `<bdi>`. A multi-day session lists each day by
+     contract 7's `dayLabel`.
+   - **المكان:** venue · its capacity, or the custom name.
+   - **السعة:** the capacity. ★ The artboard's «قائمة انتظار مفعّلة» is not a setting — there is no waitlist switch
+     in the schema — so it is **not drawn (D6)**.
+   - **إغلاق التسجيل** / **آخر إلغاء:** the stored instants.
+   - **المُقدِّمون:** `avatar` with the ring + name per accepted presenter; a pending one marked.
+   - **تسجيل الحضور:** «رمز يتغيّر كل N دقائق», with N from `org_settings.check_in_rotation_seconds`, read and never
+     typed. Add «يُسمح بالحضور دون حجز» when `allow_walk_ins` is on, and the every-day rule when multi-day. ★ The
+     artboard's «يُغلق 9:30 م» needs `check_in_ceiling()`, which is revoked from `authenticated` (`0101:139`). I will
+     not re-derive the rule in TypeScript. **D7, R1.**
+   - **الشهادة:** the certificate mode in words. It is read in both modes: SCR-045 is its one writer (DEC-178).
+   - ★ **اللغة:** **not drawn — kept, D8** (REQ-SES-011).
+3. Under the card: «عدّل» (primary) → `?edit`, and «أعد الجدولة» → `?edit#startsAt`, the same form focused on the
+   date. «أعد الجدولة» is **published or later only**, where REQ-SES-009's notice applies (D9).
+4. The side column (`card`s):
+   - **الحجوزات N / M · قائمة الانتظار N** — a new add-only `getScheduleSide()` counting confirmed and waitlisted
+     `rsvps` under RLS.
+   - **الملصق** — the formats as links from `designer`'s DTO. I add a `placement: "hub-side"` to my
+     `session-download.tsx` (add-only): plain `<a>` to the audited route, never a `Link` and never signed here. A
+     refused download still lands back with `?download=failed`.
+   - **السجل** — a new add-only `getSessionLog()` reading `audit_log` (`audit_read_admin`): `session.*` rows for this
+     session, plus `proposal.approved` for its `proposal_id`. Each line is the verb, the actor's name when one acted,
+     and the date. Display order is `occurred_at desc`, with ties broken by action rank. That ordering is for display;
+     it never decides «the last row». ★ «اعتُمد المقترح» **links to `/app/admin/proposals/<id>`**, which is how
+     REQ-PRO-009's «what the proposer wrote» stays one tap away (row S27).
+
+### Edit mode — the existing form, every field
+
+- `?edit` is a URL state. The page reads `searchParams`, and «عدّل» is a link, so it works with no JS.
+- The `kv-card`'s edit twin holds the existing `ScheduleForm`'s controls **regrouped into the card's rows**, inside the
+  form's own `<form>`. The page owns that form; the primitive owns none.
+  - **الموعد:** start, duration, the following end, «جلسة متعدّدة الأيام» and the day cards.
+  - **المكان:** venue select, the custom three.
+  - **السعة.**
+  - **إغلاق التسجيل** / **آخر إلغاء:** the presets.
+  - **تسجيل الحضور:** walk-ins, every-day.
+  - **اللغة.**
+  - **الشهادة:** read.
+  - The `FormSummary` and the form alert sit above the card.
+- Actions: «احفظ» (or «احفظ التغييرات» once published) · «إلغاء» (a link back to read mode) · for an unpublished
+  session, «انشر الجلسة», the one-press save-and-publish kept from wave 8.
+- **A success redirects to read mode** (`?saved=1` / `?published=1`). Read mode shows the existing `role="status"`
+  line once. This keeps the no-JS path and the `status` text the suites read.
+- ★ **The presenters row is not in the schedule's form, and cannot be.** `PresentersSection` is two forms of its own
+  («never inside the schedule's», `presenters-section.tsx:9-10`), and forms do not nest. In read mode the row carries
+  «غيّر», which opens a `sheet` (console's primitive, as it is) holding `PresentersSection` unchanged. Each add or
+  remove is its own audited, immediate RPC, which is honest: it is not undone by the schedule's «إلغاء». In edit mode
+  the row shows the names read. **D10** says why this is not «nothing edited without «عدّل»».
+- ★ **The poster picker** (`designer`'s `PosterPicker`, REQ-DSG-002) is drawn nowhere in the artboard. It goes into
+  edit mode as a **«الملصق»** row after «اللغة», outside the schedule's `<form>` because it has its own forms.
+  **D11.**
+
+### ★★ The kept-behaviour table — SCR-043 (re-derived from REQ-SES-*, REQ-PRO-009, DEC-117/118/121/151/178, the DAL)
+
+| # | Behaviour | Where today | Where after | Kept by |
+|---|---|---|---|---|
+| S1 | Admin only; the route 404s for anyone else (`getSessionForSchedule` null) | `page.tsx:64`, `sessions.ts:339` | unchanged; the header renders for staff, the tab 404s for non-admin | REQ-ADM-020, DEC-134 |
+| S2 | The layout decides nothing, never `notFound`/`redirect` | `layout.tsx:10-14` | kept, and the header reads catch | DEC-178 |
+| S3 | The hub's URL redirects an admin to schedule, a moderator to attendance | `[id]/page.tsx:20-21` | unchanged | DEC-178 |
+| S4 | The strip is links with `aria-current`, never a tablist; scrolls inside itself; 44 px targets; the fade mask; current from the segment | `session-settings-strip.tsx` | kept; order and one label change | REQ-SES-020, SC 2.5.8 |
+| S5 | The strip offers schedule to admins only, and the survey never to a presenter of the session | `sessions.ts:716-720` | unchanged | REQ-ADM-020, REQ-SUR-* |
+| S6 | Title, breadcrumb «الجلسات», `SessionStatusBadge` from `storedPhase` | `page.tsx:75-79` | in the header (the layout) | DEC-073, REQ-SES-020 |
+| S7 | One Server Action for save and publish: publish saves first, in one press; a refused publish leaves a saved schedule and says so (`publishFailed`) | `actions.ts:15-19, 230-240` | kept as edit mode's «انشر الجلسة»; the header's «انشر» publishes the stored schedule | REQ-SES-001, wave 8 L2 |
+| S8 | «انشر الجلسة» disabled while REQ-SES-001's gate is unmet, naming what is missing, from the form as it stands | `schedule-form.tsx:356-364, 746-751` | kept in edit mode; the header's «انشر» from the stored `missing` | REQ-SES-001 |
+| S9 | `scheduleInput` is `.strict()`; Zod first; authority is `schedule_session()`/`publish_session()` (`assert_fresh_admin`) | `actions.ts:21-24` | unchanged | `03` §1.3 |
+| S10 | The duration pre-fills from the proposal; the hint says so | `schedule-form.tsx:207`, `:494` | kept | REQ-PRO-009 |
+| S11 | The end follows start + duration as a sentence; «عدّل وقت الانتهاء» makes it a field; an explicit end wins; «احسبها من المدة» returns | `schedule-form.tsx:508-552` | kept (الموعد row) | REQ-SES-016, OQ-001 |
+| S12 | Relations said at the field at once; an empty field is not an error until submit | `schedule-form.tsx:52-56, 309-325` | kept | REQ-SES-016, REQ-UIX-011 |
+| S13 | `FormSummary` lists the errors on the page in page order, keyed on `attempt` | `schedule-form.tsx:356-386, 465-467`, `state.ts:8-17` | kept above the card; ★ `SCHEDULE_FIELDS`' order already matches the rows | DEC-144 |
+| S14 | Values survive React's form reset (controlled state + `was()`) | `schedule-form.tsx:68-70, 219-226` | kept — the same component internals, regrouped | DEC-149 §1 |
+| S15 | Capacity follows the venue until typed; `capacity.fromVenue` hint | `schedule-form.tsx:227-231, 679-690` | kept | REQ-SES-002 |
+| S16 | Custom venue: name, address required; map URL `https://` only | `actions.ts:109-116` | kept | REQ-SES-002 |
+| S17 | Deadlines are one select of presets, the resolved time said beneath, a picker only for «موعد آخر» | `schedule-form.tsx:394-462` | kept (two rows) | REQ-SES-016 |
+| S18 | Every date is `ui/date-time` inside `Field`, each trigger named by its own field | `schedule-form.tsx:63-66` | kept | REQ-UIX-009 |
+| S19 | Walk-ins: the stored value reaches the switch; always posted as an explicit boolean | `page.tsx:105-107`, `actions.ts:194-196` | kept (تسجيل الحضور row) | DEC-117, DEC-118, DEC-141 |
+| S20 | Multi-day behind «جلسة متعدّدة الأيام»; one day posts NO `days` field (main's call); `sendsDays` both halves | `schedule-form.tsx:240-276` | kept, byte for byte | REQ-SES-016, DEC-150 |
+| S21 | A new day takes the previous day's clock and place; date-only picker; «غيّر الوقت» | `schedule-form.tsx:826-843`, `rules.ts:194` | kept | REQ-SES-016 |
+| S22 | Removing a day asks, names it, and says its content is promoted, not deleted; no remove control on a day with attendance | `schedule-form.tsx:787-821, 895` | kept | DEC-121, DEC-151 |
+| S23 | No reorder control on days | `schedule-form.tsx:836-838` | kept | DEC-150 |
+| S24 | Every-day rule only inside the affordance; absent = «unchanged», never false | `actions.ts:215-218` | kept | REQ-SES-017 |
+| S25 | No certificate-mode control and no posted mode (`certificateMode: null`) | `actions.ts:190-192` | kept; shown read in الشهادة | DEC-178, REQ-SES-020 |
+| S26 | Language: a radio group, Arabic or English | `schedule-form.tsx:727-741` | kept — an «اللغة» row (D8) | REQ-SES-011 |
+| S27 | «المحتوى — كما كتبه المُقترِح» — abstract, category, level, **target audience, expected duration**: the only admin view of the audience after approval (it is not copied onto the session) | `content-panel.tsx`, `sessions.ts:403-409` | ★ **the panel goes**: the abstract, category and level are on the event page (المحتوى). **The audience is one tap away** through the log's «اعتُمد المقترح» → SCR-041's detail; the duration still pre-fills | REQ-PRO-009 (the copy is still carried) |
+| S28 | The provenance line «من مقترح …» / «أُنشئت مباشرة» | `page.tsx:67-71` | ★ the log's first line («اعتُمد المقترح» or «أُنشئت») | REQ-PRO-007 |
+| S29 | Presenters: add and remove, two audited RPCs, their own forms; no «أزل» on the last accepted; nobody in the picker who already presents; pending/declined stay pickable; the points sentence after completion; locked when cancelled; the name announced in a status region | `presenters-section.tsx`, `page.tsx:139-152` | kept unchanged, in a `sheet` from the presenters row (D10) | REQ-SES-019, DEC-172, DEC-174 |
+| S30 | The picker's members are active members from `console`'s `listMembersForAdmin()` | `page.tsx:59-61, 146` | unchanged | DEC-174 Q8 |
+| S31 | The poster picker on the hub | `page.tsx:157-159` | edit mode's «الملصق» row (D11) | REQ-DSG-002, REQ-DSG-003 |
+| S32 | The poster's download: plain `<a>` to the audited route, pending never a link, failed said, `?download=failed` said beside the control | `session-download.tsx` | the side column's «الملصق», same rules, new add-only placement | REQ-DSG-027, DEC-178 |
+| S33 | `revalidatePath` of the schedule and the event page after a save; of both after a presenter change | `actions.ts:227-228, 250-253` | kept, plus the hub layout | REQ-SES-009 |
+| S34 | A published session's save notifies and moves reminders (the RPC's, not the form's) | `schedule_session()` | unchanged | REQ-SES-009 |
+| S35 | `<bdi>` on the title, names, venue, provenance | `page.tsx`, `content-panel.tsx` | kept on every interpolated value in the rows, the header and the log | `10` bidi |
+| S36 | The sticky action bar above the tab bar on a phone | `schedule-form.tsx:745` | the card's actions; the console has no tab bar, so not sticky (D12) | REQ-SES-016 |
+| S37 | The `intro` description under the title | `page.tsx:80` | **goes** — explainer copy | REQ-UIX-080 |
+| S38 | The no-JS path | none for the form (client pickers) | read mode is server-rendered and readable; «عدّل» is a link | — |
+
+## W21.5 · Strings — `admin.proposals.*` → `proposals.json`
+
+- A new subtree `proposals.review.*` in `src/messages/ar/proposals.json` first, then `en/`:
+  - the moved keys: `empty`, `emptyAction`, `age`, `state.*`, `reasonRequired`, `send`, `cancel`, `closeDialog`,
+    `rejectConfirm*`, `failed`, `done`, and the labels;
+  - the artboard's ★ strings: `filters.{pending,changes,approved,all}`, `message` «رسالة للمقترِح», `approve` «اعتمد»,
+    `requestChanges` «اطلب تعديلًا», `reject` «ارفض», `openAsSession` «افتح كجلسة», `openSession` «افتح الجلسة»,
+    `materials` «مواد مبدئية», `notes` «ملاحظات للمشرف», `edits` «تعديلات على المحتوى منذ الإرسال · {value}», `deleted`
+    / `inserted` (sr-only), `back`, `pendingReply` «بانتظار الرد».
+- **Dropped as explainer copy:** `intro`, `approveNote`, `reasonHint`, `count`, `reasonLabel*`.
+- **When nothing reads them, I write the request to `console` (through the lead) to delete `admin.proposals.*`.**
+- Hub: `sessions.hub.items.content` «المحتوى»; `sessions.hub.lifecycle.*` («انشر», «ألغِ الجلسة», the dialog's title,
+  body, reason label and confirm); `sessions.hub.log.*` (the verbs); `schedule.read.*` (row labels, «—», «غيّر»,
+  «أعد الجدولة», «عدّل»); `schedule.side.*`.
+- Every count uses six ICU forms. No Arabic-Indic digit anywhere.
+
+## W21.6 · New disagreements (the artboard and the line; none picked)
+
+- **D1** `AdminProposals.dc.html` h1 row, «قرار خلال 7 أيام»: no stored review window. Rule 7 forbids the literal.
+  Not built unless a setting is ruled.
+- **D2** «مسودة الشرائح · PDF · 9»: a proposal's material has no pages (never rendered before carry-over). Drawn as
+  title · kind.
+- **D3** ★ **The one message box beside «اعتمد».** `review_proposal('approve')` sets `decision_reason = null` (`0013`),
+  and `MSG-proposal_approved` carries `reason` from that column (`0039:156`). **A message typed and then «اعتمد» is
+  silently discarded.**
+  - (a) send it — an RPC change, a migration from `0179`, and a notification binding;
+  - (b) refuse «اعتمد» while the box holds text;
+  - (c) say nothing and lose it.
+
+  (c) is a defect. I recommend (b) for this wave and (a) carried. The lead or the owner rules.
+- **D4** The artboard's detail draws no «الفئة المستهدفة»; REQ-PRO-002 makes it a proposal field. Kept as a line.
+- **D5** `M11a.md` §4 «nothing for completed»; `transition_session()` allows cancel from completed and archived.
+  The header follows the artboard; the row menu on 042 is where those edges live (R3).
+- **D6** `AdminSessionHub` «السعة 40 · قائمة انتظار مفعّلة»: no waitlist setting exists; the waitlist is always on.
+- **D7** «تسجيل الحضور … يُغلق 9:30 م»: needs `check_in_ceiling()`, which is not granted to `authenticated` (`0101:139`).
+- **D8** The artboard's card has no «اللغة» row; REQ-SES-011 and the form have it.
+- **D9** «أعد الجدولة» beside «عدّل» opens the same form. I show it once published (REQ-SES-009) and focus the date.
+- **D10** Presenters change from their row's «غيّر» in a `sheet`, outside «عدّل». Forms cannot nest, and each change
+  is an immediate audited RPC (REQ-SES-019). REQ-UIX-089's «nothing is edited without «عدّل»» is read as «nothing
+  edited without an explicit intent».
+- **D11** No artboard draws the poster picker. It goes in edit mode.
+- **D12** The breadcrumb is «الجلسات › إداري», where «إداري» is the **category**, not a level of the path. I build
+  «الجلسات» only. The phone's sticky bar has no tab bar to sit above in the console.
+- **D13** `AdminAttendance`'s header omits «صفحة الجلسة»; `AdminSessionHub` draws it. One header (REQ-UIX-089) means
+  it is on every tab.
+- **D14** `M11a.md` §2/§6 cite `proposals.filters.*` and `proposals.empty`, which do not exist (they are
+  `admin.proposals.*`). That is why the strings move.
+- **D15** ★ The agent file offers «new `src/components/hub/**` if you want it». **That directory exists and is
+  `scoring`'s** (wave 20's standing card: `band-moments.tsx`, `displayed-only.tsx`, `standing.tsx`). I do not use it.
+
+## W21.7 · Assertions I expect to change (each a ledger line in the same commit; none hidden)
+
+- `tests/components/admin/proposals-review-card.test.tsx` — the component is deleted. Its four cases move to a new
+  `tests/components/proposals/decision-card.test.tsx` against one box. The labels «ارفض المقترح» → «ارفض» and
+  «اعتمد المقترح» → «اعتمد»; the box label → «رسالة للمقترِح». **Expectation kept:** the dialog, cancel calls nothing,
+  confirm submits `action=reject` across the portal, and the empty-reason error.
+- `tests/e2e/admin-proposals.spec.ts`:
+  - h1 «مراجعة المقترحات» → «المقترحات»;
+  - «مقترح واحد» → the chip «بانتظار قرار 1»;
+  - `li` cards → the split view's rows and detail;
+  - the rest kept (the dialog, the toast, the empty state with «العودة إلى اللوحة»).
+- `tests/e2e/sessions-admin-proposals.spec.ts`:
+  - «الاعتماد لا ينشر الجلسة» → gone (an expectation, named here first);
+  - button names as above;
+  - the 390 px case now asserts the list as the page and the detail route.
+- `tests/components/sessions/session-settings-nav.test.tsx` and `tests/e2e/wave13-sessions-hub.spec.ts`:
+  - the strip's order and the label «صفحة الجلسة» → «المحتوى», which now appears in the header too;
+  - the poster section's selector moves to the side column, with `href` and the audited route kept.
+- `tests/e2e/wave8-lead-schedule.spec.ts` (evidence): the page opens in read mode, so the spec presses «عدّل» first.
+  «من مقترح سعد الحربي» and «المحتوى — كما كتبه المُقترِح» are gone (S27, S28). The rest kept: the label names, the
+  end-follows sentence, the relation error, «انشر الجلسة» disabled then enabled, and «نُشرت الجلسة» as a `status`.
+- `tests/e2e/wave9-sessions-schedule-days.spec.ts`, `tests/e2e/checkin-schedule-walk-ins.spec.ts`: press «عدّل» first.
+  The walk-ins case also asserts the read row.
+- `tests/components/sessions/{schedule-days,schedule-no-certificate-mode,presenters-section}.test.tsx` and
+  `tests/components/checkin/schedule-form.test.tsx` **should not change**: the form component keeps its props and
+  internals, and only its grouping moves. If they do change, they are ledger lines.
+
+## W21.8 · Requests
+
+- **R1 → lead:** a read of a day's check-in close for staff (a definer wrapper over `check_in_ceiling()`), or D7 is
+  ruled «not drawn».
+- **R2 → lead:** `console-register.test.ts`'s no-animation case reads `STAFF_DIRS` only, and my console files sit in
+  `src/components/sessions/` and `src/components/proposals/`. In the one amendment, add
+  `src/components/sessions/hub-*.tsx`, `src/components/proposals/{decision-card,diff,…}.tsx` — or allow me
+  `src/app/[locale]/app/admin/sessions/[id]/_hub/**`, which the sweep already covers. Which do you prefer?
+- **R3 → `console`:** 042's row menu keeps start / complete / archive / reopen and cancel-after-completion. The hub
+  header carries only publish and cancel. 042 decides whether its «approved, waiting to be a session» list stays now
+  that 041 has «افتح كجلسة».
+- **R4 → `checkin`:** `AttendanceHeaderAction` as specified in W21.4. Your page renders no header.
+- **R5 → lead (as custodian):** survey and certificates lose their `PageHeader` in PR B.
+- **R6 → `console`:** delete `admin.proposals.*` once SCR-041's create commit lands.
+- **`0179`** — W21.1, the lead's.
+
+## W21.9 · Open questions for sync 1
+
+1. D3 — the approve message: (a), (b) or (c)?
+2. D5 — cancel from completed in the header, or not?
+3. R2 — where the console-only components live.
+4. D10 — presenters in a `sheet` from read mode: acceptable as «edited on intent»?
+5. D7 — draw «يُغلق …» through R1, or leave it out?
+
+## W21.10 · After sync 1 (`DEC-228`) — what changes in my plan, and the queue's URLs
+
+**Rulings taken in:**
+- D3 is (b): while the message box holds text, «اعتمد» is refused at the field.
+- D5: no lifecycle action for completed, archived or cancelled; 042's menu is untouched.
+- R2: the console-only components go under `admin/proposals/_components/**` and `admin/sessions/[id]/_hub/**`.
+  Shared code stays in `components/sessions/`. `components/proposals/diff.ts` is shared and pure, so it stays there.
+- D10 is accepted.
+- D7: «يُغلق» is drawn only if `checkin`'s DAL already gives it to staff. I have asked them.
+- The display face is on `h1` alone.
+- `DEC-228` §3.11: the approved-to-session button stays on 042. SCR-041's «افتح كجلسة» is the artboard's and calls
+  the same `create_session(p_proposal)`, so the same authority sits in two places, not two mechanisms.
+
+**`0179`, handed to the lead:**
+- the SQL is `supabase/proposed/sessions/0179-proposal-audit.sql`;
+- the proof is `tests/rls/proposals-diff.test.ts`, four cases, green with `proposals-review` beside it. The two cases
+  that timed out in the first run were the 20 s limit under load; the rerun was clean.
+
+**The queue's URLs — published for `console` (R3) and the dashboard's tile.** Each is stable from PR B:
+
+| What | URL |
+|---|---|
+| awaiting a decision (`submitted` + `in_review`) — the default, the tile's target | `/app/admin/proposals` (`?state=pending` is the same) |
+| waiting on the proposer (`changes_requested`) | `/app/admin/proposals?state=changes` |
+| approved | `/app/admin/proposals?state=approved` |
+| everything but drafts, rejected included | `/app/admin/proposals?state=all` |
+| one proposal (the phone's detail route; the log's link from SCR-043) | `/app/admin/proposals/<id>` — `?state=` carried for the back link |
+
+An unknown `state` reads as `pending`. A moderator gets the streamed not-found at every one of them.

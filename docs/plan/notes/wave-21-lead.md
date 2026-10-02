@@ -1,5 +1,9 @@
 # Wave 21 — M11a, the first console batch
 
+> ★ **Step 0 is done — read `DEC-227` with this brief.** It records the owner's goal (§0), which sits above
+> everything below; the two rulings the lead asked for (the register test amended once, «التصنيفات»); a fourth wrong id
+> (`REQ-ORG-017` does not exist — `REQ-ADM-004` is the source); the diff with no data behind it; and the map.
+
 **You are the implementing lead.** This brief is measured, not estimated: every number was read from
 the tree at `51db9898`, and where it disagrees with the planning prompt or with `M11a.md`, the
 disagreement is named. Read it, then `docs/design/screens/M11a.md`, then the six artboards at 1280
@@ -159,3 +163,78 @@ bare command no longer runs and the reconnect resets the builder to RAILPACK · 
 rebuilt screen beside its artboard, and the console's acceptance is at 1280 on a real screen, not only
 at 390** · your closing entry records the deviation list, the owner's ruling on the rail's groups, and
 what comes after this batch.
+
+---
+
+## The lead's plan — the console frame and `ui/admin-rail` (sync 1's fourth plan, `STORY-UIX-074`, `075`)
+
+**The job:** the frame is how an admin gets anywhere. Twenty destinations, six groups, what is waiting counted beside
+the three queues — one look, one move. At 390 the same twenty behind ≡, in the same groups.
+
+### The frame, from `AdminDashboard.dc.html` and `AdminSessionsPhone.dc.html`
+
+- **Under `/app/admin` only** — `/app/platform` shares `isConsole()` and is **not** this batch; its frame does not move.
+- **The bar, 52 px, every width**: the wordmark · «لوحة الإدارة» · the org's name (`<bdi>`) at the inline-start; «التطبيق»
+  and the account's avatar at the inline-end. ★ **The wordmark keeps `REQ-UIX-027`** — it leads to `/app` — and
+  «التطبيق» is the artboard's plain word for the same door; a disagreement written, not picked (D1 below).
+- **Phone**: ≡ · «لوحة الإدارة» · «التطبيق» — no wordmark, **no tab bar** (`AdminSessionsPhone.dc.html`). The console
+  joins `shell-routes.ts` as its own frame: the member header, tab bar and nav rail are not drawn under `/app/admin`.
+- **The rail, from `lg`**: 220 px at the inline-start, sticky under the bar, the page beside it at 24 px padding, ≈1000 px.
+  **Under `lg`** the rail is a `sheet` from the inline-start behind ≡, keeping the six groups and their rules, closing
+  on navigation.
+- **The skip link past the rail** stays (`REQ-UIX-017`): `#admin-content`, `tabIndex={-1}`.
+- **The layout never gates** — its header comment's bug (a layout `notFound()` streams a 200) stands; a plain member
+  gets an empty rail and the page's own check answers.
+
+### `ui/admin-rail` — the props the lead lands as types after sync 1
+
+```ts
+interface AdminRailLink { key: string; href: string; label: string; count?: number; exact?: boolean }
+interface AdminRailProps {
+  groups: AdminRailLink[][];          // six groups, each one level; a group renders a rule, no heading text
+  label: string;                      // the nav landmark's name
+  countLabel: (n: number) => string;  // ICU, six forms — the badge's accessible text
+  pathname?: string;                  // the gallery and tests only; otherwise usePathname()
+  variant?: "rail" | "list";          // the 220 px rail, or the same groups inside the sheet
+}
+```
+Current item from the path with the locale stripped, `exact` for the dashboard, prefix for the rest —
+`aria-current="page"`. A badge only when `count > 0`, coral, `<bdi>`, with its accessible text. Targets ≥ 44 px
+(`SC 2.5.8`). **No icon, no animation, no hover scale.** Reads no data and no catalogue.
+
+### ★★ The kept-behaviour table — `src/components/admin/admin-rail.tsx` and `admin/layout.tsx` (`DEC-208`)
+
+| # | Behaviour today | Where | After | Kept by |
+|---|---|---|---|---|
+| 1 | A plain member gets an **empty** rail; the page underneath answers its own 404 | `layout.tsx:178-179` | the layout passes no groups for a member; the frame draws no rail and no ≡ | `REQ-ADM-020`, `DEC-134` |
+| 2 | `built: false` items are never drawn | `layout.tsx:146` | the nav table keeps `built`; filtered before the primitive | `DEC-226` §2 |
+| 3 | Admin-only items hidden from a moderator; a moderator sees six routes | `layout.tsx:146,157` | the same filter over twenty leaves | `REQ-ADM-020` |
+| 4 | The current item from `usePathname()`, locale stripped, `exact` for the dashboard | `admin-rail.tsx` `useRailPath`, `isCurrent` | in the primitive, unchanged | `REQ-UIX-006` |
+| 5 | `aria-current="page"`; `<bdi>` on every label; the nav named by the brand | `admin-rail.tsx` | unchanged | `REQ-UIX-017`, `REQ-INT-005` |
+| 6 | Phone: a bar with the menu trigger and a `sheet` from the inline-start that closes on navigation | `admin-rail.tsx` | the console bar's ≡ and the same `sheet`, now keeping six ruled groups | `16` §6.7, `DEC-226` §1 |
+| 7 | Only one chrome block focusable per width | `admin-rail.tsx` header | unchanged | `REQ-UIX-017` |
+| 8 | The second skip link to `#admin-content` | `layout.tsx` | unchanged | `REQ-UIX-017` |
+| 9 | Icons per item, by string key across the server/client boundary | `admin-rail.tsx` `ICONS` | ★ **dropped** — the artboard's rail draws no icon; `AdminRailIconKey` goes with it. The Flight lesson stays: the layout passes only plain data | `M11a.md` §0 |
+| 10 | A collapsible desktop rail, its state in `localStorage` | `admin-rail.tsx` | ★ **dropped** — the 220 px rail is fixed | `M11a.md` §0 |
+| 11 | Disclosure groups with per-group `localStorage`, and a flyout `menu` on the collapsed rail | `admin-rail.tsx` | ★ **dropped with `AdminRailChild`** — twenty items on one level, six rules | `DEC-226` §2 |
+| 12 | `menu`'s use as «the admin sub-nav» | `admin-rail.tsx` `CollapsedGroupMenu` | ★ gone from the rail; `menu` itself unchanged | — |
+
+★ The tests `admin-rail.test.tsx` and `admin-rail-groups.test.tsx` are deleted with the file — each a ledger line —
+and replaced by the count: **twenty for an admin, six routes for a moderator, none for a member, no `built: false`
+item**, in a jsdom test of the layout's table and the primitive, and in `console.spec.ts` on a real build.
+
+### The rest of the frame's rows
+
+- `console-register.test.ts` amended once (`DEC-227` §2), in the commit that deletes the old rail.
+- `admin.shell.nav.categories` → «التصنيفات», and any new frame string, on the lead's written list to `console`.
+- `ui/index.ts`: `AdminRailProps`, and `split-view`'s and `kv-card`'s from `sessions`' plan; the registry; the floor
+  60 → 63; the three demos wired.
+- Captures: `.qa-shots/rtl/wave21-lead-frame-{admin,moderator}-1280.png`, `-sheet-390.png`, beside the artboards.
+
+### Disagreements written, not picked
+
+- **D1** — the wordmark: `REQ-UIX-027` sends it to `/app`; the artboard also draws «التطبيق». Both kept; the owner may
+  rule one redundant.
+- **D2** — the badges: the artboard counts المقترحات, الصور, البلاغات. Which `attention` row each reads is `console`'s
+  contract 3 — «جلسات لم تُجدول بعد» has no rail badge in the artboard and gets none.
+- **D3** — `/app/platform` shares the console's shell predicate and is not drawn in M11a; it keeps today's frame.

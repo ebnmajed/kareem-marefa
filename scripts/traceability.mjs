@@ -225,11 +225,21 @@ for (const s of stories) {
   }
 }
 
+// ── errata: a citation in the append-only log that never resolved ─────────
+// `DECISIONS.md` cannot be edited (DEC-158), so an id it cited wrongly stays in
+// it forever. Each entry here names the file, the id, and the later entry that
+// records the correction. Adding to this list is a visible diff and needs that
+// entry; it never exempts a file that CAN be edited.
+const ERRATA = {
+  'DECISIONS.md: REQ-ORG-017':
+    'DEC-225 §3 inherited a requirement that never existed from M11a.md §7; DEC-227 §1 records REQ-ADM-004 as the source',
+}
+
 const known = new Set(definedReqs)
 for (const [name, text] of Object.entries(files)) {
   if (name.startsWith('_')) continue
   for (const cited of all(text, RE.req)) {
-    if (!known.has(cited)) gaps.brokenCitations.push(`${name}: ${cited}`)
+    if (!known.has(cited) && !ERRATA[`${name}: ${cited}`]) gaps.brokenCitations.push(`${name}: ${cited}`)
   }
 }
 const knownEnt = new Set(definedEnts)

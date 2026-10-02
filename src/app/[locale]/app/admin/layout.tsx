@@ -1,224 +1,109 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
+import { PlayWordmark } from "@/components/brand/wordmark";
+import { formatNumber } from "@/components/sessions/numerals";
+import { AccountMenu } from "@/components/shell/account-menu";
+import { adminRailGroups, type AdminNavCounts, type AdminRole } from "@/components/shell/admin-nav";
+import { ConsoleFrame } from "@/components/shell/console-frame";
+import { getAdminAttention, type AttentionQueue } from "@/lib/dal/admin-dashboard";
+import { getMe } from "@/lib/dal/members";
 import { requireSession } from "@/lib/dal/session";
-import { AdminRail, type AdminRailChild, type AdminRailIconKey, type AdminRailItem } from "@/components/admin/admin-rail";
+import { getShellData } from "@/lib/dal/shell";
 
-// The admin console shell — `app/admin/**`'s one shared layout, rebuilt onto
-// the system for wave 6 (`16` §6.7, `DEC-130`) and regrouped into the
-// fourteen-group IA for wave 7 (`DEC-137`, `docs/plan/notes/console.md`'s
-// "Wave 7 plan" §1 is the plan this implements).
+// The org console's frame — REQ-UIX-084, DEC-225 §3, DEC-226, DEC-227. Rebuilt in wave 21 from
+// `AdminDashboard.dc.html` and `AdminSessionsPhone.dc.html`: deleted first, then written (`DEC-208`); the table of what
+// it kept is in `docs/plan/notes/wave-21-lead.md`.
 //
-// ★ TWO REAL BUGS, BOTH FOUND ON A REAL BUILD (the lead's worktree runs),
-// FIXED HERE TOGETHER, wave 6:
+// ★ THE LAYOUT NEVER GATES. A `notFound()` raised in a layout under a `loading.tsx` boundary can no longer set the
+// status once streaming has begun — the request answers 200 with the not-found body inside it (wave 6). So the staff
+// and admin gates stay every page's own, at the data; a plain member gets no rail and the page answers its own
+// streamed not-found (`DEC-134`).
 //
-// 1. `requireStaffSession()` (this layout's old gate) calls `notFound()` for
-//    a plain member. Under Next 16's streaming contract, a `notFound()`
-//    raised inside a LAYOUT that sits under a `loading.tsx` boundary
-//    (`admin/loading.tsx`, unchanged, wraps this whole segment in an implicit
-//    `<Suspense>`) can no longer set the response's status code once
-//    streaming has begun — the request answers 200 with the not-found body
-//    inside it, not a real 404. `admin-dashboard.spec.ts`'s "a member gets a
-//    real 404" caught this on both projects. A PAGE-level `notFound()` is
-//    unaffected (the moderator-only equivalent test passed), which is why
-//    the fix is to stop gating HERE at all: `requireSession()` (never
-//    notFound()s an authenticated member, only redirects an unauthenticated
-//    one) replaces `requireStaffSession()`, and the staff/admin gate goes
-//    back to being every individual page's own job — exactly the pattern
-//    this file's own header comment already described before this bug
-//    existed ("every page under here still runs its own narrower check").
-//    A plain member gets an EMPTY rail (`items.length === 0` below), and the
-//    page they land on still 404s correctly, from the page.
+// ★ PLAIN DATA ACROSS THE BOUNDARY. `ConsoleFrame` and `AdminRail` are client components: the rail's groups are
+// strings, numbers and booleans, and each badge's accessible text is pluralised here. An icon component crossing it
+// crashed every admin page in wave 6.
 //
-// 2. `AdminRailItem` used to carry the icon as a component reference
-//    (`Icon: ComponentType<...>`), built here and passed to `AdminRail`
-//    ("use client"). `icons.tsx` is not a client module, so every icon it
-//    exports is a plain function, and React Flight refuses to serialise a
-//    function crossing the server/client boundary — every admin page
-//    crashed («تعذّر تحميل هذا القسم») for every staff member until this
-//    was fixed. `admin-rail.tsx` now owns the icon→component map itself
-//    (it is the client module, so the actual functions never have to
-//    leave it); this file passes a STRING KEY per item instead.
-//
-// The route list below is published for `designer` and every other track
-// whose routes render inside this shell — see docs/plan/notes/console.md for
-// the table this is generated from, and never change a path here without
-// telling the lead. `built: false` items are left out of the rendered nav on
-// purpose: a dead link that 404s is worse than a nav item that appears the
-// day its screen ships.
-//
-// ── the fourteen-group regroup (wave 7, `DEC-137`) ────────────────────────
-//
-// `16` §6.7 names fifteen rail labels; the lead's sync-1 ruling is that
-// «لوحة» is the rail's own root/home link and the other fourteen are the
-// groups. ★ wave 13 (`DEC-176`, `DEC-178`): «التصاميم» stops being one of
-// those groups. `16` §10.3's card grid already existed twice, at
-// `/app/admin/templates/{posters,certificates}` (`docs/plan/notes/console.md`'s
-// "Wave 13 plan" §2), with no single address — the fix is one leaf,
-// «القوالب», at the new `/app/admin/templates` (a redirect to `posters`;
-// `designer`'s two pages carry their own posters|certificates tab strip, so
-// there is no second `<h1>`). Top-level leaves go from 12 to 13; disclosure
-// groups from four to three — «الإشراف» (the three moderation queues),
-// «النقاط والتقدير» (scoring + recognition), and «الإشعارات» (emails +
-// reminders). `admin/designer` is still reached
-// only from a template, never from the rail, as before. `NAV_ENTRIES` below
-// is the single source of truth for both: each entry is tagged `"leaf"` or
-// `"group"`, and `buildRailItems()` turns it into `AdminRailItem[]`, applying
-// the SAME staff/admin filter at whichever level the route actually sits —
-// a leaf's own `adminOnly` gates it directly; a group survives only if at
-// least one child does (so a moderator's rail regroups to exactly four
-// top-level entries — «الجلسات», «الاستبانات» (wave 10), «الإشراف» with all
-// three children, «السجل» — six reachable routes, per `REQ-ADM-020`).
-//
-// `NAV_ENTRIES` has 20 leaf routes today (19 here plus `dashboard`) —
-// counted directly off this array, not carried forward from an old note.
-interface LeafDef {
-  key: string;
-  href: string;
-  adminOnly: boolean;
-  built: boolean;
-}
-
-type NavEntryDef = ({ kind: "leaf"; icon: AdminRailIconKey } & LeafDef) | { kind: "group"; key: string; icon: AdminRailIconKey; items: LeafDef[] };
-
-const NAV_ENTRIES: NavEntryDef[] = [
-  { kind: "leaf", key: "dashboard", href: "/app/admin", adminOnly: true, built: true, icon: "home" },
-  { kind: "leaf", key: "proposals", href: "/app/admin/proposals", adminOnly: true, built: true, icon: "checkCircle" },
-  // SCR-044: a moderator now sees this item too — `admin/sessions/page.tsx`
-  // itself branches on role and renders a read-only, attendance-focused
-  // list for a moderator, never the admin's management UI.
-  { kind: "leaf", key: "sessions", href: "/app/admin/sessions", adminOnly: false, built: true, icon: "calendar" },
-  // SCR-065 (wave 10, `DEC-160`): both staff roles, as `09` names them and as
-  // `assert_survey_staff()` enforces — a session's survey is a session
-  // operation, so a moderator's rail gains this one entry (`REQ-ADM-020`, as
-  // amended). The lead's row, as `console`'s custodian; the screens are `event`'s.
-  { kind: "leaf", key: "surveys", href: "/app/admin/surveys", adminOnly: false, built: true, icon: "chart" },
-  { kind: "leaf", key: "members", href: "/app/admin/members", adminOnly: true, built: true, icon: "user" },
-  { kind: "leaf", key: "companies", href: "/app/admin/companies", adminOnly: true, built: true, icon: "building" },
-  // «التصنيفات والوسوم» — `admin.shell.nav.categories` carries the fuller
-  // label (categories AND tags) to match `16` §6.7's own group name; the
-  // route and screen are unchanged (tags have no separate admin screen).
-  { kind: "leaf", key: "categories", href: "/app/admin/categories", adminOnly: true, built: true, icon: "tag" },
-  { kind: "leaf", key: "venues", href: "/app/admin/venues", adminOnly: true, built: true, icon: "pin" },
-  {
-    kind: "group",
-    key: "moderation",
-    icon: "alertTriangle",
-    items: [
-      { key: "moderationComments", href: "/app/admin/moderation/comments", adminOnly: false, built: true },
-      { key: "moderationPhotos", href: "/app/admin/moderation/photos", adminOnly: false, built: true },
-      { key: "moderationReports", href: "/app/admin/moderation/reports", adminOnly: false, built: true },
-    ],
-  },
-  {
-    kind: "group",
-    key: "points",
-    icon: "star",
-    items: [
-      { key: "scoring", href: "/app/admin/scoring", adminOnly: true, built: true },
-      { key: "recognition", href: "/app/admin/recognition", adminOnly: true, built: true },
-    ],
-  },
-  // ★ wave 13 (`DEC-176`, `DEC-178`): one leaf, not a two-child group — the
-  // grid at each route is `designer`'s (`template-library.tsx`), unchanged;
-  // this address is new. `/app/admin/templates` redirects to `posters`.
-  { kind: "leaf", key: "templates", href: "/app/admin/templates", adminOnly: true, built: true, icon: "image" },
-  { kind: "leaf", key: "branding", href: "/app/admin/branding", adminOnly: true, built: true, icon: "palette" },
-  {
-    kind: "group",
-    key: "notifications",
-    icon: "bell",
-    items: [
-      { key: "emails", href: "/app/admin/emails", adminOnly: true, built: true },
-      { key: "reminders", href: "/app/admin/reminders", adminOnly: true, built: true },
-    ],
-  },
-  { kind: "leaf", key: "exports", href: "/app/admin/exports", adminOnly: true, built: true, icon: "download" },
-  { kind: "leaf", key: "audit", href: "/app/admin/audit", adminOnly: false, built: true, icon: "lock" },
-  { kind: "leaf", key: "settings", href: "/app/admin/settings", adminOnly: true, built: true, icon: "gear" },
-];
-
-// Which item is current is the rail's own decision, from `usePathname()`
-// (`admin-rail.tsx`): this layout is not re-rendered on a client-side
-// navigation, so a `current` computed here went stale on the first click.
-function buildRailItems(isAdmin: boolean, t: Awaited<ReturnType<typeof getTranslations>>): AdminRailItem[] {
-  const items: AdminRailItem[] = [];
-  for (const entry of NAV_ENTRIES) {
-    if (entry.kind === "leaf") {
-      if (!entry.built || (entry.adminOnly && !isAdmin)) continue;
-      items.push({
-        key: entry.key,
-        href: entry.href,
-        label: t(`nav.${entry.key}`),
-        icon: entry.icon,
-        exact: entry.key === "dashboard",
-      });
-      continue;
-    }
-    const children: AdminRailChild[] = entry.items
-      .filter((child) => child.built && (isAdmin || !child.adminOnly))
-      .map((child) => ({
-        key: child.key,
-        href: child.href,
-        label: t(`nav.${child.key}`),
-      }));
-    if (children.length === 0) continue;
-    items.push({ key: entry.key, label: t(`groups.${entry.key}`), icon: entry.icon, children });
-  }
-  return items;
-}
+// The badges follow the data, not the artboard (`DEC-228` §3.2), through `console`'s `getAdminAttention()` — the one
+// read the dashboard's tiles use: المقترحات ← proposals awaiting a decision; الجلسات ← sessions not scheduled;
+// البلاغات ← open photo reports; التعليقات ← open comment reports. A moderator gets the two report badges only.
 
 export default async function AdminLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   const session = await requireSession(locale);
-  const t = await getTranslations("admin.shell");
+  const [t, tApp, tShell, shell, me] = await Promise.all([
+    getTranslations("admin.shell"),
+    getTranslations("app.console"),
+    getTranslations("app.shell"),
+    getShellData(locale),
+    getMe(locale),
+  ]);
 
-  // A plain member gets no rail at all — the page underneath still 404s on
-  // its own gate, which is the real boundary (see the header comment).
-  const isMember = session.role === "member";
-  const items: AdminRailItem[] = isMember ? [] : buildRailItems(session.role === "admin", t);
+  const role: AdminRole = session.role === "admin" ? "admin" : session.role === "moderator" ? "moderator" : "member";
+  // Contract 3: the same read as the dashboard's tiles, filtered by role at the data — so a badge never counts a
+  // queue its reader cannot open. A failed read draws no badge; it never takes the console down with it.
+  const attention = role === "member" ? null : await getAdminAttention(locale).catch(() => null);
+  const BADGE: Record<AttentionQueue, "proposals" | "sessions" | "photoReports" | "commentReports"> = {
+    proposals: "proposals",
+    unscheduledSessions: "sessions",
+    photoReports: "photoReports",
+    commentReports: "commentReports",
+  };
+  const counts: AdminNavCounts = Object.fromEntries(
+    (attention?.items ?? []).map((item) => [
+      item.navKey,
+      { count: item.count, label: tApp(`badge.${BADGE[item.queue]}`, { count: item.count, value: formatNumber(item.count) }) },
+    ]),
+  );
+  const groups = adminRailGroups(role, (key) => t(`nav.${key}`), counts);
+  const isStaff = role !== "member";
 
   return (
-    <div>
-      {/* ★ REQ-UIX-017 — console pages carry a SECOND skip link, past the
-          rail. The app shell's own skip link (`app/layout.tsx`) already
-          clears the header/account-menu tab stop and lands on `#main`,
-          which is this layout's own root; from there a keyboard user still
-          faces the rail's items before reaching the actual page. `tabIndex={-1}`
-          so activating the link actually MOVES focus, not just scroll
-          position (WebAIM's standard skip-link pattern) — the shell's own
-          skip link targets `id="main"` without one; this one adds it for
-          correctness rather than silently repeating that gap. */}
-      <a href="#admin-content" className="skip-link rounded-field bg-accent px-4 py-2 text-label text-on-accent">
-        {t("skipToContent")}
-      </a>
-      {items.length > 0 ? (
-        <div className="md:grid md:grid-cols-[auto_1fr] md:items-start md:gap-8">
-          <AdminRail items={items} brand={t("brand")} collapseLabel={t("collapseRail")} expandLabel={t("expandRail")} openLabel={t("openRail")} />
-          <div id="admin-content" tabIndex={-1} className="min-w-0 outline-none mt-6 md:mt-0">
-            {children}
-          </div>
-        </div>
-      ) : isMember ? (
-        // No rail, no interstitial text: the page underneath calls its own
-        // `notFound()` (every admin/moderator page's own gate), and that is
-        // the ONLY thing a plain member should see — not a "the moderation
-        // console is still being built" message stacked above a 404, which
-        // `moderatorEmpty`'s copy would read as if shown here.
-        <div id="admin-content" tabIndex={-1} className="outline-none">
-          {children}
-        </div>
-      ) : (
-        // Reachable in principle (a moderator whose staff-visible item set is
-        // somehow empty) though not by any role/item combination today — kept
-        // as the honest fallback rather than assuming it can never happen.
-        <>
-          <p className="max-w-2xl text-body text-fg-muted">{t("moderatorEmpty")}</p>
-          <div id="admin-content" tabIndex={-1} className="outline-none mt-6">
-            {children}
-          </div>
-        </>
-      )}
-    </div>
+    <ConsoleFrame
+      groups={groups}
+      railLabel={t("brand")}
+      openLabel={t("openRail")}
+      skipLabel={t("skipToContent")}
+      title={tApp("title")}
+      orgName={shell.orgName ?? null}
+      brand={
+        // Inside the platform the mark leads home, not to the public site (REQ-UIX-027).
+        <Link href="/app" aria-label={tShell("brand")} className="inline-flex items-center text-accent">
+          <PlayWordmark height={26} label={null} />
+        </Link>
+      }
+      toApp={
+        <Link href="/app" className="text-label text-fg-muted hover:text-fg-heading">
+          {tApp("toApp")}
+        </Link>
+      }
+      account={
+        <AccountMenu
+          memberId={me?.id ?? null}
+          displayName={me?.displayName ?? null}
+          avatarUrl={me?.avatarUrl ?? null}
+          teamColor={shell.teamColor}
+          isStaff={isStaff}
+          isPlatformAdmin={session.platformAdmin}
+          labels={{
+            account: tShell("account"),
+            profile: tShell("profile"),
+            points: tShell("points"),
+            certificates: tShell("certificates"),
+            bookmarks: tShell("bookmarks"),
+            calendar: tShell("calendar"),
+            notifications: tShell("meNotifications"),
+            privacy: tShell("mePrivacy"),
+            members: tShell("members"),
+            admin: tShell("adminConsole"),
+            platform: tShell("platform"),
+            signOut: tShell("signOut"),
+          }}
+        />
+      }
+    >
+      {children}
+    </ConsoleFrame>
   );
 }

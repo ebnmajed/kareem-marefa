@@ -1,6 +1,9 @@
 import "server-only";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { sessionClient, type Session } from "@/lib/dal/session";
+import { getConsoleSessions } from "@/lib/dal/admin-sessions";
+import { monthKeyOf, sortSessions, type ConsoleSessionRow } from "@/components/admin/sessions/session-query";
 
 // SCR-040 · /app/admin — the org dashboard (REQ-ADM-004, D60).
 //
@@ -61,23 +64,38 @@ export interface AttentionRow {
 }
 
 export interface DashboardData {
+  /** `YYYY-MM` on the org's clock — the month every figure below counts (`DEC-228` §3.3). */
+  month: string;
+  timeZone: string;
   proposalPipeline: PipelineCounts;
+  /** Sessions whose start falls in the month — the list `?month=` narrows to. */
+  sessionsThisMonth: number;
+  /** Confirmed reservations for the month's sessions. */
   rsvpsConfirmed: number;
+  /** Check-ins (not removed) at the month's sessions. */
   checkInsTotal: number;
-  attendanceRate: number | null; // null when there is nothing to divide by yet
+  /**
+   * ★ `checkin`'s definition, the one attendance rate (`DEC-228` §3.4): members
+   * checked in WHO HELD a confirmed reservation, over confirmed reservations, at
+   * the month's sessions that have started. A walk-in is never inside it. Null
+   * when there is nothing to divide by yet.
+   */
+  attendanceRate: number | null;
+  /** Members whose status is active — a count of people, which a month does not narrow. */
   activeMembers: number;
+  /** Positive ledger rows that occurred in the month; a reversal does not net against it. */
   pointsIssued: number;
   topPresenters: TopRow[];
   topCategories: TopRow[];
   topCompanies: TopRow[];
+  /** The next sessions — a live one first, then by start (`ConsoleSessionRow`, SCR-042's own rows). */
+  upcoming: ConsoleSessionRow[];
   /** `REQ-ADM-010`'s own enumeration — proposals, sessions, and the two
    *  `reports` targets kept SEPARATE rather than merged into one "open
    *  reports" figure, the same reasoning `DEC-005` gives for never merging a
    *  photo takedown queue with a photo report queue: two different screens,
-   *  two different urgencies. A fifth item, "job-queue depth," was named in
-   *  the spawn note and is deliberately NOT here — no org-scoped data source
-   *  exists for it (`docs/plan/notes/console.md`'s Wave 6 §3), and the lead
-   *  ruled it dropped rather than guessed at. */
+   *  two different urgencies. Read through `getAdminAttention()` (contract 3),
+   *  so the tiles and the rail's badges are one number. */
   attention: {
     proposalsAwaitingDecision: AttentionRow;
     sessionsNotScheduled: AttentionRow;
@@ -107,62 +125,81 @@ function topN(counts: Map<string, { label: string; count: number }>, n: number):
     .slice(0, n);
 }
 
+/** How many of the next sessions «القادمة» shows. */
+export const UPCOMING_ROWS = 5;
+
+/**
+ * The one attendance rate (`DEC-228` §3.4) — `checkin`'s definition, as
+ * `getAttendanceReport()` computes it for one session (`checkin.ts`,
+ * `attendanceRate`): of the confirmed reservations, how many members were
+ * checked in. Pairs are `session:member`; a check-in without a confirmed
+ * reservation (a walk-in) is in neither side. Pure, so a test computes it and
+ * `checkin`'s figure from one fixture.
+ */
+export function attendanceRateOf(confirmed: readonly { session_id: string; member_id: string }[], checkedIn: readonly { session_id: string; member_id: string }[]): number | null {
+  if (confirmed.length === 0) return null;
+  const present = new Set(checkedIn.map((c) => `${c.session_id}:${c.member_id}`));
+  return confirmed.filter((r) => present.has(`${r.session_id}:${r.member_id}`)).length / confirmed.length;
+}
+
 /** SCR-040 — every figure below is meant to be clicked through: the page
  *  pairs each one with a link to the list it summarises (`REQ-ADM-004`'s own
  *  acceptance criterion — "a dashboard number nobody can open is a number
  *  nobody trusts", 09 §5). */
-export async function getAdminDashboardData(locale: string): Promise<DashboardData | null> {
+export async function getAdminDashboardData(locale: string, nowDate: Date = new Date()): Promise<DashboardData | null> {
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin") return null;
+  const now = nowDate.getTime();
 
   const [
     { data: proposalRows, error: propErr },
-    { data: rsvpRows, error: rsvpErr },
-    { data: checkInRows, error: ciErr },
     { data: memberRows, error: memErr },
     { data: ledgerRows, error: ledErr },
     { data: presenterRows, error: presErr },
     { data: categoryRows, error: catErr },
-    { data: unscheduledRows, error: unschedErr },
-    { data: photoReportRows, error: photoRepErr },
-    { data: commentReportRows, error: commentRepErr },
+    attention,
+    consoleSessions,
   ] = await Promise.all([
-    // `created_at` added for the attention panel's "awaiting decision"
-    // oldest-age figure — the pipeline counts below are unchanged.
     supabase.from("proposals").select("state, created_at").eq("org_id", session.orgId),
-    supabase.from("rsvps").select("status, session_id, sessions!inner(starts_at)").eq("org_id", session.orgId).eq("status", "confirmed"),
-    // `removed_at` (0087) is a soft delete — `remove_check_in()` reverses the
-    // points award but the row stays for the audit trail. Excluded here so a
-    // removed check-in stops counting toward the attendance rate, the same
-    // way its points reversal already stops counting toward points issued.
-    supabase.from("check_ins").select("id").eq("org_id", session.orgId).is("removed_at", null),
     supabase.from("members").select("id, status").eq("org_id", session.orgId),
-    supabase.from("points_ledger").select("amount").eq("org_id", session.orgId),
+    supabase.from("points_ledger").select("amount, occurred_at").eq("org_id", session.orgId),
     supabase
       .from("session_presenters")
       .select("member_id, accepted, members(id, display_name)")
       .eq("org_id", session.orgId)
       .eq("accepted", true),
     supabase.from("sessions").select("category_id, categories(id, name)").eq("org_id", session.orgId).not("category_id", "is", null),
-    // «جلسات لم تُجدول بعد» — no start time yet. Filtered in JS below, not
-    // with a PostgREST `not/in`, the same "small row counts, fold in JS"
-    // call this module's own header comment already made for the pipeline.
-    supabase.from("sessions").select("state, starts_at, created_at").eq("org_id", session.orgId).is("starts_at", null),
-    // The two `reports` targets, kept as separate queries/rows rather than
-    // one combined count — see `AttentionRow`'s own comment on `attention`.
-    supabase.from("reports").select("created_at").eq("org_id", session.orgId).eq("target", "photo").eq("status", "open"),
-    supabase.from("reports").select("created_at").eq("org_id", session.orgId).eq("target", "comment").eq("status", "open"),
+    getAdminAttention(locale),
+    getConsoleSessions(locale, nowDate),
   ]);
   if (propErr) throw new Error(`proposals: ${propErr.message}`);
-  if (rsvpErr) throw new Error(`rsvps: ${rsvpErr.message}`);
-  if (ciErr) throw new Error(`check_ins: ${ciErr.message}`);
   if (memErr) throw new Error(`members: ${memErr.message}`);
   if (ledErr) throw new Error(`points_ledger: ${ledErr.message}`);
   if (presErr) throw new Error(`session_presenters: ${presErr.message}`);
   if (catErr) throw new Error(`sessions: ${catErr.message}`);
-  if (unschedErr) throw new Error(`sessions (unscheduled): ${unschedErr.message}`);
-  if (photoRepErr) throw new Error(`reports (photo): ${photoRepErr.message}`);
-  if (commentRepErr) throw new Error(`reports (comment): ${commentRepErr.message}`);
+  if (!attention || !consoleSessions) return null;
+
+  const { rows: sessions, timeZone } = consoleSessions;
+  const month = monthKeyOf(nowDate.toISOString(), timeZone);
+  const monthSessions = sessions.filter((s) => s.monthKey === month);
+  const monthIds = monthSessions.map((s) => s.id);
+  const startedIds = new Set(monthSessions.filter((s) => s.startsAt !== null && new Date(s.startsAt).getTime() <= now).map((s) => s.id));
+
+  // The month's reservations and check-ins. A removed check-in (`0087`'s soft
+  // delete) is not attendance: `remove_check_in()` reverses its points, and it
+  // stops counting here the same way.
+  const [{ data: rsvpRows, error: rsvpErr }, { data: checkInRows, error: ciErr }] = await Promise.all([
+    monthIds.length
+      ? supabase.from("rsvps").select("session_id, member_id").eq("org_id", session.orgId).eq("status", "confirmed").in("session_id", monthIds)
+      : Promise.resolve({ data: [], error: null }),
+    monthIds.length
+      ? supabase.from("check_ins").select("session_id, member_id").eq("org_id", session.orgId).is("removed_at", null).in("session_id", monthIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (rsvpErr) throw new Error(`rsvps: ${rsvpErr.message}`);
+  if (ciErr) throw new Error(`check_ins: ${ciErr.message}`);
+  const confirmed = (rsvpRows ?? []) as { session_id: string; member_id: string }[];
+  const checkIns = (checkInRows ?? []) as { session_id: string; member_id: string }[];
 
   const pipeline: PipelineCounts = { ...emptyPipeline };
   for (const r of proposalRows ?? []) {
@@ -188,46 +225,27 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
     }
   }
 
-  // "RSVPs vs check-ins" / attendance rate: only confirmed RSVPs for sessions
-  // that have actually started count toward the denominator — a session
-  // three weeks out with zero check-ins is not a no-show, it hasn't happened.
-  const now = Date.now();
-  const startedConfirmed = (rsvpRows ?? []).filter((r) => {
-    const startsAt = (r as unknown as { sessions: { starts_at: string | null } | null }).sessions?.starts_at;
-    return !!startsAt && new Date(startsAt).getTime() <= now;
-  });
-  const rsvpsConfirmed = (rsvpRows ?? []).length;
-  const checkInsTotal = (checkInRows ?? []).length;
-  const attendanceRate = startedConfirmed.length > 0 ? checkInsTotal / startedConfirmed.length : null;
-
   const activeMembers = (memberRows ?? []).filter((m) => m.status === "active").length;
-  const pointsIssued = (ledgerRows ?? []).reduce((sum, r) => sum + Math.max(0, r.amount as number), 0);
+  const pointsIssued = ((ledgerRows ?? []) as { amount: number; occurred_at: string }[])
+    .filter((r) => monthKeyOf(r.occurred_at, timeZone) === month)
+    .reduce((sum, r) => sum + Math.max(0, r.amount), 0);
 
-  // «يحتاج انتباهك» — `REQ-ADM-010`'s own four queues.
-  const awaitingDecisionAts = (proposalRows ?? []).filter((r) => r.state === "submitted" || r.state === "in_review").map((r) => r.created_at as string);
-  const unscheduledAts = (unscheduledRows ?? [])
-    .filter((r) => r.state !== "cancelled" && r.state !== "archived")
-    .map((r) => r.created_at as string);
-  const photoReportAts = (photoReportRows ?? []).map((r) => r.created_at as string);
-  const commentReportAts = (commentReportRows ?? []).map((r) => r.created_at as string);
-  const attention: DashboardData["attention"] = {
-    proposalsAwaitingDecision: { count: awaitingDecisionAts.length, oldestAgeDays: oldestAge(awaitingDecisionAts, now) },
-    sessionsNotScheduled: { count: unscheduledAts.length, oldestAgeDays: oldestAge(unscheduledAts, now) },
-    openPhotoReports: { count: photoReportAts.length, oldestAgeDays: oldestAge(photoReportAts, now) },
-    openCommentReports: { count: commentReportAts.length, oldestAgeDays: oldestAge(commentReportAts, now) },
+  const row = (queue: string): AttentionRow => {
+    const item = attention.items.find((i) => i.queue === queue);
+    return { count: item?.count ?? 0, oldestAgeDays: item?.oldestAgeDays ?? null };
   };
 
   const presenterCounts = new Map<string, { label: string; count: number }>();
-  for (const row of presenterRows ?? []) {
-    const m = (row as unknown as { members: { id: string; display_name: string | null } | null }).members;
+  for (const r of presenterRows ?? []) {
+    const m = (r as unknown as { members: { id: string; display_name: string | null } | null }).members;
     if (!m) continue;
     const existing = presenterCounts.get(m.id);
     presenterCounts.set(m.id, { label: m.display_name ?? "", count: (existing?.count ?? 0) + 1 });
   }
 
   const categoryCounts = new Map<string, { label: string; count: number }>();
-  for (const row of categoryRows ?? []) {
-    const c = (row as unknown as { categories: { id: string; name: string } | null }).categories;
+  for (const r of categoryRows ?? []) {
+    const c = (r as unknown as { categories: { id: string; name: string } | null }).categories;
     if (!c) continue;
     const existing = categoryCounts.get(c.id);
     categoryCounts.set(c.id, { label: c.name, count: (existing?.count ?? 0) + 1 });
@@ -245,24 +263,124 @@ export async function getAdminDashboardData(locale: string): Promise<DashboardDa
     .eq("accepted", true);
   if (compErr) throw new Error(`session_presenters: ${compErr.message}`);
   const companyCounts = new Map<string, { label: string; count: number }>();
-  for (const row of companyPresenterRows ?? []) {
-    const m = (row as unknown as { members: { company_id: string | null; companies: { id: string; name: string } | null } | null }).members;
+  for (const r of companyPresenterRows ?? []) {
+    const m = (r as unknown as { members: { company_id: string | null; companies: { id: string; name: string } | null } | null }).members;
     const c = m?.companies;
     if (!c) continue;
     const existing = companyCounts.get(c.id);
     companyCounts.set(c.id, { label: c.name, count: (existing?.count ?? 0) + 1 });
   }
 
+  const upcoming = sortSessions(
+    sessions.filter((s) => s.phase === "live" || s.phase === "open"),
+    "default",
+    "asc",
+  ).slice(0, UPCOMING_ROWS);
+
   return {
+    month,
+    timeZone,
     proposalPipeline: pipeline,
-    rsvpsConfirmed,
-    checkInsTotal,
-    attendanceRate,
+    sessionsThisMonth: monthSessions.length,
+    rsvpsConfirmed: confirmed.length,
+    checkInsTotal: checkIns.length,
+    attendanceRate: attendanceRateOf(
+      confirmed.filter((r) => startedIds.has(r.session_id)),
+      checkIns.filter((c) => startedIds.has(c.session_id)),
+    ),
     activeMembers,
     pointsIssued,
     topPresenters: topN(presenterCounts, 5),
     topCategories: topN(categoryCounts, 5),
     topCompanies: topN(companyCounts, 5),
-    attention,
+    upcoming,
+    attention: {
+      proposalsAwaitingDecision: row("proposals"),
+      sessionsNotScheduled: row("unscheduledSessions"),
+      openPhotoReports: row("photoReports"),
+      openCommentReports: row("commentReports"),
+    },
   };
 }
+
+// ── Contract 3 (wave 21, `DEC-227`, `DEC-228` §3.2) — what waits, for whom ──
+//
+// ONE read feeds the dashboard's «يحتاج انتباهك» tiles (`REQ-UIX-086`) and the
+// console rail's badges (`REQ-UIX-084`: «a badge's count is read from the same
+// source as the dashboard's attention tiles»). The predicates are the four
+// `attention` rows above, moved verbatim, so a tile, its badge and the queue it
+// opens can never disagree about a number.
+//
+// ★ Filtered by ROLE, at the data (`REQ-ADM-020`): a moderator reaches the
+// moderation queues and neither the proposal queue nor scheduling, so a
+// moderator gets the two report items and nothing else — a badge never leads
+// to a page that 404s for its reader. A plain member gets `null`.
+//
+// ★ It never gates. The admin layout calls it for the badges and must not
+// `notFound()` (its header says why: a layout's not-found streams a 200); the
+// page that renders the tiles does its own check.
+//
+// ★ `cache()`: the layout and the dashboard page both call it in one request,
+// and React's per-request cache makes that one set of queries, not two.
+
+export type AttentionQueue = "proposals" | "unscheduledSessions" | "photoReports" | "commentReports";
+
+export interface AttentionItem {
+  queue: AttentionQueue;
+  /** The `admin.shell.nav.*` key of the rail item whose screen IS this queue — the badge goes there (`DEC-228` §3.2). */
+  navKey: "proposals" | "sessions" | "moderationReports" | "moderationComments";
+  count: number;
+  /** The oldest open item's age in whole days; `null` exactly when `count === 0`. */
+  oldestAgeDays: number | null;
+  /** The queue, narrowed to what `count` counts. */
+  href: string;
+}
+
+export interface AdminAttention {
+  /** In the artboard's order. An admin: all four. A moderator: `photoReports` and `commentReports`. */
+  items: AttentionItem[];
+  total: number;
+}
+
+/** The sessions list narrowed to undated sessions — the same predicate as `unscheduledSessions` below. */
+export const UNSCHEDULED_SESSIONS_HREF = "/app/admin/sessions?month=none";
+
+export const getAdminAttention = cache(async (locale: string): Promise<AdminAttention | null> => {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin" && session.role !== "moderator") return null;
+  const isAdmin = session.role === "admin";
+  const now = Date.now();
+
+  const none = Promise.resolve({ data: [] as { state?: string; created_at: string }[], error: null });
+  const [proposals, unscheduled, photoReports, commentReports] = await Promise.all([
+    isAdmin ? supabase.from("proposals").select("state, created_at").eq("org_id", session.orgId).in("state", ["submitted", "in_review"]) : none,
+    // Filtered in TS, as `getAdminDashboardData()` does — the same predicate, the same place.
+    isAdmin ? supabase.from("sessions").select("state, created_at").eq("org_id", session.orgId).is("starts_at", null) : none,
+    supabase.from("reports").select("created_at").eq("org_id", session.orgId).eq("target", "photo").eq("status", "open"),
+    supabase.from("reports").select("created_at").eq("org_id", session.orgId).eq("target", "comment").eq("status", "open"),
+  ]);
+  if (proposals.error) throw new Error(`proposals (attention): ${proposals.error.message}`);
+  if (unscheduled.error) throw new Error(`sessions (attention): ${unscheduled.error.message}`);
+  if (photoReports.error) throw new Error(`reports (photo attention): ${photoReports.error.message}`);
+  if (commentReports.error) throw new Error(`reports (comment attention): ${commentReports.error.message}`);
+
+  const ats = (rows: { created_at: string }[] | null) => (rows ?? []).map((r) => r.created_at);
+  const item = (queue: AttentionQueue, navKey: AttentionItem["navKey"], href: string, createdAts: string[]): AttentionItem => ({
+    queue,
+    navKey,
+    count: createdAts.length,
+    oldestAgeDays: oldestAge(createdAts, now),
+    href,
+  });
+
+  const items: AttentionItem[] = [];
+  if (isAdmin) {
+    items.push(item("proposals", "proposals", "/app/admin/proposals", ats(proposals.data as { created_at: string }[] | null)));
+    const undated = ((unscheduled.data ?? []) as { state: string; created_at: string }[]).filter((r) => r.state !== "cancelled" && r.state !== "archived");
+    items.push(item("unscheduledSessions", "sessions", UNSCHEDULED_SESSIONS_HREF, ats(undated)));
+  }
+  items.push(item("photoReports", "moderationReports", "/app/admin/moderation/reports", ats(photoReports.data as { created_at: string }[] | null)));
+  items.push(item("commentReports", "moderationComments", "/app/admin/moderation/comments", ats(commentReports.data as { created_at: string }[] | null)));
+
+  return { items, total: items.reduce((sum, i) => sum + i.count, 0) };
+});

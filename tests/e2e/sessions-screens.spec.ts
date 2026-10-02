@@ -223,7 +223,9 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   await expect(boss.getByRole("heading", { name: title })).toHaveCount(0);
 
   // ── SCR-042 · sessions ────────────────────────────────────────────────────
-  await boss.goto("/ar/app/admin/sessions");
+  // ★ Wave 21 (L7, `console`'s for the wave): «جاهزة للجدولة» lives behind
+  // «جلسة جديدة», which is the link `?new=1` (DEC-228 §3.11).
+  await boss.goto("/ar/app/admin/sessions?new=1");
   await streamed(boss);
   // waiting under «جاهزة للجدولة». `visible`: console's DataTable renders the
   // rows twice — a table from md and a stacked card list below it, one of them
@@ -371,7 +373,10 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // path is the one 11 §2.1 runs every minute, so that is the one proved.
   await boss.goto("/ar/app/admin/sessions");
   await streamed(boss);
-  await expect(boss.getByRole("button", { name: "ابدأ الجلسة الآن" })).toBeVisible();
+  // ★ Wave 21 (L7): the manual start is a menu item under the row's ⋯.
+  await boss.getByRole("button", { name: new RegExp(`مزيد من الإجراءات على ${title}`) }).click();
+  await expect(boss.getByRole("menuitem", { name: "ابدأ الجلسة الآن" })).toBeVisible();
+  await boss.keyboard.press("Escape");
 
   await db.query(
     `update public.sessions set starts_at = now() - interval '2 minutes', ends_at = now() + interval '58 minutes',
@@ -459,11 +464,19 @@ test("the M2 demonstrable, end to end, through the real screens at 390 px RTL", 
   // ── SCR-042 · the ADMIN completes it · REQ-SES-005 ────────────────────────
   await boss.goto("/ar/app/admin/sessions");
   await streamed(boss);
-  await boss.getByRole("button", { name: "أنهِ الجلسة" }).click();
+  // ★ Wave 21 (L7): ⋯ → «أنهِ الجلسة»; before the scheduled end it confirms
+  // with what completing does to check-in, so the dialog's own button commits.
+  const rowMenu = boss.getByRole("button", { name: new RegExp(`مزيد من الإجراءات على ${title}`) });
+  await rowMenu.click();
+  await boss.getByRole("menuitem", { name: "أنهِ الجلسة" }).click();
+  await boss.getByRole("dialog").getByRole("button", { name: "أنهِ الجلسة" }).click();
+  await expect(boss.getByRole("dialog")).toHaveCount(0);
   // Wait for the console to show the new state before reading the database.
   // Clicking a Server Action returns immediately; «أرشف» is only offered on a
   // completed session, so its appearance IS the confirmation.
-  await expect(boss.getByRole("button", { name: "أرشف" })).toBeVisible();
+  await rowMenu.click();
+  await expect(boss.getByRole("menuitem", { name: "أرشف" })).toBeVisible();
+  await boss.keyboard.press("Escape");
   expect((await db.query<{ state: string }>(`select state from public.sessions where id = $1`, [sessionId])).rows[0].state).toBe("completed");
   const manualRow = await db.query<{ is_manual: boolean; actor_id: string | null }>(
     `select is_manual, actor_id from public.session_state_transitions where session_id = $1 and to_state = 'completed'`,

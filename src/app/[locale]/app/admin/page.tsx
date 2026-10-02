@@ -1,254 +1,137 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { AttentionTiles } from "@/components/admin/dashboard/attention-tiles";
+import { FigureTiles, type Figure } from "@/components/admin/dashboard/figure-tiles";
+import { PipelineBar, type PipelineSegment } from "@/components/admin/dashboard/pipeline-bar";
+import { TopLists } from "@/components/admin/dashboard/top-lists";
+import { UpcomingTable } from "@/components/admin/dashboard/upcoming-table";
 import { formatNumber } from "@/components/sessions/numerals";
-import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { AlertCircleIcon, AlertTriangleIcon, CalendarIcon, CheckCircleIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { PageHeader } from "@/components/ui/page-header";
-import { Panel } from "@/components/ui/panel";
-import { SectionHeader } from "@/components/ui/section-header";
-import { Stat } from "@/components/ui/stat";
-import { getAdminDashboardData, type AttentionRow, type DashboardData, type TopRow } from "@/lib/dal/admin-dashboard";
+import { getAdminAttention, getAdminDashboardData, type AttentionItem } from "@/lib/dal/admin-dashboard";
 
-/** A ranked "top N" list — module-level so it is not re-created on every
- *  render (react-hooks/static-components).
- *
- *  ★ The count sits at the row's edge, as «مسار المقترحات» sets it beside
- *  these three cards — a column of numbers scans, a number trailing each name
- *  does not (wave 6 row 10's finding). It is the row's SECOND child: with the
- *  name and the count inside one span, as before, `justify-between` had one
- *  child to distribute and the count sat beside the name. */
-function TopList({ rows, emptyLabel, linkFor }: { rows: TopRow[]; emptyLabel: string; linkFor?: (row: TopRow) => string }) {
-  if (rows.length === 0) return <p className="text-body-sm text-fg-muted">{emptyLabel}</p>;
-  return (
-    <ol className="space-y-2">
-      {rows.map((row) => (
-        <li key={row.id} className="flex items-baseline justify-between gap-3 text-body-sm">
-          {linkFor ? (
-            <Link href={linkFor(row)} className="min-w-0 text-fg-body hover:text-fg-heading hover:underline">
-              <bdi>{row.label}</bdi>
-            </Link>
-          ) : (
-            <span className="min-w-0 text-fg-body">
-              <bdi>{row.label}</bdi>
-            </span>
-          )}
-          <span className="shrink-0 text-fg-heading">{formatNumber(row.count)}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-// SCR-040 · /app/admin — the org dashboard (REQ-ADM-004, D60), rebuilt onto
-// the system for wave 6 (`16` §6.7, `DEC-112`, `DEC-130`). «يحتاج انتباهك»
-// is new work — it did not exist on this screen before this wave — and is
-// `REQ-ADM-010`'s own four queues (`docs/plan/notes/console.md`'s Wave 6 §3
-// is the plan this implements, including why "job-queue depth" is NOT
-// among them).
+// SCR-040 · /app/admin — the org dashboard (`REQ-ADM-004`, `REQ-UIX-086`),
+// written from `AdminDashboard.dc.html` (wave 21, `DEC-208`: deleted first).
+// The job (`DEC-227` §0.1): an admin sees what needs their attention and
+// reaches it in ONE move — each tile is the link to the queue it counts,
+// narrowed to exactly what it counted. Then the month's six figures, the
+// pipeline, the next sessions and the three top lists; every figure a link to
+// the list behind it.
 //
-// Admin only, same 404-not-message pattern the inherited proposals/venues
-// screens use: `getAdminDashboardData()` returns null for a moderator, this
-// page never learns why.
-//
-// Every figure still links to a real screen (REQ-ADM-004's own acceptance
-// criterion): proposals, sessions, scoring, categories/companies, members.
-
-function AttentionRowItem({
-  href,
-  Icon,
-  label,
-  row,
-  oldestSince,
-  num,
-}: {
-  href: string;
-  Icon: typeof CalendarIcon;
-  label: string;
-  row: AttentionRow;
-  oldestSince: (row: AttentionRow) => string | null;
-  num: (n: number) => string;
-}) {
-  const since = oldestSince(row);
-  return (
-    <li>
-      {/* The whole tile is the link — `ui/card`'s job (`16` §6.4), not a
-          `Link` drawn in the control's class string (`ui-lint`, REQ-UIX-001). */}
-      <Card density="row" href={href}>
-        <span className="flex w-full items-center gap-3 p-4">
-          <Icon aria-hidden className="shrink-0 text-[1.375rem] text-fg-muted" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-label text-fg-heading">
-              <bdi>{label}</bdi>
-            </span>
-            {since ? <span className="block text-caption text-fg-muted">{since}</span> : null}
-          </span>
-          <span className="shrink-0 text-h3 text-fg-heading">{num(row.count)}</span>
-        </span>
-      </Card>
-    </li>
-  );
-}
+// Admin only. A moderator and a member get the page-level `notFound()` — the
+// streamed contract, 200 with `noindex` (`DEC-134`, `DEC-228` §3.1); the
+// layout never gates. The page renders nothing of the console frame: its `h1`
+// row and its content.
 
 export default async function AdminDashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [data, t] = await Promise.all([getAdminDashboardData(locale), getTranslations("admin.dashboard")]);
-  if (data === null) notFound();
+  const [data, attention, t, ts] = await Promise.all([
+    getAdminDashboardData(locale),
+    getAdminAttention(locale),
+    getTranslations("admin.dashboard"),
+    getTranslations("admin.sessions"),
+  ]);
+  if (data === null || attention === null) notFound();
 
   const num = (n: number) => formatNumber(n);
-  const oldestSince = (row: AttentionRow) => (row.oldestAgeDays === null ? null : t("attention.oldestSince", { count: row.oldestAgeDays, value: num(row.oldestAgeDays) }));
+  const monthLabel = new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { timeZone: "UTC", month: "long", year: "numeric" }).format(new Date(`${data.month}-15T12:00:00Z`));
+  const inMonth = `/app/admin/sessions?month=${data.month}`;
 
-  const pipelineRows: { key: keyof DashboardData["proposalPipeline"]; label: string }[] = [
-    { key: "draft", label: t("pipeline.draft") },
-    { key: "submitted", label: t("pipeline.submitted") },
-    { key: "inReview", label: t("pipeline.inReview") },
-    { key: "changesRequested", label: t("pipeline.changesRequested") },
-    { key: "approved", label: t("pipeline.approved") },
-    { key: "rejected", label: t("pipeline.rejected") },
+  const attentionLabel: Record<AttentionItem["queue"], string> = {
+    proposals: t("attention.proposals"),
+    unscheduledSessions: t("attention.sessions"),
+    photoReports: t("attention.photoReports"),
+    commentReports: t("attention.commentReports"),
+  };
+
+  const rate = data.attendanceRate === null ? null : Math.round(data.attendanceRate * 100);
+  const figures: Figure[] = [
+    { key: "sessions", label: t("sessionsThisMonth"), value: num(data.sessionsThisMonth), href: inMonth },
+    { key: "rsvps", label: t("rsvpsConfirmed"), value: num(data.rsvpsConfirmed), href: inMonth },
+    { key: "checkIns", label: t("checkInsTotal"), value: num(data.checkInsTotal), href: inMonth },
+    { key: "rate", label: t("attendanceRateLabel"), value: rate === null ? ts("noValue") : t("attendanceRateValue", { value: num(rate) }), href: inMonth },
+    { key: "members", label: t("activeMembersTitle"), value: num(data.activeMembers), href: "/app/admin/members" },
+    { key: "points", label: t("pointsIssuedTitle"), value: num(data.pointsIssued), href: "/app/admin/scoring" },
   ];
 
-  const attendanceRatePct = data.attendanceRate === null ? null : Math.round(data.attendanceRate * 100);
-
-  const attentionTotal =
-    data.attention.proposalsAwaitingDecision.count + data.attention.sessionsNotScheduled.count + data.attention.openPhotoReports.count + data.attention.openCommentReports.count;
+  // `sessions'` queue URLs (its note, W21.10): the bare route is «awaiting a decision» — submitted and in review —
+  // and `?state=changes|approved|all` the others. Draft and rejected have no queue of their own, so they open all.
+  const p = data.proposalPipeline;
+  const segments: PipelineSegment[] = [
+    { key: "draft", label: t("pipeline.draft"), count: p.draft, fill: "bg-edge-strong", href: "/app/admin/proposals?state=all" },
+    { key: "submitted", label: t("pipeline.submitted"), count: p.submitted, fill: "bg-fg-muted", href: "/app/admin/proposals" },
+    { key: "inReview", label: t("pipeline.inReview"), count: p.inReview, fill: "bg-fg-body", href: "/app/admin/proposals" },
+    { key: "changesRequested", label: t("pipeline.changesRequested"), count: p.changesRequested, fill: "bg-signal", href: "/app/admin/proposals?state=changes" },
+    { key: "approved", label: t("pipeline.approved"), count: p.approved, fill: "bg-accent", href: "/app/admin/proposals?state=approved" },
+    { key: "rejected", label: t("pipeline.rejected"), count: p.rejected, fill: "bg-edge", href: "/app/admin/proposals?state=all" },
+  ];
 
   return (
     <>
-      <PageHeader title={t("title")} description={t("intro")} />
+      <PageHeader
+        title={t("title")}
+        actions={
+          <p className="text-label text-fg-muted">
+            <bdi>{monthLabel}</bdi>
+          </p>
+        }
+      />
 
-      <section aria-labelledby="attention-heading" className="mt-10">
-        <SectionHeader as="h2" id="attention-heading" title={t("attention.title")} />
-        <div className="mt-4">
-          {attentionTotal === 0 ? (
-            <EmptyState title={t("attention.empty")} action={{ label: t("attention.emptyAction"), href: "/app/admin/sessions" }} size="sm" />
+      <section aria-labelledby="attention-heading" className="mt-6">
+        <h2 id="attention-heading" className="text-label text-fg-heading">
+          {t("attention.title")}
+        </h2>
+        <div className="mt-3">
+          {attention.total === 0 ? (
+            <p className="text-body-sm text-fg-muted">{t("attention.empty")}</p>
           ) : (
-            <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <AttentionRowItem
-                href="/app/admin/proposals"
-                Icon={CheckCircleIcon}
-                label={t("attention.proposals")}
-                row={data.attention.proposalsAwaitingDecision}
-                oldestSince={oldestSince}
-                num={num}
-              />
-              <AttentionRowItem
-                href="/app/admin/sessions"
-                Icon={CalendarIcon}
-                label={t("attention.sessions")}
-                row={data.attention.sessionsNotScheduled}
-                oldestSince={oldestSince}
-                num={num}
-              />
-              <AttentionRowItem
-                href="/app/admin/moderation/reports"
-                Icon={AlertTriangleIcon}
-                label={t("attention.photoReports")}
-                row={data.attention.openPhotoReports}
-                oldestSince={oldestSince}
-                num={num}
-              />
-              <AttentionRowItem
-                href="/app/admin/moderation/comments"
-                Icon={AlertCircleIcon}
-                label={t("attention.commentReports")}
-                row={data.attention.openCommentReports}
-                oldestSince={oldestSince}
-                num={num}
-              />
-            </ul>
+            <AttentionTiles
+              items={attention.items}
+              labelFor={(item) => attentionLabel[item.queue]}
+              sinceFor={(item) => (item.oldestAgeDays === null ? null : t("attention.oldestSince", { count: item.oldestAgeDays, value: num(item.oldestAgeDays) }))}
+            />
           )}
         </div>
       </section>
 
-      <section aria-labelledby="overview-heading" className="mt-12">
-        <SectionHeader as="h2" id="overview-heading" title={t("overviewTitle")} />
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-          <Stat label={t("rsvpsConfirmed")} value={num(data.rsvpsConfirmed)} href="/app/admin/sessions" />
-          <Stat label={t("checkInsTotal")} value={num(data.checkInsTotal)} href="/app/admin/sessions" />
-          <Stat
-            label={t("attendanceRateLabel")}
-            value={attendanceRatePct === null ? "—" : t("attendanceRateValue", { value: num(attendanceRatePct) })}
-            hint={attendanceRatePct === null ? t("attendanceRateEmpty") : undefined}
-            href="/app/admin/sessions"
-          />
-          <Stat label={t("activeMembersTitle")} value={num(data.activeMembers)} href="/app/admin/members" />
-          <Stat label={t("pointsIssuedTitle")} value={num(data.pointsIssued)} href="/app/admin/scoring" />
+      <section aria-labelledby="overview-heading" className="mt-4">
+        <h2 id="overview-heading" className="sr-only">
+          {t("overviewTitle")}
+        </h2>
+        <FigureTiles figures={figures} />
+      </section>
+
+      <div className="mt-4">
+        <PipelineBar title={t("pipelineTitle")} segments={segments} countLabel={(s) => t("pipelineCount", { value: num(s.count), label: s.label })} />
+      </div>
+
+      <section aria-labelledby="upcoming-heading" className="mt-6">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 id="upcoming-heading" className="text-label text-fg-heading">
+            {t("upcoming.title")}
+          </h2>
+          <Link href="/app/admin/sessions" className="text-caption text-fg-muted hover:text-fg-heading hover:underline">
+            {t("upcoming.all")}
+          </Link>
+        </div>
+        {/* The artboard sets the table in a rounded card at a desk; under `md` the rows are
+            `data-table`'s own cards, so the frame would be a card around cards. */}
+        <div className="mt-3 md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1">
+          <UpcomingTable rows={data.upcoming} timeZone={data.timeZone} locale={locale} />
         </div>
       </section>
 
-      <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
-        <section aria-labelledby="pipeline-heading">
-          <SectionHeader
-            as="h3"
-            id="pipeline-heading"
-            title={t("pipelineTitle")}
-            actions={
-              <Link href="/app/admin/proposals" aria-label={`${t("viewList")} — ${t("pipelineTitle")}`} className="text-body-sm text-fg-heading underline underline-offset-4">
-                {t("viewList")}
-              </Link>
-            }
-          />
-          <Panel className="mt-3">
-            <dl className="space-y-2">
-              {pipelineRows.map((row) => (
-                <div key={row.key} className="flex items-baseline justify-between text-body-sm">
-                  <dt className="text-fg-body">{row.label}</dt>
-                  <dd className="text-fg-heading">{num(data.proposalPipeline[row.key])}</dd>
-                </div>
-              ))}
-            </dl>
-          </Panel>
-        </section>
-
-        <section aria-labelledby="top-presenters-heading">
-          <SectionHeader as="h3" id="top-presenters-heading" title={t("topPresentersTitle")} />
-          <Panel className="mt-3">
-            <TopList rows={data.topPresenters} emptyLabel={t("topEmpty")} linkFor={(row) => `/app/members/${row.id}`} />
-          </Panel>
-        </section>
-
-        <section aria-labelledby="top-categories-heading">
-          <SectionHeader
-            as="h3"
-            id="top-categories-heading"
-            title={t("topCategoriesTitle")}
-            actions={
-              <Link
-                href="/app/admin/categories"
-                aria-label={`${t("viewList")} — ${t("topCategoriesTitle")}`}
-                className="text-body-sm text-fg-heading underline underline-offset-4"
-              >
-                {t("viewList")}
-              </Link>
-            }
-          />
-          <Panel className="mt-3">
-            <TopList rows={data.topCategories} emptyLabel={t("topEmpty")} />
-          </Panel>
-        </section>
-
-        <section aria-labelledby="top-companies-heading">
-          <SectionHeader
-            as="h3"
-            id="top-companies-heading"
-            title={t("topCompaniesTitle")}
-            actions={
-              <Link
-                href="/app/admin/companies"
-                aria-label={`${t("viewList")} — ${t("topCompaniesTitle")}`}
-                className="text-body-sm text-fg-heading underline underline-offset-4"
-              >
-                {t("viewList")}
-              </Link>
-            }
-          />
-          <Panel className="mt-3">
-            <TopList rows={data.topCompanies} emptyLabel={t("topEmpty")} />
-          </Panel>
-        </section>
+      <div className="mt-4">
+        <TopLists
+          emptyLabel={t("topEmpty")}
+          lists={[
+            { id: "top-presenters", title: t("topPresentersTitle"), rows: data.topPresenters, hrefFor: (row) => `/app/members/${row.id}` },
+            { id: "top-categories", title: t("topCategoriesTitle"), rows: data.topCategories, hrefFor: (row) => `/app/admin/sessions?category=${row.id}` },
+            { id: "top-companies", title: t("topCompaniesTitle"), rows: data.topCompanies, hrefFor: () => "/app/admin/companies" },
+          ]}
+        />
       </div>
     </>
   );

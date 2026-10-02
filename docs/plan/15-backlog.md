@@ -1527,6 +1527,76 @@ passes; `qa:contract` is untouched. One PR, `wave-19/m10b`.*
 - A case drives one photograph past the cap on one session and sees `SCR-022`'s cap row.
 - Built only after `0174` is in production (`DEC-221`).
 
+#### STORY-UIX-074 — The console frame
+**Covers:** `REQ-UIX-084` · **M23** · **M** · lead · PR A
+**Built from:** `AdminDashboard.dc.html` (the bar and the rail); `M11a.md` §0.
+- - ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, the no-JS path, the role gates, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it. ★ `src/components/admin/admin-rail.tsx` is deleted, not left beside its successor (`DEC-213` §4); its table
+  names `AdminRailChild` and the disclosure groups with what replaced them.
+- The 52 px bar, the 220 px rail of twenty items in six ruled groups with queue badges, the sheet under `lg` keeping the
+  groups; the page at 24 px padding.
+- ★ **The count**: a test that an admin's rail holds twenty items, a moderator's only `REQ-ADM-020`'s, a member's none,
+  and no unbuilt item (`DEC-226` §2).
+- ★ `console-register.test.ts` amended once — the rail's path, and the three new primitives in the no-animation case
+  (`DEC-227` §2), with a ledger line; «التصنيفات» (`DEC-227` §3).
+
+#### STORY-UIX-075 — Three primitives for the console
+**Covers:** `REQ-UIX-085` · **M23** · **M** · lead (`admin-rail`), `sessions` (`split-view`, `kv-card`) · PR A
+- Each: its signature in `ui/index.ts` (the lead's, types only, after sync 1), a registry entry, a test inside the
+  scope, an RTL check, a gallery section with every state in Arabic from fixture data, no animation.
+- The gate's floor moves from 60 to 63 in the commit that adds the third file. All three land in PR A.
+
+#### STORY-UIX-076 — The dashboard, rebuilt
+**Covers:** `REQ-UIX-086` · **M23** · **M** · `console` · PR A
+**Built from:** `AdminDashboard.dc.html`; `M11a.md` §1.
+- - ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, the no-JS path, the role gates, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it.
+- «يحتاج انتباهك» from `admin-dashboard.ts`'s four `attention` rows — count, label, oldest age, a link to the queue;
+  the one line when nothing waits. The same read feeds the rail's badges (contract 3).
+- The six figures, the pipeline bar, the next sessions on `data-table`, the three top lists — every figure a link.
+- ★ **Not drawn, and built:** an org with no sessions yet, nothing waiting, a short top list. A moderator keeps today's
+  streamed not-found at `/app/admin` (`DEC-228` §3.1).
+
+#### STORY-UIX-077 — The sessions table, its bulk bar and its phone stack
+**Covers:** `REQ-UIX-087` · **M23** · **L** · `console` · PR A
+**Built from:** `AdminSessions.dc.html` · `AdminSessionsPhone.dc.html`; `M11a.md` §3.
+- - ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, the no-JS path, the role gates, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it.
+- ★ **`data-table`'s phone stack and selection are built — they are composed, not rebuilt** (`data-table.tsx:10-13`,
+  `:70-83`). The primitive changes add-only, if at all.
+- The toolbar, the chips with their value, the sticky header, sorting, the pager, the row menu, the avatar with its team
+  ring; «جلسة جديدة».
+- ★ **The bulk bar** — «N محدّدة», the actions, clear — composing the existing selection; each action the single-row
+  action's authority; the CSV through the audited export path.
+- ★ **Not drawn, and built:** an empty org, a search with no result, a moderator's read-only list, a failed bulk action.
+
+#### STORY-UIX-078 — The proposal queue as a split view
+**Covers:** `REQ-UIX-088` · **M23** · **L** · `sessions` · PR B
+**Built from:** `AdminProposals.dc.html`; `M11a.md` §2.
+- - ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, the no-JS path, the role gates, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it.
+- ★ **The diff measured first** (`DEC-227` §5.1): what is recorded of a proposal's edits today; a migration, if one
+  is needed, named in the plan and written by the lead from `0179`. No member-readable history (`DEC-215`).
+- `split-view`: the state chips with counts, the rows, ↑↓ and Enter, the detail, the decision card; «افتح كجلسة» for
+  an approved one; the detail at `/app/admin/proposals/[id]` under `lg`.
+- ★ **Not drawn, and built:** an empty queue, a decision failing, the last proposal decided, no materials.
+
+#### STORY-UIX-079 — The session hub: its header and الجدولة, read by default
+**Covers:** `REQ-UIX-089` · **M23** · **L** · `sessions` · PR B
+**Built from:** `AdminSessionHub.dc.html`; `M11a.md` §4.
+- - ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, the no-JS path, the role gates, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it. ★ The hub layout and its strip included.
+- The header above the tabs, the lifecycle action by state; the five tabs, «المحتوى» to the event page; `DEC-178`'s
+  redirect named and unchanged.
+- The `kv-card` with «عدّل» and «أعد الجدولة»; edit mode over the schedule's existing fields and actions; the side
+  column — reservations, the poster's formats through the audited route, the log.
+- ★ **Not drawn, and built:** edit mode, a draft, a completed session, a multi-day session's days.
+
+#### STORY-UIX-080 — Attendance, live
+**Covers:** `REQ-UIX-090` · **M23** · **L** · `checkin` · PR B
+**Built from:** `AdminAttendance.dc.html`; `M11a.md` §5.
+- - ★★ **Deleted first** (`DEC-208`): the page file and the screen's own markup files removed in one commit, the screen written from its artboard in the next; the note's kept-behaviour table — data calls, auth boundary, `<bdi>`, the no-JS path, the role gates, pinned names — each with its `REQ-*`, written before the create commit and read against the new file after it.
+- The figures, the code card with the countdown, «أبطل» and the switch; the chips, «تسجيل يدوي» in a sheet with the
+  member picker and the reason, the CSV; the table with faces.
+- ★ The revoke calls the existing removal (`REQ-CHK-017`) and its `DEC-172` reversal; no new mechanism.
+- ★ **Not drawn, and built:** a completed session's final rate, a multi-day session's days, before the window opens, a
+  moderator.
+
 ---
 
 ## 24. Coverage check

@@ -36,6 +36,14 @@ export function isEventPage(pathname: string | null): boolean {
   return /^\/app\/sessions\/[^/]+$/.test(strip(pathname));
 }
 
+/** ★ wave 21 (DEC-225 §3, REQ-UIX-084): the org console draws its own frame — a 52 px bar and a rail of six ruled
+ *  groups — so the member's header, tab bar and footer step aside under it, at every width. `/app/platform` is not
+ *  this batch and keeps today's frame (`DEC-227`, the lead's plan, D3). */
+export function isAdminConsole(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return /^\/app\/admin(\/|$)/.test(strip(pathname));
+}
+
 export function isConsole(pathname: string | null): boolean {
   if (!pathname) return false;
   return CONSOLE.test(strip(pathname));

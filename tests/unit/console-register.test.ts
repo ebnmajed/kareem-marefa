@@ -17,7 +17,9 @@ const STAFF_DIRS = [
   "src/app/[locale]/app/platform",
   ...["admin", "platform", "designer", "branding", "email", "survey"].map((d) => `src/components/${d}`),
 ];
-const PRIMITIVES = ["data-table", "combobox", "menu", "tabs", "sheet", "date-time"].map((n) => `src/components/ui/${n}.tsx`);
+// ★ wave 21 (DEC-227 §2, the owner): the console's three primitives live in `ui/`, outside the staff directories, so
+// they are named here — the one amendment this file has had, and it reads more, never less.
+const PRIMITIVES = ["data-table", "combobox", "menu", "tabs", "sheet", "date-time", "admin-rail", "split-view", "kv-card"].map((n) => `src/components/ui/${n}.tsx`);
 const SIX_AND_PICKER = [...PRIMITIVES, "src/components/admin/rtl-datetime-picker.tsx"];
 
 function filesUnder(path: string): string[] {
@@ -102,7 +104,7 @@ describe("the console's import graph (REQ-UIX-053)", () => {
     expect(reached.size).toBeGreaterThan(150);
     const files = [...reached.keys()].map(rel);
     for (const expected of [
-      "components/admin/admin-rail.tsx",
+      "components/ui/admin-rail.tsx",
       "components/platform/platform-nav.tsx",
       "components/ui/data-table.tsx",
       "app/[locale]/app/layout.tsx",

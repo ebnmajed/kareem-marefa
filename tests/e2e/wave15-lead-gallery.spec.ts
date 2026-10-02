@@ -91,10 +91,13 @@ for (const ground of GROUNDS) {
   test(`a dialog opened on the ${ground.name} ground lands inside the scope and wears it`, async ({ page }) => {
     const demo = page.locator(`${ground.scope} [data-demo="dialog"]`);
     await expect(demo).toHaveCount(1);
-    await demo.getByRole("button", { name: "إلغاء الحجز" }).click();
-
     const dialog = page.getByRole("dialog", { name: "إلغاء حجزك؟" });
-    await expect(dialog).toBeVisible();
+    // ★ wave 21: the gallery grew three demos, and under a full run a press could land before the trigger hydrated —
+    // the click is then lost and nothing opens. Press until it opens; what is asserted below is unchanged.
+    await expect(async () => {
+      await demo.getByRole("button", { name: "إلغاء الحجز" }).click();
+      await expect(dialog).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 15000 });
 
     const where = await dialog.evaluate((el) => ({
       inScope: el.closest(".theme-play") !== null,

@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { CalendarIcon, HomeIcon, PlusIcon, TrophyIcon, UserIcon } from "@/components/ui/icons";
 import { NAV, type NavKey } from "@/components/shell/nav-items";
-import { isImmersive, shellPath } from "@/components/shell/shell-routes";
+import { isAdminConsole, isImmersive, shellPath } from "@/components/shell/shell-routes";
 
 // The phone's bottom bar — REBUILT from `docs/design/screens/m10a/Home.dc.html`
 // (REQ-UIX-054, DEC-205 §2, DEC-206 §4.30): FIVE tabs — الرئيسية · الجلسات ·
@@ -36,7 +36,8 @@ const ICONS: Record<NavKey, typeof HomeIcon> = {
 
 export function TabBar({ labels }: TabBarProps) {
   const pathname = usePathname();
-  if (isImmersive(pathname)) return null;
+  // ★ wave 21 (REQ-UIX-084): no tab bar in the org console, at any width (`AdminSessionsPhone.dc.html`).
+  if (isImmersive(pathname) || isAdminConsole(pathname)) return null;
   const path = shellPath(pathname);
 
   return (

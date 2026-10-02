@@ -3588,6 +3588,105 @@ net is one award, and a photograph never paid is not paid by a restore.
 - The cap is read from `scoring_rules`; a photograph past it is explained in place on `SCR-022` as the cap row.
 - A photograph's row exists only after its EXIF strip (`0174`), so no unstripped image earns or shows.
 
+#### REQ-UIX-084 — The console's frame: a top bar, a rail of six ruled groups, the page beside it
+**Serves:** `DEC-225` §3 (`DEC-NEXT-26`) · `DEC-226` · `DEC-227` §2 – §4 · `REQ-UIX-053` · `REQ-ADM-020` · `16` §6.7
+Under `/app/admin` the console draws its own frame from `AdminDashboard.dc.html`: a 52 px top bar (the wordmark,
+«لوحة الإدارة», the org's name, «التطبيق» back to the member app, the account's avatar); a 220 px rail at the
+inline-start, sticky, holding the twenty `admin.shell.nav.*` items on one level divided by six rules, a queue's open
+count as a small coral badge beside it; and the page beside the rail at 24 px padding, its `h1` row carrying the page's
+one primary action at its end. Under `lg` the rail is a sheet behind ≡ that keeps the six groups and their rules.
+**Acceptance:**
+- An admin's rail renders exactly the twenty items, in the artboard's six groups; a moderator's renders only the
+  routes `REQ-ADM-020` allows; a plain member's renders none; no item whose screen is not built is ever drawn.
+- The group headings render no text; each group is separated by a rule a screen reader does not announce as content.
+- The current item carries `aria-current="page"`, decided from the path on every navigation.
+- A badge's count is read from the same source as the dashboard's attention tiles; no badge is drawn at 0.
+- The skip link past the rail stays; the frame animates nothing.
+
+#### REQ-UIX-085 — Three primitives for the console: admin rail, split view, key/value card
+**Serves:** `DEC-225` §2 · `DEC-213` §4 · `DEC-227` §2 · `REQ-UIX-001` · `REQ-UIX-050` · `REQ-UIX-053`
+`admin-rail`, `split-view` and `kv-card` join `src/components/ui/`. Each renders every state from props, reads no data
+and no message catalogue, is born inside the playground, and declares no animation.
+**Acceptance:**
+- Each new file has a registry entry, a test inside the scope, an RTL check and a gallery entry showing every state in
+  Arabic; the gate's count moves from 60 to 63 in the commit that adds the third.
+- `src/components/admin/admin-rail.tsx` no longer exists; there is one thing called `admin-rail`.
+- `admin-rail`, `split-view` and `kv-card` are among the primitives `tests/unit/console-register.test.ts` holds to no
+  animation.
+- `split-view` is a list beside a detail with a keyboard model — ↑ and ↓ move through the list, Enter opens the
+  current item, focus is never lost to the page — and is the list alone under `lg`.
+- `kv-card` is a titled card of label/value rows in read mode, with an edit twin that is the same rows as fields.
+
+#### REQ-UIX-086 — The dashboard shows what needs the admin's attention, and every figure opens its list
+**Serves:** `DEC-225` §3 · `DEC-227` §0.1 · `REQ-ADM-004` · `09` `SCR-040`
+`SCR-040` is rebuilt from `AdminDashboard.dc.html`: the `h1` and the month; «يحتاج انتباهك» — four tiles, each a
+count, a label and the oldest item's age, each a link to its queue; six figures for the month; the proposal pipeline as
+one segmented bar with its counts in the caption; the next sessions as a table; the top presenters, categories and
+companies.
+**Acceptance:**
+- Each attention tile opens the queue it counts in one move; when nothing waits, the four tiles are one line.
+- Every figure on the page is a link to the list behind it; none is a literal.
+- There is no chart beyond the one bar, and nothing on the page animates.
+- A moderator has no dashboard: `/app/admin` answers them with the streamed not-found it answers today (`DEC-228` §3.1).
+
+#### REQ-UIX-087 — The sessions table: found, filtered and acted on in bulk at a desk, usable as cards on a phone
+**Serves:** `DEC-225` §4.3 · `DEC-227` §0.3 · `REQ-ADM-005` · `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-012` · `09` `SCR-042`
+`SCR-042` is rebuilt from `AdminSessions.dc.html` and `AdminSessionsPhone.dc.html` on `data-table`: a toolbar of
+search and filter chips that carry their current value, and a count; «جلسة جديدة» on the `h1` row; a sticky header;
+row selection with select-all; the title, status, date, venue, presenter and reservations columns and a row menu; a
+pager. Selecting rows replaces the toolbar with a bulk bar naming how many are selected, with the actions that apply to
+them and a way to clear the selection.
+**Acceptance:**
+- Any column header sorts; the default order is a live session first, then upcoming by date ascending, then undated,
+  then past by date descending (`DEC-228` §3.5).
+- A bulk action does only what the same action does on one row, through the same authority; an export goes through the
+  audited export path.
+- Below `md` the same rows are cards — title and status, date and venue, presenter, seats — never a horizontally
+  scrolling table; the filter chips scroll in one row; the page causes no horizontal scroll at 390 px.
+- A moderator sees the read-only list `09` already gives them.
+
+#### REQ-UIX-088 — A proposal is decided without leaving the queue
+**Serves:** `DEC-225` §3 (`DEC-NEXT-27`) · `DEC-227` §0.2, §5.1 · `REQ-PRO-005`, `REQ-PRO-006`, `REQ-PRO-009` · `09` `SCR-041`
+`SCR-041` is rebuilt from `AdminProposals.dc.html` as a `split-view`: the queue at the inline-start, filtered by state
+with counts, each row its title, proposer and company and age; the open proposal beside it with its fields, its
+presenters, its preliminary materials, the edits made to its content shown as a diff, and the decision card — one
+message to the proposer and approve, request changes, reject.
+**Acceptance:**
+- ↑ and ↓ walk the queue and Enter opens a proposal; the decision is taken without navigating away, and the next
+  proposal is one key away after it.
+- Requesting changes and rejecting require the written message the proposer receives (`REQ-PRO-005`); every
+  decision is audited (`REQ-PRO-006`).
+- When a proposal's content changed after it was submitted, the reviewer sees what changed, field by field, before
+  deciding; when it did not, nothing is drawn.
+- Under `lg` the queue is the page and a proposal opens at its own route.
+
+#### REQ-UIX-089 — A session's settings are read by default, under one header
+**Serves:** `DEC-225` §3 (`DEC-NEXT-28`) · `DEC-178` · `DEC-227` §5.2, §5.3 · `REQ-SES-020`, `REQ-SES-009`, `REQ-SES-019` · `09` `SCR-043`
+The session hub draws one header — the breadcrumb, the title, the status, the tab's actions — above its five tabs,
+الجدولة · المحتوى · الحضور · الاستبانة · الشهادات, from `AdminSessionHub.dc.html`. الجدولة is a `kv-card` in read mode
+— the date, venue, capacity, the booking and cancellation deadlines, the presenters, check-in and the certificate —
+with «عدّل» and «أعد الجدولة», and a side column with the reservations, the poster's formats and the session's log.
+**Acceptance:**
+- Edit mode is the same card as a form with save and cancel; nothing is edited without «عدّل».
+- The header's lifecycle action follows the state: publish for a draft, cancel for a published session, none once
+  completed.
+- `DEC-178`'s redirect is unchanged: the hub's own URL lands an admin on الجدولة and a moderator on الحضور.
+- المحتوى opens the event page, where content is managed; no content screen is built in the hub.
+
+#### REQ-UIX-090 — Attendance is run live from the hub
+**Serves:** `DEC-225` §4.8 · `DEC-227` §0.4 · `REQ-CHK-008`, `REQ-CHK-012`, `REQ-CHK-015`, `REQ-CHK-016`, `REQ-CHK-017` · `DEC-172` · `09` `SCR-044`
+The الحضور tab is rebuilt from `AdminAttendance.dc.html`: «شاشة التقديم» as the header's primary; five figures;
+beside them the code card — the code, its rotation, «أبطل» and the open/closed switch; filter chips, «تسجيل يدوي» and
+the CSV; and the attendance table — the member with their face, the reservation, the time, the method and who marked
+it, the status and a row menu.
+**Acceptance:**
+- A manual check-in names a member and a reason, is audited and flagged in exports (`REQ-CHK-008`).
+- Revoking a check-in asks for a reason and writes the compensating ledger row `DEC-172` defines through the existing
+  removal; no new reversal exists.
+- On a completed session the code card is replaced by the final rate; an admin may still add and remove at any time
+  (`REQ-CHK-017`, `DEC-228` §4.6), and nothing else on the rows is editable.
+- The page renders nothing of the hub's header; faces appear here because the host placement allows them (`DEC-099`).
+
 ---
 
 ## 24. Survey — `SUR`

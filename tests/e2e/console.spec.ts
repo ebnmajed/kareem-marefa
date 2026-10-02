@@ -1,6 +1,8 @@
-// The admin console's left rail — `16` §6.7, wave 6 (`DEC-130`), regrouped
-// into the fourteen-group IA for wave 7 (`DEC-137`). Proves what
-// `admin-rail.test.tsx`/`admin-rail-groups.test.tsx` (jsdom) cannot: the
+// The admin console's frame and rail — `16` §6.7, wave 6 (`DEC-130`), regrouped
+// for wave 7 (`DEC-137`), ★ and rebuilt in wave 21 (`REQ-UIX-084`, `DEC-226`, `DEC-227`):
+// a 52 px bar and twenty destinations on one level in six ruled groups — no
+// collapse, no disclosure, no flyout. Proves what `admin-nav.test.ts` and
+// `admin-rail-scope.test.tsx` (unit, jsdom) cannot: the
 // real 390 px phone drawer over a real screen, the second skip link's actual
 // focus target, a moderator's rail on real RLS-backed roles (`REQ-ADM-020`),
 // and that the layout renders correctly around a screen this track did NOT
@@ -21,7 +23,6 @@ const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
 const PUBLISHABLE_KEY = process.env.E2E_SUPABASE_PUBLISHABLE_KEY;
 const DB_URL = process.env.RLS_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 const PASSWORD = "correct-horse-battery-staple-9";
-const PHONE = { width: 390, height: 844 };
 
 test.skip(!SERVICE_KEY || !PUBLISHABLE_KEY, "needs local Supabase: run `npm run test:e2e:local`");
 test.describe.configure({ mode: "serial" });
@@ -132,137 +133,73 @@ test("the second skip link jumps past the rail, straight to the content region",
   await expect(page.locator("#admin-content")).toBeFocused();
 });
 
-test("desktop: the rail lists the dashboard as current, and collapsing it keeps every link reachable", async ({ context, page }, testInfo) => {
+// ★ wave 21 (DEC-226 §2): the proof is a COUNT. The fourteen-group IA's collapse, disclosure and flyout cases went
+// with the rail that had them (ledger lines in STATUS.md); what they protected — every destination reachable, a
+// moderator's scope — is asserted here on the new shape.
+const RAIL = "لوحة إدارة المؤسسة";
+const shotsDir = () => {
+  const dir = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
+  mkdirSync(dir, { recursive: true });
+  return dir;
+};
+
+test("desktop: the rail holds all twenty destinations in six ruled groups, the dashboard current", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "the persistent rail is a desktop control");
   await signIn(context);
   await goto(page, "/ar/app/admin");
-  const nav = page.getByRole("navigation", { name: "لوحة إدارة المؤسسة" });
+  const nav = page.getByRole("navigation", { name: RAIL });
+  await expect(nav.getByRole("link")).toHaveCount(20);
+  await expect(nav.getByRole("list")).toHaveCount(6);
+  await expect(nav.getByRole("button")).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "لوحة التحكم" })).toHaveAttribute("aria-current", "page");
-  const proposals = nav.getByRole("link", { name: "المقترحات" });
-  await expect(proposals).not.toHaveAttribute("aria-current");
-
-  const toggle = page.getByRole("button", { name: "طيّ قائمة الإدارة" });
-  await toggle.click();
-  await expect(page.getByRole("button", { name: "توسيع قائمة الإدارة" })).toBeVisible();
-  // Collapsed: the link is still IN the accessibility tree with its full
-  // name (an `sr-only` span, not a removed label) — collapsing hides text
-  // visually, it never removes a destination.
-  await expect(nav.getByRole("link", { name: "المقترحات" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "التصنيفات", exact: true })).toHaveAttribute("href", "/ar/app/admin/categories");
+  // The console's own bar — no member header, no tab bar (REQ-UIX-084).
+  await expect(page.locator("[data-console-bar]")).toBeVisible();
+  await expect(page.locator("[data-tab-bar]")).toHaveCount(0);
+  await page.screenshot({ path: join(shotsDir(), "wave21-lead-frame-admin-1280.png") });
 });
 
-test("phone: the rail is a drawer, and it closes on navigation — DEC-111's own bug, not repeated here", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "phone", "the drawer is the phone treatment");
+test("phone: the rail is a sheet that keeps the six groups, and it closes on navigation — DEC-111's own bug, not repeated here", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "the sheet is the phone treatment");
   await signIn(context);
   await goto(page, "/ar/app/admin");
-  await expect(page.getByRole("navigation", { name: "لوحة إدارة المؤسسة" })).toBeHidden();
+  await expect(page.getByRole("navigation", { name: RAIL })).toBeHidden();
+  await expect(page.locator("[data-tab-bar]")).toHaveCount(0);
   await page.getByRole("button", { name: "فتح قائمة الإدارة" }).click();
-  const dialog = page.getByRole("dialog", { name: "لوحة إدارة المؤسسة" });
+  const dialog = page.getByRole("dialog", { name: RAIL });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("link")).toHaveCount(20);
+  await expect(dialog.getByRole("list")).toHaveCount(6);
+  await page.screenshot({ path: join(shotsDir(), "wave21-lead-frame-sheet-admin-390.png") });
   await dialog.getByRole("link", { name: "الجلسات" }).click();
   await expect(page).toHaveURL(/\/ar\/app\/admin\/sessions$/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("desktop: the fourteen-group IA discloses a group's real routes, and the collapsed rail turns it into a menu", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "the persistent rail is a desktop control");
-  await signIn(context);
-  await goto(page, "/ar/app/admin");
-  const nav = page.getByRole("navigation", { name: "لوحة إدارة المؤسسة" });
-
-  const group = nav.getByRole("button", { name: "الإشراف" });
-  await expect(group).toHaveAttribute("aria-expanded", "false");
-  await group.click();
-  await expect(group).toHaveAttribute("aria-expanded", "true");
-  const comments = nav.getByRole("link", { name: "التعليقات" });
-  await expect(comments).toHaveAttribute("href", "/ar/app/admin/moderation/comments");
-  await comments.click();
-  await expect(page).toHaveURL(/\/ar\/app\/admin\/moderation\/comments$/);
-
-  // Collapsed: the same group is a menu button, not an inline list — real
-  // Radix portal content, real focus, not jsdom's accessibility-tree stand-in.
-  await page.getByRole("button", { name: "طيّ قائمة الإدارة" }).click();
-  await page.getByRole("button", { name: "الإشراف" }).click();
-  const menu = page.getByRole("menu");
-  await expect(menu.getByRole("menuitem", { name: "الصور" })).toHaveAttribute("href", "/ar/app/admin/moderation/photos");
-});
-
-test("a moderator's rail regroups to exactly four top-level entries, matching REQ-ADM-020's scope", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "checked once, not per viewport — the filter is server-computed, not a layout concern");
+test("a moderator's rail holds exactly REQ-ADM-020's six destinations", async ({ context, page }, testInfo) => {
   await signIn(context, "moderator");
   await goto(page, "/ar/app/admin/sessions");
-  const nav = page.getByRole("navigation", { name: "لوحة إدارة المؤسسة" });
-  // «الجلسات» and «الاستبانات» direct, «الإشراف» disclosing all three queues, «السجل» direct —
-  // no «لوحة», no «الأعضاء», no «الإعدادات»; no groups whose every child is
-  // admin-only (`النقاط والتقدير`, `الإشعارات` vanish, not just hide their
-  // contents). ★ Wave 13 (`DEC-176`, `DEC-178`): «القوالب» left this list —
-  // it is a plain admin-only LEAF now, not a group
-  // (`docs/plan/notes/console.md`'s "Wave 13 plan"), checked as a `link`
-  // alongside «الأعضاء»/«لوحة» below, not as a `button` here — it was never
-  // a disclosure once this landed, and the old `role: "button"` assertion
-  // would have kept passing for the wrong reason (the name matching nothing).
-  await expect(nav.getByRole("link", { name: "الجلسات" })).toBeVisible();
-  // Wave 10 (`DEC-160`, SCR-065): a session's survey is staff's, so the
-  // moderator's rail gains this one entry — the title's count moved with it.
-  await expect(nav.getByRole("link", { name: "الاستبانات" })).toBeVisible();
-  await expect(nav.getByRole("button", { name: "الإشراف" })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "سجل التدقيق" })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "لوحة التحكم" })).toHaveCount(0);
-  await expect(nav.getByRole("link", { name: "الأعضاء" })).toHaveCount(0);
-  await expect(nav.getByRole("link", { name: "القوالب" })).toHaveCount(0);
-  await expect(nav.getByRole("button", { name: "النقاط والتقدير" })).toHaveCount(0);
-  await expect(nav.getByRole("button", { name: "الإشعارات" })).toHaveCount(0);
-
-  await nav.getByRole("button", { name: "الإشراف" }).click();
-  await expect(nav.getByRole("link", { name: "التعليقات" })).toHaveAttribute("href", "/ar/app/admin/moderation/comments");
-  await expect(nav.getByRole("link", { name: "الصور" })).toHaveAttribute("href", "/ar/app/admin/moderation/photos");
-  await expect(nav.getByRole("link", { name: "البلاغات" })).toHaveAttribute("href", "/ar/app/admin/moderation/reports");
+  let scope = page.getByRole("navigation", { name: RAIL });
+  if (testInfo.project.name === "phone") {
+    await page.getByRole("button", { name: "فتح قائمة الإدارة" }).click();
+    scope = page.getByRole("dialog", { name: RAIL });
+  }
+  await expect(scope.getByRole("link")).toHaveCount(6);
+  for (const name of ["الجلسات", "الاستبانات", "التعليقات", "الصور", "البلاغات", "سجل التدقيق"]) {
+    await expect(scope.getByRole("link", { name, exact: true })).toBeVisible();
+  }
+  for (const name of ["لوحة التحكم", "المقترحات", "الأعضاء", "القوالب", "الإعدادات"]) {
+    await expect(scope.getByRole("link", { name, exact: true })).toHaveCount(0);
+  }
+  const width = testInfo.project.name === "phone" ? "390" : "1280";
+  await page.screenshot({ path: join(shotsDir(), `wave21-lead-frame-moderator-${width}.png`) });
 });
 
-// ★ Captures the phone drawer OPEN with a group disclosed — a sync-3
-// finding: the fourteen-group IA is K0's own headline, and no capture from
-// the first pass showed it, only the closed drawer and the desktop rail. One
-// capture per role, since a moderator's drawer shows a different rail
-// entirely (§1's own regroup) and both are worth a look.
-async function captureDisclosedDrawer(page: Page, name: string) {
-  await page.getByRole("button", { name: "فتح قائمة الإدارة" }).click();
-  const dialog = page.getByRole("dialog", { name: "لوحة إدارة المؤسسة" });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "الإشراف" }).click();
-  await expect(dialog.getByRole("link", { name: "التعليقات" })).toBeVisible();
-  const dir = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
-  mkdirSync(dir, { recursive: true });
-  await page.screenshot({ path: join(dir, `wave7-console-rail-drawer-${name}-disclosed.png`), fullPage: true });
-}
-
-test("phone: the drawer captured open with «الإشراف» disclosed, as an admin", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "phone", "the drawer is the phone treatment");
+test("an admin screen no track rebuilds this wave renders under the new frame, captured at both widths", async ({ context, page }, testInfo) => {
   await signIn(context);
-  await page.setViewportSize(PHONE);
-  await goto(page, "/ar/app/admin");
-  await captureDisclosedDrawer(page, "admin");
-});
-
-test("phone: the drawer captured open with «الإشراف» disclosed, as a moderator", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "phone", "the drawer is the phone treatment");
-  await signIn(context, "moderator");
-  await page.setViewportSize(PHONE);
-  await goto(page, "/ar/app/admin/sessions");
-  await captureDisclosedDrawer(page, "moderator");
-});
-
-test("an admin screen this track did not rebuild this wave still renders correctly under the new rail, captured at both widths", async ({ context, page }, testInfo) => {
-  await signIn(context);
-  if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
-  // `proposals` — not `exports`, which wave 8 rebuilds (K2) and so stops
-  // proving "untouched" (`docs/plan/notes/console.md`, "Wave 8 plan" §3).
-  await goto(page, "/ar/app/admin/proposals");
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  // `E2E_SHOTS_DIR` lets a run in the verification worktree land its
-  // captures where the cited path actually points — a hard-coded
-  // `process.cwd()` was wave 7's own sync-3 finding: every capture landed
-  // in the worktree, not the main checkout `STATUS.md` cites.
-  const dir = process.env.E2E_SHOTS_DIR ?? join(process.cwd(), ".qa-shots", "rtl");
-  mkdirSync(dir, { recursive: true });
-  const name = testInfo.project.name === "phone" ? "390" : "desktop";
-  await page.screenshot({ path: join(dir, `wave8-console-layout-untouched-${name}.png`), fullPage: true });
+  // ★ wave 21: `venues` — not `proposals`, which `sessions` rebuilds in PR B.
+  await goto(page, "/ar/app/admin/venues");
+  await expect(page.locator("#main").getByRole("heading", { level: 1 })).toBeVisible();
+  const width = testInfo.project.name === "phone" ? "390" : "1280";
+  await page.screenshot({ path: join(shotsDir(), `wave21-lead-frame-untouched-${width}.png`), fullPage: true });
 });
