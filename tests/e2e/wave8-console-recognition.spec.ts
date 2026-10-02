@@ -189,8 +189,8 @@ test("REQ-REC-001: an admin creates a badge with its rule, then retires it in ed
   // The switch's input is `sr-only`: its 1-px box sits under the row, so a click aimed at the input's centre lands on the
   // fieldset. A mouse user clicks the DRAWN track, which is inside the input's <label> — so the click goes there, and
   // proves the track itself is not covered (the lead's question (a)).
-  const retire = page.locator("#main").getByRole("switch", { name: "مفعّل — حاضر مخلص" });
-  await page.locator("#main label").filter({ has: retire }).click();
+  // `has:` is evaluated INSIDE each candidate label, so it takes a relative locator, never one rooted at `#main`.
+  await page.locator("#main label").filter({ has: page.getByRole("switch", { name: "مفعّل — حاضر مخلص" }) }).click();
   await expect(page.locator("#main").getByRole("switch", { name: "مفعّل (معدّل) — حاضر مخلص" })).not.toBeChecked();
   await page.locator("#main").getByRole("button", { name: /^احفظ/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "حُفظ" })).toBeVisible();
