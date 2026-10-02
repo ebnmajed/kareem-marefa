@@ -1,5 +1,5 @@
-import { HeldAchievementsTable, type HeldAchievementRow } from "@/components/admin/held-achievements-table";
-import type { CertificateRow } from "@/lib/dal/certificates";
+import { HeldCertificates } from "@/components/scoring/held-certificates";
+import type { HeldCertificateRow } from "@/lib/dal/certificates";
 
 // The `HeldAchievements` slot — REQ-CRT-012.
 //
@@ -8,21 +8,36 @@ import type { CertificateRow } from "@/lib/dal/certificates";
 // per session and an achievement certificate has no session, so `09` gives
 // this nowhere to live; the recognition screen (SCR-054) hosts it.
 //
-// ★ Wave 8 (`DEC-147`): PRESENTATION ONLY, and `console`'s for the wave. The
-// data and the write are `designer`'s — `listHeldAchievements()` and
-// `releaseAchievements` — and are unchanged. What changed is who reads: the
-// host page now reads `listHeldAchievements()` and passes the rows in, because
-// a section that can be empty is gated by the PAGE (`16` §5.4.1a(b)) — the page
-// used to render its h2 over a slot that returned nothing on most days, and
-// the slot repeated the heading as an h3 with a different verb. The heading,
-// the intro and the landmark are the page's; this renders the list.
-export function HeldAchievements({ certificates, locale }: { certificates: CertificateRow[]; locale: string }) {
-  const rows: HeldAchievementRow[] = certificates.map((c) => ({
-    id: c.id,
-    recipientName: c.recipientName,
-    serial: c.serial,
-    badgeName: c.badgeName ?? null,
-    period: c.period ?? null,
-  }));
-  return <HeldAchievementsTable rows={rows} locale={locale} />;
+// ★ PRESENTATION ONLY — `scoring`'s for wave 22, as it was `console`'s for wave 8. The data and the writes are
+// `designer`'s — `listHeldAchievements()`, `releaseAchievements`, `release_certificates()`, `revoke_certificate()` —
+// and are unchanged. What changed is the presentation, rebuilt with SCR-054 from `AdminRecognition.dc.html`: the member
+// with their face, the achievement, how long it has waited, and «أصدر» / «أوقف» on the row (`scoring/held-certificates`).
+// The host page reads `listHeldAchievements()` and gates the section (`16` §5.4.1a(b)); this renders the list.
+export function HeldAchievements({
+  certificates,
+  locale,
+  now,
+  release,
+}: {
+  certificates: HeldCertificateRow[];
+  locale: string;
+  now: string;
+  release: (certificateId: string) => Promise<{ ok: boolean }>;
+}) {
+  return (
+    <HeldCertificates
+      rows={certificates.map((c) => ({
+        id: c.id,
+        memberId: c.memberId,
+        recipientName: c.recipientName,
+        serial: c.serial,
+        badgeName: c.badgeName ?? null,
+        period: c.period ?? null,
+        createdAt: c.createdAt,
+      }))}
+      locale={locale}
+      now={now}
+      release={release}
+    />
+  );
 }
