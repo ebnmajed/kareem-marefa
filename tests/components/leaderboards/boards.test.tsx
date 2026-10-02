@@ -131,6 +131,14 @@ describe("CompanyBoard", () => {
     expect(rows[1].textContent).toContain("فريقك");
   });
 
+  it("★ «N نشطًا» after each name, from the frozen pair — and nothing when it cannot be derived", async () => {
+    const ui = await CompanyBoard({ rows: [{ ...company(1), active: 18 }, { ...company(2), active: null }], metric: "points_per_active_member" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    const rows = container.querySelectorAll("[data-slot=board-rows] > li");
+    expect(rows[0].textContent).toContain("18 نشطًا");
+    expect(rows[1].textContent).not.toContain("نشطًا");
+  });
+
   it("follows the org's metric when it is total points", async () => {
     const ui = await CompanyBoard({ rows: [company(1)], metric: "total_points" });
     const { container } = render(<Wrap>{ui}</Wrap>);

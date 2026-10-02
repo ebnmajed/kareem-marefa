@@ -68,6 +68,7 @@ export async function CompanyBoard({
             fraction={fractions.get(row.companyId) ?? 0}
             secondary={ranked ? { label: t("company.totalPoints"), value: formatNumber(row.totalPoints) } : { label: t("company.perActiveMember"), value: perMember(row.pointsPerActiveMember) }}
             ownLabel={row.isOwn ? t("company.ownLabel") : null}
+            note={row.active != null ? t.markup("company.active", { count: row.active, value: formatNumber(row.active), bdi: (chunks) => chunks }) : null}
           />
         ))}
       </ul>

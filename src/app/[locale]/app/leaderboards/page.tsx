@@ -4,6 +4,7 @@ import { CompanyBoard } from "@/components/scoring/company-board";
 import { CompanyPointsBreakdownSection } from "@/components/scoring/company-points-breakdown";
 import { CupCard } from "@/components/scoring/cup-card";
 import { isDocumentLoad } from "@/components/scoring/document-load";
+import { formatDateTime } from "@/components/sessions/numerals";
 import { BOARD_MORE, BOARD_SHOWN, MemberBoard } from "@/components/scoring/member-board";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,12 +84,16 @@ export default async function LeaderboardsPage({
     const moment = await getBoardMoment(locale, "company", cup ? { ...boards, company: { rows: cup.rows, isFinal: cup.isFinal, takenAt: cup.takenAt, periodStart: cup.periodStart } } : boards);
     content = (
       <div className="flex flex-col gap-4">
+        {/* ★ The table and the card name ONE race, in words (the lead's condition 1): the cup's quarter, or — only while
+            no quarter has been taken — «سباق هذا الشهر», labelled so it is never mistaken for the cup. */}
         {cup ? (
           <CupCard cup={cup} locale={locale} />
         ) : (
-          <p className="text-caption font-bold text-fg-muted">{t("cup.monthFallback")}</p>
+          <h2 id="race-period" className="text-label font-bold text-fg-heading">
+            {t("cup.monthFallback")}
+          </h2>
         )}
-        <section id="company" aria-label={t("tabs.company")}>
+        <section id="company" aria-labelledby={cup ? "cup-heading" : "race-period"}>
           <CompanyBoard rows={raceRows} metric={metric} moment={moment} acknowledge={acknowledgeBoardSeen.bind(null, locale, moment.mark)} documentLoad={documentLoad} />
         </section>
         <CompanyPointsBreakdownSection breakdown={breakdown} locale={locale} timeZone={boards.timeZone} />
@@ -99,6 +104,7 @@ export default async function LeaderboardsPage({
     let moment: BoardMoment;
     let windowLabel: string;
     let finality = null;
+    let takenAt: string | null = null;
     let sectionId: string;
     if (board === "week") {
       const weekly = await getWeeklyBoard(locale);
@@ -128,6 +134,9 @@ export default async function LeaderboardsPage({
       rows = topic ? topic.rows : boards.allTime;
       moment = topic ? { occurrenceId: null, seenRank: null, seenFraction: null, needsMark: false, mark: { board: "all_time", period: null, rank: null, companyId: null, fraction: null } } : await getBoardMoment(locale, "all_time", boards);
       windowLabel = topic ? topic.categoryName : t("rankCard.windowPoints.all");
+      // A category's board is a nightly snapshot, not live like the windows: it says when it was taken (the lead's
+      // condition on D30). One with no snapshot yet is the board's empty state, never an error.
+      if (topic?.takenAt) takenAt = formatDateTime(topic.takenAt, boards.timeZone, locale);
       sectionId = "all-time";
       if (categories.length > 0) {
         menu = (
@@ -153,6 +162,7 @@ export default async function LeaderboardsPage({
     content = (
       <section id={sectionId} aria-label={items.find((i) => i.value === board)!.label} className="flex flex-col gap-3">
         {finality}
+        {takenAt ? <p className="text-caption text-fg-muted">{t.rich("category.takenAt", { date: takenAt, bdi: (c) => <bdi>{c}</bdi> })}</p> : null}
         <MemberBoard
           rows={rows}
           place={place}

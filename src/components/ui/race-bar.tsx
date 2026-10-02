@@ -28,7 +28,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 // (DEC-186 §4). On the light ground the accent outline takes the heading ink
 // (DEC-186 §2).
 
-export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, rank, rankLabel, secondary, ownLabel, layout = "stacked", className = "" }: RaceBarProps) {
+export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, rank, rankLabel, secondary, ownLabel, note = null, layout = "stacked", className = "" }: RaceBarProps) {
   const own = Boolean(ownLabel);
   const colour = teamColorOrNull(teamColor);
   const ring = colour ? "border-team" : "border-team-neutral";
@@ -82,6 +82,7 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
             <span aria-hidden="true" data-slot="ring" style={ringStyle} className={`size-5 shrink-0 rounded-pill border-[3px] bg-canvas ${ring}`} />
             <bdi>{companyName}</bdi>
             {own ? <span className="rounded-pill bg-accent px-2 text-caption font-bold text-on-accent pg-light:bg-fg-heading pg-light:text-canvas">{ownLabel}</span> : null}
+            {note ? <span className="text-caption font-semibold text-fg-muted">{note}</span> : null}
           </span>
           <ProgressBar value={fraction} max={1} fill="team" teamColor={colour} decorative />
         </span>

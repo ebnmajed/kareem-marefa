@@ -94,7 +94,8 @@
     "category": {
       "trigger": "By category",
       "all": "All categories",
-      "current": "Category: <bdi>{name}</bdi>"
+      "current": "Category: <bdi>{name}</bdi>",
+      "takenAt": "Counted <bdi>{date}</bdi>"
     },
     "cup": {
       "title": "{quarter, select, first {First-quarter cup} second {Second-quarter cup} third {Third-quarter cup} other {Fourth-quarter cup}}",

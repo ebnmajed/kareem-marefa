@@ -94,7 +94,8 @@
     "category": {
       "trigger": "حسب التصنيف",
       "all": "كل التصنيفات",
-      "current": "التصنيف: <bdi>{name}</bdi>"
+      "current": "التصنيف: <bdi>{name}</bdi>",
+      "takenAt": "احتُسبت في <bdi>{date}</bdi>"
     },
     "cup": {
       "title": "{quarter, select, first {كأس الربع الأول} second {كأس الربع الثاني} third {كأس الربع الثالث} other {كأس الربع الرابع}}",

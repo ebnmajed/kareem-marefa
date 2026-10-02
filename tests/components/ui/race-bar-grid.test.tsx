@@ -49,6 +49,11 @@ describe("RaceBar — grid", () => {
     expect(li.getAttribute("class")).toContain("border-accent");
   });
 
+  it("★ the note after the name — «18 نشطًا» — when the caller gives one, and nothing otherwise", () => {
+    expect(one({ note: "18 نشطًا" }).querySelector("li")!.textContent).toContain("18 نشطًا");
+    expect(one().querySelector("li")!.textContent).not.toContain("نشطًا");
+  });
+
   it("a company with no colour is its name on the neutral ring", () => {
     expect(one({ teamColor: null }).querySelector("[data-slot=ring]")!.getAttribute("class")).toContain("border-team-neutral");
   });

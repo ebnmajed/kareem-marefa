@@ -4673,3 +4673,24 @@ the 028 table is the cup's quarter, falling back to the month's race with a labe
 | `tests/e2e/leaderboards.spec.ts` | all time at `?board=all`; «أنت» `.first()`; the company seed names its month | expectation ×2, selector ×1 |
 | `tests/e2e/wave7-sessions-leaderboards.spec.ts` | the default tab is «هذا الأسبوع»; all time at `?board=all`; names from podium + rows; the seed names its month | expectation ×3, selector ×1 |
 | `tests/e2e/wave16-scoring-moments.spec.ts` (moment 5) | URL `/board=all$/`; the viewer on the podium; the rise on the rank card; the reload at `?board=all` | selector ×4 |
+
+## PR B — the lead's rulings on D30 and 028, applied (the commit after `9801e280`)
+
+- **D30 → (a)**: the category menu on «كل الأوقات» only, reading the topic snapshots; absent on the week, the month
+  and the race. ★ A chosen category's board says when its snapshot was taken («احتُسبت في …») — it is not live like
+  the windows — and a category with no snapshot yet is the board's empty state. **(b) is carried, not built**: a live
+  week per category would be a `weekly_leaderboard(p_category uuid default null)` replace, from a new migration.
+- **028 → (a)**: the table is the cup's QUARTER race; the card and the table describe one race. The period is named in
+  words — the card's «كأس الربع …» heads the table; the fallback's own heading is «سباق هذا الشهر», used only while no
+  quarter snapshot exists. Both metrics, the ranking one marked, hold for the quarter (the quarter snapshot's own
+  frozen metric, `REQ-LDR-005`).
+- **«N نشطًا»** is drawn (`RaceBarProps.note`, the lead's `02d1c9af`), from `derivedActive()`.
+
+**A kept-behaviour row, so the move is visible, not silent** (§2.4):
+
+| # | Behaviour today | Where it lives after | Kept by |
+|---|---|---|---|
+| 028.10 | ★ **The MONTHLY company race was 028's table** | the home's race (`getCompanyRace()`, the rail and the HUD), and 028's labelled fallback while no quarter snapshot exists; 028's table is the cup's quarter | `REQ-LDR-002`, `REQ-LDR-004` — the month's standings are still published, both metrics shown, where a member meets them daily |
+
+The lead shows the owner this as a disagreement with `M10c.md` §8's last line («هذا الشهر» on this tab is the monthly
+race) at the phone check.
