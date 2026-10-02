@@ -2,10 +2,12 @@ import "server-only";
 import { z } from "zod";
 import { dayLabel, type DayLabelKey, type DayLabelT } from "@/components/sessions/day-label";
 import { formatNumber } from "@/components/sessions/numerals";
+import { matchesMemberQuery, type MemberQuery } from "@/components/admin/members/member-query";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
 import { getAttendanceReport, type AttendanceReport } from "@/lib/dal/checkin";
 import arSessions from "@/messages/ar/sessions.json";
 import { getOrgPrefs } from "@/lib/dal/proposals";
+import { readAll } from "@/lib/dal/admin-paging";
 import { sessionClient } from "@/lib/dal/session";
 import { listSessionsForAdmin } from "@/lib/dal/sessions";
 import { getSurveyExportRows } from "@/lib/dal/surveys";
@@ -77,12 +79,16 @@ export function buildCsv(headers: string[], rows: string[][]): string {
  *  (`supabase/proposed/console/0002_admin_export_audit.sql`) — a
  *  `security definer` function whose OWN `assert_fresh_admin()` is the
  *  real boundary; this never trusts the caller's claim-side role alone. */
-async function auditExport(locale: string, exportType: string, subjectType?: string, subjectId?: string): Promise<void> {
+async function auditExport(locale: string, exportType: string, subjectType?: string, subjectId?: string, slice?: Record<string, unknown>): Promise<void> {
   const { supabase } = await sessionClient(locale);
+  // ★ wave 22 (`DEC-232` §2.8): the slice that left — the filters, or the ids — recorded under `after.slice`
+  // (`supabase/proposed/console/export_slice.sql`). Sent only when there is one, so a whole-file export calls the
+  // function exactly as `main` does.
   const { error } = await supabase.rpc("write_admin_export_audit", {
     p_export_type: exportType,
     p_subject_type: subjectType ?? null,
     p_subject_id: subjectId ?? null,
+    ...(slice ? { p_detail: slice } : {}),
   });
   if (error) throw new Error(`write_admin_export_audit: ${error.message}`);
 }
@@ -304,7 +310,7 @@ export async function exportSessionsCsv(locale: string, ids?: readonly string[])
       .map((p) => p.displayName ?? "")
       .join("، "),
   ]);
-  await auditExport(locale, "sessions");
+  await auditExport(locale, "sessions", undefined, undefined, ids ? { ids: [...ids] } : undefined);
   return buildCsv(["العنوان", "الحالة", "المستوى", "اللغة", whenHeader("التاريخ والوقت", prefs.timeZone), "المُقدِّمون"], rows);
 }
 
@@ -313,12 +319,15 @@ export async function exportRsvpsCsv(locale: string): Promise<string | null> {
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase
-    .from("rsvps")
-    .select("status, waitlist_position, reserved_at, session_id, member_id, sessions(title), members(display_name)")
-    .eq("org_id", session.orgId)
-    .order("reserved_at", { ascending: false });
-  if (error) throw new Error(`rsvps: ${error.message}`);
+  const data = await readAll("rsvps", (from, to) =>
+    supabase
+      .from("rsvps")
+      .select("id, status, waitlist_position, reserved_at, session_id, member_id, sessions(title), members(display_name)")
+      .eq("org_id", session.orgId)
+      .order("reserved_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
   const prefs = await getOrgPrefs(locale);
 
   const rows = (data ?? []).map((r) => {
@@ -341,21 +350,24 @@ export async function exportAllAttendanceCsv(locale: string): Promise<string | n
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase
+  const data = await readAll("check_ins", (from, to) =>
+    supabase
     .from("check_ins")
     // `!check_ins_member_id_fkey`: `check_ins` has two FKs into `members`
     // (`member_id`, `marked_by`) — an unqualified embed is ambiguous and
     // PostgREST refuses it (`getAttendanceReport()`'s own header explains
     // the discovery).
-    .select("arrived_at, method, session_id, member_id, sessions(title), members!check_ins_member_id_fkey(display_name)")
+    .select("id, arrived_at, method, session_id, member_id, sessions(title), members!check_ins_member_id_fkey(display_name)")
     .eq("org_id", session.orgId)
     // `removed_at` (0087) is a soft delete — the export is who attended, and
     // a removal is already evidenced in `audit_log` (the lead's own
     // reasoning), so a removed check-in is excluded here rather than
     // reported as attendance that no longer stands.
     .is("removed_at", null)
-    .order("arrived_at", { ascending: false });
-  if (error) throw new Error(`check_ins: ${error.message}`);
+    .order("arrived_at", { ascending: false })
+    .order("id")
+    .range(from, to),
+  );
   const prefs = await getOrgPrefs(locale);
 
   const rows = (data ?? []).map((r) => {
@@ -388,11 +400,14 @@ export async function exportRatingsCsv(locale: string): Promise<string | null> {
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase
-    .from("session_rating_aggregates")
-    .select("session_id, rating_count, session_avg, presenter_avg, sessions(title)")
-    .eq("org_id", session.orgId);
-  if (error) throw new Error(`session_rating_aggregates: ${error.message}`);
+  const data = await readAll("session_rating_aggregates", (from, to) =>
+    supabase
+      .from("session_rating_aggregates")
+      .select("session_id, rating_count, session_avg, presenter_avg, sessions(title)")
+      .eq("org_id", session.orgId)
+      .order("session_id")
+      .range(from, to),
+  );
   const num = (n: number) => formatNumber(n);
 
   const rows = (data ?? []).map((r) => {
@@ -408,16 +423,19 @@ export async function exportPointsCsv(locale: string): Promise<string | null> {
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase
+  const data = await readAll("points_ledger", (from, to) =>
+    supabase
     .from("points_ledger")
     // `!points_ledger_member_id_fkey`: `points_ledger` has two FKs into
     // `members` (`member_id`, the recipient, and `actor_id`, who wrote a
     // manual adjustment) — the same ambiguous-embed shape
     // `getAttendanceReport()`'s header explains.
-    .select("amount, source, reason, occurred_at, member_id, members!points_ledger_member_id_fkey(display_name)")
+    .select("id, amount, source, reason, occurred_at, member_id, members!points_ledger_member_id_fkey(display_name)")
     .eq("org_id", session.orgId)
-    .order("occurred_at", { ascending: false });
-  if (error) throw new Error(`points_ledger: ${error.message}`);
+    .order("occurred_at", { ascending: false })
+    .order("id")
+    .range(from, to),
+  );
   const prefs = await getOrgPrefs(locale);
 
   const rows = (data ?? []).map((r) => {
@@ -441,12 +459,15 @@ export async function exportCertificatesCsv(locale: string): Promise<string | nu
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase
-    .from("certificates")
-    .select("serial, kind, state, recipient_name_snapshot, issued_at, session_id, sessions(title)")
-    .eq("org_id", session.orgId)
-    .order("issued_at", { ascending: false, nullsFirst: true });
-  if (error) throw new Error(`certificates: ${error.message}`);
+  const data = await readAll("certificates", (from, to) =>
+    supabase
+      .from("certificates")
+      .select("id, serial, kind, state, recipient_name_snapshot, issued_at, session_id, sessions(title)")
+      .eq("org_id", session.orgId)
+      .order("issued_at", { ascending: false, nullsFirst: true })
+      .order("id")
+      .range(from, to),
+  );
   const prefs = await getOrgPrefs(locale);
 
   const rows = (data ?? []).map((c) => {
@@ -467,9 +488,15 @@ export async function exportCertificatesCsv(locale: string): Promise<string | nu
 const MEMBER_ROLE_AR: Record<string, string> = { admin: "مشرف المؤسسة", moderator: "مُنظِّم", member: "عضو" };
 const MEMBER_STATUS_AR: Record<string, string> = { active: "نشط", deactivated: "معطَّل" };
 
-export async function exportMembersCsv(locale: string): Promise<string | null> {
-  const [members, prefs] = await Promise.all([listMembersForAdmin(locale), getOrgPrefs(locale)]);
-  if (members === null) return null;
+/**
+ * ★ wave 22 (`DEC-232` §2.8): `query` narrows the file to the list SCR-049 shows — the same predicate the screen
+ * filters with (`matchesMemberQuery`), never a second reading of the filters — and the audit row records it. Absent,
+ * it is the whole roster, as from SCR-061.
+ */
+export async function exportMembersCsv(locale: string, query?: Pick<MemberQuery, "q" | "company" | "role">): Promise<string | null> {
+  const [all, prefs] = await Promise.all([listMembersForAdmin(locale), getOrgPrefs(locale)]);
+  if (all === null) return null;
+  const members = query ? all.filter((m) => matchesMemberQuery(m, query)) : all;
 
   const rows = members.map((m) => [
     m.displayName ?? "",
@@ -478,7 +505,7 @@ export async function exportMembersCsv(locale: string): Promise<string | null> {
     MEMBER_STATUS_AR[m.status],
     csvDateTime(m.createdAt, prefs.timeZone),
   ]);
-  await auditExport(locale, "members");
+  await auditExport(locale, "members", undefined, undefined, query ? { q: query.q, company: query.company, role: query.role } : undefined);
   return buildCsv(["الاسم", "البريد الإلكتروني", "الدور", "الحالة", whenHeader("تاريخ الانضمام", prefs.timeZone)], rows);
 }
 

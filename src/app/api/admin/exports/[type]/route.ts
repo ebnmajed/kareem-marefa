@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseMemberQuery } from "@/components/admin/members/member-query";
 import {
   sessionsExportIds,
   exportAllAttendanceCsv,
@@ -52,7 +53,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ type
     ids = parsed.data;
   }
 
-  const csv = ids ? await exportSessionsCsv("ar", ids) : await entry.fn("ar");
+  // ★ Wave 22 (`DEC-232` §2.8, add-only): SCR-049's «CSV» is the list the screen shows — its `q`, `company` and
+  // `role`, parsed by the screen's own parser, so a value the screen would drop is dropped here too. Absent, it is
+  // today's whole roster.
+  const sp = new URL(request.url).searchParams;
+  const memberQuery = type === "members" && ["q", "company", "role"].some((k) => sp.has(k)) ? parseMemberQuery(Object.fromEntries(sp)) : null;
+
+  const csv = ids ? await exportSessionsCsv("ar", ids) : memberQuery ? await exportMembersCsv("ar", memberQuery) : await entry.fn("ar");
   if (csv === null) return new NextResponse("not_found", { status: 404 });
 
   return new NextResponse(csv, {
