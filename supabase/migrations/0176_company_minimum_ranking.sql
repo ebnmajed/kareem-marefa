@@ -1,3 +1,4 @@
+-- 0176 · wave 20, PR C (DEC-220 §1, DEC-222, REQ-UIX-082) — proposed by `scoring`, promoted by the lead.
 -- scoring · wave 20, PR C (DEC-220 §1, DEC-222, REQ-UIX-082, STORY-UIX-072, REQ-LDR-006) — «بلا ترتيب».
 --
 -- `create or replace` of `snapshot_leaderboard()` (0081, scoring's own function), identical except two things, both in
