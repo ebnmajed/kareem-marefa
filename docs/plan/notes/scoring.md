@@ -4465,3 +4465,125 @@ until the lead rules otherwise.
 - **The hidden standing copy renders no «+N» node** (`displayed-only.tsx`): the server renders none, and the copy on
   screen renders it after hydration. Covered by `standing.test.tsx` and `wave20-scoring-standing.spec.ts`.
 - `avatar` size 64 (`040a89aa`, `content`'s) on the card and the podium.
+
+# Wave 20, PR B — plan addendum: «كأس الربع» (`DEC-219` §2), before any code
+
+Measured on the tree after `dcbf8776`. Answers the owner's one check and the lead's three questions. Nothing is built.
+
+## A · The owner's check — can a quarter already awarded change? No, and it needs no SQL
+
+`05-scoring-engine.md:383` is about a **live** denominator: «computed live, deactivating one member retroactively raises
+that company's score for every past period». The snapshot exists to stop exactly that, and **a final one is already
+immutable at the database, for every role including the owner**:
+
+- `leaderboard_snapshot_guard()` (`0027:463-476`) raises `23514` on any `update` or `delete` of a row whose `is_final` is
+  true — the replace-in-place re-run `snapshot_leaderboard()` does is a delete, so a final quarter cannot be re-taken.
+- `leaderboard_entry_guard()` (`0027:498-511`) raises `23514` on any `update` or `delete` of an entry of a final snapshot.
+- Both are triggers, not missing grants, because the writer is a definer owned by the table owner, whom `revoke` cannot
+  stop (`0027:425-430`'s header). The only exception is an org's own deletion cascading through.
+- `active_member_count` and each entry's `points` and `points_per_active_member` are written once, at snapshot time;
+  nothing recomputes them.
+
+So **a quarter's standings are frozen the moment the job marks it final**, and deactivating, adding or moving a member
+afterwards changes nothing in it. «تُسلَّم في اللقاء السنوي» is safe on that. **What stays provisional** is the CURRENT
+quarter: it is re-taken every night until the night after its last day, as the month is — which is what the card's
+«مؤقت» says (§D).
+
+★ **One carried caveat, not this wave's**: the job's periods are UTC calendar boundaries (`date_trunc` on `now()` in the
+job's session, `0042`), not the org's zone, so a quarter's last three hours in Riyadh fall into the next quarter's UTC
+bounds — the same defect the monthly board has carried since M4 (`REQ-LDR-002` says the org's zone). Written for the
+owner; fixing it changes what a period IS and touches the frozen snapshot function.
+
+## B · ★ A disagreement with `DEC-219` §2's measurement — the cup is a `company` snapshot, not a `seasonal` one
+
+`DEC-219` §2 says «a quarter is a `seasonal` snapshot whose period is a quarter». **That ranks the wrong thing.**
+`snapshot_leaderboard()`'s `seasonal` branch is the MEMBERS' branch — `if p_kind in ('monthly', 'seasonal')` inserts
+`member_id` rows (`0042:62-73`, `0081:613-624`); company rows (`company_id`, `points_per_active_member`) are written by the
+`p_kind = 'company'` branch alone (`0081:637-668`). `0066:24-28`'s precedent is about a MEMBER board («the top 3 of any
+FINAL member-ranked snapshot»), so it carries over to members, not to companies.
+
+What the cup needs, with no schema change: **a `company` snapshot whose period is a quarter** —
+`snapshot_leaderboard(org, 'company', <quarter start>, <quarter end>, null, <final?>)`. The natural key
+`(org_id, kind, period_start, period_end, category_id)` (`0027:445`) lets it sit beside the month's company snapshots.
+No enum value, no new function.
+
+★ **The consequence for the readers** — named so it is not discovered by the board: three reads take «the newest
+`company` snapshot by `taken_at`» — `getLeaderboards()` (`leaderboards.ts:61-68`), `getCompanyRace()` (`:619-627`, the
+home's race), and the boards' moment. A quarter snapshot written after the month's in the same nightly run would become
+«the newest», and the monthly race and the home would show the quarter. **Each must select by period**: the month's
+company snapshot is the one whose period is a calendar month; the quarter's, a calendar quarter. In `leaderboards.ts`
+(mine, add-only — the two existing reads need the lead's exception, like `points.ts:85-94`'s) and in a new
+`getCompanyCup()`. The ordering of the job's statements is not a safe substitute.
+
+Not picked: the lead rules whether the quarter is `company`-with-a-quarter-period (my recommendation, no SQL) or whether
+`seasonal` is taught company rows (a `create or replace` of the frozen snapshot function, from `0173`).
+
+## C · How the quarter is scheduled — no new crontab line, no SQL schedule
+
+The nightly `snapshot_leaderboards` task (`worker/src/tasks/snapshot_leaderboards.ts`, `0 2 * * *` in
+`worker/src/index.ts:115`) already takes the current month provisional and finalises the previous month once. **The
+quarter rides the same run, the same way**: the current quarter's company snapshot, provisional, every night; and the
+previous quarter's, final, once — skipped when a final row already exists, exactly as the month's check does
+(`:41-57`), because the guard would refuse the replace. So no crontab line and no `pg_cron`.
+
+★ That task is one of my eight, **frozen for everyone this wave** — so this is a request for the lead's grant on that one
+file, for those added statements only. `main`'s worker on the merged schema does nothing different: no schema change.
+
+## D · What the cup card shows
+
+Read by a new add-only `getCompanyCup(locale)` (the quarter's snapshot as §B selects it):
+
+| Drawn | From | Mid-quarter (provisional) | After the quarter (final) |
+|---|---|---|---|
+| «كأس الربع الرابع» | the period's quarter (`period_start`'s month ÷ 3), an ordinal from the catalogue | the current quarter | the quarter just closed, until the next one has a snapshot |
+| «الجولة 2 من 3 · 26 يومًا» | the month within the quarter, and the days left to `period_end` in the org's zone | shown | ★ the line becomes «نهائي» (`company.final`); no days |
+| `company.provisional` / `company.final` | `is_final` | «مؤقت» | «نهائي» |
+| «الترتيب حسبه: …» ✓ | `metric` (frozen on the snapshot, `0042:57`) | the snapshot's | the snapshot's |
+| `company.takenAt` | `taken_at` | «الليلة 2:00 ص» | the finalising night's |
+| «تُسلَّم في اللقاء السنوي» | the owner's ruling; a fact about the prize, not an explainer | shown | shown |
+
+★ **A second disagreement**: `Companies.dc.html` draws «الجولة 3 من 4». A quarter has three months, so a round counted by
+month is «من 3». «من 4» reads as the four quarters of a year (round 3 of 4 = Q3) — which would make the title and the
+round say the same thing twice. Not picked; I propose «الجولة N من 3», the month within the quarter.
+
+## E · «N نشطًا» — not `active_member_count`
+
+`DEC-219` §2 maps «N نشطًا» to `active_member_count`. **That column is the ORG's count** —
+`select count(*) from members where org_id = p_org and status = 'active'` (`0042:41`, `0081:597`), one number per
+snapshot — not a company's. A company's frozen count is not stored; it is **implied by the frozen pair**:
+`active(C) = points ÷ points_per_active_member`, exactly, since the snapshot computed the second from the first
+(`0081:643-647`). The DAL derives it, rounded, and shows nothing when either is null or 0. No SQL. ★ A third
+disagreement, recorded, not picked.
+
+## F · «بلا ترتيب» and `min_active_members`
+
+`company_scoring_rules.min_active_members` (seeded 3, `0081:169`, `:551`) gates the two percentage RULES — a company
+below it earns no percentage points (`0081:389`, `:418`). Nothing ranks by it. Two ways to make it a ranking rule:
+
+- **(a) Display only, no SQL.** The DAL derives each company's active count (§E) and shows «بلا ترتيب» when it is below
+  the minimum; the others keep their frozen rank numbers, so a gap can show («1 · 3»). ★ **But the minimum is read
+  LIVE**: an admin who edits it changes which companies of a FINAL quarter read «بلا ترتيب» — the cup's own board would
+  move after the cup is handed over. That contradicts §A.
+- **(b) Frozen at snapshot time, `0173`** (my recommendation, for the lead to write): additive —
+  `leaderboard_snapshots.min_active_members int` (nullable; old rows null = no minimum), written by the `company`
+  branch; and a `create or replace` of `snapshot_leaderboard()` whose `company` branch ranks the companies at or above
+  the minimum first (1 … k, by the metric) and those below after them (k+1 … n), so the cup's #1 is always eligible and
+  every rank stays `> 0` (`0027:484`). The DAL shows «بلا ترتيب» for a row whose derived count is below the snapshot's
+  own frozen minimum. **`REQ-UIX-079`** («a company below the minimum of active members has no rank and says so»),
+  `REQ-LDR-006`. Its five parts: the column and the function in one migration; RLS unchanged (the table's own
+  `p1_org_read`); **no new grant** (`grant select on leaderboard_snapshots` is table-level, `0027:452`); the existing
+  policies unchanged; the test in `tests/rls/snapshot-leaderboards.test.ts`'s pattern — below-minimum ranked after,
+  the column frozen on a final row, an old row's null meaning no minimum. ★ It changes the MONTHLY race's ranking going
+  forward too (provisional rows only; every final row is untouched) — the owner should know.
+- **Which minimum**: the org has no ranking minimum of its own. (b) reads `company_attendance_pct`'s
+  `min_active_members` **whether or not that rule is enabled** — the one setting an admin already uses to say «a company
+  this small is not comparable». A separate `org_settings` column would be cleaner and needs a console field (frozen).
+  Not picked.
+
+## G · Files, when wave-20b is cut
+
+`getCompanyCup()` and the period-selecting reads in `leaderboards.ts`; the cup card in `src/components/scoring/cup-card.tsx`;
+keys in `leaderboards.json`; with the lead's grant, `snapshot_leaderboards.ts`'s added statements; with (b), the lead's
+`0173` from my draft under `supabase/proposed/scoring/`; tests: a new `tests/rls/scoring-cup*.test.ts` (the quarter's
+snapshot taken, finalised once, frozen), unit cases for the quarter arithmetic and the derived count, the cup card's
+component test, and `wave20-scoring-boards.spec.ts`'s cup case.
