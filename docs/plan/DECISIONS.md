@@ -7214,3 +7214,90 @@ console wave». Its screen is the scoring or settings screen — **M11b** (`046`
 - **Documents changed:** `01-prd.md`, `04-architecture.md`, `09-sitemap-screens.md`, `14-roadmap.md`,
   `15-backlog.md`, `TRACEABILITY.md`, `16-ui-redesign.md` §6.7 (a pointer), `CLAUDE.md`, the ten agent files,
   `notes/wave-21-lead.md` (a pointer to this entry), `STATUS.md`
+
+## DEC-228 — Wave 21's sync 1: four plans approved; `0179` captures a proposal's content at submission so the diff can be drawn; one attendance rate; motion off under the console frame; three of the lead's own requirements corrected
+
+- **Date:** 2026-10-02 · **Decided by:** the wave-21 lead, on the plans at `a2bed30a` (`checkin`), `a4574d4a` (`console`), `11acd5d7` (`sessions`) and the lead's own (`dfc3bdba`). §2 needs the owner's rehearsal before it is pushed
+- **Amends:** `REQ-UIX-086`, `REQ-UIX-087`, `REQ-UIX-090` and `STORY-UIX-076` (the lead's own text of `DEC-227`, three errors §5 lists); `DEC-227` §4 (one transfer)
+- **Adds:** migration **`0179`** (§2) · **Does not touch:** the five public routes, `registrations`, `DEC-172`, `DEC-178`
+
+### 1 · Judged against `DEC-227` §0, all four plans pass
+
+Each plan names its screen's job and the steps a person takes to do it, and each kept-behaviour table found what nobody
+remembered: a create confirmation lost since wave 6 (`?created=` read by nothing), the approved-proposal-to-session
+button living only on `042`, preliminary materials absent from the review screen, a declined co-presenter listed as a
+presenter, per-rater ratings read on one page only and audited on every read, a «الحجوزات» figure counting cancelled
+rows, an attendance rate that passes 100 %, a message typed before «اعتمد» silently discarded by `0013`. **Each is a
+defect of the rebuild and is fixed or carried by name below.** «The plans are approved.»
+
+### 2 · ★★ `0179` — the proposal's content is captured at submission (contract 5)
+
+Nothing stores a proposal as it was submitted: `proposals_audit_transition()` (`0011:72-108`) writes `{state}` and
+`{state, title}`. The only edit after submission is the proposer's own, `changes_requested → submitted`. **`0179` is one
+`create or replace function public.proposals_audit_transition()`**: a transition into `submitted` records the seven
+content columns in `after`; `changes_requested → submitted` records them from `OLD` in `before`. No table, column,
+policy or grant; `audit_log` stays staff-readable (`audit_read_admin`) and append-only. `getProposalEdits()` reads it.
+**A proposal submitted before `0179` has no baseline and draws no diff — honestly, never a fabricated one.**
+`REQ-PRO-009`'s admin-edits-after-approval stays carried (it is the session's, not the proposal's). **The owner
+rehearses `0179` on a dump taken at `0178` before it is pushed**; it ships in PR B.
+
+### 3 · Rulings — `console`
+
+1. **A moderator at `/app/admin` keeps today's streamed not-found** (`DEC-134`, the pinned spec, the rail's `adminOnly`).
+   `STORY-UIX-076`'s «a moderator's dashboard» was the lead's error (§5).
+2. **The badges follow the data, not the artboard** (`console`'s D2): المقترحات ← proposals awaiting decision; الجلسات ←
+   sessions not scheduled; البلاغات ← photo reports; التعليقات ← comment reports. The artboard's badge on «الصور» is the
+   takedown queue, which none of the four counts. A moderator's rail carries the two report badges only — which also
+   fixes `shell.ts:48-62` showing a moderator counts that link to pages that 404 for them.
+3. **The six figures are this month's**, as the `h1`'s month says; each links to its list narrowed to the month.
+4. ★ **One attendance rate, everywhere — `checkin`'s**: members checked in **who held a confirmed reservation**,
+   over confirmed reservations; walk-ins are counted beside it, never inside it. The dashboard's rate stops passing
+   100 % (`console` F2) and `044`'s figure is the same definition (`checkin` D3) — the artboard's 68 % = 23/34 is not
+   adopted. A test computes both from one fixture.
+5. **The order is the artboard's**: live, then upcoming by date ascending, then undated, then past by date descending —
+   `REQ-UIX-087`'s «date ascending» corrected (§5). Desktop pages; the phone «المزيد»; one URL model.
+6. **A direct create lands on the new session's الجدولة**; the lost `?created=` is not revived.
+7. **The bulk bar**: «N محدّدة» · «ألغِ التحديد» · «ألغِ الجلسات» (only when every selected row admits cancel, one named
+   dialog, one required reason, the same `transition_session()` row by row, failed rows left selected) · «صدّر CSV»
+   (the audited export, by ids). **«أغلق» is not built** — no single-row action exists for it.
+8. **The artboard's copy is adopted** where it names a figure or a column (ledger L2); a line that explains is not.
+9. **`data-table` is yours**: `stickyHeader` and `renderCard` are add-only edits you make. The frame publishes
+   `--console-bar` (52 px) for the sticky offset.
+10. ★ **`src/app/api/admin/exports/[type]/route.ts` is `console`'s for the wave** (a transfer), for the add-only `ids`.
+11. **The approved-proposal-to-session button stays on `042`** behind «جلسة جديدة», with the direct form (`REQ-PRO-007`);
+    the direct form works without JS.
+
+### 4 · Rulings — `sessions` and `checkin`
+
+1. **The approve message** (`sessions` D3): **(b) now** — while the box holds text, «اعتمد» is refused with the reason at
+   the field, so nothing typed is lost; **(a)** — carrying it into `MSG-proposal_approved` — is carried.
+2. **The header's lifecycle offers nothing for completed, archived or cancelled.** `042`'s row menu offers what it offers
+   today, as `console`'s table records — no new place to cancel a completed session.
+3. ★ **Console-only components live under the route directories** — `admin/proposals/_components/**`,
+   `admin/sessions/[id]/_hub/**`, `admin/sessions/[id]/attendance/_components/**` — which `console-register` already
+   sweeps; shared components stay where they are. `checkin`'s `AttendanceHeaderAction` may stay in `components/checkin/`.
+4. **Presenters change through «غيّر» in a `sheet`**, outside «عدّل» — a deliberate act, so «edited on intent» holds.
+5. **«يُغلق 9:30 م»**: drawn only if `checkin`'s DAL already returns the ceiling to staff; **no grant on
+   `check_in_ceiling()`** this wave.
+6. **`checkin`**: `HostClock` gains an add-only `variant` (its default output byte-identical, its test untouched) ·
+   ratings stay on `044` for an admin, **below the table, on a completed session only** — nothing refreshes there, so
+   no audit row per check-in · «شاشة التقديم» returns `null` once the session is completed · ★ **an admin may add and
+   remove at any time, a completed session included** (`REQ-CHK-017` and the RPC win; `REQ-UIX-090` corrected, §5); a
+   moderator's window is today's · `tests/e2e/wave9-checkin-{days,one-day}.spec.ts` are `checkin`'s evidence this wave ·
+   `console` deletes `admin.attendance.*` on `checkin`'s list. D1, D6, D7, D8, D12 are fixed in the rebuild.
+
+### 5 · Three of the lead's own errors in `DEC-227`, corrected
+
+- `REQ-UIX-086` / `STORY-UIX-076` — «a moderator's dashboard»: there is none (§3.1).
+- `REQ-UIX-087` — «date ascending with a live session first»: the artboard's four-part order (§3.5).
+- `REQ-UIX-090` — «read-only except revoke»: an admin adds and removes at any time (`REQ-CHK-017`).
+
+### 6 · The register — motion is off under the console frame, and the display face stays on `h1`
+
+★ `ui/switch` declares a colour transition and `ui/badge`'s live dot pulses (`checkin` D10); `console-register` sweeps
+neither, because neither file is the console's. **The frame's root carries a marker and `globals.css` turns animation
+and transition off beneath it** — one rule, the lead's, so a shared primitive cannot bring motion into the console.
+★ **The display face is `h1`'s alone, by the owner's rule** — the artboards draw the tiles' counts, the six figures and
+the attendance code in it; they render in the body face, bold. Recorded for the owner's acceptance.
+
+- **Documents changed:** `01-prd.md`, `15-backlog.md` (§5), `CLAUDE.md` (§3.10's transfer), `STATUS.md`

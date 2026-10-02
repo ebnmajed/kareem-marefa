@@ -44,6 +44,7 @@ plans are approved» and «the frame is in».**
 - `src/app/[locale]/app/admin/{page,loading,error}.tsx`
 - the **top level** of `src/app/[locale]/app/admin/sessions/` — `{page,loading,error,actions,state}.ts(x)`,
   `sessions-table.tsx`, `session-controls.tsx`, `direct-session-form.tsx` — **never `[id]/**`**
+- ★ `src/app/api/admin/exports/[type]/route.ts` — add-only `ids` (`DEC-228` §3.10)
 - `src/lib/dal/admin*.ts` (★ `admin-dashboard.ts`'s attention read is contract 3) · `src/lib/dal/scoring-admin.ts` (frozen)
 - `src/components/admin/**` **except** `admin-rail.tsx` (the lead deletes it) and `delivery-reason.ts` · new
   `src/components/admin/{dashboard,sessions}/**` if you want them

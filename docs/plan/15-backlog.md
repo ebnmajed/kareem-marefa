@@ -1552,7 +1552,8 @@ passes; `qa:contract` is untouched. One PR, `wave-19/m10b`.*
 - «يحتاج انتباهك» from `admin-dashboard.ts`'s four `attention` rows — count, label, oldest age, a link to the queue;
   the one line when nothing waits. The same read feeds the rail's badges (contract 3).
 - The six figures, the pipeline bar, the next sessions on `data-table`, the three top lists — every figure a link.
-- ★ **Not drawn, and built:** a moderator's dashboard (`REQ-ADM-020`), an org with no sessions yet, a short top list.
+- ★ **Not drawn, and built:** an org with no sessions yet, nothing waiting, a short top list. A moderator keeps today's
+  streamed not-found at `/app/admin` (`DEC-228` §3.1).
 
 #### STORY-UIX-077 — The sessions table, its bulk bar and its phone stack
 **Covers:** `REQ-UIX-087` · **M23** · **L** · `console` · PR A

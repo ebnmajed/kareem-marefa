@@ -3627,6 +3627,7 @@ companies.
 - Each attention tile opens the queue it counts in one move; when nothing waits, the four tiles are one line.
 - Every figure on the page is a link to the list behind it; none is a literal.
 - There is no chart beyond the one bar, and nothing on the page animates.
+- A moderator has no dashboard: `/app/admin` answers them with the streamed not-found it answers today (`DEC-228` §3.1).
 
 #### REQ-UIX-087 — The sessions table: found, filtered and acted on in bulk at a desk, usable as cards on a phone
 **Serves:** `DEC-225` §4.3 · `DEC-227` §0.3 · `REQ-ADM-005` · `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-012` · `09` `SCR-042`
@@ -3636,7 +3637,8 @@ row selection with select-all; the title, status, date, venue, presenter and res
 pager. Selecting rows replaces the toolbar with a bulk bar naming how many are selected, with the actions that apply to
 them and a way to clear the selection.
 **Acceptance:**
-- Any column header sorts; the default order is by date ascending with a live session first.
+- Any column header sorts; the default order is a live session first, then upcoming by date ascending, then undated,
+  then past by date descending (`DEC-228` §3.5).
 - A bulk action does only what the same action does on one row, through the same authority; an export goes through the
   audited export path.
 - Below `md` the same rows are cards — title and status, date and venue, presenter, seats — never a horizontally
@@ -3681,7 +3683,8 @@ it, the status and a row menu.
 - A manual check-in names a member and a reason, is audited and flagged in exports (`REQ-CHK-008`).
 - Revoking a check-in asks for a reason and writes the compensating ledger row `DEC-172` defines through the existing
   removal; no new reversal exists.
-- On a completed session the code card is replaced by the final rate and the rows are read-only except revoke.
+- On a completed session the code card is replaced by the final rate; an admin may still add and remove at any time
+  (`REQ-CHK-017`, `DEC-228` §4.6), and nothing else on the rows is editable.
 - The page renders nothing of the hub's header; faces appear here because the host placement allows them (`DEC-099`).
 
 ---
