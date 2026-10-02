@@ -1,11 +1,42 @@
-**Last updated:** 2026-10-02 · **Branch:** `main` · ★★ **WAVE 21 IS PLANNED, NOT STARTED** · **`main`:** `51db9898`; production and local both at **`0178`** · **Phase:** ★★ **M11a — the FIRST CONSOLE BATCH (`DEC-225`, M23)**: the org dashboard, the proposal queue as a split view, the sessions table with its phone stack and bulk bar, and the session hub's الجدولة and الحضور tabs — five screens from six artboards, each **deleted first and written from its artboard** (`DEC-208`). Two PRs; three primitives (floor **60 → 63**); **no migration expected** (one after all starts at `0179`). The brief is `docs/plan/notes/wave-21-lead.md`. ★★ **THE OWNER RULES THE CONSOLE BEFORE STORIES** (`DEC-225` §1), superseding `DEC-224`'s closing sentence — the third deliberate re-ordering; the story ring stays inert and nobody wires it. ★ **The console is not the party** (`REQ-UIX-053`): palette, radii and type, no motion, no objects, no stickers, and its test stays green and untouched. ★★ **The rail's grouping is ANSWERED — six ruled groups, approved 2026-10-02 on the phone as well as at 1280 (`DEC-226`); all twenty nav keys survive, on one level divided by rules instead of fourteen with children.** ★ **Nothing is open for the owner.** ★ **Wave 20 is complete, live and accepted** (`DEC-224`; `0169`–`0178` on production; the phone check passed). ★ **Carried:** the hosting gate wired to nothing, withdraw + history + the reviewer's name (one wave), autosave (a REQ first), F2/F3, the hard-load duplicate (`DEC-204`), `DEC-194`'s two gates, `DEC-186` §4, session stories, M11b (`046`–`065`), and the `railway.json` that would pin the worker's builder.
+**Last updated:** 2026-10-02 · **Branch:** `wave-21a/the-console-frame` (draft PR **#44** against `main`) · ★★ **WAVE 21 IS IN PROGRESS — STEP 0 DONE, SYNC 1 PENDING** · **`main`:** `8b6a9630`; production and local both at **`0178`** · **Phase:** ★★ **M11a — the FIRST CONSOLE BATCH (`DEC-225`, `DEC-227`, M23).** ★★ **THE GOAL (`DEC-227` §0, the owner's): build the console an admin can run the org from** — see what needs attention and reach it in one move; decide a proposal without leaving the list; act on sessions in bulk at a desk and as cards on a phone; run attendance live; the sober register. Step 0 landed `143fdfb9` (spec + artboards + the prompt, unedited), `4df9568d` (`DEC-227`, `REQ-UIX-084`…`090`, `STORY-UIX-074`…`080`, `SCR-042`'s section, M23, the trace gate's `ERRATA`), `c126c55d` (the map + ten agent files). ★ **The owner ruled twice at Step 0**: `console-register.test.ts` is amended once and made stricter; «التصنيفات» loses «والوسوم». ★ **`console`, `sessions`, `checkin` are spawned PLANNING-ONLY**; nobody deletes a file before «the plans are approved» and «the frame is in». ★ **Open for sync 1:** `REQ-PRO-009`'s diff has no data behind it (`DEC-227` §5.1) — `sessions` measures first; a migration, if any, is the lead's from `0179` and the owner's rehearsal. ★ **Carried:** as `DEC-225` §6.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 21 — PLANNED, NOT STARTED — M11a, the first console batch (`DEC-225`)
+## ★★★ WAVE 21 — IN PROGRESS: STEP 0 DONE, SYNC 1 PENDING — M11a, the first console batch (`DEC-225`, `DEC-227`)
+
+### ★ Where it stands (2026-10-02) — read this first
+
+| Step | State |
+|---|---|
+| Step 0 — branch `wave-21a/the-console-frame`, draft PR **#44** against `main` | ✅ |
+| Every number in the brief re-measured | ✅ all hold — ★ **plus a fourth wrong id: `REQ-ORG-017` never existed** (`DEC-227` §1); `trace` was red on `main` at `8b6a9630`, fixed by an `ERRATA` entry in `scripts/traceability.mjs` |
+| The spec, the artboards, the planning prompt committed | ✅ `143fdfb9` — the prompt **unedited, as a record** |
+| `DEC-227`, `REQ-UIX-084`…`090`, `STORY-UIX-074`…`080`, `SCR-042`'s `09` section, M23, `proposals/[id]/` in `04` | ✅ `4df9568d` |
+| The map in `CLAUDE.md` + all ten agent files, one commit (`DEC-085`) | ✅ `c126c55d` |
+| ★ The owner's two Step-0 rulings | ✅ the register test amended once, stricter (`DEC-227` §2) · «التصنيفات» (§3) |
+| `console`, `sessions`, `checkin` spawned planning-only | ✅ — their plans land in `docs/plan/notes/{console,sessions,checkin}.md` |
+| The lead's own plan — the frame and `ui/admin-rail`, with its kept-behaviour table | ✅ `docs/plan/notes/wave-21-lead.md` § «The lead's plan» |
+| **Sync 1** — four plans approved against the goal and the seven contracts | ⏳ |
+| The frame in; the three signatures; the floor 60 → 63 | ⏳ (after sync 1) |
+| PR B `wave-21b/the-queues` opened against `main` on its first push | ⏳ |
+
+★ **If this session ends before sync 1:** the next lead reads the three teammates' «Wave 21 plan» sections and the lead's,
+judges each against `DEC-227` §0 — **a plan that reads like screens with green gates goes back** — checks every
+kept-behaviour table against the current files, answers `sessions`' contract 5 finding (the diff's data; a migration
+from `0179` is the lead's and needs the owner's rehearsal on a dump at `0178`), and only then posts «the plans are
+approved». **Nobody deletes a file before that post and «the frame is in».**
+
+★ **Three seams found at Step 0 that the brief did not name** (`DEC-227` §5): the hub's header is not the layout's today,
+so `sessions` moves it there and the survey and certificates tabs lose their own (the lead, as custodian); «المحتوى» is
+the strip's link to the event page; the console's phone frame draws no tab bar and no wordmark, and `/app/platform`,
+which shares `isConsole()`, keeps today's frame.
+
+---
+
+## ★★★ WAVE 21 — THE PLAN AS WRITTEN BEFORE STEP 0 (`DEC-225`)
 
 **The programme's seventh wave, and the first that rebuilds the CONSOLE.** The brief is
 `docs/plan/notes/wave-21-lead.md`; the drawing is `docs/design/screens/M11a.md` with the **six** artboards in
