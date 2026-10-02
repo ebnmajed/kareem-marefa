@@ -6966,3 +6966,9 @@ SCR-043 (W21.4): all 38 rows hold, with these notes:
 - `AttendanceHeaderAction`'s line in the layout, once `checkin`'s file exists;
 - `admin.proposals.*`'s deletion, a request to `console` (R6): nothing reads those keys now;
 - D7's ruling (the pure `checkInCeiling()`), still open.
+
+**After the lead's three rulings:**
+- D7 is drawn. The «تسجيل الحضور» row says «يُغلق <time>», from the pure `checkInCeiling()` over the page's own day
+  set. It is shown for one-day sessions only, because each day of a multi-day session closes on its own.
+- `AttendanceHeaderAction` (`checkin`'s, at 6aeff6f0) is in the layout's map under `attendance`.
+- «افتح كجلسة» stays on 041.

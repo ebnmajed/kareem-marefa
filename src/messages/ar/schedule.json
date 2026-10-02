@@ -224,7 +224,8 @@
         "off": "لا شهادة",
         "automatic": "تلقائية",
         "review": "بعد المراجعة"
-      }
+      },
+      "closes": "يُغلق {time}"
     },
     "side": {
       "reservations": "الحجوزات",

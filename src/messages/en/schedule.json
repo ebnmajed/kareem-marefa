@@ -224,7 +224,8 @@
         "off": "No certificate",
         "automatic": "Automatic",
         "review": "After review"
-      }
+      },
+      "closes": "closes {time}"
     },
     "side": {
       "reservations": "Reservations",

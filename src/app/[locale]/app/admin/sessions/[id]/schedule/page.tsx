@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { KvCard } from "@/components/ui/kv-card";
 import { Panel } from "@/components/ui/panel";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
+import { checkInCeiling } from "@/lib/session-status";
 import { getScheduleContent, getScheduleRead, getSessionForSchedule, getSessionLog, listSessionPresentersForAdmin, listVenues } from "@/lib/dal/sessions";
 import { addPresenter, removePresenter, saveSchedule } from "./actions";
 import { PresentersRow } from "./presenters-row";
@@ -120,8 +121,13 @@ export default async function SchedulePage({
     : session.customVenueName
       ? <bdi>{session.customVenueName}</bdi>
       : null;
+  // «يُغلق …» — the pure twin of `check_in_ceiling()` (DEC-151), read-only over the day set this page already holds:
+  // no grant, no RPC, no third copy of the rule (the lead's D7 ruling). One day only: a workshop's days each close
+  // on their own, and one time would mislead.
+  const ceiling = multiDay ? null : checkInCeiling(session.days, 0);
   const checkIn = [
     read.rotationSeconds ? t("read.rotation", { count: Math.round(read.rotationSeconds / 60), value: formatNumber(Math.round(read.rotationSeconds / 60)) }) : null,
+    ceiling !== null ? t("read.closes", { time: formatTime(new Date(ceiling).toISOString(), zone, locale) }) : null,
     session.allowWalkIns ? t("read.walkIns") : null,
     multiDay && session.requireAllDays ? t("read.everyDay") : null,
   ].filter((v): v is string => v !== null);
