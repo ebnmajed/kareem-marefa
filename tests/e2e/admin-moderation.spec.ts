@@ -183,7 +183,7 @@ test("REQ-ADM-020: a moderator reaches both screens, and DEC-005 keeps takedowns
   await goto(page, "/ar/app/admin/moderation/comments");
   await expect(page).toHaveURL(/\/ar\/app\/admin\/moderation\/reports$/);
   await expect(main.getByRole("heading", { name: "الإشراف — البلاغات", level: 1 })).toBeVisible();
-  await expect(main.getByText(/تعليق مسيء يستحق المراجعة/).first()).toBeVisible();
+  await expect(main.getByText(/تعليق مسيء يستحق المراجعة/).filter({ visible: true }).first()).toBeVisible();
 
   await goto(page, `/ar/app/admin/moderation/photos/${takenDownPhotoId}`);
   await expect(main.getByRole("heading", { name: "الإشراف — الصور", level: 1 })).toBeVisible();
@@ -263,9 +263,9 @@ test("REQ-EVT-014: removing a reported comment records the reason, closes the re
 
   // ★ «مغلقة» shows the outcome and who decided (REQ-ADM-010).
   await goto(page, "/ar/app/admin/moderation/reports?state=closed");
-  await expect(main.getByText(/تعليق مسيء يستحق المراجعة/).first()).toBeVisible();
-  await expect(main.getByText("أُزيل", { exact: true }).first()).toBeVisible();
-  await expect(main.getByText("مشرفة الإشراف").first()).toBeVisible();
+  await expect(main.getByText(/تعليق مسيء يستحق المراجعة/).filter({ visible: true }).first()).toBeVisible();
+  await expect(main.getByText("أُزيل", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(main.getByText("مشرفة الإشراف").filter({ visible: true }).first()).toBeVisible();
 });
 
 test("REQ-EVT-012: restoring a takedown clears the hide and resolves the request, in one write", async ({ context, page }) => {

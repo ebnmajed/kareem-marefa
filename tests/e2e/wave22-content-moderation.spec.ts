@@ -157,8 +157,8 @@ test("050/052 — a reported comment is read in its row, and its reporters and r
   await goto(page, "/ar/app/admin/moderation/reports");
   await expect(main.getByRole("heading", { name: "الإشراف — البلاغات", level: 1 })).toBeVisible();
   await expect(main.getByRole("link", { name: "مفتوحة 2" })).toHaveAttribute("aria-current", "true");
-  await expect(main.getByText("+1").first()).toBeVisible();
-  await expect(main.getByText("3 أيام").first()).toBeVisible();
+  await expect(main.getByText("+1").filter({ visible: true }).first()).toBeVisible();
+  await expect(main.getByText("3 أيام").filter({ visible: true }).first()).toBeVisible();
   await page.screenshot({ path: `${shots()}/wave22-content-050-open-${width()}.png`, fullPage: true });
 
   await main.getByRole("button", { name: /^أزل — هذا الكلام/ }).click();
@@ -190,8 +190,8 @@ test("050/052 — «تجاهل» decides in the row; «مغلقة» shows the ou
   expect(audit.rowCount).toBe(2);
 
   await goto(page, "/ar/app/admin/moderation/reports?state=closed");
-  await expect(main.getByText("تُجوهل", { exact: true }).first()).toBeVisible();
-  await expect(main.getByText("سلمى الحربي").first()).toBeVisible();
+  await expect(main.getByText("تُجوهل", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(main.getByText("سلمى الحربي").filter({ visible: true }).first()).toBeVisible();
   await page.screenshot({ path: `${shots()}/wave22-content-050-closed-${width()}.png`, fullPage: true });
 });
 
@@ -239,6 +239,6 @@ test("051 — a reported photo is visible, and its detail says so; the closed li
   await page.screenshot({ path: `${shots()}/wave22-content-051-report-${width()}.png`, fullPage: true });
 
   await goto(page, "/ar/app/admin/moderation/photos?kind=closed");
-  await expect(main.getByText(/أُعيدت للعرض/).first()).toBeVisible();
+  await expect(main.getByText(/أُعيدت للعرض/).filter({ visible: true }).first()).toBeVisible();
   await page.screenshot({ path: `${shots()}/wave22-content-051-closed-${width()}.png`, fullPage: true });
 });

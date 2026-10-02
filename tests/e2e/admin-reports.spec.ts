@@ -122,7 +122,7 @@ test("a photo report opens on الصور's «بلاغات الصور» chip, wit
   const main = page.locator("#main");
   await goto(page, `/ar/app/admin/moderation/photos/${photoId}?kind=reports`);
   await expect(main.getByRole("heading", { name: "الإشراف — الصور", level: 1 })).toBeVisible();
-  await expect(main.getByText("جلسة صور البلاغات").first()).toBeVisible();
+  await expect(main.getByText("جلسة صور البلاغات").filter({ visible: true }).first()).toBeVisible();
   await expect(main.getByText("محتوى غير لائق")).toBeVisible();
   await expect(main.getByText("ظاهرة", { exact: true })).toBeVisible();
 });
