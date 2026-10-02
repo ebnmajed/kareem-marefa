@@ -133,12 +133,21 @@ test("the code, its rotation, «أبطل» and the door — run from the console
   const revoked = await db.query(`select 1 from public.audit_log where org_id = $1 and action = 'check_in_code.revoked'`, [orgId]);
   expect(revoked.rowCount).toBe(1);
 
+  // ★ The switch's `<input role="switch">` is `sr-only` — a 1 px clipped box, which a pointer never lands on. A person
+  // taps its LABEL (the visible track and «مفتوح»), so that is what is clicked; the state is read off the input.
   const door = main(page).getByRole("switch", { name: "مفتوح" });
+  const track = door.locator("xpath=ancestor::label[1]");
+  const dayOpen = async () =>
+    (await db.query<{ open: boolean }>(`select check_in_open as open from public.session_days where session_id = $1`, [sessionId])).rows[0].open;
   await expect(door).toBeChecked();
-  await door.click();
-  await expect(main(page).getByRole("switch", { name: "مفتوح" })).not.toBeChecked();
-  await main(page).getByRole("switch", { name: "مفتوح" }).click();
-  await expect(main(page).getByRole("switch", { name: "مفتوح" })).toBeChecked();
+  await expect(door).toBeEnabled(); // hydrated: `HostSwitch` takes a tap only once it can act on one
+  await track.click();
+  await expect(door).not.toBeChecked();
+  expect(await dayOpen()).toBe(false);
+  await expect(door).toBeEnabled();
+  await track.click();
+  await expect(door).toBeChecked();
+  expect(await dayOpen()).toBe(true);
 });
 
 test("a member checks in from their phone, and the row turns «حاضر» without a reload", async ({ context, page }) => {
