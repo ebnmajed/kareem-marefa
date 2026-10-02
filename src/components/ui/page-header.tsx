@@ -26,9 +26,11 @@ import { Link } from "@/components/ui/link";
 // Every class that existed is still here, and the scope's are added after.
 const PLAY_TITLE = "pg:font-display pg:font-extrabold pg:text-play-md pg:text-balance";
 
-export function PageHeader({ title, eyebrow, description, breadcrumb, breadcrumbLabel, actions, meta, status, count, className = "" }: PageHeaderProps) {
+export function PageHeader({ title, eyebrow, description, breadcrumb, breadcrumbLabel, actions, meta, status, count, inlineActions = false, className = "" }: PageHeaderProps) {
   return (
-    <header className={`flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-8 ${className}`}>
+    <header
+      className={`flex gap-4 md:gap-8 ${inlineActions ? "flex-row items-center justify-between" : "flex-col md:flex-row md:items-end md:justify-between"} ${className}`}
+    >
       <div className="flex min-w-0 flex-col gap-1.5">
         {breadcrumb?.length ? (
           <nav aria-label={breadcrumbLabel}>
