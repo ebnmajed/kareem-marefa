@@ -85,9 +85,8 @@ async function signIn(context: BrowserContext, email = adminEmail) {
   });
   const { error } = await client.auth.signInWithPassword({ email, password: PASSWORD });
   if (error) throw error;
-  const { data: memberId, error: rpcError } = await client.rpc("provision_member");
+  const { error: rpcError } = await client.rpc("provision_member");
   if (rpcError) throw rpcError;
-  if (email === adminEmail && typeof memberId === "string") adminMemberId = memberId;
   jar.length = 0;
   await client.auth.refreshSession();
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
@@ -184,6 +183,9 @@ test("062 at 1280: a configuration change beside the log's rows, marked «إعد
   test.skip(testInfo.project.name !== "desktop", "the console's primary width");
   await page.setViewportSize(DESKTOP);
   await signIn(context);
+  // Read from the table, not from provision_member's answer — the verify run found it empty here.
+  const { rows: me } = await db.query<{ id: string }>(`select id from public.members where org_id = $1 and email = $2`, [orgId, adminEmail]);
+  adminMemberId = me[0].id;
   await db.query(
     `insert into public.scoring_config_history (org_id, scope, entity_id, field, old_value, new_value, actor_id) values ($1, 'scoring', gen_random_uuid(), 'points', '10', '15', $2)`,
     [orgId, adminMemberId],
