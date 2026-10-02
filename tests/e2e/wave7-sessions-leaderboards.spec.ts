@@ -77,7 +77,9 @@ test.beforeAll(async ({}, testInfo) => {
     );
     if (local === "reem") viewerEmail = email;
   }
-  await db.query(`select public.snapshot_leaderboard($1, 'company', null, null, null, false)`, [orgId]);
+  // ★ wave 20 (DEC-219 §2 as corrected): the race chooses the month's company snapshot by its period, as the nightly
+  // task writes it — the seed names the month (an expectation that moved).
+  await db.query(`select public.snapshot_leaderboard($1, 'company', date_trunc('month', now())::date, (date_trunc('month', now()) + interval '1 month')::date, null, false)`, [orgId]);
 });
 
 test.afterAll(async () => {
@@ -108,18 +110,22 @@ async function capture(page: Page, name: string) {
   }
 }
 
-test("members: the all-time board is the default tab, ranked, with the viewer marked and no faces", async ({ context, page }) => {
+test("members: the all-time board, ranked, with the viewer marked and no faces", async ({ context, page }) => {
   await signIn(context);
   await page.setViewportSize(PHONE);
+  // ★ wave 20 (REQ-UIX-078): the DEFAULT tab is «هذا الأسبوع» now; all time is `?board=all` — expectations that moved.
   await page.goto("/ar/app/leaderboards");
+  await expect(page.getByRole("tab", { name: "هذا الأسبوع" })).toHaveAttribute("aria-selected", "true");
+  await page.goto("/ar/app/leaderboards?board=all");
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("لوحات الصدارة");
   await expect(page.getByRole("tab", { name: "كل الأوقات" })).toHaveAttribute("aria-selected", "true");
   const board = page.locator("#all-time");
-  const names = await board.locator("li a").allTextContents();
+  // ★ wave 20: the first three stand on the podium, the rest are rows — the order of names is unchanged.
+  const names = await board.locator("[data-slot=podium] li a, [data-slot=board-rows] li a").allTextContents();
   expect(names).toEqual(["سعد الحربي", "ريم العتيبي", "نورة القحطاني", "خالد الشمري"]);
-  await expect(board.locator("li", { hasText: "ريم العتيبي" })).toContainText("أنت");
+  await expect(board.locator("[data-slot=podium] li", { hasText: "ريم العتيبي" })).toContainText("أنت");
   await expect(board.locator("img")).toHaveCount(0);
 
   await capture(page, "members");
