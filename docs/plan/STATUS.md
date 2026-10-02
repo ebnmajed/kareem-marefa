@@ -12,7 +12,7 @@
 | Step | State |
 |---|---|
 | Step 0 — branch `wave-21a/the-console-frame`, draft PR **#44** against `main` | ✅ |
-| Every number in the brief re-measured | ✅ all hold — ★ **plus a fourth wrong id: `REQ-ORG-017` never existed** (`DEC-227` §1); `trace` was red on `main` at `8b6a9630`, fixed by an `ERRATA` entry in `scripts/traceability.mjs` |
+| Every number in the brief re-measured | ✅ all hold — ★ **plus a fourth wrong id: the cited «ORG-017» never existed** (`DEC-227` §1); `trace` was red on `main` at `8b6a9630`, fixed by an `ERRATA` entry in `scripts/traceability.mjs` |
 | The spec, the artboards, the planning prompt committed | ✅ `143fdfb9` — the prompt **unedited, as a record** |
 | `DEC-227`, `REQ-UIX-084`…`090`, `STORY-UIX-074`…`080`, `SCR-042`'s `09` section, M23, `proposals/[id]/` in `04` | ✅ `4df9568d` |
 | The map in `CLAUDE.md` + all ten agent files, one commit (`DEC-085`) | ✅ `c126c55d` |
