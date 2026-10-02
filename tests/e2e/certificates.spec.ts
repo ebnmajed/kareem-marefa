@@ -311,7 +311,7 @@ test("★ REQ-CRT-004: `review` HOLDS — the recipient sees nothing until an ad
   // `issued`, and nothing in the page changed — only the row did.
   await memberPage.goto("/ar/app/me/certificates");
   await expect(memberPage.getByText(cert.serial)).toBeVisible();
-  await expect(memberPage.getByText("صالحة").first()).toBeVisible();
+  await expect(memberPage.locator("#main").getByText("صالحة")).toHaveCount(0); // ★ wave 20: no status word on a valid certificate (DEC-216 §2.1)
   await review(memberPage, "scr-023-certificates");
   await member.close();
 });

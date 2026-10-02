@@ -202,6 +202,8 @@ const CROSS_CUTTING = {
   'REQ-UIX-051': 'every screen’s title, headings, text, links, icon buttons and submits',
   'REQ-UIX-052': 'every glyph on every screen',
   'REQ-UIX-053': 'every console screen, under /app/admin and /app/platform',
+  // Added with wave 20 (DEC-216 §5.14, DEC-NEXT-25): a rule about every line of copy on every member screen.
+  'REQ-UIX-080': 'every string on every member screen — a line exists only if it changes what the person does next',
   'REQ-UIX-063': 'the source tree and the built output — docs/design/screens/ is a reference, never an input',
 }
 

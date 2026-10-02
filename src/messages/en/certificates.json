@@ -17,19 +17,11 @@
     },
     "mine": {
       "title": "My certificates",
-      "intro": "Every certificate issued in your name, with its serial and verification code.",
       "empty": "No certificates yet. An attendance certificate is issued after a session you checked into completes.",
       "browseAction": "Browse sessions",
       "serial": "Serial",
-      "code": "Verification code",
-      "issuedAt": "Issued",
-      "notIssued": "Not issued yet",
-      "download": "Download the certificate",
-      "preparing": "The certificate is being prepared",
-      "verify": "Verification page",
       "revokedReason": "Reason for revocation: <bdi>{reason}</bdi>",
-      "count": "{count, plural, one {One certificate} other {{value} certificates}}",
-      "status": "Status"
+      "soon": "Soon"
     },
     "verify": {
       "title": "Verify a certificate",

@@ -1,12 +1,31 @@
 "use client";
 
-import { useState, useTransition, type MouseEvent } from "react";
+import { createContext, useContext, useState, useTransition, type MouseEvent, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { toggleBookmarkAction } from "@/components/search/actions";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { BookmarkFilledIcon, BookmarkIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast";
+
+/**
+ * ★ wave 20 (DEC-218 §4.4), add-only: what a list around the buttons hears. `pending` right after the optimistic
+ * flip, then `saved` or `failed` once the action answers. `SessionRow` is a Server Component that renders this
+ * button itself, so a page cannot hand it a function (DEC-159); a client list provides this context around the rows
+ * instead — the bookmarks page drops a row at once and offers the undo. With no provider nothing is called, and the
+ * button behaves exactly as it always has.
+ */
+export interface BookmarkChange {
+  sessionId: string;
+  bookmarked: boolean;
+  status: "pending" | "saved" | "failed";
+}
+
+const BookmarkChangeContext = createContext<((change: BookmarkChange) => void) | null>(null);
+
+export function BookmarkChangeProvider({ onChange, children }: { onChange: (change: BookmarkChange) => void; children: ReactNode }) {
+  return <BookmarkChangeContext.Provider value={onChange}>{children}</BookmarkChangeContext.Provider>;
+}
 
 interface BookmarkButtonProps {
   locale: string;
@@ -34,6 +53,7 @@ interface BookmarkButtonProps {
 export function BookmarkButton({ locale, sessionId, initialBookmarked, variant = "icon", className = "" }: BookmarkButtonProps) {
   const t = useTranslations("search.bookmarkButton");
   const toast = useToast();
+  const onChange = useContext(BookmarkChangeContext);
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [pending, startTransition] = useTransition();
 
@@ -47,12 +67,14 @@ export function BookmarkButton({ locale, sessionId, initialBookmarked, variant =
     event.stopPropagation();
     const next = !bookmarked;
     setBookmarked(next);
+    onChange?.({ sessionId, bookmarked: next, status: "pending" });
     startTransition(async () => {
       const result = await toggleBookmarkAction(locale, sessionId, next);
       if (result.error) {
         setBookmarked(!next);
         toast.show({ title: t("failed"), tone: "error" });
       }
+      onChange?.({ sessionId, bookmarked: next, status: result.error ? "failed" : "saved" });
     });
   }
 

@@ -57,6 +57,21 @@
           "top": "بلغت أعلى مستوى",
           "none": "يُحدَّد مستواك في التقييم الليلي القادم."
         }
+      },
+      "ledger": {
+        "count": "{count, plural, zero {لا سطور} one {سطر واحد} two {سطران} few {{value} أسطر} many {{value} سطرًا} other {{value} سطر}}",
+        "shownOf": "<bdi>{shown}</bdi> من {count, plural, zero {لا سطور} one {سطر واحد} two {سطرين} few {<bdi>{value}</bdi> أسطر} many {<bdi>{value}</bdi> سطرًا} other {<bdi>{value}</bdi> سطر}}",
+        "more": "المزيد",
+        "older": "عرض الأقدم",
+        "filteredEmpty": "لا سطور في هذه التصفية",
+        "submit": "تصفية",
+        "gain": "{count, plural, zero {صفر نقطة} one {نقطة واحدة} two {نقطتان} few {{value} نقاط} many {{value} نقطة} other {{value} نقطة}}",
+        "loss": "{count, plural, zero {لم تُخصم نقاط} one {خُصمت نقطة واحدة} two {خُصمت نقطتان} few {خُصمت {value} نقاط} many {خُصمت {value} نقطة} other {خُصمت {value} نقطة}}",
+        "capComment": "الحد: {count, plural, zero {بلا حد} one {تعليق واحد لكل جلسة} two {تعليقان لكل جلسة} few {{value} تعليقات لكل جلسة} many {{value} تعليقًا لكل جلسة} other {{value} تعليق لكل جلسة}}",
+        "manualBy": "«<bdi>{reason}</bdi>» — <bdi>{name}</bdi>",
+        "manualReason": "«<bdi>{reason}</bdi>»",
+        "reverses": "(يلغي سطر <bdi>{date}</bdi>)",
+        "noSession": "—"
       }
     },
     "admin": {
@@ -321,6 +336,32 @@
       "badgeSelf": "نلت شارة <b><bdi>{badge}</bdi></b>",
       "streak": "<name></name> أكمل سلسلة الحضور في <bdi>{month}</bdi>",
       "streakSelf": "أكملت سلسلة الحضور في <bdi>{month}</bdi>"
+    },
+    "hub": {
+      "label": "مكانتك في الساحة",
+      "seenBy": "هكذا يراك زملاؤك",
+      "since": "عضو منذ <bdi>{month}</bdi>",
+      "level": {
+        "caption": "مستواك",
+        "toNext": "«<bdi>{level}</bdi>» بعد <bdi>{value}</bdi>",
+        "top": "بلغت أعلى مستوى",
+        "none": "يُحدَّد مستواك في التقييم الليلي القادم.",
+        "pointsLine": "{count, plural, zero {<pts></pts> نقطة} one {<pts></pts> نقطة} two {<pts></pts> نقطتان} few {<pts></pts> نقاط} many {<pts></pts> نقطة} other {<pts></pts> نقطة}} · «<bdi>{level}</bdi>» بعد <bdi>{remaining}</bdi>",
+        "pointsOnly": "{count, plural, zero {<pts></pts> نقطة} one {<pts></pts> نقطة} two {<pts></pts> نقطتان} few {<pts></pts> نقاط} many {<pts></pts> نقطة} other {<pts></pts> نقطة}}"
+      },
+      "week": {
+        "label": "هذا الأسبوع",
+        "labelHidden": "هذا الأسبوع · مخفيّ عن غيرك",
+        "valueLabel": "المرتبة <bdi>{rank}</bdi> من <bdi>{total}</bdi> هذا الأسبوع",
+        "absent": "لا ترتيب بعد"
+      },
+      "streak": {
+        "label": "السلسلة"
+      },
+      "badges": {
+        "label": "الشارات",
+        "valueLabel": "{count, plural, zero {لا شارات بعد} one {شارة واحدة} two {شارتان} few {{value} شارات} many {{value} شارة} other {{value} شارة}}"
+      }
     }
   }
 }

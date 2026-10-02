@@ -130,8 +130,12 @@ const RAMP_TEXT = ["text-level-1", "text-level-2", "text-level-3", "text-level-4
 
 function Standing({ level, standing, className }: { level: LevelFace; standing: LevelStanding; className: string }) {
   const stop = rampStop(level.tier);
+  // ★ wave 20 (DEC-218, contract 2), add-only: `frame="none"` draws the same row with no panel of its own — the hub's
+  // standing card holds it inside its own card, and a second panel would be a card in a card. `panel`, the default, is
+  // the profile's, unchanged.
+  const frame = standing.frame === "none" ? "" : "rounded-panel border border-edge bg-surface p-4";
   return (
-    <div role="group" aria-label={level.caption} data-layout="standing" data-tier={stop} className={`flex flex-col gap-3 rounded-panel border border-edge bg-surface p-4 ${className}`}>
+    <div role="group" aria-label={level.caption} data-layout="standing" data-tier={stop} className={`flex flex-col gap-3 ${frame} ${className}`}>
       <div className="flex items-center gap-3">
         <BadgeMedallion name={level.name} fill={{ level: stop }} glyph={standing.glyph} size="sm" showName={false} />
         <div className="min-w-0 flex-1 leading-tight">

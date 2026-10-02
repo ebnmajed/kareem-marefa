@@ -637,7 +637,8 @@ export interface AvatarProps extends Styleable {
   /** A platform-stored path. Null, or a takedown, falls back to initials. */
   src?: string | null;
   /** wave 19 (DEC-214 §4), add-only: 44 (the directory's row), 84 (the profile's header), 104 (the desktop header). */
-  size?: 24 | 32 | 34 | 40 | 44 | 56 | 84 | 96 | 104 | 160;
+  // ★ wave 20 (DEC-218), add-only: 64 — the podium's first place and the hub's standing (`Me.dc.html`).
+  size?: 24 | 32 | 34 | 40 | 44 | 56 | 64 | 84 | 96 | 104 | 160;
   /** Decorative beside a name that is already rendered. */
   decorative?: boolean;
   /**
@@ -1077,7 +1078,9 @@ export interface RaceBarProps extends Styleable {
    * name, bar, figure. The metric is still said on every row to a screen reader (REQ-LDR-005). Default
    * `stacked`, which every call site before wave 18 renders.
    */
-  layout?: "stacked" | "inline";
+  /** ★ wave 20 (DEC-218), add-only: `grid` — `Companies.dc.html`'s row: rank · ring, name, the bar under the name ·
+   *  the ranking value · the other, muted; the metric's words `sr-only` on every row (`REQ-LDR-005`). */
+  layout?: "stacked" | "inline" | "grid";
 }
 
 /** One face of the level card. */
@@ -1125,6 +1128,9 @@ export interface LevelStanding {
   unit: ReactNode;
   glyph?: ReactNode;
   children?: ReactNode;
+  /** ★ wave 20 (DEC-218), add-only: `none` draws no panel of its own — the hub's standing card holds the level row
+   *  inside its own card. Default `panel`. */
+  frame?: "panel" | "none";
 }
 
 // ── wave 18 (DEC-205, DEC-206, DEC-207, REQ-UIX-057) — four primitives for the screens ──────────────
@@ -1402,4 +1408,130 @@ export interface BadgeMedallionProps extends Styleable {
   showName?: boolean;
   /** Read after the name, never drawn (`sr-only`). */
   description?: string;
+}
+
+// ── wave 20 (DEC-216 §2.1, DEC-218, REQ-UIX-081) — three primitives for batch C ──────────────────────────────
+// Types only, landed by the lead at sync 1 from the plans (contract 2). The files arrive with their owners' commits,
+// each with its registry entry, its scope test and its demo. There is no `status-mark` (`DEC-216` §2.1).
+
+/**
+ * `scoring` · `ledger-row.tsx` — one line of a points history (REQ-UIX-081). Reads no data and formats no number.
+ * The figure is the caller's string, drawn in `<bdi dir="ltr">` so the sign sits at the numeral's inline-start;
+ * a loss is coral AND carries its minus — colour is never the only mark (REQ-NFR-007).
+ */
+export interface LedgerRowProps extends Styleable {
+  /** `entry` (default) · `cap` — dashed, muted, the figure `0` · `reversal` — the loss, with `reversed` beneath it
+   *  struck at 70 % inside the same row · `notice` — an explanation with NO figure (`REQ-SES-017`'s missed day). */
+  kind?: "entry" | "cap" | "reversal" | "notice";
+  /** Sign only, never drawn: picks the tone. Required unless `kind="notice"`. */
+  value?: number;
+  /** Drawn, formatted by the caller WITH its sign — «+50», «−50», «0». Required unless `kind="notice"`. */
+  figure?: string;
+  /** What a screen reader hears for the figure — «50 نقطة», «خُصمت 50 نقطة». */
+  figureLabel?: string;
+  /** The row's own reason; the caller isolates interpolations. */
+  title: ReactNode;
+  /** «session · time» — may hold a link. */
+  meta?: ReactNode;
+  /** `kind="reversal"`: the row it reverses. */
+  reversed?: { figure: string; figureLabel: string; title: ReactNode; meta?: ReactNode } | null;
+  /** `li` (default, inside the caller's `<ul>`) or `div`. */
+  as?: "li" | "div";
+}
+
+/** One place on the podium. */
+export interface PodiumPlace {
+  rank: number;
+  /** «المركز 1». */
+  rankLabel: string;
+  /** The avatar's tint key — never the name. */
+  memberId: string;
+  displayName: string;
+  company: string | null;
+  teamColor: TeamColor;
+  /** Formatted by the caller. */
+  points: string;
+  pointsLabel: string;
+  href?: string;
+  /** The viewer's own place — «أنت», in words, outlined. */
+  selfLabel?: string | null;
+}
+
+/**
+ * `scoring` · `podium.tsx` — the first three, drawn second · first · third from the inline-start, the cup over first,
+ * blocks in `--color-podium-{1,2,3}`. STATIC: no keyframe, no transition, no hover scale (`DEC-216` §5.10). DOM
+ * order is rank order; the visual order is CSS `order`. Initials only, like `rank-row`. Below its collapse width and
+ * under reduced motion it renders the same places as `rank-row`s.
+ */
+export interface PodiumProps extends Styleable {
+  /** The group's accessible name — «المراكز الأولى». */
+  label: string;
+  /** In rank order, one to three. A block's height follows its POSITION; the number on it is the rank. */
+  places: readonly PodiumPlace[];
+}
+
+/** What a settings switch row's action returns — the server-confirmed value, and whether this save failed. */
+export interface SettingsSwitchState {
+  checked: boolean;
+  failed: boolean;
+}
+
+/** A bound `"use server"` export (DEC-159) — never an inline closure from a Server Component. */
+export type SettingsSwitchAction = (previous: SettingsSwitchState, formData: FormData) => Promise<SettingsSwitchState>;
+
+interface SettingsRowBase {
+  /** Stable key; the root of the row's ids. */
+  id: string;
+  label: string;
+  /** A second line under the label — a date, a day. Plain text, drawn in `<bdi>`. */
+  detail?: string | null;
+}
+
+/** Saves on change. Without JavaScript the row is an ordinary form and `saveLabel` submits it. */
+export interface SettingsSwitchRow extends SettingsRowBase {
+  kind: "switch";
+  checked: boolean;
+  action: SettingsSwitchAction;
+  /** Posted as the switch's `name`: "on" when checked, absent when not. Default "enabled". */
+  name?: string;
+  /** Posted beside it — e.g. `{ category: "reminders" }`. */
+  hidden?: Readonly<Record<string, string>>;
+  disabled?: boolean;
+  /** Shown beside the switch, `role="alert"`, when the action returns `failed`; the switch is already reverted. */
+  errorLabel: string;
+  /** The `<noscript>` submit's label. */
+  saveLabel: string;
+}
+
+/** Navigates. `value` is drawn before the chevron («متصل»). */
+export interface SettingsLinkRow extends SettingsRowBase {
+  kind: "link";
+  href: string;
+  value?: string | null;
+  /** A Route Handler or another origin: a plain `<a>`, never client navigation. */
+  external?: boolean;
+}
+
+/** A row whose control the screen composes — a disconnect form, a retry, a connect link. */
+export interface SettingsActionRow extends SettingsRowBase {
+  kind: "action";
+  value?: string | null;
+  control: ReactNode;
+}
+
+export type SettingsRow = SettingsSwitchRow | SettingsLinkRow | SettingsActionRow;
+
+/**
+ * `notify` · `settings-group.tsx` — a titled list card of rows that save on change (REQ-UIX-081), replacing the
+ * planned `preference-matrix`. Reads no data and no catalogue. A switch row is a form driven by `useActionState` with
+ * an optimistic flip — no timer, no nudge (DEC-146); a refused save reverts and says so beside the switch.
+ */
+export interface SettingsGroupProps extends Styleable {
+  /** The group's name — always its accessible name (`aria-labelledby`). */
+  title: string;
+  /** Draw the title above the card. Default `true`; `029` passes `false` (DEC-218). */
+  showTitle?: boolean;
+  /** Default `h2`. */
+  headingLevel?: "h2" | "h3";
+  rows: SettingsRow[];
 }

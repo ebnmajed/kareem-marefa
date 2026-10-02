@@ -99,9 +99,7 @@
       "actions": {
         "tasks": "المهام التحضيرية",
         "tasksOutstanding": "{count, plural, zero {لا مهام متبقية} one {مهمة واحدة متبقية} two {مهمتان متبقيتان} few {{value} مهام متبقية} many {{value} مهمة متبقية} other {{value} مهمة متبقية}}",
-        "confirmedHint": "وصلتك رسالة التأكيد ومعها ملف التقويم.",
         "rate": "قيّم الجلسة",
-        "ratingWindow": "باب التقييم مفتوح حتى {date}. تقييمك لا يُنسب إليك.",
         "certificate": "نزّل شهادتك",
         "materials": "المواد",
         "share": "شارك",

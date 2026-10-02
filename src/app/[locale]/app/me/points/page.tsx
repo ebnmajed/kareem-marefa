@@ -1,110 +1,86 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { PageHeader } from "@/components/ui/page-header";
-import { Field } from "@/components/ui/field";
-import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Link } from "@/i18n/navigation";
-import { PointsHistoryList } from "@/components/scoring/points-history-list";
-import { PointsCatalogue } from "@/components/scoring/points-catalogue";
-import { PointsHead } from "@/components/scoring/points-head";
-import { getPointsHead, getPointsHistory } from "@/lib/dal/points";
+import { HubStrip } from "@/components/shell/hub-strip";
+import { HubTopRow } from "@/components/shell/hub-top-row";
 import { isDocumentLoad } from "@/components/scoring/document-load";
+import { PointsCatalogueList } from "@/components/scoring/points-catalogue-list";
+import { PointsFilters } from "@/components/scoring/points-filters";
+import { PointsHeadCard } from "@/components/scoring/points-head-card";
+import { PointsLedger } from "@/components/scoring/points-ledger";
+import { formatNumber } from "@/components/sessions/numerals";
+import { getPointsHeadOnce, getPointsLedger, LEDGER_PAGE } from "@/lib/dal/points";
 import { acknowledgePointsSeen } from "./actions";
 
-// SCR-022 · /app/me/points — the member's full points history (REQ-PTS-003,
-// `05` §8). The whole point of this screen: a member can explain every
-// point they hold without asking anyone. Filterable by session and by
-// month (`05` §8); both filters are plain GET params, so the filtered view
-// is a real, shareable URL rather than client-only state.
+// SCR-022 · «نقاطي» — `/app/me/points`. Written from `docs/design/screens/m10c/Points.dc.html` (phone) and
+// `HubDesktop.dc.html` (desktop) in wave 20, after the old page and its three components were deleted (DEC-208); the
+// kept-behaviour table is §2.1 of `docs/plan/notes/scoring.md`'s wave-20 plan. `REQ-UIX-072`, `REQ-PTS-003`: a member
+// explains every point without asking anyone.
 //
-// ★ `checkin`'s REQ-CHK-017 reversal needs no new read here: `getPointsHistory()`
-// already flags `source = 'reversal'` generically (it was built for
-// REQ-PTS-013's content-removal reversal), and `PointsHistoryList` already
-// renders that row's own `reason` with a tag beside it. Once the removal RPC
-// writes that source literal, this screen already renders it correctly.
+// In the artboard's order: the page's own top row (`HubTopRow`, the `h1` at every width) and the phone strip — from
+// `lg` the hub's layout draws the band and the strip above this — then the head card (balance, level, bar — at every width,
+// for moment 4), the filters, the ledger grouped by month (a table from `lg`), «المزيد», and «ماذا
+// يمنحك نقاطًا؟».
+//
+// ★ The data is read at the data (`sessionClient` → `requireSession()`), never in a layout. The filters are plain GET
+// params — a shareable URL; `rows` pages by 50. Moments 3 and 4 are the head's; the mark it acknowledges is bound
+// here, so the client sends nothing of its own.
 export default async function PointsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ session?: string; month?: string }>;
+  searchParams: Promise<{ session?: string; month?: string; rows?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { session: sessionId, month } = await searchParams;
+  const query = await searchParams;
 
-  const [t, history, head, documentLoad] = await Promise.all([
+  const [t, ledger, head, documentLoad] = await Promise.all([
     getTranslations("scoring.points"),
-    getPointsHistory(locale, { sessionId, month }),
-    getPointsHead(locale),
+    getPointsLedger(locale, { sessionId: query.session, month: query.month, rows: Number(query.rows) || undefined }),
+    getPointsHeadOnce(locale),
     isDocumentLoad(),
   ]);
-  const filtered = Boolean(sessionId || month);
 
-  const monthOptions = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date();
-    d.setUTCDate(1);
-    d.setUTCMonth(d.getUTCMonth() - i);
-    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-    const label = new Intl.DateTimeFormat("ar", { month: "long", year: "numeric", timeZone: history.timeZone }).format(d);
-    return { key, label };
-  });
+  const filtered = Boolean(ledger.filters.sessionId || ledger.filters.month);
+  const monthLabel = (key: string) =>
+    new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${key}-01T00:00:00Z`));
+
+  const more = new URLSearchParams();
+  if (ledger.filters.sessionId) more.set("session", ledger.filters.sessionId);
+  if (ledger.filters.month) more.set("month", ledger.filters.month);
+  more.set("rows", String(ledger.rows + LEDGER_PAGE));
+  const moreHref = ledger.shown < ledger.rowCount ? `/app/me/points?${more.toString()}` : null;
 
   return (
-    <>
-      <PageHeader title={t("title")} description={t("intro")} />
+    <div className="flex flex-col gap-4">
+      <HubTopRow title={t("title")} />
+      <HubStrip />
 
-      {/* ★ wave 16 (REQ-UIX-047, DEC-195 §1.1): the head — the balance, the
-          streak, the level bar and the level card, in the playground's scope, and
-          the only part of this screen that moves (moments 3 and 4). It replaces
-          the `Stat` tile; the balance stays the page's one labelled `<strong>`,
-          which `tests/e2e/points.spec.ts` reads (REQ-PTS-003: legible). The mark
-          it acknowledges is bound here, so the client sends nothing of its own. */}
-      <PointsHead head={head} acknowledge={acknowledgePointsSeen.bind(null, locale, head.mark)} documentLoad={documentLoad} />
+      {/* ★ At every width, though `HubDesktop.dc.html` draws none from `lg`: moment 4 stays on `SCR-022` (DEC-218 §3.1)
+          and turns this head's level row — with the head hidden from `lg`, a desktop member would never see a level-up
+          and the level cursor would never move (the band passes the level last seen through). Written to the lead. */}
+      <PointsHeadCard head={head} acknowledge={acknowledgePointsSeen.bind(null, locale, head.mark)} documentLoad={documentLoad} />
 
-      <form method="get" aria-labelledby="filters-heading" className="mt-8 flex flex-wrap items-end gap-4">
-        <h2 id="filters-heading" className="sr-only">
-          {t("filters.heading")}
-        </h2>
-        <Field id="session" label={t("filters.session")} className="w-48">
-          <Select name="session" defaultValue={sessionId ?? ""}>
-            <option value="">{t("filters.allSessions")}</option>
-            {history.sessionOptions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field id="month" label={t("filters.month")} className="w-48">
-          <Select name="month" defaultValue={month ?? ""}>
-            <option value="">{t("filters.allMonths")}</option>
-            {monthOptions.map((m) => (
-              <option key={m.key} value={m.key}>
-                {m.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        {/* A plain GET form, not a Server Action — `SubmitButton`'s
-            `useFormStatus` has nothing to report here, so this is `Button`
-            with no pending state, matching what the control actually does. */}
-        <Button type="submit">{t("filters.heading")}</Button>
-        {filtered ? (
-          <Link href="/app/me/points" className="text-label text-fg-muted underline underline-offset-4 hover:text-fg-heading">
-            {t("filters.clear")}
-          </Link>
-        ) : null}
-      </form>
+      <PointsFilters
+        sessions={ledger.sessionOptions.map((s) => ({ value: s.id, label: s.title }))}
+        months={ledger.monthOptions.map((m) => ({ value: m, label: monthLabel(m) }))}
+        session={ledger.filters.sessionId}
+        month={ledger.filters.month}
+        labels={{
+          heading: t("filters.heading"),
+          session: t("filters.session"),
+          month: t("filters.month"),
+          allSessions: t("filters.allSessions"),
+          allMonths: t("filters.allMonths"),
+          submit: t("ledger.submit"),
+        }}
+        count={t("ledger.count", { count: ledger.rowCount, value: formatNumber(ledger.rowCount) })}
+        clear={filtered ? { label: t("filters.clear"), href: "/app/me/points" } : null}
+      />
 
-      {/* A plain, unlabelled wrapper — not a landmark, just something to
-          scope a test locator to (the catalogue below repeats a rule's own
-          reasonAr, which can equal a specific award's reason here). */}
-      <div id="history">
-        <PointsHistoryList rows={history.rows} missed={history.missed} timeZone={history.timeZone} locale={locale} />
-      </div>
+      <PointsLedger items={ledger.items} rowCount={ledger.rowCount} shown={ledger.shown} moreHref={moreHref} filtered={filtered} timeZone={ledger.timeZone} locale={locale} />
 
-      <PointsCatalogue entries={history.catalogue} />
-    </>
+      <PointsCatalogueList entries={ledger.catalogue} />
+    </div>
   );
 }

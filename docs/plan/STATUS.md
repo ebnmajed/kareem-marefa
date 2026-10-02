@@ -1,11 +1,11 @@
-**Last updated:** 2026-10-02 · **Branch:** `main` — ★★ **WAVE 20 IS PLANNED, NOT STARTED** · **`main`:** `c5a4cf9a`; production at **`0168`** · **Phase:** ★★ **M10c — the LAST designed batch of the member app (`DEC-216`, M22)**: the hub and its five pages, the two boards, and `/app/me/settings` — nine screens from eleven artboards, each **deleted first and written from its artboard** (`DEC-208`). Two PRs; three primitives (floor **57 → 60**); one migration, **`0169`** — two nullable columns. The brief is `docs/plan/notes/wave-20-lead.md`. ★★ **WHEN THIS MERGES THE STANDING ORDER HAS NO SCREENS LEFT, SO STORIES LAND NEXT** (`05-stories.md`, designed 2026-09-28 and twice overtaken) — **unless the owner says otherwise**; wave 18's ring stays inert until then. ★ **The owner ruled twice on 2026-10-02** (`DEC-216` §2): `status-mark` stays **withdrawn**, and the weekly board **computes live** with its movement read «منذ زيارتك الأخيرة». ★ **Wave 19 is merged, live and ACCEPTED** (`2333276b`, `0168`); every phone check the programme owed — waves 16, 18 and 19 — is run and passed. ★ **Owed by the owner:** nothing. ★ **Carried:** the hosting gate wired to nothing (`REQ-REC-008`), withdraw + history + the reviewer's name (one wave), autosave (a REQ first), F2/F3, the hard-load duplicate (`DEC-204` — **recorded by this wave, never fixed, and after it no screens wave is left to carry it**), `DEC-194`'s two gates, `DEC-186` §4, and the `railway.json` that would pin the worker's builder.
+**Last updated:** 2026-10-02 · **Branch:** `wave-20a/the-hub` (draft **PR #41** against `main`) — ★★ **WAVE 20 IS IN PROGRESS: STEP 0 DONE (`DEC-217`)** · **`main`:** `5e1fabdc`; production at **`0168`**; ★ **`0169` landed locally, not pushed** · **Phase:** ★★ **M10c — the LAST designed batch of the member app (`DEC-216`, M22)**: nine screens from eleven artboards, each **deleted first and written from its artboard** (`DEC-208`). Two PRs; three primitives (floor **57 → 60**); one migration, **`0169`**. ★ **The map is in `CLAUDE.md` and the ten agent files**: `content` (`021`, `023`, `024`), `notify` (`025`, `026`, `029`), `scoring` (`022`, `027`, `028`), the lead (the frame, `0169`, the gate, the copy trim). ★ **Next: spawn the three planning-only; build the frame while they plan; sync 1.** ★ **A third correction**: `M10c.md` has no §0b, so the copy trim has no list — one question for the owner. ★★ **WHEN THIS MERGES, STORIES LAND NEXT** unless the owner says otherwise. ★ **Owed by the owner:** the copy-trim question; at the end, `0169`'s rehearsal and push, the merges (A, then B — B retargeted first), Railway's reconnect, the phone check. ★ **Carried:** as `DEC-216` §7.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 20 — PLANNED, NOT STARTED — M10c, the last designed batch of the member app (`DEC-216`)
+## ★★★ WAVE 20 — IN PROGRESS, Step 0 DONE (`DEC-217`) — on `wave-20a/the-hub`, draft PR #41 — M10c, the last designed batch of the member app (`DEC-216`)
 
 **The programme's sixth wave, and the third that rebuilds screens.** The brief is
 `docs/plan/notes/wave-20-lead.md`; the drawing is `docs/design/screens/M10c.md` with the **eleven** artboards in
@@ -69,6 +69,140 @@ leagues · a sixth moment, and the podium is static · photo tagging · the hard
 `DEC-186` §4 · `DEC-215`'s four carried items · a company logo. **Not re-litigated:** `DEC-124` numerals · `DEC-186`
 §4's `1.08` · `DEC-206` §4.56 — the boards show ranked members by design, which is not attendance · `DEC-099` on
 avatars · `DEC-213` §5.117, which keeps the level-up off the profile.
+
+### ★ Step 0 — DONE (`DEC-217`), and a third correction
+
+Every number above **re-measured and held** on `5e1fabdc`: 57 primitives and the floor at 57, eleven boards and
+eleven PNGs, `0168` the last migration, `REQ-UIX-069` / `STORY-UIX-058` the last ids, no week in `leaderboard_kind`,
+`leaderboards.ts:512`, the DTO at `points.ts:145-157`, the grant at `0162:66`. ★ **The third correction: `M10c.md` has
+no §0b.** The brief, the planning prompt and `DEC-216` §5.14 cite «§0b's list» as the copy trim's scope; `M10c.md`
+mentions §0b once, in §10, and never defines it — so the copy trim has no list, and the owner is asked (below).
+**The planning prompt is committed unedited, as a record** (`2b7a5970`), as M10a's was in wave 18.
+
+### The map (`CLAUDE.md` § *Ownership map (wave 20)*, `DEC-217` §2) — divided by who owns each screen's data
+
+| Track | PR A | PR B |
+|---|---|---|
+| **lead** | `0169` · the hub frame · the gate 57 → 60 · the copy trim | the gates, captures, the hard-load re-measure |
+| `content` (opus) | `021` my profile · `023` my certificates (★ from `designer`) · `024` bookmarks | the opt-out removed from `021` (contract 5) |
+| `notify` (opus) | `025` the calendar · `ui/settings-group` | `026` the inbox · ★ `029` settings, `preference-matrix` deleted |
+| `scoring` (opus) | `022` my points · the standing card and band · this week, live · `ui/ledger-row`, `ui/podium` | `027` the boards (★ from `sessions`) · `028` the company race |
+
+**Not spawned:** `sessions`, `checkin`, `console`, `designer`, `event`, `platform`, `branding` — the lead is custodian.
+
+### The contracts
+
+| # | Contract | Owner | State |
+|---|---|---|---|
+| C1 | **The hub frame** — a page's own phone top row on the hub, settings and the boards; the strip; the desktop standing band from C3; no game rail. **Before any track builds a screen** | lead → all | todo — built while the plans are written |
+| C2 | **The signatures and the gate** — three types in `ui/index.ts`, registry entries, floor 57 → 60, **all in PR A** | lead → all | todo — after sync 1 |
+| C3 | **The standing** — one component, two forms (the phone card on `021`, the desktop band in the layout), its DAL read | `scoring` → lead, `content` | todo — in `scoring`'s note on day one |
+| C4 | **This week, live** — rank and points over Saturday – Friday in the org's time zone; opt-out in the DAL; a missing rank an absence. **PR A** | `scoring` → `content`, lead | todo — in `scoring`'s note on day one |
+| C5 | **The opt-out moves once** — stays in `021`'s edit mode until `029` lands it, in PR B (`DEC-217` §3.1) | `notify` ↔ `content` | **published** |
+| C6 | **The artboard is the specification; `DEC-216` §5 and `DEC-217` §4 are what is not built** | everyone | **published** |
+| C7 | **Every figure is read** | everyone | **published** |
+
+### The checklist
+
+| # | Row | Owner | State |
+|---|---|---|---|
+| S0 | The spec and the eleven artboards in the tree; the branch; the draft PR; every number re-measured | lead | **DONE** — `2b7a5970`, `wave-20a/the-hub`, draft **PR #41** against `main` |
+| S0b | `DEC-217`; `REQ-UIX-070` … `081` (★ `SCR-029`'s is `077`); `09`'s `SCR-021`, `SCR-024`, `SCR-029` sections, the requirement table and route coverage; M22 in `14`; `STORY-UIX-059` … `071` in `15`; `REQ-UIX-080` cross-cutting in `traceability.mjs`; the map in `CLAUDE.md`; the ten agent files regenerated | lead | **DONE** — see the commit after `0169`'s. `trace` **374 · 207, no gaps**; `policy-diff` ✓ |
+| D2 | ★ **`0170` — `retry_calendar_sync()`** (`DEC-218` §2.3), drafted by `notify` (`e8d5f591`), promoted by the lead; no definer-exposure row (anon may not execute) | `notify` → lead | **promoted** — `supabase db reset` re-applied `0169` – `0171` in order; `notify-calendar-retry`, `definer-exposure`, `scoring-week-live`, `scoring-seen` green; `policy-diff` ✓. ★ **Migrations for the owner to rehearse and push: `0169` – `0172`** |
+| D3 | ★ **`0171` — `org_week()`, `weekly_leaderboard()`** (contract 4), proposed and proven by `scoring` (`b0320d91`, 9 cases), promoted by the lead; `03` §8.2's seven rows. ★ **`0170` is held for `retry_calendar_sync()`**: `DEC-218` cited it before the file existed — the trap `CLAUDE.md`'s migration rule names — so the number is reserved rather than the entry made false. Locally `0171` is applied before `0170` exists; the lead resets once `0170` lands | `scoring` → lead | **promoted** — see the commit after `b5a838c0`; `scoring-week-live`, `definer-exposure`, `all-time-leaderboard` 15 ✓; `policy-diff` ✓ |
+| D4 | ★ **`0172` — `capped_award_explanations()`** (`DEC-218` §3, `REQ-UIX-072`): the cap row's explanation, computed — **invoker**, writes nothing, never a ledger row, view or table; it claims the cap only when the session's comment cap is full now. Proposed and proven by `scoring` (`968b5a5f`, 6 cases) | `scoring` → lead | **promoted** — see the commit after `c2d6c105`; `scoring-capped`, `definer-exposure` green; `policy-diff` ✓. ★ **Four migrations for the owner: `0169` – `0172`** |
+| D1 | ★★ **`0169`** — `weekly_period date`, `weekly_rank int check (> 0)` on `member_seen_marks`, nullable. **No new grant: `0162:66` is table-level**, said in the migration's header and in `03` §5.7c; `02`'s entity gains the pair | lead | **landed locally** — `supabase db reset` applied it (the reset's storage health check timed out; `worker-schema` and the Kong check were run by hand after it); `scoring-seen` **4 new cases** and `isolation` **99 ✓**. ★ **The owner rehearses it on a production schema dump and pushes it** |
+| T0 | Baselines before any product commit: the public pairs, the fingerprint, the nine screens at 390 (and the hub at 1280) as they are today | lead | todo |
+| F1 | ★★ **The hub frame** (C1, `STORY-UIX-059`) — `me/layout.tsx` and `tab-strip.tsx` deleted, then written; `shell-routes.ts` | lead | ★ **IN — deleted `aed4601e`, written `ebdde010`** (table `63fdd6c0`). ★ **A ruling the artboards force**: the phone strip sits under a page's title and the desktop strip above it, so the layout renders the desktop band and strip and **a page renders `HubTopRow` and `<HubStrip />`** (contract 1 amended). `ownsTopRow()` takes the hub, settings and the boards (not privacy); `SettingsIcon` added to `icons.tsx` — ★ the four-part public proof is owed at X2. `tsc` 0, 350 ✓, `ui-lint --strict` ✓. ★ **The band is in** — `HubStanding form="band"` (`82c945bd`) placed in a Suspense with its skeleton, see the commit after `4b365b5a`'s STATUS row. **F1 DONE** |
+| S1 | **Sync 1** — three plans, each with its kept-behaviour tables, approved against the seven contracts | lead | **DONE — `DEC-218`**: `content` 22 + 15 + 8, `notify` 18 + 16 + 22, `scoring` §2.1 – §2.4. ★ Found: **interests were never built** (`REQ-PRF-001`); the revoke reason had nowhere to go but the list; **a profile save would have re-opted every member in** once the opt-out left `021` (fixed `27afbb3e`); «أعد المحاولة» had nothing to call (`0170`); the calendar's connect/callback hard-code `/ar`; `REQ-UIX-072`'s CSV clause was the lead's error. Two questions for the owner (`DEC-218` §6) |
+| P0 | Contract 2 — the signatures, the registry, the floor at 60 | lead | **signatures landed** with `DEC-218`: `LedgerRowProps`, `PodiumPlace`/`PodiumProps`, `SettingsGroupProps` and its row types; add-only `LevelStanding.frame`, `RaceBarProps.layout: "grid"`; `--color-podium-{1,2,3}`. Registry entries and the floor: with each file |
+| A1 | ★★ `SCR-021`, my profile — deleted, then written | `content` | todo |
+| A2 | ★★ `SCR-022`, my points — deleted, then written; `ui/ledger-row` | `scoring` | todo |
+| A3 | ★ `SCR-023` and `SCR-024` — deleted, then written | `content` | todo |
+| A4 | ★ `SCR-025` — deleted, then written; `ui/settings-group` | `notify` | todo |
+| A5 | ★ The standing card and band; this week, live; `ui/podium` | `scoring` | todo |
+| A6 | ★ **The copy trim** (`STORY-UIX-067`, `REQ-UIX-080`) — the list derived from the M10a/M10b artboards, ★ **confirmed by the owner before any string is removed** | lead | **DONE at `1fcacdf6` — six removed, one kept.** The owner approved seven (2026-10-02, `DEC-223`). **Removed:** the action card's «وصلتك رسالة التأكيد ومعها ملف التقويم.»; the propose form's two field hints (audience, notes); my proposal's approved-state line «المشرف سيتولى تحديد الموعد والمكان وينشر الجلسة.»; the submitted confirmation's second sentence; three dead keys rendered nowhere (`app.home.intro`, `browse.intro`, `sessions.event.actions.ratingWindow` — ★ the last also untrue: admins see individual ratings, D36). ★ **KEPT, against the approval: item 1, the event aside's «لفريقك» line** — `EventDesktop.dc.html` DOES draw it («حضور صنف لهذه الجلسة يرفع نسبة مشاركتها في سباق الشركات»); the lead's matching missed it because the wording differs, so it never met the list's own rule. No test asserted a removed string; `tsc` 0, lint 0, `ui-lint --strict` ✓, the message and component suites 341 ✓, `npm test` green — the three mail files were red only on a stale untracked `packages/mail-runtime/dist` built on PR B's branch; rebuilt, 167 ✓ |
+| B0 | PR B: `wave-20b/the-boards` cut from A's head, ★ **opened against `main` from its first push** — as wave 18's PR B was, so there is nothing to retarget and A's `--delete-branch` cannot close it | lead | see the commit after this one |
+| B1 | ★★ `SCR-026` and ★★ `SCR-029` — `preference-matrix` deleted, every preference still written; the opt-out moved | `notify`, `content` | todo |
+| B2 | ★★ `SCR-027` and `SCR-028` — the weekly seen pair through `mark_board_seen()`; `leaderboards.ts:512` fixed | `scoring` | todo |
+| H1 | ★ **The owed measurement** — the hard-load duplicate on `/app/me/points` and `/app/leaderboards`, 2 × 24 each, after the rebuild, against `DEC-204`'s table | lead | ★ **`/app/me/points` MEASURED** on a production build of `8a72e7d6`, phone, by `wave18-lead-hard-load.spec.ts`'s method (its seeded feed): **DOM duplicated 13/24 and 15/24 = 28 of 48; the accessibility tree 0 of 48** (no second `h1` announced). ★ **Control on the same build, `/app`: 7/24 and 11/24 = 18 of 48 DOM; 0 of 48 accessibility tree.** Against `DEC-204`'s `main` `/app` (4/48 empty, 32/48 seeded; tree 0/48 across 192 loads): the duplicate stays a DOM-only defect — the tree holds one page in every load measured since wave 18 — and the hub's route shows it at about the rate of a seeded `/app`. ★ The inbox's probe (`wave20-notify-inbox-duplicate`, `a6f32723`): 1 of 24 at load, hidden outside `#main`, 0 of 24 after 1 s. **Recorded, not fixed.** `/app/leaderboards` is owed by PR B |
+| X1 | ★★ Every screen at 390, and the hub at 1280, opened beside its artboard | lead | todo |
+| X2 | ★ `qa:contract`, `visual`'s public pairs, the fingerprint, `public-graph` — unmoved, not re-baselined | lead | **DONE for PR A on a build of `a6f32723`** (it carries `SettingsIcon` in `icons.tsx`, which the five import): `qa:contract` **38/38**; `visual` `wave20a-a6f32723` against `wave19-f55454cc` — the six public pairs **0.000 %** but `phone_en` **0.002 %** (the anti-aliasing flicker waves 18 and 19 measured; not a move, **not re-baselined**); the register-form fingerprint **byte-identical** to `main.json` (`cmp`, `.qa-shots/fingerprint/branch-a6f32723.json`); `public-graph` ✓. The gallery moved on purpose — the three new primitives: **its baseline is now `wave20a-a6f32723`** |
+| X3 | ★ The a11y sweep at 0 findings, the nine routes added | lead | **PR A DONE on `8a72e7d6`**: `wave11-lead-a11y-sweep` 8/8, both projects — public, member (every `/app/me` route and `/app/leaderboards`), admin, platform — 0 serious or critical. `/app/me/settings` joins with PR B |
+| X4 | ★★ **The owner holds each rebuilt screen beside its artboard on a phone** | **owner** | todo |
+| G | The gates; ★ CI read from the run's own conclusion on each PR's head (`DEC-192`) | lead | **PR A, locally on `8a72e7d6`**: `tsc` 0; lint 0 errors (30 warnings, as before); `ui-lint --strict` ✓; `npm test` **4,719 ✓** (435 files, 1 skipped); `test:rls` **1,437 ✓** (152 files, 4 todo); `trace` 374 · 207; `policy-diff` ✓; e2e run 3 29 ✓ and runs 1 – 2's remainder; X2 as above. ★ **CI, read from the run's own conclusion (`DEC-192`): run `36958244130` on `8ba0a5c4` concluded `success` — 11 of 11 jobs** (build, types and lint, plan gates, RLS, unit, design-system gates, shaping parity, end to end, frozen routes, worker probe, platform unconfigured). PR A is content-complete but for `STORY-UIX-067`, the copy trim, which waits on the owner's list |
+
+### Sync 1 — what the three plans must answer
+
+1. **For each screen: the regions in the artboard's order, and the primitive each is built from.**
+2. ★★ **The kept-behaviour table** (`DEC-208`) — each behaviour the screen has today, where it lives after, its `REQ-*`.
+   ★ `notify`'s for `029` carries **every row `preference-matrix` has**.
+3. **The props of the new primitive**, as a type — contract 2.
+4. **Every state `M10c.md` names that is not drawn**, and how it is built.
+5. **What the track publishes**, by name and type — contracts 3 and 4.
+6. **Every file created or deleted; every existing assertion that moves**, selector or expectation.
+7. **Any disagreement `DEC-216` §5 and `DEC-217` §4 do not list**, with the file and the line — not picked.
+
+### For the owner — two of five answered (`DEC-219`); three open, none blocking the build (`DEC-217` §4.2, `DEC-218` §6)
+
+1. ★ **The copy trim's list** (`DEC-217` §4.2). `M10c.md` cites «§0b» and never defines it. Does the design session hold
+   the list of lines trimmed from the M10a and M10b boards? If not, the lead derives it from the committed artboards
+   and brings it to you before any string is removed.
+2. ~~«إشعارات البريد»~~ — ★ **ANSWERED (`DEC-219` §1): built in PR B as a bulk write of the optional email rows, its state derived.** The owner accepted that a member who silenced three categories gets them back on by using it — **not a bug**.
+3. ~~The quarterly cup~~ — ★ **ANSWERED (`DEC-219` §2): built in PR B on the existing `seasonal` snapshot**; no enum, no table; a quarter-end enqueue, the DAL read, the card. `scoring` checks `is_final`'s immutability first.
+4. ★ **A rule nothing pays** (found by `scoring`, `0172`'s header): the catalogue lists «صورة من الجلسة» at 3 points, and
+   **no trigger or job anywhere awards the `photo` rule**. A member reading `SCR-022`'s catalogue is promised points the
+   product never writes. The awards are frozen this wave; fix the award (new scope), or disable the rule's seed?
+5. ★ **«بلا ترتيب» on the cup** (`scoring`'s addendum §F, `09156f37`). Honest only with **`0173`**: the snapshot freezes the
+   minimum of active members and the company ranking puts eligible companies first. ★ **That also reorders the
+   MONTHLY race going forward** (provisional rows only — a final one never moves). Yes (and which minimum: the
+   attendance rule's `min_active_members` whether or not it is enabled, or a new org setting), or leave «بلا ترتيب»
+   undrawn? Until answered the cup is built without it. ★ Also recorded: `DEC-219` §2's «seasonal» is corrected by
+   measurement — a `seasonal` snapshot ranks members; the cup is a `company` snapshot with a quarter's period; still
+   no schema, and a final quarter cannot move (`0027:453`, `:497`).
+
+### Untouched-suite ledger (wave 20)
+
+| File | Assertion | Why it moves | Commit |
+|---|---|---|---|
+| `tests/rls/scoring-seen.test.ts` | — | **Added to, nothing changed**: four cases for `0169`'s pair | Step 0 |
+| `tests/unit/shell-routes.test.ts` | `ownsTopRow("/ar/app/me")` and `("/ar/app/leaderboards")` were `false` | ★ **Expectation moved, by design** (`REQ-UIX-070`): the hub and the boards draw their own phone top row; the new `describe` pins all ten paths and privacy's exception | `ebdde010` |
+| `tests/components/me/tab-strip.test.tsx` | the whole file | **Deleted with its component**; its three cases (one current page, the landmark's name, axe) live in `tests/components/shell/hub-strip.test.tsx` with a fourth | `aed4601e`, `ebdde010` |
+| `tests/e2e/wave7-content-me.spec.ts` | `:107` «صفحاتي» visible; `:148` the privacy link | ★ **Expected to move with `021`** (`content`): on a phone the strip is the page's, and privacy is a desktop-strip link | — |
+| `tests/components/scoring/points-catalogue.test.tsx` | «an enabled rule with its cap, a disabled one marked» | ★ **Expectation moved** (`M10c.md` §2, `scoring`'s D37): a disabled rule now draws `0`; the file is retired with its component and the case re-homed | `463ed505` + the create |
+| `tests/components/scoring/points-head.test.tsx` | «no streak in words / no streak rule draws nothing» | **Retired from `022`**: the streak left the head with the artboard; covered on the standing card (`tests/components/hub/standing.test.tsx`) | `463ed505` |
+| `tests/components/scoring/points-head.test.tsx` | «the turned card names the new level and its perk» | ★ **Expectation moved** (`DEC-218` §3.1): the head's level row turns in place, with no perk list | `463ed505` + the create |
+| `tests/components/scoring/{points-history-list,points-history-days,points-catalogue,points-head}.test.tsx` | every other case | **Re-homed with its expectation unchanged**; the mapping is in `docs/plan/notes/scoring.md` | `463ed505` + the create |
+| `tests/e2e/points.spec.ts` | first test: `#main #history` li | **Selector moved** (`REQ-UIX-072`): `#main #history-table` tr on the desktop project — `022` is a table from `lg` | `bf268172` |
+| `tests/e2e/points.spec.ts` | first test and the reversal test: the link «فتح الجلسة» | **Selector moved**: the session's title is the link now («جلسة اختبار الإلغاء» in the reversal test) | `bf268172` |
+| `tests/e2e/wave9-scoring-missed-day.spec.ts:241` | the notice's link «فتح الجلسة» | **Selector moved**: the workshop's title is the link | `bf268172` |
+| `tests/e2e/wave16-scoring-moments.spec.ts:268-270` | `[data-slot=level-bar]` held «صاحب أثر» / «120 من 300» | ★ **Expectation moved (copy)** (`DEC-218` §3.1): `#main #points-head` holds «صاحب أثر» بعد 180; the `scaleX(0.4)` fill holds | `bf268172` |
+| `tests/e2e/points.spec.ts:301` | the reversal test: `reversalRow.locator("bdi[dir='ltr']")` | **Selector moved**: the reversal card holds the pair's two figures; `[data-slot=figure] bdi[dir='ltr']`, the first is the reversal's own | `78d8db51` |
+| `tests/e2e/wave16-scoring-moments.spec.ts:266` | `getByText("120 نقطة جديدة منذ زيارتك الأخيرة")` page-wide | **Selector moved**: scoped to `#main #points-head` | `78d8db51` |
+| `tests/rls/scoring-seen.test.ts` | «an unknown board is refused» lists `weekly` | ★ **Expected in PR B** (`DEC-217` §4.3): `mark_board_seen()` learns the week | — |
+| `tests/components/me/certificates-page.test.tsx` | `:60` `getByText("صالحة")` | ★ **Expectation moved** (`DEC-216` §2.1, `REQ-UIX-073`): a valid certificate carries no status word — now `queryByText("صالحة")` absent. The serial's `<bdi dir="ltr">` beside it is unchanged | `023`'s create (`content`) |
+| `tests/components/me/certificates-page.test.tsx` | `:69-72` «الشهادة قيد التجهيز», no «نزّل الشهادة» | ★ **Expectation moved** (`DEC-218` §4.1, D6): «قريبًا», and the row is not a link. The mock gains `setRequestLocale` and stubs for the lead's `HubTopRow` / `HubStrip` — no assertion | `023`'s create (`content`) |
+| `tests/e2e/wave7-content-certificates.spec.ts` | `:155` «صالحة» visible (the grant said `:159`; the assertion is at `:155`) | ★ **Expectation moved** (`DEC-216` §2.1): `toHaveCount(0)`. The reason and the serial's `dir=ltr` at `:156-164` hold | `023`'s create (`content`, the lead's grant) |
+| `tests/e2e/certificates.spec.ts` | `:314` «صالحة» visible on the member's list | ★ **Expectation moved** (`DEC-216` §2.1): `toHaveCount(0)` inside `#main`. `:313`, the serial visible, holds | `023`'s create (`content`, the lead's grant) |
+| `tests/e2e/wave13-designer-certificates-download.spec.ts` | `:165` the link named «نزّل الشهادة», exact | **Selector moved** (`REQ-UIX-073`, D5 / `DEC-218` §4.1): the row is the one link, found by its serial; the `href` and no-`download` assertions are unchanged | `023`'s create (`content`, the lead's grant) |
+| `tests/components/me/profile-form.test.tsx` | the whole file (six cases) | **Deleted with its component** (`b63968ea`, `DEC-208`); each case re-asserted against edit mode in `tests/components/me/profile-wave20.test.tsx`, marked «(was profile-form)»: own data on load, the summary + field error, the whole-form alert — **selectors unchanged**; ★ «the inline confirmation» → **expectation moved**: a success toast «تم الحفظ» and a return to read mode (`REQ-UIX-071`); ★ «echoes the saved company in the select» → **expectation moved**: after a save the page is in read mode, so the select's value is asserted after a REFUSED save instead (P9); axe — unchanged | `021`'s create (`content`) |
+| `tests/e2e/wave7-content-me.spec.ts` | `:106` `h1` «ملفي» | ★ **Expectation moved** (`REQ-UIX-071`, P17): `h1` «حسابي», `h2` «ملفي», both from `#main` | `content`, the lead's grant |
+| `tests/e2e/wave7-content-me.spec.ts` | `:108-109`, `:122-141` the fields on `/app/me` | **Selector moved** (`REQ-UIX-071`): «عدّل ملفك» is pressed first; labels matched `exact: false` (a changed field's label gains «(معدّل)»); the toast found by its exact text. ★ `:135` the name field's value after the save → **expectation**: the read row shows the saved name | `content`, the lead's grant |
+| `tests/e2e/wave7-content-me.spec.ts` | `:144-145` the select's value is the saved company | ★ **Expectation moved** (P9): read mode shows the company by name, and the member's row holds its id (asserted in the database) | `content`, the lead's grant |
+| `tests/e2e/wave10-content-me-early-save.spec.ts` | `:88` `goto("/ar/app/me")` | **Selector moved** (DEC-218 §4.3): `goto("/ar/app/me?edit")` — the race against hydration is unchanged; Save is enabled in the server's HTML | `content`, the lead's grant |
+| `tests/e2e/wave10-content-me-early-save.spec.ts` | `:102-106` the status, the field's value, the field after a reload | ★ **Expectation moved** (DEC-218 §4.3): a save returns to read mode — the toast by its exact text, the URL back at `/app/me`, and after a fresh load the saved name as a read row (the database's value, never client state) | `content`, the lead's grant |
+| `tests/e2e/bookmarks.spec.ts` | `:244` «لم تحفظ أي جلسة بعد.» on the empty page | ★ **Expectation moved** (`REQ-UIX-074`, B5): «لم تحفظ شيئًا بعد» | `content`, the lead's grant |
+| `tests/e2e/bookmarks.spec.ts` | `:276` `toggles.first().click()` | **Selector moved** (e2e run 1): the toggle inside «جلسة أولى محفوظة»'s row. Both bookmarks are inserted in one statement, so they tie on `created_at` and `first()` removed whichever the order put first; the expectation at `:280` is unchanged. The lead added a tie-break (`session_id`) in `bookmarks.ts` | `content`, the lead's grant |
+| `tests/e2e/wave20-content-hub.spec.ts` | `:163-165` the saved name, company, interest in `#main` | **Selector moved** (e2e run 1, strict mode): the standing card and the desktop band (in the DOM at every width) name the member and the company too — scoped to the profile's region «ملفي» | `content` |
+| `tests/e2e/wave7-content-me.spec.ts` | `:140`, `:149` the saved name and company in `#main` | **Selector moved**, the same reason — the region «ملفي» | `content`, the lead's direction (run 1) |
+| `tests/e2e/wave10-content-me-early-save.spec.ts` | `:108` the saved name in `#main` after the reload | **Selector moved**, the same reason — the region «ملفي» | `content`, the lead's direction (run 1) |
+| `tests/e2e/bookmarks.spec.ts` | `:166` «لم تحفظ أي جلسة بعد.» on another member's empty page | ★ **Expectation moved** (`REQ-UIX-074`, B5): SCR-024's empty state reads «لم تحفظ شيئًا بعد». The privacy assertion beside it holds | `content`, the lead's grant |
+| `tests/components/me/calendar-page.test.tsx` | all five cases; ★ a sixth added | ★ **Expectation moved** (`DEC-216` §5.20, `REQ-UIX-075`), and the file is `notify`'s by grant (`DEC-218` §5). The connect link is «اربط» with `?locale=ar` (selector + expectation, C3/C18). Connected is one row with «متصل» and «افصل» and no synced list (expectation). A failed sync is a «لم تُضف» row with «أعد المحاولة» and «حجزك قائم» (expectation, C12/C16). The banner case keeps its fact. Added: the disconnect line (REQ-CAL-007) and an error alert. The mocks follow the DAL (`listCalendarFailures`, `getOrgPrefs`) and stub the lead's `HubTopRow` / `HubStrip` | `025`'s create (`notify`) |
+| `tests/components/calendar/synced-days.test.tsx` | four cases → three | ★ **Expectation moved** (`DEC-216` §5.20): the per-day rule (`REQ-SES-015`, `018`) is proven on FAILED days, the only list left. Three days failed on two → two rows named «اليوم الأول ·» and «اليوم الثالث ·». A one-day session has no label, nor does a deleted day. The heading-count case goes with the synced list | `025`'s create (`notify`) |
+| `tests/e2e/notify-screens.spec.ts` | `:200-201` «اربط تقويم Google» → `/api/calendar/connect`, «لا جلسات متزامنة بعد»; `:213-218` «افصل التقويم», the synced row's «تعذّرت المزامنة»; `:231` «افصل التقويم» | ★ **Selector + expectation** (`DEC-218` §5's named lines): «اربط» → `…?locale=ar`; «غير متصل»; «افصل»; the failed row inside the «لم تُضف» region with «أعد المحاولة», and «حجزك قائم» on the page. The no-token assertions are unchanged | `025`'s create (`notify`) |
+| `tests/e2e/wave7-content-calendar.spec.ts` | `:100` «اربط تقويم Google»; `:117` «افصل التقويم»; `:118` «جلسة متزامنة» visible | ★ **Selector** (`:100`, `:117` → «اربط» with `?locale=ar`, «افصل») and **expectation** (`:118` → «متصل» visible and no «لم تُضف»: a synced session is absent, `DEC-216` §5.20). The no-token assertions are unchanged | `025`'s create (`notify`, by grant) |
+| `tests/e2e/wave9-notify-days.spec.ts` | `:189-210` three synced entries as links; `:213-225` the one-day row | ★ **Expectation moved** (`DEC-216` §5.20): `seatAndSync()` takes an optional state (default `synced`, so its other callers are unchanged), and the two calendar cases seed `failed` rows. Three rows in the «لم تُضف» region, each naming its day; the one-day row carries no «اليوم». The capture is taken of the region's list | `025`'s create (`notify`) |
+| `tests/e2e/notify-screens.spec.ts` | `:166` and `:174` — `page.locator("li", …)` for the fixed categories and «جلساتي» | **Selector moved** (`DEC-145`, `DEC-204`): `#main li`. The gate's run 1 met two «الشهادات» rows on the phone. `notify`'s probe (`64a7de54`, 24 hard loads on `d4ae259c`) found the second hidden outside `#main` at load in 1 of 24, none after 1 s and none with both inside `#main` — the matrix renders once. Every expectation is unchanged; PR B rewrites `:157-175` when the matrix leaves the inbox | PR A (`notify`) |
 
 ---
 

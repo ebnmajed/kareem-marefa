@@ -91,13 +91,14 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: join(SHOTS, `wave7-content-calendar-${name}.png`), fullPage: true });
 }
 
-test("not connected, then connected with a synced session — never a token in sight", async ({ context, page }) => {
+test("not connected, then connected with a synced session — one row, never a token in sight", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   memberId = await signIn(context, memberEmail);
 
   await page.goto("/ar/app/me/calendar");
   await expect(page.getByRole("heading", { name: "التقويم", level: 1 })).toBeVisible();
-  await expect(page.getByRole("link", { name: "اربط تقويم Google" })).toHaveAttribute("href", "/api/calendar/connect");
+  // ★ wave 20 (ledger): «اربط», and the locale rides along (C3, C18).
+  await expect(page.locator("#main").getByRole("link", { name: "اربط" })).toHaveAttribute("href", "/api/calendar/connect?locale=ar");
   await capture(page, "not-connected");
 
   const { rows: sessRows } = await db.query<{ id: string }>(`select id from public.sessions where org_id = $1 limit 1`, [orgId]);
@@ -114,8 +115,10 @@ test("not connected, then connected with a synced session — never a token in s
   );
 
   await page.reload();
-  await expect(page.getByRole("button", { name: "افصل التقويم" })).toBeVisible();
-  await expect(page.getByText("جلسة متزامنة")).toBeVisible();
+  // ★ wave 20 (ledger): connected is ONE row — «متصل» and «افصل»; a synced session is absent (DEC-216 §5.20).
+  await expect(page.locator("#main").getByRole("button", { name: "افصل" })).toBeVisible();
+  await expect(page.locator("#main").getByText("متصل", { exact: true })).toBeVisible();
+  await expect(page.locator("#main").getByText("لم تُضف")).toHaveCount(0);
   // The DAL's own grant excludes every token column (0026) — nothing this
   // page could render even by accident. A structural check, not decoration.
   const bodyText = (await page.locator("body").innerText()).toLowerCase();

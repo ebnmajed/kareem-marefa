@@ -175,3 +175,38 @@ builder before the deployment lands (`STATUS.md`'s wave-19 step 3 — the bare c
 the reconnect resets the builder) · the owner holds each rebuilt screen beside its artboard on a phone;
 **that is the acceptance, and it is the owner's** · your closing entry records the deviation list, the
 owed measurement's result, and the sentence that stories come next.
+
+---
+
+## The lead's work log
+
+### F1 — the hub frame (`STORY-UIX-059`, `REQ-UIX-070`): the kept-behaviour table, written before the create commit
+
+**Deleted:** `src/app/[locale]/app/me/layout.tsx`, `src/app/[locale]/app/me/loading.tsx`,
+`src/components/me/tab-strip.tsx`, `tests/components/me/tab-strip.test.tsx` (its cases move to the new strip's test).
+**Kept, not deleted:** `src/app/[locale]/app/me/error.tsx` — a boundary with no markup of its own (`RouteBoundary`).
+
+★ **A ruling the artboards force (contract 1 as amended here).** On the phone the strip sits **below** the page's own
+top row — and on `/app/me` below the standing card too (`Me.dc.html`, `Points.dc.html`); on desktop it sits **above**
+the page's heading, under the standing band (`HubDesktop.dc.html`). One strip rendered by the layout cannot be in both
+places without reordering the DOM against the reading order (SC 1.3.2, 2.4.3). So: **the layout renders the desktop
+band and strip** (`lg` and up); **a page renders its own top row and the phone strip**, through two lead-owned
+components, `HubTopRow` and `HubStrip`, both under `src/components/shell/`. At any width one strip is `display: none`
+and out of the accessibility tree.
+
+| Behaviour today | Where it lives after | Kept because |
+|---|---|---|
+| The hub's links are a `<nav>` named «صفحاتي» (`profile.nav.label`) of real links, not a tablist | `HubStrip` — the same landmark name, the same keys | `REQ-UIX-070`; `16` §6.5; `wave7-content-me.spec.ts:107` pins the name |
+| Exactly one link carries `aria-current="page"`, computed on the client from the path (a layout does not re-render on an in-hub navigation) | `HubStrip`'s client half, `usePathname()` with the locale stripped | `REQ-UIX-070`; Partial Rendering (`CLAUDE.md`, Next 16) |
+| The current link is scrolled into view on every navigation | the same effect, guarded for jsdom | `REQ-UIX-070` «never clipped» |
+| The strip scrolls in one row at 390, never the page | `overflow-x-auto` on the phone strip; the page never scrolls sideways | `REQ-UIX-070`; `wave19` propose's 42 px lesson |
+| Seven links, privacy last | ★ **phone six, desktop seven** («بياناتي وخصوصيتي» only from `lg`) — privacy stays reachable on the phone through `/app/me`'s settings link (PR A: to privacy, `DEC-217` §3.2; PR B: to settings, which links it) | `REQ-UIX-070`; the artboards; `REQ-PRF-006` keeps privacy reachable |
+| An edge fade cue on the strip's inline-end | **dropped** — the artboards draw none; a chip cut by the edge is the cue | `DEC-199` §2 (rebuilt, not restyled); recorded so it is not «found» later |
+| No auth and no data gate in the layout | unchanged — the layout reads nothing but messages; the band's data is read in its own component's DAL call, at `requireSession()` | `CLAUDE.md` «Data access» §3 |
+| A route skeleton for the hub and its children | `me/loading.tsx` rewritten to the new frame: a top row, a row of chips, rows | `REQ-UIX-005` |
+| The route error boundary | `me/error.tsx`, untouched | `REQ-UIX-016` |
+| The shell's phone top row (wordmark, bell) above every hub page | ★ **replaced by the page's own**: `ownsTopRow()` covers `/app/me`, its six children with `settings`, and `/app/leaderboards` with `companies` — `/app/me/privacy` excepted (M13's, undrawn) | `REQ-UIX-070`; the artboards draw no wordmark |
+| No game rail on any hub page | unchanged — no hub page passes one; `HubDesktop.dc.html` draws none | `DEC-216` §5.8 |
+
+**Not built in F1, and why:** the desktop standing band waits for `scoring`'s component (contract 3); the layout
+renders the desktop strip alone until it lands.

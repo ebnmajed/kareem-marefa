@@ -6526,3 +6526,211 @@ itself (`DEC-204`). · A company logo, refused (`DEC-195` §4). · Recurring ser
   SCR-029), `14-roadmap.md` (M22), `15-backlog.md` (`STORY-UIX-059` …), `TRACEABILITY.md` (generated),
   `CLAUDE.md` and the ten agent files (the wave-20 map), `STATUS.md` (the wave-20 head),
   `docs/design/screens/M10c.md` and `m10c/**` (added to the tree)
+
+## DEC-217 — Wave 20, Step 0: every number re-measured and a third correction; the map, and why it divides the nine screens as it does; five rulings the two-PR split forces
+
+- **Date:** 2026-10-02 · **Decided by:** the wave-20 lead, from the tree at `5e1fabdc` and `DEC-216`. The owner's two rulings (`DEC-216` §2) are not re-opened; one question goes to the owner (§4.2)
+- **Amends:** `CLAUDE.md` and the ten agent files (the wave-20 map); `01-prd.md` (`REQ-UIX-070` … `081`); `02-domain-model.md` and `03-permissions-rls.md` (`ENT-member_seen_marks`, §5.7c — the weekly pair); `09-sitemap-screens.md` (`SCR-021`, `SCR-024`, `SCR-029` sections; the requirement table; route coverage); `14-roadmap.md` (M22); `15-backlog.md` (`STORY-UIX-059` … `071`); `scripts/traceability.mjs` (`REQ-UIX-080` is cross-cutting)
+- **Adds:** migration **`0169`**, applied locally and green in `tests/rls/scoring-seen.test.ts` and the isolation sweep
+- **Does not touch:** the five frozen public routes, `registrations`, `qa:contract`, the register-form fingerprint
+
+### 1 · Step 0, re-measured — every number held but one citation
+
+`main` at `5e1fabdc` (the brief's own commit on `c5a4cf9a`), production at `0168`, the next migration `0169`;
+`src/components/ui/` **57** `.tsx`, the gate's floor at `tests/unit/ui-playground.test.ts:119` **57**; **eleven**
+`.dc.html` and eleven PNGs in `m10c/`, both directories carrying a `README.md`; `REQ-UIX-069` and `STORY-UIX-058` the
+last ids; `SCR-021` and `SCR-024` in `09` at the sitemap and the requirement table with no `###`; `SCR-029` nowhere;
+`leaderboard_kind` without a week (`0027:60`); `leaderboards.ts:512` reading the month under «week»; the ledger DTO
+mapping at `points.ts:145-157` without `source_id`; the grant at `0162:66` table-level. ★ **The third correction:
+`M10c.md` has no §0b.** The brief (`★ The copy trim`), the planning prompt (item 5) and `DEC-216` §5.14 all cite
+«`M10c.md` §0b's list» as `STORY-UIX-copy-trim`'s scope; `M10c.md` names «§0b» once, in §10, and never defines it,
+and no file under `docs/design/` holds a list of trimmed strings. The story therefore has no list — §4.2.
+
+**The planning prompt is committed, unedited, beside the spec** (`2b7a5970`), as `M10a-PLANNING-PROMPT.md` was in wave
+18. It is a record and not a specification; where it disagrees with `DEC-216` or this entry, it is wrong.
+
+### 2 · The map, and why it is divided this way
+
+**Each screen goes to the track that owns its data and its message namespace**, so that no screen needs another
+track's write and every contract between tracks is a read. Three teammates, all opus; the lead holds the frame.
+
+| | Screens | Why |
+|---|---|---|
+| **lead** | the hub frame, `0169`, the gate 57 → 60, the copy trim | each touches every track; `me/layout.tsx` was lead-only since `DEC-085` |
+| `content` | `021`, `023` (★ by transfer from `designer`), `024` | it built the profile form and the hub's pages in wave 7 and owns `me/actions.ts`; `023`'s substance — the audited route, the certificate DAL — does not change, and spawning `designer` for one list would cost a teammate for a page |
+| `notify` | `025`, `026`, `029`; `settings-group` | it owns preferences, the inbox and calendar sync; `settings-group` replaces its own `preference-matrix` |
+| `scoring` | `022`, `027` (★ by transfer from `sessions`), `028`; the standing card; this week; `ledger-row`, `podium` | it owns the ledger, the boards and the seen marks |
+
+**Not spawned:** `sessions` (bookmarks read its DAL and import browse's row unchanged), `checkin`, `console`,
+`designer`, `event`, `platform`, `branding` — the lead is custodian. The transfers end with the wave.
+
+### 3 · Five rulings the two-PR split forces
+
+1. **The leaderboard opt-out stays in `021`'s edit mode until `029` exists.** PR A rebuilds `021`; PR B builds `029`.
+   The owner merges A first and the two can be days apart, so removing the field in A would leave `main` — which is
+   production (invariant 4) — with no way to opt out (`REQ-LDR-008`). The field leaves `021` in the same PR that adds
+   the switch to `029`, written into `REQ-UIX-071` and contract 5.
+2. **`/app/me`'s settings glyph links to `/app/me/privacy` in PR A, and to `/app/me/settings` in PR B.** `M10c.md`
+   §1 drew it to privacy before §6b moved it; A ships before the route exists, and a link to a 404 is a defect.
+3. **This week's rank is computed in PR A, not B.** `Me.dc.html`'s standing card shows «هذا الأسبوع #4», and the
+   standing card is `021`'s. So `scoring`'s live weekly read — an add-only definer function and a DAL function — lands
+   with A; the board that is built on it and the weekly seen pair's writer land with B.
+4. **The week runs Saturday to Friday in the org's time zone.** No document defined a week before `DEC-216`, and the
+   owner's ruling says «computed live» without a boundary. `Board.dc.html` draws «حتى الجمعة» beside the title, which
+   is a week that ends on Friday. **The artboard's boundary is adopted**; the owner may overrule it, and it is a
+   one-line change in one function. Written here as the twenty-third line of the list (§4.1).
+5. **B is cut from A's head**, opened against `wave-20a/the-hub` as a draft, and ★ **retargeted to `main` before A
+   merges** — `DEC-216` §3, and how PR #36 died.
+
+### 4 · The disagreement list continues, and one question goes to the owner
+
+1. **(23) The week's boundary** — §3.4. **The artboard wins**, until the owner says otherwise.
+2. **(24) `STORY-UIX-copy-trim` has no list** — §1. **The rule wins and the list is derived**: the lead lists every
+   line the built M10a and M10b screens render that their committed artboards no longer draw and that does not
+   change what the person does next, and ★ **the owner confirms the list before any string is removed** — a removed
+   string is a removed fact, and the design session may hold the list `M10c.md` meant to cite. `STORY-UIX-067`.
+3. **(25) `mark_board_seen()` refuses `weekly` today** (`tests/rls/scoring-seen.test.ts`, «an unknown board is
+   refused»). Teaching it the week moves that assertion; **it is named here so its ledger line is expected**, in
+   `scoring`'s PR-B commit.
+
+- **Documents changed:** listed under **Amends**, and `STATUS.md` (the wave-20 head, Step 0 done)
+
+## DEC-218 — Wave 20, sync 1: three plans approved with their kept-behaviour tables; the frame's two halves; what the settings switches write; the rulings the nine screens are built on
+
+- **Date:** 2026-10-02 · **Decided by:** the wave-20 lead, at sync 1, from the plans of `content`, `notify` and `scoring` (their notes, wave-20 sections). The owner's rulings (`DEC-216` §2) are not re-opened; two questions go to the owner (§6)
+- **Amends:** `REQ-UIX-072` (the CSV clause, §3.2); `DEC-216` §5.17 (§3.6); `CLAUDE.md`'s contract 1 (§1, already landed at `f79f5ee3`); `src/components/ui/index.ts` (contract 2's types); `src/app/globals.css` (`--color-podium-{1,2,3}`)
+- **Adds:** migration **`0170`** in PR A — `retry_calendar_sync()`, drafted by `notify` under `supabase/proposed/notify/`, promoted by the lead with its grant and a definer-exposure row (§2.3)
+- **Does not touch:** the five frozen public routes, `registrations`, `qa:contract`
+
+### 1 · The plans, and the frame
+
+**Approved:** `content` (`021` 22 kept rows, `023` 15, `024` 8), `notify` (`025` 18, `026` 16, `029` 22 — every
+behaviour of `preference-matrix` among them), `scoring` (`022`, the standing, `027`, `028`, §2.1 – §2.4). **Contract
+1 is amended** (`ebdde010`, `f79f5ee3`): the phone strip sits under a page's title and the desktop strip above it, so
+the layout renders the desktop band and strip and **a page renders `HubTopRow` and `<HubStrip />`** at every width —
+the top row's `h1` is the page's heading on desktop too; the strip hides itself from `lg`. `029` renders `HubTopRow`
+alone, and from `lg` sits under the hub's desktop strip with nothing current — no layout exception.
+
+### 2 · `notify` — the settings page and the calendar
+
+1. **A category row is that category's EMAIL switch**, and every write also sets `in_app = true`: in-app is not a
+   setting (`REQ-UIX-077`), and a member who switched the inbox off under the old matrix is restored the first time
+   they touch the row. Per-channel in-app control is **withdrawn**, said so in the kept-behaviour table. No data fix.
+   `proposals` has no optional email message and is **not a row**; `admin_queue` is a row for staff only.
+2. **The opt-out has its own writer**: `setLeaderboardOptOut()` (`27afbb3e`, the lead's as `sessions'` custodian),
+   one column. In the same commit `updateMyProfile()`'s opt-out became optional and is written only when sent, so the
+   field leaving `021` in PR B cannot opt anyone back in.
+3. **«أعد المحاولة» is built** (`REQ-UIX-075`): failed syncs are recorded per session-day today, but nothing a member
+   may call re-queues one. `0170`'s `retry_calendar_sync()` re-derives the member, checks the row is theirs and
+   `failed`, and enqueues under the existing `cal:{rsvp_id}` key; it returns an outcome after the enqueue (`DEC-043`).
+4. **One form per inbox item** marks it read; an item with a session then opens it, one without stays. «عرض الأقدم»
+   pages by a keyset on `(created_at, id)`. `notify`'s own `inbox-item.tsx`, shaped like `feed-item`. One neutral
+   ring on every category tile. No «اللغة» row (English is not served); no poster swatch on a failed calendar row.
+5. **The calendar connect and callback routes** return to the member's locale — parsed against `ar | en`, never
+   interpolated raw (an open redirect otherwise). **The mails' preference link** moves to `/app/me/settings` in PR B,
+   as one reviewed diff of the pinned mail.
+
+### 3 · `scoring` — the ledger and the boards
+
+1. **Moment 4 stays on `SCR-022`** (`DEC-195`): the head's level row turns in place. Moving it to the standing card
+   would move a moment; the artboard draws the level as text and the turn is that text's.
+2. **No «تنزيل CSV»**: no member-side CSV exists in `src/`, and `REQ-UIX-072`'s «the CSV the screen already exports»
+   was written wrong by the lead. **The clause is withdrawn**; a member's ledger leaves through the data export
+   (`REQ-PRF-006`).
+3. **The cup card draws only what exists**: the company race's monthly state — provisional or final, the ranked
+   metric, when it was taken. «كأس الربع», «الجولة 3 من 4» and «تُسلَّم في اللقاء السنوي» have no data (company
+   snapshots are monthly; seasonal is unbuilt) and are **not drawn**. **«بلا ترتيب» is not built**: no ranking
+   minimum exists (`min_active_members` gates the percentage rules only).
+4. **Moment 5 on the board**: the «ترتيبك» card's figure and the rows' existing FLIP, through the unchanged keying,
+   once per change. The podium is static.
+5. **The hub band's staleness is accepted**: a layout does not re-render on navigation, so the band shows the
+   figures of the hub page the member arrived on; the authoritative figures and the moments are the page's. The
+   page's `h1` stays the heading at every width and the band's name is text (`HubDesktop.dc.html` draws the name as
+   the `h1` — recorded, not picked).
+6. **`leaderboards.ts:512` is a mislabelled error, not a misread**: the home's week card shows the MONTHLY rank by
+   `DEC-206` §4.47. The label is corrected; the read stays. `DEC-216` §5.17 called it a defect of the read.
+7. **The podium's colours** are `--color-podium-{1,2,3}`: the sticker's gold (an object colour, never a team's) and
+   the level ramp's silver and bronze. **The hidden standing form** (the card from `lg`, the band below it) plays no
+   moment and writes no mark — it acts only when displayed, with a re-render test.
+
+### 4 · `content` — the profile, certificates and bookmarks
+
+1. **The plan wins on certificates** (`REQ-CRT-013`): a revoked row keeps its **reason** as a quiet line after
+   «ملغاة», every row its **serial** in `<bdi dir="ltr">`. No certificate page is built; a row is one link to
+   `designer`'s audited download route; a row with no PDF («قريبًا») is not a link.
+2. **Interests are categories** (`REQ-PRF-001`, `member_interests.category_id`): add-only `getMyInterests()` and
+   `setMyInterests()` in `members.ts`, the setter writing the session's member only. **Delete-first found them never
+   built** — no writer existed in `src/`.
+3. **Edit mode is a URL**, `/app/me?edit`; «عدّل ملفك» and Cancel are links. Save is enabled in the server's HTML and
+   «enabled only when changed» after hydration, so the early-save spec holds unchanged.
+4. **The bookmark undo** is an add-only `BookmarkChangeProvider` in `search/bookmark-button.tsx`; `SessionRow`, a
+   Server Component, is untouched (a function cannot cross into it, `DEC-159`).
+5. **The settings link on `/app/me`** is named by where it goes: «الخصوصية والبيانات» to privacy in PR A,
+   «الإعدادات» to settings in PR B.
+
+### 5 · Grants of files held by the lead, each for the named lines only, each with its ledger line
+
+`content`: `members.ts` (the two interests functions), `search/bookmark-button.tsx` (the provider),
+`wave13-designer-certificates-download.spec.ts:165`, `wave7-content-certificates.spec.ts:159`,
+`certificates.spec.ts:314`, `profile-page.test.tsx:190`. `notify`: `wave7-content-{notifications,calendar}.spec.ts`,
+`tests/components/me/calendar-page.test.tsx`, the named lines of `notify-screens` and `wave9-notify-days`,
+`api/calendar/{connect,callback}/route.ts` (the locale fix), `supabase/proposed/notify/` (`retry_calendar_sync()`).
+`scoring`: the weekly seen cases go in `tests/rls/scoring-seen.test.ts`, which is its own again.
+
+### 6 · For the owner — neither blocks the build
+
+1. **«إشعارات البريد», the master switch**, is not built: preferences are per category and channel, it has no column,
+   and a bulk write has no honest state when the rows differ. Building it needs a column read by `public.notify()`.
+2. **The quarterly cup** that `Companies.dc.html` draws has no data behind it — a seasonal company snapshot would be
+   new scoring scope.
+
+## DEC-219 — The owner's two answers to `DEC-218` §6: «إشعارات البريد» is built as a bulk write with a derived state; «كأس الربع» is built on the seasonal snapshot that already exists
+
+- **Date:** 2026-10-02 · **Decided by:** the owner (both rulings), recorded by the wave-20 lead with the measurement the owner supplied
+- **Amends:** `DEC-218` §2.1 (the master switch, withdrawn there, is built), §3.3 and §6 (the cup card's quarter is built); `REQ-UIX-077`, `REQ-UIX-079` are read with this entry
+- **Adds:** no migration expected for either. If one is needed after all it starts at **`0173`** (production's next after this wave's `0169` – `0172`), additive, with its `REQ-*` and its five parts, and the owner rehearses it
+- **Does not touch:** `public.notify()`, the preference matrix's SQL, `leaderboard_kind`, the five frozen public routes
+
+### 1 · «إشعارات البريد» — BUILT, writing every optional category at once (PR B, `SCR-029`, `notify`)
+
+The owner chose this over a real master column and over dropping the switch, **with the consequence stated and
+accepted**:
+
+> ★★ **A MEMBER WHO HAD DELIBERATELY SILENCED THREE CATEGORIES AND THEN USES THE MASTER SWITCH GETS THEM BACK ON.**
+
+That sentence is **the owner's accepted trade** — the reason the honest alternatives were offered. **The next session
+must not «fix» it as a bug.**
+
+- It writes `channel = 'email'` rows for **the optional categories only** — `08` §2's eight: `new_sessions`,
+  `my_sessions`, `reminders`, `ratings`, `social`, `recognition`, `proposals`, and `admin_queue` (admins and moderators
+  only). `certificates`, `moderation` and `account` are «on (not switchable)» and the switch never touches them, nor
+  any of `08` §1.7's seventeen. (`proposals` is written by the master though it is not a row of its own, `DEC-218` §2.1.)
+- ★ **Its displayed state is DERIVED, not stored**: on only when every optional email row the member may hold is on;
+  otherwise off. Deterministic, so the switch never lies about what it reads.
+- No column, no migration. It is one bulk write in one action, so a failure reverts it as one, with
+  `preferences.error` inline (`M10c.md` §6b).
+
+### 2 · «كأس الربع» — BUILT (PR B, `SCR-028`, `scoring`). The owner: «yes lets add it since it creates competition.»
+
+★ **It needs no schema change.** `DEC-218` §6.2 called it «new scoring scope»; the measurement says the capability
+exists and only the schedule is missing:
+
+- `leaderboard_snapshots` already carries `kind`, `period_start`, `period_end`, `metric company_metric`,
+  `active_member_count` and `is_final` (`0027:431-445`).
+- `snapshot_leaderboard()` already branches on `p_kind in ('monthly','seasonal')` (`0042:62`; the company board's own
+  `0081:613`). **A quarter is a `seasonal` snapshot whose period is a quarter.**
+- ★ **The precedent is written down**: `0066:24-28` — «'annual' as a `seasonal` snapshot whose period is a year needs
+  no» new enum value. **No enum value is invented.**
+- ★ **What is missing: nothing ever takes a seasonal snapshot** — `seasonal` appears nowhere under `worker/src/`. The
+  work is a quarter-end enqueue, the DAL read, and `028`'s cup card.
+- The artboard's figures map to columns that exist: `company.provisional` / `company.final` to `is_final`, «N نشطًا»
+  to `active_member_count`, «بلا ترتيب» to the minimum-active rule — which `DEC-218` §3.3 found gates only the
+  percentage rules; `scoring`'s plan says how a ranking uses it.
+- ★ **The one check before building** (a cup is handed over and cannot be taken back): `05-scoring-engine.md:383` warns
+  that adding a member retroactively raises that company's score for every past period. `scoring`'s plan says what
+  `is_final` does for a quarter already awarded, and whether «تُسلَّم في اللقاء السنوي» means a final row must be
+  immutable. If it must, that is the one place this may need SQL — from `0173`, as above.
+
+### 3 · Still open for the owner
+
+The copy trim's list (`DEC-217` §4.2) and the photo rule nothing pays (`STATUS.md`, question 4).

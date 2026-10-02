@@ -867,6 +867,9 @@ revoke all on member_seen_marks from anon, service_role;
 Nobody reads another member's marks — not an admin, not a moderator: what a member has looked at is theirs. No
 delete: the member's deletion cascades. `service_role` holds nothing; moments 3 to 5 are acknowledged by the client
 that showed them, never by a job.
+★ `0169` (`DEC-216` §2.2) adds `weekly_period` / `weekly_rank`. **No policy and no grant changes**: the policies are
+row predicates that name no column, and the grant above is table-level, so it covers columns added after it —
+invariant 6 holds by that, and `tests/rls/scoring-seen.test.ts` proves the pair is the member's own.
 
 
 #### §5.7d — `feed_announcements` — an org's announcements (`0164`, `DEC-206` §3, `REQ-UIX-056`)
@@ -1484,6 +1487,21 @@ generated suite is the highest-value test in the product.
 | `RPC-monthly_ranked_count.counts_hidden` | Counts every member entry of the snapshot, an opted-out member's included, though the caller cannot read that row. (migration `0165`). |
 | `RPC-monthly_ranked_count.members_only` | Company entries are not counted. (migration `0165`). |
 | `RPC-monthly_ranked_count.foreign_org` | A snapshot of another org answers null, as an unknown id does. (migration `0165`). |
+| `RPC-org_week.boundary` | The week starts at Saturday 00:00 in the org's zone and ends before the next Saturday 00:00; a Friday 23:59 is in it (migration `0171`, `DEC-217` §3.4). |
+| `RPC-weekly_leaderboard.window` | Only rows written inside the current `org_week()` count; last week's do not (migration `0171`). |
+| `RPC-weekly_leaderboard.opt_out` | An opted-out member is absent from another member's call and present in their own (migration `0171`). |
+| `RPC-weekly_leaderboard.active` | A deactivated member never appears (migration `0171`). |
+| `RPC-weekly_leaderboard.org` | Another org's ledger never appears (migration `0171`). |
+| `RPC-weekly_leaderboard.net_positive` | A net of 0 or less this week is not ranked (migration `0171`). |
+| `RPC-week.anon` | anon cannot execute either function (migration `0171`). |
+| `RPC-retry_calendar_sync.self` | A member re-queues their OWN failed row: the job is enqueued under `cal:{rsvp_id}` and the session's failed days read `pending` (migration `0170`). |
+| `RPC-retry_calendar_sync.not_others` | Another member's row, an admin's attempt on it, and another org's, answer `not_found` and change nothing (migration `0170`). |
+| `RPC-retry_calendar_sync.only_failed` | A row that is not `failed` answers `not_failed`; nothing is enqueued (migration `0170`). |
+| `RPC-retry_calendar_sync.definer_only_callers` | `authenticated` may execute; `anon` and `public` may not (migration `0170`). |
+| `RPC-capped_award_explanations.own` | Explains the caller's own comments only; another member's capped session never appears (migration `0172`). |
+| `RPC-capped_award_explanations.full_now` | An unpaid comment while the cap is not full (a cooldown) is not explained (migration `0172`). |
+| `RPC-capped_award_explanations.deleted` | A deleted comment is never explained as capped (migration `0172`). |
+| `RPC-capped_award_explanations.anon` | anon cannot execute it (migration `0172`). |
 | `RPC-monthly_ranked_count.anon` | `anon` cannot execute it. (migration `0165`). |
 | `TRG-check_ins_host_broadcast.poke` | A member's check-in sends `{dayId}` on `host:{session_id}` (event `check_in_count`) — the day alone, no member id, name or time; the topic `0016` authorises to staff and that session's presenters (REQ-CHK-001, DEC-209 §1). (migration `0166`). |
 | `TRG-check_ins_host_broadcast.removal` | An admin's removal pokes the topic again; a refused attempt does not. (migration `0166`). |

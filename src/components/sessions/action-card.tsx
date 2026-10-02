@@ -169,7 +169,6 @@ export async function ActionCard(props: ActionCardProps) {
               <TasksJump tasks={props.tasks} />
             </Suspense>
           ) : null}
-          {open && booked ? <p className="text-caption text-fg-muted">{t("actions.confirmedHint")}</p> : null}
 
           {/* From `lg` the card is the action row: bookmark and share beside the primary (`EventDesktop.dc.html:49-50`). */}
           <div className="hidden items-center gap-2 lg:flex">

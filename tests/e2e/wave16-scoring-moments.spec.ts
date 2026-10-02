@@ -263,11 +263,13 @@ test("moments 3 and 4 — the static state under reduced motion is complete, and
   await expect(calm.page.locator("#main strong", { hasText: "120" })).toBeVisible();
   // The new balance, its delta and its words, the flame's line, the bar's line, the new face — and no motion.
   await expect(calm.page.locator("#main [data-slot=delta] bdi[dir=ltr]").first()).toHaveText("+120");
-  await expect(calm.page.getByText("120 نقطة جديدة منذ زيارتك الأخيرة")).toBeAttached();
+  // ★ wave 20: from `lg` the hub's band beside the head says it too — scoped to the head, a selector move.
+  await expect(calm.page.locator("#main #points-head").getByText("120 نقطة جديدة منذ زيارتك الأخيرة")).toBeAttached();
   await expect(calm.page.getByRole("group", { name: "مستوى جديد" })).toContainText("مشارِك نشِط");
-  await expect(calm.page.locator("#main [data-slot=level-bar]")).toContainText("صاحب أثر");
-  // ★★ The bar and its line state one fraction: «120 من 300» is a 0.4 fill.
-  await expect(calm.page.locator("#main [data-slot=level-bar]")).toContainText("120 من 300");
+  // ★ wave 20 (DEC-218, `SCR-022` rebuilt from `Points.dc.html`): the bar's line is the head's «"<next>" بعد N», beside
+  // the level row, not inside the bar's slot — an expectation of copy that moved; the fraction below is unchanged.
+  // ★★ The bar and its line state one fraction: «صاحب أثر» بعد 180 is 120 of 300, a 0.4 fill.
+  await expect(calm.page.locator("#main #points-head").getByText("«صاحب أثر» بعد 180")).toBeVisible();
   expect(await calm.page.locator("#main [data-slot=level-bar] [data-slot=fill]").evaluate((el) => (el as HTMLElement).style.transform)).toBe("scaleX(0.4)");
   expect(await animations(calm.page)).toBe(0);
   await capture(calm.page, "completion-static");

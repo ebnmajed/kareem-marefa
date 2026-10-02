@@ -60,4 +60,12 @@ describe("LevelCard — the standing layout", () => {
     const { violations } = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
     expect(violations.map((v) => v.id)).toEqual([]);
   }, 30_000);
+  it("wave 20 (DEC-218), add-only: frame «none» draws the same row with no panel of its own — the hub card holds it", () => {
+    const { container } = mount({ standing: { figure: "730", unit: "نقطة", frame: "none" } });
+    const card = container.querySelector("[data-layout=standing]")!;
+    expect(card.getAttribute("class")).not.toMatch(/rounded-panel|border-edge|bg-surface/);
+    expect(card.textContent).toContain("730");
+    const { container: panel } = mount();
+    expect(panel.querySelector("[data-layout=standing]")!.getAttribute("class")).toContain("rounded-panel");
+  });
 });

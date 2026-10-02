@@ -163,7 +163,7 @@ test("★ REQ-DSC-006: SCR-024 lists the member's own bookmarked session, and li
 test("★ REQ-DSC-006: private to the member — another member's own bookmarks page is empty", async ({ context, page }) => {
   await signIn(context, otherEmail);
   await page.goto(`/ar/app/me/bookmarks`);
-  await expect(page.getByText("لم تحفظ أي جلسة بعد.")).toBeVisible();
+  await expect(page.getByText("لم تحفظ شيئًا بعد")).toBeVisible(); // ★ wave 20: SCR-024's empty state (REQ-UIX-074, B5)
   await expect(page.getByText("جلسة تستحق الحفظ")).not.toBeVisible();
 });
 
@@ -241,7 +241,7 @@ test.describe("M9 restyle: SessionCard, and un-bookmarking drops the card", () =
 
     await page.goto("/ar/app/me/bookmarks");
     await expect(page.getByRole("heading", { name: "المحفوظات", level: 1 })).toBeVisible();
-    await expect(page.getByText("لم تحفظ أي جلسة بعد.")).toBeVisible();
+    await expect(page.getByText("لم تحفظ شيئًا بعد")).toBeVisible(); // ★ wave 20: SCR-024's empty state (REQ-UIX-074, B5)
     await capture(page, "empty");
 
     await db.query(`insert into public.bookmarks (org_id, member_id, session_id) values ($1, $2, $3), ($1, $2, $4)`, [
@@ -274,7 +274,13 @@ test.describe("M9 restyle: SessionCard, and un-bookmarking drops the card", () =
     // transition without knowing which of the two it hides).
     const [actionResponse] = await Promise.all([
       page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/app/me/bookmarks")),
-      toggles.first().click(),
+      // ★ wave 20 (e2e run 1): the toggle INSIDE the first session's row — both bookmarks are inserted together, so
+      // their order is a tie, and `toggles.first()` removed whichever came first.
+      page
+        .getByRole("listitem")
+        .filter({ has: page.getByRole("heading", { name: "جلسة أولى محفوظة", level: 3 }) })
+        .getByRole("button", { name: "احفظ الجلسة" })
+        .click(),
     ]);
     expect(actionResponse.ok(), "the un-bookmark POST itself must succeed").toBe(true);
     await expect(page.getByRole("heading", { name: "جلسة أولى محفوظة", level: 3 })).toHaveCount(0, { timeout: 10_000 });

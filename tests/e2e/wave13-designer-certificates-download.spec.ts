@@ -162,7 +162,7 @@ test("★ the admin downloads an issued certificate from SCR-045 — through the
 test("★ the member downloads their OWN certificate from /app/me/certificates — audited too (DEC-177)", async ({ context, page }) => {
   await signIn(context, emails.owner);
   await page.goto("/ar/app/me/certificates");
-  const link = main(page).getByRole("link", { name: "نزّل الشهادة", exact: true });
+  const link = main(page).getByRole("link", { name: new RegExp(SERIAL) }); // ★ wave 20: the row is the one link (DEC-218 §4.1)
   await expect(link).toHaveAttribute("href", `/api/designer/downloads/${artifactId}`);
   await expect(link).not.toHaveAttribute("download", /.*/);
 

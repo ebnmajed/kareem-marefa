@@ -6413,3 +6413,374 @@ Every row of «Wave 19 — plan» §2, re-read against `page.tsx`, `viewer-scree
    `BadgeProps.level?: number` — the files export the widened types meanwhile.
 3. **The e2e:** `tests/e2e/wave19-content-viewer.spec.ts`, eight cases, captures
    `wave19-content-viewer-{ready,chrome-hidden,denied,rendering,failed}-390.png` and `-{ready,admin}-1280.png`.
+
+---
+
+## Wave 20 plan (`DEC-216`, `DEC-217`, M22, PR A — `SCR-021`, `SCR-023`, `SCR-024`) — planning only, nothing edited
+
+Read from disk at `aed4601e` + the lead's uncommitted frame (`me/layout.tsx`, `shell/hub-top-row.tsx`,
+`shell/hub-strip.tsx`), beside `Me.dc.html`, `MeEdit.dc.html`, `HubDesktop.dc.html`, `Certificates.dc.html`,
+`Bookmarks.dc.html` and their PNGs. Every row below was re-derived from `01-prd.md`, the DAL and the files about to be
+deleted — `me/page.tsx`, `me/actions.ts`, `me/state.ts`, `components/me/profile-form.tsx`,
+`me/certificates/page.tsx`, `me/bookmarks/page.tsx` — and their suites. Answers STATUS's «Sync 1», items 1 – 7.
+
+### 1 · The regions, in each artboard's order, and what builds each
+
+**`SCR-021` read (`Me.dc.html`), phone:**
+
+| # | Region | Built from | Whose |
+|---|---|---|---|
+| 1 | Top row: `h1` «حسابي» · settings glyph link at the inline-end | `HubTopRow` (`back={false}`, `action=` an `icon-button`-shaped `Link`) | lead's component, my page passes title + action |
+| 2 | Standing card (avatar + ring, name, title · company, «هكذا يراك زملاؤك», level medallion, points, `progress-bar` line, three stats) | contract 3's component, phone form, `lg:hidden` | `scoring` — I place it |
+| 3 | Hub strip, «ملفي» current | `HubStrip` (phone, `lg:hidden`) | lead |
+| 4 | `h2` «ملفي» | `section-header as="h2"` | mine |
+| 5 | One list card of label/value rows: الاسم · الشركة (team dot) · المسمى الوظيفي · نبذة (or `members.profile.noBio`) · الاهتمامات (chips) · البريد (`<bdi>`) | `card` (`density="row"`, no `href`) holding a `<dl>`; chips are `tag-chip` | mine |
+| 6 | One primary «عدّل ملفك» | `ButtonLink` (see §4 «edit mode is a URL») | mine |
+
+**`SCR-021` edit (`MeEdit.dc.html`)** — regions 1 – 3 unchanged, then: `h2` «تعديل ملفي» with the unsaved count beside
+it · `form-summary` / the whole-form alert · the fields — `field` + `input` (الاسم), `field` + `select` (الشركة),
+`field` + `input` (المسمى), `field` + `textarea` with «N من 600» (نبذة), الاهتمامات (see D2), the leaderboard opt-out
+`checkbox` (**PR A only**, contract 5), البريد as plain text «… · من Google» · bottom `action-bar`: primary «حفظ»
+(`SubmitButton`, disabled until dirty — see D4), secondary «إلغاء».
+
+**`SCR-021` desktop (`HubDesktop.dc.html`)** draws `022` as the content, never `021`. Built as: the layout's band and
+strip, then `HubTopRow` (`h1` «حسابي», settings link) and regions 4 – 6. ★ The phone standing card is `lg:hidden` so the
+band is drawn once (`REQ-UIX-070`). Not drawn — D9.
+
+**`SCR-023` (`Certificates.dc.html`):** `HubTopRow` (back to `/app/me`, `h1` «شهاداتي») · `HubStrip` · one list `card` of
+rows: title (`<bdi>`), «kind · date», at the end the download glyph, «قريبًا» or «ملغاة». Each row is a `card`
+`density="row"` with `href` (the whole row one link, as `SessionRow`) and the download glyph in `CardActions` — never a
+link inside a link. The `?download=failed` alert (`panel tone="error"`) above the list, as today. Empty: `empty-state`.
+
+**`SCR-024` (`Bookmarks.dc.html`):** `HubTopRow` (back, `h1` «المحفوظات») · `HubStrip` · an `<ol>` of `SessionRow`
+(browse's row, imported as it is) · empty: `empty-state` «لم تحفظ شيئًا بعد» + «تصفّح الجلسات». No section header, no
+count line, no groups.
+
+### 2 · ★★ The kept-behaviour tables (`DEC-208`) — written before any delete
+
+#### `SCR-021` — deleting `me/page.tsx`, `components/me/profile-form.tsx`; rewriting `me/actions.ts`, `me/state.ts`
+
+| # | Behaviour today | Where it lives after | Kept because |
+|---|---|---|---|
+| P1 | Data: `getMe()` (the `me()` RPC — the self tier), `listCompanies()` (active companies, by name) | the new page, the same two calls | `REQ-PRF-001`, `REQ-PRF-002`, `REQ-PRF-004` (self tier is the DAL's) |
+| P2 | Auth boundary in the DAL (`sessionClient` → `requireSession`), none in the page or layout | unchanged | `CLAUDE.md` «Data access» §3 |
+| P3 | Five self-service fields written — `displayName` (1 – 120, required), `companyId` (uuid or null), `jobTitle` (≤ 120), `bio` (≤ 600), `leaderboardOptOut` — through `profileInput` (Zod) then `updateMyProfile()`; the column grant (`0004`) refuses anything else | `saveProfile` kept, signature and Zod unchanged | `REQ-PRF-001`, `REQ-NFR-002`, `REQ-LDR-008` |
+| P4 | The company is chosen from the org's list, never typed; «— اختر شركتك —» is the none option | `select` in edit mode, same options | `REQ-PRF-002` |
+| P5 | ★ The leaderboard opt-out is written from `/app/me` | **edit mode, PR A only**; removed in PR B's commit that adds `029`'s switch (contract 5) | `REQ-LDR-008`, `REQ-UIX-071`, `DEC-217` §3.1 |
+| P6 | Field errors: `form-summary` (titled `errors.summaryTitle`, linking each field) + the error at its `field`; edit mode stays | the same, inside edit mode | `REQ-UIX-071` «a failed save stays in edit mode», `16` §8.2 |
+| P7 | A whole-form failure is its own `role="alert"`, focused, never a fake summary entry; the member's text stays | kept as `FormError` in the new edit component | `REQ-UIX-071`, `16` §8.2 item 6 |
+| P8 | The member's text survives a failed round trip (`formStateFrom` / `was`) | kept — `ProfileState` unchanged but for D4 | `16` §8.2, `DEC-149` §1 |
+| P9 | ★ After a successful save the company shows what was saved even before `me` refetches (the keyed-`select` fix, `wave7-content-me.spec.ts:145`) | after save the page is in read mode, so the **read row** shows the saved company — read from `revalidatePath`'s fresh `getMe()`; the select-echo fix survives inside edit mode for a failed save | `REQ-PRF-001`; the spec's expectation moves (§6) |
+| P10 | «تم الحفظ» shown once after a save, structurally from `useActionState` — never `?saved=1` | a success `toast` once, then read mode | `REQ-UIX-071`, `M10c.md` §1; wave 7's reason for dropping the query param still binds |
+| P11 | ★ A save pressed before hydration still persists (`wave10-content-me-early-save.spec.ts`) | **at risk** — D4 | the wave-10 finding (`docs/plan/notes/content.md` wave-10 plan T2·2) |
+| P12 | `<bdi>` on the email | kept, read row and edit mode | `10` bidi rule |
+| P13 | The email is shown and not editable | read row «البريد»; edit mode plain text «· من Google» | `REQ-UIX-071` acceptance 1 |
+| P14 | The points balance as a `stat` linking to `/app/me/points` | **moves to contract 3's standing card** (the figure and the level); the link to points is the strip's «نقاطي» | `REQ-UIX-070` |
+| P15 | The member's role («عضو» / «مُنظِّم» / «مشرف المؤسسة») beside the email in the header | ★ **dropped — no `REQ-*` keeps it and no artboard draws it.** Named so it is not «found» later; the lead rules | — (open, D10) |
+| P16 | The hub's `<nav>` «صفحاتي», the privacy link last | the lead's `HubStrip` (phone: six; desktop: seven); on the phone privacy is reached by the settings glyph → `/app/me/privacy` in PR A | `REQ-UIX-070`, `DEC-217` §3.2, `REQ-PRF-006` |
+| P17 | `h1` «ملفي» | ★ `h1` «حسابي» (the top row), `h2` «ملفي» | the artboard; the expectation moves (§6) |
+| P18 | `revalidatePath('/{locale}/app/me')` after a save | kept | the read rows reread |
+| P19 | The avatar import prompt («نستخدم صورتك من Google؟») | **not on `/app/me` today** — it is on the feed (`feed.tsx:59`) and `/app/me/privacy`; unchanged, not mine to move | `REQ-PRF-008`, `DEC-180` |
+| P20 | The no-JS save (skipped spec, `wave7-content-me.spec.ts:155`) | unchanged — `/app` streams (`DEC-134`); still skipped, same reason | — |
+| P21 | ★ **Interests (`REQ-PRF-001` «اهتماماتي», from the org's تصنيفات)** — **never built on `/app/me`**: no field, no writer anywhere in `src/` (`member_interests` is read by `members.ts:199`, `:382` only) | the artboard draws them in both modes — **a defect the rebuild surfaces, not a behaviour kept**; D2 | `REQ-PRF-001` |
+| P22 | `noValidate` on the form (app-side errors) | kept | `CLAUDE.md` gates |
+
+#### `SCR-023` — deleting `me/certificates/page.tsx`
+
+| # | Behaviour today | Where it lives after | Kept because |
+|---|---|---|---|
+| C1 | Data: `listMyCertificates()` (own rows, `held` excluded, newest issue first) + `getOrgTimeZone()` | unchanged, read only (`designer`'s DAL) | `REQ-CRT-013`, `REQ-CRT-004` (held is invisible) |
+| C2 | The download is a plain link to `/api/designer/downloads/<artifactId>` (audited), never a signed URL, never `download=` | the row's end glyph, the same `href` from `downloadHref`, accessible name «نزّل الشهادة» kept (`wave13-designer-certificates-download.spec.ts:165` pins it, exact) | `REQ-CRT-014`, `DEC-177`, `DEC-178` |
+| C3 | `?download=failed` → a `role="alert"` «تعذّر تنزيل الملف…» | kept, above the list | `DEC-177` |
+| C4 | No PDF yet → «الشهادة قيد التجهيز», no broken link | the «قريبًا» row (dimmed) — D6 | `REQ-CRT-013`; `certificates-page.test.tsx:69` |
+| C5 | Revoked → «ملغاة» and **the reason** («سبب الإلغاء: …», `<bdi>`) — the **only** place a member reads it (`/verify` never shows it, A13) | ★ **D5 — the artboard moves the reason to «the certificate's own page», which does not exist for a member.** Not dropped silently | `REQ-CRT-013` acceptance; OQ-015 |
+| C6 | A revoked certificate keeps its download | ★ the artboard draws «ملغاة» in the glyph's place — D7 | `REQ-CRT-011` (the page's comment) |
+| C7 | Title falls back: session title → achievement's badge name → the kind | kept | achievement certificates have no session |
+| C8 | Kind line («شهادة حضور» / «تقديم» / «إنجاز») | kept, «kind · date» | `REQ-CRT-013` |
+| C9 | Issue date, in the org's time zone, `<bdi>` | kept as a date (no time) | `REQ-CRT-013` |
+| C10 | Serial and verification code, each `<bdi dir="ltr">` | ★ **removed from the list** — `REQ-UIX-073` («no serial, code or QR in the list») | `REQ-UIX-073` supersedes `REQ-CRT-013`'s «with its serial»; D5 asks where they live |
+| C11 | «صفحة التحقّق» link to `/verify/<code>` | D5 — kept only if the row opens `/verify` | `REQ-CRT-007` |
+| C12 | `mine.intro`, `mine.count` | ★ dropped — `REQ-UIX-080` | `REQ-UIX-080` |
+| C13 | Status badge «صالحة» on an issued certificate | ★ dropped — nothing is shown when nothing needs doing (`DEC-216` §2.1) | the expectation moves (§6) |
+| C14 | Empty: `mine.empty` + «تصفّح الجلسات» | kept (`empty-state`) | `REQ-UIX-012` |
+| C15 | `recipient_name_snapshot` is the printed name | unchanged (in the PDF, not the list) | `REQ-CRT-014` |
+
+#### `SCR-024` — deleting `me/bookmarks/page.tsx` (keeping `error.tsx`, a boundary with no markup of its own)
+
+| # | Behaviour today | Where it lives after | Kept because |
+|---|---|---|---|
+| B1 | Data: `getBookmarkedTimelineSessions()` — own bookmarks only (`p7_self_read`), most recently saved first, a session the member cannot see has no row | unchanged, read only (`sessions'` DAL) | `REQ-DSC-006` «private to the member» |
+| B2 | Each row is browse's card, the whole row one link, `h3` title in `<bdi>` | ★ `SessionRow` (wave 18's browse row) replaces the old `SessionCard` — the artboard is `011`'s row | `REQ-UIX-074`; `bookmarks.spec.ts:151` pins the `h3` |
+| B3 | The bookmark toggle «احفظ الجلسة», `aria-pressed="true"`, optimistic, a failure rolls back with an error toast | kept as `BookmarkButton` — D8 for the undo | `REQ-DSC-006`, `REQ-UIX-074`; `bookmarks.spec.ts:259-260` |
+| B4 | Un-bookmarking drops the row (via the action's `revalidatePath`) | ★ dropped **at once** (optimistic) with an undo toast | `REQ-UIX-074` |
+| B5 | Empty: «لم تحفظ أي جلسة بعد.» + «تصفّح الجلسات» | «لم تحفظ شيئًا بعد» + «تصفّح الجلسات» | `REQ-UIX-074`; the expectation moves (§6) |
+| B6 | `h1` «المحفوظات»; an `h2` count over the list | `h1` kept (top row); the `h2` count dropped — `REQ-UIX-080`, and `SessionRow`'s `h3` now follows an `h1`… ★ a skipped level — D11 | `REQ-UIX-080` |
+| B7 | `error.tsx` → `RouteError`, back to `/app` | kept, untouched | `REQ-UIX-016` |
+| B8 | Bookmarking earns nothing | unchanged — `SessionRow` gets `points={null}`, so no «+N» (D12) | `REQ-DSC-006` |
+
+### 3 · The new primitive's props
+
+**None.** `content` writes no primitive this wave (`settings-group`, `ledger-row`, `podium` are `notify`'s and
+`scoring`'s). Requests on primitives I do not own are §7.
+
+### 4 · Every state `M10c.md` names, and how it is built
+
+| Screen | State | Drawn? | Built as |
+|---|---|---|---|
+| 021 | read (default) | yes | server-rendered rows; no `<input>` in the DOM (a unit test asserts it — `REQ-UIX-071` acc. 1) |
+| 021 | edit, N unsaved | yes (count not drawn — D3) | ★ **edit mode is a URL, `/app/me?edit`** — «عدّل ملفك» is a real link (works before hydration, survives a reload, the artboard's own `<a href>`); a client component holds the fields, compares each to `me` for the count and the accent border, disables Save when clean (D4) |
+| 021 | cancel | — | «إلغاء» is a link to `/app/me`; when dirty it asks first (below) |
+| 021 | leaving with changes | not drawn | `ui/dialog` («تجاهل التغييرات؟» · «تجاهل» · «تابع التعديل») on any in-app link press while dirty (a capture-phase listener), `beforeunload` for reload/close. ★ **Browser Back is not interceptable** in the App Router without a history hack — stated, not faked (D13) |
+| 021 | no company | not drawn | `app.home.companyMissing` banner above the rows (read only — `app.json` is the lead's, read); the company row reads «اختر شركتك» as a link to `?edit` |
+| 021 | errors | not drawn | P6/P7, edit mode stays |
+| 021 | saved | not drawn | success `toast` `profile.saved` once, `router.replace('/app/me')` → read mode, focus to «عدّل ملفك» |
+| 021 | no bio / no interests | yes (no bio) | `members.profile.noBio` (read); interests row absent when empty (nothing shown when nothing needs doing) — pending D2 |
+| 021 | desktop | no | §1 |
+| 023 | list | yes | §1 |
+| 023 | revoked | yes | `line-through`, dimmed, «ملغاة» — D5, D7 |
+| 023 | not yet issued «قريبًا» | yes | D6 |
+| 023 | download failed | no | C3 |
+| 023 | empty | no | `mine.empty` + browse |
+| 024 | list | yes | `SessionRow` |
+| 024 | removed, undo | no | the row leaves at once; toast «أزيلت من المحفوظات» · «تراجع» re-saves; a failed remove restores the row and says so (`REQ-UIX-074` acc. 1) |
+| 024 | empty | no | `empty-state` |
+
+★ Strings, `ar` first, each tested against «does it change what the person does next» (`REQ-UIX-080`) — new keys in
+`profile.json`: `profile.hubTitle` «حسابي» · `profile.read.edit` «عدّل ملفك» · `profile.read.chooseCompany` «اختر شركتك» ·
+`profile.read.settings` (the glyph's name — D1) · `profile.edit.title` «تعديل ملفي» · `profile.edit.unsaved` (six ICU
+forms: «تغيير واحد غير محفوظ» / «تغييران غير محفوظين» / «{value} تغييرات غير محفوظة» / «{value} تغييرًا غير محفوظ» /
+«{value} تغيير غير محفوظ»; zero renders nothing) · `profile.edit.cancel` «إلغاء» · `profile.edit.actions` (the
+`action-bar`'s group name) · `profile.edit.bioCount` «{count} من {max}» · `profile.edit.emailSource` «من Google» (D3) ·
+`profile.edit.leave.{title,confirm,stay}` · `profile.interests` «الاهتمامات» · `profile.bookmarks.{empty,removed,undo}`
+(D14). Removed: `profile.bioHint` (the counter replaces it). `certificates.mine.{intro,count,serial,code,issuedAt,
+notIssued}` and `mine.verify` (if D5 ends it) leave the list — `state.*` stays, the admin screen and `/verify` read it;
+`mine.soon` «قريبًا» added.
+
+### 5 · What I need from the other tracks (contracts 3, 4)
+
+- **Contract 3 (`scoring`) — the standing card.** I need, by name: an **async Server Component** with a `form`
+  prop (`"card"` on my page, `"band"` in the layout), reading its own data at `requireSession()` (I pass nothing but
+  `locale`), rendering **no `h1`/`h2`**, carrying «هكذا يراك زملاؤك» → `/app/members/<self>` and the week's figure →
+  `/app/leaderboards`, and either hiding itself below/above `lg` by form or documenting that I wrap it. I will wrap it
+  in `<Suspense>` — **a skeleton export beside it** (`…Skeleton`) is what I ask for, so the page's rows do not wait on
+  the standing. ★ **A question for `scoring` and the lead, not a choice of mine:** on `/app/me` both forms are in the
+  DOM at every width (the card `lg:hidden` in the page, the band `hidden lg:block` in the layout). Moments 3 and 5 key
+  «once per occurrence» — **two mounted instances must not both play or both write `member_seen_marks`**; the hidden
+  one must be inert. The DAL read is shared by `cache()`.
+- **Contract 4 (`scoring`) — this week.** Nothing directly: the week's rank is drawn **inside** contract 3's card. If
+  the card takes the figure as a prop instead, I call the function — name it and I will.
+
+### 6 · Files, and every existing assertion that moves
+
+**Deleted (commit 1, one per screen or all three — the lead says):** `src/app/[locale]/app/me/page.tsx`,
+`src/components/me/profile-form.tsx`, `src/app/[locale]/app/me/certificates/page.tsx`,
+`src/app/[locale]/app/me/bookmarks/page.tsx`; `me/actions.ts` and `me/state.ts` **rewritten** in the create commit
+(their exports are the contract the new form calls, so they are not deleted ahead of it).
+**Created:** `me/page.tsx`, `components/me/profile-read.tsx` (server), `components/me/profile-edit.tsx` (client),
+`components/me/leave-guard.tsx` (client), `me/certificates/page.tsx`, `components/me/certificate-row.tsx`,
+`me/bookmarks/page.tsx`, `components/me/bookmark-list.tsx` (client — the optimistic list and the undo, D8), and
+`me/{certificates,bookmarks}/loading.tsx` only if the lead's hub `loading.tsx` does not serve them.
+**Tests:** `tests/components/me/profile-wave20.test.tsx`, `certificates-wave20.test.tsx`, `bookmarks-wave20.test.tsx`
+(new); `tests/e2e/wave20-content-hub.spec.ts` (captures `wave20-content-{me-read,me-edit,me-errors,me-nocompany,
+certificates,certificates-empty,bookmarks,bookmarks-undo,bookmarks-empty}-390.png` and `me-read-1280`).
+
+| File:line | Assertion | Selector or expectation | Why |
+|---|---|---|---|
+| `tests/components/me/profile-form.test.tsx` (all six cases) | imports `ProfileForm` | **the file goes with the component**; each case re-asserted against `profile-edit` in `profile-wave20.test.tsx`, one ledger line each | `DEC-208` |
+| `tests/components/me/certificates-page.test.tsx:56-60` | serial in `<bdi dir="ltr">`; «صالحة» | **expectation** — no serial, no «صالحة» | C10, C13 |
+| `…:63-66` | the reason is shown | **expectation if D5 rules the reason off the list** | C5 |
+| `…:69-72` | «الشهادة قيد التجهيز» | **expectation** → «قريبًا» | C4, D6 |
+| `tests/e2e/wave7-content-me.spec.ts:106` | `h1` «ملفي» | **expectation** → `h1` «حسابي», `h2` «ملفي» | P17 |
+| `…:108-109`, `:122-145` | fields filled on load; «حفظ» | **selector** — press «عدّل ملفك» first | read mode has no input |
+| `…:144-145` | `getByLabel("الشركة")` has the saved value | **expectation** → the read row shows the company's name | P9 |
+| `…:148` | strip link «الخصوصية والبيانات» on the phone | **selector** → the settings glyph | P16, `DEC-217` §3.2 |
+| `tests/e2e/wave10-content-me-early-save.spec.ts:95-103` | fill and save before hydration | **expectation at risk** — D4 | P11 |
+| `tests/e2e/wave7-content-certificates.spec.ts:158-164` | «صالحة»; the reason; serial `dir=ltr` | **expectation** (C10, C13; the reason by D5) | |
+| `tests/e2e/certificates.spec.ts:313-314` (`designer`'s, the lead holds) | member sees `cert.serial`, «صالحة» | **expectation** → the title row | C10, C13 |
+| `tests/e2e/bookmarks.spec.ts:166` | «لم تحفظ أي جلسة بعد.» | **expectation** → «لم تحفظ شيئًا بعد» | B5 |
+| `tests/e2e/bookmarks.spec.ts:237-281` | `SessionCard`; the row leaves after the POST | **none expected** — `SessionRow` keeps `h3` and «احفظ الجلسة»; the row leaves sooner | B2 – B4 |
+| `tests/e2e/wave19-scoring-profile.spec.ts:194` | `SCR-020`'s «عدّل ملفك» → `/ar/app/me` | **none** — or `/ar/app/me?edit` if the lead wants it to open edit mode (`scoring`'s file) | — |
+
+Which of these files are mine: `tests/components/me/**` (evidence) is; the e2e specs above are not in my list — **the
+lead edits each, or hands it to me for the commit**, with its ledger line.
+
+### 7 · Disagreements `DEC-216` §5 and `DEC-217` §4 do not list — not picked
+
+- **D1 — the settings glyph's name in PR A.** `Me.dc.html:25` names it «الإعدادات»; `DEC-217` §3.2 sends it to
+  `/app/me/privacy` until PR B. A link named «الإعدادات» that lands on «الخصوصية والبيانات» misnames its target
+  (SC 2.4.4). Either its name is the destination's in PR A and «الإعدادات» in PR B, or it keeps «الإعدادات» throughout.
+- **D2 — interests.** `MeEdit.dc.html:62-67` draws free-text hashtags with «أضف وسمًا»; `REQ-PRF-001` says
+  «اهتماماتي (topics of interest, **from the org's تصنيفات**)» and `member_interests.category_id` is a foreign key to
+  `categories` (`0004:328`). And **no writer exists** (P21). Three ways: (a) build interests as a choice of categories
+  — a chip toggle list — with an add-only `getMyInterests()` / `setMyInterests()` in `members.ts` (the lead's as
+  `sessions'` custodian; `member_interests` already has the self-write policies and grants); (b) show them read-only,
+  edit later; (c) leave them off the screen. A free-text tag is excluded by `REQ-PRF-001` and the schema either way.
+- **D3 — the unsaved count is specified and not drawn.** `M10c.md` §1: «the count in the header is the only text about
+  it» and «a Save that names the count»; `MeEdit.dc.html:44` draws «تعديل ملفي» alone and «حفظ» bare. And «· من Google»
+  (`:69`) is a line `REQ-UIX-080` may cut. ★ **The changed field's accent border is colour alone** (SC 1.4.1) when the
+  count is the only text — I propose a visually hidden «(معدّل)» in the changed field's label; that is a string the
+  lead approves.
+- **D4 — «Save enabled only when something changed» vs. a save before hydration.** `REQ-UIX-071` acc. 2 against
+  `wave10-content-me-early-save.spec.ts` (the wave-10 T2·2 guarantee). A Save disabled in the server's HTML cannot be
+  pressed before hydration; one enabled in the HTML is enabled while clean for that instant. Either the early-save
+  guarantee is re-stated as «the instant Save is enabled» (the spec's expectation moves), or the server renders it
+  enabled and the client disables it on hydration.
+- **D5 — the revoked reason, the serial and the code have nowhere to go.** `Certificates.dc.html` and `M10c.md` §3:
+  «the reason is on the certificate's own page», «serials, codes and QR live on the certificate». **No member-facing
+  certificate page exists**: `/verify/<code>` is public and by A13 never shows the reason; the PDF has the serial but
+  not the reason. `REQ-CRT-013`'s acceptance — «shown as revoked **in the member's own list, with its reason**» — is
+  still in force, and `REQ-UIX-073` says the reason is on the certificate's page. Today the list is **the one place a
+  member reads the reason** (`certificates/page.tsx:13`). Ways: (a) the row opens `/verify/<code>` and the reason
+  stays as one line under the revoked row (artboard loses); (b) a new member route `/app/me/certificates/[id]`
+  (route table, `04`, `09` — undrawn); (c) the row opens the PDF through the audited route (every «open» becomes an
+  audited download). And **where a row «opens the certificate» to** is the same question.
+- **D6 — «قريبًا» / «not yet issued».** `M10c.md` §3's «not yet issued» cannot be a `held` certificate — those are
+  invisible to the member by `REQ-CRT-004` and the DAL. The only list state that fits is **issued, PDF not rendered**
+  (today's «قيد التجهيز»), which has a date; the artboard draws «—». Built as that state with its date, unless ruled.
+- **D7 — a revoked certificate's download.** The artboard draws «ملغاة» where the glyph is; today a revoked certificate
+  keeps its PDF (`certificates/page.tsx:132-135`, `REQ-CRT-011`'s reading). Either both (the word and the glyph), or the
+  download leaves the revoked row.
+- **D8 — the undo needs a hook `BookmarkButton` does not have.** `BookmarkButton` (`search/bookmark-button.tsx`) keeps
+  its state inside and exposes no callback; `SessionRow` renders it directly. **A request, add-only, to the lead as
+  `sessions'` custodian**: either `SessionRow` gains `bookmarkSlot?: ReactNode` (my page passes its own remove control,
+  which talks to the list through context), or `BookmarkButton` gains `onChange?(bookmarked: boolean)`. Without one,
+  the row cannot leave optimistically and the undo cannot exist.
+- **D9 — no desktop board for `021`.** `HubDesktop.dc.html` draws `022`. Built as §1 says; the action bar in edit mode
+  is fixed on the phone and `position="static"` from `lg`, unless ruled.
+- **D10 — the role line.** P15.
+- **D11 — a skipped heading level on `024`.** Today's `h2` count kept `h1 → h2 → h3`; the artboard has none, so
+  `SessionRow`'s `h3` follows the `h1`. Either a visually hidden `h2` (a string), or `SessionRow`'s level is a prop
+  (a request), or the skip stands.
+- **D12 — the row's «+N».** `SessionRow` draws the attendance amount on an open row; `Bookmarks.dc.html` draws none
+  and `getBookmarkedTimelineSessions()` does not return the rule. «Imported as it is» would need the rule read
+  (`search.ts:231`'s `attendancePoints`); I plan `points={null}` unless ruled.
+- **D13 — Back while editing.** The artboard and `M10c.md` say leaving asks; the browser's Back cannot be asked about
+  without a history entry pushed on edit — with `?edit` in the URL, Back returns to read mode and the changes are
+  lost. Recorded as the limit.
+- **D14 — the bookmarks page's strings.** Today they are `search.bookmarksPage.*` (`sessions'` file, the lead's). The
+  page is mine, so its new strings go in `profile.json` (`profile.bookmarks.*`) and `search.bookmarksPage.{empty,count}`
+  become unused — **a removal request** to the lead, or the lead rules the keys stay in `search.json` and edits them.
+- **D15 — `SessionRow`'s badge is the phase, the artboard's is the reservation.** `Bookmarks.dc.html` draws «محجوز» and
+  «قائمة انتظار» **as the badge**; on `011` the badge is the phase (`SessionStatusBadge`) and «محجوز» is the seat line
+  (`session-row.tsx:53-54`). «Imported as it is» keeps `011`'s; the artboard loses unless ruled.
+
+### The three things I most want ruled at sync 1
+
+1. **D5** — where a member reads a revocation's reason, and what a certificate row opens.
+2. **D2** — interests: categories with a writer (the lead's add-only DAL), read-only, or off.
+3. **D4 with D8** — Save's disabled state against the pre-hydration save, and the hook the bookmark undo needs.
+
+### Addendum — contract 1 as amended (`ebdde010`, `f79f5ee3`)
+
+Re-read from disk. §1 already planned against it; made exact here. Below `lg` each of my three pages renders
+`HubTopRow` then `<HubStrip />` (on `/app/me`: `HubTopRow back={false}`, then contract 3's card, then `<HubStrip />`);
+from `lg` the layout's band and strip stand and my pages render neither strip. The settings action on `/app/me` is a
+`Link` to `/app/me/privacy` (PR A, `DEC-217` §3.2) wearing the lead's `SettingsIcon` (`ui/icons.tsx:316`), its
+accessible name per D1. `ownsTopRow()` covers all three of my routes, so none renders the shell's phone row. Nothing
+else in the plan moves.
+
+### Sync 1, provisional rulings (the lead, 2026-10-02) — and one consequence for D8
+
+- **D5:** `docs/plan` wins (`REQ-CRT-013`). A revoked row keeps its **reason** as a quiet second line after «ملغاة»;
+  every row keeps its **serial** as a quiet line in `<bdi dir="ltr">`. No certificate page this wave. **The row is one
+  link to `designer`'s audited route** (the `downloadHref`) and the end glyph is decorative — no second link. So C2's
+  accessible name changes: the row's link name is its text, and `wave13-designer-certificates-download.spec.ts:165`
+  (`getByRole("link", { name: "نزّل الشهادة", exact: true })`) becomes a **selector** ledger line; the `href` assertion
+  holds. A row with no `downloadHref` (D6, «قريبًا») is not a link. C10 and C11 now read: the serial kept; the code and
+  the `/verify` link leave the list. `certificates-page.test.tsx:56-66` and `wave7-content-certificates.spec.ts:158-164`
+  keep their serial and reason expectations; only «صالحة» moves.
+- **D2:** (a), categories. Add-only `getMyInterests()` / `setMyInterests()` in `src/lib/dal/members.ts`, the lead's
+  written grant for this wave; the setter takes category ids only and writes the session's own member, never one from
+  the payload. The chip list offers the org's categories; no migration (`0004:339-348`).
+- **D4:** Save is **enabled in the server HTML** and becomes «enabled only when changed» after hydration; the early-save
+  spec is unchanged.
+- **D8:** `onChange` on `BookmarkButton`, add-only, granted. ★ **Consequence:** `SessionRow` is a Server Component and
+  renders `BookmarkButton` itself, so a page cannot hand it a function through `SessionRow` (`DEC-159`: no closure
+  crosses the RSC boundary). The add-only addition that reaches it is a **context in `bookmark-button.tsx`** —
+  `BookmarkChangeProvider` / `useContext` read inside `BookmarkButton`, a no-op when absent — which my client list
+  provides around the rows. `SessionRow` is untouched. Asked of the lead in place of the prop.
+- **`?edit`:** approved — Cancel a link to `/app/me`; «leaving asks» is the client enhancement on top.
+
+### Correction to the addendum (the lead) — and D1 ruled
+
+- **`HubTopRow` renders at every width** (it hides its own back control from `lg`; its `h1` is the page's heading at
+  desktop too, under the layout's band and strip). **`<HubStrip />` is placed unconditionally** — it carries its own
+  `lg:hidden`. My pages add no breakpoint class to either. On `/app/me` at desktop: band, strip (layout), then `h1`
+  «حسابي», `h2` «ملفي», the rows; the phone standing card stays the only thing I hide from `lg`.
+- **D1 ruled:** the settings link is named by where it goes — PR A `profile.nav.privacy` («الخصوصية والبيانات») to
+  `/app/me/privacy`; PR B `app.shell.settings` («الإعدادات») to `/app/me/settings`. `profile.read.settings` is not added.
+  `wave7-content-me.spec.ts:148` then keeps its expectation — a link named «الخصوصية والبيانات» to privacy — and its
+  ledger line becomes «none» in PR A.
+
+### D8 granted as a context, and the spec line (the lead)
+
+- **D8:** `BookmarkChangeProvider`, add-only in `src/components/search/bookmark-button.tsx` — `BookmarkButton` reads it
+  through `useContext` and calls it with `(sessionId, bookmarked)` after its optimistic flip; a no-op with no provider.
+  `SessionRow` untouched. Replaces the `onChange` grant. **Its test:** a new
+  `tests/components/me/bookmarks-wave20.test.tsx` case renders `BookmarkButton` with no provider and asserts the press,
+  the `aria-pressed` flip, the action call and the failure rollback with its toast — exactly as before.
+- **The spec:** in the `023` create commit, `wave13-designer-certificates-download.spec.ts:165`'s selector becomes the
+  row link's name; the `href` assertion is unchanged. Its ledger line in `STATUS.md`'s wave-20 table, same commit:
+  **selector**, `REQ-UIX-073` / D5. The «صالحة» moves (`certificates-page.test.tsx:60`,
+  `wave7-content-certificates.spec.ts:159`, `certificates.spec.ts:314`) get their lines the same way, as **expectation**
+  moves under `DEC-216` §2.1. `wave7-content-certificates.spec.ts` and `certificates.spec.ts` are the lead's to edit
+  unless granted; I name the lines.
+
+### `wave7-content-me.spec.ts:148` under strict mode — checked
+
+The spec runs on both projects, but the test sets the viewport to 390 × 844 first (`:99`, `PHONE` at `:29`), so on the
+desktop project too the layout's strip is `hidden lg:block` → `display: none`, outside the accessibility tree, and
+`getByRole("link", { name: "الخصوصية والبيانات" })` matches the top row's link alone. **No change and no ledger line in
+PR A.** Should the e2e run show a second match after all, it is scoped to `#main`'s top row and becomes a selector line.
+
+### Grant — the two «صالحة» lines (the lead)
+
+In the `023` create commit I edit only the «صالحة» assertions at `wave7-content-certificates.spec.ts:159` and
+`certificates.spec.ts:314` — nothing else in either file — each with its ledger line (**expectation**, `DEC-216` §2.1 /
+`REQ-UIX-073`) in the same commit, beside `certificates-page.test.tsx:60`'s and the `wave13…:165` selector line.
+
+### `members.ts` at `27afbb3e`, and the PR-B row (the lead)
+
+**Re-read from disk.** `ProfileInput.leaderboardOptOut` is now optional and `updateMyProfile()` writes the column only
+when it is sent; `setLeaderboardOptOut()` is new (`notify`'s `029` calls it). **PR A:** `saveProfile` keeps sending
+`leaderboardOptOut` from edit mode's checkbox, exactly as P3/P5 say. **`getMyInterests()` / `setMyInterests()` go
+BELOW every existing export, add-only**, re-read again from disk and checked with `git log -1 -- src/lib/dal/members.ts`
+before the edit.
+
+**PR B — my row** (contract 5, in the commit that adds `029`'s switch): the checkbox leaves edit mode,
+`PROFILE_FIELDS` loses `leaderboardOptOut`, `saveProfile` stops sending it (so `updateMyProfile` leaves the column
+alone), and `profile.leaderboardOptOut` is removed if nothing else reads it. Assertions that move then, from
+`notify.md` §W6 and my own:
+
+| File:line | Moves | Writer |
+|---|---|---|
+| `tests/components/me/profile-wave20.test.tsx` — the opt-out case (PR A's) | **expectation** — no checkbox in edit mode; a save sends no opt-out | me |
+| `tests/e2e/wave20-content-hub.spec.ts` — the opt-out step, if PR A's spec has one | **expectation**, the same | me |
+| `tests/components/members/profile-page.test.tsx:190` — the self tier's links | **expectation** → `/app/me/settings` (§W6) | the lead (custodian) |
+| `tests/e2e/wave7-content-notifications.spec.ts:99`, `:102`, `:108` – `:116` — the matrix | selector + expectation, moved to `029` (§W6) | `notify`'s screen — the lead names the writer |
+| `tests/e2e/wave7-content-calendar.spec.ts:100`, `:117`, `:118` | selector + expectation, the synced list gone (§W6) | `notify`'s screen (that is PR A's `025`) — the lead names the writer |
+| `tests/components/me/calendar-page.test.tsx` (5 cases) | as §W6 | `tests/components/me/**` is in my list as evidence, but the screen is `notify`'s — the lead names the writer |
+
+Plus D1's PR-B half: the settings link's name becomes `app.shell.settings` and its `href` `/app/me/settings`;
+`wave7-content-me.spec.ts:148` (a link «الخصوصية والبيانات» to privacy) then moves — **expectation**, PR B.
+
+### PR-B writers named (the lead)
+
+- `tests/components/members/profile-page.test.tsx:190` — **mine**, in the PR-B commit that moves the settings link:
+  that assertion only (the self tier's links → `/app/me/settings`), with its ledger line. The lead's written grant as
+  custodian.
+- ~~`wave7-content-notifications.spec.ts`, `wave7-content-calendar.spec.ts`, `tests/components/me/calendar-page.test.tsx`~~
+  — **struck from my list: `notify`'s**, in the commits that rebuild `025` and `026`, each with its ledger line.
+
+### Wave 20 — built (after sync 1, `DEC-218`)
+
+| Screen | Delete | Create |
+|---|---|---|
+| `SCR-024` | `b9c4c54e` | `0d9c6930` |
+| `SCR-023` | `c7767962` | `8b53e1ed` |
+| `SCR-021` | `b63968ea` | `c1908361`, then `7e03f0ac` (the company's team dot) and the standing card's placement |
+
+E2E: `tests/e2e/wave20-content-hub.spec.ts` (`dd6a1fdd`), the lead runs it. **D10 ruled: dropped** — no `REQ-*` keeps the
+member's own role on `/app/me` and no artboard draws it (the lead, after sync 1). Kept-behaviour tables read back
+against the new files: every row holds; P14's standing card is placed (contract 3, `HubStanding form="card"` inside
+`Suspense` with its skeleton, `lg:hidden`).

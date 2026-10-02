@@ -33,12 +33,12 @@
       "board": "الترتيب",
       "adminConsole": "لوحة الإدارة",
       "attention": "{count, plural, zero {لا شيء بانتظارك} one {أمر واحد بانتظارك} two {أمران بانتظارك} few {{value} أمور بانتظارك} many {{value} أمرًا بانتظارك} other {{value} أمر بانتظارك}}",
-      "gameRail": "أسبوعك"
+      "gameRail": "أسبوعك",
+      "settings": "الإعدادات"
     },
     "home": {
       "welcome": "أهلًا <name>{value}</name>",
       "welcomeAnon": "أهلًا بك",
-      "intro": "مرحبًا بك في المنصة. تصفّح الجلسات القادمة واحجز مقعدك.",
       "completeProfile": "أكمل ملفك",
       "companyMissing": "اختر شركتك قبل حجز مقعد أو اقتراح جلسة.",
       "org": "مؤسستك: <org>{value}</org>",

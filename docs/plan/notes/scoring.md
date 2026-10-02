@@ -3732,3 +3732,876 @@ colleague for an opted-out member (§5.116), and the presented figure as the del
 ★ **The full `npm test` could not be read on this machine**: four tracks running suites at once pushed unrelated
 component cases past the 5 s timeout (`menu`, `stat`, `report-card`, …) — none touches a file of mine. The e2e specs
 `wave19-scoring-{directory,profile}.spec.ts` are the lead's to run.
+
+# Wave 20 — plan (M10c, `DEC-216`, `DEC-217`; planning only — nothing is built, nothing is deleted)
+
+`SCR-022` my points, the hub's standing card and band, this week live, `ui/ledger-row` and `ui/podium` in **PR A**
+(`wave-20a/the-hub`); `SCR-027` the boards and `SCR-028` the company race in **PR B** (`wave-20b/the-boards`).
+Measured on `3156ad36`. Answers `STATUS.md`'s «Sync 1 — what the three plans must answer», items 1 – 7.
+
+## 0 · ★ Published on day one — contracts 3 and 4, by name and type
+
+Both live in my add-only DAL modules; nothing in them writes. **Computed, never stored; an absence is an absence,
+never a zero; opt-out is the database's and the DAL's, never a component's** (contract 7, A33).
+
+### Contract 4 — this week, live (`src/lib/dal/leaderboards.ts`, add-only; PR A)
+
+```ts
+/** The org's current week: Saturday to Friday in the org's own time zone (`DEC-217` §3.4), from `org_week()`. */
+export interface WeekWindow {
+  /** `YYYY-MM-DD` — the Saturday the week starts on. */
+  start: string;
+  /** `YYYY-MM-DD` — the Friday it ends on, inclusive («حتى الجمعة» is formatted from this, never typed). */
+  end: string;
+  /** Whole days left after today until `end`; 0 on the Friday itself. */
+  daysLeft: number;
+  /** `org_settings.time_zone` — what every date on these surfaces is formatted in. */
+  timeZone: string;
+}
+
+/** The caller's standing this week — what `021`'s card, the desktop band and `027`'s rank card read. */
+export interface WeekStanding {
+  window: WeekWindow;
+  /** null is an ABSENCE — `absence` says which. Never `{ rank: 0 }`. */
+  rank: {
+    rank: number;
+    /** The caller's points this week — the live sum of their `points_ledger` rows in the window. */
+    points: number;
+    /** How many the week ranks for this viewer — «#4 من 38». */
+    ranked: number;
+    /** The visible member ranked directly above with STRICTLY more points (the gap is never 0); null at #1. */
+    above: WeekNeighbour | null; // the existing type, unchanged: memberId, displayName, company, teamColor, rank, gap
+  } | null;
+  absence: "no_points" | null;
+  /** `members.leaderboard_opt_out`: the rank is still theirs to see, and hidden from everyone else (REQ-LDR-008). */
+  optedOut: boolean;
+  /** Moment 5 on the week — `decideBoardMoment("weekly", …)`, keyed `rank:weekly:<start>:<seen>-<now>`.
+   *  ★ PR A: always `{ occurrenceId: null, needsMark: false }` — `mark_board_seen()` learns the week in PR B
+   *  (`DEC-217` §3.3), so until then nothing writes the weekly pair and nothing plays. */
+  moment: BoardMoment;
+}
+
+/** Request-scoped: the card on `021`, the band and `027` ask once between them. */
+export const getWeekStanding: (locale: string) => Promise<WeekStanding>;
+```
+
+`BoardKind` gains `"weekly"` and `BoardMark.period` carries the week's `start` — add-only to the union, used by PR B.
+
+### Contract 3 — the standing (`src/components/hub/standing.tsx` + `getHubStanding()` in `src/lib/dal/points.ts`; PR A)
+
+```ts
+// src/lib/dal/points.ts (add-only)
+export interface HubStanding {
+  /** A33 tier 1, the caller's own row: never the email, never `members.avatar_url`. */
+  member: {
+    id: string;
+    displayName: string;
+    /** `avatarHref()`'s same-origin path or null — initials then (DEC-099, REQ-PRF-009). */
+    avatarUrl: string | null;
+    jobTitle: string | null;
+    /** null: no company — the card says so in words, never an empty slot. */
+    company: { name: string; teamColor: string | null } | null;
+    /** `members.created_at`, ISO — «عضو منذ أغسطس 2026» on the band. */
+    memberSince: string;
+  };
+  /** The live balance — `points_balances.total_points`. A 0 is a true figure and is drawn. */
+  points: number;
+  /** The level the nightly evaluation stored — null until it has run once. Never recomputed here. */
+  level: { name: string; tier: number } | null;
+  /** null at the top level, or with no level. `remaining` is `threshold − points`, floored at 0. */
+  next: { name: string; threshold: number; remaining: number } | null;
+  /** `levelProgress()`'s truth — the bar and its line state one fraction. */
+  progress: { value: number; max: number } | null;
+  /** Contract 4, whole. */
+  week: WeekStanding;
+  /** null: no enabled streak rule — the tile is not drawn. `months` may be 0 — on, none running: words. */
+  streak: { months: number } | null;
+  /** How many badges the caller holds — `member_badges`, retired badges included (REQ-REC-001). */
+  badges: number;
+  /** Moment 3 — `getPointsHead()`'s `completion`, the same occurrence `SCR-022` and the home decide. */
+  completion: PointsHead["completion"];
+  /** What the card acknowledges for moment 3 — `weekPointsMark()`: the level LAST SEEN passed through (`DEC-207` §1.3). */
+  pointsMark: PointsMark;
+  pointsNeedsMark: boolean;
+}
+export const getHubStanding: (locale: string) => Promise<HubStanding>; // request-scoped `cache()`
+
+// src/components/hub/standing.tsx — one server component, two forms
+export async function HubStanding(props: {
+  locale: string;
+  /** `card`: the phone's card on `021` (`Me.dc.html`), placed by `content`'s page.
+   *  `band`: the desktop band (`HubDesktop.dc.html`), placed by the lead's `me/layout.tsx`. */
+  form: "card" | "band";
+  /** The placing owner's visibility class — `lg:hidden` for the card, `hidden lg:block` for the band. */
+  className?: string;
+}): Promise<JSX.Element>;
+```
+
+- **It reads its own data** (`getHubStanding()` → `sessionClient()` → `requireSession()`), so the layout passes
+  nothing and checks nothing. It binds its own two Server Actions from `src/components/hub/actions.ts`
+  (`acknowledgeHubPoints`, `acknowledgeHubWeek`, both `"use server"`, both bound on the server — `DEC-159`).
+- **Moments 3 and 5 through the existing keying**: it wraps its figures in `MomentWeek` (`moment-week.tsx`,
+  unchanged), whose displayed-copy gate already handles two copies in one document — on `/app/me` at `lg` the
+  card is in the HTML and not displayed, the band is displayed, and only the displayed one claims.
+- ★ **For the lead's layout**: a layout does not re-render on navigation, so the band's figures are those of the
+  first hub page the member arrived on until they leave the hub. Moment 3 is decided once per arrival in the hub,
+  not per tab. I think that is right (the strip is one place); it is written so it is not a surprise.
+- ★ **The band draws the name as text, not as a heading.** `HubDesktop.dc.html` draws it as an `h1` and «نقاطي»
+  as an `h2` — §7 below, line 34, not picked.
+
+## 1 · Sync-1 Q1 — the regions, in each artboard's order, and the primitive each is built from
+
+### `SCR-022` phone — `Points.dc.html` (390 × 1860)
+
+| # | Region (artboard order) | Built from | Data |
+|---|---|---|---|
+| 1 | Top row: back to `/app/me`, `h1` «نقاطي» | the lead's frame (contract 1): the page renders the frame's top-row component, nothing of its own | — |
+| 2 | The hub strip, «نقاطي» current | the lead's `HubStrip` (phone form), placed as the frame says | — |
+| 3 | Head card: «رصيدك» + balance in display 56 accent · «مستواك» + level name + «"<next>" بعد N» · the bar | `card` · the balance a `<strong>` (pinned by `points.spec.ts:161`) · `progress-bar` `fill="accent" decorative` with the line beside it · `MomentPointsHead`'s moment 3 (and 4 — ★ D26) | `getPointsHead()`, unchanged |
+| 4 | Filters: «كل الجلسات ▾» · «كل الشهور ▾» · «14 سطرًا» at the inline-end | a GET `<form>` with two `select`s (`sessions'`, held by the lead), auto-submitted on change by a small client island; the submit button inside `<noscript>` — the no-JS path stays | `getPointsLedger()` (new, §5.2) |
+| 5 | The ledger, grouped by month: `section-header` per month (the org's month, in its time zone), then rows | `section-header` · **`ledger-row`** (new) in a `<ul>` inside `#history` | ditto |
+| 5a | an award | `ledger-row` `kind="entry"` — `+50` accent, the rule's own reason, «session title · time»; the title is the link | ledger row |
+| 5b | the cap row — dashed, `0`, «الحد: 3 تعليقات لكل جلسة · time» | `ledger-row` `kind="cap"` | ★ an explanation, §5.3 — never a ledger row |
+| 5c | the manual adjustment — «تعديل يدوي من الإدارة», «"<reason>" — <admin>» | `ledger-row` `kind="entry"` with the manual title | ledger row + `actor_id`'s display name |
+| 5d | the reversal pair — `−50` coral **with** its minus, «إلغاء نقاط سابقة», its fixed reason; beneath, the reversed row struck at 70 % | `ledger-row` `kind="reversal"` with `reversed` | the pair through `source_id` (`0149`) |
+| 5e | (not drawn) the missed-day notice of `REQ-SES-017` | `ledger-row` `kind="notice"` — no figure | `missed_attendance_days()`, unchanged |
+| 6 | «المزيد» | a plain link `?rows=<n+50>` keeping the filters | — |
+| 7 | `h2` «ماذا يمنحك نقاطًا؟», one list card: name · cap wording · value; a disabled rule muted with «غير مُفعَّل حاليًا» and `0` | `section-header` (no description — the intro line goes, `REQ-UIX-080`) · one `card` holding a `<ul>`, `id="catalogue"` kept | `scoring_rules`, live |
+| 8 | the tab bar | the shell's | — |
+
+### `SCR-022` desktop — `HubDesktop.dc.html` (1280)
+
+| # | Region | Built from |
+|---|---|---|
+| 1 | Shell bar, navigation rail, **no game rail** | the lead's |
+| 2 | The standing band | **contract 3**, `HubStanding form="band"`, placed by the lead's layout |
+| 3 | The strip under a rule, seven links | the lead's |
+| 4 | `h2`-looking «نقاطي» (★ D34) · «الجلسة: الكل ▾» · «الشهر: الكل ▾» · «تنزيل CSV» (★ D27) | the same GET form as the phone's, laid out as a toolbar from `lg` |
+| 5 | The table: التاريخ · النقاط · السبب · الجلسة | `data-table` (`console`'s, as built; no sort, no selection), `id="history-table"` — **outside `#history`**, so no phone locator ever meets two copies |
+| 5a | a reversal: the reversing row, then the reversed row struck and muted — and, per M10c §2, «(يلغي سطر <date>)» (★ D35) | two table rows, adjacent |
+| 5b | the cap row muted, `0` | one table row |
+| 6 | «9 من 14 سطرًا» · «عرض الأقدم» | text + the same `?rows=` link |
+
+The head card (row 3 of the phone) is `lg:hidden`: the band carries the balance from `lg`, as the board draws.
+
+### The standing card — `Me.dc.html` lines 1 – 4 of the card (contract 3, `form="card"`)
+
+| # | Region | Built from |
+|---|---|---|
+| 1 | 64 px avatar with the team ring · name · title · company in team colour · «هكذا يراك زملاؤك» → `/app/members/<self>` | `avatar` (★ size 64 is a request, §8) · text · `link` |
+| 2 | Level medallion · «مستواك» · level name in its ramp colour · `730` «نقطة» at the inline-end | `level-card` `layout="standing"` (wave 19's) — ★ with an add-only `frame="none"` so it does not draw a second panel inside the card (§3.3) |
+| 3 | The bar · «"<next>" بعد N» | `progress-bar` `decorative` + the line (one fraction, `levelProgress()`) |
+| 4 | Three tiles: «هذا الأسبوع» `#4` → `/app/leaderboards` · «السلسلة» `×8` · «الشارات» `6` | `stat` × 3, the first with `href` |
+
+The whole card is one `card`, `MomentWeek` around it (moments 3 and 5). **The band** (`HubDesktop.dc.html`): 84 px
+avatar, name, «title · company · عضو منذ <month year>», the medallion row with «730 نقطة · "<next>" بعد N», the same
+three tiles — the same component, `form="band"`.
+
+### `SCR-027` — `Board.dc.html` (PR B)
+
+| # | Region | Built from |
+|---|---|---|
+| 1 | `h1` «لوحات الصدارة» · «حتى الجمعة» (the window's end, this week only) · the category `menu` in the header (★ D30 — not drawn) | the page's own top row (contract 1) · text · `menu` (`console`'s, as built, items as links) |
+| 2 | Window chips: هذا الأسبوع ★ · هذا الشهر · كل الأوقات · سباق الشركات | `tabs` in navigation mode (as today — M10c §9 lists it; the e2e suites pin `role="tab"`). If its look is not the chips', that is a request to the lead, not a new control |
+| 3 | «ترتيبك» card, accent border, always visible: rank in display 44 · ▲N since your last visit · «فوقك: <name> · +N» · the window's points | `card` · `MomentWeek` for moment 5 (`completion: null`) — the `rank` and `rise` slots it already animates |
+| 4 | Podium 2 · 1 · 3, cup over #1, ringed avatars, blocks with rank and points | **`podium`** (new) — the `cup` object from `ui/objects/` (imported, the lead's) |
+| 5 | Rows 4 – 10: rank · ringed avatar · name · company · points · own row «أنت» + accent border in place | `rank-row`, as built |
+| 6 | The own row pinned after the list when outside the range | `rank-row` under the existing «ترتيبك» heading's successor (`leaderboards.selfHeading`) |
+| 7 | «عرض 11 إلى 50 · N عضوًا» | a link `?board=…&rows=50` |
+| 8 | `monthly.provisional` / `final` as a chip on the month tab only | `badge` |
+
+### `SCR-028` — `Companies.dc.html` (PR B)
+
+| # | Region | Built from |
+|---|---|---|
+| 1 | Same header and chips, «سباق الشركات» current | as `027` |
+| 2 | Cup card: cup object · «كأس الربع N» · «الجولة · days» · finality (★ D31) | `card` + `cup` |
+| 3 | «الترتيب حسبه: …» chip with its check · «takenAt» | `tag-chip` (static) · text |
+| 4 | Column headers: # · الشركة · «لكل عضو ✓» · المجموع | a visible header row (presentation; each row still says its metric to a screen reader) |
+| 5 | A row per company: rank · team ring + name + «فريقك» + «N نشطًا» · the bar under the name from the inline-start · the ranking metric in display face · the other muted | `race-bar` — ★ with an add-only `layout="grid"` (§3.3) |
+| 6 | The own company: accent border | `race-bar`'s `ownLabel` |
+| 7 | «كيف حصلت شركتك على نقاطها» card: «رصيد <bdi>company</bdi> …: N نقطة» · one row per `source.*` with its `meta.*` line (★ D44) · «ماذا يمنح شركتك نقاطًا؟» | `card` · `ledger-row` `kind="entry"` (the same signed-amount form) · `link` to `#company-catalogue` |
+| 8 | (below the fold) the company catalogue | `card` + `<ul>`, kept from today |
+
+## 2 · Sync-1 Q2 — ★★ the kept-behaviour tables (`DEC-208`), re-derived from the `REQ-*` and the DAL
+
+Read from `me/points/page.tsx`, `points-{head,history-list,catalogue}.tsx`, `lib/dal/points.ts`,
+`leaderboards/page.tsx`, `{member,company}-board.tsx`, `company-points-breakdown.tsx`, `lib/dal/leaderboards.ts`,
+`moment-{rank,points-head,week}.tsx`, `use-seen-moment.ts` and their suites. Each row is read back against the new
+file after the create commit.
+
+### 2.1 `SCR-022`
+
+| # | Behaviour today | Where it lives after | Kept by |
+|---|---|---|---|
+| 1 | The data is read at the data: `sessionClient(locale)` → `requireSession()`; no layout check | `getPointsLedger()` and `getPointsHead()`, same entry | CLAUDE «Data access» 3 · `REQ-NFR-001` |
+| 2 | Only the caller's rows: `.eq("member_id", session.memberId)` — necessary, because `POL-points_ledger.select` lets an **admin** read everyone's | kept in every new ledger query, and in `capped_award_explanations()` by `auth_member_id()` | `REQ-PTS-003` (A33: no one else's ledger) |
+| 3 | Every row shows **its own reason** in `<bdi>`, never a label in its place | `ledger-row`'s `title`, the row's `reason` | `REQ-PTS-003`, `05` §8 |
+| 4 | The signed amount in `<bdi dir="ltr">`, sign first, Western digits (`formatNumber`) | `ledger-row` draws it; the caller formats it with «+» / «−» | `09` SCR-022 · `DEC-124` · `REQ-NFR-007` |
+| 5 | A reversal: «إلغاء نقاط سابقة» + its **fixed** reason «أُلغي تسجيل الحضور»; the admin's free text never shown | the reversal card's title and meta — ★ the artboard draws a free-text reason (D43); the test at `points.spec.ts:289` keeps it off | `REQ-CHK-017` · wave 7 contract 3 |
+| 6 | A manual adjustment: «تعديل يدوي من الإدارة» + its reason | kept, and the **admin's name** added from `actor_id` (null name → no name, never «undefined») | `REQ-PTS-009` · `REQ-UIX-072` |
+| 7 | A link from the row to `/app/sessions/<id>` | the session title IS the link (artboard); its accessible name becomes the title (§6, a moved selector) | `REQ-PTS-003` («a link to the session») |
+| 8 | ★ The missed-day notice: interleaved at the session's completion, no amount, the days in the locale's conjunction, held to the same filters | `ledger-row` `kind="notice"`, the same DTO (`MissedAttendance`), the same filter rule | `REQ-SES-017` |
+| 9 | The empty state names the next action (browse) — and a notice beats it | `empty-state` «لا نقاط بعد» + the catalogue below (M10c §2) | `REQ-UIX-012` |
+| 10 | Filters by session and month are plain GET params — a shareable URL; the session options come from an **unfiltered** pass; «مسح التصفية» when filtered | kept; ★ the filtered-empty state added («لا سطور في هذه التصفية» + `filters.clear`) | `05` §8 · `REQ-UIX-012` |
+| 11 | ★ **A defect found here**: «the org's own month» is computed in **UTC** (`points.ts:85-94`), and the 12 options are UTC dates labelled in the org's zone | the new read computes the month's bounds in `org_settings.time_zone`; `monthRange()` stays for nothing else to break | `REQ-LDR-002`'s rule for a period, applied to the member's own filter · D41 |
+| 12 | The catalogue is read live from `scoring_rules`; zero-point rules hidden; the cap in its plural forms; a disabled rule marked; `id="catalogue"` | kept; a disabled rule drawn with `0` (D37) | `REQ-PTS-014` · `05` §8 |
+| 13 | The balance from `points_balances`, the page's one `<strong>` | the head card's figure; the band's is **not** a `<strong>` | `REQ-PTS-003` · `points.spec.ts:161` |
+| 14 | Moment 3: the balance counts from the last-seen figure, «+N» and its words, the bar fills; the mark bound on the server; a hard load is static | `MomentPointsHead`, unchanged, around the new head card | `REQ-UIX-047` · `DEC-195` · `DEC-197` §5 |
+| 15 | ★★ **Moment 4: the level card turns** | **no surface in the artboard** — D26, the first ruling I need | `REQ-UIX-047` |
+| 16 | The streak and its flame on the head | not on `022`'s head (the artboard dropped it); it lives on the standing card on `021` and the band, so the hub still shows it | `REQ-REC-005` |
+| 17 | The bar and its line state one fraction | `levelProgress()`, unchanged | the lead's 390 px finding (wave 16) |
+| 18 | `#history` scopes the phone list (two suites rely on it) | kept on the phone list; the desktop table is `#history-table` | evidence |
+| 19 | No row draws a running total | kept | `points-history-list.test.tsx:135` |
+| 20 | `presenterNet()` / `getPresenterAward()` — the event page's | untouched in the DAL (add-only module) | `REQ-PTS-015` |
+| 21 | The page wraps nothing in a scope and renders nothing of the shell | kept — the frame is the lead's | `DEC-199` §1.3 · contract 1 |
+
+### 2.2 The standing card and band (new — what they must carry)
+
+| # | Behaviour | Kept by |
+|---|---|---|
+| 1 | The figures are the DAL's: the stored level, the live balance, `levelProgress()`, the streak in months (`currentStreak()`), the week from contract 4 | contract 7 · `DEC-197` §7 |
+| 2 | A missing rank, a streak rule off, no level: words or absence, never 0 | `REQ-UIX-055`'s rule, `week-hud`'s precedent |
+| 3 | An opted-out member sees their own rank, labelled as hidden from others | `REQ-LDR-008` |
+| 4 | Avatar through `avatarHref()`, initials otherwise; no email, no `avatar_url` | `DEC-099` · A33 |
+| 5 | Moments 3 and 5 through `MomentWeek`; the level passed through (`weekPointsMark()`) so the level cursor moves only where moment 4 plays | `DEC-207` §1.3 · `DEC-216` §5.10 |
+| 6 | No level-up here (it is not a sixth surface for moment 4 unless D26 rules so) | `DEC-213` §5.117 |
+
+### 2.3 `SCR-027` (PR B)
+
+| # | Behaviour today | Where it lives after | Kept by |
+|---|---|---|---|
+| 1 | Each board a linked tab `?board=…`, server-rendered, shareable | four windows: default (no param) = **this week**; `?board=month`, `?board=all` (★ new — all-time was the default), `?board=companies` | `REQ-UIX-078` · `DEC-141` r6 |
+| 2 | All-time live from `all_time_leaderboard()`; opt-out in the database | unchanged | `REQ-LDR-001`, `REQ-LDR-008` (`0044`) |
+| 3 | Month and company from the newest snapshot by `taken_at`, provisional / final | unchanged; the chip on the month tab only | `REQ-LDR-006` |
+| 4 | ★ The own rank always visible; the own row below the range under «ترتيبك» | the rank card (always) **and** the pinned own row | `REQ-LDR-001` |
+| 5 | The own row says «أنت» and is outlined | `rank-row`'s `selfLabel`; on the podium, the place's `selfLabel` | `REQ-UIX-037` |
+| 6 | A name links to `/app/members/<id>` | rows and podium places | `09` |
+| 7 | Initials in the team ring, never a photograph | `rank-row` takes no `src`; `podium` takes none either | `DEC-099` · `DEC-183` §3 |
+| 8 | An empty board names the next action | `empty-state` `leaderboards.empty` + `emptyAction` | `REQ-UIX-012` |
+| 9 | Moment 5: only a rise plays; a fall is static; the arrow never pulses; bound acknowledgement; a hard load static | the rank card (`MomentWeek`), per window kind — ★ whether the list's FLIP also stays is D42 | `REQ-UIX-048` · `DEC-197` §2, §5 |
+| 10 | 20 rows shown | 3 on the podium, 4 – 10 as rows, «عرض 11 إلى 50» | `Board.dc.html` |
+| 11 | The section ids `#all-time`, `#monthly` | kept; `#weekly` added | evidence |
+| 12 | `description` «… live» under the all-time title | ★ removed — explainer copy (`REQ-UIX-080`) | — |
+
+### 2.4 `SCR-028` (PR B)
+
+| # | Behaviour today | Where it lives after | Kept by |
+|---|---|---|---|
+| 1 | Both metrics on every row, the ranking one first and marked «الترتيب حسبه» | visible column headers + the chip; each row still says its metric (sr text) | `REQ-LDR-004`, `REQ-LDR-005` |
+| 2 | Bars from the inline-start, `companyFractions()` over all companies; a negative draws an empty track | `race-bar`, unchanged maths | `09` · `0081` |
+| 3 | The own company «فريقك» | `ownLabel` + the accent border | `REQ-UIX-038` |
+| 4 | Signed totals and per-member figures in `<bdi dir="ltr">` | kept | `boards.test.tsx:113-127` |
+| 5 | `takenAt` and provisional / final | kept, in the chip row and the cup card | `REQ-LDR-006` |
+| 6 | Moment 5 on the company: the own bar grows by `scaleX` from where it was seen, after a swap if it rose | `MomentRank`, unchanged, around the list | `REQ-UIX-048` |
+| 7 | The breakdown: own company only, `#company-breakdown`, the heading, the balance with the company in `<bdi>`, the enabled company rules, every row signed, the meta lines | kept — **its rows' form is D44** | `notes/scoring.md` «Company points rules» · `REQ-PTS-003` extended |
+| 8 | No company → the breakdown absent | ★ now the «اختر شركتك» prompt → `/app/me` (M10c §8) | `REQ-UIX-079` |
+| 9 | «company.asOf» line under the board | ★ removed — explainer copy | `REQ-UIX-080` |
+
+## 3 · Sync-1 Q3 — the two new primitives' props (contract 2, for `ui/index.ts`)
+
+### 3.1 `ledger-row`
+
+```ts
+/**
+ * `scoring` · `ledger-row.tsx` — one line of a points history (REQ-UIX-081). Reads no data and formats no number.
+ * The figure is the caller's string, drawn in `<bdi dir="ltr">` so the sign sits at the numeral's inline-start;
+ * a loss is coral AND carries its minus — colour is never the only mark (REQ-NFR-007).
+ */
+export interface LedgerRowProps extends Styleable {
+  /** `entry` (default) · `cap` — dashed, muted, the figure `0` · `reversal` — the loss, with `reversed` beneath it
+   *  struck at 70 % inside the same row · `notice` — an explanation with NO figure (`REQ-SES-017`'s missed day). */
+  kind?: "entry" | "cap" | "reversal" | "notice";
+  /** Sign only, never drawn: picks the tone. Required unless `kind="notice"`. */
+  value?: number;
+  /** Drawn, formatted by the caller WITH its sign — «+50», «−50», «0». Required unless `kind="notice"`. */
+  figure?: string;
+  /** What a screen reader hears for the figure — «50 نقطة», «خُصمت 50 نقطة». */
+  figureLabel?: string;
+  /** The row's own reason; the caller isolates interpolations. */
+  title: ReactNode;
+  /** «session · time» — may hold a link. */
+  meta?: ReactNode;
+  /** `kind="reversal"`: the row it reverses. */
+  reversed?: { figure: string; figureLabel: string; title: ReactNode; meta?: ReactNode } | null;
+  /** `li` (default, inside the caller's `<ul>`) or `div`. */
+  as?: "li" | "div";
+}
+```
+
+### 3.2 `podium`
+
+```ts
+/** One place on the podium. */
+export interface PodiumPlace {
+  rank: number;
+  /** «المركز 1». */
+  rankLabel: string;
+  /** The avatar's tint key — never the name. */
+  memberId: string;
+  displayName: string;
+  company: string | null;
+  teamColor: TeamColor;
+  /** Formatted by the caller. */
+  points: string;
+  pointsLabel: string;
+  href?: string;
+  /** The viewer's own place — «أنت», in words, outlined. */
+  selfLabel?: string | null;
+}
+
+/**
+ * `scoring` · `podium.tsx` — the first three, drawn second · first · third from the inline-start, the cup over
+ * first, blocks from the ramp's neutrals (level-3 silver, gold, level-2 bronze). STATIC: no keyframe, no transition,
+ * no hover scale (`DEC-216` §5.10). DOM order is rank order; the visual order is CSS `order`. Initials only — no
+ * `src`, like `rank-row`. Below its collapse width (★ D29), and under reduced motion as `REQ-UIX-081` says, it
+ * renders the same places as `rank-row`s.
+ */
+export interface PodiumProps extends Styleable {
+  /** The group's accessible name — «المراكز الأولى». */
+  label: string;
+  /** In rank order, one to three. A block's height follows its POSITION; the number on it is the rank, so a tie
+   *  draws two «1»s on the first two blocks. */
+  places: readonly PodiumPlace[];
+}
+```
+
+### 3.3 Add-only props on my own primitives (types are the lead's file — a request each)
+
+- `level-card`: `standing.frame?: "panel" | "none"` (default `panel`) — the hub card holds the level row inside its
+  own card, and a second panel would be a card in a card.
+- `race-bar`: `layout?: "stacked" | "inline" | "grid"` gains `grid` — rank · (ring, name, labels, the bar under the
+  name) · the ranking value · the secondary value, the metric's words `sr-only` per row; `Companies.dc.html`'s row.
+
+## 4 · Sync-1 Q4 — every state `M10c.md` names, drawn or not, and how it is built
+
+| Screen | State | How |
+|---|---|---|
+| `022` | empty (drawn as words) | `empty-state` `points.empty` + browse, then the catalogue |
+| `022` | filtered empty ★ | `empty-state` «لا سطور في هذه التصفية» (new, `scoring.points.filteredEmpty`) + `filters.clear` as `clearFilter` |
+| `022` | only notices (missed day, cap) and no row | the list, not the empty state (kept, `points-history-days.test.tsx:95`) |
+| `022` | a reversal whose reversed row is outside the page or the filter | the reversed row fetched by id and drawn inside the card — every ledger row is drawn exactly once (a unit test counts ids) |
+| `022` | a reversal whose `source_id` names no row of the caller | drawn alone (no write path produces it today — `0032`, `0059`, `0087`, `0102`, `0105`, `0113`, `0148`, `0149` all point at a ledger row) |
+| `022` | manual adjustment, admin anonymised / no name | the reason without a name |
+| `022` | no level yet | `points.head.level.none`, no bar |
+| `022` | top level | the bar full, `points.head.level.top` |
+| `022` | the cap reached but nothing capped | nothing (no explanation without a capped item) |
+| standing | no company · no streak rule · streak 0 · no week points · opted out · no level | in words in place; the tile not drawn for a streak rule off |
+| `027` | empty window | `empty-state` |
+| `027` | own rank inside 1 – 3 / 4 – 10 / outside | marked on the podium / in place / pinned below |
+| `027` | not ranked this window | the rank card in words (`leaderboards.rankCard.absent`) — the card stays (always visible) |
+| `027` | opted out | the board and the own row privately, «لا يراك الآخرون» on the card (★ D38) |
+| `027` | first visit to a window | no movement (`REQ-UIX-078`) |
+| `027` | fewer than three ranked | one or two blocks; zero → empty |
+| `028` | no company | the prompt to choose one in place of the breakdown |
+| `028` | below the minimum | ★ D32 |
+| `028` | no company snapshot yet | `empty-state` |
+
+## 5 · The SQL and the reads (sketches; `supabase/proposed/scoring/`, functions only)
+
+### 5.1 The week (contract 4) — `w20_0001_week.sql`, PR A
+
+```sql
+-- org_week(): the org's week, Saturday to Friday, in its own time zone (DEC-217 §3.4). Invoker: it reads only
+-- `org_settings` (org-readable) and computes. `p_at` exists for the boundary tests.
+create function public.org_week(p_at timestamptz default now())
+returns table (week_start date, week_end date, starts_at timestamptz, ends_at timestamptz, time_zone text)
+language sql stable security invoker set search_path = '' as $$
+  with tz as (
+    select coalesce((select s.time_zone from public.org_settings s where s.org_id = public.auth_org_id()),
+                    'Asia/Riyadh') as name
+  ), w as (
+    -- extract(dow): Sunday 0 … Saturday 6, so the days since the last Saturday are (dow + 1) % 7.
+    select tz.name, d - ((extract(dow from d)::int + 1) % 7) as start_day
+      from tz, lateral (select (p_at at time zone tz.name)::date as d) today
+  )
+  select w.start_day, w.start_day + 6,
+         w.start_day::timestamp at time zone w.name,
+         (w.start_day + 7)::timestamp at time zone w.name,
+         w.name
+    from w
+$$;
+
+-- weekly_leaderboard(): the week summed LIVE from points_ledger (DEC-216 §2.2) — no enum value, no snapshot, no job.
+-- Definer because points_ledger's RLS is self-or-admin, exactly as all_time_leaderboard() (0044) is. It mirrors
+-- 0044's rule: active members only, an opted-out member absent from everyone's call but their own, the rank
+-- computed over what that caller may see (★ D40), and the snapshot's rule that a net of 0 or less is not ranked.
+create function public.weekly_leaderboard()
+returns table (member_id uuid, rank bigint, points int)
+language sql stable security definer set search_path = '' as $$
+  with w as (select starts_at, ends_at from public.org_week()),
+  totals as (
+    select pl.member_id, sum(pl.amount)::int as total
+      from public.points_ledger pl, w
+     where pl.org_id = public.auth_org_id()
+       and pl.occurred_at >= w.starts_at and pl.occurred_at < w.ends_at
+     group by pl.member_id
+    having sum(pl.amount) > 0
+  )
+  select t.member_id, rank() over (order by t.total desc), t.total
+    from totals t
+    join public.members m on m.id = t.member_id
+   where m.status = 'active'
+     and (not m.leaderboard_opt_out or m.id = public.auth_member_id())
+   order by 2, t.member_id
+$$;
+revoke execute on function public.org_week(timestamptz), public.weekly_leaderboard() from public, anon;
+grant  execute on function public.org_week(timestamptz), public.weekly_leaderboard() to authenticated;
+```
+
+`getWeekStanding()` calls both, takes the caller's row, the row above with strictly more points, and the count;
+`getWeeklyBoard()` (PR B) adds names and companies the way `getLeaderboards()` does. Tests in a new
+`tests/rls/scoring-week-live.test.ts` (`scoring-week.test.ts` is wave 18's and stays): the Saturday boundary at
+`23:59` / `00:00` org time across a UTC date line, a Friday row counted, a Saturday row the next week's; opt-out
+absent for another member and present for self; a deactivated member absent; another org's ledger absent; a net
+of 0 unranked; `anon` refused. ★ **For the lead:** `weekly_leaderboard()` is a new definer — if
+`definer-exposure.test.ts` enumerates definers, it needs its row there, as `all_time_leaderboard()` has.
+
+### 5.2 The ledger read — `getPointsLedger()` in `points.ts`, add-only, PR A
+
+`getPointsHistory()` stays byte-identical (nothing else calls it after the rebuild; it is kept because the module
+is add-only). The new read returns the page in one DTO:
+
+```ts
+export interface LedgerEntry extends PointsLedgerRow {
+  /** wave 20, add-only: `points_ledger.source_id` — a reversal's link to the row it reverses (`0149`). */
+  sourceId: string | null;
+  /** The admin's display name on a manual adjustment, from `actor_id`; null otherwise or when it has none. */
+  actorName: string | null;
+}
+export interface CapExplanation {
+  sessionId: string; sessionTitle: string;
+  ruleKey: "comment" | "photo"; reason: string; capPerSession: number;
+  /** Where it sits: the first item the cap left unpaid. */
+  at: string;
+}
+export type LedgerItem =
+  | { kind: "entry"; at: string; entry: LedgerEntry }
+  | { kind: "reversal"; at: string; entry: LedgerEntry; reversed: LedgerEntry | null }
+  | { kind: "cap"; at: string; cap: CapExplanation }
+  | { kind: "missed"; at: string; notice: MissedAttendance };
+export interface PointsLedgerPage {
+  /** Newest first, every ledger row exactly once (a reversed row inside its reversal's item). */
+  items: LedgerItem[];
+  /** Ledger rows matching the filters — «14 سطرًا». Explanations are not rows and are not counted. */
+  rowCount: number;
+  shown: number;
+  sessionOptions: SessionOption[];
+  /** The last 12 months in the ORG's zone, `YYYY-MM` + label-ready date. */
+  monthOptions: string[];
+  catalogue: CatalogueEntry[];
+  timeZone: string;
+}
+export async function getPointsLedger(locale: string, opts: PointsHistoryFilters & { rows?: number }): Promise<PointsLedgerPage>;
+```
+
+The pairing is a pure exported function with its unit test (`pairReversals()`), and so is the grouping by the
+org's month.
+
+### 5.3 ★★ The cap row — an EXPLANATION, never a ledger row, view or table — `w20_0002_capped.sql`, PR A
+
+`award_points()` (`0148:207-214`) refuses an award when the session's sum for the rule is already
+`cap_per_session × points`, and writes **nothing** — so the cap leaves no trace in the ledger by design (`05` §8,
+`points.ts:52-55`). The explanation is computed at read time from what the member did and what the ledger holds:
+
+```sql
+-- capped_award_explanations(): for the CALLER only, each (session, rule) where the cap is reached NOW and at
+-- least one of their own items earned nothing. Invoker: the caller's own comments and photos and own ledger rows
+-- are readable to them; a removed comment or photo is excluded (its award, if any, was reversed — it is not a
+-- capped item). Comments and photos only — the caps `REQ-PTS-006` names for content.
+create function public.capped_award_explanations()
+returns table (session_id uuid, rule_key text, cap_per_session int, first_unpaid_at timestamptz)
+language sql stable security invoker set search_path = '' as $$
+  with items as (
+    select 'comment'::text as rule_key, c.id, c.session_id, c.created_at
+      from public.comments c where c.author_id = public.auth_member_id() and c.deleted_at is null
+    union all
+    select 'photo', p.id, p.session_id, p.created_at
+      from public.photos p where p.uploader_id = public.auth_member_id()
+       and p.removed_at is null and p.hidden_at is null
+  ), rules as (
+    select r.action_key, r.points, r.cap_per_session from public.scoring_rules r
+     where r.org_id = public.auth_org_id() and r.enabled and r.points > 0 and r.cap_per_session is not null
+       and r.action_key in ('comment', 'photo')
+  ), full_caps as (
+    select l.session_id, l.rule_key from public.points_ledger l join rules r on r.action_key = l.rule_key
+     where l.member_id = public.auth_member_id() and l.session_id is not null
+     group by l.session_id, l.rule_key, r.points, r.cap_per_session
+    having sum(l.amount) >= r.cap_per_session * r.points
+  )
+  select i.session_id, i.rule_key, r.cap_per_session, min(i.created_at)
+    from items i
+    join rules r on r.action_key = i.rule_key
+    join full_caps f on f.session_id = i.session_id and f.rule_key = i.rule_key
+   where not exists (select 1 from public.points_ledger l
+                      where l.member_id = public.auth_member_id() and l.source_id = i.id and l.rule_key = i.rule_key)
+   group by i.session_id, i.rule_key, r.cap_per_session
+$$;
+```
+
+- **It claims the cap only when the cap is full now.** An unpaid item while the cap is not full is a cooldown
+  (`comment` has 60 s) or a job not yet run, and saying «الحد» there would be false — so nothing is shown.
+- One explanation per (session, rule), not one per item: «الحد: 3 تعليقات لكل جلسة», no count — the artboard
+  draws one row and a count would be a figure the ledger does not hold.
+- It names no other member, writes nothing, and has no table behind it. Its RLS test: the caller's own only; a
+  removed comment excluded; a cooldown-unpaid comment with the cap not full → no row.
+- ★ If the RLS on `comments` or `photos` hides an author's own removed or hidden item from them already, the
+  predicates above are a second line, not the first.
+
+### 5.4 `mark_board_seen()` learns the week — `w20_0003_mark_board_seen_weekly.sql`, PR B
+
+`create or replace` with the same signature: `p_board` accepts `weekly`; it writes `weekly_period` (the week's
+Saturday) and `weekly_rank` exactly as the monthly pair. ★ The weekly period must be **the current week**:
+`p_period` is checked against `org_week()`'s `week_start` and refused with `22023` otherwise, so a stale tab cannot
+write last week's rank as this week's. `tests/rls/scoring-seen.test.ts`: «an unknown board is refused» stops
+listing `weekly` — the ledger line `DEC-217` §4.3 expects — and new cases (weekly writes only its pair; a stale
+period refused) go in a new `tests/rls/scoring-seen-weekly.test.ts`... ★ that name is outside my list
+(`scoring-seen*` — the agent file names `tests/rls/scoring-seen*.test.ts` only for wave 16). **A request**: may I
+create `tests/rls/scoring-seen-weekly.test.ts`, or should the cases go into `scoring-seen.test.ts` after the
+lead's `0169` cases?
+
+## 6 · Sync-1 Q6 — files created and deleted, and every existing assertion that moves
+
+### PR A
+
+**Commit 1 — delete** (`rm`, never `git rm`): `src/app/[locale]/app/me/points/page.tsx` ·
+`src/components/scoring/{points-head,points-history-list,points-catalogue}.tsx` · their tests
+`tests/components/scoring/{points-head,points-history-list,points-history-days,points-catalogue}.test.tsx` —
+**each case re-homed in a new file, and each a ledger line** (the table goes with the commit). Kept, not deleted:
+`me/points/actions.ts` (a Server Action — what survives), `moment-points-head.tsx` (the mechanism of 3 and 4 — but
+see D26), `getPointsHistory()`.
+
+**Commit 2 — create:** `me/points/page.tsx` · `src/components/scoring/{points-head-card,points-filters,points-ledger,points-table,points-catalogue-list}.tsx`
+· `src/components/scoring/filter-submit.tsx` (the client island) · `src/components/hub/{standing.tsx,actions.ts}` ·
+`src/components/ui/{ledger-row,podium}.tsx` with `tests/components/ui/{ledger-row,podium}{,-scope}.test.tsx` and
+demos `(dev)/ui/demos/{ledger-row,podium}.tsx` · `supabase/proposed/scoring/w20_000{1,2}_*.sql` ·
+`tests/rls/scoring-week-live.test.ts`, `tests/rls/scoring-capped.test.ts` · `tests/unit/scoring-ledger-pairs.test.ts`,
+`tests/unit/scoring-week-window.test.ts` · `tests/components/scoring/points-*.test.tsx` (new names) ·
+`tests/components/hub/standing.test.tsx` · `tests/e2e/wave20-scoring-{points,standing}.spec.ts` · keys in
+`src/messages/{ar,en}/scoring.json` (ar first). `podium` lands in A (contract 2: all three primitives in A) and is
+placed in B.
+
+### PR B
+
+**Delete:** `src/app/[locale]/app/leaderboards/{page,loading}.tsx` ·
+`src/components/scoring/{member-board,company-board,company-points-breakdown}.tsx`. **Create** the same paths (so
+the transfer back to `sessions` names the same files) and `src/components/scoring/{board-rank-card,cup-card}.tsx` ·
+`supabase/proposed/scoring/w20_0003_*.sql` · `tests/e2e/wave20-scoring-boards.spec.ts` · keys in
+`src/messages/{ar,en}/leaderboards.json`. `error.tsx` and `actions.ts` kept.
+
+### Assertions that move — each a ledger line in the commit that moves it
+
+| File:line | Assertion | Moves because | Kind |
+|---|---|---|---|
+| `tests/e2e/points.spec.ts:150`, `:299` | link «فتح الجلسة» | the session title is the link (artboard); its name is the title | selector |
+| `tests/e2e/wave9-scoring-missed-day.spec.ts:241` | the notice's link «فتح الجلسة» | the same | selector |
+| `tests/e2e/wave16-scoring-moments.spec.ts:174-176`, `:225`, `:267` | the level card on `SCR-022` turns, «مستوى جديد» | ★ D26 | expectation — **only if** D26 rules moment 4 off `022` |
+| `tests/e2e/wave16-scoring-moments.spec.ts:268`, `:270` | the bar's line «صاحب أثر», «120 من 300» | the line is «"صاحب أثر" بعد 180» (artboard) | expectation (copy); `:271`'s `scaleX(0.4)` holds |
+| `tests/e2e/wave16-scoring-moments.spec.ts:298`, `:328`, `:340` | tab «كل الأوقات» → URL `/leaderboards$` | all-time is `?board=all` | expectation |
+| `tests/e2e/wave16-scoring-moments.spec.ts:301-304`, `:321`, `:329`, `:333`, `:341-342` | `#all-time ul li` nth(1) carries the rise | the podium takes 1 – 3; the rise is on the rank card (and the own row) — D42 | selector |
+| `tests/e2e/wave7-sessions-leaderboards.spec.ts:114-118` | the default tab is «كل الأوقات» | ★ the default is «هذا الأسبوع» (`REQ-UIX-078`) | expectation |
+| `tests/e2e/wave7-sessions-leaderboards.spec.ts:120-121` | `#all-time li a` in order | the first three are podium places | selector |
+| `tests/e2e/leaderboards.spec.ts:110-116` | `#all-time` on the bare URL | `?board=all` | expectation |
+| `tests/e2e/{leaderboards,wave7-sessions-leaderboards}.spec.ts` `:130-132`, `:139-141` | per row «مجموع النقاط», «نقاط لكل عضو نشط», «الترتيب حسبه» ×1 | held by the `sr-only` words in `grid`; if `toBeVisible` refuses `sr-only`, a selector line | selector, possibly |
+| `tests/components/leaderboards/boards.test.tsx` (all) | `MemberBoard` / `CompanyBoard` props and the «ترتيبك» heading | the components are rewritten at the same paths | selector; the expectations (own row, no repeat, profile link, no `img`, both metrics, signed `ltr`) re-asserted |
+| `tests/rls/scoring-seen.test.ts` «an unknown board is refused» | lists `weekly` | `DEC-217` §4.3 — PR B | expectation |
+| `tests/components/scoring/{points-head,points-history-list,points-history-days,points-catalogue}.test.tsx` | every case | deleted with their components; each case re-homed (table in the delete commit) | file retired |
+
+Untouched and expected green: `moment-rank.test.tsx` (the company board keeps `MomentRank`), `week-*.test.tsx`,
+`moment-points-head.test.tsx` (unless D26), `scoring-company-points.spec.ts:157-160` (the breakdown still says
+«استضافة جلسة» and «42» — D44 permitting), `scoring-screens.spec.ts` (an `h1` and no sideways scroll).
+
+## 7 · Sync-1 Q7 — disagreements `DEC-216` §5 and `DEC-217` §4 do not list (numbered on from 25; none picked)
+
+| # | Where | The disagreement | What each side would mean |
+|---|---|---|---|
+| 26 | `Points.dc.html` head card · `REQ-UIX-047` · M10c §1, §10 | ★★ **Moment 4 loses its surface.** The rebuilt head draws the level as text; no `level-card` with faces; M10c names 3 and 5 on the standing card, never 4. The rule is «none moved», and `DEC-207` §1.3 moves the level cursor only where 4 plays | (a) keep a `level-card` (faces, flip) on `022`'s head — off the artboard; (b) moment 4 on the standing card — a new surface; (c) the head's level name turns in place (`level-card` `standing` gains the flip) |
+| 27 | `HubDesktop.dc.html` «تنزيل CSV» · M10c §2 · `REQ-UIX-072` | ★★ «the CSV the screen already exports» — **the screen exports none**; no member-side CSV exists in `src/` | (a) a new GET Route Handler under `me/points/csv/route.ts` (my folder), the formula-escaped writer of `admin-exports`; (b) not built, the link absent |
+| 28 | `Board.dc.html` rows' ▲ / ▼ / — | Movement for **other** members cannot be computed (the seen marks are the viewer's own), and ▼ contradicts `REQ-UIX-037` («a falling row carries no colour, no icon, no motion») | the own row's rise only, as built |
+| 29 | `REQ-UIX-081`, M10c §9 vs `Board.dc.html` | The podium collapses «at a narrow width / `sm`» — but the 390 artboard draws it; and collapsing a static element «under reduced motion» changes nothing a person perceives as motion | the collapse width = the container width the three blocks need (≈ 330 px), not `sm`; reduced motion as written or dropped |
+| 30 | M10c §7 «category filter in a header `menu`» · `REQ-LDR-003` | Topic boards exist only **all-time** (`snapshot_leaderboards.ts:61`); the month has no category; the week could filter live by session category. `Board.dc.html` draws no menu | (a) the menu on «كل الأوقات» only; (b) all-time and the week (`weekly_leaderboard(p_category)`); (c) not on the board this wave |
+| 31 | `Companies.dc.html` cup card · `REQ-UIX-079` | ★★ «كأس الربع الرابع», «الجولة 3 من 4 · 26 يومًا», «تُسلَّم في اللقاء السنوي» — **no quarter, round, cup or season exists**: the company snapshot is monthly, seasonal is unbuilt. Contract 7: every figure is read | (a) the card names the snapshot's month and its days left (`WeekPeriod`); (b) a quarter derived from the month — a figure no rule produces |
+| 32 | M10c §8 «بلا ترتيب» · `REQ-UIX-079` | **No ranking minimum exists.** `min_active_members` (`0081`) gates the percentage rules, not the rank; the snapshot ranks every non-zero company, a `null` per-member figure last | (a) «بلا ترتيب» for a `null` per-member figure under that metric; (b) a new minimum — a change to what a rank IS, frozen |
+| 33 | `Companies.dc.html` «18 نشطًا» | No per-company active count is frozen; the live count would contradict `05` §6.2 | derive `round(points ÷ per-member)` from the frozen pair (absent when either is null or 0) |
+| 34 | `HubDesktop.dc.html` | The band's name is the `h1`, «نقاطي» an `h2`; every hub page draws its own `h1`, and three suites read `#main h1` = «نقاطي» | the frame's decision (the lead's) |
+| 35 | M10c §2 vs `HubDesktop.dc.html` | «(يلغي سطر <date>)» on the desktop reversal — the artboard does not draw it | per M10c's text / per the board |
+| 36 | M10c §1 «وصلت أمس» | No level history exists (out of scope); `Me.dc.html` does not draw it | not built |
+| 37 | `Points.dc.html` «تفاعل (إعجاب) · غير مُفعَّل حاليًا · 0» | Reactions are **structurally** never points (`REQ-PTS-010`) and have no rule row; today a disabled rule shows its value and a badge | a disabled rule: «غير مُفعَّل حاليًا» and `0`; no reactions row, because no rule exists |
+| 38 | M10c §7 «opted out (own row only)» | Ambiguous against `REQ-LDR-008` (the member still sees the board; only others stop seeing them) | the board, and the own row privately — today's behaviour |
+| 39 | `DEC-216` §5.17 «this wave is where that stops» | The fix of `leaderboards.ts:512` has two readings | (a) the labels say «month»; the home's week stays on the monthly rank (`DEC-206` §4.47, wave 18's frozen surface); (b) the home's HUD and the game rail read contract 4 — add-only in `week-*` (the agent file allows it), and their «this month» copy moves |
+| 40 | `weekly_leaderboard()` | Rank over what the caller may see (`0044`, no gaps) or over everyone (the snapshots, gaps) | `0044`'s, the live precedent |
+| 41 | `points.ts:85-94` | The member's month filter is UTC (a defect); the monthly **snapshot** is UTC too (`0042`) while `REQ-LDR-002` says the org's zone | the filter fixed in the new read; the snapshot is frozen and not mine this wave — written for the owner |
+| 42 | `DEC-217` rule 7 vs wave 16 | Moment 5 on the board: the rank card's count and arrow **instead of** the rows' FLIP, or **as well as** | card only / card + FLIP |
+| 43 | `Points.dc.html` reversal meta «أُلغي حضورك: الرمز أُدخل من خارج القاعة» | The artboard draws the admin's free-text reason; wave 7's ruling keeps it on `check_ins.removal_reason` and `audit_log` only (`points.spec.ts:289`) | the fixed reason, as built |
+| 44 | `Companies.dc.html` breakdown | One row **per source** with an aggregate («3 جلسات × 30», «17 من 24 · 71%»); the ledger is per session, and a percentage is per session | (a) per source: the sum, the count of sessions, and no percentage line for the two percentage rules; (b) per row, as today |
+
+## 8 · Requests and questions for the lead
+
+1. **Types for `ui/index.ts`**: `LedgerRowProps`, `PodiumPlace`, `PodiumProps` (§3); add-only `LevelStanding.frame`
+   and `RaceBarProps.layout: "grid"` (§3.3); `BoardKind` is the DAL's.
+2. **To `content`, through you**: `avatar` add-only `size: 64` (`Me.dc.html`'s card and the podium's places draw
+   60 – 64; 56 is the nearest built).
+3. **Colours**: the podium's gold block — `--color-level-*` has silver (3) and bronze (2) but no gold; the sticker's
+   `gold` fill exists. I would use that semantic name; if it is not exposed as a utility, it is a `globals.css`
+   request.
+4. `definer-exposure` gains `weekly_leaderboard()` if it enumerates definers (§5.1).
+5. The test file name for the weekly seen cases (§5.4).
+6. ★ **The three rulings I most want at sync 1**: **D26** (where moment 4 plays), **D27** (the CSV: build it or
+   not), **D31 with D32** (the company cup card's quarter, and what «بلا ترتيب» means). Close behind: D39 and D42.
+
+## 9 · Amendments after the frame (`ebdde010`, doc `f79f5ee3`) and the lead's notes on contract 3
+
+- **`SCR-022`'s top row and strip**: the page renders `HubTopRow({ title: «نقاطي», back: "/app/me" })` and
+  `<HubStrip />` from `src/components/shell/` below `lg`; from `lg` the lead's `me/layout.tsx` draws the band, then the
+  strip. §1's rows 1 – 2 read so.
+- **The boards draw their own top row** (`ownsTopRow`, no hub strip, not `HubTopRow`): `h1` «لوحات الصدارة», «حتى
+  الجمعة» on the week, then the window chips — a small server component of mine,
+  `src/components/scoring/board-top-row.tsx`, used by `027` and `028` (PR B).
+- **Ruled by the lead**: the band's figures are those of the hub page the member landed on until a hard load or
+  `refresh()` — a known property, not a defect; the page's `HubTopRow` `h1` is the `h1` at every width, the band's
+  name is text (D34 closed that way).
+- ★ **The hidden copy never plays and never writes** (`content`'s requirement 1). On `/app/me` both forms are in the
+  DOM at every width. `HubStanding` wraps its figures in `MomentWeek`, whose `useDisplayed` gate (`use-displayed.ts`)
+  mounts the controller — the only code that claims an occurrence, animates or calls the two bound actions — **only
+  in the copy that has a box**. The `display:none` copy renders the static state, claims nothing and writes nothing
+  to `member_seen_marks`. A resize across `lg` mounts the other copy's controller, which finds the occurrence already
+  claimed. `tests/components/hub/standing.test.tsx` proves it: both forms mounted, one with `display:none` → only
+  the displayed one plays, exactly one acknowledgement per mark; then the re-render test (mount, play, unmount,
+  mount again → silence) on each form, and the hidden form alone → no play, no call.
+- ★ **A skeleton for the card form** (`content`'s requirement 2): `export function HubStandingSkeleton({ form }: {
+  form: "card" | "band"; className?: string })` from `src/components/hub/standing.tsx` — `skeleton` primitives in the
+  card's own geometry (the avatar row, the level row, the bar, three tiles), `aria-hidden`, no text, no data, no
+  `getTranslations`, so `content` wraps `<HubStanding form="card">` in `<Suspense fallback={<HubStandingSkeleton
+  form="card" />}>` and the lead may do the same for the band.
+
+# Wave 20 — build (after `DEC-218`; the frame at `ebdde010`)
+
+Landed so far: `ui/ledger-row` and `ui/podium` (`28d325e0`); the week's SQL, proposed (`b0320d91`); contracts 3 and 4
+— `getWeekStanding()`, `getHubStanding()`, `<HubStanding>` and its skeleton, `level-card`'s `frame="none"`
+(`82c945bd`).
+
+## `SCR-022` — commit 1, the delete (`DEC-208`)
+
+Deleted: `src/app/[locale]/app/me/points/page.tsx` · `src/components/scoring/{points-head,points-history-list,points-catalogue}.tsx`
+· their four test files. Kept: `me/points/actions.ts` (the Server Action), `moment-points-head.tsx` (moments 3 and 4's
+mechanism), `getPointsHistory()` (the DAL is add-only). The kept-behaviour table is §2.1 above, written before this
+commit; it is read back against the new files after the create commit.
+
+**Where each retired case goes** (each a ledger line in `STATUS.md`, sent to the lead):
+
+| Retired case | Re-homed in |
+|---|---|
+| `points-history-list` · the empty state names its next action | `points-ledger.test.tsx` · empty |
+| · a plain award has no reversal or manual tag | `points-ledger.test.tsx` · a plain award |
+| · the reversal entry: a Western minus, `<bdi>` on both fields | `points-ledger.test.tsx` · the reversal pair, and `ledger-row.test.tsx` |
+| · never the admin's free text on a reversal | `points-ledger.test.tsx` · the fixed reason only |
+| · no running total per row | `points-ledger.test.tsx` · no total |
+| · a manual adjustment's tag and its session link | `points-ledger.test.tsx` · manual, now with the admin's name |
+| · axe-clean with a mixed history | `points-ledger.test.tsx` · axe |
+| `points-history-days` · the notice names the day, states the rule, no amount | `points-ledger.test.tsx` · the missed-day notice |
+| · several days in the locale's conjunction, Western numerals | `points-ledger.test.tsx` · the same |
+| · a one-day history never renders a notice | `points-ledger.test.tsx` · one-day |
+| · a notice beats the empty state | `points-ledger.test.tsx` · the same |
+| · the notice interleaved by completion time | `points-ledger.test.tsx` · and the DAL's sort (`scoring-ledger-pairs.test.ts`) |
+| · axe-clean with a notice | `points-ledger.test.tsx` · axe |
+| `points-catalogue` · nothing when every rule is zero | `points-catalogue-list.test.tsx` · the same |
+| · an enabled rule with its cap, a disabled one marked | `points-catalogue-list.test.tsx` · now a disabled rule draws `0` (`M10c` §2, D37) — ★ an expectation that moves |
+| · axe | `points-catalogue-list.test.tsx` · axe |
+| `points-head` · the bar's fill is the fraction its line states | `points-head-card.test.tsx` · the same |
+| · the delta isolated left to right | `points-head-card.test.tsx` · the same |
+| · the turned card names the new level and its perk | `points-head-card.test.tsx` · the level row turns in place, both faces named (DEC-218 §3.1) — ★ no perk list: the row draws none |
+| · at the top the bar is full and says so | `points-head-card.test.tsx` · the same |
+| · no streak in words / no streak rule draws nothing | ★ retired: the streak left `022`'s head with the artboard and lives on the standing card (`standing.test.tsx` covers both) |
+
+## `SCR-022` — commit 2, the create (`bf268172`, `8815a4a7`), and §2.1 read back against the new files
+
+| # | §2.1 behaviour | Read back in |
+|---|---|---|
+| 1 | Read at the data | `getPointsLedger()` / `getPointsHead()` → `sessionClient()` ✓ |
+| 2 | The caller's rows only | `.eq("member_id", session.memberId)` on the page, and again on the reversed rows fetched by id ✓ |
+| 3 | Each row its own reason in `<bdi>` | `points-ledger.tsx` `entryText()` ✓ |
+| 4 | The signed figure in `<bdi dir="ltr">`, sign first, Western digits | `ledger-row` + `signedFigure()` (`−` U+2212) ✓ |
+| 5 | A reversal: «إلغاء نقاط سابقة» + its fixed reason, never the admin's text | `rowFor()` reversal ✓ — `points-ledger.test.tsx` |
+| 6 | A manual adjustment: the tag, its reason — and now the admin's name | `entryText()` + `actorName` ✓ |
+| 7 | A link to the session | the title is the link ✓ (the accessible name moved — ledger lines below) |
+| 8 | The missed-day notice | `ledger-row` `notice` ✓ |
+| 9 | The empty state with its next action | `PointsLedger` ✓; notices beat it ✓ |
+| 10 | GET filters, unfiltered options, «مسح التصفية» | `PointsFilters` ✓; ★ filtered empty built ✓ |
+| 11 | ★ The org's month (the defect) | `orgMonthRange()` ✓ — `scoring-ledger-pairs.test.ts` |
+| 12 | The catalogue live, `id="catalogue"`, zero rules hidden, a disabled rule marked | `PointsCatalogueList` ✓; a disabled rule draws `0` (D37) |
+| 13 | The balance the page's one `<strong>` | `MomentPointsHead` `row` ✓; the band's figure is no `<strong>` ✓ |
+| 14 | Moment 3, bound mark, a hard load static | `PointsHeadGate` → `MomentPointsHead`, unchanged mechanism ✓ |
+| 15 | ★ Moment 4 | the level row turns in place (`points-level-turn.tsx`) ✓ — ★ and the head shows at every width (below) |
+| 16 | The streak | on the standing card (`HubStanding`) ✓ |
+| 17 | One fraction for bar and line | `levelProgress()`; the line is threshold − balance ✓ |
+| 18 | `#history` | the phone list ✓; the table `#history-table` ✓ |
+| 19 | No running total | ✓ |
+| 20 | `presenterNet()` untouched | ✓ |
+| 21 | Nothing of the shell | `HubTopRow` + `HubStrip` are the frame's ✓ |
+
+★ **A deviation found while reading back** — written to the lead: `HubDesktop.dc.html` draws no head card from `lg`.
+Hiding it there would leave moment 4 (`DEC-218` §3.1) with no desktop surface and the level cursor unmoved for a
+desktop member, because the band acknowledges the level last seen. **The head shows at every width** (`8815a4a7`)
+until the lead rules otherwise.
+
+**Ledger lines** (sent to the lead for `STATUS.md`):
+
+| File:line | Assertion | Kind |
+|---|---|---|
+| `tests/e2e/points.spec.ts` first test | `#main #history` → `#main #history-table` with `tr` on the desktop project | selector |
+| `tests/e2e/points.spec.ts` first test | link «فتح الجلسة» → the session's title | selector |
+| `tests/e2e/points.spec.ts` reversal test | link «فتح الجلسة» → «جلسة اختبار الإلغاء» | selector |
+| `tests/e2e/wave9-scoring-missed-day.spec.ts:241` | the notice's link «فتح الجلسة» → the workshop's title | selector |
+| `tests/e2e/wave16-scoring-moments.spec.ts:268-270` | the bar's slot holds «صاحب أثر» and «120 من 300» → `#points-head` holds «صاحب أثر» بعد 180 | expectation (copy); `scaleX(0.4)` holds |
+
+## Closing PR A
+
+- ★ **Disagreement recorded, ruled by the lead** (the closing entry carries it): `HubDesktop.dc.html` draws no head card
+  on `SCR-022` from `lg`. **The head shows at every width** — `DEC-195` places moment 4 there and `DEC-218` §3.1 keeps
+  it; hidden, a desktop member would never see a level-up and the level cursor would stay where it was.
+- **The month filter's defect fixed where it was found** (`DEC-218`, the lead's exception to add-only for those lines):
+  `getPointsHistory()` now bounds a month in the org's zone through `orgMonthRange()`; `monthRange()` is gone. Unit
+  case: a row at 23:30 in Riyadh on 30 September stays in September.
+- **The hidden standing copy renders no «+N» node** (`displayed-only.tsx`): the server renders none, and the copy on
+  screen renders it after hydration. Covered by `standing.test.tsx` and `wave20-scoring-standing.spec.ts`.
+- `avatar` size 64 (`040a89aa`, `content`'s) on the card and the podium.
+
+# Wave 20, PR B — plan addendum: «كأس الربع» (`DEC-219` §2), before any code
+
+Measured on the tree after `dcbf8776`. Answers the owner's one check and the lead's three questions. Nothing is built.
+
+## A · The owner's check — can a quarter already awarded change? No, and it needs no SQL
+
+`05-scoring-engine.md:383` is about a **live** denominator: «computed live, deactivating one member retroactively raises
+that company's score for every past period». The snapshot exists to stop exactly that, and **a final one is already
+immutable at the database, for every role including the owner**:
+
+- `leaderboard_snapshot_guard()` (`0027:453-466`) raises `23514` on any `update` or `delete` of a row whose `is_final` is
+  true — the replace-in-place re-run `snapshot_leaderboard()` does is a delete, so a final quarter cannot be re-taken.
+- `leaderboard_entry_guard()` (`0027:497-510`) raises `23514` on any `update` or `delete` of an entry of a final snapshot.
+- Both are triggers, not missing grants, because the writer is a definer owned by the table owner, whom `revoke` cannot
+  stop (the header above `0027:432`). The only exception is an org's own deletion cascading through.
+- `active_member_count` and each entry's `points` and `points_per_active_member` are written once, at snapshot time;
+  nothing recomputes them.
+
+So **a quarter's standings are frozen the moment the job marks it final**, and deactivating, adding or moving a member
+afterwards changes nothing in it. «تُسلَّم في اللقاء السنوي» is safe on that. **What stays provisional** is the CURRENT
+quarter: it is re-taken every night until the night after its last day, as the month is — which is what the card's
+«مؤقت» says (§D).
+
+★ **One carried caveat, not this wave's**: the job's periods are UTC calendar boundaries (`date_trunc` on `now()` in the
+job's session, `0042`), not the org's zone, so a quarter's last three hours in Riyadh fall into the next quarter's UTC
+bounds — the same defect the monthly board has carried since M4 (`REQ-LDR-002` says the org's zone). Written for the
+owner; fixing it changes what a period IS and touches the frozen snapshot function.
+
+## B · ★ A disagreement with `DEC-219` §2's measurement — the cup is a `company` snapshot, not a `seasonal` one
+
+`DEC-219` §2 says «a quarter is a `seasonal` snapshot whose period is a quarter». **That ranks the wrong thing.**
+`snapshot_leaderboard()`'s `seasonal` branch is the MEMBERS' branch — `if p_kind in ('monthly', 'seasonal')` inserts
+`member_id` rows (`0042:62-73`, `0081:613-624`); company rows (`company_id`, `points_per_active_member`) are written by the
+`p_kind = 'company'` branch alone (`0081:638-668`). `0066:24-28`'s precedent is about a MEMBER board («the top 3 of any
+FINAL member-ranked snapshot»), so it carries over to members, not to companies.
+
+What the cup needs, with no schema change: **a `company` snapshot whose period is a quarter** —
+`snapshot_leaderboard(org, 'company', <quarter start>, <quarter end>, null, <final?>)`. The natural key
+`(org_id, kind, period_start, period_end, category_id)` (`0027:443`) lets it sit beside the month's company snapshots.
+No enum value, no new function.
+
+★ **The consequence for the readers** — named so it is not discovered by the board: three reads take «the newest
+`company` snapshot by `taken_at`» — `getLeaderboards()` (`leaderboards.ts:61-68`), `getCompanyRace()` (`:619-627`, the
+home's race), and the boards' moment. A quarter snapshot written after the month's in the same nightly run would become
+«the newest», and the monthly race and the home would show the quarter. **Each must select by period**: the month's
+company snapshot is the one whose period is a calendar month; the quarter's, a calendar quarter. In `leaderboards.ts`
+(mine, add-only — the two existing reads need the lead's exception, like `points.ts:85-94`'s) and in a new
+`getCompanyCup()`. The ordering of the job's statements is not a safe substitute.
+
+Not picked: the lead rules whether the quarter is `company`-with-a-quarter-period (my recommendation, no SQL) or whether
+`seasonal` is taught company rows (a `create or replace` of the frozen snapshot function, from `0173`).
+
+## C · How the quarter is scheduled — no new crontab line, no SQL schedule
+
+The nightly `snapshot_leaderboards` task (`worker/src/tasks/snapshot_leaderboards.ts`, `0 2 * * *` in
+`worker/src/index.ts:115`) already takes the current month provisional and finalises the previous month once. **The
+quarter rides the same run, the same way**: the current quarter's company snapshot, provisional, every night; and the
+previous quarter's, final, once — skipped when a final row already exists, exactly as the month's check does
+(`:41-57`), because the guard would refuse the replace. So no crontab line and no `pg_cron`.
+
+★ That task is one of my eight, **frozen for everyone this wave** — so this is a request for the lead's grant on that one
+file, for those added statements only. `main`'s worker on the merged schema does nothing different: no schema change.
+
+## D · What the cup card shows
+
+Read by a new add-only `getCompanyCup(locale)` (the quarter's snapshot as §B selects it):
+
+| Drawn | From | Mid-quarter (provisional) | After the quarter (final) |
+|---|---|---|---|
+| «كأس الربع الرابع» | the period's quarter (`period_start`'s month ÷ 3), an ordinal from the catalogue | the current quarter | the quarter just closed, until the next one has a snapshot |
+| «الجولة 2 من 3 · 26 يومًا» | the month within the quarter, and the days left to `period_end` in the org's zone | shown | ★ the line becomes «نهائي» (`company.final`); no days |
+| `company.provisional` / `company.final` | `is_final` | «مؤقت» | «نهائي» |
+| «الترتيب حسبه: …» ✓ | `metric` (frozen on the snapshot, `0042:58`) | the snapshot's | the snapshot's |
+| `company.takenAt` | `taken_at` | «الليلة 2:00 ص» | the finalising night's |
+| «تُسلَّم في اللقاء السنوي» | the owner's ruling; a fact about the prize, not an explainer | shown | shown |
+
+★ **A second disagreement**: `Companies.dc.html` draws «الجولة 3 من 4». A quarter has three months, so a round counted by
+month is «من 3». «من 4» reads as the four quarters of a year (round 3 of 4 = Q3) — which would make the title and the
+round say the same thing twice. Not picked; I propose «الجولة N من 3», the month within the quarter.
+
+## E · «N نشطًا» — not `active_member_count`
+
+`DEC-219` §2 maps «N نشطًا» to `active_member_count`. **That column is the ORG's count** —
+`select count(*) from members where org_id = p_org and status = 'active'` (`0042:42`, `0081:597`), one number per
+snapshot — not a company's. A company's frozen count is not stored; it is **implied by the frozen pair**:
+`active(C) = points ÷ points_per_active_member`, exactly, since the snapshot computed the second from the first
+(`0081:640-650`). The DAL derives it, rounded, and shows nothing when either is null or 0. No SQL. ★ A third
+disagreement, recorded, not picked.
+
+## F · «بلا ترتيب» and `min_active_members`
+
+`company_scoring_rules.min_active_members` (seeded 3, `0081:169`, `:551`) gates the two percentage RULES — a company
+below it earns no percentage points (`0081:389`, `:418`). Nothing ranks by it. Two ways to make it a ranking rule:
+
+- **(a) Display only, no SQL.** The DAL derives each company's active count (§E) and shows «بلا ترتيب» when it is below
+  the minimum; the others keep their frozen rank numbers, so a gap can show («1 · 3»). ★ **But the minimum is read
+  LIVE**: an admin who edits it changes which companies of a FINAL quarter read «بلا ترتيب» — the cup's own board would
+  move after the cup is handed over. That contradicts §A.
+- **(b) Frozen at snapshot time, `0173`** (my recommendation, for the lead to write): additive —
+  `leaderboard_snapshots.min_active_members int` (nullable; old rows null = no minimum), written by the `company`
+  branch; and a `create or replace` of `snapshot_leaderboard()` whose `company` branch ranks the companies at or above
+  the minimum first (1 … k, by the metric) and those below after them (k+1 … n), so the cup's #1 is always eligible and
+  every rank stays `> 0` (`0027:475`). The DAL shows «بلا ترتيب» for a row whose derived count is below the snapshot's
+  own frozen minimum. **`REQ-UIX-079`** («a company below the minimum of active members has no rank and says so»),
+  `REQ-LDR-006`. Its five parts: the column and the function in one migration; RLS unchanged (the table's own
+  `p1_org_read`); **no new grant** (`grant select on leaderboard_snapshots` is table-level, `0027:450`); the existing
+  policies unchanged; the test in `tests/rls/snapshot-leaderboards.test.ts`'s pattern — below-minimum ranked after,
+  the column frozen on a final row, an old row's null meaning no minimum. ★ It changes the MONTHLY race's ranking going
+  forward too (provisional rows only; every final row is untouched) — the owner should know.
+- **Which minimum**: the org has no ranking minimum of its own. (b) reads `company_attendance_pct`'s
+  `min_active_members` **whether or not that rule is enabled** — the one setting an admin already uses to say «a company
+  this small is not comparable». A separate `org_settings` column would be cleaner and needs a console field (frozen).
+  Not picked.
+
+## G · Files, when wave-20b is cut
+
+`getCompanyCup()` and the period-selecting reads in `leaderboards.ts`; the cup card in `src/components/scoring/cup-card.tsx`;
+keys in `leaderboards.json`; with the lead's grant, `snapshot_leaderboards.ts`'s added statements; with (b), the lead's
+`0173` from my draft under `supabase/proposed/scoring/`; tests: a new `tests/rls/scoring-cup*.test.ts` (the quarter's
+snapshot taken, finalised once, frozen), unit cases for the quarter arithmetic and the derived count, the cup card's
+component test, and `wave20-scoring-boards.spec.ts`'s cup case.
+
+## H · The lead's rulings on the addendum (after `09156f37`), and two answers
+
+- **Accepted**: §A (no SQL; the UTC caveat carried), §B (a `company` snapshot with a quarter period; `getLeaderboards()`
+  and `getCompanyRace()` select the month by its period length, add-only exception granted, a unit case each), §C
+  (granted on `snapshot_leaderboards.ts` for the added statements only, with its test), §D («الجولة N من 3»).
+- **«بلا ترتيب» is NOT built this wave** — option (b) also reorders the monthly race, beyond `DEC-219`; it goes to the
+  owner. `DEC-218` §3.3 stands for that line. (b) stays drafted in §F, to land from `0173` if the owner says yes.
+- **§E — is the division exact? Measured: the stored ratio is NOT rounded, so the derivation is safe.**
+  `leaderboard_entries.points_per_active_member` is an unconstrained `numeric` (`format_type` = `numeric`), and the
+  snapshot writes `sum(...)::numeric / count(...)` into it unrounded: Postgres keeps 16 fractional digits for such a
+  quotient — `170/18` is stored `9.4444444444444444`. `round(points ÷ stored)` then recovers the count: measured
+  `170 → 18`, `7/3 → 3`, `−25/7 → 7`, `99999/9973 → 9973`. The error of the round trip is far below 0.5 for any count
+  an org can hold; read into a JavaScript double it is still exact to the integer. **So «N نشطًا» is drawn**, from
+  `round(points / ppam)`, and nothing is drawn when either is null or `0`. A unit case pins the four measured pairs.
+- **`main`'s worker in the gap** (it runs the old `snapshot_leaderboards.ts` until the merge): it takes no quarter
+  snapshot, so the cup card reads none and shows its empty state; the month's snapshots are taken exactly as today and
+  every reader selects them as today. Nothing breaks, and no row `main` writes is one the new code misreads.

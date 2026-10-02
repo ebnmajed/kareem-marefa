@@ -141,16 +141,21 @@ test("a member reads their whole points history and can explain every point with
   // would otherwise match the same text.
   // wave 16: every /app locator is scoped to #main (DEC-145) — the new head changes how the page streams, and on
   // desktop an orphaned hidden segment duplicated `#history` in the full suite.
-  const history = page.locator("#main #history");
+  // ★ wave 20 (DEC-218, `SCR-022` rebuilt): the phone's ledger is `#history` (a list); from `lg` it is the table
+  // `#history-table` (`HubDesktop.dc.html`) — a selector that moved, the expectations below unchanged.
+  const desktop = (page.viewportSize()?.width ?? 0) >= 1024;
+  const history = page.locator(desktop ? "#main #history-table" : "#main #history");
+  const row = desktop ? "tr" : "li";
 
   // The check-in award: reason, amount, and a link to the session it came from.
-  const checkInRow = history.locator("li", { hasText: "تسجيل حضور مؤكَّد" });
+  const checkInRow = history.locator(row, { hasText: "تسجيل حضور مؤكَّد" });
   await expect(checkInRow).toContainText("+20");
   await expect(checkInRow.getByText(sessionTitle)).toBeVisible();
-  await expect(checkInRow.getByRole("link", { name: "فتح الجلسة" })).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
+  // ★ wave 20: the session's title IS the link (`Points.dc.html`), so its name is the title — a selector that moved.
+  await expect(checkInRow.getByRole("link", { name: sessionTitle })).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
 
   // The manual adjustment: its own admin-written reason, tagged as manual.
-  const manualRow = history.locator("li", { hasText: "مكافأة تشجيعية للاختبار" });
+  const manualRow = history.locator(row, { hasText: "مكافأة تشجيعية للاختبار" });
   await expect(manualRow).toContainText("+5");
   await expect(manualRow).toContainText("تعديل يدوي من الإدارة");
 
@@ -293,10 +298,12 @@ test.describe("M9 restyle: empty state and the reversal entry", () => {
     // proves the attribute made it into a real render, which a jsdom test
     // alone can't, regardless of why it's there.
     const reversalRow = history.locator("li", { hasText: "أُلغي تسجيل الحضور" });
-    await expect(reversalRow.locator("bdi[dir='ltr']")).toBeVisible();
+    // ★ wave 20 (DEC-216 §5.9): the reversal card holds the pair's two figures — the reversal's own is the first.
+    await expect(reversalRow.locator("[data-slot=figure] bdi[dir='ltr']").first()).toBeVisible();
     // The reversal readable next to what it reverses — never a number that
     // quietly changed (`REQ-CHK-017`).
-    await expect(history.getByRole("link", { name: "فتح الجلسة" }).first()).toHaveAttribute("href", `/ar/app/sessions/${rSessionId}`);
+    // ★ wave 20: the session's title is the link — a selector that moved.
+    await expect(history.getByRole("link", { name: "جلسة اختبار الإلغاء" }).first()).toHaveAttribute("href", `/ar/app/sessions/${rSessionId}`);
     await capture(page, "reversal");
   });
 });

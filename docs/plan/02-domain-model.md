@@ -913,10 +913,11 @@ The **all-time** board is computed live from `points_balances` — it has no per
 denominator problem.
 
 #### `ENT-member_seen_marks`
-**Serves:** `REQ-UIX-047`, `REQ-UIX-048` · added by `DEC-197` (`0162`)
+**Serves:** `REQ-UIX-047`, `REQ-UIX-048`, `REQ-UIX-078` · added by `DEC-197` (`0162`); the weekly pair by `DEC-216` (`0169`)
 ★ **What a member has seen — a cursor, not a log.** One row per member (`member_id` is the primary key, cascading
 with the member), `org_id`, and the values last shown: `points_entry_id` (an opaque marker, no FK), `points_total`,
-`level_id`, `all_time_rank`, `monthly_period` / `monthly_rank`, `company_period` / `company_id` / `company_rank` /
+`level_id`, `all_time_rank`, `monthly_period` / `monthly_rank`, ★ `weekly_period` / `weekly_rank` (`0169`, `DEC-216`
+§2.2 — the live weekly board's «since you last looked»), `company_period` / `company_id` / `company_rank` /
 `company_fraction`. Moments 3 to 5 play when the source differs from the mark, and the member's own client writes
 the new mark once the moment has shown it. **No timestamp of any kind** — a `seen_at` would record when someone
 opened their points page; `ENT-survey_participations` is the precedent. The worker never touches it, and a member's

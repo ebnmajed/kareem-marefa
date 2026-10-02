@@ -252,6 +252,12 @@
   --color-level-4: #c6ff3d;
   --color-level-5: #bfe9ff;
   --color-on-level: #0b0c12;
+  /* ★ wave 20 (DEC-218, REQ-UIX-081): the podium's three blocks — silver and bronze are the level ramp's own neutrals,
+     gold is the sticker's gold, an OBJECT colour. Never a company's (`--color-team-gold` is a team's) and never a
+     status's (`DEC-073`). Text on all three is `--color-on-level`. */
+  --color-podium-1: var(--color-sticker-gold);
+  --color-podium-2: var(--color-level-3);
+  --color-podium-3: var(--color-level-2);
 
   /* The avatar's six tints inside the scope (REQ-PRF-009): a stable hash of
      the member id, never the company. Bone on each is 9.4:1 or better. */

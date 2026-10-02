@@ -32,8 +32,6 @@
       "failed": "تعذّر حفظ الجلسة. حاول مرة أخرى."
     },
     "bookmarksPage": {
-      "heading": "المحفوظات",
-      "empty": "لم تحفظ أي جلسة بعد.",
       "count": "{count, plural, zero {لا توجد جلسات محفوظة} one {جلسة محفوظة واحدة} two {جلستان محفوظتان} few {{value} جلسات محفوظة} many {{value} جلسة محفوظة} other {{value} جلسة محفوظة}}",
       "browseAction": "تصفّح الجلسات"
     }

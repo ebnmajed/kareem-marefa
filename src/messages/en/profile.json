@@ -6,7 +6,6 @@
     "companyNone": "— choose your company —",
     "jobTitle": "Job title",
     "bio": "Bio",
-    "bioHint": "Up to 600 characters",
     "leaderboardOptOut": "Hide me from leaderboards",
     "save": "Save",
     "saving": "Saving…",
@@ -35,6 +34,34 @@
       "jobTitleTooLong": "Job title is too long — shorten it a little",
       "bioTooLong": "Bio is too long — shorten it a little",
       "failed": "Could not save your profile — try again. Your data is still in the form."
+    },
+    "bookmarks": {
+      "empty": "Nothing saved yet",
+      "removed": "Removed from saved",
+      "undo": "Undo",
+      "undoFailed": "Couldn't put it back in saved. Try again."
+    },
+    "hubTitle": "My account",
+    "interests": "Interests",
+    "read": {
+      "edit": "Edit your profile",
+      "chooseCompany": "Choose your company"
+    },
+    "edit": {
+      "title": "Editing my profile",
+      "unsaved": "{count, plural, =0 {No changes} one {1 unsaved change} other {{value} unsaved changes}}",
+      "changed": "(changed)",
+      "cancel": "Cancel",
+      "actions": "Save my profile",
+      "bioCount": "{count} of {max}",
+      "emailSource": "from Google",
+      "addInterest": "Add an interest",
+      "removeInterest": "Remove {name}",
+      "leave": {
+        "title": "Discard your changes?",
+        "confirm": "Discard",
+        "stay": "Keep editing"
+      }
     }
   }
 }

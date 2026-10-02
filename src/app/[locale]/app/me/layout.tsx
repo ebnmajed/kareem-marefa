@@ -1,49 +1,29 @@
-import type { ReactNode } from "react";
-import { getTranslations, setRequestLocale } from "next-intl/server";
-import { MeTabStrip } from "@/components/me/tab-strip";
+import { Suspense, type ReactNode } from "react";
+import { setRequestLocale } from "next-intl/server";
+import { HubStanding, HubStandingSkeleton } from "@/components/hub/standing";
+import { HubStrip } from "@/components/shell/hub-strip";
 
-// The `/app/me` hub's shell — `16` §6.5, SCR-021 … 026, `REQ-PRF-006`/`007`.
+// The `/app/me` hub's frame — `REQ-UIX-070`, `STORY-UIX-059`, `HubDesktop.dc.html`; rebuilt in wave 20 (`DEC-208`).
 //
-// `16` §6.5 names six tabs (القادمة · الحاضرة · المقترحات · المحفوظات ·
-// الشهادات · النقاط); the tree has seven routes under `/me`, three of them
-// absent from that list (calendar, notifications, privacy), and three of the
-// six (القادمة/الحاضرة/المقترحات) read another track's data this wave does
-// not have — the timeline `/app` already IS "القادمة" (DEC-112) and
-// "المقترحات" is `sessions`' `/app/propose`. Raised, not silently built or
-// dropped (docs/plan/notes/content.md's wave-7 plan §1); the lead's ruling:
-// seven tabs, one per real route, profile first — the promotion of the
-// six-item chip nav `me/page.tsx` already rendered, plus the profile form
-// itself as the seventh, first tab (§6.5's own "chips → tabs" framing).
+// From `lg`: the standing band (contract 3, `scoring`'s) and the strip under a rule, then the page. Below `lg` this
+// renders nothing: the page draws its own top row and the phone strip (`HubTopRow`, `HubStrip`), because the strip
+// sits under the page's title there and above it here. No game rail — the band is the member's own standing, and a
+// rail beside it would repeat it (`DEC-216` §5.8).
 //
-// ★ NO AUTH AND NO DATA GATE HERE (`CLAUDE.md`'s Data access §3). A layout
-// renders on navigation without re-executing (Partial Rendering), so a check
-// here would not even run again on every visit — every check stays in each
-// page's own DAL call, at `requireSession()`. This file renders chrome only.
-export default async function MeLayout({
-  children,
-  params,
-}: {
-  children: ReactNode;
-  params: Promise<{ locale: string }>;
-}) {
+// ★ NO AUTH AND NO DATA GATE HERE (`CLAUDE.md`, «Data access» §3). A layout does not re-render on navigation; every
+// check stays in each page's DAL call, and the band reads its own data at `requireSession()`.
+export default async function MeLayout({ children, params }: { children: ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("profile.nav");
-
-  const items = [
-    { href: "/app/me", label: t("profile") },
-    { href: "/app/me/points", label: t("points") },
-    { href: "/app/me/certificates", label: t("certificates") },
-    { href: "/app/me/bookmarks", label: t("bookmarks") },
-    { href: "/app/me/calendar", label: t("calendar") },
-    { href: "/app/me/notifications", label: t("notifications") },
-    { href: "/app/me/privacy", label: t("privacy") },
-  ];
-
   return (
     <>
-      <MeTabStrip label={t("label")} items={items} />
-      <div className="mt-6">{children}</div>
+      <Suspense fallback={<HubStandingSkeleton form="band" className="mb-4 hidden lg:block" />}>
+        <HubStanding locale={locale} form="band" className="mb-4 hidden lg:block" />
+      </Suspense>
+      <div className="mb-6 hidden lg:block">
+        <HubStrip desktop />
+      </div>
+      {children}
     </>
   );
 }

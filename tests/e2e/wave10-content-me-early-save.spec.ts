@@ -85,7 +85,7 @@ async function signIn(context: BrowserContext, email: string) {
 test("★ T2·2: a save pressed the instant the field is visible — no wait for streams, no wait for hydration — still persists after a reload", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, memberEmail);
-  await page.goto("/ar/app/me");
+  await page.goto("/ar/app/me?edit"); // ★ wave 20: the fields live in edit mode (SCR-021, DEC-218 §4.3)
 
   // Deliberately no `waitForStreamsToSettle`/`waitForLoadState("networkidle")` here — the entire
   // point is to race the click against hydration, not to wait it out. Playwright's own locator
@@ -99,9 +99,12 @@ test("★ T2·2: a save pressed the instant the field is visible — no wait for
   // The confirmation is the FAST path's own evidence — asserted, but not the only proof (a full
   // reload below re-reads from the database, independent of whatever the client's `useActionState`
   // did or didn't display before this assertion even started).
-  await expect(page.getByRole("status")).toContainText("تم الحفظ");
-  await expect(nameField).toHaveValue("عضو الحفظ الفوري");
+  // ★ wave 20 (SCR-021, DEC-218 §4.3): a save returns to read mode — the toast once, then the saved name as a row.
+  await expect(page.getByText("تم الحفظ", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/ar\/app\/me$/);
 
+  // The proof is a fresh load, never client state: the read row is the database's value.
   await page.reload();
-  await expect(page.getByLabel("الاسم", { exact: false })).toHaveValue("عضو الحفظ الفوري");
+  // The profile's own region: the standing card and the desktop band name the member too.
+  await expect(page.locator("#main").getByRole("region", { name: "ملفي" }).getByText("عضو الحفظ الفوري")).toBeVisible();
 });

@@ -3424,6 +3424,149 @@ badges, the sessions presented and the photos uploaded; on desktop a 1fr / 380 b
 - An opted-out member's points and ranks read «—» to a colleague; level, badges and streak still show.
 - No level-up moment plays here; photos are uploaded ones, never tagged.
 
+#### REQ-UIX-070 — The `/app/me` hub has one frame, and on desktop no game rail
+**Serves:** `DEC-216` §5.8, §5.10 · `REQ-UIX-054` · `09` `SCR-021` … `SCR-026`
+`/app/me` and its five pages share one frame, from `docs/design/screens/m10c/`: on a phone the page's own top row
+(the title in the display face, a back control on a sub-page, the settings link on `/app/me`), the hub strip of six
+links with the current one in accent, the page, and the tab bar with «حسابي» current. On desktop the shell's bar and
+navigation rail, **no game rail**, a standing band (the member's avatar, name, title, company, level, points and the
+distance to the next, and three figures), the hub strip under a rule with «بياناتي وخصوصيتي» as a seventh link, then
+the page.
+**Acceptance:**
+- No hub page renders the game rail; the standing band is drawn once, by the frame, from `lg`.
+- The strip's links are real links with `aria-current="page"` on the current one; the strip scrolls sideways on a
+  phone and is never clipped by a parent.
+- Moments 3 and 5 render on the standing card and band through the existing mechanism, once per occurrence; the
+  level-up never plays on another member's profile (`DEC-213` §5.117).
+- `/app/me/privacy` keeps its link and its screen (M13).
+
+#### REQ-UIX-071 — My profile is read by default and edited on intent
+**Serves:** `DEC-216` §5.12 · `REQ-PRF-001`, `REQ-PRF-002`, `REQ-PRF-008` · `09` `SCR-021`
+`SCR-021` is rebuilt from `Me.dc.html` and `MeEdit.dc.html`. The profile is never an open form: it renders as
+label/value rows with one «عدّل ملفك». Edit mode is entered only by that control, says it is editing, counts the
+unsaved changes, marks each changed field, and offers Save and Cancel in a bottom action bar.
+**Acceptance:**
+- In read mode no input exists; the email is read-only and shows Google's address.
+- Save is enabled only when something changed; Cancel restores every field and returns to read mode; nothing is
+  written before Save; leaving with unsaved changes asks first.
+- A failed save stays in edit mode with the error summary and each error at its field; a successful one returns to
+  read mode and says so once.
+- A member with no company is told so, and the company row is the way to choose one.
+- ★ The leaderboard opt-out stays in the profile's edit mode until `SCR-029` exists in the same deployment, and
+  leaves it in the commit that adds it there — there is never a deployment with no way to opt out (`REQ-LDR-008`).
+
+#### REQ-UIX-072 — My points explains every point, and the explanations are not ledger rows
+**Serves:** `DEC-216` §5.5, §5.6, §5.9 · `REQ-PTS-003`, `REQ-PTS-006`, `REQ-PTS-009`, `REQ-PTS-013`, `REQ-PTS-015` · `09` `SCR-022`
+`SCR-022` is rebuilt from `Points.dc.html`, and on desktop from `HubDesktop.dc.html` as a table. The head card with
+the balance, the level and the distance; the filters; the ledger grouped by month; the catalogue read live from the
+scoring rules.
+**Acceptance:**
+- A reversal and the row it reverses are drawn in one card, linked through the reversal's `source_id`; the
+  negative amount carries its minus sign as well as its colour.
+- A capped action is explained in place as a row drawn with `0`; it is computed for the screen and **no ledger row,
+  view or table holds it** (`05` §8).
+- A manual adjustment shows the admin's reason and name.
+- The empty and the filtered-empty states are built. ★ No CSV is offered: no member-side export of the ledger
+  existed to keep, and a member's ledger leaves through the data export (`REQ-PRF-006`) — `DEC-218` §3.2.
+- Every figure is the ledger's or the rules'; no figure is a literal and no award shows before completion.
+
+#### REQ-UIX-073 — My certificates is one list
+**Serves:** `DEC-216` §2.1 · `REQ-CRT-013`, `REQ-CRT-014` · `09` `SCR-023`
+`SCR-023` is rebuilt from `Certificates.dc.html`: a row is the session's title, the kind and the date, and opens
+the certificate; a download control at the row's end goes through the one audited download route.
+**Acceptance:**
+- A revoked certificate is a struck, dimmed row with the word «ملغاة»; its reason is on the certificate's own page.
+- A certificate not yet issued is a dimmed row with «قريبًا».
+- No serial, code or QR in the list; no download is ever a signed URL in the page's data.
+
+#### REQ-UIX-074 — Bookmarks are the browse row, unchanged
+**Serves:** `DEC-216` §2.1 · `REQ-DSC-006` · `09` `SCR-024`
+`SCR-024` is rebuilt from `Bookmarks.dc.html`: each saved session is the row browse draws, with the badge it has
+there and the filled bookmark at the end to remove it.
+**Acceptance:**
+- Removing is optimistic and can be undone from a toast; a failure restores the row and says so.
+- No groups and no status lines; the empty state links to browse.
+
+#### REQ-UIX-075 — The calendar page holds the connection and what failed, and nothing else
+**Serves:** `DEC-216` §5.11, §5.20 · `REQ-CAL-003`, `REQ-CAL-007`, `REQ-CAL-008` · `09` `SCR-025`
+`SCR-025` is rebuilt from `Calendar.dc.html`: one row for the Google connection — connected with «افصل», or not
+connected with «اربط» — and, only when a session failed to reach the calendar, a list of those sessions, each with
+«أعد المحاولة».
+**Acceptance:**
+- A healthy connection is one row; no synced session is listed; no token is ever rendered.
+- Disconnecting deletes the tokens (`REQ-CAL-007`); a calendar failure never blocks anything else on the page.
+
+#### REQ-UIX-076 — The notifications page is the inbox
+**Serves:** `DEC-216` §5.13, §5.16 · `REQ-NTF-005`, `REQ-NTF-006` · `09` `SCR-026`
+`SCR-026` is rebuilt from `Notifications.dc.html`: the unread-only filter, mark all read, a link to the settings,
+and the items grouped by date, an unread item marked by a dot and a filled surface.
+**Acceptance:**
+- No preference is set on this page; the link «ما يصلني» opens `SCR-029`.
+- An item that carries a session opens it; a change notice says what changed.
+- The empty and the all-read states are built; «all read» replaces the mark-all control.
+
+#### REQ-UIX-077 — `/app/me/settings` exists, and every preference a member holds lives on it
+**Serves:** `DEC-216` §4, §5.13, §5.15 · `REQ-NTF-003`, `REQ-LDR-008`, `REQ-CAL-003` · `08` §1.7, §2 · `09` `SCR-029`
+`SCR-029` is a new route, built from `Settings.dc.html`, wearing the tab bar with «حسابي» current and its own top
+row. A group of switches, a group of links (the Google calendar with its state, the language, the data and privacy
+page), and a footer with sign-out and the member's email.
+**Acceptance:**
+- The switches are the email channel's master switch, the optional categories of `08` §2 — `admin_queue` for admins
+  and moderators only — and the leaderboard visibility; the categories `08` marks «on (not switchable)» and the
+  seventeen of `08` §1.7 are **one sentence, never rows**.
+- Each switch saves on change; a failed save restores the switch and says so beside it.
+- In-app notifications are not a setting.
+- It is reached from the settings link on `/app/me` and from the inbox's «ما يصلني»; `preference-matrix` no
+  longer exists, and every preference it wrote is still written.
+
+#### REQ-UIX-078 — The leaderboards open on this week, computed live, with the member's own rank always in view
+**Serves:** `DEC-216` §2.2, §5.4, §5.7, §5.17 · `REQ-LDR-001`, `REQ-LDR-002`, `REQ-LDR-003`, `REQ-LDR-007`, `REQ-LDR-008` · `09` `SCR-027`
+`SCR-027` is rebuilt from `Board.dc.html`: the window chips — this week, this month, all time, the company race —
+the member's own rank card, a static podium for the first three, and the ranked rows. The category filter is a menu
+in the header, not a tab. There are no leagues.
+**Acceptance:**
+- This week is summed from `points_ledger` at read time over the org's calendar week in the org's time zone; no
+  enum value, snapshot or scheduled job exists for it.
+- The movement beside a rank is the change **since the member last looked at that window**, read from and written to
+  `member_seen_marks` (`0169`); the copy says so. A first visit shows no movement.
+- The member's own rank is visible inside or outside the shown range; an opted-out member sees their own row and
+  nobody else does.
+- Moment 5 plays on the rank card once per change; the podium never animates and, under reduced motion, is the
+  first three rows.
+
+#### REQ-UIX-079 — The company race is rebuilt, with both metrics and the breakdown
+**Serves:** `DEC-216` · `REQ-LDR-004`, `REQ-LDR-005`, `REQ-LDR-006` · `REQ-PRF-003` · `09` `SCR-028`
+`SCR-028` is rebuilt from `Companies.dc.html`: the cup card with the quarter, its state and the ranking metric;
+each company with both metrics, the ranking one marked, and a bar in its team colour growing from the inline-start;
+the member's own company marked; and «كيف حصلت شركتك على نقاطها».
+**Acceptance:**
+- A member with no company sees the prompt to choose one in place of the breakdown.
+- A company below the minimum of active members has no rank and says so.
+- Every figure is the snapshot's or the live computation's that the board already reads; none is a literal.
+
+#### REQ-UIX-080 — No explainer copy
+**Serves:** `DEC-216` §5.14 · `DEC-NEXT-25`
+A line of copy exists only if it changes what the person does next. Facts live in one place — the empty state, the
+error — and never as hints, legends, footnotes or intro paragraphs.
+**Acceptance:**
+- Every string this milestone adds is tested against that sentence before it is written, in `messages/ar/` first.
+- The lines the M10a and M10b screens carry that their trimmed artboards no longer draw are removed, each named in
+  the story; a removed line whose fact is needed moves to the state it belongs to.
+
+#### REQ-UIX-081 — Three primitives for batch C: podium, settings group, ledger row
+**Serves:** `DEC-216` §2.1 · `REQ-UIX-001` · `REQ-UIX-050`
+`podium`, `settings-group` and `ledger-row` join `src/components/ui/`, for `SCR-027`, `SCR-029` and `SCR-022`. Each
+renders every state from props, reads no data and no message catalogue, and is born inside the playground.
+**Acceptance:**
+- Each new file has a registry entry, a test that renders it inside the scope, an RTL check and a gallery entry
+  showing every state in Arabic; the gate's count moves from 57 to 60 in the commit that adds the third.
+- `podium` draws the first three on three blocks, second · first · third, and declares no keyframe; under reduced
+  motion or at a narrow width it is three rank rows.
+- `settings-group` is a titled group of rows, each a switch or a link, a switch's failure shown beside it.
+- `ledger-row` draws a signed amount with its sign at the numeral's inline-start, a reversal pair in one row, and a
+  cap explanation with `0`; colour is never the only mark of a negative amount.
+- There is no `status-mark` (`DEC-216` §2.1).
+
 ---
 
 ## 24. Survey — `SUR`

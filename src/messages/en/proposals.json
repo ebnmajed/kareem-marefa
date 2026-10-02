@@ -17,12 +17,10 @@
         "levelIntermediate": "Intermediate",
         "levelAdvanced": "Advanced",
         "audienceLabel": "Intended audience",
-        "audienceHint": "Who is this for? For example: anyone who prepares the monthly reports",
         "durationLabel": "Expected duration",
         "durationUnit": "minutes",
         "durationHint": "A first estimate only — an admin sets the final duration when scheduling",
         "notesLabel": "Notes for the admin",
-        "notesHint": "Anything you'd like the admin to know before reviewing",
         "optional": "optional",
         "submit": "Send the proposal",
         "saveDraft": "Save as a draft",
@@ -64,7 +62,7 @@
       },
       "created": {
         "submittedTitle": "We have your proposal — thank you",
-        "submittedBody": "Your proposal <t>{title}</t> is now with an admin for review. We'll let you know the outcome, and if a change is needed you'll get a clear reason.",
+        "submittedBody": "Your proposal <t>{title}</t> is now with an admin for review.",
         "draftTitle": "Your proposal is saved as a draft",
         "draftBody": "The draft <t>{title}</t> is saved and has not reached an admin yet. Send it whenever it's ready.",
         "another": "Propose another topic"
@@ -104,7 +102,6 @@
         "changes_requested": "Waiting for the proposer's changes"
       },
       "reasonLabel": "What the admin wrote",
-      "approvedNote": "An admin will set the date and place and publish the session.",
       "presentersLabel": "Presenters",
       "presenterProposer": "Proposer",
       "presenterAccepted": "Accepted",

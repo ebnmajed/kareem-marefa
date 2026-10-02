@@ -63,7 +63,10 @@ export async function getBookmarkedTimelineSessions(locale: string): Promise<Tim
     .from("bookmarks")
     .select("session_id")
     .eq("member_id", session.memberId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    // ★ wave 20: a tie-break. Bookmarks written in one transaction share `created_at` (the transaction's start), so
+    // without it their order was whatever Postgres returned — `bookmarks.spec.ts` removed the wrong row on that.
+    .order("session_id", { ascending: true });
   if (error) throw new Error(`bookmarks: ${error.message}`);
   return getTimelineSessionsByIds(
     locale,

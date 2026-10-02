@@ -43,7 +43,8 @@ thought about in the language it ships in. Every example string is **Arabic**.
     │   ├── /certificates                 SCR-023
     │   ├── /bookmarks                    SCR-024
     │   ├── /calendar                     SCR-025
-    │   └── /notifications                SCR-026  inbox + preferences
+    │   ├── /notifications                SCR-026  inbox (★ preferences moved to SCR-029, DEC-216)
+    │   └── /settings                     SCR-029  ★ settings — new route (DEC-216 §4)
     ├── /leaderboards                     SCR-027
     ├── /leaderboards/companies           SCR-028  سباق الشركات
     │
@@ -387,7 +388,27 @@ gendered verb about a member (§5.109).
 component-level check would leak through search results, realtime payloads and the API. **No photo
 tagging** — «الصور» means photos this member **uploaded**.
 
+### SCR-021 · `/app/me` — my profile, and the hub's landing
+★ **Wave 20 (`DEC-216`) — `REQ-UIX-070`, `REQ-UIX-071`:** rebuilt from `Me.dc.html`, `MeEdit.dc.html` and
+`HubDesktop.dc.html`. **This section did not exist before wave 20**; the screen was in the sitemap and the
+requirement table only.
+**Purpose:** who I am here, and the door to everything that is mine. **Serves:** `REQ-PRF-001`, `REQ-PRF-002`,
+`REQ-PRF-006`, `REQ-PRF-007`, `REQ-PRF-008`, `REQ-PRF-010`, `REQ-PRF-011`, `REQ-NFR-013`
+**Primary action:** «عدّل ملفك».
+**Shows:** the standing card (avatar with the team ring, name, title, company, «هكذا يراك زملاؤك» to `SCR-020`'s
+self tier, the level, the points and the distance to the next, this week's rank, the streak, the badges) · the hub
+strip · «ملفي» as label/value rows (name, company, title, bio, interests, email — read-only from Google).
+**States:** read (the default) · edit — names its state, counts unsaved changes, marks each changed field, Save and
+Cancel in a bottom action bar · no company · errors (the summary, edit mode stays) · saved (once).
+**Mobile:** the page's own top row — «حسابي» and the settings link.
+**Desktop:** the hub frame's standing band, the strip, then «ملفي»; no game rail (`DEC-216` §5.8).
+**Note:** **read by default, edit on intent** (`DEC-216` §5.12). Moments 3 and 5 render on the standing card; the
+level-up never plays on `SCR-020`. The leaderboard opt-out leaves this form for `SCR-029` in the commit that adds it
+there (`REQ-UIX-071`).
+
 ### SCR-022 · `/app/me/points` ★
+★ **Wave 20 (`DEC-216`) — `REQ-UIX-072`:** rebuilt from `Points.dc.html`; on desktop a table, from
+`HubDesktop.dc.html`. The cap row is an explanation, never a ledger row (§5.5); the reversal pair is one card (§5.9).
 
 ★ **Wave 12 (`DEC-172`) — `REQ-PTS-015`:** session awards arrive at completion; the balance never shows a figure the ledger does not hold.
 **Purpose:** explain every point. **Serves:** `REQ-PTS-003`
@@ -406,21 +427,52 @@ adjustments with the admin's reason, and the cap explanation in place when an ac
 («بلغت الحد الأقصى للتعليقات في هذه الجلسة»).
 
 ### SCR-023 · `/app/me/certificates`
+★ **Wave 20 (`DEC-216`) — `REQ-UIX-073`:** rebuilt from `Certificates.dc.html` — one list; a revoked row is struck,
+dimmed and says «ملغاة», and its reason (OQ-015) moves to the certificate's own page.
 **Serves:** `REQ-CRT-013` · Shows every certificate with **الرقم التسلسلي**, issue date, status,
 download. A revoked one shows **with its reason** — unlike the public page (OQ-015).
 **RTL:** the serial is `dir="ltr"` inside `<bdi>`.
 
+### SCR-024 · `/app/me/bookmarks`
+★ **Wave 20 (`DEC-216`) — `REQ-UIX-074`.** **This section did not exist before wave 20.**
+**Purpose:** what I saved to come back to. **Serves:** `REQ-DSC-006`
+**Primary action:** open a session; remove a bookmark.
+**Shows:** each saved session as browse's row (`SCR-011`) — poster, title, date and the same badge it has there —
+with the filled bookmark at the end.
+**States:** the list · empty («لم تحفظ شيئًا بعد» and a way to browse) · a removal pending, undone or failed.
+**Note:** removing is optimistic and undoable from a toast; no groups and no status lines (`DEC-216` §2.1).
+
 ### SCR-025 · `/app/me/calendar`
+★ **Wave 20 (`DEC-216`) — `REQ-UIX-075`:** rebuilt from `Calendar.dc.html` — the connection row and, only when one
+failed, the sessions that did not reach the calendar. No synced list (§5.20). The text below is the earlier record.
 **Serves:** `REQ-CAL-003`, `REQ-CAL-007` · Connect/disconnect, and a list of synced sessions.
 **Note:** shows **connection status only**. No token is ever rendered — there is no UI in the
 product that can display one (A33).
 
 ### SCR-026 · `/app/me/notifications`
+★ **Wave 20 (`DEC-216`) — `REQ-UIX-076`:** rebuilt from `Notifications.dc.html` — **the inbox only**; the
+preferences moved to `SCR-029` (§5.13). The text below is the earlier record, and «eleven» in it was always
+seventeen (`08` §1.7, `DEC-047`).
 **Serves:** `REQ-NTF-003`, `REQ-NTF-006` · Inbox plus the preference matrix (category × channel).
 **Note:** the eleven non-optional categories render as **fixed rows with a one-line explanation**,
 not as toggles that silently do nothing (`08` §1.7).
 
+### SCR-029 · `/app/me/settings` ★ — new route
+★ **Wave 20 (`DEC-216` §4) — `REQ-UIX-077`.** Built from `Settings.dc.html`.
+**Purpose:** everything I can switch, in one place. **Serves:** `REQ-NTF-003`, `REQ-LDR-008`, `REQ-CAL-003`
+**Primary action:** none — each switch saves on change.
+**Shows:** a group of switches — the email channel, the optional categories of `08` §2 (`admin_queue` for staff only),
+the leaderboard visibility · a group of links — the Google calendar with its state (to `SCR-025`), the language, the
+data and privacy page · sign-out and the member's email.
+**States:** each switch saving, saved, or failed and restored with the error beside it.
+**Mobile:** its own top row (back, «الإعدادات»); the tab bar with «حسابي» current.
+**Note:** the non-optional categories — `08` §1.7's seventeen and §2's «on (not switchable)» — are one sentence, never
+rows (`DEC-216` §5.15). Reached from the settings link on `SCR-021` and the inbox's «ما يصلني».
+
 ### SCR-027 / SCR-028 · Leaderboards
+★ **Wave 20 (`DEC-216`) — `REQ-UIX-078`, `REQ-UIX-079`:** rebuilt from `Board.dc.html` and `Companies.dc.html`. The
+tabs are this week · this month · all time · the company race (§5.7); the category is a header menu; no leagues. This
+week is computed live and its movement is «منذ زيارتك الأخيرة» (§2.2). The tab list below is the earlier record.
 **Serves:** `REQ-LDR-001` … `REQ-LDR-008`
 **Tabs:** الكل · هذا الشهر · حسب التصنيف · **سباق الشركات**
 **Note:** the member's **own rank is always visible**, even outside the displayed range
@@ -619,14 +671,15 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-018 my proposal | `REQ-PRO-006`, `REQ-PRO-008` |
 | SCR-019 directory | `REQ-PRF-005` |
 | SCR-020 profile | `REQ-PRF-001`, `REQ-PRF-003`, `REQ-PRF-004`, `REQ-PRF-009` |
-| SCR-021 my profile | `REQ-PRF-001`, `REQ-PRF-002`, `REQ-PRF-006`, `REQ-PRF-007`, `REQ-NFR-013`, `REQ-PRF-008`, `REQ-PRF-010`, `REQ-PRF-011` |
-| SCR-022 my points | `REQ-PTS-001`, `REQ-PTS-002`, `REQ-PTS-003`, `REQ-PTS-006`, `REQ-PTS-009`, `REQ-PTS-013` |
-| SCR-023 certificates | `REQ-CRT-005`, `REQ-CRT-006`, `REQ-CRT-013`, `REQ-CRT-014`, `REQ-INT-010` |
-| SCR-024 bookmarks | `REQ-DSC-006` |
-| SCR-025 calendar | `REQ-CAL-001` … `REQ-CAL-008` |
-| SCR-026 notifications | `REQ-NTF-001`, `REQ-NTF-003`, `REQ-NTF-005`, `REQ-NTF-006` |
-| SCR-027 leaderboards | `REQ-LDR-001`, `REQ-LDR-002`, `REQ-LDR-003`, `REQ-LDR-007`, `REQ-LDR-008` |
-| SCR-028 companies | `REQ-LDR-004`, `REQ-LDR-005`, `REQ-LDR-006` |
+| SCR-021 my profile | `REQ-PRF-001`, `REQ-PRF-002`, `REQ-PRF-006`, `REQ-PRF-007`, `REQ-NFR-013`, `REQ-PRF-008`, `REQ-PRF-010`, `REQ-PRF-011`, `REQ-UIX-070`, `REQ-UIX-071` |
+| SCR-022 my points | `REQ-PTS-001`, `REQ-PTS-002`, `REQ-PTS-003`, `REQ-PTS-006`, `REQ-PTS-009`, `REQ-PTS-013`, `REQ-UIX-072` |
+| SCR-023 certificates | `REQ-CRT-005`, `REQ-CRT-006`, `REQ-CRT-013`, `REQ-CRT-014`, `REQ-INT-010`, `REQ-UIX-073` |
+| SCR-024 bookmarks | `REQ-DSC-006`, `REQ-UIX-074` |
+| SCR-025 calendar | `REQ-CAL-001` … `REQ-CAL-008`, `REQ-UIX-075` |
+| SCR-026 notifications | `REQ-NTF-001`, `REQ-NTF-003`, `REQ-NTF-005`, `REQ-NTF-006`, `REQ-UIX-076` |
+| SCR-027 leaderboards | `REQ-LDR-001`, `REQ-LDR-002`, `REQ-LDR-003`, `REQ-LDR-007`, `REQ-LDR-008`, `REQ-UIX-078` |
+| SCR-028 companies | `REQ-LDR-004`, `REQ-LDR-005`, `REQ-LDR-006`, `REQ-UIX-079` |
+| SCR-029 settings ★ | `REQ-NTF-003`, `REQ-LDR-008`, `REQ-CAL-003`, `REQ-UIX-077` |
 | SCR-040 dashboard | `REQ-ADM-004` |
 | SCR-041 proposals | `REQ-PRO-005`, `REQ-PRO-007`, `REQ-PRO-009` |
 | SCR-042 sessions | `REQ-ADM-005`, `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-012` |
@@ -725,6 +778,7 @@ inventory screens have no route yet), and **49 pages under `app/[locale]/app/**`
 | `app/members/[id]` | SCR-020 | **M10** | Profiles, and the avatar's home surface |
 | `app/me` | SCR-021 | **M10** | The tabbed hub; the tab shell is the lead's |
 | `app/me/points` · `bookmarks` · `calendar` · `certificates` · `notifications` | SCR-022 … SCR-026 | **M10** | Re-skinned onto the system, under the hub's tab strip |
+| ★ `app/me/settings` | SCR-029 | **M22** | ★ New in wave 20 (`DEC-216` §4): every preference a member holds |
 | ★ `app/me/privacy` | — | **M13** | The screen a member uses when they are unhappy |
 | `app/leaderboards` | SCR-027 · SCR-028 | **M10** | Company board included; **no avatars here** (`DEC-099`) |
 | `app/admin` | SCR-040 | **M11** | Becomes a real dashboard: counts that are links, queues with ages |

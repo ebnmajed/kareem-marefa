@@ -132,3 +132,48 @@ describe("RPC-mark_seen — who may call", () => {
     });
   });
 });
+
+// Wave 20 — 0169 (DEC-216 §2.2, REQ-UIX-078, STORY-UIX-061): the week's pair, written directly. No function
+// writes it yet; the table's own-row policies and its table-level grant (0162:66) are the boundary, and
+// these cases are what invariant 6 rests on for two columns that arrived after the grant.
+describe("member_seen_marks — the weekly pair (0169)", () => {
+  it("a member writes and reads their own weekly period and rank", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const me = f.a.members[1];
+      await tx.as(me.claims);
+      await tx.q(`insert into public.member_seen_marks (member_id, org_id, weekly_period, weekly_rank) values ($1, $2, '2026-09-26', 4)`, [me.memberId, f.a.id]);
+      await tx.q(`update public.member_seen_marks set weekly_rank = 3 where member_id = $1`, [me.memberId]);
+      expect(await tx.q(`select weekly_period::text, weekly_rank from public.member_seen_marks`)).toEqual([{ weekly_period: "2026-09-26", weekly_rank: 3 }]);
+    });
+  });
+
+  it("never another member's: an update touches no row, an insert is refused with 42501", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const other = f.a.members[0]; // the fixture's marked member
+      await tx.as(f.a.members[1].claims);
+      await tx.q(`update public.member_seen_marks set weekly_rank = 1 where member_id = $1`, [other.memberId]);
+      expect(await errorCode(() => tx.q(`insert into public.member_seen_marks (member_id, org_id, weekly_rank) values ($1, $2, 1)`, [other.memberId, f.a.id]))).toBe("42501");
+      await tx.asOwner();
+      expect(await tx.q(`select weekly_rank from public.member_seen_marks where member_id = $1`, [other.memberId])).toEqual([{ weekly_rank: null }]);
+    });
+  });
+
+  it("a weekly rank that is not positive is refused with 23514", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const me = f.a.members[1];
+      await tx.as(me.claims);
+      expect(await errorCode(() => tx.q(`insert into public.member_seen_marks (member_id, org_id, weekly_rank) values ($1, $2, 0)`, [me.memberId, f.a.id]))).toBe("23514");
+    });
+  });
+
+  it("anon reads and writes nothing", async () => {
+    await withTx(async (tx) => {
+      await setup(tx);
+      await tx.asAnon();
+      expect(await errorCode(() => tx.q(`select weekly_rank from public.member_seen_marks`))).toBe("42501");
+    });
+  });
+});

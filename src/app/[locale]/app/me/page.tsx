@@ -1,47 +1,79 @@
+import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { PageHeader } from "@/components/ui/page-header";
-import { Stat } from "@/components/ui/stat";
-import { getMe, listCompanies } from "@/lib/dal/members";
-import { getPointsStripData } from "@/lib/dal/points";
-import { formatNumber } from "@/components/sessions/numerals";
-import { ProfileForm } from "@/components/me/profile-form";
+import { getMe, getMyInterests, listCompanies } from "@/lib/dal/members";
+import { HubStanding, HubStandingSkeleton } from "@/components/hub/standing";
+import { ProfileEdit } from "@/components/me/profile-edit";
+import { ProfileRead } from "@/components/me/profile-read";
+import { HubStrip } from "@/components/shell/hub-strip";
+import { HubTopRow } from "@/components/shell/hub-top-row";
+import { SettingsIcon } from "@/components/ui/icons";
+import { Link } from "@/components/ui/link";
 import type { Locale } from "@/i18n/routing";
 
-// SCR-021 — the member's own profile (REQ-PRF-001), and the hub's own
-// landing content, since `/app/me` is itself the first of the seven tabs
-// `me/layout.tsx` renders.
+// SCR-021 · «حسابي» — `/app/me`, the hub's landing and «ملفي». `Me.dc.html`, `MeEdit.dc.html`, `HubDesktop.dc.html`,
+// `M10c.md` §1, REQ-UIX-071, REQ-PRF-001, REQ-PRF-002, with `DEC-218` §4.2 – §4.5. Written from the artboards in
+// wave 20 after the old page and its form were deleted (DEC-208); the kept-behaviour table is P1 – P22 in
+// `docs/plan/notes/content.md`.
 //
-// The one quick-glance number this track's own data reaches: the points
-// balance (`getPointsStripData`, already built for the home page's own
-// strip). Not "القادمة"/"الحاضرة"/"المقترحات" — `16` §6.5's canvas names
-// those, but they read another track's DAL this wave does not grant
-// (`docs/plan/notes/content.md`'s wave-7 plan §1; the lead's ruling).
-export default async function MePage({ params }: { params: Promise<{ locale: string }> }) {
+// In the artboard's order: the page's own top row — the `h1` «حسابي» and, at the inline-end, the settings glyph —
+// then the standing card (contract 3, `scoring`'s, the phone's form), the phone strip, then «ملفي»: read by default,
+// edit on intent. From `lg` the hub's layout draws the band and the strip above this, so the card is the phone's alone.
+//
+// ★ EDIT MODE IS A URL, `/app/me?edit` (DEC-218 §4.3): «عدّل ملفك» and «إلغاء» are links, so both work before
+// hydration and a reload keeps the mode.
+//
+// ★ THE SETTINGS GLYPH IS NAMED BY WHERE IT GOES (DEC-218 §4.5): in PR A it opens `/app/me/privacy` and says
+// «الخصوصية والبيانات»; in PR B it opens `/app/me/settings` and says «الإعدادات».
+//
+// ★ The auth boundary is the DAL's (`sessionClient` → `requireSession`); the self tier is `me()`'s (REQ-PRF-004).
+export default async function MePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams?: Promise<{ edit?: string | string[] }>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const [me, companies, points, t] = await Promise.all([
+  const query = ((await searchParams) ?? {}) as { edit?: string | string[] };
+  const editing = query.edit !== undefined;
+
+  const [t, tNav, tMembers, tHome, me, companies, interests] = await Promise.all([
+    getTranslations("profile"),
+    getTranslations("profile.nav"),
+    getTranslations("members.profile"),
+    getTranslations("app.home"),
     getMe(locale),
     listCompanies(locale),
-    getPointsStripData(locale),
-    getTranslations("profile"),
+    getMyInterests(locale),
   ]);
+  const company = companies.find((c) => c.id === me.companyId) ?? null;
 
   return (
-    <>
-      <PageHeader
-        title={t("title")}
-        meta={
-          <p className="text-body text-fg-muted">
-            <bdi>{me.email}</bdi> · {t(`role.${me.role}`)}
-          </p>
+    <div className="flex flex-col gap-4">
+      <HubTopRow
+        title={t("hubTitle")}
+        back={false}
+        action={
+          <Link
+            href="/app/me/privacy"
+            aria-label={tNav("privacy")}
+            className="inline-flex size-10 items-center justify-center rounded-pill border border-edge bg-surface text-fg-heading"
+          >
+            <SettingsIcon />
+          </Link>
         }
       />
-
-      <div className="mt-6 max-w-xs">
-        <Stat label={t("nav.points")} value={formatNumber(points.totalPoints)} href="/app/me/points" />
-      </div>
-
-      <ProfileForm locale={locale as Locale} me={me} companies={companies} />
-    </>
+      {/* Contract 3 — `scoring`'s standing, the phone's card; from `lg` the layout draws the band instead. */}
+      <Suspense fallback={<HubStandingSkeleton form="card" className="lg:hidden" />}>
+        <HubStanding locale={locale} form="card" className="lg:hidden" />
+      </Suspense>
+      <HubStrip />
+      {editing ? (
+        <ProfileEdit locale={locale as Locale} me={me} companies={companies} interests={interests} />
+      ) : (
+        <ProfileRead me={me} companyName={company?.name ?? null} companyTeamColor={company?.teamColor ?? null} interests={interests.chosen} t={t} noBio={tMembers("noBio")} companyMissing={tHome("companyMissing")} />
+      )}
+    </div>
   );
 }

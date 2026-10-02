@@ -197,7 +197,6 @@ export default async function ProposalPage({
         </div>
       ) : null}
       {proposal.state === "submitted" || proposal.state === "in_review" ? <p className="text-body text-fg-muted">{t("nextPending")}</p> : null}
-      {proposal.state === "approved" && !session?.scheduled ? <p className="text-body text-fg-body">{t("approvedNote")}</p> : null}
       {session ? <ScheduledSession session={session} teamColor={null} teamName={proposal.categoryName ?? proposal.title} /> : null}
       {proposal.state === "rejected" && mine ? (
         <Link href="/app/propose" className="self-start text-body-sm text-fg-heading underline underline-offset-4">

@@ -31,8 +31,6 @@ describe("wave 19 — five screens draw their own phone top row (DEC-213 §3.2)"
     expect(ownsTopRow(S)).toBe(true);
     expect(ownsTopRow(`${S}/check-in`)).toBe(true);
     expect(ownsTopRow("/ar/app")).toBe(false);
-    expect(ownsTopRow("/ar/app/me")).toBe(false);
-    expect(ownsTopRow("/ar/app/leaderboards")).toBe(false);
     expect(ownsTopRow("/ar/app/members/m1/x")).toBe(false);
   });
   it("my proposal is immersive with its own bottom bar; propose and the resubmit form keep the tab bar (DEC-214 §3)", () => {
@@ -64,5 +62,32 @@ describe("wave 19 — «الأعضاء» and «حسابي» (DEC-213 §3.3)", ()
   });
   it("the tab bar keeps five — the directory is not a tab (DEC-205 §2)", () => {
     expect(NAV.map((n) => n.key)).toEqual(["home", "sessions", "propose", "board", "me"]);
+  });
+});
+
+describe("wave 20 — the hub, settings and the boards draw their own phone top row (DEC-217, REQ-UIX-070)", () => {
+  it.each([
+    "/ar/app/me",
+    "/ar/app/me/points",
+    "/ar/app/me/certificates",
+    "/ar/app/me/bookmarks",
+    "/ar/app/me/calendar",
+    "/ar/app/me/notifications",
+    "/ar/app/me/settings",
+    "/en/app/me/settings",
+    "/ar/app/leaderboards",
+    "/ar/app/leaderboards/companies",
+  ])("%s", (p) => {
+    expect(ownsTopRow(p)).toBe(true);
+  });
+  it("but not privacy, which no batch draws, nor a deeper path", () => {
+    expect(ownsTopRow("/ar/app/me/privacy")).toBe(false);
+    expect(ownsTopRow("/ar/app/me/points/x")).toBe(false);
+    expect(ownsTopRow("/ar/app/leaderboards/companies/x")).toBe(false);
+  });
+  it("and every one keeps the tab bar and the rail", () => {
+    expect(isImmersive("/ar/app/me/settings")).toBe(false);
+    expect(hasNavRail("/ar/app/me/settings")).toBe(true);
+    expect(hasNavRail("/ar/app/leaderboards")).toBe(true);
   });
 });

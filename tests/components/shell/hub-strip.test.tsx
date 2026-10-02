@@ -1,8 +1,6 @@
-// The hub's tab strip — content's own, not `ui/tabs` (see tab-strip.tsx's
-// header for why: seven items need to scroll in one row at 390 px, and
-// `ui/tabs`' `RadixTabs.List` hard-codes `flex-wrap` with no override hook).
-// Asserts the current route reads `aria-current="page"` and nothing else
-// does, and that the strip is axe-clean.
+// The hub's strip — the lead's since wave 20 (REQ-UIX-070, STORY-UIX-059). It carries the three cases of the
+// deleted `tests/components/me/tab-strip.test.tsx` (the kept-behaviour table, docs/plan/notes/wave-20-lead.md F1):
+// one current link, the landmark's name, axe-clean — and the one the rebuild adds: it scrolls inside itself.
 import { NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -13,7 +11,7 @@ vi.mock("next/navigation", async (importOriginal) => ({
   usePathname: () => "/ar/app/me/points",
 }));
 
-const { MeTabStrip } = await import("@/components/me/tab-strip");
+const { HubStripNav } = await import("@/components/shell/hub-strip-nav");
 
 const ITEMS = [
   { href: "/app/me", label: "ملفي" },
@@ -24,22 +22,29 @@ const ITEMS = [
 function renderStrip() {
   return render(
     <NextIntlClientProvider locale="ar" messages={{}}>
-      <MeTabStrip label="صفحاتي" items={ITEMS} />
+      <HubStripNav label="صفحاتي" items={ITEMS} />
     </NextIntlClientProvider>,
   );
 }
 
-describe("MeTabStrip", () => {
-  it("marks only the route matching the current path as current", () => {
+describe("HubStripNav", () => {
+  it("marks only the route matching the current path as the current page", () => {
     renderStrip();
     expect(screen.getByRole("link", { name: "نقاطي" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "ملفي" })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("link", { name: "شهاداتي" })).not.toHaveAttribute("aria-current");
   });
 
-  it("names the strip's own nav landmark", () => {
+  it("names its own nav landmark", () => {
     renderStrip();
     expect(screen.getByRole("navigation", { name: "صفحاتي" })).toBeInTheDocument();
+  });
+
+  it("scrolls inside itself, in one row", () => {
+    renderStrip();
+    const nav = screen.getByRole("navigation", { name: "صفحاتي" });
+    expect(nav.className).toContain("overflow-x-auto");
+    expect(nav.querySelector("ul")?.className).toContain("w-max");
   });
 
   it("is axe-clean", async () => {

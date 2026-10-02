@@ -178,3 +178,74 @@ export async function disconnectCalendar(locale: string): Promise<void> {
   const { error } = await supabase.from("calendar_connections").delete().eq("member_id", session.memberId);
   if (error) throw new Error(`calendar_connections: ${error.message}`);
 }
+
+// ── wave 20 — SCR-025 holds the connection and what failed, and nothing else (REQ-UIX-075, DEC-216 §5.20) ─────────
+
+export interface CalendarFailureDTO {
+  /** The `calendar_events` row — what «أعد المحاولة» names. One per member per DAY. */
+  id: string;
+  sessionId: string;
+  sessionTitle: string;
+  /** The DAY's start, or the session's when the day is gone. */
+  startsAt: string | null;
+  /** The day's rank, 1…n; null when the day has been deleted from the session. */
+  dayPosition: number | null;
+  /** How many days the session has — a day is named only when there is more than one (`REQ-SES-018`). */
+  dayCount: number;
+}
+
+/**
+ * The days that failed to reach the member's calendar and still need a hand (`REQ-CAL-005`, `REQ-CAL-008`): the row
+ * reads `failed`, its session is still on (`published` or `in_progress`), and the day has not ended. A failed day
+ * that is over, or of a cancelled session, asks for nothing — `DEC-NEXT-22`: nothing shown when nothing needs doing.
+ * `p7_self_read` is the boundary; the `member_id` filter is defence in depth.
+ */
+export async function listCalendarFailures(locale: string): Promise<CalendarFailureDTO[]> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .select("id, session_id, sessions(title, state, starts_at, ends_at, session_days(id)), session_days(position, starts_at, ends_at)")
+    .eq("member_id", session.memberId)
+    .eq("state", "failed");
+  if (error) throw new Error(`calendar_events: ${error.message}`);
+
+  type SessionEmbed = { title: string; state: string; starts_at: string | null; ends_at: string | null; session_days: Array<{ id: string }> | null };
+  type DayEmbed = { position: number; starts_at: string; ends_at: string };
+  type Row = { id: string; session_id: string; sessions: SessionEmbed | SessionEmbed[] | null; session_days: DayEmbed | DayEmbed[] | null };
+  const one = <T,>(embedded: T | T[] | null): T | null => (Array.isArray(embedded) ? (embedded[0] ?? null) : embedded);
+  const now = Date.now();
+
+  return ((data ?? []) as unknown as Row[])
+    .flatMap((row) => {
+      const s = one(row.sessions);
+      const day = one(row.session_days);
+      if (!s || (s.state !== "published" && s.state !== "in_progress")) return [];
+      const endsAt = day?.ends_at ?? s.ends_at;
+      if (endsAt && Date.parse(endsAt) <= now) return [];
+      return [
+        {
+          id: row.id,
+          sessionId: row.session_id,
+          sessionTitle: s.title,
+          startsAt: day?.starts_at ?? s.starts_at,
+          dayPosition: day?.position ?? null,
+          dayCount: s.session_days?.length ?? 1,
+        },
+      ];
+    })
+    .sort((a, b) => (a.startsAt ?? "").localeCompare(b.startsAt ?? ""));
+}
+
+export type CalendarRetryOutcome = "queued" | "not_found" | "not_failed" | "not_connected" | "not_reserved";
+
+/**
+ * «أعد المحاولة» (`REQ-UIX-075`, `REQ-CAL-005`): `retry_calendar_sync()` (`0170`) re-derives the member from the JWT,
+ * so this sends a row id and nothing else, and answers with the function's outcome rather than throwing for one.
+ */
+export async function retryCalendarSync(locale: string, eventId: string): Promise<CalendarRetryOutcome> {
+  if (!z.uuid().safeParse(eventId).success) return "not_found";
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("retry_calendar_sync", { p_event: eventId });
+  if (error) throw new Error(`retry_calendar_sync: ${error.message}`);
+  return data as CalendarRetryOutcome;
+}

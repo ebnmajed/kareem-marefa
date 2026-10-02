@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { Locale } from "@/i18n/routing";
-import { profileInput, updateMyProfile } from "@/lib/dal/members";
+import { interestsInput, profileInput, setMyInterests, updateMyProfile } from "@/lib/dal/members";
 import { formStateFrom, was, withErrors, withFormError, zodErrors } from "@/lib/form-state";
 import { PROFILE_FIELDS, type ProfileField, type ProfileState } from "./state";
 
@@ -16,6 +16,10 @@ import { PROFILE_FIELDS, type ProfileField, type ProfileState } from "./state";
 // before hydration landed (wave 6 sync 2, `docs/plan/notes/content.md`'s
 // wave-7 plan §4 item 2) — nothing in a URL can race a value that comes back
 // structurally in the action's own returned state.
+//
+// ★ wave 20 (SCR-021 rebuilt, DEC-218 §4.2): the interests travel with the profile — one «حفظ» for the whole edit
+// mode — as repeated `interests` values (category ids). `setMyInterests()` writes the session's own rows only. Edit
+// mode is `/app/me?edit`; a success returns `saved` and the client goes back to read mode.
 
 function errorKey(field: ProfileField, code: string, empty: boolean): string {
   switch (field) {
@@ -47,9 +51,12 @@ export async function saveProfile(locale: Locale, prev: ProfileState, formData: 
   const parsed = profileInput.safeParse(raw);
   // The member's text stays in the form — `formStateFrom` already captured it.
   if (!parsed.success) return { ...withErrors(state, zodErrors<ProfileField>(parsed.error, errorKey, raw)), saved: false };
+  const interests = interestsInput.safeParse(formData.getAll("interests").filter((v): v is string => typeof v === "string"));
+  if (!interests.success) return { ...withFormError(state, "failed"), saved: false };
 
   try {
     await updateMyProfile(locale, parsed.data);
+    await setMyInterests(locale, interests.data);
   } catch {
     return { ...withFormError(state, "failed"), saved: false };
   }

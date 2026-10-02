@@ -1,20 +1,16 @@
-// A route skeleton for the /app/me hub and its seven tabs (wave 7,
-// `me/layout.tsx`'s `MeTabStrip`).
+// The hub's route skeleton — `REQ-UIX-005`, rebuilt with the frame in wave 20 (`REQ-UIX-070`).
 //
-// It covers this segment AND its children — "at or above" is what makes a
-// dozen files enough for forty-nine pages (REQ-UIX-005, `16` §7.1 layer 2).
-//
-// ★ No text and no `getTranslations`: this renders before `setRequestLocale`
-// does for the real page.
-import { Skeleton, SkeletonPageHeader } from "@/components/ui/skeleton";
+// A top row, a row of chips, then rows: the shape every hub page opens with. It covers this segment and its children.
+// ★ No text and no `getTranslations` — it renders before the page's `setRequestLocale`.
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
   return (
     <div aria-hidden="true">
-      <SkeletonPageHeader />
-      <div className="mt-6 flex flex-wrap gap-2">
+      <Skeleton variant="text" width="9rem" />
+      <div className="mt-4 flex gap-1.5 overflow-hidden">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} variant="text" width="6rem" />
+          <Skeleton key={i} variant="text" width="5rem" />
         ))}
       </div>
       <Skeleton variant="row" count={4} className="mt-6" />

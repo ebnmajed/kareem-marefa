@@ -163,7 +163,8 @@ test("SCR-026 — the three not-switchable categories render as a statement with
     ["إشعارات الإشراف", "ما أُزيل دون علمك"],
     ["الحساب", "تغيّر في حسابك"],
   ] as const) {
-    const row = page.locator("li", { hasText: name });
+    // ★ wave 20 (ledger): from #main (DEC-145) — on a hard load DEC-204's hidden streamed copy can stand outside it.
+    const row = page.locator("#main li", { hasText: name });
     await expect(row).toContainText("يصلك دائمًا");
     await expect(row).toContainText(why);
     // No toggle at all, rather than one that silently does nothing.
@@ -171,7 +172,7 @@ test("SCR-026 — the three not-switchable categories render as a statement with
   }
 
   // A switchable category that still holds non-optional messages says which.
-  await expect(page.locator("li", { hasText: "جلساتي" })).toContainText("بعض إشعارات هذا النوع تصلك مهما كان الإعداد");
+  await expect(page.locator("#main li", { hasText: "جلساتي" })).toContainText("بعض إشعارات هذا النوع تصلك مهما كان الإعداد");
 });
 
 test("REQ-CAL-001 — the ICS downloads as UTF-8 text/calendar, folded at 75 octets", async ({ context, page }) => {
@@ -197,8 +198,10 @@ test("SCR-025 — the calendar screen offers a connection and never renders a to
 
   await page.goto("/ar/app/me/calendar");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("التقويم");
-  await expect(page.getByRole("link", { name: "اربط تقويم Google" })).toHaveAttribute("href", "/api/calendar/connect");
-  await expect(page.getByText("لا جلسات متزامنة بعد")).toBeVisible();
+  // ★ wave 20 (ledger): «اربط», carrying the locale back (C3, C18); the synced list and its empty state are gone
+  // (DEC-216 §5.20) — not connected is one row that says so.
+  await expect(page.locator("#main").getByRole("link", { name: "اربط" })).toHaveAttribute("href", "/api/calendar/connect?locale=ar");
+  await expect(page.locator("#main").getByText("غير متصل")).toBeVisible();
 
   // A connection with real-looking tokens, stored through the same RPC the
   // OAuth callback uses.
@@ -210,12 +213,12 @@ test("SCR-025 — the calendar screen offers a connection and never renders a to
   await db.query(`select public.record_calendar_sync($1, $2, $3, 'failed', 'goog_1', 'rateLimitExceeded')`, [orgId, id, sessionId]);
 
   await page.goto("/ar/app/me/calendar");
-  await expect(page.getByRole("button", { name: "افصل التقويم" })).toBeVisible();
+  await expect(page.locator("#main").getByRole("button", { name: "افصل" })).toBeVisible();
   // REQ-CAL-005: the failure is surfaced to the member, with the reassurance
-  // that REQ-CAL-008 makes true.
-  const synced = page.locator("li", { hasText: sessionTitle });
-  await expect(synced).toContainText("تعذّرت المزامنة");
-  await expect(synced).toContainText("حجزك قائم في كل الأحوال");
+  // that REQ-CAL-008 makes true. ★ wave 20 (ledger): a «لم تُضف» row with «أعد المحاولة», the promise under it.
+  const failed = page.locator("#main").getByRole("region", { name: "لم تُضف" });
+  await expect(failed.locator("li", { hasText: sessionTitle })).toContainText("أعد المحاولة");
+  await expect(page.locator("#main")).toContainText("حجزك قائم في كل الأحوال");
 
   // A33 / REQ-CAL-003: no token, anywhere on the page, in any form.
   const html = await page.content();
@@ -228,7 +231,7 @@ test("REQ-CAL-007 — disconnecting deletes the tokens immediately and tells the
   const id = await signIn(context, memberEmail);
 
   await page.goto("/ar/app/me/calendar");
-  await page.getByRole("button", { name: "افصل التقويم" }).click();
+  await page.locator("#main").getByRole("button", { name: "افصل" }).click(); // ★ wave 20 (ledger): «افصل»
   await expect(page.getByRole("status")).toContainText("لن تتحدّث بعد الآن");
 
   // Deleted, not flagged. Outside the retention schedule entirely.
