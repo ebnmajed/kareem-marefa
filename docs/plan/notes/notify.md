@@ -3923,7 +3923,7 @@ not by a flag. It returns `rows.filter(optionalEmail).every((r) => r.enabled.ema
 | M1 | «إشعارات البريد» writes `email` for the optional categories the member may hold (seven, or eight for staff, `proposals` included), and `in_app = true` with each | `DEC-219` §1, `DEC-218` §2.1, `REQ-NTF-003` |
 | M2 | It never writes `certificates`, `moderation` or `account`, nor any of the seventeen | `DEC-219` §1, `08` §1.7, `0026:261` |
 | M3 | Its state is derived (`emailMasterOn`), with no column and no migration | `DEC-219` §1 |
-| M4 | One action; a failure compensates every write it made and shows `preferences.error` beside the switch, whose state is re-read | `DEC-219` §1, `REQ-UIX-077` acceptance 2 |
+| M4 | One action. A failure compensates every write it made and shows `preferences.error` beside the switch, whose state is re-read. ★ **Known limit, accepted (the lead at sync, `DEC-219` §1's «no migration»): compensation is not a transaction.** If a compensating write itself fails, the rows are left mixed. The switch then reads «off» because its state is re-derived, which is truthful, and the member can switch it again. **This is not a bug to rediscover;** making it atomic would take a definer RPC and a migration, which the owner's ruling excludes | `DEC-219` §1, `REQ-UIX-077` acceptance 2 |
 | ★ M5 | **Switching the master ON turns back on every optional category the member had silenced — by design, the owner's accepted trade, NOT a bug.** No session «fixes» it | `DEC-219` §1 |
 | M6 | Switching one category off turns the master off (derived), and switching the master changes every category row under it on the next render | `DEC-219` §1 |
 
@@ -3954,3 +3954,13 @@ master's derived state follows it.
 - **`tests/e2e/wave20-notify-settings.spec.ts`:** master off, reload, every optional email row in
   `notification_preferences` is `false` and the fixed categories have no row; master on, and the reload shows every
   category switch on.
+
+**§W12 approved by the lead** (compensation, not an RPC). ★ **Absence counts as on, and the send path agrees.**
+- `_notify_wants()` returns `coalesce((select p.enabled … where member, category, channel), true)`
+  (`supabase/migrations/0026_notification_contract.sql:428-431`, «every category defaults on; a row exists only where a
+  member chose»).
+- `notify()` reads it for the inbox. The send-time re-check reads it for mail:
+  `notification_send_context()` → `'email_allowed', m.email and (not m.optional or public._notify_wants(p_member,
+  m.category, 'email'))` (`0136:129`).
+- So `getPreferenceMatrix()`'s `?? true` (`notifications.ts`, `on()`) and `emailMasterOn()` read a missing row exactly
+  as the send does. The matrix's own unit test pins that, beside the cases in §W12.
