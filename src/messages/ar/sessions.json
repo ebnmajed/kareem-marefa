@@ -169,7 +169,26 @@
         "attendance": "الحضور",
         "certificates": "الشهادات",
         "survey": "الاستبانة",
-        "event": "صفحة الجلسة"
+        "event": "صفحة الجلسة",
+        "content": "المحتوى"
+      },
+      "breadcrumb": "الجلسات",
+      "breadcrumbLabel": "مسار التنقّل",
+      "lifecycle": {
+        "publish": "انشر",
+        "pending": "جارٍ…",
+        "missing": "ينقص: {list}",
+        "cancel": "ألغِ الجلسة",
+        "cancelTitle": "إلغاء «<t>{title}</t>»؟",
+        "cancelBody": "يصل السبب كل من حجز أو ينتظر مقعدًا، وتُحذف الجلسة من تقاويمهم.",
+        "reasonLabel": "سبب الإلغاء",
+        "confirm": "تأكيد الإلغاء",
+        "keep": "تراجع",
+        "close": "إغلاق",
+        "reasonRequired": "اكتب السبب أولًا.",
+        "failed": "تعذّر ذلك — حاول مرة أخرى.",
+        "published": "نُشرت الجلسة.",
+        "cancelled": "أُلغيت الجلسة."
       }
     },
     "download": {

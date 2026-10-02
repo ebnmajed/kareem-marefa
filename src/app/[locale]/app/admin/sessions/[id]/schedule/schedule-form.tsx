@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/i18n/navigation";
 import { dayLabel, dayShortLabel } from "@/components/sessions/day-label";
 import { formatDateTime, formatNumber, formatTime, sameDay } from "@/components/sessions/numerals";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { FormSummary } from "@/components/ui/form-summary";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { RadioGroup } from "@/components/ui/radio-group";
-import { SectionHeader } from "@/components/ui/section-header";
+import { KvCard } from "@/components/ui/kv-card";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { was } from "@/lib/form-state";
@@ -182,6 +183,8 @@ export function ScheduleForm({
   initial,
   proposalDurationMinutes,
   published,
+  readRows,
+  doneHref,
 }: {
   action: (prev: ScheduleState, formData: FormData) => Promise<ScheduleState>;
   venues: ScheduleVenue[];
@@ -192,6 +195,16 @@ export function ScheduleForm({
   proposalDurationMinutes: number | null;
   /** Published or later: the primary action saves changes and warns who is told. */
   published: boolean;
+  /**
+   * wave 21 (add-only): the rows of the read card this form is the edit twin of that it does not edit — the
+   * presenters (their own forms, outside this one) and the certificate (SCR-045 is its one writer, DEC-178).
+   */
+  readRows?: { presenters: React.ReactNode; certificate: React.ReactNode };
+  /**
+   * wave 21 (add-only): the read card's address. A save that lands goes back there (`?saved=1` / `?published=1`),
+   * and «إلغاء» is a link to it. Absent, the form stays where it is, as before.
+   */
+  doneHref?: string;
 }) {
   const t = useTranslations("schedule");
   // ★ Contract 7's catalogue, read and never written here: one formatter names
@@ -200,7 +213,16 @@ export function ScheduleForm({
   // drift the contract exists to stop.
   const tDays = useTranslations("sessions.days");
   const tUi = useTranslations("ui");
-  const [state, formAction, pending] = useActionState(action, emptyScheduleState());
+  // ★ Back to the read card from INSIDE the action wrapper, never from an effect on `state` (`review-card`'s lesson):
+  // the redirect follows the result that earned it, once. A refused publish (`formError`) stays here, on the form.
+  // The router comes through `RouterBridge`, mounted only with `doneHref`, so the form keeps working where no app
+  // router is mounted (its component tests) exactly as before.
+  const routerRef = useRef<{ replace: (href: string) => void } | null>(null);
+  const [state, formAction, pending] = useActionState(async (prev: ScheduleState, formData: FormData) => {
+    const result = await action(prev, formData);
+    if (doneHref && result.saved && !result.formError) routerRef.current?.replace(`${doneHref}?${result.published ? "published" : "saved"}=1`);
+    return result;
+  }, emptyScheduleState());
   const [pressed, setPressed] = useState<"publish" | "save">("save");
 
   // ── What the form is tracking ────────────────────────────────────────────
@@ -462,6 +484,7 @@ export function ScheduleForm({
 
   return (
     <form action={formAction} noValidate className="space-y-10">
+      {doneHref ? <RouterBridge intoRef={routerRef} /> : null}
       {state.attempt > 0 && summary.length > 0 ? (
         <FormSummary key={state.attempt} errors={summary} title={t("summary.title", { count: summary.length, value: formatNumber(summary.length) })} description={t("summary.description")} />
       ) : null}
@@ -480,10 +503,21 @@ export function ScheduleForm({
         </Panel>
       ) : null}
 
-      {/* ── متى ─────────────────────────────────────────────────────────── */}
-      <section aria-labelledby="schedule-when" className="space-y-6">
-        <SectionHeader id="schedule-when" title={t("sections.when")} />
-        <div className="space-y-6">
+      {/* ★ wave 21 (REQ-UIX-089, DEC-NEXT-28): the edit twin of the card the tab reads by default — the same rows, in
+          the same order, each the controls it always had. The card renders no <form>: this one wraps it, and the
+          presenters' own two forms stay outside it (they cannot nest), so their row is read here and changed from the
+          read card's «غيّر». Nothing below moved in behaviour; only its grouping did. */}
+      <KvCard
+        label={t("read.label")}
+        mode="edit"
+        emptyValue={t("read.empty")}
+        rows={[
+          {
+            id: "when",
+            label: t("read.rows.when"),
+            value: null,
+            edit: (
+              <div className="space-y-6">
           <Field id="startsAt" label={t("startsAt.label")} hint={t("startsAt.hint")} error={err("startsAt")} required>
             <DateTime name="startsAt" label={t("startsAt.label")} value={startsAt} onChange={onStart} />
           </Field>
@@ -613,12 +647,15 @@ export function ScheduleForm({
               `days` field, `schedule_session()` takes main's path exactly
               (`tests/unit/schedule-days.test.ts` pins the argument object). */}
           {sendsDays ? <input type="hidden" name="days" value={JSON.stringify(allDays.map(payloadOf))} /> : null}
-        </div>
-      </section>
-
-      {/* ── أين ─────────────────────────────────────────────────────────── */}
-      <section aria-labelledby="schedule-where" className="space-y-6">
-        <SectionHeader id="schedule-where" title={t("sections.where")} />
+</div>
+            ),
+          },
+          {
+            id: "where",
+            label: t("read.rows.where"),
+            value: null,
+            edit: (
+              <div className="space-y-6">
         {/* The venue control does not move when days appear: it is day one's,
             and every day after it inherits this place until someone changes
             that day. Said once, here, rather than repeated on every card. */}
@@ -674,6 +711,15 @@ export function ScheduleForm({
           </div>
         ) : null}
 
+</div>
+            ),
+          },
+          {
+            id: "capacity",
+            label: t("read.rows.capacity"),
+            value: null,
+            edit: (
+              <div className="space-y-6">
         <Field
           id="capacity"
           label={t("capacity.label")}
@@ -692,15 +738,18 @@ export function ScheduleForm({
             className="w-32 text-center"
           />
         </Field>
-      </section>
-
-      {/* ── الحضور ──────────────────────────────────────────────────────── */}
-      <section aria-labelledby="schedule-attendance" className="space-y-6">
-        <SectionHeader id="schedule-attendance" title={t("sections.attendance")} />
-        <div className="space-y-6">
-          {deadline("rsvp")}
-          {deadline("cutoff")}
-
+</div>
+            ),
+          },
+          { id: "rsvpDeadline", label: t("read.rows.rsvpDeadline"), value: null, edit: deadline("rsvp") },
+          { id: "cutoff", label: t("read.rows.cutoff"), value: null, edit: deadline("cutoff") },
+          ...(readRows ? [{ id: "presenters", label: t("read.rows.presenters"), value: readRows.presenters }] : []),
+          {
+            id: "checkIn",
+            label: t("read.rows.checkIn"),
+            value: null,
+            edit: (
+              <div className="space-y-6">
           <Switch name="allowWalkIns" checked={walkIns} onCheckedChange={setWalkIns} label={t("walkIns.label")} description={t("walkIns.hint")} />
 
           {/* ★ REQ-SES-017's «every day», beside the other question about who
@@ -718,14 +767,16 @@ export function ScheduleForm({
               <input type="hidden" name="requireAllDays" value={requireAllDays ? "true" : "false"} />
             </div>
           ) : null}
-        </div>
-      </section>
-
-      {/* ── اللغة ──────────────────────────────────────────────────────────
-          ★ The certificate mode is not here (REQ-SES-020, DEC-178): SCR-045 is
-          its one writer, and this form leaves it standing (0154). */}
-      <section aria-labelledby="schedule-language" className="space-y-6">
-        <SectionHeader id="schedule-language" title={t("sections.language")} />
+</div>
+            ),
+          },
+          ...(readRows ? [{ id: "certificate", label: t("read.rows.certificate"), value: readRows.certificate }] : []),
+          {
+            id: "language",
+            label: t("read.rows.language"),
+            value: null,
+            edit: (
+              <div className="space-y-6">
         <div>
           <RadioGroup
             name="language"
@@ -739,10 +790,14 @@ export function ScheduleForm({
           />
           <p className="mt-1 text-caption text-fg-muted">{t("language.hint")}</p>
         </div>
-      </section>
+</div>
+            ),
+          },
+        ]}
+      />
 
       {/* ── The actions, in reach ───────────────────────────────────────── */}
-      <div className="sticky bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom,0px))] z-20 -mx-4 border-t border-edge bg-canvas px-4 py-4 md:static md:mx-0 md:border-0 md:px-0">
+      <div>
         {!published && missing.length > 0 ? (
           // One line, not a heading and a list: the bar sits above the tab bar in a
           // 844 px viewport, and every line it takes is a line of form it hides.
@@ -784,6 +839,11 @@ export function ScheduleForm({
               </Button>
             </>
           )}
+          {doneHref ? (
+            <Link href={doneHref} className="inline-flex min-h-11 items-center px-2 text-label text-fg-heading underline underline-offset-4">
+              {t("read.cancelEdit")}
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -973,4 +1033,13 @@ function DayCard({
       </div>
     </div>
   );
+}
+
+/** Hands the locale-aware router to the form's action wrapper — mounted only when the form has somewhere to return to. */
+function RouterBridge({ intoRef }: { intoRef: { current: { replace: (href: string) => void } | null } }) {
+  const router = useRouter();
+  useEffect(() => {
+    intoRef.current = router;
+  }, [intoRef, router]);
+  return null;
 }

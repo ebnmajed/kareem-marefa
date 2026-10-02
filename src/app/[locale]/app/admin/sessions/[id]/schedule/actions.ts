@@ -226,6 +226,8 @@ export async function saveSchedule(
   }
   revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/schedule`);
   revalidatePath(`/${locale}/app/sessions/${sessionId}`);
+  // wave 21: the hub's header (the layout) says the state — a publish below must reach it.
+  revalidatePath(`/${locale}/app/admin/sessions/${sessionId}`, "layout");
 
   if (intent === "publish") {
     try {

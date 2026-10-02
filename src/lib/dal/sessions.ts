@@ -1638,3 +1638,163 @@ export const getViewerCompany = cache(async (locale: string): Promise<{ id: stri
   const { data } = await supabase.from("companies").select("id, name, team_color").eq("id", companyId).maybeSingle();
   return data ? { id: data.id as string, name: data.name as string, teamColor: (data.team_color as string | null) ?? null } : null;
 });
+
+// ── wave 21 · the hub's header and SCR-043's read mode (add-only, REQ-UIX-089, contract 4) ──────────────────────────
+
+/** What the hub's one header draws above every tab — `admin/sessions/[id]/layout.tsx`. */
+export interface SessionHubHeader {
+  id: string;
+  title: string;
+  state: SessionState;
+  /** REQ-SES-001's gate on the STORED schedule — what «انشر» in the header still waits for. */
+  missing: ("startsAt" | "endsAt" | "capacity" | "venue")[];
+  /** The lifecycle action is an admin's; a moderator sees the header without it. */
+  viewerRole: "admin" | "moderator";
+}
+
+/**
+ * The header's read. ★ READ BY A LAYOUT, so it never throws and never gates: `null` for anyone who is not staff, a
+ * malformed id, a session this org cannot see, and any error — and the layout then draws nothing. Each tab's page is
+ * still its own boundary (`getSessionSettingsNav()`'s rule, `DEC-178`).
+ */
+export async function getSessionHubHeader(locale: string, sessionId: string): Promise<SessionHubHeader | null> {
+  try {
+    if (!z.uuid().safeParse(sessionId).success) return null;
+    const { session, supabase } = await sessionClient(locale);
+    if (session.role !== "admin" && session.role !== "moderator") return null;
+    const { data, error } = await supabase
+      .from("sessions")
+      .select("id, title, state, starts_at, ends_at, capacity, venue_id, custom_venue_name")
+      .eq("id", sessionId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const missing: SessionHubHeader["missing"] = [];
+    if (!data.starts_at) missing.push("startsAt");
+    if (!data.ends_at) missing.push("endsAt");
+    if (data.capacity === null) missing.push("capacity");
+    if (!data.venue_id && !data.custom_venue_name) missing.push("venue");
+    return { id: data.id as string, title: data.title as string, state: data.state as SessionState, missing, viewerRole: session.role };
+  } catch {
+    return null;
+  }
+}
+
+/** One presenter as SCR-043's read row draws them — a face, a ring, a name; pending marked. */
+export interface ScheduleReadPresenter {
+  memberId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  teamColor: string | null;
+  accepted: boolean;
+}
+
+/** What SCR-043's read mode needs beyond `getSessionForSchedule()` — the card's last rows and the side column. */
+export interface ScheduleRead {
+  certificateMode: CertificateMode;
+  /** The proposal it came from, for the log's «اعتُمد المقترح» → SCR-041 (REQ-PRO-009's content, one tap away). */
+  proposalId: string | null;
+  /** Accepted and pending; a declined row is not a presenter. In the order they joined. */
+  presenters: ScheduleReadPresenter[];
+  /** Confirmed and waitlisted reservations — never cancelled ones. */
+  confirmed: number;
+  waitlisted: number;
+  /** `org_settings.check_in_rotation_seconds` — read, never typed. */
+  rotationSeconds: number | null;
+}
+
+/** Admin only, like the schedule; `null` otherwise, so the page answers not-found with `getSessionForSchedule()`. */
+export async function getScheduleRead(locale: string, sessionId: string): Promise<ScheduleRead | null> {
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+  const [row, people, confirmed, waitlisted, settings] = await Promise.all([
+    supabase.from("sessions").select("certificate_mode, proposal_id").eq("id", sessionId).maybeSingle(),
+    supabase.from("session_presenters").select("member_id, accepted, declined_at, created_at").eq("session_id", sessionId).order("created_at").order("member_id"),
+    supabase.from("rsvps").select("id", { count: "exact", head: true }).eq("session_id", sessionId).eq("status", "confirmed"),
+    supabase.from("rsvps").select("id", { count: "exact", head: true }).eq("session_id", sessionId).eq("status", "waitlisted"),
+    supabase.from("org_settings").select("check_in_rotation_seconds").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  if (row.error) throw new Error(`sessions.select: ${row.error.message}`);
+  if (!row.data) return null;
+  if (people.error) throw new Error(`session_presenters: ${people.error.message}`);
+  if (confirmed.error || waitlisted.error) throw new Error(`rsvps: ${(confirmed.error ?? waitlisted.error)!.message}`);
+  const rows = (people.data ?? []).filter((p) => p.declined_at === null);
+  const profiles = await presenterProfiles(supabase, rows.map((p) => p.member_id as string));
+  return {
+    certificateMode: row.data.certificate_mode as CertificateMode,
+    proposalId: (row.data.proposal_id as string | null) ?? null,
+    presenters: rows.map((p) => {
+      const profile = profiles.get(p.member_id as string);
+      return {
+        memberId: p.member_id as string,
+        displayName: profile?.displayName ?? null,
+        avatarUrl: profile?.avatarUrl ?? null,
+        teamColor: profile?.teamColor ?? null,
+        accepted: p.accepted as boolean,
+      };
+    }),
+    confirmed: confirmed.count ?? 0,
+    waitlisted: waitlisted.count ?? 0,
+    rotationSeconds: (settings.data?.check_in_rotation_seconds as number | undefined) ?? null,
+  };
+}
+
+/** One line of the session's log — SCR-043's side column. */
+export interface SessionLogEntry {
+  /** `audit_log.action`, e.g. `session.published`, `proposal.approved`. */
+  action: string;
+  /** Who acted, when a member did; null for the system. */
+  actorName: string | null;
+  occurredAt: string;
+}
+
+/** The actions the log names; anything else (a walk-in toggle, a mode change) is the audit screen's, not this card's. */
+const SESSION_LOG_ACTIONS = [
+  "proposal.approved",
+  "session.created_from_proposal",
+  "session.created_direct",
+  "session.scheduled",
+  "session.published",
+  "session.start",
+  "session.complete",
+  "session.cancel",
+  "session.archive",
+  "session.reopen",
+  "session.presenter_added",
+  "session.presenter_removed",
+] as const;
+
+/**
+ * The session's log, newest first, from `audit_log` (`audit_read_admin`) — admin only; `null` otherwise.
+ * ★ The order is for DISPLAY: rows a single transaction wrote share `occurred_at`, so a tie is broken by the
+ * action's place above, latest step first. Nothing here decides «the last row».
+ */
+export async function getSessionLog(locale: string, sessionId: string, proposalId: string | null, limit = 8): Promise<SessionLogEntry[] | null> {
+  if (!z.uuid().safeParse(sessionId).success) return null;
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+  const subjects = proposalId ? [sessionId, proposalId] : [sessionId];
+  const { data, error } = await supabase
+    .from("audit_log")
+    .select("action, actor_id, occurred_at, subject_id")
+    .in("subject_id", subjects)
+    .in("action", [...SESSION_LOG_ACTIONS])
+    .order("occurred_at", { ascending: false })
+    .limit(limit * 2);
+  if (error) throw new Error(`audit_log: ${error.message}`);
+  const rank = (action: string) => SESSION_LOG_ACTIONS.indexOf(action as (typeof SESSION_LOG_ACTIONS)[number]);
+  const rows = (data ?? [])
+    .filter((r) => r.subject_id === sessionId || r.action === "proposal.approved")
+    .sort((a, b) =>
+      a.occurred_at === b.occurred_at
+        ? rank(b.action as string) - rank(a.action as string)
+        : new Date(b.occurred_at as string).getTime() - new Date(a.occurred_at as string).getTime(),
+    )
+    .slice(0, limit);
+  const names = await namesFor(supabase, [...new Set(rows.map((r) => r.actor_id as string | null).filter((v): v is string => v !== null))]);
+  return rows.map((r) => ({
+    action: r.action as string,
+    actorName: r.actor_id ? (names.get(r.actor_id as string) ?? null) : null,
+    occurredAt: r.occurred_at as string,
+  }));
+}

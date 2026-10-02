@@ -194,6 +194,58 @@
       "minutes": "{count, plural, one {{value} minute} other {{value} minutes}}",
       "none": "Not set",
       "note": "The content stays as it was approved; this page is for the time, the place and the settings."
+    },
+    "read": {
+      "label": "Schedule",
+      "empty": "—",
+      "rows": {
+        "when": "When",
+        "where": "Where",
+        "capacity": "Capacity",
+        "rsvpDeadline": "Booking closes",
+        "cutoff": "Last cancellation",
+        "presenters": "Presenters",
+        "checkIn": "Check-in",
+        "certificate": "Certificate",
+        "language": "Language",
+        "poster": "Poster"
+      },
+      "edit": "Edit",
+      "reschedule": "Reschedule",
+      "cancelEdit": "Cancel",
+      "changePresenters": "Change",
+      "presentersSheet": "Presenters",
+      "pendingPresenter": "Awaiting reply",
+      "rotation": "{count, plural, =0 {A fixed code} one {Code changes every minute} other {Code changes every {value} minutes}}",
+      "walkIns": "Walk-ins allowed",
+      "everyDay": "Points and certificate for attending every day",
+      "venueSeats": "{count, plural, =0 {<t>{name}</t>} one {<t>{name}</t> · 1 seat} other {<t>{name}</t> · {value} seats}}",
+      "certificateMode": {
+        "off": "No certificate",
+        "automatic": "Automatic",
+        "review": "After review"
+      }
+    },
+    "side": {
+      "reservations": "Reservations",
+      "waitlist": "Waitlist",
+      "poster": "Poster",
+      "log": "Log",
+      "ofCapacity": "{confirmed} / {capacity}"
+    },
+    "log": {
+      "proposalApproved": "Proposal approved",
+      "createdFromProposal": "Created from the proposal",
+      "createdDirect": "Created directly",
+      "scheduled": "Scheduled",
+      "published": "Published",
+      "start": "Started",
+      "complete": "Completed",
+      "cancel": "Cancelled",
+      "archive": "Archived",
+      "reopen": "Reopened",
+      "presenterAdded": "Presenter added",
+      "presenterRemoved": "Presenter removed"
     }
   }
 }

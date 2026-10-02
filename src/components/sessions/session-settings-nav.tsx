@@ -8,6 +8,12 @@ import { SessionSettingsStrip, type SessionSettingsStripItem } from "./session-s
 // Not a screen of its own: it joins the four admin screens and the event page,
 // where materials, tasks and photos are managed.
 //
+// ★ wave 21 (REQ-UIX-089, DEC-227 §5.3): five tabs in REQ-SES-020's order —
+// الجدولة · المحتوى · الحضور · الاستبانة · الشهادات. «المحتوى» IS the event page
+// (still a way out of the hub, never «current»); «صفحة الجلسة» moved into the
+// header. The order is set here — `SESSION_SETTINGS_KEYS` and the role filters
+// are the DAL's and unchanged.
+//
 // ★ NO AUTH DECISION HERE. The items are only what `getSessionSettingsNav()`
 // says the viewer may open, and `null` renders nothing — every page below
 // still checks at its own data and 404s on its own. A layout that 404'd would
@@ -23,14 +29,17 @@ const ROUTES: Record<SessionSettingsKey, { href: (id: string) => string; segment
   event: { href: (id) => `/app/sessions/${id}`, segment: null },
 };
 
+/** The strip's order (REQ-SES-020); a key the DAL did not return is not drawn. */
+const ORDER: readonly SessionSettingsKey[] = ["schedule", "event", "attendance", "survey", "certificates"];
+
 export async function SessionSettingsNav({ locale, sessionId }: { locale: string; sessionId: string }) {
   const [nav, t] = await Promise.all([getSessionSettingsNav(locale, sessionId), getTranslations("sessions.hub")]);
   if (!nav || nav.items.length === 0) return null;
-  const items: SessionSettingsStripItem[] = nav.items.map((key) => ({
+  const items: SessionSettingsStripItem[] = ORDER.filter((key) => nav.items.includes(key)).map((key) => ({
     key,
     href: ROUTES[key].href(sessionId),
     segment: ROUTES[key].segment,
-    label: t(`items.${key}`),
+    label: t(key === "event" ? "items.content" : `items.${key}`),
   }));
   return <SessionSettingsStrip label={t("label")} items={items} />;
 }
