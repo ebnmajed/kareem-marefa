@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-02 · **Branches:** ★ **THREE PRs**, all drafts against `main`: **#41 `wave-20a/the-hub`** (CI ✓ 11/11 on `8ba0a5c4`), **#42 `wave-20b/the-boards`** (CI ✓ 11/11 on `c003f358`), **#43 `wave-20c/the-award`** (in progress, checked out) · **`main`:** `5e1fabdc`; production at **`0168`** · **Phase:** M10c, wave 20 (`DEC-216` … `DEC-222`). ★★ **URGENT FOR THE OWNER: push `0169` – `0176` — `0174` closes a LIVE privacy hole** (`DEC-221`: a checked-in member could publish an unstripped photo with its GPS). PR A holds the hub frame and `021` – `025`; PR B the inbox, settings, the boards with the quarterly cup; PR C «بلا ترتيب» (done) and the photo award (**held until `0174` is in production**). ★ **Open for the owner:** the copy trim's list (`DEC-217` §4.2) — the last story of PR A. ★ **Merge order A, B, C**; each opened against `main`, so no retarget. ★★ **When this merges, stories land next** unless the owner says otherwise.
+**Last updated:** 2026-10-02 · **Branches:** ★ **THREE PRs**, all drafts against `main`: **#41 `wave-20a/the-hub`** (CI ✓ 11/11 on `8ba0a5c4`), **#42 `wave-20b/the-boards`** (CI ✓ 11/11 on `c003f358`), **#43 `wave-20c/the-award`** (in progress, checked out) · **`main`:** `5e1fabdc`; production at **`0176`** · **Phase:** M10c, wave 20 (`DEC-216` … `DEC-222`). ★ **`0169` – `0176` PUSHED 2026-10-02** — production at `0176`; ★ `0174`'s privacy fix verified closed in production (`DEC-221`). PR A holds the hub frame and `021` – `025`; PR B the inbox, settings, the boards with the quarterly cup; PR C «بلا ترتيب» (done) and the photo award (**unblocked — `0174` is in production**). ★ **Open for the owner:** the copy trim's list (`DEC-217` §4.2) — the last story of PR A. ★ **Merge order A, B, C**; each opened against `main`, so no retarget. ★★ **When this merges, stories land next** unless the owner says otherwise.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -111,7 +111,13 @@ zero `COPY`/`INSERT`; `photos_insert_checked_in` present, nothing of `0169` – 
 - **Cleaned up:** `rehearse20` dropped; the scratch copies of the dump deleted. ★ `/tmp/prod-schema-0168.sql` is the
   owner's own file and is left for the owner to delete.
 
-★★ **The owner's order now:** (1) **push `0169` – `0176`** — from `wave-20c/the-award`, which holds all eight
+★★ **PUSHED 2026-10-02 by the owner** from `wave-20c/the-award`: the dry run listed exactly `0169` – `0176`; all eight
+applied in order; the CLI's `pg-delta` catalogue-cache warning after them is the cosmetic one waves 12 – 19 recorded.
+`supabase migration list --linked` reads **`0176` on both sides**. ★ **The hole is closed in production, read by the
+owner**: `has_table_privilege(…, 'public.photos', 'INSERT')` is **false** for `anon`, `authenticated` and
+`service_role`, and **no** insert policy remains on `photos`. The photo award (PR C) is unblocked.
+
+★★ **The owner's order now:** (1) ~~push `0169` – `0176`~~ **DONE** — from `wave-20c/the-award`, which holds all eight
 (`supabase db push --linked`); (2) merge **#41, then #42, then #43**, each with `--delete-branch` (each is opened
 against `main`, so no retarget); (3) reconnect Railway with `railway service source connect --repo
 ebnmajed/kareem-marefa --branch main` and check its builder before the deployment lands; (4) the phone check.
