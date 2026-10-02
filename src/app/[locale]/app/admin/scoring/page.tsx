@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { EditorSurface } from "@/components/admin/editor-surface";
 import { splitDuration } from "@/components/admin/duration";
-import { formatDateTime, formatNumber } from "@/components/sessions/numerals";
+import { relativeWhen, whenWords } from "@/components/scoring/relative-when";
+import { formatNumber } from "@/components/sessions/numerals";
 import { ButtonLink } from "@/components/ui/button";
 import { Link } from "@/components/ui/link";
 import { PageHeader } from "@/components/ui/page-header";
@@ -130,10 +131,13 @@ export default async function ScoringAdminPage({
     );
   };
 
+  // The saved mark: a relative day and the time (the boards' dates), the instant on the element.
+  const now = new Date().toISOString();
+  const markWhen = mark ? whenWords((k, v) => t.markup(k as never, v as never), "read.when", relativeWhen(mark.at, now, mark.timeZone, locale)) : "";
   const markLine = mark
     ? mark.actor?.displayName
-      ? t.rich("read.savedMarkBy", { time: formatDateTime(mark.at, mark.timeZone, locale), actor: mark.actor.displayName, bdi })
-      : t.rich("read.savedMark", { time: formatDateTime(mark.at, mark.timeZone, locale), bdi })
+      ? t.rich("read.savedMarkBy", { time: markWhen, actor: mark.actor.displayName, bdi })
+      : t.rich("read.savedMark", { time: markWhen, bdi })
     : null;
 
   // The history's values, in words: a boolean is on or off, a cooldown is a duration, a number is a number.
@@ -176,7 +180,11 @@ export default async function ScoringAdminPage({
           </div>
         }
       />
-      {markLine ? <p className="mt-2 text-caption text-fg-muted">{markLine}</p> : null}
+      {markLine && mark ? (
+        <p className="mt-2 text-caption text-fg-muted" data-saved-at={mark.at}>
+          {markLine}
+        </p>
+      ) : null}
 
       <section aria-labelledby="catalogue-heading" className="mt-6">
         <h2 id="catalogue-heading" className="sr-only">
@@ -206,7 +214,7 @@ export default async function ScoringAdminPage({
       <section aria-labelledby="history-heading" className="mt-12">
         <SectionHeader as="h2" id="history-heading" title={t("history.heading")} />
         <div className="mt-4">
-          <HistoryTable rows={history} timeZone={data.timeZone} locale={locale} />
+          <HistoryTable rows={history} timeZone={data.timeZone} locale={locale} now={now} />
         </div>
       </section>
 

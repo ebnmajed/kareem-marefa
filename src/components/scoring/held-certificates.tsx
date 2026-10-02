@@ -141,6 +141,7 @@ export function HeldCertificates({
   return (
     <>
       <DataTable
+        className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
         label={t("held.listLabel")}
         columns={columns}
         rows={rows}

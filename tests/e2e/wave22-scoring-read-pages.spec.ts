@@ -6,7 +6,7 @@
 // Captures (`E2E_SHOTS_DIR`), at 1280 on the desktop project and 390 on the phone project:
 //   wave22-scoring-053-read-<1280|390>.png · wave22-scoring-053-edit-<1280|390>.png · wave22-scoring-053-saved-1280.png
 //   wave22-scoring-054-read-<1280|390>.png · wave22-scoring-054-edit-<1280|390>.png
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
@@ -65,6 +65,20 @@ test.beforeAll(async () => {
     [orgId, memberId, rule.points, rule.reason_ar, rule.version, `e2e:w22:comment:${tag}`],
   );
   oldRowId = ledger[0].id;
+
+  // One held achievement certificate, so SCR-054's «بانتظار الإصدار» region is captured with a row (it is absent when
+  // empty). Arranged directly — issuing is `designer`'s; the template version is read, never pinned.
+  const [{ id: badgeId }] = (await db.query<{ id: string }>(`select id from public.badges where org_id = $1 and key = 'rated_presenter'`, [orgId])).rows;
+  const [{ id: versionId }] = (
+    await db.query<{ id: string }>(
+      `select v.id from public.design_template_versions v join public.design_templates t on t.id = v.template_id where t.purpose = 'certificate' order by v.published_at desc nulls last limit 1`,
+    )
+  ).rows;
+  await db.query(
+    `insert into public.certificates (org_id, member_id, kind, badge_id, serial, verification_code, state, template_version_id, recipient_name_snapshot, created_at)
+     values ($1, $2, 'achievement', $3, 'SR-2026-000001', $4, 'held', $5, 'سارة العتيبي', now() - interval '2 days')`,
+    [orgId, memberId, badgeId, randomBytes(18).toString("base64url"), versionId],
+  );
 });
 
 test.afterAll(async () => {
@@ -153,6 +167,7 @@ test("SCR-053 and SCR-054 beside their artboards: read and edit, at 1280 and 390
     await goto(page, path);
     await expect(page.locator("#main").getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.locator("#main").getByRole("switch")).toHaveCount(0);
+    if (screen === "054") await expect(page.locator("#main").getByRole("heading", { name: /شهادات الإنجاز بانتظار الإصدار/ })).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/wave22-scoring-${screen}-read-${w}.png`, fullPage: true });
     await goto(page, `${path}?edit`);
     await expect(page.locator("#main").getByRole("button", { name: /^احفظ/ })).toBeVisible();

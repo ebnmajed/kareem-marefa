@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { EditorSurface } from "@/components/admin/editor-surface";
 import { HeldAchievements } from "@/components/certificates/held-achievements";
-import { formatDateTime } from "@/components/sessions/numerals";
+import { relativeWhen, whenWords } from "@/components/scoring/relative-when";
 import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -95,10 +95,12 @@ export default async function RecognitionAdminPage({
   const badgeSheet = sp.badge === "new" ? null : sp.badge ? data.badges.find((b) => b.id === sp.badge) : undefined;
   const revoking = sp.revoke ? held.certificates.find((c) => c.id === sp.revoke) : undefined;
 
+  // The saved mark: a relative day and the time (the boards' dates), the instant on the element.
+  const markWhen = mark ? whenWords((k, v) => t.markup(k as never, v as never), "read.when", relativeWhen(mark.at, new Date().toISOString(), mark.timeZone, locale)) : "";
   const markLine = mark
     ? mark.actor?.displayName
-      ? t.rich("read.savedMarkBy", { time: formatDateTime(mark.at, mark.timeZone, locale), actor: mark.actor.displayName, bdi })
-      : t.rich("read.savedMark", { time: formatDateTime(mark.at, mark.timeZone, locale), bdi })
+      ? t.rich("read.savedMarkBy", { time: markWhen, actor: mark.actor.displayName, bdi })
+      : t.rich("read.savedMark", { time: markWhen, bdi })
     : null;
 
   return (
@@ -120,7 +122,11 @@ export default async function RecognitionAdminPage({
           </div>
         }
       />
-      {markLine ? <p className="mt-2 text-caption text-fg-muted">{markLine}</p> : null}
+      {markLine && mark ? (
+        <p className="mt-2 text-caption text-fg-muted" data-saved-at={mark.at}>
+          {markLine}
+        </p>
+      ) : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="levels-heading">

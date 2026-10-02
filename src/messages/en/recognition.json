@@ -266,6 +266,12 @@
           "stale": "Someone saved these values after you opened them. Reload.",
           "notFound": "An item no longer exists. Reload.",
           "failed": "Could not save. Try again."
+        },
+        "when": {
+          "today": "Today · <bdi>{time}</bdi>",
+          "yesterday": "Yesterday · <bdi>{time}</bdi>",
+          "days": "{count, plural, one {A day ago · <bdi>{time}</bdi>} other {<bdi>{value}</bdi> days ago · <bdi>{time}</bdi>}}",
+          "date": "<bdi>{date}</bdi> · <bdi>{time}</bdi>"
         }
       }
     }

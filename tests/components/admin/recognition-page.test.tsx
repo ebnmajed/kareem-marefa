@@ -259,12 +259,12 @@ describe("RecognitionAdminPage — edit mode", () => {
   it("«لم يتغيّر شيء» from an empty receipt; a refused threshold lands at its level", async () => {
     actions.saveRecognitionEdit.mockResolvedValueOnce({ errors: {}, formError: null, values: {}, lists: {}, attempt: 1, receipt: { at: null, wrote: [] } });
     await renderPage([], { edit: "" });
-    fireEvent.submit(screen.getByRole("button", { name: /^احفظ/ }).closest("form") as HTMLFormElement);
+    fireEvent.submit((await screen.findByRole("button", { name: /^احفظ/ })).closest("form") as HTMLFormElement);
     expect(await screen.findByText("لم يتغيّر شيء", { exact: true })).toBeInTheDocument();
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/app/admin/recognition"));
 
     actions.saveRecognitionEdit.mockResolvedValueOnce({ errors: { "level-l2-threshold": "thresholdOrder" }, formError: null, values: {}, lists: {}, attempt: 2, receipt: null });
-    fireEvent.submit(screen.getByRole("button", { name: /^احفظ/ }).closest("form") as HTMLFormElement);
+    fireEvent.submit((await screen.findByRole("button", { name: /^احفظ/ })).closest("form") as HTMLFormElement);
     const summary = await screen.findByRole("alert");
     expect(within(summary).getByRole("link", { name: /من — صاحب أثر/ })).toHaveAttribute("href", "#level-l2-threshold");
   });

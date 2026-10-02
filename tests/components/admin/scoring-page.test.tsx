@@ -94,7 +94,8 @@ async function renderPage(searchParams: Record<string, string> = {}) {
 }
 
 const rowsOf = (name: string) => within(screen.getAllByRole("table", { name })[0]).getAllByRole("row").slice(1);
-const submit = () => fireEvent.submit(screen.getByRole("button", { name: /^احفظ/ }).closest("form") as HTMLFormElement);
+// The submit button reads «جارٍ الحفظ…» until the action settles, so each submit waits for «احفظ» to come back.
+const submit = async () => fireEvent.submit((await screen.findByRole("button", { name: /^احفظ/ })).closest("form") as HTMLFormElement);
 const settled = (attempt: number, receipt: { at: string | null; wrote: string[] } | null, errors: Record<string, string> = {}) => ({
   errors,
   formError: null,
@@ -110,12 +111,13 @@ beforeEach(() => {
 });
 
 describe("ScoringAdminPage — read mode", () => {
-  it("the catalogue as values: each action with the reason a member reads, its value, cap and cooldown in words, its state in words — and no control", async () => {
+  it("the catalogue as values: one line per action, its value, cap and cooldown in words, its state in words — and no control", async () => {
     await renderPage();
     const rows = rowsOf("كتالوج النقاط");
     expect(rows).toHaveLength(3);
     expect(rows[1]).toHaveTextContent("تعليق");
-    expect(rows[1]).toHaveTextContent("تعليق مفيد");
+    // The member's text is edit mode's, not a second line here (the lead's ruling on D2).
+    expect(rows[1]).not.toHaveTextContent("تعليق مفيد");
     expect(rows[1]).toHaveTextContent("نقطتان");
     expect(rows[1]).toHaveTextContent("5 مرات لكل جلسة");
     expect(rows[1]).toHaveTextContent("دقيقة واحدة");
@@ -124,13 +126,14 @@ describe("ScoringAdminPage — read mode", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
-  it("the deductions apart, «مغلق افتراضيًا», each as its cost; الحجز and التفاعل are absent, not zero", async () => {
+  it("the deductions apart, each as its cost and its STORED state — the heading claims nothing about them; الحجز and التفاعل are absent", async () => {
     await renderPage();
-    expect(screen.getByRole("heading", { name: "سلبية · مغلق افتراضيًا" })).toBeInTheDocument();
-    const rows = rowsOf("سلبية · مغلق افتراضيًا");
+    expect(screen.getByRole("heading", { name: "سلبية" })).toBeInTheDocument();
+    const rows = rowsOf("سلبية");
     expect(rows[0]).toHaveTextContent("لا خصم");
     expect(rows[0]).toHaveTextContent("— متوقف");
     expect(rows[1]).toHaveTextContent("خصم 5 نقاط");
+    expect(rows[1]).toHaveTextContent("✓ مفعّل");
     // The catalogue's check constraint does not admit them: no row names either action.
     expect(screen.queryByText("الحجز", { exact: true })).toBeNull();
     expect(screen.queryByText("التفاعل", { exact: true })).toBeNull();
@@ -206,12 +209,12 @@ describe("ScoringAdminPage — edit mode", () => {
   it("«لم يتغيّر شيء» from an empty receipt, «حُفظ» from one that wrote rows — and back to read mode each time", async () => {
     actions.saveCatalogue.mockResolvedValueOnce(settled(1, { at: null, wrote: [] }));
     await renderPage({ edit: "" });
-    submit();
+    await submit();
     expect(await screen.findByText("لم يتغيّر شيء", { exact: true })).toBeInTheDocument();
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/app/admin/scoring"));
 
     actions.saveCatalogue.mockResolvedValueOnce(settled(2, { at: "2026-10-03T09:00:00Z", wrote: ["comment.points"] }));
-    submit();
+    await submit();
     expect(await screen.findByText("حُفظ", { exact: true })).toBeInTheDocument();
   });
 
@@ -219,7 +222,7 @@ describe("ScoringAdminPage — edit mode", () => {
     const field = `rule-${COMMENT}-points`;
     actions.saveCatalogue.mockResolvedValueOnce(settled(1, null, { [field]: "signMismatch" }));
     await renderPage({ edit: "" });
-    submit();
+    await submit();
     const summary = await screen.findByRole("alert");
     expect(within(summary).getByRole("link", { name: /القيمة — تعليق/ })).toHaveAttribute("href", `#${field}`);
     expect(screen.getAllByText("هذه القاعدة لا تقبل هذه الإشارة.").length).toBeGreaterThan(0);

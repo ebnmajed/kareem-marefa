@@ -9,9 +9,10 @@ import { COOLDOWN_UNITS } from "./state";
 
 // SCR-053 in READ mode — one `data-table` per group, as `AdminScoring.dc.html` draws them: الفعل · القيمة · الحد ·
 // التبريد · مفعّل. ★ A read-mode value is TEXT with a glyph, never a control (`DEC-232` §3.4): nothing on this page
-// writes before «احفظ». The action's second line is the reason the member reads for it in their own history
-// (`REQ-PTS-003`, D2) — an admin sees what a member will be told. Columns are built here, in the client, because a
-// column's cell is a function and cannot cross from the server page.
+// writes before «احفظ». One line per action, as drawn (the lead's ruling on D2): the text a member reads for it
+// (`REQ-PTS-003`) is shown and edited in edit mode. Every value is what is STORED — a deduction at 0 that is switched on
+// reads «لا خصم» and «✓ مفعّل», and the group's heading claims nothing about it. Columns are built here, in the client,
+// because a column's cell is a function and cannot cross from the server page.
 
 export interface CatalogueRow {
   id: string;
@@ -46,14 +47,7 @@ export function CatalogueTable({ label, rows }: { label: string; rows: Catalogue
       key: "action",
       header: t("read.colAction"),
       onCard: true,
-      cell: (r) => (
-        <span className="flex flex-col">
-          <span className="text-fg-heading">{r.name}</span>
-          <span className="text-caption text-fg-muted">
-            <bdi>{r.reason}</bdi>
-          </span>
-        </span>
-      ),
+      cell: (r) => <span className="text-fg-heading">{r.name}</span>,
     },
     { key: "value", header: t("read.colValue"), onCard: true, cell: value },
     { key: "cap", header: t("read.colCap"), onCard: true, cell: cap },
@@ -63,7 +57,7 @@ export function CatalogueTable({ label, rows }: { label: string; rows: Catalogue
       header: t("read.colEnabled"),
       onCard: true,
       cell: (r) => (
-        <span className={r.enabled ? "text-fg-heading" : "text-fg-muted"}>
+        <span className={`whitespace-nowrap ${r.enabled ? "text-fg-heading" : "text-fg-muted"}`}>
           <span aria-hidden="true">{r.enabled ? "✓ " : "— "}</span>
           {r.enabled ? t("read.on") : t("read.off")}
         </span>
@@ -71,5 +65,5 @@ export function CatalogueTable({ label, rows }: { label: string; rows: Catalogue
     },
   ];
 
-  return <DataTable label={label} columns={columns} rows={rows} rowKey={(r) => r.id} empty={{ title: t("catalogue.empty"), action: { label: t("catalogue.emptyAction"), href: "/app/admin/scoring#history-heading" } }} />;
+  return <DataTable className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1" label={label} columns={columns} rows={rows} rowKey={(r) => r.id} empty={{ title: t("catalogue.empty"), action: { label: t("catalogue.emptyAction"), href: "/app/admin/scoring#history-heading" } }} />;
 }

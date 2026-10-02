@@ -5348,3 +5348,19 @@ the two create commits. Proposed for the lead: `cap_explained_as_it_stood.sql` (
   company rule through the line's «عدّل». New: `tests/e2e/wave22-scoring-read-pages.spec.ts` (the job, the empty
   receipt, the captures at 1280 and 390).
 - **Requests:** `console` — `src/components/admin/held-achievements-table.tsx` has no importer now; delete it.
+
+### PR B — the lead's read beside the boards (fixes)
+
+1. ★ **The deductions, as the data is**: the seed stores all four **enabled at 0 points** (`0083:35-36`, `_seed_org_scoring`)
+   — «off by default» in `REQ-PTS-008` means *costs nothing*, not *switched off*. So each row reads what is stored
+   («لا خصم», «✓ مفعّل») and the heading is «سلبية» alone: it no longer claims «مغلق افتراضيًا» over rows that say
+   otherwise. (D11 resolved this way; the artboard's unticked boxes are not the data.)
+2. Read mode is one line per action, as drawn; the member's text is shown and edited in edit mode (ruling on D2).
+3. The state cells (`✓ مفعّل` / `— متوقف`) never wrap.
+4. The capture spec seeds one held achievement certificate, so `054`'s region is captured with a row.
+5. Every table on both pages wears `042`'s surface card at `md`+.
+6. The history's «الوقت» and both saved marks are a relative day and the time («اليوم · 09:41», «أمس · …», «منذ 3 أيام · …»,
+   past a week the short date) through `components/scoring/relative-when.ts`, in the org's zone; the history's instant is
+   in `<time datetime>`, the mark's on the element. Ledger: `scoring-page.test.tsx`'s read-mode cases (heading «سلبية»,
+   no second line) and its edit-mode submits (they wait for «احفظ» to return — a pending label, not a page change);
+   `wave8-console-scoring.spec.ts`'s catalogue case reads the member's wording in edit mode.

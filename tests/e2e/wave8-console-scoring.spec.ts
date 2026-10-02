@@ -117,28 +117,29 @@ test("a moderator gets the streamed not-found page, not the catalogue (REQ-ADM-0
 
 // ★ wave 22 (REQ-UIX-100, ledger lines): SCR-053 was rebuilt read-by-default from `AdminScoring.dc.html`. The
 // catalogue is the rewards' table and the deductions' table; a rule is edited in the page's one edit mode, not a dialog.
-test("SCR-053: the catalogue read as values — the deductions apart at 0, each with what the member reads — and no reservation or reaction", async ({ context, page }, testInfo) => {
+test("SCR-053: the catalogue read as values — the deductions apart, as stored — and the member's wording in edit mode; no reservation or reaction", async ({ context, page }, testInfo) => {
   if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/scoring");
   const main = page.locator("#main");
-  await expect(main.getByRole("heading", { name: "سلبية · مغلق افتراضيًا" })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "سلبية", exact: true })).toBeVisible();
   const penalties = group(page, "penalty-heading");
-  const entry = (name: string) => shown(page, penalties.locator("tr, li").filter({ hasText: name })).first();
-  // The member's wording is each row's second line — «حُذف تعليق» under «حذف تعليق».
-  await expect(entry("حذف تعليق")).toContainText("حُذف تعليق");
-  await expect(entry("حذف صورة")).toContainText("حُذفت صورة");
   await expect(shown(page, penalties.getByText("لا خصم", { exact: true })).first()).toBeVisible();
   await expect(main.getByText("الحجز", { exact: true })).toHaveCount(0);
   await expect(main.getByRole("switch")).toHaveCount(0);
 
   if (testInfo.project.name === "phone") {
     await page.screenshot({ path: `${SHOTS}/wave8-console-scoring-catalogue.png` });
-    const penaltiesHeading = main.getByRole("heading", { name: "سلبية · مغلق افتراضيًا" });
+    const penaltiesHeading = main.getByRole("heading", { name: "سلبية", exact: true });
     await penaltiesHeading.evaluate((el) => el.scrollIntoView({ block: "start" }));
     await expect(penaltiesHeading).toBeInViewport();
     await page.screenshot({ path: `${SHOTS}/wave8-console-scoring-penalties.png` });
   }
+
+  // The member's wording differs from the action's name on purpose (`0083`): «حذف تعليق» is read «حُذف تعليق».
+  await goto(page, "/ar/app/admin/scoring?edit");
+  await expect(main.getByRole("textbox", { name: "ما يقرؤه العضو — حذف تعليق" })).toHaveValue("حُذف تعليق");
+  await expect(main.getByRole("textbox", { name: "ما يقرؤه العضو — حذف صورة" })).toHaveValue("حُذفت صورة");
 });
 
 test("REQ-PTS-008: a deduction is set by its cost, stored negative, and the history names it", async ({ context, page }, testInfo) => {

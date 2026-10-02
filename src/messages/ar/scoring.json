@@ -289,7 +289,7 @@
         "colValue": "القيمة",
         "colCap": "الحد",
         "colCooldown": "التبريد",
-        "penalties": "سلبية · مغلق افتراضيًا",
+        "penalties": "سلبية",
         "companies": "الشركات",
         "company": {
           "hosting": "استضافة <bdi>{value}</bdi>",
@@ -323,6 +323,12 @@
           "stale": "حفظ غيرك هذه القيم بعد أن فتحتها. حدّث الصفحة.",
           "notFound": "لم تعد إحدى القواعد موجودة. حدّث الصفحة.",
           "failed": "تعذّر الحفظ. حاول مرة أخرى."
+        },
+        "when": {
+          "today": "اليوم · <bdi>{time}</bdi>",
+          "yesterday": "أمس · <bdi>{time}</bdi>",
+          "days": "{count, plural, zero {منذ <bdi>{value}</bdi> يوم · <bdi>{time}</bdi>} one {منذ يوم · <bdi>{time}</bdi>} two {منذ يومين · <bdi>{time}</bdi>} few {منذ <bdi>{value}</bdi> أيام · <bdi>{time}</bdi>} many {منذ <bdi>{value}</bdi> يومًا · <bdi>{time}</bdi>} other {منذ <bdi>{value}</bdi> يوم · <bdi>{time}</bdi>}}",
+          "date": "<bdi>{date}</bdi> · <bdi>{time}</bdi>"
         }
       }
     },

@@ -41,13 +41,15 @@ export interface StreakView {
 }
 
 const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
+/** 042's surface card at `md`+ — the wave's ruling for every console table; the phone stays cards. */
+const CARD = "md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1";
 const RAMP = ["var(--color-level-1)", "var(--color-level-2)", "var(--color-level-3)", "var(--color-level-4)", "var(--color-level-5)"] as const;
 /** `levels.sort_order` → a ramp stop, clamped to 1–5 — the rule `level-card` and `badge-medallion` keep. */
 const stop = (sortOrder: number) => Math.min(5, Math.max(1, Math.round(sortOrder)));
 
 function State({ on, onWord, offWord }: { on: boolean; onWord: string; offWord: string }) {
   return (
-    <span className={on ? "text-fg-heading" : "text-fg-muted"}>
+    <span className={`whitespace-nowrap ${on ? "text-fg-heading" : "text-fg-muted"}`}>
       <span aria-hidden="true">{on ? "✓ " : "— "}</span>
       {on ? onWord : offWord}
     </span>
@@ -80,7 +82,7 @@ export function LevelsTable({ rows }: { rows: LevelView[] }) {
       cell: (r) => <DataTableSwatchCell color={RAMP[stop(r.sortOrder) - 1]} colorName={t(`read.ramp.${stop(r.sortOrder)}`)} />,
     },
   ];
-  return <DataTable label={t("levels.listLabel")} columns={columns} rows={rows} rowKey={(r) => r.id} empty={{ title: t("common.empty"), action: { label: t("common.reload"), href: "/app/admin/recognition" } }} />;
+  return <DataTable className={CARD} label={t("levels.listLabel")} columns={columns} rows={rows} rowKey={(r) => r.id} empty={{ title: t("common.empty"), action: { label: t("common.reload"), href: "/app/admin/recognition" } }} />;
 }
 
 export function BadgesTable({ rows }: { rows: BadgeView[] }) {
@@ -102,7 +104,7 @@ export function BadgesTable({ rows }: { rows: BadgeView[] }) {
     { key: "holders", header: t("read.colHolders"), onCard: true, cell: (r) => <bdi>{formatNumber(r.holders)}</bdi> },
     { key: "enabled", header: t("read.colEnabled"), onCard: true, cell: (r) => <State on={!r.retired} onWord={t("read.on")} offWord={t("read.off")} /> },
   ];
-  return <DataTable label={t("badges.listLabel")} columns={columns} rows={rows} rowKey={(r) => r.id} empty={{ title: t("common.empty"), action: { label: t("common.reload"), href: "/app/admin/recognition" } }} />;
+  return <DataTable className={CARD} label={t("badges.listLabel")} columns={columns} rows={rows} rowKey={(r) => r.id} empty={{ title: t("common.empty"), action: { label: t("common.reload"), href: "/app/admin/recognition" } }} />;
 }
 
 export function PerksTable({ rows }: { rows: PerkView[] }) {
@@ -117,7 +119,7 @@ export function PerksTable({ rows }: { rows: PerkView[] }) {
     },
     { key: "enabled", header: t("read.colEnabled"), onCard: true, cell: (r) => <State on={r.enabled} onWord={t("read.on")} offWord={t("read.off")} /> },
   ];
-  return <DataTable label={t("perks.listLabel")} columns={columns} rows={rows} rowKey={(r) => r.id} empty={{ title: t("common.empty"), action: { label: t("common.reload"), href: "/app/admin/recognition" } }} />;
+  return <DataTable className={CARD} label={t("perks.listLabel")} columns={columns} rows={rows} rowKey={(r) => r.id} empty={{ title: t("common.empty"), action: { label: t("common.reload"), href: "/app/admin/recognition" } }} />;
 }
 
 export function StreaksTable({ rows }: { rows: StreakView[] }) {
@@ -127,5 +129,5 @@ export function StreaksTable({ rows }: { rows: StreakView[] }) {
     { key: "rule", header: t("read.colRule"), onCard: true, cell: (r) => t.rich("streaks.rule", { count: r.requiredCount, value: formatNumber(r.requiredCount), bdi }) },
     { key: "enabled", header: t("read.colEnabled"), onCard: true, cell: (r) => <State on={r.enabled} onWord={t("read.on")} offWord={t("read.off")} /> },
   ];
-  return <DataTable label={t("streaks.listLabel")} columns={columns} rows={rows} rowKey={(r) => r.id} empty={{ title: t("common.empty"), action: { label: t("common.reload"), href: "/app/admin/recognition" } }} />;
+  return <DataTable className={CARD} label={t("streaks.listLabel")} columns={columns} rows={rows} rowKey={(r) => r.id} empty={{ title: t("common.empty"), action: { label: t("common.reload"), href: "/app/admin/recognition" } }} />;
 }
