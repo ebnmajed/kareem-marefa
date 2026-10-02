@@ -4476,11 +4476,11 @@ Measured on the tree after `dcbf8776`. Answers the owner's one check and the lea
 that company's score for every past period». The snapshot exists to stop exactly that, and **a final one is already
 immutable at the database, for every role including the owner**:
 
-- `leaderboard_snapshot_guard()` (`0027:463-476`) raises `23514` on any `update` or `delete` of a row whose `is_final` is
+- `leaderboard_snapshot_guard()` (`0027:453-466`) raises `23514` on any `update` or `delete` of a row whose `is_final` is
   true — the replace-in-place re-run `snapshot_leaderboard()` does is a delete, so a final quarter cannot be re-taken.
-- `leaderboard_entry_guard()` (`0027:498-511`) raises `23514` on any `update` or `delete` of an entry of a final snapshot.
+- `leaderboard_entry_guard()` (`0027:497-510`) raises `23514` on any `update` or `delete` of an entry of a final snapshot.
 - Both are triggers, not missing grants, because the writer is a definer owned by the table owner, whom `revoke` cannot
-  stop (`0027:425-430`'s header). The only exception is an org's own deletion cascading through.
+  stop (the header above `0027:432`). The only exception is an org's own deletion cascading through.
 - `active_member_count` and each entry's `points` and `points_per_active_member` are written once, at snapshot time;
   nothing recomputes them.
 
@@ -4499,12 +4499,12 @@ owner; fixing it changes what a period IS and touches the frozen snapshot functi
 `DEC-219` §2 says «a quarter is a `seasonal` snapshot whose period is a quarter». **That ranks the wrong thing.**
 `snapshot_leaderboard()`'s `seasonal` branch is the MEMBERS' branch — `if p_kind in ('monthly', 'seasonal')` inserts
 `member_id` rows (`0042:62-73`, `0081:613-624`); company rows (`company_id`, `points_per_active_member`) are written by the
-`p_kind = 'company'` branch alone (`0081:637-668`). `0066:24-28`'s precedent is about a MEMBER board («the top 3 of any
+`p_kind = 'company'` branch alone (`0081:638-668`). `0066:24-28`'s precedent is about a MEMBER board («the top 3 of any
 FINAL member-ranked snapshot»), so it carries over to members, not to companies.
 
 What the cup needs, with no schema change: **a `company` snapshot whose period is a quarter** —
 `snapshot_leaderboard(org, 'company', <quarter start>, <quarter end>, null, <final?>)`. The natural key
-`(org_id, kind, period_start, period_end, category_id)` (`0027:445`) lets it sit beside the month's company snapshots.
+`(org_id, kind, period_start, period_end, category_id)` (`0027:443`) lets it sit beside the month's company snapshots.
 No enum value, no new function.
 
 ★ **The consequence for the readers** — named so it is not discovered by the board: three reads take «the newest
@@ -4538,7 +4538,7 @@ Read by a new add-only `getCompanyCup(locale)` (the quarter's snapshot as §B se
 | «كأس الربع الرابع» | the period's quarter (`period_start`'s month ÷ 3), an ordinal from the catalogue | the current quarter | the quarter just closed, until the next one has a snapshot |
 | «الجولة 2 من 3 · 26 يومًا» | the month within the quarter, and the days left to `period_end` in the org's zone | shown | ★ the line becomes «نهائي» (`company.final`); no days |
 | `company.provisional` / `company.final` | `is_final` | «مؤقت» | «نهائي» |
-| «الترتيب حسبه: …» ✓ | `metric` (frozen on the snapshot, `0042:57`) | the snapshot's | the snapshot's |
+| «الترتيب حسبه: …» ✓ | `metric` (frozen on the snapshot, `0042:58`) | the snapshot's | the snapshot's |
 | `company.takenAt` | `taken_at` | «الليلة 2:00 ص» | the finalising night's |
 | «تُسلَّم في اللقاء السنوي» | the owner's ruling; a fact about the prize, not an explainer | shown | shown |
 
@@ -4549,10 +4549,10 @@ round say the same thing twice. Not picked; I propose «الجولة N من 3»,
 ## E · «N نشطًا» — not `active_member_count`
 
 `DEC-219` §2 maps «N نشطًا» to `active_member_count`. **That column is the ORG's count** —
-`select count(*) from members where org_id = p_org and status = 'active'` (`0042:41`, `0081:597`), one number per
+`select count(*) from members where org_id = p_org and status = 'active'` (`0042:42`, `0081:597`), one number per
 snapshot — not a company's. A company's frozen count is not stored; it is **implied by the frozen pair**:
 `active(C) = points ÷ points_per_active_member`, exactly, since the snapshot computed the second from the first
-(`0081:643-647`). The DAL derives it, rounded, and shows nothing when either is null or 0. No SQL. ★ A third
+(`0081:640-650`). The DAL derives it, rounded, and shows nothing when either is null or 0. No SQL. ★ A third
 disagreement, recorded, not picked.
 
 ## F · «بلا ترتيب» and `min_active_members`
@@ -4568,10 +4568,10 @@ below it earns no percentage points (`0081:389`, `:418`). Nothing ranks by it. T
   `leaderboard_snapshots.min_active_members int` (nullable; old rows null = no minimum), written by the `company`
   branch; and a `create or replace` of `snapshot_leaderboard()` whose `company` branch ranks the companies at or above
   the minimum first (1 … k, by the metric) and those below after them (k+1 … n), so the cup's #1 is always eligible and
-  every rank stays `> 0` (`0027:484`). The DAL shows «بلا ترتيب» for a row whose derived count is below the snapshot's
+  every rank stays `> 0` (`0027:475`). The DAL shows «بلا ترتيب» for a row whose derived count is below the snapshot's
   own frozen minimum. **`REQ-UIX-079`** («a company below the minimum of active members has no rank and says so»),
   `REQ-LDR-006`. Its five parts: the column and the function in one migration; RLS unchanged (the table's own
-  `p1_org_read`); **no new grant** (`grant select on leaderboard_snapshots` is table-level, `0027:452`); the existing
+  `p1_org_read`); **no new grant** (`grant select on leaderboard_snapshots` is table-level, `0027:450`); the existing
   policies unchanged; the test in `tests/rls/snapshot-leaderboards.test.ts`'s pattern — below-minimum ranked after,
   the column frozen on a final row, an old row's null meaning no minimum. ★ It changes the MONTHLY race's ranking going
   forward too (provisional rows only; every final row is untouched) — the owner should know.
