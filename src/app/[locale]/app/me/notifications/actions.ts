@@ -2,12 +2,11 @@
 
 import { redirect } from "next/navigation";
 import type { Locale } from "@/i18n/routing";
-import { markAllRead, openNotification, preferenceInput, setPreference } from "@/lib/dal/notifications";
+import { markAllRead, openNotification } from "@/lib/dal/notifications";
 
-// Zod first, then the DAL (REQ-NFR-002). Authority is never in the form: the
-// DAL writes the session's own rows, and `p3_self_*` plus the `enabled`
-// column grant refuse everything else — a forged `category` reaches a check
-// constraint, not another member's settings.
+// The inbox's actions (REQ-NTF-006). Authority is never in the form: the DAL
+// writes the session's own rows. ★ wave 20: preferences left this page for
+// `/app/me/settings` (DEC-216 §5.13), and their action with them.
 //
 // ★ Bound to the real locale (`.bind(null, locale)`, `privacy/actions.ts`'s
 // pattern) — every redirect here hard-coded `/ar/...` before, which sent an
@@ -15,24 +14,6 @@ import { markAllRead, openNotification, preferenceInput, setPreference } from "@
 
 function screen(locale: Locale): string {
   return `/${locale}/app/me/notifications`;
-}
-
-export async function savePreference(locale: Locale, formData: FormData) {
-  const parsed = preferenceInput.safeParse({
-    category: formData.get("category")?.toString() ?? "",
-    channel: formData.get("channel")?.toString() ?? "",
-    // The button carries the value it is switching TO, so a double submit is
-    // idempotent rather than a toggle that races with itself.
-    enabled: formData.get("enabled") === "on",
-  });
-  if (!parsed.success) redirect(`${screen(locale)}?error=1`);
-
-  try {
-    await setPreference(locale, parsed.data);
-  } catch {
-    redirect(`${screen(locale)}?error=1`);
-  }
-  redirect(`${screen(locale)}?saved=1#preferences`);
 }
 
 export async function markAllNotificationsRead(locale: Locale) {
