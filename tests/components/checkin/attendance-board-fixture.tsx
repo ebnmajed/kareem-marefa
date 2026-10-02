@@ -42,6 +42,9 @@ export function renderBoard(
     markAction: (p: ManualMarkState, f: FormData) => Promise<ManualMarkState>;
     removeAction: (p: RemoveState, f: FormData) => Promise<RemoveState>;
     filters: ReactNode;
+    emptyAction: { label: string; href: string };
+    clearFilter: { label: string; href: string };
+    sheetRequested: boolean;
   }> = {},
 ) {
   const rows = props.rows ?? [SARA, KHALID];
@@ -60,6 +63,9 @@ export function renderBoard(
         markAction={props.markAction ?? vi.fn(async () => ({ error: null, done: true }))}
         removeAction={props.removeAction ?? vi.fn(async () => ({ error: null, done: true }))}
         filters={props.filters ?? null}
+        emptyAction={props.emptyAction ?? { label: "تسجيل يدوي", href: "/app/admin/sessions/s1/attendance?manual=1" }}
+        clearFilter={props.clearFilter}
+        sheetRequested={props.sheetRequested}
       />
     </NextIntlClientProvider>,
   );

@@ -65,6 +65,9 @@ export function AttendanceBoard({
   markAction,
   removeAction,
   filters,
+  emptyAction,
+  clearFilter,
+  sheetRequested = false,
 }: {
   rows: BoardRow[];
   candidates: { value: string; label: string }[];
@@ -77,12 +80,25 @@ export function AttendanceBoard({
   markAction: (prev: ManualMarkState, formData: FormData) => Promise<ManualMarkState>;
   removeAction: (prev: RemoveState, formData: FormData) => Promise<RemoveState>;
   filters: ReactNode;
+  /** The empty list's next move (REQ-UIX-012) — the page picks it per state: the manual mark, the host screen, or the
+   *  session page. Always an href, so it works without JavaScript. */
+  emptyAction: { label: string; href: string };
+  /** Offered beside it when a chip filtered the list to nothing. */
+  clearFilter?: { label: string; href: string };
+  /** `?manual=1` — the sheet opens on arrival (the empty state's own action, and a link anyone can follow). */
+  sheetRequested?: boolean;
 }) {
   const t = useTranslations("checkin.attendance");
   const tUi = useTranslations("ui");
 
   // ── the manual mark ──
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(sheetRequested && canMark);
+  // A soft navigation to `?manual=1` keeps this component mounted, so the request is read when it CHANGES too.
+  const [lastRequested, setLastRequested] = useState(sheetRequested);
+  if (sheetRequested !== lastRequested) {
+    setLastRequested(sheetRequested);
+    if (sheetRequested && canMark) setSheetOpen(true);
+  }
   const [member, setMember] = useState("");
   const [reason, setReason] = useState("");
   const [markState, markFormAction, marking] = useActionState(markAction, emptyManualMarkState);
@@ -222,12 +238,8 @@ export function AttendanceBoard({
         ) : null}
       </div>
 
-      {/* K32: the empty line is the page's own — `EmptyState` requires an action, and there is none to offer here. */}
-      {rows.length === 0 ? (
-        <p className="text-body-sm text-fg-muted">{t("empty")}</p>
-      ) : (
-        <DataTable<BoardRow> label={t("tableLabel")} columns={columns} rows={rows} rowKey={(r) => r.memberId} empty={{ title: t("empty"), action: { label: t("empty") } }} />
-      )}
+      {/* K32: an empty list names the next move (REQ-UIX-012) — the page's choice, per state. */}
+      <DataTable<BoardRow> label={t("tableLabel")} columns={columns} rows={rows} rowKey={(r) => r.memberId} empty={{ title: t("empty"), action: emptyAction, clearFilter, size: "sm" }} />
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen} title={t("manualTitle")} side="inline-end">
         <form action={markFormAction} noValidate className="flex flex-col gap-4">

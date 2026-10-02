@@ -249,7 +249,8 @@
       "sheetEmpty": "لا أحد بلا تسجيل حضور",
       "revokeTitle": "إلغاء حضور <bdi>{name}</bdi>",
       "revokeBody": "في <bdi>{session}</bdi>. تُعكس نقاطه وتُلغى شهادته.",
-      "revokeBodyOpen": "في <bdi>{session}</bdi>. لن تُحتسب له نقاط الحضور."
+      "revokeBodyOpen": "في <bdi>{session}</bdi>. لن تُحتسب له نقاط الحضور.",
+      "sessionPage": "صفحة الجلسة"
     },
     "dayLine": "تسجيل حضور {day}",
     "award": {

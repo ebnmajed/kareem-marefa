@@ -3436,3 +3436,12 @@ console is inactive; and whether the wave-9 specs are re-pointed by the lead or 
 figures render in the body face. `stat` is `content`'s file, which the lead holds. Either the console frame's CSS
 covers it (as it does for motion) or `stat` gets an add-only prop. Until then my five figures are in the display face.
 The code itself is already in the body face.
+
+**K32, re-ruled by the lead:** `EmptyState`'s `action` stays required. The empty list's next move is picked per state:
+- **Manual mark:** «تسجيل يدوي» → `?manual=1` while anyone may be marked by this viewer. That link opens the sheet on
+  arrival, and without JavaScript it is the no-JS form's page.
+- **Host screen:** else «شاشة التقديم» → the host view, while the session is `published` or `in_progress`.
+- **Session page:** else «صفحة الجلسة» → the event page.
+
+A chip that filtered the list to nothing also offers «الكل» as `clearFilter`. `data-table`'s `empty` carries it all,
+and the page's own empty line is gone. The proof is `tests/components/checkin/attendance-empty.test.tsx`.

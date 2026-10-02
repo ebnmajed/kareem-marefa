@@ -44,7 +44,7 @@ export default async function AttendancePage({
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ day?: string; show?: string; switchError?: string; revokeError?: string; manualError?: string }>;
+  searchParams: Promise<{ day?: string; show?: string; switchError?: string; revokeError?: string; manualError?: string; manual?: string }>;
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
@@ -122,8 +122,9 @@ export default async function AttendancePage({
   const rows = show === "all" ? allRows : allRows.filter((r) => r.status === show);
   const candidates = allRows.filter((r) => r.canMark).map((r) => ({ value: r.memberId, label: r.name ?? r.memberId }));
 
-  const query = (next: Partial<{ day: string; show: Show }>) => {
+  const query = (next: Partial<{ day: string; show: Show; manual: boolean }>) => {
     const q = new URLSearchParams();
+    if (next.manual) q.set("manual", "1");
     const day = next.day ?? (asked ? asked.id : undefined);
     if (day) q.set("day", day);
     const s = next.show ?? show;
@@ -131,6 +132,16 @@ export default async function AttendancePage({
     const qs = q.toString();
     return `/app/admin/sessions/${id}/attendance${qs ? `?${qs}` : ""}`;
   };
+
+  // ★ The empty list's next move (REQ-UIX-012, the lead's ruling on K32): mark someone by hand while anyone may be
+  // marked; else project the code while the host screen is offered; else the session's own page.
+  const hostOffered = state === "published" || state === "in_progress";
+  const emptyAction =
+    candidates.length > 0
+      ? { label: t("manualOpen"), href: query({ manual: true }) }
+      : hostOffered
+        ? { label: t("hostScreen"), href: `/app/sessions/${id}/host` }
+        : { label: t("sessionPage"), href: `/app/sessions/${id}` };
 
   const num = formatNumber;
   const pct = (rate: number | null) => (rate === null ? "—" : t("attendanceRateValue", { value: num(Math.round(rate * 100)) }));
@@ -191,6 +202,9 @@ export default async function AttendancePage({
         csvHref={isAdmin ? `/api/admin/exports/attendance/${id}` : null}
         markAction={markManually.bind(null, locale as Locale, id)}
         removeAction={removeCheckInAction.bind(null, locale as Locale, id)}
+        emptyAction={emptyAction}
+        clearFilter={show === "all" ? undefined : { label: t("filter.all"), href: query({ show: "all" }) }}
+        sheetRequested={sp.manual === "1"}
         filters={
           <div role="group" aria-label={t("filter.label")} className="flex flex-wrap items-center gap-2">
             <TagChip label={t("filter.all")} count={allRows.length} href={query({ show: "all" })} selected={show === "all"} />

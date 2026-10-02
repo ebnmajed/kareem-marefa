@@ -249,7 +249,8 @@
       "sheetEmpty": "Everyone is checked in",
       "revokeTitle": "Revoke <bdi>{name}</bdi>'s attendance",
       "revokeBody": "At <bdi>{session}</bdi>. Their points are reversed and their certificate revoked.",
-      "revokeBodyOpen": "At <bdi>{session}</bdi>. They won't earn attendance points."
+      "revokeBodyOpen": "At <bdi>{session}</bdi>. They won't earn attendance points.",
+      "sessionPage": "Session page"
     },
     "dayLine": "Check-in for {day}",
     "award": {
