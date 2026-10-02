@@ -50,7 +50,7 @@ export function ConsoleFrame({ groups, railLabel, openLabel, skipLabel, brand, t
         </a>
       ) : null}
 
-      <header className="sticky top-0 z-30 h-[var(--console-bar)] border-b border-edge bg-canvas">
+      <header data-console-bar="" className="sticky top-0 z-30 h-[var(--console-bar)] border-b border-edge bg-canvas">
         <div className="flex h-full items-center gap-3 px-4 lg:gap-4 lg:px-6">
           {hasRail ? (
             <IconButton label={openLabel} size="sm" className="lg:hidden" onClick={() => setOpen(true)}>

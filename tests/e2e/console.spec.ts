@@ -154,7 +154,7 @@ test("desktop: the rail holds all twenty destinations in six ruled groups, the d
   await expect(nav.getByRole("link", { name: "لوحة التحكم" })).toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "التصنيفات", exact: true })).toHaveAttribute("href", "/ar/app/admin/categories");
   // The console's own bar — no member header, no tab bar (REQ-UIX-084).
-  await expect(page.locator("[data-console] header")).toBeVisible();
+  await expect(page.locator("[data-console-bar]")).toBeVisible();
   await expect(page.locator("[data-tab-bar]")).toHaveCount(0);
   await page.screenshot({ path: join(shotsDir(), "wave21-lead-frame-admin-1280.png") });
 });
