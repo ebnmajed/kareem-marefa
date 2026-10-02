@@ -771,6 +771,41 @@ fingerprint unmoved; ★★ **the owner holding each screen beside its artboard 
 control (M11b); the studio and `/app/platform/**`; the five public routes; session stories; the hard-load fix;
 `DEC-194`'s two gates; `DEC-215`'s carried four.
 
+## M24 — the console, batch B: the tables, moderation, the read-mode pages, the survey · wave 22 · `DEC-230`, `DEC-231`
+
+★★ **The owner put M11b before stories** (`DEC-230` §1), the fourth deliberate re-ordering. Fifteen screens rebuilt
+from fourteen artboards in `docs/design/screens/m11b/`, each under `DEC-199` §2 and `DEC-208`. **The goal**
+(`DEC-231` §0): an admin changes something and knows it saved; moderation is actioned; the catalogue is editable without
+breaking what a member reads; an export opens in Excel in Arabic; the audit log answers who, when and what for
+everything — in the sober register (`REQ-UIX-053`). Three pull requests, five teammates, **no new primitive**, `0180`
+and the audit migration.
+
+| Work | Requirements | PR | Track |
+|---|---|---|---|
+| `0180` — a venue's owning company | `REQ-ADM-022` | A | lead |
+| The audit gaps closed in the database | `REQ-ADM-023` | A | lead, `content` |
+| Hosting points follow the venue's owner; the stopgap form removed | `REQ-PTS-016` | A | `scoring` |
+| Three `data-table` cells | `REQ-UIX-092` | A | `console` |
+| Venues, categories, companies, members — `SCR-046` – `049` | `REQ-UIX-093` – `096` | A | `console` |
+| Reminders, `SCR-060` | `REQ-UIX-097` | A | `notify` |
+| Exports and the audit log, `SCR-061`, `062` | `REQ-UIX-098`, `099` | A | `console` |
+| The read-mode pattern | `REQ-UIX-091` | A, B | `scoring`, `notify`; the spec, lead |
+| Points, and badges and levels, `SCR-053`, `054` | `REQ-UIX-100`, `101` | B | `scoring` |
+| Settings, `SCR-063` | `REQ-UIX-102` | B | `notify` |
+| Reports and photos, `SCR-050/052`, `051` | `REQ-UIX-103`, `104` | C | `content` |
+| The survey tab and templates, `SCR-064`, `065` | `REQ-UIX-105`, `106` | C | `event` |
+
+**Demonstrable:** ★★ every rebuilt screen at **1280**, and at 390 where the card stack applies, **held beside its
+artboard and opened by the lead**; ★★ a kept-behaviour table per screen, with its audit rows; ★ the rail counted at
+nineteen; ★ every mutation's audit row proven by a test; ★ an export's bytes opened and the BOM found; ★
+`console-register` and `ui-playground` green **and untouched**; ★ `qa:contract`, `visual`'s public pairs and the
+register-form fingerprint unmoved; ★★ **the owner holding each screen beside its artboard at 1280 on a real screen,
+and at 390**.
+
+**Not this milestone:** `SCR-045` and `055` – `059` (M12); `/app/platform/**`; the five public routes; session stories;
+the hard-load fix; `DEC-194`'s two gates; `DEC-215`'s carried four; a company logo or domain; dropping
+`sessions.host_company_id`.
+
 ### ★ The programme's sequence — and where the three `(auth)` screens go (`DEC-195` §5, renumbered by `DEC-199` §7, re-ordered by `DEC-205` §1 and `DEC-213` §1)
 
 ★★ **The standing order (the owner, 2026-10-01, wave 19): WE BUILD WHAT HAS A DESIGN.** As long as the designer session keeps producing screen batches, screens go first; stories lands when the batches run out or when the owner says so. Stories was not demoted — it was overtaken by work that became buildable (`DEC-213` §1).
@@ -787,7 +822,8 @@ claimed the number, and every position after it kept its place.
 | 4 | ★ **M20** — done, wave 18 (`DEC-205`: the owner put it before stories) | the member screens, batch A — the shell, the door, the public card, home as the feed, browse, the event page, check-in, the host view; each **rebuilt** from `docs/design/screens/m10a/` |
 | 4a | ★ **M21** — done, wave 19 (`DEC-213`: the owner put it before stories) | the member screens, batch B — the viewer, rate, propose, my proposal, the directory, the profile; each **rebuilt** from `docs/design/screens/m10b/`, deleted first (`DEC-208`) |
 | 4b | ★ **M22** — done, wave 20 (`DEC-216`) | the member screens, batch C — the hub and its five pages, the two boards, and `/app/me/settings`; the **last** designed batch |
-| 4b′ | ★ **M23** — this wave, wave 21 (`DEC-225`: the owner put the console before stories) | the console, batch A — the frame, `SCR-040` – `044`; batch B (`046` – `065`) follows |
+| 4b′ | ★ **M23** — done, wave 21 (`DEC-225`: the owner put the console before stories) | the console, batch A — the frame, `SCR-040` – `044` |
+| 4b″ | ★ **M24** — this wave, wave 22 (`DEC-230`: the owner put M11b before stories) | the console, batch B — `SCR-046` – `054`, `060` – `065`; the console is then drawn except `045` and `055` – `059` |
 | 4c | when it opens — after the console's batches, unless the owner says otherwise | session stories and their viewer (`DEC-093`'s seventh place) |
 | 5 | ★ **when it opens — the rest of the member screens** (batch M10c) | ★ `SCR-002`, `SCR-003` and `SCR-004` moved into M20 with batch A (`DEC-205`), and `SCR-013`, `015`, `017` – `020` into M21 (`DEC-213`); what remains is `021` – `028` in `09` §8's order. The three `(auth)` screens are neither behind sign-in nor public marketing, so a grouping by either skipped them twice (`DEC-129`, `DEC-195` §5); **they are placed here by name**. ★ Each screen is **rebuilt** from `docs/design/screens/<SCR-id>.md`, never restyled (`DEC-199` §2) |
 | 6 | when it opens | the console — a rebuild of its **layout**; its visual language arrived in M19 |

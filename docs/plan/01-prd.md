@@ -1362,6 +1362,15 @@ still the sole *trigger* for attendance (`REQ-CHK-009`); the payment waits for t
 
 ## 13. Leaderboards — `LDR`
 
+#### REQ-PTS-016 — Hosting points go to the company that owns the venue
+**Serves:** `DEC-230` §2 (the owner) · `REQ-ADM-022` · DEC-067
+When a session completes, the `company_hosting` rule credits the company that owns its venue. A presenter's company
+earns the presenting rule; the venue's owner earns hosting; **a venue owned by no company rewards no company**.
+**Acceptance:**
+- A session at a venue with no company awards no hosting points, by rule and not by omission.
+- `sessions.host_company_id` is no longer read by any rule or screen; the column stays (`DEC-230` §2.3).
+- Rows already in `company_points_ledger` do not change (invariant 9).
+
 #### REQ-LDR-001 — All-time leaderboard
 **Serves:** D43
 Ranked by total points within the مؤسسة.
@@ -2277,6 +2286,25 @@ storage and notifies when it is ready. **Every download is audited.**
 - An album download never runs inside a request; a 300-photo album does not block a function.
 - The served file is the EXIF-stripped one, which is the only one a row points at (`REQ-EVT-011`; `DEC-182`: the raw upload shares its path until `process_photo` runs, so the served set is read from rows, never from a bucket listing).
 - Each download writes an audit row naming the actor, the session and what was taken.
+
+#### REQ-ADM-022 — A venue names the company that owns it
+**Serves:** `DEC-230` §2 (the owner) · `REQ-ADM-006`
+A venue may name **one company of the same org** as its owner, or none. Ownership is a property of the place, not of a
+session held there; it answers `0081`'s objection to the link (`DEC-230` §2).
+**Acceptance:**
+- A venue can name only a company of its own org; the database refuses any other.
+- A venue may name no company, and that is a valid, final state.
+- Every change of a venue's company is audited (`REQ-ADM-023`).
+
+#### REQ-ADM-023 — Every console mutation is answerable: who, when, what
+**Serves:** `DEC-231` §4 · `REQ-ADM-018` · `REQ-NFR-006`
+Every change the console can make writes a record naming the actor, the time and what changed: an `audit_log` row
+through `write_audit()`, or — for scoring, recognition and org settings — a `scoring_config_history` row with the old
+and new value (`DEC-148`).
+**Acceptance:**
+- Venues, categories and companies, report resolutions and survey templates — the six kinds that wrote nothing before
+  `DEC-231` — write their rows from the database, so a direct write under the table's policy is covered too.
+- No record is written twice, and none can be updated or deleted by any role.
 
 ---
 
@@ -3686,6 +3714,151 @@ it, the status and a row menu.
 - On a completed session the code card is replaced by the final rate; an admin may still add and remove at any time
   (`REQ-CHK-017`, `DEC-228` §4.6), and nothing else on the rows is editable.
 - The page renders nothing of the hub's header; faces appear here because the host placement allows them (`DEC-099`).
+
+### The console, batch B (`DEC-230`, `DEC-231`, M24)
+
+#### REQ-UIX-091 — A console page that holds values is read by default, and says what it saved
+**Serves:** `DEC-230` §4 (`DEC-NEXT-29`) · `DEC-231` §0.1, §3 · `M10c.md` §1 (`DEC-NEXT-23`) · `09` `SCR-053`, `054`, `060`, `063`
+A page whose purpose is to hold settings renders them as values with one «عدّل». Edit mode names its state: the count of
+unsaved changes, each changed field marked, Save naming the count, Cancel restoring. Read mode shows the last save — a
+glyph and a word, with its time and actor — read from the record the save wrote.
+**Acceptance:**
+- Nothing is written until Save; leaving with unsaved changes asks first.
+- The saved mark is shown only from the server's answer; a save that wrote nothing says so, and a failed save keeps
+  edit mode with the error at the field.
+- A changed field is marked by more than colour — a screen reader hears that it changed.
+- The saved mark is plain text with a glyph, never a primitive (`DEC-216` §2.1).
+
+#### REQ-UIX-092 — `data-table` carries a switch, a pair of actions and a colour swatch in a cell
+**Serves:** `DEC-230` §4 · `M11b.md` §Primitives · `REQ-UIX-085` · `09` `SCR-048`, `SCR-050`, `SCR-053`
+Three cell forms on the existing primitive, added without a new file: a switch cell whose change is a named action on
+the row; a two-button action cell (an approve-and-dismiss pair); a swatch cell that shows a colour **and** names it.
+**Acceptance:**
+- Every existing `data-table` suite passes untouched; the gate's floor stays 63.
+- Each form works in the phone stack as in the table, and a switch cell's change is announced with the row's name.
+- A swatch never carries its meaning by colour alone.
+
+#### REQ-UIX-093 — Venues, each with the company that owns it
+**Serves:** `DEC-230` §2 · `REQ-ADM-006`, `REQ-ADM-022` · `09` `SCR-046`
+`SCR-046` is rebuilt from `AdminVenues.dc.html` on `data-table`: name, owning company, address, capacity, sessions;
+«مكان جديد» on the `h1` row; a row's edit sheet with the company `select`, which may name no company.
+**Acceptance:**
+- A venue with no company says so in the row; nothing implies it hosts for anyone.
+- Every create, edit, company change and (de)activation writes an audit row (`REQ-ADM-023`).
+- Below `lg` the rows are cards; a venue referenced by a session is deactivated, never deleted.
+
+#### REQ-UIX-094 — Categories, alone
+**Serves:** `DEC-227` §3 · `REQ-ADM-007` · `09` `SCR-047`
+`SCR-047` is rebuilt from `AdminCategories.dc.html`: name and sessions; «تصنيف جديد». There are no tags and no label
+says «والوسوم».
+**Acceptance:**
+- A category in use cannot be deleted, and the row menu says why; deactivation is offered.
+- Every mutation writes an audit row (`REQ-ADM-023`).
+
+#### REQ-UIX-095 — Companies, with their team colour
+**Serves:** `DEC-230` §4 (`DEC-NEXT-31`) · `REQ-ADM-008`, `REQ-UIX-043` · `09` `SCR-048`
+`SCR-048` is rebuilt from `AdminCompanies.dc.html`: the colour as a swatch cell, name, members, active, the quarter's
+company points; «شركة جديدة»; a row's edit sheet for the name and the colour.
+**Acceptance:**
+- The colour is shown as a swatch and its value in words; a company with none says so.
+- No company logo and no company domain are offered (`DEC-195` §4, `DEC-231` §6.1).
+- Every mutation writes an audit row (`REQ-ADM-023`); the quarter's points are read, never a literal.
+
+#### REQ-UIX-096 — Members, roles and status, each change audited
+**Serves:** `REQ-ADM-009`, `REQ-ADM-020` · `09` `SCR-049`
+`SCR-049` is rebuilt from `AdminMembers.dc.html`: avatar, name, company, role badge, level, points, last active; chips
+for company and role; «CSV»; a row menu that changes the role, deactivates and reactivates.
+**Acceptance:**
+- There is no invite: members arrive by sign-in.
+- The last remaining org admin cannot be demoted or deactivated, and the menu says why.
+- The CSV goes through the audited export path (`REQ-ADM-017`).
+
+#### REQ-UIX-097 — Reminders, read by default
+**Serves:** `REQ-ADM-016`, `REQ-NTF-004` · `REQ-UIX-091` · `09` `SCR-060`
+`SCR-060` is rebuilt from `AdminReminders.dc.html`: one table of the reminders `08` defines — reminder, timing,
+channels, enabled — with one «عدّل».
+**Acceptance:**
+- A reminder is never added or removed here; the set is `08`'s.
+- The page meets `REQ-UIX-091`.
+
+#### REQ-UIX-098 — Exports: what each holds, when it last ran and by whom
+**Serves:** `REQ-ADM-017` · `09` `SCR-061`
+`SCR-061` is rebuilt from `AdminExports.dc.html`: one row per export with its last run — actor and time — and «CSV».
+**Acceptance:**
+- Every file is UTF-8 with a BOM, with Arabic headers and enum values, Western numerals and sortable dates.
+- Every export writes its audit row before the file is served; the last run shown is read from that row.
+
+#### REQ-UIX-099 — The audit log answers who, when and what, for every console mutation
+**Serves:** `REQ-ADM-018`, `REQ-ADM-023` · `DEC-231` §4.3 · `09` `SCR-062`
+`SCR-062` is rebuilt from `AdminAudit.dc.html`: chips for the actor, the action and the period; a table of time, actor,
+action and target; «CSV».
+**Acceptance:**
+- Configuration changes recorded in `scoring_config_history` appear beside `audit_log`'s rows, marked by kind; nothing
+  is written twice.
+- The CSV is a new export type through the audited path.
+- No row can be edited or deleted from the screen or by any role (`REQ-NFR-006`).
+
+#### REQ-UIX-100 — The points catalogue, read by default, editable without breaking what a member reads
+**Serves:** `REQ-PTS-003`, `REQ-PTS-004`, `REQ-PTS-005`, `REQ-PTS-010`, `REQ-PTS-016` · `REQ-UIX-091` · `09` `SCR-053`
+`SCR-053` is rebuilt from `AdminScoring.dc.html`: the fixed catalogue as a table — action, value, cap, cooldown,
+enabled — the negative group below it, closed by default; the company rules as one line; «عدّل»; «تعديل يدوي» in a
+sheet.
+**Acceptance:**
+- An edited rule is what `SCR-022` explains from the next award; no row already written changes (`REQ-PTS-011`).
+- A manual adjustment takes a member, a signed amount and a mandatory reason, and lands in the member's ledger.
+- The reservation and the interaction actions are absent, not zero.
+- The stopgap host-company form is gone; hosting reads the venue (`REQ-PTS-016`).
+
+#### REQ-UIX-101 — Badges and levels, and the achievement certificates waiting to be issued
+**Serves:** `REQ-ADM-012`, `REQ-REC-001`, `REQ-REC-003`, `REQ-CRT-012` · `REQ-UIX-091` · `09` `SCR-054`
+`SCR-054` is rebuilt from `AdminRecognition.dc.html`: levels — name, threshold, colour — beside badges — name, rule,
+granted, enabled — each with «عدّل»; below, the held achievement certificates with «أصدر» and «أوقف».
+**Acceptance:**
+- A level's threshold edit keeps the levels in order and is recorded with its old and new value.
+- Releasing or holding a certificate is audited.
+
+#### REQ-UIX-102 — Settings, read by default, in four cards
+**Serves:** `REQ-TEN-008` · `REQ-UIX-091` · `09` `SCR-063`
+`SCR-063` is rebuilt from `AdminSettings.dc.html`: four `kv-card`s in two columns — the organisation, sessions,
+privacy, integrations — with one «عدّل».
+**Acceptance:**
+- Every value shown is read from the org's settings; none is a literal.
+- The page meets `REQ-UIX-091`.
+
+#### REQ-UIX-103 — Reports, actioned in a table
+**Serves:** `DEC-230` §3, `DEC-231` §5 · `REQ-ADM-010` · `09` `SCR-050`, `SCR-052`
+`SCR-050/052` is rebuilt from `AdminModerationReports.dc.html`: one table with chips مفتوحة, التعليقات, مغلقة — the
+content's excerpt and author, session, reporter, reason, age — and «أخفِ» and «تجاهل» in the row.
+**Acceptance:**
+- The content is shown in context and reachable from the row.
+- Resolving records the outcome and the actor, in one write that also writes the audit row.
+- `/app/admin/moderation/comments` redirects here.
+
+#### REQ-UIX-104 — Photos: takedown requests and photo reports, decided in a split view
+**Serves:** `DEC-231` §5 · `REQ-ADM-010`, `REQ-EVT-012`, `REQ-EVT-014` · `09` `SCR-051`
+`SCR-051` is rebuilt from `AdminModerationPhotos.dc.html` on `split-view`: the queue — thumbnail, session, requester,
+age — with chips for takedown requests and photo reports; the detail — the photograph large, the session, the uploader,
+the requester, the status — with «احذف نهائيًا» and «أعدها للعرض».
+**Acceptance:**
+- A takedown request's photo is already hidden; a reported photo is not, and the detail says which.
+- Every decision records its outcome and actor and writes the audit row.
+
+#### REQ-UIX-105 — A session's survey results on the hub's tab
+**Serves:** `REQ-SUR-006` … `REQ-SUR-009`, `REQ-RAT-004` · `09` `SCR-064`
+`SCR-064` is rebuilt from `AdminSurveyResults.dc.html` on the hub: four figures — responded, the session's average,
+the presenter's average, the response rate — a bar per star count, the free-text answers with the anonymity line, and
+«CSV».
+**Acceptance:**
+- Below the withhold threshold, nothing but the count is shown, for the screen and the CSV alike (`DEC-160` §3).
+- The page renders nothing of the hub's header.
+
+#### REQ-UIX-106 — Survey templates, and the selected one's questions
+**Serves:** `REQ-SUR-001`, `REQ-SUR-002` · `REQ-ADM-023` · `09` `SCR-065`
+`SCR-065` is rebuilt from `AdminSurveys.dc.html`: the templates — name, questions, sessions, default — beside the
+selected template's questions — question, type, required; «قالب جديد».
+**Acceptance:**
+- Questions reorder without dragging (`ui/reorderable-list`).
+- Creating, saving and deleting a template are audited.
 
 ---
 
