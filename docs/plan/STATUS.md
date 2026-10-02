@@ -50,6 +50,10 @@ approved». **Nobody deletes a file before that post and «the frame is in».**
 | L21-8 | `tests/e2e/admin-dashboard.spec.ts:248-254, :340` and the component test's top-list case | «عضو نشط», «نقطة ممنوحة», «أكثر المُقدِّمين / التصنيفات / الشركات» | selector | the artboard's copy (`DEC-228` §3.8) |
 | L21-9 | `tests/e2e/admin-dashboard.spec.ts:282` | «عرض القائمة — مسار المقترحات» → the pipeline's count link | selector | the pipeline is one bar whose counts are links (`REQ-ADM-004`) |
 | L21-10 | `tests/unit/admin-removed-check-in.test.ts` | the fixture gains a session starting this month; expectations untouched | fixture | the figures are the month's (`DEC-228` §3.3) |
+| L21-11 | `tests/e2e/certificates.spec.ts:324` | «شهادات الجلسة» `level: 1` → `level: 2` | expectation | ★ PR B: the hub's header owns the session's `h1` (contract 4); the tab's title is a section heading |
+| L21-12 | `tests/e2e/wave8-designer-certificates.spec.ts:262, :408` | the same, twice | expectation | as L21-11 |
+| L21-13 | `tests/e2e/sessions-screens.spec.ts:226-238, :372, :460-463` | `?new=1`; the lifecycle under ⋯ | selector | ★ transferred to `console` for the wave (`042`'s behaviour); lines in `console`'s note |
+| — | PR B's own ledger lines (`041`, `043`, `044`) | — | — | in `notes/{sessions,checkin}.md`, so `STATUS.md` keeps one writer across the two branches |
 
 ★ **Three seams found at Step 0 that the brief did not name** (`DEC-227` §5): the hub's header is not the layout's today,
 so `sessions` moves it there and the survey and certificates tabs lose their own (the lead, as custodian); «المحتوى» is
