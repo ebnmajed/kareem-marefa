@@ -5,7 +5,10 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { matchesMemberQuery, type MemberQuery } from "@/components/admin/members/member-query";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
 import { getAttendanceReport, type AttendanceReport } from "@/lib/dal/checkin";
+import { actionText, fieldText, scopeText, subjectText, valueText, type AuditMessages } from "@/components/admin/audit/audit-text";
+import arAdmin from "@/messages/ar/admin.json";
 import arSessions from "@/messages/ar/sessions.json";
+import { listAuditFeed, type AuditFeedRow, type AuditFilters } from "@/lib/dal/admin-audit";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { readAll } from "@/lib/dal/admin-paging";
 import { sessionClient } from "@/lib/dal/session";
@@ -509,9 +512,71 @@ export async function exportMembersCsv(locale: string, query?: Pick<MemberQuery,
   return buildCsv(["الاسم", "البريد الإلكتروني", "الدور", "الحالة", whenHeader("تاريخ الانضمام", prefs.timeZone)], rows);
 }
 
+// ── SCR-062's CSV — a new export type through the same audited path (`REQ-UIX-099`, wave 22) ──────────────────────
+
+const AUDIT_CSV_PAGE = 500;
+const ROLE_AR: Record<string, string> = { admin: "مشرف المؤسسة", moderator: "مُنظِّم", member: "عضو", platform_admin: "دعم المنصة", system: "النظام" };
+
+/**
+ * Both stores, as the screen shows them, every page — the screen's own feed (`listAuditFeed`), walked by its cursor,
+ * so the file holds exactly the rows the filters show and in the same words. Admin only: `write_admin_export_audit()`
+ * asserts a fresh admin, and a moderator, who sees only their own actions, exports nothing (`REQ-ADM-020`). The audit
+ * row records the filters as its slice (`DEC-232` §2.8).
+ */
+export async function exportAuditCsv(locale: string, filters: AuditFilters = {}): Promise<string | null> {
+  const client = await requireAdmin(locale);
+  if (!client) return null;
+  const prefs = await getOrgPrefs(locale);
+  const m = arAdmin.admin.audit as unknown as AuditMessages;
+
+  const rows: AuditFeedRow[] = [];
+  let before: string | undefined;
+  for (;;) {
+    const page = await listAuditFeed(locale, { ...filters, before }, prefs.timeZone, AUDIT_CSV_PAGE);
+    if (page === null) return null;
+    rows.push(...page.rows);
+    if (!page.nextBefore) break;
+    before = page.nextBefore;
+  }
+
+  const lines = rows.map((r) => {
+    const actor = r.actorId === null ? "النظام" : (r.actorName ?? "عضو غير معروف");
+    if (r.kind === "log") {
+      return [
+        csvDateTime(r.occurredAt, prefs.timeZone),
+        actor,
+        r.actorRole ? (ROLE_AR[r.actorRole] ?? r.actorRole) : "",
+        "إجراء",
+        actionText(m, r.action),
+        [r.subjectType ? subjectText(m, r.subjectType) : "", r.subjectName ?? ""].filter(Boolean).join(" · "),
+        r.reason ?? "",
+        "",
+        "",
+      ];
+    }
+    return [
+      csvDateTime(r.occurredAt, prefs.timeZone),
+      actor,
+      r.actorId === null ? "النظام" : ROLE_AR.admin,
+      "إعداد",
+      `${scopeText(m, r.scope)} · ${fieldText(m, r.field)}`,
+      r.entityName ?? "",
+      "",
+      valueText(m, r.oldValue),
+      valueText(m, r.newValue),
+    ];
+  });
+  const slice = Object.fromEntries(Object.entries(filters).filter(([k, v]) => k !== "before" && v !== undefined));
+  await auditExport(locale, "audit", undefined, undefined, Object.keys(slice).length ? slice : undefined);
+  return buildCsv(
+    [whenHeader("الوقت", prefs.timeZone), "الفاعل", "الدور", "النوع", "الفعل", "الهدف", "السبب", "القيمة السابقة", "القيمة الجديدة"],
+    lines,
+  );
+}
+
 // ── SCR-061's «آخر تصدير» ─────────────────────────────────────────────────
 
-export const EXPORT_TYPES = ["sessions", "rsvps", "attendance", "ratings", "points", "certificates", "members"] as const;
+export const EXPORT_TYPES = ["sessions", "rsvps", "attendance", "ratings", "points", "certificates", "members", "audit"] as const;
 export type ExportType = (typeof EXPORT_TYPES)[number];
 
 export interface RecentExport {
@@ -529,22 +594,26 @@ export async function listRecentExports(locale: string): Promise<Partial<Record<
   const client = await requireAdmin(locale);
   if (!client) return null;
   const { supabase } = client;
-  const { data, error } = await supabase
-    .from("audit_log")
-    .select("actor_id, after, occurred_at")
-    .eq("action", "export.created")
-    .order("occurred_at", { ascending: false })
-    .limit(500);
-  if (error) throw new Error(`audit_log: ${error.message}`);
+  // ★ wave 22: one newest row PER TYPE. The old single read took the newest 500 `export.created` rows of every type
+  // together, so a type last exported before 500 others said «لم يُصدَّر بعد» — a figure that lied (`REQ-UIX-098`).
+  const newest = await Promise.all(
+    EXPORT_TYPES.map(async (type) => {
+      const { data, error } = await supabase
+        .from("audit_log")
+        .select("id, actor_id, occurred_at")
+        .eq("action", "export.created")
+        .eq("after->>export_type", type)
+        .order("occurred_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(1);
+      if (error) throw new Error(`audit_log: ${error.message}`);
+      const row = (data ?? [])[0];
+      return row ? ([type, { actorId: row.actor_id as string | null, occurredAt: row.occurred_at as string }] as const) : null;
+    }),
+  );
+  const latest = newest.filter((e): e is NonNullable<typeof e> => e !== null);
 
-  const latest: Partial<Record<ExportType, { actorId: string | null; occurredAt: string }>> = {};
-  for (const row of data ?? []) {
-    const type = (row.after as { export_type?: string } | null)?.export_type;
-    if (!type || !(EXPORT_TYPES as readonly string[]).includes(type) || latest[type as ExportType]) continue;
-    latest[type as ExportType] = { actorId: row.actor_id as string | null, occurredAt: row.occurred_at as string };
-  }
-
-  const ids = Array.from(new Set(Object.values(latest).map((l) => l?.actorId).filter((id): id is string => !!id)));
+  const ids = Array.from(new Set(latest.map(([, l]) => l.actorId).filter((id): id is string => !!id)));
   const names = new Map<string, string | null>();
   if (ids.length > 0) {
     const { data: members, error: mErr } = await supabase.from("members").select("id, display_name").in("id", ids);
@@ -553,7 +622,7 @@ export async function listRecentExports(locale: string): Promise<Partial<Record<
   }
 
   const result: Partial<Record<ExportType, RecentExport>> = {};
-  for (const [type, entry] of Object.entries(latest) as [ExportType, { actorId: string | null; occurredAt: string }][]) {
+  for (const [type, entry] of latest) {
     result[type] = { actorName: entry.actorId ? (names.get(entry.actorId) ?? null) : null, occurredAt: entry.occurredAt };
   }
   return result;

@@ -449,8 +449,7 @@
     },
     "exports": {
       "title": "Exports",
-      "intro": "Each file is a spreadsheet that Excel opens with the Arabic intact: its column headings in Arabic, and its dates on your organisation's clock, sorting correctly.",
-      "download": "Download CSV",
+      "download": "CSV",
       "sessions": {
         "title": "Sessions",
         "note": "Title, status, level, language, schedule and presenters."
@@ -479,11 +478,10 @@
         "title": "Members",
         "note": "Name, email, role and status for every member."
       },
-      "auditNote": "Every download is a bulk read of personal data, and is recorded in the audit log under your name.",
       "auditLink": "Exports in the audit log",
       "listLabel": "Export files",
-      "colExport": "File",
-      "colLast": "Last export",
+      "colExport": "Export",
+      "colLast": "Last run",
       "colDownload": "Download",
       "lastExport": "<t>{name}</t> · <bdi>{when}</bdi>",
       "unknownActor": "Unknown member",
@@ -492,7 +490,13 @@
       "downloading": "Downloading…",
       "downloaded": "<t>{name}</t> downloaded",
       "downloadFailed": "<t>{name}</t> could not be downloaded. Try again.",
-      "empty": "No export files."
+      "empty": "No export files.",
+      "caption": "CSV · UTF-8 ·",
+      "captionLink": "every export is logged",
+      "audit": {
+        "title": "Audit log",
+        "note": "Every action and every settings change, with who and when."
+      }
     },
     "audit": {
       "title": "Audit log",
@@ -582,7 +586,11 @@
           "restored": "Comment restored"
         },
         "company": {
-          "team_color_changed": "Company team colour changed"
+          "team_color_changed": "Company team colour changed",
+          "created": "Company created",
+          "changed": "Company changed",
+          "deactivated": "Company deactivated",
+          "reactivated": "Company reactivated"
         },
         "design": {
           "export_requested": "Design export requested",
@@ -627,7 +635,8 @@
           "deletion_requested": "Organisation deletion requested",
           "first_admin_set": "First admin set",
           "reinstated": "Organisation reinstated",
-          "suspended": "Organisation suspended"
+          "suspended": "Organisation suspended",
+          "renamed": "Organisation renamed"
         },
         "photo": {
           "removed": "Photo removed",
@@ -675,6 +684,27 @@
         "photo_album": {
           "requested": "Requested a session photo album",
           "downloaded": "Downloaded a session photo album"
+        },
+        "venue": {
+          "created": "Venue created",
+          "changed": "Venue changed",
+          "company_changed": "Venue's owning company changed",
+          "deactivated": "Venue deactivated",
+          "reactivated": "Venue reactivated"
+        },
+        "category": {
+          "created": "Category created",
+          "changed": "Category changed",
+          "deactivated": "Category deactivated",
+          "reactivated": "Category reactivated"
+        },
+        "report": {
+          "resolved": "Report resolved"
+        },
+        "survey_template": {
+          "created": "Survey template created",
+          "changed": "Survey template changed",
+          "deleted": "Survey template deleted"
         }
       },
       "domains": {
@@ -697,7 +727,12 @@
         "session": "Sessions",
         "storage": "Storage",
         "template": "Templates",
-        "other": "Other"
+        "other": "Other",
+        "venue": "Venues",
+        "category": "Categories",
+        "company": "Companies",
+        "report": "Reports",
+        "survey_template": "Surveys"
       },
       "subjects": {
         "brand_kit": "Brand kit",
@@ -718,8 +753,120 @@
         "points_ledger": "Points entry",
         "session": "Session",
         "template": "Template",
-        "photo_album": "Session photo album"
-      }
+        "photo_album": "Session photo album",
+        "company": "Company",
+        "venue": "Venue",
+        "category": "Category",
+        "report": "Report",
+        "survey_template": "Survey template"
+      },
+      "kinds": {
+        "log": "Action",
+        "config": "Setting"
+      },
+      "config": {
+        "scopes": {
+          "scoring": "Scoring rules",
+          "company_scoring": "Company scoring rules",
+          "org_settings": "Organisation settings",
+          "badges": "Badges",
+          "levels": "Levels",
+          "perks": "Perks",
+          "streaks": "Attendance streaks",
+          "branding": "Branding"
+        },
+        "group": "Settings",
+        "fields": {
+          "created": "Creation",
+          "points": "Points",
+          "enabled": "Enabled",
+          "cap_per_session": "Cap per session",
+          "cap_per_period": "Cap per period",
+          "cap_period": "Cap period",
+          "cooldown": "Cooldown",
+          "reason_ar": "Text shown to the member",
+          "version": "Version",
+          "points_per_percent": "Points per percentage point",
+          "cap_points": "Points cap",
+          "min_active_members": "Minimum active members",
+          "key": "Key",
+          "name": "Name",
+          "description": "Description",
+          "rule": "Rule",
+          "issues_certificate": "Issues a certificate",
+          "retired_at": "Retired",
+          "threshold_points": "Threshold",
+          "sort_order": "Order",
+          "required_level_id": "Required level",
+          "required_badge_id": "Required badge",
+          "window": "Window",
+          "required_count": "Required count",
+          "bonus_points": "Bonus points",
+          "time_zone": "Time zone",
+          "check_in_rotation_seconds": "Check-in code rotation",
+          "check_in_grace_seconds": "Check-in code grace",
+          "reminder_offsets_minutes": "Reminder times",
+          "rating_prompt_delay_minutes": "Rating prompt delay",
+          "rating_window_days": "Rating window",
+          "comment_edit_window_minutes": "Comment edit window",
+          "max_co_presenters": "Most co-presenters",
+          "company_metric": "Company metric",
+          "priority_rsvp_hours": "Priority booking hours",
+          "limit_document_mb": "Document limit",
+          "limit_audio_mb": "Audio limit",
+          "limit_image_mb": "Image limit",
+          "limit_poster_mb": "Poster limit",
+          "allow_jpeg_export": "JPEG export",
+          "email_from_name": "Sender name",
+          "email_reply_to": "Reply-to address",
+          "rating_min_aggregate": "Ratings shown from",
+          "survey_min_responses": "Survey shown from",
+          "company_min_active_members": "Company minimum active members",
+          "logo_asset_id": "Logo",
+          "heading_font_id": "Heading font",
+          "body_font_id": "Body font",
+          "light_canvas": "Canvas — light scheme",
+          "light_surface": "Surface — light scheme",
+          "light_fg_heading": "Headings — light scheme",
+          "light_fg_body": "Text — light scheme",
+          "light_fg_muted": "Muted text — light scheme",
+          "light_edge": "Edges — light scheme",
+          "light_edge_strong": "Strong edges — light scheme",
+          "light_spine": "Spine — light scheme",
+          "light_node": "Node — light scheme",
+          "light_canvas_raise": "Raised canvas — light scheme",
+          "dark_canvas": "Canvas — dark scheme",
+          "dark_surface": "Surface — dark scheme",
+          "dark_fg_heading": "Headings — dark scheme",
+          "dark_fg_body": "Text — dark scheme",
+          "dark_fg_muted": "Muted text — dark scheme",
+          "dark_edge": "Edges — dark scheme",
+          "dark_edge_strong": "Strong edges — dark scheme",
+          "dark_spine": "Spine — dark scheme",
+          "dark_node": "Node — dark scheme",
+          "dark_canvas_raise": "Raised canvas — dark scheme"
+        },
+        "yes": "Yes",
+        "no": "No",
+        "none": "—",
+        "composite": "a composite value",
+        "change": "<bdi>{from}</bdi> → <bdi>{to}</bdi>"
+      },
+      "csv": "CSV",
+      "csvLabel": "Download the log shown as CSV",
+      "csvPending": "Downloading…",
+      "csvDone": "The audit log file was downloaded",
+      "csvFailed": "The audit log could not be downloaded. Try again.",
+      "count": "{count, plural, =0 {no records} one {one record} other {<bdi>{value}</bdi> records}}",
+      "colTarget": "Target",
+      "colKind": "Kind",
+      "searchLabel": "Search the log",
+      "filtersLabel": "Filter the log",
+      "filterActor": "Actor: {value}",
+      "filterAction": "Action: {value}",
+      "filterPeriod": "Period: {value}",
+      "filterSubject": "Subject: {value}",
+      "customRange": "Custom period"
     },
     "settings": {
       "title": "Organisation settings",

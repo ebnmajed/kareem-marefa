@@ -449,8 +449,7 @@
     },
     "exports": {
       "title": "التصدير",
-      "intro": "كل ملف جدول يفتحه Excel بالعربية كما هو: عناوين أعمدته بالعربية، وتواريخه بتوقيت مؤسستك وتُرتَّب ترتيبًا صحيحًا.",
-      "download": "نزِّل CSV",
+      "download": "CSV",
       "sessions": {
         "title": "الجلسات",
         "note": "العنوان والحالة والمستوى واللغة والموعد والمُقدِّمون."
@@ -479,11 +478,10 @@
         "title": "الأعضاء",
         "note": "الاسم والبريد الإلكتروني والدور والحالة لكل عضو."
       },
-      "auditNote": "كل تنزيل قراءة جماعية لبيانات شخصية، ويُسجَّل في سجل التدقيق باسمك.",
       "auditLink": "عمليات التصدير في سجل التدقيق",
       "listLabel": "ملفات التصدير",
-      "colExport": "الملف",
-      "colLast": "آخر تصدير",
+      "colExport": "التصدير",
+      "colLast": "آخر مرة",
       "colDownload": "التنزيل",
       "lastExport": "<t>{name}</t> · <bdi>{when}</bdi>",
       "unknownActor": "عضو غير معروف",
@@ -492,7 +490,13 @@
       "downloading": "جارٍ التنزيل…",
       "downloaded": "نُزِّل ملف <t>{name}</t>",
       "downloadFailed": "تعذّر تنزيل ملف <t>{name}</t>. حاول مرة أخرى.",
-      "empty": "لا ملفات للتصدير."
+      "empty": "لا ملفات للتصدير.",
+      "caption": "CSV · UTF-8 ·",
+      "captionLink": "كل تصدير مسجَّل",
+      "audit": {
+        "title": "سجل التدقيق",
+        "note": "كل إجراء وكل تعديل إعداد، بالفاعل والوقت."
+      }
     },
     "audit": {
       "title": "سجل التدقيق",
@@ -582,7 +586,11 @@
           "restored": "استعادة تعليق"
         },
         "company": {
-          "team_color_changed": "تغيير لون فريق شركة"
+          "team_color_changed": "تغيير لون فريق شركة",
+          "created": "إنشاء شركة",
+          "changed": "تعديل شركة",
+          "deactivated": "تعطيل شركة",
+          "reactivated": "إعادة تفعيل شركة"
         },
         "design": {
           "export_requested": "طلب تصدير تصميم",
@@ -627,7 +635,8 @@
           "deletion_requested": "طلب حذف المؤسسة",
           "first_admin_set": "تعيين أول مشرف للمؤسسة",
           "reinstated": "إعادة تفعيل المؤسسة",
-          "suspended": "تعليق المؤسسة"
+          "suspended": "تعليق المؤسسة",
+          "renamed": "تغيير اسم المؤسسة"
         },
         "photo": {
           "removed": "إزالة صورة",
@@ -675,6 +684,27 @@
         "photo_album": {
           "requested": "طلب ملف صور جلسة",
           "downloaded": "تنزيل ملف صور جلسة"
+        },
+        "venue": {
+          "created": "إنشاء مكان",
+          "changed": "تعديل مكان",
+          "company_changed": "تغيير الشركة المالكة لمكان",
+          "deactivated": "تعطيل مكان",
+          "reactivated": "إعادة تفعيل مكان"
+        },
+        "category": {
+          "created": "إنشاء تصنيف",
+          "changed": "تعديل تصنيف",
+          "deactivated": "تعطيل تصنيف",
+          "reactivated": "إعادة تفعيل تصنيف"
+        },
+        "report": {
+          "resolved": "إغلاق بلاغ"
+        },
+        "survey_template": {
+          "created": "إنشاء قالب استبانة",
+          "changed": "تعديل قالب استبانة",
+          "deleted": "حذف قالب استبانة"
         }
       },
       "domains": {
@@ -697,7 +727,12 @@
         "session": "الجلسات",
         "storage": "التخزين",
         "template": "القوالب",
-        "other": "أخرى"
+        "other": "أخرى",
+        "venue": "الأماكن",
+        "category": "التصنيفات",
+        "company": "الشركات",
+        "report": "البلاغات",
+        "survey_template": "الاستبانات"
       },
       "subjects": {
         "brand_kit": "الهوية البصرية",
@@ -718,8 +753,120 @@
         "points_ledger": "قيد نقاط",
         "session": "جلسة",
         "template": "قالب",
-        "photo_album": "ملف صور جلسة"
-      }
+        "photo_album": "ملف صور جلسة",
+        "company": "شركة",
+        "venue": "مكان",
+        "category": "تصنيف",
+        "report": "بلاغ",
+        "survey_template": "قالب استبانة"
+      },
+      "kinds": {
+        "log": "إجراء",
+        "config": "إعداد"
+      },
+      "config": {
+        "scopes": {
+          "scoring": "قواعد النقاط",
+          "company_scoring": "قواعد نقاط الشركات",
+          "org_settings": "إعدادات المؤسسة",
+          "badges": "الشارات",
+          "levels": "المستويات",
+          "perks": "الامتيازات",
+          "streaks": "سلاسل الحضور",
+          "branding": "الهوية البصرية"
+        },
+        "group": "الإعدادات",
+        "fields": {
+          "created": "الإنشاء",
+          "points": "النقاط",
+          "enabled": "التفعيل",
+          "cap_per_session": "الحد لكل جلسة",
+          "cap_per_period": "الحد لكل مدة",
+          "cap_period": "مدة الحد",
+          "cooldown": "فترة الانتظار",
+          "reason_ar": "النص الظاهر للعضو",
+          "version": "الإصدار",
+          "points_per_percent": "النقاط لكل نقطة مئوية",
+          "cap_points": "الحد الأقصى للنقاط",
+          "min_active_members": "الحد الأدنى للأعضاء النشطين",
+          "key": "المفتاح",
+          "name": "الاسم",
+          "description": "الوصف",
+          "rule": "القاعدة",
+          "issues_certificate": "تُصدر شهادة",
+          "retired_at": "الإيقاف",
+          "threshold_points": "نقاط العتبة",
+          "sort_order": "الترتيب",
+          "required_level_id": "المستوى المطلوب",
+          "required_badge_id": "الشارة المطلوبة",
+          "window": "النافذة",
+          "required_count": "العدد المطلوب",
+          "bonus_points": "نقاط المكافأة",
+          "time_zone": "المنطقة الزمنية",
+          "check_in_rotation_seconds": "تجديد رمز الحضور",
+          "check_in_grace_seconds": "مهلة رمز الحضور",
+          "reminder_offsets_minutes": "مواعيد التذكير",
+          "rating_prompt_delay_minutes": "تأخير طلب التقييم",
+          "rating_window_days": "مهلة التقييم",
+          "comment_edit_window_minutes": "مهلة تعديل التعليق",
+          "max_co_presenters": "أقصى عدد للمقدّمين المشاركين",
+          "company_metric": "مقياس الشركات",
+          "priority_rsvp_hours": "ساعات الحجز المبكر",
+          "limit_document_mb": "حد المستند",
+          "limit_audio_mb": "حد الصوت",
+          "limit_image_mb": "حد الصورة",
+          "limit_poster_mb": "حد الملصق",
+          "allow_jpeg_export": "تصدير JPEG",
+          "email_from_name": "اسم المرسل",
+          "email_reply_to": "عنوان الرد",
+          "rating_min_aggregate": "الحد الأدنى لإظهار التقييمات",
+          "survey_min_responses": "الحد الأدنى لإظهار الاستبانة",
+          "company_min_active_members": "الحد الأدنى للأعضاء النشطين في الشركة",
+          "logo_asset_id": "الشعار",
+          "heading_font_id": "خط العناوين",
+          "body_font_id": "خط النص",
+          "light_canvas": "الخلفية — الوضع الفاتح",
+          "light_surface": "السطح — الوضع الفاتح",
+          "light_fg_heading": "العناوين — الوضع الفاتح",
+          "light_fg_body": "النص — الوضع الفاتح",
+          "light_fg_muted": "النص الخافت — الوضع الفاتح",
+          "light_edge": "الحدود — الوضع الفاتح",
+          "light_edge_strong": "الحدود البارزة — الوضع الفاتح",
+          "light_spine": "العمود — الوضع الفاتح",
+          "light_node": "العقدة — الوضع الفاتح",
+          "light_canvas_raise": "الخلفية المرتفعة — الوضع الفاتح",
+          "dark_canvas": "الخلفية — الوضع الداكن",
+          "dark_surface": "السطح — الوضع الداكن",
+          "dark_fg_heading": "العناوين — الوضع الداكن",
+          "dark_fg_body": "النص — الوضع الداكن",
+          "dark_fg_muted": "النص الخافت — الوضع الداكن",
+          "dark_edge": "الحدود — الوضع الداكن",
+          "dark_edge_strong": "الحدود البارزة — الوضع الداكن",
+          "dark_spine": "العمود — الوضع الداكن",
+          "dark_node": "العقدة — الوضع الداكن",
+          "dark_canvas_raise": "الخلفية المرتفعة — الوضع الداكن"
+        },
+        "yes": "نعم",
+        "no": "لا",
+        "none": "—",
+        "composite": "قيمة مركّبة",
+        "change": "<bdi>{from}</bdi> ← <bdi>{to}</bdi>"
+      },
+      "csv": "CSV",
+      "csvLabel": "نزِّل السجل الظاهر بصيغة CSV",
+      "csvPending": "جارٍ التنزيل…",
+      "csvDone": "نُزِّل ملف سجل التدقيق",
+      "csvFailed": "تعذّر تنزيل سجل التدقيق. حاول مرة أخرى.",
+      "count": "{count, plural, zero {لا سجلات} one {سجل واحد} two {سجلان} few {<bdi>{value}</bdi> سجلات} many {<bdi>{value}</bdi> سجلًا} other {<bdi>{value}</bdi> سجل}}",
+      "colTarget": "الهدف",
+      "colKind": "النوع",
+      "searchLabel": "ابحث في السجل",
+      "filtersLabel": "تصفية السجل",
+      "filterActor": "الفاعل: {value}",
+      "filterAction": "الفعل: {value}",
+      "filterPeriod": "المدة: {value}",
+      "filterSubject": "العنصر: {value}",
+      "customRange": "مدة مخصّصة"
     },
     "settings": {
       "title": "إعدادات المؤسسة",

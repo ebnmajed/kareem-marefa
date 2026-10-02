@@ -11,14 +11,16 @@ export const READ_PAGE = 1000;
 
 type Page<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 
-export async function readAll<T>(label: string, page: (from: number, to: number) => Page<T>): Promise<T[]> {
+/** Every row — or, with `max`, the first `max` rows, for a read that deliberately looks at the newest only. */
+export async function readAll<T>(label: string, page: (from: number, to: number) => Page<T>, max = Infinity): Promise<T[]> {
   const out: T[] = [];
-  for (;;) {
+  while (out.length < max) {
     const from = out.length;
-    const { data, error } = await page(from, from + READ_PAGE - 1);
+    const { data, error } = await page(from, Math.min(from + READ_PAGE, max) - 1);
     if (error) throw new Error(`${label}: ${error.message}`);
     const rows = data ?? [];
     if (rows.length === 0) return out;
     out.push(...rows);
   }
+  return out.slice(0, max);
 }
