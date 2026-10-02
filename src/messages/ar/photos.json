@@ -60,6 +60,64 @@
       "failed": "تعذّر تجهيز ملف الصور.",
       "rebuild": "جهّزه من جديد",
       "retry": "حاول مرة أخرى"
+    },
+    "moderation": {
+      "title": "الإشراف — الصور",
+      "filtersLabel": "قوائم الصور",
+      "filter": {
+        "takedowns": "طلبات الإخفاء",
+        "reports": "بلاغات الصور",
+        "closed": "مغلقة"
+      },
+      "listLabel": "صور بانتظار القرار",
+      "closedLabel": "صور حُسمت",
+      "row": "صورة من «<t>{session}</t>»",
+      "imageAlt": "صورة من «{session}»",
+      "requested": "طلب: <t>{name}</t>",
+      "reported": "بلاغ: <t>{name}</t>",
+      "more": "+{value}",
+      "member": "عضو",
+      "age": "{count, plural, zero {اليوم} one {يوم} two {يومان} few {{value} أيام} many {{value} يومًا} other {{value} يوم}}",
+      "label": {
+        "session": "الجلسة",
+        "uploader": "رفعها",
+        "requester": "طلب الإخفاء",
+        "reporter": "المُبلِّغ",
+        "status": "الحالة",
+        "decision": "القرار"
+      },
+      "status": {
+        "hidden": "مخفية بانتظار المراجعة",
+        "visible": "ظاهرة",
+        "removed": "محذوفة"
+      },
+      "outcome": {
+        "removed": "حُذفت",
+        "restored": "أُعيدت للعرض",
+        "dismissed": "تُجوهل البلاغ"
+      },
+      "remove": "احذف نهائيًا",
+      "restore": "أعدها للعرض",
+      "dismiss": "تجاهل",
+      "removeTitle": "حذف صورة من «<t>{session}</t>»؟",
+      "reasonLabel": "السبب — يُسجَّل في سجل التدقيق",
+      "confirm": "احذف",
+      "cancel": "تراجع",
+      "close": "إغلاق",
+      "back": "القائمة",
+      "empty": {
+        "takedowns": "لا طلبات إخفاء",
+        "reports": "لا بلاغات على الصور",
+        "closed": "لا قرارات بعد"
+      },
+      "done": "سُجّل القرار",
+      "error": {
+        "not_authorized": "لا تملك صلاحية هذا الإجراء.",
+        "reason_required": "اكتب السبب أولًا.",
+        "not_found": "تعذّر العثور عليه.",
+        "already_resolved": "حُسم من قبل.",
+        "unknown": "تعذّر تنفيذ الإجراء — حاول مرة أخرى."
+      }
     }
   }
 }

@@ -62,6 +62,49 @@
         "network": "تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى."
       },
       "presenter": "مقدِّم الجلسة"
+    },
+    "moderation": {
+      "title": "الإشراف — البلاغات",
+      "filtersLabel": "حالة البلاغ",
+      "filter": {
+        "open": "مفتوحة",
+        "closed": "مغلقة"
+      },
+      "tableLabel": "التعليقات المُبلَّغ عنها",
+      "col": {
+        "content": "المحتوى",
+        "session": "الجلسة",
+        "reporter": "المُبلِّغ",
+        "reason": "السبب",
+        "age": "منذ",
+        "decision": "القرار"
+      },
+      "deleted": "محذوف",
+      "more": "+{value}",
+      "member": "عضو",
+      "age": "{count, plural, zero {اليوم} one {يوم} two {يومان} few {{value} أيام} many {{value} يومًا} other {{value} يوم}}",
+      "remove": "أزل",
+      "dismiss": "تجاهل",
+      "removeTitle": "إزالة تعليق من «<t>{session}</t>»؟",
+      "reportedBy": "المُبلِّغون",
+      "reasonLabel": "السبب — يُسجَّل في سجل التدقيق",
+      "confirm": "أزل",
+      "cancel": "تراجع",
+      "close": "إغلاق",
+      "outcome": {
+        "removed": "أُزيل",
+        "dismissed": "تُجوهل"
+      },
+      "emptyOpen": "لا بلاغات مفتوحة",
+      "emptyClosed": "لا بلاغات مغلقة",
+      "done": "سُجّل القرار",
+      "error": {
+        "not_authorized": "لا تملك صلاحية هذا الإجراء.",
+        "reason_required": "اكتب السبب أولًا.",
+        "not_found": "تعذّر العثور عليه.",
+        "already_resolved": "حُسم من قبل.",
+        "unknown": "تعذّر تنفيذ الإجراء — حاول مرة أخرى."
+      }
     }
   }
 }
