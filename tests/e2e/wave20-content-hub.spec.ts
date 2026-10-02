@@ -130,7 +130,7 @@ test("★ SCR-021: read by default, no company, edit on intent, a refused save s
   await expect(main.getByRole("heading", { level: 1, name: "حسابي" })).toBeVisible();
   await expect(main.getByRole("heading", { level: 2, name: "ملفي" })).toBeVisible();
   await expect(main.locator("input:not([type=hidden]), select, textarea")).toHaveCount(0);
-  await expect(main.getByRole("link", { name: "الخصوصية والبيانات" })).toHaveAttribute("href", "/ar/app/me/privacy");
+  await expect(main.getByRole("link", { name: "الإعدادات" })).toHaveAttribute("href", "/ar/app/me/settings"); // PR B
   // No company: the hub says what it blocks, and the row is the way to choose one.
   await expect(main.getByRole("status")).toContainText("اختر شركتك قبل حجز مقعد");
   await noSideways(page);

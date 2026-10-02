@@ -296,14 +296,16 @@ test("moment 5 — the boards: a rise plays once by the app's own navigation, a 
   const board = (id: string) => one.page.locator(`#main #${id} [data-moment]`);
 
   // Arrive by the app's own navigation: from the monthly tab to the all-time tab.
+  // ★ wave 20 (REQ-UIX-078, DEC-218 §3.4) — selectors that moved: all time is `?board=all`; the viewer, second, stands
+  // on the podium; the rise is drawn on the «ترتيبك» card, which counts while any rows FLIP.
   await one.page.goto("/ar/app/leaderboards?board=month");
-  await navigateInApp(one.page, one.page.getByRole("tab", { name: "كل الأوقات" }), /\/ar\/app\/leaderboards$/);
+  await navigateInApp(one.page, one.page.getByRole("tab", { name: "كل الأوقات" }), /board=all$/);
   await expect.poll(() => animations(one.page)).toBeGreaterThan(0);
   await expect(board("all-time")).toHaveAttribute("data-moment", "static", { timeout: 15_000 });
-  const rows = one.page.locator("#main #all-time ul").first().locator(":scope > li");
+  const rows = one.page.locator("#main #all-time [data-slot=podium] > li");
   await expect(rows.nth(1)).toContainText("ريم الشهري");
-  await expect(rows.nth(1).locator("[data-slot=rise]")).toBeVisible();
-  await expect(rows.nth(1).locator("img")).toHaveCount(0);
+  await expect(one.page.locator("#main #all-time [data-slot=rank-card] [data-slot=rise]")).toBeVisible();
+  await expect(one.page.locator("#main #all-time img")).toHaveCount(0);
   await expect.poll(async () => (await mark())?.all_time_rank, { timeout: 15_000 }).toBe(2);
   await capture(one.page, "rank-members-animated");
 
@@ -317,7 +319,7 @@ test("moment 5 — the boards: a rise plays once by the app's own navigation, a 
   await capture(one.page, "rank-companies-animated");
 
   // ★ A reload of each: silent.
-  await one.page.goto("/ar/app/leaderboards");
+  await one.page.goto("/ar/app/leaderboards?board=all");
   await settled(one.page);
   expect(await animations(one.page)).toBe(0);
   await expect(one.page.locator("#main #all-time [data-slot=rise]")).toHaveCount(0);
@@ -327,8 +329,8 @@ test("moment 5 — the boards: a rise plays once by the app's own navigation, a 
   await db.query(`update public.member_seen_marks set all_time_rank = 1 where member_id = $1`, [meId]);
   const fell = await anotherPhone(browser);
   await fell.page.goto("/ar/app/leaderboards?board=month");
-  await navigateInApp(fell.page, fell.page.getByRole("tab", { name: "كل الأوقات" }), /\/ar\/app\/leaderboards$/);
-  await expect(fell.page.locator("#main #all-time ul").first().locator(":scope > li").nth(1)).toContainText("ريم الشهري");
+  await navigateInApp(fell.page, fell.page.getByRole("tab", { name: "كل الأوقات" }), /board=all$/);
+  await expect(fell.page.locator("#main #all-time [data-slot=podium] > li").nth(1)).toContainText("ريم الشهري");
   await expect.poll(async () => (await mark())?.all_time_rank, { timeout: 15_000 }).toBe(2);
   await settled(fell.page);
   expect(await animations(fell.page)).toBe(0);
@@ -339,9 +341,9 @@ test("moment 5 — the boards: a rise plays once by the app's own navigation, a 
   await db.query(`update public.member_seen_marks set all_time_rank = 4, company_rank = 2, company_fraction = 0.2 where member_id = $1`, [meId]);
   const calm = await anotherPhone(browser, "reduce");
   await calm.page.goto("/ar/app/leaderboards?board=month");
-  await navigateInApp(calm.page, calm.page.getByRole("tab", { name: "كل الأوقات" }), /\/ar\/app\/leaderboards$/);
-  const calmRows = calm.page.locator("#main #all-time ul").first().locator(":scope > li");
-  await expect(calmRows.nth(1).locator("[data-slot=rise]")).toBeVisible();
+  await navigateInApp(calm.page, calm.page.getByRole("tab", { name: "كل الأوقات" }), /board=all$/);
+  // Under reduced motion the podium is its three rows (REQ-UIX-081); the rise is the card's, drawn and still.
+  await expect(calm.page.locator("#main #all-time [data-slot=rank-card] [data-slot=rise]")).toBeVisible();
   expect(await animations(calm.page)).toBe(0);
   await capture(calm.page, "rank-members-static");
   await navigateInApp(calm.page, calm.page.getByRole("tab", { name: "سباق الشركات" }), /board=companies$/);

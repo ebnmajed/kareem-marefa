@@ -105,7 +105,7 @@ async function signIn(context: BrowserContext, email: string): Promise<string> {
   return (envelope as { member_id: string }).member_id;
 }
 
-test("SCR-026 — the member reads their inbox, marks one read, and switches a category off (REQ-NTF-003, REQ-NTF-006)", async ({ context, page }) => {
+test("SCR-026 and SCR-029 — the member reads their inbox, marks one read, and switches a category off (REQ-NTF-003, REQ-NTF-006)", async ({ context, page }) => {
   memberId = await signIn(context, memberEmail);
 
   // Real notifications, through the real door: public.notify() is the only
@@ -122,27 +122,39 @@ test("SCR-026 — the member reads their inbox, marks one read, and switches a c
   await page.goto("/ar/app/me/notifications");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("الإشعارات");
 
-  const seatRow = page.locator("li", { hasText: "تأكّد مقعدك" });
+  // ★ wave 20 (ledger, D7 / DEC-218 §2.4): each item is ONE form — an item with a session opens it after marking it
+  // read («فتح الجلسة» is that form's button), one without is marked read by «تعليم كمقروء». Locators from #main.
+  const seatRow = page.locator("#main li", { hasText: "تأكّد مقعدك" });
   await expect(seatRow.getByText(sessionTitle)).toBeVisible();
-  await expect(seatRow.getByRole("link", { name: "فتح الجلسة" })).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
+  await expect(seatRow.getByRole("button", { name: "فتح الجلسة" })).toBeVisible();
 
   // Marking one read leaves the other unread, and the count the bell reads
   // comes from the database rather than from anything client-side.
-  await seatRow.getByRole("button", { name: "تعليم كمقروء" }).click();
-  await expect(page.locator("li", { hasText: "تأكّد مقعدك" }).getByRole("button", { name: "تعليم كمقروء" })).toHaveCount(0);
+  const badgeRow = page.locator("#main li", { hasText: "حصلت على شارة" });
+  await badgeRow.getByRole("button", { name: "تعليم كمقروء" }).click();
+  await expect(page.locator("#main li", { hasText: "حصلت على شارة" }).getByRole("button")).toHaveCount(0);
   const { rows: unread } = await db.query<{ n: string }>(`select count(*) n from public.notifications where member_id = $1 and read_at is null`, [memberId]);
   expect(unread[0].n).toBe("1");
 
-  // The preference matrix: switching `reminders` off on email stores exactly
-  // one row, on that channel only.
-  const remindersEmail = page.getByRole("button", { name: "التذكيرات — البريد الإلكتروني — مُفعّل" });
-  await remindersEmail.click();
-  await expect(page.getByRole("status")).toContainText("حُفظت تفضيلاتك");
-  const { rows: prefs } = await db.query<{ category: string; channel: string; enabled: boolean }>(
-    `select category, channel, enabled from public.notification_preferences where member_id = $1`,
-    [memberId],
-  );
-  expect(prefs).toEqual([{ category: "reminders", channel: "email", enabled: false }]);
+  // ★ wave 20 (ledger, DEC-216 §5.13, DEC-218 §2.1): preferences live on /app/me/settings. Switching «التذكيرات» off
+  // stores its email row off AND its in-app row on — in-app is not a setting, and every write restores it. No «saved»
+  // line: a saved form says nothing, so the database is read until the write lands.
+  await page.goto("/ar/app/me/settings");
+  const reminders = page.locator("#main").getByRole("switch", { name: "التذكيرات" });
+  await expect(reminders).toBeChecked();
+  await page.locator("#main label", { hasText: "التذكيرات" }).click();
+  await expect(reminders).not.toBeChecked();
+  const prefsOf = async () =>
+    (
+      await db.query<{ category: string; channel: string; enabled: boolean }>(
+        `select category, channel, enabled from public.notification_preferences where member_id = $1 order by channel`,
+        [memberId],
+      )
+    ).rows;
+  await expect.poll(prefsOf).toEqual([
+    { category: "reminders", channel: "in_app", enabled: true },
+    { category: "reminders", channel: "email", enabled: false },
+  ]);
 
   // And the send path agrees with the screen: the same preference the member
   // just set is what notification_send_context() reports.
@@ -154,25 +166,19 @@ test("SCR-026 — the member reads their inbox, marks one read, and switches a c
   expect(ctx[0].ctx.in_app_allowed).toBe(true);
 });
 
-test("SCR-026 — the three not-switchable categories render as a statement with a reason, not a dead toggle (08 §2)", async ({ context, page }) => {
+// ★ wave 20 (ledger, DEC-216 §5.15, REQ-UIX-077): the not-switchable categories moved to /app/me/settings and are ONE
+// sentence there, never rows — still no toggle that silently does nothing. Locators from #main (DEC-145).
+test("SCR-029 — what cannot be switched off is one sentence, not a dead toggle (08 §1.7, §2)", async ({ context, page }) => {
   await signIn(context, memberEmail);
-  await page.goto("/ar/app/me/notifications");
-
-  for (const [name, why] of [
-    ["الشهادات", "شهادة صدرت باسمك"],
-    ["إشعارات الإشراف", "ما أُزيل دون علمك"],
-    ["الحساب", "تغيّر في حسابك"],
-  ] as const) {
-    // ★ wave 20 (ledger): from #main (DEC-145) — on a hard load DEC-204's hidden streamed copy can stand outside it.
-    const row = page.locator("#main li", { hasText: name });
-    await expect(row).toContainText("يصلك دائمًا");
-    await expect(row).toContainText(why);
-    // No toggle at all, rather than one that silently does nothing.
-    await expect(row.getByRole("button")).toHaveCount(0);
+  await page.goto("/ar/app/me/settings");
+  const main = page.locator("#main");
+  await expect(main.getByText(/تصلك دائمًا رسائل لا تُطفأ/)).toBeVisible();
+  for (const name of ["الشهادات", "إشعارات الإشراف", "الحساب", "المقترحات"]) {
+    await expect(main.getByRole("switch", { name })).toHaveCount(0);
   }
-
-  // A switchable category that still holds non-optional messages says which.
-  await expect(page.locator("#main li", { hasText: "جلساتي" })).toContainText("بعض إشعارات هذا النوع تصلك مهما كان الإعداد");
+  // A switchable category that still holds non-optional messages is a switch, and the sentence names the exceptions.
+  await expect(main.getByRole("switch", { name: "جلساتي" })).toBeAttached();
+  await expect(main.getByText(/تغيّر جلسة حجزتها أو إلغاؤها/)).toBeVisible();
 });
 
 test("REQ-CAL-001 — the ICS downloads as UTF-8 text/calendar, folded at 75 octets", async ({ context, page }) => {

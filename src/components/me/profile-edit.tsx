@@ -6,7 +6,6 @@ import { useRouter } from "@/i18n/navigation";
 import { useRouter as useRawRouter } from "next/navigation";
 import { ActionBar } from "@/components/ui/action-bar";
 import { Button, buttonClass } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
@@ -42,8 +41,8 @@ import { emptyProfileState, PROFILE_FIELDS, type ProfileField, type ProfileState
 // tab gets the browser's own question. The browser's Back is not asked about — with edit mode in the URL it returns
 // to read mode (D13, recorded).
 //
-// ★ The leaderboard opt-out is here in PR A only (contract 5, `REQ-LDR-008`): it leaves in the PR that adds
-// `/app/me/settings`' switch, so no deployment of `main` lacks a way to opt out.
+// ★ The leaderboard opt-out is not here (contract 5, `REQ-LDR-008`): it moved to `/app/me/settings`' switch in the
+// same PR that added it, so no deployment of `main` lacked a way to opt out.
 
 function FormError({ message }: { message: string }) {
   const region = useRef<HTMLDivElement>(null);
@@ -84,14 +83,12 @@ export function ProfileEdit({ locale, me, companies, interests }: ProfileEditPro
     companyId: me.companyId ?? "",
     jobTitle: me.jobTitle ?? "",
     bio: me.bio ?? "",
-    leaderboardOptOut: me.leaderboardOptOut,
     interests: interests.chosen.map((i) => i.id),
   };
   const [displayName, setDisplayName] = useState(initial.displayName);
   const [companyId, setCompanyId] = useState(initial.companyId);
   const [jobTitle, setJobTitle] = useState(initial.jobTitle);
   const [bio, setBio] = useState(initial.bio);
-  const [optOut, setOptOut] = useState(initial.leaderboardOptOut);
   const [chosen, setChosen] = useState<string[]>(initial.interests);
 
   const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id));
@@ -100,7 +97,6 @@ export function ProfileEdit({ locale, me, companies, interests }: ProfileEditPro
     companyId: companyId !== initial.companyId,
     jobTitle: jobTitle !== initial.jobTitle,
     bio: bio !== initial.bio,
-    leaderboardOptOut: optOut !== initial.leaderboardOptOut,
     interests: !sameSet(chosen, initial.interests),
   };
   const unsaved = Object.values(changed).filter(Boolean).length;
@@ -145,7 +141,6 @@ export function ProfileEdit({ locale, me, companies, interests }: ProfileEditPro
   };
   const fieldLabel = (field: ProfileField): string => {
     if (field === "companyId") return t("company");
-    if (field === "leaderboardOptOut") return t("leaderboardOptOut");
     return t(field);
   };
   const summary = summaryErrors(state, { fields: PROFILE_FIELDS, label: fieldLabel, message: (key) => t(`errors.${key}`) });
@@ -239,10 +234,6 @@ export function ProfileEdit({ locale, me, companies, interests }: ProfileEditPro
             ) : null}
           </div>
         </Field>
-
-        <div className={mark(changed.leaderboardOptOut)}>
-          <Checkbox id="leaderboardOptOut" name="leaderboardOptOut" checked={optOut} onChange={(e) => setOptOut(e.target.checked)} label={label(t("leaderboardOptOut"), changed.leaderboardOptOut)} />
-        </div>
 
         <p className="flex flex-wrap gap-x-2 text-caption text-fg-muted">
           <span>{t("email")}</span>

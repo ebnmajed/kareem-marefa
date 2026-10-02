@@ -6784,3 +6784,10 @@ E2E: `tests/e2e/wave20-content-hub.spec.ts` (`dd6a1fdd`), the lead runs it. **D1
 member's own role on `/app/me` and no artboard draws it (the lead, after sync 1). Kept-behaviour tables read back
 against the new files: every row holds; P14's standing card is placed (contract 3, `HubStanding form="card"` inside
 `Suspense` with its skeleton, `lg:hidden`).
+
+### PR B — the opt-out moves (contract 5), after `notify`'s `029` (`df3fdd65`)
+
+The checkbox leaves `021`'s edit mode, `PROFILE_FIELDS` loses `leaderboardOptOut`, `saveProfile` no longer sends it
+(so `updateMyProfile` leaves the column alone), `profile.leaderboardOptOut` is removed from `ar`/`en`; the settings
+glyph is «الإعدادات» → `/app/me/settings` (`app.shell.settings`). `profile-page.test.tsx:190` and `self-panel.tsx`'s
+link were the lead's, in `ae22f53a`.

@@ -3964,3 +3964,56 @@ master's derived state follows it.
   m.category, 'email'))` (`0136:129`).
 - So `getPreferenceMatrix()`'s `?? true` (`notifications.ts`, `on()`) and `emailMasterOn()` read a missing row exactly
   as the send does. The matrix's own unit test pins that, beside the cases in §W12.
+
+## W13. `026` built — read against its table (N1 – N16)
+
+**Holds:**
+- N1, plus the cursor. `listInbox()` is keyed on `(created_at, id)`; the cursor is opaque base64url, and a forged one
+  reads as the first page.
+- N2: the GET form with a `<noscript>` submit.
+- N3: «لا شيء غير مقروء» replaces mark-all at zero unread, counted by `getUnreadCount()`.
+- N5 – N8.
+- N9: the dot and fill are drawn, and the word is in the `h3`.
+- N10: the locale is now passed. Times show the clock today, the weekday and clock this week, and the date before.
+- N11: `empty-state` inside `role="status"`.
+- N12: untouched.
+- N13 – N14: `?error=inbox` gives `inbox.error`.
+- N15: the matrix and the tabs are gone.
+- N16.
+
+**D7 as built:** `openNotificationAction` reads the session from the row through `openNotification()`, never from the
+form. `markNotificationRead` is deleted; the item's one form replaced it. `markRead()` in the DAL stays and is called by
+`openNotification()`.
+
+**Not drawn:** relative times («قبل 14 دقيقة»). They would need new strings per unit; the clock carries the same
+fact.
+
+## W14. `029` built — read against its table (P1 – P19, O1, L1 – L2, M1 – M6)
+
+**Holds:**
+- P1 – P3 and P7 – P11: through `getPreferenceMatrix()`, `getNotificationMatrix()` and `setPreference()`, all unchanged.
+- P4 and P5: the one sentence `settings.alwaysOn`.
+- P6: `categoryRows()` draws only categories with an optional email message, so `proposals` is not a row.
+- P12: withdrawn, as ruled (`DEC-218` §2.1); every write sets `in_app = true`.
+- P13: a form per switch, with a `<noscript>` «حفظ».
+- P14: `role="switch"`, named by its label.
+- P15: dropped.
+- P16: `settings.error` beside the switch.
+- P17 and P18: no hints and no intro.
+- P19: the actions are bound to the locale.
+- O1: `setLeaderboardOptOut(locale, !visible)`.
+- L1: the calendar row's value. L2: the account menu's POST.
+- M1 – M6: `masterCategories()`, `writeEmail()` (compensating), `emailMasterOn()`. `settings-group` adopts a changed `checked` prop.
+
+**Where the code sits:**
+- `emailMasterOn` lives in `src/components/settings/email-master.ts`, not in `notifications.ts`. It is pure and tested
+  where it is written, and the DAL module is `server-only`.
+- The writes live in `src/components/settings/preference-writes.ts` (`server-only`). They call only `setPreference()`.
+
+**Tests:**
+- `tests/components/settings/email-master.test.tsx` covers the derived state: all on, no rows, each category off,
+  `proposals`, staff versus member, and the fixed categories.
+- `settings-writes.test.tsx` covers every write call by call, compensation, M5, and the opt-out.
+- `settings-page.test.tsx` covers the rows, the sentence, staff-only `admin_queue`, the links, the footer, and axe.
+- `tests/e2e/wave20-notify-settings.spec.ts` reads `notification_preferences` and `members.leaderboard_opt_out` back
+  after a reload.

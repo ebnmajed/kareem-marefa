@@ -6,7 +6,7 @@
 
 راجع المقترح: ⁨https://app.kareem.example/ar/app/propose/22222222-2222-4222-8222-222222222222⁩
 
-تفضيلات الإشعارات: ⁨https://app.kareem.example/ar/app/me/notifications⁩
+تفضيلات الإشعارات: ⁨https://app.kareem.example/ar/app/me/settings⁩
 
 —
 كريم معرفة · كريم معرفة · شارك المعرفة.. واصنع الأثر

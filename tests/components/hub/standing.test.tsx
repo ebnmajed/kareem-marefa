@@ -274,7 +274,7 @@ describe("★★ moments 3 and 5 — the displayed copy alone", () => {
     expect(made).toHaveLength(0);
   });
 
-  it("★ PR A: the week has no writer yet, so the card never asks to write the weekly mark", async () => {
+  it("with no rise on the week, the card writes no weekly mark", async () => {
     await draw("card");
     await finishAll();
     expect(ackRank).not.toHaveBeenCalled();

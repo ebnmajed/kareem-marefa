@@ -107,18 +107,23 @@ test("a member sees the all-time board, and both metrics on the company race", a
     [orgId, leaderMemberId, `e2e:ldr:${leaderMemberId}`],
   );
 
-  await page.goto("/ar/app/leaderboards");
+  // ★ wave 20 (REQ-UIX-078): the boards open on this week; all time is `?board=all` — an expectation that moved.
+  await page.goto("/ar/app/leaderboards?board=all");
   await streamed(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("لوحات الصدارة");
   const allTimeSection = page.locator("#all-time");
-  await expect(allTimeSection.getByText("قائد اللوحة")).toBeVisible();
+  // ★ wave 20: the leader stands on the podium; the name is scoped there (a selector that moved).
+  await expect(allTimeSection.locator("[data-slot=podium]").getByText("قائد اللوحة")).toBeVisible();
   await expect(allTimeSection).toContainText("65");
-  await expect(allTimeSection.getByText("أنت")).toBeVisible();
+  // ★ wave 20: «أنت» is on the viewer's podium place and their rank card names them — scoped to the first.
+  await expect(allTimeSection.getByText("أنت").first()).toBeVisible();
 
   // The company board — a snapshot must exist for a row to appear, so
   // build one directly (what worker/src/tasks/snapshot_leaderboards.ts
   // would do on its own schedule).
-  await db.query(`select public.snapshot_leaderboard($1, 'company', null, null, null, false)`, [orgId]);
+  // ★ wave 20 (DEC-219 §2 as corrected): the race chooses the month's company snapshot BY ITS PERIOD, as the nightly
+  // task writes it — a period-less snapshot is no month — so the seed names the month (an expectation that moved).
+  await db.query(`select public.snapshot_leaderboard($1, 'company', date_trunc('month', now())::date, (date_trunc('month', now()) + interval '1 month')::date, null, false)`, [orgId]);
   // Wave 7 (DEC-141 ruling 6): the company race is its own linked tab.
   await page.goto("/ar/app/leaderboards?board=companies");
   await streamed(page);

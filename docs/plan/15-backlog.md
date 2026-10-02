@@ -1512,6 +1512,21 @@ passes; `qa:contract` is untouched. One PR, `wave-19/m10b`.*
 - The cup card, both metrics with the ranking one marked, the `race-bar`s, the own company, the breakdown; no company;
   below the minimum.
 
+#### STORY-UIX-072 — «بلا ترتيب»: a minimum of active members, frozen into each snapshot
+**Covers:** `REQ-UIX-082` · **M22** · **M** · lead (the columns), `scoring` (the ranking and the reads) · PR C
+- `org_settings.company_min_active_members` (default 3) and a nullable `leaderboard_snapshots.min_active_members`, from
+  `0175`, additive, with their RLS cases; the company branch of `snapshot_leaderboard()` freezes the value and ranks
+  eligible companies first.
+- `SCR-028` and the home's race draw «بلا ترتيب» for an ineligible company. ★ The admin control is carried to the
+  console wave (`DEC-220` §1.3).
+
+#### STORY-UIX-073 — The photo award and its reversal
+**Covers:** `REQ-UIX-083` · **M22** · **L** · `scoring` (the award and reversal functions), `content` (the trigger on `photos`) · PR C
+- ★ The reversal is designed first, in `0149`'s shape; the award's key carries an epoch so a restore nets one award; a
+  restore pays only what a takedown reversed. The cap is the rule's.
+- A case drives one photograph past the cap on one session and sees `SCR-022`'s cap row.
+- Built only after `0174` is in production (`DEC-221`).
+
 ---
 
 ## 24. Coverage check

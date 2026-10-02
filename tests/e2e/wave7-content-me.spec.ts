@@ -153,8 +153,9 @@ test("the hub's tab strip, the profile's empty state, a field error, and the sav
 
   // The tab strip is real navigation — every route stays reachable, and a
   // tab near the end (privacy) must not widen the page either.
-  await page.getByRole("link", { name: "الخصوصية والبيانات" }).click();
-  await expect(page).toHaveURL(/\/app\/me\/privacy$/);
+  // ★ wave 20, PR B: the phone's way out of the hub is the settings glyph, «الإعدادات» → `/app/me/settings`.
+  await page.locator("#main").getByRole("link", { name: "الإعدادات" }).click();
+  await expect(page).toHaveURL(/\/app\/me\/settings$/);
   await capture(page, "tabstrip-privacy");
 });
 

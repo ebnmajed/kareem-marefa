@@ -22,8 +22,8 @@ import type { Locale } from "@/i18n/routing";
 // ★ EDIT MODE IS A URL, `/app/me?edit` (DEC-218 §4.3): «عدّل ملفك» and «إلغاء» are links, so both work before
 // hydration and a reload keeps the mode.
 //
-// ★ THE SETTINGS GLYPH IS NAMED BY WHERE IT GOES (DEC-218 §4.5): in PR A it opens `/app/me/privacy` and says
-// «الخصوصية والبيانات»; in PR B it opens `/app/me/settings` and says «الإعدادات».
+// ★ THE SETTINGS GLYPH IS NAMED BY WHERE IT GOES (DEC-218 §4.5): it opens `/app/me/settings` and says «الإعدادات»
+// (PR B; in PR A, before the route existed, it opened privacy under privacy's name).
 //
 // ★ The auth boundary is the DAL's (`sessionClient` → `requireSession`); the self tier is `me()`'s (REQ-PRF-004).
 export default async function MePage({
@@ -38,9 +38,9 @@ export default async function MePage({
   const query = ((await searchParams) ?? {}) as { edit?: string | string[] };
   const editing = query.edit !== undefined;
 
-  const [t, tNav, tMembers, tHome, me, companies, interests] = await Promise.all([
+  const [t, tShell, tMembers, tHome, me, companies, interests] = await Promise.all([
     getTranslations("profile"),
-    getTranslations("profile.nav"),
+    getTranslations("app.shell"),
     getTranslations("members.profile"),
     getTranslations("app.home"),
     getMe(locale),
@@ -56,8 +56,8 @@ export default async function MePage({
         back={false}
         action={
           <Link
-            href="/app/me/privacy"
-            aria-label={tNav("privacy")}
+            href="/app/me/settings"
+            aria-label={tShell("settings")}
             className="inline-flex size-10 items-center justify-center rounded-pill border border-edge bg-surface text-fg-heading"
           >
             <SettingsIcon />

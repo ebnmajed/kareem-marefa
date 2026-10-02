@@ -672,13 +672,13 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-019 directory | `REQ-PRF-005` |
 | SCR-020 profile | `REQ-PRF-001`, `REQ-PRF-003`, `REQ-PRF-004`, `REQ-PRF-009` |
 | SCR-021 my profile | `REQ-PRF-001`, `REQ-PRF-002`, `REQ-PRF-006`, `REQ-PRF-007`, `REQ-NFR-013`, `REQ-PRF-008`, `REQ-PRF-010`, `REQ-PRF-011`, `REQ-UIX-070`, `REQ-UIX-071` |
-| SCR-022 my points | `REQ-PTS-001`, `REQ-PTS-002`, `REQ-PTS-003`, `REQ-PTS-006`, `REQ-PTS-009`, `REQ-PTS-013`, `REQ-UIX-072` |
+| SCR-022 my points | `REQ-PTS-001`, `REQ-PTS-002`, `REQ-PTS-003`, `REQ-PTS-006`, `REQ-PTS-009`, `REQ-PTS-013`, `REQ-UIX-072`, `REQ-UIX-083` |
 | SCR-023 certificates | `REQ-CRT-005`, `REQ-CRT-006`, `REQ-CRT-013`, `REQ-CRT-014`, `REQ-INT-010`, `REQ-UIX-073` |
 | SCR-024 bookmarks | `REQ-DSC-006`, `REQ-UIX-074` |
 | SCR-025 calendar | `REQ-CAL-001` … `REQ-CAL-008`, `REQ-UIX-075` |
 | SCR-026 notifications | `REQ-NTF-001`, `REQ-NTF-003`, `REQ-NTF-005`, `REQ-NTF-006`, `REQ-UIX-076` |
 | SCR-027 leaderboards | `REQ-LDR-001`, `REQ-LDR-002`, `REQ-LDR-003`, `REQ-LDR-007`, `REQ-LDR-008`, `REQ-UIX-078` |
-| SCR-028 companies | `REQ-LDR-004`, `REQ-LDR-005`, `REQ-LDR-006`, `REQ-UIX-079` |
+| SCR-028 companies | `REQ-LDR-004`, `REQ-LDR-005`, `REQ-LDR-006`, `REQ-UIX-079`, `REQ-UIX-082` |
 | SCR-029 settings ★ | `REQ-NTF-003`, `REQ-LDR-008`, `REQ-CAL-003`, `REQ-UIX-077` |
 | SCR-040 dashboard | `REQ-ADM-004` |
 | SCR-041 proposals | `REQ-PRO-005`, `REQ-PRO-007`, `REQ-PRO-009` |

@@ -2,12 +2,11 @@
 
 import { redirect } from "next/navigation";
 import type { Locale } from "@/i18n/routing";
-import { markAllRead, markRead, preferenceInput, setPreference } from "@/lib/dal/notifications";
+import { markAllRead, openNotification } from "@/lib/dal/notifications";
 
-// Zod first, then the DAL (REQ-NFR-002). Authority is never in the form: the
-// DAL writes the session's own rows, and `p3_self_*` plus the `enabled`
-// column grant refuse everything else — a forged `category` reaches a check
-// constraint, not another member's settings.
+// The inbox's actions (REQ-NTF-006). Authority is never in the form: the DAL
+// writes the session's own rows. ★ wave 20: preferences left this page for
+// `/app/me/settings` (DEC-216 §5.13), and their action with them.
 //
 // ★ Bound to the real locale (`.bind(null, locale)`, `privacy/actions.ts`'s
 // pattern) — every redirect here hard-coded `/ar/...` before, which sent an
@@ -17,35 +16,24 @@ function screen(locale: Locale): string {
   return `/${locale}/app/me/notifications`;
 }
 
-export async function savePreference(locale: Locale, formData: FormData) {
-  const parsed = preferenceInput.safeParse({
-    category: formData.get("category")?.toString() ?? "",
-    channel: formData.get("channel")?.toString() ?? "",
-    // The button carries the value it is switching TO, so a double submit is
-    // idempotent rather than a toggle that races with itself.
-    enabled: formData.get("enabled") === "on",
-  });
-  if (!parsed.success) redirect(`${screen(locale)}?error=1`);
-
-  try {
-    await setPreference(locale, parsed.data);
-  } catch {
-    redirect(`${screen(locale)}?error=1`);
-  }
-  redirect(`${screen(locale)}?saved=1#preferences`);
-}
-
-export async function markNotificationRead(locale: Locale, formData: FormData) {
-  const id = formData.get("id")?.toString() ?? "";
-  try {
-    await markRead(locale, id);
-  } catch {
-    redirect(`${screen(locale)}?error=1`);
-  }
-  redirect(screen(locale));
-}
-
 export async function markAllNotificationsRead(locale: Locale) {
-  await markAllRead(locale);
+  // ★ wave 20 (N14): a failure says so on the inbox rather than throwing to the boundary.
+  try {
+    await markAllRead(locale);
+  } catch {
+    redirect(`${screen(locale)}?error=inbox`);
+  }
   redirect(screen(locale));
+}
+
+// ★ wave 20 (D7, DEC-218 §2.4) — one form per item: mark it read, then open its session or stay. The session comes
+// from the row through the DAL, never from the form, so a forged id opens nothing. Works without JavaScript.
+export async function openNotificationAction(locale: Locale, formData: FormData) {
+  let sessionId: string | null = null;
+  try {
+    ({ sessionId } = await openNotification(locale, formData.get("id")?.toString() ?? ""));
+  } catch {
+    redirect(`${screen(locale)}?error=inbox`);
+  }
+  redirect(sessionId ? `/${locale}/app/sessions/${sessionId}` : screen(locale));
 }

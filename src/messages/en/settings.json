@@ -1,0 +1,17 @@
+{
+  "settings": {
+    "title": "Settings",
+    "groups": {
+      "switches": "Preferences",
+      "links": "Account"
+    },
+    "email": "Email notifications",
+    "visibility": "Show me on leaderboards",
+    "alwaysOn": "Some messages always reach you: a change to or cancellation of a session you booked, your seat off the waitlist, an invitation to present or a session assigned to you and decisions on your proposals, a change to your points, your certificates, and anything about your content and account.",
+    "calendar": "Google Calendar",
+    "privacy": "Data and privacy",
+    "signOut": "Sign out",
+    "save": "Save",
+    "error": "Couldn't save that preference. Please try again."
+  }
+}

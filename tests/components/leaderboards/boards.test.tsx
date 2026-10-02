@@ -1,23 +1,22 @@
-// SCR-027 · SCR-028 — the two board components, wave 7 (DEC-137, DEC-141).
+// SCR-027 · SCR-028 — the boards rebuilt (wave 20, PR B, REQ-UIX-078, REQ-UIX-079, DEC-218, DEC-219 §2). Re-written at
+// this path after the old components were deleted (DEC-208); the retired cases are re-homed here (scoring's note).
 //
-// What a screenshot cannot say: the member's own rank is there even when they
-// are outside the rows shown (REQ-LDR-001); nobody's face is on a board
-// (DEC-099); and both company metrics are on every row with the ranking one
-// first and marked (REQ-LDR-004, REQ-LDR-005). Strings are the real Arabic.
+// What a screenshot cannot say: the viewer's own rank is there even outside the rows shown (REQ-LDR-001); nobody's face
+// is on a board (DEC-099); both company metrics are on every row with the ranking one marked (REQ-LDR-004, -005); a
+// signed number reads left to right; the cup draws only the quarter snapshot's own facts.
 import { render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider, createTranslator } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import leaderboards from "@/messages/ar/leaderboards.json";
 import ui from "@/messages/ar/ui.json";
-import type { CompanyBoardRow, CompanyPointsBreakdown, MemberBoardRow } from "@/lib/dal/leaderboards";
+import type { CompanyBoardRow, CompanyCup, CompanyPointsBreakdown, MemberBoardRow } from "@/lib/dal/leaderboards";
 
 const messages = { ...leaderboards, ...ui };
 
-// wave 16: the boards sit inside the playground's scope, which reads one class name from `next/font`,
-// compiled by Next and not by vitest.
 vi.mock("@/lib/fonts", () => ({ balooBhaijaan: { variable: "font-baloo-variable" } }));
-
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/dal/session", () => ({ sessionClient: async () => ({}) }));
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace?: string) => createTranslator({ locale: "ar", messages, namespace: namespace as never }),
 }));
@@ -25,6 +24,7 @@ vi.mock("next-intl/server", () => ({
 const { MemberBoard } = await import("@/components/scoring/member-board");
 const { CompanyBoard } = await import("@/components/scoring/company-board");
 const { CompanyPointsBreakdownSection } = await import("@/components/scoring/company-points-breakdown");
+const { CupCard } = await import("@/components/scoring/cup-card");
 
 const Wrap = ({ children }: { children: ReactNode }) => (
   <NextIntlClientProvider locale="ar" messages={messages}>
@@ -38,106 +38,175 @@ const member = (rank: number, over: Partial<MemberBoardRow> = {}): MemberBoardRo
   rank,
   points: 1000 - rank * 10,
   isSelf: false,
+  company: null,
+  teamColor: null,
   ...over,
 });
 
+async function board(rows: MemberBoardRow[], place: { rank: number; points: number; above: { displayName: string; gap: number } | null } | null = null, extra: { optedOut?: boolean; moreHref?: string | null } = {}) {
+  const ui = await MemberBoard({ rows, place, windowLabel: "هذا الأسبوع", optedOut: extra.optedOut ?? false, moreHref: extra.moreHref ?? null });
+  return render(<Wrap>{ui}</Wrap>).container;
+}
+
 describe("MemberBoard", () => {
-  it("★ shows the viewer's own row under «ترتيبك» when they are below the rows shown", async () => {
-    const rows = [member(1), member(2), member(3), member(4, { isSelf: true, displayName: "ريم العتيبي" })];
-    render(<Wrap>{await MemberBoard({ rows, limit: 2 })}</Wrap>);
-    const lists = screen.getAllByRole("list");
-    expect(within(lists[0]).getAllByRole("listitem")).toHaveLength(2);
-    const self = screen.getByRole("region", { name: "ترتيبك" });
-    expect(self).toHaveTextContent("ريم العتيبي");
-    expect(self).toHaveTextContent("أنت");
-    expect(self).toHaveTextContent("المرتبة 4");
+  it("★ the rank card is always there — the rank, the member above and the gap, the window's points", async () => {
+    const rows = Array.from({ length: 6 }, (_, i) => member(i + 1, i === 3 ? { isSelf: true } : {}));
+    const c = await board(rows, { rank: 4, points: 960, above: { displayName: "عضو 3", gap: 10 } });
+    const card = c.querySelector("[data-slot=rank-card]")!;
+    expect(card.textContent).toContain("#4");
+    expect(card.textContent).toContain("فوقك: عضو 3");
+    expect(card.textContent).toContain("+10");
+    expect(card.textContent).toContain("هذا الأسبوع");
   });
 
-  it("does not repeat the viewer's row when they are already among the rows shown", async () => {
-    const rows = [member(1, { isSelf: true }), member(2)];
-    render(<Wrap>{await MemberBoard({ rows, limit: 20 })}</Wrap>);
-    expect(screen.queryByRole("region", { name: "ترتيبك" })).toBeNull();
-    expect(screen.getAllByText("أنت")).toHaveLength(1);
+  it("★ not ranked is words on the card, never a zero rank", async () => {
+    const c = await board([member(1)], null);
+    expect(c.querySelector("[data-slot=rank-card]")!.textContent).toContain("لا ترتيب بعد");
   });
 
-  it("links a name to the member's profile, and draws no avatar (DEC-099)", async () => {
-    const { container } = render(<Wrap>{await MemberBoard({ rows: [member(1)] })}</Wrap>);
-    expect(screen.getByRole("link", { name: "عضو 1" })).toHaveAttribute("href", `/ar/app/members/${member(1).memberId}`);
-    expect(container.querySelector("img, [data-slot=avatar]")).toBeNull();
+  it("the first three stand on the podium; the rows begin at 4", async () => {
+    const c = await board(Array.from({ length: 6 }, (_, i) => member(i + 1)));
+    expect(c.querySelectorAll("[data-slot=podium] > li")).toHaveLength(3);
+    expect(Array.from(c.querySelectorAll("[data-slot=board-rows] > li")).map((li) => li.textContent?.match(/عضو \d/)?.[0])).toEqual(["عضو 4", "عضو 5", "عضو 6"]);
   });
 
-  it("an empty board names what to do next", async () => {
-    render(<Wrap>{await MemberBoard({ rows: [] })}</Wrap>);
-    expect(screen.getByText(leaderboards.leaderboards.empty)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "تصفّح الجلسات" })).toHaveAttribute("href", "/ar/app/sessions");
+  it("★ shows the viewer's own row under «ترتيبك» when they are below the rows shown (REQ-LDR-001)", async () => {
+    const rows = Array.from({ length: 12 }, (_, i) => member(i + 1, i === 11 ? { isSelf: true } : {}));
+    await board(rows, { rank: 12, points: 880, above: null });
+    const own = screen.getByRole("heading", { name: "ترتيبك" }).closest("section")!;
+    expect(within(own).getByText("عضو 12")).toBeTruthy();
+    expect(within(own).getByText("أنت")).toBeTruthy();
   });
+
+  it("does not repeat the viewer's row when they are among the rows shown", async () => {
+    const rows = Array.from({ length: 6 }, (_, i) => member(i + 1, i === 4 ? { isSelf: true } : {}));
+    await board(rows);
+    expect(screen.queryByRole("heading", { name: "ترتيبك" })).toBeNull();
+    expect(screen.getAllByText("عضو 5")).toHaveLength(1);
+  });
+
+  it("links a name to the member's profile, and draws no photograph anywhere — podium included (DEC-099)", async () => {
+    const c = await board(Array.from({ length: 5 }, (_, i) => member(i + 1)));
+    expect(screen.getAllByRole("link", { name: "عضو 1" })[0]).toHaveAttribute("href", expect.stringContaining("/app/members/00000000-0000-4000-8000-000000000001"));
+    expect(c.querySelector("img")).toBeNull();
+  });
+
+  it("an empty board names what to do next, and the rank card stays", async () => {
+    const c = await board([]);
+    expect(screen.getByRole("link", { name: "تصفّح الجلسات" })).toBeTruthy();
+    expect(c.querySelector("[data-slot=rank-card]")).not.toBeNull();
+  });
+
+  it("«عرض 11 إلى 50» when more rows exist", async () => {
+    await board(Array.from({ length: 14 }, (_, i) => member(i + 1)), null, { moreHref: "/app/leaderboards?rows=50" });
+    expect(screen.getByRole("link", { name: /عرض 11 إلى 50/ })).toHaveAttribute("href", expect.stringContaining("rows=50"));
+  });
+
+  it("an opted-out viewer is told nobody else sees them (REQ-LDR-008)", async () => {
+    const c = await board([member(1, { isSelf: true })], { rank: 1, points: 990, above: null }, { optedOut: true });
+    expect(c.querySelector("[data-slot=rank-card]")!.textContent).toContain("لا يراك الآخرون");
+  });
+});
+
+const company = (rank: number, over: Partial<CompanyBoardRow> = {}): CompanyBoardRow => ({
+  companyId: `c${rank}`,
+  companyName: `شركة ${rank}`,
+  rank,
+  totalPoints: 1000 - rank * 100,
+  pointsPerActiveMember: 10 - rank,
+  teamColor: null,
+  isOwn: false,
+  ...over,
 });
 
 describe("CompanyBoard", () => {
-  const rows: CompanyBoardRow[] = [
-    { companyId: "c1", companyName: "الشركة الأولى", rank: 1, totalPoints: 420, pointsPerActiveMember: 35 },
-    { companyId: "c2", companyName: "الشركة الثانية", rank: 2, totalPoints: 900, pointsPerActiveMember: 22.5 },
-  ];
+  it("★ both metrics on every row, the ranking one said and marked; the header names them once", async () => {
+    const ui = await CompanyBoard({ rows: [company(1), company(2, { isOwn: true })], metric: "points_per_active_member" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    const rows = container.querySelectorAll("[data-slot=board-rows] > li");
+    for (const row of Array.from(rows)) {
+      expect(row.textContent).toContain("الترتيب حسبه: نقاط لكل عضو نشط");
+      expect(row.textContent).toContain("مجموع النقاط");
+    }
+    expect(rows[1].textContent).toContain("فريقك");
+  });
 
-  // ★ wave 16 (REQ-UIX-048, DEC-195 §1.1): each company is a `race-bar`, which has no `<dl>` — the
-  // ranked metric is the bar's value and its `metricLabel` («الترتيب حسبه: …»), the other is its
-  // `secondary`. The same facts are asserted on those: both metrics, the ranked one first and the
-  // only one marked, the same two figures. Ledger: STATUS.md, wave 16, boards.test.tsx:78-93.
-  const metrics = (row: HTMLElement) => {
-    const [metricLine] = row.querySelectorAll("p");
-    const [ranked, other] = Array.from(metricLine.children) as HTMLElement[];
-    const values = Array.from(row.querySelectorAll("bdi[dir=ltr]")).map((b) => b.textContent);
-    return { ranked: ranked.textContent ?? "", other: other.textContent ?? "", values };
-  };
-
-  it("★ shows both metrics on every row, the ranking one first and marked", async () => {
-    render(<Wrap>{await CompanyBoard({ rows, metric: "points_per_active_member" })}</Wrap>);
-    const first = metrics(screen.getAllByRole("listitem")[0]);
-    expect(first.ranked).toContain("نقاط لكل عضو نشط");
-    expect(first.ranked).toContain("الترتيب حسبه");
-    expect(first.other).toContain("مجموع النقاط");
-    expect(first.other).not.toContain("الترتيب حسبه");
-    expect(first.values).toEqual(["35", "420"]);
+  it("★ «N نشطًا» after each name, from the frozen pair — and nothing when it cannot be derived", async () => {
+    const ui = await CompanyBoard({ rows: [{ ...company(1), active: 18 }, { ...company(2), active: null }], metric: "points_per_active_member" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    const rows = container.querySelectorAll("[data-slot=board-rows] > li");
+    expect(rows[0].textContent).toContain("18 نشطًا");
+    expect(rows[1].textContent).not.toContain("نشطًا");
   });
 
   it("follows the org's metric when it is total points", async () => {
-    render(<Wrap>{await CompanyBoard({ rows, metric: "total_points" })}</Wrap>);
-    const second = metrics(screen.getAllByRole("listitem")[1]);
-    expect(second.ranked).toContain("مجموع النقاط");
-    expect(second.values).toEqual(["900", "22.5"]);
+    const ui = await CompanyBoard({ rows: [company(1)], metric: "total_points" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    expect(container.querySelector("[data-slot=board-rows] li")!.textContent).toContain("الترتيب حسبه: مجموع النقاط");
+  });
+
+  it("a negative company total reads left to right", async () => {
+    const ui = await CompanyBoard({ rows: [company(1, { totalPoints: -40, pointsPerActiveMember: -2 })], metric: "total_points" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    expect(Array.from(container.querySelectorAll("bdi[dir=ltr]")).some((b) => b.textContent?.includes("-40"))).toBe(true);
   });
 });
 
-// ★ A signed number's direction is PINNED, not resolved. jsdom lays nothing
-// out, so it cannot see a «20-» reorder — the attribute is what is asserted.
-describe("signed numbers read left to right", () => {
-  it("a negative company total and its per-member figure", async () => {
-    const negative: CompanyBoardRow[] = [{ companyId: "c3", companyName: "الشركة الثالثة", rank: 3, totalPoints: -12, pointsPerActiveMember: -1.5 }];
-    render(<Wrap>{await CompanyBoard({ rows: negative, metric: "total_points" })}</Wrap>);
-    // wave 16: the two values are `race-bar`'s value and its `secondary` — no `definition` role any more.
-    // Ledger: STATUS.md, wave 16, boards.test.tsx:100-107.
-    const values = Array.from(screen.getByRole("listitem").querySelectorAll("bdi[dir=ltr]"));
-    expect(values).toHaveLength(2);
-    for (const bdi of values) {
-      expect(bdi).toHaveAttribute("dir", "ltr");
-      expect(bdi.textContent).toMatch(/-1/);
-    }
+describe("the breakdown", () => {
+  const breakdown: CompanyPointsBreakdown = {
+    companyId: "c1",
+    companyName: "صنف",
+    totalPoints: 175,
+    rows: [{ id: "r1", occurredAt: "2026-09-20T10:00:00Z", amount: -12, reason: "x", source: "company_attendance_pct", sessionId: null, sessionTitle: null, meta: null }],
+    catalogue: [],
+  };
+
+  it("a negative row in the company's own ledger reads left to right, with its minus", async () => {
+    const ui = await CompanyPointsBreakdownSection({ breakdown, locale: "ar", timeZone: "Asia/Riyadh" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    expect(container.querySelector("#company-breakdown [data-slot=figure] bdi")!.textContent).toBe("−12");
+    expect(screen.getByRole("heading", { name: "كيف حصلت شركتك على نقاطها" })).toBeTruthy();
   });
 
-  it("a negative row in the company's own ledger", async () => {
-    const breakdown: CompanyPointsBreakdown = {
-      companyId: "c1",
-      companyName: "الشركة الأولى",
-      totalPoints: 30,
-      catalogue: [],
-      rows: [
-        { id: "r1", occurredAt: "2026-09-01T09:00:00Z", amount: 50, reason: "استضافة", source: "company_hosting", sessionId: null, sessionTitle: null, meta: null },
-        { id: "r2", occurredAt: "2026-09-02T09:00:00Z", amount: -20, reason: "تصحيح", source: "company_hosting", sessionId: null, sessionTitle: null, meta: null },
-      ],
-    };
-    const { container } = render(<Wrap>{await CompanyPointsBreakdownSection({ breakdown, locale: "ar", timeZone: "Asia/Riyadh" })}</Wrap>);
-    const amounts = Array.from(container.querySelectorAll("li p.text-label bdi"));
-    expect(amounts.map((b) => b.textContent?.replace(/\u200E/g, ""))).toEqual(["50", "-20"]);
-    for (const bdi of amounts) expect(bdi).toHaveAttribute("dir", "ltr");
+  it("★ no company: the prompt to choose one, in place of the breakdown", async () => {
+    const ui = await CompanyPointsBreakdownSection({ breakdown: null, locale: "ar", timeZone: "Asia/Riyadh" });
+    render(<Wrap>{ui}</Wrap>);
+    expect(screen.getByRole("link", { name: "اختر شركتك" })).toHaveAttribute("href", expect.stringContaining("/app/me"));
+  });
+});
+
+describe("CupCard", () => {
+  const cup = (over: Partial<CompanyCup> = {}): CompanyCup => ({
+    quarter: 4,
+    year: 2026,
+    round: 1,
+    daysLeft: 26,
+    isFinal: false,
+    takenAt: "2026-10-02T23:00:00Z",
+    periodStart: "2026-10-01",
+    metric: "points_per_active_member",
+    rows: [],
+    timeZone: "Asia/Riyadh",
+    ...over,
+  });
+
+  it("★ the quarter, the month of three, the days left, provisional, the frozen metric, «تُسلَّم في اللقاء السنوي»", async () => {
+    const ui = await CupCard({ cup: cup(), locale: "ar" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    expect(screen.getByRole("heading", { name: "كأس الربع الرابع" })).toBeTruthy();
+    expect(container.textContent).toContain("الجولة 1 من 3");
+    expect(container.textContent).toContain("26 يومًا");
+    expect(container.textContent).toContain("تُسلَّم في اللقاء السنوي");
+    expect(container.textContent).toContain("الترتيب حسبه: نقاط لكل عضو نشط");
+    expect(container.textContent).toContain("مؤقتة");
+    expect(container.textContent).not.toMatch(/[٠-٩]/);
+  });
+
+  it("a final quarter says so, with no days and no round", async () => {
+    const ui = await CupCard({ cup: cup({ isFinal: true, daysLeft: null, quarter: 3 }), locale: "ar" });
+    const { container } = render(<Wrap>{ui}</Wrap>);
+    expect(screen.getByRole("heading", { name: "كأس الربع الثالث" })).toBeTruthy();
+    expect(container.textContent).toContain("نهائية");
+    expect(container.textContent).not.toContain("الجولة");
   });
 });

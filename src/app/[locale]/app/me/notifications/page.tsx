@@ -1,98 +1,109 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { getPreferenceMatrix, listNotifications } from "@/lib/dal/notifications";
-import { NotificationList } from "@/components/notifications/notification-list";
-import { PreferenceMatrix } from "@/components/notifications/preference-matrix";
-import { PageHeader } from "@/components/ui/page-header";
-import { SectionHeader } from "@/components/ui/section-header";
+import { getUnreadCount, listInbox } from "@/lib/dal/notifications";
+import { groupInbox } from "@/components/notifications/inbox-groups";
+import { InboxItem } from "@/components/notifications/inbox-item";
+import { UnreadFilter } from "@/components/notifications/unread-filter";
+import { HubStrip } from "@/components/shell/hub-strip";
+import { HubTopRow } from "@/components/shell/hub-top-row";
+import { EmptyState } from "@/components/ui/empty-state";
+import { GearIcon } from "@/components/ui/icons";
+import { Link } from "@/components/ui/link";
 import { Panel } from "@/components/ui/panel";
-import { Link } from "@/i18n/navigation";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { Locale } from "@/i18n/routing";
 import { markAllNotificationsRead } from "./actions";
 
-// SCR-026 · /app/me/notifications — the inbox and the preference matrix
-// (REQ-NTF-001, REQ-NTF-003, REQ-NTF-006).
+// SCR-026 · «الإشعارات» — `Notifications.dc.html`, `M10c.md` §6, REQ-UIX-076. Written from the artboard in wave 20
+// after the old page was deleted (DEC-208); its kept-behaviour table is N1 – N16 in `docs/plan/notes/notify.md` (§W2).
 //
-// One page, two sections, rather than a tab widget: at 390 px a tab strip
-// costs a row of chrome and hides half the screen's purpose behind a tap,
-// and both halves are short. The in-page links at the top are the tabs for
-// anyone who wants them and cost nothing to a screen reader.
+// The inbox and nothing else (DEC-216 §5.13): the top row, the strip, a toolbar — «غير المقروء فقط», «تعليم الكل كمقروء»
+// (or «لا شيء غير مقروء» when nothing is), «ما يصلني» to `/app/me/settings` — then the items grouped by day, and
+// «عرض الأقدم». No preference is set here; they live on `029`.
+//
+// ★ Everything works without JavaScript: the filter is a GET form, mark-all and each item are forms whose actions
+// redirect, and «عرض الأقدم» is a link carrying the page's cursor.
 export default async function NotificationsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saved?: string; error?: string; unread?: string }>;
+  searchParams: Promise<{ unread?: string; before?: string; error?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { saved, error, unread } = await searchParams;
+  const { unread, before, error } = await searchParams;
   const unreadOnly = unread === "1";
 
-  const [t, items, preferences] = await Promise.all([
+  const [t, page, unreadCount] = await Promise.all([
     getTranslations("notifications"),
-    listNotifications(locale, { unreadOnly }),
-    getPreferenceMatrix(locale),
+    listInbox(locale, { unreadOnly, before }),
+    getUnreadCount(locale),
   ]);
+  const groups = groupInbox(page.items, new Date(), page.timeZone);
+  const olderHref = page.nextCursor ? `/app/me/notifications?${new URLSearchParams({ ...(unreadOnly ? { unread: "1" } : {}), before: page.nextCursor })}` : null;
 
   return (
-    <>
-      <PageHeader title={t("title")} description={t("preferences.intro")} />
+    <div className="flex flex-col gap-4">
+      <HubTopRow title={t("title")} />
+      <HubStrip />
 
-      <nav aria-label={t("title")} className="mt-4 flex flex-wrap gap-4">
-        <a href="#inbox" className="text-label text-fg-heading underline underline-offset-4">
-          {t("tabs.inbox")}
-        </a>
-        <a href="#preferences" className="text-label text-fg-heading underline underline-offset-4">
-          {t("tabs.preferences")}
-        </a>
-      </nav>
-
-      {saved ? (
-        <div role="status">
-          <Panel tone="success" className="mt-4 p-3 text-body text-fg-heading">
-            {t("preferences.saved")}
-          </Panel>
-        </div>
-      ) : null}
       {error ? (
         <div role="alert">
-          <Panel tone="error" className="mt-4 p-3 text-body text-fg-heading">
-            {t("preferences.error")}
+          <Panel tone="error" className="p-3 text-body text-fg-heading">
+            {t("inbox.error")}
           </Panel>
         </div>
       ) : null}
 
-      <section id="inbox" aria-labelledby="inbox-heading" className="mt-10">
-        <SectionHeader
-          id="inbox-heading"
-          title={t("inbox.heading")}
-          actions={
-            <>
-              {/* A link, not a toggle button: it changes the URL, so `aria-current`
-                  is the right announcement and `aria-pressed` is not supported on
-                  role=link at all. */}
-              <Link
-                href={unreadOnly ? "/app/me/notifications" : "/app/me/notifications?unread=1"}
-                aria-current={unreadOnly ? "true" : undefined}
-                className={`text-label underline underline-offset-4 hover:text-fg-heading ${unreadOnly ? "text-fg-heading" : "text-fg-muted"}`}
-              >
-                {t("inbox.unreadOnly")}
-              </Link>
-              <form action={markAllNotificationsRead.bind(null, locale as Locale)}>
-                <button type="submit" className="text-label text-fg-muted underline underline-offset-4 hover:text-fg-heading">
-                  {t("inbox.markAllRead")}
-                </button>
-              </form>
-            </>
-          }
-        />
-        <NotificationList items={items} timeZone={preferences.timeZone} locale={locale as Locale} />
-      </section>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-1">
+        <UnreadFilter checked={unreadOnly} label={t("inbox.unreadOnly")} apply={t("inbox.apply")} />
+        <div className="flex items-center gap-4">
+          {unreadCount > 0 ? (
+            <form action={markAllNotificationsRead.bind(null, locale as Locale)}>
+              <button type="submit" className="min-h-11 text-label font-bold text-accent underline-offset-4 hover:underline">
+                {t("inbox.markAllRead")}
+              </button>
+            </form>
+          ) : (
+            <p role="status" className="text-label text-fg-muted">
+              {t("inbox.allRead")}
+            </p>
+          )}
+          <Link href="/app/me/settings" className="inline-flex min-h-11 items-center gap-1.5 text-label font-bold text-fg-muted hover:text-fg-heading">
+            <GearIcon aria-hidden />
+            {t("inbox.prefsLink")}
+          </Link>
+        </div>
+      </div>
 
-      <section id="preferences" aria-labelledby="preferences-heading" className="mt-12">
-        <SectionHeader id="preferences-heading" title={t("preferences.heading")} />
-        <PreferenceMatrix rows={preferences.rows} locale={locale as Locale} />
-      </section>
-    </>
+      {page.items.length === 0 ? (
+        <div role="status">
+          {unreadOnly ? (
+            <EmptyState title={t("inbox.allRead")} action={{ label: t("inbox.showAll"), href: "/app/me/notifications" }} />
+          ) : (
+            <EmptyState title={t("inbox.empty")} action={{ label: t("inbox.browse"), href: "/app/sessions" }} />
+          )}
+        </div>
+      ) : (
+        groups.map(({ group, items }, index) => (
+          <section key={`${group}-${index}`} aria-labelledby={`inbox-${group}-${index}`} className="flex flex-col gap-2">
+            <SectionHeader id={`inbox-${group}-${index}`} title={t(`inbox.group.${group}`)} />
+            <ul className="flex flex-col gap-2">
+              {items.map((item) => (
+                <li key={item.id}>
+                  <InboxItem item={item} group={group} timeZone={page.timeZone} locale={locale as Locale} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
+
+      {olderHref ? (
+        <Link href={olderHref} className="self-center py-2 text-label text-fg-muted underline underline-offset-4 hover:text-fg-heading">
+          {t("inbox.older")}
+        </Link>
+      ) : null}
+    </div>
   );
 }

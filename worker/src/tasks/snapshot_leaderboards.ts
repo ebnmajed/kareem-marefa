@@ -54,6 +54,27 @@ export const snapshot_leaderboards: Task = async (_payload, helpers) => {
       );
     }
 
+    // ★ wave 20, PR B (DEC-219 §2 as corrected, the lead's grant for these statements only): «كأس الربع», the
+    // company race's QUARTER, is a `company` snapshot whose period is a calendar quarter — no enum value, no new
+    // function; `snapshot_leaderboard()`'s company branch ranks it as it ranks the month. The current quarter is
+    // provisional, re-taken every night; the previous quarter is finalised once and then frozen by 0027's guards, so
+    // a cup handed over cannot move. The readers choose the month's and the quarter's company snapshots by their
+    // periods (`leaderboards.ts`'s `latestMonthly()` / `isQuarterPeriod()`), never by which was taken last.
+    // `main`'s worker, before the merge, runs none of this: no quarter snapshot exists and the cup card is empty.
+    const qStart = `date_trunc('quarter', now())::date`;
+    const qEnd = `(date_trunc('quarter', now()) + interval '3 months')::date`;
+    await helpers.query(`select public.snapshot_leaderboard($1, 'company', ${qStart}, ${qEnd}, null, false)`, [orgId]);
+    const qPrevStart = `date_trunc('quarter', now() - interval '3 months')::date`;
+    const qPrevEnd = `date_trunc('quarter', now())::date`;
+    const { rows: existingQuarter } = await helpers.query<{ is_final: boolean }>(
+      `select is_final from public.leaderboard_snapshots
+        where org_id = $1 and kind = 'company' and period_start = ${qPrevStart} and period_end = ${qPrevEnd}`,
+      [orgId],
+    );
+    if (!existingQuarter.some((r) => r.is_final)) {
+      await helpers.query(`select public.snapshot_leaderboard($1, 'company', ${qPrevStart}, ${qPrevEnd}, null, true)`, [orgId]);
+    }
+
     // Topic boards: all-time per category, re-snapshotted (never finalised
     // — there is no natural "period end" for an all-time board).
     const { rows: categories } = await helpers.query<{ id: string }>(`select id from public.categories where org_id = $1`, [orgId]);

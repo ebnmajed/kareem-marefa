@@ -3,6 +3,7 @@ import { z } from "zod";
 import { DEFAULT_TEMPLATES, emailDocumentFor, logoUrlFor, readBlocks, renderEmail, SAMPLE_MEMBER, SAMPLE_ORG, sampleFor } from "@kareem/mail-runtime";
 import { sessionClient } from "@/lib/dal/session";
 import { getOrgPrefs } from "@/lib/dal/proposals";
+import { decodeInboxCursor, encodeInboxCursor } from "@/components/notifications/inbox-cursor";
 
 // Notifications — the inbox and the preference matrix of SCR-026
 // (REQ-NTF-001, REQ-NTF-003, REQ-NTF-006), plus the unread count the shell's
@@ -287,6 +288,70 @@ export async function markAllRead(locale: string): Promise<void> {
     .eq("member_id", session.memberId)
     .is("read_at", null);
   if (error) throw new Error(`notifications: ${error.message}`);
+}
+
+// ── wave 20 — SCR-026, the inbox and nothing else (REQ-UIX-076, DEC-216 §5.13, DEC-218 §2.4) ──────────────────────
+
+/** How many items a page of the inbox holds before «عرض الأقدم». */
+const INBOX_PAGE = 30;
+
+export interface InboxPage {
+  items: NotificationDTO[];
+  /** The org's zone — the day an item is grouped under and the time it shows (A20). */
+  timeZone: string;
+  /** Present when older items exist past this page. */
+  nextCursor: string | null;
+}
+
+/**
+ * One page of the inbox (`REQ-NTF-006`), newest first, keyed on `(created_at, id)` so «عرض الأقدم» never repeats
+ * or skips an item that shares its instant with another (D8, DEC-218 §2.4). `p7_self_read` is the boundary.
+ */
+export async function listInbox(locale: string, opts: { unreadOnly?: boolean; before?: string | null } = {}): Promise<InboxPage> {
+  const { session, supabase } = await sessionClient(locale);
+  const before = decodeInboxCursor(opts.before);
+  let query = supabase
+    .from("notifications")
+    .select("id, key, payload, session_id, read_at, created_at")
+    .eq("member_id", session.memberId)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(INBOX_PAGE + 1);
+  if (opts.unreadOnly) query = query.is("read_at", null);
+  if (before) query = query.or(`created_at.lt."${before.at}",and(created_at.eq."${before.at}",id.lt.${before.id})`);
+
+  const [{ data, error }, { data: settings }] = await Promise.all([
+    query,
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  if (error) throw new Error(`notifications: ${error.message}`);
+  const rows = ((data ?? []) as NotificationRow[]).map(toDTO);
+  const items = rows.slice(0, INBOX_PAGE);
+  const last = items.at(-1);
+  return {
+    items,
+    timeZone: settings?.time_zone ?? "Asia/Riyadh",
+    nextCursor: rows.length > INBOX_PAGE && last ? encodeInboxCursor({ at: last.createdAt, id: last.id }) : null,
+  };
+}
+
+/**
+ * D7 (DEC-218 §2.4): opening an item marks it read and answers where it leads. The session comes from the ROW, never
+ * the form — a forged id is someone else's row, which `p7_self_read` hides, and answers null.
+ */
+export async function openNotification(locale: string, notificationId: string): Promise<{ sessionId: string | null }> {
+  if (!z.uuid().safeParse(notificationId).success) return { sessionId: null };
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("session_id")
+    .eq("id", notificationId)
+    .eq("member_id", session.memberId)
+    .maybeSingle();
+  if (error) throw new Error(`notifications: ${error.message}`);
+  if (!data) return { sessionId: null };
+  await markRead(locale, notificationId);
+  return { sessionId: data.session_id };
 }
 
 // ── The admin surfaces of SCR-058 and the reminder schedule ─────────────────

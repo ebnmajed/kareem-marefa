@@ -1,61 +1,76 @@
 import { getTranslations } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
+import { BoardRankCard, type BoardPlaceView } from "@/components/scoring/board-rank-card";
 import { MomentRank } from "@/components/scoring/moment-rank";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Link } from "@/components/ui/link";
+import { Podium } from "@/components/ui/podium";
 import { RankRow } from "@/components/ui/rank-row";
-// ★ Wave 17 (DEC-199 §1.3.4): the shell's layout is the scope now and scopes do not nest, so this is a plain element.
 import type { BoardMoment, MemberBoardRow } from "@/lib/dal/leaderboards";
 
-// SCR-027's member boards — all-time and this month. On the M9 system in wave 7
-// (`sessions`', DEC-137); ★ wave 16 (`scoring`'s for the wave, DEC-195 §1.1,
-// REQ-UIX-048): the rows are `rank-row`, inside the playground's scope, and
-// moment 5 moves them once when the member's rank ROSE since they last saw it.
+// SCR-027's member board — `Board.dc.html`, `M10c.md` §7 (wave 20, REQ-UIX-078, REQ-LDR-001, REQ-LDR-008). Written
+// from the artboard after the old file was deleted (DEC-208); scoring's for the wave, `sessions'` again after it.
 //
-// ★ REQ-LDR-001: THE MEMBER'S OWN RANK IS ALWAYS VISIBLE, even outside the
-// range shown. The board shows the top `limit`; when the viewer is below it,
-// their own row follows under «ترتيبك». REQ-LDR-008 means an opted-out
-// member's own call is the only one that returns their row.
+// In the artboard's order: «ترتيبك» (always), the podium for the first three (static), `rank-row`s 4 – 10 with the
+// viewer's row in place, the viewer's row pinned after them when it is further down, and «عرض 11 إلى 50».
 //
-// ★ INITIALS IN THE TEAM RING, NEVER A PHOTOGRAPH (DEC-183 §3, DEC-099,
-// REQ-UIX-048): `rank-row` takes no `src`. This replaces `16` §6.8.3's «no
-// avatars on a board», which `DEC-183` superseded (D-33 in scoring's note).
-// A name still links to the member's profile, and the whole row is the target.
-//
-// ★ A LEADERBOARD NEVER SHAMES: only a rise draws an arrow, and only a rise is
-// a moment. The viewer's row says «أنت» in words and is outlined.
-//
-// The scope sits around the board's list, the nearest container of the surface
-// that is neither transformed, filtered nor clipped — the boards live inside
-// `ui/tabs`' panel (DEC-197 §8). An empty board stays outside it, as it was.
+// ★ REQ-LDR-001: the viewer's own rank is always visible — the card, and the row wherever it falls. REQ-LDR-008: an
+// opted-out member's row is absent for everyone else, by the database (`all_time_leaderboard()`, `boards_read`,
+// `weekly_leaderboard()`); this draws what it is given.
+// ★ Initials in the team ring, never a photograph (DEC-099, DEC-183 §3), on the podium and the rows alike. A name links
+// to the member's profile. Only the viewer's RISE draws an arrow — other members' movement is not recorded anywhere
+// (the seen marks are the viewer's own) and a fall never draws one (REQ-UIX-037).
+// ★ Moment 5 (DEC-218 §3.4): one claim, two parts — the card's figure counts, and the rows FLIP — once per change,
+// through `MomentRank`, keyed as before. The podium never moves.
 
-const DEFAULT_LIMIT = 20;
+const PODIUM = 3;
+export const BOARD_SHOWN = 10;
+export const BOARD_MORE = 50;
 
 export async function MemberBoard({
   rows,
-  limit = DEFAULT_LIMIT,
+  place,
+  windowLabel,
+  optedOut,
+  limit = BOARD_SHOWN,
+  moreHref = null,
   moment = null,
   acknowledge = null,
   documentLoad = false,
 }: {
   rows: MemberBoardRow[];
+  place: BoardPlaceView | null;
+  windowLabel: string;
+  optedOut: boolean;
   limit?: number;
-  /** wave 16: what the viewer last saw on this board, from `getBoardMoment()`. */
+  /** «عرض 11 إلى 50» — the same window with more rows; null when every row is shown. */
+  moreHref?: string | null;
   moment?: BoardMoment | null;
-  /** wave 16: the bound Server Action that records it. */
   acknowledge?: (() => Promise<void>) | null;
-  /** wave 16: from `isDocumentLoad()` — a hard load plays nothing. */
   documentLoad?: boolean;
 }) {
   const t = await getTranslations("leaderboards");
+  const seenRank = moment?.seenRank ?? null;
+
+  // Awaited here rather than nested as an element, so the card renders in the same pass as the board.
+  const card = await BoardRankCard({ place, windowLabel, optedOut, seenRank });
 
   if (rows.length === 0) {
-    return <EmptyState size="sm" title={t("empty")} action={{ label: t("emptyAction"), href: "/app/sessions" }} />;
+    return (
+      <div className="flex flex-col gap-4">
+        {card}
+        <EmptyState size="sm" title={t("empty")} action={{ label: t("emptyAction"), href: "/app/sessions" }} />
+      </div>
+    );
   }
 
-  const shown = rows.slice(0, limit);
-  const self = rows.find((r) => r.isSelf);
-  const selfBelow = self && !shown.includes(self) ? self : null;
-  const seenRank = moment?.seenRank ?? null;
+  const top = rows.slice(0, PODIUM);
+  const listed = rows.slice(PODIUM, limit);
+  const self = rows.find((r) => r.isSelf) ?? null;
+  const selfBelow = self && !rows.slice(0, limit).includes(self) ? self : null;
+  const selfIndex = self ? listed.indexOf(self) : -1;
+  const index = selfIndex >= 0 ? selfIndex : null;
+  const passed = seenRank !== null && self ? Math.max(0, seenRank - self.rank) : 0;
 
   const row = (r: MemberBoardRow) => (
     <RankRow
@@ -74,10 +89,29 @@ export async function MemberBoard({
     />
   );
 
-  const selfIndex = self ? shown.indexOf(self) : -1;
   const board = (
-    <div className="flex flex-col gap-5">
-      <ul className="flex flex-col gap-2">{shown.map(row)}</ul>
+    <div className="flex flex-col gap-4">
+      {card}
+      <Podium
+        label={t("podium.label")}
+        places={top.map((r) => ({
+          rank: r.rank,
+          rankLabel: t.markup("rankValue", { value: formatNumber(r.rank), bdi: (chunks) => chunks }),
+          memberId: r.memberId,
+          displayName: r.displayName,
+          company: r.company ?? null,
+          teamColor: r.teamColor ?? null,
+          points: formatNumber(r.points),
+          pointsLabel: t("pointsValue", { count: r.points, value: formatNumber(r.points) }),
+          href: `/app/members/${r.memberId}`,
+          selfLabel: r.isSelf ? t("you") : null,
+        }))}
+      />
+      {listed.length > 0 ? (
+        <ul data-slot="board-rows" className="flex flex-col gap-2 border-t border-edge pt-4">
+          {listed.map(row)}
+        </ul>
+      ) : null}
       {selfBelow ? (
         <section aria-labelledby="board-self" className="flex flex-col gap-2 border-t border-edge pt-4">
           <h3 id="board-self" className="text-label text-fg-muted">
@@ -86,26 +120,29 @@ export async function MemberBoard({
           <ul className="flex flex-col gap-2">{row(selfBelow)}</ul>
         </section>
       ) : null}
+      {moreHref ? (
+        <Link href={moreHref} className="self-center py-1 text-caption text-fg-muted underline-offset-4 hover:underline">
+          {t.rich("more", { from: formatNumber(limit + 1), to: formatNumber(BOARD_MORE), count: rows.length, value: formatNumber(rows.length), bdi: (c) => <bdi>{c}</bdi> })}
+        </Link>
+      ) : null}
     </div>
   );
 
-  return (
-    <div className="rounded-panel bg-canvas p-3">
-      {acknowledge ? (
-        <MomentRank
-          occurrenceId={moment?.occurrenceId ?? null}
-          index={selfIndex >= 0 ? selfIndex : null}
-          passed={seenRank !== null && self ? Math.max(0, seenRank - self.rank) : 0}
-          fromFraction={null}
-          needsMark={moment?.needsMark ?? false}
-          acknowledge={acknowledge}
-          documentLoad={documentLoad}
-        >
-          {board}
-        </MomentRank>
-      ) : (
-        board
-      )}
-    </div>
+  return acknowledge ? (
+    <MomentRank
+      occurrenceId={moment?.occurrenceId ?? null}
+      index={index}
+      passed={passed}
+      fromFraction={null}
+      needsMark={moment?.needsMark ?? false}
+      acknowledge={acknowledge}
+      documentLoad={documentLoad}
+      count={place && moment?.occurrenceId && seenRank !== null && seenRank > place.rank ? { from: seenRank, to: place.rank } : null}
+      listSelector="[data-slot=board-rows]"
+    >
+      {board}
+    </MomentRank>
+  ) : (
+    board
   );
 }

@@ -28,19 +28,19 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 // (DEC-186 §4). On the light ground the accent outline takes the heading ink
 // (DEC-186 §2).
 
-export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, rank, rankLabel, secondary, ownLabel, layout = "stacked", className = "" }: RaceBarProps) {
+export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, rank, rankLabel, secondary, ownLabel, note = null, layout = "stacked", className = "" }: RaceBarProps) {
   const own = Boolean(ownLabel);
   const colour = teamColorOrNull(teamColor);
   const ring = colour ? "border-team" : "border-team-neutral";
   const ringStyle = colour ? ({ "--team": colour } as CSSProperties) : undefined;
-  const frame = own ? "border-accent pg-light:border-fg-heading" : "border-transparent";
+  const ownEdge = own ? "border-accent pg-light:border-fg-heading" : "border-transparent";
 
   // ★ wave 18 (DEC-207 W3, add-only): ONE line — the ring, the name, the bar, the value — as the home's race draws it
   // (`SCR-010`). The metric is still said on every row, to a screen reader, beside the value (REQ-LDR-005); the card
   // that holds the rows shows it once, visibly. The rank, when given, is heard and not drawn: the order is the rank.
   if (layout === "inline") {
     return (
-      <li className={`flex items-center gap-2 rounded-tile border-2 px-2 py-1.5 ${frame} ${className}`}>
+      <li className={`flex items-center gap-2 rounded-tile border-2 px-2 py-1.5 ${ownEdge} ${className}`}>
         {rank != null ? <span className="sr-only">{rankLabel}</span> : null}
         <span aria-hidden="true" data-slot="ring" style={ringStyle} className={`size-5 shrink-0 rounded-pill border-[3px] bg-canvas ${ring}`} />
         {/* The name and «فريقك» run on as one line, as the artboard sets «صنف، فريقك»; a long name may still wrap. */}
@@ -62,13 +62,53 @@ export function RaceBar({ companyName, teamColor, value, metricLabel, fraction, 
     );
   }
 
+  // ★ wave 20, PR B (DEC-218 §3.3, add-only): `grid` is `Companies.dc.html`'s row — the rank; the ring, the name and
+  // «فريقك» with the bar under the name, growing from the inline-start; the ranking metric's value in the display face;
+  // the other metric, quieter. The two metrics' names are said on every row to a screen reader (REQ-LDR-004, -005)
+  // and shown once, visibly, by the table's own header — the caller's.
+  if (layout === "grid") {
+    return (
+      <li className={`grid grid-cols-[1.75rem_minmax(0,1fr)_auto_auto] items-center gap-x-3 rounded-tile border-2 bg-surface px-3 py-2.5 ${own ? ownEdge : "border-edge"} ${className}`}>
+        <span className="text-center font-display text-play-sm font-extrabold text-fg-muted">
+          {rank != null ? (
+            <>
+              <span className="sr-only">{rankLabel}</span>
+              <bdi aria-hidden="true">{String(rank)}</bdi>
+            </>
+          ) : null}
+        </span>
+        <span className="flex min-w-0 flex-col gap-1.5">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-body font-bold leading-snug text-fg-heading">
+            <span aria-hidden="true" data-slot="ring" style={ringStyle} className={`size-5 shrink-0 rounded-pill border-[3px] bg-canvas ${ring}`} />
+            <bdi>{companyName}</bdi>
+            {own ? <span className="rounded-pill bg-accent px-2 text-caption font-bold text-on-accent pg-light:bg-fg-heading pg-light:text-canvas">{ownLabel}</span> : null}
+            {note ? <span className="text-caption font-semibold text-fg-muted">{note}</span> : null}
+          </span>
+          <ProgressBar value={fraction} max={1} fill="team" teamColor={colour} decorative />
+        </span>
+        <span className="font-display text-play-sm font-extrabold text-fg-heading">
+          <bdi dir="ltr">{value}</bdi>
+          <span className="sr-only">{metricLabel}</span>
+        </span>
+        <span className="text-body-sm text-fg-muted">
+          {secondary ? (
+            <>
+              <bdi dir="ltr">{secondary.value}</bdi>
+              <span className="sr-only">{secondary.label}</span>
+            </>
+          ) : null}
+        </span>
+      </li>
+    );
+  }
+
   // Three lines, so the row fits the box it is given — 326 px in the gallery at
   // 390, less inside a card: the ring, the name and the number; the bar across
   // the whole row; then the metric and the other one. Nothing on the first line
   // is fixed-width but the rank and the ring, so the name wraps and the number
   // stays whole.
   return (
-    <li className={`flex flex-col gap-1.5 rounded-tile border-2 px-2 py-2 ${frame} ${className}`}>
+    <li className={`flex flex-col gap-1.5 rounded-tile border-2 px-2 py-2 ${ownEdge} ${className}`}>
       <div className="flex items-center gap-2">
         {rank != null ? (
           <span className="w-6 shrink-0 text-center font-display font-extrabold text-fg-muted">

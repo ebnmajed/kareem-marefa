@@ -187,7 +187,7 @@ describe("SCR-020 — the profile", () => {
     expect(screen.getByText("هكذا يرى زملاؤك ملفك.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "عدّل ملفك" })).toHaveAttribute("href", expect.stringMatching(/\/app\/me$/));
     const links = screen.getByRole("region", { name: "في حسابك" });
-    expect(within(links).getAllByRole("link").map((a) => a.getAttribute("href")?.replace(/^\/ar/, ""))).toEqual(["/app/me/points", "/app/me", "/app/me/notifications"]);
+    expect(within(links).getAllByRole("link").map((a) => a.getAttribute("href")?.replace(/^\/ar/, ""))).toEqual(["/app/me/points", "/app/me", "/app/me/settings"]);
   });
 
   it("the admin tier: «للمشرفين» with the email in an LTR isolate and the attended list", async () => {

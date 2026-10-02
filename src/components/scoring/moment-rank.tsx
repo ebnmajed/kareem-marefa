@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { formatNumber } from "@/components/sessions/numerals";
+import { useCountUp } from "@/lib/ui/count-up";
 import { readDuration, readEasing } from "@/lib/ui/duration";
 import { momentKeys, readyToAcknowledge, useSeenMoment } from "@/components/scoring/use-seen-moment";
 
@@ -37,30 +39,66 @@ export interface MomentRankProps {
   acknowledge: (() => Promise<void>) | null;
   /** The server rendered this board for the document — a hard load: it never plays on this page load. */
   documentLoad?: boolean;
+  /**
+   * ★ wave 20, PR B (DEC-218 §3.4), add-only: the «ترتيبك» card's figure counts from the rank last seen to the new one
+   * while the rows FLIP — ONE moment, one claim, two parts. The card draws its figure through `RankFigure`, and its
+   * arrow (`[data-slot=rise]`) fades in. Absent: the board before wave 20, unchanged.
+   */
+  count?: { from: number; to: number } | null;
+  /** add-only: which list the FLIP moves — a selector inside the root. Default the first `ul`, as before. */
+  listSelector?: string;
   children: ReactNode;
 }
 
-export function MomentRank({ occurrenceId, index, passed, fromFraction, needsMark, acknowledge, documentLoad = false, children }: MomentRankProps) {
+const RankFrame = createContext<string | null>(null);
+
+/** The rank card's figure: the server's text, or the counting frame while moment 5 plays. */
+export function RankFigure({ text, prefix = "" }: { text: string; prefix?: string }) {
+  const frame = useContext(RankFrame);
+  return <>{frame === null ? text : `${prefix}${frame}`}</>;
+}
+
+export function MomentRank({ occurrenceId, index, passed, fromFraction, needsMark, acknowledge, documentLoad = false, count = null, listSelector = "ul", children }: MomentRankProps) {
   const [latchedId] = useState(occurrenceId);
   const [latchedLoad] = useState(documentLoad);
   const five = useSeenMoment("rank", latchedId, latchedLoad);
   const [finished, setFinished] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const playing = five.phase === "playing";
+  const [latchedCount] = useState(count);
+  const counted = useRef<(() => void) | null>(null);
+  const frame = useCountUp({
+    from: latchedCount?.from ?? 0,
+    to: latchedCount?.to ?? 0,
+    duration: "slow",
+    play: playing && latchedCount !== null,
+    onDone: () => counted.current?.(),
+    format: formatNumber,
+  });
 
   useLayoutEffect(() => {
-    const list = root.current?.querySelector("ul");
-    if (!playing || !list || index === null) return;
-    const rows = Array.from(list.children) as HTMLElement[];
+    const el = root.current;
+    if (!playing || !el) return;
+    const list = el.querySelector(listSelector);
+    const rows = (list ? Array.from(list.children) : []) as HTMLElement[];
     const easing = readEasing("play");
     const slow = readDuration("slow");
     const party = readDuration("party");
     const running: Animation[] = [];
     let at = 0;
 
-    const me = rows[index];
-    const oldPlace = rows[index + passed];
-    if (me && passed > 0 && oldPlace) {
+    const waits: Promise<void>[] = [];
+    if (latchedCount) {
+      waits.push(new Promise<void>((resolve) => (counted.current = resolve)));
+      const base = readDuration("base");
+      for (const rise of el.querySelectorAll<HTMLElement>("[data-slot=rank-card] [data-slot=rise]")) {
+        running.push(rise.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: base, delay: slow, easing, fill: "backwards" }));
+      }
+    }
+
+    const me = index === null ? undefined : rows[index];
+    const oldPlace = index === null ? undefined : rows[index + passed];
+    if (me && index !== null && passed > 0 && oldPlace) {
       const down = oldPlace.offsetTop - me.offsetTop;
       const up = me.offsetTop - (rows[index + 1]?.offsetTop ?? me.offsetTop);
       running.push(me.animate([{ transform: `translateY(${down}px)` }, { transform: "none" }], { duration: slow, easing, fill: "backwards" }));
@@ -78,7 +116,7 @@ export function MomentRank({ occurrenceId, index, passed, fromFraction, needsMar
     }
 
     let live = true;
-    Promise.all(running.map((a) => a.finished))
+    Promise.all([...waits, ...running.map((a) => a.finished)])
       .then(() => {
         if (!live) return;
         five.done();
@@ -104,8 +142,10 @@ export function MomentRank({ occurrenceId, index, passed, fromFraction, needsMar
   }, [five.verdict, finished, needsMark, acknowledge]);
 
   return (
-    <div ref={root} data-moment={playing ? "playing" : "static"} data-moment-keys={momentKeys([["rank", latchedId]])}>
-      {children}
-    </div>
+    <RankFrame.Provider value={playing && latchedCount ? frame : null}>
+      <div ref={root} data-moment={playing ? "playing" : "static"} data-moment-keys={momentKeys([["rank", latchedId]])}>
+        {children}
+      </div>
+    </RankFrame.Provider>
   );
 }

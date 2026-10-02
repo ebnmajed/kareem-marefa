@@ -19,7 +19,18 @@
       "markAllRead": "Mark all as read",
       "allRead": "Nothing unread",
       "openSession": "Open the session",
-      "count": "{count, plural, =0 {no notifications} one {one notification} other {{value} notifications}}"
+      "count": "{count, plural, =0 {no notifications} one {one notification} other {{value} notifications}}",
+      "prefsLink": "What I receive",
+      "apply": "Show",
+      "older": "Show older",
+      "showAll": "Show all",
+      "browse": "Browse sessions",
+      "error": "That didn't work. Please try again.",
+      "group": {
+        "today": "Today",
+        "week": "This week",
+        "older": "Older"
+      }
     },
     "change": {
       "field": {

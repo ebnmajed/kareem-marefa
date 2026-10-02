@@ -10,7 +10,7 @@
 
 رقم الشهادة: ⁨KM-000001⁩
 
-تفضيلات الإشعارات: ⁨https://app.kareem.example/ar/app/me/notifications⁩
+تفضيلات الإشعارات: ⁨https://app.kareem.example/ar/app/me/settings⁩
 
 —
 كريم معرفة · كريم معرفة · شارك المعرفة.. واصنع الأثر

@@ -21,10 +21,12 @@ async function insertPhoto(tx: Tx, orgId: string, sessionId: string, uploaderId:
 }
 
 describe("POL-photos.insert.checked_in", () => {
-  it("a member with a confirmed RSVP and no check-in is rejected; the same member, after checking in, succeeds", async () => {
+  // ★ wave 20 (0174, DEC-221, REQ-EVT-011): there is NO direct insert. A checked-in member, the presenter and an admin
+  // are all refused — the row is written only by `record_photo_upload()`, after the worker has stripped the bytes.
+  // Before 0174 these cases asserted the direct insert SUCCEEDED, which let a member publish an unstripped original.
+  it("a checked-in member is refused a direct insert, even claiming exif_stripped", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
       await tx.asOwner();
       const [session] = await tx.q<{ id: string }>(
         `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at, venue_id, capacity, state, published_at)
@@ -32,29 +34,11 @@ describe("POL-photos.insert.checked_in", () => {
          returning id`,
         [f.a.id, f.a.categoryId, f.a.venueId],
       );
-      await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [
-        f.a.id,
-        session.id,
-        f.a.members[0].memberId,
-      ]);
       await tx.q(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [
         f.a.id,
         session.id,
         f.a.members[1].memberId,
       ]);
-
-      await tx.as(f.a.members[1].claims);
-      expect(
-        await errorCode(() =>
-          tx.q(
-            `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
-             values ($1, $2, $3, 'x.webp', 1000, $4, true)`,
-            [f.a.id, session.id, f.a.members[1].memberId, "b".repeat(64)],
-          ),
-        ),
-      ).toBe(PERMISSION_DENIED);
-
-      await tx.asOwner();
       const [code] = await tx.q<{ id: string }>(
         `insert into public.check_in_codes (org_id, session_id, code, valid_from, valid_until)
          values ($1, $2, 'ACDEFG', now() - interval '1 minute', now() + interval '10 minutes') returning id`,
@@ -66,35 +50,41 @@ describe("POL-photos.insert.checked_in", () => {
       );
 
       await tx.as(f.a.members[1].claims);
-      const [ok] = await tx.q<{ id: string }>(
-        `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
-         values ($1, $2, $3, 'y.webp', 1000, $4, true) returning id`,
-        [f.a.id, session.id, f.a.members[1].memberId, "c".repeat(64)],
-      );
-      expect(ok.id).toBeTruthy();
+      expect(
+        await errorCode(() =>
+          tx.q(
+            `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
+             values ($1, $2, $3, 'y.webp', 1000, $4, true)`,
+            [f.a.id, session.id, f.a.members[1].memberId, "c".repeat(64)],
+          ),
+        ),
+      ).toBe(PERMISSION_DENIED);
     });
   });
 
-  it("the presenter and an admin can upload without a check-in", async () => {
+  it("the presenter and an admin are refused a direct insert too", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      // Promoted as migration 0037 at wave-2 sync 5: applied by `supabase db reset`.
-
-      await tx.as(f.a.members[0].claims); // presenter of `published`, not checked in
-      const [ok] = await tx.q<{ id: string }>(
-        `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
-         values ($1, $2, $3, 'p.webp', 1000, $4, true) returning id`,
-        [f.a.id, f.m2.a.published, f.a.members[0].memberId, "d".repeat(64)],
-      );
-      expect(ok.id).toBeTruthy();
-
+      await tx.as(f.a.members[0].claims); // presenter of `published`
+      expect(
+        await errorCode(() =>
+          tx.q(
+            `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
+             values ($1, $2, $3, 'p.webp', 1000, $4, true)`,
+            [f.a.id, f.m2.a.published, f.a.members[0].memberId, "d".repeat(64)],
+          ),
+        ),
+      ).toBe(PERMISSION_DENIED);
       await tx.as(f.a.admin.claims);
-      const [ok2] = await tx.q<{ id: string }>(
-        `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
-         values ($1, $2, $3, 'a.webp', 1000, $4, true) returning id`,
-        [f.a.id, f.m2.a.published, f.a.admin.memberId, "e".repeat(64)],
-      );
-      expect(ok2.id).toBeTruthy();
+      expect(
+        await errorCode(() =>
+          tx.q(
+            `insert into public.photos (org_id, session_id, uploader_id, storage_path, byte_size, sha256, exif_stripped)
+             values ($1, $2, $3, 'a.webp', 1000, $4, true)`,
+            [f.a.id, f.m2.a.published, f.a.admin.memberId, "e".repeat(64)],
+          ),
+        ),
+      ).toBe(PERMISSION_DENIED);
     });
   });
 });

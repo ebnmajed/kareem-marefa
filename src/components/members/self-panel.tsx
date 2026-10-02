@@ -31,7 +31,7 @@ export async function SelfNote() {
 const LINKS = [
   { key: "ledger", href: "/app/me/points" },
   { key: "email", href: "/app/me" },
-  { key: "notifications", href: "/app/me/notifications" },
+  { key: "notifications", href: "/app/me/settings" }, // ★ wave 20, PR B (DEC-216 §5.13): preferences live on SCR-029
 ] as const;
 
 export async function SelfLinks() {

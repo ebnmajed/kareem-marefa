@@ -5,7 +5,8 @@
       "allTime": "كل الأوقات",
       "monthly": "هذا الشهر",
       "company": "سباق الشركات",
-      "companyBreakdown": "نقاط شركتي"
+      "companyBreakdown": "نقاط شركتي",
+      "weekly": "هذا الأسبوع"
     },
     "you": "أنت",
     "empty": "لا بيانات كافية بعد لعرض هذه اللوحة.",
@@ -27,7 +28,15 @@
         "total_points": "الترتيب حسبه: مجموع النقاط",
         "points_per_active_member": "الترتيب حسبه: نقاط لكل عضو نشط"
       },
-      "ownLabel": "فريقك"
+      "ownLabel": "فريقك",
+      "active": "{count, plural, zero {لا أعضاء نشطين} one {عضو نشط} two {عضوان نشطان} few {<bdi>{value}</bdi> نشطين} many {<bdi>{value}</bdi> نشطًا} other {<bdi>{value}</bdi> نشط}}",
+      "columns": {
+        "rank": "#",
+        "company": "الشركة",
+        "perActiveMember": "لكل عضو",
+        "totalPoints": "المجموع",
+        "ranked": "الترتيب حسبه"
+      }
     },
     "companyBreakdown": {
       "heading": "كيف حصلت شركتك على نقاطها",
@@ -50,7 +59,10 @@
         "attended": "<bdi>{attended}</bdi> من <bdi>{active}</bdi> من الأعضاء النشطين حضروا (<bdi>{percent}</bdi>٪)",
         "presenting": "<bdi>{presenting}</bdi> من <bdi>{active}</bdi> من الأعضاء النشطين قدّموا (<bdi>{percent}</bdi>٪)"
       },
-      "balanceLabel": "رصيد شركتك من قواعد الشركات"
+      "balanceLabel": "رصيد شركتك من قواعد الشركات",
+      "noCompany": "اختر شركتك لتعرف كيف حصلت على نقاطها.",
+      "chooseCompany": "اختر شركتك",
+      "sessions": "{count, plural, zero {بلا جلسات} one {جلسة واحدة} two {جلستان} few {<bdi>{value}</bdi> جلسات} many {<bdi>{value}</bdi> جلسة} other {<bdi>{value}</bdi> جلسة}}"
     },
     "description": "من يتصدّر مؤسستك هذا الشهر ومنذ البداية، وكيف تتسابق الشركات.",
     "emptyAction": "تصفّح الجلسات",
@@ -59,6 +71,40 @@
     "allTime": {
       "live": "تُحدَّث مباشرة مع كل نقطة"
     },
-    "riseLabel": "{count, plural, zero {لم يتغيّر مركزك} one {تقدّمت مركزًا واحدًا منذ زيارتك الأخيرة} two {تقدّمت مركزين منذ زيارتك الأخيرة} few {تقدّمت {value} مراكز منذ زيارتك الأخيرة} many {تقدّمت {value} مركزًا منذ زيارتك الأخيرة} other {تقدّمت {value} مركز منذ زيارتك الأخيرة}}"
+    "riseLabel": "{count, plural, zero {لم يتغيّر مركزك} one {تقدّمت مركزًا واحدًا منذ زيارتك الأخيرة} two {تقدّمت مركزين منذ زيارتك الأخيرة} few {تقدّمت {value} مراكز منذ زيارتك الأخيرة} many {تقدّمت {value} مركزًا منذ زيارتك الأخيرة} other {تقدّمت {value} مركز منذ زيارتك الأخيرة}}",
+    "week": {
+      "until": "حتى <bdi>{day}</bdi>"
+    },
+    "rankCard": {
+      "label": "ترتيبك",
+      "above": "فوقك: <b><bdi>{name}</bdi></b> · <n>+<bdi>{gap}</bdi></n>",
+      "first": "أنت في الصدارة",
+      "absent": "لا ترتيب بعد",
+      "hidden": "لا يراك الآخرون",
+      "windowPoints": {
+        "week": "هذا الأسبوع",
+        "month": "هذا الشهر",
+        "all": "كل الأوقات"
+      }
+    },
+    "podium": {
+      "label": "المراكز الأولى"
+    },
+    "more": "عرض <bdi>{from}</bdi> إلى <bdi>{to}</bdi> · {count, plural, zero {لا أعضاء} one {عضو واحد} two {عضوان} few {<bdi>{value}</bdi> أعضاء} many {<bdi>{value}</bdi> عضوًا} other {<bdi>{value}</bdi> عضو}}",
+    "category": {
+      "trigger": "حسب التصنيف",
+      "all": "كل التصنيفات",
+      "current": "التصنيف: <bdi>{name}</bdi>",
+      "takenAt": "احتُسبت في <bdi>{date}</bdi>"
+    },
+    "cup": {
+      "title": "{quarter, select, first {كأس الربع الأول} second {كأس الربع الثاني} third {كأس الربع الثالث} other {كأس الربع الرابع}}",
+      "round": "الجولة <bdi>{round}</bdi> من <bdi>{rounds}</bdi>",
+      "days": "{count, plural, zero {اليوم الأخير} one {يوم واحد} two {يومان} few {<bdi>{value}</bdi> أيام} many {<bdi>{value}</bdi> يومًا} other {<bdi>{value}</bdi> يوم}}",
+      "awarded": "تُسلَّم في اللقاء السنوي",
+      "provisional": "مؤقتة — تُحدَّث كل ليلة حتى نهاية الربع",
+      "empty": "لم يُحسب سباق هذا الربع بعد",
+      "monthFallback": "سباق هذا الشهر"
+    }
   }
 }

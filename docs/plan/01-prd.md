@@ -3567,6 +3567,27 @@ renders every state from props, reads no data and no message catalogue, and is b
   cap explanation with `0`; colour is never the only mark of a negative amount.
 - There is no `status-mark` (`DEC-216` §2.1).
 
+#### REQ-UIX-082 — A company below the org's minimum of active members is unranked, by a setting of its own
+**Serves:** `DEC-220` §1 · `DEC-219` §2 · `REQ-LDR-004`, `REQ-LDR-006` · `09` `SCR-028`
+The org holds `company_min_active_members` (default 3), separate from any scoring rule's minimum. A company snapshot
+freezes the value; the company ranking puts eligible companies first, and a company below the minimum is drawn
+«بلا ترتيب» with no rank — on the company race and on the home's race alike.
+**Acceptance:**
+- A final snapshot — a month or a quarter — never changes when the setting changes.
+- Every stored rank stays positive; eligible companies rank first.
+- The setting has no admin control this wave (`DEC-220` §1.3); its default and range are enforced by the database.
+
+#### REQ-UIX-083 — A visible photograph earns its rule's points, and a takedown reverses them
+**Serves:** `DEC-220` §2 · `REQ-PTS-002`, `REQ-PTS-006`, `REQ-PTS-012`, `REQ-PTS-013` · `REQ-EVT-011` · `09` `SCR-022`
+A photograph that becomes visible pays the `photo` rule's points to its uploader, capped per session by the rule; a
+hidden or removed photograph writes a compensating row; a photograph restored after a takedown pays once more, so the
+net is one award, and a photograph never paid is not paid by a restore.
+**Acceptance:**
+- The award and the reversal are written by `security definer` functions with an idempotency key per photo and epoch;
+  no ledger row is ever updated or deleted.
+- The cap is read from `scoring_rules`; a photograph past it is explained in place on `SCR-022` as the cap row.
+- A photograph's row exists only after its EXIF strip (`0174`), so no unstripped image earns or shows.
+
 ---
 
 ## 24. Survey — `SUR`

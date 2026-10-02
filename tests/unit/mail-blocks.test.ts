@@ -211,8 +211,8 @@ describe("renderEmail's one branch", () => {
     // The row's `body` is what `main`'s OLD worker renders down the string
     // path; the block path does not use it.
     expect(out.html).not.toContain("النص البديل");
-    // The footer's link is built from `appUrl`.
-    expect(out.html).toContain("/ar/app/me/notifications");
+    // The footer's link is built from `appUrl`. ★ wave 20 (ledger, D14): it opens the settings, not the inbox.
+    expect(out.html).toContain("/ar/app/me/settings");
     // And the shell's sign-off is the one the string path writes.
     expect(out.text).toContain("كريم معرفة · كريم معرفة · شارك المعرفة.. واصنع الأثر");
   });
