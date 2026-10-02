@@ -9,8 +9,8 @@
 // `08` §3.3 exists to spare them. So the day and the values are asserted here,
 // on the component, and in the spec on the rendered page.
 //
-// `tests/components/notifications/notification-list.test.tsx` is `main`'s
-// evidence for the one-day card and is not edited (rule 4).
+// ★ Wave 20 (ledger, a SELECTOR move): the card is `inbox-item.tsx` now — `notification-list.tsx` was deleted with
+// SCR-026's page (DEC-208) and its change-line logic moved unchanged. Every expectation below is as it was.
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -23,12 +23,12 @@ import type { NotificationDTO } from "@/lib/dal/notifications";
 // The card reads its own namespace and `sessions.days` for the day's words.
 const messages = { ...arNotifications, ...arSessions };
 
-vi.mock("@/app/[locale]/app/me/notifications/actions", () => ({ markNotificationRead: vi.fn() }));
+vi.mock("@/app/[locale]/app/me/notifications/actions", () => ({ openNotificationAction: vi.fn() }));
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => createTranslator({ locale: "ar", messages, namespace: namespace as "notifications" }),
 }));
 
-const { NotificationList } = await import("@/components/notifications/notification-list");
+const { InboxItem } = await import("@/components/notifications/inbox-item");
 
 const DAY_2_WAS = "2026-10-02T15:00:00Z";
 const DAY_2_IS = "2026-10-02T18:00:00Z";
@@ -61,10 +61,10 @@ function line(label: RegExp): string {
 }
 
 async function renderList(items: NotificationDTO[]) {
-  const element = await NotificationList({ items, timeZone: "Asia/Riyadh", locale: "ar" as Locale });
+  const elements = await Promise.all(items.map((item) => InboxItem({ item, group: "older", timeZone: "Asia/Riyadh", locale: "ar" as Locale })));
   return render(
     <NextIntlClientProvider locale="ar" messages={messages}>
-      {element}
+      <div>{elements}</div>
     </NextIntlClientProvider>,
   );
 }

@@ -3964,3 +3964,26 @@ master's derived state follows it.
   m.category, 'email'))` (`0136:129`).
 - So `getPreferenceMatrix()`'s `?? true` (`notifications.ts`, `on()`) and `emailMasterOn()` read a missing row exactly
   as the send does. The matrix's own unit test pins that, beside the cases in §W12.
+
+## W13. `026` built — read against its table (N1 – N16)
+
+**Holds:**
+- N1, plus the cursor. `listInbox()` is keyed on `(created_at, id)`; the cursor is opaque base64url, and a forged one
+  reads as the first page.
+- N2: the GET form with a `<noscript>` submit.
+- N3: «لا شيء غير مقروء» replaces mark-all at zero unread, counted by `getUnreadCount()`.
+- N5 – N8.
+- N9: the dot and fill are drawn, and the word is in the `h3`.
+- N10: the locale is now passed. Times show the clock today, the weekday and clock this week, and the date before.
+- N11: `empty-state` inside `role="status"`.
+- N12: untouched.
+- N13 – N14: `?error=inbox` gives `inbox.error`.
+- N15: the matrix and the tabs are gone.
+- N16.
+
+**D7 as built:** `openNotificationAction` reads the session from the row through `openNotification()`, never from the
+form. `markNotificationRead` is deleted; the item's one form replaced it. `markRead()` in the DAL stays and is called by
+`openNotification()`.
+
+**Not drawn:** relative times («قبل 14 دقيقة»). They would need new strings per unit; the clock carries the same
+fact.

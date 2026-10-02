@@ -96,11 +96,15 @@ test("the inbox, an unread notification marked read, and the preference matrix's
   await page.goto("/ar/app/me/notifications");
   await expect(page.getByRole("heading", { name: "الإشعارات", level: 1 })).toBeVisible();
   await expect(page.getByText("جلسة جديدة")).toBeVisible();
-  await expect(page.getByText("غير مقروء")).toBeVisible();
+  // ★ wave 20 (ledger): unread is a dot, a fill and the word for AT (N9) — the item, from #main.
+  await expect(page.locator('#main article[data-unread="true"]')).toHaveCount(1);
+  await expect(page.locator("#main article")).toContainText("غير مقروء");
   await capture(page, "unread");
 
-  await page.getByRole("button", { name: "تعليم كمقروء" }).click();
-  await expect(page.getByText("غير مقروء")).toHaveCount(0);
+  await page.locator("#main").getByRole("button", { name: "تعليم كمقروء" }).click();
+  // ★ wave 20 (ledger): the item's own word is gone — «لا شيء غير مقروء» in the toolbar is the other match now.
+  await expect(page.locator('#main article[data-unread="true"]')).toHaveCount(0);
+  await expect(page.locator("#main article").getByText("غير مقروء")).toHaveCount(0);
 
   // «absence means on» — a member with no rows in notification_preferences
   // sees every switchable channel already enabled, straight from the DAL's

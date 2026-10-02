@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import type { Locale } from "@/i18n/routing";
-import { markAllRead, markRead, preferenceInput, setPreference } from "@/lib/dal/notifications";
+import { markAllRead, openNotification, preferenceInput, setPreference } from "@/lib/dal/notifications";
 
 // Zod first, then the DAL (REQ-NFR-002). Authority is never in the form: the
 // DAL writes the session's own rows, and `p3_self_*` plus the `enabled`
@@ -35,17 +35,24 @@ export async function savePreference(locale: Locale, formData: FormData) {
   redirect(`${screen(locale)}?saved=1#preferences`);
 }
 
-export async function markNotificationRead(locale: Locale, formData: FormData) {
-  const id = formData.get("id")?.toString() ?? "";
+export async function markAllNotificationsRead(locale: Locale) {
+  // ★ wave 20 (N14): a failure says so on the inbox rather than throwing to the boundary.
   try {
-    await markRead(locale, id);
+    await markAllRead(locale);
   } catch {
-    redirect(`${screen(locale)}?error=1`);
+    redirect(`${screen(locale)}?error=inbox`);
   }
   redirect(screen(locale));
 }
 
-export async function markAllNotificationsRead(locale: Locale) {
-  await markAllRead(locale);
-  redirect(screen(locale));
+// ★ wave 20 (D7, DEC-218 §2.4) — one form per item: mark it read, then open its session or stay. The session comes
+// from the row through the DAL, never from the form, so a forged id opens nothing. Works without JavaScript.
+export async function openNotificationAction(locale: Locale, formData: FormData) {
+  let sessionId: string | null = null;
+  try {
+    ({ sessionId } = await openNotification(locale, formData.get("id")?.toString() ?? ""));
+  } catch {
+    redirect(`${screen(locale)}?error=inbox`);
+  }
+  redirect(sessionId ? `/${locale}/app/sessions/${sessionId}` : screen(locale));
 }

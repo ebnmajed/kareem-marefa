@@ -19,7 +19,18 @@
       "markAllRead": "تعليم الكل كمقروء",
       "allRead": "لا شيء غير مقروء",
       "openSession": "فتح الجلسة",
-      "count": "{count, plural, zero {لا إشعارات} one {إشعار واحد} two {إشعاران} few {{value} إشعارات} many {{value} إشعارًا} other {{value} إشعار}}"
+      "count": "{count, plural, zero {لا إشعارات} one {إشعار واحد} two {إشعاران} few {{value} إشعارات} many {{value} إشعارًا} other {{value} إشعار}}",
+      "prefsLink": "ما يصلني",
+      "apply": "عرض",
+      "older": "عرض الأقدم",
+      "showAll": "عرض الكل",
+      "browse": "تصفّح الجلسات",
+      "error": "تعذّر تنفيذ الطلب. حاول مرة أخرى.",
+      "group": {
+        "today": "اليوم",
+        "week": "هذا الأسبوع",
+        "older": "أقدم"
+      }
     },
     "change": {
       "field": {

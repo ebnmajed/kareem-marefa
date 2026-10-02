@@ -122,14 +122,17 @@ test("SCR-026 — the member reads their inbox, marks one read, and switches a c
   await page.goto("/ar/app/me/notifications");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("الإشعارات");
 
-  const seatRow = page.locator("li", { hasText: "تأكّد مقعدك" });
+  // ★ wave 20 (ledger, D7 / DEC-218 §2.4): each item is ONE form — an item with a session opens it after marking it
+  // read («فتح الجلسة» is that form's button), one without is marked read by «تعليم كمقروء». Locators from #main.
+  const seatRow = page.locator("#main li", { hasText: "تأكّد مقعدك" });
   await expect(seatRow.getByText(sessionTitle)).toBeVisible();
-  await expect(seatRow.getByRole("link", { name: "فتح الجلسة" })).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
+  await expect(seatRow.getByRole("button", { name: "فتح الجلسة" })).toBeVisible();
 
   // Marking one read leaves the other unread, and the count the bell reads
   // comes from the database rather than from anything client-side.
-  await seatRow.getByRole("button", { name: "تعليم كمقروء" }).click();
-  await expect(page.locator("li", { hasText: "تأكّد مقعدك" }).getByRole("button", { name: "تعليم كمقروء" })).toHaveCount(0);
+  const badgeRow = page.locator("#main li", { hasText: "حصلت على شارة" });
+  await badgeRow.getByRole("button", { name: "تعليم كمقروء" }).click();
+  await expect(page.locator("#main li", { hasText: "حصلت على شارة" }).getByRole("button")).toHaveCount(0);
   const { rows: unread } = await db.query<{ n: string }>(`select count(*) n from public.notifications where member_id = $1 and read_at is null`, [memberId]);
   expect(unread[0].n).toBe("1");
 
