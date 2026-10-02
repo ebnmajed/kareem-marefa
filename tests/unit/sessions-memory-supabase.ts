@@ -33,6 +33,8 @@ export function memorySupabase(tables: Record<string, Row[]>, rpcs: Record<strin
       },
       order: () => query,
       limit: (n: number) => ((rows = rows.slice(0, n)), query),
+      // wave 22 (DEC-232 §4.3): `readAll()` pages with `.range()` until an empty page — so this MUST slice, or it loops.
+      range: (from: number, to: number) => ((rows = rows.slice(from, to + 1)), query),
       textSearch: () => query,
       ilike: () => query,
       maybeSingle: async () =>
