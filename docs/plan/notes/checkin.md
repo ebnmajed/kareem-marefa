@@ -3336,3 +3336,52 @@ and «إجراءات {name}». The dialog's two bodies, trimmed to one sentence 
 
 **Open questions for sync 1:** D1 – D12 above; the `HostClock` variant (W21.5); whether «شاشة التقديم» hides when the
 console is inactive; and whether the wave-9 specs are re-pointed by the lead or handed to me for the wave.
+
+## W21.10 · Sync 1's rulings applied (`DEC-228` §3.4, §4.6, §6), and what is built so far
+
+**Built at `6aeff6f0`** (before the header lands; no page file touched yet):
+- ★ **The one rate — for `console` to import**: `attendanceRate(confirmed, checkedIn)` in
+  `src/components/checkin/attendance-rate.ts`. It is pure and keyed by whatever the caller chooses: `memberId` for one
+  session, `sessionId:memberId` across sessions. It returns `{ confirmed, attended, outsideConfirmed, rate }`. The
+  numerator is active check-ins that held a confirmed reservation; walk-ins and anyone else checked in without one go
+  to `outsideConfirmed`, beside the rate. `rate` is null with no confirmed reservation. Its test is
+  `tests/unit/checkin-attendance-rate.test.ts`, which shows the rate cannot pass 100 % and computes the artboard's
+  23 present as 59 %, not 68 %. `getAttendanceReport()` now computes `attendanceRate` through it, with the same output
+  (the CSV does not move). The dashboard's side of «one fixture, both numbers» is `console`'s test, importing this
+  function.
+- `HostClock`'s add-only `variant="console"`: the bare `m:ss` in `<bdi>`, no icon and no grace, with every refresh
+  kept. `host-clock.test.tsx` is untouched; the variant's proof is `host-clock-console.test.tsx`.
+- **Contract 4**: `AttendanceHeaderAction({ locale, sessionId })` in `src/components/checkin/attendance-header-action.tsx`
+  is one `ButtonLink` «شاشة التقديم» → `/app/sessions/<id>/host`, or null. It reads the add-only
+  `offersHostScreen()` (`lib/dal/checkin.ts`): staff only, and the state must be `published` or `in_progress`. So it
+  is null once the session is completed, archived or cancelled, and before it is published. It never throws, redirects
+  or 404s, and renders no heading and no landmark.
+
+**Where each `REQ-CHK-012` figure lives** (the five drawn, plus what the requirement needs):
+
+| `REQ-CHK-012` | On `044` |
+|---|---|
+| confirmed | figure «محجوز» (D1 fixed: it counts confirmed, not every RSVP row) |
+| checked in | figure «حاضر»: active check-ins on the selected day, the host count's definition |
+| walked in | figure «بلا حجز» |
+| the rate | figure «المعدّل», from `attendanceRate()` |
+| no-showed | the chip «لم يحضر N»: confirmed with no active check-in on the day. ★ Uncounted («—») before the day's start (D7 fixed) |
+| reserved (waitlist included) | the الحجز column per row, «قائمة انتظار» among its values. The CSV keeps every row. No sixth figure, because none is drawn |
+| (manual) | figure «يدوي», the add-only `counts.manual` |
+
+**Rulings now governing the build, replacing my plan's defaults:**
+- ★ An admin adds and removes **at any time, completed included**. On a completed session, «تسجيل يدوي» stays for an
+  admin and the row menu offers «سجّل حضوره» and «ألغِ الحضور». A moderator's window is today's RPC window: from the
+  day's start to the ceiling, in published, in progress or completed. K15 and D4 are closed.
+- The ratings section shows for an admin, below the table, **on a completed or archived session only**, where nothing
+  subscribes or refreshes.
+- The code renders in the **body face**, bold and large, because the display face is `h1`'s alone. The motion of
+  `switch` and `badge` is turned off by the frame's root rule (`DEC-228` §6).
+- D1, D6, D7, D8 and D12 are fixed in the rebuild. D6: the population is unchanged and the false sentence goes. D8: one
+  zone, **the session's** (the report's `timeZone`, as the host view uses). D12: an `overlap` error key.
+- Console-only components go under `attendance/_components/**` (`DEC-228` §4.3), which `console-register` sweeps.
+- `tests/e2e/wave9-checkin-{days,one-day}.spec.ts` are my evidence this wave, each changed assertion a ledger line.
+- ★ **Measured, not mine:** `ui/data-table`'s `empty` is `EmptyStateProps`, whose `action` is required (it fails
+  `tsc` in `console`'s own `data-table-additions.test.tsx` on the branch now). Attendance's empty state has no action
+  to offer, so I will either pass none, if `console` makes `action` optional add-only, or render the empty line
+  outside the table. That is a question to `console`.
