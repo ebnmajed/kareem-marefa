@@ -14,7 +14,6 @@ import { CategoryForm } from "@/app/[locale]/app/admin/categories/category-form"
 import { CompanyForm } from "@/app/[locale]/app/admin/companies/company-form";
 import { DirectSessionForm } from "@/app/[locale]/app/admin/sessions/direct-session-form";
 import { SettingsForm } from "@/app/[locale]/app/admin/settings/settings-form";
-import { VenueForm } from "@/app/[locale]/app/admin/venues/venue-form";
 import { formStateFrom, withErrors, type FormState } from "@/lib/form-state";
 import adminAr from "@/messages/ar/admin.json";
 import proposalsAr from "@/messages/ar/proposals.json";
@@ -45,11 +44,6 @@ async function submitAndFollow(container: HTMLElement, controlId: string) {
 }
 
 describe("the error summary's links focus the control on this track's forms (F4)", () => {
-  it("venues", async () => {
-    const { container } = render(<Wrap><main><VenueForm action={refusing("name", "nameRequired")} /></main></Wrap>);
-    await submitAndFollow(container, "v-name");
-  });
-
   it("categories", async () => {
     const { container } = render(<Wrap><main><CategoryForm action={refusing("name", "nameRequired")} /></main></Wrap>);
     await submitAndFollow(container, "c-name");

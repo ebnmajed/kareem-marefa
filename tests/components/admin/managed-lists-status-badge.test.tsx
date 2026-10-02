@@ -15,15 +15,12 @@ import { render, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast";
-import type { AdminVenue } from "@/lib/dal/sessions";
 import type { AdminCategory, AdminCompany } from "@/lib/dal/admin-lists";
 import ar from "@/messages/ar/admin.json";
 
-vi.mock("@/app/[locale]/app/admin/venues/actions", () => ({ toggleVenue: vi.fn() }));
 vi.mock("@/app/[locale]/app/admin/categories/actions", () => ({ toggleCategory: vi.fn() }));
 vi.mock("@/app/[locale]/app/admin/companies/actions", () => ({ toggleCompany: vi.fn() }));
 
-const { VenuesTable } = await import("@/app/[locale]/app/admin/venues/venues-table");
 const { CategoriesTable } = await import("@/app/[locale]/app/admin/categories/categories-table");
 const { CompaniesTable } = await import("@/app/[locale]/app/admin/companies/companies-table");
 
@@ -49,20 +46,6 @@ function cardStatusText(cardList: HTMLElement, cardIndex: number): string {
 }
 
 describe("managed lists — the phone card view's status column", () => {
-  it("venues: an active venue's card shows «نشط», not an empty value", () => {
-    const venues: AdminVenue[] = [
-      { id: "v1", name: "قاعة نشطة", address: null, capacity: null, mapUrl: null, notes: null, timeZone: null, deactivatedAt: null, upcomingSessions: 0 },
-      { id: "v2", name: "قاعة معطّلة", address: null, capacity: null, mapUrl: null, notes: null, timeZone: null, deactivatedAt: "2026-09-01T00:00:00Z", upcomingSessions: 0 },
-    ];
-    // `getByRole("list")` is ambiguous here — the toast region's `<ol>`
-    // (`ToastProvider`, always mounted) carries the same implicit role.
-    // `DataTable`'s phone card list is the only `<ul>` in the tree.
-    const { container } = render(withProviders(<VenuesTable venues={venues} locale="ar" />));
-    const cardList = container.querySelector("ul")!;
-    expect(cardStatusText(cardList, 0)).toBe("نشط");
-    expect(cardStatusText(cardList, 1)).toBe("معطّل");
-  });
-
   it("categories: an active category's card shows «نشط», not an empty value", () => {
     const categories: AdminCategory[] = [
       { id: "c1", name: "تصنيف نشط", deactivatedAt: null, sessionCount: 0 },

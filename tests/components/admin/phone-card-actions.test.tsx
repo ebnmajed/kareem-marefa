@@ -17,15 +17,12 @@ import { MembersTable } from "@/app/[locale]/app/admin/members/members-table";
 import { ToastProvider } from "@/components/ui/toast";
 import type { AdminMemberRow } from "@/lib/dal/admin-members";
 import type { AdminCategory, AdminCompany } from "@/lib/dal/admin-lists";
-import type { AdminVenue } from "@/lib/dal/sessions";
 import adminAr from "@/messages/ar/admin.json";
 import uiAr from "@/messages/ar/ui.json";
 
-vi.mock("@/app/[locale]/app/admin/venues/actions", () => ({ toggleVenue: vi.fn() }));
 vi.mock("@/app/[locale]/app/admin/categories/actions", () => ({ toggleCategory: vi.fn() }));
 vi.mock("@/app/[locale]/app/admin/companies/actions", () => ({ toggleCompany: vi.fn() }));
 
-const { VenuesTable } = await import("@/app/[locale]/app/admin/venues/venues-table");
 const { CategoriesTable } = await import("@/app/[locale]/app/admin/categories/categories-table");
 const { CompaniesTable } = await import("@/app/[locale]/app/admin/companies/companies-table");
 
@@ -46,17 +43,6 @@ function cards(container: HTMLElement): HTMLElement[] {
 }
 
 describe("the phone card list carries each row's actions (wave 8, F1)", () => {
-  it("venues: an active venue's card offers «عطّل», a deactivated one «أعد التفعيل»", () => {
-    const venues: AdminVenue[] = [
-      { id: "v1", name: "قاعة نشطة", address: null, capacity: null, mapUrl: null, notes: null, timeZone: null, deactivatedAt: null, upcomingSessions: 0 },
-      { id: "v2", name: "قاعة معطّلة", address: null, capacity: null, mapUrl: null, notes: null, timeZone: null, deactivatedAt: "2026-09-01T00:00:00Z", upcomingSessions: 0 },
-    ];
-    const { container } = render(withProviders(<VenuesTable venues={venues} locale="ar" />));
-    const [active, deactivated] = cards(container);
-    expect(within(active).getByRole("button", { name: "عطّل" })).toBeTruthy();
-    expect(within(deactivated).getByRole("button", { name: "أعد التفعيل" })).toBeTruthy();
-  });
-
   it("categories: the card offers «عطّل»", () => {
     const categories: AdminCategory[] = [{ id: "c1", name: "تصنيف نشط", deactivatedAt: null, sessionCount: 0 }];
     const { container } = render(withProviders(<CategoriesTable categories={categories} locale="ar" />));

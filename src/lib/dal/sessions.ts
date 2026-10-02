@@ -3,6 +3,7 @@ import { cache } from "react";
 import { z } from "zod";
 import { sessionClient } from "@/lib/dal/session";
 import { avatarHref } from "@/lib/dal/avatars";
+import { readAll } from "@/lib/dal/admin-paging";
 import { createServerClient } from "@/lib/supabase/server";
 import { sessionPhase, viewerRelation as deriveRelation, type DayWindow, type ViewerRelation } from "@/lib/session-status";
 
@@ -1402,57 +1403,93 @@ export async function transitionSession(locale: string, sessionId: string, actio
 }
 
 // ── Venues (SCR-046, REQ-SES-006, REQ-ADM-006) ──────────────────────────────
+//
+// ★ Wave 22 (`DEC-231` §2, `DEC-232`): these functions are `console`'s for the wave, and change ADD-ONLY — the
+// venue's owning company (`REQ-ADM-022`, `0180`), an edit path, the session count across every day, and every write
+// returning what it wrote (`DEC-232` §3.1). The audit rows are the database's (the lead's triggers); nothing here
+// writes `audit_log` (contract 3).
+
+export interface AdminVenueCompany {
+  id: string;
+  name: string;
+  teamColor: string | null;
+  /** A deactivated owner earns no hosting points (`DEC-232` §1.2) — the screen says so. */
+  deactivated: boolean;
+}
 
 export interface AdminVenue extends Venue {
   mapUrl: string | null;
   notes: string | null;
   timeZone: string | null;
   deactivatedAt: string | null;
-  /** Future sessions still pointing at it — why deactivating is the only exit. */
+  /** Future sessions still meeting there, on any day — why deactivating is the only exit. */
   upcomingSessions: number;
+  /** ★ wave 22: the company that owns the place, or null — owned by nobody, hosts for nobody (`REQ-ADM-022`). */
+  company: AdminVenueCompany | null;
+  /** ★ wave 22: every session that meets there on any of its days, each once (`DEC-119`). */
+  sessionCount: number;
 }
+
+/** What a venue write did — never success for a write that matched no row (`DEC-232` §3.1). */
+export type VenueWrite = { ok: true } | { ok: false; error: "companyInvalid" | "failed" };
 
 /**
  * ★ REQ-SES-006's "cannot be deleted, only deactivated" needs no code and no
  * policy: `venues` has `grant select, insert, update` and **no delete grant
  * and no delete policy** (0004), so deletion is impossible for every
- * authenticated role, in use or not. The count below is not a guard — it is
- * the sentence the screen uses to explain why there is no delete button.
+ * authenticated role, in use or not. The counts below are not a guard.
  */
 export async function listVenuesForAdmin(locale: string): Promise<AdminVenue[] | null> {
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin") return null;
 
-  const { data, error } = await supabase
-    .from("venues")
-    .select("id, name, address, map_url, capacity, notes, time_zone, deactivated_at")
-    .order("deactivated_at", { nullsFirst: true })
-    .order("name");
-  if (error) throw new Error(`venues: ${error.message}`);
-  const rows = data ?? [];
+  const rows = await readAll("venues", (from, to) =>
+    supabase
+      .from("venues")
+      .select("id, name, address, map_url, capacity, notes, time_zone, deactivated_at, company_id, companies(id, name, team_color, deactivated_at)")
+      .order("id")
+      .range(from, to),
+  );
   if (rows.length === 0) return [];
 
-  const { data: upcoming, error: sErr } = await supabase
-    .from("sessions")
-    .select("venue_id")
-    .not("venue_id", "is", null)
-    .gte("starts_at", new Date().toISOString())
-    .in("state", ["approved", "published", "in_progress"]);
-  if (sErr) throw new Error(`sessions: ${sErr.message}`);
-  const counts = new Map<string, number>();
-  for (const s of upcoming ?? []) counts.set(s.venue_id as string, (counts.get(s.venue_id as string) ?? 0) + 1);
+  // Counted by DAY, each session once per venue: a workshop's second day at another hall counts there too — reading
+  // `sessions.venue_id` alone (the first day's, `DEC-119`) missed it (`DEC-232` §4.4).
+  const days = await readAll("session_days", (from, to) =>
+    supabase.from("session_days").select("id, venue_id, session_id, starts_at, sessions(state)").not("venue_id", "is", null).order("id").range(from, to),
+  );
+  const now = Date.now();
+  const all = new Map<string, Set<string>>();
+  const upcoming = new Map<string, Set<string>>();
+  for (const d of days) {
+    const venueId = d.venue_id as string;
+    const sessionId = d.session_id as string;
+    if (!all.has(venueId)) all.set(venueId, new Set());
+    all.get(venueId)!.add(sessionId);
+    const state = (d.sessions as unknown as { state: string } | null)?.state;
+    if (state && ["approved", "published", "in_progress"].includes(state) && new Date(d.starts_at as string).getTime() >= now) {
+      if (!upcoming.has(venueId)) upcoming.set(venueId, new Set());
+      upcoming.get(venueId)!.add(sessionId);
+    }
+  }
 
-  return rows.map((v) => ({
-    id: v.id,
-    name: v.name,
-    address: v.address,
-    mapUrl: v.map_url,
-    capacity: v.capacity,
-    notes: v.notes,
-    timeZone: v.time_zone,
-    deactivatedAt: v.deactivated_at,
-    upcomingSessions: counts.get(v.id) ?? 0,
-  }));
+  return rows
+    .map((v) => {
+      const c = v.companies as unknown as { id: string; name: string; team_color: string | null; deactivated_at: string | null } | null;
+      return {
+        id: v.id as string,
+        name: v.name as string,
+        address: v.address as string | null,
+        mapUrl: v.map_url as string | null,
+        capacity: v.capacity as number | null,
+        notes: v.notes as string | null,
+        timeZone: v.time_zone as string | null,
+        deactivatedAt: v.deactivated_at as string | null,
+        upcomingSessions: upcoming.get(v.id as string)?.size ?? 0,
+        company: c ? { id: c.id, name: c.name, teamColor: c.team_color, deactivated: c.deactivated_at !== null } : null,
+        sessionCount: all.get(v.id as string)?.size ?? 0,
+      };
+    })
+    .sort((a, b) => Number(a.deactivatedAt !== null) - Number(b.deactivatedAt !== null) || a.name.localeCompare(b.name, "ar"));
 }
 
 export const venueInput = z
@@ -1463,33 +1500,59 @@ export const venueInput = z
     capacity: z.int().min(1).max(10000).nullable(),
     notes: z.string().trim().max(2000).nullable(),
     timeZone: z.string().trim().max(64).nullable(),
+    /** ★ wave 22: the owning company, or null for none — a real, final choice (`REQ-ADM-022`). Absent: not written. */
+    companyId: z.uuid().nullable().optional(),
   })
   .strict();
 export type VenueInput = z.infer<typeof venueInput>;
 
-/** Plain insert: `p2_admin_insert` on `venues` already says who may (0004). */
-export async function createVenue(locale: string, input: VenueInput): Promise<void> {
-  const { session, supabase } = await sessionClient(locale);
-  const { error } = await supabase.from("venues").insert({
-    org_id: session.orgId,
+function venueColumns(input: VenueInput) {
+  return {
     name: input.name,
     address: input.address,
     map_url: input.mapUrl,
     capacity: input.capacity,
     notes: input.notes,
     time_zone: input.timeZone,
-  });
-  if (error) throw new Error(`venues.insert: ${error.message}`);
+    ...(input.companyId !== undefined ? { company_id: input.companyId } : {}),
+  };
 }
 
-/** Deactivate or restore. The only exit a venue has (REQ-SES-006). */
-export async function setVenueActive(locale: string, venueId: string, active: boolean): Promise<void> {
+/** `0180`'s same-org guard raises 23514; anything else is a plain failure. */
+function venueWriteError(error: { code?: string; message: string }): VenueWrite {
+  return { ok: false, error: error.code === "23514" ? "companyInvalid" : "failed" };
+}
+
+/** Plain insert: `p2_admin_insert` on `venues` already says who may (0004). */
+export async function createVenue(locale: string, input: VenueInput): Promise<VenueWrite> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
+    .from("venues")
+    .insert({ org_id: session.orgId, ...venueColumns(input) })
+    .select("id");
+  if (error) return venueWriteError(error);
+  return (data ?? []).length === 1 ? { ok: true } : { ok: false, error: "failed" };
+}
+
+/** ★ wave 22: the edit path (`REQ-UIX-093`) — one update for every column the sheet holds, the company included. */
+export async function updateVenue(locale: string, venueId: string, input: VenueInput): Promise<VenueWrite> {
+  if (!z.uuid().safeParse(venueId).success) return { ok: false, error: "failed" };
   const { supabase } = await sessionClient(locale);
-  const { error } = await supabase
+  const { data, error } = await supabase.from("venues").update(venueColumns(input)).eq("id", venueId).select("id");
+  if (error) return venueWriteError(error);
+  return (data ?? []).length === 1 ? { ok: true } : { ok: false, error: "failed" };
+}
+
+/** Deactivate or restore. The only exit a venue has (REQ-SES-006). A row RLS filtered away is «not written». */
+export async function setVenueActive(locale: string, venueId: string, active: boolean): Promise<{ ok: boolean }> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase
     .from("venues")
     .update({ deactivated_at: active ? null : new Date().toISOString() })
-    .eq("id", venueId);
-  if (error) throw new Error(`venues.update: ${error.message}`);
+    .eq("id", venueId)
+    .select("id");
+  if (error) return { ok: false };
+  return { ok: (data ?? []).length === 1 };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
