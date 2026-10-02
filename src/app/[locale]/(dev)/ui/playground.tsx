@@ -66,6 +66,9 @@ import { BadgeMedallionDemo } from "./demos/badge-medallion";
 import { LedgerRowDemo } from "./demos/ledger-row";
 import { PodiumDemo } from "./demos/podium";
 import { SettingsGroupDemo } from "./demos/settings-group";
+import { AdminRailDemo } from "./demos/admin-rail";
+import { SplitViewDemo } from "./demos/split-view";
+import { KvCardDemo } from "./demos/kv-card";
 import type { DemoGround } from "./ground";
 
 // «ساحة اللعب» in the gallery — contract 4, DEC-183 §4.2(f), DEC-186 §2.
@@ -152,6 +155,10 @@ const DEMOS: { file: string; title: string; node: (ground: DemoGround) => ReactN
   { file: "ledger-row", title: "سطر النقاط", node: () => <LedgerRowDemo /> },
   { file: "podium", title: "منصة التتويج", node: () => <PodiumDemo /> },
   { file: "settings-group", title: "مجموعة الإعدادات", node: () => <SettingsGroupDemo /> },
+  // ── wave 21 (DEC-225, DEC-227): the console's three ──
+  { file: "admin-rail", title: "قائمة الإدارة", node: () => <AdminRailDemo /> },
+  { file: "split-view", title: "العرض المقسوم", node: () => <SplitViewDemo /> },
+  { file: "kv-card", title: "بطاقة البيانات", node: () => <KvCardDemo /> },
   { file: "rank-row", title: "صفّ الترتيب", node: () => <RankRowDemo /> },
   { file: "race-bar", title: "سباق الشركات", node: () => <RaceBarDemo /> },
   { file: "level-card", title: "بطاقة المستوى", node: () => <LevelCardDemo /> },

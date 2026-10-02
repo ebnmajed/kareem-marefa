@@ -117,7 +117,8 @@ describe("every file in src/components/ui has a playground design", () => {
     // wave 18 (DEC-206 §1.3): 49 + `action-bar`, `attendee-stack`, `feed-item`, `week-hud`.
     // wave 19 (DEC-213 §2.1): 53 + `star-input`, `stepper`, `page-viewer`, `badge-medallion`.
     // wave 20 (DEC-216 §2.1, DEC-218): 57 + `ledger-row`, `podium`, `settings-group` — no `status-mark`.
-    expect(files.length).toBeGreaterThanOrEqual(60);
+    // wave 21 (DEC-225 §2, DEC-227): 60 + `admin-rail`, `split-view`, `kv-card`.
+    expect(files.length).toBeGreaterThanOrEqual(63);
     for (const name of ["page-header.tsx", "prose.tsx", "link.tsx", "icon-button.tsx", "section-header.tsx", "submit-button.tsx", "reorderable-list.tsx", "icons.tsx"]) {
       expect(files, `the eight wave 15 missed: ${name}`).toContain(name);
     }

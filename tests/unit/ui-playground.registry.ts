@@ -132,6 +132,13 @@ export const REGISTRY: Record<string, Entry> = {
   // wave 20 (DEC-218, REQ-UIX-081): `notify`'s first — it composes `switch` and `link` as they are.
   "settings-group.tsx": composes("settings-group", ["ui/switch", "ui/link"]),
 
+  // ── wave 21 (DEC-225 §2, DEC-227, DEC-228): the console's three ──
+  // The lead's: born inside the scope, semantic names only, no animation (`console-register` reads it).
+  "admin-rail.tsx": tokens("admin-rail", ["bg-raised", "bg-signal", "text-on-signal", "border-edge", "rounded-pill"], "admin-rail-scope.test.tsx"),
+  // `sessions'`: landed by the lead as stubs with their signatures; `sessions` writes them to its plan.
+  "split-view.tsx": tokens("split-view", ["border-accent", "bg-raised", "bg-hover"], "split-view-scope.test.tsx"),
+  "kv-card.tsx": tokens("kv-card", ["rounded-panel", "bg-surface", "border-edge", "divide-edge", "text-fg-muted"], "kv-card-scope.test.tsx"),
+
   // ── `event`'s — its first (wave 19, DEC-214) ──
   "star-input.tsx": tokens("star-input", ["text-signal", "text-edge-strong", "text-fg-muted", "text-error"], "star-input-scope.test.tsx"),
 };

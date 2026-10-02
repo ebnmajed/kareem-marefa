@@ -1537,3 +1537,97 @@ export interface SettingsGroupProps extends Styleable {
   headingLevel?: "h2" | "h3";
   rows: SettingsRow[];
 }
+
+// ── wave 21 (DEC-225 §2, DEC-227, DEC-228): the console's three ──────────────
+
+/** One destination in the console's rail. Plain data only: the layout is a Server Component and this crosses into a
+ *  client one, so no function travels here (the old rail's icon crash, `DEC-227`). */
+export interface AdminRailLink {
+  key: string;
+  href: string;
+  label: string;
+  /** A queue's open count. No badge is drawn at 0 or when absent. */
+  count?: number;
+  /** The badge's accessible text — required when `count > 0`, already pluralised by the caller (six ICU forms). */
+  countLabel?: string;
+  /** Current on its own path alone — the dashboard, whose `/app/admin` prefixes every other. */
+  exact?: boolean;
+}
+
+/**
+ * The lead's · `admin-rail.tsx` — the console's navigation (REQ-UIX-084, REQ-UIX-085, DEC-226): every destination on
+ * one level, groups divided by rules that render no text. The same component draws the 220 px rail and the sheet's
+ * list under `lg`. Reads no data and no catalogue; declares no animation.
+ */
+export interface AdminRailProps extends Styleable {
+  /** Each inner array is one ruled group. An empty group is skipped; no groups renders nothing. */
+  groups: readonly (readonly AdminRailLink[])[];
+  /** The `nav` landmark's name. */
+  label: string;
+  /** The gallery and tests only; otherwise the current item is decided from `usePathname()`. */
+  pathname?: string;
+  /** Called after a link is followed — the sheet closes itself with it. */
+  onNavigate?: () => void;
+}
+
+export interface SplitViewItem {
+  /** Stable key — the proposal's id. */
+  id: string;
+  /** Where Enter or a tap goes. A real link: the no-JS path and the phone's detail route. */
+  href: string;
+  /** The row's visible content. Plain nodes; no interactive element inside. */
+  children: ReactNode;
+}
+
+/**
+ * `sessions` · `split-view.tsx` — a list beside a detail (REQ-UIX-085, REQ-UIX-088, DEC-NEXT-27). ↑ and ↓ move focus
+ * through the list, Enter opens; below `lg` only one pane shows. Declares no animation.
+ */
+export interface SplitViewProps extends Styleable {
+  /** The list's accessible name. */
+  label: string;
+  items: readonly SplitViewItem[];
+  /** The open item: `aria-current="page"`. Null when nothing is open. */
+  currentId: string | null;
+  /** Above the list — the state chips. */
+  toolbar?: ReactNode;
+  /** In place of the list when `items` is empty. */
+  empty?: ReactNode;
+  /** The open item's detail, in a `<section>`. */
+  detail: ReactNode;
+  /** The id of the detail's own heading. */
+  detailLabelledBy?: string;
+  /** Below `lg`: `list` on the queue's own route, `detail` on an item's route. From `lg`, both. */
+  narrow: "list" | "detail";
+  /** The detail's back link below `lg`. */
+  back?: { href: string; label: string };
+}
+
+export interface KvRow {
+  /** Stable key; also the row label's id suffix. */
+  id: string;
+  /** In edit mode it names the row's group (`role="group"`). */
+  label: string;
+  /** Read mode, already formatted by the screen. `null` renders `emptyValue`. */
+  value: ReactNode | null;
+  /** Edit mode: the row's controls, each in its own `Field`. Absent = the row stays read in edit mode. */
+  edit?: ReactNode;
+}
+
+/**
+ * `sessions` · `kv-card.tsx` — the read-mode key/value card and its edit twin (REQ-UIX-085, REQ-UIX-089, DEC-NEXT-28).
+ * Renders no `<form>`: the screen owns its forms. Declares no animation.
+ */
+export interface KvCardProps extends Styleable {
+  /** A visible title. Either `title` or `label` is required. */
+  title?: string;
+  headingLevel?: 2 | 3;
+  /** The accessible name when there is no visible title. */
+  label?: string;
+  rows: readonly KvRow[];
+  mode?: "read" | "edit";
+  /** «—» — a prop, because the primitive reads no catalogue. */
+  emptyValue: string;
+  /** Under the rows. */
+  actions?: ReactNode;
+}
