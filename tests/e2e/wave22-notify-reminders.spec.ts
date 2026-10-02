@@ -108,7 +108,10 @@ test("SCR-060 at 1280: read, «عدّل», one staged change, «احفظ», and 
   await main.getByRole("link", { name: "عدّل" }).click();
   await expect(main.getByRole("heading", { name: "تعديل التذكيرات" })).toBeVisible();
   await expect(main.getByRole("button", { name: /^احفظ/ })).toBeDisabled();
-  await main.getByRole("switch", { name: /مفعّل — التذكير قبل الجلسة بساعتين/ }).click({ force: true });
+  // The keyboard, not a click: the switch's input is `sr-only`, so a forced click lands on whatever sits at its centre
+  // pixel and toggles nothing. Space on the focused switch is the path a keyboard user takes.
+  await main.getByRole("switch", { name: /مفعّل — التذكير قبل الجلسة بساعتين/ }).focus();
+  await page.keyboard.press("Space");
   await expect(main.getByText("تغيير واحد غير محفوظ")).toBeVisible();
   await expect(main.getByRole("switch", { name: /مفعّل \(معدّل\) — التذكير قبل الجلسة بساعتين/ })).not.toBeChecked();
   // Staged, never written: the database still holds the two-hour offset.
@@ -117,7 +120,7 @@ test("SCR-060 at 1280: read, «عدّل», one staged change, «احفظ», and 
   await page.screenshot({ path: `${SHOTS}/wave22-notify-060-edit-1280.png`, fullPage: true });
 
   await main.getByRole("button", { name: /^احفظ/ }).click();
-  await expect(page.getByRole("status").filter({ hasText: /^حُفظ$/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /إشعار/ }).getByText("حُفظ", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/ar\/app\/admin\/reminders$/);
   await expect(main.getByText(/^✓✓ حُفظ · .+ · مشرفة التذكيرات$/)).toBeVisible();
   await expect(main.getByRole("table", { name: "التذكيرات" })).toContainText("متوقف");
