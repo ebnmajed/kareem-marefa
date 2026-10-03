@@ -171,9 +171,12 @@ async function signIn(context: BrowserContext, email: string) {
 
 async function captureDark(page: Page, name: string) {
   await page.setViewportSize(PHONE);
-  await page.goto("/ar/app/admin/emails?key=MSG-reminder_1d");
+  // ★ Wave 23: the preview opens from the builder's bar, «معاينة واختبار» (STATUS ledger: the route and the control
+  // moved; the cell's question and its assertions did not).
+  await page.goto("/ar/app/admin/emails/MSG-reminder_1d");
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
-  await page.locator("#main").getByRole("radio", { name: "داكن قسري" }).click();
+  await page.locator("#main").getByRole("button", { name: "معاينة واختبار" }).click();
+  await page.getByRole("dialog", { name: "معاينة واختبار" }).getByRole("radio", { name: "داكن قسري" }).click();
 
   const frame = page.frameLocator('iframe[name="mail-preview"]');
   // The design must have rendered at all — if the heading is missing the cell

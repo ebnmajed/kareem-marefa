@@ -280,6 +280,12 @@ function compileAnnotated(
   const start = rows.length;
   compileOne(block, ctx, say, rows, text, dropped);
   if (!ctx.annotate) return;
+  // ★ The canvas must be able to SELECT a block that renders nothing yet — a button with no link, a poster with no
+  // card — or the admin could never reach it to fix it. In the editor's frame alone, such a block holds a dashed
+  // placeholder the overlay names; the sent mail never carries one.
+  if (rows.length === start) {
+    rows.push(row(`<td ${cell(`padding:0 0 16px 0;`)}><div style="height:40px;border:1px dashed ${ctx.palette.edge};border-radius:8px;"></div></td>`));
+  }
   for (let i = start; i < rows.length; i++) {
     rows[i] = rows[i]!.replace("<tr>", `<tr data-k="${escapeHtml(block.id)}">`);
   }

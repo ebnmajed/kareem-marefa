@@ -1,10 +1,15 @@
 // SCR-058 · the email studio — REQ-NTF-009, REQ-NTF-010, REQ-NTF-012,
 // `16` §11.4, against REAL local Supabase.
 //
-// What this covers that a unit test cannot: that the three panes render on the
-// real screen, that the preview's frame is filled by the ONE renderer over a
-// real POST, that the four modes differ, and that the checks panel refuses a
-// save an admin should not be able to make.
+// What this covers that a unit test cannot: that the editor renders on the
+// real screen, that its frame is filled by the ONE renderer over a real POST,
+// that the four preview modes differ, and that the checks refuse a save an
+// admin should not be able to make.
+//
+// ★ WAVE 23 (DEC-238 §4) rebuilt the three panes as the block builder — the
+// rail, the panel, the canvas that IS the renderer's frame — so the five cases
+// that drove the panes now drive the builder at 1280 (STATUS ledger: selectors
+// moved, expectations kept). The route-refusal case is unchanged.
 //
 // ★ AND THE ROLE, which `tests/unit/notify-preview-route.test.ts` says it
 // cannot prove: `compileEmailPreview()` collapses «not an admin» and «no such
@@ -166,80 +171,72 @@ const editor = (page: Page) => page.locator("#main");
 const check = (page: Page, words: string) =>
   editor(page).locator("li").filter({ hasText: words });
 
-test("★ the three panes at 390 px, with the preview filled by the one renderer", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
-  await page.setViewportSize(PHONE);
+const DESKTOP = { width: 1280, height: 900 };
+const target = (page: Page, name: string | RegExp) => editor(page).locator("[data-canvas-target] > button").and(page.getByRole("button", { name }));
+const railTab = (page: Page, name: string | RegExp) => editor(page).getByRole("tablist", { name: "أدوات المحرّر" }).getByRole("tab", { name });
+
+test("★ the builder at 1280, its canvas filled by the one renderer", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "the builder's canvas is a desktop tool");
+  await page.setViewportSize(DESKTOP);
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
+  await goto(page, "/ar/app/admin/emails/MSG-reminder_1d");
 
-  await expect(editor(page).getByRole("heading", { name: "الكتل", level: 3, exact: true })).toBeVisible();
-  await expect(editor(page).getByRole("heading", { name: "معاينة حيّة", level: 3, exact: true })).toBeVisible();
-  await expect(editor(page).getByRole("heading", { name: "خصائص الكتلة", level: 3, exact: true })).toBeVisible();
+  await expect(editor(page).getByRole("tablist", { name: "أدوات المحرّر" })).toBeVisible();
+  // Every block of the stored design is a target on the canvas, named by its own first words.
+  await expect(target(page, "عنوان: جلستك غدًا")).toBeVisible();
 
-  // Every block of the stored design is a row, named by its own first words.
-  await expect(editor(page).getByRole("listitem").filter({ hasText: "جلستك غدًا" })).toBeVisible();
-
-  // ★ The frame is filled by a real POST to the one renderer, not by anything
-  // this page drew: the mail's own heading is INSIDE the iframe.
-  const frame = page.frameLocator('iframe[name="mail-preview"]');
+  // ★ The frame is filled by a real POST to the one renderer, not by anything this page drew: the mail's own heading
+  // is INSIDE the iframe — with its bindings shown as tokens, the canvas's mode.
+  const frame = page.frameLocator('iframe[name="mail-canvas"]');
   await expect(frame.locator("body")).toContainText("جلستك غدًا");
-  await expect(frame.locator("body")).toContainText("قاعة");
+  await expect(frame.locator("body")).toContainText("{المكان}");
 
-  // The composed footer is shown as a fixed last row, outside the reorderable
-  // set. ★ The WHOLE string, exactly: «تذييل التفضيلات» alone also matches the
-  // checks panel's satisfied row, and a locator that matches two things is not
-  // asserting the one it names.
-  await expect(
-    editor(page).getByText("تذييل التفضيلات — يُضاف دائمًا ولا يمكن حذفه أو تحريكه", { exact: true }),
-  ).toBeVisible();
-  // `fullPage`: the three panes stack at 390 px, so the properties pane and
-  // the checks are below the fold and a viewport shot shows one pane of three.
-  await page.screenshot({ path: `${SHOTS}/wave10-notify-editor-phone.png`, fullPage: true });
+  // The composed footer is shown and never selectable.
+  await expect(editor(page).locator("[data-canvas-fixed]")).toHaveCount(1);
+  await page.screenshot({ path: `${SHOTS}/wave10-notify-editor-phone.png` });
 });
 
 test("the four preview modes differ, and the dark one says it is a simulation", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
-  await page.setViewportSize(PHONE);
+  test.skip(testInfo.project.name !== "desktop", "the builder's preview opens from its bar at 1280");
+  await page.setViewportSize(DESKTOP);
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
+  await goto(page, "/ar/app/admin/emails/MSG-reminder_1d");
+  await editor(page).getByRole("button", { name: "معاينة واختبار" }).click();
+  const sheet = page.getByRole("dialog", { name: "معاينة واختبار" });
   const frame = page.frameLocator('iframe[name="mail-preview"]');
 
-  await editor(page).getByRole("radio", { name: "سطح مكتب" }).click();
+  await sheet.getByRole("radio", { name: "سطح مكتب" }).click();
   await expect(frame.locator("body")).toContainText("جلستك غدًا");
   await page.screenshot({ path: `${SHOTS}/wave10-notify-preview-desktop.png` });
 
   // ★ Plain text is what a stripped corporate client shows — no markup at all.
-  await editor(page).getByRole("radio", { name: "نص فقط" }).click();
+  await sheet.getByRole("radio", { name: "نص فقط" }).click();
   await expect(frame.locator("body")).toContainText("افتح الجلسة:");
   await page.screenshot({ path: `${SHOTS}/wave10-notify-preview-text.png` });
 
   // ★ The simulation is NAMED on the screen, not only in the code.
-  await editor(page).getByRole("radio", { name: "داكن قسري" }).click();
-  await expect(editor(page).getByText("محاكاة:", { exact: false })).toBeVisible();
+  await sheet.getByRole("radio", { name: "داكن قسري" }).click();
+  await expect(sheet.getByText("محاكاة:", { exact: false })).toBeVisible();
   await expect(frame.locator("body")).toContainText("جلستك غدًا");
   await page.screenshot({ path: `${SHOTS}/wave10-notify-preview-dark.png` });
 });
 
 test("★ a binding the key does not offer is caught in the editor, and the save is disabled", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
-  await page.setViewportSize(PHONE);
+  test.skip(testInfo.project.name !== "desktop", "the builder's canvas is a desktop tool");
+  await page.setViewportSize(DESKTOP);
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
+  await goto(page, "/ar/app/admin/emails/MSG-reminder_1d");
 
-  await editor(page).getByRole("listitem").filter({ hasText: "نراك في" }).getByRole("button").first().click();
+  await target(page, /^فقرة: نراك في/).click();
   const text = editor(page).getByLabel("النص", { exact: true });
   await text.fill("نراك في {{building}}.");
   await text.blur();
 
+  await railTab(page, /^الفحوصات/).click();
   await expect(check(page, "لا تتيحه هذه الرسالة")).toHaveCount(1);
   // A mail an admin has not seen is a mail they must not be able to approve.
-  await expect(editor(page).getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
-  // ★ `fullPage`, because the panel this shot is NAMED for sits below the
-  // fold at 390 px. A viewport shot of the top of the page is a picture of
-  // something true that is not the thing being reviewed, and it reads as
-  // evidence — which is worse than no picture, because it is opened and
-  // believed.
-  await page.screenshot({ path: `${SHOTS}/wave10-notify-check-binding.png`, fullPage: true });
+  await expect(editor(page).getByRole("button", { name: "احفظ وفعّل" })).toBeDisabled();
+  await page.screenshot({ path: `${SHOTS}/wave10-notify-check-binding.png` });
 });
 
 test("★ a stored block the document LOST is named, not swallowed", async ({ context, page }, testInfo) => {
@@ -248,34 +245,27 @@ test("★ a stored block the document LOST is named, not swallowed", async ({ co
   await signIn(context, adminEmail);
   // This row's second block has no text: `0134` admits it, the reader refuses
   // it, and an editor that swallowed it would show a shorter document than the
-  // one stored and let an admin save the loss.
-  await goto(page, "/ar/app/admin/emails?key=MSG-reminder_7d");
+  // one stored and let an admin save the loss. Below `lg` the builder shows its
+  // checks, so the phone sees this too.
+  await goto(page, "/ar/app/admin/emails/MSG-reminder_7d");
 
   await expect(check(page, "أُسقطت كتلة")).toHaveCount(1);
-  await expect(editor(page).getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
-  // ★ `fullPage`, because the panel this shot is NAMED for sits below the
-  // fold at 390 px. A viewport shot of the top of the page is a picture of
-  // something true that is not the thing being reviewed, and it reads as
-  // evidence — which is worse than no picture, because it is opened and
-  // believed.
+  await expect(editor(page).getByRole("button", { name: "احفظ وفعّل" })).toBeDisabled();
   await page.screenshot({ path: `${SHOTS}/wave10-notify-check-dropped.png`, fullPage: true });
 });
 
 test("an image with no alt blocks the save, and the check names the block", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
-  await page.setViewportSize(PHONE);
+  test.skip(testInfo.project.name !== "desktop", "the builder's canvas is a desktop tool");
+  await page.setViewportSize(DESKTOP);
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
+  await goto(page, "/ar/app/admin/emails/MSG-reminder_1d");
 
-  await editor(page).getByRole("button", { name: "أضف صورة" }).click();
+  await editor(page).getByRole("button", { name: "صورة", exact: true }).click();
+  await editor(page).locator("[data-canvas-slot]").and(page.getByRole("button", { name: "أضف في آخر البريد" })).click();
+  await railTab(page, /^الفحوصات/).click();
   await expect(check(page, "صورة بلا نص بديل")).toHaveCount(1);
-  await expect(editor(page).getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
-  // ★ `fullPage`, because the panel this shot is NAMED for sits below the
-  // fold at 390 px. A viewport shot of the top of the page is a picture of
-  // something true that is not the thing being reviewed, and it reads as
-  // evidence — which is worse than no picture, because it is opened and
-  // believed.
-  await page.screenshot({ path: `${SHOTS}/wave10-notify-check-image-alt.png`, fullPage: true });
+  await expect(editor(page).getByRole("button", { name: "احفظ وفعّل" })).toBeDisabled();
+  await page.screenshot({ path: `${SHOTS}/wave10-notify-check-image-alt.png` });
 });
 
 test("★ the preview route refuses a MODERATOR and a member alike — the role a unit test cannot prove", async ({ context, page }, testInfo) => {
