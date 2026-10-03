@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import type { EmailBlock } from "@kareem/mail-runtime";
 import type { BlockCanvasBox, BlockCanvasPlace, BlockCanvasRow, BlockCanvasTarget } from "@/components/ui";
@@ -28,7 +28,9 @@ import { toDisplay, toStored, type TokenMap } from "@/components/email/binding-l
 // The stage around it is `ui/canvas-stage`'s, at 100 %: the mail is 600 px or the phone's 375, never scaled, so the
 // boxes the frame reports are the boxes the overlay draws.
 
-const FRAME = "mail-canvas";
+/** True only after hydration: the server snapshot is `false`, the client's `true`. */
+const subscribeNothing = () => () => {};
+const useHydrated = () => useSyncExternalStore(subscribeNothing, () => true, () => false);
 
 export interface EmailCanvasProps {
   messageKey: string;
@@ -72,11 +74,18 @@ export function EmailCanvas(props: EmailCanvasProps) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [measured, setMeasured] = useState<Measured>(EMPTY);
   const [editing, setEditing] = useState<string | null>(null);
+  // ★ THE FRAME AND ITS FORM EXIST ONLY IN THE BROWSER, under a name no other element can share. Rendered on the
+  // server, the iframe also lands in the streamed segment Next leaves behind on a hard load (DEC-145's orphan): two
+  // frames called `mail-canvas`, and the form's POST went into the orphan — which was then removed — while the visible
+  // frame stayed `about:blank`, so the canvas measured nothing and drew no target (wave 23, found on a production
+  // build). A client-only frame has no orphan copy, and `useId` keeps its name its own.
+  const hydrated = useHydrated();
+  const frameName = `mail-canvas-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
   // The frame is the renderer's answer to the committed document; a new one is asked for when it changes.
   useEffect(() => {
-    form.current?.requestSubmit();
-  }, [documentJson, width, messageKey]);
+    if (hydrated) form.current?.requestSubmit();
+  }, [hydrated, documentJson, width, messageKey]);
 
   const labelOf = useCallback((block: EmailBlock | undefined) => (block ? blockName(block, typeLabel) : ""), [typeLabel]);
 
@@ -125,6 +134,15 @@ export function EmailCanvas(props: EmailCanvasProps) {
     measure();
   }, [measure]);
 
+  // ★ The frame's own `load`, listened for natively as well as through React's `onLoad`: the measure must run on every
+  // document the renderer hands back, whatever React does with an iframe it hydrated.
+  useEffect(() => {
+    const el = frame.current;
+    if (!el) return;
+    el.addEventListener("load", measure);
+    return () => el.removeEventListener("load", measure);
+  }, [measure, hydrated]);
+
   const selectedBox =
     measured.rows.find((row) => row.id === selectedId)?.box ??
     measured.rows.flatMap((row) => (row.cells ?? []).flatMap((cell) => cell.blocks)).find((block) => block.id === selectedId)?.box ??
@@ -169,28 +187,34 @@ export function EmailCanvas(props: EmailCanvasProps) {
           onRowDragStart={(id) => props.onRowDragStart(id)}
           onDropAt={(at) => props.onDropAt(at)}
         >
-          <form ref={form} method="post" action="/api/admin/emails/preview" target={FRAME} className="hidden">
-            <input type="hidden" name="key" value={messageKey} readOnly />
-            <input type="hidden" name="subject" value={subject} readOnly />
-            <input type="hidden" name="body" value="" readOnly />
-            <input type="hidden" name="blocks" value={documentJson} readOnly />
-            <input type="hidden" name="mode" value="html" readOnly />
-            <input type="hidden" name="editor" value="1" readOnly />
-            <input type="hidden" name="tokens" value={JSON.stringify(Object.fromEntries([...tokens].map(([binding, token]) => [binding, token.slice(1, -1)])))} readOnly />
-          </form>
-          <iframe
-            ref={frame}
-            name={FRAME}
-            title={t("frameTitle")}
-            // Same-origin so the editor can read where each row is; no `allow-scripts`, so nothing in the mail runs. The
-            // route's own CSP says the same (`EDITOR_CSP`).
-            sandbox="allow-same-origin"
-            referrerPolicy="no-referrer"
-            loading="eager"
-            onLoad={measure}
-            className="block border-0 bg-canvas"
-            style={{ width, height: measured.height }}
-          />
+          {hydrated ? (
+            <form ref={form} method="post" action="/api/admin/emails/preview" target={frameName} className="hidden">
+              <input type="hidden" name="key" value={messageKey} readOnly />
+              <input type="hidden" name="subject" value={subject} readOnly />
+              <input type="hidden" name="body" value="" readOnly />
+              <input type="hidden" name="blocks" value={documentJson} readOnly />
+              <input type="hidden" name="mode" value="html" readOnly />
+              <input type="hidden" name="editor" value="1" readOnly />
+              <input type="hidden" name="tokens" value={JSON.stringify(Object.fromEntries([...tokens].map(([binding, token]) => [binding, token.slice(1, -1)])))} readOnly />
+            </form>
+          ) : null}
+          {hydrated ? (
+            <iframe
+              ref={frame}
+              name={frameName}
+              title={t("frameTitle")}
+              // Same-origin so the editor can read where each row is; no `allow-scripts`, so nothing in the mail runs. The
+              // route's own CSP says the same (`EDITOR_CSP`).
+              sandbox="allow-same-origin"
+              referrerPolicy="no-referrer"
+              loading="eager"
+              onLoad={measure}
+              className="block border-0 bg-canvas"
+              style={{ width, height: measured.height }}
+            />
+          ) : (
+            <div className="bg-canvas" style={{ width, height: measured.height }} />
+          )}
 
           {selectedBox && textual && !editing ? (
             <FloatingToolbar label={t("toolbar")} anchor={selectedBox}>
