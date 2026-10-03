@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { fontFaceCss, type BrandScheme, type DesignDocument } from "@kareem/designer-runtime";
 import type { CertificateDesignData } from "@/lib/dal/certificates";
 import { ChecksPanel, useCheckFindings } from "@/components/designer/checks-panel";
-import { TemplatePreview } from "@/components/designer/template-preview";
+import { TemplatePreview } from "@/components/templates/template-preview";
 import { formatNumber } from "@/components/sessions/numerals";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -286,7 +286,7 @@ function KindPanel({
                   <div
                     className={`relative w-full overflow-hidden rounded-card border border-edge ${selected.orientation === "portrait" ? "mx-auto aspect-[210/297] max-w-80" : "aspect-[297/210]"}`}
                   >
-                    <TemplatePreview document={selected.document} bindings={bindings} faces={faces} origin={origin} title={t("previewTitle")} />
+                    <TemplatePreview document={selected.document} values={bindings} faces={faces} origin={origin} title={t("previewTitle")} />
                   </div>
                   <figcaption className="text-caption text-fg-muted">{t("previewCaption")}</figcaption>
                 </figure>

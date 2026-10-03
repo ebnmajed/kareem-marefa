@@ -3,6 +3,7 @@ import { z } from "zod";
 import { type BrandScheme, type DesignDocument, formatBindingDate, orientationOf, validateDocument } from "@kareem/designer-runtime";
 import { createServerClient } from "@/lib/supabase/server";
 import { previewBrandBindings } from "@/lib/dal/designer";
+import { avatarHref } from "@/lib/dal/avatars";
 import { downloadHref } from "@/lib/dal/posters";
 import { sessionClient } from "@/lib/dal/session";
 
@@ -338,10 +339,14 @@ export async function getCertificateDesign(locale: string, sessionId: string): P
     ? await supabase.from("design_template_versions").select("template_id, version, document, published_at").in("template_id", ids).not("published_at", "is", null).order("version", { ascending: false })
     : { data: [] as Array<{ template_id: string; version: number; document: unknown }> };
   const latest = new Map<string, DesignDocument>();
-  for (const v of (versions ?? []) as Array<{ template_id: string; document: unknown }>) {
+  const latestVersion = new Map<string, number>();
+  for (const v of (versions ?? []) as Array<{ template_id: string; version: number; document: unknown }>) {
     if (latest.has(v.template_id)) continue;
     const parsed = validateDocument(v.document);
-    if (parsed.ok) latest.set(v.template_id, parsed.document);
+    if (parsed.ok) {
+      latest.set(v.template_id, parsed.document);
+      latestVersion.set(v.template_id, v.version);
+    }
   }
 
   const rows = (templates ?? []) as Array<{ id: string; name: string; scope: "platform" | "org"; family: string; is_default: boolean; org_id: string | null }>;
@@ -352,7 +357,12 @@ export async function getCertificateDesign(locale: string, sessionId: string): P
       // The org's own first, then defaults, then landscape before portrait.
       .sort((a, b) => Number(a.scope === "platform") - Number(b.scope === "platform") || Number(b.isDefault) - Number(a.isDefault) || a.orientation.localeCompare(b.orientation));
     const design = ((designs ?? []) as Array<{ kind: string; template_id: string; scheme: BrandScheme }>).find((d) => d.kind === kind) ?? null;
-    const fallback = options.find((o) => o.scope === "org" && o.isDefault) ?? options.find((o) => o.isDefault) ?? options[0] ?? null;
+    // ★ wave 23 (DEC-238 §2.3): what `issue_certificate()` will really pick — its own order, never «the org's default,
+    // else any default». Any live org template of the kind beats the platform's default (`0127`'s fallback).
+    const pickedId = pickEffectiveTemplate(
+      options.map((o) => ({ id: o.id, scope: o.scope, isDefault: o.isDefault, version: latestVersion.get(o.id) ?? 0 })),
+    );
+    const fallback = options.find((o) => o.id === pickedId) ?? null;
     type Cert = {
       kind: string;
       state: string;
@@ -396,6 +406,103 @@ export async function getCertificateDesign(locale: string, sessionId: string): P
 
   const [light, dark] = await Promise.all([previewBrandBindings(locale, "light"), previewBrandBindings(locale, "dark")]);
   return { kinds, brand: { light, dark }, sample, canEdit: session.role === "admin" };
+}
+
+/* ── wave 23: the template issuance really picks (DEC-238 §2.3), add-only ── */
+
+export interface EffectiveTemplateCandidate {
+  id: string;
+  scope: "platform" | "org";
+  isDefault: boolean;
+  /** The template's latest PUBLISHED version number. */
+  version: number;
+}
+
+/**
+ * `issue_certificate()`'s fallback order, in TypeScript: `(org_id is not null) desc, is_default desc, version desc`
+ * over the live, published templates of the kind (`0127`; `0066:85-92` for an achievement). So any org template of the
+ * kind beats the platform's default, flagged or not. The SQL is NOT re-ordered — that would re-point live issuance
+ * unmeasured (DEC-238 §2.3); the screens say what it does.
+ *
+ * ★ The SQL has no tiebreaker after the version: two org templates, neither the default, at the same latest version are
+ * picked arbitrarily by its `limit 1`. This breaks the tie by id, so the screen is stable — and in that state no
+ * template carries «افتراضي», which is the signal to set one.
+ */
+export function pickEffectiveTemplate(candidates: EffectiveTemplateCandidate[]): string | null {
+  const ranked = [...candidates].sort(
+    (a, b) =>
+      Number(b.scope === "org") - Number(a.scope === "org") ||
+      Number(b.isDefault) - Number(a.isDefault) ||
+      b.version - a.version ||
+      a.id.localeCompare(b.id),
+  );
+  return ranked[0]?.id ?? null;
+}
+
+export interface EffectiveCertificateTemplate {
+  templateId: string;
+  name: string;
+  scope: "platform" | "org";
+  isDefault: boolean;
+  orientation: "landscape" | "portrait";
+}
+
+/** SCR-055's defaults strip: per kind, the template a certificate issued now would use. Staff only; RLS gives this org's
+ *  templates and the platform's, exactly the rows the function reads. */
+export async function getEffectiveCertificateTemplates(locale: string): Promise<Record<CertificateKind, EffectiveCertificateTemplate | null> | null> {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin" && session.role !== "moderator") return null;
+
+  const { data: templates, error } = await supabase
+    .from("design_templates")
+    .select("id, name, scope, family, is_default")
+    .eq("purpose", "certificate")
+    .is("retired_at", null);
+  if (error) throw new Error(`effective templates: ${error.message}`);
+  const rows = (templates ?? []) as Array<{ id: string; name: string; scope: "platform" | "org"; family: string; is_default: boolean }>;
+  const ids = rows.map((t) => t.id);
+  const { data: versions } = ids.length
+    ? await supabase.from("design_template_versions").select("template_id, version, document").in("template_id", ids).not("published_at", "is", null).order("version", { ascending: false })
+    : { data: [] as Array<{ template_id: string; version: number; document: unknown }> };
+  const latest = new Map<string, { version: number; document: DesignDocument }>();
+  for (const v of (versions ?? []) as Array<{ template_id: string; version: number; document: unknown }>) {
+    if (latest.has(v.template_id)) continue;
+    const parsed = validateDocument(v.document);
+    if (parsed.ok) latest.set(v.template_id, { version: v.version, document: parsed.document });
+  }
+
+  const out = {} as Record<CertificateKind, EffectiveCertificateTemplate | null>;
+  for (const kind of ["attendance", "presenter", "achievement"] as const) {
+    const candidates = rows.filter((t) => t.family === kind && latest.has(t.id));
+    const picked = pickEffectiveTemplate(candidates.map((t) => ({ id: t.id, scope: t.scope, isDefault: t.is_default, version: latest.get(t.id)!.version })));
+    const row = candidates.find((t) => t.id === picked);
+    out[kind] = row
+      ? { templateId: row.id, name: row.name, scope: row.scope, isDefault: row.is_default, orientation: orientationOf(latest.get(row.id)!.document) }
+      : null;
+  }
+  return out;
+}
+
+/** SCR-045's rows draw each member's face with the company's team ring (`AdminCertificates.dc.html`). Admin only — the
+ *  certificates themselves are an admin's read (03 §5.8). The face goes through the one avatar resolver (DEC-099). */
+export async function getSessionCertificateFaces(
+  locale: string,
+  sessionId: string,
+): Promise<Record<string, { avatarUrl: string | null; teamColor: string | null | undefined }> | null> {
+  const { session, supabase } = await sessionClient(locale);
+  if (session.role !== "admin") return null;
+  const { data: certs } = await supabase.from("certificates").select("member_id").eq("session_id", sessionId);
+  const ids = [...new Set(((certs ?? []) as Array<{ member_id: string }>).map((c) => c.member_id))];
+  const out: Record<string, { avatarUrl: string | null; teamColor: string | null | undefined }> = {};
+  if (ids.length === 0) return out;
+  const { data, error } = await supabase.from("members").select("id, avatar_version, company_id, companies(team_color)").in("id", ids);
+  if (error) throw new Error(`members (faces): ${error.message}`);
+  type Face = { id: string; avatar_version: number | string | null; company_id: string | null; companies: { team_color: string | null } | { team_color: string | null }[] | null };
+  for (const m of (data ?? []) as unknown as Face[]) {
+    // `undefined` draws no ring (a member with no company); `null` the neutral ring — `AvatarProps.teamColor`'s three values.
+    out[m.id] = { avatarUrl: avatarHref({ id: m.id, avatarVersion: m.avatar_version }, 96), teamColor: m.company_id ? (one(m.companies)?.team_color ?? null) : undefined };
+  }
+  return out;
 }
 
 export interface EligibleRecipient {
