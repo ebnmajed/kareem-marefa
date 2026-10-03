@@ -329,11 +329,12 @@ export function DesignerEditor(props: DesignerEditorProps) {
   );
 
   const bar = (
-    <div role="toolbar" aria-label={t("title")} className="flex h-13 flex-nowrap items-center gap-2 border-b border-edge px-4">
+    <div role="toolbar" aria-label={t("title")} className="flex min-h-13 flex-wrap items-center gap-2 border-b border-edge px-4 py-2 xl:h-13 xl:flex-nowrap xl:py-0">
       {props.barStart}
       {saveBadge}
       {props.canEdit ? (
-        <span className="flex shrink-0 gap-1">
+        // Below xl the page is view and approve: nothing to undo, so the name keeps the room.
+        <span className="hidden shrink-0 gap-1 xl:flex">
           <IconButton size="sm" variant="secondary" label={t("undo")} onClick={() => s.step("undo")} disabled={depth.past === 0}>
             <ChevronIcon direction="forward" />
           </IconButton>
@@ -342,7 +343,8 @@ export function DesignerEditor(props: DesignerEditorProps) {
           </IconButton>
         </span>
       ) : null}
-      {/* ★ ONE ROW (the board's 52 px): the strip takes what is left and scrolls on its own axis; everything after
+      {/* ★ ONE ROW AT xl (the board's 52 px) — below it the bar may wrap, so the name never shrinks to nothing:
+          the strip takes what is left and scrolls on its own axis; everything after
           it keeps its intrinsic width at the inline-end. */}
       <span className="hidden min-w-0 flex-1 xl:block">{strip}</span>
       <span className="grow xl:hidden" />
