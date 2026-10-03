@@ -64,6 +64,13 @@ nothing else moves. `rehearse23` dropped; the owner's dump left for the owner. *
 
 ★ **A live defect found and not fixed this wave** (`notify`, `DEC-238` §4.5): the email studio's «أرسل اختبارًا» mails the
 **saved** row, not the draft on screen. Wave 24's builder disables it while there are unsaved changes.
+★ **The editor, slice 1 — landed** (`6cb02598`, `wave-23b/the-editor`, PR #56): the state machine moved verbatim into
+`editor-state.ts`, the inspector's arithmetic into `inspector-ops.ts`; full unit suite 5,090 green with a new 14-case hook
+test; on a production build `wave8-designer-editor`, `wave13-designer-studio-taps` and `wave13-designer-studio-drag` green.
+★ **A carried defect found on the way, not caused by it:** `wave13-designer-upload-render.spec.ts:147` cannot find the
+schedule page's poster upload (`section[aria-labelledby="poster"]` → «رفع ملصق جاهز») — the spec predates a later rebuild of
+that page, and **CI skips it** (it needs a worker), so nothing ever caught it. Slice 1 touches no file the page imports.
+
 ★ **The tie-breaker — a real defect, carried** (owner, 2026-10-03): `issue_certificate()` orders by `is_default`, then version, with no tiebreak — two org templates of one kind, neither default, on the same version, and issuance picks arbitrarily: **the screen can disagree with what issuance picks.** The cheap guard is in PR A: with no default set for a kind the screens name no template and say none is set.
 ★ **Wave 24's carries for the owner** (`DEC-238` §6): نقاطك · four certificate fields that are not bindings · the objects and
 stickers tabs · an A3 certificate · C6's place · the issuance fallback's order.
