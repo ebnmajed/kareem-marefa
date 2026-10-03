@@ -2,12 +2,16 @@
 // EMPTY, as ONE run, at 390 px in Arabic, with the REAL worker sending through
 // the local SMTP sink and the mail READ BACK from the sink's inbox.
 //
+// ★ WAVE 23 (DEC-238 §4) REBUILT SCR-058 AS THE BLOCK BUILDER, and steps 1 – 4 were rewritten for it by `notify`
+// (transferred for this, the lead's spec): the builder at /app/admin/emails/[key] opens the platform design, a save
+// adopts it, ▼ on the canvas's handle bar reorders (at 1280 — the canvas is a desktop tool), and «معاينة واختبار»
+// previews through the one renderer with forced dark named. Steps 5 – 7's assertions are unchanged; step 5 reaches
+// «أرسل اختبارًا» through the same sheet.
+//
 // The brief's measure, in its own order:
-//   1 · DUPLICATED — an org that has never touched its templates presses
-//       «ابدأ من تصميم جاهز» on a reminder key: the platform design becomes the
-//       org's own row, and the platform's constant is untouched (REQ-NTF-014);
-//   2 · REORDERED WITH TAPS — a block moved one place with ▼, no drag, and the
-//       move announced (REQ-NTF-009, SC 2.5.7);
+//   1 · DUPLICATED — an org that has never touched its templates opens a reminder key and saves: the platform design
+//       becomes the org's own row, and the platform's constant is untouched (REQ-NTF-014);
+//   2 · REORDERED WITH TAPS — a block moved one place with ▼, no drag (REQ-NTF-009, SC 2.5.7);
 //   3 · PREVIEWED BY THE PRODUCTION RENDERER — the frame is filled by a real
 //       POST to the one renderer, and its heading is INSIDE the iframe; the
 //       forced-dark mode is named a simulation on screen (REQ-NTF-010);
@@ -202,15 +206,17 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
-async function open(page: Page, path: string) {
-  await page.setViewportSize(PHONE);
+const DESKTOP = { width: 1280, height: 900 };
+
+async function open(page: Page, path: string, size = PHONE) {
+  await page.setViewportSize(size);
   await page.goto(path);
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
-async function capture(page: Page, name: string) {
+async function capture(page: Page, name: string, size = PHONE) {
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  expect(page.viewportSize()).toEqual(PHONE);
+  expect(page.viewportSize()).toEqual(size);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${name} scrolls sideways`).toBe(true);
   await page.screenshot({ path: join(SHOTS, `wave10-demo-email-${name}.png`), fullPage: true });
 }
@@ -245,33 +251,35 @@ async function releaseReminder(session: string, member: string) {
   await db.query(`update graphile_worker._private_jobs set run_at = now() where id = $1`, [rows[0].id]);
 }
 
-test("1 · FROM EMPTY — the key opens the string editor, because this org has touched nothing", async ({ context, page }) => {
+const BUILDER = `/ar/app/admin/emails/${KEY}`;
+const stored = async () =>
+  (
+    await db.query<{ blocks: { blocks: { type: string; id: string }[] }; source_family: string; body: string }>(
+      `select blocks, source_family, body from public.notification_templates where org_id = $1 and key = $2 and channel = 'email'`,
+      [orgId, KEY],
+    )
+  ).rows;
+
+test("1 · FROM EMPTY — the key opens the builder on the platform design, because this org has touched nothing", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await open(page, `/ar/app/admin/emails?key=${KEY}`);
-  await expect(main(page).getByRole("heading", { name: "قالب «تذكير قبل الجلسة بيوم»", level: 2 })).toBeVisible();
-  await expect(main(page).getByRole("button", { name: "احفظ القالب" })).toBeVisible();
-  await expect(main(page).getByRole("button", { name: "ابدأ من تصميم جاهز" })).toBeVisible();
+  await open(page, BUILDER);
+  await expect(main(page).getByRole("heading", { name: "تذكير قبل الجلسة بيوم", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("status").filter({ hasText: "التصميم الافتراضي" })).toBeVisible();
+  await expect(main(page).getByRole("button", { name: "احفظ وفعّل" })).toBeVisible();
   // No row at all: nothing of this org's is in the table yet.
   const { rows } = await db.query(`select 1 from public.notification_templates where org_id = $1`, [orgId]);
   expect(rows).toHaveLength(0);
   await capture(page, "1-string-editor");
 });
 
-test("2 · DUPLICATED — «ابدأ من تصميم جاهز» makes the platform design the org's own row; the constant is untouched", async ({ context, page }) => {
+test("2 · DUPLICATED — saving the platform design makes it the org's own row; the constant is untouched", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await open(page, `/ar/app/admin/emails?key=${KEY}`);
-  await main(page).getByRole("button", { name: "ابدأ من تصميم جاهز" }).click();
-
-  // The block editor's three panes replace the string form.
-  await expect(main(page).getByRole("heading", { name: "الكتل", level: 3, exact: true })).toBeVisible();
-  await expect(main(page).getByRole("heading", { name: "معاينة حيّة", level: 3, exact: true })).toBeVisible();
-  await expect(main(page).getByRole("heading", { name: "خصائص الكتلة", level: 3, exact: true })).toBeVisible();
+  await open(page, BUILDER);
+  await main(page).getByRole("button", { name: "احفظ وفعّل" }).click();
+  await expect(main(page).getByRole("status").filter({ hasText: /^محفوظ · / })).toBeVisible();
   await capture(page, "2-adopted");
 
-  const { rows } = await db.query<{ blocks: { blocks: { type: string; id: string }[] }; source_family: string; body: string }>(
-    `select blocks, source_family, body from public.notification_templates where org_id = $1 and key = $2 and channel = 'email'`,
-    [orgId, KEY],
-  );
+  const rows = await stored();
   expect(rows).toHaveLength(1);
   expect(rows[0].source_family).toBe("reminder");
   expect(rows[0].blocks.blocks.length).toBeGreaterThan(2);
@@ -281,36 +289,34 @@ test("2 · DUPLICATED — «ابدأ من تصميم جاهز» makes the platfo
   expect(rows[0].body).not.toContain("كريم معرفة ·");
 });
 
-test("3 · REORDERED WITH TAPS — one press of ▼ moves a block, the move is announced, and the saved order is what the screen showed", async ({ context, page }) => {
+test("3 · REORDERED WITH TAPS — one press of ▼ on the handle bar moves a block, and the saved order is what the canvas showed", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await open(page, `/ar/app/admin/emails?key=${KEY}`);
-  const list = main(page).getByRole("list", { name: "كتل الرسالة" });
-  const before = await list.getByRole("listitem").allInnerTexts();
+  await open(page, BUILDER, DESKTOP);
+  const before = (await stored())[0].blocks.blocks.map((b) => b.id);
   expect(before.length).toBeGreaterThan(2);
+  const heading = before.indexOf("h");
+  expect(heading).toBeGreaterThanOrEqual(0);
 
-  // The FIRST block goes down one place — by a tap, no drag (SC 2.5.7).
-  await list.getByRole("listitem").first().getByRole("button", { name: "انقل لأسفل" }).click();
-  await expect(main(page).getByRole("status").filter({ hasText: "إلى الموضع 2" })).toBeVisible();
-  const after = await list.getByRole("listitem").allInnerTexts();
-  expect(after[1]).toBe(before[0]);
-  expect(after[0]).toBe(before[1]);
-  await capture(page, "3-moved");
+  // The heading goes down one place — by a tap, no drag (SC 2.5.7).
+  await main(page).locator("[data-canvas-target] > button").and(page.getByRole("button", { name: /^عنوان: / })).click();
+  await main(page).locator("[data-handle-bar]").filter({ visible: true }).getByRole("button", { name: "انقل لأسفل", exact: true }).click();
+  await expect(main(page).getByRole("status").filter({ hasText: "مسودة" })).toBeVisible();
+  await capture(page, "3-moved", DESKTOP);
 
-  await main(page).getByRole("button", { name: "احفظ التصميم" }).click();
-  // Toasts mount outside `#main` (`ui/toast`); the text exact, as the brief says.
-  await expect(page.getByRole("status").filter({ hasText: "حُفظ التصميم" })).toBeVisible();
-  const { rows } = await db.query<{ blocks: { blocks: { id: string }[] } }>(
-    `select blocks from public.notification_templates where org_id = $1 and key = $2 and channel = 'email'`,
-    [orgId, KEY],
-  );
-  // The stored order is the screen's: what was first is now second.
-  const ids = rows[0].blocks.blocks.map((b) => b.id);
-  expect(ids.length).toBe(before.length);
+  await main(page).getByRole("button", { name: "احفظ وفعّل" }).click();
+  await expect(main(page).getByRole("status").filter({ hasText: /^محفوظ · / })).toBeVisible();
+  // The stored order is the canvas's: the heading and the block after it changed places.
+  const after = (await stored())[0].blocks.blocks.map((b) => b.id);
+  expect(after.length).toBe(before.length);
+  expect(after[heading + 1]).toBe("h");
+  expect(after[heading]).toBe(before[heading + 1]);
 });
 
 test("4 · PREVIEWED BY THE PRODUCTION RENDERER — the mail's heading is INSIDE the frame; forced dark is named a simulation", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await open(page, `/ar/app/admin/emails?key=${KEY}`);
+  await open(page, BUILDER);
+  await main(page).getByRole("button", { name: "معاينة واختبار" }).click();
+  const sheet = page.getByRole("dialog", { name: "معاينة واختبار" });
   await expect(frame(page).locator("body")).toContainText("جلستك غدًا");
   // The org's name is the mail's signature — the renderer knows whose mail this is.
   await expect(frame(page).locator("body")).toContainText("مؤسسة الاستوديو");
@@ -318,8 +324,8 @@ test("4 · PREVIEWED BY THE PRODUCTION RENDERER — the mail's heading is INSIDE
   // the rendered poster, and the preview asked rather than guessed.
   await expect(frame(page).locator(`img[src*="/api/s/${sessionId}/og"]`)).toHaveCount(1);
 
-  await main(page).getByRole("radio", { name: "داكن قسري" }).click();
-  await expect(main(page).getByText("محاكاة:", { exact: false })).toBeVisible();
+  await sheet.getByRole("radio", { name: "داكن قسري" }).click();
+  await expect(sheet.getByText("محاكاة:", { exact: false })).toBeVisible();
   await expect(frame(page).locator("body")).toContainText("جلستك غدًا");
   await page.locator('iframe[name="mail-preview"]').scrollIntoViewIfNeeded();
   await capture(page, "4-preview-dark");
@@ -328,10 +334,12 @@ test("4 · PREVIEWED BY THE PRODUCTION RENDERER — the mail's heading is INSIDE
 test("5 · SENT AS A TEST — to the admin's own address and no other, prefixed, audited without an address", async ({ context, page }) => {
   test.setTimeout(180_000);
   await signIn(context, adminEmail);
-  await open(page, `/ar/app/admin/emails?key=${KEY}`);
+  await open(page, BUILDER);
   const before = (await inbox(adminEmail)).length;
 
-  await main(page).getByRole("button", { name: "أرسل اختبارًا" }).click();
+  // Wave 23: «أرسل اختبارًا» lives in «معاينة واختبار», named with the admin's own address.
+  await main(page).getByRole("button", { name: "معاينة واختبار" }).click();
+  await page.getByRole("dialog", { name: "معاينة واختبار" }).getByRole("button", { name: /^أرسل اختبارًا/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "أُرسلت رسالة اختبار إلى بريدك" })).toBeVisible();
   await capture(page, "5-test-sent");
 
