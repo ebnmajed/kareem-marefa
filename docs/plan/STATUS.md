@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-03 · **Branch:** `wave-23a/templates-and-certificates` (draft PR #52) · ★★ **WAVE 23 IS IN PROGRESS — Step 0 DONE, the map written (`DEC-237`), three teammates planning** · **`main`:** `0d9a0d60`; production at **`0190`** · **Phase:** ★★ **M12 — THE STUDIO (`DEC-235`, `DEC-236`, `DEC-237`, M25)** — four screens from nine artboards, three PRs, six primitives (63 → 69), **no migration**. ★★ **One ruling waits for the owner** (`DEC-237` §4): `DEC-236` C6 says the session's certificate template is picked **in الجدولة**, but `DEC-178` makes **`045` the one writer of the mode** — the brief cited `DEC-178` for the opposite of what it says. **`DEC-178` stands until the owner rules**: `045` writes both, before completion. The brief is `docs/plan/notes/wave-23-lead.md`. ★ **Owed by the owner:** the `railway.json`, and the C6 ruling. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-059` and the platform console (M13), session stories.
+**Last updated:** 2026-10-03 · **Branch:** `wave-23a/templates-and-certificates` (draft PR #52) · ★★ **WAVE 23 — PR A ONLY, on the owner's budget ruling** · **`main`:** `0d9a0d60`; production at **`0190`**; ★ **`0191` (template audit) written, not yet pushed — the owner rehearses it on a dump taken at `0190`** · **Phase:** M12, the studio (`DEC-235` – `DEC-238`). ★★ **THE BOUNDARY:** PR A (`055`, `045`, C1 – C7, `0191`) is being built by `console` and is the wave's goal; **PR B #53 stops at the studio frame and the two shared primitives** (complete, no deletes, green); **PR C has no commits and no PR**; the designer and the email builder are **deferred to wave 24**, their plans approved and committed (`fd6a3d37`). ★ **Owed by the owner:** C6's place (`DEC-237` §4), the `0191` rehearsal, the `railway.json`.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -6,6 +6,19 @@
 ---
 
 ## ★★★ WAVE 23 — IN PROGRESS — M12, the studio (`DEC-235`, `DEC-236`, `DEC-237`)
+
+### ★★ The boundary, on the owner's budget ruling (2026-10-03)
+
+| PR | State | What a cut-off leaves |
+|---|---|---|
+| **A #52** — `wave-23a/templates-and-certificates` | ⏳ `console` building `055` then `045`, each delete + create in one sitting; `0191` (lead) and its RLS test | ★ **Rule: never push an unpaired delete** — `git log origin/main..HEAD` checked for a lone `refactor(...)` before every push. A pushed state always has every screen |
+| **B #53** — `wave-23b/the-designer` | ✓ the studio frame + `ui/editor-rail` + `ui/floating-toolbar` (`82c39667`), floor 63 → 65, full suite 5,049 green | complete and mergeable after A; **the designer rebuild is wave 24's** — `notes/designer.md` holds the approved plan |
+| **C** | no branch, no PR | **wave 24's** — `notes/notify.md` holds the approved plan; cut from B's head |
+
+★ **A live defect found and not fixed this wave** (`notify`, `DEC-238` §4.5): the email studio's «أرسل اختبارًا» mails the
+**saved** row, not the draft on screen. Wave 24's builder disables it while there are unsaved changes.
+★ **Wave 24's carries for the owner** (`DEC-238` §6): نقاطك · four certificate fields that are not bindings · the objects and
+stickers tabs · an A3 certificate · C6's place · the issuance fallback's order.
 
 ### ★ Where it stands — 2026-10-03
 
@@ -17,8 +30,8 @@
 | ★ Division | **`console`** PR A (`055`, `045`) — composition over existing DAL, `templates.ts`/`certificates.ts` transferred for the wave · **`designer`** PR B (the editor over the kept engine, `canvas-stage`, `layer-list`, the certificate canvas) · **`notify`** PR C (`058`, `block-canvas`, `block-library`, six block types) · **lead** the studio frame, `editor-rail`, `floating-toolbar`, the walkthrough |
 | ★ Seam rulings | `editor.tsx`'s state machine **moves verbatim before the delete** (`DEC-237` §2) · `canvas-stage` is **the stage around** `DesignerCanvas`, not a second engine (§3) |
 | ★★ For the owner | **C6's place** — `DEC-178` vs `DEC-236` (§4). Default in force: `045` writes the mode and the template |
-| Sync 1 | ⏳ three plans in `docs/plan/notes/{console,designer,notify}.md`; nobody deletes a file before «the plans are approved» |
-| PR B, PR C | worktrees not yet cut — B from A's head after sync 1, C from B's head once the shared chrome lands |
+| Sync 1 | ✓ `DEC-238` (`56893e93`) — three plans approved; only `console` released to build (budget) |
+| PR B, PR C | B #53 at its boundary; C deferred, no branch |
 
 ### The plan as written before Step 0
 
