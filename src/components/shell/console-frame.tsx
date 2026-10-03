@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import type { AdminRailLink } from "@/components/ui";
 import { AdminRail } from "@/components/ui/admin-rail";
 import { IconButton } from "@/components/ui/icon-button";
@@ -19,6 +20,12 @@ import { Sheet } from "@/components/ui/sheet";
 // ★ `data-console` is what `globals.css` keys on: the bar's height into `--header-h` and `--console-bar`, and motion
 // off for everything beneath it (`REQ-UIX-053`, `DEC-228` §6) — so a shared primitive cannot bring a transition in.
 // Only one rail is focusable at a width: the aside is `display: none` below `lg`, the sheet mounts only when open.
+//
+// ★★ THE STUDIO FRAME (wave 23, REQ-UIX-107, DEC-237 contract 1). The two editors own the whole viewport and draw their
+// own bar (`AdminDesigner.dc.html`, `AdminEmails.dc.html`): on their routes this renders BARE — no console bar, no rail,
+// no sheet — and keeps `data-console`, so motion stays off and the display face stays the `h1`'s. Decided here from
+// `usePathname()`, which the server render knows too, so there is no flash; the layout is not re-rendered on a
+// client-side navigation and could not decide it (wave 7). No URL moved. The layout still never gates.
 
 export interface ConsoleFrameProps {
   groups: AdminRailLink[][];
@@ -37,9 +44,29 @@ export interface ConsoleFrameProps {
   children: ReactNode;
 }
 
+const strip = (path: string) => path.replace(/^\/(ar|en)(?=\/|$)/, "");
+
+/** The editors' routes — they draw their own bar: the designer, and one email's builder (`notify`'s plan, sync 1). The
+ *  email gallery `/app/admin/emails` itself stays framed. */
+export function isStudioEditor(pathname: string): boolean {
+  const path = strip(pathname);
+  return path.startsWith("/app/admin/designer/") || /^\/app\/admin\/emails\/[^/]+$/.test(path);
+}
+
 export function ConsoleFrame({ groups, railLabel, openLabel, skipLabel, brand, title, orgName, toApp, account, children }: ConsoleFrameProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname() ?? "";
   const hasRail = groups.some((group) => group.length > 0);
+
+  if (isStudioEditor(pathname)) {
+    return (
+      <div data-console="" data-studio="" className="h-dvh overflow-hidden bg-canvas">
+        <div id="admin-content" tabIndex={-1} className="h-full min-w-0 outline-none">
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div data-console="" className="min-h-dvh bg-canvas">

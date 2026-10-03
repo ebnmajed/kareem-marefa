@@ -1636,3 +1636,58 @@ export interface KvCardProps extends Styleable {
   /** Under the rows. */
   actions?: ReactNode;
 }
+
+// ── wave 23 (DEC-235 §4, DEC-237): the studio's shared chrome — the lead's ───
+
+/** The studio rail's glyphs, by name — plain data; drawn by the lead's `src/components/studio/glyphs.tsx`. */
+export type EditorRailGlyph =
+  | "elements" | "fields" | "uploads" | "brand" | "layers" | "checks" | "layer"
+  | "add" | "styles" | "layouts" | "block";
+
+export interface EditorRailItem {
+  key: string;
+  /** Under the glyph, and the panel's heading. */
+  label: string;
+  glyph: EditorRailGlyph;
+  /** A count on the item — الفحوصات's findings. Never drawn at 0; `label` is the pluralised accessible text. */
+  count?: { value: number; label: string };
+}
+
+/**
+ * The lead's · `editor-rail.tsx` — the studio's one sidebar (REQ-UIX-107, `DEC-NEXT-36`): a 68 px rail of tabs at the
+ * inline-start and a 300 px panel that swaps with the selection. Shared by the designer and the email builder. An item
+ * that exists only with a selection (الطبقة, الكتلة) is omitted from `items` when there is none. Declares no animation.
+ */
+export interface EditorRailProps extends Styleable {
+  /** The tablist's accessible name. */
+  label: string;
+  items: readonly EditorRailItem[];
+  /** Controlled. An unknown key falls back to the first item. */
+  selected: string;
+  onSelect: (key: string) => void;
+  /** The selected item's panel content. */
+  children: ReactNode;
+  /** A row under the panel's heading — e.g. النص / الموضع / التأثيرات, composed from `ui/tabs` by the caller. */
+  panelTabs?: ReactNode;
+  /** The panel's heading, when it is not the item's label — الطبقة's «نص · {name}». */
+  panelTitle?: ReactNode;
+  /** A control in the heading's row, at its inline-end — «إغلاق». */
+  panelAction?: ReactNode;
+}
+
+/**
+ * The lead's · `floating-toolbar.tsx` — the bar above the selection (REQ-UIX-107, `DEC-NEXT-36`). `role="toolbar"`, one
+ * tab stop, ←/→ on the visual axis. Positioned in PHYSICAL px inside the caller's positioned overlay (`DEC-096`).
+ * Draws nothing of the document; never takes focus on its own. Declares no animation.
+ */
+export interface FloatingToolbarProps extends Styleable {
+  label: string;
+  /** The target's BOUNDING box — axis-aligned, so a rotated layer passes the box that contains it — in physical px,
+   *  relative to the positioned ancestor. */
+  anchor: { left: number; top: number; width: number; height: number };
+  /** The gap between the box and the bar, px. Default 8; the designer passes more to clear its rotation knob. */
+  offset?: number;
+  /** Default: above, flipped below when there is no room above. */
+  placement?: "above" | "below";
+  children: ReactNode;
+}
