@@ -227,7 +227,7 @@ test("5 · one is revoked with a reason — and the verification page says revok
   await signIn(context, emails.admin);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
   const row = main(page).getByRole("table", { name: "الشهادات الصادرة" }).getByRole("row", { name: new RegExp(certs.a.serial) });
-  await row.getByRole("button", { name: /ألغِ/ }).click();
+  await row.getByRole("link", { name: /ألغِ/ }).click();
   const sheet = page.getByRole("dialog");
   await sheet.getByRole("button", { name: "ألغِ الشهادة" }).click();
   await expect.poll(async () => (await db.query(`select state from public.certificates where id = $1`, [certs.a.id])).rows[0].state, "no reason, no revocation").toBe("issued");
