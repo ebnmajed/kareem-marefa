@@ -187,7 +187,8 @@ test("★ the builder at 1280, its canvas filled by the one renderer", async ({ 
 
   // ★ The frame is filled by a real POST to the one renderer, not by anything this page drew: the mail's own heading
   // is INSIDE the iframe — with its bindings shown as tokens, the canvas's mode.
-  const frame = page.frameLocator('iframe[name="mail-canvas"]');
+  // The canvas's frame is named per mount (`useId`, the wave-23 orphan fix), so it is found by the name's stem.
+  const frame = page.frameLocator('#main iframe[name^="mail-canvas-"]');
   await expect(frame.locator("body")).toContainText("جلستك غدًا");
   await expect(frame.locator("body")).toContainText("{المكان}");
 

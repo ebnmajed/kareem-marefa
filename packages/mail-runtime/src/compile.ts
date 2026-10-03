@@ -238,7 +238,7 @@ export function compileBlocks(document: unknown, context: CompileContext): Compi
   const { blocks, dropped } = readDocument(document);
   const styles = readStyles(document);
   const ctx: Ctx = { ...context, width: FULL_WIDTH, styles };
-  const layout = readRows(document, blocks);
+  const layout = readRows(document, blocks, { keepEmpty: context.annotate === true });
 
   if (layout === null) {
     // ★ THE PATH EVERY DOCUMENT WRITTEN BEFORE WAVE 23 TAKES, unchanged.
@@ -324,6 +324,10 @@ function compileRow(
     const width = widths[index] ?? free;
     const inner: string[] = [];
     for (const block of column) compileAnnotated(block, { ...ctx, width }, say, inner, text, dropped);
+    // The canvas only: an empty column holds a dashed place, so it has a size the editor can measure and fill.
+    if (ctx.annotate && column.length === 0) {
+      inner.push(row(`<td ${cell(`padding:0 0 16px 0;`)}><div style="height:40px;border:1px dashed ${ctx.palette.edge};border-radius:8px;"></div></td>`));
+    }
     const last = index === entry.columns.length - 1;
     // The gap sits on the LEFT of a column that is not the last: in an RTL row
     // the next column is to its left. Physical, because a mail's CSS is.

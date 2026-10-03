@@ -157,3 +157,17 @@ describe("the editor's annotation", () => {
     expect(on).toContain('<tr data-k="a">');
   });
 });
+
+describe("an empty layout row — sent as nothing, drawn on the canvas", () => {
+  const document: EmailBlockDocument = { schemaVersion: 1, blocks: [p("a", "أ")], rows: [{ id: "r-a", layout: "1", columns: [["a"]] }, { id: "empty", layout: "1/2", columns: [[], []] }] };
+
+  it("is dropped from the mail a member receives", () => {
+    expect(renderWith(sample, document, "brand").html).not.toContain("display:inline-block");
+  });
+
+  it("★ is kept in the editor's frame, with its id and a measurable place in each column", () => {
+    const html = renderEmail({ key: sample.key, override: { subject: null, body: null, blocks: document }, payload: sample.payload, member: MEMBER, org: ORG, appUrl: APP_URL, annotate: true }).html;
+    expect(html).toContain('<tr data-k="empty">');
+    expect(html.match(/border:1px dashed/g)).toHaveLength(2);
+  });
+});

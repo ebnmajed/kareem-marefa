@@ -26,7 +26,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * The rows of a document, or null when it has none — and null is the old,
  * byte-identical path.
  */
-export function readRows(document: unknown, blocks: readonly EmailBlock[]): LayoutRow[] | null {
+export function readRows(document: unknown, blocks: readonly EmailBlock[], options: { keepEmpty?: boolean } = {}): LayoutRow[] | null {
   if (!isRecord(document) || !Array.isArray(document.rows)) return null;
 
   const byId = new Map(blocks.map((block) => [block.id, block]));
@@ -57,7 +57,9 @@ export function readRows(document: unknown, blocks: readonly EmailBlock[]): Layo
     }
 
     const resolved = columns.map((column) => column.map(take).filter((block): block is EmailBlock => block !== null));
-    if (resolved.every((column) => column.length === 0)) continue;
+    // A row with nothing in it sends nothing — except to the builder's canvas (`keepEmpty`), where an empty layout
+    // must still be a place the admin can see and fill.
+    if (!options.keepEmpty && resolved.every((column) => column.length === 0)) continue;
     rows.push({ kind: "columns", id: typeof raw.id === "string" ? raw.id : "", layout, columns: resolved });
   }
 
