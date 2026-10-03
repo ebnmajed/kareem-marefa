@@ -240,6 +240,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
       <LayerToolbar
         layer={selected!}
         fontFamilies={s.fontFamilies}
+        values={props.bindings}
         alignLabels={{
           // Named as the eye sees it on THIS document: start is the right of an RTL page (DEC-096).
           start: document.direction === "rtl" ? st("layer.alignRight") : st("layer.alignLeft"),
@@ -314,7 +315,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
       aria-label={st("bar.zoom")}
       value={zoom === "fit" ? "fit" : String(zoom)}
       onChange={(e) => setZoom(e.target.value === "fit" ? "fit" : Number(e.target.value))}
-      className="w-auto"
+      className="w-36! shrink-0"
     >
       <option value="fit">
         {st("bar.fit")} · {formatNumber(Math.round(scale * 100))}%
@@ -328,11 +329,11 @@ export function DesignerEditor(props: DesignerEditorProps) {
   );
 
   const bar = (
-    <div role="toolbar" aria-label={t("title")} className="flex min-h-13 flex-wrap items-center gap-2 border-b border-edge px-4 py-2">
+    <div role="toolbar" aria-label={t("title")} className="flex h-13 flex-nowrap items-center gap-2 border-b border-edge px-4">
       {props.barStart}
       {saveBadge}
       {props.canEdit ? (
-        <span className="flex gap-1">
+        <span className="flex shrink-0 gap-1">
           <IconButton size="sm" variant="secondary" label={t("undo")} onClick={() => s.step("undo")} disabled={depth.past === 0}>
             <ChevronIcon direction="forward" />
           </IconButton>
@@ -341,12 +342,14 @@ export function DesignerEditor(props: DesignerEditorProps) {
           </IconButton>
         </span>
       ) : null}
-      <span className="hidden xl:block">{strip}</span>
-      <span className="grow" />
-      <span className="hidden xl:block">{zoomControl}</span>
+      {/* ★ ONE ROW (the board's 52 px): the strip takes what is left and scrolls on its own axis; everything after
+          it keeps its intrinsic width at the inline-end. */}
+      <span className="hidden min-w-0 flex-1 xl:block">{strip}</span>
+      <span className="grow xl:hidden" />
+      <span className="hidden shrink-0 xl:block">{zoomControl}</span>
       {props.barEnd}
       {props.previewSessions ? (
-        <Select aria-label={st("bar.previewSession")} value={props.previewSessionId ?? ""} onChange={(e) => void choosePreview(e.target.value)} className="hidden w-auto max-w-56 xl:block">
+        <Select aria-label={st("bar.previewSession")} value={props.previewSessionId ?? ""} onChange={(e) => void choosePreview(e.target.value)} className="hidden w-48! shrink-0 xl:block">
           <option value="">{st("bar.previewSession")}</option>
           {props.previewSessions.map((session) => (
             <option key={session.id} value={session.id}>
@@ -356,12 +359,12 @@ export function DesignerEditor(props: DesignerEditorProps) {
         </Select>
       ) : null}
       {props.publish && differs && props.canEdit ? (
-        <Button type="button" variant="secondary" size="sm" pending={publishing} onClick={onPublish}>
+        <Button type="button" variant="secondary" size="sm" pending={publishing} onClick={onPublish} className="shrink-0">
           {st("bar.publish")}
         </Button>
       ) : null}
       {props.exportContent ? (
-        <Button type="button" size="sm" onClick={() => setExporting(true)}>
+        <Button type="button" size="sm" onClick={() => setExporting(true)} className="shrink-0">
           {st("bar.export")}
         </Button>
       ) : null}
@@ -601,11 +604,16 @@ export function DesignerEditor(props: DesignerEditorProps) {
   );
 }
 
-/** The five on the floating toolbar, by layer kind; a QR or an image has fewer things to touch. */
+/**
+ * The five on the floating toolbar, by layer kind; a QR or an image has fewer things to touch. ★ Each control has its
+ * own intrinsic width and shows its value legibly — the face, the size, the colour's swatch and name, the alignment —
+ * never a squeezed select showing one character (the lead's capture of 8177cc6d).
+ */
 function LayerToolbar({
   layer,
   fontFamilies,
   alignLabels,
+  values,
   onPatch,
   onFillWidth,
   onBind,
@@ -613,6 +621,8 @@ function LayerToolbar({
   layer: Layer;
   fontFamilies: string[];
   alignLabels: Record<"start" | "center" | "end", string>;
+  /** The resolved brand values, for the colour's swatch. */
+  values: Record<string, string>;
   onPatch: (patch: Partial<Layer>) => void;
   onFillWidth: () => void;
   onBind: () => void;
@@ -620,21 +630,22 @@ function LayerToolbar({
   const tp = useTranslations("designer.properties");
   const st = useTranslations("designer.studio");
   if (layer.kind === "shape") {
-    return <ToolbarToken label={tp("fill")} value={layer.shape.fill ?? "{{brand.surface}}"} onValue={(fill) => onPatch({ shape: { ...layer.shape, fill } } as Partial<Layer>)} />;
+    return <ToolbarToken label={tp("fill")} value={layer.shape.fill ?? "{{brand.surface}}"} values={values} onValue={(fill) => onPatch({ shape: { ...layer.shape, fill } } as Partial<Layer>)} />;
   }
   if (layer.kind !== "text" && layer.kind !== "dynamic_field") {
     return (
-      <Button type="button" variant="ghost" size="sm" onClick={onFillWidth}>
+      <Button type="button" variant="ghost" size="sm" onClick={onFillWidth} className="shrink-0 whitespace-nowrap">
         {st("toolbar.fillWidth")}
       </Button>
     );
   }
+  const align = layer.align ?? "start";
   return (
     <>
-      <Select aria-label={tp("fontFamily")} value={layer.font.family} onChange={(e) => onPatch({ font: { ...layer.font, family: e.target.value } } as Partial<Layer>)} className="w-auto">
+      <Select aria-label={tp("fontFamily")} value={layer.font.family} onChange={(e) => onPatch({ font: { ...layer.font, family: e.target.value } } as Partial<Layer>)} className="w-48! shrink-0">
         {(fontFamilies.includes(layer.font.family) ? fontFamilies : [layer.font.family, ...fontFamilies]).map((family) => (
           <option key={family} value={family}>
-            {family}
+            {family === layer.font.family ? `${family} ${formatNumber(layer.font.weight ?? 400)}` : family}
           </option>
         ))}
       </Select>
@@ -642,7 +653,7 @@ function LayerToolbar({
         aria-label={tp("fontSize")}
         value={String(layer.font.size)}
         onChange={(e) => onPatch({ font: { ...layer.font, size: Math.max(1, Number(e.target.value)) } } as Partial<Layer>)}
-        className="w-auto"
+        className="w-24! shrink-0"
       >
         {[...new Set([layer.font.size, 24, 32, 40, 48, 64, 80, 96, 128])].sort((a, b) => a - b).map((size) => (
           <option key={size} value={size}>
@@ -650,37 +661,49 @@ function LayerToolbar({
           </option>
         ))}
       </Select>
-      <ToolbarToken label={tp("colour")} value={layer.color ?? "{{brand.fgHeading}}"} onValue={(color) => onPatch({ color } as Partial<Layer>)} />
-      <Select aria-label={tp("align")} value={layer.align ?? "start"} onChange={(e) => onPatch({ align: e.target.value as "start" | "center" | "end" } as Partial<Layer>)} className="w-auto">
+      <ToolbarToken label={tp("colour")} value={layer.color ?? "{{brand.fgHeading}}"} values={values} onValue={(color) => onPatch({ color } as Partial<Layer>)} />
+      <span role="group" aria-label={tp("align")} className="flex shrink-0 gap-0.5">
         {(["start", "center", "end"] as const).map((value) => (
-          <option key={value} value={value}>
+          <Button
+            key={value}
+            type="button"
+            size="sm"
+            variant={align === value ? "primary" : "ghost"}
+            aria-pressed={align === value}
+            onClick={() => onPatch({ align: value } as Partial<Layer>)}
+            className="shrink-0 whitespace-nowrap"
+          >
             {alignLabels[value]}
-          </option>
+          </Button>
         ))}
-      </Select>
-      <Button type="button" variant="ghost" size="sm" onClick={onFillWidth} aria-label={st("toolbar.fillWidth")}>
+      </span>
+      <Button type="button" variant="ghost" size="sm" onClick={onFillWidth} aria-label={st("toolbar.fillWidth")} className="shrink-0">
         ↔
       </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={onBind}>
+      <Button type="button" variant="ghost" size="sm" onClick={onBind} className="shrink-0 whitespace-nowrap">
         {st("toolbar.bind")}
       </Button>
     </>
   );
 }
 
-/** A brand colour by NAME, never a picker (REQ-DSG-021) — compact, for the toolbar; the panel's is `TokenSelect`. */
-function ToolbarToken({ label, value, onValue }: { label: string; value: string; onValue: (next: string) => void }) {
+/** A brand colour by NAME, never a picker (REQ-DSG-021) — its swatch beside it, painted from the resolved value as a
+ *  style (never a class); the select's value is the token's name. The panel's control is `TokenSelect`. */
+function ToolbarToken({ label, value, values, onValue }: { label: string; value: string; values: Record<string, string>; onValue: (next: string) => void }) {
   const tk = useTranslations("designer.inspector.background.tokens");
   const current = token(value);
   return (
-    <Select aria-label={label} value={current ?? value} onChange={(e) => onValue(bind(e.target.value))} className="w-auto">
-      {current === null ? <option value={value}>{value}</option> : null}
-      {BRAND_COLOUR_TOKENS.map((name) => (
-        <option key={name} value={name}>
-          {tk(name)}
-        </option>
-      ))}
-    </Select>
+    <span className="flex shrink-0 items-center gap-1.5">
+      <span aria-hidden="true" className="size-5 shrink-0 rounded-sm border border-edge" style={{ background: current ? values[`brand.${current}`] : undefined }} />
+      <Select aria-label={label} value={current ?? value} onChange={(e) => onValue(bind(e.target.value))} className="w-32! shrink-0">
+        {current === null ? <option value={value}>{value}</option> : null}
+        {BRAND_COLOUR_TOKENS.map((name) => (
+          <option key={name} value={name}>
+            {tk(name)}
+          </option>
+        ))}
+      </Select>
+    </span>
   );
 }
 

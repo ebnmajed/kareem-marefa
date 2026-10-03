@@ -111,13 +111,15 @@ export default async function DesignerPage({
 
   const barStart = (
     <>
-      <nav aria-label={t("breadcrumbLabel")}>
+      <nav aria-label={t("breadcrumbLabel")} className="shrink-0">
         <Link href={back.href} className={buttonClass("secondary", "sm")}>
           <ChevronIcon direction="back" />
           <span>{t(`back.${back.key}`)}</span>
         </Link>
       </nav>
-      <h1 className="text-label text-fg-heading">
+      {/* One line in its slot, the full name in its title: clipped on the INLINE axis only (`overflow-x-clip`), so a
+          mark above or below the line is never cut (no `overflow: hidden` on a text line). */}
+      <h1 title={title} className="min-w-0 max-w-[16rem] shrink overflow-x-clip text-ellipsis whitespace-nowrap py-1 text-label leading-loose text-fg-heading">
         <bdi>{title}</bdi>
       </h1>
       {context.kind === "session_poster" && context.binding ? (
