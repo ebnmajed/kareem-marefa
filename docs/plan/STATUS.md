@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-03 · **Branch:** `wave-23a/templates-and-certificates` (draft PR #52) · ★★ **WAVE 23 — PR A ONLY, on the owner's budget ruling** · **`main`:** `0d9a0d60`; production at **`0190`**; ★ **`0191` (template audit) written, not yet pushed — the owner rehearses it on a dump taken at `0190`** · **Phase:** M12, the studio (`DEC-235` – `DEC-238`). ★★ **THE BOUNDARY:** PR A (`055`, `045`, C1 – C7, `0191`) is being built by `console` and is the wave's goal; **PR B #53 stops at the studio frame and the two shared primitives** (complete, no deletes, green); **PR C has no commits and no PR**; the designer and the email builder are **deferred to wave 24**, their plans approved and committed (`fd6a3d37`). ★ **Owed by the owner:** C6's place (`DEC-237` §4), the `0191` rehearsal, the `railway.json`.
+**Last updated:** 2026-10-03 · **Branch:** `wave-23a/templates-and-certificates` (draft PR #52) · ★★ **WAVE 23 — PR A ONLY, on the owner's budget ruling** · **`main`:** `0d9a0d60`; production at **`0190`**; ★ **`0191` (template audit) written, not yet pushed — the owner rehearses it on a dump taken at `0190`** · **Phase:** M12, the studio (`DEC-235` – `DEC-238`). ★★ **THE BOUNDARY:** PR A (`055`, `045`, C1 – C7, `0191`) is being built by `console` and is the wave's goal; **PR B #53 stops at the studio frame and the two shared primitives** (complete, no deletes, green); **PR C has no commits and no PR**; the designer and the email builder are **deferred to wave 24**, their plans approved and committed (`fd6a3d37`). ★ **C6 RULED by the owner (2026-10-03): `045` writes both the mode and the template; `DEC-178` is not re-opened** — the brief, `DEC-236` and `M12.md` all carried the error, and `DECISIONS.md` won (the closing entry says so). ★ **`0191` REHEARSED by the lead on the owner's dump — see the wave-23 block; the owner may push it.** ★ **Owed by the owner:** pushing `0191` after PR A is green, the `railway.json`.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -15,8 +15,36 @@
 | **B #53** — `wave-23b/the-designer` | ✓ the studio frame + `ui/editor-rail` + `ui/floating-toolbar` (`82c39667`), floor 63 → 65, full suite 5,049 green | complete and mergeable after A; **the designer rebuild is wave 24's** — `notes/designer.md` holds the approved plan |
 | **C** | no branch, no PR | **wave 24's** — `notes/notify.md` holds the approved plan; cut from B's head |
 
+★★ **`0191` — REHEARSED 2026-10-03 on the owner's fresh production dump** (`/tmp/prod-schema-0190.sql`, taken at `0190`,
+**0 data rows**, `0181` present and nothing of `0191`). A throwaway `rehearse23` owned by `postgres`, the extensions as
+`supabase_admin`, the local `auth` schema whole and `storage`/`realtime` pre-data first, **the dump loaded with one error —
+the platform's `supabase_realtime` publication, as every wave**, `storage`/`realtime` post-data after it with 0 errors,
+buckets · worker migrations · retention periods copied. **`0191` in one transaction with `ON_ERROR_STOP`, as `postgres` —
+exit 0.** ★ **End state against local (`0191`): policies 194, triggers 125, table grants 784, columns 891 — identical; every
+public function body and routine grant identical (335 · 708, md5 equal) but `rls_auto_enable()` and its two grants —
+production-only, as every wave**; `0191`'s two function bodies md5-equal to local. ★★ **The six template mutations, done
+AS THE ORG'S ADMIN MEMBER under RLS** (`authenticated`, the screen's claims) on the rehearsed schema, each row's actor the
+member and its role `admin`:
+
+| Mutation | Rows written |
+|---|---|
+| create (template + v1) | `design_template.created` ×1 — `{purpose, family, name, duplicated_from: null}` |
+| duplicate a platform template (+ v1) | `design_template.created` ×1 — `duplicated_from` the platform template |
+| publish v2 | `design_template.published` ×1 — `{version: 2, version_id}` |
+| set default, twice | `design_template.default_set` ×1 per move — ★ **the cleared previous default wrote nothing**; one default for the kind after |
+| rename | `design_template.renamed` ×1 — before/after name |
+| retire, then restore | `design_template.retired` ×1, `design_template.restored` ×1 |
+
+Copying the 11 platform templates into the rehearsal wrote **no** row (org rows only). ★ **RLS on the rehearsed schema:
+114 of 115** (`isolation`, `definer-exposure`, `templates-audit`, `templates-guard`, `templates-roster`,
+`certificates-designs`) — the one red `definer-exposure` listing `rls_auto_enable()`. ★ **The gap, between the push and
+PR A's merge:** every trigger fires on writes `main` already makes and adds rows `main`'s audit screen already lists —
+nothing else moves. `rehearse23` dropped; the owner's dump left for the owner. **The owner may push:
+`supabase db push --linked --dry-run` should list exactly `0191`.**
+
 ★ **A live defect found and not fixed this wave** (`notify`, `DEC-238` §4.5): the email studio's «أرسل اختبارًا» mails the
 **saved** row, not the draft on screen. Wave 24's builder disables it while there are unsaved changes.
+★ **The tie-breaker — a real defect, carried** (owner, 2026-10-03): `issue_certificate()` orders by `is_default`, then version, with no tiebreak — two org templates of one kind, neither default, on the same version, and issuance picks arbitrarily: **the screen can disagree with what issuance picks.** The cheap guard is in PR A: with no default set for a kind the screens name no template and say none is set.
 ★ **Wave 24's carries for the owner** (`DEC-238` §6): نقاطك · four certificate fields that are not bindings · the objects and
 stickers tabs · an A3 certificate · C6's place · the issuance fallback's order.
 
@@ -29,7 +57,7 @@ stickers tabs · an A3 certificate · C6's place · the issuance fallback's orde
 | The map | ✓ `DEC-237`, `CLAUDE.md`'s wave-23 map, the ten agent files, `01` (`REQ-UIX-107` … `112`, `REQ-NTF-015`, `REQ-CRT-015`), `15` (`STORY-UIX-097` … `102`, `STORY-NTF-007`, `STORY-CRT-007`), `14` (M25), `09`; traceability 410 / 243, no gaps |
 | ★ Division | **`console`** PR A (`055`, `045`) — composition over existing DAL, `templates.ts`/`certificates.ts` transferred for the wave · **`designer`** PR B (the editor over the kept engine, `canvas-stage`, `layer-list`, the certificate canvas) · **`notify`** PR C (`058`, `block-canvas`, `block-library`, six block types) · **lead** the studio frame, `editor-rail`, `floating-toolbar`, the walkthrough |
 | ★ Seam rulings | `editor.tsx`'s state machine **moves verbatim before the delete** (`DEC-237` §2) · `canvas-stage` is **the stage around** `DesignerCanvas`, not a second engine (§3) |
-| ★★ For the owner | **C6's place** — `DEC-178` vs `DEC-236` (§4). Default in force: `045` writes the mode and the template |
+| ★★ C6 | ✓ **ruled by the owner: `045` writes both; `DEC-178` stands** |
 | Sync 1 | ✓ `DEC-238` (`56893e93`) — three plans approved; only `console` released to build (budget) |
 | PR B, PR C | B #53 at its boundary; C deferred, no branch |
 
