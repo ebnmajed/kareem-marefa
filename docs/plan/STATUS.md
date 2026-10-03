@@ -27,6 +27,11 @@
 | — a blank certificate | «قالب فارغ» button → «قالب جديد» link; «أنشئ» → «أنشئ وافتح», which **opens the studio** instead of toasting; «عمودية» → «A4 عمودي» | ★ expectation |
 | — the scheme toggle, the 390 dark capture | removed — not drawn, not built (D6, `DEC-238`) | ★ expectation |
 | — the empty org's «إلى قوالب المنصة», the moderator's sentence | removed (`DEC-NEXT-25`); the moderator's assertion is now the absence of every write control | ★ expectation |
+| `certificates.spec.ts` (`console`) — `:253` revoke button → link; `:303-307` «أصدر المحدّد» / «أصدر» / «صدرت شهادة واحدة» | the rebuilt `045`'s controls and copy (D20) | selector |
+| — `:299` the mode sentence → the line's «تُراجَع قبل الإطلاق»; `:324` the `h2` «شهادات الجلسة» gone, «محجوزة · N» asserted | the board's line; the hub's `h1` names the session | ★ expectation |
+| `wave13-console-templates.spec.ts:131` (`console`) | `h1` «قوالب الملصقات» → «القوالب» | ★ expectation |
+| `wave8-designer-certificates.spec.ts` (`console`, transferred for the wave) — `:282`, `:285`, `:343-344`, `:365-371`, `:411`, `:424`, `:434`, `:442`, `:447`, `:449`, `:458` | the template control by id, the section by `aria-labelledby`, the release copy, the revoke link, the headings «محجوزة · N» / «ملغاة · N» | selector |
+| — `:262`, `:263`, `:265-267`, `:288-293`, `:303-313`, `:352-355`, `:363-364`, `:393`, `:408-409`, `:454-456`, `:466` | the `h2` and the moderator's sentence gone (`DEC-NEXT-25`); the «لم يُحفظ» badge → the save button enabled/disabled; the serial estimate in the mode's preflight dialog; no «التصميم» section after completion — the line names the template and «غيّر» opens the sheet; locked = «غيّر» gone; the revoke sheet names member and serial; «مُلغاة نهائيًا» → «لا بديل»; «الوضع معطّل» ×2 → «الشهادات معطّلة» once | ★ expectation — each commented in place |
 | `wave13-designer-certificates-download.spec.ts:146`, `wave13-demo-download.spec.ts:218` (lead, custodian / own) | the PDF link's name «نزّل شهادة {name}» → «PDF — نزّل شهادة {name}» — the visible word is the board's «PDF» and the name begins with it (SC 2.5.3) | selector |
 
 ★★ **`0191` — REHEARSED 2026-10-03 on the owner's fresh production dump** (`/tmp/prod-schema-0190.sql`, taken at `0190`,
