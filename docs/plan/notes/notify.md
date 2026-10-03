@@ -481,6 +481,43 @@ address → received in Mailpit).
 - **D1 – D18** — defaults accepted; D5 (الفحوصات with a count) confirmed. The test-send fix (disabled while unsaved) approved.
 - `canvas-stage`'s four requests go to `designer` through the lead at approval.
 
+### C13 · Slice 3 — the kept-behaviour table read against what is written (before the create commit)
+
+Slices 1 (`5b474b64`, `50b7cd9c`, `7cb9e386`) and 2 (`a2bc72ce`) are in. Slice 3's support landed add-only first
+(`55be3329`: `builder-state.ts`, the canvas's preview mode, the real session, the strings). Then **one delete commit**
+— `admin/emails/{page,template-editor,templates-table}.tsx`, `components/email/{block-editor,preview-pane,checks-panel}.tsx`
+— and **the create commit straight after it**. `deliveries-table.tsx` is kept as §C4 said (no board draws the log).
+
+§C4's tables stand row for row; where each behaviour lives now:
+
+| Behaviour (`REQ-*`) | Now |
+|---|---|
+| admin only → streamed not-found (`REQ-ADM-020`, `DEC-134`) | gallery `page.tsx` and `[key]/page.tsx`, both from `getTemplateCatalogue()` |
+| failures in 7 days said at the top (`REQ-NTF-008`) | the gallery's panel, the same string and link |
+| the log at `?view=log`, chips, pager, retention, two empties (`REQ-NTF-008`) | gallery `LogView`, `deliveries-table.tsx` unchanged |
+| every email message by its admin-facing name; «تصل دائمًا» / «يمكن للعضو إيقافها» (wave 8 Q4) | the cards' name and meta line |
+| `?key=` opens the editor | redirects to `/app/admin/emails/[key]` |
+| a string row editable and sent in the design's frame (`DEC-081`) | the builder opens it as `documentFromText()`'s paragraphs, with the line saying so |
+| restore → confirm naming the message (`REQ-NTF-007`) | the bar's «⋯» → `ConfirmDialog` |
+| convert / adopt with provenance (`REQ-NTF-014`) | `saveEmailDesign()` decides the family from what the org had — and stops clearing it on later saves (a defect the old action had) |
+| the document is the state; the preview a function of it (`REQ-NTF-010`) | `builder-state.ts`; the canvas IS the renderer's frame |
+| a dropped stored block named and blocking until a change (`REQ-NTF-009`) | الفحوصات, `initialDropped` kept |
+| save blocked while a check blocks | «احفظ وفعّل» disabled |
+| reorder without drag, named by the row (`DEC-093`) | the handle bar's ▲▼, described by the target |
+| bindings listed, never typed; the link a binding name (`REQ-NTF-012`) | the المتغيّرات chips; الرابط a `select` |
+| image alt mandatory | `imageNoAlt`, now for poster and QR too |
+| the composed footer shown, fixed (`REQ-NTF-005`) | the canvas's fixed «ثابت» row |
+| test: own address only, rate limit said, disabled while blocking — **and while unsaved (#55)** (`REQ-NTF-011`) | «معاينة واختبار», the address shown in `<bdi dir="ltr">` |
+| subject ≤ 200, required (`DEC-161`) | the «الموضوع» line (D2) |
+| `body` generated from the blocks (`REQ-NTF-013`) | `saveEmailDesign()` unchanged in that |
+| form POST into a named sandboxed frame, never `srcdoc`, no timer, four modes, dark named (`REQ-NTF-010`, `DEC-161`, `DEC-146`) | the canvas and the sheet |
+| checks: blocking first and counted, advisory, satisfied shown, «حدّد الكتلة» | `checks-panel.tsx` rebuilt; the count is the rail's |
+
+**As built, differing from the plan, said once:** inline editing opens from the floating toolbar's «حرّر النص» rather
+than a double-click (a single pointer, `DEC-093`'s spirit); below `lg` the builder shows the checks and a notice
+(the artboards are 1280 only). **Audit rows**: unchanged — save and restore write `notification_templates` as before,
+the test send `email.test_sent` through `send_test_email()`.
+
 ---
 
 ## 0. THE CONTRACT — `public.notify()` — read this before writing a call site
