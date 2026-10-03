@@ -67,6 +67,19 @@ nothing else moves. `rehearse23` dropped; the owner's dump left for the owner. *
 ★ **The editor, slice 1 — landed** (`6cb02598`, `wave-23b/the-editor`, PR #56): the state machine moved verbatim into
 `editor-state.ts`, the inspector's arithmetic into `inspector-ops.ts`; full unit suite 5,090 green with a new 14-case hook
 test; on a production build `wave8-designer-editor`, `wave13-designer-studio-taps` and `wave13-designer-studio-drag` green.
+★ **Slice 2 — landed** (`e254218d`, `1cec007f`): `ui/canvas-stage` (the stage around `DesignerCanvas`), `ui/layer-list` with
+`designer/layer-list.tsx` deleted in the same commit; the floor 65 → 67; 118/118 on a build (editor + gallery specs, both projects).
+★ **Slice 3a — landed** (`a665e456` groundwork, delete `a9cdc4b2` + create `8177cc6d`, fixes `a4a0ddfc`, `2b2906a5`, `0f34f2c4`):
+the studio rebuilt from `AdminDesigner` + `AdminDesignerElements` — one 52 px bar with the seven presets, the rail of seven
+with الفحوصات's count and الطبقة on selection, the inspector in three tabs with «الموضع والحجم» closed and never removed, the
+floating toolbar's five; ★ **`DEC-093`: every new drag by a tap, proven by `wave23-designer-taps` with clicks only and a unit
+guard that fails if a taps spec ever drags**. Three defects found by holding the captures beside the boards and fixed: the bar
+wrapping to two rows; the toolbar's controls squeezed to one character; the name vanishing on the phone. On a build of
+`0f34f2c4`, 18/18 editor specs and the walkthrough; the galleries green on `2b2906a5`.
+★ **Ledger (selectors only, every expectation the same):** `wave8-designer-editor` — «الخصائص» → «الطبقة»; الموضع clicked before
+align; the bar named «مصمّم المستندات»; the export request and queue through «صدّر»; the phone expects «صدّر» · `wave13-designer-studio-taps`
+— «الطبقة»; a `positionTab()` helper; «نص» from العناصر (`.first()`); the «النص» field by its textbox role · `wave13-designer-studio-drag`
+— the drag hint → the region «لوحة التصميم»; the bar named · `inspector-align.test.tsx` — الموضع opened first (two places).
 ★ **A carried defect found on the way, not caused by it:** `wave13-designer-upload-render.spec.ts:147` cannot find the
 schedule page's poster upload (`section[aria-labelledby="poster"]` → «رفع ملصق جاهز») — the spec predates a later rebuild of
 that page, and **CI skips it** (it needs a worker), so nothing ever caught it. Slice 1 touches no file the page imports.
