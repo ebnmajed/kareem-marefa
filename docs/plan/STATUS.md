@@ -15,6 +15,19 @@
 | **B #53** — `wave-23b/the-designer` | ✓ the studio frame + `ui/editor-rail` + `ui/floating-toolbar` (`82c39667`), floor 63 → 65, full suite 5,049 green | complete and mergeable after A; **the designer rebuild is wave 24's** — `notes/designer.md` holds the approved plan |
 | **C** | no branch, no PR | **wave 24's** — `notes/notify.md` holds the approved plan; cut from B's head |
 
+★ **The untouched-suite ledger — wave 23** (each line: the assertion, why it moved, and whether a selector moved or an expectation did):
+
+| Spec · line | Moved | Kind |
+|---|---|---|
+| `wave8-designer-templates.spec.ts` (lead, as `designer`'s custodian) — `h1` ×4 | «قوالب الملصقات» / «قوالب الشهادات» → «القوالب» (one title over two tabs, the board) | selector |
+| — the platform card's copy | the «انسخ إلى مؤسستي» button → ⋯ «إجراءات أخرى» → «انسخ لتعدّل»; the field «اسم النسخة» → «الاسم»; «قالب المنصة» → «المنصة» | selector |
+| — «افتح في المصمّم», «انشر إصدارًا جديدًا» | buttons on the card → items in its ⋯ menu; «مسودة غير منشورة» → the chip «مسودة» | selector |
+| — «الافتراضي» | → «افتراضي» (the board's badge) | selector |
+| — the use count | on the card → in the retire confirm, as its consequence | ★ expectation |
+| — a blank certificate | «قالب فارغ» button → «قالب جديد» link; «أنشئ» → «أنشئ وافتح», which **opens the studio** instead of toasting; «عمودية» → «A4 عمودي» | ★ expectation |
+| — the scheme toggle, the 390 dark capture | removed — not drawn, not built (D6, `DEC-238`) | ★ expectation |
+| — the empty org's «إلى قوالب المنصة», the moderator's sentence | removed (`DEC-NEXT-25`); the moderator's assertion is now the absence of every write control | ★ expectation |
+
 ★★ **`0191` — REHEARSED 2026-10-03 on the owner's fresh production dump** (`/tmp/prod-schema-0190.sql`, taken at `0190`,
 **0 data rows**, `0181` present and nothing of `0191`). A throwaway `rehearse23` owned by `postgres`, the extensions as
 `supabase_admin`, the local `auth` schema whole and `storage`/`realtime` pre-data first, **the dump loaded with one error —
