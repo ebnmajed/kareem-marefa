@@ -139,6 +139,10 @@ export const REGISTRY: Record<string, Entry> = {
   "split-view.tsx": tokens("split-view", ["border-accent", "bg-raised", "bg-hover"], "split-view-scope.test.tsx"),
   "kv-card.tsx": tokens("kv-card", ["rounded-panel", "bg-surface", "border-edge", "divide-edge", "text-fg-muted"], "kv-card-scope.test.tsx"),
 
+  // ── wave 23 (DEC-235 §4, DEC-237): the studio's shared chrome, the lead's ──
+  "editor-rail.tsx": tokens("editor-rail", ["bg-raised", "border-edge", "text-fg-muted", "bg-signal", "text-on-signal"], "editor-rail-scope.test.tsx"),
+  "floating-toolbar.tsx": tokens("floating-toolbar", ["bg-raised", "border-edge", "rounded-field"], "floating-toolbar-scope.test.tsx"),
+
   // ── `event`'s — its first (wave 19, DEC-214) ──
   "star-input.tsx": tokens("star-input", ["text-signal", "text-edge-strong", "text-fg-muted", "text-error"], "star-input-scope.test.tsx"),
 };

@@ -69,6 +69,8 @@ import { SettingsGroupDemo } from "./demos/settings-group";
 import { AdminRailDemo } from "./demos/admin-rail";
 import { SplitViewDemo } from "./demos/split-view";
 import { KvCardDemo } from "./demos/kv-card";
+import { EditorRailDemo } from "./demos/editor-rail";
+import { FloatingToolbarDemo } from "./demos/floating-toolbar";
 import type { DemoGround } from "./ground";
 
 // «ساحة اللعب» in the gallery — contract 4, DEC-183 §4.2(f), DEC-186 §2.
@@ -159,6 +161,9 @@ const DEMOS: { file: string; title: string; node: (ground: DemoGround) => ReactN
   { file: "admin-rail", title: "قائمة الإدارة", node: () => <AdminRailDemo /> },
   { file: "split-view", title: "العرض المقسوم", node: () => <SplitViewDemo /> },
   { file: "kv-card", title: "بطاقة البيانات", node: () => <KvCardDemo /> },
+  // ── wave 23 (DEC-235, DEC-237): the studio's shared chrome ──
+  { file: "editor-rail", title: "شريط المحرّر", node: () => <EditorRailDemo /> },
+  { file: "floating-toolbar", title: "شريط الأدوات العائم", node: () => <FloatingToolbarDemo /> },
   { file: "rank-row", title: "صفّ الترتيب", node: () => <RankRowDemo /> },
   { file: "race-bar", title: "سباق الشركات", node: () => <RaceBarDemo /> },
   { file: "level-card", title: "بطاقة المستوى", node: () => <LevelCardDemo /> },
