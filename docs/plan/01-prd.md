@@ -1623,10 +1623,13 @@ Regenerating a certificate years later produces the same document: the template 
 **Serves:** `DEC-178`, `DEC-236` C2 and C6, `DEC-237` §4 · `REQ-CRT-004`
 Each certificate kind — attendance, presenting, achievement — has one org default (`0055`'s indexes). A session may name
 another template per kind **before completion, on its certificates screen**, the same and only place its mode is written
-(`DEC-178`); after completion both are shown and neither is written.
+(`DEC-178`). After completion the mode is shown and not written; the template may still change **while that kind has
+held certificates and none issued**, so the held ones can be re-rendered (`DEC-238` §2).
 **Acceptance:**
-- With no choice, a certificate is issued from the org's default for its kind, else the platform's.
-- Mode and template are refused once the session is completed, archived or cancelled.
+- With no choice, a certificate is issued from the template `issue_certificate()` picks, and the screens name that same
+  template — «افتراضي» only when it is the kind's default (`DEC-238` §2).
+- The mode is refused once the session is completed, archived or cancelled; the template once a certificate of that kind
+  is issued.
 
 
 ---
@@ -3928,8 +3931,10 @@ finding names its layer and selecting it opens that layer.
 
 #### REQ-UIX-111 — The certificate canvas
 **Serves:** `REQ-CRT-004`, `REQ-CRT-014`, `REQ-DSG-019` · `DEC-236` C3 – C5 · `09` `SCR-056`/`057`
-The same editor on a landscape canvas (`AdminCertDesigner.dc.html`), the strip A4 أفقي · A4 عمودي · A3 أفقي, and a الحقول
-panel listing every certificate field **marked used or unused** — {المستوى} only for the `achievement` kind, {رمز التحقق QR}
+The same editor on a landscape canvas (`AdminCertDesigner.dc.html`), the template's one page as its strip — **a
+certificate has one preset, and the other orientation is its own template, reached by a link** (`DEC-148`,
+`REQ-DSG-026`, `DEC-238` §3; the board's A3 chip is not built) — and a الحقول panel listing every certificate field the
+runtime binds, **marked used or unused** — {المستوى} only for the `achievement` kind, {رمز التحقق QR}
 bound to the verification URL. «معاينة بعضو» renders with a real member through the one renderer.
 **Acceptance:**
 - The checks fit the org's longest member name at the name layer's maximum lines.

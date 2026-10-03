@@ -53,6 +53,7 @@ disagreement with an artboard. **You delete nothing until the lead posts «the p
 - `src/app/[locale]/app/admin/emails/**` · `src/app/api/admin/emails/**` · `src/components/{email,notifications,calendar}/**` ·
   `src/components/admin/delivery-reason.ts` · `src/lib/dal/{notifications,calendar}.ts` (add-only)
 - new `src/components/ui/{block-canvas,block-library}.tsx` with their tests, `-scope` tests and demos
+- ★ new `src/app/api/mail/qr/route.ts` and its unit test (`DEC-238` §4 — an allowlist of our own paths, never caller text)
 - `src/messages/*/{notifications,emails,calendar}.json` · `supabase/proposed/notify/**` (functions only)
 - `tests/unit/{mail,notify,admin-emails}*` — ★ **`tests/unit/mail-pinned/**` READ-ONLY** · `tests/rls/{notify,notifications}*.test.ts` ·
   `tests/components/{email,notifications,calendar}/**` · `tests/components/admin/emails-page.test.tsx` ·
@@ -216,7 +217,8 @@ the lead. **Import by path** — `index.ts` exports **types only**. ★ **The di
 - **Every earlier wave's transfer has ended.** Wave 22's are back with `console`: `admin/{scoring,recognition,reminders,settings,moderation}/**` and their DAL modules.
 - **→ `console`, from `designer`:** `src/app/[locale]/app/admin/templates/**`, `src/app/[locale]/app/admin/sessions/[id]/certificates/**`,
   `src/lib/dal/{templates,certificates}.ts` (add-only), the library's chrome `src/components/designer/{template-library,template-library-page,template-preview,template-actions}.tsx`
-  (to be deleted and rebuilt as `055`), `src/messages/*/{templates,certificates}.json`, and their tests.
+  (to be deleted and rebuilt as `055`), ★ `045`'s chrome `src/components/certificates/{design-panel,eligible-list,issuance,mode-control}.tsx` (to be deleted, `DEC-238` §2), `src/messages/*/{templates,certificates}.json`, and their tests.
+- **→ `notify`, new:** `src/app/api/mail/qr/route.ts` and its test (`DEC-238` §4).
 - ★ All of these go back after the wave.
 - ★ **Frozen for everyone, fixes included:** everything waves 18 – 22 rebuilt, `/app/platform/**`, every worker task but
   the ones a row names. A defect found there is written in your note and told to the lead.

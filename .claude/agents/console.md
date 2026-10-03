@@ -52,7 +52,7 @@ artboard. **You delete nothing until the lead posts «the plans are approved».*
 
 - ★ `src/app/[locale]/app/admin/templates/**` · `src/app/[locale]/app/admin/sessions/[id]/certificates/**` (**from `designer`**)
 - ★ `src/lib/dal/{templates,certificates}.ts` (**from `designer`, add-only** — existing signatures are frozen; `verifyCertificate()` is not yours to change)
-- ★ `src/components/designer/{template-library,template-library-page,template-preview,template-actions}.tsx` — **to delete** — and new `src/components/templates/**`
+- ★ `src/components/designer/{template-library,template-library-page,template-preview,template-actions}.tsx` and ★ `src/components/certificates/{design-panel,eligible-list,issuance,mode-control}.tsx` with their tests (`DEC-238` §2) — **to delete** — and new `src/components/templates/**`; `045`'s new chrome beside its page
 - your six `ui/` files, composed (`data-table` add-only if at all), their tests, `-scope` tests and demos
 - ★ `src/messages/*/{templates,certificates}.json` (**from `designer`**) · `src/messages/*/admin.json` · `supabase/proposed/console/**` (functions only)
 - ★ `tests/rls/{templates,certificates}*.test.ts`, `tests/unit/certificates*`, `tests/components/certificates/**`, `tests/e2e/{templates,certificates}*.spec.ts`
@@ -220,7 +220,8 @@ the lead. **Import by path** — `index.ts` exports **types only**. ★ **The di
 - **Every earlier wave's transfer has ended.** Wave 22's are back with `console`: `admin/{scoring,recognition,reminders,settings,moderation}/**` and their DAL modules.
 - **→ `console`, from `designer`:** `src/app/[locale]/app/admin/templates/**`, `src/app/[locale]/app/admin/sessions/[id]/certificates/**`,
   `src/lib/dal/{templates,certificates}.ts` (add-only), the library's chrome `src/components/designer/{template-library,template-library-page,template-preview,template-actions}.tsx`
-  (to be deleted and rebuilt as `055`), `src/messages/*/{templates,certificates}.json`, and their tests.
+  (to be deleted and rebuilt as `055`), ★ `045`'s chrome `src/components/certificates/{design-panel,eligible-list,issuance,mode-control}.tsx` (to be deleted, `DEC-238` §2), `src/messages/*/{templates,certificates}.json`, and their tests.
+- **→ `notify`, new:** `src/app/api/mail/qr/route.ts` and its test (`DEC-238` §4).
 - ★ All of these go back after the wave.
 - ★ **Frozen for everyone, fixes included:** everything waves 18 – 22 rebuilt, `/app/platform/**`, every worker task but
   the ones a row names. A defect found there is written in your note and told to the lead.
