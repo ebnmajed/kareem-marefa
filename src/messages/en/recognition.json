@@ -1,7 +1,7 @@
 {
   "recognition": {
     "admin": {
-      "title": "Badges, levels and perks",
+      "title": "Badges and levels",
       "intro": "Automatic evaluation runs nightly — changes here apply from the next run, and never touch what anyone already earned.",
       "common": {
         "edit": "Edit",
@@ -18,7 +18,7 @@
         "reload": "Refresh the page"
       },
       "held": {
-        "heading": "Achievement certificates awaiting release",
+        "heading": "Achievement certificates waiting to be issued",
         "intro": "Leaderboard certificates and badges that carry one are prepared held, and reach no one until you release them.",
         "listLabel": "Held certificates",
         "colRecipient": "Recipient",
@@ -36,7 +36,27 @@
         "released": "{count, plural, one {<bdi>{value}</bdi> certificate released} other {<bdi>{value}</bdi> certificates released}}",
         "failed": "The certificates could not be released. Try again.",
         "notAuthorized": "The certificates were not released: releasing them is no longer within your permissions.",
-        "empty": "No held certificates."
+        "empty": "No held certificates.",
+        "colMember": "Member",
+        "colSince": "Since",
+        "issue": "Issue",
+        "stop": "Stop",
+        "issueTitle": "Issue <bdi>{name}</bdi>'s certificate?",
+        "issued": "Certificate issued",
+        "stopTitle": "Stop <bdi>{name}</bdi>'s certificate",
+        "stopReason": "Reason",
+        "stopConfirm": "Stop the certificate",
+        "stopped": "Certificate stopped",
+        "stopErrors": {
+          "reasonRequired": "Enter the reason.",
+          "reasonTooShort": "At least 3 characters.",
+          "failed": "Could not stop it. Try again."
+        },
+        "age": {
+          "today": "Today",
+          "days": "{count, plural, one {A day} other {<bdi>{value}</bdi> days}}"
+        },
+        "colDecide": "Decision"
       },
       "badges": {
         "heading": "Badges",
@@ -190,6 +210,68 @@
         "errors": {
           "qualifierRequired": "Choose what grants the perk.",
           "failed": "The perk could not be saved. Try again."
+        }
+      },
+      "read": {
+        "edit": "Edit",
+        "save": "Save",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "close": "Close",
+        "saved": "Saved",
+        "unchanged": "Nothing changed",
+        "savedMark": "✓✓ Saved · <bdi>{time}</bdi>",
+        "savedMarkBy": "✓✓ Saved · <bdi>{time}</bdi> · <bdi>{actor}</bdi>",
+        "unsaved": "{count, plural, one {One unsaved change} other {<bdi>{value}</bdi> unsaved changes}}",
+        "changed": "(changed)",
+        "on": "On",
+        "off": "Off",
+        "none": "—",
+        "colEnabled": "On",
+        "leave": {
+          "title": "Leave without saving?",
+          "confirm": "Leave",
+          "stay": "Stay"
+        },
+        "editing": "Editing badges and levels",
+        "actions": "Save badges and levels",
+        "colLevel": "Level",
+        "colFrom": "From",
+        "colColour": "Colour",
+        "colBadge": "Badge",
+        "colRule": "Rule",
+        "colHolders": "Held by",
+        "ramp": {
+          "1": "Grey",
+          "2": "Copper",
+          "3": "Silver",
+          "4": "Lime",
+          "5": "Ice"
+        },
+        "newBadge": "New badge",
+        "award": "Award a badge",
+        "nameOf": "Name — <bdi>{name}</bdi>",
+        "thresholdOf": "From — <bdi>{name}</bdi>",
+        "qualifierOf": "Granted by — <bdi>{name}</bdi>",
+        "errorSummaryTitle": "Badges and levels were not saved",
+        "errors": {
+          "nameRequired": "Enter the name.",
+          "nameTooLong": "The name is too long.",
+          "thresholdRequired": "Enter the points.",
+          "thresholdInvalid": "A whole number from 0.",
+          "thresholdOrder": "Above the level before it and below the one after.",
+          "thresholdTaken": "Another level uses this threshold.",
+          "qualifierRequired": "Choose what grants it.",
+          "requiredCountInvalid": "From 1 to 31.",
+          "stale": "Someone saved these values after you opened them. Reload.",
+          "notFound": "An item no longer exists. Reload.",
+          "failed": "Could not save. Try again."
+        },
+        "when": {
+          "today": "Today · <bdi>{time}</bdi>",
+          "yesterday": "Yesterday · <bdi>{time}</bdi>",
+          "days": "{count, plural, one {A day ago · <bdi>{time}</bdi>} other {<bdi>{value}</bdi> days ago · <bdi>{time}</bdi>}}",
+          "date": "<bdi>{date}</bdi> · <bdi>{time}</bdi>"
         }
       }
     }

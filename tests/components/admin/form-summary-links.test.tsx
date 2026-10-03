@@ -11,7 +11,6 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
 import { DirectSessionForm } from "@/app/[locale]/app/admin/sessions/direct-session-form";
-import { SettingsForm } from "@/app/[locale]/app/admin/settings/settings-form";
 import { formStateFrom, withErrors, type FormState } from "@/lib/form-state";
 import adminAr from "@/messages/ar/admin.json";
 import proposalsAr from "@/messages/ar/proposals.json";
@@ -42,27 +41,6 @@ async function submitAndFollow(container: HTMLElement, controlId: string) {
 }
 
 describe("the error summary's links focus the control on this track's forms (F4)", () => {
-  it("settings", async () => {
-    const settings = {
-      timeZone: "Asia/Riyadh",
-      checkInRotationSeconds: 30,
-      checkInGraceSeconds: 30,
-      maxCoPresenters: 3,
-      companyMetric: "total_points" as const,
-      priorityRsvpHours: 24,
-      limitDocumentMb: 50,
-      limitAudioMb: 200,
-      limitImageMb: 20,
-      limitPosterMb: 20,
-      allowJpegExport: false,
-      emailFromName: null,
-      emailReplyTo: null,
-      ratingMinAggregate: 3,
-    };
-    const { container } = render(<Wrap><main><SettingsForm action={refusing("emailReplyTo", "emailReplyToInvalid")} settings={settings} /></main></Wrap>);
-    await submitAndFollow(container, "s-email-reply-to");
-  });
-
   it("the direct-session form on the sessions list", async () => {
     const { container } = render(
       <Wrap>

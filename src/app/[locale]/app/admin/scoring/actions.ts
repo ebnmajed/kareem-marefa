@@ -1,156 +1,127 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { parseDuration } from "@/components/admin/duration";
 import { savedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import type { Locale } from "@/i18n/routing";
-import { formStateFrom, was, withErrors, withFormError } from "@/lib/form-state";
-import {
-  companyHostingRuleUpdateInput,
-  companyPercentRuleUpdateInput,
-  manualAdjustmentInput,
-  scoringRuleUpdateInput,
-  submitManualAdjustment,
-  updateCompanyHostingRule,
-  updateCompanyPercentRule,
-  updateScoringRule,
-} from "@/lib/dal/scoring-admin";
+import { emptyFormState, formStateFrom, was, withErrors, withFormError } from "@/lib/form-state";
+import { catalogueSaveInput, manualAdjustmentInput, saveScoringCatalogue, submitManualAdjustment } from "@/lib/dal/scoring-admin";
+import { COMPANY_FIELDS, RULE_FIELDS, companyField, ruleField, type CatalogueState } from "./state";
 
-// SCR-053's Server Actions (REQ-PTS-004 … 009, REQ-ADM-011), on the form model
-// for wave 8 (K5). Each returns a `SavedFormState`: refusals at the field they
-// concern, what was typed handed back, `saved` for the dialog to close and
-// the toast to fire. `"use server"` modules export async functions alone — the
-// state type lives in `components/admin/saved-form-state.ts`.
+// SCR-053's Server Actions — REQ-UIX-100, REQ-UIX-091, REQ-PTS-004 … 010, `DEC-232` §3.
 //
-// Zod checks shape; authority is the database's: `scoring_rules`' column grant
-// and `p2_admin_update`, `adjust_points_manually()`'s `assert_fresh_admin()`.
+// ★ ONE SAVE IS ONE WRITE: every rule and company rule edit mode shows goes to `save_scoring_catalogue()` in one call,
+// which writes only what changed, in one transaction, and answers with the history rows it wrote. «حُفظ» and «لم
+// يتغيّر شيء» are read from that answer (`receipt`), never from having pressed the button.
+// ★ Each refusal lands AT ITS FIELD, and nothing is sent until every field parses.
+// ★ `opened` carries the versions edit mode was opened at: another admin's save in between is refused as stale.
+// Shape is checked here; authority is the database's — the function is invoker, so `0027`'s and `0081`'s grants and
+// `p2_admin_update` decide, and `adjust_points_manually()`'s `assert_fresh_admin()` for the adjustment.
 
 const SCREEN = (locale: Locale) => `/${locale}/app/admin/scoring`;
-const INT = /^-?\d+$/;
 
-type State = SavedFormState;
+const opened = z.object({
+  rules: z.array(z.object({ id: z.uuid(), actionKey: z.string(), version: z.int(), penalty: z.boolean() })).max(50),
+  company: z.array(z.object({ id: z.uuid(), actionKey: z.enum(["company_hosting", "company_attendance_pct", "company_presenting_pct"]), version: z.int() })).max(3),
+});
 
-export async function saveScoringRule(locale: Locale, previous: State, formData: FormData): Promise<State> {
-  const captured = formStateFrom<string>(formData, {
-    fields: ["ruleId", "kind", "points", "capPerSession", "cooldownAmount", "cooldownUnit", "enabled", "reasonAr"],
-    previous,
-  });
-  const errors: Record<string, string> = {};
-  const penalty = was(captured, "kind") === "penalty";
-
-  const pointsRaw = was(captured, "points").trim();
-  let points = 0;
-  if (pointsRaw === "") errors.points = "pointsRequired";
-  else if (!INT.test(pointsRaw)) errors.points = "pointsInvalid";
-  else {
-    points = Number(pointsRaw);
-    if (points < 0 || points > 1000) errors.points = "pointsRange";
-  }
-
-  const capRaw = was(captured, "capPerSession").trim();
-  const cap = capRaw === "" ? null : Number(capRaw);
-  if (capRaw !== "" && (!INT.test(capRaw) || cap! < 1 || cap! > 1000)) errors.capPerSession = "capInvalid";
-
-  let cooldownSeconds: number | null = null;
-  if (was(captured, "cooldownAmount").trim() !== "") {
-    const parsed = parseDuration(was(captured, "cooldownAmount"), was(captured, "cooldownUnit"), "seconds");
-    if (!parsed.ok) errors.cooldown = "cooldownInvalid";
-    else if (parsed.amount > 31536000) errors.cooldown = "cooldownRange";
-    else cooldownSeconds = parsed.amount === 0 ? null : parsed.amount;
-  }
-
-  const reason = was(captured, "reasonAr").trim();
-  if (reason === "") errors.reasonAr = "reasonRequired";
-  else if (reason.length > 200) errors.reasonAr = "reasonTooLong";
-
-  if (Object.keys(errors).length > 0) return { ...withErrors(captured, errors), saved: false };
-
-  const parsed = scoringRuleUpdateInput.safeParse({
-    ruleId: was(captured, "ruleId"),
-    // A penalty is typed as the COST — a positive number — and stored negative.
-    points: penalty ? -points : points,
-    enabled: was(captured, "enabled") === "on",
-    capPerSession: cap,
-    cooldownSeconds,
-    reasonAr: reason,
-  });
-  if (!parsed.success) return { ...withFormError(captured, "failed"), saved: false };
-
-  try {
-    await updateScoringRule(locale, parsed.data);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message === "sign_mismatch") return { ...withErrors(captured, { points: "signMismatch" }), saved: false };
-    return { ...withFormError(captured, message === "not_found" ? "notFound" : "failed"), saved: false };
-  }
-  revalidatePath(SCREEN(locale));
-  return savedState();
-}
-
-function wholeNumber(raw: string, min: number, max: number): number | null {
+function whole(raw: string, min: number, max: number): number | null {
   const trimmed = raw.trim();
   if (!/^\d+$/.test(trimmed)) return null;
   const value = Number(trimmed);
   return value >= min && value <= max ? value : null;
 }
 
-export async function saveCompanyHostingRule(locale: Locale, previous: State, formData: FormData): Promise<State> {
-  const captured = formStateFrom<string>(formData, { fields: ["ruleId", "points", "enabled"], previous });
-  const points = wholeNumber(was(captured, "points"), 0, 10000);
-  if (points === null) return { ...withErrors(captured, { points: was(captured, "points").trim() === "" ? "pointsRequired" : "pointsInvalid" }), saved: false };
-
-  const parsed = companyHostingRuleUpdateInput.safeParse({ ruleId: was(captured, "ruleId"), enabled: was(captured, "enabled") === "on", points });
-  if (!parsed.success) return { ...withFormError(captured, "failed"), saved: false };
+export async function saveCatalogue(locale: Locale, previous: CatalogueState, formData: FormData): Promise<CatalogueState> {
+  let before: z.infer<typeof opened>;
   try {
-    await updateCompanyHostingRule(locale, parsed.data);
+    before = opened.parse(JSON.parse(String(formData.get("opened") ?? "")));
   } catch {
-    return { ...withFormError(captured, "failed"), saved: false };
+    return { ...withFormError(emptyFormState<string>(), "failed"), receipt: null };
   }
-  revalidatePath(SCREEN(locale));
-  return savedState();
-}
-
-export async function saveCompanyPercentRule(locale: Locale, previous: State, formData: FormData): Promise<State> {
-  const captured = formStateFrom<string>(formData, { fields: ["ruleId", "pointsPerPercent", "capPoints", "minActiveMembers", "enabled"], previous });
+  const fields = [
+    ...before.rules.flatMap((r) => RULE_FIELDS.map((f) => ruleField(r.id, f))),
+    ...before.company.flatMap((r) => COMPANY_FIELDS.map((f) => companyField(r.id, f))),
+  ];
+  const captured = formStateFrom<string>(formData, { fields, previous });
   const errors: Record<string, string> = {};
 
-  const perRaw = was(captured, "pointsPerPercent").trim();
-  const per = Number(perRaw);
-  if (perRaw === "") errors.pointsPerPercent = "pointsPerPercentRequired";
-  else if (!/^\d+(\.\d{1,2})?$/.test(perRaw) || per > 100) errors.pointsPerPercent = "pointsPerPercentInvalid";
-
-  const cap = wholeNumber(was(captured, "capPoints"), 1, 10000);
-  if (cap === null) errors.capPoints = was(captured, "capPoints").trim() === "" ? "capPointsRequired" : "capPointsInvalid";
-  const min = wholeNumber(was(captured, "minActiveMembers"), 1, 1000);
-  if (min === null) errors.minActiveMembers = was(captured, "minActiveMembers").trim() === "" ? "minActiveMembersRequired" : "minActiveMembersInvalid";
-
-  if (Object.keys(errors).length > 0) return { ...withErrors(captured, errors), saved: false };
-
-  const parsed = companyPercentRuleUpdateInput.safeParse({
-    ruleId: was(captured, "ruleId"),
-    enabled: was(captured, "enabled") === "on",
-    pointsPerPercent: per,
-    capPoints: cap,
-    minActiveMembers: min,
+  const rules = before.rules.map((r) => {
+    const f = (field: (typeof RULE_FIELDS)[number]) => was(captured, ruleField(r.id, field));
+    const points = whole(f("points"), 0, 1000);
+    if (f("points").trim() === "") errors[ruleField(r.id, "points")] = "pointsRequired";
+    else if (points === null) errors[ruleField(r.id, "points")] = "pointsRange";
+    const capRaw = f("cap").trim();
+    const cap = capRaw === "" ? null : whole(capRaw, 1, 1000);
+    if (capRaw !== "" && cap === null) errors[ruleField(r.id, "cap")] = "capInvalid";
+    let cooldown: number | null = null;
+    if (f("cooldownAmount").trim() !== "") {
+      const parsed = parseDuration(f("cooldownAmount"), f("cooldownUnit"), "seconds");
+      if (!parsed.ok) errors[ruleField(r.id, "cooldownAmount")] = "cooldownInvalid";
+      else if (parsed.amount > 31536000) errors[ruleField(r.id, "cooldownAmount")] = "cooldownRange";
+      else cooldown = parsed.amount === 0 ? null : parsed.amount;
+    }
+    const reason = f("reason").trim();
+    if (reason === "") errors[ruleField(r.id, "reason")] = "reasonRequired";
+    else if (reason.length > 200) errors[ruleField(r.id, "reason")] = "reasonTooLong";
+    return {
+      id: r.id,
+      version: r.version,
+      // A deduction is typed as its COST — a positive number — and stored negative (REQ-PTS-008).
+      points: r.penalty ? -(points ?? 0) : (points ?? 0),
+      enabled: f("enabled") === "on",
+      cap_per_session: cap,
+      cooldown_seconds: cooldown,
+      reason_ar: reason,
+    };
   });
-  if (!parsed.success) return { ...withFormError(captured, "failed"), saved: false };
+
+  const company = before.company.map((r) => {
+    const f = (field: (typeof COMPANY_FIELDS)[number]) => was(captured, companyField(r.id, field));
+    const enabled = f("enabled") === "on";
+    if (r.actionKey === "company_hosting") {
+      const points = whole(f("points"), 0, 10000);
+      if (points === null) errors[companyField(r.id, "points")] = f("points").trim() === "" ? "pointsRequired" : "companyPointsInvalid";
+      return { id: r.id, version: r.version, enabled, points, points_per_percent: null, cap_points: null, min_active_members: null };
+    }
+    const perRaw = f("perPercent").trim();
+    if (perRaw === "") errors[companyField(r.id, "perPercent")] = "perPercentRequired";
+    else if (!/^\d+(\.\d{1,2})?$/.test(perRaw) || Number(perRaw) > 100) errors[companyField(r.id, "perPercent")] = "perPercentInvalid";
+    const cap = whole(f("capPoints"), 1, 10000);
+    if (cap === null) errors[companyField(r.id, "capPoints")] = f("capPoints").trim() === "" ? "capPointsRequired" : "capPointsInvalid";
+    const min = whole(f("minActive"), 1, 1000);
+    if (min === null) errors[companyField(r.id, "minActive")] = f("minActive").trim() === "" ? "minActiveRequired" : "minActiveInvalid";
+    return { id: r.id, version: r.version, enabled, points: null, points_per_percent: Number(perRaw), cap_points: cap, min_active_members: min };
+  });
+
+  if (Object.keys(errors).length > 0) return { ...withErrors(captured, errors), receipt: null };
+
+  const input = catalogueSaveInput.safeParse({ rules, company });
+  if (!input.success) return { ...withFormError(captured, "failed"), receipt: null };
   try {
-    await updateCompanyPercentRule(locale, parsed.data);
-  } catch {
-    return { ...withFormError(captured, "failed"), saved: false };
+    const receipt = await saveScoringCatalogue(locale, input.data);
+    revalidatePath(SCREEN(locale));
+    return { ...emptyFormState<string>(), receipt };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const sign = message.match(/^sign_mismatch:(.+)$/);
+    if (sign) {
+      const rule = before.rules.find((r) => r.actionKey === sign[1]);
+      if (rule) return { ...withErrors(captured, { [ruleField(rule.id, "points")]: "signMismatch" }), receipt: null };
+    }
+    return { ...withFormError(captured, message === "stale" ? "stale" : message === "not_found" ? "notFound" : "failed"), receipt: null };
   }
-  revalidatePath(SCREEN(locale));
-  return savedState();
 }
 
-export async function saveManualAdjustment(locale: Locale, previous: State, formData: FormData): Promise<State> {
+export async function saveManualAdjustment(locale: Locale, previous: SavedFormState, formData: FormData): Promise<SavedFormState> {
   const captured = formStateFrom<string>(formData, { fields: ["memberId", "direction", "amount", "reason"], previous });
   const errors: Record<string, string> = {};
 
   const memberId = was(captured, "memberId");
   if (memberId === "") errors.memberId = "memberRequired";
   const amountRaw = was(captured, "amount").trim();
-  const amount = wholeNumber(amountRaw, 1, 100000);
+  const amount = whole(amountRaw, 1, 100000);
   if (amountRaw === "") errors.amount = "amountRequired";
   else if (amount === null) errors.amount = "amountInvalid";
   const reason = was(captured, "reason").trim();

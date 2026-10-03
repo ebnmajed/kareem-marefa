@@ -1,73 +1,140 @@
-// SCR-054's Server Actions — REQ-REC-001 … 008. Shape at the field; the DAL's
-// refusals mapped to the fields they concern.
+// SCR-054's Server Actions — REQ-REC-001 … 008, REQ-UIX-101, REQ-CRT-011/012. Shape at the field; the database's
+// refusals mapped to the fields they concern. ★ wave 22: the per-row writers (`saveBadge`, `saveLevel`, `savePerk`) are
+// re-said for the one save of edit mode and the badge sheet (ledger lines); the manual award's cases are unchanged; the
+// held certificate's «أوقف» is new.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/dal/session", () => ({ sessionClient: vi.fn() }));
 
-const saveBadge = vi.fn();
-const updateLevel = vi.fn();
-const updatePerk = vi.fn();
+const saveRecognition = vi.fn();
 const submitManualBadgeAward = vi.fn();
 vi.mock("@/lib/dal/scoring-admin", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/dal/scoring-admin")>()),
-  saveBadge: (...a: unknown[]) => saveBadge(...a),
-  updateLevel: (...a: unknown[]) => updateLevel(...a),
-  updatePerk: (...a: unknown[]) => updatePerk(...a),
+  saveRecognition: (...a: unknown[]) => saveRecognition(...a),
   submitManualBadgeAward: (...a: unknown[]) => submitManualBadgeAward(...a),
+}));
+const revokeCertificate = vi.fn();
+const releaseCertificates = vi.fn();
+vi.mock("@/lib/dal/certificates", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/dal/certificates")>()),
+  revokeCertificate: (...a: unknown[]) => revokeCertificate(...a),
+  releaseCertificates: (...a: unknown[]) => releaseCertificates(...a),
 }));
 
 const actions = await import("@/app/[locale]/app/admin/recognition/actions");
 const { emptySavedState } = await import("@/components/admin/saved-form-state");
+const { emptyRecognitionState } = await import("@/app/[locale]/app/admin/recognition/state");
 
 const ID = "11111111-1111-4111-8111-111111111111";
 const ID2 = "22222222-2222-4222-8222-222222222222";
+const L1 = "33333333-3333-4333-8333-333333333333";
+const L2 = "44444444-4444-4444-8444-444444444444";
+const T = "2026-10-01T10:00:00+00:00";
 const form = (values: Record<string, string>) => {
   const data = new FormData();
   for (const [k, v] of Object.entries(values)) data.set(k, v);
   return data;
 };
-
-beforeEach(() => [saveBadge, updateLevel, updatePerk, submitManualBadgeAward].forEach((f) => f.mockReset()));
-
-describe("saveBadge — REQ-REC-001: create and edit, with a rule", () => {
-  it("creates a count badge: no id, the rule's threshold as a number, the certificate flag", async () => {
-    const result = await actions.saveBadge("ar", emptySavedState(), form({ badgeId: "", name: "حاضر مخلص", description: "", metric: "check_ins_count", gte: "25", issuesCertificate: "on" }));
-    expect(result.saved).toBe(true);
-    expect(saveBadge).toHaveBeenCalledWith("ar", { badgeId: undefined, name: "حاضر مخلص", description: null, issuesCertificate: true, rule: { metric: "check_ins_count", gte: 25 } });
+const opened = JSON.stringify({
+  levels: [
+    { id: L1, name: "مشارِك", thresholdPoints: 0, updatedAt: T },
+    { id: L2, name: "صاحب أثر", thresholdPoints: 300, updatedAt: T },
+  ],
+  badges: [{ id: ID, name: "حاضر دائم", description: null, issuesCertificate: false, rule: { metric: "check_ins_count", gte: 10, minSessions: null }, retired: false, updatedAt: T }],
+  perks: [{ id: ID2, key: "can_host", enabled: false, requiredLevelId: L2, requiredBadgeId: null, updatedAt: T }],
+  streaks: [],
+});
+const editForm = (overrides: Record<string, string> = {}) =>
+  form({
+    opened,
+    [`level-${L1}-name`]: "مشارِك",
+    [`level-${L1}-threshold`]: "0",
+    [`level-${L2}-name`]: "صاحب أثر",
+    [`level-${L2}-threshold`]: "300",
+    [`badge-${ID}-name`]: "حاضر دائم",
+    [`badge-${ID}-enabled`]: "on",
+    [`perk-${ID2}-qualifier`]: `level:${L2}`,
+    ...overrides,
   });
 
-  it("edits a presenter-average badge with its minimum sessions; a manual badge carries no threshold", async () => {
-    await actions.saveBadge("ar", emptySavedState(), form({ badgeId: ID, name: "مُقدِّم مُقيَّم", metric: "presenter_rating_avg", avg: "4.5", minSessions: "3" }));
-    await actions.saveBadge("ar", emptySavedState(), form({ badgeId: ID, name: "كريم المعرفة السنوي", metric: "manual", gte: "999" }));
-    expect(saveBadge.mock.calls.map((c) => c[1].rule)).toEqual([{ metric: "presenter_rating_avg", gte: 4.5, minSessions: 3 }, { metric: "manual" }]);
+beforeEach(() => [saveRecognition, submitManualBadgeAward, revokeCertificate, releaseCertificates].forEach((f) => f.mockReset()));
+
+describe("saveRecognitionEdit — one save for everything edit mode shows (REQ-REC-001, -003, -006)", () => {
+  it("sends every row with its updated_at; an unchecked switch retires the badge, keeping its rule and flag", async () => {
+    saveRecognition.mockResolvedValueOnce({ at: T, wrote: ["badges.retired_at"] });
+    const result = await actions.saveRecognitionEdit("ar", emptyRecognitionState, editForm({ [`badge-${ID}-enabled`]: "" }));
+    expect(result.receipt).toEqual({ at: T, wrote: ["badges.retired_at"] });
+    const input = saveRecognition.mock.calls[0][1];
+    expect(input.badges[0]).toEqual({ id: ID, name: "حاضر دائم", description: null, issuesCertificate: false, rule: { metric: "check_ins_count", gte: 10, minSessions: null }, retired: true, updatedAt: T });
+    expect(input.levels.map((l: { thresholdPoints: number }) => l.thresholdPoints)).toEqual([0, 300]);
+    expect(input.perks[0]).toMatchObject({ requiredLevelId: L2, requiredBadgeId: null, enabled: false });
+  });
+
+  it("refuses at the fields and sends nothing: no name, no threshold, no qualifier", async () => {
+    const result = await actions.saveRecognitionEdit(
+      "ar",
+      emptyRecognitionState,
+      editForm({ [`level-${L2}-name`]: " ", [`level-${L2}-threshold`]: "", [`perk-${ID2}-qualifier`]: "" }),
+    );
+    expect(saveRecognition).not.toHaveBeenCalled();
+    expect(result.errors).toEqual({ [`level-${L2}-name`]: "nameRequired", [`level-${L2}-threshold`]: "thresholdRequired", [`perk-${ID2}-qualifier`]: "qualifierRequired" });
+  });
+
+  it("a threshold out of order, or taken, lands on that level's threshold; a stale form is said as stale", async () => {
+    saveRecognition.mockRejectedValueOnce(new Error(`threshold_order:${L2}`));
+    expect((await actions.saveRecognitionEdit("ar", emptyRecognitionState, editForm())).errors).toEqual({ [`level-${L2}-threshold`]: "thresholdOrder" });
+    saveRecognition.mockRejectedValueOnce(new Error(`threshold_taken:${L2}`));
+    expect((await actions.saveRecognitionEdit("ar", emptyRecognitionState, editForm())).errors).toEqual({ [`level-${L2}-threshold`]: "thresholdTaken" });
+    saveRecognition.mockRejectedValueOnce(new Error("stale"));
+    expect((await actions.saveRecognitionEdit("ar", emptyRecognitionState, editForm())).formError).toBe("stale");
+  });
+});
+
+describe("saveBadgeSheet — create and edit, with a rule (REQ-REC-001)", () => {
+  it("creates a count badge: no id, the threshold as a number, the certificate flag", async () => {
+    saveRecognition.mockResolvedValueOnce({ at: T, wrote: ["badges.created"] });
+    await actions.saveBadgeSheet("ar", emptyRecognitionState, form({ badgeId: "", name: "عدسة القاعة", metric: "check_ins_count", gte: "10", issuesCertificate: "on" }));
+    expect(saveRecognition.mock.calls[0][1].badges).toEqual([
+      { id: null, updatedAt: null, name: "عدسة القاعة", description: null, issuesCertificate: true, rule: { metric: "check_ins_count", gte: 10, minSessions: null }, retired: false },
+    ]);
+  });
+
+  it("edits a presenter-average badge with its minimum sessions, keeping its retirement as found", async () => {
+    saveRecognition.mockResolvedValueOnce({ at: T, wrote: ["badges.rule"] });
+    await actions.saveBadgeSheet("ar", emptyRecognitionState, form({ badgeId: ID, updatedAt: T, retired: "true", name: "مُقدِّم مُقيَّم", metric: "presenter_rating_avg", avg: "4.5", minSessions: "3" }));
+    expect(saveRecognition.mock.calls[0][1].badges[0]).toMatchObject({ id: ID, updatedAt: T, retired: true, rule: { metric: "presenter_rating_avg", gte: 4.5, minSessions: 3 } });
   });
 
   it("refuses at the fields: no name, no threshold, an average outside one to five", async () => {
-    const count = await actions.saveBadge("ar", emptySavedState(), form({ name: " ", metric: "check_ins_count", gte: "" }));
-    expect(count.errors).toEqual({ name: "nameRequired", gte: "gteRequired" });
-    const avg = await actions.saveBadge("ar", emptySavedState(), form({ name: "x", metric: "presenter_rating_avg", avg: "6", minSessions: "-1" }));
-    expect(avg.errors).toEqual({ avg: "avgInvalid", minSessions: "minSessionsInvalid" });
-    expect(saveBadge).not.toHaveBeenCalled();
+    const r1 = await actions.saveBadgeSheet("ar", emptyRecognitionState, form({ name: "", metric: "check_ins_count", gte: "" }));
+    expect(r1.errors).toEqual({ name: "nameRequired", gte: "gteRequired" });
+    const r2 = await actions.saveBadgeSheet("ar", emptyRecognitionState, form({ name: "س", metric: "presenter_rating_avg", avg: "7", minSessions: "3" }));
+    expect(r2.errors).toEqual({ avg: "avgInvalid" });
+    expect(saveRecognition).not.toHaveBeenCalled();
   });
 });
 
-describe("saveLevel — REQ-REC-003", () => {
-  it("a threshold out of order, or taken, lands on the threshold", async () => {
-    updateLevel.mockRejectedValueOnce(new Error("threshold_order")).mockRejectedValueOnce(new Error("threshold_taken"));
-    const order = await actions.saveLevel("ar", emptySavedState(), form({ levelId: ID, name: "صاحب أثر", thresholdPoints: "50" }));
-    const taken = await actions.saveLevel("ar", emptySavedState(), form({ levelId: ID, name: "صاحب أثر", thresholdPoints: "100" }));
-    expect([order.errors, taken.errors]).toEqual([{ thresholdPoints: "thresholdOrder" }, { thresholdPoints: "thresholdTaken" }]);
+describe("revokeHeldCertificate — «أوقف», with its mandatory reason (REQ-CRT-011)", () => {
+  it("no reason is refused at the field and nothing is revoked; a reason revokes through revokeCertificate()", async () => {
+    const refused = await actions.revokeHeldCertificate("ar", emptySavedState(), form({ certificateId: ID, reason: " " }));
+    expect(refused.errors).toEqual({ reason: "reasonRequired" });
+    expect(revokeCertificate).not.toHaveBeenCalled();
+    revokeCertificate.mockResolvedValueOnce({ status: "ok", count: 1 });
+    const done = await actions.revokeHeldCertificate("ar", emptySavedState(), form({ certificateId: ID, reason: "شهادة مكرّرة" }));
+    expect(done.saved).toBe(true);
+    expect(revokeCertificate).toHaveBeenCalledWith("ar", { id: ID, reason: "شهادة مكرّرة" });
   });
 });
 
-describe("savePerk — REQ-REC-006", () => {
-  it("sends exactly one qualifier — the one the radio chose — and refuses none", async () => {
-    await actions.savePerk("ar", emptySavedState(), form({ perkId: ID, enabled: "on", qualifier: "badge", levelId: ID2, badgeId: ID2 }));
-    expect(updatePerk).toHaveBeenCalledWith("ar", { perkId: ID, enabled: true, requiredLevelId: null, requiredBadgeId: ID2 });
-    const none = await actions.savePerk("ar", emptySavedState(), form({ perkId: ID, qualifier: "level", levelId: "" }));
-    expect(none.errors).toEqual({ qualifier: "qualifierRequired" });
+describe("releaseHeldCertificate — «أصدر» on one row", () => {
+  it("releases exactly that certificate, and says so only when one was released", async () => {
+    releaseCertificates.mockResolvedValueOnce({ status: "ok", count: 1 });
+    expect(await actions.releaseHeldCertificate("ar", ID)).toEqual({ ok: true });
+    expect(releaseCertificates).toHaveBeenCalledWith("ar", { ids: [ID] });
+    releaseCertificates.mockResolvedValueOnce({ status: "ok", count: 0 });
+    expect(await actions.releaseHeldCertificate("ar", ID)).toEqual({ ok: false });
   });
 });
 

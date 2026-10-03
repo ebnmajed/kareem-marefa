@@ -14,10 +14,13 @@ import { AlertCircleIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "@/i18n/navigation";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 
-// SCR-053's manual adjustment — REQ-PTS-009: a reason is mandatory, and the
-// entry lands in the member's history and the audit log.
+// SCR-053's «تعديل يدوي» — REQ-PTS-009: a member, a signed amount and a mandatory reason; the entry lands in the
+// member's history with its reason and in the audit log (`points.manual_adjustment`, `0032`). Written from
+// `AdminScoring.dc.html`'s sheet after the page was deleted (`DEC-208`): the page renders it inside console's
+// `EditorSurface` at `?adjust=1`, so it is a region without JS and the sheet with it (`DEC-232` §5.5).
 //
 // ★ Two things the old form got wrong in an RTL, append-only world. The
 // direction was a minus sign typed into a right-to-left number box («سالب
@@ -33,15 +36,20 @@ const FIELDS = ["memberId", "direction", "amount", "reason"] as const;
 const IDS: Record<string, string> = { memberId: "adjust-member", direction: "direction", amount: "adjust-amount", reason: "adjust-reason" };
 const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
 
-export function ManualAdjustmentForm({ action, members }: { action: Action; members: PickableMember[] }) {
+export function ManualAdjustment({ action, members }: { action: Action; members: PickableMember[] }) {
   const t = useTranslations("scoring.admin.manual");
   const formRef = useRef<HTMLFormElement>(null);
   const [resetKey, setResetKey] = useState(0);
   const [confirm, setConfirm] = useState<{ name: string; amount: number; deduct: boolean; reason: string } | null>(null);
+  const router = useRouter();
   const [state, dispatch, pending] = useActionToast<SavedFormState>(
     async (previous, formData) => {
       const result = await action(previous, formData);
-      if (result.saved) setResetKey((k) => k + 1);
+      if (result.saved) {
+        setResetKey((k) => k + 1);
+        // Written: back to the catalogue, which closes the sheet. The member's ledger shows it now.
+        router.replace("/app/admin/scoring");
+      }
       return result;
     },
     emptySavedState(),
@@ -70,7 +78,7 @@ export function ManualAdjustmentForm({ action, members }: { action: Action; memb
 
   return (
     <>
-      <form key={resetKey} ref={formRef} action={dispatch} noValidate className="max-w-xl space-y-5">
+      <form key={resetKey} ref={formRef} action={dispatch} noValidate className="space-y-5">
         {attempted ? (
           <FormSummary
             key={state.attempt}
@@ -90,10 +98,10 @@ export function ManualAdjustmentForm({ action, members }: { action: Action; memb
             { value: "deduct", label: t("deduct") },
           ]}
         />
-        <Field id="adjust-amount" label={t("amountLabel")} hint={t("amountHint")} required error={err("amount")}>
+        <Field id="adjust-amount" label={t("amountLabel")} required error={err("amount")}>
           <Input name="amount" type="number" inputMode="numeric" min={1} max={100000} step={1} dir="ltr" className="w-40 text-center" defaultValue={attempted ? was(state, "amount") : ""} />
         </Field>
-        <Field id="adjust-reason" label={t("reasonLabel")} hint={t("reasonHint")} required error={err("reason")}>
+        <Field id="adjust-reason" label={t("reasonLabel")} required error={err("reason")}>
           <Textarea name="reason" rows={3} maxLength={300} defaultValue={attempted ? was(state, "reason") : ""} />
         </Field>
         {state.formError ? (

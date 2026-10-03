@@ -11,9 +11,13 @@ import { seed, type Org } from "./fixture";
 afterAll(() => pool.end());
 
 const FILE = "scoring/w20_0002_capped.sql";
+// ★ wave 22 (DEC-232 §4.1): the explanation is judged by the rule AS IT STOOD when the comment was posted. The rule is
+// set in `ready()` at the transaction's now(), so every comment below is posted at or after it — never before.
+const AS_IT_STOOD = "scoring/cap_explained_as_it_stood.sql";
 
 async function ready(tx: Tx) {
   await applyProposed(tx, FILE);
+  await applyProposed(tx, AS_IT_STOOD);
   const f = await seed(tx);
   await tx.asOwner();
   // A cap of 2 comments at 2 points, so the test writes four rows, not ten.
@@ -58,15 +62,15 @@ describe("RPC-capped_award_explanations", () => {
       const f = await ready(tx);
       const s = await session(tx, f.a);
       const me = f.a.members[0];
-      await comment(tx, f.a, s, me.memberId, true, "now() - interval '10 minutes'");
-      await comment(tx, f.a, s, me.memberId, true, "now() - interval '8 minutes'");
-      await comment(tx, f.a, s, me.memberId, false, "now() - interval '5 minutes'");
-      await comment(tx, f.a, s, me.memberId, false, "now() - interval '1 minute'");
+      await comment(tx, f.a, s, me.memberId, true, "now() + interval '1 minute'");
+      await comment(tx, f.a, s, me.memberId, true, "now() + interval '2 minutes'");
+      await comment(tx, f.a, s, me.memberId, false, "now() + interval '5 minutes'");
+      await comment(tx, f.a, s, me.memberId, false, "now() + interval '8 minutes'");
       await tx.as(me.claims);
       const rows = await explain(tx);
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({ session_id: s, rule_key: "comment", cap_per_session: 2 });
-      const [{ first }] = await tx.q<{ first: Date }>(`select now() - interval '5 minutes' as first`);
+      const [{ first }] = await tx.q<{ first: Date }>(`select now() + interval '5 minutes' as first`);
       expect(rows[0].first_unpaid_at.toISOString()).toBe(first.toISOString());
     });
   });
