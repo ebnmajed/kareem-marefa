@@ -7801,3 +7801,141 @@ duplicate (`DEC-204`). `SCR-045` and `055` – `059` with the studio, the email 
 
 The console is now drawn and built except `045` and `055` – `059` (M12). The only designed work left unbuilt is **session
 stories**; that sentence has been overtaken five times, so it is recorded as the owner's to confirm, not as a plan.
+
+## DEC-235 — Wave 23 is M12, the studio, and it comes before stories: four screens from seven artboards, three PRs, six primitives; `DEC-208` reaches the chrome and not the engine; both of the wave's open questions are already answered by the data model, so NO migration is expected
+
+- **Date:** 2026-10-03 · **Decided by:** the owner (§1, the order; and `M12.md`'s two redesigns of 2026-10-03, §4); everything else by the wave-23 planner, from `docs/design/screens/M12.md`, the seven artboards, and measurement of the tree at `242657a5`. `DEC-093`, `DEC-096`, `DEC-176`, `DEC-199` §2, `DEC-208`, `DEC-213` §4 and `REQ-UIX-053` are not re-opened
+- **Amends:** `DEC-234`'s closing sentence on what comes next (§1); `16-ui-redesign.md` §10's studio chrome and §11's email studio, both superseded by `M12.md`'s two redesigns
+- **Adds:** milestone **M25**; requirements and stories from the next free ids, read at Step 0. ★ **Six primitives: the floor moves 63 → 69**
+- **Does not add:** a migration. ★ **Both «settle» questions the planning prompt raised are answered by what is already built** (§3)
+- **Does not touch:** the five frozen public routes, `qa:contract`, `registrations`, `REQ-UIX-053`'s test, `scripts/parity/goldens/**`
+
+### 1 · The order — the studio now, stories after (the owner)
+
+`DEC-234` closed wave 22; the owner rules **M12** next. **Stories have now been overtaken five
+times** — by `DEC-205`, `DEC-216`, `DEC-225`, `DEC-230` and this — and **wave 18's ring stays inert;
+nobody wires it.** `SCR-059` branding and the platform console go with M13.
+
+### 2 · ★★ `DEC-208` reaches the chrome, not the engine — the first wave where that matters
+
+The designer is **3,873 lines** across seventeen files, most of it machinery. `M12.md` is explicit:
+«the editor is rebuilt; `canvas.tsx`'s engine, the bindings and the checks logic are kept under it».
+So the seam is named here rather than left to judgement:
+
+**Logic, kept:** `canvas.tsx` (744 — ★ **the engine inside it is kept and the chrome around it is
+rebuilt; the lead's plan says where that seam falls**), `bindings-panel.tsx` (70),
+`checks-panel.tsx` (218), `export-panel.tsx` (128), `export-action-button.tsx` (54),
+`export-reason.ts`, `upload-asset.ts`, `add-image.tsx` (83).
+
+**Chrome, rebuilt from the artboards:** `editor.tsx` (887), `inspector.tsx` (692) +
+`inspector-section.tsx` (41) → the swapping panel, `layer-list.tsx` (201) → `ui/layer-list` with the
+old file deleted (§5.1), `variant-strip.tsx` (85) → the bar's strip, and
+`template-library{,-page}.tsx` + `template-preview.tsx` + `template-actions.tsx` → `055`.
+
+★ **Each rebuilt file gets a kept-behaviour row; each kept file's existing suite passes untouched**,
+which is the proof the seam is in the right place. **A plan that deletes `canvas.tsx` has misread
+this; a plan that keeps `editor.tsx`'s chrome has misread `DEC-199` §2.**
+
+### 3 · ★★ Both open questions are answered by what is already built — no migration
+
+**3.1 — `DEC-NEXT-33`, variants on one strip, needs NO data model work.**
+`packages/designer-runtime/src/model.ts:82-86` already carries
+`presets?: { default?: LayerPresetOverride } & Partial<Record<string, LayerPresetOverride>>` —
+«per-preset anchor and scale behaviour (`06` §5.1); `default` applies to every preset that names no
+override» — and `:98-101` the **per-variant crop override** (`A32`, `REQ-DSG-020`), where an admin
+adjusts the crop for one variant and the others keep theirs. `0055:243-258` keys an export by
+`(document_id, preset, format, source_fingerprint)` against a checked preset set. ★ **And
+`variant-strip.tsx` already exists.** One template already holds every format with per-format
+overrides: **the strip is chrome to rebuild, not a model to invent.**
+
+**3.2 — `DEC-NEXT-35`'s «six blocks» means six NEW types, and that reading is exact.**
+`packages/mail-runtime/src/blocks.ts:63-72` holds **eight** built types — `heading`, `paragraph`,
+`button`, `session_card`, `detail_list`, `divider`, `spacer`, `image`. `M12.md` draws **twelve**
+labels, six of which are the built set and **six of which are new: الملصق · رمز QR · نقاطك · شهادة ·
+الشعار · اجتماعي.**
+- ★ **`detail_list` is built and not drawn. It STAYS** — existing messages compile it and removing a
+  type would change rendered mail.
+- ★★ **The proof that six new types are additive is the pinned output.** `tests/unit/mail-pinned/`
+  holds **120 files** and **all 120 must pass untouched**. Wave 10 pinned the 25 messages' subject,
+  text and HTML for exactly this, and **pinned mail output is never auto-refreshed** — a changed file
+  is a reviewed change, as a shaping golden is. **A moved pinned file means the addition is not
+  additive.**
+- Each new type extends the union, the compiler, **the generated text alternative** and the checks;
+  `REQ-NTF-014` stays true for every org.
+
+**So the wave expects no migration.** One written after all starts at **`0191`**, additive, with its
+`REQ-*` and its five parts, rehearsed by the owner on a dump taken at `0190`.
+
+### 4 · `M12.md`'s four deltas, adopted
+
+- **`DEC-NEXT-33`** — one template holds every format as variants on one strip; a format is never a
+  separate template. §3.1 shows the model already supports it.
+- **`DEC-NEXT-34`** — **checks are a rail item with a count, never a modal**; the PPI guard explains
+  inline, each finding names its layer, and selecting it opens that layer.
+- **`DEC-NEXT-35`** — emails are block-based in the Mailchimp model: blocks, layouts, global styles
+  and per-block overrides, with **the message set still `08`'s** (§3.2).
+- **`DEC-NEXT-36`** — **both editors share one sidebar model**: a 68 px icon rail, a 300 px panel that
+  swaps with the rail's selection, **no right panel**, and a floating toolbar on the selection. This
+  is what `editor-rail` and `floating-toolbar` exist for, and it supersedes `16` §10's chrome.
+
+### 5 · Measured corrections and deviations
+
+1. ★★ **`layer-list` already exists** at `src/components/designer/layer-list.tsx` (201 lines) and
+   `M12.md` names it **new** — the **third** time: `page-viewer` (`DEC-213` §4) and `admin-rail`
+   (`DEC-225` §4.1) were the same case. **The same ruling applies: write it in `ui/`, delete the old
+   file**, with its kept-behaviour table. ★ **And measure the other five against the tree** before
+   writing them.
+2. ★ **Seven artboards, not four.** Four screens, seven boards: `AdminTemplates` (055),
+   `AdminDesigner` + `AdminDesignerElements` (056/057), `AdminEmailGallery` + `AdminEmails` +
+   `AdminEmailAdd` (058), `AdminCertificates` (045). **`M12.md`'s own header also says «4
+   artboards»**, so both the spec and the prompt undercount.
+3. ★ **A stray duplicate**: `m12/png/` holds nine entries — seven PNGs, a `README.md`, and
+   **`SCR-055 · القوالب@1x (1).png`**, an accidental copy. **Deleted at Step 0 or recorded**; a later
+   count will otherwise disagree with the boards.
+4. ★ **The floor moves 63 → 69**, not the prompt's three primitives: `M12.md` names **six**.
+5. **The prompt asked the planner to verify the count rather than asserting one** — the right
+   instruction, and the first prompt in four waves not to inherit an inflated number from the design
+   pack's header.
+6. ★★ **`DEC-093` is the wave's largest risk.** The artboards draw drag in six new places: the
+   elements panel → canvas drop, the layer reorder, the asset drag, the email block drag into a row
+   slot («سحب إلى المسودة», the dashed «أفلت هنا»), the row handle bar's drag, and the block library.
+   **Every one needs a single-pointer non-dragging path** — `SC 2.5.7` is separate from `SC 2.1.1`, so
+   a keyboard path does not discharge it — and **the inspector's numeric X/Y/W/H/rotation fields may
+   be collapsed into an accordion, never deleted.** Wave 13 built the conforming paths for the
+   designer's operations (`REQ-DSG-028`): **reuse them.** The gate is a Playwright case using
+   `page.click()` alone.
+7. ★ **No parity golden moves** (`DEC-176`). The chrome is rebuilt, so an untouched document must
+   render identically; **a golden that moves is a bug, not a re-baseline.** The designer's
+   demonstrable is **all four formats exported from the sample template.**
+8. ★ **`DEC-096` is not tidied**: the overlay uses physical `left`/`top` from document geometry, align
+   and distribute follow the document's axis, arrow keys the visual one. A rebuild that converts the
+   overlay to logical properties breaks RTL and passes every lint.
+9. ★ **`045` carries four requirements, not decoration**: the mode is a **sentence set once from
+   الجدولة** (`DEC-178`) and this screen never writes it; the serial is **`<bdi dir="ltr">`**;
+   revoke's **reason is mandatory**; and the PDF goes through **the one audited route**
+   (`REQ-CRT-014`, `DEC-177`) — never a bare `<a download>`, which writes no audit row. Achievement
+   certificates are `054`'s, built in wave 22.
+10. ★ **The designer is desktop-only** (`06` §2); the other three stack under `lg`. No phone designer
+    is invented, and the three stacks are not forgotten.
+
+### 6 · For the owner
+
+1. ★★ **The acceptance is at 1280 on a real screen.** The designer has **no phone form** to check; the
+   other three stack and are checked at both widths.
+2. **The `railway.json`** pinning the worker's builder and watch patterns — still owed.
+3. ★ **What comes after M12.** `SCR-059` branding and the platform console are M13's; stories remain
+   the only designed thing unbuilt, and that sentence has been overtaken five times — so it is
+   **the owner's to confirm**, not a plan.
+
+### 7 · Carried, unchanged
+
+`DEC-215`'s four. · `DEC-194`'s two gates, together. · `DEC-186` §4's overshoot ceiling. · F2 and F3
+(`DEC-198` §5). · The hard-load duplicate (`DEC-204`). · `SCR-059` and the platform console (M13). ·
+A company logo, refused (`DEC-195` §4). · Recurring series (`A14`). · **Replacing the renderer** —
+`DEC-017` and `DEC-048` make `@kareem/designer-runtime` the only one, and nothing here changes that.
+
+- **Documents changed:** `01-prd.md` (the wave's requirements), `09-sitemap-screens.md` (`045`, `055`,
+  `056`/`057`, `058`), `14-roadmap.md` (M25), `15-backlog.md` (the wave's stories),
+  `06-visual-designer.md` (the chrome, §2 and §4), `16-ui-redesign.md` (§10 and §11 superseded),
+  `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten agent files (the wave-23 map), `STATUS.md`
+  (the wave-23 head), `docs/design/screens/M12.md` and `m12/**` (added to the tree)

@@ -1,9 +1,72 @@
-**Last updated:** 2026-10-03 · ★★ **WAVE 22 — MERGED AND LIVE** (#47 `26ce455a`, #48 `d3feaebf`, #49 `aa7b2267`, #50 `6212386c`) · **`main`:** `6212386c`; ★ **production and local at `0190`** · **Phase:** M11b, the rest of the console, is done (`DEC-234`): fifteen screens rebuilt, the audit rule restored, «it saved» made true, and PR D's four follow-ups — photo reports, a reasoned comment removal, «materials added» sent, `railway.json`. ★ **Next: the owner's call** — session stories is the only designed work left unbuilt (`DEC-234` §5). ★ **Carried:** no real no-JS path under `/app`; `sessions.host_company_id` to drop later; `DEC-215`'s four; `DEC-194`'s two gates; `DEC-186` §4; the hard-load duplicate; `SCR-045` and `055` – `059`.
+**Last updated:** 2026-10-03 · **Branch:** `main` · ★★ **WAVE 23 IS PLANNED, NOT STARTED** · **`main`:** `242657a5`; production at **`0190`** · **Phase:** ★★ **M12 — THE STUDIO (`DEC-235`, M25)**: `055` the templates, `056`/`057` the designer rebuilt as a rich editor on a free canvas, `058` the email builder, `045` the session's certificates — **four screens from SEVEN artboards**, each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; **six primitives, so the floor moves 63 → 69**. ★★ **NO migration is expected — both of the wave's open questions are already answered by what is built** (`DEC-235` §3): the document model carries per-preset and per-variant overrides, so variants on one strip need no schema; and «six blocks» means six NEW types over the eight `blocks.ts` already holds. The brief is `docs/plan/notes/wave-23-lead.md`. ★★ **`DEC-208` REACHES THE CHROME, NOT THE ENGINE** — the first wave where that matters: 3,873 lines of designer, with the logic/chrome seam named file by file (`DEC-235` §2). ★★ **`DEC-093` is the wave's largest risk**: the artboards draw drag in six new places and every one needs a single-pointer path. ★ **The owner rules the studio before stories** (§1) — overtaken a fifth time; the ring stays inert. ★ **Owed by the owner:** the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-059` and the platform console (M13), and session stories.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
+
+## ★★★ WAVE 23 — PLANNED, NOT STARTED — M12, the studio (`DEC-235`)
+
+**The programme's ninth wave.** The brief is `docs/plan/notes/wave-23-lead.md`; the drawing is
+`docs/design/screens/M12.md` with **seven** artboards in `docs/design/screens/m12/`; the decision is `DEC-235`.
+Milestone **M25**. **Three PRs** — `wave-23a/templates-and-certificates`, `wave-23b/the-designer`,
+`wave-23c/the-email-builder` — **each opened against `main` on its first push.** ★★ **No migration is expected**;
+one written after all starts at `0191`, rehearsed on a dump taken at `0190`.
+
+★★ **The rule, and the one place it does not reach.** `DEC-199` §2 rebuilds a screen and `DEC-208` deletes its page
+file first — but **`DEC-208` reaches the PAGE and the CHROME, not the ENGINE.** This is the first wave where that
+distinction matters: the designer is **3,873 lines** across seventeen files, most of it machinery, and `M12.md` says
+«the editor is rebuilt; `canvas.tsx`'s engine, the bindings and the checks logic are kept under it». **`DEC-235` §2
+names every file as logic kept or chrome rebuilt.** A plan that deletes `canvas.tsx` has misread it; a plan that keeps
+`editor.tsx`'s chrome has misread `DEC-199` §2.
+
+### ★★ Both open questions were already answered by the tree — which is why there is no migration
+
+1. **Variants on one strip** (`DEC-NEXT-33`) needs **no data model work**.
+   `packages/designer-runtime/src/model.ts:82-86` already carries per-preset anchor and scale overrides, `:98-101`
+   the **per-variant crop override** (`A32`, `REQ-DSG-020`), and `0055:243-258` keys an export by
+   `(document_id, preset, format, source_fingerprint)`. ★ **`variant-strip.tsx` already exists.** One template
+   already holds every format: the strip is **chrome to rebuild, not a model to invent.**
+2. **«Six blocks»** (`DEC-NEXT-35`) means **six NEW types**, and the reading is exact.
+   `packages/mail-runtime/src/blocks.ts:63-72` holds **eight** — heading, paragraph, button, session_card,
+   detail_list, divider, spacer, image — and `M12.md` draws **twelve** labels, six of them the built set and six
+   new: **الملصق · رمز QR · نقاطك · شهادة · الشعار · اجتماعي**. ★ **`detail_list` is built and not drawn — it STAYS**, because
+   existing messages compile it. ★★ **And the proof the six are additive is `tests/unit/mail-pinned/`'s 120 files
+   passing UNTOUCHED** — wave 10 pinned them for exactly this, and pinned mail output is never auto-refreshed.
+
+### ★★ `DEC-093` is the largest risk in this wave
+
+The artboards draw drag in **six new places**: the elements panel → canvas drop («سحب رمز QR»), the layer reorder,
+the asset drag, **the email block drag into a row slot** («سحب إلى المسودة», the dashed «أفلت هنا»), the row handle
+bar's drag, and the block library. **Every one needs a single-pointer, non-dragging path.** `SC 2.5.7` is separate
+from `SC 2.1.1`, so a keyboard path does not discharge it, and **axe never catches this** — the gate is a Playwright
+case using `page.click()` alone. ★ Wave 13 built the conforming paths for the designer's operations
+(`REQ-DSG-028`): **reuse them**, and the inspector's numeric X/Y/W/H/rotation fields **may be collapsed into an
+accordion, never deleted.**
+
+### Step 0 — to measure, and three corrections already made
+
+| | |
+|---|---|
+| `main`, production, the next decision | **`242657a5`**, **`0190`**, **`DEC-235`** — all three as the planning prompt said |
+| `src/components/ui/` | **63 `.tsx`**, floor **63** at `tests/unit/ui-playground.test.ts:121`. ★ The prompt asked for verification rather than asserting a number — the first in four waves not to inherit an inflated count |
+| ★ The floor | **moves 63 → 69.** `M12.md` names **six** new primitives, not the prompt's three: `editor-rail`, `canvas-stage`, `floating-toolbar`, `layer-list`, `block-canvas`, `block-library` |
+| ★ The artboards | **SEVEN, not four** — four screens, seven boards. **`M12.md`'s own header also says «4 artboards»**, so the spec and the prompt undercount together |
+| ★ A stray file | `m12/png/` holds nine entries: seven PNGs, a `README.md`, and **`SCR-055 · القوالب@1x (1).png`**, an accidental duplicate. **Deleted at Step 0 or recorded** |
+| ★★ `layer-list` already exists | `src/components/designer/layer-list.tsx`, 201 lines, and `M12.md` calls it new — **the third time**, after `page-viewer` (`DEC-213` §4) and `admin-rail` (`DEC-225` §4.1). **Same ruling: write it in `ui/`, delete the old file.** Measure the other five against the tree too |
+| They are untracked | `M12.md` and `m12/` are `??`. **Step 0 commits the spec and the artboards** |
+
+### Out, and not to be re-litigated
+
+`SCR-059` branding and the platform console (M13) · the five frozen public routes · stories and the ring · the member
+app and the console's other screens · **replacing the renderer** (`DEC-017`, `DEC-048`) · `DEC-194`'s two gates ·
+`DEC-186` §4 · the hard-load fix (`DEC-204`) · `DEC-215`'s four. **Not re-litigated:** `DEC-124` · `DEC-099` ·
+`DEC-093`, which is the specification and not advice · `DEC-096`'s physical-property exemption, which nobody tidies ·
+`DEC-176`'s golden rule — **a golden that moves is a bug** · `DEC-178`'s mode and redirect · `REQ-UIX-053` ·
+**invariant 11: no SVG anywhere**, so the email image block is PNG and JPEG only.
+
+---
+
 
 ## ★★★ WAVE 22 — MERGED AND LIVE (`DEC-234`) — M11b, the rest of the console (`DEC-230`)
 
