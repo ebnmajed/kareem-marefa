@@ -97,9 +97,25 @@ export const send_test_email: Task = async (rawPayload, helpers) => {
     [p.org_id],
   );
   const cardSession = cardRows[0]?.id ?? null;
-  const payload = cardSession && appUrl
+  let payload: Record<string, unknown> = cardSession && appUrl
     ? { ...sample.payload, session_id: cardSession, session_card_image_url: `${appUrl}/api/s/${cardSession}/og` }
     : sample.payload;
+
+  // ★ WAVE 23 — THE REAL SESSION'S WORDS, NOT ONLY ITS CARD (`REQ-UIX-112`, «معاينة واختبار»). The builder's preview
+  // names the session `preview_card_session()` picked and shows its title, time and venue through
+  // `session_public_card()`; this reads the same two definer functions, so the test that arrives in Outlook is the
+  // message the admin was shown.
+  if (cardSession && appUrl) {
+    const { rows: cardData } = await helpers.query<{ title: string | null; starts_at: string | null; venue_name: string | null }>(
+      // `to_json(...)#>>'{}'` is the ISO instant the renderer formats in the org's zone; node-pg would hand back a Date.
+      `select title, to_json(starts_at) #>> '{}' as starts_at, venue_name from public.session_public_card($1::uuid)`,
+      [cardSession],
+    );
+    const card = cardData[0];
+    if (card?.title) {
+      payload = { ...payload, title: card.title, startsAt: card.starts_at ?? payload.startsAt, venue: card.venue_name ?? payload.venue };
+    }
+  }
 
   let rendered;
   try {
