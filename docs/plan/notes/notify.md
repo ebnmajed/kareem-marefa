@@ -4439,3 +4439,81 @@ history's `changed_at` is `now()` and is matched exactly. Both are also filtered
 
 ★ The receipt's types reach PR B as the same bytes as PR A's (`583eedbc`); `admin-settings.ts` will show a trivial
 merge where A's tail meets B's rewritten head — take B's.
+
+## W22-D · `MSG-materials_added` is sent (PR D, `wave-22d/the-follow-ups`, D-N1 — the owner's approval)
+
+**The defect.** `08` §1.4 specifies «Materials added after → checked-in attendees · in-app + email · optional ·
+`my_sessions`»; the matrix carries it (`0026`), `0133:99` binds it (`session_id`, `title`, `url`), the mail runtime
+designs it and links it to `/app/sessions/<id>/materials` — and **no `notify()` call anywhere sends it**. A member who
+attended and is waiting for the slides is never told they arrived.
+
+### WD.1 · What «added» means — from `07` and `REQ-MAT-*`
+
+A material is **added** at the moment a member could first open it — not at the raw upload:
+
+| Kind | The moment | Why |
+|---|---|---|
+| a file (pdf, audio, image) | `current_version_id` goes from **null to a version** — `finalize_material_upload()` (`0077:54`), after the bytes are sniffed and accepted | `07` §1: before that the version is `pending` and may be rejected and deleted, «never retrievable» (`REQ-MAT-012`). A refused upload must never announce itself |
+| a link (`video_link`, `external_link`) | its **insert** — it has no version and is usable at once | `07` §10 |
+
+**Not «added»**, each decided:
+- **A replacement** (`current_version_id` from one version to another) — `REQ-MAT-010` calls it replacing, and the member
+  already had the material; announcing every corrected typo would be the reason people mute `my_sessions`.
+- **A phase change** — after `completed` both phases are visible to members (`03` §5.5a as amended by `0116`), so a
+  `before` ↔ `after` flip on a completed session changes nothing a member sees. Before completion there is nothing to
+  send: the message is «added **after**» and goes to people who **checked in**, which only a held session has.
+- **Restoring** a removed material — no path un-removes one today (`removed_at` is only ever set); the trigger still
+  treats `removed_at` going back to null as «added», so the day it exists it is covered.
+- **A proposal's material carried onto a new session** (`0053`) — the session is new, never completed.
+
+**«After» is the session's `completed` state** — the matrix's trigger is «Materials added after» and its recipients are
+checked-in attendees, which is `send_rating_prompt()`'s rule too (`0088:261`). A day-scoped `after` material on a
+multi-day session whose day has ended but whose session has not completed is visible (`REQ-MAT-006`) yet not sent:
+checked-in attendees of that day will see it on the page, and the message waits for the session to be over. Written
+down so it is not mistaken for a gap.
+
+### WD.2 · Who — the checked-in attendees, honouring the preference
+
+`select distinct member_id from check_ins where session_id = s and removed_at is null` — distinct, because a multi-day
+session has a check-in per day (`0100`); a removed check-in is not attendance (`DEC-141`). Each through
+`public.notify(org, member, 'my_sessions', {session_id, title}, 'MSG-materials_added')`, which checks the member's
+`my_sessions` preference per channel (the matrix says optional) and enqueues the mail. **Nothing writes `notifications`
+directly.** The uploader is not excluded by design: a presenter who checked in to their own session is an attendee, and
+the matrix names no exception.
+
+### WD.3 · One per member per batch — **per session per org-local day**, and why not a debounce
+
+A presenter adding a deck, a recording and two links after the session is one event to an attendee. Two ways:
+- **A debounce through `enqueue_job`** (`materials-added:<session>`, run in ten minutes, `preserve_run_at`) needs a **new
+  worker task** to fan out at run time — a new file, a registration in `worker/src/index.ts` (the lead's) and a job in
+  `11` — and a deck finished at 23:58 still splits across the boundary of whatever window is chosen.
+- ★ **Per session per day, decided in the trigger from the materials themselves** — chosen. The first material to become
+  visible on a completed session on a given day **in the org's time zone** sends; any further one that day finds an
+  earlier visible addition and sends nothing. No table, no column, no worker task: the batch is read from `materials`
+  (a link's `created_at`; a file's first version's `uploaded_at`), counted only from the later of the day's start and
+  the session's `completed_at`, so a pre-read uploaded before the session never suppresses the first post-session
+  announcement. The message links to the materials page, which lists every file, so an attendee who opens it sees the
+  whole batch — including what arrived after the notification. **The cost, accepted**: a second batch later the same
+  day is not announced. Two additions committed in the same instant by two transactions could both send — a race the
+  queue's debounce would also have needed a lock to close, and harmless (two identical notifications).
+
+### WD.4 · The writer — a definer trigger, the lead's; proven as a member
+
+`supabase/proposed/notify/materials_added_notify.sql` — `materials_added_notify()`, `security definer`, empty search
+path, `after insert or update of current_version_id, removed_at on public.materials`; the lead promotes it as `0189`.
+It returns early for a proposal's material (`session_id is null`), a removed one, a session not `completed`, and an
+already-announced day. **The writes that fire it are made as the presenter** — `finalize_material_upload()` and a direct
+link insert under `p8_presenter_write` — so the RLS cases run as `f.a.members[…]` with the presenter's claims, never as
+the owner, and read the `notifications` rows back as the owner. No migration, table or grant beyond the function.
+
+### WD.5 · Cases (`tests/rls/notify-materials-added.test.ts`, `applyProposed`)
+1. A link added to a completed session notifies each checked-in attendee once; a non-attendee and a removed check-in get
+   nothing; the payload carries `session_id` and `title`.
+2. A file notifies when it becomes current, not when its pending version row is written.
+3. A second material the same day notifies nobody; a replacement notifies nobody.
+4. A session not yet completed notifies nobody; a proposal's material notifies nobody.
+5. An attendee with `my_sessions` off on both channels gets no row and no job; in-app off and email on → no inbox row,
+   one `send_notification` job.
+6. A multi-day attendee checked in on two days is notified once.
+
+`060` is left alone: «أُضيفت مواد» is not one of `DEC-232` §1.3's rows.
