@@ -124,6 +124,8 @@ as every wave) and two `platform-schema` cases needing the platform template lib
 dump does not carry (0 vs 11). `rehearse22` dropped. ★ **The owner may push from B's tree: the dry run must list exactly
 `0180` – `0188`.**
 
+★★ **ACCEPTED 2026-10-03 by the owner** — the fifteen screens of #47, #48, #49. Merges next: A, B, C, in order.
+
 ★★ **PUSHED 2026-10-03 by the owner** from B's tree: the dry run listed exactly `0180` – `0188`; all nine applied;
 `supabase migration list --linked` reads **`0188` on both sides**. (The CLI's post-push catalog cache warned about a missing
 certificate under B's worktree `supabase/.temp/pgdelta/` — a cache step after the push, not a migration; nothing failed.)
