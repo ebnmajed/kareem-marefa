@@ -15,7 +15,6 @@ import {
   type ImageLayer,
   type Layer,
   type PresetName,
-  type ReorderMove,
 } from "@kareem/designer-runtime";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -25,6 +24,9 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { InspectorSection } from "@/components/designer/inspector-section";
 import { formatNumber } from "@/components/sessions/numerals";
+import { bind, FOCAL_NAMES, focalChecked, nextBackground, token, type ArrangeOp, type GroupOp, type TransformOp } from "@/components/designer/inspector-ops";
+
+export type { ArrangeOp, GroupOp, TransformOp };
 
 // SCR-057's inspector — `16` §10.2, REQ-DSG-005, REQ-DSG-028, DEC-093, DEC-096.
 //
@@ -46,17 +48,6 @@ import { formatNumber } from "@/components/sessions/numerals";
 //   · letter-spacing is not editable. A30: spacing Arabic breaks the join.
 //   · a colour is a brand TOKEN from a list, never a picker (REQ-DSG-021): the
 //     template guard refuses anything else, and so does the brand check.
-
-export type ArrangeOp =
-  | { kind: "align"; axis: AlignAxis; edge: AlignEdge; target: AlignTarget }
-  | { kind: "fit" }
-  | { kind: "order"; move: ReorderMove };
-
-/** Two or more layers at once (wave 13) — on the DOCUMENT's axis, like one. */
-export type GroupOp = { kind: "align"; axis: AlignAxis; edge: AlignEdge; target: GroupAlignTarget } | { kind: "distribute"; axis: AlignAxis };
-
-/** The taps for rotate, resize and move (DEC-093): ±15°, «صفّر», «املأ عرضًا», «ضع بنقرة». */
-export type TransformOp = { kind: "rotate"; degrees: number; mode: "by" | "to" } | { kind: "fillWidth" } | { kind: "place" };
 
 export interface InspectorProps {
   document: DesignDocument;
@@ -85,8 +76,6 @@ export interface InspectorProps {
   onDelete?: (layerId: string) => void;
 }
 
-const token = (value: string | undefined): string | null => /^\{\{\s*brand\.([A-Za-z]+)\s*\}\}$/.exec(value ?? "")?.[1] ?? null;
-const bind = (name: string) => `{{brand.${name}}}`;
 
 export function Inspector({
   document: doc,
@@ -433,14 +422,8 @@ function BackgroundControl({ document: doc, canEdit, onDocument }: { document: D
   );
 
   const setType = (type: string) => {
-    if (type === bg.type) return;
-    if (type === "gradient") {
-      const from = bg.type === "solid" ? bg.color : bind("surface");
-      onDocument({ ...doc, background: { type: "gradient", angle: 140, stops: [{ color: from }, { color: bind("canvasRaise") }] } });
-    } else {
-      const first = bg.type === "gradient" ? (bg.stops[0]?.color ?? bind("canvas")) : bind("canvas");
-      onDocument({ ...doc, background: { type: "solid", color: first } });
-    }
+    const next = nextBackground(doc, type);
+    if (next) onDocument(next);
   };
 
   return (
@@ -576,7 +559,6 @@ function GroupSection({
   );
 }
 
-const FOCAL_NAMES = ["topLeft", "top", "topRight", "left", "centre", "right", "bottomLeft", "bottom", "bottomRight"] as const;
 
 /**
  * An image layer: its fit, and its focal point (REQ-DSG-030, DEC-093 path 3).
@@ -641,7 +623,7 @@ function ImageSection({
           {/* Physical on purpose — see the comment above. */}
           <div role="radiogroup" aria-label={t("focal")} dir="ltr" className="grid w-fit grid-cols-3 gap-1">
             {FOCAL_GRID.map((p, i) => {
-              const checked = Math.abs(point.x - p.x) < 0.005 && Math.abs(point.y - p.y) < 0.005;
+              const checked = focalChecked(point, p);
               return (
                 <button
                   key={`${name}-${i}`}
