@@ -54,7 +54,7 @@ approved».** You work in **`../kareem-marefa-wave23b`** (`wave-23b/the-designer
 
 - `packages/designer-runtime/src/**` **except** `brand.ts` · `packages/storage-paths/src/designer.ts`
 - `src/components/{designer,posters}/**` **except** `template-{library,library-page,preview,actions}.tsx` (`console`'s this wave) ·
-  `src/components/certificates/**` (★ `held-achievements.tsx` frozen)
+  `src/components/certificates/**` **except** `{design-panel,eligible-list,issuance,mode-control}.tsx` (`console`'s, `DEC-238` §2) (★ `held-achievements.tsx` frozen)
 - `src/app/[locale]/app/admin/designer/**` · `src/app/api/{designer,fonts,certificates}/**` · `src/lib/dal/{designer,posters,fonts}.ts`
 - `worker/src/render/**` **except** `brand.ts`; `worker/src/tasks/{render_variant,regenerate_poster,issue_certificates,materialise_font}.ts`
 - `scripts/parity/**` **except** `scripts/parity/goldens/**`
@@ -248,7 +248,8 @@ the lead. **Import by path** — `index.ts` exports **types only**. ★ **The di
 - **Every earlier wave's transfer has ended.** Wave 22's are back with `console`: `admin/{scoring,recognition,reminders,settings,moderation}/**` and their DAL modules.
 - **→ `console`, from `designer`:** `src/app/[locale]/app/admin/templates/**`, `src/app/[locale]/app/admin/sessions/[id]/certificates/**`,
   `src/lib/dal/{templates,certificates}.ts` (add-only), the library's chrome `src/components/designer/{template-library,template-library-page,template-preview,template-actions}.tsx`
-  (to be deleted and rebuilt as `055`), `src/messages/*/{templates,certificates}.json`, and their tests.
+  (to be deleted and rebuilt as `055`), ★ `045`'s chrome `src/components/certificates/{design-panel,eligible-list,issuance,mode-control}.tsx` (to be deleted, `DEC-238` §2), `src/messages/*/{templates,certificates}.json`, and their tests.
+- **→ `notify`, new:** `src/app/api/mail/qr/route.ts` and its test (`DEC-238` §4).
 - ★ All of these go back after the wave.
 - ★ **Frozen for everyone, fixes included:** everything waves 18 – 22 rebuilt, `/app/platform/**`, every worker task but
   the ones a row names. A defect found there is written in your note and told to the lead.
