@@ -1,7 +1,7 @@
 // REQ-EVT-008 (wave 22, F1) — `report_photo()` and its guard (supabase/proposed/content/0002_report_photo.sql). Every
 // call AS A MEMBER: a visible photo is reported once, never one's own, never a hidden or removed one; each refusal writes
-// nothing; the reporter is visible to staff and the photo's uploader reads nothing. The guard trigger is the lead's to
-// create — here it is created in the transaction exactly as the file's comment names it, so the direct insert is proven.
+// nothing; the reporter is visible to staff and the photo's uploader reads nothing. The guard trigger is the lead's
+// (0190); the case re-creates it in its transaction exactly as the file names it, so the direct insert is proven either way.
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
@@ -112,6 +112,8 @@ describe("reports_photo_guard() — the same rules on a direct insert (the lead'
   it("refuses one's own photo, a hidden one and a duplicate; a plain first report still goes in", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
+      // Promoted with 0190, the trigger exists; before that, it is created here as the file names it. Rolled back either way.
+      await tx.q(`drop trigger if exists reports_photo_guard on public.reports`);
       await tx.q(`create trigger reports_photo_guard before insert on public.reports for each row when (new.target = 'photo') execute function public.reports_photo_guard()`);
       const photo = f.m5.a.photoId;
       const insert = (who: { memberId: string }) =>
