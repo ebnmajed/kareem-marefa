@@ -143,6 +143,10 @@ export const REGISTRY: Record<string, Entry> = {
   "editor-rail.tsx": tokens("editor-rail", ["bg-raised", "border-edge", "text-fg-muted", "bg-signal", "text-on-signal"], "editor-rail-scope.test.tsx"),
   "floating-toolbar.tsx": tokens("floating-toolbar", ["bg-raised", "border-edge", "rounded-field"], "floating-toolbar-scope.test.tsx"),
 
+  // ── `designer`'s, the studio's stage and its layers (wave 23, DEC-237 §3, DEC-235 §5.1) ──
+  "canvas-stage.tsx": tokens("canvas-stage", ["bg-canvas", "bg-raised", "border-edge", "text-fg-muted", "rounded-pill"], "canvas-stage-scope.test.tsx"),
+  "layer-list.tsx": composes("layer-list", ["ui/button", "ui/icon-button", "ui/icons"]),
+
   // ── `event`'s — its first (wave 19, DEC-214) ──
   "star-input.tsx": tokens("star-input", ["text-signal", "text-edge-strong", "text-fg-muted", "text-error"], "star-input-scope.test.tsx"),
 };
