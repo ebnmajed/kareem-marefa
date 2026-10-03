@@ -8015,3 +8015,260 @@ explicit.
 - **Documents changed:** `docs/plan/notes/wave-23-lead.md` (§4 and the artboard count), `STATUS.md`
   (the wave-23 block), and at Step 0 `01-prd.md`, `09-sitemap-screens.md` and `15-backlog.md` for
   `C1` – `C7`'s ids
+
+## DEC-237 — Wave 23's Step 0 and its map: three teammates and the lead, divided by what each screen writes; the editor's state machine is logic living in a chrome file, and moves before the delete; `canvas-stage` is the stage around the engine, not a second engine; the session's template choice is already stored — and `DEC-178` makes `045` its writer, not الجدولة; two PNGs rendered
+
+- **Date:** 2026-10-03 · **Decided by:** the wave-23 lead, from measurement of the tree at `0d9a0d60` (Step 0's commit `9e95212f`). `DEC-235` and `DEC-236` stand; nothing here re-opens them
+- **Amends:** `DEC-235` §2's line count (3,873 → **3,950**); `DEC-235` §5.3 and `DEC-236` §4 on the PNGs (§5 below); `M12.md`'s description of `canvas-stage` (§3); ★ `DEC-236` C6's **place** — `045`, not الجدولة, because `DEC-178` stands (§4); the brief's §«six things» item 5 and `DEC-235` §5.9 on the same point
+- **Adds:** `REQ-UIX-107` … `112`, `REQ-NTF-015`, `REQ-CRT-015`; `STORY-UIX-097` … `102`, `STORY-NTF-007`, `STORY-CRT-007`; milestone **M25**'s rows in `14`
+- **Does not add:** a migration. A fourth reason (§4)
+
+### 1 · The division — each screen goes to the track that owns what it writes, and the shared chrome is the lead's
+
+`DEC-231` §2's rule, applied. **PR A is composition over functions that already exist**: `templates.ts` holds the
+library's writes, and `certificates.ts` holds `setCertificateDesign()`, `releaseCertificates()`, `revokeCertificate()` and
+`getCertificateMode()` — so `055` and `045` need **no new write path**, and they go to **`console`**, the track that
+has built every console table with a bulk bar and every mandatory-reason sheet (`042`, `044`, `049`).
+`templates.ts`, `certificates.ts`, `admin/templates/**`, `admin/sessions/[id]/certificates/**` and the library's four
+chrome files transfer to it **for the wave**. **PR B is the editor** — the engine and the chrome built on it are
+`designer`'s, because the chrome is written against the engine's props and wave 13's tap paths, which `designer`
+built. **PR C is the email builder**, `notify`'s since wave 10.
+
+★★ **How the designer's chrome is divided from its engine, as the brief asks:** by **file class and commit**, inside one
+track, with two pieces taken out of it:
+- **The shared chrome is the lead's** — `ui/editor-rail` and `ui/floating-toolbar` are used by **both** editors
+  (`DEC-NEXT-36`), so they land **first, in PR B, by the lead**, as the console frame did in wave 21; `notify` and
+  `designer` compose them from day one and **PR C is cut from B's head once they land**.
+- **The library's chrome is `console`'s** (§1 above).
+- What remains with `designer` is split by file: the **engine files** (`DEC-235` §2's «logic, kept») are edited only
+  where the chrome's contract forces it and **their suites pass untouched**; the **chrome files** are deleted first and
+  written from the artboards.
+
+### 2 · ★★ `editor.tsx` holds the editor's state machine — logic in a chrome file
+
+`DEC-235` §2 lists `editor.tsx` (887) as chrome. **Measured, it is both**: `:141-171` hold the document, the selection,
+the **fifty-step document-level undo** (`06` §10), the save state and the autosave, and `:58-76` the rule that **a
+gesture is one undo entry and a burst of arrow presses is one too** (W13.1 R5). None of that is drawn; all of it is a
+requirement (`REQ-DSG-028`, `06` §10).
+
+★ **The ruling:** the state machine is **moved verbatim into a kept logic module** (its name is `designer`'s, in its
+plan) **in a commit of its own, before `editor.tsx` is deleted**, with every existing designer suite green across that
+commit — a move, not an edit, proven as wave 11's `qa` split was. **Then** `editor.tsx` is deleted and the chrome is
+written from the artboard over the module. `DEC-208`'s «re-derive from the REQs, not from memory» is honoured by the
+kept-behaviour table, which names the module as where each behaviour now lives. The same test applies to
+`inspector.tsx` (692): **any numeric, binding or crop logic it computes moves before the delete**; the numeric
+X/Y/W/H/rotation fields survive as fields (`DEC-093`).
+
+### 3 · ★ `canvas-stage` is the stage AROUND the engine — not a second engine
+
+`M12.md` describes `canvas-stage` as «free canvas, handles, snap, safe area, rulers». **Measured: `canvas.tsx`'s
+`DesignerCanvas` already IS the handles, the snap with guides, the marquee, the focal dot, the safe-area and bleed
+overlays and every gesture** (`:159-645`, `Handles` `:670`, `FocalDot` `:722`), drawn over the one renderer's iframe
+(`DEC-017`) in physical coordinates (`DEC-096`). A primitive that re-implemented any of it would be a second drawing
+path — the exact thing `canvas.tsx`'s header forbids.
+
+★ **So the seam falls here:** `canvas-stage` in `ui/` is **the stage** — the neutral ground, fit-and-zoom, the rulers on
+demand, the grid / auto-align / safe-area toggles drawn on the canvas, and a slot that hosts a child. **`DesignerCanvas`
+stays in `canvas.tsx` and is the child**: its iframe, overlay, gestures, handles, guides and focal dot are the engine.
+What leaves `canvas.tsx` is its **outer frame** — the wrapper, the placing note, the overlay toggles — and the plan names
+each line. ★ **`canvas.tsx` is not deleted, and its existing suite passes untouched.** `block-canvas` (`notify`) is the
+email's child of the same stage. **The fourth «new» primitive that partly exists** — after `page-viewer`, `admin-rail`
+and `layer-list` — and the same discipline: one thing, in one place.
+
+### 4 · ★★ The session's template choice is already stored — and `DEC-178` makes `045` its writer, not الجدولة
+
+`DEC-236` C6 asks that a session's certificate template be chosen in الجدولة, «`DEC-178`'s one writer of the mode
+unchanged — الجدولة writes both». **Measured, `DEC-178` says the opposite.** Its contract 2: **«SCR-045 is the mode's one
+writer»** — `set_session_certificate_mode()`, admin only, audited, **refused once the session is completed, archived or
+cancelled** — and `schedule_session()`'s `p_certificate_mode` became default `null`, meaning unchanged (`DEC-178` §2, and
+`09`'s SCR-043 note: «وضع الشهادات leaves this screen and is written on SCR-045 only»). `M12.md`'s «set once in الجدولة» is
+the pack's prose; the brief and `DEC-236` repeated it with `DEC-178`'s name on it. **The artboard does not draw it**:
+`AdminCertificates.dc.html` shows a **completed** session, «الوضع · تُراجع قبل الإطلاق · القالب: ورقي A4» as sentences —
+which is exactly what `DEC-178` produces after completion, when the mode is refused.
+
+**`session_certificate_designs`** (`0099`, `DEC-128`) **already stores the template, per session and per kind**;
+`issue_certificate()` reads it first and falls back to the org default for the kind, then the platform's
+(`0127:249-273`); **its writer today is `045`** (`setCertificateDesign()`).
+
+★ **The lead's ruling, in force until the owner says otherwise:** `DECISIONS.md` wins, `DEC-178` is not re-litigated, and
+`DEC-236` itself calls the mode's writer «unchanged» — so **`045` stays the one writer of both the mode and the template**:
+a control for each **before completion** (an undrawn state, built in the sober register), **the two sentences after**, as
+drawn. `schedule-form.tsx` is **not** touched; there is no transfer from `sessions`. **C6 is satisfied in its substance** —
+one place writes both, the template defaults to the org default for its kind, and `045` shows both beside each other —
+**and differs from its wording in the place.** ★ **For the owner:** if الجدولة is wanted after all, that re-opens `DEC-178`
+and needs its own entry — `set_session_certificate_mode()`'s after-completion refusal and the schedule's `null` default
+would both move. `redesignHeldCertificates()` stays on `045` with the template control.
+
+### 5 · Measured corrections
+
+1. **The designer is 3,950 lines across seventeen files**, not 3,873.
+2. ★ **The PNGs.** The stray `SCR-055 · القوالب@1x (1).png` the brief measured is **no longer in the directory** —
+   nothing to delete. The two boards the pack added on 2026-10-03 **arrived without PNGs**; the lead rendered both from
+   their own HTML at 1280 in Chromium (`9e95212f`), named after their titles. **Nine boards, nine PNGs.**
+3. ★ **The email documents are a flat block list** (`block-editor.tsx`, `blocks.ts`); the artboard draws **row layouts**
+   (1 · 1/1 · 1/2 · 1/1/1) and **global styles**. That is a change to the document's JSON inside `mail-runtime` — **no
+   table moves** — and `notify`'s plan says how an existing flat document reads as rows **without one of the 120 pinned
+   files moving**.
+4. ★ **The studio renders inside the console frame today** (`admin/layout.tsx` has no case for it); every editor
+   artboard gives it the whole viewport with its own bar. **The lead's contract 1** yields the viewport to the two
+   editors' routes.
+5. **The email editor has no route of its own** — the editor sits inside `/app/admin/emails`. A new route
+   (`/app/admin/emails/[key]` or the plan's choice) **exists in `04` before it exists in `src/`** (`DEC-083`); `notify`
+   names it at sync 1.
+6. The board for `055`'s certificates tab draws a template tagged **حضور · تقديم** — ruled out by `DEC-236` §1; and an
+   avatar drawing «٤» — `DEC-124` wins.
+
+- **Documents changed:** `CLAUDE.md` and the ten agent files (the wave-23 map), `01-prd.md`, `09-sitemap-screens.md`,
+  `14-roadmap.md`, `15-backlog.md`, `STATUS.md`
+
+## DEC-238 — Wave 23, sync 1: three plans approved; `0191` audits the template library, because wave 22 missed it; the template may change after completion while held; a certificate keeps one page; no new binding and no نقاطك this wave
+
+- **Date:** 2026-10-03 · **Decided by:** the wave-23 lead, from the three plans in `docs/plan/notes/{console,designer,notify}.md` and measurement. `DEC-235` – `DEC-237` stand
+- **Amends:** `DEC-235` §3 and `DEC-237` — ★ **a migration is written after all: `0191`** (§1); `REQ-CRT-015` (§2); `REQ-UIX-111`'s strip (§3); `04`'s route table (§5)
+- **Adds:** migration `0191_template_audit.sql`; the routes `/app/admin/emails/[key]` and `/api/mail/qr`
+- **Does not touch:** `DEC-178`'s mode (C6's place is still the owner's, `DEC-237` §4), `scripts/parity/goldens/**`, `tests/unit/mail-pinned/**`
+
+### 1 · ★★ `0191` — the template library is audited, because `REQ-ADM-023` already said so
+
+`console` measured (`notes/console.md` §5): **creating, duplicating, publishing, setting a default, renaming and
+retiring or restoring a design template write NOTHING** to `audit_log`. `REQ-ADM-023` (wave 22) reads «every change the
+console can make writes a record»; `0181` closed six kinds and missed this one. So this is not new scope — it is a gap
+under an existing requirement, and `DEC-235`'s «no migration expected» does not survive it.
+
+`0191` adds two definer triggers on `0181`'s pattern — org rows only, an early return when the org is gone, no grant.
+★ **Nothing is written twice**: «set default» writes **one** row, because the previous default cleared by
+`design_templates_single_default` fires the trigger with `true → false`, which writes nothing; a first version inserted
+with its template is said by `.created`. Proven by hand on the reset database before promotion: seven rows for seven
+acts, one default per kind. `console` writes `tests/rls/templates-audit.test.ts`, each act as the org admin member.
+★ **The owner rehearses `0191` on a production dump taken at `0190`** before it is pushed.
+
+### 2 · `console` — four transfers, the template after completion, and the default the screens name
+
+1. **Transferred to `console` for the wave, to delete:** `src/components/certificates/{design-panel,eligible-list,issuance,mode-control}.tsx`
+   and their tests — `045`'s chrome, imported only by its page; `design-panel` imports the `055` preview `console` deletes.
+   `045`'s new chrome sits in its route folder. `designer` agreed in its note (Q-4).
+2. ★ **The template after completion** (`REQ-CRT-015` amended). `redesignHeldCertificates()` only has a use after completion,
+   because held rows are made by the completion fan-out. So **the mode is refused after completion (`DEC-178`,
+   unchanged), and the template may still change while that kind has held certificates and none issued** — then
+   «طبّق على المحجوزة» re-renders them. Refused once one of that kind is issued. Whether that refusal is in
+   `set_certificate_design()` (a definer change, `console`'s proposed SQL, promoted into `0191`) or a DAL re-check is
+   `console`'s to show.
+3. **The default the screens name is the one issuance uses.** `issue_certificate()` (`0127`, `0066`) prefers any org
+   template of the kind over the platform default, ordered by `is_default` then version. **The SQL is not re-ordered** — that
+   would re-point live issuance on production unmeasured. **The screens mirror it**: the defaults strip and `045` name the
+   template issuance will pick, marked «افتراضي» only when it is the kind's default.
+4. Copy: **«أصدر»**, as the board draws it (the HTML is the copy source); each `designer` spec assertion it moves is a
+   ledger line. The verification page keeps «هذه الشهادة ملغاة.» — it carries the requirement's words and `verify/**` is
+   frozen.
+
+### 3 · `designer` — one page per certificate, the presets that exist, no new binding
+
+1. **A certificate keeps one page** (Q-1). `DEC-148` and `REQ-DSG-026`: one preset per certificate template, the other
+   orientation its own template, and **no A3 certificate preset exists**. The strip shows the template's page as one
+   chip, with the sibling orientation as a link. The board's three chips are not built; `REQ-UIX-111` is amended.
+2. **The poster strip shows the presets the model has** — seven, with the 4:5 master first and the only editable one —
+   not the board's four. One template, every format, per-format overrides: the goal holds, and the strip tells the truth.
+3. ★ **No new binding this wave** (Q-2). Four of the board's certificate fields — {نوع الشهادة}, {تاريخ الجلسة},
+   {نص الشهادة}, {التوقيع} — are not bindings, and adding any binding re-fingerprints every existing artifact and
+   re-renders it. The الحقول panel lists what the runtime binds, used or unused; the four are a carry.
+4. **The objects and stickers tabs are not built** (Q-3): they need the six house objects as raster platform assets the
+   worker can fetch, which do not exist. A carry.
+5. **The lead's primitives took `designer`'s three requests** (`82c39667`): `panelTitle` and `panelAction` on
+   `editor-rail`, `offset` on `floating-toolbar`, the anchor documented as a bounding box. **The editor's name is the
+   page's `h1`**, in the display face at the bar's size — `data-console`'s rule makes any `h1` the display face.
+6. **Publish** (`console`'s D4) has its home in the editor's bar beside «صدّر», shown when the draft differs from the
+   published version.
+7. **`notify`'s four requests on `canvas-stage`** are accepted: optional toggles, optional zoom, vertical scroll, a
+   positioned overlay slot.
+
+### 4 · `notify` — retire the string editor, no نقاطك, a QR route
+
+1. **نقاطك is drawn, not built** (Q1): the balance would enter `notification_send_context()`, which every mail runs through;
+   one block does not justify that risk this wave. A carry for the owner.
+2. **The string editor is retired into the builder** (Q2); its suites take ledger lines; the lead rewrites
+   `wave10-demo-email-studio`'s steps 1 – 4.
+3. No session picker (Q3); the gallery thumbnail is an outline from the real block sequence (Q4) — a recorded deviation.
+4. **`/api/mail/qr`** (Q5) — a PNG QR of a path on our own origin, from an allowlist, never caller text; no dependency.
+5. **The test send is disabled while there are unsaved changes** — the defect `notify` found: today it mails the saved
+   row, not the draft on screen.
+6. The 18 disagreements' defaults stand; ★ **D5 adds الفحوصات to the email rail with a count**, as `DEC-NEXT-34` gives the
+   designer.
+
+### 5 · Routes
+
+`/app/admin/emails/[key]` (the builder; bare in the studio frame) and `/api/mail/qr` enter `04` in this commit, before
+`src/` (`DEC-083`).
+
+### 6 · Carried, for the owner
+
+نقاطك · the four certificate fields that are not bindings · the objects and stickers tabs · an A3 certificate · C6's place
+(`DEC-237` §4) · the issuance fallback's order (§2.3).
+
+- **Documents changed:** `01-prd.md` (`REQ-CRT-015`, `REQ-UIX-111`), `04-architecture.md`, `CLAUDE.md` and three agent
+  files (the transfers), `STATUS.md`; `supabase/migrations/0191_template_audit.sql`
+
+## DEC-239 — Wave 23's close: PR A is built, green and ready — `055`, `045`, the certificate flows and `0191`; PR B stops at the studio's shared chrome; PR C and the designer go to wave 24, on the owner's budget ruling
+
+- **Date:** 2026-10-03 · **Decided by:** the owner (the budget ruling, C6, the tie-breaker); the record by the wave-23 lead
+- **Closes:** wave 23 at the boundary the owner set mid-wave. `DEC-235` – `DEC-238` stand
+- **Carries:** the designer rebuild and the email builder to wave 24, from the approved plans in `notes/{designer,notify}.md` (`fd6a3d37`)
+
+### 1 · What landed
+
+**PR A #52** (`wave-23a/templates-and-certificates`): ★ `055` rebuilt from `AdminTemplates` and `AdminTemplatesCerts` (delete
+`4638c87c`, create `aa96e1b2`) — two tabs, one kind per certificate template, **three defaults named, one per kind** · ★ `045`
+rebuilt from `AdminCertificates` (delete `52a8ac6d`, create `f1ca8c47`) — the mode and the template written here and nowhere
+else before completion, the drawn sentences after; release one by one or in bulk; revoke with a mandatory reason in a sheet;
+every PDF through the one audited route · ★ **the tie guard** (`bc423bc1`) · the capture fixes (`54d43e69`) · ★ **a real defect
+found by a spec and fixed** (`6333f314`): after «طبّق على المحجوزة» the «غيّر» sheet stayed open, modal, hiding the page ·
+★★ **`0191`**, the template library's audit, rehearsed on the owner's `0190` dump (§3). **PR B #53** stops at the studio frame
+and `ui/editor-rail` + `ui/floating-toolbar` (`82c39667`) — complete, no deletes, the floor 63 → 65. **PR C** has no branch.
+
+**Evidence:** CI's own conclusion **success** on every pushed head through `54d43e69`; on a production build of `6333f314`,
+**34 of 34** e2e cases (the walkthrough, `wave23-console-screens` on both projects, `certificates`, the transferred
+`wave8-designer-certificates`), and earlier `wave8-designer-templates` and the two `wave13` download specs; the full unit
+suite and the full RLS suite green. ★ **The owner's walkthrough** (`DEC-236` §5), 7 of 7 with a capture at each step: a
+template designed, set as its kind's default, a session put in review mode on `045` and completed, two certificates released,
+one revoked with a reason, the other downloaded by its member through the audited route — **and both negatives**: a held
+certificate is invisible to its member with no mail queued (`REQ-CRT-004`), and the verification page says it is revoked
+and never shows the reason (`REQ-CRT-011`). Its fixtures (the completion fan-out, the version publish, the PDF bytes) are
+named in its header.
+
+### 2 · ★★ C6 — the pack's prose cited a decision for its own opposite, a third time, and `DECISIONS.md` won
+
+The brief, `DEC-236` C6 and `M12.md` all said the certificate mode is «set once in الجدولة (`DEC-178`)». **`DEC-178`'s own
+title and contract 2 say the opposite — «SCR-045 is the mode's one writer»** — and it records the hazard that makes الجدولة
+wrong: `schedule_session()` defaults `p_certificate_mode` to `'off'` and writes it on every save, so moving the writer there
+would switch certificates off for every session. And C6 asked for a transfer of something already home:
+`session_certificate_designs` (`0099`) stores the template per session and kind, `issue_certificate()` reads it, and `045`
+was already its writer. **The owner ruled: `045` writes both; `DEC-178` is not re-opened.** This is the third time the
+design pack's prose has carried a decision's name over the opposite of what the decision says; **a planner reads the
+decision, not the sentence that cites it.**
+
+### 3 · `0191`, rehearsed
+
+On `/tmp/prod-schema-0190.sql` (0 data rows): the dump with only the platform's `supabase_realtime` error; **`0191` exit 0**;
+the end state identical to local in every category but `rls_auto_enable()`; ★ **the six template mutations, done as the
+org's admin member under RLS, each wrote exactly its row** — set default one row per move, the cleared previous default none;
+RLS on the rehearsed schema 114 of 115, the one red `rls_auto_enable()`. **The owner may push it**: the dry run lists exactly
+`0191`. Not pushed by any session.
+
+### 4 · Carried
+
+★ **The tie-breaker — a real defect**: `issue_certificate()` orders by `is_default`, then version, with no tiebreak; **the
+screen can disagree with what issuance picks.** The guard in PR A names no template for a kind with no default — including
+a single unflagged org template, which issuance would pick deterministically; the guard follows the owner's words and nudges
+an admin to set one. The issuance order itself is unchanged · ★ **a live defect in today's email studio**: «أرسل اختبارًا»
+mails the saved row, not the draft on screen (wave 24's builder disables it while unsaved) · نقاطك · the four certificate
+fields that are not bindings · the objects and stickers tabs · an A3 certificate (`DEC-238` §6) · revoke and issue on `045`
+need JavaScript to submit (the sheets, «المزيد» and the PDF link do not) · `DEC-215`'s four, `DEC-194`'s two gates,
+`DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-059` and the platform console (M13), session stories, the
+`railway.json`.
+
+### 5 · What comes next
+
+**Wave 24: the designer (PR B's rest) and the email builder (PR C)**, from their approved plans — unless the owner says
+otherwise. The owner's suggestion stands for it: Opus for the designer's seam and the drag paths, a cheaper model for the
+mechanical work.
+
+- **Documents changed:** `STATUS.md`

@@ -1,4 +1,4 @@
-// SCR-045's mode control — DEC-178 contract 2 (the mode's one writer),
+// SCR-045's mode control (wave 23: moved with the rebuild to the route folder, its cases unchanged) — DEC-178 contract 2 (the mode's one writer),
 // REQ-DSG-031 (the stated preflight, before the act), REQ-UIX-013.
 //
 // What the control decides, with the server action mocked: nothing is saved
@@ -20,7 +20,7 @@ vi.mock("@/app/[locale]/app/admin/sessions/[id]/certificates/actions", () => ({
 const show = vi.fn();
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ show }) }));
 
-const { CertificateModeControl } = await import("@/components/certificates/mode-control");
+const { CertificateModeControl } = await import("@/app/[locale]/app/admin/sessions/[id]/certificates/mode-control");
 
 const Wrap = ({ children }: { children: React.ReactNode }) => (
   <NextIntlClientProvider locale="ar" messages={{ ...arCertificates, ...arUi }}>

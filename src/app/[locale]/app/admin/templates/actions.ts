@@ -111,3 +111,27 @@ export async function setRetired(locale: string, purpose: TemplatePurpose, templ
   if (!id.safeParse(templateId).success) return { status: "invalid", at: Date.now() };
   return answer(locale, purpose, await retireTemplate(locale, templateId, retired), retired ? "retired" : "restored");
 }
+
+/** wave 23 (SCR-055, `AdminTemplates.dc.html`): «قالب جديد» opens the designer on a blank of the tab's purpose. The
+ *  table needs a name and a family (`0055`'s checks) and a certificate a page (`DEC-148`), so the sheet asks first;
+ *  then the two existing writes — the blank template, its working document — and the studio. Audited by `0191`'s
+ *  trigger (`design_template.created`); the draft document is a working copy and writes nothing. */
+export async function createAndOpen(locale: string, purpose: TemplatePurpose, _previous: TemplateActionState, form: FormData): Promise<TemplateActionState> {
+  const name = form.get("name");
+  const invalidName = nameError(name);
+  if (invalidName) return invalidName;
+  const orientation = form.get("orientation");
+  const parsed = createBlankInput.safeParse({
+    purpose,
+    family: form.get("family"),
+    name,
+    ...(purpose === "certificate" && typeof orientation === "string" ? { orientation } : {}),
+  });
+  if (!parsed.success) return { status: "invalid", at: Date.now() };
+  const created = await createBlankTemplate(locale, parsed.data);
+  if (created.status !== "ok") return created.status === "not_authorized" ? { status: "not_authorized", at: Date.now() } : { status: "invalid", at: Date.now() };
+  revalidatePath(screen(locale, purpose));
+  const draft = await openTemplateDraft(locale, created.templateId);
+  if ("status" in draft) return { status: "not_authorized", at: Date.now() };
+  redirect(`/${locale}/app/admin/designer/${draft.documentId}`);
+}

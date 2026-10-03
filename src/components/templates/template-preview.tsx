@@ -3,41 +3,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { renderDocumentToHtml, type DesignDocument } from "@kareem/designer-runtime";
 
-// A template card's media — SCR-055/056, `16` §10.3.
+// A template drawn by THE renderer — SCR-055's card, and SCR-045's template control (wave 23, `REQ-UIX-108`).
 //
-// ★ THE RENDERER'S OWN OUTPUT, not a picture of one. A template has no
-// artifact to show (nothing is exported from a template), so the card draws
-// the latest version through `renderDocumentToHtml()` — the same function
-// the studio canvas and the worker's Chromium use (DEC-017) — with this org's
-// brand in the library's scheme, and the faces by SHA-256, never a CDN
-// (REQ-DSG-016). Unbound data shows the template's own fallbacks, and what
-// has none is a marked placeholder (REQ-DSG-006).
+// ★ THE RENDERER'S OWN OUTPUT, not a picture of one (DEC-017). A template has no artifact, so its latest version goes
+// through `renderDocumentToHtml()` — the function the studio's canvas and the worker's Chromium call — with the faces
+// by SHA-256 from `/api/fonts` (REQ-DSG-016, never a CDN) and the values the caller passes: the org's brand, and on the
+// library every bound text field as `{label}`, so the card shows the template's fields as the boards draw them.
 //
-// Mounted only once the card is near the viewport: eleven full-size documents
-// in eleven frames on a phone is a page that never settles. The frame is
-// inert — no pointer, no tab stop, hidden from assistive technology — because
-// the card's heading already names what it shows.
-//
-// ★ CONTAINED, NOT COVERED: the document is scaled to fit BOTH sides of its
-// box and centred, so a box capped short on a phone shows the whole page
-// rather than its top. And `data-rendered` turns true only once the frame's
-// document has loaded and its faces are ready — a capture waits for it, so a
-// blank render can be told from one that never mounted (DEC-149 §4).
+// Mounted only once near the viewport; inert (no pointer, no tab stop, hidden from assistive technology) because the
+// card's heading names it. ★ CONTAINED, never covered: scaled to fit both sides of its box and centred. `data-rendered`
+// turns true only after the frame's document has loaded AND its faces are ready, so a capture can tell a blank render
+// from one that never mounted (DEC-149 §4) — the attribute names wave 8's specs read are kept.
 
 export interface TemplatePreviewProps {
   document: DesignDocument;
-  bindings: Record<string, string>;
+  values: Record<string, string>;
   faces: Array<{ family: string; weight: number; style: string; sha256: string }>;
   origin: string;
   title: string;
 }
 
-export function TemplatePreview({ document: doc, bindings, faces, origin, title }: TemplatePreviewProps) {
+export function TemplatePreview({ document: doc, values, faces, origin, title }: TemplatePreviewProps) {
   const host = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [box, setBox] = useState({ width: 0, height: 0 });
-  // The html the frame last finished loading: a new document (a scheme
-  // switched) is not rendered until ITS load, so the marker is derived.
   const [loadedHtml, setLoadedHtml] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,7 +56,6 @@ export function TemplatePreview({ document: doc, bindings, faces, origin, title 
     return () => ro.disconnect();
   }, []);
 
-  // A box with no height yet (a parent sized by its content) fits the width.
   const scale = box.width
     ? box.height
       ? Math.min(box.width / doc.master.width, box.height / doc.master.height)
@@ -81,15 +69,14 @@ export function TemplatePreview({ document: doc, bindings, faces, origin, title 
       visible
         ? renderDocumentToHtml(doc, {
             fonts: faces.map((f) => ({ ...f, url: `${origin}/api/fonts/${f.sha256}` })),
-            bindings: { values: bindings },
+            bindings: { values },
           })
         : "",
-    [visible, doc, faces, origin, bindings],
+    [visible, doc, faces, origin, values],
   );
 
   return (
-    // The frame is laid out in the DOCUMENT's direction, so its inline start
-    // and its scaling origin are the same corner whatever the console's is.
+    // Laid out in the DOCUMENT's direction, so its inline start and the scaling origin are one corner (DEC-096).
     <div ref={host} dir={doc.direction} data-template-preview="" data-rendered={html !== "" && loadedHtml === html ? "true" : "false"} className="relative h-full w-full overflow-hidden">
       {visible && scale > 0 ? (
         <iframe
@@ -108,8 +95,6 @@ export function TemplatePreview({ document: doc, bindings, faces, origin, title 
             transformOrigin: doc.direction === "rtl" ? "top right" : "top left",
           }}
           onLoad={(event) => {
-            // Same-origin (the sandbox allows it), so the frame's own face set
-            // is readable; ready after the load event is ready to be looked at.
             const loaded = html;
             const fonts = event.currentTarget.contentDocument?.fonts;
             if (fonts) void fonts.ready.then(() => setLoadedHtml(loaded));

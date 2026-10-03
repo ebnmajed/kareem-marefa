@@ -643,6 +643,14 @@
           "created": "Survey template created",
           "changed": "Survey template changed",
           "deleted": "Survey template deleted"
+        },
+        "design_template": {
+          "created": "Design template created",
+          "renamed": "Design template renamed",
+          "default_set": "Default template set",
+          "retired": "Design template retired",
+          "restored": "Design template restored",
+          "published": "Template version published"
         }
       },
       "domains": {
@@ -670,7 +678,8 @@
         "category": "Categories",
         "company": "Companies",
         "report": "Reports",
-        "survey_template": "Surveys"
+        "survey_template": "Surveys",
+        "design_template": "Design templates"
       },
       "subjects": {
         "brand_kit": "Brand kit",
@@ -696,7 +705,8 @@
         "venue": "Venue",
         "category": "Category",
         "report": "Report",
-        "survey_template": "Survey template"
+        "survey_template": "Survey template",
+        "design_template": "Design template"
       },
       "kinds": {
         "log": "Action",

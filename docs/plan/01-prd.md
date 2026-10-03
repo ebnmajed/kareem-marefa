@@ -1619,6 +1619,19 @@ Regenerating a certificate years later produces the same document: the template 
 - A certificate issued against template v3 still renders as v3 after v4 is published (D67).
 - A font that has since been removed from the picker still resolves for reissue.
 
+#### REQ-CRT-015 — One default template per certificate kind, and a session's choice written in one place
+**Serves:** `DEC-178`, `DEC-236` C2 and C6, `DEC-237` §4 · `REQ-CRT-004`
+Each certificate kind — attendance, presenting, achievement — has one org default (`0055`'s indexes). A session may name
+another template per kind **before completion, on its certificates screen**, the same and only place its mode is written
+(`DEC-178`). After completion the mode is shown and not written; the template may still change **while that kind has
+held certificates and none issued**, so the held ones can be re-rendered (`DEC-238` §2).
+**Acceptance:**
+- With no choice, a certificate is issued from the template `issue_certificate()` picks, and the screens name that same
+  template — «افتراضي» only when it is the kind's default (`DEC-238` §2).
+- The mode is refused once the session is completed, archived or cancelled; the template once a certificate of that kind
+  is issued.
+
+
 ---
 
 ## 16. Designer, posters and templates — `DSG`
@@ -2036,6 +2049,17 @@ kit (`REQ-DSG-021`). An org duplicates one to make it theirs; the original is ne
   adopted a design sends the platform's design for that key; adopting remains the way to make one's own.
 - Changing the org logo restyles every message an org has adopted a design for.
 - Promotion adds to the library; it never supplies the baseline.
+
+#### REQ-NTF-015 — Six more block types, row layouts and global styles — additive
+**Serves:** `DEC-235` §3.2 · `REQ-NTF-009`, `REQ-NTF-010`, `REQ-NTF-014`
+The email document gains six block types — the poster, a QR code, the member's points, a certificate, the logo, social
+links — row layouts (1 · 1/1 · 1/2 · 1/1/1) and global styles with per-block overrides. Each block type has a compiled
+HTML form, a generated text alternative and checks.
+**Acceptance:**
+- Every message that renders today renders byte-identically: `tests/unit/mail-pinned/`'s files are unchanged.
+- A document saved before the change opens and compiles unchanged.
+- No block emits SVG; images are PNG or JPEG.
+
 
 ---
 
@@ -3860,6 +3884,72 @@ selected template's questions — question, type, required; «قالب جديد�
 **Acceptance:**
 - Questions reorder without dragging (`ui/reorderable-list`).
 - Creating, saving and deleting a template are audited.
+
+#### REQ-UIX-107 — The studio frame: both editors on one sidebar model, with the whole viewport
+**Serves:** `DEC-235` §4 (`DEC-NEXT-36`), `DEC-237` §1 · `REQ-DSG-028` · `09` `SCR-056`/`057`, `SCR-058`
+The designer and the email builder render **without the console frame**: their own bar, a 68 px icon rail at the
+inline-start, a 300 px panel that **swaps** with the rail's selection, the canvas, **no right panel**, and a floating
+toolbar on the selection — `ui/editor-rail` and `ui/floating-toolbar`, shared by both. The other studio screens stay inside
+the console frame (`REQ-UIX-084`).
+**Acceptance:**
+- Every rail item and every floating-toolbar control is reachable by keyboard and by a single tap.
+- No motion beyond drag feedback (`REQ-UIX-053`); `tests/unit/console-register.test.ts` is not edited.
+
+#### REQ-UIX-108 — The template library, with its certificates tab and three defaults
+**Serves:** `REQ-DSG-008`, `REQ-CRT-004` · `DEC-235`, `DEC-236` §1 · `09` `SCR-055`
+`SCR-055` is rebuilt from `AdminTemplates.dc.html` and `AdminTemplatesCerts.dc.html`: tabs الملصقات · الشهادات; قوالب
+مؤسستك and قوالب المنصة; a card is a preview rendered by the one renderer with its bound fields as placeholders, the name,
+«افتراضي» / «المنصة», the format chips and a menu (open, duplicate, set default, archive). On the certificates tab each
+template shows **the one kind it serves**, and **the three defaults — حضور · تقديم · إنجاز — are named**.
+**Acceptance:**
+- A platform template is read-only until copied («انسخ لتعدّل»).
+- Setting a default replaces the previous default **for that kind only**; there is never more than one per kind.
+- Every template mutation is audited.
+
+#### REQ-UIX-109 — A session's certificates: the mode and the template shown, held released, issued revoked
+**Serves:** `REQ-CRT-004`, `REQ-CRT-011`, `REQ-CRT-014` · `DEC-177`, `DEC-178`, `DEC-236` · `09` `SCR-045`
+`SCR-045` is rebuilt from `AdminCertificates.dc.html`: the mode and the template — **written here and nowhere else, before
+completion** (`DEC-178`), shown as sentences after; محجوزة with row checkboxes, «أصدر المحدّد» and «أصدر الكل»; صادرة with member, kind, serial, issue date,
+«PDF» and «ألغِ».
+**Acceptance:**
+- The serial renders in `<bdi dir="ltr">`.
+- Revoking requires a reason, entered in a sheet; the verification page then shows «شهادة ملغاة» and never the reason.
+- «PDF» goes through the one audited download route; no bare download link is rendered.
+- A held certificate is not visible to its recipient and sends no mail.
+
+#### REQ-UIX-110 — The designer, rebuilt over the kept engine
+**Serves:** `REQ-DSG-019`, `REQ-DSG-020`, `REQ-DSG-028` … `031` · `DEC-093`, `DEC-096`, `DEC-235` §2 – §4, `DEC-237` §2 – §3 · `09` `SCR-056`/`057`
+`SCR-056`/`057` is rebuilt from `AdminDesigner.dc.html` and `AdminDesignerElements.dc.html` on `REQ-UIX-107`'s frame: the
+rail's items (العناصر · الحقول · الملفات · الهوية · الطبقات · الفحوصات with a count · الطبقة), the canvas on `ui/canvas-stage`
+with handles, snap guides, rulers and the safe area, the floating toolbar's five controls, and the bar with **the variant
+strip — one template, every format, per-format overrides**. Checks are a rail item with a count, never a modal; each
+finding names its layer and selecting it opens that layer.
+**Acceptance:**
+- An untouched document exports identically in every format: no parity golden moves.
+- Every drag has a single-pointer path that is not a drag, proven by a test using clicks alone.
+- The numeric X/Y/W/H/rotation fields remain.
+
+#### REQ-UIX-111 — The certificate canvas
+**Serves:** `REQ-CRT-004`, `REQ-CRT-014`, `REQ-DSG-019` · `DEC-236` C3 – C5 · `09` `SCR-056`/`057`
+The same editor on a landscape canvas (`AdminCertDesigner.dc.html`), the template's one page as its strip — **a
+certificate has one preset, and the other orientation is its own template, reached by a link** (`DEC-148`,
+`REQ-DSG-026`, `DEC-238` §3; the board's A3 chip is not built) — and a الحقول panel listing every certificate field the
+runtime binds, **marked used or unused** — {المستوى} only for the `achievement` kind, {رمز التحقق QR}
+bound to the verification URL. «معاينة بعضو» renders with a real member through the one renderer.
+**Acceptance:**
+- The checks fit the org's longest member name at the name layer's maximum lines.
+- The QR field resolves to the one verification route, never a constructed string.
+
+#### REQ-UIX-112 — The email gallery and the block builder
+**Serves:** `REQ-NTF-009` … `REQ-NTF-015` · `DEC-235` §3.2, §4 (`DEC-NEXT-35`) · `09` `SCR-058`
+`SCR-058` is rebuilt from `AdminEmailGallery.dc.html`, `AdminEmails.dc.html` and `AdminEmailAdd.dc.html`: a gallery card
+per message (thumbnail, name, category, enabled state, send count), and an editor on `REQ-UIX-107`'s frame — blocks,
+layouts, global styles and the selected block's content and style, the email at 600 px with selectable rows, the device
+toggle, a preview with a real session and a test send to the admin's own address.
+**Acceptance:**
+- Every drag has a single-pointer path that is not a drag, proven by a test using clicks alone.
+- The message set is `08`'s; a test send reaches only the admin's own address.
+
 
 ---
 

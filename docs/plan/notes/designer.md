@@ -5,6 +5,557 @@ found. `docs/plan/` is otherwise the lead's; this file is mine.
 
 ---
 
+## Wave 23 — 2026-10-03 — the plan, PR B `wave-23b/the-designer` (planning only; nothing is deleted or built until the lead posts «the plans are approved»)
+
+Read at `8a43de20` in the main checkout: `STATUS.md`'s wave-23 block, `CLAUDE.md`'s wave-23 map, `DEC-235` – `DEC-237`
+in full, the brief, `M12.md`, `06` in full, `DEC-093`, `DEC-096`, `DEC-148`, `DEC-176`, `DEC-178`, `DEC-017`, the
+lead's day-one note (`lead-wave23.md`), the three artboards beside their PNGs, every file in `src/components/designer/`,
+`src/app/[locale]/app/admin/designer/**`, `src/lib/dal/designer.ts`, the runtime's `model.ts`, `presets.ts`,
+`compose.ts`, `library.ts`, `session-bindings.ts`, `fingerprint.ts`, the parity harness, and the suites that pin the
+studio (`tests/components/designer/*`, `tests/e2e/wave{8,13}-designer-*`).
+
+★ **The goal I am judged on, in the owner's words: an admin designs in it without a designer.** One template, every
+format, on one strip; the checks say what is wrong before export, naming the layer; every drag has a tap; an untouched
+document exports identically. «The gates are green» is not the measure — the acceptance is the owner's, at 1280.
+
+### W23.0 — what I measured that the brief and the spec did not say
+
+1. **`canvas.tsx` already holds the seam's two halves in one file, and the frame is small.** Of 744 lines, the outer
+   frame is **24**: the fit-to-container effect (`:216-230`), the wrapper and the size · zoom readout (`:459-474`, the
+   coordinates readout excepted), the scrolling host (`:476`) and the placing note (`:637`). Everything else — the
+   iframe of the one renderer, the overlay, five gestures, the handles, the focal dot, the safe-area/bleed guides and
+   `sourceShift` — is engine and stays (§W23.1).
+2. **`editor.tsx`'s state machine is ~520 of its 887 lines** (`:107-122`, `:141-598`, `:633-637`, `:684-688`). There is
+   **no component test of `DesignerEditor`**: its behaviour is pinned only by four e2e specs. So the move commit is
+   proven by those specs **and** by a new hook test written in the same commit (§W23.1.2).
+3. **`inspector.tsx` (692) computes very little** — the clamps, the background switch, the token ↔ binding mapping, the
+   focal grid's tolerance — about 40 lines. Two suites import `Inspector` and its op types by path
+   (`inspector-align.test.tsx`, `wave13-console-parity.test.tsx`), so **the rebuilt file keeps the path, the export name
+   and the required props**: the suites then need only selector moves, each a ledger line (§W23.2).
+4. **The poster strip has SEVEN presets, not four.** `POSTER_PRESETS` is `master` (4:5, the source), `square`, `story`
+   (9:16), `landscape` (16:9), `og`, `a4`, `a3` (`presets.ts:99`, `REQ-DSG-009`: «every listed variant»). The artboard
+   draws 16:9 · A4 · A3 · 9:16 and **no 4:5 — the only preset that can be edited** (D-1).
+5. ★★ **A certificate has ONE preset, by ruling.** `presetsForDocument()` returns `cert_landscape` **or**
+   `cert_portrait` (`presets.ts:115`): «a portrait certificate is a portrait composition, chosen at issue time, and never
+   a derivation» (`DEC-148`, `REQ-DSG-026`: «an orientation is a composition, so it is a row»). There is **no A3
+   certificate preset** at all. `REQ-UIX-111` and the board draw A4 أفقي · A4 عمودي · A3 أفقي on one strip (D-2,
+   **blocking**).
+6. **Four of the board's ten certificate fields are not bindings.** The runtime resolves `recipient.name`,
+   `session.title`, `certificate.serial`, `certificate.issuedAt`, `certificate.verifyUrl`, `certificate.verificationCode`,
+   `certificate.achievementName`, `org.name` (`session-bindings.ts:213-226`). {نوع الشهادة} and {نص الشهادة} are
+   **literal text layers** in every seeded certificate (`library.ts:359`), {التوقيع} is a **locked shape** («موضع
+   التوقيع», `:448`), and {تاريخ الجلسة} is **resolved nowhere on the certificate path** (`certificate_render_context()`
+   returns no session date). And the board **omits {رمز التحقّق النصّي}**, which `REQ-CRT-010` requires beside the QR
+   (D-3).
+7. ★ **Adding a binding to a resolver re-renders every poster in every org.** `resolveSessionBindings()` returns every
+   key it can, and the whole record is hashed into `source_fingerprint` (`fingerprint.ts:66`). A new `session.category`
+   key would change the fingerprint of every live poster — no golden moves, but every cached artifact is invalidated and
+   regenerated. So **no new binding is added this wave** without the lead's ruling (D-4); {التصنيف} on the poster board is
+   one.
+8. **The design-panel on `045` imports a file `console` is deleting.** `src/components/certificates/design-panel.tsx`
+   (mine) imports `TemplatePreview` from `template-preview.tsx` (one of the library's four files, `console`'s to delete
+   this wave). Whichever lands first breaks the other's build (Q-4).
+9. **`lead-wave23.md` landed while I planned** (`8a43de20`); §W23.4 answers it.
+
+---
+
+### W23.1 — ★★ the seam, file by file and by line range
+
+**The rule I am applying** (`DEC-235` §2, `DEC-237` §2 – §3): an engine file is edited only where the chrome's contract
+forces it, add-only where it can be, and **its existing suite passes untouched**; logic living in a chrome file is
+**moved verbatim, in its own commit, before the delete**; the chrome is deleted, then written from the artboard.
+
+#### W23.1.1 — `canvas.tsx` (744) — ENGINE, kept; its outer frame moves to `ui/canvas-stage`
+
+| Lines | What | Fate |
+|---|---|---|
+| `:1-158` | header (DEC-017, DEC-096 exemption), props, constants, gesture/preview types, handle table | **kept** |
+| `:159-214` | state, refs, the `previewRef` timing fix, `renderDocumentToHtml()` into `srcDoc` | **kept** |
+| `:216-230` | fit to the container (`ResizeObserver` → `scale`) | **→ `canvas-stage`** — the stage fits and zooms; `DesignerCanvas` gains `scale?: number` (add-only, defaulting to today's `0.4`, which is exactly what `canvas-overlay.test.tsx` relies on — its stub keeps the initial `0.4`) |
+| `:232-458` | geometry, `docPoint`, `paintTransient`, five gestures, keyboard, tap-to-place, `frameFor` | **kept** |
+| `:460` | the `flex-col gap-3` wrapper | **→ stage** (the canvas root becomes the sized `relative` box, `:477`) |
+| `:461-474` | «المقاس · التكبير» readout | size and zoom **→ the bar** (zoom % is the bar's, as drawn: «62%»); ★ **the coordinates `role="status"` stays in `canvas.tsx`** — it is gesture feedback and the one place the chip reads like the inspector's fields (DEC-096), so it moves inside the box as an absolutely positioned chip, not out |
+| `:476` | the `overflow-x-auto` host | **→ stage** (the stage scrolls) |
+| `:477-635` | the sized box, the iframe (physical, DEC-096), safe-area/bleed guides, the hit area, layer buttons, handles, focal dot, guides, marquee | **kept** — the guides are document geometry per preset; the stage's «منطقة الأمان» toggle drives the existing `showOverlays` |
+| `:637` | «انقر على اللوحة لتضع الطبقة» | **→ the editor** (said beside the armed button and in the stage's corner) |
+| `:642-744` | `sourceShift`, `Handles`, `FocalDot` | **kept** |
+
+**Add-only props** on `DesignerCanvasProps`, each defaulting to today's behaviour so the two suites that mount it
+(`canvas-overlay.test.tsx`, `wave13-console-parity.test.tsx`) pass **untouched**:
+- `scale?: number` — handed down by the stage.
+- `snapping?: boolean` (default `true`) — the stage's «المحاذاة التلقائية»; `false` behaves as today's held `alt`.
+- `onExternalDrop?: (point: { x: number; y: number }, payload: string) => void` — a native drop on the stage of a
+  `application/x-kareem-layer` payload, as a **logical** point (the same conversion `onStageClickCapture` makes,
+  `:446-447`). The enhancement for the three panel drags; never the path (§W23.3).
+- `onGestureChange?: (active: boolean) => void` — so the floating toolbar steps aside while a layer moves.
+- `onTextDoubleClick?: (layerId: string) => void` — opens النص with the text field focused (D-9).
+
+**Suites that prove the seam:** `canvas-overlay.test.tsx` (13 cases: DEC-096 positions in all four console × document
+pairs, tap/shift/multi selection, one hand-over per gesture, the release-before-render timing, marquee in RTL, nudge on
+the visual axis, tap-to-place) and `wave13-console-parity.test.tsx` — **both untouched**, run at every commit of B.
+
+#### W23.1.2 — `editor.tsx` (887) — CHROME, with its state machine MOVED first
+
+**Commit 1 — the move, alone.** New `src/components/designer/editor-state.ts` (`useDesignerEditorState`), the code
+**verbatim**, `editor.tsx` reduced to calling it and rendering exactly the chrome it renders today:
+
+| `editor.tsx` lines | Moves as |
+|---|---|
+| `:107-122` | `SaveState`, `AUTOSAVE_DELAY_MS` (1200), `UNDO_STEPS` (50) |
+| `:141-175` | document, selection (`selectedLayerIds`, `multi`, `placing`), `assets`, `save`, `past`/`burst`/`future`/`depth`, `presets`, `preset`, `overlays`, `fontsReady`, `baseUpdatedAt`, the timer and the abort controller — **not** `panel` (`:152`), which is chrome |
+| `:181-221` | `isLocked` (template lock **or** the layer's own flag), `placeholderLabel` (the field's Arabic name, never its path — DEC-149 §4), `faceCss`, the explicit per-family font load before `fonts.ready` (DEC-024) |
+| `:223-269` | `push` (the Route Handler PUT with `baseUpdatedAt`; 409 `locked_region` / 409 / 403 / 422 / error; an abort is the next keystroke's save) and the one toast per change of failure kind |
+| `:271-334` | `mutate` (validate in the browser; one undo entry per gesture/burst; a new edit ends the redo branch; autosave after 1200 ms), `step`, ⌘/Ctrl-Z and ⇧⌘Z, unmount cleanup |
+| `:336-547` | `patchLayer` (snapped in logical coordinates), `arrange`, `reorder`, `commit` (a no-op is not an undo step), `applyFrames`, `nudge` + `endBurst`, `groupArrange`, `transform`, `place`, `focal`, `select`, `marquee`, `add`, `addImage`, `duplicate`, `askDelete`/`confirmDelete`/`deleting`, `selectKind`, `toggleHidden` |
+| `:549-598` | `selected`, `fallbacks`/`bindingLayerNames`, `fontFamilies`, `useCheckFindings`, `flagged`, `layerNames`, `goTo`, `selectOnCanvas`, `choosePreset` |
+| `:633-637` | `shown = derive(document, preset)`, `sourcePreset`, `onSource`, `lockedIds`, `selection` |
+| `:684-688` | `identify` → exported pure `identifyLayer(layer, kindLabel)` (the delete confirm names WHICH layer, REQ-UIX-013) |
+
+**The only edits inside the moved code, named so the reviewer can check them** (`git show --color-moved=zebra` shows
+everything else as moved, not changed): the four `setPanel("inspector")` calls (`:486`, `:503`, `:580`, `:590`) become
+`options.onRevealLayer()`, because which panel opens is chrome; and the hook returns what it computed. Nothing else.
+
+**Proof across commit 1:** `tsc`, `npm test` (the two designer component suites, the 25 designer, render, poster, QR, font and serial unit suites), and the
+four e2e specs that pin the editor — `wave8-designer-editor`, `wave13-designer-studio-taps`, `wave13-designer-studio-drag`,
+`wave13-designer-upload-render` — green on the commit before and on commit 1, unchanged. I run one through the gate
+lock; the lead runs the others. **Plus a new `tests/components/designer/editor-state.test.tsx`** in the same commit,
+over a harness component: fifty steps and no more; a nudge burst is one entry and a key release ends it; a gesture's
+frames are one entry; a no-op is not an entry; a new edit clears redo; the PUT carries `baseUpdatedAt` and fires once
+after 1200 ms of quiet; 409 `locked_region` / 409 / 403 / 422 map to their states and a toast per change of kind; a
+locked layer refuses move/resize/hide/delete and allows the focal point. It runs again, unchanged, after the create.
+
+**Commit 2 — delete** `editor.tsx`. **Commit 3 — create** `editor.tsx` from `AdminDesigner.dc.html` over the module.
+**Never pushed unpaired.**
+
+★ **One new behaviour goes into the module after the move, in its own commit**: `flush()` — save now, used before
+«معاينة بجلسة» / «معاينة بعضو» navigate (§W23.5), so a preview never drops the last 1.2 s of work.
+
+#### W23.1.3 — `inspector.tsx` (692) + `inspector-section.tsx` (41) — CHROME, its arithmetic MOVED first
+
+**Commit 1 (with the editor's move, or its own):** new `src/components/designer/inspector-ops.ts`, verbatim:
+`ArrangeOp`, `GroupOp`, `TransformOp` (`:50-59`); `token()` / `bind()` (`:88-89`); the frame patch with its clamps —
+W and H ≥ 1, opacity 0 … 1 in 0.05 steps, font size ≥ 1 (`:132`, `:293`, `:395-400`); the background switch that keeps
+the first stop / builds `{{brand.surface}} → {{brand.canvasRaise}}` at 140° (`:435-444`) and the stop patches
+(`:458-463`); the angle 0 … 360, rounded (`:476`); `FOCAL_NAMES` and the 0.005 tolerance (`:579`, `:644`).
+`inspector.tsx` re-exports the three types, so both suites import them unchanged.
+
+**Then delete** `inspector.tsx` and `inspector-section.tsx`; **create** `inspector.tsx` — same path, same `Inspector`
+export, same required props (`document, layer, locked, canEdit, fontFamilies, onPatchLayer, onArrange, onDocument`),
+the optional wave-13 props unchanged — drawn as the الطبقة panel: tabs **النص · الموضع · التأثيرات** for text and a
+field, **الصورة · الموضع** for an image, **الشكل · الموضع** for a shape, **الرمز · الموضع** for a QR; the document's
+background when nothing is selected; the group section when two or more are. The disclosure that keeps «الموضع والحجم»
+closed is re-written inside it (a real `<button>`, never `<summary>` — wave 3's lesson).
+
+#### W23.1.4 — the other engine files — kept, and what each gives the chrome
+
+| File | Fate | Suite that proves it |
+|---|---|---|
+| `checks-panel.tsx` (218) | kept; **add-only**: `CheckInputs.samples?` (binding → the org's longest value) and two finding kinds, `longest` and `contrast` (§W23.6); `groupFindings()` exported so the rail's count is the panel's rows | e2e `wave8-designer-editor` (the checks), new `wave23-designer-checks` |
+| `bindings-panel.tsx` (70) | kept, composed under الحقول («used» fields with the value each resolved to) | `wave8-designer-editor` |
+| `export-panel.tsx`, `export-action-button.tsx`, `export-reason.ts` | kept, composed in the «صدّر» sheet | `designer-export-reason.test.ts`, `wave8-designer-editor` |
+| `add-image.tsx`, `upload-asset.ts` | kept, composed under الملفات («ارفع صورة») | `wave13-designer-upload-render` |
+| `packages/designer-runtime/src/compose.ts` | **add-only**: `NewLayerKind` gains `'qr'`; `NewLayerOptions` gains `shape?: 'rect' \| 'ellipse' \| 'line'` and `qrBinding?` — العناصر's دائرة, خط, رمز QR | `designer-compose.test.ts` untouched + new cases in a new file |
+| new `packages/designer-runtime/src/fields.ts` | the field registry (§W23.5) | new `tests/unit/designer-fields.test.ts` |
+
+**Not touched, and the diff will show it:** `render.ts`, `presets.ts`, `autofit.ts`, `bindings.ts`,
+`session-bindings.ts`, `fingerprint.ts`, `tier-a.ts`, `model.ts`, `validate.ts`, `qr.ts`, `focal.ts`, `geometry.ts`,
+`arrange.ts`, `library.ts`, `worker/src/render/**`, every worker task, `scripts/parity/**`.
+
+---
+
+### W23.2 — kept-behaviour tables, one per rebuilt file (re-derived from the REQs and the DAL; read back against the new files after each create)
+
+#### `editor.tsx` → the new `editor.tsx` over `editor-state.ts`
+
+| Behaviour | Where it lives after | Kept by |
+|---|---|---|
+| One engine: no poster/certificate branch in the state; a certificate is a document whose purpose is `certificate` | `editor-state.ts` | `REQ-DSG-004`, D54 |
+| Canvas is the one renderer's iframe with real bindings | `canvas.tsx` (untouched) | `DEC-017`, `REQ-DSG-006` |
+| Faces by SHA-256 from `/api/fonts/<sha>`, declared in the page too so the checks measure what the export measures; each family loaded before `fonts.ready` | `editor-state.ts` | `REQ-DSG-016`, A39, `DEC-024` |
+| Autosave through the Route Handler, 1200 ms, abort on the next edit, `baseUpdatedAt` refusing a stale save | `editor-state.ts` | `REQ-DSG-022`, `04` §4.2 |
+| Save states — saving · saved («محفوظ») · conflict · forbidden · error · locked (names the layer) · invalid (names the path) — in the bar, a toast that stays for the three failures, `role="alert"` for locked/invalid | bar + `editor-state.ts` | `16` §7.3, `REQ-DSG-024` |
+| Fifty-step document-level undo/redo; ⌘Z / ⇧⌘Z; buttons disabled at the ends | `editor-state.ts`, bar ↶ ↷ (accessible names «تراجع» / «إعادة») | `06` §10 |
+| A gesture is one entry; a burst of arrows is one entry; no timer (`DEC-146`) | `editor-state.ts` | `REQ-DSG-028` (W13.1 R5) |
+| Browser-side `validateDocument` before a write | `editor-state.ts` | `REQ-DSG-005` |
+| Locked = the template's lock **or** the layer's own flag; move/resize/hide/delete refused, order and focal allowed | `editor-state.ts` | `REQ-DSG-024` |
+| Only the source preset is manipulated; a derived preset shows `derive()` and takes the focal point and the per-format overrides (§W23.7) | `editor-state.ts`, الموضع | A32, `REQ-DSG-020` |
+| Overlays on by default for a print preset; switching a preset resets them | `editor-state.ts`; the stage's «منطقة الأمان» | `06` §10, `REQ-DSG-010` |
+| A check selects its layer on the preset it failed in, overlays on, الطبقة opened | `editor-state.ts` (`goTo`) | `REQ-DSG-029` |
+| Selecting on the canvas opens الطبقة; selecting in the list stays in the list | editor | wave 8 |
+| Delete confirms **by the layer's identity** — its words, else its name, else its kind — with its place in the stack | `identifyLayer` + the dialog | `REQ-UIX-013` |
+| Add text / shape / logo / image; duplicate; a new layer inside the safe area at the document's start edge | العناصر, الملفات, `compose.ts` | `DEC-178` (D1b), `REQ-DSG-021` |
+| Every new colour a `{{brand.*}}` token | `compose.ts`, `TokenSelect` | `REQ-DSG-021`, `0055` |
+| Read-only for a presenter or a non-admin (`canEdit`); the canvas shows, nothing writes | editor | `REQ-DSG-002`, `documents_read` |
+| ★ **Below `xl`: view and approve** — the bar, the strip, the canvas unselectable, the checks, the bindings, «صدّر» | editor | `09` SCR-057 «Mobile» (not superseded by the wave-23 note, which supersedes the **panels**) — D-8 |
+| The canvas is named in the outline (an `h2`), on the phone too | editor | wave 10's carried row, SC 1.3.1 |
+
+#### `inspector.tsx` → the الطبقة panel
+
+| Behaviour | After | Kept by |
+|---|---|---|
+| Only the sections the selected layer has; the document's background when none; the group section for two or more | `inspector.tsx` (tabs) | `16` §10.2 |
+| ★ Numeric X · Y · W · H · rotation (+ opacity), behind a closed «الموضع والحجم» disclosure, **never removed** | الموضع tab | `DEC-093`, `REQ-DSG-028`, `REQ-UIX-110` |
+| Align start/centre/end, top/middle/bottom, against the safe area or the page, on the **document's** axis | الموضع tab | `DEC-096` (byte-identical test) |
+| «لائم المنطقة الآمنة», «املأ المنطقة الآمنة عرضًا», ±15°, «صفّر الدوران», «ضع بنقرة» (source preset only) | الموضع tab (+ ↔ on the toolbar, D-7) | `DEC-093` paths 1 |
+| Order: forward · backward · front · back | الموضع tab; ▲▼ in `ui/layer-list` | `DEC-093` path 2 |
+| Group align (selection · safe · page) and distribute (needs 3), locked layers skipped and said | group section | `REQ-DSG-028`, `DEC-093` |
+| Text's own words; font family (the editor's faces); size; weight 400/500/600; colour as a brand token by name; text align start/centre/end, labelled from the **document's** direction (D-6) | النص tab + the floating toolbar | D1b, `REQ-DSG-016`, `REQ-DSG-021`, `DEC-096` |
+| No letter-spacing control | النص (a note, not a field) | A30 |
+| Binding and fallback — ★ the binding chosen **by its Arabic name** from the registry instead of typed as `session.title` | النص tab, «{ } ربط» | `REQ-DSG-006`, `DEC-149` §4 |
+| «أقصى سطور» (`autoFit.maxLines`) — already in the model, never editable until now | النص tab | `REQ-DSG-025` |
+| Image fit (contain/cover); the nine-point focal grid, physical and LTR, 44 px radios; on a derived preset it writes that preset's override | الصورة tab | `REQ-DSG-030`, `DEC-093` path 3, A32 |
+| Shape fill as a token | الشكل tab | `REQ-DSG-021` |
+| Background solid/gradient in tokens, the RTL angle stored (the renderer mirrors) | the document panel | `DEC-127` |
+| A locked layer: one note at the top, controls disabled | panel | `REQ-DSG-024` |
+| Duplicate / delete (delete confirms by name) | the panel's foot | D1b, `REQ-UIX-013` |
+| Every group named, every control labelled (axe clean) | panel | `inspector-align.test.tsx` |
+
+#### `inspector-section.tsx`
+
+| Behaviour | After | Kept by |
+|---|---|---|
+| A disclosure is a real `<button aria-expanded aria-controls>`, never `<summary>` | inside `inspector.tsx` | wave 3 (Playwright waits 30 s on a `<summary>`) |
+| «الموضع والحجم» closed by default; opens in one tap | الموضع tab | `DEC-093` |
+
+#### `layer-list.tsx` → `ui/layer-list` + the الطبقات panel (the old file deleted, `DEC-235` §5.1)
+
+| Behaviour | After | Kept by |
+|---|---|---|
+| Front of the stack first — `paintOrder()` reversed | the panel computes `items` | `06` §10 |
+| A locked layer is listed and readable, with «مقفلة»; a hidden one says «مخفية» | `ui/layer-list` | `REQ-DSG-024` |
+| ▲▼ on every row, named «طبقة إلى الأمام/الخلف» and described by the row's name; disabled at the ends | `ui/layer-list` | `DEC-093` path 2 |
+| Hide/show, refused for a locked layer | `ui/layer-list` | `REQ-DSG-024` |
+| Tap selects; shift or «تحديد متعدّد» adds and removes; «N طبقات محدّدة» as a status | `ui/layer-list` + panel | `DEC-093` path 5, `DEC-178` |
+| «اختر كل طبقات: نص/شكل/…» | الطبقات panel | `DEC-093` path 5 |
+| The count, and «لا طبقات» when empty | panel / `ui/layer-list` | — |
+| 44 px rows | `ui/layer-list` | SC 2.5.8 |
+| «أضف» (text, shape, logo, image) | moves to العناصر and الملفات | D1b |
+| Drag to reorder — new, the enhancement only | `ui/layer-list` | `DEC-093` path 2 |
+
+#### `variant-strip.tsx` → the bar's strip
+
+| Behaviour | After | Kept by |
+|---|---|---|
+| Every preset the document exports at, one tap to show it | the bar's chips | `REQ-DSG-009`, `REQ-DSG-029` |
+| `aria-pressed` on the shown one | chips | — |
+| A dot where a check fails in that preset, and an sr-only «فيه ملاحظة» | chips | `REQ-DSG-029` |
+| The worker's own render as a thumbnail, never a second live render | ★ the «صدّر» sheet, beside each ready artifact (D-1) | `DEC-017` |
+| The preset's size, `<bdi dir="ltr">` | the chip's accessible description and its tooltip-free title row in the sheet | — |
+| Scrolls inside itself; the sr-only note positioned inside the scroller (it once widened a 390 px page to 822) | chips | wave 8 capture |
+
+#### `page.tsx` (the route) — also rebuilt, delete first
+
+| Behaviour | After | Kept by |
+|---|---|---|
+| Absolute origin from the forwarded host (QR and font URLs) | `page.tsx` | `REQ-DSG-023` |
+| `getDesignerDocument()` null → `notFound()`; authority is the policy, not the page | `page.tsx` | `DEC-134`, `03` §5.9b |
+| The export queue keyed by the **saved** document's fingerprint — ★ never by a preview's bindings | `page.tsx` | `REQ-DSG-013` |
+| Downloads through the one audited route (`downloadHref`); thumbnails signed 5-minute previews, not downloads | the sheet | `DEC-177`, `DEC-178` |
+| «رجوع» to the screen that owns the document (schedule, the library tab, `045`, recognition) | the bar | `DEC-141` |
+| A live poster opens read-only with the confirmed «خصّص» detach | the bar | `REQ-DSG-003`, `REQ-UIX-013` |
+| A certificate template previews light or dark; a certificate row renders its pinned scheme | the bar | `DEC-148` contract 2 |
+| «صدّر» requests every variant of the saved document in the previewed scheme | the bar → `queueExports` | `REQ-DSG-011`, `REQ-DSG-012` |
+| `?download=failed` says so (`role="alert"`) | the page | `DEC-178` |
+| Badges: live/detached, template draft, certificate, read-only; a certificate's serial `<bdi dir="ltr">` | the bar | — |
+| `loading.tsx` | kept as is | — |
+
+**Audit rows.** The editor's mutations and what each writes today — unchanged by the rebuild: **autosave** (a
+`design_documents` update) writes none, by design (a draft is not an act; one row per 1.2 s would bury the log —
+Q-6); **«صدّر»** → `request_render()`'s `design.export_requested` (`0060:131`); **retry** → `design.export_retried`
+(`0060:243`); **a download** → `record_export_download()`'s row (`DEC-177`); **detach** → `design.poster_detached`
+(`0063:182`); **publish a version** (the template draft's primary) → `console`'s `publishVersion` and whatever the
+lead's template trigger writes (`REQ-UIX-108`), called, never duplicated. **No track writes `audit_log` from the DAL.**
+
+---
+
+### W23.3 — ★★ `DEC-093`: every drag, its tap, and the `page.click()`-only case that performs it
+
+**New spec `tests/e2e/wave23-designer-taps.spec.ts`** — `page.click()`, `fill()` and `selectOption()` only, never
+`mouse.down/move/up` or `dragTo`; after every step it reads the autosave PUT and asserts the stored document changed
+as described. One case per row below, in the rebuilt chrome.
+
+| # | Drag (where the artboard draws it) | Single-pointer path that is not a drag | Asserted |
+|---|---|---|---|
+| 1 | Move a layer on the canvas (wave 13) | «ضع بنقرة» then a tap on the canvas; align buttons; X/Y fields | frame moved; logical x on an RTL page |
+| 2 | Resize by eight handles (wave 13) | W/H fields; «لائم المنطقة الآمنة»; «املأ المنطقة الآمنة عرضًا» | frame resized |
+| 3 | Rotate by the knob (wave 13) | ±15°; «صفّر الدوران»; the rotation field | rotation 15, then 0 |
+| 4 | Marquee (wave 13) | «تحديد متعدّد» + row taps; «اختر كل طبقات: …» | three selected, group align/distribute applied |
+| 5 | Focal dot (wave 13) | the nine-point grid | `image.focal` set; on a derived preset, that preset's override |
+| 6 | ★ **العناصر → canvas** («سحب رمز QR», `AdminDesignerElements`) | **a tap on the tile adds the layer** inside the safe area at the document's start and selects it; «ضع بنقرة» then places it | a `qr` layer bound to `{{session.eventUrl}}`; then a `shape` ellipse, a `line`, a text |
+| 7 | ★ **الحقول → canvas** («اسحب حقلًا إلى اللوحة», `AdminCertDesigner`) | a tap on a field adds a bound layer (a QR field adds a QR layer) | a `dynamic_field` bound to `{{recipient.name}}`; the row flips to «مستخدم» |
+| 8 | ★ **الملفات → canvas** (the asset drag) | a tap on an uploaded asset adds an image layer sized to its proportion | an `image` layer with that `assetId` |
+| 9 | ★ **Layer reorder in الطبقات** | ▲▼ on the row; «إلى الأمام كليًا/الخلف كليًا» in الموضع | paint order changed by one, then to the front |
+| 10 | Nothing else drags. **The stage does not pan by drag** (it scrolls); **rulers spawn no guides by drag**; the floating toolbar and the rail have no drag | — | — |
+
+The drags themselves (rows 6 – 9) are built **after** their taps, as the enhancement: native HTML drag-and-drop from
+the panel's tiles to `DesignerCanvas`'s `onExternalDrop` (one commit = one undo entry: add + place in one `commit`),
+and pointer drag in `ui/layer-list` mapping a drop index to one composed reorder (one entry). A second spec,
+`wave23-designer-drag.spec.ts`, drives them with the mouse; it is evidence that the enhancement works, never the
+conformance path. **The numeric X/Y/W/H/rotation fields survive, in the closed «الموضع والحجم» disclosure**, and
+`inspector-align.test.tsx`'s DEC-093 case keeps asserting it (one selector move: the الموضع tab first — a ledger line).
+
+**Existing specs, selectors moved, expectations unchanged** — each a ledger line in `STATUS.md` in the commit that
+moves it: `wave13-designer-studio-taps` (the tablist «لوحات المحرّر» → the rail; «الخصائص» → «الطبقة»),
+`wave13-designer-studio-drag`, `wave8-designer-editor`, `wave13-designer-upload-render`, `wave8-designer-posters`;
+`inspector-align.test.tsx` (`pressIn` and the DEC-093 case open الموضع first). `wave13-console-parity.test.tsx` needs
+none (the group section has no tabs).
+
+---
+
+### W23.4 — the props I publish (contract 2, 3), and what I need from the lead's two
+
+#### `ui/canvas-stage` (mine, new) — the stage around a child; it draws nothing of a document
+
+```ts
+export interface CanvasStageToggle { key: string; label: string; pressed: boolean; onPressedChange: (next: boolean) => void }
+
+export interface CanvasStageProps {
+  label: string;                         // the region's accessible name
+  /** The child's own size in its units (document px; the email's 600 or 375). */
+  contentWidth: number;
+  /** Omitted for content whose height flows (the email): the stage then fits by width and scrolls. */
+  contentHeight?: number;
+  /** Controlled. `"fit"` fits the content in the stage; a number is a scale (1 = 100%). */
+  zoom: "fit" | number;
+  /** The scale the stage arrived at — the bar's «62%», and the child's `scale`. */
+  onScaleChange?: (scale: number) => void;
+  /** Rulers on demand, measured from the content's START edge in its own direction (DEC-096). */
+  rulers?: { direction: "rtl" | "ltr"; step: number } | null;
+  /** A neutral grid over the content, every `step` content px. Visual only — nothing snaps to it. */
+  grid?: { step: number } | null;
+  /** The toggles drawn ON the canvas (منطقة الأمان · الشبكة · المحاذاة التلقائية); `aria-pressed` buttons. */
+  toggles?: CanvasStageToggle[];
+  /** Hosted over the content in the stage's positioned overlay — the floating toolbar. */
+  overlay?: React.ReactNode;
+  /** The child, given the scale. A render prop because the child sizes itself from it. */
+  children: (scale: number) => React.ReactNode;
+  className?: string;
+}
+```
+
+Neutral ground, a scrolling viewport, the fit (the `ResizeObserver` that leaves `canvas.tsx`), the rulers (Western
+numerals, `<bdi dir="ltr">`), the grid, the toggles at the inline-start foot as drawn, and a positioned overlay for the
+toolbar. **No motion.** `notify`'s `block-canvas` is the other child. Its test, `-scope` test and demo
+(`(dev)/ui/demos/canvas-stage.tsx`) with the primitive.
+
+#### `ui/layer-list` (mine, new) — rows, never a document
+
+```ts
+export interface LayerListItem {
+  id: string;
+  name: string;                          // shown in <bdi>
+  kindLabel: string;                     // «نص», «شكل», …
+  selected: boolean;
+  locked?: boolean;
+  hidden?: boolean;
+}
+
+export interface LayerListProps {
+  label: string;                         // the list's accessible name
+  items: LayerListItem[];                // in display order — the caller decides (front first)
+  onSelect: (id: string, options: { additive: boolean }) => void;
+  /** «تحديد متعدّد» on: every tap is additive. */
+  multi?: boolean;
+  /** ▲▼ — the path. Absent: read-only rows. */
+  onMove?: (id: string, move: "forward" | "backward") => void;
+  /** The drag enhancement: the row dropped at `toIndex`. Never the only way (DEC-093). */
+  onReorder?: (id: string, toIndex: number) => void;
+  onToggleHidden?: (id: string) => void;
+  labels: { forward: string; backward: string; show: string; hide: string; locked: string; hidden: string; empty: string; handle: string };
+  className?: string;
+}
+```
+
+Strings arrive as props (wave 15's rule for primitives). ▲▼ are `aria-describedby` the row's name; a locked row's hide
+is disabled; 44 px rows.
+
+#### What I need from `ui/editor-rail` and `ui/floating-toolbar` (the lead's, `lead-wave23.md`) — three requests
+
+1. **`editor-rail` — the panel's heading is not always the item's label.** `AdminDesigner.dc.html` heads الطبقة's panel
+   «نص · {عنوان الجلسة}» (the layer's kind and name) with «إغلاق» at the end of the same row. **Request:**
+   `panelTitle?: React.ReactNode` (defaults to the item's label) and `panelAction?: React.ReactNode` (the row's end).
+2. **`floating-toolbar` — the rotation knob sits 32 px above a selected layer** (`canvas.tsx:707`, engine, not moved).
+   A toolbar placed «above» at the box's edge covers it. **Request:** `offset?: number` (px between the anchor and the
+   bar; I pass 44 for a layer with the knob).
+3. **`floating-toolbar` — a rotated layer.** I hand the axis-aligned bounding box of the rotated frame, which is what
+   the eye reads; please say in the props' doc comment that the anchor is a bounding box, so `notify` does the same.
+
+Everything else in the two signatures serves: a vertical tablist with controlled `selected`, the count «never drawn at
+0», the item that exists only with a selection, the fallback through `onSelect`; the toolbar's visual-axis arrows and
+no focus-stealing. The rail's items for the designer: العناصر (`elements`) · الحقول (`fields`) · الملفات (`uploads`) ·
+الهوية (`brand`) · الطبقات (`layers`) · الفحوصات (`checks`, with the count) · الطبقة (`layer`, only with one selection).
+A read-only viewer gets الحقول · الطبقات · الفحوصات.
+
+**Also for the lead (contract 1):** the bar's name is the page's `h1`. At bar size, is it the display face
+(`REQ-UIX-053`'s «`h1` the only display use»), or body type with the `h1` semantics? I will follow the frame's answer.
+
+---
+
+### W23.5 — ★ the certificate canvas (C3 – C5)
+
+**The field registry lives in the runtime** — new `packages/designer-runtime/src/fields.ts`, because the editor, the
+library's test and any later caller must agree on what a field is, and it is the one place that knows a binding's
+layer kind:
+
+```ts
+export interface FieldSpec {
+  binding: string;                       // `recipient.name` — the path, never shown to an admin
+  layer: "dynamic_field" | "qr";         // what a tap or a drop adds
+  purposes: readonly Purpose[];
+  /** Certificate families this field serves; absent = every family. */
+  families?: readonly CertificateFamily[];
+}
+export const FIELDS: readonly FieldSpec[];
+export function fieldsFor(purpose: Purpose, family: string | null): FieldSpec[];
+/** Each field, used when the document declares its binding (`declaredBindingsOf`). */
+export function fieldUsage(doc: DesignDocument, family: string | null): { field: FieldSpec; used: boolean }[];
+```
+
+- **The registry holds only bindings the runtime already resolves** (W23.0.6), and a unit test proves it: every
+  `FIELDS` binding is produced by `resolveSessionBindings()` or `resolveCertificateBindings()` for a full row.
+- **Poster:** {عنوان الجلسة} `session.title` · {المقدّم} `session.presenters` · {الموعد} `session.startsAt` · {المكان}
+  `session.venueName` · {عنوان المكان} · {رابط الجلسة} → a QR layer on `session.eventUrl` · {اسم المؤسسة}.
+- **Certificate:** {اسم العضو} `recipient.name` · {عنوان الجلسة} `session.title` (attendance, presenter) · {الرقم
+  التسلسلي} · {رمز التحقّق النصّي} · {تاريخ الإصدار} · {رمز التحقق QR} → a QR layer on `certificate.verifyUrl` ·
+  {اسم المؤسسة} · ★ **{المستوى} → `certificate.achievementName`, `families: ['achievement']` only** (it is what the
+  achievement certificate prints today, `library.ts:391`; drawn as «للإنجازات» — D-3).
+- ★ **{رمز التحقق QR} is bound to `certificate.verifyUrl`, which `resolveCertificateBindings()` builds once**
+  (`${origin}/${locale}/verify/${code}`, `session-bindings.ts:218`) — the one route, never a string the editor makes.
+- **Used / unused** is `fieldUsage()` against the live document; «مستخدم» or «—», as drawn, and the board's tabs
+  **الشهادة · العضو** split certificate fields from the member's.
+- The family a template serves comes from `design_templates.family` — `getDesignerDocument()`'s `template_draft`
+  context gains `family` (add-only); a certificate row has its `kind`.
+
+**The longest-member-name check** (C4): `getLongestSamples(locale)` in `designer.ts` (add-only) returns
+`{ 'session.title': the org's longest session title, 'recipient.name': the longest active member's display name }` —
+read through RLS as the admin, a few hundred rows, the longest chosen in the DAL (PostgREST cannot order by a length,
+and this needs no SQL function and therefore no migration). The checks measure each layer bound to one of those at its
+`maxLines` (§W23.6). The text panel shows the sample and «N أسطر ✓» or the failure, as drawn.
+
+**«معاينة بعضو»** (C5): a combobox of the org's members (names only — no email in the page) and, for the attendance
+and presenter kinds, a completed session. The choice is **URL state** (`?member=<id>&session=<id>`), so the page
+renders it on the server through `getDesignerDocument(..., { previewMemberId, previewSessionId })` (add-only), which
+returns a **separate** `previewBindings`:
+- if the member **holds an issued certificate** of this family from this org, its real row is bound — serial, code,
+  QR, all real;
+- otherwise `recipient.name` and `session.title` are bound, and the serial, the code and the QR are **left absent**,
+  so the canvas draws the marked placeholders (`REQ-DSG-006`) — never an invented serial, never a constructed URL.
+- ★ `previewBindings` reach the canvas and the checks only; **the fingerprint and the export use the saved document's
+  own bindings** (kept-behaviour row in `page.tsx`'s table). Rendering is `renderDocumentToHtml()` — the one renderer.
+- «معاينة بجلسة» on a poster template is the same mechanism with `?session=<id>` (`listPreviewSessions(locale)`, the
+  org's recent and upcoming sessions, add-only). A session's own poster is already real data and shows no picker.
+- Before navigating, `flush()` saves (W23.1.2).
+
+**Certificates take no object** (`REQ-DSG-026`): العناصر shows أساسية only for a certificate.
+
+**The strip** — see D-2. Until the lead rules, a certificate shows **its one preset** as a single chip, with the
+sibling orientation of the same family (if the org has it) as a link to that template, and no A3.
+
+---
+
+### W23.6 — checks as a rail item with a count
+
+`useCheckFindings` stays a hook in the editor (the count must be right whether or not الفحوصات is open — its own
+comment, `checks-panel.tsx:71-76`); `ChecksPanel` is composed as the panel. Add-only:
+
+- **`longest`** — for each text/field layer bound to a key in `samples`, on every preset, `computeAutoFit()` with the
+  sample through the same `domTextMeasurer`; a `max_lines_exceeded` / `min_size_reached` against the sample is a finding
+  naming the layer and the sample («أطول عنوان في المؤسسة لا يتّسع في 3 أسطر»). The poster fits the longest title;
+  the certificate the longest member name.
+- **`contrast`** — a text or field layer's colour token against what is behind it (the document background, both stops
+  of a gradient, or a shape that fully contains the layer), resolved through the brand bindings the canvas already has,
+  computed by `src/lib/brand/contrast.ts`'s `checkContrast()` (client-safe, no `server-only`) (read, not copied — `branding`'s, the lead custodian) at
+  AA for its size.
+- PPI (A3 and every preset, inline explanation) and the safe area are today's.
+- ★ **The rail's count is the panel's rows** (`groupFindings()`, one per check × layer), not the raw findings: today
+  the badge counts one overflow on seven presets as 7 while the list shows one row. A fix, said in the commit.
+- Selecting a finding: `goTo` — that preset, overlays on, the layer selected, الطبقة opened (`REQ-DSG-029`).
+
+---
+
+### W23.7 — the four-format demonstrable, and the proof that no golden moves
+
+- **What moves nothing by construction:** the diff boundary in W23.1.4 — no renderer, preset, autofit, binding,
+  fingerprint or Tier A file changes. The per-format overrides the الموضع tab now offers on a derived preset
+  (`presets[preset].anchor` / `.scale`, `hideAt`) and «أقصى سطور» are fields the model already has; **an untouched
+  document carries none of them, so it derives identically** (`designer-derive-untouched.test.ts`, untouched).
+- **The parity harness**, `node scripts/parity/harness.mjs` (never `--update`): 28 of 28 and the background block, at
+  B's head; `git diff main -- scripts/parity/goldens` empty.
+- ★ **New `tests/e2e/wave23-designer-four-formats.spec.ts`** (`E2E_WORKER=1`, the lead's run with the real worker):
+  the sample template — the seeded platform «جلسة» poster, copied into the org through `duplicateTemplate()` — is
+  opened in the rebuilt studio **and not touched**; «صدّر» requests every variant; it asserts **16:9 (`landscape`), A4,
+  A3 and 9:16 (`story`)** — and the other three — reach `ready` (a Tier A mismatch fails the export, `REQ-DSG-014`), that
+  each artifact's `source_fingerprint` equals the one the runtime computes from the stored document, and it writes each
+  artifact's SHA-256 to `.qa-shots/rtl/wave23-designer-four-formats.json`. **The lead runs it once on A's head (the old
+  studio) and once on B's head: equal hashes are «no golden moved» for the real export path**, not only for the harness.
+
+---
+
+### W23.8 — disagreements with the artboards (written, not picked)
+
+| # | Board · line | What it draws | What the plan says | My reading, for the lead |
+|---|---|---|---|---|
+| D-1 | `AdminDesigner` / `AdminDesignerElements`, the bar's chips | 16:9 · A4 · A3 · 9:16, text chips, no thumbnails | `REQ-DSG-009`: seven presets incl. the 4:5 master (the only editable one); `REQ-DSG-029`: «a live thumbnail of every preset» | chips for all seven, short labels (4:5 · 1:1 · 9:16 · 16:9 · OG · A4 · A3); the worker's thumbnails move into the «صدّر» sheet. ★ Needs a ruling on the thumbnails |
+| D-2 | `AdminCertDesigner`, the bar | A4 أفقي · A4 عمودي · A3 أفقي on one strip | `DEC-148`, `REQ-DSG-026`: one preset per certificate, an orientation is a row; no A3 certificate preset exists; `REQ-UIX-111` repeats the board | ★★ **BLOCKING (Q-1).** One chip + the sibling orientation as a link; no A3 |
+| D-3 | `AdminCertDesigner`, الحقول | {نوع الشهادة} {تاريخ الجلسة} {نص الشهادة} {التوقيع} as fields; no {رمز التحقّق النصّي} | kind and body are literal text; signature a locked shape; session date resolved nowhere on the certificate path; `REQ-CRT-010` requires the code as text | the four are **not fields** this wave (a binding would need `certificate_render_context()` changed — a migration — and would move every certificate's fingerprint); offered under العناصر as a text/line; the code is listed. {المستوى} = `certificate.achievementName` |
+| D-4 | `AdminDesigner`, canvas | {التصنيف} on the poster | no `session.category` binding; adding one re-fingerprints every poster (W23.0.7) | not built; Q-2 |
+| D-5 | `AdminDesigner`, النص tab | weight 700 / 800 | `model.ts:56`: 400 / 500 / 600; the font set is fixed (`REQ-DSG-016`) | 400 / 500 / 600 |
+| D-6 | `AdminDesigner`, المحاذاة | يمين · وسط · يسار | stored as start/centre/end (`DEC-096`) | labels from the **document's** direction (RTL: start = يمين); same bytes from any console |
+| D-7 | `AdminDesigner`, the floating toolbar | six glyphs (font · size · A · ≡ · ↔ · ربط); `M12.md` says five | — | ↔ = «املأ المنطقة الآمنة عرضًا», kept as drawn; Q if the lead reads it otherwise |
+| D-8 | `M12.md` «desktop-only» | no phone form | `09` SCR-057 «Mobile: view and approve» still stands (the wave-23 note supersedes the panels) | kept — the phone view below `xl`, read-only |
+| D-9 | `M12.md` «Double-click edits text inline» | inline editing on the canvas | the canvas is the renderer's iframe; an inline editor is a second text path (`DEC-017`) | double-click opens النص with the field focused |
+| D-10 | `AdminDesigner`, ملاءمة تلقائية | تصغير · قصّ | `AutoFit.mode` is `shrink-then-wrap` only; truncation is a renderer change | not built; «أقصى سطور» is |
+| D-11 | `AdminDesignerElements`, tabs الأشكال ثلاثية · الملصقات; tile «ملصق» | the house objects and stickers as draggable assets | `REQ-DSG-026` allows the objects as **raster** image layers on a poster; they exist only as PNG under `docs/design/assets/` (never imported) and as React components under `ui/objects` (the console's register test forbids importing them); a poster layer needs a design-asset id the worker can fetch | not built this wave (needs the objects as platform raster assets — the lead's `public/**` or a seeded asset — Q-3). «ملصق» (a poster frame?) unclear |
+| D-12 | `M12.md`, الهوية | «the seven team colours by name» | a team colour is a hex from `companies.team_color`; a template takes `{{brand.*}}` only (`REQ-DSG-021`, `0055`'s guard refuses a hex) | الهوية shows the brand tokens by name, the faces and the logo; team colours not offered |
+| D-13 | `AdminCertDesigner`, primary «احفظ» | a save button | autosave already saves; the act that makes a template usable is publishing a version | primary «انشر نسخة» through `console`'s `publishVersion` on a template draft; «صدّر» elsewhere |
+| D-14 | both boards, the bar | no rulers toggle, no zoom control beyond «62%», no light/dark | `REQ-UIX-110`: rulers; `DEC-148`: a certificate template previews both schemes | «المساطر» added to the stage's toggles; the % opens ملاءمة · 50 · 100 · 200; the scheme pair stays on a certificate template's bar |
+| D-15 | `AdminDesigner`, الربط | the field's Arabic name | the inspector types `session.title` today | a select over the registry by Arabic name (`DEC-149` §4) — the same bytes stored |
+
+`M12.md`'s own header still says «4 artboards» (nine; known, `DEC-236` §4).
+
+---
+
+### W23.9 — commits in PR B, in order (after «the frame is in»)
+
+1. `editor-state.ts` + `inspector-ops.ts` — the move, verbatim, with `editor-state.test.tsx`.
+2. `ui/canvas-stage` + its test, `-scope` test, demo; `canvas.tsx`'s frame out, its add-only props in (both suites untouched).
+3. `ui/layer-list` + test, `-scope` test, demo (floor 65 → 67 with 2–3).
+4. `fields.ts` + `compose.ts` add-only + `designer-fields.test.ts`; `designer.ts` add-only (`getLongestSamples`,
+   `listPreviewSessions`, `listPreviewMembers`, `previewBindings`, `family`); `posters.ts` add-only `listDesignAssets`.
+5. `checks-panel.tsx` add-only (`samples`, `longest`, `contrast`, `groupFindings`).
+6. Delete: `editor.tsx`, `inspector.tsx`, `inspector-section.tsx`, `layer-list.tsx`, `variant-strip.tsx`,
+   `admin/designer/[documentId]/page.tsx` — **paired in the same push with 7**.
+7. Create: the page, `editor.tsx`, `inspector.tsx`, the panels (`src/components/designer/panels/{elements,fields,uploads,brand,layers}.tsx`),
+   the bar, the strip; strings in `messages/ar/designer.json` first, then `en`; ledger lines for every moved selector.
+8. The drags (rows 6 – 9), after their taps.
+9. `flush()`; «معاينة بجلسة» / «معاينة بعضو».
+10. Specs: `wave23-designer-{taps,drag,checks,certificate,four-formats,captures}.spec.ts`; captures at 1280 —
+    `wave23-designer-{poster-layer,poster-elements,certificate-fields,checks,export,preview-member}-1280.png` and the
+    view-and-approve at 390.
+
+Gates I run: `tsc`, `lint` (grepping for `problems`), `npm test`, `ui-lint` before every screen commit, the parity
+harness without `--update`, one e2e spec through the lock. `console-register.test.ts` green and untouched; no
+`transition`, no motion beyond drag feedback.
+
+### W23.10 — questions for the lead
+
+- **Q-1 (blocking for C3)** — the certificate strip: `REQ-UIX-111` / the board vs `DEC-148` / `REQ-DSG-026` (D-2).
+- **Q-2** — any new binding ({التصنيف}, {تاريخ الجلسة} on a certificate, {نوع الشهادة}) re-fingerprints every
+  artifact of its purpose; I build none unless you rule (D-3, D-4).
+- **Q-3** — the objects and stickers tabs need the six objects as platform raster assets (D-11). Not this wave?
+- **Q-4** — `design-panel.tsx` (mine) imports `template-preview.tsx` (`console`'s to delete). ★ **I agree with
+  `console`'s request** (its note §1): transfer `design-panel.tsx`, `eligible-list.tsx`, `issuance.tsx` and
+  `mode-control.tsx` to `console` for the wave, to be deleted in PR A. `mode-badge.tsx`, `actions.ts` and
+  `held-achievements.tsx` stay mine and are not touched by PR B.
+- **Q-5** — the variant thumbnails' new home (D-1) and the view-and-approve layout (D-8): confirm.
+- **Q-6** — an autosave of a template draft writes no audit row today; I read `REQ-UIX-108`'s «every template
+  mutation is audited» as the version publish, not each autosave. Confirm.
+- **Q-7** — the three requests on your two primitives (§W23.4) and the bar `h1`'s face.
+- **`console` contract** (to be confirmed in its note): its rebuilt `admin/templates/actions.ts` keeps an exported
+  `publishVersion(locale, purpose, templateId)` (or names its successor), which the studio's bar imports.
+
+---
+
 ## 0. The plan (bundle 1, written before any code)
 
 ### 0.1 Story order, and why

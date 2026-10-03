@@ -466,6 +466,12 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - Leaderboard certificates issue from the frozen snapshot.
 - A v3 certificate still renders as v3 after v4 ships.
 
+#### STORY-CRT-007 — One default per kind, and the session's template beside its mode
+**Covers:** `REQ-CRT-015` · **M25** · **S** · `console` · PR A
+- The defaults set from the library's certificates tab; the session's choice per kind on `SCR-045` beside the mode,
+  refused after completion (`DEC-178`, `DEC-237` §4).
+
+
 ## EPIC-DSG — Designer
 
 #### STORY-DSG-001 — Every published session has a poster, three ways
@@ -582,6 +588,11 @@ in the PRD — the PRD's criteria apply automatically and are not restated.
 - **Every** message key resolves to a designed template; no key falls back to unstyled text.
 - An org duplicates one to own it; the original is never mutated.
 - Changing the org logo restyles every message, which is what "one edit in one place" meant.
+
+#### STORY-NTF-007 — Six more block types, layouts and global styles
+**Covers:** `REQ-NTF-015` · **M25** · **M** · `notify` · PR C
+- Additive: the pinned output does not move.
+
 
 ## EPIC-CAL — Calendar
 
@@ -1713,6 +1724,34 @@ screen writes** — each with its `REQ-*`, written before the create commit and 
 **Built from:** `AdminSurveys.dc.html`.
 - The templates, then the selected template's questions below them, as drawn; reordering by buttons; every template
   mutation audited.
+
+#### STORY-UIX-097 — The studio frame, and the shared editor chrome
+**Covers:** `REQ-UIX-107` · **M25** · **M** · lead · PR B
+- The two editors' routes take the viewport; `ui/editor-rail` and `ui/floating-toolbar` land before either editor.
+
+#### STORY-UIX-098 — The template library, both tabs, three defaults
+**Covers:** `REQ-UIX-108` · **M25** · **M** · `console` · PR A
+**Built from:** `AdminTemplates.dc.html`, `AdminTemplatesCerts.dc.html` (C1, C2).
+
+#### STORY-UIX-099 — A session's certificates, rebuilt
+**Covers:** `REQ-UIX-109` · **M25** · **M** · `console` · PR A
+**Built from:** `AdminCertificates.dc.html` (C6 shown, C7) — release individually and in bulk, revoke with a mandatory
+reason, every PDF through the audited route.
+
+#### STORY-UIX-100 — The designer, rebuilt over the kept engine
+**Covers:** `REQ-UIX-110` · **M25** · **L** · `designer` · PR B
+**Built from:** `AdminDesigner.dc.html`, `AdminDesignerElements.dc.html`. The state machine moves before `editor.tsx` is
+deleted; `canvas.tsx`'s engine stays under `ui/canvas-stage`; `ui/layer-list` replaces the old file. Done when all four
+formats export from the sample template with no golden moved.
+
+#### STORY-UIX-101 — The certificate canvas
+**Covers:** `REQ-UIX-111` · **M25** · **M** · `designer` · PR B
+**Built from:** `AdminCertDesigner.dc.html` (C3 – C5).
+
+#### STORY-UIX-102 — The email gallery and the block builder
+**Covers:** `REQ-UIX-112` · **M25** · **L** · `notify` · PR C
+**Built from:** `AdminEmailGallery.dc.html`, `AdminEmails.dc.html`, `AdminEmailAdd.dc.html`.
+
 
 ## 24. Coverage check
 

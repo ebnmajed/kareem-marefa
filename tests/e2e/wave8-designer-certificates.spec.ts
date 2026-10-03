@@ -198,7 +198,10 @@ async function capture(p: Page, name: string, { fullPage = true } = {}) {
   // ★ Every preview on show is scrolled into view and must report rendered —
   // its frame loaded, its faces ready — so a blank render cannot pass for one
   // that never mounted (DEC-149 §4).
-  const previews = main(p).locator("[data-template-preview]");
+  // ★ Wave 23: only the previews a person can see. SCR-045's template control draws its preview from `lg`
+  // (`template-control.tsx`, `hidden lg:flex`); at 390 the preview is `display: none`, never mounts its frame and has
+  // no box — scrolling it into view waited forever for «stable» (the lead's run on 54d43e69).
+  const previews = main(p).locator("[data-template-preview]:visible");
   const count = await previews.count();
   if (fullPage) {
     for (let i = 0; i < count; i++) await previews.nth(i).scrollIntoViewIfNeeded();
@@ -239,9 +242,14 @@ async function capture(p: Page, name: string, { fullPage = true } = {}) {
  *  Dialogs and toasts are portalled out and stay page-wide. */
 const main = (page: Page) => page.locator("#main");
 
-/** One kind's design panel — by its own labelled section, not «a section
- *  containing the heading», which the design section around both also is. */
-const designPanel = (page: Page, kind: "attendance" | "presenter") => main(page).locator(`section[aria-labelledby="design-${kind}"]`);
+/** One kind's template control — its own labelled section (wave 23: SCR-045 rebuilt, `template-control.tsx`).
+ *  Before completion it is on the page; after completion, in the «غيّر» sheet. */
+const designPanel = (page: Page, kind: "attendance" | "presenter") => page.locator(`section[aria-labelledby="cert-template-${kind}-heading"]`);
+
+async function templateId(name: string): Promise<string> {
+  const { rows } = await db.query<{ id: string }>(`select id from public.design_templates where scope = 'platform' and purpose = 'certificate' and name = $1`, [name]);
+  return rows[0]!.id;
+}
 
 /* ── access ─────────────────────────────────────────────────────────────── */
 
@@ -253,22 +261,26 @@ test("a member reaches nothing here — the gated not-found (DEC-134)", async ({
 });
 
 /* ── the design ─────────────────────────────────────────────────────────── */
+//
+// ★ Wave 23 (DEC-208, `AdminCertificates.dc.html`, DEC-238): SCR-045 was rebuilt, and this spec moved with it — every
+// case keeps what it proves; each locator that moved and each expectation that changed is a ledger line in STATUS.
 
-test("★ DEC-148: a design chosen before completion is saved with its scheme, and the serial line is an estimate", async ({ context, page }) => {
+test("★ DEC-148: a design chosen before completion is saved with its scheme, and the serial is an estimate", async ({ context, page }) => {
   test.skip(onPhone(), "the writes run once, on the desktop project");
   await signIn(context, emails.admin);
   await page.setViewportSize(DESKTOP);
   await page.goto(screen(sessions.future));
-  await expect(main(page).getByRole("heading", { name: "شهادات الجلسة", level: 2 })).toBeVisible();
-  await expect(main(page).getByText("الوضع مراجعة", { exact: false })).toBeVisible();
+  // Expectation (wave 23): no tab title — the hub's `h1` names the session; the mode is the board's line.
+  await expect(main(page).getByText("تُراجَع قبل الإطلاق", { exact: true })).toBeVisible();
 
   const panel = designPanel(page, "attendance");
-  await expect(panel.getByText("لم يُحفظ", { exact: true })).toBeVisible();
-  await panel.getByRole("radio", { name: "شهادة حضور عمودية" }).check();
-  await panel.getByRole("radio", { name: "داكنة" }).check();
+  // Expectation (wave 23): no «لم يُحفظ» badge — an unsaved choice is a live «احفظ التصميم».
+  await expect(panel.getByRole("button", { name: "احفظ التصميم" })).toBeEnabled();
+  await panel.getByLabel("القالب").selectOption(await templateId("شهادة حضور عمودية"));
+  await panel.getByRole("radio", { name: "داكنة" }).check({ force: true });
   await panel.getByRole("button", { name: "احفظ التصميم" }).click();
   await expect(page.getByText("حُفظ التصميم.", { exact: true })).toBeVisible();
-  await expect(panel.getByText("لم يُحفظ", { exact: true })).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
 
   const { rows } = await db.query<{ name: string; scheme: string }>(
     `select t.name, d.scheme from public.session_certificate_designs d join public.design_templates t on t.id = d.template_id
@@ -282,16 +294,20 @@ test("★ DEC-148: a design chosen before completion is saved with its scheme, a
   await expect(designPanel(page, "attendance").locator("[data-template-preview]")).toHaveAttribute("data-rendered", "true");
   await expect(designPanel(page, "attendance").frameLocator("iframe").getByText(KHALID)).toHaveCount(0);
 
-  // The preflight runs, against the longest name the list has.
-  await expect(designPanel(page, "presenter").getByRole("heading", { name: "فحص قبل الإصدار", level: 4 })).toBeVisible();
+  // The preflight runs, against the longest name the list has (selector moved: no «فحص قبل الإصدار» heading).
   await expect(designPanel(page, "presenter").getByText(KHALID)).toBeVisible();
 
-  // The estimate is this org's highest serial this year, plus one — read, not held.
+  // The estimate is this org's highest serial this year, plus one — read, not held. Expectation (wave 23): it is said in
+  // the mode's preflight confirm, where certificates are turned on (REQ-DSG-031), not as a panel on the page.
   const { rows: last } = await db.query<{ serial: string }>(`select serial from public.certificates where org_id = $1 order by serial desc limit 1`, [orgId]);
   const [prefix, year, n] = last[0]!.serial.split("-");
   const expected = `${prefix}-${year}-${String(Number(n) + 1).padStart(6, "0")}`;
-  await expect(main(page).getByText(expected)).toBeVisible();
-  await expect(main(page).getByText("تقدير لا حجز", { exact: false })).toBeVisible();
+  await main(page).getByRole("radiogroup", { name: "من يستحق شهادة، ومتى" }).getByRole("radio", { name: "تصدر تلقائيًا عند اكتمال الجلسة" }).check({ force: true });
+  await main(page).getByRole("button", { name: "احفظ الوضع", exact: true }).click();
+  const preflight = page.getByRole("dialog");
+  await expect(preflight).toContainText(expected);
+  await expect(preflight).toContainText("تقدير لا حجز");
+  await preflight.getByRole("button", { name: "تراجع" }).click();
 });
 
 test("★ held certificates take the saved design, release confirms by count and session, and the design locks", async ({ context, page }) => {
@@ -300,18 +316,12 @@ test("★ held certificates take the saved design, release confirms by count and
   await page.setViewportSize(DESKTOP);
   await page.goto(screen(sessions.review));
 
-  // ★ Completed with certificates held: the job is issuance, so «الإصدار»
-  // comes before «التصميم», and each kind's design is one line saying what
-  // its certificates were prepared with.
-  const issueTop = (await main(page).getByRole("heading", { name: "الإصدار", level: 2 }).boundingBox())!.y;
-  const designTop = (await main(page).getByRole("heading", { name: "التصميم", level: 2 }).boundingBox())!.y;
-  expect(issueTop).toBeLessThan(designTop);
+  // Expectation (wave 23): completed, the board's line names what the certificates were prepared with, and the template
+  // still changes behind «غيّر» while the kind is only held (DEC-238 §2) — no «التصميم» section after completion.
+  await expect(main(page).getByText("شهادة حضور أفقية")).toBeVisible();
+  await main(page).getByRole("link", { name: "غيّر" }).click();
   const panel = designPanel(page, "attendance");
-  await expect(panel).toContainText("جُهّزت شهادات هذا النوع بقالب");
-  await expect(panel).toContainText("شهادة حضور أفقية");
-  await expect(panel.getByRole("radio")).toHaveCount(0);
-  await panel.getByRole("button", { name: "غيّر التصميم" }).click();
-  await panel.getByRole("radio", { name: "داكنة" }).check();
+  await panel.getByRole("radio", { name: "داكنة" }).check({ force: true });
   await panel.getByRole("button", { name: "احفظ التصميم" }).click();
   await expect(page.getByText("حُفظ التصميم.", { exact: true })).toBeVisible();
 
@@ -319,7 +329,7 @@ test("★ held certificates take the saved design, release confirms by count and
     sessions.review,
   ]);
   await panel.getByRole("button", { name: "طبّق على المحجوزة" }).click();
-  const apply = page.getByRole("dialog");
+  const apply = page.getByRole("dialog", { name: /تطبيق التصميم/ });
   await expect(apply).toContainText("تطبيق التصميم على 3 شهادات محجوزة؟");
   await apply.getByRole("button", { name: "طبّق", exact: true }).click();
   await expect(page.getByText("أُعيد تصميم 3 شهادات", { exact: true })).toBeVisible();
@@ -329,6 +339,8 @@ test("★ held certificates take the saved design, release confirms by count and
   );
   expect(after.map((r) => r.scheme)).toEqual(["dark", "dark", "dark"]);
   expect(after.map((r) => r.serial)).toEqual(before.map((r) => r.serial));
+  // The act is done, so the «غيّر» sheet closes on its own and returns to the list (wave 23).
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await main(page)
     .getByRole("checkbox", { name: `تحديد الصف ${SARA}` })
@@ -336,12 +348,13 @@ test("★ held certificates take the saved design, release confirms by count and
   await main(page)
     .getByRole("checkbox", { name: `تحديد الصف ${KHALID}` })
     .check();
-  await main(page).getByRole("button", { name: "أطلِق المحدَّدة" }).click();
+  // Selector (wave 23): the board's words, «أصدر المحدّد» → «أصدر» (DEC-238 §2.4).
+  await main(page).getByRole("button", { name: "أصدر المحدّد" }).click();
   const release = page.getByRole("dialog");
-  await expect(release).toContainText("إطلاق شهادتين؟");
+  await expect(release).toContainText("إصدار شهادتين؟");
   await expect(release).toContainText(REVIEW_TITLE);
-  await release.getByRole("button", { name: "أطلِق", exact: true }).click();
-  await expect(page.getByText("أُطلقت شهادتان", { exact: true })).toBeVisible();
+  await release.getByRole("button", { name: "أصدر", exact: true }).click();
+  await expect(page.getByText("صدرت شهادتان", { exact: true })).toBeVisible();
 
   const { rows: states } = await db.query<{ member_id: string; state: string }>(`select member_id, state from public.certificates where session_id = $1`, [
     sessions.review,
@@ -349,14 +362,13 @@ test("★ held certificates take the saved design, release confirms by count and
   const stateOf = (id: string) => states.find((s) => s.member_id === id)?.state;
   expect([stateOf(members.sara), stateOf(members.khalid), stateOf(members.long)]).toEqual(["issued", "issued", "held"]);
 
-  // A certificate of this kind reached a member: the design is fixed, and the
-  // line says what they were issued with.
-  await expect(panel).toContainText("صدرت شهادات هذا النوع بقالب");
-  await expect(panel.getByText("ثابت", { exact: true })).toBeVisible();
-  await expect(panel.getByRole("button", { name: "احفظ التصميم" })).toHaveCount(0);
+  // A certificate of this kind reached a member: the design is fixed — expectation (wave 23): «غيّر» is gone, and the
+  // line still names what they were issued with (set_certificate_design()'s own lock re-checks it).
+  await expect(main(page).getByRole("link", { name: "غيّر" })).toHaveCount(0);
+  await expect(main(page).getByText("شهادة حضور أفقية")).toBeVisible();
 });
 
-test("★ REQ-CRT-011: revocation takes its reason inside the confirm, refuses a blank one at the field, and the list names who is still checked in", async ({
+test("★ REQ-CRT-011: revocation takes its reason in the sheet, refuses a blank one at the field, and the list names who is still checked in", async ({
   context,
   page,
 }) => {
@@ -366,13 +378,14 @@ test("★ REQ-CRT-011: revocation takes its reason inside the confirm, refuses a
   await page.goto(screen(sessions.review));
 
   const issued = main(page).getByRole("table", { name: "الشهادات الصادرة" });
+  // Selector (wave 23): «ألغِ» is a link to `?revoke=<id>`, which opens the sheet.
   await issued
     .getByRole("row", { name: new RegExp(KHALID) })
-    .getByRole("button", { name: "ألغِ" })
+    .getByRole("link", { name: /ألغِ/ })
     .click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("heading")).toContainText(KHALID);
-  await expect(dialog).toContainText(REVIEW_TITLE);
+  // Expectation (wave 23): the sheet names the member and the serial; the session is the hub's `h1`, above.
+  await expect(dialog).toContainText(KHALID);
 
   await dialog.getByRole("button", { name: "ألغِ الشهادة" }).click();
   await expect(dialog.getByText("اكتب سبب الإلغاء، ثلاثة أحرف على الأقل.")).toBeVisible();
@@ -388,40 +401,40 @@ test("★ REQ-CRT-011: revocation takes its reason inside the confirm, refuses a
       .getByRole("table", { name: "الشهادات الملغاة" })
       .getByRole("row", { name: new RegExp(KHALID) }),
   ).toContainText(reason);
+  // Expectation (wave 23): after completion the eligible members holding no live certificate are their own list,
+  // «بلا شهادة», and a revocation FOR CAUSE says it in one word, «لا بديل» (DEC-160 §6, DEC-161).
   await expect(
     main(page)
       .getByRole("table", { name: "المستحقّون" })
       .getByRole("row", { name: new RegExp(KHALID) }),
-    // Wave 10 (`0127`, `DEC-161`): an admin's revocation FOR CAUSE reads
-    // «مُلغاة نهائيًا — لن يصدر بديل.» in the eligible list — final, where a
-    // removal's revocation is not. The row still says the certificate is
-    // revoked; the words moved with the meaning (STATUS's ledger).
-  ).toContainText("مُلغاة نهائيًا");
+  ).toContainText("لا بديل");
 });
 
 /* ── the moderator ──────────────────────────────────────────────────────── */
 
-test("a moderator sees the design and who is eligible, and no certificate and no control", async ({ context, page }) => {
+test("a moderator sees who is eligible, and no certificate and no control", async ({ context, page }) => {
   await signIn(context, emails.mod);
   if (onPhone()) await page.setViewportSize(PHONE);
   await page.goto(screen(sessions.review));
-  await expect(main(page).getByRole("heading", { name: "شهادات الجلسة", level: 2 })).toBeVisible();
-  await expect(main(page).getByText("من صلاحيات مشرف المؤسسة", { exact: false }).first()).toBeVisible();
+  // Expectation (wave 23): no tab title and no «من صلاحيات مشرف المؤسسة» sentence (DEC-NEXT-25) — the moderator reads the
+  // line and «من يستحق», and the absence of every control says the rest.
+  await expect(main(page).getByRole("heading", { name: /من يستحق/, level: 2 })).toBeVisible();
   await expect(main(page).getByRole("button", { name: "احفظ التصميم" })).toHaveCount(0);
-  await expect(main(page).getByRole("button", { name: "أطلِق المحدَّدة" })).toHaveCount(0);
+  await expect(main(page).getByRole("button", { name: "أصدر المحدّد" })).toHaveCount(0);
   await expect(main(page).getByRole("table", { name: "الشهادات المحجوزة" })).toHaveCount(0);
   if (onPhone()) await capture(page, "moderator");
 });
 
 /* ── the captures, on the phone ─────────────────────────────────────────── */
 
-test("390 px: held, the release confirm, the design in both compositions, revoked, the revoke dialog, locked, off", async ({ context, page }) => {
+test("390 px: held, the release confirm, the design in both compositions, revoked, the revoke sheet, locked, off", async ({ context, page }) => {
   test.skip(!onPhone(), "captures are the phone project's");
   await signIn(context, emails.admin);
   await page.setViewportSize(PHONE);
 
   await page.goto(screen(sessions.review));
-  await expect(main(page).getByRole("heading", { name: "الشهادات المحجوزة", level: 3 })).toBeVisible();
+  // Selector (wave 23): the board's heading, «محجوزة · N».
+  await expect(main(page).getByRole("heading", { name: /محجوزة/, level: 3 })).toBeVisible();
   await capture(page, "held");
 
   await main(page)
@@ -430,8 +443,8 @@ test("390 px: held, the release confirm, the design in both compositions, revoke
   await main(page)
     .getByRole("checkbox", { name: `تحديد الصف ${LONG}` })
     .check();
-  await main(page).getByRole("button", { name: "أطلِق المحدَّدة" }).click();
-  await expect(page.getByRole("dialog")).toContainText("إطلاق شهادتين؟");
+  await main(page).getByRole("button", { name: "أصدر المحدّد" }).click();
+  await expect(page.getByRole("dialog")).toContainText("إصدار شهادتين؟");
   await capture(page, "release-confirm", { fullPage: false });
   await page.getByRole("dialog").getByRole("button", { name: "تراجع" }).click();
 
@@ -439,30 +452,29 @@ test("390 px: held, the release confirm, the design in both compositions, revoke
   const attendance = designPanel(page, "attendance");
   await attendance.scrollIntoViewIfNeeded();
   await capture(page, "design-landscape");
-  await attendance.getByRole("radio", { name: "شهادة حضور عمودية" }).check();
-  await attendance.getByRole("figure").scrollIntoViewIfNeeded();
+  // Expectation (wave 23): the preview sits beside the control from `lg`; on a phone the control is the select alone.
+  await attendance.getByLabel("القالب").selectOption(await templateId("شهادة حضور عمودية"));
   await capture(page, "design-portrait", { fullPage: false });
 
   await page.goto(screen(sessions.automatic));
-  await expect(main(page).getByRole("heading", { name: "الشهادات الملغاة", level: 3 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: /ملغاة/, level: 3 })).toBeVisible();
   // `automatic` has nothing to hold, so no held table at all.
-  await expect(main(page).getByRole("heading", { name: "الشهادات المحجوزة", level: 3 })).toHaveCount(0);
+  await expect(main(page).getByRole("heading", { name: /محجوزة/, level: 3 })).toHaveCount(0);
   await capture(page, "revoked");
 
-  const locked = designPanel(page, "attendance");
-  await expect(locked.getByText("ثابت", { exact: true })).toBeVisible();
-  await locked.getByRole("button", { name: "اعرض التصميم" }).click();
-  await locked.scrollIntoViewIfNeeded();
+  // Expectation (wave 23): a kind that has reached a member is a sentence on the line, with no «غيّر» — the locked
+  // panel and its «اعرض التصميم» are gone.
+  await expect(main(page).getByRole("link", { name: "غيّر" })).toHaveCount(0);
   await capture(page, "design-locked", { fullPage: false });
 
-  await main(page).getByRole("button", { name: "ألغِ" }).first().click();
+  await main(page).getByRole("link", { name: /ألغِ/ }).first().click();
   await expect(page.getByRole("dialog")).toContainText(SARA);
   await capture(page, "revoke-dialog", { fullPage: false });
-  await page.getByRole("dialog").getByRole("button", { name: "تراجع" }).click();
+  await page.keyboard.press("Escape");
 
   await page.goto(screen(sessions.off));
-  // Twice, on purpose: under the title, and in place of two empty tables —
-  // «none, ever» rather than «none yet».
-  await expect(main(page).getByText("الوضع معطّل", { exact: false })).toHaveCount(2);
+  // Expectation (wave 23): «none, ever» is said once, on the line — «الشهادات معطّلة» — not twice; before completion the
+  // page offers the mode, the template and who would receive one.
+  await expect(main(page).getByText("الشهادات معطّلة", { exact: true })).toHaveCount(1);
   await capture(page, "mode-off");
 });

@@ -8,21 +8,14 @@ import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { AlertTriangleIcon, CheckIcon } from "@/components/ui/icons";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/toast";
-import { saveCertificateMode } from "@/app/[locale]/app/admin/sessions/[id]/certificates/actions";
+import { saveCertificateMode } from "./actions";
 
-// SCR-045's «من يستحق» — the certificate MODE, written here and only here
-// (DEC-178 contract 2; REQ-DSG-031 step 2, REQ-CRT-001, REQ-SES-020).
-//
-// ★ THE ACT HAS ITS PREFLIGHT HERE. Issuance is never pressed: it is the
-// completion fan-out (automatic) or a confirmed release (review). So the one
-// moment an admin authorises it is choosing «تلقائي» or «مراجعة», and that is
-// where REQ-DSG-031's stated preflight goes, in a confirmation: the fonts, each
-// kind's design, who qualifies now, and the next serial as an ESTIMATE, never a
-// reservation (DEC-148, DEC-010). «لا شهادات» issues nothing and needs none.
-//
-// A closed session (completed, archived, cancelled) never reaches this
-// component: the page says why in a sentence, because the function refuses a
-// change that would do nothing.
+// SCR-045's mode, before completion — the one writer (DEC-178 contract 2, the owner's C6 ruling; REQ-CRT-002,
+// REQ-DSG-031 step 2). No board draws this state (`AdminCertificates.dc.html` is a completed session), so it is built in
+// the sober register with the behaviour the old control carried (note §4.2): the three modes as one named group whose
+// accessible names the suites pin, nothing saved until it changes, and turning certificates ON confirming through
+// REQ-DSG-031's stated preflight — fonts, each kind's template, who qualifies, the next serial as an ESTIMATE, never a
+// reservation (DEC-148, DEC-010). A closed session never reaches it: the page prints the mode as a sentence.
 
 export type CertificateModeValue = "off" | "automatic" | "review";
 

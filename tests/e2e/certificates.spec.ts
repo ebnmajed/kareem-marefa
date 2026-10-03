@@ -244,13 +244,13 @@ test("★ REQ-CRT-011: a revoked certificate still resolves — as ملغاة, a
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
   // Locators under `/app` scope to `#main` (DEC-145): a page can stream a
   // second, hidden copy of itself outside it.
-  // Wave 8 (D4): the revoke is a button on the issued table's row, and the
-  // reason is written inside the confirm that names the member.
+  // Wave 23 (SCR-045 rebuilt): «ألغِ» is a link on the issued row to `?revoke=<id>`, which opens the sheet where the
+  // reason is written (ledger: selector moved, button → link).
   const row = page
     .locator("#main")
     .getByRole("table", { name: "الشهادات الصادرة" })
     .getByRole("row", { name: new RegExp(cert.serial) });
-  await row.getByRole("button", { name: "ألغِ" }).click();
+  await row.getByRole("link", { name: /ألغِ/ }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel(/سبب الإلغاء/).fill(reason);
   await dialog.getByRole("button", { name: "ألغِ الشهادة" }).click();
@@ -296,15 +296,17 @@ test("★ REQ-CRT-004: `review` HOLDS — the recipient sees nothing until an ad
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
-  await expect(page.locator("#main").getByText("الوضع مراجعة", { exact: false })).toBeVisible();
+  // Wave 23: the mode is the board's line, «الوضع تُراجَع قبل الإطلاق» (ledger: expectation — the sentence's words).
+  await expect(page.locator("#main").getByText("تُراجَع قبل الإطلاق", { exact: true })).toBeVisible();
   await page
     .locator("#main")
     .getByRole("checkbox", { name: new RegExp(`تحديد الصف ${RECIPIENT}`) })
     .check();
-  await page.locator("#main").getByRole("button", { name: "أطلِق المحدَّدة" }).click();
-  // Wave 8 (D4): release confirms with the count and the session (REQ-UIX-013).
-  await page.getByRole("dialog").getByRole("button", { name: "أطلِق", exact: true }).click();
-  await expect(page.getByText("أُطلقت شهادة واحدة", { exact: true })).toBeVisible();
+  // Wave 23: the board's words, «أصدر المحدّد» → «أصدر» (DEC-238 §2.4; ledger: selector — the copy moved).
+  await page.locator("#main").getByRole("button", { name: "أصدر المحدّد" }).click();
+  // Release confirms with the count and the session (REQ-UIX-013).
+  await page.getByRole("dialog").getByRole("button", { name: "أصدر", exact: true }).click();
+  await expect(page.getByText("صدرت شهادة واحدة", { exact: true })).toBeVisible();
 
   // ★ And now the recipient sees it. Two real requests with a real policy
   // between them: `certs_read_self_or_admin` refuses `held` and allows
@@ -321,6 +323,8 @@ test("SCR-045 at 390 px, and a moderator sees the lists with no controls", async
   await signIn(context, adminEmail);
   await page.setViewportSize(PHONE);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
-  await expect(page.locator("#main").getByRole("heading", { name: "شهادات الجلسة", level: 2 })).toBeVisible();
+  // Wave 23: no tab title — the hub's `h1` names the session; the board's first table heading is «محجوزة · N»
+  // (ledger: expectation — the h2 is gone).
+  await expect(page.locator("#main").getByRole("heading", { name: /محجوزة/, level: 3 })).toBeVisible();
   await review(page, "scr-045-certificates");
 });

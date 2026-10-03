@@ -1,13 +1,13 @@
 import { setRequestLocale } from "next-intl/server";
-import { TemplateLibraryPage } from "@/components/designer/template-library-page";
+import { TemplatesScreen } from "@/components/templates/templates-screen";
 
-// SCR-055 · /app/admin/templates/posters — REQ-ADM-013, REQ-DSG-004, REQ-DSG-007,
-// REQ-DSG-008, REQ-DSG-024, REQ-DSG-026, D67, DEC-148. The screen is shared
-// with its twin; see `components/designer/template-library-page.tsx`. A poster
-// previews dark and offers no scheme (DEC-125).
+// SCR-055 · /app/admin/templates/posters — REQ-UIX-108, REQ-ADM-013, REQ-DSG-008, written for wave 23 from
+// `AdminTemplates.dc.html` (DEC-208: deleted first). One screen over two purposes (D54): the screen is
+// `components/templates/templates-screen.tsx`. `?new=1` opens «قالب جديد» — a link, so it works without JS.
 
-export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ new?: string | string[] }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <TemplateLibraryPage locale={locale} purpose="poster" />;
+  const { new: creating } = await searchParams;
+  return <TemplatesScreen locale={locale} purpose="poster" creating={creating === "1"} />;
 }

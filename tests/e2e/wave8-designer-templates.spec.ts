@@ -228,25 +228,25 @@ test("★ REQ-DSG-008: a platform template is copied, never edited — and the e
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
   await page.goto("/ar/app/admin/templates/posters");
-  await expect(main(page).getByRole("heading", { name: "قوالب الملصقات", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "القوالب", level: 1 })).toBeVisible();
 
   const talk = await platformDefault("poster", "talk");
-  const platform = card(page, talk.name).filter({ hasText: "قالب المنصة" });
+  const platform = card(page, talk.name).filter({ hasText: "المنصة" });
   await expect(platform).toBeVisible();
-  // The action that EXISTS, and no other.
-  await expect(platform.getByRole("button", { name: "افتح في المصمّم" })).toHaveCount(0);
-
-  await platform.getByRole("button", { name: "انسخ إلى مؤسستي" }).click();
+  // The action that EXISTS, and no other — wave 23: a platform card's menu holds «انسخ لتعدّل» alone.
+  await platform.getByRole("button", { name: "إجراءات أخرى" }).click();
+  await expect(page.getByRole("menuitem", { name: "افتح في المصمّم" })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: "انسخ لتعدّل" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText(talk.name);
 
   // ★ noValidate: the ACTION refuses the empty name, and says so by the field.
-  await dialog.getByLabel(/اسم النسخة/).fill("");
-  await dialog.getByRole("button", { name: "انسخ إلى مؤسستي" }).click();
+  await dialog.getByLabel(/الاسم/).fill("");
+  await dialog.getByRole("button", { name: "انسخ لتعدّل" }).click();
   await expect(dialog.getByText("اكتب اسمًا للقالب.")).toBeVisible();
 
-  await dialog.getByLabel(/اسم النسخة/).fill("نسخة ثانية من الجلسة");
-  await dialog.getByRole("button", { name: "انسخ إلى مؤسستي" }).click();
+  await dialog.getByLabel(/الاسم/).fill("نسخة ثانية من الجلسة");
+  await dialog.getByRole("button", { name: "انسخ لتعدّل" }).click();
   await expect(page.getByText("نُسخ القالب إلى مؤسستك.", { exact: true })).toBeVisible();
   await expect(dialog).toBeHidden();
   await expect(card(page, "نسخة ثانية من الجلسة")).toBeVisible();
@@ -267,13 +267,11 @@ test("★ an org template: set as default, renamed, retired behind a confirm tha
   await page.goto("/ar/app/admin/templates/posters");
 
   const mine = card(page, orgPosterName);
-  // The count the library shows is this org's use, from real rows.
-  await expect(mine).toContainText("مستخدم في جلسة واحدة");
 
   await mine.getByRole("button", { name: "إجراءات أخرى" }).click();
   await page.getByRole("menuitem", { name: "اجعله الافتراضي" }).click();
   await expect(page.getByText("صار هذا القالب الافتراضي لعائلته.", { exact: true })).toBeVisible();
-  await expect(mine.getByText("الافتراضي", { exact: true })).toBeVisible();
+  await expect(mine.getByText("افتراضي", { exact: true })).toBeVisible();
 
   await mine.getByRole("button", { name: "إجراءات أخرى" }).click();
   await page.getByRole("menuitem", { name: "غيّر الاسم" }).click();
@@ -290,6 +288,8 @@ test("★ an org template: set as default, renamed, retired behind a confirm tha
   // REQ-UIX-013: the confirm names the object and the consequence.
   await expect(confirm).toContainText(orgPosterName);
   await expect(confirm).toContainText("تبقى كما هي");
+  // wave 23 (SCR-055 rebuilt): the use count is the consequence, so it is said in the confirm, not on the card.
+  await expect(confirm).toContainText("مستخدم في جلسة واحدة");
   await confirm.getByRole("button", { name: "أحِله للتقاعد" }).click();
   await expect(page.getByText("أُحيل القالب للتقاعد.", { exact: true })).toBeVisible();
   await expect(renamed.getByText("متقاعد", { exact: true })).toBeVisible();
@@ -305,7 +305,8 @@ test("★ REQ-DSG-007: the studio opens the template's draft, and publishing it 
   await page.setViewportSize(DESKTOP);
   await page.goto("/ar/app/admin/templates/posters");
 
-  await card(page, orgPosterName).getByRole("button", { name: "افتح في المصمّم" }).click();
+  await card(page, orgPosterName).getByRole("button", { name: "إجراءات أخرى" }).click();
+  await page.getByRole("menuitem", { name: "افتح في المصمّم" }).click();
   await expect(page).toHaveURL(/\/ar\/app\/admin\/designer\//);
   await expect(main(page).getByRole("heading", { name: orgPosterName, level: 1 })).toBeVisible();
   await expect(main(page).getByText("مسودة قالب", { exact: true })).toBeVisible();
@@ -317,8 +318,9 @@ test("★ REQ-DSG-007: the studio opens the template's draft, and publishing it 
     [orgId, orgPosterName],
   );
   const mine = card(page, orgPosterName);
-  await expect(mine.getByText("مسودة غير منشورة")).toBeVisible();
-  await mine.getByRole("button", { name: "انشر إصدارًا جديدًا" }).click();
+  await expect(mine.getByText("مسودة", { exact: true })).toBeVisible();
+  await mine.getByRole("button", { name: "إجراءات أخرى" }).click();
+  await page.getByRole("menuitem", { name: "انشر إصدارًا جديدًا" }).click();
   await expect(page.getByText("نُشر إصدار جديد. ما صدر قبله من ملصقات وشهادات يبقى على إصداره.", { exact: true })).toBeVisible();
 
   const { rows: after } = await db.query<{ version: number; document: string }>(
@@ -337,16 +339,17 @@ test("★ DEC-148: a blank certificate starts on the composition chosen for it, 
   await signIn(context, adminEmail);
   await page.setViewportSize(DESKTOP);
   await page.goto("/ar/app/admin/templates/certificates");
-  await expect(main(page).getByRole("heading", { name: "قوالب الشهادات", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "القوالب", level: 1 })).toBeVisible();
 
-  await main(page).getByRole("button", { name: "قالب فارغ" }).click();
-  const dialog = page.getByRole("dialog");
+  await main(page).getByRole("link", { name: "قالب جديد" }).click();
+  const dialog = page.getByRole("dialog", { name: "قالب جديد" });
   await dialog.getByLabel(/الاسم/).fill("شهادة حضورنا العمودية");
-  // Only the certificate families are offered — no poster family leaks across.
-  await expect(dialog.getByRole("option", { name: "ورشة" })).toHaveCount(0);
-  await dialog.getByRole("radio", { name: "عمودية" }).click();
-  await dialog.getByRole("button", { name: "أنشئ" }).click();
-  await expect(page.getByText("أُنشئ القالب.", { exact: true })).toBeVisible();
+  // Only the certificate kinds are offered — no poster family leaks across.
+  await expect(dialog.getByRole("radio", { name: "ورشة" })).toHaveCount(0);
+  await dialog.getByRole("radio", { name: "A4 عمودي" }).click();
+  await dialog.getByRole("button", { name: "أنشئ وافتح" }).click();
+  // wave 23: creating opens the studio on the new draft, rather than toasting in place.
+  await page.waitForURL(/\/ar\/app\/admin\/designer\//);
 
   const { rows } = await db.query<{ width: number; height: number }>(
     `select (v.document->'master'->>'width')::int as width, (v.document->'master'->>'height')::int as height
@@ -355,12 +358,9 @@ test("★ DEC-148: a blank certificate starts on the composition chosen for it, 
     [orgId],
   );
   expect(rows[0]).toEqual({ width: 2480, height: 3508 });
-  await expect(card(page, "شهادة حضورنا العمودية").getByText("عمودية", { exact: true })).toBeVisible();
-
-  const schemes = main(page).getByRole("navigation", { name: "ألوان المعاينة" });
-  await schemes.getByRole("link", { name: "داكن" }).click();
-  await expect(page).toHaveURL(/scheme=dark/);
-  await expect(schemes.getByRole("link", { name: "داكن" })).toHaveAttribute("aria-current", "true");
+  await page.goto("/ar/app/admin/templates/certificates");
+  await expect(card(page, "شهادة حضورنا العمودية").getByText("A4 عمودي", { exact: true })).toBeVisible();
+  // wave 23 (D6, DEC-238): the library's scheme toggle is not drawn and not built.
 });
 
 /* ── 390 px ─────────────────────────────────────────────────────────────── */
@@ -371,29 +371,28 @@ test("the libraries at 390 px — populated, the copy dialog, dark certificates,
   await page.setViewportSize(PHONE);
 
   await page.goto("/ar/app/admin/templates/posters");
-  await expect(main(page).getByRole("heading", { name: "قوالب الملصقات", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "القوالب", level: 1 })).toBeVisible();
   await expect(card(page, orgPosterName)).toBeVisible();
   await capture(page, "posters-populated");
 
   const talk = await platformDefault("poster", "talk");
-  await card(page, talk.name).filter({ hasText: "قالب المنصة" }).getByRole("button", { name: "انسخ إلى مؤسستي" }).click();
+  await card(page, talk.name).filter({ hasText: "المنصة" }).getByRole("button", { name: "إجراءات أخرى" }).click();
+  await page.getByRole("menuitem", { name: "انسخ لتعدّل" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/wave8-designer-templates-posters-duplicate-dialog.png` });
   await page.keyboard.press("Escape");
 
   await page.goto("/ar/app/admin/templates/certificates");
-  await expect(main(page).getByRole("heading", { name: "قوالب الشهادات", level: 1 })).toBeVisible();
+  await expect(main(page).getByRole("heading", { name: "القوالب", level: 1 })).toBeVisible();
   await capture(page, "certificates-populated");
-  await page.goto("/ar/app/admin/templates/certificates?scheme=dark");
-  await capture(page, "certificates-dark");
 });
 
 test("an org with no templates of its own is told what to do next", async ({ context, page }) => {
   await signIn(context, emptyAdminEmail);
   await page.setViewportSize(onPhone() ? PHONE : DESKTOP);
   await page.goto("/ar/app/admin/templates/posters");
+  // wave 23 (DEC-NEXT-25): one line and nothing else — the platform group sits right below it.
   await expect(main(page).getByText("لا قوالب لمؤسستك بعد")).toBeVisible();
-  await expect(main(page).getByRole("link", { name: "إلى قوالب المنصة" })).toBeVisible();
   if (onPhone()) await capture(page, "posters-empty-org");
 });
 
@@ -401,9 +400,9 @@ test("a moderator reads the library and is offered no write", async ({ context, 
   await signIn(context, modEmail);
   await page.setViewportSize(onPhone() ? PHONE : DESKTOP);
   await page.goto("/ar/app/admin/templates/posters");
-  await expect(main(page).getByRole("heading", { name: "قوالب الملصقات", level: 1 })).toBeVisible();
-  await expect(main(page).getByText("إنشاؤها وتعديلها من صلاحيات مشرف المؤسسة", { exact: false })).toBeVisible();
-  await expect(main(page).getByRole("button", { name: "انسخ إلى مؤسستي" })).toHaveCount(0);
-  await expect(main(page).getByRole("button", { name: "قالب فارغ" })).toHaveCount(0);
+  await expect(main(page).getByRole("heading", { name: "القوالب", level: 1 })).toBeVisible();
+  // wave 23 (DEC-NEXT-25): no explainer sentence — the absence of every write control is the statement.
+  await expect(main(page).getByRole("button", { name: "إجراءات أخرى" })).toHaveCount(0);
+  await expect(main(page).getByRole("link", { name: "قالب جديد" })).toHaveCount(0);
   if (onPhone()) await capture(page, "posters-moderator");
 });

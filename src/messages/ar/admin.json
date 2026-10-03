@@ -643,6 +643,14 @@
           "created": "إنشاء قالب استبانة",
           "changed": "تعديل قالب استبانة",
           "deleted": "حذف قالب استبانة"
+        },
+        "design_template": {
+          "created": "إنشاء قالب تصميم",
+          "renamed": "تغيير اسم قالب تصميم",
+          "default_set": "تعيين قالب افتراضي",
+          "retired": "إحالة قالب للتقاعد",
+          "restored": "إعادة قالب للخدمة",
+          "published": "نشر إصدار قالب"
         }
       },
       "domains": {
@@ -670,7 +678,8 @@
         "category": "التصنيفات",
         "company": "الشركات",
         "report": "البلاغات",
-        "survey_template": "الاستبانات"
+        "survey_template": "الاستبانات",
+        "design_template": "قوالب التصميم"
       },
       "subjects": {
         "brand_kit": "الهوية البصرية",
@@ -696,7 +705,8 @@
         "venue": "مكان",
         "category": "تصنيف",
         "report": "بلاغ",
-        "survey_template": "قالب استبانة"
+        "survey_template": "قالب استبانة",
+        "design_template": "قالب تصميم"
       },
       "kinds": {
         "log": "إجراء",

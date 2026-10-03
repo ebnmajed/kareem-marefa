@@ -832,6 +832,32 @@ claimed the number, and every position after it kept its place.
 
 ---
 
+## M25 — the studio: the template library, the designer, the certificate canvas, the email builder · wave 23 · `DEC-235`, `DEC-236`, `DEC-237`
+
+★★ **The owner put the studio before stories** (`DEC-235` §1), the fifth deliberate re-ordering. Four screens rebuilt from
+nine artboards in `docs/design/screens/m12/`, each under `DEC-199` §2 and `DEC-208` — which reaches the chrome and not the
+engine (`DEC-235` §2). **The goal**: an admin designs a poster once and it is right in every format; the checks say what
+is wrong before export; an email is assembled, previewed and tested before a member sees it, while the 25 existing
+messages render byte-identically; a certificate is designed once and issued many times, from the session. Three pull
+requests, three teammates and the lead, **six new primitives (63 → 69)**, **no migration**.
+
+| Work | Requirements | PR | Track |
+|---|---|---|---|
+| The studio frame, `ui/editor-rail`, `ui/floating-toolbar` | `REQ-UIX-107` | B | lead |
+| The template library, both tabs, three defaults — `SCR-055` | `REQ-UIX-108` | A | `console` |
+| A session's certificates — `SCR-045` | `REQ-UIX-109` | A | `console` |
+| One default per kind; the session's template beside its mode | `REQ-CRT-015` | A | `console` |
+| The designer over the kept engine, `ui/canvas-stage`, `ui/layer-list` — `SCR-056`/`057` | `REQ-UIX-110` | B | `designer` |
+| The certificate canvas | `REQ-UIX-111` | B | `designer` |
+| The email gallery and builder, `ui/block-canvas`, `ui/block-library` — `SCR-058` | `REQ-UIX-112` | C | `notify` |
+| Six block types, layouts, global styles | `REQ-NTF-015` | C | `notify` |
+
+**Demonstrable:** ★★ every rebuilt screen at **1280** — and `055`, `045` and the email gallery at 390 — **held beside its
+artboard and opened by the lead**; ★★ all four formats exported from the sample template with **no golden moved**; ★★
+`tests/unit/mail-pinned/`'s 120 files **untouched**; ★★ a `page.click()`-only spec for every new drag (`DEC-093`); ★ the
+certificate walkthrough captured at every step (`DEC-236` §5); ★ `console-register` green and untouched. **The acceptance
+is the owner's, at 1280 on a real screen.**
+
 ## 3. Dependencies
 
 ```mermaid

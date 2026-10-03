@@ -181,7 +181,7 @@ src/
 │   │       │   ├── templates/page.tsx     # redirect → templates/posters; the rail's one «التصاميم» leaf [DEC-178]
 │   │       │   ├── templates/{posters,certificates}/  # SCR-055/056, with a posters | certificates tab strip
 │   │       │   ├── designer/[documentId]/page.tsx
-│   │       │   ├── emails/ · branding/ · reminders/
+│   │       │   ├── emails/ · emails/[key]/ (SCR-058's builder, bare — DEC-238) · branding/ · reminders/
 │   │       │   ├── exports/ · audit/
 │   │       │   └── settings/
 │   │       │
@@ -204,7 +204,8 @@ src/
 │       ├── verify/[code]/route.ts            # rate-limited, in front of verify_certificate()
 │       ├── webhooks/{resend,google-calendar}/route.ts
 │       ├── admin/emails/preview/route.ts     # POST — the mail preview, the ONE renderer, framed sandboxed [DEC-161]
-│       └── brand/[orgId]/logo/route.ts       # GET — an active org's logo, to anon by POLICY, for mail clients [DEC-161]
+│       ├── brand/[orgId]/logo/route.ts       # GET — an active org's logo, to anon by POLICY, for mail clients [DEC-161]
+│       └── mail/qr/route.ts                  # GET — a PNG QR of a path ON OUR OWN ORIGIN only (an allowlist; never caller text), to anon, for mail clients [DEC-238]
 ```
 
 ### 4.1 The app stays at the repository root

@@ -1,11 +1,88 @@
-**Last updated:** 2026-10-03 · **Branch:** `main` · ★★ **WAVE 23 IS PLANNED, NOT STARTED** · **`main`:** `242657a5`; production at **`0190`** · **Phase:** ★★ **M12 — THE STUDIO (`DEC-235`, M25)**: `055` the templates, `056`/`057` the designer rebuilt as a rich editor on a free canvas, `058` the email builder, `045` the session's certificates — **four screens from NINE artboards** (★ **the pack gained two on 2026-10-03 with a «certificate flows» section** — `DEC-236`), each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; **six primitives, so the floor moves 63 → 69**. ★★ **The owner rules THREE certificate defaults, one per kind** — `family` already IS the kind and `0055`'s indexes already give one default each, so the drawn two-default model is not built and **`0191` stays unwritten** (`DEC-236` §1). ★★ **NO migration is expected — both of the wave's open questions are already answered by what is built** (`DEC-235` §3): the document model carries per-preset and per-variant overrides, so variants on one strip need no schema; and «six blocks» means six NEW types over the eight `blocks.ts` already holds. The brief is `docs/plan/notes/wave-23-lead.md`. ★★ **`DEC-208` REACHES THE CHROME, NOT THE ENGINE** — the first wave where that matters: 3,873 lines of designer, with the logic/chrome seam named file by file (`DEC-235` §2). ★★ **`DEC-093` is the wave's largest risk**: the artboards draw drag in six new places and every one needs a single-pointer path. ★ **The owner rules the studio before stories** (§1) — overtaken a fifth time; the ring stays inert. ★ **Owed by the owner:** the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-059` and the platform console (M13), and session stories.
+**Last updated:** 2026-10-03 · **Branch:** `wave-23a/templates-and-certificates` (**PR #52 READY for the owner**) · ★★ **WAVE 23 CLOSED AT THE OWNER'S BUDGET BOUNDARY (`DEC-239`)** · **`main`:** `0d9a0d60`; production at **`0190`** · ★★ **PR A #52** — `055`, `045`, the certificate flows, the tie guard and `0191` — **built, green (CI success; 34/34 e2e on a build of `6333f314`; the walkthrough 7/7) and ready; the owner merges it.** ★ **`0191` is REHEARSED; the owner pushes it** (dry run: exactly `0191`) — before or with the merge. **PR B #53** stops at the studio frame and the two shared primitives (merge after A). **PR C**: none. ★ **Next: wave 24 — the designer and the email builder**, from `notes/{designer,notify}.md`. ★ **Carried:** the tie-breaker («the screen can disagree with what issuance picks»), the email studio's test-send defect, `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, M13, stories, the `railway.json`.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 23 — PLANNED, NOT STARTED — M12, the studio (`DEC-235`)
+## ★★★ WAVE 23 — IN PROGRESS — M12, the studio (`DEC-235`, `DEC-236`, `DEC-237`)
+
+### ★★ The boundary, on the owner's budget ruling (2026-10-03)
+
+| PR | State | What a cut-off leaves |
+|---|---|---|
+| **A #52** — `wave-23a/templates-and-certificates` | ⏳ `console` building `055` then `045`, each delete + create in one sitting; `0191` (lead) and its RLS test | ★ **Rule: never push an unpaired delete** — `git log origin/main..HEAD` checked for a lone `refactor(...)` before every push. A pushed state always has every screen |
+| **B #53** — `wave-23b/the-designer` | ✓ the studio frame + `ui/editor-rail` + `ui/floating-toolbar` (`82c39667`), floor 63 → 65, full suite 5,049 green | complete and mergeable after A; **the designer rebuild is wave 24's** — `notes/designer.md` holds the approved plan |
+| **C** | no branch, no PR | **wave 24's** — `notes/notify.md` holds the approved plan; cut from B's head |
+
+★ **The untouched-suite ledger — wave 23** (each line: the assertion, why it moved, and whether a selector moved or an expectation did):
+
+| Spec · line | Moved | Kind |
+|---|---|---|
+| `wave8-designer-templates.spec.ts` (lead, as `designer`'s custodian) — `h1` ×4 | «قوالب الملصقات» / «قوالب الشهادات» → «القوالب» (one title over two tabs, the board) | selector |
+| — the platform card's copy | the «انسخ إلى مؤسستي» button → ⋯ «إجراءات أخرى» → «انسخ لتعدّل»; the field «اسم النسخة» → «الاسم»; «قالب المنصة» → «المنصة» | selector |
+| — «افتح في المصمّم», «انشر إصدارًا جديدًا» | buttons on the card → items in its ⋯ menu; «مسودة غير منشورة» → the chip «مسودة» | selector |
+| — «الافتراضي» | → «افتراضي» (the board's badge) | selector |
+| — the use count | on the card → in the retire confirm, as its consequence | ★ expectation |
+| — a blank certificate | «قالب فارغ» button → «قالب جديد» link; «أنشئ» → «أنشئ وافتح», which **opens the studio** instead of toasting; «عمودية» → «A4 عمودي» | ★ expectation |
+| — the scheme toggle, the 390 dark capture | removed — not drawn, not built (D6, `DEC-238`) | ★ expectation |
+| — the empty org's «إلى قوالب المنصة», the moderator's sentence | removed (`DEC-NEXT-25`); the moderator's assertion is now the absence of every write control | ★ expectation |
+| `certificates.spec.ts` (`console`) — `:253` revoke button → link; `:303-307` «أصدر المحدّد» / «أصدر» / «صدرت شهادة واحدة» | the rebuilt `045`'s controls and copy (D20) | selector |
+| — `:299` the mode sentence → the line's «تُراجَع قبل الإطلاق»; `:324` the `h2` «شهادات الجلسة» gone, «محجوزة · N» asserted | the board's line; the hub's `h1` names the session | ★ expectation |
+| `wave13-console-templates.spec.ts:131` (`console`) | `h1` «قوالب الملصقات» → «القوالب» | ★ expectation |
+| `wave8-designer-certificates.spec.ts` (`console`, transferred for the wave) — `:282`, `:285`, `:343-344`, `:365-371`, `:411`, `:424`, `:434`, `:442`, `:447`, `:449`, `:458` | the template control by id, the section by `aria-labelledby`, the release copy, the revoke link, the headings «محجوزة · N» / «ملغاة · N» | selector |
+| — `:262`, `:263`, `:265-267`, `:288-293`, `:303-313`, `:352-355`, `:363-364`, `:393`, `:408-409`, `:454-456`, `:466` | the `h2` and the moderator's sentence gone (`DEC-NEXT-25`); the «لم يُحفظ» badge → the save button enabled/disabled; the serial estimate in the mode's preflight dialog; no «التصميم» section after completion — the line names the template and «غيّر» opens the sheet; locked = «غيّر» gone; the revoke sheet names member and serial; «مُلغاة نهائيًا» → «لا بديل»; «الوضع معطّل» ×2 → «الشهادات معطّلة» once | ★ expectation — each commented in place |
+| `wave8-designer-certificates.spec.ts:344` (`console`) | the Escape after «طبّق على المحجوزة» → the sheet is asserted closed — it now closes itself (`6333f314`, a component defect the spec found) | selector |
+| `wave13-designer-certificates-download.spec.ts:146`, `wave13-demo-download.spec.ts:218` (lead, custodian / own) | the PDF link's name «نزّل شهادة {name}» → «PDF — نزّل شهادة {name}» — the visible word is the board's «PDF» and the name begins with it (SC 2.5.3) | selector |
+
+★★ **`0191` — REHEARSED 2026-10-03 on the owner's fresh production dump** (`/tmp/prod-schema-0190.sql`, taken at `0190`,
+**0 data rows**, `0181` present and nothing of `0191`). A throwaway `rehearse23` owned by `postgres`, the extensions as
+`supabase_admin`, the local `auth` schema whole and `storage`/`realtime` pre-data first, **the dump loaded with one error —
+the platform's `supabase_realtime` publication, as every wave**, `storage`/`realtime` post-data after it with 0 errors,
+buckets · worker migrations · retention periods copied. **`0191` in one transaction with `ON_ERROR_STOP`, as `postgres` —
+exit 0.** ★ **End state against local (`0191`): policies 194, triggers 125, table grants 784, columns 891 — identical; every
+public function body and routine grant identical (335 · 708, md5 equal) but `rls_auto_enable()` and its two grants —
+production-only, as every wave**; `0191`'s two function bodies md5-equal to local. ★★ **The six template mutations, done
+AS THE ORG'S ADMIN MEMBER under RLS** (`authenticated`, the screen's claims) on the rehearsed schema, each row's actor the
+member and its role `admin`:
+
+| Mutation | Rows written |
+|---|---|
+| create (template + v1) | `design_template.created` ×1 — `{purpose, family, name, duplicated_from: null}` |
+| duplicate a platform template (+ v1) | `design_template.created` ×1 — `duplicated_from` the platform template |
+| publish v2 | `design_template.published` ×1 — `{version: 2, version_id}` |
+| set default, twice | `design_template.default_set` ×1 per move — ★ **the cleared previous default wrote nothing**; one default for the kind after |
+| rename | `design_template.renamed` ×1 — before/after name |
+| retire, then restore | `design_template.retired` ×1, `design_template.restored` ×1 |
+
+Copying the 11 platform templates into the rehearsal wrote **no** row (org rows only). ★ **RLS on the rehearsed schema:
+114 of 115** (`isolation`, `definer-exposure`, `templates-audit`, `templates-guard`, `templates-roster`,
+`certificates-designs`) — the one red `definer-exposure` listing `rls_auto_enable()`. ★ **The gap, between the push and
+PR A's merge:** every trigger fires on writes `main` already makes and adds rows `main`'s audit screen already lists —
+nothing else moves. `rehearse23` dropped; the owner's dump left for the owner. **The owner may push:
+`supabase db push --linked --dry-run` should list exactly `0191`.**
+
+★ **A live defect found and not fixed this wave** (`notify`, `DEC-238` §4.5): the email studio's «أرسل اختبارًا» mails the
+**saved** row, not the draft on screen. Wave 24's builder disables it while there are unsaved changes.
+★ **The tie-breaker — a real defect, carried** (owner, 2026-10-03): `issue_certificate()` orders by `is_default`, then version, with no tiebreak — two org templates of one kind, neither default, on the same version, and issuance picks arbitrarily: **the screen can disagree with what issuance picks.** The cheap guard is in PR A: with no default set for a kind the screens name no template and say none is set.
+★ **Wave 24's carries for the owner** (`DEC-238` §6): نقاطك · four certificate fields that are not bindings · the objects and
+stickers tabs · an A3 certificate · C6's place · the issuance fallback's order.
+
+### ★ Where it stands — 2026-10-03
+
+| Step | State |
+|---|---|
+| Step 0 — branch, spec, artboards, draft PR | ✓ `wave-23a/templates-and-certificates`, `9e95212f`, **draft PR #52** against `main`. **Nine boards, nine PNGs**: the stray duplicate was already gone; the two new boards came without PNGs and the lead rendered them from their HTML at 1280 |
+| Measured | `ui/` **63**, floor **63** at `ui-playground.test.ts:121` · designer **3,950** lines / 17 files (the brief said 3,873) · `mail-pinned` **120** files · goldens **17** · next ids `REQ-UIX-107`, `STORY-UIX-097` |
+| The map | ✓ `DEC-237`, `CLAUDE.md`'s wave-23 map, the ten agent files, `01` (`REQ-UIX-107` … `112`, `REQ-NTF-015`, `REQ-CRT-015`), `15` (`STORY-UIX-097` … `102`, `STORY-NTF-007`, `STORY-CRT-007`), `14` (M25), `09`; traceability 410 / 243, no gaps |
+| ★ Division | **`console`** PR A (`055`, `045`) — composition over existing DAL, `templates.ts`/`certificates.ts` transferred for the wave · **`designer`** PR B (the editor over the kept engine, `canvas-stage`, `layer-list`, the certificate canvas) · **`notify`** PR C (`058`, `block-canvas`, `block-library`, six block types) · **lead** the studio frame, `editor-rail`, `floating-toolbar`, the walkthrough |
+| ★ Seam rulings | `editor.tsx`'s state machine **moves verbatim before the delete** (`DEC-237` §2) · `canvas-stage` is **the stage around** `DesignerCanvas`, not a second engine (§3) |
+| ★★ C6 | ✓ **ruled by the owner: `045` writes both; `DEC-178` stands** |
+| Sync 1 | ✓ `DEC-238` (`56893e93`) — three plans approved; only `console` released to build (budget) |
+| PR B, PR C | B #53 at its boundary; C deferred, no branch |
+
+### The plan as written before Step 0
+
 
 **The programme's ninth wave.** The brief is `docs/plan/notes/wave-23-lead.md`; the drawing is
 `docs/design/screens/M12.md` with **seven** artboards in `docs/design/screens/m12/`; the decision is `DEC-235`.

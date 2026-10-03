@@ -127,7 +127,8 @@ test("K2: /app/admin/templates redirects into the tabbed library, not the generi
   await expect(page).toHaveURL(/\/ar\/app\/admin\/templates\/posters$/);
 
   const main = page.locator("#main");
-  await expect(main.getByRole("heading", { level: 1 })).toHaveText("قوالب الملصقات");
+  // Wave 23 (SCR-055 rebuilt): one `h1` for both tabs, «القوالب», as the boards draw it (ledger: expectation — the title).
+  await expect(main.getByRole("heading", { level: 1 })).toHaveText("القوالب");
   const tabs = main.getByRole("tablist", { name: "أنواع القوالب" });
   await expect(tabs.getByRole("tab", { name: "الملصقات" })).toHaveAttribute("aria-selected", "true");
   const certTab = tabs.getByRole("tab", { name: "الشهادات" });
