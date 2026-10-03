@@ -198,7 +198,10 @@ async function capture(p: Page, name: string, { fullPage = true } = {}) {
   // ★ Every preview on show is scrolled into view and must report rendered —
   // its frame loaded, its faces ready — so a blank render cannot pass for one
   // that never mounted (DEC-149 §4).
-  const previews = main(p).locator("[data-template-preview]");
+  // ★ Wave 23: only the previews a person can see. SCR-045's template control draws its preview from `lg`
+  // (`template-control.tsx`, `hidden lg:flex`); at 390 the preview is `display: none`, never mounts its frame and has
+  // no box — scrolling it into view waited forever for «stable» (the lead's run on 54d43e69).
+  const previews = main(p).locator("[data-template-preview]:visible");
   const count = await previews.count();
   if (fullPage) {
     for (let i = 0; i < count; i++) await previews.nth(i).scrollIntoViewIfNeeded();
@@ -274,7 +277,7 @@ test("★ DEC-148: a design chosen before completion is saved with its scheme, a
   // Expectation (wave 23): no «لم يُحفظ» badge — an unsaved choice is a live «احفظ التصميم».
   await expect(panel.getByRole("button", { name: "احفظ التصميم" })).toBeEnabled();
   await panel.getByLabel("القالب").selectOption(await templateId("شهادة حضور عمودية"));
-  await panel.getByRole("radio", { name: "داكنة" }).check();
+  await panel.getByRole("radio", { name: "داكنة" }).check({ force: true });
   await panel.getByRole("button", { name: "احفظ التصميم" }).click();
   await expect(page.getByText("حُفظ التصميم.", { exact: true })).toBeVisible();
   await expect(panel.getByRole("button", { name: "احفظ التصميم" })).toBeDisabled();
@@ -318,7 +321,7 @@ test("★ held certificates take the saved design, release confirms by count and
   await expect(main(page).getByText("شهادة حضور أفقية")).toBeVisible();
   await main(page).getByRole("link", { name: "غيّر" }).click();
   const panel = designPanel(page, "attendance");
-  await panel.getByRole("radio", { name: "داكنة" }).check();
+  await panel.getByRole("radio", { name: "داكنة" }).check({ force: true });
   await panel.getByRole("button", { name: "احفظ التصميم" }).click();
   await expect(page.getByText("حُفظ التصميم.", { exact: true })).toBeVisible();
 

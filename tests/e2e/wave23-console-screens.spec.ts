@@ -242,7 +242,9 @@ test("045 · before completion: the template per kind, the mode, and who receive
 
 test("045 · completed in review: «أصدر» issues one, audited as the admin; «غيّر» still opens the template while held", async ({ page, context }, info) => {
   desktopOnly(info);
-  await db.query(`update public.sessions set certificate_mode = 'review', state = 'completed', completed_at = now() where id = $1`, [sessionId]);
+  // The legal path (the state guard refuses published → completed): in progress, then completed.
+  await db.query(`update public.sessions set certificate_mode = 'review', state = 'in_progress' where id = $1`, [sessionId]);
+  await db.query(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
   const ids: Record<"a" | "b", string> = { a: "", b: "" };
   for (const key of ["a", "b"] as const) {
     const { rows } = await db.query<{ id: string; state: string }>(`select id, state from public.issue_certificate($1, $2, 'attendance'::public.certificate_kind)`, [
