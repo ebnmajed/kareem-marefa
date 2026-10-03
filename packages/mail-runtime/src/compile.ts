@@ -23,7 +23,9 @@
 // separate, reviewed change.
 
 import { DESIGN_STACK, escapeHtml, formatValue, lookup } from "./primitives.js";
-import { readDocument, type DroppedBlock, type EmailBlock, type ImageSource } from "./blocks.js";
+import { readDocument, ROW_LAYOUTS, type BlockStyle, type DroppedBlock, type EmailBlock, type EmailStyles, type ImageSource, type PaletteToken } from "./blocks.js";
+import { isToken, mobileCss, readRows, readStyles, type LayoutRow } from "./layout.js";
+import { isQrPath } from "./qr-paths.js";
 
 /** U+2068 FIRST STRONG ISOLATE and U+2069 POP DIRECTIONAL ISOLATE. Written as
  *  escapes, never as the characters: an invisible control character in source
@@ -71,6 +73,10 @@ export interface CompileContext {
    *  a unit test, where only `https:` and `mailto:` are then allowed. */
   appOrigin: string | null;
   org: string;
+  /** Wave 23 — the editor's canvas only: each block's row carries
+   *  `data-k="<id>"` so the editor can draw its selection over the one
+   *  renderer's output. ★ Off by default, so nothing sent or pinned moves. */
+  annotate?: boolean;
 }
 
 export interface CompiledBlocks {
@@ -82,6 +88,11 @@ export interface CompiledBlocks {
    *  editor's checks panel can NAME every row the mail lost. A mail that
    *  silently drops a block is one an admin approves believing it is whole. */
   dropped: DroppedBlock[];
+  /** Wave 23 — the document's global styles, for the shell; null for every
+   *  document written before, which keeps the shell's literals. */
+  styles: EmailStyles | null;
+  /** Wave 23 — the mobile rules for `<head>`, or "" (the old head). */
+  head: string;
 }
 
 /**
@@ -144,26 +155,98 @@ const WRAP = "overflow-wrap:anywhere;word-break:break-word;";
  *  beside `text-align`, because Outlook's Word engine reads the attribute and
  *  does not inherit direction reliably through nested tables. A right-aligned
  *  cell is not an RTL cell. */
-function cell(style: string): string {
-  return `dir="rtl" align="right" style="font-family:${DESIGN_STACK};${style}"`;
+function cell(style: string, align: Physical = "right"): string {
+  return `dir="rtl" align="${align}" style="font-family:${DESIGN_STACK};${style}"`;
 }
 
 function row(inner: string): string {
   return `      <tr>${inner}</tr>`;
 }
 
-function textCell(style: string, html: string): string {
-  return row(`<td ${cell(style)}>${html}</td>`);
+function textCell(style: string, html: string, align: Physical = "right", cls = ""): string {
+  return row(`<td ${cls ? `class="${cls}" ` : ""}${cell(style, align)}>${html}</td>`);
 }
 
-export function compileBlocks(document: unknown, ctx: CompileContext): CompiledBlocks {
+// ── Wave 23: the overrides, each one a no-op when absent ─────────────────────
+//
+// ★ EVERY HELPER BELOW RETURNS ITS DEFAULT, CHARACTER FOR CHARACTER, WHEN THE
+// BLOCK CARRIES NO STYLE — which is every block written before wave 23. That is
+// the whole of «additive» for the existing types, and the pinned files are what
+// hold it.
+
+/** An RTL mail's three alignments, in the physical words HTML's `align` takes. */
+type Physical = "right" | "center" | "left";
+
+/** The compiler's working context: the caller's, plus the column's width and
+ *  the document's styles. A single-column row is 512 px wide, which is what
+ *  every literal below has always assumed. */
+interface Ctx extends CompileContext {
+  width: number;
+  styles: EmailStyles | null;
+}
+
+const FULL_WIDTH = 512;
+const GUTTER = 8;
+const PADS = new Set([0, 8, 16, 24]);
+
+function styleOf(block: EmailBlock): BlockStyle | undefined {
+  const raw = block.type === "button" ? block.blockStyle : "style" in block ? block.style : undefined;
+  return raw && typeof raw === "object" ? raw : undefined;
+}
+
+function alignOf(block: EmailBlock): Physical {
+  const align = styleOf(block)?.align;
+  return align === "center" ? "center" : align === "end" ? "left" : "right";
+}
+
+/** `padding:` for a block, from its default `top right bottom left`. */
+function padOf(block: EmailBlock, fallback: string): string {
+  const style = styleOf(block);
+  const top = typeof style?.padTop === "number" && PADS.has(style.padTop) ? style.padTop : null;
+  const bottom = typeof style?.padBottom === "number" && PADS.has(style.padBottom) ? style.padBottom : null;
+  if (top === null && bottom === null) return fallback;
+  const [t, r, b, l] = fallback.split(" ");
+  return `${top === null ? t : `${top}px`} ${r} ${bottom === null ? b : `${bottom}px`} ${l}`;
+}
+
+function token(ctx: Ctx, name: PaletteToken | undefined, fallback: string): string {
+  return name && isToken(name) ? ctx.palette[name] : fallback;
+}
+
+function colourOf(block: EmailBlock, ctx: Ctx, fallback: string): string {
+  return token(ctx, styleOf(block)?.colour, fallback);
+}
+
+/** A cell's background as an attribute (what Outlook reads) — or nothing. */
+function bgAttr(block: EmailBlock, ctx: Ctx): string {
+  const name = styleOf(block)?.background;
+  return name && isToken(name) ? ` bgcolor="${ctx.palette[name]}"` : "";
+}
+
+function shapeOf(block: EmailBlock, ctx: Ctx): "rounded" | "pill" {
+  const own = styleOf(block)?.shape;
+  if (own === "pill" || own === "rounded") return own;
+  return ctx.styles?.button?.shape === "pill" ? "pill" : "rounded";
+}
+
+const KIND: Readonly<Record<string, string>> = { attendance: "شهادة حضور", presenter: "شهادة تقديم", achievement: "شهادة إنجاز" };
+
+export function compileBlocks(document: unknown, context: CompileContext): CompiledBlocks {
   const rows: string[] = [];
   const text: string[] = [];
-  const say = (template: string) => interpolateIsolated(template, ctx.payload);
+  const say = (template: string) => interpolateIsolated(template, context.payload);
   const { blocks, dropped } = readDocument(document);
+  const styles = readStyles(document);
+  const ctx: Ctx = { ...context, width: FULL_WIDTH, styles };
+  const layout = readRows(document, blocks);
 
-  for (const block of blocks) {
-    compileOne(block, ctx, say, rows, text, dropped);
+  if (layout === null) {
+    // ★ THE PATH EVERY DOCUMENT WRITTEN BEFORE WAVE 23 TAKES, unchanged.
+    for (const block of blocks) {
+      compileAnnotated(block, ctx, say, rows, text, dropped);
+    }
+  } else {
+    for (const entry of layout) compileRow(entry, ctx, say, rows, text, dropped);
   }
 
   // ★ THE FOOTER IS COMPOSED, NOT TYPED (REQ-NTF-009). It is appended here,
@@ -171,21 +254,96 @@ export function compileBlocks(document: unknown, ctx: CompileContext): CompiledB
   // deleted by an admin or forgotten by a design.
   rows.push(row(`<td ${cell(`padding:8px 0 0 0;`)}><hr style="border:none;border-top:1px solid ${ctx.palette.edge};margin:0;" /></td>`));
   if (ctx.preferencesUrl) {
+    const link = token(ctx, styles?.linkColour, ctx.palette.fgMuted);
     rows.push(
       textCell(
         `font-size:13px;line-height:1.7;color:${ctx.palette.fgMuted};padding:12px 0 0 0;text-align:right;`,
-        `<a href="${escapeHtml(ctx.preferencesUrl)}" style="color:${ctx.palette.fgMuted};">تفضيلات الإشعارات</a>`,
+        `<a href="${escapeHtml(ctx.preferencesUrl)}" style="color:${link};">تفضيلات الإشعارات</a>`,
       ),
     );
     text.push(`تفضيلات الإشعارات: ${isolate(ctx.preferencesUrl)}`);
   }
 
-  return { rows, text, dropped };
+  return { rows, text, dropped, styles, head: mobileCss(styles) };
+}
+
+/** `compileOne()`, with the block's id on the row it wrote when the editor
+ *  asked for it (`annotate`). Without `annotate` it is `compileOne()`. */
+function compileAnnotated(
+  block: EmailBlock,
+  ctx: Ctx,
+  say: (template: string) => string,
+  rows: string[],
+  text: string[],
+  dropped: DroppedBlock[],
+): void {
+  const start = rows.length;
+  compileOne(block, ctx, say, rows, text, dropped);
+  if (!ctx.annotate) return;
+  for (let i = start; i < rows.length; i++) {
+    rows[i] = rows[i]!.replace("<tr>", `<tr data-k="${escapeHtml(block.id)}">`);
+  }
+}
+
+/**
+ * One row of a document that carries `rows`. A one-column row compiles through
+ * the same `compileOne()` into the same top-level `<tr>`, so even a mixed
+ * document's single rows are byte-identical to what they would be flat.
+ *
+ * A multi-column row is ONE shell row holding a hybrid («spongy») row: each
+ * column an `inline-block` capped at its width, which stacks on a phone with no
+ * media query (Gmail's app strips some), wrapped in an Outlook ghost table so
+ * the Word engine lays the columns side by side. `dir="rtl"` on every table and
+ * cell (D3a item 2): the first column is the right one.
+ */
+function compileRow(
+  entry: LayoutRow,
+  ctx: Ctx,
+  say: (template: string) => string,
+  rows: string[],
+  text: string[],
+  dropped: DroppedBlock[],
+): void {
+  if (entry.kind === "single") {
+    compileAnnotated(entry.block, ctx, say, rows, text, dropped);
+    return;
+  }
+
+  const weights = ROW_LAYOUTS[entry.layout];
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  const free = FULL_WIDTH - GUTTER * (weights.length - 1);
+  const widths = weights.map((w) => Math.floor((free * w) / total));
+
+  const columns = entry.columns.map((column, index) => {
+    const width = widths[index] ?? free;
+    const inner: string[] = [];
+    for (const block of column) compileAnnotated(block, { ...ctx, width }, say, inner, text, dropped);
+    const last = index === entry.columns.length - 1;
+    // The gap sits on the LEFT of a column that is not the last: in an RTL row
+    // the next column is to its left. Physical, because a mail's CSS is.
+    const gap = last ? "" : `padding-left:${GUTTER}px;`;
+    return {
+      width,
+      gap,
+      html: `<div dir="rtl" style="display:inline-block;vertical-align:top;width:100%;max-width:${width + (last ? 0 : GUTTER)}px;font-size:17px;">` +
+        `<table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td dir="rtl" align="right" style="${gap}">` +
+        `<table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0">${inner.join("")}</table>` +
+        `</td></tr></table></div>`,
+    };
+  });
+
+  const ghostOpen = `<!--[if mso]><table role="presentation" dir="rtl" width="${FULL_WIDTH}" cellpadding="0" cellspacing="0" border="0"><tr><![endif]-->`;
+  const ghostClose = `<!--[if mso]></tr></table><![endif]-->`;
+  const body = columns
+    .map((column) => `<!--[if mso]><td dir="rtl" width="${column.width + (column.gap ? GUTTER : 0)}" valign="top"><![endif]-->${column.html}<!--[if mso]></td><![endif]-->`)
+    .join("");
+  const tr = row(`<td ${cell(`padding:0 0 0 0;font-size:0;text-align:right;`)}>${ghostOpen}${body}${ghostClose}</td>`);
+  rows.push(ctx.annotate && entry.id ? tr.replace("<tr>", `<tr data-k="${escapeHtml(entry.id)}">`) : tr);
 }
 
 function compileOne(
   block: EmailBlock,
-  ctx: CompileContext,
+  ctx: Ctx,
   say: (template: string) => string,
   rows: string[],
   text: string[],
@@ -197,11 +355,17 @@ function compileOne(
       if (value === "") return;
       // line-height 1.4 on headings (10 §2); never letter-spaced, never
       // `overflow: hidden` — it clips tashkeel.
-      const size = block.level === 1 ? 24 : 19;
+      const sizes = ctx.styles?.headingSize;
+      const size = block.level === 1 ? (sizes?.h1 ?? 24) : (sizes?.h2 ?? 19);
+      const mobile = ctx.styles?.mobile?.headingSize;
+      const cls = block.level === 1 ? (mobile?.h1 ? "k-h1" : "") : mobile?.h2 ? "k-h2" : "";
+      const align = alignOf(block);
       rows.push(
         textCell(
-          `font-size:${size}px;line-height:1.4;font-weight:bold;color:${ctx.palette.fgHeading};padding:0 0 12px 0;text-align:right;`,
+          `font-size:${size}px;line-height:1.4;font-weight:bold;color:${colourOf(block, ctx, ctx.palette.fgHeading)};padding:${padOf(block, "0 0 12px 0")};text-align:${align};`,
           escapeHtml(value),
+          align,
+          cls,
         ),
       );
       text.push(value);
@@ -211,10 +375,13 @@ function compileOne(
     case "paragraph": {
       const value = say(block.text);
       if (value === "") return;
+      const align = alignOf(block);
+      const body = token(ctx, ctx.styles?.textColour, ctx.palette.fgBody);
       rows.push(
         textCell(
-          `font-size:17px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 16px 0;text-align:right;${WRAP}`,
+          `font-size:17px;line-height:1.7;color:${colourOf(block, ctx, body)};padding:${padOf(block, "0 0 16px 0")};text-align:${align};${WRAP}`,
           escapeHtml(value).replace(/\n/g, "<br />"),
+          align,
         ),
       );
       text.push(value);
@@ -234,7 +401,12 @@ function compileOne(
         dropped.push({ id: block.id, type: "button", reason: "malformed" });
         return;
       }
-      rows.push(row(`<td ${cell(`padding:4px 0 20px 0;text-align:right;`)}>${bulletproofButton(href, label, block.style, ctx.palette)}</td>`));
+      const align = alignOf(block);
+      rows.push(
+        row(
+          `<td ${cell(`padding:${padOf(block, "4px 0 20px 0")};text-align:${align};`, align)}${bgAttr(block, ctx)}>${bulletproofButton(href, label, block.style, ctx.palette, shapeOf(block, ctx), Math.min(240, ctx.width))}</td>`,
+        ),
+      );
       // REQ-NTF-013: «a button becomes `label: url`».
       text.push(`${label}: ${isolate(href)}`);
       return;
@@ -252,7 +424,7 @@ function compileOne(
       const lines = [title, day, when, venue].filter((line) => line !== "");
       if (lines.length === 0 && !image) return;
       const inner = [
-        image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border-radius:8px;" />` : "",
+        image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" width="${ctx.width}" style="display:block;width:100%;max-width:${ctx.width}px;height:auto;border-radius:8px;" />` : "",
         ...lines.map((line, index) =>
           index === 0
             ? `<div dir="rtl" style="font-size:19px;line-height:1.4;font-weight:bold;color:${ctx.palette.fgHeading};padding:8px 0 4px 0;text-align:right;">${escapeHtml(isolate(line))}</div>`
@@ -261,7 +433,7 @@ function compileOne(
       ].join("");
       rows.push(
         row(
-          `<td ${cell(`padding:0 0 16px 0;text-align:right;`)}><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${ctx.palette.surface}" style="background:${ctx.palette.surface};border:1px solid ${ctx.palette.edge};border-radius:12px;"><tr><td ${cell(`padding:12px;text-align:right;`)} bgcolor="${ctx.palette.surface}">${inner}</td></tr></table></td>`,
+          `<td ${cell(`padding:${padOf(block, "0 0 16px 0")};text-align:right;`)}><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${ctx.palette.surface}" style="background:${ctx.palette.surface};border:1px solid ${ctx.palette.edge};border-radius:12px;"><tr><td ${cell(`padding:12px;text-align:right;`)} bgcolor="${ctx.palette.surface}">${inner}</td></tr></table></td>`,
         ),
       );
       // REQ-NTF-013: «a session card becomes four LINES» — one text entry
@@ -286,10 +458,10 @@ function compileOne(
         .map(
           (pair) =>
             `<tr><td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgMuted};padding:0 0 4px 0;text-align:right;`)} width="35%">${escapeHtml(pair.label)}</td>` +
-            `<td ${cell(`font-size:15px;line-height:1.7;color:${ctx.palette.fgBody};padding:0 0 4px 8px;text-align:right;${WRAP}`)}>${escapeHtml(pair.value)}</td></tr>`,
+            `<td ${cell(`font-size:15px;line-height:1.7;color:${token(ctx, ctx.styles?.textColour, ctx.palette.fgBody)};padding:0 0 4px 8px;text-align:right;${WRAP}`)}>${escapeHtml(pair.value)}</td></tr>`,
         )
         .join("");
-      rows.push(row(`<td ${cell(`padding:0 0 16px 0;`)}><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0">${inner}</table></td>`));
+      rows.push(row(`<td ${cell(`padding:${padOf(block, "0 0 16px 0")};`)}><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0">${inner}</table></td>`));
       // A list is a list: consecutive lines, one entry — the same reason as
       // the session card's.
       text.push(pairs.map((pair) => `${pair.label}: ${pair.value}`).join("\n"));
@@ -297,7 +469,7 @@ function compileOne(
     }
 
     case "divider": {
-      rows.push(row(`<td ${cell(`padding:4px 0 20px 0;`)}><hr style="border:none;border-top:1px solid ${ctx.palette.edge};margin:0;" /></td>`));
+      rows.push(row(`<td ${cell(`padding:${padOf(block, "4px 0 20px 0")};`)}><hr style="border:none;border-top:1px solid ${ctx.palette.edge};margin:0;" /></td>`));
       return;
     }
 
@@ -314,7 +486,7 @@ function compileOne(
       // the logo falls back to the org's NAME through its heading block
       // (contract 9).
       if (!src) return;
-      const width = Math.min(Math.max(Math.trunc(block.width) || 160, 16), 512);
+      const width = Math.min(Math.max(Math.trunc(block.width) || 160, 16), ctx.width);
       // ★ F2 — an explicit `bgcolor` ATTRIBUTE, never a CSS background. A brand
       // logo is very often dark ink on TRANSPARENCY, and Gmail on Android
       // darkens the card's surface whatever the mail declares (F1's opt-out
@@ -337,12 +509,169 @@ function compileOne(
       // a tinted card, and it is never worse in the failure case.
       rows.push(
         row(
-          `<td ${cell(`padding:0 0 16px 0;text-align:right;`)} bgcolor="${ctx.palette.surface}"><img src="${escapeHtml(src)}" alt="${escapeHtml(say(block.alt))}" width="${width}" style="display:block;width:${width}px;max-width:100%;height:auto;border:0;" /></td>`,
+          `<td ${cell(`padding:${padOf(block, "0 0 16px 0")};text-align:${alignOf(block)};`, alignOf(block))} bgcolor="${ctx.palette.surface}"><img src="${escapeHtml(src)}" alt="${escapeHtml(say(block.alt))}" width="${width}" style="${imageStyle(block, width)}" /></td>`,
         ),
       );
       return;
     }
+
+    // ── Wave 23 (`REQ-NTF-015`) ───────────────────────────────────────────
+
+    case "poster": {
+      // The session's poster CARD (`/api/s/{id}/og`), which the worker hands
+      // over only when it exists — so a draft, a cancelled session or one with
+      // no poster drops the row and never shows a broken image.
+      const src = imageUrl({ kind: "session_card_image" }, ctx);
+      if (!src) return;
+      const align = alignOf(block);
+      rows.push(
+        row(
+          `<td ${cell(`padding:${padOf(block, "0 0 16px 0")};text-align:${align};`, align)} bgcolor="${ctx.palette.surface}"><img src="${escapeHtml(src)}" alt="${escapeHtml(say(block.alt))}" width="${ctx.width}" style="display:block;width:100%;max-width:${ctx.width}px;height:auto;border:0;border-radius:8px;" /></td>`,
+        ),
+      );
+      // No text line, as `image` writes none: the text part must not depend on
+      // whether a picture happened to exist.
+      return;
+    }
+
+    case "qr": {
+      const href = formatValue(lookup(ctx.payload, block.urlBinding));
+      if (href === "") return;
+      const path = qrPath(href, ctx.appOrigin);
+      // ★ A QR is drawn only for a page on OUR origin that `/api/mail/qr`
+      // agrees to draw. Anything else is dropped LOUDLY, so the checks panel
+      // names it rather than an admin wondering where the code went.
+      if (path === null || !ctx.appOrigin) {
+        dropped.push({ id: block.id, type: "qr", reason: "malformed" });
+        return;
+      }
+      const side = block.size === "sm" ? 120 : 160;
+      const src = `${ctx.appOrigin.replace(/\/+$/, "")}/api/mail/qr?p=${encodeURIComponent(path)}`;
+      const label = say(block.label);
+      const align = alignOf(block);
+      const caption = label === "" ? "" : `<div dir="rtl" style="font-size:15px;line-height:1.7;color:${ctx.palette.fgMuted};padding:8px 0 0 0;text-align:${align};">${escapeHtml(label)}</div>`;
+      const imgAlign = align === "center" ? "margin:0 auto;" : align === "left" ? "margin:0 auto 0 0;" : "margin:0 0 0 auto;";
+      rows.push(
+        row(
+          `<td ${cell(`padding:${padOf(block, "0 0 16px 0")};text-align:${align};`, align)} bgcolor="${ctx.palette.surface}"><img src="${escapeHtml(src)}" alt="${escapeHtml(say(block.alt))}" width="${side}" height="${side}" style="display:block;width:${side}px;height:${side}px;border:0;${imgAlign}" />${caption}</td>`,
+        ),
+      );
+      // REQ-NTF-013: the same line a button writes, so a stripped client can
+      // still follow it.
+      text.push(label === "" ? isolate(href) : `${label}: ${isolate(href)}`);
+      return;
+    }
+
+    case "logo": {
+      const align = alignOf(block);
+      if (ctx.logoUrl) {
+        const width = Math.min(Math.max(Math.trunc(block.width) || 160, 16), ctx.width);
+        rows.push(
+          row(
+            `<td ${cell(`padding:${padOf(block, "0 0 16px 0")};text-align:${align};`, align)} bgcolor="${ctx.palette.surface}"><img src="${escapeHtml(ctx.logoUrl)}" alt="${escapeHtml(ctx.org)}" width="${width}" style="${imageStyle(block, width)}" /></td>`,
+          ),
+        );
+      } else {
+        // ★ No PNG/JPEG logo — none, or a WebP one `0126` refuses — is the
+        // org's NAME, so every message is correct with no image (contract 9).
+        rows.push(
+          textCell(
+            `font-size:19px;line-height:1.4;font-weight:bold;color:${colourOf(block, ctx, ctx.palette.fgHeading)};padding:${padOf(block, "0 0 16px 0")};text-align:${align};`,
+            escapeHtml(ctx.org),
+            align,
+          ),
+        );
+      }
+      // ★ No text in EITHER branch: the signature line already names the org,
+      // and the pinned suite holds that the text part never depends on whether
+      // a logo exists.
+      return;
+    }
+
+    case "certificate": {
+      const kind = KIND[formatValue(lookup(ctx.payload, "kind"))] ?? "";
+      const title = formatValue(lookup(ctx.payload, "title"));
+      const serial = formatValue(lookup(ctx.payload, "serial"));
+      const lines = [kind, title, serial].filter((line) => line !== "");
+      const href = formatValue(lookup(ctx.payload, "url"));
+      const label = say(block.label);
+      const linkable = href !== "" && label !== "" && isSendableHref(href, ctx.appOrigin);
+      if (href !== "" && label !== "" && !linkable) dropped.push({ id: block.id, type: "certificate", reason: "malformed" });
+      if (lines.length === 0) return;
+      const inner =
+        lines
+          .map((line, index) =>
+            index === 0
+              ? `<div dir="rtl" style="font-size:19px;line-height:1.4;font-weight:bold;color:${ctx.palette.fgHeading};padding:0 0 4px 0;text-align:right;">${escapeHtml(isolate(line))}</div>`
+              : `<div dir="rtl" style="font-size:15px;line-height:1.7;color:${ctx.palette.fgMuted};text-align:right;">${escapeHtml(isolate(line))}</div>`,
+          )
+          .join("") + (linkable ? `<div dir="rtl" style="padding:12px 0 0 0;text-align:right;">${bulletproofButton(href, label, "primary", ctx.palette, shapeOf(block, ctx), Math.min(240, ctx.width))}</div>` : "");
+      rows.push(
+        row(
+          `<td ${cell(`padding:${padOf(block, "0 0 16px 0")};text-align:right;`)}><table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${ctx.palette.surface}" style="background:${ctx.palette.surface};border:1px solid ${ctx.palette.edge};border-radius:12px;"><tr><td ${cell(`padding:12px;text-align:right;`)} bgcolor="${ctx.palette.surface}">${inner}</td></tr></table></td>`,
+        ),
+      );
+      text.push(lines.map((line) => isolate(line)).join("\n"));
+      if (linkable) text.push(`${label}: ${isolate(href)}`);
+      return;
+    }
+
+    case "social": {
+      const links: { label: string; href: string }[] = [];
+      for (const item of block.items) {
+        const label = say(item.label);
+        // The address is the admin's own literal, never interpolated: an
+        // isolated binding inside a URL would break it.
+        const href = item.value.trim();
+        if (label === "" && href === "") continue;
+        if (label === "" || !isSendableHref(href, ctx.appOrigin)) {
+          dropped.push({ id: block.id, type: "social", reason: "malformed" });
+          continue;
+        }
+        links.push({ label, href });
+      }
+      if (links.length === 0) return;
+      const colour = colourOf(block, ctx, token(ctx, ctx.styles?.linkColour, ctx.palette.fgMuted));
+      const align = alignOf(block);
+      rows.push(
+        textCell(
+          `font-size:15px;line-height:1.7;color:${ctx.palette.fgMuted};padding:${padOf(block, "0 0 16px 0")};text-align:${align};`,
+          links.map((link) => `<a href="${escapeHtml(link.href)}" style="color:${colour};">${escapeHtml(link.label)}</a>`).join(" · "),
+          align,
+        ),
+      );
+      text.push(links.map((link) => `${link.label}: ${isolate(link.href)}`).join("\n"));
+      return;
+    }
   }
+}
+
+/** An image's inline style: today's exactly, unless the block is centred or
+ *  end-aligned, when the image follows (a `display:block` image ignores
+ *  `text-align`). */
+function imageStyle(block: EmailBlock, width: number): string {
+  const align = alignOf(block);
+  const margin = align === "center" ? "margin:0 auto;" : align === "left" ? "margin:0 auto 0 0;" : "";
+  return `display:block;width:${width}px;max-width:100%;height:auto;border:0;${margin}`;
+}
+
+/** The path a QR may encode, or null — an absolute URL on our own origin, with
+ *  no query and no fragment, that `/api/mail/qr` will draw. */
+function qrPath(href: string, appOrigin: string | null): string | null {
+  if (!appOrigin) return null;
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  try {
+    if (url.origin !== new URL(appOrigin).origin) return null;
+  } catch {
+    return null;
+  }
+  if (url.search !== "" || url.hash !== "") return null;
+  return isQrPath(url.pathname) ? url.pathname : null;
 }
 
 function imageUrl(src: ImageSource, ctx: CompileContext): string | null {
@@ -358,15 +687,22 @@ function imageUrl(src: ImageSource, ctx: CompileContext): string | null {
  * plain underlined text in Outlook, which turns a primary action into a link
  * nobody sees.
  */
-function bulletproofButton(href: string, label: string, style: "primary" | "secondary", palette: CompilePalette): string {
+function bulletproofButton(
+  href: string,
+  label: string,
+  style: "primary" | "secondary",
+  palette: CompilePalette,
+  shape: "rounded" | "pill" = "rounded",
+  width = 240,
+): string {
   const background = style === "primary" ? palette.accent : palette.surface;
   const colour = style === "primary" ? "#ffffff" : palette.fgHeading;
   const border = style === "primary" ? background : palette.edge;
   const safeHref = escapeHtml(href);
   const safeLabel = escapeHtml(label);
   return [
-    `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:44px;v-text-anchor:middle;width:240px;" arcsize="18%" strokecolor="${border}" fillcolor="${background}"><w:anchorlock/><center style="color:${colour};font-family:${DESIGN_STACK};font-size:16px;">${safeLabel}</center></v:roundrect><![endif]-->`,
-    `<!--[if !mso]><!-- --><a href="${safeHref}" style="display:inline-block;background:${background};color:${colour};border:1px solid ${border};border-radius:8px;font-family:${DESIGN_STACK};font-size:16px;line-height:44px;padding:0 24px;text-decoration:none;">${safeLabel}</a><!--<![endif]-->`,
+    `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:44px;v-text-anchor:middle;width:${width}px;" arcsize="${shape === "pill" ? "50%" : "18%"}" strokecolor="${border}" fillcolor="${background}"><w:anchorlock/><center style="color:${colour};font-family:${DESIGN_STACK};font-size:16px;">${safeLabel}</center></v:roundrect><![endif]-->`,
+    `<!--[if !mso]><!-- --><a href="${safeHref}" style="display:inline-block;background:${background};color:${colour};border:1px solid ${border};border-radius:${shape === "pill" ? "22px" : "8px"};font-family:${DESIGN_STACK};font-size:16px;line-height:44px;padding:0 24px;text-decoration:none;">${safeLabel}</a><!--<![endif]-->`,
   ].join("");
 }
 
@@ -416,6 +752,22 @@ export function blocksToTemplateText(document: unknown): string {
       case "divider":
       case "spacer":
         break;
+      // Wave 23 — the same lines the compiler writes, in template form.
+      case "poster":
+      case "logo":
+        break;
+      case "qr":
+        if (block.urlBinding.trim() !== "") lines.push(block.label.trim() !== "" ? `${block.label}: {{${block.urlBinding}}}` : `{{${block.urlBinding}}}`);
+        break;
+      case "certificate":
+        lines.push(["{{title}}", "{{serial}}"].join("\n"));
+        if (block.label.trim() !== "") lines.push(`${block.label}: {{url}}`);
+        break;
+      case "social": {
+        const items = block.items.filter((item) => item.label.trim() !== "" && item.value.trim() !== "");
+        if (items.length > 0) lines.push(items.map((item) => `${item.label}: ${item.value}`).join("\n"));
+        break;
+      }
     }
   }
   return lines.join("\n\n");

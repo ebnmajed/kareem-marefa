@@ -39,5 +39,17 @@ export function emptyBlock(type: BlockType): EmailBlock {
       return { type, id, height: "md" };
     case "image":
       return { type, id, src: { kind: "org_logo" }, alt: "", width: 160 };
+    // Wave 23 (`REQ-NTF-015`). Each starts as a block the checks will name
+    // until it is filled — an empty alt or link is blocking, never silent.
+    case "poster":
+      return { type, id, alt: "ملصق الجلسة" };
+    case "qr":
+      return { type, id, label: "امسح للفتح", urlBinding: "url", alt: "", size: "md" };
+    case "logo":
+      return { type, id, width: 160 };
+    case "certificate":
+      return { type, id, label: "اعرض الشهادة" };
+    case "social":
+      return { type, id, items: [{ label: "", value: "" }] };
   }
 }

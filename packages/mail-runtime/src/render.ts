@@ -24,6 +24,7 @@ import { isBlockDocument, type DroppedBlock, type EmailBlockDocument } from "./b
 import { documentFromText, platformDesign } from "./designs.js";
 import { linkFor } from "./links.js";
 import { compileBlocks, type CompilePalette } from "./compile.js";
+import type { EmailStyles } from "./blocks.js";
 
 export interface RenderInput {
   key: string;
@@ -55,6 +56,9 @@ export interface RenderInput {
    *  preview passes its own origin. Unset, a button is dropped and the footer
    *  carries no link — never a relative one. */
   appUrl?: string | null;
+  /** Wave 23 — the editor's canvas only (`CompileContext.annotate`). Never set
+   *  by the worker, so nothing sent carries it. */
+  annotate?: boolean;
 }
 
 /** What `main`'s worker sends, and what `render.ts` has taken since M3. */
@@ -356,6 +360,12 @@ function compilePalette(brand: RenderInput["brand"]): CompilePalette {
   };
 }
 
+/** The brand kit's light canvas, for a document whose ground asks for it. */
+function canvasOf(brand: RenderInput["brand"]): string {
+  const light: BrandPalette = brand && "light" in brand ? (brand.light ?? {}) : {};
+  return hex(light.canvas, "#f5f5f5");
+}
+
 /**
  * The document every mail fills: the block compiler's rows, then the
  * signature. Since the string path left (`DEC-081`) there is one frame, and it
@@ -364,24 +374,35 @@ function compilePalette(brand: RenderInput["brand"]): CompilePalette {
  * background while leaving an explicit text colour alone produces dark text on
  * a dark card) and F4's declared Arabic faces for iOS and Android.
  */
-function shell(rows: string, org: string, brand: LegacyBrand | null | undefined): string {
+function shell(
+  rows: string,
+  org: string,
+  brand: LegacyBrand | null | undefined,
+  // ★ Wave 23. Both absent — every document written before — and every line
+  // below is the literal it has always been.
+  styles: EmailStyles | null = null,
+  extra: { head: string; palette: CompilePalette; canvas: string } | null = null,
+): string {
   const fgBody = brand?.fgBody ?? "#1a1a1a";
   const fgMuted = brand?.fgMuted ?? "#6b6b6b";
   const surface = brand?.surface ?? "#ffffff";
+  const ground = styles?.ground === "canvas" && extra ? extra.canvas : styles?.ground === "surface" && extra ? extra.palette.surface : "#f5f5f5";
+  const padding = styles?.padding ?? 24;
+  const cardClass = styles?.mobile?.padding ? ` class="k-card"` : "";
   const cell = `dir="rtl" align="right" style="font-family:${DESIGN_STACK};font-size:17px;line-height:1.7;color:${fgBody};padding:0 0 16px 0;text-align:right;"`;
   // The documented opt-out for Apple Mail and Outlook.com. Gmail on Android
   // inverts regardless, which is what the `bgcolor` attributes in `compile.ts`
   // are for.
-  const head = `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="color-scheme" content="light" /><meta name="supported-color-schemes" content="light" /><style>:root{color-scheme:light;supported-color-schemes:light;}</style></head>`;
+  const head = `<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="color-scheme" content="light" /><meta name="supported-color-schemes" content="light" /><style>:root{color-scheme:light;supported-color-schemes:light;}</style>${extra?.head ?? ""}</head>`;
 
   return [
     `<!doctype html>`,
     `<html dir="rtl" lang="ar">`,
     head,
-    `<body dir="rtl" style="margin:0;padding:0;background:#f5f5f5;">`,
-    `  <table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f5;padding:24px 0;">`,
+    `<body dir="rtl" style="margin:0;padding:0;background:${ground};">`,
+    `  <table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${ground};padding:24px 0;">`,
     `    <tr><td dir="rtl" align="center">`,
-    `      <table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:${surface};border-radius:12px;padding:24px;">`,
+    `      <table${cardClass} role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:${surface};border-radius:12px;padding:${padding}px;">`,
     rows,
     `        <tr><td ${cell.replace("padding:0 0 16px 0", "padding:16px 0 0 0")} >`,
     `          <span style="font-size:13px;color:${fgMuted};">${escapeHtml(org)} · ${escapeHtml(SIGNATURE)}</span>`,
@@ -456,9 +477,11 @@ export function renderEmail(input: RenderInput): RenderedEmail {
 
   // ★ ONE PATH (DEC-081). Every key resolved to a document above, so every
   // mail is compiled here.
+  const palette = compilePalette(input.brand);
   const compiled = compileBlocks(document, {
     payload,
-    palette: compilePalette(input.brand),
+    palette,
+    annotate: input.annotate === true,
     logoUrl: input.logoUrl ?? null,
     appOrigin: input.appUrl ?? null,
     // ★ wave 20 (DEC-218 §2.5, D14): preferences live on `/app/me/settings` (SCR-029), no longer on the inbox.
@@ -468,7 +491,13 @@ export function renderEmail(input: RenderInput): RenderedEmail {
   return {
     subject,
     text: `${compiled.text.join("\n\n")}\n\n—\n${input.org.name} · ${SIGNATURE}\n`,
-    html: shell(compiled.rows.join("\n"), input.org.name, legacyBrand(input.brand)),
+    html: shell(
+      compiled.rows.join("\n"),
+      input.org.name,
+      legacyBrand(input.brand),
+      compiled.styles,
+      compiled.styles ? { head: compiled.head, palette, canvas: canvasOf(input.brand) } : null,
+    ),
     dropped: compiled.dropped,
   };
 }

@@ -296,6 +296,23 @@
           "textSizeFixed": {
             "title": "Text sizes are fixed",
             "reason": "Sizes come from the design system, not from the block, so no block can shrink text below the minimum."
+          },
+          "qrNoUrl": {
+            "title": "A QR code with no link",
+            "reason": "The code will not appear in the delivered mail. Choose the field carrying the link."
+          },
+          "socialUrlInvalid": {
+            "title": "A social link that will not be sent",
+            "titleWithValue": "The link <bdi>{value}</bdi> will not be sent",
+            "reason": "A link is sent when it starts with https or mailto and has a name."
+          },
+          "socialEmpty": {
+            "title": "An empty social block",
+            "reason": "It will not appear in the mail until you add a link."
+          },
+          "blockEmptyForKey": {
+            "title": "A block this message carries no data for",
+            "reason": "It will not appear in this message as delivered."
           }
         },
         "blocks": {
@@ -311,7 +328,12 @@
             "detail_list": "Detail list",
             "divider": "Divider",
             "spacer": "Spacer",
-            "image": "Image"
+            "image": "Image",
+            "poster": "Poster",
+            "qr": "QR code",
+            "logo": "Logo",
+            "certificate": "Certificate",
+            "social": "Social"
           },
           "add": {
             "heading": "Add a heading",
