@@ -81,4 +81,27 @@ describe("ui/floating-toolbar — inside the scope", () => {
     ).container.querySelector<HTMLElement>("[data-slot=floating-toolbar]")!;
     expect(bar.style.top).toBe("260px");
   });
+
+  it("stays inside its positioned ancestor when centring would run past an edge", () => {
+    const widths = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(400);
+    const parents = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1000);
+    const offsetParent = vi.spyOn(HTMLElement.prototype, "offsetParent", "get").mockImplementation(function (this: HTMLElement) {
+      return this.parentElement;
+    });
+    try {
+      const bar = render(
+        <div style={{ position: "relative" }}>
+          <FloatingToolbar label="تنسيق" anchor={{ left: 900, top: 300, width: 80, height: 40 }}>
+            <button type="button">الخط</button>
+          </FloatingToolbar>
+        </div>,
+      ).container.querySelector<HTMLElement>("[data-slot=floating-toolbar]")!;
+      // centred on 940 it would span 740–1140; clamped, its centre is 1000 − 200 = 800.
+      expect(bar.style.left).toBe("800px");
+    } finally {
+      widths.mockRestore();
+      parents.mockRestore();
+      offsetParent.mockRestore();
+    }
+  });
 });

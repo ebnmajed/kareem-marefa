@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { FloatingToolbarProps } from "@/components/ui";
 
 // The bar above the selection — REQ-UIX-107, DEC-235 §4 (`DEC-NEXT-36`), DEC-237. The lead's; both editors compose it.
@@ -58,6 +58,21 @@ export function FloatingToolbar({ label, anchor, placement, offset = GAP, childr
     all[next].focus();
   }
 
+  // ★ KEPT INSIDE ITS ANCESTOR. Centred on a small layer near the stage's edge, the bar would run past the ancestor and
+  // under whatever sits beside it (the editor's panel covered its start — wave 23, slice 3a's capture). After layout,
+  // the bar's measured width clamps its centre to [half, ancestor − half]; until measured it is centred as before.
+  const [shift, setShift] = useState(0);
+  const centre = anchor.left + anchor.width / 2;
+  useLayoutEffect(() => {
+    const bar = ref.current;
+    const host = bar?.offsetParent as HTMLElement | null;
+    if (!bar || !host) return;
+    const half = bar.offsetWidth / 2;
+    const room = host.clientWidth;
+    const clamped = half * 2 >= room ? room / 2 : Math.min(Math.max(centre, half), room - half);
+    setShift(clamped - centre);
+  }, [centre, anchor.width]);
+
   const below = placement === "below" || (placement === undefined && anchor.top < FLIP_AT + offset - GAP);
   const top = below ? anchor.top + anchor.height + offset : anchor.top - offset;
 
@@ -76,7 +91,7 @@ export function FloatingToolbar({ label, anchor, placement, offset = GAP, childr
       }}
       className={`absolute z-10 flex items-center gap-1 rounded-field border border-edge bg-raised p-1 text-label text-fg-heading ${className}`}
       style={{
-        left: anchor.left + anchor.width / 2,
+        left: centre + shift,
         top,
         translate: below ? "-50% 0" : "-50% -100%",
       }}
