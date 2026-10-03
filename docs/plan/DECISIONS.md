@@ -7754,3 +7754,50 @@ they ship **after** A – C merged, in their own PR, so the three accepted PRs d
 
 Verified on a production build of D: the follow-ups spec 3/3 and the moderation specs 29/29; the RLS cases for both
 migrations green; the captures held. The owner pushes `0189` – `0190` after rehearsal, then merges D.
+
+## DEC-234 — Wave 22's close: M11b is merged and live, the four follow-ups with it; what the wave found that no suite did; what it carries; and what comes next, the owner's to confirm
+
+- **Date:** 2026-10-03 · **Decided by:** the wave-22 lead, recording; §5 is the owner's
+- **Records:** PRs #47 (`26ce455a`), #48 (`d3feaebf`), #49 (`aa7b2267`), #50 (`6212386c`); production at **`0190`**; the
+  Railway worker on `DOCKERFILE` / `worker/Dockerfile`, now pinned by `railway.json`
+
+### 1 · What shipped
+
+Fifteen console screens rebuilt from fourteen artboards, each deleted first (`DEC-208`): `046` – `049`, `050/052`,
+`051`, `053`, `054`, `060` – `065`. No new primitive — the gate's floor stayed 63. Eleven migrations: `0180` (a venue's
+owner), `0181` (the seven audit gaps), `0182` (hosting by the venue's owner), `0183` (one-write report resolution),
+`0184` (the cap explained as it stood), `0185` – `0187` (one-transaction saves), `0188` (the export's slice), and PR D's
+`0189` («materials added» sent) and `0190` (photo reports, a reasoned comment removal). Each rehearsed by the lead on the
+owner's production dump (`0180` – `0188` at `0179`; `0189` – `0190` at `0188`) with the end state identical by hash, and
+pushed by the owner. Accepted by the owner, 2026-10-03.
+
+### 2 · What the wave found that no suite did
+
+1. ★★ **The audit rule had not held since wave 6** — six kinds of console mutation, then a seventh (renaming the org),
+   wrote no record. Closed by definer triggers (`0181`); `062` reads both stores.
+2. ★★ **The console said «saved» when nothing was written**, in five places (`DEC-232` §3). Every write now returns what
+   it wrote; the saved mark is the server's receipt; a stale form is refused.
+3. ★ **The moderation routes held the opposite queues to their names**; takedowns were counted nowhere; a comment's
+   resolution was two writes. Fixed in `050/052` / `051` and `0183`.
+4. ★ **`SCR-022`'s cap explanation vanished after a rule edit** (`REQ-PTS-003`) — fixed by `0184`.
+5. ★ **Exports and `admin_list_members()` were cut at 1,000 rows** silently — every read now pages.
+6. ★ Holding the captures beside the artboards found real defects (`049`'s level «—», `053`'s heading contradicting its
+   rows) and the lead's own wrong requirement (`REQ-UIX-106`'s «beside», corrected).
+
+### 3 · The lead's slips, recorded
+
+Two pushes carried an unpaired delete to a draft PR (the check and the push ran in one step; now separate steps). One
+merge silently duplicated a code block (caught by `notify`). A generated `TRACEABILITY.md` went stale on a docs commit
+(CI caught it). PR D was opened as a draft and not marked ready before the merge. None reached `main`.
+
+### 4 · Carried
+
+★ **No real no-JS path under `/app`** while `app/loading.tsx` streams — the shell's loading model, the owner's call.
+«آخر نشاط» is stored nowhere (drawn on `049`). A company logo and a company domain stay absent. `sessions.host_company_id`
+is superseded, unread, and not yet dropped. `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load
+duplicate (`DEC-204`). `SCR-045` and `055` – `059` with the studio, the email studio and the brand kit.
+
+### 5 · What comes next — the owner's to confirm
+
+The console is now drawn and built except `045` and `055` – `059` (M12). The only designed work left unbuilt is **session
+stories**; that sentence has been overtaken five times, so it is recorded as the owner's to confirm, not as a plan.

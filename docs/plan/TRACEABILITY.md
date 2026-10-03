@@ -582,6 +582,6 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-103` | — | — | `SCR-050` `SCR-052` | — | — | `STORY-UIX-093` | M24 |
 | `REQ-UIX-104` | — | — | `SCR-051` | — | — | `STORY-UIX-094` | M24 |
 | `REQ-UIX-105` | — | — | `SCR-064` | — | — | `STORY-UIX-095` | M24 |
-| `REQ-UIX-106` | — | — | `SCR-065` | — | — | `STORY-UIX-096` | M24 |
+| `REQ-UIX-106` | — | — | `SCR-022` `SCR-065` | — | — | `STORY-UIX-096` | M24 |
 
 <!-- TRACEABILITY:END -->
