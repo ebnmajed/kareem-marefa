@@ -356,6 +356,7 @@
           "saving": "Saving…",
           "blockedBySaveChecks": "Fix the blocking checks before saving.",
           "sendTest": "Send a test",
+          "testNeedsSave": "Save before testing.",
           "testSent": "A test message was sent to your address",
           "testRateLimited": "Too many tests in the last hour. Try again shortly."
         }
