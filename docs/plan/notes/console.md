@@ -474,6 +474,32 @@ against §4.1:
   run had 6 failures on 5s timeouts under load (`inspector-align`, `schedule-days`, `input`, `deactivate-toggle`,
   `viewer-screen`). All of them pass on their own.
 
+### 14 · As built — `045` (wave 23, `DEC-238`)
+
+Delete `52a8ac6d` (the page, the four transferred chrome files and their two suites), then the create commit right after.
+Read back against §4.2. Every row holds. As-built notes:
+- **Co-located** in `admin/sessions/[id]/certificates/`: `page.tsx`, `template-control.tsx`, `mode-control.tsx`,
+  `eligible-table.tsx`, `issuance.tsx`, `revoke-form.tsx`; `actions.ts` is unchanged. The mode control has no board, so
+  it carries the old control's behaviour and its pinned accessible names, with a new header.
+- **The template after completion** (`DEC-238` §2): «غيّر» on the line links to `?design=<kind>` and opens a sheet, and
+  only while that kind has held certificates and none issued. «طبّق على المحجوزة» is in it. The data re-checks through
+  `set_certificate_design()`'s `55000`, so **no definer change** (§12b).
+- **The line** names what each kind was issued with, else what issuance would pick (`getCertificateDesign()`'s
+  `effectiveTemplateId`, now on `pickEffectiveTemplate()`). When the two kinds differ, the line names each.
+- ★ **Deviation — the PDF link's accessible name** is now «PDF — نزّل شهادة {name}». The visible word is the board's
+  «PDF», and SC 2.5.3 wants the accessible name to begin with it. This **moves two specs that pinned the old exact name**:
+  `wave13-designer-certificates-download.spec.ts:146` and `wave13-demo-download.spec.ts:218`. They are ledger lines for
+  the lead and correct §9/§12's «kept».
+- ★ **Deviation — no-JS.** Revoke renders its sheet as a region without JS (`?revoke=<id>`), but the submit needs JS,
+  because a form action would reset the typed reason. Issuing needs JS too, because selecting rows already does. Viewing,
+  «المزيد» and the PDF link work without JS.
+- Before completion: the template per kind, then the mode, then «من يستحق · N». After completion: the line, then
+  محجوزة / صادرة / ملغاة (only when there are some) / بلا شهادة (only when there are some). A moderator sees the line and
+  «من يستحق» at every stage. A cancelled session with nothing issued shows one line.
+- Tests: `tests/components/certificates/{issuance,revoke-form}.test.tsx` (new, 9), `mode-control.test.tsx` (moved with
+  its cases unchanged, 4). `proposal-copy.test.tsx` (the lead's, as `sessions'` custodian) scans `admin/sessions/**` for
+  `overflow-hidden`, so the preview frame avoids it.
+
 Written before code, updated as bundles land. Read `notify.md` §6.1, `scoring.md`'s wave-3
 handoff and `content.md` §5 first — they describe what I inherit and where the gaps already are.
 
