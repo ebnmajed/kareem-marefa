@@ -111,7 +111,7 @@ export function FieldsPanel({
               type="button"
               disabled={disabled}
               onClick={() => onAdd(field.layer, { name: `{${name(field.binding)}}`, binding: field.binding, fallback: name(field.binding) })}
-              className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-start"
+              className="min-h-11 w-full px-3 text-start [&>span]:flex [&>span]:w-full [&>span]:items-center [&>span]:justify-between [&>span]:gap-3"
             >
               <span className="text-body-sm text-fg-heading">
                 <bdi>{`{${name(field.binding)}}`}</bdi>
