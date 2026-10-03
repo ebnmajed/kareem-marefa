@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-03 · **Branch:** `main` · ★★ **WAVE 23 IS PLANNED, NOT STARTED** · **`main`:** `242657a5`; production at **`0190`** · **Phase:** ★★ **M12 — THE STUDIO (`DEC-235`, M25)**: `055` the templates, `056`/`057` the designer rebuilt as a rich editor on a free canvas, `058` the email builder, `045` the session's certificates — **four screens from SEVEN artboards**, each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; **six primitives, so the floor moves 63 → 69**. ★★ **NO migration is expected — both of the wave's open questions are already answered by what is built** (`DEC-235` §3): the document model carries per-preset and per-variant overrides, so variants on one strip need no schema; and «six blocks» means six NEW types over the eight `blocks.ts` already holds. The brief is `docs/plan/notes/wave-23-lead.md`. ★★ **`DEC-208` REACHES THE CHROME, NOT THE ENGINE** — the first wave where that matters: 3,873 lines of designer, with the logic/chrome seam named file by file (`DEC-235` §2). ★★ **`DEC-093` is the wave's largest risk**: the artboards draw drag in six new places and every one needs a single-pointer path. ★ **The owner rules the studio before stories** (§1) — overtaken a fifth time; the ring stays inert. ★ **Owed by the owner:** the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-059` and the platform console (M13), and session stories.
+**Last updated:** 2026-10-03 · **Branch:** `main` · ★★ **WAVE 23 IS PLANNED, NOT STARTED** · **`main`:** `242657a5`; production at **`0190`** · **Phase:** ★★ **M12 — THE STUDIO (`DEC-235`, M25)**: `055` the templates, `056`/`057` the designer rebuilt as a rich editor on a free canvas, `058` the email builder, `045` the session's certificates — **four screens from NINE artboards** (★ **the pack gained two on 2026-10-03 with a «certificate flows» section** — `DEC-236`), each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; **six primitives, so the floor moves 63 → 69**. ★★ **The owner rules THREE certificate defaults, one per kind** — `family` already IS the kind and `0055`'s indexes already give one default each, so the drawn two-default model is not built and **`0191` stays unwritten** (`DEC-236` §1). ★★ **NO migration is expected — both of the wave's open questions are already answered by what is built** (`DEC-235` §3): the document model carries per-preset and per-variant overrides, so variants on one strip need no schema; and «six blocks» means six NEW types over the eight `blocks.ts` already holds. The brief is `docs/plan/notes/wave-23-lead.md`. ★★ **`DEC-208` REACHES THE CHROME, NOT THE ENGINE** — the first wave where that matters: 3,873 lines of designer, with the logic/chrome seam named file by file (`DEC-235` §2). ★★ **`DEC-093` is the wave's largest risk**: the artboards draw drag in six new places and every one needs a single-pointer path. ★ **The owner rules the studio before stories** (§1) — overtaken a fifth time; the ring stays inert. ★ **Owed by the owner:** the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-059` and the platform console (M13), and session stories.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -33,6 +33,34 @@ names every file as logic kept or chrome rebuilt.** A plan that deletes `canvas.
    new: **الملصق · رمز QR · نقاطك · شهادة · الشعار · اجتماعي**. ★ **`detail_list` is built and not drawn — it STAYS**, because
    existing messages compile it. ★★ **And the proof the six are additive is `tests/unit/mail-pinned/`'s 120 files
    passing UNTOUCHED** — wave 10 pinned them for exactly this, and pinned mail output is never auto-refreshed.
+
+### ★★ The certificate flows — added 2026-10-03 by `DEC-236`
+
+`M12.md` gained **«The certificate flows — two, drawn separately»** and `m12/` gained
+`AdminTemplatesCerts.dc.html` and `AdminCertDesigner.dc.html` — **nine artboards, not seven**. Stories `C1` – `C7`
+are in the brief's §4: **PR A** takes the library's الشهادات tab, the defaults, the session's template choice and
+`045`'s release/revoke; **PR B** takes the certificate canvas, its checks and «معاينة بعضو».
+
+★★ **THE OWNER'S RULING: THREE DEFAULTS, ONE PER KIND — حضور · تقديم · إنجاز — AND NO MIGRATION.** The pack asked
+for a template tagged with the kind**s** it serves and **two** defaults. Measured:
+`design_templates.family` **is single-valued and already IS the kind** (`0098` seeds `attendance`,
+`presenter`, `achievement`), and `design_templates_org_default` on `(org_id, purpose, family) where is_default`
+plus its platform sibling (`0055:102-105`) **already give exactly one default per kind.** The two-default model
+would need a kinds mapping, a regrouped default and a reconciliation of `0098`'s library; **the owner ruled the
+schema's shape instead. The tab draws three, and a template serving several kinds is not built.**
+
+★ **And one correction to the amendment's own wording:** «the issued PDF … **is never re-rendered**» is the
+**opposite** of `REQ-CRT-014`, which is **«Reissuing is byte-reproducible»** — «regenerating a certificate years
+later produces the same document: the template version and the font hashes are pinned at issue time», with «a
+certificate issued against template v3 still renders as v3 after v4 is published». `certificates.template_version_id`
+is already `not null` with `on delete restrict` (`0055:288`). **The rule is «a reissue renders identically», never
+«a reissue does not happen»** — a story written the other way breaks `D67`.
+
+★ **The flows' definition of done is the owner's walkthrough, captured at every step**: a template designed, set as
+its kind's default, a session completed in review mode, two certificates released, one revoked with a reason, the
+other downloaded by the member — plus `REQ-CRT-004`'s negative (**a held certificate is invisible to its recipient
+and no mail is sent**) and `REQ-CRT-011`'s (**the verification page says «شهادة ملغاة» and never the reason; the PDF
+is not deleted**).
 
 ### ★★ `DEC-093` is the largest risk in this wave
 

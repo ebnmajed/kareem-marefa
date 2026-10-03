@@ -7939,3 +7939,79 @@ A company logo, refused (`DEC-195` §4). · Recurring series (`A14`). · **Repla
   `06-visual-designer.md` (the chrome, §2 and §4), `16-ui-redesign.md` (§10 and §11 superseded),
   `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten agent files (the wave-23 map), `STATUS.md`
   (the wave-23 head), `docs/design/screens/M12.md` and `m12/**` (added to the tree)
+
+## DEC-236 — An amendment to wave 23: the certificate flows are two, drawn separately; the owner rules THREE defaults, one per kind, so `0191` is not written; and `REQ-CRT-014` is «byte-reproducible», not «never re-rendered»
+
+- **Date:** 2026-10-03 · **Decided by:** the owner (§1, three defaults; and the pack's amendment of 2026-10-03); the rest by the wave-23 planner, from the amended `docs/design/screens/M12.md` and measurement of the tree at `e1e4af6a`
+- **Amends:** `DEC-235` §3's «no migration is expected» — ★ **it still holds, and now for a third reason** (§1); `DEC-235` §5.2's artboard count, **seven → nine**
+- **Adds:** stories `C1` – `C7` to `docs/plan/notes/wave-23-lead.md` §4, divided between PR A and PR B
+- **Does not add:** a migration. `0191` stays unwritten
+
+### 1 · ★★ Three defaults, one per kind — the owner's ruling, and why it costs nothing
+
+`M12.md`'s new section asks for a certificate template «tagged with the kind**s** it serves» and
+**two** defaults — one for attendance/presenting, one for achievements. **Measured:**
+
+- **`design_templates.family` is single-valued and ALREADY IS the kind.** `0098` seeds the platform
+  families **`attendance`**, **`presenter`** and **`achievement`** under `purpose = 'certificate'`
+  (`0098:1528`, `:2261`, `:2997` and their portrait siblings).
+- **The defaults are already unique per kind**: `design_templates_org_default` on
+  `(org_id, purpose, family) where is_default`, and `design_templates_platform_default` on
+  `(purpose, family) where is_default and org_id is null` (`0055:102-105`).
+
+So the schema gives **one default per kind — three — for free**, while the drawn two-default model
+needs a template to serve more than one kind, which a single-valued `family` cannot express and which
+would cost a kinds mapping, a regrouped default, and a reconciliation of `0098`'s seeded library.
+
+★ **The owner ruled the schema's shape: a template serves ONE kind, there are THREE defaults —
+حضور · تقديم · إنجاز — and `0191` is not written.** The tab draws three. **A template tagged with
+several kinds is not built.** `054`'s release uses the `achievement` default; `045` uses the
+`attendance` or `presenter` default for the kind it issues, unless the session named another in
+الجدولة.
+
+### 2 · ★ `REQ-CRT-014` is «byte-reproducible», not «never re-rendered»
+
+The amendment's wording — «the issued PDF renders from the session's template at issue time and **is
+never re-rendered**» — is the **opposite** of the requirement, and a story written to it would break
+`D67`. `REQ-CRT-014` reads: *«Reissuing is byte-reproducible… Regenerating a certificate years later
+produces the same document: the template version and the font hashes are pinned at issue time»*, with
+the acceptance *«a certificate issued against template v3 still renders as v3 after v4 is published»*
+and *«a font that has since been removed from the picker still resolves for reissue»*.
+
+★ **The schema already pins it**: `certificates.template_version_id` is **`not null`** with
+`on delete restrict` (`0055:288`). **So the rule is «a reissue renders identically», never «a reissue
+does not happen».** The brief states it the requirement's way.
+
+### 3 · The two other requirements the flow must not soften
+
+- **`REQ-CRT-004`** — in review mode certificates are **generated and held**; **a held certificate is
+  not visible to its recipient and is not emailed**; **release is audited**; release works
+  individually and in bulk.
+- **`REQ-CRT-011`** — revoke takes a **mandatory reason**, is audited, takes effect on the
+  verification page **immediately**, where the page shows **«شهادة ملغاة» and NEVER the reason**, and
+  **the PDF is not deleted**.
+
+### 4 · The pack's amendment, measured
+
+**Nine artboards, not seven**: `m12/` gained **`AdminTemplatesCerts.dc.html`** (055's الشهادات tab)
+and **`AdminCertDesigner.dc.html`** (the certificate canvas). `M12.md`'s own header still reads «4
+artboards», so the spec has now undercounted twice. ★ **`m12/png/` is re-counted at Step 0** — the two
+new boards' PNGs may or may not have arrived with them, and the stray
+`SCR-055 · القوالب@1x (1).png` duplicate still stands.
+
+### 5 · Where the stories land
+
+**PR A** takes `C1` (the الشهادات tab), `C2` (the three defaults), `C6` (the session's template
+choice, shown on `045` and written in الجدولة — ★ `DEC-178`'s one writer of the **mode** is
+unchanged) and `C7` (release and revoke). **PR B** takes `C3` (the certificate canvas and its variant
+strip), `C4` (the checks, with the longest **member name** where the poster fits the longest title)
+and `C5` («معاينة بعضو», through the one renderer — `DEC-017`).
+
+★ **The flows' definition of done is the owner's walkthrough, captured at every step**: a template
+designed, set as its kind's default, a session completed in review mode, two certificates released,
+one revoked with a reason, the other downloaded by the member — plus the two negatives §3 makes
+explicit.
+
+- **Documents changed:** `docs/plan/notes/wave-23-lead.md` (§4 and the artboard count), `STATUS.md`
+  (the wave-23 block), and at Step 0 `01-prd.md`, `09-sitemap-screens.md` and `15-backlog.md` for
+  `C1` – `C7`'s ids

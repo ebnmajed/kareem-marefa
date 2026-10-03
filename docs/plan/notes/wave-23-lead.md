@@ -3,7 +3,7 @@
 **You are the implementing lead.** This brief is measured, not estimated: every number was read from
 the tree at `242657a5`, and where it disagrees with the planning prompt or with `M12.md`, the
 disagreement is named. Read it, then `docs/design/screens/M12.md`, then `M11a.md` §0 for the console
-frame you build inside, then the **seven** artboards at 1280 beside their PNGs, then
+frame you build inside, then the **nine** artboards at 1280 beside their PNGs — ★ **the pack gained two on 2026-10-03**, and `M12.md` gained a «The certificate flows — two, drawn separately» section at §056/057, then
 `notes/wave-22-lead.md`, `DEC-230`…`DEC-234`, `DEC-199` §2 as amended by `DEC-208`,
 **`06-visual-designer.md` in full**, `DEC-093`, `DEC-096`, `DEC-176`, `DEC-177`, `DEC-178`,
 `DEC-203`, `REQ-CRT-004`, `REQ-CRT-011`, `REQ-CRT-014`, `08-notifications-calendar.md` §2,
@@ -39,15 +39,15 @@ Stories have now been overtaken **five** times. **Wave 18's ring stays inert; no
 | The next decision | **`DEC-235`** — the log ends at `DEC-234`. As the prompt says |
 | `src/components/ui/` | **63 `.tsx`**, floor **63** at `tests/unit/ui-playground.test.ts:121`. ★ The prompt asked me to verify rather than asserting a number, which is the right instruction — the three waves before it each inherited an inflated count from the design pack's header |
 | ★★ The floor **moves 63 → 69** | `M12.md`'s Primitives names **six** new, not the prompt's three: `editor-rail`, `canvas-stage`, `floating-toolbar`, `layer-list`, `block-canvas`, `block-library` |
-| ★ The artboards | **SEVEN `.dc.html`, not four.** Four screens, seven boards: `AdminTemplates` (055) · `AdminDesigner` + `AdminDesignerElements` (056/057) · `AdminEmailGallery` + `AdminEmails` + `AdminEmailAdd` (058) · `AdminCertificates` (045). `M12.md`'s own header also says «4 artboards» |
-| ★ A stray file | `m12/png/` holds **nine** entries: seven PNGs, a `README.md`, and **`SCR-055 · القوالب@1x (1).png` — an accidental duplicate**. Delete it at Step 0 or record why it stays; a later count will otherwise disagree with the boards |
+| ★ The artboards | **NINE `.dc.html`, not four.** Four screens, nine boards after the pack's amendment of 2026-10-03: `AdminTemplates` + ★ `AdminTemplatesCerts` (055) · `AdminDesigner` + `AdminDesignerElements` + ★ `AdminCertDesigner` (056/057) · `AdminEmailGallery` + `AdminEmails` + `AdminEmailAdd` (058) · `AdminCertificates` (045). `M12.md`'s own header still says «4 artboards» |
+| ★ A stray file | `m12/png/` held **nine** entries when first measured — seven PNGs, a `README.md`, and **`SCR-055 · القوالب@1x (1).png` — an accidental duplicate**. Delete it at Step 0 or record why it stays; a later count will otherwise disagree with the boards. ★ **Re-count the directory at Step 0**: the pack gained two boards on 2026-10-03 and their PNGs may or may not have arrived with them |
 | ★ They are untracked | `M12.md` and `m12/` are `??`. **Step 0 commits the spec and the artboards**, and you say what you chose for any planning prompt |
 | New ids | read the next free `REQ-UIX-*` and `STORY-UIX-*` from `01-prd.md` and `15-backlog.md` at Step 0 — wave 22 consumed `REQ-UIX-091`…`106` and more |
 
-## The wave — four screens, seven artboards, six primitives, three PRs
+## The wave — four screens, nine artboards, six primitives, three PRs
 
-- **A — `wave-23a/templates-and-certificates`**: `055` القوالب · `045` الشهادات.
-- **B — `wave-23b/the-designer`**: `056`/`057` المصمّم, the six primitives' home.
+- **A — `wave-23a/templates-and-certificates`**: `055` القوالب **with its الشهادات tab** (`AdminTemplatesCerts.dc.html`) · `045` الشهادات · ★ **the release and revoke flow** (§4 below).
+- **B — `wave-23b/the-designer`**: `056`/`057` المصمّم, the six primitives' home, ★ **and the certificate canvas** (`AdminCertDesigner.dc.html`, §4 below).
 - **C — `wave-23c/the-email-builder`**: `058` البريد.
 
 ★ **Open each against `main` on its FIRST push.** Five waves have avoided the retarget trap that way.
@@ -133,6 +133,55 @@ old file deleted** (item 1) · `variant-strip.tsx` (85) → the strip on the bar
 
 ★ **Each rebuilt file gets its kept-behaviour row**; each kept file's existing suite passes
 **untouched**, which is the proof the seam is in the right place.
+
+## ★★ §4 — the certificate flows, added by the pack's amendment of 2026-10-03
+
+`M12.md` §056/057 gained **«The certificate flows — two, drawn separately»** and the pack gained two boards.
+**A template is never per session**: one flow designs templates, the other issues from them.
+
+★★ **THE OWNER'S RULING, 2026-10-03: THREE DEFAULTS, ONE PER KIND — and therefore NO MIGRATION.**
+The pack asks for a template «tagged with the kind**s** it serves» and **two** defaults, one for
+attendance/presenting and one for achievements. ★ **Measured: `design_templates.family` is
+single-valued and ALREADY IS the kind** — `0098` seeds the platform families `attendance`,
+`presenter` and `achievement` — and the unique indexes `design_templates_org_default` on
+`(org_id, purpose, family) where is_default` and `design_templates_platform_default` on
+`(purpose, family) where is_default and org_id is null` (`0055:102-105`) **already give exactly one
+default per kind.** So the owner ruled the schema's shape: **a template serves ONE kind, there are
+THREE defaults — حضور · تقديم · إنجاز — and `0191` is not written.** Draw three, not two. A template
+tagged with several kinds is **not built**.
+
+### The stories
+
+| # | Story | `REQ-*` | Artboard | PR |
+|---|---|---|---|---|
+| C1 | **The library's الشهادات tab** — the org's certificate templates and the platform's, each showing **the kind it serves**, «انسخ لتعدّل» on a platform one (read-only until copied), and **the three defaults named on the tab** | `REQ-DSG-*`, `REQ-CRT-004` | `AdminTemplatesCerts.dc.html` | **A** |
+| C2 | **Three defaults, one per kind**, set from the tab. ★ **`054`'s release uses the `achievement` default; `045` uses the `attendance` or `presenter` default for the kind it is issuing**, unless the session named another in الجدولة (C5). Enforced by `0055`'s existing indexes — **no column, no migration** | `REQ-DSG-*` | `AdminTemplatesCerts.dc.html` | **A** |
+| C3 | **The certificate canvas** — the same editor on a **landscape** canvas, the variant strip **A4 أفقي · A4 عمودي · A3 أفقي**, and the **الحقول** panel listing every certificate field **marked used / unused**: {اسم العضو} {نوع الشهادة} {عنوان الجلسة} {تاريخ الجلسة} {نص الشهادة} {الرقم التسلسلي} {تاريخ الإصدار} {التوقيع} {رمز التحقق QR}, and **{المستوى} only for the `achievement` kind**. ★ **{رمز التحقق QR} binds to the verify URL** — the one `verify/**` route, never a constructed string | `REQ-DSG-*`, `REQ-CRT-014` | `AdminCertDesigner.dc.html` | **B** |
+| C4 | **The checks run on the certificate**: contrast, the logo's PPI, and ★ **the longest MEMBER NAME in the org fitted at the layer's max lines** — the poster's equivalent fits the longest title. A rail item with a count, inline, never a modal (`DEC-NEXT-34`) | `REQ-DSG-*` | `AdminCertDesigner.dc.html` | **B** |
+| C5 | **«معاينة بعضو»** — rendered with a **real member**, and for the session kinds with a **real completed session**. Through the one renderer (`DEC-017`), never a second path | `REQ-DSG-*` | `AdminCertDesigner.dc.html` | **B** |
+| C6 | **The session's template choice** — picked in **الجدولة, before completion**, defaulting to the org default for the kind; **shown on `045` beside the mode**. ★ **`DEC-178`'s one writer of the MODE is unchanged** — الجدولة writes both, `045` shows both and writes neither | `REQ-CRT-004`, `DEC-178` | `AdminCertificates.dc.html` | **A** |
+| C7 | **`045` release and revoke** — **individually and in bulk**; ★ **held certificates are not visible to recipients and are not emailed**, and **release is audited** (`REQ-CRT-004`); revoke's **reason is mandatory** and audited, the verification page then shows **«شهادة ملغاة» and NEVER the reason**, and **the PDF is not deleted** (`REQ-CRT-011`); every download through **the one audited route** (`REQ-CRT-014`, `DEC-177`) | `REQ-CRT-004`, `-011`, `-014` | `AdminCertificates.dc.html` | **A** |
+
+### ★ Two corrections to the amendment's own wording, both measured
+
+1. ★★ **«the issued PDF … is never re-rendered» is the OPPOSITE of `REQ-CRT-014`.** That requirement is
+   **«Reissuing is byte-reproducible»**: «Regenerating a certificate years later produces the same
+   document: the template version and the **font hashes** are pinned at issue time», with the
+   acceptance «a certificate issued against template v3 still renders as **v3** after v4 is
+   published». ★ **The schema already pins it**: `certificates.template_version_id` is **`not null`**
+   and `on delete restrict` (`0055:288`). So the rule is **«a reissue renders identically», not «it is
+   never re-rendered»** — a story that forbids reissue breaks `REQ-CRT-014` and `D67`. Write it the
+   requirement's way.
+2. ★ **«the kinds each serves» is singular in the schema and now by ruling** — see the ruling above.
+
+### Definition of done for the flows — the owner's walkthrough, captured at each step
+
+An admin **designs a certificate template**, **sets it as the default for its kind**, **completes a
+session in review mode**, **releases two certificates**, **revokes one with a reason**, and **the
+member downloads the other** — ★ **a capture at every step, each held beside its artboard**, on a
+production build the row names by commit. ★ Plus the two negatives that `REQ-CRT-004` and `-011`
+make explicit: **a held certificate is not visible to its recipient and no mail is sent**, and **the
+verification page of a revoked one says «شهادة ملغاة» without the reason.**
 
 ## Explicitly out
 
