@@ -27,6 +27,7 @@
 | — a blank certificate | «قالب فارغ» button → «قالب جديد» link; «أنشئ» → «أنشئ وافتح», which **opens the studio** instead of toasting; «عمودية» → «A4 عمودي» | ★ expectation |
 | — the scheme toggle, the 390 dark capture | removed — not drawn, not built (D6, `DEC-238`) | ★ expectation |
 | — the empty org's «إلى قوالب المنصة», the moderator's sentence | removed (`DEC-NEXT-25`); the moderator's assertion is now the absence of every write control | ★ expectation |
+| `wave13-designer-certificates-download.spec.ts:146`, `wave13-demo-download.spec.ts:218` (lead, custodian / own) | the PDF link's name «نزّل شهادة {name}» → «PDF — نزّل شهادة {name}» — the visible word is the board's «PDF» and the name begins with it (SC 2.5.3) | selector |
 
 ★★ **`0191` — REHEARSED 2026-10-03 on the owner's fresh production dump** (`/tmp/prod-schema-0190.sql`, taken at `0190`,
 **0 data rows**, `0181` present and nothing of `0191`). A throwaway `rehearse23` owned by `postgres`, the extensions as
