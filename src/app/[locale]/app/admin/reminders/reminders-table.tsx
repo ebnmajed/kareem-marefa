@@ -24,7 +24,7 @@ export function RemindersTable({ rows }: { rows: ReadRow[] }) {
   const t = useTranslations("notifications.admin.reminders");
   return (
     <DataTable<ReadRow>
-      className="mt-6"
+      className="mt-6 md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
       label={t("title")}
       rows={rows}
       rowKey={(row) => row.id}

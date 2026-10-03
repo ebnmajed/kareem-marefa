@@ -102,9 +102,11 @@ describe("SCR-049 — the table", { timeout: 20_000 }, () => {
     expect(screen.getByRole("navigation", { name: "صفحات الأعضاء" }).textContent).toContain("1 – 25 من 212");
   });
 
-  it("★ REQ-ADM-009: the admin sees every member's email on its own line", () => {
+  // ★ wave 22, the lead's ruling: the board draws no email in the row and no requirement asks it of this row — the
+  // full record is the profile (an expectation moved — a ledger line). The search still finds by email.
+  it("the row draws no email — the full record is the profile", () => {
     renderTable();
-    expect(within(rowOf("سارة العتيبي")).getByText("sara@example.com")).toBeVisible();
+    expect(within(rowOf("سارة العتيبي")).queryByText("sara@example.com")).toBeNull();
   });
 
   it("the role column: staff and a deactivated member wear a badge with REQ-ADM-009's words; a member is plain text", () => {

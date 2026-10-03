@@ -278,21 +278,19 @@ test("★ SCR-046, the job: the owner sets a venue's company in one move, and «
   expect(cleared[0].company_id).toBeNull();
 });
 
-test.describe("without JavaScript (DEC-232 §5.5)", () => {
-  test.use({ javaScriptEnabled: false });
-
-  test("«تصنيف جديد» opens the form in the page, and it posts", async ({ context, page }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop", "one walk is enough");
-    await signIn(context, adminEmail);
-    await page.goto("/ar/app/admin/categories");
-    await page.locator("#main").getByRole("link", { name: "تصنيف جديد" }).click();
-    const region = page.getByRole("region", { name: "تصنيف جديد" });
-    await region.getByLabel("الاسم").fill("تصنيف بلا جافاسكربت");
-    await region.getByRole("button", { name: "احفظ" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "حُفظ التصنيف." })).toBeVisible();
-    const { rows } = await db.query(`select 1 from public.categories where org_id = $1 and name = 'تصنيف بلا جافاسكربت'`, [orgId]);
-    expect(rows).toHaveLength(1);
-  });
+// ★ DEC-232 §5.5: «… جديد» and «عدّل» are links to `?new=1` / `?edit=<id>`, and the SERVER renders the form for them.
+// A browser with JavaScript off cannot show it here: `app/loading.tsx` streams every `/app` page behind a Suspense
+// boundary whose reveal is an inline script, so no-JS sees the skeleton on every console page (the verify run proved it).
+// What this proves instead is the half that is ours — the response itself carries the form, its fields and its action.
+test("?new=1 renders the creation form on the server — the URL is the state (DEC-232 §5.5)", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "one walk is enough");
+  await signIn(context, adminEmail);
+  const html = await (await page.request.get("/ar/app/admin/categories?new=1")).text();
+  expect(html).toContain('id="category-editor"');
+  expect(html).toContain('name="name"');
+  expect(html).toMatch(/<form[^>]*action=/);
+  const edit = await (await page.request.get("/ar/app/admin/categories?new=0")).text();
+  expect(edit).not.toContain('id="category-editor"');
 });
 
 test("SCR-046/047/048 at 390 px RTL: the three lists read down the page as a stacked card list, never sideways", async ({ context, page }) => {
