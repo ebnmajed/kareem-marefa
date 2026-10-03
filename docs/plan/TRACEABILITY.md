@@ -224,7 +224,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-EVT-011` | `ENT-photos` | — | `SCR-012` `SCR-022` | `JOB-process_photo` `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-EVT-005` | M5 |
 | `REQ-EVT-012` | `ENT-photo_takedowns` `ENT-photos` | — | `SCR-012` `SCR-043` `SCR-050` +1 | `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-EVT-006` | M5 |
 | `REQ-EVT-013` | `ENT-photo_takedowns` `ENT-photos` | — | `SCR-012` | — | — | `STORY-EVT-005` | M5 |
-| `REQ-EVT-014` | `ENT-photos` | `POL-comments.removal_audit` | `SCR-011` `SCR-012` `SCR-043` +4 | — | `MSG-reminder_generic` | `STORY-EVT-006` | M5 |
+| `REQ-EVT-014` | `ENT-photos` | `POL-comments.removal_audit` | `SCR-011` `SCR-012` `SCR-043` +4 | — | `MSG-materials_added` `MSG-reminder_generic` | `STORY-EVT-006` | M5 |
 | `REQ-EVT-015` | — | — | `SCR-012` | — | — | `STORY-EVT-006` | M5 |
 | `REQ-EVT-016` | — | — | `SCR-012` | `JOB-zip_session_photos` | — | `STORY-EVT-007` | M16 |
 
