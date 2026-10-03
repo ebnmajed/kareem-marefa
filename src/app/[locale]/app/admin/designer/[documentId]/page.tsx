@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { PresetName } from "@kareem/designer-runtime";
-import { exportFingerprint, getDesignerDocument, getExportQueue, listPreviewSessions, signExportUrl, type DesignerDocumentData } from "@/lib/dal/designer";
+import { exportFingerprint, getDesignerDocument, getExportQueue, getLongestSamples, listPreviewMembers, listPreviewSessions, signExportUrl, type DesignerDocumentData } from "@/lib/dal/designer";
 import { listEditorFaces } from "@/lib/dal/fonts";
 import { assetSizesFor, downloadHref, listDesignAssets } from "@/lib/dal/posters";
 import { DesignerEditor } from "@/components/designer/editor";
@@ -16,7 +16,7 @@ import { Link } from "@/components/ui/link";
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { publishVersion } from "@/app/[locale]/app/admin/templates/actions";
-import { queueExports } from "./actions";
+import { openSiblingTemplate, queueExports } from "./actions";
 
 // SCR-056/057 · /app/admin/designer/[documentId] — the studio, rebuilt from `AdminDesigner.dc.html` (wave 23,
 // REQ-UIX-107, REQ-UIX-110, DEC-208, DEC-237, DEC-238). REQ-DSG-005, REQ-DSG-006, REQ-DSG-010 … REQ-DSG-013,
@@ -56,11 +56,11 @@ export default async function DesignerPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; documentId: string }>;
-  searchParams: Promise<{ scheme?: string; download?: string | string[]; session?: string }>;
+  searchParams: Promise<{ scheme?: string; download?: string | string[]; session?: string; member?: string }>;
 }) {
   const { locale, documentId } = await params;
   setRequestLocale(locale);
-  const { scheme: requestedScheme, download, session: previewSessionId } = await searchParams;
+  const { scheme: requestedScheme, download, session: previewSessionId, member: previewMemberId } = await searchParams;
 
   // The QR target and the font URLs must be ABSOLUTE: a phone camera needs a URL (REQ-DSG-023), and a `srcdoc`
   // iframe resolves a relative one against whatever the browser decides its base is.
@@ -69,10 +69,11 @@ export default async function DesignerPage({
   const proto = headerList.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const origin = `${proto}://${host}`;
 
-  const [t, te, data, faces] = await Promise.all([
+  const [t, te, ts, data, faces] = await Promise.all([
     getTranslations("designer.editor"),
     getTranslations("designer.exports"),
-    getDesignerDocument(locale, documentId, origin, { scheme: requestedScheme ?? null, previewSessionId: previewSessionId ?? null }),
+    getTranslations("designer.studio"),
+    getDesignerDocument(locale, documentId, origin, { scheme: requestedScheme ?? null, previewSessionId: previewSessionId ?? null, previewMemberId: previewMemberId ?? null }),
     listEditorFaces(locale),
   ]);
   if (!data) notFound();
@@ -86,12 +87,17 @@ export default async function DesignerPage({
     fontHashes: faces.map((f) => f.sha256),
   });
   const { context } = data;
-  const previewable = data.purpose === "poster" && !data.boundSessionId;
-  const [queue, assetSizes, uploads, previewSessions] = await Promise.all([
+  // «معاينة بجلسة» on a poster not bound to its own session; «معاينة بعضو» (and, for a session kind, a session) on a
+  // certificate that is not a certificate row (C5).
+  const certificateTemplate = data.purpose === "certificate" && !data.boundCertificateId;
+  const previewable = (data.purpose === "poster" && !data.boundSessionId) || (certificateTemplate && data.family !== "achievement");
+  const [queue, assetSizes, uploads, previewSessions, previewMembers, samples] = await Promise.all([
     getExportQueue(locale, documentId, fingerprint),
     assetSizesFor(locale, data.document),
     data.canEdit ? listDesignAssets(locale) : Promise.resolve([]),
     previewable ? listPreviewSessions(locale) : Promise.resolve(null),
+    certificateTemplate && data.canEdit ? listPreviewMembers(locale) : Promise.resolve(null),
+    data.canEdit ? getLongestSamples(locale) : Promise.resolve({}),
   ]);
 
   // ★ A DOWNLOAD IS AUDITED, A PREVIEW IS NOT (DEC-178). The queue's links go through the one audited route; the
@@ -146,9 +152,18 @@ export default async function DesignerPage({
 
   // A certificate TEMPLATE carries no scheme (a scheme is never a row, DEC-148), so its preview offers both. A poster
   // is always dark and a certificate row renders what it pinned — neither offers a choice.
+  // ★ ONE PAGE PER CERTIFICATE (DEC-148, DEC-238 §3): the strip shows this composition's one preset, and its other
+  // orientation — a separate template in the org's library — is a link that opens that template's draft.
+  const sibling = context.kind === "template_draft" && data.sibling ? (
+    <form action={openSiblingTemplate.bind(null, locale, data.sibling.templateId)} className="shrink-0">
+      <button type="submit" className={buttonClass("secondary", "sm")}>
+        {ts(`siblingOrientation.${data.sibling.orientation}`)}
+      </button>
+    </form>
+  ) : null;
   const barEnd =
     data.purpose === "certificate" && context.kind !== "certificate" ? (
-      <nav aria-label={t("scheme.legend")} className="flex items-center gap-1">
+      <nav aria-label={t("scheme.legend")} className="flex shrink-0 items-center gap-1">
         {(["light", "dark"] as const).map((value) => (
           <Link
             key={value}
@@ -159,6 +174,7 @@ export default async function DesignerPage({
             {t(`scheme.${value}`)}
           </Link>
         ))}
+        {sibling}
       </nav>
     ) : null;
 
@@ -235,6 +251,8 @@ export default async function DesignerPage({
       {...(context.kind === "template_draft" && data.canEdit ? { publish: publishVersion.bind(null, locale, context.purpose, context.templateId) } : {})}
       family={data.family}
       {...(previewSessions ? { previewSessions, previewSessionId: previewSessionId ?? null } : {})}
+      {...(previewMembers ? { previewMembers, previewMemberId: previewMemberId ?? null } : {})}
+      samples={samples}
       uploads={uploads}
     />
   );

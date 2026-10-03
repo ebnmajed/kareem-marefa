@@ -500,7 +500,7 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
   }, [document.layers]);
   const fontFamilies = useMemo(() => [...new Set(props.faces.map((f) => f.family))], [props.faces]);
 
-  const { findings, measuring } = useCheckFindings({ document, bindings: props.bindings, fontsReady, assetSizes: props.assetSizes });
+  const { findings, measuring } = useCheckFindings({ document, bindings: props.bindings, fontsReady, assetSizes: props.assetSizes, ...(props.samples ? { samples: props.samples } : {}) });
   const flagged = useMemo(() => new Set(findings.map((f) => f.preset)), [findings]);
   const layerNames = useMemo(() => Object.fromEntries(document.layers.filter((l) => l.name).map((l) => [l.id, l.name as string])), [document.layers]);
 

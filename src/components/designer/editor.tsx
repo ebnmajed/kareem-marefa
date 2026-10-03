@@ -78,6 +78,11 @@ export interface DesignerEditorProps {
   previewSessionId?: string | null;
   /** الملفات — the org's images. */
   uploads?: PanelAsset[];
+  /** C4: binding → the org's longest value, which the checks fit at each layer's max lines. */
+  samples?: Record<string, string>;
+  /** C5: «معاينة بعضو»'s members (names only) and the one on screen — a certificate template's. */
+  previewMembers?: { id: string; name: string }[];
+  previewMemberId?: string | null;
 }
 
 type RailKey = "elements" | "fields" | "uploads" | "brand" | "layers" | "checks" | "layer";
@@ -167,9 +172,14 @@ export function DesignerEditor(props: DesignerEditorProps) {
       }
     });
 
-  const choosePreview = async (sessionId: string) => {
+  /** A preview is URL state, rendered by the server through the one renderer's bindings — saved first (flush). */
+  const choosePreview = async (key: "session" | "member", id: string) => {
     await s.flush();
-    router.push(sessionId ? `?session=${sessionId}` : "?");
+    const params = new URLSearchParams(window.location.search);
+    if (id) params.set(key, id);
+    else params.delete(key);
+    const query = params.toString();
+    router.push(query ? `?${query}` : "?");
   };
 
   const alert = (() => {
@@ -351,11 +361,21 @@ export function DesignerEditor(props: DesignerEditorProps) {
       <span className="hidden shrink-0 xl:block">{zoomControl}</span>
       {props.barEnd}
       {props.previewSessions ? (
-        <Select aria-label={st("bar.previewSession")} value={props.previewSessionId ?? ""} onChange={(e) => void choosePreview(e.target.value)} className="hidden w-48! shrink-0 xl:block">
+        <Select aria-label={st("bar.previewSession")} value={props.previewSessionId ?? ""} onChange={(e) => void choosePreview("session", e.target.value)} className="hidden w-48! shrink-0 xl:block">
           <option value="">{st("bar.previewSession")}</option>
           {props.previewSessions.map((session) => (
             <option key={session.id} value={session.id}>
               {session.title}
+            </option>
+          ))}
+        </Select>
+      ) : null}
+      {props.previewMembers ? (
+        <Select aria-label={st("bar.previewMember")} value={props.previewMemberId ?? ""} onChange={(e) => void choosePreview("member", e.target.value)} className="hidden w-48! shrink-0 xl:block">
+          <option value="">{st("bar.previewMember")}</option>
+          {props.previewMembers.map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.name}
             </option>
           ))}
         </Select>

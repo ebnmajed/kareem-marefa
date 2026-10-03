@@ -5,6 +5,28 @@ found. `docs/plan/` is otherwise the lead's; this file is mine.
 
 ---
 
+## Wave 23 — slice 3b (2026-10-03) — the certificate canvas and the four-format demonstrable
+
+- **One page per certificate** (DEC-148, DEC-238 §3): the strip shows the composition's one preset; its other
+  orientation, when the org's library has it (same family, the other master), is a button that opens that template's
+  draft through `templates.ts`'s `openTemplateDraft()` (`openSiblingTemplate`, the designer route's action).
+- **الحقول** from `fields.ts`: used / unused from the document; `{المستوى}` = `certificate.achievementName`, achievement
+  only; `{رمز التحقق QR}` = a QR on `certificate.verifyUrl`, the URL the resolver builds. **No new binding** (§3.3): the
+  board's {نوع الشهادة}, {تاريخ الجلسة}, {نص الشهادة} and {التوقيع} are not fields (D-3).
+- **C4**: `getLongestSamples()` (the org's longest session title and longest active member's name, through RLS) feeds
+  `useCheckFindings`' new `samples`; a layer bound to one is measured with it at its own max lines on every preset —
+  the `longest` finding names the layer and the field. The contrast check of the plan is not built in 3b.
+- **C5** «معاينة بعضو»: URL state (`?member=`, and `?session=` for a session kind); if the member holds an issued
+  certificate of the kind, its own row binds (real serial, code, QR); otherwise only the name and the title, the rest
+  left as placeholders. `previewBindings` reach the canvas and the checks only — the page's fingerprint uses the saved
+  document's own bindings, and the certificate spec asserts a preview writes no `export_artifacts` row.
+- **The demonstrable**: `wave23-designer-four-formats.spec.ts` (`E2E_WORKER=1`) — the platform `talk` poster, untouched,
+  with every rendered input fixed (org name, session id, title, venue, time), all 12 artifacts `ready`, a SHA-256 per
+  artifact (a PDF's dates and id blanked first) written to `wave23-designer-four-formats.json` for the lead to compare
+  between `main`'s head and B's.
+
+---
+
 ## Wave 23 — slice 3a (2026-10-03) — the editor chrome deleted and rebuilt; the table, written before the create
 
 Deleted: `editor.tsx`, `inspector.tsx`, `inspector-section.tsx`, `variant-strip.tsx`, `admin/designer/[documentId]/page.tsx`.

@@ -107,6 +107,9 @@ export interface DesignerDocumentData {
   publishedDocument: DesignDocument | null;
   /** The family a template draft serves — a certificate's kind (DEC-236 §1). */
   family: string | null;
+  /** A certificate template's other orientation in the org's library — the strip links to it (DEC-148: an
+   *  orientation is a composition, its own row, never a derivation). */
+  sibling: { templateId: string; orientation: "landscape" | "portrait" } | null;
 }
 
 export type DesignerContext =
@@ -216,7 +219,7 @@ export async function getDesignerDocument(
   locale: string,
   documentId: string,
   origin: string,
-  options: { scheme?: string | null; previewSessionId?: string | null } = {},
+  options: { scheme?: string | null; previewSessionId?: string | null; previewMemberId?: string | null } = {},
 ): Promise<DesignerDocumentData | null> {
   const { session, supabase } = await sessionClient(locale);
 
@@ -348,9 +351,19 @@ export async function getDesignerDocument(
     timeZone,
     context,
     scheme,
-    previewBindings: await previewSessionBindings(supabase, locale, row.bound_session_id ? null : (options.previewSessionId ?? null), bindingOptions),
+    previewBindings:
+      purpose === "certificate"
+        ? row.bound_certificate_id
+          ? {}
+          : await previewCertificateBindings(
+              supabase,
+              { memberId: options.previewMemberId ?? null, sessionId: options.previewSessionId ?? null, family: (draftTemplate?.family as string | undefined) ?? null },
+              bindingOptions,
+            )
+        : await previewSessionBindings(supabase, locale, row.bound_session_id ? null : (options.previewSessionId ?? null), bindingOptions),
     publishedDocument: draftTemplate ? await latestPublished(supabase, draftTemplate.id as string) : null,
-    family: (draftTemplate?.family as string | undefined) ?? null,
+    family: (draftTemplate?.family as string | undefined) ?? ((certificateRow as { kind?: string } | null)?.kind ?? null),
+    sibling: draftTemplate && purpose === "certificate" ? await siblingOrientation(supabase, draftTemplate.id as string, draftTemplate.family as string, document) : null,
   };
 }
 
@@ -380,6 +393,101 @@ async function latestPublished(supabase: Client, templateId: string): Promise<De
   if (!data) return null;
   const parsed = validateDocument(data.document);
   return parsed.ok ? parsed.document : null;
+}
+
+/**
+ * «معاينة بعضو» (C5): a real member, and for a session kind a real session. If the member HOLDS an issued certificate of
+ * this kind from this org, its own row is bound — serial, code and the QR's /verify URL all real. Otherwise only the
+ * name and the session's title are bound, and the serial, the code and the QR are left ABSENT, so the canvas draws
+ * their marked placeholders (REQ-DSG-006) — never an invented serial, never a URL the editor built (REQ-CRT-010).
+ * Through RLS as the caller. Never in `bindings`: the fingerprint keeps the document's own (REQ-DSG-013).
+ */
+async function previewCertificateBindings(
+  supabase: Client,
+  input: { memberId: string | null; sessionId: string | null; family: string | null },
+  options: BindingOptions,
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  const uuid = (v: string | null) => (v && z.uuid().safeParse(v).success ? v : null);
+  const memberId = uuid(input.memberId);
+  const sessionId = uuid(input.sessionId);
+  if (sessionId && input.family !== "achievement") {
+    const { data } = await supabase.from("sessions").select("title").eq("id", sessionId).maybeSingle();
+    if (data?.title) out["session.title"] = data.title as string;
+  }
+  if (!memberId) return out;
+  const { data: member } = await supabase.from("members").select("display_name").eq("id", memberId).maybeSingle();
+  if (!member?.display_name) return out;
+  out["recipient.name"] = member.display_name as string;
+  if (input.family) {
+    let held = supabase
+      .from("certificates")
+      .select("id, serial, verification_code, issued_at, recipient_name_snapshot, session_id")
+      .eq("member_id", memberId)
+      .eq("kind", input.family)
+      .eq("state", "issued");
+    if (sessionId && input.family !== "achievement") held = held.eq("session_id", sessionId);
+    const { data: certificate } = await held.order("issued_at", { ascending: false }).limit(1).maybeSingle();
+    if (certificate) Object.assign(out, certificateBindings(certificate as unknown as CertificateRow, options));
+  }
+  return out;
+}
+
+async function siblingOrientation(
+  supabase: Client,
+  templateId: string,
+  family: string,
+  document: DesignDocument,
+): Promise<{ templateId: string; orientation: "landscape" | "portrait" } | null> {
+  const want = document.master.width >= document.master.height ? "portrait" : "landscape";
+  const { data: templates } = await supabase
+    .from("design_templates")
+    .select("id")
+    .eq("purpose", "certificate")
+    .eq("family", family)
+    .not("org_id", "is", null)
+    .is("retired_at", null)
+    .neq("id", templateId);
+  const ids = (templates ?? []).map((t) => t.id as string);
+  if (!ids.length) return null;
+  const { data: versions } = await supabase.from("design_template_versions").select("template_id, version, master:document->master").in("template_id", ids).order("version", { ascending: false });
+  const seen = new Set<string>();
+  for (const v of versions ?? []) {
+    const id = v.template_id as string;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const m = v.master as { width?: number; height?: number } | null;
+    if (!m?.width || !m.height) continue;
+    if ((m.width >= m.height ? "landscape" : "portrait") === want) return { templateId: id, orientation: want };
+  }
+  return null;
+}
+
+/** «معاينة بعضو»'s members: names only — no email reaches the page. Through RLS. */
+export async function listPreviewMembers(locale: string): Promise<{ id: string; name: string }[]> {
+  const { supabase } = await sessionClient(locale);
+  const { data } = await supabase.from("members").select("id, display_name").eq("status", "active").order("display_name").limit(300);
+  return (data ?? []).filter((m) => m.display_name).map((m) => ({ id: m.id as string, name: m.display_name as string }));
+}
+
+/**
+ * The checks' samples (C4): the org's longest session title and the longest active member's name — what a poster's
+ * title and a certificate's name layer must fit at their max lines. Read through RLS; the longest is chosen here
+ * (PostgREST cannot order by a length, and this needs no SQL function).
+ */
+export async function getLongestSamples(locale: string): Promise<Record<string, string>> {
+  const { supabase } = await sessionClient(locale);
+  const [{ data: sessions }, { data: members }] = await Promise.all([
+    supabase.from("sessions").select("title").limit(2000),
+    supabase.from("members").select("display_name").eq("status", "active").limit(5000),
+  ]);
+  const longest = (values: (string | null | undefined)[]) => values.reduce<string>((best, v) => (v && v.length > best.length ? v : best), "");
+  const out: Record<string, string> = {};
+  const title = longest((sessions ?? []).map((s) => s.title as string));
+  const name = longest((members ?? []).map((m) => m.display_name as string | null));
+  if (title) out["session.title"] = title;
+  if (name) out["recipient.name"] = name;
+  return out;
 }
 
 /** «معاينة بجلسة»'s choices: the org's sessions, the latest first. Through RLS. */
