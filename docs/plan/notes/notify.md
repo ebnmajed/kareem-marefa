@@ -4517,3 +4517,9 @@ the owner, and read the `notifications` rows back as the owner. No migration, ta
 6. A multi-day attendee checked in on two days is notified once.
 
 `060` is left alone: «أُضيفت مواد» is not one of `DEC-232` §1.3's rows.
+
+### WD.6 · Built — `supabase/proposed/notify/materials_added_notify.sql`, `tests/rls/notify-materials-added.test.ts` 7/7
+
+Every case as planned in WD.5 except the multi-day one (the fixture has no second day; `select distinct` is the guard),
+plus one: **applied before `seed()`, the whole fixture seeds and announces nothing** — its one material sits on the
+published session — so promoting `0189` does not drop a notification into every other suite's inbox.
