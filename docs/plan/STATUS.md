@@ -1,11 +1,27 @@
-**Last updated:** 2026-10-03 · **Branch:** `main` · ★★ **WAVE 23 IS PLANNED, NOT STARTED** · **`main`:** `242657a5`; production at **`0190`** · **Phase:** ★★ **M12 — THE STUDIO (`DEC-235`, M25)**: `055` the templates, `056`/`057` the designer rebuilt as a rich editor on a free canvas, `058` the email builder, `045` the session's certificates — **four screens from NINE artboards** (★ **the pack gained two on 2026-10-03 with a «certificate flows» section** — `DEC-236`), each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; **six primitives, so the floor moves 63 → 69**. ★★ **The owner rules THREE certificate defaults, one per kind** — `family` already IS the kind and `0055`'s indexes already give one default each, so the drawn two-default model is not built and **`0191` stays unwritten** (`DEC-236` §1). ★★ **NO migration is expected — both of the wave's open questions are already answered by what is built** (`DEC-235` §3): the document model carries per-preset and per-variant overrides, so variants on one strip need no schema; and «six blocks» means six NEW types over the eight `blocks.ts` already holds. The brief is `docs/plan/notes/wave-23-lead.md`. ★★ **`DEC-208` REACHES THE CHROME, NOT THE ENGINE** — the first wave where that matters: 3,873 lines of designer, with the logic/chrome seam named file by file (`DEC-235` §2). ★★ **`DEC-093` is the wave's largest risk**: the artboards draw drag in six new places and every one needs a single-pointer path. ★ **The owner rules the studio before stories** (§1) — overtaken a fifth time; the ring stays inert. ★ **Owed by the owner:** the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-059` and the platform console (M13), and session stories.
+**Last updated:** 2026-10-03 · **Branch:** `wave-23a/templates-and-certificates` (draft PR #52) · ★★ **WAVE 23 IS IN PROGRESS — Step 0 DONE, the map written (`DEC-237`), three teammates planning** · **`main`:** `0d9a0d60`; production at **`0190`** · **Phase:** ★★ **M12 — THE STUDIO (`DEC-235`, `DEC-236`, `DEC-237`, M25)** — four screens from nine artboards, three PRs, six primitives (63 → 69), **no migration**. ★★ **One ruling waits for the owner** (`DEC-237` §4): `DEC-236` C6 says the session's certificate template is picked **in الجدولة**, but `DEC-178` makes **`045` the one writer of the mode** — the brief cited `DEC-178` for the opposite of what it says. **`DEC-178` stands until the owner rules**: `045` writes both, before completion. The brief is `docs/plan/notes/wave-23-lead.md`. ★ **Owed by the owner:** the `railway.json`, and the C6 ruling. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-059` and the platform console (M13), session stories.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 23 — PLANNED, NOT STARTED — M12, the studio (`DEC-235`)
+## ★★★ WAVE 23 — IN PROGRESS — M12, the studio (`DEC-235`, `DEC-236`, `DEC-237`)
+
+### ★ Where it stands — 2026-10-03
+
+| Step | State |
+|---|---|
+| Step 0 — branch, spec, artboards, draft PR | ✓ `wave-23a/templates-and-certificates`, `9e95212f`, **draft PR #52** against `main`. **Nine boards, nine PNGs**: the stray duplicate was already gone; the two new boards came without PNGs and the lead rendered them from their HTML at 1280 |
+| Measured | `ui/` **63**, floor **63** at `ui-playground.test.ts:121` · designer **3,950** lines / 17 files (the brief said 3,873) · `mail-pinned` **120** files · goldens **17** · next ids `REQ-UIX-107`, `STORY-UIX-097` |
+| The map | ✓ `DEC-237`, `CLAUDE.md`'s wave-23 map, the ten agent files, `01` (`REQ-UIX-107` … `112`, `REQ-NTF-015`, `REQ-CRT-015`), `15` (`STORY-UIX-097` … `102`, `STORY-NTF-007`, `STORY-CRT-007`), `14` (M25), `09`; traceability 410 / 243, no gaps |
+| ★ Division | **`console`** PR A (`055`, `045`) — composition over existing DAL, `templates.ts`/`certificates.ts` transferred for the wave · **`designer`** PR B (the editor over the kept engine, `canvas-stage`, `layer-list`, the certificate canvas) · **`notify`** PR C (`058`, `block-canvas`, `block-library`, six block types) · **lead** the studio frame, `editor-rail`, `floating-toolbar`, the walkthrough |
+| ★ Seam rulings | `editor.tsx`'s state machine **moves verbatim before the delete** (`DEC-237` §2) · `canvas-stage` is **the stage around** `DesignerCanvas`, not a second engine (§3) |
+| ★★ For the owner | **C6's place** — `DEC-178` vs `DEC-236` (§4). Default in force: `045` writes the mode and the template |
+| Sync 1 | ⏳ three plans in `docs/plan/notes/{console,designer,notify}.md`; nobody deletes a file before «the plans are approved» |
+| PR B, PR C | worktrees not yet cut — B from A's head after sync 1, C from B's head once the shared chrome lands |
+
+### The plan as written before Step 0
+
 
 **The programme's ninth wave.** The brief is `docs/plan/notes/wave-23-lead.md`; the drawing is
 `docs/design/screens/M12.md` with **seven** artboards in `docs/design/screens/m12/`; the decision is `DEC-235`.

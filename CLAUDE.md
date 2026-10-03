@@ -325,7 +325,123 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 22 — M11b, the rest of the console, DEC-230 · DEC-231) — ★ THE MAP IN FORCE
+### Ownership map (wave 23 — M12, the studio, DEC-235 · DEC-236 · DEC-237) — ★ THE MAP IN FORCE
+
+**The programme's ninth wave** (milestone **M25**). ★★ **The owner put the studio before stories** (`DEC-235` §1) — the
+fifth deliberate re-ordering; wave 18's ring stays inert and nobody wires it. **Four screens from nine artboards** in
+`docs/design/screens/m12/`, specified by `docs/design/screens/M12.md` and corrected by the brief
+(`docs/plan/notes/wave-23-lead.md`), `DEC-235`, `DEC-236` and `DEC-237`: `055` القوالب with its الشهادات tab, `056`/`057`
+المصمّم (the poster canvas and the certificate canvas), `058` البريد, `045` الشهادات. ★★ **Six new primitives — the floor
+moves 63 → 69** (`editor-rail`, `floating-toolbar`, `canvas-stage`, `layer-list`, `block-canvas`, `block-library`).
+★★ **No migration is expected** — four reasons, `DEC-235` §3, `DEC-236` §1, `DEC-237` §4; one written after all starts at
+`0191`, rehearsed on a dump taken at `0190`.
+
+★★ **THE GOAL, above the process** (the owner's words): **make the studio something an admin can design in without a
+designer.** ★ A poster is designed **once** and is right in **every format** — one template, 16:9 · A4 · A3 · 9:16 on one
+strip, layers mapping across with per-format overrides; an admin who rebuilds it four times means the strip failed. ★ The
+checks say what is wrong **before** export, inline, naming the layer, and selecting a finding opens it — contrast, the
+logo's PPI at A3, the longest title (or member name) fitted at the layer's max lines, the safe area — **a count on a rail
+item, never a modal**. ★ An email is **assembled, previewed with a real session and tested to the admin's own address**
+before a member sees it — ★ **and the 25 messages keep rendering byte-identically: `tests/unit/mail-pinned/`'s 120 files
+pass UNTOUCHED.** ★ A certificate is **designed once and issued many times** — three defaults, one per kind (حضور · تقديم ·
+إنجاز), and **a certificate issued against v3 still renders as v3 after v4** (`REQ-CRT-014`: reissue is
+byte-reproducible). ★ Certificates are **issued and revoked from the session** — the serial `<bdi dir="ltr">`, revoke's
+reason mandatory, every PDF through the one audited route. ★★ **EVERY DRAG HAS A PATH THAT NEEDS NO DRAGGING**
+(`DEC-093`) — the floor of the whole wave, and the thing most likely to be missed. ★ **The sober register**
+(`REQ-UIX-053`): no motion beyond drag feedback; `console-register.test.ts` green **and untouched**. ★ **An untouched
+document exports identically**: a parity golden that moves is a bug, not a re-baseline. **«Good» is not «the gates are
+green».**
+
+★★ **Three PRs, each against `main` from its FIRST push.** **A — `wave-23a/templates-and-certificates`** (draft #52, the
+main checkout): `055` with C1 – C2, `045` with C6 – C7. **B — `wave-23b/the-designer`**
+(`../kareem-marefa-wave23b`, cut from A's head after the map): the editor frame and the two shared primitives **first, by
+the lead**, then `056`/`057`, `canvas-stage`, `layer-list`, the certificate canvas with C3 – C5. **C —
+`wave-23c/the-email-builder`** (`../kareem-marefa-wave23c`, **cut from B's head once `editor-rail` and
+`floating-toolbar` land**): `058`, `block-canvas`, `block-library`, the six new block types. **Merge order A, B, C.**
+**A teammate edits a PR's files only in that PR's tree**; the lead posts each path when it exists.
+
+★ **Why it is divided this way** (`DEC-237` §1): **each screen goes to the track that owns what it writes.** PR A is
+composition over functions that already exist — `templates.ts`'s library writes and `certificates.ts`'s
+`setCertificateDesign`, `releaseCertificates`, `revokeCertificate`, and `sessions'` `set_session_certificate_mode()` — so `055` and `045` go to `console`, which has built
+every console table with a bulk bar and a reason sheet; those two DAL modules transfer to it for the wave. **The editor's
+engine and the chrome built on it are `designer`'s**, divided **by file class and commit** (`DEC-235` §2, `DEC-237`
+§2 – §3); the chrome **both** editors share is the lead's; the library's chrome is `console`'s. The email builder is
+`notify`'s, as since wave 10.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ `DEC-237`, this map, the ten agent files, `01`/`09`/`14`/`15`, `STATUS` · ★★ **contract 1, the studio frame, first** (`REQ-UIX-107`, `STORY-UIX-097`): the two editors' routes get the whole viewport with their own bar · ★★ **`ui/editor-rail`** (the 68 px icon rail and the 300 px panel that swaps) and **`ui/floating-toolbar`**, in PR B before any editor screen · ★ **contract 2**: `ui/index.ts`'s six signatures, the registry, the floor 63 → 67 in B and 67 → 69 in C, each demo wired · ★★ **the certificate walkthrough spec**, captured at every step (`DEC-236` §5) · every capture beside its artboard · the gates, three PRs, two worktrees | the lead-only paths below, ★ new `src/components/ui/{editor-rail,floating-toolbar}.tsx` with their tests, `-scope` tests and demos, `src/app/[locale]/app/admin/layout.tsx`, `src/components/shell/**`, `tests/unit/console-register.test.ts` (**untouched this wave**), new `tests/e2e/wave23-{demo,lead}-*.spec.ts`. **Custodian** of every file of a track not spawned — `sessions`, `checkin`, `scoring`, `content`, `event`, `platform`, `branding` |
+| `console` | opus | ★★ **`055` the library, both tabs** (`REQ-UIX-108`, `STORY-UIX-098`, C1 – C2) — قوالب مؤسستك and قوالب المنصة, «انسخ لتعدّل», ★ **three defaults named on the الشهادات tab, one per kind** · ★★ **`045` the session's certificates** (`REQ-UIX-109`, `STORY-UIX-099`, C6 shown, C7) — ★ **the mode and the template — `045` is their one writer** (`DEC-178`, `DEC-237` §4): a control before completion, the drawn sentences after; محجوزة with row checkboxes and «أصدر المحدّد» / «أصدر الكل», صادرة with the serial `<bdi dir="ltr">`, «PDF» through **the one audited route**, «ألغِ» with a **mandatory reason in a sheet** · ★ **one default per kind used when the session names none** (`REQ-CRT-015`, `STORY-CRT-007`) — all PR A | ★ `src/app/[locale]/app/admin/templates/**` and `src/app/[locale]/app/admin/sessions/[id]/certificates/**` (**from `designer`, this wave**), ★ `src/lib/dal/{templates,certificates}.ts` (**from `designer`, add-only**), ★ the library's chrome — `src/components/designer/{template-library,template-library-page,template-preview,template-actions}.tsx` **to delete** — and new `src/components/templates/**`, its six `ui/` files (composed; `data-table` add-only if at all), ★ `src/messages/*/{templates,certificates}.json` (**from `designer`**), `supabase/proposed/console/**` (functions only), ★ `tests/rls/{templates,certificates}*.test.ts`, `tests/unit/certificates*`, `tests/components/certificates/**`, `tests/e2e/{templates,certificates}*.spec.ts` (**from `designer`**, evidence), new `tests/components/templates/**`, new `tests/e2e/wave23-console-*.spec.ts`, `docs/plan/notes/console.md`. **Nothing else** — the rest of the console is frozen |
+| `designer` | opus | ★★ **`056`/`057` the editor, rebuilt** (`REQ-UIX-110`, `STORY-UIX-100`) — the rail's seven items, the swapping panel, the floating toolbar, the variant strip on the bar, ★ **checks a rail item with a count** (`DEC-NEXT-34`), «معاينة بجلسة» · ★★ **the editor's state machine moved verbatim into a kept module BEFORE `editor.tsx` is deleted** (`DEC-237` §2) · ★★ **`canvas.tsx`'s engine kept and its outer frame moved to `ui/canvas-stage`** (`DEC-237` §3) · ★ **`ui/layer-list`**, and `src/components/designer/layer-list.tsx` **deleted** (`DEC-235` §5.1) · ★ **the certificate canvas** (`REQ-UIX-111`, `STORY-UIX-101`, C3 – C5): the landscape strip, the الحقول panel used / unused, {المستوى} for `achievement` only, {رمز التحقق QR} bound to the verify URL, the longest **member name** check, «معاينة بعضو» through the one renderer · ★★ **the demonstrable: all four formats exported from the sample template, no golden moved** · ★★ **a `page.click()`-only spec for every new drag** — all PR B | `packages/designer-runtime/src/**` **except** `brand.ts`, `packages/storage-paths/src/designer.ts`, `src/components/{designer,posters}/**` **except** the library's four files (`console`'s), `src/components/certificates/**`, `src/app/[locale]/app/admin/designer/**`, `src/app/api/{designer,fonts,certificates}/**`, `src/lib/dal/{designer,posters,fonts}.ts`, `worker/src/render/**` except `brand.ts` and its four tasks, `scripts/parity/**` minus `goldens/`, new `src/components/ui/{canvas-stage,layer-list}.tsx` with their tests, `-scope` tests and demos, `src/messages/*/designer.json`, `supabase/proposed/designer/**`, `tests/rls/{designer,posters,fonts,exports}*.test.ts`, `tests/unit/{designer,render,posters,qr,fonts,serial}*`, `tests/components/{designer,posters}/**`, `tests/e2e/{designer,posters}*.spec.ts` and `tests/e2e/wave{8,10,13}-designer-*.spec.ts` (evidence), new `tests/e2e/wave23-designer-*.spec.ts`, `docs/plan/notes/designer.md`. **Fixes only**, in PR A's tree if `045` needs one: `src/app/[locale]/verify/**` **except its layout**, `src/app/[locale]/app/me/certificates/**` |
+| `notify` | opus | ★★ **`058` the gallery and the builder** (`REQ-UIX-112`, `STORY-UIX-102`) — a card per message (thumbnail, name, category, مفعّلة / متوقفة, send count), the editor on `editor-rail` (إضافة · الأنماط · التخطيطات · الكتلة), the email at 600 px on `canvas-stage`, rows with their handle bar, the device toggle, «معاينة واختبار» with a real session and a test send to the admin's own address, «احفظ وفعّل» · ★ **`ui/block-canvas`** and **`ui/block-library`** · ★★ **six new block types, layouts and global styles** (`REQ-NTF-015`, `STORY-NTF-007`) — الملصق · رمز QR · نقاطك · شهادة · الشعار · اجتماعي, each through the union, the compiler, **the generated text alternative** and the checks; `detail_list` stays · ★★ **`tests/unit/mail-pinned/`'s 120 files pass UNTOUCHED** · ★★ **a `page.click()`-only spec for every new drag** — all PR C | `packages/mail-runtime/src/**`, `worker/src/mail/**`, `worker/src/tasks/{send_notification,send_test_email}.ts`, `src/app/[locale]/app/admin/emails/**`, `src/components/{email,notifications,calendar}/**`, `src/components/admin/delivery-reason.ts`, `src/app/api/admin/emails/**`, `src/lib/dal/{notifications,calendar}.ts` (add-only), new `src/components/ui/{block-canvas,block-library}.tsx` with their tests, `-scope` tests and demos, `src/messages/*/{notifications,emails,calendar}.json`, `supabase/proposed/notify/**` (functions only), `tests/unit/{mail,notify,admin-emails}*` **with `tests/unit/mail-pinned/**` READ-ONLY**, `tests/rls/{notify,notifications}*.test.ts`, `tests/components/{email,notifications,calendar}/**`, `tests/components/admin/emails-page.test.tsx`, `tests/e2e/{wave8-console-emails,wave10-notify-*}.spec.ts` (evidence), new `tests/e2e/wave23-notify-*.spec.ts`, `docs/plan/notes/notify.md`. **Nothing else** — `notify()`, the inbox, reminders, settings and every other worker task are frozen |
+
+**Wave-23 contracts.**
+
+1. **Lead → everyone — the studio frame and the shared chrome.** The two editors' routes render **without the console
+   frame** — their own 52 px bar, `editor-rail` at the inline-start, the canvas — and every other studio screen (`055`,
+   `045`, the email gallery) stays inside wave 21's frame. `editor-rail` takes the rail's items and the panel for the
+   selected item; `floating-toolbar` takes a target's box and its controls. **Their props in the lead's note on day one**;
+   they land in PR B before any editor screen, and **C is cut after them**.
+2. **Lead → everyone — the signatures and the gate.** Each owner names its primitive's props in its plan; the lead lands
+   the six as types after sync 1, with the registry entries; the floor moves **63 → 67** in B and **67 → 69** in C.
+3. **`designer` ↔ `notify` — one stage.** `canvas-stage` is the ground, the fit and the zoom, the rulers and the toggles,
+   with a slot; `DesignerCanvas` is the poster's child and `block-canvas` the email's. **Neither child re-implements the
+   stage**, and the stage draws nothing of a document (`DEC-237` §3).
+4. ★★ **Everyone — `DEC-093`, six new drags.** The elements panel → canvas, the layer reorder, the asset drag (`designer`);
+   the block into a row slot, the row handle bar, the block library (`notify`). **Each has a single-pointer path that is
+   not a drag** — a tap that places, ▲▼ that move — named in the plan **before** the drag is built, and **a Playwright
+   case with `page.click()` alone performs it.** Wave 13's paths are reused; the inspector's numeric X/Y/W/H/rotation
+   fields may be collapsed into an accordion, **never deleted**.
+5. ★★ **`designer` — the engine is not touched for the chrome's convenience.** `canvas.tsx`, `bindings-panel.tsx`,
+   `checks-panel.tsx`, `export-panel.tsx`, `export-action-button.tsx`, `export-reason.ts`, `upload-asset.ts` and
+   `add-image.tsx` keep their behaviour; **each one's existing suite passes untouched** — that is the proof the seam is
+   right. `DEC-096` stands: the overlay is physical `left`/`top` from document geometry; nobody tidies it.
+6. ★★ **`console` — the certificate rules are requirements.** A held certificate is **invisible to its recipient and sends
+   no mail** (`REQ-CRT-004`); release is audited, individually and in bulk; revoke takes a **mandatory reason**, is
+   audited, and the verification page then says **«شهادة ملغاة» and never the reason**, with the PDF **not deleted**
+   (`REQ-CRT-011`); every PDF through **the one audited route** (`DEC-177`) — never a bare `<a download>`. **The mode and
+   the template are written only on `045`, and refused after completion** (`DEC-178`, `DEC-237` §4) — a control before,
+   the drawn sentences after. ★ `DEC-236` C6's «الجدولة» is the owner's to confirm; until then `DEC-178` stands.
+7. ★★ **`notify` — additive or it is wrong.** A new block type, a layout or a global style that moves one of the 120
+   pinned files is not additive. **Pinned mail output is never refreshed by a teammate**; a changed file is a reviewed
+   change the lead opens. An existing flat document reads as rows without a byte moving. **No SVG in mail** — the image
+   block is PNG and JPEG only (invariant 11).
+8. **Everyone — the artboard is the specification, and `DEC-235` §5, `DEC-236` and `DEC-237` §5 are the list of what it
+   draws that is not built.** A new disagreement is written in your note with the artboard and the line; nobody picks a
+   side. No class, id or markup pattern from a `.dc.html` in `src/`.
+
+**Wave-23 rules.**
+
+- ★★ **Rebuilt, never restyled; deleted first — and `DEC-208` reaches the chrome, not the engine** (`DEC-235` §2). Two
+  commits per screen — a delete, then a create — with the kept-behaviour table in the note **before** the create. ★ **Logic
+  that lives in a chrome file is MOVED, verbatim and in its own commit, before the delete** (`DEC-237` §2). ★ **Never push an
+  unpaired delete.**
+- ★★ **No golden moves** (`DEC-176`). `scripts/parity/goldens/**` is the lead's; an untouched document renders identically.
+- ★★ **`mail-pinned`'s 120 files are untouched**, and nobody runs a refresh over them.
+- ★★ **The studio is not the party** (`REQ-UIX-053`): no motion beyond drag feedback, no `transition`, no object, no sticker,
+  no moment; `console-register.test.ts` **is not edited**.
+- ★ **The designer is desktop-only** (`06` §2) — no phone designer is invented; `055`, `045` and the email gallery stack
+  under `lg` like every console table.
+- ★ **No explainer copy** (`DEC-NEXT-25`). ★ **Arabic first**; `<bdi>` on every serial, code, number and title; Western
+  numerals; six ICU forms; logical properties — **except `DEC-096`'s overlay**.
+- ★★ **`registrations` is never touched; the five public routes do not move.** `verify/[code]` is not one of the five.
+- ★ **The existing suites are evidence**; each changed assertion is a ledger line in `STATUS.md`, in the same commit.
+- ★ **No new dependency.** **No migration**; a function a plan needs goes under `supabase/proposed/<you>/`.
+- **Teammates spawn planning-only**; sync 1 approves three plans with their kept-behaviour tables and their `DEC-093`
+  paths; **nobody deletes a file before the lead posts «the plans are approved»**.
+- **One writer per file, specs and demos included. `ui-lint --strict` has no allowlist and never gains one.**
+- **Captures land at `.qa-shots/rtl/wave23-<track>-<screen>-<state>-<1280|390>.png`** from a production build the row
+  names by commit, honouring `E2E_SHOTS_DIR`; the lead opens every one beside the artboard, in bands, never downscaled.
+- **Not this wave, and never-touch for every teammate:** `SCR-059` branding and the brand kit; `/app/platform/**`; the five
+  public routes; ★ stories, their viewer and `story_views` — the ring stays inert; the member app and the console's other
+  screens; **replacing the renderer** (`DEC-017`, `DEC-048`); a template serving several kinds (`DEC-236` §1); a phone
+  designer; `DEC-194`'s two gates; `DEC-186` §4; the hard-load fix (`DEC-204`); `DEC-215`'s four; the `railway.json`.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`, `stop`,
+  branch switches, worktrees, pushes and the PRs.
+
+### Ownership map (wave 22 — M11b, the rest of the console, DEC-230 · DEC-231) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 22 merged as PRs #47 – #50 and closed with #51 (`242657a5`; `0190` on production, `DEC-234`). Its map is kept as the record; **wave 23's map is directly above** (`DEC-235`, `DEC-236`, `DEC-237`).
 
 **The programme's eighth wave, and its largest batch: fifteen screens** (milestone **M24**). ★★ **The owner put M11b
 before stories** (`DEC-230` §1) — the fourth deliberate re-ordering; wave 18's ring stays inert and nobody wires it.
@@ -1812,6 +1928,7 @@ to hard-fail in M13.
 ★ from wave 20 (`DEC-217`): `src/app/[locale]/app/me/{layout,loading,error}.tsx` and `src/components/me/tab-strip.tsx` are the lead's — the hub frame has one writer; `me/certificates/**` is `content`'s and `leaderboards/**` `scoring`'s for the wave, back to `designer` and `sessions` after it.
 ★ from wave 21 (`DEC-227`): `src/app/[locale]/app/admin/layout.tsx` is the lead's — the console frame has one writer; `admin/proposals/**` is `sessions'` for the wave, back to `console` after it. `tests/unit/console-register.test.ts` is the lead's, amended once (`DEC-227` §2).
 ★ from wave 22 (`DEC-231`): `admin/{scoring,recognition}/**` and `scoring-admin.ts` are `scoring`'s, `admin/{reminders,settings}/**` and `admin-settings.ts` `notify`'s, `admin/moderation/**` and `admin-moderation.ts` `content`'s — **for the wave**, back to `console` after it. `src/components/shell/admin-nav.ts` stays the lead's.
+★ from wave 23 (`DEC-237`): `admin/templates/**`, `admin/sessions/[id]/certificates/**`, `lib/dal/{templates,certificates}.ts` and `messages/*/{templates,certificates}.json` are `console`'s **for the wave**, back to `designer` after it. `ui/{editor-rail,floating-toolbar}.tsx` are the lead's — the chrome both editors share has one writer.
 ★ from wave 18 (`DEC-206`): `tests/unit/design-files.test.ts` — the gate that keeps `docs/design/screens/` out of the build has one writer. `src/app/[locale]/app/page.tsx` is `content`'s for the wave: home is the feed, a page composed of three tracks' items on the lead's frame.
 
 ★ **Added by DEC-085, with the design milestone** — none of these was lead-only before, and
@@ -1828,7 +1945,7 @@ the sessions timeline (`DEC-112`), which is no longer a page composed of other t
 **Inside `src/components/ui/` ownership is per FILE, not per directory** — a glob with four writers
 is the exact failure `TEAM.md` exists to prevent. The four literal file lists — the lead's fifteen,
 `sessions'` eight, `console'`s six, `content'`s nine — are in each `.claude/agents/*.md`, and they are
-unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 18 adds four** (`DEC-206`): `week-hud` is `scoring`'s, `feed-item` and `attendee-stack` are `content`'s, `action-bar` is `sessions'` — 53 files. ★ **Wave 19 adds four** (`DEC-213`): `page-viewer` is `content`'s, `star-input` `event`'s — its first — `stepper` `sessions'`, `badge-medallion` `scoring`'s — 57 files. ★ **Wave 20 adds three** (`DEC-216` §2.1): `podium` and `ledger-row` are `scoring`'s, `settings-group` `notify`'s — its first — 60 files; `status-mark` is withdrawn. ★ **Wave 21 adds three** (`DEC-225` §2, `DEC-227` §2): `admin-rail` is the lead's — and `src/components/admin/admin-rail.tsx` is deleted, so there is one — `split-view` and `kv-card` `sessions'` — 63 files. ★ **Wave 22 adds none** (`DEC-230`): the three `data-table` cells are stories on `console`'s file — 63 files, the floor unmoved. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
+unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 18 adds four** (`DEC-206`): `week-hud` is `scoring`'s, `feed-item` and `attendee-stack` are `content`'s, `action-bar` is `sessions'` — 53 files. ★ **Wave 19 adds four** (`DEC-213`): `page-viewer` is `content`'s, `star-input` `event`'s — its first — `stepper` `sessions'`, `badge-medallion` `scoring`'s — 57 files. ★ **Wave 20 adds three** (`DEC-216` §2.1): `podium` and `ledger-row` are `scoring`'s, `settings-group` `notify`'s — its first — 60 files; `status-mark` is withdrawn. ★ **Wave 21 adds three** (`DEC-225` §2, `DEC-227` §2): `admin-rail` is the lead's — and `src/components/admin/admin-rail.tsx` is deleted, so there is one — `split-view` and `kv-card` `sessions'` — 63 files. ★ **Wave 22 adds none** (`DEC-230`): the three `data-table` cells are stories on `console`'s file — 63 files, the floor unmoved. ★ **Wave 23 adds six** (`DEC-235`, `DEC-237`): `editor-rail` and `floating-toolbar` are the lead's — both editors share them — `canvas-stage` and `layer-list` `designer`'s (and `src/components/designer/layer-list.tsx` is deleted, so there is one), `block-canvas` and `block-library` `notify`'s — 69 files. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
 it does not exist**, which is why all ten were regenerated in the same commit as this list.
 
 `src/components/ui/index.ts` exports **types only**; implementations are imported **by path**. A
