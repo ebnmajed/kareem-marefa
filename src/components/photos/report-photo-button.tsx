@@ -73,7 +73,7 @@ export function ReportPhotoButton({ locale, sessionId, photoId, reported }: { lo
           }}
         >
           <Field id={reasonId} label={t("reasonLabel")} hint={t.markup("reasonHint", { ...REASON, bdi: plain })} required error={fieldError ?? undefined}>
-            <Textarea name="reason" rows={3} maxLength={1000} />
+            <Textarea name="reason" rows={3} maxLength={1000} onChange={() => setFieldError(null)} />
           </Field>
           <div className="mt-3 flex gap-2">
             <Button type="submit" pending={pending} pendingLabel={t("sending")}>

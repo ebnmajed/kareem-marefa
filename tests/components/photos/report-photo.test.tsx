@@ -54,6 +54,8 @@ describe("ReportPhotoButton", () => {
     const dialog = await send("ab");
     expect(await within(dialog).findByText("اكتب سببًا من 3 أحرف على الأقل.")).toBeVisible();
     expect(within(dialog).getByLabelText("سبب الإبلاغ", { exact: false })).toHaveValue("ab");
+    await userEvent.type(within(dialog).getByLabelText("سبب الإبلاغ", { exact: false }), "c");
+    expect(within(dialog).queryByText("اكتب سببًا من 3 أحرف على الأقل.")).not.toBeInTheDocument();
   });
 
   it("a photo no longer shown says so", async () => {

@@ -139,6 +139,7 @@ test("REQ-EVT-008: a member reports a photograph from the lightbox, once; it sta
   await dialog.getByRole("button", { name: "إرسال البلاغ" }).click();
   await expect(dialog.getByText("اكتب سببًا من 3 أحرف على الأقل.")).toBeVisible();
   await dialog.getByLabel("سبب الإبلاغ", { exact: false }).fill("صورة لا تخص الجلسة");
+  await expect(dialog.getByText("اكتب سببًا من 3 أحرف على الأقل.")).toHaveCount(0);
   await dialog.getByRole("button", { name: "إرسال البلاغ" }).click();
   await expect(lightbox.getByText("تم إرسال بلاغك عن هذه الصورة")).toBeVisible();
   await page.screenshot({ path: `${shots()}/wave22d-content-photo-report-sent-390.png` });
@@ -168,7 +169,10 @@ test("REQ-EVT-014: staff remove a comment on the event page with a reason; its r
   const dialog = page.getByRole("dialog", { name: "إزالة تعليق خالد الغامدي؟" });
   await dialog.getByRole("button", { name: "إزالة" }).click();
   await expect(dialog.getByText("اكتب السبب أولًا.")).toBeVisible();
+  // The refused state, with the field empty; then the corrected one — typing clears the refusal.
+  await page.screenshot({ path: `${shots()}/wave22d-content-comment-remove-refused-390.png` });
   await dialog.getByLabel("السبب — يُسجَّل في سجل التدقيق", { exact: false }).fill("دعاية لمنتج");
+  await expect(dialog.getByText("اكتب السبب أولًا.")).toHaveCount(0);
   await page.screenshot({ path: `${shots()}/wave22d-content-comment-remove-dialog-390.png` });
   await dialog.getByRole("button", { name: "إزالة" }).click();
   await expect(main.getByText("رابط لمنتج خارجي لا علاقة له بالجلسة")).toHaveCount(0);

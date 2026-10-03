@@ -75,6 +75,9 @@ describe("staff removal on the event page", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "إزالة" }));
     expect(await within(dialog).findByText("اكتب السبب أولًا.")).toBeVisible();
     expect(box).toHaveValue("ab");
+    // Typing again clears the refusal — no stale error under a reason being corrected.
+    await userEvent.type(box, "c");
+    expect(within(dialog).queryByText("اكتب السبب أولًا.")).not.toBeInTheDocument();
   });
 
   it("cancelling sends nothing", async () => {

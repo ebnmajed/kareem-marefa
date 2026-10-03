@@ -344,7 +344,8 @@ function StaffRemove({ locale, commentId, authorName, onRemoved }: { locale: str
           }}
         >
           <Field id={reasonId} label={t("moderator.reasonLabel")} required error={fieldError ?? undefined}>
-            <Textarea name="reason" rows={3} maxLength={300} />
+            {/* A refusal is the field's until the member types again — never a stale error under a valid reason. */}
+            <Textarea name="reason" rows={3} maxLength={300} onChange={() => setFieldError(null)} />
           </Field>
           <div className="mt-3 flex gap-2">
             <Button type="submit" variant="danger" pending={pending} pendingLabel={t("moderator.removing")}>
