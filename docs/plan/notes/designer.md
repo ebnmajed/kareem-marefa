@@ -5,6 +5,32 @@ found. `docs/plan/` is otherwise the lead's; this file is mine.
 
 ---
 
+## Wave 23 — slice 3a (2026-10-03) — the editor chrome deleted and rebuilt; the table, written before the create
+
+Deleted: `editor.tsx`, `inspector.tsx`, `inspector-section.tsx`, `variant-strip.tsx`, `admin/designer/[documentId]/page.tsx`.
+Created back to back, from `AdminDesigner.dc.html` and `AdminDesignerElements.dc.html`, over `editor-state.ts` (slice 1).
+**The behaviour tables are §W23.2 of the plan below — `editor.tsx`, `inspector.tsx`, `inspector-section.tsx`,
+`variant-strip.tsx`, `page.tsx` — each row re-read against the new files after the create.** What 3a decides beyond them:
+
+| Decision | Where | Kept by / ruled |
+|---|---|---|
+| The bar: back (the owner of the document), the name as the page's `h1`, the save state and the badges, ↶ ↷, the strip of **all seven** presets with the 4:5 master first and a dot per flagged preset, the zoom, «معاينة بجلسة», «صدّر» (a sheet: «اطلب التصدير», the queue, the worker's thumbnails), and «انشر» beside it on a template draft whose document differs from its last published version | `editor.tsx` (`Bar`) | `DEC-238` §3 (seven presets), D-1, D-13 |
+| The rail's items: العناصر · الحقول · الملفات · الهوية · الطبقات · الفحوصات (count = rows listed) · الطبقة (only with one selection); its tablist keeps the name «لوحات المحرّر» | `editor.tsx` over `ui/editor-rail` | `DEC-NEXT-36`, `REQ-DSG-029` |
+| العناصر: عنوان · نص · مستطيل · دائرة · خط · رمز QR · شعار الشركة, and four text styles — **a tap adds and arms «ضع بنقرة»**; no objects or stickers tabs | `panels.tsx` | `DEC-093`, `DEC-238` §3 |
+| الحقول: the registry's fields for the purpose, «مستخدم» / «—», a tap adds the bound field or QR; the bound values (`BindingsPanel`) beneath | `panels.tsx` | `REQ-DSG-006`, `DEC-093` |
+| الملفات: «أضف صورة» (`AddImage`, the one upload flow, never SVG) and the org's images — a tap adds an image layer at its proportion | `panels.tsx` | `DEC-009`, `DEC-093` |
+| الهوية: the brand colour tokens by name — a tap applies one to the selected layer's colour or fill — the faces, the logo | `panels.tsx` | `REQ-DSG-021`; team colours not offered (D-12) |
+| الطبقة: `Inspector` at its old path with its old props; tabs النص · الموضع · التأثيرات (a shape الشكل, an image الصورة, a QR الرمز); «الموضع والحجم» closed and never removed; the region «الخصائص» around it | `inspector.tsx` | `DEC-093`, `REQ-DSG-028` |
+| The floating toolbar's five: font · size · colour · alignment · «{ } ربط» (opens النص); ↔ «املأ عرضًا»; offset clears the rotation knob; hidden during a gesture | `editor.tsx` over `ui/floating-toolbar` | `M12.md`, D-7 |
+| Below `xl`: view and approve | `editor.tsx` | `09` SCR-057 (D-8) |
+
+**Selector moves in my e2e specs (expectations unchanged), for `STATUS.md`'s ledger:** the tab «الخصائص» → «الطبقة»;
+the align, order and transform buttons sit under the الموضع tab; «اطلب التصدير» sits in the «صدّر» sheet; the variant
+strip's buttons are named by the preset's short name. Specs: `wave8-designer-editor`, `wave13-designer-studio-taps`;
+`inspector-align.test.tsx` opens الموضع first.
+
+---
+
 ## Wave 23 — slice 2 (2026-10-03) — `layer-list.tsx` deleted; its kept-behaviour table, read against the new files
 
 Written before the create. `src/components/designer/layer-list.tsx` (201) is deleted; its rows become `ui/layer-list`
