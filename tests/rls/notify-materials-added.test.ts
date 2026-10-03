@@ -151,6 +151,32 @@ describe("MSG-materials_added — sent when a material is added after the sessio
     });
   });
 
+  it("a member checked in on two days of one session is notified once", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      const attendee = attendeeOf(f);
+      // The fixture's completed session has one day; a second, after it, with the same attendee checked in on it.
+      const [{ ends }] = await tx.q<{ ends: string }>(`select max(ends_at)::text as ends from public.session_days where session_id = $1`, [f.m2.a.completed]);
+      const [{ id: day2 }] = await tx.q<{ id: string }>(
+        `insert into public.session_days (org_id, session_id, position, starts_at, ends_at, venue_id)
+         values ($1, $2, 2, $3::timestamptz + interval '20 hours', $3::timestamptz + interval '21 hours', $4) returning id`,
+        [f.a.id, f.m2.a.completed, ends, f.a.venueId],
+      );
+      await tx.q(
+        `insert into public.check_ins (org_id, session_id, session_day_id, member_id, method, manual_reason, marked_by)
+         values ($1, $2, $3, $4, 'manual', 'اليوم الثاني', $5)`,
+        [f.a.id, f.m2.a.completed, day2, attendee.memberId, f.a.admin.memberId],
+      );
+      const [{ n }] = await tx.q<{ n: number }>(
+        `select count(*)::int as n from public.check_ins where session_id = $1 and member_id = $2 and removed_at is null`,
+        [f.m2.a.completed, attendee.memberId],
+      );
+      expect(n).toBe(2);
+      await addLink(tx, f, f.m2.a.completed);
+      expect((await sent(tx)).map((r) => r.member_id)).toEqual([attendee.memberId]);
+    });
+  });
+
   it("promoted before the fixture is seeded, the whole fixture still seeds and announces nothing (the suite's own guard)", async () => {
     await withTx(async (tx) => {
       await tx.asOwner();

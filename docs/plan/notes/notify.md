@@ -4518,8 +4518,11 @@ the owner, and read the `notifications` rows back as the owner. No migration, ta
 
 `060` is left alone: «أُضيفت مواد» is not one of `DEC-232` §1.3's rows.
 
-### WD.6 · Built — `supabase/proposed/notify/materials_added_notify.sql`, `tests/rls/notify-materials-added.test.ts` 7/7
+### WD.6 · Built — `supabase/proposed/notify/materials_added_notify.sql`, `tests/rls/notify-materials-added.test.ts` 8/8
 
-Every case as planned in WD.5 except the multi-day one (the fixture has no second day; `select distinct` is the guard),
+Every case as planned in WD.5 — the multi-day one by seeding a second day and a second check-in in the test itself —
 plus one: **applied before `seed()`, the whole fixture seeds and announces nothing** — its one material sits on the
 published session — so promoting `0189` does not drop a notification into every other suite's inbox.
+
+**The story's recorded cost (approved at W22-D):** a second batch of materials added to the same session later the same
+org-local day is not announced — the day's first notification already points at the materials page, which lists it.
