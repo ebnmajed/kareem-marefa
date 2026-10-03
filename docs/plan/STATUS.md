@@ -110,6 +110,20 @@ below; green after. The owner rehearses all four on a dump taken at `0179` befor
 ★★ **CI, read from each run's own conclusion (`DEC-192`):** #47 run `37070876282` **success** · #48 run `37079179130`
 **success** (after `f4d6c424`: three strings carried a literal «1%») · #49 run `37070615147` **success**.
 
+### ★★ `0180` – `0188` REHEARSED 2026-10-03 on the owner's fresh production dump
+
+`/tmp/prod-schema-0179.sql` (`public` + `graphile_worker`, taken at `0179` — `supabase migration list --linked` read
+`0179` on both sides; **0 data rows**, 90 tables). A throwaway `rehearse22` owned by `postgres`; the nine extensions as
+`supabase_admin`; the local `auth` / `storage` / `realtime` schemas loaded first; **the dump loaded with 0 errors**; the
+16 platform policies naming `public` re-applied after it; buckets 8 · worker migrations 20 · retention periods 7 copied,
+each equal to local. ★ **`0180` – `0188` from B's tree, as `postgres`, in ONE transaction with `ON_ERROR_STOP` — exit 0,
+0 errors.** End state against local (D's `0189` / `0190` objects excluded), by hash: functions 329 · policies 194 ·
+triggers 126 · table grants 263 · column grants 1,435 · execute grants 366 · columns 891 — **identical**. The wave's 19
+database suites on the rehearsed schema: **241 of 244** — `definer-exposure` listing `rls_auto_enable()` (production-only,
+as every wave) and two `platform-schema` cases needing the platform template library's seeded rows, which a schema-only
+dump does not carry (0 vs 11). `rehearse22` dropped. ★ **The owner may push from B's tree: the dry run must list exactly
+`0180` – `0188`.**
+
 ### ★★ The owner's order — before and after the merge
 
 1. **Rehearse `0180` – `0188`** on a production schema dump taken at `0179`. ★ **Push all nine together, before merging A**:
