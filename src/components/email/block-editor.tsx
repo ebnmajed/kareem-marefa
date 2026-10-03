@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BLOCK_TYPES, readDocument, SCHEMA_VERSION, type BlockType, type EmailBlock } from "@kareem/mail-runtime";
 import { emptySavedState, type SavedFormState } from "@/components/admin/saved-form-state";
@@ -30,6 +30,11 @@ import { PreviewPane, type PreviewMode } from "@/components/email/preview-pane";
 // ★ NO DRAG (`DEC-160` §5, `SC 2.5.7`). `ui/reorderable-list` moves a row by
 // ▲▼, named by the row they move. Drag is the enhancement and nobody needs it
 // to conform.
+
+/** The document as the save posts it — the one string both «what is stored» and «what is on screen» compare by. */
+function documentJsonOf(blocks: readonly EmailBlock[]): string {
+  return blocks.length > 0 ? JSON.stringify({ schemaVersion: SCHEMA_VERSION, blocks }) : "";
+}
 
 let counter = 0;
 /** A stable id for a new block. `readDocument()` requires one, and the
@@ -106,10 +111,19 @@ export function BlockEditor({
   const [testing, setTesting] = useState(false);
   const toast = useToast();
 
-  const documentJson = useMemo(
-    () => (blocks.length > 0 ? JSON.stringify({ schemaVersion: SCHEMA_VERSION, blocks }) : ""),
-    [blocks],
-  );
+  const documentJson = useMemo(() => documentJsonOf(blocks), [blocks]);
+
+  // ★ WHAT IS STORED, so a test send is never a different mail from the one on screen. `send_test_email()` renders the
+  // SAVED row (`REQ-NTF-011`), so while the subject or the document differs from the last save the test would mail an
+  // admin something they are not looking at — the defect `notify` found at wave 23's sync 1 (`DEC-238` §4.5). The
+  // snapshot moves only when the server says the save landed: the values posted are held at submit and committed when
+  // `state.saved` arrives, never on the click.
+  const [stored, setStored] = useState(() => ({ subject: initialSubject, doc: documentJsonOf(readDocument(initialBlocks).blocks) }));
+  const posted = useRef(stored);
+  useEffect(() => {
+    if (state.saved) setStored(posted.current);
+  }, [state]);
+  const unsaved = subject !== stored.subject || documentJson !== stored.doc;
 
   // The checks read the SAME document the preview posts, so the panel and the
   // frame cannot describe different mails. `dropped` is empty here because the
@@ -208,7 +222,14 @@ export function BlockEditor({
         {/* ★ The save is BLOCKED while any check is: a mail an admin has not
             seen is a mail they must not be able to approve. The panel says
             which check, and names the block. */}
-        <form action={dispatch} noValidate className="mt-4 flex flex-wrap items-center gap-3">
+        <form
+          action={dispatch}
+          onSubmit={() => {
+            posted.current = { subject, doc: documentJson };
+          }}
+          noValidate
+          className="mt-4 flex flex-wrap items-center gap-3"
+        >
           <input type="hidden" name="key" value={messageKey} />
           <input type="hidden" name="subject" value={subject} />
           <input type="hidden" name="blocks" value={documentJson} />
@@ -219,7 +240,7 @@ export function BlockEditor({
           <Button
             type="button"
             variant="secondary"
-            disabled={blocked || testing}
+            disabled={blocked || testing || unsaved}
             onClick={async () => {
               setTesting(true);
               try {
@@ -238,7 +259,7 @@ export function BlockEditor({
           >
             {t("sendTest")}
           </Button>
-          {blocked ? <span className="text-body-sm text-fg-muted">{t("blockedBySaveChecks")}</span> : null}
+          {blocked ? <span className="text-body-sm text-fg-muted">{t("blockedBySaveChecks")}</span> : unsaved ? <span className="text-body-sm text-fg-muted">{t("testNeedsSave")}</span> : null}
           {state.formError ? <span className="text-body-sm text-error">{t(`errors.${state.formError}`)}</span> : null}
         </form>
 
