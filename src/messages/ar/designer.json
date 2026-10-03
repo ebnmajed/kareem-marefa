@@ -428,6 +428,86 @@
         "not_authorized": "إضافة الصور من صلاحيات مشرف المؤسسة.",
         "unknown": "تعذّر رفع الصورة. أعد المحاولة."
       }
+    },
+    "studio": {
+      "rail": {
+        "elements": "العناصر",
+        "fields": "الحقول",
+        "uploads": "الملفات",
+        "brand": "الهوية",
+        "layers": "الطبقات",
+        "checks": "الفحوصات",
+        "layer": "الطبقة",
+        "checksCount": "{count, plural, zero {لا ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {{value} ملاحظات} many {{value} ملاحظة} other {{value} ملاحظة}}"
+      },
+      "elements": {
+        "basic": "أساسية",
+        "heading": "عنوان",
+        "text": "نص",
+        "rect": "مستطيل",
+        "circle": "دائرة",
+        "line": "خط",
+        "qr": "رمز QR",
+        "logo": "شعار الشركة",
+        "styles": "أنماط النص",
+        "styleTitle": "عنوان ملصق",
+        "styleSubtitle": "عنوان فرعي",
+        "styleBody": "نص",
+        "styleLabel": "تسمية صغيرة"
+      },
+      "fields": {
+        "used": "مستخدم",
+        "unused": "غير مستخدم",
+        "values": "القيم في المعاينة"
+      },
+      "uploads": {
+        "empty": "لا صور مرفوعة بعد.",
+        "imageOf": "صورة <bdi>{width}</bdi> × <bdi>{height}</bdi>"
+      },
+      "brand": {
+        "colours": "الألوان",
+        "fonts": "الخطوط",
+        "logo": "الشعار",
+        "apply": "طبّق «<bdi>{name}</bdi>» على الطبقة"
+      },
+      "layer": {
+        "close": "إغلاق",
+        "text": "النص",
+        "position": "الموضع",
+        "effects": "التأثيرات",
+        "image": "الصورة",
+        "shape": "الشكل",
+        "qr": "الرمز",
+        "maxLines": "أقصى سطور",
+        "qrTarget": "يشير إلى",
+        "document": "المستند",
+        "alignRight": "يمين",
+        "alignLeft": "يسار",
+        "alignMiddle": "وسط"
+      },
+      "toolbar": {
+        "label": "تنسيق الطبقة",
+        "bind": "{ } ربط",
+        "fillWidth": "املأ عرضًا"
+      },
+      "bar": {
+        "zoom": "التكبير",
+        "fit": "ملاءمة",
+        "export": "صدّر",
+        "exportTitle": "التصدير",
+        "previewSession": "معاينة بجلسة",
+        "previewNone": "بلا جلسة",
+        "publish": "انشر",
+        "published": "نُشر إصدار جديد من القالب.",
+        "publishFailed": "تعذّر النشر.",
+        "strip": "المقاسات"
+      },
+      "stage": {
+        "safeArea": "منطقة الأمان",
+        "grid": "الشبكة",
+        "snap": "المحاذاة التلقائية",
+        "rulers": "المساطر"
+      }
     }
   }
 }

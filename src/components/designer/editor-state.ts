@@ -548,7 +548,7 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
   }, [document, push]);
 
   /** A tile tapped in العناصر, الحقول or الملفات: the layer is added inside the safe area at the document's start,
-   *  selected, and «ضع بنقرة» armed — the next tap on the canvas places its centre (DEC-093; the drag is the
+   *  selected and shown, and «ضع بنقرة» armed — the next tap on the canvas places its centre (DEC-093; the drag is the
    *  enhancement). */
   const addFromPanel = useCallback(
     (kind: NewLayerKind, options: NewLayerOptions) => {
@@ -560,8 +560,9 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
       commit(addLayer(document, layer));
       setSelectedLayerIds([layer.id]);
       setPlacing(true);
+      onRevealLayer();
     },
-    [commit, document, props.faces, ta],
+    [commit, document, props.faces, ta, onRevealLayer],
   );
 
   return {

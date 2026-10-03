@@ -428,6 +428,86 @@
         "not_authorized": "Adding images is an org admin's act.",
         "unknown": "The image could not be uploaded. Try again."
       }
+    },
+    "studio": {
+      "rail": {
+        "elements": "Elements",
+        "fields": "Fields",
+        "uploads": "Uploads",
+        "brand": "Brand",
+        "layers": "Layers",
+        "checks": "Checks",
+        "layer": "Layer",
+        "checksCount": "{count, plural, zero {No findings} one {One finding} two {Two findings} few {{value} findings} many {{value} findings} other {{value} findings}}"
+      },
+      "elements": {
+        "basic": "Basic",
+        "heading": "Heading",
+        "text": "Text",
+        "rect": "Rectangle",
+        "circle": "Circle",
+        "line": "Line",
+        "qr": "QR code",
+        "logo": "Company logo",
+        "styles": "Text styles",
+        "styleTitle": "Poster title",
+        "styleSubtitle": "Subtitle",
+        "styleBody": "Body",
+        "styleLabel": "Small label"
+      },
+      "fields": {
+        "used": "Used",
+        "unused": "Unused",
+        "values": "Values in the preview"
+      },
+      "uploads": {
+        "empty": "No uploaded images yet.",
+        "imageOf": "Image <bdi>{width}</bdi> × <bdi>{height}</bdi>"
+      },
+      "brand": {
+        "colours": "Colours",
+        "fonts": "Fonts",
+        "logo": "Logo",
+        "apply": "Apply “<bdi>{name}</bdi>” to the layer"
+      },
+      "layer": {
+        "close": "Close",
+        "text": "Text",
+        "position": "Position",
+        "effects": "Effects",
+        "image": "Image",
+        "shape": "Shape",
+        "qr": "Code",
+        "maxLines": "Maximum lines",
+        "qrTarget": "Points to",
+        "document": "Document",
+        "alignRight": "Right",
+        "alignLeft": "Left",
+        "alignMiddle": "Centre"
+      },
+      "toolbar": {
+        "label": "Layer format",
+        "bind": "{ } Bind",
+        "fillWidth": "Fill width"
+      },
+      "bar": {
+        "zoom": "Zoom",
+        "fit": "Fit",
+        "export": "Export",
+        "exportTitle": "Export",
+        "previewSession": "Preview with a session",
+        "previewNone": "No session",
+        "publish": "Publish",
+        "published": "A new version of the template was published.",
+        "publishFailed": "Could not publish.",
+        "strip": "Sizes"
+      },
+      "stage": {
+        "safeArea": "Safe area",
+        "grid": "Grid",
+        "snap": "Auto-align",
+        "rulers": "Rulers"
+      }
     }
   }
 }
