@@ -171,6 +171,12 @@ function group(findings: CheckFinding[]): FindingGroup[] {
   return [...groups.values()];
 }
 
+/** The rows the panel lists — one per check × layer. The rail's count (wave 23): one overflow on seven presets is one
+ *  problem, so the count says one, as the list does. */
+export function checkRowCount(findings: CheckFinding[]): number {
+  return group(findings).length;
+}
+
 export function ChecksPanel({ findings, measuring, onGoTo, layerNames = {}, showIntro = true }: ChecksPanelProps) {
   const t = useTranslations("designer.checks");
   const tp = useTranslations("designer.presets");

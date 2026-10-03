@@ -419,6 +419,18 @@ export async function getPosterPicker(locale: string, sessionId: string): Promis
 /** A signed URL for a design asset, five minutes. `null` when the id names
  *  no asset this org may read — which the canvas renders as a marked
  *  placeholder rather than a broken image (REQ-DSG-006). */
+/** الملفات (wave 23, add-only): the org's uploaded images, newest first, each with its size and a five-minute preview
+ *  URL for the panel's tile — a preview, never a download. Through RLS (`design_assets` is org-scoped). */
+export async function listDesignAssets(locale: string): Promise<{ assetId: string; width: number; height: number; previewUrl: string | null }[]> {
+  const { supabase } = await sessionClient(locale);
+  const { data } = await supabase.from("design_assets").select("id, storage_path, width, height").order("created_at", { ascending: false }).limit(24);
+  const rows = data ?? [];
+  const signed = await Promise.all(
+    rows.map(async (r) => (await supabase.storage.from("design-assets").createSignedUrl(r.storage_path as string, 300)).data?.signedUrl ?? null),
+  );
+  return rows.map((r, i) => ({ assetId: r.id as string, width: (r.width as number) ?? 0, height: (r.height as number) ?? 0, previewUrl: signed[i] ?? null }));
+}
+
 export async function signDesignAssetUrl(locale: string, assetId: string): Promise<string | null> {
   // Already a URL (wave 4 may hand one over directly) — nothing to sign.
   if (/^https?:\/\//.test(assetId)) return assetId;

@@ -15,6 +15,7 @@ import {
   fontFaceCss,
   newLayer,
   type NewLayerKind,
+  type NewLayerOptions,
   nudgeLayers,
   placeLayerCentre,
   PRESETS,
@@ -536,6 +537,33 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
   const lockedIds = useMemo(() => document.layers.filter((l) => isLocked(l.id)).map((l) => l.id), [document.layers, isLocked]);
   const selection = useMemo(() => document.layers.filter((l) => selectedLayerIds.includes(l.id)), [document.layers, selectedLayerIds]);
 
+  /* ── wave 23, after the move: what the rebuilt chrome needs beyond it ── */
+
+  /** Save NOW — before a navigation (a preview, a publish) drops the last 1.2 s of work. */
+  const flush = useCallback(async () => {
+    if (!timer.current) return;
+    clearTimeout(timer.current);
+    timer.current = null;
+    await push(document);
+  }, [document, push]);
+
+  /** A tile tapped in العناصر, الحقول or الملفات: the layer is added inside the safe area at the document's start,
+   *  selected, and «ضع بنقرة» armed — the next tap on the canvas places its centre (DEC-093; the drag is the
+   *  enhancement). */
+  const addFromPanel = useCallback(
+    (kind: NewLayerKind, options: NewLayerOptions) => {
+      const layer = newLayer(document, kind, {
+        literal: ta("newText"),
+        fontFamily: props.faces.find((f) => /arabic/i.test(f.family))?.family ?? props.faces[0]?.family,
+        ...options,
+      });
+      commit(addLayer(document, layer));
+      setSelectedLayerIds([layer.id]);
+      setPlacing(true);
+    },
+    [commit, document, props.faces, ta],
+  );
+
   return {
     document,
     selectedLayerIds,
@@ -594,5 +622,8 @@ export function useDesignerEditorState(props: DesignerEditorProps, { onRevealLay
     onSource,
     lockedIds,
     selection,
+    flush,
+    addFromPanel,
+    setPlacing,
   };
 }

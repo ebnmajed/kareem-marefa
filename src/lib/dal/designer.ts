@@ -99,6 +99,14 @@ export interface DesignerDocumentData {
   /** The palette the preview resolved, and the one an export from this
    *  screen pins (DEC-125, DEC-148 contract 2). */
   scheme: BrandScheme;
+  /* ── wave 23, add-only ── */
+  /** «معاينة بجلسة»: a real session's bindings over the canvas and the checks ONLY. Never in `bindings`, so the
+   *  fingerprint, the export queue and every render keep the saved document's own (REQ-DSG-013). */
+  previewBindings: Record<string, string>;
+  /** A template draft's latest PUBLISHED version, so the bar offers «انشر» only when the draft differs. */
+  publishedDocument: DesignDocument | null;
+  /** The family a template draft serves — a certificate's kind (DEC-236 §1). */
+  family: string | null;
 }
 
 export type DesignerContext =
@@ -208,7 +216,7 @@ export async function getDesignerDocument(
   locale: string,
   documentId: string,
   origin: string,
-  options: { scheme?: string | null } = {},
+  options: { scheme?: string | null; previewSessionId?: string | null } = {},
 ): Promise<DesignerDocumentData | null> {
   const { session, supabase } = await sessionClient(locale);
 
@@ -254,7 +262,7 @@ export async function getDesignerDocument(
       ? supabase.from("session_posters").select("binding").eq("session_id", row.bound_session_id).maybeSingle()
       : Promise.resolve({ data: null }),
     row.draft_for_template_id
-      ? supabase.from("design_templates").select("id, name, purpose").eq("id", row.draft_for_template_id).maybeSingle()
+      ? supabase.from("design_templates").select("id, name, purpose, family").eq("id", row.draft_for_template_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const purpose = row.purpose as DesignerPurpose;
@@ -340,7 +348,45 @@ export async function getDesignerDocument(
     timeZone,
     context,
     scheme,
+    previewBindings: await previewSessionBindings(supabase, locale, row.bound_session_id ? null : (options.previewSessionId ?? null), bindingOptions),
+    publishedDocument: draftTemplate ? await latestPublished(supabase, draftTemplate.id as string) : null,
+    family: (draftTemplate?.family as string | undefined) ?? null,
   };
+}
+
+type Client = Awaited<ReturnType<typeof sessionClient>>["supabase"];
+
+/** A real session's bindings for «معاينة بجلسة» — through RLS as the caller; nothing when it is not readable. */
+async function previewSessionBindings(supabase: Client, locale: string, sessionId: string | null, options: BindingOptions): Promise<Record<string, string>> {
+  if (!sessionId || !z.uuid().safeParse(sessionId).success) return {};
+  const { data } = await supabase
+    .from("sessions")
+    .select("id, title, abstract, starts_at, time_zone, custom_venue_name, custom_venue_address, venues(name, address), session_presenters(accepted, members(display_name))")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (!data) return {};
+  const days = await listSessionDays(locale, sessionId);
+  return sessionBindings({ ...(data as unknown as SessionRow), days: days.map((d) => ({ startsAt: d.startsAt, endsAt: d.endsAt })) }, options);
+}
+
+async function latestPublished(supabase: Client, templateId: string): Promise<DesignDocument | null> {
+  const { data } = await supabase
+    .from("design_template_versions")
+    .select("document")
+    .eq("template_id", templateId)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const parsed = validateDocument(data.document);
+  return parsed.ok ? parsed.document : null;
+}
+
+/** «معاينة بجلسة»'s choices: the org's sessions, the latest first. Through RLS. */
+export async function listPreviewSessions(locale: string): Promise<{ id: string; title: string }[]> {
+  const { supabase } = await sessionClient(locale);
+  const { data } = await supabase.from("sessions").select("id, title").order("starts_at", { ascending: false, nullsFirst: false }).limit(30);
+  return (data ?? []).map((r) => ({ id: r.id as string, title: r.title as string }));
 }
 
 /* ── the autosave ───────────────────────────────────────────────────────── */
