@@ -17,7 +17,7 @@
       },
       "noTemplate": "No template",
       "platformMark": "Platform",
-      "notFlagged": "no default set"
+      "noDefault": "No default set"
     },
     "card": {
       "isDefault": "Default",

@@ -23,7 +23,8 @@ import { TemplatePreview } from "./template-preview";
 // REQ-DSG-008, REQ-CRT-015, DEC-236 §1, DEC-238.
 //
 // The job: an admin finds the default for each certificate kind in one look — the strip names the template issuance
-// really picks (DEC-238 §2.3), marked «افتراضي» only when it is the kind's default — and changes it in one move, ⋯ →
+// really picks (DEC-238 §2.3), and when the kind has no default set it names NONE and says «لا قالب افتراضي» (the owner's
+// tie guard: issuance would then take a template by version with no tiebreak) — and changes it in one move, ⋯ →
 // «اجعله الافتراضي». A platform template is read-only until copied: its card's one action is «انسخ لتعدّل».
 //
 // Regions in the boards' order: the `h1` with «قالب جديد» · the tabs · قوالب مؤسستك · قوالب المنصة · (certificates) the
@@ -146,12 +147,14 @@ export async function TemplatesScreen({ locale, purpose, creating }: { locale: s
                     <div key={kind} className="flex flex-col gap-0.5">
                       <dt className="text-caption font-bold text-fg-muted">{t(`library.defaultFor.${kind}`)}</dt>
                       <dd className="flex flex-wrap items-center gap-1.5 text-fg-heading">
-                        {picked ? (
+                        {picked.status === "named" ? (
                           <>
-                            <bdi>{picked.name}</bdi>
-                            {picked.isDefault ? null : <span className="text-caption text-fg-muted">· {t("library.notFlagged")}</span>}
-                            {picked.scope === "platform" ? <span className="text-caption text-fg-muted">· {t("library.platformMark")}</span> : null}
+                            <bdi>{picked.template.name}</bdi>
+                            {picked.template.scope === "platform" ? <span className="text-caption text-fg-muted">· {t("library.platformMark")}</span> : null}
                           </>
+                        ) : picked.status === "no_default" ? (
+                          // The tie guard: issuance would take a template by version with no tiebreak — name none.
+                          <span className="text-fg-muted">{t("library.noDefault")}</span>
                         ) : (
                           t("library.noTemplate")
                         )}

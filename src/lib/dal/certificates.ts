@@ -293,8 +293,13 @@ export interface CertificateDesignData {
      *  family default, light. */
     chosen: { templateId: string; scheme: BrandScheme } | null;
     /** What issuance would use right now: the chosen template, else the
-     *  family default (the org's, else the platform's). */
+     *  family default (the org's, else the platform's). ★ wave 23: when
+     *  `noDefault`, this is only the control's preselection for the preview —
+     *  an id-tiebroken pick that must never be NAMED as what issuance uses. */
     effectiveTemplateId: string | null;
+    /** ★ wave 23 (the owner's tie guard, DEC-238): nothing chosen for the session and no default set for the kind —
+     *  issuance would take an org template by version with no tiebreak, so the screen says «لا قالب افتراضي». */
+    noDefault?: boolean;
     options: CertificateTemplateOption[];
     /** A certificate of this kind has reached a member — the design is fixed. */
     locked: boolean;
@@ -362,7 +367,11 @@ export async function getCertificateDesign(locale: string, sessionId: string): P
     const pickedId = pickEffectiveTemplate(
       options.map((o) => ({ id: o.id, scope: o.scope, isDefault: o.isDefault, version: latestVersion.get(o.id) ?? 0 })),
     );
+    // Internal: the control's preselection only. Whether it may be NAMED is `resolveEffectiveDefault()`'s answer.
     const fallback = options.find((o) => o.id === pickedId) ?? null;
+    const resolved = resolveEffectiveDefault(
+      options.map((o) => ({ id: o.id, scope: o.scope, isDefault: o.isDefault, version: latestVersion.get(o.id) ?? 0 })),
+    );
     type Cert = {
       kind: string;
       state: string;
@@ -387,6 +396,7 @@ export async function getCertificateDesign(locale: string, sessionId: string): P
       kind,
       chosen: design ? { templateId: design.template_id, scheme: design.scheme } : null,
       effectiveTemplateId: design?.template_id ?? fallback?.id ?? null,
+      noDefault: design === null && resolved.status === "no_default",
       options,
       locked: mine.some((c) => c.state === "issued" || c.state === "revoked"),
       heldCount: mine.filter((c) => c.state === "held").length,
@@ -439,6 +449,23 @@ export function pickEffectiveTemplate(candidates: EffectiveTemplateCandidate[]):
   return ranked[0]?.id ?? null;
 }
 
+export type EffectiveDefault = { status: "named"; id: string } | { status: "no_default" } | { status: "none" };
+
+/**
+ * ★ The owner's tie guard (wave 23, DEC-238). Which template a screen may NAME as the one issuance uses. Issuance takes
+ * this org's templates of the kind before the platform's (`0127`); within the scope it takes, a flagged default is
+ * deterministic and is named. With templates in that scope and NO default, `issue_certificate()` falls to `version desc`
+ * with no tiebreak — so the screen names nothing and says «لا قالب افتراضي», with the set-default move on SCR-055.
+ * `pickEffectiveTemplate()`'s id tiebreak is never shown as the answer; it only preselects the control's preview.
+ */
+export function resolveEffectiveDefault(candidates: EffectiveTemplateCandidate[]): EffectiveDefault {
+  const org = candidates.filter((c) => c.scope === "org");
+  const scope = org.length ? org : candidates;
+  if (scope.length === 0) return { status: "none" };
+  const flagged = scope.find((c) => c.isDefault);
+  return flagged ? { status: "named", id: flagged.id } : { status: "no_default" };
+}
+
 export interface EffectiveCertificateTemplate {
   templateId: string;
   name: string;
@@ -447,9 +474,12 @@ export interface EffectiveCertificateTemplate {
   orientation: "landscape" | "portrait";
 }
 
-/** SCR-055's defaults strip: per kind, the template a certificate issued now would use. Staff only; RLS gives this org's
- *  templates and the platform's, exactly the rows the function reads. */
-export async function getEffectiveCertificateTemplates(locale: string): Promise<Record<CertificateKind, EffectiveCertificateTemplate | null> | null> {
+export type EffectiveCertificateDefault = { status: "named"; template: EffectiveCertificateTemplate } | { status: "no_default" } | { status: "none" };
+
+/** SCR-055's defaults strip: per kind, the template a certificate issued now would use — or, when the kind has no default
+ *  set, that state, never an arbitrary pick (the tie guard, `resolveEffectiveDefault()`). Staff only; RLS gives this
+ *  org's templates and the platform's, exactly the rows the function reads. */
+export async function getEffectiveCertificateTemplates(locale: string): Promise<Record<CertificateKind, EffectiveCertificateDefault> | null> {
   const { session, supabase } = await sessionClient(locale);
   if (session.role !== "admin" && session.role !== "moderator") return null;
 
@@ -471,14 +501,16 @@ export async function getEffectiveCertificateTemplates(locale: string): Promise<
     if (parsed.ok) latest.set(v.template_id, { version: v.version, document: parsed.document });
   }
 
-  const out = {} as Record<CertificateKind, EffectiveCertificateTemplate | null>;
+  const out = {} as Record<CertificateKind, EffectiveCertificateDefault>;
   for (const kind of ["attendance", "presenter", "achievement"] as const) {
     const candidates = rows.filter((t) => t.family === kind && latest.has(t.id));
-    const picked = pickEffectiveTemplate(candidates.map((t) => ({ id: t.id, scope: t.scope, isDefault: t.is_default, version: latest.get(t.id)!.version })));
-    const row = candidates.find((t) => t.id === picked);
+    const resolved = resolveEffectiveDefault(candidates.map((t) => ({ id: t.id, scope: t.scope, isDefault: t.is_default, version: latest.get(t.id)!.version })));
+    const row = resolved.status === "named" ? candidates.find((t) => t.id === resolved.id) : undefined;
     out[kind] = row
-      ? { templateId: row.id, name: row.name, scope: row.scope, isDefault: row.is_default, orientation: orientationOf(latest.get(row.id)!.document) }
-      : null;
+      ? { status: "named", template: { templateId: row.id, name: row.name, scope: row.scope, isDefault: row.is_default, orientation: orientationOf(latest.get(row.id)!.document) } }
+      : resolved.status === "named"
+        ? { status: "none" }
+        : resolved;
   }
   return out;
 }

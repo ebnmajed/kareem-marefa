@@ -47,3 +47,31 @@ describe("the template issuance really picks", () => {
     expect(pickEffectiveTemplate([])).toBeNull();
   });
 });
+
+// ★ The owner's tie guard (wave 23, DEC-238): what a screen may NAME. The id tiebreak above only preselects a preview.
+describe("the template a screen may name (resolveEffectiveDefault)", () => {
+  it("★ two non-default org templates of one kind, both on v1: neither is named — «لا قالب افتراضي»", async () => {
+    const { resolveEffectiveDefault } = await import("@/lib/dal/certificates");
+    expect(
+      resolveEffectiveDefault([
+        platformDefault,
+        { id: "o-a", scope: "org", isDefault: false, version: 1 },
+        { id: "o-b", scope: "org", isDefault: false, version: 1 },
+      ]),
+    ).toEqual({ status: "no_default" });
+  });
+
+  it("an org template that is not flagged is not named either, though issuance would take it", async () => {
+    const { resolveEffectiveDefault } = await import("@/lib/dal/certificates");
+    expect(resolveEffectiveDefault([platformDefault, { id: "o-1", scope: "org", isDefault: false, version: 3 }])).toEqual({ status: "no_default" });
+  });
+
+  it("the org's flagged default is named; with no org template, the platform's default is named", async () => {
+    const { resolveEffectiveDefault } = await import("@/lib/dal/certificates");
+    expect(
+      resolveEffectiveDefault([platformDefault, { id: "o-d", scope: "org", isDefault: true, version: 1 }, { id: "o-x", scope: "org", isDefault: false, version: 5 }]),
+    ).toEqual({ status: "named", id: "o-d" });
+    expect(resolveEffectiveDefault([platformOther, platformDefault])).toEqual({ status: "named", id: "p-default" });
+    expect(resolveEffectiveDefault([])).toEqual({ status: "none" });
+  });
+});

@@ -87,6 +87,29 @@ describe("REQ-ADM-023 — the template library (0191)", () => {
     });
   });
 
+  it("a version published LATER — `published_at` set from null by an update — writes .published, whatever its number", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      await tx.as(f.a.admin.claims);
+      const id = await create(tx, f.a.id, f.a.admin.memberId, "ورقي");
+      // `authenticated` has no update grant on versions (immutable once published, 0055), so the later publish is a
+      // database path — written here as the owner, which is how such a row is ever written.
+      await tx.asOwner();
+      const [{ id: versionId }] = await tx.q<{ id: string }>(
+        `insert into public.design_template_versions (template_id, version, document) values ($1, 2, $2::jsonb) returning id`,
+        [id, DOC],
+      );
+      const m = await mark(tx);
+      expect(await since(tx, f.a.id, m)).toEqual([]);
+      await tx.asOwner();
+      await tx.q(`update public.design_template_versions set published_at = now() where id = $1`, [versionId]);
+      const rows = await since(tx, f.a.id, m);
+      expect(rows.map((r) => r.action)).toEqual(["design_template.published"]);
+      expect(rows[0]).toMatchObject({ subject_id: id });
+      expect(rows[0].after).toMatchObject({ version: 2, version_id: versionId });
+    });
+  });
+
   it("★ set default writes EXACTLY ONE row, on the new default — the cleared previous default writes nothing", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);

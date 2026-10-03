@@ -5,7 +5,8 @@
 // The job, one line per screen (note §0): on `055` an admin reads the three defaults in one strip and copies a platform
 // template with ⋯ → «انسخ لتعدّل»; on `045` an admin issues a held certificate with «أصدر» and, while the kind is only
 // held, still changes its template behind «غيّر». Each act's audit row is read back, written by the admin member.
-// A moderator reads both screens and writes on neither; a member gets the streamed not-found.
+// ★ The owner's tie guard: a kind with no default set is named by neither screen. A moderator reads both screens and
+// writes on neither; a member gets the streamed not-found.
 //
 // Captures at `.qa-shots/rtl/wave23-console-<screen>-<state>-<1280|390>.png`, honouring `E2E_SHOTS_DIR`: every screen
 // at 1280 on the desktop project and at 390 on the phone project (both stack under `lg`). Writes run once, on desktop.
@@ -175,8 +176,38 @@ test("055 · a platform template is read-only until copied — one action, «ا�
   await expect(mine).toBeVisible();
   const { rows } = await db.query<{ id: string }>(`select id from public.design_templates where org_id = $1 and name = $2`, [orgId, `${name} لنا`]);
   expect(await auditRows("design_template.created", rows[0].id)).toEqual([{ actor_id: members.admin }]);
-  // An org copy that is not the default now wins issuance over the platform's default: the strip says so, unflagged.
-  await expect(main(page).getByLabel("القوالب الافتراضية")).toContainText(`${name} لنا`);
+  // ★ The tie guard: an org copy that is not the default takes issuance from the platform's default, so that kind has no
+  // default set — the strip names neither, and says so (DEC-238, the owner's ruling).
+  const strip = main(page).getByLabel("القوالب الافتراضية");
+  await expect(strip).toContainText("لا قالب افتراضي");
+  await expect(strip).not.toContainText(`${name} لنا`);
+});
+
+test("055 · ★ the tie guard — two non-default org templates of one kind on v1: the strip names neither", async ({ page, context }, info) => {
+  desktopOnly(info);
+  const doc = JSON.stringify({ schemaVersion: 1, purpose: "certificate", master: { width: 3508, height: 2480, unit: "px", dpi: 300 }, direction: "rtl", background: { type: "solid", color: "{{brand.canvas}}" }, layers: [] });
+  for (const name of ["تقديم أول", "تقديم ثانٍ"]) {
+    const { rows } = await db.query<{ id: string }>(
+      `insert into public.design_templates (org_id, scope, purpose, family, name) values ($1, 'org', 'certificate', 'presenter', $2) returning id`,
+      [orgId, name],
+    );
+    await db.query(`insert into public.design_template_versions (template_id, version, document, published_at) values ($1, 1, $2::jsonb, now())`, [rows[0].id, doc]);
+  }
+  await signIn(context, emails.admin);
+  await page.goto("/ar/app/admin/templates/certificates");
+  const presenter = main(page).getByLabel("القوالب الافتراضية").locator("div", { has: page.getByText("الافتراضي للتقديم", { exact: true }) });
+  await expect(presenter.locator("dd")).toHaveText("لا قالب افتراضي");
+  await expect(main(page).getByLabel("القوالب الافتراضية")).not.toContainText("تقديم أول");
+  await expect(main(page).getByLabel("القوالب الافتراضية")).not.toContainText("تقديم ثانٍ");
+  await settled(page);
+  await shot(page, info, "templates", "no-default");
+
+  // One move: ⋯ → «اجعله الافتراضي» names it.
+  const card = main(page).locator("article", { has: page.getByRole("heading", { name: "تقديم أول", exact: true, level: 3 }) });
+  await card.getByRole("button", { name: "إجراءات أخرى" }).click();
+  await page.getByRole("menuitem", { name: "اجعله الافتراضي" }).click();
+  await expect(page.getByText("صار هذا القالب الافتراضي لعائلته.", { exact: true })).toBeVisible();
+  await expect(presenter.locator("dd")).toHaveText("تقديم أول");
 });
 
 test("055 · a moderator reads the library and writes nothing; a member gets the streamed not-found (DEC-134)", async ({ page, context }, info) => {

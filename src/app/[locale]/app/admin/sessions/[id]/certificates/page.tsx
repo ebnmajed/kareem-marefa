@@ -88,10 +88,20 @@ export default async function SessionCertificatesPage({
   const serial = estimate ? `${estimate.prefix}-${estimate.year}-${String(estimate.next).padStart(6, "0")}` : null;
 
   // The template line: what each kind was issued with, else what issuance would pick (DEC-238 §2.3).
+  // ★ The tie guard (the owner, DEC-238): a kind with no template chosen and no default set names NOTHING — issuance would
+  // take a template by version with no tiebreak — and says «لا قالب افتراضي», one move from SCR-055's set-default.
   const templateName = (kind: CertificateDesignData["kinds"][number]) =>
-    kind.issuedWith?.templateName ?? kind.options.find((o) => o.id === kind.effectiveTemplateId)?.name ?? null;
-  const named = design.kinds.map((k) => ({ kind: k, name: templateName(k) })).filter((k) => k.name !== null) as Array<{ kind: CertificateDesignData["kinds"][number]; name: string }>;
-  const sameTemplate = named.length > 0 && named.every((k) => k.name === named[0].name);
+    kind.issuedWith?.templateName ?? (kind.noDefault ? null : (kind.options.find((o) => o.id === kind.effectiveTemplateId)?.name ?? null));
+  type Line = { kind: CertificateDesignData["kinds"][number]; name: string | null };
+  const named: Line[] = design.kinds
+    .map((k) => ({ kind: k, name: templateName(k) }))
+    .filter((l) => l.name !== null || (l.kind.noDefault && !l.kind.issuedWith));
+  const sameTemplate = named.length > 0 && named.every((l) => l.name === named[0].name);
+  const noDefaultLink = (
+    <Link href="/app/admin/templates/certificates" className="text-fg-heading underline underline-offset-4">
+      {t("noDefault")}
+    </Link>
+  );
   // After completion the template changes only while that kind has held certificates and none issued (DEC-238 §2).
   const changeable = (k: CertificateDesignData["kinds"][number]) => isAdmin && !cancelled && (!completed || (k.heldCount > 0 && !k.locked));
   const editingKind = completed && typeof sp.design === "string" ? (design.kinds.find((k) => k.kind === sp.design && changeable(k)) ?? null) : null;
@@ -121,15 +131,27 @@ export default async function SessionCertificatesPage({
         {data.mode !== "off" && named.length ? (
           <span className="text-fg-muted">
             {"· "}
-            {sameTemplate
-              ? t.rich("lineTemplate", { name: named[0].name, bdi })
+            {sameTemplate && named[0].name === null
+              ? (
+                  <>
+                    {t("lineTemplatePrefix")} {noDefaultLink}
+                  </>
+                )
+              : sameTemplate
+              ? t.rich("lineTemplate", { name: named[0].name ?? "", bdi })
               : (
                   <>
                     {t("lineTemplatePrefix")}{" "}
                     {named.map((k, i) => (
                       <span key={k.kind.kind}>
                         {i > 0 ? " · " : null}
-                        {t.rich("lineTemplateKind", { kind: tk(k.kind.kind), name: k.name, bdi })}
+                        {k.name === null ? (
+                          <>
+                            <bdi>{tk(k.kind.kind)}</bdi> — {noDefaultLink}
+                          </>
+                        ) : (
+                          t.rich("lineTemplateKind", { kind: tk(k.kind.kind), name: k.name, bdi })
+                        )}
                       </span>
                     ))}
                   </>

@@ -17,7 +17,7 @@
       },
       "noTemplate": "لا قالب",
       "platformMark": "المنصة",
-      "notFlagged": "بلا افتراضي"
+      "noDefault": "لا قالب افتراضي"
     },
     "card": {
       "isDefault": "افتراضي",

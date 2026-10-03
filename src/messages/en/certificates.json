@@ -234,7 +234,8 @@
         "attendance": "Attendance",
         "presenter": "Presenting"
       },
-      "offLine": "No certificates are issued for this session."
+      "offLine": "No certificates are issued for this session.",
+      "noDefault": "No default set"
     },
     "download": {
       "failed": "The file could not be downloaded. Try again, and if it keeps happening tell your organisation's admin."
