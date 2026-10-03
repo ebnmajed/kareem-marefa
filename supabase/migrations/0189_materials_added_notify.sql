@@ -1,3 +1,4 @@
+-- 0189 · promoted by the lead (wave 22, PR D) from supabase/proposed/notify/materials_added_notify.sql, unchanged below this line.
 -- notify (wave 22, PR D, D-N1) — MSG-materials_added is SENT: when a material becomes visible on a session that has
 -- already completed, its checked-in attendees are told, once per session per day.
 --
