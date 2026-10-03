@@ -12,6 +12,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import arAdmin from "@/messages/ar/admin.json";
 import arCertificates from "@/messages/ar/certificates.json";
+import arTemplates from "@/messages/ar/templates.json";
 import arUi from "@/messages/ar/ui.json";
 import type { SessionCertificateRow } from "@/lib/dal/certificates";
 
@@ -51,7 +52,7 @@ const row = (over: Partial<SessionCertificateRow> = {}): SessionCertificateRow =
 });
 
 const Wrap = ({ children }: { children: React.ReactNode }) => (
-  <NextIntlClientProvider locale="ar" messages={{ ...arCertificates, ...arUi, ...arAdmin }} timeZone="Asia/Riyadh">
+  <NextIntlClientProvider locale="ar" messages={{ ...arCertificates, ...arTemplates, ...arUi, ...arAdmin }} timeZone="Asia/Riyadh">
     <div dir="rtl">{children}</div>
   </NextIntlClientProvider>
 );
@@ -105,6 +106,18 @@ describe("SCR-045 — issued", () => {
     expect(revoke).not.toBeNull();
     expect(revoke).toHaveAttribute("aria-label", "ألغِ — سارة القحطاني");
     expect(container.querySelector('bdi[dir="ltr"]')?.textContent).toBe("KM-2026-000214");
+  });
+
+  it("the board's short kind and date — «حضور», «1 أكتوبر» in the org's zone, the full instant kept in dateTime; no empty sentence", () => {
+    const { container } = mount({ held: [] });
+    expect(screen.getAllByText("حضور").length).toBeGreaterThan(0);
+    expect(screen.queryByText("شهادة حضور")).toBeNull();
+    const time = container.querySelector("time");
+    expect(time?.textContent).toBe("1 أكتوبر");
+    expect(time).toHaveAttribute("dateTime", "2026-10-01T10:00:00Z");
+    // DEC-NEXT-25: nothing held is the heading and its 0.
+    expect(screen.getByRole("heading", { name: "محجوزة · 0" })).toBeInTheDocument();
+    expect(container.textContent).not.toContain("وضع المراجعة");
   });
 
   it("the list stops at its limit and says how many more, with a link to all", () => {

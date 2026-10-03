@@ -86,7 +86,6 @@
       "whoIntro": "تصدر شهادة الحضور لكل من سُجّل حضوره، وشهادة التقديم لكل مقدِّم قبِل الدعوة — ولا شيء غير ذلك. تُحسب القائمة عند اكتمال الجلسة.",
       "modeLink": "غيّر وضع الإصدار",
       "eligibleEmptyTitle": "لا أحد بعد",
-      "eligibleEmptyDescription": "لم يُسجَّل حضور أحد ولم يقبل مقدِّم الدعوة. تظهر الأسماء هنا حين يحدث ذلك.",
       "attendanceLink": "سجل الحضور",
       "revokedReplaceable": "مُلغاة لإزالة الحضور — يصدر بديل عند تسجيل حضوره من جديد.",
       "revokedFinal": "مُلغاة نهائيًا — لن يصدر بديل.",
@@ -115,11 +114,8 @@
       "revokedLabel": "الشهادات الملغاة",
       "eligibleLabel": "المستحقّون",
       "heldEmptyTitle": "لا شهادات محجوزة",
-      "heldEmptyDescription": "في وضع المراجعة تُجهَّز الشهادات عند اكتمال الجلسة وتنتظر هنا حتى تُطلقها.",
       "issuedEmptyTitle": "لا شهادات صادرة بعد",
-      "issuedEmptyDescription": "تظهر هنا كل شهادة وصلت إلى صاحبها.",
       "revokedEmptyTitle": "لا شهادات ملغاة",
-      "revokedEmptyDescription": "الشهادة الملغاة تبقى هنا بسبب إلغائها، وتظهر «ملغاة» في صفحة التحقّق.",
       "selected": "{count, plural, zero {لم تُحدَّد شهادة} one {شهادة واحدة محدّدة} two {شهادتان محدّدتان} few {{value} شهادات محدّدة} many {{value} شهادة محدّدة} other {{value} شهادة محدّدة}}",
       "release": "أصدر",
       "releaseTitle": "{count, plural, zero {لا شهادات للإصدار} one {إصدار شهادة واحدة؟} two {إصدار شهادتين؟} few {إصدار {value} شهادات؟} many {إصدار {value} شهادة؟} other {إصدار {value} شهادة؟}}",
@@ -133,7 +129,7 @@
       "sessionLine": "الجلسة: <bdi>{title}</bdi>",
       "lockedBadge": "ثابت",
       "notChosenBadge": "لم يُحفظ",
-      "noTemplates": "لا قالب منشور لهذا النوع. انسخ قالبًا من مكتبة قوالب الشهادات.",
+      "noTemplates": "لا قالب منشور لهذا النوع",
       "saving": "جارٍ الحفظ…",
       "previewTitle": "معاينة الشهادة",
       "preflightHeading": "فحص قبل الإصدار",
@@ -235,7 +231,8 @@
         "presenter": "التقديم"
       },
       "offLine": "لا تصدر شهادات لهذه الجلسة.",
-      "noDefault": "لا قالب افتراضي"
+      "noDefault": "لا قالب افتراضي",
+      "toLibrary": "إلى القوالب"
     },
     "download": {
       "failed": "تعذّر تنزيل الملف. أعد المحاولة، وإن تكرّر فأخبر مشرف المؤسسة."

@@ -10,6 +10,7 @@ import { TemplatePreview } from "@/components/templates/template-preview";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
+import { Link } from "@/components/ui/link";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
@@ -98,7 +99,15 @@ export function TemplateControl({ locale, sessionId, kind, brand, sample, longes
       if (result.status === "ok") setConfirmOpen(false);
     });
 
-  if (kind.options.length === 0) return <p className="text-body-sm text-fg-muted">{t("noTemplates")}</p>;
+  if (kind.options.length === 0)
+    return (
+      <p className="flex flex-wrap gap-2 text-body-sm text-fg-muted">
+        {t("noTemplates")}
+        <Link href="/app/admin/templates/certificates" className="text-fg-heading underline underline-offset-4">
+          {t("toLibrary")}
+        </Link>
+      </p>
+    );
 
   return (
     <section aria-labelledby={`${id}-heading`} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

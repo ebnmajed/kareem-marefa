@@ -222,7 +222,8 @@ test("055 · a moderator reads the library and writes nothing; a member gets the
   await signIn(context, emails.member);
   const response = await page.goto("/ar/app/admin/templates/posters");
   expect(response?.status()).toBe(200);
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  // The not-found page carries more than one robots meta; one of them says noindex (DEC-134).
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
   await expect(main(page).getByRole("heading", { level: 1, name: "القوالب" })).toHaveCount(0);
 });
 

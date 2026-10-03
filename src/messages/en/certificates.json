@@ -86,7 +86,6 @@
       "whoIntro": "An attendance certificate goes to everyone checked in, and a presenter certificate to every presenter who accepted — and nothing else. The list is taken when the session completes.",
       "modeLink": "Change the issuing mode",
       "eligibleEmptyTitle": "Nobody yet",
-      "eligibleEmptyDescription": "Nobody is checked in and no presenter has accepted. Names appear here when they do.",
       "attendanceLink": "Attendance",
       "revokedReplaceable": "Revoked because the check-in was removed — a replacement is issued once they are checked in again.",
       "revokedFinal": "Revoked for good — no replacement will be issued.",
@@ -115,11 +114,8 @@
       "revokedLabel": "Revoked certificates",
       "eligibleLabel": "Eligible",
       "heldEmptyTitle": "No held certificates",
-      "heldEmptyDescription": "In review mode certificates are prepared when the session completes and wait here until you release them.",
       "issuedEmptyTitle": "No certificates issued yet",
-      "issuedEmptyDescription": "Every certificate that reached its holder appears here.",
       "revokedEmptyTitle": "No revoked certificates",
-      "revokedEmptyDescription": "A revoked certificate stays here with its reason, and reads «revoked» on the verification page.",
       "selected": "{count, plural, zero {None selected} one {One certificate selected} two {Two certificates selected} few {{value} certificates selected} many {{value} certificates selected} other {{value} certificates selected}}",
       "release": "Issue",
       "releaseTitle": "{count, plural, =0 {Nothing to issue} one {Issue one certificate?} other {Issue {value} certificates?}}",
@@ -133,7 +129,7 @@
       "sessionLine": "Session: <bdi>{title}</bdi>",
       "lockedBadge": "Fixed",
       "notChosenBadge": "Not saved",
-      "noTemplates": "No published template for this kind. Copy one from the certificate template library.",
+      "noTemplates": "No published template of this kind",
       "saving": "Saving…",
       "previewTitle": "Certificate preview",
       "preflightHeading": "Check before issuing",
@@ -235,7 +231,8 @@
         "presenter": "Presenting"
       },
       "offLine": "No certificates are issued for this session.",
-      "noDefault": "No default set"
+      "noDefault": "No default set",
+      "toLibrary": "To templates"
     },
     "download": {
       "failed": "The file could not be downloaded. Try again, and if it keeps happening tell your organisation's admin."

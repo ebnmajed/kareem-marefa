@@ -27,6 +27,17 @@ import { releaseHeld, retryCertificateRender } from "./actions";
 // Revoked certificates, and eligible members holding no live one, show only when there are some (note §3).
 // Every result is a toast from the action's own answer, inside the transition (wave 6's trap).
 
+/** The board's date — «1 أكتوبر» — day and month in the org's zone, Western digits; the full instant on hover and in
+ *  `dateTime`. */
+function DayMonth({ iso, timeZone, locale }: { iso: string; timeZone: string; locale: string }) {
+  const day = new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { day: "numeric", month: "long", timeZone }).format(new Date(iso));
+  return (
+    <time dateTime={iso} title={formatDateTime(iso, timeZone, locale)}>
+      <bdi>{day}</bdi>
+    </time>
+  );
+}
+
 type Face = { avatarUrl: string | null; teamColor: string | null | undefined };
 
 export interface IssuanceProps {
@@ -46,7 +57,8 @@ export interface IssuanceProps {
 
 export function Issuance({ locale, sessionId, sessionTitle, timeZone, showHeld, held, issued, revoked, faces, issuedLimit, path }: IssuanceProps) {
   const t = useTranslations("certificates.session");
-  const tk = useTranslations("certificates.kind");
+  // The board's short kind — «حضور», not «شهادة حضور» (`templates.card.kind`, read).
+  const tk = useTranslations("templates.card.kind");
   const ui = useTranslations("ui");
   const toast = useToast();
   const [pending, start] = useTransition();
@@ -152,9 +164,8 @@ export function Issuance({ locale, sessionId, sessionTitle, timeZone, showHeld, 
               </div>
             ) : null}
           </div>
-          {held.length === 0 ? (
-            <p className="text-body-sm text-fg-muted">{t("heldEmptyDescription")}</p>
-          ) : (
+          {/* DEC-NEXT-25: nothing held is the heading and its 0 — never a sentence. */}
+          {held.length === 0 ? null : (
             <DataTable
               label={t("heldLabel")}
               rows={held}
@@ -181,7 +192,7 @@ export function Issuance({ locale, sessionId, sessionTitle, timeZone, showHeld, 
                 label: (count) => t("selected", { count, value: formatNumber(count) }),
                 actions: null,
               }}
-              empty={{ title: t("heldEmptyTitle"), description: t("heldEmptyDescription"), action: attendance }}
+              empty={{ title: t("heldEmptyTitle"), action: attendance }}
             />
           )}
         </section>
@@ -191,9 +202,7 @@ export function Issuance({ locale, sessionId, sessionTitle, timeZone, showHeld, 
         <h3 id="cert-issued" className="text-label text-fg-muted">
           {t.rich("issuedHeading", { value: formatNumber(issued.length), bdi })}
         </h3>
-        {issued.length === 0 ? (
-          <p className="text-body-sm text-fg-muted">{t("issuedEmptyDescription")}</p>
-        ) : (
+        {issued.length === 0 ? null : (
           <DataTable
             label={t("issuedLabel")}
             rows={shownIssued}
@@ -206,7 +215,7 @@ export function Issuance({ locale, sessionId, sessionTitle, timeZone, showHeld, 
                 key: "issuedAt",
                 header: t("columns.issuedAt"),
                 onCard: true,
-                cell: (c) => (c.issuedAt ? <bdi>{formatDateTime(c.issuedAt, timeZone, locale)}</bdi> : null),
+                cell: (c) => (c.issuedAt ? <DayMonth iso={c.issuedAt} timeZone={timeZone} locale={locale} /> : null),
               },
               {
                 key: "actions",
@@ -223,7 +232,7 @@ export function Issuance({ locale, sessionId, sessionTitle, timeZone, showHeld, 
                 ),
               },
             ]}
-            empty={{ title: t("issuedEmptyTitle"), description: t("issuedEmptyDescription"), action: attendance }}
+            empty={{ title: t("issuedEmptyTitle"), action: attendance }}
           />
         )}
         {hiddenIssued > 0 ? (
@@ -250,12 +259,12 @@ export function Issuance({ locale, sessionId, sessionTitle, timeZone, showHeld, 
                 key: "revokedAt",
                 header: t("columns.revokedAt"),
                 onCard: true,
-                cell: (c) => (c.revokedAt ? <bdi>{formatDateTime(c.revokedAt, timeZone, locale)}</bdi> : null),
+                cell: (c) => (c.revokedAt ? <DayMonth iso={c.revokedAt} timeZone={timeZone} locale={locale} /> : null),
               },
               // The org's own screen shows the reason; /verify never does (REQ-CRT-011, OQ-015).
               { key: "reason", header: t("columns.reason"), onCard: true, cell: (c) => (c.revocationReason ? <bdi>{c.revocationReason}</bdi> : null) },
             ]}
-            empty={{ title: t("revokedEmptyTitle"), description: t("revokedEmptyDescription"), action: attendance }}
+            empty={{ title: t("revokedEmptyTitle"), action: attendance }}
           />
         </section>
       ) : null}

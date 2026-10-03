@@ -14,7 +14,7 @@ import { AlertCircleIcon } from "@/components/ui/icons";
 
 export function EligibleTable({ rows, sessionId, label, without = false }: { rows: EligibleRecipient[]; sessionId: string; label: string; without?: boolean }) {
   const t = useTranslations("certificates.session");
-  const tk = useTranslations("certificates.kind");
+  const tk = useTranslations("templates.card.kind");
   const columns: DataTableColumn<EligibleRecipient>[] = [
     {
       key: "name",
@@ -45,7 +45,6 @@ export function EligibleTable({ rows, sessionId, label, without = false }: { row
       columns={columns}
       empty={{
         title: t("eligibleEmptyTitle"),
-        description: t("eligibleEmptyDescription"),
         action: { label: t("attendanceLink"), href: `/app/admin/sessions/${sessionId}/attendance` },
       }}
     />
