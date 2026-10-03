@@ -644,10 +644,24 @@ function LayerToolbar({
   const align = layer.align ?? "start";
   return (
     <>
-      <Select aria-label={tp("fontFamily")} value={layer.font.family} onChange={(e) => onPatch({ font: { ...layer.font, family: e.target.value } } as Partial<Layer>)} className="w-48! shrink-0">
+      {/* The family alone, wide enough for the longest in the font set («IBM Plex Sans Arabic»), and the weight
+          beside it — so neither name is clipped at its start. */}
+      <Select aria-label={tp("fontFamily")} value={layer.font.family} onChange={(e) => onPatch({ font: { ...layer.font, family: e.target.value } } as Partial<Layer>)} className="w-60! shrink-0">
         {(fontFamilies.includes(layer.font.family) ? fontFamilies : [layer.font.family, ...fontFamilies]).map((family) => (
           <option key={family} value={family}>
-            {family === layer.font.family ? `${family} ${formatNumber(layer.font.weight ?? 400)}` : family}
+            {family}
+          </option>
+        ))}
+      </Select>
+      <Select
+        aria-label={tp("weight")}
+        value={String(layer.font.weight ?? 400)}
+        onChange={(e) => onPatch({ font: { ...layer.font, weight: Number(e.target.value) as 400 | 500 | 600 } } as Partial<Layer>)}
+        className="w-24! shrink-0"
+      >
+        {([400, 500, 600] as const).map((w) => (
+          <option key={w} value={w}>
+            {formatNumber(w)}
           </option>
         ))}
       </Select>
