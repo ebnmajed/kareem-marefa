@@ -154,9 +154,14 @@ test("★ a moderator writes a template, moves a question with ONE CLICK, and sa
   ]);
 
   await open(page, "/ar/app/admin/surveys");
-  await expect(main(page).getByText("استبانة ما بعد الجلسة")).toBeVisible();
-  await expect(main(page).getByText(/3 أسئلة/)).toBeVisible();
-  await expect(main(page).getByText(/لم تُستخدم بعد/)).toBeVisible();
+  // ★ wave 22 (ledger W22-E10): SCR-065 is a table — at 390 its phone cards — so the counts are «الأسئلة 3» and
+  // «الجلسات 0», not sentences; and the selected template's questions stand beside it, in the stored order, typed in
+  // REQ-SUR-002's names (REQ-UIX-106, DEC-232).
+  await expect(main(page).getByRole("link", { name: "استبانة ما بعد الجلسة" })).toBeVisible();
+  const card = main(page).getByRole("listitem").filter({ has: page.getByRole("link", { name: "استبانة ما بعد الجلسة" }) });
+  await expect(card).toContainText(/الأسئلة\s*3/);
+  await expect(card).toContainText(/الجلسات\s*0/);
+  await expect(main(page).getByRole("listitem").filter({ hasText: "ما مدى وضوح المحتوى؟" })).toContainText("مقياس 1–5");
   await capture(page, "templates-list");
 });
 

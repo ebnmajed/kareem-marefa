@@ -319,7 +319,7 @@ export type AttentionQueue = "proposals" | "unscheduledSessions" | "photoReports
 export interface AttentionItem {
   queue: AttentionQueue;
   /** The `admin.shell.nav.*` key of the rail item whose screen IS this queue — the badge goes there (`DEC-228` §3.2). */
-  navKey: "proposals" | "sessions" | "moderationReports" | "moderationComments";
+  navKey: "proposals" | "sessions" | "moderationReports" | "moderationPhotos";
   count: number;
   /** The oldest open item's age in whole days; `null` exactly when `count === 0`. */
   oldestAgeDays: number | null;
@@ -343,26 +343,32 @@ export const getAdminAttention = cache(async (locale: string): Promise<AdminAtte
   const now = Date.now();
 
   const none = Promise.resolve({ data: [] as { state?: string; created_at: string }[], error: null });
-  const [proposals, unscheduled, photoReports, commentReports] = await Promise.all([
+  const [proposals, unscheduled, photoReports, commentReports, takedowns] = await Promise.all([
     isAdmin ? supabase.from("proposals").select("state, created_at").eq("org_id", session.orgId).in("state", ["submitted", "in_review"]) : none,
     // Filtered in TS, as `getAdminDashboardData()` does — the same predicate, the same place.
     isAdmin ? supabase.from("sessions").select("state, created_at").eq("org_id", session.orgId).is("starts_at", null) : none,
-    supabase.from("reports").select("created_at").eq("org_id", session.orgId).eq("target", "photo").eq("status", "open"),
-    supabase.from("reports").select("created_at").eq("org_id", session.orgId).eq("target", "comment").eq("status", "open"),
+    supabase.from("reports").select("photo_id, created_at").eq("org_id", session.orgId).eq("target", "photo").eq("status", "open"),
+    supabase.from("reports").select("comment_id, created_at").eq("org_id", session.orgId).eq("target", "comment").eq("status", "open"),
+    // ★ wave 22 (contract 5, `DEC-232` §4.6): a takedown request hides a photo until it is decided — it waits too, and
+    // nothing counted it, so a hidden photo waited unseen.
+    supabase.from("photo_takedowns").select("photo_id, requested_at").eq("org_id", session.orgId).is("resolved_at", null),
   ]);
   if (proposals.error) throw new Error(`proposals (attention): ${proposals.error.message}`);
   if (unscheduled.error) throw new Error(`sessions (attention): ${unscheduled.error.message}`);
   if (photoReports.error) throw new Error(`reports (photo attention): ${photoReports.error.message}`);
   if (commentReports.error) throw new Error(`reports (comment attention): ${commentReports.error.message}`);
+  if (takedowns.error) throw new Error(`photo_takedowns (attention): ${takedowns.error.message}`);
 
   const ats = (rows: { created_at: string }[] | null) => (rows ?? []).map((r) => r.created_at);
-  const item = (queue: AttentionQueue, navKey: AttentionItem["navKey"], href: string, createdAts: string[]): AttentionItem => ({
+  const item = (queue: AttentionQueue, navKey: AttentionItem["navKey"], href: string, createdAts: string[], count = createdAts.length): AttentionItem => ({
     queue,
     navKey,
-    count: createdAts.length,
-    oldestAgeDays: oldestAge(createdAts, now),
+    count,
+    oldestAgeDays: count === 0 ? null : oldestAge(createdAts, now),
     href,
   });
+  /** How many distinct things wait — a photo or comment reported three times is one decision (`DEC-232` §5.3). */
+  const distinct = (rows: Record<string, string | null>[] | null, key: string) => new Set((rows ?? []).map((r) => r[key]).filter((v): v is string => !!v)).size;
 
   const items: AttentionItem[] = [];
   if (isAdmin) {
@@ -370,8 +376,16 @@ export const getAdminAttention = cache(async (locale: string): Promise<AdminAtte
     const undated = ((unscheduled.data ?? []) as { state: string; created_at: string }[]).filter((r) => r.state !== "cancelled" && r.state !== "archived");
     items.push(item("unscheduledSessions", "sessions", UNSCHEDULED_SESSIONS_HREF, ats(undated)));
   }
-  items.push(item("photoReports", "moderationReports", "/app/admin/moderation/reports", ats(photoReports.data as { created_at: string }[] | null)));
-  items.push(item("commentReports", "moderationComments", "/app/admin/moderation/comments", ats(commentReports.data as { created_at: string }[] | null)));
+  // ★ wave 22 (contract 5, `DEC-231` §5, content's written request): the queues follow the screens. الصور (`051`) holds
+  // the open takedown requests AND the photo reports — counted as its two chips show them, so a photo in both counts in
+  // both; البلاغات (`050/052`) holds the comment reports. The queue keys are unchanged, so the layout's badges follow.
+  const photoRows = (photoReports.data ?? []) as { photo_id: string | null; created_at: string }[];
+  const takedownRows = (takedowns.data ?? []) as { photo_id: string | null; requested_at: string }[];
+  const photoCount = distinct(photoRows, "photo_id") + distinct(takedownRows, "photo_id");
+  const photoHref = takedownRows.length === 0 && photoRows.length > 0 ? "/app/admin/moderation/photos?kind=reports" : "/app/admin/moderation/photos";
+  items.push(item("photoReports", "moderationPhotos", photoHref, [...ats(photoRows), ...takedownRows.map((r) => r.requested_at)], photoCount));
+  const commentRows = (commentReports.data ?? []) as { comment_id: string | null; created_at: string }[];
+  items.push(item("commentReports", "moderationReports", "/app/admin/moderation/reports", ats(commentRows), distinct(commentRows, "comment_id")));
 
   return { items, total: items.reduce((sum, i) => sum + i.count, 0) };
 });

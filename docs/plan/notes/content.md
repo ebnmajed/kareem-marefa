@@ -7340,3 +7340,30 @@ existing `moderation.test.ts`: 18 / 18. One change from the W22.5 draft: the env
 
 **To the lead** (as `shell.ts`'s and the rail's owner): `src/lib/dal/shell.ts:60-63` follows the same two predicates;
 `moderationComments` → `built: false`.
+
+## Wave 22, PR C — built (`b8f28033` delete · `03b91e2b` 050/052 · `65cd751b` 051 · `54c1f797` the suites)
+
+**The tables read back against the new files.** `050/052` (W22.3): rows 1 – 24 hold, with three notes. Row 12, the
+already-resolved report, is no longer silent: the refusal says «حُسم من قبل» and the list refreshes (it was a stale
+row otherwise). Row 22: `ui/empty-state`'s `action` is required, so an empty list offers the other chip — a link, not
+a sentence. Row 7's three-character minimum is checked in `resolve_report()`; the field says it. `051` (W22.4): rows
+1 – 17 hold. One change from the plan: «احذف نهائيًا» calls `remove_photo()` for **both** kinds, because it already
+closes the photo's open reports in its own transaction — `resolve_report()` would add nothing but a hop. A report's
+other decision is «تجاهل» through `resolve_report()`; a takedown's is the one-write restore.
+
+**Records, as W22.5 says** — nothing is written to `audit_log` from the DAL; `comment.removed`, `photo.removed`,
+`photo.restored` and `report.resolved` are the database's. `wave22-content-moderation.spec.ts` asserts `report.resolved`
+and `photo.restored` with the moderator as actor; `tests/rls/moderation-*` the rest.
+
+**Ledger lines** (the lead's `STATUS.md`): `tests/components/admin/{report-card,comment-report-card,takedown-card}.test.tsx`
+deleted with their components (14 cases; behaviours re-asserted in `tests/components/moderation/{reports-table,photo-decide}.test.tsx`,
+15 cases) · `admin-moderation.spec.ts`: the member case — three routes → two plus the redirect (expectation); the
+moderator case — headings and labels (selector) and the photo report's home (expectation, DEC-231 §5); the 390 px case —
+two screens, new capture names (selector); the tab-strip case — **removed** with the strip (expectation); the three
+decisions — row/dialog/button names, «أزل», «احذف نهائيًا» (selector), DB assertions unchanged ·
+`admin-reports.spec.ts` (transferred): every case re-pointed at `/photos?kind=reports` (expectation, DEC-231 §5); the
+ModerationTabs case becomes the chips' separate counts (expectation); the remove flow's names (selector).
+
+**Waiting on others:** the lead promotes `proposed/content/0001_resolve_report.sql` (both screens call it) and lands
+`report.resolved`'s trigger; `console` re-points the attention rows and deletes `moderation-tabs.tsx` with
+`admin.moderation.*` (then `listModerationCounts()` goes from `admin-moderation.ts`); the e2e and captures are the lead's to run.

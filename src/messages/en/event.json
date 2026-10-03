@@ -62,6 +62,49 @@
         "network": "Connection failed. Check your internet and try again."
       },
       "presenter": "Presenter"
+    },
+    "moderation": {
+      "title": "Moderation — Reports",
+      "filtersLabel": "Report state",
+      "filter": {
+        "open": "Open",
+        "closed": "Closed"
+      },
+      "tableLabel": "Reported comments",
+      "col": {
+        "content": "Content",
+        "session": "Session",
+        "reporter": "Reported by",
+        "reason": "Reason",
+        "age": "Age",
+        "decision": "Decision"
+      },
+      "deleted": "Deleted",
+      "more": "+{value}",
+      "member": "Member",
+      "age": "{count, plural, zero {today} one {1 day} other {{value} days}}",
+      "remove": "Remove",
+      "dismiss": "Dismiss",
+      "removeTitle": "Remove a comment from “<t>{session}</t>”?",
+      "reportedBy": "Reported by",
+      "reasonLabel": "Reason — recorded in the audit log",
+      "confirm": "Remove",
+      "cancel": "Cancel",
+      "close": "Close",
+      "outcome": {
+        "removed": "Removed",
+        "dismissed": "Dismissed"
+      },
+      "emptyOpen": "No open reports",
+      "emptyClosed": "No closed reports",
+      "done": "Decision recorded",
+      "error": {
+        "not_authorized": "You can't do this.",
+        "reason_required": "Write the reason first.",
+        "not_found": "Not found.",
+        "already_resolved": "Already decided.",
+        "unknown": "That didn't work — try again."
+      }
     }
   }
 }

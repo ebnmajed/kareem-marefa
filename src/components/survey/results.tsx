@@ -3,131 +3,134 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { Panel } from "@/components/ui/panel";
 import { Progress } from "@/components/ui/progress";
 import { Stat } from "@/components/ui/stat";
+import type { PresenterAggregate } from "@/lib/dal/ratings";
 import type { SurveyResultQuestion, SurveyResultsDTO } from "@/lib/dal/surveys";
 
-// SCR-064's results, drawn (REQ-SUR-006, REQ-SUR-008, `16` §9.2).
+// SCR-064's body, written from `AdminSurveyResults.dc.html` (REQ-UIX-105, REQ-SUR-006 … 008, DEC-232 §1.4) — the
+// figures, then one card per question in the survey's order. The hub draws everything above it.
 //
-// ★ NOTHING HERE DECIDES WHAT MAY BE SHOWN. `public.survey_results()` applies
-// the withhold — to the survey, to each question, and to the response count —
-// and hands back `withheld: true` and nulls where it did. This renders what it
-// was given, which is why the screen and the CSV cannot drift apart: they are
-// two shapes of one answer.
+// ★ TWO INSTRUMENTS, AND EACH FIGURE SAYS WHICH (`DEC-074`, `DEC-232` §1.4). The responses and their rate are the
+// SURVEY's, from `survey_results()`; the two averages are the RATING's, from `session_rating_aggregates` — the view
+// both staff roles read, aggregate only, which writes no record (`REQ-RAT-005`'s audit is the per-rater read, and
+// this page makes none). The stars drawn as bars are the survey's own 1–5 questions — the owner's ruling.
 //
-// ★★ EVERY BAR CARRIES ITS LABEL AND ITS COUNT AS VISIBLE TEXT. `ui/progress`
-// is a bare bar by design — its consumers put their own words beside it — so a
-// row that passed the label only through `aria-label` rendered five unlabelled
-// grey lines: a sighted reader could not tell «4 chose 3» from «3 chose 4», and
-// a choice question's options were invisible altogether. The label and the
-// number are in the DOM now, and the bar's own aria is unchanged, so the two
-// audiences read the same thing rather than one of them reading nothing.
+// ★ NOTHING HERE DECIDES WHAT MAY BE SHOWN. `survey_results()` withholds — the survey, each question, the count —
+// and the view withholds the rating below its own minimum. A withheld figure is «—», never `0`, which would be a
+// number the withhold did not release; a withheld question says so and draws no chart (`REQ-SUR-006`).
 //
-// Bars grow from the START edge, and the number sits opposite the label on one
-// line with the bar beneath, so a long option label wraps instead of being
-// squeezed — no fixed width, no `overflow: hidden` on a text line, nothing
-// physical (`09` SCR-064, `10` §2). Western digits (DEC-124).
+// ★★ EVERY BAR CARRIES ITS LABEL AND ITS COUNT AS VISIBLE TEXT (wave 10's lesson): `ui/progress` is a bare bar, so a
+// row that named itself only through `aria-label` drew unlabelled lines. Bars grow from the start edge; no fixed
+// width, no `overflow: hidden` on a text line, nothing physical. Western digits (DEC-124).
 
-/**
- * The keys this file reads from `survey.session`, as a function type — the
- * `DayLabelT` idiom (`components/sessions/day-label.ts`). ★ It exists so only
- * the TOP of this file is async: a nested async component cannot be rendered by
- * anything but a Server Component, which makes it untestable in jsdom and
- * unreviewable anywhere else.
- */
+/** The keys this file reads from `survey.session`, as a function type — so only the top of the file is async and a
+ *  component test can render the rest. */
 type ResultsT = (key: string, values?: Record<string, string | number>) => string;
 
-export async function SurveyResults({ results }: { results: SurveyResultsDTO }) {
+export interface SurveyResultsProps {
+  results: SurveyResultsDTO;
+  /** The rating's aggregate, `null` below `rating_min_aggregate`. */
+  rating: PresenterAggregate | null;
+  /** The rating's bare count — shown beside a withheld average, never a value. */
+  ratingCount: number;
+}
+
+export async function SurveyResults({ results, rating, ratingCount }: SurveyResultsProps) {
   const t = (await getTranslations("survey.session")) as ResultsT;
+  const none = t("figureNone");
+  const released = results.status === "ok" && results.responseCount !== null;
+  const rate =
+    released && results.eligibleCount > 0 ? `${formatNumber(Math.round(((results.responseCount ?? 0) / results.eligibleCount) * 100))}%` : none;
+  const average = (value: number | null) => (rating && value !== null ? formatNumber(Number(value)) : none);
+  // Below the rating's minimum the averages are «—» and the bare count says why there is no value (`REQ-RAT-006`).
+  const ratingHint = rating ? undefined : t("ratingCount", { count: ratingCount, value: formatNumber(ratingCount) });
 
   return (
     <>
-      <section aria-labelledby="rate" className="mt-8">
-        <h2 id="rate" className="text-h3 text-fg-heading">
-          {t("responseRate")}
+      <section aria-labelledby="survey-figures">
+        <h2 id="survey-figures" className="sr-only">
+          {t("figuresLabel")}
         </h2>
-        <div className="mt-3 max-w-md">
-          {results.eligibleCount === 0 ? (
-            <p className="text-body text-fg-muted">{t("noAttendees")}</p>
-          ) : (
-            // ★ The label is not the heading repeated. «نسبة الاستجابة» is the
-            // section; this says what the numerator COUNTS, and the hint says
-            // what the denominator is — «من 12 حاضرًا مؤهلًا», which is the one
-            // thing the ratio does not say for itself (eligible attendees, not
-            // invitees — REQ-SUR-008).
-            <Stat
-              label={t("respondents")}
-              value={`${formatNumber(results.responseCount ?? 0)} / ${formatNumber(results.eligibleCount)}`}
-              hint={t("outOfEligible", { count: results.eligibleCount, value: formatNumber(results.eligibleCount) })}
-            />
-          )}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <Stat
+            label={t("figureResponses")}
+            value={released ? `${formatNumber(results.responseCount ?? 0)} / ${formatNumber(results.eligibleCount)}` : none}
+            // REQ-SUR-008: no eligible attendee is said, never divided by.
+            hint={results.eligibleCount === 0 ? t("noAttendees") : undefined}
+          />
+          <Stat label={t("figureSessionAvg")} value={average(rating?.sessionAvg ?? null)} hint={ratingHint} />
+          <Stat label={t("figurePresenterAvg")} value={average(rating?.presenterAvg ?? null)} hint={ratingHint} />
+          <Stat label={t("figureRate")} value={rate} />
         </div>
       </section>
 
-      <section aria-labelledby="questions" className="mt-10">
-        <h2 id="questions" className="text-h3 text-fg-heading">
-          {t("title")}
-        </h2>
-        <ul className="mt-4 flex max-w-2xl flex-col gap-6">
-          {results.questions.map((question) => (
-            <li key={question.id}>
-              <QuestionResult question={question} t={t} />
-            </li>
-          ))}
-        </ul>
-      </section>
+      {results.status === "ok" ? (
+        <section aria-labelledby="survey-questions" className="mt-4">
+          <h2 id="survey-questions" className="sr-only">
+            {t("title")}
+          </h2>
+          <ul className="flex flex-col gap-4">
+            {results.questions.map((question) => (
+              <li key={question.id}>
+                <QuestionResult question={question} t={t} />
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-caption text-fg-muted">{t("anonymity", { min: results.min, value: formatNumber(results.min) })}</p>
+        </section>
+      ) : null}
     </>
   );
 }
 
-function QuestionResult({ question, t }: { question: SurveyResultQuestion; t: ResultsT }) {
-  const total = Math.max(1, ...(question.distribution ?? []).map((cell) => cell.count));
+export function QuestionResult({ question, t }: { question: SurveyResultQuestion; t: ResultsT }) {
+  // The artboard reads a scale from its top: five stars first.
+  const cells = question.kind === "scale_1_5" ? [...(question.distribution ?? [])].reverse() : (question.distribution ?? []);
+  const total = Math.max(1, ...cells.map((cell) => cell.count));
 
   return (
-    <article aria-labelledby={`q-${question.id}`}>
-      <h3 id={`q-${question.id}`} className="text-label text-fg-heading">
-        <bdi>{question.prompt}</bdi>
-      </h3>
-      {/* ★ A withheld question publishes NO count either (`DEC-163`): two reads
-          a response apart would otherwise say which question the newest
-          respondent answered. «محجوبة» below is the whole of what staff get. */}
-      {question.answeredCount !== null ? (
-        <p className="mt-1 text-caption text-fg-muted">
-          {t("answeredCount", { count: question.answeredCount, value: formatNumber(question.answeredCount) })}
-          {question.mean !== null ? ` · ${t("mean", { value: formatNumber(question.mean) })}` : null}
-        </p>
-      ) : null}
+    <Panel>
+      <article aria-labelledby={`q-${question.id}`}>
+        <h3 id={`q-${question.id}`} className="text-label text-fg-heading">
+          <bdi>{question.prompt}</bdi>
+          {/* ★ A withheld question publishes NO count (`DEC-163`): two reads a response apart would say which
+              question the newest respondent answered. */}
+          {question.answeredCount !== null ? (
+            <span className="font-normal text-fg-muted">
+              {" · "}
+              {t("answers", { count: question.answeredCount, value: formatNumber(question.answeredCount) })}
+              {question.mean !== null ? ` · ${t("mean", { value: formatNumber(question.mean) })}` : null}
+            </span>
+          ) : null}
+        </h3>
 
-      {question.withheld ? (
-        // Never an empty chart: the screen says results are withheld and why
-        // (REQ-SUR-006's acceptance).
-        <Panel tone="info" className="mt-2">
-          <p className="text-body-sm text-fg-body">{t("questionWithheld")}</p>
-        </Panel>
-      ) : question.texts ? (
-        <ul className="mt-2 flex flex-col gap-2">
-          {question.texts.map((text, index) => (
-            <li key={index} className="rounded-card bg-raised p-3 text-body text-fg-body">
-              <bdi>{text}</bdi>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <ul className="mt-2 flex flex-col gap-3">
-          {(question.distribution ?? []).map((cell) => {
-            const label = cell.label ?? formatNumber(cell.value ?? 0);
-            return (
-              <li key={cell.id ?? cell.value} className="flex flex-col gap-1">
-                <div className="flex items-baseline justify-between gap-3">
+        {question.withheld ? (
+          <p className="mt-2 text-body-sm text-fg-muted">{t("questionWithheld")}</p>
+        ) : question.texts ? (
+          <ul className="mt-3 flex flex-col gap-2">
+            {question.texts.map((text, index) => (
+              <li key={index} className="text-body-sm text-fg-body">
+                «<bdi>{text}</bdi>»
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {cells.map((cell) => {
+              const label =
+                cell.label ?? (cell.value !== undefined ? t("stars", { count: cell.value, value: formatNumber(cell.value) }) : "");
+              return (
+                <li key={cell.id ?? cell.value} className="grid grid-cols-[minmax(0,10rem)_1fr_auto] items-center gap-3">
                   <span className="text-body-sm text-fg-body">
                     <bdi>{label}</bdi>
                   </span>
+                  <Progress value={cell.count} max={total} label={label} valueText={formatNumber(cell.count)} />
                   <span className="text-body-sm text-fg-muted">{formatNumber(cell.count)}</span>
-                </div>
-                <Progress value={cell.count} max={total} label={label} valueText={formatNumber(cell.count)} />
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </article>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </article>
+    </Panel>
   );
 }

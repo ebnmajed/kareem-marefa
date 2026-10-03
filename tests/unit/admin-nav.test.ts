@@ -1,7 +1,7 @@
 // The console rail's destinations, COUNTED — REQ-UIX-084, DEC-226 §2, DEC-227. The lead's.
 //
-// `DEC-226` asked for a proof by count, not by glance: twenty for an admin who may reach them, `REQ-ADM-020`'s six for
-// a moderator, none for a plain member, and never an item whose screen is not built — the three behaviours the deleted
+// `DEC-226` asked for a proof by count, not by glance: nineteen for an admin who may reach them (twenty until wave 22's
+// moderation merge, DEC-230 §3), `REQ-ADM-020`'s five for a moderator, none for a plain member, and never an item whose screen is not built — the three behaviours the deleted
 // rail's own comments recorded. And the twenty are exactly the `admin.shell.nav.*` keys: nothing orphaned.
 import { describe, expect, it } from "vitest";
 import ar from "@/messages/ar/admin.json";
@@ -16,15 +16,16 @@ describe("the console rail (DEC-226)", () => {
     expect(ADMIN_NAV.map((g) => g.length)).toEqual([4, 4, 3, 3, 3, 3]);
   });
 
-  it("renders all twenty to an admin, each with its label", () => {
+  it("renders nineteen to an admin, each with its label — moderationComments is unbuilt since DEC-230 §3", () => {
     const groups = adminRailGroups("admin", label);
-    expect(groups.flat()).toHaveLength(20);
+    expect(groups.flat()).toHaveLength(19);
+    expect(keysOf(groups)).not.toContain("moderationComments");
     for (const link of groups.flat()) expect(link.label).toBe(`label:${link.key}`);
   });
 
-  it("renders REQ-ADM-020's six to a moderator — sessions, surveys, the three moderation queues, the audit log", () => {
+  it("renders REQ-ADM-020's five to a moderator — sessions, surveys, the two moderation screens, the audit log", () => {
     expect(keysOf(adminRailGroups("moderator", label)).sort()).toEqual(
-      ["audit", "moderationComments", "moderationPhotos", "moderationReports", "sessions", "surveys"].sort(),
+      ["audit", "moderationPhotos", "moderationReports", "sessions", "surveys"].sort(),
     );
   });
 
@@ -36,8 +37,9 @@ describe("the console rail (DEC-226)", () => {
     const table = ADMIN_NAV.map((g) => g.map((leaf) => (leaf.key === "venues" ? { ...leaf, built: false } : leaf)));
     // the filter is the function's, so prove it on a table with one unbuilt leaf
     const built = table.flat().filter((l) => l.built).length;
-    expect(built).toBe(19);
-    expect(ADMIN_NAV.flat().every((l) => l.built)).toBe(true);
+    expect(built).toBe(18);
+    // wave 22: exactly one leaf is unbuilt in the table itself — the merged moderation queue (DEC-230 §3)
+    expect(ADMIN_NAV.flat().filter((l) => !l.built).map((l) => l.key)).toEqual(["moderationComments"]);
   });
 
   it("names exactly the twenty admin.shell.nav keys, in both languages — nothing orphaned", () => {

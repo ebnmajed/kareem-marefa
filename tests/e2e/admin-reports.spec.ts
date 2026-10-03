@@ -1,10 +1,7 @@
-// SCR-052 · /app/admin/moderation/reports — the photo report queue, rebuilt
-// onto the system for wave 6 (`16` §6.7, `DEC-130`). Proves the Card grid
-// (not DataTable — DEC-130's own reasoning), the remove confirmation dialog
-// naming the session (REQ-UIX-013), and dismiss staying one click. Wave 7
-// (`DEC-137`) adds the shared `ModerationTabs` strip across all three
-// moderation queues — proved once here, since this file already seeds
-// exactly one open report and nothing on the other two queues.
+// Photo reports — wave 6's SCR-052 queue, which wave 22 MOVED to SCR-051 الصور's «بلاغات الصور» chip
+// (DEC-231 §5, REQ-UIX-104; transferred to `content` by DEC-232 §6, each changed case a ledger line in STATUS.md).
+// Proves the report sits in its own list beside the takedowns, never merged with them (DEC-005), the remove
+// confirmation naming the session (REQ-UIX-013), and dismissal staying one press.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
@@ -120,42 +117,35 @@ async function goto(page: Page, url: string) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
-test("the page header and the report card render for a real open photo report", async ({ context, page }) => {
+test("a photo report opens on الصور's «بلاغات الصور» chip, with its session, reporter and reason", async ({ context, page }) => {
   await signIn(context);
-  await goto(page, "/ar/app/admin/moderation/reports");
-  await expect(page.getByRole("heading", { name: "الصور المُبلَّغ عنها", level: 1 })).toBeVisible();
-  // `page.tsx`'s `<dd><bdi>{sessionTitle}</bdi></dd>` — bidi-isolating every
-  // interpolated value (CLAUDE.md's own rule) wraps it in a `<bdi>` with no
-  // sibling text, so the `<dd>` and the `<bdi>` share the exact same
-  // normalised text content and `getByText` matches both. `.last()` for the
-  // innermost, same nesting trap `event-comments.spec.ts` already documents.
-  await expect(page.getByText("جلسة صور البلاغات").last()).toBeVisible();
-  await expect(page.getByText("محتوى غير لائق")).toBeVisible();
+  const main = page.locator("#main");
+  await goto(page, `/ar/app/admin/moderation/photos/${photoId}?kind=reports`);
+  await expect(main.getByRole("heading", { name: "الإشراف — الصور", level: 1 })).toBeVisible();
+  await expect(main.getByText("جلسة صور البلاغات").filter({ visible: true }).first()).toBeVisible();
+  await expect(main.getByText("محتوى غير لائق")).toBeVisible();
+  await expect(main.getByText("ظاهرة", { exact: true })).toBeVisible();
 });
 
-// ★ ORDERED HERE, BEFORE THE RESOLUTION TEST BELOW, on purpose — a real
-// sync-3 finding: `test.describe.configure({ mode: "serial" })` above runs
-// every test in this file, in file order, and the resolution test below
-// RESOLVES this file's one seeded report. Run after it (its original
-// position), the tab strip correctly showed every count at 0 — not a
-// product bug, this file's own test order emptying the queue before
-// checking it.
-test("wave 7: the shared ModerationTabs strip counts each queue separately, and moves without merging them (DEC-005)", async ({ context, page }) => {
+// ★ Before the resolution test below empties the queue (mode: "serial" runs in file order).
+test("DEC-005: the chips count takedowns and photo reports separately, and the report is not in the takedown list", async ({ context, page }) => {
   await signIn(context);
-  await goto(page, "/ar/app/admin/moderation/reports");
-  const tabs = page.getByRole("tablist", { name: "قوائم الإشراف" });
-  await expect(tabs.getByRole("tab", { name: /بلاغات الصور.*1/ })).toHaveAttribute("aria-selected", "true");
-  await expect(tabs.getByRole("tab", { name: /التعليقات.*0/ })).toBeVisible();
-  await expect(tabs.getByRole("tab", { name: /طلبات الإخفاء.*0/ })).toBeVisible();
+  const main = page.locator("#main");
+  await goto(page, "/ar/app/admin/moderation/photos?kind=reports");
+  const chips = main.getByRole("navigation", { name: "قوائم الصور" });
+  await expect(chips.getByRole("link", { name: "بلاغات الصور 1" })).toHaveAttribute("aria-current", /.+/);
+  await expect(chips.getByRole("link", { name: "طلبات الإخفاء 0" })).toBeVisible();
 
-  await tabs.getByRole("tab", { name: /التعليقات/ }).click();
-  await expect(page).toHaveURL(/\/ar\/app\/admin\/moderation\/comments$/);
+  await chips.getByRole("link", { name: "طلبات الإخفاء 0" }).click();
+  await expect(page).toHaveURL(/\/ar\/app\/admin\/moderation\/photos$/);
+  await expect(main.getByText("لا طلبات إخفاء")).toBeVisible();
 });
 
 test("★ removing confirms in a dialog naming the session — cancel changes nothing, confirm resolves the report and removes the photo", async ({ context, page }) => {
   await signIn(context);
-  await goto(page, "/ar/app/admin/moderation/reports");
-  await page.getByRole("button", { name: "أزل" }).click();
+  const main = page.locator("#main");
+  await goto(page, `/ar/app/admin/moderation/photos/${photoId}?kind=reports`);
+  await main.getByRole("button", { name: "احذف نهائيًا" }).click();
 
   const dialog = page.getByRole("dialog", { name: "حذف صورة من «جلسة صور البلاغات»؟" });
   await expect(dialog).toBeVisible();
@@ -163,11 +153,11 @@ test("★ removing confirms in a dialog naming the session — cancel changes no
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect((await db.query<{ status: string }>(`select status from public.reports where id = $1`, [reportId])).rows[0].status).toBe("open");
 
-  await page.getByRole("button", { name: "أزل" }).click();
-  await page.getByLabel("السبب الذي يُسجَّل في سجل التدقيق", { exact: false }).fill("مخالفة سياسة المحتوى");
-  await page.getByRole("button", { name: "أرسل" }).click();
-  await expect(page.getByRole("status")).toContainText("تم تنفيذ القرار");
-  await expect(page.getByText("جلسة صور البلاغات")).toHaveCount(0);
+  await main.getByRole("button", { name: "احذف نهائيًا" }).click();
+  await page.getByRole("dialog").getByLabel("السبب — يُسجَّل في سجل التدقيق", { exact: false }).fill("مخالفة سياسة المحتوى");
+  await page.getByRole("dialog").getByRole("button", { name: "احذف", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("سُجّل القرار");
+  await expect(main.getByText("محذوفة", { exact: true })).toBeVisible();
 
   const report = await db.query<{ status: string }>(`select status from public.reports where id = $1`, [reportId]);
   expect(report.rows[0].status).toBe("resolved");

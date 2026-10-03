@@ -41,7 +41,10 @@ export const ADMIN_NAV: readonly (readonly AdminNavLeaf[])[] = [
     { key: "venues", href: "/app/admin/venues", adminOnly: true, built: true },
   ],
   [
-    { key: "moderationComments", href: "/app/admin/moderation/comments", adminOnly: false, built: true },
+    // ★ wave 22 (DEC-230 §3, DEC-231 §5): moderation is TWO screens — comment reports moved to `/moderation/reports`,
+    // and `/moderation/comments` redirects there. The leaf stays, unbuilt, so the rail drops to nineteen by the
+    // mechanism above rather than by deleting a row a later wave would have to re-derive.
+    { key: "moderationComments", href: "/app/admin/moderation/comments", adminOnly: false, built: false },
     { key: "moderationPhotos", href: "/app/admin/moderation/photos", adminOnly: false, built: true },
     { key: "moderationReports", href: "/app/admin/moderation/reports", adminOnly: false, built: true },
   ],

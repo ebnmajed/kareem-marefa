@@ -1,8 +1,8 @@
-// SCR-050/051/052 — the moderation queues, against REAL local Supabase
-// (REQ-ADM-010, REQ-EVT-008, REQ-EVT-012, REQ-EVT-014, DEC-005). Proves the
-// takedown queue and the report queue never merge, a member gets a real
-// 404 on all three, a moderator can act on all three, and a removal
-// reverses the original points award.
+// SCR-050/052 and SCR-051 — moderation, against REAL local Supabase (REQ-ADM-010, REQ-EVT-008, REQ-EVT-012,
+// REQ-EVT-014, REQ-UIX-103, REQ-UIX-104, DEC-005). Rewritten in wave 22 with the two rebuilt screens (each changed
+// case is a ledger line in STATUS.md): comment reports are decided on البلاغات, takedowns and photo reports on الصور —
+// two chips, never one list — a member gets the streamed not-found on both, `/comments` redirects, a moderator can
+// act on both, and a removal reverses the original points award.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
@@ -162,96 +162,56 @@ async function goto(page: Page, url: string) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
-// ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense
-// boundary, so the response has begun streaming — status committed — before
-// `requireStaff()`'s gate runs. A gated page's `notFound()` therefore
-// answers 200 with `noindex` and the not-found page, never a real 404
-// status. `comments` and `photos` are wave-7 routes this track never
-// rebuilt, so their guarded heading text isn't known here — checking that
-// the not-found page's own `<h1>` is the ONLY one on the page proves no
-// guarded queue rendered alongside it, without needing each route's copy.
-//
-// ★ A latent flake sessions' own diagnosis found (172bf22): `goto()`'s own
-// zero-`div[hidden][id^="S:"]` wait can time out HERE specifically — a gated
-// route can flush one Suspense boundary before its page's own `notFound()`
-// throws, so an empty hidden div stays in the body for good, not just
-// transiently. `page.goto()` bare, then the visible not-found heading is the
-// wait — it already auto-retries.
-test("a member gets the streamed not-found page on all three moderation queues (DEC-134)", async ({ context, page }) => {
+// ★ DEC-134: `app/loading.tsx` wraps every `/app` page in a Suspense boundary, so a gated page answers 200 with
+// `noindex` and the not-found page. `page.goto()` bare, then the visible not-found heading is the wait (172bf22).
+// ★ Wave 22: two queues, and `/comments` redirects to `/reports`, which then answers the member the same way.
+test("a member gets the streamed not-found page on both moderation screens, and /comments redirects (DEC-134, DEC-230 §3)", async ({ context, page }) => {
   await signIn(context, memberEmail);
   for (const path of ["comments", "photos", "reports"]) {
     await page.goto(`/ar/app/admin/moderation/${path}`);
+    if (path === "comments") await expect(page).toHaveURL(/\/ar\/app\/admin\/moderation\/reports$/);
     await expect(page.getByRole("heading", { name: "لم نعثر على ما تبحث عنه", level: 1 }), path).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 }), path).toHaveCount(1);
-    // ★ Not `.toHaveAttribute` on the bare selector: `/app`'s own layout
-    // meta ("noindex, nofollow") plus the not-found boundary's own injected
-    // tag both match `meta[name="robots"]`, three elements in a real build —
-    // the content-based attribute selector plus `.first()` finds ANY of them
-    // carrying `noindex`, which is all DEC-134 actually asks for.
     await expect(page.locator('meta[name="robots"][content*="noindex"]').first(), path).toBeAttached();
   }
 });
 
-test("REQ-ADM-020: a moderator reaches all three queues, and DEC-005 keeps the takedown queue separate from the report queue", async ({ context, page }) => {
+test("REQ-ADM-020: a moderator reaches both screens, and DEC-005 keeps takedowns and photo reports in two lists", async ({ context, page }) => {
   await signIn(context, modEmail);
+  const main = page.locator("#main");
 
   await goto(page, "/ar/app/admin/moderation/comments");
-  await expect(page.getByRole("heading", { name: "التعليقات المُبلَّغ عنها", level: 1 })).toBeVisible();
-  await expect(page.getByText("تعليق مسيء يستحق المراجعة")).toBeVisible();
+  await expect(page).toHaveURL(/\/ar\/app\/admin\/moderation\/reports$/);
+  await expect(main.getByRole("heading", { name: "الإشراف — البلاغات", level: 1 })).toBeVisible();
+  await expect(main.getByText(/تعليق مسيء يستحق المراجعة/).filter({ visible: true }).first()).toBeVisible();
 
-  await goto(page, "/ar/app/admin/moderation/photos");
-  await expect(page.getByRole("heading", { name: "طلبات إخفاء الصور", level: 1 })).toBeVisible();
-  // The takedown queue shows only the taken-down photo's requester — never
-  // the plain report's reporter (a different photo entirely here, but the
-  // real assertion is that the two queues never share a list).
-  await expect(page.getByText("طالب الإخفاء")).toBeVisible();
-  await expect(page.getByText("المُبلِّغ")).toHaveCount(0);
+  await goto(page, `/ar/app/admin/moderation/photos/${takenDownPhotoId}`);
+  await expect(main.getByRole("heading", { name: "الإشراف — الصور", level: 1 })).toBeVisible();
+  await expect(main.getByText("مخفية بانتظار المراجعة")).toBeVisible();
+  await expect(main.getByText("طلب الإخفاء", { exact: true })).toBeVisible();
 
-  await goto(page, "/ar/app/admin/moderation/reports");
-  await expect(page.getByRole("heading", { name: "الصور المُبلَّغ عنها", level: 1 })).toBeVisible();
-  await expect(page.getByText("المُبلِّغ")).toBeVisible();
-  await expect(page.getByText("طالب الإخفاء")).toHaveCount(0);
+  await goto(page, `/ar/app/admin/moderation/photos/${reportedPhotoId}?kind=reports`);
+  await expect(main.getByText("ظاهرة", { exact: true })).toBeVisible();
+  await expect(main.getByText("محتوى غير مناسب")).toBeVisible();
+  await expect(main.getByText("طلب الإخفاء", { exact: true })).toHaveCount(0);
 });
 
-// ★ ORDERED HERE, BEFORE THE THREE RESOLUTION TESTS BELOW, on purpose — a
-// real sync-3 finding: `mode: "serial"` runs every test IN FILE ORDER within
-// a project, and none of the three resolution tests below carry a
-// project skip, so they ran on the phone project too. Captured AFTER them
-// (its original position), this test showed all three queues freshly
-// resolved — «لا بلاغات مفتوحة» and every tab count at 0 — not because the
-// product is broken, but because this file's own OWN prior tests had
-// already cleared the seeded data by the time it ran. Moved here, right
-// after the read-only moderator-view test and before anything mutates.
-test("SCR-050/051/052 at 390 px RTL: each queue reads down the page, never sideways", async ({ context, page }) => {
-  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project: a desktop context at 390 px carries a classic 12 px scrollbar a mobile one does not (TEAM.md §5)");
+// ★ Before anything below mutates (mode: "serial" runs in file order on every project).
+test("SCR-050/052 and SCR-051 at 390 px RTL: each reads down the page, never sideways", async ({ context, page }) => {
+  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project (TEAM.md §5)");
   await page.setViewportSize(PHONE);
   await signIn(context, modEmail);
-  // `wave7-console-…` — the row-cited path `docs/plan/notes/console.md`'s
-  // "Wave 7 plan" §2/§4 commits to for K1/K2, and `reports`' own missing
-  // capture (wave 6's own carried finding) closed in the same pass now that
-  // the shared `ModerationTabs` strip touches all three pages together.
-  // `E2E_SHOTS_DIR` — same reason `console.spec.ts` carries it: a run in the
-  // verification worktree must land its captures at the path `STATUS.md`
-  // cites, not `process.cwd()`.
   const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
   for (const [path, name] of [
-    ["comments", "wave7-console-moderation-comments-populated"],
-    ["photos", "wave7-console-moderation-photos-populated"],
-    ["reports", "wave7-console-moderation-reports-populated"],
+    ["reports", "wave22-content-050-open-390"],
+    ["photos", "wave22-content-051-queue-390"],
+    [`photos/${takenDownPhotoId}`, "wave22-content-051-detail-390"],
   ] as const) {
     await goto(page, `/ar/app/admin/moderation/${path}`);
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-    // Measured against the layout viewport, not `scrollWidth - clientWidth`: in an RTL
-    // document the vertical scrollbar sits on the left, so that difference is the
-    // scrollbar's width on every page that scrolls (TEAM.md §5; the reasoning is in
-    // tests/e2e/notify-screens.spec.ts). Names what escapes, rather than a boolean.
-    const overflow = await page.evaluate(() => {      // First question: does the page itself scroll sideways? (One number; on the
-      // phone project innerWidth already includes no classic scrollbar.)
+    // Measured against the layout viewport, naming what escapes (TEAM.md §5; tests/e2e/notify-screens.spec.ts).
+    const overflow = await page.evaluate(() => {
       if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
-      // Second: which element is responsible. An element inside an
-      // `overflow-x: auto|scroll` ancestor is a permitted scroller (CLAUDE.md:
-      // tables), and a `position: fixed` overlay spans the visual viewport by
-      // design; neither makes the page scroll, so neither is named.
       const limit = window.innerWidth;
       const offenders: string[] = [];
       for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
@@ -262,7 +222,10 @@ test("SCR-050/051/052 at 390 px RTL: each queue reads down the page, never sidew
         let contained = false;
         for (let n: HTMLElement | null = el; n; n = n.parentElement) {
           const cs = getComputedStyle(n);
-          if (cs.position === "fixed" || ((n !== el) && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) { contained = true; break; }
+          if (cs.position === "fixed" || (n !== el && (cs.overflowX === "auto" || cs.overflowX === "scroll"))) {
+            contained = true;
+            break;
+          }
         }
         if (contained) continue;
         offenders.push(`${el.tagName.toLowerCase()}.${el.className || "(no class)"} — ${Math.round(box.width)}px at ${Math.round(box.left)}`);
@@ -270,49 +233,25 @@ test("SCR-050/051/052 at 390 px RTL: each queue reads down the page, never sidew
       return offenders.slice(0, 6);
     });
     expect(overflow, `${path} must not scroll sideways at 390 px`).toEqual([]);
-    await page.screenshot({ path: `${dir}/${name}-390-rtl-${test.info().project.name}.png`, fullPage: true });
+    await page.screenshot({ path: `${dir}/${name}.png`, fullPage: true });
   }
 });
 
-// Wave 8, the lead's sync-1 finding on `wave7-console-moderation-reports-populated`:
-// at 390 px the strip cut «بلاغات الصور»'s count at the edge, with nothing to
-// say it scrolls — on the page where that tab is the ACTIVE one. Read-only, so
-// it sits with the captures, before any queue is resolved.
-test("the moderation tab strip at 390 px: the active tab is whole, and the strip says it scrolls", async ({ context, page }) => {
-  test.skip(test.info().project.name !== "phone", "the 390 px review runs on the phone project");
-  await page.setViewportSize(PHONE);
-  await signIn(context, modEmail);
-  await goto(page, "/ar/app/admin/moderation/reports");
-  const strip = page.getByRole("tablist", { name: "قوائم الإشراف" });
-  const active = strip.getByRole("tab", { selected: true });
-  await expect(active).toContainText("بلاغات الصور");
-  const [stripBox, activeBox] = await Promise.all([strip.boundingBox(), active.boundingBox()]);
-  expect(activeBox!.x).toBeGreaterThanOrEqual(stripBox!.x - 1);
-  expect(activeBox!.x + activeBox!.width).toBeLessThanOrEqual(stripBox!.x + stripBox!.width + 1);
-  // Scrolled to its end, the strip hides more at its START, and fades that side.
-  await expect(strip).toHaveAttribute("data-overflow", /start|both/);
-  const dir = process.env.E2E_SHOTS_DIR ?? `${process.cwd()}/.qa-shots/rtl`;
-  await page.screenshot({ path: `${dir}/wave8-console-moderation-tabs-390.png` });
-});
-
-test("REQ-EVT-014: removing a reported comment records the reason and audits the removal", async ({ context, page }) => {
+test("REQ-EVT-014: removing a reported comment records the reason, closes the report and audits the removal", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/moderation/comments");
-  const card = page.locator("article", { has: page.getByText("تعليق مسيء يستحق المراجعة") });
+  await goto(page, "/ar/app/admin/moderation/reports");
+  const main = page.locator("#main");
 
-  // ★ `ui/dialog`'s confirmation (`report-card.tsx`, REQ-UIX-013, wave 7) is
-  // portalled onto `document.body`, OUTSIDE this card's own DOM subtree —
-  // same trap the photo-report test below already names for its own queue.
-  // Scoped to the dialog, not the card, from here on.
-  await card.getByRole("button", { name: "أزل" }).click();
-  const dialog = page.getByRole("dialog", { name: "حذف تعليق من «جلسة الإشراف»؟" });
+  // `ui/dialog` portals onto `document.body`, outside `#main` — scoped to the dialog from here on.
+  await main.getByRole("button", { name: /^أزل — تعليق مسيء/ }).click();
+  const dialog = page.getByRole("dialog", { name: "إزالة تعليق من «جلسة الإشراف»؟" });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "أرسل" }).click();
-  await expect(dialog.getByText("اكتب السبب أولًا")).toBeVisible();
+  await dialog.getByRole("button", { name: "أزل", exact: true }).click();
+  await expect(dialog.getByText("اكتب السبب أولًا.")).toBeVisible();
 
-  await dialog.getByLabel("السبب الذي يُسجَّل في سجل التدقيق").fill("لغة غير لائقة");
-  await dialog.getByRole("button", { name: "أرسل" }).click();
-  await expect(page.getByText("تعليق مسيء يستحق المراجعة")).toHaveCount(0);
+  await dialog.getByLabel("السبب — يُسجَّل في سجل التدقيق").fill("لغة غير لائقة");
+  await dialog.getByRole("button", { name: "أزل", exact: true }).click();
+  await expect(main.getByText(/تعليق مسيء يستحق المراجعة/)).toHaveCount(0);
 
   const { rows: commentRows } = await db.query<{ deleted_at: string; removal_reason: string }>(`select deleted_at, removal_reason from public.comments where id = $1`, [commentId]);
   expect(commentRows[0].deleted_at).toBeTruthy();
@@ -321,13 +260,19 @@ test("REQ-EVT-014: removing a reported comment records the reason and audits the
   expect(reportRows.rows[0]).toEqual({ status: "resolved", resolution: "removed" });
   const audit = await db.query(`select 1 from public.audit_log where action = 'comment.removed' and subject_id = $1`, [commentId]);
   expect(audit.rowCount).toBe(1);
+
+  // ★ «مغلقة» shows the outcome and who decided (REQ-ADM-010).
+  await goto(page, "/ar/app/admin/moderation/reports?state=closed");
+  await expect(main.getByText(/تعليق مسيء يستحق المراجعة/).filter({ visible: true }).first()).toBeVisible();
+  await expect(main.getByText("أُزيل", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(main.getByText("مشرفة الإشراف").filter({ visible: true }).first()).toBeVisible();
 });
 
-test("REQ-EVT-012: restoring a takedown clears the hide and resolves the request", async ({ context, page }) => {
+test("REQ-EVT-012: restoring a takedown clears the hide and resolves the request, in one write", async ({ context, page }) => {
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/moderation/photos");
-  await page.getByRole("button", { name: "أعد الإظهار" }).click();
-  await expect(page.getByText("طالب الإخفاء")).toHaveCount(0);
+  await goto(page, `/ar/app/admin/moderation/photos/${takenDownPhotoId}`);
+  await page.locator("#main").getByRole("button", { name: "أعدها للعرض" }).click();
+  await expect(page.locator("#main").getByText("ظاهرة", { exact: true })).toBeVisible();
 
   const photoRows = await db.query<{ hidden_at: string | null }>(`select hidden_at from public.photos where id = $1`, [takenDownPhotoId]);
   expect(photoRows.rows[0].hidden_at).toBeNull();
@@ -344,28 +289,21 @@ test("REQ-PTS-013: removing a reported photo reverses its original points award 
   );
 
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/moderation/reports");
-  const card = page.locator("li", { has: page.getByText("محتوى غير مناسب") });
-  // ★ `ui/dialog`'s own confirmation (`report-card.tsx`, REQ-UIX-013) is
-  // portalled by Radix onto `document.body`, OUTSIDE this `<li>` card's own
-  // DOM subtree — a card-scoped locator for the reason field or the submit
-  // button never resolves, and this test stalled to its own timeout on
-  // exactly that. Scoped to the dialog instead, the same shape
-  // `admin-reports.spec.ts`'s own equivalent test already uses.
-  await card.getByText("أزل", { exact: true }).click();
+  await goto(page, `/ar/app/admin/moderation/photos/${reportedPhotoId}?kind=reports`);
+  await page.locator("#main").getByRole("button", { name: "احذف نهائيًا" }).click();
   const dialog = page.getByRole("dialog", { name: "حذف صورة من «جلسة الإشراف»؟" });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel("السبب الذي يُسجَّل في سجل التدقيق").fill("مخالفة صريحة");
-  await dialog.getByRole("button", { name: "أرسل" }).click();
-  await expect(page.getByText("محتوى غير مناسب")).toHaveCount(0);
+  await dialog.getByLabel("السبب — يُسجَّل في سجل التدقيق").fill("مخالفة صريحة");
+  await dialog.getByRole("button", { name: "احذف", exact: true }).click();
+  await expect(page.locator("#main").getByText("محذوفة", { exact: true })).toBeVisible();
 
   const photoRows = await db.query<{ removed_at: string | null }>(`select removed_at from public.photos where id = $1`, [reportedPhotoId]);
   expect(photoRows.rows[0].removed_at).toBeTruthy();
   const reportRows = await db.query<{ status: string; resolution: string }>(`select status, resolution from public.reports where id = $1`, [photoReportId]);
   expect(reportRows.rows[0]).toEqual({ status: "resolved", resolution: "removed" });
-  const reversal = await db.query<{ amount: number }>(`select amount from public.points_ledger where source = 'reversal' and source_id in (select id from public.points_ledger where source = 'photo' and source_id = $1)`, [
-    reportedPhotoId,
-  ]);
+  const reversal = await db.query<{ amount: number }>(
+    `select amount from public.points_ledger where source = 'reversal' and source_id in (select id from public.points_ledger where source = 'photo' and source_id = $1)`,
+    [reportedPhotoId],
+  );
   expect(reversal.rows).toEqual([{ amount: -3 }]);
 });
-

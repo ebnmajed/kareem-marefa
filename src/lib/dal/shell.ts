@@ -47,7 +47,7 @@ export const getShellData = cache(async (locale: string): Promise<ShellData> => 
     return error ? 0 : (n ?? 0);
   };
 
-  const [me, org, proposals, unscheduled, photoReports, commentReports] = await Promise.all([
+  const [me, org, proposals, unscheduled, openPhotoReports, commentReports, openTakedowns] = await Promise.all([
     company,
     supabase.from("orgs").select("name").eq("id", session.orgId).maybeSingle(),
     isStaff
@@ -62,7 +62,13 @@ export const getShellData = cache(async (locale: string): Promise<ShellData> => 
     isStaff
       ? count(supabase.from("reports").select("id", { count: "exact", head: true }).eq("org_id", session.orgId).eq("target", "comment").eq("status", "open"))
       : 0,
+    // ★ wave 22 (DEC-232 §4.6, `content`'s F2): a takedown request waits on the same screen as a photo report — الصور
+    // (SCR-051) — and was counted nowhere, so a hidden photo waited unseen. It joins the photo figure.
+    isStaff
+      ? count(supabase.from("photo_takedowns").select("id", { count: "exact", head: true }).eq("org_id", session.orgId).is("resolved_at", null))
+      : 0,
   ]);
+  const photoReports = openPhotoReports + openTakedowns;
 
   const teamColor = (me.data as { companies: { team_color: string | null } | null } | null)?.companies?.team_color ?? null;
   return {

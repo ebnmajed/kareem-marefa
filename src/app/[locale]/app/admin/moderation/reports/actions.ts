@@ -1,21 +1,27 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { resolvePhotoReport } from "@/lib/dal/admin-moderation";
 import type { Locale } from "@/i18n/routing";
+import { decideReport } from "@/lib/dal/admin-moderation";
+import type { ModerationState } from "../state";
 
-// SCR-052's Server Action (REQ-ADM-010, REQ-EVT-008). Zod validation lives
-// in `resolvePhotoReport` itself.
+// SCR-050/052's two decisions (REQ-UIX-103, REQ-EVT-014). Zod lives in `decideReport()`; the decision itself is
+// `resolve_report()`, one transaction that closes every open report on the comment — and writes no audit row of its
+// own (`report.resolved` and `comment.removed` are the database's triggers).
 
-export type ModerationState = { error: string | null; done: boolean };
+async function decide(locale: Locale, reportId: string, outcome: "removed" | "dismissed", reason?: string): Promise<ModerationState> {
+  const result = await decideReport(locale, { reportId, outcome, reason });
+  // Decided already, elsewhere: the row is stale, so the list is refreshed with the refusal.
+  if (result.done || result.error === "already_resolved") revalidatePath(`/${locale}/app/admin/moderation/reports`);
+  return result.done ? { error: null, done: true } : { error: result.error, done: false };
+}
 
-export async function resolveReport(locale: Locale, reportId: string, photoId: string, _prev: ModerationState, formData: FormData): Promise<ModerationState> {
-  const action = formData.get("action")?.toString();
-  if (action !== "remove" && action !== "dismiss") return { error: "unknown", done: false };
-  const reason = formData.get("reason")?.toString();
+/** «أزل» — from the dialog's form: the reason travels with it (REQ-EVT-014). */
+export async function removeReportedComment(locale: Locale, reportId: string, _prev: ModerationState, formData: FormData): Promise<ModerationState> {
+  return decide(locale, reportId, "removed", formData.get("reason")?.toString());
+}
 
-  const { error } = await resolvePhotoReport(locale, { reportId, photoId, action, reason });
-  if (error) return { error, done: false };
-  revalidatePath(`/${locale}/app/admin/moderation/reports`);
-  return { error: null, done: true };
+/** «تجاهل» — one press in the row. */
+export async function dismissReportedComment(locale: Locale, reportId: string): Promise<ModerationState> {
+  return decide(locale, reportId, "dismissed");
 }

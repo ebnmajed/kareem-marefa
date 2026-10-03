@@ -180,19 +180,24 @@ test("★ the third response draws it — the rate, the scale's bars, the writte
   await signIn(context, people.admin.email);
   await open(page, `/ar/app/admin/sessions/${sessionId}/survey`);
 
-  await expect(main(page).getByRole("heading", { name: "نسبة الاستجابة" })).toBeVisible();
+  // ★ wave 22 (ledger W22-E7): the rate is a figure that names its instrument, not a section heading.
+  await expect(main(page).getByText("نسبة الرد على الاستبانة")).toBeVisible();
   await expect(main(page).getByRole("article", { name: /ما مدى وضوح المحتوى؟/ }).getByRole("progressbar")).toHaveCount(5);
   await expect(main(page).getByText("اقتراح 1")).toBeVisible();
-  await expect(main(page).getByRole("link", { name: "تصدير CSV" })).toBeVisible();
+  // ★ wave 22 (ledger W22-E8): the CSV is the hub header's action, its word «CSV» (DEC-232).
+  await expect(main(page).getByRole("link", { name: /CSV/ })).toBeVisible();
   // ★ Every bar carries its label and its count as TEXT, so the distribution is
   // readable without a screen reader and without colour.
   const bars = main(page).getByRole("article", { name: /ما مدى وضوح المحتوى؟/ }).getByRole("listitem");
   await expect(bars).toHaveCount(5);
-  await expect(bars.first()).toHaveText(/^1\s*0$/);
-  // ★ And the detach is GONE once anyone has answered — the sentence is there
-  // instead of a button that the database would refuse.
+  // ★ wave 22 (ledger W22-E9): a scale reads from its top, five stars first, the label in words.
+  await expect(bars.first()).toHaveText(/^5 نجوم\s*\d+$/);
+  // ★ And the detach is GONE once anyone has answered — never a button that the
+  // database would refuse.
   await expect(main(page).getByRole("link", { name: "أزل الاستبانة" })).toHaveCount(0);
-  await expect(main(page).getByText("لا يمكن إزالة استبانة أجاب عنها أحد")).toBeVisible();
+  // ★ wave 22 (ledger W22-E11): and no standing sentence in its place — nothing is shown when nothing can be done
+  // (DEC-NEXT-25); a press that races an answer still gets the refusal as an alert.
+  await expect(main(page).getByText("لا يمكن إزالة استبانة أجاب عنها أحد")).toHaveCount(0);
   // Every number on the screen is Western (DEC-124).
   expect(await main(page).innerText()).not.toMatch(/[٠-٩]/);
   await capture(page, "survey-results");
@@ -202,7 +207,7 @@ test("★ the session's presenter is refused by the DATABASE, not by a missing l
   await signIn(context, people.presenter.email);
   await open(page, `/ar/app/admin/sessions/${sessionId}/survey`);
 
-  await expect(main(page).getByRole("heading", { name: "نسبة الاستجابة" })).toHaveCount(0);
+  await expect(main(page).getByText("نسبة الرد على الاستبانة")).toHaveCount(0);
   await expect(main(page).getByText("النتائج محجوبة")).toHaveCount(0);
   await expect(main(page)).not.toContainText("اقتراح 1");
   await capture(page, "survey-presenter-refused");

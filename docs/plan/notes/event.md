@@ -1583,3 +1583,38 @@ Nothing in `DEC-160` §3 moves: no member and no instant on a response, results 
 - The trigger on `survey_templates` with the org-gone return is the lead's. ★ **I tell the lead when
   `SurveyHeaderAction` exists**, and the lead adds the `survey:` key to `[id]/layout.tsx` as custodian.
 - Build in C's worktree only, once its path is posted.
+
+### 9 · Build log (PR C, `../kareem-marefa-wave22c`)
+
+| Commit | What |
+|---|---|
+| `c7acdbaf` | delete — `064`'s `page.tsx` and `components/survey/results.tsx` |
+| `26cd0cd8` | create — `064` from its artboard; `getSurveyResultsOrNull()` and `offersSurveyExport()` (add-only); `SurveyHeaderAction`; ledger W22-E1 … E9 |
+| `81839d93` | delete — `065`'s `page.tsx` |
+| `8eeeecea` | create — `065` from its artboard; `surveys/actions.ts` (`deleteFromList`); `components/survey/templates-table.tsx`; ledger W22-E10 |
+| `0a05fe08` | `tests/e2e/wave22-event-survey.spec.ts` — the two jobs, every record read back |
+
+**§3.1 read against the new `064`:** 1 ✓ · 2 ✓ · 3 ✓ fixed (`getSurveyResultsOrNull`) · 4 `getSessionHeading` gone with
+#12 · 5 ✓ (★ `noneBody` dropped too, told to the lead) · 6 ✓ unchanged file · 7 ✓ unchanged component · 8 ✓ · 9 ✓ the
+«why» kept · 10 ✓ the rate a figure; «لا حضور مؤهلون» the responses figure's hint (the reachable case is withheld + 0
+eligible — `ok` with 0 eligible cannot happen, `eligible = greatest(attend, n)`) · 11 ✓ · 12 dropped · 13 ✓ moved to the
+header · 14 dropped · 15 the first `h2` is the figures' (`sr-only`), each question an `h3` · 16 ✓ · 17, 18 ✓ unchanged.
+
+**§3.2 read against the new `065`:** 1 – 4 ✓ (the empty state has no description now) · 5 ✓ cells, `<bdi>`, Western ·
+6 ✓ · 7, 8 dropped · 9 ✓ ⋯ «عدّل» · 10 ✓ editor's two-step kept, the list's added server-side · 11, 12 ✓.
+
+**Waiting on the lead:** the `survey:` key in `[id]/layout.tsx`; the trigger on `survey_templates` — then
+`tests/rls/survey-template-audit.test.ts` (not written before it: a failing RLS file runs in everyone's suite).
+
+**After the lead opened the captures (three corrections):**
+- **065 — the questions BELOW the templates, full width**, as `AdminSurveys.dc.html` draws them. `REQ-UIX-106` said
+  «beside» and `DEC-232`'s D5 ruled by it; the lead corrected both to the board.
+- **Both tables in the console's surface card at a desk** — `042`'s own treatment, `md:rounded-panel md:border
+  md:border-edge md:bg-surface`, on `data-table`'s `className`; no new primitive. `064`'s question cards were already
+  `ui/panel` (neutral = the same surface).
+- **`064`'s «لا يمكن إزالة استبانة أجاب عنها أحد» — dropped as a standing line.** Measured: it was not the only place
+  the refusal is said. A released result has no detach control at all, so the line stood alone at the foot explaining
+  an absence (`DEC-NEXT-25`). The detach region now renders only while it can work (no survey answered yet: withheld);
+  a press that races an answer still lands on `?error=has_responses`, the `role="alert"` above — the refusal stays,
+  where it happens. `DetachControl` itself is unchanged and its suite untouched. Ledger W22-E11:
+  `wave10-event-survey-results.spec.ts:198` — the sentence `toBeVisible()` → `toHaveCount(0)` (expectation changed).

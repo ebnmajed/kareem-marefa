@@ -60,6 +60,63 @@
       "failed": "The photo archive could not be prepared.",
       "rebuild": "Prepare it again",
       "retry": "Try again"
+    },
+    "moderation": {
+      "title": "Moderation — Photos",
+      "filtersLabel": "Photo queues",
+      "filter": {
+        "takedowns": "Takedown requests",
+        "reports": "Photo reports",
+        "closed": "Closed"
+      },
+      "listLabel": "Photos awaiting a decision",
+      "closedLabel": "Decided photos",
+      "row": "Photo from “<bdi>{session}</bdi>”",
+      "imageAlt": "Photo from “<bdi>{session}</bdi>”",
+      "requested": "Requested by <bdi>{name}</bdi>",
+      "reported": "Reported by <bdi>{name}</bdi>",
+      "member": "Member",
+      "age": "{count, plural, zero {today} one {1 day} other {{value} days}}",
+      "label": {
+        "session": "Session",
+        "uploader": "Uploaded by",
+        "requester": "Takedown requested by",
+        "reporter": "Reported by",
+        "status": "Status",
+        "decision": "Decision"
+      },
+      "status": {
+        "hidden": "Hidden, awaiting review",
+        "visible": "Visible",
+        "removed": "Removed"
+      },
+      "outcome": {
+        "removed": "Removed",
+        "restored": "Restored",
+        "dismissed": "Report dismissed"
+      },
+      "remove": "Remove permanently",
+      "restore": "Restore",
+      "dismiss": "Dismiss",
+      "removeTitle": "Remove a photo from “<bdi>{session}</bdi>”?",
+      "reasonLabel": "Reason — recorded in the audit log",
+      "confirm": "Remove",
+      "cancel": "Cancel",
+      "close": "Close",
+      "back": "The list",
+      "empty": {
+        "takedowns": "No takedown requests",
+        "reports": "No photo reports",
+        "closed": "No decisions yet"
+      },
+      "done": "Decision recorded",
+      "error": {
+        "not_authorized": "You can't do this.",
+        "reason_required": "Write the reason first.",
+        "not_found": "Not found.",
+        "already_resolved": "Already decided.",
+        "unknown": "That didn't work — try again."
+      }
     }
   }
 }

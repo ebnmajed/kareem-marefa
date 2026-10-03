@@ -1,39 +1,61 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { formatDate, formatNumber } from "@/components/sessions/numerals";
+import { TemplateQuestionsTable, TemplatesTable } from "@/components/survey/templates-table";
 import { ButtonLink } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { getOrgPrefs } from "@/lib/dal/proposals";
-import { listSurveyTemplates } from "@/lib/dal/surveys";
+import { Panel } from "@/components/ui/panel";
+import { SubmitButton } from "@/components/ui/submit-button";
+import type { Locale } from "@/i18n/routing";
+import { getSurveyTemplate, listSurveyTemplates } from "@/lib/dal/surveys";
+import { deleteFromList } from "./actions";
 
-// SCR-065 · /app/admin/surveys — the question sets an org reuses
-// (REQ-SUR-001, REQ-SUR-002, DEC-160).
+// SCR-065 · /app/admin/surveys — the question sets an org reuses, rebuilt in wave 22 from `AdminSurveys.dc.html`
+// (REQ-UIX-106, REQ-SUR-001, REQ-SUR-002, DEC-160, DEC-232). Deleted first, then written (`DEC-208`); the
+// kept-behaviour table is `docs/plan/notes/event.md` § Wave 22 §3.2.
 //
-// Staff only, and that is the database's word rather than this page's: the six
-// authoring tables carry a `select` policy for `is_staff()` and no write policy
-// at all, so a member reaching this URL is handed `notFound()` by the guard in
-// `lib/dal/surveys.ts` and would see an empty list even without it.
+// The `h1` and its one primary, «قالب جديد»; then the templates — name, questions, sessions — and BELOW them, full
+// width, the selected one's questions (`REQ-UIX-106` as corrected to the drawing), read on the server from
+// `?template=<id>`, the first by default.
+// The artboard's «افتراضي» has no column and is absent (`DEC-232`).
 //
-// A template is COPIED into a session's survey when it is attached (SCR-064),
-// so «كم جلسة تستخدمه» counts copies already made and editing the template
-// afterwards changes none of them — which is the sentence the list has to make
-// visible, because it is the difference between this screen and one that edits
-// what members are already answering.
+// ★ STAFF — ADMIN AND MODERATOR — AND THE DATABASE SAYS SO. The six authoring tables carry a `select` policy for
+// `is_staff()` and no write policy at all; `listSurveyTemplates()` answers `null` for a member and the page answers
+// `notFound()`. A moderator authors templates (`REQ-ADM-020`).
+//
+// ★ «الجلسات» counts the COPIES made: attaching copies a template into a session's survey, so editing it afterwards
+// changes none of them. The editor (`[templateId]`, kept untouched) is where questions are written and reordered by
+// taps alone (`ui/reorderable-list`, `REQ-SUR-002`).
+//
+// ★ Every write is recorded by the database — `survey_template.created` · `changed` · `deleted` from the lead's trigger
+// on `survey_templates` (`DEC-231` §4); nothing here or in the DAL writes `audit_log`.
 
-export default async function SurveyTemplatesPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function SurveyTemplatesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ template?: string; delete?: string; deleted?: string; error?: string }>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const flags = await searchParams;
 
-  const [templates, prefs, t] = await Promise.all([listSurveyTemplates(locale), getOrgPrefs(locale), getTranslations("survey.templates")]);
+  const [templates, t, tErrors] = await Promise.all([
+    listSurveyTemplates(locale),
+    getTranslations("survey.templates"),
+    getTranslations("survey.errors"),
+  ]);
   if (templates === null) notFound();
+
+  const selectedId = templates.find((row) => row.id === flags.template)?.id ?? templates[0]?.id ?? null;
+  const selected = selectedId ? await getSurveyTemplate(locale, selectedId) : null;
+  const deleting = templates.find((row) => row.id === flags.delete) ?? null;
 
   return (
     <>
       <PageHeader
+        inlineActions
         title={t("title")}
-        description={t("description")}
         actions={
           <ButtonLink href="/app/admin/surveys/new" size="md">
             {t("new")}
@@ -41,29 +63,55 @@ export default async function SurveyTemplatesPage({ params }: { params: Promise<
         }
       />
 
-      {templates.length === 0 ? (
-        <div className="mt-10 max-w-xl">
-          <EmptyState title={t("emptyTitle")} description={t("emptyBody")} action={{ label: t("new"), href: "/app/admin/surveys/new" }} />
+      {flags.deleted ? (
+        <p role="status" className="mt-4 text-body-sm text-fg-muted">
+          {t("deleted")}
+        </p>
+      ) : null}
+      {flags.error ? (
+        <div role="alert" className="mt-4 max-w-xl">
+          <Panel tone="ended">
+            <p className="text-body-sm text-fg-body">{tErrors("generic")}</p>
+          </Panel>
         </div>
-      ) : (
-        <ul className="mt-8 flex max-w-2xl flex-col gap-3">
-          {templates.map((template) => (
-            <li key={template.id}>
-              <Card href={`/app/admin/surveys/${template.id}`}>
-                <h2 className="text-label text-fg-heading">
-                  <bdi>{template.title}</bdi>
-                </h2>
-                <p className="mt-1 text-body-sm text-fg-muted">
-                  {t("questionCount", { count: template.questionCount, value: formatNumber(template.questionCount) })}
-                  {" · "}
-                  {t("sessionCount", { count: template.sessionCount, value: formatNumber(template.sessionCount) })}
-                </p>
-                <p className="mt-1 text-caption text-fg-muted">{t("updatedAt", { date: formatDate(template.updatedAt, prefs.timeZone, locale) })}</p>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
+      ) : null}
+
+      {deleting ? (
+        // The second step of «احذف القالب», server-side: asked in words, completed by a form, survives a reload.
+        <section aria-labelledby="delete-template" className="mt-6 max-w-xl">
+          <Panel tone="ended">
+            <h2 id="delete-template" className="text-label text-fg-heading">
+              <bdi>{deleting.title}</bdi>
+            </h2>
+            <p className="mt-1 text-body-sm text-fg-body">{t("deleteConfirm")}</p>
+            <form action={deleteFromList.bind(null, locale as Locale, deleting.id)} className="mt-4 flex flex-wrap items-center gap-3">
+              <SubmitButton variant="danger" size="md">
+                {t("delete")}
+              </SubmitButton>
+              <ButtonLink href={`/app/admin/surveys?template=${deleting.id}`} variant="secondary" size="md">
+                {t("cancel")}
+              </ButtonLink>
+            </form>
+          </Panel>
+        </section>
+      ) : null}
+
+      <div className="mt-6 flex flex-col gap-6">
+        <TemplatesTable rows={templates} selectedId={selectedId} />
+
+        {selected ? (
+          <section aria-labelledby="template-questions">
+            <h2 id="template-questions" className="mb-3 text-label text-fg-muted">
+              <bdi>{selected.title}</bdi>
+            </h2>
+            <TemplateQuestionsTable
+              templateId={selected.id}
+              title={selected.title}
+              rows={selected.questions.map((q) => ({ id: q.id, prompt: q.prompt, kind: q.kind, required: q.required }))}
+            />
+          </section>
+        ) : null}
+      </div>
     </>
   );
 }

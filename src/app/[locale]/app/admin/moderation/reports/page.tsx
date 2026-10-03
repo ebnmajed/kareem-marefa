@@ -1,82 +1,57 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { formatNumber } from "@/components/sessions/numerals";
-import type { Locale } from "@/i18n/routing";
-import { ModerationTabs } from "@/components/admin/moderation-tabs";
-import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { listModerationCounts, listPhotoReports } from "@/lib/dal/admin-moderation";
-import { resolveReport } from "./actions";
-import { ReportCard } from "./report-card";
+import { TagChip } from "@/components/ui/tag-chip";
+import type { Locale } from "@/i18n/routing";
+import { listCommentReportQueue, type ReportState } from "@/lib/dal/admin-moderation";
+import { dismissReportedComment, removeReportedComment } from "./actions";
+import { ReportsTable } from "./_components/reports-table";
 
-// SCR-052 · /app/admin/moderation/reports (REQ-ADM-010, REQ-EVT-008,
-// DEC-005), rebuilt onto the system for wave 6 (`16` §6.7, `DEC-130`), with
-// the shared `ModerationTabs` strip added for wave 7 once `comments`/`photos`
-// joined it on the system (`DEC-137`). Open reports on PHOTOS that have NOT
-// been hidden — distinct from SCR-051's takedown queue (already hidden).
-// "Reports" here is photo-specific, not a merged all-content inbox: comment
-// reports have their own screen (SCR-050) because comments have no takedown
-// concept to contrast against, so nothing about them needs the same split.
+// SCR-050/052 · البلاغات — REQ-UIX-103, REQ-ADM-010, REQ-EVT-008, REQ-EVT-014. Written from
+// `AdminModerationReports.dc.html` in wave 22 (DEC-208: deleted first; the kept-behaviour table is
+// `docs/plan/notes/content.md` W22.3).
+//
+// ★ THE JOB (DEC-231 §0.2): moderation is ACTIONED, not listed. One row per reported comment — the comment, its author,
+// the session, who reported it and why, how long ago — and the decision in that row: «تجاهل», or «أزل» with a reason.
+// «مغلقة» shows what was decided and by whom, the first place in the product a resolved report is visible.
+//
+// Admin and moderator (REQ-ADM-020); a member gets `null` from the read and the streamed not-found (DEC-134). The
+// page renders nothing of the console frame: its `h1` row and its content.
 
-function ageInDays(iso: string): number {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
-}
-
-export default async function PhotoReportsPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
+export default async function ReportsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [{ locale }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
+  const state: ReportState = query.state === "closed" ? "closed" : "open";
 
-  const [reports, counts, t] = await Promise.all([listPhotoReports(locale), listModerationCounts(locale), getTranslations("admin.moderation")]);
-  if (reports === null || counts === null) notFound();
-
-  const num = (n: number) => formatNumber(n);
-  const action = (reportId: string, photoId: string) => resolveReport.bind(null, locale as Locale, reportId, photoId);
+  const [queue, t] = await Promise.all([listCommentReportQueue(locale, state), getTranslations("event.moderation")]);
+  if (!queue) notFound();
 
   return (
     <>
-      <PageHeader title={t("photosReportsTitle")} description={t("photosReportsIntro")} />
-      <div className="mt-6">
-        <ModerationTabs current="reports" counts={counts} />
-      </div>
-
-      {reports.length === 0 ? (
-        <div className="mt-8">
-          <EmptyState title={t("photosReportsEmpty")} action={{ label: t("photosReportsEmptyAction"), href: "/app/admin" }} />
-        </div>
-      ) : (
-        <ul className="mt-8 grid max-w-3xl grid-cols-1 gap-5 sm:grid-cols-2">
-          {reports.map((r) => (
-            <li key={r.reportId}>
-              <ReportCard action={action(r.reportId, r.photoId)} photoUrl={r.photoUrl} sessionTitle={r.sessionTitle}>
-                <p className="text-body-sm text-fg-muted">{t("age", { count: ageInDays(r.createdAt), value: num(ageInDays(r.createdAt)) })}</p>
-                <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-body-sm">
-                  <div className="flex gap-2">
-                    <dt className="text-fg-muted">{t("uploaderLabel")}</dt>
-                    <dd className="text-fg-body">
-                      <bdi>{r.uploaderName ?? "—"}</bdi>
-                    </dd>
-                  </div>
-                  <div className="flex gap-2">
-                    <dt className="text-fg-muted">{t("sessionLabel")}</dt>
-                    <dd className="text-fg-body">
-                      <bdi>{r.sessionTitle}</bdi>
-                    </dd>
-                  </div>
-                  <div className="flex gap-2">
-                    <dt className="text-fg-muted">{t("reporterLabel")}</dt>
-                    <dd className="text-fg-body">
-                      <bdi>{r.reporterName ?? "—"}</bdi>
-                    </dd>
-                  </div>
-                </dl>
-                <p className="mt-2 text-body-sm text-fg-body">
-                  {t("reasonGiven")}: <bdi>{r.reason}</bdi>
-                </p>
-              </ReportCard>
-            </li>
-          ))}
+      <PageHeader title={t("title")} className="mb-4" />
+      <nav aria-label={t("filtersLabel")} className="mb-4">
+        <ul className="flex flex-wrap gap-2">
+          <li>
+            <TagChip label={`${t("filter.open")} ${formatNumber(queue.openCount)}`} href="/app/admin/moderation/reports" selected={state === "open"} />
+          </li>
+          <li>
+            <TagChip label={t("filter.closed")} href="/app/admin/moderation/reports?state=closed" selected={state === "closed"} />
+          </li>
         </ul>
-      )}
+      </nav>
+      <ReportsTable
+        rows={queue.rows}
+        state={state}
+        remove={removeReportedComment.bind(null, locale as Locale)}
+        dismiss={dismissReportedComment.bind(null, locale as Locale)}
+      />
     </>
   );
 }
