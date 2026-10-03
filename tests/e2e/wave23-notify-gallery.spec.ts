@@ -107,7 +107,7 @@ test("the builder at 1280: the bar, the rail in order, a block selected, the lib
   // A block selected — the button, as `AdminEmails.dc.html` draws it: الكتلة open, its handle bar shown.
   await main(page).locator("[data-canvas-target] > button").and(page.getByRole("button", { name: /^زر/ })).first().click();
   await expect(main(page).getByRole("tab", { name: "الكتلة", exact: true })).toHaveAttribute("aria-selected", "true");
-  await expect(main(page).locator("[data-handle-bar]").filter({ visible: true })).toHaveCount(1);
+  await expect(main(page).locator("[data-handle-bar][data-selected]")).toHaveCount(1);
   await page.screenshot({ path: `${SHOTS}/wave23-notify-058-editor-block-1280.png` });
 
   // The library armed — «رمز QR» pressed and the dashed slots across the email, as `AdminEmailAdd.dc.html` draws.

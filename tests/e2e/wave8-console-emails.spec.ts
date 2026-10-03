@@ -140,7 +140,8 @@ test("SCR-058 at 390 px: an old `?key=` link opens the builder, which says it is
   await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
   await expect(page).toHaveURL(/\/app\/admin\/emails\/MSG-reminder_1d$/);
   await expect(page.getByRole("heading", { name: "تذكير قبل الجلسة بيوم", level: 1 })).toBeVisible();
-  await expect(page.getByText("يُحرَّر البريد على شاشة أعرض.", { exact: true })).toBeVisible();
+  // From `#main`, and the visible one: a hard load can leave an orphaned streamed copy of the page (DEC-145).
+  await expect(page.locator("#main").getByText("يُحرَّر البريد على شاشة أعرض.", { exact: true }).filter({ visible: true })).toBeVisible();
   const { rows } = await db.query(`select id from public.notification_templates where org_id = $1`, [orgId]);
   expect(rows).toHaveLength(0);
   await page.screenshot({ path: `${SHOTS}/wave8-console-emails-refused-save.png` });

@@ -339,7 +339,9 @@ export function EmailBuilder(props: EmailBuilderProps) {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col bg-canvas lg:h-dvh lg:overflow-hidden">
+    // The studio frame is a fixed viewport (`h-dvh overflow-hidden`), so the builder scrolls ITSELF below `lg`: the bar
+    // wraps on a phone, and the notice and the checks under it must still be reachable.
+    <div className="flex h-dvh flex-col overflow-y-auto bg-canvas lg:overflow-hidden">
       {bar}
 
       {/* ── Below `lg`: the canvas is a desktop tool; the checks and the preview stay reachable ── */}

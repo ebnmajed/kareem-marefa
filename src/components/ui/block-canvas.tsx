@@ -2,7 +2,6 @@
 
 import { useId } from "react";
 import type { BlockCanvasBox, BlockCanvasPlace, BlockCanvasProps, BlockCanvasTarget } from "@/components/ui";
-import { IconButton } from "@/components/ui/icon-button";
 import { ChevronIcon, TrashIcon } from "@/components/ui/icons";
 
 // The email's child of `canvas-stage` — REQ-UIX-112, DEC-237 §3, DEC-093. `notify`'s.
@@ -57,13 +56,13 @@ export function BlockCanvas({
         {columns ? (
           // ★ A ROW OF COLUMNS IS SELECTED BY ITS OWN TAB. Its blocks are targets laid over it and can cover every
           // point of it — a 1/2 row whose button fills a column left no point of the row to tap, so the row could not
-          // be selected, moved or deleted with one pointer (DEC-093). The tab sits on the row's top edge, above the
-          // blocks, always shown, and is the row's one select control.
+          // be selected, moved or deleted with one pointer (DEC-093). The tab sits just above the row's top edge at its
+          // start, outside every block's box, always shown, and is the row's one select control.
           <button
             type="button"
             aria-pressed={selected}
             onClick={() => onSelect(selected ? null : item.id)}
-            className={`pointer-events-auto absolute -top-3 start-2 z-10 min-h-6 rounded-field border px-2 text-caption font-bold text-fg-heading ${
+            className={`pointer-events-auto absolute bottom-full start-2 z-10 min-h-6 rounded-field border px-2 text-caption font-bold text-fg-heading ${
               selected ? "border-accent bg-raised" : "border-edge bg-raised hover:bg-hover"
             }`}
           >
@@ -86,13 +85,19 @@ export function BlockCanvas({
             role="group"
             aria-label={item.label}
             data-handle-bar=""
-            className={`pointer-events-auto absolute -top-4 end-2 z-10 items-center gap-1 rounded-field border border-edge bg-raised px-1 py-0.5 ${
-              selected ? "flex" : "hidden group-hover:flex group-focus-within:flex"
-            }`}
+            data-selected={selected ? "" : undefined}
+            // ★ OUTSIDE ITS OWN TARGET, ALWAYS. A bar laid over the top of the box it acts on covered the very point a
+            // person taps to select it (DEC-093). A row's bar sits just above the row at its end — the row tab takes the
+            // start — and a block's just below the block, so neither covers its target nor the row's tab.
+            className={`pointer-events-auto absolute end-2 z-20 items-center gap-0.5 rounded-field border border-edge bg-raised px-0.5 ${
+              kind === "row" ? "bottom-full" : "top-full"
+            } ${selected ? "flex" : "hidden group-hover:flex group-focus-within:flex"}`}
           >
-            <span className="px-1 text-caption font-bold text-fg-heading">
-              <bdi>{item.label}</bdi>
-            </span>
+            {kind === "row" ? (
+              <span className="px-1 text-caption font-bold text-fg-heading">
+                <bdi>{item.label}</bdi>
+              </span>
+            ) : null}
             {onRowDragStart ? (
               <span
                 aria-hidden="true"
@@ -105,26 +110,26 @@ export function BlockCanvas({
                 ⋮⋮
               </span>
             ) : null}
-            <IconButton size="sm" variant="ghost" label={labels.moveUp} aria-describedby={nameId} disabled={index === 0} onClick={() => actions.moveUp(item.id)}>
+            <BarButton label={labels.moveUp} describedBy={nameId} disabled={index === 0} onClick={() => actions.moveUp(item.id)}>
               <ChevronIcon direction="up" />
-            </IconButton>
-            <IconButton size="sm" variant="ghost" label={labels.moveDown} aria-describedby={nameId} disabled={index === count - 1} onClick={() => actions.moveDown(item.id)}>
+            </BarButton>
+            <BarButton label={labels.moveDown} describedBy={nameId} disabled={index === count - 1} onClick={() => actions.moveDown(item.id)}>
               <ChevronIcon direction="down" />
-            </IconButton>
+            </BarButton>
             <button
               type="button"
               aria-describedby={nameId}
               onClick={() => actions.move(item.id)}
-              className="min-h-6 rounded-field px-1.5 text-caption font-bold text-fg-heading hover:bg-hover"
+              className="min-h-6 rounded-field px-1 text-caption font-bold text-fg-heading hover:bg-hover"
             >
               {labels.move}
             </button>
-            <IconButton size="sm" variant="ghost" label={labels.duplicate} aria-describedby={nameId} onClick={() => actions.duplicate(item.id)}>
+            <BarButton label={labels.duplicate} describedBy={nameId} onClick={() => actions.duplicate(item.id)}>
               <DuplicateGlyph />
-            </IconButton>
-            <IconButton size="sm" variant="ghost" label={labels.remove} aria-describedby={nameId} onClick={() => actions.remove(item.id)}>
+            </BarButton>
+            <BarButton label={labels.remove} describedBy={nameId} onClick={() => actions.remove(item.id)}>
               <TrashIcon />
-            </IconButton>
+            </BarButton>
           </div>
         ) : null}
       </div>
@@ -202,6 +207,23 @@ export function BlockCanvas({
           : null}
       </div>
     </div>
+  );
+}
+
+/** One of the handle bar's controls: a 24 px target (SC 2.5.8's minimum) — the bar must stay small enough to sit
+ *  beside a row without reaching the middle of the row it sits on. */
+function BarButton({ label, describedBy, disabled, onClick, children }: { label: string; describedBy: string; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-describedby={describedBy}
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex size-6 items-center justify-center rounded-field text-fg-heading hover:bg-hover disabled:text-fg-muted disabled:opacity-50"
+    >
+      {children}
+    </button>
   );
 }
 

@@ -88,8 +88,8 @@ async function signIn(context: BrowserContext, email: string) {
 const main = (page: Page) => page.locator("#main");
 /** A canvas target — the select button the overlay lays over a row or a block. */
 const target = (page: Page, label: string) => main(page).locator("[data-canvas-target] > button").and(page.getByRole("button", { name: label, exact: true }));
-/** The handle bar shown for the selected target. */
-const bar = (page: Page) => main(page).locator("[data-handle-bar]").filter({ visible: true });
+/** The SELECTED target's handle bar — shown on selection, whatever the pointer happens to hover. */
+const bar = (page: Page) => main(page).locator("[data-handle-bar][data-selected]");
 const slot = (page: Page, name: string) => main(page).locator("[data-canvas-slot]").and(page.getByRole("button", { name, exact: true }));
 
 type Stored = { blocks: Array<{ id: string; type: string }>; rows?: Array<{ id: string; layout: string; columns: string[][] }> };

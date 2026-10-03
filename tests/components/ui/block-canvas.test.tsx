@@ -157,12 +157,26 @@ describe("ui/block-canvas", () => {
     expect(onDropAt.mock.calls[0]![0]).toEqual({ index: 1 });
   });
 
+  it("★ a handle bar never sits on its own target: a row's above the row, a block's below the block", () => {
+    const { container } = mount({ selectedId: "p" });
+    const bars = [...container.querySelectorAll<HTMLElement>("[data-handle-bar]")];
+    for (const bar of bars) {
+      const kind = bar.closest("[data-canvas-target]")!.getAttribute("data-canvas-target");
+      expect(bar.className, bar.getAttribute("aria-label")!).toContain(kind === "row" ? "bottom-full" : "top-full");
+      expect(bar.className).not.toMatch(/-top-|inset-0/);
+    }
+    // Only the selected target's bar says so — what a person (and a spec) reaches after a tap, hover or not.
+    const selected = container.querySelectorAll("[data-handle-bar][data-selected]");
+    expect(selected).toHaveLength(1);
+    expect(selected[0]!.getAttribute("aria-label")).toBe("فقرة: يمين");
+  });
+
   it("★ a row of columns is selected by its own visible tab on its top edge — its blocks may cover every point of it", () => {
     const { container, handlers } = mount();
     const tab = screen.getByRole("button", { name: "تخطيط 1/2" });
     // A labelled tab, not an invisible cover the row's blocks would sit on.
     expect(tab.textContent).toBe("تخطيط 1/2");
-    expect(tab.className).toContain("-top-3");
+    expect(tab.className).toContain("bottom-full");
     expect(tab.className).toContain("z-10");
     fireEvent.click(tab);
     expect(handlers.onSelect).toHaveBeenLastCalledWith("row");

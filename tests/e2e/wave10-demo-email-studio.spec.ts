@@ -299,7 +299,7 @@ test("3 · REORDERED WITH TAPS — one press of ▼ on the handle bar moves a bl
 
   // The heading goes down one place — by a tap, no drag (SC 2.5.7).
   await main(page).locator("[data-canvas-target] > button").and(page.getByRole("button", { name: /^عنوان: / })).click();
-  await main(page).locator("[data-handle-bar]").filter({ visible: true }).getByRole("button", { name: "انقل لأسفل", exact: true }).click();
+  await main(page).locator("[data-handle-bar][data-selected]").getByRole("button", { name: "انقل لأسفل", exact: true }).click();
   await expect(main(page).getByRole("status").filter({ hasText: "مسودة" })).toBeVisible();
   await capture(page, "3-moved", DESKTOP);
 
