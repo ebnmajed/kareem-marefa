@@ -6,8 +6,9 @@ import { sessionClient } from "@/lib/dal/session";
 // review — this module never hides anything, it only files the report.
 // "The reporter's identity is never shown to the reported member" is
 // already structural: no policy lets a non-staff member select `reports`
-// at all. The moderation queue UI (`app/admin/**`) is `console`'s, wave 3
-// — out of scope here.
+// at all. The moderation queues are SCR-050/052 and SCR-051 (`admin-moderation.ts`).
+// ★ Wave 22 (F1): a photograph is reported too, through `report_photo()` — visible photos only, never one's own,
+// once per member.
 
 export const reportCommentInput = z.object({
   commentId: z.uuid(),
@@ -45,4 +46,25 @@ export async function getReportedCommentIds(locale: string, commentIds: string[]
   const { data, error } = await supabase.from("reports").select("comment_id").eq("reporter_id", session.memberId).in("comment_id", commentIds);
   if (error) throw new Error(`reports: ${error.message}`);
   return new Set((data ?? []).map((r) => r.comment_id as string).filter(Boolean));
+}
+
+export const reportPhotoInput = z.object({
+  photoId: z.uuid(),
+  reason: z.string().trim().min(3).max(1000),
+});
+
+export type ReportPhotoOutcome = "reported" | "already_reported" | "own_photo" | "not_visible" | "reason_required" | "unknown";
+
+/** REQ-EVT-008 — a member reports a photograph (wave 22, F1). `report_photo()` refuses a hidden or removed photo, the
+ *  member's own, and a second report; the report lands on SCR-051's «بلاغات الصور». Answers what the database did. */
+export async function reportPhoto(locale: string, input: z.input<typeof reportPhotoInput>): Promise<ReportPhotoOutcome> {
+  const parsed = reportPhotoInput.safeParse(input);
+  if (!parsed.success) return "reason_required";
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("report_photo", { p_photo: parsed.data.photoId, p_reason: parsed.data.reason });
+  if (error) return "unknown";
+  const outcome = (data as { outcome?: string } | null)?.outcome;
+  return outcome === "reported" || outcome === "already_reported" || outcome === "own_photo" || outcome === "not_visible" || outcome === "reason_required"
+    ? outcome
+    : "unknown";
 }
