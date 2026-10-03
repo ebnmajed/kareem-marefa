@@ -281,7 +281,8 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
   expect(added.color).toBe("{{brand.fgHeading}}");
 
   done = saved(page);
-  await inspector(page).getByLabel("النص", { exact: true }).fill("ملتقى المعرفة");
+  // Wave 23: the «النص» tab labels its panel too — the field is the textbox (a selector move).
+  await inspector(page).getByRole("textbox", { name: "النص", exact: true }).fill("ملتقى المعرفة");
   await done;
   expect((await storedLayer(added.id)).text?.literal).toBe("ملتقى المعرفة");
 

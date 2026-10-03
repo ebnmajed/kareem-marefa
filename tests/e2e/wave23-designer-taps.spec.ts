@@ -161,7 +161,8 @@ const panel = (page: Page) => main(page).getByRole("tablist", { name: "لوحا�
 const railPanel = (page: Page) => main(page).getByRole("tabpanel").first();
 const inspector = (page: Page) => main(page).getByRole("region", { name: "الخصائص", exact: true });
 async function rail(page: Page, name: string) {
-  await panel(page).getByRole("tab", { name, exact: true }).click();
+  // الفحوصات is the one rail item that carries a count, and its accessible name carries the count's words.
+  await panel(page).getByRole("tab", name === "الفحوصات" ? { name: /^الفحوصات/ } : { name, exact: true }).click();
 }
 
 test("★ SC 2.5.7 — every drag wave 23 drew has a tap, and the stored document changes each time", async ({ context, page }) => {
