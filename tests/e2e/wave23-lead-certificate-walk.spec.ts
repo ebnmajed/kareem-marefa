@@ -157,6 +157,14 @@ test("2 · it is set as the default for its kind — one of three, حضور · �
   await expect(page.getByText("صار هذا القالب الافتراضي لعائلته.", { exact: true })).toBeVisible();
   await expect(main(page).getByLabel("القوالب الافتراضية")).toContainText(TEMPLATE);
   await expect(card.getByText("افتراضي", { exact: true })).toBeVisible();
+  // Each preview renders through the one renderer once its card is on screen — wait for every one before the capture.
+  const previews = main(page).locator("[data-template-preview]");
+  for (let i = 0; i < (await previews.count()); i += 1) {
+    await previews.nth(i).scrollIntoViewIfNeeded();
+    await expect(previews.nth(i)).toHaveAttribute("data-rendered", "true", { timeout: 15_000 });
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.getByRole("button", { name: /إغلاق|أغلق/ }).first().click({ trial: false }).catch(() => {});
   await shot(page, "2-default-set");
 
   const { rows } = await db.query(`select 1 from public.audit_log where org_id = $1 and action = 'design_template.default_set' and subject_id = $2`, [orgId, templateId]);
@@ -174,6 +182,8 @@ test("3 · the session is put in review mode on SCR-045 and completed — the ce
   await shot(page, "3a-review-mode");
 
   // The completion and its fan-out, as fixtures (the header says why).
+  // Through the state machine's legal path (0024's guard): published → in_progress → completed.
+  await db.query(`update public.sessions set state = 'in_progress' where id = $1`, [sessionId]);
   await db.query(`update public.sessions set state = 'completed', completed_at = now() where id = $1`, [sessionId]);
   for (const key of ["a", "b"] as const) {
     const { rows } = await db.query<{ id: string; serial: string; verification_code: string; state: string }>(
