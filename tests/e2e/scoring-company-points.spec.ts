@@ -109,18 +109,17 @@ test("an admin edits the company rules on /app/admin/scoring, and the change app
   await context.clearCookies();
   await signIn(context);
 
+  // ★ wave 22 (REQ-UIX-100, a ledger line): the company rules are one line in read mode, and its «عدّل» opens the
+  // page's one edit mode at them — no dialog per rule.
   await page.goto("/ar/app/admin/scoring");
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "نقاط الشركات" })).toBeVisible();
-
-  // Wave 8 (K5): each rule is edited in its own dialog — the list shows the
-  // values, «عدّل: استضافة جلسة» opens the form.
-  await page.getByRole("button", { name: "عدّل: استضافة جلسة" }).filter({ visible: true }).click();
-  const dialog = page.getByRole("dialog", { name: "تعديل «استضافة جلسة»" });
-  await dialog.getByLabel("النقاط لكل جلسة مُستضافة", { exact: false }).fill("42");
-  await dialog.getByRole("button", { name: "احفظ القاعدة" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "حُفظت القاعدة" })).toBeVisible();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const main = page.locator("#main");
+  await expect(main.getByText(/^الشركات:/)).toBeVisible();
+  await main.getByText(/^الشركات:/).getByRole("link", { name: "عدّل" }).click();
+  await main.getByRole("textbox", { name: /^القيمة — استضافة جلسة/ }).fill("42");
+  await main.getByRole("button", { name: /^احفظ/ }).click();
+  await expect(page.getByRole("status").filter({ hasText: "حُفظ" })).toBeVisible();
+  await expect(main.getByText(/^الشركات:/)).toContainText("استضافة 42");
 
   const [row] = (await db.query(`select points, version from public.company_scoring_rules where org_id = $1 and action_key = 'company_hosting'`, [orgId]))
     .rows as Array<{ points: number; version: number }>;

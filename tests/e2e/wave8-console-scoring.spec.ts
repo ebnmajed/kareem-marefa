@@ -115,54 +115,47 @@ test("a moderator gets the streamed not-found page, not the catalogue (REQ-ADM-0
   await expect(page.getByRole("heading", { name: "كتالوج النقاط" })).toHaveCount(0);
 });
 
-test("SCR-053: the fixed catalogue in three groups, the deductions closed at 0, and no reservation or reaction", async ({ context, page }, testInfo) => {
+// ★ wave 22 (REQ-UIX-100, ledger lines): SCR-053 was rebuilt read-by-default from `AdminScoring.dc.html`. The
+// catalogue is the rewards' table and the deductions' table; a rule is edited in the page's one edit mode, not a dialog.
+test("SCR-053: the catalogue read as values — the deductions apart, as stored — and the member's wording in edit mode; no reservation or reaction", async ({ context, page }, testInfo) => {
   if (testInfo.project.name === "phone") await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/scoring");
-  await expect(page.getByRole("heading", { name: "للحاضرين" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "للمُقدِّمين" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "الخصومات" })).toBeVisible();
+  const main = page.locator("#main");
+  await expect(main.getByRole("heading", { name: "سلبية", exact: true })).toBeVisible();
   const penalties = group(page, "penalty-heading");
-  await expect(shown(page, penalties.getByText("تغيّب بعد الحجز", { exact: true }))).toBeVisible();
-  // «يظهر للعضو» appears only where the member's wording differs from the
-  // rule's name (the a4d2886 run found «تغيّب بعد الحجز» twice). The seed
-  // (`_seed_org_scoring`, 0083) words two deductions differently on purpose —
-  // the name is the action, the member reads what happened to them.
-  const entry = (name: string) => shown(page, penalties.locator("tr, li").filter({ hasText: name }));
-  await expect(entry("تغيّب بعد الحجز")).not.toContainText("يظهر للعضو");
-  await expect(entry("إلغاء متأخر")).not.toContainText("يظهر للعضو");
-  await expect(entry("حذف تعليق")).toContainText("يظهر للعضو: حُذف تعليق");
-  await expect(entry("حذف صورة")).toContainText("يظهر للعضو: حُذفت صورة");
   await expect(shown(page, penalties.getByText("لا خصم", { exact: true })).first()).toBeVisible();
-  await expect(shown(page, penalties.getByText("مغلق", { exact: true })).first()).toBeVisible();
-  await expect(page.getByText("الحجز", { exact: true })).toHaveCount(0);
+  await expect(main.getByText("الحجز", { exact: true })).toHaveCount(0);
+  await expect(main.getByRole("switch")).toHaveCount(0);
 
   if (testInfo.project.name === "phone") {
-    await page.getByRole("heading", { name: "كتالوج النقاط" }).scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${SHOTS}/wave8-console-scoring-catalogue.png` });
-    const penaltiesHeading = page.getByRole("heading", { name: "الخصومات" });
+    const penaltiesHeading = main.getByRole("heading", { name: "سلبية", exact: true });
     await penaltiesHeading.evaluate((el) => el.scrollIntoView({ block: "start" }));
-    // What the capture is for: the deductions on screen, not the page's top.
     await expect(penaltiesHeading).toBeInViewport();
-    await expect(page.getByRole("heading", { name: "كتالوج النقاط" })).not.toBeInViewport();
     await page.screenshot({ path: `${SHOTS}/wave8-console-scoring-penalties.png` });
   }
+
+  // The member's wording differs from the action's name on purpose (`0083`): «حذف تعليق» is read «حُذف تعليق».
+  await goto(page, "/ar/app/admin/scoring?edit");
+  await expect(main.getByRole("textbox", { name: "ما يقرؤه العضو — حذف تعليق" })).toHaveValue("حُذف تعليق");
+  await expect(main.getByRole("textbox", { name: "ما يقرؤه العضو — حذف صورة" })).toHaveValue("حُذفت صورة");
 });
 
 test("REQ-PTS-008: a deduction is set by its cost, stored negative, and the history names it", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one project writes this org's catalogue");
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/scoring");
-  await page.getByRole("button", { name: "عدّل: تغيّب بعد الحجز" }).filter({ visible: true }).click();
-  const dialog = page.getByRole("dialog", { name: "تعديل «تغيّب بعد الحجز»" });
-  await dialog.getByLabel("مقدار الخصم", { exact: false }).fill("3");
-  await dialog.getByRole("button", { name: "احفظ القاعدة" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "حُفظت القاعدة" })).toBeVisible();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await goto(page, "/ar/app/admin/scoring?edit");
+  const main = page.locator("#main");
+  await main.getByRole("textbox", { name: "الخصم — تغيّب بعد الحجز" }).fill("3");
+  await main.getByRole("button", { name: /^احفظ/ }).click();
+  await expect(page.getByRole("status").filter({ hasText: "حُفظ" })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "تعديل النقاط" })).toHaveCount(0);
 
   const { rows } = await db.query<{ points: number }>(`select points from public.scoring_rules where org_id = $1 and action_key = 'no_show'`, [orgId]);
   expect(rows[0].points).toBe(-3);
   await expect(shown(page, group(page, "penalty-heading").getByText("خصم 3 نقاط", { exact: true }))).toBeVisible();
+  await expect(main.getByText(/✓✓ حُفظ/)).toContainText("مشرفة النقاط");
   const history = group(page, "history-heading");
   await expect(shown(page, history.getByText("تغيّب بعد الحجز", { exact: true })).first()).toBeVisible();
   await expect(shown(page, history.getByText("مشرفة النقاط", { exact: true })).first()).toBeVisible();
@@ -170,17 +163,16 @@ test("REQ-PTS-008: a deduction is set by its cost, stored negative, and the hist
   await expect(history.getByText("version", { exact: false })).toHaveCount(0);
 });
 
-test("SCR-053 at 390 px: a rule refused at the field, inside its dialog", async ({ context, page }, testInfo) => {
+test("SCR-053 at 390 px: a rule refused at the field, in edit mode", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/scoring");
-  await page.getByRole("button", { name: "عدّل: تعليق" }).filter({ visible: true }).click();
-  const dialog = page.getByRole("dialog", { name: "تعديل «تعليق»" });
-  await dialog.getByLabel("النقاط", { exact: false }).first().fill("1500");
-  await dialog.getByRole("button", { name: "احفظ القاعدة" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("لم تُحفظ القاعدة");
-  await expect(dialog.getByText("من صفر إلى ألف.", { exact: true }).last()).toBeVisible();
+  await goto(page, "/ar/app/admin/scoring?edit");
+  const main = page.locator("#main");
+  await main.getByRole("textbox", { name: "القيمة — تعليق" }).fill("1500");
+  await main.getByRole("button", { name: /^احفظ/ }).click();
+  await expect(main.getByRole("alert")).toContainText("لم تُحفظ النقاط");
+  await expect(main.getByText("من صفر إلى ألف.", { exact: true }).last()).toBeVisible();
   const { rows } = await db.query<{ points: number }>(`select points from public.scoring_rules where org_id = $1 and action_key = 'comment'`, [orgId]);
   expect(rows[0].points).toBe(2);
   await page.screenshot({ path: `${SHOTS}/wave8-console-scoring-rule-dialog-error.png` });
@@ -190,8 +182,10 @@ test("REQ-PTS-009: a manual adjustment — member chosen by name, confirmed by n
   test.skip(testInfo.project.name !== "phone", "one project writes this member's ledger; the picker capture is the phone's");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
+  // ★ wave 22: «تعديل يدوي» is the h1 row's link; the form is its sheet at `?adjust=1`.
   await goto(page, "/ar/app/admin/scoring");
-  const manual = group(page, "manual-heading");
+  await page.locator("#main").getByRole("link", { name: "تعديل يدوي" }).click();
+  const manual = page.getByRole("dialog", { name: "تعديل يدوي" });
   await manual.getByRole("combobox", { name: /العضو/ }).fill("سارة");
   await expect(page.getByRole("option", { name: /سارة العتيبي/ })).toBeVisible();
   // What the capture is for: the open list on screen, beside its field — and

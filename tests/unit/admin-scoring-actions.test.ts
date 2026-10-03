@@ -1,20 +1,22 @@
-// SCR-053's Server Actions and the interval reader — REQ-PTS-004 … 009.
+// SCR-053's Server Actions and the interval reader — REQ-PTS-004 … 009, REQ-UIX-100. ★ wave 22: `saveScoringRule`'s
+// cases are re-said for `saveCatalogue`, the one save of edit mode (a ledger line); the adjustment's are unchanged.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/dal/session", () => ({ sessionClient: vi.fn() }));
 
-const updateScoringRule = vi.fn();
+const saveScoringCatalogue = vi.fn();
 const submitManualAdjustment = vi.fn();
 vi.mock("@/lib/dal/scoring-admin", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/dal/scoring-admin")>()),
-  updateScoringRule: (...args: unknown[]) => updateScoringRule(...args),
+  saveScoringCatalogue: (...args: unknown[]) => saveScoringCatalogue(...args),
   submitManualAdjustment: (...args: unknown[]) => submitManualAdjustment(...args),
 }));
 
 const { intervalToSeconds } = await import("@/lib/dal/scoring-admin");
-const { saveManualAdjustment, saveScoringRule } = await import("@/app/[locale]/app/admin/scoring/actions");
+const { saveCatalogue, saveManualAdjustment } = await import("@/app/[locale]/app/admin/scoring/actions");
+const { emptyCatalogueState } = await import("@/app/[locale]/app/admin/scoring/state");
 const { emptySavedState } = await import("@/components/admin/saved-form-state");
 
 const RULE = "11111111-1111-4111-8111-111111111111";
@@ -43,36 +45,51 @@ describe("intervalToSeconds — every shape PostgREST prints", () => {
   });
 });
 
-describe("saveScoringRule", () => {
-  beforeEach(() => updateScoringRule.mockReset());
+describe("saveCatalogue — one save for every rule edit mode shows", () => {
+  beforeEach(() => saveScoringCatalogue.mockReset());
+  const opened = (penalty: boolean) => JSON.stringify({ rules: [{ id: RULE, actionKey: penalty ? "no_show" : "comment", version: 4, penalty }], company: [] });
+  const f = (field: string) => `rule-${RULE}-${field}`;
 
-  it("a deduction is typed as its cost and stored negative, with the cooldown in seconds", async () => {
-    const result = await saveScoringRule(
+  it("a deduction is typed as its cost and sent negative, with the cooldown in seconds and its version", async () => {
+    saveScoringCatalogue.mockResolvedValueOnce({ at: "2026-10-03T09:00:00Z", wrote: ["no_show.points"] });
+    const result = await saveCatalogue(
       "ar",
-      emptySavedState(),
-      form({ ruleId: RULE, kind: "penalty", points: "5", capPerSession: "", cooldownAmount: "2", cooldownUnit: "hours", enabled: "on", reasonAr: "تغيّب بعد الحجز" }),
+      emptyCatalogueState,
+      form({ opened: opened(true), [f("points")]: "5", [f("cap")]: "", [f("cooldownAmount")]: "2", [f("cooldownUnit")]: "hours", [f("enabled")]: "on", [f("reason")]: "تغيّب بعد الحجز" }),
     );
-    expect(result.saved).toBe(true);
-    expect(updateScoringRule).toHaveBeenCalledWith("ar", { ruleId: RULE, points: -5, enabled: true, capPerSession: null, cooldownSeconds: 7200, reasonAr: "تغيّب بعد الحجز" });
+    expect(result.receipt).toEqual({ at: "2026-10-03T09:00:00Z", wrote: ["no_show.points"] });
+    expect(saveScoringCatalogue).toHaveBeenCalledWith("ar", {
+      rules: [{ id: RULE, version: 4, points: -5, enabled: true, cap_per_session: null, cooldown_seconds: 7200, reason_ar: "تغيّب بعد الحجز" }],
+      company: [],
+    });
   });
 
-  it("refuses at the fields, and writes nothing", async () => {
-    const result = await saveScoringRule(
+  it("refuses at the fields, and sends nothing", async () => {
+    const result = await saveCatalogue(
       "ar",
-      emptySavedState(),
-      form({ ruleId: RULE, kind: "reward", points: "1001", capPerSession: "0", cooldownAmount: "1.5", cooldownUnit: "hours", reasonAr: "  " }),
+      emptyCatalogueState,
+      form({ opened: opened(false), [f("points")]: "1001", [f("cap")]: "0", [f("cooldownAmount")]: "1.5", [f("cooldownUnit")]: "hours", [f("reason")]: "  " }),
     );
-    expect(updateScoringRule).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ saved: false, attempt: 1 });
-    expect(result.errors).toEqual({ points: "pointsRange", capPerSession: "capInvalid", cooldown: "cooldownInvalid", reasonAr: "reasonRequired" });
-    expect(result.values.points).toBe("1001");
+    expect(saveScoringCatalogue).not.toHaveBeenCalled();
+    expect(result.receipt).toBeNull();
+    expect(result.errors).toEqual({ [f("points")]: "pointsRange", [f("cap")]: "capInvalid", [f("cooldownAmount")]: "cooldownInvalid", [f("reason")]: "reasonRequired" });
+    expect(result.values[f("points")]).toBe("1001");
   });
 
-  it("the DAL's sign guard lands on the points field; an unchecked «enabled» saves the rule off", async () => {
-    updateScoringRule.mockRejectedValueOnce(new Error("sign_mismatch"));
-    const refused = await saveScoringRule("ar", emptySavedState(), form({ ruleId: RULE, kind: "reward", points: "3", reasonAr: "تعليق" }));
-    expect(refused.errors).toEqual({ points: "signMismatch" });
-    expect(updateScoringRule.mock.calls[0][1]).toMatchObject({ enabled: false, points: 3 });
+  it("the function's sign guard lands on that rule's value; a stale form is said as stale; an unchecked switch sends the rule off", async () => {
+    saveScoringCatalogue.mockRejectedValueOnce(new Error("sign_mismatch:comment"));
+    const refused = await saveCatalogue("ar", emptyCatalogueState, form({ opened: opened(false), [f("points")]: "3", [f("reason")]: "تعليق" }));
+    expect(refused.errors).toEqual({ [f("points")]: "signMismatch" });
+    expect(saveScoringCatalogue.mock.calls[0][1].rules[0]).toMatchObject({ enabled: false, points: 3 });
+    saveScoringCatalogue.mockRejectedValueOnce(new Error("stale"));
+    const stale = await saveCatalogue("ar", emptyCatalogueState, form({ opened: opened(false), [f("points")]: "3", [f("reason")]: "تعليق" }));
+    expect(stale.formError).toBe("stale");
+  });
+
+  it("a receipt that wrote nothing comes back as one — the page says «لم يتغيّر شيء» from it", async () => {
+    saveScoringCatalogue.mockResolvedValueOnce({ at: null, wrote: [] });
+    const result = await saveCatalogue("ar", emptyCatalogueState, form({ opened: opened(false), [f("points")]: "3", [f("enabled")]: "on", [f("reason")]: "تعليق" }));
+    expect(result.receipt).toEqual({ at: null, wrote: [] });
   });
 });
 

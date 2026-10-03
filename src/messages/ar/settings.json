@@ -12,6 +12,98 @@
     "privacy": "البيانات والخصوصية",
     "signOut": "تسجيل الخروج",
     "save": "حفظ",
-    "error": "تعذّر حفظ التفضيل. حاول مرة أخرى."
+    "error": "تعذّر حفظ التفضيل. حاول مرة أخرى.",
+    "admin": {
+      "title": "الإعدادات",
+      "edit": "عدّل",
+      "editing": "تعديل الإعدادات",
+      "unsaved": "{count, plural, zero {<bdi>{value}</bdi> تغيير غير محفوظ} one {تغيير واحد غير محفوظ} two {تغييران غير محفوظين} few {<bdi>{value}</bdi> تغييرات غير محفوظة} many {<bdi>{value}</bdi> تغييرًا غير محفوظ} other {<bdi>{value}</bdi> تغيير غير محفوظ}}",
+      "changed": "(معدّل)",
+      "save": "احفظ",
+      "saving": "جارٍ الحفظ…",
+      "cancel": "إلغاء",
+      "actions": "حفظ الإعدادات",
+      "savedMark": "✓✓ حُفظ · <bdi>{time}</bdi>",
+      "savedMarkBy": "✓✓ حُفظ · <bdi>{time}</bdi> · <bdi>{actor}</bdi>",
+      "saved": "حُفظ",
+      "unchanged": "لم يتغيّر شيء",
+      "empty": "—",
+      "cards": {
+        "org": "المؤسسة",
+        "sessions": "الجلسات",
+        "privacy": "الخصوصية",
+        "integrations": "الربط"
+      },
+      "rows": {
+        "name": "الاسم",
+        "domains": "النطاقات",
+        "timeZone": "المنطقة الزمنية",
+        "companyMetric": "ترتيب الشركات",
+        "companyMinActiveMembers": "حد الترتيب",
+        "checkIn": "رمز الحضور",
+        "maxCoPresenters": "المقدّمون المشاركون",
+        "priorityRsvpHours": "الحجز المبكر",
+        "limits": "حدود الملفات",
+        "ratings": "التقييمات",
+        "calendar": "تقويم Google",
+        "email": "البريد",
+        "jpeg": "تصدير JPEG",
+        "verify": "التحقّق من الشهادات"
+      },
+      "labels": {
+        "checkInRotation": "مدة تغيّر الرمز",
+        "checkInGrace": "مهلة الرمز السابق",
+        "limitDocument": "المستندات (ميغابايت)",
+        "limitAudio": "الصوت (ميغابايت)",
+        "limitImage": "الصور (ميغابايت)",
+        "limitPoster": "الملصقات (ميغابايت)",
+        "emailFromName": "اسم المرسل",
+        "emailReplyTo": "عنوان الرد",
+        "removeDomain": "أزل <bdi>{domain}</bdi>",
+        "addDomains": "أضف نطاقًا"
+      },
+      "values": {
+        "timeZone": "<bdi>{name}</bdi> · <bdi>{id}</bdi>",
+        "metric": {
+          "total_points": "إجمالي النقاط",
+          "points_per_active_member": "النقاط لكل عضو نشط"
+        },
+        "minActive": "{count, plural, zero {<bdi>{value}</bdi> عضو نشط على الأقل} one {عضو نشط واحد على الأقل} two {عضوان نشطان على الأقل} few {<bdi>{value}</bdi> أعضاء نشطين على الأقل} many {<bdi>{value}</bdi> عضوًا نشطًا على الأقل} other {<bdi>{value}</bdi> عضو نشط على الأقل}}",
+        "checkIn": "يتغيّر كل <rotation></rotation> · يُقبل السابق <grace></grace>",
+        "checkInNoGrace": "يتغيّر كل <rotation></rotation> · لا يُقبل السابق",
+        "seconds": "{count, plural, zero {<bdi>{value}</bdi> ثانية} one {ثانية} two {ثانيتين} few {<bdi>{value}</bdi> ثوانٍ} many {<bdi>{value}</bdi> ثانية} other {<bdi>{value}</bdi> ثانية}}",
+        "minutes": "{count, plural, zero {<bdi>{value}</bdi> دقيقة} one {دقيقة} two {دقيقتين} few {<bdi>{value}</bdi> دقائق} many {<bdi>{value}</bdi> دقيقة} other {<bdi>{value}</bdi> دقيقة}}",
+        "coPresenters": "{count, plural, zero {بلا مقدّمين مشاركين} one {حتى مقدّم مشارك واحد} two {حتى مقدّمَين مشاركَين} few {حتى <bdi>{value}</bdi> مقدّمين مشاركين} many {حتى <bdi>{value}</bdi> مقدّمًا مشاركًا} other {حتى <bdi>{value}</bdi> مقدّم مشارك}}",
+        "priority": "{count, plural, zero {بلا حجز مبكر} one {ساعة قبل الحجز العام} two {ساعتان قبل الحجز العام} few {<bdi>{value}</bdi> ساعات قبل الحجز العام} many {<bdi>{value}</bdi> ساعة قبل الحجز العام} other {<bdi>{value}</bdi> ساعة قبل الحجز العام}}",
+        "limits": "مستندات <bdi>{document}</bdi> · صوت <bdi>{audio}</bdi> · صور <bdi>{image}</bdi> · ملصقات <bdi>{poster}</bdi> ميغابايت",
+        "ratings": "{count, plural, zero {يظهر المتوسط بعد <bdi>{value}</bdi> تقييم} one {يظهر المتوسط بعد تقييم واحد} two {يظهر المتوسط بعد تقييمين} few {يظهر المتوسط بعد <bdi>{value}</bdi> تقييمات} many {يظهر المتوسط بعد <bdi>{value}</bdi> تقييمًا} other {يظهر المتوسط بعد <bdi>{value}</bdi> تقييم}}",
+        "calendarOn": "متاح للأعضاء",
+        "calendarOff": "غير مُعدّ",
+        "email": "<bdi>{from}</bdi> · الرد إلى <bdi>{replyTo}</bdi>",
+        "emailNoReply": "<bdi>{from}</bdi>",
+        "jpegOn": "مسموح",
+        "jpegOff": "غير مسموح"
+      },
+      "leave": {
+        "title": "تغادر دون حفظ؟",
+        "confirm": "غادر",
+        "stay": "ابقَ"
+      },
+      "errorSummaryTitle": "لم تُحفظ الإعدادات",
+      "errors": {
+        "required": "هذا الحقل مطلوب.",
+        "number": "اكتب عددًا صحيحًا.",
+        "range": "بين <bdi>{min}</bdi> و<bdi>{max}</bdi>.",
+        "timeZone": "اختر منطقة زمنية من القائمة.",
+        "metric": "اختر مقياسًا من القائمة.",
+        "emailFromName": "اسم المرسل أطول من اللازم.",
+        "emailReplyTo": "اكتب بريدًا إلكترونيًا صالحًا.",
+        "domainInvalid": "نطاق غير صالح: <bdi>{domain}</bdi>",
+        "domainTaken": "النطاق مضاف من قبل: <bdi>{domain}</bdi>",
+        "domainLast": "أبقِ نطاقًا واحدًا على الأقل.",
+        "stale": "غيّر مشرف آخر هذا الحقل بعد فتحك الصفحة. افتحها من جديد.",
+        "failed": "تعذّر حفظ الإعدادات. حاول مرة أخرى."
+      }
+    }
   }
 }
