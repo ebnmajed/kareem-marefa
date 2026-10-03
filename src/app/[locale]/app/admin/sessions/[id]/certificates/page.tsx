@@ -107,7 +107,7 @@ export default async function SessionCertificatesPage({
   const editingKind = completed && typeof sp.design === "string" ? (design.kinds.find((k) => k.kind === sp.design && changeable(k)) ?? null) : null;
   const revoking = isAdmin && typeof sp.revoke === "string" ? (data.issued.find((c) => c.id === sp.revoke) ?? null) : null;
 
-  const control = (k: CertificateDesignData["kinds"][number]) => (
+  const control = (k: CertificateDesignData["kinds"][number], closeHref?: string) => (
     <TemplateControl
       key={k.kind}
       locale={locale}
@@ -119,6 +119,7 @@ export default async function SessionCertificatesPage({
       faces={faces}
       origin={origin}
       offerApplyHeld={completed}
+      closeHref={closeHref}
     />
   );
 
@@ -177,7 +178,7 @@ export default async function SessionCertificatesPage({
 
       {editingKind ? (
         <EditorSurface id="cert-design-editor" title={`${t("templateLabel")} · ${t(`kindTitle.${editingKind.kind}`)}`} closeHref={path} closeLabel={t("closeEditor")}>
-          {control(editingKind)}
+          {control(editingKind, path)}
         </EditorSurface>
       ) : null}
 
@@ -198,7 +199,7 @@ export default async function SessionCertificatesPage({
             <h2 id="cert-design" className="text-label text-fg-muted">
               {t("designHeading")}
             </h2>
-            <div className="flex flex-col gap-6">{design.kinds.filter(changeable).map(control)}</div>
+            <div className="flex flex-col gap-6">{design.kinds.filter(changeable).map((k) => control(k))}</div>
           </section>
           <section aria-labelledby="cert-mode-heading" className="flex flex-col gap-4 border-t border-edge pt-6">
             <h2 id="cert-mode-heading" className="sr-only">

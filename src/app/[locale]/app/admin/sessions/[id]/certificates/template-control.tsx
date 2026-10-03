@@ -14,6 +14,7 @@ import { Link } from "@/components/ui/link";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { useRouter } from "@/i18n/navigation";
 import { applyDesignToHeld, saveCertificateDesign, type CertificateActionResult } from "./actions";
 
 // SCR-045's template, per kind — written here and nowhere else (the owner's C6 ruling, DEC-178, REQ-CRT-015 as amended
@@ -40,6 +41,9 @@ export interface TemplateControlProps {
   origin: string;
   /** After completion: re-pin the held certificates once the choice is saved. */
   offerApplyHeld: boolean;
+  /** In the «غيّر» sheet: where to return once the held certificates are re-pinned — the act is done, so the sheet
+   *  closes on success rather than standing modal over the list. */
+  closeHref?: string;
 }
 
 function useFacesReady(faces: Face[]): boolean {
@@ -61,7 +65,8 @@ function useFacesReady(faces: Face[]): boolean {
   return ready;
 }
 
-export function TemplateControl({ locale, sessionId, kind, brand, sample, longestName, faces, origin, offerApplyHeld }: TemplateControlProps) {
+export function TemplateControl({ locale, sessionId, kind, brand, sample, longestName, faces, origin, offerApplyHeld, closeHref }: TemplateControlProps) {
+  const router = useRouter();
   const t = useTranslations("certificates.session");
   const ui = useTranslations("ui");
   const toast = useToast();
@@ -96,7 +101,10 @@ export function TemplateControl({ locale, sessionId, kind, brand, sample, longes
       const result = await applyDesignToHeld(locale, sessionId, kind.kind);
       const count = result.status === "ok" ? (result.count ?? 0) : 0;
       say(result, t("applyHeldDone", { count, value: formatNumber(count) }));
-      if (result.status === "ok") setConfirmOpen(false);
+      if (result.status === "ok") {
+        setConfirmOpen(false);
+        if (closeHref) router.replace(closeHref, { scroll: false });
+      }
     });
 
   if (kind.options.length === 0)

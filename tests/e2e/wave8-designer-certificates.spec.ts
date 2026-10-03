@@ -339,7 +339,8 @@ test("★ held certificates take the saved design, release confirms by count and
   );
   expect(after.map((r) => r.scheme)).toEqual(["dark", "dark", "dark"]);
   expect(after.map((r) => r.serial)).toEqual(before.map((r) => r.serial));
-  await page.keyboard.press("Escape");
+  // The act is done, so the «غيّر» sheet closes on its own and returns to the list (wave 23).
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await main(page)
     .getByRole("checkbox", { name: `تحديد الصف ${SARA}` })
