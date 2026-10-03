@@ -28,9 +28,9 @@ const EMAIL: EditorRailItem[] = [
 function One({ items, initial, title }: { items: EditorRailItem[]; initial: string; title: string }) {
   const [selected, setSelected] = useState(initial);
   return (
-    <figure className="flex flex-col gap-3">
+    <figure className="flex min-w-0 max-w-full flex-col gap-3">
       <figcaption className="text-caption text-fg-muted">{title}</figcaption>
-      <div className="h-[22rem] overflow-hidden rounded-panel border border-edge bg-canvas">
+      <div className="h-[22rem] max-w-full overflow-x-auto rounded-panel border border-edge bg-canvas">
         <EditorRail label={title} items={items} selected={selected} onSelect={setSelected}>
           <p className="text-body-sm text-fg-muted">
             <bdi>{items.find((i) => i.key === selected)?.label}</bdi>
@@ -43,7 +43,7 @@ function One({ items, initial, title }: { items: EditorRailItem[]; initial: stri
 
 export function EditorRailDemo() {
   return (
-    <div className="flex flex-wrap gap-6">
+    <div className="flex min-w-0 flex-wrap gap-6">
       <One items={DESIGNER} initial="layer" title="المصمّم — طبقة محدّدة" />
       <One items={EMAIL} initial="add" title="محرّر البريد" />
     </div>

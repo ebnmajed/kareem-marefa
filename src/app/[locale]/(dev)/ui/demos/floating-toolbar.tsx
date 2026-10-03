@@ -8,11 +8,11 @@ import { FloatingToolbar } from "@/components/ui/floating-toolbar";
 const CONTROLS = ["Baloo 800", "40", "A", "المحاذاة", "{ } ربط"];
 
 function Stage({ top, title }: { top: number; title: string }) {
-  const anchor = { left: 60, top, width: 280, height: 56 };
+  const anchor = { left: 24, top, width: 280, height: 56 };
   return (
     <figure className="flex flex-col gap-3">
       <figcaption className="text-caption text-fg-muted">{title}</figcaption>
-      <div className="relative h-48 w-[25rem] rounded-panel border border-edge bg-surface">
+      <div className="relative h-48 w-full max-w-[22rem] rounded-panel border border-edge bg-surface">
         <span aria-hidden="true" className="absolute border border-accent" style={{ left: anchor.left, top: anchor.top, width: anchor.width, height: anchor.height }} />
         <FloatingToolbar label="تنسيق النص" anchor={anchor}>
           {CONTROLS.map((c) => (
