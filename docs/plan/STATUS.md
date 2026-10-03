@@ -1,11 +1,11 @@
-**Last updated:** 2026-10-03 · **Branch:** `wave-23a/templates-and-certificates` (**PR #52 READY for the owner**) · ★★ **WAVE 23 CLOSED AT THE OWNER'S BUDGET BOUNDARY (`DEC-239`)** · **`main`:** `0d9a0d60`; production at **`0190`** · ★★ **PR A #52** — `055`, `045`, the certificate flows, the tie guard and `0191` — **built, green (CI success; 34/34 e2e on a build of `6333f314`; the walkthrough 7/7) and ready; the owner merges it.** ★ **`0191` is REHEARSED; the owner pushes it** (dry run: exactly `0191`) — before or with the merge. **PR B #53** stops at the studio frame and the two shared primitives (merge after A). **PR C**: none. ★ **Next: wave 24 — the designer and the email builder**, from `notes/{designer,notify}.md`. ★ **Carried:** the tie-breaker («the screen can disagree with what issuance picks»), the email studio's test-send defect, `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, M13, stories, the `railway.json`.
+**Last updated:** 2026-10-03 · **Branch:** `main` · ★★ **WAVE 23 MERGED AND LIVE (`DEC-239`)** — PR A #52 merged as **`a51c2a06`**; **`0191` pushed by the owner — production at `0191`** (`supabase migration list --linked`: local and remote equal through `0191`) · **Phase:** M12, the studio — `055`, `045`, the certificate flows and the template audit are live; ★ **PR B #53** (the studio frame and the two shared primitives) **ready** — CI success at `85c3a3cb` after its gallery demos were fixed to fit 390 px · ★ **PR #55** fixes the email studio's test-send defect (`DEC-238` §4.5): «أرسل اختبارًا» is disabled while the design has unsaved changes — CI success at `6d7d3a36` · ★ **Next: wave 24 — the designer and the email builder**, from `notes/{designer,notify}.md` · ★ **Carried:** the tie-breaker («the screen can disagree with what issuance picks»), `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, M13, stories, the `railway.json`.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 23 — IN PROGRESS — M12, the studio (`DEC-235`, `DEC-236`, `DEC-237`)
+## ★★★ WAVE 23 — MERGED AND LIVE (#52 `a51c2a06`; `0191` on production; `DEC-239`) — M12, the studio (`DEC-235` – `DEC-239`)
 
 ### ★★ The boundary, on the owner's budget ruling (2026-10-03)
 
