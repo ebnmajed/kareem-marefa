@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { BLOCK_TYPES, readDocument, SCHEMA_VERSION, type BlockType, type EmailBlock } from "@kareem/mail-runtime";
+import { BLOCK_TYPES, readDocument, type EmailBlock } from "@kareem/mail-runtime";
+import { documentJsonOf, emptyBlock } from "@/components/email/document";
 import { emptySavedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import { useActionToast } from "@/components/admin/use-action-toast";
 import { Button } from "@/components/ui/button";
@@ -30,41 +31,6 @@ import { PreviewPane, type PreviewMode } from "@/components/email/preview-pane";
 // ★ NO DRAG (`DEC-160` §5, `SC 2.5.7`). `ui/reorderable-list` moves a row by
 // ▲▼, named by the row they move. Drag is the enhancement and nobody needs it
 // to conform.
-
-/** The document as the save posts it — the one string both «what is stored» and «what is on screen» compare by. */
-function documentJsonOf(blocks: readonly EmailBlock[]): string {
-  return blocks.length > 0 ? JSON.stringify({ schemaVersion: SCHEMA_VERSION, blocks }) : "";
-}
-
-let counter = 0;
-/** A stable id for a new block. `readDocument()` requires one, and the
- *  reorderable list keeps a row's DOM — and its focus — by it. */
-function newId(): string {
-  counter += 1;
-  return `b${Date.now().toString(36)}${counter}`;
-}
-
-function emptyBlock(type: BlockType): EmailBlock {
-  const id = newId();
-  switch (type) {
-    case "heading":
-      return { type, id, text: "", level: 1 };
-    case "paragraph":
-      return { type, id, text: "" };
-    case "button":
-      return { type, id, label: "", urlBinding: "", style: "primary" };
-    case "session_card":
-      return { type, id };
-    case "detail_list":
-      return { type, id, items: [{ label: "", value: "" }] };
-    case "divider":
-      return { type, id };
-    case "spacer":
-      return { type, id, height: "md" };
-    case "image":
-      return { type, id, src: { kind: "org_logo" }, alt: "", width: 160 };
-  }
-}
 
 export function BlockEditor({
   messageKey,
