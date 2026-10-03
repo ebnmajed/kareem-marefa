@@ -1,7 +1,7 @@
 {
   "recognition": {
     "admin": {
-      "title": "الشارات والمستويات والامتيازات",
+      "title": "الشارات والمستويات",
       "intro": "التقييم التلقائي يعمل كل ليلة — التغييرات هنا تُطبَّق من التقييم التالي، ولا تمسّ ما حصل عليه أحد من قبل.",
       "common": {
         "edit": "عدّل",
@@ -18,7 +18,7 @@
         "reload": "حدّث الصفحة"
       },
       "held": {
-        "heading": "شهادات إنجاز بانتظار الإطلاق",
+        "heading": "شهادات الإنجاز بانتظار الإصدار",
         "intro": "شهادات المتصدّرين والشارات التي تمنح شهادة تُجهَّز محجوزة، ولا تصل أصحابها حتى تطلقها.",
         "listLabel": "الشهادات المحجوزة",
         "colRecipient": "المستفيد",
@@ -36,7 +36,27 @@
         "released": "{count, plural, zero {أُطلقت <bdi>{value}</bdi> شهادة} one {أُطلقت شهادة واحدة} two {أُطلقت شهادتان} few {أُطلقت <bdi>{value}</bdi> شهادات} many {أُطلقت <bdi>{value}</bdi> شهادة} other {أُطلقت <bdi>{value}</bdi> شهادة}}",
         "failed": "تعذّر إطلاق الشهادات. حاول مرة أخرى.",
         "notAuthorized": "لم تُطلق الشهادات: إطلاقها لم يعد ضمن صلاحياتك.",
-        "empty": "لا شهادات محجوزة."
+        "empty": "لا شهادات محجوزة.",
+        "colMember": "العضو",
+        "colSince": "منذ",
+        "issue": "أصدر",
+        "stop": "أوقف",
+        "issueTitle": "إصدار شهادة «<bdi>{name}</bdi>»؟",
+        "issued": "أُصدرت الشهادة",
+        "stopTitle": "إيقاف شهادة «<bdi>{name}</bdi>»",
+        "stopReason": "السبب",
+        "stopConfirm": "أوقف الشهادة",
+        "stopped": "أُوقفت الشهادة",
+        "stopErrors": {
+          "reasonRequired": "اكتب السبب.",
+          "reasonTooShort": "ثلاثة أحرف على الأقل.",
+          "failed": "تعذّر الإيقاف. حاول مرة أخرى."
+        },
+        "age": {
+          "today": "اليوم",
+          "days": "{count, plural, zero {<bdi>{value}</bdi> يوم} one {يوم} two {يومان} few {<bdi>{value}</bdi> أيام} many {<bdi>{value}</bdi> يومًا} other {<bdi>{value}</bdi> يوم}}"
+        },
+        "colDecide": "القرار"
       },
       "badges": {
         "heading": "الشارات",
@@ -190,6 +210,68 @@
         "errors": {
           "qualifierRequired": "اختر ما يُمنح به الامتياز.",
           "failed": "تعذّر حفظ الامتياز. حاول مرة أخرى."
+        }
+      },
+      "read": {
+        "edit": "عدّل",
+        "save": "احفظ",
+        "saving": "جارٍ الحفظ…",
+        "cancel": "إلغاء",
+        "close": "إغلاق",
+        "saved": "حُفظ",
+        "unchanged": "لم يتغيّر شيء",
+        "savedMark": "✓✓ حُفظ · <bdi>{time}</bdi>",
+        "savedMarkBy": "✓✓ حُفظ · <bdi>{time}</bdi> · <bdi>{actor}</bdi>",
+        "unsaved": "{count, plural, zero {<bdi>{value}</bdi> تغيير غير محفوظ} one {تغيير واحد غير محفوظ} two {تغييران غير محفوظين} few {<bdi>{value}</bdi> تغييرات غير محفوظة} many {<bdi>{value}</bdi> تغييرًا غير محفوظ} other {<bdi>{value}</bdi> تغيير غير محفوظ}}",
+        "changed": "(معدّل)",
+        "on": "مفعّل",
+        "off": "متوقف",
+        "none": "—",
+        "colEnabled": "مفعّل",
+        "leave": {
+          "title": "تغادر دون حفظ؟",
+          "confirm": "غادر",
+          "stay": "ابقَ"
+        },
+        "editing": "تعديل الشارات والمستويات",
+        "actions": "حفظ الشارات والمستويات",
+        "colLevel": "المستوى",
+        "colFrom": "من",
+        "colColour": "اللون",
+        "colBadge": "الشارة",
+        "colRule": "القاعدة",
+        "colHolders": "مُنحت",
+        "ramp": {
+          "1": "رمادي",
+          "2": "نحاسي",
+          "3": "فضي",
+          "4": "ليموني",
+          "5": "جليدي"
+        },
+        "newBadge": "شارة جديدة",
+        "award": "امنح شارة",
+        "nameOf": "الاسم — <bdi>{name}</bdi>",
+        "thresholdOf": "من — <bdi>{name}</bdi>",
+        "qualifierOf": "يُمنح بحسب — <bdi>{name}</bdi>",
+        "errorSummaryTitle": "لم تُحفظ الشارات والمستويات",
+        "errors": {
+          "nameRequired": "اكتب الاسم.",
+          "nameTooLong": "الاسم أطول من المسموح.",
+          "thresholdRequired": "اكتب النقاط.",
+          "thresholdInvalid": "عدد صحيح من صفر فأكثر.",
+          "thresholdOrder": "أكثر من المستوى الذي قبله وأقل من الذي بعده.",
+          "thresholdTaken": "مستوى آخر يستخدم هذا الحد.",
+          "qualifierRequired": "اختر ما يُمنح به.",
+          "requiredCountInvalid": "من واحد إلى واحد وثلاثين.",
+          "stale": "حفظ غيرك هذه القيم بعد أن فتحتها. حدّث الصفحة.",
+          "notFound": "لم يعد أحد العناصر موجودًا. حدّث الصفحة.",
+          "failed": "تعذّر الحفظ. حاول مرة أخرى."
+        },
+        "when": {
+          "today": "اليوم · <bdi>{time}</bdi>",
+          "yesterday": "أمس · <bdi>{time}</bdi>",
+          "days": "{count, plural, zero {منذ <bdi>{value}</bdi> يوم · <bdi>{time}</bdi>} one {منذ يوم · <bdi>{time}</bdi>} two {منذ يومين · <bdi>{time}</bdi>} few {منذ <bdi>{value}</bdi> أيام · <bdi>{time}</bdi>} many {منذ <bdi>{value}</bdi> يومًا · <bdi>{time}</bdi>} other {منذ <bdi>{value}</bdi> يوم · <bdi>{time}</bdi>}}",
+          "date": "<bdi>{date}</bdi> · <bdi>{time}</bdi>"
         }
       }
     }

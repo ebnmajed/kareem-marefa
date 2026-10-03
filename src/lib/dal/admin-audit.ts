@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { readAll } from "@/lib/dal/admin-paging";
+import { avatarHref } from "@/lib/dal/avatars";
 import { sessionClient } from "@/lib/dal/session";
 
 // SCR-062 · /app/admin/audit (REQ-ADM-018). Staff — admin sees the whole
@@ -286,13 +287,21 @@ export const CONFIG_SCOPES = ["scoring", "company_scoring", "org_settings", "bad
 export type ConfigScope = (typeof CONFIG_SCOPES)[number];
 const CONFIG_PREFIX = "config.";
 
+/** ★ The actor's face, as the board draws it — through the one resolver (`DEC-099`), with the company's ring. */
+export interface AuditActorFace {
+  avatarUrl: string | null;
+  /** undefined: no company (no ring); null: a company with no colour. */
+  teamColor: string | null | undefined;
+}
+
 export type AuditFeedRow =
-  | (AuditLogRow & { kind: "log"; subjectName: string | null })
+  | (AuditLogRow & { kind: "log"; subjectName: string | null; actorFace: AuditActorFace | null })
   | {
       kind: "config";
       id: string;
       actorId: string | null;
       actorName: string | null;
+      actorFace: AuditActorFace | null;
       scope: ConfigScope | string;
       entityId: string | null;
       entityName: string | null;
@@ -315,6 +324,18 @@ const isConfigAction = (action: string | undefined) => !!action && action.starts
 function newerFirst(a: { occurredAt: string; id: string }, b: { occurredAt: string; id: string }): number {
   if (a.occurredAt !== b.occurredAt) return a.occurredAt > b.occurredAt ? -1 : 1;
   return a.id > b.id ? -1 : a.id < b.id ? 1 : 0;
+}
+
+/** The actors' faces: the avatar's version and the company's colour, read under RLS like their names. */
+async function facesFor(supabase: Supabase, ids: string[]): Promise<Map<string, AuditActorFace>> {
+  const faces = new Map<string, AuditActorFace>();
+  if (ids.length === 0) return faces;
+  const { data, error } = await supabase.from("members").select("id, avatar_version, company_id, companies(team_color)").in("id", ids);
+  if (error) throw new Error(`members (faces): ${error.message}`);
+  for (const m of (data ?? []) as unknown as { id: string; avatar_version: number | string | null; company_id: string | null; companies: { team_color: string | null } | null }[]) {
+    faces.set(m.id, { avatarUrl: avatarHref({ id: m.id, avatarVersion: m.avatar_version }, 96), teamColor: m.company_id ? (m.companies?.team_color ?? null) : undefined });
+  }
+  return faces;
 }
 
 /** Display names for the subjects a log row names, where the subject's table carries one the admin may read. */
@@ -433,8 +454,9 @@ export async function listAuditFeed(locale: string, filters: AuditFilters, timeZ
   const actorIds = Array.from(new Set(page.map((p) => p.raw.actor_id).filter((id): id is string => id !== null)));
   const logs = page.filter((p) => p.kind === "log").map((p) => p.raw as LogRaw);
   const configs = page.filter((p) => p.kind === "config").map((p) => p.raw as ConfigRaw);
-  const [names, subjects, entities] = await Promise.all([
+  const [names, faces, subjects, entities] = await Promise.all([
     namesFor(supabase, actorIds),
+    facesFor(supabase, actorIds),
     subjectNames(supabase, logs.map((r) => ({ subjectType: r.subject_type, subjectId: r.subject_id }))),
     entityNames(supabase, configs.map((r) => ({ scope: r.scope, entityId: r.entity_id }))),
   ]);
@@ -442,6 +464,7 @@ export async function listAuditFeed(locale: string, filters: AuditFilters, timeZ
   return {
     rows: page.map((p): AuditFeedRow => {
       const actorName = p.raw.actor_id ? (names.get(p.raw.actor_id) ?? null) : null;
+      const actorFace = p.raw.actor_id ? (faces.get(p.raw.actor_id) ?? null) : null;
       if (p.kind === "log") {
         const r = p.raw as LogRaw;
         return {
@@ -449,6 +472,7 @@ export async function listAuditFeed(locale: string, filters: AuditFilters, timeZ
           id: r.id,
           actorId: r.actor_id,
           actorName,
+          actorFace,
           actorRole: r.actor_role,
           action: r.action,
           subjectType: r.subject_type,
@@ -464,6 +488,7 @@ export async function listAuditFeed(locale: string, filters: AuditFilters, timeZ
         id: r.id,
         actorId: r.actor_id,
         actorName,
+        actorFace,
         scope: r.scope,
         entityId: r.entity_id,
         entityName: r.entity_id ? (entities.get(r.entity_id) ?? null) : null,

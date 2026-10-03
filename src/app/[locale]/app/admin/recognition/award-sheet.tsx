@@ -13,10 +13,12 @@ import { FormSummary } from "@/components/ui/form-summary";
 import { AlertCircleIcon } from "@/components/ui/icons";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "@/i18n/navigation";
 import { hasAttempted, summaryErrors, was } from "@/lib/form-state";
 
-// SCR-054's manual award — REQ-REC-001: «manually awarding a badge requires a
-// reason and is audited».
+// SCR-054's «امنح شارة» — REQ-REC-001: «manually awarding a badge requires a reason and is audited»
+// (`badge.manual_award`, `0047`). The artboard does not draw it and `DEC-232` §5.2 keeps it: the page renders it in
+// console's `EditorSurface` at `?award=1` — a region without JS, the sheet with it.
 //
 // It took the member as a typed UUID (`DEC-050` gave the scoring screen a
 // picker and this one never got it). And it called an award «saved» when the
@@ -38,10 +40,14 @@ export function AwardForm({ action, members, badges, timeZone, locale }: { actio
   const formRef = useRef<HTMLFormElement>(null);
   const [resetKey, setResetKey] = useState(0);
   const [confirm, setConfirm] = useState<{ name: string; badge: string; reason: string } | null>(null);
+  const router = useRouter();
   const [state, dispatch, pending] = useActionToast<SavedFormState>(
     async (previous, formData) => {
       const result = await action(previous, formData);
-      if (result.saved) setResetKey((k) => k + 1);
+      if (result.saved) {
+        setResetKey((k) => k + 1);
+        router.replace("/app/admin/recognition");
+      }
       return result;
     },
     emptySavedState(),
@@ -79,7 +85,7 @@ export function AwardForm({ action, members, badges, timeZone, locale }: { actio
 
   return (
     <>
-      <form key={resetKey} ref={formRef} action={dispatch} noValidate className="max-w-xl space-y-5">
+      <form key={resetKey} ref={formRef} action={dispatch} noValidate className="space-y-5">
         {attempted ? (
           <FormSummary
             key={state.attempt}

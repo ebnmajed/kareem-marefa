@@ -108,7 +108,10 @@ test("SCR-060 at 1280: read, «عدّل», one staged change, «احفظ», and 
   await main.getByRole("link", { name: "عدّل" }).click();
   await expect(main.getByRole("heading", { name: "تعديل التذكيرات" })).toBeVisible();
   await expect(main.getByRole("button", { name: /^احفظ/ })).toBeDisabled();
-  await main.getByRole("switch", { name: /مفعّل — التذكير قبل الجلسة بساعتين/ }).click({ force: true });
+  // The keyboard, not a click: the switch's input is `sr-only`, so a forced click lands on whatever sits at its centre
+  // pixel and toggles nothing. Space on the focused switch is the path a keyboard user takes.
+  await main.getByRole("switch", { name: /مفعّل — التذكير قبل الجلسة بساعتين/ }).focus();
+  await page.keyboard.press("Space");
   await expect(main.getByText("تغيير واحد غير محفوظ")).toBeVisible();
   await expect(main.getByRole("switch", { name: /مفعّل \(معدّل\) — التذكير قبل الجلسة بساعتين/ })).not.toBeChecked();
   // Staged, never written: the database still holds the two-hour offset.
@@ -117,20 +120,22 @@ test("SCR-060 at 1280: read, «عدّل», one staged change, «احفظ», and 
   await page.screenshot({ path: `${SHOTS}/wave22-notify-060-edit-1280.png`, fullPage: true });
 
   await main.getByRole("button", { name: /^احفظ/ }).click();
-  await expect(page.getByRole("status").filter({ hasText: /^حُفظ$/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /إشعار/ }).getByText("حُفظ", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/ar\/app\/admin\/reminders$/);
   await expect(main.getByText(/^✓✓ حُفظ · .+ · مشرفة التذكيرات$/)).toBeVisible();
   await expect(main.getByRole("table", { name: "التذكيرات" })).toContainText("متوقف");
 
   const { rows } = await db.query<{ o: number[] }>(`select reminder_offsets_minutes as o from public.org_settings where org_id = $1`, [orgId]);
-  expect(rows[0].o).toEqual([10080, 1440, 4320]);
+  // The two-hour offset is gone; the custom 3-day one survives. The write stores the array largest first, as it always
+  // has (`setReminderSchedule()`, R13) — the fixture's own insert was not sorted, which is why `old_value` is not.
+  expect(rows[0].o).toEqual([10080, 4320, 1440]);
   // The record: one history row, the old and new arrays, this admin as the actor (REQ-TEN-008, REQ-ADM-023).
   const history = await db.query<{ old_value: number[]; new_value: number[]; display_name: string }>(
     `select h.old_value, h.new_value, m.display_name from public.scoring_config_history h join public.members m on m.id = h.actor_id
       where h.org_id = $1 and h.scope = 'org_settings' and h.field = 'reminder_offsets_minutes'`,
     [orgId],
   );
-  expect(history.rows).toEqual([{ old_value: [10080, 1440, 120, 4320], new_value: [10080, 1440, 4320], display_name: "مشرفة التذكيرات" }]);
+  expect(history.rows).toEqual([{ old_value: [10080, 1440, 120, 4320], new_value: [10080, 4320, 1440], display_name: "مشرفة التذكيرات" }]);
   await page.screenshot({ path: `${SHOTS}/wave22-notify-060-saved-1280.png`, fullPage: true });
 });
 

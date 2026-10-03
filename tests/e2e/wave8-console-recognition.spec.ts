@@ -138,13 +138,16 @@ test("a moderator gets the streamed not-found page (REQ-ADM-020, DEC-134)", asyn
   await expect(page.getByRole("heading", { name: "الشارات" })).toHaveCount(0);
 });
 
-test("REQ-CRT-012 at 390 px: held certificates first, released after a confirmation that counts them", async ({ context, page }, testInfo) => {
+// ★ wave 22 (REQ-UIX-101, ledger lines): SCR-054 was rebuilt read-by-default from `AdminRecognition.dc.html` — the held
+// certificates below the tables, a badge in its sheet (`?badge=`), levels and badges' switches in the page's one edit
+// mode, the manual award in its sheet (`?award=1`).
+test("REQ-CRT-012 at 390 px: held certificates, released after a confirmation that counts them", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "phone", "one project releases this org's certificates; the captures are the phone's");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/recognition");
   const held = group(page, "held-heading");
-  await expect(held.getByRole("heading", { name: /شهادات إنجاز بانتظار الإطلاق/ })).toBeVisible();
+  await expect(held.getByRole("heading", { name: /شهادات الإنجاز بانتظار الإصدار/ })).toBeVisible();
   const cards = held.getByRole("listitem");
   await expect(cards).toHaveCount(2);
   await expect(cards.first()).toContainText("شارة «مُقدِّم مُقيَّم»");
@@ -161,32 +164,36 @@ test("REQ-CRT-012 at 390 px: held certificates first, released after a confirmat
 
   const { rows } = await db.query<{ state: string }>(`select state from public.certificates where id = any($1::uuid[]) order by serial`, [certIds]);
   expect(rows.map((r) => r.state)).toEqual(["issued", "issued"]);
-  await expect(page.getByRole("heading", { name: /شهادات إنجاز بانتظار الإطلاق/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /شهادات الإنجاز بانتظار الإصدار/ })).toHaveCount(0);
 });
 
-test("REQ-REC-001: an admin creates a badge with its rule, then retires it after a confirmation naming it", async ({ context, page }, testInfo) => {
+test("REQ-REC-001: an admin creates a badge with its rule, then retires it in edit mode", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one project writes this org's badges");
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/recognition");
-  await group(page, "badges-heading").getByRole("button", { name: "أضف شارة" }).first().click();
-  const dialog = page.getByRole("dialog", { name: "شارة جديدة" });
-  await dialog.getByLabel("اسم الشارة", { exact: false }).fill("حاضر مخلص");
-  await dialog.getByLabel("تُمنح بحسب", { exact: false }).selectOption("check_ins_count");
-  await dialog.getByLabel("الحد المطلوب", { exact: false }).fill("25");
-  await dialog.getByRole("button", { name: "احفظ" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "أُضيفت الشارة" })).toBeVisible();
+  await page.locator("#main").getByRole("link", { name: "شارة جديدة" }).click();
+  const sheet = page.getByRole("dialog", { name: "شارة جديدة" });
+  await sheet.getByLabel("اسم الشارة", { exact: false }).fill("حاضر مخلص");
+  await sheet.getByLabel("تُمنح بحسب", { exact: false }).selectOption("check_ins_count");
+  await sheet.getByLabel("الحد المطلوب", { exact: false }).fill("25");
+  await sheet.getByRole("button", { name: "احفظ" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "حُفظ" })).toBeVisible();
 
   const { rows } = await db.query<{ key: string; rule: unknown; retired_at: string | null }>(`select key, rule, retired_at from public.badges where org_id = $1 and name = 'حاضر مخلص'`, [orgId]);
   expect(rows).toHaveLength(1);
   expect(rows[0].key).toMatch(/^custom_/);
   expect(rows[0].rule).toEqual({ metric: "check_ins_count", gte: 25 });
+  await expect(page.getByRole("row", { name: /حاضر مخلص/ }).first()).toContainText("بعد 25 تسجيل حضور");
 
-  const row = page.getByRole("row", { name: /حاضر مخلص/ });
-  await expect(row).toContainText("بعد 25 تسجيل حضور");
-  await row.getByRole("button", { name: "أوقف الشارة" }).click();
-  const confirm = page.getByRole("dialog", { name: "إيقاف شارة «حاضر مخلص»؟" });
-  await confirm.getByRole("button", { name: "أوقف الشارة" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "أُوقفت الشارة" })).toBeVisible();
+  await goto(page, "/ar/app/admin/recognition?edit");
+  // The switch's input is `sr-only`: its 1-px box sits under the row, so a click aimed at the input's centre lands on the
+  // fieldset. A mouse user clicks the DRAWN track, which is inside the input's <label> — so the click goes there, and
+  // proves the track itself is not covered (the lead's question (a)).
+  // `has:` is evaluated INSIDE each candidate label, so it takes a relative locator, never one rooted at `#main`.
+  await page.locator("#main label").filter({ has: page.getByRole("switch", { name: "مفعّل — حاضر مخلص" }) }).click();
+  await expect(page.locator("#main").getByRole("switch", { name: "مفعّل (معدّل) — حاضر مخلص" })).not.toBeChecked();
+  await page.locator("#main").getByRole("button", { name: /^احفظ/ }).click();
+  await expect(page.getByRole("status").filter({ hasText: "حُفظ" })).toBeVisible();
   const { rows: after } = await db.query<{ retired_at: string | null }>(`select retired_at from public.badges where org_id = $1 and name = 'حاضر مخلص'`, [orgId]);
   expect(after[0].retired_at).not.toBeNull();
 });
@@ -194,17 +201,16 @@ test("REQ-REC-001: an admin creates a badge with its rule, then retires it after
 test("REQ-REC-003: a level renamed, and a threshold below the level before it refused at the field", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one project writes this org's levels");
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/recognition");
-  await page.getByRole("row", { name: /صاحب أثر/ }).getByRole("button", { name: "عدّل: صاحب أثر" }).click();
-  const dialog = page.getByRole("dialog", { name: "تعديل مستوى «صاحب أثر»" });
-  await dialog.getByLabel("النقاط المطلوبة", { exact: false }).fill("50");
-  await dialog.getByRole("button", { name: "احفظ" }).click();
-  await expect(dialog.getByText("يجب أن يكون الحد أكثر من المستوى الذي قبله وأقل من الذي بعده.").last()).toBeVisible();
+  await goto(page, "/ar/app/admin/recognition?edit");
+  const main = page.locator("#main");
+  await main.getByRole("textbox", { name: "من — صاحب أثر" }).fill("50");
+  await main.getByRole("button", { name: /^احفظ/ }).click();
+  await expect(main.getByText("أكثر من المستوى الذي قبله وأقل من الذي بعده.").last()).toBeVisible();
 
-  await dialog.getByLabel("اسم المستوى", { exact: false }).fill("صاحبة أثر");
-  await dialog.getByLabel("النقاط المطلوبة", { exact: false }).fill("350");
-  await dialog.getByRole("button", { name: "احفظ" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await main.getByRole("textbox", { name: "الاسم — صاحب أثر" }).fill("صاحبة أثر");
+  await main.getByRole("textbox", { name: /^من — صاحب أثر/ }).fill("350");
+  await main.getByRole("button", { name: /^احفظ/ }).click();
+  await expect(page.getByRole("status").filter({ hasText: "حُفظ" })).toBeVisible();
   const { rows } = await db.query<{ name: string; threshold_points: number }>(`select name, threshold_points from public.levels where org_id = $1 and sort_order = 3`, [orgId]);
   expect(rows[0]).toEqual({ name: "صاحبة أثر", threshold_points: 350 });
 });
@@ -213,8 +219,10 @@ test("REQ-REC-001 at 390 px: a badge the member already holds is said at the mem
   test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
+  // ★ wave 22: «امنح شارة» is the h1 row's link; the form is its sheet at `?award=1`.
   await goto(page, "/ar/app/admin/recognition");
-  const award = group(page, "award-heading");
+  await page.locator("#main").getByRole("link", { name: "امنح شارة" }).click();
+  const award = page.getByRole("dialog", { name: "منح شارة يدويًا" });
   await award.getByRole("combobox", { name: /العضو/ }).fill("ريم");
   await page.getByRole("option", { name: /ريم القحطاني/ }).click();
   await award.getByLabel("الشارة", { exact: false }).selectOption({ label: "حاضر دائم" });

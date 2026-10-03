@@ -86,6 +86,8 @@ export function CompaniesTable({ companies, locale }: { companies: CompanyRow[];
   return (
     <>
       <DataTable
+        // The surface card at md+, as 042 and the boards draw every console table (the lead's wave-22 ruling); cards below.
+        className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
         stickyHeader
         hiddenHeaders={["actions"]}
         label={t("title")}

@@ -5307,3 +5307,60 @@ add-only select in `listHeldAchievements()` (`certificates.ts:712`). Without it 
   `saveSessionHostCompany` and the fixture's `companies` **removed** (a selector-level removal; the six cases unchanged).
 - `tests/e2e/scoring-company-points.spec.ts:128-141` — the host-company form's steps **removed**; the rule edit above
   them unchanged.
+
+## Wave 22 — PR B built: `053` and `054` (`DEC-232`)
+
+**Commits (B tree):** `cf4d5997` the SQL and its RLS cases · `6cbedead` delete `053` · `2d53a14f` delete `054` · then
+the two create commits. Proposed for the lead: `cap_explained_as_it_stood.sql` (F1), `save_scoring_catalogue.sql`,
+`save_recognition.sql` (with `badge_holder_counts()`).
+
+**Read against the kept-behaviour tables** — every row holds, with these as built:
+- `053` #1 admin-only not-found ✓ · #2 invoker save ✓ · #3 fixed catalogue, الحجز/التفاعل absent (a test) ✓ · #4 cost
+  typed positive, stored negative, the sign guard in the function landing at the field ✓ · #5 – #6 value, cap, cooldown,
+  switch and **the member's reason** edited in edit mode ✓ · #7 forward only — proven from SCR-022 by
+  `scoring-catalogue-save.test.ts` (forward_only) and the e2e ✓ · #8 history per changed column, ★ a no-op writes nothing ✓
+  · #9 – #10 the history in words under `id="history-heading"` — `history-table.tsx` is re-created with its wave-8 body:
+  the artboard draws no history, `DEC-231` §4.3 keeps it · #11 company rules: one line read, edited in the same edit
+  mode at `#company-rules` ✓ · #12 – #13 manual adjustment in console's `EditorSurface` at `?adjust=1` (a region without
+  JS), confirmation by name and amount, refusals at their fields ✓ · #14 – #16 ✓.
+- `054` #1 ✓ · #2 held certificates gated by the page — **below** the tables, as drawn (was first) · #3 named by badge or
+  period ✓ · #4 per-row «أصدر» confirms naming the member; bulk release through the selection kept ✓ · #5 serial under
+  the name ✓ · #6 – #8 a badge created or fully edited in its sheet `?badge=new|<id>` — ★ **its own «احفظ»** (one
+  `save_recognition()` call, its receipt), the deviation from «staged into edit mode» D5 proposed; name and switch are
+  also in edit mode · #7 retire = edit mode's staged switch; holders kept (an RLS case) · #9 thresholds climb, refused at
+  the level, written without a transient duplicate (an RLS case) · #10 perks — a third table, qualifier in edit mode, the
+  hosting gate's warning beside its switch · #11 the streak: count and switch only, ★ `bonus_points` not offered (F2)
+  · #12 manual award in its sheet `?award=1`, already-held at the member ✓ · «أوقف» = `revokeCertificate()` at `?revoke=<id>`
+  with its mandatory reason (`certificate.revoked`).
+- The face on a held row goes through the one resolver (`avatarHref()`, `DEC-099`): `listHeldAchievements()` returns the
+  member but not the copy's version, so `listAvatarHrefs()` (scoring-admin.ts, admin-only) reads `avatar_version` for
+  exactly those members. A member with no copy draws initials.
+
+**Ledger lines (for `STATUS.md`):**
+- `tests/rls/scoring-capped.test.ts` — fixture moved: comments posted after the rule the test sets; applies F1's file.
+- `tests/components/admin/scoring-page.test.tsx` — all six wave-8 cases re-said for read and edit mode (dialogs gone).
+- `tests/components/admin/recognition-page.test.tsx` — all eight re-said: held certificates below, sheets, edit mode.
+- `tests/unit/admin-scoring-actions.test.ts` — `saveScoringRule`'s three cases → `saveCatalogue`'s four.
+- `tests/unit/admin-recognition-actions.test.ts` — `saveBadge`/`saveLevel`/`savePerk` → `saveRecognitionEdit`/`saveBadgeSheet`;
+  `awardBadge` unchanged; «أوقف» and «أصدر» new.
+- `tests/e2e/wave8-console-scoring.spec.ts:118,152,173,189` and `wave8-console-recognition.spec.ts:141,167,194,212` —
+  selectors move (edit mode and sheets); `:111`/`:134` untouched. `tests/e2e/scoring-company-points.spec.ts:106` — the
+  company rule through the line's «عدّل». New: `tests/e2e/wave22-scoring-read-pages.spec.ts` (the job, the empty
+  receipt, the captures at 1280 and 390).
+- **Requests:** `console` — `src/components/admin/held-achievements-table.tsx` has no importer now; delete it.
+
+### PR B — the lead's read beside the boards (fixes)
+
+1. ★ **The deductions, as the data is**: the seed stores all four **enabled at 0 points** (`0083:35-36`, `_seed_org_scoring`)
+   — «off by default» in `REQ-PTS-008` means *costs nothing*, not *switched off*. So each row reads what is stored
+   («لا خصم», «✓ مفعّل») and the heading is «سلبية» alone: it no longer claims «مغلق افتراضيًا» over rows that say
+   otherwise. (D11 resolved this way; the artboard's unticked boxes are not the data.)
+2. Read mode is one line per action, as drawn; the member's text is shown and edited in edit mode (ruling on D2).
+3. The state cells (`✓ مفعّل` / `— متوقف`) never wrap.
+4. The capture spec seeds one held achievement certificate, so `054`'s region is captured with a row.
+5. Every table on both pages wears `042`'s surface card at `md`+.
+6. The history's «الوقت» and both saved marks are a relative day and the time («اليوم · 09:41», «أمس · …», «منذ 3 أيام · …»,
+   past a week the short date) through `components/scoring/relative-when.ts`, in the org's zone; the history's instant is
+   in `<time datetime>`, the mark's on the element. Ledger: `scoring-page.test.tsx`'s read-mode cases (heading «سلبية»,
+   no second line) and its edit-mode submits (they wait for «احفظ» to return — a pending label, not a page change);
+   `wave8-console-scoring.spec.ts`'s catalogue case reads the member's wording in edit mode.

@@ -12,6 +12,98 @@
     "privacy": "Data and privacy",
     "signOut": "Sign out",
     "save": "Save",
-    "error": "Couldn't save that preference. Please try again."
+    "error": "Couldn't save that preference. Please try again.",
+    "admin": {
+      "title": "Settings",
+      "edit": "Edit",
+      "editing": "Editing settings",
+      "unsaved": "{count, plural, one {1 unsaved change} other {<bdi>{value}</bdi> unsaved changes}}",
+      "changed": "(changed)",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "actions": "Save settings",
+      "savedMark": "✓✓ Saved · <bdi>{time}</bdi>",
+      "savedMarkBy": "✓✓ Saved · <bdi>{time}</bdi> · <bdi>{actor}</bdi>",
+      "saved": "Saved",
+      "unchanged": "Nothing changed",
+      "empty": "—",
+      "cards": {
+        "org": "The organisation",
+        "sessions": "Sessions",
+        "privacy": "Privacy",
+        "integrations": "Integrations"
+      },
+      "rows": {
+        "name": "Name",
+        "domains": "Domains",
+        "timeZone": "Time zone",
+        "companyMetric": "Company ranking",
+        "companyMinActiveMembers": "Ranking threshold",
+        "checkIn": "Check-in code",
+        "maxCoPresenters": "Co-presenters",
+        "priorityRsvpHours": "Early booking",
+        "limits": "File limits",
+        "ratings": "Ratings",
+        "calendar": "Google Calendar",
+        "email": "Email",
+        "jpeg": "JPEG export",
+        "verify": "Certificate verification"
+      },
+      "labels": {
+        "checkInRotation": "Code changes every",
+        "checkInGrace": "Previous code accepted for",
+        "limitDocument": "Documents (MB)",
+        "limitAudio": "Audio (MB)",
+        "limitImage": "Images (MB)",
+        "limitPoster": "Posters (MB)",
+        "emailFromName": "Sender name",
+        "emailReplyTo": "Reply-to address",
+        "removeDomain": "Remove <bdi>{domain}</bdi>",
+        "addDomains": "Add a domain"
+      },
+      "values": {
+        "timeZone": "<bdi>{name}</bdi> · <bdi>{id}</bdi>",
+        "metric": {
+          "total_points": "Total points",
+          "points_per_active_member": "Points per active member"
+        },
+        "minActive": "{count, plural, one {at least 1 active member} other {at least <bdi>{value}</bdi> active members}}",
+        "checkIn": "Changes every <rotation></rotation> · previous accepted <grace></grace>",
+        "checkInNoGrace": "Changes every <rotation></rotation> · previous not accepted",
+        "seconds": "{count, plural, one {1 second} other {<bdi>{value}</bdi> seconds}}",
+        "minutes": "{count, plural, one {1 minute} other {<bdi>{value}</bdi> minutes}}",
+        "coPresenters": "{count, plural, one {up to 1 co-presenter} other {up to <bdi>{value}</bdi> co-presenters}}",
+        "priority": "{count, plural, one {1 hour before general booking} other {<bdi>{value}</bdi> hours before general booking}}",
+        "limits": "Documents <bdi>{document}</bdi> · audio <bdi>{audio}</bdi> · images <bdi>{image}</bdi> · posters <bdi>{poster}</bdi> MB",
+        "ratings": "{count, plural, one {the average shows after 1 rating} other {the average shows after <bdi>{value}</bdi> ratings}}",
+        "calendarOn": "Available to members",
+        "calendarOff": "Not configured",
+        "email": "<bdi>{from}</bdi> · reply to <bdi>{replyTo}</bdi>",
+        "emailNoReply": "<bdi>{from}</bdi>",
+        "jpegOn": "Allowed",
+        "jpegOff": "Not allowed"
+      },
+      "leave": {
+        "title": "Leave without saving?",
+        "confirm": "Leave",
+        "stay": "Stay"
+      },
+      "errorSummaryTitle": "The settings were not saved",
+      "errors": {
+        "required": "This field is required.",
+        "number": "Enter a whole number.",
+        "range": "Between <bdi>{min}</bdi> and <bdi>{max}</bdi>.",
+        "timeZone": "Choose a time zone from the list.",
+        "metric": "Choose a metric from the list.",
+        "emailFromName": "The sender name is too long.",
+        "emailReplyTo": "Enter a valid email address.",
+        "domainInvalid": "Not a valid domain: <bdi>{domain}</bdi>",
+        "domainTaken": "Already added: <bdi>{domain}</bdi>",
+        "domainLast": "Keep at least one domain.",
+        "stale": "Another admin changed this field after you opened the page. Open it again.",
+        "failed": "The settings could not be saved. Try again."
+      }
+    }
   }
 }

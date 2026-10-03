@@ -1,5 +1,7 @@
 import "server-only";
 import { z } from "zod";
+import type { SaveReceipt, SavedMark } from "@/lib/dal/admin-settings";
+import { avatarHref } from "@/lib/dal/avatars";
 import { sessionClient } from "@/lib/dal/session";
 
 // SCR-053 (scoring) and SCR-054 (recognition) admin screens — DEC-046's
@@ -167,53 +169,11 @@ export async function getScoringAdminData(locale: string): Promise<ScoringAdminD
   };
 }
 
-export const scoringRuleUpdateInput = z.object({
-  ruleId: z.uuid(),
-  points: z.number().int().min(-1000).max(1000),
-  enabled: z.boolean(),
-  capPerSession: z.number().int().min(1).max(1000).nullable(),
-  cooldownSeconds: z.number().int().min(0).max(31536000).nullable(),
-  reasonAr: z.string().trim().min(1).max(200),
-});
-export type ScoringRuleUpdateInput = z.infer<typeof scoringRuleUpdateInput>;
-
-/** A plain table UPDATE — 0027's column grant plus its `p2_admin_update`
- * policy is the whole boundary; `scoring_rules_before_update` bumps the
- * version and `scoring_rules_history` (both 0027) log the change without
- * this function doing anything but the UPDATE.
- *
- * ★ The sign follows the rule, and nothing in the schema says so: a reward
- * saved negative would take points for attending, and a penalty saved
- * positive would pay for a no-show. The rule's own `action_key` — read here,
- * never taken from the form — decides which way `points` may go. */
-export async function updateScoringRule(locale: string, input: ScoringRuleUpdateInput): Promise<void> {
-  const client = await assertAdmin(locale);
-  if (!client) throw new Error("not_an_admin");
-  const { supabase } = client;
-  const { data: rule, error: readError } = await supabase.from("scoring_rules").select("action_key").eq("id", input.ruleId).maybeSingle();
-  if (readError) throw new Error(`scoring_rules: ${readError.message}`);
-  if (!rule) throw new Error("not_found");
-  if (isPenalty(rule.action_key as string) ? input.points > 0 : input.points < 0) throw new Error("sign_mismatch");
-  const { error } = await supabase
-    .from("scoring_rules")
-    .update({
-      points: input.points,
-      enabled: input.enabled,
-      cap_per_session: input.capPerSession,
-      cooldown: input.cooldownSeconds != null ? `${input.cooldownSeconds} seconds` : null,
-      reason_ar: input.reasonAr,
-    })
-    .eq("id", input.ruleId);
-  if (error) throw new Error(`scoring_rules: ${error.message}`);
-}
-
 // ── Company rules (post-launch — docs/plan/notes/scoring.md "Company
 // points rules") ────────────────────────────────────────────────────────
 //
-// A plain table UPDATE, same technique as updateScoringRule — 0001's
-// column grant plus its p2_admin_update policy is the whole boundary;
-// company_scoring_rules_before_update / _history (also 0001) log the
-// change the same way scoring_rules already does.
+// ★ wave 22: written only through `save_scoring_catalogue()` (invoker — 0081's column grant and p2_admin_update stay
+// the boundary); company_scoring_rules_before_update / _history (0081) log the change as scoring_rules' do.
 
 export interface CompanyScoringRule {
   id: string;
@@ -225,89 +185,6 @@ export interface CompanyScoringRule {
   minActiveMembers: number | null;
   reasonAr: string;
   version: number;
-}
-
-export async function getCompanyScoringRules(locale: string): Promise<CompanyScoringRule[] | null> {
-  const client = await assertAdmin(locale);
-  if (!client) return null;
-  const { session, supabase } = client;
-  const { data, error } = await supabase
-    .from("company_scoring_rules")
-    .select("id, action_key, enabled, points, points_per_percent, cap_points, min_active_members, reason_ar, version")
-    .eq("org_id", session.orgId)
-    .order("action_key");
-  if (error) throw new Error(`company_scoring_rules: ${error.message}`);
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    actionKey: r.action_key as CompanyScoringRule["actionKey"],
-    enabled: r.enabled,
-    points: r.points,
-    pointsPerPercent: r.points_per_percent,
-    capPoints: r.cap_points,
-    minActiveMembers: r.min_active_members,
-    reasonAr: r.reason_ar,
-    version: r.version,
-  }));
-}
-
-export const companyHostingRuleUpdateInput = z.object({
-  ruleId: z.uuid(),
-  enabled: z.boolean(),
-  points: z.number().int().min(0).max(10000),
-});
-export type CompanyHostingRuleUpdateInput = z.infer<typeof companyHostingRuleUpdateInput>;
-
-export async function updateCompanyHostingRule(locale: string, input: CompanyHostingRuleUpdateInput): Promise<void> {
-  const client = await assertAdmin(locale);
-  if (!client) throw new Error("not_an_admin");
-  const { error } = await client.supabase
-    .from("company_scoring_rules")
-    .update({ enabled: input.enabled, points: input.points })
-    .eq("id", input.ruleId);
-  if (error) throw new Error(`company_scoring_rules: ${error.message}`);
-}
-
-export const companyPercentRuleUpdateInput = z.object({
-  ruleId: z.uuid(),
-  enabled: z.boolean(),
-  pointsPerPercent: z.number().min(0).max(100),
-  capPoints: z.number().int().min(1).max(10000),
-  minActiveMembers: z.number().int().min(1).max(1000),
-});
-export type CompanyPercentRuleUpdateInput = z.infer<typeof companyPercentRuleUpdateInput>;
-
-export async function updateCompanyPercentRule(locale: string, input: CompanyPercentRuleUpdateInput): Promise<void> {
-  const client = await assertAdmin(locale);
-  if (!client) throw new Error("not_an_admin");
-  const { error } = await client.supabase
-    .from("company_scoring_rules")
-    .update({
-      enabled: input.enabled,
-      points_per_percent: input.pointsPerPercent,
-      cap_points: input.capPoints,
-      min_active_members: input.minActiveMembers,
-    })
-    .eq("id", input.ruleId);
-  if (error) throw new Error(`company_scoring_rules: ${error.message}`);
-}
-
-export interface CompanyOption {
-  id: string;
-  name: string;
-}
-
-export async function listCompaniesForAdmin(locale: string): Promise<CompanyOption[] | null> {
-  const client = await assertAdmin(locale);
-  if (!client) return null;
-  const { session, supabase } = client;
-  const { data, error } = await supabase
-    .from("companies")
-    .select("id, name")
-    .eq("org_id", session.orgId)
-    .is("deactivated_at", null)
-    .order("name");
-  if (error) throw new Error(`companies: ${error.message}`);
-  return data ?? [];
 }
 
 export const manualAdjustmentInput = z.object({
@@ -368,12 +245,18 @@ export interface BadgeRow {
   rule: BadgeRule;
   /** Kept for callers that only need to know. */
   isManual: boolean;
+  /** ★ wave 22, add-only: the stale check of a save (`DEC-232` §3.3). */
+  updatedAt: string;
+  /** ★ wave 22, add-only: how many members hold it — a count, never who (`badge_holder_counts()`). */
+  holders: number;
 }
 export interface LevelRow {
   id: string;
   name: string;
   thresholdPoints: number;
   sortOrder: number;
+  /** ★ wave 22, add-only. */
+  updatedAt: string;
 }
 export interface PerkRow {
   id: string;
@@ -383,6 +266,8 @@ export interface PerkRow {
   requiredBadgeId: string | null;
   requiredLevelName: string | null;
   requiredBadgeName: string | null;
+  /** ★ wave 22, add-only. */
+  updatedAt: string;
 }
 export interface StreakRuleRow {
   id: string;
@@ -390,6 +275,8 @@ export interface StreakRuleRow {
   requiredCount: number;
   bonusPoints: number;
   enabled: boolean;
+  /** ★ wave 22, add-only. */
+  updatedAt: string;
 }
 
 export interface RecognitionAdminData {
@@ -417,16 +304,19 @@ export async function getRecognitionAdminData(locale: string): Promise<Recogniti
   if (!client) return null;
   const { session, supabase } = client;
 
-  const [{ data: badges, error: e1 }, { data: levels, error: e2 }, { data: perks, error: e3 }, { data: streakRules, error: e4 }] = await Promise.all([
-    supabase.from("badges").select("id, key, name, description, rule, issues_certificate, retired_at").eq("org_id", session.orgId).order("created_at").order("key"),
-    supabase.from("levels").select("id, name, threshold_points, sort_order").eq("org_id", session.orgId).order("sort_order"),
-    supabase.from("perks").select("id, key, enabled, required_level_id, required_badge_id").eq("org_id", session.orgId).order("key"),
-    supabase.from("streak_rules").select("id, key, required_count, bonus_points, enabled").eq("org_id", session.orgId).order("key"),
+  const [{ data: badges, error: e1 }, { data: levels, error: e2 }, { data: perks, error: e3 }, { data: streakRules, error: e4 }, { data: holders, error: e5 }] = await Promise.all([
+    supabase.from("badges").select("id, key, name, description, rule, issues_certificate, retired_at, updated_at").eq("org_id", session.orgId).order("created_at").order("key"),
+    supabase.from("levels").select("id, name, threshold_points, sort_order, updated_at").eq("org_id", session.orgId).order("sort_order"),
+    supabase.from("perks").select("id, key, enabled, required_level_id, required_badge_id, updated_at").eq("org_id", session.orgId).order("key"),
+    supabase.from("streak_rules").select("id, key, required_count, bonus_points, enabled, updated_at").eq("org_id", session.orgId).order("key"),
+    supabase.rpc("badge_holder_counts"),
   ]);
   if (e1) throw new Error(`badges: ${e1.message}`);
   if (e2) throw new Error(`levels: ${e2.message}`);
   if (e3) throw new Error(`perks: ${e3.message}`);
   if (e4) throw new Error(`streak_rules: ${e4.message}`);
+  if (e5) throw new Error(`badge_holder_counts: ${e5.message}`);
+  const held = new Map(((holders ?? []) as Array<{ badge_id: string; holders: number }>).map((h) => [h.badge_id, h.holders]));
 
   const levelName = new Map((levels ?? []).map((l) => [l.id as string, l.name as string]));
   const badgeName = new Map((badges ?? []).map((b) => [b.id as string, b.name as string]));
@@ -443,9 +333,11 @@ export async function getRecognitionAdminData(locale: string): Promise<Recogniti
         retiredAt: b.retired_at,
         rule,
         isManual: rule.metric === "manual",
+        updatedAt: b.updated_at as string,
+        holders: held.get(b.id as string) ?? 0,
       };
     }),
-    levels: (levels ?? []).map((l) => ({ id: l.id, name: l.name, thresholdPoints: l.threshold_points, sortOrder: l.sort_order })),
+    levels: (levels ?? []).map((l) => ({ id: l.id, name: l.name, thresholdPoints: l.threshold_points, sortOrder: l.sort_order, updatedAt: l.updated_at as string })),
     perks: (perks ?? []).map((p) => ({
       id: p.id,
       key: p.key,
@@ -454,8 +346,9 @@ export async function getRecognitionAdminData(locale: string): Promise<Recogniti
       requiredBadgeId: p.required_badge_id,
       requiredLevelName: p.required_level_id ? (levelName.get(p.required_level_id) ?? null) : null,
       requiredBadgeName: p.required_badge_id ? (badgeName.get(p.required_badge_id) ?? null) : null,
+      updatedAt: p.updated_at as string,
     })),
-    streakRules: (streakRules ?? []).map((s) => ({ id: s.id, key: s.key, requiredCount: s.required_count, bonusPoints: s.bonus_points, enabled: s.enabled })),
+    streakRules: (streakRules ?? []).map((s) => ({ id: s.id, key: s.key, requiredCount: s.required_count, bonusPoints: s.bonus_points, enabled: s.enabled, updatedAt: s.updated_at as string })),
   };
 }
 
@@ -474,102 +367,6 @@ export const badgeInput = z.object({
   rule: badgeRuleInput,
 });
 export type BadgeInput = z.infer<typeof badgeInput>;
-
-/** Create or edit a badge. A created badge gets a stable key the admin never types. */
-export async function saveBadge(locale: string, input: BadgeInput): Promise<void> {
-  const client = await assertAdmin(locale);
-  if (!client) throw new Error("not_an_admin");
-  const { session, supabase } = client;
-  const rule = badgeRuleJson({
-    metric: input.rule.metric,
-    gte: "gte" in input.rule ? input.rule.gte : null,
-    minSessions: "minSessions" in input.rule ? input.rule.minSessions : null,
-  });
-  const row = { name: input.name, description: input.description, issues_certificate: input.issuesCertificate, rule };
-  const { error } = input.badgeId
-    ? await supabase.from("badges").update(row).eq("id", input.badgeId)
-    : await supabase.from("badges").insert({ ...row, org_id: session.orgId, key: `custom_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}` });
-  if (error) throw new Error(`badges: ${error.message}`);
-}
-
-/** Retiring never revokes a badge a member holds (`REQ-REC-001`); it stops future awards. */
-export async function setBadgeRetired(locale: string, badgeId: string, retired: boolean): Promise<void> {
-  const client = await assertAdmin(locale);
-  if (!client) throw new Error("not_an_admin");
-  if (!z.uuid().safeParse(badgeId).success) throw new Error("not_found");
-  const { error } = await client.supabase.from("badges").update({ retired_at: retired ? new Date().toISOString() : null }).eq("id", badgeId);
-  if (error) throw new Error(`badges: ${error.message}`);
-}
-
-export const perkUpdateInput = z
-  .object({
-    perkId: z.uuid(),
-    enabled: z.boolean(),
-    requiredLevelId: z.uuid().nullable(),
-    requiredBadgeId: z.uuid().nullable(),
-  })
-  .refine((p) => (p.requiredLevelId === null) !== (p.requiredBadgeId === null), "one_qualifier");
-export type PerkUpdateInput = z.infer<typeof perkUpdateInput>;
-
-export async function updatePerk(locale: string, input: PerkUpdateInput): Promise<void> {
-  const client = await assertAdmin(locale);
-  if (!client) throw new Error("not_an_admin");
-  const { error } = await client.supabase
-    .from("perks")
-    .update({ enabled: input.enabled, required_level_id: input.requiredLevelId, required_badge_id: input.requiredBadgeId })
-    .eq("id", input.perkId);
-  if (error) throw new Error(`perks: ${error.message}`);
-}
-
-export const streakRuleUpdateInput = z.object({
-  streakRuleId: z.uuid(),
-  requiredCount: z.number().int().min(1).max(31),
-  bonusPoints: z.number().int().min(0).max(1000),
-  enabled: z.boolean(),
-});
-export type StreakRuleUpdateInput = z.infer<typeof streakRuleUpdateInput>;
-
-export async function updateStreakRule(locale: string, input: StreakRuleUpdateInput): Promise<void> {
-  const client = await assertAdmin(locale);
-  if (!client) throw new Error("not_an_admin");
-  const { error } = await client.supabase
-    .from("streak_rules")
-    .update({ required_count: input.requiredCount, bonus_points: input.bonusPoints, enabled: input.enabled })
-    .eq("id", input.streakRuleId);
-  if (error) throw new Error(`streak_rules: ${error.message}`);
-}
-
-export const levelUpdateInput = z.object({
-  levelId: z.uuid(),
-  name: z.string().trim().min(1).max(60),
-  thresholdPoints: z.number().int().min(0).max(1_000_000),
-});
-export type LevelUpdateInput = z.infer<typeof levelUpdateInput>;
-
-/**
- * A level's title and threshold. The thresholds must still climb with the
- * levels' order — a «كريم معرفة» below «صاحب أثر» is not a ladder — which the
- * schema does not say (it only makes each threshold unique), so it is said
- * here, against the neighbours: `threshold_order`. A threshold another level
- * already has is `threshold_taken`, the unique constraint's `23505`.
- */
-export async function updateLevel(locale: string, input: LevelUpdateInput): Promise<void> {
-  const client = await assertAdmin(locale);
-  if (!client) throw new Error("not_an_admin");
-  const { session, supabase } = client;
-  const { data: levels, error: readError } = await supabase.from("levels").select("id, threshold_points, sort_order").eq("org_id", session.orgId).order("sort_order");
-  if (readError) throw new Error(`levels: ${readError.message}`);
-  const index = (levels ?? []).findIndex((l) => l.id === input.levelId);
-  if (index < 0) throw new Error("not_found");
-  const below = levels![index - 1];
-  const above = levels![index + 1];
-  if ((below && input.thresholdPoints <= below.threshold_points) || (above && input.thresholdPoints >= above.threshold_points)) {
-    if ([below, above].some((l) => l && l.threshold_points === input.thresholdPoints)) throw new Error("threshold_taken");
-    throw new Error("threshold_order");
-  }
-  const { error } = await supabase.from("levels").update({ name: input.name, threshold_points: input.thresholdPoints }).eq("id", input.levelId);
-  if (error) throw new Error(error.code === "23505" ? "threshold_taken" : `levels: ${error.message}`);
-}
 
 export const manualBadgeAwardInput = z.object({ memberId: z.uuid(), badgeId: z.uuid(), reason: z.string().trim().min(1).max(300) });
 export type ManualBadgeAwardInput = z.infer<typeof manualBadgeAwardInput>;
@@ -596,4 +393,159 @@ export async function submitManualBadgeAward(locale: string, input: ManualBadgeA
   if (error.code === "P0002") throw new Error("not_found");
   if (error.message.includes("reason_required")) throw new Error("reason_required");
   throw new Error(`award_badge_manually: ${error.message}`);
+}
+
+// ── Wave 22 — one save, its receipt, and the saved mark (REQ-UIX-091, REQ-UIX-100, REQ-UIX-101, DEC-232 §3) ─────
+//
+// SCR-053 and SCR-054 are read-mode pages. A save is ONE call to an invoker function (`save_scoring_catalogue()`,
+// `save_recognition()`) — today's grants decide, one transaction, only what changed — and its answer is the receipt:
+// the history rows it wrote, found by its own transaction instant. A refusal is thrown as the word the screen lands at
+// its field; a write that matched nothing is never success.
+
+/** The function's refusals, as `Error.message`s the actions read. */
+function saveRefusal(error: { code?: string; message: string }): Error {
+  if (error.code === "42501") return new Error("not_an_admin");
+  if (error.code === "40001") return new Error("stale");
+  if (error.code === "P0002") return new Error("not_found");
+  const named = error.message.match(/(sign_mismatch|threshold_order|threshold_taken):[^\s"]+/);
+  if (named) return new Error(named[0]);
+  return new Error(`save: ${error.message}`);
+}
+
+function receiptOf(data: unknown): SaveReceipt {
+  const r = (data ?? {}) as { at?: string | null; wrote?: string[] };
+  return { at: r.at ?? null, wrote: Array.isArray(r.wrote) ? r.wrote : [] };
+}
+
+export const catalogueSaveInput = z.object({
+  rules: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        version: z.int(),
+        points: z.int().min(-1000).max(1000),
+        enabled: z.boolean(),
+        cap_per_session: z.int().min(1).max(1000).nullable(),
+        cooldown_seconds: z.int().min(1).max(31536000).nullable(),
+        reason_ar: z.string().trim().min(1).max(200),
+      }),
+    )
+    .max(50),
+  company: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        version: z.int(),
+        enabled: z.boolean(),
+        points: z.int().min(0).max(10000).nullable(),
+        points_per_percent: z.number().min(0).max(100).nullable(),
+        cap_points: z.int().min(1).max(10000).nullable(),
+        min_active_members: z.int().min(1).max(1000).nullable(),
+      }),
+    )
+    .max(3),
+});
+export type CatalogueSaveInput = z.infer<typeof catalogueSaveInput>;
+
+/** SCR-053's one save. Throws `stale`, `sign_mismatch:<action_key>`, `not_found` or `not_an_admin`. */
+export async function saveScoringCatalogue(locale: string, input: CatalogueSaveInput): Promise<SaveReceipt> {
+  const client = await assertAdmin(locale);
+  if (!client) throw new Error("not_an_admin");
+  const { data, error } = await client.supabase.rpc("save_scoring_catalogue", { p_rules: input.rules, p_company: input.company });
+  if (error) throw saveRefusal(error);
+  return receiptOf(data);
+}
+
+export const recognitionSaveInput = z.object({
+  levels: z.array(z.object({ id: z.uuid(), updatedAt: z.string(), name: z.string().trim().min(1).max(60), thresholdPoints: z.int().min(0).max(1_000_000) })).max(20),
+  badges: z
+    .array(
+      z.object({
+        id: z.uuid().nullable(),
+        updatedAt: z.string().nullable(),
+        name: z.string().trim().min(1).max(100),
+        description: z.string().trim().max(300).nullable(),
+        issuesCertificate: z.boolean(),
+        rule: z.object({ metric: z.enum(BADGE_METRICS), gte: z.number().nullable(), minSessions: z.number().nullable() }),
+        retired: z.boolean(),
+      }),
+    )
+    .max(200),
+  perks: z
+    .array(z.object({ id: z.uuid(), updatedAt: z.string(), enabled: z.boolean(), requiredLevelId: z.uuid().nullable(), requiredBadgeId: z.uuid().nullable() }))
+    .max(10)
+    .refine((all) => all.every((p) => (p.requiredLevelId === null) !== (p.requiredBadgeId === null)), "one_qualifier"),
+  streaks: z.array(z.object({ id: z.uuid(), updatedAt: z.string(), requiredCount: z.int().min(1).max(31), enabled: z.boolean() })).max(10),
+});
+export type RecognitionSaveInput = z.infer<typeof recognitionSaveInput>;
+
+/** SCR-054's one save. Never sends `bonus_points` (DEC-232 §4 row 2). Throws `stale`, `threshold_order:<id>`,
+ *  `threshold_taken:<id>`, `not_found` or `not_an_admin`. */
+export async function saveRecognition(locale: string, input: RecognitionSaveInput): Promise<SaveReceipt> {
+  const client = await assertAdmin(locale);
+  if (!client) throw new Error("not_an_admin");
+  const { data, error } = await client.supabase.rpc("save_recognition", {
+    p_levels: input.levels.map((l) => ({ id: l.id, updated_at: l.updatedAt, name: l.name, threshold_points: l.thresholdPoints })),
+    p_badges: input.badges.map((b) => ({
+      id: b.id,
+      updated_at: b.updatedAt,
+      name: b.name,
+      description: b.description,
+      issues_certificate: b.issuesCertificate,
+      rule: badgeRuleJson(b.rule),
+      retired: b.retired,
+    })),
+    p_perks: input.perks.map((p) => ({ id: p.id, updated_at: p.updatedAt, enabled: p.enabled, required_level_id: p.requiredLevelId, required_badge_id: p.requiredBadgeId })),
+    p_streaks: input.streaks.map((s) => ({ id: s.id, updated_at: s.updatedAt, required_count: s.requiredCount, enabled: s.enabled })),
+  });
+  if (error) throw saveRefusal(error);
+  return receiptOf(data);
+}
+
+/**
+ * The read-mode mark (`REQ-UIX-091`): the newest save among these history scopes, with its actor. Ordered by
+ * `changed_at` on purpose — the rows one save wrote share it, and the newest of them IS the save (the group, never
+ * «the last row»; notify's N10 says the same of `getLastSave()`). `version` rows are the trigger's, not an admin's.
+ */
+export async function getConfigLastSave(locale: string, scopes: readonly ("scoring" | "company_scoring" | "levels" | "badges" | "perks" | "streaks")[]): Promise<SavedMark | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { session, supabase } = client;
+  const [history, settings] = await Promise.all([
+    supabase
+      .from("scoring_config_history")
+      .select("changed_at, actor_id")
+      .eq("org_id", session.orgId)
+      .in("scope", [...scopes])
+      .neq("field", "version")
+      .not("actor_id", "is", null)
+      .order("changed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from("org_settings").select("time_zone").eq("org_id", session.orgId).maybeSingle(),
+  ]);
+  if (history.error) throw new Error(`scoring_config_history: ${history.error.message}`);
+  if (settings.error) throw new Error(`org_settings: ${settings.error.message}`);
+  if (!history.data) return null;
+  const actorId = history.data.actor_id as string;
+  const { data: actor, error } = await supabase.from("members_member_view").select("display_name").eq("id", actorId).maybeSingle();
+  if (error) throw new Error(`members_member_view: ${error.message}`);
+  return {
+    at: history.data.changed_at as string,
+    timeZone: (settings.data?.time_zone as string | undefined) ?? "Asia/Riyadh",
+    actor: { id: actorId, displayName: (actor?.display_name as string | null | undefined) ?? null },
+  };
+}
+
+/**
+ * The faces of the members on SCR-054's held certificates (`DEC-099`): each member's same-origin avatar href through
+ * the one resolver, or null — never Google's source. `listHeldAchievements()` (designer's) returns the member, not the
+ * copy's version, so it is read here, admin-only, for exactly those members.
+ */
+export async function listAvatarHrefs(locale: string, memberIds: readonly string[]): Promise<Record<string, string | null>> {
+  const client = await assertAdmin(locale);
+  if (!client || memberIds.length === 0) return {};
+  const { data, error } = await client.supabase.from("members").select("id, avatar_version").in("id", [...new Set(memberIds)]);
+  if (error) throw new Error(`members: ${error.message}`);
+  return Object.fromEntries((data ?? []).map((m) => [m.id as string, avatarHref({ id: m.id as string, avatarVersion: m.avatar_version as number | string | null }, 96)]));
 }

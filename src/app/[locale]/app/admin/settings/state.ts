@@ -1,45 +1,17 @@
+import type { SaveReceipt } from "@/lib/dal/admin-settings";
 import { emptyFormState, type FormState } from "@/lib/form-state";
 
-// A "use server" module may export async functions and nothing else.
+// A "use server" module may export async functions and nothing else, so the state lives here.
 //
-// ★ Replaces the old `SettingsState = { error: string | null; saved: boolean }`
-// — moved onto `lib/form-state`'s shared model for wave 7 (`DEC-137`), same
-// as every other rebuilt admin form since wave 6. `saved` is no longer part
-// of this state: it travels as `?saved=1` after a successful save
-// (`admin/scoring`/`admin/emails`'s own established convention), which is
-// also what lets the confirmation survive the fresh `FormState` a
-// successful `redirect()` never returns through anyway.
+// `receipt` is the server's answer to a save (`DEC-232` §3.2) — what `save_org_settings()` wrote, read from the records
+// its transaction wrote. «حُفظ» and «لم يتغيّر شيء» come from it and nothing else; the old `?saved=1` flag is gone
+// (D-N5: typed into the URL, it said «saved» with no save).
+//
+// An error's value is a key under `settings.admin.errors`, optionally followed by `|` and JSON values for it —
+// «range|{"min":1,"max":50}» — because a Server Action cannot render a message (`lib/form-state.ts`).
 
-export const SETTINGS_FIELDS = [
-  "timeZone",
-  "checkInRotationSeconds",
-  "checkInGraceSeconds",
-  "maxCoPresenters",
-  "companyMetric",
-  "priorityRsvpHours",
-  "limitDocumentMb",
-  "limitAudioMb",
-  "limitImageMb",
-  "limitPosterMb",
-  "allowJpegExport",
-  "emailFromName",
-  "emailReplyTo",
-  "ratingMinAggregate",
-] as const;
-export type SettingsField = (typeof SETTINGS_FIELDS)[number];
-export const SETTINGS_REQUIRED_FIELDS: readonly SettingsField[] = [
-  "timeZone",
-  "checkInRotationSeconds",
-  "checkInGraceSeconds",
-  "maxCoPresenters",
-  "companyMetric",
-  "priorityRsvpHours",
-  "limitDocumentMb",
-  "limitAudioMb",
-  "limitImageMb",
-  "limitPosterMb",
-  "ratingMinAggregate",
-];
+export type SettingsState = FormState<string> & { receipt: SaveReceipt | null };
+export const emptySettingsState: SettingsState = { ...emptyFormState<string>(), receipt: null };
 
-export type SettingsState = FormState<SettingsField>;
-export const emptySettingsState: SettingsState = emptyFormState<SettingsField>();
+/** The control's id for each posted field — the error summary's link focuses it. */
+export const controlId = (field: string) => `setting-${field}`;

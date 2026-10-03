@@ -76,7 +76,7 @@
       }
     },
     "admin": {
-      "title": "إعدادات النقاط",
+      "title": "النقاط",
       "intro": "عدّل القيم متى شئت — أي تغيير يسري على ما يُكتسب لاحقًا فقط، ولا يُعاد كتابة رصيد أحد بأثر رجعي.",
       "catalogue": {
         "heading": "كتالوج النقاط",
@@ -261,6 +261,75 @@
         "unknownActor": "عضو غير معروف",
         "empty": "لا تعديلات بعد.",
         "emptyAction": "إلى كتالوج النقاط"
+      },
+      "read": {
+        "edit": "عدّل",
+        "save": "احفظ",
+        "saving": "جارٍ الحفظ…",
+        "cancel": "إلغاء",
+        "close": "إغلاق",
+        "saved": "حُفظ",
+        "unchanged": "لم يتغيّر شيء",
+        "savedMark": "✓✓ حُفظ · <bdi>{time}</bdi>",
+        "savedMarkBy": "✓✓ حُفظ · <bdi>{time}</bdi> · <bdi>{actor}</bdi>",
+        "unsaved": "{count, plural, zero {<bdi>{value}</bdi> تغيير غير محفوظ} one {تغيير واحد غير محفوظ} two {تغييران غير محفوظين} few {<bdi>{value}</bdi> تغييرات غير محفوظة} many {<bdi>{value}</bdi> تغييرًا غير محفوظ} other {<bdi>{value}</bdi> تغيير غير محفوظ}}",
+        "changed": "(معدّل)",
+        "on": "مفعّل",
+        "off": "متوقف",
+        "none": "—",
+        "colEnabled": "مفعّل",
+        "leave": {
+          "title": "تغادر دون حفظ؟",
+          "confirm": "غادر",
+          "stay": "ابقَ"
+        },
+        "editing": "تعديل النقاط",
+        "actions": "حفظ النقاط",
+        "colAction": "الفعل",
+        "colValue": "القيمة",
+        "colCap": "الحد",
+        "colCooldown": "التبريد",
+        "penalties": "سلبية",
+        "companies": "الشركات",
+        "company": {
+          "hosting": "استضافة <bdi>{value}</bdi>",
+          "attendance": "حضور <bdi>{per}</bdi> لكل نقطة مئوية بحد <bdi>{cap}</bdi>",
+          "presenting": "تقديم <bdi>{per}</bdi> لكل نقطة مئوية بحد <bdi>{cap}</bdi>"
+        },
+        "valueOf": "القيمة — <bdi>{name}</bdi>",
+        "costOf": "الخصم — <bdi>{name}</bdi>",
+        "capOf": "الحد — <bdi>{name}</bdi>",
+        "cooldownOf": "التبريد — <bdi>{name}</bdi>",
+        "reasonOf": "ما يقرؤه العضو — <bdi>{name}</bdi>",
+        "perPercentOf": "لكل نقطة مئوية — <bdi>{name}</bdi>",
+        "minActiveOf": "أقل عدد أعضاء نشطين — <bdi>{name}</bdi>",
+        "errorSummaryTitle": "لم تُحفظ النقاط",
+        "errors": {
+          "pointsRequired": "اكتب القيمة.",
+          "pointsRange": "من صفر إلى ألف.",
+          "signMismatch": "هذه القاعدة لا تقبل هذه الإشارة.",
+          "capInvalid": "من واحد إلى ألف، أو فارغ.",
+          "cooldownInvalid": "عدد صحيح، أو فارغ.",
+          "cooldownRange": "سنة على الأكثر.",
+          "reasonRequired": "اكتب ما يقرؤه العضو.",
+          "reasonTooLong": "مئتا حرف على الأكثر.",
+          "companyPointsInvalid": "من صفر إلى عشرة آلاف.",
+          "perPercentRequired": "اكتب القيمة.",
+          "perPercentInvalid": "من صفر إلى مئة.",
+          "capPointsRequired": "اكتب الحد.",
+          "capPointsInvalid": "من واحد إلى عشرة آلاف.",
+          "minActiveRequired": "اكتب العدد.",
+          "minActiveInvalid": "من واحد إلى ألف.",
+          "stale": "حفظ غيرك هذه القيم بعد أن فتحتها. حدّث الصفحة.",
+          "notFound": "لم تعد إحدى القواعد موجودة. حدّث الصفحة.",
+          "failed": "تعذّر الحفظ. حاول مرة أخرى."
+        },
+        "when": {
+          "today": "اليوم · <bdi>{time}</bdi>",
+          "yesterday": "أمس · <bdi>{time}</bdi>",
+          "days": "{count, plural, zero {منذ <bdi>{value}</bdi> يوم · <bdi>{time}</bdi>} one {منذ يوم · <bdi>{time}</bdi>} two {منذ يومين · <bdi>{time}</bdi>} few {منذ <bdi>{value}</bdi> أيام · <bdi>{time}</bdi>} many {منذ <bdi>{value}</bdi> يومًا · <bdi>{time}</bdi>} other {منذ <bdi>{value}</bdi> يوم · <bdi>{time}</bdi>}}",
+          "date": "<bdi>{date}</bdi> · <bdi>{time}</bdi>"
+        }
       }
     },
     "week": {

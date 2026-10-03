@@ -119,35 +119,39 @@ test("a moderator gets the streamed not-found page on the settings screen (DEC-1
   await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
 });
 
+// ★ Wave 22 (ledger): SCR-063 was rebuilt from `AdminSettings.dc.html` (DEC-232 §5.1) — read by default, edited through
+// «عدّل», the confirmation the server's receipt («حُفظ»), not `?saved=1`. Selectors moved; the database read-backs and
+// the history's old and new value did not, and the history now proves ONE row was written.
 test("REQ-TEN-008: an admin changes the time zone, it persists, and the history records the old and new value", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/settings");
-  await expect(page.getByRole("heading", { name: "إعدادات المؤسسة", level: 1 })).toBeVisible();
+  const main = page.locator("#main");
+  await expect(main.getByRole("heading", { name: "الإعدادات", level: 1 })).toBeVisible();
 
   // REQ-INT-006, DEC-124: numerals are Western everywhere and there is no
   // setting — the control that used to be tested here must not exist.
   await expect(page.getByLabel("نظام الترقيم")).toHaveCount(0);
-  await page.getByLabel("المنطقة الزمنية").fill("Asia/Dubai");
-  await page.getByRole("button", { name: "احفظ الإعدادات" }).click();
-  // ★ Wave 7: the save now travels through a `redirect(...?saved=1)`
-  // (`admin/scoring`/`admin/emails`'s own established convention) rather
-  // than returning `{saved: true}` in place — `SavedToast` fires a real
-  // `ui/toast` (`role="status"`) on mount, then strips the query param.
-  await expect(page.getByRole("status")).toContainText("حُفظت الإعدادات.");
+  await main.getByRole("link", { name: "عدّل" }).click();
+  await expect(page.getByLabel("نظام الترقيم")).toHaveCount(0);
+  await main.getByRole("combobox", { name: "المنطقة الزمنية" }).selectOption("Asia/Dubai");
+  await main.getByRole("button", { name: /^احفظ/ }).click();
+  await expect(page.getByRole("region", { name: /إشعار/ }).getByText("حُفظ", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/ar\/app\/admin\/settings$/);
 
   const { rows } = await db.query<{ time_zone: string }>(`select time_zone from public.org_settings where org_id = $1`, [orgId]);
   expect(rows[0].time_zone).toBe("Asia/Dubai");
 
   const history = await db.query<{ old_value: string; new_value: string }>(
-    `select old_value, new_value from public.scoring_config_history where org_id = $1 and scope = 'org_settings' and field = 'time_zone'`,
+    `select old_value, new_value from public.scoring_config_history where org_id = $1 and scope = 'org_settings'`,
     [orgId],
   );
   expect(history.rows).toEqual([{ old_value: "Asia/Riyadh", new_value: "Asia/Dubai" }]);
 
-  // Reload: the field shows the persisted value, not the old default.
+  // Reload: the read value is the persisted one, and so is the edit field.
   await page.reload();
-  await expect(page.getByLabel("المنطقة الزمنية")).toHaveValue("Asia/Dubai");
+  await expect(main).toContainText("Asia/Dubai");
+  await main.getByRole("link", { name: "عدّل" }).click();
+  await expect(main.getByRole("combobox", { name: "المنطقة الزمنية" })).toHaveValue("Asia/Dubai");
 });
 
 test("SCR-063 at 390 px RTL: the settings form reads down the page, never sideways", async ({ context, page }) => {
@@ -156,7 +160,8 @@ test("SCR-063 at 390 px RTL: the settings form reads down the page, never sidewa
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/settings");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  const overflow = await page.evaluate(() => {    // First question: does the page itself scroll sideways? (One number; on the
+  const overflow = await page.evaluate(() => {
+    // First question: does the page itself scroll sideways? (One number; on the
     // phone project innerWidth already includes no classic scrollbar.)
     if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
     // Second: which element is responsible. An element inside an
