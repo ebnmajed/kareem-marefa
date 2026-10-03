@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { ROW_LAYOUTS, type BlockType, type DroppedBlock, type EmailBlock, type RowLayout } from "@kareem/mail-runtime";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
@@ -68,6 +68,20 @@ import {
 
 type RailKey = "add" | "styles" | "layouts" | "checks" | "block";
 
+// ★ ONE LAYOUT IN THE DOM, NOT TWO. The phone's notice-and-checks and the desktop's rail-and-canvas used to be both
+// rendered and one hidden by CSS, so a check was listed twice in the document (once behind `lg:hidden`) and every
+// query for it found two. On the server the width is unknown and both are rendered, CSS choosing; in the browser only
+// the one the width calls for. `lg` is 64rem, Tailwind's.
+const WIDE = "(min-width: 64rem)";
+function subscribeWide(onChange: () => void) {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  const query = window.matchMedia(WIDE);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+const wideNow = () => (typeof window.matchMedia === "function" ? window.matchMedia(WIDE).matches : null);
+const useWide = () => useSyncExternalStore(subscribeWide, wideNow, () => null);
+
 /** The drawn order of the library — نقاطك is drawn and not built (DEC-238 §4). */
 const LIBRARY: readonly BlockType[] = ["paragraph", "image", "button", "divider", "spacer", "session_card", "poster", "qr", "logo", "certificate", "social"];
 const LAYOUTS = Object.keys(ROW_LAYOUTS) as RowLayout[];
@@ -114,6 +128,7 @@ export function EmailBuilder(props: EmailBuilderProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [restoring, setRestoring] = useState<"ask" | "busy" | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const wide = useWide();
 
   const json = useMemo(() => documentJsonOf(doc), [doc]);
   const blocks = useMemo(() => blockList(doc), [doc]);
@@ -279,7 +294,7 @@ export function EmailBuilder(props: EmailBuilderProps) {
   const state_ = unsaved ? t("unsaved") : stored.savedAt ? t.rich("savedAt", { time: formatDateTime(stored.savedAt, props.timeZone, props.locale), bdi: (c) => <bdi>{c}</bdi> }) : t("platform");
 
   const bar = (
-    <header className="flex min-h-13 flex-wrap items-center gap-2.5 border-b border-edge px-4 py-2">
+    <header className="flex min-h-13 shrink-0 flex-wrap items-center gap-2.5 border-b border-edge px-4 py-2">
       <IconButton size="sm" variant="secondary" label={t("back")} onClick={() => (unsaved ? setLeaving(true) : router.push("/app/admin/emails"))}>
         <ChevronIcon direction="back" />
       </IconButton>
@@ -340,81 +355,86 @@ export function EmailBuilder(props: EmailBuilderProps) {
 
   return (
     // The studio frame is a fixed viewport (`h-dvh overflow-hidden`), so the builder scrolls ITSELF below `lg`: the bar
-    // wraps on a phone, and the notice and the checks under it must still be reachable.
-    <div className="flex h-dvh flex-col overflow-y-auto bg-canvas lg:overflow-hidden">
+    // wraps on a phone, and the notice and the checks under it must still be reachable. In normal flow there, never a
+    // fixed-height flex column — that shrank the wrapped bar and let the notice paint over its buttons.
+    <div className="h-dvh overflow-y-auto bg-canvas lg:flex lg:flex-col lg:overflow-hidden">
       {bar}
 
       {/* ── Below `lg`: the canvas is a desktop tool; the checks and the preview stay reachable ── */}
-      <div className="flex flex-col gap-4 p-4 lg:hidden">
-        <Panel tone="info">
-          <p className="text-body-sm text-fg-body">{t("phoneNotice")}</p>
-        </Panel>
-        {subjectRow}
-        <ChecksPanel checks={checks} onSelectBlock={() => undefined} />
-      </div>
-
-      <div className="hidden min-h-0 flex-1 lg:flex">
-        <EditorRail
-          label={t("railLabel")}
-          items={railItems}
-          selected={rail}
-          onSelect={(key) => setRail(key as RailKey)}
-          {...(panelTitle ? { panelTitle } : {})}
-          {...(rail === "block"
-            ? {
-                panelAction: (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => select(null)}>
-                    {t("block.close")}
-                  </Button>
-                ),
-              }
-            : {})}
-        >
-          {panel}
-        </EditorRail>
-
-        <section aria-label={t("canvas.label")} className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {wide !== true ? (
+        <div className="flex flex-col gap-4 p-4 lg:hidden">
+          <Panel tone="info">
+            <p className="text-body-sm text-fg-body">{t("phoneNotice")}</p>
+          </Panel>
           {subjectRow}
-          <EmailCanvas
-            messageKey={messageKey}
-            subject={subject}
-            documentJson={json}
-            doc={doc}
-            tokens={tokens}
-            width={device}
-            selectedId={selectedId}
-            onSelect={select}
-            typeLabel={typeLabel}
-            actions={{
-              moveUp: (id) => apply(moveStep(doc, id, "up")),
-              moveDown: (id) => apply(moveStep(doc, id, "down")),
-              move: (id) => setArmed({ key: `move:${id}`, armed: { kind: "move", id } }),
-              duplicate: (id) => {
-                const result = duplicate(doc, id);
-                apply(result.doc, result.select);
-              },
-              remove: (id) => apply(remove(doc, id), selectedId === id ? null : selectedId),
-            }}
-            slots={armed ? { inCells, dragging, onPlace: placeAt, onCancel: disarm } : null}
-            onRowDragStart={(id) => {
-              setArmed({ key: `move:${id}`, armed: { kind: "move", id } });
-              setDragging(true);
-            }}
-            onDropAt={placeAt}
-            onEditText={(id, text) => {
-              const block = doc.blocks[id];
-              if (block && (block.type === "heading" || block.type === "paragraph")) apply(updateBlock(doc, id, { ...block, text }));
-            }}
-            onAlign={(id, align) => {
-              const block = doc.blocks[id] as EmailBlock & { style?: { align?: string } };
-              if (!block || !("style" in block || block.type === "heading" || block.type === "paragraph")) return;
-              const style = { ...(block.style ?? {}), align: align === "start" ? undefined : align };
-              const clean = Object.fromEntries(Object.entries(style).filter(([, v]) => v !== undefined));
-              apply(updateBlock(doc, id, { ...block, style: Object.keys(clean).length ? clean : undefined } as EmailBlock));
-            }}
-          />
-        </section>
-      </div>
+          <ChecksPanel checks={checks} onSelectBlock={() => undefined} />
+        </div>
+      ) : null}
+
+      {wide !== false ? (
+        <div className="hidden min-h-0 flex-1 lg:flex">
+          <EditorRail
+            label={t("railLabel")}
+            items={railItems}
+            selected={rail}
+            onSelect={(key) => setRail(key as RailKey)}
+            {...(panelTitle ? { panelTitle } : {})}
+            {...(rail === "block"
+              ? {
+                  panelAction: (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => select(null)}>
+                      {t("block.close")}
+                    </Button>
+                  ),
+                }
+              : {})}
+          >
+            {panel}
+          </EditorRail>
+
+          <section aria-label={t("canvas.label")} className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {subjectRow}
+            <EmailCanvas
+              messageKey={messageKey}
+              subject={subject}
+              documentJson={json}
+              doc={doc}
+              tokens={tokens}
+              width={device}
+              selectedId={selectedId}
+              onSelect={select}
+              typeLabel={typeLabel}
+              actions={{
+                moveUp: (id) => apply(moveStep(doc, id, "up")),
+                moveDown: (id) => apply(moveStep(doc, id, "down")),
+                move: (id) => setArmed({ key: `move:${id}`, armed: { kind: "move", id } }),
+                duplicate: (id) => {
+                  const result = duplicate(doc, id);
+                  apply(result.doc, result.select);
+                },
+                remove: (id) => apply(remove(doc, id), selectedId === id ? null : selectedId),
+              }}
+              slots={armed ? { inCells, dragging, onPlace: placeAt, onCancel: disarm } : null}
+              onRowDragStart={(id) => {
+                setArmed({ key: `move:${id}`, armed: { kind: "move", id } });
+                setDragging(true);
+              }}
+              onDropAt={placeAt}
+              onEditText={(id, text) => {
+                const block = doc.blocks[id];
+                if (block && (block.type === "heading" || block.type === "paragraph")) apply(updateBlock(doc, id, { ...block, text }));
+              }}
+              onAlign={(id, align) => {
+                const block = doc.blocks[id] as EmailBlock & { style?: { align?: string } };
+                if (!block || !("style" in block || block.type === "heading" || block.type === "paragraph")) return;
+                const style = { ...(block.style ?? {}), align: align === "start" ? undefined : align };
+                const clean = Object.fromEntries(Object.entries(style).filter(([, v]) => v !== undefined));
+                apply(updateBlock(doc, id, { ...block, style: Object.keys(clean).length ? clean : undefined } as EmailBlock));
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
 
       <PreviewSheet
         open={previewOpen}

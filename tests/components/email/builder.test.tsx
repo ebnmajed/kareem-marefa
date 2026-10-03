@@ -133,6 +133,31 @@ describe("EmailBuilder", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/^محفوظ · /));
   });
 
+  it("★ one layout in the document: at a desktop width the phone's checks are not rendered, so a finding is listed once", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia;
+    try {
+      mount();
+      expect(screen.queryByText("يُحرَّر البريد على شاشة أعرض.")).toBeNull();
+      expect(screen.getAllByLabelText(/الموضوع/)).toHaveLength(1);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("and at a phone width only the phone's notice and checks, with «معاينة واختبار» still in the bar", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia;
+    try {
+      mount();
+      expect(screen.getByText("يُحرَّر البريد على شاشة أعرض.")).toBeInTheDocument();
+      expect(screen.queryByRole("tablist", { name: "أدوات المحرّر" })).toBeNull();
+      expect(screen.getByRole("button", { name: "معاينة واختبار" })).toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it("names the real session the preview uses", () => {
     mount();
     openPreview();
