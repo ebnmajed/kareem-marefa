@@ -22,7 +22,7 @@ function mount(action = vi.fn(async () => ({ saved: true }) as never)) {
   const sendTest = vi.fn(async () => ({ status: "queued" }));
   render(
     <NextIntlClientProvider locale="ar" messages={messages}>
-      <ToastProvider>
+      <ToastProvider closeLabel="إغلاق">
         <BlockEditor
           messageKey="MSG-session_reminder"
           initialSubject="تذكير بالجلسة"
