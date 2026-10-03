@@ -157,6 +157,20 @@ describe("ui/block-canvas", () => {
     expect(onDropAt.mock.calls[0]![0]).toEqual({ index: 1 });
   });
 
+  it("★ a row of columns is selected by its own visible tab on its top edge — its blocks may cover every point of it", () => {
+    const { container, handlers } = mount();
+    const tab = screen.getByRole("button", { name: "تخطيط 1/2" });
+    // A labelled tab, not an invisible cover the row's blocks would sit on.
+    expect(tab.textContent).toBe("تخطيط 1/2");
+    expect(tab.className).toContain("-top-3");
+    expect(tab.className).toContain("z-10");
+    fireEvent.click(tab);
+    expect(handlers.onSelect).toHaveBeenLastCalledWith("row");
+    // A one-column row keeps its whole-row cover.
+    const single = container.querySelector('[data-canvas-target="row"] > button[aria-label="زر: افتح الجلسة"]')!;
+    expect(single.className).toContain("inset-0");
+  });
+
   it("the fixed footer is labelled and never a control", () => {
     const { container } = mount();
     const fixed = container.querySelector("[data-canvas-fixed]")!;

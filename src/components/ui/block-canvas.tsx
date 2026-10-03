@@ -43,7 +43,7 @@ export function BlockCanvas({
 }: BlockCanvasProps) {
   const base = useId();
 
-  function target(item: BlockCanvasTarget, index: number, count: number, kind: "row" | "block") {
+  function target(item: BlockCanvasTarget, index: number, count: number, kind: "row" | "block", columns = false) {
     const selected = selectedId === item.id;
     const nameId = `${base}-${item.id}`;
     return (
@@ -54,13 +54,30 @@ export function BlockCanvas({
         style={at(item.box)}
         className={`group pointer-events-none absolute ${selected ? "outline outline-2 -outline-offset-2 outline-accent" : ""}`}
       >
-        <button
-          type="button"
-          aria-pressed={selected}
-          aria-label={item.label}
-          onClick={() => onSelect(selected ? null : item.id)}
-          className="pointer-events-auto absolute inset-0 cursor-pointer hover:outline hover:outline-1 hover:-outline-offset-1 hover:outline-edge-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-        />
+        {columns ? (
+          // ★ A ROW OF COLUMNS IS SELECTED BY ITS OWN TAB. Its blocks are targets laid over it and can cover every
+          // point of it — a 1/2 row whose button fills a column left no point of the row to tap, so the row could not
+          // be selected, moved or deleted with one pointer (DEC-093). The tab sits on the row's top edge, above the
+          // blocks, always shown, and is the row's one select control.
+          <button
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onSelect(selected ? null : item.id)}
+            className={`pointer-events-auto absolute -top-3 start-2 z-10 min-h-6 rounded-field border px-2 text-caption font-bold text-fg-heading ${
+              selected ? "border-accent bg-raised" : "border-edge bg-raised hover:bg-hover"
+            }`}
+          >
+            <bdi>{item.label}</bdi>
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-pressed={selected}
+            aria-label={item.label}
+            onClick={() => onSelect(selected ? null : item.id)}
+            className="pointer-events-auto absolute inset-0 cursor-pointer hover:outline hover:outline-1 hover:-outline-offset-1 hover:outline-edge-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          />
+        )}
         <span id={nameId} hidden>
           {item.label}
         </span>
@@ -158,7 +175,7 @@ export function BlockCanvas({
     >
       {children}
       <div className="pointer-events-none absolute inset-0">
-        {rows.map((row, index) => target(row, index, rows.length, "row"))}
+        {rows.map((row, index) => target(row, index, rows.length, "row", Boolean(row.cells?.length)))}
         {rows.flatMap((row) =>
           (row.cells ?? []).flatMap((cell) => cell.blocks.map((block, index) => target(block, index, cell.blocks.length, "block"))),
         )}

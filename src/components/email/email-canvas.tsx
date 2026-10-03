@@ -195,7 +195,9 @@ export function EmailCanvas(props: EmailCanvasProps) {
               <input type="hidden" name="blocks" value={documentJson} readOnly />
               <input type="hidden" name="mode" value="html" readOnly />
               <input type="hidden" name="editor" value="1" readOnly />
-              <input type="hidden" name="tokens" value={JSON.stringify(Object.fromEntries([...tokens].map(([binding, token]) => [binding, token.slice(1, -1)])))} readOnly />
+              {/* Each binding as the token the board draws — «{المكان}», braces and all; the renderer isolates it
+                  (FSI … PDI) with the braces inside the isolate, as it isolates every bound value. */}
+              <input type="hidden" name="tokens" value={JSON.stringify(Object.fromEntries(tokens))} readOnly />
             </form>
           ) : null}
           {hydrated ? (

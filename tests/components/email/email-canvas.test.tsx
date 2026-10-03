@@ -28,7 +28,7 @@ function canvas() {
         subject="s"
         documentJson={JSON.stringify(DOC)}
         doc={doc}
-        tokens={new Map()}
+        tokens={new Map([["venue", "{المكان}"]])}
         width={600}
         selectedId={null}
         onSelect={vi.fn()}
@@ -56,6 +56,11 @@ describe("EmailCanvas", () => {
     const frame = container.querySelector("iframe")!;
     expect(frame.name).toMatch(/^mail-canvas-/);
     expect(container.querySelector("form")!.getAttribute("target")).toBe(frame.name);
+  });
+
+  it("★ posts each token as the board draws it — «{المكان}», braces and all", () => {
+    const { container } = render(canvas());
+    expect(JSON.parse((container.querySelector('input[name="tokens"]') as HTMLInputElement).value)).toEqual({ venue: "{المكان}" });
   });
 
   it("draws a target for every row the frame carries a data-k for, once the frame loads", async () => {
