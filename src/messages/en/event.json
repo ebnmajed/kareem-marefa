@@ -29,7 +29,15 @@
         "remove": "Remove",
         "removing": "Removing…",
         "restore": "Restore",
-        "restoring": "Restoring…"
+        "restoring": "Restoring…",
+        "dialogTitle": "Remove <bdi>{name}</bdi>’s comment?",
+        "dialogBody": "It disappears for everyone, and every report on it closes.",
+        "reasonLabel": "Reason — recorded in the audit log",
+        "confirm": "Remove",
+        "cancel": "Cancel",
+        "removed": "Comment removed.",
+        "reasonRequired": "Write the reason first.",
+        "close": "Close"
       },
       "reactions": {
         "like": "Like",

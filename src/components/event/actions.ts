@@ -1,6 +1,6 @@
 "use server";
 
-import { createComment, createCommentInput, deleteOwnComment, moderateComment, searchMentionCandidates, updateComment, updateCommentInput } from "@/lib/dal/comments";
+import { createComment, createCommentInput, deleteOwnComment, moderateComment, removeCommentAsStaff, searchMentionCandidates, updateComment, updateCommentInput, type RemoveCommentOutcome } from "@/lib/dal/comments";
 import { toggleReaction } from "@/lib/dal/reactions";
 import { reportComment, reportCommentInput } from "@/lib/dal/reports";
 
@@ -83,6 +83,16 @@ export async function moderateCommentAction(locale: string, commentId: string, a
     return { error: null };
   } catch (e) {
     return { error: toErrorKey(e) };
+  }
+}
+
+/** REQ-EVT-014, wave 22 (F6) — staff remove a comment with its reason; every open report on it closes in the same
+ *  transaction (`remove_comment()`). The answer is what the database did. */
+export async function removeCommentAction(locale: string, commentId: string, reason: string): Promise<{ outcome: RemoveCommentOutcome }> {
+  try {
+    return { outcome: await removeCommentAsStaff(locale, { commentId, reason }) };
+  } catch {
+    return { outcome: "unknown" };
   }
 }
 
