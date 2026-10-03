@@ -7731,3 +7731,26 @@ PR A builds now in the main checkout: `console`'s cells first, then its six scre
 hosting rule. ★ **`0180` and the audit migration must be applied to the local stack before `scoring`'s and the
 triggers' tests can run** — that apply waits on the owner's permission (`STATUS.md`). B and C are cut from A's head once
 the cells land; `scoring`'s and `notify`'s PR B work and `content`'s and `event`'s PR C work wait for their worktree.
+
+## DEC-233 — Wave 22's PR D: four carried gaps fixed after A – C merged, at the owner's request; `0189`, `0190`, and a `railway.json`
+
+- **Date:** 2026-10-03 · **Decided by:** the owner («Can you fix these…»; «merge first, then fix» on the lead's recommendation)
+- **Adds:** `0189_materials_added_notify`, `0190_photo_reports_and_comment_removal`, `railway.json` · **Does not add:** a requirement, a primitive or a screen — each item fulfils a requirement that already existed
+
+The wave's close carried four gaps to the owner; none was caused by wave 22. The owner asked for them fixed, and ruled
+they ship **after** A – C merged, in their own PR, so the three accepted PRs did not need re-verification.
+
+1. ★ **Members report a photo** (`REQ-EVT-008`, half built since M2 — `content`'s F1): «إبلاغ» in the lightbox;
+   `report_photo()` refuses a hidden or removed photo, one's own, and a second report by the same member; the guard
+   trigger the lead attached applies the same rules to a direct insert under `reports_insert_self`. The report lands on
+   `051`'s «بلاغات الصور»; the photo stays visible.
+2. ★ **Staff removing a comment on the event page record a reason and close its reports** (`REQ-EVT-014` — `content`'s
+   F6): `remove_comment()`, staff only, one transaction; the audit rows from `0059` and `0181`.
+3. ★ **`MSG-materials_added` is sent** (`08` §1 — `notify`'s D-N1), specified since M5 and never sent: when a material
+   first becomes openable on a completed session, to its distinct checked-in members through `notify()`; one per session
+   per org-local day — a second batch the same day is not announced, the accepted cost.
+4. ★ **`railway.json`** pins the worker's builder (`DOCKERFILE`, `worker/Dockerfile`) and watch patterns that are exactly
+   what the image copies, so a reconnect can no longer reset it to Railpack (the wave-19 trap).
+
+Verified on a production build of D: the follow-ups spec 3/3 and the moderation specs 29/29; the RLS cases for both
+migrations green; the captures held. The owner pushes `0189` – `0190` after rehearsal, then merges D.
