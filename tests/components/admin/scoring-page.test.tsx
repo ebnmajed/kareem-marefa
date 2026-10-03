@@ -166,6 +166,8 @@ describe("ScoringAdminPage — read mode", () => {
   });
 
   it("the manual adjustment, in its sheet: confirmed by name and amount, then posted with its reason", async () => {
+    // What the Server Action answers on a write — a SavedFormState, never undefined.
+    actions.saveManualAdjustment.mockResolvedValueOnce({ errors: {}, formError: null, values: {}, lists: {}, attempt: 0, saved: true });
     await renderPage({ adjust: "1" });
     const sheet = await screen.findByRole("dialog", { name: "تعديل يدوي" });
     fireEvent.change(within(sheet).getByRole("combobox", { name: "العضو مطلوب" }), { target: { value: "سارة" } });
@@ -180,6 +182,9 @@ describe("ScoringAdminPage — read mode", () => {
     await waitFor(() => expect(actions.saveManualAdjustment).toHaveBeenCalledTimes(1));
     const posted: FormData = actions.saveManualAdjustment.mock.calls[0][2];
     expect([posted.get("memberId"), posted.get("direction"), posted.get("amount"), posted.get("reason")]).toEqual(["m1", "deduct", "50", "تصحيح خطأ"]);
+    // Written: the toast says so and the sheet closes back to the catalogue.
+    expect(await screen.findByText("نُفِّذ التعديل", { exact: true })).toBeInTheDocument();
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/app/admin/scoring"));
   });
 
   it("has no axe violations in read mode", async () => {
