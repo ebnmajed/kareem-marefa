@@ -84,6 +84,7 @@
       "hidden": "Hidden",
       "show": "Show",
       "hide": "Hide",
+      "handle": "Drag to reorder — or use forward and back",
       "kind": {
         "text": "Text",
         "image": "Image",
@@ -199,7 +200,8 @@
       "ppiBlock": "The image on layer <bdi>{layer}</bdi> resolves to <bdi>{ppi}</bdi> PPI on <bdi>{preset}</bdi>, below the print minimum. Export for that size is blocked until a higher-resolution image is uploaded.",
       "ppiHint": "Logos are raster, not vector — we do not accept SVG, because an XML file opened inside a privileged browser is a risk that buys nothing. Supply a high-resolution logo, or the guard blocks the large print sizes.",
       "badge": "{count, plural, zero {No open checks} one {One check} two {Two checks} few {{value} checks} many {{value} checks} other {{value} checks}}",
-      "goToLayer": "Go to layer"
+      "goToLayer": "Go to layer",
+      "longest": "The organisation's longest “<bdi>{field}</bdi>” does not fit layer <bdi>{layer}</bdi> at <bdi>{preset}</bdi>."
     },
     "exports": {
       "heading": "Export queue",
@@ -426,6 +428,91 @@
         "unreadable": "The image could not be read. Try another file.",
         "not_authorized": "Adding images is an org admin's act.",
         "unknown": "The image could not be uploaded. Try again."
+      }
+    },
+    "studio": {
+      "rail": {
+        "elements": "Elements",
+        "fields": "Fields",
+        "uploads": "Uploads",
+        "brand": "Brand",
+        "layers": "Layers",
+        "checks": "Checks",
+        "layer": "Layer",
+        "checksCount": "{count, plural, zero {No findings} one {One finding} two {Two findings} few {{value} findings} many {{value} findings} other {{value} findings}}"
+      },
+      "elements": {
+        "basic": "Basic",
+        "heading": "Heading",
+        "text": "Text",
+        "rect": "Rectangle",
+        "circle": "Circle",
+        "line": "Line",
+        "qr": "QR code",
+        "logo": "Company logo",
+        "styles": "Text styles",
+        "styleTitle": "Poster title",
+        "styleSubtitle": "Subtitle",
+        "styleBody": "Body",
+        "styleLabel": "Small label"
+      },
+      "fields": {
+        "used": "Used",
+        "unused": "Unused",
+        "values": "Values in the preview"
+      },
+      "uploads": {
+        "empty": "No uploaded images yet.",
+        "imageOf": "Image <bdi>{width}</bdi> × <bdi>{height}</bdi>"
+      },
+      "brand": {
+        "colours": "Colours",
+        "fonts": "Fonts",
+        "logo": "Logo",
+        "apply": "Apply “<bdi>{name}</bdi>” to the layer"
+      },
+      "layer": {
+        "close": "Close",
+        "text": "Text",
+        "position": "Position",
+        "effects": "Effects",
+        "image": "Image",
+        "shape": "Shape",
+        "qr": "Code",
+        "maxLines": "Maximum lines",
+        "qrTarget": "Points to",
+        "document": "Document",
+        "alignRight": "Right",
+        "alignLeft": "Left",
+        "alignMiddle": "Centre"
+      },
+      "toolbar": {
+        "label": "Layer format",
+        "bind": "{ } Bind",
+        "fillWidth": "Fill width"
+      },
+      "bar": {
+        "zoom": "Zoom",
+        "fit": "Fit",
+        "export": "Export",
+        "exportTitle": "Export",
+        "previewSession": "Preview with a session",
+        "previewNone": "No session",
+        "publish": "Publish",
+        "published": "A new version of the template was published.",
+        "publishFailed": "Could not publish.",
+        "strip": "Sizes",
+        "previewMember": "Preview with a member"
+      },
+      "stage": {
+        "safeArea": "Safe area",
+        "grid": "Grid",
+        "snap": "Auto-align",
+        "rulers": "Rulers"
+      },
+      "siblingOrientation": {
+        "landscape": "Open the landscape version",
+        "portrait": "Open the portrait version"
       }
     }
   }

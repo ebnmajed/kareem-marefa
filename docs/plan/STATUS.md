@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-03 · **Branch:** `main` · ★★ **WAVE 23 MERGED AND LIVE (`DEC-239`)** — PR A #52 merged as **`a51c2a06`**; **`0191` pushed by the owner — production at `0191`** (`supabase migration list --linked`: local and remote equal through `0191`) · **Phase:** M12, the studio — `055`, `045`, the certificate flows and the template audit are live; ★ **PR B #53** (the studio frame and the two shared primitives) **ready** — CI success at `85c3a3cb` after its gallery demos were fixed to fit 390 px · ★ **PR #55** fixes the email studio's test-send defect (`DEC-238` §4.5): «أرسل اختبارًا» is disabled while the design has unsaved changes — CI success at `6d7d3a36` · ★ **Next: wave 24 — the designer and the email builder**, from `notes/{designer,notify}.md` · ★ **Carried:** the tie-breaker («the screen can disagree with what issuance picks»), `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, M13, stories, the `railway.json`.
+**Last updated:** 2026-10-03 · **Branch:** `main` · ★★ **WAVE 23 MERGED AND LIVE (`DEC-239`)** — PR A #52 merged as **`a51c2a06`**; **`0191` pushed by the owner — production at `0191`** (`supabase migration list --linked`: local and remote equal through `0191`) · **Phase:** M12, the studio — `055`, `045`, the certificate flows and the template audit are live; ★ **PR B #53** (the studio frame and the two shared primitives) **ready** — CI success at `85c3a3cb` after its gallery demos were fixed to fit 390 px · ★ **PR #55** fixes the email studio's test-send defect (`DEC-238` §4.5): «أرسل اختبارًا» is disabled while the design has unsaved changes — CI success at `6d7d3a36` · ★★ **`wave-23b/the-editor` (PR #56) — the designer, ALL THREE SLICES LANDED; see the wave-23 block.** It was built in three slices under wave 23's map and `designer`'s approved plan (the owner, 2026-10-03, on ~10% budget): (1) the state machine moved verbatim, (2) `ui/canvas-stage` + `ui/layer-list`, (3) the editor rebuilt — each slice lands green and pushed; a cut-off stops at the last finished slice.** ★ **The email builder (PR C) waits for a fresh budget**, from `notes/{designer,notify}.md` · ★ **Carried:** the tie-breaker («the screen can disagree with what issuance picks»), `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, M13, stories, the `railway.json`.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -64,6 +64,36 @@ nothing else moves. `rehearse23` dropped; the owner's dump left for the owner. *
 
 ★ **A live defect found and not fixed this wave** (`notify`, `DEC-238` §4.5): the email studio's «أرسل اختبارًا» mails the
 **saved** row, not the draft on screen. Wave 24's builder disables it while there are unsaved changes.
+★ **The editor, slice 1 — landed** (`6cb02598`, `wave-23b/the-editor`, PR #56): the state machine moved verbatim into
+`editor-state.ts`, the inspector's arithmetic into `inspector-ops.ts`; full unit suite 5,090 green with a new 14-case hook
+test; on a production build `wave8-designer-editor`, `wave13-designer-studio-taps` and `wave13-designer-studio-drag` green.
+★ **Slice 2 — landed** (`e254218d`, `1cec007f`): `ui/canvas-stage` (the stage around `DesignerCanvas`), `ui/layer-list` with
+`designer/layer-list.tsx` deleted in the same commit; the floor 65 → 67; 118/118 on a build (editor + gallery specs, both projects).
+★ **Slice 3a — landed** (`a665e456` groundwork, delete `a9cdc4b2` + create `8177cc6d`, fixes `a4a0ddfc`, `2b2906a5`, `0f34f2c4`):
+the studio rebuilt from `AdminDesigner` + `AdminDesignerElements` — one 52 px bar with the seven presets, the rail of seven
+with الفحوصات's count and الطبقة on selection, the inspector in three tabs with «الموضع والحجم» closed and never removed, the
+floating toolbar's five; ★ **`DEC-093`: every new drag by a tap, proven by `wave23-designer-taps` with clicks only and a unit
+guard that fails if a taps spec ever drags**. Three defects found by holding the captures beside the boards and fixed: the bar
+wrapping to two rows; the toolbar's controls squeezed to one character; the name vanishing on the phone. On a build of
+`0f34f2c4`, 18/18 editor specs and the walkthrough; the galleries green on `2b2906a5`.
+★ **Ledger (selectors only, every expectation the same):** `wave8-designer-editor` — «الخصائص» → «الطبقة»; الموضع clicked before
+align; the bar named «مصمّم المستندات»; the export request and queue through «صدّر»; the phone expects «صدّر» · `wave13-designer-studio-taps`
+— «الطبقة»; a `positionTab()` helper; «نص» from العناصر (`.first()`); the «النص» field by its textbox role · `wave13-designer-studio-drag`
+— the drag hint → the region «لوحة التصميم»; the bar named · `inspector-align.test.tsx` — الموضع opened first (two places).
+★ **Slice 3b — landed** (`a844e9cc`, fixes `b337653b`; the lead's toolbar clamp `2268ce5a`): the certificate canvas — one page
+per certificate with the sibling orientation as a link, الحقول used/unused from the runtime's field registry, {المستوى} for
+achievement only, {رمز التحقق QR} → `certificate.verifyUrl`, the longest member-name and session-title check, «معاينة بعضو» and
+«معاينة بجلسة» through the one renderer (preview bindings never in the fingerprint); no new binding (`DEC-238` §3.3); the contrast
+check not built. Three more capture defects found and fixed: the toolbar running under the panel (clamped), the field rows
+running name into status, the canvas sitting low (the root grew to its tallest column). ★ **On a build of `b337653b`: 127/127**
+(the certificate spec, the editor specs, the taps spec, the walkthrough, all four galleries, both projects). ★ **Parity holds —
+21 of 28 locally, no golden file changed** (the other 7 need `cwebp`/`poppler`; CI's «shaping parity» runs all 28). ★ **Owed:
+the worker-backed four-format comparison** — `wave23-designer-four-formats.spec.ts` (`E2E_WORKER=1`) is written; run it on
+`main` and on this head with the worker image up and diff the two SHA files.
+★ **A carried defect found on the way, not caused by it:** `wave13-designer-upload-render.spec.ts:147` cannot find the
+schedule page's poster upload (`section[aria-labelledby="poster"]` → «رفع ملصق جاهز») — the spec predates a later rebuild of
+that page, and **CI skips it** (it needs a worker), so nothing ever caught it. Slice 1 touches no file the page imports.
+
 ★ **The tie-breaker — a real defect, carried** (owner, 2026-10-03): `issue_certificate()` orders by `is_default`, then version, with no tiebreak — two org templates of one kind, neither default, on the same version, and issuance picks arbitrarily: **the screen can disagree with what issuance picks.** The cheap guard is in PR A: with no default set for a kind the screens name no template and say none is set.
 ★ **Wave 24's carries for the owner** (`DEC-238` §6): نقاطك · four certificate fields that are not bindings · the objects and
 stickers tabs · an A3 certificate · C6's place · the issuance fallback's order.

@@ -15,10 +15,11 @@
  * Pure: document in, document out, the input untouched. Whole pixels.
  */
 
-import type { DesignDocument, ImageLayer, Layer, ShapeLayer, TextLayer } from './model.js'
+import type { DesignDocument, DynamicFieldLayer, ImageLayer, Layer, QrLayer, ShapeLayer, TextLayer } from './model.js'
 import { sourceSafeBox } from './presets.js'
 
-export type NewLayerKind = 'text' | 'image' | 'logo' | 'shape'
+/** ★ wave 23, add-only: `qr` and `field` — the studio's elements and fields panels (REQ-UIX-110). */
+export type NewLayerKind = 'text' | 'image' | 'logo' | 'shape' | 'qr' | 'field'
 
 /** An id no layer of this document has, readable in the layer list's fallback. */
 export function nextLayerId(doc: DesignDocument, kind: string): string {
@@ -43,6 +44,16 @@ export interface NewLayerOptions {
   assetId?: string
   /** The editor's name for the layer. */
   name?: string
+  /* ── wave 23, add-only ── */
+  /** A shape's type — مستطيل, دائرة, خط. Default `rect`. */
+  shape?: 'rect' | 'ellipse' | 'line'
+  /** A text layer's size in px, for a heading tile; default the body size. */
+  fontSize?: number
+  /** What a `qr` or a `field` layer binds — `session.eventUrl`, `recipient.name`. The binding the RUNTIME resolves;
+   *  the editor never builds a URL (REQ-CRT-010, REQ-DSG-023). */
+  binding?: string
+  /** A field's fallback — what prints when nothing binds. */
+  fallback?: string
 }
 
 /** A new layer of `kind`, sized to the document and placed inside its safe area. */
@@ -54,7 +65,7 @@ export function newLayer(doc: DesignDocument, kind: NewLayerKind, options: NewLa
   const unit = Math.round(Math.min(box.w, box.h) / 10)
 
   if (kind === 'text') {
-    const size = Math.max(12, Math.round(unit * 0.6))
+    const size = options.fontSize ?? Math.max(12, Math.round(unit * 0.6))
     const layer: TextLayer = {
       id,
       kind: 'text',
@@ -79,7 +90,39 @@ export function newLayer(doc: DesignDocument, kind: NewLayerKind, options: NewLa
       ...name,
       z,
       frame: { x: Math.round(box.x + (box.w - w) / 2), y: Math.round(box.y + (box.h - h) / 2), w, h },
-      shape: { type: 'rect', fill: '{{brand.surface}}' },
+      shape: { type: options.shape ?? 'rect', fill: '{{brand.surface}}' },
+    }
+    if (options.shape === 'line') layer.frame = { ...layer.frame, h: Math.max(2, Math.round(unit / 20)) }
+    return layer
+  }
+
+  if (kind === 'qr') {
+    // 25 mm at 300 dpi is 295 px (REQ-CRT-010's minimum); on a screen master a fifth of the short side.
+    const side = Math.max(unit * 2, Math.round(Math.min(box.w, box.h) / 5))
+    const layer: QrLayer = {
+      id,
+      kind: 'qr',
+      ...name,
+      z,
+      frame: { x: box.x, y: Math.round(box.y + box.h - side), w: side, h: side },
+      qr: { binding: options.binding ?? 'session.eventUrl', ecLevel: 'M', quietZoneModules: 4 },
+    }
+    return layer
+  }
+
+  if (kind === 'field') {
+    const size = options.fontSize ?? Math.max(12, Math.round(unit * 0.6))
+    const layer: DynamicFieldLayer = {
+      id,
+      kind: 'dynamic_field',
+      ...name,
+      z,
+      frame: { x: box.x, y: box.y, w: Math.round(box.w * 0.6), h: Math.round(size * 1.7 * 2) },
+      field: { binding: options.binding ?? 'session.title', ...(options.fallback ? { fallback: options.fallback } : {}) },
+      font: { family: options.fontFamily ?? 'IBM Plex Sans Arabic', size, weight: 500 },
+      align: 'start',
+      color: '{{brand.fgHeading}}',
+      autoFit: { mode: 'shrink-then-wrap', maxLines: 2 },
     }
     return layer
   }

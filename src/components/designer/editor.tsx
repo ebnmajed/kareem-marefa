@@ -1,88 +1,45 @@
 "use client";
 
-import { cloneElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import type { DesignDocument, FocalPoint, Frame, Layer, PresetName, ReorderMove } from "@kareem/designer-runtime";
-import {
-  addLayer,
-  alignLayer,
-  alignLayers,
-  derive,
-  distributeLayers,
-  duplicateLayer,
-  fillSafeWidth,
-  fitLayerToSafeArea,
-  fontFaceCss,
-  newLayer,
-  type NewLayerKind,
-  nudgeLayers,
-  placeLayerCentre,
-  paintOrder,
-  PRESETS,
-  presetsForDocument,
-  removeLayer,
-  reorderLayer,
-  rotateLayer,
-  setFocal,
-  snap,
-  snapTargets,
-  snapTargetsBlock,
-  validateDocument,
-} from "@kareem/designer-runtime";
+import { useRouter } from "next/navigation";
+import { BRAND_COLOUR_TOKENS, fieldsFor, fingerprintSource, paintOrder, PRESETS, toPhysical, type DesignDocument, type FocalPoint, type Layer, type PresetName } from "@kareem/designer-runtime";
 import { DesignerCanvas } from "@/components/designer/canvas";
-import { LayerList } from "@/components/designer/layer-list";
-import { Inspector, type ArrangeOp, type GroupOp, type TransformOp } from "@/components/designer/inspector";
+import { useDesignerEditorState } from "@/components/designer/editor-state";
+import { Inspector } from "@/components/designer/inspector";
+import { bind, token } from "@/components/designer/inspector-ops";
+import { ChecksPanel, checkRowCount } from "@/components/designer/checks-panel";
+import { LayersPanel } from "@/components/designer/layers-panel";
+import { BrandPanel, ElementsPanel, FieldsPanel, UploadsPanel, type PanelAsset } from "@/components/designer/panels";
 import { BindingsPanel } from "@/components/designer/bindings-panel";
-import { ChecksPanel, useCheckFindings, type CheckFinding } from "@/components/designer/checks-panel";
-import { VariantStrip } from "@/components/designer/variant-strip";
 import { formatNumber } from "@/components/sessions/numerals";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CanvasStage } from "@/components/ui/canvas-stage";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
+import { EditorRail } from "@/components/ui/editor-rail";
+import { FloatingToolbar } from "@/components/ui/floating-toolbar";
+import { IconButton } from "@/components/ui/icon-button";
+import { AlertTriangleIcon, CheckIcon, ChevronIcon } from "@/components/ui/icons";
 import { Panel } from "@/components/ui/panel";
-import { Switch } from "@/components/ui/switch";
-import { Tabs } from "@/components/ui/tabs";
+import { Select } from "@/components/ui/select";
+import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
-import { AlertTriangleIcon, CheckIcon } from "@/components/ui/icons";
 
-// SCR-057 — the shared designer, on the M9 system. REQ-DSG-004 … REQ-DSG-006,
-// REQ-DSG-022, REQ-DSG-028, REQ-DSG-029, DEC-077, DEC-093, DEC-096, DEC-148.
+// SCR-056/057 — the studio's editor, rebuilt from `AdminDesigner.dc.html` and `AdminDesignerElements.dc.html` (wave 23,
+// REQ-UIX-107, REQ-UIX-110, DEC-199 §2, DEC-208, DEC-237, DEC-238). The chrome is new; the machine under it is
+// `editor-state.ts` (moved verbatim in slice 1) and the canvas is `canvas.tsx`'s engine on `ui/canvas-stage`.
 //
-// ONE ENGINE (D54). There is no poster branch and no certificate branch in
-// this component: a certificate document is a document whose `purpose` is
-// `certificate` and whose bindings resolve from a certificate row.
+// ONE SIDEBAR (`DEC-NEXT-36`): the bar · the 68 px rail of seven items and the 300 px panel that swaps · the canvas ·
+// no right panel · a floating toolbar on the selection. The route renders bare (the studio frame, contract 1), so
+// this owns the viewport and draws its own bar, with the document's name as the page's `h1`.
 //
-// THE ENGINE IS UNCHANGED (DEC-048, `16` §10.1). The canvas is an iframe of
-// `renderDocumentToHtml()`'s real output, bindings come from real rows, the
-// faces load by SHA-256, autosave is a Route Handler (layer trees exceed the
-// 1 MB action cap), undo is fifty document-level steps. What changed is the
-// chrome above it: a toolbar, a tabbed side panel — the inspector showing only
-// the sections the selected layer has, the layers, the data, the checks as a
-// count that selects its layer — and a strip of every variant.
+// ★ EVERY DRAG HAS A TAP (DEC-093). A tile in العناصر, الحقول or الملفات adds its layer on a tap and arms «ضع بنقرة»;
+// layers reorder by ▲▼; the canvas's drag, handles, knob and marquee keep their wave-13 taps under الطبقة's الموضع.
+// `wave23-designer-taps.spec.ts` performs every one with `click()` alone.
 //
-// ★ TWO COLUMNS, NOT `16` §10.2's THREE. The studio lives inside the admin
-// console's content column, which is about 830 px wide at every desktop size;
-// a rail, a canvas and an inspector side by side there left the canvas 160 px
-// wide (measured). So the canvas takes the start column and one tabbed panel
-// the end — properties, layers, checks — one tap apart. The dynamic fields
-// are the document's own properties, so they sit under «المستند».
-//
-// ★ DIRECT MANIPULATION, AND A TAP FOR EVERY DRAG (wave 13 — REQ-DSG-028,
-// DEC-093, DEC-178). The canvas drags, resizes, rotates, snaps, nudges and
-// marquee-selects (`canvas.tsx`); and every one of those has a single-pointer
-// path here — align, distribute, «لائم», «املأ عرضًا», ±15°, «ضع بنقرة», the
-// numbers, ▲▼, «تحديد متعدّد» — which `wave8-designer-editor.spec.ts` and
-// `wave13-designer-studio-taps.spec.ts` perform with `click()` alone. A gesture
-// is ONE undo entry, and a burst of arrow presses is one too (W13.1 R5).
-//
-// ★ ONLY THE SOURCE PRESET IS MANIPULATED. A derived preset's frames are
-// `derive()`'s, and writing one back would be a guess; there the canvas shows
-// and the focal point alone is set per preset (A32).
-//
-// MOBILE IS VIEW AND APPROVE (09, SCR-057). Below the editor breakpoint the
-// layer chrome is not reflowed but replaced: the canvas, every variant, the
-// checks, and «اطلب التصدير» in the page header — a layer editor at 390 px is
-// a bad tool pretending to be a feature.
+// MOBILE IS VIEW AND APPROVE (`09` SCR-057, D-8): below `xl` the canvas, every variant, the checks, the bindings and
+// «صدّر» — a layer editor at 390 px is a bad tool pretending to be a feature.
 
 export interface DesignerEditorProps {
   documentId: string;
@@ -99,503 +56,131 @@ export interface DesignerEditorProps {
   origin: string;
   /** Each image layer's intrinsic pixel size, for the PPI guard. */
   assetSizes: Record<string, { width: number; height: number }>;
-  /** Signed URLs of READY PNG exports of the saved source, by preset — the
-   *  variant strip shows the worker's own renders (DEC-017). */
+  /** Signed URLs of READY PNG exports of the saved source, by preset (DEC-017). */
   variantPreviews: Partial<Record<PresetName, string>>;
+  /* ── wave 23 ── */
+  /** The bar's start: the way back, the name as the `h1`, the document's badges — the page's, it knows the context. */
+  barStart?: ReactNode;
+  /** Controls the page adds to the bar's end — a certificate template's light/dark. */
+  barEnd?: ReactNode;
+  /** The «صدّر» sheet's content: the request, the queue, the thumbnails (server-rendered by the page). */
+  exportContent?: ReactNode;
+  /** Above the canvas — a live poster's detach gate, a failed download. */
+  notice?: ReactNode;
+  /** A template draft's last published version; «انشر» shows when the draft differs from it. */
+  publishedDocument?: DesignDocument | null;
+  /** Publishes the draft — `templates/actions.ts`'s `publishVersion`, bound by the page. */
+  publish?: () => Promise<{ status: string }>;
+  /** A certificate template's kind (DEC-236 §1), for the fields it may carry. */
+  family?: string | null;
+  /** «معاينة بجلسة»'s choices and the one on screen. Absent for a document bound to its own session. */
+  previewSessions?: { id: string; title: string }[];
+  previewSessionId?: string | null;
+  /** الملفات — the org's images. */
+  uploads?: PanelAsset[];
+  /** C4: binding → the org's longest value, which the checks fit at each layer's max lines. */
+  samples?: Record<string, string>;
+  /** C5: «معاينة بعضو»'s members (names only) and the one on screen — a certificate template's. */
+  previewMembers?: { id: string; name: string }[];
+  previewMemberId?: string | null;
 }
 
-type SaveState =
-  | { kind: "clean" }
-  | { kind: "saving" }
-  | { kind: "saved" }
-  | { kind: "error" }
-  | { kind: "conflict" }
-  | { kind: "forbidden" }
-  | { kind: "locked"; layerId: string }
-  | { kind: "invalid"; issue: string };
+type RailKey = "elements" | "fields" | "uploads" | "brand" | "layers" | "checks" | "layer";
+type Zoom = "fit" | number;
 
-/** Long enough that typing in a number field is one save, short enough that
- *  closing the tab a second after a change does not lose it. */
-const AUTOSAVE_DELAY_MS = 1200;
-
-/** 06 §10: fifty steps. */
-const UNDO_STEPS = 50;
-
-type PanelTab = "inspector" | "layers" | "checks";
+/** The rotation knob sits 32 px above a selected layer (`canvas.tsx`); the toolbar clears it. */
+const TOOLBAR_OFFSET = 44;
 
 export function DesignerEditor(props: DesignerEditorProps) {
   const t = useTranslations("designer.editor");
   const ts = useTranslations("designer.save");
   const tb = useTranslations("designer.bindings");
-  const tp = useTranslations("designer.inspector");
-  const tprops = useTranslations("designer.properties");
-  const tpr = useTranslations("designer.presets");
   const tc = useTranslations("designer.checks");
+  const tp = useTranslations("designer.properties");
+  const tpr = useTranslations("designer.presets");
   const tcv = useTranslations("designer.canvas");
-  const ta = useTranslations("designer.add");
   const tly = useTranslations("designer.inspector.layer");
   const tl = useTranslations("designer.layers");
+  const st = useTranslations("designer.studio");
   const ui = useTranslations("ui");
   const toast = useToast();
+  const router = useRouter();
 
-  const [document, setDocument] = useState<DesignDocument>(props.initialDocument);
-  const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>([]);
-  /** The canvas's asset URLs: the page's, plus any image added in this session. */
-  const [assets, setAssets] = useState<Record<string, string>>(() => props.assets ?? {});
-  /** «تحديد متعدّد» — DEC-178's added tap path: shift-click needs a keyboard. */
-  const [multi, setMulti] = useState(false);
-  /** Tap-to-place armed for the selected layer (DEC-093's path for a move). */
-  const [placing, setPlacing] = useState(false);
-  const selectedLayerId = selectedLayerIds.length === 1 ? (selectedLayerIds[0] as string) : null;
-  const setSelectedLayerId = useCallback((id: string | null) => setSelectedLayerIds(id ? [id] : []), []);
-  const [save, setSave] = useState<SaveState>({ kind: "clean" });
-  const [panel, setPanel] = useState<PanelTab>("layers");
-  // 06 §10: undo/redo is document-level, fifty steps. A layer-level history
-  // would let an undo half-apply an edit that touched two layers, and the
-  // whole document is a few kilobytes.
-  const past = useRef<DesignDocument[]>([]);
-  /** The burst an edit belongs to: consecutive edits with the SAME key are one
-   *  undo entry (a held arrow key). Any other edit, a key release, or a
-   *  selection change ends it. No timer (DEC-146). */
-  const burst = useRef<string | null>(null);
-  const future = useRef<DesignDocument[]>([]);
-  const [depth, setDepth] = useState({ past: 0, future: 0 });
-  // A certificate is exported at the one page its master is composed for
-  // (DEC-148); a poster at all seven. The master does not change while the
-  // document is open, so neither does the list.
-  const presets = useMemo(() => presetsForDocument(props.initialDocument), [props.initialDocument]);
-  const [preset, setPreset] = useState<PresetName>(() => presetsForDocument(props.initialDocument)[0] ?? "master");
-  // On by default for print, where crossing a safe area is expensive and the
-  // blade is not negotiable (06 §10).
-  const [overlays, setOverlays] = useState(() => PRESETS[presetsForDocument(props.initialDocument)[0] ?? "master"].bleed > 0);
-  const [fontsReady, setFontsReady] = useState(false);
-  const baseUpdatedAt = useRef(props.initialUpdatedAt);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inFlight = useRef<AbortController | null>(null);
-
-  /** Locked by the TEMPLATE, or by the layer's own flag. The database
-   *  enforces the first (design_documents_guard compares against the pinned
-   *  version); the second is the document's own statement, and ignoring it
-   *  would make `locked: true` decoration — an uploaded poster's single
-   *  locked layer could then be moved. */
-  const isLocked = useCallback(
-    (layerId: string) => props.lockedLayerIds.includes(layerId) || document.layers.some((l) => l.id === layerId && l.locked === true),
-    [document.layers, props.lockedLayerIds],
-  );
-
-  // The canvas draws a STRING, so this must be one: `t.rich` returns a
-  // ReactNode the renderer cannot use, and a message carrying a tag called
-  // through plain `t()` renders the raw key (DEC-047's lesson, found on the
-  // canvas by the wave-3 e2e). The renderer bidi-isolates the result itself.
-  // The field's Arabic name, never its path (DEC-149 §4).
-  const placeholderLabel = useCallback(
-    (binding: string) => `${tb("unbound")} · ${tb.has(`field.${binding}`) ? tb(`field.${binding}`) : tb("field.unknown")}`,
-    [tb],
-  );
-
-  // The SAME faces the canvas loads, declared in this document too, because
-  // the pre-export checks measure here. Measuring against a fallback face
-  // would produce a warning list that disagrees with the export.
-  const faceCss = useMemo(
-    () => fontFaceCss(props.faces.map((f) => ({ ...f, url: `${props.origin}/api/fonts/${f.sha256}` }))),
-    [props.faces, props.origin],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    const families = [...new Set(props.faces.map((f) => f.family))];
-    // `document.fonts.ready` alone is not enough: a face declared but never
-    // exercised is not "pending", so ready resolves while the glyphs are
-    // still unloaded (DEC-024). Load each family explicitly first.
-    void Promise.all(families.map((family) => window.document.fonts.load(`400 40px "${family}"`)))
-      .then(() => window.document.fonts.ready)
-      .then(() => {
-        if (!cancelled) setFontsReady(true);
-      })
-      .catch(() => {
-        if (!cancelled) setFontsReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [props.faces]);
-
-  const push = useCallback(
-    async (next: DesignDocument) => {
-      inFlight.current?.abort();
-      const controller = new AbortController();
-      inFlight.current = controller;
-      setSave({ kind: "saving" });
-      try {
-        const response = await fetch(`/api/designer/${props.documentId}`, {
-          method: "PUT",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ baseUpdatedAt: baseUpdatedAt.current, document: next }),
-          signal: controller.signal,
-        });
-        const body = (await response.json()) as { status?: string; updatedAt?: string; layerId?: string; issues?: { path: string; code: string }[] };
-        if (response.ok && body.updatedAt) {
-          baseUpdatedAt.current = body.updatedAt;
-          setSave({ kind: "saved" });
-          return;
-        }
-        if (response.status === 409 && body.status === "locked_region") return setSave({ kind: "locked", layerId: body.layerId ?? "" });
-        if (response.status === 409) return setSave({ kind: "conflict" });
-        if (response.status === 403) return setSave({ kind: "forbidden" });
-        if (response.status === 422) {
-          const first = body.issues?.[0];
-          return setSave({ kind: "invalid", issue: first ? `${first.path} — ${first.code}` : "" });
-        }
-        setSave({ kind: "error" });
-      } catch (e) {
-        // An aborted request is the NEXT keystroke's save, not a failure.
-        if ((e as Error).name !== "AbortError") setSave({ kind: "error" });
-      }
-    },
-    [props.documentId],
-  );
-
-  // A failed save is said where the admin is looking — a toast that stays
-  // until dismissed (`16` §7.3) — as well as in the toolbar's status. The
-  // conflict and the permission cases name what to do; the chip alone would
-  // be scrolled past.
-  const toasted = useRef<SaveState["kind"]>("clean");
-  useEffect(() => {
-    // Only a change of KIND is news: a second failed save in a row is the
-    // same toast, which is still on screen because errors stay.
-    if (toasted.current === save.kind) return;
-    toasted.current = save.kind;
-    if (save.kind === "conflict" || save.kind === "forbidden" || save.kind === "error") toast.show({ tone: "error", title: ts(save.kind) });
-  }, [save.kind, toast, ts]);
-
-  const mutate = useCallback(
-    (next: DesignDocument, options: { coalesce?: string } = {}) => {
-      // Validated in the browser too, so a bad edit is refused at the field
-      // rather than round-tripping to a 422. The Route Handler runs the same
-      // function — this is a courtesy, never the boundary.
-      const parsed = validateDocument(next);
-      if (!parsed.ok) {
-        const first = parsed.issues[0];
-        setSave({ kind: "invalid", issue: first ? `${first.path} — ${first.code}` : "" });
-        return;
-      }
-      const joins = options.coalesce !== undefined && options.coalesce === burst.current;
-      burst.current = options.coalesce ?? null;
-      setDocument((current) => {
-        // One entry per gesture or burst: a continuing burst replaces what is
-        // on screen without pushing another step.
-        if (!joins) past.current = [...past.current, current].slice(-UNDO_STEPS);
-        // A new edit ends the redo branch: keeping it would let a redo jump
-        // to a document that never followed from what is on screen.
-        future.current = [];
-        setDepth({ past: past.current.length, future: 0 });
-        return next;
-      });
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => void push(next), AUTOSAVE_DELAY_MS);
-    },
-    [push],
-  );
-
-  const step = useCallback(
-    (direction: "undo" | "redo") => {
-      const from = direction === "undo" ? past : future;
-      const to = direction === "undo" ? future : past;
-      const previous = from.current[from.current.length - 1];
-      if (!previous) return;
-      from.current = from.current.slice(0, -1);
-      setDocument((current) => {
-        to.current = [...to.current, current].slice(-UNDO_STEPS);
-        setDepth({ past: past.current.length, future: future.current.length });
-        return previous;
-      });
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => void push(previous), AUTOSAVE_DELAY_MS);
-    },
-    [push],
-  );
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
-      e.preventDefault();
-      step(e.shiftKey ? "redo" : "undo");
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [step]);
-
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-      inFlight.current?.abort();
-    },
-    [],
-  );
-
-  const patchLayer = useCallback(
-    (layerId: string, patch: Partial<Layer>) => {
-      if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
-      // Guides applied to a TYPED frame, in the document's own logical
-      // coordinates, so they mirror with direction rather than jumping to the
-      // far side when a template is mirrored for English.
-      const snapped = patch.frame
-        ? {
-            ...patch,
-            frame: {
-              ...patch.frame,
-              x: snap(patch.frame.x, snapTargets(document, layerId)),
-              y: snap(patch.frame.y, snapTargetsBlock(document, layerId)),
-            },
-          }
-        : patch;
-      mutate({ ...document, layers: document.layers.map((l) => (l.id === layerId ? ({ ...l, ...snapped } as Layer) : l)) });
-    },
-    [document, mutate, isLocked],
-  );
-
-  // ★ Align and fit move a layer, so a locked one is refused (REQ-DSG-024);
-  // reordering changes only depth, which the template lock does not cover.
-  // The runtime computes the result on the DOCUMENT's axis — nothing here
-  // reads the console's direction (DEC-096).
-  const arrange = useCallback(
-    (layerId: string, op: ArrangeOp) => {
-      if (op.kind !== "order" && isLocked(layerId)) return setSave({ kind: "locked", layerId });
-      const next =
-        op.kind === "align"
-          ? alignLayer(document, layerId, op.axis, op.edge, op.target)
-          : op.kind === "fit"
-            ? fitLayerToSafeArea(document, layerId)
-            : reorderLayer(document, layerId, op.move);
-      // A no-op is not an edit: no undo step, no autosave.
-      if (next !== document && JSON.stringify(next) !== JSON.stringify(document)) mutate(next);
-    },
-    [document, mutate, isLocked],
-  );
-
-  const reorder = useCallback((layerId: string, move: ReorderMove) => arrange(layerId, { kind: "order", move }), [arrange]);
-
-  /** Commits a document only when it changed — a no-op is not an undo step. */
-  const commit = useCallback(
-    (next: DesignDocument, options?: { coalesce?: string }) => {
-      if (next !== document && JSON.stringify(next) !== JSON.stringify(document)) mutate(next, options);
-    },
-    [document, mutate],
-  );
-
-  /** A canvas gesture's result: the new SOURCE frames, once, on release. */
-  const applyFrames = useCallback(
-    (frames: Record<string, Frame>) => {
-      const locked = Object.keys(frames).find((id) => isLocked(id));
-      if (locked) return setSave({ kind: "locked", layerId: locked });
-      commit({ ...document, layers: document.layers.map((l) => (frames[l.id] ? { ...l, frame: frames[l.id] as Frame } : l)) });
-    },
-    [commit, document, isLocked],
-  );
-
-  /** Arrow keys, on the VISUAL axis (DEC-096) — the runtime maps it to `x`. */
-  const nudge = useCallback(
-    (dx: number, dy: number) => {
-      const ids = selectedLayerIds.filter((id) => !isLocked(id));
-      if (ids.length === 0) return;
-      commit(nudgeLayers(document, ids, dx, dy), { coalesce: `nudge:${ids.join(",")}` });
-    },
-    [commit, document, isLocked, selectedLayerIds],
-  );
-  const endBurst = useCallback(() => {
-    burst.current = null;
+  const [rail, setRail] = useState<RailKey>(props.canEdit ? "elements" : "layers");
+  /** The الطبقة panel's tab, remembered for the layer it was chosen on — another layer opens on its own first tab. */
+  const [layerTab, setLayerTab] = useState<{ id: string | null; tab: string } | null>(null);
+  const revealLayer = useCallback(() => {
+    setRail("layer");
+    setLayerTab(null);
   }, []);
+  const s = useDesignerEditorState(props, { onRevealLayer: revealLayer });
+  const {
+    document,
+    selectedLayerIds,
+    selectedLayerId,
+    multi,
+    setMulti,
+    placing,
+    save,
+    depth,
+    presets,
+    preset,
+    overlays,
+    setOverlays,
+    selected,
+    selection,
+    lockedIds,
+    findings,
+    onSource,
+    sourcePreset,
+  } = s;
 
-  /** Align and distribute for two or more layers, on the DOCUMENT's axis. Locked ones stay put. */
-  const groupArrange = useCallback(
-    (op: GroupOp) => {
-      const ids = selectedLayerIds.filter((id) => !isLocked(id));
-      if (ids.length === 0) return;
-      commit(op.kind === "align" ? alignLayers(document, ids, op.axis, op.edge, op.target) : distributeLayers(document, ids, op.axis));
-    },
-    [commit, document, isLocked, selectedLayerIds],
+  const [zoom, setZoom] = useState<Zoom>("fit");
+  const [scale, setScale] = useState(0.4);
+  const [grid, setGrid] = useState(false);
+  const [rulers, setRulers] = useState(false);
+  const [snapping, setSnapping] = useState(true);
+  const [gesturing, setGesturing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [published, setPublished] = useState<DesignDocument | null>(props.publishedDocument ?? null);
+  const [publishing, startPublish] = useTransition();
+
+  const bindingChoices = useMemo(
+    () => Object.fromEntries(fieldsFor(document.purpose, props.family ?? null).filter((f) => f.layer === "field").map((f) => [f.binding, tb.has(`field.${f.binding}`) ? tb(`field.${f.binding}`) : f.binding])),
+    [document.purpose, props.family, tb],
   );
+  const qrNames = useMemo(() => ({ "session.eventUrl": tb("field.session.eventUrl"), "certificate.verifyUrl": tb("field.certificate.verifyUrl") }), [tb]);
 
-  /** ±15°, «صفّر», «املأ عرضًا» and arming «ضع بنقرة» — the taps for rotate, resize and move. */
-  const transform = useCallback(
-    (layerId: string, op: TransformOp) => {
-      if (op.kind === "place") return setPlacing((v) => !v);
-      if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
-      commit(
-        op.kind === "rotate"
-          ? rotateLayer(document, layerId, op.degrees, op.mode)
-          : fillSafeWidth(document, layerId),
-      );
-    },
-    [commit, document, isLocked],
-  );
+  const rows = checkRowCount(findings);
+  // The draft differs from what was published when their canonical forms differ — key order is not a change.
+  const differs = useMemo(() => {
+    if (!props.publish) return false;
+    if (!published) return true;
+    const canon = (d: DesignDocument) => fingerprintSource({ document: d, templateVersionId: null, bindings: {}, fontHashes: [] });
+    return canon(published) !== canon(document);
+  }, [document, published, props.publish]);
 
-  const place = useCallback(
-    (point: { x: number; y: number }) => {
-      setPlacing(false);
-      if (!selectedLayerId) return;
-      if (isLocked(selectedLayerId)) return setSave({ kind: "locked", layerId: selectedLayerId });
-      commit(placeLayerCentre(document, selectedLayerId, point));
-    },
-    [commit, document, isLocked, selectedLayerId],
-  );
-
-  /**
-   * The focal point (REQ-DSG-030). Allowed on a layer locked by its OWN flag —
-   * an uploaded poster's only layer — because A32's crop override is not a
-   * move, a resize, a hide or a delete (REQ-DSG-024), and the database's guard
-   * compares exactly those (`0055`'s `design_documents_guard`). On a derived
-   * preset it writes that preset's override.
-   */
-  const focal = useCallback(
-    (layerId: string, point: FocalPoint, forPreset?: PresetName) => commit(setFocal(document, layerId, point, forPreset)),
-    [commit, document],
-  );
-
-  /** A tap selects; shift or «تحديد متعدّد» adds and removes. */
-  const select = useCallback(
-    (layerId: string | null, options: { additive?: boolean } = {}) => {
-      burst.current = null;
-      setPlacing(false);
-      if (!layerId) return setSelectedLayerIds([]);
-      if (options.additive) {
-        setSelectedLayerIds((ids) => (ids.includes(layerId) ? ids.filter((id) => id !== layerId) : [...ids, layerId]));
+  const onPublish = () =>
+    startPublish(async () => {
+      await s.flush();
+      const result = await props.publish!();
+      if (result.status === "ok") {
+        setPublished(document);
+        toast.show({ tone: "success", title: st("bar.published") });
       } else {
-        setSelectedLayerIds([layerId]);
+        toast.show({ tone: "error", title: st("bar.publishFailed") });
       }
-    },
-    [],
-  );
+    });
 
-  const marquee = useCallback((ids: string[], additive: boolean) => {
-    burst.current = null;
-    setSelectedLayerIds((current) => (additive ? [...new Set([...current, ...ids])] : ids));
-  }, []);
-
-  /* ── D1b: add, duplicate, delete (DEC-178 — «add images, logos, text») ── */
-
-  const add = useCallback(
-    (kind: NewLayerKind) => {
-      const layer = newLayer(document, kind, {
-        literal: ta("newText"),
-        fontFamily: props.faces.find((f) => /arabic/i.test(f.family))?.family ?? props.faces[0]?.family,
-        name: ta(kind),
-      });
-      commit(addLayer(document, layer));
-      setSelectedLayerIds([layer.id]);
-      setPanel("inspector");
-    },
-    [commit, document, props.faces, ta],
-  );
-
-  /** An uploaded image: the document stores the asset ID; the canvas shows the
-   *  signed preview at once (DEC-179). Sized to the image's own proportion,
-   *  inside the safe area. */
-  const addImage = useCallback(
-    (asset: { assetId: string; width: number; height: number; previewUrl: string | null }) => {
-      const base = newLayer(document, "image", { assetId: asset.assetId, name: ta("image") });
-      const w = base.frame.w;
-      const h = Math.max(1, Math.round((w * asset.height) / Math.max(1, asset.width)));
-      const layer = { ...base, frame: { ...base.frame, h } } as Layer;
-      if (asset.previewUrl) setAssets((current) => ({ ...current, [asset.assetId]: asset.previewUrl as string }));
-      commit(addLayer(document, layer));
-      setSelectedLayerIds([layer.id]);
-      setPanel("inspector");
-    },
-    [commit, document, ta],
-  );
-
-  const duplicate = useCallback(
-    (layerId: string) => {
-      if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
-      const next = duplicateLayer(document, layerId);
-      commit(next);
-      const copy = next.layers[next.layers.length - 1];
-      if (copy) setSelectedLayerIds([copy.id]);
-    },
-    [commit, document, isLocked],
-  );
-
-  /** ★ Delete confirms BY NAME (REQ-UIX-013) and a locked region is never
-   *  deleted (REQ-DSG-024 — the database's guard refuses it too). */
-  const [deleting, setDeleting] = useState<Layer | null>(null);
-  const askDelete = useCallback(
-    (layerId: string) => {
-      if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
-      setDeleting(document.layers.find((l) => l.id === layerId) ?? null);
-    },
-    [document.layers, isLocked],
-  );
-  const confirmDelete = useCallback(() => {
-    if (!deleting) return;
-    commit(removeLayer(document, deleting.id));
-    setSelectedLayerIds((ids) => ids.filter((id) => id !== deleting.id));
-    setDeleting(null);
-  }, [commit, deleting, document]);
-
-  const selectKind = useCallback((kind: Layer["kind"]) => {
-    burst.current = null;
-    setSelectedLayerIds(document.layers.filter((l) => l.kind === kind && !l.hidden).map((l) => l.id));
-  }, [document.layers]);
-
-  const toggleHidden = useCallback(
-    (layerId: string) => {
-      if (isLocked(layerId)) return setSave({ kind: "locked", layerId });
-      mutate({ ...document, layers: document.layers.map((l) => (l.id === layerId ? { ...l, hidden: !l.hidden } : l)) });
-    },
-    [document, mutate, isLocked],
-  );
-
-  const selected = useMemo(() => document.layers.find((l) => l.id === selectedLayerId) ?? null, [document.layers, selectedLayerId]);
-  // What each binding's template fallback is, so an unbound field can say
-  // what will actually print rather than only that nothing bound.
-  // …and the layer's own name, for a binding the catalogue has no Arabic name
-  // for: an org admin never reads a plan identifier (DEC-149 §4).
-  const { fallbacks, bindingLayerNames } = useMemo(() => {
-    const out: Record<string, string> = {};
-    const names: Record<string, string> = {};
-    for (const layer of document.layers) {
-      const binding = layer.kind === "text" ? layer.text.binding : layer.kind === "dynamic_field" ? layer.field.binding : undefined;
-      const fallback = layer.kind === "text" ? layer.text.fallback : layer.kind === "dynamic_field" ? layer.field.fallback : undefined;
-      if (!binding) continue;
-      const key = binding.replace(/^\{\{|\}\}$/g, "").trim();
-      if (fallback) out[key] = fallback;
-      if (layer.name && !names[key]) names[key] = layer.name;
-    }
-    return { fallbacks: out, bindingLayerNames: names };
-  }, [document.layers]);
-  const fontFamilies = useMemo(() => [...new Set(props.faces.map((f) => f.family))], [props.faces]);
-
-  const { findings, measuring } = useCheckFindings({ document, bindings: props.bindings, fontsReady, assetSizes: props.assetSizes });
-  const flagged = useMemo(() => new Set(findings.map((f) => f.preset)), [findings]);
-  const layerNames = useMemo(() => Object.fromEntries(document.layers.filter((l) => l.name).map((l) => [l.id, l.name as string])), [document.layers]);
-
-  // ★ REQ-DSG-029: a check selects the layer that failed it, on the preset it
-  // failed in — the canvas shows that variant with that layer outlined.
-  const goTo = useCallback(
-    (finding: CheckFinding) => {
-      setPreset(finding.preset);
-      setOverlays(true);
-      setSelectedLayerId(finding.layerId);
-      setPanel("inspector");
-    },
-    [setSelectedLayerId],
-  );
-
-  // Selecting on the CANVAS opens the layer's properties; selecting in the
-  // layer list stays in the list, so several rows can be reordered in a row.
-  const selectOnCanvas = useCallback(
-    (layerId: string | null, options: { additive?: boolean } = {}) => {
-      select(layerId, options);
-      if (layerId) setPanel("inspector");
-    },
-    [select],
-  );
-
-  const choosePreset = useCallback((name: PresetName) => {
-    setPreset(name);
-    setOverlays(PRESETS[name].bleed > 0);
-  }, []);
+  /** A preview is URL state, rendered by the server through the one renderer's bindings — saved first (flush). */
+  const choosePreview = async (key: "session" | "member", id: string) => {
+    await s.flush();
+    const params = new URLSearchParams(window.location.search);
+    if (id) params.set(key, id);
+    else params.delete(key);
+    const query = params.toString();
+    router.push(query ? `?${query}` : "?");
+  };
 
   const alert = (() => {
     switch (save.kind) {
@@ -623,72 +208,200 @@ export function DesignerEditor(props: DesignerEditorProps) {
       </Badge>
     ) : null;
 
-  const checksCount = findings.length;
-  const checksBadge = (
-    <Badge tone={checksCount ? "error" : "success"} outline={!checksCount} icon={checksCount ? <AlertTriangleIcon /> : <CheckIcon />}>
-      {tc("badge", { count: checksCount, value: formatNumber(checksCount) })}
-    </Badge>
-  );
-
-  const shown = useMemo(() => derive(document, preset), [document, preset]);
-  const sourcePreset = presets[0] ?? "master";
-  const onSource = preset === sourcePreset;
-  const lockedIds = useMemo(() => document.layers.filter((l) => isLocked(l.id)).map((l) => l.id), [document.layers, isLocked]);
-  const selection = useMemo(() => document.layers.filter((l) => selectedLayerIds.includes(l.id)), [document.layers, selectedLayerIds]);
-
-  const canvas = (
+  const canvasAt = (scaleNow: number, selectable = true) => (
     <DesignerCanvas
-      document={shown}
+      scale={scaleNow}
+      selectable={selectable}
+      snapping={snapping}
+      onGestureChange={setGesturing}
+      document={s.shown}
       preset={preset}
       showOverlays={overlays}
       bindings={props.bindings}
-      assets={assets}
+      assets={s.assets}
       faces={props.faces}
       origin={props.origin}
       selectedLayerIds={selectedLayerIds}
-      onSelect={selectOnCanvas}
+      onSelect={s.selectOnCanvas}
       lockedLayerIds={lockedIds}
-      placeholderLabel={placeholderLabel}
-      {...(props.canEdit ? { onFocal: (layerId: string, point: FocalPoint) => focal(layerId, point, onSource ? undefined : preset) } : {})}
+      placeholderLabel={s.placeholderLabel}
+      {...(props.canEdit ? { onFocal: (layerId: string, point: FocalPoint) => s.focal(layerId, point, onSource ? undefined : preset) } : {})}
       {...(props.canEdit && onSource
         ? {
             source: document,
             multi,
             placing,
-            onFrames: applyFrames,
-            onMarquee: marquee,
-            onPlace: place,
-            onNudge: nudge,
-            onNudgeEnd: endBurst,
-            onReorderKey: reorder,
-            onDeleteKey: askDelete,
+            onFrames: s.applyFrames,
+            onMarquee: s.marquee,
+            onPlace: s.place,
+            onNudge: s.nudge,
+            onNudgeEnd: s.endBurst,
+            onReorderKey: s.reorder,
+            onDeleteKey: s.askDelete,
           }
         : {})}
     />
   );
 
-  const strip = <VariantStrip presets={presets} current={preset} onSelect={choosePreset} flagged={flagged} previews={props.variantPreviews} />;
+  /* ── the floating toolbar — the five things touched most, on one selected layer ── */
+  const toolbarLayer = selected && props.canEdit && !gesturing && !s.isLocked(selected.id) ? s.shown.layers.find((l) => l.id === selected.id) : undefined;
+  const toolbar = toolbarLayer ? (
+    <FloatingToolbar label={st("toolbar.label")} anchor={boundingBox(toolbarLayer, s.shown, scale)} offset={TOOLBAR_OFFSET}>
+      <LayerToolbar
+        layer={selected!}
+        fontFamilies={s.fontFamilies}
+        values={props.bindings}
+        alignLabels={{
+          // Named as the eye sees it on THIS document: start is the right of an RTL page (DEC-096).
+          start: document.direction === "rtl" ? st("layer.alignRight") : st("layer.alignLeft"),
+          center: st("layer.alignMiddle"),
+          end: document.direction === "rtl" ? st("layer.alignLeft") : st("layer.alignRight"),
+        }}
+        onPatch={(patch) => s.patchLayer(selected!.id, patch)}
+        onFillWidth={() => s.transform(selected!.id, { kind: "fillWidth" })}
+        onBind={() => {
+          setRail("layer");
+          setLayerTab({ id: selected!.id, tab: "text" });
+        }}
+      />
+    </FloatingToolbar>
+  ) : null;
 
-  const overlaysSwitch = (
-    <Switch label={tpr("safeAreaLabel")} checked={overlays} onCheckedChange={setOverlays} />
+  const stage = (selectable: boolean) => (
+    <CanvasStage
+      label={tcv("label")}
+      contentWidth={document.master.width}
+      contentHeight={document.master.height}
+      zoom={zoom}
+      {...(selectable ? { onScaleChange: setScale } : {})}
+      rulers={rulers ? { direction: document.direction, step: rulerStep(document.master.width) } : null}
+      grid={grid ? { step: rulerStep(document.master.width) / 2 } : null}
+      toggles={[
+        { key: "safe", label: st("stage.safeArea"), pressed: overlays, onPressedChange: setOverlays },
+        { key: "grid", label: st("stage.grid"), pressed: grid, onPressedChange: setGrid },
+        ...(selectable ? [{ key: "snap", label: st("stage.snap"), pressed: snapping, onPressedChange: setSnapping }] : []),
+        { key: "rulers", label: st("stage.rulers"), pressed: rulers, onPressedChange: setRulers },
+      ]}
+      overlay={selectable ? toolbar : null}
+      className="min-h-0 flex-1"
+    >
+      {(scaleNow) => canvasAt(scaleNow, selectable)}
+    </CanvasStage>
   );
 
-  /**
-   * ★ WHICH layer, not what kind (REQ-UIX-013, the lead's ruling on DEC-178's
-   * «a confirm that names the layer»): with two text layers, «نص» cannot tell
-   * the admin which one is about to go. A text is named by its own words,
-   * shortened; a field by its layer name; anything else by its name, with its
-   * kind and its place in the list said beneath. The kind alone is only the
-   * fallback for a layer with nothing else to say.
-   */
+  const strip = (
+    <nav aria-label={tpr("stripLabel")} className="min-w-0">
+      <ul className="flex gap-1 overflow-x-auto">
+        {presets.map((name) => {
+          const flagged = s.flagged.has(name);
+          const p = PRESETS[name];
+          return (
+            <li key={name} className="shrink-0">
+              <button
+                type="button"
+                aria-pressed={name === preset}
+                onClick={() => s.choosePreset(name)}
+                className={`relative inline-flex min-h-8 items-center gap-1 rounded-pill border px-3 text-label ${
+                  name === preset ? "border-transparent bg-fg-heading text-surface" : "border-edge bg-raised text-fg-heading hover:bg-hover"
+                }`}
+              >
+                {p.bleed === 0 && name !== "og" ? <bdi dir="ltr">{ratioOf(p.width, p.height)}</bdi> : <bdi>{tpr(`name.${name}`)}</bdi>}
+                <span className="sr-only">
+                  {" · "}
+                  {tpr(`name.${name}`)} · {formatNumber(p.width)} × {formatNumber(p.height)}
+                  {flagged ? ` · ${tpr("hasFinding")}` : ""}
+                </span>
+                {flagged ? <span aria-hidden="true" className="size-1.5 rounded-full bg-error" /> : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+
+  const zoomControl = (
+    <Select
+      aria-label={st("bar.zoom")}
+      value={zoom === "fit" ? "fit" : String(zoom)}
+      onChange={(e) => setZoom(e.target.value === "fit" ? "fit" : Number(e.target.value))}
+      className="w-36! shrink-0"
+    >
+      <option value="fit">
+        {st("bar.fit")} · {formatNumber(Math.round(scale * 100))}%
+      </option>
+      {[0.25, 0.5, 1].map((z) => (
+        <option key={z} value={String(z)}>
+          {formatNumber(z * 100)}%
+        </option>
+      ))}
+    </Select>
+  );
+
+  const bar = (
+    <div role="toolbar" aria-label={t("title")} className="flex min-h-13 flex-wrap items-center gap-2 border-b border-edge px-4 py-2 xl:h-13 xl:flex-nowrap xl:py-0">
+      {props.barStart}
+      {saveBadge}
+      {props.canEdit ? (
+        // Below xl the page is view and approve: nothing to undo, so the name keeps the room.
+        <span className="hidden shrink-0 gap-1 xl:flex">
+          <IconButton size="sm" variant="secondary" label={t("undo")} onClick={() => s.step("undo")} disabled={depth.past === 0}>
+            <ChevronIcon direction="forward" />
+          </IconButton>
+          <IconButton size="sm" variant="secondary" label={t("redo")} onClick={() => s.step("redo")} disabled={depth.future === 0}>
+            <ChevronIcon direction="back" />
+          </IconButton>
+        </span>
+      ) : null}
+      {/* ★ ONE ROW AT xl (the board's 52 px) — below it the bar may wrap, so the name never shrinks to nothing:
+          the strip takes what is left and scrolls on its own axis; everything after
+          it keeps its intrinsic width at the inline-end. */}
+      <span className="hidden min-w-0 flex-1 xl:block">{strip}</span>
+      <span className="grow xl:hidden" />
+      <span className="hidden shrink-0 xl:block">{zoomControl}</span>
+      {props.barEnd}
+      {props.previewSessions ? (
+        <Select aria-label={st("bar.previewSession")} value={props.previewSessionId ?? ""} onChange={(e) => void choosePreview("session", e.target.value)} className="hidden w-48! shrink-0 xl:block">
+          <option value="">{st("bar.previewSession")}</option>
+          {props.previewSessions.map((session) => (
+            <option key={session.id} value={session.id}>
+              {session.title}
+            </option>
+          ))}
+        </Select>
+      ) : null}
+      {props.previewMembers ? (
+        <Select aria-label={st("bar.previewMember")} value={props.previewMemberId ?? ""} onChange={(e) => void choosePreview("member", e.target.value)} className="hidden w-48! shrink-0 xl:block">
+          <option value="">{st("bar.previewMember")}</option>
+          {props.previewMembers.map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.name}
+            </option>
+          ))}
+        </Select>
+      ) : null}
+      {props.publish && differs && props.canEdit ? (
+        <Button type="button" variant="secondary" size="sm" pending={publishing} onClick={onPublish} className="shrink-0">
+          {st("bar.publish")}
+        </Button>
+      ) : null}
+      {props.exportContent ? (
+        <Button type="button" size="sm" onClick={() => setExporting(true)} className="shrink-0">
+          {st("bar.export")}
+        </Button>
+      ) : null}
+    </div>
+  );
+
   const identify = (layer: Layer): string => {
     const words = layer.kind === "text" ? (layer.text.literal ?? layer.text.fallback ?? "").trim() : "";
     if (words) return words.length > 40 ? `${words.slice(0, 40).trimEnd()}…` : words;
     return layer.name ?? tl(`kind.${layer.kind}`);
   };
 
+  const deleting = s.deleting;
   const deleteDialog = (
-    <Dialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+    <Dialog open={deleting !== null} onOpenChange={(open) => !open && s.setDeleting(null)}>
       <DialogContent title={tly("deleteTitle")} closeLabel={ui("dialog.close")}>
         <p className="text-body-sm text-fg-body">{tly.rich("deleteBody", { name: deleting ? identify(deleting) : "", bdi: (c) => <bdi>{c}</bdi> })}</p>
         {deleting ? (
@@ -702,7 +415,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
           </p>
         ) : null}
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button type="button" size="md" onClick={confirmDelete}>
+          <Button type="button" size="md" onClick={s.confirmDelete}>
             {tly("deleteConfirm")}
           </Button>
           <DialogClose asChild>
@@ -715,173 +428,340 @@ export function DesignerEditor(props: DesignerEditorProps) {
     </Dialog>
   );
 
-  return (
-    <div className="flex flex-col gap-6">
-      {deleteDialog}
-      {/* Generated by the runtime's own fontFaceCss() from the manifest; no
-          user input reaches it, and the family names are escaped there. */}
-      <style dangerouslySetInnerHTML={{ __html: faceCss }} />
+  const addDisabled = !props.canEdit || !onSource;
+  const railItems = [
+    ...(props.canEdit
+      ? [
+          { key: "elements", label: st("rail.elements"), glyph: "elements" as const },
+          { key: "fields", label: st("rail.fields"), glyph: "fields" as const },
+          { key: "uploads", label: st("rail.uploads"), glyph: "uploads" as const },
+          { key: "brand", label: st("rail.brand"), glyph: "brand" as const },
+        ]
+      : [{ key: "fields", label: st("rail.fields"), glyph: "fields" as const }]),
+    { key: "layers", label: st("rail.layers"), glyph: "layers" as const },
+    {
+      key: "checks",
+      label: st("rail.checks"),
+      glyph: "checks" as const,
+      ...(rows ? { count: { value: rows, label: st("rail.checksCount", { count: rows, value: formatNumber(rows) }) } } : {}),
+    },
+    ...(selected || selection.length > 1 ? [{ key: "layer", label: st("rail.layer"), glyph: "layer" as const }] : []),
+  ];
+  const railSelected: RailKey = rail === "layer" && !(selected || selection.length > 1) ? "layers" : rail;
 
+  const panel = (() => {
+    switch (railSelected) {
+      case "elements":
+        return <ElementsPanel purpose={document.purpose} onAdd={s.addFromPanel} disabled={addDisabled} />;
+      case "fields":
+        return (
+          <FieldsPanel
+            document={document}
+            family={props.family ?? null}
+            onAdd={s.addFromPanel}
+            disabled={addDisabled}
+            declared={props.declaredBindings}
+            values={props.bindings}
+            fallbacks={s.fallbacks}
+            layerNames={s.bindingLayerNames}
+          />
+        );
+      case "uploads":
+        return <UploadsPanel assets={props.uploads ?? []} onAdd={(a) => s.addImage(a)} disabled={addDisabled} />;
+      case "brand":
+        return (
+          <BrandPanel
+            values={props.bindings}
+            fontFamilies={s.fontFamilies}
+            canApply={selected !== null && (selected.kind === "text" || selected.kind === "dynamic_field" || selected.kind === "shape")}
+            onApply={(token) =>
+              selected && s.patchLayer(selected.id, (selected.kind === "shape" ? { shape: { ...selected.shape, fill: token } } : { color: token }) as Partial<Layer>)
+            }
+            onAddLogo={() => s.addFromPanel("logo", {})}
+            disabled={addDisabled}
+          />
+        );
+      case "layers":
+        return (
+          <LayersPanel
+            document={document}
+            selectedLayerId={selectedLayerId}
+            selectedLayerIds={selectedLayerIds}
+            onSelect={(id: string, options?: { additive?: boolean }) => s.select(id, { additive: options?.additive || multi })}
+            onToggleHidden={s.toggleHidden}
+            onReorder={s.reorder}
+            lockedLayerIds={lockedIds}
+            canEdit={props.canEdit}
+            multi={multi}
+            onToggleMulti={() => setMulti((v) => !v)}
+            onSelectKind={s.selectKind}
+          />
+        );
+      case "checks":
+        return <ChecksPanel findings={findings} measuring={s.measuring} onGoTo={s.goTo} layerNames={s.layerNames} />;
+      case "layer":
+        return (
+          // The region keeps its name «الخصائص»: what the properties are OF is the panel's heading.
+          <section aria-label={tp("heading")}>
+            <Inspector
+              document={document}
+              layer={selected}
+              locked={selected ? s.isLocked(selected.id) : false}
+              canEdit={props.canEdit}
+              fontFamilies={s.fontFamilies}
+              onPatchLayer={s.patchLayer}
+              onArrange={s.arrange}
+              onDocument={s.mutate}
+              selection={selection}
+              lockedLayerIds={lockedIds}
+              onGroupArrange={s.groupArrange}
+              onTransform={s.transform}
+              placing={placing}
+              canPlace={onSource}
+              onFocal={s.focal}
+              focalPreset={onSource ? undefined : preset}
+              bindingChoices={{ ...bindingChoices, ...qrNames }}
+              {...(layerTab && layerTab.id === (selected?.id ?? null) ? { tab: layerTab.tab } : {})}
+              onTabChange={(tab) => setLayerTab({ id: selected?.id ?? null, tab })}
+              {...(props.canEdit ? { onDuplicate: s.duplicate, onDelete: s.askDelete } : {})}
+            />
+          </section>
+        );
+    }
+  })();
+
+  const layerTitle = selected ? (
+    <bdi>
+      {tl(`kind.${selected.kind}`)} · {selected.name ?? selected.id}
+    </bdi>
+  ) : undefined;
+
+  return (
+    <div className="flex min-h-dvh flex-col bg-canvas xl:h-dvh xl:overflow-hidden">
+      {deleteDialog}
+      {/* Generated by the runtime's own fontFaceCss() from the manifest; no user input reaches it. */}
+      <style dangerouslySetInnerHTML={{ __html: s.faceCss }} />
+
+      {bar}
+
+      {props.exportContent ? (
+        <Sheet open={exporting} onOpenChange={setExporting} title={st("bar.exportTitle")} side="inline-end">
+          {props.exportContent}
+        </Sheet>
+      ) : null}
+
+      {props.notice}
       {alert ? (
-        <Panel tone="error">
+        <Panel tone="error" className="m-4">
           <p role="alert" className="text-body-sm text-fg-heading">
             {alert}
           </p>
         </Panel>
       ) : null}
 
-      {/* ── Phone: view and approve ─────────────────────────────────────── */}
-      <div className="flex flex-col gap-6 xl:hidden">
+      {/* ── Phone: view and approve ── */}
+      <div className="flex flex-col gap-6 p-4 xl:hidden">
         <Panel tone="info">
           <p className="text-body-sm text-fg-body">{t.rich("phoneNotice", { width: formatNumber(1280), bdi: (c) => <bdi>{c}</bdi> })}</p>
         </Panel>
-        {/* The canvas is named in the outline on the phone as it is on the desktop (wave 10's
-            carried row): the iframe's title satisfied 4.1.2, but a member moving by heading met
-            the checks before the thing being checked. */}
         <section aria-labelledby="dr-canvas-m" className="flex flex-col gap-3">
           <h2 id="dr-canvas-m" className="text-h3 text-fg-heading">
             {t("previewHeading")}
           </h2>
           {strip}
-          {/* The phone reviews and approves; it does not select layers (see `selectable`). */}
-          {cloneElement(canvas, { selectable: false })}
+          <div className="flex h-[28rem] flex-col">{stage(false)}</div>
         </section>
         <section aria-labelledby="dr-checks-m" className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 id="dr-checks-m" className="text-h3 text-fg-heading">
-              {tc("heading")}
-            </h2>
-            {checksBadge}
-          </div>
-          <ChecksPanel findings={findings} measuring={measuring} onGoTo={goTo} layerNames={layerNames} />
+          <h2 id="dr-checks-m" className="text-h3 text-fg-heading">
+            {tc("heading")}
+          </h2>
+          <ChecksPanel findings={findings} measuring={s.measuring} onGoTo={s.goTo} layerNames={s.layerNames} />
         </section>
         <section aria-labelledby="dr-bindings-m" className="flex flex-col gap-3">
           <h2 id="dr-bindings-m" className="text-h3 text-fg-heading">
             {tb("heading")}
           </h2>
-          <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} layerNames={bindingLayerNames} />
+          <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={s.fallbacks} layerNames={s.bindingLayerNames} />
         </section>
       </div>
 
-      {/* ── Desktop: the editor ─────────────────────────────────────────────
-          Composed for RTL: the canvas at the start edge, the panel at the end,
-          and both mirror with the document rather than being flipped by a
-          toggle (06 §10). */}
-      <div className="hidden flex-col gap-4 xl:flex">
-        <div role="toolbar" aria-label={t("title")} className="flex flex-wrap items-center gap-3 rounded-card border border-edge bg-surface px-4 py-2">
-          <p className="text-label text-fg-muted">{t(`purpose.${props.purpose}`)}</p>
-          {saveBadge}
-          {props.canEdit ? (
-            <div className="flex gap-1">
-              <Button type="button" variant="ghost" size="sm" onClick={() => step("undo")} disabled={depth.past === 0}>
-                {t("undo")}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => step("redo")} disabled={depth.future === 0}>
-                {t("redo")}
+      {/* ── Desktop: the rail, the panel, the canvas ── */}
+      <div className="hidden min-h-0 flex-1 xl:flex">
+        <EditorRail
+          label={t("rail.label")}
+          items={railItems}
+          selected={railSelected}
+          onSelect={(key) => setRail(key as RailKey)}
+          {...(railSelected === "layer" && layerTitle ? { panelTitle: layerTitle } : {})}
+          {...(railSelected === "layer"
+            ? {
+                panelAction: (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => s.select(null)}>
+                    {st("layer.close")}
+                  </Button>
+                ),
+              }
+            : {})}
+        >
+          {panel}
+        </EditorRail>
+
+        <section aria-labelledby="dr-canvas" className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <h2 id="dr-canvas" className="sr-only">
+            {t("previewHeading")}
+          </h2>
+          {props.canEdit && !onSource ? (
+            <div className="flex flex-wrap items-center gap-3 border-b border-edge px-4 py-2">
+              <p className="text-body-sm text-fg-muted">{tcv("derivedNote")}</p>
+              <Button type="button" variant="secondary" size="sm" onClick={() => s.choosePreset(sourcePreset)}>
+                {tcv("editSource")}
               </Button>
             </div>
           ) : null}
-          <span className="grow" />
-          <button type="button" onClick={() => setPanel("checks")} className="rounded-field">
-            {checksBadge}
-          </button>
-          {overlaysSwitch}
-        </div>
-
-        <div className="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
-          <section aria-labelledby="dr-canvas" className="flex min-w-0 flex-col gap-3">
-            <h2 id="dr-canvas" className="text-h3 text-fg-heading">
-              {t("previewHeading")}
-            </h2>
-            <p className="text-body-sm text-fg-muted">{t("realDataNote")}</p>
-            {props.canEdit ? (
-              onSource ? (
-                <p className="text-body-sm text-fg-muted">{tcv("dragHint")}</p>
-              ) : (
-                <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-body-sm text-fg-muted">{tcv("derivedNote")}</p>
-                  <Button type="button" variant="secondary" size="sm" onClick={() => choosePreset(sourcePreset)}>
-                    {tcv("editSource")}
-                  </Button>
-                </div>
-              )
-            ) : null}
-            {canvas}
-            {strip}
-          </section>
-
-          <section aria-labelledby="dr-panel" className="flex min-w-0 flex-col gap-3">
-            <h2 id="dr-panel" className="sr-only">
-              {t("rail.label")}
-            </h2>
-            <Tabs
-              label={t("rail.label")}
-              value={panel}
-              onValueChange={(v) => setPanel(v as PanelTab)}
-              items={[
-                { value: "inspector", label: tprops("heading") },
-                { value: "layers", label: t("rail.layers") },
-                { value: "checks", label: t("rail.checks"), count: checksCount },
-              ]}
-            >
-              <div className="pt-4">
-                {panel === "inspector" ? (
-                  <section aria-label={tprops("heading")} className="flex flex-col gap-2">
-                    {/* What the properties are OF: the layer's own name, or the
-                        document when nothing is selected. The tab already
-                        says «الخصائص». */}
-                    <h3 className="text-label text-fg-heading">
-                      <bdi>{selected ? (selected.name ?? selected.id) : tp("documentHeading")}</bdi>
-                    </h3>
-                    <Inspector
-                      document={document}
-                      layer={selected}
-                      locked={selected ? isLocked(selected.id) : false}
-                      canEdit={props.canEdit}
-                      fontFamilies={fontFamilies}
-                      onPatchLayer={patchLayer}
-                      onArrange={arrange}
-                      onDocument={mutate}
-                      selection={selection}
-                      lockedLayerIds={lockedIds}
-                      onGroupArrange={groupArrange}
-                      onTransform={transform}
-                      placing={placing}
-                      canPlace={onSource}
-                      onFocal={focal}
-                      focalPreset={onSource ? undefined : preset}
-                      {...(props.canEdit ? { onDuplicate: duplicate, onDelete: askDelete } : {})}
-                    />
-                    {selected || selection.length > 1 ? null : (
-                      <div className="flex flex-col gap-3 pt-4">
-                        <h3 className="text-label text-fg-heading">{tb("heading")}</h3>
-                        <BindingsPanel declared={props.declaredBindings} values={props.bindings} fallbacks={fallbacks} layerNames={bindingLayerNames} />
-                      </div>
-                    )}
-                  </section>
-                ) : panel === "layers" ? (
-                  <LayerList
-                    document={document}
-                    selectedLayerId={selectedLayerId}
-                    selectedLayerIds={selectedLayerIds}
-                    onSelect={(id: string, options?: { additive?: boolean }) => select(id, { additive: options?.additive || multi })}
-                    onToggleHidden={toggleHidden}
-                    onReorder={reorder}
-                    lockedLayerIds={lockedIds}
-                    canEdit={props.canEdit}
-                    multi={multi}
-                    onToggleMulti={() => setMulti((v) => !v)}
-                    onSelectKind={selectKind}
-                    {...(props.canEdit && onSource ? { onAdd: add, onAddImage: addImage } : {})}
-                  />
-                ) : (
-                  <ChecksPanel findings={findings} measuring={measuring} onGoTo={goTo} layerNames={layerNames} />
-                )}
-              </div>
-            </Tabs>
-          </section>
-        </div>
+          {placing ? <p className="border-b border-edge px-4 py-2 text-body-sm text-fg-heading">{tcv("placingNote")}</p> : null}
+          {stage(true)}
+        </section>
       </div>
     </div>
   );
+}
+
+/**
+ * The five on the floating toolbar, by layer kind; a QR or an image has fewer things to touch. ★ Each control has its
+ * own intrinsic width and shows its value legibly — the face, the size, the colour's swatch and name, the alignment —
+ * never a squeezed select showing one character (the lead's capture of 8177cc6d).
+ */
+function LayerToolbar({
+  layer,
+  fontFamilies,
+  alignLabels,
+  values,
+  onPatch,
+  onFillWidth,
+  onBind,
+}: {
+  layer: Layer;
+  fontFamilies: string[];
+  alignLabels: Record<"start" | "center" | "end", string>;
+  /** The resolved brand values, for the colour's swatch. */
+  values: Record<string, string>;
+  onPatch: (patch: Partial<Layer>) => void;
+  onFillWidth: () => void;
+  onBind: () => void;
+}) {
+  const tp = useTranslations("designer.properties");
+  const st = useTranslations("designer.studio");
+  if (layer.kind === "shape") {
+    return <ToolbarToken label={tp("fill")} value={layer.shape.fill ?? "{{brand.surface}}"} values={values} onValue={(fill) => onPatch({ shape: { ...layer.shape, fill } } as Partial<Layer>)} />;
+  }
+  if (layer.kind !== "text" && layer.kind !== "dynamic_field") {
+    return (
+      <Button type="button" variant="ghost" size="sm" onClick={onFillWidth} className="shrink-0 whitespace-nowrap">
+        {st("toolbar.fillWidth")}
+      </Button>
+    );
+  }
+  const align = layer.align ?? "start";
+  return (
+    <>
+      {/* The family alone, wide enough for the longest in the font set («IBM Plex Sans Arabic»), and the weight
+          beside it — so neither name is clipped at its start. */}
+      <Select aria-label={tp("fontFamily")} value={layer.font.family} onChange={(e) => onPatch({ font: { ...layer.font, family: e.target.value } } as Partial<Layer>)} className="w-60! shrink-0">
+        {(fontFamilies.includes(layer.font.family) ? fontFamilies : [layer.font.family, ...fontFamilies]).map((family) => (
+          <option key={family} value={family}>
+            {family}
+          </option>
+        ))}
+      </Select>
+      <Select
+        aria-label={tp("weight")}
+        value={String(layer.font.weight ?? 400)}
+        onChange={(e) => onPatch({ font: { ...layer.font, weight: Number(e.target.value) as 400 | 500 | 600 } } as Partial<Layer>)}
+        className="w-24! shrink-0"
+      >
+        {([400, 500, 600] as const).map((w) => (
+          <option key={w} value={w}>
+            {formatNumber(w)}
+          </option>
+        ))}
+      </Select>
+      <Select
+        aria-label={tp("fontSize")}
+        value={String(layer.font.size)}
+        onChange={(e) => onPatch({ font: { ...layer.font, size: Math.max(1, Number(e.target.value)) } } as Partial<Layer>)}
+        className="w-24! shrink-0"
+      >
+        {[...new Set([layer.font.size, 24, 32, 40, 48, 64, 80, 96, 128])].sort((a, b) => a - b).map((size) => (
+          <option key={size} value={size}>
+            {formatNumber(size)}
+          </option>
+        ))}
+      </Select>
+      <ToolbarToken label={tp("colour")} value={layer.color ?? "{{brand.fgHeading}}"} values={values} onValue={(color) => onPatch({ color } as Partial<Layer>)} />
+      <span role="group" aria-label={tp("align")} className="flex shrink-0 gap-0.5">
+        {(["start", "center", "end"] as const).map((value) => (
+          <Button
+            key={value}
+            type="button"
+            size="sm"
+            variant={align === value ? "primary" : "ghost"}
+            aria-pressed={align === value}
+            onClick={() => onPatch({ align: value } as Partial<Layer>)}
+            className="shrink-0 whitespace-nowrap"
+          >
+            {alignLabels[value]}
+          </Button>
+        ))}
+      </span>
+      <Button type="button" variant="ghost" size="sm" onClick={onFillWidth} aria-label={st("toolbar.fillWidth")} className="shrink-0">
+        ↔
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={onBind} className="shrink-0 whitespace-nowrap">
+        {st("toolbar.bind")}
+      </Button>
+    </>
+  );
+}
+
+/** A brand colour by NAME, never a picker (REQ-DSG-021) — its swatch beside it, painted from the resolved value as a
+ *  style (never a class); the select's value is the token's name. The panel's control is `TokenSelect`. */
+function ToolbarToken({ label, value, values, onValue }: { label: string; value: string; values: Record<string, string>; onValue: (next: string) => void }) {
+  const tk = useTranslations("designer.inspector.background.tokens");
+  const current = token(value);
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      <span aria-hidden="true" className="size-5 shrink-0 rounded-sm border border-edge" style={{ background: current ? values[`brand.${current}`] : undefined }} />
+      <Select aria-label={label} value={current ?? value} onChange={(e) => onValue(bind(e.target.value))} className="w-32! shrink-0">
+        {current === null ? <option value={value}>{value}</option> : null}
+        {BRAND_COLOUR_TOKENS.map((name) => (
+          <option key={name} value={name}>
+            {tk(name)}
+          </option>
+        ))}
+      </Select>
+    </span>
+  );
+}
+
+/** The axis-aligned box that contains a layer's frame on screen, in physical px (DEC-096) — the toolbar's anchor. */
+function boundingBox(layer: Layer, doc: DesignDocument, scale: number) {
+  const b = toPhysical(layer.frame, doc);
+  const rad = ((b.rotation ?? 0) * Math.PI) / 180;
+  const w = Math.abs(b.width * Math.cos(rad)) + Math.abs(b.height * Math.sin(rad));
+  const h = Math.abs(b.width * Math.sin(rad)) + Math.abs(b.height * Math.cos(rad));
+  const cx = b.left + b.width / 2;
+  const cy = b.top + b.height / 2;
+  return { left: (cx - w / 2) * scale, top: (cy - h / 2) * scale, width: w * scale, height: h * scale };
+}
+
+/** A screen preset's proportion, as a chip says it — 1080 × 1350 is «4:5». A number, never copy. */
+function ratioOf(width: number, height: number): string {
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+  const g = gcd(width, height);
+  return `${formatNumber(width / g)}:${formatNumber(height / g)}`;
+}
+
+/** A ruler mark every tenth of the width, rounded to a readable step. */
+function rulerStep(width: number): number {
+  return Math.max(10, Math.round(width / 10 / 10) * 10);
 }

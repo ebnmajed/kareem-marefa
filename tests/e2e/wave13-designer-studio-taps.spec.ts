@@ -163,7 +163,12 @@ const inspector = (page: Page) => main(page).getByRole("region", { name: "الخ
 async function selectInList(page: Page, name: string) {
   await panel(page).getByRole("tab", { name: "الطبقات", exact: true }).click();
   await main(page).getByRole("tabpanel").getByRole("button", { name: new RegExp(`^${name}`) }).first().click();
-  await panel(page).getByRole("tab", { name: "الخصائص", exact: true }).click();
+  // Wave 23: the properties are the rail's «الطبقة» (a selector move).
+  await panel(page).getByRole("tab", { name: "الطبقة", exact: true }).click();
+}
+/** Wave 23: align, order, transform and the numbers sit under the panel's الموضع tab. */
+async function positionTab(page: Page) {
+  await inspector(page).getByRole("tab", { name: "الموضع", exact: true }).click();
 }
 
 test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed with click() alone, and the stored document changes each time", async ({ context, page }) => {
@@ -176,6 +181,7 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
   // ── move: «ضع بنقرة», then one click on the canvas ────────────────────────
   await selectInList(page, "المكان");
   const before = await storedLayer("l_where");
+  await positionTab(page);
   let done = saved(page);
   await inspector(page).getByRole("button", { name: "ضع بنقرة", exact: true }).click();
   await main(page).locator("[data-layer-hit-area]").click({ position: { x: 60, y: 60 } });
@@ -242,7 +248,7 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
   await expect(list.getByText("3 طبقات محدّدة")).toBeVisible();
 
   // ── group align and distribute ─────────────────────────────────────────────
-  await panel(page).getByRole("tab", { name: "الخصائص", exact: true }).click();
+  await panel(page).getByRole("tab", { name: "الطبقة", exact: true }).click();
   const group = inspector(page);
   done = saved(page);
   await group.getByRole("group", { name: "أفقيًا", exact: true }).getByRole("button", { name: "البداية", exact: true }).click();
@@ -263,8 +269,10 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
 
   // ── D1b: add a text, write it, colour it, duplicate it, delete it ─────────
   const count = (await stored()).length;
+  // Wave 23: «نص» is a tile in العناصر — a tap adds it (and arms «ضع بنقرة»), the panel turns to الطبقة.
   done = saved(page);
-  await list.getByRole("button", { name: "نص", exact: true }).click();
+  await panel(page).getByRole("tab", { name: "العناصر", exact: true }).click();
+  await main(page).getByRole("tabpanel").getByRole("button", { name: "نص", exact: true }).first().click();
   await done;
   const layers = await stored();
   expect(layers).toHaveLength(count + 1);
@@ -273,7 +281,8 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
   expect(added.color).toBe("{{brand.fgHeading}}");
 
   done = saved(page);
-  await inspector(page).getByLabel("النص", { exact: true }).fill("ملتقى المعرفة");
+  // Wave 23: the «النص» tab labels its panel too — the field is the textbox (a selector move).
+  await inspector(page).getByRole("textbox", { name: "النص", exact: true }).fill("ملتقى المعرفة");
   await done;
   expect((await storedLayer(added.id)).text?.literal).toBe("ملتقى المعرفة");
 
@@ -298,5 +307,6 @@ test("★ SC 2.5.7 — every operation wave 13 added to the canvas is performed 
 
   // And the numbers are still there, demoted, never deleted (DEC-093).
   await selectInList(page, "المكان");
+  await positionTab(page);
   await expect(inspector(page).getByRole("button", { name: "الموضع والحجم", exact: true })).toHaveAttribute("aria-expanded", "false");
 });

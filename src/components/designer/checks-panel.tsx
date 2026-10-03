@@ -43,6 +43,10 @@ export interface CheckInputs {
    *  (REQ-DSG-019). Keyed by LAYER id: the same logo in two frames has two
    *  answers. */
   assetSizes: Record<string, { width: number; height: number }>;
+  /** ★ wave 23, optional (C4): binding → the org's LONGEST value — the longest session title, the longest member's
+   *  name. A layer bound to one is also measured with it, at its own max lines, on every preset: the title that fits
+   *  today's session can overflow next month's. */
+  samples?: Record<string, string>;
 }
 
 export interface ChecksPanelProps {
@@ -63,7 +67,9 @@ export interface ChecksPanelProps {
 export type CheckFinding =
   | { kind: "safeArea"; preset: PresetName; layerId: string; overflowPx: number }
   | { kind: "ppi"; preset: PresetName; layerId: string; ppi: number; severity: "warn" | "block" }
-  | { kind: AutoFitWarning; preset: PresetName; layerId: string };
+  | { kind: AutoFitWarning; preset: PresetName; layerId: string }
+  /** wave 23 (C4): the org's longest value for the layer's binding does not fit it. */
+  | { kind: "longest"; preset: PresetName; layerId: string; binding: string };
 
 type Finding = CheckFinding;
 
@@ -74,7 +80,7 @@ type Finding = CheckFinding;
  * shown is unmounted — so a panel that measured for itself would leave the
  * badge reading zero exactly when nobody is looking at the list.
  */
-export function useCheckFindings({ document: doc, bindings, fontsReady, assetSizes }: CheckInputs): { findings: CheckFinding[]; measuring: boolean } {
+export function useCheckFindings({ document: doc, bindings, fontsReady, assetSizes, samples }: CheckInputs): { findings: CheckFinding[]; measuring: boolean } {
   const [fitFindings, setFitFindings] = useState<Finding[]>([]);
 
   // Geometry needs no measurement, so it is available immediately.
@@ -134,6 +140,16 @@ export function useCheckFindings({ document: doc, bindings, fontsReady, assetSiz
           measure,
         );
         if (!result.fits && result.warning) found.push({ kind: result.warning, preset, layerId: layer.id });
+        // C4: the org's longest value for this binding, at the layer's own max lines.
+        const key = spec.binding?.replace(/^\{\{|\}\}$/g, "").trim();
+        const sample = key ? samples?.[key] : undefined;
+        if (key && sample && sample !== resolved.text) {
+          const longest = computeAutoFit(
+            { text: sample, frame: layer.frame, font: layer.font, ...(layer.autoFit ? { autoFit: layer.autoFit } : {}) },
+            measure,
+          );
+          if (!longest.fits) found.push({ kind: "longest", preset, layerId: layer.id, binding: key });
+        }
       }
     }
 
@@ -141,7 +157,7 @@ export function useCheckFindings({ document: doc, bindings, fontsReady, assetSiz
     return () => {
       cancelled = true;
     };
-  }, [doc, bindings, fontsReady]);
+  }, [doc, bindings, fontsReady, samples]);
 
   const findings = useMemo(() => [...safeFindings, ...ppi, ...fitFindings], [safeFindings, ppi, fitFindings]);
   return { findings, measuring: !fontsReady };
@@ -171,9 +187,16 @@ function group(findings: CheckFinding[]): FindingGroup[] {
   return [...groups.values()];
 }
 
+/** The rows the panel lists — one per check × layer. The rail's count (wave 23): one overflow on seven presets is one
+ *  problem, so the count says one, as the list does. */
+export function checkRowCount(findings: CheckFinding[]): number {
+  return group(findings).length;
+}
+
 export function ChecksPanel({ findings, measuring, onGoTo, layerNames = {}, showIntro = true }: ChecksPanelProps) {
   const t = useTranslations("designer.checks");
   const tp = useTranslations("designer.presets");
+  const tb = useTranslations("designer.bindings");
   const blocked = findings.some((f) => f.kind === "ppi" && f.severity === "block");
   const groups = useMemo(() => group(findings), [findings]);
 
@@ -199,6 +222,8 @@ export function ChecksPanel({ findings, measuring, onGoTo, layerNames = {}, show
                     ? t.rich(f.severity === "block" ? "ppiBlock" : "ppiWarn", { layer, preset, ppi: formatNumber(g.ppi), bdi: (c) => <bdi>{c}</bdi> })
                     : f.kind === "safeArea"
                       ? t.rich("safeArea", { layer, preset, px: formatNumber(g.overflowPx), bdi: (c) => <bdi>{c}</bdi> })
+                      : f.kind === "longest"
+                        ? t.rich("longest", { layer, preset, field: tb.has(`field.${f.binding}`) ? tb(`field.${f.binding}`) : f.binding, bdi: (c) => <bdi>{c}</bdi> })
                       : t.rich(f.kind === "min_size_reached" ? "minSize" : "maxLines", { layer, preset, bdi: (c) => <bdi>{c}</bdi> })}
                 </p>
                 {onGoTo ? (

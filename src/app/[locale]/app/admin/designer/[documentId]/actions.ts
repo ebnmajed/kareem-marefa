@@ -2,8 +2,10 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requestExports, retryExport } from "@/lib/dal/designer";
+import { openTemplateDraft } from "@/lib/dal/templates";
 import type { ExportActionState } from "./state";
 
 // SCR-057's export queue — REQ-DSG-011, REQ-DSG-012.
@@ -58,4 +60,13 @@ export async function retryArtifact(locale: string, documentId: string, artifact
   if (result.status !== "ok") return { status: "not_authorized", at: Date.now() };
   revalidatePath(`/${locale}/app/admin/designer/${parsed.data.documentId}`);
   return { status: "retried", at: Date.now() };
+}
+
+/** The certificate strip's other orientation (DEC-148, DEC-238 §3): opens that template's draft — `templates.ts`'s
+ *  `openTemplateDraft()`, the library's own path, read and never re-implemented. A refusal stays on this page. */
+export async function openSiblingTemplate(locale: string, templateId: string): Promise<void> {
+  if (!id.safeParse(templateId).success) return;
+  const result = await openTemplateDraft(locale, templateId);
+  if ("status" in result) return;
+  redirect(`/${locale}/app/admin/designer/${result.documentId}`);
 }

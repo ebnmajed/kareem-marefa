@@ -200,6 +200,12 @@ async function openStudio(page: Page) {
   await expect(main(page).getByRole("heading", { name: SESSION_TITLE, level: 1 })).toBeVisible();
 }
 
+/** Wave 23: «صدّر» opens the sheet that holds the request and the queue. */
+async function openExports(page: Page) {
+  await main(page).getByRole("button", { name: "صدّر", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+}
+
 /* ── desktop: the editor, operated by taps alone ────────────────────────── */
 
 test("★ DEC-093: every studio operation is performable with click() alone, and the stored document changes", async ({ context, page }) => {
@@ -232,15 +238,17 @@ test("★ DEC-093: every studio operation is performable with click() alone, and
     .getByRole("button", { name: "اذهب إلى الطبقة" });
   await expect(goTo).toBeVisible();
   await goTo.click();
-  await expect(panel.getByRole("tab", { name: "الخصائص" })).toHaveAttribute("aria-selected", "true");
+  await expect(panel.getByRole("tab", { name: "الطبقة" })).toHaveAttribute("aria-selected", "true");
   const inspector = main(page).getByRole("region", { name: "الخصائص" });
+  // Wave 23: align, order and the numbers sit under the panel's الموضع tab (a selector move).
+  await inspector.getByRole("tab", { name: "الموضع" }).click();
   await expect(inspector.getByRole("group", { name: "أفقيًا" })).toBeVisible();
 
   // …and the layer it selected is `l_where`, pressed in the list.
   await panel.getByRole("tab", { name: "الطبقات" }).click();
   const rows = main(page).getByRole("tabpanel");
   await expect(rows.getByRole("button", { name: /المكان/, pressed: true })).toBeVisible();
-  await panel.getByRole("tab", { name: "الخصائص" }).click();
+  await panel.getByRole("tab", { name: "الطبقة" }).click();
 
   // ★ Align to the safe area's start on the DOCUMENT's axis (DEC-096).
   let done = saved(page);
@@ -268,7 +276,7 @@ test("★ DEC-093: every studio operation is performable with click() alone, and
     .click();
   await done;
   expect(await storedIndex("l_where")).toBeGreaterThan(indexBefore);
-  await panel.getByRole("tab", { name: "الخصائص" }).click();
+  await panel.getByRole("tab", { name: "الطبقة" }).click();
 
   // To the back, from the inspector: one z, below every other layer's.
   done = saved(page);
@@ -299,7 +307,7 @@ test("★ DEC-093: every studio operation is performable with click() alone, and
 
   // Undo is a tap too: it saves the step before «لائم».
   done = saved(page);
-  await main(page).getByRole("toolbar").getByRole("button", { name: "تراجع" }).click();
+  await main(page).getByRole("toolbar", { name: "مصمّم المستندات" }).getByRole("button", { name: "تراجع" }).click();
   await done;
   expect((await storedLayer("l_where")).frame.x).toBe(900);
 
@@ -319,9 +327,10 @@ test("★ REQ-DSG-024: a locked region cannot be moved by the align buttons, and
     .getByRole("tabpanel")
     .getByRole("button", { name: /رمز الجلسة/ })
     .click();
-  await main(page).getByRole("tablist", { name: "لوحات المحرّر" }).getByRole("tab", { name: "الخصائص" }).click();
+  await main(page).getByRole("tablist", { name: "لوحات المحرّر" }).getByRole("tab", { name: "الطبقة" }).click();
   const inspector = main(page).getByRole("region", { name: "الخصائص" });
   await expect(inspector.getByText("مقفلة في القالب", { exact: false })).toBeVisible();
+  await inspector.getByRole("tab", { name: "الموضع" }).click();
   await expect(inspector.getByRole("group", { name: "أفقيًا" }).getByRole("button", { name: "البداية" })).toBeDisabled();
   await expect(inspector.getByRole("button", { name: "لائم المنطقة الآمنة" })).toBeDisabled();
 });
@@ -331,9 +340,11 @@ test("★ «اطلب التصدير» queues every variant of the saved document
   await page.setViewportSize(onPhone() ? PHONE : DESKTOP);
   await openStudio(page);
 
-  await main(page).getByRole("button", { name: "اطلب التصدير" }).click();
+  // Wave 23: the queue lives in the «صدّر» sheet (a selector move).
+  await openExports(page);
+  await page.getByRole("dialog").getByRole("button", { name: "اطلب التصدير" }).click();
   await expect(page.getByText("أُضيفت المقاسات إلى قائمة التصدير.", { exact: true })).toBeVisible();
-  const exports = main(page).getByRole("region", { name: /قائمة التصدير/ });
+  const exports = page.getByRole("dialog").getByRole("region", { name: /قائمة التصدير/ });
   await expect(exports.getByText("في الانتظار").first()).toBeVisible();
 
   const { rows } = await db.query<{ n: string }>(`select count(*)::text as n from public.export_artifacts where document_id = $1`, [documentId]);
@@ -368,8 +379,9 @@ test("★ «اطلب التصدير» queues every variant of the saved document
     );
     expect(failed, "every variant renders through the worker").toEqual([]);
     await page.reload();
+    await openExports(page);
     await expect(exports.getByText("جاهز").first()).toBeVisible();
-    await expect(main(page).getByRole("navigation", { name: "المقاسات" }).first().locator("img").first()).toBeVisible();
+    await expect(page.getByRole("dialog").locator("img").first()).toBeVisible();
     if (onPhone()) await capture(page, "review");
     else await page.screenshot({ path: `${SHOTS}/wave8-designer-editor-desktop.png`, fullPage: true });
     return;
@@ -381,6 +393,7 @@ test("★ «اطلب التصدير» queues every variant of the saved document
     [documentId],
   );
   await page.reload();
+  await openExports(page);
   await expect(exports.getByText("قيد التوليد").first()).toBeVisible();
   if (onPhone()) await capture(page, "rendering");
 
@@ -390,6 +403,7 @@ test("★ «اطلب التصدير» queues every variant of the saved document
     [documentId],
   );
   await page.reload();
+  await openExports(page);
   // Said in the admin's words first (DEC-149 §4), the worker's own text kept
   // beneath it for whoever debugs the render.
   await expect(exports.getByRole("alert")).toContainText("النص لم يتّسع بالحجم المصمَّم له في هذا المقاس");
@@ -413,7 +427,7 @@ test("★ SCR-057 at 390 px is VIEW AND APPROVE — the canvas, every variant, t
   await openStudio(page);
 
   await expect(main(page).getByText("على الهاتف تراجِع ولا تحرّر", { exact: false })).toBeVisible();
-  await expect(main(page).getByRole("button", { name: "اطلب التصدير" })).toBeVisible();
+  await expect(main(page).getByRole("button", { name: "صدّر", exact: true })).toBeVisible();
   await expect(main(page).getByRole("navigation", { name: "المقاسات" }).first()).toBeVisible();
   await expect(main(page).getByRole("heading", { name: "قبل التصدير", level: 2 })).toBeVisible();
   // The editor is not here: no rail, no inspector, no align buttons.

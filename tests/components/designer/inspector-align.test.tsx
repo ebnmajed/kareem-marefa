@@ -68,6 +68,8 @@ async function pressIn(locale: "ar" | "en", console: "rtl" | "ltr", doc: DesignD
     />,
     { wrapper: Wrap },
   );
+  // ★ Wave 23: the align buttons sit under the الموضع tab of the rebuilt panel — a selector move, the bytes unchanged.
+  await userEvent.click(screen.getByRole("tab", { name: (locale === "ar" ? arDesigner : enDesigner).designer.studio.layer.position }));
   const group = screen.getByRole("group", { name: groupName });
   await userEvent.click(within(group).getByRole("button", { name: buttonName }));
   expect(onArrange).toHaveBeenCalledTimes(1);
@@ -144,6 +146,7 @@ describe("DEC-093 — the numbers are demoted, never removed", () => {
         />
       </NextIntlClientProvider>,
     );
+    await userEvent.click(screen.getByRole("tab", { name: arDesigner.designer.studio.layer.position }));
     const toggle = screen.getByRole("button", { name: arDesigner.designer.inspector.sections.position });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     await userEvent.click(toggle);

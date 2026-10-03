@@ -5,6 +5,82 @@ found. `docs/plan/` is otherwise the lead's; this file is mine.
 
 ---
 
+## Wave 23 — slice 3b (2026-10-03) — the certificate canvas and the four-format demonstrable
+
+- **One page per certificate** (DEC-148, DEC-238 §3): the strip shows the composition's one preset; its other
+  orientation, when the org's library has it (same family, the other master), is a button that opens that template's
+  draft through `templates.ts`'s `openTemplateDraft()` (`openSiblingTemplate`, the designer route's action).
+- **الحقول** from `fields.ts`: used / unused from the document; `{المستوى}` = `certificate.achievementName`, achievement
+  only; `{رمز التحقق QR}` = a QR on `certificate.verifyUrl`, the URL the resolver builds. **No new binding** (§3.3): the
+  board's {نوع الشهادة}, {تاريخ الجلسة}, {نص الشهادة} and {التوقيع} are not fields (D-3).
+- **C4**: `getLongestSamples()` (the org's longest session title and longest active member's name, through RLS) feeds
+  `useCheckFindings`' new `samples`; a layer bound to one is measured with it at its own max lines on every preset —
+  the `longest` finding names the layer and the field. The contrast check of the plan is not built in 3b.
+- **C5** «معاينة بعضو»: URL state (`?member=`, and `?session=` for a session kind); if the member holds an issued
+  certificate of the kind, its own row binds (real serial, code, QR); otherwise only the name and the title, the rest
+  left as placeholders. `previewBindings` reach the canvas and the checks only — the page's fingerprint uses the saved
+  document's own bindings, and the certificate spec asserts a preview writes no `export_artifacts` row.
+- **The demonstrable**: `wave23-designer-four-formats.spec.ts` (`E2E_WORKER=1`) — the platform `talk` poster, untouched,
+  with every rendered input fixed (org name, session id, title, venue, time), all 12 artifacts `ready`, a SHA-256 per
+  artifact (a PDF's dates and id blanked first) written to `wave23-designer-four-formats.json` for the lead to compare
+  between `main`'s head and B's.
+
+---
+
+## Wave 23 — slice 3a (2026-10-03) — the editor chrome deleted and rebuilt; the table, written before the create
+
+Deleted: `editor.tsx`, `inspector.tsx`, `inspector-section.tsx`, `variant-strip.tsx`, `admin/designer/[documentId]/page.tsx`.
+Created back to back, from `AdminDesigner.dc.html` and `AdminDesignerElements.dc.html`, over `editor-state.ts` (slice 1).
+**The behaviour tables are §W23.2 of the plan below — `editor.tsx`, `inspector.tsx`, `inspector-section.tsx`,
+`variant-strip.tsx`, `page.tsx` — each row re-read against the new files after the create.** What 3a decides beyond them:
+
+| Decision | Where | Kept by / ruled |
+|---|---|---|
+| The bar: back (the owner of the document), the name as the page's `h1`, the save state and the badges, ↶ ↷, the strip of **all seven** presets with the 4:5 master first and a dot per flagged preset, the zoom, «معاينة بجلسة», «صدّر» (a sheet: «اطلب التصدير», the queue, the worker's thumbnails), and «انشر» beside it on a template draft whose document differs from its last published version | `editor.tsx` (`Bar`) | `DEC-238` §3 (seven presets), D-1, D-13 |
+| The rail's items: العناصر · الحقول · الملفات · الهوية · الطبقات · الفحوصات (count = rows listed) · الطبقة (only with one selection); its tablist keeps the name «لوحات المحرّر» | `editor.tsx` over `ui/editor-rail` | `DEC-NEXT-36`, `REQ-DSG-029` |
+| العناصر: عنوان · نص · مستطيل · دائرة · خط · رمز QR · شعار الشركة, and four text styles — **a tap adds and arms «ضع بنقرة»**; no objects or stickers tabs | `panels.tsx` | `DEC-093`, `DEC-238` §3 |
+| الحقول: the registry's fields for the purpose, «مستخدم» / «—», a tap adds the bound field or QR; the bound values (`BindingsPanel`) beneath | `panels.tsx` | `REQ-DSG-006`, `DEC-093` |
+| الملفات: «أضف صورة» (`AddImage`, the one upload flow, never SVG) and the org's images — a tap adds an image layer at its proportion | `panels.tsx` | `DEC-009`, `DEC-093` |
+| الهوية: the brand colour tokens by name — a tap applies one to the selected layer's colour or fill — the faces, the logo | `panels.tsx` | `REQ-DSG-021`; team colours not offered (D-12) |
+| الطبقة: `Inspector` at its old path with its old props; tabs النص · الموضع · التأثيرات (a shape الشكل, an image الصورة, a QR الرمز); «الموضع والحجم» closed and never removed; the region «الخصائص» around it | `inspector.tsx` | `DEC-093`, `REQ-DSG-028` |
+| The floating toolbar's five: font · size · colour · alignment · «{ } ربط» (opens النص); ↔ «املأ عرضًا»; offset clears the rotation knob; hidden during a gesture | `editor.tsx` over `ui/floating-toolbar` | `M12.md`, D-7 |
+| Below `xl`: view and approve | `editor.tsx` | `09` SCR-057 (D-8) |
+
+**Selector moves in my e2e specs (expectations unchanged), for `STATUS.md`'s ledger:** the tab «الخصائص» → «الطبقة»;
+the align, order and transform buttons sit under the الموضع tab; «اطلب التصدير» sits in the «صدّر» sheet; the variant
+strip's buttons are named by the preset's short name. Specs: `wave8-designer-editor`, `wave13-designer-studio-taps`;
+`inspector-align.test.tsx` opens الموضع first.
+
+---
+
+## Wave 23 — slice 2 (2026-10-03) — `layer-list.tsx` deleted; its kept-behaviour table, read against the new files
+
+Written before the create. `src/components/designer/layer-list.tsx` (201) is deleted; its rows become `ui/layer-list`
+(no runtime import — the caller hands it the order and the words) and its panel chrome `designer/layers-panel.tsx`,
+which keeps the old `LayerListProps` so `editor.tsx` swaps one import until slice 3 rebuilds the chrome.
+
+| Behaviour (old file) | Where it lives now | Kept by |
+|---|---|---|
+| Front of the stack first — `paintOrder()` reversed (`:69`) | `layers-panel.tsx` builds `items` | `06` §10 |
+| A locked layer listed with «مقفلة»; a hidden one «مخفية» (`:143-152`) | `ui/layer-list` (the words from `designer.layers`) | `REQ-DSG-024` |
+| ▲▼ named «طبقة إلى الأمام/الخلف», `aria-describedby` the row's name, disabled at the ends (`:156-177`) | `ui/layer-list` `onMove` | `DEC-093` path 2 |
+| Hide/show, disabled for a locked row (`:182-192`) | `ui/layer-list` `onToggleHidden`; ★ for a viewer who cannot edit it is now absent rather than disabled, like ▲▼ already were | `REQ-DSG-024` |
+| A tap selects; shift or «تحديد متعدّد» adds and removes (`:137`) | `ui/layer-list` `multi` | `DEC-093` path 5, `DEC-178` |
+| «تحديد متعدّد» toggle and «N طبقات محدّدة» as a status (`:101-113`) | `layers-panel.tsx` | `DEC-178` |
+| «اختر كل طبقات: …» per visible kind (`:114-122`) | `layers-panel.tsx` | `DEC-093` path 5 |
+| The count and the order hint (`:92-95`); «لا طبقات» when empty (`:126-127`) | `layers-panel.tsx` / `ui/layer-list` `labels.empty` | — |
+| «أضف» — text, shape, logo, and «أضف صورة» through `AddImage` (`:75-90`) | `layers-panel.tsx` until slice 3 moves it to العناصر / الملفات | `DEC-178` (D1b) |
+| 44 px rows (`:137`) | `ui/layer-list` | SC 2.5.8 |
+| — new — drag to reorder, beside ▲▼ only | `ui/layer-list` `onReorder` (wired in slice 3) | `DEC-093` path 2 (the enhancement) |
+
+**`canvas.tsx`'s frame, moved in the same slice** (`DEC-237` §3): the fit (`:216-230`) is `ui/canvas-stage`'s; the
+wrapper, the size · zoom line and the scrolling host are gone (the editor shows size and zoom beside the canvas until
+slice 3's bar); the placing note is the editor's; the coordinates `role="status"` stays, as a chip inside the canvas's
+box. Add-only props: `scale` (default `0.4`), `snapping` (default `true`), `onGestureChange`. `canvas-overlay.test.tsx`
+and `wave13-console-parity.test.tsx` untouched.
+
+---
+
 ## Wave 23 — 2026-10-03 — the plan, PR B `wave-23b/the-designer` (planning only; nothing is deleted or built until the lead posts «the plans are approved»)
 
 Read at `8a43de20` in the main checkout: `STATUS.md`'s wave-23 block, `CLAUDE.md`'s wave-23 map, `DEC-235` – `DEC-237`

@@ -204,7 +204,8 @@ test("★ drag, resize and rotate on the canvas — one undo step per gesture, t
   // DEC-149 §4: no smooth scroll under a pointer measurement.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openStudio(page);
-  await expect(main(page).getByText("اسحب الطبقة لتحريكها", { exact: false })).toBeVisible();
+  // Wave 23: the canvas sits on its stage (the old chrome's drag hint is gone with the chrome — a selector move).
+  await expect(main(page).getByRole("region", { name: "لوحة التصميم" })).toBeVisible();
 
   // ── move: to the right on the screen ──────────────────────────────────────
   const where = await storedLayer("l_where");
@@ -220,7 +221,7 @@ test("★ drag, resize and rotate on the canvas — one undo step per gesture, t
 
   // ★ One gesture, one undo step: a single «تراجع» restores the frame.
   done = saved(page);
-  await main(page).getByRole("toolbar").getByRole("button", { name: "تراجع", exact: true }).click();
+  await main(page).getByRole("toolbar", { name: "مصمّم المستندات" }).getByRole("button", { name: "تراجع", exact: true }).click();
   await done;
   expect((await storedLayer("l_where")).frame).toEqual(where.frame);
 

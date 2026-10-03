@@ -1691,3 +1691,72 @@ export interface FloatingToolbarProps extends Styleable {
   placement?: "above" | "below";
   children: ReactNode;
 }
+
+/** One toggle drawn on a `canvas-stage` — منطقة الأمان · الشبكة · المحاذاة التلقائية · المساطر. An `aria-pressed` button. */
+export interface CanvasStageToggle {
+  key: string;
+  label: string;
+  pressed: boolean;
+  onPressedChange: (next: boolean) => void;
+}
+
+/**
+ * `designer`'s · `canvas-stage.tsx` — the stage AROUND an editor's canvas (REQ-UIX-110, `DEC-237` §3): the neutral
+ * ground, the fit and the zoom, rulers on demand, a grid, the toggles on the canvas, and a positioned overlay for the
+ * floating toolbar. It draws nothing of a document; the designer's canvas and the email's `block-canvas` are its
+ * children. Rulers count from the content's START edge (`DEC-096`). Declares no animation.
+ */
+export interface CanvasStageProps extends Styleable {
+  /** The region's accessible name. */
+  label: string;
+  /** The child's own size, in its units (document px; the email's 600 or 375). */
+  contentWidth: number;
+  /** Omitted for content whose height flows (the email): the stage then fits by width and scrolls. */
+  contentHeight?: number;
+  /** Controlled. `"fit"` fits the content inside the stage (never above 1); a number is a scale. */
+  zoom: "fit" | number;
+  /** The scale the stage arrived at — the bar's «62%». Pass a stable callback. */
+  onScaleChange?: (scale: number) => void;
+  rulers?: { direction: "rtl" | "ltr"; step: number } | null;
+  /** A neutral grid every `step` content px. Visual only — nothing snaps to it. */
+  grid?: { step: number } | null;
+  toggles?: readonly CanvasStageToggle[];
+  /** Over the content, inside its positioned box — the floating toolbar. */
+  overlay?: ReactNode;
+  /** The child, handed the scale it is drawn at. */
+  children: (scale: number) => ReactNode;
+}
+
+/** One row of a `layer-list`. */
+export interface LayerListItem {
+  id: string;
+  /** Shown in `<bdi>`. */
+  name: string;
+  /** «نص», «شكل», … */
+  kindLabel: string;
+  selected: boolean;
+  locked?: boolean;
+  hidden?: boolean;
+}
+
+/**
+ * `designer`'s · `layer-list.tsx` — a document's layers as rows (REQ-DSG-028, `DEC-093` path 2, `DEC-235` §5.1): a tap
+ * selects (additive with shift or `multi`), ▲▼ move a row one step and are described by its name, hide/show is refused
+ * on a locked row. Drag to reorder is the enhancement, offered only beside ▲▼. Rows only — the caller decides the order
+ * and the words. Declares no animation.
+ */
+export interface LayerListProps extends Styleable {
+  /** The list's accessible name. */
+  label: string;
+  /** In display order — the designer passes the front of the stack first. */
+  items: readonly LayerListItem[];
+  onSelect: (id: string, options: { additive: boolean }) => void;
+  /** «تحديد متعدّد» is on: every tap adds or removes. */
+  multi?: boolean;
+  /** ▲▼ — the path. Absent: rows are read-only. */
+  onMove?: (id: string, move: "forward" | "backward") => void;
+  /** The drag enhancement: the row dropped at `toIndex`. Never the only way (`DEC-093`). */
+  onReorder?: (id: string, toIndex: number) => void;
+  onToggleHidden?: (id: string) => void;
+  labels: { forward: string; backward: string; show: string; hide: string; locked: string; hidden: string; empty: string; handle: string };
+}
