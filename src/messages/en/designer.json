@@ -84,6 +84,7 @@
       "hidden": "Hidden",
       "show": "Show",
       "hide": "Hide",
+      "handle": "Drag to reorder — or use forward and back",
       "kind": {
         "text": "Text",
         "image": "Image",

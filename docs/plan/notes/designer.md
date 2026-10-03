@@ -5,6 +5,34 @@ found. `docs/plan/` is otherwise the lead's; this file is mine.
 
 ---
 
+## Wave 23 — slice 2 (2026-10-03) — `layer-list.tsx` deleted; its kept-behaviour table, read against the new files
+
+Written before the create. `src/components/designer/layer-list.tsx` (201) is deleted; its rows become `ui/layer-list`
+(no runtime import — the caller hands it the order and the words) and its panel chrome `designer/layers-panel.tsx`,
+which keeps the old `LayerListProps` so `editor.tsx` swaps one import until slice 3 rebuilds the chrome.
+
+| Behaviour (old file) | Where it lives now | Kept by |
+|---|---|---|
+| Front of the stack first — `paintOrder()` reversed (`:69`) | `layers-panel.tsx` builds `items` | `06` §10 |
+| A locked layer listed with «مقفلة»; a hidden one «مخفية» (`:143-152`) | `ui/layer-list` (the words from `designer.layers`) | `REQ-DSG-024` |
+| ▲▼ named «طبقة إلى الأمام/الخلف», `aria-describedby` the row's name, disabled at the ends (`:156-177`) | `ui/layer-list` `onMove` | `DEC-093` path 2 |
+| Hide/show, disabled for a locked row (`:182-192`) | `ui/layer-list` `onToggleHidden`; ★ for a viewer who cannot edit it is now absent rather than disabled, like ▲▼ already were | `REQ-DSG-024` |
+| A tap selects; shift or «تحديد متعدّد» adds and removes (`:137`) | `ui/layer-list` `multi` | `DEC-093` path 5, `DEC-178` |
+| «تحديد متعدّد» toggle and «N طبقات محدّدة» as a status (`:101-113`) | `layers-panel.tsx` | `DEC-178` |
+| «اختر كل طبقات: …» per visible kind (`:114-122`) | `layers-panel.tsx` | `DEC-093` path 5 |
+| The count and the order hint (`:92-95`); «لا طبقات» when empty (`:126-127`) | `layers-panel.tsx` / `ui/layer-list` `labels.empty` | — |
+| «أضف» — text, shape, logo, and «أضف صورة» through `AddImage` (`:75-90`) | `layers-panel.tsx` until slice 3 moves it to العناصر / الملفات | `DEC-178` (D1b) |
+| 44 px rows (`:137`) | `ui/layer-list` | SC 2.5.8 |
+| — new — drag to reorder, beside ▲▼ only | `ui/layer-list` `onReorder` (wired in slice 3) | `DEC-093` path 2 (the enhancement) |
+
+**`canvas.tsx`'s frame, moved in the same slice** (`DEC-237` §3): the fit (`:216-230`) is `ui/canvas-stage`'s; the
+wrapper, the size · zoom line and the scrolling host are gone (the editor shows size and zoom beside the canvas until
+slice 3's bar); the placing note is the editor's; the coordinates `role="status"` stays, as a chip inside the canvas's
+box. Add-only props: `scale` (default `0.4`), `snapping` (default `true`), `onGestureChange`. `canvas-overlay.test.tsx`
+and `wave13-console-parity.test.tsx` untouched.
+
+---
+
 ## Wave 23 — 2026-10-03 — the plan, PR B `wave-23b/the-designer` (planning only; nothing is deleted or built until the lead posts «the plans are approved»)
 
 Read at `8a43de20` in the main checkout: `STATUS.md`'s wave-23 block, `CLAUDE.md`'s wave-23 map, `DEC-235` – `DEC-237`

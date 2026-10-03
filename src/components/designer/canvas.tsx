@@ -123,6 +123,16 @@ export interface DesignerCanvasProps {
    * the path, this dot the refinement (DEC-093 path 3).
    */
   onFocal?: (layerId: string, point: FocalPoint) => void;
+  /* ── wave 23, all optional: the canvas behaves exactly as before without them ── */
+  /**
+   * The scale the canvas is drawn at — handed down by `ui/canvas-stage`, which fits and zooms (the fit lived here
+   * until wave 23, DEC-237 §3). Without it, `0.4`: the scale the canvas started at before its first measure.
+   */
+  scale?: number;
+  /** «المحاذاة التلقائية» — off, a move does not snap (as with alt held today). */
+  snapping?: boolean;
+  /** A gesture started or ended — so the floating toolbar steps aside while a layer moves. */
+  onGestureChange?: (active: boolean) => void;
 }
 
 /** A press that moves less than this, in screen pixels, is a tap. */
@@ -180,16 +190,17 @@ export function DesignerCanvas({
   onReorderKey,
   onDeleteKey,
   onFocal,
+  scale = 0.4,
+  snapping = true,
+  onGestureChange,
 }: DesignerCanvasProps) {
   const t = useTranslations("designer.canvas");
   const tl = useTranslations("designer.layers");
-  const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const gesture = useRef<Gesture | null>(null);
   /** Set when a press became a drag, so the click that follows it is not also a selection. */
   const swallowClick = useRef(false);
-  const [scale, setScale] = useState(0.4);
   const [preview, setPreviewState] = useState<Preview>(null);
   /**
    * ★ The gesture's result is read from THIS, never from the state. A fast hand
@@ -212,22 +223,6 @@ export function DesignerCanvas({
       }),
     [doc, faces, origin, bindings, placeholderLabel, assets],
   );
-
-  // Fit to the container rather than to a breakpoint: the editor is a
-  // three-column layout whose middle column is whatever is left over.
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
-    const fit = () => {
-      const available = host.clientWidth;
-      if (!available) return;
-      setScale(Math.min(1, available / doc.master.width));
-    };
-    fit();
-    const observer = new ResizeObserver(fit);
-    observer.observe(host);
-    return () => observer.disconnect();
-  }, [doc.master.width]);
 
   const { width, height } = doc.master;
   const presetSpec = PRESETS[preset];
@@ -279,10 +274,11 @@ export function DesignerCanvas({
   );
 
   const finish = useCallback(() => {
+    if (gesture.current) onGestureChange?.(false);
     gesture.current = null;
     setPreview(null);
     paintTransient(null);
-  }, [paintTransient, setPreview]);
+  }, [paintTransient, setPreview, onGestureChange]);
 
   // A gesture never outlives the document it started on.
   useEffect(() => finish, [finish]);
@@ -328,6 +324,7 @@ export function DesignerCanvas({
       if (Math.hypot(dxScreen, dyScreen) < TAP_SLOP) return;
       g.moved = true;
       if (g.kind === "move" && !selectedLayerIds.includes(g.layerId)) onSelect(g.layerId);
+      if (g.kind === "move") onGestureChange?.(true);
     }
     const dx = dxScreen / scale;
     const dy = dyScreen / scale;
@@ -352,7 +349,7 @@ export function DesignerCanvas({
       }
       // One layer snaps; a group moves as it is — its own members would be its targets.
       const only = g.ids.length === 1 ? g.ids[0] : undefined;
-      if (only && frames[only] && !event.altKey) {
+      if (only && frames[only] && !event.altKey && snapping) {
         const snapped = snapFrame(source, only, frames[only], snapTolerance(scale));
         frames[only] = snapped.frame;
         guides = snapped.guides;
@@ -360,6 +357,7 @@ export function DesignerCanvas({
       setPreview({ kind: "frames", frames, guides });
       paintTransient(frames);
     } else if (g.kind === "resize") {
+      onGestureChange?.(true);
       const f = sourceOf(g.layerId)?.frame;
       if (!f) return;
       const keepRatio = event.shiftKey || sourceOf(g.layerId)?.kind === "image";
@@ -367,6 +365,7 @@ export function DesignerCanvas({
       setPreview({ kind: "frames", frames, guides: { inline: [], block: [] } });
       paintTransient(frames);
     } else if (g.kind === "rotate") {
+      onGestureChange?.(true);
       const f = sourceOf(g.layerId)?.frame;
       if (!f) return;
       const start = docPoint(g.x0, g.y0);
@@ -457,23 +456,6 @@ export function DesignerCanvas({
   const readout = preview?.kind === "frames" && single ? preview.frames[single.id] : undefined;
 
   return (
-    <div className="flex min-w-0 flex-col gap-3">
-      <p className="text-body-sm text-fg-muted">
-        {t.rich("size", { width: formatNumber(width), height: formatNumber(height), bdi: (c) => <bdi>{c}</bdi> })}
-        {" · "}
-        {t.rich("zoom", { value: formatNumber(Math.round(scale * 100)), bdi: (c) => <bdi>{c}</bdi> })}
-        {readout ? (
-          <>
-            {" · "}
-            {/* ★ Reads like the inspector's fields — `x` from the DOCUMENT's
-                start edge — so the chip and the numbers are one truth (DEC-096;
-                no rulers this wave, DEC-178). */}
-            <span role="status">{t.rich("coords", { x: formatNumber(readout.x), y: formatNumber(readout.y), bdi: (c) => <bdi>{c}</bdi> })}</span>
-          </>
-        ) : null}
-      </p>
-
-      <div ref={hostRef} className="min-w-0 overflow-x-auto">
         <div className="relative" style={{ width: width * scale, height: height * scale }}>
           <iframe
             ref={frameRef}
@@ -631,11 +613,15 @@ export function DesignerCanvas({
               ) : null}
             </div>
           ) : null}
-        </div>
-      </div>
 
-      {placing ? <p className="text-body-sm text-fg-heading">{t("placingNote")}</p> : null}
-    </div>
+          {readout ? (
+            // ★ Reads like the inspector's fields — `x` from the DOCUMENT's start edge — so the chip and the numbers
+            // are one truth (DEC-096). The size and the zoom moved to the editor's bar with the fit (wave 23).
+            <span role="status" className="pointer-events-none absolute start-2 top-2 rounded-field bg-raised px-2 py-1 text-caption text-fg-heading">
+              {t.rich("coords", { x: formatNumber(readout.x), y: formatNumber(readout.y), bdi: (c) => <bdi>{c}</bdi> })}
+            </span>
+          ) : null}
+        </div>
   );
 }
 

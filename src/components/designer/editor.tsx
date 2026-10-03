@@ -1,18 +1,19 @@
 "use client";
 
-import { cloneElement, useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import type { DesignDocument, FocalPoint, Layer, PresetName } from "@kareem/designer-runtime";
 import { paintOrder } from "@kareem/designer-runtime";
 import { DesignerCanvas } from "@/components/designer/canvas";
 import { useDesignerEditorState } from "@/components/designer/editor-state";
-import { LayerList } from "@/components/designer/layer-list";
+import { LayersPanel } from "@/components/designer/layers-panel";
 import { Inspector } from "@/components/designer/inspector";
 import { BindingsPanel } from "@/components/designer/bindings-panel";
 import { ChecksPanel } from "@/components/designer/checks-panel";
 import { VariantStrip } from "@/components/designer/variant-strip";
 import { formatNumber } from "@/components/sessions/numerals";
 import { Badge } from "@/components/ui/badge";
+import { CanvasStage } from "@/components/ui/canvas-stage";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Panel } from "@/components/ui/panel";
@@ -139,8 +140,10 @@ export function DesignerEditor(props: DesignerEditorProps) {
   );
 
 
-  const canvas = (
+  const canvas = (scale: number, selectable = true) => (
     <DesignerCanvas
+      scale={scale}
+      selectable={selectable}
       document={shown}
       preset={preset}
       showOverlays={overlays}
@@ -247,7 +250,9 @@ export function DesignerEditor(props: DesignerEditorProps) {
           </h2>
           {strip}
           {/* The phone reviews and approves; it does not select layers (see `selectable`). */}
-          {cloneElement(canvas, { selectable: false })}
+          <CanvasFrame width={document.master.width} height={document.master.height} placing={placing}>
+            {(scale) => canvas(scale, false)}
+          </CanvasFrame>
         </section>
         <section aria-labelledby="dr-checks-m" className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -309,7 +314,9 @@ export function DesignerEditor(props: DesignerEditorProps) {
                 </div>
               )
             ) : null}
-            {canvas}
+            <CanvasFrame width={document.master.width} height={document.master.height} placing={placing}>
+              {(scale) => canvas(scale)}
+            </CanvasFrame>
             {strip}
           </section>
 
@@ -363,7 +370,7 @@ export function DesignerEditor(props: DesignerEditorProps) {
                     )}
                   </section>
                 ) : panel === "layers" ? (
-                  <LayerList
+                  <LayersPanel
                     document={document}
                     selectedLayerId={selectedLayerId}
                     selectedLayerIds={selectedLayerIds}
@@ -385,6 +392,28 @@ export function DesignerEditor(props: DesignerEditorProps) {
           </section>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The canvas on `ui/canvas-stage` (wave 23, slice 2): the stage fits it, and the size, the zoom and the placing note —
+ * the frame that lived inside `canvas.tsx` until `DEC-237` §3 — are said here until the rebuilt chrome's bar says them.
+ */
+function CanvasFrame({ width, height, placing, children }: { width: number; height: number; placing: boolean; children: (scale: number) => ReactNode }) {
+  const t = useTranslations("designer.canvas");
+  const [scale, setScale] = useState(0.4);
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <p className="text-body-sm text-fg-muted">
+        {t.rich("size", { width: formatNumber(width), height: formatNumber(height), bdi: (c) => <bdi>{c}</bdi> })}
+        {" · "}
+        {t.rich("zoom", { value: formatNumber(Math.round(scale * 100)), bdi: (c) => <bdi>{c}</bdi> })}
+      </p>
+      <CanvasStage label={t("label")} contentWidth={width} zoom="fit" onScaleChange={setScale} className="rounded-card">
+        {children}
+      </CanvasStage>
+      {placing ? <p className="text-body-sm text-fg-heading">{t("placingNote")}</p> : null}
     </div>
   );
 }
