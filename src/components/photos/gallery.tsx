@@ -32,7 +32,7 @@ export async function Photos({ sessionId, locale, phase }: SlotProps & { phase?:
     getTranslations("photos.album"),
     getTranslations("photos.download"),
   ]);
-  const { photos, canUpload, isStaff, imageLimitMb, days: rawDays, timeZone, album } = await getPhotosPageData(locale, sessionId);
+  const { photos, canUpload, isStaff, myMemberId, imageLimitMb, days: rawDays, timeZone, album } = await getPhotosPageData(locale, sessionId);
   if (photos.length === 0 && !canUpload) return null;
   const days = rawDays ?? [];
   const live = phase === "live";
@@ -71,7 +71,7 @@ export async function Photos({ sessionId, locale, phase }: SlotProps & { phase?:
 
   return (
     // One sequence through every group, in the order the page shows them, visible photographs only (DEC-182).
-    <PhotoAlbum photos={lightboxSequence(ordered)} locale={locale} sessionId={sessionId}>
+    <PhotoAlbum photos={lightboxSequence(ordered)} locale={locale} sessionId={sessionId} reportable={reportable(photos, myMemberId)}>
       <div className="flex flex-col gap-3">
         {topRow}
         <PhotoDownloadNotice photoFailed={tDownload("photoFailed")} albumFailed={tDownload("albumFailed")} />
@@ -99,6 +99,12 @@ export async function Photos({ sessionId, locale, phase }: SlotProps & { phase?:
 /** The lightbox's sequence: the VISIBLE photographs, in page order. A hidden one is never in it (DEC-182). */
 function lightboxSequence(photos: PhotoSummary[]): LightboxPhoto[] {
   return photos.filter((p) => !p.hiddenAt && p.url).map((p) => ({ id: p.id, url: p.url, width: p.width ?? null, height: p.height ?? null }));
+}
+
+/** REQ-EVT-008 (wave 22, F1) — which photographs the viewer may report: every visible one but their own, and whether
+ *  they already did. `report_photo()` holds the same rules; this only decides what is offered. */
+function reportable(photos: PhotoSummary[], me: string): Record<string, "open" | "reported"> {
+  return Object.fromEntries(photos.filter((p) => !p.hiddenAt && p.uploaderId !== me).map((p) => [p.id, p.reportedByMe ? "reported" : "open"]));
 }
 
 /** The page's gate and the sub-nav's count — the same `cache()`d read. */

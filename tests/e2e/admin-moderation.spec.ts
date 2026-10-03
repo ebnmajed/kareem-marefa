@@ -125,7 +125,8 @@ test.beforeAll(async ({}, testInfo) => {
   reportedPhotoId = photo2Rows[0].id;
   const { rows: photoReportRows } = await db.query<{ id: string }>(
     `insert into public.reports (org_id, target, photo_id, reporter_id, reason) values ($1, 'photo', $2, $3, 'محتوى غير مناسب') returning id`,
-    [orgId, reportedPhotoId, uploaderMemberId],
+    // Not the uploader: 0190's guard refuses a report on one's own photo (REQ-EVT-008).
+    [orgId, reportedPhotoId, modMemberId],
   );
   photoReportId = photoReportRows[0].id;
 });

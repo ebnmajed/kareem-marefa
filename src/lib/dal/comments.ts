@@ -11,10 +11,8 @@ import { sessionClient } from "@/lib/dal/session";
 // docs/plan/notes/event.md §1 for why a member's own delete past the edit
 // window needs supabase/proposed/event/03_comments_self_delete_rpc.sql.
 //
-// Comment removal WITH an audited reason (REQ-EVT-014) is STORY-EVT-006,
-// M5, alongside photo takedown — not built here. A moderator/admin can
-// still remove or restore today through the plain update policy
-// (p6_staff_update); it just carries no reason or audit row yet.
+// Staff removal WITH its reason (REQ-EVT-014) is `removeCommentAsStaff()` below — wave 22's `remove_comment()`, one
+// transaction that also closes the comment's open reports. `moderateComment()` remains for a restore.
 
 export interface CommentAuthor {
   id: string;
@@ -262,4 +260,21 @@ export async function moderateComment(locale: string, commentId: string, action:
     .select("id");
   if (error) throw mapCommentError(error);
   if (!data || data.length === 0) throw new Error("not_permitted");
+}
+
+export const removeCommentInput = z.object({ commentId: z.uuid(), reason: z.string().trim().max(300) });
+
+export type RemoveCommentOutcome = "removed" | "already_removed" | "not_found" | "not_authorized" | "reason_required" | "unknown";
+
+/** REQ-EVT-014, wave 22 (F6) — staff remove a comment from the event page with a reason. `remove_comment()` removes it
+ *  if still visible and resolves every open report on it, in one transaction; `comment.removed` and `report.resolved`
+ *  are the database's triggers — nothing here writes `audit_log`. Answers what the database says it did. */
+export async function removeCommentAsStaff(locale: string, input: z.input<typeof removeCommentInput>): Promise<RemoveCommentOutcome> {
+  const parsed = removeCommentInput.safeParse(input);
+  if (!parsed.success) return "unknown";
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("remove_comment", { p_comment: parsed.data.commentId, p_reason: parsed.data.reason });
+  if (error) return "unknown";
+  const outcome = (data as { outcome?: string } | null)?.outcome;
+  return outcome === "removed" || outcome === "already_removed" || outcome === "not_found" || outcome === "not_authorized" || outcome === "reason_required" ? outcome : "unknown";
 }

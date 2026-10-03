@@ -7367,3 +7367,41 @@ ModerationTabs case becomes the chips' separate counts (expectation); the remove
 **Waiting on others:** the lead promotes `proposed/content/0001_resolve_report.sql` (both screens call it) and lands
 `report.resolved`'s trigger; `console` re-points the attention rows and deletes `moderation-tabs.tsx` with
 `admin.moderation.*` (then `listModerationCounts()` goes from `admin-moderation.ts`); the e2e and captures are the lead's to run.
+
+## W22-D — PR D (`wave-22d/the-follow-ups`): members report a photo; staff remove a comment with a reason (F1, F6)
+
+Approved by the owner (lead's brief). Built in `../kareem-marefa-wave22d` only.
+
+**1. A member reports a photo (`REQ-EVT-008`).** «إبلاغ» sits in the lightbox beside «احذف الصور التي أظهر فيها» and
+«تنزيل الصورة», for the photograph on screen — the lightbox shows visible photographs only, so a hidden one is never
+offered. Same shape as the comment report: a dialog, a reason (3 – 1000), «إرسال البلاغ»; afterwards «تم إرسال بلاغك عن
+هذه الصورة» in place of the button. Not offered on the viewer's own photograph. The write is a definer function,
+**`report_photo(p_photo uuid, p_reason text) returns jsonb`** (`supabase/proposed/content/0002_report_photo.sql`): an
+active member; the photo in their org, **visible** (`hidden_at` and `removed_at` null) — else `not_visible`; **not their
+own** — `own_photo`; **once per member per photo** (any earlier report, open or closed, as `hasReportedComment()` reads
+it) — `already_reported`; reason 3 – 1000 — `reason_required`; then one insert into `reports` (`target = 'photo'`). It
+writes no audit row (a filed report is not a console mutation; `reports_notify()` tells staff as for comments). It lands
+on `051`'s «بلاغات الصور» with no change there. ★ **Request to the lead**: `reports_insert_self` still admits a direct
+insert that skips these checks; the function's guard as a `before insert` trigger on `reports` for `target = 'photo'` is
+yours — the trigger function is in the same file (`reports_photo_guard()`), the `create trigger` line is not.
+`PhotoSummary` gains an optional `reportedByMe` (add-only), read with the viewer's own reports through RLS.
+
+**2. Staff remove a comment on the event page (`REQ-EVT-014`).** «إزالة» opens a dialog naming the action, with the
+reason required at the field (as on `050`), and confirms. The write is **`remove_comment(p_comment uuid, p_reason
+text) returns jsonb`** (same file family, `0003_remove_comment.sql`): admin or moderator; the comment in the org;
+reason ≥ 3 — `reason_required`; if still visible, `deleted_at` and `removal_reason` set (an author's own delete is
+never re-stamped, as in `resolve_report()`); **every open report on the comment resolved `removed`** by the actor — one
+transaction. Records: `comment.removed` (0059) and `report.resolved` × n (0181) — **nothing from the DAL**. Envelope
+`removed | already_removed | not_found | not_authorized | reason_required`. `moderateComment()` stays for restore.
+
+| Behaviour kept | Where | REQ |
+|---|---|---|
+| A member reports a comment once; staff see the reporter, the author never does | unchanged | `REQ-EVT-008` |
+| The lightbox's tap targets, focus return, «n من m», download route | `lightbox.tsx` untouched; the report rides `extra` | `REQ-EVT-016`, `DEC-093` |
+| The takedown beside it | `album.tsx` | `REQ-EVT-012` |
+| Staff remove any comment, any time; the point reversal | `remove_comment()` → 0032's trigger | `REQ-EVT-014`, `REQ-PTS-013` |
+| A network failure toasts and never reaches the error boundary | the item's `run()` | — |
+
+**Tests**: `tests/rls/{photo-report,comment-remove}.test.ts` as a member (each refusal writes nothing; the audit rows
+come from the triggers; the reports close); `tests/components/photos/report-photo.test.tsx`,
+`tests/components/event/comment-remove.test.tsx`; `tests/e2e/wave22d-content-follow-ups.spec.ts` with 390 captures.

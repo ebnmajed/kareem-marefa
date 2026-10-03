@@ -1,15 +1,16 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useId, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { deleteMyCommentAction, editCommentAction, moderateCommentAction, reportCommentAction, toggleReactionAction } from "@/components/event/actions";
+import { deleteMyCommentAction, editCommentAction, removeCommentAction, reportCommentAction, toggleReactionAction } from "@/components/event/actions";
 import { timeAgo } from "@/components/feed/relative";
 import { orgDay } from "@/components/browse/session-post";
 import { formatDateTime } from "@/components/sessions/numerals";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import { HeartIcon, AlertCircleIcon } from "@/components/ui/icons";
 import { Panel } from "@/components/ui/panel";
 import { ReactionBar } from "@/components/ui/reaction-bar";
@@ -29,7 +30,8 @@ import type { ReactionSummary } from "@/lib/dal/reactions";
 //   · REQ-EVT-005 — edit own inside the org's window, marked «(معدَّل)»; delete own at any time, confirmed; a
 //     deleted comment with replies stands as «حُذف هذا التعليق» (the list drops one without);
 //   · REQ-EVT-008 — report with a reason, once; «تم إرسال بلاغك…» after;
-//   · REQ-EVT-014 — staff remove any comment;
+//   · REQ-EVT-014 — staff remove any comment — ★ wave 22 (F6): with a reason, in a dialog, and every open report on it
+//     closes in the same transaction (`remove_comment()`); the audit rows are the database's triggers;
 //   · a frozen thread (a cancelled session, REQ-SES-010) shows counts and offers nothing;
 //   · every action that fails at the network says so and never takes the page to its error boundary.
 // ★ «· مقدِّم الجلسة» beside an author who presents; the company in words (DEC-209). Names in `<bdi>`.
@@ -208,11 +210,7 @@ export function CommentItem({
             </button>
           ) : null}
           {comment.isMine ? <DeleteConfirm pending={pending} onConfirm={() => run(() => deleteMyCommentAction(locale, comment.id), () => router.refresh())} /> : null}
-          {comment.isStaffViewer ? (
-            <button type="button" disabled={pending} onClick={() => run(() => moderateCommentAction(locale, comment.id, "remove"), () => router.refresh())} className={ACTION}>
-              {pending ? t("moderator.removing") : t("moderator.remove")}
-            </button>
-          ) : null}
+          {comment.isStaffViewer ? <StaffRemove locale={locale} commentId={comment.id} authorName={comment.author.displayName ?? "—"} onRemoved={() => router.refresh()} /> : null}
           {!comment.isMine && !isReported ? <ReportDialog pending={pending} onSubmit={report} /> : null}
           {isReported ? <span className="px-2 text-caption text-fg-muted">{t("report.already")}</span> : null}
         </div>
@@ -281,6 +279,81 @@ function ReportDialog({ onSubmit, pending }: { onSubmit: (formData: FormData) =>
             <DialogClose asChild>
               <Button type="button" variant="secondary">
                 {t("cancel")}
+              </Button>
+            </DialogClose>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** REQ-EVT-014, wave 22 (F6) — staff remove a comment from the event page: a dialog naming whose comment and what follows
+ *  (REQ-UIX-013), the reason required at the field, one transaction in `remove_comment()` that also closes every open
+ *  report on it. Controlled, closing on the answer; `onSubmit`, so a refused reason stays typed (React resets a form
+ *  after an action). A network failure toasts and never reaches the error boundary. */
+function StaffRemove({ locale, commentId, authorName, onRemoved }: { locale: string; commentId: string; authorName: string; onRemoved: () => void }) {
+  const t = useTranslations("event.comments");
+  const toast = useToast();
+  const reasonId = useId();
+  const [open, setOpen] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function submit(reason: string) {
+    setFieldError(null);
+    startTransition(async () => {
+      let outcome: string;
+      try {
+        outcome = (await removeCommentAction(locale, commentId, reason)).outcome;
+      } catch {
+        toast.show({ tone: "error", title: t("errors.network") });
+        return;
+      }
+      if (outcome === "reason_required") {
+        setFieldError(t("moderator.reasonRequired"));
+        return;
+      }
+      setOpen(false);
+      if (outcome === "removed" || outcome === "already_removed") {
+        toast.show({ tone: "success", title: t("moderator.removed") });
+        onRemoved();
+      } else {
+        toast.show({ tone: "error", title: t(outcome === "not_authorized" ? "errors.not_permitted" : "errors.generic") });
+      }
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button type="button" disabled={pending} className={ACTION}>
+          {pending ? t("moderator.removing") : t("moderator.remove")}
+        </button>
+      </DialogTrigger>
+      <DialogContent
+        title={t.rich("moderator.dialogTitle", { name: authorName, bdi: (chunks) => <bdi>{chunks}</bdi> })}
+        description={t("moderator.dialogBody")}
+        closeLabel={t("moderator.close")}
+      >
+        <form
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            submit(new FormData(event.currentTarget).get("reason")?.toString() ?? "");
+          }}
+        >
+          <Field id={reasonId} label={t("moderator.reasonLabel")} required error={fieldError ?? undefined}>
+            {/* A refusal is the field's until the member types again — never a stale error under a valid reason. */}
+            <Textarea name="reason" rows={3} maxLength={300} onChange={() => setFieldError(null)} />
+          </Field>
+          <div className="mt-3 flex gap-2">
+            <Button type="submit" variant="danger" pending={pending} pendingLabel={t("moderator.removing")}>
+              {t("moderator.confirm")}
+            </Button>
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                {t("moderator.cancel")}
               </Button>
             </DialogClose>
           </div>

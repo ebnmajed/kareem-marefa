@@ -174,7 +174,7 @@ export function PhotoLightbox({ photos, children, extra }: { photos: LightboxPho
             }}
           >
             <div className="flex items-center justify-between gap-3 pb-3">
-              <p className="text-body-sm">{t.rich("position", { current, total, bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
+              <p className="shrink-0 whitespace-nowrap text-body-sm">{t.rich("position", { current, total, bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
               {/* A route, never a signed URL in page data and never `download`: it
                   audits, then 303s (REQ-ADM-021, DEC-177). A plain <a> so nothing
                   prefetches it. */}

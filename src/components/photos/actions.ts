@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requestPhotoTakedown, rescopePhoto, restorePhoto } from "@/lib/dal/photos";
+import { reportPhoto, type ReportPhotoOutcome } from "@/lib/dal/reports";
 
 // REQ-EVT-012 — the two staff-facing/member-facing mutations the gallery
 // needs that aren't the upload flow (uploads are Route Handlers, never
@@ -40,5 +41,17 @@ export async function rescopePhotoAction(locale: string, sessionId: string, phot
     return { error: null };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "unknown_error" };
+  }
+}
+
+// REQ-EVT-008, wave 22 (F1) — a member reports the photograph on screen. `report_photo()` decides; the answer is what
+// it did, so the dialog can say «already reported» or «no longer shown» rather than a generic failure.
+export async function reportPhotoAction(locale: string, sessionId: string, photoId: string, reason: string): Promise<{ outcome: ReportPhotoOutcome }> {
+  try {
+    const outcome = await reportPhoto(locale, { photoId, reason });
+    if (outcome === "reported" || outcome === "already_reported") revalidatePath(`/${locale}/app/sessions/${sessionId}`);
+    return { outcome };
+  } catch {
+    return { outcome: "unknown" };
   }
 }

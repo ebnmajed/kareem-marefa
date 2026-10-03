@@ -78,9 +78,25 @@ test.beforeAll(async ({}, testInfo) => {
     [orgId, sessionId, memberId, `${orgId}/sessions/${sessionId}/photos/placeholder.jpg`, SHA],
   );
   photoId = photoRows[0].id;
+  // The reporter is a second member, never the uploader: 0190's guard refuses a report on one's own photo (REQ-EVT-008).
+  const { data: reporterAuth, error: reporterErr } = await admin.auth.admin.createUser({
+    email: `reporter@${domain}`,
+    password: PASSWORD,
+    email_confirm: true,
+    user_metadata: { full_name: "عضو مُبلِّغ" },
+  });
+  if (reporterErr) throw reporterErr;
+  userIds.push(reporterAuth.user.id);
+  const reporterClient = createServerClient(SUPABASE_URL, PUBLISHABLE_KEY!, { cookies: { getAll: () => [], setAll: () => {} } });
+  const { error: reporterSignInErr } = await reporterClient.auth.signInWithPassword({ email: `reporter@${domain}`, password: PASSWORD });
+  if (reporterSignInErr) throw reporterSignInErr;
+  const { data: reporterRow, error: reporterRpcErr } = await reporterClient.rpc("provision_member");
+  if (reporterRpcErr) throw reporterRpcErr;
+  const reporterId = (reporterRow as { member_id: string }).member_id;
+
   const { rows: reportRows } = await db.query<{ id: string }>(
     `insert into public.reports (org_id, target, photo_id, reporter_id, reason) values ($1, 'photo', $2, $3, 'محتوى غير لائق') returning id`,
-    [orgId, photoId, memberId],
+    [orgId, photoId, reporterId],
   );
   reportId = reportRows[0].id;
 });

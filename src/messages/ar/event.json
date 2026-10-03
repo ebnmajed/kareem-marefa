@@ -29,7 +29,15 @@
         "remove": "إزالة",
         "removing": "جارٍ الإزالة…",
         "restore": "استعادة",
-        "restoring": "جارٍ الاستعادة…"
+        "restoring": "جارٍ الاستعادة…",
+        "dialogTitle": "إزالة تعليق <bdi>{name}</bdi>؟",
+        "dialogBody": "يختفي عن الجميع، وتُغلق كل البلاغات عليه.",
+        "reasonLabel": "السبب — يُسجَّل في سجل التدقيق",
+        "confirm": "إزالة",
+        "cancel": "تراجع",
+        "removed": "أُزيل التعليق.",
+        "reasonRequired": "اكتب السبب أولًا.",
+        "close": "إغلاق"
       },
       "reactions": {
         "like": "إعجاب",

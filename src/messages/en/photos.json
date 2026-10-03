@@ -117,6 +117,24 @@
         "already_resolved": "Already decided.",
         "unknown": "That didn't work — try again."
       }
+    },
+    "report": {
+      "action": "Report",
+      "dialogTitle": "Report a photo",
+      "reasonLabel": "Reason",
+      "reasonHint": "<bdi>{min}</bdi> to <bdi>{max}</bdi> characters",
+      "submit": "Send report",
+      "sending": "Sending…",
+      "cancel": "Cancel",
+      "success": "Report sent. The moderators will review it.",
+      "already": "You reported this photo",
+      "errors": {
+        "own_photo": "You can't report a photo you uploaded.",
+        "not_visible": "This photo is no longer shown.",
+        "reason_required": "Write a reason of at least <bdi>{min}</bdi> characters.",
+        "unknown": "The report wasn't sent. Try again."
+      },
+      "close": "Close"
     }
   }
 }

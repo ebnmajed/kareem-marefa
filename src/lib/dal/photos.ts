@@ -124,6 +124,9 @@ export interface PhotoSummary {
    *  (`EventLive.dc.html:64`) — `#rrggbb` or null; reaches the DOM only as `--team`. OPTIONAL for the same
    *  reason as `width`. */
   uploaderTeamColor?: string | null;
+  /** Wave 22, add-only (F1): the viewer has already reported this photograph — read through RLS, which shows a
+   *  member their own reports alone. OPTIONAL for the same reason as `width`. */
+  reportedByMe?: boolean;
 }
 
 /** The session's album for staff (`photo_albums`, 0156; DEC-182) — the state «تنزيل الكل» reads,
@@ -197,6 +200,15 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
   ]);
   if (error) throw new Error(`photos: ${error.message}`);
 
+  // The viewer's own photo reports (REQ-EVT-008, wave 22) — `reports_read_staff_or_reporter`; filtered to the viewer
+  // so staff, who read every report, see their own state too.
+  const ids = (rows ?? []).map((p) => p.id as string);
+  const { data: mine, error: reportsError } = ids.length
+    ? await supabase.from("reports").select("photo_id").eq("target", "photo").eq("reporter_id", session.memberId).in("photo_id", ids)
+    : { data: [], error: null };
+  if (reportsError) throw new Error(`reports (photos): ${reportsError.message}`);
+  const reported = new Set((mine ?? []).map((r) => r.photo_id as string));
+
   const photos = await Promise.all(
     (rows ?? []).map(async (p): Promise<PhotoSummary> => {
       const { data: signed } = await supabase.storage.from("photos").createSignedUrl(p.storage_path as string, 3600);
@@ -210,6 +222,7 @@ export const getPhotosPageData = cache(async (locale: string, sessionId: string)
         width: (p.width as number | null) ?? null,
         height: (p.height as number | null) ?? null,
         uploaderTeamColor: (p.uploader as unknown as { company: { team_color: string | null } | null } | null)?.company?.team_color ?? null,
+        reportedByMe: reported.has(p.id as string),
       };
     }),
   );
