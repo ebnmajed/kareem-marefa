@@ -1,249 +1,232 @@
-// SCR-049's members list onto `ui/data-table` — the search box, role change,
-// and the deactivate confirmation dialog naming the member.
-// `tests/e2e/admin-members.spec.ts` proves the same shapes against real
-// Supabase; this file is the fast jsdom check.
+// SCR-049 (`REQ-ADM-009`, `REQ-UIX-096`), written for wave 22 from `AdminMembers.dc.html`. `tests/e2e/admin-members.spec.ts`
+// proves the same shapes against real Supabase; this file proves what the screen says and does with its actions mocked.
 //
-// ★ Actions are plain mock functions in a `Record<id, fn>`, matching the real
-// component's props exactly — `members-table.tsx` cannot import `./actions`
-// at all (it transitively pulls in `lib/dal/admin-members.ts`, which starts
-// `import "server-only"` and throws the instant anything imports it outside
-// a server module, even a test).
-//
-// ★ `DataTable` renders EVERY `onCard` column's cell TWICE per row — once
-// for the desktop `<table>`, once for the phone card list, hidden by CSS
-// media queries a real browser applies and jsdom does not. A stateful cell
-// (`RoleCell`, `ActionsCell` here) is therefore mounted as two independent
-// component instances. `getAllByRole(...)[0]` picks the first (desktop)
-// instance throughout, matching how a real browser's accessibility tree
-// would already exclude the `md:hidden` copy for free.
-import { render, screen, waitFor, within } from "@testing-library/react";
+// ★ Wave 22 moved: the search into the URL (a GET form), the role change from a select into the row's ⋯ with a
+// confirmation, reactivation from a button into the ⋯, and the last-admin refusal from an error after the attempt to a
+// sentence in the menu before it. What stands: the email to the admin, the self row with no controls, the deactivation
+// dialog naming the member with a reason, the reason's inline error, the RPC's errors as sentences, axe.
+import type React from "react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { NextIntlClientProvider } from "next-intl";
-import { describe, expect, it, vi } from "vitest";
-import { MembersTable } from "@/app/[locale]/app/admin/members/members-table";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { matchesMemberQuery, membersHref, parseMemberQuery } from "@/components/admin/members/member-query";
 import { ToastProvider } from "@/components/ui/toast";
-import type { AdminMemberRow } from "@/lib/dal/admin-members";
+import type { ConsoleMemberRow, ConsoleMembers } from "@/lib/dal/admin-members";
 import adminAr from "@/messages/ar/admin.json";
 import uiAr from "@/messages/ar/ui.json";
 
-// `ui/field.tsx` (sessions' primitive, consumed) reads `ui.field.required`
-// for the «مطلوب» marker it appends to every required label's own text — a
-// second namespace this route does not otherwise touch, merged in so
-// `getByLabelText`'s EXACT match sees the real Arabic word, not the raw
-// `ui.field.required` key path a missing namespace falls back to.
-const ar = { ...adminAr, ...uiAr };
+const changeRole = vi.fn();
+const deactivate = vi.fn();
+const reactivate = vi.fn();
+vi.mock("@/app/[locale]/app/admin/members/actions", () => ({ changeRole, deactivate, reactivate }));
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  usePathname: () => "/ar/app/admin/members",
+}));
 
-const MEMBERS: AdminMemberRow[] = [
-  {
-    id: "m1",
-    email: "sara@example.com",
-    displayName: "سارة العتيبي",
-    companyId: null,
-    jobTitle: null,
-    role: "member",
-    status: "active",
-    deactivatedAt: null,
-    deactivatedReason: null,
-    createdAt: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "m2",
-    email: "khalid@example.com",
-    displayName: "خالد الحربي",
-    companyId: null,
-    jobTitle: null,
-    role: "moderator",
-    status: "active",
-    deactivatedAt: null,
-    deactivatedReason: null,
-    createdAt: "2026-01-02T00:00:00Z",
-  },
+const { MembersTable } = await import("@/app/[locale]/app/admin/members/members-table");
+
+const messages = { ...adminAr, ...uiAr };
+
+const row = (over: Partial<ConsoleMemberRow>): ConsoleMemberRow => ({
+  id: "m1",
+  email: "sara@example.com",
+  displayName: "سارة العتيبي",
+  companyId: "c1",
+  companyName: "مواهب",
+  teamColor: "#35d0ff",
+  jobTitle: null,
+  role: "member",
+  status: "active",
+  deactivatedAt: null,
+  deactivatedReason: null,
+  createdAt: "2026-01-01T00:00:00Z",
+  avatarUrl: null,
+  points: 1240,
+  levelName: "كريم معرفة",
+  ...over,
+});
+
+const ROWS: ConsoleMemberRow[] = [
+  row({}),
+  row({ id: "m2", email: "khalid@example.com", displayName: "خالد الحربي", role: "moderator", companyId: null, companyName: null, teamColor: undefined, points: 310, levelName: null }),
+  row({ id: "m3", email: "noura@example.com", displayName: "نورة العتيبي", role: "admin" }),
+  row({ id: "m4", email: "old@example.com", displayName: "عضو سابق", status: "deactivated", deactivatedAt: "2026-09-01T10:00:00Z", deactivatedReason: "مغادرة الشركة" }),
+  row({ id: "self", email: "me@example.com", displayName: "أنا المشرفة", role: "admin" }),
 ];
 
-type RowState = { error: string | null; done: boolean };
-type RowAction = (prev: RowState, fd: FormData) => Promise<RowState>;
+const data = (over: Partial<ConsoleMembers> = {}): ConsoleMembers => ({
+  rows: ROWS,
+  total: 212,
+  page: 1,
+  pageCount: 9,
+  from: 1,
+  to: 25,
+  companies: [{ id: "c1", name: "مواهب" }],
+  activeAdmins: 2,
+  ...over,
+});
 
-function renderTable(overrides?: { changeRole?: RowAction; deactivate?: RowAction }) {
-  const changeRoleActions: Record<string, RowAction> = {
-    m1: overrides?.changeRole ?? vi.fn<RowAction>().mockResolvedValue({ error: null, done: true }),
-    m2: vi.fn<RowAction>().mockResolvedValue({ error: null, done: true }),
-  };
-  const deactivateActions: Record<string, RowAction> = {
-    m1: overrides?.deactivate ?? vi.fn<RowAction>().mockResolvedValue({ error: null, done: true }),
-    m2: vi.fn<RowAction>().mockResolvedValue({ error: null, done: true }),
-  };
-  const reactivateActions = { m1: vi.fn().mockResolvedValue(undefined), m2: vi.fn().mockResolvedValue(undefined) };
-  render(
-    <NextIntlClientProvider locale="ar" messages={ar}>
-      <MembersTable
-        members={MEMBERS}
-        companyNames={new Map()}
-        selfId="self"
-        timeZone="Asia/Riyadh"
-        locale="ar"
-        changeRoleActions={changeRoleActions}
-        deactivateActions={deactivateActions}
-        reactivateActions={reactivateActions}
-      />
+function renderTable(d: ConsoleMembers = data(), q = parseMemberQuery({})) {
+  return render(
+    <NextIntlClientProvider locale="ar" messages={messages}>
+      <ToastProvider closeLabel="إغلاق">
+        <main>
+          <MembersTable data={d} query={q} selfId="self" timeZone="Asia/Riyadh" locale="ar" />
+        </main>
+      </ToastProvider>
     </NextIntlClientProvider>,
   );
-  return { changeRoleActions, deactivateActions, reactivateActions };
 }
 
-describe("MembersTable", () => {
-  // A longer timeout than the default 5 s, not a longer test: `userEvent.type`
-  // across the whole `DataTable` (rendered twice per row — see the header
-  // note) is the single heaviest interaction in this file, and the default
-  // has been observed to trip under load though the interaction itself
-  // completes in a few seconds.
-  it("the search box filters by name and by email", async () => {
+const table = () => screen.getByRole("table");
+const rowOf = (name: string) => within(table()).getByRole("row", { name: new RegExp(name) });
+const openMenu = async (name: string) => userEvent.click(within(rowOf(name)).getByRole("button", { name: `مزيد من الإجراءات على ${name}` }));
+
+beforeEach(() => {
+  changeRole.mockReset();
+  deactivate.mockReset();
+  reactivate.mockReset();
+});
+
+describe("SCR-049 — the table", { timeout: 20_000 }, () => {
+  it("draws العضو · الشركة · الدور · المستوى · النقاط and the ⋯, the count, the chips with their value, and the pager", () => {
     renderTable();
-    expect(screen.getAllByText("سارة العتيبي").length).toBeGreaterThan(0);
-    await userEvent.type(screen.getByRole("searchbox", { name: "ابحث في الأعضاء" }), "khalid");
-    expect(screen.queryByText("سارة العتيبي")).not.toBeInTheDocument();
-    expect(screen.getAllByText("خالد الحربي").length).toBeGreaterThan(0);
-  }, 15000);
-
-  it("★ deactivating confirms in a dialog naming the member, with the reason field inside it", async () => {
-    const deactivateAction = vi.fn<RowAction>().mockResolvedValue({ error: null, done: true });
-    renderTable({ deactivate: deactivateAction });
-
-    const trigger = screen.getAllByRole("button", { name: /مزيد من الإجراءات على سارة العتيبي/ })[0];
-    await userEvent.click(trigger);
-    await userEvent.click(screen.getByRole("menuitem", { name: "عطّل العضوية" }));
-
-    const dialog = await screen.findByRole("dialog", { name: "تعطيل عضوية «سارة العتيبي»؟" });
-    // `{ exact: false }`: `ui/field.tsx` appends «مطلوب» to every required
-    // label's own accessible name (REQ-UIX-011) — a real, permanent suffix,
-    // not something to match verbatim here.
-    await userEvent.type(within(dialog).getByLabelText("سبب التعطيل الذي يُسجَّل في سجل التدقيق", { exact: false }), "مغادرة الشركة");
-    await userEvent.click(within(dialog).getByRole("button", { name: "أرسل" }));
-
-    await waitFor(() => expect(deactivateAction).toHaveBeenCalledTimes(1));
-    const submitted = deactivateAction.mock.calls[0][1] as FormData;
-    expect(submitted.get("reason")).toBe("مغادرة الشركة");
+    expect(within(table()).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["العضو", "الشركة", "الدور", "المستوى", "النقاط", "إجراءات"]);
+    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "212 عضوًا")).toBeVisible();
+    const filters = screen.getByRole("navigation", { name: "تصفية الأعضاء" });
+    expect(within(filters).getByRole("button", { name: "الشركة: الكل" })).toBeVisible();
+    expect(within(filters).getByRole("button", { name: "الدور: الكل" })).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "صفحات الأعضاء" }).textContent).toContain("1 – 25 من 212");
   });
 
-  // ★ The dialog's `<form>` has no `noValidate` set to work AROUND — its
-  // reason field is `required` only via `<Field>`'s own `aria-required`
-  // context, never a native HTML `required` attribute (`ui/textarea.tsx`
-  // never forwards one unless a caller passes it directly, and this one
-  // doesn't), so the browser was never going to block this submission in
-  // the first place. What this proves is the other half of 16 §8.2's rule:
-  // once the round trip returns `reason_required`, the app's OWN inline
-  // `<Field>` error actually renders — the sync-3-adjacent sweep's real
-  // concern (content's 7f4809f), checked here rather than assumed.
-  it("an empty reason shows the app's own inline error, not a silently blocked submission", async () => {
-    const deactivateAction = vi.fn<RowAction>().mockResolvedValue({ error: "reason_required", done: false });
-    renderTable({ deactivate: deactivateAction });
-
-    const trigger = screen.getAllByRole("button", { name: /مزيد من الإجراءات على سارة العتيبي/ })[0];
-    await userEvent.click(trigger);
-    await userEvent.click(screen.getByRole("menuitem", { name: "عطّل العضوية" }));
-
-    const dialog = await screen.findByRole("dialog", { name: "تعطيل عضوية «سارة العتيبي»؟" });
-    await userEvent.click(within(dialog).getByRole("button", { name: "أرسل" }));
-
-    await waitFor(() => expect(deactivateAction).toHaveBeenCalledTimes(1));
-    expect(await within(dialog).findByText("اكتب سبب التعطيل أولًا.")).toBeVisible();
-    // Still open — the error is only useful where the field it names is.
-    expect(dialog).toBeVisible();
+  // ★ wave 22, the lead's ruling: the board draws no email in the row and no requirement asks it of this row — the
+  // full record is the profile (an expectation moved — a ledger line). The search still finds by email.
+  it("the row draws no email — the full record is the profile", () => {
+    renderTable();
+    expect(within(rowOf("سارة العتيبي")).queryByText("sara@example.com")).toBeNull();
   });
 
-  it("changing a role submits the select's value", async () => {
-    const changeRoleAction = vi.fn<RowAction>().mockResolvedValue({ error: null, done: true });
-    renderTable({ changeRole: changeRoleAction });
-
-    const selects = screen.getAllByLabelText("الدور") as HTMLSelectElement[];
-    await userEvent.selectOptions(selects[0], "moderator");
-    const submitButtons = screen.getAllByRole("button", { name: "غيّر الدور" });
-    await userEvent.click(submitButtons[0]);
-
-    await waitFor(() => expect(changeRoleAction).toHaveBeenCalledTimes(1));
-    const submitted = changeRoleAction.mock.calls[0][1] as FormData;
-    expect(submitted.get("role")).toBe("moderator");
+  it("the role column: staff and a deactivated member wear a badge with REQ-ADM-009's words; a member is plain text", () => {
+    renderTable();
+    expect(within(rowOf("نورة العتيبي")).getByText("مشرف المؤسسة")).toBeVisible();
+    expect(within(rowOf("خالد الحربي")).getByText("مُنظِّم")).toBeVisible();
+    expect(within(rowOf("سارة العتيبي")).getByText("عضو")).toBeVisible();
+    expect(within(rowOf("عضو سابق")).getByText("معطَّل")).toBeVisible();
+    expect(within(rowOf("عضو سابق")).getByText("مغادرة الشركة")).toBeVisible();
   });
 
-  // ★ REQ-ADM-009: the RPC's last-admin guard, proved HERE rather than in
-  // the e2e spec — the spec seeds only one admin, which is the signed-in
-  // viewer's own row, and `RoleCell` withholds the role control entirely on
-  // the viewer's own row (no self-demotion in the UI at all, `isSelf`
-  // below), so the guard is unreachable through that row's own control. A
-  // real build's own run found the e2e test trying anyway, timing out on a
-  // `<select>` that was never going to exist. `error.last_admin` only ever
-  // surfaces as a toast (`RoleCell` has no inline alert of its own), which
-  // is a no-op outside `ToastProvider` — wrapped here, unlike `renderTable`.
-  it("★ REQ-ADM-009: the last-admin guard's error reads as a real sentence", async () => {
-    const changeRoleAction = vi.fn<RowAction>().mockResolvedValue({ error: "last_admin", done: false });
-    render(
-      <NextIntlClientProvider locale="ar" messages={ar}>
-        <ToastProvider closeLabel="إغلاق">
-          <MembersTable
-            members={MEMBERS}
-            companyNames={new Map()}
-            selfId="self"
-            timeZone="Asia/Riyadh"
-            locale="ar"
-            changeRoleActions={{ m1: changeRoleAction, m2: vi.fn<RowAction>().mockResolvedValue({ error: null, done: true }) }}
-            deactivateActions={{ m1: vi.fn<RowAction>().mockResolvedValue({ error: null, done: true }), m2: vi.fn<RowAction>().mockResolvedValue({ error: null, done: true }) }}
-            reactivateActions={{ m1: vi.fn().mockResolvedValue(undefined), m2: vi.fn().mockResolvedValue(undefined) }}
-          />
-        </ToastProvider>
-      </NextIntlClientProvider>,
-    );
-
-    const selects = screen.getAllByLabelText("الدور") as HTMLSelectElement[];
-    await userEvent.selectOptions(selects[0], "member");
-    await userEvent.click(screen.getAllByRole("button", { name: "غيّر الدور" })[0]);
-
-    await waitFor(() => expect(changeRoleAction).toHaveBeenCalledTimes(1));
-    await screen.findByText("لا يمكن ترك المؤسسة بلا مشرف", { exact: false });
+  it("level and points are read; a member with no level shows «—»", () => {
+    renderTable();
+    const cells = within(rowOf("سارة العتيبي")).getAllByRole("cell").map((c) => c.textContent);
+    expect(cells.slice(3, 5)).toEqual(["كريم معرفة", "1,240"]);
+    expect(within(rowOf("خالد الحربي")).getAllByRole("cell")[3].textContent).toBe("—");
   });
 
-  // ★ A real build's own run found `admin-members.spec.ts` trying to
-  // demote the last admin through the viewer's OWN row — but the viewer's
-  // own row renders no role select and no deactivate menu at all
-  // (`RoleCell`/`ActionsCell`'s `isSelf` branch), so the guard above is the
-  // only place this decision is actually provable. This proves the
-  // withholding itself.
-  it("the viewer's own row offers no role control and no deactivate — self-demotion has no UI path at all", () => {
-    render(
-      <NextIntlClientProvider locale="ar" messages={ar}>
-        <MembersTable
-          members={[{ ...MEMBERS[0], id: "self", role: "admin" }, MEMBERS[1]]}
-          companyNames={new Map()}
-          selfId="self"
-          timeZone="Asia/Riyadh"
-          locale="ar"
-          changeRoleActions={{ self: vi.fn(), m2: vi.fn() }}
-          deactivateActions={{ self: vi.fn(), m2: vi.fn() }}
-          reactivateActions={{ self: vi.fn(), m2: vi.fn() }}
-        />
-      </NextIntlClientProvider>,
-    );
-    // The plain-text role reading (no select, no submit) is what `isSelf`
-    // renders instead.
-    expect(screen.getAllByText("مشرف المؤسسة").length).toBeGreaterThan(0);
-    expect(screen.queryAllByLabelText("الدور")).toHaveLength(2); // both from m2, the OTHER member — none from "self"
+  it("the viewer's own row offers no ⋯ — self-demotion has no path", () => {
+    renderTable();
+    expect(within(rowOf("أنا المشرفة")).queryByRole("button", { name: /مزيد من الإجراءات/ })).toBeNull();
+  });
+
+  it("the search is a GET form carrying the chips' values; the chips and pager are links", async () => {
+    renderTable(data(), parseMemberQuery({ role: "moderator", company: "11111111-1111-4111-8111-111111111111" }));
+    const search = screen.getByRole("search");
+    expect(search.getAttribute("method")).toBe("get");
+    expect((search.querySelector("input[name=role]") as HTMLInputElement).value).toBe("moderator");
+    expect((search.querySelector("input[name=company]") as HTMLInputElement).value).toBe("11111111-1111-4111-8111-111111111111");
+    expect(screen.getByRole("link", { name: "التالية" }).getAttribute("href")).toContain("page=2");
   });
 
   it("has no axe violations", async () => {
-    const { container } = render(
-      <NextIntlClientProvider locale="ar" messages={ar}>
-        <MembersTable
-          members={MEMBERS}
-          companyNames={new Map()}
-          selfId="self"
-          timeZone="Asia/Riyadh"
-          locale="ar"
-          changeRoleActions={{ m1: vi.fn(), m2: vi.fn() }}
-          deactivateActions={{ m1: vi.fn(), m2: vi.fn() }}
-          reactivateActions={{ m1: vi.fn(), m2: vi.fn() }}
-        />
-      </NextIntlClientProvider>,
-    );
+    const { container } = renderTable();
     const { violations } = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
     expect(violations.map((v) => v.id)).toEqual([]);
-  }, 20000);
+  });
+});
+
+describe("SCR-049 — the row's ⋯", { timeout: 20_000 }, () => {
+  it("★ a role change confirms naming the member and the role, then calls the RPC's action", async () => {
+    changeRole.mockResolvedValue({ error: null, done: true });
+    renderTable();
+    await openMenu("سارة العتيبي");
+    expect(screen.getByRole("menuitem", { name: "عرض الملف الكامل" }).closest("a")?.getAttribute("href")).toContain("/app/members/m1");
+    await userEvent.click(screen.getByRole("menuitem", { name: "غيّر الدور إلى مُنظِّم" }));
+    const dialog = screen.getByRole("dialog", { name: "تغيير دور «سارة العتيبي» إلى مُنظِّم؟" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "غيّر الدور" }));
+    await waitFor(() => expect(changeRole).toHaveBeenCalledWith("ar", "m1", "moderator"));
+    expect(await screen.findByText("غُيِّر الدور.", { exact: true })).toBeInTheDocument();
+  });
+
+  it("★ the RPC's refusal reads as a sentence", async () => {
+    changeRole.mockResolvedValue({ error: "stale_claims", done: false });
+    renderTable();
+    await openMenu("خالد الحربي");
+    await userEvent.click(screen.getByRole("menuitem", { name: "غيّر الدور إلى عضو" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "غيّر الدور" }));
+    expect(await screen.findByText("بيانات جلستك تغيّرت — أعد تحميل الصفحة وحاول مرة أخرى.", { exact: true })).toBeInTheDocument();
+  });
+
+  it("★ REQ-UIX-096: the last active admin's menu says why — no role change, no deactivation — before any click", async () => {
+    renderTable(data({ activeAdmins: 1, rows: ROWS.filter((r) => r.id !== "self") }));
+    await openMenu("نورة العتيبي");
+    const why = screen.getByRole("menuitem", { name: "آخر مشرف نشط للمؤسسة — لا تغيير للدور ولا تعطيل" });
+    expect(why).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("menuitem", { name: /غيّر الدور/ })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "عطّل العضوية" })).toBeNull();
+  });
+
+  it("★ deactivating confirms in a dialog naming the member, with the reason inside it; an empty reason is the app's own inline error", async () => {
+    deactivate.mockResolvedValueOnce({ error: "reason_required", done: false }).mockResolvedValueOnce({ error: null, done: true });
+    renderTable();
+    await openMenu("سارة العتيبي");
+    await userEvent.click(screen.getByRole("menuitem", { name: "عطّل العضوية" }));
+    const dialog = screen.getByRole("dialog", { name: "تعطيل عضوية «سارة العتيبي»؟" });
+    fireEvent.submit(dialog.querySelector("form")!);
+    expect(await within(dialog).findByText("اكتب سبب التعطيل أولًا.")).toBeVisible();
+    await userEvent.type(within(dialog).getByRole("textbox"), "مغادرة الشركة");
+    fireEvent.submit(dialog.querySelector("form")!);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(deactivate).toHaveBeenLastCalledWith("ar", "m1", expect.anything(), expect.any(FormData));
+  });
+
+  it("★ reactivation toasts what the server said — a refusal is never «أُعيد تفعيل العضوية» (DEC-232 §3.1)", async () => {
+    reactivate.mockResolvedValue({ error: "not_an_admin", done: false });
+    renderTable();
+    await openMenu("عضو سابق");
+    await userEvent.click(screen.getByRole("menuitem", { name: "أعد تفعيل العضوية" }));
+    expect(await screen.findByText("لم يعد لديك صلاحية المشرف — أعد تحميل الصفحة.", { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText("أُعيد تفعيل العضوية.", { exact: true })).toBeNull();
+  });
+
+  it("the phone card carries the ⋯, and the own card a «—» rather than an empty slot (wave 8, F1)", () => {
+    const { container } = renderTable();
+    const cards = within(container.querySelector("ul") as HTMLElement).getAllByRole("listitem");
+    expect(within(cards[0]).getByRole("button", { name: "مزيد من الإجراءات على سارة العتيبي" })).toBeVisible();
+    expect(cards[4].textContent).toContain("—");
+  });
+});
+
+describe("member-query — the one predicate the screen and its CSV share", () => {
+  const m = { displayName: "سارة العتيبي", email: "sara@example.com", companyId: "11111111-1111-4111-8111-111111111111", role: "moderator" as const, status: "active" as const };
+
+  it("searches name and email", () => {
+    expect(matchesMemberQuery(m, { q: "سارة", company: null, role: null })).toBe(true);
+    expect(matchesMemberQuery(m, { q: "SARA@", company: null, role: null })).toBe(true);
+    expect(matchesMemberQuery(m, { q: "خالد", company: null, role: null })).toBe(false);
+  });
+
+  it("filters by company, by «بلا شركة», by role — and «معطَّل» is a status, not a role", () => {
+    expect(matchesMemberQuery(m, { q: "", company: m.companyId, role: "moderator" })).toBe(true);
+    expect(matchesMemberQuery(m, { q: "", company: "none", role: null })).toBe(false);
+    expect(matchesMemberQuery({ ...m, companyId: null }, { q: "", company: "none", role: null })).toBe(true);
+    expect(matchesMemberQuery(m, { q: "", company: null, role: "deactivated" })).toBe(false);
+    expect(matchesMemberQuery({ ...m, status: "deactivated" }, { q: "", company: null, role: "moderator" })).toBe(false);
+  });
+
+  it("a stale or hand-edited query is dropped, never refused", () => {
+    expect(parseMemberQuery({ role: "owner", company: "x", page: "-3" })).toEqual({ q: "", company: null, role: null, page: 1 });
+    expect(membersHref(parseMemberQuery({ role: "admin" }), { page: 2 })).toBe("/app/admin/members?role=admin&page=2");
+  });
 });

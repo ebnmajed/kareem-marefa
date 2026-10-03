@@ -36,6 +36,7 @@ export function DeactivateToggle({
   reactivateDoneLabel,
   onActivate,
   onDeactivate,
+  notWrittenLabel,
 }: {
   active: boolean;
   activateLabel: string;
@@ -47,8 +48,11 @@ export function DeactivateToggle({
   closeLabel: string;
   deactivateDoneLabel: string;
   reactivateDoneLabel: string;
-  onActivate: () => Promise<void>;
-  onDeactivate: () => Promise<void>;
+  /** ★ wave 22 (`DEC-232` §3.1, add-only): a write that answers `{ ok: false }` is «not written», never a success. */
+  onActivate: () => Promise<void | { ok: boolean }>;
+  onDeactivate: () => Promise<void | { ok: boolean }>;
+  /** Shown when the write answers `{ ok: false }`. Absent, the caller's own refusal path is the only one, as before. */
+  notWrittenLabel?: string;
 }) {
   const toast = useToast();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -60,8 +64,9 @@ export function DeactivateToggle({
   async function handleActivate() {
     setPending(true);
     try {
-      await onActivate();
-      toast.show({ title: reactivateDoneLabel, tone: "success" });
+      const result = await onActivate();
+      if (result && !result.ok && notWrittenLabel) toast.show({ title: notWrittenLabel, tone: "error" });
+      else toast.show({ title: reactivateDoneLabel, tone: "success" });
     } finally {
       setPending(false);
     }
@@ -70,7 +75,11 @@ export function DeactivateToggle({
   async function handleDeactivate() {
     setPending(true);
     try {
-      await onDeactivate();
+      const result = await onDeactivate();
+      if (result && !result.ok && notWrittenLabel) {
+        toast.show({ title: notWrittenLabel, tone: "error" });
+        return;
+      }
       toast.show({ title: deactivateDoneLabel, tone: "success" });
       setConfirmOpen(false);
     } finally {

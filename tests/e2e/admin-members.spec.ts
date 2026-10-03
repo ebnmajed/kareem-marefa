@@ -114,7 +114,7 @@ async function expectGatedNotFound(page: Page) {
   // content-based attribute selector plus `.first()` finds ANY of them
   // carrying `noindex`, which is all DEC-134 actually asks for.
   await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
-  await expect(page.getByRole("heading", { name: "الأعضاء والأدوار" })).toHaveCount(0);
+  await expect(page.locator("#main").getByRole("heading", { name: "الأعضاء", exact: true, level: 1 })).toHaveCount(0); // ★ wave 22: the h1 is «الأعضاء» (a ledger line)
 }
 
 // ★ A latent flake sessions' own diagnosis found (172bf22): `goto()`'s own
@@ -142,17 +142,22 @@ test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role 
   test.skip(testInfo.project.name !== "desktop", "row-scoped interaction — the phone card stack has no <table>/role=\"row\" to scope by");
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/members");
-  await expect(page.getByRole("heading", { name: "الأعضاء والأدوار", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "الأعضاء", exact: true, level: 1 })).toBeVisible();
   // `DataTable` renders BOTH the desktop `<table>` and the phone `<ul>` card
   // list in the DOM at once (CSS hides one per viewport) — f44d339 put the
   // email back on both, which is exactly why a bare `getByText` now matches
   // both copies. Scoped to whichever of the two roles is actually present,
   // the same pattern used elsewhere for this DataTable dual render.
-  await expect(page.getByRole("table").or(page.getByRole("list")).getByText(memberEmail)).toBeVisible();
+  // ★ wave 22: the row draws no email (the lead's ruling, a ledger line) — the search still finds a member by it.
+  await goto(page, `/ar/app/admin/members?q=${encodeURIComponent(memberEmail)}`);
+  await expect(page.locator("#main").getByRole("table").getByText("عضو تحت الاختبار")).toBeVisible();
+  await goto(page, "/ar/app/admin/members");
 
-  const row = page.getByRole("row", { name: new RegExp(`عضو تحت الاختبار.*${memberEmail}`) });
-  await row.getByLabel("الدور").selectOption("moderator");
-  await row.getByRole("button", { name: "غيّر الدور" }).click();
+  const row = page.getByRole("row", { name: /عضو تحت الاختبار/ });
+  // ★ wave 22: the role changes from the row's ⋯, confirmed naming the member and the role (a ledger line).
+  await row.getByRole("button", { name: /مزيد من الإجراءات على عضو تحت الاختبار/ }).click();
+  await page.getByRole("menuitem", { name: "غيّر الدور إلى مُنظِّم" }).click();
+  await page.getByRole("dialog", { name: "تغيير دور «عضو تحت الاختبار» إلى مُنظِّم؟" }).getByRole("button", { name: "غيّر الدور" }).click();
   // The toast, not an inline row confirmation: `ui/toast`'s success tone is
   // `role="status"`, and `useActionState`'s own returned state is what
   // drives it — only once the RPC has actually returned, unlike the
@@ -160,9 +165,7 @@ test("REQ-ADM-009: the admin sees every member's email, and REQ-TEN-005: a role 
   // the instant `selectOption` runs regardless of whether the action ever
   // completed.
   await expect(page.getByRole("status")).toContainText("غُيِّر الدور.");
-  // React resets the form after the action; the select must still show the
-  // role just saved, not the one the row mounted with (`ui/select`, `dcd5f05`).
-  await expect(row.getByLabel("الدور")).toHaveValue("moderator");
+  await expect(row.getByText("مُنظِّم", { exact: true })).toBeVisible();
 
   const { rows: memberRow } = await db.query<{ org_role: string }>(`select org_role from public.members where id = $1`, [memberId]);
   expect(memberRow[0].org_role).toBe("moderator");
@@ -195,9 +198,7 @@ test("REQ-ADM-009: the viewer's own admin row offers no role control and no deac
   await expect(page.getByRole("table").or(page.getByRole("list")).getByText("مشرفة الأعضاء")).toBeVisible();
 
   const row = page.getByRole("row", { name: new RegExp("مشرفة الأعضاء") });
-  await expect(row.getByText("مشرف المؤسسة", { exact: true })).toBeVisible(); // plain text, not a <select>
-  await expect(row.getByLabel("الدور")).toHaveCount(0);
-  await expect(row.getByRole("button", { name: "غيّر الدور" })).toHaveCount(0);
+  await expect(row.getByText("مشرف المؤسسة", { exact: true })).toBeVisible(); // the role's badge, no control
   await expect(row.getByRole("button", { name: /مزيد من الإجراءات/ })).toHaveCount(0);
 
   const { rows } = await db.query<{ org_role: string }>(`select org_role from public.members where id = $1`, [adminMemberRows[0].id]);
@@ -229,8 +230,33 @@ test("★ REQ-ADM-009: deactivation confirms in a dialog naming the member and n
   const { rows } = await db.query<{ status: string; deactivated_reason: string }>(`select status, deactivated_reason from public.members where id = $1`, [memberId]);
   expect(rows[0]).toEqual({ status: "deactivated", deactivated_reason: "مغادرة الشركة" });
 
-  await row.getByRole("button", { name: /أعد تفعيل العضوية/ }).click();
+  // ★ wave 22: reactivation is under the ⋯ too (a ledger line), and its toast is what the RPC said.
+  await row.getByRole("button", { name: /مزيد من الإجراءات على عضو تحت الاختبار/ }).click();
+  await page.getByRole("menuitem", { name: "أعد تفعيل العضوية" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "أُعيد تفعيل العضوية." })).toBeVisible();
   await expect(row.getByText("معطَّل", { exact: true })).toHaveCount(0);
+});
+
+test("★ REQ-UIX-096: the chips filter the list by role, and «CSV» downloads that list — its slice recorded in the audit row", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "one walk is enough");
+  await signIn(context, adminEmail);
+  await goto(page, "/ar/app/admin/members?role=admin");
+  const filters = page.getByRole("navigation", { name: "تصفية الأعضاء" });
+  await expect(filters.getByRole("button", { name: "الدور: مشرف المؤسسة" })).toBeVisible();
+  await expect(page.locator("#main").getByRole("table").getByText("مشرفة الأعضاء")).toBeVisible();
+  await expect(page.locator("#main").getByRole("table").getByText("عضو تحت الاختبار")).toHaveCount(0);
+
+  const [download] = await Promise.all([page.waitForEvent("download"), page.locator("#main").getByRole("button", { name: "نزِّل قائمة الأعضاء الظاهرة بصيغة CSV" }).click()]);
+  const path = await download.path();
+  const bytes = (await import("node:fs")).readFileSync(path!);
+  expect(bytes.subarray(0, 3)).toEqual(Buffer.from([0xef, 0xbb, 0xbf]));
+  const text = bytes.toString("utf8");
+  expect(text).toContain("مشرفة الأعضاء");
+  expect(text).not.toContain("عضو تحت الاختبار");
+
+  await expect
+    .poll(async () => (await db.query(`select after from public.audit_log where org_id = $1 and action = 'export.created' order by id`, [orgId])).rows.map((r) => r.after))
+    .toContainEqual({ export_type: "members", slice: { q: "", company: null, role: "admin" } });
 });
 
 test("SCR-049 at 390 px RTL: the members list reads down the page, never sideways", async ({ context, page }) => {
@@ -268,7 +294,7 @@ test("SCR-049 at 390 px RTL: the members list reads down the page, never sideway
     return offenders.slice(0, 6);
   });
   expect(overflow, "the members list must not scroll sideways at 390 px").toEqual([]);
-  await page.screenshot({ path: `.qa-shots/rtl/scr-049-members-390-rtl-${test.info().project.name}.png`, fullPage: true });
+  await page.screenshot({ path: `${process.env.E2E_SHOTS_DIR ?? ".qa-shots/rtl"}/wave22-console-members-populated-390.png`, fullPage: true });
 });
 
 
@@ -291,7 +317,8 @@ test("F1 at 390 px: a member is deactivated and reactivated from their phone car
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(card.getByText("معطَّل", { exact: true })).toBeVisible();
 
-  await card.getByRole("button", { name: /أعد تفعيل العضوية/ }).click();
+  await card.getByRole("button", { name: /مزيد من الإجراءات على عضو تحت الاختبار/ }).click();
+  await page.getByRole("menuitem", { name: "أعد تفعيل العضوية" }).click();
   await expect(card.getByText("معطَّل", { exact: true })).toHaveCount(0);
   const { rows } = await db.query<{ status: string }>(`select status from public.members where id = $1`, [memberId]);
   expect(rows[0].status).toBe("active");

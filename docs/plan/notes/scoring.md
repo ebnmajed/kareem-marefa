@@ -4867,3 +4867,443 @@ a takedown followed by a removal writes ONE reversal, the hide's. That is the ex
   first, so the removal finds nothing standing) — the ledger line goes in that commit.
 - `content` was told at `c8b2e1ef`: both functions, their grants, the restore flag, and to list my file before its own
   in `applyProposed()`.
+
+---
+
+## Wave 22 — the plan (sync 1)
+
+> `DEC-230`, `DEC-231`, M24 · `REQ-PTS-016`, `REQ-UIX-091`, `REQ-UIX-100`, `REQ-UIX-101` · `STORY-PTS-008`,
+> `STORY-UIX-090`, `STORY-UIX-091` · contracts 3, 4, 6. **Planning only — nothing edited but this note, nothing deleted.**
+> Measured on `wave-22a/the-tables` at `a6c0345a`, with the lead's `0180_venue_company.sql` untracked on disk.
+
+### The job, one line per deliverable (`DEC-231` §0)
+
+- **Hosting (PR A).** The building's owner earns hosting, the presenter's company earns presenting, a building owned by
+  nobody earns nobody anything — and there is **one** place that says who owns a building (`venues.company_id`), set
+  once on `046`, never per session.
+- **`053` (PR B).** An admin reads the whole catalogue as values, presses «عدّل», changes a value, a cap or **the reason
+  a member reads**, sees «2 تغييرات غير محفوظة», saves, and reads the saved mark with its time and name. ★ **The promise
+  kept:** the change applies to the **next** award only (its row names the new `rule_version`), every row already
+  written keeps its amount and its own stored `reason`, and `SCR-022`'s catalogue and cap explanation read the new
+  rule — proven by a test that edits a rule and then reads `SCR-022` as the member (below, and ★ finding F1).
+- **`054` (PR B).** An admin reads levels and badges as values, edits them in one edit mode, sees how many members hold
+  each badge, and **issues or stops each waiting achievement certificate from its own row** — each an audit row.
+
+---
+
+### PR A — hosting follows the venue's owner (`REQ-PTS-016`, `STORY-PTS-008`)
+
+#### A1 · The rule's new definition — `supabase/proposed/scoring/hosting_follows_the_venue.sql`
+
+One `create or replace function public.evaluate_company_points(p_session uuid) returns void`, **same signature**, so
+`0081`'s grants stand (`service_role` only, `0081:434-435`) and `main`'s worker call
+(`worker/src/tasks/evaluate_no_shows.ts:70`) resolves to it unchanged. Re-created from **`0113:563`** (the live
+definition — no migration after `0113` replaces it; measured), with **rule 1 alone changed**; rules 2 and 3 verbatim.
+
+Rule 1, as it will read:
+
+```sql
+-- Rule 1 — company_hosting: the company that OWNS THE PLACE (DEC-230 §2, REQ-PTS-016).
+-- ★ A venue owned by no company — and a custom venue, which has no venue row — rewards NO company. That is the
+--   owner's rule, not a gap: «if the location is owned by no company, no company is rewarded». Do not "fix" it.
+-- ★ sessions.host_company_id (0081) is SUPERSEDED and deliberately not read here (DEC-230 §2.3).
+-- ★ One hosting credit per session, ever: a session that already holds a company_hosting row — written under
+--   0081's rule before this one — is not credited again under this one (forward-only, invariant 9).
+if r_host.id is not null and r_host.enabled
+   and not exists (select 1 from public.company_points_ledger l
+                    where l.session_id = p_session and l.source = 'company_hosting') then
+  for rec in
+    select distinct v.company_id
+      from public.session_days d
+      join public.venues v on v.id = d.venue_id
+     where d.session_id = p_session and v.company_id is not null      -- see A3: every day's owner, once
+  loop
+    v_key := format('company_hosting:session_delivered:%s:%s:v1', p_session, rec.company_id);
+    insert into public.company_points_ledger (...same columns as 0113...)
+    values (s.org_id, rec.company_id, r_host.points, 'company_hosting', p_session, p_session,
+            r_host.reason_ar, 'company_hosting', r_host.version, v_key)
+    on conflict (idempotency_key) do nothing;
+  end loop;
+end if;
+```
+
+- **The key's shape is unchanged** (`company_hosting:session_delivered:<session>:<company>:v1`), so a replay is still a
+  no-op by `on conflict`; the `not exists` guard is the first line of defence and the key the second (`DEC-151`'s
+  pattern for attendance).
+- The venue's company is read **at evaluation** (completion). A venue that changes owner later moves nothing already
+  written.
+- **The query reads `session_days`, not `sessions.venue_id`**, so the answer to A3 is the code, not a comment. At one day
+  it is identical to reading `sessions.venue_id` (`0100`: the session's venue **is** its first day's).
+
+#### A2 · What the removal takes with it — a removal-only edit in PR A (no rebuild until B)
+
+| What | Where | After |
+|---|---|---|
+| the stopgap form | `src/app/[locale]/app/admin/scoring/host-company-form.tsx` (92 lines) | **deleted** (`rm`) |
+| its section | `admin/scoring/page.tsx:114-118` (`host-company-heading`), the import `:21`, `listHostableSessions` in the `Promise.all` `:48` and the `!sessions` arm of `notFound()` | removed; `notFound()` keeps `!data` (`REQ-ADM-020`) |
+| its action | `admin/scoring/actions.ts:148-165` `saveSessionHostCompany`, imports `:13-14` | removed |
+| its DAL | `src/lib/dal/scoring-admin.ts:299-318` (`sessionHostCompanyInput`, `SessionHostCompanyInput`, `setSessionHostCompany`) and `:364-395` (`HostableSession`, `listHostableSessions`) | removed. ★ `ScoringAdminData.companies` (`:62`, `:115`) was read **only** by the form — removed with it; `timeZone` stays (the history reads it) |
+| its strings | `scoring.admin.hostCompany.*` (15 keys) in `src/messages/{ar,en}/scoring.json:201` | removed, `ar` first |
+| its tests | below, each a ledger line | |
+
+After it, `grep -rn "host_company_id\|hostCompany\|Hostable" src worker` finds **nothing**; `tests/` finds only the
+RLS fixture that still writes the column to prove it is ignored, and `POL-sessions.host_company_same_org` (the
+column's guard stays with the column). **The column stays** (`DEC-230` §2.3).
+
+#### A3 · ★ A multi-day session at venues of different owners (`DEC-231` §6.3) — **an answer, for the lead to take to the owner**
+
+`sessions.venue_id` is the **first** day's (`0100:196`), so the cheapest code credits the first day's owner. The three
+readings:
+
+| | Credits | Reads the owner's words as |
+|---|---|---|
+| (a) first day's owner | one company | «the session's place» — but a day-2 owner hosted and earns nothing |
+| ★ **(b) every distinct owner among the days, once each** | each owning company, the rule's full amount | «**whose building is this**» — asked per meeting; a workshop held in A's room and B's room was hosted by both |
+| (c) none when the owners differ | nobody | a refusal the words do not contain |
+
+**I recommend (b)**, and the SQL above implements it: it is the only one that never leaves a company that lent its
+room uncredited, and it is identical to (a) whenever the days share an owner (every one-day session; every multi-day
+session in one building — the common case). Its cost: a session can pay hosting more than once, bounded by the
+number of distinct owners. **Not my call** — `STORY-PTS-008` says the lead brings it to the owner; a change to (a) is
+the `select` reading `sessions.venue_id` instead.
+
+#### A4 · What `main` does between the owner's push and A's merge (`DEC-231` §7)
+
+1. The push lands `0180`, the lead's audit migration and my function (as the lead's migration after them). **`main`'s
+   worker** calls `evaluate_company_points($1)` exactly as before; the function now reads `venues.company_id`, which is
+   **null on every venue** (no backfill, `0180`'s header). ⇒ **no `company_hosting` row is written for any session
+   completing in the gap.** Rules 2 and 3 are untouched. Correct by `DEC-230` §2.2.
+2. **`main`'s console** still shows the stopgap form; its writes go to `sessions.host_company_id`, which nothing reads.
+   The owner does not use it (`DEC-231` §7).
+3. ★ **A consequence the lead should put in front of the owner**: evaluation runs **once, at completion**. A session
+   that completes in the gap is never re-evaluated after the venues are named, so its hosting is not paid later. The
+   owner can close the gap to zero by naming the venues' owners **between the push and the merge** with a scoped
+   statement (`0180` grants the column; `046` is not on `main` yet), or accept the gap. Nothing I build re-evaluates
+   old sessions, on purpose.
+
+#### A5 · RLS cases — new `tests/rls/scoring-venue-hosting.test.ts` (runs once `0180` is in the local DB; `applyProposed()` for my file)
+
+Every case evaluates as `service_role` (the worker's role), reads as the owner:
+
+1. `RPC-evaluate_company_points.hosting_venue_owner` — presenter from A at a venue owned by B: **B** gets one
+   `company_hosting` row (the rule's points, `rule_version` = the rule's, `reason` = its `reason_ar`); **A** gets the
+   presenting-percentage row and **no** hosting row.
+2. `…hosting_no_owner` — a venue with no company: **no** hosting row; rules 2 and 3 still pay. The test's title says
+   «by rule».
+3. `…hosting_custom_venue` — `venue_id` null (custom venue): none.
+4. ★ `…host_company_id_not_read` — `host_company_id = C`, venue owned by B: B is credited, **C never**; and
+   `host_company_id = C` with an owner-less venue: nothing.
+5. `…hosting_idempotent` — two evaluations: one row.
+6. `…hosting_once_per_session` — a session already holding a `company_hosting` row for X (inserted as the old rule
+   wrote it): evaluation writes no second hosting row, for X or for the venue's owner.
+7. `…hosting_multi_day` — days at venues of B and D: one row each (or one, if the owner rules (a) — the case moves with
+   the ruling); days all at B's: exactly one.
+8. `…hosting_rule_disabled` — rule off: none.
+9. `…hosting_cross_org` — impossible by `0180`'s trigger; not re-tested here (the lead's `venue-company` test holds it).
+
+`03` §8.2 rows: `RPC-evaluate_company_points.hosting` re-worded to «the company owning the venue of each of the
+session's days, once each»; new `.hosting_no_owner`, `.host_company_id_not_read`, `.hosting_once_per_session`.
+
+#### A6 · Existing tests that move in PR A — ledger lines
+
+- `tests/rls/scoring-company-points.test.ts:244` «hosting — awards exactly one company_hosting row» — **an expectation
+  moves**: the credited company comes from the venue, not `host_company_id`; `completedSession()` (`:57`) gains the
+  venue's owner. Same commit as the promotion.
+- `tests/rls/scoring-company-points.test.ts:264` «no host assigned» — passes untouched (the fixture's venue has no
+  owner). `:168` `POL-sessions.host_company_same_org` — untouched (the guard stays with the column).
+- `tests/unit/admin-scoring-actions.test.ts:103-111` `describe("saveSessionHostCompany")` — **removed with the action**
+  (an expectation removed, not changed).
+- `tests/e2e/scoring-company-points.spec.ts:128-141` — the host-company steps **removed**; `:106-127` (the company rule
+  through its dialog) untouched in A, moves in B.
+- `tests/components/admin/scoring-page.test.tsx:25,31,78` — the mocks of `listHostableSessions` and
+  `saveSessionHostCompany` are harmless once nothing imports them (`vi.mock`'s factory replaces the module); **left
+  untouched in A**, rewritten with the page in B.
+
+---
+
+### PR B — `053` the points catalogue (`REQ-UIX-100`, `STORY-UIX-090`)
+
+**From `AdminScoring.dc.html` at 1280** — two commits: delete `admin/scoring/{page,rules-table,company-rules-table,
+manual-adjustment-form,history-table}.tsx` and `actions.ts`; then write. The h1 row, the tables, the company line.
+
+#### Regions, in the artboard's order
+
+1. **`h1` row** — «النقاط» (`PageHeader`); at its end the page's one primary «عدّل» (`ui/button`) and the secondary
+   «تعديل يدوي». In edit mode the row reads «تعديل النقاط · 2 تغييرات غير محفوظة» with «إلغاء» and «احفظ 2» in place
+   of «عدّل». In read mode, under the `h1`: the **saved mark** — `✓ حُفظ · <time> · <name>` — plain text with a glyph.
+2. **The rewards table** — `ui/data-table`: الفعل · القيمة · الحد · التبريد · مفعّل. Every reward rule the catalogue
+   holds (10, not the artboard's 6 — the artboard is a sample), the action's name and, as its second line, the
+   **reason the member reads** (`reason_ar`; see D2). «مفعّل» is `console`'s **switch cell**. At 390 the
+   `data-table` stack (`onCard`).
+3. **«سلبية · مغلق افتراضيًا»** — `SectionHeader` and a second `data-table`, the four deductions (`REQ-PTS-008` names
+   four; the artboard draws two). Value shown as its **cost**, stored negative (kept from `saveScoringRule`).
+4. **The company line** — one line of text, every value read (`company_scoring_rules`), each number in `<bdi>`, and its
+   inline «عدّل» enters the **same** edit mode with focus on the company rules, which then show as a small table (D3).
+5. **The history** — kept below, not drawn (D4), `id="history-heading"` kept.
+6. **«تعديل يدوي»** — `ui/sheet`: member `ui/combobox` (`listMembersForAdmin`, as it is), a signed amount (إضافة / خصم +
+   amount), the reason (mandatory), a confirmation naming the member and the amount before the write.
+
+`ui/` composed as they are: `page-header`, `section-header`, `button`, `data-table` (+ the switch cell), `sheet`,
+`combobox`, `field`, `input`, `textarea`, `select`, `radio-group`, `submit-button`, `dialog` (the leave-with-changes
+ask). **No class, id or markup from the `.dc.html`.**
+
+#### ★ Every mutation and its record (contract 3 — `DEC-231` §4 confirmed, row by row)
+
+| Mutation | Path | Record |
+|---|---|---|
+| a rule's points · cap · cooldown · enabled · reason | new invoker function `save_scoring_catalogue()` (below) → `update scoring_rules` | `scoring_config_history`, scope `scoring`, one row per changed column, actor = the caller (`scoring_rules_history`, `0027`) |
+| a company rule's values | the same call → `update company_scoring_rules` | `scoring_config_history`, scope `company_scoring` (`0081`) |
+| a manual adjustment | `adjust_points_manually()` (`0032`), unchanged | `points.manual_adjustment` in `audit_log` + the member's ledger row, one transaction |
+| ~~the host company~~ | removed in A | — |
+
+**Confirmed: `DEC-231` §4's `053` line is complete.** No gap; no trigger needed from the lead for `053`.
+
+★ **One save is one transaction.** Today each rule saves in its own dialog — one UPDATE per request. Edit mode saves
+many rules at once; N PostgREST updates would leave half a save written when the fifth fails. So a new
+`security invoker` function in `supabase/proposed/scoring/save_scoring_catalogue.sql` — **functions only, no table**:
+`save_scoring_catalogue(p_rules jsonb, p_company jsonb) returns table (written int, changed_at timestamptz)`. Invoker,
+so **the authority is unchanged**: `0027`'s column grant and `p2_admin_update`, `0081`'s for company rules — a moderator
+is refused exactly as today. It updates **only the rows whose values differ** (`is distinct from`), so ★ **a save that
+changes nothing writes nothing** — today a no-op save bumps `version` and logs a `version` history row
+(`scoring_rules_before_update`, `0027:111`), which is precisely «a setting that silently wrote». The sign guard
+(`scoring-admin.ts:201`, a reward never negative, a deduction never positive) moves into the function, raised as
+`22023` with the rule named, so the action lands it on the field. `written = 0` ⇒ the page says «لا تغييرات» and shows
+no saved mark (`REQ-UIX-091`).
+
+#### The read-mode pattern (contract 6, `REQ-UIX-091`) — and where the saved mark comes from
+
+Reference: `components/me/profile-edit.tsx`, **read, never imported**. A client component under
+`admin/scoring/` holds the edit state: values with one «عدّل»; edit mode names itself; the unsaved count; each changed
+cell marked by its accent border **and** a visually-hidden «تغيّر» on its label; Save names the count; Cancel restores;
+nothing written until Save; a link press with changes asks (`ui/dialog`), `beforeunload` asks on reload.
+★ **The saved mark is read from the server, twice**: the action returns the function's `{written, changed_at}` and the
+page shows «حُفظ» only from that answer; in read mode the mark is the newest `scoring_config_history` row in scopes
+`scoring` + `company_scoring` (excluding `field = 'version'`), its `changed_at` and its actor's name — **never the
+client's clock**. Ordering by `changed_at` is safe here: all rows of one save share it because one save is one
+transaction, and that is the answer wanted. A failed save stays in edit mode with the error at the field.
+
+#### Kept-behaviour table — `053`, re-derived from the requirements and the DAL
+
+| # | Behaviour | Now | After | REQ |
+|---|---|---|---|---|
+| 1 | admin only; a moderator and a member get the streamed not-found | `page.tsx:49` `!data → notFound()`; `getScoringAdminData` null for non-admin | same; the page's check at the data | `REQ-ADM-020`, `DEC-134` |
+| 2 | authority is the database's (column grant + `p2_admin_update`; the RPC's `assert_fresh_admin()`) | plain UPDATEs | invoker function — same grants decide | `REQ-ADM-011`, invariant 6 |
+| 3 | the catalogue is fixed; `action_key`/`actor` never editable; الحجز and التفاعل absent, not zero | check constraint + grant; groups from `REWARD_*`/`PENALTY_ACTIONS` | same constants; no add/remove control | `REQ-PTS-010` |
+| 4 | deductions grouped apart, typed as a cost, stored negative; a sign mismatch refused at the field | `actions.ts:68`, `scoring-admin.ts:201` | the function's guard, refused at the field | `REQ-PTS-008` |
+| 5 | value, cap, cooldown, enabled, reason editable; cooldown as a duration (`intervalToSeconds`, day-part fix) | `rules-table.tsx`, `scoring-admin.ts:73` | same fields in edit mode; `intervalToSeconds` kept | `REQ-PTS-004`, `-006`, `-007` |
+| 6 | ★ **the reason a member reads is editable and visible to the admin** | the dialog's `reasonAr` | the row's second line (D2) | `REQ-PTS-003`, `REQ-PTS-014` |
+| 7 | a change applies forward only; written rows keep amount and `rule_version` | `version` bump (`0027:111`) | unchanged — **and proven from `SCR-022`** (test T1) | `REQ-PTS-004`, `REQ-PTS-011` |
+| 8 | every change recorded: who, when, old, new | triggers → history | unchanged; no-op writes nothing (new) | `REQ-PTS-005`, `DEC-148` |
+| 9 | the history readable here, rules and fields in words, actor named, «النظام» for no actor | `history-table.tsx`, `page.tsx:55-79` | kept below the tables | `REQ-PTS-005` |
+| 10 | ★ `id="history-heading"` — the audit log links to it (K1) | `page.tsx:127` | kept; told to `console` for `062` | `REQ-ADM-018` |
+| 11 | company rules: hosting points; per-percent, cap, minimum roster; enabled | `company-rules-table.tsx` | the line read; edited in the same edit mode | DEC-067, `REQ-PTS-016` |
+| 12 | manual adjustment: member by name (not a UUID), direction + amount, mandatory reason, confirmation by name and amount, refusals at their fields | `manual-adjustment-form.tsx`, `actions.ts:167` | the same in a `sheet` | `REQ-PTS-009`, `REQ-UIX-013` |
+| 13 | the adjustment lands in the member's ledger with its reason and the admin's name, audited | `adjust_points_manually()` | unchanged | `REQ-PTS-009`, `REQ-PTS-003` |
+| 14 | numbers through `formatNumber`, `<bdi>` on every number and name, six plural forms | throughout | same | `DEC-124`, `10` |
+| 15 | no motion, no object | — | `console-register` untouched and green | `REQ-UIX-053` |
+| 16 | form with an app-side error sets `noValidate`; controlled fields survive React's reset | `form-state` pattern | same (`DEC-149` §1) | `DEC-149` |
+
+#### ★ T1 — the test the job asks for: edit a rule, then read `SCR-022` as the member
+
+`tests/rls/scoring-catalogue-forward.test.ts` (new, `applyProposed()`): a member with a paid `comment` row at 5 pts,
+reason «تعليق»; the admin saves `comment` → 7 pts, reason «تعليق مفيد» through `save_scoring_catalogue()`. Then, as the
+member: the old row still reads 5 and «تعليق», `rule_version` 1; `scoring_rules` reads 7 and the new reason (what
+`getPointsLedger()`'s `catalogue` returns, `points.ts:1049`); a new comment's award reads 7, `rule_version` 2. And the
+e2e `wave22-scoring-catalogue.spec.ts` does it through the screens: edit on `053`, then `/ar/app/me/points` as the
+member shows 7 and the new reason, the old row untouched.
+
+★ **F1 — what T1 finds, and it breaks the promise today.** `SCR-022`'s cap explanation,
+`capped_award_explanations()` (`0177`, wave 20), decides «this session's comments were capped» from the **current**
+rule: `having sum(l.amount) >= r.cap_per_session * r.points` (`0172`/`0177`). An admin who raises `comment` from 5 to 10
+after a member hit a cap of 3 at 5 pts makes `15 >= 30` false — **the explanation disappears**, and the member sees a
+comment that earned nothing, unexplained. Raising the cap does the same; disabling the rule removes every past
+explanation. That is exactly «editing the catalogue breaks `REQ-PTS-003`». The fix is a function of mine — decide
+«capped» from the **paid rows and the cap in force when they were paid** (the count of paid rows against the
+`cap_per_session` read from `scoring_config_history` as of the first unpaid item, falling back to the current value) —
+but the function feeds **`SCR-022`, which is frozen**. **Question Q1** below. I will not save the failing case under
+`tests/rls/`; it lands with the fix or not at all.
+
+---
+
+### PR B — `054` badges and levels, with the held certificates (`REQ-UIX-101`, `STORY-UIX-091`)
+
+**From `AdminRecognition.dc.html` at 1280** — delete `admin/recognition/{page,badges-table,levels-table,perks-table,
+streaks-table,award-form}.tsx` and `actions.ts`; then write.
+
+#### Regions, in the artboard's order
+
+1. **`h1` row** — «الشارات والمستويات», the saved mark under it, «عدّل» at its end (secondaries in D7).
+2. **Two tables side by side at 1280, stacked under `lg`** — **levels** (المستوى · من · اللون) at the inline-start
+   and **badges** (الشارة · القاعدة · مُنحت · مفعّلة) beside it. Level colour: `console`'s **swatch cell** showing the
+   level's ramp stop (`--color-level-1…5`, keyed on `sort_order` as `level-card` and `badge-medallion` key it) **and
+   its word** — read-only, there is no colour column (D9). The badge's rule in words (metric + threshold, plural
+   forms). «مُنحت» a count read by a new invoker function `badge_holder_counts()` (a group-by PostgREST cannot do
+   without aggregates). «مفعّلة» = not retired, the switch cell.
+3. **«شهادات الإنجاز بانتظار الإصدار» · count** — `data-table`: العضو (`ui/avatar` through the one resolver,
+   `DEC-099`) · الإنجاز (badge name, or the board's period in words — kept from `held-achievements-table.tsx`) · منذ (age)
+   · `console`'s **two-button action cell**: «أصدر» / «أوقف». Shown **only when there are any** (kept: the page gates
+   its own section).
+4. **Below, not drawn**: perks and streaks (D6) and the history is **not** added (054 has none today; its records show
+   on `062`).
+
+#### ★ Every mutation and its record
+
+| Mutation | Path | Record |
+|---|---|---|
+| a level's name · threshold | new invoker `save_recognition()` → `update levels` | history, scope `levels` (`0123`) |
+| a badge's name · description · rule · certificate flag · retired | the same call → `update badges` | history, scope `badges`; retiring logs `retired_at` (`0123`) |
+| a badge created | the same call → `insert badges` | history `created` row (`0123:63`) |
+| a perk's qualifier · enabled | the same call → `update perks` | history, scope `perks` |
+| a streak rule | the same call → `update streak_rules` | history, scope `streaks` |
+| a badge granted by hand | `award_badge_manually()` (`0047`), unchanged, held-already pre-read kept | `badge.manual_award` |
+| «أصدر» | `releaseAchievements` (`components/certificates/actions.ts`, `designer`'s, as it is) → `release_certificates` | `certificate.released` (`0065:193`) |
+| ★ «أوقف» | `revokeCertificate()` (`certificates.ts:533`, **as it is**) from my action, with the **mandatory reason** | `certificate.revoked` with the serial and cause (`0127:145`) |
+
+**Confirmed, with one addition: `DEC-231` §4's `054` line omits «أوقف».** It is not a gap in the records —
+`revoke_certificate()` audits — but the table and `STATUS.md`'s enumeration should name `certificate.revoked`. Revoking a
+held certificate is allowed by the function (`state <> 'revoked'`) and **notifies no one** (no `notify()` call for
+`certificate_revoked` exists; measured) — right for a certificate the member never saw.
+
+`save_recognition(p_levels, p_badges, p_perks, p_streaks)` — invoker, one transaction, updates only what differs,
+returns `{written, changed_at}`. ★ **Levels are written in an order the unique `(org_id, threshold_points)` never sees
+a transient duplicate** (raises top-down, lowers bottom-up), after the same climb check `updateLevel()` makes today
+(`threshold_order`, `threshold_taken` at the field).
+
+#### Kept-behaviour table — `054`
+
+| # | Behaviour | Now | After | REQ |
+|---|---|---|---|---|
+| 1 | admin only; streamed not-found otherwise | `page.tsx:44` | same | `REQ-ADM-020` |
+| 2 | held certificates shown only when there are any, the page gating its own section, count beside the heading | `page.tsx:50-57` | same — but **below** the tables, as drawn (was first) | `REQ-CRT-012`, `16` §5.4.1a(b) |
+| 3 | a held certificate named by its badge, or by its board's period in words, never an ISO date | `held-achievements-table.tsx:46-53` | same, in my table | `REQ-CRT-012` |
+| 4 | issuing confirms first, counts, and the toast counts what was **released**, not what was selected; a refusal says so | `:83-102` | per row «أصدر» confirms; bulk kept through `data-table`'s selection (D8) | `REQ-UIX-013`, `REQ-CRT-012` |
+| 5 | the serial shown, `dir="ltr"` in `<bdi>` | `:66-73` | kept as the row's second line | `REQ-CRT-*` |
+| 6 | badges: create, edit name/description/rule/certificate flag, retire; the rule's fields follow the metric | `badges-table.tsx`, `saveBadge` | edit mode + a badge sheet staged into the page's changes (D5) | `REQ-REC-001` |
+| 7 | retiring never revokes a held badge; asks first, naming the badge | `setBadgeRetired`, `retireBadge` | the switch is staged; Save's confirmation names what retires | `REQ-REC-001` |
+| 8 | a created badge gets a stable key the admin never types | `scoring-admin.ts:550` | in `save_recognition()` | `REQ-REC-001` |
+| 9 | levels: name and threshold; thresholds climb with the order, refused at the field (`threshold_order`, `threshold_taken`) | `updateLevel` | same refusals, from the function | `REQ-REC-003` |
+| 10 | perks: one qualifier, level **or** badge; the hosting gate's warning kept | `perks-table.tsx`, `perkUpdateInput` | D6 | `REQ-REC-006` – `008`, `DEC-215` |
+| 11 | streak rules: required count, enabled | `streaks-table.tsx` | D6 / F2 | `REQ-REC-005` |
+| 12 | manual award: member by name, badge, mandatory reason; **a badge already held is said at the member with since when, and nothing is written** | `award-form.tsx`, `submitManualBadgeAward` | the same in a sheet (D7) | `REQ-REC-001` |
+| 13 | the evaluators read what this page edits and never rewrite the past | header comment | unchanged | `REQ-REC-003` |
+| 14 | `<bdi>`, Western numerals, six plural forms | throughout | same | `DEC-124` |
+
+#### The held certificates — through `certificates.ts` as they are
+
+`listHeldAchievements()`, `releaseAchievements` and `revokeCertificate()` are called unchanged. `held-achievements.tsx`
+stays the slot (presentation-only) and renders a new client table of mine, `src/components/scoring/held-certificates.tsx`,
+instead of `src/components/admin/held-achievements-table.tsx` (`console`'s) — **which then has no importer; `console`
+deletes it on my written request**. ★ **Two add-only fields the artboard needs and the DTO lacks** — the member (for
+the avatar through `avatars.ts`) and `created_at` (for «منذ»): a **request to the lead as `designer`'s custodian**, an
+add-only select in `listHeldAchievements()` (`certificates.ts:712`). Without it the row draws no face and no age.
+
+---
+
+### New disagreements — artboard and line; no side picked
+
+- **D1** · `AdminScoring.dc.html` «مفعّل» is drawn as a **checkbox glyph**; `M11b.md` §053 says «enabled `switch`»;
+  `REQ-UIX-092`'s switch cell is «a named action on the row» — an **immediate** write, which `REQ-UIX-091` forbids in a
+  read-mode page («nothing is written until Save»). My default, pending a ruling: read mode shows the state as a word
+  and a glyph; edit mode renders the switch cell as a **controlled, staged** input. ★ **Request to `console`**: the
+  switch cell takes a plain `onChange` + `checked` (no server action of its own) and a read-only form.
+- **D2** · The artboard's 053 has **no reason column**; `reason_ar` is what `SCR-022` shows a member for every rule
+  (`REQ-PTS-003`, `REQ-PTS-014`). Dropping it would leave the member's explanation uneditable. Default: the row's
+  second line.
+- **D3** · The company line carries **its own «عدّل»** beside the h1's — two edit controls on a «one «عدّل»» page
+  (`DEC-NEXT-29`). Default: the inline one enters the same edit mode.
+- **D4** · Neither artboard draws a **history**; `REQ-PTS-005` («readable in the admin console») and `DEC-231` §4.3
+  («the scoring and recognition pages keep their own history as they do today») keep `053`'s. `054` has none today.
+- **D5** · `054` draws **no «شارة جديدة»**, no description, no certificate flag; `REQ-REC-001` requires create and both
+  fields. Default: a «شارة جديدة» row-adder inside edit mode, the full badge in a sheet staged into the page's unsaved
+  changes.
+- **D6** · ★ `054` draws **no perks and no streaks**; `REQ-ADM-012` and `09`:65 («badges, levels, streaks, perks») keep
+  both. And **`053`'s artboard draws the streak as a catalogue row** («سلسلة حضور · 20 · كل 5 جلسات»). Default: perks as a
+  third read-mode table on `054`; streaks — F2.
+- **D7** · Neither artboard draws the **manual badge award**; `REQ-REC-001` keeps it. Default: «امنح شارة», a
+  secondary on `054`'s h1 row opening a sheet — `053`'s «تعديل يدوي» in shape.
+- **D8** · The artboard's held certificates are **per row** («أصدر» / «أوقف»); today's are a **selection with a bulk
+  bar**. Default: both — per-row actions in the two-button cell, `data-table`'s selection kept for «أصدر» on many.
+- **D9** · The artboard's levels carry a **«اللون» column**; levels have no colour (`0027:203`) — the ramp is keyed on
+  `sort_order`. Drawn read-only from the ramp, never edited.
+- **D10** · The artboard's held rows name **«مستوى كريم معرفة»** — a level certificate — and badge «سفير» has the rule
+  «مستوى سفير المعرفة». Neither exists: achievement certificates are badges and boards (`REQ-CRT-012`), and no badge
+  metric reads a level (`BADGE_METRICS`). Drawn, not built.
+- **D11** · The artboard draws the deductions **unticked** (off); they are seeded **enabled at 0** (`0083:35-36`) and
+  `05` §1.3 says «present, enabled, and worth 0», while `REQ-PTS-008`'s title says «off by default». The stored value is
+  drawn. And «مغلق افتراضيًا» on the artboard is the group's **label**, drawn open — the brief's «closed by default»
+  could be read as a collapsed group, which the artboard does not draw.
+- **D12** · `053`'s artboard shows **6** reward rows; the catalogue holds **10** — drawn as a sample; all ten are shown.
+
+### Findings — defects the rule found
+
+- **F1** · The cap explanation disappears when a rule is edited (above, `0172`/`0177`). Breaks `REQ-PTS-003`.
+- **F2** · ★ **`streak_rules.bonus_points` is edited on `054` and read by nothing.** `evaluate_streaks()` (`0150`)
+  pays `award_points('streak_month', …)` — `scoring_rules.streak_month.points`; no function reads `bonus_points`
+  (measured: only `scoring-admin.ts` and the seeds name it). An admin who changes «نقاط المكافأة» today changes nothing a
+  member is paid — **a setting that silently did not write**, `DEC-231` §0.1's worst outcome. The artboard's merged
+  streak row (D6) is the natural cure: value from `streak_month`, «كل N … في الشهر» from `streak_rules.required_count`,
+  `bonus_points` no longer shown. Two `enabled` flags remain (evaluate vs pay) — **Q2**. Copy says **month**: the rule
+  is N completed sessions in a calendar month, not «every N sessions» as drawn.
+- **F3** · A no-op save writes (`version` bump + a `version` history row) — closed by the functions above.
+
+### Questions for the lead
+
+- **Q1** · F1: may I `create or replace capped_award_explanations()` in PR B (a function feeding the frozen `SCR-022`,
+  no change to its screen), or is it carried? Without it, T1 can only prove the half that holds.
+- **Q2** · F2: does the streak move to `053` as one row (the artboard), or stay on `054` with `bonus_points` hidden? And
+  which `enabled` does its switch drive — both?
+- **Q3** · A3 (b) or (a) — to the owner.
+- **Q4** · A deactivated company that still owns a venue: credited? My default is yes (the rule says «owns»; the
+  percentage rules do not check deactivation either).
+- **Q5** · `company_min_active_members` (`0175`, `DEC-220` §1.3) has no control yet; it is an `org_settings` column, so
+  `063` (`notify`) — not `053`'s company line, though it governs the same board. Confirm it is in `notify`'s plan so it
+  is not dropped by both.
+- **Q6** · The add-only fields in `listHeldAchievements()` (member, `created_at`) — yours as `designer`'s custodian.
+- **Q7** · `tests/rls/admin-recognition-writes.test.ts` (wave 8) is not in my list; it proves the grants my invoker
+  function leans on. Whose is it this wave? I add new cases in a new file either way.
+
+### Files, by PR
+
+- **A**: `supabase/proposed/scoring/hosting_follows_the_venue.sql` (new) · `tests/rls/scoring-venue-hosting.test.ts`
+  (new) · `admin/scoring/{page,actions}.ts(x)` and `scoring-admin.ts` (removal only) · `host-company-form.tsx` (rm) ·
+  `messages/{ar,en}/scoring.json` (removal) · `tests/rls/scoring-company-points.test.ts`,
+  `tests/unit/admin-scoring-actions.test.ts`, `tests/e2e/scoring-company-points.spec.ts` (ledger lines).
+- **B**: `supabase/proposed/scoring/{save_scoring_catalogue,save_recognition,badge_holder_counts}.sql` (functions only)
+  · `admin/{scoring,recognition}/**` deleted then written · `scoring-admin.ts` (the batch saves, the counts, the saved
+  mark's read) · `held-achievements.tsx` (presentation) · new `src/components/scoring/held-certificates.tsx` ·
+  `messages/{ar,en}/{scoring,recognition}.json` · new `tests/rls/{scoring-catalogue-forward,scoring-catalogue-save,
+  recognition-save}.test.ts` · new `tests/e2e/wave22-scoring-{catalogue,recognition}.spec.ts` (1280, and 390 for the
+  stack) · rewritten, each a ledger line: `tests/components/admin/{scoring-page,recognition-page}.test.tsx` (all
+  fourteen cases — the dialogs become edit mode), `tests/unit/admin-{scoring,recognition}-actions.test.ts`
+  (`saveScoringRule`/`saveBadge`/`saveLevel`/`savePerk` → the batch actions; `intervalToSeconds`,
+  `saveManualAdjustment`, `awardBadge` untouched), `tests/e2e/wave8-console-scoring.spec.ts:118,152,173,189` and
+  `wave8-console-recognition.spec.ts:141,167,194,212` (selectors move; `:111`/`:134`, the moderator's not-found,
+  untouched), `tests/e2e/scoring-company-points.spec.ts:106-127` (the dialog becomes edit mode). `scoring-screens.spec.ts`
+  (h1 + no horizontal scroll at 390) passes untouched.
+- **Requests**: `console` — the switch cell's staged form (D1); delete `components/admin/held-achievements-table.tsx`
+  once mine replaces it; keep the `#history-heading` link on `062`. The lead — Q1 – Q7, the add-only certificate fields.
+
+## Wave 22 — PR A built: hosting follows the venue's owner (`DEC-232` §1.1, §1.2)
+
+- `supabase/proposed/scoring/hosting_follows_the_venue.sql` — `evaluate_company_points()` re-created from `0113:563`,
+  rule 1 alone changed (rules 2 and 3 diffed byte-identical against `0113:602-670`). Each distinct owner of the days'
+  venues once; a deactivated owner earns nothing; no owner or a custom venue earns nothing, by rule;
+  `host_company_id` never read; a session already holding a hosting row is not credited again.
+- `tests/rls/scoring-venue-hosting.test.ts` — 9 cases, **green now**: it applies `lead/0180_venue_company.sql` and my
+  file inside its own transaction, so it needs no local `0180`, and both calls become no-ops at promotion. Control run
+  without my file: 4 of the 9 fail (the venue owner, `host_company_id` not read, replay, multi-day) — the cases bite.
+- The stopgap form removed: `host-company-form.tsx` (rm), its section, `saveSessionHostCompany`,
+  `setSessionHostCompany` + schema, `listHostableSessions` + `HostableSession`, `ScoringAdminData.companies` (only the
+  form read it), `scoring.admin.hostCompany.*` (ar, en). `listCompaniesForAdmin`/`CompanyOption` in `scoring-admin.ts`
+  had no caller before this change either (the console reads `admin-lists.ts`'s) — left for `053`'s rebuild in B.
+
+**Ledger lines (for `STATUS.md`, the lead's):**
+- `tests/rls/scoring-company-points.test.ts:244` «hosting — awards exactly one…» — **expectation moves**: the credited
+  company is the venue's owner (the fixture venue is given `f.a.companyId`), not `host_company_id`; it applies both
+  proposed files, so it is green before and after promotion.
+- `tests/unit/admin-scoring-actions.test.ts` — `describe("saveSessionHostCompany")` and its mock **removed** with the
+  action.
+- `tests/components/admin/scoring-page.test.tsx:25,31,40,72,78` — the mocks of `listHostableSessions` /
+  `saveSessionHostCompany` and the fixture's `companies` **removed** (a selector-level removal; the six cases unchanged).
+- `tests/e2e/scoring-company-points.spec.ts:128-141` — the host-company form's steps **removed**; the rule edit above
+  them unchanged.

@@ -1,11 +1,11 @@
-**Last updated:** 2026-10-02 · **Branch:** `main` · ★★ **WAVE 22 IS PLANNED, NOT STARTED** · **`main`:** `584abdd0`; production and local both at **`0179`** · **Phase:** ★★ **M11b — THE REST OF THE CONSOLE (`DEC-230`, M24)**: the four tables, the two moderation queues, the four read-mode pages, reminders, exports, the audit log, settings and the two survey screens — **fifteen screens from fourteen artboards**, each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; ★★ **NO new primitive, so the gate's floor stays 63 and `tests/unit/ui-playground.test.ts` is untouched** — the first wave since 15 to add none. **One migration, `0180`** — one nullable column. The brief is `docs/plan/notes/wave-22-lead.md`. ★★ **THE OWNER RULES M11b BEFORE STORIES** (`DEC-230` §1), answering `DEC-229` §5's open question — stories have now been overtaken FOUR times and the ring stays inert. ★★ **Two owner rulings settle the wave's only hard questions:** hosting points move to **the venue's owning company** — the presenter's company earns presenting, the building's owner earns hosting, and a venue owned by nobody rewards nobody — which **answers the objection `0081` recorded rather than ignoring it** (§2); and moderation becomes **two screens**, so `moderationComments` flips to `built: false` and **the rail drops from twenty items to nineteen** (§3). ★ **Owed by the owner:** set each existing venue's company on `046` before the hosting rule's first evaluation; the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-045` and `055`–`059` with the studio and the brand kit, and session stories.
+**Last updated:** 2026-10-02 · ★★ **WAVE 22 — BUILT; THREE PRs GREEN IN CI (#47 `fc69f1fc`, #48 `f4d6c424`, #49 `3f308dc2`), READY FOR THE OWNER** · **Branch:** `wave-22a/the-tables` (draft #47) · **`main`:** `5494ea50`; ★ **production at `0188`** (pushed 2026-10-03), local at `0190` · **Phase:** ★★ **M11b — THE REST OF THE CONSOLE (`DEC-230`, M24)**: the four tables, the two moderation queues, the four read-mode pages, reminders, exports, the audit log, settings and the two survey screens — **fifteen screens from fourteen artboards**, each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; ★★ **NO new primitive, so the gate's floor stays 63 and `tests/unit/ui-playground.test.ts` is untouched** — the first wave since 15 to add none. **One migration, `0180`** — one nullable column. The brief is `docs/plan/notes/wave-22-lead.md`. ★★ **THE OWNER RULES M11b BEFORE STORIES** (`DEC-230` §1), answering `DEC-229` §5's open question — stories have now been overtaken FOUR times and the ring stays inert. ★★ **Two owner rulings settle the wave's only hard questions:** hosting points move to **the venue's owning company** — the presenter's company earns presenting, the building's owner earns hosting, and a venue owned by nobody rewards nobody — which **answers the objection `0081` recorded rather than ignoring it** (§2); and moderation becomes **two screens**, so `moderationComments` flips to `built: false` and **the rail drops from twenty items to nineteen** (§3). ★ **Owed by the owner:** set each existing venue's company on `046` before the hosting rule's first evaluation; the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-045` and `055`–`059` with the studio and the brand kit, and session stories.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
 
-## ★★★ WAVE 22 — PLANNED, NOT STARTED — M11b, the rest of the console (`DEC-230`)
+## ★★★ WAVE 22 — STEP 0 DONE, SYNC 1 OPEN — M11b, the rest of the console (`DEC-230`)
 
 **The programme's eighth wave, and the largest batch it has attempted: fifteen screens.** The brief is
 `docs/plan/notes/wave-22-lead.md`; the drawing is `docs/design/screens/M11b.md` with the **fourteen** artboards in
@@ -23,6 +23,183 @@ child type with no remaining use, an i18n defect printing `{value}`, and a pager
 ★★ **NO NEW PRIMITIVE.** `M11b.md` says so outright, and the three `data-table` cells — a switch cell, a two-button
 action cell, a swatch cell — are **stories, add-only**, proven by every existing suite passing untouched. **The
 floor stays 63.**
+
+### ★★ Step 0 — DONE (2026-10-02, `DEC-231`) · sync 1 — OPEN
+
+| | |
+|---|---|
+| Branch · PR A | `wave-22a/the-tables` from `5494ea50`; ★ **draft PR #47 against `main` from its first push** |
+| Step 0's numbers | ui/ **63**, floor **63** at `ui-playground.test.ts:121`, `0179` → next `0180`, `REQ-UIX-091` / `STORY-UIX-081` / `DEC-231` next — **all re-read, all as `DEC-230` says** |
+| The artboards | `M11b.md`, `m11b/**` and ★ **the planning prompt, unedited, as the record** — `a0bc20e7` |
+| Documents | `DEC-231`; `REQ-UIX-091` – `106`, `REQ-ADM-022`, `023`, `REQ-PTS-016`; `STORY-UIX-081` – `096`, `STORY-ADM-010`, `011`, `STORY-PTS-008`; M24 in `14`; `09`'s moderation; ★ `05` §6.3 (`0081`'s company rules were never documented); `trace` **red at `5494ea50`, green now** |
+| The map | `CLAUDE.md` § *Ownership map (wave 22)* and **all ten agent files in the same commit** (`DEC-085`) |
+| Spawned, planning-only | `console`, `scoring`, `notify`, `content`, `event` — all opus |
+
+★★ **What Step 0 found that the brief did not** (`DEC-231`):
+
+1. ★★ **The audit rule has quietly not held since wave 6.** Six kinds of mutation on these screens write **nothing**:
+   venues, categories, companies (but the team colour), report dismissals (only `reports.resolved_by` on the row), the
+   stopgap host-company form, survey templates. They close **in the database** — a definer trigger per table, the lead's,
+   in one migration after `0180`, its number named when it is on disk (`DEC-180`'s rule). Scoring, recognition and
+   org-settings changes are answered by `scoring_config_history` by design (`DEC-148`); ★ **`062` reads both stores**.
+2. ★★ **The moderation routes hold the opposite queues to their names**: `/reports` lists PHOTO reports, `/comments`
+   COMMENT reports. The rebuild moves photo reports to `/photos` and comment reports to `/reports`; the attention rows and
+   the rail's badges move with them.
+3. ★ **Comment resolution is two DAL writes** (`admin-moderation.ts:152`) — a failure between them leaves a removed
+   comment under an open report. One function, `content`'s, PR C.
+4. ★ `DEC-230`'s «`05` §5.4» pointed at **Perks**, whose «hosting» is the level-gated right to host — not hosting points.
+5. ★ **A company has no domain** (`048` draws one) and **no badge revoke exists** — drawn, not built.
+6. ★ **A multi-day session may meet at venues of different owners** — `scoring`'s plan answers it.
+
+### ★ The lead's audit enumeration — one line per mutation per screen (`DEC-231` §4 is the full table)
+
+| Screen | Mutation → record |
+|---|---|
+| `046` | create → `venue.created` ★new · edit → `venue.changed` ★new · company → `venue.company_changed` ★new · (de)activate → `venue.deactivated` / `venue.reactivated` ★new |
+| `047` | create → `category.created` ★new · edit → `category.changed` ★new · (de)activate → `category.deactivated` / `category.reactivated` ★new |
+| `048` | create → `company.created` ★new · rename → `company.changed` ★new · (de)activate → `company.deactivated` / `company.reactivated` ★new · colour → `company.team_color_changed` |
+| `049` | role → `member.role_changed` · deactivate → `member.deactivated` · reactivate → `member.reactivated` · CSV → `export.created` |
+| `050/052` | hide → `comment.removed` · restore → `comment.restored` · dismiss → `report.resolved` ★new |
+| `051` | delete → `photo.removed` · restore → `photo.restored` · dismiss a photo report → `report.resolved` ★new |
+| `053` | rule → `scoring_config_history` (scoring) · company rule → history (company_scoring) · manual → `points.manual_adjustment` · ~~host company~~ removed |
+| `054` | level · badge · perk · streak → history · manual badge → `badge.manual_award` · release → `certificate.released` |
+| `060` · `063` | → history (`org_settings`) · domains → `domain.added` / `changed` / `removed` |
+| `061` · `062` · `064` | every CSV → `export.created`, the slice in `after`; ★ the audit log's CSV a new export type; ★ `064` reads the rating's aggregates and writes **no** `ratings.read_admin` (`DEC-232` §2.7) |
+| `054` «أوقف» | → `certificate.revoked` (`DEC-232` §2.3) |
+| `063` the org's name | → `org.renamed` ★new — the seventh gap (`DEC-232` §2.1) |
+| `064` | attach / detach → `survey.attached` / `survey.detached` |
+| `065` | create / save / delete → `survey_template.created` / `changed` / `deleted` ★new |
+
+### ★ Where it stands (2026-10-02, end of Step 0)
+
+- ★ **Sync 1 is done — `DEC-232`.** Five plans approved; the owner ruled hosting across days (each owner once), an inactive
+  owner (earns nothing), reminders (the artboard's set, no column) and the survey tab's bars (the survey's own questions).
+  PR A builds in the main checkout.
+- ★ **The cells landed at `e611e992`; B and C are cut from it**: `../kareem-marefa-wave22b` (`wave-22b/the-read-pages`) and
+  `../kareem-marefa-wave22c` (`wave-22c/moderation-and-the-survey`) — `node_modules` and `packages/*/dist` symlinked,
+  `.env.local` and `supabase/.temp` copied. **Neither is pushed yet.**
+- ★ **A lead's slip, recorded**: A's push of `b81ac2a6`'s parent carried `e0dce842` (`060` deleted) **without its create**
+  — the unpaired delete the rules forbid. Draft PR, `main` untouched. **A is not pushed again until `060`'s and `046`'s
+  creates are in, and B and C's first pushes wait for the same.** Check the head before every push.
+- ★ **The slip, repeated (2026-10-03)**: B's first push (draft **#48**) carried three unpaired deletes — `053` (`6cbedead`)
+  and `054` (`2d53a14f`), committed by `scoring` between the lead's check and the push, and `062` (`01b51903`) from A.
+  The command listed the deletes and pushed in the same step. ★ **The rule now: the head is read in one step, the push
+  is a separate step, and nothing is pushed while a teammate is mid-screen in that tree.**
+- ★ **`0180` is WRITTEN AND STAGED, NOT APPLIED**: `supabase/proposed/lead/0180_venue_company.sql` and its cases in
+  `supabase/proposed/lead/venue-company.test.ts.pending` (`9fea9a91`). Applying it to the shared local stack was
+  declined by the session's permission check while five teammates were on the machine (load average ~245). **Promotion**:
+  move the SQL to `supabase/migrations/0180_venue_company.sql`, the test to `tests/rls/venue-company.test.ts`, reset,
+  run the sweep.
+- ★ **An orphaned `next-server` from wave 21** (parent gone, no port, ~30 h, ~40 % CPU, cwd this repo) is still running;
+  stopping it was declined by the permission check. **The owner stops it**, or allows the lead to.
+
+### ★ Migrations — on disk and applied locally (owner approved 2026-10-03)
+
+`0180_venue_company` · `0181_console_audit` (the seven gaps) · `0182_hosting_follows_the_venue` (`scoring`) ·
+`0183_resolve_report` (`content`). Full RLS sweep at `0181`: 1513 passed, 2 failed — both the expected wave-15 cases
+below; green after. The owner rehearses all four on a dump taken at `0179` before the push.
+
+### ★ Verification, 2026-10-03 — production builds, specs, captures held beside the artboards
+
+| PR | Build | Specs | Captures beside the boards — sent back |
+|---|---|---|---|
+| A (`17837124` → `be811650`) | verify worktree, real `npm ci` | ★ green — `console`'s six screens, managed lists, members, exports, audit, team colour, wave-17 screens; `notify`'s reminders ×2; `scoring`'s company points | ★ wave-wide: **every table in 042's surface card** (all bare); `062` full dates and a second link line per row, role badges where the board draws faces; `049` emails drawn, «—» for level at 0 points; `046` capture under five toasts |
+| B (`baec9578`) | real `npm ci` | 26 passed, 2 red — `notify`'s stale-form refusal not shown (★ possibly the owner's worst outcome), `scoring`'s badge switch intercepted by its row | ★★ `053`'s deductions read «✓ مفعّل» under a heading that says «مغلق افتراضيًا»; each action drawn twice; `054` «مفعّل» wraps, held certificates uncaptured; `063` card order and title size |
+| C (`27342c69` → `43928498`) | real `npm ci` | ★ green — `event`'s 3 specs 24/24, `content`'s 3 specs 26/26 | `065` questions belong **below** (the lead's `REQ-UIX-106` «beside» corrected); `064`'s standing explainer dropped; `050/052` actions stacked, short cells wrap; `051`'s primary inverted |
+
+★★ **CI, read from each run's own conclusion (`DEC-192`):** #47 run `37070876282` **success** · #48 run `37079179130`
+**success** (after `f4d6c424`: three strings carried a literal «1%») · #49 run `37070615147` **success**.
+
+### ★★ `0180` – `0188` REHEARSED 2026-10-03 on the owner's fresh production dump
+
+`/tmp/prod-schema-0179.sql` (`public` + `graphile_worker`, taken at `0179` — `supabase migration list --linked` read
+`0179` on both sides; **0 data rows**, 90 tables). A throwaway `rehearse22` owned by `postgres`; the nine extensions as
+`supabase_admin`; the local `auth` / `storage` / `realtime` schemas loaded first; **the dump loaded with 0 errors**; the
+16 platform policies naming `public` re-applied after it; buckets 8 · worker migrations 20 · retention periods 7 copied,
+each equal to local. ★ **`0180` – `0188` from B's tree, as `postgres`, in ONE transaction with `ON_ERROR_STOP` — exit 0,
+0 errors.** End state against local (D's `0189` / `0190` objects excluded), by hash: functions 329 · policies 194 ·
+triggers 126 · table grants 263 · column grants 1,435 · execute grants 366 · columns 891 — **identical**. The wave's 19
+database suites on the rehearsed schema: **241 of 244** — `definer-exposure` listing `rls_auto_enable()` (production-only,
+as every wave) and two `platform-schema` cases needing the platform template library's seeded rows, which a schema-only
+dump does not carry (0 vs 11). `rehearse22` dropped. ★ **The owner may push from B's tree: the dry run must list exactly
+`0180` – `0188`.**
+
+★★ **ACCEPTED 2026-10-03 by the owner** — the fifteen screens of #47, #48, #49. Merges next: A, B, C, in order.
+
+★★ **PUSHED 2026-10-03 by the owner** from B's tree: the dry run listed exactly `0180` – `0188`; all nine applied;
+`supabase migration list --linked` reads **`0188` on both sides**. (The CLI's post-push catalog cache warned about a missing
+certificate under B's worktree `supabase/.temp/pgdelta/` — a cache step after the push, not a migration; nothing failed.)
+In the window before the merges: hosting pays nobody until venues name their owner; the old stopgap form on `main` writes
+a column nothing reads — not to be used; the audit triggers record from now.
+
+### ★★ The owner's order — before and after the merge
+
+1. **Rehearse `0180` – `0188`** on a production schema dump taken at `0179`. ★ **Push all nine together, before merging A**:
+   B's `0184` – `0187` are numbered before A's `0188`, so a push of A's alone leaves production out of order.
+2. **Merge A (#47), then B (#48), then C (#49).** B and C carry A's commits until A merges; ★ retarget nothing — all three
+   are against `main` already. Delete a branch only after its PR is merged and the next one's base is `main`.
+3. ★ **Set each existing venue's owning company on `046`** before the next session completes (`DEC-230` §2.4). Until then
+   no hosting points are awarded — correct, not a fault.
+4. Railway: reconnect with `--repo ebnmajed/kareem-marefa --branch main` and **check the builder** before the deployment.
+5. ★★ **The acceptance**: each screen beside its artboard, at 1280 on a real screen and at 390.
+6. Carried to you: no real no-JS path under `/app` (the loading model); photo reports cannot be filed (`REQ-EVT-008`);
+   staff removing a comment on the event page record no reason; `MSG-materials_added` is never sent; the leftover
+   wave-21 `next-server` on this machine; the `railway.json`; what comes after M11b (stories, the owner's to confirm).
+
+★ **Second pass (2026-10-03, after the fixes): all three green on production builds, every capture re-held beside its board and matching.**
+A `fc69f1fc`: 62 + 7 green (one phone `me()` gateway 502 re-run green alone) · B `5d3bd7bc`: **29/29** — the badge
+switch takes a real click on its drawn track (the red was the spec), the stale-form refusal shows and writes nothing (the
+red was the spec's race), `053`'s job proven (a rule edited is what `SCR-022` explains next; the written row unmoved) · C
+`3f308dc2`: **50/50**. Found and fixed by the review, beyond layout: `049`'s level read «—» below a stored level (a
+defect in the read); `053`'s deductions heading contradicted its rows. PRs: **#47** (A), **#48** (B), **#49** (C), all
+drafts against `main`, every delete paired at each pushed head; CI read from each run's own conclusion.
+
+Load produced reds that did not reproduce alone (C's first runs, one gateway `me()` 502); each was re-run before being called load.
+The `stat` primitive draws label-above-value where `064`'s board draws value-above-label — `content`'s primitive, recorded, not changed.
+
+### ★ Found by the verification builds, carried to the owner
+
+- ★★ **A real no-JS path is impossible under `/app` while `app/loading.tsx` streams** (`console`, 2026-10-03). Every
+  console page sits in that Suspense boundary; the streamed content is revealed by an inline script, so a browser with
+  JavaScript off sees only the skeleton (the CSP log shows the script blocked). `DEC-232` §5.5's `?new=1` / `?edit=` holds
+  for the server's HTML only — the specs now prove that half. Wave 21's `042` is in the same state. Not this wave's to
+  change: the loading model is the shell's, and every route depends on it.
+
+### ★ The untouched-suite ledger — wave 22
+
+| Suite | Change | Kind | Why |
+|---|---|---|---|
+| `rls/team-colour.test.ts` «main's own UPDATE» | no row → `company.deactivated`, still no colour row | expectation | `0181` audits deactivation (`DEC-231` §4) |
+| `rls/team-colour-insert.test.ts` «insert with a colour» | no row → `company.created` carrying the colour | expectation | `DEC-232` §2.2 |
+| `unit/admin-nav.test.ts` | 20 → 19 for an admin; 6 → 5 for a moderator; one unbuilt leaf | expectation | `DEC-230` §3 (C, `99e69692`) |
+| `rls/scoring-company-points.test.ts:244` | hosting credited to the venue's owner | expectation | `REQ-PTS-016` (`scoring`) |
+| `unit/admin-scoring-actions` | the `saveSessionHostCompany` describe removed | removed with its subject | `DEC-230` §2.3 |
+| `components/admin/scoring-page.test` | dead mocks and the fixture's companies removed; six cases unchanged | fixture | same |
+| `e2e/scoring-company-points.spec:128-141` | the stopgap form's steps removed | removed with its subject | same |
+| `e2e/wave8-console-reminders.spec.ts` | selectors moved (h1, table, «عدّل», row names, «احفظ», «حُفظ»); add/remove → band timing + prompt | selector; one expectation | `DEC-232` §1.3 (`notify`) |
+| `components/admin/reminders-form.test.tsx` | deleted with its file; re-said in `notifications/admin-reminders-edit.test.tsx` | moved | `DEC-208` |
+| `unit/admin-reminders-action.test.ts` | deleted; re-said in `notify-admin-reminders-action.test.ts`; `saved: true` → a receipt | moved; expectation | `DEC-232` §3 |
+| `components/admin/form-summary-links.test.tsx` | venues, categories, companies cases → each screen's test | selector | `console` |
+| `components/admin/phone-card-actions.test.tsx` | the three lists' cases removed; «عطّل» under ⋯ | selector | `console` |
+| `components/admin/managed-lists-status-badge.test.tsx` | deleted; «نشط» no longer drawn, «معطّل» asserted per screen | expectation | `console` |
+| `components/admin/companies-table.test.tsx` | colour chosen in the edit form | expectation | `console` |
+| `components/admin/companies-add-colour.test.tsx` · `unit/admin-lists-team-colour.test.ts` | `addCompany`/`setCompanyTeamColour` → `saveCompany`; empty colour = «بلا لون» | selector | `console` |
+| `e2e/admin-managed-lists.spec.ts` | rebuilt flows, a venue-company case, a no-JS case, captures renamed | selector; new cases | `console` |
+| `e2e/wave15-console-team-colour.spec.ts` · `e2e/wave17-console-screens.spec.ts:150` | the colour via ⋯ → «عدّل»; the trigger is the row's ⋯ | selector | `console` |
+| `components/survey/results.test.tsx` (E1–E6) | the rate «33%»; bars 5→1; star words; withheld string; quoted answers; «nobody eligible» on the reachable state | expectation | `event` |
+| `e2e/wave10-event-survey-results.spec.ts` (E7–E9) | heading → text; «تصدير CSV» → «CSV» in the header; first bar «5 نجوم» | selector; expectation | `event` |
+| `e2e/wave10-event-templates.spec.ts:157-159` (E10) | the phone card's «الأسئلة 3» / «الجلسات 0» | expectation | `event` |
+| `components/admin/{report-card,comment-report-card,takedown-card}.test.tsx` | deleted (14 cases); re-said in `moderation/{reports-table,photo-decide}.test.tsx` | moved | `content` |
+| `e2e/wave10-demo-survey.spec.ts:389-392, :402` | the lead's — moves with `064` | selector | pending, the lead |
+
+### The order of work
+
+1. **Sync 1** — five plans, each with its kept-behaviour tables and its audit lines, judged against `DEC-231` §0. ★
+   Nobody deletes a file before «the plans are approved».
+2. **PR A** — `0180` and the audit migration (lead) · the cells (`console`, first) · `046` – `049`, `061`, `062`
+   (`console`) · `060` (`notify`) · the hosting rule and the stopgap form's removal (`scoring`).
+3. **B and C cut from A's head after the cells**, each in its own worktree, each opened against `main` on its first push.
+4. **PR C carries the rail 20 → 19** in the commit with `content`'s redirect.
 
 ### ★★ The owner's three rulings
 

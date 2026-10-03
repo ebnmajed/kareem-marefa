@@ -7460,3 +7460,274 @@ brand kit. · A company logo, refused (`DEC-195` §4). · Recurring series (`A14
   `05-scoring-engine.md` (§5.4's hosting source), `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten
   agent files (the wave-22 map), `STATUS.md` (the wave-22 head), `docs/design/screens/M11b.md` and
   `m11b/**` (added to the tree)
+
+## DEC-231 — Wave 22's Step 0 and its map: five teammates, divided by the data each screen writes; the audit rule measured — six kinds of mutation write nothing today; the moderation routes hold the opposite queues to their names; and four smaller corrections to `DEC-230`
+
+- **Date:** 2026-10-02 · **Decided by:** the wave-22 lead, from measurement of the tree at `5494ea50`. Nothing the owner ruled in `DEC-230` §1 – §3 is re-opened
+- **Amends:** `DEC-230`'s «one migration, `0180`» (§4 below: the audit gaps need a second, the lead's, in the wave that closes them); `DEC-230`'s «`05-scoring-engine.md` (§5.4's hosting source)» (§6.2)
+- **Adds:** `REQ-UIX-091` … `REQ-UIX-106`, `REQ-ADM-022`, `REQ-ADM-023`, `REQ-PTS-016`; `STORY-UIX-081` … `STORY-UIX-096`, `STORY-ADM-010`, `STORY-ADM-011`, `STORY-PTS-008`; the wave-22 map in `CLAUDE.md` and the ten agent files
+- **Does not add:** a primitive. The floor stays 63 and `tests/unit/ui-playground.test.ts` is untouched
+
+### 0 · The goal, above the process (the owner's words, from the wave's prompt)
+
+**Finish the console, so an admin can run the whole organisation from it.** «Good» is not «the gates are green»:
+
+1. ★ **An admin changes something and KNOWS IT SAVED.** On the four read-mode pages: values with one «عدّل», the
+   unsaved count, the changed-field marks, and the saved mark afterwards. **A setting that silently did or did not
+   write is the worst outcome on any of them.**
+2. ★ **Moderation is ACTIONED, not listed**: the content in context, the reporter, the age; resolving records the
+   outcome **and** the actor (`REQ-ADM-010`). A queue you cannot act from is a list.
+3. ★ **The scoring catalogue is editable WITHOUT BREAKING THE PROMISE THE MEMBER APP MAKES.** `SCR-022` reads the rules
+   live and `REQ-PTS-003` says a member explains every point without asking anyone; a change here keeps that true.
+4. ★ **An export opens in Excel in Arabic** with no import step — UTF-8 with a BOM, Arabic headers and enum values,
+   Western numerals — **and every export is audited** (`REQ-ADM-017`).
+5. ★ **The audit log answers «who did this, when, and why» for everything these screens can do** — through one writer,
+   `public.write_audit()` (`0005:16`), into an append-only table with `service_role` revoked.
+6. ★ **The console stays the sober register** (`REQ-UIX-053`); its test stays green **and untouched**.
+
+A plan that reads like fifteen screens with green gates has not absorbed this, and sync 1 sends it back.
+
+### 1 · Step 0, measured
+
+| | |
+|---|---|
+| `main` | **`5494ea50`** (the brief), clean; production and local at **`0179`**; next **`0180`** |
+| `src/components/ui/` | **63 `.tsx`**; the floor **63** at `tests/unit/ui-playground.test.ts:121` — both as `DEC-230` §5 says |
+| Next ids | `REQ-UIX-091`, `STORY-UIX-081`, `REQ-ADM-022`, `REQ-PTS-016`, `STORY-ADM-010`, `STORY-PTS-008`, `DEC-231` — all re-read at Step 0 |
+| The artboards | committed at `a0bc20e7` with `M11b.md`; ★ **the planning prompt is committed UNEDITED as the record**, as wave 21 did — its «69» stays where it was made, and `DEC-230` §5 is the correction |
+| PR A | `wave-22a/the-tables`, **draft #47 against `main` from its first push** |
+| `trace` | **red at `5494ea50`** — `DEC-230` and `STATUS.md` cite `REQ-UIX-091`, which did not exist. This entry's documents make it exist |
+
+### 2 · The map — five teammates, each screen to the track whose data it writes
+
+`DEC-227` §4's principle, kept: **each screen goes to the track that owns what it writes, so every contract between
+tracks is a read.** Measured, the console's own DAL (`admin-*.ts`, `scoring-admin.ts`) sits behind twelve of the
+fifteen screens — one teammate cannot carry twelve rebuilds, so the split follows the data **underneath** the admin
+read:
+
+| Teammate | Screens | Why |
+|---|---|---|
+| **lead** | `0180`; the audit migration (§4); the rail 20 → 19 (`admin-nav.ts`, the shell's); the gates, the captures, three PRs | tables and the frame have one writer |
+| `console` | `046`, `047`, `048`, `049`, `061`, `062` and the three `data-table` cells — **PR A** | `admin-lists`, `admin-members`, `admin-exports`, `admin-audit` and `data-table` are its own; ★ the venue writes live in `sessions.ts` (`createVenue`, `setVenueActive`), and `sessions` is not spawned, so `console` edits **the venue functions of `sessions.ts` only**, add-only, for the wave |
+| `scoring` | ★ the hosting rule onto the venue's company, with the stopgap form removed in the same PR — **PR A**; `053`, `054` — **PR B** | the rules, the ledger and `company_points_ledger` are its; ★ `admin/{scoring,recognition}/**` and `scoring-admin.ts` come to it **for the wave**, as in wave 2 |
+| `notify` | `060` — **PR A**; `063` — **PR B** | ★ **both pages write one row, `org_settings`** (`setReminderSchedule` writes it at `notifications.ts:828`), and its history is one scope; `063`'s الربط card is calendar and mail, `notify`'s. `admin/{reminders,settings}/**` and `admin-settings.ts` come to it for the wave |
+| `content` | `050/052`, `051` — **PR C** | `comments`, `reports` and `photos` are its tables and its removal functions; `admin/moderation/**` and `admin-moderation.ts` come to it for the wave |
+| `event` | `064`, `065` — **PR C** | the survey is its, end to end (`DEC-160`) |
+
+**Not spawned:** `sessions`, `checkin`, `designer`, `platform`, `branding` — the lead is custodian.
+`certificates/held-achievements.tsx` (`designer`'s) is **presentation-only** to `scoring` for `054`, as it was to
+`console` in wave 8.
+
+★ **Three branches, two worktrees.** A is built in the main checkout. **B and C are cut from A's head once the
+`data-table` cells land**, each opened against `main` on its first push, and each built in its own worktree
+(`../kareem-marefa-wave22b`, `../kareem-marefa-wave22c`) — wave 21's lesson. A teammate edits a PR's files **only in
+that PR's tree**; the lead posts each worktree's path when it exists.
+
+### 3 · The read-mode pages — one pattern, four pages, two owners, and one test that reads all four
+
+`053` and `054` are `scoring`'s; `060` and `063` are `notify`'s. **No primitive** carries the pattern (`DEC-230` §4), so
+it is a **contract**: `M10c.md` §1's principle, whose reference implementation is `components/me/profile-edit.tsx`
+(**read, never imported**): values with one «عدّل»; edit mode names its state; the unsaved count; each changed field
+marked by its accent border **and** a word for a screen reader; Save names the count; Cancel restores; **nothing is
+written until Save**; leaving with changes asks; ★ the saved mark is **plain text with a glyph** (`DEC-216` §2.1), shown
+in read mode with the last change's time, read from the history row the save wrote — **never from the client's
+clock**. ★ **A save that wrote nothing says so**: a server action returns what it wrote, and the page shows the saved
+mark only from that answer. The lead's `wave22-lead-read-mode` spec walks all four pages with the same steps.
+
+### 4 · The audit rule, measured — the brief's list against the tree
+
+Two stores answer «who, when, what», by design: **`audit_log`** through `write_audit()` (`0005:16`), and
+**`scoring_config_history`** (`0004:354`), where every scoring, recognition and org-settings change is written with its
+actor, its old value and its new value — `REQ-ADM-018` as `DEC-148` corrected it. Measured per mutation:
+
+| Mutation (screen) | Today | This wave |
+|---|---|---|
+| venue created · changed · (de)activated (`046`) | ★★ **nothing** | `venue.created` · `venue.changed` · `venue.deactivated` · `venue.reactivated` |
+| ★ venue's company set or cleared (`046`, new) | — | `venue.company_changed` |
+| category created · changed · (de)activated (`047`) | ★★ **nothing** | `category.created` · `category.changed` · `category.deactivated` · `category.reactivated` |
+| company created · renamed · (de)activated (`048`) | ★★ **nothing** | `company.created` · `company.changed` · `company.deactivated` · `company.reactivated` |
+| company team colour (`048`) | `company.team_color_changed` (`0161`) | unchanged |
+| member role · deactivate · reactivate (`049`) | `member.role_changed` · `member.deactivated` · `member.reactivated` (`0005`) | unchanged |
+| a report dismissed — comment or photo (`050/052`, `051`) | ★★ **only `reports.resolved_by` / `resolved_at` on the row**; no `audit_log` row | `report.resolved`, with the resolution in `after` |
+| a comment removed · restored (`050/052`) | `comment.removed` · `comment.restored` (`0059`, trigger) | unchanged |
+| a photo removed · restored (`051`) | `photo.removed` · `photo.restored` (`0051`) | unchanged |
+| a scoring rule · a company rule (`053`) | `scoring_config_history` (`0027`, `0081`) | unchanged |
+| a manual adjustment (`053`) | `points.manual_adjustment` (`0032`) and its ledger row | unchanged |
+| ★ the stopgap host-company form (`053`) | ★★ **nothing** — a direct column update (`scoring-admin.ts:313`) | ★ **removed** (`DEC-230` §2.3) |
+| a level · badge · perk · streak edited, a badge retired (`054`) | `scoring_config_history` (`0123`) | unchanged |
+| a badge granted by hand (`054`) | `badge.manual_award` (`0047`) | unchanged |
+| a held certificate released (`054`) | `certificate.released` (`0066`) | unchanged |
+| reminder offsets (`060`) · org settings (`063`) | `scoring_config_history`, scope `org_settings` (`0004:393`) | unchanged |
+| an org domain (`063`) | `domain.added` · `domain.changed` · `domain.removed` (`0005:333`) | unchanged |
+| every export (`049`, `061`, `062`, `064`) | `export.created` (`0058`) | unchanged — ★ and the audit log's own CSV (`062`) is a **new export type through the same path** |
+| survey attached · detached (`064`) | `survey.attached` · `survey.detached` (`0132`) | unchanged |
+| ★ a survey template created · saved · deleted (`065`) | ★★ **nothing** | `survey_template.created` · `survey_template.changed` · `survey_template.deleted` |
+
+**Six kinds of mutation write nothing today** — venues, categories, companies, report dismissals, the stopgap form and
+survey templates. The brief's guess was that a plan would enumerate them; the tree says the rule has quietly not held
+since wave 6. So:
+
+1. ★ **The gaps close in the database, not the DAL.** One `security definer` trigger per table, on `0161`'s pattern, calling
+   `write_audit()` with the actor from the caller's claims — so a direct admin write under the table's own policy is
+   covered too, not only the screen's path. **The lead writes them, in one migration after `0180`**, from the action
+   strings above; its number is named in this wave's closing entry once it is on disk (`DEC-180`'s rule —
+   **this entry cites no unallocated number**). It is in PR A for the three tables, and the report and template triggers
+   travel with it, so the rule holds from the first merge. `DEC-230`'s «one migration» becomes two.
+2. ★ **Reports' resolution becomes one function.** `admin-moderation.ts:152` removes a comment and then marks its
+   report in **two separate writes from the DAL** — a failure between them leaves a removed comment under an open
+   report. `content`'s plan proposes one definer function that does both and audits; the lead promotes it.
+3. ★ **`062` reads both stores.** The owner's sentence is «the audit log answers who did this … for **everything** these
+   screens can do», and half of these screens write `scoring_config_history`. `062` therefore shows the history rows
+   beside the log's, marked by kind; **nothing is written twice**, and `DEC-148`'s split of the stores stands. The
+   scoring and recognition pages keep their own history as they do today.
+
+### 5 · Moderation — the routes hold the opposite queues to their names
+
+Measured: **`/app/admin/moderation/reports` lists PHOTO reports** (`reports/actions.ts` → `resolvePhotoReport`),
+**`/moderation/comments` lists COMMENT reports**, and `/moderation/photos` the takedown requests. The boards draw
+`051` الصور with chips **طلبات الإخفاء / بلاغات الصور**, and `050/052` البلاغات with chips **مفتوحة / التعليقات /
+مغلقة**. So the rebuild **moves photo reports from `/reports` to `/photos`**, and **comment reports from `/comments` to
+`/reports`** — `DEC-230` §3's redirect of `/comments` → `/reports` is right for a bookmark, and a bookmark to
+`/reports` now opens comments. ★ **`admin-dashboard.ts`'s attention rows and the rail's badges move with the queues**
+(`DEC-NEXT-30`: «the rail shows both counts»): two items, each counting what its screen shows. `content`'s plan
+names the counts; the lead re-points the badges and the rail's count test (twenty → nineteen).
+
+### 6 · Four smaller corrections
+
+1. ★ **A company has no domain.** `048`'s artboard draws a domain column and a domains field; no table holds a
+   company's domains (`org_domains` is the org's). **Drawn, not built** — a decision for the owner if wanted.
+2. ★ **`DEC-230`'s documents line names «`05` §5.4's hosting source».** §5.4 is **Perks**, and the only «hosting» in
+   `05` (§5.2, level 4) is the level-gated **right to host a session** (`DEC-215`'s hosting gate) — a different word
+   from **hosting points**. `05` never documented `0081`'s three company rules at all; this wave adds them as
+   **`05` §6.3**, with the venue as hosting's source. The two «hosting»s must not be confused in copy either.
+3. ★ **A multi-day session may meet in venues of different companies** (`DEC-119`); `sessions.venue_id` is derived from
+   the day set. `scoring`'s plan says which company the rule credits — the first day's, each owner once, or none —
+   and the lead brings it to the owner if the answer is not already in `DEC-230` §2's words.
+4. ★ **«Revoke a badge» does not exist.** The brief lists it; there is a manual grant (`0047`) and a retire switch
+   (history), and no requirement for taking a held badge from a member. **Not built**; the «enabled» column is the
+   retire switch.
+
+### 7 · What `main`'s code does in the gap (push precedes merge)
+
+`0180` and the rule's new definition reach production when the owner pushes, **before** A merges. In that window
+`main`'s console still shows the stopgap form, whose writes **nobody reads any more** — so ★ **the owner does not use
+it between the push and the merge**, and no hosting points are awarded until a venue names its company on the new
+`046`. Expected, and correct by `DEC-230` §2.2. The audit triggers write rows `main`'s code never sees — nothing moves.
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-091` … `106`, `REQ-ADM-022`, `023`, `REQ-PTS-016`), `15-backlog.md`,
+  `14-roadmap.md` (M24), `09-sitemap-screens.md` (moderation), `05-scoring-engine.md` (§6.3), `CLAUDE.md` and the ten
+  agent files, `STATUS.md`, `TRACEABILITY.md` (generated)
+
+## DEC-232 — Wave 22's sync 1: five plans approved; the owner's four rulings (hosting across days, an inactive owner, reminders as drawn, the survey's own bars); a seventh audit gap; and what «it saved» means on every console page
+
+- **Date:** 2026-10-02 · **Decided by:** the owner (§1); the lead, from the five plans (`console` `953a8f81`, `scoring` `16e35aa5`, `notify` `4cfafe7e`, `content` `087593fd`, `event` `d17406f1`) (§2 – §7)
+- **Amends:** `DEC-231` §4 (a seventh gap, and `certificate.revoked`); `STATUS.md`'s audit enumeration (`064` writes no `ratings.read_admin`); `REQ-UIX-097` («the set is `08`'s» — the owner chose the artboard's set, §1.3)
+
+### 1 · The owner's four rulings
+
+1. **A multi-day session at venues of different owners credits each distinct owner once.** Identical to «the first day's
+   owner» whenever the days share one.
+2. **A deactivated company earns no hosting points**, even while it owns a venue. The venue hosts for nobody until its
+   owner changes or the company is reactivated.
+3. **Reminders (`060`) are built to the artboard's set**: three fixed pre-session rows (7 d, 1 d, 2 h) and the rating
+   prompt. ★ **No column is needed** — `notify`'s reading (b): a row's «off» removes its offset from
+   `reminder_offsets_minutes`, a timing edit is clamped to its message's ±20 % band (`0062`) so a row never silently
+   becomes `MSG-reminder_generic`, and at least one stays on. ★ **Nothing stored is hidden**: an org holding an offset
+   outside the three sees it read-only below them. The rating prompt's row shows on, as text, with no switch — nothing
+   stores its «off» and `REQ-RAT-007` sends it. The «أُضيفت مواد» and «إغلاق التسجيل» rows are **absent**: nothing sends
+   them (`MSG-materials_added` — `notify`'s D-N1, carried; `MSG-rsvp_deadline_soon` has no job, `DEC-047`). The lead's
+   question to the owner said this needed storage; it does not, and the answer stands.
+4. **The survey tab's star bars (`064`) are the survey's own 1 – 5 questions**, not the rating's distribution. No new
+   SQL. ★ **`DEC-074` stands**: the rating and the survey stay two instruments; the two averages are the rating's,
+   read through `session_rating_aggregates` as today, and each figure says which instrument it is.
+
+### 2 · The audit rule, completed
+
+1. ★ **A seventh gap** (`notify`, A-G1): an org admin can rename the org (`grant update (name)`, `0004:55`) and nothing
+   records it. The audit migration adds **`org.renamed`**; the name is editable on `063`.
+2. **`company.created` carries the team colour** in `after` — `0161` fires on update only, so a colour set at creation
+   was unaudited (`console`).
+3. **`certificate.revoked`** (`0065`) is «أوقف»'s record on `054` (`scoring`) — added to the enumeration.
+4. ★★ **Every new trigger's delete arm returns early when its org is gone** — `perform_org_deletion()`'s pattern
+   (`0069:960`) — or `delete_org`'s cascade inserts `audit_log` rows for a deleted org and fails on the foreign key
+   (`event`). Venues, categories and companies are deactivated, not deleted, but the cascade still deletes them.
+5. **The survey template trigger sits on `survey_templates` alone** — insert → `survey_template.created`, update →
+   `changed`, delete → `deleted`. A save deletes and re-inserts the questions, so a trigger on them writes one row per
+   question per save (`event`).
+6. **One save changing a venue's name and its company writes two rows**, `venue.changed` and `venue.company_changed`:
+   an admin searching for who re-pointed a venue finds it by action.
+7. **`064` writes no `ratings.read_admin`**: the aggregates view is readable by both staff roles and audits nothing;
+   that row is for reading individual ratings (`0017`). `STATUS.md`'s line is corrected.
+8. **`export.created` records the slice** — the filters and, for `049`, the filtered list the screen shows.
+
+### 3 · What «it saved» means — every console page, not only the four
+
+The plans found the console reporting success when nothing was written, in five places: the venue, category and
+company deactivate toggles and member reactivation (RLS filters the row, the update matches 0 rows, no error —
+`console`); both settings save paths (`notify` D-N2); `?saved=1` typed into the URL (`notify` D-N5); and every
+settings save writing all fourteen columns, so a concurrent edit is overwritten and the history credits the wrong actor
+(`notify` D-N4). ★★ **This is the owner's worst outcome, live today.** Ruled:
+
+1. **Every write returns what it wrote.** A DAL write that matched no row reports «not written», never success.
+   Widening a track's own write from `void` to a result is **add-only** for this wave.
+2. **The saved mark is the server's receipt**: on the read-mode pages, the history rows the save wrote, found by the
+   save's own transaction time (`org_settings.updated_at` = the history's `changed_at`) — `notify`'s N0, adopted for
+   `053` and `054` too. An empty receipt says «لم يتغيّر شيء». No client clock, no URL flag, never «the last row» by time.
+3. **A save writes only the fields that changed, and refuses a stale form** (`notify` D-N4).
+4. **On a read-mode page nothing writes before Save** — a read-mode value is text with a glyph, never a control
+   (`notify` R-D8); in edit mode `data-table`'s switch cell is given a handler that stages the change and returns at
+   once. The switch cell's immediate write is for pages that are not read-mode. One save is one transaction
+   (`scoring`'s and `notify`'s invoker functions, approved).
+
+### 4 · Defects found by rule 2, and who fixes them
+
+| # | Defect | Fix |
+|---|---|---|
+| 1 | ★★ `capped_award_explanations()` (`0172`/`0177`) judges «capped» by the **current** rule — raise a cap and `SCR-022`'s explanation vanishes, breaking `REQ-PTS-003` | `scoring`, PR B: judged by the rule as it stood at the award; `SCR-022`'s markup unchanged, a test reads it after a rule edit |
+| 2 | ★ `streak_rules.bonus_points` is edited on `054` and read by nothing — a setting that silently does not write | `scoring`: **not offered for edit**; the streak's payout is `scoring_rules.streak_month`, edited on `053`. Dropping the column is carried |
+| 3 | ★★ `max_rows = 1000` truncates every export and `admin_list_members()` silently (`REQ-ADM-017`) | `console`, PR A: page through every read in its files; the lead checks production's setting |
+| 4 | the venue session count misses day 2+ of a multi-day session; proposals are not counted for a category | `console`, PR A |
+| 5 | resolving a comment report is two writes; removing a comment resolves one of its reports; restoring a photo is two writes, the second unchecked; removing an already-deleted comment overwrites its author as the deleter | `content`, PR C — `resolve_report()`, one transaction, all open reports on the content |
+| 6 | takedown requests are counted nowhere — a hidden photo waits unseen | `content`'s الصور count includes them; the rail and the dashboard follow |
+| 7 | `064` refuses an admin who presented, or another org's session, with the error boundary, not `notFound()` | `event`, PR C |
+| 8 | `time_zone` accepts any string and breaks every date | `notify`, PR B: validated as an IANA zone |
+
+**Carried, the owner's:** nothing files a photo report (`REQ-EVT-008` half built — `content` F1); staff removing a
+comment on the event page record no reason and leave its reports open (`content` F6, frozen code); `MSG-materials_added`
+is never sent (`notify` D-N1); «آخر نشاط» is stored nowhere.
+
+### 5 · The artboards against the documents — ruled
+
+1. **`063` draws nine values nothing stores and two that are false** (photos «deleted after two years» — kept for the
+   org's life; «keeps the record» — anonymised at 365 days). **Absent, never invented.** The eleven `REQ-TEN-008`
+   settings it does not draw are **kept**, placed per `notify`'s N2. The cards carry **visible titles**. ★
+   `company_min_active_members`' control lands **on `063`**, as `DEC-220` §1.3 promised. The last org domain cannot be
+   removed.
+2. **`054`'s undrawn perks, streaks, manual badge award and badge creation are kept** (`REQ-ADM-012`, `REQ-REC-001`) —
+   rule 2's failure would be to drop them. The level colour is a read-only ramp; level certificates are absent.
+3. **Moderation**: one row per reported comment or photo, not per report; `050/052`'s chips are مفتوحة · مغلقة — with
+   photo reports moved to `051`, «التعليقات» duplicates «مفتوحة»; the action is **«أزل»** (`REQ-EVT-014`), its reason
+   dialog kept; `051` gains مغلقة too, so an outcome and its actor are visible somewhere for the first time; faces through
+   `ui/avatar` and the one resolver (`DEC-099`).
+4. **`064`'s anonymity line tells the truth** (`REQ-SUR-005`) and its threshold is read, never «3»; «افتراضي» has no
+   column and is absent; the editor is kept untouched, reached from the row's menu.
+5. **The no-JS path is `042`'s**: `?new=1` / `?edit=<id>` regions in the page, the sheet the enhancement.
+6. **`data-table` stacks below `md`**, as built; the artboards' «under `lg`» is not adopted.
+7. **No gendered verb about a member** in any new string (`DEC-213` §5.109).
+8. **«CSV»** is the link's word, as drawn; the lead's demo spec moves with it (a ledger line).
+
+### 6 · Requests and transfers
+
+- **To the lead, as custodian:** `labelHidden` on `ui/switch` (add-only); `member` and `created_at` on
+  `listHeldAchievements()` (add-only); the survey tab's CSV in the hub's header (`[id]/layout.tsx`); the audit labels'
+  keys are `console`'s in `admin.json`, in PR A with the triggers.
+- **Transfers:** `tests/e2e/admin-reports.spec.ts` → `content`; `tests/e2e/{admin-managed-lists,wave15-console-team-colour}.spec.ts`
+  → `console`; `tests/rls/admin-recognition-writes.test.ts` → `scoring`; `form-summary-links.test.tsx`'s settings case —
+  `console` removes it in PR B on `notify`'s request. Each changed assertion is a ledger line.
+
+### 7 · The order
+
+PR A builds now in the main checkout: `console`'s cells first, then its six screens; `notify`'s `060`; `scoring`'s
+hosting rule. ★ **`0180` and the audit migration must be applied to the local stack before `scoring`'s and the
+triggers' tests can run** — that apply waits on the owner's permission (`STATUS.md`). B and C are cut from A's head once
+the cells land; `scoring`'s and `notify`'s PR B work and `content`'s and `event`'s PR C work wait for their worktree.

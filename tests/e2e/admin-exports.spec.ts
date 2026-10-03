@@ -104,13 +104,14 @@ test("a member cannot open the exports screen", async ({ context, page }) => {
   await expectGatedNotFound(page);
 });
 
-test("REQ-ADM-017: the admin sees all seven exports, and two representative downloads are correct and audited", async ({ context, page }) => {
+// ★ Wave 22 (`DEC-208`): eight exports — the audit log's is new, through the same audited path (`REQ-UIX-099`). A ledger line.
+test("REQ-ADM-017: the admin sees all eight exports, and three representative downloads are correct and audited", async ({ context, page }) => {
   await signIn(context, adminEmail);
   await page.goto("/ar/app/admin/exports");
   await expect(page.getByRole("heading", { name: "التصدير", level: 1 })).toBeVisible();
   // Wave 8 (K2): a list, not seven headed boxes — each file is named by its own
   // download control, on whichever of the table or the card list is on screen.
-  for (const title of ["الجلسات", "الحجوزات", "الحضور", "التقييمات", "النقاط", "الشهادات", "الأعضاء"]) {
+  for (const title of ["الجلسات", "الحجوزات", "الحضور", "التقييمات", "النقاط", "الشهادات", "الأعضاء", "سجل التدقيق"]) {
     await expect(page.getByRole("button", { name: `نزِّل ملف ${title} بصيغة CSV` }).filter({ visible: true })).toBeVisible();
   }
 
@@ -135,8 +136,18 @@ test("REQ-ADM-017: the admin sees all seven exports, and two representative down
   expect(sessionsText).toMatch(/,\d{4}-\d{2}-\d{2} \d{2}:\d{2},/);
   expect(sessionsText).not.toMatch(/[\u0660-\u0669]/);
 
+  // The audit log's own CSV: both stores in the screen's words, the clock named, and its own export audited too.
+  const auditCsv = await page.request.get("/api/admin/exports/audit");
+  expect(auditCsv.status()).toBe(200);
+  const auditBody = await auditCsv.body();
+  expect([auditBody[0], auditBody[1], auditBody[2]]).toEqual([0xef, 0xbb, 0xbf]);
+  const auditText = auditBody.toString("utf8");
+  expect(auditText).toContain("الوقت (Asia/Riyadh)");
+  expect(auditText).toContain("تصدير بيانات");
+  expect(auditText).not.toMatch(/[\u0660-\u0669]/);
+
   const audit = await db.query<{ after: { export_type: string } }>(`select after from public.audit_log where org_id = $1 and action = 'export.created' order by occurred_at`, [orgId]);
-  expect(audit.rows.map((r) => r.after.export_type)).toEqual(["members", "sessions"]);
+  expect(audit.rows.map((r) => r.after.export_type)).toEqual(["members", "sessions", "audit"]);
 });
 
 test("an unknown export type 404s", async ({ context, page }) => {

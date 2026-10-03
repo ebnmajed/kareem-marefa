@@ -1,5 +1,7 @@
 import "server-only";
 import { z } from "zod";
+import { readAll } from "@/lib/dal/admin-paging";
+import { avatarHref } from "@/lib/dal/avatars";
 import { sessionClient } from "@/lib/dal/session";
 
 // SCR-062 · /app/admin/audit (REQ-ADM-018). Staff — admin sees the whole
@@ -220,6 +222,9 @@ export interface AuditFilterOptions {
   actors: { id: string; displayName: string | null }[] | null;
   actions: string[];
   subjectTypes: string[];
+  /** ★ wave 22: the configuration history's scopes, for an admin — `config.<scope>` in the action filter. Empty for a
+   *  moderator, who reads no history (0004). */
+  configScopes?: string[];
 }
 
 /**
@@ -233,9 +238,12 @@ export async function listAuditFilterOptions(locale: string): Promise<AuditFilte
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase.from("audit_log").select("action, subject_type, actor_id").order("occurred_at", { ascending: false }).limit(5000);
-  if (error) throw new Error(`audit_log: ${error.message}`);
-  const rows = data ?? [];
+  // The newest 5000 — paged, because an unranged read stops at `max_rows` (1000) and the old `.limit(5000)` read 1000.
+  const rows = await readAll(
+    "audit_log",
+    (from, to) => supabase.from("audit_log").select("id, action, subject_type, actor_id").order("occurred_at", { ascending: false }).order("id", { ascending: false }).range(from, to),
+    5000,
+  );
   const actions = Array.from(new Set(rows.map((r) => r.action as string))).sort();
   const subjectTypes = Array.from(new Set(rows.map((r) => r.subject_type as string | null).filter((s): s is string => s !== null))).sort();
 
@@ -251,5 +259,246 @@ export async function listAuditFilterOptions(locale: string): Promise<AuditFilte
     ...(staff ?? []).map((m) => ({ id: m.id as string, displayName: m.display_name as string | null })),
     ...Array.from(former, ([id, displayName]) => ({ id, displayName })),
   ].sort((a, b) => (a.displayName ?? "").localeCompare(b.displayName ?? "", "ar"));
-  return { actors, actions, subjectTypes };
+  const history = await readAll(
+    "scoring_config_history",
+    (from, to) => supabase.from("scoring_config_history").select("id, scope").order("changed_at", { ascending: false }).order("id", { ascending: false }).range(from, to),
+    5000,
+  );
+  const configScopes = Array.from(new Set(history.map((h) => h.scope as string))).sort();
+  return { actors, actions, subjectTypes, configScopes };
+}
+
+// ── SCR-062, wave 22 — both stores, marked by kind (`REQ-UIX-099`, `DEC-231` §4.3, add-only) ────────────────────────
+//
+// The owner's sentence is «the audit log answers who did this … for EVERYTHING these screens can do», and half of
+// them write `scoring_config_history` (`DEC-148`) rather than `audit_log`. The screen therefore reads both, side by
+// side, each row marked by its kind — and NOTHING IS WRITTEN TWICE: the two stores stand as `DEC-148` split them.
+//
+//  · The history is an ADMIN's to read (`config_history_read_admin`, 0004), so a moderator's feed is the log alone —
+//    their own actions — exactly as before (`REQ-ADM-020`); the DAL does not even ask.
+//  · One history row is one changed field: its old and new value, as written. Not grouped per save — a group would
+//    straddle a page, and «this field, from → to» is what the row honestly holds.
+//  · ONE CURSOR, TWO STREAMS. Both are ordered `(at desc, id desc)`; each is asked for a page strictly older than the
+//    cursor, the two are merged and cut, and the cursor is the last row's. Timestamps are compared as PostgREST
+//    prints them — the same zone and form for both columns — so the order is Postgres's own, microseconds included.
+//  · The action filter names a log action, or `config.<scope>` for the history (no log action starts `config.`).
+
+export const CONFIG_SCOPES = ["scoring", "company_scoring", "org_settings", "badges", "levels", "perks", "streaks", "branding"] as const;
+export type ConfigScope = (typeof CONFIG_SCOPES)[number];
+const CONFIG_PREFIX = "config.";
+
+/** ★ The actor's face, as the board draws it — through the one resolver (`DEC-099`), with the company's ring. */
+export interface AuditActorFace {
+  avatarUrl: string | null;
+  /** undefined: no company (no ring); null: a company with no colour. */
+  teamColor: string | null | undefined;
+}
+
+export type AuditFeedRow =
+  | (AuditLogRow & { kind: "log"; subjectName: string | null; actorFace: AuditActorFace | null })
+  | {
+      kind: "config";
+      id: string;
+      actorId: string | null;
+      actorName: string | null;
+      actorFace: AuditActorFace | null;
+      scope: ConfigScope | string;
+      entityId: string | null;
+      entityName: string | null;
+      field: string;
+      oldValue: unknown;
+      newValue: unknown;
+      occurredAt: string;
+    };
+
+export interface AuditFeedPage {
+  rows: AuditFeedRow[];
+  nextBefore: string | null;
+  /** How many rows match the filters, across both stores and every page. */
+  total: number;
+}
+
+const isConfigAction = (action: string | undefined) => !!action && action.startsWith(CONFIG_PREFIX);
+
+/** Older first is false: `a` sorts before `b` when it is NEWER — `(at desc, id desc)`. */
+function newerFirst(a: { occurredAt: string; id: string }, b: { occurredAt: string; id: string }): number {
+  if (a.occurredAt !== b.occurredAt) return a.occurredAt > b.occurredAt ? -1 : 1;
+  return a.id > b.id ? -1 : a.id < b.id ? 1 : 0;
+}
+
+/** The actors' faces: the avatar's version and the company's colour, read under RLS like their names. */
+async function facesFor(supabase: Supabase, ids: string[]): Promise<Map<string, AuditActorFace>> {
+  const faces = new Map<string, AuditActorFace>();
+  if (ids.length === 0) return faces;
+  const { data, error } = await supabase.from("members").select("id, avatar_version, company_id, companies(team_color)").in("id", ids);
+  if (error) throw new Error(`members (faces): ${error.message}`);
+  for (const m of (data ?? []) as unknown as { id: string; avatar_version: number | string | null; company_id: string | null; companies: { team_color: string | null } | null }[]) {
+    faces.set(m.id, { avatarUrl: avatarHref({ id: m.id, avatarVersion: m.avatar_version }, 96), teamColor: m.company_id ? (m.companies?.team_color ?? null) : undefined });
+  }
+  return faces;
+}
+
+/** Display names for the subjects a log row names, where the subject's table carries one the admin may read. */
+async function subjectNames(supabase: Supabase, rows: { subjectType: string | null; subjectId: string | null }[]): Promise<Map<string, string>> {
+  const tables: Record<string, { table: string; column: string }> = {
+    member: { table: "members", column: "display_name" },
+    session: { table: "sessions", column: "title" },
+    venue: { table: "venues", column: "name" },
+    category: { table: "categories", column: "name" },
+    company: { table: "companies", column: "name" },
+  };
+  const names = new Map<string, string>();
+  for (const [type, { table, column }] of Object.entries(tables)) {
+    const ids = Array.from(new Set(rows.filter((r) => r.subjectType === type && r.subjectId).map((r) => r.subjectId as string)));
+    if (ids.length === 0) continue;
+    const { data, error } = await supabase.from(table).select(`id, ${column}`).in("id", ids);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    for (const row of (data ?? []) as unknown as Record<string, string | null>[]) if (row[column]) names.set(row.id as string, row[column] as string);
+  }
+  return names;
+}
+
+/** The names of the configuration a history row changed, where its table carries one. */
+async function entityNames(supabase: Supabase, rows: { scope: string; entityId: string | null }[]): Promise<Map<string, string>> {
+  const tables: Record<string, { table: string; column: string }> = {
+    badges: { table: "badges", column: "name" },
+    levels: { table: "levels", column: "name" },
+    scoring: { table: "scoring_rules", column: "action_key" },
+    company_scoring: { table: "company_scoring_rules", column: "action_key" },
+    perks: { table: "perks", column: "key" },
+    streaks: { table: "streak_rules", column: "key" },
+  };
+  const names = new Map<string, string>();
+  for (const [scope, { table, column }] of Object.entries(tables)) {
+    const ids = Array.from(new Set(rows.filter((r) => r.scope === scope && r.entityId).map((r) => r.entityId as string)));
+    if (ids.length === 0) continue;
+    const { data, error } = await supabase.from(table).select(`id, ${column}`).in("id", ids);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    for (const row of (data ?? []) as unknown as Record<string, string | null>[]) if (row[column]) names.set(row.id as string, row[column] as string);
+  }
+  return names;
+}
+
+export async function listAuditFeed(locale: string, filters: AuditFilters, timeZone: string, pageSize: number = AUDIT_PAGE_SIZE): Promise<AuditFeedPage | null> {
+  const client = await requireStaff(locale);
+  if (!client) return null;
+  const parsed = auditFiltersInput.parse(filters);
+  const { session, supabase } = client;
+  const bounds = periodBounds(parsed, timeZone);
+  const cursor = parsed.before ? parsed.before.split("~") : null;
+  const older = (at: string) => (cursor ? `${at}.lt."${cursor[0]}",and(${at}.eq."${cursor[0]}",id.lt.${cursor[1]})` : null);
+
+  const wantLog = !isConfigAction(parsed.action);
+  // The history is an admin's alone (0004), and a subject-type filter is the log's vocabulary.
+  const wantConfig = session.role === "admin" && !parsed.subjectType && (!parsed.action || isConfigAction(parsed.action));
+
+  // The same filters on both stores — actor, subject, period — each in its own column names.
+  const logQuery = (columns: string, head = false) => {
+    let q = supabase.from("audit_log").select(columns, head ? { count: "exact", head: true } : undefined);
+    if (parsed.actor === "system") q = q.is("actor_id", null);
+    else if (parsed.actor) q = q.eq("actor_id", parsed.actor);
+    if (parsed.subjectId) q = q.eq("subject_id", parsed.subjectId);
+    if (bounds.from) q = q.gte("occurred_at", bounds.from);
+    if (bounds.until) q = q.lt("occurred_at", bounds.until);
+    if (parsed.action) q = q.eq("action", parsed.action);
+    if (parsed.subjectType) q = q.eq("subject_type", parsed.subjectType);
+    return q;
+  };
+  const configQuery = (columns: string, head = false) => {
+    let q = supabase.from("scoring_config_history").select(columns, head ? { count: "exact", head: true } : undefined);
+    if (parsed.actor === "system") q = q.is("actor_id", null);
+    else if (parsed.actor) q = q.eq("actor_id", parsed.actor);
+    if (parsed.subjectId) q = q.eq("entity_id", parsed.subjectId);
+    if (bounds.from) q = q.gte("changed_at", bounds.from);
+    if (bounds.until) q = q.lt("changed_at", bounds.until);
+    if (isConfigAction(parsed.action)) q = q.eq("scope", parsed.action!.slice(CONFIG_PREFIX.length));
+    return q;
+  };
+  const LOG_COLUMNS = "id, actor_id, actor_role, action, subject_type, subject_id, reason, occurred_at";
+  const CONFIG_COLUMNS = "id, scope, entity_id, field, old_value, new_value, actor_id, changed_at";
+
+  const [logPage, configPage, logCount, configCount] = await Promise.all([
+    wantLog
+      ? (() => {
+          let q = logQuery(LOG_COLUMNS).order("occurred_at", { ascending: false }).order("id", { ascending: false }).limit(pageSize + 1);
+          const c = older("occurred_at");
+          if (c) q = q.or(c);
+          return q;
+        })()
+      : Promise.resolve({ data: [], error: null }),
+    wantConfig
+      ? (() => {
+          let q = configQuery(CONFIG_COLUMNS).order("changed_at", { ascending: false }).order("id", { ascending: false }).limit(pageSize + 1);
+          const c = older("changed_at");
+          if (c) q = q.or(c);
+          return q;
+        })()
+      : Promise.resolve({ data: [], error: null }),
+    wantLog ? logQuery("id", true) : Promise.resolve({ count: 0, error: null }),
+    wantConfig ? configQuery("id", true) : Promise.resolve({ count: 0, error: null }),
+  ]);
+  for (const [label, r] of [["audit_log", logPage], ["scoring_config_history", configPage], ["audit_log (count)", logCount], ["scoring_config_history (count)", configCount]] as const) {
+    if (r.error) throw new Error(`${label}: ${(r.error as { message: string }).message}`);
+  }
+
+  type LogRaw = { id: string; actor_id: string | null; actor_role: string | null; action: string; subject_type: string | null; subject_id: string | null; reason: string | null; occurred_at: string };
+  type ConfigRaw = { id: string; scope: string; entity_id: string | null; field: string; old_value: unknown; new_value: unknown; actor_id: string | null; changed_at: string };
+  const merged = [
+    ...((logPage.data ?? []) as unknown as LogRaw[]).map((r) => ({ kind: "log" as const, id: r.id, occurredAt: r.occurred_at, raw: r })),
+    ...((configPage.data ?? []) as unknown as ConfigRaw[]).map((r) => ({ kind: "config" as const, id: r.id, occurredAt: r.changed_at, raw: r })),
+  ].sort(newerFirst);
+  const page = merged.slice(0, pageSize);
+  const last = page.at(-1);
+  const nextBefore = merged.length > pageSize && last ? `${last.occurredAt}~${last.id}` : null;
+
+  const actorIds = Array.from(new Set(page.map((p) => p.raw.actor_id).filter((id): id is string => id !== null)));
+  const logs = page.filter((p) => p.kind === "log").map((p) => p.raw as LogRaw);
+  const configs = page.filter((p) => p.kind === "config").map((p) => p.raw as ConfigRaw);
+  const [names, faces, subjects, entities] = await Promise.all([
+    namesFor(supabase, actorIds),
+    facesFor(supabase, actorIds),
+    subjectNames(supabase, logs.map((r) => ({ subjectType: r.subject_type, subjectId: r.subject_id }))),
+    entityNames(supabase, configs.map((r) => ({ scope: r.scope, entityId: r.entity_id }))),
+  ]);
+
+  return {
+    rows: page.map((p): AuditFeedRow => {
+      const actorName = p.raw.actor_id ? (names.get(p.raw.actor_id) ?? null) : null;
+      const actorFace = p.raw.actor_id ? (faces.get(p.raw.actor_id) ?? null) : null;
+      if (p.kind === "log") {
+        const r = p.raw as LogRaw;
+        return {
+          kind: "log",
+          id: r.id,
+          actorId: r.actor_id,
+          actorName,
+          actorFace,
+          actorRole: r.actor_role,
+          action: r.action,
+          subjectType: r.subject_type,
+          subjectId: r.subject_id,
+          subjectName: r.subject_id ? (subjects.get(r.subject_id) ?? null) : null,
+          reason: r.reason,
+          occurredAt: r.occurred_at,
+        };
+      }
+      const r = p.raw as ConfigRaw;
+      return {
+        kind: "config",
+        id: r.id,
+        actorId: r.actor_id,
+        actorName,
+        actorFace,
+        scope: r.scope,
+        entityId: r.entity_id,
+        entityName: r.entity_id ? (entities.get(r.entity_id) ?? null) : null,
+        field: r.field,
+        oldValue: r.old_value,
+        newValue: r.new_value,
+        occurredAt: r.changed_at,
+      };
+    }),
+    nextBefore,
+    total: (logCount.count ?? 0) + (configCount.count ?? 0),
+  };
 }

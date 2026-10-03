@@ -2,10 +2,15 @@ import "server-only";
 import { z } from "zod";
 import { dayLabel, type DayLabelKey, type DayLabelT } from "@/components/sessions/day-label";
 import { formatNumber } from "@/components/sessions/numerals";
+import { matchesMemberQuery, type MemberQuery } from "@/components/admin/members/member-query";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
 import { getAttendanceReport, type AttendanceReport } from "@/lib/dal/checkin";
+import { actionText, fieldText, scopeText, subjectText, valueText, type AuditMessages } from "@/components/admin/audit/audit-text";
+import arAdmin from "@/messages/ar/admin.json";
 import arSessions from "@/messages/ar/sessions.json";
+import { listAuditFeed, type AuditFeedRow, type AuditFilters } from "@/lib/dal/admin-audit";
 import { getOrgPrefs } from "@/lib/dal/proposals";
+import { readAll } from "@/lib/dal/admin-paging";
 import { sessionClient } from "@/lib/dal/session";
 import { listSessionsForAdmin } from "@/lib/dal/sessions";
 import { getSurveyExportRows } from "@/lib/dal/surveys";
@@ -77,12 +82,16 @@ export function buildCsv(headers: string[], rows: string[][]): string {
  *  (`supabase/proposed/console/0002_admin_export_audit.sql`) — a
  *  `security definer` function whose OWN `assert_fresh_admin()` is the
  *  real boundary; this never trusts the caller's claim-side role alone. */
-async function auditExport(locale: string, exportType: string, subjectType?: string, subjectId?: string): Promise<void> {
+async function auditExport(locale: string, exportType: string, subjectType?: string, subjectId?: string, slice?: Record<string, unknown>): Promise<void> {
   const { supabase } = await sessionClient(locale);
+  // ★ wave 22 (`DEC-232` §2.8): the slice that left — the filters, or the ids — recorded under `after.slice`
+  // (`supabase/proposed/console/export_slice.sql`). Sent only when there is one, so a whole-file export calls the
+  // function exactly as `main` does.
   const { error } = await supabase.rpc("write_admin_export_audit", {
     p_export_type: exportType,
     p_subject_type: subjectType ?? null,
     p_subject_id: subjectId ?? null,
+    ...(slice ? { p_detail: slice } : {}),
   });
   if (error) throw new Error(`write_admin_export_audit: ${error.message}`);
 }
@@ -304,7 +313,7 @@ export async function exportSessionsCsv(locale: string, ids?: readonly string[])
       .map((p) => p.displayName ?? "")
       .join("، "),
   ]);
-  await auditExport(locale, "sessions");
+  await auditExport(locale, "sessions", undefined, undefined, ids ? { ids: [...ids] } : undefined);
   return buildCsv(["العنوان", "الحالة", "المستوى", "اللغة", whenHeader("التاريخ والوقت", prefs.timeZone), "المُقدِّمون"], rows);
 }
 
@@ -313,12 +322,15 @@ export async function exportRsvpsCsv(locale: string): Promise<string | null> {
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase
-    .from("rsvps")
-    .select("status, waitlist_position, reserved_at, session_id, member_id, sessions(title), members(display_name)")
-    .eq("org_id", session.orgId)
-    .order("reserved_at", { ascending: false });
-  if (error) throw new Error(`rsvps: ${error.message}`);
+  const data = await readAll("rsvps", (from, to) =>
+    supabase
+      .from("rsvps")
+      .select("id, status, waitlist_position, reserved_at, session_id, member_id, sessions(title), members(display_name)")
+      .eq("org_id", session.orgId)
+      .order("reserved_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
   const prefs = await getOrgPrefs(locale);
 
   const rows = (data ?? []).map((r) => {
@@ -341,21 +353,24 @@ export async function exportAllAttendanceCsv(locale: string): Promise<string | n
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase
+  const data = await readAll("check_ins", (from, to) =>
+    supabase
     .from("check_ins")
     // `!check_ins_member_id_fkey`: `check_ins` has two FKs into `members`
     // (`member_id`, `marked_by`) — an unqualified embed is ambiguous and
     // PostgREST refuses it (`getAttendanceReport()`'s own header explains
     // the discovery).
-    .select("arrived_at, method, session_id, member_id, sessions(title), members!check_ins_member_id_fkey(display_name)")
+    .select("id, arrived_at, method, session_id, member_id, sessions(title), members!check_ins_member_id_fkey(display_name)")
     .eq("org_id", session.orgId)
     // `removed_at` (0087) is a soft delete — the export is who attended, and
     // a removal is already evidenced in `audit_log` (the lead's own
     // reasoning), so a removed check-in is excluded here rather than
     // reported as attendance that no longer stands.
     .is("removed_at", null)
-    .order("arrived_at", { ascending: false });
-  if (error) throw new Error(`check_ins: ${error.message}`);
+    .order("arrived_at", { ascending: false })
+    .order("id")
+    .range(from, to),
+  );
   const prefs = await getOrgPrefs(locale);
 
   const rows = (data ?? []).map((r) => {
@@ -388,11 +403,14 @@ export async function exportRatingsCsv(locale: string): Promise<string | null> {
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase
-    .from("session_rating_aggregates")
-    .select("session_id, rating_count, session_avg, presenter_avg, sessions(title)")
-    .eq("org_id", session.orgId);
-  if (error) throw new Error(`session_rating_aggregates: ${error.message}`);
+  const data = await readAll("session_rating_aggregates", (from, to) =>
+    supabase
+      .from("session_rating_aggregates")
+      .select("session_id, rating_count, session_avg, presenter_avg, sessions(title)")
+      .eq("org_id", session.orgId)
+      .order("session_id")
+      .range(from, to),
+  );
   const num = (n: number) => formatNumber(n);
 
   const rows = (data ?? []).map((r) => {
@@ -408,16 +426,19 @@ export async function exportPointsCsv(locale: string): Promise<string | null> {
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase
+  const data = await readAll("points_ledger", (from, to) =>
+    supabase
     .from("points_ledger")
     // `!points_ledger_member_id_fkey`: `points_ledger` has two FKs into
     // `members` (`member_id`, the recipient, and `actor_id`, who wrote a
     // manual adjustment) — the same ambiguous-embed shape
     // `getAttendanceReport()`'s header explains.
-    .select("amount, source, reason, occurred_at, member_id, members!points_ledger_member_id_fkey(display_name)")
+    .select("id, amount, source, reason, occurred_at, member_id, members!points_ledger_member_id_fkey(display_name)")
     .eq("org_id", session.orgId)
-    .order("occurred_at", { ascending: false });
-  if (error) throw new Error(`points_ledger: ${error.message}`);
+    .order("occurred_at", { ascending: false })
+    .order("id")
+    .range(from, to),
+  );
   const prefs = await getOrgPrefs(locale);
 
   const rows = (data ?? []).map((r) => {
@@ -441,12 +462,15 @@ export async function exportCertificatesCsv(locale: string): Promise<string | nu
   if (!client) return null;
   const { session, supabase } = client;
 
-  const { data, error } = await supabase
-    .from("certificates")
-    .select("serial, kind, state, recipient_name_snapshot, issued_at, session_id, sessions(title)")
-    .eq("org_id", session.orgId)
-    .order("issued_at", { ascending: false, nullsFirst: true });
-  if (error) throw new Error(`certificates: ${error.message}`);
+  const data = await readAll("certificates", (from, to) =>
+    supabase
+      .from("certificates")
+      .select("id, serial, kind, state, recipient_name_snapshot, issued_at, session_id, sessions(title)")
+      .eq("org_id", session.orgId)
+      .order("issued_at", { ascending: false, nullsFirst: true })
+      .order("id")
+      .range(from, to),
+  );
   const prefs = await getOrgPrefs(locale);
 
   const rows = (data ?? []).map((c) => {
@@ -467,9 +491,15 @@ export async function exportCertificatesCsv(locale: string): Promise<string | nu
 const MEMBER_ROLE_AR: Record<string, string> = { admin: "مشرف المؤسسة", moderator: "مُنظِّم", member: "عضو" };
 const MEMBER_STATUS_AR: Record<string, string> = { active: "نشط", deactivated: "معطَّل" };
 
-export async function exportMembersCsv(locale: string): Promise<string | null> {
-  const [members, prefs] = await Promise.all([listMembersForAdmin(locale), getOrgPrefs(locale)]);
-  if (members === null) return null;
+/**
+ * ★ wave 22 (`DEC-232` §2.8): `query` narrows the file to the list SCR-049 shows — the same predicate the screen
+ * filters with (`matchesMemberQuery`), never a second reading of the filters — and the audit row records it. Absent,
+ * it is the whole roster, as from SCR-061.
+ */
+export async function exportMembersCsv(locale: string, query?: Pick<MemberQuery, "q" | "company" | "role">): Promise<string | null> {
+  const [all, prefs] = await Promise.all([listMembersForAdmin(locale), getOrgPrefs(locale)]);
+  if (all === null) return null;
+  const members = query ? all.filter((m) => matchesMemberQuery(m, query)) : all;
 
   const rows = members.map((m) => [
     m.displayName ?? "",
@@ -478,13 +508,75 @@ export async function exportMembersCsv(locale: string): Promise<string | null> {
     MEMBER_STATUS_AR[m.status],
     csvDateTime(m.createdAt, prefs.timeZone),
   ]);
-  await auditExport(locale, "members");
+  await auditExport(locale, "members", undefined, undefined, query ? { q: query.q, company: query.company, role: query.role } : undefined);
   return buildCsv(["الاسم", "البريد الإلكتروني", "الدور", "الحالة", whenHeader("تاريخ الانضمام", prefs.timeZone)], rows);
+}
+
+// ── SCR-062's CSV — a new export type through the same audited path (`REQ-UIX-099`, wave 22) ──────────────────────
+
+const AUDIT_CSV_PAGE = 500;
+const ROLE_AR: Record<string, string> = { admin: "مشرف المؤسسة", moderator: "مُنظِّم", member: "عضو", platform_admin: "دعم المنصة", system: "النظام" };
+
+/**
+ * Both stores, as the screen shows them, every page — the screen's own feed (`listAuditFeed`), walked by its cursor,
+ * so the file holds exactly the rows the filters show and in the same words. Admin only: `write_admin_export_audit()`
+ * asserts a fresh admin, and a moderator, who sees only their own actions, exports nothing (`REQ-ADM-020`). The audit
+ * row records the filters as its slice (`DEC-232` §2.8).
+ */
+export async function exportAuditCsv(locale: string, filters: AuditFilters = {}): Promise<string | null> {
+  const client = await requireAdmin(locale);
+  if (!client) return null;
+  const prefs = await getOrgPrefs(locale);
+  const m = arAdmin.admin.audit as unknown as AuditMessages;
+
+  const rows: AuditFeedRow[] = [];
+  let before: string | undefined;
+  for (;;) {
+    const page = await listAuditFeed(locale, { ...filters, before }, prefs.timeZone, AUDIT_CSV_PAGE);
+    if (page === null) return null;
+    rows.push(...page.rows);
+    if (!page.nextBefore) break;
+    before = page.nextBefore;
+  }
+
+  const lines = rows.map((r) => {
+    const actor = r.actorId === null ? "النظام" : (r.actorName ?? "عضو غير معروف");
+    if (r.kind === "log") {
+      return [
+        csvDateTime(r.occurredAt, prefs.timeZone),
+        actor,
+        r.actorRole ? (ROLE_AR[r.actorRole] ?? r.actorRole) : "",
+        "إجراء",
+        actionText(m, r.action),
+        [r.subjectType ? subjectText(m, r.subjectType) : "", r.subjectName ?? ""].filter(Boolean).join(" · "),
+        r.reason ?? "",
+        "",
+        "",
+      ];
+    }
+    return [
+      csvDateTime(r.occurredAt, prefs.timeZone),
+      actor,
+      r.actorId === null ? "النظام" : ROLE_AR.admin,
+      "إعداد",
+      `${scopeText(m, r.scope)} · ${fieldText(m, r.field)}`,
+      r.entityName ?? "",
+      "",
+      valueText(m, r.oldValue),
+      valueText(m, r.newValue),
+    ];
+  });
+  const slice = Object.fromEntries(Object.entries(filters).filter(([k, v]) => k !== "before" && v !== undefined));
+  await auditExport(locale, "audit", undefined, undefined, Object.keys(slice).length ? slice : undefined);
+  return buildCsv(
+    [whenHeader("الوقت", prefs.timeZone), "الفاعل", "الدور", "النوع", "الفعل", "الهدف", "السبب", "القيمة السابقة", "القيمة الجديدة"],
+    lines,
+  );
 }
 
 // ── SCR-061's «آخر تصدير» ─────────────────────────────────────────────────
 
-export const EXPORT_TYPES = ["sessions", "rsvps", "attendance", "ratings", "points", "certificates", "members"] as const;
+export const EXPORT_TYPES = ["sessions", "rsvps", "attendance", "ratings", "points", "certificates", "members", "audit"] as const;
 export type ExportType = (typeof EXPORT_TYPES)[number];
 
 export interface RecentExport {
@@ -502,22 +594,26 @@ export async function listRecentExports(locale: string): Promise<Partial<Record<
   const client = await requireAdmin(locale);
   if (!client) return null;
   const { supabase } = client;
-  const { data, error } = await supabase
-    .from("audit_log")
-    .select("actor_id, after, occurred_at")
-    .eq("action", "export.created")
-    .order("occurred_at", { ascending: false })
-    .limit(500);
-  if (error) throw new Error(`audit_log: ${error.message}`);
+  // ★ wave 22: one newest row PER TYPE. The old single read took the newest 500 `export.created` rows of every type
+  // together, so a type last exported before 500 others said «لم يُصدَّر بعد» — a figure that lied (`REQ-UIX-098`).
+  const newest = await Promise.all(
+    EXPORT_TYPES.map(async (type) => {
+      const { data, error } = await supabase
+        .from("audit_log")
+        .select("id, actor_id, occurred_at")
+        .eq("action", "export.created")
+        .eq("after->>export_type", type)
+        .order("occurred_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(1);
+      if (error) throw new Error(`audit_log: ${error.message}`);
+      const row = (data ?? [])[0];
+      return row ? ([type, { actorId: row.actor_id as string | null, occurredAt: row.occurred_at as string }] as const) : null;
+    }),
+  );
+  const latest = newest.filter((e): e is NonNullable<typeof e> => e !== null);
 
-  const latest: Partial<Record<ExportType, { actorId: string | null; occurredAt: string }>> = {};
-  for (const row of data ?? []) {
-    const type = (row.after as { export_type?: string } | null)?.export_type;
-    if (!type || !(EXPORT_TYPES as readonly string[]).includes(type) || latest[type as ExportType]) continue;
-    latest[type as ExportType] = { actorId: row.actor_id as string | null, occurredAt: row.occurred_at as string };
-  }
-
-  const ids = Array.from(new Set(Object.values(latest).map((l) => l?.actorId).filter((id): id is string => !!id)));
+  const ids = Array.from(new Set(latest.map(([, l]) => l.actorId).filter((id): id is string => !!id)));
   const names = new Map<string, string | null>();
   if (ids.length > 0) {
     const { data: members, error: mErr } = await supabase.from("members").select("id, display_name").in("id", ids);
@@ -526,7 +622,7 @@ export async function listRecentExports(locale: string): Promise<Partial<Record<
   }
 
   const result: Partial<Record<ExportType, RecentExport>> = {};
-  for (const [type, entry] of Object.entries(latest) as [ExportType, { actorId: string | null; occurredAt: string }][]) {
+  for (const [type, entry] of latest) {
     result[type] = { actorName: entry.actorId ? (names.get(entry.actorId) ?? null) : null, occurredAt: entry.occurredAt };
   }
   return result;

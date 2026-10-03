@@ -198,25 +198,6 @@
           "failed": "The rule could not be saved. Try again."
         }
       },
-      "hostCompany": {
-        "heading": "A session's hosting company",
-        "intro": "Choose the session and the company that hosted it. Hosting points are counted when the session completes.",
-        "sessionLabel": "Session",
-        "sessionPlaceholder": "Search by session title",
-        "noMatches": "No matching session",
-        "notScheduled": "Not scheduled yet",
-        "companyLabel": "Hosting company",
-        "none": "No hosting company",
-        "save": "Save hosting company",
-        "saving": "Saving…",
-        "saved": "Hosting company saved",
-        "summaryTitle": "The hosting company was not saved",
-        "errors": {
-          "sessionRequired": "Choose a session.",
-          "companyInvalid": "Choose a company from the list, or “No hosting company”.",
-          "failed": "Could not save. Try again."
-        }
-      },
       "manual": {
         "heading": "Manual adjustment",
         "intro": "Add points to a member or deduct them, with a reason that appears in their history and in the audit log. The entry cannot be deleted: to correct a mistake, record the opposite adjustment.",

@@ -400,6 +400,25 @@ average, which would turn a privacy control into a tactic.
 
 ---
 
+### 6.3 Company points — the three rules, and where hosting comes from (`0081`, DEC-067, `DEC-230` §2)
+
+Beside the derived metric above, a company earns points of its own in **`company_points_ledger`** — append-only, with
+the invariants of `points_ledger` — evaluated once per **completed** session by `evaluate_company_points()`. The
+owner's three creditable rules (DEC-067), each a row of `company_scoring_rules`, editable on `SCR-053`:
+
+| Rule | Credits | Source |
+|---|---|---|
+| `company_hosting` | the company that **owns the session's venue** | ★ `venues.company_id` (`0180`, `REQ-PTS-016`) |
+| attendance percentage | every company whose active members attended | `check_ins`, gated by `min_active_members` |
+| presenting percentage | every company whose active members presented | `session_presenters`, gated likewise |
+
+★ **Hosting is a property of the place** (`DEC-230` §2): a presenter from company A in a room owned by company B earns
+A the presenting rule and B the hosting rule; **a venue owned by no company rewards no company**, by rule.
+`sessions.host_company_id` (`0081`) is **superseded and not read**; it stays until a wave can drop it.
+
+★ **Not the same «hosting» as §5.2's level 4**, which grants a member the right to host a session (`DEC-215`). Copy
+never uses one word for the other.
+
 ## 7. Manual adjustment
 
 `REQ-PTS-009`, D41. An org admin adds or removes points with a **mandatory reason**, through an

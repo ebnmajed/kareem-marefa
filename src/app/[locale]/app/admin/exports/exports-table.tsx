@@ -7,9 +7,11 @@ import { DataTable } from "@/components/ui/data-table";
 import type { DataTableColumn } from "@/components/ui";
 import type { ExportType, RecentExport } from "@/lib/dal/admin-exports";
 
-// SCR-061's seven exports on `ui/data-table` — the file and what it holds, who
-// took it last and when, and the download. Every column is on the phone card,
-// the download included.
+// SCR-061's table, written for wave 22 from `AdminExports.dc.html` (`DEC-208`: deleted first): التصدير · آخر مرة ·
+// «CSV». One row per export — the seven of `REQ-ADM-017` and the audit log's, a new type through the same audited path
+// (`REQ-UIX-099`). ★ «آخر مرة» is read from the `export.created` row the download wrote: who and when, never a
+// literal (`REQ-UIX-098`). The download stays `ExportDownloadButton` — it fetches, names the file, toasts either way and
+// refreshes, so the row shows the export that just happened.
 
 export interface ExportRow {
   type: ExportType;
@@ -28,7 +30,8 @@ export function ExportsTable({ rows, timeZone, locale }: { rows: ExportRow[]; ti
       cell: (r) => (
         <div className="min-w-0">
           <p className="text-label text-fg-heading">{t(`${r.type}.title`)}</p>
-          <p className="mt-0.5 text-body-sm text-fg-muted">{t(`${r.type}.note`)}</p>
+          {/* `REQ-UIX-098`: what each file holds — one line, under the name. */}
+          <p className="mt-0.5 text-caption text-fg-muted">{t(`${r.type}.note`)}</p>
         </div>
       ),
     },
@@ -53,6 +56,7 @@ export function ExportsTable({ rows, timeZone, locale }: { rows: ExportRow[]; ti
     {
       key: "download",
       header: t("colDownload"),
+      align: "end",
       onCard: true,
       cell: (r) => {
         const name = t(`${r.type}.title`);
@@ -73,6 +77,10 @@ export function ExportsTable({ rows, timeZone, locale }: { rows: ExportRow[]; ti
 
   return (
     <DataTable
+      // The surface card at md+, as 042 and the boards draw every console table (the lead's wave-22 ruling); cards below.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
+      stickyHeader
+      hiddenHeaders={["download"]}
       label={t("listLabel")}
       columns={columns}
       rows={rows}

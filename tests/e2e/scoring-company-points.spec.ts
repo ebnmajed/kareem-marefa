@@ -125,19 +125,6 @@ test("an admin edits the company rules on /app/admin/scoring, and the change app
   const [row] = (await db.query(`select points, version from public.company_scoring_rules where org_id = $1 and action_key = 'company_hosting'`, [orgId]))
     .rows as Array<{ points: number; version: number }>;
   expect(row).toMatchObject({ points: 42, version: 2 });
-
-  // The host company: a session chosen by name, not a UUID typed into a box.
-  const host = page.locator('section[aria-labelledby="host-company-heading"]');
-  await host.getByRole("combobox", { name: /الجلسة/ }).fill("جلسة نقاط");
-  await page.getByRole("option", { name: /جلسة نقاط الشركات/ }).click();
-  await host.getByLabel("الشركة المستضيفة", { exact: true }).selectOption({ label: companyName });
-  await host.getByRole("button", { name: "احفظ الشركة المستضيفة" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "حُفظت الشركة المستضيفة" })).toBeVisible();
-
-  const [sessionRow] = (await db.query(`select host_company_id from public.sessions where id = $1`, [sessionId])).rows as Array<{
-    host_company_id: string;
-  }>;
-  expect(sessionRow.host_company_id).toBe(companyId);
 });
 
 test("the company board's breakdown shows the company ledger's points, explained", async ({ context, page }) => {

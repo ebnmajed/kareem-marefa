@@ -1,5 +1,8 @@
 import "server-only";
 import { z } from "zod";
+import { matchesMemberQuery, MEMBERS_PAGE_SIZE, type MemberQuery } from "@/components/admin/members/member-query";
+import { readAll } from "@/lib/dal/admin-paging";
+import { avatarHref } from "@/lib/dal/avatars";
 import { sessionClient } from "@/lib/dal/session";
 
 // SCR-049 · /app/admin/members — members and roles (REQ-ADM-009,
@@ -33,26 +36,22 @@ async function requireAdmin(locale: string) {
   return client.session.role === "admin" ? client : null;
 }
 
-export async function listMembersForAdmin(locale: string): Promise<AdminMemberRow[] | null> {
-  const client = await requireAdmin(locale);
-  if (!client) return null;
-  const { supabase } = client;
+type AdminMemberRpcRow = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  company_id: string | null;
+  job_title: string | null;
+  org_role: AdminMemberRow["role"];
+  status: AdminMemberRow["status"];
+  deactivated_at: string | null;
+  deactivated_reason: string | null;
+  created_at: string;
+};
 
-  const { data, error } = await supabase.rpc("admin_list_members");
-  if (error) throw new Error(`admin_list_members: ${error.message}`);
-  const rows = (data ?? []) as {
-    id: string;
-    email: string;
-    display_name: string | null;
-    company_id: string | null;
-    job_title: string | null;
-    org_role: AdminMemberRow["role"];
-    status: AdminMemberRow["status"];
-    deactivated_at: string | null;
-    deactivated_reason: string | null;
-    created_at: string;
-  }[];
-
+/** ★ wave 22 (`DEC-232` §4.3): paged — the definer list returns a set, and PostgREST cut it at `max_rows` silently. */
+async function readMembers(supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"]): Promise<AdminMemberRow[]> {
+  const rows = await readAll<AdminMemberRpcRow>("admin_list_members", (from, to) => supabase.rpc("admin_list_members").order("id").range(from, to));
   return rows
     .map((m) => ({
       id: m.id,
@@ -67,6 +66,97 @@ export async function listMembersForAdmin(locale: string): Promise<AdminMemberRo
       createdAt: m.created_at,
     }))
     .sort((a, b) => (a.displayName ?? a.email).localeCompare(b.displayName ?? b.email, "ar"));
+}
+
+export async function listMembersForAdmin(locale: string): Promise<AdminMemberRow[] | null> {
+  const client = await requireAdmin(locale);
+  if (!client) return null;
+  return readMembers(client.supabase);
+}
+
+// ── SCR-049, wave 22 — the screen's own read (`REQ-UIX-096`, add-only) ─────────────────────────────────────────────
+//
+// What `AdminMembers.dc.html` draws beside the definer list: the avatar through the one resolver (`DEC-099` — never
+// `members.avatar_url`), the company's team ring, the level the nightly evaluation stored and the balance
+// (`points_balances`, org-readable), filtered, sorted and paged here. `listMembersForAdmin` above is unchanged for the
+// three other screens that read it. ★ «آخر نشاط» is not here: nothing stores a member's last activity (`DEC-232` §4,
+// carried to the owner).
+
+export interface ConsoleMemberRow extends AdminMemberRow {
+  avatarUrl: string | null;
+  companyName: string | null;
+  /** The company's colour, or null for a company with none; undefined for a member with no company — no ring. */
+  teamColor: string | null | undefined;
+  points: number;
+  levelName: string | null;
+}
+
+export interface ConsoleMembers {
+  rows: ConsoleMemberRow[];
+  /** How many match the query, across every page. */
+  total: number;
+  page: number;
+  pageCount: number;
+  /** 1-based positions of the page's first and last row; 0 and 0 for none. */
+  from: number;
+  to: number;
+  /** For the company chip: every company of the org, active first. */
+  companies: { id: string; name: string }[];
+  /** Active org admins — the last one's menu says why it cannot be demoted or deactivated (`REQ-ADM-009`). */
+  activeAdmins: number;
+}
+
+export async function listMembersForConsole(locale: string, query: MemberQuery): Promise<ConsoleMembers | null> {
+  const client = await requireAdmin(locale);
+  if (!client) return null;
+  const { session, supabase } = client;
+
+  const [members, extras, companies, balances, levels] = await Promise.all([
+    readMembers(supabase),
+    readAll("members", (from, to) => supabase.from("members").select("id, avatar_version").order("id").range(from, to)),
+    readAll("companies", (from, to) => supabase.from("companies").select("id, name, team_color, deactivated_at").order("id").range(from, to)),
+    readAll("points_balances", (from, to) => supabase.from("points_balances").select("member_id, total_points, current_level_id").order("member_id").range(from, to)),
+    readAll("levels", (from, to) => supabase.from("levels").select("id, name, threshold_points").eq("org_id", session.orgId).order("id").range(from, to)),
+  ]);
+
+  const avatar = new Map(extras.map((m) => [m.id as string, m.avatar_version as number | string | null]));
+  const company = new Map(companies.map((c) => [c.id as string, { name: c.name as string, teamColor: c.team_color as string | null }]));
+  const balance = new Map(balances.map((b) => [b.member_id as string, { points: b.total_points as number, levelId: b.current_level_id as string | null }]));
+  const level = new Map(levels.map((l) => [l.id as string, l.name as string]));
+  // ★ A member the nightly evaluation has not reached — no balance row yet, or none stored — still holds the level
+  // their balance meets: level 1 starts at 0, so «—» would be wrong for every new member (the lead's wave-22 finding).
+  const ladder = [...levels].sort((a, b) => (b.threshold_points as number) - (a.threshold_points as number));
+  const levelOf = (points: number, stored: string | null) =>
+    (stored ? level.get(stored) : undefined) ?? (ladder.find((l) => (l.threshold_points as number) <= points)?.name as string | undefined) ?? null;
+
+  const matching = members.filter((m) => matchesMemberQuery(m, query));
+  const pageCount = Math.max(1, Math.ceil(matching.length / MEMBERS_PAGE_SIZE));
+  const page = Math.min(query.page, pageCount);
+  const slice = matching.slice((page - 1) * MEMBERS_PAGE_SIZE, page * MEMBERS_PAGE_SIZE);
+
+  return {
+    rows: slice.map((m) => {
+      const c = m.companyId ? company.get(m.companyId) : undefined;
+      const b = balance.get(m.id);
+      return {
+        ...m,
+        avatarUrl: avatarHref({ id: m.id, avatarVersion: avatar.get(m.id) }, 96),
+        companyName: c?.name ?? null,
+        teamColor: c ? c.teamColor : undefined,
+        points: b?.points ?? 0,
+        levelName: levelOf(b?.points ?? 0, b?.levelId ?? null),
+      };
+    }),
+    total: matching.length,
+    page,
+    pageCount,
+    from: slice.length ? (page - 1) * MEMBERS_PAGE_SIZE + 1 : 0,
+    to: (page - 1) * MEMBERS_PAGE_SIZE + slice.length,
+    companies: companies
+      .sort((a, b) => Number(a.deactivated_at !== null) - Number(b.deactivated_at !== null) || (a.name as string).localeCompare(b.name as string, "ar"))
+      .map((c) => ({ id: c.id as string, name: c.name as string })),
+    activeAdmins: members.filter((m) => m.role === "admin" && m.status === "active").length,
+  };
 }
 
 const ROLE_CHANGE_ERRORS = ["last_admin", "not_an_admin", "member_not_found", "stale_claims"] as const;

@@ -361,44 +361,76 @@
         }
       },
       "reminders": {
-        "title": "Reminder schedule",
-        "intro": "Reminders arrive this long before a session. Changing the schedule moves pending reminders rather than duplicating them.",
-        "currentTitle": "Current schedule",
-        "before": {
-          "minutes": "{count, plural, one {<bdi>{value}</bdi> minute} other {<bdi>{value}</bdi> minutes}} before",
-          "hours": "{count, plural, one {<bdi>{value}</bdi> hour} other {<bdi>{value}</bdi> hours}} before",
-          "days": "{count, plural, one {<bdi>{value}</bdi> day} other {<bdi>{value}</bdi> days}} before"
-        },
-        "promptImmediate": "Rating prompt: as soon as the session ends",
-        "promptAfter": {
-          "minutes": "Rating prompt: {count, plural, one {<bdi>{value}</bdi> minute} other {<bdi>{value}</bdi> minutes}} after the session ends",
-          "hours": "Rating prompt: {count, plural, one {<bdi>{value}</bdi> hour} other {<bdi>{value}</bdi> hours}} after the session ends",
-          "days": "Rating prompt: {count, plural, one {<bdi>{value}</bdi> day} other {<bdi>{value}</bdi> days}} after the session ends"
-        },
-        "offsetsLegend": "Reminders before the session",
-        "offsetsHint": "From five minutes to thirty days, and six reminders at most.",
-        "offsetLabel": "Reminder <bdi>{n}</bdi>",
-        "removeOffset": "Remove reminder <bdi>{n}</bdi>",
-        "addOffset": "Add a reminder",
-        "offsetsMax": "Six reminders is the limit.",
-        "genericNote": "A reminder near a week, a day or two hours before arrives with its own dedicated message. Any other offset you choose arrives with a general message that states the exact date and time instead of assuming a full week or day.",
-        "promptLabel": "Rating prompt after the session ends",
-        "promptHint": "Zero means as soon as the session ends; a week at most.",
-        "save": "Save schedule",
+        "title": "Reminders",
+        "edit": "Edit",
+        "editing": "Editing reminders",
+        "unsaved": "{count, plural, one {1 unsaved change} other {<bdi>{value}</bdi> unsaved changes}}",
+        "changed": "(changed)",
+        "save": "Save",
         "saving": "Saving…",
-        "saved": "Schedule saved and pending reminders moved",
+        "cancel": "Cancel",
+        "actions": "Save reminders",
+        "savedMark": "✓✓ Saved · <bdi>{time}</bdi>",
+        "savedMarkBy": "✓✓ Saved · <bdi>{time}</bdi> · <bdi>{actor}</bdi>",
+        "saved": "Saved",
+        "unchanged": "Nothing changed",
+        "columns": {
+          "reminder": "Reminder",
+          "timing": "Timing",
+          "channels": "Channel",
+          "enabled": "On"
+        },
+        "rows": {
+          "before": "Before the session",
+          "prompt": "Rating prompt",
+          "other": "Before the session"
+        },
+        "names": {
+          "week": "The week-before reminder",
+          "day": "The day-before reminder",
+          "hours": "The two-hours-before reminder",
+          "prompt": "Rating prompt"
+        },
+        "state": {
+          "on": "On",
+          "off": "Off"
+        },
+        "generic": "General message",
+        "timingLabel": "<bdi>{name}</bdi> — timing",
+        "timing": {
+          "days": "{count, plural, one {1 day} other {<bdi>{value}</bdi> days}}",
+          "hours": "{count, plural, one {1 hour} other {<bdi>{value}</bdi> hours}}",
+          "minutes": "{count, plural, one {1 minute} other {<bdi>{value}</bdi> minutes}}"
+        },
+        "after": {
+          "now": "As it ends",
+          "days": "{count, plural, one {1 day after it ends} other {<bdi>{value}</bdi> days after it ends}}",
+          "hours": "{count, plural, one {1 hour after it ends} other {<bdi>{value}</bdi> hours after it ends}}",
+          "minutes": "{count, plural, one {1 minute after it ends} other {<bdi>{value}</bdi> minutes after it ends}}"
+        },
+        "channel": {
+          "inApp": "In the app",
+          "email": "Email"
+        },
+        "leave": {
+          "title": "Leave without saving?",
+          "confirm": "Leave",
+          "stay": "Stay"
+        },
         "errorSummaryTitle": "The schedule was not saved",
         "errors": {
-          "offsetRequired": "Enter this reminder's time.",
-          "offsetInvalid": "Enter a whole number above zero.",
-          "offsetTooShort": "A reminder is at least five minutes before.",
-          "offsetTooLong": "A reminder is at most thirty days before.",
-          "offsetDuplicate": "Another reminder already has this time.",
-          "offsetsNone": "Add at least one reminder.",
-          "offsetsTooMany": "Six reminders at most.",
+          "timingRequired": "Enter the timing.",
+          "timingInvalid": "Enter a whole number.",
+          "band": {
+            "week": "Between <bdi>{min}</bdi> and <bdi>{max}</bdi> days.",
+            "day": "Between <bdi>{min}</bdi> and <bdi>{max}</bdi> hours.",
+            "hours": "Between <bdi>{min}</bdi> and <bdi>{max}</bdi> minutes."
+          },
+          "noneOn": "Keep at least one reminder on.",
           "promptRequired": "Enter the rating prompt's delay.",
           "promptInvalid": "Enter a whole number, or zero to send it as the session ends.",
-          "promptTooLong": "The rating prompt is at most a week after.",
+          "promptTooLong": "The rating prompt waits a week at most.",
+          "stale": "The schedule changed since you opened this page. Open it again.",
           "failed": "The schedule could not be saved. Try again."
         }
       }

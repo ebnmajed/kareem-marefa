@@ -1,23 +1,19 @@
+import type { SaveReceipt } from "@/lib/dal/admin-settings";
 import { emptyFormState, type FormState } from "@/lib/form-state";
+import type { ReminderRowKey } from "./rows";
 
-// A "use server" module may export async functions and nothing else, so the
-// state lives here.
+// A "use server" module may export async functions and nothing else, so the state lives here.
 //
-// The offsets are rows the admin adds and removes, so their field names are
-// not a fixed list: each row carries a key the form made, and a row's error is
-// `offset-<key>` — an error stays on ITS row even after a row above it is
-// removed, which an index would not.
+// `receipt` is the server's answer to a save (`DEC-232` §3.2): what the save wrote, read from the history rows it
+// wrote. The form shows «حُفظ» or «لم يتغيّر شيء» from it and nothing else — never from having pressed the button.
 
-export const MAX_OFFSETS = 6;
+export type RemindersState = FormState<string> & { receipt: SaveReceipt | null };
+export const emptyRemindersState: RemindersState = { ...emptyFormState<string>(), receipt: null };
 
-/** `reminderScheduleInput`'s bounds (`lib/dal/notifications.ts`), said at the field. */
-export const OFFSET_MIN_MINUTES = 5;
-export const OFFSET_MAX_MINUTES = 43200;
-export const PROMPT_MAX_MINUTES = 10080;
-
-export type RemindersState = FormState<string> & { saved: boolean };
-export const emptyRemindersState: RemindersState = { ...emptyFormState<string>(), saved: false };
-
-export const offsetField = (key: string) => `offset-${key}`;
-export const offsetControlId = (key: string) => `reminder-offset-${key}`;
+export const onField = (key: ReminderRowKey) => `${key}-on`;
+export const amountField = (key: ReminderRowKey) => `${key}-amount`;
+export const unitField = (key: ReminderRowKey) => `${key}-unit`;
+/** A row's error key, and the id of its timing control (the summary's link focuses it). */
+export const rowControlId = (key: ReminderRowKey) => `reminder-${key}`;
+export const switchControlId = (key: ReminderRowKey) => `reminder-${key}-on`;
 export const PROMPT_CONTROL_ID = "reminder-prompt";

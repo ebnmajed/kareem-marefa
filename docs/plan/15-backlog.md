@@ -1599,6 +1599,121 @@ passes; `qa:contract` is untouched. One PR, `wave-19/m10b`.*
 
 ---
 
+## 23i. Wave 22 — `M24`, the console, batch B (`DEC-230`, `DEC-231`)
+
+**Fifteen screens from fourteen artboards** in `docs/design/screens/m11b/`, specified by `M11b.md` and corrected by
+`DEC-230` and `DEC-231`. **No new primitive.** Three PRs: **A** the tables, reminders, exports, the audit log, the
+cells, `0180` and the audit migration; **B** the points, recognition and settings pages; **C** moderation and the
+survey. ★★ **Every screen story below is deleted first** (`DEC-208`): the page file and the screen's own markup files
+removed in one commit, the screen written from its artboard in the next, the owner's note carrying the kept-behaviour
+table — data calls, auth boundary, `<bdi>`, the no-JS path, the role gates, pinned names, **and every audit row the
+screen writes** — each with its `REQ-*`, written before the create commit and read against the new file after it.
+
+#### STORY-ADM-010 — `0180`: a venue names the company that owns it
+**Covers:** `REQ-ADM-022` · **M24** · **S** · lead · PR A
+- `venues.company_id uuid references public.companies(id)`, nullable, with a same-org trigger in the shape of
+  `sessions_host_company_same_org()` (`0081`) and its RLS case; the grant follows the table's existing update policy.
+- Rehearsed by the owner on a dump taken at `0179` before the push. No backfill: **the owner sets each venue's company on
+  `046`** (`DEC-230` §2.4).
+
+#### STORY-PTS-008 — Hosting points follow the venue's owner
+**Covers:** `REQ-PTS-016` · **M24** · **M** · `scoring` · PR A
+- `evaluate_company_points()` reads the venue's company; a venue with none awards nothing, **by rule** — the story says
+  so, so nobody later «fixes» it.
+- `sessions.host_company_id` stops being read; ★ **the stopgap form on `/app/admin/scoring` and
+  `setSessionHostCompany()` are removed in the same PR**. The column stays (`DEC-230` §2.3).
+- ★ A multi-day session at venues of different owners: the plan's answer, brought to the owner if needed (`DEC-231` §6.3).
+- `05` §6.3 written (`DEC-231` §6.2); what `main`'s worker does in the gap is named (`DEC-231` §7).
+
+#### STORY-ADM-011 — The audit gaps closed in the database
+**Covers:** `REQ-ADM-023` · **M24** · **M** · lead (the triggers), `content` (report resolution as one function) · PR A
+- A `security definer` trigger per table on `0161`'s pattern for venues, categories, companies, report resolution and
+  survey templates, with the action strings `DEC-231` §4 fixes; a test per action, written as a member.
+- Reports' resolution moves from two DAL writes into one audited function (`DEC-231` §4.2).
+
+#### STORY-UIX-081 — The read-mode pattern, four times, one test
+**Covers:** `REQ-UIX-091` · **M24** · **M** · `scoring`, `notify`; the spec, lead · PR B (and `060` in A)
+- Each read-mode page implements `M10c.md` §1 against `profile-edit.tsx` as its reference, never importing it.
+- The saved mark from the server's answer and the history row; leaving with changes asks.
+- ★ `wave22-lead-read-mode` walks `053`, `054`, `060`, `063` with the same steps.
+
+#### STORY-UIX-082 — Three cells on `data-table`
+**Covers:** `REQ-UIX-092` · **M24** · **S** · `console` · PR A
+- A switch cell, a two-button action cell, a swatch cell — add-only, each in the gallery demo, each with a case in the
+  scope test; every existing `data-table` suite untouched. **No new file; the floor stays 63.**
+
+#### STORY-UIX-083 — Venues, rebuilt
+**Covers:** `REQ-UIX-093`, `REQ-ADM-022` · **M24** · **M** · `console` · PR A
+**Built from:** `AdminVenues.dc.html`; `M11b.md` §046.
+- The table with the owning company; the edit sheet's company `select`, «لا شركة» a real choice.
+- ★ **Not drawn, and built:** a venue with no company, a deactivated venue, an empty org.
+
+#### STORY-UIX-084 — Categories, rebuilt
+**Covers:** `REQ-UIX-094` · **M24** · **S** · `console` · PR A
+**Built from:** `AdminCategories.dc.html`.
+- No tags. Delete only when unused, the menu saying why otherwise.
+
+#### STORY-UIX-085 — Companies, rebuilt
+**Covers:** `REQ-UIX-095` · **M24** · **M** · `console` · PR A
+**Built from:** `AdminCompanies.dc.html`.
+- The swatch cell, the quarter's points read; no logo, no domain (`DEC-231` §6.1).
+
+#### STORY-UIX-086 — Members, rebuilt
+**Covers:** `REQ-UIX-096` · **M24** · **M** · `console` · PR A
+**Built from:** `AdminMembers.dc.html`.
+- Chips, the row menu, the last-admin guard said in the menu; the CSV through the audited path.
+
+#### STORY-UIX-087 — Reminders, rebuilt
+**Covers:** `REQ-UIX-097` · **M24** · **S** · `notify` · PR A
+**Built from:** `AdminReminders.dc.html`.
+- `08`'s set, read by default; the offsets written by the function that writes them today.
+
+#### STORY-UIX-088 — Exports, rebuilt
+**Covers:** `REQ-UIX-098` · **M24** · **S** · `console` · PR A
+**Built from:** `AdminExports.dc.html`.
+- One row per export, its last run read from the audit row; a test opens one file's bytes and finds the BOM.
+
+#### STORY-UIX-089 — The audit log, rebuilt
+**Covers:** `REQ-UIX-099` · **M24** · **M** · `console` · PR A
+**Built from:** `AdminAudit.dc.html`.
+- Both stores, marked by kind (`DEC-231` §4.3); the CSV a new export type through the audited path.
+
+#### STORY-UIX-090 — The points catalogue, rebuilt
+**Covers:** `REQ-UIX-100` · **M24** · **L** · `scoring` · PR B
+**Built from:** `AdminScoring.dc.html`.
+- Read mode, «عدّل», the manual adjustment sheet; ★ a test that edits a rule and reads `SCR-022`'s explanation after.
+
+#### STORY-UIX-091 — Badges and levels, rebuilt, with the held certificates
+**Covers:** `REQ-UIX-101` · **M24** · **L** · `scoring` (`held-achievements.tsx` presentation-only) · PR B
+**Built from:** `AdminRecognition.dc.html`.
+- Levels and badges read by default; the held certificates with «أصدر» and «أوقف» through `designer`'s functions.
+
+#### STORY-UIX-092 — Settings, rebuilt
+**Covers:** `REQ-UIX-102` · **M24** · **M** · `notify` · PR B
+**Built from:** `AdminSettings.dc.html`.
+- Four `kv-card`s, read by default; every value read; the org domains through their audited path.
+
+#### STORY-UIX-093 — Reports, rebuilt
+**Covers:** `REQ-UIX-103` · **M24** · **M** · `content` · PR C
+**Built from:** `AdminModerationReports.dc.html`.
+- Comment reports, moved here from `/comments` (`DEC-231` §5); the redirect; the counts the rail's badge reads.
+
+#### STORY-UIX-094 — Photos, rebuilt as a split view
+**Covers:** `REQ-UIX-104` · **M24** · **M** · `content` · PR C
+**Built from:** `AdminModerationPhotos.dc.html`.
+- Takedown requests and photo reports — the latter moved here from `/reports` — on `split-view`.
+
+#### STORY-UIX-095 — The survey tab, rebuilt
+**Covers:** `REQ-UIX-105` · **M24** · **M** · `event` · PR C
+**Built from:** `AdminSurveyResults.dc.html`.
+- The withhold for every question type, on the screen and in the CSV; the hub's header untouched.
+
+#### STORY-UIX-096 — Survey templates, rebuilt
+**Covers:** `REQ-UIX-106` · **M24** · **M** · `event` · PR C
+**Built from:** `AdminSurveys.dc.html`.
+- The templates, then the selected template's questions below them, as drawn; reordering by buttons; every template
+  mutation audited.
+
 ## 24. Coverage check
 
 Regenerated by `scripts/traceability.mjs`; the table is in `TRACEABILITY.md`. The invariants this
@@ -1609,7 +1724,7 @@ backlog must satisfy:
    redesigns screens `STORY-AUT-001` built. `trace` cannot see that gap, because it checks
    REQ→story, not decision→story; `DEC-129` is why it is written down.
 2. **Every story cites at least one `REQ-*`.**
-3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183`, M18 since `DEC-195`, M19 since `DEC-199`, M20 since `DEC-205`, M21 since `DEC-213` and M22 since `DEC-216`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
+3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183`, M18 since `DEC-195`, M19 since `DEC-199`, M20 since `DEC-205`, M21 since `DEC-213`, M22 since `DEC-216`, M23 since `DEC-225` and M24 since `DEC-230`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
 4. **No story cites a requirement that does not exist.**
 
 A violation of any of the five **fails CI** (`13` §10). That gate is the only thing that keeps this

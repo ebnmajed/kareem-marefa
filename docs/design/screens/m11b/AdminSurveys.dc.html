@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>SCR-065 · الاستبانات</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#F4F1EA}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@700;800&amp;family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;display=swap">
+</helmet>
+<div dir="rtl" style="width: 1280px; height: 640px; box-sizing: border-box; background: #0B0C12; color: #F4F1EA; font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; font-size: 14px; line-height: 1.5; position: relative; overflow: hidden; display: flex; flex-direction: column">
+  <div style="height: 52px; display: flex; align-items: center; gap: 16px; padding: 0 20px; border-bottom: 1px solid #2A2E40; flex-shrink: 0">
+    <a href="#admin" style="text-decoration: none; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 20px; color: #C6FF3D; line-height: 1">كريم معرفة</a>
+    <span style="font-size: 13px; font-weight: 700">لوحة الإدارة</span>
+    <span style="font-size: 12px; color: #A7ABBE">شبه الجزيرة</span>
+    <span style="flex: 1"></span>
+    <a href="#app" style="font-size: 13px; color: #A7ABBE; text-decoration: none">التطبيق</a>
+    <span style="width: 30px; height: 30px; border-radius: 999px; background: #1E2130; border: 2px solid #E9E4D6; display: inline-flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 13px">ع</span>
+  </div>
+  <div style="flex: 1; display: flex; overflow: hidden">
+    <nav aria-label="الإدارة" style="width: 220px; flex-shrink: 0; border-inline-end: 1px solid #2A2E40; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; overflow: hidden">
+      <a href="#dashboard"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">لوحة التحكم</a>
+      <a href="#proposals"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">المقترحات<span style="margin-inline-start: auto; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: #FF6E4F; color: #0B0C12">4</span></a>
+      <a href="#sessions"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">الجلسات</a>
+      <a href="#surveys" aria-current="page" style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; background: #1E2130; color: #F4F1EA; font-weight: 700">الاستبانات</a>
+      <div style="height: 1px; background: #2A2E40; margin: 6px 4px"></div>
+      <a href="#members"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">الأعضاء</a>
+      <a href="#companies"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">الشركات</a>
+      <a href="#categories"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">التصنيفات والوسوم</a>
+      <a href="#venues"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">الأماكن</a>
+      <div style="height: 1px; background: #2A2E40; margin: 6px 4px"></div>
+      <a href="#comments"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">التعليقات</a>
+      <a href="#photos"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">الصور<span style="margin-inline-start: auto; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: #FF6E4F; color: #0B0C12">1</span></a>
+      <a href="#reports"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">البلاغات<span style="margin-inline-start: auto; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: #FF6E4F; color: #0B0C12">2</span></a>
+      <div style="height: 1px; background: #2A2E40; margin: 6px 4px"></div>
+      <a href="#scoring"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">النقاط</a>
+      <a href="#recognition"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">الشارات والمستويات</a>
+      <a href="#reminders"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">التذكيرات</a>
+      <div style="height: 1px; background: #2A2E40; margin: 6px 4px"></div>
+      <a href="#templates"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">القوالب</a>
+      <a href="#emails"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">البريد</a>
+      <a href="#branding"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">الهوية البصرية</a>
+      <div style="height: 1px; background: #2A2E40; margin: 6px 4px"></div>
+      <a href="#exports"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">التصدير</a>
+      <a href="#audit"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">سجل التدقيق</a>
+      <a href="#settings"  style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; text-decoration: none; color: #A7ABBE; font-weight: 600">الإعدادات</a>
+    </nav>
+    <main style="flex: 1; min-width: 0; padding: 20px 24px; overflow: hidden; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; align-items: center; gap: 12px"><h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 26px; line-height: 1">الاستبانات</h1><span style="flex: 1"></span><a href="#" style="display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none; background: #C6FF3D; color: #0B0C12; border: 0">قالب جديد</a></div>
+      <div style="border-radius: 14px; background: #151724; border: 1px solid #2A2E40; overflow: hidden">
+        <div style="display: grid; grid-template-columns: 1fr 90px 90px 80px 28px; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid #2A2E40; font-size: 11px; font-weight: 700; color: #A7ABBE"><span>القالب</span><span>الأسئلة</span><span>الجلسات</span><span>افتراضي</span><span></span></div>
+        <div style="display: grid; grid-template-columns: 1fr 90px 90px 80px 28px; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #2A2E40; font-size: 13px"><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">التقييم القياسي</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">4</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">38</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap"><span style="display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #1E2130; color: #C6FF3D; white-space: nowrap">افتراضي</span></span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">⋯</span></div>
+        <div style="display: grid; grid-template-columns: 1fr 90px 90px 80px 28px; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #2A2E40; font-size: 13px"><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">ورشة عملية</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">6</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">5</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap"></span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">⋯</span></div>
+        <div style="display: grid; grid-template-columns: 1fr 90px 90px 80px 28px; gap: 12px; align-items: center; padding: 10px 14px;  font-size: 13px"><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">جلسة بلا تقييم مُقدِّم</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">3</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">2</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap"></span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">⋯</span></div>
+      </div>
+      <div style="font-size: 12px; font-weight: 700; color: #A7ABBE; margin: 0 0 -8px">التقييم القياسي</div>
+      <div style="border-radius: 14px; background: #151724; border: 1px solid #2A2E40; overflow: hidden">
+        <div style="display: grid; grid-template-columns: 1fr 120px 80px; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid #2A2E40; font-size: 11px; font-weight: 700; color: #A7ABBE"><span>السؤال</span><span>النوع</span><span>مطلوب</span></div>
+        <div style="display: grid; grid-template-columns: 1fr 120px 80px; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #2A2E40; font-size: 13px"><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">تقييم الجلسة</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">نجوم 1–5</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">نعم</span></div>
+        <div style="display: grid; grid-template-columns: 1fr 120px 80px; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #2A2E40; font-size: 13px"><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">تقييم المُقدِّم</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">نجوم 1–5</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">نعم</span></div>
+        <div style="display: grid; grid-template-columns: 1fr 120px 80px; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #2A2E40; font-size: 13px"><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">ما الذي نفعك؟</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">نص</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">لا</span></div>
+        <div style="display: grid; grid-template-columns: 1fr 120px 80px; gap: 12px; align-items: center; padding: 10px 14px;  font-size: 13px"><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">ما كنت تودّ أن يكون مختلفًا؟</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">نص</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">لا</span></div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

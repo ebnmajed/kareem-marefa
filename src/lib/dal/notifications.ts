@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { DEFAULT_TEMPLATES, emailDocumentFor, logoUrlFor, readBlocks, renderEmail, SAMPLE_MEMBER, SAMPLE_ORG, sampleFor } from "@kareem/mail-runtime";
+import type { SaveReceipt } from "@/lib/dal/admin-settings";
 import { sessionClient } from "@/lib/dal/session";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { decodeInboxCursor, encodeInboxCursor } from "@/components/notifications/inbox-cursor";
@@ -825,17 +826,44 @@ export type ReminderScheduleInput = z.infer<typeof reminderScheduleInput>;
  * every published session in the org. Doing it in this function would leave
  * the same orphans behind whenever the value changed by any other path.
  */
-export async function setReminderSchedule(locale: string, input: ReminderScheduleInput): Promise<void> {
+export async function setReminderSchedule(locale: string, input: ReminderScheduleInput, expected?: ReminderSchedule): Promise<SaveReceipt> {
   const client = await assertAdmin(locale);
   if (!client) throw new Error("not_permitted");
   const { session, supabase } = client;
 
   const offsets = Array.from(new Set(input.offsetsMinutes)).sort((a, b) => b - a);
-  const { error } = await supabase
+  // ★ Wave 22 (`DEC-232` §3, add-only): `expected` is the schedule the page opened with. The update matches only while
+  // the stored row still equals it, so an edit another admin saved meanwhile is refused as `stale`, never overwritten
+  // and credited to this actor in the history (notes/notify.md D-N4). And 0 rows is never a success (D-N2).
+  let update = supabase
     .from("org_settings")
     .update({ reminder_offsets_minutes: offsets, rating_prompt_delay_minutes: input.ratingPromptDelayMinutes })
     .eq("org_id", session.orgId);
+  if (expected) {
+    update = update
+      .eq("reminder_offsets_minutes", `{${expected.offsetsMinutes.join(",")}}`)
+      .eq("rating_prompt_delay_minutes", expected.ratingPromptDelayMinutes);
+  }
+  const { data, error } = await update.select("id, updated_at");
   if (error) throw new Error(error.code === "42501" ? "not_permitted" : `org_settings: ${error.message}`);
+  const row = (data ?? [])[0] as { id: string; updated_at: string } | undefined;
+  if (!row) {
+    if (!expected) throw new Error("not_written");
+    const { data: exists, error: readError } = await supabase.from("org_settings").select("id").eq("org_id", session.orgId).maybeSingle();
+    if (readError) throw new Error(`org_settings: ${readError.message}`);
+    throw new Error(exists ? "stale" : "not_written");
+  }
+
+  // The rows THIS save wrote: the history trigger and `set_updated_at()` share the transaction's now().
+  const { data: written, error: historyError } = await supabase
+    .from("scoring_config_history")
+    .select("field")
+    .eq("org_id", session.orgId)
+    .eq("scope", "org_settings")
+    .eq("entity_id", row.id)
+    .eq("changed_at", row.updated_at);
+  if (historyError) throw new Error(`scoring_config_history: ${historyError.message}`);
+  return { at: row.updated_at, wrote: ((written ?? []) as Array<{ field: string }>).map((r) => r.field).sort() };
 }
 
 // ── Wave 8 (`DEC-147`, K6) — add-only, for SCR-058 on the M9 system ─────────

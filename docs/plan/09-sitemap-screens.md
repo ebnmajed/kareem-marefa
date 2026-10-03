@@ -59,7 +59,8 @@ thought about in the language it ships in. Every example string is **Arabic**.
     │   ├── /sessions/[id]/certificates   SCR-045  review + release
     │   ├── /venues · /categories · /companies    SCR-046 · 047 · 048
     │   ├── /members                      SCR-049  members and roles
-    │   ├── /moderation/{comments,photos,reports} SCR-050 · 051 · 052
+    │   ├── /moderation/{photos,reports}  SCR-051 · 050/052  ★ two screens (DEC-230 §3): photos holds takedowns and photo
+    │   │                                  reports, reports holds comment reports; /moderation/comments redirects (DEC-231 §5)
     │   ├── /scoring                      SCR-053  scoring configuration
     │   ├── /recognition                  SCR-054  badges, levels, streaks, perks
     │   ├── /templates/{posters,certificates}     SCR-055 · 056
