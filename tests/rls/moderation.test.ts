@@ -75,13 +75,16 @@ describe("POL-remove_photo", () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.asOwner();
+      // The report first, as it happens for real: a member reports a VISIBLE photo, then someone asks to hide it —
+      // 0190's guard refuses a report on a photo already hidden (wave 22, a ledger line; the assertions stand). The
+      // reporter is members[0]: members[1] uploaded the fixture's photo, and one's own photo cannot be reported.
+      const [{ id: reportId }] = await tx.q<{ id: string }>(
+        `insert into public.reports (org_id, target, photo_id, reporter_id, reason) values ($1, 'photo', $2, $3, 'محتوى غير لائق') returning id`,
+        [f.a.id, f.m5.a.photoId, f.a.members[0].memberId],
+      );
       const [{ id: takedownId }] = await tx.q<{ id: string }>(
         `insert into public.photo_takedowns (org_id, photo_id, requester_id) values ($1, $2, $3) returning id`,
         [f.a.id, f.m5.a.photoId, f.a.members[0].memberId],
-      );
-      const [{ id: reportId }] = await tx.q<{ id: string }>(
-        `insert into public.reports (org_id, target, photo_id, reporter_id, reason) values ($1, 'photo', $2, $3, 'محتوى غير لائق') returning id`,
-        [f.a.id, f.m5.a.photoId, f.a.members[1]?.memberId ?? f.a.members[0].memberId],
       );
       await tx.q(
         `insert into public.points_ledger (org_id, member_id, amount, source, source_id, session_id, reason, rule_key, idempotency_key)
