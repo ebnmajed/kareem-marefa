@@ -23,6 +23,9 @@ import { MemberRowMenu } from "./member-row-menu";
 //
 // ★ The role column is the role's badge for staff and for a deactivated member, plain «عضو» otherwise (the artboard);
 // the words are `REQ-ADM-009`'s, not the artboard's (D9). ★ «آخر نشاط» is absent — nothing stores it (`DEC-232` §4).
+// ★ The email is not drawn in the row — the board does not, and no requirement asks it of this row: `REQ-ADM-009`'s
+// «a member's full record» is the profile (⋯ «عرض الملف الكامل», SCR-020's admin tier); the search still finds by
+// email and the CSV still carries it (the lead's wave-22 ruling).
 // The viewer's own row has no ⋯: self-demotion and self-deactivation have no path (`REQ-ADM-009`).
 
 export function MembersTable({ data, query, selfId, timeZone, locale }: { data: ConsoleMembers; query: MemberQuery; selfId: string; timeZone: string; locale: string }) {
@@ -39,10 +42,6 @@ export function MembersTable({ data, query, selfId, timeZone, locale }: { data: 
           <div className="min-w-0">
             <p className="text-label text-fg-heading">
               <bdi>{m.displayName ?? m.email}</bdi>
-            </p>
-            {/* ★ REQ-ADM-009: the admin sees every member's email — always its own line. */}
-            <p className="mt-0.5 text-caption text-fg-muted">
-              <bdi dir="ltr">{m.email}</bdi>
             </p>
             {m.status === "deactivated" && m.deactivatedAt ? (
               <p className="mt-1 text-caption text-fg-muted">
@@ -103,6 +102,8 @@ export function MembersTable({ data, query, selfId, timeZone, locale }: { data: 
     <div className="space-y-4">
       <Toolbar data={data} query={query} />
       <DataTable
+        // The surface card at md+, as 042 and the boards draw every console table (the lead's wave-22 ruling); cards below.
+        className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
         stickyHeader
         hiddenHeaders={["actions"]}
         label={t("tableLabel")}

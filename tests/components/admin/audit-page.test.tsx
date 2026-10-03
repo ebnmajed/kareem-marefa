@@ -43,9 +43,9 @@ const RULE = "33333333-3333-4333-8333-333333333333";
 
 const feed: AuditFeedPage = {
   rows: [
-    { kind: "log", id: "a1", actorId: ADMIN, actorName: "مشرفة السجل", actorRole: "admin", action: "member.role_changed", subjectType: "member", subjectId: MEMBER, subjectName: "خالد الغامدي", reason: "ترقية عضو", occurredAt: "2026-09-17T09:00:00Z" },
-    { kind: "config", id: "c1", actorId: ADMIN, actorName: "مشرفة السجل", scope: "scoring", entityId: RULE, entityName: "check_in", field: "points", oldValue: 10, newValue: 15, occurredAt: "2026-09-16T12:00:00Z" },
-    { kind: "log", id: "a2", actorId: null, actorName: null, actorRole: "system", action: "points.balance_divergence", subjectType: null, subjectId: null, subjectName: null, reason: null, occurredAt: "2026-09-16T09:00:00Z" },
+    { kind: "log", id: "a1", actorId: ADMIN, actorName: "مشرفة السجل", actorFace: null, actorRole: "admin", action: "member.role_changed", subjectType: "member", subjectId: MEMBER, subjectName: "خالد الغامدي", reason: "ترقية عضو", occurredAt: "2026-09-17T09:00:00Z" },
+    { kind: "config", id: "c1", actorId: ADMIN, actorName: "مشرفة السجل", actorFace: null, scope: "scoring", entityId: RULE, entityName: "check_in", field: "points", oldValue: 10, newValue: 15, occurredAt: "2026-09-16T12:00:00Z" },
+    { kind: "log", id: "a2", actorId: null, actorName: null, actorFace: null, actorRole: "system", action: "points.balance_divergence", subjectType: null, subjectId: null, subjectName: null, reason: null, occurredAt: "2026-09-16T09:00:00Z" },
   ],
   nextBefore: "2026-09-16T09:00:00+00:00~a2a2a2a2-a2a2-4a2a-8a2a-a2a2a2a2a2a2",
   total: 1284,
@@ -99,10 +99,22 @@ describe("AuditLogPage", { timeout: 20_000 }, () => {
     expect(config.textContent).toContain("10 ← 15");
   });
 
-  it("a row naming a subject links to everything that happened to it", async () => {
+  it("★ the target is itself the link to everything that happened to it — one line, no second «follow» line", async () => {
     await renderPage({});
-    const links = within(table()).getAllByRole("link", { name: "كل ما جرى على هذا العنصر" });
-    expect(links[0]).toHaveAttribute("href", `/ar/app/admin/audit?subject=member&subjectId=${MEMBER}`);
+    expect(within(table()).getByRole("link", { name: "عضو · خالد الغامدي" })).toHaveAttribute("href", `/ar/app/admin/audit?subject=member&subjectId=${MEMBER}`);
+    expect(screen.queryByText("كل ما جرى على هذا العنصر")).toBeNull();
+  });
+
+  it("★ the time is the day said relative to today, the full instant in the <time>'s title; the actor is a face, not a role badge", async () => {
+    vi.mocked(listAuditFeed).mockClear();
+    const now = new Date();
+    const at = new Date(now.getTime() - 60_000).toISOString();
+    await renderPage({}, "admin", { ...feed, rows: [{ ...feed.rows[0], occurredAt: at, actorFace: { avatarUrl: null, teamColor: "#35d0ff" } }] });
+    const time = table().querySelector("time")!;
+    expect(time.getAttribute("dateTime")).toBe(at);
+    expect(time.textContent?.startsWith("اليوم ")).toBe(true);
+    expect(time.getAttribute("title")).toBeTruthy();
+    expect(within(table()).queryByText("مشرف المؤسسة")).toBeNull();
   });
 
   it("the DAL reads the query's filters and the org's zone; the chips carry their values; the CSV carries the filters", async () => {

@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-02 · ★★ **WAVE 22 — SYNC 1 DONE (`DEC-232`), PR A BUILDING** · **Branch:** `wave-22a/the-tables` (draft #47) · **`main`:** `5494ea50`; production and local both at **`0179`** · **Phase:** ★★ **M11b — THE REST OF THE CONSOLE (`DEC-230`, M24)**: the four tables, the two moderation queues, the four read-mode pages, reminders, exports, the audit log, settings and the two survey screens — **fifteen screens from fourteen artboards**, each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; ★★ **NO new primitive, so the gate's floor stays 63 and `tests/unit/ui-playground.test.ts` is untouched** — the first wave since 15 to add none. **One migration, `0180`** — one nullable column. The brief is `docs/plan/notes/wave-22-lead.md`. ★★ **THE OWNER RULES M11b BEFORE STORIES** (`DEC-230` §1), answering `DEC-229` §5's open question — stories have now been overtaken FOUR times and the ring stays inert. ★★ **Two owner rulings settle the wave's only hard questions:** hosting points move to **the venue's owning company** — the presenter's company earns presenting, the building's owner earns hosting, and a venue owned by nobody rewards nobody — which **answers the objection `0081` recorded rather than ignoring it** (§2); and moderation becomes **two screens**, so `moderationComments` flips to `built: false` and **the rail drops from twenty items to nineteen** (§3). ★ **Owed by the owner:** set each existing venue's company on `046` before the hosting rule's first evaluation; the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-045` and `055`–`059` with the studio and the brand kit, and session stories.
+**Last updated:** 2026-10-02 · ★★ **WAVE 22 — BUILT; THREE PRs GREEN IN CI (#47 `fc69f1fc`, #48 `f4d6c424`, #49 `3f308dc2`), READY FOR THE OWNER** · **Branch:** `wave-22a/the-tables` (draft #47) · **`main`:** `5494ea50`; production and local both at **`0179`** · **Phase:** ★★ **M11b — THE REST OF THE CONSOLE (`DEC-230`, M24)**: the four tables, the two moderation queues, the four read-mode pages, reminders, exports, the audit log, settings and the two survey screens — **fifteen screens from fourteen artboards**, each **deleted first and written from its artboard** (`DEC-208`). **Three PRs**; ★★ **NO new primitive, so the gate's floor stays 63 and `tests/unit/ui-playground.test.ts` is untouched** — the first wave since 15 to add none. **One migration, `0180`** — one nullable column. The brief is `docs/plan/notes/wave-22-lead.md`. ★★ **THE OWNER RULES M11b BEFORE STORIES** (`DEC-230` §1), answering `DEC-229` §5's open question — stories have now been overtaken FOUR times and the ring stays inert. ★★ **Two owner rulings settle the wave's only hard questions:** hosting points move to **the venue's owning company** — the presenter's company earns presenting, the building's owner earns hosting, and a venue owned by nobody rewards nobody — which **answers the objection `0081` recorded rather than ignoring it** (§2); and moderation becomes **two screens**, so `moderationComments` flips to `built: false` and **the rail drops from twenty items to nineteen** (§3). ★ **Owed by the owner:** set each existing venue's company on `046` before the hosting rule's first evaluation; the `railway.json`. ★ **Carried:** `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-045` and `055`–`059` with the studio and the brand kit, and session stories.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -98,6 +98,50 @@ floor stays 63.**
 `0180_venue_company` · `0181_console_audit` (the seven gaps) · `0182_hosting_follows_the_venue` (`scoring`) ·
 `0183_resolve_report` (`content`). Full RLS sweep at `0181`: 1513 passed, 2 failed — both the expected wave-15 cases
 below; green after. The owner rehearses all four on a dump taken at `0179` before the push.
+
+### ★ Verification, 2026-10-03 — production builds, specs, captures held beside the artboards
+
+| PR | Build | Specs | Captures beside the boards — sent back |
+|---|---|---|---|
+| A (`17837124` → `be811650`) | verify worktree, real `npm ci` | ★ green — `console`'s six screens, managed lists, members, exports, audit, team colour, wave-17 screens; `notify`'s reminders ×2; `scoring`'s company points | ★ wave-wide: **every table in 042's surface card** (all bare); `062` full dates and a second link line per row, role badges where the board draws faces; `049` emails drawn, «—» for level at 0 points; `046` capture under five toasts |
+| B (`baec9578`) | real `npm ci` | 26 passed, 2 red — `notify`'s stale-form refusal not shown (★ possibly the owner's worst outcome), `scoring`'s badge switch intercepted by its row | ★★ `053`'s deductions read «✓ مفعّل» under a heading that says «مغلق افتراضيًا»; each action drawn twice; `054` «مفعّل» wraps, held certificates uncaptured; `063` card order and title size |
+| C (`27342c69` → `43928498`) | real `npm ci` | ★ green — `event`'s 3 specs 24/24, `content`'s 3 specs 26/26 | `065` questions belong **below** (the lead's `REQ-UIX-106` «beside» corrected); `064`'s standing explainer dropped; `050/052` actions stacked, short cells wrap; `051`'s primary inverted |
+
+★★ **CI, read from each run's own conclusion (`DEC-192`):** #47 run `37070876282` **success** · #48 run `37079179130`
+**success** (after `f4d6c424`: three strings carried a literal «1%») · #49 run `37070615147` **success**.
+
+### ★★ The owner's order — before and after the merge
+
+1. **Rehearse `0180` – `0188`** on a production schema dump taken at `0179`. ★ **Push all nine together, before merging A**:
+   B's `0184` – `0187` are numbered before A's `0188`, so a push of A's alone leaves production out of order.
+2. **Merge A (#47), then B (#48), then C (#49).** B and C carry A's commits until A merges; ★ retarget nothing — all three
+   are against `main` already. Delete a branch only after its PR is merged and the next one's base is `main`.
+3. ★ **Set each existing venue's owning company on `046`** before the next session completes (`DEC-230` §2.4). Until then
+   no hosting points are awarded — correct, not a fault.
+4. Railway: reconnect with `--repo ebnmajed/kareem-marefa --branch main` and **check the builder** before the deployment.
+5. ★★ **The acceptance**: each screen beside its artboard, at 1280 on a real screen and at 390.
+6. Carried to you: no real no-JS path under `/app` (the loading model); photo reports cannot be filed (`REQ-EVT-008`);
+   staff removing a comment on the event page record no reason; `MSG-materials_added` is never sent; the leftover
+   wave-21 `next-server` on this machine; the `railway.json`; what comes after M11b (stories, the owner's to confirm).
+
+★ **Second pass (2026-10-03, after the fixes): all three green on production builds, every capture re-held beside its board and matching.**
+A `fc69f1fc`: 62 + 7 green (one phone `me()` gateway 502 re-run green alone) · B `5d3bd7bc`: **29/29** — the badge
+switch takes a real click on its drawn track (the red was the spec), the stale-form refusal shows and writes nothing (the
+red was the spec's race), `053`'s job proven (a rule edited is what `SCR-022` explains next; the written row unmoved) · C
+`3f308dc2`: **50/50**. Found and fixed by the review, beyond layout: `049`'s level read «—» below a stored level (a
+defect in the read); `053`'s deductions heading contradicted its rows. PRs: **#47** (A), **#48** (B), **#49** (C), all
+drafts against `main`, every delete paired at each pushed head; CI read from each run's own conclusion.
+
+Load produced reds that did not reproduce alone (C's first runs, one gateway `me()` 502); each was re-run before being called load.
+The `stat` primitive draws label-above-value where `064`'s board draws value-above-label — `content`'s primitive, recorded, not changed.
+
+### ★ Found by the verification builds, carried to the owner
+
+- ★★ **A real no-JS path is impossible under `/app` while `app/loading.tsx` streams** (`console`, 2026-10-03). Every
+  console page sits in that Suspense boundary; the streamed content is revealed by an inline script, so a browser with
+  JavaScript off sees only the skeleton (the CSP log shows the script blocked). `DEC-232` §5.5's `?new=1` / `?edit=` holds
+  for the server's HTML only — the specs now prove that half. Wave 21's `042` is in the same state. Not this wave's to
+  change: the loading model is the shell's, and every route depends on it.
 
 ### ★ The untouched-suite ledger — wave 22
 

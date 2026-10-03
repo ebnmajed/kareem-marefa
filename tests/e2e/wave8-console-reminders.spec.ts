@@ -152,7 +152,7 @@ test("REQ-ADM-016: a changed schedule saves in minutes, says so, and the page re
   await main.getByRole("combobox", { name: "دعوة التقييم — التوقيت — الوحدة" }).selectOption("minutes");
   await main.getByRole("button", { name: /^احفظ/ }).click();
 
-  await expect(page.getByRole("status").filter({ hasText: /^حُفظ$/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /إشعار/ }).getByText("حُفظ", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/ar\/app\/admin\/reminders$/);
   await expect(main).toContainText("140 دقيقة");
   await expect(main).toContainText("بعد 30 دقيقة من الانتهاء");
