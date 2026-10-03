@@ -422,3 +422,11 @@ export async function retireTemplate(locale: string, templateId: string, retired
     .maybeSingle();
   return data ? { status: "ok", templateId: data.id as string } : { status: "not_authorized" };
 }
+
+/** wave 23 (SCR-055), add-only — the org's name for a card's preview. The boards draw a certificate with the org's own
+ *  name and every other bound field as `{label}`; the name is the one field the library already knows. */
+export async function getOrgPreviewName(locale: string): Promise<string | null> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data } = await supabase.from("orgs").select("name").eq("id", session.orgId).maybeSingle();
+  return (data?.name as string | undefined) ?? null;
+}

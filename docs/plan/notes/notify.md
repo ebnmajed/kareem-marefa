@@ -7,6 +7,482 @@ call. Append as I go.
 
 ---
 
+## ★★ Wave 23 — PR C, `058` البريد: the gallery and the block builder — THE PLAN (sync 1)
+
+**Planning only.** Written 2026-10-03 against `52bd5cc0`, read in the main checkout. Builds in
+`../kareem-marefa-wave23c` (`wave-23c/the-email-builder`) once it is cut from B's head after
+`editor-rail` and `floating-toolbar` land. **Nothing is deleted before «the plans are approved».**
+Cites `REQ-UIX-112`, `REQ-NTF-007` … `015`, `STORY-UIX-102`, `STORY-NTF-007`, `DEC-235` §3.2, §4, `DEC-237` §5.3, §5.5,
+`DEC-081`, `DEC-093`, `DEC-160`, `DEC-161`.
+
+**The job, in one line** (`DEC-231` §0's discipline, the owner's goal for this screen): *an admin opens a message from the
+gallery, assembles it from blocks and rows on the real renderer, previews it with a real session, sends a test to their own
+address, and saves it live — and the 25 messages nobody touched render byte for byte as before.* The e2e spec walks exactly
+that (§10).
+
+### C0 · The baseline, measured before any edit
+
+| | |
+|---|---|
+| `tests/unit/mail-pinned/` | **120 files** (`git ls-files`), 30 cases × 4 parts (`SAMPLE_CASES` 29 + `ORG_TEXT`) |
+| `npx vitest run --project unit tests/unit/mail-pinned.test.ts` | **125 / 125 passed**, 2.26 s, at `52bd5cc0` |
+| sha-256 of the 120 files concatenated in `git ls-files` order | `b058b6d68a51be5d12372784e778d605f11d20616654cc4626de162d384ff985` |
+| last commit touching `tests/unit/mail-pinned` or `packages/mail-runtime` | `1652fe91` |
+
+**After every commit in PR C**, in the C tree: (1) the same vitest line, 125 / 125; (2) `git diff --stat <base> -- tests/unit/mail-pinned`
+**empty**; (3) the sha-256 above unchanged. Written in each commit's body. A moved file means the change is not additive and the
+commit is wrong — **I never run `MAIL_PIN_WRITE=1`** and never touch the directory.
+
+### C1 · ★★ The document change — rows, layouts and styles, with every flat document compiling to the same bytes
+
+**Measured first, because it decides the shape.** The database's binding check (`REQ-NTF-012`) is
+`public.bindings_in_blocks()` (`0133:140-171`): it walks **only the top-level `blocks` array** and reads `text`, `label`,
+`alt`, `items[].label`, `items[].value` and `urlBinding`. A document that **nested** blocks inside rows
+(`{type:"row", columns:[[…]]}`) would put every block in a column **out of the trigger's sight** — a binding in a 1/2 row
+would save unrefused, and fixing it would be a function change, i.e. a migration. **So blocks do not nest.**
+
+**The shape — an optional overlay on the flat list; `schemaVersion` stays `1`:**
+
+```ts
+export interface EmailBlockDocument {
+  schemaVersion: number;      // stays 1 — nothing to migrate
+  blocks: EmailBlock[];       // EVERY block, flat, in reading order (row by row, column start → end)
+  rows?: EmailRow[];          // NEW, optional — absent means «each block is its own one-column row»
+  styles?: EmailStyles;       // NEW, optional — absent means the compiler's constants, exactly as today
+}
+export type RowLayout = "1" | "1/1" | "1/2" | "1/1/1";        // column weights: 1 · 1+1 · 1+2 · 1+1+1, start first
+export interface EmailRow { id: string; layout: RowLayout; columns: BlockId[][] }  // a "1" row holds exactly one block
+```
+
+Why this shape holds every promise at once:
+
+1. **Byte identity.** `compileBlocks()` takes **today's loop verbatim** when `rows` is absent. When `rows` is present, a
+   `"1"` row compiles through the same `compileOne()` into the same top-level `<tr>`, so even a mixed document's
+   single-column rows are byte-identical to what they would be flat. `styles` absent → every constant in `compile.ts`
+   and `render.ts`'s `shell()` stays the literal it is (the shell gains an optional parameter whose default reproduces
+   today's strings).
+2. **The editor never writes an overlay it does not need.** Its serialiser **omits `rows` when every row is a one-block
+   `"1"` row** and omits `styles` when it is empty. So a platform design or a wave-10 document opened and saved without a
+   multi-column row is stored **as the same JSON it was** — `REQ-NTF-015`'s «a document saved before the change opens and
+   compiles unchanged», by construction.
+3. **The trigger sees every block** because every block is still in `blocks`. `rows` and `styles` carry **no author
+   text** — ids, enum layouts and token names only — and the compiler never interpolates anything from them.
+4. **`0134`'s envelope check is untouched** (`schemaVersion`, `blocks` array, ≤ 200,000 chars).
+5. **`main`'s OLD worker** (the merge → Railway window, `blocks.ts`'s own tolerance comment) ignores `rows`/`styles` and
+   renders `blocks` flat — **the same reading order**, columns stacked — and skips the six new types as `unknown_type`.
+   It degrades; it never throws.
+6. **The text part** is the walk over `blocks` in reading order — identical with or without `rows`, and
+   `blocksToTemplateText()` (the stored `body`) likewise.
+
+**Reading it** — a new `readEmailDocument()` beside `readDocument()` (which keeps its signature for every caller):
+`rows` is normalised — an id that names no block is ignored, a block no row names is appended as its own `"1"` row
+(never lost), a row with no surviving block is dropped, a `"1"` row with several ids is split. `styles` values are enum or
+token checks (§C1.2), an unknown value falls back to the default — the same «drop, never throw» rule `isRenderable()`
+applies.
+
+**A multi-column row compiles** to one shell `<tr>` holding a **hybrid («spongy») row**: per column a
+`<div style="display:inline-block;vertical-align:top;width:100%;max-width:Npx" dir="rtl">` with a nested
+`<table role="presentation" dir="rtl">` of that column's block rows, wrapped in an Outlook ghost table
+(`<!--[if mso]><table dir="rtl"><tr><td width="N" valign="top"><![endif]-->`). Columns stack on a phone **without a media
+query** (Gmail's app strips some), side by side from 560 px. `dir="rtl"` + `align="right"` on every cell (D3a item 2); the
+start column is the right one. Column widths: 560 · 272/272 · 181/363 · 176/176/176 with 8 px gutters.
+
+#### C1.2 · Global styles (الأنماط) and per-block overrides (النمط)
+
+```ts
+export interface EmailStyles {
+  headingSize?: { h1?: 22 | 24 | 28; h2?: 17 | 19 | 21 };       // today 24 / 19
+  textColour?: PaletteToken;  linkColour?: PaletteToken;        // a brand-kit token NAME, never a hex
+  button?: { style?: "primary" | "secondary"; shape?: "rounded" | "pill" };   // today primary, 8 px
+  padding?: 16 | 24 | 32;                                       // the card's, today 24
+  ground?: "neutral" | "canvas" | "surface";                     // the outer ground, today #f5f5f5
+  mobile?: { headingSize?: …; padding?: … };                    // absent = linked (the default)
+}
+export type PaletteToken = "fgBody" | "fgHeading" | "fgMuted" | "edge" | "surface";
+// on a block: style?: { align?: "start" | "center" | "end"; padTop?: 0|8|16|24; padBottom?: 0|8|16|24;
+//                        colour?: PaletteToken; background?: PaletteToken; button?: {…} }
+```
+
+- **Colours are token names resolved through `compilePalette()`**, so every value still passes the anchored-hex
+  assertion (`render.ts:345`) and **changing the brand kit restyles the message** (`REQ-NTF-014`). No free hex reaches a
+  `style=`.
+- **Sizes are a closed scale with a floor of 17 px for headings and the body's 17 px untouched**, so `textSizeFixed`
+  stays a *satisfied* check: nothing an admin can choose is below 14 px.
+- **Mobile values** (heading size, padding) emit one `<style>@media (max-width:620px){…}</style>` with per-block classes
+  — **only when a document has a mobile value**, so the pinned `<head>` is untouched. Linked is the default, as drawn.
+- ★ **Not offered: the font.** `08` §3.1 — «web fonts do not load in most clients, so email falls back to a declared
+  stack» — and `primitives.ts`'s one `DESIGN_STACK` («two stacks would be two chances for an Arabic face to fall back
+  silently»). Disagreement **D4**.
+
+### C2 · ★ Six new block types — fields, binding, compiled HTML, text alternative, checks
+
+Every author-typed field is named `text`, `label`, `alt` or `items[].label/value`, **so the existing SQL scanner already
+reaches it — no function changes.** Each type gets an `isRenderable()` case; anything malformed is dropped and named
+(`droppedBlock`). **None emits SVG**: the two that carry images point at **PNG/JPEG routes we serve**.
+
+| Type · label | Fields | Binding | Compiled HTML (one shell row, `dir="rtl" align="right"`) | Text alternative | Checks |
+|---|---|---|---|---|---|
+| `poster` · **الملصق** | `alt` (default `{{title}}`), `style?` | implicit `session_card_image_url` (the worker injects it when the card exists — `send_notification.ts:132`) | `<img width="512">` of `/api/s/{id}/og` — **the 1200×630 card of the poster**, full width, `bgcolor` = surface (F2). No URL (draft, cancelled, no poster) → **row dropped, never a broken image** | none, as `image` emits none (the pinned rule: the text part must not depend on an image being there) | `imageNoAlt` (blocking) · new `blockEmptyForKey` (advisory) when the key offers no `session_id` |
+| `qr` · **رمز QR** | `label` (default «امسح للفتح»), `urlBinding` (default `url`), `alt`, `size: "sm"\|"md"` (120 / 160 px) | the named URL binding, after interpolation | `<img>` of **`{appOrigin}/api/mail/qr?p=<path>`** — a **PNG** QR of a path **on our own origin only**, the label under it in muted 15 px. A URL that is not sendable **or not our origin** → dropped loudly | `label: url`, exactly as a button (`REQ-NTF-013`) | new `qrNoUrl` (blocking, as `buttonNoUrl`) · `imageNoAlt` (blocking) |
+| `points` · **نقاطك** | `label` (default «رصيدك من النقاط») | `{{member.points}}` — ★ **offered by no key today** (§C2.1) | the figure in 28 px bold (`formatNumber`, Western digits) and the label beneath, on the surface card | `label: value` | `blockEmptyForKey` until the binding exists |
+| `certificate` · **شهادة** | `label` (the button's, default «اعرض الشهادة») | implicit `kind`, `title`, `serial`, `url` — offered by `MSG-certificate_issued` (`0133`) | a surface card like `session_card`'s table: the kind in Arabic (حضور · تقديم · إنجاز, a fixed map in the compiler), the session title, the serial **FSI/PDI-isolated** (Latin run in an Arabic line — `compile.ts`'s isolation), then a bulletproof button to `url`. **No image**: the certificate PDF lives in the private `exports` bucket. All lines empty → dropped | the lines joined by `\n`, then `label: url` | `blockEmptyForKey` (advisory) for a key without `serial` |
+| `logo` · **الشعار** | `width` (96 – 240), `style?` (align) | implicit `logoUrl` (`0126`) and `{{org}}` | `<img>` of `/api/brand/{orgId}/logo` with `alt="{org}"`. `org_public_logo()` answers **only PNG or JPEG for an active org**, so a WebP logo or none → **the org's NAME in 19 px bold** instead — every message correct with no image | **none in either case** — the signature line already names the org, and the pinned suite asserts the text part never depends on the logo | none blocking |
+| `social` · **اجتماعي** | `items: {label, value}[]` — `value` an `https:` URL the admin types | none (literal URLs; the scanner still reads `items`) | the labels as text links joined by « · », muted 15 px. **No icons**: an icon is an image, SVG is forbidden (invariant 11) and we host no PNG set. A non-`https:`/`mailto:` value → that link dropped loudly | `label: url` per item, one entry | new `socialUrlInvalid` (blocking, names the item) · new `socialEmpty` (advisory) |
+
+★ **`detail_list` stays**: compiled exactly as today, still editable in الكتلة when selected; it is not in the drawn
+library (D7). **`heading` and `paragraph` are the drawn «نص»**: the library adds a paragraph; النمط switches فقرة · عنوان 1 ·
+عنوان 2, which changes the block's `type` and keeps its text.
+
+#### C2.1 · Two of the six need something outside my files
+
+1. ★ **`qr` needs a public PNG route** — mail clients fetch with no session. I propose **`src/app/api/mail/qr/route.ts`**
+   (new path — **a request**, it is outside my list; `/api/admin/emails/**` would misname a public endpoint). Node runtime;
+   `encodeQr()` from `@kareem/designer-runtime` (no dependency — `qr.ts` exists for exactly this reason) and a ~60-line
+   1-bit PNG writer on `node:zlib` with a hand CRC-32 (no `sharp`, no package). **Not an open QR generator**: `p` must match
+   an allowlist of our own paths — `ROUTE_FOR`'s shapes (`/app/sessions/<uuid>`, `/app/propose/<uuid>`, the member's own
+   pages) and `/verify/<code>` — and the data encoded is `origin + p`, never caller text. `cache-control: public,
+   max-age=31536000, immutable`. The preview's CSP (`img-src 'self'`) already admits it. Unit test: the PNG decodes
+   (signature, IHDR, CRC), the matrix equals `encodeQr()`'s, a foreign path is 404.
+2. ★★ **`points` needs data no payload carries.** `notification_send_context()` (`0136`) returns no balance and
+   `notification_bindings()` (`0133`) offers no `member.points`. Two ways, **the lead's / owner's call (Q1)**:
+   **(a)** two `create or replace` functions I write under `supabase/proposed/notify/` — the send context adds
+   `member.points` from `points_balances`, the bindings function offers `member.points` to every email key — promoted
+   by the lead as **`0191`**, additive, no pinned file moves (no current document references it); `send_notification.ts`
+   merges it into `payload.member`. **(b)** نقاطك is **drawn, not built**: absent from the library. **I build (b) until
+   ruled**, because `DEC-235` §3 says no migration is expected.
+
+### C3 · The gallery and the editor — regions in the artboards' order
+
+#### `SCR-058` gallery — `/app/admin/emails` (inside wave 21's frame; `AdminEmailGallery.dc.html`)
+
+1. **The `h1` row**: «البريد» · spacer · «سجل الإرسال» (`ui/button` secondary, a link to `?view=log`) · «رسالة جديدة»
+   (`ui/button` primary).
+2. ★ *Undrawn, kept*: the **failures panel** — «تعذّر إرسال … خلال آخر سبعة أيام» with its link (`ui/panel` tone error),
+   only when there is one (`REQ-NTF-008`; `wave8-console-emails` pins it).
+3. **Category chips**: «الكل <bdi>25</bdi>» then each category that has an email message (`ui/tag-chip` links,
+   `?category=`), names from `notifications.category.<c>.name`.
+4. **The grid**: 4 columns at 1280, 2 at `md`, 1 under it (390). A card (`ui/card`, a link to `/app/admin/emails/<key>`):
+   the thumbnail (§D3) · the name + the state badge (`ui/badge`, `DEC-073` tones) · the meta line «<category> ·
+   أُرسلت <bdi>N</bdi> مرة» or «—» at 0. **N is read** — an add-only `countSentByKey()` in `notifications.ts`: rows of
+   `email_deliveries` handed to the provider (`sent`, `delivered`, `bounced`, `complained`), through `deliveries_read_admin`,
+   one head-count per key in one DAL call (no aggregate config needed; a `language sql` invoker function is the lead's
+   alternative). ★ It counts **the retained log — 180 days** (OQ-019), so «أُرسلت» means that (D10).
+5. **«سجل الإرسال»** = `?view=log`: the delivery log **kept as it is** — the filter chips, `deliveries-table.tsx`, the pager,
+   the retention line. No board draws it; its cases are evidence and do not change.
+6. **States**: a moderator → the streamed not-found (`DEC-134`, pinned); a category with no message — impossible by
+   construction (chips come from the matrix); the log's two empties as today.
+
+«رسالة جديدة» **from `08`'s fixed set**: a `ui/sheet` listing every email key by category, the ones still on the platform
+design first; choosing one opens its editor. Nothing is created that `08` does not list (D9).
+
+#### `SCR-058` editor — `/app/admin/emails/[key]` (bare, the lead's contract 1; `AdminEmails.dc.html`, `AdminEmailAdd.dc.html`)
+
+**The route.** ★ **`/app/admin/emails/[key]`**, `[key]` the `MSG-*` key verbatim (`MSG-reminder_1d`), validated against
+`notification_matrix()`'s email keys — anything else is `notFound()`. **It enters `04` before `src/` (`DEC-083`)** — the
+lead's edit at sync 1: under `admin/` in `04` §2's tree, `emails/[key]/  # SCR-058 the block builder, bare (DEC-237 §5.5)`.
+★ `?key=MSG-…` on the gallery **redirects** to it (old links and `wave8-console-emails`' URLs keep working).
+The page's own check at the data is the boundary: `getTemplateCatalogue()` is null for a non-admin → `notFound()`.
+
+**1 · The bar (52 px, the page's own)** — in the artboard's order: back (`ui/icon-button`, «رجوع», to the gallery; asks
+first when there are unsaved changes) · the message's name (`h1`, `<bdi>`) · the state: «مسودة» while there are unsaved
+changes, «محفوظ · <bdi>14:32</bdi>» from **the `updated_at` of the row the save wrote** (never the client's clock),
+«التصميم الافتراضي» for a key with no org row · divider · undo / redo (`ui/icon-button`, document-level, 50 steps, a typing
+burst is one step) · the device toggle «سطح المكتب · هاتف» (a two-option `radiogroup`, 600 / 375) · spacer ·
+«معاينة واختبار» (`ui/button` secondary, opens the sheet, §C7) · «احفظ وفعّل» (`ui/submit-button` primary, **disabled
+while a blocking check stands**). ★ *Undrawn, kept*: an overflow `ui/menu` «⋯» with «استعد التصميم الافتراضي» — deletes the
+org's row after `ConfirmDialog` names the message and says it cannot be recovered (`REQ-NTF-007`, `wave8` pins the confirm).
+
+**2 · The rail — `ui/editor-rail`**, items in the artboard's order: **إضافة** (`add`) · **الأنماط** (`styles`) ·
+**التخطيطات** (`layouts`) · **الكتلة** (`block`, only while a block is selected — the rail falls back to إضافة when the
+selection clears) · ★ **الفحوصات** (`checks`, with a count, D5).
+
+**3 · The panel (300 px), per item:**
+- **إضافة** — `panelTabs` الكتل · التخطيطات (`ui/tabs`); **`ui/block-library`** of the twelve in the drawn order: نص · صورة ·
+  زر · فاصل · مسافة · بطاقة الجلسة · الملصق · رمز QR · نقاطك · شهادة · الشعار · اجتماعي; under it the «التخطيطات» heading
+  and **`ui/block-library`** `variant="layouts"` (1 · 1/1 · 1/2 · 1/1/1), as `AdminEmailAdd` draws both.
+- **الأنماط** — §C1.2's controls: heading sizes (`ui/radio-group`), text and link colour (`ui/radio-group` of the kit's
+  tokens, each a swatch **and** its name), button style and shape, padding, ground; «اربط سطح المكتب والهاتف» (`ui/switch`,
+  on by default) — off reveals the mobile pair.
+- **التخطيطات** — the layouts library alone (D6).
+- **الكتلة** — heading = the block's type («زر») · «إغلاق» · `panelTabs` **المحتوى · النمط**. المحتوى: the type's fields
+  (`ui/field` + `input`/`textarea`/`select`) — for a button النص · الرابط (a `select` of the key's URL bindings, never typed) ·
+  المحاذاة (يمين · وسط · يسار); then **المتغيّرات** — the key's offered bindings as chips (`ui/tag-chip` buttons) in Arabic
+  ({اسم العضو} {عنوان الجلسة} {الموعد} {المكان} …), a tap inserts `{{member.name}}` at the caret; the text fields **show** the
+  Arabic token and **store** the `{{binding}}` (one map per key from `notification_bindings()` + strings). Divider,
+  «استعد الأنماط الافتراضية» (clears the block's `style`). النمط: §C1.2's per-block overrides.
+- **الفحوصات** — `checks.ts`'s list, blocking first and counted, advisory, satisfied shown; each finding naming a block
+  selects it and opens الكتلة (`DEC-NEXT-34`).
+
+**4 · The canvas — `ui/canvas-stage` hosting `ui/block-canvas`.** ★★ **The canvas IS the one renderer.** The mail is the
+preview route's HTML in a frame, and `block-canvas` draws the selection, the handle bar and the slots **over** it — the
+designer's own pattern (`DesignerCanvas` over the renderer's iframe, `DEC-017`). A React-drawn mail would be the second
+renderer `REQ-NTF-010` forbids, and an admin would edit one thing and send another.
+- The frame: the existing `<form method="post" target>` into a named iframe (`preview-pane.tsx`'s mechanism, kept), with a
+  new `editor=1` field. In editor mode the route **(a)** fills every binding with its Arabic token — so the canvas shows
+  «جلستك غدًا، {اسم العضو}» as drawn — except URL bindings, which get a real sendable URL so a button is not dropped;
+  **(b)** asks the compiler to add `data-k="<blockId>"` to each block's row (an option, **off by default**, so no sent or
+  pinned byte moves); **(c)** answers `sandbox allow-same-origin` (still no `allow-scripts`) so the editor can read row
+  geometry. Refreshed on a structural change and on a field's blur — **events, never a timer** (`DEC-146`).
+- The editor measures `[data-k]` boxes after each load and hands them to `block-canvas`. The composed footer is shown as a
+  fixed, unselectable row (`REQ-NTF-005` — it cannot move or be deleted).
+- A row: hover **or selection or focus** shows the handle bar — label · ⋮⋮ (drag) · ▲ · ▼ · ⧉ duplicate · 🗑 delete
+  (D8: ▲▼ added). Inline text: a double-click — or «حرّر النص» on `ui/floating-toolbar` — puts an editing field over the
+  row; blur commits and the frame refreshes. The floating toolbar holds the five most-touched: فقرة/عنوان · المحاذاة ·
+  اللون · «{ } متغيّر» · حرّر النص. The device toggle sets the frame to 600 or 375.
+- ★ *Undrawn*: a **subject line** above the mail («الموضوع», an inline field) — the subject is
+  `notification_templates.subject` (`DEC-161`) and no board draws where it is edited (D2).
+
+**5 · Undrawn states, all built:** nothing selected (no الكتلة) · a placement armed (the slots visible, «إلغاء» on the bar) ·
+a stored document that lost blocks (named in الفحوصات and blocking — wave 10's rule, kept) · a string row (opens as its
+`documentFromText()` paragraphs, which is what it already sends; a line says so) · saving / saved / refused at the binding /
+failed · leaving with changes (a `ConfirmDialog`, and `beforeunload`) · the logo absent (the org's name, from the renderer) ·
+the phone width.
+
+### C4 · Kept-behaviour tables — re-derived from the REQs and the DAL
+
+★ **Logic in a chrome file moves first, verbatim, in its own commit** (`DEC-237` §2): `newId()` and `emptyBlock()` leave
+`block-editor.tsx` for a kept module **`src/components/email/document.ts`**, block-editor importing them, every suite green
+across the commit. **Kept, not rebuilt** (logic, their suites untouched): `checks.ts` (add-only cases),
+`actions.ts` (add-only), `delivery-reason.ts`, `deliveries-table.tsx` (no board draws the log), `preview/route.ts` and
+`simulate.ts` (add-only `editor` mode).
+
+**`admin/emails/page.tsx`** (241) → the gallery page
+
+| Behaviour | `REQ-*` | Where it lives after |
+|---|---|---|
+| admin only: DAL null → streamed not-found; a moderator sees no `h1` | `REQ-ADM-020`, `DEC-134` | the gallery page, `getTemplateCatalogue()` |
+| a failure in 7 days said at the top, with its link | `REQ-NTF-008` | the gallery's failures panel |
+| the delivery log at `?view=log`, failed/all chips, keyset pager, retention 180 days, two empties | `REQ-NTF-008`, OQ-019 | gallery `?view=log`, `deliveries-table.tsx` unchanged |
+| every email message listed, by its admin-facing name (`names.*` then `message.*`) | `REQ-NTF-007`, `REQ-ADM-014` | the cards |
+| `?key=` opens the editor | — | a redirect to `/app/admin/emails/[key]` |
+| a string row opens editable; a design row opens the builder | `REQ-NTF-007`, `DEC-081` | the builder opens both (string → its paragraphs) |
+| `<bdi>` on every count and name; Western digits | `10` §2, `DEC-124` | gallery + builder |
+| the matrix beside each message (channels; «تصل دائمًا» / «يمكن للعضو إيقافها») | wave 8 sync-1 Q4 | the card's meta line (D11) |
+
+**`template-editor.tsx`** (165, the string editor) → **retired into the builder** (Q2)
+
+| Behaviour | `REQ-*` | After |
+|---|---|---|
+| what was typed survives a refusal | `DEC-149` §1 | the builder holds the document in state; a refusal never resets it |
+| the trigger's refusal said at the field it names | `REQ-NTF-007`, `REQ-NTF-012` | the binding refusal lands on the block that carries it (`unknownBinding`, kept) |
+| restore default → confirm naming the message, «cannot be recovered» | `REQ-NTF-007` | the bar's «⋯» menu, the same `ConfirmDialog` |
+| «حوّله إلى تصميم» (convert) — sends the same mail | `DEC-081` | implicit: a string row opens as `documentFromText()`; saving stores it with `sourceFamily: null` (`admin-emails.test.ts`' provenance cases kept) |
+| «ابدأ من تصميم جاهز» (adopt) | `REQ-NTF-014` | implicit: an untouched key opens its `platformDesign()`; saving stores it with `sourceFamily = DESIGN_FOR[key]` |
+| the admin's declared `required_fields` on a string template | `REQ-NTF-007` | ★ the declaration goes; the **database's** rule 3 stays (`REQ-NTF-012` acceptance 2) and the per-key binding check (stronger) governs a design — **Q2** |
+| the framed-note: a string row is sent in the design's frame | `DEC-081` | the string-row line in the builder |
+
+**`templates-table.tsx`** (89) → the cards: name · category · channels and optional/always (D11) · org row or default
+(the state badge, D1) · the row links by key — all kept; `MSG-*` is never shown.
+
+**`block-editor.tsx`** (313) → the builder
+
+| Behaviour | `REQ-*` | After |
+|---|---|---|
+| the document is the state; the preview is a function of it | `REQ-NTF-010` | the builder's reducer; the canvas frame |
+| a stored block the reader dropped is named and blocking until the admin changes anything | `REQ-NTF-009` | الفحوصات, same rule (`initialDropped`) |
+| save blocked while any check blocks | `REQ-NTF-009` | «احفظ وفعّل» disabled |
+| reorder with no drag, ▲▼ named by the row they move, announced | `REQ-NTF-009`, `DEC-093` | the handle bar's ▲▼ + the live region (`reorderable-list`'s pattern) |
+| add any type, the new block selected | `REQ-NTF-009` | the library → slot, selected on placement |
+| bindings listed, never typed; the button's URL a binding name | `REQ-NTF-012` | المتغيّرات chips; الرابط a `select` |
+| image `alt` mandatory | `REQ-NTF-009` | `imageNoAlt` |
+| the composed footer shown as a fixed last row | `REQ-NTF-005` | the canvas's fixed row |
+| test send: own address only, rate limit said, disabled while blocking | `REQ-NTF-011` | «معاينة واختبار» (§C7) — ★ and now also **disabled while there are unsaved changes** (a defect found: the job renders the **saved** row, so a test of an unsaved draft mailed a different message) |
+| subject edited, ≤ 200, required | `DEC-161` | the subject line (D2) |
+| `body` written from the blocks, never by the admin | `REQ-NTF-013` | `saveEmailDesign()` unchanged |
+
+**`preview-pane.tsx`** (129) → the canvas frame + the sheet: form POST into a named sandboxed iframe, never `srcdoc` /
+`blob:` · no timer · phone 375 / desktop 640 / text / dark, the dark one named a simulation · a refresh control as the
+keyboard path · `loading="eager"` — **all kept** (`REQ-NTF-010`, `DEC-161`, `DEC-146`).
+
+**`checks-panel.tsx`** (118) → الفحوصات: blocking first, counted in the heading, six ICU forms · advisory · satisfied
+shown (`footerPresent`, `textSizeFixed`) · «حدّد الكتلة» selects — **all kept**, the panel now opening الكتلة.
+
+**`deliveries-table.tsx`** (64) — **kept, not deleted**: the status words and tones, the reason in Arabic and the provider's
+own text beneath in `<bdi dir="ltr">`, the recipient in `<bdi>` (`REQ-NTF-008`). If the lead wants it rebuilt anyway, the
+row stands as its table.
+
+**Audit rows this screen writes** (the wave-22 habit, kept): save / restore → `notification_templates` insert/update/delete
+— **the same writes as today**, no new mutation; the test send → `email.test_sent` through `send_test_email()` (`0139`),
+unchanged. Nothing new to audit.
+
+### C5 · ★★ `DEC-093` — every drag, and the path that needs none
+
+**One placement model carries all three**: a thing is **armed** — a library block, a library layout, or an existing
+row/block via «انقل» — and the canvas shows **«أضف هنا»** slots between every pair of rows, and inside each column of a
+multi-column row when a block is armed; **one tap on a slot places it**. Tapping the armed item again, «إلغاء» on the
+bar, or Escape disarms. The drag is the enhancement on the same slots, which then read «أفلت هنا» (as drawn).
+
+| Drag the board draws | The single-pointer path (no drag) |
+|---|---|
+| a block from the library into the email («سحب إلى المسودة») | tap the block (it shows pressed) → tap a «أضف هنا» slot |
+| a layout from the library | tap the layout → tap a slot → an empty row; tap a block, then a column's slot |
+| the row handle bar's ⋮⋮ (reorder) | ▲ / ▼ in the handle bar, one step, announced; «انقل» → a slot, for a long move |
+| a block between columns | «انقل» (handle bar or الكتلة) → a column's slot |
+
+★ **The spec** — `tests/e2e/wave23-notify-builder-taps.spec.ts`, desktop project, **`page.click()` and `fill()` only**:
+add a QR block by tap → slot; add a 1/2 layout and place a paragraph and a button in its two columns; ▲ a row; «انقل» a block
+to another column; duplicate; delete; save; read the stored document back from the database and assert the order, the
+row and the columns. ★ A unit test (`tests/unit/notify-builder-taps-spec.test.ts`) reads that spec's source and fails on
+`dragTo`, `mouse.`, `keyboard.` or `.press(` — so the proof cannot quietly become a drag.
+
+### C6 · `ui/block-canvas` and `ui/block-library` — props, and what I need from the lead and `designer`
+
+```ts
+// ui/block-library — the grid. Tap arms; the drag is optional.
+export interface BlockLibraryItem { key: string; label: string; glyph?: React.ReactNode; weights?: number[] /* layouts: [1,2] */ }
+export interface BlockLibraryProps {
+  label: string;                         // the group's accessible name
+  items: BlockLibraryItem[];
+  variant?: "blocks" | "layouts";        // blocks: 3 columns, glyph + label · layouts: 2 columns, the column schematic from `weights`
+  armed: string | null;                  // drawn pressed (aria-pressed)
+  onArm: (key: string | null) => void;   // a tap on the armed item disarms
+  onDragStart?: (key: string, event: React.DragEvent) => void;   // the enhancement; absent = not draggable
+  className?: string;
+}
+
+// ui/block-canvas — the email's child of canvas-stage: rows, slots, the handle bar. It computes no geometry.
+export interface BlockCanvasBox { left: number; top: number; width: number; height: number }  // px, in the frame (DEC-096: physical, document geometry)
+export interface BlockCanvasRow {
+  id: string; label: string;             // «زر», «تخطيط 1/2»
+  box: BlockCanvasBox;
+  cells?: { blocks: { id: string; label: string; box: BlockCanvasBox }[]; box: BlockCanvasBox }[];  // a multi-column row
+}
+export interface BlockCanvasProps {
+  label: string;
+  width: number;                         // 600 | 375
+  rows: BlockCanvasRow[];                // document order
+  fixed?: { label: string; box: BlockCanvasBox }[];   // the composed footer: shown, never selectable
+  selectedId: string | null;             // a row or a block
+  onSelect: (id: string | null) => void;
+  actions: { moveUp: (id: string) => void; moveDown: (id: string) => void; arm: (id: string) => void; duplicate: (id: string) => void; remove: (id: string) => void };
+  labels: { moveUp: string; moveDown: string; move: string; duplicate: string; remove: string; drag: string };  // each named with the row's label
+  slots: null | { label: string /* «أضف هنا» | «أفلت هنا» */; inCells: boolean; onPlace: (at: { index: number } | { rowId: string; column: number; index: number }) => void };
+  onRowDragStart?: (id: string, event: React.DragEvent) => void;
+  onDropAt?: (at: { index: number } | { rowId: string; column: number; index: number }, event: React.DragEvent) => void;
+  children: React.ReactNode;             // the frame
+  className?: string;
+}
+```
+
+Both render every state from props (no DAL, no message catalogue); the demos pass a static stand-in for the frame. No
+motion — the only feedback is the outline and the dashed slot (`REQ-UIX-053`). Glyphs are inline `aria-hidden` paths in
+`src/components/email/block-glyphs.tsx` (mine), passed in as `glyph` — not `ui/icons.tsx` (public-graph).
+
+**From the lead — `ui/editor-rail`:** fits as published. One confirm: an item I append (الفحوصات) uses the published
+`checks` glyph and `count`. **`ui/floating-toolbar`:** fits — the anchor is the row's box from the frame, relative to
+`block-canvas`'s positioned layer.
+**From `designer` — `ui/canvas-stage` (contract 3), requested in its plan:** (1) the **toggles optional** (the email
+draws no grid / auto-align / safe-area); (2) **zoom optional** (the email's bar has none); (3) **vertical scroll** of a
+child taller than the viewport, never clipping it; (4) a positioned slot so `block-canvas` can lay its overlay over the
+frame; (5) a `label` for the region. Nothing of a document is drawn by the stage.
+
+### C7 · «معاينة واختبار» — a real session, the one renderer, a test to the admin only
+
+A `ui/sheet` from the bar: the four modes (phone · desktop · text · dark, the dark one named a simulation — `REQ-NTF-010`),
+the frame, and «أرسل اختبارًا إلى <bdi>{my address}</bdi>».
+- **A real session's data**: `preview_card_session()` (`0141`) already picks one real session of the org with a rendered
+  card; the preview now also fills `title`, `startsAt` (in the org's zone) and `venue` from **`session_public_card()`**
+  (`0080`, a definer function both the app and the worker may call), over the sample for everything else. The sheet names
+  the session («بجلسة <bdi>…</bdi>»); with none, it says it is sample data. **`send_test_email.ts` reads the same two
+  functions**, so the test and the preview show the same session. ★ **No session picker**: `send_test_email()` takes no
+  session, and giving it one is a signature change — a migration (Q3).
+- **Through the one renderer** — `compileEmailPreview()` → `renderEmail()`; the worker → `renderEmail()`. No second path.
+- **Own address only** — `send_test_email(p_key, p_locale)` reads the address from the caller's member row; nothing here
+  takes one. Rate limit and «not permitted» said as today. ★ **Disabled while the document has unsaved changes** (the job
+  renders the saved row) — «احفظ أولًا» beside it.
+
+### C8 · Disagreements with the artboards — the board, the line, no side picked (my default in force until ruled)
+
+| # | Board · what it draws | Why it cannot be built as drawn | Default I build |
+|---|---|---|---|
+| D1 | Gallery card: **«مفعّلة / متوقفة»** | nothing stores a message as on or off for an org; every `08` message sends (`0026`); a column is a migration | the badge says **«تصميم المؤسسة» / «التصميم الافتراضي»** (whether a row exists) |
+| D2 | Editor: no subject field anywhere | the subject is the row's (`DEC-161`) and must stay editable | a «الموضوع» line above the mail |
+| D3 | Gallery: «a rendered thumbnail» (the board draws bars and a coloured band) | 25 rendered iframes per load; a real render needs the brand kit and sample per card | an **outline** drawn from the document's real block sequence (heading bar, card band, button pill …) on the kit's surface — `[Q4]` if the lead wants real renders |
+| D4 | الأنماط: **font** | `08` §3.1, `DESIGN_STACK` — one declared stack, web fonts stripped | not offered |
+| D5 | Email rail has **no checks item** | blocking checks gate the save and must be visible (`DEC-NEXT-34` for the designer) | **الفحوصات** appended to the rail, with a count |
+| D6 | Layouts in **three** places: the rail item, a tab in إضافة, and a section under the blocks | — | built as drawn: one component, one armed state |
+| D7 | The library has no **detail_list**; «نص» stands for heading + paragraph | `detail_list` stays (`DEC-235` §3.2) | detail_list editable when selected, not addable; نص = paragraph, النمط switches level |
+| D8 | Handle bar: label · ⋮⋮ · ⧉ · 🗑 | `DEC-093` needs a non-drag move | ▲ ▼ added to the bar |
+| D9 | «رسالة جديدة» | the set is `08`'s and every key already has a card | a sheet over the same keys, the untouched first |
+| D10 | «أُرسلت 218 مرة» | the log keeps 180 days (OQ-019) | the count over the retained log |
+| D11 | The card drops the matrix facts | `wave8-console-emails` pins «تصل دائمًا» / «يمكن للعضو إيقافها» at 390 | kept in the meta line — or the lead rules them gone and the case gets a ledger line |
+| D12 | Gallery «الكل 14»; cards «إعلان من الإدارة», «انضممت لقائمة الانتظار» | `08` §1 has **25** email keys and neither of those two | «الكل 25»; only `08`'s keys |
+| D13 | Variables {المُقدِّم} and {آخر إلغاء} on «تذكير قبل الجلسة بيوم»; the session card's presenter line | no reminder payload carries a presenter or a cancel deadline (`0133`) | not offered; the card stays title · day · time · venue |
+| D14 | Session card: a **4:5 poster beside** the lines | the public image is the 1200×630 card (`POL-storage.exports.public_card`); the pinned card is image-over-lines | as compiled today |
+| D15 | Heading in the display face, 28 px; the button **centred** | the mail's one stack; the pinned button is start-aligned | default unchanged; centre is a per-block choice |
+| D16 | The mail's header «كريم معرفة · شبه الجزيرة» and footer «شبه الجزيرة · الرياض · الإعدادات» | the header is the org's logo block (or its name); the footer is composed — «تفضيلات الإشعارات» and «{org} · signature» — and pinned | the renderer's, untouched |
+| D17 | «احفظ وفعّل» and «مسودة» imply an inactive draft | a saved row is live at once; no draft is stored | «احفظ وفعّل» saves live; «مسودة» = unsaved changes |
+| D18 | The gallery PNG's avatar draws an Arabic-Indic digit (the HTML says «ع») | `DEC-124` | the lead's frame |
+
+### C9 · The suites — evidence, and the ledger lines I expect (told to the lead, written in the same commit)
+
+**Untouched and green:** `mail-pinned*` (read-only), `mail-render`, `mail-designs`, `mail-links`, `mail-wrap`, `mail-mime`,
+`mail-instants`, `mail-day-words`, `mail-source-visible`, `mail-runtime-dist`, `mail-transport`, `notify-preview-logo`,
+`notify-webhook-route`, `deliveryReason`'s case. `mail-blocks` and `notify-email-checks` gain cases in **new files**
+(`tests/unit/mail-layout.test.ts`, `mail-blocks-new-types.test.ts`, `notify-email-checks-new.test.ts`).
+**Changed, each a ledger line:** `tests/components/admin/emails-page.test.tsx` (catalogue → gallery; the string editor's
+refusal → the binding refusal at the block; restore → the menu; log cases unchanged); `tests/e2e/wave10-notify-studio.spec.ts`
+(three panes → rail/canvas; selectors move, expectations stay); `tests/e2e/wave8-console-emails.spec.ts` — the two string
+editor cases if Q2 retires it (the URL redirect keeps the rest); `tests/unit/notify-string-editor-strings.test.ts` and
+`admin-emails.test.ts`' `saveEmailTemplate` cases (same Q2). ★ **Not mine and it will break**: the lead's
+**`tests/e2e/wave10-demo-email-studio.spec.ts`** (steps 1 – 4 drive the string editor and the three panes) — a request to
+the lead.
+
+**New:** `mail-layout.test.ts` — ★ the 30 pinned cases with a **canonical** `rows` overlay and `styles: {}` render
+**identical** to the pinned files; the editor's serialiser round-trips every platform design to the same JSON; an unknown
+row id, a block no row names, a non-token colour — each dropped or defaulted, never thrown. `tests/rls/notify-template-layout.test.ts`
+— the trigger refuses an unknown binding in a block **that sits in a column** (the flat-list design proven at the database).
+`tests/unit/notify-qr-route.test.ts` (if granted). Component tests for the builder and `tests/components/ui/{block-canvas,block-library}{,-scope}.test.tsx`
+with demos. E2E: `wave23-notify-gallery.spec.ts` (1280 and 390 captures), `wave23-notify-builder-taps.spec.ts` (§C5),
+`wave23-notify-preview-test.spec.ts` (the walk: open → add → preview with the real session → save → test send to own
+address → received in Mailpit).
+
+### C10 · Order of work in the C tree
+
+1. Move `newId`/`emptyBlock` → `components/email/document.ts` (suites green).
+2. `mail-runtime`: the overlay reader, the layout compiler, styles, six types, `blocksToTemplateText` cases, the editor-mode
+   option; `mail-layout` + new-type tests — pinned 125 / 125, diff empty.
+3. `checks.ts` cases + strings.
+4. The QR route (if granted) and its test.
+5. `ui/block-library`, `ui/block-canvas` with tests, `-scope` tests, demos — the lead lands the types and registry (67 → 69).
+6. ★ **Delete commit**: `page.tsx`, `template-editor.tsx` (per Q2), `templates-table.tsx`, `block-editor.tsx`,
+   `preview-pane.tsx`, `checks-panel.tsx`.
+7. ★ **Create commit**: the gallery, `[key]/page.tsx`, the builder in `src/components/email/**`, the strings in
+   `notifications.json` (ar first, then en), the changed suites with their ledger lines. **6 and 7 are never pushed apart.**
+8. The three e2e specs; `npm run ui-lint`; captures named `wave23-notify-058-{gallery,editor-add,editor-block,preview}-{1280,390}`.
+
+### C11 · Questions for the lead
+
+- **Q1** — نقاطك: `0191` with my two proposed functions, or drawn-not-built? (Default: not built.)
+- **Q2** — Retire the string editor into the builder (a string row opens as the paragraphs it already sends; the
+  admin-declared `required_fields` UI goes, the database rule stays)? Two `wave8` cases and two unit files take ledger lines.
+  (Default: retire — the artboard draws one editor.)
+- **Q3** — A session picker in «معاينة واختبار» needs `send_test_email()` to take a session (a migration). (Default: none;
+  the preview and the test share `preview_card_session()`'s pick, named.)
+- **Q4** — The gallery thumbnail: an outline from the real block sequence, or real renders? (Default: outline.)
+- **Q5** — `src/app/api/mail/qr/route.ts` added to my list for رمز QR? Without it the QR block is drawn, not built.
+- **Q6** — The `04` entry for `/app/admin/emails/[key]` at sync 1 (the lead's edit).
+
+### C12 · The lead's interim sync-1 rulings (2026-10-03) — still planning-only
+
+- **Q1** — نقاطك **drawn, not built** this wave; a carry for the owner. No send-context change. It is absent from the
+  library (eleven items), and its compiler case is not written.
+- **Q2** — **the string editor is retired** into the builder; every moved assertion is a ledger line I list (§C9). The
+  lead rewrites `wave10-demo-email-studio`'s steps 1 – 4 himself.
+- **Q3** — no session picker; `preview_card_session()`'s pick, named on screen.
+- **Q4** — the outline thumbnail, a recorded deviation from «rendered thumbnail».
+- **Q5** — **granted**: `src/app/api/mail/qr/route.ts` and its test, allowlisted paths only, `origin + p` encoded, never
+  caller text, no dependency. ★ **Checked, read-only:** `src/proxy.ts:189`'s matcher is
+  `/((?!_next|_vercel|api/|.*\\..*).*)` — **`api/` is excluded**, so the proxy (its auth check and its CSP header) never
+  runs on `/api/mail/qr`; `next.config.ts` sets no headers. The route is reachable without a session as it stands, like
+  `/api/brand/{orgId}/logo` and `/api/s/{id}/og`. **No proxy change is needed.** The route sets its own headers
+  (`content-type: image/png`, `x-content-type-options: nosniff`, `cache-control: public, max-age=31536000, immutable`).
+- **Q6** — the lead adds the route to `04` and to the studio frame's bare list at approval.
+- **D1 – D18** — defaults accepted; D5 (الفحوصات with a count) confirmed. The test-send fix (disabled while unsaved) approved.
+- `canvas-stage`'s four requests go to `designer` through the lead at approval.
+
+---
+
 ## 0. THE CONTRACT — `public.notify()` — read this before writing a call site
 
 `scoring` and `content`: this is the only function you call to send anything. Do not insert into

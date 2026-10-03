@@ -5,212 +5,170 @@ import {
   estimateNextSerial,
   getCertificateDesign,
   getOrgTimeZone,
+  getSessionCertificateFaces,
   getSessionCertificatesWithRender,
   listEligibleRecipients,
+  type CertificateDesignData,
   type SessionCertificateKind,
 } from "@/lib/dal/certificates";
 import { listEditorFaces } from "@/lib/dal/fonts";
-import { CertificateDesign } from "@/components/certificates/design-panel";
-import { EligibleList } from "@/components/certificates/eligible-list";
-import { CertificateIssuance } from "@/components/certificates/issuance";
-import { CertificateModeControl } from "@/components/certificates/mode-control";
+import { EditorSurface } from "@/components/admin/editor-surface";
 import { formatNumber } from "@/components/sessions/numerals";
-import { Badge } from "@/components/ui/badge";
-import { SectionHeader } from "@/components/ui/section-header";
+import { Link } from "@/components/ui/link";
 import { Panel } from "@/components/ui/panel";
+import { EligibleTable } from "./eligible-table";
+import { Issuance } from "./issuance";
+import { CertificateModeControl } from "./mode-control";
+import { RevokeForm } from "./revoke-form";
+import { TemplateControl } from "./template-control";
 
-// SCR-045 · `/app/admin/sessions/[id]/certificates` — REQ-CRT-001,
-// REQ-CRT-004, REQ-CRT-011, REQ-DSG-031, D50, DEC-128, DEC-148.
+// SCR-045 الشهادات · `/app/admin/sessions/[id]/certificates` — rebuilt for wave 23 from `AdminCertificates.dc.html`
+// (DEC-208: deleted first; the kept-behaviour table is `docs/plan/notes/console.md` §4.2). REQ-UIX-109, REQ-CRT-001,
+// REQ-CRT-004, REQ-CRT-011, REQ-CRT-015, REQ-DSG-031, DEC-177, DEC-178, DEC-238.
 //
-// ★ THREE SECTIONS FOR THE THREE MEANINGS OF «شهادة» (REQ-DSG-031): the
-// DESIGN (which composition, which colours — chosen before completion), WHO
-// receives one (exactly the fan-out's two groups, and the mode that decides
-// whether it happens at all), and the ISSUANCE (held, issued, revoked, with
-// each file's render). ★ Since wave 13 the mode is CHANGED here, in «من يستحق»,
-// and only here (DEC-178 contract 2); the schedule screen shows it.
+// The job: before completion an admin sets the MODE and, per kind, the TEMPLATE here and nowhere else (the owner's C6
+// ruling — DEC-178 stands); after completion they issue held certificates one at a time or in bulk, revoke one with a
+// mandatory reason, and hand out a PDF only through the one audited route.
 //
-// ★ THE MODE IS THE FIRST THING UNDER THE TITLE, and not decoration. In
-// `automatic` there is nothing to release and the held table never appears;
-// in `off` nothing will ever be issued. An empty screen that is correct and
-// one that looks broken differ only by that sentence.
+// The hub's header and tabs are above this page (wave 21); it renders nothing of them. In the board's order: the line
+// «الوضع · … · القالب: …», then «محجوزة» and «صادرة». The board draws a completed session; before completion is built in
+// the sober register — REQ-DSG-031's three meanings kept apart: the template per kind, the mode with its preflight, and
+// who receives one. After completion the mode is a sentence (refused by the function); the template may still change
+// while that kind has held certificates and none issued (DEC-238 §2), behind «غيّر» on the line, in a sheet.
 //
-// Staff reach it; the certificates themselves are an admin's. A moderator
-// reads the design and the list (`design_templates`, `check_ins`) and no
-// certificate at all — `certs_read_*` are admin-only (03 §5.8) — so the
-// issuance section says so rather than showing three empty tables that
-// would read as «none were issued».
-//
-// ★ THE ORDER FOLLOWS THE JOB. Before completion the job is the design, so it
-// comes first; once any certificate exists (or the session has completed) the
-// job is releasing and revoking, so «الإصدار» comes first and each kind's
-// design folds to one line — what it was issued with — behind «غيّر التصميم».
-// An admin arriving to release three held certificates used to scroll four
-// phone screens of template radios to reach them (the lead's capture review).
-//
-// ★ THE SERIAL LINE IS AN ESTIMATE, never a reservation (DEC-148, DEC-010):
-// «الرقم التالي المتوقع … والعدد», shown only before completion, when it
-// helps an admin who prints a register; the number is allocated at issue.
+// A moderator reads the line and «من يستحق» and no certificate (`certs_read_*` are admin-only, 03 §5.8). A member, or
+// a session this org cannot see, gets the streamed not-found (DEC-134).
+
+const ISSUED_SHOWN = 20;
 
 export default async function SessionCertificatesPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams?: Promise<{ download?: string | string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale, id } = await params;
-  // A download refused or failed by the audited route comes back here (DEC-178).
-  const downloadFailed = ((await (searchParams ?? Promise.resolve({}))) as { download?: string | string[] }).download === "failed";
   setRequestLocale(locale);
+  const sp = await searchParams;
 
-  const [t, tc, data, design, eligible, timeZone, faces, estimate, headerList] = await Promise.all([
+  const [t, tc, tk, data, design, eligible, timeZone, faces, estimate, certFaces, headerList] = await Promise.all([
     getTranslations("certificates.session"),
     getTranslations("certificates"),
+    getTranslations("certificates.kind"),
     getSessionCertificatesWithRender(locale, id),
     getCertificateDesign(locale, id),
     listEligibleRecipients(locale, id),
     getOrgTimeZone(locale),
     listEditorFaces(locale),
     estimateNextSerial(locale),
+    getSessionCertificateFaces(locale, id),
     headers(),
   ]);
-  // `getCertificateDesign` is null for a plain member and for a session this
-  // org cannot see: a 404, not a message (every admin screen's pattern).
   if (!data || !design) notFound();
 
-  // Absolute, so a `srcdoc` frame resolves the font URLs the same way in
-  // every browser rather than depending on how it inherits a base URL.
   const host = headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "localhost:3000";
   const proto = headerList.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const origin = `${proto}://${host}`;
 
+  const path = `/app/admin/sessions/${id}/certificates`;
   const isAdmin = design.canEdit;
   const completed = data.state === "completed" || data.state === "archived";
   const cancelled = data.state === "cancelled";
+  const closed = completed || cancelled;
+  const any = data.held.length + data.issued.length + data.revoked.length > 0;
+  const bdi = (c: React.ReactNode) => <bdi>{c}</bdi>;
 
-  // The preflight's name: the longest on the list, per kind — the one that
-  // breaks is never the sample's.
+  // The preflight's name: the longest on the list, per kind — the one that breaks is never the sample's.
   const longestName: Partial<Record<SessionCertificateKind, string>> = {};
   for (const r of eligible) {
     const current = longestName[r.kind];
     if (r.name && (!current || r.name.length > current.length)) longestName[r.kind] = r.name;
   }
+  const serial = estimate ? `${estimate.prefix}-${estimate.year}-${String(estimate.next).padStart(6, "0")}` : null;
 
-  // Any certificate at all, or a completed session: the job is issuance now.
-  const afterIssue = completed || data.held.length + data.issued.length + data.revoked.length > 0;
-  const showEstimate = isAdmin && estimate !== null && !completed && data.mode !== "off" && eligible.length > 0;
-  const serial = estimate ? `${estimate.prefix}-${estimate.year}-${String(estimate.next).padStart(6, "0")}` : "";
+  // The template line: what each kind was issued with, else what issuance would pick (DEC-238 §2.3).
+  // ★ The tie guard (the owner, DEC-238): a kind with no template chosen and no default set names NOTHING — issuance would
+  // take a template by version with no tiebreak — and says «لا قالب افتراضي», one move from SCR-055's set-default.
+  const templateName = (kind: CertificateDesignData["kinds"][number]) =>
+    kind.issuedWith?.templateName ?? (kind.noDefault ? null : (kind.options.find((o) => o.id === kind.effectiveTemplateId)?.name ?? null));
+  type Line = { kind: CertificateDesignData["kinds"][number]; name: string | null };
+  const named: Line[] = design.kinds
+    .map((k) => ({ kind: k, name: templateName(k) }))
+    .filter((l) => l.name !== null || (l.kind.noDefault && !l.kind.issuedWith));
+  const sameTemplate = named.length > 0 && named.every((l) => l.name === named[0].name);
+  const noDefaultLink = (
+    <Link href="/app/admin/templates/certificates" className="text-fg-heading underline underline-offset-4">
+      {t("noDefault")}
+    </Link>
+  );
+  // After completion the template changes only while that kind has held certificates and none issued (DEC-238 §2).
+  const changeable = (k: CertificateDesignData["kinds"][number]) => isAdmin && !cancelled && (!completed || (k.heldCount > 0 && !k.locked));
+  const editingKind = completed && typeof sp.design === "string" ? (design.kinds.find((k) => k.kind === sp.design && changeable(k)) ?? null) : null;
+  const revoking = isAdmin && typeof sp.revoke === "string" ? (data.issued.find((c) => c.id === sp.revoke) ?? null) : null;
 
-  const designSection = (
-    <section aria-labelledby="cert-design" className="flex flex-col gap-6">
-      <SectionHeader id="cert-design" title={t("sections.design")} description={t(afterIssue ? "designIntroAfter" : "designIntro")} />
-      <CertificateDesign locale={locale} sessionId={id} data={design} longestName={longestName} faces={faces} origin={origin} collapsed={afterIssue} />
-    </section>
+  const control = (k: CertificateDesignData["kinds"][number], closeHref?: string) => (
+    <TemplateControl
+      key={k.kind}
+      locale={locale}
+      sessionId={id}
+      kind={k}
+      brand={design.brand}
+      sample={design.sample}
+      longestName={longestName[k.kind] ?? null}
+      faces={faces}
+      origin={origin}
+      offerApplyHeld={completed}
+      closeHref={closeHref}
+    />
   );
-  const whoSection = (
-    <section aria-labelledby="cert-who" className="flex flex-col gap-4">
-      <SectionHeader id="cert-who" title={t("sections.who")} description={t("whoIntro")} count={eligible.length} />
-      {isAdmin ? (
-        completed || cancelled ? (
-          // The function refuses a closed session (23514): a sentence, not a failing control.
-          <p className="text-body-sm text-fg-muted">{t(cancelled ? "modeControl.closedCancelled" : "modeControl.closedCompleted")}</p>
-        ) : (
-          <CertificateModeControl
-            locale={locale}
-            sessionId={id}
-            mode={data.mode}
-            preflight={{
-              fontsLoaded: faces.length > 0,
-              designs: design.kinds.map((k) => ({ kind: k.kind, saved: k.chosen !== null })),
-              eligible: eligible.length,
-              serial: estimate ? serial : null,
-            }}
-          />
-        )
-      ) : null}
-      {showEstimate ? (
-        <Panel>
-          <p className="text-body-sm text-fg-heading">
-            {t.rich("serialEstimate", {
-              serial,
-              count: eligible.length,
-              value: formatNumber(eligible.length),
-              bdi: (c) => (
-                <bdi dir="ltr" className="break-all">
-                  {c}
-                </bdi>
-              ),
-            })}
-          </p>
-          <p className="mt-1 text-caption text-fg-muted">{t("serialEstimateHint")}</p>
-        </Panel>
-      ) : null}
-      <EligibleList rows={eligible} sessionId={id} />
-    </section>
-  );
-  const issueSection = (
-    <section aria-labelledby="cert-issue" className="flex flex-col gap-6">
-      <SectionHeader id="cert-issue" title={t("sections.issue")} />
-      {!completed && data.mode !== "off" ? <p className="text-body-sm text-fg-muted">{t("notCompleted")}</p> : null}
-      {!isAdmin ? (
-        <p className="text-body-sm text-fg-muted">{t("notAuthorized")}</p>
-      ) : data.mode === "off" && data.held.length + data.issued.length + data.revoked.length === 0 ? (
-        // Off, and never on: two empty tables would say «none yet», and the
-        // truth is «none, ever» — the sentence under the title already says so.
-        <p className="text-body-sm text-fg-muted">{t("modeExplain.off")}</p>
-      ) : (
-        <CertificateIssuance
-          locale={locale}
-          sessionId={id}
-          sessionTitle={data.sessionTitle}
-          timeZone={timeZone}
-          mode={data.mode}
-          held={data.held}
-          issued={data.issued}
-          revoked={data.revoked}
-        />
-      )}
-    </section>
-  );
-  const ordered: Array<[string, React.ReactNode]> = afterIssue
-    ? [
-        ["issue", issueSection],
-        ["who", whoSection],
-        ["design", designSection],
-      ]
-    : [
-        ["design", designSection],
-        ["who", whoSection],
-        ["issue", issueSection],
-      ];
 
   return (
-    <div className="space-y-12">
-      {/* ★ wave 21 (DEC-227 §5.2, contract 4): the hub draws the breadcrumb, the session's `h1` and its status above
-          the tabs, so this tab's title is a section heading; the session and mode lines stay under it. The lead's
-          edit, as `designer`'s custodian; nothing else in the file moved. */}
-      <div className="flex flex-col gap-3">
-        <SectionHeader as="h2" title={t("title")} />
-        {
-          <div className="flex flex-col gap-3">
-            <p className="text-body text-fg-body">{t.rich("sessionLine", { title: data.sessionTitle, bdi: (c) => <bdi>{c}</bdi> })}</p>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className="text-label text-fg-muted">{t("modeLabel")}</span>
-              <Badge size="sm" tone={data.mode === "off" ? "ended" : data.mode === "review" ? "info" : "success"} outline={data.mode === "off"}>
-                {t(`modeBadge.${data.mode}`)}
-              </Badge>
-              {isAdmin && !completed && !cancelled ? (
-                <a href="#cert-mode" className="text-body-sm text-fg-heading underline underline-offset-4">
-                  {t("modeLink")}
-                </a>
-              ) : null}
-            </div>
-            <p className="max-w-prose text-body-sm text-fg-muted">{t(`modeExplain.${data.mode}`)}</p>
-          </div>
-        }
-      </div>
+    <div className="flex flex-col gap-6">
+      {/* The board's line: «الوضع تُراجع قبل الإطلاق · القالب: ورقي A4». */}
+      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-body-sm">
+        <span className="text-fg-muted">{t("lineMode")}</span>
+        <b className="text-fg-heading">{t(`modeBadge.${data.mode}`)}</b>
+        {data.mode !== "off" && named.length ? (
+          <span className="text-fg-muted">
+            {"· "}
+            {sameTemplate && named[0].name === null
+              ? (
+                  <>
+                    {t("lineTemplatePrefix")} {noDefaultLink}
+                  </>
+                )
+              : sameTemplate
+              ? t.rich("lineTemplate", { name: named[0].name ?? "", bdi })
+              : (
+                  <>
+                    {t("lineTemplatePrefix")}{" "}
+                    {named.map((k, i) => (
+                      <span key={k.kind.kind}>
+                        {i > 0 ? " · " : null}
+                        {k.name === null ? (
+                          <>
+                            <bdi>{tk(k.kind.kind)}</bdi> — {noDefaultLink}
+                          </>
+                        ) : (
+                          t.rich("lineTemplateKind", { kind: tk(k.kind.kind), name: k.name, bdi })
+                        )}
+                      </span>
+                    ))}
+                  </>
+                )}
+          </span>
+        ) : null}
+        {completed
+          ? design.kinds.filter(changeable).map((k) => (
+              <Link key={k.kind} href={`${path}?design=${k.kind}#cert-design-editor`} className="text-body-sm text-fg-heading underline underline-offset-4">
+                {design.kinds.filter(changeable).length > 1 ? `${t("change")} · ${t(`kindTitle.${k.kind}`)}` : t("change")}
+              </Link>
+            ))
+          : null}
+      </p>
 
-      {downloadFailed ? (
+      {sp.download === "failed" ? (
         <Panel tone="error">
           <p role="alert" className="text-body-sm text-fg-heading">
             {tc("download.failed")}
@@ -218,19 +176,88 @@ export default async function SessionCertificatesPage({
         </Panel>
       ) : null}
 
-      {!isAdmin ? (
-        <Panel tone="info">
-          <p role="status" className="text-body-sm text-fg-body">
-            {t("moderatorNote")}
-          </p>
-        </Panel>
+      {editingKind ? (
+        <EditorSurface id="cert-design-editor" title={`${t("templateLabel")} · ${t(`kindTitle.${editingKind.kind}`)}`} closeHref={path} closeLabel={t("closeEditor")}>
+          {control(editingKind, path)}
+        </EditorSurface>
       ) : null}
 
-      {ordered.map(([name, section], index) => (
-        <div key={name} className={index > 0 ? "border-t border-edge pt-10" : undefined}>
-          {section}
-        </div>
-      ))}
+      {revoking ? (
+        <EditorSurface id="cert-revoke" title={t("revokeConfirm")} closeHref={path} closeLabel={t("closeEditor")}>
+          <p className="mb-4 text-body-sm text-fg-body">
+            <bdi>{revoking.recipientName}</bdi>
+            {" · "}
+            <bdi dir="ltr">{revoking.serial}</bdi>
+          </p>
+          <RevokeForm locale={locale} sessionId={id} certificateId={revoking.id} closeHref={path} />
+        </EditorSurface>
+      ) : null}
+
+      {!closed && isAdmin ? (
+        <>
+          <section aria-labelledby="cert-design" className="flex flex-col gap-4">
+            <h2 id="cert-design" className="text-label text-fg-muted">
+              {t("designHeading")}
+            </h2>
+            <div className="flex flex-col gap-6">{design.kinds.filter(changeable).map((k) => control(k))}</div>
+          </section>
+          <section aria-labelledby="cert-mode-heading" className="flex flex-col gap-4 border-t border-edge pt-6">
+            <h2 id="cert-mode-heading" className="sr-only">
+              {t("lineMode")}
+            </h2>
+            <CertificateModeControl
+              locale={locale}
+              sessionId={id}
+              mode={data.mode}
+              preflight={{
+                fontsLoaded: faces.length > 0,
+                designs: design.kinds.map((k) => ({ kind: k.kind, saved: k.chosen !== null })),
+                eligible: eligible.length,
+                serial,
+              }}
+            />
+          </section>
+        </>
+      ) : null}
+
+      {!closed || !isAdmin ? (
+        <section aria-labelledby="cert-who" className="flex flex-col gap-3">
+          <h2 id="cert-who" className="text-label text-fg-muted">
+            {t.rich("whoHeading", { value: formatNumber(eligible.length), bdi })}
+          </h2>
+          <EligibleTable rows={eligible} sessionId={id} label={t("eligibleLabel")} />
+        </section>
+      ) : null}
+
+      {isAdmin && closed ? (
+        (data.mode === "off" || cancelled) && !any ? (
+          <p className="text-body-sm text-fg-muted">{cancelled ? t("modeControl.closedCancelled") : t("offLine")}</p>
+        ) : (
+          <>
+            <Issuance
+              locale={locale}
+              sessionId={id}
+              sessionTitle={data.sessionTitle}
+              timeZone={timeZone}
+              showHeld={data.mode === "review" || data.held.length > 0}
+              held={data.held}
+              issued={data.issued}
+              revoked={data.revoked}
+              faces={certFaces ?? {}}
+              issuedLimit={sp.issued === "all" ? null : ISSUED_SHOWN}
+              path={path}
+            />
+            {eligible.some((r) => r.revokedButPresent) ? (
+              <section aria-labelledby="cert-without" className="flex flex-col gap-3">
+                <h3 id="cert-without" className="text-label text-fg-muted">
+                  {t.rich("withoutHeading", { value: formatNumber(eligible.filter((r) => r.revokedButPresent).length), bdi })}
+                </h3>
+                <EligibleTable rows={eligible} sessionId={id} label={t("eligibleLabel")} without />
+              </section>
+            ) : null}
+          </>
+        )
+      ) : null}
     </div>
   );
 }

@@ -2,6 +2,504 @@
 
 > ★ **Wave 11 (M13, `DEC-166`) — the plan is the last section of this file:** *Wave 11 plan — K1 … K3*.
 
+---
+
+## ★★ Wave 23 — PR A plan (`wave-23a/templates-and-certificates`, draft #52) — `055` both tabs and `045`
+
+> Planning only. Written at `52bd5cc0` after reading the agent file's list, `DEC-235` … `DEC-237`, `DEC-177`, `DEC-178`,
+> `REQ-CRT-004/011/014/015`, `REQ-UIX-108/109`, `REQ-DSG-031`, `M12.md`, `M11a.md` §0, and the three boards at 1280
+> beside their PNGs. **Nothing is deleted before the lead posts «the plans are approved».** Every figure below was
+> read from the tree, with its file and line.
+
+### 0 · The job, one line per screen (`DEC-231` §0's shape, this wave's goal)
+
+- **`055`** — an admin opens القوالب › الشهادات, reads **the three defaults — حضور · تقديم · إنجاز — in one strip**, and
+  changes one in **one move**: ⋯ on a card → «اجعله الافتراضي». A platform template is copied with ⋯ → «انسخ لتعدّل».
+- **`045`** — before completion an admin sets **the mode and, per kind, the template** on this tab and nowhere else;
+  after completion they **issue held certificates one at a time («أصدر») or in bulk («أصدر المحدّد» / «أصدر الكل»)**,
+  **revoke one with a mandatory reason in a sheet**, and hand out a PDF only through **the one audited route**.
+
+### 1 · ★★ A blocking request — the four `045` chrome files are not in my list
+
+`045`'s page renders **four files in `src/components/certificates/`** that are `designer`'s and were **not transferred**:
+`design-panel.tsx` (366), `eligible-list.tsx` (82), `issuance.tsx` (393), `mode-control.tsx` (120) — measured, each
+imported **only** by `admin/sessions/[id]/certificates/page.tsx` (grep over `src` and `tests`). Their two suites,
+`tests/components/certificates/{issuance-download,mode-control}.test.tsx`, **are** in my list. Two consequences:
+
+1. `DEC-208` reaches the chrome: the page's chrome **is** these files. Deleting `page.tsx` and leaving them is restyling
+   by omission.
+2. ★ `design-panel.tsx:9` imports `TemplatePreview` from `components/designer/template-preview.tsx`, which **I delete**
+   for `055`. Without the transfer, `055`'s delete commit breaks `tsc`.
+
+**Request (to the lead, and through the lead to `designer`):** transfer those four files to `console` **for the wave, to
+be deleted**. `mode-badge.tsx` (used by `posters/slots.ts`, `sessions/event-meta.tsx`), `actions.ts` (the recognition
+slot's release) and `held-achievements.tsx` stay `designer`'s and are not touched. **`045`'s new chrome is written
+co-located in its own route folder** (`admin/sessions/[id]/certificates/*.tsx`, as wave 22 wrote `venues-table.tsx`
+beside `venues/page.tsx`) — no new directory is needed for it. The one component both screens share, the preview, is
+`src/components/templates/template-preview.tsx` (in my list).
+
+### 2 · `055` القوالب — regions in the board's order (`AdminTemplates.dc.html`, `AdminTemplatesCerts.dc.html`)
+
+Inside wave 21's frame; the page renders its `h1` row and its content, nothing of the frame. Two routes stay
+(`templates/{posters,certificates}`), `/app/admin/templates` still redirects to `posters` (`DEC-178`, the redirect file is
+kept as it is — it is not chrome).
+
+| # | Region (board order) | Built with | Notes |
+|---|---|---|---|
+| 1 | `h1` «القوالب» (both tabs) · «قالب جديد» primary at its end | `ui/page-header` (`inlineActions`), `ButtonLink` | `h1` changes from «قوالب الملصقات» / «قوالب الشهادات» to the board's one title (ledger, §9). «قالب جديد» is a **link** `?new=1` |
+| 2 | Tabs الملصقات · الشهادات | `ui/tabs` link mode (`TabItem.href`) | accessible name «أنواع القوالب» kept |
+| 3 | «قوالب مؤسستك · N» then the grid | `<h2>` (`ui/section-header`), `<ul>` of `ui/card` | board order: **org first**, platform second (old file: platform first) |
+| 4 | «قوالب المنصة · N · انسخ لتعدّل» then the grid | same | retired platform rows hidden (kept) |
+| 5 | ★ certificates tab only — **the defaults strip**: الافتراضي للحضور · للتقديم · للإنجاز, each with its template's name | a `<dl aria-label="القوالب الافتراضية">` | **three**, not the board's two (`DEC-236` §1). Board puts it **last**; built where drawn unless ruled (D11) |
+
+**The card** (both tabs): media = a preview **rendered by the one renderer** (§6.6), board size — poster 4:5 in a 4-column
+grid (196 × 245 at 1280), certificate a fixed-height landscape box (140 px) with a portrait page contained in it · name
+`<h3><bdi>` · «افتراضي» `ui/badge` · «المنصة» `ui/badge` · ⋯ `ui/menu` (trigger `ui/icon-button`) · the chips row
+(`ui/tag-chip`): **posters** the format chips 16:9 · A4 · A3 · 9:16 (D2), **certificates the ONE kind** (حضور / تقديم /
+إنجاز) and the page («A4 أفقي» / «A4 عمودي»). Cards are `article` (`ui/card`), so `card()` locators keep working.
+
+**The menu.** Org card: «افتح في المصمّم» · «انسخ» · «اجعله الافتراضي» (hidden when default or retired) · «انشر إصدارًا
+جديدًا» (only with a draft — not drawn, kept, D4) · «غيّر الاسم» (kept, D4) · «أحِله للتقاعد» / «أعِده للخدمة».
+Platform card: «انسخ لتعدّل» alone. Trigger name «إجراءات أخرى» kept (wave 8's spec walks it).
+
+**Undrawn states, built in the sober register:** the «قالب جديد» sheet (`ui/sheet` through `components/admin/editor-surface`,
+`?new=1`, no-JS region): الاسم · النوع (the tab's families; certificates: حضور · تقديم · إنجاز) · الاتجاه (certificate only)
+→ «أنشئ وافتح» → creates, opens the draft, lands in `/app/admin/designer/<documentId>` (D5) · the duplicate and rename
+dialogs (`ui/dialog`, the lead's, composed) · the retire confirm, now naming the usage count («مستخدم في N جلسة», six forms)
+as the consequence · **a platform template's read-only card** (no write control at all, one menu item) · org group
+empty: one line «لا قوالب لمؤسستك بعد» and nothing else · a retired org card dimmed with «متقاعد» · a draft chip
+«مسودة» · a moderator: the cards, no ⋯ and no «قالب جديد» · under `lg`: the grid stacks to two then one column;
+«قالب جديد» and «افتح في المصمّم» are not offered (the designer has no phone form, `06` §2) — replaces the old sentence.
+
+**Not built:** a template tagged with several kinds (`DEC-236` §1) · the scheme toggle (D6) · the intro, platform intro,
+locked-regions hint, brand note and phone note panels (`DEC-NEXT-25`) · the version and locked-region lines on the card.
+
+### 3 · `045` الشهادات — regions in the board's order (`AdminCertificates.dc.html`)
+
+The hub's header and tabs above it are `sessions'` (the lead's as custodian, wave 21) and are not touched. This tab renders:
+
+| # | Region | Built with | Notes |
+|---|---|---|---|
+| 1 | The line «الوضع **تُراجع قبل الإطلاق** · القالب: ورقي A4» | text, `<bdi>` on the name | after completion, or cancelled: **sentences, nothing written**. With two kinds on different templates: «القالب: حضور — X · تقديم — Y» |
+| 2 | «محجوزة · N» with «أصدر المحدّد» (primary) / «أصدر الكل» at its end | `ui/section-header` + two `Button`s | only when the mode is `review` or a held row exists (kept) |
+| 3 | The held table — ☐ · العضو (avatar + name) · النوع · الرقم · «أصدر» | `ui/data-table` **selection and phone stack composed as they are**, `ui/avatar` (team ring) | table name «الشهادات المحجوزة» kept |
+| 4 | «صادرة · N» | `ui/section-header` | |
+| 5 | The issued table — العضو · النوع · الرقم `<bdi dir="ltr">` · الإصدار · «PDF» · «ألغِ» | `ui/data-table`; «PDF» an `<a href>` to `/api/designer/downloads/<artifactId>` styled `buttonClass("ghost","sm")`; «ألغِ» a quiet danger `Button` | table name «الشهادات الصادرة» kept; the link's name «نزّل شهادة {name}» kept (visible «PDF», the rest `sr-only`) |
+| 6 | «N أخرى · المزيد» | a `Link` to `?issued=all` | first 20 rows, then the link (D18); six ICU forms |
+
+`data-table`'s two-button action cell does not fit row 5 — one of the two is a link — so the cell is composed by hand, as
+the old `issuance.tsx` did. **`data-table` is not edited.**
+
+**Undrawn states, built:**
+- ★★ **Before completion** (the board draws only after): **التصميم** — per kind (حضور, تقديم) a template `select` over the
+  org's and the platform's published templates of that family, defaulting to the effective default (§6.4), the scheme
+  (فاتح / داكن, `DEC-148`), «احفظ», and at `lg` the preview beside it with the longest eligible name and the studio's
+  checks (`useCheckFindings` / `ChecksPanel` from `designer/checks-panel.tsx`, imported as they are) · **من يستحق** — the
+  mode as a radio group with its preflight confirm when turning it on, and the live list with its count · the issuance
+  region says nothing until completion (one line, `notCompleted`). `REQ-DSG-031`'s three meanings stay separated.
+- ★ **After completion, held certificates of a kind, none issued yet** — the template line carries «غيّر» → the same
+  control in a sheet, and «طبّق على المحجوزة» → `redesignHeldCertificates()`. **See D25 — this collides with
+  `REQ-CRT-015`'s acceptance and needs the lead's ruling.**
+- The revoke sheet (`ui/sheet`, `?revoke=<id>` with a no-JS region): the member, the serial `<bdi dir="ltr">`, «سبب
+  الإلغاء» (`ui/textarea` in `ui/field`, required, `noValidate`) → «ألغِ الشهادة».
+- The release confirm (`ui/dialog`): «إصدار N شهادة؟» + the session's title → «أصدر». Without JS, «أصدر» and «أصدر الكل»
+  are links (`?release=<id>` / `?release=all`) to the same confirm as a region; «أصدر المحدّد» needs the selection, so JS.
+- **Revoked** — shown only when non-empty: العضو · النوع · الرقم · تاريخ الإلغاء · السبب (the org's own screen; D16).
+- **Members without a live certificate** — only when non-empty, after completion: the eligible rows `revokedButPresent`
+  with «يُستبدل تلقائيًا» / «لا بديل» (`DEC-160` §6; one word each, no sentence).
+- Render state in the PDF cell: pending → «قيد التجهيز»; failed → «أعد التوليد» (`retryExport`) — `REQ-DSG-031`'s per-
+  certificate re-issue. Empty held / issued: one line each. `?download=failed` → the alert (kept).
+- A moderator: the mode and template lines and «من يستحق»; no certificate table (they read none, `03` §5.8).
+- Automatic mode, completed: no held region; issued as above. Off and never on: one line.
+
+**Not built:** achievement certificates (`054`'s) · a template written in الجدولة (`DEC-237` §4) · revoke from held.
+
+### 4 · ★★ Kept-behaviour tables — re-derived from the requirements, the DAL and the old files
+
+#### 4.1 · `055` — `templates/{posters,certificates}/page.tsx`, `designer/template-library{,-page}.tsx`, `template-preview.tsx`, `template-actions.tsx`
+
+| Behaviour (old file:line) | Where it lives after | Kept by |
+|---|---|---|
+| Staff only; a member gets the streamed not-found (`template-library-page.tsx:35`, `getTemplateLibrary` null) | new page, same call | `REQ-ADM-020`, `DEC-134` |
+| Writes only for an admin (`canManage`); a moderator reads (`templates.ts:183`) | the card and header gate on `canManage` | `REQ-ADM-013`, `REQ-ADM-020` |
+| A platform card carries **no write control**, only copy (`template-library.tsx:196`) | the platform card's one menu item | `REQ-DSG-008` |
+| Duplicate = a copy, `duplicated_from` set, v1 from the source's latest (`templates.ts:240`) | «انسخ لتعدّل» (platform) and ★ «انسخ» (org), same DAL | `REQ-DSG-008` |
+| Create blank with family + orientation, v1 published at once (`templates.ts:285`) | the «قالب جديد» sheet, then opens the draft | `REQ-DSG-008`, `DEC-148` |
+| Open in the studio creates the draft from the latest version and redirects (`actions.ts:84`) | «افتح في المصمّم», same action | `REQ-DSG-007` |
+| Publish the draft as the next version, previous version untouched (`templates.ts:349`) | ⋯ «انشر إصدارًا جديدًا» when a draft exists, the «مسودة» chip | `REQ-DSG-007`, `REQ-CRT-014` |
+| Set default: one UPDATE, `design_templates_single_default` clears the previous default **for that (org, purpose, family)** (`templates.ts:389`, `0057:52`) | ⋯ «اجعله الافتراضي»; the strip reads it | `REQ-DSG-002`, `REQ-CRT-015`, `REQ-UIX-108` |
+| Rename with a name check (`templates.ts:397`) | ⋯ «غيّر الاسم» dialog | `REQ-ADM-013` |
+| Retire, never delete; clears the default; restore (`templates.ts:406`) | ⋯ «أحِله للتقاعد» / «أعِده للخدمة» | `REQ-DSG-007` |
+| Retire confirm names the object and the consequence (`template-actions.tsx:229`) | same, + the usage count | `REQ-UIX-013` |
+| Name field error at the field, forms `noValidate` (`template-actions.tsx:57`) | same | `REQ-UIX-009` |
+| Every result a toast **from the action's result**, never an effect (`:43`) | same pattern | wave 6's trap |
+| Preview = `renderDocumentToHtml()` in a sandboxed `srcdoc` frame, faces by SHA-256 via `/api/fonts`, the org brand (`template-preview.tsx:91`) | `components/templates/template-preview.tsx`, same mechanism | `DEC-017`, `REQ-DSG-016`, `DEC-053` |
+| Preview mounted only near the viewport; inert (`aria-hidden`, no tab stop); contained, centred; `data-template-preview` + `data-rendered` true only after load **and** `fonts.ready` (`:40-120`) | same, same attribute names (wave 8's specs read them) | `DEC-149` §4 |
+| Frame laid out in the document's direction, origin at its inline start (`:111`) | same | `DEC-096` |
+| Unbound data: the template's fallback, else a marked placeholder (`:13`) | ★ changed: every **text** binding renders as `{label}` (§6.6) — the board's `{العنوان}` | `REQ-DSG-006`, `REQ-UIX-108` |
+| `<bdi>` on the template name everywhere (`template-library.tsx:142`, dialog titles) | same | `10` §bidi |
+| Usage count = this org's sessions, under RLS (`templates.ts:126`) | the retire confirm | `16` §10.3 (superseded as layout; kept as a consequence) |
+| Retired platform rows hidden from orgs (`templates.ts:174`) | same | `REQ-DSG-008` |
+| Cards capped short on a phone, media contained (`template-library.tsx:126`) | the stack under `lg` | `REQ-UIX-053`, `M12.md` |
+| Scheme links `?scheme=light|dark` on the certificate library (`template-library-page.tsx:54`) | **dropped** (D6) | — (`DEC-148`: the scheme is a session's choice, made on `045`) |
+| Version line, locked-region count, «draft» wording, intro/brand/lock/phone/moderator panels | **dropped** | `DEC-NEXT-25`; the lock is enforced by `design_documents_guard` (`0055`), not by a sentence |
+| ★ Audit rows | **none today** — see §5 | `REQ-UIX-108` «every template mutation is audited» |
+
+#### 4.2 · `045` — `admin/sessions/[id]/certificates/page.tsx` + the four chrome files of §1
+
+| Behaviour (old file:line) | Where it lives after | Kept by |
+|---|---|---|
+| A member, or a session this org cannot see → not-found (`page.tsx:86`) | same | `DEC-134` |
+| A moderator reads the design and «من يستحق», no certificate (`page.tsx:31`, `moderatorNote`) | same, no note sentence — the absence of the tables says it | `REQ-ADM-020`, `03` §5.8 |
+| Release and revoke for an admin only (`canRelease`) | same | `REQ-CRT-004`, `REQ-CRT-011` |
+| ★ The mode written **here only**, refused once completed, archived or cancelled; a closed session gets a sentence (`page.tsx:120`, `actions.ts:93`) | the before-completion «من يستحق» | `DEC-178`, `REQ-CRT-002`, `REQ-CRT-015` |
+| Turning certificates on opens the preflight: fonts, each kind's design, eligible count, the next serial **as an estimate**, Tier A (`mode-control.tsx:94`) | same confirm; the separate serial panel (`page.tsx:142`) folds into it | `REQ-DSG-031`, `DEC-148`, `DEC-010` |
+| Mode radio group's accessible names «من يستحق شهادة، ومتى», «احفظ الوضع», «ثبّت الوضع» (wave 9's spec) | kept verbatim | evidence |
+| The template per kind, the org default else the platform's; locked once a certificate of the kind reached a member (`design-panel.tsx:162`, `0099:36`) | the before-completion template control | `REQ-CRT-015`, `REQ-CRT-014` |
+| The scheme per kind, pinned at issue (`design-panel.tsx:242`) | same control | `DEC-148` |
+| «صدرت بـ» names the live certificate's design, a revoked first row skipped (`certificates.ts:363`) | the after-completion template sentence | `DEC-160` §6 |
+| Redesign held certificates of a kind (`design-panel.tsx:220`, `redesign_held_certificates`) | the «غيّر» sheet after completion — **pending D25** | `REQ-CRT-004`, `DEC-148` |
+| The preview binds the **longest eligible name per kind** and runs the studio's checks (`design-panel.tsx:178`, `:317`) | the template control's preview at `lg` | `REQ-DSG-031`, `REQ-DSG-016` |
+| «من يستحق» = exactly the fan-out's read: complete attendees + accepted presenters, one row per member (`certificates.ts:420`) | the before-completion list | `REQ-CRT-001`, `REQ-SES-017` |
+| A failed read throws, never «nobody» (`certificates.ts:445`) | same DAL | `DEC-148` |
+| An eligible member holding only revoked rows is named, replaceable vs final (`eligible-list.tsx:30`) | the «بلا شهادة» rows | `DEC-160` §6 |
+| Held / issued / revoked kept apart; a held row is released, an issued one revoked (`issuance.tsx:21`) | three regions | `REQ-CRT-004`, `REQ-CRT-011` |
+| Selection counts only ids still held after a revalidation (`issuance.tsx:73`) | same | — (correctness) |
+| Release confirm with the count and the session (`issuance.tsx:300`) | same; per row and «الكل» too | `REQ-UIX-013`, `REQ-DSG-031` |
+| Revoke: reason **mandatory**, refused at the field, typed text kept on refusal (`issuance.tsx:330`) | the sheet; the action returns the reason to refill | `REQ-CRT-011`, `DEC-149` §1 |
+| Serial `<bdi dir="ltr">` everywhere (`issuance.tsx:146`) | same | `REQ-UIX-109` |
+| PDF for an **issued** certificate whose render is ready, through `/api/designer/downloads/<id>` (`issuance.tsx:170`) — never a held or revoked one | same | `DEC-177`, `DEC-178`, `REQ-UIX-109` |
+| The link is a 36 px target (`issuance.tsx:173`) | same | SC 2.5.8 |
+| Render state and the per-certificate retry (`issuance.tsx:155`) | the PDF cell | `REQ-DSG-031` |
+| `?download=failed` → an alert (`page.tsx:66`) | same | `DEC-178` |
+| Revoked table with the reason (`issuance.tsx:263`) | the revoked region, when non-empty | `REQ-CRT-011`, `REQ-CRT-013` |
+| Toasts from the result inside the transition (`issuance.tsx:79`) | same | wave 6's trap |
+| Section order flips after issue (`page.tsx:179`) | replaced by the two states (before / after completion) | `M12.md`, the board |
+| `<bdi>` on every name and title | same | `10` §bidi |
+| ★ Audit rows | §5 — every one exists today | `REQ-CRT-004`, `-011`, `REQ-ADM-021` |
+
+### 5 · ★★ Every mutation, its DAL function as it is, and the row it writes TODAY (measured)
+
+| Screen | Mutation | DAL (unchanged) | Writes today | Action string (file:line) |
+|---|---|---|---|---|
+| 055 | create blank | `createBlankTemplate()` — two RLS inserts | ✗ **nothing** | — |
+| 055 | duplicate (platform or org) | `duplicateTemplate()` — two RLS inserts | ✗ **nothing** | — |
+| 055 | open in studio (first open creates the draft) | `openTemplateDraft()` | ✗ nothing | — (a working copy; I propose no row) |
+| 055 | publish a version | `publishTemplateVersion()` — RLS insert | ✗ **nothing** | — |
+| 055 | set default | `setDefaultTemplate()` — RLS update; the previous default cleared by `design_templates_single_default` (invoker trigger, `0057:52`) | ✗ **nothing** | — |
+| 055 | rename | `renameTemplate()` | ✗ **nothing** | — |
+| 055 | retire / restore | `retireTemplate()` | ✗ **nothing** | — |
+| 045 | mode | `setSessionCertificateMode()` (`sessions.ts:746`) → `set_session_certificate_mode()` | ✓ | `session.certificate_mode_changed` (`0154:28`) |
+| 045 | template per kind | `setCertificateDesign()` → `set_certificate_design()` | ✓ before/after template + scheme | `certificate.design_set` (`0099:49`) |
+| 045 | redesign held | `redesignHeldCertificates()` | ✓ one row per call, with the count | `certificate.redesigned` (`0099:206`) |
+| 045 | issue one / selected / all | `releaseCertificates()` → `release_certificates()` | ✓ **one row per certificate**, then `notify(… 'MSG-certificate_issued')` | `certificate.released` (`0065:186`) |
+| 045 | revoke | `revokeCertificate()` → `revoke_certificate()` | ✓ reason in the row's `reason`, cause in `after` | `certificate.revoked` (`0127`, revoke body) |
+| 045 | PDF | the route → `record_export_download()` | ✓ actor, subject `certificate`, ids | `export_artifact.downloaded` (`0152`) |
+| 045 | retry a render | `retryExport()` (`designer.ts:546`) | ✓ | `design.export_retried` (`0060:243`) |
+
+★★ **The gap — every `055` mutation writes nothing**, while `REQ-UIX-108` and `REQ-ADM-023` say every console change is
+audited. **The lead writes it in `0191`** (sync 1). ★ **§5 FINAL — the specification `0191` is written from**, on `0181`'s
+`managed_list_audit()` pattern: `security definer`, `set search_path = ''`, rows through `public.write_audit()` only,
+actor the caller (`write_audit`'s default), subject type `'design_template'`.
+
+**Scope: org rows only.** A row with `org_id is null` is a platform template (`02` §7's third exception); it writes
+nothing here — the platform console's writes belong to `platform_audit_log`, and no org can write one anyway
+(`templates_update_org` is `scope = 'org'`).
+
+**Trigger 1 — `design_templates_audit`, `after insert or update on public.design_templates`, `for each row`:**
+
+| Event (old → new) | Action | `subject_id` | `before` | `after` | Written by |
+|---|---|---|---|---|---|
+| `INSERT` | `design_template.created` | `new.id` | null | `{purpose, family, name, duplicated_from}` (null `duplicated_from` = blank) | «قالب جديد», «انسخ», «انسخ لتعدّل» |
+| `name` distinct | `design_template.renamed` | `new.id` | `{name}` | `{name}` | «غيّر الاسم» |
+| `is_default` `false → true` | `design_template.default_set` | `new.id` | `{is_default: false}` | `{is_default: true, purpose, family}` | «اجعله الافتراضي» |
+| `is_default` `true → false` | **nothing** | — | — | — | the row `design_templates_single_default` clears inside the same statement (`0057:58`), or a retire |
+| `retired_at` `null → not null` | `design_template.retired` | `new.id` | `{retired_at: null, is_default: old.is_default}` | `{retired_at}` | «أحِله للتقاعد» — `was the default` rides in `before`, so the cleared default needs no row of its own |
+| `retired_at` `not null → null` | `design_template.restored` | `new.id` | `{retired_at}` | `{retired_at: null}` | «أعِده للخدمة» |
+| `description`, `updated_at`, `created_by` only | **nothing** | | | | no screen writes them |
+
+One `UPDATE` may change several columns; each matching line writes its row (no DAL path does that today — rename,
+default and retire are three separate statements). ★ **«Set default» writes exactly one row**: the new default's
+`false → true`. The previous default's `true → false`, fired by the `before` trigger's nested `UPDATE`, writes nothing.
+The «who it replaced» is the prior `default_set` row for the same `(purpose, family)` in the log; a `before` carrying the
+replaced id would need the `before` trigger to pass it on, which I do not propose.
+
+**Trigger 2 — `design_template_versions_audit`, `after insert on public.design_template_versions`, `for each row`:**
+
+| Event | Action | `subject_id` | `before` | `after` | Written by |
+|---|---|---|---|---|---|
+| `INSERT`, `new.version > 1`, org row | `design_template.published` | `new.template_id` | null | `{version, version_id: new.id}` | «انشر إصدارًا جديدًا» (`publishTemplateVersion()`) |
+| `INSERT`, `new.version = 1` | **nothing** | | | | v1 is inserted by create and duplicate in the same action; `.created` already says it — nothing written twice |
+
+`new.org_id` is set by `design_template_versions_guard` (a `before` trigger, `0055`), so it is populated when this fires.
+No `UPDATE` or `DELETE` trigger: a published version is immutable (no update or delete grant, `0055`).
+
+**Not audited, by design:** `openTemplateDraft()`'s draft `design_documents` row (a working copy; the publish is the
+change) · a `DELETE` on `design_templates` — `templates_delete_org` exists but no DAL function deletes (retire is the
+exit); if the lead wants the door covered, `design_template.deleted` with `before {name, family}` is the line to add.
+
+**The test, mine once `0191` is promoted:** `tests/rls/templates-audit.test.ts`, every case **as the org admin member**
+(claims, `authenticated` — never the owner), counting `audit_log` rows by `action` and `subject_id` since a marker:
+create → one `.created`, no `.published` · duplicate → one `.created` whose `after.duplicated_from` is the source ·
+publish v2 → one `.published` with `version: 2` · ★ set default with an existing default → **exactly one row in total**,
+on the new default · rename → one `.renamed` · retire the default → one `.retired` with `before.is_default = true`, no
+`.default_set` · restore → one `.restored` · a moderator's update matches no row and writes no row · a platform row
+written by the seed writes nothing.
+
+### 6 · The measurements the agent file asks for
+
+1. **Release and revoke are audited today**, in their own transaction: `certificate.released` per row (`0065:186`),
+   `certificate.revoked` with the reason in `audit_log.reason` and `{serial, cause}` (`0127`); tests exist at
+   `tests/rls/designer-certificates.test.ts:280` and `:343` (`designer`'s file). ★ Revoke **sends no mail** (no
+   `notify()` in `revoke_certificate()`; `MSG-certificate_revoked` is the attendance-removal path's) — not a requirement.
+2. **`/verify/[code]` of a revoked certificate**: `verify_certificate()`'s return type has **no reason column**
+   (`0055`, the function) and `state in ('issued','revoked')`; the page renders `certificates.verify.revoked` in
+   `role="status"` and never a reason. ✓ for «never the reason». ★ **The words are «هذه الشهادة ملغاة.»**, not
+   `REQ-CRT-011`'s «شهادة ملغاة» (D26). **The PDF is kept**: `revoke_certificate()` touches no artifact; no retention
+   job deletes one (`enforce_retention.ts` has no certificate path); `record_export_download()` still serves a revoked
+   certificate to its member (`v_cert_state <> 'held'`), as `REQ-CRT-013` wants. No fix in `verify/**` is needed.
+3. **A held certificate is invisible and unmailed**: `certs_read_self_or_admin` has `state <> 'held'` (`0055`) and
+   `listMyCertificates()` filters `neq('state','held')` (`certificates.ts:157`); its document is unreadable to the member
+   (`documents_read`'s sub-select runs under that policy); the download route refuses it (`record_export_download`,
+   `v_cert_state <> 'held'`); mail: `issue_certificates` announces **only** `state = 'issued'`
+   (`worker/src/tasks/issue_certificates.ts:197`), and `release_certificates()` is the one other caller of
+   `notify(…'MSG-certificate_issued')`. ✓ — the walkthrough's negative is checked at the data (§8).
+4. **«Set default» writes** one `update design_templates set is_default = true`; `design_templates_single_default`
+   (`0057:52`, `before`, invoker, under RLS) clears the previous default with `t.org_id is not distinct from new.org_id`
+   and the same `(purpose, family)`. `0055:102-105`'s two partial unique indexes back it: one per `(org_id, purpose,
+   family)` and one platform default per `(purpose, family)`. For certificates that is **exactly three per org**. An org
+   cannot set a platform template as its default (the update policy is `scope = 'org'`); it copies first.
+5. ★ **Where «the default» actually comes from — a measured defect (D13).** `issue_certificate()`'s fallback (`0127`,
+   and the same line in `0066:91` for achievements) orders `(t.org_id is not null) desc, t.is_default desc, v.version
+   desc`: **any** live org template of the kind beats the platform's default, default or not. And
+   `getCertificateDesign()` (`certificates.ts:355`) says the opposite: org default, else **any** default (the platform's).
+   So with an org template that is not flagged default, the screen names the platform's while issuance uses the org's.
+   «Find the default in one look» is false in that case. It needs the lead's ruling: fix the SQL order (a migration —
+   `0191`) or have the strip and the control mirror the SQL's order and name what issuance uses.
+6. **`redesignHeldCertificates()` goes** with the template control **after completion**, in the «غيّر» sheet beside a held
+   kind — because held rows only exist after the completion fan-out, it can do nothing before. That is exactly D25.
+7. **The card preview through the one renderer**: `renderDocumentToHtml(doc, { fonts, bindings: { values } })` from
+   `@kareem/designer-runtime` (`DEC-017`) in a sandboxed `srcdoc` iframe, scaled to contain. `values` = the org's
+   `previewBindings` (brand, in the card's scheme — posters dark, certificates light) **plus, for every text binding
+   `declaredBindingsOf(doc)` names outside `brand.*`, the value `{label}`** — the label from `designer.bindings.field.*`
+   (read, never written), «حقل» when unknown. So `{العنوان}` and `{اسم العضو}` are drawn by the renderer itself, as the
+   boards draw them, rather than the template's fallback text. An image or QR binding stays the renderer's marked
+   placeholder.
+
+### 7 · DAL reads needed — add-only, existing signatures untouched
+
+- `certificates.ts` — `getSessionCertificateFaces(locale: string, sessionId: string): Promise<Record<string, { avatarSrc: string | null; teamColor: string | null }> | null>` — admin only (certificates are admin-read), the face through `avatarHref()` (`DEC-099`) and the company's `team_color`; `null` for anyone else.
+- ~~`templates.ts` — `certificateDefaults()`~~ — **replaced by `getEffectiveCertificateTemplates()`** (§12c), which mirrors `issue_certificate()`'s order.
+- `templates.ts` — `posterFormats` / `certificatePage` derive in the component from `presetsForDocument()`; no read.
+- No write path is added. The one new action is `createAndOpen` in `templates/actions.ts`: `createBlankTemplate()` then
+  `openTemplateDraft()` then `redirect()` — both existing.
+
+### 8 · Locators for the lead's walkthrough (`DEC-236` §5) — every one from `#main`
+
+| Step | Locator |
+|---|---|
+| 055 certificates tab | `goto /ar/app/admin/templates/certificates`; `main.getByRole("tablist", { name: "أنواع القوالب" }).getByRole("tab", { name: "الشهادات" })` has `aria-selected="true"` |
+| New template | `main.getByRole("link", { name: "قالب جديد" })` → `page.getByRole("dialog", { name: "قالب جديد" })` → `getByLabel("الاسم")`, `getByRole("radiogroup", { name: "النوع" }).getByRole("radio", { name: "حضور" })`, `getByRole("radiogroup", { name: "الاتجاه" })` → `getByRole("button", { name: "أنشئ وافتح" })` → URL `/app/admin/designer/` (the studio's steps are `designer`'s) |
+| A card | `main.locator("article", { has: page.getByRole("heading", { name, exact: true, level: 3 }) })` |
+| Set as default | card → `getByRole("button", { name: "إجراءات أخرى" })` → `page.getByRole("menuitem", { name: "اجعله الافتراضي" })` → toast `getByText("صار هذا القالب الافتراضي لعائلته.", { exact: true })` → `main.getByLabel("القوالب الافتراضية")` `toContainText(name)` and the card `getByText("افتراضي", { exact: true })` |
+| Review mode (before completion) | `goto …/sessions/<id>/certificates`; `main.getByRole("radiogroup", { name: "من يستحق شهادة، ومتى" }).getByRole("radio", { name: "تُجهَّز وتبقى محجوزة حتى تُطلقها" })` → `getByRole("button", { name: "احفظ الوضع", exact: true })` → `page.getByRole("dialog").getByRole("button", { name: "ثبّت الوضع", exact: true })` |
+| Negative: held invisible | as the member, `/ar/app/me/certificates`: `getByText(serial)` count 0; `select count(*) from public.notifications where member_id = $1 and message_key = 'MSG-certificate_issued'` = 0 (the lead's fixture names the columns) |
+| Release two | `main.getByRole("table", { name: "الشهادات المحجوزة" }).getByRole("checkbox", { name: "تحديد الصف <name>" })` ×2 → `main.getByRole("button", { name: "أصدر المحدّد" })` → `page.getByRole("dialog").getByRole("button", { name: "أصدر", exact: true })` → toast `getByText("صدرت شهادتان", { exact: true })` (D22) |
+| Revoke one | `main.getByRole("table", { name: "الشهادات الصادرة" }).getByRole("row", { name: new RegExp(serial) }).getByRole("button", { name: /ألغِ/ })` → `page.getByRole("dialog")` (the sheet) `.getByLabel("سبب الإلغاء")` → `getByRole("button", { name: "ألغِ الشهادة" })` → toast `getByText("أُلغيت الشهادة.", { exact: true })` → `main.getByRole("table", { name: "الشهادات الملغاة" })` `toContainText(reason)` |
+| Negative: verify | `/ar/verify/<code>`: `getByRole("status")` has the revoked words (D26) and `page.getByText(reason)` count 0 |
+| Member downloads the other | admin side: `main.getByRole("link", { name: "نزّل شهادة <name>", exact: true })` `href` matches `/api/designer/downloads/`; member side is `/app/me/certificates` (`designer`'s screen); the audit `export_artifact.downloaded` row with the member as actor |
+
+### 9 · Existing suites my rebuild moves — each a ledger line in the same commit (the lead writes them)
+
+- Mine (evidence): `tests/components/certificates/{issuance-download,mode-control}.test.tsx` — the files they mount are
+  deleted; their cases move to new `tests/components/templates/**` and a co-located-component suite under the same folder
+  rule; `tests/e2e/certificates.spec.ts:299` («الوضع مراجعة» sentence → the line), `:307` (toast vocabulary, D22).
+- **Not mine — each a request:** `wave8-designer-templates.spec.ts:340,385` (`h1`), `:379` («انسخ إلى مؤسستي» → «انسخ لتعدّل»),
+  `:276` («الافتراضي» → «افتراضي»), `:362,387` (`?scheme=`, D6), `:274-299` (card text «مستخدم في جلسة واحدة» moves to the
+  retire confirm) · `wave8-designer-certificates.spec.ts:263,267,282,325,343-344,412,424,434,442,447,449,466` (the design
+  radios, the release dialog's words, the section headings) · `wave10-designer-reissue-and-days.spec.ts:320-321`
+  (`section[aria-labelledby="cert-issued"]` — kept if I keep the ids; I will) and `:380` (D26) · `wave13-console-templates.spec.ts:131`
+  (`h1`) · `wave13-designer-certificates-download.spec.ts:146` and `wave13-demo-download.spec.ts:218` (the link's name — kept,
+  so no change) · `wave9-three-day-workshop.spec.ts:316-320` (kept names, so no change).
+
+### 10 · Disagreements with the boards — written, no side picked (contract 8)
+
+| # | Board · line | The board | The tree / the plan says |
+|---|---|---|---|
+| D1 | `AdminTemplates.dc.html:57-64` | org group first, platform second | the old screen put platform first; **built as drawn** |
+| D2 | `AdminTemplates.dc.html:59-66` | format chips differ per template (16:9 · A4 · A3 · 9:16, or a subset) | a poster derives **all seven** presets (`presets.ts:99`, `presetsForDocument`); there is no per-template format list. Chips will be the same four on every poster card |
+| D3 | `:65-66` | ⋯ on a platform card | it holds one item, «انسخ لتعدّل» — a platform template is not editable (`REQ-DSG-008`) |
+| D4 | `M12.md` §055 | menu = open, duplicate, set default, archive | publish, rename and restore exist and are kept (`REQ-DSG-007`, `REQ-ADM-013`). ★ **For `designer` and the lead:** publishing a template version is a library action today, and nothing in the new bar publishes — should «انشر» move into the studio's bar? |
+| D5 | `:55` | «قالب جديد» opens the designer on a blank | the table needs a name and a family (`0055` checks), a certificate an orientation (`DEC-148`); a sheet asks first, then opens |
+| D6 | — | no scheme toggle | the old certificate library had `?scheme=`; dropped, `DEC-148` served on `045` |
+| D7 | `AdminTemplatesCerts.dc.html:59` | certificate preview 140 px tall, landscape | a portrait certificate exists (`0098`); it is contained in the same box |
+| D8 | both | the avatar draws an Eastern-Arabic digit | `DEC-124`; the frame's, the lead's |
+| D9 | `AdminTemplatesCerts.dc.html:59,64` | chips «حضور · تقديم» on one template | **one kind** (`DEC-236` §1) |
+| D10 | `:66` | two defaults: «الحضور والتقديم» and «الإنجازات» | **three** (`DEC-236` §1) |
+| D11 | `:66` | the defaults strip is the last thing on the page | the job is «find the default in one look»; built where drawn unless the lead moves it under the tabs |
+| D12 | `:66` | each default names an org template | with no org default for a kind, the strip names the platform's, marked «المنصة» |
+| D13 | — | — | ★ `issue_certificate()`'s fallback disagrees with `getCertificateDesign()` and with `REQ-CRT-015` (§6.5) |
+| D14 | `AdminCertificates.dc.html:57` | «القالب: ورقي A4» — one template | a session has one per kind (`session_certificate_designs`, `0099`) |
+| D15 | the whole board | a completed session only | before completion is built undrawn (§3), `REQ-DSG-031`'s three steps |
+| D16 | — | no revoked table | kept when non-empty (`REQ-CRT-011`; the reason is the org's to read) |
+| D17 | `:68-70` | «PDF» always present | a PDF exists only once rendered; pending and failed states, and the retry, kept (`REQ-DSG-031`) |
+| D18 | `:72` | «22 أخرى · المزيد» | `data-table` has no pagination; built as the first 20 and a link `?issued=all` — no primitive change |
+| D19 | `:61-70` | an avatar with a team ring on every row | a new add-only read (§7) |
+| D20 | `:58,61` | «أصدر» / «أصدر المحدّد» / «أصدر الكل» | the strings today say «أطلِق». Board copy adopted; toasts follow («صدرت…»), which moves other tracks' specs (§9) |
+| D21 | — | no confirm drawn for issuing | kept (`REQ-UIX-013`; `REQ-DSG-031`'s «one confirmed button»; a release mails the member and cannot be undone) |
+| D22 | — | — | same vocabulary point for the toasts |
+| D23 | `:68` | «ألغِ» a coral text link | a quiet danger button, 36 px (SC 2.5.8) |
+| D24 | `:57` | — | `M12.md` says the mode is «set once in الجدولة»; `DEC-237` §4 rules `045` |
+| D25 | — | — | ★★ `REQ-CRT-015`: «mode **and template** are refused once the session is completed». **Measured:** `set_certificate_design()` refuses only when a certificate of the kind is issued or revoked (`0099:36`), **not** on completion; and `redesign_held_certificates()` is only useful after completion (held rows are made by the completion fan-out). Read literally, the requirement removes the held-redesign path the database supports and `DEC-148` built; read as the SQL works, the acceptance line is wrong. **The lead rules**: (a) keep the template control after completion while held rows of the kind exist and none is issued — the requirement amended — or (b) refuse it after completion — a definer change from the lead, and `redesignHeldCertificates()` loses its only use |
+| D26 | — | `REQ-CRT-011` quotes «شهادة ملغاة» | the verify page says «هذه الشهادة ملغاة.» (`certificates.json`, now mine). Changing it moves `certificates.spec.ts:267` (mine) and `wave10-designer-reissue-and-days.spec.ts:380` (`designer`'s). The lead says whether the words change |
+| D27 | `AdminCertificates.dc.html:55-56` | the hub's header and tabs | `sessions'` (custodian: the lead), built in wave 21; untouched |
+| D28 | rail | — | `admin-nav.ts:58` hides «القوالب» from a moderator, while the page serves them read-only (`getTemplateLibrary`). Consistent with «the layout never gates»; noted, not changed |
+| D29 | `AdminCertDesigner` (PR B) | strip «A4 أفقي · A4 عمودي · A3 أفقي» | there is no A3 certificate preset (`presets.ts:100`); for `designer`, recorded here because `055`'s chips name the page |
+
+### 11 · Order of work, once approved
+
+1. `055` — delete commit (`templates/{posters,certificates}/page.tsx`, the four `designer/template-*.tsx`) and, in the
+   **same push**, the create commit (`components/templates/**`, the two pages, `actions.ts` add-only `createAndOpen`,
+   `templates.json` strings, ar first). ★ §1 granted (§12a); `055`'s delete waits for `045`'s files to be deleted in the same push, since `design-panel.tsx` imports `template-preview.tsx`.
+2. `045` — delete commit (`page.tsx`, the four transferred files, their two suites) then create (co-located components,
+   `certificates.json` strings, `getSessionCertificateFaces`).
+3. Tests: `tests/components/templates/**`, the co-located component suites, `tests/rls/templates-audit.test.ts` after the
+   trigger, `tests/e2e/wave23-console-{templates,certificates}.spec.ts` — each mutation and its audit row, the 1280 and
+   390 captures at `.qa-shots/rtl/wave23-console-<screen>-<state>-<1280|390>.png`.
+4. Gates before each screen commit: `tsc`, `lint` (grep `problems`), `npm test`, `npm run ui-lint`;
+   `console-register.test.ts` untouched — the new files import nothing from `src/lib/ui/**`, `ui/objects/**`, a sticker or
+   a moment, and `ui/data-table` is not edited.
+
+### 12 · ★ Sync 1's interim rulings, applied (the lead, 2026-10-03; `DEC-238` to come)
+
+**(a) Granted.** `src/components/certificates/{design-panel,eligible-list,issuance,mode-control}.tsx` and
+`tests/components/certificates/{issuance-download,mode-control}.test.tsx` are mine for the wave, **to delete** in `045`'s
+delete commit. The new chrome is co-located in `admin/sessions/[id]/certificates/`. `mode-badge.tsx`, `actions.ts` and
+`held-achievements.tsx` stay `designer`'s, untouched. The two suites' cases are re-written against the new files in the
+create commit (a ledger line each: «file deleted with its component; cases moved to …»).
+
+**(b) The template after completion — measured answer: NO definer change is needed.** `set_certificate_design()` already
+raises `design_locked` (`55000`) once **any** certificate of that kind is `issued` or `revoked` (`0099:33-39`), so
+«refused once one of that kind is issued» holds in SQL today, before and after completion. The DAL maps `55000` to
+`{ status: "locked" }` (`certificates.ts:504`). So:
+- **The screen gates:** before completion the control is offered per kind unless `locked`; after completion it is offered
+  (behind «غيّر» on the template sentence, in a sheet, with «طبّق على المحجوزة») **only when `heldCount > 0 && !locked`**
+  for that kind; otherwise the sentence alone.
+- **The data re-checks:** a stale page that submits after an issue gets `55000` → the «locked» toast, and nothing is
+  written (the raise precedes the insert, `DEC-043`).
+- ★ **The one case the SQL does not refuse and the ruling does:** a completed session with **no** held and no issued
+  certificate of the kind (mode `off`, or nothing eligible). The write succeeds, is audited (`certificate.design_set`),
+  and changes nothing that will ever be issued — the fan-out has already run (`DEC-178`). The screen never offers it. I
+  recommend **no SQL** for it; if the lead wants exact parity, the line is «`raise … 'design_locked'` when the session is
+  `completed`/`archived`/`cancelled` and no `held` certificate of the kind exists», and I write it under
+  `supabase/proposed/console/` for `0191` on request.
+- The mode is unchanged: written before completion only (`DEC-178`).
+
+**(c) The screen mirrors `issue_certificate()`'s real order.** One add-only read, used by both screens:
+
+```ts
+// src/lib/dal/certificates.ts — add-only
+export async function getEffectiveCertificateTemplates(locale: string): Promise<Record<CertificateKind,
+  { templateId: string; name: string; scope: "org" | "platform"; isDefault: boolean; orientation: "landscape" | "portrait" } | null> | null>
+```
+
+Staff only (`null` otherwise). Per kind, the SQL's exact predicate and order (`0127`'s fallback; `0066:85-92` for
+`achievement`): purpose `certificate`, `retired_at is null`, family = kind, this org's or the platform's, **published
+versions only**, ordered `(org_id is not null) desc, is_default desc, version desc`, first row. Read under RLS
+(`templates_read`, `template_versions_read`), so it is the caller's org and the platform, as the function sees.
+- `055`'s strip names it; «افتراضي» beside it **only when `isDefault`**; «المنصة» when `scope = "platform"`.
+- `getCertificateDesign()`'s `effectiveTemplateId` fallback (`certificates.ts:355`) is changed to the same order —
+  **signature and DTO unchanged**, a behaviour fix in a file transferred to me; `tests/rls/certificates-designs.test.ts`
+  is re-run and any assertion that moves is a ledger line.
+- ★ **A measured caveat for `DEC-238`:** the SQL's `order by` has **no tiebreaker** after `v.version desc`. Two live org
+  templates of one kind, neither default, whose latest published versions share a number (both at v1 — every fresh
+  copy is v1) are picked **arbitrarily** by `limit 1`, and may differ between two issuances. The mirror cannot be exact
+  there; it orders the tie by `template_id` and says so in a comment. The honest way out for an admin is the one move
+  the strip offers — set a default — and the strip shows no «افتراضي» in that state, which is the signal. Fixing the
+  tie is the same ordering migration the lead ruled out; recorded, not built.
+
+**Final §5** is above (the two triggers, every column → row, set default = one row, v1 writes nothing).
+
+**Small ones, applied.**
+- **D26:** «هذه الشهادة ملغاة.» stays; `verify/**` is not touched; the walkthrough asserts that string.
+- **D20:** «أصدر» · «أصدر المحدّد» · «أصدر الكل», the confirm «إصدار N شهادة؟», the toast «صدرت N شهادة» (six forms),
+  written from the board's HTML. §8's release locators already use them.
+- **D4:** publishing a template version → `designer`, for the bar; until the bar has it, ⋯ «انشر إصدارًا جديدًا» on
+  `055` keeps the only door (`REQ-DSG-007`), and is removed when `designer`'s lands.
+- ★ **Found while re-measuring:** `templates.family.*` is read by `/app/platform/templates` (`promote-table.tsx:92`,
+  `library-table.tsx:105` — `platform`'s, frozen). **Those keys stay, unchanged** — a kept-behaviour row for `055`.
+
+**The ledger lines in `designer`'s specs — one per moved assertion, for the lead** (the rest of each spec is untouched):
+
+| Spec · line | Today | After | Kind |
+|---|---|---|---|
+| `wave8-designer-templates.spec.ts:271` | card text «مستخدم في جلسة واحدة» | in the retire confirm, not on the card | expectation moved |
+| `:276` | `getByText("الافتراضي")` | `getByText("افتراضي")` (board) | copy |
+| `:340`, `:385` | `h1` «قوالب الشهادات» | `h1` «القوالب» | copy |
+| `:342`, `:407` | button «قالب فارغ» | link «قالب جديد» (`?new=1`) | role + copy |
+| `:344-349` | the create dialog creates and toasts | the sheet creates **and opens the studio** (URL `/app/admin/designer/`) | expectation moved |
+| `:358` | chip «عمودية» | chip «A4 عمودي» | copy |
+| `:362`, `:387` | `?scheme=dark` | no scheme toggle (D6) | removed |
+| `:379` | «انسخ إلى مؤسستي» | «انسخ لتعدّل» via ⋯ | copy + a menu |
+| `wave8-designer-certificates.spec.ts:262`, `:408` | `h2` «شهادات الجلسة» | no tab title (the hub's `h1` names the session) | removed |
+| `:263` | «الوضع مراجعة» sentence | «الوضع تُراجَع قبل الإطلاق» line | copy |
+| `:266-267`, `:442` | «لم يُحفظ»; radio «شهادة حضور عمودية», «داكنة» | the template `select` and the scheme radios | control moved |
+| `:282` | `designPanel(...).locator("[data-template-preview]")` | same attribute, inside the template control | selector moved |
+| `:343-344` | «أطلِق» / «أُطلقت شهادتان» | «أصدر» / «صدرت شهادتان» | copy (D20) |
+| `:412`, `:424`, `:449` | heading «الشهادات المحجوزة» (h3) | heading «محجوزة · N»; the table keeps the name «الشهادات المحجوزة» | copy |
+| `:434` | «إطلاق شهادتين؟» | «إصدار شهادتين؟» | copy (D20) |
+| `:466` | «الوضع معطّل» ×2 | the line once («الشهادات معطّلة») and the one empty sentence | expectation moved |
+| `wave10-designer-reissue-and-days.spec.ts:320-321` | `section[aria-labelledby="cert-issued"|"cert-revoked"]` | **kept** — the ids stay | none |
+| `wave13-designer-certificates-download.spec.ts:146`, `wave13-demo-download.spec.ts:218` | link «نزّل شهادة {name}» | **kept** | none |
+| `wave13-console-templates.spec.ts:131` (the lead's evidence) | `h1` «قوالب الملصقات» | «القوالب» | copy |
+| mine: `certificates.spec.ts:299`, `:307`, `:324` | mode sentence, «أُطلقت شهادة واحدة», `h2` | the line, «صدرت شهادة واحدة», no `h2` | copy |
+
+### 13 · As built — `055` (wave 23, after «the plans are approved», `DEC-238`)
+
+Delete `4638c87c` (the two pages, the four `designer/template-*` files), then the create commit right after it. Read back
+against §4.1:
+- Every row holds, with three as-built notes. **(1)** The format chips are **notation in code, not copy** («16:9», «A4»,
+  «A3», «9:16», read from `presetsForDocument()`). `designer-i18n.test.ts` (`designer`'s) refuses a Western digit in
+  `templates.json` outside the two preset names, so the paper sizes and ratios cannot be catalogue strings. The page
+  word does stay in the catalogue («أفقي» / «عمودي»). **(2)** «افتح في المصمّم» and «قالب جديد» are offered at every width.
+  I dropped §2's «not offered under `lg`», because hiding one menu item by viewport needs a script and the studio route
+  answers for itself. **(3)** The copy's default name is `{name} — نسخة`, built in code, because `designer-i18n` wants
+  every interpolation inside `<bdi>` and an input's default value cannot carry markup.
+- `templates.family.*` is unchanged; `/app/platform/templates` reads it.
+- `getCertificateDesign()`'s fallback now follows `pickEffectiveTemplate()` (`DEC-238` §2.3). No signature changed.
+- The audit labels for `0191`'s six actions are in `admin.json` (`admin.audit.actions.design_template.*`, plus the domain
+  and subject). `admin-audit-labels.test.ts` failed until they were added.
+- Tests: `tests/components/templates/template-menu.test.tsx` (5), `tests/unit/certificates-effective.test.ts` (5),
+  `tests/rls/templates-audit.test.ts` (6, every act as the org admin member; set default = one row). The full `npm test`
+  run had 6 failures on 5s timeouts under load (`inspector-align`, `schedule-days`, `input`, `deactivate-toggle`,
+  `viewer-screen`). All of them pass on their own.
+
+### 14 · As built — `045` (wave 23, `DEC-238`)
+
+Delete `52a8ac6d` (the page, the four transferred chrome files and their two suites), then the create commit right after.
+Read back against §4.2. Every row holds. As-built notes:
+- **Co-located** in `admin/sessions/[id]/certificates/`: `page.tsx`, `template-control.tsx`, `mode-control.tsx`,
+  `eligible-table.tsx`, `issuance.tsx`, `revoke-form.tsx`; `actions.ts` is unchanged. The mode control has no board, so
+  it carries the old control's behaviour and its pinned accessible names, with a new header.
+- **The template after completion** (`DEC-238` §2): «غيّر» on the line links to `?design=<kind>` and opens a sheet, and
+  only while that kind has held certificates and none issued. «طبّق على المحجوزة» is in it. The data re-checks through
+  `set_certificate_design()`'s `55000`, so **no definer change** (§12b).
+- **The line** names what each kind was issued with, else what issuance would pick (`getCertificateDesign()`'s
+  `effectiveTemplateId`, now on `pickEffectiveTemplate()`). When the two kinds differ, the line names each.
+- ★ **Deviation — the PDF link's accessible name** is now «PDF — نزّل شهادة {name}». The visible word is the board's
+  «PDF», and SC 2.5.3 wants the accessible name to begin with it. This **moves two specs that pinned the old exact name**:
+  `wave13-designer-certificates-download.spec.ts:146` and `wave13-demo-download.spec.ts:218`. They are ledger lines for
+  the lead and correct §9/§12's «kept».
+- ★ **Deviation — no-JS.** Revoke renders its sheet as a region without JS (`?revoke=<id>`), but the submit needs JS,
+  because a form action would reset the typed reason. Issuing needs JS too, because selecting rows already does. Viewing,
+  «المزيد» and the PDF link work without JS.
+- Before completion: the template per kind, then the mode, then «من يستحق · N». After completion: the line, then
+  محجوزة / صادرة / ملغاة (only when there are some) / بلا شهادة (only when there are some). A moderator sees the line and
+  «من يستحق» at every stage. A cancelled session with nothing issued shows one line.
+- Tests: `tests/components/certificates/{issuance,revoke-form}.test.tsx` (new, 9), `mode-control.test.tsx` (moved with
+  its cases unchanged, 4). `proposal-copy.test.tsx` (the lead's, as `sessions'` custodian) scans `admin/sessions/**` for
+  `overflow-hidden`, so the preview frame avoids it.
+
 Written before code, updated as bundles land. Read `notify.md` §6.1, `scoring.md`'s wave-3
 handoff and `content.md` §5 first — they describe what I inherit and where the gaps already are.
 

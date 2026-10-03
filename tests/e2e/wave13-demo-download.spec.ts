@@ -215,7 +215,8 @@ test("★ an admin downloads the session's poster and its certificate FROM THE S
   // 3 · The strip to «الشهادات», and the certificate's own download there.
   await strip.getByRole("link", { name: "الشهادات", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/ar/app/admin/sessions/${sessionId}/certificates$`));
-  const cert = main(page).getByRole("link", { name: `نزّل شهادة ${RECIPIENT}`, exact: true });
+  // wave 23: the visible word is the board's «PDF», and the name begins with it (SC 2.5.3).
+  const cert = main(page).getByRole("link", { name: `PDF — نزّل شهادة ${RECIPIENT}`, exact: true });
   await expect(cert).toHaveAttribute("href", `/api/designer/downloads/${certArtifact}`);
   // SC 2.5.8: the download a staff member taps on a phone is a target, not a word.
   const box = await cert.boundingBox();

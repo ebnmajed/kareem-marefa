@@ -8206,3 +8206,69 @@ acts, one default per kind. `console` writes `tests/rls/templates-audit.test.ts`
 
 - **Documents changed:** `01-prd.md` (`REQ-CRT-015`, `REQ-UIX-111`), `04-architecture.md`, `CLAUDE.md` and three agent
   files (the transfers), `STATUS.md`; `supabase/migrations/0191_template_audit.sql`
+
+## DEC-239 — Wave 23's close: PR A is built, green and ready — `055`, `045`, the certificate flows and `0191`; PR B stops at the studio's shared chrome; PR C and the designer go to wave 24, on the owner's budget ruling
+
+- **Date:** 2026-10-03 · **Decided by:** the owner (the budget ruling, C6, the tie-breaker); the record by the wave-23 lead
+- **Closes:** wave 23 at the boundary the owner set mid-wave. `DEC-235` – `DEC-238` stand
+- **Carries:** the designer rebuild and the email builder to wave 24, from the approved plans in `notes/{designer,notify}.md` (`fd6a3d37`)
+
+### 1 · What landed
+
+**PR A #52** (`wave-23a/templates-and-certificates`): ★ `055` rebuilt from `AdminTemplates` and `AdminTemplatesCerts` (delete
+`4638c87c`, create `aa96e1b2`) — two tabs, one kind per certificate template, **three defaults named, one per kind** · ★ `045`
+rebuilt from `AdminCertificates` (delete `52a8ac6d`, create `f1ca8c47`) — the mode and the template written here and nowhere
+else before completion, the drawn sentences after; release one by one or in bulk; revoke with a mandatory reason in a sheet;
+every PDF through the one audited route · ★ **the tie guard** (`bc423bc1`) · the capture fixes (`54d43e69`) · ★ **a real defect
+found by a spec and fixed** (`6333f314`): after «طبّق على المحجوزة» the «غيّر» sheet stayed open, modal, hiding the page ·
+★★ **`0191`**, the template library's audit, rehearsed on the owner's `0190` dump (§3). **PR B #53** stops at the studio frame
+and `ui/editor-rail` + `ui/floating-toolbar` (`82c39667`) — complete, no deletes, the floor 63 → 65. **PR C** has no branch.
+
+**Evidence:** CI's own conclusion **success** on every pushed head through `54d43e69`; on a production build of `6333f314`,
+**34 of 34** e2e cases (the walkthrough, `wave23-console-screens` on both projects, `certificates`, the transferred
+`wave8-designer-certificates`), and earlier `wave8-designer-templates` and the two `wave13` download specs; the full unit
+suite and the full RLS suite green. ★ **The owner's walkthrough** (`DEC-236` §5), 7 of 7 with a capture at each step: a
+template designed, set as its kind's default, a session put in review mode on `045` and completed, two certificates released,
+one revoked with a reason, the other downloaded by its member through the audited route — **and both negatives**: a held
+certificate is invisible to its member with no mail queued (`REQ-CRT-004`), and the verification page says it is revoked
+and never shows the reason (`REQ-CRT-011`). Its fixtures (the completion fan-out, the version publish, the PDF bytes) are
+named in its header.
+
+### 2 · ★★ C6 — the pack's prose cited a decision for its own opposite, a third time, and `DECISIONS.md` won
+
+The brief, `DEC-236` C6 and `M12.md` all said the certificate mode is «set once in الجدولة (`DEC-178`)». **`DEC-178`'s own
+title and contract 2 say the opposite — «SCR-045 is the mode's one writer»** — and it records the hazard that makes الجدولة
+wrong: `schedule_session()` defaults `p_certificate_mode` to `'off'` and writes it on every save, so moving the writer there
+would switch certificates off for every session. And C6 asked for a transfer of something already home:
+`session_certificate_designs` (`0099`) stores the template per session and kind, `issue_certificate()` reads it, and `045`
+was already its writer. **The owner ruled: `045` writes both; `DEC-178` is not re-opened.** This is the third time the
+design pack's prose has carried a decision's name over the opposite of what the decision says; **a planner reads the
+decision, not the sentence that cites it.**
+
+### 3 · `0191`, rehearsed
+
+On `/tmp/prod-schema-0190.sql` (0 data rows): the dump with only the platform's `supabase_realtime` error; **`0191` exit 0**;
+the end state identical to local in every category but `rls_auto_enable()`; ★ **the six template mutations, done as the
+org's admin member under RLS, each wrote exactly its row** — set default one row per move, the cleared previous default none;
+RLS on the rehearsed schema 114 of 115, the one red `rls_auto_enable()`. **The owner may push it**: the dry run lists exactly
+`0191`. Not pushed by any session.
+
+### 4 · Carried
+
+★ **The tie-breaker — a real defect**: `issue_certificate()` orders by `is_default`, then version, with no tiebreak; **the
+screen can disagree with what issuance picks.** The guard in PR A names no template for a kind with no default — including
+a single unflagged org template, which issuance would pick deterministically; the guard follows the owner's words and nudges
+an admin to set one. The issuance order itself is unchanged · ★ **a live defect in today's email studio**: «أرسل اختبارًا»
+mails the saved row, not the draft on screen (wave 24's builder disables it while unsaved) · نقاطك · the four certificate
+fields that are not bindings · the objects and stickers tabs · an A3 certificate (`DEC-238` §6) · revoke and issue on `045`
+need JavaScript to submit (the sheets, «المزيد» and the PDF link do not) · `DEC-215`'s four, `DEC-194`'s two gates,
+`DEC-186` §4, the hard-load duplicate (`DEC-204`), `SCR-059` and the platform console (M13), session stories, the
+`railway.json`.
+
+### 5 · What comes next
+
+**Wave 24: the designer (PR B's rest) and the email builder (PR C)**, from their approved plans — unless the owner says
+otherwise. The owner's suggestion stands for it: Opus for the designer's seam and the drag paths, a cheaper model for the
+mechanical work.
+
+- **Documents changed:** `STATUS.md`
