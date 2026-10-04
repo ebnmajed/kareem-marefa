@@ -724,7 +724,7 @@ function FocalDot({
       style={{ left: (box.left + point.x * box.width) * scale, top: (box.top + point.y * box.height) * scale }}
       onPointerDown={onPointerDown}
     >
-      <span className="block size-4 rounded-full border-2 border-surface bg-fg-heading shadow" />
+      <span className="block size-4 rounded-full border-2 border-surface bg-fg-heading shadow-sm" />
     </span>
   );
 }
