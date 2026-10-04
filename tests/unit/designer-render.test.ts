@@ -72,7 +72,14 @@ describe("REQ-DSG-006 — an unbound field is a marked placeholder, never an emp
 describe("REQ-DSG-021 — colours are tokens, resolved at render time", () => {
   it("resolves {{brand.*}} from the platform theme and never prints the token", () => {
     const { html } = renderDocumentToFragment(doc([title()]), { fonts: [], bindings: { values: platformBrand("light") } });
-    expect(html).toContain("#0b1220");
+    // ★ DEC-242: READ from platformBrand(), never a literal. These two cases
+    //   asserted `#0b1220` and `#ffffff` — the platform navy — and went red when
+    //   wave 24 moved the default palette, which is a true statement about the
+    //   palette and says nothing about what this file tests: that a token is
+    //   RESOLVED at render time and never printed. Reading the expected value
+    //   from the same source the renderer reads keeps the case honest and
+    //   palette-independent, so the next move of the default cannot redden it.
+    expect(html).toContain(platformBrand("light")["brand.fgHeading"]);
     expect(html).not.toContain("{{brand.fgHeading}}");
   });
 
@@ -80,7 +87,7 @@ describe("REQ-DSG-021 — colours are tokens, resolved at render time", () => {
     const light = renderDocumentToFragment(doc([title()]), { fonts: [], bindings: { values: platformBrand("light") } }).html;
     const dark = renderDocumentToFragment(doc([title()]), { fonts: [], bindings: { values: platformBrand("dark") } }).html;
     expect(light).not.toEqual(dark);
-    expect(dark).toContain("#ffffff");
+    expect(dark).toContain(platformBrand("dark")["brand.fgHeading"]);
   });
 });
 
