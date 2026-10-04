@@ -8564,3 +8564,187 @@ family or changing the roster's count (§1); new brand tokens (§2); a per-schem
 
 - **Documents changed:** `01-prd.md` (`REQ-DSG-032` … `034`, `REQ-CRT-016`, `REQ-NTF-016`), `15-backlog.md`
   (five stories), `CLAUDE.md` (the wave-24 map), `STATUS.md`, `docs/plan/notes/wave-24-lead.md`
+
+---
+
+## DEC-243 — An admin adds a member ahead of their first sign-in; an invitation is a roster entry claimed exactly once at sign-in, it overrides the email-domain gate while it is pending, and it mails the person
+
+- **Date:** 2026-10-04 · **Decided by:** the owner, asked four questions and answering all four
+- **Opens:** wave 25, milestone **M27** — queued behind wave 24, which is open and whose PR A is in flight
+- **Amends:** `REQ-AUT-003`'s «No invitation, no admin approval step», `01` §2.116's «no invite flow» and
+  §3855's «There is no invite: members arrive by sign-in» — all three stated the same deliberate absence, and
+  this entry is the only thing that may remove it
+- **Amends:** the brief's **D11** «No invites at launch» — **in one half only.** Domain-gated auto-provisioning
+  stays exactly as it is for everyone who was not added by hand; what changes is that an admin may now name a
+  person in advance, and that naming is what admits them
+
+### 0 · ★ THE GOAL, above the process (the owner's words)
+
+**«I want the ability to add user to the app in addition for them becoming users on the first signin.»**
+
+★ **«In addition» is the whole sentence.** Nothing about first sign-in changes: a Google account on an allowed
+domain is still auto-provisioned on arrival, with no admin in the loop (`REQ-AUT-003`). What is added is a second
+door — an admin names somebody, and that person arrives already belonging, with the role, the company and the job
+title the admin set. ★ **The case that justifies the feature is the person the first door refuses**: an outside
+presenter, a partner, somebody whose work address is not on the org's list. Today they are told «this is a private
+platform» and there is no answer. **«Good» is not «the gates are green»** — the acceptance is an admin adding a
+Gmail address and that person signing in and landing in the app.
+
+### 1 · ★★ What was measured before the decision was written
+
+| # | Measurement | Result |
+|---|---|---|
+| 1 | **Can a member row exist before the person has signed in?** | ★★ **No, by construction.** `members.auth_user_id` is `uuid not null unique references auth.users(id) on delete cascade` (`0004:239`). There is no state in the schema today for «a person we expect» |
+| 2 | **How coupled is `auth_user_id`?** | ★ **Barely.** It appears in **5** migration files and in **nothing** under `src/` or `worker/src/` — every read of a member's identity goes through claims via `auth_member_id()`. All five uses are lookups keyed by `auth.uid()`, so a row that is not bound simply never matches. Nullable would be structurally safe |
+| 3 | **What refuses an outside domain today, and where?** | `before_user_created_hook()` (`0007`), which runs **before the auth user row exists** — the only place `REQ-AUT-006`'s «no account, member row or audit subject is created for a rejected sign-in» can be met. It **fails open**: any error returns the event unchanged, so a broken hook produces an orphan auth user on `/no-access`, never a sign-up outage |
+| 4 | **What would a third `member_status` value cost?** | ★★ **54 sites.** `status = 'active'` is written out in 54 places across 26 migrations, and the table carries `check ((status = 'deactivated') = (deactivated_at is not null))`. Every one would have to be re-read and decided |
+| 5 | **Would a pre-created *active* member row move anything?** | ★★ **Yes, immediately.** `company_min_active_members` (`0176`) ranks companies on their active-member count, so pasting a list of twenty names would re-rank the company board before any of them had arrived. They would also appear in the directory, the member picker and the attendance denominators |
+| 6 | ★★ **Can the invitation mail go through `notify()`?** | ★★ **No.** `notify(p_org, p_member, p_category, p_payload, p_key)` (`0026:436`) takes a **member id** and resolves the matrix row, the preference, the inbox row and the address from it. An invited person has none of those. **The invitation is a transactional send, not a matrix message**, and its pattern already exists: `JOB-send_test_email` |
+| 7 | **Does anything public move?** | **No.** The five frozen routes render nothing of this. `qa:contract`, `qa:appearance`, `visual`'s public pairs and the register-form fingerprint stay **unmoved, not re-baselined** |
+| 8 | **Does the design draw it?** | ★ **No.** `docs/design/screens/m11b/AdminMembers.dc.html` has no add, invite or pending affordance anywhere in it. This is the first screen change since wave 17 with no artboard behind it, and `DEC-199` §2's «rebuilt, never restyled» therefore **does not apply**: `SCR-049` is wave 22's build and it is **extended**, not rebuilt — no page file is deleted, so `DEC-208` does not fire either |
+
+### 2 · ★ The four questions and the four answers
+
+| | Question | Answer |
+|---|---|---|
+| 1 | **What is an added person before they sign in?** | ★★ **An invitation row** — a new entity, not a member. They appear on `SCR-049` as pending; **nothing else in the product can reference them.** No count, ranking, denominator or directory moves, and measurement 4's 54 sites are untouched |
+| 2 | **Can you add someone whose domain is not on the list?** | ★★ **Yes — a pending invitation overrides the gate**, and that is the point of the feature. `before_user_created_hook()` gains a second reason to admit |
+| 3 | **Does the person get an email?** | ★ **Yes**, and by measurement 6 it is a transactional send outside the notification matrix |
+| 4 | **When?** | ★ **After wave 24 merges, as its own wave.** The record is written now; nothing is built until A, B and C are in |
+
+### 3 · ★★ What an invitation IS — `ENT-member_invitations`
+
+★ **A roster entry: an admin's statement that a named email belongs, carrying the fields provisioning cannot
+guess.** One row per invited email per org. `id`, `org_id` (not null, cascading with the org), `email`
+(`extensions.citext not null`), `display_name`, `company_id`, `job_title`, `org_role`, a new
+`invitation_status` enum (`pending` · `claimed` · `revoked`), `invited_by` (the admin's member id), `created_at`,
+`updated_at`, `claimed_at`, `claimed_member_id`, `revoked_at`, `revoked_by`, `revoked_reason`, `last_sent_at`,
+`send_count`. ★ **A unique index on `(org_id, email)` `where status = 'pending'`** — one live invitation per
+address, and a revoked one does not block a new one. Invariant 5 in full: `org_id`, RLS, the complete policy set,
+a grant for every policy, a test case each, and the generated isolation sweep covers it the day it exists.
+
+★ **What it is NOT.** It is not a member, so it holds no points, no RSVP, no certificate and no avatar; it is not
+in `members_member_view`, the directory, any picker or any denominator. It is not a seat, a presenter assignment
+or a session-level invitation (`DEC-175` settled that: an admin-added presenter is **assigned**). It carries no
+token and no secret: there is nothing to leak, because the mail's link is the ordinary sign-in URL and the
+authority is the row, not the link. ★ **It is not a way to set `org_role = 'admin'`** — see §5.
+
+### 4 · ★★ The claim — one path, inside `provision_member()`
+
+★ **The member row is still created at first sign-in, from `auth.uid()`, exactly as `REQ-AUT-002` requires
+(«keyed to the auth user, never to an email or a provider»).** The invitation only supplies what the insert used
+to default. The order inside `provision_member()` becomes:
+
+1. already a member → unchanged, return `member`;
+2. ★ **a `pending` invitation for this email in an `active` org → claim it**: insert the member with the
+   invitation's `org_role`, `company_id`, `job_title` and `display_name` (Google's name still wins when the
+   invitation left it blank), mark the invitation `claimed` with `claimed_member_id`, audit
+   `member_invitation.claimed` **and** the existing `member.provisioned`, and return `provisioned`;
+3. the domain match → unchanged (count 0 → `no_match`, >1 → `ambiguous`, the `first_admin_email` promotion);
+4. the insert, `on conflict do nothing`, and the `email_already_member` raise — unchanged.
+
+★ **Two properties the wave is judged on.** **Claimed exactly once**: the claim and the member insert are one
+transaction, and the `where status = 'pending'` predicate on the update is the lock, so a concurrent double
+sign-in claims once and provisions one member — the same guarantee `0005` already states for the insert. ★ **An
+invitation never overrides an existing member**: `invite_member()` refuses an address that is already a member of
+the org (`already_a_member`), so step 2 can never fight step 1, and `org_id` immutability (`REQ-TEN-004`) is
+never approached.
+
+### 5 · ★★ The gate override — the riskiest change in the wave, and the rules on it
+
+`before_user_created_hook()` is **the single point of failure for all sign-in** (`CLAUDE.md`, «the five things most
+likely to go wrong», #2). It gains one more reason to admit: an email with a `pending` invitation in an `active`
+org, read with the same `lower()`-on-both discipline `0007` and `provision_member()` already use. Four rules:
+
+1. ★★ **It still fails open.** The `exception when others then return event` stays verbatim, and the invitation
+   read goes **inside** the existing `begin`/`exception` block. A broken invitation read must never refuse a
+   sign-in that the domain list would have allowed.
+2. ★★ **The override is scoped to `pending`.** A claimed or revoked invitation admits nobody. Revoking is
+   therefore a real control: it closes the door for an address that has not yet walked through it.
+3. ★ **The refusal message does not change.** `domain_not_allowed` stays the identifier the sign-in screen maps
+   to Arabic copy that names no org and lists no domains (`REQ-AUT-006`). An invited address is admitted; a
+   refused one learns nothing new.
+4. ★★ **An invitation cannot grant `admin`.** `invite_member()` accepts `member` and `moderator` only. An
+   invitation is a standing grant to whoever controls a mailbox, and `set_member_role()` already guards the last
+   admin and audits every promotion — so admin is granted to a member who has arrived, never to an address.
+   **This is a refusal, not a deferral.**
+
+★ **The hook needs a new grant** (`grant select on public.member_invitations to supabase_auth_admin`), which is
+the third grant `0007`'s own comment warns about. Invariant 6 applies to it as to any other.
+
+### 6 · ★ The mail — transactional, and the recipient is not in the payload
+
+By measurement 6 the invitation does not enter `notification_matrix()`: **there is no 26th key, the matrix stays
+at 25, and `tests/unit/mail-pinned/`'s 120 files are untouched.** It is `JOB-send_member_invitation`, keyed
+`invite:{invitation_id}`, enqueued through `public.enqueue_job()` (`0025`) by `invite_member()` and by
+`resend_member_invitation()`.
+
+★ **The recipient is not in the payload** — `send_test_email`'s rule, and for the same reason, stated in its own
+file: the payload carries `invitation_id`, and the address is read in the worker from a definer function. A forged
+or replayed job can mail nobody but that invitation's address, and the guarantee lives in two places that both
+refuse to carry an address rather than in a check. ★ **It is a designed family in `packages/mail-runtime`**, in
+the language wave 24 gives the other eight (`REQ-NTF-016`) — Arabic first, a generated text alternative, no SVG
+(invariant 11).
+
+### 7 · ★ The screen — `SCR-049` is extended, not rebuilt
+
+★ **«أضف عضوًا»** as the page's one primary action, a `sheet` with the fields, and the pending invitations in the
+same table as the members, marked «لم يسجّل الدخول بعد» with «أعد الإرسال» and «ألغِ الدعوة» (a mandatory reason,
+as every revoke in the console takes one). ★ **A pending row is not a member row**: it offers no role change, no
+deactivation and no profile. The counts the dashboard and the rail read are **members**, and an invitation is
+never counted as one. **No new primitive** — `ui/` stays at 69 files and `ui-playground.test.ts` is untouched; the
+console's sober register holds (`REQ-UIX-053`) and `console-register.test.ts` is not edited.
+
+★ **Bulk is in, as a paste, not an import.** One address per line in the same sheet, validated per line, each
+line reported as added · already a member · already invited · not an address. **No CSV file, no column mapping,
+no background job** — the rows are created in one transaction and the mails are enqueued per row.
+
+### 8 · ★ The audit actions, fixed here so nobody invents a fifth
+
+`member_invitation.created` · `member_invitation.resent` · `member_invitation.revoked` ·
+`member_invitation.claimed`. Every one through `public.write_audit()` inside the definer that performs the change
+— **no track writes `audit_log` from the DAL** (`DEC-231` §4's rule, unchanged). The claim writes its row with the
+new member as the actor, because at that instant the actor is the person arriving.
+
+### 9 · ★ What is NOT in scope, and is refused rather than deferred
+
+- ★★ **A second sign-in method.** No password, no magic link, no OTP, no email/password branch. `REQ-AUT-001`
+  stands: the invited person signs in with Google like everybody else. The invitation changes who is admitted,
+  not how.
+- ★★ **Creating an `auth.users` row.** That needs the Admin API and therefore `service_role`, which is never on
+  Vercel (invariant 7) — and it would manufacture an account for somebody who may never arrive. The row is
+  created by their own sign-in or not at all.
+- ★★ **A nullable `members.auth_user_id`.** Measurement 2 says it would work and measurement 5 says it would
+  re-rank the company board the moment an admin pasted a list. **Refused for this wave**; if the owner later
+  wants an added person to be assignable as a presenter before they arrive, that is a new entry and it reopens
+  measurement 4, not this one.
+- ★ **An invited person appearing in the directory, a picker, a board or a denominator.** By §3 they cannot.
+- ★ **Transferring an invitation between orgs**, editing a claimed one, or a member-visible invitation list.
+- ★ **Self-service**: there is still no org self-registration and no «request access» form (`01` §43).
+
+### 10 · ★ The one open question, with its default in force
+
+**Does a pending invitation expire?** ★ **Default in force: no.** It is revocable, and §5.2 makes revocation the
+control; an expiry would add a «resend» chore to onboarding and a sweep job to `11`. The cost of the default is
+that an abandoned invitation is a standing admission for that address until somebody revokes it, which is why
+`SCR-049` shows the pending rows with their age and the audit log answers who created each one. ★ **If the owner
+wants expiry it is a column, a predicate in §5's read and a line in `retention_periods`** — named in the wave's
+plan, not invented in it.
+
+### 11 · ★ Why the wave is divided the way it is
+
+**Three tracks, each owning what it writes.** The **lead** holds the migration (the entity, its policy set, the
+`invitation_status` enum, the three RPCs, `provision_member()`'s claim, the hook's read and its grant) because
+tables and the auth hook are the lead's and because invariant 5 and the single-point-of-failure rule both land
+there. **`console`** holds `SCR-049`, its DAL and its strings, as it has since wave 22. **`notify`** holds the
+job, the mail family and the transport, as it has since wave 10. **No teammate touches `0007`**, and no teammate
+writes `create table`, a policy or a grant, even under `proposed/`.
+
+- **Documents changed:** `01-prd.md` (`REQ-TEN-009` … `011`, `REQ-NTF-017`, `REQ-UIX-113`, and the amendment
+  pointers on `REQ-AUT-003` and `REQ-AUT-006`), `02-domain-model.md` (`ENT-member_invitations`),
+  `08-notifications-calendar.md` (§3.2a — why this mail is not a matrix row), `09-sitemap-screens.md`
+  (`SCR-049`), `11-background-jobs.md` (`JOB-send_member_invitation`), `14-roadmap.md` (**M27**),
+  `15-backlog.md` (four stories), `STATUS.md`, `docs/plan/notes/wave-25-lead.md`
+- ★ **`03-permissions-rls.md` is NOT changed by this entry**, deliberately: `scripts/policy-diff.mjs` fails on «a
+  policy written out in `03` with no counterpart in the migrations», so the policy set and its §8.2 test rows land
+  in the **same commit as the migration**, as every policy in the product has.

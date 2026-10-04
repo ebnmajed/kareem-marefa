@@ -579,6 +579,25 @@ bulk; revoke with a mandatory reason.
 
 ★ **Wave 23 (`DEC-236`, `DEC-237` §4, `REQ-UIX-109`, `REQ-CRT-015`):** rebuilt from `AdminCertificates.dc.html`. **Still the one writer of the mode, and now visibly of the template beside it** — a control for each before completion, the two sentences after (the artboard draws the completed case). محجوزة with row checkboxes, «أصدر المحدّد» / «أصدر الكل»; صادرة with the serial `<bdi dir="ltr">`, «PDF» through the one audited route, «ألغِ» with a mandatory reason in a sheet.
 
+### SCR-049 · `/app/admin/members` ★
+★ **Added by `DEC-243` §7** — the screen shipped in wave 6, was rebuilt in wave 22 (`REQ-UIX-096`) and never had a
+section of its own.
+**Purpose:** see everyone who belongs, change what they are, and **add somebody who does not belong yet**.
+**Roles:** مشرف المؤسسة only.
+**Serves:** `REQ-ADM-009`, `REQ-TEN-005`, `REQ-TEN-009` … `REQ-TEN-011`, `REQ-AUT-007`, `REQ-AUT-008`,
+`REQ-UIX-096`, `REQ-UIX-113`
+**Primary action:** ★ **«أضف عضوًا»** — a `sheet` taking البريد الإلكتروني · الاسم · الشركة · المسمى الوظيفي ·
+الدور (عضو or مشرف محتوى; **never مشرف المؤسسة**, `DEC-243` §5.4), and **several addresses at once, one per line**.
+**States:** members only · ★ **waiting rows mixed into the same table**, marked «لم يسجّل الدخول بعد» with their
+age, «أعد الإرسال» and «ألغِ الدعوة» · a search with no result · the add sheet's per-line report (added · already a
+member · already invited · not an address).
+**Mobile:** the same rows as cards, as every console table since wave 22; the add sheet is full-height.
+**RTL:** the row menu at the inline-end; an address is `<bdi dir="ltr">`; numerals Western (`DEC-124`).
+**Note:** ★ **a waiting row is not a member row** — no role change, no deactivation, no profile — and it is counted
+nowhere: the dashboard's tiles and the rail's badges read members. Revoking takes a **mandatory reason**, as every
+revoke in the console does. ★ **The screen is extended, not rebuilt**: `AdminMembers.dc.html` draws no add
+affordance, so `DEC-208` does not fire and no page file is deleted.
+
 ### SCR-050–052 · Moderation queues
 **Serves:** `REQ-ADM-010`, `REQ-EVT-008`, `REQ-EVT-012`, `REQ-EVT-014`
 **Note:** the **photo takedown queue** is distinct from the report queue — a takedown has
@@ -711,7 +730,7 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-046 venues | `REQ-ADM-006`, `REQ-SES-006` |
 | SCR-047 categories | `REQ-ADM-007`, `REQ-DSC-001`, `REQ-DSC-002`, `REQ-DSC-004`, `REQ-DSC-008` |
 | SCR-048 companies | `REQ-ADM-008`, `REQ-PRF-002` |
-| SCR-049 members | `REQ-ADM-009`, `REQ-TEN-005`, `REQ-AUT-007`, `REQ-AUT-008` |
+| SCR-049 members | `REQ-ADM-009`, `REQ-TEN-005`, `REQ-TEN-009`, `REQ-TEN-010`, `REQ-TEN-011`, `REQ-AUT-007`, `REQ-AUT-008`, `REQ-UIX-113` |
 | SCR-050–052 moderation | `REQ-ADM-010`, `REQ-EVT-008`, `REQ-EVT-012`, `REQ-EVT-014` |
 | SCR-053 scoring | `REQ-ADM-011`, `REQ-PTS-004`, `REQ-PTS-005`, `REQ-PTS-007`, `REQ-PTS-008`, `REQ-PTS-010`, `REQ-PTS-014` |
 | SCR-054 recognition | `REQ-ADM-012`, `REQ-REC-001` … `REQ-REC-008` |

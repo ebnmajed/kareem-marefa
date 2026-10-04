@@ -882,6 +882,31 @@ files moving **once**, as one reviewed diff, and stable on a re-run; ★ `qa:con
 pairs and the register-form fingerprint **unmoved**. **The acceptance is the owner's, on a printed poster and a printed
 certificate.**
 
+## M27 — a member may be added by hand, not only by signing in · wave 25 · `DEC-243`
+
+★★ **The second door.** Nothing about the first changes: a Google account on an allowed domain is still
+auto-provisioned on arrival with no admin in the loop (`REQ-AUT-003`). What is added is that an **مشرف المؤسسة** may
+name a person in advance — and that naming is what admits them, **including when their email domain is on no org's
+list**, which is the case the first door has no answer for: an outside presenter, a partner, a personal address.
+★ **A named person is an invitation, not a member** (`ENT-member_invitations`): nothing in the product can reference
+them, so no count, ranking, denominator or directory moves until they sign in and the invitation is claimed. Two
+teammates and the lead, one migration, **no new primitive**, and `SCR-049` is **extended, not rebuilt**.
+
+| Work | Requirements | Track |
+|---|---|---|
+| The entity, its policy set, the three admin RPCs | `REQ-TEN-009` | lead |
+| The gate override in the Before User Created hook | `REQ-TEN-010` | lead |
+| The claim inside `provision_member()` | `REQ-TEN-011` | lead |
+| The invitation mail and its job | `REQ-NTF-017` | `notify` |
+| `SCR-049` gains the add, the waiting rows, resend and revoke | `REQ-UIX-113` | `console` |
+
+**Demonstrable:** ★★ an admin adds a **personal-domain** address, and that person signs in and lands in the app —
+the case the product refuses today; ★★ the same invitation **revoked before sign-in**, and the same account refused
+again; ★ a concurrent double sign-in claiming the invitation once and creating exactly one member; ★ the member
+arriving with the admin's role, company and job title already set; ★ ten addresses added in one paste, each line
+reported; ★ the matrix still at 25 keys and the 120 pinned mail files untouched; ★ `qa:contract` and the
+register-form fingerprint **unmoved**. **The acceptance is the owner's, adding a real person.**
+
 ## 3. Dependencies
 
 ```mermaid
@@ -895,6 +920,7 @@ graph LR
     M6 --> M7
     M7 --> M8 --> M9 --> M10 --> M11 --> M12 --> M13
     M12 --> M26
+    M26 --> M27
 ```
 
 | Dependency | Why it is hard |
@@ -932,6 +958,7 @@ graph LR
 | **M12** | A layer positioned by finger **and** by tap; an email designed, previewed in three modes and opened in Outlook |
 | **M13** | The live marketing site rebuilt on the same system, `qa:contract` never once red, `registrations` untouched |
 | **M26** | A poster and a certificate printed from the rebuilt baseline, beside one issued before the wave that still renders as it did |
+| **M27** | An admin adds a personal-domain address and that person signs in and belongs — then the same invitation revoked, and the same account refused |
 
 ---
 

@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-04 · **Branch:** `wave-24/the-templates` · ★★ **WAVE 24 IS OPEN — M26, THE ARTEFACTS (`DEC-242`)** · **`main`:** `6de410b2`; production at **`0191`**; the worker on Railway at `37f79dd5`, `builder = DOCKERFILE` held by `railway.json` · ★★ **The owner's ask, verbatim: «I want the templates to match the designed ones and delete the current ones.»** Three questions, three answers (`DEC-242`): **both** the design templates and the mail designs · a **hard delete** · the **platform default palette moves** to «ساحة اللعب». · ★★ **This is the first wave that touches what LEAVES the product** — every screen has worn the playground since wave 17; an exported poster and an issued certificate still wear M6's Reem Kufi on navy, because «the playground stops at the certificate's edge» (`DEC-183` §4) was a deferral. · ★★ **Three PRs:** A `wave-24a/the-palette` (lead, alone, first) · B `wave-24b/the-baseline` (`designer`) · C `wave-24c/the-mail-designs` (`notify`) — **B and C both cut from A's head**, merge order A, B, C. · ★★ **Two migrations, both the lead's:** `0192` (the palette) and `0193` (the baseline), rehearsed on a dump taken at `0191`. · ★★ **NO new primitive** — `ui/` stays **69**. · ★★ **The hard-delete has a floor the database enforces:** `certificates.template_version_id` is `on delete restrict` and `issue_certificates()` resolves the **platform** row directly, so a version a certificate references **cannot** be deleted — `REQ-CRT-014` made structural. The migration **deletes where it can and retires where it cannot, reporting which per row** (`DEC-242` §3). · ★ **Carried from M12:** the tie-breaker, `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, and the **November** Railway dry run (`DEC-241` §2, before 2026-12-01).
+**Last updated:** 2026-10-04 · **Branch:** `wave-24/the-templates` · ★★ **WAVE 24 IS OPEN — M26, THE ARTEFACTS (`DEC-242`)** · **`main`:** `6de410b2`; production at **`0191`**; the worker on Railway at `37f79dd5`, `builder = DOCKERFILE` held by `railway.json` · ★★ **The owner's ask, verbatim: «I want the templates to match the designed ones and delete the current ones.»** Three questions, three answers (`DEC-242`): **both** the design templates and the mail designs · a **hard delete** · the **platform default palette moves** to «ساحة اللعب». · ★★ **This is the first wave that touches what LEAVES the product** — every screen has worn the playground since wave 17; an exported poster and an issued certificate still wear M6's Reem Kufi on navy, because «the playground stops at the certificate's edge» (`DEC-183` §4) was a deferral. · ★★ **Three PRs:** A `wave-24a/the-palette` (lead, alone, first) · B `wave-24b/the-baseline` (`designer`) · C `wave-24c/the-mail-designs` (`notify`) — **B and C both cut from A's head**, merge order A, B, C. · ★★ **Two migrations, both the lead's:** `0192` (the palette) and `0193` (the baseline), rehearsed on a dump taken at `0191`. · ★★ **NO new primitive** — `ui/` stays **69**. · ★★ **The hard-delete has a floor the database enforces:** `certificates.template_version_id` is `on delete restrict` and `issue_certificates()` resolves the **platform** row directly, so a version a certificate references **cannot** be deleted — `REQ-CRT-014` made structural. The migration **deletes where it can and retires where it cannot, reporting which per row** (`DEC-242` §3). · ★ **Carried from M12:** the tie-breaker, `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, and the **November** Railway dry run (`DEC-241` §2, before 2026-12-01). · ★★ **NEXT SCOPE IS WRITTEN AND NOT OPEN:** wave 25 / **M27** — a member added by hand (`DEC-243`), the owner's ask «I want the ability to add user to the app in addition for them becoming users on the first signin»; the record is in `01`/`02`/`08`/`09`/`11`/`14`/`15` and `notes/wave-25-lead.md`, **`03` and the migration deliberately not yet written**. Finish wave 24 first.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -86,6 +86,34 @@ because that is what moving a default means — and an org that has overridden i
 | Spec · line | Moved | Kind |
 |---|---|---|
 | _(none yet)_ | | |
+
+---
+
+## ★★ NEXT SCOPE — wave 25, M27: a member added by hand (`DEC-243`, written 2026-10-04, **not open**)
+
+★ **The owner's ask, verbatim: «I want the ability to add user to the app in addition for them becoming users on the
+first signin.»** Four questions, four answers (`DEC-243` §2): **an invitation row**, not a member · **it beats the
+email-domain gate** while pending · **the person is mailed**, outside the matrix · **after wave 24 merges**.
+
+★★ **The record is written and the wave is NOT open.** Finish wave 24's three PRs first. What exists today:
+`DEC-243`; `REQ-TEN-009` … `011`, `REQ-NTF-017`, `REQ-UIX-113` in `01`; `ENT-member_invitations` in `02`;
+`08` §3.2a; `SCR-049`'s own section in `09`; `JOB-send_member_invitation` in `11`; **M27** in `14`; five stories in
+`15`; and the brief in [`notes/wave-25-lead.md`](notes/wave-25-lead.md). ★ **`03` is deliberately untouched** —
+`policy-diff` fails on a policy documented with no migration behind it, so the policy set and its §8.2 rows land in
+the **same commit as the migration**, from **`0194`**.
+
+★★ **The next lead writes the wave-25 ownership map into `CLAUDE.md` before spawning anyone** (`DEC-085`). Three
+tracks: the **lead** (the migration, the claim, the hook), **`console`** (`SCR-049`), **`notify`** (the job and the
+mail family). ★ **The riskiest line in the wave is one function**: `before_user_created_hook()` is the single point of
+failure for all sign-in, the invitation read goes **inside** its existing exception block, and it still fails open.
+
+| Measured before the decision | Result |
+|---|---|
+| Can a member row exist before sign-in? | ★ **No** — `members.auth_user_id` is `not null unique` (`0004:239`) |
+| How coupled is `auth_user_id`? | 5 migrations, **0** files under `src/` or `worker/src/` |
+| What would a third `member_status` cost? | ★ **54** `status = 'active'` sites across 26 migrations |
+| Would a pre-created *active* member move anything? | ★★ **Yes** — `0176`'s company ranking, immediately |
+| Can the invitation mail be a matrix message? | ★★ **No** — `notify()` resolves everything from a member id |
 
 ---
 
