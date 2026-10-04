@@ -73,8 +73,7 @@ create function public.story_instant_key(p_at timestamptz) returns text
 language sql immutable set search_path = '' as $$
   select to_char(p_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
 $$;
-revoke all on function public.story_instant_key(timestamptz) from public, anon;
-grant execute on function public.story_instant_key(timestamptz) to authenticated, service_role;
+revoke all on function public.story_instant_key(timestamptz) from public, anon, authenticated;
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- 2 · triggers 1, 5 (the first day) and 7 — the session's own state
