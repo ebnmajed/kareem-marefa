@@ -5039,3 +5039,425 @@ published session — so promoting `0189` does not drop a notification into ever
 
 **The story's recorded cost (approved at W22-D):** a second batch of materials added to the same session later the same
 org-local day is not announced — the day's first notification already points at the materials page, which lists it.
+
+---
+
+## ★★ Wave 24 — PR C, the eight designed mail families, rebuilt — THE PLAN (sync 1)
+
+**Planning only.** Written 2026-10-04 on `wave-24/the-templates` in the main checkout, at `333ed9c1`. Nothing is
+built until the lead posts **«the palette is in at `<sha>`»** and **«the plans are approved»**. Builds in
+`../kareem-marefa-wave24c` (`wave-24c/the-mail-designs`), cut from A's head.
+
+Read first: `STATUS.md`'s wave-24 block · `CLAUDE.md` § *Ownership map (wave 24)* · `DEC-242` in full ·
+`docs/plan/notes/wave-24-lead.md` in full, **including §4's addendum, which the lead added while I was measuring** ·
+`designs.ts`'s header · `docs/design/01-tokens.md`, `02-typography.md`.
+
+★ **The goal, in the owner's words:** «I want the templates to match the designed ones and delete the current ones.»
+A message that lands in a member's inbox must look like the product it came from. ★ **There is nothing to delete**:
+the eight are constants, not rows (`designs.ts`'s header, `REQ-NTF-014`'s own reasoning), so PR C writes no SQL and
+needs no migration. It is a rewrite of `layout()` and of what the renderer paints with.
+
+---
+
+### W24.0 · ★★ THE FOUR FINDINGS, each measured, before anything else
+
+★ **F1 — PR A's palette commit moves ZERO pinned files, and the brief says it moves all 120.**
+
+`wave-24-lead.md` §4 and `DEC-242` §4 both say «the mail renderer reads `brand_kit()`, so PR A's palette commit alone
+re-pins them». **It does not, and the reason is the fixture, not the renderer.** `tests/unit/mail-pinned.fixtures.ts`
+renders every case two ways and **neither reads a brand kit**:
+
+| variant | what it passes | what the renderer then uses |
+|---|---|---|
+| `.brand.html` | `SAMPLE_BRAND` — a **three-key `LegacyBrand`** (`samples.ts:41`): `fgBody`, `fgMuted`, `surface` | `"light" in brand` is **false**, so `compilePalette()`'s `light` is `{}` and `fgHeading`, `edge`, `accent` and `canvas` all fall to **`render.ts`'s own literals** |
+| `.plain.html` | `brand: null` | every value is a `render.ts` literal |
+
+Measured in the committed files (`grep -oh '#[0-9a-fA-F]\{6\}' tests/unit/mail-pinned/*.html | sort | uniq -c`):
+
+- `.brand.html` — the old navy heading/accent literal appears **138** times, the old light-edge literal **43**, the
+  shell's neutral ground literal **60**, the neutral surface literal **48**; the three `SAMPLE_BRAND` values account for the rest.
+- `.plain.html` — the same navy **138**, the same edge **43**, the same ground **60**, and `render.ts`'s own body and
+  muted literals.
+
+**Not one of those six strings is read from `brand.ts` or from `brand_kit()`.** They are `render.ts`'s sanitiser
+defaults. So `0192` + `brand.ts` changes the mail a **real org** receives (the worker passes the full kit —
+`send_notification.ts:106`, `brand = kit?.light ? { light, dark } : null`) and changes **nothing** the pins read.
+
+★ **What this means for the checklist, and it is the lead's call, not mine:** step 4 («the 120 pinned mail files
+re-pinned, once, reviewed», PR A) produces an **empty diff**. The 120 move exactly once, **in PR C** — the wave's own
+demonstrable 5 is satisfied there, not in A. The lead's §4 addendum reaches the same place from the other side
+(«they do not affect the pinned output and PR A correctly leaves them alone») — the half I am correcting is the row
+above it, which still says the palette alone moves them. **Nobody should go looking for a bug in `0192` when A's
+re-pin comes back clean.**
+
+★ **F2 — the pins freeze a brand shape the worker no longer sends.** Because `SAMPLE_BRAND` is the legacy
+three-key object, the 120 files never exercise `light.fgHeading`, `light.edge`, `light.canvas` or `light.node` — the
+four tokens this wave is *about*. The pin is a faithful record of the renderer's **fallback** behaviour and not of
+what a member receives. **Q1 below asks the lead to decide.**
+
+★ **F3 — the mail has no accent today, and moving `accent` to `node` without a second change ships a button that
+fails AA.** `compilePalette()` ends `accent: fgHeading` — the primary button is painted with the heading colour — and
+`bulletproofButton()` hard-codes its **label** colour as a white literal. Measured (WCAG 2.x, sRGB):
+
+| pair | ratio | verdict |
+|---|---|---|
+| `brand.node` (light) behind the current hard-coded white label | **2.70:1** | ✗ fails 4.5:1 — *this is what moving `accent` alone would ship* |
+| `brand.node` (light) behind `brand.fgHeading` (light) | **6.87:1** | ✓ the design's own «text on it is ink» pairing |
+| `brand.fgHeading` on `brand.surface` | 18.52:1 | ✓ |
+| `brand.fgHeading` on `brand.canvas` (light) | 16.71:1 | ✓ |
+| `brand.fgMuted` on `brand.surface` | 6.31:1 | ✓ |
+| `brand.fgMuted` on `brand.canvas` (light) | 5.69:1 | ✓ |
+
+So **the accent and the button's label move in the same commit, or not at all.** That is `REQ-NTF-016`'s most visible
+single change and the lead asked for it by name (§4 addendum).
+
+★ **F4 — mail is a LIGHT-SCHEME medium, so «lime» in an email is lime-deep, not the bright lime.** `render.ts`'s
+shell declares `color-scheme: light` and `supported-color-schemes: light` deliberately (D3 finding F1: an inverter
+that darkens a background while leaving an explicit text colour alone produces dark text on a dark card), and
+`compilePalette()` reads the **light** scheme only. `01-tokens.md` calls the light-ground value «lime on light
+ground». **So the primary button will be a deep olive-green, not the chartreuse of the app's dark UI.** It is the
+design's own answer for a light ground and it is correct — written here so nobody is surprised at the review and
+nobody «fixes» it by reaching for the dark scheme.
+
+---
+
+### W24.1 · The eight families as they stand — `layout()`, measured block by block
+
+`designs.ts:170-200`. `logo()` is `{ type: "image", id: "logo", src: { kind: "org_logo" }, alt: "{{org}}", width: 160 }`;
+`heading` is always the pair `[{heading id:"h" level:1}, {paragraph id:"greeting"}]`; `body` is
+`{paragraph id:"body"}`; `button` is `[{button id:"cta" style:"primary"}]` **only when the key's copy has an action**.
+
+| family | blocks, in order, as `layout()` emits them |
+|---|---|
+| `announcement` | `image(logo)` · `heading(h)` · `paragraph(greeting)` · `paragraph(body)` · `session_card(card, withImage)` · `button(cta)?` |
+| `reminder` | `image(logo)` · `heading(h)` · `paragraph(greeting)` · `session_card(card, withImage)` · `paragraph(body)` · `button(cta)?` |
+| `rsvp` | identical to `reminder` |
+| `rescheduled` | `image(logo)` · `heading(h)` · `paragraph(greeting)` · `paragraph(body)` · `paragraph(changes)` · `session_card(card, **no image**)` · `button(cta)?` |
+| `cancelled` | `image(logo)` · `heading(h)` · `paragraph(greeting)` · `paragraph(body)` — **no card, no action** |
+| `rating` | `image(logo)` · `heading(h)` · `paragraph(greeting)` · `paragraph(body)` · `button(cta)?` |
+| `certificate` | `image(logo)` · `heading(h)` · `paragraph(greeting)` · `paragraph(body)` · `detail_list(meta: رقم الشهادة = {{serial}})` · `button(cta)?` |
+| `recognition` | identical to `rating` |
+
+**No design carries `rows` and none carries `styles`** — so every one takes `compileBlocks()`'s `layout === null`
+branch and `shell()`'s all-literal branch, which is why wave 23 moved nothing. **No design uses any of wave 23's six
+new types** (`poster`, `qr`, `logo`, `certificate`, `social`) and none uses `divider` or `spacer`.
+
+What the compiler lets a design control, measured from `compile.ts` and `layout.ts` — **this is the whole vocabulary**:
+
+- `EmailStyles`: `headingSize.h1 ∈ {22,24,28}` · `h2 ∈ {17,19,21}` · `textColour`/`linkColour` ∈ `PaletteToken` ·
+  `button.style`/`button.shape ∈ {rounded,pill}` · `padding ∈ {16,24,32}` · `ground ∈ {neutral,canvas,surface}` ·
+  `mobile.{headingSize,padding}`.
+- `BlockStyle` per block: `align ∈ {start,center,end}` · `padTop`/`padBottom ∈ {0,8,16,24}` · `colour` ·
+  `background` · `shape`.
+- `PaletteToken` is **five names only**: `fgBody`, `fgHeading`, `fgMuted`, `edge`, `surface`. ★ **`node` is not in
+  it** (`blocks.ts:96`), and neither are `canvas`, `canvasRaise`, `edgeStrong` or `spine`.
+
+---
+
+### W24.2 · The 25 keys → the eight families, and no copy is touched
+
+Read from `DESIGN_FOR` and `COPY`. All 25 map; `mail-designs.test.ts` already asserts the map **equals**
+`DEFAULT_TEMPLATES`' key set and that every key resolves to a non-null design. **Each key carries its own `Copy`
+row** — `heading`, `body`, and an optional `action { label, urlBinding }`.
+
+| family | keys | each key's own copy |
+|---|---|---|
+| `announcement` | `session_published` · `presenter_assigned` · `proposal_approved` · `copresenter_invited` | 4 distinct headings and bodies; all four have an action |
+| `reminder` | `reminder_7d` · `reminder_1d` · `reminder_2h` · `reminder_generic` · `materials_added` | 5 distinct headings; the four reminders share the body `{{day}}` and differ in heading, which is the family's point |
+| `rsvp` | `rsvp_promoted` | its own |
+| `rescheduled` | `session_changed` | its own |
+| `cancelled` | `session_cancelled` · `proposal_rejected` · `role_changed` · `account_deactivated` | 4 distinct; **none has an action** |
+| `rating` | `rating_prompt` · `proposal_submitted` · `proposal_changes` · `comment_reply` · `mentioned` | 5 distinct, all with an action |
+| `certificate` | `certificate_issued` · `certificate_revoked` · `export_ready` | 3 distinct; `certificate_revoked` has **no** action |
+| `recognition` | `badge_earned` · `level_reached` | 2 distinct |
+
+★ **I touch no line of `COPY`.** This is a visual rebuild. I found **no** line I would change, so there is no
+question for the lead here. One thing I will *not* do and which is worth naming: `DEC-NEXT-25`'s «no explainer copy»
+would argue against the greeting paragraph «مرحبًا {{member.name}}،» — but that block exists because `DEC-081`
+brought it back deliberately when the string path retired, and `notify-jobs.test.ts` holds the sent mail to it.
+**It stays.** A copy pass on mail is not this wave.
+
+---
+
+### W24.3 · ★★ THE COLOUR TABLE — every colour the mail paints, and the token it arrives as
+
+★ **Token names only. No value appears in this table, and none will appear in `designs.ts`.** The design's names are
+`01-tokens.md`'s; mail renders the **light** scheme only (F4).
+
+| the design's name | what it paints in a mail | arrives as | reached how |
+|---|---|---|---|
+| paper | the page ground: `<body>` and the outer table | **`brand.canvas`** (light) | `styles.ground: "canvas"` → `canvasOf()` → `light.canvas` |
+| paper-surface | the 560 px card; the session card's and the certificate card's fill; the `bgcolor` under every image cell | **`brand.surface`** | `legacyBrand().surface` → `light.surface` |
+| paper-ink | every `heading`; the session card's and certificate card's first line; a secondary button's label | **`brand.fgHeading`** | `light.fgHeading` |
+| paper-ink | body text — every `paragraph`, a detail row's value | **`brand.fgBody`** | `legacyBrand().fgBody` → `light.fgBody` |
+| paper-muted | the session card's secondary lines, a detail row's label, the QR caption, the social row, the footer's preference link, the signature | **`brand.fgMuted`** | `legacyBrand().fgMuted` → `light.fgMuted` |
+| paper-line | every hairline: the card borders, `divider`, the footer's rule, a secondary button's border | **`brand.edge`** | `light.edge` |
+| lime-deep («lime on a light ground») | ★ **the one accent: the primary button's fill** | **`brand.node`** | `compilePalette().accent` becomes `light.node` (F3) |
+| paper-ink on the accent | ★ **the primary button's label** | **`brand.fgHeading`** | replaces `bulletproofButton()`'s hard-coded white (F3) |
+
+★ **Three colours the design has and mail cannot express, and I am not inventing a way:**
+
+1. **surface-2 / `--bg-raised`** → `brand.canvasRaise`. The kit carries it; **mail has no site for it and
+   `PaletteToken` does not list it.** A raised chip or a tinted inset is therefore not drawable. *Named, not worked
+   around.*
+2. **coral / `--signal`** → **has no brand token and must not get one** (`DEC-073`; `DEC-242` §6 lists «coral as a
+   brand token» under not-this-wave). Mail paints no status colour today and will paint none. Correct as it stands.
+3. **the team colour** → reaches every other surface as `--team` on the element (`DEC-186` §2). A mail has no CSS
+   custom properties that survive Gmail's sanitiser, and `companies.team_color` is in **no** notification payload.
+   **So the «لون الفريق» colourway is a poster colourway and has no mail form.** *Named.*
+
+★ **An org that overrode its kit sees its own colours** (contract 6). Every row above is a read of
+`brand_kit()`'s light scheme through `compilePalette()`/`canvasOf()`/`legacyBrand()`. **No family will hard-code a
+platform value**, and the one place a value is still written as a literal is `render.ts`'s sanitiser defaults —
+W24.5.
+
+★ **One honest limit on contrast:** the brand kit guarantees **no** pair for `accent`. `0144` guards the six status
+pairs only, and `DEC-242` §2's measurement is of the **platform default**. So `brand.fgHeading` on `brand.node` is
+6.87:1 for the default and **unguaranteed for an org that overrode both** — exactly as a white label on `fgHeading` is
+unguaranteed today (an org with a pale `fgHeading` already ships a white-on-pale button). **The change does not
+create the class of defect; it moves it.** Whether a kit-level accent contrast guard is wanted is a question for
+`branding` and M13, and I am recording it rather than widening `0144` in a mail PR.
+
+---
+
+### W24.4 · What I will actually change in `designs.ts` — and what I deliberately will not
+
+★ **Every family keeps its block list.** The language arrives through `styles`, through per-block `style`, and
+through F3's accent — not by swapping blocks. The reasoning for each non-swap is below, because a reviewer should see
+that the wave-23 types were considered rather than forgotten.
+
+**A · `styles`, added to all eight (the global look).** `ground: "canvas"` (paper under a white card) ·
+`padding: 32` · `headingSize: { h1: 28, h2: 21 }` · `button: { shape: "pill" }` ·
+`mobile: { headingSize: { h1: 24 }, padding: 16 }`. This is the whole of «it looks like the product»: a warm paper
+ground, a generous card, the heaviest heading the scale offers, and the pill the design uses for every button.
+
+**B · per-block `style`, where the design asks and the vocabulary allows.**
+- `rescheduled`'s `changes` paragraph gets `background: "surface"` with `padTop`/`padBottom` — the «old ← new» block
+  reads as a block instead of as prose.
+- `cancelled`'s `body` likewise: an ending with a reason, set apart.
+- `recognition`'s `heading` and `cta` get `align: "center"` — the one family that is a celebration.
+- The `logo` row keeps `align: "start"`, which is the artboard's mark position.
+
+**C · the accent (F3), in `render.ts` and `compile.ts`, one commit:** `compilePalette().accent` reads `light.node`;
+`bulletproofButton()`'s primary label colour becomes `palette.fgHeading`.
+
+★ **Deliberately NOT done, each with its reason:**
+- **`poster`** instead of `session_card(withImage)` — `poster` writes **no line into the text alternative**, while
+  `session_card` writes the title, day, time and venue. Swapping would cost `REQ-NTF-013` four lines of the plain
+  part to gain a flat image. *Refused.*
+- **`qr`** anywhere in the eight — a QR is a **print** affordance (it is on the poster and the certificate because
+  those are printed). In an inbox the reader is already on the device: a link is strictly better. Four keys also have
+  no route at all (`session_cancelled`, `role_changed`, `account_deactivated`, `certificate_revoked`), so `url` is
+  unset and the block would silently render nothing for them. *Refused.*
+- **`logo`** instead of `image({kind:"org_logo"})` — they compile to the same HTML but for the `alt`, and switching
+  changes `blocksToTemplateText()`, which is what «حوّله إلى تصميم» stores in `notification_templates.body`. A
+  conversion path moves for no visual gain. *Refused.*
+- **the `certificate` block** in the certificate family — it carries its own button, so either
+  `MSG-certificate_issued` gets two CTAs or `MSG-export_ready` (no `kind`, no `title`, no `serial`) loses its only
+  one. `detail_list` stays, as wave 23 settled. *Refused.*
+- **`social`** — no org has social links in a notification payload and nothing offers the binding. *Refused.*
+- **a category pill** — ★ **this is the artboard's most distinctive element and mail cannot draw it.** `BlockStyle`
+  offers a cell `background` (full width, no radius, no `inline-block`) and `shape` applies to buttons only. A pill
+  would need a new block type or a new style, both forbidden this wave. *Named as a disagreement, D1 below.*
+
+---
+
+### W24.5 · ★★ `render.ts`'s third copy of the palette — what I move, and the guard I would rather have
+
+The lead's §4 addendum assigns these to me: `compilePalette()` and `canvasOf()` (`render.ts:349-366`) and `shell()`'s
+own defaults carry six literals — the old navy heading/accent, the old light edge, the neutral ground, and the
+neutral body/muted/surface triple. F1 proves they **do** reach the pinned output (138 + 43 + 60 occurrences), because
+the fixture passes the legacy shape; the addendum's «they do not affect the pinned output» is true only of a render
+that passes the full kit, which the worker does and the pins do not.
+
+★ **What they become:** the platform default's **light** values for `fgHeading`, `edge`, `canvas`, `fgBody`,
+`fgMuted`, `surface`, and `light.node` for `accent`'s fallback. They remain literals in `render.ts` because
+`@kareem/mail-runtime` must not grow a dependency on `@kareem/designer-runtime` — and `packages/*/package.json` is
+lead-only, so I will not propose one quietly.
+
+★ **And so they cannot drift again, I propose the same guard the other two copies already have.** `brand-kits.test.ts`
+compares `brand.ts` against `brand_kit()`; a **new** `tests/unit/mail-palette-default.test.ts` (mine, matches
+`tests/unit/mail*`) compares `render.ts`'s fallbacks against `platformBrand('light')`. A test import of
+`@kareem/designer-runtime` costs the package nothing. **This is the third copy's `brand-kits.test.ts`, and without
+it the next palette move finds the navy again.** → **Q2**.
+
+---
+
+### W24.6 · ★ What must stay true (`REQ-NTF-016`), and how each is proven
+
+| must stay true | proof, and it exists already unless marked ★new |
+|---|---|
+| all 25 keys resolve to one of the eight | `mail-designs.test.ts` — `DESIGN_FOR`'s keys `toEqual` `DEFAULT_TEMPLATES`', `platformDesign(key)` non-null for all 25, the eight families all used |
+| each key keeps its own copy | `mail-designs.test.ts` compiles every design over **its own** sample payload and asserts `text` non-empty; `notify-jobs.test.ts` holds sent mail. ★new: a case asserting the 25 `heading` strings are **25 distinct** values, which nothing asserts today |
+| every block has an `id` | `mail-designs.test.ts` — `readDocument()` returns `dropped: []` and `blocks.length === design.blocks.length` for all 25, and no `id` is `""` |
+| a compiled HTML form | `mail-designs.test.ts` — `rows.length > 0` and `dropped: []` for all 25 |
+| ★ a generated text alternative | `mail-designs.test.ts` — `text.join("\n") !== ""` for all 25. ★new, and it is the sharpest check I have: **the 30 `.txt` and 30 `.subject.txt` pinned files must be byte-identical after my change.** `styles`, `BlockStyle`, the accent and the button's label colour touch **HTML only**. If a `.txt` moves, my change is wrong — not the pin |
+| no block emits SVG | `blocks.ts`'s `ImageSource` is a **closed** two-member set; `mail-blocks.test.ts` asserts an org logo «never as SVG». **No design adds an image source** — the only image is `org_logo`, unchanged |
+| a null `blocks` row is still the admin's own text | `documentFromText()` is untouched. `mail-pinned`'s `MSG-reminder_1d.org-text` case is exactly this and is pinned; `mail-designs.test.ts` holds that a design is adopted only by being **stored**. ★ Note: `documentFromText()` returns **no `styles`**, so an admin's own text keeps the neutral ground — *deliberate*: framing their words is `REQ-NTF-007`, restyling them is not |
+| the preference footer cannot be lost | composed, not typed (`compileBlocks()` appends it always); `checks.ts` reports `footerPresent` as satisfied |
+
+---
+
+### W24.7 · ★★ The pinned files — what I hand the lead instead of a re-pin
+
+★ **I never run `MAIL_PIN_WRITE=1`, and I never commit a file under `tests/unit/mail-pinned/`.** There is no flag in
+any npm script, workflow or hook, and I will not introduce one (`mail-pin-write.test.ts`'s header is the rule).
+
+**What I hand over, per commit that changes a design:**
+1. the commit's own diff of `designs.ts` / `render.ts` / `compile.ts`;
+2. a written **prediction** of the pinned diff before it is taken: **60 HTML files move (30 `.brand.html`, 30
+   `.plain.html`); 60 files do not (30 `.subject.txt`, 30 `.txt`)**, and per HTML file the shape of the change —
+   the ground, the card padding, the `k-h1`/`k-card` classes and the `<style>` media query appearing in `<head>`,
+   the heading sizes, the button's fill, border and label, the pill radius and the VML `arcsize`;
+3. the exact command for the lead to run, and the `git diff -- tests/unit/mail-pinned/` to read;
+4. ★ **the stability proof**: the lead runs the writer a **second** time on the same tree and `git status` is clean.
+   Nothing in my change is clock-, locale- or id-dependent — `samples.ts` fixes every uuid and instant for exactly
+   this reason — so a second run that moves a byte is a defect in my design, not in the pinning.
+
+★ **And the sequencing, which F1 changes:** the lead's step 4 in PR A will come back **empty**. The 120 move once,
+in PR C, in **one** reviewed diff. I will ask the lead to take it at the **end** of PR C rather than per commit, so
+there is one diff to read rather than three.
+
+★ **One operational step I must not forget:** `mail-runtime-dist.test.ts` fails if a `src/` file is newer than its
+built twin, and a green pin over a stale `dist/` is worse than no pin. So every commit that touches
+`packages/mail-runtime/src/**` runs `npm run build -w @kareem/mail-runtime` (the package's own `tsc -p`) first. ★ I
+read that as permitted — it is not the root `npm run build`, which is the Next production build and lead-only. **If
+the lead reads it otherwise, say so and I will hand the rebuild over too.**
+
+---
+
+### W24.8 · ★★ The font finding — mail cannot use the display face, and that is the honest answer
+
+**Asked: how does Baloo Bhaijaan 2 reach an email. It does not, and it must not be made to.** Three independent
+places in the tree already say so:
+
+1. `render.ts`'s header, constraint 3: «a declared fallback font stack, **not a web font** — web fonts do not load
+   in most clients, so the mail is designed to look right in the fallback rather than to depend on the brand face».
+2. `primitives.ts`'s `DESIGN_STACK` comment: «a mail renders in the **READER's** fonts — **invariant 12 does not
+   reach an inbox** and `@font-face` is stripped by Gmail and Outlook — so the stack is declared and ends in a
+   generic that exists on Windows, macOS, iOS, Android and Gmail's web client. There is **ONE** stack: two would be
+   two chances for an Arabic face to fall back silently to one that breaks lam-alef.»
+3. `02-typography.md` §«Getting the display face into the product» routes it through `@font-face` in `globals.css`
+   with a metric-matched fallback — a mechanism an email client has no part in.
+
+**The stack a mail declares, today and after this wave:**
+`'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, 'Geeza Pro', 'Noto Naskh Arabic', Arial, sans-serif`.
+A heading is that same stack at `font-weight: bold` and the heading size — **there is no display face and no second
+stack.** `DESIGN_STACK`'s own comment already records the honest weakness: Windows gets Segoe/Tahoma, and **iOS and
+Android ship none of the three**, so on most readers the Arabic run falls through `sans-serif` to the platform's
+glyph-level fallback (Geeza Pro, Noto Naskh Arabic), which *works* — a fallback face shapes its own run and lam-alef
+survives — but is **discovered rather than declared**, and this repository's standard is the opposite (`06` §5.1).
+
+★ **So «the same visual language» in mail is carried by the palette, the ground, the rhythm, the pill and the
+accent — never by the face.** That is a real gap between the artefacts and it belongs in the plan: a printed poster
+and a printed certificate **will** wear Baloo Bhaijaan 2 (`designer`'s PR B, through the font set), and an email
+**will not**. **I am not proposing a workaround.** Three were considered and all three are worse than the gap: an
+`@font-face` (stripped, and a silent reflow where it is not); a bitmap heading (an image of text — unreadable with
+images off, and a second image to break); a second «display» stack (the exact two-stacks failure
+`DESIGN_STACK`'s comment forbids). → **D2 below**, for the record, not for a decision.
+
+---
+
+### W24.9 · Evidence — the suites, and every assertion I expect to move
+
+★ **Evidence, expected to pass untouched:** `mail-render.test.ts` · `mail-instants.test.ts` · `mail-day-words.test.ts`
+· `mail-links.test.ts` · `mail-mime.test.ts` · `mail-wrap.test.ts` · `mail-transport.test.ts` ·
+`mail-source-visible.test.ts` · `notify-jobs.test.ts` · `notify-jobs-days.test.ts` · `notify-channels.test.ts` ·
+`notify-i18n.test.ts` · `notify-subject-tokens.test.ts` · `notify-email-keys.test.ts` · `notify-qr-route.test.ts` ·
+`notify-webhook-route.test.ts` · `notify-preview-route.test.ts` · `notify-preview-editor-mode.test.ts` ·
+`notify-builder-taps-guard.test.ts` · `notify-email-checks*.test.ts` · `tests/components/email/**` ·
+`tests/rls/notify*` · `tests/e2e/{wave8-console-emails,wave10-notify-*,wave23-notify-*}`.
+
+★ **Assertions I expect to move.** Each gets a ledger line in `STATUS.md` in the **same commit**, with its kind.
+
+| file · what moves | why | kind |
+|---|---|---|
+| `tests/unit/notify-builder-state.test.ts` — «a design opened and saved unchanged is the JSON it was»: `expect(documentJson(doc)).toBe(documentJsonOf(design.blocks))`, for all 25 keys | `documentJsonOf()` serialises **blocks only**; once a design carries `styles`, `toDocument()` writes them back (correctly — `fromDocument` reads them at `builder-state.ts:46`) and the two strings differ. The round trip is **not** broken; the comparison is too narrow. It becomes a comparison against the whole document | **expectation** |
+| `tests/unit/mail-designs.test.ts` — the `ctx()` palette literal | it hard-codes the six `CompilePalette` fields, `accent` among them. `accent` stops being the heading colour | **expectation** |
+| `tests/unit/mail-blocks.test.ts` / `mail-wrap.test.ts` / `mail-blocks-new-types.test.ts` — their `PALETTE`/`palette` literals | same: fixtures that set `accent` equal to `fgHeading`. ★ Only if a case asserts the **button's** colours; I expect `mail-blocks.test.ts`'s `v:roundrect` case to need its expected fill and label updated | **expectation** |
+| `tests/unit/mail-layout.test.ts:127` — `expect(html).not.toContain("background:#f5f5f5")` | it asserts the ground is **not** the neutral literal when `styles.ground` is set. This should keep passing and is worth naming because it is the one existing assertion that already covers the paper ground | **unchanged, named** |
+| `tests/unit/mail-pinned/**` — 60 HTML files | the rebuild. **The lead's diff, not mine** | **expectation** (the lead's ledger line) |
+
+★ **New files (mine):** `tests/unit/mail-wave24-designs.test.ts` — the 25 headings distinct; every family carries
+`styles`; the accent is `node` and the primary label is `fgHeading`, with the contrast pair asserted from the
+committed constants; **no design references an image source other than `org_logo`** (the no-SVG floor as a test
+rather than a type argument). And `tests/unit/mail-palette-default.test.ts` per **Q2**.
+
+★ **Captures:** `.qa-shots/rtl/wave24-notify-<family>-<state>-<1280|390>.png`, honouring `E2E_SHOTS_DIR`, each
+family at 600 px in Arabic, **opened beside the app's own surfaces** — the point of the wave is that they are the
+same product. A new `tests/e2e/wave24-notify-designs.spec.ts` drives the existing preview; the **production build is
+the lead's**.
+
+---
+
+### W24.10 · Questions for the lead (sync 1)
+
+- **Q1 — `SAMPLE_BRAND` is a legacy three-key brand, and the worker sends the full kit (F1, F2). Which?**
+  **(a)** leave it, accept that the 120 files record the renderer's *fallback* behaviour and that the paper ground
+  and the real `fgHeading`/`edge`/`node` never appear in a pinned file, and prove the real thing with a new test and
+  the captures instead. **(b)** make `SAMPLE_BRAND` a `FullBrand` (`samples.ts` is mine) so the pins record what a
+  member actually receives — **a much larger, one-time pinned diff, and the preview's sample moves with it**, since
+  `samples.ts` is deliberately the one sample set. ★ **My recommendation: (b), in its own commit, before any design
+  change**, so the pinned diff separates «the fixture now passes a real kit» from «the design changed». But the 120
+  files are the lead's and the diff is the lead's to read, so the lead chooses.
+- **Q2 — the third copy's guard.** May I add `tests/unit/mail-palette-default.test.ts`, which imports
+  `@kareem/designer-runtime` **in a test only** and asserts `render.ts`'s six fallbacks equal
+  `platformBrand('light')`? No package manifest changes. Without it the mail renderer is the one copy of the palette
+  with nothing watching it.
+- **Q3 — `npm run build -w @kareem/mail-runtime`.** I read the package's own `tsc -p` as mine to run (it is not the
+  root Next build). Confirm, or I hand every rebuild over.
+- **Q4 — the heading scale caps at 28.** `EmailStyles.headingSize.h1 ∈ {22,24,28}`; the design's display-md is
+  30/34. 28 is the closest honest mapping and I will use it. Widening the closed scale would touch `layout.ts`'s
+  `H1` set and the styles panel an admin uses, which is a chrome behaviour change this wave freezes. **Confirm 28 is
+  the answer and the gap is recorded, not closed.**
+
+---
+
+### W24.11 · ★ Disagreements — written with the file and the line, no side picked
+
+- **D1 — the artboard's category pill has no mail form.** `DEC-242` §1 makes «the category as a pill at the
+  block-start, in the ground's colour on ink» the first element of the poster's specification. Mail cannot draw it:
+  `BlockStyle.background` is a **cell** `bgcolor` (full width, no radius, no `inline-block`) and `BlockStyle.shape`
+  applies to a button alone (`packages/mail-runtime/src/blocks.ts:101-114`; `compile.ts`'s `bgAttr()` and
+  `shapeOf()`). A pill needs a new block type or a new style, and `DEC-242` §6 forbids both («no new primitive»,
+  and the block builder's chrome is frozen). **Which wins — the pill or the freeze — is not mine to decide.** My
+  plan proceeds without it.
+- **D2 — the display face reaches the poster and the certificate and cannot reach a mail.** `DEC-242` §0 and
+  `CLAUDE.md`'s wave-24 goal say «an exported poster, an issued certificate **and a sent email** look like the
+  product they came from», and `02-typography.md` makes Baloo Bhaijaan 2 the display face of that product. But
+  `render.ts`'s header (constraint 3) and `primitives.ts`'s `DESIGN_STACK` comment both rule that a mail declares
+  one fallback stack and no web font — and `CLAUDE.md` invariant 12's one font set, by `primitives.ts`'s own words,
+  «does not reach an inbox». **So the three artefacts cannot wear the same face, and the email is the one that
+  cannot.** Recorded; I propose no workaround (W24.8 says why all three candidates are worse).
+- **D3 — `wave-24-lead.md` §4's row and `DEC-242` §4's row say the palette alone re-pins the 120 files; measured,
+  it moves none** (F1). The lead's own §4 addendum reaches the same conclusion from the other direction, so this is
+  one row of one table, not a decision. **It needs a correction in `STATUS.md`'s checklist (step 4 lands in C, not
+  A) and the lead is the only one who can make it.**
+- **D4 — `samples.ts`'s comment says «the 116 pinned files»; there are 120** (30 cases × 4 parts), and
+  `mail-pinned.fixtures.ts` says «the 29 `.subject.txt` files»; there are 30. Stale counts from wave 10, in files
+  that are mine. **I will fix both comments in PR C** unless the lead would rather they move in A with the re-pin.
+
+---
+
+### W24.12 · ★★ Sync 1 — approved, and the four rulings (2026-10-04)
+
+**The plan above is approved. «The palette is in at `bb9adc5d`»**, with the full unit suite 2,592 green across it.
+★ **I am holding until the lead posts the path for `../kareem-marefa-wave24c`**; nothing below is built before that.
+
+| # | Ruling | What it binds me to |
+|---|---|---|
+| **F1** | ★ The lead had already corrected it independently, from the same measurement. `STATUS.md`, `CLAUDE.md` contract 4 and the brief's §4 now all say the palette does **not** move the 120 and that the one diff falls in **PR C**; checklist step 4 reads **«measured UNMOVED»** | D3 is closed. Nobody hunts for a bug in `0192` |
+| **F3** | ★ Approved as framed: `accent → light.node` **and** the primary button's label `→ fgHeading` are **ONE commit** | ★ **The commit body carries both ratios — 2.70:1 (fails) and 6.87:1 (passes)** — «that measurement is the justification and it should outlive the diff» |
+| **Q1** | ★ **(b), my way: `SAMPLE_BRAND` becomes a full brand, in its OWN commit, before any design change.** The deciding reason is mine: the pins freeze a shape the worker no longer sends, so 120 files prove nothing about what a member receives. ★ **The preview's sample moving with it is correct, not collateral** — the preview should show a real kit | Commit order in C: **(1)** `SAMPLE_BRAND` → full brand · **(2)** `render.ts`'s six sanitiser literals + `tests/unit/mail-palette-default.test.ts` · **(3)** the accent pair (F3) · **(4)** the eight families' `styles` and per-block `style` · **(5)** D4's stale counts. One pinned diff for the lead at the **end** |
+| **Q2** | ★ Approved. `tests/unit/mail-palette-default.test.ts` **should exist** — «without it the next palette move finds the navy again, which is exactly how `0155` happened». The six literals move in **PR C** and the new test holds them | It is the third copy's `brand-kits.test.ts`. Test-only import of `@kareem/designer-runtime`; no manifest change |
+| **Q3** | ★ Confirmed: `npm run build -w @kareem/mail-runtime` is the package's own `tsc -p` and is **mine**. Only the root Next build is lead-only | Run it before every commit that touches `packages/mail-runtime/src/**`, or `mail-runtime-dist.test.ts` goes green over a stale `dist/` |
+| **Q4** | ★ Approved: use **28** and record the gap. **Do not widen a closed scale the styles panel reads** | W24.4's `headingSize.h1: 28` stands; the 30/34 gap stays recorded in W24.1 |
+| **D1** | Proceed without the pill, recorded | No new block type, no new style |
+| **D2** | ★ **The display-face gap goes to the OWNER as a product fact, not a defect.** The lead agrees all three workarounds are worse than the gap and is not asking me to close it | W24.8 stands as written. I build no workaround |
+| **D4** | Fix both stale counts in C | `samples.ts`'s «116» → 120; `mail-pinned.fixtures.ts`'s «29 `.subject.txt`» → 30 |
+
+★ **The shared tree, while I hold.** A concurrent session is writing `DEC-243` / `REQ-TEN-009` into `DECISIONS.md` and
+`01-prd.md` **in this same checkout**, and the lead is committing PR A into it. So: **stage only my own paths by
+explicit filename, `git commit -- <paths>`, never `git add -A`**, never stash, rebase, reset, clean or switch
+branches, and **re-read any file I did not write in this session from disk before editing it** — a stale in-context
+copy written back is a silent revert. ★ When the worktree lands I work on C's files **in C's tree only**.
