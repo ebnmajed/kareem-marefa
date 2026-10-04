@@ -35,11 +35,30 @@ function migration(suffix: string, proposed?: string): string {
 const BASELINE = () => migration("_baseline_library.sql");
 const GUARD = () => migration("_template_guard_walks_every_colour.sql", "0001_template_guard_walks_every_colour.sql");
 const SEED = () => migration("_certificate_library.sql", "0002_certificate_library.sql");
-// ★ wave 24 (DEC-242): the supersede function, then the rebuilt library. 0005
-// CALLS `supersede_baseline_template()`, so 0006 is applied first — the same
-// order the promoted migration uses.
-const SUPERSEDE = () => migration("_supersede_baseline.sql", "0006_supersede_baseline.sql");
-const PLAYGROUND = () => migration("_playground_library.sql", "0005_playground_library.sql");
+/**
+ * ★ wave 24 (DEC-242) — the supersede function and the rebuilt library, in the
+ * order they must be applied: 0005 CALLS `supersede_baseline_template()`, so the
+ * function comes first.
+ *
+ * ★★ RETURNS A LIST, because the shape of this wave changes under the test's
+ * feet when the lead promotes. Under `supabase/proposed/` it is TWO files; the
+ * lead promotes them as ONE migration (`0193_baseline_library_playground.sql`),
+ * whose name ends with neither proposed suffix. `db.ts`'s own rule is that a
+ * test which proved something under `proposed/` must keep passing the moment it
+ * is promoted — so this resolves both states rather than naming one, and a
+ * missing wave is a loud failure rather than a silent no-op.
+ */
+function wave24(): string[] {
+  const proposed = ["0006_supersede_baseline.sql", "0005_playground_library.sql"]
+    .map((f) => join(process.cwd(), "supabase", "proposed", "designer", f))
+    .filter((f) => existsSync(f));
+  if (proposed.length === 2) return proposed.map((f) => readFileSync(f, "utf8"));
+  const dir = join(process.cwd(), "supabase", "migrations");
+  // The promoted migration carries the function AND the seed, in that order.
+  const found = readdirSync(dir).find((f) => /_baseline_library_playground\.sql$/.test(f));
+  if (!found) throw new Error("wave 24's baseline seed is neither under supabase/proposed/designer/ nor promoted");
+  return [readFileSync(join(dir, found), "utf8")];
+}
 
 /** The platform library as the migrations build it on an empty world. */
 async function buildLibrary(tx: Tx) {
@@ -50,11 +69,10 @@ async function buildLibrary(tx: Tx) {
   await tx.q(BASELINE());
   await tx.q(GUARD());
   await tx.q(SEED());
-  // ★ LEDGER (wave 24): two statements added. The roster is still counted from
-  // the migrations alone, on an empty world — it is just that the migrations now
-  // include the wave that rebuilt every document and superseded the old rows.
-  await tx.q(SUPERSEDE());
-  await tx.q(PLAYGROUND());
+  // ★ LEDGER (wave 24): the wave's own SQL is applied. The roster is still
+  // counted from the migrations alone, on an empty world — it is just that they
+  // now include the wave that rebuilt every document and superseded the old rows.
+  for (const body of wave24()) await tx.q(body);
 }
 
 interface Row {
@@ -226,7 +244,7 @@ describe("REQ-DSG-026 — the seeded roster (DEC-148)", () => {
       // remains is the eleven it seeded, one version each.
       expect(before).toEqual({ templates: "11", versions: "11" });
 
-      await tx.q(PLAYGROUND());
+      for (const body of wave24()) await tx.q(body);
       expect(await count()).toEqual(before);
       const [{ v1: after }] = await tx.q<{ v1: string }>(
         `select md5(string_agg(v.document::text, '|' order by t.family, t.purpose)) as v1

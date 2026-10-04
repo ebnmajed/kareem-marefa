@@ -18,6 +18,8 @@
 // 03 §8.2: RPC-supersede_baseline_template.{deleted,retired_by_certificate,
 // retired_by_document,retired_by_design,not_callable}.
 
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
@@ -25,7 +27,29 @@ import { seed } from "./fixture";
 afterAll(() => pool.end());
 
 const FN = "designer/0006_supersede_baseline.sql";
-const SEED = "designer/0005_playground_library.sql";
+
+/**
+ * ★★ The wave's own SQL, in application order, under EITHER shape.
+ *
+ * Under `supabase/proposed/` it is two files; the lead promotes them as ONE
+ * migration (`0193_baseline_library_playground.sql`) whose name ends with
+ * neither proposed suffix. `applyProposed()` cannot stand in for this: it
+ * correctly no-ops once a file is promoted, on the reasoning that `db:reset`
+ * already applied it — but these tests DELETE every template row to rebuild a
+ * pre-wave world, so the wave's inserts have to run again inside the
+ * transaction. A no-op there would leave no new rows and the assertions would
+ * be measuring nothing.
+ */
+function wave24(): string[] {
+  const proposed = ["0006_supersede_baseline.sql", "0005_playground_library.sql"]
+    .map((f) => join(process.cwd(), "supabase", "proposed", "designer", f))
+    .filter((f) => existsSync(f));
+  if (proposed.length === 2) return proposed.map((f) => readFileSync(f, "utf8"));
+  const dir = join(process.cwd(), "supabase", "migrations");
+  const found = readdirSync(dir).find((f) => /_baseline_library_playground\.sql$/.test(f));
+  if (!found) throw new Error("wave 24's baseline seed is neither under supabase/proposed/designer/ nor promoted");
+  return [readFileSync(join(dir, found), "utf8")];
+}
 
 /** The platform baseline as it stands BEFORE this wave, built from the
  *  migrations on an empty world — 0061's eight compositions and 0098's versions.
@@ -35,13 +59,11 @@ async function preWaveLibrary(tx: Tx): Promise<void> {
   for (const t of ["certificates", "export_artifacts", "session_posters", "design_documents", "design_assets", "design_template_versions", "design_templates"]) {
     await tx.q(`delete from public.${t}`);
   }
-  await tx.q(await migrationText("_baseline_library.sql"));
-  await tx.q(await migrationText("_certificate_library.sql", "designer/0002_certificate_library.sql"));
+  await tx.q(migrationText("_baseline_library.sql"));
+  await tx.q(migrationText("_certificate_library.sql", "designer/0002_certificate_library.sql"));
 }
 
-async function migrationText(suffix: string, proposed?: string): Promise<string> {
-  const { existsSync, readdirSync, readFileSync } = await import("node:fs");
-  const { join } = await import("node:path");
+function migrationText(suffix: string, proposed?: string): string {
   if (proposed) {
     const file = join(process.cwd(), "supabase", "proposed", proposed);
     if (existsSync(file)) return readFileSync(file, "utf8");
@@ -287,8 +309,8 @@ describe("REQ-DSG-033 · REQ-CRT-016 — the rebuilt library replaces the old on
 
       // ★ The wave, exactly as the migration runs it: the function, then the seed,
       // which inserts the eleven and then supersedes everything else.
-      await applyProposed(tx, FN);
-      await applyProposed(tx, SEED);
+      // ★ The wave, exactly as the migration runs it.
+      for (const body of wave24()) await tx.q(body);
 
       // The live roster is the new eleven, each at version 1.
       const live = await tx.q<{ purpose: string; family: string; version: string }>(
