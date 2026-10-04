@@ -50,6 +50,8 @@ describe("EventTopRow", () => {
     );
     expect(screen.getByRole("button", { name: "شاهد القصة" })).toHaveAttribute("aria-haspopup", "dialog");
     expect(screen.queryByRole("link", { name: "إداري" })).toBeNull();
+    // ★ The phone's entry: its row is display:none from lg, so the desktop's is the only one there (DEC-251 §4.7).
+    expect(screen.getByRole("button", { name: "شاهد القصة" }).closest(".lg\\:hidden")).not.toBeNull();
   });
 
   it("open, even given a story: the breadcrumb — the entry is a live session's", async () => {
