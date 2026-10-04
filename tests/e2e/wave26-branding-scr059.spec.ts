@@ -7,7 +7,10 @@
 //   edit-changed   — two changes: the unsaved count, Save naming it
 //   edit-refused   — ★★ a canvas the DATABASE refuses (`0144`): the failing pair inline, the value kept, nothing written
 //   read-saved     — a palette the database accepts: back to read mode with the saved mark from the row
+//   read-with-logo — the artboard's own state: a logo uploaded through the real path, on its tile, with its format, size,
+//                    the A3 result and its badge, and «استبدال»
 import { randomUUID } from "node:crypto";
+import { deflateSync } from "node:zlib";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
@@ -72,6 +75,42 @@ async function signIn(context: BrowserContext, email: string) {
   await context.addCookies(jar.map((c) => ({ name: c.name, value: c.value, domain: "localhost", path: "/" })));
 }
 
+/** A real PNG large enough to print at A3 (≥ 300 PPI on both axes): a dark mark centred on a bone ground, 8-bit
+ *  greyscale so it stays small on the wire. Built here so the upload sniffs and measures a genuine image. */
+function logoPng(width = 3600, height = 5000): Buffer {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (buf: Buffer) => {
+    let c = 0xffffffff;
+    for (const b of buf) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const sum = Buffer.alloc(4);
+    sum.writeUInt32BE(crc(body));
+    return Buffer.concat([len, body, sum]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 0; // greyscale
+  const raw = Buffer.alloc((width + 1) * height, 0xf0);
+  const [x0, x1, y0, y1] = [width * 0.25, width * 0.75, height * 0.3, height * 0.7].map(Math.round);
+  for (let y = 0; y < height; y++) {
+    const row = y * (width + 1);
+    raw[row] = 0; // filter: none
+    if (y >= y0 && y < y1) raw.fill(0x12, row + 1 + x0, row + 1 + x1);
+  }
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
+}
+
 async function settle(page: Page) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
@@ -126,4 +165,28 @@ test("★ SCR-059 read first, edit, the database's refusal on the screen, and a 
   const { rows } = await db.query<{ light_canvas: string }>(`select light_canvas from public.brand_kits where org_id = $1`, [orgId]);
   expect(rows[0]?.light_canvas).toBe("#f4f6f9");
   await capture(page, "read-saved");
+});
+
+test("SCR-059 with a logo — the artboard's own state, uploaded through the real path", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "SCR-059's artboard is drawn at 1280");
+  await page.setViewportSize(DESKTOP);
+  await signIn(context, adminEmail);
+  const main = page.locator("#main");
+
+  await page.goto("/ar/app/admin/branding?edit");
+  await expect(main.getByRole("heading", { name: "تعديل الهوية" })).toBeVisible();
+  // `ui/file-drop` reports the file; the round trip (initiate → PUT → complete, sniffed on content) starts on the button.
+  await main.locator('input[type="file"][name="logo"]').setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: logoPng() });
+  await main.getByRole("button", { name: "رفع شعار" }).click();
+  await expect(main.getByRole("status").filter({ hasText: "نقطة/بوصة" })).toBeVisible({ timeout: 20_000 });
+  await main.getByRole("button", { name: /^حفظ/ }).click();
+  await expect(main.getByRole("link", { name: "استبدال" })).toBeVisible({ timeout: 10_000 });
+
+  // The logo card as drawn: the mark on its tile, «PNG · w × h · A3 عند N نقطة/بوصة», the rating badge, «استبدال».
+  await expect(main.getByRole("img", { name: "الشعار الحالي" })).toBeVisible();
+  await expect(main.getByText(/^PNG · 3,600 × 5,000 · A3 عند \d+ نقطة\/بوصة$/)).toBeVisible();
+  await expect(main.getByText("كافٍ للطباعة")).toBeVisible();
+  const { rows } = await db.query<{ logo_asset_id: string | null }>(`select logo_asset_id from public.brand_kits where org_id = $1`, [orgId]);
+  expect(rows[0]?.logo_asset_id).not.toBeNull();
+  await capture(page, "read-with-logo");
 });
