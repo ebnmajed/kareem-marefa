@@ -858,6 +858,30 @@ artboard and opened by the lead**; ★★ all four formats exported from the sam
 certificate walkthrough captured at every step (`DEC-236` §5); ★ `console-register` green and untouched. **The acceptance
 is the owner's, at 1280 on a real screen.**
 
+## M26 — the artefacts: the baseline template library and the eight mail designs, rebuilt · wave 24 · `DEC-242`
+
+★★ **The first wave that touches what LEAVES the product.** Every screen has worn «ساحة اللعب» since wave 17; the poster
+and the certificate an admin exports still wear M6's — Reem Kufi on navy — because «the playground stops at the
+certificate's edge» (`DEC-183` §4) was a deferral, and this is the wave that discharges it. **The goal**: an exported
+poster, an issued certificate and a sent email look like the product they came from. Three pull requests, two teammates
+and the lead, **no new primitive**, and **the first wave since M6 in which a parity golden moving is correct**.
+
+| Work | Requirements | PR | Track |
+|---|---|---|---|
+| The platform default brand palette | `REQ-DSG-032` | A | lead |
+| The five baseline poster families, rebuilt | `REQ-DSG-033` | B | `designer` |
+| The three certificate families × two orientations, rebuilt | `REQ-CRT-016` | B | `designer` |
+| The superseded eleven leave the library | `REQ-DSG-034` | B | `designer` |
+| The eight designed mail families, rebuilt | `REQ-NTF-016` | C | `notify` |
+
+**Demonstrable:** ★★ a poster and a certificate exported from the rebuilt baseline, **held beside the library
+artboard's thumbnails and opened by the lead**; ★★ a certificate issued **before** the wave still rendering as the
+version it was issued against, byte-reproducible (`REQ-CRT-014`); ★★ the migration's own report naming, per row, whether
+it deleted or retired; ★ all six of `0144`'s status pairs clearing 4.5:1 on the new defaults; ★ the 120 pinned mail
+files moving **once**, as one reviewed diff, and stable on a re-run; ★ `qa:contract`, `qa:appearance`, `visual`'s public
+pairs and the register-form fingerprint **unmoved**. **The acceptance is the owner's, on a printed poster and a printed
+certificate.**
+
 ## 3. Dependencies
 
 ```mermaid
@@ -870,6 +894,7 @@ graph LR
     M4 --> M7
     M6 --> M7
     M7 --> M8 --> M9 --> M10 --> M11 --> M12 --> M13
+    M12 --> M26
 ```
 
 | Dependency | Why it is hard |
@@ -906,6 +931,7 @@ graph LR
 | **M11** | An admin schedules an approved proposal without re-typing a word; a presenter is refused the survey results by policy |
 | **M12** | A layer positioned by finger **and** by tap; an email designed, previewed in three modes and opened in Outlook |
 | **M13** | The live marketing site rebuilt on the same system, `qa:contract` never once red, `registrations` untouched |
+| **M26** | A poster and a certificate printed from the rebuilt baseline, beside one issued before the wave that still renders as it did |
 
 ---
 

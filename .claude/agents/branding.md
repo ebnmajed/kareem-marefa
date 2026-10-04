@@ -1,6 +1,6 @@
 ---
 name: branding
-description: Not spawned in wave 23 (DEC-235, DEC-237). The brand kit and its status-colour guard — the lead holds them as custodian; the studio's الهوية panel reads getBrandKit() as it is, and SCR-059 is M13's.
+description: Not spawned in wave 24 (DEC-242). The brand kit is this wave's subject but only its PLATFORM DEFAULT moves, and that is the lead's — brand.ts's LIGHT/DARK and brand_kit()'s fallbacks, in one commit. The org override, save_brand_kit()'s guard and SCR-059 are untouched and M13's.
 model: opus
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: console
-description: Wave-23 teammate — M12, the studio (DEC-235, DEC-236, DEC-237, M25), PR A: SCR-055 the template library with its certificates tab and three defaults (one per kind), SCR-045 the session's certificates (the mode and the template, release individually and in bulk, revoke with a mandatory reason, the audited PDF route). templates.ts and certificates.ts are its for the wave. Opus.
+description: Not spawned in wave 24 (DEC-242). The template library (055) and a session's certificates (045) render what this wave rebuilds but neither screen changes; templates.ts and certificates.ts return to `designer`. The lead holds the console as custodian.
 model: opus
 ---
 

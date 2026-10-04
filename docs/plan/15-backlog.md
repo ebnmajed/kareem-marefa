@@ -1752,6 +1752,33 @@ formats export from the sample template with no golden moved.
 **Covers:** `REQ-UIX-112` · **M25** · **L** · `notify` · PR C
 **Built from:** `AdminEmailGallery.dc.html`, `AdminEmails.dc.html`, `AdminEmailAdd.dc.html`.
 
+#### STORY-DSG-014 — The platform default brand palette becomes «ساحة اللعب»
+**Covers:** `REQ-DSG-032` · **M26** · **M** · lead · PR A
+`brand.ts`'s `LIGHT`/`DARK` and `public.brand_kit()`'s fallbacks move in one commit, proven equal by
+`tests/rls/brand-kits.test.ts`. The parity goldens and the 120 pinned mail files move once, reviewed. Done when all six
+of `0144`'s status pairs clear 4.5:1 and an org with an overridden kit renders unchanged.
+
+#### STORY-DSG-015 — The five baseline poster families, rebuilt to their design
+**Covers:** `REQ-DSG-033` · **M26** · **L** · `designer` · PR B
+**Built from:** the poster thumbnails on `AdminTemplates.dc.html`. One structure, five colourways; every colour a
+`brand.*` binding or the team colour. Done when a poster exports uncropped on every surface and the roster count is
+still five.
+
+#### STORY-CRT-008 — The three certificate families, rebuilt to their design
+**Covers:** `REQ-CRT-016` · **M26** · **L** · `designer` · PR B
+**Built from:** the certificate thumbnails on `AdminTemplatesCerts.dc.html`. Both orientations, bone on ink text, the
+serial bidi-isolated. Done when a certificate issued before the wave still renders as its own version.
+
+#### STORY-DSG-016 — The superseded baseline leaves the library
+**Covers:** `REQ-DSG-034` · **M26** · **M** · `designer` · PR B
+The eleven rows are deleted where the database permits and retired where `on delete restrict` refuses, with the
+migration reporting which per row. Done when no superseded row reaches `055`, `045`'s picker or issuance.
+
+#### STORY-NTF-008 — The eight designed mail families, rebuilt
+**Covers:** `REQ-NTF-016` · **M26** · **L** · `notify` · PR C
+`designs.ts`'s eight constants rebuilt to the same language. All 25 keys still resolve to a family with its own copy.
+Done when the 120 pinned files move once and are stable on a re-run.
+
 
 ## 24. Coverage check
 

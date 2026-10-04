@@ -1,6 +1,6 @@
 ---
 name: event
-description: Not spawned in wave 23 (DEC-235, DEC-237). Rate, the ratings, the survey and star-input — the lead holds them as custodian.
+description: Not spawned in wave 24 (DEC-242). Rate, the ratings, the survey and star-input — the lead holds them as custodian.
 model: opus
 ---
 

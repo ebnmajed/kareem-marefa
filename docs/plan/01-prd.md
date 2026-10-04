@@ -1631,6 +1631,18 @@ held certificates and none issued**, so the held ones can be re-rendered (`DEC-2
 - The mode is refused once the session is completed, archived or cancelled; the template once a certificate of that kind
   is issued.
 
+#### REQ-CRT-016 — The baseline certificate templates are the designed ones
+**Serves:** `DEC-242` §1, §3 · `REQ-CRT-014` · `REQ-DSG-008`, `REQ-DSG-026`
+The three platform certificate families, in both orientations, are rebuilt to the design the library's artboard
+draws: a bone ground, ink text, the org wordmark at the top-start in the display face, the member's name large in
+the display face, the serial at the bottom-start in `fgMuted`, the verification QR at the bottom-end. The family
+set, the orientation rule and the one-default-per-family indexes are unchanged.
+**Acceptance:**
+- Every colour in the document is a `brand.*` binding; `design_template_versions_guard` accepts it.
+- A certificate issued before the rebuild still renders as the version it was issued against (`REQ-CRT-014`), which
+  is why the old version row survives when the database refuses its deletion.
+- The member's name is set in the display face and the serial is bidi-isolated.
+
 
 ---
 
@@ -1932,6 +1944,41 @@ button, then a per-certificate progress list with a re-issue for failures).
 - Issuance cannot be triggered from a dropdown without the preflight and the confirmation.
 - A failed certificate is re-issuable individually without re-issuing the batch.
 
+#### REQ-DSG-032 — The platform default brand palette is «ساحة اللعب»
+**Serves:** `DEC-242` §2 · `DEC-183` · `REQ-UIX-049` · `DEC-052` (the identity override)
+The ten `BRAND_COLOUR_TOKENS`' platform default values are the accepted visual direction's palette — ink, surface,
+surface-2, bone, muted and line on the dark ground; paper, paper-surface, paper-ink, paper-muted and paper-line on
+the light one — with `node` carrying the single accent (lime, and lime-deep on a light ground) and `edgeStrong` the
+secondary-text value. The set of tokens does not change.
+**Acceptance:**
+- `packages/designer-runtime/src/brand.ts` and `public.brand_kit()`'s fallbacks hold the same values, proven by
+  `tests/rls/brand-kits.test.ts`.
+- All six of `0144`'s status pairs clear 4.5:1 on the new defaults, so the platform default still saves.
+- An org that has overridden its brand kit renders exactly as before.
+- No status colour (`DEC-073`) and no company's team colour becomes a brand token.
+
+#### REQ-DSG-033 — The baseline poster templates are the designed ones
+**Serves:** `DEC-242` §1 · `REQ-DSG-008`, `REQ-DSG-026`, `REQ-UIX-026`
+The five platform poster families are rebuilt to the design the library's artboard draws: a flat ground, the
+category as a pill at the block-start, the title large in the display face, the presenter and the date at the
+bottom-start, the verification QR at the bottom-end. The five families and the one-default-per-family rule are
+unchanged; each family differs by its colourway, not its structure.
+**Acceptance:**
+- Every colour is a `brand.*` binding or the team colour; no hex literal reaches a document.
+- A poster is never cropped on any surface that shows it (`REQ-UIX-026`).
+- The roster CI count (`REQ-DSG-026`) is unchanged at five poster families.
+
+#### REQ-DSG-034 — The superseded baseline leaves the library
+**Serves:** `DEC-242` §3 · `REQ-DSG-008` · `REQ-CRT-014`
+The eleven superseded baseline rows are deleted. Where a certificate or a design document references a version of
+one, the database refuses the deletion by design, and the row is retired instead — invisible to the library, to a
+session's picker and to issuance, and kept only so an already-issued document still renders.
+**Acceptance:**
+- No superseded row appears in `platform_template_library()`, in `055`'s platform section, or in `045`'s picker.
+- Issuance never resolves a superseded template.
+- Every certificate issued before the wave still renders, and its PDF is byte-reproducible (`REQ-CRT-014`).
+- The migration reports, per row, whether it was deleted or retired.
+
 ---
 
 ## 17. Notifications — `NTF`
@@ -2059,6 +2106,18 @@ HTML form, a generated text alternative and checks.
 - Every message that renders today renders byte-identically: `tests/unit/mail-pinned/`'s files are unchanged.
 - A document saved before the change opens and compiles unchanged.
 - No block emits SVG; images are PNG or JPEG.
+
+#### REQ-NTF-016 — The eight designed mail families are rebuilt to the same language
+**Serves:** `DEC-242` §1, §5 · `REQ-NTF-014` · `DEC-081`, `DEC-082`
+The eight designed platform families in `packages/mail-runtime/src/designs.ts` are rebuilt to the visual direction
+the app and the templates wear. They remain **constants, not rows**, so there is nothing to delete and no migration:
+an org that has not touched its templates receives the rebuilt design, and an org that duplicated one to edit keeps
+its own.
+**Acceptance:**
+- All 25 message keys still resolve to one of the eight families, and each still carries its own copy.
+- Every block still has an `id`, a compiled HTML form and a generated text alternative; no block emits SVG.
+- A row whose `blocks` is null is still an admin's own text, framed and never replaced by a design.
+- The 120 pinned files move once, as one reviewed diff, and are stable on a re-run.
 
 
 ---

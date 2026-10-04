@@ -715,9 +715,9 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-050–052 moderation | `REQ-ADM-010`, `REQ-EVT-008`, `REQ-EVT-012`, `REQ-EVT-014` |
 | SCR-053 scoring | `REQ-ADM-011`, `REQ-PTS-004`, `REQ-PTS-005`, `REQ-PTS-007`, `REQ-PTS-008`, `REQ-PTS-010`, `REQ-PTS-014` |
 | SCR-054 recognition | `REQ-ADM-012`, `REQ-REC-001` … `REQ-REC-008` |
-| SCR-055–056 templates | `REQ-ADM-013`, `REQ-DSG-004`, `REQ-DSG-007`, `REQ-DSG-008`, `REQ-DSG-024`, `REQ-DSG-026`, `REQ-UIX-108`, `REQ-CRT-015` |
+| SCR-055–056 templates | `REQ-ADM-013`, `REQ-DSG-004`, `REQ-DSG-007`, `REQ-DSG-008`, `REQ-DSG-024`, `REQ-DSG-026`, `REQ-DSG-032`, `REQ-DSG-033`, `REQ-DSG-034`, `REQ-UIX-108`, `REQ-CRT-015`, `REQ-CRT-016` |
 | SCR-057 designer | `REQ-DSG-005`, `REQ-DSG-006`, `REQ-DSG-009` … `REQ-DSG-012`, `REQ-DSG-014`, `REQ-DSG-015`, `REQ-DSG-016` … `REQ-DSG-019`, `REQ-DSG-022`, `REQ-DSG-023`, `REQ-DSG-025`, `REQ-DSG-028`, `REQ-DSG-029`, `REQ-DSG-030`, `REQ-UIX-013` |
-| SCR-058 emails | `REQ-ADM-014`, `REQ-NTF-007`, `REQ-NTF-009` … `REQ-NTF-015`, `REQ-UIX-112` |
+| SCR-058 emails | `REQ-ADM-014`, `REQ-NTF-007`, `REQ-NTF-009` … `REQ-NTF-016`, `REQ-UIX-112` |
 | SCR-059 branding | `REQ-ADM-015`, `REQ-DSG-021` |
 | SCR-060 reminders | `REQ-ADM-016`, `REQ-NTF-004` |
 | SCR-061 exports | `REQ-ADM-017`, `REQ-INT-010` |

@@ -8,9 +8,9 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **410** |
+| Requirements (`REQ-*`) | **415** |
 | Entities (`ENT-*`) | **84** |
-| Stories (`STORY-*`) | **243** |
+| Stories (`STORY-*`) | **248** |
 | Screens cited (`SCR-*`) | 60 |
 | Jobs cited (`JOB-*`) | 40 |
 | Messages cited (`MSG-*`) | 24 |
@@ -158,6 +158,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CRT-013` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
 | `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` +1 | — | `SCR-023` `SCR-045` `SCR-055` +2 | `JOB-evaluate_alerts` | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-015` | — | — | `SCR-045` `SCR-055` | — | — | `STORY-CRT-007` | M25 |
+| `REQ-CRT-016` | — | — | `SCR-055` `SCR-059` | — | — | `STORY-CRT-008` | M26 |
 
 ### DSC
 
@@ -207,6 +208,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-029` | — | — | `SCR-043` `SCR-045` `SCR-057` | — | — | `STORY-DSG-012` | M12, M15 |
 | `REQ-DSG-030` | — | — | `SCR-045` `SCR-057` | — | — | `STORY-DSG-012` | M12, M15 |
 | `REQ-DSG-031` | `ENT-session_certificate_designs` | — | `SCR-043` `SCR-045` `SCR-057` +1 | — | — | `STORY-DSG-013` | M12, M15 |
+| `REQ-DSG-032` | — | — | `SCR-055` `SCR-059` | — | — | `STORY-DSG-014` | M26 |
+| `REQ-DSG-033` | — | — | `SCR-055` | — | — | `STORY-DSG-015` | M26 |
+| `REQ-DSG-034` | — | — | `SCR-055` | — | — | `STORY-DSG-016` | M26 |
 
 ### EVT
 
@@ -318,6 +322,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NTF-013` | `ENT-notification_templates` | — | `SCR-058` | — | — | `STORY-NTF-005` | M12 |
 | `REQ-NTF-014` | `ENT-notification_templates` | — | `SCR-058` | — | — | `STORY-NTF-006` | M12 |
 | `REQ-NTF-015` | — | — | `SCR-055` `SCR-057` `SCR-058` | — | — | `STORY-NTF-007` | M25 |
+| `REQ-NTF-016` | — | — | `SCR-058` `SCR-059` | — | — | `STORY-NTF-008` | M26 |
 
 ### PRF
 

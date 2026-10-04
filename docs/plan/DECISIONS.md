@@ -8396,3 +8396,171 @@ cannot express them by then, it becomes a question for Railway's support, not a 
 `railway.json` stays as it is until then.
 
 - **Documents changed:** `STATUS.md` (the head)
+
+## DEC-242 — The baseline template library and the eight mail designs are rebuilt to «ساحة اللعب»; the platform default palette moves with them; the old rows are deleted where the database permits and retired where it refuses
+
+- **Date:** 2026-10-04 · **Decided by:** the owner, asked three questions and answering all three
+- **Opens:** wave 24, milestone **M26** — the programme's tenth wave
+- **Amends:** `DEC-183` §4's «the playground stops at the certificate's edge» and wave 15/17's never-touch «the
+  rendered poster and certificate are not restyled» — both were wave-scoped deferrals, and this is the wave that
+  discharges them
+- **Amends:** `DEC-176`'s «no parity golden moves» and `DEC-235`'s «`mail-pinned`'s 120 files are untouched» — **for
+  this wave only, and only through a lead-reviewed diff.** The rule that a teammate never refreshes either is
+  unchanged
+
+### 0 · ★ THE GOAL, above the process (the owner's words)
+
+**«I want the templates to match the designed ones and delete the current ones.»**
+
+A poster and a certificate that leave this product look like the product. Today they do not: the baseline library is
+the design the platform shipped in M6, set in **Reem Kufi and IBM Plex Sans Arabic** on a navy palette, and every
+screen around it has been «ساحة اللعب» since wave 17. ★ **An admin who exports a poster gets an artefact from a
+different product than the screen they exported it from** — that is the defect, and it is the only thing this wave
+is judged on. «Good» is not «the gates are green».
+
+### 1 · ★ What «the designed ones» is, and what it is NOT
+
+★★ **There is no artboard for a poster or a certificate.** `docs/design/screens/m12/` draws the *library screen*;
+the design signal is the **card thumbnails** on `AdminTemplates.dc.html` and `AdminTemplatesCerts.dc.html`, which
+are consistent across all seven cards and therefore a specification:
+
+| | What the thumbnails draw |
+|---|---|
+| **Poster** | A flat ground. The category as a pill at the block-start, in the ground's colour on ink. The title large in **Baloo Bhaijaan 2 800**, `line-height: 1.12`, floating between. The presenter and the date bottom-start, small and bold, two lines. The verification QR bottom-end, a square with a 4 px radius. Nothing else — **no logo lockup, no venue row, no session-type chip, no task list** |
+| **Colourways** | The team colour (`#FF9A2E` on the artboard, i.e. `--team`); ink + lime; bone + ink; and a platform accent (cyan, violet) |
+| **Certificate** | Bone ground, ink text, landscape. The org wordmark top-start in the display face at a small size. The member's name large in the display face. The serial bottom-start in muted. The QR bottom-end |
+
+★ **The names the artboards print — «ساحة اللعب — لون الفريق», «ليلي», «ورقي», «لقاء», «إعلان», «كلاسيكي» — are
+FIXTURES, not a roster.** `0096`'s contract 3 is the roster and it stands: **five poster families** (`talk`,
+`workshop`, `panel`, `meetup`, `announcement`) and **three certificate families × landscape and portrait**, one
+default per `(purpose, family)`, the orientation read from `document->'master'` and never a column. `REQ-DSG-026`
+counts the roster in CI. **The eleven rows keep their families and their names; what changes is the document inside
+each.** A plan that proposes renaming a family or changing the count has misread the artboard as a roster.
+
+### 2 · ★★ The platform default palette moves — and it is measured, not assumed
+
+The designed look needs ink, bone, lime and paper. `design_template_versions_guard` (`0055`) **refuses a hex colour
+literal in a template document**, by design and for a good reason — a literal hands an org that rebrands somebody
+else's colour (`DEC-127`'s reasoning, in its own words). So the colour reaches a template **only** through the ten
+`BRAND_COLOUR_TOKENS`, and the owner's ruling is that **the platform default values of those ten move to the
+playground's palette**. Not new tokens: the ten are the vocabulary, and the design's own light/dark grounds map onto
+them one for one.
+
+★ **The default lives in two places that a test already keeps from drifting** —
+`packages/designer-runtime/src/brand.ts`'s `LIGHT`/`DARK` constants, and `public.brand_kit()`'s literal `coalesce`
+fallbacks (`0068`, `canvasRaise` added by `0093`), compared by `tests/rls/brand-kits.test.ts`. **Both move in one
+commit or the wave is wrong.**
+
+| Token | dark, today → new | light, today → new | The design's name |
+|---|---|---|---|
+| `canvas` | `#0b1220` → **`#0B0C12`** | `#ffffff` → **`#F6F3EC`** | ink · paper |
+| `surface` | `#111a2c` → **`#151724`** | `#ffffff` → **`#FFFFFF`** | surface · paper-surface |
+| `canvasRaise` | `#1d2a42` → **`#1E2130`** | `#f1f3f7` → **`#FFFFFF`** | surface-2 |
+| `fgHeading` | `#ffffff` → **`#F4F1EA`** | `#0b1220` → **`#12131A`** | bone · paper-ink |
+| `fgBody` | `#c9ced6` → **`#F4F1EA`** | `#33415c` → **`#12131A`** | bone · paper-ink |
+| `fgMuted` | `#a8b3c4` → **`#A7ABBE`** | `#5b6780` → **`#5B5F73`** | muted · paper-muted |
+| `edge` | `#252e3d` → **`#2A2E40`** | `#e6eaf0` → **`#E4DFD3`** | line · paper-line |
+| `spine` | `#252e3d` → **`#2A2E40`** | `#d7dce3` → **`#E4DFD3`** | line · paper-line |
+| `edgeStrong` | `#4b5464` → **`#A7ABBE`** | `#767f8c` → **`#5B5F73`** | ★ muted — see below |
+| `node` | `#ffffff` → **`#C6FF3D`** | `#0b1220` → **`#78AD12`** | ★ lime — see below |
+
+★ **Two of the ten need a judgement, because `01-tokens.md` has no token for them, and both are written here so
+nobody picks a side later.**
+
+- **`node` becomes lime** (`--color-lime` on dark, `--color-lime-deep` on light, which is «lime on a light ground»
+  in the design's own words). `node` is the accent of the network vocabulary, and lime is the accent of the
+  playground — exactly two accents exist and the other, coral, is a *status* colour (`DEC-073`), which a brand token
+  must never be. **This is the one way lime reaches a poster without a hex literal**, and it is what the artboard's
+  category pill is painted with on the «ليلي» card.
+- **`edgeStrong` becomes muted.** The design has no «strong line» token; a visible divider at the strength
+  `edgeStrong` is for reads as the secondary-text value on both grounds, and both already pass contrast.
+
+★★ **Measured against `0144`'s guard before the decision was written**, as `0144`'s own header asks («measuring the
+platform default against the drafted guard before writing it»). All six pairs clear SC 1.4.3's 4.5:1 on the new
+values, so `POL-save_brand_kit.status_contrast_accepted` — the platform default always saves — holds:
+
+| Pair | today | new |
+|---|---|---|
+| `--color-live` on light `canvas` | 5.89:1 | **5.32:1** |
+| `--color-ended` on light `canvas` | 5.68:1 | **5.13:1** |
+| `--color-live` / `--color-ended` on light `surface` | 5.89 / 5.68:1 | **5.89 / 5.68:1** (unchanged — still `#FFFFFF`) |
+| `--color-live-on-dark` on dark `canvas` | 8.52:1 | **8.88:1** |
+| `--color-live-on-dark` on dark `surface` | 7.91:1 | **8.10:1** |
+
+★ **The team colour is not a brand token and does not become one.** The «لون الفريق» colourway reaches the poster
+the way `DEC-186` §2 established for every other surface — as `--team` on the element, from
+`companies.team_color` (`0160`) — and a template that wants it binds the team colour, never a hex.
+
+### 3 · ★★ «Delete the current ones» — what the database permits, measured
+
+The owner chose a **hard delete**. The schema permits it for some rows and **refuses it for others, deliberately**,
+and this is written down because it is the one place the instruction cannot be followed literally:
+
+- `design_template_versions.template_id` → **`on delete cascade`**: deleting a template row deletes its versions.
+- `certificates.template_version_id` → **`on delete restrict`**, `not null` (`0055:288`).
+- `design_documents.template_version_id` → **`on delete restrict`** (`0055:135`).
+
+★★ **And a certificate points at the PLATFORM row directly.** `issue_certificates()` (`0065:138-146`) resolves the
+template as «the org's default for this kind, **else the platform's**» — `t.org_id is null` is in the predicate. So
+in any environment where an org never authored its own certificate template, every certificate it ever issued
+references a platform baseline version, and `delete from design_templates` **will be refused by the database**.
+That refusal is `REQ-CRT-014` made structural — «a certificate issued against v3 still renders as v3 after v4», one
+of wave 23's own goals — and it is correct. The same holds for a poster through `design_documents`.
+
+★ **The ruling, therefore:** the migration **attempts the delete row by row and retires the row when the delete is
+refused.** `retired_at` is what the library and the picker read, so the user-visible meaning of «delete the current
+ones» — they are gone from `055`, from `045`'s picker and from issuance — is satisfied for all eleven either way.
+**What survives is invisible and unreachable**: a version row that exists only so a certificate somebody is holding
+still renders. The migration **reports which of the eleven went which way**, and the lead puts that table in
+`STATUS.md`. ★ **Nothing is forced**: no `cascade`, no detaching a certificate from its version, no rewriting
+`recipient_name_snapshot` or a pinned `font_hashes`.
+
+★ **A migration is not a data fix** (`CLAUDE.md` rule 3) — and this one is not: it is the schema's own library
+content, shipped by `0061` and `0098` as migrations, replaced by a migration, forward-only, idempotent on
+`(scope, purpose, family)` exactly as `0061` is. It runs in every environment forever and does the same thing in
+each.
+
+### 4 · ★★ What this moves, and who is allowed to move it
+
+| What | How many | Who reviews |
+|---|---|---|
+| `scripts/parity/goldens/**` | the backgrounds and slide-page sets | ★ **the lead, every before-and-after opened** — `designer` runs `--update`, the lead commits |
+| `tests/unit/mail-pinned/**` | **all 120 files** | ★ **the lead.** The palette alone moves them: the mail renderer reads `brand_kit()`, so PR A moves them before `notify` touches a design |
+| `qa:contract` · `qa:appearance` · `visual`'s public pairs · the register-form fingerprint | **unmoved** | the five public routes render no template and read no brand kit |
+
+★★ **This is the first wave since M6 in which a golden moving is CORRECT.** The rule it suspends is narrow: a
+golden moves **only** because the palette moved or a baseline document was rebuilt, and **the lead names which in
+the commit**. A golden that moves for any other reason is still a bug. `DEC-176`'s sentence — «an untouched document
+renders identically» — holds verbatim: an **org's own** document, which binds the same tokens, renders with the new
+values because that is what moving a default means, and an org that has overridden its kit sees nothing change at
+all.
+
+### 5 · ★ The division, and three PRs
+
+**Each screen and each artefact goes to the track that owns what it writes**, as since `DEC-231` §2.
+
+- **PR A — `wave-24a/the-palette`** (the **lead**, alone): `brand.ts`'s `LIGHT`/`DARK`, the migration that replaces
+  `brand_kit()`'s fallbacks, the goldens re-baselined, the 120 pinned mail files re-pinned, `brand-kits.test.ts` and
+  `status-contrast.test.ts` green. ★ **It lands first and B and C are cut from its head** — both bind the tokens it
+  moves, and a template built against the old defaults would be measured against the wrong ground.
+- **PR B — `wave-24b/the-baseline`** (`designer`): the five poster families and the six certificate rows rebuilt to
+  §1's structure, the eleven old rows deleted-or-retired, `REQ-DSG-026`'s roster still counted.
+- **PR C — `wave-24c/the-mail-designs`** (`notify`): the eight designed families in
+  `packages/mail-runtime/src/designs.ts` rebuilt to the same language. ★ **They are CONSTANTS, not rows**
+  (`designs.ts`'s own header, and `REQ-NTF-014`'s reasoning) — so «delete the current ones» here is a rewrite, and
+  there is nothing to delete and no migration.
+
+**Merge order A, B, C.** A teammate edits a PR's files only in that PR's tree.
+
+### 6 · Not this wave
+
+`SCR-059` branding and the brand-kit **screen** (M13 — this wave moves the platform *default*, not the org override
+and not its UI); session stories; `/app/platform/**`; the five public routes; the studio's chrome and `ui/`'s 69
+files — **no new primitive**; the designer's state machine, `canvas.tsx`'s engine and the export pipeline;
+**replacing the renderer** (`DEC-017`, `DEC-048`); a template serving several kinds (`DEC-236` §1); renaming a
+family or changing the roster's count (§1); new brand tokens (§2); a per-scheme logo; coral as a brand token
+(`DEC-073`); the Railway check (`DEC-241` §2 — November); `DEC-215`'s four; `DEC-194`'s two gates; `DEC-186` §4;
+`DEC-204`; the `railway.json`.
+
+- **Documents changed:** `01-prd.md` (`REQ-DSG-032` … `034`, `REQ-CRT-016`, `REQ-NTF-016`), `15-backlog.md`
+  (five stories), `CLAUDE.md` (the wave-24 map), `STATUS.md`, `docs/plan/notes/wave-24-lead.md`
