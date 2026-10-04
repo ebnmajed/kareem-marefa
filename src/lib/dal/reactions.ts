@@ -88,10 +88,15 @@ export async function setStoryReaction(locale: string, frameId: string, kind: St
     return null;
   }
   const parsed = storyReactionKind.parse(kind);
-  const { error } = await supabase
-    .from("story_reactions")
-    .upsert({ org_id: session.orgId, frame_id: id, member_id: session.memberId, kind: parsed, updated_at: new Date().toISOString() }, { onConflict: "frame_id,member_id" });
-  if (error) throw new Error(`story_reactions: ${error.message}`);
+  // ★ The update grant is on `kind` alone (0198): a reaction can change which of the four it is, never move. So an
+  // existing row is UPDATED by that one column (its `updated_at` is the trigger's) and a new one INSERTED — never an
+  // upsert, which would ask to update every column it sends.
+  const { data: updated, error: updateError } = await supabase.from("story_reactions").update({ kind: parsed }).eq("frame_id", id).eq("member_id", session.memberId).select("frame_id");
+  if (updateError) throw new Error(`story_reactions: ${updateError.message}`);
+  if ((updated ?? []).length === 0) {
+    const { error } = await supabase.from("story_reactions").insert({ org_id: session.orgId, frame_id: id, member_id: session.memberId, kind: parsed });
+    if (error) throw new Error(`story_reactions: ${error.message}`);
+  }
   return parsed;
 }
 
