@@ -58,7 +58,9 @@ async function endedSession(title: string, presenter: string, category: string, 
   await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, id, presenter]);
   for (const [kind, key, minutes] of [
     ["published", "published", ageMinutes + 120],
-    ["live", "e2e-live", ageMinutes + 30],
+    // Not `live`: a live frame is a day's and the read model draws none without one (DEC-251 §4.4); these three
+    // render from the session alone, so each session shows exactly these three.
+    ["registration_closed", "e2e-closed", ageMinutes + 60],
     ["materials", "e2e-materials", ageMinutes],
   ] as const) {
     await db.query(

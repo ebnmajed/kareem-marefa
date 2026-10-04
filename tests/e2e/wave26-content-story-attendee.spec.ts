@@ -105,7 +105,13 @@ test.beforeAll(async ({}, testInfo) => {
     `insert into public.check_ins (org_id, session_id, member_id, method, manual_reason, marked_by, session_window) values ($1, $2, $3, 'manual', 'حضر', $4, 'empty'::tstzrange)`,
     [orgId, sessionId, ids.attendee, ids.staff],
   );
-  await db.query(`insert into public.story_frames (org_id, session_id, kind, trigger_key, triggered_at) values ($1, $2, 'live', 'e2e-live', now() - interval '30 minutes') on conflict do nothing`, [orgId, sessionId]);
+  // A `live` frame is a day's (DEC-251 §4.4): it names the session's day, or the read model draws nothing for it.
+  await db.query(
+    `insert into public.story_frames (org_id, session_id, session_day_id, kind, trigger_key, triggered_at)
+     select $1, $2, d.id, 'live', 'e2e-live', now() - interval '30 minutes' from public.session_days d where d.session_id = $2 order by d.position limit 1
+     on conflict do nothing`,
+    [orgId, sessionId],
+  );
   // An attendee's visible video frame — the rows only; its objects are the worker's, and a missing rendition is a
   // poster-less <video> that still renders its controls.
   const { rows: v } = await db.query<{ id: string }>(

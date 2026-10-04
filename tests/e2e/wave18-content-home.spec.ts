@@ -107,9 +107,11 @@ test.beforeAll(async ({}, testInfo) => {
   await db.query(`update public.members set org_role = 'admin' where id = $1`, [staffId]);
 
   const liveId = await session(LIVE, "-30 minutes", 90, "in_progress", cat[0].id, venue[0].id, presenterId);
-  // Wave 26: a ring is drawn for a session with a visible story frame (REQ-STO-006). The live one has its live frame.
+  // Wave 26: a ring is drawn for a session with a visible story frame (REQ-STO-006). The live one has its live frame —
+  // a `live` frame is a DAY's (DEC-251 §4.4), and the read model draws none without one, so it names the session's day.
   await db.query(
-    `insert into public.story_frames (org_id, session_id, kind, trigger_key, triggered_at) values ($1, $2, 'live', 'e2e-live', now() - interval '30 minutes')
+    `insert into public.story_frames (org_id, session_id, session_day_id, kind, trigger_key, triggered_at)
+     select $1, $2, d.id, 'live', 'e2e-live', now() - interval '30 minutes' from public.session_days d where d.session_id = $2 order by d.position limit 1
      on conflict (session_id, kind, trigger_key) do nothing`,
     [orgId, liveId],
   );

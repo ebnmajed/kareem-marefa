@@ -57,31 +57,41 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
   const [draftUrl, setDraftUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [message, setMessage] = useState<string | undefined>(undefined);
+  /** Why the camera is not ours — the DOMException's name (`NotAllowedError`, `NotFoundError`, `NotReadableError`), or
+   *  `unsupported` with no `mediaDevices` (an insecure origin). Read by the page and by a spec, never guessed. */
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
-  // The camera, for as long as the capture is open and nothing is under review.
+  // The camera, for as long as the capture is open and nothing is under review. Video and sound first; video alone if
+  // the microphone is refused. ★ The page's own `Permissions-Policy` must allow `camera` and `microphone` for `self`,
+  // or both are refused before any prompt (`NotAllowedError`) — the reason is kept, so a refusal says which it was.
   useEffect(() => {
     if (draft) return;
     let cancelled = false;
-    navigator.mediaDevices
-      ?.getUserMedia({ video: { facingMode: facing }, audio: true })
-      .catch(() => navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } }))
+    const media = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
+    if (!media?.getUserMedia) {
+      queueMicrotask(() => !cancelled && setCameraError("unsupported"));
+      return () => {
+        cancelled = true;
+      };
+    }
+    media
+      .getUserMedia({ video: { facingMode: facing }, audio: true })
+      .catch(() => media.getUserMedia({ video: { facingMode: facing } }))
       .then((s) => {
         if (cancelled) return s.getTracks().forEach((tr) => tr.stop());
         stream.current = s;
+        setCameraError(null);
         if (live.current) live.current.srcObject = s;
       })
-      .catch(() => {
-        if (!cancelled) {
-          setState("denied");
-          setMessage(t("capture.denied"));
-        }
+      .catch((e: unknown) => {
+        if (!cancelled) setCameraError(e instanceof DOMException ? e.name : "failed");
       });
     return () => {
       cancelled = true;
       stream.current?.getTracks().forEach((tr) => tr.stop());
       stream.current = null;
     };
-  }, [facing, draft, t]);
+  }, [facing, draft]);
 
   // The elapsed figure while recording, and the stop at the limit.
   useEffect(() => {
@@ -220,13 +230,14 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
         <video src={draftUrl} playsInline controls className="h-full w-full object-contain" />
       )
     ) : (
-      <video ref={live} autoPlay muted playsInline className="h-full w-full object-cover" />
+      <video ref={live} autoPlay muted playsInline data-camera-error={cameraError ?? undefined} className="h-full w-full object-cover" />
     );
 
+  const denied = cameraError !== null && !draft && state === "idle";
   return (
     <StoryCapture
       open
-      state={state}
+      state={denied ? "denied" : state}
       mode={mode}
       onModeChange={setMode}
       preview={preview}
@@ -246,7 +257,7 @@ export function CaptureFlow({ sessionId, onClose }: { sessionId: string; onClose
         stopRecording();
         onClose();
       }}
-      message={message}
+      message={denied ? t("capture.denied") : message}
       labels={{
         dialog: t("capture.dialog"),
         close: t("viewer.close"),
