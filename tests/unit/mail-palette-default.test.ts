@@ -16,6 +16,7 @@
 import { describe, expect, it } from "vitest";
 import { BRAND_COLOUR_TOKENS, platformBrand } from "@kareem/designer-runtime";
 import { PLATFORM_LIGHT, SAMPLE_BRAND } from "@kareem/mail-runtime";
+import { contrastRatio } from "@/lib/brand/contrast";
 
 /** The platform default's one scheme, by bare token name. */
 const platform = (scheme: "light" | "dark"): Record<string, string> => {
@@ -96,5 +97,36 @@ describe("★ the third copy of the platform palette equals the other two", () =
     for (const token of Object.keys(PLATFORM_LIGHT)) {
       expect(kit[token], token).not.toBe(PLATFORM_LIGHT[token as keyof typeof PLATFORM_LIGHT]);
     }
+  });
+});
+
+describe("★ the accent pair — the measurement that made commit 3 one commit", () => {
+  // ★ WHY THIS IS A TEST AND NOT ONLY A COMMIT MESSAGE.
+  //
+  // `compilePalette().accent` was `fgHeading` and the primary button's label was
+  // a hard-coded white: a dark slab with white text, which is why no sent mail
+  // ever carried the product's accent. `DEC-242` §2 makes the accent `node`, and
+  // the label had to move in the SAME commit — because white on the new accent
+  // is below AA. A commit body records that once; this holds it.
+  //
+  // `contrastRatio()` is `src/lib/brand/contrast.ts`'s, the function
+  // `save_brand_kit()`'s own guard is built on, so this asks the same question
+  // the database asks of a kit rather than a second implementation of it.
+  const AA = 4.5;
+
+  it("the heading colour on the accent clears AA — the pairing that shipped", () => {
+    expect(contrastRatio(PLATFORM_LIGHT.fgHeading, PLATFORM_LIGHT.node)).toBeGreaterThanOrEqual(AA);
+  });
+
+  it("★ a white label on the accent does NOT — which is why the label moved with it", () => {
+    // The defect this commit fixes, asserted as a defect. If a later change
+    // makes white pass on the accent, the accent has drifted light enough to be
+    // worth a second look rather than a silent pass.
+    expect(contrastRatio("#ffffff", PLATFORM_LIGHT.node)).toBeLessThan(AA);
+  });
+
+  it("and the sample kit's own accent pairing clears AA too, so the pins show a legible button", () => {
+    const kit = SAMPLE_BRAND.light;
+    expect(contrastRatio(kit.fgHeading, kit.node)).toBeGreaterThanOrEqual(AA);
   });
 });

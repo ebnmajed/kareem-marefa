@@ -333,6 +333,12 @@ export const PLATFORM_LIGHT = {
   fgBody: '#12131a',
   fgMuted: '#5b5f73',
   edge: '#e4dfd3',
+  // ★ The single accent (`DEC-242` §2 — `node` carries it, because exactly two
+  //   accents exist and the other, coral, is a STATUS colour, which a brand
+  //   token must never be). On a light ground it is lime-deep, and a mail is a
+  //   light-scheme medium by declaration, so this is the lime an inbox ever
+  //   shows.
+  node: '#78ad12',
 } as const;
 
 /** A hex colour, or the default. See `compilePalette()` for why. */
@@ -393,7 +399,20 @@ function compilePalette(brand: RenderInput["brand"]): CompilePalette {
     surface: hex(legacy?.surface, PLATFORM_LIGHT.surface),
     fgHeading,
     edge: hex(light.edge, PLATFORM_LIGHT.edge),
-    accent: fgHeading,
+    // ★ THE ACCENT IS `node`, AND UNTIL WAVE 24 THE MAIL HAD NO ACCENT AT ALL.
+    //
+    // It was `fgHeading`: the primary button was painted with the heading
+    // colour and labelled in a hard-coded white, which reads as a dark slab and
+    // is why nothing in a sent mail ever carried the product's accent. The
+    // comment that stood here said a tenth token would be a brand-kit change
+    // for a contrast pair the kit already guarantees — true when it was written,
+    // and `DEC-242` §2 answers it: no token is added. `node` already exists,
+    // already means «the accent», and is the one way the accent reaches a
+    // document that refuses a hex literal.
+    //
+    // The button's LABEL moves with it, in the same commit — see
+    // `bulletproofButton()` for the two ratios that make that mandatory.
+    accent: hex(light.node, PLATFORM_LIGHT.node),
   };
 }
 
