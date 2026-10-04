@@ -58,6 +58,12 @@ test's own comment rather than in a commit message.
   all seven poster presets and both certificate compositions** — first run, no frame adjusted after the fact.
 - `tests/rls/{designer,templates,certificates}*`: **161 cases, 13 files, all green**, including the six that are
   evidence and were not edited.
+- ★ **The final full `npm test`, single runner, nothing else running: 5,334 passed, 1 skipped, 3 failed in 2 files — and
+  neither file is mine to fix.** `designer-derive-untouched` (1) is the pinned table the lead refreshes;
+  `designer-render` (2) is `main`'s stale palette literals, which PR #63 fixes (§A4, §A8). ★ **493 files passed against
+  487 in the run I polluted with a second runner** — the seven component files that failed there pass here, which is the
+  diagnosis in §A5 confirmed rather than assumed. ★ And the wrapper reported **exit 0 while the log's own summary said
+  `EXIT=1`**: the same trap, twice in one session. Read what produced the signal.
 - `designer-derive-untouched`: **41 of 48 hashes move, the 7 `uploaded/*` do not.** The seam assertion passes
   untouched, which is the assertion that proves the engine was not touched. The table is computed and handed over;
   **I did not refresh it.**
