@@ -27,7 +27,31 @@ describe("★ what is stored — a design opened and saved unchanged is the JSON
     const design = platformDesign(key)!;
     const { doc, dropped } = fromDocument(design);
     expect(dropped).toEqual([]);
-    expect(documentJson(doc)).toBe(documentJsonOf(design.blocks));
+    // ★ THE WHOLE DOCUMENT, AND BY VALUE RATHER THAN BY STRING (wave 24,
+    // `REQ-NTF-016`).
+    //
+    // It was `toBe(documentJsonOf(design.blocks))` — blocks alone — which held
+    // only while no platform design carried `styles`. Widening it to
+    // `JSON.stringify(design)` then failed on KEY ORDER and nothing else:
+    // `readStyles()` rebuilds the object in its own order, so the round trip was
+    // byte-different and semantically perfect.
+    //
+    // ★ And key order is not a property of anything. The string that must be
+    // stable is the one the editor compares — and it compares
+    // `documentJson(current)` against `documentJson(initial)`, BOTH through
+    // `fromDocument()`, so an admin opening a platform design does not see
+    // «unsaved» (`builder.tsx:151`). That is asserted below as idempotency,
+    // which is the real invariant; this line asserts the document survives.
+    expect(JSON.parse(documentJson(doc))).toEqual(design);
+  });
+
+  it.each(Object.keys(DESIGN_FOR))("%s — and the stored string is stable through a second round trip", (key) => {
+    // ★ The property `builder.tsx` leans on: the baseline it compares against is
+    // `documentJson(fromDocument(…).doc)`, so a second pass must produce the
+    // same string or every design would open dirty.
+    const once = documentJson(fromDocument(platformDesign(key)!).doc);
+    const twice = documentJson(fromDocument(JSON.parse(once)).doc);
+    expect(twice).toBe(once);
   });
 
   it("a multi-column row writes `rows`; styles are written only when set", () => {

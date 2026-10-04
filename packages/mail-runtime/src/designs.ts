@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, type EmailBlock, type EmailBlockDocument } from "./blocks.js";
+import { SCHEMA_VERSION, type EmailBlock, type EmailBlockDocument, type EmailStyles } from "./blocks.js";
 
 // The eight designed platform templates — REQ-NTF-014, DEC-082, `16` §11.5.
 //
@@ -158,6 +158,85 @@ const logo = (): EmailBlock => ({ type: "image", id: "logo", src: { kind: "org_l
  * 404s for a cancelled session (contract 8) — so a cancellation, the one mail a
  * member reads carefully, can never arrive with a broken image.
  */
+
+/**
+ * ★★ THE HOUSE STYLE — ONE CONSTANT, REFERENCED BY ALL EIGHT (wave 24,
+ * `REQ-NTF-016`, `DEC-242` §0).
+ *
+ * The goal of the wave in one sentence: a message that lands in a member's
+ * inbox looks like the product it came from. ★ Almost none of that is the block
+ * list — it is the ground, the rhythm, the heading scale, the pill and the
+ * accent, and those are document styles. So they live here, once.
+ *
+ * ★ WHY ONE CONSTANT AND NOT EIGHT INLINE COPIES. Wave 25 adds a NINTH designed
+ * family — the invitation (`REQ-NTF-017`, `JOB-send_member_invitation`), which
+ * `01-prd.md` describes as «in the same designed language as the eight
+ * families». Eight copies would make that ninth «eight copies plus one», and the
+ * first thing to drift would be the one nobody rendered beside the others.
+ * Referencing this means the ninth inherits the house style by existing.
+ *
+ * Each value, and why it is that value:
+ *
+ *   · `ground: "canvas"` — the design's PAPER under the card, from the kit's
+ *     `canvas`. The alternative, `neutral`, is a flat grey that belongs to no
+ *     palette; `surface` would make the page and the card the same colour and
+ *     lose the card entirely.
+ *   · `padding: 32` — the top of the closed scale. The design is generous and a
+ *     mail at 560 px can afford it; `16` is the phone's, below.
+ *   · `headingSize.h1: 28` — ★ also the top of the closed scale, and NOT the
+ *     display scale's 30/34 (`02-typography.md`). 28 is the closest honest
+ *     mapping and the gap is recorded rather than closed: widening the scale
+ *     would change a control an admin picks from (`DEC-242` §6 freezes the
+ *     builder's chrome). `h2: 21` is set although no design uses an `h2` today,
+ *     because this is the house STYLE SHEET — an admin who duplicates a design
+ *     and adds a subheading should get the house size, not the default.
+ *   · `button.shape: "pill"` — `--radius-pill`, which every button in the
+ *     product wears.
+ *
+ * ★★ AND NO `mobile` LEG, WHICH IS A DECISION AND NOT AN OMISSION.
+ *
+ * `mobile` is the only style that reaches the HTML as a `<style>` media query
+ * and two `class=` attributes (`mobileCss()`, and `shell()`'s `k-card`). Wave 23
+ * built it for an admin who asks for it, and **no platform design has ever used
+ * it**: every message this product has sent is inline-only, which
+ * `tests/unit/mail-render.test.ts` states as one of «the constraints email
+ * clients impose» — every rule that draws anything is inline, because a client
+ * that strips `<style>` then changes nothing. Putting a mobile leg on all 25
+ * messages would spend that property, and on measuring what it buys, it buys
+ * very little:
+ *
+ *   · the heading needs no phone size. `02-typography.md`'s `title` is **28 on a
+ *     phone** and 32 on desktop — so 28 IS the design's phone value, and the
+ *     desktop 32 is the gap the closed scale cannot reach either way.
+ *   · the padding would go 32 → 16, which at 390 px is 326 px of content against
+ *     358 px. Arabic body at 17 px reads at about thirty characters a line
+ *     either way.
+ *
+ * So: generous padding at every width, inline-only kept for all 25, and the one
+ * real gap — a 32 px desktop heading — recorded rather than traded for a
+ * media query. An admin who wants a phone leg still has the panel.
+ *
+ * ★ WHAT IS DELIBERATELY ABSENT. `textColour` and `linkColour`: the compiler
+ * already uses `fgBody` and `fgMuted`, and the design has one text colour per
+ * ground, so naming them would be a no-op that looks like a decision. And no
+ * token for a RAISED ground — the design's surface-2 is `canvasRaise`, which
+ * `PaletteToken` does not carry (`blocks.ts`), so a tinted inset is **not
+ * drawable in mail and is not faked with `edge`**: that would be a hairline
+ * colour used as a fill, which is the kind of substitution that reads as a
+ * token meaning two things. Named, not worked around.
+ */
+/** The greeting, once — the `recognition` family builds its own heading pair so
+ *  it can centre it, and a second literal there would be the first thing to
+ *  drift from the other seven. */
+const GREETING = "مرحبًا {{member.name}}،";
+
+const HOUSE: EmailStyles = {
+  ground: "canvas",
+  padding: 32,
+  headingSize: { h1: 28, h2: 21 },
+  button: { shape: "pill" },
+};
+
 function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
   // ★ The heading, then the member by name — every string template greeted
   // since M3, and `notify-jobs.test.ts` holds the sent mail to it. The designs
@@ -166,12 +245,18 @@ function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
   // edit or remove (`DEC-081`).
   const heading: EmailBlock[] = [
     { type: "heading", id: "h", text: copy.heading, level: 1 },
-    { type: "paragraph", id: "greeting", text: "مرحبًا {{member.name}}،" },
+    { type: "paragraph", id: "greeting", text: GREETING },
   ];
   const body: EmailBlock = { type: "paragraph", id: "body", text: copy.body };
-  const button: EmailBlock[] = copy.action
-    ? [{ type: "button", id: "cta", label: copy.action.label, urlBinding: copy.action.urlBinding, style: "primary" }]
-    : [];
+  // ★ Typed as the button MEMBER, not as `EmailBlock`: a family that adds a
+  // block style to it (the `recognition` one centres it) would otherwise spread
+  // the whole union, where `style` is the button's primary/secondary rather than
+  // a `BlockStyle`. The narrower type is what makes that a compile error instead
+  // of a cast.
+  const cta: Extract<EmailBlock, { type: "button" }> | null = copy.action
+    ? { type: "button", id: "cta", label: copy.action.label, urlBinding: copy.action.urlBinding, style: "primary" }
+    : null;
+  const button: EmailBlock[] = cta ? [cta] : [];
 
   switch (family) {
     case "announcement":
@@ -183,16 +268,47 @@ function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
     case "rescheduled":
       // The change block is the point of this one: `{{changes}}` is the
       // renderer's pre-built «old ← new» (`08` §3.3, `REQ-SES-009`).
-      return [logo(), ...heading, body, { type: "paragraph", id: "changes", text: "{{changes}}" }, { type: "session_card", id: "card" }, ...button];
+      //
+      // ★ Wave 24: it is framed by two hairlines so it reads as a block rather
+      // than as another paragraph — the treatment a tinted inset would give it
+      // if mail had a raised token, done with the one the vocabulary has. A
+      // `divider` writes no line into the text alternative, so the plain part is
+      // unchanged.
+      return [
+        logo(),
+        ...heading,
+        body,
+        { type: "divider", id: "changes-top" },
+        { type: "paragraph", id: "changes", text: "{{changes}}" },
+        { type: "divider", id: "changes-end" },
+        { type: "session_card", id: "card" },
+        ...button,
+      ];
     case "cancelled":
       // No image, and no primary action: an ending with a reason.
-      return [logo(), ...heading, body];
+      //
+      // ★ Wave 24: the reason gets room after it, because this is the one mail a
+      // member reads carefully and it ends here — there is no action below to
+      // separate it from.
+      return [logo(), ...heading, { ...body, style: { padBottom: 24 } }];
     case "rating":
       return [logo(), ...heading, body, ...button];
     case "certificate":
       return [logo(), ...heading, body, { type: "detail_list", id: "meta", items: [{ label: "رقم الشهادة", value: "{{serial}}" }] }, ...button];
-    case "recognition":
-      return [logo(), ...heading, body, ...button];
+    case "recognition": {
+      // ★ Wave 24: the one celebratory family, so the heading, the words and the
+      // action are centred. `center` is `center` in both directions, so it needs
+      // no logical/physical thought — unlike `start`, which the compiler maps to
+      // the right edge of an RTL mail.
+      const centred = { align: "center" } as const;
+      return [
+        logo(),
+        { type: "heading", id: "h", text: copy.heading, level: 1, style: centred },
+        { type: "paragraph", id: "greeting", text: GREETING },
+        { type: "paragraph", id: "body", text: copy.body, style: centred },
+        ...(cta ? [{ ...cta, blockStyle: centred }] : []),
+      ];
+    }
   }
 }
 
@@ -206,7 +322,11 @@ export function platformDesign(key: string): EmailBlockDocument | null {
   // an unresolved `{{serial}}` renders blank and the compiler drops a detail
   // row whose value is empty — so the row is dropped for `MSG-export_ready`
   // without a second layout.
-  return { schemaVersion: SCHEMA_VERSION, blocks };
+  // ★ The house style, on every design (wave 24). `readStyles()` reads it back
+  // through the same enum checks an admin's own styles go through, so a
+  // duplicated design carries it and `fromDocument()`/`toDocument()` round-trip
+  // it unchanged.
+  return { schemaVersion: SCHEMA_VERSION, blocks, styles: HOUSE };
 }
 
 /**
