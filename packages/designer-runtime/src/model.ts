@@ -53,7 +53,15 @@ export interface FontSpec {
   /** A30: always 0 on Arabic. Letter-spacing breaks the cursive join — that is
    *  a broken word, not a loose one. */
   letterSpacing?: 0
-  weight?: 400 | 500 | 600
+  /** ★ 700 and 800 added in wave 24 (`DEC-242`, `REQ-DSG-033`, `REQ-CRT-016`):
+   *  the designed poster sets its title and the certificate its recipient's
+   *  name in **Baloo Bhaijaan 2 800**, and the smaller display lines in 700.
+   *  Both faces are already in the one font set by SHA-256
+   *  (`packages/fonts/manifest.json`, invariant 12) — nothing is added to it.
+   *  ADDITIVE, and it changes no rendered byte for a document that does not
+   *  use it: `render.ts` passes the weight straight through to CSS, so an
+   *  existing 400/500/600 layer is untouched and no `schemaVersion` moves. */
+  weight?: 400 | 500 | 600 | 700 | 800
 }
 
 export interface AutoFit {

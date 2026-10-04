@@ -156,7 +156,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CRT-011` | `ENT-certificates` | `POL-certificates.constraints` `POL-revoke_certificate.reason` +1 | `SCR-006` `SCR-045` | — | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-012` | `ENT-badges` `ENT-certificates` `ENT-leaderboard_entries` +2 | `POL-achievement.badge` `POL-achievement.snapshot` | `SCR-011` `SCR-043` `SCR-045` +2 | — | `MSG-reminder_generic` | `STORY-CRT-006` | M6 |
 | `REQ-CRT-013` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
-| `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` +1 | — | `SCR-023` `SCR-045` `SCR-055` +2 | `JOB-evaluate_alerts` | — | `STORY-CRT-006` | M6 |
+| `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` +1 | — | `SCR-023` `SCR-045` `SCR-055` +3 | `JOB-evaluate_alerts` | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-015` | — | — | `SCR-045` `SCR-055` | — | — | `STORY-CRT-007` | M25 |
 | `REQ-CRT-016` | — | — | `SCR-055` `SCR-059` | — | — | `STORY-CRT-008` | M26 |
 
@@ -210,7 +210,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-031` | `ENT-session_certificate_designs` | — | `SCR-043` `SCR-045` `SCR-057` +1 | — | — | `STORY-DSG-013` | M12, M15 |
 | `REQ-DSG-032` | — | — | `SCR-055` `SCR-059` | — | — | `STORY-DSG-014` | M26 |
 | `REQ-DSG-033` | — | — | `SCR-055` | — | — | `STORY-DSG-015` | M26 |
-| `REQ-DSG-034` | — | — | `SCR-055` | — | — | `STORY-DSG-016` | M26 |
+| `REQ-DSG-034` | — | — | `SCR-055` `SCR-083` | — | — | `STORY-DSG-016` | M26 |
 
 ### EVT
 
