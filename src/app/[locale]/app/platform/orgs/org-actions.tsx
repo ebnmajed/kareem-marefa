@@ -2,11 +2,10 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Link } from "@/components/ui/link";
 import { Panel } from "@/components/ui/panel";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +32,9 @@ import { emptyDeleteState, emptySuspendState, type DeleteState, type SuspendStat
 // name. A toast title is plain text, so the org's name is isolated with FSI/PDI, the character form of `<bdi>`.
 
 const isolate = (value: string) => `⁨${value}⁩`;
+
+/** A 36 px pill with a 44 px hit area: the pseudo-element extends the target, not the drawing. */
+const HIT = "relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']";
 
 export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale }) {
   const t = useTranslations("platform.orgs");
@@ -79,20 +81,23 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
 
   return (
     <Dialog open={dialog !== null} onOpenChange={(open) => setDialog(open ? dialog : null)}>
-      <div role="group" aria-label={org.name} className="flex flex-wrap items-center gap-2">
+      {/* One line at a desk, as drawn: quiet pills for the reversible acts and the way to SCR-082, the destructive
+          act as coral TEXT. Each pill draws 36 px and is HIT at 44: its `after:` box reaches 4 px past it on both
+          sides (SC 2.5.8 asks 24; the console's floor is 44). */}
+      <div role="group" aria-label={org.name} className="flex flex-wrap items-center gap-1.5 md:flex-nowrap">
         {org.status === "active" ? (
-          <Button type="button" variant="secondary" size="sm" aria-label={named(t("suspendShort"))} onClick={() => setDialog("suspend")}>
+          <Button type="button" variant="quiet" size="sm" className={HIT} aria-label={named(t("suspendShort"))} onClick={() => setDialog("suspend")}>
             {t("suspendShort")}
           </Button>
         ) : (
-          <Button type="button" variant="secondary" size="sm" aria-label={named(t("reinstate"))} pending={reinstating} onClick={reinstate}>
+          <Button type="button" variant="quiet" size="sm" className={HIT} aria-label={named(t("reinstate"))} pending={reinstating} onClick={reinstate}>
             {t("reinstate")}
           </Button>
         )}
-        <Link href={`/app/platform/orgs/${org.id}/domains`} aria-label={named(t("domainsLink"))} className="px-2 text-label">
+        <ButtonLink href={`/app/platform/orgs/${org.id}/domains`} variant="quiet" size="sm" className={HIT} aria-label={named(t("domainsLink"))}>
           {t("domainsLink")}
-        </Link>
-        <Button type="button" variant="danger" size="sm" aria-label={named(t("deleteShort"))} onClick={() => setDialog("delete")}>
+        </ButtonLink>
+        <Button type="button" variant="ghost" size="sm" className={`${HIT} text-error`} aria-label={named(t("deleteShort"))} onClick={() => setDialog("delete")}>
           {t("deleteShort")}
         </Button>
       </div>

@@ -112,6 +112,9 @@ export function PromoteTable({ candidates, locale }: { candidates: PromotableVer
 
   return (
     <DataTable
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
+      hiddenHeaders={["actions"]}
       label={t("promoteTitle")}
       columns={columns}
       rows={candidates}

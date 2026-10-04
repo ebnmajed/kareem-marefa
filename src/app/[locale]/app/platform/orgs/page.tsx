@@ -1,7 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatNumber } from "@/components/sessions/numerals";
 import type { Locale } from "@/i18n/routing";
 import { listOrgs } from "@/lib/dal/platform";
 import { OrgsTable } from "./orgs-table";
@@ -25,7 +24,6 @@ export default async function PlatformOrgsPage({ params }: { params: Promise<{ l
       <PageHeader
         inlineActions
         title={t("title")}
-        count={formatNumber(orgs.length)}
         actions={
           <ButtonLink href="/app/platform/orgs/new" size="md">
             {t("newLink")}

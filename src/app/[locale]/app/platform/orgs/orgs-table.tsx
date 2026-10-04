@@ -19,6 +19,15 @@ import { OrgActions } from "./org-actions";
 /** The platform's own zone: a super admin has no org to take one from. */
 const PLATFORM_TIME_ZONE = "Asia/Riyadh";
 
+/**
+ * «أغسطس 2026», as the board prints it — month and year, Western digits (`DEC-124`), the platform's zone — joined by
+ * a no-break space so the cell stays one line. The full date rides in the cell's `title`.
+ */
+function monthYear(iso: string, locale: string): string {
+  const parts = new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { month: "long", year: "numeric", timeZone: PLATFORM_TIME_ZONE }).formatToParts(new Date(iso));
+  return parts.map((p) => (p.type === "literal" ? p.value.replace(/ /g, "\u00A0") : p.value)).join("");
+}
+
 export function OrgsTable({ orgs, locale }: { orgs: OrgSummary[]; locale: Locale }) {
   const t = useTranslations("platform.orgs");
   const num = (n: number) => <bdi>{formatNumber(n)}</bdi>;
@@ -28,14 +37,18 @@ export function OrgsTable({ orgs, locale }: { orgs: OrgSummary[]; locale: Locale
       key: "org",
       header: t("orgColumn"),
       cell: (org) => (
-        <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+        // One line, «name · slug», as drawn; it wraps — never truncates — where the column is narrow.
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
           <span className="text-label text-fg-heading">
             <bdi>{org.name}</bdi>
           </span>
-          {/* A slug is Latin in an Arabic cell: isolated, left to right in its own box. */}
-          <span className="font-mono text-caption text-fg-muted" dir="ltr">
-            <bdi>{org.slug}</bdi>
+          <span aria-hidden className="text-caption text-fg-muted">
+            ·
           </span>
+          {/* A slug is Latin in an Arabic cell: isolated, left to right in its own box. */}
+          <bdi dir="ltr" className="font-mono text-caption text-fg-muted">
+            {org.slug}
+          </bdi>
         </span>
       ),
     },
@@ -60,12 +73,20 @@ export function OrgsTable({ orgs, locale }: { orgs: OrgSummary[]; locale: Locale
     { key: "activeMembers", header: t("activeMembers"), align: "end", cell: (org) => num(org.activeMembers) },
     { key: "sessions", header: t("sessions"), onCard: true, align: "end", cell: (org) => num(org.sessions) },
     { key: "certificates", header: t("certificates"), align: "end", cell: (org) => num(org.certificates) },
-    { key: "created", header: t("created"), cell: (org) => <bdi>{formatDate(org.createdAt, PLATFORM_TIME_ZONE, locale)}</bdi> },
+    {
+      key: "created",
+      header: t("created"),
+      cell: (org) => <bdi title={formatDate(org.createdAt, PLATFORM_TIME_ZONE, locale)}>{monthYear(org.createdAt, locale)}</bdi>,
+    },
     { key: "actions", header: t("actionsColumn"), onCard: true, cell: (org) => <OrgActions org={org} locale={locale} /> },
   ];
 
   return (
     <DataTable
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
+      stickyHeader
+      hiddenHeaders={["actions"]}
       label={t("title")}
       columns={columns}
       rows={orgs}

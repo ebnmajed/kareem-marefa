@@ -35,6 +35,8 @@ export function AlertsTable({ alerts }: { alerts: PlatformAlert[] }) {
 
   return (
     <DataTable
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
       label={t("metrics.alertsTitle")}
       columns={columns}
       rows={alerts}
@@ -70,6 +72,8 @@ export function JobsTable({ jobs }: { jobs: JobHealthRow[] }) {
 
   return (
     <DataTable
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
       label={t("metrics.jobsTitle")}
       columns={columns}
       rows={jobs}
@@ -93,6 +97,8 @@ export function OrgMetricsTable({ orgs }: { orgs: OrgSummary[] }) {
 
   return (
     <DataTable
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
       label={t("metrics.perOrgTitle")}
       columns={columns}
       rows={orgs}

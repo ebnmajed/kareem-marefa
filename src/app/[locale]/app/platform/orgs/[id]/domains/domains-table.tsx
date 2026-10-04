@@ -39,7 +39,15 @@ function RemoveDomain({ domain, remove }: { domain: string; remove: (domain: str
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button type="button" variant="danger" size="sm" aria-label={t("removeFor", { domain })} onClick={() => setOpen(true)}>
+      {/* A quiet pill, as drawn; 36 px drawn, 44 px hit (the `after:` box). The confirm inside is the danger. */}
+      <Button
+        type="button"
+        variant="quiet"
+        size="sm"
+        className="relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']"
+        aria-label={t("removeFor", { domain })}
+        onClick={() => setOpen(true)}
+      >
         {t("remove")}
       </Button>
       <DialogContent
@@ -91,6 +99,9 @@ export function DomainsTable({ domains, remove }: { domains: string[]; remove?: 
 
   return (
     <DataTable
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
+      hiddenHeaders={["actions"]}
       label={t("domainsTitle")}
       columns={columns}
       rows={domains.map((domain) => ({ domain }))}
