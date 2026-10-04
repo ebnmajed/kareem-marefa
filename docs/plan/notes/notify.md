@@ -5549,3 +5549,37 @@ that separation is only visible if the two are taken apart:
 Between them I run the suite with `mail-pinned.test.ts` deselected and say so in each commit body. ★ **The decision is
 the lead's** — the alternative is that commits 1 – 3 land red on that one file with the reason in each body, which is
 defensible on a PR branch but is not something I will do without being told to.
+
+---
+
+### W24.14 · Commit 1 landed — `ba060098`, and two things my prediction missed
+
+★ **The prediction was handed over before the measurement and matched exactly: 30 pinned comparisons fail, all of
+them `.brand.html`; 0 subject, 0 text, 0 `.plain.html`.** That is re-pin A's diff, and it is the lead's to take.
+
+`tsc` clean · `lint` 0 errors (31 pre-existing warnings, none mine) · **2,409 unit tests green** with three files
+deselected. The gold accent, the invented palette and the `dark` scheme are reasoned in `samples.ts` itself.
+
+★ **Finding 1 — the pinned corpus has TWO readers, not one.** I said «`mail-pinned.test.ts` goes red»; in fact
+**`tests/unit/mail-layout.test.ts` reads the pinned files too** — its «★ an overlay that says nothing new renders
+every pinned message byte for byte» case walks all 30 cases and compares `.brand.html`, `.plain.html`, `.txt` and
+`.subject.txt` against the files, which is how wave 23 proved the row overlay additive. So **30 more failures, same
+cause, same cure**: green again the moment re-pin A lands. **Not a defect in the change — a correction to the scope
+of my prediction**, and the deselect list between re-pins is **two** files, not one.
+
+★ **Finding 2 — `tests/unit/designer-render.test.ts` is red on `main`, from PR A, and it is not mine.** Two cases
+(«colours are tokens, resolved at render time» and «the same document in the dark scheme is the same document»)
+assert the **old** platform navy, which `0192` replaced. My diff is `samples.ts` plus two test files, none of which
+`designer-render.test.ts` imports, so it cannot be mine; it was simply outside the six-suite baseline I took.
+★ **It is `designer`'s file** (`tests/unit/{designer,render,…}*`), so it is a report, not a fix: either `designer`
+updates it in PR B or the lead takes it as PR A's own untouched-suite ledger line. **Told to the lead.**
+
+★ **The ledger line commit 1 owes `STATUS.md`** (mine to report, the lead's to write):
+
+| Spec · line | Moved | Kind |
+|---|---|---|
+| `tests/unit/mail-layout.test.ts:132` — `BRAND.fgMuted` → `BRAND.light.fgMuted` | the sample kit became the whole kit, so the value is reached through its scheme. **The colour asserted is unchanged** | **selector** |
+
+★ **Commit 1 did not create `mail-palette-default.test.ts` for commit 2's sake and then wait** — it created it with
+the «no value equals the platform default» case, because that property is commit 1's own, and **commit 2 adds the
+third copy's case to the same file**. One file, grown additively, and neither property is unguarded for a commit.
