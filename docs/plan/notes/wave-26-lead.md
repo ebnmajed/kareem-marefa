@@ -126,8 +126,14 @@ building, ready and expired. `REQ-PRV-*`.
 ## §C — the platform console, redesigned
 
 `DEC-NEXT-38`: it moves onto the console frame — **`ui/admin-rail` with a second nav set** — and
-**`src/components/platform/platform-nav.tsx` is deleted**, with its kept-behaviour table. Note the
-rail's own rules still hold: a plain member gets an empty rail, and `built: false` items are excluded.
+★★ **`src/components/platform/platform-nav.tsx` is REBUILT IN PLACE, not deleted** (the owner, 2026-10-05,
+`DEC-249`). `tests/unit/console-register.test.ts:108` names that exact path as **one of four files it uses to prove
+the console's import graph is actually walked** — a fixture for the walk, not a claim about the nav's design. Keep
+the path, re-export or wrap `ui/admin-rail` with the platform's second nav set, and **`REQ-UIX-053`'s guard stays
+green and UNTOUCHED**. `DEC-208` still binds its CONTENTS — the old markup goes and the kept-behaviour table is
+owed — only the path survives. ★ **Two guards edited in one wave is one too many**: you are already rewriting
+`public-graph.test.ts` under `DEC-247`, and that is the one exception this wave gets. Note the rail's own rules
+still hold: a plain member gets an empty rail, and `built: false` items are excluded.
 
 ★ **Platform isolation is the thing to get right** (`REQ-NFR-014`, invariant 8, `DEC-014`): **the
 super admin has no data plane.** The metrics and orgs tables carry **counts only** — your plan names

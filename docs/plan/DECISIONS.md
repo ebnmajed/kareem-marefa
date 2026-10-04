@@ -9354,3 +9354,51 @@ bytes; the task spawns the binary as `pdf.ts` spawns `pdftoppm`.
   `.claude/agents/*.md`, `00-overview.md` §5, `01-prd.md` (§23's seven, §25's eighteen; *Out of scope* moves to §26),
   `09-sitemap-screens.md` §7.2, `14-roadmap.md` (M28), `15-backlog.md` (fourteen stories), `TRACEABILITY.md`
   (generated), `STATUS.md` (the wave-26 head)
+
+## DEC-249 — Three rulings for wave 26: the certificate hotfix lands before the dump, the design gate's name collision is fixed at the Tailwind utility, and the platform nav is rebuilt IN PLACE so `REQ-UIX-053`'s guard stays untouched
+
+- **Date:** 2026-10-05 · **Decided by:** the owner, on the wave-26 lead's three questions
+- **Amends:** the wave-26 brief's «`platform-nav.tsx` is deleted» (§3 below)
+
+### 1 · PR #69 — the lead rebases it, and it merges before the `0198` dump
+
+`hotfix/certificates-after-completion` is a **production correctness fix**, not wave work: a session
+completed at the default certificate mode could never issue one. It has been open since 2026-10-04 and
+is `CONFLICTING` because `main` moved under it.
+
+★ **The wave-26 lead rebases and merges it**, because it owns `main`'s state for this wave and the
+session that wrote it was one of three that ran outside the usual runs. ★★ **And it lands BEFORE the
+owner takes the `0198` rehearsal dump** — a dump taken first would capture a database whose
+certificate behaviour is about to change, and the rehearsal would prove the wrong thing.
+
+### 2 · PR #72 — merged; the collision was the planner's and the fix is at the right layer
+
+`main` has been red at `3d22c33a` since `cfbcb099` added `prototypes/logo-motion.html`, which declares
+a class named `shadow`. `tests/unit/design-files.test.ts` forbids a drawing's class name in `src/`
+(`REQ-UIX-063`) and correctly read **Tailwind's own `shadow` utility** on
+`src/components/designer/canvas.tsx:727` as a leaked prototype class.
+
+★ **It is a name collision, not a leak, and the gate was right to fail.** The fix is one word —
+`shadow` → `shadow-sm`, Tailwind 4's canonical name for the same value, `--shadow` surviving only as a
+byte-identical deprecated alias. ★ **Neither the guard nor the drawing is edited**, and the handle is
+the editor's **overlay, not a document**, so no parity golden is involved. **The planner committed the
+prototype that caused it** (`cfbcb099`).
+
+### 3 · The platform nav keeps its path — and the guard stays untouched
+
+The brief asked for `src/components/platform/platform-nav.tsx` to be **deleted**. ★ **It is rebuilt in
+place instead.** `tests/unit/console-register.test.ts:108` names that exact path as **one of four files
+it uses to prove the console's import graph is actually walked** — a fixture for the walk, not a claim
+about the nav's design. So the rebuilt nav keeps the path and wraps `ui/admin-rail` with the platform's
+second nav set, and **`REQ-UIX-053`'s guard stays green and untouched.**
+
+★★ **The reason to prefer this over a one-string edit:** that guard is the only thing standing between
+the console and the playground's motion, and **this wave already has the lead rewriting
+`public-graph.test.ts`** under `DEC-247`. **Two guards edited in one wave is one too many.** If
+`console-register.test.ts` must ever change, it is a separate deliberate decision, not a convenience
+inside a nav refactor.
+
+★ `DEC-208` still binds the nav's **contents** — the old markup goes, the kept-behaviour table is owed.
+**Only the path survives.**
+
+- **Documents changed:** `docs/plan/notes/wave-26-lead.md` (§C's platform-nav row)
