@@ -16,6 +16,9 @@ export default defineConfig({
     // Arabic is the default; a test that needs English navigates to /en.
     locale: "ar-SA",
     trace: "on-first-retry",
+    // ★ wave 26 (REQ-STO-011): the story capture asks for a camera. Chromium's FAKE device and an auto-accepted prompt
+    // let a spec record by taps alone; no real device is ever opened, and nothing outside `getUserMedia` changes.
+    launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] },
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
