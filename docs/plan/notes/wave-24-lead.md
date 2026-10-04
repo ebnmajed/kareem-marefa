@@ -94,13 +94,39 @@ clear the way.
 | What | Who | The rule |
 |---|---|---|
 | `scripts/parity/goldens/**` | ★ **the lead** | `designer` runs `--update` and hands the diff over. **It never commits the goldens.** A golden moves **only** because the palette moved or a baseline document was rebuilt, and the lead's commit says which |
-| `tests/unit/mail-pinned/**` — all 120 | ★ **the lead** | **The palette alone moves them**: the mail renderer reads `brand_kit()`, so they move in **PR A**, before `notify` touches a design, and once more in C. `notify` **never runs a re-pin** |
+| `tests/unit/mail-pinned/**` — all 120 | ★ **the lead** | ★★ **MEASURED, AND NOT WHAT PR A EXPECTED: the palette does NOT move them.** The full unit suite is green across the palette commit — 2,592 passed. `SAMPLE_BRAND` (`packages/mail-runtime/src/samples.ts:41`) is the **legacy three-key shape** `{fgBody, fgMuted, surface}` with its own fixture hexes and **no `light` object**, so `compilePalette()`'s `"light" in brand` is false and `fgHeading`/`edge` fall to the sanitiser's own defaults. **`brand_kit()`'s values never enter the pinned render.** So they move **once, in PR C**, and only because `notify` changes a design or moves the sanitiser defaults. `notify` **never runs a re-pin** |
 | `qa:contract` · `qa:appearance` · `visual`'s public pairs · the register-form fingerprint | the lead proves it | **unmoved, not re-baselined.** The five public routes render no template and read no brand kit |
+
+★★ **A second thing the measurement found, and it widens `REQ-NTF-016`.** A *real* send does read the kit — but only
+**six of the ten**. `compilePalette()` reads `light.fgHeading`, `light.edge` and `light.canvas`; `legacyBrand()` reads
+`light.fgBody`, `light.fgMuted` and `light.surface`. **`edgeStrong`, `spine`, `node` and `canvasRaise` never reach mail
+at all** — and `node` is the one that now carries lime. ★ `render.ts:362`'s own comment says «`accent` is `fgHeading`,
+not a new token … `public.brand_kit()` has nine and none of them is a "primary"» — **that reasoning is overtaken by
+`DEC-242` §2**: `node` *is* the primary, and it did not exist as an accent when that comment was written. **So the mail
+has no accent today and paints one with its heading colour** — `REQ-NTF-016`'s single most visible change, and
+`notify`'s to make.
 
 ★★ **This is the first wave since M6 in which a golden moving is correct — and the rule it suspends is narrow.** A golden
 that moves for any other reason is still a bug. `DEC-176`'s sentence holds verbatim: **an org's own untouched document
 renders identically**, with the new values, because that is what moving a default means; and an org that has overridden
 its kit sees **nothing** change.
+
+### ★★ A THIRD copy of the palette, found in PR A — and it is `notify`'s to move
+
+`packages/mail-runtime/src/render.ts:349-366` (`compilePalette()`, `canvasOf()`) carries its own literals:
+`hex(light.fgHeading, "#0b1220")`, `hex(light.edge, "#e6eaf0")`, `hex(light.canvas, "#f5f5f5")` and
+`hex(legacy?.fgBody, "#1a1a1a")`.
+
+★ **They are a SANITISER's defaults, not the palette's definition** — the function's own comment says a value that is
+not a hex colour is replaced, and `tests/unit/mail-blocks.test.ts` asserts a planted non-hex never reaches the HTML.
+After `0192` none of the ten can be missing, **so they do not affect the pinned output** and PR A correctly leaves them
+alone. ★ But leaving the old navy there is latent drift the next person will trip on, so **`notify` moves them in PR C**
+— the file is its one writer, and it is already in it.
+
+★★ **And the finding inside them is a design defect, not a colour:** `compilePalette()` ends with
+**`accent: fgHeading`**. **The mail has no accent today** — it paints its accent with its heading colour. That is
+exactly what `node` becoming lime exists to fix, and it is `REQ-NTF-016`'s most visible single change. `notify`'s plan
+says what reads `accent` and what it becomes.
 
 ---
 

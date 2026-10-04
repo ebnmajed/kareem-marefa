@@ -1,7 +1,161 @@
-**Last updated:** 2026-10-04 · **Branch:** `main` · ★★ **M12 IS COMPLETE, LIVE AND ACCEPTED (`DEC-240`, `DEC-241`)** · **`main`:** `0f27fe5d`; production at **`0191`**; the worker on Railway at `37f79dd5`, `builder = DOCKERFILE` held by `railway.json` · **Wave 23 merged as eight PRs, none open:** #52 `a51c2a06` (`055`, `045`, the certificate flows, `0191`) · #53 `67daa9c6` (the studio frame) · #54 · #55 `f683dd6a` (the test-send fix) · #56 `285bc3ee` (★ the designer, rebuilt over its kept engine, the certificate canvas included) · #57 · #58 `37f79dd5` (★ the email builder) · #59 `0f27fe5d` (the carries). ★ **`ui/` 69 files, floor 69 — all six primitives.** ★ **No golden moved — the four-format comparison is 12 of 12 byte-identical** (worker `wave18b` vs `w23`). ★ **The manual Railway step is RETIRED**: the first clean reconnect in fifteen, because `railway.json` pins the builder; probe 10 ms, 39 task names. ★★ **M12 ACCEPTED by the owner, 2026-10-04 (`DEC-241`).** ★★ **Owed — CHECK IN NOVEMBER (before 2026-12-01):** re-run `railway config migrate` as a **dry run only**; apply only when its `.railway/railway.ts` carries the builder, `worker/Dockerfile` and the watch patterns as real settings (not comments) against the service `worker` — the 2026-10-04 dry run did neither, so `railway.json` stays (`DEC-241` §2). ★ **Next, the owner's call:** `SCR-059` branding (M13 — the platform console is on the system and needs a design only if the owner wants it redrawn; otherwise it moves onto the console frame with no artboards, `DEC-240` §5) or **session stories** (designed; needs requirements and `0192`). ★ **Carried:** the tie-breaker («the screen can disagree with what issuance picks»), `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`.
+**Last updated:** 2026-10-04 · **Branch:** `wave-24/the-templates` · ★★ **WAVE 24 IS OPEN — M26, THE ARTEFACTS (`DEC-242`)** · **`main`:** `6de410b2`; production at **`0191`**; the worker on Railway at `37f79dd5`, `builder = DOCKERFILE` held by `railway.json` · ★★ **The owner's ask, verbatim: «I want the templates to match the designed ones and delete the current ones.»** Three questions, three answers (`DEC-242`): **both** the design templates and the mail designs · a **hard delete** · the **platform default palette moves** to «ساحة اللعب». · ★★ **This is the first wave that touches what LEAVES the product** — every screen has worn the playground since wave 17; an exported poster and an issued certificate still wear M6's Reem Kufi on navy, because «the playground stops at the certificate's edge» (`DEC-183` §4) was a deferral. · ★★ **Three PRs:** A `wave-24a/the-palette` (lead, alone, first) · B `wave-24b/the-baseline` (`designer`) · C `wave-24c/the-mail-designs` (`notify`) — **B and C both cut from A's head**, merge order A, B, C. · ★★ **Two migrations, both the lead's:** `0192` (the palette) and `0193` (the baseline), rehearsed on a dump taken at `0191`. · ★★ **NO new primitive** — `ui/` stays **69**. · ★★ **The hard-delete has a floor the database enforces:** `certificates.template_version_id` is `on delete restrict` and `issue_certificates()` resolves the **platform** row directly, so a version a certificate references **cannot** be deleted — `REQ-CRT-014` made structural. The migration **deletes where it can and retires where it cannot, reporting which per row** (`DEC-242` §3). · ★ **Carried from M12:** the tie-breaker, `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, and the **November** Railway dry run (`DEC-241` §2, before 2026-12-01).
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
+
+---
+
+## ★★★ WAVE 24 — OPEN · M26, the artefacts (`DEC-242`)
+
+### The goal, above the process (the owner's words)
+
+> **«I want the templates to match the designed ones and delete the current ones.»**
+
+★ **An exported poster, an issued certificate and a sent email look like the product they came from.** That is the whole
+wave. An admin who exports a poster today gets an artefact from a different product than the screen they exported it
+from. **«Good» is not «the gates are green»** — the acceptance is the owner's, on a **printed** poster and a **printed**
+certificate.
+
+### ★★ What was measured before the decision was written
+
+| # | Measurement | Result |
+|---|---|---|
+| 1 | **Is there an artboard for a poster or a certificate?** | ★★ **No.** `docs/design/screens/m12/` draws the *library screen*. The design is the **seven card thumbnails** on `AdminTemplates.dc.html` and `AdminTemplatesCerts.dc.html`, consistent across all seven and therefore a specification (`DEC-242` §1) |
+| 2 | **Are the names on the cards a roster?** | ★ **No — fixtures.** `0096`'s contract 3 stands: five poster families, three certificate families × two orientations. **The eleven rows keep their families and names; the document inside each changes** |
+| 3 | **What does the current baseline look like?** | `0061` + `0098`, ~6,200 lines of seeded JSON, set in **Reem Kufi / IBM Plex Sans Arabic** on the navy palette — the design M6 shipped |
+| 4 | **Can a hex colour go in a template?** | ★ **No.** `design_template_versions_guard` (`0055`) refuses a literal and `0094`'s guard walks every colour. The vocabulary is the ten `brand.*` tokens plus the team colour — which is why the **default palette** had to move |
+| 5 | ★★ **Can the eleven rows be hard-deleted?** | ★★ **Not all of them, and the database is right.** `certificates.template_version_id` is `on delete restrict` + `not null` (`0055:288`), `design_documents.template_version_id` is `on delete restrict` (`0055:135`), and `issue_certificates()` (`0065:138-146`) resolves «the org's default, **else the platform's**» — so wherever an org never authored its own certificate template, its certificates reference a **platform** baseline version. That is `REQ-CRT-014` made structural |
+| 6 | **Do the new defaults pass `0144`'s status-contrast guard?** | ★ **Yes, all six pairs, with margin** — live 5.32:1 and ended 5.13:1 on the new light canvas, live-on-dark 8.88:1 and 8.10:1 on the new dark canvas/surface (4.5:1 required). So `POL-save_brand_kit.status_contrast_accepted` holds |
+| 7 | **Are the eight mail designs rows?** | ★ **No — constants** in `packages/mail-runtime/src/designs.ts`, by `REQ-NTF-014`'s own reasoning. So PR C writes **no SQL** and deletes nothing; it is a rewrite |
+| 8 | **Does anything public move?** | **No.** The five public routes render no template and read no brand kit, so `qa:contract`, `qa:appearance`, `visual`'s public pairs and the register-form fingerprint stay **unmoved, not re-baselined** |
+
+### ★★ Two findings PR A's own measurement produced
+
+| # | Finding | Consequence |
+|---|---|---|
+| 9 | ★★ **The pinned mail files do not read the platform palette at all.** `SAMPLE_BRAND` is the **legacy three-key shape** `{fgBody, fgMuted, surface}` with no `light` object, so `compilePalette()` falls to the sanitiser's own hard-coded defaults | The 120 files are **unmoved by PR A** — measured, whole unit suite green — and the one reviewed diff falls in **PR C**. The wave's plan said the opposite; this corrects it |
+| 10 | ★★ **A real send reads only SIX of the ten tokens.** `compilePalette()` takes `light.{fgHeading,edge,canvas}` and `legacyBrand()` takes `light.{fgBody,fgMuted,surface}`. **`edgeStrong`, `spine`, `node` and `canvasRaise` never reach mail** — and `node` is the one that now carries lime. `render.ts:362`'s own comment («`accent` is `fgHeading`, not a new token … none of them is a "primary"») is **overtaken by `DEC-242` §2** | **The mail has no accent and paints one with its heading colour.** That is `REQ-NTF-016`'s single most visible change and widens PR C beyond restyling eight layouts: `notify` wires the ten tokens through |
+
+### ★★ The ruling on «delete», and what it means on screen
+
+**Delete row by row; retire the row when the delete is refused; report which per row** (`DEC-242` §3). `retired_at` is
+what the library, `045`'s picker and issuance read, so the user-visible meaning of «delete the current ones» — **gone
+from `055`, gone from the picker, never resolved by issuance** — is true for all eleven either way. What survives is
+invisible and unreachable: a version row kept only so a certificate somebody is holding still renders.
+★ **Nothing is forced** — no `cascade`, no detaching a certificate from its version, no touching
+`recipient_name_snapshot` or a pinned `font_hashes`.
+
+★ **The per-row report goes here when `0193` runs.**
+
+| Row | Family · purpose · orientation | Deleted or retired | Refused by |
+|---|---|---|---|
+| _(filled by `0193`'s report)_ | | | |
+
+### ★★ The two things allowed to move, once, and only by the lead
+
+| What | How many | Why it is correct here |
+|---|---|---|
+| `scripts/parity/goldens/**` | the backgrounds and slide-page sets | **The first wave since M6 in which a golden moving is correct** — and only because the palette moved or a baseline document was rebuilt, named in the lead's commit. `designer` runs `--update`; the lead opens every before-and-after and commits |
+| `tests/unit/mail-pinned/**` | **all 120** | ★★ **MEASURED, AND THE OPPOSITE OF WHAT PR A EXPECTED: the palette does NOT move them.** The full unit suite is green across the palette commit — 2,592 passed, 1 skipped. `SAMPLE_BRAND` (`samples.ts:41`) is the **legacy three-key shape** with its own fixture hexes and **no `light` object**, so `compilePalette()`'s `"light" in brand` is false and `fgHeading`/`edge` fall to the sanitiser's own defaults — **`brand_kit()`'s values never enter the pinned render.** They move **once, in PR C.** `notify` never runs a re-pin |
+
+★ `DEC-176`'s sentence holds verbatim: **an org's own untouched document renders identically** — with the new values,
+because that is what moving a default means — and an org that has overridden its kit sees **nothing** change.
+
+### The checklist
+
+| # | Step | PR | Who | State |
+|---|---|---|---|---|
+| 0 | `DEC-242`, the map, the ten agent files, `01`/`09`/`14`/`15`, this block, the brief | — | lead | ✓ done |
+| 1 | ★★ **The palette** — `brand.ts`'s `LIGHT`/`DARK` and `0192` replacing `brand_kit()`'s ten fallbacks, **one commit**, `brand-kits.test.ts` green | A | lead | ☐ |
+| 2 | The six status pairs re-measured from the committed constants | A | lead | ☐ |
+| 3 | The parity goldens re-baselined, every before-and-after opened | A | lead | ☐ |
+| 4 | The 120 pinned mail files — **measured UNMOVED by the palette**; the one reviewed diff moves to PR C | A | lead | ✓ measured |
+| 5 | «the palette is in at `<sha>`» posted; B and C cut from A's head | A | lead | ☐ |
+| 6 | Sync 1 — two plans approved with their colour tables and the delete-or-retire table | — | lead | ☐ |
+| 7 | The five baseline poster families, rebuilt | B | `designer` | ☐ |
+| 8 | The three certificate families × both orientations, rebuilt | B | `designer` | ☐ |
+| 9 | `0193` — the superseded eleven, deleted-or-retired, with its report | B | lead, from `designer`'s proposed file | ☐ |
+| 10 | ★★ A certificate issued **before** the wave still rendering as its own version | B | `designer` | ☐ |
+| 11 | The eight designed mail families, rebuilt | C | `notify` | ☐ |
+| 12 | The 120 files stable on a re-run | C | lead | ☐ |
+| 13 | Captures beside the thumbnails, and each render opened **at its own size** | — | lead | ☐ |
+| 14 | The gates; three PRs; the owner's acceptance on a printed poster and certificate | — | lead | ☐ |
+
+★ **The untouched-suite ledger — wave 24** (each line: the assertion, why it moved, selector or expectation):
+
+| Spec · line | Moved | Kind |
+|---|---|---|
+| _(none yet)_ | | |
+
+---
+
+## ★ `scripts/seed-demo.mjs` — the client demo seed (2026-10-04, outside the wave structure)
+
+**What it is.** One self-contained demo organisation — fourteen sessions covering every phase and
+viewer relation, two of them multi-day; sixteen members across five companies with team colours;
+five proposals, one per state; the ledger, badges, levels and both boards; certificates in all
+three states; materials with pages, photographs, a discussion, ratings, a five-question survey,
+moderation queues, the feed. Built so the product can be shown to a client end to end.
+
+**It is a SEED, NOT A MIGRATION** (`CLAUDE.md` rule 3). Nothing of it goes under
+`supabase/migrations/`. `scripts/` is lead-only, which is where it belongs.
+
+**The five things it is careful about, each measured rather than assumed:**
+
+| # | Property | How it is achieved, and what the measurement was |
+|---|---|---|
+| 1 | **`registrations` is never touched** (invariant 2) | `--clean` deletes by org id, so it cannot reach a table the org does not own. The string appears nowhere in the script |
+| 2 | **One transaction** | Either the whole org appears or none of it does. It is also what makes row 3 possible |
+| 3 | ★★ **The mail is CONTAINED, not abolished** | Three layers: (a) every seeded member opted out of email for the eight optional categories; (b) **415 `send_notification` jobs deleted before COMMIT**, so the live worker never sees them; (c) **every demo address is a `+tag` on the admin's own mailbox**. ★ (c) is LOAD-BEARING: after the seed the worker awards badges, a badge issues an achievement certificate, and `certificates` is one of three categories the `notification_preferences` check constraint **forbids** switching off — about forty genuine messages follow, and on a domain nobody receives they would be forty hard bounces on the live Resend domain. A remote run is **refused** unless the member domain matches the admin's |
+| 4 | **It goes through the product's own functions** | Identity switched as `tests/rls/db.ts` does it. Attendance via `mark_checked_in_manually()`, because `attendance_recorded()` hangs off the RPC and **not** off a trigger on `check_ins` (`0148`) — a direct insert awards nothing. Release and revoke via `release_certificates()` / `revoke_certificate()`. **Points are never inserted**: `points_ledger` is append-only with `service_role` revoked (invariant 9), so the ledger shown is the one the triggers computed |
+| 5 | **Production is asked for twice** | A non-local URL needs `--production` **and** `DEMO_SEED_CONFIRM=<slug>`, and refuses port 6543 (the transaction pooler cannot hold one role-switching transaction) |
+
+**Three defects the run found, all fixed:**
+
+- ★ **The state chain must be WALKED, never short-circuited.** `sessions_guard_transition` is
+  `before update of state`, so a direct insert at `completed` is allowed — and leaves the ledger
+  empty and the certificate list non-existent, because the awards live in
+  `sessions_completion_fanout` and the certificates in `sessions_certificate_hook`, both of which
+  fire on the UPDATE.
+- ★ **`--clean` must purge the QUEUE, and by the id each task actually sends.** Rows cascade from
+  `orgs`; queued jobs do not. The first `--reset` left **58 failing `issue_certificates` and 52
+  failing `send_notification`** jobs against deleted sessions — on production that is an
+  exhausted-job alert on the super admin's console for every orphan. Sweeping by org, session and
+  member id then **still** left 60 `render_variant` (payload: an `export_artifacts` id alone) and
+  140 `calendar_upsert`/`calendar_delete` (payload: an `rsvps` id alone). The sweep now covers
+  eleven id sources and `--clean` leaves **0 of 467** jobs behind — verified by re-running it
+  immediately after a full seed.
+- ★ **The boards cannot be snapshot in the seed's own transaction.** `SCR-027`/`028` read
+  `leaderboard_snapshots` + `leaderboard_entries`, and `award_points` is a **job**, so at COMMIT the
+  ledger is empty: the first run produced **two board entries for fifteen members with points**.
+  Hence a second pass, `--finalise`, run once the worker has drained. All-time is **not** snapshot —
+  it computes live from `all_time_leaderboard()` (`leaderboards.ts:81`).
+
+★ **One cosmetic limitation, deliberately not fixed.** Every `points_ledger` row's `occurred_at` is
+the award job's own clock, so the points history shows a member's whole ledger at one instant.
+Backdating it would mean an `UPDATE` on an append-only table (invariant 9) — the seed does not do
+that, and the demo's story is «this org just started». The inbox IS spread (ten days, older half
+read), because `notifications` carries no such invariant.
+
+**Proven locally** against all 191 migrations and the real worker: 186 ledger rows, 15 balances,
+45 certificates (8 held · 35 issued · 1 revoked), 478 notifications, 15 monthly and 5 company board
+entries, a 3-day workshop where one member attended 2 of 3 days and correctly earns **no**
+certificate, a full session with 8 confirmed and 4 waitlisted at positions 1–4, and
+**0 outbound mail jobs** for the org after commit. The only local failures are `render_variant`
+with «CHROME_PATH is not set» — the Railway worker image pins Chromium, so posters and certificate
+PDFs render there.
+
+★ **Impersonation cannot demo the app.** The hook deliberately strips `member_id` during
+impersonation (`0069:525`) and `session.ts:60` treats a token without it as `no_org` → `/no-access`.
+Impersonation scopes **platform-console reads** to an org; it does not open the member app or the
+console. Walking the app needs a real member row, which needs a Google identity whose domain the org
+allows. The script's closing note prints the claim → sign in → unclaim sequence, and the one query
+that says whether the address is already a member of another org (`auth_user_id` is unique and
+`org_id` immutable, so it can only ever belong to one).
+
+**Owner's run order:** `--reset` → wait for the worker → `--finalise` → claim the domain, sign in,
+unclaim. `supabase db query --linked` is on the project deny list, so no agent session can run any
+of it.
 
 ---
 
