@@ -224,7 +224,16 @@ const logo = (frame: Layer['frame']): Layer => ({
   name: 'شعار المؤسسة',
   image: { binding: 'brand.logoAssetId', fit: 'contain' },
   frame,
-  presets: { default: { anchor: 'block-start', scale: 'proportional' } },
+  // ★ `inlineAnchor: 'end'` — the logo is the block-start INLINE-END corner, and
+  //   it should still be that corner on a page of a different aspect. Without it
+  //   a 4:5 → 16:9 derivation put it 40 % across with the page's outer 60 %
+  //   empty.
+  //
+  // ★ The certificate shares this helper and puts its logo at the inline-START,
+  //   inside the lockup — and needs no override, measured: a certificate derives
+  //   to exactly ONE preset, its own master, so the factor is 1 and holding the
+  //   distance from the inline-end reproduces the authored x to the pixel.
+  presets: { default: { anchor: 'block-start', inlineAnchor: 'end', scale: 'proportional' } },
   z: 10,
 })
 
@@ -415,7 +424,7 @@ function posterDocument(family: PosterFamily): DesignDocument {
       // so there is no dpi change to survive and 320 px is 27.1 mm wherever it
       // lands (`REQ-CRT-010`'s 25 mm minimum). The two settings differ because
       // the two masters differ, not because one of them is a mistake.
-      presets: { default: { anchor: 'block-end', scale: 'proportional' } },
+      presets: { default: { anchor: 'block-end', inlineAnchor: 'end', scale: 'proportional' } },
       z: 10,
     },
   ]

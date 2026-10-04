@@ -100,6 +100,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -311,6 +312,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-end",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -388,6 +390,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -599,6 +602,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-end",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -676,6 +680,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -887,6 +892,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-end",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -964,6 +970,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -1175,6 +1182,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-end",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -1252,6 +1260,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -1463,6 +1472,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-end",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -1540,6 +1550,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -1912,6 +1923,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -2284,6 +2296,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -2656,6 +2669,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -3028,6 +3042,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
@@ -3400,6 +3415,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-start",
+          "inlineAnchor": "end",
           "scale": "proportional"
         }
       },
