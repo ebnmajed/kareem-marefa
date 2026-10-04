@@ -33,8 +33,11 @@ export async function BrandKitRead({
   const t = await getTranslations("branding");
   const a3 = kit.logo ? ppiAtA3(kit.logo.width, kit.logo.height) : null;
   const font = (f: BrandFontRef | null) => (f ? <bdi>{`${f.family} · ${formatNumber(f.weight)}`}</bdi> : t("fonts.platformDefault"));
+  // The artboard lays a group's swatches as a wrapping grid beside its label — two to a row at 1280 in this half-width card, one under `lg` —
+  // so the card stays the height it draws, each swatch still carrying its name and its value.
+  const GRID = "grid grid-cols-1 gap-x-4 gap-y-2 lg:grid-cols-2";
   const scheme = (set: BrandColourSet) => (
-    <span className="flex flex-wrap gap-x-4 gap-y-2">
+    <span className={GRID}>
       {TOKENS.map((token) => (
         <Swatch key={token} color={set[token]} name={t(`colours.tokens.${token}`)} />
       ))}
@@ -45,7 +48,8 @@ export async function BrandKitRead({
     <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
       <div className="flex min-w-0 flex-col gap-4">
         <section aria-labelledby="brand-logo" className="flex flex-wrap items-center gap-4 rounded-panel border border-edge bg-surface p-4">
-          <div className="flex size-24 shrink-0 items-center justify-center overflow-clip rounded-card bg-raised">
+          {/* The artboard's bone tile: an org's mark is drawn for a light ground. */}
+          <div className="flex size-24 shrink-0 items-center justify-center overflow-clip rounded-card bg-fg-heading p-2">
             {kit.logo && logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- an org-uploaded image at a short-lived signed URL.
               <img src={logoUrl} alt={t("logo.current")} className="max-h-full max-w-full object-contain" />
@@ -100,7 +104,7 @@ export async function BrandKitRead({
               id: "accent",
               label: t("colours.accent"),
               value: (
-                <span className="flex flex-wrap gap-x-4 gap-y-2">
+                <span className={GRID}>
                   <Swatch color={kit.light.node} name={t("colours.schemeLight")} />
                   <Swatch color={kit.dark.node} name={t("colours.schemeDark")} />
                 </span>
@@ -110,7 +114,7 @@ export async function BrandKitRead({
               id: "teams",
               label: t("colours.teams"),
               value: (
-                <span className="flex flex-wrap gap-x-4 gap-y-2">
+                <span className={GRID}>
                   {teamColours.map((c) => (
                     <Swatch key={c.hex} color={c.hex} name={c.name} />
                   ))}
