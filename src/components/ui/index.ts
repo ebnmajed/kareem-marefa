@@ -1884,6 +1884,8 @@ export interface StoryViewerFrame {
   content: ReactNode;
   /** ms. Photo 5000, text 6000; a video passes its own length and drives the clock itself (`media`). */
   durationMs: number;
+  /** The frame's own age — «قبل 12 دقيقة» — appended to the header's meta line. The frame's, not the story's. */
+  age?: string;
   /** A video frame: the viewer reads currentTime/ended/pause from this element instead of its own clock. */
   media?: RefObject<HTMLVideoElement | null>;
   /** The one action — «افتح الجلسة» / «حمّل المواد». */
