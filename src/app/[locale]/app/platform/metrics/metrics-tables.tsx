@@ -56,7 +56,7 @@ export function JobsTable({ jobs }: { jobs: JobHealthRow[] }) {
       // A task identifier is snake_case Latin in an Arabic table: isolated, so
       // the underscores do not reorder.
       cell: (job) => (
-        <span dir="ltr" className="font-mono">
+        <span dir="ltr" className="font-mono [overflow-wrap:anywhere]">
           <bdi>{job.task}</bdi>
         </span>
       ),

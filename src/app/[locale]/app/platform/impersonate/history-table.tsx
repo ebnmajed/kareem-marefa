@@ -23,10 +23,13 @@ export function HistoryTable({ sessions, locale }: { sessions: ImpersonationSess
   const when = (iso: string) => formatDateTime(iso, PLATFORM_TIME_ZONE, locale);
   const minutes = (s: ImpersonationSession) => Math.round((Date.parse(s.expiresAt) - Date.parse(s.startedAt)) / 60000);
 
+  // Five columns, as the board draws five: the end sits under the state in one cell, so the log fits its half of the
+  // page at 1280 with no horizontal scroller — a read-only table that scrolls sideways is a region a keyboard cannot
+  // reach (axe `scrollable-region-focusable`). Free text breaks anywhere rather than widening the table.
   const columns: DataTableColumn<ImpersonationSession>[] = [
     { key: "started", header: t("whenColumn"), cell: (s) => <bdi>{when(s.startedAt)}</bdi> },
-    { key: "org", header: t("orgColumn"), onCard: true, cell: (s) => <bdi>{s.orgName}</bdi> },
-    { key: "reason", header: t("reasonColumn"), onCard: true, cell: (s) => <bdi>{s.reason}</bdi> },
+    { key: "org", header: t("orgColumn"), onCard: true, cell: (s) => <bdi className="[overflow-wrap:anywhere]">{s.orgName}</bdi> },
+    { key: "reason", header: t("reasonColumn"), onCard: true, cell: (s) => <bdi className="[overflow-wrap:anywhere]">{s.reason}</bdi> },
     {
       key: "duration",
       header: t("durationColumn"),
@@ -37,25 +40,27 @@ export function HistoryTable({ sessions, locale }: { sessions: ImpersonationSess
       },
     },
     {
-      key: "end",
-      header: t("endColumn"),
-      onCard: true,
-      cell: (s) => <bdi>{when(s.endedBy === "stopped" && s.endedAt ? s.endedAt : s.expiresAt)}</bdi>,
-    },
-    {
       key: "state",
       header: t("stateColumn"),
       onCard: true,
-      cell: (s) =>
-        s.endedBy === null ? (
-          <Badge tone="live">{t("stateOpen")}</Badge>
-        ) : s.endedBy === "stopped" ? (
-          <Badge tone="ended">{t("stateStopped")}</Badge>
-        ) : (
-          <Badge tone="ended" outline>
-            {t("stateExpired")}
-          </Badge>
-        ),
+      cell: (s) => (
+        <span className="flex flex-col items-start gap-1">
+          {s.endedBy === null ? (
+            <Badge tone="live">{t("stateOpen")}</Badge>
+          ) : s.endedBy === "stopped" ? (
+            <Badge tone="ended">{t("stateStopped")}</Badge>
+          ) : (
+            <Badge tone="ended" outline>
+              {t("stateExpired")}
+            </Badge>
+          )}
+          <span className="text-caption text-fg-muted">
+            {t("endColumn")}
+            {": "}
+            <bdi>{when(s.endedBy === "stopped" && s.endedAt ? s.endedAt : s.expiresAt)}</bdi>
+          </span>
+        </span>
+      ),
     },
   ];
 

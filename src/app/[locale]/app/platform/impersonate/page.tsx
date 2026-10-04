@@ -45,7 +45,7 @@ export default async function ImpersonatePage({ params }: { params: Promise<{ lo
     <>
       <PageHeader inlineActions title={t("title")} actions={<Badge tone="live">{t("recordedBadge")}</Badge>} />
 
-      <div className="mt-6 grid items-start gap-8 lg:grid-cols-2">
+      <div className="mt-6 grid items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
         <div className="min-w-0 space-y-4">
           <Panel tone="info">
             <p className="flex items-start gap-2 text-body-sm text-fg-body">
