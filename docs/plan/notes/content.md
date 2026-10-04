@@ -8000,3 +8000,17 @@ tests), `bb134576` (RLS, 16 cases, as members), `c1d81a8e` (the walk spec, the r
   reads `0198`'s `'poster.webp'` literal as an audit action.
 - **Owed:** the capture, video, moderation and strip e2e specs (after the promotion and the image with `ffmpeg`);
   `story-video-strip.test.ts` run inside the worker image with `REQUIRE_FFMPEG=1`; the captures.
+
+### Wave 26 — the e2e runs (after `0199`), what they found
+
+- **A product defect, the lead's file:** `src/proxy.ts` sent `permissions-policy: camera=(), microphone=()` on every
+  page, so «أضف»'s camera could never open. Fixed by the lead at `c36557f2` — `camera=(self), microphone=(self)` on
+  `/{locale}/app` only; the public routes keep the old header byte for byte (`wave26-lead-permissions-policy`).
+- **The rendition audit refused our own output:** ffprobe reads the video stream's `encoder` back from the sample
+  description («Lavc libx264»). An `encoder` that is libavcodec's is ours; any other is still refused (`9f4fc75e`,
+  confirmed by the worker's log). The video spec then passed 4/4 through the real worker.
+- **Seeds, not code:** a `live` frame is a day's and the read model draws none without one; a uuid passed once as
+  two types; a ROLE locator behind an open sheet finds nothing, so «0 tiles» passed before the write.
+- **The strip says every answer** (`ae7b96dc`): a refusal is an error toast with the sheet left open, never a silent
+  close. An empty `role="status"` at rest on the home is gone (`9f4fc75e`).
+- PR D green on a production build of `ae7b96dc`: 60 passed, 0 failed; 044's own suites untouched.
