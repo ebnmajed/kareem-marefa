@@ -64,6 +64,7 @@ today only `qa:contract` shape-checks it.
 | `src/components/ui/` | **69**, floor **69** at `:123` → **71** with the two new |
 | ★ The PNGs | **sixteen for seventeen boards** — `AdminAttendance.dc.html` has none |
 | ★ `M13.md`'s `DEC-NEXT-40` | cites **`0192`** for `story_views`; `0192` is `platform_palette`, merged in wave 24. **It is `0198`** |
+| ★★ The spec is **ON `main`** | `M13.md`, its planning prompt, `STORIES-USER-STORIES.md`, the **seventeen** artboards, **sixteen** PNGs and the logo pack (11 files under `assets/brand/logo/`) were untracked and landed as **PR #71 → `3a3d0c54`**. ★ **Step 0 commits NOTHING under `docs/design/`** — check git before adding there, or a second copy of seventeen artboards appears. Only **`AdminAttendance`'s PNG** is still absent |
 | ★ Impersonation | is **`DEC-054`**, not a 1xx as the prompt guessed — `impersonation_sessions`, «≤ 4 h by constraint, append-only», with `DEC-055` §3 and `DEC-057` §7 |
 
 ### ★ Stories — the requirements come first

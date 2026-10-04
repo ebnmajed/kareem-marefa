@@ -63,11 +63,11 @@ branch cut.
 
 ★ **Open each against `main` on its FIRST push.** Six waves have avoided the retarget trap that way.
 
-★★ **And read this before Step 0: `M13.md`, `M13-PLANNING-PROMPT.md`, `STORIES-USER-STORIES.md`, all seventeen
-artboards and all sixteen PNGs were UNTRACKED and are now committed on the branch `brand/logo-pack` (`fe9228f2`),
-together with the logo pack and the wordmark assets it replaces — 87 files. They are NOT on `main`.** So either that
-branch merges before you cut yours, or your Step 0 takes the spec from it. **Do not re-commit them**; check what is
-already in git before you add anything under `docs/design/`.
+★★ **The spec is ON `main` — do not re-commit it.** `M13.md`, `M13-PLANNING-PROMPT.md`,
+`STORIES-USER-STORIES.md`, the **seventeen** artboards, **sixteen** PNGs and the whole logo pack (11 files under
+`assets/brand/logo/`) were untracked and landed as **PR #71 → `3a3d0c54`**. So your Step 0 **commits nothing under
+`docs/design/`** — check what is already in git before adding anything there, or you will create a second copy of
+seventeen artboards. ★ The one still absent is **`AdminAttendance`'s PNG**.
 
 ## ★★ §A — the public contract is the tightest constraint in this wave
 
