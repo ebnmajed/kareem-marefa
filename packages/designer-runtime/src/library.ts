@@ -40,43 +40,104 @@
  *      category pill is a stadium composed from `ellipse` + `rect` +
  *      `ellipse` because `shape` has no radius, and the serial carries
  *      `<bdi>` (which `render.ts` already emits) and not `dir="ltr"`.
- *   2. EVERY COLOUR IS `{{brand.<token>}}` AND NOTHING ELSE. `0094`'s guard is
- *      an ALLOWLIST of the binding shape — `^\{\{\s*brand\.[A-Za-z]+\s*\}\}$`
- *      — not a denylist of hex, so `rgb()`, `navy` and a team-colour binding
- *      are all refused. The ten `BRAND_COLOUR_TOKENS` are the whole
+ *   2. EVERY COLOUR IS `{{brand.<token>}}` OR `{{design.<name>}}` AND NOTHING
+ *      ELSE. `0094`'s guard is an ALLOWLIST of the binding shape —
+ *      `^\{\{\s*(brand|design)\.[A-Za-z]+\s*\}\}$` — not a denylist of hex, so
+ *      `rgb()`, `navy`, `#FF9A2E` and `{{team.colour}}` are all still refused.
+ *      ★ The `design` branch is wave 24's and is the ONLY thing the guard
+ *      newly admits: the new pattern is the old one with the literal `brand`
+ *      replaced by an alternation, so the set of newly-accepted strings is
+ *      exactly the well-formed `design` bindings and nothing else. The ten
+ *      `BRAND_COLOUR_TOKENS` and the seven `DESIGN_COLOURS` are the whole
  *      vocabulary.
  *
- * ★★ THE FIVE COLOURWAYS, and the loss recorded in them (wave 24 ruling 1).
- * The thumbnails paint three colourways: a TEAM colour (the «لون الفريق»,
- * «لقاء» and «إعلان» cards are all the same colourway — `#FF9A2E`, `#35D0FF`
- * and `#9B7CFF` are `--color-team-tangerine`, `--color-team-cyan` and
- * `--color-team-violet` in `01-tokens.md`, not platform accents), an INK one
- * («ليلي») and a PAPER one («ورقي»). The team colour CANNOT reach a template:
- * it would need `0094`'s guard widened, `brandViolations()` and
- * `roster.variants` widened with it, a new binding, and a field in two render
- * contexts. The owner deferred it to its own wave rather than make that a
- * mid-wave change, so five families take five TOKEN grounds. The ink and
- * paper colourways are the thumbnails' own, hex for hex; the other three are
- * the palette's remaining grounds.
+ * ★★ THE FIVE COLOURWAYS (wave 24's re-colour, and what it corrected).
  *
- *   talk          ink    — `canvas`      ground, `fgHeading` text, `node` pill
- *   workshop      paper  — `fgHeading`   ground, `canvas`    text, `canvas` pill
- *   panel         surface— `surface`     ground, `fgHeading` text, `node` pill
- *   meetup        raised — `canvasRaise` ground, `fgHeading` text, `node` pill
- *   announcement  lime   — `node`        ground, `canvas`    text, `canvas` pill
+ * ★ THE FIRST ATTEMPT WAS WRONG, and the diagnosis is worth keeping because it
+ * is not «the design was not read». `DEC-242` §1 declared «there is no artboard
+ * for a poster», and §2 ruled the design's own grounds out by name — they «are
+ * `--color-team-tangerine`, `--color-team-cyan` and `--color-team-violet` …
+ * not platform accents», therefore unreachable, because a team colour cannot
+ * bind. Two things were wrong with that:
  *
- * ★ `workshop` is the DARK palette read the other way round, and that is not a
- * trick: the thumbnail's «ورقي» card paints `#0B0C12` on `#F4F1EA`, which are
- * the dark leg's own `canvas` and `fgHeading`. `node` is lime on dark and
- * lime-deep on light (`DEC-242` §2) and is the one way the accent reaches a
- * document at all. Text on lime is ink at 16:1 (`01-tokens.md`).
+ *   · `AdminDesignerElements.dc.html` IS the poster artboard. Its `<title>` is
+ *     «ساحة اللعب — لون الفريق» — the name of library card 1 — and it draws the
+ *     poster at 640×360 on `#FF9A2E` with `#0B0C12` type. It was always the
+ *     same specification, at full size.
+ *   · `01-tokens.md` labels that table «Team colours (**proposal**; the mapping
+ *     to companies is the owner's to change)», and **cyan and violet sit on the
+ *     PLATFORM cards** of `AdminTemplates.dc.html` — where a team colour cannot
+ *     be, because a platform template is org-independent. A proposal was cited
+ *     as settled fact to disqualify the design's own palette. The lesson is not
+ *     «read the design»; it is **«check whether the thing you are citing is
+ *     settled»**.
  *
- * VERSIONS AND ROWS (REQ-DSG-007, REQ-CRT-014, REQ-DSG-034). These are ELEVEN
- * NEW platform rows at VERSION 1. The eleven superseded rows are deleted where
- * the database permits and RETIRED where `on delete restrict` refuses, by
- * `supersede_baseline_template()` — a certificate issued against a 2026
- * version renders as that version for ever, which is why its row survives
- * invisibly rather than being forced out of the way.
+ * ★ WHAT THE ARTBOARDS ACTUALLY DRAW — five colourways, THREE VIVID AND TWO
+ * NEUTRAL, in two labelled sections:
+ *
+ *   قوالب مؤسستك · 3   ساحة اللعب — لون الفريق  `#FF9A2E` on ink
+ *                      ليلي                     ink ground, bone type, LIME pill
+ *                      ورقي                     bone ground, ink type
+ *   قوالب المنصة · 2   لقاء      ★ `#35D0FF` cyan on ink   → `meetup`
+ *                      إعلان     ★ `#9B7CFF` violet on ink → `announcement`
+ *
+ * ★★ SO FIVE VIVID FAMILIES IS THE OWNER'S INSTRUCTION, NOT THE DESIGN'S —
+ * «I need the new design to match the design» plus the six hexes they handed
+ * over. Writing «the design specifies five vivid colourways» would be the same
+ * error a fourth time. What the design DOES fix is two of the five, and those
+ * two are not ours to move: «لقاء» is cyan and «إعلان» is violet, by name, on
+ * the platform cards. The other three are the remaining palette, and
+ * `workshop`/`panel` were a free choice between lime and coral.
+ *
+ *   talk          `design.tangerine`  — the colourway drawn at full size
+ *   workshop      `design.lime`
+ *   panel         `design.coral`
+ *   meetup        `design.cyan`       ★ the artboard, by name
+ *   announcement  `design.violet`     ★ the artboard, by name
+ *
+ * Type on every one is `design.ink`; the pill is ink filled with the ground
+ * colour as its type — the artboard's rule on all four vivid cards. Measured:
+ * ink on tangerine 9.22:1, lime 16.52, cyan 10.80, violet 6.25, coral 7.06.
+ * Bone on a vivid ground is 1.05–2.77:1, so **ink is the only possible type
+ * colour** and the artboard had no choice either.
+ *
+ * ★★ TWO DEFECTS IN THE SHIPPED VERSION THIS REPLACES, both measured.
+ *
+ *   1. THREE OF THE FIVE WERE THE SAME POSTER. `talk`→`canvas` `#0B0C12`,
+ *      `panel`→`surface` `#151724` and `meetup`→`canvasRaise` `#1E2130` are
+ *      within 1.10:1, 1.22:1 and 1.11:1 of one another — same hue, same
+ *      luminance, indistinguishable in print. `roster.variants` passed them
+ *      because it only asks «does every colour resolve», never «are these five
+ *      different». `roster.poster_ground` now asserts five DISTINCT RESOLVED
+ *      grounds, which is the assertion that would have caught it.
+ *   2. `workshop` BOUND `fgHeading` AS A GROUND — a foreground token painting a
+ *      page, with `canvas` as its type. It only looked right because the dark
+ *      leg's `fgHeading` happens to be bone; an org that rebranded its heading
+ *      colour would have got a poster whose GROUND was it. Nothing checked
+ *      that, because resolvability is not semantics.
+ *
+ * ★ THE LOSS, recorded in words because it is real: a baseline poster's ground
+ * is now a PLATFORM DESIGN CONSTANT, so an org's brand kit no longer repaints
+ * it. An org that wants its own colours **copies the template and picks a
+ * `brand.*` token from the inspector**, which is what the artboard itself
+ * shows — the org's three cards are different colourways from the platform's
+ * two, and card 1 is named «لون الفريق». `REQ-DSG-021` still holds: one
+ * definition, one edit, one place. ★ And the third tier the design wants —
+ * `{{team.*}}` for «لون الفريق» — is now one word in the guard away, which is
+ * the other reason the namespace is an alternation rather than a second
+ * hard-coded prefix.
+ *
+ * VERSIONS AND ROWS (REQ-DSG-007, REQ-CRT-014, REQ-DSG-034). ★ The re-colour
+ * is **VERSION 2 ON THE ELEVEN ROWS THE WAVE ALREADY CREATED**, not eleven more
+ * rows, and the distinction matters. The wave's first seed needed new rows
+ * because `REQ-DSG-034` required M6's baseline to LEAVE the library — there was
+ * something to remove. Here there is not: the eleven rows are the right rows
+ * with the wrong document inside them, so the fix is the pattern `0061` and
+ * `0098` already used — **a version is ADDED, never edited** — and nothing is
+ * superseded, deleted or retired. A certificate issued against version 1
+ * renders as version 1 for ever (`REQ-CRT-014`), which is the whole reason a
+ * version is immutable; issuance and `poster_render_context()` read the latest,
+ * so every new export is the designed one.
  *
  * A ROW IS A COMPOSITION (DEC-148): the SCHEME is a palette chosen where the
  * render is decided (a poster is always `dark`, DEC-125; a certificate pins
@@ -91,6 +152,7 @@
 
 import { declaredBindingsOf } from './bindings.js'
 import { BRAND_COLOUR_TOKENS } from './brand.js'
+import { DESIGN_COLOUR_NAMES } from './design-colours.js'
 import type { DesignDocument, Layer } from './model.js'
 import { BASE_SCHEMA_VERSION } from './model.js'
 import { PRESETS } from './presets.js'
@@ -126,7 +188,13 @@ export function orientationOf(document: Pick<DesignDocument, 'master'>): Certifi
  *  document names except the brand colours, which are the brand kit's, not
  *  data (06 §2.3). The org logo stays — it is bound, like data. */
 export function dynamicFieldsOf(document: DesignDocument): string[] {
-  return declaredBindingsOf(document).filter((b) => !b.startsWith('brand.') || b === 'brand.logoAssetId')
+  // ★ `design.*` is excluded for the same reason `brand.*` is: it is a colour
+  //   the platform supplies, not a value an admin fills in. Missed, every
+  //   design colour would land in the `dynamic_fields` COLUMN and appear in the
+  //   editor's field panel as a bindable field.
+  return declaredBindingsOf(document).filter(
+    (b) => (!b.startsWith('brand.') && !b.startsWith('design.')) || b === 'brand.logoAssetId',
+  )
 }
 
 /* ── the shared vocabulary ──────────────────────────────────────────────── */
@@ -156,7 +224,16 @@ const logo = (frame: Layer['frame']): Layer => ({
   name: 'شعار المؤسسة',
   image: { binding: 'brand.logoAssetId', fit: 'contain' },
   frame,
-  presets: { default: { anchor: 'block-start', scale: 'proportional' } },
+  // ★ `inlineAnchor: 'end'` — the logo is the block-start INLINE-END corner, and
+  //   it should still be that corner on a page of a different aspect. Without it
+  //   a 4:5 → 16:9 derivation put it 40 % across with the page's outer 60 %
+  //   empty.
+  //
+  // ★ The certificate shares this helper and puts its logo at the inline-START,
+  //   inside the lockup — and needs no override, measured: a certificate derives
+  //   to exactly ONE preset, its own master, so the factor is 1 and holding the
+  //   distance from the inline-end reproduces the authored x to the pixel.
+  presets: { default: { anchor: 'block-start', inlineAnchor: 'end', scale: 'proportional' } },
   z: 10,
 })
 
@@ -204,16 +281,28 @@ interface Colourway {
   pillInk: string
 }
 
+/** ★ The ground is the only thing that differs between the five. Type is always
+ *  `design.ink`, the pill is always ink filled with the ground colour as its
+ *  own type — the artboard's rule on all four of its vivid cards, and the
+ *  reason there is one helper rather than five literal rows that could drift
+ *  apart. */
+const vivid = (ground: string): Colourway => ({
+  ground,
+  ink: '{{design.ink}}',
+  pillFill: '{{design.ink}}',
+  pillInk: ground,
+})
+
 const COLOURWAYS: Record<PosterFamily, Colourway> = {
-  // The thumbnails' «ليلي» card, hex for hex on the dark palette.
-  talk: { ground: '{{brand.canvas}}', ink: '{{brand.fgHeading}}', pillFill: '{{brand.node}}', pillInk: '{{brand.canvas}}' },
-  // The thumbnails' «ورقي» card: the dark palette read the other way round.
-  workshop: { ground: '{{brand.fgHeading}}', ink: '{{brand.canvas}}', pillFill: '{{brand.canvas}}', pillInk: '{{brand.fgHeading}}' },
-  panel: { ground: '{{brand.surface}}', ink: '{{brand.fgHeading}}', pillFill: '{{brand.node}}', pillInk: '{{brand.canvas}}' },
-  meetup: { ground: '{{brand.canvasRaise}}', ink: '{{brand.fgHeading}}', pillFill: '{{brand.node}}', pillInk: '{{brand.canvas}}' },
-  // Lime as a ground, ink on it at 16:1 — the loudest family, which suits an
-  // announcement, and the only poster whose pill inverts to the accent.
-  announcement: { ground: '{{brand.node}}', ink: '{{brand.canvas}}', pillFill: '{{brand.canvas}}', pillInk: '{{brand.node}}' },
+  // The colourway `AdminDesignerElements.dc.html` draws at full size and the
+  // library draws first — the representative poster, for the commonest family.
+  talk: vivid('{{design.tangerine}}'),
+  workshop: vivid('{{design.lime}}'),
+  panel: vivid('{{design.coral}}'),
+  // ★ The artboard's own, by name: the platform card «لقاء».
+  meetup: vivid('{{design.cyan}}'),
+  // ★ The artboard's own, by name: the platform card «إعلان».
+  announcement: vivid('{{design.violet}}'),
 }
 
 /**
@@ -335,7 +424,7 @@ function posterDocument(family: PosterFamily): DesignDocument {
       // so there is no dpi change to survive and 320 px is 27.1 mm wherever it
       // lands (`REQ-CRT-010`'s 25 mm minimum). The two settings differ because
       // the two masters differ, not because one of them is a mistake.
-      presets: { default: { anchor: 'block-end', scale: 'proportional' } },
+      presets: { default: { anchor: 'block-end', inlineAnchor: 'end', scale: 'proportional' } },
       z: 10,
     },
   ]
@@ -390,11 +479,28 @@ interface CertificateLayout {
   qr: { x: number; y: number }
 }
 
+/** The space between the mark and the wordmark in the lockup — the artboard's
+ *  `gap: 10px` of a 680-wide page, 1.47 %, which is 52 px at 3508. */
+const LOCKUP_GAP = 52
+
+/** The signature label's size, and one line of it. `Math.ceil` because the
+ *  frame must be at least its own line tall — a shorter one warns on every
+ *  export, and the fraction is where that creeps in. */
+/** The wordmark's slot. A FIXED width, not a fraction of `L.head`: the text is a
+ *  fixed literal at a fixed size and measures ~640 px at 120, so a fraction
+ *  would be generous on landscape and too narrow on portrait, where `head` is
+ *  1700. 700 fits both with room and keeps the org's name beside it rather than
+ *  adrift. */
+const WORDMARK_SLOT = 700
+
+const SIGNATURE_SIZE = 56
+const SIGNATURE_LINE = Math.ceil(SIGNATURE_SIZE * 1.7)
+
 const LAYOUTS: Record<CertificateOrientation, CertificateLayout> = {
   landscape: {
     preset: 'cert_landscape',
     box: { x: 240, y: 240, w: 3028, h: 2000 },
-    logo: { x: 3048, y: 240, w: 220, h: 220 },
+    logo: { x: 240, y: 240, w: 220, h: 220 },
     head: 2200,
     recipient: { y: 640, h: 850 },
     reason: { y: 1540, h: 260 },
@@ -406,7 +512,7 @@ const LAYOUTS: Record<CertificateOrientation, CertificateLayout> = {
   portrait: {
     preset: 'cert_portrait',
     box: { x: 240, y: 240, w: 2000, h: 3028 },
-    logo: { x: 2020, y: 240, w: 220, h: 220 },
+    logo: { x: 240, y: 240, w: 220, h: 220 },
     head: 1700,
     recipient: { y: 700, h: 1000 },
     reason: { y: 1780, h: 260 },
@@ -452,16 +558,55 @@ function certificateDocument(family: CertificateFamily, orientation: Certificate
   const { x, w } = L.box
 
   const layers: Layer[] = [
-    // Top-END, opposite the wordmark the thumbnail puts at the top-start.
+    // ★ INSIDE THE LOCKUP at the block-start inline-start, not opposite it
+    //   (wave 24's re-colour). `AdminCertDesigner.dc.html` draws a 40 × 40 mark
+    //   and the wordmark 10 px apart as ONE lockup — `display: flex; gap: 10px`
+    //   at `top: 40; inset-inline-start: 48` — and `DEC-242` §1, which named
+    //   only «the org wordmark top-start», had the logo on the other side of
+    //   the page. The mark's 40 of 680 is 5.9 % of the width, which is 206 px
+    //   on a 3508 page: 220 was already right, only its corner was wrong.
     logo(L.logo),
+    {
+      id: 'l_wordmark',
+      kind: 'text',
+      name: 'اسم المنصة',
+      // ★ THE LOCKUP IS THREE PARTS, from the rendered artboard
+      //   (`png/SCR-056 · 057 · المصمّم — قالب شهادة@1x.png`): a mark, the
+      //   PLATFORM's name in the display face, and the ORG's name after it,
+      //   small and muted. `DEC-242` §1 named «the org wordmark» alone and had
+      //   the logo on the other side of the page; the render has all three
+      //   together at the block-start inline-start.
+      //
+      // ★ A LITERAL, and deliberately so: «كريم معرفة» is the product, and an
+      //   org is a chapter of it — the email artboards put the same pair in the
+      //   same order in every message header. It needs no binding, which is what
+      //   keeps this refinement inside the wave.
+      //
+      // Optically centred on the mark: the mark spans 220 from `L.logo.y`, so a
+      // 170-high line sits 25 below its top.
+      frame: { x: x + L.logo.w + LOCKUP_GAP, y: L.box.y + 25, w: WORDMARK_SLOT, h: 170 },
+      text: { literal: 'كريم معرفة' },
+      font: { family: DISPLAY, size: 120, lineHeight: 1.4, letterSpacing: 0, weight: 700 },
+      color: '{{brand.fgHeading}}',
+      align: 'start',
+      z: 10,
+    },
     {
       id: 'l_org',
       kind: 'dynamic_field',
       name: 'اسم المؤسسة',
-      frame: { x, y: L.box.y, w: L.head, h: 170 },
+      // After the wordmark on the same line, at the render's own ratio — the
+      // org's name is ~0.55 of the platform's there — and dropped 62 so the two
+      // sit on one optical baseline rather than one top edge.
+      frame: {
+        x: x + L.logo.w + LOCKUP_GAP + WORDMARK_SLOT + LOCKUP_GAP,
+        y: L.box.y + 25 + 62,
+        w: L.head - L.logo.w - LOCKUP_GAP * 2 - WORDMARK_SLOT,
+        h: 90,
+      },
       field: { binding: 'org.name', fallback: 'اسم المؤسسة' },
-      font: { family: DISPLAY, size: 120, lineHeight: 1.4, letterSpacing: 0, weight: 700 },
-      color: '{{brand.fgHeading}}',
+      font: { family: DISPLAY, size: 64, lineHeight: 1.4, letterSpacing: 0, weight: 700 },
+      color: '{{brand.fgMuted}}',
       align: 'start',
       z: 10,
     },
@@ -469,7 +614,12 @@ function certificateDocument(family: CertificateFamily, orientation: Certificate
       id: 'l_kind',
       kind: 'text',
       name: 'نوع الشهادة',
-      frame: { x, y: L.box.y + 190, w: L.head, h: 120 },
+      // ★ BELOW THE LOCKUP, not beside it. `L.box.y + 190` put this at 430 while
+      //   the mark now spans 240 – 460 in the same column, and the two collided
+      //   by 30 px — found by rendering the certificate at its own size, which no
+      //   assertion would have caught: both frames are inside the safe box and
+      //   neither is shorter than its own line.
+      frame: { x, y: L.logo.y + L.logo.h + 40, w: L.head, h: 120 },
       text: { literal: CERTIFICATE_NAMES[family] },
       font: { family: DISPLAY, size: 84, lineHeight: 1.4, letterSpacing: 0, weight: 700 },
       color: '{{brand.fgMuted}}',
@@ -574,6 +724,46 @@ function certificateDocument(family: CertificateFamily, orientation: Certificate
       presets: { default: { anchor: 'block-end', scale: 'fixed' } },
       z: 20,
     },
+    {
+      id: 'l_signature_label',
+      kind: 'text',
+      name: 'تسمية التوقيع',
+      // ★ The rule gains its label (wave 24's re-colour). The artboard draws
+      //   the signature as `border-top` + `padding-top: 6px` + `{التوقيع}`, so
+      //   the word sits UNDER the line; a rule with nothing under it is a line
+      //   on a page, and nobody signing knows it is for them.
+      //
+      // ★ A LITERAL, not a binding, and that is the whole reason this one is in
+      //   scope while the artboard's body sentence is not: «التوقيع» is a
+      //   printed LABEL — the Arabic word for «signature» — not data. There is
+      //   no `certificate.signatory` binding and this does not invent one; the
+      //   five that exist are `serial`, `issuedAt`, `verificationCode`,
+      //   `verifyUrl` and `achievementName`.
+      //
+      // ★ GEOMETRY MEASURED AGAINST THE TWO THINGS THAT CAN BITE, both of which
+      //   an existing assertion caught rather than a reading of the artboard:
+      //
+      //   · ONE LINE TALL AT ITS OWN SIZE. A 56 px line at 1.7 needs 96 px, and
+      //     a frame shorter than its own line is «the frame that made every
+      //     export warn» (`designer-library.test.ts`). So the height is the line,
+      //     and the label is pushed UP where sitting 31 below the rule would take
+      //     it past the safe box — which is the landscape case exactly.
+      //   · NEVER UNDER THE QR. The rule is 800 wide on both orientations, but on
+      //     portrait the QR starts only 480 inside it, so the LABEL is clipped to
+      //     stop clear of it. The rule itself passes above the QR and always did.
+      frame: {
+        x: L.signature.x,
+        y: Math.min(L.signature.y + 31, L.box.y + L.box.h - SIGNATURE_LINE),
+        w: Math.min(800, L.qr.x - L.signature.x - 40),
+        h: SIGNATURE_LINE,
+      },
+      text: { literal: 'التوقيع' },
+      font: { family: BODY, size: SIGNATURE_SIZE, lineHeight: 1.7, letterSpacing: 0, weight: 400 },
+      color: '{{brand.fgMuted}}',
+      align: 'start',
+      presets: { default: { anchor: 'block-end', scale: 'fixed' } },
+      z: 20,
+    },
   ]
 
   return {
@@ -597,7 +787,7 @@ export const BASELINE_LIBRARY: BaselineTemplate[] = [
     family,
     purpose: 'poster' as const,
     name: POSTER_NAMES[family],
-    version: 1,
+    version: 2,
     isDefault: true,
     document: posterDocument(family),
   })),
@@ -607,7 +797,7 @@ export const BASELINE_LIBRARY: BaselineTemplate[] = [
       purpose: 'certificate' as const,
       orientation,
       name: `${CERTIFICATE_NAMES[family]} ${ORIENTATION_NAMES[orientation]}`,
-      version: 1,
+      version: 2,
       isDefault: orientation === 'landscape',
       document: certificateDocument(family, orientation),
     })),
@@ -616,6 +806,15 @@ export const BASELINE_LIBRARY: BaselineTemplate[] = [
 
 /**
  * The brand rules, as a check anything can run — REQ-DSG-026, DEC-003.
+ *
+ * ★ AFTER WAVE 24's RE-COLOUR THIS IS THE PLATFORM'S OWN STANDARD, not a
+ * constraint on anybody. The database guard no longer refuses a literal colour
+ * — a brand token is an option an admin may take, not a toll every colour pays
+ * (the owner's ruling) — so nothing here is enforced on an org's document, and
+ * nothing outside `BASELINE_LIBRARY`'s own test calls it. What it still buys is
+ * that the ELEVEN BASELINE COMPOSITIONS bind named colours rather than hexes:
+ * one definition, one edit, one place, which is `REQ-DSG-021`'s substance
+ * surviving the removal of its mandate.
  *
  * A style guide nobody opens while designing is a style guide that is not
  * followed. This is the same rules as a function, so the library's own test
@@ -629,19 +828,22 @@ export function brandViolations(document: DesignDocument): string[] {
   // version too, and this says so before it gets there (REQ-DSG-021).
   for (const hex of text.match(/"#[0-9a-fA-F]{3,8}"/g) ?? []) problems.push(`a hard-coded colour ${hex}`)
 
-  // ★ And every colour a template carries is a brand TOKEN THAT EXISTS —
-  // `rgb(…)`, `navy` and `{{brand.canvsRaise}}` are as hard-coded, or as
-  // broken, as a hex. Every stop of a gradient included (DEC-127): a
-  // gradient has no `background.color`, which is exactly where the first
-  // guard stopped looking. The database guard checks the binding SHAPE on the
-  // same fields; membership lives here, beside the token list, so there is
-  // one copy of it.
+  // ★ And every colour a template carries is a TOKEN THAT EXISTS, in one of the
+  // two namespaces — `rgb(…)`, `navy` and `{{brand.canvsRaise}}` are as
+  // hard-coded, or as broken, as a hex. Every stop of a gradient included
+  // (DEC-127): a gradient has no `background.color`, which is exactly where the
+  // first guard stopped looking. ★ The database no longer checks any of this
+  // (wave 24's re-colour), so this is the only place it is checked, and it is
+  // checked only against the platform's own library.
   for (const { path, value } of colourFieldsOf(document)) {
-    const token = /^\{\{\s*brand\.([A-Za-z]+)\s*\}\}$/.exec(value)?.[1]
-    if (!token) {
+    const bound = /^\{\{\s*(brand|design)\.([A-Za-z]+)\s*\}\}$/.exec(value)
+    if (!bound) {
       if (!/^#[0-9a-fA-F]{3,8}$/.test(value)) problems.push(`a hard-coded colour ${path} = ${value}`)
-    } else if (!(BRAND_COLOUR_TOKENS as readonly string[]).includes(token)) {
-      problems.push(`an unknown brand colour ${path} = ${value}`)
+    } else {
+      const ns = bound[1] ?? ''
+      const token = bound[2] ?? ''
+      const vocabulary: readonly string[] = ns === 'brand' ? BRAND_COLOUR_TOKENS : DESIGN_COLOUR_NAMES
+      if (!vocabulary.includes(token)) problems.push(`an unknown ${ns} colour ${path} = ${value}`)
     }
   }
 

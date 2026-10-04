@@ -19,7 +19,27 @@ export type GroupOp = { kind: "align"; axis: AlignAxis; edge: AlignEdge; target:
 /** The taps for rotate, resize and move (DEC-093): ±15°, «صفّر», «املأ عرضًا», «ضع بنقرة». */
 export type TransformOp = { kind: "rotate"; degrees: number; mode: "by" | "to" } | { kind: "fillWidth" } | { kind: "place" };
 
-export const token = (value: string | undefined): string | null => /^\{\{\s*brand\.([A-Za-z]+)\s*\}\}$/.exec(value ?? "")?.[1] ?? null;
+/**
+ * The binding PATH a colour field holds — `brand.canvas`, `design.cyan` — or
+ * `null` when it holds something else (a legacy hex, which the pickers keep
+ * visible so an admin can see it and replace it).
+ *
+ * ★ A PATH, not a bare token name (wave 24's re-colour). It used to return
+ * `canvas` and the callers re-prefixed `brand.`, which cannot express a second
+ * namespace — and a colour in a document that the picker cannot show is a
+ * colour an admin cannot reproduce after «انسخ لتعدّل». The two namespaces are
+ * `brand` (the org's kit, overridable) and `design` (the platform's design
+ * constants, which an org cannot repaint — `design-colours.ts`).
+ */
+export const colourPath = (value: string | undefined): string | null =>
+  /^\{\{\s*((?:brand|design)\.[A-Za-z]+)\s*\}\}$/.exec(value ?? "")?.[1] ?? null;
+
+/** A path as a binding: `brand.canvas` → `{{brand.canvas}}`. */
+export const bindPath = (path: string) => `{{${path}}}`;
+
+/** A BRAND token as a binding. Kept for the defaults below and in the
+ *  inspector, every one of which is deliberately a brand token: a layer an
+ *  admin adds should follow their kit, not the platform's design. */
 export const bind = (name: string) => `{{brand.${name}}}`;
 
 /** The background after choosing «solid» or «gradient» — `null` when nothing changes. */

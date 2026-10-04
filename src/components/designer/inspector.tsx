@@ -4,6 +4,7 @@ import { useId, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   BRAND_COLOUR_TOKENS,
+  DESIGN_COLOUR_NAMES,
   FOCAL_GRID,
   focalOf,
   type AlignAxis,
@@ -25,7 +26,7 @@ import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatNumber } from "@/components/sessions/numerals";
-import { bind, FOCAL_NAMES, focalChecked, nextBackground, token, type ArrangeOp, type GroupOp, type TransformOp } from "@/components/designer/inspector-ops";
+import { bind, bindPath, colourPath, FOCAL_NAMES, focalChecked, nextBackground, type ArrangeOp, type GroupOp, type TransformOp } from "@/components/designer/inspector-ops";
 
 export type { ArrangeOp, GroupOp, TransformOp };
 
@@ -694,18 +695,31 @@ function ImageSection({
  */
 function TokenSelect({ label, value, disabled, onValue }: { label: string; value: string; disabled: boolean; onValue: (next: string) => void }) {
   const t = useTranslations("designer.inspector.background");
-  const current = token(value);
+  const current = colourPath(value);
   return (
     <Field label={label}>
-      <Select value={current ?? value} disabled={disabled} onChange={(e) => onValue(bind(e.target.value))}>
+      <Select value={current ?? value} disabled={disabled} onChange={(e) => onValue(bindPath(e.target.value))}>
         {/* A legacy colour that is not a token stays visible as what it is,
             so the admin can see it and replace it — never silently lost. */}
         {current === null ? <option value={value}>{value}</option> : null}
-        {BRAND_COLOUR_TOKENS.map((name) => (
-          <option key={name} value={name}>
-            {t(`tokens.${name}`)}
-          </option>
-        ))}
+        {/* ★ Two groups, because there are two namespaces (wave 24). The org's
+            kit first — it is what most layers should follow — and the design's
+            own constants second, so a baseline poster's ground is reachable
+            after «انسخ لتعدّل». An option's value is the full PATH. */}
+        <optgroup label={t("groups.brand")}>
+          {BRAND_COLOUR_TOKENS.map((name) => (
+            <option key={name} value={`brand.${name}`}>
+              {t(`tokens.${name}`)}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label={t("groups.design")}>
+          {DESIGN_COLOUR_NAMES.map((name) => (
+            <option key={name} value={`design.${name}`}>
+              {t(`designTokens.${name}`)}
+            </option>
+          ))}
+        </optgroup>
       </Select>
     </Field>
   );

@@ -1,12 +1,12 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { BRAND_COLOUR_TOKENS, fieldUsage, type DesignDocument, type NewLayerKind, type NewLayerOptions } from "@kareem/designer-runtime";
+import { BRAND_COLOUR_TOKENS, DESIGN_COLOUR_NAMES, fieldUsage, resolveColour, type DesignDocument, type NewLayerKind, type NewLayerOptions } from "@kareem/designer-runtime";
 import { Button } from "@/components/ui/button";
 import { BindingsPanel } from "@/components/designer/bindings-panel";
 import { AddImage } from "@/components/designer/add-image";
 import { formatNumber } from "@/components/sessions/numerals";
-import { bind } from "@/components/designer/inspector-ops";
+import { bindPath } from "@/components/designer/inspector-ops";
 
 // SCR-057's four adding panels — العناصر · الحقول · الملفات · الهوية — written from `AdminDesignerElements.dc.html` and
 // `AdminDesigner.dc.html` (wave 23, REQ-UIX-110, DEC-238 §3).
@@ -180,29 +180,46 @@ export function BrandPanel({
   disabled: boolean;
 }) {
   const t = useTranslations("designer.studio.brand");
+  const tb = useTranslations("designer.inspector.background");
   const tk = useTranslations("designer.inspector.background.tokens");
+  const td = useTranslations("designer.inspector.background.designTokens");
+  // ★ Two groups, because there are two namespaces (wave 24's re-colour): the
+  //   org's kit, which an org overrides, and the design's own constants, which
+  //   it cannot. Without the second a baseline poster's ground is a colour the
+  //   studio can show but not re-apply after «انسخ لتعدّل».
+  const swatches = (
+    heading: string,
+    names: readonly string[],
+    path: (name: string) => string,
+    label: (name: string) => string,
+  ) => (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-label text-fg-muted">{heading}</h3>
+      <ul className="grid grid-cols-2 gap-1.5">
+        {names.map((name) => (
+          <li key={name}>
+            <Button variant="secondary" size="sm"
+              type="button"
+              disabled={disabled || !canApply}
+              onClick={() => onApply(bindPath(path(name)))}
+              aria-label={t("apply", { name: label(name) })}
+              className="flex min-h-11 w-full items-center gap-2 px-2 text-start text-caption text-fg-heading"
+            >
+              {/* The swatch is the RESOLVED value, painted from data as a style — never a class.
+                  Through the runtime, so a `design.*` constant — which is in no render
+                  context, by construction — paints as itself rather than as nothing. */}
+              <span aria-hidden="true" className="size-4 shrink-0 rounded-sm border border-edge" style={{ background: resolveColour({ values }, bindPath(path(name)), "transparent") }} />
+              {label(name)}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
   return (
     <div className="flex flex-col gap-4">
-      <section className="flex flex-col gap-2">
-        <h3 className="text-label text-fg-muted">{t("colours")}</h3>
-        <ul className="grid grid-cols-2 gap-1.5">
-          {BRAND_COLOUR_TOKENS.map((name) => (
-            <li key={name}>
-              <Button variant="secondary" size="sm"
-                type="button"
-                disabled={disabled || !canApply}
-                onClick={() => onApply(bind(name))}
-                aria-label={t("apply", { name: tk(name) })}
-                className="flex min-h-11 w-full items-center gap-2 px-2 text-start text-caption text-fg-heading"
-              >
-                {/* The swatch is the brand kit's resolved value, painted from data as a style — never a class. */}
-                <span aria-hidden="true" className="size-4 shrink-0 rounded-sm border border-edge" style={{ background: values[`brand.${name}`] }} />
-                {tk(name)}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {swatches(tb("groups.brand"), BRAND_COLOUR_TOKENS, (n) => `brand.${n}`, (n) => tk(n))}
+      {swatches(tb("groups.design"), DESIGN_COLOUR_NAMES, (n) => `design.${n}`, (n) => td(n))}
       <section className="flex flex-col gap-2">
         <h3 className="text-label text-fg-muted">{t("fonts")}</h3>
         <ul className="flex flex-col gap-1 text-body-sm text-fg-heading">

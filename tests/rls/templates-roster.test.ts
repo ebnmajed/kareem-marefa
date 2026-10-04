@@ -16,7 +16,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { platformBrand, colourFieldsOf, type BrandScheme, type DesignDocument } from "@kareem/designer-runtime";
+import { platformBrand, colourFieldsOf, resolveColour, type BrandScheme, type DesignDocument } from "@kareem/designer-runtime";
 import { pool, withTx, type Tx } from "./db";
 
 afterAll(() => pool.end());
@@ -33,8 +33,54 @@ function migration(suffix: string, proposed?: string): string {
 }
 
 const BASELINE = () => migration("_baseline_library.sql");
-const GUARD = () => migration("_template_guard_walks_every_colour.sql", "0001_template_guard_walks_every_colour.sql");
 const SEED = () => migration("_certificate_library.sql", "0002_certificate_library.sql");
+
+/**
+ * ★ THE NEWEST file whose name says it is the thing, not the first one.
+ *
+ * `migration()` above uses `.find()`, which takes the FIRST match — fine while
+ * exactly one file ends in a suffix, and a silent trap the moment there are two.
+ * `tests/unit/designer-library.test.ts` carried the same one: it would have read
+ * `0094`, asserted `0094`'s regex and PASSED GREEN while the database ran a
+ * different guard.
+ */
+function newestBody(dir: string, re: RegExp): string | null {
+  if (!existsSync(dir)) return null;
+  const found = readdirSync(dir)
+    .filter((f) => re.test(f))
+    .sort()
+    .at(-1);
+  return found ? readFileSync(join(dir, found), "utf8") : null;
+}
+
+/**
+ * ★ The template guard, newest first — wave 24's re-colour adds a second one
+ * (`_template_guard_admits_design_colours.sql`), which admits the `design.*`
+ * namespace and still refuses every literal. Applied once, up front: it accepts
+ * everything the older guard accepted, so the seeds that run after it — 0061's,
+ * 0098's, 0193's, all `brand.*` — are unaffected.
+ */
+function GUARD(): string {
+  const body =
+    newestBody(join(process.cwd(), "supabase", "proposed", "designer"), /_template_guard_.*\.sql$/) ??
+    newestBody(join(process.cwd(), "supabase", "migrations"), /_template_guard_.*\.sql$/);
+  if (!body) throw new Error("no template-guard migration, proposed or promoted");
+  return body;
+}
+
+/**
+ * ★ The re-colour (wave 24, after `AdminDesignerElements.dc.html` was found):
+ * VERSION 2 of the eleven rows `0193` created. Applied last, because the newest
+ * document wins and this is it. Resolves proposed-or-promoted like `wave24()`,
+ * and a missing file is loud rather than a silent no-op.
+ */
+function recolour(): string {
+  const proposed = join(process.cwd(), "supabase", "proposed", "designer", "0002_baseline_library_recolour.sql");
+  if (existsSync(proposed)) return readFileSync(proposed, "utf8");
+  const body = newestBody(join(process.cwd(), "supabase", "migrations"), /_baseline_library_recolour\.sql$/);
+  if (!body) throw new Error("wave 24's re-colour seed is neither under supabase/proposed/designer/ nor promoted");
+  return body;
+}
 /**
  * ★ wave 24 (DEC-242) — the supersede function and the rebuilt library, in the
  * order they must be applied: 0005 CALLS `supersede_baseline_template()`, so the
@@ -73,6 +119,8 @@ async function buildLibrary(tx: Tx) {
   // counted from the migrations alone, on an empty world — it is just that they
   // now include the wave that rebuilt every document and superseded the old rows.
   for (const body of wave24()) await tx.q(body);
+  // ★ LEDGER (wave 24's re-colour): and then version 2 of all eleven.
+  await tx.q(recolour());
 }
 
 interface Row {
@@ -140,9 +188,15 @@ describe("REQ-DSG-026 — the seeded roster (DEC-148)", () => {
       for (const row of rows) {
         for (const scheme of ["light", "dark"] as BrandScheme[]) {
           const palette = platformBrand(scheme);
+          // ★ LEDGER (wave 24's re-colour): the expectation changed, not a
+          // selector. A colour may now also be a `design.*` constant, which
+          // resolves from the runtime rather than from the palette — by
+          // construction, so that an org cannot repaint a platform colourway.
+          // `resolveColour()` is the one funnel both go through, which is also
+          // the honest thing to assert: «does the renderer get a colour».
           const unresolved = colourFieldsOf(row.document)
-            .map(({ path, value }) => ({ path, token: /^\{\{\s*(brand\.[A-Za-z]+)\s*\}\}$/.exec(value)?.[1] }))
-            .filter(({ token }) => !token || !palette[token]);
+            .map(({ path, value }) => ({ path, hex: resolveColour({ values: palette }, value, "") }))
+            .filter(({ hex }) => !/^#[0-9A-Fa-f]{6}$/.test(hex));
           expect(unresolved, `${row.family}@${orientation(row.document)} in ${scheme}`).toEqual([]);
           variants++;
         }
@@ -153,20 +207,35 @@ describe("REQ-DSG-026 — the seeded roster (DEC-148)", () => {
 
   it("roster.poster_ground — ★ every poster family's latest version carries a FLAT brand ground, and five families use five", async () => {
     // ★ LEDGER (wave 24): replaced `roster.poster_gradient`. DEC-127's gradient
-    // is one of the four visual clauses DEC-242 supersedes in REQ-DSG-026, and
-    // the version is 1 because these are eleven NEW rows (REQ-DSG-034), not new
-    // versions of the old ones.
+    // is one of the four visual clauses DEC-242 supersedes in REQ-DSG-026.
+    //
+    // ★★ LEDGER (wave 24's re-colour), and this is the assertion that was
+    // missing. The version is 2, not 1: the re-colour ADDS a version to the
+    // eleven rows rather than creating eleven more (REQ-DSG-007 — a version is
+    // added, never edited, which is what keeps REQ-CRT-014 true). And the five
+    // grounds are compared AS RESOLVED COLOURS, not as binding strings. Five
+    // distinct strings were `canvas` #0B0C12, `surface` #151724 and
+    // `canvasRaise` #1E2130 plus two more — and the first three are within
+    // 1.10:1, 1.22:1 and 1.11:1 of one another, so three of the five families
+    // were the same poster in print and this test said they were fine.
     await withTx(async (tx) => {
       await buildLibrary(tx);
-      const grounds = new Set<string>();
+      const palette = platformBrand("dark");
+      const grounds = new Map<string, string>();
       for (const row of (await platformRows(tx)).filter((r) => r.purpose === "poster")) {
-        expect(row.version, row.family).toBe(1);
+        expect(row.version, row.family).toBe(2);
         const bg = row.document.background as { type: string; color?: string } | undefined;
         expect(bg?.type, row.family).toBe("solid");
-        expect(bg?.color, row.family).toMatch(/^\{\{brand\.[A-Za-z]+\}\}$/);
-        grounds.add(bg!.color as string);
+        // A binding in one of the two namespaces the guard admits — never a literal.
+        expect(bg?.color, row.family).toMatch(/^\{\{(?:brand|design)\.[A-Za-z]+\}\}$/);
+        const hex = resolveColour({ values: palette }, bg?.color, "");
+        expect(hex, `${row.family} resolves`).toMatch(/^#[0-9A-Fa-f]{6}$/);
+        grounds.set(row.family, hex);
       }
       expect(grounds.size).toBe(5);
+      // ★ Five families, five DIFFERENT colours on the page — reported by name,
+      // so a failure says which two collapsed into one.
+      expect(new Set(grounds.values()).size, `grounds: ${JSON.stringify([...grounds])}`).toBe(5);
     });
   });
 
@@ -181,14 +250,21 @@ describe("REQ-DSG-026 — the seeded roster (DEC-148)", () => {
                 (select count(*) from public.design_templates where scope = 'platform')::text as total`,
       );
       expect({ live, total }).toEqual({ live: "11", total: "11" });
-      // Every live row is version 1 — i.e. a row this wave seeded, never a
-      // survivor of 0061 or 0098.
+      // ★ LEDGER (wave 24's re-colour): versions 1 AND 2, where it was 1 alone.
+      // Both belong to this wave — 0193 created the row at version 1 and the
+      // re-colour ADDED version 2 to it — so the property the test is really
+      // after is unchanged: no live row is a survivor of 0061 or 0098, which
+      // would carry a version this wave never wrote. ★ Version 1 is still there
+      // ON PURPOSE and must be: a certificate issued against it renders as it
+      // for ever (REQ-CRT-014), which is why the re-colour adds rather than
+      // edits.
       const versions = await tx.q<{ v: string }>(
         `select distinct v.version::text as v from public.design_template_versions v
            join public.design_templates t on t.id = v.template_id
-          where t.scope = 'platform' and t.retired_at is null`,
+          where t.scope = 'platform' and t.retired_at is null
+          order by 1`,
       );
-      expect(versions.map((r) => r.v)).toEqual(["1"]);
+      expect(versions.map((r) => r.v)).toEqual(["1", "2"]);
     });
   });
 
@@ -241,11 +317,19 @@ describe("REQ-DSG-026 — the seeded roster (DEC-148)", () => {
       // ★ LEDGER (wave 24): was `{ templates: "11", versions: "19" }` — 8
       // version-1 rows from 0061, 8 version-2 rows and 3 portrait version-1
       // rows. The wave deleted all eleven old rows on an empty world, so what
-      // remains is the eleven it seeded, one version each.
-      expect(before).toEqual({ templates: "11", versions: "11" });
+      // remains is the eleven it seeded.
+      // ★ LEDGER (wave 24's re-colour): 22 versions, not 11 — the re-colour adds
+      // version 2 to each of the eleven rows rather than creating eleven more
+      // rows, so the TEMPLATE count is untouched and the VERSION count doubles.
+      expect(before).toEqual({ templates: "11", versions: "22" });
 
       for (const body of wave24()) await tx.q(body);
       expect(await count()).toEqual(before);
+      // ★ And the re-colour is idempotent on the same terms: its key is the
+      // DOCUMENT, so a second run finds the version it wrote and adds nothing.
+      // Without that it would insert version 3, then 4, on every reseed.
+      await tx.q(recolour());
+      expect(await count(), "the re-colour seed ran twice and added a version").toEqual(before);
       const [{ v1: after }] = await tx.q<{ v1: string }>(
         `select md5(string_agg(v.document::text, '|' order by t.family, t.purpose)) as v1
            from public.design_template_versions v join public.design_templates t on t.id = v.template_id

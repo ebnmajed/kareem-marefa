@@ -102,6 +102,28 @@ interface LayerBase {
 /** The shape of one per-preset override. `presets.ts` owns the meaning. */
 export interface LayerPresetOverride {
   anchor?: 'block-start' | 'block-end' | 'center'
+  /**
+   * ★ The INLINE axis's anchor — the mirror of `anchor`'s `block-end`, and the
+   * thing whose absence made a 16:9 poster use 40 % of its width.
+   *
+   * `derive()` has always held a footer's distance from the safe box's BOTTOM
+   * (`anchor: 'block-end'`) while computing every inline position as
+   * `dst.x + (f.x - src.x) * factor` — a start-anchored scale. Deriving a 4:5
+   * master onto a 16:9 page scales by the limiting axis (the height, 0.739), so
+   * a layer sitting ON the master's inline-end edge lands 40 % across and the
+   * outer 60 % of the page is empty. The block axis never had that problem
+   * because it had this field's twin.
+   *
+   * ★ A SEPARATE FIELD, not a fourth value in `anchor`, and the reason is the
+   * push-before-merge window: `main`'s renderer IGNORES a field it does not
+   * know and keeps today's layout, whereas an unrecognised `anchor` VALUE would
+   * fall through its `else` to `block-start` and move a footer QR to the top of
+   * the page. So this needs no `schemaVersion` bump (`DEC-178`'s D2b) and
+   * degrades to exactly today's output on the old code.
+   *
+   * `'start'` is the default and is what every layer did before this existed.
+   */
+  inlineAnchor?: 'start' | 'end'
   scale?: 'proportional' | 'fixed' | 'fill' | 'page'
   /** The per-variant crop override (A32, REQ-DSG-020). Automatic cropping
    *  gets some cases wrong — a poster with its title at the bottom, a logo
