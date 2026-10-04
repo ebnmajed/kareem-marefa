@@ -7760,9 +7760,9 @@ feed never carries another's. The author sees «جارٍ التجهيز» on a p
 their own position in the story, with no reactions and no action. Nobody else sees anything. **A video earns nothing
 and never enters the album** — no `photos` row, no ledger row (an RLS case asserts both).
 
-**5.9 Served:** a signed URL from the caller's own client (so `story-media`'s read policy applies), **600 s** — longer
-than the photos' 3 600? no: shorter, because a range request after expiry fails and a frame lives ≤ 15 s inside a viewer
-session; the feed re-signs on every `router.refresh()`. **The bucket is never public.** Read policy (the lead's):
+**5.9 Served:** a signed URL from the caller's own client (so `story-media`'s read policy applies), **600 s** — shorter
+than the album thumbnails' 3 600 s (`photos.ts:214`) and long enough that a range request mid-viewing does not outlive
+its URL; the feed re-signs on every `router.refresh()`. **The bucket is never public.** Read policy (the lead's):
 `[1] = auth_org_id()`, file name `video.mp4` or `poster.webp` (**never `source.*`**), and `exists (select 1 from
 story_frames f where f.id = ([5])::uuid and f.state = 'visible')` under the caller's RLS — so expiry, hiding,
 cancellation and removal close the bytes exactly when they close the row.
