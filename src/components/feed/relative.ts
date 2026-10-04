@@ -32,12 +32,3 @@ export function timeAgo(at: string, now: Date, day: string, today: string, t: T,
   return formatDate(`${day}T12:00:00Z`, "UTC", locale);
 }
 
-/** A ring's caption — «الآن» for live, else the day in words. */
-export function ringCaption(state: "live" | "upcoming" | "recap", day: string, today: string, t: T, locale: string): string {
-  if (state === "live") return t("rings.now");
-  const diff = daysBetween(today, day);
-  if (diff === 0) return t("days.today");
-  if (diff === 1) return t("days.tomorrow");
-  if (diff === -1) return t("days.yesterday");
-  return new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { weekday: "long", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
-}
