@@ -125,7 +125,7 @@ async function runTheJob(memberId: string) {
 test("★ REQ-PRF-006: a member asks, and the download carries their data and nobody else's", async ({ context, page }) => {
   await signIn(context, meEmail);
   await page.goto("/ar/app/me/privacy");
-  await page.getByRole("button", { name: /اطلب التصدير/ }).click();
+  await page.locator("#main").getByRole("button", { name: /اطلب التصدير/ }).click();
   // Queued, building or already ready — all three mean the request landed. ★ Wave 26 (REQ-UIX-117): the states are
   // the artboard's words — «طُلب · ‹date›», «جارٍ», «جاهز · ‹date›».
   await expect(page.locator("#main").getByText(/طُلب ·|جارٍ|جاهز ·/)).toBeVisible();
@@ -159,8 +159,9 @@ test("REQ-NFR-005: a second request inside the window is refused, and the screen
   await page.goto("/ar/app/me/privacy");
   // The member asked a moment ago in the case above, so the screen states the
   // limit instead of offering a button that would be refused.
-  await expect(page.getByText(/أربع وعشرين ساعة/)).toBeVisible();
-  await expect(page.getByRole("button", { name: /اطلب نسخة جديدة/ })).toHaveCount(0);
+  // ★ Wave 26: scoped to `#main` (DEC-145) — an orphaned streamed copy of the page outside it duplicated the caption.
+  await expect(page.locator("#main").getByText(/أربع وعشرين ساعة/)).toBeVisible();
+  await expect(page.locator("#main").getByRole("button", { name: /اطلب نسخة جديدة/ })).toHaveCount(0);
 
   // And the rule is the RPC's, not the screen's: calling it directly is
   // refused too, which is what makes the missing button honest rather than
@@ -190,7 +191,7 @@ test("★ REQ-PRF-007: a deactivation request reaches the org's log and deactiva
   await expect(confirmSheet).toBeVisible();
   await confirmSheet.getByLabel(/سبب الطلب/).fill("أغادر المؤسسة نهاية الشهر");
   await confirmSheet.getByRole("button", { name: /أرسل الطلب/ }).click();
-  await expect(page.getByText(/أُرسل طلبك/)).toBeVisible();
+  await expect(page.locator("#main").getByText(/أُرسل طلبك/)).toBeVisible();
 
   const { rows } = await db.query<{ reason: string; status: string }>(
     `select a.reason, m.status
@@ -298,7 +299,7 @@ test.describe("M9 restyle: named states", () => {
     await page.goto("/ar/app/me/privacy");
     // ★ Wave 26 (DEC-251 §3.5): the artboard's title.
     await expect(page.locator("#main").getByRole("heading", { name: "البيانات والخصوصية", level: 1 })).toBeVisible();
-    await expect(page.getByRole("button", { name: "اطلب التصدير" })).toBeVisible();
+    await expect(page.locator("#main").getByRole("button", { name: "اطلب التصدير" })).toBeVisible();
     await capture(page, "no-export");
 
     await db.query(
@@ -315,13 +316,13 @@ test.describe("M9 restyle: named states", () => {
     const dialog = page.getByRole("dialog", { name: "إيقاف حسابي" });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "أرسل الطلب" }).click();
-    await expect(page.getByRole("status")).toHaveCount(0);
+    await expect(page.locator("#main").getByRole("status")).toHaveCount(0);
 
     await dialog.getByLabel("سبب الطلب", { exact: false }).fill("لم أعد أستخدم المنصة");
     await capture(page, "deactivate-confirm");
 
     await dialog.getByRole("button", { name: "أرسل الطلب" }).click();
-    await expect(page.getByRole("status")).toContainText("أُرسل طلبك");
+    await expect(page.locator("#main").getByRole("status")).toContainText("أُرسل طلبك");
     await capture(page, "deactivate-sent");
   });
 });

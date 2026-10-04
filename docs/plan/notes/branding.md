@@ -1133,3 +1133,17 @@ for it. Instead every read the read page and the `?edit` render make, and what a
 So three reads that **degraded into data loss** now fail hard, and one that failed hard for a cosmetic line now
 degrades. Proven in `tests/unit/brand-kit-reads.test.ts` (both directions: a failure throws; absence is still null).
 `getBrandKit()` has no other caller in `src/` (`app/layout.tsx` only mentions it in a comment, since `DEC-201`).
+
+**Closed (2026-10-05):** failure 2 did not reproduce in three runs on production builds with the server's output captured
+(`3dafd983` once, `567ae5f5` twice) — no digest, no server error. It is recorded as the first run's contention (load
+≈ 60, other tracks' RLS suites on the one database), not a defect of the flow; the component case «refused once, then
+saved» stays as its guard, and W26.14 is what the question found.
+
+### W26.15 `privacy.spec.ts:157` — two copies of the limit line, one outside `#main`
+
+Verified, not assumed: the page renders the caption **once** — `privacy/page.tsx` maps `exported.captions` a single
+time, no `SettingsGroup` row carries it as `detail` any more (`376bb6cc`), and `privacy-page.test.tsx` finds it with a
+strict `getByText` (it would throw on two). The second copy is `DEC-145`'s orphaned streamed segment outside `#main`,
+which is why it failed on one project per run. The spec's page-level locators are now scoped to `#main` (lines 128,
+162–163, 193, 301, 318, 324); the two `dialog` locators stay on `page`, because the sheet portals outside `#main` by
+design. `wave26-branding-{scr059,privacy}.spec.ts` were already scoped to `#main` throughout.
