@@ -1861,3 +1861,21 @@ export async function getSessionLog(locale: string, sessionId: string, proposalI
     occurredAt: r.occurred_at as string,
   }));
 }
+
+// ── wave 26 · the story feed's people and places (add-only, REQ-STO-004, DEC-251 §4) ──────────────────────────────
+
+/**
+ * The presenter cards' read, for `stories.ts`: the same member-tier fields, our own avatar copy and the company's team
+ * colour, so a story's header and the event page cannot disagree about who presents. Read, never re-derived.
+ */
+export async function readPresenterProfiles(locale: string, memberIds: readonly string[]): Promise<Map<string, EventPresenter>> {
+  const ids = [...new Set(memberIds)].filter((id) => z.uuid().safeParse(id).success);
+  if (ids.length === 0) return new Map();
+  const { supabase } = await sessionClient(locale);
+  return presenterProfiles(supabase, ids);
+}
+
+/** `venueFrom()` — «المكان»'s one rule — for a day read by `stories.ts`. */
+export function storyVenueFrom(row: Parameters<typeof venueFrom>[0]): EventVenue | null {
+  return venueFrom(row);
+}

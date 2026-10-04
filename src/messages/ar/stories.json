@@ -1,0 +1,85 @@
+{
+  "stories": {
+    "age": {
+      "now": "الآن",
+      "minutes": "{count, plural, zero {الآن} one {قبل دقيقة} two {قبل دقيقتين} few {قبل {count} دقائق} many {قبل {count} دقيقة} other {قبل {count} دقيقة}}",
+      "hours": "{count, plural, zero {الآن} one {قبل ساعة} two {قبل ساعتين} few {قبل {count} ساعات} many {قبل {count} ساعة} other {قبل {count} ساعة}}"
+    },
+    "frame": {
+      "day": "اليوم {position}",
+      "published": "جلسة جديدة",
+      "registrationOpened": "التسجيل مفتوح",
+      "registrationClosed": "أُغلق التسجيل",
+      "startsSoon": "تبدأ غدًا",
+      "live": "جارية الآن",
+      "liveCount": "{count, plural, zero {لا أحد في القاعة بعد} one {واحد في القاعة} two {اثنان في القاعة} few {{count} في القاعة} many {{count} في القاعة} other {{count} في القاعة}}",
+      "until": "حتى {time}",
+      "recap": "اكتملت",
+      "attended": "حضروا",
+      "rating": "التقييم",
+      "ratingWithheld": "بعد {minimum}",
+      "materialsStat": "{count, plural, zero {مواد} one {مادة} two {مادتان} few {مواد} many {مادة} other {مادة}}",
+      "materials": "مواد جديدة",
+      "byline": "{name} · {age}",
+      "length": "{m}:{ss}",
+      "processing": "جارٍ التجهيز",
+      "failed": "تعذّر"
+    },
+    "action": {
+      "openSession": "افتح الجلسة",
+      "downloadMaterials": "حمّل المواد"
+    },
+    "viewer": {
+      "dialog": "قصة الجلسة: {title}",
+      "previous": "الإطار السابق",
+      "next": "الإطار التالي",
+      "pause": "أوقف مؤقتًا",
+      "resume": "تابِع",
+      "paused": "متوقفة",
+      "close": "إغلاق",
+      "add": "أضف",
+      "position": "الإطار {current} من {total}",
+      "more": "المزيد",
+      "reactions": "التفاعلات"
+    },
+    "reaction": {
+      "heart": "أعجبني",
+      "fire": "رائع",
+      "clap": "تصفيق",
+      "idea": "فكرة"
+    },
+    "moderation": {
+      "removeMe": "أزلني",
+      "report": "بلّغ",
+      "reportReason": "السبب",
+      "reported": "أُخفي الإطار حتى المراجعة"
+    },
+    "capture": {
+      "dialog": "أضف إلى القصة",
+      "photo": "صورة",
+      "video": "فيديو",
+      "shutter": "التقط صورة",
+      "start": "ابدأ التسجيل",
+      "stop": "أوقف التسجيل",
+      "gallery": "من الاستوديو",
+      "flip": "قلب الكاميرا",
+      "caption": "تعليق",
+      "submit": "انشر",
+      "retake": "أعد",
+      "elapsed": "{elapsed} / {limit}",
+      "notice": "تُشارَك مع الجميع في المؤسسة",
+      "denied": "لا وصول إلى الكاميرا",
+      "tooLong": "أطول من 15 ثانية",
+      "tooLarge": "أكبر من 60 ميغابايت",
+      "refused": "الإضافة لمن سجّل حضوره"
+    },
+    "admin": {
+      "title": "{count, plural, zero {قصص الحضور · {count}} one {قصص الحضور · {count}} two {قصص الحضور · {count}} few {قصص الحضور · {count}} many {قصص الحضور · {count}} other {قصص الحضور · {count}}}",
+      "remove": "أزل",
+      "removeReason": "سبب الإزالة",
+      "hidden": "مخفية",
+      "video": "فيديو {length}",
+      "photo": "صورة"
+    }
+  }
+}

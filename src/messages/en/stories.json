@@ -1,0 +1,85 @@
+{
+  "stories": {
+    "age": {
+      "now": "Now",
+      "minutes": "{count, plural, one {1 minute ago} other {{count} minutes ago}}",
+      "hours": "{count, plural, one {1 hour ago} other {{count} hours ago}}"
+    },
+    "frame": {
+      "day": "Day {position}",
+      "published": "New session",
+      "registrationOpened": "Registration is open",
+      "registrationClosed": "Registration closed",
+      "startsSoon": "Starts tomorrow",
+      "live": "Live now",
+      "liveCount": "{count, plural, =0 {Nobody in the room yet} one {1 in the room} other {{count} in the room}}",
+      "until": "Until {time}",
+      "recap": "Completed",
+      "attended": "Attended",
+      "rating": "Rating",
+      "ratingWithheld": "After {minimum}",
+      "materialsStat": "{count, plural, one {material} other {materials}}",
+      "materials": "New materials",
+      "byline": "{name} · {age}",
+      "length": "{m}:{ss}",
+      "processing": "Processing",
+      "failed": "Failed"
+    },
+    "action": {
+      "openSession": "Open the session",
+      "downloadMaterials": "Get the materials"
+    },
+    "viewer": {
+      "dialog": "Session story: {title}",
+      "previous": "Previous frame",
+      "next": "Next frame",
+      "pause": "Pause",
+      "resume": "Resume",
+      "paused": "Paused",
+      "close": "Close",
+      "add": "Add",
+      "position": "Frame {current} of {total}",
+      "more": "More",
+      "reactions": "Reactions"
+    },
+    "reaction": {
+      "heart": "Like",
+      "fire": "Great",
+      "clap": "Applause",
+      "idea": "Idea"
+    },
+    "moderation": {
+      "removeMe": "Remove me",
+      "report": "Report",
+      "reportReason": "Reason",
+      "reported": "Hidden until reviewed"
+    },
+    "capture": {
+      "dialog": "Add to the story",
+      "photo": "Photo",
+      "video": "Video",
+      "shutter": "Take a photo",
+      "start": "Start recording",
+      "stop": "Stop recording",
+      "gallery": "From the gallery",
+      "flip": "Flip camera",
+      "caption": "Caption",
+      "submit": "Post",
+      "retake": "Retake",
+      "elapsed": "{elapsed} / {limit}",
+      "notice": "Shared with everyone in the organisation",
+      "denied": "No camera access",
+      "tooLong": "Longer than 15 seconds",
+      "tooLarge": "Larger than 60 MB",
+      "refused": "Only those checked in can add"
+    },
+    "admin": {
+      "title": "{count, plural, other {Attendee stories · {count}}}",
+      "remove": "Remove",
+      "removeReason": "Reason for removal",
+      "hidden": "Hidden",
+      "video": "Video {length}",
+      "photo": "Photo"
+    }
+  }
+}
