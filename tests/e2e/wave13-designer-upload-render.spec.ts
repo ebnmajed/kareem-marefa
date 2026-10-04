@@ -146,6 +146,10 @@ test("★ an uploaded poster is SEEN — in the studio, and (with a worker) edge
   // section beside the form (`schedule/page.tsx`, `poster-picker`), so the upload is reached at `?edit` — a selector
   // move; the control and every expectation below are unchanged.
   await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule?edit`);
+  // ★ On a hard load Next leaves an orphaned copy of the streamed page beside the real one until hydration removes it
+  // (DEC-145): for about a second there are TWO pickers and two file inputs, and an action taken at once can bind to
+  // the copy that is about to go. Wait until exactly one input is left — the page is right; the spec was early.
+  await expect(page.locator('input[type="file"][name="poster"]')).toHaveCount(1, { timeout: 15_000 });
   const upload = main(page).locator('section[aria-labelledby="poster-picker"]').locator("article", { has: page.getByRole("heading", { name: "رفع ملصق جاهز", level: 3, exact: true }) });
   await upload.locator('input[type="file"][name="poster"]').setInputFiles({ name: "poster.png", mimeType: "image/png", buffer: redPng(1200, 1500) });
   await upload.getByRole("button", { name: "ارفع الملصق", exact: true }).click();

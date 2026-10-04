@@ -94,6 +94,17 @@ the worker-backed four-format comparison** — `wave23-designer-four-formats.spe
 schedule page's poster upload (`section[aria-labelledby="poster"]` → «رفع ملصق جاهز») — the spec predates a later rebuild of
 that page, and **CI skips it** (it needs a worker), so nothing ever caught it. Slice 1 touches no file the page imports.
 
+★★ **THE FOUR-FORMAT DEMONSTRABLE — DONE, 12 OF 12 IDENTICAL (2026-10-04).** `wave23-designer-four-formats.spec.ts` run twice on
+the same app build and the same fixed data, once with the worker image `kareem-worker:wave18b` (built 2026-09-30; the
+renderer has not changed since 2026-09-22, so it renders exactly as `main` did before wave 23) and once with
+`kareem-worker:w23` built from `main` at `37f79dd5`. **Every artifact byte-identical** — `a3.pdf`, `a4.pdf`, landscape 16:9,
+story 9:16, master, square and OG, in PNG and WebP: same SHA-256 (PDFs with their dates and id blanked), same size, same
+source fingerprint. **No golden moved.**
+★ **`wave13-designer-upload-render` — fixed and GREEN with the real worker** (`designer`'s `0028232f`: the picker is at `?edit` since
+wave 21's read-by-default schedule; and the lead's wait: on a hard load Next's orphaned streamed copy (`DEC-145`) holds a
+second picker and file input for about a second, so the spec now waits for exactly one). Ledger: `:145-147` selectors, and
+one added wait — no expectation changed.
+
 ★ **The tie-breaker — a real defect, carried** (owner, 2026-10-03): `issue_certificate()` orders by `is_default`, then version, with no tiebreak — two org templates of one kind, neither default, on the same version, and issuance picks arbitrarily: **the screen can disagree with what issuance picks.** The cheap guard is in PR A: with no default set for a kind the screens name no template and say none is set.
 ★ **Wave 24's carries for the owner** (`DEC-238` §6): نقاطك · four certificate fields that are not bindings · the objects and
 stickers tabs · an A3 certificate · C6's place · the issuance fallback's order.
