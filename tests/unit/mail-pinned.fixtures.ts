@@ -46,7 +46,7 @@ import { renderEmail, sampleFor, SAMPLE_BRAND, SAMPLE_CASES, SAMPLE_MEMBER, SAMP
 // quietly appear — which is the defect class this wave has already found three
 // times.
 //
-// The values are unchanged by the move, and the 116 files under
+// The values are unchanged by the move, and the 120 files under
 // `tests/unit/mail-pinned/` are what proves it.
 export type PinnedCase = SampleCase & {
   /** An org's own row for the key. Absent: the org has none, which is every

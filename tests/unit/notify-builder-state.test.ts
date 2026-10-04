@@ -2,7 +2,6 @@
 // canvas leans on is proven here: what is stored, where a slot puts what is armed, ▲▼, duplicate, delete, history.
 import { describe, expect, it } from "vitest";
 import { DESIGN_FOR, platformDesign, type EmailBlock } from "@kareem/mail-runtime";
-import { documentJsonOf } from "@/components/email/document";
 import {
   commit,
   documentJson,

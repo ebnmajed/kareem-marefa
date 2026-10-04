@@ -18,7 +18,7 @@
 // **and** in the generated text part, which reorders without them.
 //
 // It does not live in `interpolate()`, which renders the SUBJECT: the
-// subject has been interpolated plainly since M3, and the 29 `.subject.txt`
+// subject has been interpolated plainly since M3, and the 30 `.subject.txt`
 // files under `tests/unit/mail-pinned/` hold it so — isolating it would be a
 // separate, reviewed change.
 

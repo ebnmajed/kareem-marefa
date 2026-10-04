@@ -17,7 +17,7 @@
 // the blank on purpose; `docs/plan/notes/notify.md` lists them.
 //
 // Moved here from `tests/unit/mail-pinned.fixtures.ts` with the values
-// unchanged, and the 116 pinned files are what proves it.
+// unchanged, and the 120 pinned files are what proves it.
 
 /** One sample. Not a key: three renderer branches are worth freezing
  *  separately, and each is a one-line case rather than a second key. */
