@@ -45,7 +45,7 @@ anything more is new scope the owner decides.
 | Next decision / migration | **`DEC-252`** (`249` the owner's three rulings, `250` the hotfix's, `251` sync 1) · **`0198`** |
 | ★★ `0194` and the missing `DEC-245` | **Neither was abandoned and nothing failed to land: both are open PR #69** (`hotfix/certificates-after-completion`). ★★ **It is a collision** — the planner filled `DEC-245` with the wave-26 entry, so two decisions carry that number. `main`'s stands; **#69's is renumbered when #69 is rebased** (it conflicts with `main` today); `0194` keeps its number and `db push` needs `--include-all` |
 | `src/components/ui/` | **69**, floor **69** at `:123` → **71** in PR D |
-| ★★ `main` was RED | CI's unit job failed on `3d22c33a`: `logo-motion.html` declares a class `shadow`, and the design-files gate read Tailwind's `shadow` in `designer/canvas.tsx:727` as a leak. **Fixed by the canonical name `shadow-sm`** — the same value, no guard and no drawing edited — as this branch's first commit **and** its own PR against `main` |
+| ★★ `main` was RED (**fixed — PR #72 merged, `f46d2f59`**) | CI's unit job failed on `3d22c33a`: `logo-motion.html` declares a class `shadow`, and the design-files gate read Tailwind's `shadow` in `designer/canvas.tsx:727` as a leak. **Fixed by the canonical name `shadow-sm`** — the same value, no guard and no drawing edited — as this branch's first commit **and** its own PR against `main` |
 | ★★ A second guard | `console-register.test.ts:108` asserts the graph contains `components/platform/platform-nav.tsx` — the file the wave deletes. **The platform nav set is created at that path** (`DEC-248` §4), so the guard is untouched |
 | ★ Citations that do not exist | `REQ-PRV-*` (it is `REQ-PRF-006` … `008`, `REQ-NFR-013`) · `REQ-NFR-014` for the no-data-plane rule (it is `REQ-ADM-002`) · `REQ-PHO-*` (it is `REQ-EVT-010` … `016`) · the audit (it is `REQ-ADM-018`) · migration `0192` (it is `0198`) |
 | ★ `05-stories.md` vs §25 | the eighteen win: STO-04's eight triggers, expiry from the trigger, views per frame, the start-third tap zone, swipe down to close (`DEC-248` §7.7) |
@@ -58,17 +58,19 @@ anything more is new scope the owner decides.
 | 0 | The map, the ten agent files, `DEC-248`, the requirements, M28, the stories; trace green | lead | **done** |
 | 1 | Four plans, each with its kept-behaviour tables; `content`'s three `DEC-093` pairs; `platform`'s no-data-plane table | the four | **done** |
 | 2 | Sync 1 — «the plans are approved» (`DEC-251`) | lead | **done** |
-| 3 | A: `<Logo>`; the behaviour fingerprint taken on `main`; `006`; the one commit | lead | — |
-| 4 | C: the platform frame — «the frame is in at `<sha>`» | lead | — |
-| 5 | D: `0198` with policies, grants, RLS cases and fixture rows; `ffmpeg` in the image; the two signatures and the floor | lead | — |
-| 6 | B, C, D built; every capture beside its artboard | the four, lead | — |
+| 3 | A: `<Logo>`; the behaviour fingerprint taken on `main`; `006`; the one commit | lead | **the fingerprint is recorded and committed** (`e849a55a`, 17 states, both projects); the rest not started |
+| 4 | C: the platform frame — «the frame is in at `<sha>`» | lead | **in at `3e104896`** (C tree). ★ Open: `platform-console.spec.ts:580` fails on the phone project (the break-glass region after starting a session) — 26 others pass; not yet diagnosed |
+| 5 | D: `0198` with policies, grants, RLS cases and fixture rows; `ffmpeg` in the image; the two signatures and the floor | lead | **`0198` in at `393eb59d`** (17 cases + the sweep, 108/108; policy-diff green; applied locally); the signatures in at `a458a347`. **Owed:** `ffmpeg` in `worker/Dockerfile`, `story-media` in the worker's bucket list, the keyframe, the registry and the floor, the promotion migration with the bucket's write policy |
+| 6 | B, C, D built; every capture beside its artboard | the four, lead | B: both screens committed (`25438f3c`, pushed). C: `080` – `084` committed, `085` mid-rebuild (unpushed — its head is an unpaired delete). D: the generator and feed, the primitives and the video task in progress. **No build, e2e or capture run by the lead yet** |
 | 7 | E: the mark inside the product | lead | — |
 | 8 | The owner rehearses `0198` on a dump taken at `0197`, pushes, merges A → E; Railway's builder checked | owner | — |
 | 9 | The closing entry: the deviation list, and **the sentence** | lead | — |
 
 ### The untouched-suite ledger (wave 26)
 
-*Empty. Each changed assertion in a pre-existing test gets a line here, in the commit that changes it.*
+**One file per PR**, so four branches never edit the same lines here: `docs/plan/notes/wave-26-ledger-{a,b,c,d,e}.md`, each on its own branch. B1 and C1 – C5 are written; the teammates' lines are collected into them at each sync.
+
+★ **PR #69** is merged with `main` twice (`ce2a9a27`, `eb2cf485`), its decision renumbered `DEC-250`, and is mergeable; its CI is running on the green `main`. ★★ **`.claude/settings.json` was changed in the main checkout by a session that is not the lead** — `gh pr merge`, `git rebase` and `git switch` moved from denied to allowed. It is uncommitted and the lead has not used it: the owner confirms it or reverts it.
 
 ### Out, and not to be re-litigated
 
