@@ -329,7 +329,8 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
                 elapsedRef={elapsedRef}
                 onDone={next}
               />
-              {/* The header as `StoryLive.dc.html` draws it: the session's avatar with its ring, the TITLE with the meta line
+              {/* The header as `StoryLive.dc.html` draws it: the session's avatar ringed in BONE (the lead's ruling: on a
+                  frame whose ground IS the team colour a team ring would vanish; the ring row on 010 carries the team),  the TITLE with the meta line
                   under it («presenter · company · age»), close at the inline-end. «أضف» and pause (DEC-093) sit on a row of
                   their own under it at the inline-end, so the title keeps the width the board gives it at 390 and every
                   control keeps its 44 px. ★ The title is one line in a MARK-SAFE box: the ellipsis needs the clip on the
@@ -338,7 +339,7 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
               <div className="flex items-center gap-2.5">
                 <span
                   aria-hidden
-                  className={`inline-flex size-9 shrink-0 items-center justify-center rounded-pill border-[3px] bg-surface font-display text-body font-extrabold ${teamColour ? "border-team" : "border-team-neutral"}`}
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-pill border-[3px] border-fg-heading bg-surface font-display text-body font-extrabold"
                 >
                   <bdi>{story.glyph}</bdi>
                 </span>
