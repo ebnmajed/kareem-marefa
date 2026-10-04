@@ -42,7 +42,7 @@ anything more is new scope the owner decides.
 | | |
 |---|---|
 | `main` | **`3d22c33a`**, local and origin equal, the tree clean |
-| Next decision / migration | **`DEC-249`** · **`0198`** |
+| Next decision / migration | **`DEC-252`** (`249` the owner's three rulings, `250` the hotfix's, `251` sync 1) · **`0198`** |
 | ★★ `0194` and the missing `DEC-245` | **Neither was abandoned and nothing failed to land: both are open PR #69** (`hotfix/certificates-after-completion`). ★★ **It is a collision** — the planner filled `DEC-245` with the wave-26 entry, so two decisions carry that number. `main`'s stands; **#69's is renumbered when #69 is rebased** (it conflicts with `main` today); `0194` keeps its number and `db push` needs `--include-all` |
 | `src/components/ui/` | **69**, floor **69** at `:123` → **71** in PR D |
 | ★★ `main` was RED | CI's unit job failed on `3d22c33a`: `logo-motion.html` declares a class `shadow`, and the design-files gate read Tailwind's `shadow` in `designer/canvas.tsx:727` as a leak. **Fixed by the canonical name `shadow-sm`** — the same value, no guard and no drawing edited — as this branch's first commit **and** its own PR against `main` |
@@ -56,8 +56,8 @@ anything more is new scope the owner decides.
 | # | Row | Owner | State |
 |---|---|---|---|
 | 0 | The map, the ten agent files, `DEC-248`, the requirements, M28, the stories; trace green | lead | **done** |
-| 1 | Four plans, each with its kept-behaviour tables; `content`'s three `DEC-093` pairs; `platform`'s no-data-plane table | the four | planning |
-| 2 | Sync 1 — «the plans are approved» | lead | — |
+| 1 | Four plans, each with its kept-behaviour tables; `content`'s three `DEC-093` pairs; `platform`'s no-data-plane table | the four | **done** |
+| 2 | Sync 1 — «the plans are approved» (`DEC-251`) | lead | **done** |
 | 3 | A: `<Logo>`; the behaviour fingerprint taken on `main`; `006`; the one commit | lead | — |
 | 4 | C: the platform frame — «the frame is in at `<sha>`» | lead | — |
 | 5 | D: `0198` with policies, grants, RLS cases and fixture rows; `ffmpeg` in the image; the two signatures and the floor | lead | — |

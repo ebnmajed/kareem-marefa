@@ -9402,3 +9402,108 @@ inside a nav refactor.
 **Only the path survives.**
 
 - **Documents changed:** `docs/plan/notes/wave-26-lead.md` (§C's platform-nav row)
+
+---
+
+## DEC-251 — Wave 26, sync 1: four plans approved; what the artboards draw that has no data behind it is not built; the story tables' final shape; and `DEC-250` is the certificates hotfix's number
+
+- **Date:** 2026-10-05 · **Decided by:** the wave-26 lead at sync 1, from the four plans in `docs/plan/notes/{branding,platform,sessions,content}.md` (commits `b21f543d`, `0eb367c8`, `5613c9e3`, `44f4d50b`, `fe7256b1`); the items marked **owner** are defaults in force until the owner rules otherwise
+- **Amends:** `REQ-UIX-118`'s acceptance line on impersonation and `REQ-STO-004`'s on coinciding triggers (§2, §4) · `DEC-248` §5 (the tables' final shape, §5 below) · `DEC-248` §2 (the hotfix's number is now known)
+
+### 1 · The numbering, closed
+
+`DEC-249` is the owner's three rulings. **`DEC-250` is «The certificate mode outlives completion»** — PR #69's entry,
+renumbered on its own branch at `ce2a9a27`, with every line the branch added that cited the old number. ★ **By a merge
+of `main` into the branch, not a rebase**: `git rebase` is denied to every session in this repository, and a merge needs
+no force-push. `main`'s log will therefore read `247`, `250`, then `248`, `249`, `251` when PR #73 merges — unique, and
+out of order by one entry. ★ **`gh pr merge` is denied to every session too**: the owner merges #72 and #69.
+
+### 2 · PR C — `platform`'s plan is approved
+
+**The no-data-plane table is accepted as written**: nineteen exports, none returning a member's name, a session's title
+or a piece of content. Three fields cross and all three pre-date the wave and are tested — the first admin's address
+(the platform's own input, echoed), an org template's **name** in the promotion list (`REQ-DSG-008`), and the org's name
+read **inside** an impersonation session. **Nothing is added to either DAL file.**
+
+1. ★★ **`085` has no member field, and `REQ-UIX-118` was wrong to ask for one.** `start_impersonation()` takes no
+   member, the hook mints no `member_id`, `impersonation_sessions` has no member column, and filling a picker would
+   need a function that lists an org's admins — the data plane, by another door. The acceptance line reads: *«Impersonation
+   takes an org, a mandatory reason and a duration»*. The error was the lead's, copied from the artboard.
+2. **Durations (owner):** the form keeps today's five presets and today's default of 60, drawn in the artboard's
+   segmented shape, until the owner rules on 15 / 30 / 60 with 30.
+3. **`/app/platform` has no artboard**, so it is not rebuilt: it stays as built, under the new frame.
+4. **`084`**: the three existing counts are drawn; «جلسة هذا الربع», «معدّل الحضور», «التصديرات» and «الجاهزية» are **not
+   built** — nothing measures uptime, and the others are new functions in a PR that has no migration. The sixth `stat` is
+   «انتحالات جارية», which exists. ★ **The alerts and job health stay**, below the drawn content — `REQ-ADM-003` names
+   them and the artboard forgot them.
+5. **`083`**: no live thumbnail and no «قالب جديد» — a super admin has no authoring path (`DEC-052`). **The promotion
+   list stays** (`REQ-DSG-008`).
+6. **`082`**: no company column — a company is the org's data. «أُضيف» and members-per-domain are not built this wave.
+   **«تعيين أول مشرف» stays on `082`** (`DEC-148`).
+7. **`081`**: no default language (no column); the domain list, the certificate prefix and the seed checkbox stay; ★ the
+   hint «يصله بريد عند الإنشاء» is **not written — it is false**, `create_org()` sends nothing.
+8. **`080`**: delete stays offered on active orgs; a pending-deletion row keeps its counts. `tokenTail` stays on `085`.
+9. `tests/components/platform/platform-nav.test.tsx` is rewritten by the lead with the file, each case a ledger line.
+
+### 3 · PR B — `branding`'s plan is approved
+
+1. ★★ **«الصور التي تظهر فيها» has no data**: photographs are not tagged (`DEC-011`). **(owner)** The row shows what
+   exists — the member's own removal requests, with their count — and offers no page-level «أزلني», which would have no
+   photograph to act on.
+2. **Two fonts**, as `brand_kits` holds; the artboard's four would be two new columns. **One accent, `node`** — coral
+   is a status colour and never a brand token (`DEC-073`). **Ten swatches per scheme**, because every figure is read.
+3. ★ **The archive is kept 7 days, not `M13.md`'s 30**, and the sentence that says so stays the literal it is today —
+   `retention_periods` has no grant and PR B has no migration.
+4. The export has **five states and «never asked»**: `failed` exists and is kept. The two requirement-bearing
+   sentences stay (`deactivateHonest`, the export's note); the other explainer copy goes (`DEC-NEXT-25`).
+5. The database's refusal is shown **inline with the failing pair**, replacing the toast. WebP stays accepted. The
+   title is the artboard's «البيانات والخصوصية». Privacy's back goes to settings (an add-only `backHref`, the lead's),
+   it leaves the desktop strip, and it draws its own top row. The seven team colours are imported read-only.
+
+### 4 · PR D — `sessions'` and `content`'s plans are approved, and reconciled
+
+1. **Kinds** (one enum): `published`, `registration_opened`, `registration_closed`, `starts_soon`, `live`, `photo`,
+   `recap`, `materials`, `video`. ★ **Every visible album photograph makes one `photo` frame**, keyed by its id,
+   whoever uploaded it and by whichever door; the capture adds only a caption.
+2. ★ **The caption is `photos.caption`**, written by `record_photo_upload()`'s trailing defaulted argument (`content`'s
+   own function). The frame copies nothing, there is no pending row, and neither track's write waits on the other's.
+3. ★★ **A trigger that coincides with another writes one frame, not two** (`REQ-STO-004`, amended — **owner**).
+   With the priority window off, «registration opens» **is** the publication; with the default deadline, «registration
+   closes» **is** the start. `registration_opened` is written only when a priority window delays it past publication,
+   and `registration_closed` only when the deadline is earlier than the first start. Two frames in one second saying
+   one thing is the noise STO-02 exists to prevent.
+4. `starts_soon` and `live` are **per day**; a day-scoped `after` material released at its day's end makes no frame.
+   The live count is **refetched, not broadcast** — the only check-in broadcast is staff-and-presenter by design.
+5. **The ring has no fifth state.** `unseen` is drawn with `story-ring`'s `upcoming` shape before completion and its
+   `recap` shape after, the word under it the caller's. `sessions'` feed carries the session's phase for that.
+6. The feed carries **the author's own processing and failed video**, to the author alone — where «تعذّر» is said.
+7. **At a story's end the viewer moves to the next ring** and closes after the last (`05`, §25 silent). «شاهد القصة»
+   is drawn on desktop beside the live badge. `content` exports the opener; `sessions` passes its content as children.
+8. ★ **A report hides the FRAME; a photo frame's photograph stays in the album** — `REQ-EVT-008` governs the album,
+   and hiding the photograph would reverse its points on one member's word. «أزلني» on a photo frame is the photograph's
+   own takedown and hides both.
+9. **A removal request on a frame is not audited**, as a photograph's is not — the request row is the record; the
+   decision is. **A hidden video sends no notification** (STO §F). A removed photograph's objects stay unreadable, as
+   today. No retention rule for views or reactions.
+10. The viewer composes Radix's dialog directly; its one keyframe is the lead's, in `globals.css`. `content` removes
+    the feed's dead ring state with a ledger line. `purge_story_video.ts` is `content`'s; `story-media` enters the
+    worker's bucket list by the lead's edit. `sessions` edits its two own test files for «شاهد القصة», each a ledger line.
+
+### 5 · `0198`, final — the lead's
+
+Enums `story_frame_kind`, `story_frame_state`, `story_reaction_kind`; `report_target` gains `story_frame`.
+**Tables:** `story_frames` (the union of both plans' columns; `unique (session_id, kind, trigger_key)`),
+`story_views`, `story_reactions`, `story_frame_takedowns` — each with `org_id`, RLS, its full policy set, **a grant for
+every policy**, an RLS case and a fixture row. **One SQL predicate**, `story_frame_is_visible()`, called by the member
+policy **and** by `sessions'` feed, so the two cannot drift. **Columns:** `photos.caption`,
+`photos.story_derivative_ready`, `reports.story_frame_id`. **A private bucket**, `story-media`, 60 MB at the edge, its
+write policy calling `content`'s capture gate and its read policy joining the frame under the caller's own RLS — so
+expiry, hiding, cancellation and removal close the bytes exactly when they close the row. The triggers that attach
+the tracks' functions. `02`, `03`, `11` and `12` are written in the migration's commit.
+
+### 6 · For the owner
+
+1. §4.3 — one frame for coinciding triggers. 2. §3.1 — what the photographs row shows. 3. §2.2 — the durations.
+4. Merge #72, then #69 once it is green on the new `main`; push `0194` with `--include-all`; then the `0198` dump.
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-118`, `REQ-STO-004`), `STATUS.md`

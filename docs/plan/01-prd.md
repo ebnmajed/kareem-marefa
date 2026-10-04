@@ -4164,8 +4164,8 @@ set and a «لا بيانات مؤسسات هنا» mark in the bar.
 **Acceptance:**
 - The orgs table and the metrics carry **counts**, never an org's content; no policy gains a super-admin disjunct.
 - Deleting an org needs its slug typed back; suspending and reactivating are what they were.
-- Impersonation takes an org, an admin of it, a mandatory reason and a duration, says it is recorded and visible to
-  the org, and shows its log — and behaves exactly as it did.
+- Impersonation takes an org, a mandatory reason and a duration, says it is recorded and visible to the org, and
+  shows its log — and behaves exactly as it did. ★ It takes no member: the session carries none (`DEC-251` §2.1).
 - The sober register holds: no motion, no object, no sticker.
 
 #### REQ-UIX-119 — The mark is one component with three moves
@@ -4329,7 +4329,9 @@ A published session has one story: its frames in time order. It belongs to the s
 The eight: the session is published · registration opens · registration closes · 24 hours before it starts · it goes
 live · an attendee's photograph becomes visible · it completes · its materials are added.
 **Acceptance:**
-- Each trigger produces exactly one frame, however many times it fires or is retried.
+- Each trigger produces exactly one frame, however many times it fires or is retried. ★ Two triggers that are the
+  same instant are one moment and one frame: registration opening **at** publication, or closing **at** the start,
+  writes no frame of its own (`DEC-251` §4.3).
 - The frame is readable within one minute of its trigger.
 - The live frame shows the count of people checked in, current while the session is live.
 - The recap shows attendance, the rating — **only at or above the org's minimum** (`REQ-RAT-006`) — and materials,
