@@ -715,8 +715,10 @@ test.describe("390 px RTL review", () => {
     await page.goto("/ar/app/platform");
     await expect(page.getByRole("heading", { level: 1, name: "لوحة المنصة" })).toBeVisible();
     await review(page, "wave8-platform-home-default");
-    await page.getByRole("button", { name: "أقسام لوحة المنصة: لوحة المنصة" }).click();
-    await expect(page.getByRole("menu")).toBeVisible();
+    // ★ wave 26 (DEC-249, ledger C2): the section switcher on `ui/menu` went with the old nav component; under `lg` the
+    // console frame's sheet behind ≡ is the platform's navigation, as on every console screen since wave 21.
+    await page.getByRole("button", { name: "افتح قائمة لوحة المنصة" }).click();
+    await expect(page.getByRole("dialog").getByRole("navigation", { name: "لوحة المنصة" })).toBeVisible();
     await review(page, "wave8-platform-shell-nav-open");
     await page.keyboard.press("Escape");
 
