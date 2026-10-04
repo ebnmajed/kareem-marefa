@@ -185,6 +185,17 @@ describe("ui/block-canvas", () => {
     expect(single.className).toContain("inset-0");
   });
 
+  it("★ the fixed footer's «ثابت» tag sits inside the footer's own box, at its foot — never astride a neighbour's edge", () => {
+    const { container } = mount({ selectedId: "b" });
+    const tag = container.querySelector<HTMLElement>("[data-canvas-fixed-tag]")!;
+    expect(tag.textContent).toBe("ثابت");
+    expect(tag.className).toContain("bottom-1");
+    expect(tag.className).not.toMatch(/-top-|-bottom-|top-full|bottom-full/);
+    // And the bars that could reach the footer hang from the other edges: a row's above its row, a block's below its
+    // block — so the footer's foot is free.
+    expect(tag.closest("[data-canvas-fixed]")).not.toBeNull();
+  });
+
   it("the fixed footer is labelled and never a control", () => {
     const { container } = mount();
     const fixed = container.querySelector("[data-canvas-fixed]")!;
