@@ -326,8 +326,9 @@ function posterDocument(family: PosterFamily): DesignDocument {
       // on a wall. Measured over all seven presets, not reasoned about.
       //
       // `proportional` scales the frame with the safe box, which across a dpi
-      // change is what holds the physical size: A3 43.8 mm, A4 30.8 mm, the
-      // screen presets 42–49 mm, the `og` link card 20 mm — every one scannable.
+      // change is what holds the physical size. Measured AFTER the change, on
+      // every preset: A3 43.7, A4 30.4, master and story 49.4, square 38.1,
+      // landscape 36.7, the `og` link card 20.1 — millimetres, all scannable.
       //
       // ★ The CERTIFICATE's QR keeps `fixed` and is right to: its master is
       // already 300 dpi and `presetsForDocument()` gives it exactly one preset,
