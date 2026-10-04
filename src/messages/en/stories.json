@@ -1,5 +1,8 @@
 {
   "stories": {
+    "ring": {
+      "seen": "Seen"
+    },
     "age": {
       "now": "Now",
       "minutes": "{count, plural, one {1 minute ago} other {{value} minutes ago}}",

@@ -1,5 +1,8 @@
 {
   "stories": {
+    "ring": {
+      "seen": "شوهدت"
+    },
     "age": {
       "now": "الآن",
       "minutes": "{count, plural, zero {الآن} one {قبل دقيقة} two {قبل دقيقتين} few {قبل {value} دقائق} many {قبل {value} دقيقة} other {قبل {value} دقيقة}}",
