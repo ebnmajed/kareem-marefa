@@ -15,7 +15,7 @@
 // them equal.
 import { describe, expect, it } from "vitest";
 import { BRAND_COLOUR_TOKENS, platformBrand } from "@kareem/designer-runtime";
-import { SAMPLE_BRAND } from "@kareem/mail-runtime";
+import { PLATFORM_LIGHT, SAMPLE_BRAND } from "@kareem/mail-runtime";
 
 /** The platform default's one scheme, by bare token name. */
 const platform = (scheme: "light" | "dark"): Record<string, string> => {
@@ -58,5 +58,43 @@ describe("★ the sample kit is an org's own, never the platform's", () => {
     // failed that test, which is why the pins recorded fallbacks for four
     // tokens instead of the kit.
     expect("light" in SAMPLE_BRAND).toBe(true);
+  });
+});
+
+describe("★ the third copy of the platform palette equals the other two", () => {
+  // ★ THE CASE THIS FILE WAS NAMED FOR. `render.ts`'s `PLATFORM_LIGHT` is what
+  // a mail falls back to when the kit supplies nothing — no brand at all, a
+  // half-filled kit, or the three-key shape the worker sent before wave 10.
+  // Until wave 24 those were M6's navy written inline at ten call sites, which
+  // `0192` replaced everywhere except here, so a mail rendered without a kit
+  // looked like a product that no longer exists.
+  //
+  // It cannot be derived at run time: `@kareem/mail-runtime` must not import the
+  // document renderer. So it is a literal held equal by a test, exactly as
+  // `tests/rls/brand-kits.test.ts` holds `brand.ts` and `public.brand_kit()`
+  // equal — and this is the copy that had nothing watching it.
+  it("every token `render.ts` carries equals `platformBrand('light')`", () => {
+    const defaults = platform("light");
+    for (const [token, value] of Object.entries(PLATFORM_LIGHT)) {
+      expect(value, `render.ts's PLATFORM_LIGHT.${token}`).toBe(defaults[token]);
+    }
+  });
+
+  it("carries only real brand tokens — a typo cannot hide as an unchecked key", () => {
+    // Without this, `PLATFORM_LIGHT.fgheading` would pass the case above by
+    // never being compared to anything.
+    for (const token of Object.keys(PLATFORM_LIGHT)) {
+      expect(BRAND_COLOUR_TOKENS, token).toContain(token);
+    }
+  });
+
+  it("★ the sample kit and the platform default still differ on every token they share", () => {
+    // The two halves of this file meet here: if they ever agreed, `.brand.html`
+    // and `.plain.html` would be byte-identical and 60 pinned files would stop
+    // proving that a brand is read at all.
+    const kit = SAMPLE_BRAND.light as Record<string, string>;
+    for (const token of Object.keys(PLATFORM_LIGHT)) {
+      expect(kit[token], token).not.toBe(PLATFORM_LIGHT[token as keyof typeof PLATFORM_LIGHT]);
+    }
   });
 });

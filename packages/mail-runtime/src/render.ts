@@ -298,6 +298,43 @@ function changeLabel(change: { field: string; day?: unknown; days?: unknown }): 
 // name, and the gap is where the next widening lands.
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
+/**
+ * ★ THE PLATFORM DEFAULT'S LIGHT SCHEME — THE THIRD COPY, AND NOW A NAMED ONE
+ * (wave 24, `REQ-NTF-016`, `DEC-242` §2).
+ *
+ * These are the values a mail falls back to when the kit does not supply one:
+ * no brand at all (a unit test), a half-filled kit, or the three-key shape the
+ * worker sent before wave 10. They were written inline at ten call sites as
+ * M6's navy, which is the palette `0192` replaced — so a mail rendered without
+ * a kit looked like a product that no longer exists.
+ *
+ * ★ WHY THEY ARE STILL LITERALS. The platform default is defined in
+ * `packages/designer-runtime/src/brand.ts` and in `public.brand_kit()`, and
+ * `tests/rls/brand-kits.test.ts` holds those two equal. This package must not
+ * import the document renderer — the worker's mail path has no business loading
+ * it — so the third copy stays a literal and
+ * `tests/unit/mail-palette-default.test.ts` is what holds it equal to the other
+ * two. That test is this constant's `brand-kits.test.ts`, and `0155` is what it
+ * looks like when a copy nobody watches is left behind.
+ *
+ * ★ IT IS A SANITISER'S DEFAULT, NOT A COLOUR THIS FILE CHOOSES. An org that
+ * overrode its kit reaches none of these (`DEC-242` §6).
+ *
+ * ★ AND `ground`'s NEUTRAL IS NOT IN HERE, ON PURPOSE. `styles.ground` offers
+ * `neutral` as a CHOICE beside `canvas` and `surface`; its grey is what
+ * «neutral» MEANS, not a fallback for a missing value. Moving it would redefine
+ * an option an admin picks and make `neutral` and `canvas` identical for every
+ * org on the default — a vocabulary change, which this wave is not.
+ */
+export const PLATFORM_LIGHT = {
+  canvas: '#f6f3ec',
+  surface: '#ffffff',
+  fgHeading: '#12131a',
+  fgBody: '#12131a',
+  fgMuted: '#5b5f73',
+  edge: '#e4dfd3',
+} as const;
+
 /** A hex colour, or the default. See `compilePalette()` for why. */
 function hex(value: string | undefined, fallback: string): string {
   return value !== undefined && HEX.test(value) ? value : fallback;
@@ -320,7 +357,7 @@ function legacyBrand(brand: RenderInput["brand"]): LegacyBrand | null | undefine
   // changes nothing that exists and closes what the type does not promise.
   const three = "fgBody" in brand ? brand : brand.light ?? {};
   return three.fgBody && three.fgMuted && three.surface
-    ? { fgBody: hex(three.fgBody, "#1a1a1a"), fgMuted: hex(three.fgMuted, "#6b6b6b"), surface: hex(three.surface, "#ffffff") }
+    ? { fgBody: hex(three.fgBody, PLATFORM_LIGHT.fgBody), fgMuted: hex(three.fgMuted, PLATFORM_LIGHT.fgMuted), surface: hex(three.surface, PLATFORM_LIGHT.surface) }
     : null;
 }
 
@@ -349,13 +386,13 @@ function legacyBrand(brand: RenderInput["brand"]): LegacyBrand | null | undefine
 function compilePalette(brand: RenderInput["brand"]): CompilePalette {
   const light: BrandPalette = brand && "light" in brand ? (brand.light ?? {}) : {};
   const legacy = legacyBrand(brand);
-  const fgHeading = hex(light.fgHeading, "#0b1220");
+  const fgHeading = hex(light.fgHeading, PLATFORM_LIGHT.fgHeading);
   return {
-    fgBody: hex(legacy?.fgBody, "#1a1a1a"),
-    fgMuted: hex(legacy?.fgMuted, "#6b6b6b"),
-    surface: hex(legacy?.surface, "#ffffff"),
+    fgBody: hex(legacy?.fgBody, PLATFORM_LIGHT.fgBody),
+    fgMuted: hex(legacy?.fgMuted, PLATFORM_LIGHT.fgMuted),
+    surface: hex(legacy?.surface, PLATFORM_LIGHT.surface),
     fgHeading,
-    edge: hex(light.edge, "#e6eaf0"),
+    edge: hex(light.edge, PLATFORM_LIGHT.edge),
     accent: fgHeading,
   };
 }
@@ -363,7 +400,7 @@ function compilePalette(brand: RenderInput["brand"]): CompilePalette {
 /** The brand kit's light canvas, for a document whose ground asks for it. */
 function canvasOf(brand: RenderInput["brand"]): string {
   const light: BrandPalette = brand && "light" in brand ? (brand.light ?? {}) : {};
-  return hex(light.canvas, "#f5f5f5");
+  return hex(light.canvas, PLATFORM_LIGHT.canvas);
 }
 
 /**
@@ -383,9 +420,9 @@ function shell(
   styles: EmailStyles | null = null,
   extra: { head: string; palette: CompilePalette; canvas: string } | null = null,
 ): string {
-  const fgBody = brand?.fgBody ?? "#1a1a1a";
-  const fgMuted = brand?.fgMuted ?? "#6b6b6b";
-  const surface = brand?.surface ?? "#ffffff";
+  const fgBody = brand?.fgBody ?? PLATFORM_LIGHT.fgBody;
+  const fgMuted = brand?.fgMuted ?? PLATFORM_LIGHT.fgMuted;
+  const surface = brand?.surface ?? PLATFORM_LIGHT.surface;
   const ground = styles?.ground === "canvas" && extra ? extra.canvas : styles?.ground === "surface" && extra ? extra.palette.surface : "#f5f5f5";
   const padding = styles?.padding ?? 24;
   const cardClass = styles?.mobile?.padding ? ` class="k-card"` : "";

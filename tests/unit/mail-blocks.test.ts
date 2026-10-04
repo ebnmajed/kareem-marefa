@@ -6,7 +6,7 @@
 // without it, and none of them can be checked by looking at the mail in one's
 // own inbox.
 import { describe, expect, it } from "vitest";
-import { compileBlocks, isolate, readBlocks, renderEmail, type CompileContext, type EmailBlock } from "@kareem/mail-runtime";
+import { compileBlocks, isolate, PLATFORM_LIGHT, readBlocks, renderEmail, type CompileContext, type EmailBlock } from "@kareem/mail-runtime";
 
 const FSI = String.fromCharCode(0x2068);
 const PDI = String.fromCharCode(0x2069);
@@ -410,6 +410,14 @@ describe("★ the palette invariant — every value reaching an unescaped style=
     expect(out.html).not.toContain("<script>");
     expect(out.html).not.toContain("alert(1)");
     // It fell back to the default rather than to nothing.
-    expect(out.html).toContain("#1a1a1a");
+    //
+    // ★ Read from `PLATFORM_LIGHT`, never written as a literal (wave 24,
+    // `REQ-NTF-016`). This case is about the SANITISER — that a planted value is
+    // replaced by the default rather than dropped — and the default's colour is
+    // not its subject. Written as a literal it broke the moment `0192` moved the
+    // palette, which is the same way `main` went red on
+    // `tests/unit/designer-render.test.ts`: a test that pins a colour it does
+    // not care about becomes a second place the palette has to be edited.
+    expect(out.html).toContain(PLATFORM_LIGHT.fgBody);
   });
 });
