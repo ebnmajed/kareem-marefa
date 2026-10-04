@@ -12,8 +12,7 @@ import { FrameBody, frameAge, frameDurationMs, videoLength } from "@/components/
 import { ringShape } from "@/components/stories/story-rings-client";
 import type { StoryFrame, StorySession } from "@/lib/dal/stories";
 
-// `frame.inRoom` is requested from `sessions` (stories.json is theirs); until it lands the test supplies the word.
-const messages = { stories: { ...stories.stories, frame: { inRoom: "في القاعة", ...stories.stories.frame } } };
+const messages = stories;
 const t = createTranslator({ locale: "ar", messages, namespace: "stories" });
 const NOW = "2026-10-05T18:00:00Z";
 const base = { triggeredAt: "2026-10-05T17:57:00Z", expiresAt: "2026-10-06T17:57:00Z", seen: false, dayId: null, dayPosition: null, action: { kind: "open_session", href: "/app/sessions/s" } } as const;
