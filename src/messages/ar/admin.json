@@ -600,7 +600,11 @@
           "provisioned": "انضمام عضو",
           "reactivated": "إعادة تفعيل عضوية",
           "role_changed": "تغيير دور عضو",
-          "avatar_import_answered": "أجاب عن سؤال صورة Google"
+          "avatar_import_answered": "أجاب عن سؤال صورة Google",
+          "added": "إضافة عضو",
+          "add_undone": "حذف عضو مضاف قبل تسجيل دخوله",
+          "invite_resent": "إعادة إرسال دعوة عضو",
+          "claimed": "تسجيل دخول عضو مضاف لأول مرة"
         },
         "org": {
           "created": "إنشاء المؤسسة",

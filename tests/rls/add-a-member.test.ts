@@ -236,8 +236,9 @@ describe("FN-provision_member — the bind, REQ-TEN-011", () => {
         company_id: f.a.companyId,
         display_name: "اسم من جوجل",
       });
-      const actions = await tx.q<{ action: string }>(`select action from public.audit_log where subject_id = $1 order by action`, [id]);
-      expect(actions.map((a) => a.action)).toEqual(["member.added", "member.claimed"]);
+      // Sorted in JS for the same reason as the delete case above — never by database collation.
+      const actions = await tx.q<{ action: string }>(`select action from public.audit_log where subject_id = $1`, [id]);
+      expect(actions.map((a) => a.action).sort()).toEqual(["member.added", "member.claimed"].sort());
     });
   });
 
@@ -346,8 +347,11 @@ describe("RPC-remove_unbound_member and RPC-resend_member_invitation", () => {
       await tx.asOwner();
       expect(await tx.q(`select id from public.members where id = $1`, [id])).toEqual([]);
       // The audit row outlives the member it records — subject_id carries no foreign key.
-      const actions = await tx.q<{ action: string }>(`select action from public.audit_log where subject_id = $1 order by action`, [id]);
-      expect(actions.map((a) => a.action)).toEqual(["member.add_undone", "member.added"]);
+      // ★ Sorted in JS, NOT by `order by action`: `_` sorts BEFORE `e` under the C collation and
+      // AFTER it under ICU, so `member.add_undone` and `member.added` swap places between a macOS
+      // developer database and the CI container. CI caught exactly that.
+      const actions = await tx.q<{ action: string }>(`select action from public.audit_log where subject_id = $1`, [id]);
+      expect(actions.map((a) => a.action).sort()).toEqual(["member.add_undone", "member.added"].sort());
 
       await tx.as(f.a.admin.claims);
       expect(await errorMessage(() => tx.q(`select public.remove_unbound_member($1)`, [f.a.members[0].memberId]))).toContain("already_signed_in");

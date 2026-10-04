@@ -600,7 +600,11 @@
           "provisioned": "Member joined",
           "reactivated": "Membership reactivated",
           "role_changed": "Member's role changed",
-          "avatar_import_answered": "Answered the Google photo question"
+          "avatar_import_answered": "Answered the Google photo question",
+          "added": "Member added",
+          "add_undone": "Added member removed before signing in",
+          "invite_resent": "Member invitation resent",
+          "claimed": "Added member signed in for the first time"
         },
         "org": {
           "created": "Organisation created",
