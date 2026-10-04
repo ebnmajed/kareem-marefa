@@ -154,3 +154,55 @@ invitation (`DEC-175`); the five public routes; `registrations`; stories and `st
 `/app/platform/**`; the studio; every console screen but `SCR-049`; the member app's screens; `DEC-194`'s two gates;
 `DEC-215`'s four; `DEC-186` §4; `DEC-204`. The November Railway dry run (`DEC-241` §2) is the owner's and is not this
 wave's.
+
+---
+
+## 8 · ★★ The runbook for the push — what the owner does, in order
+
+★ **Production is at `0191`.** `main` carries `0192`, `0193`, `0195`, `0196` and now `0197`, so the live database is
+**six** migrations behind, not one. `0194` is still in open PR #69.
+
+### 8.1 The hole in the chain, and the one flag it needs
+
+`0195` and `0196` merged while `0194` is still open. So:
+
+- a fresh `supabase db reset` applies **0194 before 0195/0196** (filename order);
+- a production pushed in merge order receives it **after**.
+
+The three are independent — a certificate mode, a template guard, a baseline recolour — so the divergence is in the
+**order**, not the outcome. But `supabase db push` only applies what is newer than the last applied version, so the
+straggler needs **`--include-all`** when #69 lands. ★ **Push `0197` before `0194`, or after it, but know which.**
+
+### 8.2 What `0197` does to a live table, and why it is not a long lock
+
+| Statement | Lock profile |
+|---|---|
+| `alter table public.members alter column auth_user_id drop not null` | **Catalog only.** `ACCESS EXCLUSIVE` for the instant it takes to update `pg_attribute`; no table rewrite and no scan |
+| `alter table public.members add column invited_by uuid references public.members(id) on delete set null` | A nullable column with no default is also **catalog only**; the foreign key validates against existing rows, which is a scan of a table holding **tens** of rows in production |
+| the four `create or replace function` | Catalog only |
+
+★ **Nothing rewrites a table and nothing scans anything large.** The risk in this migration is not duration — it is
+*what* it replaces: `provision_member()` and `before_user_created_hook()`, the two functions **every sign-in** goes
+through. That is what earns the rehearsal, not the lock time.
+
+### 8.3 The order, and why it is this order
+
+1. **Rehearse on a production-shaped dump** (invariant 3). The thing to watch is not `members` — it is that a sign-in
+   still provisions: `provision_member()` on an address whose domain is listed, and the hook returning the event
+   unchanged for one that is not.
+2. **Push the migrations, then merge #68.** `main`'s worker and Vercel both deploy from `main`, so the schema must
+   lead the code: the new RPCs exist before anything calls them, and `main`'s *old* worker on the new schema does
+   nothing different (it has no `send_member_invitation` registered, so those jobs simply **wait** in the queue until
+   the redeploy — graphile-worker fetches only the tasks a worker registers).
+3. **Vercel redeploys from `main`; Railway redeploys the worker.** The waiting `invite:*` jobs then run and the mail
+   goes out. ★ **An invitation enqueued before the worker redeploys is not lost** — it is queued.
+4. **Check the one thing that cannot be tested from here:** sign in as yourself. If sign-in works, the riskiest half
+   of this wave is proven in the only environment that counts.
+
+### 8.4 The rollback, if sign-in breaks
+
+`provision_member()` and `before_user_created_hook()` are `create or replace` — so the rollback is to re-run **their
+previous definitions**, which are `0005` and `0007` verbatim, and which are still in the repository. Nothing about
+the column changes has to be undone for sign-in to work again: a nullable `auth_user_id` is invisible to the old
+definitions. ★ **That is the property worth having on a live auth path**, and it is why the column change and the
+function replacements are safe to ship together.

@@ -377,7 +377,13 @@
         "stale_claims": "Your session's data changed — reload the page and try again.",
         "reason_required": "Write the deactivation reason first.",
         "cannot_deactivate_self": "You cannot deactivate your own membership.",
-        "failed": "That action could not be carried out — try again."
+        "failed": "That action could not be carried out — try again.",
+        "already_a_member": "That address already belongs to a member of this organisation.",
+        "not_an_address": "Enter a valid email address.",
+        "role_not_allowed": "An organisation admin cannot be added by email — add them as a member, then change their role once they have signed in.",
+        "already_signed_in": "They have signed in — deactivate with a reason instead of removing.",
+        "no_addresses": "Enter at least one email address.",
+        "company_other_org": "That company does not belong to your organisation."
       },
       "columnLevel": "Level",
       "columnPoints": "Points",
@@ -401,7 +407,36 @@
       "csvLabel": "Download the members shown as CSV",
       "csvPending": "Downloading…",
       "csvDone": "The members file was downloaded",
-      "csvFailed": "The members file could not be downloaded. Try again."
+      "csvFailed": "The members file could not be downloaded. Try again.",
+      "add": {
+        "open": "Add a member",
+        "title": "Add a member to the organisation",
+        "note": "They become a member immediately, and are emailed an invitation to sign in.",
+        "emails": "Email address",
+        "emailsHint": "One address, or one per line.",
+        "displayName": "Name",
+        "jobTitle": "Job title",
+        "oneOnly": "For a single address only.",
+        "company": "Company",
+        "role": "Role",
+        "submit": "Add",
+        "done": "{count, plural, =0 {Nobody was added} one {1 member added} other {{value} members added}}",
+        "outcome": {
+          "added": "added",
+          "already_a_member": "already a member",
+          "not_an_address": "not an email address",
+          "role_not_allowed": "that role is not available here",
+          "failed": "could not be added"
+        },
+        "reportLabel": "What happened to each address"
+      },
+      "waitingNote": "Has not signed in yet · added {days, plural, =0 {today} one {1 day ago} other {{value} days ago}}",
+      "resend": "Resend the invitation",
+      "resendDone": "The invitation was sent again.",
+      "remove": "Remove",
+      "removeDone": "Removed from the organisation.",
+      "removeConfirmTitle": "Remove <t>{name}</t> from the organisation?",
+      "removeConfirmBody": "They have not signed in, so they hold nothing here. Once they have signed in, deactivation is the only way out."
     },
     "exports": {
       "title": "Exports",
@@ -565,7 +600,11 @@
           "provisioned": "Member joined",
           "reactivated": "Membership reactivated",
           "role_changed": "Member's role changed",
-          "avatar_import_answered": "Answered the Google photo question"
+          "avatar_import_answered": "Answered the Google photo question",
+          "added": "Member added",
+          "add_undone": "Added member removed before signing in",
+          "invite_resent": "Member invitation resent",
+          "claimed": "Added member signed in for the first time"
         },
         "org": {
           "created": "Organisation created",

@@ -1,4 +1,4 @@
-**Last updated:** 2026-10-04 · **Branch:** `wave-24/the-templates` · ★★ **WAVE 24 IS OPEN — M26, THE ARTEFACTS (`DEC-242`)** · **`main`:** `6de410b2`; production at **`0191`**; the worker on Railway at `37f79dd5`, `builder = DOCKERFILE` held by `railway.json` · ★★ **The owner's ask, verbatim: «I want the templates to match the designed ones and delete the current ones.»** Three questions, three answers (`DEC-242`): **both** the design templates and the mail designs · a **hard delete** · the **platform default palette moves** to «ساحة اللعب». · ★★ **This is the first wave that touches what LEAVES the product** — every screen has worn the playground since wave 17; an exported poster and an issued certificate still wear M6's Reem Kufi on navy, because «the playground stops at the certificate's edge» (`DEC-183` §4) was a deferral. · ★★ **Three PRs:** A `wave-24a/the-palette` (lead, alone, first) · B `wave-24b/the-baseline` (`designer`) · C `wave-24c/the-mail-designs` (`notify`) — **B and C both cut from A's head**, merge order A, B, C. · ★★ **Two migrations, both the lead's:** `0192` (the palette) and `0193` (the baseline), rehearsed on a dump taken at `0191`. · ★★ **NO new primitive** — `ui/` stays **69**. · ★★ **The hard-delete has a floor the database enforces:** `certificates.template_version_id` is `on delete restrict` and `issue_certificates()` resolves the **platform** row directly, so a version a certificate references **cannot** be deleted — `REQ-CRT-014` made structural. The migration **deletes where it can and retires where it cannot, reporting which per row** (`DEC-242` §3). · ★ **Carried from M12:** the tie-breaker, `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, and the **November** Railway dry run (`DEC-241` §2, before 2026-12-01). · ★★ **NEXT SCOPE IS WRITTEN AND NOT OPEN:** wave 25 / **M27** — a member added by hand (`DEC-243`, **shape set by `DEC-244`** after the owner corrected the first answer: «i need the addition of the user to take affect and appear in the users as soon as the admin adds them»). ★★ **An added person is a `members` row at once — no invitation table, no new enum; `auth_user_id` becomes nullable and first sign-in BINDS it.** ★ Two traps: the auth hook (no new grant — `0006` already has it) and the active-member denominator (four predicates, same PR). The record is in `01`/`02`/`05`/`08`/`09`/`11`/`14`/`15` and `notes/wave-25-lead.md`; **`03` and the migration deliberately not yet written**. Finish wave 24 first.
+**Last updated:** 2026-10-04 · **Branch:** `wave-24/the-templates` · ★★ **WAVE 24 IS OPEN — M26, THE ARTEFACTS (`DEC-242`)** · **`main`:** `6de410b2`; production at **`0196`** (★ `0192`, `0193`, `0195`, `0196` pushed 2026-10-04; **`0194` is on neither side** — still in open PR #69, so it arrives out of order and will need `--include-all`); the worker on Railway at `37f79dd5`, `builder = DOCKERFILE` held by `railway.json` · ★★ **The owner's ask, verbatim: «I want the templates to match the designed ones and delete the current ones.»** Three questions, three answers (`DEC-242`): **both** the design templates and the mail designs · a **hard delete** · the **platform default palette moves** to «ساحة اللعب». · ★★ **This is the first wave that touches what LEAVES the product** — every screen has worn the playground since wave 17; an exported poster and an issued certificate still wear M6's Reem Kufi on navy, because «the playground stops at the certificate's edge» (`DEC-183` §4) was a deferral. · ★★ **Three PRs:** A `wave-24a/the-palette` (lead, alone, first) · B `wave-24b/the-baseline` (`designer`) · C `wave-24c/the-mail-designs` (`notify`) — **B and C both cut from A's head**, merge order A, B, C. · ★★ **Two migrations, both the lead's:** `0192` (the palette) and `0193` (the baseline), rehearsed on a dump taken at `0191`. · ★★ **NO new primitive** — `ui/` stays **69**. · ★★ **The hard-delete has a floor the database enforces:** `certificates.template_version_id` is `on delete restrict` and `issue_certificates()` resolves the **platform** row directly, so a version a certificate references **cannot** be deleted — `REQ-CRT-014` made structural. The migration **deletes where it can and retires where it cannot, reporting which per row** (`DEC-242` §3). · ★ **Carried from M12:** the tie-breaker, `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, and the **November** Railway dry run (`DEC-241` §2, before 2026-12-01). · ★★ **NEXT SCOPE IS WRITTEN AND NOT OPEN:** wave 25 / **M27** — a member added by hand (`DEC-243`, **shape set by `DEC-244`** after the owner corrected the first answer: «i need the addition of the user to take affect and appear in the users as soon as the admin adds them»). ★★ **An added person is a `members` row at once — no invitation table, no new enum; `auth_user_id` becomes nullable and first sign-in BINDS it.** ★ Two traps: the auth hook (no new grant — `0006` already has it) and the active-member denominator (four predicates, same PR). The record is in `01`/`02`/`05`/`08`/`09`/`11`/`14`/`15` and `notes/wave-25-lead.md`; **`03` and the migration deliberately not yet written**. Finish wave 24 first.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
@@ -175,7 +175,59 @@ because that is what moving a default means — and an org that has overridden i
 
 ---
 
-## ★★ NEXT SCOPE — wave 25, M27: a member added by hand (`DEC-243`, shape set by `DEC-244`; **not open**)
+## ★★★ WAVE 25 — OPEN, BUILT, AWAITING THE PUSH · M27, a member added by hand (`DEC-243` · `DEC-244` · `DEC-246`)
+
+### ★★ `0197` — REHEARSED 2026-10-04 on the owner's fresh production dump
+
+`/tmp/prod-schema-0196.sql`, taken at `0196`, **0 data rows** (no `COPY`, no `INSERT`) and **nothing of `0197`**
+— verified by `add_member` and `invited_by` being absent from the file. A throwaway `rehearse25` owned by `postgres`;
+the seven extensions into `extensions` and `supabase_vault` into `vault`; the local `auth`, `storage` and `realtime`
+schemas, re-applied **after** the dump because their policies reference `public.sessions` and `public.auth_org_id()`.
+★ **The dump loaded with ONE error — the platform's `supabase_realtime` publication, as every wave.**
+★★ **`0197` applied `--single-transaction` with `ON_ERROR_STOP`, as `postgres` — exit 0.**
+
+| Check | Result |
+|---|---|
+| The eight functions present | ★ `add_member`, `add_members`, `admin_list_members`, `before_user_created_hook`, `member_invitation_context`, `provision_member`, `remove_unbound_member`, `resend_member_invitation` |
+| `members.auth_user_id` nullable | ★ **true** |
+| `members.invited_by` added | ★ 1 |
+| ★ the `unique` on `auth_user_id` **kept** | ★ 1 — a unique constraint permits many nulls, so it keeps its meaning for every bound row |
+| `snapshot_leaderboard()` carries the bound-member predicate | ★ **true** |
+| ★ `evaluate_company_points()` carries it too (`DEC-246`) | ★ **true** |
+| ★ `before_user_created_hook()` still fails open | ★ **true** — `when others then` intact |
+
+★ **`registrations` is not read, written or altered by `0197`**, and neither is any table but `members`.
+
+★ **Branch `wave-25/add-a-member`, PR #68.** All three pieces are built and green; the migration is **`0197`**,
+promoted and replayed in a full chain. What is left is the owner's: the rehearsal, the push, the merge.
+
+| | State |
+|---|---|
+| `0197_add_a_member.sql` | ★ promoted (a **move**, so `applyProposed()` no-ops and the suite passed unchanged) · replayed clean in a full `db reset` 0001 → 0197 |
+| `SCR-049` | «أضف عضوًا», the sheet, the pasted list with its per-line report, «لم يسجّل الدخول بعد» with its age, resend, delete |
+| `JOB-send_member_invitation` | the thirty-seventh job; the design is a sibling export, so `DESIGN_FOR` stays at 25 and the 120 pinned files are untouched |
+| Tests | 27 RLS · 11 component (axe) · 6 unit for the mail · `members-table.test.ts`'s 16 cases unchanged |
+| ★ Owed | an e2e spec for the demonstrable; the owner's rehearsal and push (**runbook: [`notes/wave-25-lead.md`](notes/wave-25-lead.md) §8**) |
+
+★★ **A hole in the chain, not this wave's:** `0194` is still in open PR #69 while `0195` and `0196` are on `main`. A
+fresh reset applies `0194` **before** them; a production pushed in merge order gets it **after**. Independent
+migrations, so the divergence is in the order — but **`supabase db push` wants `--include-all`** for the straggler.
+
+★★ **`DEC-246` — `DEC-244` §6 measured short.** The denominator is **five predicates across two functions**, not
+four across one: `0182`'s `evaluate_company_points()` divides by active members to **award** company points, so
+adding five colleagues by hand would have **paid their own company less** at the next session completion — into an
+**append-only** ledger. Provably a no-op on existing data, three ways.
+
+### The ledger — assertions changed, and why
+
+| File | Change | Why |
+|---|---|---|
+| `tests/components/admin/members-table.test.tsx` | row factory gains `hasSignedIn: true`, `invitedBy: null` | A type completion, **not an assertion**: all 16 cases pass untouched, and every case written before M27 keeps its meaning |
+| `05-scoring-engine.md` §6.2, `STORY-LDR-005` | «four predicates in one function» → five across two | `DEC-246` |
+
+### The record, as it stood before the build
+
+
 
 ★ **The owner's ask, verbatim, in two sentences — and the second corrects the first answer:**
 > «I want the ability to add user to the app in addition for them becoming users on the first signin.»

@@ -28,6 +28,11 @@ import { MemberRowMenu } from "./member-row-menu";
 // email and the CSV still carries it (the lead's wave-22 ruling).
 // The viewer's own row has no ⋯: self-demotion and self-deactivation have no path (`REQ-ADM-009`).
 
+/** Whole days since an instant, floored at 0 — the age a waiting row shows. */
+function daysSince(iso: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
+}
+
 export function MembersTable({ data, query, selfId, timeZone, locale }: { data: ConsoleMembers; query: MemberQuery; selfId: string; timeZone: string; locale: string }) {
   const t = useTranslations("admin.members");
 
@@ -46,6 +51,14 @@ export function MembersTable({ data, query, selfId, timeZone, locale }: { data: 
             {m.status === "deactivated" && m.deactivatedAt ? (
               <p className="mt-1 text-caption text-fg-muted">
                 {t.rich("deactivatedNote", { date: formatDateTime(m.deactivatedAt, timeZone, locale), reason: m.deactivatedReason ?? "", bdi: (chunks) => <bdi>{chunks}</bdi> })}
+              </p>
+            ) : !m.hasSignedIn ? (
+              // ★ wave 25 (`REQ-UIX-113`): state lives in the row, with its age — a word and a
+              // number, never a sentence (`DEC-NEXT-25`). The address is drawn HERE and nowhere
+              // else in the table, because for somebody who has not arrived it is the only thing
+              // that identifies them: `displayName` is whatever the admin typed, or nothing.
+              <p className="mt-1 text-caption text-fg-muted">
+                {t("waitingNote", { days: daysSince(m.createdAt), value: formatNumber(daysSince(m.createdAt)) })} · <bdi dir="ltr">{m.email}</bdi>
               </p>
             ) : null}
           </div>
