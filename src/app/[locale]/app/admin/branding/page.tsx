@@ -65,7 +65,12 @@ export default async function BrandingPage({
     );
   }
 
-  const { timeZone } = await getOrgPrefs(locale);
+  // The org's time zone is read for the saved mark alone; if that read fails the mark is left out rather than drawn in
+  // a guessed zone or taking the page to the error boundary — the kit itself is the page, the mark is a line under it.
+  const timeZone = await getOrgPrefs(locale).then(
+    (prefs) => prefs.timeZone,
+    () => null,
+  );
   const teamColours = TEAM_COLOUR_NAMES.map((name) => ({ hex: TEAM_COLOUR_HEX[name], name: tAdmin(`teamColourNames.${name}`) }));
 
   return (
@@ -79,7 +84,7 @@ export default async function BrandingPage({
           </ButtonLink>
         }
       />
-      {kit.isOverridden && kit.updatedAt ? (
+      {kit.isOverridden && kit.updatedAt && timeZone ? (
         <p className="mt-2 text-caption text-fg-muted">
           {t.rich("savedMark", { time: formatDateTime(kit.updatedAt, timeZone, locale), bdi: (chunks) => <bdi>{chunks}</bdi> })}
         </p>

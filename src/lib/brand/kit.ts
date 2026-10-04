@@ -74,7 +74,11 @@ async function fetchLogo(
   supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"],
   assetId: string,
 ): Promise<{ assetId: string; storagePath: string; width: number; height: number; mime: string | null; byteSize: number | null } | null> {
-  const { data } = await supabase.from("design_assets").select("id, storage_path, width, height, sniffed_mime, byte_size").eq("id", assetId).maybeSingle();
+  // ★ wave 26: a FAILED read throws; only an ABSENT row is null. Degrading a failed read to «no logo» was not soft: SCR-059's
+  // edit mode binds what this returns as the form's `logoAssetId`, so a transient error here followed by any save
+  // would have unbound the org's logo, silently. The page's error boundary is the honest outcome; «no logo» is not.
+  const { data, error } = await supabase.from("design_assets").select("id, storage_path, width, height, sniffed_mime, byte_size").eq("id", assetId).maybeSingle();
+  if (error) throw error;
   if (!data || !data.width || !data.height) return null;
   return {
     assetId: data.id,
@@ -90,7 +94,9 @@ async function fetchFont(
   supabase: Awaited<ReturnType<typeof sessionClient>>["supabase"],
   fontId: string,
 ): Promise<{ id: string; family: string; weight: number; style: string; sha256: string } | null> {
-  const { data } = await supabase.from("fonts").select("id, family, weight, style, sha256").eq("id", fontId).maybeSingle();
+  // ★ wave 26: as `fetchLogo` — a failed read throws, so edit mode never posts «platform default» over a chosen face.
+  const { data, error } = await supabase.from("fonts").select("id, family, weight, style, sha256").eq("id", fontId).maybeSingle();
+  if (error) throw error;
   if (!data) return null;
   return data;
 }

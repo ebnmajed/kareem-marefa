@@ -1112,3 +1112,24 @@ against P2. Read back now, with a second row the same reading found:
 `queued` and `building` never offer a request even outside the window: `data_export_requests_one_open` refuses a second
 open request, so the button would only lead to a refusal (the old page offered it there; nothing reachable changes —
 a request stuck queued for 24 hours is the worker's failure, not a state this row can mend).
+
+### W26.14 Failure 2 — what SCR-059's reads do when one fails (the lead's question; it did not reproduce under no load)
+
+The first run showed the admin error boundary after a successful save, while the machine ran other tracks' RLS suites
+on the one database; the re-run (with the server's output captured) passed and logged no error. No fix was guessed
+for it. Instead every read the read page and the `?edit` render make, and what a failure of each does:
+
+| Read | Before | Now | Why |
+|---|---|---|---|
+| `getBrandKit()` → `brand_kit()` | throws | throws | the kit IS the page; a stand-in would show — and in edit mode post — the platform default as the org's |
+| its logo row (`fetchLogo`) | error **swallowed → «no logo»** | **throws** | ★ not soft: edit mode posts the kit's logo id; a failed read then any save would have **unbound the org's logo**, silently |
+| its font rows (`fetchFont`) | error **swallowed → «platform default»** | **throws** | ★ same — a save would have reset the chosen face |
+| `listSelectableFonts()` | error **swallowed → no fonts** | **throws** | ★ an empty list disables both pickers, and a disabled `<select>` is not posted: a save would have reset both faces |
+| the logo's signed URL (`signDesignAssetUrl`, designer's) | null on failure | unchanged | a blank tile loses nothing: the asset id is still bound and still posted |
+| `getOrgPrefs()` (sessions', for the saved mark's zone) | throws → error boundary | **soft: the mark is left out** | the mark is a line under the page; a guessed zone would print a wrong time |
+| `getImageLimitMb()`, `getOrgName()` | fall back (20 MB, «») | unchanged | advisory only; the upload route enforces the real limit |
+| team colours | constants | — | `TEAM_COLOUR_HEX`, no read |
+
+So three reads that **degraded into data loss** now fail hard, and one that failed hard for a cosmetic line now
+degrades. Proven in `tests/unit/brand-kit-reads.test.ts` (both directions: a failure throws; absence is still null).
+`getBrandKit()` has no other caller in `src/` (`app/layout.tsx` only mentions it in a comment, since `DEC-201`).
