@@ -6,6 +6,7 @@ import { Field } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
 import { formatNumber } from "@/components/sessions/numerals";
 import { REMOVE_ATTENDEE_FRAME_INITIAL, type RemoveAttendeeFrameState } from "@/components/stories/state";
 import type { AttendeeStoryFrame } from "@/lib/dal/story-frames";
@@ -32,10 +33,22 @@ export function AttendeeStoriesClient({
 }) {
   const t = useTranslations("stories.admin");
   const tf = useTranslations("stories.frame");
+  const tm = useTranslations("photos.moderation");
+  const toast = useToast();
   const [target, setTarget] = useState<AttendeeStoryFrame | null>(null);
+  // ★ Every answer is SAID, never swallowed: «سُجّل القرار» when the database removed it (or had already), the
+  // reason at its field when it is missing, and any other refusal — not_authorized, not_found, a failure — as an error
+  // toast with the sheet left open, so a removal that did not write never looks like one that did. The toast fires
+  // inside the action, never from an effect (SCR-051's `Decide`, the same rule).
   const [state, formAction] = useActionState(async (prev: RemoveAttendeeFrameState, form: FormData) => {
     const next = await removeAction(prev, form);
-    if (next.outcome === "removed" || next.outcome === "already_removed") setTarget(null);
+    if (next.outcome === "removed" || next.outcome === "already_removed") {
+      setTarget(null);
+      toast.show({ title: tm("done"), tone: "success" });
+    } else if (next.outcome !== "reason_required") {
+      const key = next.outcome === "not_authorized" || next.outcome === "not_found" ? next.outcome : "unknown";
+      toast.show({ title: tm(`error.${key}`), tone: "error" });
+    }
     return next;
   }, REMOVE_ATTENDEE_FRAME_INITIAL);
   const reasonError = state.outcome === "reason_required" && state.frameId === target?.id;

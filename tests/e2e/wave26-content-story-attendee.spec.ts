@@ -261,7 +261,12 @@ test("SCR-044's «قصص الحضور»: staff remove a frame with its reason �
   const sheet = page.getByRole("dialog", { name: "أزل" });
   await sheet.getByRole("textbox").fill("خارج موضوع الجلسة");
   await sheet.getByRole("button", { name: "أزل" }).click();
-  await expect(strip.locator(`li[data-frame-id="${videoFrame}"]`)).toHaveCount(0);
+  // ★ Wait on the UI's own acknowledgement — never on the strip's count: while the sheet is open the page behind it is
+  // aria-hidden, so a ROLE locator finds no region and «0 tiles» passes before anything is written (the first run's
+  // false pass). The sheet closes and «سُجّل القرار» is said only when the database answered `removed`.
+  await expect(sheet).toBeHidden();
+  await expect(page.getByText("سُجّل القرار", { exact: true })).toBeVisible();
+  await expect(page.locator(`#main li[data-frame-id="${videoFrame}"]`)).toHaveCount(0);
 
   const { rows } = await db.query(`select removed_by, removal_reason from public.story_frames where id = $1`, [videoFrame]);
   expect(rows[0]).toEqual({ removed_by: ids.staff, removal_reason: "خارج موضوع الجلسة" });
