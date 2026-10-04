@@ -1550,6 +1550,14 @@ html[data-sting="done"] {
 }
 
 /* Register-route loading screen: three dots connecting */
+/* ★ wave 26 (DEC-251 §4.10, REQ-STO-007) — the story viewer's one keyframe: a frame arriving. Transform and opacity
+   only, a token's duration, applied by `story-viewer` under `motion-safe:` so reduced motion changes frames with no
+   slide at all. It is NOT a moment (there is no sixth), and under `[data-console]` motion is off regardless. */
+@keyframes story-frame-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
 @keyframes loader-dot {
   0%,
   100% {

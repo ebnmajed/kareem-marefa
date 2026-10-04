@@ -101,5 +101,7 @@ export const BUCKETS: { name: string; orgPrefixed: boolean }[] = [
   // treat as a fact about the environment, not a violation.
   { name: "photo-albums", orgPrefixed: true },
   { name: "avatars", orgPrefixed: true },
+  // ★ Wave 26 (DEC-251 §4.10, 0198): a story video's source, rendition and poster — `{org}/sessions/…/frames/…`.
+  { name: "story-media", orgPrefixed: true },
   { name: "fonts", orgPrefixed: false },
 ];
