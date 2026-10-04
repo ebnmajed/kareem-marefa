@@ -269,20 +269,22 @@ describe("REQ-DSG-026 — the brand constraint", () => {
     expect(colourFieldsOf({ ...doc, background: { type: "solid", color: "{{brand.canvas}}" }, layers: [] }).map((c) => c.path)).toEqual(["background.color"]);
   });
 
-  it("★ the database's template guard walks the SAME colour fields as colourFieldsOf()", () => {
-    // Two lists of «where a colour lives» — this one and the SQL guard's —
-    // are one list only if something holds them together. Read from the
-    // proposed file while it exists, else from the promoted migration.
+  it("★ the database's template guard no longer has an opinion about colour — and still refuses a broken document", () => {
+    // ★★ LEDGER (wave 24's re-colour): this REPLACED «the database's template
+    // guard walks the SAME colour fields as `colourFieldsOf()`». It was the
+    // right test while two lists of «where a colour lives» had to stay one
+    // list; the owner's ruling removes the SQL list entirely, so asserting a
+    // mirror of it would be asserting against nothing.
     //
-    // ★★ THE NEWEST GUARD, NOT THE FIRST ONE (wave 24's re-colour). This used
-    // to look for one exact basename — `_template_guard_walks_every_colour.sql`
-    // — with `.find()`, which takes the FIRST match. The moment a second guard
-    // migration existed it would have read `0094`, kept asserting `0094`'s
-    // regex, and PASSED GREEN while production ran a different guard: the exact
-    // silent drift this test exists to prevent, in the test itself. So: every
-    // file whose name says it is the guard, sorted, and the LAST one — which is
-    // the highest-numbered migration, and whichever proposed file is about to
-    // be promoted over it.
+    // ★ What is asserted instead is the shape of the decision: the guard keeps
+    // the five STRUCTURAL checks — a document that is broken rather than merely
+    // styled differently — and reads no colour field at all. A walk that
+    // collected every colour and then accepted all of them would read like a
+    // gate while never refusing, which is worse than no walk.
+    //
+    // ★ `colourFieldsOf()` is unchanged and is still the runtime's ONE list of
+    // where a colour lives: `brandViolations()` and the parity harness both
+    // read it, and the case above holds it to the model.
     const guard = /_template_guard_.*\.sql$/;
     const newest = (dir: string) =>
       existsSync(dir)
@@ -301,19 +303,25 @@ describe("REQ-DSG-026 — the brand constraint", () => {
       return;
     }
     const sql = readFileSync(file, "utf8");
-    expect(sql).toContain(`new.document->'background'->>'color'`);
-    expect(sql).toContain(`new.document->'background'->'stops'`);
-    expect(sql).toContain(`v_stop->>'color'`);
-    expect(sql).toContain(`v_layer->>'color'`);
-    expect(sql).toContain(`v_layer#>>'{shape,fill}'`);
-    expect(sql).toContain(`v_layer#>>'{shape,stroke}'`);
-    // …and an allowlist of the binding SHAPE, not a denylist of `#`, over the
-    // two namespaces that exist: `brand` (an org's kit) and `design` (the
-    // platform's design constants, wave 24). ★ LEDGER: the expectation changed,
-    // not a selector — the guard admits one more namespace and refuses
-    // everything it refused before, which `tests/rls/templates-guard.test.ts`
-    // asserts case by case.
-    expect(sql).toContain(String.raw`!~ '^\{\{\s*(brand|design)\.[A-Za-z]+\s*\}\}$'`);
+
+    // The five structural refusals, each by the error it raises.
+    for (const refusal of [
+      "document_schema_version_missing",
+      "document_layers_missing",
+      "layer_id_missing",
+      "layer_id_duplicated",
+      "layer_kind_invalid",
+    ]) {
+      expect(sql, `the guard kept ${refusal}`).toContain(refusal);
+    }
+
+    // ★ And no colour is read, by any route. `hardcoded_colour_in_template` was
+    // the mandate's own error; `background` and `shape,fill` were where it
+    // looked. A future edit that re-adds any of them re-adds the mandate, and
+    // this is the line that says so.
+    for (const gone of ["hardcoded_colour_in_template", "background", "{shape,fill}", "{shape,stroke}", "brand\\."]) {
+      expect(sql, `the guard still reads ${gone}`).not.toContain(gone);
+    }
   });
 
   it("the only image layer anywhere is the org logo, bound rather than embedded", () => {

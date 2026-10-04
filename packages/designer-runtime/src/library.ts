@@ -477,6 +477,13 @@ const LOCKUP_GAP = 52
 /** The signature label's size, and one line of it. `Math.ceil` because the
  *  frame must be at least its own line tall — a shorter one warns on every
  *  export, and the fraction is where that creeps in. */
+/** The wordmark's slot. A FIXED width, not a fraction of `L.head`: the text is a
+ *  fixed literal at a fixed size and measures ~640 px at 120, so a fraction
+ *  would be generous on landscape and too narrow on portrait, where `head` is
+ *  1700. 700 fits both with room and keeps the org's name beside it rather than
+ *  adrift. */
+const WORDMARK_SLOT = 700
+
 const SIGNATURE_SIZE = 56
 const SIGNATURE_LINE = Math.ceil(SIGNATURE_SIZE * 1.7)
 
@@ -551,15 +558,46 @@ function certificateDocument(family: CertificateFamily, orientation: Certificate
     //   on a 3508 page: 220 was already right, only its corner was wrong.
     logo(L.logo),
     {
+      id: 'l_wordmark',
+      kind: 'text',
+      name: 'اسم المنصة',
+      // ★ THE LOCKUP IS THREE PARTS, from the rendered artboard
+      //   (`png/SCR-056 · 057 · المصمّم — قالب شهادة@1x.png`): a mark, the
+      //   PLATFORM's name in the display face, and the ORG's name after it,
+      //   small and muted. `DEC-242` §1 named «the org wordmark» alone and had
+      //   the logo on the other side of the page; the render has all three
+      //   together at the block-start inline-start.
+      //
+      // ★ A LITERAL, and deliberately so: «كريم معرفة» is the product, and an
+      //   org is a chapter of it — the email artboards put the same pair in the
+      //   same order in every message header. It needs no binding, which is what
+      //   keeps this refinement inside the wave.
+      //
+      // Optically centred on the mark: the mark spans 220 from `L.logo.y`, so a
+      // 170-high line sits 25 below its top.
+      frame: { x: x + L.logo.w + LOCKUP_GAP, y: L.box.y + 25, w: WORDMARK_SLOT, h: 170 },
+      text: { literal: 'كريم معرفة' },
+      font: { family: DISPLAY, size: 120, lineHeight: 1.4, letterSpacing: 0, weight: 700 },
+      color: '{{brand.fgHeading}}',
+      align: 'start',
+      z: 10,
+    },
+    {
       id: 'l_org',
       kind: 'dynamic_field',
       name: 'اسم المؤسسة',
-      // Beside the mark and optically centred on it: the mark spans 220 from
-      // `L.logo.y`, so a 170-high line sits 25 below its top.
-      frame: { x: x + L.logo.w + LOCKUP_GAP, y: L.box.y + 25, w: L.head - L.logo.w - LOCKUP_GAP, h: 170 },
+      // After the wordmark on the same line, at the render's own ratio — the
+      // org's name is ~0.55 of the platform's there — and dropped 62 so the two
+      // sit on one optical baseline rather than one top edge.
+      frame: {
+        x: x + L.logo.w + LOCKUP_GAP + WORDMARK_SLOT + LOCKUP_GAP,
+        y: L.box.y + 25 + 62,
+        w: L.head - L.logo.w - LOCKUP_GAP * 2 - WORDMARK_SLOT,
+        h: 90,
+      },
       field: { binding: 'org.name', fallback: 'اسم المؤسسة' },
-      font: { family: DISPLAY, size: 120, lineHeight: 1.4, letterSpacing: 0, weight: 700 },
-      color: '{{brand.fgHeading}}',
+      font: { family: DISPLAY, size: 64, lineHeight: 1.4, letterSpacing: 0, weight: 700 },
+      color: '{{brand.fgMuted}}',
       align: 'start',
       z: 10,
     },
@@ -567,7 +605,12 @@ function certificateDocument(family: CertificateFamily, orientation: Certificate
       id: 'l_kind',
       kind: 'text',
       name: 'نوع الشهادة',
-      frame: { x, y: L.box.y + 190, w: L.head, h: 120 },
+      // ★ BELOW THE LOCKUP, not beside it. `L.box.y + 190` put this at 430 while
+      //   the mark now spans 240 – 460 in the same column, and the two collided
+      //   by 30 px — found by rendering the certificate at its own size, which no
+      //   assertion would have caught: both frames are inside the safe box and
+      //   neither is shorter than its own line.
+      frame: { x, y: L.logo.y + L.logo.h + 40, w: L.head, h: 120 },
       text: { literal: CERTIFICATE_NAMES[family] },
       font: { family: DISPLAY, size: 84, lineHeight: 1.4, letterSpacing: 0, weight: 700 },
       color: '{{brand.fgMuted}}',
@@ -755,6 +798,15 @@ export const BASELINE_LIBRARY: BaselineTemplate[] = [
 /**
  * The brand rules, as a check anything can run — REQ-DSG-026, DEC-003.
  *
+ * ★ AFTER WAVE 24's RE-COLOUR THIS IS THE PLATFORM'S OWN STANDARD, not a
+ * constraint on anybody. The database guard no longer refuses a literal colour
+ * — a brand token is an option an admin may take, not a toll every colour pays
+ * (the owner's ruling) — so nothing here is enforced on an org's document, and
+ * nothing outside `BASELINE_LIBRARY`'s own test calls it. What it still buys is
+ * that the ELEVEN BASELINE COMPOSITIONS bind named colours rather than hexes:
+ * one definition, one edit, one place, which is `REQ-DSG-021`'s substance
+ * surviving the removal of its mandate.
+ *
  * A style guide nobody opens while designing is a style guide that is not
  * followed. This is the same rules as a function, so the library's own test
  * and any future template screen can ask the same question.
@@ -767,13 +819,13 @@ export function brandViolations(document: DesignDocument): string[] {
   // version too, and this says so before it gets there (REQ-DSG-021).
   for (const hex of text.match(/"#[0-9a-fA-F]{3,8}"/g) ?? []) problems.push(`a hard-coded colour ${hex}`)
 
-  // ★ And every colour a template carries is a brand TOKEN THAT EXISTS —
-  // `rgb(…)`, `navy` and `{{brand.canvsRaise}}` are as hard-coded, or as
-  // broken, as a hex. Every stop of a gradient included (DEC-127): a
-  // gradient has no `background.color`, which is exactly where the first
-  // guard stopped looking. The database guard checks the binding SHAPE on the
-  // same fields; membership lives here, beside the token list, so there is
-  // one copy of it.
+  // ★ And every colour a template carries is a TOKEN THAT EXISTS, in one of the
+  // two namespaces — `rgb(…)`, `navy` and `{{brand.canvsRaise}}` are as
+  // hard-coded, or as broken, as a hex. Every stop of a gradient included
+  // (DEC-127): a gradient has no `background.color`, which is exactly where the
+  // first guard stopped looking. ★ The database no longer checks any of this
+  // (wave 24's re-colour), so this is the only place it is checked, and it is
+  // checked only against the platform's own library.
   for (const { path, value } of colourFieldsOf(document)) {
     const bound = /^\{\{\s*(brand|design)\.([A-Za-z]+)\s*\}\}$/.exec(value)
     if (!bound) {

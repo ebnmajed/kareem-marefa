@@ -1546,18 +1546,17 @@ v_doc    := $json${
       "z": 10
     },
     {
-      "id": "l_org",
-      "kind": "dynamic_field",
-      "name": "اسم المؤسسة",
+      "id": "l_wordmark",
+      "kind": "text",
+      "name": "اسم المنصة",
       "frame": {
         "x": 512,
         "y": 265,
-        "w": 1928,
+        "w": 700,
         "h": 170
       },
-      "field": {
-        "binding": "org.name",
-        "fallback": "اسم المؤسسة"
+      "text": {
+        "literal": "كريم معرفة"
       },
       "font": {
         "family": "Baloo Bhaijaan 2",
@@ -1571,12 +1570,37 @@ v_doc    := $json${
       "z": 10
     },
     {
+      "id": "l_org",
+      "kind": "dynamic_field",
+      "name": "اسم المؤسسة",
+      "frame": {
+        "x": 1264,
+        "y": 327,
+        "w": 1176,
+        "h": 90
+      },
+      "field": {
+        "binding": "org.name",
+        "fallback": "اسم المؤسسة"
+      },
+      "font": {
+        "family": "Baloo Bhaijaan 2",
+        "size": 64,
+        "lineHeight": 1.4,
+        "letterSpacing": 0,
+        "weight": 700
+      },
+      "color": "{{brand.fgMuted}}",
+      "align": "start",
+      "z": 10
+    },
+    {
       "id": "l_kind",
       "kind": "text",
       "name": "نوع الشهادة",
       "frame": {
         "x": 240,
-        "y": 430,
+        "y": 500,
         "w": 2200,
         "h": 120
       },
@@ -1894,18 +1918,17 @@ v_doc    := $json${
       "z": 10
     },
     {
-      "id": "l_org",
-      "kind": "dynamic_field",
-      "name": "اسم المؤسسة",
+      "id": "l_wordmark",
+      "kind": "text",
+      "name": "اسم المنصة",
       "frame": {
         "x": 512,
         "y": 265,
-        "w": 1428,
+        "w": 700,
         "h": 170
       },
-      "field": {
-        "binding": "org.name",
-        "fallback": "اسم المؤسسة"
+      "text": {
+        "literal": "كريم معرفة"
       },
       "font": {
         "family": "Baloo Bhaijaan 2",
@@ -1919,12 +1942,37 @@ v_doc    := $json${
       "z": 10
     },
     {
+      "id": "l_org",
+      "kind": "dynamic_field",
+      "name": "اسم المؤسسة",
+      "frame": {
+        "x": 1264,
+        "y": 327,
+        "w": 676,
+        "h": 90
+      },
+      "field": {
+        "binding": "org.name",
+        "fallback": "اسم المؤسسة"
+      },
+      "font": {
+        "family": "Baloo Bhaijaan 2",
+        "size": 64,
+        "lineHeight": 1.4,
+        "letterSpacing": 0,
+        "weight": 700
+      },
+      "color": "{{brand.fgMuted}}",
+      "align": "start",
+      "z": 10
+    },
+    {
       "id": "l_kind",
       "kind": "text",
       "name": "نوع الشهادة",
       "frame": {
         "x": 240,
-        "y": 430,
+        "y": 500,
         "w": 1700,
         "h": 120
       },
@@ -2242,18 +2290,17 @@ v_doc    := $json${
       "z": 10
     },
     {
-      "id": "l_org",
-      "kind": "dynamic_field",
-      "name": "اسم المؤسسة",
+      "id": "l_wordmark",
+      "kind": "text",
+      "name": "اسم المنصة",
       "frame": {
         "x": 512,
         "y": 265,
-        "w": 1928,
+        "w": 700,
         "h": 170
       },
-      "field": {
-        "binding": "org.name",
-        "fallback": "اسم المؤسسة"
+      "text": {
+        "literal": "كريم معرفة"
       },
       "font": {
         "family": "Baloo Bhaijaan 2",
@@ -2267,12 +2314,37 @@ v_doc    := $json${
       "z": 10
     },
     {
+      "id": "l_org",
+      "kind": "dynamic_field",
+      "name": "اسم المؤسسة",
+      "frame": {
+        "x": 1264,
+        "y": 327,
+        "w": 1176,
+        "h": 90
+      },
+      "field": {
+        "binding": "org.name",
+        "fallback": "اسم المؤسسة"
+      },
+      "font": {
+        "family": "Baloo Bhaijaan 2",
+        "size": 64,
+        "lineHeight": 1.4,
+        "letterSpacing": 0,
+        "weight": 700
+      },
+      "color": "{{brand.fgMuted}}",
+      "align": "start",
+      "z": 10
+    },
+    {
       "id": "l_kind",
       "kind": "text",
       "name": "نوع الشهادة",
       "frame": {
         "x": 240,
-        "y": 430,
+        "y": 500,
         "w": 2200,
         "h": 120
       },
@@ -2590,18 +2662,17 @@ v_doc    := $json${
       "z": 10
     },
     {
-      "id": "l_org",
-      "kind": "dynamic_field",
-      "name": "اسم المؤسسة",
+      "id": "l_wordmark",
+      "kind": "text",
+      "name": "اسم المنصة",
       "frame": {
         "x": 512,
         "y": 265,
-        "w": 1428,
+        "w": 700,
         "h": 170
       },
-      "field": {
-        "binding": "org.name",
-        "fallback": "اسم المؤسسة"
+      "text": {
+        "literal": "كريم معرفة"
       },
       "font": {
         "family": "Baloo Bhaijaan 2",
@@ -2615,12 +2686,37 @@ v_doc    := $json${
       "z": 10
     },
     {
+      "id": "l_org",
+      "kind": "dynamic_field",
+      "name": "اسم المؤسسة",
+      "frame": {
+        "x": 1264,
+        "y": 327,
+        "w": 676,
+        "h": 90
+      },
+      "field": {
+        "binding": "org.name",
+        "fallback": "اسم المؤسسة"
+      },
+      "font": {
+        "family": "Baloo Bhaijaan 2",
+        "size": 64,
+        "lineHeight": 1.4,
+        "letterSpacing": 0,
+        "weight": 700
+      },
+      "color": "{{brand.fgMuted}}",
+      "align": "start",
+      "z": 10
+    },
+    {
       "id": "l_kind",
       "kind": "text",
       "name": "نوع الشهادة",
       "frame": {
         "x": 240,
-        "y": 430,
+        "y": 500,
         "w": 1700,
         "h": 120
       },
@@ -2938,18 +3034,17 @@ v_doc    := $json${
       "z": 10
     },
     {
-      "id": "l_org",
-      "kind": "dynamic_field",
-      "name": "اسم المؤسسة",
+      "id": "l_wordmark",
+      "kind": "text",
+      "name": "اسم المنصة",
       "frame": {
         "x": 512,
         "y": 265,
-        "w": 1928,
+        "w": 700,
         "h": 170
       },
-      "field": {
-        "binding": "org.name",
-        "fallback": "اسم المؤسسة"
+      "text": {
+        "literal": "كريم معرفة"
       },
       "font": {
         "family": "Baloo Bhaijaan 2",
@@ -2963,12 +3058,37 @@ v_doc    := $json${
       "z": 10
     },
     {
+      "id": "l_org",
+      "kind": "dynamic_field",
+      "name": "اسم المؤسسة",
+      "frame": {
+        "x": 1264,
+        "y": 327,
+        "w": 1176,
+        "h": 90
+      },
+      "field": {
+        "binding": "org.name",
+        "fallback": "اسم المؤسسة"
+      },
+      "font": {
+        "family": "Baloo Bhaijaan 2",
+        "size": 64,
+        "lineHeight": 1.4,
+        "letterSpacing": 0,
+        "weight": 700
+      },
+      "color": "{{brand.fgMuted}}",
+      "align": "start",
+      "z": 10
+    },
+    {
       "id": "l_kind",
       "kind": "text",
       "name": "نوع الشهادة",
       "frame": {
         "x": 240,
-        "y": 430,
+        "y": 500,
         "w": 2200,
         "h": 120
       },
@@ -3286,18 +3406,17 @@ v_doc    := $json${
       "z": 10
     },
     {
-      "id": "l_org",
-      "kind": "dynamic_field",
-      "name": "اسم المؤسسة",
+      "id": "l_wordmark",
+      "kind": "text",
+      "name": "اسم المنصة",
       "frame": {
         "x": 512,
         "y": 265,
-        "w": 1428,
+        "w": 700,
         "h": 170
       },
-      "field": {
-        "binding": "org.name",
-        "fallback": "اسم المؤسسة"
+      "text": {
+        "literal": "كريم معرفة"
       },
       "font": {
         "family": "Baloo Bhaijaan 2",
@@ -3311,12 +3430,37 @@ v_doc    := $json${
       "z": 10
     },
     {
+      "id": "l_org",
+      "kind": "dynamic_field",
+      "name": "اسم المؤسسة",
+      "frame": {
+        "x": 1264,
+        "y": 327,
+        "w": 676,
+        "h": 90
+      },
+      "field": {
+        "binding": "org.name",
+        "fallback": "اسم المؤسسة"
+      },
+      "font": {
+        "family": "Baloo Bhaijaan 2",
+        "size": 64,
+        "lineHeight": 1.4,
+        "letterSpacing": 0,
+        "weight": 700
+      },
+      "color": "{{brand.fgMuted}}",
+      "align": "start",
+      "z": 10
+    },
+    {
       "id": "l_kind",
       "kind": "text",
       "name": "نوع الشهادة",
       "frame": {
         "x": 240,
-        "y": 430,
+        "y": 500,
         "w": 1700,
         "h": 120
       },

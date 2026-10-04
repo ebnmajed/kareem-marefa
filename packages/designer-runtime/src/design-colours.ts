@@ -11,11 +11,22 @@
  * «لقاء» *is*. An org must never be able to rebrand it, which is precisely why
  * these values are not brand tokens.
  *
- * They are not literals either. `0094`'s guard refuses a hex in a template
- * document and is right to (`DEC-127`'s reasoning): a literal is invisible
- * until someone changes a colour, and it makes `DEC-008`'s «one edit in one
- * place» aspirational. So the design's colours get their own binding
- * namespace, and this file is the one place they are defined.
+ * They are not literals either, and after wave 24 that is a CHOICE rather than a
+ * rule. `0055` and `0094` used to refuse a hex in a template document; the
+ * owner's ruling ended that — a brand token is an option an admin may take, not
+ * a toll every colour pays — so a literal is now accepted everywhere. What a
+ * named constant still buys, and why the five baseline posters bind one:
+ *
+ *   · ONE DEFINITION. Changing the design's tangerine changes every template
+ *     that names it, which is `DEC-008`'s «one edit in one place» surviving the
+ *     removal of the rule that used to enforce it.
+ *   · A PICKABLE PALETTE. The inspector can offer «برتقالي» as a swatch; it
+ *     cannot offer `#FF9A2E` as anything an admin would recognise. A colour in a
+ *     document that the UI cannot reproduce is a colour an admin cannot
+ *     re-apply after «انسخ لتعدّل».
+ *
+ * So this file is the one place they are defined — and an admin who wants a
+ * colour that is not here types it, which is now allowed.
  *
  * ★ HOW THE ERROR THAT MADE THIS NECESSARY HAPPENED, because it was not «the
  * design was not read». `DEC-242` §2 ruled these colours out by name — they
@@ -112,9 +123,11 @@ export const DESIGN_NAMESPACE = 'design'
  *
  * `undefined` for an unknown name, so `resolveColour()` falls through to its
  * caller's fallback exactly as it does for `{{brand.canvsRaise}}` today.
- * Membership is `brandViolations()`'s job, as it already is for brand tokens —
- * the database guard checks the binding's SHAPE and this file's list is what
- * says a name exists.
+ * ★ Nothing refuses an unknown name: the database stopped having an opinion
+ * about colour in wave 24's re-colour, and `brandViolations()` — which reads
+ * this file's list — judges the platform's own library and nobody else's. A
+ * name that does not exist renders the fallback, visibly, which is where a
+ * typo should surface for an admin who is free to type one.
  */
 export function designColour(path: string): string | undefined {
   const dot = path.indexOf('.')

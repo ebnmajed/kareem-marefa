@@ -1,9 +1,24 @@
-// The template guard walks every colour — REQ-DSG-021, DEC-127, DEC-148.
+// The template guard polices STRUCTURE and no longer polices COLOUR —
+// REQ-DSG-005, REQ-DSG-021 as wave 24's re-colour amends it, DEC-242.
 //
-// `supabase/proposed/designer/0001_template_guard_walks_every_colour.sql`
-// re-creates 0055's `design_template_versions_guard()`. 0055 read
-// `background.color`, which a gradient does not have, and refused only a value
-// starting with `#`: a hex in a gradient stop, `rgb(…)` and `navy` all passed.
+// ★★ THE WHOLE COLOUR HALF OF THIS SUITE IS INVERTED, and every case is a ledger
+// line rather than a deletion: a guard that has stopped refusing something is
+// proved to have stopped refusing it. `0055` refused a value starting with `#`
+// and `0094` refused anything that was not `{{brand.<token>}}`; the owner's
+// ruling is that a brand token is an OPTION an admin may take, not a toll every
+// colour pays — «remove the whole brand thing and make it optional … let the
+// user do whatever they need».
+//
+// ★ What the mandate bought, measured against this wave: `DEC-127` justified it
+// as stopping «an org that rebrands a gradient whose far end is somebody else's
+// colour». It did not stop that. It stopped the product's own design reaching
+// its own posters, because `01-tokens.md` has no brand token for tangerine, cyan
+// or violet — so five families were painted from the ten tokens and three of
+// them came out within 1.22:1 of each other.
+//
+// ★ The cost, asserted below rather than left to be rediscovered: a template
+// whose colours are literals is not repainted when an org saves its brand kit.
+// That is the admin's own choice.
 //
 // Applied with applyProposed() inside each test's rolled-back transaction, and
 // only while the file is still under `supabase/proposed/` — once the lead
@@ -18,11 +33,11 @@ import { seedBase } from "./fixture";
 afterAll(() => pool.end());
 
 const INVALID = "22023";
-// ★ The NEWEST guard (wave 24's re-colour): `_admits_design_colours` re-creates
-// the function again, adding the `design.*` namespace and refusing everything
-// 0094 refused. Applied while it is proposed; once promoted, `supabase db reset`
-// has applied it and the same cases run against the migration.
-const FILE = "designer/0001_template_guard_admits_design_colours.sql";
+// ★ The NEWEST guard (wave 24's re-colour): `_drops_the_colour_mandate`
+// re-creates the function with the five structural checks and no colour walk at
+// all. Applied while it is proposed; once promoted, `supabase db reset` has
+// applied it and the same cases run against the migration.
+const FILE = "designer/0001_template_guard_drops_the_colour_mandate.sql";
 
 const TEXT = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -66,43 +81,46 @@ async function setup(tx: Tx) {
   return { insert };
 }
 
-describe("POL-design_template_versions — the guard walks every colour (DEC-127)", () => {
-  it("guard_gradient_stop_hex — a hex literal in ANY stop is refused; the same gradient on tokens is accepted", async () => {
+describe("POL-design_template_versions — the guard polices structure, not colour (DEC-242)", () => {
+  it("guard_gradient_stop_hex — ★ LEDGER: RETIRED. A hex in any stop is now ACCEPTED, and so is the same gradient on tokens", async () => {
+    // ★ Was: «a hex literal in ANY stop is refused». `DEC-127` added that case
+    // after 0055 let a hex through a gradient — the walk was the right fix for
+    // «the guard does not look here», and the REFUSAL was the part that turned
+    // out to cost more than it bought.
     await withTx(async (tx) => {
       const { insert } = await setup(tx);
 
-      // DEC-127's own background, on tokens — the whole point of the rule.
+      // Still accepted, and still the thing a template that wants a rebrand to
+      // reach it should do.
       expect(await errorCode(() => insert(DOC()))).toBeNull();
 
-      // The literal the canvas paints, in the second stop — what 0055 let through.
-      expect(await errorCode(() => insert(DOC({ background: GRADIENT([{ color: "{{brand.surface}}" }, { color: "#1d2a42" }]) })))).toBe(INVALID);
-      // And in the first, so the walk is not «the last stop only».
-      expect(await errorCode(() => insert(DOC({ background: GRADIENT([{ color: "#111a2c" }, { color: "{{brand.canvasRaise}}" }]) })))).toBe(INVALID);
-
-      const message = await errorMessage(() =>
-        insert(DOC({ background: GRADIENT([{ color: "{{brand.surface}}" }, { color: "#1d2a42" }]) })),
-      );
-      expect(message).toContain("hardcoded_colour_in_template");
-      expect(message).toContain("background.stops[1].color");
+      // ★ Now accepted: the literal the canvas paints, in either stop.
+      expect(await errorCode(() => insert(DOC({ background: GRADIENT([{ color: "{{brand.surface}}" }, { color: "#1d2a42" }]) })))).toBeNull();
+      expect(await errorCode(() => insert(DOC({ background: GRADIENT([{ color: "#111a2c" }, { color: "{{brand.canvasRaise}}" }]) })))).toBeNull();
+      // And a gradient that is literals end to end.
+      expect(await errorCode(() => insert(DOC({ background: GRADIENT([{ color: "#FF9A2E" }, { color: "#0B0C12" }]) })))).toBeNull();
     });
   });
 
-  it("guard_non_hex_literal — rgb(), a named colour and a non-brand binding are refused on every colour field", async () => {
+  it("guard_non_hex_literal — ★ LEDGER: RETIRED. rgb(), a named colour and a hex are now ACCEPTED on every colour field", async () => {
+    // ★ Was: «refused on the background, a stop, a layer `color`, `shape.fill`
+    // and `shape.stroke` alike». The FIELDS the old guard walked are the thing
+    // worth keeping from it, so the same five are exercised — now asserting that
+    // none of them refuses.
     await withTx(async (tx) => {
       const { insert } = await setup(tx);
 
-      for (const literal of ["rgb(29, 42, 66)", "navy", "{{session.title}}", "transparent"]) {
-        expect(await errorCode(() => insert(DOC({ background: { type: "solid", color: literal } }))), `background ${literal}`).toBe(INVALID);
-        expect(await errorCode(() => insert(DOC({ background: GRADIENT([{ color: literal }, { color: "{{brand.canvasRaise}}" }]) }))), `stop ${literal}`).toBe(
-          INVALID,
-        );
-        expect(await errorCode(() => insert(DOC({}, [TEXT("l1", { color: literal })]))), `color ${literal}`).toBe(INVALID);
+      for (const literal of ["rgb(29, 42, 66)", "navy", "#0B0C12", "#FF9A2E", "transparent", "var(--whatever)"]) {
+        expect(await errorCode(() => insert(DOC({ background: { type: "solid", color: literal } }))), `background ${literal}`).toBeNull();
+        expect(await errorCode(() => insert(DOC({ background: GRADIENT([{ color: literal }, { color: "{{brand.canvasRaise}}" }]) }))), `stop ${literal}`).toBeNull();
+        expect(await errorCode(() => insert(DOC({}, [TEXT("l1", { color: literal })]))), `color ${literal}`).toBeNull();
         const shape = (field: "fill" | "stroke") => ({ id: "l_rule", kind: "shape", frame: { x: 0, y: 0, w: 10, h: 2 }, shape: { type: "rect", [field]: literal } });
-        expect(await errorCode(() => insert(DOC({}, [shape("fill")]))), `fill ${literal}`).toBe(INVALID);
-        expect(await errorCode(() => insert(DOC({}, [shape("stroke")]))), `stroke ${literal}`).toBe(INVALID);
+        expect(await errorCode(() => insert(DOC({}, [shape("fill")]))), `fill ${literal}`).toBeNull();
+        expect(await errorCode(() => insert(DOC({}, [shape("stroke")]))), `stroke ${literal}`).toBeNull();
       }
 
-      // Tokens pass on every one of those fields, including a spaced binding.
+      // Tokens pass on every one of those fields, including a spaced binding —
+      // unchanged, and the assertion that the OPTION still works.
       expect(await errorCode(() => insert(DOC({ background: { type: "solid", color: "{{ brand.canvas }}" } })))).toBeNull();
       expect(
         await errorCode(() =>
@@ -114,66 +132,23 @@ describe("POL-design_template_versions — the guard walks every colour (DEC-127
     });
   });
 
-  it("guard_design_namespace — ★ `{{design.*}}` is accepted, and the guard refuses everything it refused before", async () => {
-    // ★★ THE PROOF THE GUARD DID NOT WEAKEN, case by case.
+  it("guard_design_namespace — ★ `{{design.*}}` is accepted, which is what the baseline posters ship", async () => {
+    // ★ The namespace survives the mandate's removal and is the better half of
+    // it: a NAMED, PICKABLE palette gives the inspector swatches, which a raw
+    // hex never would. The five baseline poster families bind it, and an org
+    // that copies one keeps a colour it can re-apply by name.
     //
-    // The new pattern is the old one with the literal `brand` replaced by
-    // `(brand|design)`. The argument is exhaustive rather than a sample: if a
-    // string matched the old pattern it still matches through the `brand`
-    // branch; if it did NOT, it can match the new one only through the `design`
-    // branch — only if it has the form `{{` `\s*` `design.` `[A-Za-z]+` `\s*`
-    // `}}`. So the newly-accepted set is exactly the well-formed `design`
-    // bindings. These cases are that argument, executed against the database.
+    // ★ `{{team.colour}}` is accepted too, now — not because a team colour
+    // resolves (it does not; it renders the caller's fallback) but because the
+    // guard has stopped having an opinion about colour. Making an unresolved
+    // binding visible is the renderer's and the studio's job, not a constraint
+    // in the database.
     await withTx(async (tx) => {
       const { insert } = await setup(tx);
-
-      // ── accepted, on every colour field ────────────────────────────────────
-      for (const ok of ["{{design.tangerine}}", "{{ design.cyan }}", "{{design.ink}}", "{{design.bone}}"]) {
+      for (const ok of ["{{design.tangerine}}", "{{ design.cyan }}", "{{design.ink}}", "{{design.bone}}", "{{design.unicorn}}", "{{team.colour}}"]) {
         expect(await errorCode(() => insert(DOC({ background: { type: "solid", color: ok } }))), `background ${ok}`).toBeNull();
-        expect(await errorCode(() => insert(DOC({ background: GRADIENT([{ color: ok }, { color: "{{brand.canvasRaise}}" }]) }))), `stop ${ok}`).toBeNull();
         expect(await errorCode(() => insert(DOC({}, [TEXT("l1", { color: ok })]))), `color ${ok}`).toBeNull();
-        const shape = (field: "fill" | "stroke") => ({ id: "l_rule", kind: "shape", frame: { x: 0, y: 0, w: 10, h: 2 }, shape: { type: "rect", [field]: ok } });
-        expect(await errorCode(() => insert(DOC({}, [shape("fill")]))), `fill ${ok}`).toBeNull();
-        expect(await errorCode(() => insert(DOC({}, [shape("stroke")]))), `stroke ${ok}`).toBeNull();
       }
-
-      // ★ MEMBERSHIP IS STILL NOT THE DATABASE'S JOB, and this asserts the seam
-      // rather than leaving it to be rediscovered: a well-formed binding to a
-      // name that does not exist is ACCEPTED here and renders the caller's
-      // fallback, exactly as `{{brand.canvsRaise}}` does. `brandViolations()`
-      // owns membership, beside the list, so there is one copy of it.
-      expect(await errorCode(() => insert(DOC({ background: { type: "solid", color: "{{design.unicorn}}" } })))).toBeNull();
-
-      // ── still refused ─────────────────────────────────────────────────────
-      const refused = [
-        "#0B0C12",
-        "#FF9A2E",
-        "rgb(255, 154, 46)",
-        "navy",
-        "transparent",
-        "var(--color-ink)",
-        // The third tier the artboard draws and DEC-242 §2 deferred: a team
-        // colour still cannot reach a template, and that is deliberate.
-        "{{team.colour}}",
-        "{{design}}",
-        "{{design.}}",
-        "{{design.tan-gerine}}",
-        "{{design.tangerine2}}",
-        "{{design.a.b}}",
-        "{{designer.tangerine}}",
-        "{{ design.cyan }} ",
-        "{{brand.canvas}}{{design.ink}}",
-      ];
-      for (const bad of refused) {
-        expect(await errorCode(() => insert(DOC({ background: { type: "solid", color: bad } }))), `background ${bad}`).toBe(INVALID);
-        expect(await errorCode(() => insert(DOC({}, [TEXT("l1", { color: bad })]))), `color ${bad}`).toBe(INVALID);
-      }
-
-      // The message still names the field and keeps 0055's prefix, so a caller
-      // matching it still matches.
-      const message = await errorMessage(() => insert(DOC({}, [TEXT("l_title", { color: "{{team.colour}}" })])));
-      expect(message).toContain("hardcoded_colour_in_template");
-      expect(message).toContain("layer l_title color");
     });
   });
 
