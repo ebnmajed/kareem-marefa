@@ -33,6 +33,14 @@ import { emptyDeleteState, emptySuspendState, type DeleteState, type SuspendStat
 
 const isolate = (value: string) => `⁨${value}⁩`;
 
+/**
+ * Coral text on a `ghost` act. A bare `text-error` loses to the variant's own `text-fg-heading` (same specificity, and
+ * the variant's utility sorts after it), so the act drew in the heading's bone. `pg-dark:` sorts after every base
+ * utility, which is how `danger` itself reaches DEC-073's on-dark error inside the scope; the platform is always
+ * inside it.
+ */
+const CORAL = "text-error pg-dark:text-error-on-dark";
+
 /** A 36 px pill with a 44 px hit area: the pseudo-element extends the target, not the drawing. */
 const HIT = "relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']";
 
@@ -97,7 +105,7 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
         <ButtonLink href={`/app/platform/orgs/${org.id}/domains`} variant="quiet" size="sm" className={HIT} aria-label={named(t("domainsLink"))}>
           {t("domainsLink")}
         </ButtonLink>
-        <Button type="button" variant="ghost" size="sm" className={`${HIT} text-error`} aria-label={named(t("deleteShort"))} onClick={() => setDialog("delete")}>
+        <Button type="button" variant="ghost" size="sm" className={`${HIT} ${CORAL}`} aria-label={named(t("deleteShort"))} onClick={() => setDialog("delete")}>
           {t("deleteShort")}
         </Button>
       </div>

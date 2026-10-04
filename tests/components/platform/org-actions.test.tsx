@@ -133,7 +133,10 @@ describe("OrgActions", () => {
 
   it("★ deletion is offered on an active org as well as a suspended one; «النطاقات» leads to SCR-082 (DEC-251 Q9)", () => {
     renderActions();
-    expect(screen.getByRole("button", { name: "احذف — Acme للاستشارات" })).toBeInTheDocument();
+    const del = screen.getByRole("button", { name: "احذف — Acme للاستشارات" });
+    // Coral text, not the heading's bone: jsdom computes no Tailwind, so the class that wins inside the dark scope is
+    // what is pinned — `pg-dark:` sorts after the ghost variant's own `text-fg-heading` (the lead's capture, wave 26).
+    expect(del.className).toContain("pg-dark:text-error-on-dark");
     expect(screen.getByRole("link", { name: "النطاقات — Acme للاستشارات" })).toHaveAttribute("href", expect.stringContaining(`/app/platform/orgs/${ORG.id}/domains`));
   });
 

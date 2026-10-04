@@ -38,7 +38,7 @@ export function OrgsTable({ orgs, locale }: { orgs: OrgSummary[]; locale: Locale
       header: t("orgColumn"),
       cell: (org) => (
         // One line, «name · slug», as drawn; it wraps — never truncates — where the column is narrow.
-        <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 md:min-w-56">
           <span className="text-label text-fg-heading">
             <bdi>{org.name}</bdi>
           </span>
@@ -83,9 +83,11 @@ export function OrgsTable({ orgs, locale }: { orgs: OrgSummary[]; locale: Locale
 
   return (
     <DataTable
-      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`. No
+      // `stickyHeader`: it makes the table `border-separate`, where a row's `border-b` is not drawn — and the board
+      // draws a rule under every row. The first column takes the slack (`md:min-w-56` on its cell) so a long name
+      // keeps to one or two lines while the counts stay narrow.
       className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
-      stickyHeader
       hiddenHeaders={["actions"]}
       label={t("title")}
       columns={columns}
