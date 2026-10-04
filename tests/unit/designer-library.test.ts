@@ -406,17 +406,35 @@ describe("the seed migrations are a copy of this library, and have not drifted",
   // files» would pick 0098's v2 and compare the OLD document against the new
   // library. The newest FILE wins instead, which is what «the latest seeded
   // version» always meant — file order is migration order.
-  function seedFile(name: string): string | null {
+  /**
+   * A seed's body, under `supabase/proposed/designer/` or promoted.
+   *
+   * ★ `promotedAs` exists because a promotion may RENAME. The fallback derives a
+   * suffix from the proposed name, which works while the lead promotes a file
+   * under its own name — and wave 24's two proposed files were promoted as ONE
+   * migration, `0193_baseline_library_playground.sql`, whose name ends with
+   * neither. `db.ts`'s rule is that a test proved under `proposed/` keeps passing
+   * the instant it is promoted, so a seed that was renamed says so here rather
+   * than returning null and failing as «a migration was not found».
+   */
+  function seedFile(name: string, promotedAs?: RegExp): string | null {
     const proposed = join(process.cwd(), "supabase", "proposed", "designer", name);
     if (existsSync(proposed)) return readFileSync(proposed, "utf8");
+    const dir = join(process.cwd(), "supabase", "migrations");
     const suffix = name.replace(/^\d+_/, "_");
-    const promoted = readdirSync(join(process.cwd(), "supabase", "migrations")).find((f) => f.endsWith(suffix));
-    return promoted ? readFileSync(join(process.cwd(), "supabase", "migrations", promoted), "utf8") : null;
+    const promoted = readdirSync(dir).find((f) => (promotedAs ? promotedAs.test(f) : f.endsWith(suffix)));
+    return promoted ? readFileSync(join(dir, promoted), "utf8") : null;
   }
 
   it("★ the latest seeded version of every composition deep-equals the library, dynamic fields included", () => {
     // Oldest first: the last file to mention a composition is the live one.
-    const bodies = [seedFile("0004_baseline_library.sql"), seedFile("0002_certificate_library.sql"), seedFile("0005_playground_library.sql")];
+    const bodies = [
+      seedFile("0004_baseline_library.sql"),
+      seedFile("0002_certificate_library.sql"),
+      // Promoted as `0193_baseline_library_playground.sql`, together with the
+      // supersede function it calls.
+      seedFile("0005_playground_library.sql", /_baseline_library_playground\.sql$/),
+    ];
     if (bodies.some((b) => b === null)) {
       expect.fail("a baseline-library seed migration (0061's, or the wave-8 certificate library) was not found");
       return;
