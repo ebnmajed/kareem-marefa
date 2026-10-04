@@ -120,8 +120,9 @@ test.beforeAll(async ({}, testInfo) => {
   const prefix = `${orgId}/sessions/${sessionId}/frames/${videoFrame}`;
   await db.query(
     `insert into public.story_frames (id, org_id, session_id, kind, trigger_key, triggered_at, author_id, caption, video_path, poster_path, duration_ms)
-     values ($1, $2, $3, 'video', $1::text, now() - interval '5 minutes', $4, $5, $6, $7, 12000)`,
-    [videoFrame, orgId, sessionId, ids.attendee, CAPTION, `${prefix}/video.mp4`, `${prefix}/poster.webp`],
+     values ($1::uuid, $2, $3, 'video', $8::text, now() - interval '5 minutes', $4, $5, $6, $7, 12000)`,
+    // The id twice, as two parameters: one parameter cannot be deduced as both a uuid and a text.
+    [videoFrame, orgId, sessionId, ids.attendee, CAPTION, `${prefix}/video.mp4`, `${prefix}/poster.webp`, videoFrame],
   );
   for (const [name, type] of [["video.mp4", "video/mp4"], ["poster.webp", "image/webp"]] as const) {
     const { error } = await admin.storage.from("story-media").upload(`${prefix}/${name}`, new Uint8Array([0, 0, 0, 0]), { contentType: type, upsert: true });
