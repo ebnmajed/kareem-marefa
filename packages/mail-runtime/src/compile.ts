@@ -18,7 +18,7 @@
 // **and** in the generated text part, which reorders without them.
 //
 // It does not live in `interpolate()`, which renders the SUBJECT: the
-// subject has been interpolated plainly since M3, and the 29 `.subject.txt`
+// subject has been interpolated plainly since M3, and the 30 `.subject.txt`
 // files under `tests/unit/mail-pinned/` hold it so — isolating it would be a
 // separate, reviewed change.
 
@@ -706,7 +706,27 @@ function bulletproofButton(
   width = 240,
 ): string {
   const background = style === "primary" ? palette.accent : palette.surface;
-  const colour = style === "primary" ? "#ffffff" : palette.fgHeading;
+  // ★ THE LABEL IS THE HEADING COLOUR ON BOTH, AND IT USED TO BE A WHITE
+  // LITERAL ON THE PRIMARY (wave 24, `REQ-NTF-016`, `DEC-242` §2).
+  //
+  // White was safe only while `accent` WAS the heading colour — a dark fill, so
+  // white on it. `accent` is now the kit's `node`, the single accent, and the
+  // design's own pairing is «text on it is ink» (`01-tokens.md`). Measured on
+  // the platform default's light scheme: the accent behind a white label is
+  // **2.70:1** and fails SC 1.4.3; behind the heading colour it is **6.87:1**.
+  // On the sample kit's gold the same pair is **1.93:1** and **7.30:1**.
+  //
+  // ★ So the two changes are ONE commit by necessity, not by preference: moving
+  // `accent` to `node` while leaving this literal would ship a button below AA
+  // for every org on the default.
+  //
+  // ★ And it is a TOKEN, so an org that overrode its kit gets its own pairing
+  // (`DEC-242` §6). The kit guarantees no contrast pair for the accent — `0144`
+  // guards the six status pairs only — so a kit whose `node` and `fgHeading` are
+  // close is as unguarded as a kit whose `fgHeading` was pale under the old
+  // white. The change moves that class of defect; it does not create it, and a
+  // kit-level accent guard is `branding`'s and M13's.
+  const colour = palette.fgHeading;
   const border = style === "primary" ? background : palette.edge;
   const safeHref = escapeHtml(href);
   const safeLabel = escapeHtml(label);

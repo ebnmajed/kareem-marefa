@@ -30,6 +30,10 @@ export {
   dayPhrase,
   DAY_ORDINALS,
   TemplateMissingError,
+  // ★ Wave 24: the platform default's light scheme, the third copy of the
+  // palette, exported so `tests/unit/mail-palette-default.test.ts` can hold it
+  // equal to `brand.ts`'s rather than scraping the source for literals.
+  PLATFORM_LIGHT,
 } from "./render.js";
 export type { RenderInput, RenderedEmail, ChangedField, LegacyBrand, FullBrand, BrandPalette } from "./render.js";
 

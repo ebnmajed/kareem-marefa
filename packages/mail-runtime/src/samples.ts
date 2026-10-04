@@ -17,7 +17,7 @@
 // the blank on purpose; `docs/plan/notes/notify.md` lists them.
 //
 // Moved here from `tests/unit/mail-pinned.fixtures.ts` with the values
-// unchanged, and the 116 pinned files are what proves it.
+// unchanged, and the 120 pinned files are what proves it.
 
 /** One sample. Not a key: three renderer branches are worth freezing
  *  separately, and each is a one-line case rather than a second key. */
@@ -34,11 +34,76 @@ export interface SampleCase {
 export const SAMPLE_ORG = { name: "كريم معرفة", timeZone: "Asia/Riyadh" } as const;
 export const SAMPLE_MEMBER = { name: "سارة العتيبي", email: "sara@kareem.example" } as const;
 
-/** An org's palette. None of the three values is one of `render.ts`'s
- *  fallbacks (`#1a1a1a`, `#6b6b6b`, `#ffffff`), so `<id>.brand.html` and
- *  `<id>.plain.html` differ in every digit and a brand that stopped being read
- *  would fail rather than quietly produce two identical files. */
-export const SAMPLE_BRAND = { fgBody: "#2b3a55", fgMuted: "#6f7d93", surface: "#fffdf7" } as const;
+/**
+ * An org's OWN brand kit — the whole thing, both schemes, exactly the shape
+ * `public.brand_kit()` returns and `send_notification.ts` passes.
+ *
+ * ★ WHY IT IS THE WHOLE KIT AND NOT THREE KEYS (wave 24, `REQ-NTF-016`).
+ *
+ * It was `{ fgBody, fgMuted, surface }` — a `LegacyBrand`, the shape the worker
+ * sent before wave 10 and has not sent since. `compilePalette()` tests
+ * `"light" in brand`, so that shape made the LIGHT scheme empty and
+ * `fgHeading`, `edge`, `accent` and `canvas` ALL fall to `render.ts`'s own
+ * sanitiser defaults. The 120 pinned files therefore recorded the renderer's
+ * FALLBACK behaviour and not one byte of what a member receives — measured:
+ * the old heading default appeared 138 times per variant, the edge default 43,
+ * the ground default 60, none of them read from a kit.
+ *
+ * ★ It is also the exact disagreement this file's header exists to prevent.
+ * The preview has always passed the full kit (`lib/dal/notifications.ts`, the
+ * `brand_kit()` RPC), so the preview was a picture of something nobody pinned
+ * and the pin a record of something nobody saw — for the brand, since wave 10.
+ * One sample set cannot fix that while it carries a shape only the pins use.
+ *
+ * ★ AND EVERY VALUE DIFFERS FROM THE PLATFORM DEFAULT, DELIBERATELY. The old
+ * comment kept the three off `render.ts`'s fallbacks «so a brand that stopped
+ * being read would fail rather than quietly produce two identical files». Wave
+ * 24 makes those fallbacks the platform default (`DEC-242` §2), so the same
+ * guarantee now needs the whole kit to be an INVENTED org palette: were it the
+ * platform's own values, `<id>.brand.html` and `<id>.plain.html` would become
+ * byte-identical and the pin would stop proving the brand is read at all.
+ * `tests/unit/mail-palette-default.test.ts` asserts that property rather than
+ * leaving it to a reader's eye.
+ *
+ * ★ `node` is a gold on purpose. It is the one token the renderer paints the
+ * primary button with (`DEC-242` §2 — the single accent), and today the button
+ * is painted with the HEADING colour and labelled in a hard-coded white, so a
+ * kit with no accent of its own could never show that. A real accent makes the
+ * defect visible in the fixture: white on this gold is 1.93:1 and fails AA,
+ * and the ink label that replaces it is 7.30:1. The pinned bytes record the
+ * defect until that commit lands and the fix after it.
+ *
+ * ★ The `dark` scheme is here because `brand_kit()` returns it and the worker
+ * passes it. The renderer reads the LIGHT scheme only — a mail declares
+ * `color-scheme: light` on purpose (D3 finding F1) — so nothing below renders
+ * a byte of it, and that it does not is worth pinning too.
+ */
+export const SAMPLE_BRAND = {
+  light: {
+    canvas: "#eef1f6",
+    surface: "#fffdf7",
+    canvasRaise: "#f7f9fc",
+    fgHeading: "#1f2b44",
+    fgBody: "#2b3a55",
+    fgMuted: "#6f7d93",
+    edge: "#d4dae6",
+    edgeStrong: "#8a97ad",
+    spine: "#c3cbda",
+    node: "#e8b23a",
+  },
+  dark: {
+    canvas: "#121826",
+    surface: "#1b2235",
+    canvasRaise: "#242d44",
+    fgHeading: "#f2f5fa",
+    fgBody: "#e6ecf5",
+    fgMuted: "#9aa8bf",
+    edge: "#2f3a52",
+    edgeStrong: "#9aa8bf",
+    spine: "#2f3a52",
+    node: "#e8b23a",
+  },
+} as const;
 
 // Fixed ids. Nothing resolves them; they are in the payload because the real
 // one carries them, and a uuid that changed per run would make every file move.

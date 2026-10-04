@@ -1,12 +1,24 @@
 // Wave 23 — rows, layouts and global styles on the flat block list
 // (`REQ-NTF-015`, `DEC-235` §3.2, `DEC-238` §4).
 //
-// ★ THE PROOF THE OVERLAY IS ADDITIVE, beside the 120 pinned files that are not
-// touched. Every pinned case is rendered again with an overlay that says
-// nothing new — each block its own one-column row, an empty `styles` — and must
-// come out byte-identical to its pinned file. A row compiled any differently
-// from the flat path, or a style object that moved a literal by being merely
-// present, fails here.
+// ★ THE PROOF THE OVERLAY IS ADDITIVE. Every pinned case is rendered again with
+// an overlay that says nothing new — each block its own one-column row, and the
+// document's OWN styles carried through — and must come out byte-identical to
+// its pinned file. A row compiled any differently from the flat path fails here.
+//
+// ★ WAVE 24 CORRECTED `canonical()` HERE, AND THE BUG IS WORTH KEEPING ON THE
+// RECORD. It used to blank `styles` to `{}`, which was the same thing as the
+// real value only while NO platform design carried styles. When the eight gained
+// the house style (`REQ-NTF-016`) the helper started saying something new — it
+// stripped the ground, rendered the neutral grey and disagreed with a pin that
+// was correct. The suite that proves an overlay additive must not itself be an
+// overlay that changes the document.
+//
+// The property the `{}` was carrying — that a `styles` object which is PRESENT
+// but EMPTY compiles identically to one that is absent, so a style object cannot
+// move a literal by merely being there — is real and is now asserted on its own,
+// below, against a document with no styles of its own rather than against the
+// designs.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -30,7 +42,9 @@ function renderWith(sample: PinnedCase, document: EmailBlockDocument, variant: "
 }
 
 function canonical(document: EmailBlockDocument): EmailBlockDocument {
-  return { ...document, rows: document.blocks.map((block) => ({ id: `r-${block.id}`, layout: "1" as const, columns: [[block.id]] })), styles: {} };
+  // ★ `styles` is CARRIED, not blanked: the spread keeps the document's own, so
+  // the only thing this overlay says is «each block is its own one-column row».
+  return { ...document, rows: document.blocks.map((block) => ({ id: `r-${block.id}`, layout: "1" as const, columns: [[block.id]] })) };
 }
 
 describe("★ an overlay that says nothing new renders every pinned message byte for byte", () => {
@@ -57,6 +71,19 @@ describe("reading the overlay — tolerant, never throwing, never losing a block
   it("no `rows` is null: the old path", () => {
     expect(readRows({ schemaVersion: 1, blocks }, blocks)).toBeNull();
     expect(readStyles({ schemaVersion: 1, blocks })).toBeNull();
+  });
+
+  it("★ a `styles` that is PRESENT but EMPTY is the old path too — being there moves no literal", () => {
+    // The property `canonical()` used to carry by blanking `styles` to `{}`,
+    // held on its own now that the eight designs have styles of their own
+    // (wave 24). `readStyles()` returns null for an object with nothing in it,
+    // so the shell keeps every literal it has always had — and a document that
+    // merely mentions `styles` renders byte for byte like one that does not.
+    expect(readStyles({ schemaVersion: 1, blocks, styles: {} })).toBeNull();
+    const bare: EmailBlockDocument = { schemaVersion: 1, blocks };
+    const empty: EmailBlockDocument = { schemaVersion: 1, blocks, styles: {} };
+    expect(renderWith(sample, empty, "brand").html).toBe(renderWith(sample, bare, "brand").html);
+    expect(renderWith(sample, empty, "plain").html).toBe(renderWith(sample, bare, "plain").html);
   });
 
   it("an id that names nothing is forgotten; a block no row names is appended as its own row", () => {
@@ -129,7 +156,12 @@ describe("global styles and per-block overrides", () => {
 
   it("★ a colour is a TOKEN resolved from the brand — the hex that lands is the kit's", () => {
     const html = renderWith(sample, { ...base, styles: { textColour: "fgMuted" } }, "brand").html;
-    expect(html).toContain(`color:${BRAND.fgMuted};padding:0 0 16px 0`);
+    // ★ `BRAND.light.fgMuted`, not `BRAND.fgMuted`: wave 24 made the sample kit
+    // the WHOLE kit, both schemes, because the three-key shape made four tokens
+    // fall to `render.ts`'s fallbacks and the 120 pinned files recorded those
+    // instead of a kit (`REQ-NTF-016`). The colour this asserts is unchanged —
+    // the accessor is.
+    expect(html).toContain(`color:${BRAND.light.fgMuted};padding:0 0 16px 0`);
   });
 
   it("the mobile rules are emitted only when a mobile value exists", () => {

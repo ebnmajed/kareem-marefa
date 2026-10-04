@@ -5461,3 +5461,195 @@ the lead's**.
 explicit filename, `git commit -- <paths>`, never `git add -A`**, never stash, rebase, reset, clean or switch
 branches, and **re-read any file I did not write in this session from disk before editing it** — a stale in-context
 copy written back is a silent revert. ★ When the worktree lands I work on C's files **in C's tree only**.
+
+---
+
+### W24.13 · ★★ PR C opened — the three measurements the lead asked for, and one sequencing blocker
+
+**Tree `../kareem-marefa-wave24c`, branch `wave-24c/the-mail-designs`, at `267c318f`** (`0192` merged). `npm ci`
+finished; both workspace `dist/` trees are built.
+
+★ **Baseline, in this tree, before I change anything:** `mail-pinned` · `mail-designs` · `mail-blocks` ·
+`mail-layout` · `mail-blocks-new-types` · `mail-runtime-dist` — **6 files, 237 tests, green.**
+★ **That is F1 confirmed empirically on the post-merge tree**: the 120 pinned files are green **with `0192` in**, so
+the palette did not move one of them. Measured, not inferred, and independently of the lead's own run.
+
+#### ★ `DEC-243` / `REQ-TEN-009` — the matrix stays at 25 keys, and nothing of wave 24 moves
+
+Read on `main` as the lead asked, `08` §1 and §3.2 diffed against `6de410b2`:
+
+- ★ **`08` gained a new §3.2a, «The two mails that are deliberately NOT in the matrix»**, which rules the invitation
+  out of the matrix for the reason the matrix exists: `notify(p_org, p_member, …)` resolves the preference, the inbox
+  row and the address **from a member id**, and an invited person has none. It states «**the matrix stays at 25 keys
+  and `tests/unit/mail-pinned/`'s 120 files are untouched by either**».
+- ★ **`REQ-NTF-017`** says the same in its own acceptance: «The matrix stays at 25 keys; the 120 pinned mail files are
+  untouched by this feature», and «it is not one of the notification matrix's messages and **does not become a
+  twenty-sixth key**».
+- **`11` gained `JOB-send_member_invitation`, the thirty-seventh job, marked «added in wave 25».**
+- **`packages/mail-runtime/**`, `worker/src/mail/**` and `src/messages/*` are byte-unchanged since `6de410b2`** (empty
+  diff stat), and in code `templates.ts` still holds **25** distinct keys with `DESIGN_FOR` and `COPY` at 25 each.
+
+★ **So: no `DESIGN_FOR` family, no `Copy` row, no twenty-sixth key. My plan's «all 25 keys» stands verbatim.**
+
+★ **But two consequences for later, both in my files, and better said now:**
+1. **Wave 25 adds a NINTH designed family to `designs.ts`** — `REQ-NTF-017` calls the invitation «a transactional send
+   on the test send's pattern, **in the same designed language as the eight families**». ★ **So whatever look I
+   establish in commit 4 becomes the house style the ninth inherits.** That is an argument for putting the shared look
+   in **one** constant that all eight reference, rather than eight inline copies — so the ninth picks it up for free
+   and cannot drift. **I will do that.**
+2. ★ **`mail-designs.test.ts`'s «the eight families are `DEC-082`'s, and every one is used» will not survive a ninth
+   family that has no `MSG-*` key** (it asserts `DESIGN_FAMILIES` has length 8 **and** that the set of
+   `DESIGN_FOR`'s values equals it). That is **wave 25's** ledger line, not mine — recorded here so its owner meets it
+   in a note rather than at a gate.
+
+#### ★ The pinned diff, now measured per commit rather than estimated
+
+Rendering all 29 `SAMPLE_CASES` twice — once with today's three-key `SAMPLE_BRAND`, once with a candidate ten-token
+kit — through the built renderer: **subject moved 0 · text moved 0 · html moved 29 of 29.** The full kit's
+`fgHeading` and `edge` reach the HTML (so F2 closes), and its `canvas` does **not** yet, which is right: the ground
+needs `styles.ground`, and that arrives in commit 4.
+
+| commit | what moves | what does not |
+|---|---|---|
+| **1** `SAMPLE_BRAND` → a full kit | **30 `.brand.html`** | 30 `.plain.html`, 30 `.txt`, 30 `.subject.txt` |
+| **2** `render.ts`'s six sanitiser literals + the new guard test | **30 `.plain.html`** — and `.brand.html` no longer depends on a fallback at all, because after commit 1 every `hex(value, fallback)` has a value (derived from the code; verified at the commit) | everything else |
+| **3** the accent pair | the primary button in both HTML variants | the text part — a button's text line is `label: url` and carries no colour |
+| **4** the eight families' `styles` | both HTML variants, all 30 each | the text part — `styles` and `BlockStyle` are HTML-only |
+| **5** D4's stale comments | nothing | everything |
+
+★ **Across C: 60 HTML files move, 60 text and subject files never move.** The headline prediction is unchanged and now
+has per-commit granularity. **If a `.txt` moves, my change is wrong, not the pin.**
+
+#### ★★ One finding that shapes commit 1: the full kit must NOT be the platform default
+
+`samples.ts`'s own comment says `SAMPLE_BRAND`'s three values are deliberately none of `render.ts`'s fallbacks, «so
+`<id>.brand.html` and `<id>.plain.html` differ in every digit and **a brand that stopped being read would fail rather
+than quietly produce two identical files**». ★ **Commit 2 makes those fallbacks the platform default.** So if commit 1
+made `SAMPLE_BRAND` the platform default too, the two variants would become **byte-identical** and the pin would stop
+proving that the brand is read at all — the exact failure that comment exists to prevent, re-introduced by the two
+commits together. **So the ten-token `SAMPLE_BRAND` is an invented org kit whose every value differs from the platform
+default**, and I will assert that property in a test rather than leave it to a reader's eye.
+
+#### ★★ THE BLOCKER — `mail-pinned.test.ts` goes red at commit 1 and stays red until the lead re-pins
+
+The pins are **read-only to me** and the plan says one diff at the end of C. The consequence, which I did not think
+through at sync 1 and should have: **from commit 1 onward `mail-pinned.test.ts` is red in my tree**, and the
+`TaskCompleted` hook runs vitest for me — so I cannot land a green task, and four commits would sit red.
+
+★ **My proposal, and it is the honest consequence of the Q1 (b) ruling the lead already made: TWO re-pins, not one or
+three.** Q1 (b) was chosen precisely so «the fixture now passes a real kit» and «the design changed» are separable, and
+that separation is only visible if the two are taken apart:
+
+- **Re-pin A — after my commit 1, alone.** Cause: the fixture now passes a real kit. Diff: **30 `.brand.html`**,
+  palette values only, no structural change. The most mechanically predictable diff of the wave.
+- **Re-pin B — after my commit 4, at the end.** Cause: the renderer's defaults, the accent and the eight designs.
+  Diff: **30 `.plain.html` and 30 `.brand.html`**, with the ground, the padding, the `k-h1`/`k-card` classes, the
+  `<style>` in `<head>`, the heading sizes and the button.
+
+Between them I run the suite with `mail-pinned.test.ts` deselected and say so in each commit body. ★ **The decision is
+the lead's** — the alternative is that commits 1 – 3 land red on that one file with the reason in each body, which is
+defensible on a PR branch but is not something I will do without being told to.
+
+---
+
+### W24.14 · Commit 1 landed — `ba060098`, and two things my prediction missed
+
+★ **The prediction was handed over before the measurement and matched exactly: 30 pinned comparisons fail, all of
+them `.brand.html`; 0 subject, 0 text, 0 `.plain.html`.** That is re-pin A's diff, and it is the lead's to take.
+
+`tsc` clean · `lint` 0 errors (31 pre-existing warnings, none mine) · **2,409 unit tests green** with three files
+deselected. The gold accent, the invented palette and the `dark` scheme are reasoned in `samples.ts` itself.
+
+★ **Finding 1 — the pinned corpus has TWO readers, not one.** I said «`mail-pinned.test.ts` goes red»; in fact
+**`tests/unit/mail-layout.test.ts` reads the pinned files too** — its «★ an overlay that says nothing new renders
+every pinned message byte for byte» case walks all 30 cases and compares `.brand.html`, `.plain.html`, `.txt` and
+`.subject.txt` against the files, which is how wave 23 proved the row overlay additive. So **30 more failures, same
+cause, same cure**: green again the moment re-pin A lands. **Not a defect in the change — a correction to the scope
+of my prediction**, and the deselect list between re-pins is **two** files, not one.
+
+★ **Finding 2 — `tests/unit/designer-render.test.ts` is red on `main`, from PR A, and it is not mine.** Two cases
+(«colours are tokens, resolved at render time» and «the same document in the dark scheme is the same document»)
+assert the **old** platform navy, which `0192` replaced. My diff is `samples.ts` plus two test files, none of which
+`designer-render.test.ts` imports, so it cannot be mine; it was simply outside the six-suite baseline I took.
+★ **It is `designer`'s file** (`tests/unit/{designer,render,…}*`), so it is a report, not a fix: either `designer`
+updates it in PR B or the lead takes it as PR A's own untouched-suite ledger line. **Told to the lead.**
+
+★ **The ledger line commit 1 owes `STATUS.md`** (mine to report, the lead's to write):
+
+| Spec · line | Moved | Kind |
+|---|---|---|
+| `tests/unit/mail-layout.test.ts:132` — `BRAND.fgMuted` → `BRAND.light.fgMuted` | the sample kit became the whole kit, so the value is reached through its scheme. **The colour asserted is unchanged** | **selector** |
+
+★ **Commit 1 did not create `mail-palette-default.test.ts` for commit 2's sake and then wait** — it created it with
+the «no value equals the platform default» case, because that property is commit 1's own, and **commit 2 adds the
+third copy's case to the same file**. One file, grown additively, and neither property is unguarded for a commit.
+
+---
+
+### W24.15 · PR C is done — the five commits, and what each one proved
+
+| # | commit | what it is | pinned delta, predicted = measured |
+|---|---|---|---|
+| 1 | `ba060098` | `SAMPLE_BRAND` becomes an org's whole kit, both schemes, every value unlike the platform default | **30 `.brand.html`** |
+| 2 | `4c0391aa` | `render.ts`'s ten fallback sites become one `PLATFORM_LIGHT`, guarded against `platformBrand('light')` | **30 `.plain.html`** |
+| 3 | `c7518734` | the accent: `node` fills the primary button, `fgHeading` labels it | **24 + 24** |
+| 4 | `3add3933` | ★ the eight families wear the house style — one constant they all reference | **29 + 29**, and `org-text` unmoved |
+| 4b | `0df27280` | the overlay suite's own `canonical()` stops blanking `styles` | — |
+| 5 | `3eec1dc6` | three pinned-file counts stale since wave 10 | none |
+
+Three re-pins, each taken by the lead against a prediction handed over first: `a0ce4cdf`, `e14473f4`, `0973e2d7`.
+★ **Every prediction matched exactly**, and re-pin C was verified against the allowed-difference list rather than by
+eye — all five forbidden tokens at zero, and no declaration outside the list.
+
+★ **The four things `REQ-NTF-016` demanded, and where each is held:**
+
+1. **All 25 keys resolve, each with its own copy** — `mail-designs.test.ts`, unchanged by this wave. ★ **No copy line
+   was touched**, and `DEC-243` was measured not to add a twenty-sixth (W24.13).
+2. **Every block keeps its `id`, its compiled HTML and its generated text alternative** — `mail-designs.test.ts`'s
+   `dropped: []` across all 25, and ★ **the sharpest proof of the wave: the 30 `.txt` and 30 `.subject.txt` pinned
+   files never moved, through five commits.** The look changed and not one word or line of the plain part did.
+3. **No SVG** — `ImageSource` is a closed two-member set and no design added an image source; the only image is the
+   org logo.
+4. **A null `blocks` row is still the admin's own framed text** — ★ **proved in the bytes rather than asserted**:
+   of thirty pinned cases the one that did **not** move in commit 4 is `MSG-reminder_1d.org-text`.
+
+★ **Three judgements I would defend at review, each a line I drew rather than found:**
+
+- **`styles.ground`'s neutral grey is not a copy of the palette** (commit 2). The same six characters do two jobs —
+  one a fallback, one the *definition* of what «neutral» means in a control an admin picks. The lead's list had it
+  among the literals; moving it would have made `neutral` and `canvas` identical for every org on the default.
+- **No `mobile` leg** (commit 4). It is the only style that reaches the HTML as a `<style>` and two `class=`
+  attributes, and no platform design had ever used one — so all 25 messages are still inline-only. Measuring what it
+  buys found almost nothing: `02-typography.md`'s `title` is **28 on a phone** already. ★ **A stated constraint of
+  the medium was kept rather than edited to fit the change.**
+- **No tinted inset painted with `edge`** (commit 4). The design's surface-2 is `canvasRaise`, which `PaletteToken`
+  does not carry; a hairline colour used as a fill would make a token mean two things. `rescheduled`'s change block
+  is framed with two `divider`s instead — the vocabulary's own answer.
+
+★ **Carried out of this wave, in my files, for whoever takes them:**
+
+- **Wave 25's ninth designed family** (`REQ-NTF-017`, the invitation) inherits `HOUSE` by referencing it — but
+  `mail-designs.test.ts` asserts `DESIGN_FAMILIES.length === 8` **and** that `DESIGN_FOR`'s value set equals it,
+  which a ninth family with no `MSG-*` key cannot satisfy. **A ledger line that wave owes, named before it starts.**
+- **A kit-level accent contrast guard** is `branding`'s and M13's. `0144` guards the six status pairs only, so a kit
+  whose `node` and `fgHeading` sit close is as unguarded as a kit whose `fgHeading` was pale under the old white
+  label. The change moved that class of defect; it did not create it.
+- **The mail has no display face** (`D2`, W24.8), accepted as a product fact and with the owner. The poster and the
+  certificate wear Baloo Bhaijaan 2; an email wears `DESIGN_STACK` and cannot. No workaround was built.
+- ★ **A mail heading cannot reach the design's 32 px desktop `title`** — `headingSize.h1` tops out at 28, and
+  widening a closed scale would change a control an admin picks from. Recorded, not closed.
+
+★ **Ledger lines PR C owes `STATUS.md`** (reported to the lead, the lead's to write):
+
+| Spec · line | Moved | Kind |
+|---|---|---|
+| `tests/unit/mail-layout.test.ts:132` — `BRAND.fgMuted` → `BRAND.light.fgMuted` | the sample kit became the whole kit; the colour asserted is unchanged | **selector** |
+| `tests/unit/mail-blocks.test.ts:413` — `"#1a1a1a"` → `PLATFORM_LIGHT.fgBody` | the case is about the sanitiser, not the colour; a literal made it a second place the palette had to be edited | **expectation** |
+| `tests/unit/notify-builder-state.test.ts:30` — `toBe(documentJsonOf(design.blocks))` → `toEqual` on the parsed document | a design now carries `styles`, which `documentJsonOf()` never serialised | **expectation** |
+| same file — a **new** idempotency case | key order is not a property of anything; the string the editor compares is, and it had no test | **new coverage** |
+| `tests/unit/mail-layout.test.ts:33` — `canonical()` stops blanking `styles`, and the present-but-empty property is asserted on its own | the helper that proves an overlay additive was itself an overlay that changed the document | **expectation** + **new coverage** |
+
+**Gates:** `tsc --noEmit` clean · `npm run lint` **0 errors** · **485 unit tests green** across the 27 suites PR C
+touches, and `tests/components/email` 16 green · `main` merged at `79e96c6f`, both workspace packages rebuilt.
+★ **No full local suite**, per the owner's choice: this machine's component project times out under load and its
+failing set rotates between runs, so CI on a clean runner is the authority.
