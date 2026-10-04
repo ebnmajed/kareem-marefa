@@ -1,24 +1,31 @@
 {
   "branding": {
     "title": "Brand kit",
-    "intro": "The org's logo, colours and fonts — one source that feeds session posters, certificates and email. Changing a colour or a font here changes it in all of them at once; it does not change the app's own colours.",
+    "edit": "Edit",
+    "feeds": "Feeds posters, certificates and email — not the app",
+    "savedMark": "✓✓ Saved · <bdi>{time}</bdi>",
+    "empty": "—",
     "logo": {
       "title": "Logo",
       "current": "Current logo",
-      "none": "No custom logo — the platform's default identity is used.",
-      "replace": "Replace logo",
+      "none": "No custom logo",
+      "meta": "<bdi>{format}</bdi> · <bdi>{width} × {height}</bdi> · <bdi>A3</bdi> at {ppi} PPI",
+      "rating": {
+        "sufficient": "Fit for print",
+        "warning": "Below recommended",
+        "insufficient": "Not enough for A3"
+      },
+      "replace": "Replace",
       "upload": "Upload a logo",
       "uploading": "Uploading…",
       "remove": "Remove logo",
       "minResolutionHint": "For crisp printing up to <bdi>A3</bdi>, upload an image at least {width} × {height} px (300 PPI).",
       "formatHint": "<bdi>PNG</bdi>, <bdi>JPG</bdi> or <bdi>WebP</bdi> only — <bdi>SVG</bdi> is not accepted.",
-      "ppiResult": "Used at full <bdi>A3</bdi> size, this logo would print at {ppi} PPI.",
-      "ppiSufficient": "Sufficient for printing up to A3.",
-      "ppiWarning": "Below the recommended 300 PPI — large exports may warn.",
-      "ppiInsufficient": "Below 200 PPI — an A3 export with this logo will be refused.",
+      "ppiResult": "<bdi>A3</bdi> at {ppi} PPI",
       "errors": {
         "rejected_content": "This file is not a valid PNG, JPG or WebP image.",
         "file_too_large": "The file is larger than the allowed size.",
+        "too_small": "The image is smaller than the minimum.",
         "unreadable": "The image could not be read.",
         "not_authorized": "You do not have permission to upload a logo.",
         "unknown": "The logo could not be uploaded. Try again."
@@ -28,64 +35,84 @@
       "title": "Colours",
       "schemeLight": "Light mode",
       "schemeDark": "Dark mode",
+      "accent": "Accent",
+      "teams": "Team colours",
       "tokens": {
-        "canvas": "Canvas",
+        "canvas": "Background",
         "surface": "Surface",
         "fgHeading": "Heading colour",
-        "fgBody": "Body text colour",
+        "fgBody": "Text colour",
         "fgMuted": "Muted colour",
-        "edge": "Edge colour",
-        "edgeStrong": "Strong edge colour",
+        "edge": "Border colour",
+        "edgeStrong": "Strong border colour",
         "spine": "Spine colour",
         "node": "Node colour",
         "canvasRaise": "Gradient background"
       },
-      "invalidHex": "Enter a valid colour in <bdi>#rrggbb</bdi> form.",
-      "canvasRaiseLightHint": "This colour reaches no generated poster today — posters always render in dark mode."
+      "invalidHex": "Enter a valid colour as <bdi>#rrggbb</bdi>."
     },
     "preview": {
-      "title": "Live preview",
+      "title": "Preview",
       "headingSample": "Kareem Marefa",
-      "bodySample": "This is how body text looks on posters, on certificates and in email.",
+      "bodySample": "Text on posters, certificates and email.",
       "buttonSample": "Action button",
       "cardTitle": "Card title",
-      "cardBody": "Explanatory text inside a card, in the colours chosen above.",
-      "posterGradientLabel": "This is how a generated poster's background looks — always in dark mode, whichever tab is shown here."
+      "cardBody": "Text inside a card.",
+      "posterGradientLabel": "Poster background"
     },
     "contrast": {
-      "title": "Contrast (WCAG 2.2 AA)",
+      "title": "Contrast",
       "body": "Body text",
       "muted": "Muted text",
       "large": "Large text",
-      "ui": "UI component",
+      "ui": "UI element",
       "pass": "Passes",
       "fail": "Fails — {ratio}:1 (needs at least {threshold}:1)",
-      "ratioLabel": "{ratio}:1"
+      "ratioLabel": "Ratio {ratio}:1"
     },
     "fonts": {
       "title": "Fonts",
-      "headingLabel": "Heading font",
+      "headingLabel": "Display font",
       "bodyLabel": "Body font",
-      "platformDefault": "Platform default font",
-      "noneSelectable": "No approved fonts yet — see the designer's font list."
+      "platformDefault": "Platform default",
+      "noneSelectable": "No approved fonts yet."
+    },
+    "editMode": {
+      "heading": "Editing the brand kit",
+      "unsaved": "{count, plural, one {1 unsaved change} other {<bdi>{value}</bdi> unsaved changes}}",
+      "changed": "(changed)",
+      "actions": "Save or cancel the brand kit",
+      "leave": {
+        "title": "Leave without saving?",
+        "confirm": "Leave",
+        "stay": "Stay"
+      }
     },
     "actions": {
       "save": "Save",
       "saving": "Saving…",
-      "saved": "The brand kit was saved.",
-      "reset": "Reset to platform default",
+      "saved": "Brand kit saved.",
+      "reset": "Reset to the platform brand",
       "resetTitle": "Reset <bdi>{orgName}</bdi>'s brand kit?",
       "cancel": "Cancel",
       "closeDialog": "Close",
-      "resetConfirm": "This will delete the org's customisation, and every screen will return to the platform's default identity. Continue?",
+      "resetConfirm": "This org's customisation is deleted and posters, certificates and email return to the platform's default brand.",
       "resetting": "Resetting…",
-      "resetDone": "The brand kit was reset to the platform default."
+      "resetDone": "The brand kit was reset to the default."
     },
     "errors": {
-      "invalid": "Check the values you entered.",
-      "notAdmin": "This action requires admin permission.",
+      "invalid": "Check the values entered.",
+      "notAdmin": "This action needs admin rights.",
       "badReference": "The selected logo or font is not valid.",
-      "statusContrast": "A status badge (such as “live” or “ended”) does not read clearly against the canvas or surface colour you chose. Try a lighter or darker value for that field.",
+      "statusContrast": "The database refused these colours: the status badges do not contrast enough with the background or surface.",
+      "statusContrastPair": {
+        "live_vs_light_canvas": "The database refused these colours: the «live» badge cannot be read on the light background.",
+        "live_vs_light_surface": "The database refused these colours: the «live» badge cannot be read on the light surface.",
+        "ended_vs_light_canvas": "The database refused these colours: the «ended» badge cannot be read on the light background.",
+        "ended_vs_light_surface": "The database refused these colours: the «ended» badge cannot be read on the light surface.",
+        "live_on_dark_vs_dark_canvas": "The database refused these colours: the «live» badge cannot be read on the dark background.",
+        "live_on_dark_vs_dark_surface": "The database refused these colours: the «live» badge cannot be read on the dark surface."
+      },
       "unknown": "Something went wrong. Try again."
     }
   }
