@@ -7405,3 +7405,563 @@ transaction. Records: `comment.removed` (0059) and `report.resolved` × n (0181)
 **Tests**: `tests/rls/{photo-report,comment-remove}.test.ts` as a member (each refusal writes nothing; the audit rows
 come from the triggers; the reports close); `tests/components/photos/report-photo.test.tsx`,
 `tests/components/event/comment-remove.test.tsx`; `tests/e2e/wave22d-content-follow-ups.spec.ts` with 390 captures.
+
+---
+
+## Wave 26 plan — PR D, `wave-26d/stories`: the viewer, the capture and the attendee half (`DEC-245`, `DEC-247`, `DEC-248`, M28) — planning only, nothing edited
+
+**Covers** `REQ-STO-005`, `007`, `009` … `017` · `STORY-STO-003` … `006` · contracts 2 – 6. Written **from `01` §25**, read
+against `STORIES-USER-STORIES.md`, `05-stories.md`, `prototypes/stories.html`, `M13.md` and the six boards
+(`StoryLive`, `StoryPhoto`, `StoryRecap`, `StoryAdd`, `StoryAttendee`, `AdminAttendance`). Every fact below was read
+from the tree at `72933b5f`. Where `05` disagrees with §25, §25 wins (`DEC-248` §7.7); where §25 is silent `05` stands.
+`sessions`' types are not yet in its note, so §0 states what I plan against and what I need.
+
+### 0 · What I need from `sessions` (contract 4) — and what I give back
+
+I plan against **one DAL function in `src/lib/dal/stories.ts`** returning the ring row: `StoryFeedSession[]`, ordered
+(live first, then newest), each `{ sessionId, title, presenterName, companyName, teamColor, ringState, firstUnseenIndex,
+canAdd, frames: StoryFrameDTO[] }`, every frame `{ id, kind, triggeredAt, durationMs | null, seen, action: { kind:
+'open_session' | 'materials', href } | null, …kind-specific fields }`. **I need, beyond the generated kinds:**
+
+1. **`ringState` drawn from the four states `story-ring` already has** (`live · upcoming · recap · seen`,
+   `ui/index.ts:920`). §25's «unseen» is not one of them; if `sessions` wants a fifth state it is an add-only request
+   to me on `story-ring.tsx`, with its word and its shape (REQ-NFR-007 — told apart without colour).
+2. **The attendee kinds** — `attendee_photo` and `attendee_video` — carrying `authorName`, `authorTeamColor`,
+   `authorGlyph`, `caption` (**`photos.caption` for a photo frame, `story_frames.caption` for a video** — §4), `photoId`
+   with a signed `story` derivative URL (the original's when `story_derivative_ready` is false), and for a video
+   `videoUrl`, `posterUrl`, `durationMs`, `state` (`processing · visible · failed`).
+3. ★ **The author's own non-visible video frames, in the author's feed only** — `story_frames`' member policy admits
+   `author_id = auth_member_id()` (§4.3); without them «تعذّر» has nowhere to be said (REQ-STO-016).
+4. **`canAdd`** = `story_capture_open(session)` (§4.1), my definer, read by `sessions`' query or by my
+   `src/lib/dal/story-frames.ts` — **a hint only; the server refuses regardless.**
+5. Nothing filtered in a component: expiry, visibility, cancellation and hiding are RLS's and the DAL's.
+
+★ **The trigger-6 hook and a caption.** A photo frame is written by `sessions`' hook on `photos` insert. The caption
+lives on **`photos.caption`** and is read by the frame through its join — **the frame copies nothing** (`DEC-248` §5),
+there is no pending row and no ordering between my write and `sessions'`. ★ **Open, `sessions`' and the lead's:** does
+**every** visible album photograph make a frame (`REQ-STO-004`'s literal «an attendee's photograph becomes visible»),
+or only one by a checked-in attendee inside the window? My default: every visible one — the caption is then the only
+thing the story path adds. A photo uploaded a week later would make a frame a week later (24 h from its trigger).
+
+I give `sessions` the **frame bodies**: `src/components/stories/frame-*.tsx` render a `StoryFrameDTO` into the viewer's
+slot. `sessions` names the kind-specific fields; I render them; neither of us queries the other's tables.
+
+### 1 · ★★ `DEC-093` — the three pairs, named before anything is built (contract 5, `REQ-STO-007`)
+
+`SC 2.5.7` (dragging/gestures need a single-pointer alternative) is not `SC 2.1.1` (keyboard). Each row has **both**.
+The tap zones are `M13.md`'s (the start third is previous, the rest is next), not `05`'s halves (`DEC-248` §7.7).
+
+| Gesture (enhancement) | ★ Visible single-pointer control — not a gesture | Where it sits | Accessible name | Size | Key |
+|---|---|---|---|---|---|
+| **Tap the start third → previous; elsewhere → next** | two `IconButton`s, always visible, on a scrim disc | vertically centred, at the inline-start edge (previous) and the inline-end edge (next), above the tap layer; chevrons by `ChevronIcon direction="back" / "forward"` so they mirror with the document | «الإطار السابق» / «الإطار التالي» | 44 × 44 | **← / →** following the reading direction (in RTL `ArrowLeft` = next), **Home** = first frame of this story, **End** = last |
+| **Hold (≥ 220 ms) → pause, release → resume** | a pause **button**, `aria-pressed`, its glyph and name swapping | the header row, beside close, at the inline-end | «أوقف مؤقتًا» ⇄ «تابِع» | 44 × 44 | **Space** (only when focus is not on a button, link or field — a focused button keeps Space for itself) |
+| **Swipe down (dy > 80 px, \|dy\| > \|dx\|) → close** | the close **button** | the header row's inline-end corner (`M13.md`; `StoryAdd` draws it at the start — §8) | «إغلاق» | 44 × 44 (the boards draw 36 — §8) | **Escape** (Radix) |
+| `story-capture`: **hold the shutter → record video** | a mode switch «صورة · فيديو» (`radio-group`, two 44 px segments) above the shutter; in «فيديو» the shutter is **tap to start, tap to stop** (`aria-pressed`) | above the shutter | the shutter's name follows the mode and state: «التقط صورة» · «ابدأ التسجيل» · «أوقف التسجيل» | shutter 76; segments 44 | **Enter / Space** on the shutter (native); arrows in the radio group |
+
+- Previous from > 1.5 s into a frame restarts it (`05`, §25 silent → stands); at a story's first frame it restarts.
+  ★ **At a story's last frame, next moves to the next ring's first unseen frame and closes after the last ring** —
+  `05`'s rule, which §25 does not contradict (`DEC-248` §7.7 forbids only the *swipe* between sessions). Ruling asked (§9 Q2).
+- Every control stops the tap layer's pointer handling (`stopPropagation`) so a click on a button is never also a tap.
+- **The specs.** ★ `tests/e2e/wave26-content-story-click.spec.ts` — opens a ring and walks a three-session feed end to
+  end, previous, pause and resume, react, close, **with `page.click()` alone** (no `mouse.down`, no keyboard, no
+  `dispatchEvent`), asserting the displayed frame id changes each time and the ring reads «شوهدت» after. ★
+  `tests/e2e/wave26-content-story-keys.spec.ts` — the same walk with `page.keyboard` alone: Tab to the ring, Enter,
+  → ← Home End Space Escape, focus back on the ring. ★ The gestures get their own `wave26-content-story-gestures.spec.ts`
+  through `page.mouse` (hold, swipe) — they are enhancements, tested as such, never the conformance path. Capture gets
+  `wave26-content-capture-click.spec.ts`: a fake camera (`--use-fake-device-for-media-stream`) records and stops a
+  video by two clicks.
+
+### 2 · The two primitives — props for `ui/index.ts` (contract 2; floor 69 → 71)
+
+Strings arrive as props; no DAL, no session, no catalogue, no `fetch`. Both `"use client"`.
+
+```ts
+/** `content` · `story-viewer.tsx` — REQ-STO-007, REQ-STO-009, DEC-093. A dialog over a run of stories. */
+export interface StoryViewerStory {
+  id: string;
+  /** The header: session title, «presenter · company · age» as one pre-formatted line. */
+  title: string;
+  meta: string;
+  glyph: string;
+  teamColor?: TeamColor;
+  frames: StoryViewerFrame[];
+  /** Index of the first unseen frame — where the viewer opens on this story. */
+  startIndex: number;
+  /** «أضف» — present only when the server says the viewer may add (a hint; the server refuses anyway). */
+  onAdd?: () => void;
+}
+export interface StoryViewerFrame {
+  id: string;
+  /** The frame's body — rendered by the caller (`components/stories/frame-*.tsx`). */
+  content: ReactNode;
+  /** ms. Photo 5000, text 6000; a video passes its own length and drives the clock itself (`media`). */
+  durationMs: number;
+  /** A video frame: the viewer reads currentTime/ended/pause from this element instead of its own clock. */
+  media?: RefObject<HTMLVideoElement | null>;
+  /** The one action — «افتح الجلسة» / «حمّل المواد». */
+  action?: { label: string; href: string };
+  reactions?: { label: string; items: ReactionBarItem[]; onToggle: (kind: string) => void; pending?: boolean };
+  /** Attendee frames: «أزلني» and «بلّغ», in a menu behind «المزيد». */
+  moderation?: { menuLabel: string; items: { label: string; onSelect: () => void }[] };
+}
+export interface StoryViewerProps {
+  open: boolean;
+  stories: StoryViewerStory[];
+  /** Which story opened (the ring tapped). */
+  storyIndex: number;
+  onClose: () => void;
+  /** Fires once per frame shown — the caller writes `story_views` (§3). */
+  onFrameShown?: (storyId: string, frameId: string) => void;
+  /** Focus returns here on close (the ring). */
+  returnFocusTo?: RefObject<HTMLElement | null>;
+  labels: {
+    dialog: string;            // «قصة الجلسة»
+    previous: string; next: string; pause: string; resume: string; close: string; add: string;
+    /** «الإطار 3 من 7» — pre-formatted per frame by the caller is not possible inside a primitive, so a template fn. */
+    position: (current: number, total: number) => string;
+    paused: string;            // «متوقفة» — the visible pill, the hold's state
+  };
+}
+
+/** `content` · `story-capture.tsx` — REQ-STO-011, DEC-093. Presentational: the camera lives in `components/stories/use-camera.ts`. */
+export type StoryCaptureMode = "photo" | "video";
+export type StoryCaptureState = "idle" | "denied" | "recording" | "review" | "uploading" | "processing" | "refused" | "error";
+export interface StoryCaptureProps {
+  open: boolean;
+  state: StoryCaptureState;
+  mode: StoryCaptureMode;
+  onModeChange: (mode: StoryCaptureMode) => void;
+  /** The live preview or the review — a <video>/<img> the caller owns. */
+  preview: ReactNode;
+  elapsedSeconds: number;
+  /** 15 — read from the caller's constant, drawn «0:07 / 0:15». */
+  limitSeconds: number;
+  /** Photo mode: tap. Video mode: tap toggles start/stop (DEC-093). */
+  onShutter: () => void;
+  /** Photo mode only — the gesture: a hold starts video, release stops. */
+  onHoldStart?: () => void;
+  onHoldEnd?: () => void;
+  /** Gallery: the caller's handler receives the chosen File; accept = jpeg/png/webp/mp4/quicktime/webm. */
+  onPick: (file: File) => void;
+  onFlip?: () => void;        // absent → no flip button (one camera)
+  caption: string;
+  onCaptionChange: (value: string) => void;
+  captionMaxLength: number;   // 100
+  onSubmit: () => void;
+  onRetake: () => void;
+  onClose: () => void;
+  /** The status line for the non-idle states — «جارٍ التجهيز», «أطول من 15 ثانية», «تعذّر». */
+  message?: string;
+  labels: {
+    dialog: string; close: string; photoMode: string; videoMode: string;
+    shutterPhoto: string; recordStart: string; recordStop: string;
+    gallery: string; flip: string; caption: string; submit: string; retake: string;
+    /** REQ-EVT-013: «تُشارَك مع الجميع في المؤسسة» — at the point of upload, never buried. */
+    notice: string;
+    elapsed: (seconds: number, limit: number) => string;
+  };
+}
+```
+
+**`story-viewer` states:** a photo/text frame running · paused (the «متوقفة» pill, the pause button pressed) · a video
+frame (its clock from the element; paused pauses the element) · the first frame (previous restarts) · the last frame of
+the last story (next closes) · a frame with no action · a frame with no reactions (generated frames take reactions too —
+STO-05; a failed/processing own frame takes none) · «أضف» present · reduced motion (no slide; the segment still fills,
+in 1-second steps) · desktop (from `lg`: centred at 390 px wide, full height, on the ink ground, **no control added**).
+**Dialog:** Radix `Dialog.Root` composed directly with `usePlayPortal()` as the container — `ui/dialog`'s
+`DialogContent` draws its own title row and close, which the viewer's header replaces, so it is **not** composed; the
+title is a visually-hidden `Dialog.Title` («قصة الجلسة: <bdi>title</bdi>»). Focus opens on the content (`tabIndex=-1`) so
+the keys work at once; it is held by Radix's `FocusScope`; `onCloseAutoFocus` returns it to `returnFocusTo` (the
+lightbox's own pattern, `photos/lightbox.tsx:168-171`). The tab bar is under the full-screen layer.
+**Timer model:** one `requestAnimationFrame` loop owns `elapsed`; `paused` (button, hold, Space, a sheet open,
+`document.hidden`) stops it. A photo runs 5 s, a text frame 6 s (STO-07 — `05`'s 4.2 / 6 s differ, §8), a video its own
+length from the element's `timeupdate`/`ended`, its `waiting` state pausing the clock. The segments are
+`ui/progress-bar size="sm" decorative` with `value` from the loop — `scaleX` already (REQ-UIX-036). **Under
+`prefers-reduced-motion` the segment still fills** (it is information) but in whole-second steps, and a frame changes
+without the slide. ★ **The slide is a keyframe in `globals.css` — the lead's** (`story-frame-in`, transform + opacity,
+`--dur-base`, collapsing under reduce with the tokens); it is not a moment, and no sixth moment is added.
+**Gallery demo** `(dev)/ui/demos/story-viewer.tsx`: three fixture stories (live, a photo with caption, a recap; a
+video frame on a 3-second generated clip is impossible without a file, so the video state is shown with a poster and a
+fake `media`), paused, last frame, «أضف», reduced motion forced by a toggle. `demos/story-capture.tsx`: every state from
+props with a solid preview.
+**`-scope` tests** `tests/components/ui/{story-viewer,story-capture}-scope.test.tsx` and behaviour tests beside them
+(keys in both directions, focus return, the pause button, the timer under fake timers, no gesture needed).
+**Registry entries** (the lead's): both `tokens` with the semantic classes they use.
+
+**`story-ring.tsx`, add-only:** nothing changes in its props — `onOpen` exists and makes it a button (the inert branch
+stays, so `story-ring-inert.test.tsx` passes untouched). I add **`aria-haspopup="dialog"`** on the button branch only.
+The «seen» state already exists. The ring row passes `onOpen` once the client launcher holds the viewer (§5).
+
+### 3 · Views and reactions
+
+**`story_views` — a plain insert under the self-only policy, not a definer.** The insert is
+`insert … on conflict (member_id, frame_id) do nothing` (supabase `upsert(…, { ignoreDuplicates: true })` — which needs
+only the `insert` privilege). The policy's `with check` says everything: `org_id = auth_org_id() and member_id =
+auth_member_id() and exists (select 1 from story_frames f where f.id = frame_id)` — the `exists` runs under the
+caller's own RLS on `story_frames`, so a member can mark seen only a frame they may see now. A definer would bypass
+RLS and have to re-derive visibility by hand — the thing that leaks. **Columns I need:** `org_id`, `member_id`,
+`frame_id` (`references story_frames on delete cascade`), `viewed_at timestamptz default now()`, **primary key
+`(member_id, frame_id)`**; grants `select, insert` only (no update, no delete); select `member_id = self`; no staff
+policy (`REQ-STO-010`). Written from the viewer's `onFrameShown` through one Server Action that **batches**: a
+client queue sends the ids not yet sent whenever none is in flight and on close (Server Actions serialise per client —
+never `Promise.all`). On close the launcher marks the ring seen locally and calls `router.refresh()`.
+
+★ **Where a reaction is stored — a NEW table, `story_reactions`. The existing `reactions` cannot take a frame:**
+1. its subject is an exclusive pair enforced by `check ((comment_id is not null) <> (session_id is not null))`
+   (`0010`); a third subject means dropping and re-creating a wave-1 constraint the discussion relies on;
+2. its uniqueness is **one row per member per kind** (`reactions_member_comment_kind_key`, `…_session_kind_key`,
+   `0010:345-346`) — §25 wants **one per member per frame, replaced on change**;
+3. `reactions_broadcast()` (`0016:144`) computes totals by `comment_id is not distinct from … and session_id is not
+   distinct from …` — a frame row with both null would be summed with every other frame and broadcast on a null
+   session's topic;
+4. `p1_org_read` is org-wide — counts of an expired or hidden frame would stay readable.
+
+**Columns:** `org_id` (FK orgs, cascade), `frame_id` (FK `story_frames`, cascade), `member_id` (FK members, cascade),
+`kind public.story_reaction_kind` (a Postgres enum: `heart`, `fire`, `clap`, `idea` — ❤️ 🔥 👏 💡, the boards' four),
+`created_at`, `updated_at`; **`unique (frame_id, member_id)`**. Policies: select `org_id = auth_org_id() and exists
+(select 1 from story_frames f where f.id = frame_id)` (caller's RLS — the counts of a frame I may see); insert with
+check self + same `exists`; update `using`/`with check` self + `exists`, grant `update (kind, updated_at)`; delete self.
+Grants `select, insert, delete, update (kind, updated_at)`. **No ledger row, ever** — no trigger, no catalogue entry
+(`REQ-EVT-004`, `REQ-PTS-010`); an RLS case asserts `points_ledger` is unchanged after a reaction. The DAL
+(`src/lib/dal/reactions.ts`, add-only): `setStoryReaction(frameId, kind | null)` — upsert on `(frame_id, member_id)` or
+delete — and `getStoryReactions(frameIds)` → `{ totals, mine }`. Not live (STO-05 asks counts, not live counts).
+
+### 4 · The attendee photograph — the album's own path, traced
+
+**Today, end to end:** `POST /api/upload/photo` → `initiatePhotoUpload()` (`src/lib/dal/photos.ts:56`) mints a uuid and
+a signed upload URL at `photoPath(org, session, id, ext)` = `{org}/sessions/{session}/photos/{id}.{ext}`
+(`packages/storage-paths/src/content.ts`), gated by `photos_storage_write` (`0037:657`: checked in **or** presenter **or**
+staff); the browser PUTs the bytes to Storage directly → `POST /api/upload/photo/complete` → `initiate_photo_processing()`
+(`0115`: the same three-way gate, the org's image limit, `enqueue_job('process_photo', …, 'photo:'||id)`) → the worker
+`process_photo` downloads, sniffs (`DEC-009`), strips (`exif.ts`), writes back, and calls `record_photo_upload()`
+(`0050`, service_role, **the only writer since `0174`**) → the row's insert fires `photos_points_insert` (`0178`) →
+`award_photo_points()` (`0177`), the album's cap applied there. Nothing reads the bytes before the strip
+(`photos_storage_read` needs a row; the row needs `exif_stripped`).
+
+**A story photograph rides it unchanged but for its last door and one field:**
+- **4.1 The gate, on the server.** New definer **`story_capture_open(p_session uuid) returns boolean`** (`proposed/content/`):
+  `has_checked_in(p_session)` (`0087`'s version — a removed check-in no longer counts) **and** the session is not
+  `cancelled` **and** `now() >= min(session_days.starts_at)` **and** `now() < max(session_days.ends_at) + interval
+  '24 hours'`. Presenters and staff who are not checked in get `false` (`REQ-STO-011`: «only for a member checked in»).
+  It is called by `initiate_story_photo`, `begin_story_video`, the `story-media` write policy, and the DAL's `canAdd`.
+- **4.2 `initiate_story_photo(p_photo_id, p_session_id, p_storage_path, p_declared_kind, p_declared_byte_size,
+  p_caption)`** — definer, `authenticated`: refuses `42501` unless `story_capture_open()`; the org's image limit as
+  `initiate_photo_processing()` does; the caption trimmed, 1 – 100 characters or null; then the **same**
+  `enqueue_job('process_photo', {…, caption}, 'photo:'||id)`. Route: `POST /api/stories/photo/complete`; the
+  signed URL is `initiatePhotoUpload()` itself (`POST /api/upload/photo`, unchanged — the PUT is allowed by the album's
+  wider policy; the refusal comes at this door, and a refused object is an orphan nobody can read, exactly like any
+  photo PUT never completed).
+- **4.3 The caption — `photos.caption text null check (char_length(btrim(caption)) between 1 and 100)`** (a column, the
+  lead's), written only by `record_photo_upload()` gaining a **trailing defaulted `p_caption text default null`** (and
+  `p_story_derivative boolean default false`, below), dropped and re-created in one file so PostgREST never sees two
+  overloads (`0085`'s lesson). The worker passes `payload.caption ?? null`. The frame reads it through its join.
+  **`main`'s old worker** ignores the payload's `caption` (its `isPayload` checks the required keys only) and calls the
+  10-argument form: the photo posts, uncaptioned. Nothing breaks.
+- **4.4 Points:** the album's, under the album's cap, by the existing trigger — the story path adds nothing.
+  (`STORIES-USER-STORIES.md` STO-12 writes «10 pt, 2 per session»; the catalogue's defaults are `REQ-PTS-006`'s — every
+  figure is read, §8.)
+- **4.5 The `story` derivative** (`process_photo.ts`, add-only): after the strip, `cwebp -q 82 -metadata none -resize
+  W H` to **1080 px on the long side, never upscaled** (the same `execFile` + timeout pattern as `platform/avatar.ts`),
+  sniffed as WebP, uploaded to **`photoStoryPath(org, session, photoId)` = `{org}/sessions/{session}/photos/story/{id}.webp`**
+  — ★ **a sub-folder, not `{id}.story.webp`**: `photos_storage_read` (`0156:68-78`) casts the file name minus its last
+  extension to `uuid`, so `{id}.story` would make the policy **raise** for every signing in the bucket. In `story/` the
+  file name is `{id}.webp` → the same row, the same visibility, no policy change. Then `record_photo_upload(…, caption,
+  true)`; a derivative failure is logged and the photo records with `false` (the frame falls back to the original). On
+  `file_too_large` both objects are deleted. **Column:** `photos.story_derivative_ready boolean not null default false`.
+- The uploader is told «جارٍ التجهيز», never «نُشرت» (`DEC-139`); a photo that fails the sniff has no row and no frame —
+  the same «never becomes retrievable» outcome as today.
+
+### 5 · ★★ The video — answered
+
+**5.1 Upload.** `POST /api/stories/video` (Route Handler; Zod: `sessionId`, `ext ∈ {mp4, mov, webm}`,
+`declaredByteSize ≤ 62 914 560`, `caption`) → DAL `initiateStoryVideo()` mints `frameId`, builds
+`storyVideoSourcePath(org, session, frameId, ext)` = `{org}/sessions/{session}/frames/{frameId}/source.{ext}` and
+signs an upload URL in the **new private bucket `story-media`** (the lead's: `public = false`, **`file_size_limit =
+62914560`** — the 60 MB cap **at the edge**, enforced by Storage on the PUT itself, since the bytes never pass through
+Vercel — `allowed_mime_types = {video/mp4, video/quicktime, video/webm, image/webp}`). Its write policy (the lead's):
+insert only, `[1] = auth_org_id()`, `[2] = 'sessions'`, `story_capture_open([3]::uuid)`, `[4] = 'frames'`, file name
+`source.(mp4|mov|webm)`. **No update policy** — an object cannot be overwritten. Then `POST /api/stories/video/complete`
+→ **`begin_story_video(p_frame_id, p_session_id, p_storage_path, p_declared_byte_size, p_caption)`** (definer): the gate
+again, the path re-built from its arguments and compared (never trusted), inserts the frame (`kind 'attendee_video'`,
+`state 'processing'`, `author_id`, `caption`, `source_path`, `trigger_key = frame id`), and
+`enqueue_job('transcode_story_video', {frame_id, org_id, session_id, source_path}, 'story_video:'||frame_id, null,
+'story_video', 3)` — **a named queue so transcodes run one at a time on the worker**, three attempts. Returns
+`{ status: 'processing' }`.
+
+**5.2 Sniffed on content, after the bytes land** — in the task, before `ffprobe` sees a byte (`content/video.ts`, a
+sibling of `exif.ts`): ISO-BMFF (`ftyp` at offset 4 — brands `isom`, `iso2`–`iso6`, `mp41`, `mp42`, `avc1`, `M4V `,
+`qt  `; or a legacy QuickTime atom `moov`/`mdat`/`wide`/`free` at offset 4) → demuxer **`mov`**; EBML `1A 45 DF A3` with
+doctype `webm` or `matroska` → demuxer **`matroska`**. Anything else — an image, an SVG, a playlist, a text file — is
+refused and deleted. ★ **The demuxer is then FORCED with `-f`** so `ffprobe`/`ffmpeg` never auto-detect: no HLS, no
+`concat`, no image2 sequence, no protocol other than `file` (`-protocol_whitelist file`) — an uploaded playlist cannot
+make the worker fetch a URL or read another file. Accepted: iPhone MOV (HEVC or H.264), MP4, Chrome's WebM (VP8/VP9 +
+Opus), Safari's MediaRecorder MP4 (H.264 + AAC). Video codecs `h264, hevc, vp8, vp9, av1`; audio `aac, opus, vorbis, mp3`
+or none.
+
+**5.3 `ffprobe` decides** (never the client):
+
+```
+ffprobe -v error -hide_banner -protocol_whitelist file -f <mov|matroska> \
+  -show_entries format=format_name,duration,size:stream=index,codec_type,codec_name,width,height,duration \
+  -of json -i /tmp/<job>/source
+```
+
+Refused (permanent; the frame → `failed`, reason recorded) when: the object's byte size (the download's length) >
+**62 914 560**; `format.duration` missing or **> 15.1 s** (one frame of tolerance over MediaRecorder's own 15 000 ms stop;
+the constant `STORY_VIDEO_MAX_SECONDS = 15` and its tolerance are named once, and the capture stops at 15.0); no video
+stream; a codec outside the list; width or height > 4096. **20 s is refused; 12 s passes.**
+
+**5.4 `ffmpeg` writes one MP4** (Debian 5.1.9: `libx264`, native `aac`; `-fpsmax` exists since 5.0):
+
+```
+ffmpeg -hide_banner -nostdin -v error -y \
+  -protocol_whitelist file -f <mov|matroska> -i /tmp/<job>/source \
+  -map 0:v:0 -map 0:a:0? -dn -sn \
+  -t 15.1 \
+  -vf "scale='if(lte(iw,ih),min(720,iw),-2)':'if(lte(iw,ih),-2,min(720,ih))',format=yuv420p" \
+  -fpsmax 30 \
+  -c:v libx264 -preset veryfast -profile:v high -level:v 4.0 -crf 23 -maxrate 2500k -bufsize 5000k \
+  -c:a aac -b:a 128k -ac 2 -ar 48000 \
+  -map_metadata -1 -map_metadata:s:v -1 -map_metadata:s:a -1 -map_chapters -1 \
+  -fflags +bitexact -flags:v +bitexact -flags:a +bitexact -write_tmcd 0 \
+  -movflags +faststart \
+  -threads 2 /tmp/<job>/video.mp4
+```
+
+Why each strip: `-map_metadata -1` drops the container's global tags (QuickTime `©xyz`, `com.apple.quicktime.location.ISO6709`,
+`make`, `model`, `software`, `creation_time`); `-map_metadata:s:v/a -1` the per-stream tags; `-map_chapters -1` the
+chapters; **the explicit `-map 0:v:0 -map 0:a:0?` with `-dn -sn` drops every other track — iPhone writes location
+into a separate timed-metadata track (`mebx`), which a tag strip alone would carry across**; `bitexact` drops the
+encoder-version strings; `-write_tmcd 0` writes no timecode track. Autorotation is ffmpeg's default, so the display
+matrix is applied to the pixels and none is written. **Short side ≤ 720 px**, even dimensions; video **≤ 2.5 Mbit/s**,
+audio 128 kbit/s — a 15 s rendition is at most about 5 MB. ★ **Wall-clock timeout: 120 s for `ffmpeg`, 15 s for
+`ffprobe`, 15 s for the poster** (`execFile`'s `timeout` + `killSignal: 'SIGKILL'`), `maxBuffer` 1 MB; a timeout is a
+permanent failure. The working directory is `os.tmpdir()/story-<frame>` and is removed in `finally`.
+
+**5.5 The poster frame:** `ffmpeg -hide_banner -nostdin -v error -protocol_whitelist file -f mp4 -i video.mp4 -ss
+<min(0.5, duration/2)> -frames:v 1 -f image2 -c:v png poster.png` → `cwebp -q 80 -metadata none poster.png -o
+poster.webp` (the `cwebp` already in the image), sniffed as WebP. Taken from the **stripped rendition**, never the source.
+
+**5.6 Then:** the output re-probed (one video stream, ≤ one audio stream, **no data stream, no tag outside
+`major_brand`, `minor_version`, `compatible_brands`**), uploaded to `storyVideoPath` (`…/frames/{frameId}/video.mp4`)
+and `storyVideoPosterPath` (`…/poster.webp`), recorded by **`record_story_video(p_frame, p_duration_ms, p_width,
+p_height, p_byte_size, p_sha256)`** (service_role definer: `state = 'visible'`, `triggered_at = now()` — **the 24 h runs
+from visibility**, `source_path = null`), then **the source deleted**. A refusal or failure calls **`fail_story_video(p_frame,
+p_reason)`** (`state = 'failed'`, `failure_reason` ∈ `too_long · too_large · unsupported · failed`) and deletes the
+source. A transient error (Storage 5xx) throws and graphile retries; the third failure is caught by a final attempt
+check (`helpers.job.attempts >= helpers.job.max_attempts`) which fails the frame rather than leaving it `processing`.
+
+**5.7 Idempotency:** the job key `story_video:{frame_id}` (`job_key_mode replace`, `0025`); `record_story_video()` and
+`fail_story_video()` are no-ops unless the frame is `processing`; uploads use `x-upsert`. A retry after the source was
+deleted finds the frame already `visible` and returns.
+
+**5.8 Who sees what:** `processing` and `failed` frames are readable **only by their author** (and staff); a member's
+feed never carries another's. The author sees «جارٍ التجهيز» on a processing frame and **«تعذّر»** on a failed one, at
+their own position in the story, with no reactions and no action. Nobody else sees anything. **A video earns nothing
+and never enters the album** — no `photos` row, no ledger row (an RLS case asserts both).
+
+**5.9 Served:** a signed URL from the caller's own client (so `story-media`'s read policy applies), **600 s** — longer
+than the photos' 3 600? no: shorter, because a range request after expiry fails and a frame lives ≤ 15 s inside a viewer
+session; the feed re-signs on every `router.refresh()`. **The bucket is never public.** Read policy (the lead's):
+`[1] = auth_org_id()`, file name `video.mp4` or `poster.webp` (**never `source.*`**), and `exists (select 1 from
+story_frames f where f.id = ([5])::uuid and f.state = 'visible')` under the caller's RLS — so expiry, hiding,
+cancellation and removal close the bytes exactly when they close the row.
+
+**5.10 Deleted with its session and on removal:** `story_frames.session_id … on delete cascade`; an `after delete` and
+an `after update of removed_at` trigger on `story_frames` (the lead's to attach; the function is mine) enqueue
+**`purge_story_video`** `{org_id, session_id, frame_id}` keyed `story_purge:{frame_id}`, which deletes everything under
+`storyFramePrefix(org, session, frame)`. ★ **That is a new task file, `worker/src/tasks/purge_story_video.ts` — not in my
+edit list; I ask for it** (fallback: the same file as the transcode, one task per export). `delete_org` and
+`assert_storage_prefixes` read `BUCKETS` from `worker/src/platform/storage.ts` (`platform`'s) — **`story-media` must be
+added there**, org-prefixed: a request through the lead.
+
+**5.11 `main`'s worker in the gap:** it has no `transcode_story_video` and no `purge_story_video`; graphile-worker
+`^0.18` only fetches jobs whose identifier it knows, so the jobs wait and run when the new image deploys — the frame
+stays `processing`, visible to its author only. `process_photo`'s new payload key and arguments are trailing and
+optional (§4.3). The route ships in the same PR as the task.
+
+**5.12 Proof that no tag survives:** `tests/unit/story-video-args.test.ts` asserts the exact argument arrays (it needs
+no binary). ★ `tests/unit/story-video-strip.test.ts` makes its fixtures **with ffmpeg itself** — a 12 s and a 20 s
+`lavfi testsrc`+`sine` MOV carrying `-metadata location=+24.7136+046.6753/`, `com.apple.quicktime.location.ISO6709`,
+`make=Apple`, `model=iPhone`, `creation_time`, a chapter and a data track (`-movflags use_metadata_tags`) — runs the real
+task function against them, and asserts: the 20 s one is refused `too_long` by `ffprobe`; the 12 s one yields one MP4
+whose `ffprobe -show_entries format_tags:stream_tags:chapters` holds nothing outside the three brand keys, no data
+stream, and whose **bytes contain neither `+24.7136` nor `ISO6709` nor `iPhone`**. It needs the binary: it runs in the
+worker image (`docker run kareem-worker …`, the lead's CI step) and **fails, never skips, when `REQUIRE_FFMPEG=1`**.
+
+### 6 · Moderation (`REQ-STO-014`, `015`; `admin/moderation/**` for a video only)
+
+**Measured:** SCR-051, `/app/admin/moderation/photos` (`admin-moderation.ts:265-500`, `listPhotoQueue()`), takes **both**
+open `photo_takedowns` and `reports where target = 'photo'`, keyed by **photo id**, detail at `/photos/[photoId]`;
+decisions go through `remove_photo()` (`0059`), `resolve_report()` (`0183`) and the takedown guard (`0037`). SCR-050
+(`/reports`) is comment reports only. ★ **A reported photo is NOT hidden today**: `report_photo()` (`0190`) says «reported
+items stay visible pending review», which is **`REQ-EVT-008`'s rule**, its one exception being «أزلني».
+
+- **«أزلني» on a photo frame** → the existing `photo_takedowns` insert (`requestPhotoTakedown()`): the photo hides,
+  points reverse (`0178`), the uploader is told (`0043`, `MSG-photo_hidden`) — and the frame vanishes by its join.
+- **«أزلني» on a video frame** → new **`story_frame_takedowns`** (the lead's; `photo_takedowns`' columns with
+  `frame_id` in place of `photo_id`, the same three policies and grants) inserted through my definer
+  **`request_story_frame_takedown(p_frame)`**, which sets `story_frames.hidden_at = now(), hidden_reason =
+  'takedown_requested'` in the same call — hidden for everyone at once, before any person sees it. Notification: see Q6.
+- **A report on a frame** → **`report_story_frame(p_frame, p_reason)`** (definer, envelope as `report_photo()`): the
+  frame must be readable to the reporter now, not their own, not already reported by them; inserts a `reports` row with
+  **`target = 'story_frame'`** and **`story_frame_id`**, then sets `story_frames.hidden_at`, `hidden_reason = 'reported'`.
+  ★ **One report hides the FRAME. For a photo frame the album photograph stays visible** — `REQ-EVT-008` governs the
+  album and §25 speaks of the frame; hiding the photograph would also reverse its points on one member's word. That is
+  my default and a ruling (Q1).
+- **`reports` needs (the lead's):** `alter type report_target add value 'story_frame'`; `reports.story_frame_id uuid
+  references story_frames(id) on delete cascade`; `check ((target::text = 'story_frame') = (story_frame_id is not
+  null))` — ★ **written with `target::text`, because a new enum value cannot be used as a literal in the transaction that
+  adds it** (`55P04`); `reports_photo_guard`'s twin as a guard for the new target (or a direct insert skips the rules).
+- **The queue:** `listPhotoQueue()` gains (add-only) frame takedowns and frame reports. A **photo** frame's report is
+  shown on its photograph's item (the frame named); a **video** frame is its own item, detail at
+  **`/app/admin/moderation/photos/frames/[frameId]`**, which **plays the rendition** (`<video controls>` with the poster,
+  a 600 s signed URL — staff read every frame state `visible`) beside its caption, author, age, reporters. Decisions go
+  through **`decide_story_frame(p_frame, p_outcome 'restored' | 'removed' | 'dismissed', p_reason)`** (definer, staff,
+  envelope): `restored`/`dismissed` clear the frame's `hidden_at` and close its open reports and takedowns; `removed` →
+  `remove_story_frame()` (§7). For a photo frame, `restored`/`dismissed` clear the **frame's** hide only.
+
+### 7 · SCR-044's «قصص الحضور» (`REQ-STO-017`)
+
+**`src/components/stories/attendee-stories.tsx`** — an async Server Component, `{ locale: Locale; sessionId: string }`,
+returning `null` when the session has no attendee frame (no section, no heading drawn from nothing). It reads
+**`listAttendeeStoryFrames(locale, sessionId)`** (`src/lib/dal/story-frames.ts`) — every frame of kind `attendee_photo`
+or `attendee_video` in the session, **expired too** (staff's select-all policy), not removed, newest first, each with
+its thumbnail (the photo's `story` derivative or the video's poster, signed), its author (name, team colour), its kind,
+a video's length, `hidden` (and why), and `processing`/`failed` for videos. A tile is 96 × 140 as drawn, in a
+horizontally scrolling `<ul>` (the board clips at `overflow: hidden` — a seventh tile would be unreachable, §8).
+**«أزل»** on each → a `sheet` with a mandatory reason (`REQ-EVT-014` «audited with actor and reason»; the board draws a
+bare chip, §8) → Server Action `removeAttendeeFrame` (bound, `DEC-159`) → **`remove_story_frame(p_frame, p_reason)`**
+(definer, admin or moderator, envelope):
+
+- **a photo frame:** `perform remove_photo(photo_id, reason)` (`0059`) — which sets `removed_at`, closes the photo's
+  takedowns and reports, and through its existing triggers writes **`photo.removed`** to `audit_log` (`0059:117`) and the
+  compensating **`photo_removed` · «حُذف المحتوى»** ledger row (`0059:143`, `REQ-PTS-013`); the frame disappears by its
+  join, and the album with it. Nothing new writes a ledger row. The objects stay, unreadable (`0156`), as every removed
+  photograph's do today (Q7).
+- **a video frame:** `removed_at`, `removed_by`, `removal_reason` on the frame, its reports and takedowns closed,
+  **`story_frame.removed`** written by a trigger on the frame's `removed_at` (the lead's trigger, my function — no
+  track writes `audit_log` from the DAL), and `purge_story_video` enqueued (§5.10). **No ledger row**: a video earned
+  nothing, so there is nothing to reverse.
+
+★ **The one line the lead adds**, in `src/app/[locale]/app/admin/sessions/[id]/attendance/page.tsx`, between the
+figures grid and `<AttendanceBoard` (with its import):
+
+```tsx
+<AttendeeStories locale={locale as Locale} sessionId={id} />
+```
+
+Its `h2`-level label «قصص الحضور · N» is the component's own (`attendee-stories` is a section of a console page, not a
+slot of the event page). It renders **no motion** (REQ-UIX-053) and passes `console-register`'s walk: no moment, no
+sticker, no `src/lib/ui/**` import.
+
+### 8 · Disagreements — written, not picked (beyond `DEC-248` §7.7)
+
+1. **No board draws next, previous or pause controls, or a report** — `StoryLive/Photo/Recap/Attendee.dc.html` have one
+   link (close) and one action. `REQ-STO-007` requires them visible; §25 wins; they are drawn as §1 says.
+2. **Close: 36 × 36** on every board; `REQ-STO-007`/`DEC-093` and 44 px — built at 44. **Reactions 40 × 40**
+   (`StoryAttendee.dc.html`, the reaction row) — built at 44.
+3. **`StoryAdd.dc.html` puts close at the inline-START** (first child of an RTL flex row) and the session's title in a pill;
+   the viewer boards and `M13.md` put close at the inline-end. One side, the end.
+4. **`StoryAdd.dc.html`'s shutter is one button named «صوّر — اضغط للصورة، اضغط مطوّلًا للفيديو»** — a hold as the only path
+   to video. `REQ-STO-011` («started and stopped by taps alone») wins: the mode switch of §1, which no board draws.
+5. **`StoryAdd.dc.html`'s footer «صورة أو 15 ثانية · تظهر في قصة الجلسة وألبومها»** says a video enters the album; `REQ-STO-012`
+   says it does not. And it is explainer copy (`DEC-NEXT-25`). The notice I need is `REQ-EVT-013`'s («shared with everyone
+   in the org»), one line.
+6. **`StoryAttendee.dc.html` repeats `<div style="position:absolute;inset:0;background:#4A3A2E">` AFTER the header**, so the
+   drawn frame covers its own header; read as a drawing artefact — the header is on top.
+7. **`StoryPhoto.dc.html`** draws «من القاعة» where `REQ-STO-013` asks the frame's age and caption.
+8. **`AdminAttendance.dc.html`**: «أزل» is a 10 px chip, ~20 px tall (`SC 2.5.8` wants 24; the console's 36) and has no
+   reason step (`REQ-EVT-014`); the strip is `overflow: hidden` (unreachable seventh tile); the tile names no author in
+   text (a ring alone — colour only, `REQ-NFR-007`); «تبقى للأعضاء 24 ساعة · تبقى هنا» is explainer copy (`DEC-NEXT-25`).
+   **`M13.md` says frames are kept «forever»** for staff; `REQ-STO-017` says «past 24 hours too» — the same, no end date.
+9. **Durations:** `05-stories.md` 5 s / photos 4.2 s / recap 6 s; STO-07 photo 5 s, video its length, text 6 s; §25 silent.
+   I follow STO-07 (the brief). **«Seen»:** `05` a last-frame key per session; §25 per frame (§7.7 already).
+10. **STO-12's «10 pt, 2 per session»** are not `REQ-PTS-006`'s defaults; the catalogue is read, never these.
+11. **STO-14 «audited»**: a photo takedown request writes **no** `audit_log` row today (`0051:13` — by design, the request
+    row is the record; restoration and removal are audited). Building frame takedowns the same way; Q5.
+12. **STO-15 «reports and takedowns reuse `050`/`051`»**: `050` is comment reports only since wave 22; a frame goes to `051`.
+13. **`REQ-EVT-008` vs `REQ-STO-015`** — «reported items stay visible» vs «one report hides the frame» (§6, Q1).
+14. **`M13.md` «served from the asset bucket»** — the only asset bucket is `design-assets`, admins-only; a new
+    `story-media` bucket is proposed.
+
+**Keys for `stories.json`** (`sessions'` file — I ask, Arabic first; Western numerals; `<bdi>` around every interpolation):
+`viewer.dialog` «قصة الجلسة: {title}» · `viewer.previous` «الإطار السابق» · `viewer.next` «الإطار التالي» · `viewer.pause`
+«أوقف مؤقتًا» · `viewer.resume` «تابِع» · `viewer.paused` «متوقفة» · `viewer.close` «إغلاق» · `viewer.add` «أضف» ·
+`viewer.position` «الإطار {current} من {total}» · `viewer.more` «المزيد» · `viewer.reactions` «التفاعلات» ·
+`reaction.{heart,fire,clap,idea}` «أعجبني · رائع · تصفيق · فكرة» · `frame.byline` «{name} · {age}» · `frame.length` «{m}:{ss}»
+· `frame.processing` «جارٍ التجهيز» · `frame.failed` «تعذّر» · `moderation.removeMe` «أزلني» · `moderation.report` «بلّغ» ·
+`moderation.reportReason` «السبب» · `moderation.reported` «أُخفي الإطار حتى المراجعة» · `capture.dialog` «أضف إلى القصة» ·
+`capture.photo` «صورة» · `capture.video` «فيديو» · `capture.shutter` «التقط صورة» · `capture.start` «ابدأ التسجيل» ·
+`capture.stop` «أوقف التسجيل» · `capture.gallery` «من الاستوديو» · `capture.flip` «قلب الكاميرا» · `capture.caption`
+«تعليق» · `capture.submit` «انشر» · `capture.retake` «أعد» · `capture.elapsed` «{elapsed} / {limit}» · `capture.notice`
+«تُشارَك مع الجميع في المؤسسة» · `capture.denied` «لا وصول إلى الكاميرا» · `capture.tooLong` «أطول من 15 ثانية» ·
+`capture.tooLarge` «أكبر من 60 ميغابايت» · `capture.refused` «الإضافة لمن سجّل حضوره» · `admin.title` «قصص الحضور ·
+{count}» (six ICU forms) · `admin.remove` «أزل» · `admin.removeReason` «سبب الإزالة» · `admin.hidden` «مخفية» ·
+`admin.video` «فيديو {length}» · `admin.photo` «صورة». The moderation detail's strings go in `photos.json` (mine).
+
+### 9 · Open questions — each needs a ruling
+
+- **Q1** A report on a **photo** frame: hide the frame only (my default, `REQ-EVT-008` kept for the album) or the
+  photograph too (and its points reversed on one report)?
+- **Q2** At a story's end: move to the next ring (`05`, §25 silent) or close? Default: next ring.
+- **Q3** Does every visible album photograph make a frame, or only one from a checked-in attendee in the window (§0)?
+- **Q4** `purge_story_video.ts` as a new task file (my request) — and `story-media` added to `platform`'s `BUCKETS`.
+- **Q5** Is a frame takedown request audited (STO-14) when a photo takedown request is not?
+- **Q6** The uploader of a hidden video: reuse `MSG-photo_hidden` (its copy says «صورتك») or a new key (`notify`'s, the lead's)?
+- **Q7** «The asset» on a removed **photo** frame: today a removed photograph's objects stay, unreadable. Delete them
+  (new for every removed photo) or keep the album's behaviour? Default: keep.
+- **Q8** The viewer composes Radix's dialog directly, not `ui/dialog` (its header is wrong for a story); and the slide is a
+  keyframe in `globals.css` (the lead's). Both need the lead's yes.
+- **Q9** `src/lib/dal/feed.ts` is not in my edit list: the ring row moves to `sessions'` feed and `feed.rings` /
+  `components/feed/ring-state.ts` (and `tests/unit/feed-ring-state.test.ts`) become dead. Remove them in PR D, or leave?
+- **Q10** `story_views` and `story_reactions` are kept as long as their frame (forever, for staff's frames). A retention
+  rule in `enforce_retention` (`platform`'s), or none?
+
+### 10 · Tables and columns I need from the lead (`0198`)
+
+- `story_frames` (beyond contract 3): `author_id` (FK members), `caption text check 1–100`, `photo_id` (FK photos,
+  cascade), `source_path`, `video_path`, `poster_path`, `duration_ms int`, `width int`, `height int`, `byte_size bigint`,
+  `sha256 text`, `state public.story_frame_state` (`processing · visible · failed`, default `visible`),
+  `failure_reason text`, `hidden_at`, `hidden_reason text`, `removed_at`, `removed_by` (FK members), `removal_reason`;
+  checks: `kind = 'attendee_photo'` ⇒ `photo_id not null`; `kind = 'attendee_video'` ⇒ `author_id not null`, and
+  `state = 'visible'` ⇒ `video_path, poster_path, duration_ms not null`. Member select also admits `author_id = self`
+  for a non-visible own frame, and excludes `hidden_at`/`removed_at` for everyone but staff. Kind names
+  `attendee_photo`, `attendee_video`.
+- `story_views` (§3) · `story_reactions` + `story_reaction_kind` (§3) · `story_frame_takedowns` (§6) · `reports.story_frame_id`
+  + `report_target 'story_frame'` (§6) · `photos.caption`, `photos.story_derivative_ready` (§4) · bucket `story-media` with
+  its write and read policies (§5) · triggers attaching my functions: frame audit (`story_frame.removed`,
+  `story_frame.restored`), purge on delete/removal, the `reports` guard for `story_frame`.
+
+**My functions, under `supabase/proposed/content/`** (each proven with `applyProposed()` as a member, never as owner):
+`story_capture_open`, `initiate_story_photo`, `record_photo_upload` (re-created, two trailing defaults), `begin_story_video`,
+`record_story_video`, `fail_story_video` (both `service_role` only), `report_story_frame`, `request_story_frame_takedown`,
+`decide_story_frame`, `remove_story_frame`, `story_frames_audit()` and `story_frames_purge()` (trigger functions).
+
+### 11 · Tests, captures, and the suites that must pass untouched
+
+**New:** `tests/rls/story-frames-content.test.ts` (the gate: checked-in ✓, not checked-in ✗, presenter not checked in ✗,
+staff ✗, before the start ✗, 24 h after the end ✗, cancelled ✗, another org ✗ — for both `initiate_story_photo` and
+`begin_story_video` and the `story-media` write policy; a story photo is an album photo with its points and its
+caption; a video writes no `photos` row and no ledger row; a reaction writes no ledger row and replaces the member's
+earlier one; a view cannot be written for an invisible frame nor read by anyone else; report hides a frame at once and
+lands in the queue; «أزلني» on a video hides it; `remove_story_frame` on a photo writes `photo.removed` and one
+`photo_removed` row, on a video `story_frame.removed` and no ledger row; a failed video is readable by its author
+alone) · `tests/unit/story-video-{args,sniff,strip}.test.ts` · `tests/unit/storage-paths` cases for the four new
+builders (the lead's existing file — or new `tests/unit/story-paths.test.ts`) · `tests/components/ui/story-{viewer,capture}{,-scope}.test.tsx`
+· `tests/components/stories/{launcher,attendee-stories,frames}.test.tsx` · e2e: `wave26-content-story-click`,
+`-story-keys`, `-story-gestures`, `-capture-click`, `-story-video` (a 20 s refused and a 12 s transcoded through the real
+worker), `-story-moderation` (report hides; the queue plays the video), `-attendee-stories` (the cascade with its audit
+and ledger rows), each through the gate lock, one at a time.
+
+**Captures** (production build named by commit, `E2E_SHOTS_DIR`): `wave26-content-story-{live,photo,recap,attendee-video,paused,failed}-390.png`,
+`wave26-content-story-desktop-1280.png`, `wave26-content-capture-{photo,recording,review}-390.png`,
+`wave26-content-moderation-video-1280.png`, `wave26-content-044-strip-1280.png` — each beside its board's PNG
+(`png/القصص — …@1x.png`; `SCR-044 · …@1x.png`).
+
+**Must pass untouched:** `tests/components/ui/story-ring{,-inert}.test.tsx`, `reaction-bar`, `progress-bar`; every
+photos suite (`tests/rls/{photo*,moderation*}`, `tests/components/photos/**`, `wave14-content-{album,lightbox}`,
+`wave22*`), `tests/unit/storage-exif.test.ts`, `admin-attendance*` and `wave21-checkin-*` (the strip is add-only),
+`console-register`, `public-graph`. ★ **One expectation changes, a ledger line:** `tests/e2e/wave18-content-home.spec.ts:152-153`
+asserts the ring row holds **no button** and the ring is an `img` — wired, it is a button named the same; and
+`tests/unit/feed-ring-state.test.ts` if Q9 removes `ring-state.ts`.
