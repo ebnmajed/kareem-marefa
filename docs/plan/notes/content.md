@@ -7965,3 +7965,38 @@ photos suite (`tests/rls/{photo*,moderation*}`, `tests/components/photos/**`, `w
 `console-register`, `public-graph`. ★ **One expectation changes, a ledger line:** `tests/e2e/wave18-content-home.spec.ts:152-153`
 asserts the ring row holds **no button** and the ring is an `img` — wired, it is a button named the same; and
 `tests/unit/feed-ring-state.test.ts` if Q9 removes `ring-state.ts`.
+
+---
+
+## Wave 26 — as built after sync 1 (`DEC-251`), PR D, `wave-26d/stories`
+
+Commits `e373e7ad` (worker + SQL), `7b4cb91a` (the two primitives), `18c363f3` (the app half), `673c37a0` (component
+tests), `bb134576` (RLS, 16 cases, as members), `c1d81a8e` (the walk spec, the ring row failing soft).
+
+- **The rulings applied:** kinds are `sessions'` `photo` / `video`; every visible album photograph makes a frame
+  (`sessions'` hook) and the capture adds only `photos.caption`; a report hides the FRAME (a photo frame's photograph
+  stays in the album); «أزلني» on a photo frame is the photograph's own takedown; a frame takedown REQUEST writes no
+  audit row, a decision does; a hidden video notifies nobody; a removed photograph's objects stay unreadable; at a
+  story's end the viewer moves to the next ring and closes after the last.
+- **The primitives** are §2's with one add-only prop, `StoryViewerProps.paused` (a sheet over the viewer holds the
+  clock). The viewer composes Radix's dialog with `usePlayPortal()`; the slide is the lead's `story-frame-in`. Under
+  reduced motion the segment fills in whole seconds and nothing slides. `story-ring` gained `aria-haspopup="dialog"`
+  on its button branch only.
+- **The seam:** `StoryOpener` (server) wraps `sessions'` pill as children; `StoryRings` (server) is the ring row; both
+  read media hrefs (`getStoryMediaHrefs`), reactions and the capture hint once, in `components/stories/prepare.ts`.
+  `unseen` maps to `story-ring`'s `upcoming` before completion and `recap` after.
+- **Reactions:** `0198` grants `update (kind)` alone, so `setStoryReaction()` updates that one column on an existing
+  row and inserts a new one — never an upsert, which asks to update every column it sends.
+- **Moderation:** a frame report or takedown joins SCR-051's two chips as `frame-{id}`; `[photoId]/page.tsx` opens
+  `frame-detail.tsx`, which plays a video with `controls` and decides through `decide_story_frame()`.
+  `photo-detail.tsx` exports `Pair` and `Who` (add-only).
+- **Ledger (to the lead):** `tests/unit/feed-ring-state.test.ts` deleted with `components/feed/ring-state.ts` and
+  `relative.ts`'s `ringCaption`; `tests/components/feed/feed.test.tsx` loses the `rings` fixture and its «rings open
+  nothing» case becomes «the ring row is the story feed's» — an expectation changed. `tests/e2e/wave18-content-home.spec.ts:152-153`
+  fails once the row reads the story feed — the lead's call.
+- **Found on the way:** `resolve_report()` (`0183`) falls through to `remove_photo(rep.photo_id)` for any target that
+  is not `comment`, so a `story_frame` report must never reach it — the queue decides frames through
+  `decide_story_frame()` only; a guard in `resolve_report()` is offered to the lead. `tests/unit/admin-audit-labels`
+  reads `0198`'s `'poster.webp'` literal as an audit action.
+- **Owed:** the capture, video, moderation and strip e2e specs (after the promotion and the image with `ffmpeg`);
+  `story-video-strip.test.ts` run inside the worker image with `REQUIRE_FFMPEG=1`; the captures.
