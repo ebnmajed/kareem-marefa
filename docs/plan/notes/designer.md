@@ -4484,6 +4484,32 @@ mandate; the colour pair asserts it is **accepted**, because a guard that has st
 should be proved to have stopped refusing it rather than have its case deleted. The old title — «the guard
 refuses a hard-coded colour…» — had become false and is gone.
 
+★★ **AND THE VERIFICATION ITSELF HAD THE SAME FAULT, one round later.** The split case then failed CI with
+`23505` — `unique_violation`, not the guard at all. `design_template_versions` carries
+`unique (template_id, version)` (`0055:122`), and the case's helper hard-coded `version = 1`. That survived for
+as long as every insert in the case was REFUSED and no row landed; the moment `DEC-246` made two of them
+**accepted**, the second collided. The guard did its job, the table did its job, and the fixture was wrong.
+
+★ **Why the in-transaction technique above did not catch it, which is the part to carry forward.** I ran the
+six expectations as six independent statements, each with its own version — so nothing could collide. CI ran
+them as the committed case, in sequence, against one template. **A per-statement proof and a per-case proof are
+different proofs**, and the first is the weaker one precisely where a test's own fixture is the defect. The
+corrected technique runs the case *as written* — same template, same helper, same order — inside the rollback:
+
+```
+begin; \i supabase/migrations/0195_*.sql;
+  <insert 1>; <insert 2>; <insert 3>; <insert 4>   -- one template, the helper's own version sequence
+rollback;
+```
+
+Both shapes were then proved: the fixed case returns `[null, null, null, null]`, and re-running it with the old
+hard-coded `version = 1` returns `[null, 23505, 23505]` — CI's error, reproduced locally before the push rather
+than inferred from its message.
+
+★ **It is the same shape as the bundled-refusal fault it was fixing**: a case asserting one thing while a
+second, unrelated constraint decides the outcome. Twice in one file, which is why the comment on the insert
+helper now says the version must differ and why.
+
 ★ **The wave's own lesson, which the owner reached before I did:** measure the thing you are about to assert,
 and say what you measured. Every correction here came from a number — 1.10:1 between three grounds that were
 supposed to differ, 30 px of overlap, 40% of a 16:9 page, 15 of 41 derivations, 1.87× from `scale: 'fill'`,

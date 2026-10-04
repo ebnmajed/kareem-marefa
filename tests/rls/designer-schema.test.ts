@@ -275,8 +275,20 @@ describe("POL-design_template_versions", () => {
         `insert into public.design_templates (org_id, scope, purpose, family, name) values ($1, 'org', 'poster', 'talk', 'قالب') returning id`,
         [f.a.id],
       );
+      // ★★ A FRESH VERSION PER ATTEMPT, and it is load-bearing rather than tidy.
+      //   `design_template_versions` carries `unique (template_id, version)`
+      //   (0055:122), so a hard-coded `1` only survives while every insert in the
+      //   case is REFUSED and no row lands. The moment one is accepted — which is
+      //   exactly what DEC-246 changed — the next collides with `23505`, and the
+      //   case reports a unique violation while claiming to test the guard. Mirrors
+      //   `templates-guard.test.ts`, which has held this shape since wave 8.
+      let version = 0;
       const insert = (doc: unknown) =>
-        tx.q(`insert into public.design_template_versions (template_id, version, document) values ($1, 1, $2::jsonb)`, [t.id, JSON.stringify(doc)]);
+        tx.q(`insert into public.design_template_versions (template_id, version, document) values ($1, $2, $3::jsonb)`, [
+          t.id,
+          ++version,
+          JSON.stringify(doc),
+        ]);
 
       // A document that is BROKEN rather than merely styled differently. Neither
       // of these is a choice an admin could want to make: a `kind` outside the
@@ -295,8 +307,20 @@ describe("POL-design_template_versions", () => {
         `insert into public.design_templates (org_id, scope, purpose, family, name) values ($1, 'org', 'poster', 'talk', 'قالب') returning id`,
         [f.a.id],
       );
+      // ★★ A FRESH VERSION PER ATTEMPT, and it is load-bearing rather than tidy.
+      //   `design_template_versions` carries `unique (template_id, version)`
+      //   (0055:122), so a hard-coded `1` only survives while every insert in the
+      //   case is REFUSED and no row lands. The moment one is accepted — which is
+      //   exactly what DEC-246 changed — the next collides with `23505`, and the
+      //   case reports a unique violation while claiming to test the guard. Mirrors
+      //   `templates-guard.test.ts`, which has held this shape since wave 8.
+      let version = 0;
       const insert = (doc: unknown) =>
-        tx.q(`insert into public.design_template_versions (template_id, version, document) values ($1, 1, $2::jsonb)`, [t.id, JSON.stringify(doc)]);
+        tx.q(`insert into public.design_template_versions (template_id, version, document) values ($1, $2, $3::jsonb)`, [
+          t.id,
+          ++version,
+          JSON.stringify(doc),
+        ]);
 
       // ★ WAS: «REQ-DSG-021: a literal #0B1220 in a template is a defect», both
       // of these asserting 22023. The owner ended the mandate — a brand token is
