@@ -3,11 +3,11 @@
 import { useCallback, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { BRAND_COLOUR_TOKENS, fieldsFor, fingerprintSource, paintOrder, PRESETS, toPhysical, type DesignDocument, type FocalPoint, type Layer, type PresetName } from "@kareem/designer-runtime";
+import { BRAND_COLOUR_TOKENS, DESIGN_COLOUR_NAMES, fieldsFor, fingerprintSource, paintOrder, PRESETS, resolveColour, toPhysical, type DesignDocument, type FocalPoint, type Layer, type PresetName } from "@kareem/designer-runtime";
 import { DesignerCanvas } from "@/components/designer/canvas";
 import { useDesignerEditorState } from "@/components/designer/editor-state";
 import { Inspector } from "@/components/designer/inspector";
-import { bind, token } from "@/components/designer/inspector-ops";
+import { bindPath, colourPath } from "@/components/designer/inspector-ops";
 import { ChecksPanel, checkRowCount } from "@/components/designer/checks-panel";
 import { LayersPanel } from "@/components/designer/layers-panel";
 import { BrandPanel, ElementsPanel, FieldsPanel, UploadsPanel, type PanelAsset } from "@/components/designer/panels";
@@ -726,18 +726,33 @@ function LayerToolbar({
 /** A brand colour by NAME, never a picker (REQ-DSG-021) — its swatch beside it, painted from the resolved value as a
  *  style (never a class); the select's value is the token's name. The panel's control is `TokenSelect`. */
 function ToolbarToken({ label, value, values, onValue }: { label: string; value: string; values: Record<string, string>; onValue: (next: string) => void }) {
+  const t = useTranslations("designer.inspector.background");
   const tk = useTranslations("designer.inspector.background.tokens");
-  const current = token(value);
+  const td = useTranslations("designer.inspector.background.designTokens");
+  const current = colourPath(value);
   return (
     <span className="flex shrink-0 items-center gap-1.5">
-      <span aria-hidden="true" className="size-5 shrink-0 rounded-sm border border-edge" style={{ background: current ? values[`brand.${current}`] : undefined }} />
-      <Select aria-label={label} value={current ?? value} onChange={(e) => onValue(bind(e.target.value))} className="w-32! shrink-0">
+      {/* ★ The swatch resolves through the RUNTIME (wave 24), which consults the
+          context and then the design's own constants — `design.*` is in no
+          render context by construction, so `values[path]` alone would paint
+          the swatch empty for every colour on a baseline poster. */}
+      <span aria-hidden="true" className="size-5 shrink-0 rounded-sm border border-edge" style={{ background: current ? resolveColour({ values }, value, "transparent") : undefined }} />
+      <Select aria-label={label} value={current ?? value} onChange={(e) => onValue(bindPath(e.target.value))} className="w-32! shrink-0">
         {current === null ? <option value={value}>{value}</option> : null}
-        {BRAND_COLOUR_TOKENS.map((name) => (
-          <option key={name} value={name}>
-            {tk(name)}
-          </option>
-        ))}
+        <optgroup label={t("groups.brand")}>
+          {BRAND_COLOUR_TOKENS.map((name) => (
+            <option key={name} value={`brand.${name}`}>
+              {tk(name)}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label={t("groups.design")}>
+          {DESIGN_COLOUR_NAMES.map((name) => (
+            <option key={name} value={`design.${name}`}>
+              {td(name)}
+            </option>
+          ))}
+        </optgroup>
       </Select>
     </span>
   );

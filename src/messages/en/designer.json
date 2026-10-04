@@ -344,7 +344,7 @@
         "to": "End colour",
         "angle": "Angle in degrees",
         "angleHint": "The angle is the Arabic source's; the English variant mirrors by itself.",
-        "tokenNote": "Brand colours only — no colour typed by hand, so a brand change reaches every template.",
+        "tokenNote": "Brand and design colours only — no colour typed by hand, so a colour change reaches every template.",
         "tokens": {
           "canvas": "Canvas",
           "surface": "Surface",
@@ -356,6 +356,19 @@
           "edgeStrong": "Strong edge colour",
           "spine": "Spine colour",
           "node": "Node colour"
+        },
+        "designTokens": {
+          "tangerine": "Tangerine",
+          "lime": "Lime",
+          "coral": "Coral",
+          "cyan": "Cyan",
+          "violet": "Violet",
+          "ink": "Ink",
+          "bone": "Bone"
+        },
+        "groups": {
+          "brand": "Brand colours",
+          "design": "Design colours"
         }
       },
       "group": {

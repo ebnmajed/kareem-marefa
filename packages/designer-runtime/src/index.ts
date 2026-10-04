@@ -1,6 +1,7 @@
 export * from './model.js'
 export * from './brand.js'
 export * from './bindings.js'
+export * from './design-colours.js'
 export * from './validate.js'
 export * from './render.js'
 export * from './presets.js'
