@@ -132,7 +132,16 @@ export default async function proxy(request: NextRequest) {
   response.headers.set("x-content-type-options", "nosniff");
   response.headers.set("referrer-policy", "strict-origin-when-cross-origin");
   response.headers.set("x-frame-options", "DENY");
-  response.headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  // ★ wave 26 (REQ-STO-011): a checked-in attendee adds a photograph or a short video to a session's story from
+  // INSIDE the app, and `camera=()` refused `getUserMedia` there with NotAllowedError before any prompt — the capture
+  // could never have worked in production. The camera and the microphone are allowed to this origin alone, and only
+  // on `/app` paths; every public route, the sign-in pages and everything else keep them refused, as before. No
+  // third party is ever allowed either, and geolocation stays refused everywhere.
+  const inApp = /^\/(ar|en)\/app(\/|$)/.test(pathname);
+  response.headers.set(
+    "permissions-policy",
+    inApp ? "camera=(self), microphone=(self), geolocation=()" : "camera=(), microphone=(), geolocation=()",
+  );
   return response;
 }
 
