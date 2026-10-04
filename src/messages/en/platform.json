@@ -102,18 +102,11 @@
       "newDomain": "New domain"
     },
     "templates": {
-      "title": "Platform template library",
-      "intro": "This library is managed, not authored here. A platform admin has no org and the designer's editor is org-scoped, so authoring stays in an org's editor. What happens here: list, promote a published org version, set the default, retire.",
-      "baselineNote": "The baseline ships with the platform and is ready for every org from the moment it is created, before it publishes anything: five poster families, and three certificate families in landscape and portrait.",
-      "schemesNote": "Every template renders light and dark; the scheme is chosen where it is used, not in the library.",
-      "floorNote": "The library never falls below one default per purpose, so the last default of a purpose offers no retirement.",
+      "title": "Template library",
       "libraryTitle": "The library",
       "purposePoster": "Posters",
       "purposeCertificate": "Certificates",
       "nameColumn": "Template",
-      "orientationColumn": "Orientation",
-      "stateColumn": "State",
-      "versionsColumn": "Versions",
       "actionsColumn": "Actions",
       "actionsFor": "Actions for {name}",
       "landscape": "Landscape",
@@ -133,7 +126,6 @@
       "unretiredDone": "{name} is back in service.",
       "promoteTitle": "Promote an org's template",
       "promoteIntro": "Promotion is a copy. An org's later edits never reach the promoted version, which is what makes improving a platform template safe.",
-      "promoteNote": "Only published versions appear here, by name, family and number. No template's content is shown on this page.",
       "promoteEmpty": "No published version is available to promote.",
       "orgColumn": "Org",
       "familyColumn": "Family",
@@ -148,7 +140,11 @@
       "promoted": "The template was promoted into the library.",
       "cancel": "Cancel",
       "closeDialog": "Close",
-      "empty": "The library is empty."
+      "empty": "The library is empty.",
+      "readOnlyLine": "Every org reads it; an org copies one to edit it.",
+      "purposePosterOne": "Poster",
+      "purposeCertificateOne": "Certificate",
+      "chipsLabel": "Family and kind"
     },
     "metrics": {
       "title": "Platform metrics",

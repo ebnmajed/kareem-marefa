@@ -574,7 +574,7 @@ test("★ REQ-DSG-026 · DEC-148: SCR-083 lists the baseline as rows of a compos
   if (!phone) await expect(posters.getByRole("columnheader", { name: "الشكل" })).toHaveCount(0);
   // The baseline is badged as such, and no document or preview is on the page.
   await expect(main(page).getByText("أساسي").filter({ visible: true }).first()).toBeVisible();
-  await expect(page.locator("main img, main canvas")).toHaveCount(0);
+  await expect(page.locator("main img, main canvas, main iframe")).toHaveCount(0);
 });
 
 test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, where its admin reads it", async ({ context, page }) => {
@@ -755,7 +755,7 @@ test.describe("390 px RTL review", () => {
 
     // P5 — the library with the baseline.
     await page.goto("/ar/app/platform/templates");
-    await expect(page.getByRole("heading", { level: 1, name: "مكتبة قوالب المنصة" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "مكتبة القوالب" })).toBeVisible();
     await review(page, "wave8-platform-templates-baseline");
 
     // P6 — metrics: the alerts, the totals, job health as cards.
