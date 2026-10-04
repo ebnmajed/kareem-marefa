@@ -36,6 +36,26 @@ certificate.
 | 9 | ★★ **The pinned mail files do not read the platform palette at all.** `SAMPLE_BRAND` is the **legacy three-key shape** `{fgBody, fgMuted, surface}` with no `light` object, so `compilePalette()` falls to the sanitiser's own hard-coded defaults | The 120 files are **unmoved by PR A** — measured, whole unit suite green — and the one reviewed diff falls in **PR C**. The wave's plan said the opposite; this corrects it |
 | 10 | ★★ **A real send reads only SIX of the ten tokens.** `compilePalette()` takes `light.{fgHeading,edge,canvas}` and `legacyBrand()` takes `light.{fgBody,fgMuted,surface}`. **`edgeStrong`, `spine`, `node` and `canvasRaise` never reach mail** — and `node` is the one that now carries lime. `render.ts:362`'s own comment («`accent` is `fgHeading`, not a new token … none of them is a "primary"») is **overtaken by `DEC-242` §2** | **The mail has no accent and paints one with its heading colour.** That is `REQ-NTF-016`'s single most visible change and widens PR C beyond restyling eight layouts: `notify` wires the ten tokens through |
 
+### ★★ `0192` — REHEARSED 2026-10-04 on the owner's fresh production dump
+
+`/tmp/prod-schema-0191.sql`, taken at `0191`, **0 data rows** (no `COPY`, no `INSERT`), `0191`'s template-audit objects
+present and **nothing of `0192`** — verified by the old palette's `#0b1220` being in the file three times and `#0b0c12`
+not at all. A throwaway `rehearse24` owned by `postgres`; the seven extensions into `extensions` and `vault` as local
+has them; the local `auth`, `storage` and `realtime` schemas loaded first. ★ **The dump then loaded with ONE error —
+the platform's `supabase_realtime` publication, as every wave.** ★★ **`0192` applied `--single-transaction` with
+`ON_ERROR_STOP`, as `postgres` — exit 0**, three statements: `CREATE FUNCTION`, `REVOKE`, `GRANT`.
+
+| Check | Result |
+|---|---|
+| `brand_kit()` body, local vs rehearsed | ★ **md5 identical** — `b6ee07d66d4e0c876e4507f3041c9ba7` |
+| Routine grants | ★ **identical** — `authenticated`, `postgres`, `service_role`; `public` and `anon` revoked |
+| Defaults read back on the production schema | ★ `dark.canvas #0b0c12` · `dark.node #c6ff3d` · `light.canvas #f6f3ec` |
+| policies · triggers · columns · table grants | ★ **177 · 125 · 891 · 784 — identical to local** |
+| public functions | 335 local, 336 rehearsed — ★ **the one difference is `rls_auto_enable()`, production-only, as every wave**; no local-only function |
+
+★ **`brand_kits` is not read, written or altered by `0192`**, so an org that overrode its kit is untouched by the
+rehearsal and by the deploy.
+
 ### ★★ The production read, and the owner's four rulings at sync 1 (2026-10-04)
 
 ★★ **The owner ran the read** (`supabase db query --linked` is denied to agent sessions). Platform scope, 11 rows:
@@ -88,7 +108,7 @@ because that is what moving a default means — and an org that has overridden i
 | # | Step | PR | Who | State |
 |---|---|---|---|---|
 | 0 | `DEC-242`, the map, the ten agent files, `01`/`09`/`14`/`15`, this block, the brief | — | lead | ✓ done |
-| 1 | ★★ **The palette** — `brand.ts`'s `LIGHT`/`DARK` and `0192` replacing `brand_kit()`'s ten fallbacks, **one commit**, `brand-kits.test.ts` green | A | lead | ✓ `bb9adc5d` |
+| 1 | ★★ **The palette** — `brand.ts`'s `LIGHT`/`DARK` and `0192` replacing `brand_kit()`'s ten fallbacks, **one commit**, `brand-kits.test.ts` green | A | lead | ✓ `bb9adc5d` · **rehearsed, PR #62 ready** |
 | 2 | The six status pairs re-measured from the committed constants | A | lead | ✓ all six clear 4.5:1 |
 | 3 | The parity goldens re-baselined, every before-and-after opened | A | lead | ✓ **exactly one moved** — `backgrounds/gradient-rtl.png`, opened and reviewed; the six shaping goldens 0.000% |
 | 4 | The 120 pinned mail files — **measured UNMOVED by the palette**; the one reviewed diff moves to PR C | A | lead | ✓ measured |
