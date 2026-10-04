@@ -7285,3 +7285,26 @@ moved: «شاهد القصة» opens the story, `REQ-STO-008`»).
 6. D7 — «شاهد القصة» on desktop.
 7. The two changed assertions (W26.8) — the lead's edits.
 8. `stories.json` keys `content` needs — written to me, I add them.
+
+## W26.10 · After sync 1 (`DEC-251` §4 – §5) — what changed, and what is built
+
+**Rulings applied.**
+- D5: every visible album photograph makes one `photo` frame, keyed by its id. The caption is `photos.caption`, read through the join, so the hook is a plain insert-once.
+- D1/D2: `registration_opened` is written only after a priority window, and `registration_closed` only before the first start.
+- D3: `starts_soon` and `live` are per day.
+- D4: materials follow 0189's moment, keyed per org-local day, with no clock addition.
+- D7: the pill goes on desktop too.
+- D8: the countdown's tasks are not built.
+
+**The feed's changes.** It carries `phase` (`upcoming · live · completed`) so `story-ring` can draw `unseen` in its `upcoming` or `recap` shape. It also carries the author's own processing or failed video. Media are ids, which `content` signs. The recap's photographs are therefore `photoIds`, and the published frame's poster is `getSessionPoster()`'s signed master.
+
+**Built at `0e544ba2`** (wave-26d):
+- `proposed/sessions/01_story_generator.sql`, `02_story_feed.sql`
+- `src/lib/dal/stories.ts`, with add-only `readPresenterProfiles()` and `storyVenueFrom()` in `sessions.ts`
+- `worker/src/tasks/generate_story_frames.ts`
+- `stories.json` (ar, en) with `content`'s §8 keys
+- `tests/unit/stories-feed.test.ts` (12)
+
+**Waiting on:**
+- `0198`, for `tests/rls/story-generator*.test.ts`
+- `content`'s `<StoryOpener>`, for «شاهد القصة»
