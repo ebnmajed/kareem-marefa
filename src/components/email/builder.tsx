@@ -25,7 +25,7 @@ import { BlockFields } from "@/components/email/block-fields";
 import { BlockGlyph } from "@/components/email/block-glyphs";
 import { hasBlocking, runChecks } from "@/components/email/checks";
 import { ChecksPanel } from "@/components/email/checks-panel";
-import { chipBindings, labelKey, tokenMap } from "@/components/email/binding-labels";
+import { chipBindings, labelKey, toDisplay, toStored, tokenMap } from "@/components/email/binding-labels";
 import { emptyBlock } from "@/components/email/document";
 import { EmailCanvas } from "@/components/email/email-canvas";
 import { PreviewSheet } from "@/components/email/preview-sheet";
@@ -347,7 +347,9 @@ export function EmailBuilder(props: EmailBuilderProps) {
   const subjectRow = (
     <div className="border-b border-edge px-4 py-2">
       <Field label={t("subject")}>
-        <Input name="builder-subject" maxLength={200} value={subject} onChange={(event) => setSubject(event.target.value)} />
+        {/* ★ Shown in the canvas's tokens — «غدًا: {عنوان الجلسة}» — and kept in the stored syntax, `{{title}}`: what
+            is typed is converted back on every change, so what is saved is exactly what the row has always held. */}
+        <Input name="builder-subject" maxLength={200} value={toDisplay(subject, tokens)} onChange={(event) => setSubject(toStored(event.target.value, tokens))} />
       </Field>
       {props.isStringRow ? <p className="mt-1 text-caption text-fg-muted">{t("stringRow")}</p> : null}
     </div>

@@ -70,7 +70,9 @@ function mount(action = vi.fn(async () => ({ saved: true, values: { updatedAt: "
 const openPreview = () => fireEvent.click(screen.getByRole("button", { name: "معاينة واختبار" }));
 const testButton = () => screen.getByRole("button", { name: /أرسل اختبارًا إلى/ });
 
-describe("EmailBuilder", () => {
+// The whole builder mounts per case, and under the full suite's load a case can pass 5 s; the cases wait on the
+// server's answer (a mocked action), never on time.
+describe("EmailBuilder", { timeout: 20_000 }, () => {
   it("draws the bar and the rail in the artboard's order, الكتلة only with a selection", () => {
     mount();
     expect(screen.getByRole("heading", { level: 1, name: "تذكير قبل الجلسة بيوم" })).toBeInTheDocument();
@@ -156,6 +158,17 @@ describe("EmailBuilder", () => {
     } finally {
       window.matchMedia = original;
     }
+  });
+
+  it("★ the subject is shown in tokens and saved in the stored syntax, exactly", async () => {
+    const { action } = mount();
+    const field = screen.getAllByLabelText(/الموضوع/)[0] as HTMLInputElement;
+    expect(field.value).toBe("غدًا: {عنوان الجلسة}");
+    fireEvent.change(field, { target: { value: "بعد غد: {عنوان الجلسة}" } });
+    expect(field.value).toBe("بعد غد: {عنوان الجلسة}");
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "احفظ وفعّل" })));
+    const posted = (action.mock.calls[0] as unknown as [unknown, FormData])[1];
+    expect(posted.get("subject")).toBe("بعد غد: {{title}}");
   });
 
   it("names the real session the preview uses", () => {

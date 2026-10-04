@@ -186,7 +186,11 @@ export function BlockCanvas({
         )}
         {fixed.map((item) => (
           <div key={item.id} aria-hidden="true" data-canvas-fixed="" style={at(item.box)} className="absolute">
-            <span className="absolute -top-3 end-2 rounded-field border border-edge bg-raised px-1.5 text-caption text-fg-muted">{labels.fixed}</span>
+            {/* Inside its own box, at the bottom: astride the top edge it touched the last row's corner, and a block's
+                bar hangs below that block into the footer's top — the footer's foot is the one place nothing else uses. */}
+            <span data-canvas-fixed-tag="" className="absolute bottom-1 end-2 rounded-field border border-edge bg-raised px-1.5 text-caption text-fg-muted">
+              {labels.fixed}
+            </span>
           </div>
         ))}
         {slots
