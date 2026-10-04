@@ -1,9 +1,90 @@
-**Last updated:** 2026-10-04 · **Branch:** `wave-24/the-templates` · ★★ **WAVE 24 IS OPEN — M26, THE ARTEFACTS (`DEC-242`)** · **`main`:** `6de410b2`; production at **`0196`** (★ `0192`, `0193`, `0195`, `0196` pushed 2026-10-04; **`0194` is on neither side** — still in open PR #69, so it arrives out of order and will need `--include-all`); the worker on Railway at `37f79dd5`, `builder = DOCKERFILE` held by `railway.json` · ★★ **The owner's ask, verbatim: «I want the templates to match the designed ones and delete the current ones.»** Three questions, three answers (`DEC-242`): **both** the design templates and the mail designs · a **hard delete** · the **platform default palette moves** to «ساحة اللعب». · ★★ **This is the first wave that touches what LEAVES the product** — every screen has worn the playground since wave 17; an exported poster and an issued certificate still wear M6's Reem Kufi on navy, because «the playground stops at the certificate's edge» (`DEC-183` §4) was a deferral. · ★★ **Three PRs:** A `wave-24a/the-palette` (lead, alone, first) · B `wave-24b/the-baseline` (`designer`) · C `wave-24c/the-mail-designs` (`notify`) — **B and C both cut from A's head**, merge order A, B, C. · ★★ **Two migrations, both the lead's:** `0192` (the palette) and `0193` (the baseline), rehearsed on a dump taken at `0191`. · ★★ **NO new primitive** — `ui/` stays **69**. · ★★ **The hard-delete has a floor the database enforces:** `certificates.template_version_id` is `on delete restrict` and `issue_certificates()` resolves the **platform** row directly, so a version a certificate references **cannot** be deleted — `REQ-CRT-014` made structural. The migration **deletes where it can and retires where it cannot, reporting which per row** (`DEC-242` §3). · ★ **Carried from M12:** the tie-breaker, `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, and the **November** Railway dry run (`DEC-241` §2, before 2026-12-01). · ★★ **NEXT SCOPE IS WRITTEN AND NOT OPEN:** wave 25 / **M27** — a member added by hand (`DEC-243`, **shape set by `DEC-244`** after the owner corrected the first answer: «i need the addition of the user to take affect and appear in the users as soon as the admin adds them»). ★★ **An added person is a `members` row at once — no invitation table, no new enum; `auth_user_id` becomes nullable and first sign-in BINDS it.** ★ Two traps: the auth hook (no new grant — `0006` already has it) and the active-member denominator (four predicates, same PR). The record is in `01`/`02`/`05`/`08`/`09`/`11`/`14`/`15` and `notes/wave-25-lead.md`; **`03` and the migration deliberately not yet written**. Finish wave 24 first.
+**Last updated:** 2026-10-04 · **Branch:** `main` · ★★ **WAVE 26 IS PLANNED — THE LAST WAVE (`DEC-245`, M28)** · **`main`:** `00377c6f`; migrations run to **`0197`**, the next is **`0198`** · **Phase:** ★★ **M13 + STORIES + THE MARK**: the landing, register and verify; the brand kit and privacy; the platform console REDESIGNED on `admin-rail`; stories, generated and from attendees — **seventeen artboards**, five PRs, **two primitives (floor 69 → 71)**, one migration. The brief is `docs/plan/notes/wave-26-lead.md`. ★★ **WHEN THIS MERGES, EVERY SCREEN IN THE PRODUCT HAS A DESIGN AND IS BUILT — NOTHING REMAINS**; anything further is new scope the owner decides, and the story ring is wired at last after five waves inert. ★★ **PR E, the mark, is HELD on two blockers** (`DEC-245` §6): `docs/design/prototypes/logo-motion.html` is **MISSING**, which is the planning prompt's own stop condition; and the motion's `.theme-play` gating **contradicts `public-graph.test.ts`**, which forbids that string in any file the public routes reach — the landing renders the mark. ★ **Owed by the owner:** the motion prototype; the landing's reveal (static, or un-scoped CSS); `AdminAttendance`'s missing PNG; the `railway.json` → `.railway/railway.ts` migration due **2026-12-01**; and the last acceptance. ★ **Flagged for the lead, not the planner:** **`0194` is missing from the migration sequence** — `0193` then `0195`, on disk and on `origin/main`.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
+
+## ★★★ WAVE 26 — PLANNED — THE LAST WAVE: M13, stories and the mark (`DEC-245`)
+
+**The programme's twelfth wave, and its last designed work.** The brief is `docs/plan/notes/wave-26-lead.md`; the
+drawing is `docs/design/screens/M13.md` with **seventeen** artboards in `docs/design/screens/m13/` and
+`STORIES-USER-STORIES.md`'s **STO-01–18**; the decision is `DEC-245`. Milestone **M28**. **One migration, `0198`** —
+`story_views` and `story_frames` together. **Two primitives**, `story-viewer` and `story-capture`, so the floor moves
+**69 → 71**. **Five PRs**, each opened against `main` on its first push.
+
+★★ **WHEN THIS MERGES, EVERY SCREEN HAS A DESIGN AND IS BUILT. NOTHING REMAINS.** `05-stories.md` entered the tree
+on 28 September and was overtaken five times; the ring has been inert since wave 18. Both end here. After this wave
+there is no further plan — anything more is new scope the owner decides.
+
+### The owner's three rulings (`DEC-245` §1)
+
+1. **M13 and stories together, in this wave**, and nothing remains after it.
+2. **The platform console is redesigned** on the console frame. ★ **These are BUILT screens** — wave 8 built all seven
+   platform routes (`DEC-147`) — so `DEC-208` applies in full: **delete, then rebuild.**
+3. **The landing's appearance changes** on `REQ-NFR-019`'s permitted path: a `DEC` **and** a re-baselined visual diff
+   **in the same commit**, with URLs, registration behaviour and the accessibility floor untouched.
+
+### ★★ The public contract is the tightest constraint, and `public-graph` is why
+
+`tests/unit/public-graph.test.ts` stays **untouched** and asserts three things to design around: the graph still
+reaches `components/registration-form.tsx`; it reaches **exactly five primitives** (`button`, `field`, `icons`,
+`input`, `textarea`), so **a sixth from `ui/` fails it**; and ★★ **it names `theme-play` nowhere** in any file the
+public routes reach.
+
+★ **`001`'s frozen behaviour, measured:** `action={formAction}`, hidden `form_token` (`:146`) and `locale` (`:150`),
+a honeypot (`:157`), `role="alert"` at `:167` and `:348`, and the posted names `name`, `email`, `topicTitle`,
+`topicCategory`, `topicDescription`, `role`. Those, the validation and the no-JS path are the contract byte for byte.
+
+### ★★ PR E, the mark, is HELD — two blockers
+
+1. ★ **`docs/design/prototypes/logo-motion.html` is MISSING.** The directory holds only `motion-story.html` and
+   `stories.html`, both of 28 September. **This is the planning prompt's own stop condition**, and the motion
+   vocabulary — reveal · loading · tap — has no reference implementation. It is not invented.
+2. ★★ **A contradiction between three of the prompt's own requirements.** PR E puts the motion CSS **under
+   `.theme-play`**; PR A keeps **`public-graph.test.ts` untouched**; that test **forbids `theme-play`** in any file the
+   public routes reach — **and the landing renders the mark.** So a single `<Logo>` naming the scope fails the guard,
+   and «the landing may use the reveal once» cannot happen by that mechanism either.
+   ★ **The way through, for the owner:** `<Logo>` is a **plain component, not in `ui/`** (which would also break the
+   five-primitive assertion), carrying the inlined SVG, `pathLength="1"` and attribute strokes, **naming no scope**;
+   the motion attaches from `globals.css` under `.theme-play`, which the public pages never carry. **The landing gets
+   the static mark** unless the owner wants un-scoped reveal CSS written for it.
+
+★ **The rest of PR E is measured and correct**: both wordmark components exist, `platform/layout.tsx` has no mark,
+`src/app/icon.svg` is the favicon, and **`/og.png` is absent from `scripts/visual-diff.mjs`'s `ROUTES`** (`:56`), so
+today only `qa:contract` shape-checks it.
+
+### Step 0 — measured, with five corrections
+
+| | |
+|---|---|
+| `main` | **`00377c6f`** (`origin/main`, PR #68). ★★ **Local `main` is 9 commits BEHIND and holds 44 uncommitted files — the brand pack, with the wordmark assets staged as DELETIONS.** Fast-forward, cut the branches, then let PR E delete. Nothing is deleted before the wave that replaces it is on a branch |
+| Next decision / migration | **`DEC-245`** (log ends at `DEC-244`) · **`0198`** (`0197_add_a_member.sql` is the last) |
+| ★ `0194` | **missing from the sequence** — `0193` then `0195`, on disk and on `origin/main`. **The lead rules on it**; the planner only flags it |
+| `src/components/ui/` | **69**, floor **69** at `:123` → **71** with the two new |
+| ★ The PNGs | **sixteen for seventeen boards** — `AdminAttendance.dc.html` has none |
+| ★ `M13.md`'s `DEC-NEXT-40` | cites **`0192`** for `story_views`; `0192` is `platform_palette`, merged in wave 24. **It is `0198`** |
+| ★ Impersonation | is **`DEC-054`**, not a 1xx as the prompt guessed — `impersonation_sessions`, «≤ 4 h by constraint, append-only», with `DEC-055` §3 and `DEC-057` §7 |
+
+### ★ Stories — the requirements come first
+
+`01-prd.md` gains **`REQ-STO-001` … `REQ-STO-018` from STO-01–18 one to one**, and PR D's stories are written from the
+`REQ`s, not the artboards. Then `0198`. ★ **The video path is the open engineering question**: ≤ 15 s, ≤ 60 MB, one MP4
+rendition, and `DEC-181` forbids an npm package for media work — **the worker uses system binaries from
+`worker/Dockerfile`**, `ffmpeg` is not in the image today, and the plan **names the transcoder and its image-size
+cost**. A reported video is **hidden on first report, like a photo**.
+
+### Out, and not to be re-litigated
+
+New scope of any kind · `DEC-194`'s two gates · `DEC-186` §4 · the hard-load fix (`DEC-204`) · `DEC-215`'s four · the
+`railway.json` migration (the owner's, due 2026-12-01). **Not re-litigated:** `DEC-124` · `DEC-099` · `DEC-093`, which
+is why `story-viewer` needs a keyboard path · **`DEC-014` and invariant 8 — no `is_super_admin()` disjunct** ·
+`DEC-054`'s impersonation shape · `DEC-167`'s public contract · `DEC-181`'s no-npm-for-media rule · `DEC-201`'s brand
+kit scope · invariant 2, `registrations` · invariant 11, no SVG uploads — the mark is a repo asset inlined by a
+component, not an upload.
+
+---
+
 
 ## ★★★ WAVE 24 — OPEN · M26, the artefacts (`DEC-242`)
 

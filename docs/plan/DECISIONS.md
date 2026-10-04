@@ -8911,6 +8911,126 @@ migration that is now **two column changes, four RPCs, two function amendments a
 - ★ **`03-permissions-rls.md` is still not changed**, and now for a second reason: there is no new relation to
   document. The policy set `members` carries is unchanged by a nullable column.
 
+## DEC-245 — Wave 26 is the LAST wave: M13 and stories together, the platform console redesigned, the landing's appearance changed on `REQ-NFR-019`'s permitted path; five PRs of which four are buildable, and ★ the mark is HELD because its motion prototype is missing and its scope gating contradicts the public-graph guard
+
+- **Date:** 2026-10-04 · **Decided by:** the owner (§1, three rulings); everything else by the wave-26 planner, from `docs/design/screens/M13.md`, `STORIES-USER-STORIES.md`, the seventeen artboards, and measurement of the tree at `00377c6f`
+- **Amends:** `M13.md`'s `DEC-NEXT-40`, which cites migration `0192` for `story_views` — **`0192` is `platform_palette` and taken**, so it is `0198` (§5.3)
+- **Adds:** milestone **M28**; **`REQ-STO-001` … `REQ-STO-018`** from STO-01…18 one-to-one; one migration, **`0198`**, carrying `story_views` and `story_frames`. ★ **Two primitives — `story-viewer`, `story-capture` — so the floor moves 69 → 71**
+- **Does not touch:** the public URLs, the registration behaviour, the accessibility floor, `registrations`, `public-graph.test.ts`, `console-register.test.ts`
+
+### 1 · The owner's three rulings
+
+1. **M13 and stories ship together, in this wave** — ★ **and nothing remains after it.** Every screen
+   in the product then has a design and is built.
+2. **The platform console is redesigned** (`DEC-240` §5's reading (b)) on the console frame. ★ **These
+   are BUILT screens** — wave 8 built all seven platform routes (`DEC-147`) — so `DEC-208` applies in
+   full: **delete, then rebuild**, not new pages.
+3. **The landing's appearance changes**, on `REQ-NFR-019`'s permitted path: a `DECISIONS.md` entry
+   **and** a re-baselined visual diff **in the same commit**, with URLs, registration behaviour and
+   the accessibility floor untouched.
+
+### 2 · Five PRs, four of them buildable today
+
+**A** the public site (`000`, `001`, `006`) · **B** `059` and `/app/me/privacy` · **C** the platform
+console (`080`–`085`) on `admin-rail` · **D** stories, generated and attendee · **E the mark — HELD**
+(§6). Each opened against `main` on its first push.
+
+★ **`SCR-044` is the one screen `DEC-208` does not reach**: rebuilt in wave 21 and only **extended**
+here with the «قصص الحضور» strip, so it is add-only with its wave-21 suites passing untouched.
+
+### 3 · ★★ The public contract is the wave's tightest constraint, and `public-graph` is why
+
+`tests/unit/public-graph.test.ts` stays untouched and asserts three things the design must be built
+around:
+
+1. the graph is larger than the pages and **still reaches `components/registration-form.tsx`**;
+2. it reaches **exactly five primitives** — `button`, `field`, `icons`, `input`, `textarea`
+   (`DEC-186` §1) — so **a sixth from `ui/` makes it fail**;
+3. ★★ **it names the playground's scope nowhere**: for every file the public routes reach,
+   `source.includes("theme-play")` is `false`.
+
+★ **`001`'s frozen behaviour, measured** (`src/components/registration-form.tsx`): a server-action
+`action={formAction}`; hidden `form_token` (`:146`) and `locale` (`:150`); a honeypot (`:157`);
+`role="alert"` at `:167` and `:348`; posted names `name`, `email`, `topicTitle`, `topicCategory`,
+`topicDescription`, `role`. **Those, the validation and the no-JS path are the contract byte for
+byte**, and `registrations` is never read, altered or dropped (invariant 2 — **20 real signups**).
+
+### 4 · The platform console's two non-negotiables
+
+★ **No data plane** (`REQ-NFR-014`, invariant 8, `DEC-014`): the metrics and orgs tables carry
+**counts only**, each DAL function named in the plan with its test, and **no policy ever gains an
+`is_super_admin()` disjunct**.
+
+★ **Impersonation is `DEC-054`, not a 1xx** — the planning prompt guessed. `DEC-054` Decision 1 lands
+`impersonation_sessions` «`02` §4.1 verbatim, **≤ 4 h by constraint**, append-only»; `DEC-055`
+Decision 3 holds that break-glass browses nothing beyond it; `DEC-057` Decision 7 makes the
+`ImpersonationBanner` real on the platform shell and `/no-access`. The reason and duration are
+stored, **the org's** audit receives the entry, the session ends at the duration. **The new screen
+shows all of it and changes none of it.**
+
+### 5 · Measured corrections
+
+1. ★ **`0194` is missing from the sequence** — `0193` then `0195`, on disk and on `origin/main`. The
+   **lead rules on it**; the planner only flags it. `DEC-180`'s lesson is that a number cited and
+   never written vanishes without an error.
+2. ★ **Sixteen PNGs for seventeen boards**: `AdminAttendance.dc.html` has none. Every other board
+   does.
+3. ★ **`M13.md`'s `DEC-NEXT-40` cites `0192` for `story_views`.** `0192` is `platform_palette`,
+   merged in wave 24. **It is `0198`.**
+4. ★ **`/og.png` is absent from `scripts/visual-diff.mjs`'s `ROUTES`** (`:56` reads
+   `['/ar', '/en', '/ar/register', '/ar/ui']`), so today only `qa:contract` shape-checks it. PR E
+   adds it with a baseline.
+5. ★ **The brand pack is uncommitted on a local `main` that is 9 commits behind `origin/main`, with
+   the wordmark SVG and PNG assets staged as DELETIONS.** Nothing is deleted before the wave that
+   replaces it is on a branch (the owner's rule of 2026-09-28): **fast-forward, cut, then let PR E
+   delete.**
+
+### 6 · ★★ PR E is HELD — two blockers, and the first is the prompt's own stop condition
+
+The planning prompt says «if either is missing, the logo pack was not unpacked — stop and say so».
+**`docs/design/LOGO-PROMPT.md`, `assets/brand/logo/README.md` and `assets/brand/logo/logo.svg` are all
+present. ★ `docs/design/prototypes/logo-motion.html` is MISSING** — the directory holds only
+`motion-story.html` and `stories.html`, both of 28 September. **So the motion vocabulary — reveal ·
+loading · tap — has no reference implementation, and PR E's instruction is to take the CSS «from the
+prototype's CSS». It is not invented.**
+
+★★ **The second blocker is a contradiction between three of the prompt's own requirements**, which
+nobody could have seen without reading the guard: PR E puts the motion CSS **under `.theme-play`**;
+PR A keeps **`public-graph.test.ts` untouched**; and that test forbids the string `theme-play` in any
+file the public routes reach. **The landing renders the mark.** So a single `<Logo>` naming the scope
+fails the guard — and the prompt's «the public landing may use the reveal once» cannot happen by that
+mechanism either, because the landing may not carry the class.
+
+★ **The way through, for the owner to confirm:** `<Logo>` is a **plain component, not in `ui/`** —
+`ui/` would also break the «exactly five primitives» assertion — carrying the inlined SVG,
+`pathLength="1"` and attribute strokes, and **naming no scope**; the motion attaches from
+`globals.css` by selectors under `.theme-play`, which the public pages never carry. **The landing then
+gets the static mark** unless the owner wants un-scoped reveal CSS written for it, which is a decision
+and not an implementation detail.
+
+**The rest of PR E is measured and correct**: both wordmark components exist
+(`src/components/wordmark.tsx`, `src/components/brand/wordmark.tsx`), `platform/layout.tsx` has no
+mark, and `src/app/icon.svg` is the favicon to replace. **PR E is ready the moment the prototype lands
+and the owner rules on the landing.**
+
+### 7 · For the owner
+
+1. ★★ **`prototypes/logo-motion.html`**, so PR E can start.
+2. ★ **The landing's reveal** — static mark, or un-scoped CSS written for it (§6).
+3. ★ **`AdminAttendance`'s PNG**, or a ruling that `044`'s strip is reviewed against the board itself.
+4. The **`railway.json` → `.railway/railway.ts`** migration, due **2026-12-01**.
+5. ★★ **The acceptance**, and it is the last one: every screen beside its artboard.
+
+### 8 · Carried, unchanged
+
+`DEC-194`'s two gates. · `DEC-186` §4's overshoot ceiling. · The hard-load duplicate (`DEC-204`). ·
+`DEC-215`'s four. · ★ **After this wave there is no further plan**; anything more is new scope.
+
+- **Documents changed:** `01-prd.md` (`REQ-STO-001` … `018` and the wave's `REQ-UIX-*`),
+  `09-sitemap-screens.md` (the eleven screens and the story surfaces), `14-roadmap.md` (M28),
+  `15-backlog.md` (the wave's stories), `02-domain-model.md` and `03-permissions-rls.md`
+  (`story_views`, `story_frames`), `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten agent files
+  (the wave-26 map), `STATUS.md` (the wave-26 head)
 ---
 
 ## DEC-246 — `DEC-244` §6 measured short: the active-member denominator is **five predicates across two functions**, and the second one awards points
