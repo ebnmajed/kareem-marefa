@@ -310,16 +310,17 @@ the recipient is the calling admin's own, read inside the function. Renders the 
 with its reason. «[اختبار] » is prefixed at the transport call, never in the renderer.
 
 #### `JOB-send_member_invitation` ★ the thirty-seventh job
-**Serves:** `REQ-NTF-017`, `REQ-TEN-009` · `DEC-243` §6 · **added in wave 25**
-**Key:** `invite:{invitation_id}` — a double press replaces rather than duplicates
-**Notes:** the mail that tells a named person they belong. Enqueued through `public.enqueue_job()` by
-`invite_member()` and by `resend_member_invitation()`. ★ **It takes no address**: the payload carries the
-invitation's id and the address is read here, through a definer function, on `JOB-send_test_email`'s rule and for
-the same reason — a forged or replayed job can mail nobody but that invitation's own address, and the guarantee
-lives in two places that both refuse to carry an address. **It is not a matrix message** (`DEC-243` §6): it
-resolves no preference and writes no inbox row, because its recipient has no member row to resolve one from. It
-writes an `email_deliveries` row, so an invitation appears in the delivery log with its reason. An invitation that
-is `revoked` or already `claimed` sends nothing and returns — it does not retry.
+**Serves:** `REQ-NTF-017`, `REQ-TEN-009` · `DEC-243` §6, ★ `DEC-244` §8 · **added in wave 25**
+**Key:** `invite:{member_id}` — a double press replaces rather than duplicates
+**Notes:** the mail that tells a person an admin has added them that they belong. Enqueued through
+`public.enqueue_job()` by `add_member()` and by `resend_member_invitation()`. ★ **It takes no address**: the payload
+names the **member** — who exists from the moment the admin saved them (`DEC-244` §3) — and the address is read here
+through the same definer context the real send uses, on `JOB-send_test_email`'s rule and for the same reason. A
+forged or replayed job can mail nobody but that member. **It is not a matrix message** (`DEC-244` §8): «you have been
+added» is not a message anybody may switch off, and a twenty-sixth key would move the matrix, the designed families
+and all 120 pinned files to add a preference nobody may use. It writes an `email_deliveries` row, so an addition
+appears in the delivery log with its reason. A member who has **already signed in**, or who has been deactivated,
+is sent nothing and the job returns — it does not retry.
 
 #### `JOB-rsvp_nudge`
 **Key:** `nudge:{session_id}` · **Notes:** in-app only, **once**, at −7 d. §6 asks for reminders to

@@ -10,7 +10,7 @@
 |---|---|
 | Requirements (`REQ-*`) | **420** |
 | Entities (`ENT-*`) | **85** |
-| Stories (`STORY-*`) | **253** |
+| Stories (`STORY-*`) | **254** |
 | Screens cited (`SCR-*`) | 60 |
 | Jobs cited (`JOB-*`) | 41 |
 | Messages cited (`MSG-*`) | 24 |
@@ -95,7 +95,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
 | `REQ-AUT-001` | — | — | `SCR-002` `SCR-003` `SCR-004` | — | — | `STORY-AUT-001` `STORY-UIX-016` | M1, M10, M9 |
-| `REQ-AUT-002` | — | — | `SCR-002` | — | — | `STORY-AUT-001` | M1 |
+| `REQ-AUT-002` | `ENT-member_invitations` | — | `SCR-002` | — | — | `STORY-AUT-001` | M1 |
 | `REQ-AUT-003` | `ENT-member_invitations` `ENT-members` `ENT-org_domains` | — | `SCR-049` `SCR-082` | `JOB-send_member_invitation` | — | `STORY-AUT-002` | M1 |
 | `REQ-AUT-004` | `ENT-org_domains` | `POL-provision_member.ambiguous` | `SCR-002` `SCR-003` `SCR-004` +9 | `JOB-zip_session_photos` | — | `STORY-AUT-002` | M1 |
 | `REQ-AUT-005` | — | — | `SCR-002` `SCR-003` `SCR-004` | — | — | `STORY-AUT-003` | M1 |
@@ -257,7 +257,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-LDR-003` | `ENT-categories` | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-002` | M4 |
 | `REQ-LDR-004` | `ENT-companies` `ENT-company_points_balances` `ENT-company_points_ledger` +2 | — | `SCR-010` `SCR-027` `SCR-028` +3 | — | — | `STORY-LDR-003` | M4 |
 | `REQ-LDR-005` | — | — | `SCR-010` `SCR-027` `SCR-028` | — | — | `STORY-LDR-003` | M4 |
-| `REQ-LDR-006` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | `POL-achievement.snapshot` | `SCR-027` `SCR-028` | `JOB-snapshot_leaderboards` | — | `STORY-LDR-004` | M4 |
+| `REQ-LDR-006` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` `ENT-member_invitations` +1 | `POL-achievement.snapshot` | `SCR-027` `SCR-028` `SCR-049` | `JOB-send_member_invitation` `JOB-snapshot_leaderboards` | — | `STORY-LDR-004` `STORY-LDR-005` | M27, M4 |
 | `REQ-LDR-007` | — | — | `SCR-027` `SCR-028` | — | — | `STORY-LDR-004` | M4 |
 | `REQ-LDR-008` | — | `POL-leaderboard_entries.opt_out_at_write` `POL-leaderboard_entries.select.opt_out` | `SCR-012` `SCR-013` `SCR-015` +10 | — | — | `STORY-LDR-003` | M4 |
 
@@ -361,7 +361,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
 | `REQ-PTS-001` | `ENT-audit_log` `ENT-points_ledger` | — | `SCR-010` `SCR-012` `SCR-014` +1 | — | — | `STORY-PTS-001` | M4 |
-| `REQ-PTS-002` | `ENT-points_ledger` | — | `SCR-022` | — | — | `STORY-PTS-001` | M4 |
+| `REQ-PTS-002` | `ENT-member_invitations` `ENT-members` `ENT-points_ledger` | — | `SCR-022` `SCR-049` | `JOB-send_member_invitation` | — | `STORY-PTS-001` | M4 |
 | `REQ-PTS-003` | — | `POL-scoring_rules.select` | `SCR-007` `SCR-010` `SCR-022` +9 | `JOB-zip_session_photos` | — | `STORY-PTS-006` | M4 |
 | `REQ-PTS-004` | `ENT-scoring_rules` | — | `SCR-022` `SCR-045` `SCR-053` +1 | — | — | `STORY-PTS-003` | M4 |
 | `REQ-PTS-005` | `ENT-scoring_config_history` `ENT-scoring_rules` | — | `SCR-022` `SCR-045` `SCR-053` +1 | — | — | `STORY-PTS-003` | M4 |
@@ -471,8 +471,8 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-TEN-007` | `ENT-org_domains` | — | `SCR-082` | — | — | `STORY-TEN-004` | M1 |
 | `REQ-TEN-008` | `ENT-org_settings` `ENT-scoring_config_history` | — | `SCR-063` | — | — | `STORY-TEN-004` | M1 |
 | `REQ-TEN-009` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | `JOB-send_member_invitation` `JOB-send_test_email` | — | `STORY-TEN-005` | M27 |
-| `REQ-TEN-010` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | — | — | `STORY-TEN-006` | M27 |
-| `REQ-TEN-011` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | — | — | `STORY-TEN-007` | M27 |
+| `REQ-TEN-010` | — | — | `SCR-049` | — | — | `STORY-TEN-006` | M27 |
+| `REQ-TEN-011` | `ENT-members` | — | `SCR-049` | — | — | `STORY-TEN-007` | M27 |
 
 ### TSK
 
