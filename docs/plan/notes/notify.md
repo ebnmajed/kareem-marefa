@@ -5583,3 +5583,73 @@ updates it in PR B or the lead takes it as PR A's own untouched-suite ledger lin
 ★ **Commit 1 did not create `mail-palette-default.test.ts` for commit 2's sake and then wait** — it created it with
 the «no value equals the platform default» case, because that property is commit 1's own, and **commit 2 adds the
 third copy's case to the same file**. One file, grown additively, and neither property is unguarded for a commit.
+
+---
+
+### W24.15 · PR C is done — the five commits, and what each one proved
+
+| # | commit | what it is | pinned delta, predicted = measured |
+|---|---|---|---|
+| 1 | `ba060098` | `SAMPLE_BRAND` becomes an org's whole kit, both schemes, every value unlike the platform default | **30 `.brand.html`** |
+| 2 | `4c0391aa` | `render.ts`'s ten fallback sites become one `PLATFORM_LIGHT`, guarded against `platformBrand('light')` | **30 `.plain.html`** |
+| 3 | `c7518734` | the accent: `node` fills the primary button, `fgHeading` labels it | **24 + 24** |
+| 4 | `3add3933` | ★ the eight families wear the house style — one constant they all reference | **29 + 29**, and `org-text` unmoved |
+| 4b | `0df27280` | the overlay suite's own `canonical()` stops blanking `styles` | — |
+| 5 | `3eec1dc6` | three pinned-file counts stale since wave 10 | none |
+
+Three re-pins, each taken by the lead against a prediction handed over first: `a0ce4cdf`, `e14473f4`, `0973e2d7`.
+★ **Every prediction matched exactly**, and re-pin C was verified against the allowed-difference list rather than by
+eye — all five forbidden tokens at zero, and no declaration outside the list.
+
+★ **The four things `REQ-NTF-016` demanded, and where each is held:**
+
+1. **All 25 keys resolve, each with its own copy** — `mail-designs.test.ts`, unchanged by this wave. ★ **No copy line
+   was touched**, and `DEC-243` was measured not to add a twenty-sixth (W24.13).
+2. **Every block keeps its `id`, its compiled HTML and its generated text alternative** — `mail-designs.test.ts`'s
+   `dropped: []` across all 25, and ★ **the sharpest proof of the wave: the 30 `.txt` and 30 `.subject.txt` pinned
+   files never moved, through five commits.** The look changed and not one word or line of the plain part did.
+3. **No SVG** — `ImageSource` is a closed two-member set and no design added an image source; the only image is the
+   org logo.
+4. **A null `blocks` row is still the admin's own framed text** — ★ **proved in the bytes rather than asserted**:
+   of thirty pinned cases the one that did **not** move in commit 4 is `MSG-reminder_1d.org-text`.
+
+★ **Three judgements I would defend at review, each a line I drew rather than found:**
+
+- **`styles.ground`'s neutral grey is not a copy of the palette** (commit 2). The same six characters do two jobs —
+  one a fallback, one the *definition* of what «neutral» means in a control an admin picks. The lead's list had it
+  among the literals; moving it would have made `neutral` and `canvas` identical for every org on the default.
+- **No `mobile` leg** (commit 4). It is the only style that reaches the HTML as a `<style>` and two `class=`
+  attributes, and no platform design had ever used one — so all 25 messages are still inline-only. Measuring what it
+  buys found almost nothing: `02-typography.md`'s `title` is **28 on a phone** already. ★ **A stated constraint of
+  the medium was kept rather than edited to fit the change.**
+- **No tinted inset painted with `edge`** (commit 4). The design's surface-2 is `canvasRaise`, which `PaletteToken`
+  does not carry; a hairline colour used as a fill would make a token mean two things. `rescheduled`'s change block
+  is framed with two `divider`s instead — the vocabulary's own answer.
+
+★ **Carried out of this wave, in my files, for whoever takes them:**
+
+- **Wave 25's ninth designed family** (`REQ-NTF-017`, the invitation) inherits `HOUSE` by referencing it — but
+  `mail-designs.test.ts` asserts `DESIGN_FAMILIES.length === 8` **and** that `DESIGN_FOR`'s value set equals it,
+  which a ninth family with no `MSG-*` key cannot satisfy. **A ledger line that wave owes, named before it starts.**
+- **A kit-level accent contrast guard** is `branding`'s and M13's. `0144` guards the six status pairs only, so a kit
+  whose `node` and `fgHeading` sit close is as unguarded as a kit whose `fgHeading` was pale under the old white
+  label. The change moved that class of defect; it did not create it.
+- **The mail has no display face** (`D2`, W24.8), accepted as a product fact and with the owner. The poster and the
+  certificate wear Baloo Bhaijaan 2; an email wears `DESIGN_STACK` and cannot. No workaround was built.
+- ★ **A mail heading cannot reach the design's 32 px desktop `title`** — `headingSize.h1` tops out at 28, and
+  widening a closed scale would change a control an admin picks from. Recorded, not closed.
+
+★ **Ledger lines PR C owes `STATUS.md`** (reported to the lead, the lead's to write):
+
+| Spec · line | Moved | Kind |
+|---|---|---|
+| `tests/unit/mail-layout.test.ts:132` — `BRAND.fgMuted` → `BRAND.light.fgMuted` | the sample kit became the whole kit; the colour asserted is unchanged | **selector** |
+| `tests/unit/mail-blocks.test.ts:413` — `"#1a1a1a"` → `PLATFORM_LIGHT.fgBody` | the case is about the sanitiser, not the colour; a literal made it a second place the palette had to be edited | **expectation** |
+| `tests/unit/notify-builder-state.test.ts:30` — `toBe(documentJsonOf(design.blocks))` → `toEqual` on the parsed document | a design now carries `styles`, which `documentJsonOf()` never serialised | **expectation** |
+| same file — a **new** idempotency case | key order is not a property of anything; the string the editor compares is, and it had no test | **new coverage** |
+| `tests/unit/mail-layout.test.ts:33` — `canonical()` stops blanking `styles`, and the present-but-empty property is asserted on its own | the helper that proves an overlay additive was itself an overlay that changed the document | **expectation** + **new coverage** |
+
+**Gates:** `tsc --noEmit` clean · `npm run lint` **0 errors** · **485 unit tests green** across the 27 suites PR C
+touches, and `tests/components/email` 16 green · `main` merged at `79e96c6f`, both workspace packages rebuilt.
+★ **No full local suite**, per the owner's choice: this machine's component project times out under load and its
+failing set rotates between runs, so CI on a clean runner is the authority.
