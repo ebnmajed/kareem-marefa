@@ -142,8 +142,11 @@ test("★ an uploaded poster is SEEN — in the studio, and (with a worker) edge
   await signIn(context);
   await page.setViewportSize(DESKTOP);
 
-  await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule`);
-  const upload = main(page).locator('section[aria-labelledby="poster"]').locator("article", { has: page.getByRole("heading", { name: "رفع ملصق جاهز", level: 3, exact: true }) });
+  // ★ Wave 21 rebuilt الجدولة read-by-default (SCR-043): the poster picker is a setting shown while EDITING, in its own
+  // section beside the form (`schedule/page.tsx`, `poster-picker`), so the upload is reached at `?edit` — a selector
+  // move; the control and every expectation below are unchanged.
+  await page.goto(`/ar/app/admin/sessions/${sessionId}/schedule?edit`);
+  const upload = main(page).locator('section[aria-labelledby="poster-picker"]').locator("article", { has: page.getByRole("heading", { name: "رفع ملصق جاهز", level: 3, exact: true }) });
   await upload.locator('input[type="file"][name="poster"]').setInputFiles({ name: "poster.png", mimeType: "image/png", buffer: redPng(1200, 1500) });
   await upload.getByRole("button", { name: "ارفع الملصق", exact: true }).click();
   await expect(page.getByText("رُفع الملصق، وتُجهَّز مقاساته الآن.", { exact: true })).toBeVisible({ timeout: 30_000 });
