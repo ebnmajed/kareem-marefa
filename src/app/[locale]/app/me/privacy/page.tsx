@@ -73,30 +73,41 @@ type T = Awaited<ReturnType<typeof getTranslations<"privacy.page">>>;
 
 function exportRow(request: DataExportRequest | null, t: T, day: (iso: string) => string, locale: Locale): SettingsRow {
   const base = { kind: "action" as const, id: "export", label: t("exportTitle") };
-  const ask = (label: string) =>
-    request && !request.canRequestAgain ? null : <ExportRequest label={label} action={requestExportAction.bind(null, locale)} />;
-  const limited = request && !request.canRequestAgain ? t("rateLimited") : null;
+  if (!request) return { ...base, value: null, control: <ExportRequest label={t("exportRequest")} action={requestExportAction.bind(null, locale)} /> };
 
-  if (!request) return { ...base, value: null, control: ask(t("exportRequest")) };
+  // ★ P2 (REQ-NFR-005): inside the 24 hours the limit is SAID, in every state — requested, building, ready, expired or
+  // failed — and no request control is offered; outside it the control is offered wherever a new copy makes sense. The
+  // RPC refuses a second request whatever this renders; saying so before the click is the difference between a rule
+  // and a rebuke. (The first rebuild gave the line to expired and failed only — the wave-26 e2e found it missing on a
+  // ready export.)
+  const limited = !request.canRequestAgain;
+  const ask = limited ? null : <ExportRequest label={t("exportAgain")} action={requestExportAction.bind(null, locale)} />;
+  const notes = (...lines: (string | null)[]) => lines.filter(Boolean).join(" ") || null;
+  const limit = limited ? t("rateLimited") : null;
+
   switch (request.status) {
     case "queued":
-      return { ...base, value: t("statusQueued", { date: day(request.requestedAt) }), control: null };
+      return { ...base, value: t("statusQueued", { date: day(request.requestedAt) }), detail: limit, control: null };
     case "building":
-      return { ...base, value: t("statusBuilding"), control: null };
+      return { ...base, value: t("statusBuilding"), detail: limit, control: null };
     case "ready":
       return {
         ...base,
         value: t("statusReady", { date: day(request.completedAt ?? request.requestedAt) }),
-        detail: t("expiryNote"),
+        detail: notes(t("expiryNote"), limit),
+        // The old page offered a fresh copy beside a ready one once the 24 hours had passed; so does this row.
         control: (
-          <a href="/api/me/export" download className={buttonClass("primary", "sm")}>
-            {t("exportDownload")}
-          </a>
+          <span className="flex flex-wrap items-start justify-end gap-2">
+            <a href="/api/me/export" download className={buttonClass("primary", "sm")}>
+              {t("exportDownload")}
+            </a>
+            {ask}
+          </span>
         ),
       };
     case "expired":
-      return { ...base, value: t("statusExpired"), detail: limited, control: ask(t("exportAgain")) };
+      return { ...base, value: t("statusExpired"), detail: limit, control: ask };
     case "failed":
-      return { ...base, value: t("statusFailed"), detail: limited, control: ask(t("exportAgain")) };
+      return { ...base, value: t("statusFailed"), detail: limit, control: ask };
   }
 }

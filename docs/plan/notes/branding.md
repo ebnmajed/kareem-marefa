@@ -1094,3 +1094,21 @@ untouched; `avatar-import.test.tsx` passes untouched.
 - `npm test` in the tree: 5404 passed; five failures were all timeouts in files this track does not touch; four pass
   on a re-run, `tests/components/designer/inspector-align.test.tsx`'s «holds for every edge on both axes…» times out at
   5 s even alone (`designer`'s).
+
+### W26.13 The lead's e2e on `63fbdb1e` — a kept behaviour the table carried and the rebuild dropped
+
+**P2 was in the table and was built wrong.** The table said «the 24-hour limit is said before the click — `page.tsx:102-109`»,
+but W26.4's per-state table, written after it, gave the limit line to `expired` and `failed` only, and the page was
+built from W26.4, not from P2. The deleted page drew the line whenever `request && !canRequestAgain`, **whatever the
+status** (`git show 4cc177b3^:…/privacy/page.tsx:102-103`), and REQ-NFR-005 is not state-dependent. The miss: I
+re-derived the states from the data and then wrote the controls per state, without reading each per-state row back
+against P2. Read back now, with a second row the same reading found:
+
+| # | Behaviour | Lives now | Kept by |
+|---|---|---|---|
+| P2 (corrected) | Inside the 24 hours the limit line is drawn in **every** state — requested, building, ready (after the seven days), expired, failed — and no request control is offered | `privacy/page.tsx` `exportRow()`, `limit` on every branch | `REQ-NFR-005` |
+| P9b (found on the same reading) | Outside the 24 hours a fresh copy is offered **beside** a ready one, as the old page offered its form under the ready panel | `exportRow()` `ready` branch, `{ask}` after «نزّل» | `REQ-PRF-006`, `REQ-NFR-005` |
+
+`queued` and `building` never offer a request even outside the window: `data_export_requests_one_open` refuses a second
+open request, so the button would only lead to a refusal (the old page offered it there; nothing reachable changes —
+a request stuck queued for 24 hours is the worker's failure, not a state this row can mend).

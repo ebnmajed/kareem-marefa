@@ -65,10 +65,11 @@ describe("/app/me/privacy", () => {
     expect(screen.getByRole("button", { name: "اطلب التصدير" })).toBeInTheDocument();
   });
 
-  it("requested: «طُلب» with its date, no control", async () => {
+  it("requested: «طُلب» with its date, no control, and the limit said", async () => {
     vi.mocked(getMyExportRequest).mockResolvedValue(row({ status: "queued", canRequestAgain: false }));
     await show();
     expect(screen.getByText("طُلب · 1 أكتوبر")).toBeInTheDocument();
+    expect(screen.getByText(/أربع وعشرين ساعة/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /اطلب/ })).not.toBeInTheDocument();
   });
 
@@ -85,7 +86,18 @@ describe("/app/me/privacy", () => {
     const link = screen.getByRole("link", { name: "نزّل" });
     expect(link).toHaveAttribute("href", "/api/me/export");
     expect(link).toHaveAttribute("download");
+    expect(screen.queryByRole("button", { name: /اطلب/ })).not.toBeInTheDocument();
     expect(screen.getByText(/سبعة أيام/)).toBeInTheDocument();
+    // ★★ P2, the kept behaviour the first rebuild dropped: a ready export inside the 24 hours still says the limit.
+    expect(screen.getByText(/أربع وعشرين ساعة/)).toBeInTheDocument();
+  });
+
+  it("ready outside the 24 hours: «نزّل» and a fresh copy offered, no limit line", async () => {
+    vi.mocked(getMyExportRequest).mockResolvedValue(row({ status: "ready", completedAt: "2026-10-02T09:00:00Z", canRequestAgain: true }));
+    await show();
+    expect(screen.getByRole("link", { name: "نزّل" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "اطلب نسخة جديدة" })).toBeInTheDocument();
+    expect(screen.queryByText(/أربع وعشرين ساعة/)).not.toBeInTheDocument();
   });
 
   it("expired: said, and a fresh copy offered once the window has passed", async () => {
