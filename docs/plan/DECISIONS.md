@@ -8272,3 +8272,98 @@ otherwise. The owner's suggestion stands for it: Opus for the designer's seam an
 mechanical work.
 
 - **Documents changed:** `STATUS.md`
+
+## DEC-240 — `DEC-239` is overtaken: M12 finished inside the owner's budget boundary — the designer and the email builder merged, every carry discharged, the floor at 69, no golden moved; the worker deploys clean on `railway.json`; two new carries; and what M13 actually is
+
+- **Date:** 2026-10-04 · **Decided by:** the record, written by the wave-23 lead at the owner's request; every fact below re-read from the tree, GitHub and Railway on this date, not taken from memory
+- **Corrects:** `DEC-239`, which is **not edited** (`DEC-158`) — read the two together. `DEC-239` §1 says «PR B stops at the studio's shared chrome» and §5 sends «the designer (PR B's rest) and the email builder (PR C)» to wave 24; **both are untrue now**
+- **Amends:** `STATUS.md`'s head and wave 19's step 3 (§3 below)
+- **Adds:** no migration, no requirement
+
+### 1 · What happened after `DEC-239` — verified
+
+`DEC-239` recorded a boundary the owner set for budget: PR A only, the rest to wave 24. **The work then finished inside the
+same budget**, slice by slice, each landing green before the next began. That is a good outcome, recorded as one — the
+boundary was right when it was set, and it was overtaken by the work, not ignored.
+
+| PR | Branch | Merged as | What |
+|---|---|---|---|
+| #52 | `wave-23a/templates-and-certificates` | `a51c2a06` | `055`, `045`, the certificate flows, the tie guard, `0191` |
+| #53 | `wave-23b/the-designer` | `67daa9c6` | the studio frame, `ui/editor-rail`, `ui/floating-toolbar` |
+| #54 | `wave-23/close` | `2bcdc77c` | `STATUS` — PR A merged, `0191` live |
+| #55 | `wave-23/test-send-fix` | `f683dd6a` | «أرسل اختبارًا» disabled while unsaved (`DEC-238` §4.5) |
+| #56 | `wave-23b/the-editor` | `285bc3ee` | ★ **the designer rebuilt over its kept engine**, the certificate canvas included |
+| #57 | `wave-23b/close` | `1903e7dc` | `STATUS` — the designer merged |
+| #58 | `wave-23c/the-email-builder` | `37f79dd5` | ★ **the email builder — M12 complete in `main`** |
+| #59 | `wave-23/carries` | `0f27fe5d` | the carries (§2) |
+
+**Eight PRs merged, none open.** `src/components/ui/` holds **69** files and the floor reads **69**
+(`tests/unit/ui-playground.test.ts:123`): ★ **all six primitives landed** — `editor-rail`, `floating-toolbar`,
+`canvas-stage`, `layer-list`, `block-canvas`, `block-library`, not the two `DEC-239` counted. **`0191`** is on `main` and on
+production (`supabase migration list --linked`: equal through `0191`). ★ **No parity golden moved**: nothing under
+`scripts/parity/goldens/` changed since `0d9a0d60`.
+
+### 2 · `DEC-239`'s carries — DISCHARGED, not carried
+
+- ★★ **The four-format demonstrable — 12 of 12 byte-identical.** `wave23-designer-four-formats.spec.ts`, run twice on one app
+  build with fixed data: the worker image `kareem-worker:wave18b` (the renderer has not changed since 2026-09-22, so it renders
+  as `main` did before wave 23) against `kareem-worker:w23` built from `main` at `37f79dd5`. `a3.pdf`, `a4.pdf`, landscape 16:9,
+  story 9:16, master, square and OG, in PNG and WebP — same SHA-256 (PDFs with dates and id blanked), same size, same source
+  fingerprint.
+- The email builder's subject in Arabic tokens, round-trip exact on all 25 subjects · the «ثابت» tag inside the footer's box ·
+  the retired string editor's dead strings and their test · `wave13-designer-upload-render` green with the real worker (it had
+  raced `DEC-145`'s orphaned twin input).
+- ★ **Wave 24 inherits neither the designer nor the email builder.** `DEC-239` §5's «What comes next» is void.
+
+The tie-breaker (`DEC-239` §4 — «the screen can disagree with what issuance picks») and `DEC-238` §6's smaller items
+(نقاطك, the four certificate fields that are not bindings, the objects and stickers tabs, an A3 certificate) **stay carried**:
+they were never in scope for M12's slices.
+
+### 3 · ★★ The deploy — the manual reconnect step is retired
+
+The owner reconnected Railway with `railway service source connect --repo ebnmajed/kareem-marefa --branch main`, and **the
+builder held at `DOCKERFILE` / `worker/Dockerfile` with no intervention — the first clean reconnect in fifteen.** Read back
+on 2026-10-04 with `railway status --json`: the `worker` service's active deployment is **SUCCESS / RUNNING**, `builder =
+DOCKERFILE`, `dockerfilePath = worker/Dockerfile`, at commit **`37f79dd5`**. The worker logs **«LISTEN/NOTIFY probe OK — round
+trip 10 ms»**, «queues dispatch over LISTEN/NOTIFY; polling every 15 s as a fallback», and **39 task names** registered,
+`send_test_email` and `issue_certificates` among them.
+
+★ **The reason is `railway.json`** (`82b786a2`, 2026-10-03), which pins `builder: DOCKERFILE`, `dockerfilePath:
+worker/Dockerfile` and the watch patterns (`worker/**`, `packages/**`, `scripts/fonts/**`, the two manifests). The build
+config no longer lives only in Railway's dashboard, so a reconnect cannot reset it — wave 19's root cause, closed.
+**The step «check the builder after a reconnect and restore it in the dashboard» is retired.** Reading
+`meta.serviceManifest.build` once after a reconnect is still a cheap check, not a fix.
+
+★ **This is the first wave since 18 where the worker runs genuinely new code**: wave 23 changed `packages/`
+(`mail-runtime`, `designer-runtime`), so the watch pattern redeployed it. #59 touched no watched path and, correctly, did not.
+
+### 4 · Two new carries
+
+1. ★ **`railway.json` is already deprecated.** The CLI asks for `.railway/railway.ts` and gives until **2026-12-01**;
+   `railway config migrate` converts it. **Do it before 1 December** — otherwise it is discovered by a deploy that stops
+   working, and the reconnect problem §3 closed comes back.
+2. ★ **The owner's acceptance of M12 is still owed** — each rebuilt screen beside its artboard **at 1280**, and **at 390** for
+   the three that stack (`055`, `045`, the email gallery); the designer and the builder have no phone form. **It is open, not
+   passed.** The lead's captures are evidence for it, not a substitute.
+
+### 5 · What comes after — and what M13 actually is, measured
+
+Two designed-or-designable things remain: **`SCR-059` branding** and **session stories**.
+
+★ **Before anyone plans M13, measure the platform console — measured here:**
+- `STATUS.md` (wave 11's table) reads «**The platform console on the system — done in wave 8** (`DEC-147`) — `16` §15's M13
+  row closes by reference». **True as far as it goes:** `SCR-080` – `085` are seven pages under `src/app/[locale]/app/platform/`
+  on the M9 primitives (wave 8) and inside the playground's tokens (wave 17's raw-palette sweep, `cd8d5192`, its last change).
+- ★ **But it was never rebuilt from an artboard** — none exists — and **it does not use wave 21's console frame**: its layout
+  composes its own `PlatformNav` inside the app shell, not `ConsoleFrame` and `ui/admin-rail`. It works, it wears the right
+  tokens, and it is **a generation behind the console visually**.
+- ★ **So the question for the designer session is narrower than «design the platform console»**: either (a) **M13 is branding
+  alone** (`SCR-059`, the brand kit — plus `/app/me/privacy`, which `M10c.md` also assigns to M13), and the platform console
+  moves onto the existing console frame as a **frame composition with no new artboards**; or (b) the owner wants the
+  platform console redrawn, and then it needs artboards like every other screen (`DEC-199` §2). **The owner's call; (a) is
+  the cheaper reading and matches what the tree already has.**
+- **Session stories** are designed (`docs/design/05-stories.md`, `prototypes/stories.html`), not built: they need requirements
+  (none exist in `01-prd.md`) and one migration (`0192`, `story_views` — option A of `05-stories.md`). The ring on `SCR-010` is
+  built and inert.
+
+- **Documents changed:** `STATUS.md` (the head; wave 19's step 3)
