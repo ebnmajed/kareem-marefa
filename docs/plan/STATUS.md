@@ -253,7 +253,48 @@ because that is what moving a default means — and an org that has overridden i
 
 | Spec · line | Moved | Kind |
 |---|---|---|
-| _(none yet)_ | | |
+| `tests/rls/sessions-certificate-mode.test.ts` «a completed session is refused, with no write and no audit» | ★ `DEC-250`: rewritten as «a cancelled session is refused». A completed session is now **accepted** — the mode is written, one audit row carries the old and the new, the function returns `fanned_out`. | **expectation** |
+| `tests/rls/sessions-certificate-mode.test.ts` «an archived and a cancelled session are refused too» | ★ `DEC-250`: **split**. Archived is accepted and fans out (`after_completion`); cancelled is still refused `session_cancelled` (`refusals`). | **expectation** |
+| `tests/rls/sessions-certificate-mode.test.ts` «enqueues no job and writes no notification and no transition» | ★ `DEC-250`: scoped to **before completion** and to a switch to `off`, which is what it always meant. The late switch's own jobs are asserted in `after_completion`; neither path writes a notification or a transition, and that part did not change. | **expectation** |
+| `tests/components/certificates/mode-control.test.tsx:42` (`mount`) | ★ `DEC-250`: the control takes `completed`, defaulted to `false` in the helper, so every case written before the change asserts exactly what it asserted then. | selector |
+| `tests/components/certificates/mode-control.test.tsx` «a refusal says why, in the function's own terms» | ★ `DEC-250`: `session_completed` → `session_cancelled`. `0194` no longer raises the first, so pinning its copy would pin a state the product cannot reach. | **expectation** |
+
+★ **Three new RLS describes and one new component describe** carry the new behaviour, in new blocks rather than in the
+old ones: `RPC-set_session_certificate_mode.after_completion` (three cases), `.after_completion_off`, and
+«★ on a session that has already completed» (three cases). ★ **`0194` is applied inside the rolled-back transaction**
+like a proposed file, so the suite is green on a database that has not been reset since it landed — safe because every
+statement in it is `create or replace`, `revoke`, `grant` or `comment`.
+
+---
+
+## ★ HOTFIX IN FLIGHT — `DEC-250`, the certificate mode outlives completion (`REQ-CRT-017`, `0194`)
+
+★★ **The owner met a live defect while wave 24 was open:** «there is a bug in the live app not allowing certificates to
+be issued … the default for the certificate is that the session has no certificate and the settings for enabling and
+disabling disappeared». Both halves true, and together a dead end — `certificate_mode` defaults to `off` (`0010:88`),
+the fan-out runs only on the **edge into `completed`** (`0065:78`), and `set_session_certificate_mode()` then refused a
+completed session (`0154`), so wave 23's `SCR-045` drew **no control at all** (`page.tsx`, gated on `!closed`). That
+control has no other home: the schedule screen only *reads* the mode.
+
+★★ **`DEC-178` ruling 2's premise was false.** «A mode changed after completion does nothing» was an observation about
+a **missing caller**, not about the mechanism: `fan_out_certificates()` reads the mode live, its
+`cert:{session}:{member}:{kind}` key makes a re-run **move** each pending job rather than duplicate it, and
+`issue_certificate()` is idempotent over a live row and re-derives eligibility at call time. Nothing was needed but a
+second caller.
+
+| # | Step | State |
+|---|---|---|
+| 1 | `DEC-250`; `REQ-CRT-017` in `01`; `03` §8.2's three new rows and two amended; `14`/`15` | ✓ |
+| 2 | `0194` — the refusal lifted for completed/archived, kept for cancelled, and the late switch fans out | ✓ |
+| 3 | `SCR-045` — the mode section gated on `!cancelled`; `changeable()` drops `heldCount > 0`; the `offLine` dead-end sentence removed; «من يستحق» shown to an admin on a completed session with nothing issued | ✓ |
+| 4 | The control says it issues **now** — `fanned_out` → «يجري تجهيز الشهادات الآن…», `confirmBodyCompleted`, `checkEligibleNow`, `confirmNow` | ✓ |
+| 5 | Gates: `tsc` clean · `lint` 0 errors · `npm test` **5375 passed, 1 skipped** · certificate RLS **70 passed** · `traceability` ✓ · `policy-diff` ✓ | ✓ |
+| 6 | ★ **Not run, and why:** `supabase db reset` and `npm run qa` / `visual` / `build` — a second session was working in the shared checkout and a reset would have destroyed its local data. The migration is proven **against the live 0193 schema** inside the suite's own transaction, not through a full-chain reset | ☐ **owner** |
+| 7 | ★ **Two questions left for the owner** (`DEC-250` §4): should a new session default to `review` rather than `off`? Should `off` be refused once certificates exist for the session? | ☐ **owner** |
+
+★ **`REQ-CRT-014` is untouched**: a certificate issued before this still renders as the version it was issued against,
+and a late switch never replaces one revoked **for cause** (`0127`). ★ **`registrations` is untouched and the five
+public routes do not move** — `SCR-045` is behind sign-in and renders none of them.
 
 ---
 

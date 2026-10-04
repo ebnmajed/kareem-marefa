@@ -1689,8 +1689,8 @@ held certificates and none issued**, so the held ones can be re-rendered (`DEC-2
 **Acceptance:**
 - With no choice, a certificate is issued from the template `issue_certificate()` picks, and the screens name that same
   template — «افتراضي» only when it is the kind's default (`DEC-238` §2).
-- The mode is refused once the session is completed, archived or cancelled; the template once a certificate of that kind
-  is issued.
+- ★ **Amended by `DEC-250`:** the mode is refused only once the session is **cancelled** (see `REQ-CRT-017`); the
+  template once a certificate of that kind is issued.
 
 #### REQ-CRT-016 — The baseline certificate templates are the designed ones
 **Serves:** `DEC-242` §1, §3 · `REQ-CRT-014` · `REQ-DSG-008`, `REQ-DSG-026`
@@ -1703,6 +1703,26 @@ set, the orientation rule and the one-default-per-family indexes are unchanged.
 - A certificate issued before the rebuild still renders as the version it was issued against (`REQ-CRT-014`), which
   is why the old version row survives when the database refuses its deletion.
 - The member's name is set in the display face and the serial is bidi-isolated.
+
+#### REQ-CRT-017 — Certificates may be switched on after the session has completed, and are issued when they are
+**Serves:** `DEC-250` · `REQ-CRT-001`, `REQ-CRT-002` · `REQ-SES-017` · `09` `SCR-045`
+A session's certificate mode is `off` until somebody chooses otherwise (`ENT-sessions`), and the completion fan-out
+runs once, on the edge into `completed`. A session that completed at `off` was therefore unreachable: the mode could
+not be changed afterwards and `SCR-045` drew no control, so an admin had no way to issue a certificate for a session
+that had already happened. **An admin may now set the mode on a completed or archived session, and setting it to a
+mode other than `off` fans out in the same transaction** — one job per eligible recipient per kind, under `11` §2.5's
+key. A **cancelled** session is still refused: it has no attendance to attest.
+★ **A late switch attests only what the database holds at the moment of the switch.** Eligibility is re-derived then,
+from active check-ins and accepted presenters through `REQ-SES-017`'s predicate — never from a list recorded earlier.
+**Acceptance:**
+- A completed session at `off` shows the mode control on `SCR-045`, with its three named options and its preflight.
+- Switching it to `review` creates a held certificate for each eligible recipient; to `automatic`, an issued one.
+  Switching it back to `off` enqueues nothing and deletes nothing.
+- Setting the same mode twice issues one certificate per recipient, not two (`REQ-CRT-003`), and a re-run moves each
+  pending job rather than duplicating it.
+- A certificate revoked for cause is not replaced by a late switch (`REQ-CRT-011`).
+- A cancelled session shows no control and is refused by the function.
+- The screen says the certificates are being **prepared**, not «saved»: the worker writes the rows.
 
 
 ---

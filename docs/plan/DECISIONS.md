@@ -9169,3 +9169,99 @@ the wave it was waiting for**, and `DEC-199`'s «the public site is in scope and
 exactly such a sentence.
 
 - **Documents changed:** `docs/plan/notes/wave-26-lead.md` (§A and §E), `STATUS.md` (the wave-26 block)
+
+---
+
+## DEC-250 — The certificate mode outlives completion: a session that completed at `off` could never issue a certificate, and `DEC-178`'s refusal was guarding a mechanism that already works
+
+> ★ **Renumbered on 2026-10-05 before it reached `main`** (`DEC-248` §2, `DEC-249` §1). This entry was written as
+> `DEC-245` on `hotfix/certificates-after-completion` while `main`'s log ended at `244`; the wave-26 planner then filled
+> `245` on `main`, and `246` – `249` followed. It has never been on `main` under another number, so this is a branch's
+> renumbering and not an edit of the log. `248` and `249` are on `wave-26a/the-public-site` and land with PR #73.
+
+- **Date:** 2026-10-04 · **Decided by:** the owner, reporting the live defect — «there is a bug in the live app not
+  allowing certificates to be issued … the default for the certificate is that the session has no certificate and the
+  settings for enabling and disabling disappeared»
+- **Amends:** `DEC-178` ruling 2 — «The mode is refused once the session is `completed`, `archived` or `cancelled`,
+  because changing it then does nothing. "Issue now" for a late switch is not this wave.» ★ **The refusal is lifted for
+  `completed` and `archived` and kept for `cancelled`; the deferred «issue now» is discharged.**
+- **Amends:** `REQ-CRT-015`'s acceptance line, which stated the refusal in the same words
+- **Defines:** `REQ-CRT-017` (in `01-prd.md`, the only place a requirement is defined)
+- **Migration:** `0194_certificate_mode_after_completion.sql` — a hotfix, outside wave 24's two
+
+### 1 · ★★ The defect, in three parts, each measured against the tree
+
+| # | Part | Where |
+|---|---|---|
+| 1 | `sessions.certificate_mode` is `not null default 'off'`, and since `0154` `schedule_session()`'s `p_certificate_mode` defaults to `null` = unchanged. **A session nobody deliberately switched on completes at `off`** | `0010:88`, `0154:54` |
+| 2 | Certificates fan out from **exactly one place** — `sessions_certificate_hook`, an `after update` trigger firing only on the **edge into `completed`** — and `fan_out_certificates()` returns `0` at once when the mode is `off` | `0065:74-85`, `0108:70-73` |
+| 3 | `set_session_certificate_mode()` then refused `completed`/`archived`, and wave 23's rebuilt `SCR-045` honoured it by gating the control on `!closed`. **That control has no other home in the product** — the schedule screen only *reads* the mode | `0154`, `certificates/page.tsx:208` |
+
+★★ **So the admin saw one sentence — «لا تصدر شهادات لهذه الجلسة.» — and had no control anywhere.** Because part 1
+makes `off` the default, this is the **normal** path, not an edge case. Before wave 23 the mode at least lived visibly
+on `SCR-043`; the rebuild made its absence total, which is why the owner met it now and not in M11a.
+
+### 2 · ★★ Why the refusal's premise was false
+
+`DEC-178` found that «a mode changed after completion does nothing. The fan-out ran at completion» — **true as an
+observation about a missing caller, false as a statement about the mechanism.** `fan_out_certificates()` is re-runnable
+by construction, and every part of that is checkable in the tree:
+
+- it reads the mode **live** and returns `0` at `off` (`0108:70-73`), so it can never issue against a mode that is off;
+- its job key is `cert:{session}:{member}:{kind}` through `enqueue_job`, so a re-run **moves** each pending job rather
+  than duplicating it — `0108`'s own comment says «a re-run moves each rather than duplicating it»;
+- `issue_certificate()` is idempotent over a live row (`REQ-CRT-003`), raises `revoked_for_cause` rather than
+  overruling an admin's deliberate revocation (`0127`), and **re-derives eligibility at call time** from active
+  `check_ins` and accepted `session_presenters` through `session_attendance_complete()` (`REQ-SES-017`).
+
+★ A late switch therefore attests exactly the attendance the database holds at the moment of the switch — the same
+guarantee the completion fan-out gives, from the same function. **Nothing new was needed but a second caller.**
+
+### 3 · ★ What changed
+
+1. **`0194`** re-creates `set_session_certificate_mode()` with 0154's signature (`create or replace`, grants restated):
+   the `completed`/`archived` refusal goes, `cancelled` stays, and when the session is already completed and the new
+   mode is not `off` the function calls `fan_out_certificates()` in the same transaction and returns a third value,
+   `fanned_out`. Reached through `SECURITY DEFINER`, which is why `sessions_certificate_hook()` is definer too
+   (`0065:70-73`).
+2. **`SCR-045`** gates the mode section on `!cancelled` instead of `!closed`, and `changeable()` drops its
+   `heldCount > 0` clause so a completed session with nothing issued can still choose a template — which is exactly
+   what `set_certificate_design()` refuses (`design_locked`, `0099`), so **the screen and the function now agree**.
+   The `offLine` sentence goes: a live control with three named options says that state better than prose, and the
+   sentence contradicted the control above it. An admin on a completed session with no certificates also sees «من
+   يستحق», because that is the number the preflight counts.
+3. **The control says it issues NOW.** `fanned_out` is its own answer, not a louder «saved» — the worker writes the
+   rows, so «حُفظ» followed by an empty «محجوزة · 0» would read as a failure, which is the same shape of defect this
+   entry exists to close. New copy: `preparing`, `confirmBodyCompleted`, `checkEligibleNow`, `confirmNow`.
+4. **`main` runs on the schema first, as always.** `main`'s app reads `data === 'unchanged' ? 'unchanged' : 'ok'`, so
+   `fanned_out` reads as `ok` there — a less specific toast and nothing else — and `main`'s `SCR-045` renders no
+   control for a completed session, so the new path is simply unreachable until the merge.
+
+### 4 · ★ What is deliberately NOT done, and the two questions left open
+
+- ★★ **The default is not changed.** `certificate_mode not null default 'off'` stands. Moving it would switch
+  certificates on for every session in the product, and that is the owner's decision, not a hotfix's. **This entry
+  makes the default recoverable, which is the actual defect**; changing the default without that would only relocate it.
+  ★ **Open for the owner: should a new session default to `review`?**
+- ★ **Switching back to `off` after a fan-out is still allowed** and still deletes nothing — it only stops future
+  issuance, because `issue_certificate()` raises `certificates_off`. What has reached a member stays governed by
+  `release_certificates()` and `revoke_certificate()`, which is where it belongs. ★ **Open for the owner: should `off`
+  be refused once certificates exist for the session?**
+- **No trigger is added and no job is invented.** The one new behaviour is one `perform` of a function from `0065`.
+- **No new primitive, no new dependency, no screen rebuilt** — no page file is deleted, so `DEC-208` does not fire.
+- **`registrations` is untouched and the five public routes do not move**: `SCR-045` is behind sign-in and renders
+  none of them.
+
+### 5 · ★ The three assertions that changed, and why that is the honest direction
+
+The existing suite **pinned the refusal**, so the fix changes it. Each is a ledger line in `STATUS.md`, in the same
+commit, and each is an **expectation** that changed rather than a selector that moved:
+
+| Test | Was | Is |
+|---|---|---|
+| `sessions-certificate-mode.test.ts` «a completed session is refused, with no write and no audit» | `session_completed` (23514), no write, no audit | the mode is written, one audit row carries the old and the new, and the fan-out enqueues |
+| … «an archived and a cancelled session are refused too» | both refused | **split**: archived accepted and fans out; cancelled still refused `session_cancelled` |
+| … «enqueues no job and writes no notification and no transition» | no job on any path | no job before completion and on a switch to `off`; one job per recipient per kind on a late switch |
+
+- **Documents changed:** `01-prd.md` (`REQ-CRT-017`; `REQ-CRT-015`'s acceptance line), `03-permissions-rls.md` (§8.2's
+  four rows, in the migration's own commit), `STATUS.md` (the ledger), `DECISIONS.md`
