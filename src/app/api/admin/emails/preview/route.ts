@@ -40,7 +40,16 @@ const previewInput = z.object({
    *  the one mode whose bytes are not what ships, and it is named everywhere
    *  it appears. */
   simulate: z.enum(["", "dark"]).optional(),
+  /** Wave 23 — the builder's canvas: tokens for every binding, a `data-k` on every row, and a policy that lets the
+   *  editor READ the frame's geometry (still no script). */
+  editor: z.enum(["", "1"]).optional(),
+  /** The canvas's tokens, binding → Arabic label, as JSON. The editor's own display words, shown to the admin alone. */
+  tokens: z.string().max(4000).optional(),
+  /** Wave 23 — «معاينة واختبار»: the org's real session's words. */
+  session: z.enum(["", "real"]).optional(),
 });
+
+const tokenMap = z.record(z.string().max(80), z.string().max(80));
 
 /**
  * The preview's own policy. `default-src 'none'` because a mail loads nothing
@@ -58,12 +67,19 @@ const PREVIEW_CSP = [
   "sandbox",
 ].join("; ");
 
-function respond(body: string, contentType: string, status = 200): Response {
+/**
+ * ★ The canvas's policy differs in ONE token: `sandbox allow-same-origin`. The builder draws its selection over the
+ * frame (the designer's pattern, DEC-017), so it must read where each row is — which an opaque origin forbids. Scripts
+ * stay forbidden: `allow-same-origin` without `allow-scripts` lets the PARENT look in and lets nothing in the frame run.
+ */
+const EDITOR_CSP = PREVIEW_CSP.replace(/sandbox$/, "sandbox allow-same-origin");
+
+function respond(body: string, contentType: string, status = 200, csp = PREVIEW_CSP): Response {
   return new Response(body, {
     status,
     headers: {
       "content-type": contentType,
-      "content-security-policy": PREVIEW_CSP,
+      "content-security-policy": csp,
       // `SAMEORIGIN` and not `DENY`: our own editor frames this, and nobody
       // else may. `frame-ancestors 'self'` above says the same to a browser
       // that reads CSP; this is for the ones that read the header.
@@ -86,6 +102,9 @@ export async function POST(request: Request): Promise<Response> {
     blocks: form.get("blocks") ?? undefined,
     mode: form.get("mode") ?? undefined,
     simulate: form.get("simulate") ?? undefined,
+    editor: form.get("editor") ?? undefined,
+    tokens: form.get("tokens") ?? undefined,
+    session: form.get("session") ?? undefined,
   });
   // Zod before anything else (CLAUDE.md), and a refusal that says nothing: a
   // preview is an admin surface and its errors belong on the screen, not in a
@@ -96,12 +115,31 @@ export async function POST(request: Request): Promise<Response> {
   // so a preview never shows `localhost` in production or a production URL in
   // development, and never a relative link a mail client cannot follow.
   const origin = new URL(request.url).origin;
-  const preview = await compileEmailPreview("ar", { ...parsed.data, appUrl: origin });
+  let tokens: Record<string, string> | undefined;
+  if (parsed.data.tokens) {
+    try {
+      const read = tokenMap.safeParse(JSON.parse(parsed.data.tokens));
+      tokens = read.success ? read.data : undefined;
+    } catch {
+      tokens = undefined;
+    }
+  }
+  const editor = parsed.data.editor === "1";
+  const preview = await compileEmailPreview("ar", {
+    key: parsed.data.key,
+    subject: parsed.data.subject,
+    body: parsed.data.body,
+    blocks: parsed.data.blocks,
+    appUrl: origin,
+    editor,
+    tokens,
+    realSession: parsed.data.session === "real",
+  });
   // Not an admin, or a key outside `08` §1: the same answer, because a preview
   // must not tell a non-admin which message keys exist.
   if (!preview) return respond("not_found", "text/plain; charset=utf-8", 404);
 
   if (parsed.data.mode === "text") return respond(preview.text, "text/plain; charset=utf-8");
   const html = parsed.data.simulate === "dark" ? simulateForcedDark(preview.html) : preview.html;
-  return respond(html, "text/html; charset=utf-8");
+  return respond(html, "text/html; charset=utf-8", 200, editor ? EDITOR_CSP : PREVIEW_CSP);
 }

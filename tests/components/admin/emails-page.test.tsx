@@ -1,13 +1,12 @@
-// SCR-058 · /app/admin/emails on the M9 system (wave 8, K6) — what it does
-// today: the catalogue with `08` §1's matrix, the editor with the trigger's
-// refusal at the field and a confirmed restore, and the delivery log with its
-// reasons. Not the email studio.
+// SCR-058 · /app/admin/emails — the gallery rebuilt in wave 23 (REQ-UIX-112, DEC-238 §4) and the delivery log kept
+// as it was (REQ-NTF-008). ★ The log's two cases are unchanged. The catalogue case became the gallery's; the string
+// editor's refusal and its restore left with the editor — the restore lives on the builder's bar now and is the
+// builder's to prove (STATUS ledger).
 import { createTranslator, NextIntlClientProvider } from "next-intl";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/toast";
-import { formStateFrom, withErrors } from "@/lib/form-state";
 import type { DeliveryDTO, MatrixRow, TemplateCatalogue } from "@/lib/dal/notifications";
 import adminAr from "@/messages/ar/admin.json";
 import notificationsAr from "@/messages/ar/notifications.json";
@@ -27,17 +26,22 @@ vi.mock("@/lib/dal/notifications", () => ({
   // A harness line — every case below is still about the string editor, which
   // this org's `blocks: null` template opens.
   getMessageBindings: vi.fn(async () => new Map([["MSG-session_cancelled", ["title", "startsAt", "reason", "url", "member.name", "org"]]])),
+  // Wave 23: the gallery's «أُرسلت N مرة».
+  countSentByKey: vi.fn(async () => new Map([["MSG-reminder_1d", 218], ["MSG-session_cancelled", 0]])),
+}));
+vi.mock("@/i18n/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/i18n/navigation")>()),
+  redirect: (args: { href: string }) => {
+    throw new Error(`NEXT_REDIRECT ${args.href}`);
+  },
 }));
 // `convertTemplateToDesign` and `saveEmailDesign` are wave 10's: the page
 // binds the first for an org that HAS a string override (§X9) and the second
 // for a block template. Harness lines — no case below exercises either.
 const actions = {
-  saveEmailTemplate: vi.fn(),
   restoreDefaultTemplate: vi.fn(),
-  convertTemplateToDesign: vi.fn(),
   saveEmailDesign: vi.fn(),
   sendTestEmailAction: vi.fn(),
-  adoptPlatformDesign: vi.fn(),
 };
 vi.mock("@/app/[locale]/app/admin/emails/actions", () => actions);
 vi.mock("next-intl/server", () => ({
@@ -113,52 +117,42 @@ const cards = (container: HTMLElement) => within(container.querySelector("ul.spa
 describe("EmailsPage", () => {
   beforeEach(() => Object.values(actions).forEach((a) => a.mockReset()));
 
-  it("the catalogue lists every email message with the matrix: channels, whether a member can switch it off, and whose template", async () => {
+
+  it("★ the gallery: a card per email message — its name, whose design it wears, its kind, the matrix, and the send count", async () => {
     const { container } = await renderPage({});
-    const rows = cards(container);
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent("يمكن للعضو إيقافها");
-    expect(rows[0]).toHaveTextContent("الافتراضي");
-    expect(rows[1]).toHaveTextContent("تصل دائمًا");
-    expect(rows[1]).toHaveTextContent("قالب المؤسسة");
-    // Named, never by the plan's identifier (sync 2).
-    expect(rows[0]).toHaveTextContent("تذكير قبل الجلسة بيوم");
+    const list = screen.getByRole("list", { name: "رسائل البريد" });
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("تذكير قبل الجلسة بيوم");
+    expect(items[0]).toHaveTextContent("التصميم الافتراضي");
+    expect(items[0]).toHaveTextContent("يمكن للعضو إيقافها");
+    expect(items[0]).toHaveTextContent("أُرسلت 218 مرة");
+    expect(items[1]).toHaveTextContent("تصميم المؤسسة");
+    expect(items[1]).toHaveTextContent("تصل دائمًا");
+    expect(items[1]).toHaveTextContent("—");
+    // Each card opens its builder, by key — the identifier is in the link, never in the words.
+    expect(within(items[0]!).getByRole("link")).toHaveAttribute("href", "/ar/app/admin/emails/MSG-reminder_1d");
     expect(container.textContent).not.toContain("MSG-");
+    expect(screen.getByRole("link", { name: "سجل الإرسال" })).toHaveAttribute("href", "/ar/app/admin/emails?view=log");
+    expect(screen.getByRole("button", { name: "رسالة جديدة" })).toBeInTheDocument();
     expect(screen.queryByText(/تعذّر إرسال/)).toBeNull();
+  });
+
+  it("the category chips: «الكل» with the count, then each kind; one chosen shows its messages only", async () => {
+    await renderPage({ category: "reminders" });
+    const chips = screen.getByRole("group", { name: "أنواع الرسائل" });
+    expect(within(chips).getAllByRole("link").map((a) => a.textContent)).toEqual(expect.arrayContaining([expect.stringContaining("الكل")]));
+    expect(within(screen.getByRole("list", { name: "رسائل البريد" })).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("a link from before the builder — `?key=` — goes to the builder's own route", async () => {
+    await expect(renderPage({ key: "MSG-reminder_1d" })).rejects.toThrow("NEXT_REDIRECT /app/admin/emails/MSG-reminder_1d");
   });
 
   it("a failure in the last seven days is said at the top, with the way to it", async () => {
     await renderPage({}, 3);
     expect(screen.getByText((_, el) => el?.tagName === "P" && (el.textContent ?? "").startsWith("تعذّر إرسال 3 رسائل خلال آخر سبعة أيام."))).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "اعرض الإخفاقات" })).toHaveAttribute("href", "/ar/app/admin/emails?view=log&status=failed");
-  });
-
-  it("★ the editor: the trigger's refusal at the body, naming the field, with what was typed kept", async () => {
-    actions.saveEmailTemplate.mockImplementation(async (_l: string, previous: never, formData: FormData) => {
-      const refused = withErrors(formStateFrom<string>(formData, { fields: ["key", "subject", "body", "requiredFields"], previous }), { body: "missingRequiredField" });
-      return { ...refused, values: { ...refused.values, missingField: "title" }, saved: false };
-    });
-    const { container } = await renderPage({ key: "MSG-reminder_1d" });
-    // Named by what it is, not by the member's «غدًا».
-    expect(screen.getByRole("heading", { name: "قالب «تذكير قبل الجلسة بيوم»", level: 2 })).toBeInTheDocument();
-    expect(screen.getByText("تصل هذه الرسالة بالتصميم الافتراضي. قالب المؤسسة يُكتب هنا من البداية، أو يبدأ من التصميم الجاهز.")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("الموضوع مطلوب"), { target: { value: "جلستك غدًا" } });
-    fireEvent.change(screen.getByLabelText("النص مطلوب"), { target: { value: "مرحبًا" } });
-    fireEvent.submit(container.querySelector("form")!);
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByLabelText("النص مطلوب")).toHaveAccessibleDescription(/النص والموضوع لا يحتويان على الحقل title\./);
-    expect(screen.getByLabelText("النص مطلوب")).toHaveValue("مرحبًا");
-    expect(screen.getByLabelText("الموضوع مطلوب")).toHaveValue("جلستك غدًا");
-  });
-
-  it("restoring the default confirms, naming the message and saying the template cannot be recovered", async () => {
-    actions.restoreDefaultTemplate.mockResolvedValue(undefined);
-    await renderPage({ key: "MSG-session_cancelled" });
-    fireEvent.click(screen.getByRole("button", { name: "استعد القالب الافتراضي" }));
-    const confirm = await screen.findByRole("dialog");
-    expect(confirm).toHaveTextContent("لا يمكن استرجاع قالبك بعد ذلك");
-    fireEvent.click(within(confirm).getByRole("button", { name: "احذف قالب المؤسسة" }));
-    await waitFor(() => expect(actions.restoreDefaultTemplate).toHaveBeenCalledWith("ar", "t1"));
   });
 
   it("the delivery log: the failure's reason in words, and the provider's own beneath", async () => {
@@ -177,8 +171,8 @@ describe("EmailsPage", () => {
     expect(screen.getByText("لا إخفاقات — خرجت كل الرسائل")).toBeInTheDocument();
   });
 
-  it("has no axe violations — catalogue, editor and log", async () => {
-    for (const query of [{}, { key: "MSG-session_cancelled" }, { view: "log" }] as Record<string, string>[]) {
+  it("has no axe violations — the gallery and the log", async () => {
+    for (const query of [{}, { view: "log" }] as Record<string, string>[]) {
       const { container, unmount } = await renderPage(query, 1);
       const { violations } = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
       expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);

@@ -73,6 +73,8 @@ import { EditorRailDemo } from "./demos/editor-rail";
 import { FloatingToolbarDemo } from "./demos/floating-toolbar";
 import { CanvasStageDemo } from "./demos/canvas-stage";
 import { LayerListDemo } from "./demos/layer-list";
+import { BlockLibraryDemo } from "./demos/block-library";
+import { BlockCanvasDemo } from "./demos/block-canvas";
 import type { DemoGround } from "./ground";
 
 // «ساحة اللعب» in the gallery — contract 4, DEC-183 §4.2(f), DEC-186 §2.
@@ -168,6 +170,9 @@ const DEMOS: { file: string; title: string; node: (ground: DemoGround) => ReactN
   { file: "floating-toolbar", title: "شريط الأدوات العائم", node: () => <FloatingToolbarDemo /> },
   { file: "canvas-stage", title: "مسرح اللوحة", node: () => <CanvasStageDemo /> },
   { file: "layer-list", title: "قائمة الطبقات", node: () => <LayerListDemo /> },
+  // ── wave 23 (DEC-238 §4): the email builder's two, `notify`'s ──
+  { file: "block-library", title: "مكتبة الكتل", node: () => <BlockLibraryDemo /> },
+  { file: "block-canvas", title: "لوحة الكتل", node: () => <BlockCanvasDemo /> },
   { file: "rank-row", title: "صفّ الترتيب", node: () => <RankRowDemo /> },
   { file: "race-bar", title: "سباق الشركات", node: () => <RaceBarDemo /> },
   { file: "level-card", title: "بطاقة المستوى", node: () => <LevelCardDemo /> },

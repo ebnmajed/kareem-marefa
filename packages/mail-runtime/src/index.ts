@@ -37,8 +37,25 @@ export type { RenderInput, RenderedEmail, ChangedField, LegacyBrand, FullBrand, 
 // The editor and the preview build documents with these types; the worker and
 // the preview render them with the same compiler, which is the whole of
 // REQ-NTF-010's «there is exactly one mail renderer».
-export { SCHEMA_VERSION, BLOCK_TYPES, isBlockDocument, readBlocks, readDocument } from "./blocks.js";
-export type { EmailBlock, EmailBlockDocument, BlockId, BlockType, ImageSource, DroppedBlock } from "./blocks.js";
+export { SCHEMA_VERSION, BLOCK_TYPES, NEW_BLOCK_TYPES, ALL_BLOCK_TYPES, PALETTE_TOKENS, ROW_LAYOUTS, isBlockDocument, readBlocks, readDocument } from "./blocks.js";
+export type {
+  EmailBlock,
+  EmailBlockDocument,
+  BlockId,
+  BlockType,
+  ImageSource,
+  DroppedBlock,
+  BlockStyle,
+  EmailRow,
+  EmailStyles,
+  PaletteToken,
+  RowLayout,
+} from "./blocks.js";
+// Wave 23 (`REQ-NTF-015`) — the overlay's reader, and the one rule for what a
+// mail's QR may encode, shared by the compiler and `/api/mail/qr`.
+export { readRows, readStyles } from "./layout.js";
+export type { LayoutRow } from "./layout.js";
+export { isQrPath } from "./qr-paths.js";
 export { compileBlocks, blocksToTemplateText, interpolateIsolated, isolate } from "./compile.js";
 // The one sample set: the preview renders it and `tests/unit/mail-pinned/`
 // pins it, so an admin approves the bytes the suite records.

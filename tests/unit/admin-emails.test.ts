@@ -1,20 +1,35 @@
-// SCR-058 — REQ-NTF-007, REQ-NTF-008. The delivery reason read as an admin can
-// act on it, and the template save's refusals at the field they concern.
+// SCR-058 — REQ-NTF-007, REQ-NTF-008, REQ-NTF-014. The delivery reason read as an admin can act on it, and the
+// builder's one save: its refusals, and where it says the design came from.
+//
+// ★ WAVE 23 (DEC-238 §4, Q2) RETIRED THE STRING EDITOR. Its cases — `saveEmailTemplate`'s trimming, its refusal at the
+// body naming the field, its pre-database checks — went with it (STATUS ledger); the database's own rule 3 is still
+// proven by `tests/rls/notify-bindings.test.ts`. Adoption and conversion are no longer separate actions: the builder's
+// save decides the family from what the org had, and the three provenance cases below are the same three facts.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const saveTemplateChecked = vi.fn();
+const getOwnTemplate = vi.fn();
 vi.mock("@/lib/dal/notifications", () => ({
   saveTemplateChecked: (...a: unknown[]) => saveTemplateChecked(...a),
+  getOwnTemplate: (...a: unknown[]) => getOwnTemplate(...a),
   deleteTemplate: vi.fn(),
-  // Adoption reads the row's current subject before replacing its body.
-  getTemplateSubject: async () => null,
+  sendTestEmail: vi.fn(),
 }));
 
 const { deliveryReason } = await import("@/components/admin/delivery-reason");
-const { saveEmailTemplate } = await import("@/app/[locale]/app/admin/emails/actions");
+const { saveEmailDesign } = await import("@/app/[locale]/app/admin/emails/actions");
 const { emptySavedState } = await import("@/components/admin/saved-form-state");
+const { DESIGN_FOR, platformDesign } = await import("@kareem/mail-runtime");
+
+const form = (key: string, blocks: unknown, subject = "غدًا: {{title}}") => {
+  const data = new FormData();
+  data.set("key", key);
+  data.set("subject", subject);
+  data.set("blocks", typeof blocks === "string" ? blocks : JSON.stringify(blocks));
+  return data;
+};
 
 describe("deliveryReason", () => {
   it("names the provider's refusals by what an admin does next", () => {
@@ -28,71 +43,57 @@ describe("deliveryReason", () => {
   });
 });
 
-describe("saveEmailTemplate", () => {
-  beforeEach(() => saveTemplateChecked.mockReset());
-  const form = (values: Record<string, string>) => {
-    const data = new FormData();
-    for (const [k, v] of Object.entries(values)) data.set(k, v);
-    return data;
-  };
-
-  it("saves the trimmed subject and body, and the declared fields as a list", async () => {
-    saveTemplateChecked.mockResolvedValue({ ok: true });
-    const result = await saveEmailTemplate("ar", emptySavedState(), form({ key: "MSG-reminder_1d", subject: " جلستك غدًا ", body: "مرحبًا {{member.name}}", requiredFields: "member.name, title" }));
-    expect(result.saved).toBe(true);
-    expect(saveTemplateChecked).toHaveBeenCalledWith("ar", { key: "MSG-reminder_1d", subject: "جلستك غدًا", body: "مرحبًا {{member.name}}", requiredFields: ["member.name", "title"] });
+describe("«احفظ وفعّل» — the builder's save", () => {
+  beforeEach(() => {
+    saveTemplateChecked.mockReset().mockResolvedValue({ ok: true });
+    getOwnTemplate.mockReset().mockResolvedValue({ id: "t1", isDesign: true, sourceFamily: "reminder", updatedAt: "2026-10-03T12:00:00Z" });
   });
 
-  it("★ the trigger's refusal lands at the body with the field it named, and what was typed comes back", async () => {
-    saveTemplateChecked.mockResolvedValue({ ok: false, error: "missing_required_field", field: "title" });
-    const result = await saveEmailTemplate("ar", emptySavedState(), form({ key: "MSG-reminder_1d", subject: "تذكير", body: "مرحبًا", requiredFields: "title" }));
-    expect(result.errors).toEqual({ body: "missingRequiredField" });
-    expect(result.values).toMatchObject({ body: "مرحبًا", subject: "تذكير", missingField: "title" });
+  it("writes the body FROM the blocks, and answers with the time the database wrote", async () => {
+    const state = await saveEmailDesign("ar", emptySavedState(), form("MSG-reminder_1d", { schemaVersion: 1, blocks: [{ type: "paragraph", id: "p", text: "أهلًا {{member.name}}" }] }));
+    expect(state.saved).toBe(true);
+    expect(state.values.updatedAt).toBe("2026-10-03T12:00:00Z");
+    const [, input] = saveTemplateChecked.mock.calls[0] as [string, { body: string; requiredFields: string[] }];
+    expect(input.body).toBe("أهلًا {{member.name}}");
+    expect(input.requiredFields).toEqual([]);
   });
 
-  it("empty fields and malformed field names are refused before the database; an unknown key is a form error", async () => {
-    const empty = await saveEmailTemplate("ar", emptySavedState(), form({ key: "MSG-x", subject: "", body: " ", requiredFields: "عنوان" }));
-    expect(empty.errors).toEqual({ subject: "subjectRequired", body: "bodyRequired", requiredFields: "requiredFieldsInvalid" });
+  it("a binding the database refuses comes back named; an empty design and no subject never reach it", async () => {
+    saveTemplateChecked.mockResolvedValueOnce({ ok: false, error: "unknown_binding", binding: "nope" });
+    const refused = await saveEmailDesign("ar", emptySavedState(), form("MSG-reminder_1d", { schemaVersion: 1, blocks: [{ type: "paragraph", id: "p", text: "{{nope}}" }] }));
+    expect(refused).toMatchObject({ saved: false, formError: "unknownBinding" });
+    expect(refused.values.binding).toBe("nope");
+    saveTemplateChecked.mockClear();
+    expect((await saveEmailDesign("ar", emptySavedState(), form("MSG-reminder_1d", { schemaVersion: 1, blocks: [] }))).formError).toBe("designEmpty");
+    expect((await saveEmailDesign("ar", emptySavedState(), form("MSG-reminder_1d", "{"))).formError).toBe("blocksUnreadable");
+    expect((await saveEmailDesign("ar", emptySavedState(), form("MSG-reminder_1d", { schemaVersion: 1, blocks: [] }, " "))).formError).toBe("subjectRequired");
     expect(saveTemplateChecked).not.toHaveBeenCalled();
-    saveTemplateChecked.mockResolvedValue({ ok: false, error: "unknown_message_key" });
-    const unknown = await saveEmailTemplate("ar", emptySavedState(), form({ key: "MSG-x", subject: "a", body: "b", requiredFields: "" }));
-    expect(unknown.formError).toBe("unknownMessageKey");
   });
 });
 
+describe("★ the save records WHERE the design came from (`0125`'s source_family)", () => {
+  beforeEach(() => saveTemplateChecked.mockReset().mockResolvedValue({ ok: true }));
 
-describe("★ «ابدأ من تصميم جاهز» records WHERE the design came from", () => {
-  // `0125` defines `source_family` as provenance — which of DEC-082's eight
-  // platform designs a row came from. Adoption is the one moment that is
-  // known: afterwards the row is the org's to edit, and nothing can recover
-  // the answer. It shipped writing `blocks` and `body` with the column null.
-  beforeEach(() => saveTemplateChecked.mockReset());
-
-  it("adopting MSG-reminder_1d stores source_family = 'reminder', with the blocks", async () => {
-    const { adoptPlatformDesign } = await import("@/app/[locale]/app/admin/emails/actions");
-    await adoptPlatformDesign("ar", "MSG-reminder_1d");
-    const [, input] = saveTemplateChecked.mock.calls[0] as [string, { sourceFamily: string; blocks: unknown; key: string }];
-    expect(input.key).toBe("MSG-reminder_1d");
-    expect(input.sourceFamily).toBe("reminder");
-    // `0125` refuses a family without blocks, so the two travel together.
-    expect(input.blocks).toBeTruthy();
-  });
-
-  it("every key's adoption names the family the library maps it to", async () => {
-    const { adoptPlatformDesign } = await import("@/app/[locale]/app/admin/emails/actions");
-    const { DESIGN_FOR } = await import("@kareem/mail-runtime");
+  it("no row yet: the admin started from the platform design — every key names its family", async () => {
+    getOwnTemplate.mockResolvedValue(null);
     for (const key of Object.keys(DESIGN_FOR)) {
       saveTemplateChecked.mockClear();
-      await adoptPlatformDesign("ar", key);
-      const [, input] = saveTemplateChecked.mock.calls[0] as [string, { sourceFamily: string }];
+      await saveEmailDesign("ar", emptySavedState(), form(key, platformDesign(key)));
+      const [, input] = saveTemplateChecked.mock.calls[0] as [string, { sourceFamily: string | null; blocks: unknown }];
       expect(input.sourceFamily, key).toBe(DESIGN_FOR[key]);
+      expect(input.blocks, key).toBeTruthy();
     }
   });
 
-  it("★ CONVERTING an org's own text records no family — that would be a false provenance", async () => {
-    const { convertTemplateToDesign } = await import("@/app/[locale]/app/admin/emails/actions");
-    await convertTemplateToDesign("ar", "MSG-reminder_1d", "فقرة أولى\n\nفقرة ثانية");
-    const [, input] = saveTemplateChecked.mock.calls[0] as [string, { sourceFamily: string | null }];
-    expect(input.sourceFamily).toBeNull();
+  it("a design row keeps the family it had — a later save no longer clears it", async () => {
+    getOwnTemplate.mockResolvedValue({ id: "t1", isDesign: true, sourceFamily: "rating", updatedAt: "x" });
+    await saveEmailDesign("ar", emptySavedState(), form("MSG-reminder_1d", platformDesign("MSG-reminder_1d")));
+    expect((saveTemplateChecked.mock.calls[0] as [string, { sourceFamily: string }])[1].sourceFamily).toBe("rating");
+  });
+
+  it("★ a string row — the org's own words — records no family: that would be a false provenance", async () => {
+    getOwnTemplate.mockResolvedValue({ id: "t1", isDesign: false, sourceFamily: null, updatedAt: "x" });
+    await saveEmailDesign("ar", emptySavedState(), form("MSG-reminder_1d", { schemaVersion: 1, blocks: [{ type: "paragraph", id: "p1", text: "فقرة" }] }));
+    expect((saveTemplateChecked.mock.calls[0] as [string, { sourceFamily: string | null }])[1].sourceFamily).toBeNull();
   });
 });

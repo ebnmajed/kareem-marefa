@@ -1,34 +1,36 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { emailDocumentFor, readBlocks } from "@kareem/mail-runtime";
 import { KeysetPager } from "@/components/admin/keyset-pager";
+import { EmailThumbnail } from "@/components/email/email-thumbnail";
 import { formatNumber } from "@/components/sessions/numerals";
+import { Badge } from "@/components/ui/badge";
+import { buttonClass } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Link } from "@/components/ui/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { TagChip } from "@/components/ui/tag-chip";
-import { Tabs } from "@/components/ui/tabs";
-import type { Locale } from "@/i18n/routing";
-import { countDeliveryFailures, getMessageBindings, getNotificationMatrix, getTemplateCatalogue, listDeliveryLog } from "@/lib/dal/notifications";
+import { redirect } from "@/i18n/navigation";
+import { countDeliveryFailures, countSentByKey, getNotificationMatrix, getTemplateCatalogue, listDeliveryLog } from "@/lib/dal/notifications";
 import { getOrgPrefs } from "@/lib/dal/proposals";
-import { BlockEditor } from "@/components/email/block-editor";
-import { adoptPlatformDesign, convertTemplateToDesign, restoreDefaultTemplate, saveEmailDesign, saveEmailTemplate, sendTestEmailAction } from "./actions";
 import { DeliveriesTable } from "./deliveries-table";
-import { TemplateEditor } from "./template-editor";
-import { TemplatesTable, type TemplateCatalogueRow } from "./templates-table";
+import { NewMessage } from "./new-message";
 
-// SCR-058 · /app/admin/emails — REQ-ADM-014, REQ-NTF-007, REQ-NTF-008, on the M9
-// system for wave 8 (K6), rebuilt around WHAT IT DOES TODAY: the string-template
-// catalogue with `08` §1's matrix beside it, the trigger's refusal at the field,
-// and the delivery log with its reasons. The email studio — blocks, the
-// three-pane editor, a preview, «أرسل اختبارًا», the designed library — is M12
-// and `notify`'s (`16` §11, `DEC-147`); none of it is here.
+// SCR-058 · /app/admin/emails — the gallery, rebuilt from `AdminEmailGallery.dc.html` (wave 23, REQ-UIX-112,
+// REQ-ADM-014, REQ-NTF-007, REQ-NTF-008, DEC-199 §2, DEC-208, DEC-238 §4). Inside the console's frame.
 //
-// Admin only: the DAL answers null for anyone else and the page answers with the
-// streamed not-found (`DEC-134`).
+// In the artboard's order: the `h1` row with «سجل الإرسال» and «رسالة جديدة»; ★ the failures panel when there is one
+// (undrawn, kept — `REQ-NTF-008`); the category chips; a card per message — the outline of its real document (D3), its
+// name, whose design it wears (D1: nothing stores a message as on or off, so the badge says what IS stored), and the
+// meta line: its kind, whether a member can switch it off (D11, kept from wave 8's matrix), how many times it was sent
+// over the retained log (D10). Every figure is read. The message set is `08` §1's, never a literal (D12).
 //
-// The log is the half an admin opens on a bad morning, so a failure in the last
-// seven days is said at the top of either view, with the way to it.
+// «سجل الإرسال» is `?view=log`: the delivery log as it was — its chips, its table, its pager — because no board draws
+// it and its cases are evidence. `?key=` from before the builder redirects to the builder's own route.
+//
+// Admin only: the DAL answers null for anyone else and the page answers with the streamed not-found (`DEC-134`).
 
 const PATH = "/app/admin/emails";
 const RETENTION_DAYS = 180; // OQ-019
@@ -38,14 +40,15 @@ export default async function EmailsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ view?: string; key?: string; status?: string; before?: string }>;
+  searchParams: Promise<{ view?: string; key?: string; status?: string; before?: string; category?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const sp = await searchParams;
-  const view = sp.view === "log" ? "log" : "templates";
+  if (sp.key && /^MSG-[a-z0-9_]{1,60}$/.test(sp.key)) redirect({ href: `${PATH}/${sp.key}`, locale });
+
+  const view = sp.view === "log" ? "log" : "messages";
   const status = sp.status === "all" ? "all" : "failed";
-  const bound = locale as Locale;
 
   const [t, tn, catalogue, failures, prefs] = await Promise.all([
     getTranslations("notifications.admin.emails"),
@@ -57,16 +60,36 @@ export default async function EmailsPage({
   if (!catalogue || failures === null) notFound();
 
   const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
-  // A member's inbox names a reminder by when the session is — «غدًا». In a
-  // catalogue of every message an admin needs what the message is, so `names`
-  // holds the three timed reminders; every other message keeps the name its
-  // member sees.
+  // A member's inbox names a reminder by when the session is — «غدًا». In a catalogue of every message an admin needs
+  // what the message is, so `names` holds the three timed reminders; every other message keeps the name its member sees.
   const messageName = (key: string) => (t.has(`names.${key}`) ? t(`names.${key}`) : tn.has(`message.${key}`) ? tn(`message.${key}`) : key);
-  const selectedKey = view === "templates" && sp.key && catalogue.emailMessages.includes(sp.key) ? sp.key : null;
 
   return (
     <>
-      <PageHeader title={t("title")} description={t("intro")} />
+      <PageHeader
+        title={t("title")}
+        actions={
+          view === "messages" ? (
+            <div className="flex flex-wrap gap-2">
+              <Link href={`${PATH}?view=log`} className={buttonClass("secondary", "md")}>
+                {t("gallery.log")}
+              </Link>
+              <NewMessage
+                label={t("gallery.newMessage")}
+                title={t("gallery.pickerTitle")}
+                listLabel={t("gallery.pickerLabel")}
+                ownLabel={t("gallery.own")}
+                platformLabel={t("gallery.platform")}
+                messages={catalogue.emailMessages.map((key) => ({ key, name: messageName(key), own: catalogue.templates.some((tpl) => tpl.key === key && tpl.channel === "email") }))}
+              />
+            </div>
+          ) : (
+            <Link href={PATH} className={buttonClass("secondary", "md")}>
+              {t("gallery.backToMessages")}
+            </Link>
+          )
+        }
+      />
 
       {failures > 0 ? (
         <Panel tone="error" className="mt-6 max-w-3xl">
@@ -79,38 +102,8 @@ export default async function EmailsPage({
         </Panel>
       ) : null}
 
-      <Tabs
-        className="mt-6"
-        label={t("tabsLabel")}
-        value={view}
-        items={[
-          { value: "templates", label: t("tabTemplates"), href: PATH },
-          { value: "log", label: t("tabLog"), href: `${PATH}?view=log`, count: failures > 0 ? failures : undefined },
-        ]}
-      />
-
-      {view === "templates" ? (
-        selectedKey ? (
-          <section aria-labelledby="editor-heading" className="mt-6">
-            <Link href={PATH} className="text-body-sm text-fg-heading underline underline-offset-4">
-              {t("editor.back")}
-            </Link>
-            <h2 id="editor-heading" className="mt-3 text-h2 text-fg-heading">
-              {t.rich("editor.heading", { name: messageName(selectedKey), bdi })}
-            </h2>
-            <div className="mt-4">
-              <EditorForKey
-                locale={locale}
-                bound={bound}
-                messageKey={selectedKey}
-                name={messageName(selectedKey)}
-                template={catalogue.templates.find((tpl) => tpl.key === selectedKey && tpl.channel === "email") ?? null}
-              />
-            </div>
-          </section>
-        ) : (
-          <TemplatesView locale={locale} timeZone={prefs.timeZone} catalogue={catalogue} messageName={messageName} categoryName={(c) => (tn.has(`category.${c}.name`) ? tn(`category.${c}.name`) : c)} />
-        )
+      {view === "messages" ? (
+        <Gallery locale={locale} catalogue={catalogue} category={sp.category} messageName={messageName} categoryName={(c) => (tn.has(`category.${c}.name`) ? tn(`category.${c}.name`) : c)} />
       ) : (
         <LogView locale={locale} timeZone={prefs.timeZone} status={status} before={sp.before} messageName={messageName} />
       )}
@@ -118,30 +111,63 @@ export default async function EmailsPage({
   );
 }
 
-async function TemplatesView({
+async function Gallery({
   locale,
-  timeZone,
   catalogue,
+  category,
   messageName,
   categoryName,
 }: {
   locale: string;
-  timeZone: string;
   catalogue: NonNullable<Awaited<ReturnType<typeof getTemplateCatalogue>>>;
+  category?: string;
   messageName: (key: string) => string;
   categoryName: (category: string) => string;
 }) {
-  const matrix = await getNotificationMatrix(locale);
-  const rows: TemplateCatalogueRow[] = matrix
-    .filter((m) => m.email)
-    .map((m) => {
-      const own = catalogue.templates.find((tpl) => tpl.key === m.key && tpl.channel === "email");
-      return { key: m.key, name: messageName(m.key), category: categoryName(m.category), inApp: m.inApp, email: m.email, optional: m.optional, overriddenAt: own?.updatedAt ?? null };
-    });
+  const [t, tc, matrix] = await Promise.all([getTranslations("notifications.admin.emails.gallery"), getTranslations("notifications.admin.emails.catalogue"), getNotificationMatrix(locale)]);
+  const email = matrix.filter((m) => m.email);
+  const sent = await countSentByKey(locale, email.map((m) => m.key));
+  if (!sent) notFound();
+  const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
+  const categories = [...new Set(email.map((m) => m.category))];
+  const current = categories.find((c) => c === category) ?? null;
+  const shown = current ? email.filter((m) => m.category === current) : email;
+
   return (
-    <section className="mt-6">
-      <TemplatesTable rows={rows} timeZone={timeZone} locale={locale} />
-    </section>
+    <>
+      <div role="group" aria-label={t("chipsLabel")} className="mt-6 flex flex-wrap gap-2">
+        <TagChip label={t("all")} count={email.length} href={PATH} selected={current === null} />
+        {categories.map((c) => (
+          <TagChip key={c} label={categoryName(c)} href={`${PATH}?category=${encodeURIComponent(c)}`} selected={current === c} />
+        ))}
+      </div>
+
+      <ul aria-label={t("listLabel")} className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {shown.map((m) => {
+          const own = catalogue.templates.find((tpl) => tpl.key === m.key && tpl.channel === "email") ?? null;
+          const document = emailDocumentFor(m.key, own ? { subject: own.subject, body: own.body, blocks: own.blocks } : null);
+          const count = sent.get(m.key) ?? 0;
+          return (
+            <li key={m.key}>
+              <Card href={`${PATH}/${m.key}`} density="compact">
+                <div className="flex flex-col gap-2">
+                  <EmailThumbnail blocks={readBlocks(document)} />
+                  <span className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 text-label font-bold text-fg-heading">{messageName(m.key)}</span>
+                    <Badge size="sm" tone={own ? "success" : "neutral"} outline={!own}>
+                      {own ? t("own") : t("platform")}
+                    </Badge>
+                  </span>
+                  <span className="text-caption text-fg-muted">
+                    <span>{categoryName(m.category)}</span> · <span>{m.optional ? tc("optional") : tc("always")}</span> · <span>{t.rich("sent", { count, value: formatNumber(count), bdi })}</span>
+                  </span>
+                </div>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
@@ -183,60 +209,3 @@ async function LogView({ locale, timeZone, status, before, messageName }: { loca
   );
 }
 
-
-/**
- * ★ WHICH EDITOR A KEY OPENS, and the rule is the row's own `blocks` column.
- *
- * `blocks is null` is a STRING template — every row that existed before wave
- * 10 — and it opens the string editor wave 8 built, unchanged: the admin's
- * words are still theirs to edit. Since `DEC-081` they are SENT in the
- * design's frame (`documentFromText()`), which the editor says, and
- * `tests/e2e/wave8-console-emails.spec.ts`'s refusal and restore cases stay
- * evidence for it (`DEC-160`, rule 3).
- *
- * A document opens the block editor. An org with a string override is offered
- * the conversion (§X9) and nothing is converted for it: what it sends today
- * keeps being what it sends until an admin chooses otherwise.
- */
-async function EditorForKey({
-  locale,
-  bound,
-  messageKey,
-  name,
-  template,
-}: {
-  locale: string;
-  bound: Locale;
-  messageKey: string;
-  name: string;
-  template: Awaited<ReturnType<typeof getTemplateCatalogue>> extends infer C ? (C extends { templates: (infer T)[] } ? T | null : never) : never;
-}) {
-  const bindings = await getMessageBindings(locale);
-  const offered = bindings.get(messageKey) ?? [];
-
-  if (template?.blocks) {
-    return (
-      <BlockEditor
-        messageKey={messageKey}
-        initialSubject={template.subject ?? ""}
-        initialBody={template.body}
-        initialBlocks={template.blocks}
-        offered={offered}
-        action={saveEmailDesign.bind(null, bound)}
-        sendTest={sendTestEmailAction.bind(null, bound, messageKey)}
-      />
-    );
-  }
-
-  return (
-    <TemplateEditor
-      messageKey={messageKey}
-      name={name}
-      template={template}
-      action={saveEmailTemplate.bind(null, bound)}
-      restore={restoreDefaultTemplate.bind(null, bound)}
-      convert={template ? convertTemplateToDesign.bind(null, bound, messageKey, template.body) : undefined}
-      adopt={adoptPlatformDesign.bind(null, bound, messageKey)}
-    />
-  );
-}

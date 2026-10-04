@@ -52,7 +52,7 @@
 // `route-error` and `data-table`, which §4.2's table omits and §16.2's lists
 // name — so thirty-four files, and §16.2 is authoritative (DEC-102).
 
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, DragEvent, ReactNode } from "react";
 import type { SeatState, SessionPhase } from "@/lib/session-status";
 
 // Re-exported so a track gets the whole status vocabulary from one import.
@@ -1759,4 +1759,103 @@ export interface LayerListProps extends Styleable {
   onReorder?: (id: string, toIndex: number) => void;
   onToggleHidden?: (id: string) => void;
   labels: { forward: string; backward: string; show: string; hide: string; locked: string; hidden: string; empty: string; handle: string };
+}
+
+// ── wave 23 (DEC-235 §4, DEC-238 §4): the email builder's two — `notify`'s ───
+
+/** One tile of a `block-library` — a block type, or a row layout. */
+export interface BlockLibraryItem {
+  key: string;
+  label: string;
+  /** A block's glyph — inline, `aria-hidden`, drawn by the caller. */
+  glyph?: ReactNode;
+  /** A layout's column weights from the start — `[1, 2]` is «1/2». The tile draws the schematic. */
+  weights?: readonly number[];
+}
+
+/**
+ * `notify`'s · `block-library.tsx` — the email builder's grid of blocks or layouts (REQ-UIX-112, REQ-NTF-015, `DEC-093`).
+ * ★ A TAP ARMS a tile (`aria-pressed`) and the canvas's slots place it; a tap on the armed tile disarms. Drag is the
+ * enhancement, offered only when the caller passes `onDragStart`. Declares no animation.
+ */
+export interface BlockLibraryProps extends Styleable {
+  /** The group's accessible name. */
+  label: string;
+  items: readonly BlockLibraryItem[];
+  /** `blocks`: three columns, glyph and label. `layouts`: two columns, the column schematic. */
+  variant?: "blocks" | "layouts";
+  /** The armed tile, or null. Controlled. */
+  armed: string | null;
+  onArm: (key: string | null) => void;
+  onDragStart?: (key: string, event: DragEvent<HTMLElement>) => void;
+  onDragEnd?: () => void;
+}
+
+/** A box in the email's frame, in PHYSICAL px from its top-left — document geometry (`DEC-096`'s exemption). */
+export interface BlockCanvasBox {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** A block the canvas can select — a one-column row, or a block inside a column. */
+export interface BlockCanvasTarget {
+  id: string;
+  /** «زر», «فقرة: مرحبًا…» — the target's name for every control that acts on it. */
+  label: string;
+  box: BlockCanvasBox;
+}
+
+/** One row of a `block-canvas`. A multi-column row carries its columns; a one-column row does not. */
+export interface BlockCanvasRow extends BlockCanvasTarget {
+  cells?: readonly { box: BlockCanvasBox; blocks: readonly BlockCanvasTarget[] }[];
+}
+
+/** Where a slot places what is armed: between rows, or inside a row's column. */
+export type BlockCanvasPlace = { index: number } | { rowId: string; column: number; index: number };
+
+/**
+ * `notify`'s · `block-canvas.tsx` — the email's child of `canvas-stage` (REQ-UIX-112, `DEC-237` §3, `DEC-093`). It lays
+ * the selection, the handle bar and the drop slots OVER its child — the one renderer's frame — and computes no
+ * geometry: the caller measures the frame and hands it the boxes. ▲▼ and «انقل» are the path; the ⋮⋮ grip and dropping
+ * on a slot are the enhancement. Never re-implements the stage. Declares no animation.
+ */
+export interface BlockCanvasProps extends Styleable {
+  /** The region's accessible name. */
+  label: string;
+  /** The frame's width — 600 or 375. */
+  width: number;
+  /** In document order. */
+  rows: readonly BlockCanvasRow[];
+  /** Shown and never selectable — the composed footer (`REQ-NTF-005`). */
+  fixed?: readonly BlockCanvasTarget[];
+  /** A row or a block. */
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  /** What the handle bar does. Absent: the canvas selects only. */
+  actions?: {
+    moveUp: (id: string) => void;
+    moveDown: (id: string) => void;
+    move: (id: string) => void;
+    duplicate: (id: string) => void;
+    remove: (id: string) => void;
+  };
+  labels: { moveUp: string; moveDown: string; move: string; duplicate: string; remove: string; drag: string; fixed: string };
+  /** Visible while something is armed (or dragged). Null hides every slot. */
+  slots?: null | {
+    /** «أضف هنا» while armed by a tap, «أفلت هنا» while dragging. */
+    label: string;
+    /** Also offer slots inside each column — when a BLOCK is armed. */
+    inCells: boolean;
+    onPlace: (at: BlockCanvasPlace) => void;
+    /** Escape. */
+    onCancel?: () => void;
+    /** The slot's accessible name — «أضف بعد "زر"». Default: `label`. */
+    describe?: (at: BlockCanvasPlace) => string;
+  };
+  onRowDragStart?: (id: string, event: DragEvent<HTMLElement>) => void;
+  onDropAt?: (at: BlockCanvasPlace, event: DragEvent<HTMLElement>) => void;
+  /** The frame. */
+  children: ReactNode;
 }

@@ -417,6 +417,73 @@ export interface EmailPreviewInput {
   /** The editor's unsaved block document, as JSON text. */
   blocks?: string;
   appUrl: string;
+  /** Wave 23 — the builder's CANVAS: every binding shows as its Arabic token (`tokens`, binding → label), URL bindings
+   *  stay real so a button is not dropped, and each row carries its block's id (`annotate`). Off: today's preview. */
+  editor?: boolean;
+  tokens?: Record<string, string>;
+  /** Wave 23 — «معاينة واختبار»: the title, time and venue of the org's real session (`preview_card_session()`), the
+   *  same one the test send uses, over the sample for everything else. */
+  realSession?: boolean;
+}
+
+/** One of the org's real sessions, for «معاينة واختبار» — the one `preview_card_session()` picks (`0141`), described
+ *  through `session_public_card()` (`0080`), so the preview, the test send and the canvas all name the same session. */
+export interface PreviewSession {
+  id: string;
+  title: string;
+  startsAt: string;
+  venue: string | null;
+}
+
+/** Wave 23 (`REQ-UIX-112`): the real session the preview and the test send share, or null when the org has none whose
+ *  card has rendered. Admin only, like the rest of SCR-058. */
+export async function getPreviewSession(locale: string): Promise<PreviewSession | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { data: id } = await client.supabase.rpc("preview_card_session", { p_org: client.session.orgId });
+  if (typeof id !== "string") return null;
+  const { data } = await client.supabase.rpc("session_public_card", { p_session: id });
+  const row = (Array.isArray(data) ? data[0] : data) as { title?: string; starts_at?: string; venue_name?: string | null } | null;
+  if (!row?.title || !row.starts_at) return null;
+  return { id, title: row.title, startsAt: row.starts_at, venue: row.venue_name ?? null };
+}
+
+/** Wave 23 (`REQ-UIX-112`): how many times each message was handed to the provider — the gallery's «أُرسلت N مرة». Over
+ *  the retained log (OQ-019, 180 days), through `deliveries_read_admin`: one head-count per key in one DAL call. A
+ *  queued or failed row was never sent. */
+export async function countSentByKey(locale: string, keys: readonly string[]): Promise<Map<string, number> | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const counts = await Promise.all(
+    keys.map(async (key) => {
+      const { count, error } = await client.supabase
+        .from("email_deliveries")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", client.session.orgId)
+        .eq("key", key)
+        .in("status", ["sent", "delivered", "bounced", "complained"]);
+      if (error) throw new Error(`email_deliveries: ${error.message}`);
+      return [key, count ?? 0] as const;
+    }),
+  );
+  return new Map(counts);
+}
+
+/** Wave 23: the org's own row for one email key — what the builder needs to know about provenance (`0125`'s
+ *  `source_family`) and the saved mark (`updated_at`, the server's clock, never the client's). Null: no row. */
+export async function getOwnTemplate(locale: string, key: string): Promise<{ id: string; isDesign: boolean; sourceFamily: DesignFamily | null; updatedAt: string } | null> {
+  const client = await assertAdmin(locale);
+  if (!client) return null;
+  const { data, error } = await client.supabase
+    .from("notification_templates")
+    .select("id, blocks, source_family, updated_at")
+    .eq("org_id", client.session.orgId)
+    .eq("key", key)
+    .eq("channel", "email")
+    .maybeSingle();
+  if (error) throw new Error(`notification_templates: ${error.message}`);
+  if (!data) return null;
+  return { id: data.id as string, isDesign: data.blocks != null, sourceFamily: (data.source_family as DesignFamily | null) ?? null, updatedAt: data.updated_at as string };
 }
 
 /**
@@ -498,25 +565,48 @@ export async function compileEmailPreview(
   // ★ Asked of the RENDERER's own resolution: since DEC-081 a key with no row
   // is its design, which may carry a card, so reading `blocks` alone would
   // miss the image an untouched org's mail really has.
-  const wantsCard = readBlocks(emailDocumentFor(input.key, { subject, body, blocks })).some(
-    (block) => block.type === "session_card" && block.withImage !== false,
-  );
+  const wantsCard =
+    input.realSession === true ||
+    readBlocks(emailDocumentFor(input.key, { subject, body, blocks })).some(
+      (block) => (block.type === "session_card" && block.withImage !== false) || block.type === "poster",
+    );
   const cardSession = wantsCard && input.appUrl
     ? ((await client.supabase.rpc("preview_card_session", { p_org: client.session.orgId })).data as string | null)
     : null;
   const cardImageUrl = cardSession ? `${input.appUrl.replace(/\/+$/, "")}/api/s/${cardSession}/og` : null;
 
+  // ★ The real session id travels too, not just its image. `{{url}}` is
+  // built from `payload.session_id`, and the sample's names no row — so
+  // without this the preview's button points at a 404 while the sent mail's
+  // points at the session. One answer fixes both.
+  let payload: Record<string, unknown> = cardSession
+    ? { ...sample.payload, session_id: cardSession, session_card_image_url: cardImageUrl }
+    : sample.payload;
+  let member: { name: string | null; email: string } = sample.member ?? SAMPLE_MEMBER;
+  // ★ Wave 23, «معاينة واختبار»: the real session's words too, not only its id and card — the same function the test
+  // send reads (`send_test_email.ts`), so the two show one session.
+  if (input.realSession && cardSession) {
+    const { data } = await client.supabase.rpc("session_public_card", { p_session: cardSession });
+    const card = (Array.isArray(data) ? data[0] : data) as { title?: string; starts_at?: string; venue_name?: string | null } | null;
+    if (card?.title) payload = { ...payload, title: card.title, startsAt: card.starts_at ?? payload.startsAt, venue: card.venue_name ?? payload.venue };
+  }
+  // ★ Wave 23, the CANVAS: each binding as its token, so the admin edits «{اسم العضو}» rather than one sample member's
+  // name. A URL stays real — a button whose href is a token is not sendable and the compiler would drop it.
+  if (input.editor && input.tokens) {
+    const tokens = Object.entries(input.tokens).filter(([binding]) => binding !== "url" && /^[\w.]{1,80}$/.test(binding));
+    payload = { ...payload };
+    for (const [binding, label] of tokens) {
+      if (binding === "member.name") member = { ...member, name: label };
+      else if (!binding.includes(".")) payload[binding] = label;
+    }
+  }
+
   const rendered = renderEmail({
     key: input.key,
     override: { subject, body, blocks },
-    // ★ The real session id travels too, not just its image. `{{url}}` is
-    // built from `payload.session_id`, and the sample's names no row — so
-    // without this the preview's button points at a 404 while the sent mail's
-    // points at the session. One answer fixes both.
-    payload: cardSession
-      ? { ...sample.payload, session_id: cardSession, session_card_image_url: cardImageUrl }
-      : sample.payload,
-    member: sample.member ?? SAMPLE_MEMBER,
+    payload,
+    annotate: input.editor === true,
+    member,
     org: { name: (org?.name as string | undefined) ?? SAMPLE_ORG.name, timeZone: prefs.timeZone },
     brand: light ? { light, dark } : null,
     // `org_public_logo()` returns a row only for an ACTIVE org with a PNG or

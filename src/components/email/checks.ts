@@ -42,13 +42,20 @@ export interface EmailCheck {
     | "buttonNoUrl"
     | "subjectTooLong"
     | "footerPresent"
-    | "textSizeFixed";
+    | "textSizeFixed"
+    | BlockCheckId;
   severity: CheckSeverity;
   /** The block this names, so the panel can select it. */
   blockId?: string;
   /** One value the message interpolates — a binding, a block type, a count. */
   value?: string;
 }
+
+/** Wave 23 (`REQ-NTF-015`) — the checks the five new block types add. Kept
+ *  out of the literal union above so wave 10's suite, which reads that union
+ *  as `16` §11.4's list, stays the record of what §11.4 named. */
+export type BlockCheckId = "qrNoUrl" | "socialUrlInvalid" | "socialEmpty" | "blockEmptyForKey";
+export const BLOCK_CHECK_IDS: readonly BlockCheckId[] = ["qrNoUrl", "socialUrlInvalid", "socialEmpty", "blockEmptyForKey"];
 
 export interface ChecksInput {
   /** False when the editor's document text did not parse as JSON. */
@@ -83,6 +90,15 @@ export function bindingsUsed(blocks: readonly EmailBlock[], subject: string): st
     }
     if (block.type === "image") scan(block.alt);
     if (block.type === "detail_list") for (const item of block.items) [item.label, item.value].forEach(scan);
+    // Wave 23 — the same fields `bindings_in_blocks()` reads.
+    if (block.type === "poster") scan(block.alt);
+    if (block.type === "qr") {
+      scan(block.label);
+      scan(block.alt);
+      if (block.urlBinding) found.add(block.urlBinding);
+    }
+    if (block.type === "certificate") scan(block.label);
+    if (block.type === "social") for (const item of block.items) [item.label, item.value].forEach(scan);
   }
   return [...found];
 }
@@ -123,6 +139,32 @@ export function runChecks(input: ChecksInput): EmailCheck[] {
     if (block.type === "button" && block.urlBinding.trim() === "") {
       checks.push({ id: "buttonNoUrl", severity: "blocking", blockId: block.id });
     }
+
+    // ── Wave 23 (`REQ-NTF-015`) ──────────────────────────────────────────
+    if ((block.type === "poster" || block.type === "qr") && block.alt.trim() === "") {
+      checks.push({ id: "imageNoAlt", severity: "blocking", blockId: block.id });
+    }
+    // A QR with no link renders as NOTHING, as a button does.
+    if (block.type === "qr" && block.urlBinding.trim() === "") {
+      checks.push({ id: "qrNoUrl", severity: "blocking", blockId: block.id });
+    }
+    if (block.type === "social") {
+      const filled = block.items.filter((item) => item.label.trim() !== "" || item.value.trim() !== "");
+      if (filled.length === 0) checks.push({ id: "socialEmpty", severity: "advisory", blockId: block.id });
+      // The compiler drops a link it would not send; the admin hears it here,
+      // naming the label, before the mail loses it.
+      for (const item of filled) {
+        if (item.label.trim() === "" || !isSendableLiteral(item.value.trim())) {
+          checks.push({ id: "socialUrlInvalid", severity: "blocking", blockId: block.id, value: item.label.trim() || item.value.trim() });
+        }
+      }
+    }
+    // A block whose data this message never carries renders nothing at all:
+    // worth a second thought, never a refusal.
+    const needs = IMPLICIT[block.type];
+    if (needs && !offered.has(needs)) {
+      checks.push({ id: "blockEmptyForKey", severity: "advisory", blockId: block.id });
+    }
   }
 
   if (input.subject.length > SUBJECT_LIMIT) {
@@ -141,6 +183,23 @@ export function runChecks(input: ChecksInput): EmailCheck[] {
   return checks;
 }
 
+/** The binding a block's implicit data hangs on. Absent: the message never
+ *  carries what the block draws. `session_card` is left out on purpose — wave
+ *  10's checks did not name it and changing what an existing document reports
+ *  is not this wave's. */
+const IMPLICIT: Partial<Record<EmailBlock["type"], string>> = { poster: "session_id", certificate: "serial" };
+
+/** What an admin may type into a social link: `https:` or `mailto:`, the two
+ *  the compiler sends for a literal. */
+function isSendableLiteral(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "mailto:";
+  } catch {
+    return false;
+  }
+}
+
 /** Whether anything would be approved that was not seen. */
 export function hasBlocking(checks: readonly EmailCheck[]): boolean {
   return checks.some((check) => check.severity === "blocking");
@@ -157,9 +216,13 @@ export function blockName(block: EmailBlock, typeLabel: (type: string) => string
         ? block.label
         : block.type === "image"
           ? block.alt
-          : block.type === "detail_list"
+          : block.type === "detail_list" || block.type === "social"
             ? (block.items[0]?.label ?? "")
-            : "";
+            : block.type === "qr" || block.type === "certificate"
+              ? block.label
+              : block.type === "poster"
+                ? block.alt
+                : "";
   const trimmed = words.trim().replace(/\s+/g, " ").slice(0, 32);
   return trimmed === "" ? label : `${label}: ${trimmed}`;
 }

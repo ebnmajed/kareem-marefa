@@ -129,51 +129,39 @@ test("SCR-058 at 390 px: the catalogue with the matrix, and this morning's failu
   await page.screenshot({ path: `${SHOTS}/wave8-console-emails-catalogue.png` });
 });
 
-test("REQ-NTF-007 at 390 px: the trigger's refusal lands at the body, naming the field, with what was typed kept", async ({ context, page }, testInfo) => {
+// ★ WAVE 23 (DEC-238 §4, Q2) RETIRED THE STRING EDITOR, so the two cases that drove it changed (STATUS ledger): the
+// required-field refusal at the body is gone with the editor (the database's rule 3 stays, proven by
+// `tests/rls/notify-bindings.test.ts`); the restore keeps its substance — a save, a confirmation naming what is lost,
+// the org's row deleted — through the builder's bar.
+test("SCR-058 at 390 px: an old `?key=` link opens the builder, which says it is edited on a wider screen", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
   await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
-  // The editor is open before anything is typed: a failure here names the
-  // page that rendered instead (the phone run at 5a8f5bc timed out on the
-  // label with nothing to say why).
-  await expect(page.getByRole("heading", { name: "البريد", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "قالب «تذكير قبل الجلسة بيوم»", level: 2 })).toBeVisible();
-  await page.getByLabel("الموضوع", { exact: false }).fill("جلستك غدًا");
-  await page.getByLabel("النص", { exact: false }).first().fill("مرحبًا، نذكّرك بجلسة الغد.");
-  await page.getByLabel("الحقول المطلوبة", { exact: true }).fill("title");
-  await page.getByRole("button", { name: "احفظ القالب" }).click();
-
-  await expect(page.getByRole("alert").filter({ hasText: "لم يُحفظ القالب" })).toBeVisible();
-  await expect(page.getByText("النص والموضوع لا يحتويان على الحقل title.").last()).toBeVisible();
-  await expect(page.getByLabel("الموضوع", { exact: false })).toHaveValue("جلستك غدًا");
+  await expect(page).toHaveURL(/\/app\/admin\/emails\/MSG-reminder_1d$/);
+  await expect(page.getByRole("heading", { name: "تذكير قبل الجلسة بيوم", level: 1 })).toBeVisible();
+  // From `#main`, and the visible one: a hard load can leave an orphaned streamed copy of the page (DEC-145).
+  await expect(page.locator("#main").getByText("يُحرَّر البريد على شاشة أعرض.", { exact: true }).filter({ visible: true })).toBeVisible();
   const { rows } = await db.query(`select id from public.notification_templates where org_id = $1`, [orgId]);
   expect(rows).toHaveLength(0);
-  await page.getByRole("alert").filter({ hasText: "لم يُحفظ القالب" }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${SHOTS}/wave8-console-emails-refused-save.png` });
 });
 
-test("REQ-NTF-007: a template saved, then its default restored after a confirmation", async ({ context, page }, testInfo) => {
+test("REQ-NTF-007: a design saved, then its default restored after a confirmation", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one project writes this org's templates");
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/emails?key=MSG-reminder_1d");
-  // The editor is open before anything is typed: a failure here names the
-  // page that rendered instead (the phone run at 5a8f5bc timed out on the
-  // label with nothing to say why).
-  await expect(page.getByRole("heading", { name: "البريد", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "قالب «تذكير قبل الجلسة بيوم»", level: 2 })).toBeVisible();
-  await page.getByLabel("الموضوع", { exact: false }).fill("جلستك غدًا");
-  await page.getByLabel("النص", { exact: false }).first().fill("مرحبًا، نذكّرك بجلسة {{title}} غدًا.");
-  await page.getByLabel("الحقول المطلوبة", { exact: true }).fill("title");
-  await page.getByRole("button", { name: "احفظ القالب" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "حُفظ القالب" })).toBeVisible();
-  await expect(page.getByText("تصل هذه الرسالة بقالب مؤسستك.")).toBeVisible();
+  await goto(page, "/ar/app/admin/emails/MSG-reminder_1d");
+  await expect(page.getByRole("heading", { name: "تذكير قبل الجلسة بيوم", level: 1 })).toBeVisible();
+  await page.getByLabel("الموضوع", { exact: true }).filter({ visible: true }).fill("جلستك غدًا: {{title}}");
+  await page.getByRole("button", { name: "احفظ وفعّل" }).click();
+  await expect(page.locator("#main").getByRole("status").filter({ hasText: /^محفوظ · / })).toBeVisible();
 
-  await page.getByRole("button", { name: "استعد القالب الافتراضي" }).click();
+  await page.getByRole("button", { name: "المزيد" }).click();
+  await page.getByRole("menuitem", { name: "استعد التصميم الافتراضي" }).click();
   const confirm = page.getByRole("dialog");
-  await expect(confirm).toContainText("لا يمكن استرجاع قالبك بعد ذلك");
-  await confirm.getByRole("button", { name: "احذف قالب المؤسسة" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "عادت الرسالة إلى القالب الافتراضي" })).toBeVisible();
+  await expect(confirm).toContainText("ولا يمكن استرجاعه");
+  await confirm.getByRole("button", { name: "احذف تصميم المؤسسة" }).click();
+  await expect(page.locator("#main").getByRole("status").filter({ hasText: "التصميم الافتراضي" })).toBeVisible();
   const { rows } = await db.query(`select id from public.notification_templates where org_id = $1`, [orgId]);
   expect(rows).toHaveLength(0);
 });

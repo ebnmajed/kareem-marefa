@@ -147,6 +147,10 @@ export const REGISTRY: Record<string, Entry> = {
   "canvas-stage.tsx": tokens("canvas-stage", ["bg-canvas", "bg-raised", "border-edge", "text-fg-muted", "rounded-pill"], "canvas-stage-scope.test.tsx"),
   "layer-list.tsx": composes("layer-list", ["ui/button", "ui/icon-button", "ui/icons"]),
 
+  // ── `notify`'s, the email builder's library and canvas (wave 23, DEC-238 §4) ──
+  "block-library.tsx": tokens("block-library", ["border-accent", "border-edge", "bg-raised", "bg-hover", "bg-edge"], "block-library-scope.test.tsx"),
+  "block-canvas.tsx": tokens("block-canvas", ["outline-accent", "border-accent", "border-edge", "bg-raised"], "block-canvas-scope.test.tsx"),
+
   // ── `event`'s — its first (wave 19, DEC-214) ──
   "star-input.tsx": tokens("star-input", ["text-signal", "text-edge-strong", "text-fg-muted", "text-error"], "star-input-scope.test.tsx"),
 };
