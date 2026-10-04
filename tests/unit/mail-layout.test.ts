@@ -129,7 +129,12 @@ describe("global styles and per-block overrides", () => {
 
   it("★ a colour is a TOKEN resolved from the brand — the hex that lands is the kit's", () => {
     const html = renderWith(sample, { ...base, styles: { textColour: "fgMuted" } }, "brand").html;
-    expect(html).toContain(`color:${BRAND.fgMuted};padding:0 0 16px 0`);
+    // ★ `BRAND.light.fgMuted`, not `BRAND.fgMuted`: wave 24 made the sample kit
+    // the WHOLE kit, both schemes, because the three-key shape made four tokens
+    // fall to `render.ts`'s fallbacks and the 120 pinned files recorded those
+    // instead of a kit (`REQ-NTF-016`). The colour this asserts is unchanged —
+    // the accessor is.
+    expect(html).toContain(`color:${BRAND.light.fgMuted};padding:0 0 16px 0`);
   });
 
   it("the mobile rules are emitted only when a mobile value exists", () => {
