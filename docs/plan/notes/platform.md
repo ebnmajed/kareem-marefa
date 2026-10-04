@@ -1646,3 +1646,352 @@ those land, and the four captures come from that run.
 URL. The lead opened the captures at full resolution. For «نعم» the account menu shows our copy; for «لا» it shows
 the «س» initial. The four captures are `.qa-shots/rtl/wave14-platform-{account-menu,privacy}-{photo,initials}.png`.
 **Platform's wave-14 rows (A1–A4, C4, M3) are done**, unless the lead's final gates say otherwise.
+
+---
+
+## Wave 26 plan (2026-10-05) — `080` – `085` deleted and rebuilt on the lead's frame (`REQ-UIX-118`, `STORY-UIX-108`, PR C)
+
+Planning only. Everything below was measured from the tree on `wave-26a/the-public-site` at `72933b5f`, not from memory
+or from the brief. Nothing is deleted before the lead posts «the plans are approved» **and** «the frame is in at `<sha>`».
+I work in `../kareem-marefa-wave26c` once its path is posted.
+
+### W26.0 Measured — the five things the brief, `M13.md` and the requirement do not say
+
+1. ★★ **The artboard's «العضو (مشرف فقط)» on `085` has no mechanism behind it, and `REQ-UIX-118` repeats it.**
+   `start_impersonation(p_org, p_reason, p_minutes)` (`0069_m8_schema.sql`) takes **no member**; the hook mints
+   `org_id`, `org_role = 'member'` and **no `member_id`** (`0069:39-41`, pinned by `tests/rls/platform-schema.test.ts:236`);
+   `impersonation_sessions` (`0069:92-106`) has **no member column**; and under `DEC-055` option C the session opens no
+   org screen at all. So a member field would choose nothing the database records, and filling its options would need a
+   new function that lists an org's admins' **emails** — a widening of the data plane contract 7 forbids — plus a change
+   to the frozen `start_impersonation()`. ★ `REQ-UIX-118`'s acceptance line «Impersonation takes an org, **an admin of
+   it**, a mandatory reason and a duration … and behaves exactly as it did» contradicts itself: the two halves cannot both
+   hold. **For the lead's ruling** (`01-prd.md` is the lead's). I do not build the field unless told to.
+2. ★ **The duration** (§7.9 of `DEC-248`) — W26.3.
+3. ★ **`/app/platform` (the console's home, `page.tsx`, wave 8 W8.2) has no artboard.** The rail draws «لوحة المنصة»
+   (`href="#home"`) on every board, so the route stays; but `DEC-208` needs an artboard to rebuild from. **Question Q3.**
+4. ★ **`console-register.test.ts:108` names `components/platform/platform-nav.tsx`** — `DEC-248` §4 already rules it
+   (the lead re-creates the file as the nav set). Consequence for me: **`tests/components/platform/platform-nav.test.tsx`
+   (5 cases) tests the component that dies** and is in my edit list. Q4.
+5. ★ **The guard that would catch a super-admin disjunct is narrower than its reputation** — W26.1's last paragraph.
+
+### W26.1 ★★ The no-data-plane table (contract 7)
+
+Every export of `src/lib/dal/platform.ts` (592 lines) and `src/lib/dal/platform-templates.ts` (183 lines). «Gate» is
+`assert_platform_admin()` (`0005`), which re-reads `platform_admins` for `auth.uid()` and raises `42501`; every RPC below
+is `security definer`, `search_path = ''`, `revoke … from public, anon`, `grant … to authenticated`.
+
+| # | DAL export (file:line) | Reads (SQL, latest migration) | Returns, field by field | Org content in it? Under what authority | Test that proves it |
+|---|---|---|---|---|---|
+| 1 | `requirePlatformAdmin` `platform.ts:40` | `assert_platform_admin()` `0005`; `getClaims()` | `{ userId, email }` — **the super admin's own** sub and email | No | `rls/platform-console.test.ts:35`; e2e `platform-console.spec.ts:393` (not found for an org admin) |
+| 2 | `isPlatformAdmin` `:57` | same | `boolean` | No | same; shell callers are the lead's |
+| 3 | `listOrgs` `:107` | `platform_metrics_by_org()` → view `platform_org_metrics` (`0097:76-91`) | `id, name, slug, status, createdAt` (the org's **own row** — platform metadata, `REQ-ADM-001`) and **counts**: `members, activeMembers, sessions, publishedSessions, completedSessions, certificates`; `deletionPending` (boolean from `platform_audit_log`). The view also has `org_templates`, which the DAL drops | **No member, no session title, no content.** Name and slug are the org's identity, written by `create_org()` from the platform | `rls/platform-schema.test.ts:629` «the view exposes counts and org metadata, nothing else» (pins the column list) · `:646` (refused to member and org admin; views ungranted) · `rls/platform-reinstate.test.ts:75` |
+| 4 | `getOrgDetail` `:146` | `platform_org(p_org)` `0097` | `id, name, slug, status, certificatePrefix, createdAt, deletionPending`; **`firstAdminEmail`**; **`suspendedAt`, `suspendedReason`**; `domains: string[]`; `counts` (the metrics row minus identity) | ★ **One email**: `orgs.first_admin_email` — written **by the platform** through `create_org()` / `set_first_admin()`, never read from `members`. `suspendedReason` is the platform's own sentence. Domains are `REQ-ADM-001`/`REQ-TEN-007`'s, platform-written | `rls/platform-console.test.ts:49` «the org's row, its domains and counts, and nothing that names anyone» · `:92`, `:107` |
+| 5 | `createOrg` `:213` | `create_org()` `0005` | `{ status, id }` | Write only. ★ **It sends no mail** (no `notify`/`enqueue` in its body) | `rls/platform-schema.test.ts:417`; e2e `platform-console.spec.ts:401` |
+| 6 | `suspendOrg` `:230` · `reinstateOrg` `:238` | `suspend_org()` `0005`, `reinstate_org()` `0097` | `{ status }` | Write only | `rls/platform-reinstate.test.ts:30,47,61`; e2e `:445` |
+| 7 | `deleteOrg` `:251` | `delete_org(p_org, p_slug_typed)` `0069` | `{ status }`; `slug_mismatch` on a wrong slug, **compared in SQL** | Write only | `rls/platform-schema.test.ts:799,833`; e2e `:467` |
+| 8 | `setFirstAdmin` `:269` | `set_first_admin()` `0069` | `{ status }` | Write only (promotes an existing member by address — the org learns it in its own log) | `rls/platform-schema.test.ts:358`; `rls/platform-console.test.ts:126`; `unit/platform-first-admin.test.ts` |
+| 9 | `addDomain` `:286` · `removeDomain` `:305` | `add_org_domain()`, `remove_org_domain()` `0069` | `{ status, id? }` (null id = already present) | Write only; stored lowercase by `org_domains_normalise` | `rls/platform-schema.test.ts:388`; `rls/platform-console.test.ts:107` |
+| 10 | `getPlatformTotals` `:328` | `platform_metrics_totals()` → view `platform_totals` (`0069:827-836`) | `orgs, activeOrgs, suspendedOrgs, members, activeMembers, sessions, certificates, activeImpersonations` — **all counts** | No | `rls/platform-schema.test.ts:629,646` |
+| 11 | `getJobHealth` `:360` · `listExhaustedJobs` `:391` | `platform_job_health()` `0143` | `task` (a task identifier — code), `pending, failed, oldestPendingSeconds` | No — never a payload or key | `rls/platform-console.test.ts:249`; `components/platform/platform-home-exhausted.test.tsx`; e2e `wave11-platform-exhausted.spec.ts` |
+| 12 | `listPlatformAlerts` `:435` | `platform_alerts()` `0095` → `evaluate_alerts()` | `alert, fired, detail` (counts, ages, rates, thresholds) | No | `rls/platform-alerts.test.ts:394,407` («every detail key aggregate»); `unit/platform-alerts.test.ts` |
+| 13 | `startImpersonation` `:493` · `endImpersonation` `:505` | `start_impersonation()`, `end_impersonation()` `0069` — **frozen** | `{ status, id }` | Write only | W26.3's list |
+| 14 | `listMyImpersonations` `:512` | `platform_impersonations(p_limit)` `0070` — **the caller's own** sessions only | `id, orgId, orgName, orgSlug, reason, startedAt, expiresAt, endedAt` + `isActive, endedBy, endedRecently` (computed) | No — `reason` is the super admin's own sentence | `rls/platform-console.test.ts:142` «own sessions, not another's»; `unit/platform-impersonations.test.ts` |
+| 15 | `getMyActiveImpersonation` `:549` | `my_impersonation()` `0069` + `from("orgs").select("name")` **through RLS as the impersonating session** | `id, orgId, orgName, expiresAt, minutesRemaining` | The org's name only, read **inside** a live impersonation with the session's own claims (`orgs_read_own`) — the authority contract 7 allows | `components/platform/impersonation-banner.test.tsx`; e2e `:665` |
+| 16 | `listPlatformAudit` `:584` | `platform_audit()` `0069` | `id, action, subjectOrg, reason, occurredAt, after` | `after` holds platform-written values only: `first_admin_email` (`0069:589`), an org's `name`/`slug` on deletion (`:918`, `:984`), `purpose`/`family`. ★ **No caller in `src/` today** | `rls/platform-schema.test.ts:701` |
+| 17 | `listPlatformTemplates` `platform-templates.ts:51` | `platform_template_library()` `0096` | `id, purpose, family, name, isDefault, retiredAt, versions, createdAt, orientation, isBaseline, retirable` — **`scope = 'platform'` rows only**, the platform's own | No | `rls/platform-library.test.ts:46-122`; `rls/platform-schema.test.ts:597` |
+| 18 | `listPromotableVersions` `:104` | `platform_promotable_versions(p_org)` `0072` | `versionId, templateId, orgId, orgName, purpose, family, name, version, publishedAt, alreadyPromoted` — **no document, no author** | ★ **Yes, the one row of the table that returns an org-authored string**: the org template's `name` (with its family, version and publish date). Authority: `REQ-DSG-008` (promotion) and wave 8's ruling that identity alone may cross; the header of `supabase/proposed/platform/0003_platform_library.sql` records it | `rls/platform-console.test.ts:174` «identity only for a platform admin» · `:209` |
+| 19 | `promoteTemplate` `:139` · `retirePlatformTemplate` `:155` · `setPlatformTemplateDefault` `:163` | `promote_template_to_platform()`, `retire_platform_template()`, `set_platform_template_default()` `0069` | `{ status, id? }` — promotion copies the document **server-side** and never returns it | Write only | `rls/platform-schema.test.ts:510,552,573`; `rls/platform-console.test.ts:234` |
+
+**Verdict.** No function returns a member's name, a session title or a piece of content. Three fields are worth the
+owner knowing about, all pre-existing and all tested: `firstAdminEmail` (#4 — the platform's own input, echoed back),
+the org template **name** in #18 (`REQ-DSG-008`'s promotion list), and the org's name read **inside** an impersonation
+(#15). **I add nothing to either file unless a ruling in W26.4 asks for it**, and anything added is a function under
+`supabase/proposed/platform/` returning counts or platform rows.
+
+**`081`'s «أول مشرف»**: today's door is an address the operator TYPES (`create_org(p_first_admin_email)`), stored on
+`orgs.first_admin_email`; nothing reads `members` to offer one. **The rebuilt form is the same text field** — no picker,
+nothing wider. **`085`'s «العضو»**: today's functions expose **nothing** about an org's members — not a count by role,
+not an address. See W26.0(1).
+
+**No policy has a super-admin disjunct** — measured: of 215 `create policy` statements in `supabase/migrations/`, the
+only two that mention `platform` are `0055`'s `templates_read` / `template_versions_read`, whose `scope = 'platform'` is
+a **data** scope (platform templates readable by every org, D67), not a role. No migration defines `is_super_admin()` or
+`is_platform_admin()`. The guards: `tests/rls/platform-schema.test.ts:301` (every table with `org_id` returns zero rows
+or `42501` to a platform admin's claims — this catches a disjunct **by its effect**, whatever its spelling) and `:342`
+(no policy's `qual`/`with_check` mentions `platform_admins`). ★ **`:342` is narrower than its title**: it queries every
+public policy (not «this file's», as the name says) but only for the literal `platform_admins`, so a disjunct spelled
+`auth.jwt() ->> 'platform_admin'` or through a helper function would pass it; `:301` is the one that holds. **I do not
+edit either** (evidence); if the lead wants `:342` widened to `%platform_admin%`, it is a one-pattern change I can make on
+request with a ledger line.
+
+### W26.2 Kept-behaviour tables
+
+#### W26.2.0 What the frame takes from `platform/layout.tsx` (56 lines) and `platform-nav.tsx` (126 lines) — for the lead's table
+
+| # | Behaviour | Today | Where it must live after | Kept by |
+|---|---|---|---|---|
+| F1 | The gate at the chrome: signed-out → `/sign-in?next=/{locale}/app/platform`; anyone not in `platform_admins` → **not found** (streamed 200 + `noindex`), never 403 | `layout.tsx:37` | the new layout (and still at the data in every page, F2) | `REQ-ADM-001`, `DEC-134`, `DEC-035` |
+| F2 | Every page's own data call re-gates (`requirePlatformAdmin` inside each DAL read; `orgs/new/page.tsx:17` calls it directly because it has no read) | every page | unchanged — mine | CLAUDE.md «checks close to the data, never in layouts» |
+| F3 | `ImpersonationBanner` **first**, above everything, **in flow, never sticky** (a second sticky layer is `16` §3.1's focus hazard) | `layout.tsx:42`, header `:21-26` | the frame, where `DEC-057` §7 put it | `REQ-ADM-002`, `REQ-ADM-019`, `DEC-057` §7 |
+| F4 | The console's own skip link «تخطَّ إلى محتوى اللوحة» to `#platform-content`, which has `tabIndex={-1}` so focus moves, not only scroll | `layout.tsx:43-51` | the frame (or the console frame's own skip link if it already does this) | `REQ-NFR-007`, `platform.shell.skipToContent` |
+| F5 | The nav carries **no org-scoped link** | `layout.tsx:19`, `platform-nav.tsx:39-45` | the nav set | `DEC-014` |
+| F6 | Five items in order — home «لوحة المنصة» `/app/platform` (HomeIcon) · «المؤسسات» `/orgs` (BuildingIcon) · «مكتبة القوالب» `/templates` (ImageIcon) · «المؤشرات» `/metrics` (ChartIcon) · «الدخول الاستثنائي» `/impersonate` (LockIcon); words from `platform.shell.nav.*` | `platform-nav.tsx:37-45` | the nav set's table | `REQ-ADM-001`; the artboards draw the same five in the same order |
+| F7 | `current`: home matches **exactly**; the rest by **prefix**, so `orgs/new` and `orgs/[id]/domains` keep «المؤسسات»; the locale prefix and a trailing slash are stripped first | `platformSection()` `:48-54` | `admin-rail`'s second set | `REQ-UIX-017`; e2e `platform-console.spec.ts:602` |
+| F8 | `current` read on the **client** from `usePathname()`, never in the layout (a layout is not re-rendered on client navigation) | `:24-29`, `:64` | `admin-rail` already does this for the console | `REQ-UIX-017`, the `shell-routes.ts` lesson |
+| F9 | `aria-current="page"` on the current item; the `nav` landmark named «لوحة المنصة» | `:104`, `:113` | the rail | `REQ-NFR-007` |
+| F10 | Phone: a **section switcher on `ui/menu`** whose trigger names the current section (`aria-label` «أقسام لوحة المنصة: {section}»), closes on select/outside/Escape with focus returned; the brand line hidden on home so it is not said twice; **never a horizontal scroller** | `:71-101` | **replaced** by the console frame's sheet behind ≡ under `lg` — the lead's to confirm the sheet names the current section or the bar does | `DEC-111`, `REQ-UIX-023` |
+| F11 | Takes **no props** — nothing crosses the server/client boundary | `:31-35` | the nav set is data; `admin-rail` owns the icons' rendering | `DEC-159` |
+| F12 | Every label in `<bdi>` | `:79`, `:92`, `:106`, `:116` | the rail | Arabic-first rule |
+| F13 | `error.tsx` → `RouteBoundary`; `loading.tsx` → `SkeletonPageHeader` + six rows, no text | `error.tsx`, `loading.tsx` | **kept untouched** (mine; not chrome) | `REQ-UIX-016`, `REQ-UIX-005` |
+| F14 | No redirect anywhere in the layout beyond F1 | — | — | — |
+
+The banner (`components/platform/impersonation-banner.tsx`), the stop control (`stop-control.tsx`, `actions.ts`) and
+`alert-copy.ts` are **not chrome and are not deleted**; the banner is also rendered by `(auth)/no-access/page.tsx` (the
+lead's). Their behaviours, unchanged: renders **null** for everyone but a super admin inside a live session; `role="status"`,
+not `alert`; `Panel tone="live"` + `Badge tone="live"` with the lock; the org's name in `<bdi>`; an **end time, not a
+countdown**, in `Asia/Riyadh`; «لا تُفتح شاشات المؤسسة» line; the stop control full-width on a phone, beside the text from
+`sm`; the stop ends the row, **refreshes the token, then** `router.refresh()`, inside the transition and never in an
+effect (`DEC-146`, wave 8 F1/F2). `tests/components/platform/impersonation-banner.test.tsx` passes untouched.
+
+#### W26.2.1 `080` orgs — delete `orgs/{page,orgs-table,org-actions}.tsx`; `orgs/{actions,state}.ts` KEPT, untouched
+
+| # | Behaviour | Today | After | Kept by |
+|---|---|---|---|---|
+| O1 | Every figure a count from `listOrgs()` | `orgs-table.tsx:59-62` | the table's columns (W26.4 O-a on «النشطون») | `REQ-ADM-003`, contract 7 |
+| O2 | Name in `<bdi>`; slug `dir="ltr"` in `<bdi>` | `:31-39` | the org cell | Arabic-first |
+| O3 | Status: «قيد الحذف» (error, outline) when `deletionPending`; «نشطة» success; «موقوفة» neutral outline | `:46-57` | the status cell (`DEC-073` tones) | `0097`, `DEC-073` |
+| O4 | A pending-deletion org is offered **no act**, and says so in one line | `:70-75`, `org-actions.tsx:84` | the actions cell («—» as drawn, with an accessible name) | `0097` (sync 3), principle 7 |
+| O5 | Suspend: a dialog **naming the org**, a **mandatory reason** (≥ 3, field error «reason_required»), `danger` submit; closes and toasts in the action's own path, never an effect | `org-actions.tsx:58-65`, `:103-128` | «أوقف» opens the same dialog | `REQ-TEN-006`, `REQ-UIX-013`, wave 8 F2 |
+| O6 | Reinstate: one press, no confirm, answered either way (toast with the org isolated by FSI/PDI) | `:76-80` | «أعد التفعيل» | `REQ-TEN-006`, wave 8 F4 |
+| O7 | ★ Delete: a dialog naming the org, the slug shown on its own line `dir="ltr"`, a field to type it back (`autocomplete=off`, `spellCheck=false`), empty → «confirmRequired», **compared in SQL** (`slug_mismatch`), then «deleteQueued» | `:130-167`, `actions.ts:125-134` | «احذف» as coral text opens the same dialog | `REQ-NFR-014`, `12` §5.5 |
+| O8 | Delete is offered on **active and suspended** orgs alike | `org-actions.tsx:99` | ★ the artboard draws it on the suspended row only — W26.4 O-b | `REQ-NFR-014` |
+| O9 | The row links to `082` (`rowHref`) | `orgs-table.tsx:85` | the row **and** «النطاقات» | `REQ-TEN-007` |
+| O10 | Stacked cards under `md`, never a sideways scroller; `onCard` columns: status, members, sessions, actions | `data-table` | `data-table` composed as is | `16` §6.7 |
+| O11 | Empty state with «مؤسسة جديدة» | `:86` | kept | `REQ-UIX-008` |
+| O12 | The one primary «مؤسسة جديدة» in the header; the count «N مؤسسات» (six ICU forms) | `page.tsx:29-38` | the `h1` row | `16` §3 principle 2 |
+| O13 | Dates `formatDate(…, "Asia/Riyadh", locale)`, Western | `orgs-table.tsx:63` | «أغسطس 2026» as drawn — a month-year format, same zone | `DEC-124` |
+| O14 | `revalidatePath` after suspend / reinstate / delete | `actions.ts` | unchanged (file kept) | — |
+
+#### W26.2.2 `081` new org — delete `orgs/new/{page,org-form}.tsx`; `createOrgAction` in `orgs/actions.ts` KEPT
+
+| # | Behaviour | Today | After | Kept by |
+|---|---|---|---|---|
+| N1 | `requirePlatformAdmin` at the page | `page.tsx:17` | kept | F2 |
+| N2 | Fields: name (2–120), slug (`dir="ltr"`, mono, lowercased, `^[a-z0-9]+(-[a-z0-9]+)*$`), **certificate prefix** (2–5 capitals, required by `create_org` and `orgs`), **domains** (1–10, one per line or comma, leading «@» forgiven, deduplicated, lowercased), **first admin email**, **«seed categories»** checkbox (default ticked) | `org-form.tsx:62-99`, `actions.ts:50-87` | ★ the artboard draws name · slug · **one** first domain · first admin · **default language**, and no prefix and no seed — W26.4 N-a … N-c | `REQ-TEN-002`, `REQ-TEN-004`, `REQ-TEN-007` |
+| N3 | `noValidate`; errors beside each field and in a `FormSummary` keyed by attempt; every value survives a refusal | `:52-60` | kept | `REQ-UIX-009` … `011`, `DEC-149` §1 |
+| N4 | `slug_taken` on the slug's own field; `domains_required` on domains; anything else a form error | `actions.ts:90-94` | kept | — |
+| N5 | On success: revalidate the list and **land on `082`** for the new org | `actions.ts:96-99` | kept | wave 8 W8.4 |
+| N6 | Breadcrumb «المؤسسات» → `/orgs` | `page.tsx:25` | the `h1` row (the artboard draws «إلغاء» — a link back, W26.4 N-d) | — |
+
+#### W26.2.3 `082` domains — delete `orgs/[id]/domains/{page,domains-table,forms}.tsx`; `{actions,state}.ts` KEPT
+
+| # | Behaviour | Today | After | Kept by |
+|---|---|---|---|---|
+| D1 | Unknown **or malformed** id → the same not-found | `page.tsx:34-35` | kept | `DEC-134` |
+| D2 | Header: the org's name, slug badge `dir="ltr"`, status badge | `:42-60` | «النطاقات · {org}» as drawn, slug and status kept | — |
+| D3 | Pending deletion: an error panel, **no remove, no add, no first-admin form** | `:62-66`, `:90-106` | kept | `0097` |
+| D4 | Suspended: «موقوفة منذ {date}: {reason}» | `:67-76` | kept | `REQ-TEN-006` |
+| D5 | ★ The removal line — removing stops **new** provisioning only, said beside the list | `:83-88`; key `removalNote` | the drawn line «إزالة نطاق لا تُخرج أعضاءه؛ تمنع دخول الجدد فقط» | `REQ-TEN-007` |
+| D6 | Remove confirms in a dialog naming the domain (`<bdi dir="ltr">`) and saying the same | `domains-table.tsx:25-63` | «أزل» opens it | `REQ-UIX-013` |
+| D7 | Add: any case, a leading «@» forgiven; the toast names the domain **as stored**; «already present» is `info`, not success | `forms.tsx:38-60`, `actions.ts:24-39` | «نطاق جديد» (the `h1` row's primary) leads to the same form | contract 4 (`DEC-147`), `org_domains_normalise` |
+| D8 | Empty list: «add one» focuses `#domain` | `domains-table.tsx:97` | kept | — |
+| D9 | ★ **Set the first admin** — current address shown `dir="ltr"`, the field prefilled, lowercased before the RPC (F3), toast on save | `page.tsx:99-106`, `forms.tsx:62-108` | ★ **not drawn on `082`** — W26.4 D-c | `REQ-ADM-001`, `REQ-TEN-002`, `DEC-148` C3 |
+| D10 | Count beside «النطاقات» | `:80` | kept | — |
+
+#### W26.2.4 `083` the platform library — delete `templates/{page,library-table,promote-table}.tsx`; `templates/{actions,state}.ts` KEPT
+
+| # | Behaviour | Today | After | Kept by |
+|---|---|---|---|---|
+| T1 | Two purposes, each its rows; a certificate row carries its orientation, a poster none; the scheme is **not** a row | `page.tsx:55-70`, `library-table.tsx:122-133` | the grid, grouped by purpose | `DEC-148` contract 3, `0096` |
+| T2 | State badges: baseline / promoted, default, retired | `:134-149` | on each card | `REQ-DSG-008`, `DEC-052` |
+| T3 | Menu: «اجعله الافتراضي» (not retired, not default), «أعده» (retired), «أوقف» (only when `retirable` — computed in SQL), retire confirms naming the template; every act toasts, a refusal in words | `:36-99` | the card's «⋯» as drawn | `DEC-052` floor, wave 8 F4/F5 |
+| T4 | Family label only when it says something the name does not | `:117-119` | kept | wave 4 capture |
+| T5 | ★ **Promotion** from an org's published version: the candidates table (name, org, family, version, published), a dialog with an optional name, «already promoted» flagged | `promote-table.tsx` | ★ **not drawn** — W26.4 T-b | `REQ-DSG-008` |
+| T6 | **No preview and no document anywhere on the page** | `page.tsx:26` | ★ the artboard draws thumbnails — W26.4 T-a | `REQ-DSG-008`, wave 8's header |
+| T7 | No create, no edit, no delete | `actions.ts:11-14` | ★ the artboard draws «قالب جديد» — W26.4 T-c | `DEC-052` («managed, not authored») |
+| T8 | Versions «N نسخ» (six ICU forms) | `:150-155` | kept or dropped per the drawing — Q | — |
+
+#### W26.2.5 `084` metrics — delete `metrics/{page,metrics-tables}.tsx`
+
+| # | Behaviour | Today | After | Kept by |
+|---|---|---|---|---|
+| M1 | ★ **All eight alerts** through `platform_alerts()`, fired count beside the heading; a failed read **said**, never eight quiet rows | `page.tsx:56-70` | ★ **not drawn** — W26.4 M-b | `REQ-ADM-003` («error rates»), `REQ-NFR-016`, `DEC-148` C2 |
+| M2 | ★ **Job health** — task (code, `dir="ltr"`), oldest pending age, pending, failed; `#jobs` anchor the home links to | `:83-88` | ★ **not drawn** — W26.4 M-b | `REQ-ADM-003` («job health»), `11` §3.1 |
+| M3 | Eight totals as `stat`s | `:41-50`, `:72-81` | six `stat`s as drawn — W26.4 M-a | `REQ-ADM-003` |
+| M4 | Per-org table: org, active members, sessions, certificates | `metrics-tables.tsx:84-104` | the drawn per-org table — W26.4 M-a | `REQ-ADM-003` |
+| M5 | Alert words from `alert-copy.ts`, shared with the home | `metrics-tables.tsx:8` | kept | — |
+
+#### W26.2.6 `085` impersonate — delete `impersonate/{page,impersonate-form,history-table}.tsx`; `impersonate/{actions,state}.ts` KEPT (W26.3 for `state.ts`)
+
+| # | Behaviour | Today | After | Kept by |
+|---|---|---|---|---|
+| I1 | The consequence said **before** anything: the org knows (`honest`) — and that an expired session's access can outlive it by one token lifetime (`tokenTail`) | `page.tsx:51-57` | ★ the drawn badge «مسجَّل ومرئي للمؤسسة» says the first; the second is not drawn — W26.4 I-c | `09` §6, `DEC-148` C4 |
+| I2 | Three states: **none active** (the form) · **active** (a live panel: org, ends at, reason, started, and **the one stop control**) · **expired** (said at the top for an hour) | `:59-116` | ★ only the form is drawn — the other two are kept | `09` §6 SCR-085 states, wave 8 F1 |
+| I3 | Org: a `Select` from `listOrgs()` with a text placeholder | `impersonate-form.tsx:99-112` | kept | `REQ-ADM-002` |
+| I4 | Reason mandatory, 3–500, refusals on the field | `:114-116`, `actions.ts:25-34` | kept | `REQ-ADM-002`, the table's check |
+| I5 | Duration presets, default, ceiling | W26.3 | **unchanged until the lead rules** | `DEC-054` |
+| I6 | On start: **refresh the token in the submit path, then** `router.refresh()` — never an effect, no `revalidatePath` | `:65-75`, `actions.ts:14-22` | kept verbatim | wave 8 F2 |
+| I7 | `org_not_found` on the org field; `impersonation_already_active` a form error | `actions.ts:52-58` | kept | — |
+| I8 | The log: **the caller's own** sessions — org, reason, started, end, state («جارية» / «أُنهيت» / «انتهت») | `history-table.tsx:26-50` | the drawn «السجل» — W26.4 I-b | `REQ-ADM-019`, `0070` |
+
+### W26.3 ★★ Impersonation — shown, changed in nothing
+
+**What the form offers today** (`impersonate/state.ts:25-26`, `impersonate-form.tsx:118-131`): a radio group «المدة»
+with **five** presets — **15 · 30 · 60 · 120 · 240** minutes — labelled «15 دقيقة», «30 دقيقة», «ساعة واحدة»,
+«ساعتان», «4 ساعات», the last carrying the hint «الحد الأعلى، وهو قيد في قاعدة البيانات لا في هذه الصفحة»; **default
+60**. Behind it: Zod `minutes` 5 – 240 (`platform.ts:486-490`); `start_impersonation()` **clamps** to 5 – 240 and defaults
+to 60 (`0069`); the table refuses over 4 h (`impersonation_window`, `0069:102-105`).
+
+**What the artboard draws** (`PlatformImpersonate.dc.html:40`, its PNG): **three** — «15 دقيقة» · «30 دقيقة» · «ساعة»
+— a segmented control with **30 selected**.
+
+**The difference, for the owner:** the artboard (a) drops **120** and **240**, so the form could no longer ask for the
+four hours the table allows; (b) moves the default **60 → 30**. Neither moves the database: the RPC and the table are the
+same either way. Two existing assertions pin today's set and would become ledger lines if it changes:
+`tests/e2e/platform-console.spec.ts:642-644` (`[15, 30, 60, 120, 240]`, «ساعة واحدة» checked, «4 ساعات» visible) and
+`tests/components/platform/impersonate-form.test.tsx:53`. **I do not pick**; until the ruling, the rebuilt form keeps
+today's five and today's default, drawn in the artboard's segmented shape.
+
+**Frozen and untouched:** `start_impersonation()`, `end_impersonation()`, `assert_platform_admin()`, `my_impersonation()`,
+`platform_impersonations()`, `expire_impersonation`. **Suites that must pass unmodified:**
+`tests/rls/platform-schema.test.ts:38-298` (all eleven impersonation cases: select, append-only, expiry, platform-only,
+one-at-a-time, enqueues, end actor, the sweep, the hook, read-like-a-member) · `tests/rls/platform-console.test.ts:142` ·
+`tests/rls/platform-alerts.test.ts:261` · `tests/unit/platform-impersonations.test.ts` ·
+`tests/components/platform/impersonation-banner.test.tsx` · e2e `platform-console.spec.ts:580, 647, 665` (and `:635`
+unless the duration is ruled changed).
+
+### W26.4 Every disagreement — artboard against requirement and DAL (nobody picks; the lead rules)
+
+**`080` `PlatformOrgs.dc.html`**
+- O-a `:36`/`:39` «النشطون» — the view's `active_members` is **members with `status = 'active'`**, not recent activity; the
+  board's suspended org reads 14 members and **0** active, which the view would not produce (a suspended org's members
+  keep their status). Label stays «النشطون» over the same count unless ruled otherwise.
+- O-b `:37-39` «احذف» is drawn only on the suspended row; today it is offered on active rows too (`delete_org()` suspends
+  as its first step). Keep both until ruled.
+- O-c `:40` a pending-deletion row draws «—» for every count; `listOrgs()` returns real counts. Showing «—» hides a number
+  we hold — I propose keeping the numbers.
+- O-d The board draws no suspend dialog and no slug-typed dialog — both kept (O5, O7): the reason and the slug are
+  requirements, not chrome.
+
+**`081` `PlatformOrgNew.dc.html`**
+- N-a `:37` «اللغة الافتراضية» — **no column, no parameter**: `orgs` has none and `create_org()` takes none. Not built
+  without a migration (the lead's) — I recommend dropping it.
+- N-b `:37` «النطاق الأول» (one) — today 1 – 10. One field that still accepts a list, or one domain only and the rest on
+  `082`; either keeps `create_org`'s `domains_required`.
+- N-c ★ The **certificate prefix** is `not null` on `orgs` and required by `create_org()` — the board omits it. It must
+  stay. The «seed categories» checkbox is also omitted; it has a default.
+- N-d `:37` the first admin's hint «يصله بريد عند الإنشاء» is **false**: `create_org()` enqueues nothing and sends no
+  mail. The slug's «لا يتغيّر» is true (`0004:54`). I will not write the false sentence.
+
+**`082` `PlatformDomains.dc.html`**
+- D-a `:36-43` «الشركة» with a team dot — `org_domains` has **no link to a company**, and a company's name and colour are
+  the **org's** data. Showing them is a data-plane widening. Recommend: not built.
+- D-b «أُضيف» — `org_domains.created_at` exists but `platform_org()` returns domains as bare strings. A new definer
+  `platform_org_domains(p_org)` returning `domain, created_at` (the platform's own write) would draw it.
+- D-c «الأعضاء» per domain — a **count** of members whose address ends with the domain; aggregate, but computed over
+  members' emails. Same new function could return it; **a ruling**, since it is the first count derived from a member
+  column.
+- D-d ★ «تعيين أول مشرف» is not drawn on `082`, and `082` is where it lives (`DEC-148` C3, `REQ-ADM-001`). Kept below the
+  list unless the lead moves it.
+
+**`083` `PlatformTemplates.dc.html`**
+- T-a `:37-40` thumbnails rendering `{العنوان}` / `{المُقدِّم} · {التاريخ}` and format chips «16:9 · A4 · 9:16», «A4 أفقي ·
+  A3 أفقي». `platform_template_library()` returns **no document**. The documents of `scope = 'platform'` rows are the
+  platform's own, so reading them is not a data-plane widening — but it is a new function (and a renderer on a screen that
+  had none). Format chips would come from the document's variants. **A ruling**; recommend a family swatch without a live
+  render, as `055` does for an org.
+- T-b The **promotion** list (`REQ-DSG-008`) is not drawn. It must stay — below the grid.
+- T-c `:34` «قالب جديد» — **there is no authoring path** for a super admin (`DEC-052`, «managed, not authored»; the editor
+  is org-scoped). Not built; the primary action is absent, or it is «رقِّ قالبًا» scrolling to T-b. A ruling.
+- T-d `:35` «تظهر لكل المؤسسات للقراءة؛ تنسخها لتعدّلها» — true (`templates_read`, `055`'s «انسخ لتعدّل»).
+- T-e `:37` «لقاء», «ليلي», «كلاسيكي» are fixture names, not the roster (`DEC-242` contract 5); the roster is read.
+
+**`084` `PlatformMetrics.dc.html`**
+- M-a The six `stat`s `:36-41`: «مؤسسات نشطة» ✓ (`activeOrgs`) · «عضو» ✓ (`members`) · ★ «جلسة **هذا الربع**» — no
+  windowed count exists (`sessions` is all-time) · ★ «معدّل الحضور» — no function computes it · «شهادة» ✓ · ★ «الجاهزية
+  30 يومًا» 99.8 % — **nothing in the system measures uptime**; no table, no job. Per-org `:44-47`: الأعضاء ✓ · النشطون ✓ ·
+  الجلسات ✓ · ★ «الحضور» % — none · الشهادات ✓ · ★ «التصديرات» — not in the view. The two attendance figures and the
+  quarter's sessions are aggregates a new definer function could return (counts of RSVPs and check-ins per org, sessions
+  since the quarter's start); uptime cannot be read from anything. Recommend: build the counts only if ruled; replace
+  uptime with a held stat (e.g. «انتحالات جارية», which exists).
+- M-b ★★ The board drops the **alerts** and **job health**. `REQ-ADM-003` names «job health, error rates» and the home's
+  links land on `#jobs`. Kept below the drawn content — dropping them would drop a requirement.
+- M-c `:34` «أعداد فقط · لا محتوى» — a true badge; new string.
+
+**`085` `PlatformImpersonate.dc.html`**
+- I-a ★★ `:38` «العضو» / «مشرف فقط» — W26.0(1).
+- I-b `:46-49` the log draws «العضو» (not stored) and «المدة» («15 د», derivable as `expires_at − started_at`, the
+  platform's own row) and no state; today's log has the state and the end. Whose sessions the board's log lists is not
+  said — today it is **the caller's own** (`0070`); another admin's is `platform_audit()`. Keep the caller's own.
+- I-c The board draws no active panel and no expired line (I2), and not `tokenTail` (I1, `DEC-148` C4). Kept; `tokenTail`
+  is the one explainer sentence on the page and the lead may rule it off (`DEC-NEXT-25`).
+- I-d `:40` 30 selected — W26.3.
+- I-e The PNG truncates org names and reasons with «…» — that is `overflow: hidden` on a text line, which clips tashkeel
+  (CLAUDE.md). Not reproduced: the cells wrap.
+
+**All six** — the bar's «م» avatar and the mark are the lead's frame. Dates on the boards are month-year («أغسطس 2026»):
+appearance only, same zone (`Asia/Riyadh`), Western.
+
+### W26.5 The work, in commits — after «the plans are approved» and «the frame is in»
+
+Per screen, two commits in `../kareem-marefa-wave26c`, the table above re-read against the new files after each create:
+
+| Screen | Delete commit (`rm`, never `git rm`) | Create commit |
+|---|---|---|
+| `080` | `orgs/{page,orgs-table,org-actions}.tsx` | the same paths, from the artboard; `orgs/{actions,state}.ts` untouched |
+| `081` | `orgs/new/{page,org-form}.tsx` | the same |
+| `082` | `orgs/[id]/domains/{page,domains-table,forms}.tsx` | the same; `{actions,state}.ts` untouched |
+| `083` | `templates/{page,library-table,promote-table}.tsx` | the same; `{actions,state}.ts` untouched |
+| `084` | `metrics/{page,metrics-tables}.tsx` | the same |
+| `085` | `impersonate/{page,impersonate-form,history-table}.tsx` | the same; `{actions,state}.ts` untouched (state changes only on a W26.3 ruling) |
+
+Never pushed by me; the lead pushes each pair together. `components/platform/{impersonation-banner,stop-control,actions,alert-copy}`
+and `platform/{error,loading}.tsx` are not touched. Every page renders its `h1` row with **one** primary and its content —
+nothing of the frame. No `transition`, no keyframe, no `.animate(`, no object, no sticker; `console-register.test.ts` green
+and untouched. `npm run ui-lint` before each create commit.
+
+**New strings, `ar` first** (`platform.json`, mine): `metrics.countsOnly` «أعداد فقط · لا محتوى» · `impersonate.recordedBadge`
+«مسجَّل ومرئي للمؤسسة» · `impersonate.logTitle` «السجل» · `impersonate.whenColumn` «متى» · `impersonate.durationColumn` (six
+ICU forms, «{value} د») · `domains.newDomain` «نطاق جديد» · `domains.titleFor` «النطاقات · {org}» · `templates.formats` if T-a
+is ruled in. ★ **The bar's badge «لا بيانات مؤسسات هنا»** is the frame's: I add `shell.noDataBadge` to `platform.json` on the
+lead's written request, or the lead names another namespace.
+
+**Tests.** New: `tests/e2e/wave26-platform-screens.spec.ts` — each of the six at 1280 and 390, no sideways scroll, the
+`REQ-ADM-002` walk re-run over the new markup (no member, session title or content of either fixture org in any body),
+**a delete refused without the slug and accepted with it**, the duration options as ruled. New component tests under
+`tests/components/platform/` for each rebuilt file. **Evidence, expected to move by selector only** (each a ledger line
+from this note): `platform-console.spec.ts` (`:401`, `:445`, `:467`, `:502`, `:519`, `:550`, `:564` locators; `:710`
+capture paths), `components/platform/{orgs-table,org-actions,new-org-form,domains,library-table,platform-metrics-page,impersonate-form}.test.tsx`
+— those whose subject file is deleted are rewritten against the new one, each a ledger line.
+
+**Captures** (`.qa-shots/rtl/`, honouring `E2E_SHOTS_DIR`, from the production build the row names):
+`wave26-platform-orgs-{default,delete-confirm}-{1280,390}` · `wave26-platform-org-new-{default,refused}-{1280,390}` ·
+`wave26-platform-domains-{default,deletion-pending}-{1280,390}` · `wave26-platform-templates-default-{1280,390}` ·
+`wave26-platform-metrics-default-{1280,390}` · `wave26-platform-impersonate-{form,active,expired}-{1280,390}`.
+
+### W26.6 Requests to the lead
+
+1. **The nav set** must keep F6 – F9 (home exact, the rest by prefix after stripping the locale) — `platform-console.spec.ts:602`
+   asserts the rail follows a client-side navigation.
+2. **`tests/components/platform/platform-nav.test.tsx`** dies with the component you delete. It is in my edit list: I delete it
+   in the same commit as yours if you prefer, or you do with a ledger line — say which (Q4).
+3. **No `ui/` change is needed** that I can see: `data-table` with `DataTableActionPair` covers two-act rows; `080`'s third
+   («النطاقات») is the row's link. A coral **text** «احذف» is `Button variant="quiet"`/`ghost` in the error colour — if no
+   variant draws it, `variant="danger" size="sm"` is today's outline and I would use that rather than ask.
+4. **Functions**, only if W26.4 rules them in: `platform_org_domains(p_org)` (D-b/D-c), a per-org attendance count and a
+   windowed session count (M-a), a platform-template thumbnail read (T-a) — each under `supabase/proposed/platform/`,
+   counts or platform rows only, `assert_platform_admin()` first, proven with `applyProposed()`.
+
+### W26.7 Questions that need a ruling
+
+- **Q1** ★★ `085`'s member field, and `REQ-UIX-118`'s «an admin of it» (W26.0(1)).
+- **Q2** ★ The duration: 15 / 30 / 60 with 30 default, or today's five with 60 (W26.3).
+- **Q3** `/app/platform` (home) has no artboard: kept as built under the new frame (my recommendation), or rebuilt by
+  analogy with `084`?
+- **Q4** Who deletes `platform-nav.test.tsx`.
+- **Q5** `084`: the three new aggregates and uptime (M-a); the alerts and job health kept below (M-b).
+- **Q6** `083`: thumbnails (T-a) and «قالب جديد» (T-c).
+- **Q7** `082`: company (D-a, recommend no), added and members per domain (D-b, D-c).
+- **Q8** `081`: default language (N-a, recommend drop), one domain or a list (N-b).
+- **Q9** `080`: delete offered on active orgs (O-b); counts on a pending-deletion row (O-c).
+- **Q10** `tokenTail` on `085` (I-c) under `DEC-NEXT-25`.
