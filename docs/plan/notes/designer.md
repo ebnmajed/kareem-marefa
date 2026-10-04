@@ -79,6 +79,44 @@ misleading: the background output files came back **empty** (one reported exit 0
 **failed**. It passes alone. **A concurrent runner produces failures that look like yours and are not.** One runner,
 checked with `pgrep` first, every time.
 
+### A7 · ★★ The poster QR was 11.9 mm on both print presets, and the comment had been wrong since M6
+
+Measured while checking the four formats derive sensibly, which is the only reason it surfaced: **`scale: 'fixed'`
+holds the frame's PIXELS at the master's dpi**, and the poster master is 72 dpi while A4 and A3 are 300 dpi. So 140 px
+was 49.4 mm on every screen preset and **11.9 mm on both printed ones** — a 4.2× physical shrink on exactly the two
+variants that go on a wall. The certificate's QR was never affected: its master is already 300 dpi and it derives to one
+preset, so 320 px is 27.1 mm wherever it lands.
+
+★ **The comment that stood above it since M6 said `fixed` keeps «the same physical size on every variant», which is the
+opposite of what `fixed` does across a dpi change.** Nobody caught it because nobody printed an A3 poster; **this wave
+is the first whose acceptance is a printed artefact**, which is why it is the first that could.
+
+★ I measured it, did not act, and reported it — and **the lead overruled the hesitation, not the reasoning**: a wave
+accepted on a printed poster that ships a knowingly unscannable code is the wave failing its own acceptance, and an
+older defect is older, not smaller. `scale: 'proportional'` on the **poster** QR alone:
+
+| preset | dpi | `fixed` (was) | `proportional` (now) |
+|---|---|---|---|
+| master · story | 72 | 49.4 mm | 49.4 mm |
+| square | 72 | 49.4 mm | 38.1 mm |
+| landscape (16:9) | 72 | 49.4 mm | 36.7 mm |
+| og (link card) | 72 | 49.4 mm | 20.1 mm |
+| **A4** | 300 | **11.9 mm** | **30.4 mm** |
+| **A3** | 300 | **11.9 mm** | **43.7 mm** |
+
+Both comments are corrected to say what `fixed` actually means and why the two purposes legitimately differ — the
+masters differ, not the judgement. ★ And the anti-drift test earned its keep immediately: changing the layer's `presets`
+drifted the generated seed from the library and `designer-library.test.ts` failed until it was regenerated. The pinned
+derive table moved a second time with it, and the lead has the regenerated 41.
+
+### A8 · `designer-render.test.ts` reverted to `main`'s — the lead had already fixed it in PR #63
+
+I found PR A's two stale palette literals and fixed them to read `platformBrand()`. **The lead had fixed the same two
+cases the same way in #63**, which is open. Both of us arriving at «read the palette, never the literal» is the right
+answer twice; two commits doing it is a conflict for no gain. The file is `main`'s again here and rebases when #63 lands;
+the ledger lines live in the lead's commit. ★ And my instinct to look further was right: **`TRACEABILITY.md` was stale by
+two rows**, caught by CI's currency check rather than by the local `--check`, and that is in #63 too.
+
 ### A6 · Still open, and NOT done by me
 
 - The parity `--update` diff and `designer-derive-untouched`'s 41 hashes: **handed to the lead**, who opens and commits.

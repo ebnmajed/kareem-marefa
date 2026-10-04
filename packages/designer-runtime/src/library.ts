@@ -314,9 +314,27 @@ function posterDocument(family: PosterFamily): DesignDocument {
       // the thumbnails' own arrangement.
       frame: { x: 860, y: 1130, w: 140, h: 140 },
       qr: { binding: 'session.eventUrl', ecLevel: 'M', quietZoneModules: 4 },
-      // `fixed`, so the QR is the same physical size on every variant rather
-      // than shrinking with the page until it will not scan.
-      presets: { default: { anchor: 'block-end', scale: 'fixed' } },
+      // ★★ `proportional`, and the comment that stood here from M6 until wave 24
+      // was WRONG — it said `fixed` keeps «the same physical size on every
+      // variant», which is the opposite of what `fixed` does across a change of
+      // dpi.
+      //
+      // `fixed` holds the frame's PIXELS at the value authored on the master.
+      // The poster master is 72 dpi and A4/A3 are 300 dpi, so 140 px is 49.4 mm
+      // on every screen preset and 11.9 mm on both PRINT presets — a 4.2×
+      // physical shrink on exactly the two variants that get printed and stuck
+      // on a wall. Measured over all seven presets, not reasoned about.
+      //
+      // `proportional` scales the frame with the safe box, which across a dpi
+      // change is what holds the physical size: A3 43.8 mm, A4 30.8 mm, the
+      // screen presets 42–49 mm, the `og` link card 20 mm — every one scannable.
+      //
+      // ★ The CERTIFICATE's QR keeps `fixed` and is right to: its master is
+      // already 300 dpi and `presetsForDocument()` gives it exactly one preset,
+      // so there is no dpi change to survive and 320 px is 27.1 mm wherever it
+      // lands (`REQ-CRT-010`'s 25 mm minimum). The two settings differ because
+      // the two masters differ, not because one of them is a mistake.
+      presets: { default: { anchor: 'block-end', scale: 'proportional' } },
       z: 10,
     },
   ]
@@ -507,7 +525,11 @@ function certificateDocument(family: CertificateFamily, orientation: Certificate
       // thumbnail's own 18 px square is 320 px on the page, which agrees.
       frame: { x: L.qr.x, y: L.qr.y, w: 320, h: 320 },
       qr: { binding: 'certificate.verifyUrl', ecLevel: 'Q', quietZoneModules: 4 },
-      // `fixed`: a QR that shrinks with the page is a QR that stops scanning.
+      // `fixed` — correct HERE, and for a reason the poster's QR does not share:
+      // this document's master is already 300 dpi and it derives to exactly one
+      // preset (its own), so `fixed` holds 320 px = 27.1 mm and there is no dpi
+      // change to shrink it. See the poster's QR for what `fixed` costs when the
+      // master and the target disagree about dpi.
       presets: { default: { anchor: 'block-end', scale: 'fixed' } },
       z: 20,
     },

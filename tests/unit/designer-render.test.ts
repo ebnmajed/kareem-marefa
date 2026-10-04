@@ -71,26 +71,16 @@ describe("REQ-DSG-006 — an unbound field is a marked placeholder, never an emp
 
 describe("REQ-DSG-021 — colours are tokens, resolved at render time", () => {
   it("resolves {{brand.*}} from the platform theme and never prints the token", () => {
-    // ★ LEDGER (wave 24): the expectation was the literal `#0b1220` — the light
-    // `fgHeading` as it stood before DEC-242 moved the platform palette. A test
-    // that hard-codes the value it is checking the resolution OF has to be
-    // edited every time the palette moves, and an edit is where a wrong value
-    // gets written down. It reads the palette now, so the next move is free.
-    const palette = platformBrand("light");
-    const { html } = renderDocumentToFragment(doc([title()]), { fonts: [], bindings: { values: palette } });
-    expect(html).toContain(palette["brand.fgHeading"]);
+    const { html } = renderDocumentToFragment(doc([title()]), { fonts: [], bindings: { values: platformBrand("light") } });
+    expect(html).toContain("#0b1220");
     expect(html).not.toContain("{{brand.fgHeading}}");
   });
 
   it("the same document in the dark scheme is the same document — the variant is the SCHEME", () => {
-    // ★ LEDGER (wave 24): was the literal `#ffffff`, the dark `fgHeading` before
-    // DEC-242. Same reasoning as above, and the claim is unchanged: one document,
-    // two palettes, two renders.
-    const darkPalette = platformBrand("dark");
     const light = renderDocumentToFragment(doc([title()]), { fonts: [], bindings: { values: platformBrand("light") } }).html;
-    const dark = renderDocumentToFragment(doc([title()]), { fonts: [], bindings: { values: darkPalette } }).html;
+    const dark = renderDocumentToFragment(doc([title()]), { fonts: [], bindings: { values: platformBrand("dark") } }).html;
     expect(light).not.toEqual(dark);
-    expect(dark).toContain(darkPalette["brand.fgHeading"]);
+    expect(dark).toContain("#ffffff");
   });
 });
 

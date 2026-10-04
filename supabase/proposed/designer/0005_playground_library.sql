@@ -296,7 +296,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-end",
-          "scale": "fixed"
+          "scale": "proportional"
         }
       },
       "z": 10
@@ -579,7 +579,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-end",
-          "scale": "fixed"
+          "scale": "proportional"
         }
       },
       "z": 10
@@ -862,7 +862,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-end",
-          "scale": "fixed"
+          "scale": "proportional"
         }
       },
       "z": 10
@@ -1145,7 +1145,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-end",
-          "scale": "fixed"
+          "scale": "proportional"
         }
       },
       "z": 10
@@ -1428,7 +1428,7 @@ v_doc    := $json${
       "presets": {
         "default": {
           "anchor": "block-end",
-          "scale": "fixed"
+          "scale": "proportional"
         }
       },
       "z": 10
