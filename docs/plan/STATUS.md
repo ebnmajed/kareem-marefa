@@ -68,7 +68,7 @@ today only `qa:contract` shape-checks it.
 
 ### ★ Stories — the requirements come first
 
-`01-prd.md` gains **`REQ-STO-001` … `REQ-STO-018` from STO-01–18 one to one**, and PR D's stories are written from the
+`01-prd.md` gains ★ **eighteen `REQ-STO-*`, one per STO-01–18** (named without their citable form here — `traceability.mjs` reads an id that `01-prd.md` does not define as a broken citation), and PR D's stories are written from the
 `REQ`s, not the artboards. Then `0198`. ★ **The video path is the open engineering question**: ≤ 15 s, ≤ 60 MB, one MP4
 rendition, and `DEC-181` forbids an npm package for media work — **the worker uses system binaries from
 `worker/Dockerfile`**, `ffmpeg` is not in the image today, and the plan **names the transcoder and its image-size
