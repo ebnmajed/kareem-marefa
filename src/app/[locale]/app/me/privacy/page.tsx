@@ -33,11 +33,12 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [request, removals, prefs, t] = await Promise.all([
+  const [request, removals, prefs, t, tSettings] = await Promise.all([
     getMyExportRequest(locale),
     countMyPhotoRemovalRequests(locale),
     getOrgPrefs(locale),
     getTranslations("privacy.page"),
+    getTranslations("settings"),
   ]);
   const day = (iso: string) => new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { day: "numeric", month: "long", timeZone: prefs.timeZone }).format(new Date(iso));
 
@@ -52,7 +53,8 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
 
   return (
     <>
-      <HubTopRow title={t("title")} backHref="/app/me/settings" />
+      {/* The back control returns to settings and is named for it (`Privacy.dc.html:20`, «الإعدادات»). */}
+      <HubTopRow title={t("title")} backHref="/app/me/settings" backLabel={tSettings("title")} />
       <div className="flex flex-col gap-3">
         <SettingsGroup title={t("groupData")} showTitle={false} rows={rows} />
         {/* REQ-PRF-006's second acceptance criterion, said to the person it protects. */}

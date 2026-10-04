@@ -7,14 +7,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import privacyAr from "@/messages/ar/privacy.json";
 import uiAr from "@/messages/ar/ui.json";
 import appAr from "@/messages/ar/app.json";
+import settingsAr from "@/messages/ar/settings.json";
 import type { DataExportRequest } from "@/lib/dal/privacy";
 
-const messages = { ...privacyAr, ...uiAr, ...appAr };
+const messages = { ...privacyAr, ...uiAr, ...appAr, ...settingsAr };
 
 vi.mock("@/lib/dal/privacy", () => ({ getMyExportRequest: vi.fn(), countMyPhotoRemovalRequests: vi.fn() }));
 vi.mock("@/lib/dal/proposals", () => ({ getOrgPrefs: vi.fn(async () => ({ timeZone: "Asia/Riyadh", maxCoPresenters: 2 })) }));
 vi.mock("@/components/privacy/avatar-section", () => ({ AvatarSection: () => <section aria-label="avatar" /> }));
-vi.mock("@/components/shell/hub-top-row", () => ({ HubTopRow: ({ title, backHref }: { title: string; backHref: string }) => <h1 data-back={backHref}>{title}</h1> }));
+vi.mock("@/components/shell/hub-top-row", () => ({ HubTopRow: ({ title, backHref, backLabel }: { title: string; backHref: string; backLabel: string }) => <h1 data-back={backHref} data-back-label={backLabel}>{title}</h1> }));
 vi.mock("@/app/[locale]/app/me/privacy/actions", () => ({ requestExportAction: vi.fn(), requestDeactivationAction: vi.fn() }));
 vi.mock("@/i18n/navigation", () => ({ Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("next-intl/server", () => ({
@@ -55,6 +56,7 @@ describe("/app/me/privacy", () => {
     vi.mocked(getMyExportRequest).mockResolvedValue(null);
     await show();
     expect(screen.getByRole("heading", { level: 1, name: "البيانات والخصوصية" })).toHaveAttribute("data-back", "/app/me/settings");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveAttribute("data-back-label", "الإعدادات");
   });
 
   it("never asked: the request control", async () => {
