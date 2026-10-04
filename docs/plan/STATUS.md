@@ -56,6 +56,28 @@ the platform's `supabase_realtime` publication, as every wave.** ★★ **`0192`
 ★ **`brand_kits` is not read, written or altered by `0192`**, so an org that overrode its kit is untouched by the
 rehearsal and by the deploy.
 
+### ★★ `0193` — REHEARSED 2026-10-04 on a production dump taken at `0192`
+
+`/tmp/prod-schema-0192.sql`, **0 data rows**, the new palette present (`#0b0c12`) and **nothing of `0193`**
+(`supersede_baseline` absent). A throwaway `rehearse24b`, the seven extensions, the local `auth`/`storage`/`realtime`
+schemas first; ★ **the dump loaded with ONE error — the platform's `supabase_realtime` publication, as every wave.**
+★★ **`0193` applied `--single-transaction` with `ON_ERROR_STOP`, as `postgres` — exit 0.**
+
+| Check | Result |
+|---|---|
+| End state | ★ **11 platform templates, 11 versions** |
+| policies · triggers · columns | ★ **177 · 125 · 891 — identical to local** |
+| public functions | 336 local, 337 rehearsed — the one difference is **`rls_auto_enable()`, production-only, as every wave** |
+| `supersede_baseline_template()` body | ★ **md5 identical to local** — `45881cce6dc33cd130c35545ccc33ed8` |
+
+★★ **THE ONE THING THIS REHEARSAL DOES NOT PROVE, said plainly.** A schema dump carries **no rows**, so
+`design_templates` was empty and **the delete-versus-retire branch was never exercised here** — every row the loop
+would have found was absent. What the rehearsal proves is that `0193` **applies** to production's schema. **The branch
+itself is proven by `tests/rls/designer-baseline-supersede.test.ts`**, which rebuilds a pre-wave world, issues a
+certificate against the old library, and asserts the delete was *refused*, `template_version_id` unchanged, and
+`certificate_render_context()` returning the pre-wave document byte for byte. ★ **The real per-row outcome comes from
+the push's own notices**, and they go in the table below — that is the evidence nothing was forced.
+
 ### ★★ The production read, and the owner's four rulings at sync 1 (2026-10-04)
 
 ★★ **The owner ran the read** (`supabase db query --linked` is denied to agent sessions). Platform scope, 11 rows:

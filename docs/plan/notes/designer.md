@@ -5,6 +5,706 @@ found. `docs/plan/` is otherwise the lead's; this file is mine.
 
 ---
 
+## Wave 24 — as built, PR B `wave-24b/the-baseline` (after the owner's four rulings)
+
+**The owner's rulings, applied:** five TOKEN grounds and the team colour deferred to its own wave · the thumbnails'
+omissions **kept** (the org logo, `l_issued`, `l_reason`, `l_kind`) · the re-render is a one-off the owner runs and is
+**not** in `0193` · cyan and violet recorded as team colours, so the artboard asks for three colourways and one of them
+ships properly.
+
+### What changed, file by file
+
+| file | what |
+|---|---|
+| `packages/designer-runtime/src/library.ts` | all eleven documents rebuilt; `DISPLAY = 'Baloo Bhaijaan 2'`; five colourways; the stadium pill; version 1 on every row |
+| `packages/designer-runtime/src/model.ts` · `validate.ts` | `FontSpec.weight` widened to `700 | 800`, additive |
+| `packages/designer-runtime/scripts/seed-sql.mjs` | emits eleven NEW rows plus the supersede loop (granted to me this wave) |
+| `supabase/proposed/designer/0005_playground_library.sql` | generated, 3,362 lines |
+| `supabase/proposed/designer/0006_supersede_baseline.sql` | `supersede_baseline_template()` |
+| `scripts/parity/backgrounds.mjs` | a `solid-rtl` case; the mirror on a harness-owned fixture |
+| `tests/unit/designer-library.test.ts` | five expectations moved, each with a ledger comment |
+| `tests/unit/designer-render.test.ts` | two palette literals replaced by palette reads (a PR-A gap, §A4) |
+| `tests/rls/templates-roster.test.ts` | the new seed in `buildLibrary()`; two expectations moved; one case added |
+| new `tests/rls/designer-baseline-supersede.test.ts` | 8 cases, both branches |
+| new `tests/unit/designer-reissue-pinned.test.ts` | 5 cases |
+
+### A1 · ★★ The defect the roster suite caught, and the plan's §6 was wrong about it
+
+My plan said the seed stays «idempotent on `(scope, purpose, family)` exactly as `0061` is», with `retired_at is null`
+added as a third condition. **That is not sufficient and the test proved it in one run.** `0061` and `0098` ADD A
+VERSION to an existing row, so «the live default of this (purpose, family)» is exactly the row to seed into. Wave 24
+REPLACES the row, and that key cannot tell the row being replaced from the row replacing it: on the first run it matched
+the **superseded** row, found version 1 already present, inserted nothing, and the documents never changed —
+**11 templates, 19 versions, the old design still live.**
+
+★ The key is now **the document itself**: the row carrying this exact `jsonb`. Structural equality, key-order
+independent, the literal declared once into `v_doc` so it is not written twice, and a re-run finds the row it created.
+★ A second bug fell out of the same change and the suite caught that too: I had replaced `returning id into v_template`
+with a `select` by `(family, name)`, which matched the **superseded** row — still carrying that family and that name
+until the supersede step runs — and then inserted version 1 on a row that already had one. `RETURNING`, always.
+
+### A2 · ★ `0098` re-applied AFTER this wave would silently restore the old design
+
+Found while fixing `roster.idempotent`. Re-running `0098` after the new seed adds **its own version 2** — the old
+documents — to the eleven NEW rows, because they are the live defaults it looks for: 11 templates, 19 versions. And
+since `certificate_template_latest_version()` takes the highest **published** version, issuance would resolve the old
+design again. **Not reachable**: migrations run once, in order, and `0098` precedes `0193` in every environment for
+ever. But a future «reseed the library» script that replays `0061`/`0098` **would** do it. Written here and in the
+test's own comment rather than in a commit message.
+
+### A3 · Measured, not asserted
+
+- **11 rows, 11 distinct documents, 0 brand violations, 0 validation issues, and `allSafeAreaViolations()` empty over
+  all seven poster presets and both certificate compositions** — first run, no frame adjusted after the fact.
+- `tests/rls/{designer,templates,certificates}*`: **161 cases, 13 files, all green**, including the six that are
+  evidence and were not edited.
+- ★ **The final full `npm test`, single runner, nothing else running: 5,334 passed, 1 skipped, 3 failed in 2 files — and
+  neither file is mine to fix.** `designer-derive-untouched` (1) is the pinned table the lead refreshes;
+  `designer-render` (2) is `main`'s stale palette literals, which PR #63 fixes (§A4, §A8). ★ **493 files passed against
+  487 in the run I polluted with a second runner** — the seven component files that failed there pass here, which is the
+  diagnosis in §A5 confirmed rather than assumed. ★ And the wrapper reported **exit 0 while the log's own summary said
+  `EXIT=1`**: the same trap, twice in one session. Read what produced the signal.
+- `designer-derive-untouched`: **41 of 48 hashes move, the 7 `uploaded/*` do not.** The seam assertion passes
+  untouched, which is the assertion that proves the engine was not touched. The table is computed and handed over;
+  **I did not refresh it.**
+- `npx tsc --noEmit` clean. `npm run lint` **0 errors**, 31 warnings, all pre-existing.
+
+### A4 · ★ A PR-A gap found here and fixed by the lead — see §A8
+
+`tests/unit/designer-render.test.ts` asserted the literals `#0b1220` and `#ffffff` — the light and dark `fgHeading`
+**as they stood before `0192`**. The palette moved in PR A and these two cases were left on the old navy; they fail on
+`main` independently of anything in PR B. ★ **I fixed them and then dropped the fix**: the lead had already made the same
+change the same way in PR #63. **§A8 is what happened**; the file is `main`'s in this branch.
+
+### A5 · ★ My own process failure, recorded because it cost two false signals
+
+I started an RLS run while the full unit run was still going, against the single-runner rule. Two consequences, both
+misleading: the background output files came back **empty** (one reported exit 0 with no content, which reads as
+«green»), and `tests/components/templates/template-menu.test.tsx` — `console`'s file, which I must not edit —
+**failed**. It passes alone. **A concurrent runner produces failures that look like yours and are not.** One runner,
+checked with `pgrep` first, every time.
+
+### A7 · ★★ The poster QR was 11.9 mm on both print presets, and the comment had been wrong since M6
+
+Measured while checking the four formats derive sensibly, which is the only reason it surfaced: **`scale: 'fixed'`
+holds the frame's PIXELS at the master's dpi**, and the poster master is 72 dpi while A4 and A3 are 300 dpi. So 140 px
+was 49.4 mm on every screen preset and **11.9 mm on both printed ones** — a 4.2× physical shrink on exactly the two
+variants that go on a wall. The certificate's QR was never affected: its master is already 300 dpi and it derives to one
+preset, so 320 px is 27.1 mm wherever it lands.
+
+★ **The comment that stood above it since M6 said `fixed` keeps «the same physical size on every variant», which is the
+opposite of what `fixed` does across a dpi change.** Nobody caught it because nobody printed an A3 poster; **this wave
+is the first whose acceptance is a printed artefact**, which is why it is the first that could.
+
+★ I measured it, did not act, and reported it — and **the lead overruled the hesitation, not the reasoning**: a wave
+accepted on a printed poster that ships a knowingly unscannable code is the wave failing its own acceptance, and an
+older defect is older, not smaller. `scale: 'proportional'` on the **poster** QR alone:
+
+| preset | dpi | `fixed` (was) | `proportional` (now) |
+|---|---|---|---|
+| master · story | 72 | 49.4 mm | 49.4 mm |
+| square | 72 | 49.4 mm | 38.1 mm |
+| landscape (16:9) | 72 | 49.4 mm | 36.7 mm |
+| og (link card) | 72 | 49.4 mm | 20.1 mm |
+| **A4** | 300 | **11.9 mm** | **30.4 mm** |
+| **A3** | 300 | **11.9 mm** | **43.7 mm** |
+
+Both comments are corrected to say what `fixed` actually means and why the two purposes legitimately differ — the
+masters differ, not the judgement. ★ And the anti-drift test earned its keep immediately: changing the layer's `presets`
+drifted the generated seed from the library and `designer-library.test.ts` failed until it was regenerated. The pinned
+derive table moved a second time with it, and the lead has the regenerated 41.
+
+### A8 · `designer-render.test.ts` reverted to `main`'s — the lead had already fixed it in PR #63
+
+I found PR A's two stale palette literals and fixed them to read `platformBrand()`. **The lead had fixed the same two
+cases the same way in #63**, which is open. Both of us arriving at «read the palette, never the literal» is the right
+answer twice; two commits doing it is a conflict for no gain. The file is `main`'s again here and rebases when #63 lands;
+the ledger lines live in the lead's commit. ★ And my instinct to look further was right: **`TRACEABILITY.md` was stale by
+two rows**, caught by CI's currency check rather than by the local `--check`, and that is in #63 too.
+
+### A9 · Still open, and NOT done by me
+
+- The parity `--update` diff and `designer-derive-untouched`'s 41 hashes: **handed to the lead**, who opens and commits.
+- The four owner questions are settled; **the team colour is a deferred wave**, recorded in `library.ts`'s header as a
+  real loss rather than a tidy-up.
+- The one-off re-render is the owner's script, not `0193`.
+- ★ **The editor's weight control still offers 400/500/600 only** (`inspector.tsx:247`, `editor.tsx:682`). The studio's
+  chrome is frozen this wave, so an admin editing a rebuilt document sees no weight selected on the title and cannot
+  set 800 from the UI. The document renders correctly; the control cannot express it. ★ **The lead has recorded it as a
+  carry for the wave that unfreezes the chrome** — «the document rendering correctly while the control cannot express it
+  is exactly the kind of thing that disappears if it is not written down».
+
+---
+
+## Wave 24 — 2026-10-04 — the plan, PR B `wave-24b/the-baseline` (planning only; no document and no SQL until the lead posts «the palette is in» and «the plans are approved»)
+
+**The goal in one line, the owner's:** a poster an admin exports and a certificate a member holds look like the
+product they came from — today they wear M6's Reem Kufi on navy while every screen has worn «ساحة اللعب» since wave 17.
+**The second line, which is the floor:** a certificate somebody is already holding does not change, which is why the
+database refuses to delete its version and why nothing here forces it.
+
+Read: `STATUS.md`'s wave-24 block · `CLAUDE.md`'s wave-24 map · `DEC-242` in full · `notes/wave-24-lead.md` ·
+`AdminTemplates.dc.html` and `AdminTemplatesCerts.dc.html` (the seven card thumbnails, inline styles extracted) ·
+`01-tokens.md`. Measured, not assumed: `0055`, `0057`, `0061`, `0063`, `0065`, `0066`, `0094`, `0096`, `0098`, `0099`,
+`0127`, `0191`, `0192`; `library.ts`, `model.ts`, `presets.ts`, `bindings.ts`, `session-bindings.ts`, `brand.ts`,
+`render.ts`, `qr.ts`, `fingerprint.ts`; `worker/src/tasks/regenerate_poster.ts`, `issue_certificates.ts`;
+`scripts/parity/{harness,backgrounds,paths,cases}.mjs`; `templates.ts`, `certificates.ts`, `designer.ts`, `posters.ts`.
+
+★ **Two hard constraints I derived before anything else, because they bound every other choice.**
+
+1. ★★ **The eleven new documents stay at `BASE_SCHEMA_VERSION` (1).** `SCHEMA_VERSION` is 2 and `main`'s worker
+   refuses a document whose version it does not know (`schema_version_future`, `DEC-178` D2b). The owner pushes the
+   migration **before** merging, so `main`'s worker runs `0193`'s rows with `main`'s code for the whole window — a
+   bumped document would fail **every** poster render in that window. **Therefore no new model field that changes a
+   rendered byte**: no `radius`, no `dir`, nothing the old runtime would draw differently. See §9.6 and §9.8.
+2. ★★ **Every colour is `{{brand.<token>}}` and nothing else.** `0094`'s guard (`:103`) is an **allowlist of the
+   binding shape**: `^\{\{\s*brand\.[A-Za-z]+\s*\}\}$`. Not «no hex» — **no anything else**. `brandViolations()` and
+   `tests/rls/templates-roster.test.ts`'s `roster.variants` hold the same shape in TypeScript. So a team colour
+   cannot reach a template as a binding either. §9.2 is the question that follows.
+
+---
+
+### 0 · ★★ Sync 1 — what the lead ruled, what the owner holds, and the production read
+
+**Approved as framed**, so the plan below stands except where this section amends it:
+
+- `BASE_SCHEMA_VERSION` stays 1 and **no new model field that changes a rendered byte** (§9.6, §9.8).
+- The category pill carries the **family literal**, not a `session.category` binding — the deciding argument is that
+  byte-identical documents fail `designer-library.test.ts:48-50` (§9.1).
+- **`l_kind` is kept**: «a certificate that cannot tell attendance from presenting is not a simplification» (§9.5).
+- The pill is the **three-shape stadium** (§9.6).
+- `FontSpec.weight` widened to **700 | 800**, additive, with **Baloo 700** for the small bold lines (§9.7).
+- `backgrounds.mjs` gains a **`solid-rtl`** case and keeps a **harness-owned gradient fixture** for the `360 − angle`
+  mirror (§5).
+- `designer-derive-untouched`'s 41-of-48 table: **I compute it and hand it over; the LEAD refreshes it, not me**, and
+  the **7 `uploaded/*` hashes not moving is the assertion that proves the seam** (§5).
+- ★ **`packages/designer-runtime/scripts/seed-sql.mjs` is mine for this wave** — granted; the lead is adding it to the
+  map and the agent file (§9.13a).
+
+**The lead is fixing two requirement gaps, and I work around neither** — they will be correct before I build:
+`REQ-DSG-026`'s gradient / tasks strip / formal Naskh / Knowledge Network is being amended in `01-prd.md` (§9.9), and
+`REQ-DSG-034`'s first acceptance bullet is being rewritten to name the surfaces a teammate can actually reach rather
+than `platform_template_library()`, which returns retired rows on purpose for SCR-083 (§9.10).
+
+★★ **Four questions are the OWNER's and I do not resolve any of them myself:**
+
+1. **The team colourway** — (a) the migration-and-new-scope route, or (b) five token grounds (§9.2).
+2. **The org logo leaving every baseline artefact** (§9.11).
+3. **Dropping the certificate's issue date and the achievement's reason** (§9.5's second half).
+4. **The one-off re-render fan-out** (§9.12).
+
+★ The lead is taking §9.3 to the owner in my own words — cyan and violet are `--color-team-cyan` and
+`--color-team-violet`, so the artboard's «لقاء» and «إعلان» cards are **the same colourway as card 1**, which changes
+what the design is asking for.
+
+★★ **HOLD.** Nothing is deleted, no document is written and `0193` is not touched until the lead posts the owner's four
+answers **and** the path for `../kareem-marefa-wave24b`. ★ A concurrent session is writing `DEC-243` / `REQ-TEN-009`
+into `DECISIONS.md` and `01-prd.md` in this checkout: **stage only my own paths, never `git add -A`**, and re-read any
+file I did not write in this session from disk before editing it.
+
+★ **The production read is in §2**, where it corrects the «production» column for all six certificate rows.
+
+---
+
+### 1 · The current eleven rows, and what each draws that the thumbnails do not
+
+Source of truth: `packages/designer-runtime/src/library.ts` (the library IS the source; `0061`/`0098` are generated
+copies, deep-equalled by `tests/unit/designer-library.test.ts`). **19 version rows across 11 template rows.**
+
+| # | purpose · family · orientation | name | versions | current | `is_default` |
+|---|---|---|---|---|---|
+| 1 | poster · `talk` | جلسة | 1 (`0061`), 2 (`0098`) | **2** | true |
+| 2 | poster · `workshop` | ورشة | 1, 2 | **2** | true |
+| 3 | poster · `panel` | حوار | 1, 2 | **2** | true |
+| 4 | poster · `meetup` | لقاء | 1, 2 | **2** | true |
+| 5 | poster · `announcement` | إعلان | 1, 2 | **2** | true |
+| 6 | certificate · `attendance` · landscape | شهادة حضور أفقية | 1 (as «شهادة حضور»), 2 | **2** | true |
+| 7 | certificate · `attendance` · portrait | شهادة حضور عمودية | 1 (`0098`) | **1** | false |
+| 8 | certificate · `presenter` · landscape | شهادة تقديم أفقية | 1, 2 | **2** | true |
+| 9 | certificate · `presenter` · portrait | شهادة تقديم عمودية | 1 | **1** | false |
+| 10 | certificate · `achievement` · landscape | شهادة إنجاز أفقية | 1, 2 | **2** | true |
+| 11 | certificate · `achievement` · portrait | شهادة إنجاز عمودية | 1 | **1** | false |
+
+**What the five posters draw today and the thumbnails do not** — all of it goes:
+
+- `l_logo` — an image layer bound to `brand.logoAssetId`, 160 × 160 at the block-start. The thumbnails draw **no logo
+  lockup** (§9.11 names the consequence).
+- `l_rule` + `l_rule-node-1..3` — the Knowledge Network: a 920 × 2 rule on `{{brand.edgeStrong}}` with three 10 px
+  lime ellipses. **Nothing of it is on any thumbnail.**
+- `l_where` — the venue line (`session.venueName`, `hideAt: ['og']`). **No venue row** on any thumbnail.
+- `l_tasks` — the workshop family's preparatory-tasks strip (`hideAt: ['og','square']`). **No task list.**
+- The **gradient** background — `DEC-127`'s `140deg`, `{{brand.surface}}` → `{{brand.canvasRaise}}`. The thumbnails
+  draw **a flat ground** (and `REQ-DSG-033` says so in words). §9.9.
+- **Reem Kufi 600** on the title at 96 px / lineHeight 1.4, and **IBM Plex Sans Arabic** on everything else. The
+  thumbnails set the title in **Baloo Bhaijaan 2 800 at lineHeight 1.12**.
+- `l_kicker` as a plain muted line («نوع الجلسة», body face 40/1.4) rather than **a pill in the ground's colour on ink**.
+- The QR at the **inline-start** of the foot (`x: 80`) with the presenter and date **above** it. The thumbnails put the
+  presenter and date **bottom-start** and the QR **bottom-end**, side by side.
+
+**What survives on a poster:** the title, the presenters, the date, the QR. Four things.
+
+**What the six certificates draw today and the thumbnails do not:**
+
+- `l_logo` (the bound image), `l_rule` + three nodes on `{{brand.spine}}`, `l_signature` (a locked 600 × 2 rule on
+  `{{brand.edgeStrong}}`), `l_reason` (`session.title` / `certificate.achievementName`), `l_issued`
+  (`certificate.issuedAt`).
+- **Amiri** (formal Naskh) on the kind line at 128 px and the recipient at 150 px. The thumbnails use **the display
+  face** for both.
+- The org name as a **centred** body-face dynamic field at 56 px. The thumbnail draws a **wordmark at the top-start in
+  the display face at a small size**.
+- **Everything centred.** The thumbnail is a corner composition: wordmark top-start, name large, serial bottom-start,
+  QR bottom-end.
+
+**What survives on a certificate:** the recipient's name, the serial, the verification code (`REQ-CRT-010` keeps it
+even though the thumbnail omits it — a requirement over an artboard, not a disagreement), the QR. Plus `l_kind`, which
+I keep for the reason in §9.5.
+
+---
+
+### 2 · ★★ The delete-or-retire table — read from the FKs and the issuance functions, not from memory
+
+**The five paths that can hold a reference**, each read at its line:
+
+| id | reference | action | who writes it |
+|---|---|---|---|
+| R1 | `design_documents.template_version_id` | **restrict** (`0055:135`) | `regenerate_poster.ts:160` from `poster_render_context()` (`0063:113-121` — **`t.family = 'talk'` only**, `retired_at is null`); `record_certificate_document()` (`0065:303`, `0099:332`) from `certificates.template_version_id` |
+| R2 | `certificates.template_version_id` | **restrict**, `not null` (`0055:288`) | `issue_certificate()` (latest `0127:263-271`: family `presenter` else `attendance`, `retired_at is null`, `published_at is not null`, `is_default desc`); `issue_achievement_certificate()` (`0066:84`: **family `achievement`**); `set_certificate_design()`'s pin via `certificate_template_latest_version()` |
+| R3 | `session_certificate_designs.template_id` | **restrict** (`0099:63`) | `set_certificate_design()` — any non-retired certificate template of the family, this org's **or the platform's**, landscape **or portrait**; `kind in ('attendance','presenter')` by check constraint |
+| R4 | `design_documents.draft_for_template_id` | cascade (`0057:36`) | `createTemplateDraft()` — **refuses a non-`org` template** (`templates.ts:331-334`), so a platform row **cannot** have a draft. Expected: none, anywhere |
+| R5 | `design_templates.duplicated_from` | set null (`0055:84`) | duplication. **Never an obstacle**: a duplicate is a copy, not a reference. `0096` computes `is_baseline` from `platform_audit_log` rather than this column precisely so a nulled provenance does not turn an org's copy into a baseline row |
+
+Plus `design_template_versions.template_id` → **cascade** (`0055:111`): deleting a template row takes its versions,
+which is how R1/R2 come to refuse the parent delete.
+
+**Expected outcome per row.** «Production» means a database where the product has been used; «empty» means a fresh
+database and the world `tests/rls/templates-roster.test.ts`'s `buildLibrary()` builds (it clears `certificates`,
+`export_artifacts`, `session_posters`, `design_documents`, `design_assets` and both template tables first).
+
+★★ **CORRECTED AT SYNC 1 BY THE PRODUCTION READ — the «production» column below was wrong for all six certificate
+rows, in the wave's favour.** The owner ran the read for the lead. **Platform scope, production: `certs = 0` on every
+one of the eleven rows**, and `docs = 0` on everything except **`poster/talk`, which has `docs = 2`**. So **R2 and R3
+do not fire at all**, and the production outcome is **ten deleted and `poster/talk` retired** — `talk` for exactly the
+reason derived below from `0063:113-121` without the data. The «production» column is therefore read as **«in any
+database where the product has been used as the code allows»**, which is what the function must survive, not what
+production holds today: a certificate can be issued between the read and the push, and local, CI and future
+environments differ. **The function stays defensive and the per-row notice stays**, which is also the lead's ruling.
+
+| # | row | empty | production as the code allows (★ production TODAY: see above) | refused by, and why |
+|---|---|---|---|---|
+| 1 | poster `talk` | **deleted** | **RETIRED** (★ and retired on production, `docs = 2`) | **R1.** `poster_render_context()` resolves the `talk` family **and only `talk`**; `regenerate_poster` then inserts a `design_documents` row carrying that version. `REQ-DSG-001` means every published session has a poster, so in production every org without its own poster template holds one |
+| 2–5 | poster `workshop`, `panel`, `meetup`, `announcement` | **deleted** | **deleted** | **Nothing.** No code path binds their versions to anything: `poster_render_context()` reads `family='talk'`, and there is no other writer of a poster's `template_version_id`. Duplication is R5 |
+| 6 | cert `attendance@landscape` | **deleted** | **RETIRED** | **R2** (every attendance certificate an org issued with no template of its own — the `is_default desc` ordering picks the landscape row), then **R1** through `record_certificate_document()`, and **R3** if an admin chose it on `045` |
+| 7 | cert `attendance@portrait` | **deleted** | **deleted unless chosen** | **R3 then R2** — only if an admin picked «شهادة حضور عمودية» on `045`. Issuance never reaches it on its own: `is_default desc … limit 1` prefers the landscape row |
+| 8 | cert `presenter@landscape` | **deleted** | **RETIRED** | as 6 |
+| 9 | cert `presenter@portrait` | **deleted** | **deleted unless chosen** | as 7 |
+| 10 | cert `achievement@landscape` | **deleted** | **RETIRED** | **R2** via `issue_achievement_certificate()` (`0066:84`), which **does** resolve `family = 'achievement'` — a badge with `issues_certificate`, or a final leaderboard snapshot. Then **R1** |
+| 11 | cert `achievement@portrait` | **deleted** | **deleted** | **Nothing.** `session_certificate_designs` forbids `kind='achievement'` (`0099:62`), so R3 cannot reach it, and `0066:84`'s `is_default desc` never prefers it while the landscape row stands |
+
+★ **I cannot query production** (`supabase db query --linked` is on the deny list), so every row above was an
+expectation when it was written and **the migration decides at runtime** — that is the design, not a gap. ★ The owner's
+read at sync 1 confirmed the mechanism and narrowed the outcome to **ten deleted, `talk` retired**; it does not change
+a line of the function, because the next environment is not this one.
+
+**How it decides and reports.** One function in `supabase/proposed/designer/0006_supersede_baseline.sql`:
+
+`public.supersede_baseline_template(p_template uuid) returns table (outcome text, refused_by text)` —
+`security definer`, `set search_path = ''`, **no grant to anyone** (`revoke execute … from public, anon,
+authenticated, service_role`, so `tests/rls/definer-exposure.test.ts` stays green). Body: a subtransaction that
+attempts `delete from public.design_templates where id = p_template`; `exception when foreign_key_violation then` it
+`update`s `retired_at = now(), is_default = false` and returns `('retired', sqlerrm)` — `restrict` raises `23503`
+immediately and the subtransaction's rollback undoes only the failed delete, so nothing else in the migration is at
+risk (and no write-then-`raise` is involved, so `DEC-043` is not in play).
+
+`0193` then, **in this order**:
+1. inserts the eleven new rows and their version 1 (idempotent — §6);
+2. loops the eleven **superseded** rows, calling the function and `raise notice '%'`-ing `(purpose, family,
+   orientation, name, outcome, refused_by)` per row;
+3. leaves the function in place so `tests/rls/designer-baseline-supersede.test.ts` can drive **both** branches on
+   fixtures. ★ If the lead would rather it not survive, `0193` drops it at the end and the RLS test applies the
+   proposed file instead — the lead's call.
+
+★ **The order matters and is free to get right.** Inserting the new default first makes
+`design_templates_single_default` (`0057`) clear the **old** row's `is_default` in the same statement, so by the time
+the supersede step runs the old rows are already non-default — which means issuance and
+`poster_render_context()` prefer the new row even before `retired_at` is set, and `0096`'s `retirable` is already
+true for the old ones. Reversing the order would leave a window with no non-retired default.
+
+**Where the report surfaces:** the notices are in the promotion run's output, which the lead pastes into
+`STATUS.md`'s per-row table (`DEC-242` §3). ★ **Nothing is forced:** no `cascade`, no `null`ing
+`template_version_id`, no touching `recipient_name_snapshot` or a pinned `font_hashes`, and **no `design_document` is
+deleted to clear the way** — R4 says none can exist on a platform row anyway.
+
+---
+
+### 3 · ★★ The colour table — every colour, the token it arrives as, the value it renders
+
+A poster is always rendered `dark` (`DEC-125`, every call site passes it explicitly). A certificate's scheme is pinned
+per certificate (`certificates.scheme`, `0099`), default `light`. Values are `0192`'s and `brand.ts`'s, which are now
+one palette in two places.
+
+**Poster — colourway A, «ink» (the artboard's «ليلي» card):**
+
+| element | thumbnail | token | renders (dark) |
+|---|---|---|---|
+| ground | `#0B0C12` | `{{brand.canvas}}` | `#0b0c12` ✓ exact |
+| title | `#F4F1EA` | `{{brand.fgHeading}}` | `#f4f1ea` ✓ exact |
+| presenter · date | `#F4F1EA` | `{{brand.fgBody}}` | `#f4f1ea` ✓ exact |
+| category pill fill | `#C6FF3D` | `{{brand.node}}` | `#c6ff3d` ✓ exact — **this is the one way lime reaches a poster** |
+| category pill text | `#0B0C12` | `{{brand.canvas}}` | `#0b0c12` ✓ exact |
+
+**Poster — colourway B, «paper» (the «ورقي» card). A deliberate inversion of the dark palette, and the artboard's own
+hexes are the proof:**
+
+| element | thumbnail | token | renders (dark) |
+|---|---|---|---|
+| ground | `#F4F1EA` | `{{brand.fgHeading}}` | `#f4f1ea` ✓ exact |
+| text | `#0B0C12` | `{{brand.canvas}}` | `#0b0c12` ✓ exact |
+| pill fill | `#0B0C12` | `{{brand.canvas}}` | `#0b0c12` ✓ |
+| pill text | `#F4F1EA` | `{{brand.fgHeading}}` | `#f4f1ea` ✓ |
+
+The thumbnail paints this card in `#F4F1EA` on `#0B0C12` — which is the **dark** leg's bone and ink, not the light
+leg's paper and paper-ink. So «a paper poster» is the dark kit read the other way round, needs no new token and no
+literal, and renders exactly the artboard's hexes. Under the light scheme it inverts to dark-on-light, which is
+readable and never rendered (posters are always dark); `roster.variants` resolves it in both.
+
+**Poster — colourway C, «the team colour» (the «ساحة اللعب — لون الفريق» card, and the two platform cards):**
+
+| element | thumbnail | token |
+|---|---|---|
+| ground | `#FF9A2E` / `#35D0FF` / `#9B7CFF` | ★★ **none — I cannot express this. §9.2** |
+| text · pill fill | `#0B0C12` | `{{brand.canvas}}` |
+| pill text | the ground again | ★★ **none — §9.2** |
+
+**The QR, both purposes:** black on white, **by the renderer** — `render.ts:189-193` passes no colours on purpose
+(«a tinted QR is a QR with less contrast, and contrast is the whole of whether it scans»), and `QrLayer` has no
+colour field. The thumbnail's solid 31 px square is a glyph, not a specification. §9.6 covers its 4 px radius.
+
+**Certificate — all three families, both orientations (light; dark flips every row):**
+
+| element | thumbnail | token | renders (light) | renders (dark) |
+|---|---|---|---|---|
+| ground | `#F4F1EA` | `{{brand.canvas}}` | `#f6f3ec` (§9.4) | `#0b0c12` |
+| wordmark (`org.name`) | `#0B0C12` | `{{brand.fgHeading}}` | `#12131a` | `#f4f1ea` |
+| the kind line | — (§9.5) | `{{brand.fgHeading}}` | `#12131a` | `#f4f1ea` |
+| recipient's name | `#0B0C12` | `{{brand.fgHeading}}` | `#12131a` | `#f4f1ea` |
+| serial · verification code | `#5B5F73` | `{{brand.fgMuted}}` | `#5b5f73` ✓ **exact** | `#a7abbe` |
+
+**No hex literal appears in any document. Nothing in a document hard-codes the platform's own new values** — every
+row above is a binding, so an org that overrode its kit renders in its own colours (contract 6).
+
+---
+
+### 4 · The document model — the real layer vocabulary, and how one structure yields four formats
+
+**Poster.** `master: { width: 1080, height: 1350, dpi: 72 }` (`PRESETS.master`), `direction: 'rtl'`,
+`background: { type: 'solid', color: '{{brand.canvas}}' }` (or the colourway's token), `schemaVersion: 1`. Composed
+inside `sourceSafeBox()` — the master's 80 px inset, **not** the thumbnail's 4.6 % — so every print preset's 5 mm
+safe area holds.
+
+| layer | kind | binding / literal | font | presets |
+|---|---|---|---|---|
+| `l_category_pill_start` · `_mid` · `_end` | `shape` ellipse + rect + ellipse | — | — | `default: {anchor:'block-start', scale:'proportional'}` |
+| `l_category` | `text` | **literal**, the family's Arabic name (§9.1) | Baloo Bhaijaan 2 700 | block-start |
+| `l_title` | `text` | `session.title`, fallback «عنوان الجلسة» | Baloo Bhaijaan 2 **800**, 96 / min 56, **lineHeight 1.12** (§9.7), `letterSpacing: 0`, `autoFit: shrink-then-wrap maxLines 3` | block-start |
+| `l_presenters` | `dynamic_field` | `session.presenters` | Baloo 700, 44 / min 32, 1.4, `maxLines 2` | `{anchor:'block-end'}` |
+| `l_when` | `dynamic_field` | `session.startsAt` | Baloo 700, 40, 1.4 | `{anchor:'block-end'}` |
+| `l_qr` | `qr` | `session.eventUrl`, `ecLevel 'M'`, 4 quiet modules, **locked** | — | `{anchor:'block-end', scale:'fixed'}`, at the **inline-end** of the foot |
+
+**All four formats from this one structure, with no admin rebuild** (`presets.ts:derive()`, M6's mechanism):
+the four chips the artboard prints are `landscape` (16:9), `a4`, `a3` and `story` (9:16) — four of the seven presets
+`POSTER_PRESETS` already derives, and the editor's strip shows all seven with their ratios computed
+(`editor.tsx:295-311`). `derive()` takes **one** factor — `min(dst.w/src.w, dst.h/src.h)` over the **safe boxes** —
+for size *and* position, so the gap between the title and the foot scales with them; `anchor: 'block-end'` holds the
+presenter/date/QR block to the foot by its distance from the source safe box's bottom; `scale: 'fixed'` keeps the QR
+the same **physical** size on A3 as on 16:9 (`REQ-CRT-010`'s reasoning); and text re-fits per preset
+(`font.size * factor`), so A3's title is genuinely larger rather than an upscaled raster. **Per-format overrides are
+`layer.presets[<presetName>]`** — `{anchor, scale, focal}`, resolved field-by-field over `presets.default`
+(`behaviourFor()`), which is what wave 23's variant strip writes: an admin correcting one format corrects that format
+only and never re-draws the poster. I measure `allSafeAreaViolations()` over all seven before the create and adjust
+frames, never `hideAt`, unless a preset genuinely cannot hold a line.
+
+**Certificate.** Two compositions per family, each its own document: `master` is `PRESETS.cert_landscape`
+(3508 × 2480 @300) or `cert_portrait` (2480 × 3508 @300); `background: { type:'solid', color:'{{brand.canvas}}' }`.
+**Orientation is read from `document->'master'`, never a column** — `width >= height` means landscape, and three
+places read those same two numbers: `orientationOf()` (the runtime), the `case` in `platform_template_library()`
+(`0096`), and `siblingOrientation()` (`designer.ts:441`). `presetsForDocument()` returns exactly one preset for a
+certificate, so a portrait certificate is a composition and never a derivation (`DEC-148`'s measurement: deriving
+portrait from landscape left a 157 mm empty band).
+
+| layer | kind | binding / literal | placement |
+|---|---|---|---|
+| `l_org` | `dynamic_field` | `org.name`, fallback «اسم المؤسسة» | top-start, display face 700, small, `align: 'start'` |
+| `l_kind` | `text` | literal «شهادة حضور / تقديم / إنجاز» (§9.5) | under the wordmark, display face 700, small |
+| `l_recipient` | `dynamic_field` | `recipient.name` — the frozen snapshot | large, display face **800**, `autoFit maxLines 2`, `align: 'start'` |
+| `l_serial` | `dynamic_field` | `certificate.serial`, **locked** | bottom-start, `fgMuted`, `{anchor:'block-end', scale:'fixed'}` |
+| `l_code` | `dynamic_field` | `certificate.verificationCode`, **locked** — `REQ-CRT-010` + A29 | beside the serial, same treatment |
+| `l_qr` | `qr` | `certificate.verifyUrl`, `ecLevel 'Q'`, 320 × 320 (25 mm at 300 dpi), **locked** | bottom-end, `{anchor:'block-end', scale:'fixed'}` |
+
+Dropped from the certificate: `l_logo`, `l_rule` + three nodes, `l_signature`, `l_reason`, `l_issued` (§9.5, §9.11).
+`dynamic_fields` therefore loses `brand.logoAssetId`, `certificate.achievementName`, `certificate.issuedAt`,
+`session.title` — wave 23's الحقول panel will list them as **unused**, which is the panel working.
+
+---
+
+### 5 · The goldens — which move, and why each
+
+**I run `node scripts/parity/harness.mjs --update` and hand the diff over. I never commit `scripts/parity/goldens/**`
+(contract 4).**
+
+**Moves — `scripts/parity/goldens/backgrounds/gradient-rtl.png` and `record.json`, for two independent reasons:**
+
+1. **The palette moved** (PR A, the lead's): the case binds `{{brand.surface}}` and `{{brand.canvasRaise}}`, whose
+   dark values went `#111a2c → #151724` and `#1d2a42 → #1e2130`. That re-baseline is the lead's in A, before I touch
+   anything.
+2. **The subject changes** (PR B, mine): `posterGradient()` (`backgrounds.mjs:46-50`) reads **the poster's own
+   background out of `BASELINE_LIBRARY`** and **throws** — «no poster in the library declares a gradient» — when none
+   does. A flat ground makes it throw and the whole background block fails hard. So `backgrounds.mjs` (mine:
+   `scripts/parity/**` minus `goldens/`) changes: a `solid-rtl` case asserts the rebuilt poster's flat ground reaches
+   Chromium's computed style as exactly the palette's `canvas` (no fallback to white — the trap `render.ts` held
+   open); the **LTR mirror case keeps a gradient fixture of the harness's own**, so `backgroundCss()`'s `360 − angle`
+   stays a pixel fact even with no gradient in the library; `ink-on-dark` keeps its subject, because a flat
+   `{{brand.canvas}}` page is still blank and the blank-capture probe still has to say so.
+
+**Does not move, and if one does it is a bug:** the seven `goldens/*.png`, the seven `goldens/slide_pages/*.png`, and
+**every geometry number in `goldens/signature.json`**. The seven shaping cases are built by `paths.mjs:buildDocument()`
+on a **white solid** background in **IBM Plex Sans Arabic** at fixed sizes (`cases.mjs:87-88`); they read neither the
+library nor `platformBrand()`. ★ `signature.json` **is** modified in the working tree right now (PR A, the lead's), but
+reading the diff: every number is identical — 168.81, 88.05, 482.45, 497.61, the five `long-word-break` widths — and
+only the probe's SHAPE changed (`distinctFromFallback` → `faceLoaded` + `coverageAdvances`). **So the shaping has not
+moved, and nothing in my wave may move a number in it.** `tests/unit/gradient-render.test.ts` likewise builds its own
+documents and does not move.
+
+★ The lead's PR A has already re-baselined `goldens/backgrounds/gradient-rtl.png` in this tree (53,533 → 39,817 bytes),
+which is reason 1 above landing exactly as expected.
+
+**And one pinned artefact that is not a golden but behaves like one.**
+`tests/unit/designer-derive-untouched.test.ts` holds 48 hashes of `derive()` + `renderDocumentToHtml()`.
+**41 of them move** — 5 posters × 7 presets = 35, plus 6 certificates × 1 preset = 6 — because those documents are
+rebuilt on purpose. **The 7 `uploaded/*` hashes must NOT move**: they come from a self-built fixture with no brand
+token, and they are what still proves the derive/render engine is untouched. The file's own header says a changed
+hash «is a bug to report, never a hash to refresh», so **I compute the new table, hand the before/after to the lead,
+and the lead commits it beside the goldens with `DEC-242` §4's narrow suspension cited in the commit.** I do not
+refresh it on my own.
+
+---
+
+### 6 · How `REQ-DSG-026`'s roster count stays at five and three
+
+Measured, not argued: `tests/rls/templates-roster.test.ts:62-74`'s `platformRows()` already filters
+**`t.retired_at is null`**. So a retired row leaves the count, and `roster.rows` (11), `roster.variants` (22) and
+`roster.defaults` are unchanged whichever branch each row takes. `buildLibrary()` gains one line — the new seed,
+through the same `migration(suffix, proposed)` helper — which is a **selector** change.
+
+The new seed is **idempotent on the live row**, which is `0061`'s pattern with one necessary refinement: the guard
+must be `where scope = 'platform' and purpose = … and family = … and retired_at is null` (plus, for the certificates,
+the portrait master test `0098` already uses). Without `retired_at is null` a re-run would find the **retired** old
+row and skip the insert — and worse, the portrait lookup («the non-default platform row of that family») would match
+a retired landscape row. That is the one trap in this file and it is why the guard reads three conditions, not two.
+
+`REQ-DSG-026`'s acceptance also asks for **22 renderable variants** — eleven rows each resolving every colour it
+names in both schemes. Every colour in my table is a `brand.*` token, so all 22 resolve. ★ If §9.2 is settled by
+admitting a non-`brand.*` binding, **`roster.variants` fails** — that is a consequence the ruling has to carry.
+
+---
+
+### 7 · ★★ The hardest demonstrable — a certificate issued BEFORE the wave, still rendering as its own version
+
+**What actually protects it, in three measured parts.**
+
+1. **The pinned version is still the one resolved.** `certificates.template_version_id` is `not null` and
+   `on delete restrict`, and `certificate_render_context()` joins `design_template_versions v on v.id =
+   c.template_version_id` (`0065:278`) — the **old** document, which `0193` either leaves in place (the row retired)
+   or never had reason to touch. The scheme (`certificates.scheme`), the font hashes and
+   `recipient_name_snapshot` are pinned on the same row.
+2. **The already-rendered PDF is not touched at all.** `export_artifacts` is `unique (document_id, preset, format,
+   source_fingerprint)` and the brand is composed into the bindings **before** the fingerprint
+   (`regenerate_poster.ts:111-120`, `issue_certificates.ts:109`, `fingerprint.ts`'s `bindings` field). So the palette
+   move makes any future render a **new** artifact row at a new path rather than an overwrite, and nothing enqueues
+   a re-render: no trigger on `design_template_versions`, and `0071`'s regeneration fan-out fires on
+   `save_brand_kit()`, which `0192` does not call. §9.12 is the flip side of this.
+3. **A re-render of the pinned version is byte-identical at a fixed brand, and differs only by the palette.** That is
+   `DEC-176`'s sentence verbatim — «an org's own untouched document renders identically, with the new values, because
+   that is what moving a default means» — and the self-invalidating fingerprint (`REQ-DSG-013`) is what makes it safe
+   rather than stale.
+
+**Named tests, both new, both mine:**
+
+- `tests/rls/designer-baseline-supersede.test.ts` — inside a rolled-back transaction: build the pre-wave library
+  (`0061` + `0094` + `0098`), issue a certificate through `issue_certificate()` so it pins a **platform** version,
+  then apply the proposed seed and the supersede. Assert: (a) the delete was **refused** and the row carries
+  `retired_at`; (b) `certificates.template_version_id` is **unchanged**; (c) `certificate_render_context()` returns a
+  `template_document` that deep-equals the **pre-wave** document, byte for byte; (d) the same for a poster through
+  `design_documents` on the `talk` row; (e) the other rows **deleted**, with the function reporting `('deleted',
+  null)`; (f) issuance after the wave resolves the **new** row, never the retired one.
+- `tests/unit/designer-reissue-pinned.test.ts` — the pre-wave certificate document (read out of `0098`'s SQL, as
+  `designer-library.test.ts` already parses it) rendered twice through `renderDocumentToHtml()` with
+  `resolveBrand({}, 'light')`: byte-equal. Then the same document fingerprinted under the old and the new palette:
+  **different**, which is the proof the cache cannot serve a stale artifact.
+
+The migration's own per-row report (§2) is the third demonstrable, and the poster and certificate exported from the
+rebuilt baseline — opened at their own size beside the thumbnails — are the first.
+
+---
+
+### 8 · Evidence — every assertion I expect to move, and whether it is a selector or an expectation
+
+| file · case | what moves | kind |
+|---|---|---|
+| `tests/unit/designer-library.test.ts:70-82` «every poster family's background is `DEC-127`'s gradient» | a solid `{{brand.*}}` ground per colourway; the case is renamed to the ground | **expectation** |
+| `:276` «the tasks strip is the workshop family's» | `l_tasks` is gone from every family | **expectation** |
+| `:282-284` `hideAt` on `l_where` / `l_tasks` | both layers are gone | **expectation** |
+| `:187-191` «the only image layer anywhere is the org logo» | becomes vacuous; I keep it and add «the baseline carries no image layer at all» | **expectation** |
+| `:95-101` «every text frame is at least one line tall at its size» | recomputed by construction — must pass unchanged | no change |
+| `:300-333` the seed-vs-library deep-equal | `bodies` gains the new seed file (**selector**); `latest` must prefer the **newest file** rather than the highest version number, because the new rows start at version 1 while the old sat at 2; `t.version` is 1 for all eleven (**expectation**) | **both** |
+| `tests/unit/designer-derive-untouched.test.ts` | 41 of 48 pinned hashes; the 7 `uploaded/*` must not move | **pinned artefact — lead-reviewed, not refreshed by me** |
+| `tests/rls/templates-roster.test.ts:39-48` `buildLibrary()` | runs the new seed | **selector** |
+| `:78-104` `roster.rows` | nothing — 11, `retired_at is null` | no change |
+| `:107-123` `roster.variants` | nothing — 22, **provided §9.2 keeps every colour a `brand.*` token** | no change |
+| `:126-139` `roster.poster_gradient` | gradient → solid; `version` 2 → 1; renamed `roster.poster_ground` | **expectation** |
+| `:141-157` `roster.defaults` | nothing — the eleven names and the `is_default` pattern are unchanged | no change |
+| `:159-186` `roster.idempotent` | `{templates:"11", versions:"19"}` → `{templates:"11", versions:"11"}` in the cleared world, and the version-1 `md5` changes | **expectation** |
+| `scripts/parity/backgrounds.mjs` | `posterGradient()` and `BACKGROUND_CASES` (§5) | mine, not a test |
+| `tests/unit/{gradient-render,designer-presets,designer-render,designer-qr,designer-fields,designer-model}.test.ts` | nothing — all fixture-built | no change |
+| `tests/rls/{designer-schema,templates-guard,templates-audit,certificates-designs,certificates-reissue}.test.ts` | nothing — all fixture-built | no change |
+| new: `tests/rls/designer-baseline-supersede.test.ts`, `tests/unit/designer-reissue-pinned.test.ts` | — | **new files** |
+| new cases in `tests/unit/designer-model.test.ts` for `weight` 700 and 800 | — | **additive** |
+
+Each line that moves is a ledger row in `STATUS.md`, in the same commit (`DEC-242`'s rule; I tell the lead).
+Nothing of the studio's chrome, the state machine, `canvas.tsx`'s engine or `ui/`'s files is touched: **no screen is
+rebuilt and `DEC-208` does not apply** — this wave changes documents.
+
+---
+
+### 9 · Disagreements and questions — written with the file and the line; I pick no side
+
+**9.1 `{التصنيف}` is a binding that does not exist.** `AdminTemplates.dc.html` draws the pill's content as
+`{التصنيف}` — the *category*, which is `categories` in the product (التصنيفات والوسوم on the rail) — in the same
+brace notation as `{العنوان}`, `{المُقدِّم}` and `{التاريخ}`, all of which **are** bindings. But
+`resolveSessionBindings()` (`session-bindings.ts`) produces no `session.category`, and `library.ts:159-161` says so
+in words: «A literal, because the family IS the kicker. Not a binding: there is nothing in the session row that says
+"ورشة"». Adding one is a DAL read, a value in `poster_render_context()` (`0063`) and in
+`regenerate_poster.ts` — new scope and a migration. ★ **And it has a structural consequence either way:** with a
+literal the five poster documents differ by that literal and `designer-library.test.ts:48-50`'s «eleven **distinct**
+documents» holds; with a binding **all five become byte-identical** and that assertion fails, taking `DEC-148`'s
+reasoning («two identical documents should not be two rows») with it. **I plan the literal and ask.**
+
+**9.2 ★★ The team colour cannot reach a template, and three of the five poster cards need it.** `DEC-242` §2 says the
+colourway «reaches the poster the way `DEC-186` §2 established — as `--team` on the element, from
+`companies.team_color`», and `REQ-DSG-033`'s acceptance says «a `brand.*` binding **or the team colour**». Measured,
+four ways, all negative:
+- `0094:103` requires every colour to match `^\{\{\s*brand\.[A-Za-z]+\s*\}\}$`, so `{{session.teamColor}}` is
+  **refused by the database**;
+- `brandViolations()` (`library.ts`) and `roster.variants` (`templates-roster.test.ts:107-123`) hold the same shape in
+  TypeScript;
+- `grep -rn team packages/designer-runtime/src worker/src/render` returns **nothing** — no binding, no render-context
+  field, nothing in `poster_render_context()` or `export_render_context()`;
+- `--team on the element` is a CSS custom property on a themed DOM scope (`DEC-186` §2); a poster is composed by the
+  runtime from a document whose colours the guard walks, and `resolveColour()` has no third case.
+So the team colourway needs **either** the guard's allowlist widened plus the two TypeScript checks plus a new
+binding plus two render contexts (a migration and new scope), **or** a new brand token (§2 forbids it). ★ **A
+fallback I can ship with no new mechanism, if the lead rules it:** five distinct colourways from the ten tokens —
+ink (`canvas`), paper (`fgHeading`, inverted, §3), surface (`surface`), surface-2 (`canvasRaise`) and **lime**
+(`node` as the ground with `canvas` text, 16:1 by `01-tokens.md`). Five grounds, five families, zero new mechanism —
+but three of them are near-identical darks, which is probably not what the thumbnails mean.
+
+**9.3 Cyan and violet are team colours, not platform accents.** `DEC-242` §1's colourway row calls `#35D0FF` and
+`#9B7CFF` «a platform accent (cyan, violet)». `docs/design/01-tokens.md:59` and `:61` name them
+`--color-team-cyan` (مواهب) and `--color-team-violet` (أيك) — **team colours**, which §2 says never become brand
+tokens. So the artboard's «لقاء» and «إعلان» cards are **the same colourway as card 1** with a different company's
+colour, not two more colourways. That reading is what makes §9.2 the only open colour question.
+
+**9.4 The certificate ground is drawn in the dark leg's bone, not the light leg's paper.** The thumbnails paint
+`#F4F1EA` (`--color-bone`) on `#0B0C12`; the light `canvas` is `#F6F3EC` (`--color-paper`) and `fgHeading` is
+`#12131A`. Two units per channel — the same paper to the eye. **I bind `{{brand.canvas}}` and render `#f6f3ec`.** If
+the owner wants the bone tone exactly, that is a palette change and the lead's.
+
+**9.5 The certificate thumbnail does not say what it certifies — and without a kind line the six rows collapse.**
+`DEC-242` §1 and `REQ-CRT-016` list four elements: wordmark, name, serial, QR. `library.ts`'s `l_kind` is the only
+layer that prints «شهادة حضور». Drop it and `attendance@landscape` and `presenter@landscape` become **byte-identical
+documents**, which `designer-library.test.ts:48-50` refuses and `DEC-148`'s own reasoning refuses. **I keep `l_kind`,
+small, in the display face, under the wordmark — and write the disagreement here rather than deciding it.**
+Alongside it I follow the thumbnails and **drop `l_reason`** (the session title / achievement name) and
+**`l_issued`** (the date), which no `REQ-CRT-*` requires; the consequence is that an achievement certificate no
+longer names the achievement and no certificate carries its date. **That is the lead's to confirm.** `l_code` stays
+regardless: `REQ-CRT-010` requires the serial **and** the verification code printed as text beside the QR (A29).
+
+**9.6 No radius in the model, and a new field is not safe this wave.** The artboard's pill is
+`border-radius: 999px` and its QR square `4px`. `ShapeLayer.shape` is `{ type, fill, stroke, strokeWidth }` —
+`model.ts`, no radius. ★ Adding one changes a rendered byte, which by `DEC-178`'s D2b precedent needs a
+`schemaVersion` bump, and a bumped document is **refused** by `main`'s worker (`schema_version_future`) for the whole
+window between the owner's push and the merge — every poster render would fail. **So: no new field.** I compose the
+pill as a stadium from `ellipse` + `rect` + `ellipse` at `BASE_SCHEMA_VERSION`, behind the text. **Question:** is a
+three-shape stadium acceptable, or should the category be plain bold text in the accent colour with no pill? The
+QR's 4 px radius I simply do not build — a QR's quiet zone stays square and white (`REQ-CRT-010`).
+
+**9.7 The weights the thumbnails need are not all in the model, and one is not in the font set.** The title and the
+member's name are **Baloo Bhaijaan 2 800**; the presenter, date and serial are `font-weight: 700` in the body face.
+`FontSpec.weight` is typed `400 | 500 | 600` (`model.ts`) and `validate.ts:95-96` refuses anything else — both files
+are mine, the widening to `700 | 800` is additive, and it changes no rendered byte for an existing document because
+`render.ts:137` passes the weight straight through. But `packages/fonts/manifest.json` has **Baloo Bhaijaan 2 at 700
+and 800** and **IBM Plex Sans Arabic at 400/500/600 only** — there is no body face at 700. **I propose Baloo
+Bhaijaan 2 700** for the small bold lines, which keeps the artefact in one face plus nothing new; `packages/fonts/**`
+is lead-only and nothing is added to it.
+
+**9.8 `<bdi dir="ltr">` on the serial is half-buildable.** `REQ-CRT-016` and my agent file ask for it.
+`render.ts:145` already wraps **every** text and dynamic-field value in `<bdi>`, and the numerals are Western
+(`DEC-124`), so the serial is isolated today. A `dir="ltr"` attribute would need a new model field — §9.6's problem.
+**So: `<bdi>`, yes, already; `dir="ltr"`, not without a schema bump.** Reported, not worked around.
+
+**9.9 `REQ-DSG-026` still mandates what `REQ-DSG-033` and `REQ-CRT-016` replace.** `01-prd.md`'s `REQ-DSG-026` says,
+verbatim: «Posters render on a **GRADIENT** background» (`DEC-125`, `DEC-127`), «**ورشة** (workshop, **with a tasks
+strip**)», certificates in «**formal Naskh**», and «The visual language is the **Knowledge Network** — dots, thin
+lines, light». The thumbnails and `REQ-DSG-033`/`REQ-CRT-016` replace all four, and **neither new requirement says
+`REQ-DSG-026` is amended.** `01-prd.md` is lead-only; the lead amends it or rules.
+
+**9.10 `REQ-DSG-034`'s first acceptance bullet is false of the function it names, by that function's own design.**
+«No superseded row appears in `platform_template_library()`» — but `0096` returns **every** platform row with its
+`retired_at` and a `retirable` flag, precisely so SCR-083 can retire and restore. The substance holds everywhere a
+teammate can reach: `055`'s platform section filters `retired_at === null` (`templates.ts:185`), `045`'s picker does
+(`certificates.ts:329`), `designer.ts:449` does, and all three issuance paths do (`0127:266`, `0066:84`,
+`0063:118`). SCR-083 is `/app/platform/**` — **never-touch this wave**, so I change nothing and report it.
+
+**9.11 The org logo leaves every baseline artefact.** The thumbnails draw no logo on the poster and a **text**
+wordmark on the certificate. So `brand.logoAssetId` appears in no baseline document, `06 §8.3`'s «replacing the logo
+updates every template at once» has no subject, and `REQ-DSG-019`'s «the org logo must be supplied at a resolution
+that clears A3» guards nothing until an org adds an image layer of its own. An org that uploaded a logo would find
+it on nothing the platform ships. Written down, not decided.
+
+**9.12 Nothing re-renders, so every already-exported poster keeps the old design.** §7.2 is why that is safe; it is
+also why the goal «an admin exports a poster and gets the new design» is only true at the **next** regeneration. The
+mechanism to close it exists and is not mine to invoke unasked: `0071`'s loop enqueues `regenerate_poster` once per
+org session with a **live** poster under `11` §2.5's key `poster:{session_id}`, skipping `detached` ones by
+`REQ-DSG-003`, and renders are serial in the `render` queue. **Is a one-off fan-out in `0193` in scope?** `DEC-242`
+§4 does not mention it. The lead's call.
+
+**9.13 Two housekeeping notes.** (a) `packages/designer-runtime/scripts/seed-sql.mjs` is the generator that writes
+the seed from `library.ts`, and it is **not in my wave-24 edit list** (which names `packages/designer-runtime/src/**`
+only). It must learn to emit new rows plus the supersede loop rather than «add a version to the existing row» —
+**a written request to the lead.** (b) `STATUS.md`'s wave-23 PR-B and PR-C rows say the designer rebuild and the
+email builder are «wave 24's», while `DEC-240`/`DEC-241` record M12 complete and accepted and `DEC-242`'s map
+contains neither; all six wave-23 primitives are on disk. A documentation observation only.
+
+---
+
+### 10 · The order I will work in, once both posts are up
+
+1. **`library.ts` rebuilt** — the eleven documents, `BASE_SCHEMA_VERSION`, every colour a token; `model.ts` and
+   `validate.ts` widened to `700 | 800`. `npm test` over `designer-library`, `designer-model`, `designer-presets`.
+2. **`allSafeAreaViolations()` measured** over all seven poster presets and both certificate compositions; frames
+   adjusted until it is empty. No `hideAt` unless a preset genuinely cannot hold a line.
+3. **The seed generated** into `supabase/proposed/designer/0005_playground_library.sql`, with the three-condition
+   idempotency guard (§6), plus `0006_supersede_baseline.sql` (§2). `tests/rls/{templates-roster,designer-baseline-supersede}`.
+4. **`backgrounds.mjs`** re-pointed (§5); `--update` run; the diff handed over with the before/after images named.
+5. **`designer-derive-untouched`'s 41 hashes** computed and handed over as a table; the 7 `uploaded/*` unchanged.
+6. **The two new tests** (§7) and the ledger lines for §8.
+7. **Captures** at `.qa-shots/rtl/wave24-designer-<artefact>-<state>-1280.png`, honouring `E2E_SHOTS_DIR`, plus each
+   render opened **at its own size** — a poster and a certificate are printed artefacts, not screens.
+8. `npx tsc --noEmit`, `npm run lint` (grepped for `problems`), `npm test`, `npm run test:rls` (single runner), one
+   e2e through the gate lock. `npm run qa`, `npm run visual`, `npm run build`, `db reset`, worktrees and pushes stay
+   the lead's.
+
+---
+
 ## Wave 23 — slice 3b (2026-10-03) — the certificate canvas and the four-format demonstrable
 
 - **One page per certificate** (DEC-148, DEC-238 §3): the strip shows the composition's one preset; its other
