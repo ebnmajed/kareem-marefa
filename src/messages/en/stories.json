@@ -2,8 +2,8 @@
   "stories": {
     "age": {
       "now": "Now",
-      "minutes": "{count, plural, one {1 minute ago} other {{count} minutes ago}}",
-      "hours": "{count, plural, one {1 hour ago} other {{count} hours ago}}"
+      "minutes": "{count, plural, one {1 minute ago} other {{value} minutes ago}}",
+      "hours": "{count, plural, one {1 hour ago} other {{value} hours ago}}"
     },
     "frame": {
       "day": "Day {position}",
@@ -12,7 +12,7 @@
       "registrationClosed": "Registration closed",
       "startsSoon": "Starts tomorrow",
       "live": "Live now",
-      "liveCount": "{count, plural, =0 {Nobody in the room yet} one {1 in the room} other {{count} in the room}}",
+      "liveCount": "{count, plural, =0 {Nobody in the room yet} one {1 in the room} other {{value} in the room}}",
       "until": "Until {time}",
       "recap": "Completed",
       "attended": "Attended",
@@ -74,7 +74,7 @@
       "refused": "Only those checked in can add"
     },
     "admin": {
-      "title": "{count, plural, other {Attendee stories · {count}}}",
+      "title": "{count, plural, other {Attendee stories · {value}}}",
       "remove": "Remove",
       "removeReason": "Reason for removal",
       "hidden": "Hidden",

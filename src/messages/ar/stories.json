@@ -2,8 +2,8 @@
   "stories": {
     "age": {
       "now": "الآن",
-      "minutes": "{count, plural, zero {الآن} one {قبل دقيقة} two {قبل دقيقتين} few {قبل {count} دقائق} many {قبل {count} دقيقة} other {قبل {count} دقيقة}}",
-      "hours": "{count, plural, zero {الآن} one {قبل ساعة} two {قبل ساعتين} few {قبل {count} ساعات} many {قبل {count} ساعة} other {قبل {count} ساعة}}"
+      "minutes": "{count, plural, zero {الآن} one {قبل دقيقة} two {قبل دقيقتين} few {قبل {value} دقائق} many {قبل {value} دقيقة} other {قبل {value} دقيقة}}",
+      "hours": "{count, plural, zero {الآن} one {قبل ساعة} two {قبل ساعتين} few {قبل {value} ساعات} many {قبل {value} ساعة} other {قبل {value} ساعة}}"
     },
     "frame": {
       "day": "اليوم {position}",
@@ -12,7 +12,7 @@
       "registrationClosed": "أُغلق التسجيل",
       "startsSoon": "تبدأ غدًا",
       "live": "جارية الآن",
-      "liveCount": "{count, plural, zero {لا أحد في القاعة بعد} one {واحد في القاعة} two {اثنان في القاعة} few {{count} في القاعة} many {{count} في القاعة} other {{count} في القاعة}}",
+      "liveCount": "{count, plural, zero {لا أحد في القاعة بعد} one {واحد في القاعة} two {اثنان في القاعة} few {{value} في القاعة} many {{value} في القاعة} other {{value} في القاعة}}",
       "until": "حتى {time}",
       "recap": "اكتملت",
       "attended": "حضروا",
@@ -74,7 +74,7 @@
       "refused": "الإضافة لمن سجّل حضوره"
     },
     "admin": {
-      "title": "{count, plural, zero {قصص الحضور · {count}} one {قصص الحضور · {count}} two {قصص الحضور · {count}} few {قصص الحضور · {count}} many {قصص الحضور · {count}} other {قصص الحضور · {count}}}",
+      "title": "{count, plural, zero {قصص الحضور · {value}} one {قصص الحضور · {value}} two {قصص الحضور · {value}} few {قصص الحضور · {value}} many {قصص الحضور · {value}} other {قصص الحضور · {value}}}",
       "remove": "أزل",
       "removeReason": "سبب الإزالة",
       "hidden": "مخفية",
