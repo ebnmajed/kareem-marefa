@@ -80,8 +80,8 @@ grant execute on function public.story_capture_open(uuid) to authenticated;
 -- Insert only, and only a SOURCE: under the caller's org, under a session whose capture window is open for the
 -- caller (`story_capture_open()` — checked in, from the start until 24 hours after the end, not cancelled), in a
 -- frame's folder. No update policy exists, so an object can never be overwritten; the rendition and the poster are
--- written by the worker. The session segment is compared as text and cast only once it has the shape of a uuid — a
--- cast on anything else would raise instead of refusing.
+-- written by the worker. The session segment is cast only once it has the shape of a uuid — a cast on anything else
+-- would raise instead of refusing.
 create policy "story_media_write" on storage.objects for insert to authenticated
   with check (
     bucket_id = 'story-media'
@@ -90,8 +90,12 @@ create policy "story_media_write" on storage.objects for insert to authenticated
     and (storage.foldername(name))[4] = 'frames'
     and (storage.foldername(name))[5] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     and storage.filename(name) ~ '^source\.(mp4|mov|webm)$'
-    and (storage.foldername(name))[3] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-    and public.story_capture_open(((storage.foldername(name))[3])::uuid)
+    -- ★ A CASE, not two terms of the AND: Postgres does not promise to evaluate AND left to right, so a regex beside
+    -- a cast could let the planner run the cast first and RAISE on a name that is not a uuid instead of refusing it.
+    -- Only CASE fixes the order (`content`, at promotion).
+    and coalesce(public.story_capture_open(
+          case when (storage.foldername(name))[3] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+               then ((storage.foldername(name))[3])::uuid end), false)
   );
 grant insert on storage.objects to authenticated;   -- stated, not assumed (invariant 6)
 
