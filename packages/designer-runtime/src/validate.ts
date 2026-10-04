@@ -92,8 +92,10 @@ function font(v: unknown, path: string, is: Issues): FontSpec | null {
     // A30, and the one type error in this file that is a product rule.
     return is.add(`${path}.letterSpacing`, 'letter_spacing', 'letter-spacing must be 0 — it breaks the Arabic cursive join'), null
   }
-  if (v.weight !== undefined && ![400, 500, 600].includes(v.weight as number)) {
-    return is.add(`${path}.weight`, 'font_weight', 'weight must be 400, 500 or 600'), null
+  // ★ wave 24 (DEC-242): 700 and 800 admitted for the display face — see
+  // `FontSpec.weight`. Additive: every weight that validated before still does.
+  if (v.weight !== undefined && ![400, 500, 600, 700, 800].includes(v.weight as number)) {
+    return is.add(`${path}.weight`, 'font_weight', 'weight must be 400, 500, 600, 700 or 800'), null
   }
   return v as unknown as FontSpec
 }

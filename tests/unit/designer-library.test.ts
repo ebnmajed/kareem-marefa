@@ -66,18 +66,83 @@ describe("06 §3.3 as DEC-148 rules it — a row is a COMPOSITION", () => {
   });
 });
 
-describe("DEC-127 · DEC-148 q4 — the poster's version 2", () => {
-  it("★ every poster family's background is DEC-127's gradient, exactly, in tokens", () => {
+describe("DEC-242 — the poster's FLAT ground, one colourway per family", () => {
+  // ★ LEDGER (wave 24): this block replaced «the poster's version 2». DEC-127's
+  // gradient and the Knowledge Network rule are two of the four visual clauses
+  // DEC-242 supersedes in REQ-DSG-026, and the thumbnails draw a flat ground on
+  // all seven cards. `model.ts`'s gradient union and `backgroundCss()`'s
+  // `360 − angle` mirror are untouched and still proven by
+  // `tests/unit/gradient-render.test.ts`.
+  it("★ every poster family's ground is a SOLID brand token — and no two families share one", () => {
+    const grounds = new Set<string>();
     for (const t of BASELINE_LIBRARY.filter((x) => x.purpose === "poster")) {
-      expect(t.document.background, t.family).toEqual({ type: "gradient", angle: 140, stops: [{ color: "{{brand.surface}}" }, { color: "{{brand.canvasRaise}}" }] });
+      const bg = t.document.background;
+      expect(bg?.type, t.family).toBe("solid");
+      const colour = bg?.type === "solid" ? bg.color : "";
+      // A token, never a literal and never a gradient stop.
+      expect(colour, t.family).toMatch(/^\{\{brand\.[A-Za-z]+\}\}$/);
+      grounds.add(colour);
+    }
+    // ★ REQ-DSG-033: «each family differs by its colourway, not its structure».
+    // Five families, five distinct grounds — which is also what keeps the five
+    // documents distinct now that nothing else differs between them.
+    expect(grounds.size).toBe(5);
+  });
+
+  it("★ the accent reaches a poster as `node`, and never as reading text — DEC-242 §2", () => {
+    // `node` is lime on dark and lime-deep on light, and it is the ONLY way the
+    // playground's accent enters a document: the other accent, coral, is a
+    // STATUS colour (DEC-073) and a brand token must never be one.
+    //
+    // ★ NOT «every family paints it». The paper colourway — the thumbnails'
+    // «ورقي» card — carries no lime at all, and that is the design: it is ink on
+    // bone and its pill is ink. The property that holds is the other one: the
+    // accent is used, and it is never the colour of a line somebody reads.
+    const posters = BASELINE_LIBRARY.filter((x) => x.purpose === "poster");
+    const limeSomewhere = posters.filter((t) => colourFieldsOf(t.document).some((c) => c.value === "{{brand.node}}"));
+    expect(limeSomewhere.length).toBeGreaterThan(0);
+    for (const t of posters) {
+      for (const id of ["l_title", "l_presenters", "l_when"]) {
+        const layer = t.document.layers.find((l) => l.id === id)!;
+        const colour = "color" in layer ? layer.color : null;
+        // A 96 px title in lime on ink would pass contrast and still be wrong:
+        // the accent marks one thing, and a poster's one thing is its category.
+        expect(colour, `${t.family}/${id}`).not.toBe("{{brand.node}}");
+      }
     }
   });
 
-  it("the Knowledge Network rule binds edgeStrong on posters (q4) and stays on spine on certificates", () => {
+  it("★ the Knowledge Network rule is GONE from every composition — DEC-242 §1", () => {
     for (const t of BASELINE_LIBRARY) {
-      const rule = t.document.layers.find((l) => l.id === "l_rule");
-      expect(rule?.kind === "shape" ? rule.shape.fill : null, t.family).toBe(t.purpose === "poster" ? "{{brand.edgeStrong}}" : "{{brand.spine}}");
+      expect(t.document.layers.find((l) => l.id === "l_rule"), t.family).toBeUndefined();
+      expect(t.document.layers.filter((l) => l.name === "عقدة الشبكة"), t.family).toEqual([]);
     }
+  });
+
+  it("★ the category pill is a STADIUM of three shapes, because the model has no radius", () => {
+    // Adding a `radius` would change a rendered byte, which needs a
+    // schemaVersion bump (DEC-178's D2b) — and a bumped document is REFUSED by
+    // `main`'s worker for the whole window between the owner's push and the
+    // merge, so every poster render would fail. Three shapes at schema 1 are
+    // exact and cost nothing.
+    for (const t of BASELINE_LIBRARY.filter((x) => x.purpose === "poster")) {
+      const caps = t.document.layers.filter((l) => l.id === "l_pill_start" || l.id === "l_pill_end");
+      const body = t.document.layers.find((l) => l.id === "l_pill_body");
+      expect(caps.map((l) => (l.kind === "shape" ? l.shape.type : null)), t.family).toEqual(["ellipse", "ellipse"]);
+      expect(body?.kind === "shape" ? body.shape.type : null, t.family).toBe("rect");
+      // A true stadium: each cap is as wide as the pill is tall, and the body
+      // spans between their centres.
+      for (const cap of caps) expect(cap.frame.w, `${t.family}/${cap.id}`).toBe(cap.frame.h);
+      const start = caps.find((l) => l.id === "l_pill_start")!;
+      expect(body!.frame.x, t.family).toBe(start.frame.x + Math.round(start.frame.h / 2));
+      // The pill sits UNDER its own label.
+      const label = t.document.layers.find((l) => l.id === "l_category")!;
+      expect((body!.z ?? 0) < (label.z ?? 0), t.family).toBe(true);
+    }
+  });
+
+  it("★ every document declares BASE_SCHEMA_VERSION — `main`'s worker refuses a version it does not know", () => {
+    for (const t of BASELINE_LIBRARY) expect(t.document.schemaVersion, `${t.family}@${t.orientation ?? "poster"}`).toBe(1);
   });
 
   it("certificates stay solid — the gradient is the poster's", () => {
@@ -271,24 +336,76 @@ describe("the locked regions a certificate cannot ship without", () => {
   });
 });
 
-describe("A27 — the family differences are real", () => {
-  it("the workshop family carries a preparatory-tasks strip and no other family does", () => {
-    const withTasks = BASELINE_LIBRARY.filter((t) => t.document.layers.some((l) => l.id === "l_tasks")).map((t) => t.family);
-    expect(withTasks).toEqual(["workshop"]);
+describe("A27 · DEC-242 — the family difference is the COLOURWAY, not the structure", () => {
+  // ★ LEDGER (wave 24): this block replaced «the family differences are real».
+  // The workshop's tasks strip and the venue line are two of the four visual
+  // clauses DEC-242 supersedes in REQ-DSG-026 — the thumbnails draw neither —
+  // so the two `hideAt` declarations they carried have no subject. What takes
+  // their place is REQ-DSG-033's own sentence, asserted directly.
+  it("★ the tasks strip and the venue line are gone from every family", () => {
+    for (const t of BASELINE_LIBRARY) {
+      expect(t.document.layers.find((l) => l.id === "l_tasks"), t.family).toBeUndefined();
+      expect(t.document.layers.find((l) => l.id === "l_where"), t.family).toBeUndefined();
+    }
   });
 
-  it("what does not survive a crop is DECLARED — the venue line and the task strip name their presets", () => {
-    const talk = BASELINE_LIBRARY.find((t) => t.family === "talk")!.document;
-    expect(talk.layers.find((l) => l.id === "l_where")?.hideAt).toEqual(["og"]);
-    const workshop = BASELINE_LIBRARY.find((t) => t.family === "workshop")!.document;
-    expect(workshop.layers.find((l) => l.id === "l_tasks")?.hideAt).toEqual(["og", "square"]);
+  it("★ every poster family has the SAME layer ids in the same order — only the colours differ", () => {
+    const posters = BASELINE_LIBRARY.filter((t) => t.purpose === "poster");
+    const shape = (d: (typeof posters)[number]["document"]) => d.layers.map((l) => `${l.id}:${l.kind}`).join("|");
+    const first = shape(posters[0]!.document);
+    for (const t of posters) expect(shape(t.document), t.family).toBe(first);
+    // And the documents are still distinct, because the colourway and the
+    // category literal differ — which is what makes five rows five rows.
+    expect(new Set(posters.map((t) => JSON.stringify(t.document))).size).toBe(5);
+  });
+
+  it("★ nothing is dropped on a crop any more: no layer declares `hideAt`", () => {
+    // The two layers that did are gone, and every remaining one fits every
+    // preset's safe area — proven by `allSafeAreaViolations` below rather than
+    // assumed, which is why nothing has to be declared away.
+    for (const t of BASELINE_LIBRARY) {
+      for (const layer of t.document.layers) expect(layer.hideAt, `${t.family}/${layer.id}`).toBeUndefined();
+    }
+  });
+
+  it("★ a certificate family is told apart by its kind line — without it two rows would be byte-identical", () => {
+    // The thumbnails draw no kind line; the owner kept it (wave 24 ruling 2).
+    // This is the assertion that says why: drop `l_kind` and
+    // attendance@landscape and presenter@landscape become the same document.
+    for (const t of BASELINE_LIBRARY.filter((x) => x.purpose === "certificate")) {
+      const kind = t.document.layers.find((l) => l.id === "l_kind");
+      expect(kind?.kind === "text" ? kind.text.literal : null, `${t.family}@${t.orientation}`).toBe(
+        { attendance: "شهادة حضور", presenter: "شهادة تقديم", achievement: "شهادة إنجاز" }[t.family as "attendance"],
+      );
+    }
+  });
+
+  it("★ the four layers the thumbnails omit are KEPT, each for a reason a 196 px preview cannot carry", () => {
+    for (const t of BASELINE_LIBRARY.filter((x) => x.purpose === "certificate")) {
+      const ids = t.document.layers.map((l) => l.id);
+      const key = `${t.family}@${t.orientation}`;
+      // The bound org logo — 06 §8.3's «one edit in one place», and the subject
+      // REQ-DSG-019's A3 resolution guard needs.
+      expect(ids, key).toContain("l_logo");
+      // The issue date — a certificate that does not say when is a regression.
+      expect(ids, key).toContain("l_issued");
+      // The reason — how an achievement names the achievement.
+      expect(ids, key).toContain("l_reason");
+      // REQ-CRT-010 + A29: the serial AND the code, as text beside the QR.
+      expect(ids, key).toContain("l_serial");
+      expect(ids, key).toContain("l_code");
+    }
   });
 });
 
 describe("the seed migrations are a copy of this library, and have not drifted", () => {
-  // 0061 seeded version 1 of eight compositions; the wave-8 seed adds version
-  // 2 of those and version 1 of the three portraits. The LATEST version of
-  // each composition across both files must be exactly the library's.
+  // ★ LEDGER (wave 24): the seed list and the «latest» rule both moved.
+  // 0061 seeded version 1 of eight compositions and 0098 added version 2 of
+  // those plus version 1 of three portraits. Wave 24's seed is ELEVEN NEW ROWS
+  // at version 1 (REQ-DSG-034), so «the highest version number across the
+  // files» would pick 0098's v2 and compare the OLD document against the new
+  // library. The newest FILE wins instead, which is what «the latest seeded
+  // version» always meant — file order is migration order.
   function seedFile(name: string): string | null {
     const proposed = join(process.cwd(), "supabase", "proposed", "designer", name);
     if (existsSync(proposed)) return readFileSync(proposed, "utf8");
@@ -298,7 +415,8 @@ describe("the seed migrations are a copy of this library, and have not drifted",
   }
 
   it("★ the latest seeded version of every composition deep-equals the library, dynamic fields included", () => {
-    const bodies = [seedFile("0004_baseline_library.sql"), seedFile("0002_certificate_library.sql")];
+    // Oldest first: the last file to mention a composition is the live one.
+    const bodies = [seedFile("0004_baseline_library.sql"), seedFile("0002_certificate_library.sql"), seedFile("0005_playground_library.sql")];
     if (bodies.some((b) => b === null)) {
       expect.fail("a baseline-library seed migration (0061's, or the wave-8 certificate library) was not found");
       return;
@@ -308,7 +426,13 @@ describe("the seed migrations are a copy of this library, and have not drifted",
     for (const body of bodies as string[]) {
       // `-- @family <family>[@<orientation>][@v<n>]`, then the version's
       // `$json$…$json$` and `$fields$…$fields$` before the next marker.
-      for (const match of body.matchAll(/--\s*@family\s+(\S+)((?:(?!--\s*@family)[\s\S])*?)\$json\$([\s\S]*?)\$json\$::jsonb,\s*\$fields\$([\s\S]*?)\$fields\$/g)) {
+      // ★ LEDGER (wave 24): the separator between the two dollar-quoted blocks is
+      // now `::jsonb;` as well as `::jsonb,`. 0061 and 0098 inline both literals
+      // as arguments of one INSERT; wave 24's seed assigns each to a variable
+      // first, because its idempotency key is the DOCUMENT and the lookup needs
+      // it before the insert does. Both shapes are parsed, so the two older
+      // seeds are read exactly as before.
+      for (const match of body.matchAll(/--\s*@family\s+(\S+)((?:(?!--\s*@family)[\s\S])*?)\$json\$([\s\S]*?)\$json\$::jsonb[,;][\s\S]*?\$fields\$([\s\S]*?)\$fields\$/g)) {
         const parts = (match[1] as string).split("@");
         const family = parts[0] as string;
         const versionTag = parts.find((p) => /^v\d+$/.test(p));
@@ -316,10 +440,10 @@ describe("the seed migrations are a copy of this library, and have not drifted",
         const isCertificate = ["attendance", "presenter", "achievement"].includes(family);
         const key = isCertificate ? `${family}@${orientation ?? "landscape"}` : family;
         const version = versionTag ? Number(versionTag.slice(1)) : 1;
-        const existing = latest.get(key);
-        if (!existing || existing.version < version) {
-          latest.set(key, { version, document: JSON.parse(match[3] as string), fields: JSON.parse(match[4] as string) });
-        }
+        // ★ The newest FILE wins, unconditionally — not the highest version
+        // number. A later migration may seed a NEW row at version 1, and that
+        // row is the live one.
+        latest.set(key, { version, document: JSON.parse(match[3] as string), fields: JSON.parse(match[4] as string) });
       }
     }
 
