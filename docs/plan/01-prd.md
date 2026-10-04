@@ -4115,6 +4115,79 @@ is deleted, and no new primitive is added.
 - The console's sober register holds: no motion, no object, no sticker.
 
 
+#### REQ-UIX-114 — The landing and the register page are rebuilt on «ساحة اللعب», and nothing they do changes
+**Serves:** owner 2026-10-04 · `DEC-245` §1.3 · `DEC-247` · `REQ-NFR-019` · `DEC-167` · `09` `SCR-000`, `SCR-001`
+`/`, `/ar`, `/en` and `/ar/register` are drawn from `Landing.dc.html` and `Register.dc.html`: the header with the mark,
+the hero with its three poster objects and two actions, the seven companies as team rings, the four features, the two
+four-step paths, the register band, the footer. `/og.png` carries the mark. Copy is `marketing.json`'s.
+**Acceptance:**
+- The five URLs answer as they did; `qa:contract` passes unmodified at every commit.
+- The registration form posts the same field names from the same ids to the same action, validates as it did, and
+  works with JavaScript off — proven by a behaviour fingerprint taken on `main` and on the branch, and equal.
+- The accessibility floor holds: the sweep reports no finding on the five routes.
+- The appearance, its re-baselined capture, the rewritten `qa:appearance` and the rewritten public-graph guard land in
+  one commit with their `DECISIONS.md` entry.
+- `registrations` is not read, altered or dropped.
+
+#### REQ-UIX-115 — The verification page is rebuilt to its design
+**Serves:** `DEC-245` · `REQ-CRT-007` · `REQ-CRT-011` · `09` `SCR-006`
+`/verify/[code]` is drawn from `Verify.dc.html` in three states: valid, revoked, not found.
+**Acceptance:**
+- A valid certificate shows its six facts; a revoked one says «شهادة ملغاة» and **never the reason**; an unknown code
+  says so and nothing else.
+- The serial and the code are `dir="ltr"` inside `<bdi>`.
+- The page needs no session and reveals nothing the page before it did not.
+
+#### REQ-UIX-116 — The brand kit screen is rebuilt, read first
+**Serves:** `DEC-245` · `REQ-ADM-015` · `REQ-DSG-021` · `DEC-201` · `09` `SCR-059`
+`SCR-059` is drawn from `AdminBranding.dc.html`: read mode with one «عدّل»; the logo with its format, size and the A3
+print result; the four fonts; the light and dark tokens; the team colours.
+**Acceptance:**
+- A colour is shown as a swatch **and** its value in words, never by colour alone.
+- A palette the database refuses is refused on the screen with the database's reason (`REQ-DSG-021`).
+- The screen says the kit feeds posters, certificates and email — not the app.
+- The saved mark is read from the server's answer.
+
+#### REQ-UIX-117 — Privacy is a hub page reached from settings
+**Serves:** `DEC-245` · `REQ-PRF-006` · `REQ-PRF-007` · `REQ-PRF-008` · `REQ-NFR-013` · `REQ-EVT-012`
+`/app/me/privacy` is drawn from `Privacy.dc.html`: the data export with its state, the photographs the member appears
+in with «أزلني», the two legal links, and deactivation behind a confirm sheet.
+**Acceptance:**
+- The export shows each of its states — requested, building, ready with its date and «نزّل», expired — from the data.
+- The profile-picture answer the page carried before is still given there.
+- Deactivation asks before it acts and is the action it was.
+
+#### REQ-UIX-118 — The platform console moves onto the console frame
+**Serves:** `DEC-245` §1.2 · `REQ-ADM-001` · `REQ-ADM-002` · `REQ-ADM-003` · `REQ-ADM-019` · `REQ-TEN-002` · `REQ-TEN-006` · `REQ-TEN-007` · `REQ-NFR-014` · `09` `SCR-080` … `SCR-085`
+The six platform screens are drawn from `Platform*.dc.html` on the console's bar and rail, with the platform's own nav
+set and a «لا بيانات مؤسسات هنا» mark in the bar.
+**Acceptance:**
+- The orgs table and the metrics carry **counts**, never an org's content; no policy gains a super-admin disjunct.
+- Deleting an org needs its slug typed back; suspending and reactivating are what they were.
+- Impersonation takes an org, an admin of it, a mandatory reason and a duration, says it is recorded and visible to
+  the org, and shows its log — and behaves exactly as it did.
+- The sober register holds: no motion, no object, no sticker.
+
+#### REQ-UIX-119 — The mark is one component with three moves
+**Serves:** owner 2026-10-04 · `DEC-245` §6 · `DEC-247` · `docs/design/assets/brand/logo/README.md`
+The mark is an inlined drawing named «كريم معرفة». It **reveals** once on sign-in and on the landing, **breathes**
+while the app waits longer than 400 ms, and **settles** once when pressed as the home control.
+**Acceptance:**
+- Under `prefers-reduced-motion` the mark is static in all three places.
+- The reveal is not repeated on navigation.
+- In a console or studio bar the mark never moves (`REQ-UIX-053`).
+- The mark is a repository asset drawn by a component; nothing is uploaded (invariant 11).
+
+#### REQ-UIX-120 — The mark stands wherever the written wordmark stood
+**Serves:** owner 2026-10-04 · `DEC-245` · `REQ-UIX-027`
+The app's bar, sign-in, the console and platform bars, the public card, the legal pages, the error page, the favicon
+and the app icons draw the mark; the two wordmark components are deleted.
+**Acceptance:**
+- Inside `/app` the mark leads to `/app`; outside it, to `/`.
+- No file imports a wordmark component, and neither file exists.
+- The name remains as text only where it is a word in a sentence, and as the mark's accessible name.
+
+
 ---
 
 ## 24. Survey — `SUR`
@@ -4225,7 +4298,143 @@ and data dumps.
 
 ---
 
-## 25. Out of scope
+## 25. Session stories — `STO`
+
+*Added by `DEC-245`, from `docs/design/screens/STORIES-USER-STORIES.md` — one requirement per STO-01 … 18, in its
+order. A story is **generated from what a session does** and from what its attendees add; nothing in it is authored
+by staff. Where `docs/design/05-stories.md` disagrees with the list below, this list wins (`DEC-248` §7).*
+
+#### REQ-STO-001 — Every session has one story, and it is the session's
+**Serves:** owner 2026-10-04 · STO-01
+A published session has one story: its frames in time order. It belongs to the session, never to a person.
+**Acceptance:**
+- A story exists for every session from publication, and has no author.
+- Its frames are read in the order their triggers fired.
+
+#### REQ-STO-002 — A frame disappears 24 hours after its trigger
+**Serves:** STO-02
+**Acceptance:**
+- A member is not shown a frame at or after its trigger time plus 24 hours.
+- A ring with no visible frame is not drawn.
+- An attendee's frame older than 24 hours is still readable by staff (`REQ-STO-017`), and by nobody else.
+
+#### REQ-STO-003 — A story is visible to its org and to nobody else
+**Serves:** STO-03 · `REQ-TEN-003` · `REQ-NFR-001`
+**Acceptance:**
+- A member of one org receives no frame of another, by policy and by test.
+- The public card and the verification page carry no story.
+
+#### REQ-STO-004 — A frame is generated within a minute of each of eight triggers
+**Serves:** STO-04
+The eight: the session is published · registration opens · registration closes · 24 hours before it starts · it goes
+live · an attendee's photograph becomes visible · it completes · its materials are added.
+**Acceptance:**
+- Each trigger produces exactly one frame, however many times it fires or is retried.
+- The frame is readable within one minute of its trigger.
+- The live frame shows the count of people checked in, current while the session is live.
+- The recap shows attendance, the rating — **only at or above the org's minimum** (`REQ-RAT-006`) — and materials,
+  with the first three photographs.
+
+#### REQ-STO-005 — A reaction on a frame is one of four, and earns nothing
+**Serves:** STO-05 · `REQ-EVT-004` · `REQ-PTS-010`
+**Acceptance:**
+- A member holds at most one reaction on a frame; choosing another replaces it.
+- Counts are visible; no ledger row is ever written for a reaction.
+
+#### REQ-STO-006 — The ring row shows each session's story state
+**Serves:** STO-06 · `REQ-UIX-040`
+**Acceptance:**
+- A ring is live, unseen, or seen — seen when the member has viewed every visible frame — each told apart without
+  colour.
+- Live rings come first, then the newest.
+- A session with no visible frame has no ring.
+
+#### REQ-STO-007 — A ring opens the viewer on the first unseen frame, and every gesture has a plain alternative
+**Serves:** STO-07 · `DEC-093` · `REQ-NFR-007`
+The viewer shows segmented progress, the session with its team ring, its title, its presenter and company, the frame's
+age and a close control. A frame advances on a timer. Tapping the start third goes back and elsewhere goes forward;
+holding pauses; swiping down closes.
+**Acceptance:**
+- Next, previous, pause and close each exist as a visible control operable by a single tap, and by a key —
+  ← → Home End Space Escape, the arrows following the reading direction.
+- A test drives a whole story with single clicks alone, and another with the keyboard alone.
+- The viewer is a dialog: focus is held inside it and returns to the ring on close.
+- Under `prefers-reduced-motion` frames change without a slide.
+
+#### REQ-STO-008 — A frame's one action goes where the frame points
+**Serves:** STO-08
+**Acceptance:**
+- A live or upcoming frame offers «افتح الجلسة»; the recap offers «حمّل المواد», opening that section.
+- «شاهد القصة» appears on a live session's page and opens the same viewer.
+
+#### REQ-STO-009 — On a wide screen the viewer is the same viewer, centred
+**Serves:** STO-09
+**Acceptance:**
+- From `lg` the viewer is centred at phone width on the ink ground, with the same controls and keys and none added.
+
+#### REQ-STO-010 — What a member has viewed is remembered, and is theirs alone
+**Serves:** STO-10
+**Acceptance:**
+- A viewed frame is recorded once per member, and the record survives a reload and another device.
+- No member, and no staff role, reads another member's views.
+
+#### REQ-STO-011 — A checked-in attendee adds a frame from the room
+**Serves:** STO-11 · owner 2026-10-04 (`DEC-NEXT-41`)
+A photograph by a tap or a video of up to 15 seconds by a hold, from the camera or the gallery, with one caption line.
+**Acceptance:**
+- «أضف» is present only for a member checked in to the session, from its start until 24 hours after its end, and the
+  server refuses everyone else whatever the screen shows.
+- Recording a video can be started and stopped by taps alone.
+- The 15-second limit is enforced in capture and again on what was uploaded.
+
+#### REQ-STO-012 — An attendee's photograph is an album photograph; a video is a frame only
+**Serves:** STO-12 · `REQ-EVT-010` · `REQ-EVT-011` · `REQ-PTS-006`
+**Acceptance:**
+- A photo frame is created by the album's own upload: metadata stripped by the worker, the album's points under the
+  album's cap.
+- A video earns nothing and does not enter the album.
+
+#### REQ-STO-013 — An attendee's frame says who posted it
+**Serves:** STO-13 · `REQ-PRF-004`
+**Acceptance:**
+- The frame shows the poster's avatar with the team ring, their name, its age, the caption, and a video's length.
+- It expires and takes reactions as any frame does.
+
+#### REQ-STO-014 — «أزلني» hides a frame for everyone at once, video included
+**Serves:** STO-14 · `REQ-EVT-012`
+**Acceptance:**
+- A member who says they appear in a frame hides it immediately, by the photographs' own mechanism, audited.
+
+#### REQ-STO-015 — A reported frame is hidden on the first report and goes to the photo queue
+**Serves:** STO-15 · `REQ-EVT-014` · `REQ-ADM-010`
+**Acceptance:**
+- One report hides the frame from members until staff decide.
+- The report appears in the existing queue, and a video can be played there.
+
+#### REQ-STO-016 — A video is short, small, one rendition, and carries no metadata
+**Serves:** STO-16 · `DEC-181` · `REQ-EVT-011`
+**Acceptance:**
+- A video over 15 seconds or 60 MB is refused, measured on the server.
+- It is transcoded by the worker to one MP4 rendition, with every container tag removed — location included.
+- A failed transcode says «تعذّر» to its poster and shows nothing to anyone else.
+- The video is deleted with its session.
+
+#### REQ-STO-017 — Staff see every attendee frame on the session's attendance tab, and may remove one
+**Serves:** STO-17 · `REQ-ADM-018` · `REQ-PTS-013`
+**Acceptance:**
+- «قصص الحضور» lists every attendee frame, past 24 hours too, with its poster and «أزل».
+- Removing takes the frame from the story and, for a photograph, from the album; it is audited, and an award is
+  reversed by a compensating row.
+
+#### REQ-STO-018 — Generated frames need nothing from staff, and cancelling ends the story
+**Serves:** STO-18 · `REQ-SES-010`
+**Acceptance:**
+- No screen authors, edits or schedules a generated frame.
+- A cancelled session shows no frame to members and has no ring.
+
+---
+
+## 26. Out of scope
 
 Not planned, not designed, not built. From `_source-brief.md` §4.22:
 
