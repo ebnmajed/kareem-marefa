@@ -117,6 +117,18 @@ async function settle(page: Page) {
 
 async function capture(page: Page, state: string) {
   await settle(page);
+  // A full-page capture is taken from the top, at rest: the save's toast closed (its ✕) and gone, no element left
+  // focused (the skip link would show), the page scrolled to 0 with smooth scrolling forced off — scrolled, the sticky
+  // console bar is painted across the middle of the stitched image — and one frame let through.
+  const toastClose = page.getByRole("button", { name: "إغلاق الإشعار" });
+  for (const close of await toastClose.all()) await close.click().catch(() => {});
+  await expect(toastClose).toHaveCount(0);
+  await page.evaluate(async () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(0, 0);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
   await page.screenshot({ path: `${SHOTS}/wave26-branding-scr059-${state}-1280.png`, fullPage: true });
 }
 
