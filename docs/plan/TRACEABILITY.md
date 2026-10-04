@@ -12,7 +12,7 @@
 | Entities (`ENT-*`) | **89** |
 | Stories (`STORY-*`) | **268** |
 | Screens cited (`SCR-*`) | 60 |
-| Jobs cited (`JOB-*`) | 41 |
+| Jobs cited (`JOB-*`) | 44 |
 | Messages cited (`MSG-*`) | 24 |
 
 ## Cross-cutting requirements
@@ -226,7 +226,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-EVT-008` | `ENT-reports` | — | `SCR-012` `SCR-022` `SCR-050` | — | `MSG-materials_added` | `STORY-EVT-004` | M2 |
 | `REQ-EVT-009` | `ENT-photos` | — | `SCR-012` | `JOB-zip_session_photos` | — | `STORY-EVT-005` | M5 |
 | `REQ-EVT-010` | `ENT-photos` `ENT-session_days` | — | `SCR-012` | `JOB-process_photo` | — | `STORY-EVT-005` | M5 |
-| `REQ-EVT-011` | `ENT-photos` | — | `SCR-012` `SCR-022` | `JOB-process_photo` `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-EVT-005` | M5 |
+| `REQ-EVT-011` | `ENT-photos` | — | `SCR-012` `SCR-022` | `JOB-process_photo` `JOB-transcode_story_video` +1 | `MSG-photo_album_ready` | `STORY-EVT-005` | M5 |
 | `REQ-EVT-012` | `ENT-photo_takedowns` `ENT-photos` | — | `SCR-012` `SCR-043` `SCR-050` +1 | `JOB-zip_session_photos` | `MSG-photo_album_ready` | `STORY-EVT-006` | M5 |
 | `REQ-EVT-013` | `ENT-photo_takedowns` `ENT-photos` | — | `SCR-012` | — | — | `STORY-EVT-005` | M5 |
 | `REQ-EVT-014` | `ENT-photos` | `POL-comments.removal_audit` | `SCR-011` `SCR-012` `SCR-043` +4 | — | `MSG-materials_added` `MSG-reminder_generic` | `STORY-EVT-006` | M5 |
@@ -451,7 +451,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-STO-001` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-001` | M28 |
 | `REQ-STO-002` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-001` | M28 |
 | `REQ-STO-003` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-007` | M28 |
-| `REQ-STO-004` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-001` | M28 |
+| `REQ-STO-004` | `ENT-story_frames` | — | `SCR-010` | `JOB-generate_story_frames` | — | `STORY-STO-001` | M28 |
 | `REQ-STO-005` | `ENT-story_reactions` | — | `SCR-010` | — | — | `STORY-STO-003` | M28 |
 | `REQ-STO-006` | `ENT-story_views` | — | `SCR-010` | — | — | `STORY-STO-002` | M28 |
 | `REQ-STO-007` | — | — | `SCR-010` | — | — | `STORY-STO-003` | M28 |
@@ -459,12 +459,12 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-STO-009` | — | — | `SCR-010` | — | — | `STORY-STO-003` | M28 |
 | `REQ-STO-010` | `ENT-story_views` | `POL-reports.story_frame` `POL-story_frame_takedowns.read` +3 | `SCR-010` | — | — | `STORY-STO-003` `STORY-STO-007` | M28 |
 | `REQ-STO-011` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
-| `REQ-STO-012` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
+| `REQ-STO-012` | `ENT-story_frames` | — | `SCR-010` | `JOB-transcode_story_video` | — | `STORY-STO-004` | M28 |
 | `REQ-STO-013` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
 | `REQ-STO-014` | `ENT-photo_takedowns` `ENT-story_frame_takedowns` `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |
 | `REQ-STO-015` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |
-| `REQ-STO-016` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |
-| `REQ-STO-017` | `ENT-story_frames` | `POL-reports.story_frame` `POL-story_frame_takedowns.read` +3 | `SCR-044` | — | — | `STORY-STO-006` | M28 |
+| `REQ-STO-016` | `ENT-story_frames` | — | `SCR-010` | `JOB-purge_story_video` `JOB-transcode_story_video` | — | `STORY-STO-005` | M28 |
+| `REQ-STO-017` | `ENT-story_frames` | `POL-reports.story_frame` `POL-story_frame_takedowns.read` +3 | `SCR-044` | `JOB-purge_story_video` | — | `STORY-STO-006` | M28 |
 | `REQ-STO-018` | `ENT-story_frames` | — | `SCR-012` | — | — | `STORY-STO-001` | M28 |
 
 ### SUR

@@ -588,6 +588,14 @@ html:has([data-play-root].theme-play-light) {
   50% { opacity: 1; }
   to { transform: translateX(calc(250% * var(--moment-dir))) rotate(20deg); opacity: 0; }
 }
+
+/* ★ wave 26 (DEC-251 §4.10, REQ-STO-007) — the story viewer's one keyframe: a frame arriving. Transform and opacity
+   only, a token's duration, applied by `story-viewer` under `motion-safe:` so reduced motion changes frames with no
+   slide at all. It is NOT a moment (there is no sixth), and under `[data-console]` motion is off regardless. */
+@keyframes story-frame-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
 /* No arrow pulse (DEC-197): moment 5's arrow is simply shown. An overshoot is
    a sticker's alone (DEC-183 §2), and a pulse on an arrow widens that line. */
 
@@ -1550,14 +1558,6 @@ html[data-sting="done"] {
 }
 
 /* Register-route loading screen: three dots connecting */
-/* ★ wave 26 (DEC-251 §4.10, REQ-STO-007) — the story viewer's one keyframe: a frame arriving. Transform and opacity
-   only, a token's duration, applied by `story-viewer` under `motion-safe:` so reduced motion changes frames with no
-   slide at all. It is NOT a moment (there is no sixth), and under `[data-console]` motion is off regardless. */
-@keyframes story-frame-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: none; }
-}
-
 @keyframes loader-dot {
   0%,
   100% {

@@ -620,6 +620,10 @@
           "restored": "استعادة صورة",
           "downloaded": "تنزيل صورة"
         },
+        "story_frame": {
+          "removed": "إزالة إطار من القصة",
+          "restored": "إعادة إطار إلى القصة"
+        },
         "points": {
           "balance_divergence": "اختلاف في رصيد النقاط",
           "manual_adjustment": "تعديل نقاط يدوي"

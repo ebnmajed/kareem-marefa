@@ -322,6 +322,36 @@ and all 120 pinned files to add a preference nobody may use. It writes an `email
 appears in the delivery log with its reason. A member who has **already signed in**, or who has been deactivated,
 is sent nothing and the job returns — it does not retry.
 
+#### `JOB-generate_story_frames` ★ the thirty-eighth job
+**Serves:** `REQ-STO-004` · wave 26 (`DEC-251` §4, `0199`) · `sessions`
+Cron, every minute (`* * * * *`). Calls `public.clock_story_frames()` — `SECURITY DEFINER`, `service_role` only — which
+writes the story frames that no row write marks: `registration_opened`, only when a priority window delays it past
+publication; `registration_closed`, only for a deadline earlier than the first start; `starts_soon`, 24 hours before
+each day; and `live` for a workshop's later days. **Idempotency is structural**: `story_frames_one_per_trigger` and
+`on conflict do nothing`, so a doubled or retried run writes nothing and no job key is needed. It considers only
+instants in (now − 24 h, now] and dates each frame at its scheduled instant, so a late run moves no expiry and a first
+deploy back-fills nothing older. It enqueues nothing. The event-driven triggers — published, the first day's live, a
+photograph, the recap, materials — are table triggers, not jobs. **`main`'s worker in the gap** has no such task: these
+frames are not written until the new worker deploys, and its look-back then writes those still inside their 24 hours.
+
+#### `JOB-transcode_story_video` ★ the thirty-ninth job
+**Serves:** `REQ-STO-016`, `REQ-STO-012`, `REQ-EVT-011` · wave 26 (`DEC-248` §6, `0199`) · `content`
+Enqueued by `begin_story_video()` through `public.enqueue_job()`, key `story_video:{frame}`, on the named queue
+`story_video` so transcodes run one at a time; three attempts. Downloads the source from `story-media`, **sniffs the
+container from its first bytes** and forces the demuxer (no playlist, no protocol but `file`), then **`ffprobe` decides**
+the 15-second and 60 MB limits — never the client. `ffmpeg` (the image's binary, `DEC-181`) writes **one** H.264/AAC
+MP4, at most 720 px on the short side, with every container, stream and chapter tag removed and every track but one
+video and one audio dropped — a phone writes its location into a separate metadata track. A poster frame is taken from
+the stripped rendition and made WebP. `record_story_video()` makes the frame visible and starts its 24 hours;
+`fail_story_video()` records `too_long` · `too_large` · `unsupported` · `failed`; either way the source is deleted. A
+transient error retries; the last attempt fails the frame rather than leaving it processing. **`main`'s worker in the
+gap** does not know the task, so the job waits in its queue and the frame stays visible to its author alone.
+
+#### `JOB-purge_story_video` ★ the fortieth job
+**Serves:** `REQ-STO-016`, `REQ-STO-017` · wave 26 (`0199`) · `content`
+Enqueued by the `story_frames_purge` trigger when a video frame is removed or deleted, key `story_purge:{frame}`.
+Deletes everything under the frame's prefix in `story-media`. Idempotent: an empty prefix is success.
+
 #### `JOB-rsvp_nudge`
 **Key:** `nudge:{session_id}` · **Notes:** in-app only, **once**, at −7 d. §6 asks for reminders to
 non-responders; once and in-app is the restraint that keeps that from being the reason people mute
@@ -429,6 +459,9 @@ that can differ between renders, which is D66's failure mode with no error attac
 | `JOB-build_data_export` | `REQ-PRF-006` |
 | `JOB-delete_org` | `REQ-NFR-014` |
 | `JOB-evaluate_alerts` | `REQ-NFR-016` |
+| `JOB-generate_story_frames` | `REQ-STO-004` |
+| `JOB-transcode_story_video` | `REQ-STO-016` |
+| `JOB-purge_story_video` | `REQ-STO-016`, `REQ-STO-017` |
 
 ## 5. Proposed entities
 

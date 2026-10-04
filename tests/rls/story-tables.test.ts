@@ -7,7 +7,18 @@
 // tables that take no client write prove it by refusing one.
 import { afterAll, describe, expect, it } from "vitest";
 import { errorCode, pool, withTx } from "./db";
-import { seed } from "./fixture";
+import { seed as seedFixture } from "./fixture";
+import type { Tx } from "./db";
+
+// ★ With 0199 live, SEEDING ITSELF writes frames: the fixture's visible photograph fires `photos_story_frame` and its
+// «قبل» material fires `materials_story_frame` (`sessions'` hooks, proven in story-generator.test.ts). These cases are
+// about the TABLES' policies, so each starts from the two frames the fixture inserts by hand and drives its own rows.
+async function seed(tx: Tx) {
+  const f = await seedFixture(tx);
+  await tx.asOwner();
+  await tx.q(`delete from public.story_frames where kind in ('photo', 'materials')`);
+  return f;
+}
 
 afterAll(() => pool.end());
 
