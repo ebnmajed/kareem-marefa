@@ -6972,3 +6972,316 @@ SCR-043 (W21.4): all 38 rows hold, with these notes:
   set. It is shown for one-day sessions only, because each day of a multi-day session closes on its own.
 - `AttendanceHeaderAction` (`checkin`'s, at 6aeff6f0) is in the layout's map under `attendance`.
 - «افتح كجلسة» stays on 041.
+
+---
+
+# Wave 26 plan — PR D, the generated half of session stories (`REQ-STO-001` … `004`, `006`, `008`, `018`; `STORY-STO-001`, `002`)
+
+Planning only. Written from `01-prd.md` §25 (the requirements), `DEC-248` §5 (the storage contract) and §7.7 (where
+`05-stories.md` loses), and measured from the tree at `72933b5f`. Nothing below writes a table, a policy or a grant —
+those are the lead's, in `0198`; I name columns (W26.4). Every function below goes under
+`supabase/proposed/sessions/` and is proven with `applyProposed()`.
+
+## W26.1 · ★★ The trigger table — what fires each of STO-04's eight, measured
+
+**What the schema has, before the table.** `sessions.state` is `public.session_state` (`0010:17`); the legal moves are
+`0024`'s guard (`sessions_guard_transition`, `0024:78`): `approved → published` once, `published → in_progress`,
+`in_progress → completed`, `completed ↔ archived`, any of those `→ cancelled`. The clock moves sessions in
+`clock_start_sessions()` (`0022:40`, `published → in_progress` at `starts_at`) and `clock_complete_sessions()`
+(`0022:67`, `→ completed` at `ends_at`, setting `completed_at`), called minutely by `start_session.ts` /
+`complete_session.ts`; a person moves them through `publish_session()` / `schedule_session()` (`0106`, `0154:42`) and
+`transition_session()` (`0089:57`). Every one of those writes **`sessions.state` by `update`**, so **one `after update
+of state` trigger on `sessions` sees every path** — the clock, the admin, the schedule chain — without my editing any
+of the four functions. `sessions.starts_at`/`ends_at` are the first day's start and the last day's end, derived from
+`session_days` (`0100`); a session at `published` or beyond always has ≥ 1 day (`POL-session_days.consistent_at_commit`).
+
+★ **«Registration opens / closes» are not columns — they are derived instants, and both exist as data:**
+- **Closes** = `sessions.rsvp_deadline_at` (`0010:86`), which `reserve_seat()` refuses after (`0045:48`,
+  `deadline_passed`) and which `schedule_session()` defaults to the first start (`coalesce(p_rsvp_deadline_at,
+  v_starts)`, `0154`/`0106:322`). A CHECK keeps it ≤ `starts_at` (`0010:97`). `reserve_seat()` also refuses once the
+  state leaves `published` (`0045:45`), so the effective close is `least(rsvp_deadline_at, the start)` — equal by
+  default.
+- **Opens** = `published_at` when the org's `priority_rsvp` perk is off (the seed's default, `0045:52-56`), else
+  `published_at + org_settings.priority_rsvp_hours` (`0004:122`, `0045:57-60`) for members without the perk. **There is
+  no other «opens»**: no `rsvp_opens_at`, no window column. So with the perk off, «registration opens» and «published»
+  are the SAME instant — see W26.7 D1.
+- Capacity filling is **not** a close: a full session waitlists (`0045:85-90`); I do not invent a «full» trigger.
+
+| # | Trigger (STO-04) | Kind (proposed enum value) | What fires it, today's data | Event or clock | Trigger key (unique with session + kind) | `triggered_at` | At `n` days (correct at `n = 1`) |
+|---|---|---|---|---|---|---|---|
+| 1 | published | `published` | `sessions.state` `approved → published` (`0024` guard; written by `publish_session()` / `schedule_session()`'s chain, `0106:491` sets `published_at`) | **event** — `after update of state on sessions`, `when new.state = 'published' and old.state is distinct from 'published'` | `'published'` (constant — the guard allows the move once) | `coalesce(new.published_at, now())` | session-level; a day is not involved |
+| 2 | registration opens | `registration_opened` | the derived instant above | **clock** — `clock_story_frames()`, state `published`, instant in `(p_now − 24 h, p_now]` | the instant as UTC ISO text (`to_char(… at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`) — so a perk toggled later that moves the instant writes a new, truthful frame, and a re-run writes nothing | the derived instant | session-level — one registration covers every day (`DEC-120`) |
+| 3 | registration closes | `registration_closed` | `coalesce(rsvp_deadline_at, starts_at)` | **clock** — state `published` or `in_progress` (at the default the deadline IS the start, and `start_session` may already have moved it that minute), instant in `(p_now − 24 h, p_now]` | the instant, UTC ISO | the instant | session-level (≤ the first day's start, by CHECK) |
+| 4 | 24 h before it starts | `starts_soon` | `session_days.starts_at − 24 h` | **clock** — for each day not yet started, session `published` or `in_progress`, instant in `(p_now − 24 h, p_now]` | `<day id>:<day starts_at, UTC ISO>` — a reschedule before the day (REQ-SES-009 moves reminders) writes the new reminder | `greatest(day.starts_at − 24 h, sessions.published_at)` — never before publication | **one per day**, like `notify`'s reminder stream (wave 9 contract 8); at `n = 1` the day is the session |
+| 5 | it goes live | `live` | (a) `sessions.state → in_progress` — the clock at the first start, or an admin's early start; (b) for day `k ≥ 2`, the day's start while the session stays `in_progress` (the night between days is `open`, `session-status.ts:183-193`) | **both, one key**: (a) **event**, same `sessions` trigger, `when new.state = 'in_progress'`, keyed on the running day else the first un-ended day; (b) **clock**, `day.starts_at ≤ p_now < day.ends_at` and state `in_progress` | `<day id>` | (a) `now()` (the transition's instant); (b) `day.starts_at` | **one per day**; at `n = 1` (a) writes it and (b) finds the key and writes nothing |
+| 6 | an attendee's photograph becomes visible | `photo` | an `insert` into `photos`. ★ After `0174` the ONLY writer is `record_photo_upload()` (`0115:192`, definer, service_role), called by the worker after the strip; `check (exif_stripped)` (`0037:169`) — so **an insert IS the stripped photograph becoming visible**, exactly as `0178`'s header measures. Visible = `exif_stripped` (always), `hidden_at is null`, `removed_at is null` (`photos_read`, `0037:507`; `remove_photo()` sets both, `0059:84`) | **event** — `after insert on photos`, `when (new.hidden_at is null and new.removed_at is null)`, the same `when` as `photos_points_insert` (`0178:48-51`) | `<photo id>` | `new.created_at` | `photos.session_day_id` copied to the frame; no branch |
+| 7 | it completes | `recap` | `sessions.state → completed` — `clock_complete_sessions()` at the last `ends_at`, or `transition_session()`'s early completion (`0089:103` sets `completed_at`) | **event** — same `sessions` trigger, `when new.state = 'completed' and old.state = 'in_progress'` (★ not `archived → completed`, a reopen) | `'completed'` (constant) | `coalesce(new.completed_at, now())` | session-level: completion is after the LAST day |
+| 8 | its materials are added | `materials` | ★ **0189's moment, re-expressed in my own function, never edited**: a link's `insert`; a file's `current_version_id` null → set (after the sniff, `0077:54`); a removed material restored (`0189:43-49`) — AND the material is member-visible now under `materials_read`'s gate (`0116:70-86`: `phase = 'before'`, or the session `completed`/`archived`, or its day ended), AND the session is `published` … `archived` | **event** — `after insert or update of current_version_id, removed_at on materials` (0189's own column list) | `'materials:' ‖ the org-local date` (`org_settings.time_zone`) — **0189's «once per session per day» batch** (`0189:19-24`): a deck and two links are one frame | the first addition's `now()` | the material's `session_day_id` is not used for the key; one batch per date |
+
+**What is not a trigger and why.** A cancelled session writes nothing (the generator returns early) and RLS hides what
+it had (W26.3). `archived → completed` writes nothing (key 7 is constant). An `after`-phase material uploaded before the
+session is released by completion, not «added» — the recap carries the materials figure (W26.7 D4). Rows inserted
+already-published (the RLS fixture does this) are **not** hooked — `after update of state` only, so no existing suite
+gains rows it did not ask for.
+
+## W26.2 · The generator — one writer, never raises, never edits another track's function
+
+```sql
+-- definer, search_path '' ; no grant to anon, authenticated or service_role — only my own functions call it
+public.generate_story_frame(
+  p_session      uuid,
+  p_kind         public.story_frame_kind,
+  p_trigger_key  text,
+  p_triggered_at timestamptz,
+  p_day          uuid default null,
+  p_photo        uuid default null
+) returns uuid           -- the new frame's id, or null when the key already existed or the session is cancelled
+```
+- `org_id` is read from the session row, never passed. A `cancelled` session returns null and writes nothing.
+- `insert … on conflict (session_id, kind, trigger_key) do nothing returning id` — **the lead's unique constraint is
+  the idempotency**; a double fire, a retried job or two triggers racing produce one row. `DEC-043` holds trivially:
+  nothing is written before a refusal, and there is no refusal path that raises.
+- ★ **It never raises on an expected input.** It runs inside `publish_session()`, `record_photo_upload()` and the
+  clock's transaction; an exception would refuse a publish or lose a stripped photograph. The hooks pass only ids from
+  `new`, so no FK can fail.
+- **Callers, all mine:** three trigger functions (`sessions_story_frames()`, `photos_story_frame()`,
+  `materials_story_frame()` — each `returns trigger`, definer, revoked from every client role, so the definer-exposure
+  sweep skips them by construction) and one clock function:
+  `public.clock_story_frames(p_now timestamptz default now()) returns int` — definer, **service_role only**, the
+  written count. It scans only instants in `(p_now − 24 h, p_now]`, so a late or doubled run is harmless and a first
+  deploy does not back-fill history; `generate_story_frames.ts` is one `select public.clock_story_frames()` and a log
+  line, like `start_session.ts`. ★ It is a **crontab** entry (`* * * * * generate_story_frames`, `worker/src/index.ts:116`,
+  the lead's), not an `enqueue_job()` call — nothing in SQL enqueues it.
+
+**Functions I would otherwise be tempted to edit, and how I avoid each** (all are hooked by a trigger on the table they
+write, or read as they are):
+`clock_start_sessions()` / `clock_complete_sessions()` (`0022`) and their tasks (frozen this wave) · `transition_session()`
+(`0089:57`) · `publish_session()` / `schedule_session()` (`0106`, `0154:42`) · `sessions_completion_fanout()` (`0031:98`,
+scoring's) · `sessions_notify()` (`0036:165`, notify's) · `record_photo_upload()` (`0115:192`) and `photos_points()`
+(`0178`) — content's and scoring's · `materials_added_notify()` (`0189`, notify's — its predicate is **re-stated** in
+mine, not shared) · `finalize_material_upload()` (`0077`) · `reserve_seat()` (`0045`, checkin's) ·
+`session_attendance_count()` (`0165:23`) · `session_rating_aggregates` (`0130:95`). **None is replaced.**
+
+**Read functions I add** (functions, no table):
+- `public.story_feed(p_now timestamptz default now())` — **security invoker**, `stable`, granted to `authenticated`,
+  revoked from `anon`: the frames the caller may see **with the member predicate applied on top of RLS** (inside 24 h,
+  session not cancelled, a photo frame's photograph visible, an attendee frame in its ready state) and `seen` per frame
+  from the caller's own `story_views`. ★ Why on top of RLS: `DEC-248` §5 lets **staff `select` every frame** (expired
+  attendee frames for `REQ-STO-017`), so a staff member's ring row would otherwise show expired and cancelled frames.
+  One SQL definition for the feed, proven over RLS in `tests/rls/`. **I ask the lead to put the member predicate in
+  `0198` as one SQL function the policy itself calls** (`story_frame_is_visible(...)`), so the policy and the feed
+  cannot drift.
+- `public.story_recap_figures(p_session uuid)` — **definer** (a member cannot read `session_rating_aggregates`, which is
+  staff-and-presenter only, `0010:390-403`), granted to `authenticated`, revoked from `anon`; refuses a session of
+  another org by returning no row, answers only for `completed`/`archived`: `attended` (distinct active check-ins, as
+  `0165`), `rating_count`, `rating_avg` **null unless `rating_count ≥ rating_min_aggregate`** (`REQ-RAT-006`), and
+  `rating_min`. Never who.
+- `public.story_live_count(p_session uuid, p_day uuid)` — definer, `authenticated` only: the day's active check-ins, a
+  number (A33). At `n = 1` the day is the session, so it equals `session_attendance_count()`.
+
+## W26.3 · ★ The read model — `src/lib/dal/stories.ts` (contract 4, published now)
+
+`import 'server-only'`; every function calls `requireSession()` first; DTOs only. `content` renders these types and
+never queries a session's tables; **expiry, visibility and cancellation are `story_feed()`'s and RLS's**, never a
+component's.
+
+```ts
+export type StoryRingState = "live" | "unseen" | "seen";
+export type StoryFrameKind =
+  | "published" | "registration_opened" | "registration_closed" | "starts_soon"
+  | "live" | "photo" | "recap" | "materials" | "video";
+
+export interface StoryPerson {
+  memberId: string;
+  name: string;              // member tier only (REQ-PRF-004)
+  avatarUrl: string | null;  // the platform's resolver (0157) — never a Google URL
+  teamColor: string | null;  // `#rrggbb` → `--team`
+  company: string | null;
+}
+
+/** The frame's one action (REQ-STO-008). `href` is a path, never a signed URL. */
+export interface StoryAction { kind: "open_session" | "download_materials"; href: string }
+
+interface FrameBase {
+  id: string;
+  triggeredAt: string;       // ISO; order and «قبل N دقائق»
+  expiresAt: string;         // triggeredAt + 24 h, for the viewer's age line only — never a filter
+  seen: boolean;             // a story_views row of mine exists for this frame
+  dayId: string | null;
+  dayPosition: number | null; // «اليوم 2» — null at n = 1
+  action: StoryAction;
+}
+
+export type StoryFrame = FrameBase & (
+  | { kind: "published"; startsAt: string; venueName: string | null; posterHref: string | null }
+  | { kind: "registration_opened"; startsAt: string; closesAt: string | null }
+  | { kind: "registration_closed"; startsAt: string }
+  | { kind: "starts_soon"; startsAt: string; venueName: string | null }
+  | { kind: "live"; checkedInCount: number | null; venueName: string | null; endsAt: string }   // «23 في القاعة · حتى 7:30 م»
+  | { kind: "photo"; photoId: string; uploader: StoryPerson | null; caption: string | null }  // image href: content's (W26.6)
+  | { kind: "recap"; attended: number | null;
+      rating: { state: "shown"; average: number; count: number } | { state: "withheld"; count: number; minimum: number } | null;
+      materialsCount: number; photos: { id: string; url: string }[] }   // ≤ 3, first three by created_at, id
+  | { kind: "materials"; materialsCount: number }
+  | { kind: "video"; author: StoryPerson | null; caption: string | null; durationSeconds: number }  // media hrefs: content's
+);
+
+export interface StorySession {
+  sessionId: string;
+  title: string;
+  teamColor: string | null;      // the first presenter's company, as the feed's session post reads it
+  presenter: StoryPerson | null;
+  ring: StoryRingState;
+  frames: StoryFrame[];          // time order (triggeredAt, then kind order, then id) — never created_at
+  firstUnseenIndex: number;      // 0 when all are seen
+}
+
+export interface StoryFeed { sessions: StorySession[] }   // live first, then newest visible frame first; a session with no visible frame is absent
+
+export function getStoryFeed(locale: string): Promise<StoryFeed>;                         // 010's ring row (content wires it)
+export function getSessionStory(locale: string, sessionId: string): Promise<StorySession | null>;  // 012's «شاهد القصة», and a refetch
+export function getStoryLiveCount(locale: string, sessionId: string, dayId: string | null): Promise<number | null>;
+```
+
+- **State.** `live` when the session's phase is `live` by `sessionPhase()` over its days (the same function the event
+  page uses — no second definition), whatever was seen; else `seen` when every visible frame has my view, else
+  `unseen`. **Seen is per frame** from `story_views` (`DEC-248` §7.7) — a new frame turns a seen ring unseen again.
+- **Order.** Live rings first; then by the newest visible frame's `triggeredAt` descending; `sessionId` breaks a tie.
+- **Photo frames: at most the last twelve visible** per session (`05-stories.md`'s rule, standing where §25 is silent,
+  `DEC-248` §7.7).
+- **Expiry, org and cancellation.** `story_feed()` applies them (W26.2) on top of the lead's policy (members: inside
+  24 h, session not cancelled, photograph visible; org by `auth_org_id()`). The DAL adds no permission check of its own
+  and no component filters.
+- **The live count.** Read at fetch (`story_live_count()`), and again when the live frame is shown, through
+  `getStoryLiveCount()` — ★ **a refetch, not realtime**: the only check-in broadcast is `host:{session}`
+  (`0166`), staff-and-presenter only by design, and the event page's `session:{id}` topic carries comments and photos
+  (`0091:25-32`), never check-ins. **No new broadcast** — the 05 doc's «nothing new is broadcast» holds. A new photo
+  frame may use the existing `photos_broadcast` poke on `session:{id}` to refetch `getSessionStory()` — content's call.
+- **The recap.** `story_recap_figures()` for attendance and the rating (withheld below the minimum, with the count and
+  the minimum for «بعد N»); the materials figure counted through `materials_read` with the caller's client; the first
+  three visible photographs.
+- **Computed, never stored**: nothing in a frame row holds a figure; a frame holds an identity and an instant.
+
+## W26.4 · The columns I need on `story_frames` (beyond `DEC-248` §5) — the lead's, in `0198`
+
+- `kind public.story_frame_kind` — the enum's values as W26.3 spells them: `published`, `registration_opened`,
+  `registration_closed`, `starts_soon`, `live`, `photo`, `recap`, `materials`, `video` (the attendee's video is
+  `content`'s).
+- `trigger_key text not null` (a `char_length` bound, say ≤ 120) — **text**, because the keys are a constant, an
+  instant, a day id or a photo id. `unique (session_id, kind, trigger_key)`.
+- `session_day_id uuid null` — composite FK `(session_id, session_day_id) → session_days (session_id, id)` like the
+  content tables (`0100`, `POL-content.day_of_own_session`), **`on delete set null`**.
+- `photo_id uuid null references photos(id) on delete cascade` — the photograph a photo frame shows; the policy's join
+  on it hides the frame with the photograph (`DEC-248` §5).
+- `triggered_at timestamptz not null`; and **`written_at timestamptz not null default clock_timestamp()`** — the
+  «readable within a minute» test measures it against `triggered_at`; never used to order.
+- **Indexes:** `(org_id, triggered_at desc)` for the feed's 24 h scan; `(session_id, triggered_at)`; `(photo_id)`.
+- **`story_views`:** `unique (member_id, frame_id)`; an index on `(member_id, frame_id)` serves the seen join.
+- ★ The member predicate as one SQL function the policy calls (W26.2), so `story_feed()` reuses it.
+
+## W26.5 · What `main`'s OLD worker and app do on the new schema
+
+The migration is pushed before the merge, so for a while `main` runs on it. **The three event hooks fire on writes
+`main` already makes** — a publish, the clock's start and completion, `record_photo_upload()`, a material's finalise —
+and write frame rows **nobody reads** (`main` has no `stories.ts`, the ring is inert, the event page's chip is text).
+The clock job does not exist on `main`, so frames 2 – 4 and days `k ≥ 2`'s live are not written in the gap; when the new
+worker deploys, `clock_story_frames()`'s 24-hour look-back writes those still inside their 24 hours **with their
+scheduled `triggered_at`**, so their expiry is unchanged, and the older ones would already have expired. ★ The one real
+risk is a hook raising inside `main`'s writes; the generator has no raising path (W26.2) and the existing suites
+(W26.8) prove publish, the clock, the photo pipeline and materials unchanged. **Expected answer: nothing moves.**
+
+## W26.6 · «شاهد القصة» on a live `012`, and the seam with `content`
+
+**Where.** `EventLive.dc.html:21` draws it in the phone top row, between back and bookmark/share: a pill with a coral
+ring and «مباشر» then «شاهد القصة». That place exists: `src/components/sessions/event-top-row.tsx:28-35` renders it
+today **as inert text** (`DEC-205` §1, `DEC-209` §2). I make it the control there. ★ **Desktop is not drawn** — the
+row is `lg:hidden` and `EventDesktop.dc.html` is the open phase; `REQ-STO-008` needs it on a live page at any width, so I
+propose the same pill in the desktop hero band beside the live badge (W26.7 D7). Rendered **only** when
+`getSessionStory()` returns a session with a visible frame (a live session always has its live frame).
+
+**The seam — proposed to `content` through the lead.** `content` exports one client component that owns the dialog:
+`<StoryOpener story={StorySession} feed?={StorySession[]}>{children}</StoryOpener>` — it renders the `<button>`, and I
+pass the pill's **content** as `children` (a `ReactNode` crosses the RSC boundary; a closure would not, `DEC-159`). The
+same component serves the ring row on `010`. No route, no search param: the viewer is a dialog whose focus returns to
+its opener (`REQ-STO-007`). Without JavaScript the button does nothing; I propose it be a link to `#photos` in that
+case only if `content` prefers — its call. Media hrefs (the `story` derivative, the video and its poster) are
+**`content`'s** — I return ids, and `content` names the function or route that turns them into an `href`
+(`src/app/api/stories/**` is its); I will call it from `stories.ts` if it is a DAL function.
+
+## W26.7 · Disagreements (file and line; no side picked beyond `DEC-248` §7.7)
+
+- **D1 — «registration opens» = «published» by default.** With `priority_rsvp` off (`0045:52-56`, the seed's default)
+  both instants are `published_at`, so two frames land in the same second saying nearly the same thing. §25 lists both;
+  `05-stories.md` has no registration frames at all. **Options:** (a) both, always (§25 literal — my default); (b)
+  `registration_opened` only when a priority window delays it.
+- **D2 — «registration closes» = «live» by default.** `rsvp_deadline_at` defaults to the start (`0106:322`), so frame
+  3 and frame 5 land in the same minute. Same two options.
+- **D3 — `starts_soon` per day or per session.** §25: «24 hours before it starts»; `05-stories.md` frame 2: «the
+  morning of `starts_at`». `DEC-248` §7.7 makes §25 win on the instant; **per day** is my reading (one meeting, one
+  reminder — wave 9 contract 8). Same question for **`live`** (I write one per day; `session-status.ts:183-193` makes
+  the night between days `open`).
+- **D4 — «materials added».** `05-stories.md` frame 6: «the first `after` material becomes visible»; §25: «its
+  materials are added». I follow 0189's moment (openable, member-visible now), batched per org-local day; so an `after`
+  material released by completion makes no materials frame (the recap carries it), and **a day-scoped `after`
+  material released at its day's end on a workshop makes none** (no event fires — the clock could add one).
+- **D5 — the photo frame and `content`'s attendee photo frame are ONE row.** STO-04 generates a frame per visible
+  album photograph; STO-11/12 create one per attendee photo with a **caption** that exists before the worker writes the
+  `photos` row. One `(session, 'photo', <photo id>)` key; the open question is who writes the caption: **I propose**
+  `content`'s capture writes the row first (state `processing`, author, caption, key = the pre-generated photo id —
+  `initiate_photo_processing()` already takes `p_photo_id`), and my `photos_story_frame()` hook then sets `photo_id`
+  and the ready state **on conflict** — or `content` stores the caption elsewhere and I write the row. The lead rules.
+  Also: does a photo uploaded from the **album** (not the story) make a frame? STO-04 «each attendee photo» and the
+  photo `05` frame 4 say yes; `M13.md:66-68` describes only the capture. My default: yes, every visible album photo.
+- **D6 — the recap's figures.** `StoryRecap.dc.html` draws the rating always («4.6 التقييم»); §25 withholds it below
+  the minimum (`05`'s «بعد 3»). `05` also lists points, photo count and the top reaction — §25 wins, not built. §25 says
+  the **first** three photographs; the feed's recap reads the **newest** three (`photos.ts:415`). I follow §25.
+- **D7 — no desktop drawing of «شاهد القصة»** (W26.6).
+- **D8 — the countdown's tasks.** `05` frame 2 shows the viewer's tasks to a reservation holder; §25 is silent, the
+  three artboards do not draw `starts_soon`, and tasks are `content`'s tables. Not built unless ruled.
+- **D9 — the registration frames are drawn nowhere.** No artboard draws frames 1 – 4 (the prototype's `poster` and
+  `countdown` are the nearest). Their copy is mine in `stories.json`; their look is `content`'s viewer.
+- **D10 — `STORIES-USER-STORIES.md:24` cites «`REQ-SCR-021`'s structural zero»** for reactions — already `DEC-248`
+  §7.3; not mine.
+
+## W26.8 · Tests
+
+**New — `tests/rls/story-generator*.test.ts`** (with `applyProposed()`, as a member, never as the owner where a member
+fires the hook):
+1. **Each of the eight fired twice leaves one frame**: publish (and the `approved → published` re-statement); the
+   clock run twice for opens, closes and starts_soon; the clock start then `clock_story_frames()` for live; a photo
+   recorded twice through `record_photo_upload()` (its own `on conflict (id) do nothing`) and hidden then restored;
+   `clock_complete_sessions()` then `archived → completed`; a material finalised then a second the same org-day.
+2. Multi-day: a three-day workshop writes three `starts_soon`, three `live`, one `recap`; a one-day session writes one
+   of each — the same assertions with `n = 1`.
+3. **Org isolation**: a member of org B reads no frame of org A through the table, `story_feed()`,
+   `story_recap_figures()` or `story_live_count()`; `anon` reads nothing.
+4. **Cancelled**: a cancelled session's frames are invisible to members and absent from `story_feed()` for staff too;
+   the generator writes nothing for it.
+5. **Expiry**: a frame at `triggered_at + 24 h` is absent from `story_feed(p_now)`; one second earlier present.
+6. **Feed order and the three states** over RLS: live first; then newest; seen after viewing every frame; a new frame
+   turns it unseen; a hidden photograph's frame vanishes and does not count against «seen».
+7. The recap: rating withheld below `rating_min_aggregate`, shown at it; never a member id.
+8. `clock_story_frames()` is service_role-only (`42501` for `authenticated`); `generate_story_frame()` is executable by
+   no client role.
+
+**New — `tests/unit/stories-*`**: the DTO mapping, ring state, order and the twelve-photo cap from fixture rows.
+**New — `tests/e2e/wave26-sessions-story.spec.ts`**: a live session's «شاهد القصة» opens the viewer (`page.click()`
+alone), and a frame is readable within a minute of a clock trigger on the real worker.
+
+**Must pass untouched:** `tests/rls/{sessions-clock,sessions-guard,sessions-scheduling,sessions-schedule-days,
+session-days*,photos-*,photo-*,scoring-photo-award,materials-*,notify-materials-added,notify-session-notices,
+definer-exposure,isolation}` and the checkin suites. ★ **Two assertions change on purpose** — the inert chip becomes a
+control: `tests/components/sessions/event-top-row.test.tsx:34-39` and `tests/e2e/wave18-sessions-event.spec.ts:219-220`.
+Neither file is in my wave-26 edit list, so each is **a request to the lead**, and a ledger line («an expectation
+moved: «شاهد القصة» opens the story, `REQ-STO-008`»).
+
+## W26.9 · Open questions for sync 1
+
+1. D5 — who writes a photo frame's caption, and is every album photograph a frame?
+2. D1/D2 — the coinciding registration frames.
+3. D3 — `starts_soon` and `live` per day.
+4. D4 — materials: per-day batch key, and the day-end release.
+5. The member predicate as one SQL function in `0198` that the policy and `story_feed()` share (W26.2).
+6. D7 — «شاهد القصة» on desktop.
+7. The two changed assertions (W26.8) — the lead's edits.
+8. `stories.json` keys `content` needs — written to me, I add them.
