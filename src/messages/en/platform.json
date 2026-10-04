@@ -147,10 +147,8 @@
       "chipsLabel": "Family and kind"
     },
     "metrics": {
-      "title": "Platform metrics",
-      "intro": "Aggregates only. No member name, session title or content appears here, and that is a constraint in the query rather than in the rendering.",
+      "title": "Metrics",
       "alertsTitle": "Alerts",
-      "alertsIntro": "The same thresholds the worker measures every minute, as it reads them — no copy of them lives on this page.",
       "alertColumn": "Alert",
       "stateColumn": "State",
       "readingColumn": "Reading",
@@ -166,7 +164,6 @@
       "certificates": "Certificates",
       "activeImpersonations": "Open break-glass sessions",
       "jobsTitle": "Job health",
-      "jobsIntro": "Oldest pending job is the number that catches a stalled queue; the others look healthy even when it is not.",
       "jobTask": "Task",
       "jobOldest": "Oldest pending",
       "jobPending": "Pending",
@@ -175,7 +172,13 @@
       "jobsEmptyAction": "Reload",
       "perOrgTitle": "By org",
       "orgColumn": "Org",
-      "countsOnly": "Counts only · no content"
+      "countsOnly": "Counts only · no content",
+      "statActiveOrgs": "Active orgs",
+      "statMembers": "Members",
+      "statSessions": "Sessions",
+      "statActiveMembers": "Active members",
+      "statCertificates": "Certificates",
+      "statImpersonations": "Open break-glass sessions"
     },
     "impersonate": {
       "title": "Break-glass",

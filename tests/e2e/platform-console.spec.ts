@@ -760,7 +760,7 @@ test.describe("390 px RTL review", () => {
 
     // P6 — metrics: the alerts, the totals, job health as cards.
     await page.goto("/ar/app/platform/metrics");
-    await expect(page.getByRole("heading", { level: 1, name: "مؤشرات المنصة" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "المؤشرات" })).toBeVisible();
     await review(page, "wave8-platform-metrics-default");
 
     // P7 — SCR-085's states, and the banner where an org route lands (C1).

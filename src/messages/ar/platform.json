@@ -147,10 +147,8 @@
       "chipsLabel": "العائلة والنوع"
     },
     "metrics": {
-      "title": "مؤشرات المنصة",
-      "intro": "أرقام إجمالية فقط. لا يظهر هنا اسم عضو ولا عنوان جلسة ولا أي محتوى، وهذا قيد في الاستعلام نفسه لا في العرض.",
+      "title": "المؤشرات",
       "alertsTitle": "التنبيهات",
-      "alertsIntro": "العتبات نفسها التي يقيسها العامل كل دقيقة، كما يقرؤها — لا نسخة منها في هذه الصفحة.",
       "alertColumn": "التنبيه",
       "stateColumn": "الحالة",
       "readingColumn": "القراءة",
@@ -166,7 +164,6 @@
       "certificates": "الشهادات",
       "activeImpersonations": "جلسات دخول استثنائي مفتوحة",
       "jobsTitle": "صحة المهام",
-      "jobsIntro": "أقدم مهمة منتظرة هي الرقم الذي يكشف طابورًا متوقفًا؛ بقية الأرقام تبدو سليمة حتى حين لا يكون.",
       "jobTask": "المهمة",
       "jobOldest": "أقدم منتظرة",
       "jobPending": "منتظرة",
@@ -175,7 +172,13 @@
       "jobsEmptyAction": "أعد التحميل",
       "perOrgTitle": "حسب المؤسسة",
       "orgColumn": "المؤسسة",
-      "countsOnly": "أعداد فقط · لا محتوى"
+      "countsOnly": "أعداد فقط · لا محتوى",
+      "statActiveOrgs": "مؤسسات نشطة",
+      "statMembers": "عضو",
+      "statSessions": "جلسة",
+      "statActiveMembers": "عضو نشط",
+      "statCertificates": "شهادة",
+      "statImpersonations": "انتحالات جارية"
     },
     "impersonate": {
       "title": "الدخول الاستثنائي",
