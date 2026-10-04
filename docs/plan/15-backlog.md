@@ -1752,6 +1752,71 @@ formats export from the sample template with no golden moved.
 **Covers:** `REQ-UIX-112` · **M25** · **L** · `notify` · PR C
 **Built from:** `AdminEmailGallery.dc.html`, `AdminEmails.dc.html`, `AdminEmailAdd.dc.html`.
 
+#### STORY-DSG-014 — The platform default brand palette becomes «ساحة اللعب»
+**Covers:** `REQ-DSG-032` · **M26** · **M** · lead · PR A
+`brand.ts`'s `LIGHT`/`DARK` and `public.brand_kit()`'s fallbacks move in one commit, proven equal by
+`tests/rls/brand-kits.test.ts`. The parity goldens and the 120 pinned mail files move once, reviewed. Done when all six
+of `0144`'s status pairs clear 4.5:1 and an org with an overridden kit renders unchanged.
+
+#### STORY-DSG-015 — The five baseline poster families, rebuilt to their design
+**Covers:** `REQ-DSG-033` · **M26** · **L** · `designer` · PR B
+**Built from:** the poster thumbnails on `AdminTemplates.dc.html`. One structure, five colourways; every colour a
+`brand.*` binding or the team colour. Done when a poster exports uncropped on every surface and the roster count is
+still five.
+
+#### STORY-CRT-008 — The three certificate families, rebuilt to their design
+**Covers:** `REQ-CRT-016` · **M26** · **L** · `designer` · PR B
+**Built from:** the certificate thumbnails on `AdminTemplatesCerts.dc.html`. Both orientations, bone on ink text, the
+serial bidi-isolated. Done when a certificate issued before the wave still renders as its own version.
+
+#### STORY-DSG-016 — The superseded baseline leaves the library
+**Covers:** `REQ-DSG-034` · **M26** · **M** · `designer` · PR B
+The eleven rows are deleted where the database permits and retired where `on delete restrict` refuses, with the
+migration reporting which per row. Done when no superseded row reaches `055`, `045`'s picker or issuance.
+
+#### STORY-NTF-008 — The eight designed mail families, rebuilt
+**Covers:** `REQ-NTF-016` · **M26** · **L** · `notify` · PR C
+`designs.ts`'s eight constants rebuilt to the same language. All 25 keys still resolve to a family with its own copy.
+Done when the 120 pinned files move once and are stable on a re-run.
+
+
+### ★ Wave 25 — M27, a member added by hand (`DEC-243`)
+
+#### STORY-TEN-005 — An admin names somebody who is not a member yet
+**Covers:** `REQ-TEN-009` · **M27** · **M** · lead
+`ENT-member_invitations` with `org_id`, RLS, the full policy set, a grant for every policy and a test case each, plus
+`invite_member()`, `resend_member_invitation()` and `revoke_member_invitation()` on `assert_fresh_admin()`, each
+audited. The role accepts `member` and `moderator` only. Done when naming somebody creates no member row and moves no
+count anywhere, and the isolation sweep covers the new table.
+
+#### STORY-TEN-006 — A named address is admitted where the domain list would refuse
+**Covers:** `REQ-TEN-010` · **M27** · **M** · lead
+`before_user_created_hook()` gains one more reason to admit: a `pending` invitation in an `active` org, read inside
+the existing exception block so it still fails open, with the third grant the hook needs. Done when a personal-domain
+address with an invitation signs in, the same address refused again after a revoke, and a broken invitation read
+admits every sign-in the domain list would have allowed.
+
+#### STORY-TEN-007 — First sign-in claims the invitation, exactly once
+**Covers:** `REQ-TEN-011` · **M27** · **M** · lead
+`provision_member()` gains one branch between «already a member» and the domain match: claim a `pending` invitation,
+apply its role, company, job title and name, mark it claimed against the member it created, and audit both the claim
+and the provisioning. Done when a concurrent double sign-in claims once and creates one member, and the claim and the
+member exist only together.
+
+#### STORY-NTF-009 — The invitation mail
+**Covers:** `REQ-NTF-017` · **M27** · **M** · `notify`
+`JOB-send_member_invitation`, keyed `invite:{invitation_id}`, with a designed family in `packages/mail-runtime` and a
+generated text alternative. ★ The address is **not in the payload** — it is read in the worker, on the test send's
+rule. Done when the matrix is still 25 keys, the 120 pinned files are untouched, and a revoked or claimed invitation
+sends nothing however the job is triggered.
+
+#### STORY-UIX-103 — Members and the people waiting are one screen
+**Covers:** `REQ-UIX-113` · **M27** · **M** · `console`
+`SCR-049` gains «أضف عضوًا» as its one primary action, a sheet that accepts one address or a pasted list with a
+per-line report, and the waiting rows in the same table with their age, «أعد الإرسال» and «ألغِ الدعوة» with a
+mandatory reason. **Extended, not rebuilt** — no page file is deleted, no primitive is added. Done when a waiting row
+offers no role change, no deactivation and no profile, and no count treats it as a member.
+
 
 ## 24. Coverage check
 
@@ -1763,7 +1828,7 @@ backlog must satisfy:
    redesigns screens `STORY-AUT-001` built. `trace` cannot see that gap, because it checks
    REQ→story, not decision→story; `DEC-129` is why it is written down.
 2. **Every story cites at least one `REQ-*`.**
-3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183`, M18 since `DEC-195`, M19 since `DEC-199`, M20 since `DEC-205`, M21 since `DEC-213`, M22 since `DEC-216`, M23 since `DEC-225` and M24 since `DEC-230`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
+3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183`, M18 since `DEC-195`, M19 since `DEC-199`, M20 since `DEC-205`, M21 since `DEC-213`, M22 since `DEC-216`, M23 since `DEC-225`, M24 since `DEC-230` and ★ M27 since `DEC-243`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
 4. **No story cites a requirement that does not exist.**
 
 A violation of any of the five **fails CI** (`13` §10). That gate is the only thing that keeps this

@@ -47,38 +47,52 @@ export const BRAND_ASSET_TOKENS = ['logoAssetId'] as const
 
 export type BrandScheme = 'light' | 'dark'
 
+// ★ DEC-242 (wave 24, M26) — the platform default IS «ساحة اللعب». These ten
+//   values and `public.brand_kit()`'s ten `coalesce` fallbacks are one palette
+//   kept in two places, and `tests/rls/brand-kits.test.ts` compares them, so
+//   they move together or that test says so. `BRAND_COLOUR_TOKENS` is
+//   unchanged: ten before, ten after.
+//
+//   The light leg is the design's PAPER ground (`docs/design/01-tokens.md`,
+//   "Light ground (supported, not default)").
 const LIGHT: Record<BrandColourToken, string> = {
-  canvas: '#ffffff',
-  surface: '#ffffff',
-  fgHeading: '#0b1220',
-  fgBody: '#33415c',
-  fgMuted: '#5b6780',
-  edge: '#e6eaf0',
-  edgeStrong: '#767f8c',
-  spine: '#d7dce3',
-  node: '#0b1220',
-  // DEC-127. Not painted anywhere today — the poster gradient is the first
-  // consumer — chosen to sit visibly above `surface` (`#ffffff`) the same
-  // way the dark value sits visibly above dark `surface` (`#111a2c`).
-  canvasRaise: '#f1f3f7',
+  canvas: '#f6f3ec', // --color-paper
+  surface: '#ffffff', // --color-paper-surface
+  fgHeading: '#12131a', // --color-paper-ink
+  fgBody: '#12131a', // --color-paper-ink — the design has one text colour per ground
+  fgMuted: '#5b5f73', // --color-paper-muted (7:1 on paper)
+  edge: '#e4dfd3', // --color-paper-line
+  // ★ DEC-242 §2 — the design has no «strong line» token. A divider at this
+  //   strength reads as the secondary-text value, which already passes
+  //   contrast on this ground, so `edgeStrong` takes it rather than a colour
+  //   invented here.
+  edgeStrong: '#5b5f73', // --color-paper-muted
+  spine: '#e4dfd3', // --color-paper-line
+  // ★ DEC-242 §2 — `node` carries the single accent. Exactly two accents
+  //   exist and the other, coral, is a STATUS colour (DEC-073), which a brand
+  //   token must never be. On a light ground the design's own accent is
+  //   lime-deep («lime on a light ground», 01-tokens.md). This is the one way
+  //   the accent reaches a template document, which refuses a hex literal
+  //   (`design_template_versions_guard`, 0055).
+  node: '#78ad12', // --color-lime-deep
+  canvasRaise: '#ffffff', // a card lifted off paper is paper-surface
 }
 
+// ★ DEC-242 — the dark leg is the design's own default ground.
 const DARK: Record<BrandColourToken, string> = {
-  canvas: '#0b1220',
-  surface: '#111a2c',
-  fgHeading: '#ffffff',
-  fgBody: '#c9ced6',
-  fgMuted: '#a8b3c4',
+  canvas: '#0b0c12', // --color-ink
+  surface: '#151724', // --color-surface
+  fgHeading: '#f4f1ea', // --color-bone
+  fgBody: '#f4f1ea', // --color-bone — one text colour per ground
+  fgMuted: '#a7abbe', // --color-muted (8.5:1 on ink)
   // globals.css writes these two as rgba() over the silver; a poster is
   // composited on an opaque canvas, so the flattened value is used here —
   // an export has no page behind it to blend with.
-  edge: '#252e3d',
-  edgeStrong: '#4b5464',
-  spine: '#252e3d',
-  node: '#ffffff',
-  // DEC-127 — `--color-navy-800` (globals.css), the second stop of the
-  // canvas's `linear-gradient(140deg, #111a2c, #1d2a42)`.
-  canvasRaise: '#1d2a42',
+  edge: '#2a2e40', // --color-line
+  edgeStrong: '#a7abbe', // --color-muted — DEC-242 §2, as on the light leg
+  spine: '#2a2e40', // --color-line
+  node: '#c6ff3d', // --color-lime — DEC-242 §2, the single accent
+  canvasRaise: '#1e2130', // --color-surface-2
 }
 
 /** The platform brand as `brand.*` binding values. Every template family ships

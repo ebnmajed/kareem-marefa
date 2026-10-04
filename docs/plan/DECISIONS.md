@@ -8396,3 +8396,355 @@ cannot express them by then, it becomes a question for Railway's support, not a 
 `railway.json` stays as it is until then.
 
 - **Documents changed:** `STATUS.md` (the head)
+
+## DEC-242 — The baseline template library and the eight mail designs are rebuilt to «ساحة اللعب»; the platform default palette moves with them; the old rows are deleted where the database permits and retired where it refuses
+
+- **Date:** 2026-10-04 · **Decided by:** the owner, asked three questions and answering all three
+- **Opens:** wave 24, milestone **M26** — the programme's tenth wave
+- **Amends:** `DEC-183` §4's «the playground stops at the certificate's edge» and wave 15/17's never-touch «the
+  rendered poster and certificate are not restyled» — both were wave-scoped deferrals, and this is the wave that
+  discharges them
+- **Amends:** `DEC-176`'s «no parity golden moves» and `DEC-235`'s «`mail-pinned`'s 120 files are untouched» — **for
+  this wave only, and only through a lead-reviewed diff.** The rule that a teammate never refreshes either is
+  unchanged
+
+### 0 · ★ THE GOAL, above the process (the owner's words)
+
+**«I want the templates to match the designed ones and delete the current ones.»**
+
+A poster and a certificate that leave this product look like the product. Today they do not: the baseline library is
+the design the platform shipped in M6, set in **Reem Kufi and IBM Plex Sans Arabic** on a navy palette, and every
+screen around it has been «ساحة اللعب» since wave 17. ★ **An admin who exports a poster gets an artefact from a
+different product than the screen they exported it from** — that is the defect, and it is the only thing this wave
+is judged on. «Good» is not «the gates are green».
+
+### 1 · ★ What «the designed ones» is, and what it is NOT
+
+★★ **There is no artboard for a poster or a certificate.** `docs/design/screens/m12/` draws the *library screen*;
+the design signal is the **card thumbnails** on `AdminTemplates.dc.html` and `AdminTemplatesCerts.dc.html`, which
+are consistent across all seven cards and therefore a specification:
+
+| | What the thumbnails draw |
+|---|---|
+| **Poster** | A flat ground. The category as a pill at the block-start, in the ground's colour on ink. The title large in **Baloo Bhaijaan 2 800**, `line-height: 1.12`, floating between. The presenter and the date bottom-start, small and bold, two lines. The verification QR bottom-end, a square with a 4 px radius. Nothing else — **no logo lockup, no venue row, no session-type chip, no task list** |
+| **Colourways** | The team colour (`#FF9A2E` on the artboard, i.e. `--team`); ink + lime; bone + ink; and a platform accent (cyan, violet) |
+| **Certificate** | Bone ground, ink text, landscape. The org wordmark top-start in the display face at a small size. The member's name large in the display face. The serial bottom-start in muted. The QR bottom-end |
+
+★ **The names the artboards print — «ساحة اللعب — لون الفريق», «ليلي», «ورقي», «لقاء», «إعلان», «كلاسيكي» — are
+FIXTURES, not a roster.** `0096`'s contract 3 is the roster and it stands: **five poster families** (`talk`,
+`workshop`, `panel`, `meetup`, `announcement`) and **three certificate families × landscape and portrait**, one
+default per `(purpose, family)`, the orientation read from `document->'master'` and never a column. `REQ-DSG-026`
+counts the roster in CI. **The eleven rows keep their families and their names; what changes is the document inside
+each.** A plan that proposes renaming a family or changing the count has misread the artboard as a roster.
+
+### 2 · ★★ The platform default palette moves — and it is measured, not assumed
+
+The designed look needs ink, bone, lime and paper. `design_template_versions_guard` (`0055`) **refuses a hex colour
+literal in a template document**, by design and for a good reason — a literal hands an org that rebrands somebody
+else's colour (`DEC-127`'s reasoning, in its own words). So the colour reaches a template **only** through the ten
+`BRAND_COLOUR_TOKENS`, and the owner's ruling is that **the platform default values of those ten move to the
+playground's palette**. Not new tokens: the ten are the vocabulary, and the design's own light/dark grounds map onto
+them one for one.
+
+★ **The default lives in two places that a test already keeps from drifting** —
+`packages/designer-runtime/src/brand.ts`'s `LIGHT`/`DARK` constants, and `public.brand_kit()`'s literal `coalesce`
+fallbacks (`0068`, `canvasRaise` added by `0093`), compared by `tests/rls/brand-kits.test.ts`. **Both move in one
+commit or the wave is wrong.**
+
+| Token | dark, today → new | light, today → new | The design's name |
+|---|---|---|---|
+| `canvas` | `#0b1220` → **`#0B0C12`** | `#ffffff` → **`#F6F3EC`** | ink · paper |
+| `surface` | `#111a2c` → **`#151724`** | `#ffffff` → **`#FFFFFF`** | surface · paper-surface |
+| `canvasRaise` | `#1d2a42` → **`#1E2130`** | `#f1f3f7` → **`#FFFFFF`** | surface-2 |
+| `fgHeading` | `#ffffff` → **`#F4F1EA`** | `#0b1220` → **`#12131A`** | bone · paper-ink |
+| `fgBody` | `#c9ced6` → **`#F4F1EA`** | `#33415c` → **`#12131A`** | bone · paper-ink |
+| `fgMuted` | `#a8b3c4` → **`#A7ABBE`** | `#5b6780` → **`#5B5F73`** | muted · paper-muted |
+| `edge` | `#252e3d` → **`#2A2E40`** | `#e6eaf0` → **`#E4DFD3`** | line · paper-line |
+| `spine` | `#252e3d` → **`#2A2E40`** | `#d7dce3` → **`#E4DFD3`** | line · paper-line |
+| `edgeStrong` | `#4b5464` → **`#A7ABBE`** | `#767f8c` → **`#5B5F73`** | ★ muted — see below |
+| `node` | `#ffffff` → **`#C6FF3D`** | `#0b1220` → **`#78AD12`** | ★ lime — see below |
+
+★ **Two of the ten need a judgement, because `01-tokens.md` has no token for them, and both are written here so
+nobody picks a side later.**
+
+- **`node` becomes lime** (`--color-lime` on dark, `--color-lime-deep` on light, which is «lime on a light ground»
+  in the design's own words). `node` is the accent of the network vocabulary, and lime is the accent of the
+  playground — exactly two accents exist and the other, coral, is a *status* colour (`DEC-073`), which a brand token
+  must never be. **This is the one way lime reaches a poster without a hex literal**, and it is what the artboard's
+  category pill is painted with on the «ليلي» card.
+- **`edgeStrong` becomes muted.** The design has no «strong line» token; a visible divider at the strength
+  `edgeStrong` is for reads as the secondary-text value on both grounds, and both already pass contrast.
+
+★★ **Measured against `0144`'s guard before the decision was written**, as `0144`'s own header asks («measuring the
+platform default against the drafted guard before writing it»). All six pairs clear SC 1.4.3's 4.5:1 on the new
+values, so `POL-save_brand_kit.status_contrast_accepted` — the platform default always saves — holds:
+
+| Pair | today | new |
+|---|---|---|
+| `--color-live` on light `canvas` | 5.89:1 | **5.32:1** |
+| `--color-ended` on light `canvas` | 5.68:1 | **5.13:1** |
+| `--color-live` / `--color-ended` on light `surface` | 5.89 / 5.68:1 | **5.89 / 5.68:1** (unchanged — still `#FFFFFF`) |
+| `--color-live-on-dark` on dark `canvas` | 8.52:1 | **8.88:1** |
+| `--color-live-on-dark` on dark `surface` | 7.91:1 | **8.10:1** |
+
+★ **The team colour is not a brand token and does not become one.** The «لون الفريق» colourway reaches the poster
+the way `DEC-186` §2 established for every other surface — as `--team` on the element, from
+`companies.team_color` (`0160`) — and a template that wants it binds the team colour, never a hex.
+
+### 3 · ★★ «Delete the current ones» — what the database permits, measured
+
+The owner chose a **hard delete**. The schema permits it for some rows and **refuses it for others, deliberately**,
+and this is written down because it is the one place the instruction cannot be followed literally:
+
+- `design_template_versions.template_id` → **`on delete cascade`**: deleting a template row deletes its versions.
+- `certificates.template_version_id` → **`on delete restrict`**, `not null` (`0055:288`).
+- `design_documents.template_version_id` → **`on delete restrict`** (`0055:135`).
+
+★★ **And a certificate points at the PLATFORM row directly.** `issue_certificates()` (`0065:138-146`) resolves the
+template as «the org's default for this kind, **else the platform's**» — `t.org_id is null` is in the predicate. So
+in any environment where an org never authored its own certificate template, every certificate it ever issued
+references a platform baseline version, and `delete from design_templates` **will be refused by the database**.
+That refusal is `REQ-CRT-014` made structural — «a certificate issued against v3 still renders as v3 after v4», one
+of wave 23's own goals — and it is correct. The same holds for a poster through `design_documents`.
+
+★ **The ruling, therefore:** the migration **attempts the delete row by row and retires the row when the delete is
+refused.** `retired_at` is what the library and the picker read, so the user-visible meaning of «delete the current
+ones» — they are gone from `055`, from `045`'s picker and from issuance — is satisfied for all eleven either way.
+**What survives is invisible and unreachable**: a version row that exists only so a certificate somebody is holding
+still renders. The migration **reports which of the eleven went which way**, and the lead puts that table in
+`STATUS.md`. ★ **Nothing is forced**: no `cascade`, no detaching a certificate from its version, no rewriting
+`recipient_name_snapshot` or a pinned `font_hashes`.
+
+★ **A migration is not a data fix** (`CLAUDE.md` rule 3) — and this one is not: it is the schema's own library
+content, shipped by `0061` and `0098` as migrations, replaced by a migration, forward-only, idempotent on
+`(scope, purpose, family)` exactly as `0061` is. It runs in every environment forever and does the same thing in
+each.
+
+### 4 · ★★ What this moves, and who is allowed to move it
+
+| What | How many | Who reviews |
+|---|---|---|
+| `scripts/parity/goldens/**` | the backgrounds and slide-page sets | ★ **the lead, every before-and-after opened** — `designer` runs `--update`, the lead commits |
+| `tests/unit/mail-pinned/**` | **all 120 files** | ★ **the lead.** The palette alone moves them: the mail renderer reads `brand_kit()`, so PR A moves them before `notify` touches a design |
+| `qa:contract` · `qa:appearance` · `visual`'s public pairs · the register-form fingerprint | **unmoved** | the five public routes render no template and read no brand kit |
+
+★★ **This is the first wave since M6 in which a golden moving is CORRECT.** The rule it suspends is narrow: a
+golden moves **only** because the palette moved or a baseline document was rebuilt, and **the lead names which in
+the commit**. A golden that moves for any other reason is still a bug. `DEC-176`'s sentence — «an untouched document
+renders identically» — holds verbatim: an **org's own** document, which binds the same tokens, renders with the new
+values because that is what moving a default means, and an org that has overridden its kit sees nothing change at
+all.
+
+### 5 · ★ The division, and three PRs
+
+**Each screen and each artefact goes to the track that owns what it writes**, as since `DEC-231` §2.
+
+- **PR A — `wave-24a/the-palette`** (the **lead**, alone): `brand.ts`'s `LIGHT`/`DARK`, the migration that replaces
+  `brand_kit()`'s fallbacks, the goldens re-baselined, the 120 pinned mail files re-pinned, `brand-kits.test.ts` and
+  `status-contrast.test.ts` green. ★ **It lands first and B and C are cut from its head** — both bind the tokens it
+  moves, and a template built against the old defaults would be measured against the wrong ground.
+- **PR B — `wave-24b/the-baseline`** (`designer`): the five poster families and the six certificate rows rebuilt to
+  §1's structure, the eleven old rows deleted-or-retired, `REQ-DSG-026`'s roster still counted.
+- **PR C — `wave-24c/the-mail-designs`** (`notify`): the eight designed families in
+  `packages/mail-runtime/src/designs.ts` rebuilt to the same language. ★ **They are CONSTANTS, not rows**
+  (`designs.ts`'s own header, and `REQ-NTF-014`'s reasoning) — so «delete the current ones» here is a rewrite, and
+  there is nothing to delete and no migration.
+
+**Merge order A, B, C.** A teammate edits a PR's files only in that PR's tree.
+
+### 6 · Not this wave
+
+`SCR-059` branding and the brand-kit **screen** (M13 — this wave moves the platform *default*, not the org override
+and not its UI); session stories; `/app/platform/**`; the five public routes; the studio's chrome and `ui/`'s 69
+files — **no new primitive**; the designer's state machine, `canvas.tsx`'s engine and the export pipeline;
+**replacing the renderer** (`DEC-017`, `DEC-048`); a template serving several kinds (`DEC-236` §1); renaming a
+family or changing the roster's count (§1); new brand tokens (§2); a per-scheme logo; coral as a brand token
+(`DEC-073`); the Railway check (`DEC-241` §2 — November); `DEC-215`'s four; `DEC-194`'s two gates; `DEC-186` §4;
+`DEC-204`; the `railway.json`.
+
+- **Documents changed:** `01-prd.md` (`REQ-DSG-032` … `034`, `REQ-CRT-016`, `REQ-NTF-016`), `15-backlog.md`
+  (five stories), `CLAUDE.md` (the wave-24 map), `STATUS.md`, `docs/plan/notes/wave-24-lead.md`
+
+---
+
+## DEC-243 — An admin adds a member ahead of their first sign-in; an invitation is a roster entry claimed exactly once at sign-in, it overrides the email-domain gate while it is pending, and it mails the person
+
+- **Date:** 2026-10-04 · **Decided by:** the owner, asked four questions and answering all four
+- **Opens:** wave 25, milestone **M27** — queued behind wave 24, which is open and whose PR A is in flight
+- **Amends:** `REQ-AUT-003`'s «No invitation, no admin approval step», `01` §2.116's «no invite flow» and
+  §3855's «There is no invite: members arrive by sign-in» — all three stated the same deliberate absence, and
+  this entry is the only thing that may remove it
+- **Amends:** the brief's **D11** «No invites at launch» — **in one half only.** Domain-gated auto-provisioning
+  stays exactly as it is for everyone who was not added by hand; what changes is that an admin may now name a
+  person in advance, and that naming is what admits them
+
+### 0 · ★ THE GOAL, above the process (the owner's words)
+
+**«I want the ability to add user to the app in addition for them becoming users on the first signin.»**
+
+★ **«In addition» is the whole sentence.** Nothing about first sign-in changes: a Google account on an allowed
+domain is still auto-provisioned on arrival, with no admin in the loop (`REQ-AUT-003`). What is added is a second
+door — an admin names somebody, and that person arrives already belonging, with the role, the company and the job
+title the admin set. ★ **The case that justifies the feature is the person the first door refuses**: an outside
+presenter, a partner, somebody whose work address is not on the org's list. Today they are told «this is a private
+platform» and there is no answer. **«Good» is not «the gates are green»** — the acceptance is an admin adding a
+Gmail address and that person signing in and landing in the app.
+
+### 1 · ★★ What was measured before the decision was written
+
+| # | Measurement | Result |
+|---|---|---|
+| 1 | **Can a member row exist before the person has signed in?** | ★★ **No, by construction.** `members.auth_user_id` is `uuid not null unique references auth.users(id) on delete cascade` (`0004:239`). There is no state in the schema today for «a person we expect» |
+| 2 | **How coupled is `auth_user_id`?** | ★ **Barely.** It appears in **5** migration files and in **nothing** under `src/` or `worker/src/` — every read of a member's identity goes through claims via `auth_member_id()`. All five uses are lookups keyed by `auth.uid()`, so a row that is not bound simply never matches. Nullable would be structurally safe |
+| 3 | **What refuses an outside domain today, and where?** | `before_user_created_hook()` (`0007`), which runs **before the auth user row exists** — the only place `REQ-AUT-006`'s «no account, member row or audit subject is created for a rejected sign-in» can be met. It **fails open**: any error returns the event unchanged, so a broken hook produces an orphan auth user on `/no-access`, never a sign-up outage |
+| 4 | **What would a third `member_status` value cost?** | ★★ **54 sites.** `status = 'active'` is written out in 54 places across 26 migrations, and the table carries `check ((status = 'deactivated') = (deactivated_at is not null))`. Every one would have to be re-read and decided |
+| 5 | **Would a pre-created *active* member row move anything?** | ★★ **Yes, immediately.** `company_min_active_members` (`0176`) ranks companies on their active-member count, so pasting a list of twenty names would re-rank the company board before any of them had arrived. They would also appear in the directory, the member picker and the attendance denominators |
+| 6 | ★★ **Can the invitation mail go through `notify()`?** | ★★ **No.** `notify(p_org, p_member, p_category, p_payload, p_key)` (`0026:436`) takes a **member id** and resolves the matrix row, the preference, the inbox row and the address from it. An invited person has none of those. **The invitation is a transactional send, not a matrix message**, and its pattern already exists: `JOB-send_test_email` |
+| 7 | **Does anything public move?** | **No.** The five frozen routes render nothing of this. `qa:contract`, `qa:appearance`, `visual`'s public pairs and the register-form fingerprint stay **unmoved, not re-baselined** |
+| 8 | **Does the design draw it?** | ★ **No.** `docs/design/screens/m11b/AdminMembers.dc.html` has no add, invite or pending affordance anywhere in it. This is the first screen change since wave 17 with no artboard behind it, and `DEC-199` §2's «rebuilt, never restyled» therefore **does not apply**: `SCR-049` is wave 22's build and it is **extended**, not rebuilt — no page file is deleted, so `DEC-208` does not fire either |
+
+### 2 · ★ The four questions and the four answers
+
+| | Question | Answer |
+|---|---|---|
+| 1 | **What is an added person before they sign in?** | ★★ **An invitation row** — a new entity, not a member. They appear on `SCR-049` as pending; **nothing else in the product can reference them.** No count, ranking, denominator or directory moves, and measurement 4's 54 sites are untouched |
+| 2 | **Can you add someone whose domain is not on the list?** | ★★ **Yes — a pending invitation overrides the gate**, and that is the point of the feature. `before_user_created_hook()` gains a second reason to admit |
+| 3 | **Does the person get an email?** | ★ **Yes**, and by measurement 6 it is a transactional send outside the notification matrix |
+| 4 | **When?** | ★ **After wave 24 merges, as its own wave.** The record is written now; nothing is built until A, B and C are in |
+
+### 3 · ★★ What an invitation IS — `ENT-member_invitations`
+
+★ **A roster entry: an admin's statement that a named email belongs, carrying the fields provisioning cannot
+guess.** One row per invited email per org. `id`, `org_id` (not null, cascading with the org), `email`
+(`extensions.citext not null`), `display_name`, `company_id`, `job_title`, `org_role`, a new
+`invitation_status` enum (`pending` · `claimed` · `revoked`), `invited_by` (the admin's member id), `created_at`,
+`updated_at`, `claimed_at`, `claimed_member_id`, `revoked_at`, `revoked_by`, `revoked_reason`, `last_sent_at`,
+`send_count`. ★ **A unique index on `(org_id, email)` `where status = 'pending'`** — one live invitation per
+address, and a revoked one does not block a new one. Invariant 5 in full: `org_id`, RLS, the complete policy set,
+a grant for every policy, a test case each, and the generated isolation sweep covers it the day it exists.
+
+★ **What it is NOT.** It is not a member, so it holds no points, no RSVP, no certificate and no avatar; it is not
+in `members_member_view`, the directory, any picker or any denominator. It is not a seat, a presenter assignment
+or a session-level invitation (`DEC-175` settled that: an admin-added presenter is **assigned**). It carries no
+token and no secret: there is nothing to leak, because the mail's link is the ordinary sign-in URL and the
+authority is the row, not the link. ★ **It is not a way to set `org_role = 'admin'`** — see §5.
+
+### 4 · ★★ The claim — one path, inside `provision_member()`
+
+★ **The member row is still created at first sign-in, from `auth.uid()`, exactly as `REQ-AUT-002` requires
+(«keyed to the auth user, never to an email or a provider»).** The invitation only supplies what the insert used
+to default. The order inside `provision_member()` becomes:
+
+1. already a member → unchanged, return `member`;
+2. ★ **a `pending` invitation for this email in an `active` org → claim it**: insert the member with the
+   invitation's `org_role`, `company_id`, `job_title` and `display_name` (Google's name still wins when the
+   invitation left it blank), mark the invitation `claimed` with `claimed_member_id`, audit
+   `member_invitation.claimed` **and** the existing `member.provisioned`, and return `provisioned`;
+3. the domain match → unchanged (count 0 → `no_match`, >1 → `ambiguous`, the `first_admin_email` promotion);
+4. the insert, `on conflict do nothing`, and the `email_already_member` raise — unchanged.
+
+★ **Two properties the wave is judged on.** **Claimed exactly once**: the claim and the member insert are one
+transaction, and the `where status = 'pending'` predicate on the update is the lock, so a concurrent double
+sign-in claims once and provisions one member — the same guarantee `0005` already states for the insert. ★ **An
+invitation never overrides an existing member**: `invite_member()` refuses an address that is already a member of
+the org (`already_a_member`), so step 2 can never fight step 1, and `org_id` immutability (`REQ-TEN-004`) is
+never approached.
+
+### 5 · ★★ The gate override — the riskiest change in the wave, and the rules on it
+
+`before_user_created_hook()` is **the single point of failure for all sign-in** (`CLAUDE.md`, «the five things most
+likely to go wrong», #2). It gains one more reason to admit: an email with a `pending` invitation in an `active`
+org, read with the same `lower()`-on-both discipline `0007` and `provision_member()` already use. Four rules:
+
+1. ★★ **It still fails open.** The `exception when others then return event` stays verbatim, and the invitation
+   read goes **inside** the existing `begin`/`exception` block. A broken invitation read must never refuse a
+   sign-in that the domain list would have allowed.
+2. ★★ **The override is scoped to `pending`.** A claimed or revoked invitation admits nobody. Revoking is
+   therefore a real control: it closes the door for an address that has not yet walked through it.
+3. ★ **The refusal message does not change.** `domain_not_allowed` stays the identifier the sign-in screen maps
+   to Arabic copy that names no org and lists no domains (`REQ-AUT-006`). An invited address is admitted; a
+   refused one learns nothing new.
+4. ★★ **An invitation cannot grant `admin`.** `invite_member()` accepts `member` and `moderator` only. An
+   invitation is a standing grant to whoever controls a mailbox, and `set_member_role()` already guards the last
+   admin and audits every promotion — so admin is granted to a member who has arrived, never to an address.
+   **This is a refusal, not a deferral.**
+
+★ **The hook needs a new grant** (`grant select on public.member_invitations to supabase_auth_admin`), which is
+the third grant `0007`'s own comment warns about. Invariant 6 applies to it as to any other.
+
+### 6 · ★ The mail — transactional, and the recipient is not in the payload
+
+By measurement 6 the invitation does not enter `notification_matrix()`: **there is no 26th key, the matrix stays
+at 25, and `tests/unit/mail-pinned/`'s 120 files are untouched.** It is `JOB-send_member_invitation`, keyed
+`invite:{invitation_id}`, enqueued through `public.enqueue_job()` (`0025`) by `invite_member()` and by
+`resend_member_invitation()`.
+
+★ **The recipient is not in the payload** — `send_test_email`'s rule, and for the same reason, stated in its own
+file: the payload carries `invitation_id`, and the address is read in the worker from a definer function. A forged
+or replayed job can mail nobody but that invitation's address, and the guarantee lives in two places that both
+refuse to carry an address rather than in a check. ★ **It is a designed family in `packages/mail-runtime`**, in
+the language wave 24 gives the other eight (`REQ-NTF-016`) — Arabic first, a generated text alternative, no SVG
+(invariant 11).
+
+### 7 · ★ The screen — `SCR-049` is extended, not rebuilt
+
+★ **«أضف عضوًا»** as the page's one primary action, a `sheet` with the fields, and the pending invitations in the
+same table as the members, marked «لم يسجّل الدخول بعد» with «أعد الإرسال» and «ألغِ الدعوة» (a mandatory reason,
+as every revoke in the console takes one). ★ **A pending row is not a member row**: it offers no role change, no
+deactivation and no profile. The counts the dashboard and the rail read are **members**, and an invitation is
+never counted as one. **No new primitive** — `ui/` stays at 69 files and `ui-playground.test.ts` is untouched; the
+console's sober register holds (`REQ-UIX-053`) and `console-register.test.ts` is not edited.
+
+★ **Bulk is in, as a paste, not an import.** One address per line in the same sheet, validated per line, each
+line reported as added · already a member · already invited · not an address. **No CSV file, no column mapping,
+no background job** — the rows are created in one transaction and the mails are enqueued per row.
+
+### 8 · ★ The audit actions, fixed here so nobody invents a fifth
+
+`member_invitation.created` · `member_invitation.resent` · `member_invitation.revoked` ·
+`member_invitation.claimed`. Every one through `public.write_audit()` inside the definer that performs the change
+— **no track writes `audit_log` from the DAL** (`DEC-231` §4's rule, unchanged). The claim writes its row with the
+new member as the actor, because at that instant the actor is the person arriving.
+
+### 9 · ★ What is NOT in scope, and is refused rather than deferred
+
+- ★★ **A second sign-in method.** No password, no magic link, no OTP, no email/password branch. `REQ-AUT-001`
+  stands: the invited person signs in with Google like everybody else. The invitation changes who is admitted,
+  not how.
+- ★★ **Creating an `auth.users` row.** That needs the Admin API and therefore `service_role`, which is never on
+  Vercel (invariant 7) — and it would manufacture an account for somebody who may never arrive. The row is
+  created by their own sign-in or not at all.
+- ★★ **A nullable `members.auth_user_id`.** Measurement 2 says it would work and measurement 5 says it would
+  re-rank the company board the moment an admin pasted a list. **Refused for this wave**; if the owner later
+  wants an added person to be assignable as a presenter before they arrive, that is a new entry and it reopens
+  measurement 4, not this one.
+- ★ **An invited person appearing in the directory, a picker, a board or a denominator.** By §3 they cannot.
+- ★ **Transferring an invitation between orgs**, editing a claimed one, or a member-visible invitation list.
+- ★ **Self-service**: there is still no org self-registration and no «request access» form (`01` §43).
+
+### 10 · ★ The one open question, with its default in force
+
+**Does a pending invitation expire?** ★ **Default in force: no.** It is revocable, and §5.2 makes revocation the
+control; an expiry would add a «resend» chore to onboarding and a sweep job to `11`. The cost of the default is
+that an abandoned invitation is a standing admission for that address until somebody revokes it, which is why
+`SCR-049` shows the pending rows with their age and the audit log answers who created each one. ★ **If the owner
+wants expiry it is a column, a predicate in §5's read and a line in `retention_periods`** — named in the wave's
+plan, not invented in it.
+
+### 11 · ★ Why the wave is divided the way it is
+
+**Three tracks, each owning what it writes.** The **lead** holds the migration (the entity, its policy set, the
+`invitation_status` enum, the three RPCs, `provision_member()`'s claim, the hook's read and its grant) because
+tables and the auth hook are the lead's and because invariant 5 and the single-point-of-failure rule both land
+there. **`console`** holds `SCR-049`, its DAL and its strings, as it has since wave 22. **`notify`** holds the
+job, the mail family and the transport, as it has since wave 10. **No teammate touches `0007`**, and no teammate
+writes `create table`, a policy or a grant, even under `proposed/`.
+
+- **Documents changed:** `01-prd.md` (`REQ-TEN-009` … `011`, `REQ-NTF-017`, `REQ-UIX-113`, and the amendment
+  pointers on `REQ-AUT-003` and `REQ-AUT-006`), `02-domain-model.md` (`ENT-member_invitations`),
+  `08-notifications-calendar.md` (§3.2a — why this mail is not a matrix row), `09-sitemap-screens.md`
+  (`SCR-049`), `11-background-jobs.md` (`JOB-send_member_invitation`), `14-roadmap.md` (**M27**),
+  `15-backlog.md` (four stories), `STATUS.md`, `docs/plan/notes/wave-25-lead.md`
+- ★ **`03-permissions-rls.md` is NOT changed by this entry**, deliberately: `scripts/policy-diff.mjs` fails on «a
+  policy written out in `03` with no counterpart in the migrations», so the policy set and its §8.2 test rows land
+  in the **same commit as the migration**, as every policy in the product has.

@@ -1,6 +1,6 @@
 ---
 name: platform
-description: Not spawned in wave 23 (DEC-235, DEC-237). The super-admin console, break-glass, privacy, the avatar import and the retention jobs — the lead holds them as custodian; /app/platform is M13's.
+description: Not spawned in wave 24 (DEC-242). The super-admin console, break-glass, privacy, the avatar import and the retention jobs — the lead holds them as custodian; the platform library's roster rule (0096) is read, never changed.
 model: opus
 ---
 

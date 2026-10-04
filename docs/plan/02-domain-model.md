@@ -311,6 +311,27 @@ Indexes: `(org_id, status)`, `(org_id, company_id)`, `(auth_user_id)`.
 **Serves:** `REQ-PRF-001`
 Join: `(member_id, category_id)`, `primary key (member_id, category_id)`.
 
+#### `ENT-member_invitations`
+**Serves:** `REQ-TEN-009` … `REQ-TEN-011`, `REQ-NTF-017`, `REQ-UIX-113` · added by `DEC-243` §3
+★ **A roster entry, not a member — an admin's statement that a named address belongs.** `id`, `org_id` (not null,
+cascading with the org), `email extensions.citext not null`, `display_name`, `company_id` (the org's own, by the
+same trigger `ENT-members` uses), `job_title`, `org_role org_role not null default 'member'`, `status
+invitation_status not null default 'pending'` (a new enum: `pending` · `claimed` · `revoked`), `invited_by uuid not
+null references members(id)`, `created_at`, `updated_at`, `claimed_at`, `claimed_member_id uuid references
+members(id)`, `revoked_at`, `revoked_by uuid references members(id)`, `revoked_reason`, `last_sent_at`,
+`send_count int not null default 0`.
+★ **A unique index on `(org_id, email)` `where status = 'pending'`** — one live invitation per address, and a
+revoked one does not block a new one. The two `check`s mirror `ENT-members`' deactivation pair: a `claimed` row has
+`claimed_at` and `claimed_member_id`, a `revoked` row has `revoked_at` and `revoked_reason`.
+★ **It is read by `supabase_auth_admin`**, which is why it carries a third grant of its own: the Before User
+Created hook consults it to admit an address the domain list would refuse (`REQ-TEN-010`), and that is the only
+place outside the org's own admins that sees it.
+**What it is not.** Not a member: it holds no points, RSVP, certificate or avatar, it is absent from
+`members_member_view`, every picker and every active-member denominator, and `0176`'s company ranking never counts
+it. Not a token: the mail's link is the ordinary sign-in URL and the authority is the row's `pending` status, so
+there is no secret to leak or expire. Not a presenter assignment (`DEC-175`), and not visible to members.
+`org_id` is never updatable; a claimed row is never edited.
+
 #### `ENT-platform_admins`
 **Serves:** `REQ-ADM-001`, `REQ-ADM-002`
 `auth_user_id uuid not null unique`. **No `org_id`** — it is a platform table, and it is the

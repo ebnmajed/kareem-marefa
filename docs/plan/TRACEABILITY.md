@@ -8,11 +8,11 @@
 
 | Artifact | Count |
 |---|---|
-| Requirements (`REQ-*`) | **410** |
-| Entities (`ENT-*`) | **84** |
-| Stories (`STORY-*`) | **243** |
+| Requirements (`REQ-*`) | **420** |
+| Entities (`ENT-*`) | **85** |
+| Stories (`STORY-*`) | **253** |
 | Screens cited (`SCR-*`) | 60 |
-| Jobs cited (`JOB-*`) | 40 |
+| Jobs cited (`JOB-*`) | 41 |
 | Messages cited (`MSG-*`) | 24 |
 
 ## Cross-cutting requirements
@@ -96,10 +96,10 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 |---|---|---|---|---|---|---|---|
 | `REQ-AUT-001` | — | — | `SCR-002` `SCR-003` `SCR-004` | — | — | `STORY-AUT-001` `STORY-UIX-016` | M1, M10, M9 |
 | `REQ-AUT-002` | — | — | `SCR-002` | — | — | `STORY-AUT-001` | M1 |
-| `REQ-AUT-003` | `ENT-members` `ENT-org_domains` | — | `SCR-082` | — | — | `STORY-AUT-002` | M1 |
+| `REQ-AUT-003` | `ENT-member_invitations` `ENT-members` `ENT-org_domains` | — | `SCR-049` `SCR-082` | `JOB-send_member_invitation` | — | `STORY-AUT-002` | M1 |
 | `REQ-AUT-004` | `ENT-org_domains` | `POL-provision_member.ambiguous` | `SCR-002` `SCR-003` `SCR-004` +9 | `JOB-zip_session_photos` | — | `STORY-AUT-002` | M1 |
 | `REQ-AUT-005` | — | — | `SCR-002` `SCR-003` `SCR-004` | — | — | `STORY-AUT-003` | M1 |
-| `REQ-AUT-006` | — | `POL-provision_member.no_match` | `SCR-002` `SCR-003` `SCR-004` +17 | `JOB-zip_session_photos` | — | `STORY-AUT-003` | M1 |
+| `REQ-AUT-006` | `ENT-member_invitations` | `POL-provision_member.no_match` | `SCR-002` `SCR-003` `SCR-004` +18 | `JOB-send_member_invitation` `JOB-zip_session_photos` | — | `STORY-AUT-003` | M1 |
 | `REQ-AUT-007` | `ENT-members` | — | `SCR-049` | — | — | `STORY-AUT-004` | M1 |
 | `REQ-AUT-008` | `ENT-leaderboard_entries` `ENT-leaderboard_snapshots` | — | `SCR-049` | — | — | `STORY-AUT-004` | M1 |
 
@@ -158,6 +158,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-CRT-013` | `ENT-certificates` | — | `SCR-023` | — | — | `STORY-CRT-003` | M6 |
 | `REQ-CRT-014` | `ENT-certificates` `ENT-design_template_versions` `ENT-fonts` +1 | — | `SCR-023` `SCR-045` `SCR-055` +2 | `JOB-evaluate_alerts` | — | `STORY-CRT-006` | M6 |
 | `REQ-CRT-015` | — | — | `SCR-045` `SCR-055` | — | — | `STORY-CRT-007` | M25 |
+| `REQ-CRT-016` | — | — | `SCR-055` `SCR-059` | — | — | `STORY-CRT-008` | M26 |
 
 ### DSC
 
@@ -207,6 +208,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-DSG-029` | — | — | `SCR-043` `SCR-045` `SCR-057` | — | — | `STORY-DSG-012` | M12, M15 |
 | `REQ-DSG-030` | — | — | `SCR-045` `SCR-057` | — | — | `STORY-DSG-012` | M12, M15 |
 | `REQ-DSG-031` | `ENT-session_certificate_designs` | — | `SCR-043` `SCR-045` `SCR-057` +1 | — | — | `STORY-DSG-013` | M12, M15 |
+| `REQ-DSG-032` | — | — | `SCR-055` `SCR-059` | — | — | `STORY-DSG-014` | M26 |
+| `REQ-DSG-033` | — | — | `SCR-055` | — | — | `STORY-DSG-015` | M26 |
+| `REQ-DSG-034` | — | — | `SCR-055` | — | — | `STORY-DSG-016` | M26 |
 
 ### EVT
 
@@ -318,6 +322,8 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-NTF-013` | `ENT-notification_templates` | — | `SCR-058` | — | — | `STORY-NTF-005` | M12 |
 | `REQ-NTF-014` | `ENT-notification_templates` | — | `SCR-058` | — | — | `STORY-NTF-006` | M12 |
 | `REQ-NTF-015` | — | — | `SCR-055` `SCR-057` `SCR-058` | — | — | `STORY-NTF-007` | M25 |
+| `REQ-NTF-016` | — | — | `SCR-058` `SCR-059` | `JOB-send_member_invitation` | — | `STORY-NTF-008` | M26 |
+| `REQ-NTF-017` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | `JOB-send_member_invitation` `JOB-send_test_email` | — | `STORY-NTF-009` | M27 |
 
 ### PRF
 
@@ -464,6 +470,9 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-TEN-006` | `ENT-orgs` | — | `SCR-004` `SCR-080` | — | — | `STORY-TEN-003` | M1 |
 | `REQ-TEN-007` | `ENT-org_domains` | — | `SCR-082` | — | — | `STORY-TEN-004` | M1 |
 | `REQ-TEN-008` | `ENT-org_settings` `ENT-scoring_config_history` | — | `SCR-063` | — | — | `STORY-TEN-004` | M1 |
+| `REQ-TEN-009` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | `JOB-send_member_invitation` `JOB-send_test_email` | — | `STORY-TEN-005` | M27 |
+| `REQ-TEN-010` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | — | — | `STORY-TEN-006` | M27 |
+| `REQ-TEN-011` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | — | — | `STORY-TEN-007` | M27 |
 
 ### TSK
 
@@ -531,7 +540,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-050` | — | — | `SCR-010` `SCR-012` `SCR-013` +6 | — | — | `STORY-UIX-033` | M19 |
 | `REQ-UIX-051` | — | — | — | — | — | `STORY-UIX-035` | M19 |
 | `REQ-UIX-052` | — | — | — | — | — | `STORY-UIX-036` | M19 |
-| `REQ-UIX-053` | — | — | `SCR-022` `SCR-042` `SCR-045` +3 | — | — | `STORY-UIX-038` | M19 |
+| `REQ-UIX-053` | — | — | `SCR-022` `SCR-042` `SCR-045` +4 | — | — | `STORY-UIX-038` | M19 |
 | `REQ-UIX-054` | — | — | `SCR-010` `SCR-011` `SCR-012` +2 | — | — | `STORY-UIX-039` `STORY-UIX-051` | M20, M21 |
 | `REQ-UIX-055` | `ENT-feed_announcements` | — | `SCR-010` `SCR-020` `SCR-022` | — | — | `STORY-UIX-044` `STORY-UIX-047` | M20 |
 | `REQ-UIX-056` | `ENT-feed_announcements` | `POL-feed_announcements.read` `POL-feed_announcements.write` | `SCR-010` | — | — | `STORY-UIX-040` `STORY-UIX-044` | M20 |
@@ -591,5 +600,6 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-110` | — | — | `SCR-056` | — | — | `STORY-UIX-100` | M25 |
 | `REQ-UIX-111` | — | — | `SCR-056` | — | — | `STORY-UIX-101` | M25 |
 | `REQ-UIX-112` | — | — | `SCR-055` `SCR-057` `SCR-058` | — | — | `STORY-UIX-102` | M25 |
+| `REQ-UIX-113` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | `JOB-send_member_invitation` | — | `STORY-UIX-103` | M27 |
 
 <!-- TRACEABILITY:END -->

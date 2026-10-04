@@ -325,7 +325,116 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 23 — M12, the studio, DEC-235 · DEC-236 · DEC-237) — ★ THE MAP IN FORCE
+### Ownership map (wave 24 — M26, the artefacts: the baseline library and the mail designs, DEC-242) — ★ THE MAP IN FORCE
+
+**The programme's tenth wave** (milestone **M26**). ★★ **The owner asked for the templates to match the design and the
+current ones deleted**, and answered all three questions the ask turned on (`DEC-242`): **both** the design templates and
+the mail designs · a **hard delete** · the **platform default palette moves**. ★★ **This is the first wave that touches
+what LEAVES the product.** Every screen has worn «ساحة اللعب» since wave 17; a poster an admin exports and a certificate
+a member holds still wear M6's — Reem Kufi on navy — because «the playground stops at the certificate's edge»
+(`DEC-183` §4) was a deferral. **This wave discharges it.** ★★ **NO new primitive** — `ui/` stays **69 files** and
+`tests/unit/ui-playground.test.ts` is untouched. ★★ **Two migrations, both the lead's**: `0192` (the palette, PR A) and
+`0193` (the baseline, PR B) — rehearsed on a dump taken at `0191`.
+
+★★ **THE GOAL, above the process** (the owner's words): **the templates match the designed ones.** ★ An exported poster,
+an issued certificate and a sent email **look like the product they came from** — an admin who exports a poster today
+gets an artefact from a different product than the screen they exported it from, and that is the only defect this wave
+exists to fix. ★ **A certificate somebody is already holding does not change** (`REQ-CRT-014`): it renders as the version
+it was issued against, byte-reproducibly, which is exactly why the database refuses to delete that version and why the
+wave does not force it. ★ **Every colour comes through a token** — `design_template_versions_guard` refuses a hex
+literal, by design, and nobody argues with it. ★ **The sober register still holds** (`REQ-UIX-053`). **«Good» is not
+«the gates are green»** — the acceptance is the owner's, on a **printed** poster and a **printed** certificate.
+
+★★ **Three PRs, each against `main` from its FIRST push.** **A — `wave-24a/the-palette`** (the lead, alone, the main
+checkout): `brand.ts`'s `LIGHT`/`DARK`, `0192`, the goldens re-baselined, the 120 pinned mail files re-pinned.
+**B — `wave-24b/the-baseline`** (`../kareem-marefa-wave24b`, cut from A's head): the five poster families, the six
+certificate rows, `0193`. **C — `wave-24c/the-mail-designs`** (`../kareem-marefa-wave24c`, cut from A's head): the eight
+designed families. ★ **B and C are cut from A, not from each other** — both bind the tokens A moves and neither touches
+the other's files. **Merge order A, B, C.** **A teammate edits a PR's files only in that PR's tree**; the lead posts each
+path when it exists.
+
+★ **Why it is divided this way** (`DEC-242` §5): **the palette is the foundation both artefacts sit on**, so it is the
+lead's and it lands first — a template built against the old defaults would be measured against the wrong ground, and
+the goldens and the pinned mail move once, in A, before either teammate touches a design. **The design documents are
+`designer`'s** — it owns `packages/designer-runtime`, the parity harness and every template screen's DAL. **The mail
+designs are `notify`'s**, as since wave 10, and they are **constants, not rows**, so C writes no SQL at all.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ `DEC-242`, this map, the ten agent files, `01`/`09`/`14`/`15`, `STATUS` · ★★ **`REQ-DSG-032`, the palette, first** (`STORY-DSG-014`): `brand.ts`'s `LIGHT`/`DARK` and **`0192`** replacing `brand_kit()`'s ten fallbacks, **in one commit**, proven equal by `tests/rls/brand-kits.test.ts` · ★★ **the goldens re-baselined** — `designer` runs `--update`, **the lead opens every before-and-after and commits** `scripts/parity/goldens/**` · ★★ **the 120 pinned mail files reviewed — measured UNMOVED by the palette (contract 4), so the one reviewed diff falls in PR C** · ★ **`0193`** from `designer`'s proposed file (PR B), with its report per row and its RLS case · ★ the six status pairs re-measured on the new defaults · every capture beside the artboard's thumbnails · the gates, three PRs, two worktrees | the lead-only paths below, `supabase/migrations/**` from `0192`, ★ `packages/designer-runtime/src/brand.ts` (**`branding`'s normally — the lead's for this wave, `BRAND_COLOUR_TOKENS` unchanged**), `scripts/parity/goldens/**`, ★ `tests/unit/mail-pinned/**` (**the lead's alone this wave**), `tests/rls/{brand-kits,status-contrast}*.test.ts`, `src/lib/brand/contrast.ts`, `src/app/globals.css`, `tests/unit/{ui-playground,tokens-only,no-raw-palette,scope-root}*` (**untouched this wave**), new `tests/e2e/wave24-{demo,lead}-*.spec.ts`, `scripts/seed-demo.mjs`. **Custodian** of every file of a track not spawned — `sessions`, `checkin`, `scoring`, `content`, `event`, `console`, `platform`, `branding` |
+| `designer` | opus | ★★ **the five baseline poster families, rebuilt** (`REQ-DSG-033`, `STORY-DSG-015`) — one structure, five colourways: the flat ground, the category pill at the block-start, the title large in the display face, presenter and date bottom-start, the QR bottom-end · ★★ **the three certificate families × both orientations** (`REQ-CRT-016`, `STORY-CRT-008`) — bone ground, the wordmark top-start, the member's name large, the serial bottom-start `<bdi>`, the QR bottom-end · ★★ **the superseded eleven leave the library** (`REQ-DSG-034`, `STORY-DSG-016`) — deleted where the database permits, **retired where `on delete restrict` refuses**, the migration reporting which per row · ★ **the roster still counts five poster families and three certificate families** (`REQ-DSG-026`) · ★ **the demonstrable: a poster and a certificate exported from the rebuilt baseline, and one issued BEFORE the wave still rendering as its own version** — all PR B | `packages/designer-runtime/src/**` **except** `brand.ts` (the lead's this wave), ★ `packages/designer-runtime/scripts/seed-sql.mjs` (**granted at sync 1** — it is the generator `designer-library.test.ts` deep-equals against `0193`, so the two cannot drift), `packages/storage-paths/src/designer.ts`, `src/components/{designer,posters}/**`, `src/components/certificates/**`, `src/app/[locale]/app/admin/{designer,templates}/**`, `src/app/[locale]/app/admin/sessions/[id]/certificates/**`, `src/app/api/{designer,fonts,certificates}/**`, `src/lib/dal/{designer,templates,posters,certificates,fonts}.ts`, `worker/src/render/**` except `brand.ts` and its four tasks, `scripts/parity/**` **minus `goldens/`**, `src/messages/*/{designer,templates,certificates}.json`, ★ `supabase/proposed/designer/**` (**the baseline documents and the delete-or-retire function — never a file under `supabase/migrations/`**), `tests/rls/{designer,templates,posters,certificates,fonts,exports}*.test.ts`, `tests/unit/{designer,render,posters,certificates,qr,fonts,serial}*`, `tests/components/{designer,posters,certificates}/**`, `tests/e2e/{designer,templates,certificates,posters}*.spec.ts` and `tests/e2e/wave{8,10,13,23}-*designer*.spec.ts` (evidence), new `tests/e2e/wave24-designer-*.spec.ts`, `docs/plan/notes/designer.md`. **Nothing else** — the studio's chrome, the state machine, `canvas.tsx`'s engine, `ui/`'s 69 files and the export pipeline are frozen |
+| `notify` | opus | ★★ **the eight designed mail families, rebuilt** (`REQ-NTF-016`, `STORY-NTF-008`) — `designs.ts`'s eight layouts in the same language as the app and the templates: the ground, the display face on the heading, lime as the single accent, the row rhythm · ★ **all 25 keys still resolve to a family, each with its own copy**; every block keeps its `id`, its compiled HTML and **its generated text alternative**; **no SVG** (invariant 11) · ★ **a null `blocks` row is still the admin's own text**, framed and never replaced · ★★ **it never re-pins: `tests/unit/mail-pinned/**` is READ-ONLY to `notify`** — the lead opens the diff — all PR C | `packages/mail-runtime/src/**`, `worker/src/mail/**`, `worker/src/tasks/{send_notification,send_test_email}.ts`, `src/app/[locale]/app/admin/emails/**`, `src/components/{email,notifications,calendar}/**`, `src/app/api/admin/emails/**`, `src/lib/dal/{notifications,calendar}.ts` (add-only), `src/messages/*/{notifications,emails,calendar}.json`, `tests/unit/{mail,notify,admin-emails}*` **with `tests/unit/mail-pinned/**` READ-ONLY**, `tests/rls/{notify,notifications}*.test.ts`, `tests/components/{email,notifications,calendar}/**`, `tests/e2e/{wave8-console-emails,wave10-notify-*,wave23-notify-*}.spec.ts` (evidence), new `tests/e2e/wave24-notify-*.spec.ts`, `docs/plan/notes/notify.md`. **Nothing else** — `notify()`, the inbox, reminders, settings, the block builder's chrome and every other worker task are frozen |
+
+**Wave-24 contracts.**
+
+1. ★★ **Lead → both — the palette, first, and its names.** `0192` and `brand.ts` move the ten defaults in **one commit**;
+   `tests/rls/brand-kits.test.ts` proves the two copies equal. **`BRAND_COLOUR_TOKENS` does not change** — no token is
+   added, renamed or removed, so `DEC-127`'s add-only ordering still holds. ★ **It lands before either track writes a
+   document**, and the lead posts «the palette is in at `<sha>`» with the ten values. **Nobody authors a template against
+   the old defaults.**
+2. ★★ **Lead → both — a colour arrives as a token or it is a defect.** `design_template_versions_guard` (`0055`) refuses a
+   hex literal in a template document, and `0094`'s guard walks **every** colour. The ten `brand.*` bindings and the team
+   colour are the whole vocabulary; **`node` is lime and `edgeStrong` is muted** (`DEC-242` §2), decided, not re-opened.
+   A colour a plan cannot express in them is a question to the lead, **never a literal and never a new token**.
+3. ★★ **`designer` → lead — what is deleted and what is retired.** `designer`'s plan names the eleven rows and, per row,
+   what the delete would be refused by: `certificates.template_version_id` and `design_documents.template_version_id` are
+   both `on delete restrict`, and `issue_certificates()` (`0065:138-146`) resolves **the platform row directly** when an
+   org has no default of its own. The function goes under `supabase/proposed/designer/`; **the lead promotes it as
+   `0193`** and it **reports which of the eleven went which way**. ★ **Nothing is forced** — no `cascade`, no detaching a
+   certificate from its version.
+4. ★★ **Lead → both — the goldens and the pinned mail move ONCE, and only the lead moves them.** A golden moves **only**
+   because the palette moved or a baseline document was rebuilt, and the lead's commit says which. `designer` runs
+   `--update` and hands the diff over; **it never commits `scripts/parity/goldens/**`.** `notify` **never runs a mail
+   re-pin**; a changed pinned file is the lead's reviewed diff. ★★ **Measured in PR A: the palette does NOT move the 120** — `SAMPLE_BRAND` is the legacy three-key shape with no `light` object, so `brand_kit()`'s values never enter the pinned render, and the full unit suite is green across the palette commit. **They move once, in PR C.** `DEC-176`'s sentence still holds verbatim: **an org's own
+   untouched document renders identically**, with the new values, because that is what moving a default means.
+5. ★ **Everyone — the thumbnails are the specification, and `DEC-242` §1 is what they are NOT.** The seven cards on
+   `AdminTemplates.dc.html` and `AdminTemplatesCerts.dc.html` are the design. ★★ **The names they print are FIXTURES, not
+   a roster**: `0096`'s contract 3 stands — five poster families, three certificate families × two orientations, one
+   default per `(purpose, family)`, the orientation read from `document->'master'`. **The eleven rows keep their families
+   and their names; the document inside each is what changes.** A new disagreement is written in your note with the file
+   and the line; nobody picks a side. No class, id or markup pattern from a `.dc.html` in `src/`.
+6. ★ **Everyone — an org that overrode its kit sees nothing change.** Every figure, every colour and every font is read
+   from `brand_kit()` and `resolveBrand()` as they stand. A template never hard-codes the platform's own values «because
+   that is what the default is».
+
+**Wave-24 rules.**
+
+- ★★ **A golden moving is CORRECT in this wave and in no other** (`DEC-242` §4) — and only for the two named reasons,
+  only in the lead's commit. **The rule that a teammate never refreshes a golden or a pinned mail file is unchanged.**
+- ★★ **`REQ-CRT-014` is the floor.** A certificate issued before the wave renders as the version it was issued against,
+  byte-reproducibly. **A version row that a certificate references is never deleted**, however much the instruction says
+  «delete» — the database refuses it and the database is right.
+- ★★ **`registrations` is never touched; the five public routes do not move.** They render no template and read no brand
+  kit, so `qa:contract`, `qa:appearance`, `visual`'s public pairs and the register-form fingerprint are **unmoved, not
+  re-baselined** — and the lead proves it.
+- ★★ **No new primitive.** `ui/` stays 69 files; `ui-playground.test.ts` is untouched. No screen is rebuilt: `DEC-208`
+  does not apply, because **no page file is deleted** — this wave changes documents and constants, not screens.
+- ★ **The studio is not the party** (`REQ-UIX-053`): no motion, no object, no sticker; `console-register.test.ts` is not
+  edited.
+- ★ **Arabic first**; `<bdi>` on every serial, code, number and title; Western numerals (`DEC-124`); six ICU forms;
+  logical properties — **except `DEC-096`'s overlay**, which nobody tidies.
+- ★ **The existing suites are evidence**; each changed assertion is a ledger line in `STATUS.md`, in the same commit.
+- ★ **No new dependency.** **No migration beyond the lead's two**; a function a plan needs goes under
+  `supabase/proposed/<you>/`.
+- **Teammates spawn planning-only**; sync 1 approves two plans with their colour tables and `designer`'s
+  delete-or-retire table; **nobody writes a document before the lead posts «the palette is in».**
+- **One writer per file, specs and demos included. `ui-lint --strict` has no allowlist and never gains one.**
+- **Captures land at `.qa-shots/rtl/wave24-<track>-<artefact>-<state>-<1280|390>.png`** from a production build the row
+  names by commit, honouring `E2E_SHOTS_DIR`; the lead opens every one beside the artboard's thumbnails, in bands, never
+  downscaled. ★ **A render is also opened at its own size** — a poster and a certificate are printed artefacts.
+- **Not this wave, and never-touch for every teammate:** `SCR-059` branding and the brand-kit **screen** (M13 — this wave
+  moves the platform *default*, never the org override or its UI); stories, their viewer and `story_views` — the ring
+  stays inert; `/app/platform/**`; the five public routes; the member app and the console's screens; the studio's chrome,
+  the state machine and `canvas.tsx`'s engine; **replacing the renderer** (`DEC-017`, `DEC-048`); a template serving
+  several kinds (`DEC-236` §1); **renaming a family or changing the roster's count**; **a new brand token**; coral as a
+  brand token (`DEC-073`); a per-scheme logo; the Railway check (`DEC-241` §2 — November); `DEC-194`'s two gates;
+  `DEC-215`'s four; `DEC-186` §4; `DEC-204`; the `railway.json`.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`, `stop`,
+  branch switches, worktrees, pushes and the PRs.
+
+### Ownership map (wave 23 — M12, the studio, DEC-235 · DEC-236 · DEC-237) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 23 merged as PRs #52 – #59 and was accepted by the owner on 2026-10-04 (`DEC-240`, `DEC-241`; `main` `0f27fe5d`, production `0191`). Its map is kept as the record; **wave 24's map is directly above** (`DEC-242`).
 
 **The programme's ninth wave** (milestone **M25**). ★★ **The owner put the studio before stories** (`DEC-235` §1) — the
 fifth deliberate re-ordering; wave 18's ring stays inert and nobody wires it. **Four screens from nine artboards** in
@@ -1929,6 +2038,7 @@ to hard-fail in M13.
 ★ from wave 21 (`DEC-227`): `src/app/[locale]/app/admin/layout.tsx` is the lead's — the console frame has one writer; `admin/proposals/**` is `sessions'` for the wave, back to `console` after it. `tests/unit/console-register.test.ts` is the lead's, amended once (`DEC-227` §2).
 ★ from wave 22 (`DEC-231`): `admin/{scoring,recognition}/**` and `scoring-admin.ts` are `scoring`'s, `admin/{reminders,settings}/**` and `admin-settings.ts` `notify`'s, `admin/moderation/**` and `admin-moderation.ts` `content`'s — **for the wave**, back to `console` after it. `src/components/shell/admin-nav.ts` stays the lead's.
 ★ from wave 23 (`DEC-237`): `admin/templates/**`, `admin/sessions/[id]/certificates/**`, `lib/dal/{templates,certificates}.ts` and `messages/*/{templates,certificates}.json` are `console`'s **for the wave**, back to `designer` after it. `ui/{editor-rail,floating-toolbar}.tsx` are the lead's — the chrome both editors share has one writer.
+★ from wave 24 (`DEC-242`): `packages/designer-runtime/src/brand.ts` is the lead's **for the wave** (`branding`'s otherwise, and `BRAND_COLOUR_TOKENS` is unchanged), and `tests/unit/mail-pinned/**` is the lead's **alone** — a pinned mail file and a parity golden have one writer, and in the one wave where both are allowed to move that matters more, not less. `admin/templates/**` and `lib/dal/{templates,certificates}.ts` return to `designer`.
 ★ from wave 18 (`DEC-206`): `tests/unit/design-files.test.ts` — the gate that keeps `docs/design/screens/` out of the build has one writer. `src/app/[locale]/app/page.tsx` is `content`'s for the wave: home is the feed, a page composed of three tracks' items on the lead's frame.
 
 ★ **Added by DEC-085, with the design milestone** — none of these was lead-only before, and
@@ -1945,7 +2055,7 @@ the sessions timeline (`DEC-112`), which is no longer a page composed of other t
 **Inside `src/components/ui/` ownership is per FILE, not per directory** — a glob with four writers
 is the exact failure `TEAM.md` exists to prevent. The four literal file lists — the lead's fifteen,
 `sessions'` eight, `console'`s six, `content'`s nine — are in each `.claude/agents/*.md`, and they are
-unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 18 adds four** (`DEC-206`): `week-hud` is `scoring`'s, `feed-item` and `attendee-stack` are `content`'s, `action-bar` is `sessions'` — 53 files. ★ **Wave 19 adds four** (`DEC-213`): `page-viewer` is `content`'s, `star-input` `event`'s — its first — `stepper` `sessions'`, `badge-medallion` `scoring`'s — 57 files. ★ **Wave 20 adds three** (`DEC-216` §2.1): `podium` and `ledger-row` are `scoring`'s, `settings-group` `notify`'s — its first — 60 files; `status-mark` is withdrawn. ★ **Wave 21 adds three** (`DEC-225` §2, `DEC-227` §2): `admin-rail` is the lead's — and `src/components/admin/admin-rail.tsx` is deleted, so there is one — `split-view` and `kv-card` `sessions'` — 63 files. ★ **Wave 22 adds none** (`DEC-230`): the three `data-table` cells are stories on `console`'s file — 63 files, the floor unmoved. ★ **Wave 23 adds six** (`DEC-235`, `DEC-237`): `editor-rail` and `floating-toolbar` are the lead's — both editors share them — `canvas-stage` and `layer-list` `designer`'s (and `src/components/designer/layer-list.tsx` is deleted, so there is one), `block-canvas` and `block-library` `notify`'s — 69 files. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
+unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 18 adds four** (`DEC-206`): `week-hud` is `scoring`'s, `feed-item` and `attendee-stack` are `content`'s, `action-bar` is `sessions'` — 53 files. ★ **Wave 19 adds four** (`DEC-213`): `page-viewer` is `content`'s, `star-input` `event`'s — its first — `stepper` `sessions'`, `badge-medallion` `scoring`'s — 57 files. ★ **Wave 20 adds three** (`DEC-216` §2.1): `podium` and `ledger-row` are `scoring`'s, `settings-group` `notify`'s — its first — 60 files; `status-mark` is withdrawn. ★ **Wave 21 adds three** (`DEC-225` §2, `DEC-227` §2): `admin-rail` is the lead's — and `src/components/admin/admin-rail.tsx` is deleted, so there is one — `split-view` and `kv-card` `sessions'` — 63 files. ★ **Wave 22 adds none** (`DEC-230`): the three `data-table` cells are stories on `console`'s file — 63 files, the floor unmoved. ★ **Wave 23 adds six** (`DEC-235`, `DEC-237`): `editor-rail` and `floating-toolbar` are the lead's — both editors share them — `canvas-stage` and `layer-list` `designer`'s (and `src/components/designer/layer-list.tsx` is deleted, so there is one), `block-canvas` and `block-library` `notify`'s — 69 files. ★ **Wave 24 adds none** (`DEC-242`): the wave changes documents and constants, not screens — the floor stays **69**. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
 it does not exist**, which is why all ten were regenerated in the same commit as this list.
 
 `src/components/ui/index.ts` exports **types only**; implementations are imported **by path**. A

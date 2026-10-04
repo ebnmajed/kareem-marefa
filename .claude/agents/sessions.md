@@ -1,6 +1,6 @@
 ---
 name: sessions
-description: Not spawned in wave 23 (DEC-235, DEC-237). The event page, browse, propose, the hub, the schedule, split-view and kv-card — the lead holds them as custodian; SCR-045 calls set_session_certificate_mode() as it is (DEC-178).
+description: Not spawned in wave 24 (DEC-242). The event page, browse, propose, the hub and the schedule — the lead holds them as custodian; a session's poster is rebuilt as a template document, not as a screen.
 model: opus
 ---
 

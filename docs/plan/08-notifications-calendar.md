@@ -193,6 +193,21 @@ export that does.
 | `MSG-account_deactivated` | «تم إيقاف حسابك» |
 | `MSG-export_ready` | «بياناتك جاهزة للتحميل» |
 
+### 3.2a ★ The two mails that are deliberately NOT in the matrix
+
+Two sends in the product carry no `MSG-*` id and resolve no matrix row, because **the matrix is keyed on a
+member** — `notify(p_org, p_member, …)` (`0026:436`) reads the preference, writes the inbox row and finds the
+address from a member id, and neither of these two has one to read.
+
+| Send | Why it cannot be a matrix row |
+|---|---|
+| **the test send** (`JOB-send_test_email`, `REQ-NTF-011`) | Its subject is the admin's own address and its purpose is to exercise the live transport. A preference would let an admin switch off their own test |
+| ★ **the invitation** (`JOB-send_member_invitation`, `REQ-NTF-017`, `DEC-243` §6) | Its recipient **is not a member yet** — that is the whole point of it. There is no preference to honour, no inbox to write to, and no member row to read an address from |
+
+★ **So the matrix stays at 25 keys and `tests/unit/mail-pinned/`'s 120 files are untouched by either.** Both are
+designed families in `packages/mail-runtime` and both write an `email_deliveries` row, so both appear in the
+delivery log with a reason — they are outside the *matrix*, not outside the record.
+
 ### 3.3 Worked example — `MSG-session_changed`
 
 The one that matters most operationally, because a vague version sends people to the wrong room.

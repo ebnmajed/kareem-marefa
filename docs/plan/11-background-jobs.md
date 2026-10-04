@@ -309,6 +309,18 @@ the recipient is the calling admin's own, read inside the function. Renders the 
 `email_deliveries` row, and sends through the live transport, so a test appears in the delivery log
 with its reason. «[اختبار] » is prefixed at the transport call, never in the renderer.
 
+#### `JOB-send_member_invitation` ★ the thirty-seventh job
+**Serves:** `REQ-NTF-017`, `REQ-TEN-009` · `DEC-243` §6 · **added in wave 25**
+**Key:** `invite:{invitation_id}` — a double press replaces rather than duplicates
+**Notes:** the mail that tells a named person they belong. Enqueued through `public.enqueue_job()` by
+`invite_member()` and by `resend_member_invitation()`. ★ **It takes no address**: the payload carries the
+invitation's id and the address is read here, through a definer function, on `JOB-send_test_email`'s rule and for
+the same reason — a forged or replayed job can mail nobody but that invitation's own address, and the guarantee
+lives in two places that both refuse to carry an address. **It is not a matrix message** (`DEC-243` §6): it
+resolves no preference and writes no inbox row, because its recipient has no member row to resolve one from. It
+writes an `email_deliveries` row, so an invitation appears in the delivery log with its reason. An invitation that
+is `revoked` or already `claimed` sends nothing and returns — it does not retry.
+
 #### `JOB-rsvp_nudge`
 **Key:** `nudge:{session_id}` · **Notes:** in-app only, **once**, at −7 d. §6 asks for reminders to
 non-responders; once and in-app is the restraint that keeps that from being the reason people mute
@@ -409,6 +421,7 @@ that can differ between renders, which is D66's failure mode with no error attac
 | `JOB-send_notification`, `JOB-schedule_reminders`, `JOB-send_reminder`, `JOB-rating_prompt`, `JOB-rsvp_nudge` | `REQ-NTF-002` … `REQ-NTF-008`, `REQ-RAT-007` |
 | `JOB-record_survey_response` | `REQ-SUR-004`, `REQ-SUR-009` |
 | `JOB-send_test_email` | `REQ-NTF-011` |
+| `JOB-send_member_invitation` | `REQ-NTF-017`, `REQ-TEN-009` |
 | `JOB-enforce_retention`, `JOB-anonymise_members` | `REQ-NFR-012`, `REQ-PRF-007` |
 | `JOB-assert_storage_prefixes` | `REQ-TEN-003` |
 | `JOB-expire_impersonation` | `REQ-ADM-002` |

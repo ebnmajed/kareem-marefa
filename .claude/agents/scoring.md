@@ -1,6 +1,6 @@
 ---
 name: scoring
-description: Not spawned in wave 23 (DEC-235, DEC-237). The ledger, the awards, the boards, the points catalogue and badges (SCR-053, 054) — the lead holds them as custodian; held-achievements.tsx stays as wave 22 built it.
+description: Not spawned in wave 24 (DEC-242). The ledger, the awards, the boards, the points catalogue and badges — the lead holds them as custodian.
 model: opus
 ---
 

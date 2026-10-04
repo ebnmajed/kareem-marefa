@@ -1,6 +1,6 @@
 ---
 name: content
-description: Not spawned in wave 23 (DEC-235, DEC-237). Materials, photos, tasks, the viewer, the feed, the discussion, moderation and the upload routes — the lead holds them as custodian.
+description: Not spawned in wave 24 (DEC-242). Materials, photos, tasks, the viewer, the feed, the discussion, moderation and the upload routes — the lead holds them as custodian.
 model: opus
 ---
 

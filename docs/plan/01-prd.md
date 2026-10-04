@@ -106,6 +106,47 @@ co-presenters (OQ-021), and its sending identity and reply-to (OQ-016).
 - Every change is written to the configuration history with actor, timestamp, old value and new
   value (`REQ-PTS-005` generalises this for scoring).
 
+#### REQ-TEN-009 — An admin adds a عضو ahead of their first sign-in
+**Serves:** DEC-243 · D11 (amended in one half) · D4
+An **مشرف المؤسسة** may name a person who is not yet a member, by email address, together with the
+fields provisioning cannot guess: **الاسم**, **الشركة**, **المسمى الوظيفي** and the role. The named
+person is **not a member** until they sign in — they hold no points, no seat, no certificate and no
+profile, and they appear in no directory, picker, board or active-member denominator. Several
+addresses may be named at once, one per line, in the same control.
+**Acceptance:**
+- Naming somebody creates no member row and changes no count anywhere in the product.
+- An address that is already a member of the مؤسسة is refused, with that reason.
+- An address already named and still waiting is refused, with that reason; one already revoked may
+  be named again.
+- The role may be **عضو** or **مشرف محتوى** only; **مشرف المؤسسة** is granted to a member who has
+  arrived, through `REQ-TEN-005`, and never to an address.
+- Naming, re-sending and revoking are each audited with the actor and, for a revoke, its reason.
+
+#### REQ-TEN-010 — A pending invitation admits an address the domain list would refuse
+**Serves:** DEC-243 · D11 · D58
+A person who has been named by an admin may sign in **even though their email domain is on no
+مؤسسة's allowed list**. This is the reason the capability exists: an outside presenter or a partner
+has no work address to be gated on. The override lasts only while the invitation is waiting — once
+it is claimed or revoked it admits nobody.
+**Acceptance:**
+- An admin names a personal-domain address; that person signs in and lands in the app.
+- Revoking before they sign in closes the door: the same account is refused again.
+- A refused account still sees `REQ-AUT-006`'s explanation, which names no مؤسسة and lists no
+  domains — an invited address is admitted, a refused one learns nothing new.
+- A failure anywhere in reading the invitation list admits the sign-in the domain list would have
+  allowed; it never causes a sign-in outage.
+
+#### REQ-TEN-011 — The invitation is claimed exactly once, at first sign-in
+**Serves:** DEC-243 · `REQ-AUT-002` · `REQ-TEN-004`
+The member record is still created at first sign-in and is still keyed to the auth user, never to an
+email or a provider. The invitation supplies only what the record would otherwise default: the role,
+the company, the job title and the name. It is then marked claimed, against the member it created.
+**Acceptance:**
+- A concurrent double sign-in claims the invitation once and creates exactly one member.
+- The member arrives with the admin's role, company and job title already set.
+- A name the admin left blank is filled from Google; a name the admin set is kept.
+- The claim and the member's creation are one transaction: neither exists without the other.
+
 ---
 
 ## 2. Authentication and membership — `AUT`
@@ -129,7 +170,10 @@ configuration and UI, not a migration.
 #### REQ-AUT-003 — Domain-gated auto-provisioning on first sign-in
 **Serves:** D11
 A Google account whose email domain appears on a مؤسسة's allowed list is **auto-provisioned as a
-عضو of that org on first sign-in**. No invitation, no admin approval step.
+عضو of that org on first sign-in**. No admin approval step.
+★ **Amended by `DEC-243`:** this door is unchanged, and a second one is added beside it — an admin
+may name a person in advance (`REQ-TEN-009` … `011`), and that naming admits them. Everyone who was
+not named still arrives exactly as this requirement describes.
 **Acceptance:**
 - First sign-in with an allowed domain creates the member record and lands the user in the app.
 - The account's `org_id` is set once, at provisioning, and never changes (`REQ-TEN-004`).
@@ -157,6 +201,8 @@ dashboard.
 A Google account whose domain is on no org's list sees a clear message — this is a private
 platform for member organizations — and a way to contact whoever runs it. It never sees a blank
 screen, a generic error, or a silent redirect loop.
+★ **Amended by `DEC-243`:** an address with a pending invitation is admitted instead
+(`REQ-TEN-010`); the message a refused account sees does not change.
 **Acceptance:**
 - The message names no org and leaks nothing about which domains exist.
 - No account, member row or audit subject is created for a rejected sign-in.
@@ -1631,6 +1677,18 @@ held certificates and none issued**, so the held ones can be re-rendered (`DEC-2
 - The mode is refused once the session is completed, archived or cancelled; the template once a certificate of that kind
   is issued.
 
+#### REQ-CRT-016 — The baseline certificate templates are the designed ones
+**Serves:** `DEC-242` §1, §3 · `REQ-CRT-014` · `REQ-DSG-008`, `REQ-DSG-026`
+The three platform certificate families, in both orientations, are rebuilt to the design the library's artboard
+draws: a bone ground, ink text, the org wordmark at the top-start in the display face, the member's name large in
+the display face, the serial at the bottom-start in `fgMuted`, the verification QR at the bottom-end. The family
+set, the orientation rule and the one-default-per-family indexes are unchanged.
+**Acceptance:**
+- Every colour in the document is a `brand.*` binding; `design_template_versions_guard` accepts it.
+- A certificate issued before the rebuild still renders as the version it was issued against (`REQ-CRT-014`), which
+  is why the old version row survives when the database refuses its deletion.
+- The member's name is set in the display face and the serial is bidi-isolated.
+
 
 ---
 
@@ -1855,6 +1913,16 @@ with a mirrored LTR variant reserved for English. Certificate families — **ح�
 ★ **Posters render on a GRADIENT background and default to the DARK scheme** (`DEC-125`, `DEC-127`);
 certificates are **a library the admin chooses from**, in both orientations and both schemes
 (`DEC-128`). Numerals on every template are **Western** (`REQ-INT-006`, `DEC-124`).
+
+★★ **AMENDED BY `DEC-242` (wave 24, M26) — four of this requirement's VISUAL clauses are superseded
+by `REQ-DSG-033` and `REQ-CRT-016`, and its STRUCTURE is not.** What stands: the five poster
+families and the three certificate families by those names, both orientations, both schemes, the
+counted roster, Western numerals, locked regions. What `DEC-242` replaces: **the gradient
+background** (a flat ground), **the workshop's tasks strip** (not drawn by the design), **formal
+Naskh on a certificate** (the display face), and **the Knowledge Network as the visual language**
+(«ساحة اللعب»). ★ The roster's count and names are unchanged by that wave, which is why this
+requirement is amended rather than withdrawn — a plan that reads the four superseded clauses as
+live has missed `DEC-242` §1.
 **Acceptance:**
 - ★ **The seeded roster is counted, not assumed** (as amended by `DEC-148`) — **11 platform
   templates**: the 5 poster families, and the 3 certificate families each as a **landscape** and a
@@ -1931,6 +1999,46 @@ button, then a per-certificate progress list with a re-issue for failures).
 - The three meanings of «شهادة» — the design, the mode and the act — are separated on screen.
 - Issuance cannot be triggered from a dropdown without the preflight and the confirmation.
 - A failed certificate is re-issuable individually without re-issuing the batch.
+
+#### REQ-DSG-032 — The platform default brand palette is «ساحة اللعب»
+**Serves:** `DEC-242` §2 · `DEC-183` · `REQ-UIX-049` · `DEC-052` (the identity override)
+The ten `BRAND_COLOUR_TOKENS`' platform default values are the accepted visual direction's palette — ink, surface,
+surface-2, bone, muted and line on the dark ground; paper, paper-surface, paper-ink, paper-muted and paper-line on
+the light one — with `node` carrying the single accent (lime, and lime-deep on a light ground) and `edgeStrong` the
+secondary-text value. The set of tokens does not change.
+**Acceptance:**
+- `packages/designer-runtime/src/brand.ts` and `public.brand_kit()`'s fallbacks hold the same values, proven by
+  `tests/rls/brand-kits.test.ts`.
+- All six of `0144`'s status pairs clear 4.5:1 on the new defaults, so the platform default still saves.
+- An org that has overridden its brand kit renders exactly as before.
+- No status colour (`DEC-073`) and no company's team colour becomes a brand token.
+
+#### REQ-DSG-033 — The baseline poster templates are the designed ones
+**Serves:** `DEC-242` §1 · `REQ-DSG-008`, `REQ-DSG-026`, `REQ-UIX-026`
+The five platform poster families are rebuilt to the design the library's artboard draws: a flat ground, the
+category as a pill at the block-start, the title large in the display face, the presenter and the date at the
+bottom-start, the verification QR at the bottom-end. The five families and the one-default-per-family rule are
+unchanged; each family differs by its colourway, not its structure.
+**Acceptance:**
+- Every colour is a `brand.*` binding or the team colour; no hex literal reaches a document.
+- A poster is never cropped on any surface that shows it (`REQ-UIX-026`).
+- The roster CI count (`REQ-DSG-026`) is unchanged at five poster families.
+
+#### REQ-DSG-034 — The superseded baseline leaves the library
+**Serves:** `DEC-242` §3 · `REQ-DSG-008` · `REQ-CRT-014`
+The eleven superseded baseline rows are deleted. Where a certificate or a design document references a version of
+one, the database refuses the deletion by design, and the row is retired instead — invisible to the library, to a
+session's picker and to issuance, and kept only so an already-issued document still renders.
+**Acceptance:**
+- No superseded row is offered anywhere a template can be chosen: `055`'s platform section
+  (`templates.ts`), `045`'s picker (`certificates.ts`), the designer's own list (`designer.ts`) and
+  all three issuance paths each filter `retired_at is null`. ★ `platform_template_library()`
+  (`0096`) deliberately **does** return a retired row, with its `retired_at` and `retirable`
+  columns, because `SCR-083` retires and restores — that is the super admin's own surface and it is
+  not a place a template is chosen.
+- Issuance never resolves a superseded template.
+- Every certificate issued before the wave still renders, and its PDF is byte-reproducible (`REQ-CRT-014`).
+- The migration reports, per row, whether it was deleted or retired.
 
 ---
 
@@ -2059,6 +2167,32 @@ HTML form, a generated text alternative and checks.
 - Every message that renders today renders byte-identically: `tests/unit/mail-pinned/`'s files are unchanged.
 - A document saved before the change opens and compiles unchanged.
 - No block emits SVG; images are PNG or JPEG.
+
+#### REQ-NTF-016 — The eight designed mail families are rebuilt to the same language
+**Serves:** `DEC-242` §1, §5 · `REQ-NTF-014` · `DEC-081`, `DEC-082`
+The eight designed platform families in `packages/mail-runtime/src/designs.ts` are rebuilt to the visual direction
+the app and the templates wear. They remain **constants, not rows**, so there is nothing to delete and no migration:
+an org that has not touched its templates receives the rebuilt design, and an org that duplicated one to edit keeps
+its own.
+**Acceptance:**
+- All 25 message keys still resolve to one of the eight families, and each still carries its own copy.
+- Every block still has an `id`, a compiled HTML form and a generated text alternative; no block emits SVG.
+- A row whose `blocks` is null is still an admin's own text, framed and never replaced by a design.
+- The 120 pinned files move once, as one reviewed diff, and are stable on a re-run.
+
+#### REQ-NTF-017 — The invitation mail is transactional, not a matrix message
+**Serves:** `DEC-243` §6 · `REQ-TEN-009` · `REQ-NTF-014`
+A person named by an admin is told by email, in Arabic, with a link that signs them in. ★ **It is not one of the
+notification matrix's messages and does not become a twenty-sixth key**: the matrix resolves a member's preference,
+inbox row and address from a member id, and an invited person has none of those. It is a transactional send on the
+test send's pattern, in the same designed language as the eight families.
+**Acceptance:**
+- The matrix stays at 25 keys; the 120 pinned mail files are untouched by this feature.
+- ★ The recipient's address is **not in the job's payload** — the payload carries the invitation, and the address is
+  read in the worker, so a forged or replayed job can mail nobody else.
+- The mail carries a generated text alternative and no SVG; the copy is authored in Arabic first.
+- Re-sending is the same mail to the same address, recorded on the invitation with a count and the last instant.
+- An invitation that is revoked or already claimed sends nothing, however the job is triggered.
 
 
 ---
@@ -3949,6 +4083,20 @@ toggle, a preview with a real session and a test send to the admin's own address
 **Acceptance:**
 - Every drag has a single-pointer path that is not a drag, proven by a test using clicks alone.
 - The message set is `08`'s; a test send reaches only the admin's own address.
+
+#### REQ-UIX-113 — Members and the people waiting are one screen
+**Serves:** `REQ-TEN-009` · `REQ-ADM-009` · `DEC-243` §7 · `09` `SCR-049`
+`SCR-049` **gains** «أضف عضوًا» as its one primary action and shows the people who have been named but have not
+signed in **in the same table as the members**, marked «لم يسجّل الدخول بعد» with their age, «أعد الإرسال» and
+«ألغِ الدعوة». ★ The screen is **extended, not rebuilt**: there is no artboard for an add affordance, no page file
+is deleted, and no new primitive is added.
+**Acceptance:**
+- A waiting row offers no role change, no deactivation and no profile — it is not a member row.
+- Revoking takes a mandatory reason, in a sheet, as every revoke in the console does.
+- Several addresses are added at once, one per line, and each line is reported as added, already a member,
+  already invited, or not an address.
+- The counts the dashboard tiles and the rail's badges read are members; a waiting row is never counted as one.
+- The console's sober register holds: no motion, no object, no sticker.
 
 
 ---
