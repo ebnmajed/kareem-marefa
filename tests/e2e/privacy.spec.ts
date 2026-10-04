@@ -126,12 +126,14 @@ test("★ REQ-PRF-006: a member asks, and the download carries their data and no
   await signIn(context, meEmail);
   await page.goto("/ar/app/me/privacy");
   await page.getByRole("button", { name: /اطلب التصدير/ }).click();
-  // Queued, building or already ready — all three mean the request landed.
-  await expect(page.getByText(/في الانتظار|قيد التجهيز|جاهز/)).toBeVisible();
+  // Queued, building or already ready — all three mean the request landed. ★ Wave 26 (REQ-UIX-117): the states are
+  // the artboard's words — «طُلب · ‹date›», «جارٍ», «جاهز · ‹date›».
+  await expect(page.locator("#main").getByText(/طُلب ·|جارٍ|جاهز ·/)).toBeVisible();
 
   await runTheJob(meMemberId);
   await page.reload();
-  await expect(page.getByRole("link", { name: /نزّل الملف/ })).toBeVisible();
+  // ★ Wave 26: the artboard's «نزّل».
+  await expect(page.locator("#main").getByRole("link", { name: "نزّل", exact: true })).toBeVisible();
 
   // The real handler, with the member's own session.
   const download = await page.request.get("/api/me/export");
@@ -181,16 +183,13 @@ test("REQ-NFR-005: a second request inside the window is refused, and the screen
 test("★ REQ-PRF-007: a deactivation request reaches the org's log and deactivates nobody", async ({ context, page }) => {
   await signIn(context, meEmail);
   await page.goto("/ar/app/me/privacy");
-  await page.getByLabel(/سبب الطلب/).fill("أغادر المؤسسة نهاية الشهر");
-  // ★ M9: REQ-UIX-013 — every destructive action confirms in a dialog now
-  // (`takedown-button.tsx`'s shape). The first click only opens the
-  // confirm; the dialog's OWN "أرسل الطلب" is what actually submits — two
-  // buttons share that visible name, so the second click is scoped to the
-  // dialog rather than picked by name alone.
-  await page.getByRole("button", { name: /أرسل الطلب/ }).click();
-  const confirmDialog = page.getByRole("dialog", { name: /تأكيد إرسال الطلب/ });
-  await expect(confirmDialog).toBeVisible();
-  await confirmDialog.getByRole("button", { name: /أرسل الطلب/ }).click();
+  // ★ Wave 26 (REQ-UIX-117, `Privacy.dc.html:32`): «إيقاف حسابي» opens a confirm sheet, and the sheet holds the
+  // required reason — nothing is sent by opening it (REQ-UIX-013).
+  await page.locator("#main").getByRole("button", { name: "إيقاف حسابي" }).click();
+  const confirmSheet = page.getByRole("dialog", { name: "إيقاف حسابي" });
+  await expect(confirmSheet).toBeVisible();
+  await confirmSheet.getByLabel(/سبب الطلب/).fill("أغادر المؤسسة نهاية الشهر");
+  await confirmSheet.getByRole("button", { name: /أرسل الطلب/ }).click();
   await expect(page.getByText(/أُرسل طلبك/)).toBeVisible();
 
   const { rows } = await db.query<{ reason: string; status: string }>(
@@ -297,7 +296,8 @@ test.describe("M9 restyle: named states", () => {
     await signIn(context, sMemberEmail);
 
     await page.goto("/ar/app/me/privacy");
-    await expect(page.getByRole("heading", { name: "بياناتي وخصوصيتي", level: 1 })).toBeVisible();
+    // ★ Wave 26 (DEC-251 §3.5): the artboard's title.
+    await expect(page.locator("#main").getByRole("heading", { name: "البيانات والخصوصية", level: 1 })).toBeVisible();
     await expect(page.getByRole("button", { name: "اطلب التصدير" })).toBeVisible();
     await capture(page, "no-export");
 
@@ -307,17 +307,17 @@ test.describe("M9 restyle: named states", () => {
       [sOrgId, sMemberId, `orgs/${sOrgId}/exports/${sMemberId}.zip`],
     );
     await page.reload();
-    await expect(page.getByRole("link", { name: "نزّل الملف" })).toHaveAttribute("href", "/api/me/export");
+    await expect(page.locator("#main").getByRole("link", { name: "نزّل", exact: true })).toHaveAttribute("href", "/api/me/export");
     await capture(page, "export-ready");
 
-    // Opening the confirm requires a filled, valid reason first — REQ-UIX-013.
-    await page.getByRole("button", { name: "أرسل الطلب" }).click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-
-    await page.getByLabel("سبب الطلب", { exact: false }).fill("لم أعد أستخدم المنصة");
-    await page.getByRole("button", { name: "أرسل الطلب" }).click();
-    const dialog = page.getByRole("dialog", { name: "تأكيد إرسال الطلب" });
+    // ★ Wave 26: the confirm is the sheet «إيقاف حسابي» opens; an empty reason sends nothing — REQ-UIX-013.
+    await page.locator("#main").getByRole("button", { name: "إيقاف حسابي" }).click();
+    const dialog = page.getByRole("dialog", { name: "إيقاف حسابي" });
     await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "أرسل الطلب" }).click();
+    await expect(page.getByRole("status")).toHaveCount(0);
+
+    await dialog.getByLabel("سبب الطلب", { exact: false }).fill("لم أعد أستخدم المنصة");
     await capture(page, "deactivate-confirm");
 
     await dialog.getByRole("button", { name: "أرسل الطلب" }).click();

@@ -84,22 +84,24 @@ async function goto(page: Page, url: string) {
   await expect(page.locator('div[hidden][id^="S:"]')).toHaveCount(0);
 }
 
-test("★ DEC-166: a canvas colour that would fail a status badge's AA is refused, the toast names why, the field keeps what was typed", async ({ context, page }, testInfo) => {
+test("★ DEC-166: a canvas colour that would fail a status badge's AA is refused, the screen names the failing pair, the field keeps what was typed", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/branding");
+  // ★ Wave 26 (REQ-UIX-116): the form is edit mode; SCR-059 opens read.
+  await goto(page, "/ar/app/admin/branding?edit");
   const main = page.locator("#main");
 
   // #8a5a1f is globals.css's own --color-live (:51) — a canvas equal to it
   // is exactly 1:1 against `--color-live` as text, nowhere near 4.5:1.
-  const canvas = main.getByLabel("الخلفية", { exact: true });
+  // ★ Wave 26: a changed field adds «(معدّل)» to its accessible name (DEC-231 §3), so the label is matched from its start.
+  const canvas = main.getByLabel(/^الخلفية/);
   await canvas.fill("#8a5a1f");
-  await main.getByRole("button", { name: "حفظ" }).click();
+  await main.getByRole("button", { name: /^حفظ/ }).click();
 
-  await expect(
-    page.getByRole("status").filter({ hasText: "تباين شارات الحالة" }),
-  ).toBeVisible();
+  // ★ Wave 26 (DEC-251 §3.5): the refusal is on the screen, inline, naming the pair from the error's `detail` — the
+  // toast is gone. `live` on the light canvas fails first.
+  await expect(main.getByRole("alert").filter({ hasText: "شارة «جارية الآن» لا تُقرأ على خلفية الوضع الفاتح" })).toBeVisible();
 
   // Controlled input: nothing typed was lost to a native form reset.
   await expect(canvas).toHaveValue("#8a5a1f");
@@ -115,12 +117,14 @@ test("★ DEC-166: a canvas colour far from every status colour saves normally",
   test.skip(testInfo.project.name !== "phone", "the 390 px review runs on the phone project");
   await page.setViewportSize(PHONE);
   await signIn(context, adminEmail);
-  await goto(page, "/ar/app/admin/branding");
+  // ★ Wave 26 (REQ-UIX-116): the form is edit mode; SCR-059 opens read.
+  await goto(page, "/ar/app/admin/branding?edit");
   const main = page.locator("#main");
 
-  const canvas = main.getByLabel("الخلفية", { exact: true });
+  // ★ Wave 26: a changed field adds «(معدّل)» to its accessible name (DEC-231 §3), so the label is matched from its start.
+  const canvas = main.getByLabel(/^الخلفية/);
   await canvas.fill("#f4f6f9");
-  await main.getByRole("button", { name: "حفظ" }).click();
+  await main.getByRole("button", { name: /^حفظ/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "تم حفظ هوية المؤسسة." })).toBeVisible();
 
   const { rows } = await db.query<{ light_canvas: string }>(`select light_canvas from public.brand_kits where org_id = $1`, [orgId]);
