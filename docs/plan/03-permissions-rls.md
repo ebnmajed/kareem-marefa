@@ -828,6 +828,10 @@ for insert and update, so "opens at completion, closes 14 days later" is one rul
 | `leaderboard_snapshots`, `leaderboard_entries` | §5.7b | — | — | — | Job-written. |
 | `member_seen_marks` | §5.7c | §5.7c | §5.7c | — | A member's own bookmark of what they have seen (`0162`, `DEC-197`). No timestamp; no delete; the worker never touches it. |
 | `feed_announcements` | §5.7d | §5.7d | §5.7d | §5.7d | An org's announcements in the feed (`0164`, `DEC-206` §3, `REQ-UIX-056`). Members read what is published and unexpired; an admin reads and writes all of the org's. The update grant is by column. The worker never touches it. |
+| `story_frames` | §5.7e | — | — | — | A session's story (`0198`, `DEC-248` §5, `REQ-STO-001` … `018`). Members read what is visible and inside 24 h; the author reads their own unfinished video; staff read all. **No client write** — every write is a definer function. |
+| `story_views` | §5.7e | §5.7e | — | — | A member's own record of what they viewed; nobody else's, staff included (`REQ-STO-010`). |
+| `story_reactions` | §5.7e | §5.7e | §5.7e | §5.7e | One per member per frame; the update grant is by column; no ledger row, ever (`REQ-STO-005`). |
+| `story_frame_takedowns` | §5.7e | — | — | — | «أزلني» on a video frame; the requester and staff read; written only by definer functions (`REQ-STO-014`). |
 
 #### §5.7a — `points_ledger`, read
 ```sql
@@ -890,6 +894,38 @@ grant select, insert, delete on feed_announcements to authenticated;
 grant update (body, published_at, expires_at) on feed_announcements to authenticated;
 revoke all on feed_announcements from anon, service_role;
 ```
+
+
+#### §5.7e — session stories — `story_frames`, `story_views`, `story_reactions`, `story_frame_takedowns` (`0198`, `DEC-248` §5, `DEC-251` §5)
+A story is the session's; a frame is a row that stores an identity and an instant and **no figure**. Expiry, hiding,
+removal, cancellation and a hidden photograph are all one predicate, `story_frame_is_visible()` — security invoker, so
+it reads the session and the photograph through the caller's own policies and can only take authority away. The read
+policy calls it and so does the story feed, so the two cannot drift. **No client role writes a frame or a removal
+request**: the generator, the capture, the transcode and moderation are definer functions. `service_role` holds
+nothing on any of the four. Cases: `POL-story_frames.read_visible`, `.read_own`, `.staff_read`, `.no_client_write`,
+`.one_per_trigger`, `POL-story_views.own`, `POL-story_reactions.own`, `POL-story_frame_takedowns.read`,
+`POL-reports.story_frame`, `POL-story_media_read` in `tests/rls/story-tables.test.ts`.
+```sql
+create policy "story_frames_read_visible"   on story_frames for select to authenticated;  -- org_id = auth_org_id() and story_frame_is_visible(row): visible, not hidden, not removed, inside 24 h of its trigger, session not cancelled, its photograph visible
+create policy "story_frames_read_own"       on story_frames for select to authenticated;  -- the author's own video while processing or failed, never a removed one
+create policy "story_frames_staff_read"     on story_frames for select to authenticated;  -- org_id = auth_org_id() and is_staff() — expired, hidden and removed too (REQ-STO-017)
+grant select on story_frames to authenticated;                                             -- no insert, update or delete for anyone: definer functions only
+create policy "story_views_read_own"        on story_views for select to authenticated;   -- member_id = auth_member_id(); no staff policy (REQ-STO-010)
+create policy "story_views_insert_own"      on story_views for insert to authenticated;   -- the same, and the frame is one the caller may read now
+grant select, insert on story_views to authenticated;
+create policy "story_reactions_read"        on story_reactions for select to authenticated;  -- the org's, for a frame the caller may read
+create policy "story_reactions_insert_own"  on story_reactions for insert to authenticated;  -- member_id = auth_member_id(), a readable frame
+create policy "story_reactions_update_own"  on story_reactions for update to authenticated;  -- the same, both sides
+create policy "story_reactions_delete_own"  on story_reactions for delete to authenticated;  -- member_id = auth_member_id()
+grant select, insert, delete on story_reactions to authenticated;
+grant update (kind) on story_reactions to authenticated;
+create policy "story_frame_takedowns_read"  on story_frame_takedowns for select to authenticated;  -- is_staff() or requester_id = auth_member_id()
+grant select on story_frame_takedowns to authenticated;                                     -- requests and decisions are definer functions
+revoke all on story_frames, story_views, story_reactions, story_frame_takedowns from anon, service_role;
+```
+`reports` gains `story_frame_id` and `report_target` gains `story_frame`; a check ties the two
+(`POL-reports.story_frame`). `photos` gains `caption` and `story_derivative_ready`, both written by the worker's
+definer alone.
 
 ### 5.8 Certificates
 
@@ -1120,6 +1156,7 @@ create policy "exports_storage_read_public_card" on storage.objects for select t
 create policy "exports_storage_certificate_restricted" on storage.objects as restrictive for select to authenticated;  -- DEC-178 (0153): a certificate's render only to staff of its org or its own member once released, via export_object_is_foreign_certificate(name); narrows exports_storage_read, which admitted the whole org prefix
 create policy "photo_albums_storage_read"          on storage.objects for select to authenticated;  -- DEC-182 (0156): staff of the org, and only the album's CURRENT build (path segment 5 = build_id), ready and unexpired — a stale, superseded or expired zip is unreadable with its path in hand
 create policy "avatars_storage_read"                on storage.objects for select to authenticated;  -- DEC-182 (0157): same org, and only a member's CURRENT avatar_version (path segment 4) — clearing the version cuts access in the same statement
+create policy "story_media_read"                    on storage.objects for select to authenticated;  -- DEC-248 §5 (0198): a story video's rendition and poster — never its source — for a frame the caller may read now (the frame is looked up under the caller's own policies); the write policy lands with content's capture gate
 create policy "design_assets_storage_read_public_logo" on storage.objects for select to anon, authenticated;  -- DEC-161 (0126): ONLY the PNG or JPEG an ACTIVE org's brand_kits.logo_asset_id names, via brand_logo_is_public(name) — so a mail client can fetch a logo; every other design asset stays closed
 create policy "fonts_storage_read"           on storage.objects for select to authenticated;  -- no org prefix (REQ-DSG-016)
 ```

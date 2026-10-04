@@ -9,7 +9,7 @@
 | Artifact | Count |
 |---|---|
 | Requirements (`REQ-*`) | **445** |
-| Entities (`ENT-*`) | **85** |
+| Entities (`ENT-*`) | **89** |
 | Stories (`STORY-*`) | **268** |
 | Screens cited (`SCR-*`) | 60 |
 | Jobs cited (`JOB-*`) | 41 |
@@ -448,24 +448,24 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 
 | Requirement | Entities | Policies | Screens | Jobs | Messages | Stories | M |
 |---|---|---|---|---|---|---|---|
-| `REQ-STO-001` | — | — | `SCR-010` | — | — | `STORY-STO-001` | M28 |
-| `REQ-STO-002` | — | — | `SCR-010` | — | — | `STORY-STO-001` | M28 |
-| `REQ-STO-003` | — | — | `SCR-010` | — | — | `STORY-STO-007` | M28 |
-| `REQ-STO-004` | — | — | `SCR-010` | — | — | `STORY-STO-001` | M28 |
-| `REQ-STO-005` | — | — | `SCR-010` | — | — | `STORY-STO-003` | M28 |
-| `REQ-STO-006` | — | — | `SCR-010` | — | — | `STORY-STO-002` | M28 |
+| `REQ-STO-001` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-001` | M28 |
+| `REQ-STO-002` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-001` | M28 |
+| `REQ-STO-003` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-007` | M28 |
+| `REQ-STO-004` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-001` | M28 |
+| `REQ-STO-005` | `ENT-story_reactions` | — | `SCR-010` | — | — | `STORY-STO-003` | M28 |
+| `REQ-STO-006` | `ENT-story_views` | — | `SCR-010` | — | — | `STORY-STO-002` | M28 |
 | `REQ-STO-007` | — | — | `SCR-010` | — | — | `STORY-STO-003` | M28 |
 | `REQ-STO-008` | — | — | `SCR-012` | — | — | `STORY-STO-002` | M28 |
 | `REQ-STO-009` | — | — | `SCR-010` | — | — | `STORY-STO-003` | M28 |
-| `REQ-STO-010` | — | — | `SCR-010` | — | — | `STORY-STO-003` `STORY-STO-007` | M28 |
-| `REQ-STO-011` | — | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
-| `REQ-STO-012` | — | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
-| `REQ-STO-013` | — | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
-| `REQ-STO-014` | — | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |
-| `REQ-STO-015` | — | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |
-| `REQ-STO-016` | — | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |
-| `REQ-STO-017` | — | — | `SCR-044` | — | — | `STORY-STO-006` | M28 |
-| `REQ-STO-018` | — | — | `SCR-012` | — | — | `STORY-STO-001` | M28 |
+| `REQ-STO-010` | `ENT-story_views` | `POL-reports.story_frame` `POL-story_frame_takedowns.read` +3 | `SCR-010` | — | — | `STORY-STO-003` `STORY-STO-007` | M28 |
+| `REQ-STO-011` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
+| `REQ-STO-012` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
+| `REQ-STO-013` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-004` | M28 |
+| `REQ-STO-014` | `ENT-photo_takedowns` `ENT-story_frame_takedowns` `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |
+| `REQ-STO-015` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |
+| `REQ-STO-016` | `ENT-story_frames` | — | `SCR-010` | — | — | `STORY-STO-005` | M28 |
+| `REQ-STO-017` | `ENT-story_frames` | `POL-reports.story_frame` `POL-story_frame_takedowns.read` +3 | `SCR-044` | — | — | `STORY-STO-006` | M28 |
+| `REQ-STO-018` | `ENT-story_frames` | — | `SCR-012` | — | — | `STORY-STO-001` | M28 |
 
 ### SUR
 
