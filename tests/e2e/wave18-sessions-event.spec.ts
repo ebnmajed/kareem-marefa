@@ -180,7 +180,7 @@ test("open, phone: the regions in the artboard's order, the rule's amount, and t
     const at = (sel: string) => all.indexOf(root.querySelector(sel) as Element);
     return [at('a[href$="/app/sessions"]'), at('[data-slot="poster-placeholder"], figure, img'), at("h1"), at('a[href*="/app/members/"]'), at("section#attend"), at('nav[aria-label="أقسام الجلسة"]'), at("section#about")];
   });
-  expect(order.every((n) => n >= 0)).toBe(true);
+  expect(order.every((n) => n >= 0), JSON.stringify(order)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
 
   // ★ The language before the action (REQ-SES-011).
