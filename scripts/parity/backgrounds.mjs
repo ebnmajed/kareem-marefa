@@ -33,7 +33,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { BASELINE_LIBRARY, INK_REFERENCE_CSS, backgroundCss, inkedRatio, platformBrand, renderDocumentToHtml } from '@kareem/designer-runtime'
+import { BASELINE_LIBRARY, INK_REFERENCE_CSS, backgroundCss, inkedRatio, platformBrand, resolveColour, renderDocumentToHtml } from '@kareem/designer-runtime'
 
 export const BACKGROUND_CASES = ['solid-rtl', 'gradient-rtl', 'gradient-ltr', 'ink-on-dark']
 
@@ -224,10 +224,15 @@ export async function runBackgroundBlock({ browser, diffPage, diffOf, facesFor, 
     const seen = []
     for (const { family: groundFamily, background: g } of grounds) {
       const solid = await render(browser, documentFor('rtl', g), { bindings })
-      const token = (g.color ?? '').replace(/^\{\{|\}\}$/g, '').trim()
-      const want = palette[token]
-      if (!want) {
-        problems.push(`${groundFamily}: the ground names a token the dark palette does not have: ${g.color}`)
+      // ★ wave 24's re-colour: RESOLVED THROUGH THE RUNTIME, not looked up in the
+      // palette. A poster's ground is a `design.*` constant now, and a design
+      // constant is in no render context BY CONSTRUCTION — that is what stops an
+      // org repainting a platform colourway. `resolveColour()` is the one funnel
+      // the renderer itself uses, so asking it is both correct here and the same
+      // question Chromium is about to answer.
+      const want = resolveColour(bindings, g.color, '')
+      if (!/^#[0-9a-fA-F]{6}$/.test(want)) {
+        problems.push(`${groundFamily}: the ground does not resolve to a colour: ${g.color} → ${want || 'nothing'}`)
         continue
       }
       // `backgroundColor`, not `backgroundImage` — see `render()`. A flat fill
@@ -244,8 +249,14 @@ export async function runBackgroundBlock({ browser, diffPage, diffOf, facesFor, 
     }
     // Five families, five DISTINCT grounds — REQ-DSG-033's «each family differs
     // by its colourway». Two families sharing one is a colourway that was lost.
-    const distinct = new Set(grounds.map((x) => x.background.color)).size
-    if (distinct !== grounds.length) problems.push(`${grounds.length} poster families share only ${distinct} grounds`)
+    //
+    // ★ wave 24's re-colour: compared as RESOLVED COLOURS, not as binding
+    // strings. Five distinct strings were `canvas` #0B0C12, `surface` #151724
+    // and `canvasRaise` #1E2130 plus two more, and the first three are within
+    // 1.10:1, 1.22:1 and 1.11:1 of one another — three of the five families
+    // were the same poster on the wall, and a count of strings said nothing.
+    const distinct = new Set(grounds.map((x) => resolveColour(bindings, x.background.color, ''))).size
+    if (distinct !== grounds.length) problems.push(`${grounds.length} poster families resolve to only ${distinct} distinct grounds`)
     if (problems.length) fail(`solid-rtl: ${problems.join(' · ')}`)
     else pass(`solid-rtl — ${grounds.length} flat grounds, each a resolved token with no image and four equal corners: ${seen.join('; ')}`)
   }

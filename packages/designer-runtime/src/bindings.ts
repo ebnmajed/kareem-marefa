@@ -14,8 +14,18 @@
  * fixed.
  */
 
-/** The five namespaces a binding may name. Anything else is unbound. */
-export const BINDING_NAMESPACES = ['brand', 'session', 'recipient', 'certificate', 'org'] as const
+import { designColour } from './design-colours.js'
+
+/** The namespaces a binding may name. Anything else is unbound.
+ *
+ *  ★ `design` is wave 24's (the re-colour): the design's own colour constants,
+ *  which are a PLATFORM identity and so cannot be `brand.*`, and which cannot
+ *  be a hex either because `0094`'s guard refuses one. It is listed here
+ *  because `isBinding()` gates `resolveColour()` — without it
+ *  `{{design.cyan}}` is not a binding, `resolveColour()` returns the moustache
+ *  **as a literal CSS colour**, and the ground renders as nothing at all.
+ *  See `design-colours.ts`. */
+export const BINDING_NAMESPACES = ['brand', 'design', 'session', 'recipient', 'certificate', 'org'] as const
 export type BindingNamespace = (typeof BINDING_NAMESPACES)[number]
 
 /** `{{brand.canvas}}` and `brand.canvas` are the same binding. */
@@ -96,11 +106,21 @@ export function resolveText(
  * drawing a dashed box where a fill should be would be worse than the
  * fallback. So it falls back, and the TEMPLATE GUARD in the database is what
  * stops a hex literal being committed in the first place (REQ-DSG-021).
+ *
+ * ★ `design.*` resolves from the DESIGN'S OWN CONSTANTS rather than from the
+ * context (wave 24). The context is consulted first, so a caller that wants to
+ * substitute one — a test, a future preview — still can; but nothing in the
+ * tree does, and that is the point: these values reach no per-org render
+ * context, so an org's brand kit **cannot** repaint «the tangerine colourway».
+ * Impossible by construction, not merely unimplemented. It also means all four
+ * context-assembly sites — the worker's, the studio's two and the parity
+ * harness's — resolve them identically without knowing they exist.
  */
 export function resolveColour(ctx: BindingContext, value: string | undefined, fallback: string): string {
   if (!value) return fallback
   if (!isBinding(value)) return value
-  return ctx.values[normaliseBinding(value)] ?? fallback
+  const path = normaliseBinding(value)
+  return ctx.values[path] ?? designColour(path) ?? fallback
 }
 
 /** Resolve a URL or an asset id — an image source, a QR target. Unbound is

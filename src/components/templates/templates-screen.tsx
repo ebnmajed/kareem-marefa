@@ -49,7 +49,10 @@ function textBindingsOf(doc: DesignDocument): string[] {
   for (const raw of doc.layers) {
     const layer = raw as { text?: { binding?: string }; field?: { binding?: string } };
     const binding = (layer.text?.binding ?? layer.field?.binding ?? "").replace(/^\{\{|\}\}$/g, "").trim();
-    if (binding && !binding.startsWith("brand.") && !out.includes(binding)) out.push(binding);
+    // ★ DEC-246: `design.*` is excluded for the same reason `brand.*` is — both are
+    //   PALETTE namespaces, not session data, and `055` lists what a template BINDS
+    //   from a session. Without this the card would offer «design.cyan» as a binding.
+    if (binding && !binding.startsWith("brand.") && !binding.startsWith("design.") && !out.includes(binding)) out.push(binding);
   }
   return out;
 }
