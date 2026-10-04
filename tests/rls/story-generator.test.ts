@@ -17,6 +17,10 @@ async function setup(tx: Tx): Promise<M2Fixture> {
   await applyProposed(tx, "sessions/01_story_generator.sql");
   await applyProposed(tx, "sessions/02_story_feed.sql");
   await tx.asOwner();
+  // ★ Once 0199 is in the chain the fixture's own writes fire the hooks: fixture-m5's visible photograph and its
+  // «قبل» material on the published session each write a frame. Each case below drives the trigger it is about, so it
+  // starts from the fixture's two hand-written frames (published, video) and nothing the hooks wrote while seeding.
+  await tx.q(`delete from public.story_frames where kind in ('photo', 'materials')`);
   return f;
 }
 
