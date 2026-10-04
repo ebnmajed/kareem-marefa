@@ -175,7 +175,38 @@ because that is what moving a default means — and an org that has overridden i
 
 ---
 
-## ★★ NEXT SCOPE — wave 25, M27: a member added by hand (`DEC-243`, shape set by `DEC-244`; **not open**)
+## ★★★ WAVE 25 — OPEN, BUILT, AWAITING THE PUSH · M27, a member added by hand (`DEC-243` · `DEC-244` · `DEC-246`)
+
+★ **Branch `wave-25/add-a-member`, PR #68.** All three pieces are built and green; the migration is **`0197`**,
+promoted and replayed in a full chain. What is left is the owner's: the rehearsal, the push, the merge.
+
+| | State |
+|---|---|
+| `0197_add_a_member.sql` | ★ promoted (a **move**, so `applyProposed()` no-ops and the suite passed unchanged) · replayed clean in a full `db reset` 0001 → 0197 |
+| `SCR-049` | «أضف عضوًا», the sheet, the pasted list with its per-line report, «لم يسجّل الدخول بعد» with its age, resend, delete |
+| `JOB-send_member_invitation` | the thirty-seventh job; the design is a sibling export, so `DESIGN_FOR` stays at 25 and the 120 pinned files are untouched |
+| Tests | 27 RLS · 11 component (axe) · 6 unit for the mail · `members-table.test.ts`'s 16 cases unchanged |
+| ★ Owed | an e2e spec for the demonstrable; the owner's rehearsal and push (**runbook: [`notes/wave-25-lead.md`](notes/wave-25-lead.md) §8**) |
+
+★★ **A hole in the chain, not this wave's:** `0194` is still in open PR #69 while `0195` and `0196` are on `main`. A
+fresh reset applies `0194` **before** them; a production pushed in merge order gets it **after**. Independent
+migrations, so the divergence is in the order — but **`supabase db push` wants `--include-all`** for the straggler.
+
+★★ **`DEC-246` — `DEC-244` §6 measured short.** The denominator is **five predicates across two functions**, not
+four across one: `0182`'s `evaluate_company_points()` divides by active members to **award** company points, so
+adding five colleagues by hand would have **paid their own company less** at the next session completion — into an
+**append-only** ledger. Provably a no-op on existing data, three ways.
+
+### The ledger — assertions changed, and why
+
+| File | Change | Why |
+|---|---|---|
+| `tests/components/admin/members-table.test.tsx` | row factory gains `hasSignedIn: true`, `invitedBy: null` | A type completion, **not an assertion**: all 16 cases pass untouched, and every case written before M27 keeps its meaning |
+| `05-scoring-engine.md` §6.2, `STORY-LDR-005` | «four predicates in one function» → five across two | `DEC-246` |
+
+### The record, as it stood before the build
+
+
 
 ★ **The owner's ask, verbatim, in two sentences — and the second corrects the first answer:**
 > «I want the ability to add user to the app in addition for them becoming users on the first signin.»

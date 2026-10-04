@@ -8910,3 +8910,58 @@ migration that is now **two column changes, four RPCs, two function amendments a
   `STATUS.md`, `docs/plan/notes/wave-25-lead.md`
 - ★ **`03-permissions-rls.md` is still not changed**, and now for a second reason: there is no new relation to
   document. The policy set `members` carries is unchanged by a nullable column.
+
+---
+
+## DEC-246 — `DEC-244` §6 measured short: the active-member denominator is **five predicates across two functions**, and the second one awards points
+
+- **Date:** 2026-10-04 · **Decided by:** the lead, from the implementation — the measurement was wrong, not the ruling
+- **Amends:** `DEC-244` §6, `05-scoring-engine.md` §6.2 and `STORY-LDR-005`, each of which says «four predicates in one function»
+- **Does not amend:** the ruling itself. The denominator still counts the members who have signed in, for the reason
+  `DEC-244` §6 gives, and it is still provably a no-op on existing data
+
+### 1 · What was measured, and what the measurement missed
+
+`DEC-244` §6 named `snapshot_leaderboard()` and counted its predicates: the org-wide denominator frozen into every
+snapshot (`0176:39`) and the two per-company counts that rank the company race (`0176:95`, `:98`). Three, plus a
+fourth that did not exist. ★ **What it missed is that a second live function counts active members**:
+`evaluate_company_points()` (`0182:97`, `:126`), whose two counts are the denominators of
+`company_attendance_pct` and `company_presenting_pct`.
+
+### 2 · ★★ Why the one it missed is the more important of the two
+
+`snapshot_leaderboard()` decides a **ranking**. `evaluate_company_points()` writes rows into
+`company_points_ledger` — it **awards**. An admin adding five colleagues by hand would therefore not merely have
+re-ordered a board: at the next session completion their own company would have been paid **less**, because its
+attendance percentage was divided by five people who had never been asked to attend. ★ And `points_ledger` and
+`company_points_ledger` are **append-only** (invariant 9), so the under-payment would not have been corrected by
+anything later — it would have been a wrong number that stayed right where it landed.
+
+★ **It is the same defect `A11`/`DEC-016` froze the snapshot denominator to prevent**, arriving through the one
+door nobody had looked at.
+
+### 3 · What is unchanged
+
+Both functions are replaced **whole**, as `0176` replaced `0081` — the house pattern, so the diff is reviewable and
+nothing else in either body moves. ★ **The change is provably a no-op for everything that exists**: `auth_user_id`
+is `not null` until `0197` runs, so every member already satisfies `auth_user_id is not null`, and every stored
+snapshot, every live derivation and every award is byte-identical. `tests/rls/add-a-member.test.ts` asserts it three
+ways — the two counts agreeing on the fixture, the snapshot's stored `active_member_count` across an addition, and
+the per-company count behind the award.
+
+### 4 · The promotion, recorded here because the number was the other thing that could go wrong
+
+`0197_add_a_member.sql`, promoted from `supabase/proposed/wave25/add_a_member.sql` by **moving** it — which is why
+`tests/rls/add-a-member.test.ts` kept passing unchanged, `applyProposed()` being a no-op on a missing path
+(`tests/rls/db.ts:133-147`). The number was swept across **every worktree on the machine** before it was claimed,
+not read off one chain: `main` at 0195/0196, `kareem-marefa-hotfix` at 0194, nothing at 0197. `DEC-180` records two
+migrations vanishing from exactly that shortcut.
+
+★ **A hole in the chain, above this one and not caused by it:** `0194` is still in open PR #69 while `0195` and
+`0196` are already on `main`. A fresh `supabase db reset` therefore applies `0194` **before** them; a production
+pushed in merge order receives it **after**. The three are independent — a certificate mode, a template guard and a
+baseline recolour — so the divergence is in the order and not the outcome, but **`supabase db push` will want
+`--include-all` for the straggler**, and whoever pushes should know before they do.
+
+- **Documents changed:** `05-scoring-engine.md` §6.2, `15-backlog.md` (`STORY-LDR-005`), `STATUS.md`, and
+  `supabase/migrations/0197_add_a_member.sql`'s own header

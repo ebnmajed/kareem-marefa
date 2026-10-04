@@ -1,39 +1,23 @@
--- add_a_member.sql — wave 25, M27. Proposed by the lead; NOT YET NUMBERED, on purpose.
+-- 0197_add_a_member.sql — wave 25, M27. Promoted by the lead from
+-- `supabase/proposed/wave25/add_a_member.sql`, which it was proved under (`DEC-040`).
 --
--- ★ THE NUMBER IS 0197, AND IT IS NOT CLAIMED UNTIL `origin/main` SHOWS 0196.
--- Swept across every worktree on the machine on 2026-10-04, not just `main` — `DEC-180` records two
--- migrations vanishing from exactly that shortcut, because a number cited ahead of time is taken by
--- whichever wave gets there first and the promised change disappears without an error:
---   · `main`, committed .................. head is 0193
---   · `kareem-marefa-hotfix` ............. 0194  (certificates after completion)
---   · `kareem-marefa-wave24b` ............ 0195  (the template guard), 0196 (the baseline re-colour)
---   · nothing holds ...................... 0197
--- So 0194 is NOT on `main` — it is on the certificate branch, which is a different statement and the
--- reason the sweep is the rule rather than reading one chain.
+-- ★ THE NUMBER. Swept across every worktree on the machine before it was claimed, not just `main` —
+-- `DEC-180` records two migrations vanishing from exactly that shortcut. At promotion: `main` held
+-- 0195 and 0196, `kareem-marefa-hotfix` held 0194, and nothing held 0197.
 --
--- ★ PROMOTION IS A MOVE, and the suite is built for it: `git mv` this file to
--- `supabase/migrations/0197_add_a_member.sql`. `applyProposed()` then NO-OPS on the missing path
--- (`tests/rls/db.ts:133-147`) and `tests/rls/add-a-member.test.ts` keeps passing unchanged, because
--- the objects come from the chain instead. ★ **This file is deliberately NOT idempotent** — the
--- helper's own comment says applying it twice «would fail on `create function` anyway», and the
--- move is the mechanism, not `if not exists` everywhere.
+-- ★ A HOLE IN THE CHAIN, ABOVE THIS ONE, AND IT IS NOT THIS MIGRATION'S: `0194`
+-- (`0194_certificate_mode_after_completion`) is still in open PR #69 while `0195` and `0196` are
+-- already on `main`. A fresh `supabase db reset` therefore applies 0194 BEFORE 0195/0196, while a
+-- production pushed in merge order receives it after. The three are independent — a certificate
+-- mode, a template guard and a baseline recolour — so the divergence is in the ORDER and not in the
+-- outcome, but `supabase db push` will want `--include-all` for the straggler, and whoever pushes
+-- should know that before they do. Written here because this is the next migration anyone reads.
 --
--- ★ VERIFIED NON-DESTRUCTIVELY against the live chain (2026-10-04), with no reset and invisible to
--- the other sessions on this machine:
---     begin; \i supabase/proposed/wave25/add_a_member.sql; rollback;
--- Every statement applied, all five functions created, `members.auth_user_id` nullable. Re-run after
--- 0195 and 0196 land, since those are the two migrations this one has never been stacked on.
---
--- Serves:  REQ-TEN-009 (an admin adds a عضو, and they are a member at once)
---          REQ-TEN-010 (an added member is admitted where the domain list would refuse)
---          REQ-TEN-011 (first sign-in BINDS the waiting row; it never creates a second)
--- Decided: DEC-243 (the capability), DEC-244 (the shape — an invitation table was proposed and
---          withdrawn the same day: a row nothing may reference cannot «take effect»)
--- Cites:   0004 (members, members_org_immutable, members_company_same_org), 0005 (provision_member,
---          write_audit, assert_fresh_admin), 0006 (the access-token hook AND its existing
---          `grant select on public.members to supabase_auth_admin` — the reason this migration adds
---          no grant), 0007 (before_user_created_hook), 0025 (enqueue_job), 0056 (admin_list_members),
---          0139 (send_test_email — the shape this wave's mail job copies)
+-- ★ THE SUITE SURVIVED THE PROMOTION UNCHANGED, by design: `applyProposed()` no-ops on a missing
+-- path (`tests/rls/db.ts:133-147`) because promotion is a MOVE, so `tests/rls/add-a-member.test.ts`
+-- keeps passing with these objects coming from the chain instead of from the transaction. The file
+-- is deliberately NOT idempotent — the helper's own comment says applying it twice «would fail on
+-- `create function` anyway».
 --
 -- ── What this does NOT do, on purpose ───────────────────────────────────────────────────────────
 --   * No new table and no new enum. DEC-244 withdrew ENT-member_invitations: an added person is a

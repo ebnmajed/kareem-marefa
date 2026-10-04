@@ -1809,7 +1809,8 @@ presenting the same address is still refused.
 
 #### STORY-LDR-005 — The active-member denominator counts the members who have signed in
 **Covers:** `REQ-LDR-006` · **M27** · **S** · `scoring`
-Four predicates in `snapshot_leaderboard()` — the org-wide count and the three per-company counts — gain
+★ **Five predicates across two functions** (`DEC-246`, correcting `DEC-244` §6) — three in `snapshot_leaderboard()`
+and two in `evaluate_company_points()`, which awards rather than ranks — gain
 `and auth_user_id is not null`, so adding five colleagues cannot dilute their company's **النقاط لكل عضو نشِط** before
 any of them arrives, and cannot carry a company across `company_min_active_members`. ★ Done when the counts are proven
 **byte-identical on existing data**, because every member already satisfies the predicate.

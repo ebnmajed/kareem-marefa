@@ -400,8 +400,9 @@ score — for five people who have not declined to contribute but have not been 
 same silent rewrite the freeze exists to prevent, arriving through a different door.
 ★ **It is provably a no-op for everything that exists**: `auth_user_id` is `not null` until that
 wave's migration, so every member already satisfies the predicate and every stored snapshot and
-live derivation is byte-identical. The four counts are the org-wide one in `snapshot_leaderboard()`
-and its three per-company counts; `company_min_active_members` (`REQ-UIX-082`) reads the same ones
+live derivation is byte-identical. ★ **Corrected by `DEC-246`:** it is **five predicates across two functions**, not four across one — the
+org-wide count and the two per-company counts in `snapshot_leaderboard()` (`0176`), and the two in
+`evaluate_company_points()` (`0182`), which **awards** rather than ranks; `company_min_active_members` (`REQ-UIX-082`) reads the same ones
 and follows automatically.
 
 ### 6.3 Opting out
