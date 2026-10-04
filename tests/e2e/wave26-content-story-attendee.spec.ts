@@ -177,6 +177,35 @@ test("«أضف» is the checked-in attendee's alone; a gallery photograph goes t
   }
 });
 
+test("★★ a video recorded and stopped by TAPS alone — page.click() on the mode and on the shutter, never a hold (DEC-093)", async ({ context, page }) => {
+  // playwright.config.ts launches Chromium with a fake camera and microphone; the permission is this context's.
+  await context.grantPermissions(["camera", "microphone"]);
+  await page.setViewportSize(PHONE);
+  await signIn(context, email.attendee);
+  await openStory(page);
+  await page.click('[data-story-viewer] button:has-text("أضف")');
+  const capture = page.locator("[data-story-capture]");
+  await expect(capture).toBeVisible();
+
+  await page.click('[data-story-capture] [role="radio"]:has-text("فيديو")');
+  await expect(capture.getByRole("radio", { name: "فيديو" })).toHaveAttribute("aria-checked", "true");
+  await page.click('[data-story-capture] button[aria-label="ابدأ التسجيل"]');
+  await expect(capture.getByRole("button", { name: "أوقف التسجيل" })).toHaveAttribute("aria-pressed", "true");
+  await expect(capture).toHaveAttribute("data-state", "recording");
+  await expect(capture.locator('[data-slot="elapsed"]')).toContainText("0:02", { timeout: 5_000 });
+  await page.screenshot({ path: join(SHOTS, "wave26-content-capture-recording-390.png") });
+  await page.click('[data-story-capture] button[aria-label="أوقف التسجيل"]');
+
+  await expect(capture).toHaveAttribute("data-state", "review");
+  await expect(capture.locator("video[controls]")).toBeVisible();
+  await page.click('[data-story-capture] button:has-text("انشر")');
+  await expect(capture.getByRole("status")).toHaveText("جارٍ التجهيز", { timeout: 30_000 });
+  // The recorded clip's own frame exists — processing until the worker decides (visible at once if one is running).
+  await expect
+    .poll(async () => (await db.query(`select count(*)::int as n from public.story_frames where session_id = $1 and kind = 'video' and author_id = $2 and id <> $3`, [sessionId, ids.attendee, videoFrame])).rows[0].n)
+    .toBe(1);
+});
+
 test("a report hides a video frame at once, and SCR-051 lists it and plays it", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, email.member);
