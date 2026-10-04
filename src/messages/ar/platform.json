@@ -49,7 +49,10 @@
       "delete": "احذف نهائيًا",
       "deleteQueued": "بدأ الحذف. أُوقفت المؤسسة الآن، وتُزال صفوفها وملفاتها في الخلفية.",
       "cancel": "تراجع",
-      "closeDialog": "إغلاق"
+      "closeDialog": "إغلاق",
+      "domainsLink": "النطاقات",
+      "suspendShort": "أوقف",
+      "deleteShort": "احذف"
     },
     "newOrg": {
       "title": "مؤسسة جديدة",
@@ -100,7 +103,10 @@
       "firstAdminCurrent": "المحفوظ حاليًا",
       "firstAdminNone": "لم يُحدَّد بعد",
       "setFirstAdmin": "احفظ",
-      "firstAdminSaved": "حُفظ بريد أول مشرف."
+      "firstAdminSaved": "حُفظ بريد أول مشرف.",
+      "titleFor": "النطاقات · <bdi>{org}</bdi>",
+      "newDomain": "نطاق جديد",
+      "removeShort": "أزل"
     },
     "templates": {
       "title": "مكتبة قوالب المنصة",
@@ -179,7 +185,8 @@
       "jobsEmpty": "لا توجد مهام في الطابور.",
       "jobsEmptyAction": "أعد التحميل",
       "perOrgTitle": "حسب المؤسسة",
-      "orgColumn": "المؤسسة"
+      "orgColumn": "المؤسسة",
+      "countsOnly": "أعداد فقط · لا محتوى"
     },
     "impersonate": {
       "title": "الدخول الاستثنائي",
@@ -213,7 +220,12 @@
       "expiredRecently": "انتهت جلستك مع <bdi>{org}</bdi> تلقائيًا عند <bdi>{time}</bdi>.",
       "historyTitle": "جلساتك السابقة",
       "historyEmpty": "لا توجد جلسات سابقة.",
-      "historyEmptyAction": "ابدأ جلسة"
+      "historyEmptyAction": "ابدأ جلسة",
+      "recordedBadge": "مسجَّل ومرئي للمؤسسة",
+      "logTitle": "السجل",
+      "whenColumn": "متى",
+      "durationColumn": "المدة",
+      "durationShort": "{count, plural, zero {أقل من دقيقة} one {دقيقة} two {دقيقتان} few {{value} د} many {{value} د} other {{value} د}}"
     },
     "banner": {
       "badge": "جلسة استثنائية",

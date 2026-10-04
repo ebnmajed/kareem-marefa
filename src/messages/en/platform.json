@@ -49,7 +49,10 @@
       "delete": "Delete permanently",
       "deleteQueued": "Deletion has started. The org is suspended now; its rows and files are removed in the background.",
       "cancel": "Cancel",
-      "closeDialog": "Close"
+      "closeDialog": "Close",
+      "domainsLink": "Domains",
+      "suspendShort": "Suspend",
+      "deleteShort": "Delete"
     },
     "newOrg": {
       "title": "New org",
@@ -100,7 +103,10 @@
       "firstAdminCurrent": "Currently stored",
       "firstAdminNone": "Not set",
       "setFirstAdmin": "Save",
-      "firstAdminSaved": "The first admin's email is saved."
+      "firstAdminSaved": "The first admin's email is saved.",
+      "titleFor": "Domains · <bdi>{org}</bdi>",
+      "newDomain": "New domain",
+      "removeShort": "Remove"
     },
     "templates": {
       "title": "Platform template library",
@@ -179,7 +185,8 @@
       "jobsEmpty": "Nothing in the queue.",
       "jobsEmptyAction": "Reload",
       "perOrgTitle": "By org",
-      "orgColumn": "Org"
+      "orgColumn": "Org",
+      "countsOnly": "Counts only · no content"
     },
     "impersonate": {
       "title": "Break-glass",
@@ -213,7 +220,12 @@
       "expiredRecently": "Your session with <bdi>{org}</bdi> expired on its own at <bdi>{time}</bdi>.",
       "historyTitle": "Your earlier sessions",
       "historyEmpty": "No earlier sessions.",
-      "historyEmptyAction": "Start a session"
+      "historyEmptyAction": "Start a session",
+      "recordedBadge": "Recorded and visible to the org",
+      "logTitle": "Log",
+      "whenColumn": "When",
+      "durationColumn": "Duration",
+      "durationShort": "{count, plural, one {1 min} other {{value} min}}"
     },
     "banner": {
       "badge": "Break-glass session",
