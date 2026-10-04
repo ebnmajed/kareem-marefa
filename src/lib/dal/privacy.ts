@@ -108,3 +108,17 @@ export async function requestDeactivation(locale: string, reason: string): Promi
   const { error } = await supabase.rpc("request_deactivation", { p_reason: parsed.data });
   return error ? { status: "failed", message: "failed" } : { status: "ok" };
 }
+
+/**
+ * ★ wave 26 (REQ-UIX-117, REQ-EVT-012, DEC-251 §3.1), add-only. «الصور التي تظهر فيها» has no data: photographs are
+ * not tagged (`DEC-011`). What exists is the member's OWN removal requests — `photo_takedowns` rows they filed, which
+ * `photo_takedowns_read` already admits (`0037`) — so the row counts those, one per photograph, and offers no page-level
+ * «أزلني»: a removal is asked for on the photograph itself, in the album (`requestPhotoTakedown()`, `content`'s).
+ * `null` when the read fails, so the screen draws no figure rather than a wrong one.
+ */
+export async function countMyPhotoRemovalRequests(locale: string): Promise<number | null> {
+  const { session, supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.from("photo_takedowns").select("photo_id").eq("requester_id", session.memberId);
+  if (error || !data) return null;
+  return new Set(data.map((r) => r.photo_id as string)).size;
+}
