@@ -111,9 +111,31 @@ are cut from its head rather than from each other.
 
 ★ **The per-row report goes here when `0193` runs.**
 
-| Row | Family · purpose · orientation | Deleted or retired | Refused by |
+| # | Row | Outcome | Refused by |
 |---|---|---|---|
-| _(filled by `0193`'s report)_ | | | |
+| 1 | poster · announcement · إعلان | **deleted** | — |
+| 2 | poster · meetup · لقاء | **deleted** | — |
+| 3 | poster · panel · حوار | **deleted** | — |
+| 4 | ★ **poster · talk · جلسة** | ★★ **RETIRED** | `design_documents_template_version_id_fkey` |
+| 5 | poster · workshop · ورشة | **deleted** | — |
+| 6 | certificate · achievement · أفقية | **deleted** | — |
+| 7 | certificate · achievement · عمودية | **deleted** | — |
+| 8 | certificate · attendance · أفقية | **deleted** | — |
+| 9 | certificate · attendance · عمودية | **deleted** | — |
+| 10 | certificate · presenter · أفقية | **deleted** | — |
+| 11 | certificate · presenter · عمودية | **deleted** | — |
+
+★★ **Ten deleted, one retired — and the one that retired is the one the code said would, named by the constraint that
+refused it.** `designer` derived `poster/talk` as the only possible retirement from `0063:113-121`
+(`poster_render_context()` resolves `family = 'talk'` and no other, and `regenerate_poster` then writes a
+`design_documents` row carrying that version) **before it had seen any production data**, and the owner's read at sync 1
+bore it out (`docs = 2` on `talk`, `0` everywhere else). The push then produced exactly that, and the constraint in the
+notice — `design_documents_template_version_id_fkey` — is the R1 path by name.
+
+★ **No certificate anywhere was involved**: `certs = 0` on all eleven held, so `REQ-CRT-014`'s restrict never had to
+fire in anger. The mechanism that would have protected a held certificate is the same one that protected `talk`'s
+posters, and it worked without anything being forced — no `cascade`, no detached version, no nulled column, and the
+retired row is invisible to `055`, to `045`'s picker and to issuance while its two documents still render.
 
 ### ★★ The two things allowed to move, once, and only by the lead
 
@@ -138,7 +160,7 @@ because that is what moving a default means — and an org that has overridden i
 | 6 | Sync 1 — two plans approved with their colour tables and the delete-or-retire table | — | lead | ✓ both approved; four owner rulings above |
 | 7 | The five baseline poster families, rebuilt | B | `designer` | ☐ |
 | 8 | The three certificate families × both orientations, rebuilt | B | `designer` | ☐ |
-| 9 | `0193` — the superseded eleven, deleted-or-retired, with its report | B | lead, from `designer`'s proposed file | ☐ |
+| 9 | `0193` — the superseded eleven, deleted-or-retired, with its report | B | lead, from `designer`'s proposed file | ✓ **on production: 10 deleted, `talk` retired** |
 | 10 | ★★ A certificate issued **before** the wave still rendering as its own version | B | `designer` | ☐ |
 | 11 | The eight designed mail families, rebuilt | C | `notify` | ☐ |
 | 12 | The 120 files stable on a re-run | C | lead | ☐ |
