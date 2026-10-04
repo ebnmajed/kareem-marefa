@@ -7,7 +7,7 @@
 //
 // What it proves, beyond the pictures:
 //   · the regions stand in the artboard's order, and the page has one `<h1>`;
-//   · a ring opens nothing — no button in the row (DEC-206 §1.5);
+//   · a ring is a button that opens the session's story (wave 26, DEC-251 §4 — until then it opened nothing);
 //   · a post's action is a LINK — nothing on the home reserves (§4.57);
 //   · the like is written and survives a reload;
 //   · with no company, the one `role="status"` asks for one, and a post says why it cannot reserve;
@@ -106,7 +106,13 @@ test.beforeAll(async ({}, testInfo) => {
   await db.query(`update public.members set company_id = $1 where id = any($2::uuid[])`, [co[0].id, [presenterId, memberId, staffId]]);
   await db.query(`update public.members set org_role = 'admin' where id = $1`, [staffId]);
 
-  await session(LIVE, "-30 minutes", 90, "in_progress", cat[0].id, venue[0].id, presenterId);
+  const liveId = await session(LIVE, "-30 minutes", 90, "in_progress", cat[0].id, venue[0].id, presenterId);
+  // Wave 26: a ring is drawn for a session with a visible story frame (REQ-STO-006). The live one has its live frame.
+  await db.query(
+    `insert into public.story_frames (org_id, session_id, kind, trigger_key, triggered_at) values ($1, $2, 'live', 'e2e-live', now() - interval '30 minutes')
+     on conflict (session_id, kind, trigger_key) do nothing`,
+    [orgId, liveId],
+  );
   openId = await session(OPEN, "2 days", 90, "published", cat[0].id, venue[0].id, presenterId);
   await session(ENDED, "-5 hours", 120, "completed", cat[0].id, venue[0].id, presenterId);
   // A session with no time — the staff strip's «جلسة بلا موعد».
@@ -140,7 +146,7 @@ async function openHome(page: Page) {
 
 const shot = (page: Page, state: string, width: 390 | 1280) => page.screenshot({ path: join(SHOTS, `wave18-content-home-${state}-${width}.png`), fullPage: true });
 
-test("★ the regions in the artboard's order, one h1, rings that open nothing, links that reserve nothing — 390", async ({ context, page }) => {
+test("★ the regions in the artboard's order, one h1, rings that open the story, links that reserve nothing — 390", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, emails.member);
   await openHome(page);
@@ -149,8 +155,8 @@ test("★ the regions in the artboard's order, one h1, rings that open nothing, 
   await expect(main.getByRole("heading", { level: 1 })).toHaveText("الرئيسية");
   const rings = main.getByRole("list", { name: "جلسات اليوم وما حوله" });
   await expect(rings).toBeVisible();
-  await expect(rings.locator("button")).toHaveCount(0);
-  await expect(rings.getByRole("img", { name: new RegExp(`${LIVE}، مباشر`) })).toBeVisible();
+  // ★ Wave 26 (ledger): the ring is no longer an image that opens nothing — it is a button that opens the story.
+  await expect(rings.getByRole("button", { name: new RegExp(`${LIVE}، مباشر`) })).toHaveAttribute("aria-haspopup", "dialog");
 
   // The days: today (the live post), the coming day (the open post), and yesterday or today for the recap.
   await expect(main.getByRole("heading", { level: 2, name: "اليوم" })).toBeVisible();

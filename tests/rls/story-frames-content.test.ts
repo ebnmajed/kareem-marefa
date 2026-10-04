@@ -4,13 +4,21 @@
 //
 // The fixture's published session has members[1] checked in and members[0] presenting it; each org also has an
 // attendee's video frame by its moderator (tests/rls/fixture.ts).
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { applyProposed, errorCode, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
 
-const FILES = ["content/0001_story_capture_gate.sql", "content/0002_story_photo.sql", "content/0003_story_video.sql", "content/0004_story_moderation.sql"];
+const FILES = [
+  "content/0001_story_capture_gate.sql",
+  "content/0002_story_photo.sql",
+  "content/0003_story_video.sql",
+  "content/0004_story_moderation.sql",
+  "content/0005_resolve_report_story_frame.sql",
+];
 
 async function prepare(tx: Tx) {
   for (const file of FILES) await applyProposed(tx, file);
@@ -228,10 +236,14 @@ describe("a frame reported, taken down, decided, removed", () => {
       const f = await prepare(tx);
       await tx.asOwner();
       const [{ session_id, uploader_id }] = await tx.q<{ session_id: string; uploader_id: string }>(`select session_id, uploader_id from public.photos where id = $1`, [f.m5.a.photoId]);
-      const [{ id: frame }] = await tx.q<{ id: string }>(
-        `insert into public.story_frames (org_id, session_id, kind, trigger_key, triggered_at, photo_id) values ($1, $2, 'photo', $3::text, now(), $3::uuid) returning id`,
+      // The photo frame is `sessions'` hook's once the generator is promoted; written here only if it is not.
+      await tx.q(
+        `insert into public.story_frames (org_id, session_id, kind, trigger_key, triggered_at, photo_id) values ($1, $2, 'photo', $3::text, now(), $3::uuid)
+         on conflict (session_id, kind, trigger_key) do nothing`,
         [f.a.id, session_id, f.m5.a.photoId],
       );
+      await tx.q(`update public.story_frames set triggered_at = now() where kind = 'photo' and photo_id = $1`, [f.m5.a.photoId]);
+      const [{ id: frame }] = await tx.q<{ id: string }>(`select id from public.story_frames where kind = 'photo' and photo_id = $1`, [f.m5.a.photoId]);
       const reporter = [f.a.members[0], f.a.members[1], f.a.admin].find((m) => m.memberId !== uploader_id)!;
       await tx.as(reporter.claims);
       expect(await tx.q(`select public.report_story_frame($1, 'ليست من الجلسة') -> 'outcome' as o`, [frame])).toEqual([{ o: "reported" }]);
@@ -313,10 +325,14 @@ describe("a frame reported, taken down, decided, removed", () => {
       const f = await prepare(tx);
       await tx.asOwner();
       const [{ session_id }] = await tx.q<{ session_id: string }>(`select session_id from public.photos where id = $1`, [f.m5.a.photoId]);
-      const [{ id: frame }] = await tx.q<{ id: string }>(
-        `insert into public.story_frames (org_id, session_id, kind, trigger_key, triggered_at, photo_id) values ($1, $2, 'photo', $3::text, now(), $3::uuid) returning id`,
+      // The photo frame is `sessions'` hook's once the generator is promoted; written here only if it is not.
+      await tx.q(
+        `insert into public.story_frames (org_id, session_id, kind, trigger_key, triggered_at, photo_id) values ($1, $2, 'photo', $3::text, now(), $3::uuid)
+         on conflict (session_id, kind, trigger_key) do nothing`,
         [f.a.id, session_id, f.m5.a.photoId],
       );
+      await tx.q(`update public.story_frames set triggered_at = now() where kind = 'photo' and photo_id = $1`, [f.m5.a.photoId]);
+      const [{ id: frame }] = await tx.q<{ id: string }>(`select id from public.story_frames where kind = 'photo' and photo_id = $1`, [f.m5.a.photoId]);
       await tx.as(f.a.mod.claims);
       expect(await tx.q(`select public.remove_story_frame($1, 'خارج الموضوع') -> 'outcome' as o`, [frame])).toEqual([{ o: "removed" }]);
       await tx.asOwner();
@@ -324,6 +340,79 @@ describe("a frame reported, taken down, decided, removed", () => {
       expect(await audits(tx, "photo.removed", f.m5.a.photoId)).toBe(1);
       await tx.as(f.a.members[1].claims);
       expect(await tx.q(`select 1 from public.story_frames where id = $1`, [frame])).toEqual([]);
+    });
+  });
+});
+
+// ★ The `story-media` WRITE policy is the lead's to create (it calls the gate above), so its text lives as a comment
+// block in 0001 and is created here from that very text — the policy proven is the policy promoted. Once promoted, the
+// block is gone from proposed/ and the live policy is what these cases meet.
+function writePolicy(): string | null {
+  let text: string;
+  try {
+    text = readFileSync(join(process.cwd(), "supabase", "proposed", "content", "0001_story_capture_gate.sql"), "utf8");
+  } catch {
+    return null;
+  }
+  const lines = text.split("\n");
+  const from = lines.findIndex((l) => l.includes('create policy "story_media_write"'));
+  if (from < 0) return null;
+  const to = lines.findIndex((l, i) => i > from && l.trim() === "--     );");
+  return lines.slice(from, to + 1).map((l) => l.replace(/^--   /, "")).join("\n");
+}
+
+describe("POL-story_media_write — the PUT, under the capture gate", () => {
+  async function withPolicy(tx: Tx) {
+    const f = await prepare(tx);
+    await tx.asOwner();
+    const sql = writePolicy();
+    const [{ exists }] = await tx.q<{ exists: boolean }>(`select exists (select 1 from pg_policies where schemaname = 'storage' and policyname = 'story_media_write') as exists`);
+    if (!exists && sql) await tx.q(sql);
+    return f;
+  }
+  const put = (tx: Tx, name: string) => tx.q(`insert into storage.objects (bucket_id, name) values ('story-media', $1)`, [name]);
+
+  it("a checked-in member inside the window puts source.{mp4,mov,webm}; nothing else, nowhere else", async () => {
+    await withTx(async (tx) => {
+      const f = await withPolicy(tx);
+      const base = `${f.a.id}/sessions/${f.m2.a.published}/frames`;
+      await tx.as(f.a.members[1].claims);
+      for (const ext of ["mp4", "mov", "webm"]) await put(tx, `${base}/${crypto.randomUUID()}/source.${ext}`);
+      for (const bad of [
+        `${base}/${crypto.randomUUID()}/video.mp4`,
+        `${base}/${crypto.randomUUID()}/poster.webp`,
+        `${base}/${crypto.randomUUID()}/source.svg`,
+        `${base}/not-a-uuid/source.mp4`,
+        `${f.b.id}/sessions/${f.m2.a.published}/frames/${crypto.randomUUID()}/source.mp4`,
+        `${f.a.id}/sessions/not-a-uuid/frames/${crypto.randomUUID()}/source.mp4`,
+      ]) {
+        expect(await errorCode(() => put(tx, bad)), bad).toBe("42501");
+      }
+    });
+  });
+
+  it("the presenter, staff and an unchecked member are refused", async () => {
+    await withTx(async (tx) => {
+      const f = await withPolicy(tx);
+      for (const who of [f.a.members[0], f.a.admin]) {
+        await tx.as(who.claims);
+        expect(await errorCode(() => put(tx, `${f.a.id}/sessions/${f.m2.a.published}/frames/${crypto.randomUUID()}/source.mp4`))).toBe("42501");
+      }
+    });
+  });
+});
+
+describe("RPC-resolve_report.story_frame — a frame's report never reaches remove_photo()", () => {
+  it("a story_frame report is 'invalid' to resolve_report(), and nothing is written", async () => {
+    await withTx(async (tx) => {
+      const f = await prepare(tx);
+      await tx.asOwner();
+      const [{ id: frame }] = await tx.q<{ id: string }>(`select id from public.story_frames where org_id = $1 and kind = 'video'`, [f.a.id]);
+      await tx.as(f.a.members[1].claims);
+      const [{ r }] = await tx.q<{ r: { report_id: string } }>(`select public.report_story_frame($1, 'محتوى مسيء') as r`, [frame]);
+      await tx.as(f.a.mod.claims);
+      expect(await tx.q(`select public.resolve_report($1, 'removed', 'سبب كافٍ') as e`, [r.report_id])).toEqual([{ e: { outcome: "invalid" } }]);
+      expect(await tx.q(`select status::text from public.reports where id = $1`, [r.report_id])).toEqual([{ status: "open" }]);
     });
   });
 });
