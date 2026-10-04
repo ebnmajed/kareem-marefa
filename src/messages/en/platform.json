@@ -25,7 +25,7 @@
       "statusSuspended": "Suspended",
       "statusDeleting": "Being deleted",
       "members": "Members",
-      "activeMembers": "Active members",
+      "activeMembers": "Active",
       "sessions": "Sessions",
       "certificates": "Certificates",
       "created": "Created",

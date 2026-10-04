@@ -437,15 +437,15 @@ test("★ REQ-TEN-002: a super admin creates an org and sets its first admin, an
 });
 
 /** Open a row's menu on SCR-080 and choose an act. The hidden twin (card list or table) is excluded by the role locator. */
+// Wave 26: SCR-080's acts sit in the row (`PlatformOrgs.dc.html`), each named «{act} — {org}»; no menu opens first.
 async function orgAct(page: Page, org: { name: string }, item: string) {
-  await page.getByRole("button", { name: `إجراءات ${org.name}` }).click();
-  await page.getByRole("menuitem", { name: item }).click();
+  await main(page).getByRole("button", { name: `${item} — ${org.name}` }).click();
 }
 
 test("★ REQ-TEN-006 · REQ-UIX-013: suspension confirms by name, refuses an empty reason beside the field, and reinstating answers", async ({ context, page }) => {
   await signInPlatform(context);
   await page.goto("/ar/app/platform/orgs");
-  await orgAct(page, b, "إيقاف المؤسسة");
+  await orgAct(page, b, "أوقف");
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading")).toContainText(b.name);
   await expect(dialog).toContainText("لا يحذف شيئًا");
@@ -477,7 +477,7 @@ test("★ REQ-NFR-014: deletion needs the slug typed back — a mismatch deletes
   await db.query(`insert into public.org_settings (org_id) values ($1)`, [rows[0].id]);
 
   await page.goto("/ar/app/platform/orgs");
-  await orgAct(page, { name }, "حذف المؤسسة");
+  await orgAct(page, { name }, "احذف");
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading")).toContainText(name);
   await dialog.getByRole("textbox", { name: /^معرّف المؤسسة/ }).fill(`${slug}-typo`);
@@ -496,7 +496,7 @@ test("★ REQ-NFR-014: deletion needs the slug typed back — a mismatch deletes
   // «أعد التفعيل» for the window before the job runs. Whether the row is still
   // there («قيد الحذف») or the worker already removed it, the acts are gone.
   await page.reload();
-  await expect(page.getByRole("button", { name: `إجراءات ${name}` })).toHaveCount(0);
+  await expect(main(page).getByRole("button", { name: new RegExp(`— ${name}$`) })).toHaveCount(0);
 });
 
 test("REQ-UIX-009 · REQ-UIX-011: a refused new org summarises its fields and keeps what was typed", async ({ context, page }) => {
@@ -726,11 +726,11 @@ test.describe("390 px RTL review", () => {
     await page.goto("/ar/app/platform/orgs");
     await expect(main(page).getByText(a.name).filter({ visible: true }).first()).toBeVisible();
     await review(page, "wave8-platform-orgs-cards");
-    await orgAct(page, a, "إيقاف المؤسسة");
+    await orgAct(page, a, "أوقف");
     await expect(page.getByRole("dialog")).toBeVisible();
     await review(page, "wave8-platform-orgs-suspend-confirm");
     await page.keyboard.press("Escape");
-    await orgAct(page, a, "حذف المؤسسة");
+    await orgAct(page, a, "احذف");
     await page.getByRole("dialog").getByRole("textbox", { name: /^معرّف المؤسسة/ }).fill("not-the-slug");
     await page.getByRole("dialog").getByRole("button", { name: /احذف نهائيًا/ }).click();
     await expect(page.getByRole("dialog").getByText(/لا يطابق معرّف المؤسسة/)).toBeVisible();

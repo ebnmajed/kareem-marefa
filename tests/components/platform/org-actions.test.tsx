@@ -53,9 +53,9 @@ function renderActions(org: OrgSummary = ORG) {
   );
 }
 
+// Wave 26: the acts sit in the row (`PlatformOrgs.dc.html`), each named with its org — no menu to open first.
 async function choose(item: string) {
-  await userEvent.click(screen.getByRole("button", { name: "إجراءات Acme للاستشارات" }));
-  await userEvent.click(screen.getByRole("menuitem", { name: item }));
+  await userEvent.click(screen.getByRole("button", { name: `${item} — Acme للاستشارات` }));
 }
 
 beforeEach(() => {
@@ -68,7 +68,7 @@ beforeEach(() => {
 describe("OrgActions", () => {
   it("suspension confirms in a dialog that names the org and says what suspension does, before the press", async () => {
     renderActions();
-    await choose("إيقاف المؤسسة");
+    await choose("أوقف");
     const dialog = screen.getByRole("dialog");
     const title = within(dialog).getByRole("heading");
     expect(title).toHaveTextContent("إيقاف Acme للاستشارات");
@@ -83,7 +83,7 @@ describe("OrgActions", () => {
       .mockResolvedValueOnce({ errors: { reason: "reason_required" }, formError: null, values: { reason: "" }, lists: {}, attempt: 1 })
       .mockResolvedValueOnce({ errors: {}, formError: null, values: { reason: "مخالفة" }, lists: {}, attempt: 0 });
     renderActions();
-    await choose("إيقاف المؤسسة");
+    await choose("أوقف");
     await act(async () => {
       await userEvent.click(screen.getByRole("button", { name: /^أوقف/ }));
     });
@@ -107,7 +107,7 @@ describe("OrgActions", () => {
       attempt: 1,
     });
     renderActions();
-    await choose("حذف المؤسسة");
+    await choose("احذف");
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("heading")).toHaveTextContent("حذف Acme للاستشارات نهائيًا");
     expect(dialog).toHaveTextContent("لا يمكن التراجع عنه");
@@ -126,7 +126,15 @@ describe("OrgActions", () => {
 
   it("★ an org with a deletion requested is offered nothing — not reinstatement, not a second deletion (0010, principle 7)", () => {
     renderActions({ ...ORG, status: "suspended", deletionPending: true });
-    expect(screen.queryByRole("button", { name: /إجراءات/ })).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByText("لا إجراء — الحذف قيد التنفيذ.")).toBeInTheDocument();
+  });
+
+  it("★ deletion is offered on an active org as well as a suspended one; «النطاقات» leads to SCR-082 (DEC-251 Q9)", () => {
+    renderActions();
+    expect(screen.getByRole("button", { name: "احذف — Acme للاستشارات" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "النطاقات — Acme للاستشارات" })).toHaveAttribute("href", expect.stringContaining(`/app/platform/orgs/${ORG.id}/domains`));
   });
 
   it("a suspended org offers reinstatement, and a refused one says why rather than nothing (F4)", async () => {
