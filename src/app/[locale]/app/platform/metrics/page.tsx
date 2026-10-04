@@ -59,7 +59,7 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
       </section>
 
       <section aria-labelledby="per-org" className="mt-8">
-        <SectionHeader as="h2" id="per-org" title={t("metrics.perOrgTitle")} count={orgs.length} />
+        <SectionHeader as="h2" id="per-org" title={t("metrics.perOrgTitle")} />
         <div className="mt-3">
           <OrgMetricsTable orgs={orgs} />
         </div>

@@ -108,7 +108,7 @@ export default async function ImpersonatePage({ params }: { params: Promise<{ lo
         </div>
 
         <section aria-labelledby="history" className="min-w-0">
-          <SectionHeader as="h2" id="history" title={t("logTitle")} count={sessions.length} />
+          <SectionHeader as="h2" id="history" title={t("logTitle")} />
           <div className="mt-3">
             <HistoryTable sessions={sessions} locale={locale} />
           </div>

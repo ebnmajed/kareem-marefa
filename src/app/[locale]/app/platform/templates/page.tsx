@@ -41,7 +41,6 @@ export default async function PlatformTemplatesPage({ params }: { params: Promis
                 as="h2"
                 id={`purpose-${purpose}`}
                 title={purpose === "poster" ? t("purposePoster") : t("purposeCertificate")}
-                count={rows.length}
               />
               <div className="mt-3">
                 <LibraryGrid purpose={purpose} templates={rows} locale={loc} />
@@ -52,7 +51,7 @@ export default async function PlatformTemplatesPage({ params }: { params: Promis
       </div>
 
       <section id="promote" aria-labelledby="promote-title" className="mt-12 border-t border-edge pt-8">
-        <SectionHeader as="h2" id="promote-title" title={t("promoteTitle")} count={candidates.length} />
+        <SectionHeader as="h2" id="promote-title" title={t("promoteTitle")} />
         <div className="mt-4">
           <PromoteTable candidates={candidates} locale={loc} />
         </div>

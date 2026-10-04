@@ -24,14 +24,15 @@ export function HistoryTable({ sessions, locale }: { sessions: ImpersonationSess
   // «22 سبتمبر · 3:12 م» — the board's short form, so a row stays near one line in its half of the page; the full date
   // and weekday ride in the cell's `title`. The time keeps its «م» on its own line (`formatTime`'s no-break space).
   const dayMonth = new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { day: "numeric", month: "long", timeZone: PLATFORM_TIME_ZONE });
-  const when = (iso: string) => `${dayMonth.format(new Date(iso))} · ${formatTime(iso, PLATFORM_TIME_ZONE, locale)}`;
+  const when = (iso: string) => `${dayMonth.format(new Date(iso))}\u00A0·\u00A0${formatTime(iso, PLATFORM_TIME_ZONE, locale)}`;
   const minutes = (s: ImpersonationSession) => Math.round((Date.parse(s.expiresAt) - Date.parse(s.startedAt)) / 60000);
 
   // Five columns, as the board draws five: the end sits under the state in one cell, so the log fits its half of the
   // page at 1280 with no horizontal scroller — a read-only table that scrolls sideways is a region a keyboard cannot
   // reach (axe `scrollable-region-focusable`). Free text breaks anywhere rather than widening the table.
   const columns: DataTableColumn<ImpersonationSession>[] = [
-    { key: "started", header: t("whenColumn"), cell: (s) => <bdi title={full(s.startedAt)}>{when(s.startedAt)}</bdi> },
+    // The row's key, so it stays one line: no-break spaces around «·» and `whitespace-nowrap` on the cell's text.
+    { key: "started", header: t("whenColumn"), cell: (s) => <bdi title={full(s.startedAt)} className="whitespace-nowrap">{when(s.startedAt)}</bdi> },
     { key: "org", header: t("orgColumn"), onCard: true, cell: (s) => <bdi className="[overflow-wrap:anywhere]">{s.orgName}</bdi> },
     { key: "reason", header: t("reasonColumn"), onCard: true, cell: (s) => <bdi className="[overflow-wrap:anywhere]">{s.reason}</bdi> },
     {

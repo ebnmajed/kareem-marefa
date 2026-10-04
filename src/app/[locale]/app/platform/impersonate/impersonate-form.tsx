@@ -113,13 +113,17 @@ export function ImpersonateForm({
       </Field>
 
       <div>
+        {/* A chip's label never wraps (`whitespace-nowrap`); the ROW of five wraps when the column is narrower than
+            the five — `radio-group`'s chip row is `flex` without `wrap`, so the wrap is set on it from here through
+            its own `data-appearance` hook rather than by editing the primitive. */}
         <RadioGroup
           appearance="chips"
+          className="[&_[data-appearance=chips]]:flex-wrap"
           name="minutes"
           legend={t("durationLegend")}
           defaultValue={was(state, "minutes") || String(DEFAULT_DURATION)}
           invalid={Boolean(state.errors.minutes)}
-          options={DURATION_PRESETS.map((minutes) => ({ value: String(minutes), label: duration(minutes) }))}
+          options={DURATION_PRESETS.map((minutes) => ({ value: String(minutes), label: <span className="whitespace-nowrap">{duration(minutes)}</span> }))}
           error={err("minutes")}
         />
         {/* A chip carries no hint, so the ceiling is said once under the row (it was the last row's hint). */}
