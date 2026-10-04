@@ -63,13 +63,12 @@ test's own comment rather than in a commit message.
   **I did not refresh it.**
 - `npx tsc --noEmit` clean. `npm run lint` **0 errors**, 31 warnings, all pre-existing.
 
-### A4 · ★ A PR-A gap I fixed in my own file, with a ledger line
+### A4 · ★ A PR-A gap found here and fixed by the lead — see §A8
 
 `tests/unit/designer-render.test.ts` asserted the literals `#0b1220` and `#ffffff` — the light and dark `fgHeading`
 **as they stood before `0192`**. The palette moved in PR A and these two cases were left on the old navy; they fail on
-`main` independently of anything in PR B. The file is in my edit list, so both now read `platformBrand()`'s own value
-instead of a literal, which is what a test of colour *resolution* should have done and makes the next palette move
-free. Two ledger lines.
+`main` independently of anything in PR B. ★ **I fixed them and then dropped the fix**: the lead had already made the same
+change the same way in PR #63. **§A8 is what happened**; the file is `main`'s in this branch.
 
 ### A5 · ★ My own process failure, recorded because it cost two false signals
 
@@ -117,7 +116,7 @@ answer twice; two commits doing it is a conflict for no gain. The file is `main`
 the ledger lines live in the lead's commit. ★ And my instinct to look further was right: **`TRACEABILITY.md` was stale by
 two rows**, caught by CI's currency check rather than by the local `--check`, and that is in #63 too.
 
-### A6 · Still open, and NOT done by me
+### A9 · Still open, and NOT done by me
 
 - The parity `--update` diff and `designer-derive-untouched`'s 41 hashes: **handed to the lead**, who opens and commits.
 - The four owner questions are settled; **the team colour is a deferred wave**, recorded in `library.ts`'s header as a
@@ -125,8 +124,9 @@ two rows**, caught by CI's currency check rather than by the local `--check`, an
 - The one-off re-render is the owner's script, not `0193`.
 - ★ **The editor's weight control still offers 400/500/600 only** (`inspector.tsx:247`, `editor.tsx:682`). The studio's
   chrome is frozen this wave, so an admin editing a rebuilt document sees no weight selected on the title and cannot
-  set 800 from the UI. The document renders correctly; nothing is lost but the control is incomplete. **A request for
-  the wave that unfreezes the chrome**, not a fix I may make here.
+  set 800 from the UI. The document renders correctly; the control cannot express it. ★ **The lead has recorded it as a
+  carry for the wave that unfreezes the chrome** — «the document rendering correctly while the control cannot express it
+  is exactly the kind of thing that disappears if it is not written down».
 
 ---
 
