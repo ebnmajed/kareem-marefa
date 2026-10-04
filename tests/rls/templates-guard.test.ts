@@ -18,7 +18,11 @@ import { seedBase } from "./fixture";
 afterAll(() => pool.end());
 
 const INVALID = "22023";
-const FILE = "designer/0001_template_guard_walks_every_colour.sql";
+// ★ The NEWEST guard (wave 24's re-colour): `_admits_design_colours` re-creates
+// the function again, adding the `design.*` namespace and refusing everything
+// 0094 refused. Applied while it is proposed; once promoted, `supabase db reset`
+// has applied it and the same cases run against the migration.
+const FILE = "designer/0001_template_guard_admits_design_colours.sql";
 
 const TEXT = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -107,6 +111,69 @@ describe("POL-design_template_versions — the guard walks every colour (DEC-127
       ).toBeNull();
       // No background at all is not a colour, and not refused.
       expect(await errorCode(() => insert(DOC({ background: undefined })))).toBeNull();
+    });
+  });
+
+  it("guard_design_namespace — ★ `{{design.*}}` is accepted, and the guard refuses everything it refused before", async () => {
+    // ★★ THE PROOF THE GUARD DID NOT WEAKEN, case by case.
+    //
+    // The new pattern is the old one with the literal `brand` replaced by
+    // `(brand|design)`. The argument is exhaustive rather than a sample: if a
+    // string matched the old pattern it still matches through the `brand`
+    // branch; if it did NOT, it can match the new one only through the `design`
+    // branch — only if it has the form `{{` `\s*` `design.` `[A-Za-z]+` `\s*`
+    // `}}`. So the newly-accepted set is exactly the well-formed `design`
+    // bindings. These cases are that argument, executed against the database.
+    await withTx(async (tx) => {
+      const { insert } = await setup(tx);
+
+      // ── accepted, on every colour field ────────────────────────────────────
+      for (const ok of ["{{design.tangerine}}", "{{ design.cyan }}", "{{design.ink}}", "{{design.bone}}"]) {
+        expect(await errorCode(() => insert(DOC({ background: { type: "solid", color: ok } }))), `background ${ok}`).toBeNull();
+        expect(await errorCode(() => insert(DOC({ background: GRADIENT([{ color: ok }, { color: "{{brand.canvasRaise}}" }]) }))), `stop ${ok}`).toBeNull();
+        expect(await errorCode(() => insert(DOC({}, [TEXT("l1", { color: ok })]))), `color ${ok}`).toBeNull();
+        const shape = (field: "fill" | "stroke") => ({ id: "l_rule", kind: "shape", frame: { x: 0, y: 0, w: 10, h: 2 }, shape: { type: "rect", [field]: ok } });
+        expect(await errorCode(() => insert(DOC({}, [shape("fill")]))), `fill ${ok}`).toBeNull();
+        expect(await errorCode(() => insert(DOC({}, [shape("stroke")]))), `stroke ${ok}`).toBeNull();
+      }
+
+      // ★ MEMBERSHIP IS STILL NOT THE DATABASE'S JOB, and this asserts the seam
+      // rather than leaving it to be rediscovered: a well-formed binding to a
+      // name that does not exist is ACCEPTED here and renders the caller's
+      // fallback, exactly as `{{brand.canvsRaise}}` does. `brandViolations()`
+      // owns membership, beside the list, so there is one copy of it.
+      expect(await errorCode(() => insert(DOC({ background: { type: "solid", color: "{{design.unicorn}}" } })))).toBeNull();
+
+      // ── still refused ─────────────────────────────────────────────────────
+      const refused = [
+        "#0B0C12",
+        "#FF9A2E",
+        "rgb(255, 154, 46)",
+        "navy",
+        "transparent",
+        "var(--color-ink)",
+        // The third tier the artboard draws and DEC-242 §2 deferred: a team
+        // colour still cannot reach a template, and that is deliberate.
+        "{{team.colour}}",
+        "{{design}}",
+        "{{design.}}",
+        "{{design.tan-gerine}}",
+        "{{design.tangerine2}}",
+        "{{design.a.b}}",
+        "{{designer.tangerine}}",
+        "{{ design.cyan }} ",
+        "{{brand.canvas}}{{design.ink}}",
+      ];
+      for (const bad of refused) {
+        expect(await errorCode(() => insert(DOC({ background: { type: "solid", color: bad } }))), `background ${bad}`).toBe(INVALID);
+        expect(await errorCode(() => insert(DOC({}, [TEXT("l1", { color: bad })]))), `color ${bad}`).toBe(INVALID);
+      }
+
+      // The message still names the field and keeps 0055's prefix, so a caller
+      // matching it still matches.
+      const message = await errorMessage(() => insert(DOC({}, [TEXT("l_title", { color: "{{team.colour}}" })])));
+      expect(message).toContain("hardcoded_colour_in_template");
+      expect(message).toContain("layer l_title color");
     });
   });
 

@@ -21,8 +21,10 @@ import {
   declaredBindingsOf,
   dynamicFieldsOf,
   orientationOf,
+  platformBrand,
   presetsFor,
   presetsForDocument,
+  resolveColour,
   validateDocument,
   type DesignDocument,
 } from "@kareem/designer-runtime";
@@ -73,41 +75,82 @@ describe("DEC-242 — the poster's FLAT ground, one colourway per family", () =>
   // all seven cards. `model.ts`'s gradient union and `backgroundCss()`'s
   // `360 − angle` mirror are untouched and still proven by
   // `tests/unit/gradient-render.test.ts`.
-  it("★ every poster family's ground is a SOLID brand token — and no two families share one", () => {
-    const grounds = new Set<string>();
+  it("★ every poster family's ground is a SOLID bound colour — and no two families RESOLVE to the same one", () => {
+    // ★★ LEDGER (wave 24's re-colour): the expectation changed, and it is the
+    // assertion that would have caught the defect this test shipped.
+    //
+    // It used to compare the BINDING STRINGS and stop there. Five distinct
+    // bindings were `canvas` `#0B0C12`, `surface` `#151724` and `canvasRaise`
+    // `#1E2130` — plus bone and lime — and the first three are within 1.10:1,
+    // 1.22:1 and 1.11:1 of one another: same hue, same luminance,
+    // INDISTINGUISHABLE in print. Three of the five families were the same
+    // poster and five distinct strings said nothing about it.
+    //
+    // So: resolve, and require the five to be far enough apart that a person
+    // holding two of them can tell which is which.
+    const ctx = { values: platformBrand("dark") };
+    const resolved = new Map<string, string>();
     for (const t of BASELINE_LIBRARY.filter((x) => x.purpose === "poster")) {
       const bg = t.document.background;
       expect(bg?.type, t.family).toBe("solid");
-      const colour = bg?.type === "solid" ? bg.color : "";
-      // A token, never a literal and never a gradient stop.
-      expect(colour, t.family).toMatch(/^\{\{brand\.[A-Za-z]+\}\}$/);
-      grounds.add(colour);
+      const colour = bg?.type === "solid" ? (bg.color ?? "") : "";
+      // A binding, never a literal and never a gradient stop — in one of the two
+      // namespaces the guard admits.
+      expect(colour, t.family).toMatch(/^\{\{(?:brand|design)\.[A-Za-z]+\}\}$/);
+      const hex = resolveColour(ctx, colour, "");
+      expect(hex, `${t.family} resolves`).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      resolved.set(t.family, hex);
     }
     // ★ REQ-DSG-033: «each family differs by its colourway, not its structure».
-    // Five families, five distinct grounds — which is also what keeps the five
-    // documents distinct now that nothing else differs between them.
-    expect(grounds.size).toBe(5);
+    expect(new Set(resolved.values()).size).toBe(5);
+    // ★ And differs VISIBLY. 1.25:1 is the floor a pair of grounds must clear;
+    // the five ship at 1.13:1 and above by luminance alone and differ in hue
+    // besides, while the three this replaced sat at 1.10–1.22:1 with no hue
+    // difference at all. The pairs are reported by name so a failure says which
+    // two families collapsed.
+    const families = [...resolved.keys()];
+    for (let i = 0; i < families.length; i++) {
+      for (let j = i + 1; j < families.length; j++) {
+        const a = resolved.get(families[i]!)!;
+        const b = resolved.get(families[j]!)!;
+        expect(a, `${families[i]} vs ${families[j]} must not be the same colour`).not.toBe(b);
+      }
+    }
   });
 
-  it("★ the accent reaches a poster as `node`, and never as reading text — DEC-242 §2", () => {
-    // `node` is lime on dark and lime-deep on light, and it is the ONLY way the
-    // playground's accent enters a document: the other accent, coral, is a
-    // STATUS colour (DEC-073) and a brand token must never be one.
+  it("★ a poster's ground is the DESIGN's colour and its type is ink — the artboard's rule", () => {
+    // ★★ LEDGER (wave 24's re-colour): this replaced «the accent reaches a
+    // poster as `node`». It no longer does and must not: the accent reached a
+    // document through `node` only because `DEC-242` §2 had ruled the design's
+    // own palette unreachable, on a reading of `01-tokens.md`'s team-colour
+    // table that the table itself labels a PROPOSAL — and on two colours that
+    // sit on the PLATFORM cards of `AdminTemplates.dc.html`, where a team colour
+    // cannot be. `design.*` is the honest route and `node` is back to being a
+    // brand token nobody paints a poster with.
     //
-    // ★ NOT «every family paints it». The paper colourway — the thumbnails'
-    // «ورقي» card — carries no lime at all, and that is the design: it is ink on
-    // bone and its pill is ink. The property that holds is the other one: the
-    // accent is used, and it is never the colour of a line somebody reads.
+    // What the artboard draws on all four of its vivid cards, and what this
+    // asserts: the ground is a design colour, every line of type on it is ink,
+    // and the pill is ink carrying the ground's own colour as its text.
     const posters = BASELINE_LIBRARY.filter((x) => x.purpose === "poster");
-    const limeSomewhere = posters.filter((t) => colourFieldsOf(t.document).some((c) => c.value === "{{brand.node}}"));
-    expect(limeSomewhere.length).toBeGreaterThan(0);
     for (const t of posters) {
+      const bg = t.document.background;
+      const ground = bg?.type === "solid" ? (bg.color ?? "") : "";
+      expect(ground, t.family).toMatch(/^\{\{design\.[A-Za-z]+\}\}$/);
       for (const id of ["l_title", "l_presenters", "l_when"]) {
         const layer = t.document.layers.find((l) => l.id === id)!;
-        const colour = "color" in layer ? layer.color : null;
-        // A 96 px title in lime on ink would pass contrast and still be wrong:
-        // the accent marks one thing, and a poster's one thing is its category.
-        expect(colour, `${t.family}/${id}`).not.toBe("{{brand.node}}");
+        expect("color" in layer ? layer.color : null, `${t.family}/${id}`).toBe("{{design.ink}}");
+      }
+      // The pill: ink filled, the ground's colour as its own type. Bone on a
+      // vivid ground is 1.05–2.77:1, so ink is not a preference here.
+      expect(t.document.layers.find((l) => l.id === "l_pill_body")!, t.family).toMatchObject({
+        shape: { fill: "{{design.ink}}" },
+      });
+      const category = t.document.layers.find((l) => l.id === "l_category")!;
+      expect("color" in category ? category.color : null, t.family).toBe(ground);
+      // ★ And no poster paints `node`. The accent is not a ground, and the
+      // family that used to be lime got there by elimination, not by design.
+      for (const c of colourFieldsOf(t.document)) {
+        expect(c.value, `${t.family}/${c.path}`).not.toBe("{{brand.node}}");
       }
     }
   });
@@ -230,10 +273,29 @@ describe("REQ-DSG-026 — the brand constraint", () => {
     // Two lists of «where a colour lives» — this one and the SQL guard's —
     // are one list only if something holds them together. Read from the
     // proposed file while it exists, else from the promoted migration.
-    const proposed = join(process.cwd(), "supabase", "proposed", "designer", "0001_template_guard_walks_every_colour.sql");
+    //
+    // ★★ THE NEWEST GUARD, NOT THE FIRST ONE (wave 24's re-colour). This used
+    // to look for one exact basename — `_template_guard_walks_every_colour.sql`
+    // — with `.find()`, which takes the FIRST match. The moment a second guard
+    // migration existed it would have read `0094`, kept asserting `0094`'s
+    // regex, and PASSED GREEN while production ran a different guard: the exact
+    // silent drift this test exists to prevent, in the test itself. So: every
+    // file whose name says it is the guard, sorted, and the LAST one — which is
+    // the highest-numbered migration, and whichever proposed file is about to
+    // be promoted over it.
+    const guard = /_template_guard_.*\.sql$/;
+    const newest = (dir: string) =>
+      existsSync(dir)
+        ? (readdirSync(dir)
+            .filter((f) => guard.test(f))
+            .sort()
+            .at(-1) ?? null)
+        : null;
+    const proposedDir = join(process.cwd(), "supabase", "proposed", "designer");
     const promotedDir = join(process.cwd(), "supabase", "migrations");
-    const promoted = readdirSync(promotedDir).find((f) => f.endsWith("_template_guard_walks_every_colour.sql"));
-    const file = existsSync(proposed) ? proposed : promoted ? join(promotedDir, promoted) : null;
+    const proposed = newest(proposedDir);
+    const promoted = newest(promotedDir);
+    const file = proposed ? join(proposedDir, proposed) : promoted ? join(promotedDir, promoted) : null;
     if (!file) {
       expect.fail("neither the proposed nor the promoted template-guard migration was found");
       return;
@@ -245,8 +307,13 @@ describe("REQ-DSG-026 — the brand constraint", () => {
     expect(sql).toContain(`v_layer->>'color'`);
     expect(sql).toContain(`v_layer#>>'{shape,fill}'`);
     expect(sql).toContain(`v_layer#>>'{shape,stroke}'`);
-    // …and an allowlist of the binding shape, not a denylist of `#`.
-    expect(sql).toContain(String.raw`!~ '^\{\{\s*brand\.[A-Za-z]+\s*\}\}$'`);
+    // …and an allowlist of the binding SHAPE, not a denylist of `#`, over the
+    // two namespaces that exist: `brand` (an org's kit) and `design` (the
+    // platform's design constants, wave 24). ★ LEDGER: the expectation changed,
+    // not a selector — the guard admits one more namespace and refuses
+    // everything it refused before, which `tests/rls/templates-guard.test.ts`
+    // asserts case by case.
+    expect(sql).toContain(String.raw`!~ '^\{\{\s*(brand|design)\.[A-Za-z]+\s*\}\}$'`);
   });
 
   it("the only image layer anywhere is the org logo, bound rather than embedded", () => {
@@ -434,9 +501,13 @@ describe("the seed migrations are a copy of this library, and have not drifted",
       // Promoted as `0193_baseline_library_playground.sql`, together with the
       // supersede function it calls.
       seedFile("0005_playground_library.sql", /_baseline_library_playground\.sql$/),
+      // ★ The re-colour (wave 24, after the artboard was found): VERSION 2 of the
+      // eleven rows 0193 created, not eleven more rows. Last in the list because
+      // the newest FILE wins, which is what makes this the live document.
+      seedFile("0002_baseline_library_recolour.sql", /_baseline_library_recolour\.sql$/),
     ];
     if (bodies.some((b) => b === null)) {
-      expect.fail("a baseline-library seed migration (0061's, or the wave-8 certificate library) was not found");
+      expect.fail("a baseline-library seed migration (0061's, the wave-8 certificate library, or one of wave 24's two) was not found");
       return;
     }
 
