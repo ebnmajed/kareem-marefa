@@ -2,7 +2,7 @@
 
 import type { RefObject } from "react";
 import { useTranslations } from "next-intl";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, teamColorOrNull } from "@/components/ui/avatar";
 import { formatDate, formatNumber, formatTime } from "@/components/sessions/numerals";
 import type { StoryFrame, StorySession } from "@/lib/dal/stories";
 import type { StoryMediaHrefs } from "@/lib/dal/story-frames";
@@ -11,6 +11,15 @@ import type { StoryMediaHrefs } from "@/lib/dal/story-frames";
 // `StoryAttendee` .dc.html; REQ-STO-004, REQ-STO-013). `content`'s, rendered from `sessions'` DTO: every figure is
 // read from it, never computed here, and nothing is filtered here (contract 4). Arabic first; every interpolated
 // title, name and number in <bdi>; Western numerals (DEC-124).
+//
+// ★ THE GROUND (`StoryLive`, `StoryRecap`; `05-stories.md` «Poster frames use the team colour as the ground with ink
+// text»). A generated frame stands on the session's TEAM COLOUR with INK text — `--team` set by the viewer on the
+// frame's element, never a class per company and never a hex here — and on the raised ground with the scope's text
+// when the session has no team colour. Ink on each of the seven passes AA (tests/unit/story-team-ground.test.ts). The
+// viewer's own chrome — segments, header, controls — stays bone on its two scrims, as the boards draw it.
+//
+// ★ A CONTROL NEVER COVERS CONTENT: a text frame's body is inset 3.5 rem on both inline sides, clearing the viewer's two
+// 44 px «السابق / التالي» discs at the edges, so the longest title wraps inside them.
 
 type T = ReturnType<typeof useTranslations>;
 
@@ -39,8 +48,15 @@ export function frameDurationMs(frame: StoryFrame, media: StoryMediaHrefs): numb
   return 6000;
 }
 
-const SHADE_TOP = "pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-void/60 to-transparent";
-const SHADE_BOTTOM = "pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-void/70 to-transparent";
+/** The generated frames' ground — the team's colour with ink, or the neutral raised ground. */
+function ground(session: StorySession): { frame: string; pill: string; tile: string } {
+  return teamColorOrNull(session.teamColor)
+    ? { frame: "bg-team text-on-team", pill: "bg-on-team text-team", tile: "bg-on-team/10" }
+    : { frame: "bg-raised text-fg-heading", pill: "bg-canvas text-fg-heading", tile: "bg-canvas/40" };
+}
+
+/** Clear of the viewer's two 44 px discs (0.5 rem gutter + 2.75 rem disc). */
+const INSET = "px-14";
 
 function Person({ person, line }: { person: { memberId: string; name: string | null; avatarUrl: string | null; teamColor: string | null } | null; line: string }) {
   return (
@@ -54,16 +70,17 @@ function Person({ person, line }: { person: { memberId: string; name: string | n
   );
 }
 
-function TextFrame({ eyebrow, title, lines, team }: { eyebrow: string; title: string; lines: string[]; team?: boolean }) {
+function TextFrame({ session, eyebrow, title, lines }: { session: StorySession; eyebrow: string; title: string; lines: string[] }) {
+  const g = ground(session);
   return (
-    <div className={`flex h-full flex-col justify-center gap-3 px-6 ${team ? "bg-team text-on-team" : "bg-canvas"}`}>
-      <span className="self-start rounded-pill bg-chrome px-3 py-1 text-label font-bold text-fg-heading">{eyebrow}</span>
+    <div className={`flex h-full flex-col justify-center gap-3.5 ${INSET} pt-20 ${g.frame}`}>
+      <span className={`self-start rounded-pill px-3.5 py-1.5 text-label font-bold ${g.pill}`}>{eyebrow}</span>
       <h2 className="font-display text-h2 font-extrabold leading-snug">
         <bdi>{title}</bdi>
       </h2>
       {lines.map((line) => (
-        <p key={line} className="text-body">
-          {line}
+        <p key={line} className="text-body font-bold">
+          <bdi>{line}</bdi>
         </p>
       ))}
     </div>
@@ -87,24 +104,25 @@ export function FrameBody({
 }) {
   const t = useTranslations("stories");
   const tz = session.timeZone;
+  const g = ground(session);
   const day = frame.dayPosition ? t("frame.day", { position: formatNumber(frame.dayPosition) }) : null;
   const when = (iso: string | null) => (iso ? `${formatDate(iso, tz, locale)} · ${formatTime(iso, tz, locale)}` : null);
 
   switch (frame.kind) {
     case "published":
       return (
-        <div className="relative h-full bg-team text-on-team">
+        <div className={`relative h-full ${g.frame}`}>
           {frame.posterUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- a signed URL, never optimisable
+            // eslint-disable-next-line @next/next/no-img-element -- a signed URL; the poster whole, never cropped (REQ-UIX-026)
             <img src={frame.posterUrl} alt="" className="absolute inset-0 h-full w-full object-contain" />
           ) : null}
-          <div className="relative flex h-full flex-col justify-end gap-2 px-6 pb-32">
-            <span className="self-start rounded-pill bg-chrome px-3 py-1 text-label font-bold text-fg-heading">{t("frame.published")}</span>
+          <div className={`relative flex h-full flex-col justify-end gap-2.5 ${INSET} pb-32`}>
+            <span className={`self-start rounded-pill px-3.5 py-1.5 text-label font-bold ${g.pill}`}>{t("frame.published")}</span>
             <h2 className="font-display text-h2 font-extrabold leading-snug">
               <bdi>{session.title}</bdi>
             </h2>
             {[when(frame.startsAt), frame.venueName].filter(Boolean).map((line) => (
-              <p key={line} className="text-body">
+              <p key={line} className="text-body font-bold">
                 <bdi>{line}</bdi>
               </p>
             ))}
@@ -112,38 +130,51 @@ export function FrameBody({
         </div>
       );
     case "registration_opened":
-      return <TextFrame eyebrow={t("frame.registrationOpened")} title={session.title} lines={[when(frame.startsAt)].filter(Boolean) as string[]} />;
+      return <TextFrame session={session} eyebrow={t("frame.registrationOpened")} title={session.title} lines={[when(frame.startsAt)].filter(Boolean) as string[]} />;
     case "registration_closed":
-      return <TextFrame eyebrow={t("frame.registrationClosed")} title={session.title} lines={[when(frame.startsAt)].filter(Boolean) as string[]} />;
+      return <TextFrame session={session} eyebrow={t("frame.registrationClosed")} title={session.title} lines={[when(frame.startsAt)].filter(Boolean) as string[]} />;
     case "starts_soon":
-      return <TextFrame eyebrow={day ?? t("frame.startsSoon")} title={session.title} lines={[when(frame.startsAt), frame.venueName].filter(Boolean) as string[]} team />;
+      return <TextFrame session={session} eyebrow={day ?? t("frame.startsSoon")} title={session.title} lines={[when(frame.startsAt), frame.venueName].filter(Boolean) as string[]} />;
     case "materials":
       return (
         <TextFrame
+          session={session}
           eyebrow={t("frame.materials")}
           title={session.title}
           lines={[`${formatNumber(frame.materialsCount)} ${t("frame.materialsStat", { count: frame.materialsCount })}`]}
         />
       );
-    case "live":
+    case "live": {
+      // `StoryLive.dc.html`: everything CENTRED, both ways — the badge (ink, coral word and dot), the title, the count's
+      // NUMERAL large with «في القاعة» small beside it, the venue and the end. The whole phrase is the accessible text.
+      const count = frame.checkedInCount;
       return (
-        <div className="flex h-full flex-col justify-center gap-3 bg-canvas px-6">
-          <span className="inline-flex items-center gap-2 self-start rounded-pill border-2 border-signal px-3 py-1 text-label font-bold">
+        <div className={`flex h-full flex-col items-center justify-center gap-4 ${INSET} text-center ${g.frame}`}>
+          <span className="inline-flex items-center gap-2 rounded-pill bg-on-team px-3.5 py-1.5 text-label font-bold text-signal">
             <span aria-hidden className="size-2 rounded-pill bg-signal" />
             {t("frame.live")}
             {day ? <bdi>· {day}</bdi> : null}
           </span>
-          <h2 className="font-display text-h2 font-extrabold leading-snug">
+          <h2 className="font-display text-h1 font-extrabold leading-tight">
             <bdi>{session.title}</bdi>
           </h2>
-          {frame.checkedInCount !== null ? (
-            <p className="font-display text-h1 font-extrabold">{t("frame.liveCount", { count: frame.checkedInCount, value: formatNumber(frame.checkedInCount) })}</p>
+          {count !== null ? (
+            <p className="flex items-baseline gap-2">
+              <span className="sr-only">{t("frame.liveCount", { count, value: formatNumber(count) })}</span>
+              <bdi aria-hidden className="font-display text-[4rem] font-extrabold leading-none tabular-nums">
+                {formatNumber(count)}
+              </bdi>
+              <span aria-hidden className="text-body font-bold">
+                {t("frame.inRoom")}
+              </span>
+            </p>
           ) : null}
-          <p className="text-body text-fg-muted">
-            {[frame.venueName, t("frame.until", { time: formatTime(frame.endsAt, tz, locale) })].filter(Boolean).join(" · ")}
+          <p className="text-body-sm font-bold">
+            <bdi>{[frame.venueName, t("frame.until", { time: formatTime(frame.endsAt, tz, locale) })].filter(Boolean).join(" · ")}</bdi>
           </p>
         </div>
       );
+    }
     case "photo": {
       const url = media.photos[frame.photoId];
       return (
@@ -152,8 +183,6 @@ export function FrameBody({
             // eslint-disable-next-line @next/next/no-img-element -- a signed URL; never cropped (REQ-UIX-026)
             <img src={url} alt={frame.caption ?? ""} className="absolute inset-0 h-full w-full object-contain" />
           ) : null}
-          <div className={SHADE_TOP} />
-          <div className={SHADE_BOTTOM} />
           <div className="absolute inset-x-4 bottom-24 flex flex-col gap-2">
             <Person person={frame.uploader} line={frameAge(t, frame.triggeredAt, now)} />
             {frame.caption ? (
@@ -170,7 +199,7 @@ export function FrameBody({
       const length = hrefs?.durationMs ? hrefs.durationMs / 1000 : frame.durationSeconds;
       if (frame.state !== "visible" || !hrefs) {
         return (
-          <div className="flex h-full flex-col items-center justify-center gap-3 bg-canvas px-6 text-center">
+          <div className={`flex h-full flex-col items-center justify-center gap-3 ${INSET} text-center ${g.frame}`}>
             <p role="status" className="font-display text-h3 font-extrabold">
               {frame.state === "failed" ? t("frame.failed") : t("frame.processing")}
             </p>
@@ -179,16 +208,7 @@ export function FrameBody({
       }
       return (
         <div className="relative h-full bg-void">
-          <video
-            ref={videoRef}
-            src={hrefs.videoUrl}
-            poster={hrefs.posterUrl}
-            playsInline
-            preload="auto"
-            className="absolute inset-0 h-full w-full object-contain"
-          />
-          <div className={SHADE_TOP} />
-          <div className={SHADE_BOTTOM} />
+          <video ref={videoRef} src={hrefs.videoUrl} poster={hrefs.posterUrl} playsInline preload="auto" className="absolute inset-0 h-full w-full object-contain" />
           {length ? (
             <span className="absolute end-4 top-24 rounded-pill bg-chrome px-2.5 py-1 text-caption font-bold">
               <bdi dir="ltr">{videoLength(t, length)}</bdi>
@@ -206,6 +226,8 @@ export function FrameBody({
       );
     }
     case "recap": {
+      // `StoryRecap.dc.html`: start-aligned on the team ground — «اكتملت» in an ink pill with the team's word, the title,
+      // the three stats on ink-tinted tiles, the photo strip.
       const rating =
         frame.rating === null
           ? "—"
@@ -219,26 +241,26 @@ export function FrameBody({
       ];
       const photos = frame.photoIds.map((id) => media.photos[id]).filter(Boolean);
       return (
-        <div className="flex h-full flex-col justify-center gap-4 bg-canvas px-6">
-          <span className="self-start rounded-pill bg-accent px-3 py-1 text-label font-bold text-on-accent">{t("frame.recap")}</span>
-          <h2 className="font-display text-h2 font-extrabold leading-snug">
+        <div className={`flex h-full flex-col justify-center gap-3.5 ${INSET} pt-20 ${g.frame}`}>
+          <span className={`self-start rounded-pill px-3.5 py-1.5 text-label font-bold ${g.pill}`}>{t("frame.recap")}</span>
+          <h2 className="font-display text-h2 font-extrabold leading-tight">
             <bdi>{session.title}</bdi>
           </h2>
           <dl className="grid grid-cols-3 gap-2">
             {stats.map(([value, label]) => (
-              <div key={label} className="flex flex-col gap-0.5 rounded-tile bg-surface px-3 py-2.5">
-                <dd className="order-1 font-display text-h3 font-extrabold">
+              <div key={label} className={`flex flex-col gap-0.5 rounded-tile p-3 ${g.tile}`}>
+                <dd className="order-1 font-display text-h3 font-extrabold leading-none">
                   <bdi>{value}</bdi>
                 </dd>
-                <dt className="order-2 text-caption text-fg-muted">{label}</dt>
+                <dt className="order-2 text-caption font-bold">{label}</dt>
               </div>
             ))}
           </dl>
           {photos.length > 0 ? (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               {photos.map((url) => (
-                // eslint-disable-next-line @next/next/no-img-element -- signed URLs
-                <img key={url} src={url} alt="" className="aspect-square w-full rounded-tile object-cover" />
+                // eslint-disable-next-line @next/next/no-img-element -- signed URLs; the strip's crop is deliberate
+                <img key={url} src={url} alt="" className="aspect-square w-full rounded-field object-cover" />
               ))}
             </div>
           ) : null}
@@ -247,4 +269,3 @@ export function FrameBody({
     }
   }
 }
-

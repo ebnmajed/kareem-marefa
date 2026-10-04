@@ -265,6 +265,9 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
   }
 
   const pauseOn = paused || held;
+  // The meta line: the story's «presenter · company», then this frame's age — the age is the FRAME's, so it changes as
+  // the run moves (`StoryLive`: «سارة القحطاني · مواهب · قبل 12 دقيقة»).
+  const meta = [story.meta, frame.age].filter(Boolean).join(" · ");
 
   return (
     <RadixDialog.Root open={open} onOpenChange={(o) => (o ? null : onClose())}>
@@ -296,6 +299,11 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
               {frame.content}
             </div>
 
+            {/* The two scrims every board draws, so the bone chrome reads on any ground — the team's colour, a photograph:
+                ink at 55 % fading down from the top, 60 % fading up from the bottom. */}
+            <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-void/55 to-transparent" />
+            <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-void/60 to-transparent" />
+
             {/* The gestures' layer: above the frame, below every control, and nothing to assistive technology — the
                 controls are the conformance path, this is the enhancement. */}
             <div
@@ -321,6 +329,12 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
                 elapsedRef={elapsedRef}
                 onDone={next}
               />
+              {/* The header as `StoryLive.dc.html` draws it: the session's avatar with its ring, the TITLE with the meta line
+                  under it («presenter · company · age»), close at the inline-end. «أضف» and pause (DEC-093) sit on a row of
+                  their own under it at the inline-end, so the title keeps the width the board gives it at 390 and every
+                  control keeps its 44 px. ★ The title is one line in a MARK-SAFE box: the ellipsis needs the clip on the
+                  text's own block, so that block carries padding-block and the body line-height — tashkeel above and below
+                  falls inside the box it is clipped to, never outside it. */}
               <div className="flex items-center gap-2.5">
                 <span
                   aria-hidden
@@ -328,10 +342,15 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
                 >
                   <bdi>{story.glyph}</bdi>
                 </span>
-                <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                  <bdi className="truncate py-0.5 text-body-sm font-bold">{story.title}</bdi>
-                  <bdi className="text-caption text-fg-muted">{story.meta}</bdi>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <bdi className="block truncate py-1 text-body-sm font-bold leading-[1.7]">{story.title}</bdi>
+                  {meta ? <bdi className="block text-caption text-fg-muted">{meta}</bdi> : null}
                 </span>
+                <RadixDialog.Close aria-label={labels.close} className={CONTROL}>
+                  <CloseIcon aria-hidden />
+                </RadixDialog.Close>
+              </div>
+              <div className="flex items-center justify-end gap-2">
                 {story.onAdd ? (
                   <button type="button" onClick={story.onAdd} className={`${CONTROL} w-auto gap-1.5 px-3 text-label font-bold`}>
                     <PlusIcon aria-hidden />
@@ -341,9 +360,6 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
                 <button type="button" aria-pressed={pauseOn} aria-label={pauseOn ? labels.resume : labels.pause} onClick={() => setPaused((p) => !p)} className={CONTROL}>
                   {pauseOn ? <PlayIcon aria-hidden /> : <PauseIcon aria-hidden />}
                 </button>
-                <RadixDialog.Close aria-label={labels.close} className={CONTROL}>
-                  <CloseIcon aria-hidden />
-                </RadixDialog.Close>
               </div>
               {pauseOn ? (
                 <span className="self-center rounded-pill bg-chrome px-3 py-1 text-caption font-bold">{labels.paused}</span>

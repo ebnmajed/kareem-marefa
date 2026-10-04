@@ -12,7 +12,9 @@ import { FrameBody, frameAge, frameDurationMs, videoLength } from "@/components/
 import { ringShape } from "@/components/stories/story-rings-client";
 import type { StoryFrame, StorySession } from "@/lib/dal/stories";
 
-const t = createTranslator({ locale: "ar", messages: stories, namespace: "stories" });
+// `frame.inRoom` is requested from `sessions` (stories.json is theirs); until it lands the test supplies the word.
+const messages = { stories: { ...stories.stories, frame: { inRoom: "في القاعة", ...stories.stories.frame } } };
+const t = createTranslator({ locale: "ar", messages, namespace: "stories" });
 const NOW = "2026-10-05T18:00:00Z";
 const base = { triggeredAt: "2026-10-05T17:57:00Z", expiresAt: "2026-10-06T17:57:00Z", seen: false, dayId: null, dayPosition: null, action: { kind: "open_session", href: "/app/sessions/s" } } as const;
 const session: StorySession = {
@@ -30,7 +32,7 @@ const media = { photos: { ph: "https://x.test/p.webp" }, videos: { v: { videoUrl
 
 function show(frame: StoryFrame) {
   return render(
-    <NextIntlClientProvider locale="ar" messages={stories}>
+    <NextIntlClientProvider locale="ar" messages={messages}>
       <FrameBody frame={frame} session={session} media={media} now={NOW} locale="ar" />
     </NextIntlClientProvider>,
   );
@@ -61,7 +63,7 @@ describe("the frame bodies", () => {
     expect(screen.getByRole("status")).toHaveTextContent("جارٍ التجهيز");
     expect(container.querySelector("video")).toBeNull();
     rerender(
-      <NextIntlClientProvider locale="ar" messages={stories}>
+      <NextIntlClientProvider locale="ar" messages={messages}>
         <FrameBody frame={{ ...base, id: "p1", kind: "video", state: "failed", author: null, caption: null, durationSeconds: null }} session={session} media={media} now={NOW} locale="ar" />
       </NextIntlClientProvider>,
     );
@@ -88,5 +90,34 @@ describe("the ring's shape — no fifth state (DEC-251 §4.5)", () => {
     expect(ringShape({ ring: "live", phase: "live" }, true)).toBe("live");
     expect(ringShape({ ring: "seen", phase: "completed" }, false)).toBe("seen");
     expect(ringShape({ ring: "unseen", phase: "completed" }, true)).toBe("seen");
+  });
+});
+
+describe("`StoryLive.dc.html` — the live frame as drawn", () => {
+  const live: StoryFrame = { ...base, id: "l", kind: "live", checkedInCount: 23, venueName: "قاعة الرياض", endsAt: "2026-10-05T16:30:00Z" };
+
+  it("stands on the TEAM ground with ink text, centred both ways, clear of the two discs", () => {
+    const { container } = show(live);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root).toHaveClass("bg-team", "text-on-team", "items-center", "justify-center", "text-center", "px-14");
+  });
+
+  it("draws the count's NUMERAL large and «في القاعة» small; the accessible text is the whole phrase", () => {
+    const { container } = show(live);
+    const numeral = [...container.querySelectorAll("bdi")].find((el) => el.textContent === "23")!;
+    expect(numeral).toHaveClass("text-[4rem]");
+    expect(numeral).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("في القاعة")).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector(".sr-only")).toHaveTextContent("23 في القاعة");
+  });
+
+  it("with no team colour, the neutral raised ground — never ink on a missing colour", () => {
+    render(
+      <NextIntlClientProvider locale="ar" messages={messages}>
+        <FrameBody frame={live} session={{ ...session, teamColor: null }} media={media} now={NOW} locale="ar" />
+      </NextIntlClientProvider>,
+    );
+    expect(document.querySelector(".bg-raised")).not.toBeNull();
+    expect(document.querySelector(".bg-team")).toBeNull();
   });
 });

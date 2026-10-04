@@ -94,4 +94,28 @@ describe("StoryViewer inside the scope", () => {
     const { violations } = await axe.run(viewer(), { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } });
     expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
   });
+
+  it("two scrims carry the bone chrome on any ground; the header is avatar, title, meta (with the frame's age), close", () => {
+    render(
+      <NextIntlClientProvider locale="ar" messages={{}}>
+        <Direction.Provider dir="rtl">
+          <StoryViewer
+            open
+            stories={[{ id: "s", title: "العرض في 5 شرائح: كيف تُقنع اللجنة التنفيذية", meta: "سارة القحطاني · مواهب", glyph: "م", teamColor: "#35D0FF", startIndex: 0, frames: [{ id: "f", content: <p>إطار</p>, durationMs: 5000, age: "قبل 12 دقيقة" }], onAdd: () => {} }]}
+            storyIndex={0}
+            onClose={() => {}}
+            labels={labels}
+          />
+        </Direction.Provider>
+      </NextIntlClientProvider>,
+    );
+    expect(viewer().querySelectorAll(".from-void\\/55, .from-void\\/60")).toHaveLength(2);
+    expect(viewer()).toHaveTextContent("سارة القحطاني · مواهب · قبل 12 دقيقة");
+    // The title's row holds only the avatar, the title and close; «أضف» and pause are on the row under it.
+    const close = viewer().querySelector('button[aria-label="إغلاق"]')!;
+    const pause = viewer().querySelector('button[aria-label="أوقف مؤقتًا"]')!;
+    expect(close.parentElement).not.toBe(pause.parentElement);
+    const title = [...viewer().querySelectorAll("bdi")].find((el) => el.textContent?.startsWith("العرض"))!;
+    expect(title).toHaveClass("truncate", "py-1", "leading-[1.7]");
+  });
 });

@@ -128,6 +128,7 @@ export function useStoryHost(prepared: PreparedStories) {
           id: f.id,
           content: <FrameBody frame={f} session={s} media={media} now={now} locale={locale} videoRef={videoRefs.get(f.id)} />,
           durationMs: frameDurationMs(f, media),
+          age: frameAge(t, f.triggeredAt, now),
           media: f.kind === "video" && visible ? videoRefs.get(f.id) : undefined,
           action: visible
             ? { label: f.action.kind === "download_materials" ? t("action.downloadMaterials") : t("action.openSession"), href: f.action.href }
