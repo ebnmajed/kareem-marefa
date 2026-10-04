@@ -72,13 +72,10 @@
       "cancel": "Cancel"
     },
     "domains": {
-      "title": "Domains and first admin",
-      "breadcrumb": "Breadcrumb",
       "suspendedSince": "Suspended since <bdi>{date}</bdi>. Reason: <bdi>{reason}</bdi>",
       "deletionPending": "This org has a deletion requested, running in the background. It is irreversible, so its domains and first admin are no longer edited.",
       "domainsTitle": "Allowed domains",
-      "domainsIntro": "These decide who can be provisioned into the org on a first sign-in.",
-      "removalNote": "Removing a domain prevents new memberships only. Existing members keep their access.",
+      "removalNote": "Removing a domain keeps its members; it only stops new ones joining.",
       "domainColumn": "Domain",
       "actionsColumn": "Actions",
       "domainLabel": "Domain",
@@ -95,16 +92,14 @@
       "emptyAction": "Add a domain",
       "domainCount": "{count, plural, =0 {No domains} one {One domain} other {{value} domains}}",
       "firstAdminTitle": "First admin",
-      "firstAdminIntro": "If that address is already a member they become an admin at once; if not, on their first sign-in.",
       "firstAdminLabel": "First admin's email",
       "firstAdminHint": "In any case — stored in lowercase.",
       "firstAdminCurrent": "Currently stored",
       "firstAdminNone": "Not set",
       "setFirstAdmin": "Save",
       "firstAdminSaved": "The first admin's email is saved.",
-      "titleFor": "Domains · <bdi>{org}</bdi>",
-      "newDomain": "New domain",
-      "removeShort": "Remove"
+      "titleFor": "Domains · {org}",
+      "newDomain": "New domain"
     },
     "templates": {
       "title": "Platform template library",

@@ -538,11 +538,11 @@ test("★ REQ-TEN-007 (contract 4) · REQ-TEN-002 (F3): SCR-082 takes any case a
   // Put the seeded admin back: other cases sign in as it.
   await db.query(`update public.orgs set first_admin_email = $2 where id = $1`, [b.id, b.adminEmail]);
 
-  await page.getByRole("button", { name: `احذف ${storedDomain}` }).click();
+  await page.getByRole("button", { name: `أزل ${storedDomain}` }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading")).toContainText(storedDomain);
   await expect(dialog).toContainText("لا يفقد أحد وصوله");
-  await dialog.getByRole("button", { name: "احذف" }).click();
+  await dialog.getByRole("button", { name: "أزل" }).click();
   await expect(dialog).toHaveCount(0);
   await expect.poll(async () => (await db.query(`select 1 from public.org_domains where org_id = $1 and domain = $2`, [b.id, storedDomain])).rowCount).toBe(0);
 });

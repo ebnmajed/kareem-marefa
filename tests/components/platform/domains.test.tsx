@@ -60,14 +60,14 @@ describe("SCR-082 domains", () => {
   it("removal confirms by name and says, before the press, that nobody loses access", async () => {
     const remove = vi.fn(async () => ({ error: null }));
     wrap(<DomainsTable domains={["example.com"]} remove={remove} />);
-    const buttons = screen.getAllByRole("button", { name: "احذف example.com" });
+    const buttons = screen.getAllByRole("button", { name: "أزل example.com" });
     await userEvent.click(buttons[0]);
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("heading")).toHaveTextContent("إزالة example.com");
     expect(dialog).toHaveTextContent("لا يفقد أحد وصوله");
     expect(remove).not.toHaveBeenCalled();
     await act(async () => {
-      await userEvent.click(within(dialog).getByRole("button", { name: "احذف" }));
+      await userEvent.click(within(dialog).getByRole("button", { name: "أزل" }));
     });
     await vi.waitFor(() => expect(remove).toHaveBeenCalledWith("example.com"));
     expect(show).toHaveBeenCalledWith(expect.objectContaining({ tone: "success" }));
