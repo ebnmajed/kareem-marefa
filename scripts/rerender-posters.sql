@@ -23,7 +23,7 @@
 -- Run this alone first and look at the number. It is how many render jobs step 2 will queue.
 -- ═══════════════════════════════════════════════════════════════════════════
 
-select count(*) as posters_to_rerender,
+select count(*) filter (where sp.binding = 'live')  as will_rerender,
        count(*) filter (where sp.binding <> 'live') as customised_left_alone
   from public.session_posters sp;
 
@@ -36,18 +36,21 @@ select count(*) as posters_to_rerender,
 -- through `public.enqueue_job()` and through nothing else.
 -- ═══════════════════════════════════════════════════════════════════════════
 
-do $$
-declare
-  v_session uuid;
-  v_queued  int := 0;
-begin
-  for v_session in
-    select sp.session_id from public.session_posters sp where sp.binding = 'live'
-  loop
-    perform public.enqueue_job('regenerate_poster',
-                               jsonb_build_object('session_id', v_session),
-                               'poster:' || v_session::text, null, 'render', 3);
-    v_queued := v_queued + 1;
-  end loop;
-  raise notice 'queued % regenerate_poster jobs (live posters only; customised left alone)', v_queued;
-end $$;
+-- ★ Written as a plain SELECT rather than a `do $$ … $$` block ON PURPOSE: `$$` is expanded by zsh
+-- and bash inside double quotes, so a DO block pasted into `supabase db query --linked "…"` does
+-- not survive the shell. This form has no `$` in it at all.
+--
+-- It calls `enqueue_job()` once per live poster and returns one job id per row, so the row count
+-- you get back IS the number of renders queued.
+
+select public.enqueue_job(
+         'regenerate_poster',
+         jsonb_build_object('session_id', sp.session_id),
+         'poster:' || sp.session_id::text,
+         null,
+         'render',
+         3
+       ) as job_id,
+       sp.session_id
+  from public.session_posters sp
+ where sp.binding = 'live';
