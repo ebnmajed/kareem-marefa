@@ -261,7 +261,13 @@ describe("POL-design_template_versions", () => {
     });
   });
 
-  it("the guard refuses a hard-coded colour, an unknown layer kind and a duplicate layer id", async () => {
+  // ★★ THIS CASE WAS ONE ASSERTION OVER THREE REFUSALS and `DEC-246` changed
+  // exactly one of them, which is why splitting it matters rather than editing
+  // it in place: bundled, the two that SURVIVED would have been proved only as
+  // a side effect of the one that did not. They are now the RLS proof that the
+  // structural guard outlived the colour mandate, so they get their own case
+  // and their own name.
+  it("the guard refuses an unknown layer kind and a duplicate layer id — the structural checks DEC-246 KEPT", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.asOwner();
@@ -272,19 +278,45 @@ describe("POL-design_template_versions", () => {
       const insert = (doc: unknown) =>
         tx.q(`insert into public.design_template_versions (template_id, version, document) values ($1, 1, $2::jsonb)`, [t.id, JSON.stringify(doc)]);
 
-      // REQ-DSG-021: «a literal #0B1220 in a template is a defect» — and it is
-      // invisible until an org changes its brand and one template does not follow.
-      expect(await errorCode(() => insert(DOC([LAYER("l1", { color: "#0B1220" })])))).toBe(INVALID_TEXT_REPRESENTATION);
-      expect(
-        await errorCode(() =>
-          insert({ ...DOC(), background: { type: "solid", color: "#ffffff" } }),
-        ),
-      ).toBe(INVALID_TEXT_REPRESENTATION);
+      // A document that is BROKEN rather than merely styled differently. Neither
+      // of these is a choice an admin could want to make: a `kind` outside the
+      // enum renders as nothing, and two layers under one id make «which layer
+      // did I just move» unanswerable.
       expect(await errorCode(() => insert(DOC([LAYER("l1", { kind: "video" })])))).toBe(INVALID_TEXT_REPRESENTATION);
       expect(await errorCode(() => insert(DOC([LAYER("l1"), LAYER("l1")])))).toBe(INVALID_TEXT_REPRESENTATION);
+    });
+  });
 
-      // A token colour is fine, which is the whole point of the rule.
+  it("★ LEDGER (DEC-246): a hard-coded colour is ACCEPTED — the mandate is gone, so this proves it is gone", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.asOwner();
+      const [t] = await tx.q<{ id: string }>(
+        `insert into public.design_templates (org_id, scope, purpose, family, name) values ($1, 'org', 'poster', 'talk', 'قالب') returning id`,
+        [f.a.id],
+      );
+      const insert = (doc: unknown) =>
+        tx.q(`insert into public.design_template_versions (template_id, version, document) values ($1, 1, $2::jsonb)`, [t.id, JSON.stringify(doc)]);
+
+      // ★ WAS: «REQ-DSG-021: a literal #0B1220 in a template is a defect», both
+      // of these asserting 22023. The owner ended the mandate — a brand token is
+      // an OPTION an admin may take, not a toll every colour pays — so a literal
+      // is accepted on a layer and on the background alike. A guard that has
+      // stopped refusing something is proved to have stopped refusing it, rather
+      // than having its case deleted.
+      //
+      // ★ The cost, asserted here rather than left to be rediscovered: a template
+      // whose colours are literals is NOT repainted when an org saves its brand
+      // kit. `0071`'s fan-out still repaints every template that binds
+      // `brand.*`. That is the admin's own choice and it is the point.
+      expect(await errorCode(() => insert(DOC([LAYER("l1", { color: "#0B1220" })])))).toBeNull();
+      expect(await errorCode(() => insert({ ...DOC(), background: { type: "solid", color: "#ffffff" } }))).toBeNull();
+
+      // Both token namespaces still resolve, which is what keeps the OPTION worth
+      // taking: `brand.*` follows an org's kit, `design.*` is the platform's own
+      // palette and is what the five baseline posters bind.
       expect(await errorCode(() => insert(DOC([LAYER("l1", { color: "{{brand.fgHeading}}" })])))).toBeNull();
+      expect(await errorCode(() => insert(DOC([LAYER("l1", { color: "{{design.tangerine}}" })])))).toBeNull();
     });
   });
 });

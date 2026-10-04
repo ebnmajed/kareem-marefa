@@ -4441,3 +4441,50 @@ Tests:
    
    The old objects are overwritten at the same paths by the new renders.
 3. Certificates draw the logo too. An issued certificate's PDF re-renders only by the per-row retry or a re-issue, and a certificate is what was printed (`REQ-CRT-014`). **I recommend leaving issued certificates as they are**: the owner decides.
+
+---
+
+## Wave 24 · the re-colour — the gap that made every local RLS result weaker than CI's
+
+★★ **CI caught a failure my local run could not, and the cause is worth writing down because it applies to
+every RLS result produced this wave — mine and the lead's.**
+
+`tests/rls/designer-schema.test.ts` asserted the guard refuses a hard-coded colour. `DEC-246` ended that
+mandate, so the assertion is wrong. My local `npm run test:rls` passed it. CI failed it.
+
+**Why.** The RLS suites run against the local Postgres **as it stands**, not against the migration chain.
+`supabase db reset` is what applies a newly promoted migration — and this wave **three Claude sessions shared
+one local Postgres**, so a reset would have destroyed two other sessions' test state. Nobody reset, correctly.
+The local database therefore sat at `0193` while the branch carried `0195`, and I measured it rather than
+assuming: `select prosrc from pg_proc where proname='design_template_versions_guard'` still matched
+`hardcoded_colour_in_template`. **CI has its own container and runs the chain from zero, so it tested the
+guard the branch actually ships.**
+
+★ **The consequence to carry forward: a green local RLS run proves the suites pass against the database's
+CURRENT schema, not against the branch's.** Any suite whose subject is a migration promoted during the wave
+is unverified locally by default. Two ways to close it, both used here:
+
+1. **A suite that applies its own SQL is immune.** `templates-guard.test.ts` uses `applyProposed()` inside its
+   rolled-back transaction, so it tested the new guard from the moment it was written — and keeps passing the
+   instant the file is promoted, which is `db.ts`'s own rule. `designer-schema.test.ts` does not, and that is
+   exactly which of the two CI caught.
+2. **Verify a promoted migration without a reset.** Open a transaction, run the migration file into it, run
+   the assertions, `rollback`. Non-destructive, invisible to the other sessions, and it is how all six
+   expectations in the split case were confirmed against the real `0195` before the push:
+
+   ```
+   begin; \i supabase/migrations/0195_*.sql; <inserts>; rollback;
+   ```
+
+★ **And the case itself was a packaging failure, not just a stale expectation.** One `it()` asserted THREE
+refusals — a hard-coded colour, an unknown layer kind, a duplicate layer id — and `DEC-246` changed exactly
+one of them. Bundled, the two that survived were proved only as a side effect of the one that did not. Split
+in two: the structural pair keeps `22023` and is now the RLS proof that the structural guard outlived the
+mandate; the colour pair asserts it is **accepted**, because a guard that has stopped refusing something
+should be proved to have stopped refusing it rather than have its case deleted. The old title — «the guard
+refuses a hard-coded colour…» — had become false and is gone.
+
+★ **The wave's own lesson, which the owner reached before I did:** measure the thing you are about to assert,
+and say what you measured. Every correction here came from a number — 1.10:1 between three grounds that were
+supposed to differ, 30 px of overlap, 40% of a 16:9 page, 15 of 41 derivations, 1.87× from `scale: 'fill'`,
+6 of 6 against `0195` — and none came from looking harder.
