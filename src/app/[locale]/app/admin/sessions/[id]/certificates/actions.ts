@@ -76,14 +76,17 @@ export async function retryCertificateRender(locale: string, sessionId: string, 
   return { status: "ok" };
 }
 
-export type ModeActionResult = { status: "ok" | "unchanged" } | { status: "refused"; error: CertificateModeError } | { status: "failed" };
+export type ModeActionResult = { status: "ok" | "unchanged" | "fanned_out" } | { status: "refused"; error: CertificateModeError } | { status: "failed" };
 
 /**
  * ★ THE MODE'S ONE WRITER (DEC-178 contract 2): SCR-045 changes it, through
  * `sessions`' `setSessionCertificateMode()` → `set_session_certificate_mode()`
- * (0154) — admin only, audited, refused once the session has completed, been
- * archived or been cancelled, where a change would do nothing. The schedule
- * screen only shows it.
+ * (0154, `0194`) — admin only, audited, refused only for a cancelled session.
+ * The schedule screen only shows it.
+ *
+ * ★ DEC-245 (REQ-CRT-017): a completed session may still be switched on, and
+ * doing so fans out at once — `fanned_out`, which the control reports as «being
+ * prepared» rather than «saved», because the worker writes the rows.
  */
 export async function saveCertificateMode(locale: string, sessionId: string, mode: string): Promise<ModeActionResult> {
   const parsed = z.object({ sessionId: z.uuid(), mode: z.enum(["off", "automatic", "review"]) }).safeParse({ sessionId, mode });
