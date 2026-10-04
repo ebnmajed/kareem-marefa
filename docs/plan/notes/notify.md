@@ -5461,3 +5461,91 @@ the lead's**.
 explicit filename, `git commit -- <paths>`, never `git add -A`**, never stash, rebase, reset, clean or switch
 branches, and **re-read any file I did not write in this session from disk before editing it** — a stale in-context
 copy written back is a silent revert. ★ When the worktree lands I work on C's files **in C's tree only**.
+
+---
+
+### W24.13 · ★★ PR C opened — the three measurements the lead asked for, and one sequencing blocker
+
+**Tree `../kareem-marefa-wave24c`, branch `wave-24c/the-mail-designs`, at `267c318f`** (`0192` merged). `npm ci`
+finished; both workspace `dist/` trees are built.
+
+★ **Baseline, in this tree, before I change anything:** `mail-pinned` · `mail-designs` · `mail-blocks` ·
+`mail-layout` · `mail-blocks-new-types` · `mail-runtime-dist` — **6 files, 237 tests, green.**
+★ **That is F1 confirmed empirically on the post-merge tree**: the 120 pinned files are green **with `0192` in**, so
+the palette did not move one of them. Measured, not inferred, and independently of the lead's own run.
+
+#### ★ `DEC-243` / `REQ-TEN-009` — the matrix stays at 25 keys, and nothing of wave 24 moves
+
+Read on `main` as the lead asked, `08` §1 and §3.2 diffed against `6de410b2`:
+
+- ★ **`08` gained a new §3.2a, «The two mails that are deliberately NOT in the matrix»**, which rules the invitation
+  out of the matrix for the reason the matrix exists: `notify(p_org, p_member, …)` resolves the preference, the inbox
+  row and the address **from a member id**, and an invited person has none. It states «**the matrix stays at 25 keys
+  and `tests/unit/mail-pinned/`'s 120 files are untouched by either**».
+- ★ **`REQ-NTF-017`** says the same in its own acceptance: «The matrix stays at 25 keys; the 120 pinned mail files are
+  untouched by this feature», and «it is not one of the notification matrix's messages and **does not become a
+  twenty-sixth key**».
+- **`11` gained `JOB-send_member_invitation`, the thirty-seventh job, marked «added in wave 25».**
+- **`packages/mail-runtime/**`, `worker/src/mail/**` and `src/messages/*` are byte-unchanged since `6de410b2`** (empty
+  diff stat), and in code `templates.ts` still holds **25** distinct keys with `DESIGN_FOR` and `COPY` at 25 each.
+
+★ **So: no `DESIGN_FOR` family, no `Copy` row, no twenty-sixth key. My plan's «all 25 keys» stands verbatim.**
+
+★ **But two consequences for later, both in my files, and better said now:**
+1. **Wave 25 adds a NINTH designed family to `designs.ts`** — `REQ-NTF-017` calls the invitation «a transactional send
+   on the test send's pattern, **in the same designed language as the eight families**». ★ **So whatever look I
+   establish in commit 4 becomes the house style the ninth inherits.** That is an argument for putting the shared look
+   in **one** constant that all eight reference, rather than eight inline copies — so the ninth picks it up for free
+   and cannot drift. **I will do that.**
+2. ★ **`mail-designs.test.ts`'s «the eight families are `DEC-082`'s, and every one is used» will not survive a ninth
+   family that has no `MSG-*` key** (it asserts `DESIGN_FAMILIES` has length 8 **and** that the set of
+   `DESIGN_FOR`'s values equals it). That is **wave 25's** ledger line, not mine — recorded here so its owner meets it
+   in a note rather than at a gate.
+
+#### ★ The pinned diff, now measured per commit rather than estimated
+
+Rendering all 29 `SAMPLE_CASES` twice — once with today's three-key `SAMPLE_BRAND`, once with a candidate ten-token
+kit — through the built renderer: **subject moved 0 · text moved 0 · html moved 29 of 29.** The full kit's
+`fgHeading` and `edge` reach the HTML (so F2 closes), and its `canvas` does **not** yet, which is right: the ground
+needs `styles.ground`, and that arrives in commit 4.
+
+| commit | what moves | what does not |
+|---|---|---|
+| **1** `SAMPLE_BRAND` → a full kit | **30 `.brand.html`** | 30 `.plain.html`, 30 `.txt`, 30 `.subject.txt` |
+| **2** `render.ts`'s six sanitiser literals + the new guard test | **30 `.plain.html`** — and `.brand.html` no longer depends on a fallback at all, because after commit 1 every `hex(value, fallback)` has a value (derived from the code; verified at the commit) | everything else |
+| **3** the accent pair | the primary button in both HTML variants | the text part — a button's text line is `label: url` and carries no colour |
+| **4** the eight families' `styles` | both HTML variants, all 30 each | the text part — `styles` and `BlockStyle` are HTML-only |
+| **5** D4's stale comments | nothing | everything |
+
+★ **Across C: 60 HTML files move, 60 text and subject files never move.** The headline prediction is unchanged and now
+has per-commit granularity. **If a `.txt` moves, my change is wrong, not the pin.**
+
+#### ★★ One finding that shapes commit 1: the full kit must NOT be the platform default
+
+`samples.ts`'s own comment says `SAMPLE_BRAND`'s three values are deliberately none of `render.ts`'s fallbacks, «so
+`<id>.brand.html` and `<id>.plain.html` differ in every digit and **a brand that stopped being read would fail rather
+than quietly produce two identical files**». ★ **Commit 2 makes those fallbacks the platform default.** So if commit 1
+made `SAMPLE_BRAND` the platform default too, the two variants would become **byte-identical** and the pin would stop
+proving that the brand is read at all — the exact failure that comment exists to prevent, re-introduced by the two
+commits together. **So the ten-token `SAMPLE_BRAND` is an invented org kit whose every value differs from the platform
+default**, and I will assert that property in a test rather than leave it to a reader's eye.
+
+#### ★★ THE BLOCKER — `mail-pinned.test.ts` goes red at commit 1 and stays red until the lead re-pins
+
+The pins are **read-only to me** and the plan says one diff at the end of C. The consequence, which I did not think
+through at sync 1 and should have: **from commit 1 onward `mail-pinned.test.ts` is red in my tree**, and the
+`TaskCompleted` hook runs vitest for me — so I cannot land a green task, and four commits would sit red.
+
+★ **My proposal, and it is the honest consequence of the Q1 (b) ruling the lead already made: TWO re-pins, not one or
+three.** Q1 (b) was chosen precisely so «the fixture now passes a real kit» and «the design changed» are separable, and
+that separation is only visible if the two are taken apart:
+
+- **Re-pin A — after my commit 1, alone.** Cause: the fixture now passes a real kit. Diff: **30 `.brand.html`**,
+  palette values only, no structural change. The most mechanically predictable diff of the wave.
+- **Re-pin B — after my commit 4, at the end.** Cause: the renderer's defaults, the accent and the eight designs.
+  Diff: **30 `.plain.html` and 30 `.brand.html`**, with the ground, the padding, the `k-h1`/`k-card` classes, the
+  `<style>` in `<head>`, the heading sizes and the button.
+
+Between them I run the suite with `mail-pinned.test.ts` deselected and say so in each commit body. ★ **The decision is
+the lead's** — the alternative is that commits 1 – 3 land red on that one file with the reason in each body, which is
+defensible on a PR branch but is not something I will do without being told to.
