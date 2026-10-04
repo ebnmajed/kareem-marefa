@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import type { MenuItem } from "@/components/ui";
 import type { ConsoleMemberRow } from "@/lib/dal/admin-members";
 import type { Locale } from "@/i18n/routing";
-import { changeRole, deactivate, reactivate, type RowState } from "./actions";
+import { changeRole, deactivate, reactivate, removeUnbound, resendInvitation, type RowState } from "./actions";
 import { emptyRowState } from "./state";
 
 // SCR-049's ⋯ (`REQ-ADM-009`, `REQ-UIX-096`), written for wave 22 from `AdminMembers.dc.html`: the row menu changes the
@@ -25,6 +25,12 @@ import { emptyRowState } from "./state";
 // action's own result. ★ New: a role change confirms first, naming the member and the role (`REQ-UIX-013`); ★ the last
 // active admin's menu SAYS WHY before the click (`REQ-UIX-096`) instead of offering a change the RPC then refuses;
 // ★ reactivation toasts what the server said, never success regardless (`DEC-232` §3.1).
+//
+// ★ wave 25 (`REQ-TEN-009`, `DEC-244` §9): a row whose auth user is not yet bound is an ORDINARY
+// member row — it keeps the role change and the deactivation — and gains two items: «أعد الإرسال»,
+// and «احذف», which is the admin who mistyped an address getting the row GONE rather than
+// deactivated with a reason. The delete exists only while the row is unbound; the RPC refuses it
+// the moment the person has arrived, and after that the only way out is `REQ-AUT-008`.
 
 const ROLES = ["admin", "moderator", "member"] as const;
 
@@ -36,6 +42,9 @@ export function MemberRowMenu({ member, locale, lastAdmin }: { member: ConsoleMe
   const [rolePending, setRolePending] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [reactivatePending, setReactivatePending] = useState(false);
+  const [resendPending, setResendPending] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removePending, setRemovePending] = useState(false);
 
   const [state, formAction, pending] = useActionState(async (prev: RowState, formData: FormData) => {
     const result = await deactivate(locale, member.id, prev, formData);
@@ -71,8 +80,34 @@ export function MemberRowMenu({ member, locale, lastAdmin }: { member: ConsoleMe
     }
   }
 
+  async function runResend() {
+    setResendPending(true);
+    try {
+      const result = await resendInvitation(locale, member.id);
+      toast.show(result.done ? { title: t("resendDone"), tone: "success" } : { title: t(`error.${result.error ?? "failed"}`), tone: "error" });
+    } finally {
+      setResendPending(false);
+    }
+  }
+
+  async function runRemove() {
+    setRemovePending(true);
+    try {
+      const result = await removeUnbound(locale, member.id);
+      toast.show(result.done ? { title: t("removeDone"), tone: "success" } : { title: t(`error.${result.error ?? "failed"}`), tone: "error" });
+      if (result.done) setRemoving(false);
+    } finally {
+      setRemovePending(false);
+    }
+  }
+
   const active = member.status === "active";
   const items: MenuItem[] = [{ label: t("viewProfile"), href: `/app/members/${member.id}` }];
+  // ★ wave 25: the two items a row has only while its auth user is unbound.
+  if (active && !member.hasSignedIn) {
+    items.push({ label: t("resend"), onSelect: () => void runResend(), startsGroup: true, disabled: resendPending });
+    items.push({ label: t("remove"), tone: "error", onSelect: () => setRemoving(true), disabled: removePending });
+  }
   if (!active) {
     items.push({ label: t("reactivate"), onSelect: () => void runReactivate(), startsGroup: true, disabled: reactivatePending });
   } else if (lastAdmin) {
@@ -108,6 +143,19 @@ export function MemberRowMenu({ member, locale, lastAdmin }: { member: ConsoleMe
         tone="primary"
         pending={rolePending}
         onConfirm={() => void confirmRole()}
+      />
+
+      <ConfirmDialog
+        open={removing}
+        onOpenChange={setRemoving}
+        title={t.rich("removeConfirmTitle", { name, t: (chunks) => <bdi>{chunks}</bdi> })}
+        body={<p>{t("removeConfirmBody")}</p>}
+        confirmLabel={t("remove")}
+        cancelLabel={t("cancelDialogCancel")}
+        closeLabel={t("closeDialog")}
+        tone="danger"
+        pending={removePending}
+        onConfirm={() => void runRemove()}
       />
 
       <Dialog open={deactivating} onOpenChange={setDeactivating}>

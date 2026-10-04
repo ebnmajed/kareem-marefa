@@ -6,12 +6,20 @@ import { PageHeader } from "@/components/ui/page-header";
 import { listMembersForConsole } from "@/lib/dal/admin-members";
 import { getOrgPrefs } from "@/lib/dal/proposals";
 import { requireSession } from "@/lib/dal/session";
+import type { Locale } from "@/i18n/routing";
+import { AddMember } from "./add-member";
 import { MembersTable } from "./members-table";
 
 // SCR-049 · /app/admin/members (`REQ-ADM-009`, `REQ-TEN-005`, `REQ-AUT-007`, `REQ-AUT-008`, `REQ-UIX-096`), written for
 // wave 22 from `AdminMembers.dc.html` (`DEC-208`: deleted first). The job: an admin finds a member by name, email,
 // company or role, and changes a role or suspends from the row — the consequence named first, the last admin's menu
-// saying why it cannot be demoted. No invite: members arrive by sign-in.
+// saying why it cannot be demoted.
+//
+// ★ wave 25 (`REQ-TEN-009`, `REQ-UIX-113`, `DEC-243`, `DEC-244`): members no longer arrive only by signing in. «أضف
+// عضوًا» is the page's one primary action, and a person an admin adds is a MEMBER AT ONCE — a row in this same table,
+// in the directory, in every picker, assignable as a presenter — marked «لم يسجّل الدخول بعد» until they arrive. The
+// screen is EXTENDED, not rebuilt: `AdminMembers.dc.html` draws no add affordance, so `DEC-208` does not fire and no
+// page file was deleted.
 //
 // Admin only, decided at the data (`listMembersForConsole` → null → the streamed not-found, `DEC-134`): a moderator is
 // staff and would otherwise read `members_read_org`, but role and status are the «member-management endpoint»
@@ -40,15 +48,18 @@ export default async function MembersPage({
         inlineActions
         title={t("title")}
         actions={
-          <ExportDownloadButton
-            href={`/api/admin/exports/members${slice ? `?${slice}` : ""}`}
-            fallbackName="members.csv"
-            label={t("csv")}
-            accessibleName={t("csvLabel")}
-            pendingLabel={t("csvPending")}
-            doneLabel={t("csvDone")}
-            failedLabel={t("csvFailed")}
-          />
+          <div className="flex items-center gap-2">
+            <ExportDownloadButton
+              href={`/api/admin/exports/members${slice ? `?${slice}` : ""}`}
+              fallbackName="members.csv"
+              label={t("csv")}
+              accessibleName={t("csvLabel")}
+              pendingLabel={t("csvPending")}
+              doneLabel={t("csvDone")}
+              failedLabel={t("csvFailed")}
+            />
+            <AddMember locale={locale as Locale} companies={data.companies} />
+          </div>
         }
       />
       <div className="mt-6">
