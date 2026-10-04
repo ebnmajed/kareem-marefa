@@ -1,5 +1,28 @@
--- add_a_member.sql — wave 25, M27. Proposed by the lead; promoted with a number once the
--- certificate hotfix has claimed its own (0194 is taken by 0194_certificate_mode_after_completion).
+-- add_a_member.sql — wave 25, M27. Proposed by the lead; NOT YET NUMBERED, on purpose.
+--
+-- ★ THE NUMBER IS 0197, AND IT IS NOT CLAIMED UNTIL `origin/main` SHOWS 0196.
+-- Swept across every worktree on the machine on 2026-10-04, not just `main` — `DEC-180` records two
+-- migrations vanishing from exactly that shortcut, because a number cited ahead of time is taken by
+-- whichever wave gets there first and the promised change disappears without an error:
+--   · `main`, committed .................. head is 0193
+--   · `kareem-marefa-hotfix` ............. 0194  (certificates after completion)
+--   · `kareem-marefa-wave24b` ............ 0195  (the template guard), 0196 (the baseline re-colour)
+--   · nothing holds ...................... 0197
+-- So 0194 is NOT on `main` — it is on the certificate branch, which is a different statement and the
+-- reason the sweep is the rule rather than reading one chain.
+--
+-- ★ PROMOTION IS A MOVE, and the suite is built for it: `git mv` this file to
+-- `supabase/migrations/0197_add_a_member.sql`. `applyProposed()` then NO-OPS on the missing path
+-- (`tests/rls/db.ts:133-147`) and `tests/rls/add-a-member.test.ts` keeps passing unchanged, because
+-- the objects come from the chain instead. ★ **This file is deliberately NOT idempotent** — the
+-- helper's own comment says applying it twice «would fail on `create function` anyway», and the
+-- move is the mechanism, not `if not exists` everywhere.
+--
+-- ★ VERIFIED NON-DESTRUCTIVELY against the live chain (2026-10-04), with no reset and invisible to
+-- the other sessions on this machine:
+--     begin; \i supabase/proposed/wave25/add_a_member.sql; rollback;
+-- Every statement applied, all five functions created, `members.auth_user_id` nullable. Re-run after
+-- 0195 and 0196 land, since those are the two migrations this one has never been stacked on.
 --
 -- Serves:  REQ-TEN-009 (an admin adds a عضو, and they are a member at once)
 --          REQ-TEN-010 (an added member is admitted where the domain list would refuse)
