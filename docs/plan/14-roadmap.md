@@ -873,6 +873,12 @@ and the lead, **no new primitive**, and **the first wave since M6 in which a par
 | The three certificate families × two orientations, rebuilt | `REQ-CRT-016` | B | `designer` |
 | The superseded eleven leave the library | `REQ-DSG-034` | B | `designer` |
 | The eight designed mail families, rebuilt | `REQ-NTF-016` | C | `notify` |
+| ★ **Hotfix** — certificates may be switched on after completion (`DEC-245`) | `REQ-CRT-017` | hotfix | lead |
+
+★ **The hotfix row is not one of the wave's three PRs.** `DEC-245` closes a live defect the owner met while wave 24
+was open — a session that completed at the default `off` could never issue a certificate, and `SCR-045` drew no control
+— so it ships on its own branch, against `main`, with its own migration `0194`. It is recorded here because that is
+where `REQ-CRT-017` was built, not because it belongs to the wave's scope.
 
 **Demonstrable:** ★★ a poster and a certificate exported from the rebuilt baseline, **held beside the library
 artboard's thumbnails and opened by the lead**; ★★ a certificate issued **before** the wave still rendering as the
