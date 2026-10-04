@@ -7,6 +7,7 @@ import { FileDrop } from "@/components/ui/file-drop";
 import { useToast } from "@/components/ui/toast";
 import { formatNumber } from "@/components/sessions/numerals";
 import { MIN_LOGO_PX_FOR_A3, type PpiRating } from "@/lib/brand/ppi";
+import { uploadLogo } from "@/lib/brand/upload-logo";
 import type { Locale } from "@/i18n/routing";
 
 // The logo widget — SCR-059, REQ-DSG-018, REQ-DSG-019, REQ-DSG-021, DEC-009.
@@ -55,47 +56,17 @@ export function LogoUploader({
     setError(null);
 
     startTransition(async () => {
-      try {
-        const initiated = await fetch("/api/admin/branding/logo", {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-locale": locale },
-          body: JSON.stringify({ byteSize: file.size, declaredType: file.type }),
-        }).then((r) => r.json());
-        if ("status" in initiated) {
-          const code = initiated.status === "file_too_large" ? "file_too_large" : "not_authorized";
-          setError(code);
-          toast.show({ tone: "error", title: t(`errors.${code}`) });
-          return;
-        }
-
-        const put = await fetch(initiated.uploadUrl, { method: "PUT", body: file, headers: { "content-type": file.type || "application/octet-stream" } });
-        if (!put.ok) {
-          setError("unknown");
-          toast.show({ tone: "error", title: t("errors.unknown") });
-          return;
-        }
-
-        const completed = await fetch("/api/admin/branding/logo/complete", {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-locale": locale },
-          body: JSON.stringify({ assetId: initiated.assetId }),
-        }).then((r) => r.json());
-        if (completed.status !== "ok") {
-          const code = completed.status ?? "unknown";
-          setError(code);
-          toast.show({ tone: "error", title: t(`errors.${code}`) });
-          return;
-        }
-
-        setA3(completed.a3);
-        const signed = await signPreview(locale, completed.assetId);
-        onChange({ assetId: completed.assetId, previewUrl: signed });
-        setFiles([]);
-        setResetKey((k) => k + 1);
-      } catch {
-        setError("unknown");
-        toast.show({ tone: "error", title: t("errors.unknown") });
+      const result = await uploadLogo(locale, file);
+      if (result.status !== "ok") {
+        setError(result.status);
+        toast.show({ tone: "error", title: t(`errors.${result.status}`) });
+        return;
       }
+      setA3(result.a3);
+      const signed = await signPreview(locale, result.assetId);
+      onChange({ assetId: result.assetId, previewUrl: signed });
+      setFiles([]);
+      setResetKey((k) => k + 1);
     });
   }
 
