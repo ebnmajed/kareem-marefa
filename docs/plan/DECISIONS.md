@@ -8367,3 +8367,32 @@ Two designed-or-designable things remain: **`SCR-059` branding** and **session s
   built and inert.
 
 - **Documents changed:** `STATUS.md` (the head; wave 19's step 3)
+
+## DEC-241 — The owner accepts M12; the Railway config migration is checked in November, never applied before it pins the build
+
+- **Date:** 2026-10-04 · **Decided by:** the owner
+- **Closes:** `DEC-240` §4.2 — the owner's acceptance of M12
+- **Amends:** `DEC-240` §4.1 — how and when `railway.json` is migrated
+
+### 1 · M12 accepted
+
+The owner held the rebuilt screens beside their artboards and **accepted M12** — `055` (both tabs), `045`, `056`/`057` (the
+designer and the certificate canvas) and `058` (the email gallery and builder). Wave 23 is closed: built, merged, live and
+accepted.
+
+### 2 · ★ The Railway config migration — check in November; do not apply early
+
+`railway config migrate`'s dry run (2026-10-04) produced a `.railway/railway.ts` that **does not pin the build**:
+`dockerfilePath`, `builder` and `watchPatterns` came through **only as comments** inside an empty `service(...)`, and it
+targeted a service named **`kareem-marefa`**, not the real **`worker`** (`railway status --json`: `serviceName = worker`).
+Railway's Infrastructure-as-Code reference documents no option for the Dockerfile builder, its path or watch patterns.
+`--apply` also **clears** the existing config-file settings, so applying it would unpin the builder and bring back the
+reconnect reset that `railway.json` closed (`DEC-240` §3).
+
+★ **The owner's ruling: check again in November** (early-to-mid November, before the **2026-12-01** cut-off). Re-run the dry
+run only — `railway config migrate`, never `--apply` — and apply **only** when its output carries the builder, the
+Dockerfile path and the watch patterns as **real settings, not comments**, against the service **`worker`**. If Railway still
+cannot express them by then, it becomes a question for Railway's support, not a silent migration that loses the pin.
+`railway.json` stays as it is until then.
+
+- **Documents changed:** `STATUS.md` (the head)
