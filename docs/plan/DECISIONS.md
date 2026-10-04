@@ -9103,3 +9103,69 @@ baseline recolour — so the divergence is in the order and not the outcome, but
 
 - **Documents changed:** `05-scoring-engine.md` §6.2, `15-backlog.md` (`STORY-LDR-005`), `STATUS.md`, and
   `supabase/migrations/0197_add_a_member.sql`'s own header
+
+## DEC-247 — The owner lifts the playground's public-site guard for the three pages this wave rebuilds: the landing gets the mark's reveal, `public-graph.test.ts` is REWRITTEN rather than untouched, and the three things `REQ-NFR-019` actually freezes do not move
+
+- **Date:** 2026-10-04 · **Decided by:** the owner · **Amends:** `DEC-245` §3 and §6, and the wave-26 brief, both of which carried «`public-graph.test.ts` untouched» from the planning prompt; `DEC-186` §6 and `DEC-199`'s «the public site moves last», which this wave completes
+- **Does not amend:** `REQ-NFR-019`, `DEC-167` or invariant 1 — §3 below is why
+
+### 1 · The owner's reasoning, and it is right
+
+*«The public pages were frozen when we were redesigning the app, but now what we are redesigning is the
+landing page itself.»*
+
+★ **`tests/unit/public-graph.test.ts` says the same thing in its own header**: «**The playground never
+reaches the public site** — `DEC-186` §6, contract 5… It is the graph walk `sessions` ran at sync 1 to
+find that the public site renders five primitives and not eight, **kept as a test so the count cannot
+drift unseen**.» That is a **wave-15 guard protecting the public site while the APP was redesigned
+around it**. Wave 26 is the wave in which the public site is itself redesigned, so **as written the
+guard forbids the wave's own purpose.**
+
+### 2 · What changes, in PR A's one commit
+
+The guard is **rewritten, never deleted and never quietly loosened** — the same discipline `DEC-167`
+applies to `qa:appearance`: **the `DEC`, the appearance change, the re-baselined visual diff and the
+rewritten test, in one commit.**
+
+1. **«exactly five primitives»** becomes **exactly the set the rebuilt pages render**, named one by
+   one. ★ **The assertion's purpose survives; its list does not** — the count still cannot drift unseen.
+2. **«names the playground's scope nowhere»** is **lifted for the three rebuilt pages**, which may now
+   carry `.theme-play` and import `ui/scope`. ★ **This is what makes the mark's reveal possible on the
+   landing**, and it is why `<Logo>` needs no second, un-scoped copy of the animation.
+3. The rewritten test **says in its header why**, citing this wave, so no later reader restores the old
+   rule as a regression.
+
+### 3 · ★★ What does not move, and no rewrite may touch it
+
+`REQ-NFR-019` names three things that may never regress, and **appearance has never been one of them**:
+
+- **the URLs** — `/`, `/ar`, `/en`, `/ar/register`, `/og.png`;
+- **the registration behaviour** — `001`'s action, field names, ids, validation and no-JS path, **byte
+  for byte**;
+- **the accessibility floor.**
+
+And **`registrations` is never read, altered or dropped** (invariant 2 — **20 real signups**).
+
+★ **The line is: APPEARANCE AND THE IMPORT GRAPH MAY CHANGE; BEHAVIOUR MAY NOT.** The mark on
+`/ar/register` is an appearance change and nothing else. **A rewrite that weakens any of the three is
+the one failure this wave cannot recover from**, because unlike a screen it cannot be noticed by
+looking.
+
+### 4 · Two consequences
+
+- ★ **PR E has no blocker left.** The scope contradiction was the second; the first was
+  `prototypes/logo-motion.html`, which **landed at `cfbcb099`** defining `@keyframes draw` (reveal),
+  `breathe` (loading) and `settle` (tap) — exactly `logo/README.md` §16's three moves. The CSS comes
+  from the prototype, as the planning prompt always intended.
+- ★ **`SCR-044`'s PNG also landed at `cfbcb099`**, so the batch is **seventeen artboards and seventeen
+  PNGs**, complete.
+
+### 5 · The planner's error, recorded
+
+`DEC-245` and the brief both said «`public-graph.test.ts` untouched», taken from the planning prompt
+without asking whether a wave-15 guard still applied to the wave that redesigns what it guards. **The
+owner caught it.** The general form is worth keeping: **a guard written as «not yet» must be re-read in
+the wave it was waiting for**, and `DEC-199`'s «the public site is in scope and still moves last» was
+exactly such a sentence.
+
+- **Documents changed:** `docs/plan/notes/wave-26-lead.md` (§A and §E), `STATUS.md` (the wave-26 block)

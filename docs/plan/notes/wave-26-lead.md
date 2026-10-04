@@ -52,8 +52,8 @@ branch cut.
 ## The wave — five PRs
 
 - **A — `wave-26a/the-public-site`**: `000` the landing · `001` register · `006` verify. ★ **One
-  commit carries the `DEC`, the appearance change and the re-baselined visual diff together**
-  (`REQ-NFR-019`, `DEC-167`); `public-graph.test.ts` **untouched**; the accessibility floor re-run.
+  commit carries the `DEC`, the appearance change, the re-baselined visual diff AND the rewritten
+  `public-graph.test.ts` together** (`REQ-NFR-019`, `DEC-167`, and §A below); the accessibility floor re-run.
 - **B — `wave-26b/branding-and-privacy`**: `059` هوية المؤسسة · `/app/me/privacy`.
 - **C — `wave-26c/the-platform-console`**: `080`–`085` on `admin-rail`, deleted and rebuilt.
 - **D — `wave-26d/stories`**: `REQ-STO-*`, `0198` `story_views` and `story_frames`, the generator,
@@ -76,15 +76,37 @@ behaviour and their accessibility floor** forever; their **appearance** changes 
 `DECISIONS.md` entry **and a re-baselined visual diff in the same commit**. That is the permitted
 path and `DEC-NEXT-37` takes it.
 
-★ **`tests/unit/public-graph.test.ts` is the guard, it stays untouched, and it asserts three things
-you must design around:**
+★★ **`tests/unit/public-graph.test.ts` IS REWRITTEN IN THIS WAVE — the planning prompt said «untouched»
+and that was wrong, by the owner's ruling of 2026-10-04.** Read the test's own header: «**The playground never
+reaches the public site**… kept as a test so the count cannot drift unseen». **That is a wave-15 guard protecting
+the public site while the APP was redesigned around it. This is the wave in which the public site is itself
+redesigned, so as written the guard forbids the wave's own purpose.** It is rewritten the way `qa:appearance` is —
+**in the same commit as the change, with the `DEC` and the re-baselined visual diff** — never deleted, never
+loosened quietly.
+
+★★ **THE LINE, AND IT IS NOT NEGOTIABLE: APPEARANCE AND THE IMPORT GRAPH MAY CHANGE; BEHAVIOUR MAY NOT.**
+
+**What changes, deliberately, in PR A's one commit:**
+- the **«exactly five primitives»** assertion becomes **exactly the set the rebuilt pages render**, named one by one,
+  so the count still cannot drift unseen — the assertion's PURPOSE survives, its list does not;
+- the **«names the playground's scope nowhere»** assertion is lifted **for the three rebuilt pages**, which may now
+  carry `.theme-play` and import `ui/scope` — that is what makes the mark's reveal possible on the landing;
+- the rewritten test says **in its header** why, citing this wave, so the next reader does not restore the old rule.
+
+★★ **What does NOT change, ever, and no rewrite may touch:** the **URLs**; the **registration behaviour** — the
+form's action, field names, ids, validation and no-JS path, byte for byte; the **accessibility floor**; and
+**`registrations`** (invariant 2, 20 real signups). `REQ-NFR-019` names exactly these three as the things that may
+never regress, and it has always permitted appearance to change. **A rewrite that weakens any of the three is the
+one failure this wave cannot recover from.**
+
+★ **The guard's remaining three assertions, for reference:**
 
 1. the graph is **found and larger than the pages** — more than ten files, and it **must still reach
    `components/registration-form.tsx`**;
 2. it reaches **exactly five primitives** — `button`, `field`, `icons`, `input`, `textarea`
    (`DEC-186` §1). **A sixth makes it fail**, so nothing new from `ui/` may enter the public graph;
-3. ★★ **it names the playground's scope NOWHERE**: for every file the public routes reach,
-   `source.includes("theme-play")` must be `false`.
+3. **it names the playground's scope nowhere** — `source.includes("theme-play")` is `false`, and no file imports
+   `ui/scope`. ★ **This is the assertion the wave lifts for the three rebuilt pages.**
 
 **The frozen behaviour of `001`, to be listed in your plan and shown kept to the letter.** Measured
 in `src/components/registration-form.tsx`: a server-action `action={formAction}`; a hidden
@@ -182,23 +204,19 @@ The planning prompt says: *«if either is missing, the logo pack was not unpacke
 CSS from §16 against the `pathLength="1"` paths, and ask the owner for the prototype in parallel.** What you must
 not do is invent a move §16 does not describe, or add a fourth.
 
-★★ **And there is a second blocker the prompt does not see — a contradiction between three of its own
-requirements.** PR E says the motion CSS lives **under `.theme-play`**; PR A says
-**`public-graph.test.ts` is untouched**; and that test asserts **no file the public routes reach may
-contain the string `theme-play`**. The landing renders the mark. So:
+★★ **RESOLVED by the owner, 2026-10-04.** The reasoning, in the owner's words: *«the public pages were frozen when
+we were redesigning the app; now what we are redesigning is the landing page itself»* — and the guard's own header
+agrees, calling itself the walk that keeps the playground off the public site **while the app moved**. **So the
+landing DOES get the reveal**: the three rebuilt public pages may carry `.theme-play`, `public-graph.test.ts` is
+rewritten in PR A's one commit (§A), and `<Logo>` needs **no second, un-scoped copy** of the animation.
 
-- a single `<Logo>` that names the scope **fails `public-graph`**;
-- the prompt also says «the public landing may use the reveal once, since it is not under the test» —
-  but the reveal is gated by `.theme-play`, which the landing may not carry, so **the landing cannot
-  have the reveal by that mechanism at all**.
+★ **And `prototypes/logo-motion.html` has since landed** (`cfbcb099`), defining `@keyframes draw` (reveal),
+`breathe` (loading) and `settle` (tap) — exactly §16's three moves. **PR E has no blocker left**: take the CSS from
+the prototype, as the prompt always intended.
 
-★ **The way through, for the owner to confirm:** `<Logo>` is a **plain component, not in `ui/`** —
-`ui/` would also break the «exactly five primitives» assertion — carrying the inlined SVG,
-`pathLength="1"` and attribute strokes, and **naming no scope**. The motion attaches from
-`globals.css` by selectors **under `.theme-play`**, which the public pages simply never carry, so the
-component stays scope-agnostic and the CSS does the gating. **The landing then gets the static mark**
-unless the owner wants un-scoped reveal CSS written specially for it — which is a decision, not an
-implementation detail.
+★★ **One line still holds, and it is the whole point of the rewrite: the reveal is an APPEARANCE change.**
+`001`'s registration behaviour, the five URLs and the accessibility floor do not move, and the mark on
+`/ar/register` must not alter the form's action, its field names, its ids, its validation or its no-JS path.
 
 **Everything else in PR E is measured and correct**: both wordmark components exist
 (`src/components/wordmark.tsx` and `src/components/brand/wordmark.tsx`), `platform/layout.tsx` has no
