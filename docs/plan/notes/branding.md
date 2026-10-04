@@ -1049,3 +1049,48 @@ brand-public-logo,privacy,data-export-surveys,avatar-copy,avatar-import}.test.ts
 - **Q9** (D14) the title: «البيانات والخصوصية» or «بياناتي وخصوصيتي»?
 - **Q10** (R2/D17) privacy's back: to settings (a `backHref` on `HubTopRow`) or `/app/me`?
 - **Q11** (R6) importing `console`'s seven team colours read-only.
+
+### W26.10 Built — the tables read back against the new files (2026-10-05, `../kareem-marefa-wave26b`)
+
+Commits: `25d6b9fe` (the logo round trip moved) · `84b4b844` (059 delete) · `912a8eea` (059 create) · `4cc177b3`
+(privacy delete) · `154e3deb` (privacy create) · `25438f3c` (specs). Rulings applied as `DEC-251` §3 gives them.
+
+**059** — every row lives where W26.1 said, except as ruled: **B10** inline `role="alert"` naming the pair from
+`detail` (`actions.ts` `failedPair`; `brand-kit-edit.tsx`), the toast gone (Q7) · **B19** the light `canvasRaise` hint
+and the other explainer sentences dropped (Q6; `resetConfirm` stays, it is the dialog's consequence, REQ-UIX-013) ·
+**B25** upload errors inline only, and a missing `too_small` message added (the old widget would have asked for a key
+that did not exist) · **B12** reset still offered always, as before — `isOverridden` is not used to hide it · **N2**
+ten swatches per scheme, the accent `node` in both schemes, the seven team colours by name, each hex in `<bdi dir="ltr">`
+(Q3, Q4, Q11) · **N4** the read mode's mark is `brand_kit()`'s `updatedAt`, shown only when a row exists; a save
+returns to read mode through `router.replace` from the action's own answer · the fonts are two (Q2) · WebP stays (Q8).
+No `transition`, keyframe or moment in any file this track wrote; `console-register` green and untouched.
+
+**Privacy** — every row lives where W26.2 said, with: **P6** the seven days kept as the literal (Q5) · **P7/P20** the
+export's «no other member's data» note under the rows and `deactivateHonest` inside the sheet; `intro`, `exportIntro`,
+`deactivateIntro`, `policyLink`, `requestedAt`, `readyAt`, `deactivateConfirm*` deleted (Q6) · **P16/P17** the sheet
+IS the confirmation: opening it sends nothing; the reason is checked by `reportValidity()` before the submit; the submit
+button lives in the form inside the sheet, so no `form=` attribute crosses the portal · **N11** «صور طلبت إزالتها»
+with the count of the member's own `photo_takedowns` (`countMyPhotoRemovalRequests()`, add-only in `privacy.ts`), no
+page-level «أزلني» (Q1) · **N9** `HubTopRow backHref="/app/me/settings"` (the lead's, `60b7fdb8`) · title
+«البيانات والخصوصية» (Q9). `src/components/privacy/{avatar-section,avatar-answer-form,avatar-href,avatar-import-prompt}`
+untouched; `avatar-import.test.tsx` passes untouched.
+
+### W26.11 Ledger lines for `STATUS.md` (each a selector or flow unless it says «expectation»)
+
+| File | What changed |
+|---|---|
+| `tests/components/branding/brand-kit-form.test.tsx` | deleted with `brand-kit-form.tsx` (`84b4b844`); its eight cases re-homed one-for-one in `brand-kit-edit.test.tsx` (`912a8eea`) — the reset dialog's cancel now found as the dialog's labelled button; the colour picker sits inside the swatch |
+| `tests/components/privacy/deactivation-form.test.tsx` | deleted with `forms.tsx` (`4cc177b3`); its four cases re-homed in `deactivate-sheet.test.tsx` (`154e3deb`): «no dialog over an empty reason» reads «nothing sent by opening the sheet or on an empty reason»; «confirm» is the sheet's «أرسل الطلب» |
+| `tests/e2e/branding.spec.ts` | flow: «عدّل» before the form; Save matched `/^حفظ/` (it names its count); after save the value is checked as the read mode's written hex, then in `?edit`; reset reached at `?edit` |
+| `tests/e2e/wave8-branding-review.spec.ts` | flow: `?edit` for the three form cases; Save `/^حفظ/`; the heading label not `exact` (a changed field adds «(معدّل)»). ★ **expectation**: the defaults case read `#ffffff` as the light canvas, stale since `0192` moved the palette (wave 24) — it now reads the value from `brand_kit()` and finds it written in read mode |
+| `tests/e2e/wave11-branding-status-contrast.spec.ts` | flow: `?edit`, the canvas label matched from its start, Save `/^حفظ/`; the refusal is found as `role="alert"` in `#main` naming «شارة «جارية الآن» لا تُقرأ على خلفية الوضع الفاتح», not a toast's `role="status"` (DEC-251 §3.5); the value-kept and nothing-written assertions unchanged |
+| `tests/e2e/privacy.spec.ts` | flow: the state regex is the new words («طُلب ·», «جارٍ», «جاهز ·»); «نزّل» for «نزّل الملف»; deactivation opens from «إيقاف حسابي» and the reason is in the sheet; the `h1` is «البيانات والخصوصية» (Q9); the named-states capture finds the sheet instead of the dialog. Every outcome asserted is unchanged |
+
+### W26.12 For the lead
+
+- Captures to run: **`tests/e2e/wave26-branding-scr059.spec.ts`** (desktop project, five states at 1280) and
+  **`tests/e2e/wave26-branding-privacy.spec.ts`** (phone project, eight states at 390), plus the four evidence specs
+  above.
+- `npm test` in the tree: 5404 passed; five failures were all timeouts in files this track does not touch; four pass
+  on a re-run, `tests/components/designer/inspector-align.test.tsx`'s «holds for every edge on both axes…» times out at
+  5 s even alone (`designer`'s).
