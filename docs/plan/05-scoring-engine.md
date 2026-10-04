@@ -392,6 +392,19 @@ containments — deactivation requires a **reason** and is audited (`REQ-AUT-008
 are always displayed (`REQ-LDR-004`), so a company with a suspiciously small active roster is
 visible to everyone looking at the board.
 
+★ **Who is «active» — amended by `DEC-244` §6 (wave 25).** From the wave that lets an admin add a
+member by hand, `active_member_count` counts the members who **have signed in**
+(`auth_user_id is not null`), not every `active` row. **The reason is the paragraph above**: an
+admin who adds five colleagues would otherwise raise that company's denominator — lowering its
+score — for five people who have not declined to contribute but have not been asked. That is the
+same silent rewrite the freeze exists to prevent, arriving through a different door.
+★ **It is provably a no-op for everything that exists**: `auth_user_id` is `not null` until that
+wave's migration, so every member already satisfies the predicate and every stored snapshot and
+live derivation is byte-identical. ★ **Corrected by `DEC-246`:** it is **five predicates across two functions**, not four across one — the
+org-wide count and the two per-company counts in `snapshot_leaderboard()` (`0176`), and the two in
+`evaluate_company_points()` (`0182`), which **awards** rather than ranks; `company_min_active_members` (`REQ-UIX-082`) reads the same ones
+and follows automatically.
+
 ### 6.3 Opting out
 
 `REQ-LDR-008`. An opted-out member is filtered from others' view, still sees their own rank, and

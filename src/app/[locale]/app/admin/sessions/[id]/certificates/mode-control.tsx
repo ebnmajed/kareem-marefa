@@ -17,7 +17,7 @@ import { saveCertificateMode } from "./actions";
 // REQ-DSG-031's stated preflight — fonts, each kind's template, who qualifies, the next serial as an ESTIMATE, never a
 // reservation (DEC-148, DEC-010).
 //
-// ★ DEC-245: a COMPLETED session reaches it too, and there the act is different in kind — the fan-out has already run,
+// ★ DEC-250: a COMPLETED session reaches it too, and there the act is different in kind — the fan-out has already run,
 // so saving issues NOW rather than arming something for later (`0194` returns `fanned_out`). The confirmation and the
 // toast say so; the preflight's figures stop being predictions and become the list it is about to act on. Only a
 // cancelled session never reaches it, and the page prints its one sentence instead.
@@ -44,7 +44,7 @@ export function CertificateModeControl({
   locale: string;
   sessionId: string;
   mode: CertificateModeValue;
-  /** ★ DEC-245: the session has already completed, so saving a mode other than `off` issues at once. */
+  /** ★ DEC-250: the session has already completed, so saving a mode other than `off` issues at once. */
   completed: boolean;
   preflight: ModePreflight;
 }) {
@@ -60,7 +60,7 @@ export function CertificateModeControl({
     start(async () => {
       const result = await saveCertificateMode(locale, sessionId, value);
       setConfirming(false);
-      // ★ DEC-245: `fanned_out` is its own answer and not a louder «saved». The worker writes the rows, so a
+      // ★ DEC-250: `fanned_out` is its own answer and not a louder «saved». The worker writes the rows, so a
       // «حُفظ» here would be followed by an empty «محجوزة · 0» and read as a failure — the same shape of defect
       // this whole change exists to close.
       if (result.status === "fanned_out") toast.show({ tone: "success", title: t("preparing") });

@@ -1,9 +1,91 @@
-**Last updated:** 2026-10-04 · **Branch:** `wave-24/the-templates` · ★★ **WAVE 24 IS OPEN — M26, THE ARTEFACTS (`DEC-242`)** · **`main`:** `6de410b2`; production at **`0191`**; the worker on Railway at `37f79dd5`, `builder = DOCKERFILE` held by `railway.json` · ★★ **The owner's ask, verbatim: «I want the templates to match the designed ones and delete the current ones.»** Three questions, three answers (`DEC-242`): **both** the design templates and the mail designs · a **hard delete** · the **platform default palette moves** to «ساحة اللعب». · ★★ **This is the first wave that touches what LEAVES the product** — every screen has worn the playground since wave 17; an exported poster and an issued certificate still wear M6's Reem Kufi on navy, because «the playground stops at the certificate's edge» (`DEC-183` §4) was a deferral. · ★★ **Three PRs:** A `wave-24a/the-palette` (lead, alone, first) · B `wave-24b/the-baseline` (`designer`) · C `wave-24c/the-mail-designs` (`notify`) — **B and C both cut from A's head**, merge order A, B, C. · ★★ **Two migrations, both the lead's:** `0192` (the palette) and `0193` (the baseline), rehearsed on a dump taken at `0191`. · ★★ **NO new primitive** — `ui/` stays **69**. · ★★ **The hard-delete has a floor the database enforces:** `certificates.template_version_id` is `on delete restrict` and `issue_certificates()` resolves the **platform** row directly, so a version a certificate references **cannot** be deleted — `REQ-CRT-014` made structural. The migration **deletes where it can and retires where it cannot, reporting which per row** (`DEC-242` §3). · ★ **Carried from M12:** the tie-breaker, `DEC-238` §6, `DEC-215`'s four, `DEC-194`'s two gates, `DEC-186` §4, `DEC-204`, and the **November** Railway dry run (`DEC-241` §2, before 2026-12-01). · ★★ **NEXT SCOPE IS WRITTEN AND NOT OPEN:** wave 25 / **M27** — a member added by hand (`DEC-243`), the owner's ask «I want the ability to add user to the app in addition for them becoming users on the first signin»; the record is in `01`/`02`/`08`/`09`/`11`/`14`/`15` and `notes/wave-25-lead.md`, **`03` and the migration deliberately not yet written**. Finish wave 24 first.
+**Last updated:** 2026-10-04 · **Branch:** `main` · ★★ **WAVE 26 IS PLANNED — THE LAST WAVE (`DEC-245`, M28)** · **`main`:** `00377c6f`; migrations run to **`0197`**, the next is **`0198`** · **Phase:** ★★ **M13 + STORIES + THE MARK**: the landing, register and verify; the brand kit and privacy; the platform console REDESIGNED on `admin-rail`; stories, generated and from attendees — **seventeen artboards**, five PRs, **two primitives (floor 69 → 71)**, one migration. The brief is `docs/plan/notes/wave-26-lead.md`. ★★ **WHEN THIS MERGES, EVERY SCREEN IN THE PRODUCT HAS A DESIGN AND IS BUILT — NOTHING REMAINS**; anything further is new scope the owner decides, and the story ring is wired at last after five waves inert. ★★ **PR E has NO BLOCKER LEFT** (`DEC-247`): the motion prototype landed at `cfbcb099` with `draw`, `breathe` and `settle`, and ★★ **the owner lifted the playground's public-site guard for the three pages this wave rebuilds** — «the public pages were frozen when we were redesigning the app; now what we are redesigning is the landing page itself». **So the landing gets the mark's reveal**, `public-graph.test.ts` is **REWRITTEN in PR A's one commit** rather than untouched, and ★ **what does NOT move is the URLs, the registration behaviour byte for byte, and the accessibility floor** — appearance and the import graph may change, behaviour may not. ★ **Owed by the owner:** the motion prototype; the landing's reveal (static, or un-scoped CSS); `AdminAttendance`'s missing PNG; the `railway.json` → `.railway/railway.ts` migration due **2026-12-01**; and the last acceptance. ★ **Flagged for the lead, not the planner:** **`0194` is missing from the migration sequence** — `0193` then `0195`, on disk and on `origin/main`.
 
 > This is the single entry point for every session. Read it before anything else; update it
 > before you finish, whether or not you got through what you intended.
 
 ---
+
+## ★★★ WAVE 26 — PLANNED — THE LAST WAVE: M13, stories and the mark (`DEC-245`)
+
+**The programme's twelfth wave, and its last designed work.** The brief is `docs/plan/notes/wave-26-lead.md`; the
+drawing is `docs/design/screens/M13.md` with **seventeen** artboards in `docs/design/screens/m13/` and
+`STORIES-USER-STORIES.md`'s **STO-01–18**; the decision is `DEC-245`. Milestone **M28**. **One migration, `0198`** —
+`story_views` and `story_frames` together. **Two primitives**, `story-viewer` and `story-capture`, so the floor moves
+**69 → 71**. **Five PRs**, each opened against `main` on its first push.
+
+★★ **WHEN THIS MERGES, EVERY SCREEN HAS A DESIGN AND IS BUILT. NOTHING REMAINS.** `05-stories.md` entered the tree
+on 28 September and was overtaken five times; the ring has been inert since wave 18. Both end here. After this wave
+there is no further plan — anything more is new scope the owner decides.
+
+### The owner's three rulings (`DEC-245` §1)
+
+1. **M13 and stories together, in this wave**, and nothing remains after it.
+2. **The platform console is redesigned** on the console frame. ★ **These are BUILT screens** — wave 8 built all seven
+   platform routes (`DEC-147`) — so `DEC-208` applies in full: **delete, then rebuild.**
+3. **The landing's appearance changes** on `REQ-NFR-019`'s permitted path: a `DEC` **and** a re-baselined visual diff
+   **in the same commit**, with URLs, registration behaviour and the accessibility floor untouched.
+
+### ★★ The public contract is the tightest constraint, and `public-graph` is why
+
+`tests/unit/public-graph.test.ts` stays **untouched** and asserts three things to design around: the graph still
+reaches `components/registration-form.tsx`; it reaches **exactly five primitives** (`button`, `field`, `icons`,
+`input`, `textarea`), so **a sixth from `ui/` fails it**; and ★★ **it names `theme-play` nowhere** in any file the
+public routes reach.
+
+★ **`001`'s frozen behaviour, measured:** `action={formAction}`, hidden `form_token` (`:146`) and `locale` (`:150`),
+a honeypot (`:157`), `role="alert"` at `:167` and `:348`, and the posted names `name`, `email`, `topicTitle`,
+`topicCategory`, `topicDescription`, `role`. Those, the validation and the no-JS path are the contract byte for byte.
+
+### ★★ PR E, the mark, is HELD — two blockers
+
+1. ★ **`docs/design/prototypes/logo-motion.html` is MISSING.** The directory holds only `motion-story.html` and
+   `stories.html`, both of 28 September. **This is the planning prompt's own stop condition**, and the motion
+   vocabulary — reveal · loading · tap — has no reference implementation. It is not invented.
+2. ★★ **A contradiction between three of the prompt's own requirements.** PR E puts the motion CSS **under
+   `.theme-play`**; PR A keeps **`public-graph.test.ts` untouched**; that test **forbids `theme-play`** in any file the
+   public routes reach — **and the landing renders the mark.** So a single `<Logo>` naming the scope fails the guard,
+   and «the landing may use the reveal once» cannot happen by that mechanism either.
+   ★ **The way through, for the owner:** `<Logo>` is a **plain component, not in `ui/`** (which would also break the
+   five-primitive assertion), carrying the inlined SVG, `pathLength="1"` and attribute strokes, **naming no scope**;
+   the motion attaches from `globals.css` under `.theme-play`, which the public pages never carry. **The landing gets
+   the static mark** unless the owner wants un-scoped reveal CSS written for it.
+
+★ **The rest of PR E is measured and correct**: both wordmark components exist, `platform/layout.tsx` has no mark,
+`src/app/icon.svg` is the favicon, and **`/og.png` is absent from `scripts/visual-diff.mjs`'s `ROUTES`** (`:56`), so
+today only `qa:contract` shape-checks it.
+
+### Step 0 — measured, with five corrections
+
+| | |
+|---|---|
+| `main` | **`00377c6f`** (`origin/main`, PR #68). ★★ **Local `main` is 9 commits BEHIND and holds 44 uncommitted files — the brand pack, with the wordmark assets staged as DELETIONS.** Fast-forward, cut the branches, then let PR E delete. Nothing is deleted before the wave that replaces it is on a branch |
+| Next decision / migration | **`DEC-245`** (log ends at `DEC-244`) · **`0198`** (`0197_add_a_member.sql` is the last) |
+| ★ `0194` | **missing from the sequence** — `0193` then `0195`, on disk and on `origin/main`. **The lead rules on it**; the planner only flags it |
+| `src/components/ui/` | **69**, floor **69** at `:123` → **71** with the two new |
+| ★ The PNGs | **seventeen for seventeen** — `SCR-044`'s landed at `cfbcb099`, and so did `prototypes/logo-motion.html` |
+| ★ `M13.md`'s `DEC-NEXT-40` | cites **`0192`** for `story_views`; `0192` is `platform_palette`, merged in wave 24. **It is `0198`** |
+| ★★ The spec is **ON `main`** | `M13.md`, its planning prompt, `STORIES-USER-STORIES.md`, the **seventeen** artboards, **sixteen** PNGs and the logo pack (11 files under `assets/brand/logo/`) were untracked and landed as **PR #71 → `3a3d0c54`**. ★ **Step 0 commits NOTHING under `docs/design/`** — check git before adding there, or a second copy of seventeen artboards appears. Only **`AdminAttendance`'s PNG** is still absent |
+| ★ Impersonation | is **`DEC-054`**, not a 1xx as the prompt guessed — `impersonation_sessions`, «≤ 4 h by constraint, append-only», with `DEC-055` §3 and `DEC-057` §7 |
+
+### ★ Stories — the requirements come first
+
+`01-prd.md` gains ★ **eighteen `REQ-STO-*`, one per STO-01–18** (named without their citable form here — `traceability.mjs` reads an id that `01-prd.md` does not define as a broken citation), and PR D's stories are written from the
+`REQ`s, not the artboards. Then `0198`. ★ **The video path is the open engineering question**: ≤ 15 s, ≤ 60 MB, one MP4
+rendition, and `DEC-181` forbids an npm package for media work — **the worker uses system binaries from
+`worker/Dockerfile`**, `ffmpeg` is not in the image today, and the plan **names the transcoder and its image-size
+cost**. A reported video is **hidden on first report, like a photo**.
+
+### Out, and not to be re-litigated
+
+New scope of any kind · `DEC-194`'s two gates · `DEC-186` §4 · the hard-load fix (`DEC-204`) · `DEC-215`'s four · the
+`railway.json` migration (the owner's, due 2026-12-01). **Not re-litigated:** `DEC-124` · `DEC-099` · `DEC-093`, which
+is why `story-viewer` needs a keyboard path · **`DEC-014` and invariant 8 — no `is_super_admin()` disjunct** ·
+`DEC-054`'s impersonation shape · `DEC-167`'s public contract · `DEC-181`'s no-npm-for-media rule · `DEC-201`'s brand
+kit scope · invariant 2, `registrations` · invariant 11, no SVG uploads — the mark is a repo asset inlined by a
+component, not an upload.
+
+---
+
 
 ## ★★★ WAVE 24 — OPEN · M26, the artefacts (`DEC-242`)
 
@@ -171,11 +253,11 @@ because that is what moving a default means — and an org that has overridden i
 
 | Spec · line | Moved | Kind |
 |---|---|---|
-| `tests/rls/sessions-certificate-mode.test.ts` «a completed session is refused, with no write and no audit» | ★ `DEC-245`: rewritten as «a cancelled session is refused». A completed session is now **accepted** — the mode is written, one audit row carries the old and the new, the function returns `fanned_out`. | **expectation** |
-| `tests/rls/sessions-certificate-mode.test.ts` «an archived and a cancelled session are refused too» | ★ `DEC-245`: **split**. Archived is accepted and fans out (`after_completion`); cancelled is still refused `session_cancelled` (`refusals`). | **expectation** |
-| `tests/rls/sessions-certificate-mode.test.ts` «enqueues no job and writes no notification and no transition» | ★ `DEC-245`: scoped to **before completion** and to a switch to `off`, which is what it always meant. The late switch's own jobs are asserted in `after_completion`; neither path writes a notification or a transition, and that part did not change. | **expectation** |
-| `tests/components/certificates/mode-control.test.tsx:42` (`mount`) | ★ `DEC-245`: the control takes `completed`, defaulted to `false` in the helper, so every case written before the change asserts exactly what it asserted then. | selector |
-| `tests/components/certificates/mode-control.test.tsx` «a refusal says why, in the function's own terms» | ★ `DEC-245`: `session_completed` → `session_cancelled`. `0194` no longer raises the first, so pinning its copy would pin a state the product cannot reach. | **expectation** |
+| `tests/rls/sessions-certificate-mode.test.ts` «a completed session is refused, with no write and no audit» | ★ `DEC-250`: rewritten as «a cancelled session is refused». A completed session is now **accepted** — the mode is written, one audit row carries the old and the new, the function returns `fanned_out`. | **expectation** |
+| `tests/rls/sessions-certificate-mode.test.ts` «an archived and a cancelled session are refused too» | ★ `DEC-250`: **split**. Archived is accepted and fans out (`after_completion`); cancelled is still refused `session_cancelled` (`refusals`). | **expectation** |
+| `tests/rls/sessions-certificate-mode.test.ts` «enqueues no job and writes no notification and no transition» | ★ `DEC-250`: scoped to **before completion** and to a switch to `off`, which is what it always meant. The late switch's own jobs are asserted in `after_completion`; neither path writes a notification or a transition, and that part did not change. | **expectation** |
+| `tests/components/certificates/mode-control.test.tsx:42` (`mount`) | ★ `DEC-250`: the control takes `completed`, defaulted to `false` in the helper, so every case written before the change asserts exactly what it asserted then. | selector |
+| `tests/components/certificates/mode-control.test.tsx` «a refusal says why, in the function's own terms» | ★ `DEC-250`: `session_completed` → `session_cancelled`. `0194` no longer raises the first, so pinning its copy would pin a state the product cannot reach. | **expectation** |
 
 ★ **Three new RLS describes and one new component describe** carry the new behaviour, in new blocks rather than in the
 old ones: `RPC-set_session_certificate_mode.after_completion` (three cases), `.after_completion_off`, and
@@ -185,7 +267,7 @@ statement in it is `create or replace`, `revoke`, `grant` or `comment`.
 
 ---
 
-## ★ HOTFIX IN FLIGHT — `DEC-245`, the certificate mode outlives completion (`REQ-CRT-017`, `0194`)
+## ★ HOTFIX IN FLIGHT — `DEC-250`, the certificate mode outlives completion (`REQ-CRT-017`, `0194`)
 
 ★★ **The owner met a live defect while wave 24 was open:** «there is a bug in the live app not allowing certificates to
 be issued … the default for the certificate is that the session has no certificate and the settings for enabling and
@@ -202,13 +284,13 @@ second caller.
 
 | # | Step | State |
 |---|---|---|
-| 1 | `DEC-245`; `REQ-CRT-017` in `01`; `03` §8.2's three new rows and two amended; `14`/`15` | ✓ |
+| 1 | `DEC-250`; `REQ-CRT-017` in `01`; `03` §8.2's three new rows and two amended; `14`/`15` | ✓ |
 | 2 | `0194` — the refusal lifted for completed/archived, kept for cancelled, and the late switch fans out | ✓ |
 | 3 | `SCR-045` — the mode section gated on `!cancelled`; `changeable()` drops `heldCount > 0`; the `offLine` dead-end sentence removed; «من يستحق» shown to an admin on a completed session with nothing issued | ✓ |
 | 4 | The control says it issues **now** — `fanned_out` → «يجري تجهيز الشهادات الآن…», `confirmBodyCompleted`, `checkEligibleNow`, `confirmNow` | ✓ |
 | 5 | Gates: `tsc` clean · `lint` 0 errors · `npm test` **5375 passed, 1 skipped** · certificate RLS **70 passed** · `traceability` ✓ · `policy-diff` ✓ | ✓ |
 | 6 | ★ **Not run, and why:** `supabase db reset` and `npm run qa` / `visual` / `build` — a second session was working in the shared checkout and a reset would have destroyed its local data. The migration is proven **against the live 0193 schema** inside the suite's own transaction, not through a full-chain reset | ☐ **owner** |
-| 7 | ★ **Two questions left for the owner** (`DEC-245` §4): should a new session default to `review` rather than `off`? Should `off` be refused once certificates exist for the session? | ☐ **owner** |
+| 7 | ★ **Two questions left for the owner** (`DEC-250` §4): should a new session default to `review` rather than `off`? Should `off` be refused once certificates exist for the session? | ☐ **owner** |
 
 ★ **`REQ-CRT-014` is untouched**: a certificate issued before this still renders as the version it was issued against,
 and a late switch never replaces one revoked **for cause** (`0127`). ★ **`registrations` is untouched and the five
@@ -216,31 +298,102 @@ public routes do not move** — `SCR-045` is behind sign-in and renders none of 
 
 ---
 
-## ★★ NEXT SCOPE — wave 25, M27: a member added by hand (`DEC-243`, written 2026-10-04, **not open**)
+## ★★★ WAVE 25 — OPEN, BUILT, AWAITING THE PUSH · M27, a member added by hand (`DEC-243` · `DEC-244` · `DEC-246`)
 
-★ **The owner's ask, verbatim: «I want the ability to add user to the app in addition for them becoming users on the
-first signin.»** Four questions, four answers (`DEC-243` §2): **an invitation row**, not a member · **it beats the
-email-domain gate** while pending · **the person is mailed**, outside the matrix · **after wave 24 merges**.
+### ★★ `0197` — REHEARSED 2026-10-04 on the owner's fresh production dump
+
+`/tmp/prod-schema-0196.sql`, taken at `0196`, **0 data rows** (no `COPY`, no `INSERT`) and **nothing of `0197`**
+— verified by `add_member` and `invited_by` being absent from the file. A throwaway `rehearse25` owned by `postgres`;
+the seven extensions into `extensions` and `supabase_vault` into `vault`; the local `auth`, `storage` and `realtime`
+schemas, re-applied **after** the dump because their policies reference `public.sessions` and `public.auth_org_id()`.
+★ **The dump loaded with ONE error — the platform's `supabase_realtime` publication, as every wave.**
+★★ **`0197` applied `--single-transaction` with `ON_ERROR_STOP`, as `postgres` — exit 0.**
+
+| Check | Result |
+|---|---|
+| The eight functions present | ★ `add_member`, `add_members`, `admin_list_members`, `before_user_created_hook`, `member_invitation_context`, `provision_member`, `remove_unbound_member`, `resend_member_invitation` |
+| `members.auth_user_id` nullable | ★ **true** |
+| `members.invited_by` added | ★ 1 |
+| ★ the `unique` on `auth_user_id` **kept** | ★ 1 — a unique constraint permits many nulls, so it keeps its meaning for every bound row |
+| `snapshot_leaderboard()` carries the bound-member predicate | ★ **true** |
+| ★ `evaluate_company_points()` carries it too (`DEC-246`) | ★ **true** |
+| ★ `before_user_created_hook()` still fails open | ★ **true** — `when others then` intact |
+
+★ **`registrations` is not read, written or altered by `0197`**, and neither is any table but `members`.
+
+★ **Branch `wave-25/add-a-member`, PR #68.** All three pieces are built and green; the migration is **`0197`**,
+promoted and replayed in a full chain. What is left is the owner's: the rehearsal, the push, the merge.
+
+| | State |
+|---|---|
+| `0197_add_a_member.sql` | ★ promoted (a **move**, so `applyProposed()` no-ops and the suite passed unchanged) · replayed clean in a full `db reset` 0001 → 0197 |
+| `SCR-049` | «أضف عضوًا», the sheet, the pasted list with its per-line report, «لم يسجّل الدخول بعد» with its age, resend, delete |
+| `JOB-send_member_invitation` | the thirty-seventh job; the design is a sibling export, so `DESIGN_FOR` stays at 25 and the 120 pinned files are untouched |
+| Tests | 27 RLS · 11 component (axe) · 6 unit for the mail · `members-table.test.ts`'s 16 cases unchanged |
+| ★ Owed | an e2e spec for the demonstrable; the owner's rehearsal and push (**runbook: [`notes/wave-25-lead.md`](notes/wave-25-lead.md) §8**) |
+
+★★ **A hole in the chain, not this wave's:** `0194` is still in open PR #69 while `0195` and `0196` are on `main`. A
+fresh reset applies `0194` **before** them; a production pushed in merge order gets it **after**. Independent
+migrations, so the divergence is in the order — but **`supabase db push` wants `--include-all`** for the straggler.
+
+★★ **`DEC-246` — `DEC-244` §6 measured short.** The denominator is **five predicates across two functions**, not
+four across one: `0182`'s `evaluate_company_points()` divides by active members to **award** company points, so
+adding five colleagues by hand would have **paid their own company less** at the next session completion — into an
+**append-only** ledger. Provably a no-op on existing data, three ways.
+
+### The ledger — assertions changed, and why
+
+| File | Change | Why |
+|---|---|---|
+| `tests/components/admin/members-table.test.tsx` | row factory gains `hasSignedIn: true`, `invitedBy: null` | A type completion, **not an assertion**: all 16 cases pass untouched, and every case written before M27 keeps its meaning |
+| `05-scoring-engine.md` §6.2, `STORY-LDR-005` | «four predicates in one function» → five across two | `DEC-246` |
+
+### The record, as it stood before the build
+
+
+
+★ **The owner's ask, verbatim, in two sentences — and the second corrects the first answer:**
+> «I want the ability to add user to the app in addition for them becoming users on the first signin.»
+> ★★ «i need the addition of the user to take affect and appear in the users as soon as the admin adds them»
+
+★★ **`DEC-243`'s first answer was wrong and `DEC-244` replaced it the same day.** `DEC-243` proposed a roster table
+beside `members` and wrote «nothing else in the product can reference them» — so an added person *appeared* on one
+console table and could not be assigned, picked or counted. **«Take effect» is the requirement.** ★★ **An added
+person is a `members` row from the moment the admin saves it** — in the directory, in every picker, assignable as a
+presenter, with their role, company and job title set — waiting only for its auth user, which their **first sign-in
+binds** rather than inserting a second. `ENT-member_invitations` and the `invitation_status` enum are **withdrawn
+before they were built**.
+
+| | `DEC-243` (superseded) | ★ `DEC-244` (in force) |
+|---|---|---|
+| What an added person is | a row in a new table | ★ **a `members` row, `active`, unbound** |
+| Schema | new table + enum + policy set + grant | ★ **`auth_user_id` nullable + `invited_by`** |
+| «Has signed in» | the row's `status` | ★ **`auth_user_id is not null`**, a boolean from `admin_list_members()` |
+| First sign-in | claims an invitation, inserts a member | ★ **binds the row**, inserts nothing |
+| Can they be assigned, picked, counted? | **no** | ★★ **yes — that is the feature** |
+| New policy set for the sweep | yes | ★ **none** |
+
+★★ **Two things to get right, and one of them would corrupt data nobody is looking at.** **(1)** The gate override
+lives in `before_user_created_hook()`, the single point of failure for all sign-in: the read goes **inside** its
+existing exception block, it still fails open, and ★ **it needs no new grant** —
+`grant select on public.members … to supabase_auth_admin` is already in `0006`. **(2)** ★★
+`snapshot_leaderboard()` counts `members where status = 'active'` — org-wide (`0081:597`, `0176:39`) and per company
+(`0081:382`, `:411`, `:647`) — so **adding five colleagues would lower their own company's
+النقاط لكل عضو نشِط** before any of them arrived, which is the silent rewrite `A11`/`DEC-016` froze the denominator to
+prevent. The fix is four predicates (`and auth_user_id is not null`), **provably a no-op on existing data**, and it
+**lands in the same PR as the nullable column**.
 
 ★★ **The record is written and the wave is NOT open.** Finish wave 24's three PRs first. What exists today:
-`DEC-243`; `REQ-TEN-009` … `011`, `REQ-NTF-017`, `REQ-UIX-113` in `01`; `ENT-member_invitations` in `02`;
-`08` §3.2a; `SCR-049`'s own section in `09`; `JOB-send_member_invitation` in `11`; **M27** in `14`; five stories in
-`15`; and the brief in [`notes/wave-25-lead.md`](notes/wave-25-lead.md). ★ **`03` is deliberately untouched** —
-`policy-diff` fails on a policy documented with no migration behind it, so the policy set and its §8.2 rows land in
-the **same commit as the migration**, from **`0194`**.
+`DEC-243` and `DEC-244`; `REQ-TEN-009` … `011`, `REQ-NTF-017`, `REQ-UIX-113` and `REQ-LDR-006`'s amendment in `01`;
+`ENT-members`' amendment and `ENT-member_invitations` struck in `02`; `05` §6.2's denominator; `08` §3.2a; `SCR-049`'s
+own section in `09`; `JOB-send_member_invitation` in `11`; **M27** in `14`; six stories in `15`; and the brief in
+[`notes/wave-25-lead.md`](notes/wave-25-lead.md). ★ **`03` is untouched, now for two reasons** — `policy-diff` fails
+on a policy documented with no migration behind it, **and there is no new relation to document**: the policy set
+`members` carries is unchanged by a nullable column.
 
-★★ **The next lead writes the wave-25 ownership map into `CLAUDE.md` before spawning anyone** (`DEC-085`). Three
-tracks: the **lead** (the migration, the claim, the hook), **`console`** (`SCR-049`), **`notify`** (the job and the
-mail family). ★ **The riskiest line in the wave is one function**: `before_user_created_hook()` is the single point of
-failure for all sign-in, the invitation read goes **inside** its existing exception block, and it still fails open.
-
-| Measured before the decision | Result |
-|---|---|
-| Can a member row exist before sign-in? | ★ **No** — `members.auth_user_id` is `not null unique` (`0004:239`) |
-| How coupled is `auth_user_id`? | 5 migrations, **0** files under `src/` or `worker/src/` |
-| What would a third `member_status` cost? | ★ **54** `status = 'active'` sites across 26 migrations |
-| Would a pre-created *active* member move anything? | ★★ **Yes** — `0176`'s company ranking, immediately |
-| Can the invitation mail be a matrix message? | ★★ **No** — `notify()` resolves everything from a member id |
+★ **Four tracks** — the **lead** (the migration, the bind, the hook), **`scoring`** (the denominator, one function),
+**`console`** (`SCR-049`), **`notify`** (the job and the mail). The migration starts at **`0194`**. ★★ **The next lead
+writes the wave-25 ownership map into `CLAUDE.md` before spawning anyone** (`DEC-085`).
 
 ---
 

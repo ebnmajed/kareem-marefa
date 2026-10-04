@@ -1,4 +1,4 @@
--- supabase/migrations/0194_certificate_mode_after_completion.sql — the lead (hotfix, DEC-245)
+-- supabase/migrations/0194_certificate_mode_after_completion.sql — the lead (hotfix, DEC-250)
 --
 -- Serves:  REQ-CRT-017 (new), REQ-CRT-002, REQ-CRT-001, REQ-SES-017
 -- Cites:   0154 (set_session_certificate_mode — THE LIVE TEXT this file re-creates, with two
@@ -7,7 +7,7 @@
 --          0108:63 (fan_out_certificates — re-runnable, and this file's whole argument) ·
 --          0127 (issue_certificate — idempotent over a live row, and never replaces a
 --          for-cause revocation) · 0005 (assert_fresh_admin, write_audit)
--- Docs:    DEC-245, which amends DEC-178 ruling 2 and discharges its deferral
+-- Docs:    DEC-250, which amends DEC-178 ruling 2 and discharges its deferral
 --
 -- ★★ THE LIVE DEFECT THIS CLOSES, as the owner reported it: «the default for the certificate is
 -- that the session has no certificate and the settings for enabling and disabling disappeared».
@@ -56,12 +56,12 @@
 -- ★ WHAT IS DELIBERATELY NOT DONE.
 --   · Nothing changes `certificate_mode`'s DEFAULT. Moving it off 'off' would switch
 --     certificates on for every session in the product and is the owner's call, not a hotfix's
---     (DEC-245 §4). This file makes the default RECOVERABLE, which is the actual defect.
+--     (DEC-250 §4). This file makes the default RECOVERABLE, which is the actual defect.
 --   · Turning the mode back to 'off' after a fan-out is still allowed and still deletes
 --     nothing: it only stops future issuance, because `issue_certificate()` raises
 --     `certificates_off`. What has reached a member is governed by `release_certificates()` and
 --     `revoke_certificate()`, which is where it belongs. Refusing 'off' once certificates exist
---     is a separate question, left open in DEC-245 §4.
+--     is a separate question, left open in DEC-250 §4.
 --   · No trigger is added and no job is invented. The one new behaviour is one `perform` of a
 --     function that has existed since 0065.
 --
@@ -93,7 +93,7 @@ begin
   if s.id is null then
     raise exception 'session_not_found' using errcode = '42501';
   end if;
-  -- ★ DEC-245: 'completed' and 'archived' are no longer refused. A cancelled session still is —
+  -- ★ DEC-250: 'completed' and 'archived' are no longer refused. A cancelled session still is —
   -- it has no attendance to attest, and no fan-out will ever run for it.
   if s.state = 'cancelled' then
     raise exception 'session_cancelled' using errcode = '23514';
@@ -130,4 +130,4 @@ end $$;
 revoke execute on function public.set_session_certificate_mode(uuid, public.certificate_mode) from public, anon;
 grant  execute on function public.set_session_certificate_mode(uuid, public.certificate_mode) to authenticated;
 comment on function public.set_session_certificate_mode(uuid, public.certificate_mode) is
-  'REQ-CRT-002, REQ-CRT-017. SCR-045 is the mode''s one writer. Admin only, audited. A cancelled session is refused; a COMPLETED or ARCHIVED one is accepted and fans out in the same transaction (DEC-245, amending DEC-178 ruling 2), returning ''fanned_out''.';
+  'REQ-CRT-002, REQ-CRT-017. SCR-045 is the mode''s one writer. Admin only, audited. A cancelled session is refused; a COMPLETED or ARCHIVED one is accepted and fans out in the same transaction (DEC-250, amending DEC-178 ruling 2), returning ''fanned_out''.';

@@ -84,7 +84,7 @@ export type ModeActionResult = { status: "ok" | "unchanged" | "fanned_out" } | {
  * (0154, `0194`) — admin only, audited, refused only for a cancelled session.
  * The schedule screen only shows it.
  *
- * ★ DEC-245 (REQ-CRT-017): a completed session may still be switched on, and
+ * ★ DEC-250 (REQ-CRT-017): a completed session may still be switched on, and
  * doing so fans out at once — `fanned_out`, which the control reports as «being
  * prepared» rather than «saved», because the worker writes the rows.
  */

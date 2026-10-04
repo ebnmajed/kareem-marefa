@@ -743,7 +743,7 @@ const certificateModeInput = z.object({ sessionId: z.uuid(), mode: z.enum(["off"
  * longer states the mode, and `schedule_session()` leaves it standing when it
  * is not named.
  *
- * ★ DEC-245 (REQ-CRT-017): a COMPLETED or ARCHIVED session is no longer
+ * ★ DEC-250 (REQ-CRT-017): a COMPLETED or ARCHIVED session is no longer
  * refused. Switching it to a mode other than `off` fans out in the same
  * transaction and answers `fanned_out`, which the screen says out loud —
  * the worker creates the rows, so «saved» alone would look like nothing

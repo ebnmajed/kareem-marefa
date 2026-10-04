@@ -29,6 +29,12 @@ export interface AdminMemberRow {
   deactivatedAt: string | null;
   deactivatedReason: string | null;
   createdAt: string;
+  /** ★ wave 25 (`DEC-244` §3): false for somebody an admin added who has not signed in yet. The
+   *  binding itself (`members.auth_user_id`) is outside 0004's column grant and reaches no DTO —
+   *  `admin_list_members()` derives this boolean and returns it instead. */
+  hasSignedIn: boolean;
+  /** The admin who added them, or null for everyone who arrived by signing in. */
+  invitedBy: string | null;
 }
 
 async function requireAdmin(locale: string) {
@@ -47,6 +53,8 @@ type AdminMemberRpcRow = {
   deactivated_at: string | null;
   deactivated_reason: string | null;
   created_at: string;
+  has_signed_in: boolean;
+  invited_by: string | null;
 };
 
 /** ★ wave 22 (`DEC-232` §4.3): paged — the definer list returns a set, and PostgREST cut it at `max_rows` silently. */
@@ -64,6 +72,8 @@ async function readMembers(supabase: Awaited<ReturnType<typeof sessionClient>>["
       deactivatedAt: m.deactivated_at,
       deactivatedReason: m.deactivated_reason,
       createdAt: m.created_at,
+      hasSignedIn: m.has_signed_in,
+      invitedBy: m.invited_by,
     }))
     .sort((a, b) => (a.displayName ?? a.email).localeCompare(b.displayName ?? b.email, "ar"));
 }
@@ -161,7 +171,7 @@ export async function listMembersForConsole(locale: string, query: MemberQuery):
 
 const ROLE_CHANGE_ERRORS = ["last_admin", "not_an_admin", "member_not_found", "stale_claims"] as const;
 const DEACTIVATE_ERRORS = ["reason_required", "cannot_deactivate_self", "not_an_admin", "member_not_found", "stale_claims"] as const;
-type KnownError = (typeof ROLE_CHANGE_ERRORS)[number] | (typeof DEACTIVATE_ERRORS)[number];
+type KnownError = (typeof ROLE_CHANGE_ERRORS)[number] | (typeof DEACTIVATE_ERRORS)[number] | "already_a_member" | "not_an_address" | "role_not_allowed" | "already_signed_in" | "company_other_org";
 
 /** Every RPC below raises a plain identifier as its message (0005's own
  *  style — `raise exception 'last_admin' using errcode = '42501'`), so the
@@ -198,5 +208,123 @@ export async function reactivateMember(locale: string, memberId: string): Promis
   const { supabase } = await sessionClient(locale);
   const { error } = await supabase.rpc("reactivate_member", { p_member: memberId });
   if (error) return { error: classify(error.message, DEACTIVATE_ERRORS) };
+  return { error: null };
+}
+
+// ── wave 25 · M27 — adding a member by hand (`REQ-TEN-009`, `DEC-243`, `DEC-244`) ────────────────
+//
+// Thin calls into the RPCs the wave's migration builds, exactly as the three above are thin calls
+// into 0005's. `assert_fresh_admin()` is the gate, the audit row is the RPC's, and the mail is
+// enqueued there — so nothing here decides anything a caller could skip.
+//
+// ★ `role` is `moderator | member` at this edge too. The database refuses `admin` (`DEC-244` §5.4)
+// and that refusal is the authority; this enum is the SHAPE, so a crafted call fails validation
+// before it reaches a round trip — never instead of it.
+
+const ADD_MEMBER_ERRORS = ["already_a_member", "not_an_address", "role_not_allowed", "not_an_admin", "stale_claims"] as const;
+// `members_company_same_org` (0004) raises a sentence, not an identifier — the one error here
+// that is not already a key, so it is mapped rather than passed through with a space in it.
+const OTHER_ORG_COMPANY = "another org";
+const UNBOUND_ERRORS = ["already_signed_in", "member_not_found", "not_an_admin", "stale_claims"] as const;
+
+const email = z
+  .string()
+  .trim()
+  .min(3)
+  .max(320)
+  // The same shape the RPC enforces. Deliberately not a full RFC 5322 parser: the address is
+  // proved by the person signing in with it, not by this regex.
+  .regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/);
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .optional();
+
+export const addMemberInput = z
+  .object({
+    email,
+    displayName: optionalText(120),
+    companyId: z.uuid().nullable().optional(),
+    jobTitle: optionalText(120),
+    role: z.enum(["moderator", "member"]),
+  })
+  .strict();
+export type AddMemberInput = z.infer<typeof addMemberInput>;
+
+export async function addMember(locale: string, input: AddMemberInput): Promise<{ error: string | null; memberId: string | null }> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("add_member", {
+    p_email: input.email,
+    p_display_name: input.displayName ?? null,
+    p_company: input.companyId ?? null,
+    p_job_title: input.jobTitle ?? null,
+    p_role: input.role,
+  });
+  if (error) {
+    if (error.message.includes(OTHER_ORG_COMPANY)) return { error: "company_other_org", memberId: null };
+    return { error: classify(error.message, ADD_MEMBER_ERRORS), memberId: null };
+  }
+  // `add_member` returns the whole row; the screen needs only its id.
+  const row = data as { id?: string } | null;
+  return { error: null, memberId: row?.id ?? null };
+}
+
+/** One line of «أضف عضوًا»'s pasted list, as the RPC reports it. */
+export interface AddMemberLine {
+  email: string;
+  outcome: "added" | "already_a_member" | "not_an_address" | "role_not_allowed" | "failed";
+  memberId?: string;
+}
+
+export const addMembersInput = z
+  .object({
+    // Validated per line by the RPC, which reports each one — so the array itself is only bounded.
+    emails: z.array(z.string().trim()).min(1).max(200),
+    companyId: z.uuid().nullable().optional(),
+    role: z.enum(["moderator", "member"]),
+  })
+  .strict();
+export type AddMembersInput = z.infer<typeof addMembersInput>;
+
+export async function addMembers(locale: string, input: AddMembersInput): Promise<{ error: string | null; report: AddMemberLine[] }> {
+  const { supabase } = await sessionClient(locale);
+  const { data, error } = await supabase.rpc("add_members", {
+    p_emails: input.emails,
+    p_company: input.companyId ?? null,
+    p_role: input.role,
+  });
+  if (error) {
+    if (error.message.includes(OTHER_ORG_COMPANY)) return { error: "company_other_org", report: [] };
+    return { error: classify(error.message, ADD_MEMBER_ERRORS), report: [] };
+  }
+  // The RPC reports `sqlerrm` per failed line; map it to the identifiers the screen can say, and
+  // never show a raw Postgres message to an admin.
+  const report = ((data ?? []) as { email: string; outcome: string; member_id?: string }[]).map((line) => ({
+    email: line.email,
+    outcome: (ADD_MEMBER_ERRORS.find((k) => line.outcome.includes(k)) ?? (line.outcome === "added" ? "added" : "failed")) as AddMemberLine["outcome"],
+    memberId: line.member_id,
+  }));
+  return { error: null, report };
+}
+
+export async function resendMemberInvitation(locale: string, memberId: string): Promise<{ error: string | null }> {
+  if (!z.uuid().safeParse(memberId).success) return { error: "failed" };
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("resend_member_invitation", { p_member: memberId });
+  if (error) return { error: classify(error.message, UNBOUND_ERRORS) };
+  return { error: null };
+}
+
+/** A mistyped address is deleted, and only while it is unbound (`DEC-244` §7). Once the person has
+ *  signed in the RPC refuses, and the way out is deactivation with its reason (`REQ-AUT-008`). */
+export async function removeUnboundMember(locale: string, memberId: string): Promise<{ error: string | null }> {
+  if (!z.uuid().safeParse(memberId).success) return { error: "failed" };
+  const { supabase } = await sessionClient(locale);
+  const { error } = await supabase.rpc("remove_unbound_member", { p_member: memberId });
+  if (error) return { error: classify(error.message, UNBOUND_ERRORS) };
   return { error: null };
 }

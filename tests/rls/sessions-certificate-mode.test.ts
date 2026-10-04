@@ -12,7 +12,7 @@
 //               RPC-set_session_certificate_mode.after_completion_off,
 //               RPC-set_session_certificate_mode.late_switch_is_idempotent
 //
-// ★ DEC-245 (REQ-CRT-017, `0194`): a COMPLETED or ARCHIVED session is no longer
+// ★ DEC-250 (REQ-CRT-017, `0194`): a COMPLETED or ARCHIVED session is no longer
 // refused — it is accepted and FANS OUT in the same transaction. Three
 // assertions below changed with it, each an expectation and not a selector,
 // each a ledger line in STATUS.md. `cancelled` is still refused.
@@ -30,7 +30,7 @@ afterAll(() => pool.end());
 const PROPOSED = "sessions/0001_certificate_mode_one_writer.sql";
 const CHECK_VIOLATION = "23514";
 
-// ★ DEC-245: `0194` is applied INSIDE the rolled-back transaction, like a
+// ★ DEC-250: `0194` is applied INSIDE the rolled-back transaction, like a
 // proposed file, so the suite is green on a database that has not been reset
 // since the migration landed. It is safe to apply twice: every statement in it
 // is `create or replace`, `revoke`, `grant` or `comment` — there is no
@@ -206,7 +206,7 @@ describe("RPC-set_session_certificate_mode.audited", () => {
 });
 
 describe("RPC-set_session_certificate_mode.refusals", () => {
-  // ★ DEC-245: ONLY a cancelled session is refused now. It has no attendance to
+  // ★ DEC-250: ONLY a cancelled session is refused now. It has no attendance to
   // attest and no fan-out will ever run for it, so a mode on it would be a
   // setting that cannot become a certificate.
   it("a cancelled session is refused, with no write and no audit", async () => {
@@ -223,7 +223,7 @@ describe("RPC-set_session_certificate_mode.refusals", () => {
 });
 
 describe("RPC-set_session_certificate_mode.after_completion", () => {
-  // ★ The defect DEC-245 closes, asserted from the admin's side: a session that
+  // ★ The defect DEC-250 closes, asserted from the admin's side: a session that
   // completed at the DEFAULT `off` had no way back. Now it has one, and the mode
   // is written and audited like any other.
   it("a completed session accepts the mode, writes it, audits it and fans out", async () => {
@@ -280,7 +280,7 @@ describe("RPC-set_session_certificate_mode.after_completion", () => {
 describe("RPC-set_session_certificate_mode.after_completion_off", () => {
   // ★ Switching a completed session back to `off` is accepted and enqueues
   // NOTHING. It deletes nothing either: what has reached a member is governed by
-  // release/revoke, never by the mode (DEC-245 §4).
+  // release/revoke, never by the mode (DEC-250 §4).
   it("switching a completed session to off is accepted, audited and enqueues nothing", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
@@ -298,7 +298,7 @@ describe("RPC-set_session_certificate_mode.after_completion_off", () => {
 });
 
 describe("RPC-set_session_certificate_mode.no_side_effects", () => {
-  // ★ DEC-245 narrows this to what it always meant: the mode itself has no side
+  // ★ DEC-250 narrows this to what it always meant: the mode itself has no side
   // effects. BEFORE completion it still enqueues nothing — the trigger will fan
   // out on the edge into `completed`, and doing it early would issue against an
   // attendance list still being written. The late switch's own jobs are asserted

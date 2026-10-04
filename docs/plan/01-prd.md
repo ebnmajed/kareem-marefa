@@ -106,46 +106,55 @@ co-presenters (OQ-021), and its sending identity and reply-to (OQ-016).
 - Every change is written to the configuration history with actor, timestamp, old value and new
   value (`REQ-PTS-005` generalises this for scoring).
 
-#### REQ-TEN-009 — An admin adds a عضو ahead of their first sign-in
-**Serves:** DEC-243 · D11 (amended in one half) · D4
-An **مشرف المؤسسة** may name a person who is not yet a member, by email address, together with the
-fields provisioning cannot guess: **الاسم**, **الشركة**, **المسمى الوظيفي** and the role. The named
-person is **not a member** until they sign in — they hold no points, no seat, no certificate and no
-profile, and they appear in no directory, picker, board or active-member denominator. Several
-addresses may be named at once, one per line, in the same control.
+#### REQ-TEN-009 — An admin adds a عضو, and they are a member at once
+**Serves:** `DEC-243` · ★ **shape set by `DEC-244`** · D11 (amended in one half) · D4
+An **مشرف المؤسسة** adds a person by email address, with **الاسم**, **الشركة**, **المسمى الوظيفي**
+and the role. ★ **The member exists from the moment it is saved**: they are listed among the members,
+they appear in the member directory and in every member picker, they can be assigned as a presenter,
+and their role, company and job title are already set — all before they have signed in once. What
+they do not have is a session, so they cannot act until they do. Several addresses may be added at
+once, one per line, in the same control.
 **Acceptance:**
-- Naming somebody creates no member row and changes no count anywhere in the product.
+- The person appears in the members list, the directory and the member picker immediately.
+- They can be assigned as a presenter of a session before they have ever signed in.
+- The members list marks them «لم يسجّل الدخول بعد», with how long they have been waiting.
 - An address that is already a member of the مؤسسة is refused, with that reason.
-- An address already named and still waiting is refused, with that reason; one already revoked may
-  be named again.
-- The role may be **عضو** or **مشرف محتوى** only; **مشرف المؤسسة** is granted to a member who has
-  arrived, through `REQ-TEN-005`, and never to an address.
-- Naming, re-sending and revoking are each audited with the actor and, for a revoke, its reason.
+- The role may be **عضو** or **مشرف محتوى** only; **مشرف المؤسسة** is granted through `REQ-TEN-005`
+  once they arrive, and never to an address.
+- A person added by mistake can be **removed outright** while they have not yet signed in; once they
+  have, the only way out is deactivation with its reason (`REQ-AUT-008`).
+- Adding, re-sending, removing and deactivating are each audited, and the log distinguishes a member
+  who was added from one who arrived by signing in.
 
-#### REQ-TEN-010 — A pending invitation admits an address the domain list would refuse
-**Serves:** DEC-243 · D11 · D58
-A person who has been named by an admin may sign in **even though their email domain is on no
-مؤسسة's allowed list**. This is the reason the capability exists: an outside presenter or a partner
-has no work address to be gated on. The override lasts only while the invitation is waiting — once
-it is claimed or revoked it admits nobody.
+#### REQ-TEN-010 — An added member may sign in from a domain the list would refuse
+**Serves:** `DEC-243`, `DEC-244` §5 · D11 · D58
+A person an admin has added may sign in **even though their email domain is on no مؤسسة's allowed
+list**. This is why the capability exists: an outside presenter or a partner has no work address to
+be gated on. The admission lasts while their record is waiting and active — binding it or
+deactivating them ends it.
 **Acceptance:**
-- An admin names a personal-domain address; that person signs in and lands in the app.
-- Revoking before they sign in closes the door: the same account is refused again.
+- An admin adds a personal-domain address; that person signs in and lands in the app, already a
+  member of that مؤسسة with the role they were given.
+- Deactivating them before they sign in closes the door: the same account is refused again.
 - A refused account still sees `REQ-AUT-006`'s explanation, which names no مؤسسة and lists no
-  domains — an invited address is admitted, a refused one learns nothing new.
-- A failure anywhere in reading the invitation list admits the sign-in the domain list would have
-  allowed; it never causes a sign-in outage.
+  domains — an added address is admitted, a refused one learns nothing new.
+- A failure anywhere in that read admits every sign-in the domain list would have allowed; it never
+  causes a sign-in outage.
 
-#### REQ-TEN-011 — The invitation is claimed exactly once, at first sign-in
-**Serves:** DEC-243 · `REQ-AUT-002` · `REQ-TEN-004`
-The member record is still created at first sign-in and is still keyed to the auth user, never to an
-email or a provider. The invitation supplies only what the record would otherwise default: the role,
-the company, the job title and the name. It is then marked claimed, against the member it created.
+#### REQ-TEN-011 — First sign-in binds the waiting record; it never creates a second one
+**Serves:** `DEC-243`, `DEC-244` §4 · `REQ-AUT-002` · `REQ-TEN-004`
+A member who was added by hand is **waiting for their auth user, not for their row**. Their first
+sign-in binds the two: the record they already have becomes theirs, Google fills the name the admin
+left blank and supplies the avatar, and nothing is inserted. ★ A member is still identified by their
+auth user and never by an email (`REQ-AUT-002`) — the address is what the admin addressed, used once,
+at the binding, and never again.
 **Acceptance:**
-- A concurrent double sign-in claims the invitation once and creates exactly one member.
-- The member arrives with the admin's role, company and job title already set.
-- A name the admin left blank is filled from Google; a name the admin set is kept.
-- The claim and the member's creation are one transaction: neither exists without the other.
+- Signing in binds the existing record: the member's id, role, company and job title are the ones the
+  admin set, and no second member is created.
+- A concurrent double sign-in binds exactly once.
+- A name the admin set is kept; one they left blank is filled from Google.
+- A **different** account later presenting the same address is still refused, as it is today.
+- The person's `org_id` is the one they were added to and cannot change (`REQ-TEN-004`).
 
 ---
 
@@ -1455,8 +1464,14 @@ Default: **النقاط لكل عضو نشِط**, so a large شركة cannot win
 **Serves:** A11 · DEC-016
 Monthly, seasonal and company standings are **snapshotted** and frozen, including the
 **active-member denominator**.
+★ **Amended by `DEC-244` §6:** the denominator counts the members who **have signed in**. A person an
+admin added who has not yet arrived has not declined to contribute — they have not been asked — so
+counting them would dilute their شركة's **النقاط لكل عضو نشِط** for an admin's typing, and could carry
+a company across `REQ-UIX-082`'s minimum before anybody had done anything.
 **Acceptance:**
 - Deactivating a member does not change any published standing.
+- ★ A member added by an admin enters the denominator on their **first sign-in**, not when they are
+  added; the change is provably a no-op for every member who already exists.
 - Certificates for leaderboard winners are issued from the frozen snapshot (`REQ-CRT-012`).
 
 #### REQ-LDR-007 — Leaderboards are org-scoped
@@ -1674,7 +1689,7 @@ held certificates and none issued**, so the held ones can be re-rendered (`DEC-2
 **Acceptance:**
 - With no choice, a certificate is issued from the template `issue_certificate()` picks, and the screens name that same
   template — «افتراضي» only when it is the kind's default (`DEC-238` §2).
-- ★ **Amended by `DEC-245`:** the mode is refused only once the session is **cancelled** (see `REQ-CRT-017`); the
+- ★ **Amended by `DEC-250`:** the mode is refused only once the session is **cancelled** (see `REQ-CRT-017`); the
   template once a certificate of that kind is issued.
 
 #### REQ-CRT-016 — The baseline certificate templates are the designed ones
@@ -1690,7 +1705,7 @@ set, the orientation rule and the one-default-per-family indexes are unchanged.
 - The member's name is set in the display face and the serial is bidi-isolated.
 
 #### REQ-CRT-017 — Certificates may be switched on after the session has completed, and are issued when they are
-**Serves:** `DEC-245` · `REQ-CRT-001`, `REQ-CRT-002` · `REQ-SES-017` · `09` `SCR-045`
+**Serves:** `DEC-250` · `REQ-CRT-001`, `REQ-CRT-002` · `REQ-SES-017` · `09` `SCR-045`
 A session's certificate mode is `off` until somebody chooses otherwise (`ENT-sessions`), and the completion fan-out
 runs once, on the edge into `completed`. A session that completed at `off` was therefore unreachable: the mode could
 not be changed afterwards and `SCR-045` drew no control, so an admin had no way to issue a certificate for a session
@@ -2200,19 +2215,20 @@ its own.
 - A row whose `blocks` is null is still an admin's own text, framed and never replaced by a design.
 - The 120 pinned files move once, as one reviewed diff, and are stable on a re-run.
 
-#### REQ-NTF-017 — The invitation mail is transactional, not a matrix message
-**Serves:** `DEC-243` §6 · `REQ-TEN-009` · `REQ-NTF-014`
-A person named by an admin is told by email, in Arabic, with a link that signs them in. ★ **It is not one of the
-notification matrix's messages and does not become a twenty-sixth key**: the matrix resolves a member's preference,
-inbox row and address from a member id, and an invited person has none of those. It is a transactional send on the
-test send's pattern, in the same designed language as the eight families.
+#### REQ-NTF-017 — The mail that announces a member's addition is transactional, not a matrix message
+**Serves:** `DEC-243` §6 · ★ `DEC-244` §8 · `REQ-TEN-009` · `REQ-NTF-014`
+A person an admin has added is told by email, in Arabic, with a link that signs them in. ★ **It is not one of the
+notification matrix's messages and does not become a twenty-sixth key** — a twenty-sixth would move the matrix's
+count, the designed families and all 120 pinned files, and **«you have been added» is not a message anybody may
+switch off.** It is a transactional send on the test send's pattern, in the same designed language as the eight
+families.
 **Acceptance:**
 - The matrix stays at 25 keys; the 120 pinned mail files are untouched by this feature.
-- ★ The recipient's address is **not in the job's payload** — the payload carries the invitation, and the address is
-  read in the worker, so a forged or replayed job can mail nobody else.
+- ★ The recipient's address is **not in the job's payload** — the payload names the member and the address is read in
+  the worker, so a forged or replayed job can mail nobody else.
 - The mail carries a generated text alternative and no SVG; the copy is authored in Arabic first.
-- Re-sending is the same mail to the same address, recorded on the invitation with a count and the last instant.
-- An invitation that is revoked or already claimed sends nothing, however the job is triggered.
+- Re-sending is the same mail to the same address, and every send is in the delivery log with its reason.
+- A member who has already signed in, or who has been deactivated, is sent nothing however the job is triggered.
 
 
 ---

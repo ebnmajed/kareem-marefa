@@ -38,7 +38,7 @@ const preflight = {
   serial: "KM-2026-000124",
 };
 
-// ★ DEC-245: `completed` defaults to false, so every case written before this
+// ★ DEC-250: `completed` defaults to false, so every case written before this
 // change asserts exactly what it asserted then — the before-completion control.
 function mount(mode: "off" | "automatic" | "review" = "off", completed = false) {
   return render(<CertificateModeControl locale="ar" sessionId="s1" mode={mode} completed={completed} preflight={preflight} />, { wrapper: Wrap });
@@ -85,7 +85,7 @@ describe("the certificate mode on SCR-045", () => {
     expect(saveCertificateMode).toHaveBeenCalledWith("ar", "s1", "off");
   });
 
-  // ★ DEC-245: the live refusal is the CANCELLED one. `session_completed` is no
+  // ★ DEC-250: the live refusal is the CANCELLED one. `session_completed` is no
   // longer raised by `set_session_certificate_mode()` (`0194`), so pinning its
   // copy here would pin a state the product cannot reach.
   it("a refusal says why, in the function's own terms", async () => {
@@ -96,7 +96,7 @@ describe("the certificate mode on SCR-045", () => {
     expect(show).toHaveBeenCalledWith({ tone: "error", title: "أُلغيت الجلسة، فلا شهادات لها." });
   });
 
-  // ★ DEC-245 (REQ-CRT-017). The defect was that this control did not exist for a
+  // ★ DEC-250 (REQ-CRT-017). The defect was that this control did not exist for a
   // completed session at all. Where it does, the act is different in kind — it
   // issues NOW — and the screen has to say so, or «حُفظ» followed by an empty
   // «محجوزة · 0» reads as a failure.

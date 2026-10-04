@@ -31,7 +31,10 @@ export function BindingsPanel({ declared, values, fallbacks = {}, layerNames = {
   const label = (binding: string) => (t.has(`field.${binding}`) ? t(`field.${binding}`) : (layerNames[binding] ?? t("field.unknown")));
   // `brand.*` resolves from the platform theme and is never interesting here;
   // the fields an admin can get wrong are the data ones.
-  const fields = declared.filter((b) => !b.startsWith("brand."));
+  // ★ `design.*` is excluded for the same reason (wave 24's re-colour): it is a
+  //   colour the platform supplies, not a value anybody fills in. Missed, every
+  //   design colour on a baseline poster would list here as an unbound field.
+  const fields = declared.filter((b) => !b.startsWith("brand.") && !b.startsWith("design."));
 
   if (fields.length === 0) return <p className="text-body-sm text-fg-muted">{t("empty")}</p>;
 

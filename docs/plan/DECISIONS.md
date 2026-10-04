@@ -8751,7 +8751,433 @@ writes `create table`, a policy or a grant, even under `proposed/`.
 
 ---
 
-## DEC-245 — The certificate mode outlives completion: a session that completed at `off` could never issue a certificate, and `DEC-178`'s refusal was guarding a mechanism that already works
+## DEC-244 — An added member is a REAL member from the moment the admin adds them: `members.auth_user_id` becomes nullable, first sign-in **binds** rather than inserts, and `ENT-member_invitations` is withdrawn
+
+- **Date:** 2026-10-04 · **Decided by:** the owner, overruling `DEC-243`'s first answer after being shown what it
+  produced
+- **Amends:** `DEC-243` §2 question 1, §3, §4, §9's third bullet and §10 — the shape, the claim, the refusal of a
+  nullable binding, and the expiry question, which disappears with the entity
+- **Withdraws:** `ENT-member_invitations` and the `invitation_status` enum. **There is no new table and no new enum.**
+  `REQ-TEN-009` … `011` and `REQ-NTF-017` keep their numbers and are rewritten; `REQ-UIX-113` is unchanged in intent
+- **Does not amend:** `REQ-AUT-002` («keyed to the auth user, never to an email or a provider»), which survives
+  intact — see §4
+
+### 0 · ★ THE GOAL, in the owner's words
+
+> **«i need the addition of the user to take affect and appear in the users as soon as the admin adds them»**
+
+### 1 · ★★ Why `DEC-243`'s answer was the wrong one, stated plainly
+
+`DEC-243` §3 put the added person in a table beside `members` and wrote: «**nothing else in the product can reference
+them.**» ★ **That sentence is the defect.** They *appeared* — `SCR-049` listed them as a waiting row — so the «appear
+in the users» half was met and the «take effect» half was not. An admin could add a presenter and then not assign
+them; add a colleague and not pick them in the member picker; add ten people and see nothing of them anywhere but one
+console table. ★ **«Take effect» is the requirement, and an entity that nothing may reference cannot meet it.**
+
+The shape the owner now asks for is the one `DEC-243` §9 refused on the strength of one measurement — the company
+denominator. ★ **That measurement was right and the conclusion drawn from it was wrong**: the denominator is a
+four-line fix in one function (§6), not a reason to make the feature inert.
+
+### 2 · ★★ What was measured, now that the shape is the one previously refused
+
+| # | Measurement | Result |
+|---|---|---|
+| 1 | **What else joins `auth.users`?** | ★★ **Exactly one statement in the whole product** — `0005:119`, inside `provision_member()`, reading the email and Google's metadata. Nothing else in 192 migrations, nothing in `src/`, nothing in `worker/`. An unbound member row is invisible to every other query by construction |
+| 2 | **What reads `members.auth_user_id`?** | 5 migrations, **0** files under `src/` or `worker/src/`; all five are lookups keyed by `auth.uid()`, which a null never matches |
+| 3 | **Does `unique` survive nulls?** | ★ **Yes** — a Postgres unique constraint permits **many** nulls, so `auth_user_id uuid unique` stays exactly as written. Only `not null` is dropped |
+| 4 | ★★ **Does the gate override need a new grant?** | ★★ **No — `grant select on public.members … to supabase_auth_admin` already exists** (`0006`, its «rule 3: the three grants»). The hook can read `members` today. `DEC-243` §5's «third grant» was for a table that no longer exists, and invariant 6 gains nothing to satisfy |
+| 5 | **Can an admin be shown «has not signed in» without exposing the binding?** | ★ **Yes** — `admin_list_members()` is already a `security definer` function (`DEC-232` §4.3), so it returns a **boolean**. `auth_user_id` is outside the column grant and stays outside it; no screen and no DTO ever carries it |
+| 6 | **What does an `active` member with no binding reach?** | ★ `members_member_view` filters on `status = 'active'` **and nothing else**, so they reach the member directory, the member picker, presenter assignment, the comment and rating author lookups, and every admin list. ★★ **That is the feature, not a side effect** |
+| 7 | **Do they clutter the leaderboards?** | ★ **No.** Every board reads `points_balances`, which has a row only for a member who has earned something. An unbound member appears on **no** member board, and `leaderboard_opt_out` never has to be touched |
+| 8 | ★★ **Is there anything the shape genuinely breaks?** | ★★ **One thing, and it is real.** `snapshot_leaderboard()` takes the denominator as `count(*) from public.members where org_id = … and status = 'active'` (`0081:597`, `0176:39`) and the per-company counts the same way (`0081:382`, `:411`, `:647`). **Five added people dilute their company's points-per-active-member, and can carry a company across `company_min_active_members`, before any of them has done anything.** `A11`/`DEC-016` froze that denominator into the snapshot precisely to stop it being silently rewritten — see §6 |
+| 9 | **What does the shape cost in schema?** | ★ **Less than `DEC-243`'s.** No table, no enum, no policy set, no grant, nothing for the isolation sweep to cover, and **no third `member_status`** — so measurement 4 of `DEC-243` (the 54 `status = 'active'` sites) stays irrelevant |
+
+### 3 · ★★ The shape
+
+★ **One nullable column and one new column on `ENT-members`:**
+
+- `auth_user_id uuid unique references auth.users(id) on delete cascade` — **`not null` is dropped.** Null means «we
+  expect this person and they have not arrived». The unique constraint is unchanged (measurement 3), and
+  `on delete cascade` still applies to the ones that are bound.
+- `invited_by uuid references public.members(id)` — nullable; null for everyone who arrived through the front door.
+  **When** they were added is `created_at`, already there, and **what was sent** is `email_deliveries`, already there,
+  so nothing else is stored.
+
+★★ **«Has signed in» is `auth_user_id is not null`.** It is **not** a status, not an enum value and not a column of
+its own: a derived boolean, returned by `admin_list_members()` (measurement 5). An added member is `active` from the
+instant the admin saves, with their role, company and job title set, and every surface that lists members lists them.
+
+### 4 · ★★ First sign-in BINDS, it does not insert — and `REQ-AUT-002` survives
+
+`provision_member()` gains one branch, between «already a member» and the domain match: ★ **an `active` member row in
+this org with this email and `auth_user_id is null` → bind it.** Set `auth_user_id = auth.uid()`, fill `display_name`
+from Google if the admin left it blank, take Google's avatar, audit `member.claimed`, and return `provisioned`.
+
+★ **`REQ-AUT-002` is not amended, and the distinction matters.** «Keyed to the auth user, never to an email or a
+provider» is about **what identifies a member once they exist** — `auth_user_id`, which is still the only key any
+policy, claim or lookup uses. The email is what the admin *addressed*, used **once**, at the bind, and never again.
+A member is still keyed to the auth user; what changed is that the row may be waiting for its key.
+
+★ **Three properties, each with a test.** **Bound once:** the update carries `where auth_user_id is null` and that
+predicate is the lock, so a concurrent double sign-in binds once. **Never re-bound:** a bound row is matched by
+`auth_user_id` at step one and never reaches the email branch, so a second Google account on the same address still
+raises `email_already_member`, exactly as today. **Never across orgs:** the branch is scoped to the org the domain or
+the row resolves, and `members_org_immutable` (`0004`) still refuses any change to `org_id` for every role,
+`service_role` included.
+
+### 5 · ★ The gate override reads `members`
+
+`before_user_created_hook()` admits an address with an **`active`, unbound** member row in an **`active`** org, beside
+the domain check it already performs. **No new grant** (measurement 4), the read goes **inside** the existing
+`begin`/`exception` block so it still fails open, and `domain_not_allowed` stays the only message a refused account
+sees. ★ **The override ends when the row is bound or the member is deactivated** — deactivating somebody who has not
+arrived closes the door, through the function that already exists and already demands a reason (`REQ-AUT-008`).
+
+### 6 · ★★ The denominator counts members who have signed in — `scoring`'s one correction
+
+Measurement 8 is the only real defect in the shape, and it is **four predicates in one function**:
+`snapshot_leaderboard()`'s org-wide count and its three per-company counts gain `and auth_user_id is not null`.
+
+★ **It is provably a no-op today**, which is why it is safe to make: `auth_user_id` is `not null` until this wave's
+migration, so every existing member satisfies the new predicate and **every existing snapshot and every live
+derivation is byte-identical**. A test asserts the count before and after on the same data.
+
+★ **Why it is the right reading, not a convenience.** `points_per_active_member` asks «how much does this company's
+average member contribute». A person who has never signed in has not declined to contribute — they have not been
+asked. Counting them penalises a company for an admin's typing, and `A11`/`DEC-016` froze the denominator into the
+snapshot so it could not be rewritten by a side door. **This is that door, closed before it is opened.**
+★ `company_min_active_members` (`0175`) reads the same counts and therefore follows automatically.
+
+### 7 · ★ Undoing a mistake — a delete while unbound, a deactivation after
+
+An admin who mistypes an address wants the row **gone**, not deactivated with a reason. ★ **A member row may be hard
+deleted while `auth_user_id is null`**, through an admin RPC that is audited (`member.add_undone`) and refuses the
+moment the row is bound. It is safe by construction: an unbound member has no attendance, no ledger row, no
+certificate, no RSVP and no comment, because nothing can be created without a session. ★ **Once bound they are an
+ordinary member** and the only way out is `REQ-AUT-008`'s deactivation, with its mandatory reason — nobody deletes a
+person who has arrived, and the audit trail of their addition survives either way.
+
+### 8 · ★ The mail — simpler than `DEC-243`'s, and still not a matrix message
+
+★ The recipient now **has a `member_id`**, so `JOB-send_member_invitation`'s payload is `{member_id}` and the address
+is read in the worker from the same definer context the real send uses — **`JOB-send_test_email`'s shape exactly**
+(`11` §2.6), and the «the recipient is not in the payload» rule holds unchanged.
+
+★ **It stays outside `notification_matrix()`** even though it now *could* go through `notify()`: a twenty-sixth key
+would move the matrix's count, the designed families and all 120 pinned files, and «you have been added» is not a
+message anybody may switch off. `08` §3.2a's table stands, with its reason for this row corrected: **not «the
+recipient has no member row» but «it is the mail that announces the member row's existence, and it is not
+optional».**
+
+### 9 · ★ The screen — the same screen, and a simpler one
+
+`SCR-049` keeps «أضف عضوًا», the sheet and the pasted list with its per-line report. ★ **What changes is that there
+are no longer two kinds of row**: every row is a member, and one whose binding is null is marked «لم يسجّل الدخول
+بعد» with its age, «أعد الإرسال» and «احذف» (§7) — ★ **and, unlike `DEC-243` §7, it offers the role change and the
+deactivation every other row offers**, because it is a member. **No new primitive**; `ui/` stays at 69 files;
+`console-register.test.ts` is untouched.
+
+### 10 · ★ The audit actions, replacing `DEC-243` §8's four
+
+`member.added` (the admin creates the row) · `member.add_undone` (the hard delete of §7) · `member.invite_resent` ·
+`member.claimed` (first sign-in binds). ★ **`member.provisioned` is unchanged** and still records the front door, so
+the log distinguishes the two ways in. Every one through `public.write_audit()` inside the definer that performs the
+change; **no track writes `audit_log` from the DAL** (`DEC-231` §4).
+
+### 11 · ★ What is still refused, and is not reopened by this entry
+
+- ★★ **An invitation cannot create an `admin`** (`DEC-243` §5.4): `member` and `moderator` only, and the promotion
+  path stays `set_member_role()`, which guards the last admin and audits. **Easier to live with now**, because the
+  added person is a member the moment they are added and can be promoted the moment they arrive.
+- ★★ **No second sign-in method and no `auth.users` row is ever created by us** — no password, no magic link, no OTP,
+  no Admin API, no `service_role` on Vercel (invariant 7). The person still signs in with Google.
+- ★ **No third `member_status`** (measurement 9), no expiry (`DEC-243` §10's question disappears with the entity —
+  the control is deactivation or the delete of §7), no CSV import with column mapping, no member-visible list of who
+  has not arrived, no org self-registration.
+- ★ **`registrations` is never touched; the five public routes do not move.**
+
+### 12 · ★ What this makes smaller, for the record
+
+No table · no enum · no policy set · no grant · no isolation-sweep row · no `03` §8.2 block for a new relation · no
+third status and therefore none of `DEC-243` measurement 4's 54 sites · one fewer kind of row on `SCR-049` · one
+migration that is now **two column changes, four RPCs, two function amendments and four predicates**.
+
+- **Documents changed:** `01-prd.md` (`REQ-TEN-009` … `011` and `REQ-NTF-017` rewritten; `REQ-PTS-002`'s denominator
+  note), `02-domain-model.md` (`ENT-members` amended; `ENT-member_invitations` struck), `05-scoring-engine.md` (the
+  denominator), `08-notifications-calendar.md` (§3.2a's reason), `09-sitemap-screens.md` (`SCR-049`),
+  `11-background-jobs.md` (`JOB-send_member_invitation`'s payload), `14-roadmap.md` (**M27**), `15-backlog.md`
+  (`STORY-TEN-005` … `007`, `STORY-NTF-009`, `STORY-UIX-103` rewritten, plus `STORY-LDR-005` for the denominator),
+  `STATUS.md`, `docs/plan/notes/wave-25-lead.md`
+- ★ **`03-permissions-rls.md` is still not changed**, and now for a second reason: there is no new relation to
+  document. The policy set `members` carries is unchanged by a nullable column.
+
+## DEC-245 — Wave 26 is the LAST wave: M13 and stories together, the platform console redesigned, the landing's appearance changed on `REQ-NFR-019`'s permitted path; five PRs of which four are buildable, and ★ the mark is HELD because its motion prototype is missing and its scope gating contradicts the public-graph guard
+
+- **Date:** 2026-10-04 · **Decided by:** the owner (§1, three rulings); everything else by the wave-26 planner, from `docs/design/screens/M13.md`, `STORIES-USER-STORIES.md`, the seventeen artboards, and measurement of the tree at `00377c6f`
+- **Amends:** `M13.md`'s `DEC-NEXT-40`, which cites migration `0192` for `story_views` — **`0192` is `platform_palette` and taken**, so it is `0198` (§5.3)
+- **Adds:** milestone **M28**; ★ **eighteen `REQ-STO-*`, one per STO-01…18** — written in `01-prd.md` by the wave, and named here without their citable form so `traceability.mjs` does not read them as broken citations (the precedent is `a3133d53`); one migration, **`0198`**, carrying `story_views` and `story_frames`. ★ **Two primitives — `story-viewer`, `story-capture` — so the floor moves 69 → 71**
+- **Does not touch:** the public URLs, the registration behaviour, the accessibility floor, `registrations`, `public-graph.test.ts`, `console-register.test.ts`
+
+### 1 · The owner's three rulings
+
+1. **M13 and stories ship together, in this wave** — ★ **and nothing remains after it.** Every screen
+   in the product then has a design and is built.
+2. **The platform console is redesigned** (`DEC-240` §5's reading (b)) on the console frame. ★ **These
+   are BUILT screens** — wave 8 built all seven platform routes (`DEC-147`) — so `DEC-208` applies in
+   full: **delete, then rebuild**, not new pages.
+3. **The landing's appearance changes**, on `REQ-NFR-019`'s permitted path: a `DECISIONS.md` entry
+   **and** a re-baselined visual diff **in the same commit**, with URLs, registration behaviour and
+   the accessibility floor untouched.
+
+### 2 · Five PRs, four of them buildable today
+
+**A** the public site (`000`, `001`, `006`) · **B** `059` and `/app/me/privacy` · **C** the platform
+console (`080`–`085`) on `admin-rail` · **D** stories, generated and attendee · **E the mark — HELD**
+(§6). Each opened against `main` on its first push.
+
+★ **`SCR-044` is the one screen `DEC-208` does not reach**: rebuilt in wave 21 and only **extended**
+here with the «قصص الحضور» strip, so it is add-only with its wave-21 suites passing untouched.
+
+### 3 · ★★ The public contract is the wave's tightest constraint, and `public-graph` is why
+
+`tests/unit/public-graph.test.ts` stays untouched and asserts three things the design must be built
+around:
+
+1. the graph is larger than the pages and **still reaches `components/registration-form.tsx`**;
+2. it reaches **exactly five primitives** — `button`, `field`, `icons`, `input`, `textarea`
+   (`DEC-186` §1) — so **a sixth from `ui/` makes it fail**;
+3. ★★ **it names the playground's scope nowhere**: for every file the public routes reach,
+   `source.includes("theme-play")` is `false`.
+
+★ **`001`'s frozen behaviour, measured** (`src/components/registration-form.tsx`): a server-action
+`action={formAction}`; hidden `form_token` (`:146`) and `locale` (`:150`); a honeypot (`:157`);
+`role="alert"` at `:167` and `:348`; posted names `name`, `email`, `topicTitle`, `topicCategory`,
+`topicDescription`, `role`. **Those, the validation and the no-JS path are the contract byte for
+byte**, and `registrations` is never read, altered or dropped (invariant 2 — **20 real signups**).
+
+### 4 · The platform console's two non-negotiables
+
+★ **No data plane** (`REQ-NFR-014`, invariant 8, `DEC-014`): the metrics and orgs tables carry
+**counts only**, each DAL function named in the plan with its test, and **no policy ever gains an
+`is_super_admin()` disjunct**.
+
+★ **Impersonation is `DEC-054`, not a 1xx** — the planning prompt guessed. `DEC-054` Decision 1 lands
+`impersonation_sessions` «`02` §4.1 verbatim, **≤ 4 h by constraint**, append-only»; `DEC-055`
+Decision 3 holds that break-glass browses nothing beyond it; `DEC-057` Decision 7 makes the
+`ImpersonationBanner` real on the platform shell and `/no-access`. The reason and duration are
+stored, **the org's** audit receives the entry, the session ends at the duration. **The new screen
+shows all of it and changes none of it.**
+
+### 5 · Measured corrections
+
+1. ★ **`0194` is missing from the sequence** — `0193` then `0195`, on disk and on `origin/main`. The
+   **lead rules on it**; the planner only flags it. `DEC-180`'s lesson is that a number cited and
+   never written vanishes without an error.
+2. ★ **Sixteen PNGs for seventeen boards**: `AdminAttendance.dc.html` has none. Every other board
+   does.
+3. ★ **`M13.md`'s `DEC-NEXT-40` cites `0192` for `story_views`.** `0192` is `platform_palette`,
+   merged in wave 24. **It is `0198`.**
+4. ★ **`/og.png` is absent from `scripts/visual-diff.mjs`'s `ROUTES`** (`:56` reads
+   `['/ar', '/en', '/ar/register', '/ar/ui']`), so today only `qa:contract` shape-checks it. PR E
+   adds it with a baseline.
+5. ★ **The brand pack is uncommitted on a local `main` that is 9 commits behind `origin/main`, with
+   the wordmark SVG and PNG assets staged as DELETIONS.** Nothing is deleted before the wave that
+   replaces it is on a branch (the owner's rule of 2026-09-28): **fast-forward, cut, then let PR E
+   delete.**
+
+### 6 · ★ PR E — buildable, with ONE decision outstanding (the planner's first reading is corrected here)
+
+The planning prompt says «if either is missing, the logo pack was not unpacked — stop and say so».
+`docs/design/LOGO-PROMPT.md`, `assets/brand/logo/README.md` and `assets/brand/logo/logo.svg` are all
+present; ★ **`docs/design/prototypes/logo-motion.html` is MISSING** — the directory holds only
+`motion-story.html` and `stories.html`, both of 28 September.
+
+★★ **CORRECTED, after the pack was committed as `fe9228f2`: PR E is NOT blocked on this.** The planner's
+first reading was that the motion had no reference at all. It has two:
+**`assets/brand/logo/README.md` §16 specifies all three moves** — **Reveal** (sign-in and cold start only,
+the four faces drawing in order coral → lime → violet → …), **Loading** (the four faces breathing in
+sequence, **1.6 s loop, 200 ms apart, shadows at 50 %**), **Tap** (one settle bounce as the home control),
+with «`prefers-reduced-motion`: static, nothing moves. No sixth moment — the mark never animates as one» —
+and **`logo-animated.svg` carries ten `pathLength="1"` paths**, so the motion needs no measuring.
+**What is missing is the reference CSS, not the specification.** Build from §16; ask the owner for the
+prototype in parallel, because matching a described easing is guesswork and all five moments got one.
+**Do not invent a move §16 does not describe, and do not add a fourth.**
+
+★★ **The second blocker is a contradiction between three of the prompt's own requirements**, which
+nobody could have seen without reading the guard: PR E puts the motion CSS **under `.theme-play`**;
+PR A keeps **`public-graph.test.ts` untouched**; and that test forbids the string `theme-play` in any
+file the public routes reach. **The landing renders the mark.** So a single `<Logo>` naming the scope
+fails the guard — and the prompt's «the public landing may use the reveal once» cannot happen by that
+mechanism either, because the landing may not carry the class.
+
+★ **The way through, for the owner to confirm:** `<Logo>` is a **plain component, not in `ui/`** —
+`ui/` would also break the «exactly five primitives» assertion — carrying the inlined SVG,
+`pathLength="1"` and attribute strokes, and **naming no scope**; the motion attaches from
+`globals.css` by selectors under `.theme-play`, which the public pages never carry. **The landing then
+gets the static mark** unless the owner wants un-scoped reveal CSS written for it, which is a decision
+and not an implementation detail.
+
+★★ **And a finding the pack's commit surfaced:** `M13.md`, `M13-PLANNING-PROMPT.md`,
+`STORIES-USER-STORIES.md`, all seventeen artboards and all sixteen PNGs **were untracked too** and are now on
+**`brand/logo-pack` (`fe9228f2`, 87 files), not on `main`.** The wave's Step 0 either merges that branch first or
+takes the spec from it, and re-commits nothing.
+
+★ **A second numbering gap, beside `0194`: `DEC-245` was missing upstream** — the log ran `244` then `246`, and
+this entry fills it. Two skipped numbers in one wave; `DEC-180`'s lesson is that a number cited and never written
+disappears without an error.
+
+**The rest of PR E is measured and correct**: both wordmark components exist
+(`src/components/wordmark.tsx`, `src/components/brand/wordmark.tsx`), `platform/layout.tsx` has no
+mark, and `src/app/icon.svg` is the favicon to replace. **PR E is ready the moment the prototype lands
+and the owner rules on the landing.**
+
+### 7 · For the owner
+
+1. ★★ **`prototypes/logo-motion.html`**, so PR E can start.
+2. ★ **The landing's reveal** — static mark, or un-scoped CSS written for it (§6).
+3. ★ **`AdminAttendance`'s PNG**, or a ruling that `044`'s strip is reviewed against the board itself.
+4. The **`railway.json` → `.railway/railway.ts`** migration, due **2026-12-01**.
+5. ★★ **The acceptance**, and it is the last one: every screen beside its artboard.
+
+### 8 · Carried, unchanged
+
+`DEC-194`'s two gates. · `DEC-186` §4's overshoot ceiling. · The hard-load duplicate (`DEC-204`). ·
+`DEC-215`'s four. · ★ **After this wave there is no further plan**; anything more is new scope.
+
+- **Documents changed:** `01-prd.md` (the eighteen `REQ-STO-*` and the wave's `REQ-UIX-*`),
+  `09-sitemap-screens.md` (the eleven screens and the story surfaces), `14-roadmap.md` (M28),
+  `15-backlog.md` (the wave's stories), `02-domain-model.md` and `03-permissions-rls.md`
+  (`story_views`, `story_frames`), `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten agent files
+  (the wave-26 map), `STATUS.md` (the wave-26 head)
+---
+
+## DEC-246 — `DEC-244` §6 measured short: the active-member denominator is **five predicates across two functions**, and the second one awards points
+
+- **Date:** 2026-10-04 · **Decided by:** the lead, from the implementation — the measurement was wrong, not the ruling
+- **Amends:** `DEC-244` §6, `05-scoring-engine.md` §6.2 and `STORY-LDR-005`, each of which says «four predicates in one function»
+- **Does not amend:** the ruling itself. The denominator still counts the members who have signed in, for the reason
+  `DEC-244` §6 gives, and it is still provably a no-op on existing data
+
+### 1 · What was measured, and what the measurement missed
+
+`DEC-244` §6 named `snapshot_leaderboard()` and counted its predicates: the org-wide denominator frozen into every
+snapshot (`0176:39`) and the two per-company counts that rank the company race (`0176:95`, `:98`). Three, plus a
+fourth that did not exist. ★ **What it missed is that a second live function counts active members**:
+`evaluate_company_points()` (`0182:97`, `:126`), whose two counts are the denominators of
+`company_attendance_pct` and `company_presenting_pct`.
+
+### 2 · ★★ Why the one it missed is the more important of the two
+
+`snapshot_leaderboard()` decides a **ranking**. `evaluate_company_points()` writes rows into
+`company_points_ledger` — it **awards**. An admin adding five colleagues by hand would therefore not merely have
+re-ordered a board: at the next session completion their own company would have been paid **less**, because its
+attendance percentage was divided by five people who had never been asked to attend. ★ And `points_ledger` and
+`company_points_ledger` are **append-only** (invariant 9), so the under-payment would not have been corrected by
+anything later — it would have been a wrong number that stayed right where it landed.
+
+★ **It is the same defect `A11`/`DEC-016` froze the snapshot denominator to prevent**, arriving through the one
+door nobody had looked at.
+
+### 3 · What is unchanged
+
+Both functions are replaced **whole**, as `0176` replaced `0081` — the house pattern, so the diff is reviewable and
+nothing else in either body moves. ★ **The change is provably a no-op for everything that exists**: `auth_user_id`
+is `not null` until `0197` runs, so every member already satisfies `auth_user_id is not null`, and every stored
+snapshot, every live derivation and every award is byte-identical. `tests/rls/add-a-member.test.ts` asserts it three
+ways — the two counts agreeing on the fixture, the snapshot's stored `active_member_count` across an addition, and
+the per-company count behind the award.
+
+### 4 · The promotion, recorded here because the number was the other thing that could go wrong
+
+`0197_add_a_member.sql`, promoted from `supabase/proposed/wave25/add_a_member.sql` by **moving** it — which is why
+`tests/rls/add-a-member.test.ts` kept passing unchanged, `applyProposed()` being a no-op on a missing path
+(`tests/rls/db.ts:133-147`). The number was swept across **every worktree on the machine** before it was claimed,
+not read off one chain: `main` at 0195/0196, `kareem-marefa-hotfix` at 0194, nothing at 0197. `DEC-180` records two
+migrations vanishing from exactly that shortcut.
+
+★ **A hole in the chain, above this one and not caused by it:** `0194` is still in open PR #69 while `0195` and
+`0196` are already on `main`. A fresh `supabase db reset` therefore applies `0194` **before** them; a production
+pushed in merge order receives it **after**. The three are independent — a certificate mode, a template guard and a
+baseline recolour — so the divergence is in the order and not the outcome, but **`supabase db push` will want
+`--include-all` for the straggler**, and whoever pushes should know before they do.
+
+- **Documents changed:** `05-scoring-engine.md` §6.2, `15-backlog.md` (`STORY-LDR-005`), `STATUS.md`, and
+  `supabase/migrations/0197_add_a_member.sql`'s own header
+
+## DEC-247 — The owner lifts the playground's public-site guard for the three pages this wave rebuilds: the landing gets the mark's reveal, `public-graph.test.ts` is REWRITTEN rather than untouched, and the three things `REQ-NFR-019` actually freezes do not move
+
+- **Date:** 2026-10-04 · **Decided by:** the owner · **Amends:** `DEC-245` §3 and §6, and the wave-26 brief, both of which carried «`public-graph.test.ts` untouched» from the planning prompt; `DEC-186` §6 and `DEC-199`'s «the public site moves last», which this wave completes
+- **Does not amend:** `REQ-NFR-019`, `DEC-167` or invariant 1 — §3 below is why
+
+### 1 · The owner's reasoning, and it is right
+
+*«The public pages were frozen when we were redesigning the app, but now what we are redesigning is the
+landing page itself.»*
+
+★ **`tests/unit/public-graph.test.ts` says the same thing in its own header**: «**The playground never
+reaches the public site** — `DEC-186` §6, contract 5… It is the graph walk `sessions` ran at sync 1 to
+find that the public site renders five primitives and not eight, **kept as a test so the count cannot
+drift unseen**.» That is a **wave-15 guard protecting the public site while the APP was redesigned
+around it**. Wave 26 is the wave in which the public site is itself redesigned, so **as written the
+guard forbids the wave's own purpose.**
+
+### 2 · What changes, in PR A's one commit
+
+The guard is **rewritten, never deleted and never quietly loosened** — the same discipline `DEC-167`
+applies to `qa:appearance`: **the `DEC`, the appearance change, the re-baselined visual diff and the
+rewritten test, in one commit.**
+
+1. **«exactly five primitives»** becomes **exactly the set the rebuilt pages render**, named one by
+   one. ★ **The assertion's purpose survives; its list does not** — the count still cannot drift unseen.
+2. **«names the playground's scope nowhere»** is **lifted for the three rebuilt pages**, which may now
+   carry `.theme-play` and import `ui/scope`. ★ **This is what makes the mark's reveal possible on the
+   landing**, and it is why `<Logo>` needs no second, un-scoped copy of the animation.
+3. The rewritten test **says in its header why**, citing this wave, so no later reader restores the old
+   rule as a regression.
+
+### 3 · ★★ What does not move, and no rewrite may touch it
+
+`REQ-NFR-019` names three things that may never regress, and **appearance has never been one of them**:
+
+- **the URLs** — `/`, `/ar`, `/en`, `/ar/register`, `/og.png`;
+- **the registration behaviour** — `001`'s action, field names, ids, validation and no-JS path, **byte
+  for byte**;
+- **the accessibility floor.**
+
+And **`registrations` is never read, altered or dropped** (invariant 2 — **20 real signups**).
+
+★ **The line is: APPEARANCE AND THE IMPORT GRAPH MAY CHANGE; BEHAVIOUR MAY NOT.** The mark on
+`/ar/register` is an appearance change and nothing else. **A rewrite that weakens any of the three is
+the one failure this wave cannot recover from**, because unlike a screen it cannot be noticed by
+looking.
+
+### 4 · Two consequences
+
+- ★ **PR E has no blocker left.** The scope contradiction was the second; the first was
+  `prototypes/logo-motion.html`, which **landed at `cfbcb099`** defining `@keyframes draw` (reveal),
+  `breathe` (loading) and `settle` (tap) — exactly `logo/README.md` §16's three moves. The CSS comes
+  from the prototype, as the planning prompt always intended.
+- ★ **`SCR-044`'s PNG also landed at `cfbcb099`**, so the batch is **seventeen artboards and seventeen
+  PNGs**, complete.
+
+### 5 · The planner's error, recorded
+
+`DEC-245` and the brief both said «`public-graph.test.ts` untouched», taken from the planning prompt
+without asking whether a wave-15 guard still applied to the wave that redesigns what it guards. **The
+owner caught it.** The general form is worth keeping: **a guard written as «not yet» must be re-read in
+the wave it was waiting for**, and `DEC-199`'s «the public site is in scope and still moves last» was
+exactly such a sentence.
+
+- **Documents changed:** `docs/plan/notes/wave-26-lead.md` (§A and §E), `STATUS.md` (the wave-26 block)
+
+---
+
+## DEC-250 — The certificate mode outlives completion: a session that completed at `off` could never issue a certificate, and `DEC-178`'s refusal was guarding a mechanism that already works
+
+> ★ **Renumbered on 2026-10-05 before it reached `main`** (`DEC-248` §2, `DEC-249` §1). This entry was written as
+> `DEC-245` on `hotfix/certificates-after-completion` while `main`'s log ended at `244`; the wave-26 planner then filled
+> `245` on `main`, and `246` – `249` followed. It has never been on `main` under another number, so this is a branch's
+> renumbering and not an edit of the log. `248` and `249` are on `wave-26a/the-public-site` and land with PR #73.
 
 - **Date:** 2026-10-04 · **Decided by:** the owner, reporting the live defect — «there is a bug in the live app not
   allowing certificates to be issued … the default for the certificate is that the session has no certificate and the

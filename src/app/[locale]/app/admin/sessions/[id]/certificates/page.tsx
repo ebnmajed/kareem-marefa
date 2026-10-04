@@ -30,7 +30,7 @@ import { TemplateControl } from "./template-control";
 // stands for the writer); after completion they issue held certificates one at a time or in bulk, revoke one with a
 // mandatory reason, and hand out a PDF only through the one audited route.
 //
-// ★ DEC-245 (REQ-CRT-017): the MODE outlives completion. `certificate_mode` defaults to `off` (0010:88) and the
+// ★ DEC-250 (REQ-CRT-017): the MODE outlives completion. `certificate_mode` defaults to `off` (0010:88) and the
 // fan-out ran only on the edge into `completed` (0065:78), so a session nobody deliberately switched on completed
 // into a dead end — and this screen, gating the control on `!closed`, was where that dead end was visible. A
 // completed session now keeps the control, and saving it fans out at once (`0194`).
@@ -110,7 +110,7 @@ export default async function SessionCertificatesPage({
   );
   // After completion the template changes while that kind has nothing issued or revoked — which is exactly what
   // `set_certificate_design()` refuses (`design_locked`, 0099), so the screen and the function agree (DEC-238 §2).
-  // ★ DEC-245: no longer `heldCount > 0`. A session completed at `off` has no held certificate and is precisely the
+  // ★ DEC-250: no longer `heldCount > 0`. A session completed at `off` has no held certificate and is precisely the
   // case that must be able to choose a template before it is switched on (REQ-CRT-017).
   const changeable = (k: CertificateDesignData["kinds"][number]) => isAdmin && !cancelled && (!completed || !k.locked);
   const editingKind = completed && typeof sp.design === "string" ? (design.kinds.find((k) => k.kind === sp.design && changeable(k)) ?? null) : null;
@@ -211,7 +211,7 @@ export default async function SessionCertificatesPage({
         </section>
       ) : null}
 
-      {/* ★ DEC-245 (REQ-CRT-017): the mode outlives completion. It used to be gated on `!closed`, and because
+      {/* ★ DEC-250 (REQ-CRT-017): the mode outlives completion. It used to be gated on `!closed`, and because
           `certificate_mode` defaults to `off` (0010:88) a session nobody switched on completed into a dead end —
           one sentence and no control anywhere in the product. A cancelled session still has none: there is no
           attendance to attest and no fan-out will ever run for it. On a completed session the save fans out at
@@ -236,7 +236,7 @@ export default async function SessionCertificatesPage({
         </section>
       ) : null}
 
-      {/* ★ DEC-245: an admin on a completed session with no certificates sees who qualifies, because that is the
+      {/* ★ DEC-250: an admin on a completed session with no certificates sees who qualifies, because that is the
           number the mode's preflight counts and the switch they are about to press acts on. */}
       {!closed || !isAdmin || (completed && !any) ? (
         <section aria-labelledby="cert-who" className="flex flex-col gap-3">
@@ -251,7 +251,7 @@ export default async function SessionCertificatesPage({
         cancelled && !any ? (
           <p className="text-body-sm text-fg-muted">{t("modeControl.closedCancelled")}</p>
         ) : data.mode === "off" && !any ? (
-          // ★ DEC-245: no sentence. «لا تصدر شهادات لهذه الجلسة.» read as final and now contradicts the live
+          // ★ DEC-250: no sentence. «لا تصدر شهادات لهذه الجلسة.» read as final and now contradicts the live
           // control above it — the control, with its three named options, says this state better than prose does.
           null
         ) : (

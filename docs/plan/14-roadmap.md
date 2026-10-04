@@ -873,9 +873,9 @@ and the lead, **no new primitive**, and **the first wave since M6 in which a par
 | The three certificate families × two orientations, rebuilt | `REQ-CRT-016` | B | `designer` |
 | The superseded eleven leave the library | `REQ-DSG-034` | B | `designer` |
 | The eight designed mail families, rebuilt | `REQ-NTF-016` | C | `notify` |
-| ★ **Hotfix** — certificates may be switched on after completion (`DEC-245`) | `REQ-CRT-017` | hotfix | lead |
+| ★ **Hotfix** — certificates may be switched on after completion (`DEC-250`) | `REQ-CRT-017` | hotfix | lead |
 
-★ **The hotfix row is not one of the wave's three PRs.** `DEC-245` closes a live defect the owner met while wave 24
+★ **The hotfix row is not one of the wave's three PRs.** `DEC-250` closes a live defect the owner met while wave 24
 was open — a session that completed at the default `off` could never issue a certificate, and `SCR-045` drew no control
 — so it ships on its own branch, against `main`, with its own migration `0194`. It is recorded here because that is
 where `REQ-CRT-017` was built, not because it belongs to the wave's scope.
@@ -888,30 +888,37 @@ files moving **once**, as one reviewed diff, and stable on a re-run; ★ `qa:con
 pairs and the register-form fingerprint **unmoved**. **The acceptance is the owner's, on a printed poster and a printed
 certificate.**
 
-## M27 — a member may be added by hand, not only by signing in · wave 25 · `DEC-243`
+## M27 — a member may be added by hand, and is a member at once · wave 25 · `DEC-243` · `DEC-244`
 
-★★ **The second door.** Nothing about the first changes: a Google account on an allowed domain is still
-auto-provisioned on arrival with no admin in the loop (`REQ-AUT-003`). What is added is that an **مشرف المؤسسة** may
-name a person in advance — and that naming is what admits them, **including when their email domain is on no org's
-list**, which is the case the first door has no answer for: an outside presenter, a partner, a personal address.
-★ **A named person is an invitation, not a member** (`ENT-member_invitations`): nothing in the product can reference
-them, so no count, ranking, denominator or directory moves until they sign in and the invitation is claimed. Two
-teammates and the lead, one migration, **no new primitive**, and `SCR-049` is **extended, not rebuilt**.
+★★ **The second door, and it opens onto the same room.** Nothing about the first changes: a Google account on an
+allowed domain is still auto-provisioned on arrival with no admin in the loop (`REQ-AUT-003`). What is added is that an
+**مشرف المؤسسة** may add a person by email — and ★★ **that person is a real member from the moment it is saved**: in
+the members list, in the directory, in every member picker, assignable as a presenter, with their role, company and job
+title already set. They are waiting for an auth user, not for a row, and their first sign-in **binds** it rather than
+inserting a second (`REQ-TEN-011`). Adding also **admits an address the domain list would refuse**
+(`REQ-TEN-010`) — the case the front door has no answer for: an outside presenter, a partner, a personal address.
+
+★ **The shape the owner corrected.** `DEC-243` proposed a roster table beside `members` and wrote «nothing else in the
+product can reference them» — which met «appear» and not «take effect». `DEC-244` withdrew it: **no new table, no new
+enum, no third status.** One nullable column, one new column, and the active-member denominator corrected so that
+adding five people cannot dilute their company's score before any of them arrives (`REQ-LDR-006`).
 
 | Work | Requirements | Track |
 |---|---|---|
-| The entity, its policy set, the three admin RPCs | `REQ-TEN-009` | lead |
+| `auth_user_id` nullable, `invited_by`, the four admin RPCs | `REQ-TEN-009` | lead |
 | The gate override in the Before User Created hook | `REQ-TEN-010` | lead |
-| The claim inside `provision_member()` | `REQ-TEN-011` | lead |
-| The invitation mail and its job | `REQ-NTF-017` | `notify` |
-| `SCR-049` gains the add, the waiting rows, resend and revoke | `REQ-UIX-113` | `console` |
+| First sign-in binds the waiting row | `REQ-TEN-011` | lead |
+| The active-member denominator counts bound members | `REQ-LDR-006` | `scoring` |
+| The mail that announces the addition, and its job | `REQ-NTF-017` | `notify` |
+| `SCR-049` gains the add, the unbound mark, resend and delete | `REQ-UIX-113` | `console` |
 
-**Demonstrable:** ★★ an admin adds a **personal-domain** address, and that person signs in and lands in the app —
-the case the product refuses today; ★★ the same invitation **revoked before sign-in**, and the same account refused
-again; ★ a concurrent double sign-in claiming the invitation once and creating exactly one member; ★ the member
-arriving with the admin's role, company and job title already set; ★ ten addresses added in one paste, each line
-reported; ★ the matrix still at 25 keys and the 120 pinned mail files untouched; ★ `qa:contract` and the
-register-form fingerprint **unmoved**. **The acceptance is the owner's, adding a real person.**
+**Demonstrable:** ★★ an admin adds a **personal-domain** address, that person is **assigned as a presenter before they
+have ever signed in**, and then signs in and finds themselves already on the session — the case the product refuses
+today; ★★ a concurrent double sign-in **binding once**, with no second member created; ★★ the active-member
+denominator **byte-identical** on existing data before and after the predicate; ★ a mistyped address deleted outright
+while unbound, and refused once bound; ★ ten addresses added in one paste, each line reported; ★ the matrix still at 25
+keys and the 120 pinned mail files untouched; ★ `qa:contract` and the register-form fingerprint **unmoved**. **The
+acceptance is the owner's, adding a real person.**
 
 ## 3. Dependencies
 
@@ -964,7 +971,7 @@ graph LR
 | **M12** | A layer positioned by finger **and** by tap; an email designed, previewed in three modes and opened in Outlook |
 | **M13** | The live marketing site rebuilt on the same system, `qa:contract` never once red, `registrations` untouched |
 | **M26** | A poster and a certificate printed from the rebuilt baseline, beside one issued before the wave that still renders as it did |
-| **M27** | An admin adds a personal-domain address and that person signs in and belongs — then the same invitation revoked, and the same account refused |
+| **M27** | An admin adds a personal-domain address, assigns them as a presenter before they have signed in, and then they sign in and are already on the session |
 
 ---
 

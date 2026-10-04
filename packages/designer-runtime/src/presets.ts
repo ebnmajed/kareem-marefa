@@ -160,23 +160,27 @@ export type Anchor = 'block-start' | 'block-end' | 'center'
  *  keeps its frame's own proportion and so never crops; it is unchanged, for
  *  the documents that already use it. */
 export type ScaleMode = 'proportional' | 'fixed' | 'fill' | 'page'
+export type InlineAnchor = 'start' | 'end'
 
 export interface LayerPresetBehaviour {
   /** Where the layer sits when the canvas reflows. */
   anchor?: Anchor
+  /** ★ The same question on the inline axis — see `model.ts`. */
+  inlineAnchor?: InlineAnchor
   /** How its frame responds. */
   scale?: ScaleMode
   /** The per-variant crop override (A32). */
   focal?: { x: number; y: number }
 }
 
-function behaviourFor(layer: Layer, target: PresetName): LayerPresetBehaviour & Required<Pick<LayerPresetBehaviour, 'anchor' | 'scale'>> {
+function behaviourFor(layer: Layer, target: PresetName): LayerPresetBehaviour & Required<Pick<LayerPresetBehaviour, 'anchor' | 'inlineAnchor' | 'scale'>> {
   // A per-preset entry overrides `default` field by field, so declaring a
   // crop for `og` does not silently drop the anchor `default` set.
   const fallback = layer.presets?.default ?? {}
   const declared = layer.presets?.[target] ?? {}
   return {
     anchor: declared.anchor ?? fallback.anchor ?? 'block-start',
+    inlineAnchor: declared.inlineAnchor ?? fallback.inlineAnchor ?? 'start',
     scale: declared.scale ?? fallback.scale ?? 'proportional',
     ...(declared.focal ?? fallback.focal ? { focal: declared.focal ?? fallback.focal } : {}),
   }
@@ -205,7 +209,7 @@ export function derive(doc: DesignDocument, target: PresetName): DesignDocument 
   const layers = doc.layers
     .filter((l) => !(l.hideAt ?? []).includes(target))
     .map((layer): Layer => {
-      const { anchor, scale, focal } = behaviourFor(layer, target)
+      const { anchor, inlineAnchor, scale, focal } = behaviourFor(layer, target)
       const f = layer.frame
 
       // ★ D2b — a NEW branch, before every other: nothing the three branches
@@ -237,8 +241,19 @@ export function derive(doc: DesignDocument, target: PresetName): DesignDocument 
         h = f.h * factor
       }
 
-      const inlineOffset = (f.x - src.x) * (scale === 'fill' ? 0 : factor)
-      let x = dst.x + inlineOffset
+      // ★ The inline axis's two anchors, mirroring the block axis's below.
+      //   `end` holds the layer's distance from the source safe box's INLINE-END,
+      //   which is what a corner element — a QR, a logo lockup — actually holds
+      //   constant; `start` holds its distance from the inline-start, which is
+      //   what every layer did before this existed and still does by default.
+      //   `fill` spans the box, so neither applies to it.
+      const fromInlineEnd = src.x + src.w - (f.x + f.w)
+      let x =
+        scale === 'fill'
+          ? dst.x
+          : inlineAnchor === 'end'
+            ? dst.x + dst.w - fromInlineEnd * factor - w
+            : dst.x + (f.x - src.x) * factor
       // Constrained to the safe area (A12) rather than left hanging over the
       // edge; what still does not fit is reported by safeAreaViolations().
       if (x + w > dst.x + dst.w) x = dst.x + dst.w - w

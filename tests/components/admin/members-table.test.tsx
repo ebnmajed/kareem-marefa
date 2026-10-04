@@ -46,6 +46,10 @@ const row = (over: Partial<ConsoleMemberRow>): ConsoleMemberRow => ({
   avatarUrl: null,
   points: 1240,
   levelName: "كريم معرفة",
+  // ★ wave 25: the default is a member who arrived by signing in, so every case written before
+  // M27 keeps its meaning unchanged. A waiting row is `row({ hasSignedIn: false })`.
+  hasSignedIn: true,
+  invitedBy: null,
   ...over,
 });
 
