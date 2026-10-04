@@ -80,8 +80,9 @@ describe("wave 20 — the hub, settings and the boards draw their own phone top 
   ])("%s", (p) => {
     expect(ownsTopRow(p)).toBe(true);
   });
-  it("but not privacy, which no batch draws, nor a deeper path", () => {
-    expect(ownsTopRow("/ar/app/me/privacy")).toBe(false);
+  // ★ wave 26 (DEC-251 §3.5): an expectation moved — M13 draws privacy (`m13/Privacy.dc.html`), so it owns its row.
+  it("privacy too, since M13 draws it — but not a deeper path", () => {
+    expect(ownsTopRow("/ar/app/me/privacy")).toBe(true);
     expect(ownsTopRow("/ar/app/me/points/x")).toBe(false);
     expect(ownsTopRow("/ar/app/leaderboards/companies/x")).toBe(false);
   });
