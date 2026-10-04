@@ -35,17 +35,44 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { BASELINE_LIBRARY, INK_REFERENCE_CSS, backgroundCss, inkedRatio, platformBrand, renderDocumentToHtml } from '@kareem/designer-runtime'
 
-export const BACKGROUND_CASES = ['gradient-rtl', 'gradient-ltr', 'ink-on-dark']
+export const BACKGROUND_CASES = ['solid-rtl', 'gradient-rtl', 'gradient-ltr', 'ink-on-dark']
 
 /** The production threshold (`worker/src/render/variant.ts`). */
 const MIN_INK_RATIO = 0.001
 const W = 540
 const H = 675
 
-/** The gradient a v2 poster actually ships, not a copy of it. */
-function posterGradient() {
-  const template = BASELINE_LIBRARY.find((t) => t.purpose === 'poster' && t.document.background?.type === 'gradient')
-  if (!template) throw new Error('backgrounds: no poster in the library declares a gradient — DEC-127 has not landed')
+/**
+ * ★★ THE MIRROR'S SUBJECT IS NOW THE HARNESS'S OWN (wave 24, DEC-242 §1).
+ *
+ * Until this wave this function read the gradient out of `BASELINE_LIBRARY` and
+ * THREW if no poster declared one. `DEC-242` supersedes `REQ-DSG-026`'s gradient
+ * clause — the library's posters carry a flat ground — so reading it from there
+ * would now fail the whole block on a design change that is correct.
+ *
+ * The gradient is kept as a FIXTURE because what the two gradient cases prove is
+ * not «the library has a gradient»: it is that `backgroundCss()` resolves every
+ * stop independently and mirrors the angle as `360 − angle` for LTR, which is a
+ * property of the RENDERER and is still reachable through `model.ts`'s union, an
+ * org's own document and any future template. Keeping the fixture identical to
+ * the gradient `DEC-127` defined is also what keeps `goldens/backgrounds/
+ * gradient-rtl.png` from moving for a second reason in one wave.
+ *
+ * ★ `solid-rtl` is the case that watches the real thing: it takes the ground a
+ * REBUILT poster actually ships and needs no golden, because a flat fill is
+ * proved by its computed value and its corners rather than by an image.
+ */
+const MIRROR_GRADIENT = { type: 'gradient', angle: 140, stops: [{ color: '{{brand.surface}}' }, { color: '{{brand.canvasRaise}}' }] }
+
+function mirrorGradient() {
+  return { family: 'fixture', background: MIRROR_GRADIENT }
+}
+
+/** The flat ground a rebuilt poster ships, and the family it belongs to — read
+ *  from the library, so a colourway that stopped being a token is caught here. */
+function posterGround() {
+  const template = BASELINE_LIBRARY.find((t) => t.purpose === 'poster' && t.document.background?.type === 'solid')
+  if (!template) throw new Error('backgrounds: no poster in the library declares a flat ground — DEC-242 §1 has not landed')
   return { family: template.family, background: template.document.background }
 }
 
@@ -122,7 +149,8 @@ export async function runBackgroundBlock({ browser, diffPage, diffOf, facesFor, 
   const dir = join(goldens, 'backgrounds')
   const recordPath = join(dir, 'record.json')
   const goldenRtl = join(dir, 'gradient-rtl.png')
-  const { family: posterFamily, background } = posterGradient()
+  const { family: posterFamily, background } = mirrorGradient()
+  const { family: groundFamily, background: ground } = posterGround()
   const palette = platformBrand('dark')
   const bindings = { values: palette }
 
@@ -157,6 +185,31 @@ export async function runBackgroundBlock({ browser, diffPage, diffOf, facesFor, 
     const token = s.color.replace(/^\{\{|\}\}$/g, '').trim()
     return palette[token]
   })
+
+  /* ── solid-rtl: the ground a REBUILT poster actually ships ─────────────── */
+  // ★ wave 24. No golden and no image: a flat fill is completely described by
+  // its computed value, and asserting the four corners are one colour catches
+  // the only way it can go wrong — a token that did not resolve and fell back to
+  // white, which is the trap `render.ts` held open for a gradient (above) and
+  // holds open for a solid in exactly the same way.
+  asserted++
+  {
+    const solidDoc = documentFor('rtl', ground)
+    const solid = await render(browser, solidDoc, { bindings })
+    const token = (ground.color ?? '').replace(/^\{\{|\}\}$/g, '').trim()
+    const want = palette[token]
+    const problems = []
+    if (!want) problems.push(`the ground names a token the dark palette does not have: ${ground.color}`)
+    else {
+      if (solid.computed !== rgb(want)) problems.push(`computed ${solid.computed}, expected ${rgb(want)} for ${ground.color}`)
+      if (want !== '#ffffff' && solid.computed.includes('rgb(255, 255, 255)')) problems.push(`the ground fell back to white: ${solid.computed}`)
+      const { corners } = await inspect(diffPage, solid.capture)
+      const flat = [corners.tl, corners.tr, corners.bl, corners.br]
+      if (new Set(flat.map((c) => c.join(','))).size !== 1) problems.push(`a flat ground painted four different corners: ${flat.map((c) => c.join(',')).join(' | ')}`)
+    }
+    if (problems.length) fail(`solid-rtl: ${problems.join(' · ')}`)
+    else pass(`solid-rtl — ${groundFamily}'s ground ${ground.color} computes to ${solid.computed}, flat on all four corners`)
+  }
 
   /* ── gradient-rtl ─────────────────────────────────────────────────────── */
   asserted++
@@ -211,7 +264,11 @@ export async function runBackgroundBlock({ browser, diffPage, diffOf, facesFor, 
   /* ── ink-on-dark: the production probe ────────────────────────────────── */
   asserted++
   {
-    const blank = await render(browser, rtlDoc, { bindings, reference: true })
+    // ★ wave 24: probed on the FLAT ground a poster now ships, which is what
+    // production renders. The claim is unchanged — a dark page with no layers
+    // must measure blank — and a flat canvas is the harder case of the two.
+    const solidDoc = documentFor('rtl', ground)
+    const blank = await render(browser, solidDoc, { bindings, reference: true })
     const text = {
       id: 'l_line',
       kind: 'text',
@@ -221,7 +278,7 @@ export async function runBackgroundBlock({ browser, diffPage, diffOf, facesFor, 
       align: 'center',
       color: '{{brand.fgHeading}}',
     }
-    const inked = await render(browser, documentFor('rtl', background, [text]), { bindings, reference: true, fonts: facesFor(family) })
+    const inked = await render(browser, documentFor('rtl', ground, [text]), { bindings, reference: true, fonts: facesFor(family) })
     const problems = []
     if (blank.ink >= MIN_INK_RATIO) problems.push(`a page with no layers measured ${(blank.ink * 100).toFixed(3)}% inked — the probe would pass a blank export`)
     if (inked.ink < MIN_INK_RATIO) problems.push(`a page with a line of text measured ${(inked.ink * 100).toFixed(3)}% inked — the probe would fail a good export`)

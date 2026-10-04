@@ -35,6 +35,11 @@ function migration(suffix: string, proposed?: string): string {
 const BASELINE = () => migration("_baseline_library.sql");
 const GUARD = () => migration("_template_guard_walks_every_colour.sql", "0001_template_guard_walks_every_colour.sql");
 const SEED = () => migration("_certificate_library.sql", "0002_certificate_library.sql");
+// ★ wave 24 (DEC-242): the supersede function, then the rebuilt library. 0005
+// CALLS `supersede_baseline_template()`, so 0006 is applied first — the same
+// order the promoted migration uses.
+const SUPERSEDE = () => migration("_supersede_baseline.sql", "0006_supersede_baseline.sql");
+const PLAYGROUND = () => migration("_playground_library.sql", "0005_playground_library.sql");
 
 /** The platform library as the migrations build it on an empty world. */
 async function buildLibrary(tx: Tx) {
@@ -45,6 +50,11 @@ async function buildLibrary(tx: Tx) {
   await tx.q(BASELINE());
   await tx.q(GUARD());
   await tx.q(SEED());
+  // ★ LEDGER (wave 24): two statements added. The roster is still counted from
+  // the migrations alone, on an empty world — it is just that the migrations now
+  // include the wave that rebuilt every document and superseded the old rows.
+  await tx.q(SUPERSEDE());
+  await tx.q(PLAYGROUND());
 }
 
 interface Row {
@@ -123,17 +133,44 @@ describe("REQ-DSG-026 — the seeded roster (DEC-148)", () => {
     });
   });
 
-  it("roster.poster_gradient — every poster family's latest version carries DEC-127's gradient, exactly", async () => {
+  it("roster.poster_ground — ★ every poster family's latest version carries a FLAT brand ground, and five families use five", async () => {
+    // ★ LEDGER (wave 24): replaced `roster.poster_gradient`. DEC-127's gradient
+    // is one of the four visual clauses DEC-242 supersedes in REQ-DSG-026, and
+    // the version is 1 because these are eleven NEW rows (REQ-DSG-034), not new
+    // versions of the old ones.
     await withTx(async (tx) => {
       await buildLibrary(tx);
+      const grounds = new Set<string>();
       for (const row of (await platformRows(tx)).filter((r) => r.purpose === "poster")) {
-        expect(row.version, row.family).toBe(2);
-        expect(row.document.background, row.family).toEqual({
-          type: "gradient",
-          angle: 140,
-          stops: [{ color: "{{brand.surface}}" }, { color: "{{brand.canvasRaise}}" }],
-        });
+        expect(row.version, row.family).toBe(1);
+        const bg = row.document.background as { type: string; color?: string } | undefined;
+        expect(bg?.type, row.family).toBe("solid");
+        expect(bg?.color, row.family).toMatch(/^\{\{brand\.[A-Za-z]+\}\}$/);
+        grounds.add(bg!.color as string);
       }
+      expect(grounds.size).toBe(5);
+    });
+  });
+
+  it("roster.superseded — ★ the old eleven are gone from the live roster, and a retired row never takes a new one's place", async () => {
+    // REQ-DSG-034. On an empty world nothing references a baseline version, so
+    // all eleven old rows DELETE — which is also the branch that proves the
+    // seed's own idempotency guard is not relying on `retired_at`.
+    await withTx(async (tx) => {
+      await buildLibrary(tx);
+      const [{ live, total }] = await tx.q<{ live: string; total: string }>(
+        `select (select count(*) from public.design_templates where scope = 'platform' and retired_at is null)::text as live,
+                (select count(*) from public.design_templates where scope = 'platform')::text as total`,
+      );
+      expect({ live, total }).toEqual({ live: "11", total: "11" });
+      // Every live row is version 1 — i.e. a row this wave seeded, never a
+      // survivor of 0061 or 0098.
+      const versions = await tx.q<{ v: string }>(
+        `select distinct v.version::text as v from public.design_template_versions v
+           join public.design_templates t on t.id = v.template_id
+          where t.scope = 'platform' and t.retired_at is null`,
+      );
+      expect(versions.map((r) => r.v)).toEqual(["1"]);
     });
   });
 
@@ -158,7 +195,18 @@ describe("REQ-DSG-026 — the seeded roster (DEC-148)", () => {
     });
   });
 
-  it("roster.idempotent — the seed run twice adds no row and no version, and version 1 is never edited", async () => {
+  it("roster.idempotent — the LATEST seed run twice adds no row and no version, and version 1 is never edited", async () => {
+    // ★ LEDGER (wave 24): the re-run is now the latest seed's, not 0098's.
+    //
+    // ★ AND THE REASON IS A FINDING WORTH WRITING DOWN. Re-applying 0098 AFTER
+    // wave 24's seed adds its own version 2 — the OLD design — to the eleven NEW
+    // rows, because they are the live defaults it looks for. Eleven templates,
+    // nineteen versions, and since `certificate_template_latest_version()` takes
+    // the highest PUBLISHED version, issuance would quietly resolve the old
+    // design again. It is not reachable: migrations run once, in order, and 0098
+    // precedes 0193 in every environment for ever. But a future «reseed the
+    // library» script that replays 0061/0098 WOULD do it, which is why this
+    // comment is here and not in a commit message.
     await withTx(async (tx) => {
       await buildLibrary(tx);
       const [{ v1 }] = await tx.q<{ v1: string }>(
@@ -172,10 +220,13 @@ describe("REQ-DSG-026 — the seeded roster (DEC-148)", () => {
                   (select count(*) from public.design_template_versions v join public.design_templates t on t.id = v.template_id where t.scope = 'platform')::text as versions`,
         ))[0];
       const before = await count();
-      // 8 version-1 rows from 0061, 8 version-2 rows, 3 portrait version-1 rows.
-      expect(before).toEqual({ templates: "11", versions: "19" });
+      // ★ LEDGER (wave 24): was `{ templates: "11", versions: "19" }` — 8
+      // version-1 rows from 0061, 8 version-2 rows and 3 portrait version-1
+      // rows. The wave deleted all eleven old rows on an empty world, so what
+      // remains is the eleven it seeded, one version each.
+      expect(before).toEqual({ templates: "11", versions: "11" });
 
-      await tx.q(SEED());
+      await tx.q(PLAYGROUND());
       expect(await count()).toEqual(before);
       const [{ v1: after }] = await tx.q<{ v1: string }>(
         `select md5(string_agg(v.document::text, '|' order by t.family, t.purpose)) as v1
