@@ -114,7 +114,7 @@ three.
 
 ## Edit only
 
-`packages/designer-runtime/src/**` **except `brand.ts`** (the lead's this wave), `packages/storage-paths/src/designer.ts`,
+`packages/designer-runtime/src/**` **except `brand.ts`** (the lead's this wave), ★ `packages/designer-runtime/scripts/seed-sql.mjs` (granted at sync 1), `packages/storage-paths/src/designer.ts`,
 `src/components/{designer,posters}/**`, `src/components/certificates/**`,
 `src/app/[locale]/app/admin/{designer,templates}/**`, `src/app/[locale]/app/admin/sessions/[id]/certificates/**`,
 `src/app/api/{designer,fonts,certificates}/**`, `src/lib/dal/{designer,templates,posters,certificates,fonts}.ts`,

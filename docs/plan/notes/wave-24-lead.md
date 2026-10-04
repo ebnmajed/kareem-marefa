@@ -130,6 +130,23 @@ says what reads `accent` and what it becomes.
 
 ---
 
+## 8 · ★★ The owner's four rulings at sync 1 (2026-10-04) — these bind PR B
+
+| # | Question | ★ The owner's answer | What it binds |
+|---|---|---|---|
+| 1 | **The team colourway.** The first card is named «ساحة اللعب — لون الفريق» and three of five are painted with a company's colour — but `0094:103` allows only `^\{\{\s*brand\.[A-Za-z]+\s*\}\}$`, there is no `session.teamColor` binding, nothing in `poster_render_context()`, and `--team` is a CSS property a composed poster never sees | ★ **Five token grounds now; the team colour is its own later wave** | `designer` uses `canvas`, `fgHeading` inverted, `surface`, `canvasRaise` and **`node` (lime) as a ground with `canvas` text (16:1)**. **No guard widened, no new binding, no new render-context field, no migration.** `roster.variants` does not move |
+| 2 | **The omissions.** The thumbnails do not draw the org logo, the certificate's issue date, or what an achievement was for | ★ **Keep all three** | A 196 px thumbnail is a preview, **not an exhaustive inventory**. The logo layer stays, so `06` §8.3 and `REQ-DSG-019`'s A3 guard keep their subject and replacing the logo still restyles every template. `l_issued` and `l_reason` stay — **a certificate that does not say when it was issued is a regression, not a simplification** — and so does `l_kind`, which also keeps `attendance@landscape` from being byte-identical to `presenter@landscape` |
+| 3 | **Re-rendering what already exists.** A poster exported before the merge keeps the old design until its session changes | ★ **A separate one-off the lead hands over, NOT inside `0193`** | `0193` stays schema-only. The lead writes a script that enqueues through `0071`'s existing fan-out (`poster:{session_id}`, skipping detached by `REQ-DSG-003`), and **the owner runs it when they choose the worker's load.** A migration that queues a batch of Chromium renders during a deploy is a surprise |
+| 4 | **Cyan and violet** — `DEC-242` §1 called them «a platform accent»; `01-tokens.md:59,61` names them `--color-team-cyan` (مواهب) and `--color-team-violet` (أيك) | ★ Settled by ruling 1 | **They are team colours, so the two «platform» cards are the SAME colourway as card 1, not two more.** The design asks for three colourways, not five — which is why ruling 1 is a real loss and a later wave, not a tidy-up |
+
+★★ **And the production read the owner ran, which ruling 3 and `0193` both depend on:** `certs = 0` on **all eleven**
+rows; `docs = 0` on all but **`poster/talk`, which has 2**. So the expected outcome is **ten deleted, `talk` retired** —
+and `talk` for the reason `designer` derived from `0063:113-121` before seeing the data. ★ **The function stays
+defensive anyway**: a certificate can be issued between the read and the push, and local, CI and future environments
+differ. The read is a snapshot, not a guarantee.
+
+---
+
 ## 5 · The three PRs
 
 | PR | Branch · tree | Who | What |

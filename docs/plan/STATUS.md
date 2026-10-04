@@ -36,6 +36,22 @@ certificate.
 | 9 | ★★ **The pinned mail files do not read the platform palette at all.** `SAMPLE_BRAND` is the **legacy three-key shape** `{fgBody, fgMuted, surface}` with no `light` object, so `compilePalette()` falls to the sanitiser's own hard-coded defaults | The 120 files are **unmoved by PR A** — measured, whole unit suite green — and the one reviewed diff falls in **PR C**. The wave's plan said the opposite; this corrects it |
 | 10 | ★★ **A real send reads only SIX of the ten tokens.** `compilePalette()` takes `light.{fgHeading,edge,canvas}` and `legacyBrand()` takes `light.{fgBody,fgMuted,surface}`. **`edgeStrong`, `spine`, `node` and `canvasRaise` never reach mail** — and `node` is the one that now carries lime. `render.ts:362`'s own comment («`accent` is `fgHeading`, not a new token … none of them is a "primary"») is **overtaken by `DEC-242` §2** | **The mail has no accent and paints one with its heading colour.** That is `REQ-NTF-016`'s single most visible change and widens PR C beyond restyling eight layouts: `notify` wires the ten tokens through |
 
+### ★★ The production read, and the owner's four rulings at sync 1 (2026-10-04)
+
+★★ **The owner ran the read** (`supabase db query --linked` is denied to agent sessions). Platform scope, 11 rows:
+**`certs = 0` on every one**, `docs = 0` on all but **`poster/talk`, which has 2**. So the expected outcome is
+**ten deleted and `talk` retired** — and `talk` for exactly the reason `designer` derived from `0063:113-121`
+(`poster_render_context()` resolves `family = 'talk'` alone) **before** it saw the data. ★ `REQ-CRT-014`'s risk is nil
+on this data and **the function stays defensive regardless**: a certificate can be issued between the read and the
+push, and local, CI and future environments differ.
+
+| # | Ruling | Consequence |
+|---|---|---|
+| 1 | ★ **Five token grounds now; the team colour is its own later wave** | `0094:103` allows only `{{brand.*}}`, there is no `session.teamColor` binding and nothing in `poster_render_context()` — so the team colourway needs a widened guard, a new binding and two render contexts. **Not mid-wave.** The five grounds are `canvas`, `fgHeading` inverted, `surface`, `canvasRaise` and **`node` (lime) with `canvas` text, 16:1** |
+| 2 | ★ **The thumbnails' omissions are kept, not deleted** | A 196 px thumbnail is a preview, not an inventory. **The org logo stays** (so `06` §8.3 and `REQ-DSG-019`'s A3 guard keep their subject), **the certificate's issue date stays**, **the achievement's reason stays**, and `l_kind` stays — which also keeps `attendance@landscape` from being byte-identical to `presenter@landscape` |
+| 3 | ★ **The re-render is a one-off the owner runs, not part of `0193`** | `0193` stays schema-only; the lead hands over a script that enqueues through `0071`'s existing fan-out. A migration that queues a batch of Chromium renders during a deploy is a surprise |
+| 4 | ★ **Cyan and violet are TEAM colours, not platform accents** | `01-tokens.md:59,61` — so the artboard's two «platform» cards are the **same** colourway as card 1. The design asks for **three** colourways, not five, which is why ruling 1 is a real loss and a later wave rather than a tidy-up. `DEC-242` §1's «a platform accent» is corrected here |
+
 ### ★★ The ruling on «delete», and what it means on screen
 
 **Delete row by row; retire the row when the delete is refused; report which per row** (`DEC-242` §3). `retired_at` is
@@ -44,6 +60,12 @@ from `055`, gone from the picker, never resolved by issuance** — is true for a
 invisible and unreachable: a version row kept only so a certificate somebody is holding still renders.
 ★ **Nothing is forced** — no `cascade`, no detaching a certificate from its version, no touching
 `recipient_name_snapshot` or a pinned `font_hashes`.
+
+★★ **THE SHORTCUT THE OWNER TOOK (2026-10-04).** `0055`'s guard refuses a hex literal, so **every colour in all
+eleven existing baseline documents is already a `brand.*` binding** — which means **PR A alone re-colours every poster
+and certificate**, ink and bone and lime instead of navy, **with no document rebuilt.** The owner chose to ship it
+ahead of B and C. The designed *structure* still needs PR B. ★ This is why A was built to stand alone and why B and C
+are cut from its head rather than from each other.
 
 ★ **The per-row report goes here when `0193` runs.**
 
@@ -66,12 +88,12 @@ because that is what moving a default means — and an org that has overridden i
 | # | Step | PR | Who | State |
 |---|---|---|---|---|
 | 0 | `DEC-242`, the map, the ten agent files, `01`/`09`/`14`/`15`, this block, the brief | — | lead | ✓ done |
-| 1 | ★★ **The palette** — `brand.ts`'s `LIGHT`/`DARK` and `0192` replacing `brand_kit()`'s ten fallbacks, **one commit**, `brand-kits.test.ts` green | A | lead | ☐ |
-| 2 | The six status pairs re-measured from the committed constants | A | lead | ☐ |
-| 3 | The parity goldens re-baselined, every before-and-after opened | A | lead | ☐ |
+| 1 | ★★ **The palette** — `brand.ts`'s `LIGHT`/`DARK` and `0192` replacing `brand_kit()`'s ten fallbacks, **one commit**, `brand-kits.test.ts` green | A | lead | ✓ `bb9adc5d` |
+| 2 | The six status pairs re-measured from the committed constants | A | lead | ✓ all six clear 4.5:1 |
+| 3 | The parity goldens re-baselined, every before-and-after opened | A | lead | ✓ **exactly one moved** — `backgrounds/gradient-rtl.png`, opened and reviewed; the six shaping goldens 0.000% |
 | 4 | The 120 pinned mail files — **measured UNMOVED by the palette**; the one reviewed diff moves to PR C | A | lead | ✓ measured |
-| 5 | «the palette is in at `<sha>`» posted; B and C cut from A's head | A | lead | ☐ |
-| 6 | Sync 1 — two plans approved with their colour tables and the delete-or-retire table | — | lead | ☐ |
+| 5 | «the palette is in at `bb9adc5d`» posted; **PR A open as draft #62**; B and C cut from A's head | A | lead | ⏳ worktrees owed |
+| 6 | Sync 1 — two plans approved with their colour tables and the delete-or-retire table | — | lead | ✓ both approved; four owner rulings above |
 | 7 | The five baseline poster families, rebuilt | B | `designer` | ☐ |
 | 8 | The three certificate families × both orientations, rebuilt | B | `designer` | ☐ |
 | 9 | `0193` — the superseded eleven, deleted-or-retired, with its report | B | lead, from `designer`'s proposed file | ☐ |
