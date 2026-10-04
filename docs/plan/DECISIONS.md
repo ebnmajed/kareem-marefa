@@ -8915,7 +8915,7 @@ migration that is now **two column changes, four RPCs, two function amendments a
 
 - **Date:** 2026-10-04 · **Decided by:** the owner (§1, three rulings); everything else by the wave-26 planner, from `docs/design/screens/M13.md`, `STORIES-USER-STORIES.md`, the seventeen artboards, and measurement of the tree at `00377c6f`
 - **Amends:** `M13.md`'s `DEC-NEXT-40`, which cites migration `0192` for `story_views` — **`0192` is `platform_palette` and taken**, so it is `0198` (§5.3)
-- **Adds:** milestone **M28**; **`REQ-STO-001` … `REQ-STO-018`** from STO-01…18 one-to-one; one migration, **`0198`**, carrying `story_views` and `story_frames`. ★ **Two primitives — `story-viewer`, `story-capture` — so the floor moves 69 → 71**
+- **Adds:** milestone **M28**; ★ **eighteen `REQ-STO-*`, one per STO-01…18** — written in `01-prd.md` by the wave, and named here without their citable form so `traceability.mjs` does not read them as broken citations (the precedent is `a3133d53`); one migration, **`0198`**, carrying `story_views` and `story_frames`. ★ **Two primitives — `story-viewer`, `story-capture` — so the floor moves 69 → 71**
 - **Does not touch:** the public URLs, the registration behaviour, the accessibility floor, `registrations`, `public-graph.test.ts`, `console-register.test.ts`
 
 ### 1 · The owner's three rulings
@@ -9044,7 +9044,7 @@ and the owner rules on the landing.**
 `DEC-194`'s two gates. · `DEC-186` §4's overshoot ceiling. · The hard-load duplicate (`DEC-204`). ·
 `DEC-215`'s four. · ★ **After this wave there is no further plan**; anything more is new scope.
 
-- **Documents changed:** `01-prd.md` (`REQ-STO-001` … `018` and the wave's `REQ-UIX-*`),
+- **Documents changed:** `01-prd.md` (the eighteen `REQ-STO-*` and the wave's `REQ-UIX-*`),
   `09-sitemap-screens.md` (the eleven screens and the story surfaces), `14-roadmap.md` (M28),
   `15-backlog.md` (the wave's stories), `02-domain-model.md` and `03-permissions-rls.md`
   (`story_views`, `story_frames`), `TRACEABILITY.md` (generated), `CLAUDE.md` and the ten agent files
