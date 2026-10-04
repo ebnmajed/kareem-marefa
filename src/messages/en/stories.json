@@ -16,6 +16,7 @@
       "startsSoon": "Starts tomorrow",
       "live": "Live now",
       "liveCount": "{count, plural, =0 {Nobody in the room yet} one {1 in the room} other {{value} in the room}}",
+      "inRoom": "in the room",
       "until": "Until {time}",
       "recap": "Completed",
       "attended": "Attended",

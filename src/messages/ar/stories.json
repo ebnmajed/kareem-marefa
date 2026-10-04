@@ -16,6 +16,7 @@
       "startsSoon": "تبدأ غدًا",
       "live": "جارية الآن",
       "liveCount": "{count, plural, zero {لا أحد في القاعة بعد} one {واحد في القاعة} two {اثنان في القاعة} few {{value} في القاعة} many {{value} في القاعة} other {{value} في القاعة}}",
+      "inRoom": "في القاعة",
       "until": "حتى {time}",
       "recap": "اكتملت",
       "attended": "حضروا",

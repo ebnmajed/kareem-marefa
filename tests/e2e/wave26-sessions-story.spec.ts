@@ -80,6 +80,22 @@ test.beforeAll(async ({}, testInfo) => {
   // ★ Inserted already running: no transition, so no frame — the entry stays text (DEC-251 §4.7).
   ids.bare = await session(T.bare, "in_progress");
 
+  // A presenter in a company, so the viewer's meta line reads as the board's: «الاسم · الشركة · قبل N دقيقة».
+  const presenterEmail = `presenter@${domain}`;
+  const presenter = await admin.auth.admin.createUser({ email: presenterEmail, password: PASSWORD, email_confirm: true });
+  if (presenter.error) throw presenter.error;
+  users.push(presenter.data.user.id);
+  const company = (await db.query<{ id: string }>(`insert into public.companies (org_id, name, team_color) values ($1, 'مواهب', '#ff6e4f') returning id`, [orgId])).rows[0].id;
+  const presenterId = (
+    await db.query<{ id: string }>(
+      `insert into public.members (org_id, auth_user_id, email, display_name, job_title, company_id) values ($1, $2, $3, 'سارة القحطاني', 'مديرة المنتج', $4) returning id`,
+      [orgId, presenter.data.user.id, presenterEmail, company],
+    )
+  ).rows[0].id;
+  for (const sessionId of Object.values(ids)) {
+    await db.query(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [orgId, sessionId, presenterId]);
+  }
+
   // The member is checked in to the story's session: the live frame counts «واحد في القاعة».
   await db.query(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed')`, [orgId, ids.story, memberId]);
   await db.query(
@@ -159,6 +175,7 @@ for (const width of [390, 1280] as const) {
     const dialog = page.getByRole("dialog", { name: new RegExp(`قصة الجلسة: .*${T.story.slice(0, 10)}`) });
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText("جلسة جديدة"); // the first unseen frame: the publication
+    await expect(dialog).toContainText("سارة القحطاني"); // the session's presenter, at member tier
 
     await dialog.getByRole("button", { name: "الإطار التالي" }).click();
     await expect(dialog).toContainText("جارية الآن");
