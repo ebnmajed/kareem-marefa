@@ -58,10 +58,16 @@ branch cut.
 - **C — `wave-26c/the-platform-console`**: `080`–`085` on `admin-rail`, deleted and rebuilt.
 - **D — `wave-26d/stories`**: `REQ-STO-*`, `0198` `story_views` and `story_frames`, the generator,
   `story-viewer`, `story-capture`, the ring wired, `044`'s strip.
-- **E — the mark**: ★ **HELD. Do not start it.** See §E below — two blockers, one of them the
-  planning prompt's own stop condition.
+- **E — the mark**: ★ **buildable, with ONE decision outstanding** — the scope gating (§E). The motion is specified
+  in `assets/brand/logo/README.md` §16 even though the prototype it names is missing.
 
 ★ **Open each against `main` on its FIRST push.** Six waves have avoided the retarget trap that way.
+
+★★ **And read this before Step 0: `M13.md`, `M13-PLANNING-PROMPT.md`, `STORIES-USER-STORIES.md`, all seventeen
+artboards and all sixteen PNGs were UNTRACKED and are now committed on the branch `brand/logo-pack` (`fe9228f2`),
+together with the logo pack and the wordmark assets it replaces — 87 files. They are NOT on `main`.** So either that
+branch merges before you cut yours, or your Step 0 takes the spec from it. **Do not re-commit them**; check what is
+already in git before you add anything under `docs/design/`.
 
 ## ★★ §A — the public contract is the tightest constraint in this wave
 
@@ -169,11 +175,12 @@ The planning prompt says: *«if either is missing, the logo pack was not unpacke
 | `docs/design/LOGO-PROMPT.md` | present |
 | `docs/design/assets/brand/logo/README.md` | present |
 | `docs/design/assets/brand/logo/logo.svg` | present |
-| ★ **`docs/design/prototypes/logo-motion.html`** | **MISSING.** The directory holds only `motion-story.html` and `stories.html`, both 28 September |
+| ★ **`docs/design/prototypes/logo-motion.html`** | **MISSING** — the directory holds only `motion-story.html` and `stories.html`, both 28 September. ★★ **But the motion is SPECIFIED, so PR E is buildable:** `assets/brand/logo/README.md` §16 gives all three moves — **Reveal** (sign-in and cold start only, the four faces drawing in order coral → lime → violet → …), **Loading** (the four faces breathing in sequence, **1.6 s loop, 200 ms apart, shadows at 50 %**), **Tap** (one settle bounce as the home control), and «`prefers-reduced-motion`: static, nothing moves. No sixth moment — the mark never animates as one». And `logo-animated.svg` carries **ten `pathLength="1"` paths**, so the motion needs no measuring. **What is missing is the reference CSS, not the specification** — ask for the prototype, because matching a described easing is guesswork and all five moments got one, but do not wait on it |
 
-**So the stop condition fires.** The motion vocabulary — reveal · loading · tap — has no reference
-implementation, and PR E's instruction is to take the CSS «from the prototype's CSS». **Do not invent
-it**; the five moments exist because `03-motion.md` and a prototype specified them precisely.
+★ **The stop condition names the prototype, and the prototype is absent — but it is not the only reference.**
+`README.md` §16 specifies the three moves with their timings (above), so **PR E is not blocked on this: build the
+CSS from §16 against the `pathLength="1"` paths, and ask the owner for the prototype in parallel.** What you must
+not do is invent a move §16 does not describe, or add a fourth.
 
 ★★ **And there is a second blocker the prompt does not see — a contradiction between three of its own
 requirements.** PR E says the motion CSS lives **under `.theme-play`**; PR A says

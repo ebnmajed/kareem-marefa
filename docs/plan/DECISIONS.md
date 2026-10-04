@@ -8985,14 +8985,23 @@ shows all of it and changes none of it.**
    replaces it is on a branch (the owner's rule of 2026-09-28): **fast-forward, cut, then let PR E
    delete.**
 
-### 6 · ★★ PR E is HELD — two blockers, and the first is the prompt's own stop condition
+### 6 · ★ PR E — buildable, with ONE decision outstanding (the planner's first reading is corrected here)
 
 The planning prompt says «if either is missing, the logo pack was not unpacked — stop and say so».
-**`docs/design/LOGO-PROMPT.md`, `assets/brand/logo/README.md` and `assets/brand/logo/logo.svg` are all
-present. ★ `docs/design/prototypes/logo-motion.html` is MISSING** — the directory holds only
-`motion-story.html` and `stories.html`, both of 28 September. **So the motion vocabulary — reveal ·
-loading · tap — has no reference implementation, and PR E's instruction is to take the CSS «from the
-prototype's CSS». It is not invented.**
+`docs/design/LOGO-PROMPT.md`, `assets/brand/logo/README.md` and `assets/brand/logo/logo.svg` are all
+present; ★ **`docs/design/prototypes/logo-motion.html` is MISSING** — the directory holds only
+`motion-story.html` and `stories.html`, both of 28 September.
+
+★★ **CORRECTED, after the pack was committed as `fe9228f2`: PR E is NOT blocked on this.** The planner's
+first reading was that the motion had no reference at all. It has two:
+**`assets/brand/logo/README.md` §16 specifies all three moves** — **Reveal** (sign-in and cold start only,
+the four faces drawing in order coral → lime → violet → …), **Loading** (the four faces breathing in
+sequence, **1.6 s loop, 200 ms apart, shadows at 50 %**), **Tap** (one settle bounce as the home control),
+with «`prefers-reduced-motion`: static, nothing moves. No sixth moment — the mark never animates as one» —
+and **`logo-animated.svg` carries ten `pathLength="1"` paths**, so the motion needs no measuring.
+**What is missing is the reference CSS, not the specification.** Build from §16; ask the owner for the
+prototype in parallel, because matching a described easing is guesswork and all five moments got one.
+**Do not invent a move §16 does not describe, and do not add a fourth.**
 
 ★★ **The second blocker is a contradiction between three of the prompt's own requirements**, which
 nobody could have seen without reading the guard: PR E puts the motion CSS **under `.theme-play`**;
@@ -9007,6 +9016,15 @@ mechanism either, because the landing may not carry the class.
 `globals.css` by selectors under `.theme-play`, which the public pages never carry. **The landing then
 gets the static mark** unless the owner wants un-scoped reveal CSS written for it, which is a decision
 and not an implementation detail.
+
+★★ **And a finding the pack's commit surfaced:** `M13.md`, `M13-PLANNING-PROMPT.md`,
+`STORIES-USER-STORIES.md`, all seventeen artboards and all sixteen PNGs **were untracked too** and are now on
+**`brand/logo-pack` (`fe9228f2`, 87 files), not on `main`.** The wave's Step 0 either merges that branch first or
+takes the spec from it, and re-commits nothing.
+
+★ **A second numbering gap, beside `0194`: `DEC-245` was missing upstream** — the log ran `244` then `246`, and
+this entry fills it. Two skipped numbers in one wave; `DEC-180`'s lesson is that a number cited and never written
+disappears without an error.
 
 **The rest of PR E is measured and correct**: both wordmark components exist
 (`src/components/wordmark.tsx`, `src/components/brand/wordmark.tsx`), `platform/layout.tsx` has no
