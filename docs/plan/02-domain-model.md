@@ -307,30 +307,25 @@ one** (`DEC-183` §4.11): it is set on `SCR-048`.
 **`org_id` is immutable** — enforced by a trigger that raises on any change (`REQ-TEN-004`).
 Indexes: `(org_id, status)`, `(org_id, company_id)`, `(auth_user_id)`.
 
+★ **Amended by `DEC-244` §3 (wave 25):** `auth_user_id` becomes **nullable** — `unique` and `on delete cascade`
+unchanged, since a unique constraint permits many nulls — and `invited_by uuid references members(id)` is added,
+nullable. **Null `auth_user_id` means «an admin added this person and they have not signed in yet»**: they are
+`active`, they carry their role, company and job title, and every surface that lists members lists them.
+★ **It is not a status and not a column of its own**: «has signed in» is the derived boolean
+`auth_user_id is not null`, returned by `admin_list_members()` — `auth_user_id` is outside the column grant and
+stays outside it. First sign-in **binds** the row rather than inserting one (`REQ-TEN-011`), under
+`where auth_user_id is null`, which is the lock. ★ **The active-member denominator counts bound members only**
+(`DEC-244` §6, `REQ-LDR-006`). A row may be hard deleted while it is unbound and only then (`DEC-244` §7).
+
 #### `ENT-member_interests`
 **Serves:** `REQ-PRF-001`
 Join: `(member_id, category_id)`, `primary key (member_id, category_id)`.
 
-#### `ENT-member_invitations`
-**Serves:** `REQ-TEN-009` … `REQ-TEN-011`, `REQ-NTF-017`, `REQ-UIX-113` · added by `DEC-243` §3
-★ **A roster entry, not a member — an admin's statement that a named address belongs.** `id`, `org_id` (not null,
-cascading with the org), `email extensions.citext not null`, `display_name`, `company_id` (the org's own, by the
-same trigger `ENT-members` uses), `job_title`, `org_role org_role not null default 'member'`, `status
-invitation_status not null default 'pending'` (a new enum: `pending` · `claimed` · `revoked`), `invited_by uuid not
-null references members(id)`, `created_at`, `updated_at`, `claimed_at`, `claimed_member_id uuid references
-members(id)`, `revoked_at`, `revoked_by uuid references members(id)`, `revoked_reason`, `last_sent_at`,
-`send_count int not null default 0`.
-★ **A unique index on `(org_id, email)` `where status = 'pending'`** — one live invitation per address, and a
-revoked one does not block a new one. The two `check`s mirror `ENT-members`' deactivation pair: a `claimed` row has
-`claimed_at` and `claimed_member_id`, a `revoked` row has `revoked_at` and `revoked_reason`.
-★ **It is read by `supabase_auth_admin`**, which is why it carries a third grant of its own: the Before User
-Created hook consults it to admit an address the domain list would refuse (`REQ-TEN-010`), and that is the only
-place outside the org's own admins that sees it.
-**What it is not.** Not a member: it holds no points, RSVP, certificate or avatar, it is absent from
-`members_member_view`, every picker and every active-member denominator, and `0176`'s company ranking never counts
-it. Not a token: the mail's link is the ordinary sign-in URL and the authority is the row's `pending` status, so
-there is no secret to leak or expire. Not a presenter assignment (`DEC-175`), and not visible to members.
-`org_id` is never updatable; a claimed row is never edited.
+#### `ENT-member_invitations` — ★ **WITHDRAWN before it was built** (`DEC-244`)
+Proposed by `DEC-243` §3 as a roster table beside `members`, and **withdrawn by `DEC-244`** the same day: a row
+nothing in the product could reference could not meet «take effect». There is **no invitation table and no
+`invitation_status` enum** — an added member is a `members` row from the moment the admin saves it, waiting only for
+its auth user. See `ENT-members` above, and `DEC-244` §3.
 
 #### `ENT-platform_admins`
 **Serves:** `REQ-ADM-001`, `REQ-ADM-002`

@@ -8748,3 +8748,165 @@ writes `create table`, a policy or a grant, even under `proposed/`.
 - ★ **`03-permissions-rls.md` is NOT changed by this entry**, deliberately: `scripts/policy-diff.mjs` fails on «a
   policy written out in `03` with no counterpart in the migrations», so the policy set and its §8.2 test rows land
   in the **same commit as the migration**, as every policy in the product has.
+
+---
+
+## DEC-244 — An added member is a REAL member from the moment the admin adds them: `members.auth_user_id` becomes nullable, first sign-in **binds** rather than inserts, and `ENT-member_invitations` is withdrawn
+
+- **Date:** 2026-10-04 · **Decided by:** the owner, overruling `DEC-243`'s first answer after being shown what it
+  produced
+- **Amends:** `DEC-243` §2 question 1, §3, §4, §9's third bullet and §10 — the shape, the claim, the refusal of a
+  nullable binding, and the expiry question, which disappears with the entity
+- **Withdraws:** `ENT-member_invitations` and the `invitation_status` enum. **There is no new table and no new enum.**
+  `REQ-TEN-009` … `011` and `REQ-NTF-017` keep their numbers and are rewritten; `REQ-UIX-113` is unchanged in intent
+- **Does not amend:** `REQ-AUT-002` («keyed to the auth user, never to an email or a provider»), which survives
+  intact — see §4
+
+### 0 · ★ THE GOAL, in the owner's words
+
+> **«i need the addition of the user to take affect and appear in the users as soon as the admin adds them»**
+
+### 1 · ★★ Why `DEC-243`'s answer was the wrong one, stated plainly
+
+`DEC-243` §3 put the added person in a table beside `members` and wrote: «**nothing else in the product can reference
+them.**» ★ **That sentence is the defect.** They *appeared* — `SCR-049` listed them as a waiting row — so the «appear
+in the users» half was met and the «take effect» half was not. An admin could add a presenter and then not assign
+them; add a colleague and not pick them in the member picker; add ten people and see nothing of them anywhere but one
+console table. ★ **«Take effect» is the requirement, and an entity that nothing may reference cannot meet it.**
+
+The shape the owner now asks for is the one `DEC-243` §9 refused on the strength of one measurement — the company
+denominator. ★ **That measurement was right and the conclusion drawn from it was wrong**: the denominator is a
+four-line fix in one function (§6), not a reason to make the feature inert.
+
+### 2 · ★★ What was measured, now that the shape is the one previously refused
+
+| # | Measurement | Result |
+|---|---|---|
+| 1 | **What else joins `auth.users`?** | ★★ **Exactly one statement in the whole product** — `0005:119`, inside `provision_member()`, reading the email and Google's metadata. Nothing else in 192 migrations, nothing in `src/`, nothing in `worker/`. An unbound member row is invisible to every other query by construction |
+| 2 | **What reads `members.auth_user_id`?** | 5 migrations, **0** files under `src/` or `worker/src/`; all five are lookups keyed by `auth.uid()`, which a null never matches |
+| 3 | **Does `unique` survive nulls?** | ★ **Yes** — a Postgres unique constraint permits **many** nulls, so `auth_user_id uuid unique` stays exactly as written. Only `not null` is dropped |
+| 4 | ★★ **Does the gate override need a new grant?** | ★★ **No — `grant select on public.members … to supabase_auth_admin` already exists** (`0006`, its «rule 3: the three grants»). The hook can read `members` today. `DEC-243` §5's «third grant» was for a table that no longer exists, and invariant 6 gains nothing to satisfy |
+| 5 | **Can an admin be shown «has not signed in» without exposing the binding?** | ★ **Yes** — `admin_list_members()` is already a `security definer` function (`DEC-232` §4.3), so it returns a **boolean**. `auth_user_id` is outside the column grant and stays outside it; no screen and no DTO ever carries it |
+| 6 | **What does an `active` member with no binding reach?** | ★ `members_member_view` filters on `status = 'active'` **and nothing else**, so they reach the member directory, the member picker, presenter assignment, the comment and rating author lookups, and every admin list. ★★ **That is the feature, not a side effect** |
+| 7 | **Do they clutter the leaderboards?** | ★ **No.** Every board reads `points_balances`, which has a row only for a member who has earned something. An unbound member appears on **no** member board, and `leaderboard_opt_out` never has to be touched |
+| 8 | ★★ **Is there anything the shape genuinely breaks?** | ★★ **One thing, and it is real.** `snapshot_leaderboard()` takes the denominator as `count(*) from public.members where org_id = … and status = 'active'` (`0081:597`, `0176:39`) and the per-company counts the same way (`0081:382`, `:411`, `:647`). **Five added people dilute their company's points-per-active-member, and can carry a company across `company_min_active_members`, before any of them has done anything.** `A11`/`DEC-016` froze that denominator into the snapshot precisely to stop it being silently rewritten — see §6 |
+| 9 | **What does the shape cost in schema?** | ★ **Less than `DEC-243`'s.** No table, no enum, no policy set, no grant, nothing for the isolation sweep to cover, and **no third `member_status`** — so measurement 4 of `DEC-243` (the 54 `status = 'active'` sites) stays irrelevant |
+
+### 3 · ★★ The shape
+
+★ **One nullable column and one new column on `ENT-members`:**
+
+- `auth_user_id uuid unique references auth.users(id) on delete cascade` — **`not null` is dropped.** Null means «we
+  expect this person and they have not arrived». The unique constraint is unchanged (measurement 3), and
+  `on delete cascade` still applies to the ones that are bound.
+- `invited_by uuid references public.members(id)` — nullable; null for everyone who arrived through the front door.
+  **When** they were added is `created_at`, already there, and **what was sent** is `email_deliveries`, already there,
+  so nothing else is stored.
+
+★★ **«Has signed in» is `auth_user_id is not null`.** It is **not** a status, not an enum value and not a column of
+its own: a derived boolean, returned by `admin_list_members()` (measurement 5). An added member is `active` from the
+instant the admin saves, with their role, company and job title set, and every surface that lists members lists them.
+
+### 4 · ★★ First sign-in BINDS, it does not insert — and `REQ-AUT-002` survives
+
+`provision_member()` gains one branch, between «already a member» and the domain match: ★ **an `active` member row in
+this org with this email and `auth_user_id is null` → bind it.** Set `auth_user_id = auth.uid()`, fill `display_name`
+from Google if the admin left it blank, take Google's avatar, audit `member.claimed`, and return `provisioned`.
+
+★ **`REQ-AUT-002` is not amended, and the distinction matters.** «Keyed to the auth user, never to an email or a
+provider» is about **what identifies a member once they exist** — `auth_user_id`, which is still the only key any
+policy, claim or lookup uses. The email is what the admin *addressed*, used **once**, at the bind, and never again.
+A member is still keyed to the auth user; what changed is that the row may be waiting for its key.
+
+★ **Three properties, each with a test.** **Bound once:** the update carries `where auth_user_id is null` and that
+predicate is the lock, so a concurrent double sign-in binds once. **Never re-bound:** a bound row is matched by
+`auth_user_id` at step one and never reaches the email branch, so a second Google account on the same address still
+raises `email_already_member`, exactly as today. **Never across orgs:** the branch is scoped to the org the domain or
+the row resolves, and `members_org_immutable` (`0004`) still refuses any change to `org_id` for every role,
+`service_role` included.
+
+### 5 · ★ The gate override reads `members`
+
+`before_user_created_hook()` admits an address with an **`active`, unbound** member row in an **`active`** org, beside
+the domain check it already performs. **No new grant** (measurement 4), the read goes **inside** the existing
+`begin`/`exception` block so it still fails open, and `domain_not_allowed` stays the only message a refused account
+sees. ★ **The override ends when the row is bound or the member is deactivated** — deactivating somebody who has not
+arrived closes the door, through the function that already exists and already demands a reason (`REQ-AUT-008`).
+
+### 6 · ★★ The denominator counts members who have signed in — `scoring`'s one correction
+
+Measurement 8 is the only real defect in the shape, and it is **four predicates in one function**:
+`snapshot_leaderboard()`'s org-wide count and its three per-company counts gain `and auth_user_id is not null`.
+
+★ **It is provably a no-op today**, which is why it is safe to make: `auth_user_id` is `not null` until this wave's
+migration, so every existing member satisfies the new predicate and **every existing snapshot and every live
+derivation is byte-identical**. A test asserts the count before and after on the same data.
+
+★ **Why it is the right reading, not a convenience.** `points_per_active_member` asks «how much does this company's
+average member contribute». A person who has never signed in has not declined to contribute — they have not been
+asked. Counting them penalises a company for an admin's typing, and `A11`/`DEC-016` froze the denominator into the
+snapshot so it could not be rewritten by a side door. **This is that door, closed before it is opened.**
+★ `company_min_active_members` (`0175`) reads the same counts and therefore follows automatically.
+
+### 7 · ★ Undoing a mistake — a delete while unbound, a deactivation after
+
+An admin who mistypes an address wants the row **gone**, not deactivated with a reason. ★ **A member row may be hard
+deleted while `auth_user_id is null`**, through an admin RPC that is audited (`member.add_undone`) and refuses the
+moment the row is bound. It is safe by construction: an unbound member has no attendance, no ledger row, no
+certificate, no RSVP and no comment, because nothing can be created without a session. ★ **Once bound they are an
+ordinary member** and the only way out is `REQ-AUT-008`'s deactivation, with its mandatory reason — nobody deletes a
+person who has arrived, and the audit trail of their addition survives either way.
+
+### 8 · ★ The mail — simpler than `DEC-243`'s, and still not a matrix message
+
+★ The recipient now **has a `member_id`**, so `JOB-send_member_invitation`'s payload is `{member_id}` and the address
+is read in the worker from the same definer context the real send uses — **`JOB-send_test_email`'s shape exactly**
+(`11` §2.6), and the «the recipient is not in the payload» rule holds unchanged.
+
+★ **It stays outside `notification_matrix()`** even though it now *could* go through `notify()`: a twenty-sixth key
+would move the matrix's count, the designed families and all 120 pinned files, and «you have been added» is not a
+message anybody may switch off. `08` §3.2a's table stands, with its reason for this row corrected: **not «the
+recipient has no member row» but «it is the mail that announces the member row's existence, and it is not
+optional».**
+
+### 9 · ★ The screen — the same screen, and a simpler one
+
+`SCR-049` keeps «أضف عضوًا», the sheet and the pasted list with its per-line report. ★ **What changes is that there
+are no longer two kinds of row**: every row is a member, and one whose binding is null is marked «لم يسجّل الدخول
+بعد» with its age, «أعد الإرسال» and «احذف» (§7) — ★ **and, unlike `DEC-243` §7, it offers the role change and the
+deactivation every other row offers**, because it is a member. **No new primitive**; `ui/` stays at 69 files;
+`console-register.test.ts` is untouched.
+
+### 10 · ★ The audit actions, replacing `DEC-243` §8's four
+
+`member.added` (the admin creates the row) · `member.add_undone` (the hard delete of §7) · `member.invite_resent` ·
+`member.claimed` (first sign-in binds). ★ **`member.provisioned` is unchanged** and still records the front door, so
+the log distinguishes the two ways in. Every one through `public.write_audit()` inside the definer that performs the
+change; **no track writes `audit_log` from the DAL** (`DEC-231` §4).
+
+### 11 · ★ What is still refused, and is not reopened by this entry
+
+- ★★ **An invitation cannot create an `admin`** (`DEC-243` §5.4): `member` and `moderator` only, and the promotion
+  path stays `set_member_role()`, which guards the last admin and audits. **Easier to live with now**, because the
+  added person is a member the moment they are added and can be promoted the moment they arrive.
+- ★★ **No second sign-in method and no `auth.users` row is ever created by us** — no password, no magic link, no OTP,
+  no Admin API, no `service_role` on Vercel (invariant 7). The person still signs in with Google.
+- ★ **No third `member_status`** (measurement 9), no expiry (`DEC-243` §10's question disappears with the entity —
+  the control is deactivation or the delete of §7), no CSV import with column mapping, no member-visible list of who
+  has not arrived, no org self-registration.
+- ★ **`registrations` is never touched; the five public routes do not move.**
+
+### 12 · ★ What this makes smaller, for the record
+
+No table · no enum · no policy set · no grant · no isolation-sweep row · no `03` §8.2 block for a new relation · no
+third status and therefore none of `DEC-243` measurement 4's 54 sites · one fewer kind of row on `SCR-049` · one
+migration that is now **two column changes, four RPCs, two function amendments and four predicates**.
+
+- **Documents changed:** `01-prd.md` (`REQ-TEN-009` … `011` and `REQ-NTF-017` rewritten; `REQ-PTS-002`'s denominator
+  note), `02-domain-model.md` (`ENT-members` amended; `ENT-member_invitations` struck), `05-scoring-engine.md` (the
+  denominator), `08-notifications-calendar.md` (§3.2a's reason), `09-sitemap-screens.md` (`SCR-049`),
+  `11-background-jobs.md` (`JOB-send_member_invitation`'s payload), `14-roadmap.md` (**M27**), `15-backlog.md`
+  (`STORY-TEN-005` … `007`, `STORY-NTF-009`, `STORY-UIX-103` rewritten, plus `STORY-LDR-005` for the denominator),
+  `STATUS.md`, `docs/plan/notes/wave-25-lead.md`
+- ★ **`03-permissions-rls.md` is still not changed**, and now for a second reason: there is no new relation to
+  document. The policy set `members` carries is unchanged by a nullable column.

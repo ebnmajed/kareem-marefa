@@ -1780,43 +1780,53 @@ migration reporting which per row. Done when no superseded row reaches `055`, `0
 Done when the 120 pinned files move once and are stable on a re-run.
 
 
-### ★ Wave 25 — M27, a member added by hand (`DEC-243`)
+### ★ Wave 25 — M27, a member added by hand (`DEC-243`, shape set by `DEC-244`)
 
-#### STORY-TEN-005 — An admin names somebody who is not a member yet
+#### STORY-TEN-005 — An admin adds a member, and they are a member at once
 **Covers:** `REQ-TEN-009` · **M27** · **M** · lead
-`ENT-member_invitations` with `org_id`, RLS, the full policy set, a grant for every policy and a test case each, plus
-`invite_member()`, `resend_member_invitation()` and `revoke_member_invitation()` on `assert_fresh_admin()`, each
-audited. The role accepts `member` and `moderator` only. Done when naming somebody creates no member row and moves no
-count anywhere, and the isolation sweep covers the new table.
+`members.auth_user_id` becomes nullable and `invited_by` is added; `add_member()`, `add_members()` (the pasted list),
+`resend_member_invitation()` and `remove_unbound_member()` on `assert_fresh_admin()`, each audited —
+`member.added` · `member.add_undone` · `member.invite_resent`. `admin_list_members()` returns «has signed in» as a
+**boolean**, never the binding. The role accepts `member` and `moderator` only. **No new table, no new enum, no third
+status.** Done when the added person appears in the members list, the directory and the member picker, and can be
+assigned as a presenter, before they have ever signed in.
 
-#### STORY-TEN-006 — A named address is admitted where the domain list would refuse
+#### STORY-TEN-006 — An added member is admitted where the domain list would refuse
 **Covers:** `REQ-TEN-010` · **M27** · **M** · lead
-`before_user_created_hook()` gains one more reason to admit: a `pending` invitation in an `active` org, read inside
-the existing exception block so it still fails open, with the third grant the hook needs. Done when a personal-domain
-address with an invitation signs in, the same address refused again after a revoke, and a broken invitation read
-admits every sign-in the domain list would have allowed.
+`before_user_created_hook()` gains one more reason to admit: an `active`, unbound member row in an `active` org. ★ It
+needs **no new grant** — `grant select on public.members … to supabase_auth_admin` is already in `0006` — and the read
+goes **inside** the existing exception block so it still fails open. Done when a personal-domain address with a
+waiting row signs in, a deactivated one is refused again, and a broken read admits every sign-in the domain list
+would have allowed.
 
-#### STORY-TEN-007 — First sign-in claims the invitation, exactly once
+#### STORY-TEN-007 — First sign-in binds the waiting row, exactly once
 **Covers:** `REQ-TEN-011` · **M27** · **M** · lead
-`provision_member()` gains one branch between «already a member» and the domain match: claim a `pending` invitation,
-apply its role, company, job title and name, mark it claimed against the member it created, and audit both the claim
-and the provisioning. Done when a concurrent double sign-in claims once and creates one member, and the claim and the
-member exist only together.
+`provision_member()` gains one branch between «already a member» and the domain match: bind the unbound row with this
+email in this org under `where auth_user_id is null`, fill the name from Google only if the admin left it blank, audit
+`member.claimed`. `REQ-AUT-002` is untouched — the member is still keyed to the auth user; the email is used once, at
+the bind. Done when a concurrent double sign-in binds once and creates no second member, and a different account
+presenting the same address is still refused.
 
-#### STORY-NTF-009 — The invitation mail
+#### STORY-LDR-005 — The active-member denominator counts the members who have signed in
+**Covers:** `REQ-LDR-006` · **M27** · **S** · `scoring`
+Four predicates in `snapshot_leaderboard()` — the org-wide count and the three per-company counts — gain
+`and auth_user_id is not null`, so adding five colleagues cannot dilute their company's **النقاط لكل عضو نشِط** before
+any of them arrives, and cannot carry a company across `company_min_active_members`. ★ Done when the counts are proven
+**byte-identical on existing data**, because every member already satisfies the predicate.
+
+#### STORY-NTF-009 — The mail that announces the addition
 **Covers:** `REQ-NTF-017` · **M27** · **M** · `notify`
-`JOB-send_member_invitation`, keyed `invite:{invitation_id}`, with a designed family in `packages/mail-runtime` and a
-generated text alternative. ★ The address is **not in the payload** — it is read in the worker, on the test send's
-rule. Done when the matrix is still 25 keys, the 120 pinned files are untouched, and a revoked or claimed invitation
-sends nothing however the job is triggered.
+`JOB-send_member_invitation`, keyed `invite:{member_id}`, with a designed family in `packages/mail-runtime` and a
+generated text alternative. ★ The address is **not in the payload** — the payload names the member and the address is
+read in the worker, on the test send's rule. Done when the matrix is still 25 keys, the 120 pinned files are
+untouched, and a member who has already signed in or been deactivated is sent nothing however the job is triggered.
 
-#### STORY-UIX-103 — Members and the people waiting are one screen
+#### STORY-UIX-103 — One kind of row, and a mark for the ones who have not arrived
 **Covers:** `REQ-UIX-113` · **M27** · **M** · `console`
 `SCR-049` gains «أضف عضوًا» as its one primary action, a sheet that accepts one address or a pasted list with a
-per-line report, and the waiting rows in the same table with their age, «أعد الإرسال» and «ألغِ الدعوة» with a
-mandatory reason. **Extended, not rebuilt** — no page file is deleted, no primitive is added. Done when a waiting row
-offers no role change, no deactivation and no profile, and no count treats it as a member.
-
+per-line report, and «لم يسجّل الدخول بعد» with its age, «أعد الإرسال» and «احذف» on the rows that are unbound.
+**Extended, not rebuilt** — no page file is deleted, no primitive is added. Done when an unbound row offers
+everything a member row offers plus the delete, and the delete is refused the moment it is bound.
 
 ## 24. Coverage check
 
