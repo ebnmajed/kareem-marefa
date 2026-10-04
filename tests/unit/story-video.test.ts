@@ -106,6 +106,13 @@ describe("auditRendition — the proof read back on every run", () => {
   it("accepts the muxer's own brand keys", () => {
     expect(auditRendition(clean)).toBeNull();
   });
+
+  it("accepts the encoder name ffprobe reads back from OUR libavcodec, and refuses any other encoder", () => {
+    const ours = { ...clean, streams: [{ codec_type: "video", tags: { language: "und", handler_name: "VideoHandler", vendor_id: "[0][0][0][0]", encoder: "Lavc libx264" } }] };
+    expect(auditRendition(ours)).toBeNull();
+    const theirs = { ...clean, streams: [{ codec_type: "video", tags: { encoder: "H.264 (Apple)" } }] };
+    expect(auditRendition(theirs)).toMatch(/encoder/);
+  });
   it("refuses a surviving location, device, creation time, data track or chapter", () => {
     expect(auditRendition({ ...clean, format: { tags: { ...clean.format.tags, location: "+24.7136+046.6753/" } } })).toMatch(/location/);
     expect(auditRendition({ ...clean, format: { tags: { "com.apple.quicktime.make": "Apple" } } })).toMatch(/apple/);

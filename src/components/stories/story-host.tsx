@@ -217,9 +217,12 @@ export function useStoryHost(prepared: PreparedStories) {
         </form>
       </Sheet>
       {capture ? <CaptureFlow sessionId={capture} onClose={() => setCapture(null)} /> : null}
-      <p role="status" className="sr-only">
-        {notice ?? ""}
-      </p>
+      {/* Said once, when there is something to say — never an empty status region at rest on the home. */}
+      {notice ? (
+        <p role="status" className="sr-only">
+          {notice}
+        </p>
+      ) : null}
     </>
   );
 

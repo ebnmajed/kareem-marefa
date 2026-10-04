@@ -156,8 +156,10 @@ test("★★ 12 seconds becomes ONE visible MP4 with its length and NO location 
   await signIn(context, attendeeEmail);
   const [{ n: ledgerBefore }] = (await db.query<{ n: number }>(`select count(*)::int as n from public.points_ledger where member_id = $1`, [attendeeId])).rows;
   const id = await post(context, phoneVideo(12));
-  await expect.poll(async () => (await frame(id))?.state, { timeout: 180_000 }).toBe("visible");
+  await expect.poll(async () => (await frame(id))?.state, { timeout: 180_000 }).not.toBe("processing");
   const row = await frame(id);
+  // On a failure the row names why (too_long · too_large · unsupported · failed) — printed whole, never just «failed».
+  expect(row, JSON.stringify(row)).toMatchObject({ state: "visible", failure_reason: null });
   expect(row.source_path).toBeNull();
   expect(row.duration_ms).toBeGreaterThan(11_500);
   expect(row.duration_ms).toBeLessThanOrEqual(12_500);

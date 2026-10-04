@@ -172,10 +172,14 @@ export function auditRendition(probe: RenditionProbe): string | null {
   if (streams.filter((s) => s.codec_type === "audio").length > 1) return "more than one audio stream";
   const other = streams.filter((s) => s.codec_type !== "video" && s.codec_type !== "audio");
   if (other.length > 0) return `a ${other[0]!.codec_type ?? "data"} stream survived`;
-  // A muxer's own per-stream bookkeeping (`language`, `handler_name`, `vendor_id`) is not a phone's; any other key is.
+  // A muxer's own per-stream bookkeeping (`language`, `handler_name`, `vendor_id`) is not a phone's, and neither is the
+  // `encoder` ffprobe reads back from the sample description — OUR encoder, always `Lavc…` (libavcodec, ours, the
+  // version dropped by `bitexact`). Any other key is the phone's, and so is an `encoder` that is not libavcodec's.
   const STREAM_KEYS = new Set(["language", "handler_name", "vendor_id"]);
   for (const s of streams) {
-    const extra = Object.keys(s.tags ?? {}).filter((k) => !STREAM_KEYS.has(k));
+    const extra = Object.entries(s.tags ?? {})
+      .filter(([k, v]) => !STREAM_KEYS.has(k) && !(k === "encoder" && /^Lavc/.test(v)))
+      .map(([k]) => k);
     if (extra.length > 0) return `stream tags survived: ${extra.join(", ")}`;
   }
   if ((probe.chapters ?? []).length > 0) return "chapters survived";

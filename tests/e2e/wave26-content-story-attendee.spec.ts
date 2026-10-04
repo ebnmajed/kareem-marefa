@@ -114,12 +114,19 @@ test.beforeAll(async ({}, testInfo) => {
   );
   // An attendee's visible video frame — the rows only; its objects are the worker's, and a missing rendition is a
   // poster-less <video> that still renders its controls.
-  const { rows: v } = await db.query<{ id: string }>(
-    `insert into public.story_frames (org_id, session_id, kind, trigger_key, triggered_at, author_id, caption, video_path, poster_path, duration_ms)
-     values ($1, $2, 'video', gen_random_uuid()::text, now() - interval '5 minutes', $3, $4, $5, $6, 12000) returning id`,
-    [orgId, sessionId, ids.attendee, CAPTION, `${orgId}/sessions/${sessionId}/frames/x/video.mp4`, `${orgId}/sessions/${sessionId}/frames/x/poster.webp`],
+  // ★ Its paths are the one builder's shape for THIS frame — `story_media_read` reads segment 5 as the frame — and its
+  // two objects exist, so the queue's detail can sign them (a stand-in's bytes: the spec proves the player, not a codec).
+  videoFrame = crypto.randomUUID();
+  const prefix = `${orgId}/sessions/${sessionId}/frames/${videoFrame}`;
+  await db.query(
+    `insert into public.story_frames (id, org_id, session_id, kind, trigger_key, triggered_at, author_id, caption, video_path, poster_path, duration_ms)
+     values ($1, $2, $3, 'video', $1::text, now() - interval '5 minutes', $4, $5, $6, $7, 12000)`,
+    [videoFrame, orgId, sessionId, ids.attendee, CAPTION, `${prefix}/video.mp4`, `${prefix}/poster.webp`],
   );
-  videoFrame = v[0].id;
+  for (const [name, type] of [["video.mp4", "video/mp4"], ["poster.webp", "image/webp"]] as const) {
+    const { error } = await admin.storage.from("story-media").upload(`${prefix}/${name}`, new Uint8Array([0, 0, 0, 0]), { contentType: type, upsert: true });
+    if (error) throw error;
+  }
 });
 
 test.afterAll(async () => {
@@ -233,7 +240,10 @@ test("a report hides a video frame at once, and SCR-051 lists it and plays it", 
   await page.setViewportSize(DESKTOP);
   await settle(page, "/ar/app/admin/moderation/photos?kind=reports");
   await page.click(`#main a[href*="frame-${videoFrame}"]`);
-  await expect(page.locator("#main video[controls]")).toBeVisible();
+  const player = page.locator("#main video[controls]");
+  await expect(player).toBeVisible();
+  // A signed URL into `story-media` — the rendition, never the source, and never a public bucket.
+  await expect(player).toHaveAttribute("src", /\/storage\/v1\/object\/sign\/story-media\/.*\/video\.mp4\?token=/);
   await page.screenshot({ path: join(SHOTS, "wave26-content-moderation-video-1280.png") });
 });
 

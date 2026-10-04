@@ -28,8 +28,10 @@ export async function FrameDetail({ locale, frame }: { locale: string; frame: Fr
       <h2 id="photo-title" className="sr-only">
         {name}
       </h2>
-      {frame.kind === "video" && frame.videoUrl ? (
-        <video src={frame.videoUrl} poster={frame.posterUrl || undefined} controls playsInline preload="metadata" aria-label={name} className="max-h-[28rem] w-full rounded-tile bg-raised object-contain" />
+      {/* A video frame is ALWAYS its player, even when its rendition cannot be signed (an object gone from Storage): a
+          moderator sees there is a video to decide on, and its controls, never a blank tile. */}
+      {frame.kind === "video" ? (
+        <video src={frame.videoUrl || undefined} poster={frame.posterUrl || undefined} controls playsInline preload="metadata" aria-label={name} className="max-h-[28rem] w-full rounded-tile bg-raised object-contain" />
       ) : frame.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- a signed, short-lived preview
         <img src={frame.imageUrl} alt={name} className="max-h-[28rem] w-full rounded-tile bg-raised object-contain" />
