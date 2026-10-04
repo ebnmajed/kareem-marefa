@@ -715,3 +715,58 @@ begin
     end loop;
   end if;
 end $$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 9 · member_invitation_context — the address is READ here, never passed
+-- ═══════════════════════════════════════════════════════════════════════════
+-- `REQ-NTF-017`, `DEC-244` §8. `notification_send_context()` (`0030`) cannot serve this send: its
+-- first statement resolves the key in `notification_matrix()` and raises `unknown_message_key` for
+-- anything else, and the invitation is deliberately not a matrix message. So it gets its own
+-- context, shaped the same so the worker reads familiarly.
+--
+-- ★ The guard is HERE, not in the task: a `null` return means «nothing to send», and the job logs
+-- and returns rather than retrying twenty-five times. It returns null for a member who has already
+-- signed in, one who is deactivated, and an org that is not active — so a replayed or stale job
+-- cannot mail somebody who has arrived.
+create function public.member_invitation_context(p_member uuid) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  mem public.members;
+  o   record;
+begin
+  select * into mem from public.members where id = p_member;
+  if not found then
+    return null;
+  end if;
+  if mem.auth_user_id is not null or mem.status <> 'active' then
+    return null;
+  end if;
+
+  -- ★ No `numerals`: `0082` dropped the column and the enum (`DEC-124`, `DEC-132`) — the numerals
+  -- are Western everywhere and there is no setting. `0030`'s own context still READ it when it was
+  -- written, which is why copying that shape wholesale was wrong here; the RLS case caught it.
+  select o2.name as org_name, s.email_from_name, s.email_reply_to, s.time_zone
+    into o
+    from public.orgs o2 left join public.org_settings s on s.org_id = o2.id
+   where o2.id = mem.org_id and o2.status = 'active';
+  if not found then
+    return null;
+  end if;
+
+  return jsonb_build_object(
+    'member', jsonb_build_object(
+      'id',           mem.id,
+      'email',        mem.email::text,
+      'display_name', mem.display_name),
+    'org', jsonb_build_object(
+      'id',        mem.org_id,
+      'name',      o.org_name,
+      -- 08 §3.4 / OQ-016, as every send does: one platform-verified sending domain, the org's name
+      -- in the From display name, the org's admin contact as Reply-To.
+      'from_name', coalesce(o.email_from_name, o.org_name),
+      'reply_to',  o.email_reply_to,
+      'time_zone', coalesce(o.time_zone, 'Asia/Riyadh'))
+  );
+end $$;
+revoke execute on function public.member_invitation_context(uuid) from public, anon, authenticated;
+grant  execute on function public.member_invitation_context(uuid) to service_role;

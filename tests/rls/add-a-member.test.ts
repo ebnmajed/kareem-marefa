@@ -450,6 +450,53 @@ describe("★★ REQ-LDR-006 — the active-member denominator counts the member
   });
 });
 
+describe("FN-member_invitation_context — the mail's address is READ, never passed", () => {
+  const ctx = (tx: Tx, id: string) =>
+    tx.q<{ c: { member?: { email: string }; org?: { name: string } } | null }>(`select public.member_invitation_context($1) as c`, [id]).then((r) => r[0].c);
+
+  it("gives the worker the address and the org's sending identity, for a member who is waiting", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      const [{ id }] = await addMember(tx, "waiting@gmail.com");
+      await tx.asServiceRole();
+      const c = await ctx(tx, id);
+      expect(c?.member?.email).toBe("waiting@gmail.com");
+      expect(c?.org?.name).toBeTruthy();
+    });
+  });
+
+  it("★ gives NOTHING once they have signed in, or once they are deactivated", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      const [{ id }] = await addMember(tx, "gone@gmail.com");
+      const [{ id: other }] = await addMember(tx, "off@gmail.com");
+      await tx.q(`select public.deactivate_member($1, $2)`, [other, "أُضيف بالخطأ"]);
+
+      await tx.asOwner();
+      const authUserId = randomUUID();
+      await tx.q(`insert into auth.users (id, email) values ($1, $2)`, [authUserId, "gone@gmail.com"]);
+      await tx.as({ sub: authUserId, email: "gone@gmail.com" });
+      await provision(tx);
+
+      await tx.asServiceRole();
+      // A replayed or stale job therefore mails nobody who has arrived.
+      expect(await ctx(tx, id)).toBeNull();
+      expect(await ctx(tx, other)).toBeNull();
+      expect(await ctx(tx, randomUUID())).toBeNull();
+    });
+  });
+
+  it("is the worker's alone — an admin cannot call it", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      expect(await errorMessage(() => ctx(tx, f.a.members[0].memberId))).toContain("permission denied");
+    });
+  });
+});
+
 describe("the unbound row changes no existing guarantee", () => {
   it("org_id is still immutable, for every role including service_role", async () => {
     await withTx(async (tx) => {

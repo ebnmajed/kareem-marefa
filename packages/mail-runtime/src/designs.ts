@@ -313,6 +313,34 @@ function layout(family: DesignFamily, copy: Copy): EmailBlock[] {
 }
 
 /** The designed document for one message key, or null for a key with none. */
+/**
+ * ★ WAVE 25 — THE ONE MAIL THAT IS NOT A MATRIX MESSAGE (`REQ-NTF-017`, `DEC-243` §6, `DEC-244` §8).
+ *
+ * A person an admin added is told that they belong, with a link that signs them in. It is NOT a
+ * twenty-sixth key and it is deliberately absent from `DESIGN_FOR` and `COPY`:
+ *
+ *   · the matrix resolves a preference, an inbox row and an address from a member id, and
+ *     «you have been added» is not a message anybody may switch off (`08` §3.2a);
+ *   · a twenty-sixth key would move `DESIGN_FOR`'s count, the template table and all 120 pinned
+ *     files — `tests/unit/mail-designs.test.ts` holds the map at exactly 25 and to the template
+ *     table, and that pin is the thing keeping the two from drifting.
+ *
+ * It wears the **announcement** family, which is the shape «good news, one thing to open» — the
+ * same vocabulary, the same `HOUSE` style, so it is the product's mail and not a second look. The
+ * worker passes it as a template override, which `emailDocumentFor()` honours ahead of
+ * `platformDesign()`, so no key lookup happens at all.
+ */
+export const INVITATION_SUBJECT = "دعوة للانضمام إلى {{org}}";
+
+export function invitationDesign(): EmailBlockDocument {
+  const copy: Copy = {
+    heading: "أنت الآن عضو",
+    body: "أضافك مشرف {{org}} إلى المنصة. سجّل الدخول بحساب Google على البريد الذي وصلتك عليه هذه الرسالة.",
+    action: { label: "سجّل الدخول", urlBinding: "url" },
+  };
+  return { schemaVersion: SCHEMA_VERSION, blocks: layout("announcement", copy), styles: HOUSE };
+}
+
 export function platformDesign(key: string): EmailBlockDocument | null {
   const family = DESIGN_FOR[key];
   const copy = COPY[key];
