@@ -42,8 +42,9 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
   ]);
   const day = (iso: string) => new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { day: "numeric", month: "long", timeZone: prefs.timeZone }).format(new Date(iso));
 
+  const exported = exportRow(request, t, day, locale as Locale);
   const rows: SettingsRow[] = [
-    exportRow(request, t, day, locale as Locale),
+    exported.row,
     { kind: "action", id: "photos", label: t("photosTitle"), value: removals === null ? null : formatNumber(removals), control: null },
   ];
   const legal: SettingsRow[] = [
@@ -55,15 +56,23 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
     <>
       {/* The back control returns to settings and is named for it (`Privacy.dc.html:20`, «الإعدادات»). */}
       <HubTopRow title={t("title")} backHref="/app/me/settings" backLabel={tSettings("title")} />
-      <div className="flex flex-col gap-3">
-        <SettingsGroup title={t("groupData")} showTitle={false} rows={rows} />
-        {/* REQ-PRF-006's second acceptance criterion, said to the person it protects. */}
-        <p className="px-1 text-body-sm text-fg-muted">{t("exportNote")}</p>
-      </div>
-      <SettingsGroup title={t("groupLegal")} showTitle={false} rows={legal} />
-      <AvatarSection locale={locale} />
-      <div className="flex flex-col px-1 pt-2">
-        <DeactivateSheet action={requestDeactivationAction.bind(null, locale as Locale)} />
+      <div className="flex flex-col gap-4">
+        {/* The row reads as drawn — «تصدير بياناتي … جاهز · 5 أكتوبر [نزّل]»; the kept sentences sit UNDER the card, each a
+            caption line across its width: the archive's seven days and the 24-hour limit (P2, P6), and REQ-PRF-006's
+            promise that the file carries no other member's data, said to the person it protects. */}
+        <div className="flex flex-col gap-2">
+          <SettingsGroup title={t("groupData")} showTitle={false} rows={rows} />
+          {[...exported.captions, t("exportNote")].map((line) => (
+            <p key={line} className="px-1 text-caption text-fg-muted">
+              {line}
+            </p>
+          ))}
+        </div>
+        <SettingsGroup title={t("groupLegal")} showTitle={false} rows={legal} />
+        <AvatarSection locale={locale} />
+        <div className="flex flex-col px-1">
+          <DeactivateSheet action={requestDeactivationAction.bind(null, locale as Locale)} />
+        </div>
       </div>
     </>
   );
@@ -71,9 +80,10 @@ export default async function MyPrivacyPage({ params }: { params: Promise<{ loca
 
 type T = Awaited<ReturnType<typeof getTranslations<"privacy.page">>>;
 
-function exportRow(request: DataExportRequest | null, t: T, day: (iso: string) => string, locale: Locale): SettingsRow {
+/** The export row, and the caption lines that go under its card rather than crowd it. */
+function exportRow(request: DataExportRequest | null, t: T, day: (iso: string) => string, locale: Locale): { row: SettingsRow; captions: string[] } {
   const base = { kind: "action" as const, id: "export", label: t("exportTitle") };
-  if (!request) return { ...base, value: null, control: <ExportRequest label={t("exportRequest")} action={requestExportAction.bind(null, locale)} /> };
+  if (!request) return { row: { ...base, value: null, control: <ExportRequest label={t("exportRequest")} action={requestExportAction.bind(null, locale)} /> }, captions: [] };
 
   // ★ P2 (REQ-NFR-005): inside the 24 hours the limit is SAID, in every state — requested, building, ready, expired or
   // failed — and no request control is offered; outside it the control is offered wherever a new copy makes sense. The
@@ -82,32 +92,33 @@ function exportRow(request: DataExportRequest | null, t: T, day: (iso: string) =
   // ready export.)
   const limited = !request.canRequestAgain;
   const ask = limited ? null : <ExportRequest label={t("exportAgain")} action={requestExportAction.bind(null, locale)} />;
-  const notes = (...lines: (string | null)[]) => lines.filter(Boolean).join(" ") || null;
-  const limit = limited ? t("rateLimited") : null;
+  const limit = limited ? [t("rateLimited")] : [];
 
   switch (request.status) {
     case "queued":
-      return { ...base, value: t("statusQueued", { date: day(request.requestedAt) }), detail: limit, control: null };
+      return { row: { ...base, value: t("statusQueued", { date: day(request.requestedAt) }), control: null }, captions: limit };
     case "building":
-      return { ...base, value: t("statusBuilding"), detail: limit, control: null };
+      return { row: { ...base, value: t("statusBuilding"), control: null }, captions: limit };
     case "ready":
       return {
-        ...base,
-        value: t("statusReady", { date: day(request.completedAt ?? request.requestedAt) }),
-        detail: notes(t("expiryNote"), limit),
-        // The old page offered a fresh copy beside a ready one once the 24 hours had passed; so does this row.
-        control: (
-          <span className="flex flex-wrap items-start justify-end gap-2">
-            <a href="/api/me/export" download className={buttonClass("primary", "sm")}>
-              {t("exportDownload")}
-            </a>
-            {ask}
-          </span>
-        ),
+        row: {
+          ...base,
+          value: t("statusReady", { date: day(request.completedAt ?? request.requestedAt) }),
+          // The old page offered a fresh copy beside a ready one once the 24 hours had passed; so does this row.
+          control: (
+            <span className="flex flex-wrap items-start justify-end gap-2">
+              <a href="/api/me/export" download className={buttonClass("primary", "sm")}>
+                {t("exportDownload")}
+              </a>
+              {ask}
+            </span>
+          ),
+        },
+        captions: [t("expiryNote"), ...limit],
       };
     case "expired":
-      return { ...base, value: t("statusExpired"), detail: limit, control: ask };
+      return { row: { ...base, value: t("statusExpired"), control: ask }, captions: limit };
     case "failed":
-      return { ...base, value: t("statusFailed"), detail: limit, control: ask };
+      return { row: { ...base, value: t("statusFailed"), control: ask }, captions: limit };
   }
 }
