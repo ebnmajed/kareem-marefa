@@ -405,12 +405,12 @@ test("★ REQ-TEN-002: a super admin creates an org and sets its first admin, an
   const domain = `made-${tag}.example`;
 
   await page.goto("/ar/app/platform/orgs/new");
-  await main(page).getByRole("textbox", { name: /^اسم المؤسسة/ }).fill(name);
-  await main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ }).fill(slug);
+  await main(page).getByRole("textbox", { name: /^الاسم/ }).fill(name);
+  await main(page).getByRole("textbox", { name: /^المعرّف/ }).fill(slug);
   await main(page).getByRole("textbox", { name: /^بادئة الشهادات/ }).fill("MDE");
   await main(page).getByRole("textbox", { name: /^النطاقات المسموح بها/ }).fill(domain);
-  await main(page).getByRole("textbox", { name: /^بريد أول مشرف/ }).fill(`boss@${domain}`);
-  await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
+  await main(page).getByRole("textbox", { name: /^أول مشرف/ }).fill(`boss@${domain}`);
+  await page.getByRole("button", { name: /^أنشئ/ }).click();
 
   // SCR-081 lands on SCR-082 for the org it just made.
   await page.waitForURL(/\/app\/platform\/orgs\/[0-9a-f-]+\/domains/);
@@ -502,16 +502,16 @@ test("★ REQ-NFR-014: deletion needs the slug typed back — a mismatch deletes
 test("REQ-UIX-009 · REQ-UIX-011: a refused new org summarises its fields and keeps what was typed", async ({ context, page }) => {
   await signInPlatform(context);
   await page.goto("/ar/app/platform/orgs/new");
-  await main(page).getByRole("textbox", { name: /^اسم المؤسسة/ }).fill(`مؤسسة لم تُنشأ ${tag}`);
-  await main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ }).fill("Bad Slug");
+  await main(page).getByRole("textbox", { name: /^الاسم/ }).fill(`مؤسسة لم تُنشأ ${tag}`);
+  await main(page).getByRole("textbox", { name: /^المعرّف/ }).fill("Bad Slug");
   await main(page).getByRole("textbox", { name: /^النطاقات المسموح بها/ }).fill("Example.COM");
-  await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
+  await page.getByRole("button", { name: /^أنشئ/ }).click();
 
   const summary = main(page).getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" });
   await expect(summary).toBeVisible();
   await expect(summary.getByRole("link")).toHaveCount(3); // slug, prefix, first admin
-  await expect(main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ })).toHaveAttribute("aria-invalid", "true");
-  await expect(main(page).getByRole("textbox", { name: /^اسم المؤسسة/ })).toHaveValue(`مؤسسة لم تُنشأ ${tag}`);
+  await expect(main(page).getByRole("textbox", { name: /^المعرّف/ })).toHaveAttribute("aria-invalid", "true");
+  await expect(main(page).getByRole("textbox", { name: /^الاسم/ })).toHaveValue(`مؤسسة لم تُنشأ ${tag}`);
   await expect(main(page).getByRole("textbox", { name: /^النطاقات المسموح بها/ })).toHaveValue("Example.COM");
   expect(new URL(page.url()).pathname).toBe("/ar/app/platform/orgs/new");
 });
@@ -739,9 +739,9 @@ test.describe("390 px RTL review", () => {
 
     // P3 — a new org with field errors, the summary focused, the values kept.
     await page.goto("/ar/app/platform/orgs/new");
-    await main(page).getByRole("textbox", { name: /^اسم المؤسسة/ }).fill("مؤسسة التصوير");
-    await main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ }).fill("Bad Slug");
-    await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
+    await main(page).getByRole("textbox", { name: /^الاسم/ }).fill("مؤسسة التصوير");
+    await main(page).getByRole("textbox", { name: /^المعرّف/ }).fill("Bad Slug");
+    await page.getByRole("button", { name: /^أنشئ/ }).click();
     await expect(main(page).getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" })).toBeVisible();
     await review(page, "wave8-platform-orgs-new-field-error");
 
