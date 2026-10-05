@@ -1,5 +1,6 @@
-// The scope is the root of every layout but the public site's — DEC-199 §1.3,
-// contract 1, REQ-UIX-049.
+// The scope is the root of every layout — DEC-199 §1.3, contract 1, REQ-UIX-049.
+// ★ Wave 26 (DEC-247, DEC-252): the public site's too. Until then its route group was the one exception, kept
+// outside «until its wave»; this is its wave, and `(marketing)/layout.tsx` is the sixth root layout below.
 //
 // Until wave 17 the scope wrapped five surfaces, each by itself, and every other
 // screen was outside it: the mixture the owner called a Frankenstein. Now a
@@ -43,34 +44,20 @@ const ROOT_LAYOUTS = [
   "app/[locale]/legal/layout.tsx",
   "app/[locale]/s/layout.tsx", // the public session card
   "app/[locale]/verify/layout.tsx", // the certificate's verification page
+  "app/[locale]/(marketing)/layout.tsx", // the public site: the landing and the interest form (wave 26, DEC-247)
 ];
 // The gallery shows both of the scope's grounds, so it renders two scopes side by side.
 const GALLERY = "app/[locale]/(dev)/ui/playground.tsx";
 
-// The public site's own files, which keep today's look until their wave (DEC-199 §1.2): the five
-// frozen routes' group, and the components it renders.
-const PUBLIC = [
-  "app/[locale]/(marketing)/",
-  "app/[locale]/layout.tsx",
-  "components/header.tsx",
-  "components/footer.tsx",
-  "components/chapter.tsx",
-  "components/wordmark.tsx",
-  "components/intro-sting.tsx",
-  "components/network-bg.tsx",
-  "components/network-gl.tsx",
-  "components/ornaments.tsx",
-  "components/mobile-cta.tsx",
-  "components/language-toggle.tsx",
-  "components/registration-form.tsx",
-  "components/form-token.tsx",
-];
+// What is still outside: the locale's own layout, which every surface shares and which renders no scope, and
+// the old wordmark, which keeps its old classes until the mark replaces it everywhere (wave 26, PR E).
+const PUBLIC = ["app/[locale]/layout.tsx", "components/wordmark.tsx"];
 const isPublic = (file: string) => PUBLIC.some((p) => file === p || (p.endsWith("/") && file.startsWith(p)));
 
 describe("the scope is rendered by a layout, and by nothing else", () => {
   const rendering = all.filter((path) => /<PlayScope\b/.test(code(path))).map(rel).sort();
 
-  it("exactly the five layouts and the gallery render it", () => {
+  it("exactly the six layouts and the gallery render it", () => {
     expect(rendering).toEqual([...ROOT_LAYOUTS, GALLERY].sort());
   });
 
@@ -88,7 +75,7 @@ describe("the scope is rendered by a layout, and by nothing else", () => {
     expect(all.filter((path) => readFileSync(path, "utf8").includes("theme-play")).map(rel)).toEqual(["components/ui/scope.tsx"]);
   });
 
-  it("no public file renders or imports it", () => {
+  it("neither file left outside renders or imports it", () => {
     for (const file of all.map(rel).filter(isPublic)) {
       const source = readFileSync(join(SRC, file), "utf8");
       expect(/ui\/scope["']/.test(source), `${file} imports the scope`).toBe(false);
@@ -96,7 +83,7 @@ describe("the scope is rendered by a layout, and by nothing else", () => {
   });
 });
 
-describe("every route that is not the public site's is under a root scope", () => {
+describe("every route is under a root scope", () => {
   // A route is a `page.tsx` or a `not-found.tsx`. Its layouts are the `layout.tsx` files on the way up.
   const routes = walk(LOCALE).filter((path) => /\/(page|not-found)\.tsx$/.test(path)).map(rel);
 
@@ -108,7 +95,7 @@ describe("every route that is not the public site's is under a root scope", () =
     expect(ROOT_LAYOUTS.some((layout) => route.startsWith(layout.replace(/layout\.tsx$/, ""))), "no root scope above it").toBe(true);
   });
 
-  it("the locale's own layout renders none: the public site shares it", () => {
+  it("the locale's own layout renders none: every surface shares it", () => {
     expect(code(join(LOCALE, "layout.tsx"))).not.toMatch(/PlayScope|theme-play/);
   });
 });

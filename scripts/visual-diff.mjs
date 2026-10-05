@@ -53,7 +53,8 @@ const PART_HEIGHT = 8_000
 // It is also why the gallery is not behind admin auth: this script drives a
 // browser at public URLs and has no authentication path at all. An
 // admin-gated gallery would have been a gate that could never run.
-const ROUTES = ['/ar', '/en', '/ar/register', '/ar/ui']
+// ★ Wave 26 (DEC-252): `/og.png` is the fifth public URL and is drawn, so it is captured like the rest.
+const ROUTES = ['/ar', '/en', '/ar/register', '/og.png', '/ar/ui']
 const VIEWPORTS = [
   { name: 'phone', width: 390, height: 844, deviceScaleFactor: 1 },
   { name: 'desktop', width: 1440, height: 900, deviceScaleFactor: 1 },
@@ -98,7 +99,11 @@ async function capture(name) {
           // way). Refuse one: every section must be laid out and no text may
           // sit at opacity 0.
           const skipped = [...document.querySelectorAll('section')].filter(
-            (s) => getComputedStyle(s).contentVisibility === 'auto' || s.getBoundingClientRect().height === 0,
+            // A section a breakpoint hides on purpose (`hidden lg:block` — split-view's second pane on a phone)
+            // is not a blank capture; one that is laid out at no height is.
+            (s) =>
+              getComputedStyle(s).contentVisibility === 'auto' ||
+              (s.getBoundingClientRect().height === 0 && getComputedStyle(s).display !== 'none'),
           ).length
           const invisible = [...document.querySelectorAll('main h1, main h2, main h3, main p, main li')].filter(
             (el) => el.textContent.trim() && getComputedStyle(el).opacity === '0',
