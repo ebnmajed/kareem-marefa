@@ -122,12 +122,10 @@ function MoveConfirm({ confirm }: { confirm: CompanyConfirm | null }) {
   const t = useTranslations("admin.companies");
   const [shown, setShown] = useState<CompanyConfirm | null>(null);
   const [open, setOpen] = useState(false);
-  const [sent, setSent] = useState(false);
   // Adjusted during render, never in an effect: a fresh answer opens the dialog once (wave 6's rule for dialogs).
   if (confirm !== shown) {
     setShown(confirm);
     setOpen(confirm !== null);
-    setSent(false);
   }
   if (!confirm) return null;
   const name = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
@@ -140,7 +138,10 @@ function MoveConfirm({ confirm }: { confirm: CompanyConfirm | null }) {
           {confirm.held > 0 ? <p>{t.rich("heldCount", { count: confirm.held, value: formatNumber(confirm.held), bdi: name })}</p> : null}
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Button type="submit" form={FORM_ID} name="confirm" value="1" pending={sent} disabled={sent} onClick={() => setSent(true)}>
+          {/* ★ Never disabled from its own click: React flushes that update before the browser runs the button's
+              activation, and a disabled submitter submits nothing (the wave-27 e2e found it). The action's answer
+              closes the dialog (saved) or re-asks it (changed); the action queue serialises a second press. */}
+          <Button type="submit" form={FORM_ID} name="confirm" value="1">
             {t("moveConfirm")}
           </Button>
           <DialogClose asChild>

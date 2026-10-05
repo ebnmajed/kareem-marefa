@@ -2,7 +2,8 @@
 // STORY-ADM-012). The database's half — who moves, the token, the audit — is `tests/rls/company-sweep.test.ts`; this
 // file proves the action's two steps and what the form says, with `saveCompanyWithDomains()` mocked.
 import { createTranslator } from "next-intl";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -135,6 +136,34 @@ describe("the form — domains are LTR text in an RTL form", () => {
     expect(go).toHaveAttribute("name", "confirm");
     expect((document.querySelector('input[name="token"]') as HTMLInputElement).value).toBe("t1");
     expect((await axe.run(dialog)).violations).toEqual([]);
+  });
+
+  // ★ The wiring of the confirm: form=, confirm=1 and the token reach the action. jsdom does NOT reproduce the defect the
+  // wave-27 e2e found (the button disabling itself from its own click before activation) — the e2e is that proof.
+  it("★ «انقل واحفظ» really submits the form, with confirm=1 and the dry run's token", async () => {
+    const calls: FormData[] = [];
+    const action = vi.fn(async (_prev: CompanyState, fd: FormData): Promise<CompanyState> => {
+      calls.push(fd);
+      return calls.length === 1
+        ? { ...emptyCompanyState, attempt: 1, values: { name: "أكمي", domains: "acme.example" }, confirm: { moving: 2, held: 0, token: "t9", companyName: "أكمي", changed: false } }
+        : { ...emptyCompanyState, saved: true };
+    });
+    render(
+      <NextIntlClientProvider locale="ar" messages={messages}>
+        <ToastProvider closeLabel="إغلاق">
+          <main>
+            <CompanyForm action={action} company={{ id: ID, name: "أكمي", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null, domains: [] }} closeHref="/app/admin/companies" />
+          </main>
+        </ToastProvider>
+      </NextIntlClientProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "احفظ" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "انقل واحفظ" }));
+    await waitFor(() => expect(calls).toHaveLength(2));
+    expect(calls[0].get("confirm")).toBeNull();
+    expect(calls[1].get("confirm")).toBe("1");
+    expect(calls[1].get("token")).toBe("t9");
   });
 
   it("«changed» says so above the new numbers; nobody held is not said", async () => {
