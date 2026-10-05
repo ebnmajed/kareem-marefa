@@ -13,7 +13,7 @@
       "published": "New session",
       "registrationOpened": "Registration is open",
       "registrationClosed": "Registration closed",
-      "startsSoon": "Starts tomorrow",
+      "startsSoon": "Starting soon",
       "live": "Live now",
       "liveCount": "{count, plural, =0 {Nobody in the room yet} one {1 in the room} other {{value} in the room}}",
       "inRoom": "in the room",
