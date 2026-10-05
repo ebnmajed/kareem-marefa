@@ -864,6 +864,8 @@ test.describe("wave 26 — the six screens beside their artboards", () => {
     expect(rows[0].status, "a refused slug suspends nothing and deletes nothing").toBe("active");
     await capture(page, "orgs", "delete-confirm");
     await page.keyboard.press("Escape");
+    // ★ Focus returns to the row's act that opened the confirm — never to the top of the document (ledger C19).
+    await expect(main(page).getByRole("button", { name: `احذف — ${a.name}` })).toBeFocused();
 
     await page.goto("/ar/app/platform/orgs/new");
     await expect(page.getByRole("heading", { level: 1, name: "مؤسسة جديدة" })).toBeVisible();
@@ -880,6 +882,7 @@ test.describe("wave 26 — the six screens beside their artboards", () => {
     await expect(page.getByRole("dialog")).toContainText("لا يفقد أحد وصوله");
     await capture(page, "domains", "remove-confirm");
     await page.keyboard.press("Escape");
+    await expect(main(page).getByRole("button", { name: `أزل ${a.domain}` })).toBeFocused();
 
     await page.goto("/ar/app/platform/templates");
     await expect(page.getByRole("heading", { level: 1, name: "مكتبة القوالب" })).toBeVisible();

@@ -140,6 +140,22 @@ describe("OrgActions", () => {
     expect(screen.getByRole("link", { name: "النطاقات — Acme للاستشارات" })).toHaveAttribute("href", expect.stringContaining(`/app/platform/orgs/${ORG.id}/domains`));
   });
 
+  it("★ closing a confirm returns focus to the act that opened it, not to the top of the document (wave 26)", async () => {
+    renderActions();
+    const suspend = screen.getByRole("button", { name: "أوقف — Acme للاستشارات" });
+    await userEvent.click(suspend);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(document.activeElement).toBe(suspend);
+
+    const del = screen.getByRole("button", { name: "احذف — Acme للاستشارات" });
+    await userEvent.click(del);
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(document.activeElement).toBe(del);
+  });
+
   it("a suspended org offers reinstatement, and a refused one says why rather than nothing (F4)", async () => {
     reinstateOrgAction.mockResolvedValueOnce({ error: "org_not_found_or_active" });
     renderActions({ ...ORG, status: "suspended" });

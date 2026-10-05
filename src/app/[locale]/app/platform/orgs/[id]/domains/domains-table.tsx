@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -28,6 +28,9 @@ function RemoveDomain({ domain, remove }: { domain: string; remove: (domain: str
   const tErr = useTranslations("platform.errors");
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  // Focus returns to «أزل» when the confirm closes without removing (Escape, «تراجع»): the dialog is opened by state,
+  // so Radix has no trigger of its own to return to (the same defect and fix as 080's row acts).
+  const opener = useRef<HTMLButtonElement | null>(null);
   const [pending, start] = useTransition();
 
   const confirm = () =>
@@ -46,7 +49,10 @@ function RemoveDomain({ domain, remove }: { domain: string; remove: (domain: str
         size="sm"
         className="relative after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']"
         aria-label={t("removeFor", { domain })}
-        onClick={() => setOpen(true)}
+        onClick={(event) => {
+          opener.current = event.currentTarget;
+          setOpen(true);
+        }}
       >
         {t("remove")}
       </Button>
@@ -54,6 +60,11 @@ function RemoveDomain({ domain, remove }: { domain: string; remove: (domain: str
         title={t.rich("removeConfirmTitle", { domain, bdi: (c) => <bdi dir="ltr">{c}</bdi> })}
         description={t("removeConfirmBody")}
         closeLabel={tOrgs("closeDialog")}
+        onCloseAutoFocus={(event) => {
+          if (!opener.current?.isConnected) return;
+          event.preventDefault();
+          opener.current.focus();
+        }}
       >
         <div className="flex flex-wrap gap-3">
           <Button type="button" variant="danger" size="md" pending={pending} onClick={confirm}>

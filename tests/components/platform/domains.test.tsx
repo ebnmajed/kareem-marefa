@@ -73,6 +73,17 @@ describe("SCR-082 domains", () => {
     expect(show).toHaveBeenCalledWith(expect.objectContaining({ tone: "success" }));
   });
 
+  it("★ closing the removal confirm without removing returns focus to «أزل» (wave 26)", async () => {
+    const remove = vi.fn(async () => ({ error: null }));
+    wrap(<DomainsTable domains={["example.com"]} remove={remove} />);
+    const button = screen.getAllByRole("button", { name: "أزل example.com" })[0];
+    await userEvent.click(button);
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(document.activeElement).toBe(button);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
   it("the first-admin form shows the stored address, is noValidate, and is axe-clean", async () => {
     const { container } = wrap(<FirstAdminForm current="boss@example.com" action={async (prev) => prev} />);
     expect(container.querySelector("form")).toHaveAttribute("novalidate");

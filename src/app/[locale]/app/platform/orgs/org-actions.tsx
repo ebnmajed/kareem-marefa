@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
@@ -49,6 +49,16 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
   const tErr = useTranslations("platform.errors");
   const toast = useToast();
   const [dialog, setDialog] = useState<"suspend" | "delete" | null>(null);
+  // ★ Focus goes BACK to the act that opened the dialog when it closes — Escape, «تراجع» or a refusal kept open then
+  // dismissed. The dialog is opened by state, not by a Radix trigger, so Radix has no trigger to return to and focus
+  // fell to the top of the document (the frame's skip link, the lead's 390 capture). The opener is remembered from
+  // the press itself; a success that re-renders the row still finds the same button.
+  const opener = useRef<HTMLButtonElement | null>(null);
+  const returnFocus = (event: Event) => {
+    if (!opener.current?.isConnected) return;
+    event.preventDefault();
+    opener.current.focus();
+  };
   const [reinstating, startReinstate] = useTransition();
 
   const [suspendState, suspendAction, suspendPending] = useActionState(async (prev: SuspendState, formData: FormData) => {
@@ -94,7 +104,10 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
           sides (SC 2.5.8 asks 24; the console's floor is 44). */}
       <div role="group" aria-label={org.name} className="flex flex-wrap items-center gap-1.5 md:flex-nowrap">
         {org.status === "active" ? (
-          <Button type="button" variant="quiet" size="sm" className={HIT} aria-label={named(t("suspendShort"))} onClick={() => setDialog("suspend")}>
+          <Button type="button" variant="quiet" size="sm" className={HIT} aria-label={named(t("suspendShort"))} onClick={(event) => {
+              opener.current = event.currentTarget;
+              setDialog("suspend");
+            }}>
             {t("suspendShort")}
           </Button>
         ) : (
@@ -105,13 +118,16 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
         <ButtonLink href={`/app/platform/orgs/${org.id}/domains`} variant="quiet" size="sm" className={HIT} aria-label={named(t("domainsLink"))}>
           {t("domainsLink")}
         </ButtonLink>
-        <Button type="button" variant="ghost" size="sm" className={`${HIT} ${CORAL}`} aria-label={named(t("deleteShort"))} onClick={() => setDialog("delete")}>
+        <Button type="button" variant="ghost" size="sm" className={`${HIT} ${CORAL}`} aria-label={named(t("deleteShort"))} onClick={(event) => {
+            opener.current = event.currentTarget;
+            setDialog("delete");
+          }}>
           {t("deleteShort")}
         </Button>
       </div>
 
       {dialog === "suspend" ? (
-        <DialogContent title={orgTitle("suspendConfirmTitle")} description={t("suspendHint")} closeLabel={t("closeDialog")}>
+        <DialogContent title={orgTitle("suspendConfirmTitle")} description={t("suspendHint")} closeLabel={t("closeDialog")} onCloseAutoFocus={returnFocus}>
           <form action={suspendAction} noValidate className="space-y-5">
             {suspendState.formError ? <FormError message={tErr(suspendState.formError)} /> : null}
             <Field
@@ -138,7 +154,7 @@ export function OrgActions({ org, locale }: { org: OrgSummary; locale: Locale })
       ) : null}
 
       {dialog === "delete" ? (
-        <DialogContent title={orgTitle("deleteConfirmTitle")} description={t("deleteHint")} closeLabel={t("closeDialog")}>
+        <DialogContent title={orgTitle("deleteConfirmTitle")} description={t("deleteHint")} closeLabel={t("closeDialog")} onCloseAutoFocus={returnFocus}>
           <form action={deleteAction} noValidate className="space-y-5">
             {deleteState.formError ? <FormError message={tErr(deleteState.formError)} /> : null}
             {/* The slug on its own line, Latin, left to right in its own isolated box: inside the sentence it wrapped
