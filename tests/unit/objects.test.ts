@@ -63,33 +63,46 @@ describe("the six objects", () => {
   });
 });
 
-describe("the playground's wordmark", () => {
-  const wordmark = readFileSync("src/components/brand/wordmark.tsx", "utf8");
+// ★ wave 26 (REQ-UIX-119, REQ-UIX-120): the written wordmark is gone — both components are deleted — and the
+// mark stands wherever it stood. What this block held about the wordmark it now holds about the mark.
+describe("the mark", () => {
+  const logo = readFileSync("src/components/brand/logo.tsx", "utf8");
 
-  it("is outlines in currentColor: no font is asked for, and the tone is where it stands", () => {
-    expect(wordmark).toContain('fill="currentColor"');
-    expect(wordmark).not.toMatch(/<text\b/);
-    expect(wordmark).not.toMatch(/#[0-9a-fA-F]{6}/);
-    expect(wordmark).not.toMatch(/font-family|fontFamily/);
+  it("is a drawing a component inlines: no text, no font, no file fetched", () => {
+    expect(logo).not.toMatch(/<text\b/);
+    expect(logo).not.toMatch(/font-family|fontFamily/);
+    expect(logo).not.toMatch(/\.svg["']|<img\b|<Image\b/);
+    expect(logo).toContain("pathLength={1}");
   });
 
   it("is named in Arabic, and can stand unnamed beside the name in text", () => {
-    expect(wordmark).toContain('label = "كريم معرفة"');
-    expect(wordmark).toContain("aria-hidden={named ? undefined : true}");
+    expect(logo).toContain('label = "كريم معرفة"');
+    expect(logo).toContain("aria-hidden={named ? undefined : true}");
   });
 
-  // ★ wave 18 (DEC-183 §4.9 → REQ-UIX-054, REQ-UIX-058): «built and not yet worn … until the
-  // screens wave changes the shell». The screens wave has come: the rebuilt shell and the rebuilt
-  // door wear it. What still holds is the other half of §4.9 — the public site keeps its own mark,
-  // so nothing a public route renders imports this one (`public-graph` walks that graph).
-  it("★ is worn by the rebuilt shell, the door and the public card, and by nothing the public site renders", () => {
-    const walk = (dir: string): string[] =>
-      readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${dir}/${e.name}`) : /\.(tsx?|mjs)$/.test(e.name) ? [`${dir}/${e.name}`] : []));
-    const importers = walk("src").filter((f) => /components\/brand\/wordmark["']/.test(readFileSync(f, "utf8")));
-    // The public session card (`/s/[id]`) is not one of the five frozen routes (`REQ-UIX-059`); it wears it too.
-    // ★ wave 21 (REQ-UIX-084): the console draws its own bar, and the bar wears the mark (`AdminDashboard.dc.html`).
-    const allowed = ["src/app/[locale]/(dev)/", "src/app/[locale]/app/layout.tsx", "src/app/[locale]/app/admin/layout.tsx", "src/app/[locale]/(auth)/door.tsx", "src/components/browse/public-card-frame.tsx"];
-    for (const f of importers) expect(allowed.some((a) => f.startsWith(a)), `${f} wears the new wordmark`).toBe(true);
-    expect(importers).toContain("src/app/[locale]/app/layout.tsx");
+  it("has three moves and stillness, and still is the default", () => {
+    expect(logo).toContain('export type LogoMotion = "none" | "reveal" | "loading" | "tap";');
+    expect(logo).toContain('motion = "none"');
+  });
+
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${dir}/${e.name}`) : /\.(tsx?|mjs)$/.test(e.name) ? [`${dir}/${e.name}`] : []));
+  const all = walk("src");
+
+  it("★ neither wordmark component exists, and nothing imports one", () => {
+    expect(all.filter((f) => /(^|\/)wordmark\.tsx$/.test(f))).toEqual([]);
+    expect(all.filter((f) => /components\/(brand\/)?wordmark["']/.test(readFileSync(f, "utf8")))).toEqual([]);
+  });
+
+  it("★ a console bar's mark never moves (REQ-UIX-053): the reveal is sign-in's and the landing's, the breath and the settle are the app bar's", () => {
+    const moving = all
+      .filter((f) => f !== "src/components/brand/logo.tsx" && /motion=(\{[^}]*"(reveal|loading|tap)"|"(reveal|loading|tap)")/.test(readFileSync(f, "utf8")))
+      .sort();
+    expect(moving).toEqual([
+      "src/app/[locale]/(auth)/sign-in/page.tsx",
+      "src/app/[locale]/(dev)/ui/playground.tsx",
+      "src/components/intro-sting.tsx",
+      "src/components/shell/home-mark.tsx",
+    ]);
   });
 });

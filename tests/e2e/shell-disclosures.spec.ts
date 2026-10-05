@@ -71,7 +71,7 @@ const header = (page: import("@playwright/test").Page) => page.locator("header")
 
 test("★ following a link inside the account menu leaves no menu over the destination", async ({ context, page }) => {
   await signIn(context);
-  await page.goto("/ar/app/leaderboards");
+  await page.goto("/ar/app"); // wave 26 (ledger E1): the boards own their phone top row since wave 20; home keeps the shell's
   await header(page).getByRole("button", { name: "حسابي" }).click();
   await expect(page.getByRole("menu")).toBeVisible();
   await page.getByRole("menuitem", { name: "نقاطي" }).click();
@@ -82,7 +82,7 @@ test("★ following a link inside the account menu leaves no menu over the desti
 
 test("the account menu lists each /app/me route once, in the hub's tab order", async ({ context, page }) => {
   await signIn(context);
-  await page.goto("/ar/app/leaderboards");
+  await page.goto("/ar/app"); // wave 26 (ledger E1): the boards own their phone top row since wave 20; home keeps the shell's
   await header(page).getByRole("button", { name: "حسابي" }).click();
   await expect(page.getByRole("menu")).toBeVisible();
   const hrefs = await page
@@ -103,7 +103,7 @@ test("the account menu lists each /app/me route once, in the hub's tab order", a
 
 test("★ Escape closes the menu and returns focus to the control that opened it", async ({ context, page }) => {
   await signIn(context);
-  await page.goto("/ar/app/leaderboards");
+  await page.goto("/ar/app"); // wave 26 (ledger E1): the boards own their phone top row since wave 20; home keeps the shell's
   const trigger = header(page).getByRole("button", { name: "حسابي" });
   await trigger.click();
   await expect(page.getByRole("menu")).toBeVisible();
@@ -114,7 +114,7 @@ test("★ Escape closes the menu and returns focus to the control that opened it
 
 test("★ an outside click closes the menu", async ({ context, page }, testInfo) => {
   await signIn(context);
-  await page.goto("/ar/app/leaderboards");
+  await page.goto("/ar/app"); // wave 26 (ledger E1): the boards own their phone top row since wave 20; home keeps the shell's
   await header(page).getByRole("button", { name: "حسابي" }).click();
   await expect(page.getByRole("menu")).toBeVisible();
   // In RTL the account menu opens at the LEFT edge (its inline end), so the
@@ -157,7 +157,7 @@ test("★ desktop: the account menu closes on navigation, and the rail is links 
 
 test("the header and its open menu, captured for the icon-position review at both widths", async ({ context, page }, testInfo) => {
   await signIn(context);
-  await page.goto("/ar/app/leaderboards");
+  await page.goto("/ar/app"); // wave 26 (ledger E1): the boards own their phone top row since wave 20; home keeps the shell's
   const dir = join(process.cwd(), ".qa-shots", "rtl");
   mkdirSync(dir, { recursive: true });
   const name = testInfo.project.name === "phone" ? "390" : "desktop";

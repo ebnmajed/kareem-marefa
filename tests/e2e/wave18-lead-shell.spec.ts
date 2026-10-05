@@ -126,7 +126,10 @@ test("phone: five tabs by name, the third raised, and the bar clears the page", 
   expect(mainBottom).toBeLessThanOrEqual((await bar.boundingBox())!.y + 1);
   expect(await noSidewaysScroll(page)).toBe(0);
 
-  // The top row: the wordmark leads home (REQ-UIX-027); search and the bell are named.
+  // The top row: the mark leads home (REQ-UIX-027, REQ-UIX-120); search and the bell are named.
+  // ★ wave 26 (ledger E2): read on home — the boards have drawn their own phone top row since wave 20 (DEC-217).
+  await page.goto("/ar/app");
+  await settle(page);
   const header = page.getByRole("banner");
   await expect(header.getByRole("link", { name: "كريم معرفة" })).toHaveAttribute("href", "/ar/app");
   await expect(header.getByRole("link", { name: "ابحث في الجلسات" })).toBeVisible();
@@ -179,7 +182,8 @@ test("staff: the ruled section with the console's link; an immersive route wears
   await signIn(context, "staff");
   const desktop = testInfo.project.name === "desktop";
   await page.setViewportSize(desktop ? { width: 1280, height: 900 } : { width: 390, height: 844 });
-  await page.goto("/ar/app/leaderboards");
+  // ★ wave 26 (ledger E2): on the phone the menu is opened from home — the boards own their top row since wave 20.
+  await page.goto(desktop ? "/ar/app/leaderboards" : "/ar/app");
   await settle(page);
 
   const nav = page.getByRole("navigation", { name: NAV });

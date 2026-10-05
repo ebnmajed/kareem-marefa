@@ -44,7 +44,7 @@ export default async function SignInPage({
 
   return (
     <>
-      <DoorLockup size="lg" label={shell("brand")} />
+      <DoorLockup size="lg" label={shell("brand")} motion="reveal" />
 
       <Panel className="relative mt-10 flex flex-col gap-3.5 px-[18px] py-[22px]">
         <Sticker fill="gold" rotate={6} size="sm" className="absolute -top-3.5 end-4">
