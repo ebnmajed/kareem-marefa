@@ -376,7 +376,6 @@
       "own": "Your team",
       "rankLabel": "Place <bdi>{value}</bdi>",
       "full": "The full board, <bdi>{metric}</bdi>",
-      "noCompany": "Choose your company to join the race",
       "metric": {
         "total_points": "total points",
         "points_per_active_member": "points per active member"

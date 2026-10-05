@@ -29,18 +29,18 @@ function Wrap({ children }: { children: React.ReactNode }) {
 }
 
 const COMPANIES: Row[] = [
-  { id: "11111111-1111-4111-8111-111111111111", name: "شركة الأولى", deactivatedAt: null, memberCount: 9, activeMemberCount: 7, teamColor: "#35d0ff", quarterPoints: 25 },
-  { id: "22222222-2222-4222-8222-222222222222", name: "شركة الثانية", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null, quarterPoints: null },
-  { id: "33333333-3333-4333-8333-333333333333", name: "شركة قديمة", deactivatedAt: "2026-09-01T00:00:00Z", memberCount: 2, activeMemberCount: 0, teamColor: null, quarterPoints: null },
+  { id: "11111111-1111-4111-8111-111111111111", name: "شركة الأولى", deactivatedAt: null, memberCount: 9, activeMemberCount: 7, teamColor: "#35d0ff", quarterPoints: 25, domains: ["first.example", "first.sa"] },
+  { id: "22222222-2222-4222-8222-222222222222", name: "شركة الثانية", deactivatedAt: null, memberCount: 0, activeMemberCount: 0, teamColor: null, quarterPoints: null, domains: [] },
+  { id: "33333333-3333-4333-8333-333333333333", name: "شركة قديمة", deactivatedAt: "2026-09-01T00:00:00Z", memberCount: 2, activeMemberCount: 0, teamColor: null, quarterPoints: null, domains: [] },
 ];
 const table = () => screen.getByRole("table");
 const rows = () => within(table()).getAllByRole("row").slice(1);
 
 describe("CompaniesTable", () => {
-  it("draws الشركة · الأعضاء · النشطون · الربع and a named ⋯ — ★ no domain column and no logo (DEC-231 §6.1, DEC-195 §4)", () => {
+  // ★ wave 27 (DEC-254 §2, REQ-ADM-024; ledger B): the artboard's النطاق column is built — the expectation moved.
+  it("draws الشركة · النطاق · الأعضاء · النشطون · الربع and a named ⋯ — no logo (DEC-195 §4)", () => {
     render(<CompaniesTable companies={COMPANIES} locale="ar" />, { wrapper: Wrap });
-    expect(within(table()).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["الشركة", "الأعضاء", "النشطون", "الربع", "إجراءات"]);
-    expect(screen.queryByText("النطاق")).toBeNull();
+    expect(within(table()).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["الشركة", "النطاق", "الأعضاء", "النشطون", "الربع", "إجراءات"]);
     expect(document.querySelector("img")).toBeNull();
   });
 
@@ -58,8 +58,9 @@ describe("CompaniesTable", () => {
   it("the quarter's points are read; «—» before the quarter's snapshot exists", () => {
     render(<CompaniesTable companies={COMPANIES} locale="ar" />, { wrapper: Wrap });
     const cells = (r: HTMLElement) => within(r).getAllByRole("cell").map((c) => c.textContent);
-    expect(cells(rows()[0]).slice(1, 4)).toEqual(["9", "7", "25"]);
-    expect(cells(rows()[1])[3]).toBe("—");
+    // ★ wave 27 (ledger B): one column further along — النطاق is the second.
+    expect(cells(rows()[0]).slice(2, 5)).toEqual(["9", "7", "25"]);
+    expect(cells(rows()[1])[4]).toBe("—");
   });
 
   it("state lives in the row: «معطّلة» beside a deactivated company only, and the count line under the table", () => {

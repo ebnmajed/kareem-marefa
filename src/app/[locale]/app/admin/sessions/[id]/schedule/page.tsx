@@ -12,6 +12,9 @@ import { KvCard } from "@/components/ui/kv-card";
 import { Panel } from "@/components/ui/panel";
 import { listMembersForAdmin } from "@/lib/dal/admin-members";
 import { getSessionPosterDownloads } from "@/lib/dal/posters";
+import { estimateNextSerial, getCertificateDesign, listEligibleRecipients } from "@/lib/dal/certificates";
+import { listEditorFaces } from "@/lib/dal/fonts";
+import { ScheduleCertificateMode } from "@/components/sessions/schedule-certificate";
 import { checkInCeiling } from "@/lib/session-status";
 import { getScheduleContent, getScheduleRead, getSessionForSchedule, getSessionLog, listSessionPresentersForAdmin, listVenues } from "@/lib/dal/sessions";
 import { addPresenter, removePresenter, saveSchedule } from "./actions";
@@ -66,6 +69,7 @@ const LOG_KEY: Record<string, string> = {
   "session.reopen": "reopen",
   "session.presenter_added": "presenterAdded",
   "session.presenter_removed": "presenterRemoved",
+  "session.renamed": "renamed",
 };
 
 export default async function SchedulePage({
@@ -79,7 +83,7 @@ export default async function SchedulePage({
   setRequestLocale(locale);
   const editing = query.edit !== undefined;
 
-  const [session, read, content, venues, presenters, members, t, tDays] = await Promise.all([
+  const [session, read, content, venues, presenters, members, t, tDays, certDesign, certEligible, certFaces, certSerial] = await Promise.all([
     getSessionForSchedule(locale, id),
     getScheduleRead(locale, id),
     getScheduleContent(locale, id),
@@ -89,6 +93,12 @@ export default async function SchedulePage({
     listMembersForAdmin(locale),
     getTranslations("schedule"),
     getTranslations("sessions.days"),
+    // DEC-256: the certificate mode's control, SCR-045's own, needs SCR-045's preflight — the same four reads, read only.
+    // A failed read leaves the row reading its sentence; it never takes the schedule tab down.
+    getCertificateDesign(locale, id).catch(() => null),
+    listEligibleRecipients(locale, id).catch(() => null),
+    listEditorFaces(locale).catch(() => null),
+    estimateNextSerial(locale).catch(() => null),
   ]);
   if (!session || !read || !content || !presenters) notFound();
   const [logRows, posterDownloads] = await Promise.all([
@@ -136,7 +146,27 @@ export default async function SchedulePage({
     session.allowWalkIns ? t("read.walkIns") : null,
     multiDay && session.requireAllDays ? t("read.everyDay") : null,
   ].filter((v): v is string => v !== null);
-  const certificate = t(`read.certificateMode.${read.certificateMode}`);
+  // DEC-256: the row carries SCR-045's control where 045 offers it, and its sentence otherwise (a cancelled session).
+  const certificate = (
+    <ScheduleCertificateMode
+      locale={locale}
+      sessionId={session.id}
+      state={session.state}
+      mode={read.certificateMode}
+      sentence={t(`read.certificateMode.${read.certificateMode}`)}
+      preflight={
+        certDesign && certEligible && certFaces
+          ? {
+              fontsLoaded: certFaces.length > 0,
+              designs: certDesign.kinds.map((k) => ({ kind: k.kind, saved: k.chosen !== null })),
+              eligible: certEligible.length,
+              // `certificates/page.tsx:94`'s shape — an ESTIMATE, never a reservation (DEC-148).
+              serial: certSerial ? `${certSerial.prefix}-${certSerial.year}-${String(certSerial.next).padStart(6, "0")}` : null,
+            }
+          : null
+      }
+    />
+  );
   const cancelled = session.state === "cancelled";
   const presentersSection = {
     presenters,

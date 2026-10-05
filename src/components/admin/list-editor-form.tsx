@@ -28,6 +28,7 @@ export function ListEditorForm<S extends SavedFormState>({
   submitLabel,
   pendingLabel,
   children,
+  id,
 }: {
   action: (previous: S, formData: FormData) => Promise<S>;
   emptyState: S;
@@ -39,6 +40,9 @@ export function ListEditorForm<S extends SavedFormState>({
   submitLabel: string;
   pendingLabel: string;
   children: (state: S) => ReactNode;
+  /** ★ wave 27 (add-only): the form's id, so a control outside it — a dialog's button in a portal — can submit it
+   *  through `form=`. */
+  id?: string;
 }) {
   const router = useRouter();
   const [state, dispatch] = useActionToast<S>(
@@ -52,7 +56,7 @@ export function ListEditorForm<S extends SavedFormState>({
   );
 
   return (
-    <form action={dispatch} noValidate className="space-y-5">
+    <form id={id} action={dispatch} noValidate className="space-y-5">
       {hasAttempted(state) ? <FormSummary key={state.attempt} title={summaryTitle} errors={summary(state)} /> : null}
       {state.formError ? <FormAlert>{failedMessage(state.formError)}</FormAlert> : null}
       {state.saved ? (

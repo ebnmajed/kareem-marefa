@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import axe from "axe-core";
 import profileAr from "@/messages/ar/profile.json";
 import uiAr from "@/messages/ar/ui.json";
-import type { Company, MyInterests, SelfProfile } from "@/lib/dal/members";
+import type { MyInterests, SelfProfile } from "@/lib/dal/members";
 import type { ProfileState } from "@/app/[locale]/app/me/state";
 import { ToastProvider } from "@/components/ui/toast";
 
@@ -35,7 +35,6 @@ const ME: SelfProfile = {
   status: "active",
   leaderboardOptOut: false,
 };
-const COMPANIES: Company[] = [{ id: "c1", name: "شركة الاختبار" }];
 const C1 = "11111111-1111-1111-1111-111111111111";
 const C2 = "22222222-2222-2222-2222-222222222222";
 const INTERESTS: MyInterests = { chosen: [{ id: C1, name: "حوكمة" }], options: [{ id: C1, name: "حوكمة" }, { id: C2, name: "تقارير" }] };
@@ -47,7 +46,7 @@ function renderEdit(me: SelfProfile = ME) {
   return render(
     <NextIntlClientProvider locale="ar" messages={messages}>
       <ToastProvider closeLabel="إغلاق">
-        <ProfileEdit locale="ar" me={me} companies={COMPANIES} interests={INTERESTS} />
+        <ProfileEdit locale="ar" me={me} interests={INTERESTS} />
       </ToastProvider>
     </NextIntlClientProvider>,
   );
@@ -67,7 +66,7 @@ describe("SCR-021 — read mode", () => {
   function renderRead(me: SelfProfile = ME, interests = INTERESTS.chosen) {
     return render(
       <NextIntlClientProvider locale="ar" messages={messages}>
-        <ProfileRead me={me} companyName={me.companyId ? "شركة الاختبار" : null} interests={interests} t={t as never} noBio="لا توجد نبذة بعد" companyMissing="اختر شركتك قبل حجز مقعد أو اقتراح جلسة." />
+        <ProfileRead me={me} companyName={me.companyId ? "شركة الاختبار" : null} interests={interests} t={t as never} noBio="لا توجد نبذة بعد" />
       </NextIntlClientProvider>,
     );
   }
@@ -86,7 +85,7 @@ describe("SCR-021 — read mode", () => {
   it("the company row carries its team dot through `--team`, never a class or a hex in markup", () => {
     const { container } = render(
       <NextIntlClientProvider locale="ar" messages={messages}>
-        <ProfileRead me={{ ...ME, companyId: "c1" }} companyName="صنف" companyTeamColor="#ff9a2e" interests={[]} t={t as never} noBio="—" companyMissing="—" />
+        <ProfileRead me={{ ...ME, companyId: "c1" }} companyName="صنف" companyTeamColor="#ff9a2e" interests={[]} t={t as never} noBio="—" />
       </NextIntlClientProvider>,
     );
     const dot = container.querySelector(".bg-team") as HTMLElement;
@@ -95,10 +94,12 @@ describe("SCR-021 — read mode", () => {
     expect(dot).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("★ no company: says what it blocks, and the company row is the way to choose one", () => {
+  // ★ wave 27 (DEC-254 §2, REQ-PRF-012; ledger B): the company is shown, never chosen — no banner, no link.
+  it("★ no company: the row says «بلا شركة», nothing asks for one and nothing leads to a control", () => {
     renderRead();
-    expect(screen.getByRole("status")).toHaveTextContent("اختر شركتك قبل حجز مقعد");
-    expect(screen.getByRole("link", { name: "اختر شركتك" })).toHaveAttribute("href", "/ar/app/me?edit");
+    expect(screen.getByText("بلا شركة")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["/ar/app/me?edit"]);
   });
 
   it("is axe-clean", async () => {
@@ -144,13 +145,17 @@ describe("SCR-021 — edit mode", () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/app/me"));
   });
 
-  it("keeps the chosen company in the select after a refused save (was profile-form: «echoes the saved company»)", async () => {
-    saveProfile.mockResolvedValue({ ...base, formError: "failed", attempt: 1 } as ProfileState);
-    renderEdit();
-    fireEvent.change(screen.getByLabelText("الشركة", { exact: false }), { target: { value: "c1" } });
+  // ★ wave 27 (DEC-254 §2.5, STORY-PRF-007; ledger B): replaces «keeps the chosen company in the select» — there is
+  // no select to keep. Edit mode has no company control and the save posts no `companyId`.
+  it("★ no company control, and the save posts no companyId", async () => {
+    saveProfile.mockResolvedValue({ ...base, saved: true } as ProfileState);
+    renderEdit({ ...ME, companyId: "c1" });
+    expect(screen.queryByLabelText("الشركة", { exact: false })).not.toBeInTheDocument();
+    fireEvent.change(name(), { target: { value: "ريم" } });
     save();
-    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
-    expect(screen.getByLabelText("الشركة", { exact: false })).toHaveValue("c1");
+    await waitFor(() => expect(saveProfile).toHaveBeenCalled());
+    const posted = saveProfile.mock.calls[0][2];
+    expect(posted.has("companyId")).toBe(false);
   });
 
   it("★ Save is enabled only when something changed, and the header counts the changes", () => {

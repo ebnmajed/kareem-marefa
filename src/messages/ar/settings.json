@@ -52,6 +52,7 @@
       },
       "labels": {
         "checkInRotation": "مدة تغيّر الرمز",
+        "checkInFixed": "لا يتغيّر",
         "checkInGrace": "مهلة الرمز السابق",
         "limitDocument": "المستندات (ميغابايت)",
         "limitAudio": "الصوت (ميغابايت)",
@@ -71,6 +72,7 @@
         "minActive": "{count, plural, zero {<bdi>{value}</bdi> عضو نشط على الأقل} one {عضو نشط واحد على الأقل} two {عضوان نشطان على الأقل} few {<bdi>{value}</bdi> أعضاء نشطين على الأقل} many {<bdi>{value}</bdi> عضوًا نشطًا على الأقل} other {<bdi>{value}</bdi> عضو نشط على الأقل}}",
         "checkIn": "يتغيّر كل <rotation></rotation> · يُقبل السابق <grace></grace>",
         "checkInNoGrace": "يتغيّر كل <rotation></rotation> · لا يُقبل السابق",
+        "checkInFixed": "لا يتغيّر",
         "seconds": "{count, plural, zero {<bdi>{value}</bdi> ثانية} one {ثانية} two {ثانيتين} few {<bdi>{value}</bdi> ثوانٍ} many {<bdi>{value}</bdi> ثانية} other {<bdi>{value}</bdi> ثانية}}",
         "minutes": "{count, plural, zero {<bdi>{value}</bdi> دقيقة} one {دقيقة} two {دقيقتين} few {<bdi>{value}</bdi> دقائق} many {<bdi>{value}</bdi> دقيقة} other {<bdi>{value}</bdi> دقيقة}}",
         "coPresenters": "{count, plural, zero {بلا مقدّمين مشاركين} one {حتى مقدّم مشارك واحد} two {حتى مقدّمَين مشاركَين} few {حتى <bdi>{value}</bdi> مقدّمين مشاركين} many {حتى <bdi>{value}</bdi> مقدّمًا مشاركًا} other {حتى <bdi>{value}</bdi> مقدّم مشارك}}",

@@ -76,6 +76,8 @@ export function SettingsEdit({
   const [removed, setRemoved] = useState<string[]>([]);
   const [adding, setAdding] = useState("");
   const set = (field: keyof Values) => (value: string) => setValues((v) => ({ ...v, [field]: value }));
+  // The period to return to when «لا يتغيّر» is switched back off: the one the page opened with, else the default.
+  const [lastRotation, setLastRotation] = useState(initial.checkInRotationSeconds === "" ? "600" : initial.checkInRotationSeconds);
 
   // The toast and the way back are called FROM the action's own result (`use-action-toast.ts` says why).
   const [state, formAction] = useActionState<SettingsState, FormData>(async (previous, formData) => {
@@ -285,8 +287,26 @@ export function SettingsEdit({
                   label: t("rows.checkIn"),
                   value: null,
                   edit: (
-                    <div className="flex flex-wrap gap-4">
-                      {number("checkInRotationSeconds", t("labels.checkInRotation"), true)}
+                    <div className="flex flex-wrap items-end gap-4">
+                      {/* ★ wave 27 (REQ-CHK-019): «لا يتغيّر» posts the rotation EMPTY, which the action reads as null. The
+                          last period typed is kept beside the switch, so turning it back on restores it. */}
+                      {values.checkInRotationSeconds === "" ? (
+                        <input type="hidden" name="checkInRotationSeconds" value="" />
+                      ) : (
+                        number("checkInRotationSeconds", t("labels.checkInRotation"), true)
+                      )}
+                      <div className={`w-fit ${mark(changed("checkInRotationSeconds") && values.checkInRotationSeconds === "")}`}>
+                        <Switch
+                          label={t("labels.checkInFixed")}
+                          checked={values.checkInRotationSeconds === ""}
+                          onCheckedChange={(on) => {
+                            if (on) {
+                              if (values.checkInRotationSeconds !== "") setLastRotation(values.checkInRotationSeconds);
+                              set("checkInRotationSeconds")("");
+                            } else set("checkInRotationSeconds")(lastRotation);
+                          }}
+                        />
+                      </div>
                       {number("checkInGraceSeconds", t("labels.checkInGrace"), true)}
                     </div>
                   ),

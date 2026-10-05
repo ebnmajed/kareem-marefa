@@ -21,13 +21,14 @@ import { PROFILE_FIELDS, type ProfileField, type ProfileState } from "./state";
 // mode — as repeated `interests` values (category ids). ★ PR B: the leaderboard opt-out is not sent — it lives on
 // `/app/me/settings` (contract 5), and `updateMyProfile` leaves the column alone when it is absent. `setMyInterests()` writes the session's own rows only. Edit
 // mode is `/app/me?edit`; a success returns `saved` and the client goes back to read mode.
+//
+// ★ wave 27 (`DEC-254` §2.5, `REQ-PRF-012`): no company. It follows the member's email domain or an admin's placement;
+// `profileInput` is strict, so a crafted `companyId` is refused here, and the column leaves the member's grant after.
 
 function errorKey(field: ProfileField, code: string, empty: boolean): string {
   switch (field) {
     case "displayName":
       return empty ? "displayNameRequired" : code === "too_big" ? "displayNameTooLong" : "displayNameRequired";
-    case "companyId":
-      return "companyInvalid";
     case "jobTitle":
       return "jobTitleTooLong";
     case "bio":
@@ -43,7 +44,6 @@ export async function saveProfile(locale: Locale, prev: ProfileState, formData: 
 
   const raw = {
     displayName: was(state, "displayName"),
-    companyId: was(state, "companyId") || null,
     jobTitle: was(state, "jobTitle") || null,
     bio: was(state, "bio") || null,
   };

@@ -11,6 +11,8 @@ import {
   removeUnboundMember,
   resendMemberInvitation,
   roleChangeInput,
+  memberCompanyInput,
+  setMemberCompany,
   setMemberRole,
   type AddMemberLine,
 } from "@/lib/dal/admin-members";
@@ -108,5 +110,18 @@ export async function removeUnbound(locale: Locale, memberId: string): Promise<R
   const { error } = await removeUnboundMember(locale, memberId);
   if (error) return { error, done: false };
   revalidatePath(`/${locale}/app/admin/members`);
+  return { error: null, done: true };
+}
+
+// ── wave 27 · M29 — «غيّر الشركة» (`REQ-PRF-013`, `DEC-254` §2.6) ────────────────────────────────────────────────────
+// The dialog posts a company id or «none»; Zod first, then the one RPC, which holds the authority and the audit row.
+export async function changeCompany(locale: Locale, memberId: string, _prev: RowState, formData: FormData): Promise<RowState> {
+  const raw = formData.get("companyId")?.toString() ?? "";
+  const parsed = memberCompanyInput.safeParse({ memberId, companyId: raw === "none" || raw === "" ? null : raw });
+  if (!parsed.success) return { error: "failed", done: false };
+  const { error } = await setMemberCompany(locale, parsed.data);
+  if (error) return { error, done: false };
+  revalidatePath(`/${locale}/app/admin/members`);
+  revalidatePath(`/${locale}/app/admin/companies`);
   return { error: null, done: true };
 }

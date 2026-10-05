@@ -105,8 +105,11 @@ describe("POL-sessions", () => {
       expect(await errorCode(() => tx.q(`update public.sessions set starts_at = now() where id = $1`, [f.m2.a.published]))).toBe(PERMISSION_DENIED);
       expect(await errorCode(() => tx.q(`update public.sessions set state = 'published' where id = $1`, [f.m2.a.draft]))).toBe(PERMISSION_DENIED);
       expect(await errorCode(() => tx.q(`update public.sessions set capacity = 500 where id = $1`, [f.m2.a.published]))).toBe(PERMISSION_DENIED);
-      const t = await tx.q<{ title: string }>(`update public.sessions set title = 'عنوان محدّث' where id = $1 returning title`, [f.m2.a.published]);
+      // wave 27 (0200, DEC-255 §1): a title is editable until the session is published — so the grant is proven on the
+      // presenter's DRAFT, and the published one is refused by the guard, not by the grant.
+      const t = await tx.q<{ title: string }>(`update public.sessions set title = 'عنوان محدّث' where id = $1 returning title`, [f.m2.a.draft]);
       expect(t[0].title).toBe("عنوان محدّث");
+      expect(await errorCode(() => tx.q(`update public.sessions set title = 'عنوان محدّث' where id = $1`, [f.m2.a.published]))).toBe("55000");
       // not a presenter of B's session, and B's session is invisible anyway
       expect(await tx.q(`update public.sessions set title = 'x' where id = $1 returning id`, [f.m2.b.published])).toEqual([]);
     });

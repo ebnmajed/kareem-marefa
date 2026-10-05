@@ -254,9 +254,10 @@ test("an admin: the hub's address lands on the schedule, the strip follows the r
   await expect(strip(page).locator('[aria-current="page"]')).toHaveCount(1);
   await expect(strip(page).getByRole("link", { name: "المحتوى" })).toHaveAttribute("href", `/ar/app/sessions/${sessionId}`);
   await expectTargets(page);
-  // ★ The mode's one writer is SCR-045 (DEC-178); SCR-043 does the schedule's job.
-  await expect(main(page).locator('[name="certificateMode"]')).toHaveCount(0);
-  await expect(main(page).getByRole("radio", { name: "تُصدَر تلقائيًا لكل من سجّل حضوره" })).toHaveCount(0);
+  // ★ DEC-256 (ledger A4): SCR-043's «الشهادة» row carries SCR-045's own mode control — one writer, two places.
+  const certificateMode = main(page).getByRole("radiogroup", { name: "من يستحق شهادة، ومتى" });
+  await expect(certificateMode).toBeVisible();
+  await expect(certificateMode.getByRole("radio")).toHaveCount(3);
   const axe = await new AxeBuilder({ page }).include('[data-session-settings]').analyze();
   expect(axe.violations).toEqual([]);
   await capture(page, "hub-schedule");

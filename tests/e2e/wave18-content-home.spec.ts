@@ -10,7 +10,7 @@
 //   · a ring is a button that opens the session's story (wave 26, DEC-251 §4 — until then it opened nothing);
 //   · a post's action is a LINK — nothing on the home reserves (§4.57);
 //   · the like is written and survives a reload;
-//   · with no company, the one `role="status"` asks for one, and a post says why it cannot reserve;
+//   · with no company, nothing asks for one and a post still offers its seat (wave 27, DEC-255 §4);
 //   · staff see «يحتاج انتباهك», a member does not;
 //   · from `lg` the week is the game rail's, and the column's copy of it is not displayed.
 //
@@ -205,15 +205,16 @@ test("★ a like is written, and it is still there after a reload", async ({ con
   await expect(again).toHaveAttribute("aria-pressed", "false");
 });
 
-test("★ no company: the one status line asks for it, above the week, and a post says why it cannot reserve", async ({ context, page }) => {
+// wave 27 (DEC-255 §4, REQ-PRF-012): a member no longer chooses a company, so one with none is asked nothing and
+// reserves like anyone else.
+test("★ no company: nothing asks for one, and a post still offers its seat", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, emails.noCompany);
   await openHome(page);
   const main = page.locator("#main");
-  await expect(page.getByRole("status")).toHaveCount(1);
-  await expect(page.getByRole("status")).toContainText("اختر شركتك");
-  await expect(main.getByRole("link", { name: /احجز مقعدك/ })).toHaveCount(0);
-  await expect(main.getByText("اختر شركتك أولًا لتحجز مقعدًا").first()).toBeVisible();
+  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(main.getByText(/اختر شركتك/)).toHaveCount(0);
+  await expect(main.getByRole("link", { name: /احجز مقعدك/ }).first()).toBeVisible();
   await shot(page, "no-company", 390);
 });
 

@@ -12,9 +12,6 @@ import { StaffStrip } from "@/components/feed/staff-strip";
 import { AvatarImportPrompt } from "@/components/privacy/avatar-import-prompt";
 import { CompanyRaceCard } from "@/components/scoring/company-race-card";
 import { MemberWeekHud } from "@/components/scoring/member-week-hud";
-import { buttonClass } from "@/components/ui/button";
-import { Link } from "@/components/ui/link";
-import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getFeed } from "@/lib/dal/feed";
@@ -24,7 +21,9 @@ import { getFeed } from "@/lib/dal/feed";
 //
 // The regions, in the artboard's order:
 //   1. the ring row;
-//   2. the member's own prompts — no company set, and «نستخدم صورتك من Google؟» — above the week (DEC-207 §6.1);
+//   2. the member's own prompt — «نستخدم صورتك من Google؟» — above the week (DEC-207 §6.1). ★ wave 27 (DEC-255 §4,
+//      REQ-PRF-012): the «choose your company» prompt is gone — a member no longer chooses, and one with none is
+//      refused nothing;
 //   3. the week (`scoring's` `MemberWeekHud`) — on the phone only: from `lg` the week is the game rail's;
 //   4. «يحتاج انتباهك», staff only;
 //   5. the feed by day — session posts, recaps, announcements, achievements — with the company race after the
@@ -37,24 +36,13 @@ import { getFeed } from "@/lib/dal/feed";
 // never waits for the week.
 
 export async function Feed({ locale }: { locale: string }) {
-  const [feed, t, tApp] = await Promise.all([getFeed(locale), getTranslations("feed"), getTranslations("app.home")]);
+  const [feed, t] = await Promise.all([getFeed(locale), getTranslations("feed")]);
   const now = new Date(feed.now);
 
   return (
     <div className="flex flex-col gap-4">
       <RingRow />
 
-      {/* REQ-PRF-001: a member with no company is asked for one before they can reserve. */}
-      {!feed.viewer.hasCompany ? (
-        <div role="status">
-          <Panel tone="info" className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-body text-fg-heading">{tApp("companyMissing")}</p>
-            <Link href="/app/me" className={buttonClass("primary", "md")}>
-              {tApp("completeProfile")}
-            </Link>
-          </Panel>
-        </div>
-      ) : null}
       <Suspense fallback={null}>
         <AvatarImportPrompt locale={locale} />
       </Suspense>
@@ -79,7 +67,7 @@ export async function Feed({ locale }: { locale: string }) {
               {group.entries.map((entry) => {
                 switch (entry.kind) {
                   case "session":
-                    return <SessionPost key={entry.key} post={entry.post} locale={locale} today={feed.today} noCompany={!feed.viewer.hasCompany} />;
+                    return <SessionPost key={entry.key} post={entry.post} locale={locale} today={feed.today} />;
                   case "recap":
                     return <RecapPost key={entry.key} post={entry.post} extra={feed.recaps[entry.post.id] ?? { count: 0, photos: [], hasMaterials: false }} locale={locale} now={now} today={feed.today} />;
                   case "announcement":

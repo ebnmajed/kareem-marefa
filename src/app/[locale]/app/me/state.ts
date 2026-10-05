@@ -11,8 +11,10 @@ import { emptyFormState, type FormState } from "@/lib/form-state";
  * them. ★ wave 20, PR B (contract 5, DEC-217 §3.1): the leaderboard opt-out
  * left the profile for `/app/me/settings`' switch, which writes it through
  * `setLeaderboardOptOut()` — the profile neither shows nor sends it.
+ *
+ * ★ wave 27 (`DEC-254` §2.5, `REQ-PRF-012`): `companyId` left — the member never sets their company.
  */
-export const PROFILE_FIELDS = ["displayName", "companyId", "jobTitle", "bio"] as const;
+export const PROFILE_FIELDS = ["displayName", "jobTitle", "bio"] as const;
 export type ProfileField = (typeof PROFILE_FIELDS)[number];
 
 /**

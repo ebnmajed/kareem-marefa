@@ -1,0 +1,24 @@
+-- 0201 · wave 27 (DEC-254 §4, REQ-CRT-018, STORY-CRT-010) — a new session's certificates are held for review.
+--
+-- `sessions.certificate_mode` has defaulted to 'off' since 0010:88, and since 0154 `schedule_session()` leaves the
+-- mode alone unless it is named. So a session nobody visited `SCR-045` for completed with no certificate at all
+-- (DEC-250 §1). 0194 made that recoverable and said of the default: «the owner's call». This is the call.
+--
+-- 'review' means: at completion a certificate is generated for every eligible recipient and HELD — invisible to its
+-- recipient, no mail — until an admin releases it (REQ-CRT-004).
+--
+-- ★ A DEFAULT APPLIES TO NEW ROWS. No existing session is rewritten; one that is 'off' stays 'off' until an admin
+-- changes it on SCR-045, which 0194 allows at any time but after cancellation.
+-- ★ THE ONLY PLACE. Both inserts into `sessions` (0020:75, 0151:74) name no mode, and the live `schedule_session()`
+-- (0154:54) defaults its parameter to null = unchanged. Nothing else carries 'off' as a default.
+-- ★ WHAT IT RAISES THE STAKES OF: with this, every completed session fans out, so every completion needs a template to
+-- resolve (`no_certificate_template`, 0127:274). Today the platform's rows answer for every org; wave 27's later
+-- migrations hand that to each org's own rows and refuse to remove a platform row before they do (DEC-254 §3.3).
+--
+-- Additive for `main`: its app creates sessions through the same two functions and reads the mode as it is.
+--
+-- | Test | Proves |
+-- |---|---|
+-- | `COL-sessions.certificate_mode_default` | A session inserted with no mode is 'review'; a session that existed before keeps its mode. |
+
+alter table public.sessions alter column certificate_mode set default 'review';
