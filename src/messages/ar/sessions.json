@@ -116,6 +116,7 @@
       "attendingNowOf": "{count, plural, zero {الآن} one {من مقعد واحد، حاضرًا الآن} two {من مقعدين، حاضرًا الآن} few {من {capacity} حاضرين الآن} many {من {capacity} حاضرًا الآن} other {من {capacity} حاضر الآن}}",
       "attendingNow": "{count, plural, zero {لا أحد حاضر الآن} one {حاضر الآن} two {حاضران الآن} few {حاضرين الآن} many {حاضرًا الآن} other {حاضر الآن}}",
       "rotation": "{count, plural, zero {الرمز يُعرض في القاعة ويتغيّر باستمرار.} one {الرمز يُعرض في القاعة ويتغيّر كل دقيقة.} two {الرمز يُعرض في القاعة ويتغيّر كل دقيقتين.} few {الرمز يُعرض في القاعة ويتغيّر كل {value} دقائق.} many {الرمز يُعرض في القاعة ويتغيّر كل {value} دقيقة.} other {الرمز يُعرض في القاعة ويتغيّر كل {value} دقيقة.}}",
+      "rotationFixed": "الرمز يُعرض في القاعة.",
       "rotationPoints": "{count, plural, zero {} one {+{value} نقطة تصل عند انتهاء الجلسة.} two {+{value} نقطة تصل عند انتهاء الجلسة.} few {+{value} نقاط تصل عند انتهاء الجلسة.} many {+{value} نقطة تصل عند انتهاء الجلسة.} other {+{value} نقطة تصل عند انتهاء الجلسة.}}",
       "liveTimes": "بدأت {start} · تنتهي {end}",
       "deadlineClose": "يُغلق التسجيل {value}",

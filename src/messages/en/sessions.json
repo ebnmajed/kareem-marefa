@@ -116,6 +116,7 @@
       "attendingNowOf": "of {capacity} here now",
       "attendingNow": "{count, plural, =0 {nobody here yet} one {here now} other {here now}}",
       "rotation": "{count, plural, one {The code is shown in the room and changes every minute.} other {The code is shown in the room and changes every {value} minutes.}}",
+      "rotationFixed": "The code is shown in the room.",
       "rotationPoints": "{count, plural, =0 {} one {+1 point arrives when the session ends.} other {+{value} points arrive when the session ends.}}",
       "liveTimes": "Started {start} · ends {end}",
       "deadlineClose": "Registration closes {value}",
