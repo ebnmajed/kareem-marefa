@@ -18,3 +18,13 @@ One line per changed assertion or fixture in a file that existed before the wave
 | B12 | `tests/components/admin/companies-add-colour.test.tsx` · `tests/unit/admin-lists-team-colour.test.ts` | the DAL mock moves from `createCompany` / `updateCompany` to `saveCompanyWithDomains` | selector — the colour's expectations are unchanged | a company and its domains are saved by one function, `save_company()` (`console`'s line) |
 | B13 | `tests/e2e/wave20-content-hub.spec.ts` | the placement step navigates with `goto` and settles at once, instead of `page.reload()` | selector — no expectation moved | measured by `console` with a trace: after a reload every request completes but Playwright's network-idle for the reloaded document never fires; the screen makes no new request |
 | B14 | `tests/components/admin/companies-domains.test.tsx` | a new case: «انقل واحفظ» submits with `confirm=1` and the token | new behaviour, listed so the file's history reads | ★ **the e2e found a real defect here**: the confirm button disabled itself from its own click before the browser's submit, so the confirmed save never left the browser (`e5fb6b32`). jsdom does not reproduce it; the desktop e2e is the proof |
+
+**★ An intermittent error page, measured and NOT this wave's code** (2026-10-05, after `main` was merged in). In a
+combined e2e run the session hub showed «تعذّر عرض هذه الصفحة» once, a certificate control fell back to its sentence once,
+and the hub's strip was empty once — three sightings, one cause. With the server's own log captured: `admin_list_members:
+An invalid response was received from the upstream server`. The local gateway's log says why: `upstream prematurely closed
+connection` / `Connection reset by peer` from the local PostgREST container (`Warp server error: Thread killed by timeout
+manager`), on unrelated requests too (`survey_results`, `companies`, `org_settings`). nginx retries a GET and cannot retry a
+POST, so an RPC read gets the 502 — 6 of 11,765 requests in the window. **The local stack's gateway, not the product**: it
+survives a restart of the REST container, and the same specs pass 35 of 35 in the runs it does not strike. Recorded so the
+next lead does not chase it as a defect; what is real is that one failed read takes a whole console page down.
