@@ -664,7 +664,8 @@
           "walk_ins_changed": "Walk-ins changed",
           "presenter_added": "Presenter added to a session",
           "presenter_removed": "Presenter removed from a session",
-          "certificate_mode_changed": "Session certificate mode changed"
+          "certificate_mode_changed": "Session certificate mode changed",
+          "renamed": "Session renamed"
         },
         "storage": {
           "prefix_violation": "Storage path violation"

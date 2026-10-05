@@ -82,7 +82,7 @@ export type ModeActionResult = { status: "ok" | "unchanged" | "fanned_out" } | {
  * ★ THE MODE'S ONE WRITER (DEC-178 contract 2): SCR-045 changes it, through
  * `sessions`' `setSessionCertificateMode()` → `set_session_certificate_mode()`
  * (0154, `0194`) — admin only, audited, refused only for a cancelled session.
- * The schedule screen only shows it.
+ * ★ wave 27 (DEC-256): the schedule tab carries this same control and calls this same action — one function, two places.
  *
  * ★ DEC-250 (REQ-CRT-017): a completed session may still be switched on, and
  * doing so fans out at once — `fanned_out`, which the control reports as «being
@@ -93,7 +93,11 @@ export async function saveCertificateMode(locale: string, sessionId: string, mod
   if (!parsed.success) return { status: "refused", error: "session_not_found" };
   try {
     const result = await setSessionCertificateMode(locale, parsed.data.sessionId, parsed.data.mode);
-    if (result.status !== "refused") revalidatePath(screen(locale, sessionId));
+    if (result.status !== "refused") {
+      revalidatePath(screen(locale, sessionId));
+      // ★ wave 27 (DEC-256): the same control also sits on the schedule tab, which must read the mode it just saved.
+      revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/schedule`);
+    }
     return result;
   } catch {
     return { status: "failed" };

@@ -8,7 +8,7 @@ import { EventMeta } from "@/components/sessions/event-meta";
 import { MomentPart, ReserveMoment, ReserveRefused } from "@/components/sessions/moment-reserve";
 import { formatDate, formatNumber } from "@/components/sessions/numerals";
 import { CertificateRow, OutcomeCard } from "@/components/sessions/outcome-card";
-import { primaryAfterCheckIn, showsAttended, type PrimaryAction } from "@/components/sessions/event-actions";
+import { primaryAfterCheckIn, rotationLineFor, showsAttended, type PrimaryAction } from "@/components/sessions/event-actions";
 import { SessionDownload } from "@/components/sessions/session-download";
 import type { SlotProps, SlotSummary } from "@/components/sessions/slots";
 import { ActionBar } from "@/components/ui/action-bar";
@@ -80,6 +80,7 @@ export async function ActionCard(props: ActionCardProps) {
 
   const open = phase === "open";
   const live = phase === "live";
+  const rules = rotationLineFor(figures.rotationSeconds, props.points);
   const ended = phase === "ended";
   const booked = rsvp?.relation === "confirmed" || session.rsvpStatus === "confirmed";
   const calendarInBooked = primary === "calendar" && rsvp !== null && rsvp.canCancel && !rsvp.canReserve;
@@ -151,10 +152,14 @@ export async function ActionCard(props: ActionCardProps) {
             {can.calendar && primary !== "calendar" ? <AddToCalendar {...slot} placement="inline" variant="secondary" /> : null}
           </div>
 
-          {live && (primary === "checkIn" || booked) && figures.rotationSeconds ? (
+          {/* wave 27 (REQ-CHK-019, DEC-255 D4): with the rotation off — or unread — the line keeps its first clause and drops
+              only the period; the points sentence (REQ-CHK-018) never goes with the rotation. */}
+          {live && (primary === "checkIn" || booked) ? (
             <p className="text-caption text-fg-muted">
-              {t("rotation", { count: Math.round(figures.rotationSeconds / 60), value: formatNumber(Math.round(figures.rotationSeconds / 60)) })}
-              {props.points !== null && props.points > 0 ? <> {t("rotationPoints", { count: props.points, value: formatNumber(props.points) })}</> : null}
+              {rules.rotation.key === "rotation"
+                ? t("rotation", { count: rules.rotation.minutes, value: formatNumber(rules.rotation.minutes) })
+                : t("rotationFixed")}
+              {rules.points !== null ? <> {t("rotationPoints", { count: rules.points, value: formatNumber(rules.points) })}</> : null}
             </p>
           ) : null}
 

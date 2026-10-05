@@ -45,7 +45,8 @@ export const settingsFieldSchemas: Record<SettingsField, z.ZodType<SettingsValue
   timeZone: z.string().trim().min(1).max(64),
   companyMetric: z.enum(["total_points", "points_per_active_member"]),
   companyMinActiveMembers: z.int().min(1).max(50),
-  checkInRotationSeconds: z.int().min(60).max(3600),
+  // ★ wave 27 (0202, REQ-CHK-019): null is «لا يتغيّر» — one code per day, inside the same validity window.
+  checkInRotationSeconds: z.int().min(60).max(3600).nullable(),
   checkInGraceSeconds: z.int().min(0).max(600),
   maxCoPresenters: z.int().min(0).max(10),
   priorityRsvpHours: z.int().min(0).max(168),
@@ -59,7 +60,7 @@ export const settingsFieldSchemas: Record<SettingsField, z.ZodType<SettingsValue
   allowJpegExport: z.boolean(),
 };
 
-export type OrgSettingsView = { [K in SettingsField]: K extends "allowJpegExport" ? boolean : K extends "emailFromName" | "emailReplyTo" ? string | null : K extends "timeZone" | "companyMetric" ? string : number } & {
+export type OrgSettingsView = { [K in SettingsField]: K extends "allowJpegExport" ? boolean : K extends "emailFromName" | "emailReplyTo" ? string | null : K extends "checkInRotationSeconds" ? number | null : K extends "timeZone" | "companyMetric" ? string : number } & {
   name: string;
   domains: { id: string; domain: string }[];
 };

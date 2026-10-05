@@ -362,7 +362,7 @@ export (`REQ-PRF-006`) includes the picture.
 **Serves:** owner 2026-10-05 · `DEC-254` §2 · D12 · `REQ-PRF-002` · `REQ-PRF-003`
 A **شركة** carries one or more email domains. A member whose address is on one of them belongs to that شركة: at
 first sign-in, at the binding of a member an admin added, and **retroactively** — when an admin adds a domain, the
-members of the مؤسسة who have no شركة and whose address matches are placed in it. A domain belongs to at most one
+members of the مؤسسة who have no شركة and whose address matches are placed in it — ★ and so are members an earlier domain placed elsewhere (`DEC-255` §4); only an admin's placement is never moved. A domain belongs to at most one
 شركة in a مؤسسة. A company's domains and the مؤسسة's allowed-domain list (`REQ-TEN-007`) are independent: neither
 validates the other. ★ **The member never chooses**: the profile shows the شركة and offers no control for it.
 **Acceptance:**
@@ -371,7 +371,7 @@ validates the other. ★ **The member never chooses**: the profile shows the ش�
 - Adding a domain to a شركة places every matching member who has none; a member placed by hand is not touched.
 - The same domain cannot be saved on two شركات of one مؤسسة; the same domain on شركات of two مؤسسات is allowed.
 - The member's own profile edit cannot change their شركة — refused by the database, not only absent from the form.
-- A member moved into a شركة counts for it on the boards from that moment; no snapshot and no ledger row changes.
+- A member moved into a شركة brings the open period's points with them at the next snapshot; finalised snapshots and company points already paid do not change (`DEC-255` §4).
 
 #### REQ-PRF-013 — An admin's placement outranks the domain
 **Serves:** owner 2026-10-05 · `DEC-254` §2.6 · `REQ-ADM-009`
@@ -609,16 +609,18 @@ from the event page when empty rather than rendered as an empty heading.
 - A session with no objectives renders no «ماذا ستتعلّم؟» section and no heading.
 
 
-#### REQ-SES-021 — An admin renames a session
-**Serves:** owner 2026-10-05 · `DEC-254` §5 · `REQ-SES-020` · `REQ-ADM-023` · `09` `SCR-043`
-An **مشرف المؤسسة** changes a session's title from the session hub's header, in any state. The change is audited
+#### REQ-SES-021 — An admin renames a session until it is published
+**Serves:** owner 2026-10-05 · `DEC-254` §5 · ★ **rule set by `DEC-255` §1** · `REQ-SES-020` · `REQ-ADM-023` · `09` `SCR-043`
+An **مشرف المؤسسة** changes a session's title from the session hub's header **while the session has not been
+published**, whether or not it was made from a proposal. Once it is published the name is fixed. The change is audited
 with the old and the new title.
 **Acceptance:**
-- The new title is what the hub, the event page, the feed, the public card and browse show from then on.
-- A moderator and a member are refused by the database.
+- The control is offered in every state before publication and in none after; the new title is what the hub, the
+  sessions table and the schedule tab's log show.
+- A title change to a published or later session is refused by the database, for an admin and a presenter alike.
+- A moderator, and a member who does not present the session, are refused by the database.
 - An empty title, or one over the length a proposal's title allows, is refused at the field.
-- A certificate already issued keeps the title it was issued with (`REQ-CRT-014`).
-- Mail already sent is not re-sent; a calendar entry carries the new title after its next sync.
+- The proposal the session was made from keeps its own title.
 
 ---
 
@@ -996,7 +998,7 @@ the day's start until that day stops taking attendance (`REQ-CHK-016`'s ceiling)
 - With rotation off, the code shown at the start of a day is the code shown at its end, and it checks a member in.
 - The same code is refused after the day's ceiling, and a day's code never works for another day.
 - The host view and the check-in screen show no countdown and no rotation period when there is none.
-- Switching rotation off while a code is current keeps that code; switching it on resumes from the current code.
+- Switching rotation off while a code is current keeps that code for the rest of the day; switching it on ends the whole-day code after the grace period, like any previous code (`DEC-255` §3).
 - A period, when one is set, is still between 60 and 3600 seconds.
 
 ---
@@ -1742,6 +1744,7 @@ held certificates and none issued**, so the held ones can be re-rendered (`DEC-2
 **Acceptance:**
 - With no choice, a certificate is issued from the template `issue_certificate()` picks, and the screens name that same
   template — «افتراضي» only when it is the kind's default (`DEC-238` §2).
+- ★ **Amended by `DEC-256`:** the mode's control also sits on the session's **schedule tab** (`SCR-043`), with the session's other settings — the same control and the same function as on its certificates screen, never the schedule form's own save. The template is still chosen on the certificates screen alone.
 - ★ **Amended by `DEC-250`:** the mode is refused only once the session is **cancelled** (see `REQ-CRT-017`); the
   template once a certificate of that kind is issued.
 
@@ -2156,6 +2159,7 @@ way to publish an org's template to other orgs. An improvement to the baseline r
 - A certificate or a design document issued against a former platform version still renders as that version
   (`REQ-CRT-014`); such a version is retired, never deleted.
 - The platform console has no template screen, and no function promotes a template across orgs.
+- An org's last live published template of a family that issuance or a poster falls back on cannot be retired; the refusal says why (`DEC-255` §5).
 
 ---
 

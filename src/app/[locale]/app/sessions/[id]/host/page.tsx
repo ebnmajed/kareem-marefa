@@ -83,9 +83,11 @@ export default async function HostPage({
 
   // Awake, listening and counting down only while the day can take attendance and a code is out.
   const live = view.code !== null && view.phase === "live";
-  // The next instant the answer changes by itself: the rotation, else the day's start (the pre-flight).
+  // The next instant the answer changes by itself: the rotation, else the day's start (the pre-flight), else — with
+  // rotation off (REQ-CHK-019) — the instant the day's one code stops, so the wall turns to «انتهى» at the ceiling.
   const dayStart = view.day?.startsAt ?? view.startsAt;
-  const nextChangeAt = view.rotatesAt ?? (view.phase === "open" && dayStart && Date.parse(dayStart) > Date.parse(view.readAt) ? dayStart : null);
+  const nextChangeAt =
+    view.rotatesAt ?? (view.phase === "open" && dayStart && Date.parse(dayStart) > Date.parse(view.readAt) ? dayStart : view.code ? view.validUntil : null);
 
   const count = formatNumber(view.checkInCount);
   const countHint = [

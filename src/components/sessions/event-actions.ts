@@ -67,3 +67,17 @@ export function showsAttended(answer: CheckInAnswer, can: Pick<AffordanceCell, "
 export function primaryAfterCheckIn(primary: PrimaryAction | null, answer: CheckInAnswer): PrimaryAction | null {
   return primary === "checkIn" && answer === "recorded" ? null : primary;
 }
+
+/**
+ * The live rules line under the check-in — REQ-CHK-019, REQ-CHK-018, DEC-255 D4. What it says, as message keys: the
+ * period when the code rotates, the first clause alone when it does not (null is «off» — or unread, `checkin`'s
+ * contract 2), and the pending points after either. ★ The points sentence never goes with the rotation.
+ */
+export type RotationLine = { rotation: { key: "rotation"; minutes: number } | { key: "rotationFixed" }; points: number | null };
+
+export function rotationLineFor(rotationSeconds: number | null, points: number | null): RotationLine {
+  return {
+    rotation: rotationSeconds ? { key: "rotation", minutes: Math.round(rotationSeconds / 60) } : { key: "rotationFixed" },
+    points: points !== null && points > 0 ? points : null,
+  };
+}

@@ -89,12 +89,16 @@ export default async function CheckInPage({
   );
 
   const positions = Array.from({ length: CODE_LENGTH }, (_, i) => t("codePosition", { position: formatNumber(i + 1), total: formatNumber(CODE_LENGTH) }));
-  // The org's rotation, in whole minutes when it is whole minutes (DEC-206 §4.76) — never «10».
-  const minutes = data.rotationSeconds % 60 === 0 ? data.rotationSeconds / 60 : null;
+  // The org's rotation, in whole minutes when it is whole minutes (DEC-206 §4.76) — never «10». ★ With none
+  // (REQ-CHK-019, «لا يتغيّر»), nothing: no period, and no sentence in its place (DEC-255 D2).
+  const seconds = data.rotationSeconds;
+  const minutes = seconds !== null && seconds % 60 === 0 ? seconds / 60 : null;
   const rotation =
-    minutes !== null
-      ? t.rich("rules.rotationMinutes", { count: minutes, value: formatNumber(minutes), bdi })
-      : t.rich("rules.rotationSeconds", { count: data.rotationSeconds, value: formatNumber(data.rotationSeconds), bdi });
+    seconds === null
+      ? null
+      : minutes !== null
+        ? t.rich("rules.rotationMinutes", { count: minutes, value: formatNumber(minutes), bdi })
+        : t.rich("rules.rotationSeconds", { count: seconds, value: formatNumber(seconds), bdi });
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 pb-6 pt-4">
@@ -160,10 +164,12 @@ export default async function CheckInPage({
                 </div>
               ) : null}
 
-              <p className="text-center text-caption text-fg-muted">
-                {rotation}
-                {data.allowWalkIns ? <> {t("rules.walkIns")}</> : null}
-              </p>
+              {rotation || data.allowWalkIns ? (
+                <p className="text-center text-caption text-fg-muted">
+                  {rotation}
+                  {data.allowWalkIns ? <>{rotation ? " " : null}{t("rules.walkIns")}</> : null}
+                </p>
+              ) : null}
 
               <Suspense fallback={null}>
                 <EarnPanel sessionId={id} locale={locale} allDays={data.requireAllDays && data.dayCount > 1} />
