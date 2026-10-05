@@ -307,7 +307,7 @@ neither validates the other. **No client role writes it** — `save_company()` i
 | `auth_user_id` | `uuid not null unique references auth.users(id)` | keyed to the auth user, **not** to an email or a provider ID — `REQ-AUT-002` |
 | `email` | `citext not null` | `unique (org_id, email)` |
 | `display_name`, `avatar_url` | `text` | refreshed from Google on sign-in |
-| `company_id` | `uuid references companies(id)` | ★ follows the member's email domain or an admin's placement (`REQ-PRF-012`, `DEC-254` §2); **never required** — the «required before RSVP or proposal» line is withdrawn |
+| `company_id` | `uuid references companies(id)` | ★ **not in the member's own update grant since `0208`** · follows the member's email domain or an admin's placement (`REQ-PRF-012`, `DEC-254` §2); **never required** — the «required before RSVP or proposal» line is withdrawn |
 | `company_assigned_by` | `company_source` (`'domain'` · `'admin'`), nullable | ★ `0203` — who placed the member. `'admin'` is never moved by a domain change, a deliberate null company included; null only while nobody has ever placed them. Kept by a normalising trigger; in no column grant |
 | `job_title`, `bio` | `text` | `bio` capped at 600 chars |
 | `org_role` | `org_role not null default 'member'` | `REQ-TEN-005` |
@@ -1070,7 +1070,7 @@ One row per org (`unique (org_id)`), `logo_asset_id uuid references design_asset
 
 #### `ENT-design_templates` · `ENT-design_template_versions`
 **Serves:** `REQ-DSG-007`, `REQ-DSG-008`, `REQ-DSG-026`, D67
-★ **Wave 27 (`DEC-254` §3, `0205` – `0207`): an org owns its templates.** Every org receives the eleven baseline compositions as its own `scope = 'org'` rows, each with one published version, from an `after insert` trigger on `orgs` (`seed_org_templates()`); `design_templates_keep_one_live` refuses retiring or deleting an org's last live published template of a family issuance or a poster falls back on. `scope = 'platform'` and `design_templates_scope_org` remain for rows a certificate or a document still references; PR D retires or deletes them and narrows who reads them.
+★ **Wave 27 (`DEC-254` §3, `0205` – `0207`): an org owns its templates.** Every org receives the eleven baseline compositions as its own `scope = 'org'` rows, each with one published version, from an `after insert` trigger on `orgs` (`seed_org_templates()`); `design_templates_keep_one_live` refuses retiring or deleting an org's last live published template of a family issuance or a poster falls back on. `scope = 'platform'` and `design_templates_scope_org` remain for rows a certificate, a document or a session's design still references. ★ **`0209` / `0210` (PR D):** every platform row nothing references is deleted and the rest retired; `design_templates_platform_retired` — `check (scope = 'org' or retired_at is not null)` — keeps a platform row from being live again; the five platform-library functions and `supersede_baseline_template()` are dropped.
 `design_templates`: `scope template_scope not null`, `purpose template_purpose not null`,
 `family text not null` (`talk`, `workshop`, `panel`, `meetup`, `announcement`, `attendance`,
 `presenter`, `achievement`), `name`, `org_id` **nullable for `scope = 'platform'`**.

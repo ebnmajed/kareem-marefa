@@ -1,6 +1,7 @@
--- designer (wave 27, M29) — THE REMOVAL: the platform library leaves; every lookup reads the org's own.
--- M2. ★★ PROMOTED ONLY AFTER PR C'S CODE IS ON `main`, in the follow-up PR (DEC-255, D9) — never in PR C's chain.
--- In PR C it lives here and is proven by `applyProposed()` (tests/rls/templates-platform-removal.test.ts).
+-- 0209 · wave 27, PR D (DEC-254 §3.3 – §3.4, DEC-255 §5 – §6, REQ-DSG-035) — THE REMOVAL: the platform library leaves;
+-- every lookup reads the org's own. `designer`'s M2, promoted by the lead AFTER PR C's code reached `main`
+-- (`bdd5ae70`, 2026-10-05) and after 0205 – 0207 seeded every org on production. Proven by
+-- tests/rls/templates-platform-removal.test.ts, which rebuilds the pre-removal world and runs this file's sections.
 --
 -- Serves:  REQ-DSG-035 (no platform template an org reads, no way to publish across orgs), REQ-DSG-008 as amended,
 --          REQ-CRT-014 (a version a certificate or document references is retired, never deleted), REQ-CRT-015

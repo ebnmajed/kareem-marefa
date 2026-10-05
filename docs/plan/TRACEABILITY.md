@@ -345,7 +345,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-PRF-009` | `ENT-companies` | — | `SCR-016` `SCR-020` `SCR-048` | `JOB-anonymise_members` `JOB-import_avatar` +1 | — | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-010` | — | — | `SCR-020` `SCR-021` `SCR-029` +1 | `JOB-anonymise_members` | `MSG-photo_album_ready` | `STORY-PRF-005` | M10, M16 |
 | `REQ-PRF-011` | — | — | `SCR-020` `SCR-021` `SCR-029` | `JOB-anonymise_members` `JOB-zip_session_photos` | — | `STORY-PRF-005` | M10, M16 |
-| `REQ-PRF-012` | `ENT-company_domains` `ENT-org_domains` `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-012` `STORY-PRF-006` +1 | M29 |
+| `REQ-PRF-012` | `ENT-company_domains` `ENT-org_domains` `ENT-sessions` | `POL-members.update.self` | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-012` `STORY-PRF-006` +1 | M29 |
 | `REQ-PRF-013` | `ENT-sessions` | — | `SCR-021` `SCR-045` `SCR-048` +1 | — | — | `STORY-ADM-013` | M29 |
 
 ### PRO

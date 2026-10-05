@@ -11,7 +11,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { applyProposed, errorMessage, PERMISSION_DENIED, errorCode, withTx, type Claims, type Tx } from "./db";
-import { seed, seedBase } from "./fixture";
+import { seedBase } from "./fixture";
 
 const FILES = [
   "platform/0001_m8_schema.sql",
@@ -171,80 +171,8 @@ describe("platform — the console's reads (0002)", () => {
     });
   });
 
-  it("RPC-platform_promotable_versions.platform_only — refused to every org role; identity only for a platform admin", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await apply(tx);
-
-      for (const claims of [f.a.admin.claims, f.a.mod.claims, f.a.members[0].claims]) {
-        await tx.as(claims);
-        expect(await errorMessage(() => tx.q(`select * from public.platform_promotable_versions()`))).toMatch(
-          /not_platform_admin/,
-        );
-      }
-
-      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
-      const rows = await tx.q<Record<string, unknown>>(`select * from public.platform_promotable_versions()`);
-      expect(rows.length).toBeGreaterThan(0);
-      // The whole point of 0003's header: identity, never content.
-      expect(Object.keys(rows[0]).sort()).toEqual(
-        [
-          "already_promoted",
-          "family",
-          "name",
-          "org_id",
-          "org_name",
-          "published_at",
-          "purpose",
-          "template_id",
-          "version",
-          "version_id",
-        ].sort(),
-      );
-      expect(Object.keys(rows[0])).not.toContain("document");
-      expect(Object.keys(rows[0])).not.toContain("published_by");
-    });
-  });
-
-  it("RPC-platform_promotable_versions.scope — drafts and platform versions never appear", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await apply(tx);
-      await tx.asOwner();
-      const [draft] = await tx.q<{ id: string }>(
-        `insert into public.design_template_versions (template_id, version, document)
-         values ($1, 2, '{"schemaVersion":1,"layers":[]}'::jsonb) returning id`,
-        [f.m6.a.certTemplateId],
-      );
-
-      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
-      const ids = (await tx.q<{ version_id: string }>(`select version_id from public.platform_promotable_versions()`)).map(
-        (r) => r.version_id,
-      );
-      expect(ids).toContain(f.m6.a.certTemplateVersionId);
-      expect(ids, "an unpublished draft is not promotable").not.toContain(draft.id);
-      expect(ids, "the library does not offer to promote itself").not.toContain(f.m6.platformTemplateVersionId);
-
-      // Scoping to one org narrows it, and never widens it.
-      const scoped = await tx.q<{ org_id: string }>(`select org_id from public.platform_promotable_versions($1)`, [f.a.id]);
-      expect(scoped.every((r) => r.org_id === f.a.id)).toBe(true);
-    });
-  });
-
-  it("RPC-promote_template_to_platform — after promotion the candidate is flagged already_promoted", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await apply(tx);
-      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
-      await tx.q(`select public.promote_template_to_platform($1, 'قالب مرقّى')`, [f.m6.a.certTemplateVersionId]);
-
-      const rows = await tx.q<{ version_id: string; already_promoted: boolean }>(
-        `select version_id, already_promoted from public.platform_promotable_versions($1)`,
-        [f.a.id],
-      );
-      expect(rows.find((r) => r.version_id === f.m6.a.certTemplateVersionId)!.already_promoted).toBe(true);
-    });
-  });
+  // wave 27, PR D (0209, REQ-DSG-035; ledger D3): three cases on `platform_promotable_versions()` and
+  // `promote_template_to_platform()` stood here. Both functions are dropped with the platform library.
 
   it("RPC-platform_job_health.due — a future job is neither pending nor old, and the age is never negative", async () => {
     await withTx(async (tx) => {

@@ -1002,16 +1002,24 @@ because the limit is per-IP and the database does not see IPs.
 #### §5.9a — `design_templates`
 ```sql
 create policy "templates_read" on design_templates for select to authenticated
-  using (scope = 'platform' or org_id = auth_org_id());
+  using (org_id = auth_org_id()
+         or (scope = 'platform' and template_referenced_by_my_org(id)));   -- ★ 0210, DEC-254 §3.4
 create policy "templates_write_org" on design_templates for insert to authenticated
   with check (scope = 'org' and org_id = auth_org_id() and is_org_admin());
 create policy "templates_update_org" on design_templates for update to authenticated
   using       (scope = 'org' and org_id = auth_org_id() and is_org_admin())
   with check  (scope = 'org' and org_id = auth_org_id() and is_org_admin());
 ```
-The one table where a **cross-org read is deliberately permitted**, and the exception is narrow and
-explicit: platform templates are readable by every org because D67 requires org admins to duplicate
-from them. They are **never writable** by an org — `scope = 'org'` appears in every write clause,
+★ **Narrowed by `0210` (wave 27, `DEC-254` §3, `REQ-DSG-035`).** There is no platform library: every org owns its
+templates (`0205` – `0207`). A platform row survives only **retired**, and only where a certificate, a design document
+or a session's certificate design still names it (`REQ-CRT-014`); an org reads such a row **only while one of its own
+rows names it** — `template_referenced_by_my_org()`, a definer boolean about the caller's org alone, which exists
+because the inline form would recurse through `design_template_versions`' policy (`42P17`).
+`design_template_versions`' read follows its parent, with the same predicate. `design_templates_platform_retired`
+(`check (scope = 'org' or retired_at is not null)`) keeps a platform row from ever being live again.
+
+Before wave 27 this was the one table where a **cross-org read was deliberately permitted**: platform templates were
+readable by every org because D67 required org admins to duplicate from them. They were, and are, **never writable** by an org — `scope = 'org'` appears in every write clause,
 so an org admin cannot edit a platform template in place (`REQ-DSG-008`).
 
 #### §5.9b — `design_documents`
@@ -1648,6 +1656,18 @@ generated suite is the highest-value test in the product.
 | `RPC-org_missing_templates` | Every (purpose, family) of the FALLBACK SET — certificate attendance, presenter, achievement; poster talk — for which `org_template_version()` is null. Empty for every seeded org. Owner-only. |
 | `TRG-orgs_seed_templates` | An org inserted by ANY path — `create_org()`, a fixture, the owner's hand — holds the baseline the moment the insert commits. |
 | `TRG-design_templates_keep_one_live` | Retiring, deleting or re-familying an org's LAST live published template of a fallback family is refused with `last_live_template` (23514); every other retire is untouched; an org's deletion is not blocked. |
+| `POL-members.update.self.no_company` | ★ `0208`, `DEC-254` §2.5, `REQ-PRF-012` — a member updating their own `company_id` is refused `42501`; the same member's display_name, job_title, bio and leaderboard_opt_out still save. The column left the member's grant; every writer of a company is a definer function. |
+| `MIG-platform_removal.raises_first` | An org that cannot resolve a fallback template stops the migration before any platform row or design changes. |
+| `MIG-platform_removal.repoint` | An UNLOCKED session design naming a platform template now names the org's own template of the same family and orientation, audited `certificate.design_set` as `system`; a LOCKED one is left. |
+| `RPC-remove_platform_template.deleted` | A platform template nothing references is deleted, its versions with it. |
+| `RPC-remove_platform_template.retired` | A live one a certificate, a document or a session design references is retired, `is_default` cleared, the reference untouched. |
+| `RPC-remove_platform_template.kept_retired` | An already-retired one still referenced is reported and not written. |
+| `RPC-remove_platform_template.not_callable` | Owner-only. |
+| `RPC-issue_certificate.org_only` · `RPC-issue_achievement_certificate.org_only` · `RPC-poster_render_context.org_only` · `RPC-set_certificate_design.org_only` | No platform branch remains. |
+| `POL-design_templates.read.platform_only_if_referenced` | An org reads a platform template only while one of its certificates, design documents or session certificate designs names it; another org's reference does not open it; an unreferenced one is invisible. |
+| `POL-design_template_versions.read.follows_parent` | A version is readable exactly when its template is — the org's own, or a platform one the org references. |
+| `CHK-design_templates.platform_retired` | A platform row with `retired_at` null is refused `23514`, on insert and on update. |
+| `FN-template_referenced_by_my_org.own_org_only` | The function answers for the caller's org alone and returns false with no session. |
 | `RPC-set_session_certificate_mode.after_completion` | ★ A **completed** or **archived** session accepts a mode change: the mode is written, one `session.certificate_mode_changed` row carries the old and the new, the function returns `fanned_out`, and a mode other than `off` fans out in the same transaction — one `issue_certificates` job per eligible recipient per kind, under `11` §2.5's key. (migration `0194`). |
 | `RPC-set_session_certificate_mode.after_completion_off` | ★ Switching a completed session back to `off` is accepted, returns `ok`, writes its audit row, and enqueues **nothing**; certificates already issued are untouched. (migration `0194`). |
 | `RPC-set_session_certificate_mode.late_switch_is_idempotent` | ★ The same mode twice returns `unchanged` and enqueues nothing new; a second fan-out **moves** each pending job rather than duplicating it (the `cert:{session}:{member}:{kind}` key). (migration `0194`). |

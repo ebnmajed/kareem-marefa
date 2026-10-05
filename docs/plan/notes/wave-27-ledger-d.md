@@ -1,0 +1,26 @@
+# Wave 27 — the untouched-suite ledger, PR D (the two removals)
+
+One line per changed assertion or fixture in a file that existed before PR D. `designer`'s lines are as handed over in
+writing (`423f7f2b`); the lead's are marked.
+
+| # | File | What changed | Selector, expectation or setup | Why |
+|---|---|---|---|---|
+| D1 (lead) | `tests/rls/members.test.ts` · `update.self` | «a company from another org is rejected by the trigger» → «a member cannot write their own company; their other four fields still save» — the refusal is `42501` | **expectation** | `0208`: `company_id` left the member's grant, so the grant refuses before 0004's same-org trigger is reached. The trigger is still proven where a writer may write the column |
+| D2 (lead) | `tests/rls/platform-schema.test.ts:509-608` | the «template library» block deleted — four cases on `promote_template_to_platform()`, `retire_platform_template()`, `platform_template_library()` | **expectation** (the functions are gone) | `0209` drops them; that they are gone is asserted in `templates-platform-removal` |
+| D3 (lead) | `tests/rls/platform-console.test.ts:174-247` | three cases on `platform_promotable_versions()` and `promote_template_to_platform()` deleted | **expectation** | as D2 |
+| D4 (lead) | `tests/e2e/platform-console.spec.ts:456-460` | «the A27 baseline is there for an org that has published nothing»: ≥ 8 live platform rows → the new org's own 11 templates | **expectation** | the baseline is the org's own rows since `0206`; no live platform row exists after `0209` |
+| D5 (lead) | `tests/rls/platform-schema.test.ts:416-500` · «a freshly created org reads the whole A27 baseline» | the two reads move from live platform rows to the new org's own rows (`org_id = $1`); the property — every family present, one default each, a published version to render from — is unchanged | selector | the baseline is the org's own since `0206`; no live platform row exists after `0209` |
+| C-22 | `tests/rls/fixture-m6.ts` · `platformRows()` | the platform talk row is inserted retired, with no default | setup | a live platform row is refused (`0210`) |
+| C-23 | `tests/rls/platform-library.test.ts` | **deleted whole** — five cases on `platform_template_library()` | — | dropped by `0209` |
+| C-24 | `tests/rls/templates-roster.test.ts` | the roster is counted per org on a freshly seeded org; `poster_ground` version 2 → 1; «superseded» → «no live platform row, the org's versions all 1»; idempotence 11/22 → 11/11 by re-running the seed | selector, **expectation** ×3 | the old replay of `0061` → `0196` writes live platform rows, now refused |
+| C-25 | `tests/rls/designer-baseline-supersede.test.ts` | **deleted whole** | — | `supersede_baseline_template()` is dropped; its `REQ-CRT-014` cases are carried by `templates-platform-removal` |
+| C-26 | `tests/rls/designer-schema.test.ts` · `template()` | a platform row is inserted retired | setup | as C-22 |
+| C-27 | `designer-schema` · `select.platform` | inverted: an unreferenced platform row is invisible to an org's admin; once the org's document names its version it is visible | **expectation** | `0210`'s narrowed read |
+| C-28 | `designer-schema` · «read follows the parent» | the platform version is invisible until the org's document names it, then visible; never writable | **expectation** | as C-27 |
+| C-29 | `tests/rls/templates-audit.test.ts:168` | the `purpose = 'certificate'` filter dropped; an added assertion that the update touched a row | selector, **expectation** (strengthened — it could pass vacuously) | the chain holds no platform certificate |
+| C-30 | `tests/rls/designer-achievements.test.ts` · `setup()` | the live platform achievement «fallback» insert removed | setup | each fixture org owns its seeded achievement templates; a live platform row is refused |
+| C-31 … C-40 | `tests/e2e/wave8-designer-{editor,posters,templates}`, `wave10-designer-reissue-and-days`, `wave13-designer-studio-{drag,taps}`, `wave23-designer-{four-formats,taps,certificate}`, `wave11-lead-a11y-sweep` | ten reads move from the platform row to the spec's own org (`org_id = $1`, default first) | selector | no live platform row exists |
+| C-41 | `tests/rls/templates-world.ts` | rebuilt: lifts the retired-only constraint for its rolled-back transaction, puts back live platform rows copied from the org's seeded documents, and runs `0209`'s first three sections from the migration file | setup | the pre-removal world no longer exists in the chain |
+| C-42 | `tests/rls/templates-platform-removal.test.ts` | `raises_first` runs `0209`'s section 1 against that world plus an unseeded org; its last assertion «the functions it would drop are still there» → «the live platform count is unchanged and the open design still names its platform template» | setup, **expectation** | the functions are already dropped by the chain |
+| C-43 | `tests/rls/templates-read-narrowed.test.ts` | the setup uses the rebuilt world instead of applying two proposed files | setup | promoted |
+| C-44 | `tests/rls/templates-org-seed.test.ts` | `byte_identical` compares each seeded document with the baseline library itself; `backfill` runs `0207`'s own file twice against an org inserted with the trigger off | selector, **expectation** (strengthened — it was a no-op once promoted) | no live platform row to compare with |
