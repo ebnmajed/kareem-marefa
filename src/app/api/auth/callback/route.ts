@@ -33,6 +33,13 @@ export async function GET(request: NextRequest) {
 
   const envelope = await provision(supabase);
   if (envelope.status === "no_match") {
+    // ★ A platform admin belongs to no org, so `no_match` is their ordinary answer — and with no org
+    // left at all it is everyone's (DEC-253 §7.1, DEC-261). Their session is kept and they land on the
+    // console; the table is the answer, never the claim (`assert_platform_admin` raises 42501 otherwise).
+    const { error: notPlatformAdmin } = await supabase.rpc("assert_platform_admin");
+    if (!notPlatformAdmin) {
+      return NextResponse.redirect(new URL(`/${PLATFORM_LOCALE}/app/platform`, request.url), 303);
+    }
     // Defence in depth behind the before-user-created hook: no session is
     // kept for an account the platform does not recognise.
     await supabase.auth.signOut();

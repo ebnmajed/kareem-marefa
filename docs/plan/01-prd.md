@@ -108,6 +108,7 @@ co-presenters (OQ-021), and its sending identity and reply-to (OQ-016).
 
 #### REQ-TEN-009 — An admin adds a عضو, and they are a member at once
 **Serves:** `DEC-243` · ★ **shape set by `DEC-244`** · D11 (amended in one half) · D4
+★★ **Amended by `DEC-261` (the owner, 2026-10-05): the role may be مشرف المؤسسة too** — an admin adds another admin by email. The acceptance line below that limits the role to two is withdrawn. An admin who has not signed in yet never counts as the مؤسسة's last admin (`REQ-TEN-005`).
 An **مشرف المؤسسة** adds a person by email address, with **الاسم**, **الشركة**, **المسمى الوظيفي**
 and the role. ★ **The member exists from the moment it is saved**: they are listed among the members,
 they appear in the member directory and in every member picker, they can be assigned as a presenter,

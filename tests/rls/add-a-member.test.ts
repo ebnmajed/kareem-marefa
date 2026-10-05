@@ -49,13 +49,28 @@ describe("RPC-add_member", () => {
     });
   });
 
-  it("no_admin_by_email — `admin` is refused; `moderator` is accepted", async () => {
+  // ★ 0211 (DEC-261, the owner's ruling): was «no_admin_by_email — `admin` is refused». The expectation is reversed.
+  it("admin_by_email — `admin` is accepted and carried on the row; `moderator` is accepted", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       await tx.as(f.a.admin.claims);
-      expect(await errorMessage(() => addMember(tx, "boss@gmail.com", null, null, "admin"))).toContain("role_not_allowed");
+      const [boss] = await addMember(tx, "boss@gmail.com", null, null, "admin");
+      const [row] = await tx.q<{ org_role: string }>(`select org_role from public.members where id = $1`, [boss.id]);
+      expect(row.org_role).toBe("admin");
       const [{ id }] = await addMember(tx, "mod@gmail.com", null, null, "moderator");
       expect(id).toBeTruthy();
+    });
+  });
+
+  it("last_admin_arrived — an admin who has not signed in is never the org's last admin", async () => {
+    await withTx(async (tx) => {
+      const f = await setup(tx);
+      await tx.as(f.a.admin.claims);
+      const [boss] = await addMember(tx, "boss@gmail.com", null, null, "admin");
+      // The only signed-in admin cannot step down while the other admin row is unbound…
+      expect(await errorMessage(() => tx.q(`select public.set_member_role($1, 'member')`, [f.a.admin.memberId]))).toContain("last_admin");
+      // …and the unbound admin can be demoted, because the actor remains.
+      await tx.q(`select public.set_member_role($1, 'member')`, [boss.id]);
     });
   });
 

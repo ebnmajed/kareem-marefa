@@ -1331,6 +1331,8 @@ generated suite is the highest-value test in the product.
 | `RPC-save_company.deactivated_places_nobody` | Domains saved on a deactivated company move nobody (DEC-255 §4, Q3). |
 | `RPC-save_company.audit` | `company.domain_added` / `company.domain_removed` per domain, `member.company_changed` per member moved; `company.created` / `.changed` / `.team_color_changed` still from their triggers. |
 | `RPC-set_member_company.by_hand` | An admin's placement or removal is source 'admin', audited with the old and the new, and no later save moves it. |
+| `RPC-add_member.admin_by_email` | ★ `0211`, `DEC-261` — replaces `no_admin_by_email`: an admin adds an address as `admin`; the row carries the role and binds at first sign-in. A moderator and a member are still refused `42501`. |
+| `RPC-set_member_role.last_admin_arrived` | `0211` — the last admin who has signed in cannot be demoted while every other admin row is unbound: `last_admin`, `42501`. An unbound admin can always be demoted. |
 | `RPC-add_member.company_source` | A company given while adding is 'admin'; none given and a matching domain is 'domain'; none at all is null. |
 | `POL-org_settings.update.admin` | A moderator updating settings is rejected (`REQ-ADM-020`). |
 | `POL-members.select.member` | Selecting `email` on another member **errors on the column grant**, not returns null. |

@@ -218,9 +218,8 @@ export async function reactivateMember(locale: string, memberId: string): Promis
 // into 0005's. `assert_fresh_admin()` is the gate, the audit row is the RPC's, and the mail is
 // enqueued there — so nothing here decides anything a caller could skip.
 //
-// ★ `role` is `moderator | member` at this edge too. The database refuses `admin` (`DEC-244` §5.4)
-// and that refusal is the authority; this enum is the SHAPE, so a crafted call fails validation
-// before it reaches a round trip — never instead of it.
+// ★ `role` may be `admin` since `0211` (`DEC-261`, the owner's ruling, reversing `DEC-244` §11): an admin adds
+// another admin by email. The enum is the SHAPE; the authority is `assert_fresh_admin()` in the RPC.
 
 const ADD_MEMBER_ERRORS = ["already_a_member", "not_an_address", "role_not_allowed", "not_an_admin", "stale_claims"] as const;
 // `members_company_same_org` (0004) raises a sentence, not an identifier — the one error here
@@ -251,7 +250,7 @@ export const addMemberInput = z
     displayName: optionalText(120),
     companyId: z.uuid().nullable().optional(),
     jobTitle: optionalText(120),
-    role: z.enum(["moderator", "member"]),
+    role: z.enum(["admin", "moderator", "member"]),
   })
   .strict();
 export type AddMemberInput = z.infer<typeof addMemberInput>;
@@ -286,7 +285,7 @@ export const addMembersInput = z
     // Validated per line by the RPC, which reports each one — so the array itself is only bounded.
     emails: z.array(z.string().trim()).min(1).max(200),
     companyId: z.uuid().nullable().optional(),
-    role: z.enum(["moderator", "member"]),
+    role: z.enum(["admin", "moderator", "member"]),
   })
   .strict();
 export type AddMembersInput = z.infer<typeof addMembersInput>;

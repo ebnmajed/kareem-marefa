@@ -10256,3 +10256,43 @@ Collaborative editing; a version history; a server-side draft; a server autosave
 | 5 | Still awaiting rulings, none of them scope: the last-org lockout (`DEC-253` §7.1); `DEC-255` §1; `DEC-254` §7 | the brief's §2 – §3 |
 
 - **Documents changed:** `STATUS.md`
+
+---
+
+## DEC-261 — The owner rules three things: the super admin is never locked out; an admin may add another admin by email (`DEC-244` §11 and `DEC-254` §7 reversed); a session is still renamed only until it is published
+
+- **Date:** 2026-10-05 · **Decided by:** the owner — «fix the lockout so it doesn't happen for the super admin, no do not revers and yes the admin can add another admin by email» · **Reverses:** `DEC-244` §11, `DEC-254` §7 · **Discharges:** `DEC-253` §7.1 · **Keeps:** `DEC-255` §1 · **Amends:** `REQ-TEN-009` · PR B of wave 28, `wave-28b/the-lockout-and-admin-by-email` · migration **`0211`**
+
+### 1 · The lockout (`DEC-253` §7.1)
+
+Measured live on 2026-10-05: with the only org deleted, `provision_member()` answers `no_match` for every address, `api/auth/callback` signed the session out, and the super admin could not reach the console to create an org. Recovery was an org seeded in SQL.
+
+**Fixed in the callback, and nowhere else.** On `no_match` it asks `assert_platform_admin()` — the table, never the claim — and for a platform admin it **keeps the session and lands on `/app/platform`**. Everybody else is signed out exactly as before. `requirePlatformAdmin()` already reads the table, and the shell already draws for a session with no member row (`DEC-057`), so the console works the moment the session exists. No policy changes; no super-admin disjunct anywhere (invariant 8).
+
+★ This also fixes the ordinary case nobody had reported: a platform admin whose address matches no org's domain was signed out at every sign-in, whether or not any org existed.
+
+### 2 · An admin adds another admin by email
+
+`DEC-244` §11 refused it because an addition by email is a standing grant to whoever controls the mailbox; `DEC-254` §7 kept that. **The owner has now ruled the other way, knowing the reason.** Four places change:
+
+| Where | Before | After |
+|---|---|---|
+| `add_member()` (`0204`'s definition) | `admin` refused `role_not_allowed`, `22023` | accepted — `0211` |
+| `addMemberInput`, `addMembersInput` (`admin-members.ts`) | `moderator \| member` | `admin \| moderator \| member` |
+| The add form (`add-member.tsx`) | two roles | three; «عضو» still the default |
+| `provision_member()` | binds the row with the role it carries | **unchanged** — an added admin arrives as an admin |
+
+★★ **One guard is added, because one invariant would otherwise break.** Until now no admin row could exist without a signed-in person behind it, so `set_member_role()`'s last-admin check never had to ask. With an admin addable by email, the acting admin could add one and step down, leaving the org with nobody able to sign in as its admin. **`0211` makes the check count only admins who have signed in** (`auth_user_id is not null`); an admin who has not arrived can always be demoted. `deactivate_member()` needs nothing: it refuses the actor's own row, so a signed-in admin always remains.
+
+`0211` is two `create or replace` over unchanged signatures — additive; every grant stands; `main`'s app on it offers no `admin` and its Zod refuses one, so nothing moves before the merge. **The owner rehearses and pushes it before merging PR B.**
+
+### 3 · The rename stays as `DEC-255` §1 made it
+
+«No, do not reverse»: a session's title is edited until it is published and refused by the database after. Nothing changes.
+
+### 4 · Evidence, and what is not proven
+
+- `tests/rls/add-a-member.test.ts` and the member and tenancy suites, 57 of 57 on a local database at `0211`; `members-add.test.tsx` 11 of 11; a new unit test for the callback, 3 of 3 (a platform admin keeps the session and lands on the console; anybody else is signed out; a member is never asked). Three expectations reversed or added — ledger L-1 … L-3.
+- ★ **Not proven end to end**: the callback's path runs behind Google's OAuth, which no local spec drives. The unit test mocks the client. **The owner's check after the merge is the real one**: sign in as the super admin and land on the console.
+
+- **Documents changed:** `01-prd.md` (`REQ-TEN-009`), `03-permissions-rls.md` §8.2, `STATUS.md`, `notes/wave-28-ledger.md`
