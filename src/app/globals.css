@@ -596,6 +596,40 @@ html:has([data-play-root].theme-play-light) {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
+
+/* ── The mark's three moves (REQ-UIX-119, DEC-247; `components/brand/logo.tsx`) ─────────────────────────────────
+   Taken from `docs/design/prototypes/logo-motion.html`: the same curves, durations and delays, keyed on the
+   component's `data-*` attributes and never on the prototype's class names. They are the MARK's, not a moment
+   (there is no sixth), and never a console's: `[data-console]` switches every animation off beneath it.
+   ★ The paths REST at `stroke-dashoffset: 0`. The reveal's hidden start is the keyframe's own `from`, held through
+   each delay by `both` — so if no animation runs (reduced motion, a console, an old browser) the mark is simply
+   there, never invisible waiting for one. */
+[data-logo] [data-arc] { stroke-dasharray: 1; stroke-dashoffset: 0; }
+@keyframes logo-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes logo-settle { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+@keyframes logo-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  /* Reveal — 1.4 s in all: the faces in order, each shadow 90 ms behind its face, then one settle. */
+  [data-logo][data-motion="reveal"] [data-arc] { animation: logo-draw 0.62s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  [data-logo][data-motion="reveal"] [data-arc="coral"][data-part="face"] { animation-delay: 0ms; }
+  [data-logo][data-motion="reveal"] [data-arc="coral"][data-part="shadow"] { animation-delay: 90ms; }
+  [data-logo][data-motion="reveal"] [data-arc="lime"][data-part="face"] { animation-delay: 140ms; }
+  [data-logo][data-motion="reveal"] [data-arc="lime"][data-part="shadow"] { animation-delay: 230ms; }
+  [data-logo][data-motion="reveal"] [data-arc="violet"][data-part="face"] { animation-delay: 280ms; }
+  [data-logo][data-motion="reveal"] [data-arc="violet"][data-part="shadow"] { animation-delay: 370ms; }
+  [data-logo][data-motion="reveal"] [data-arc="orange"][data-part="face"] { animation-delay: 420ms; }
+  [data-logo][data-motion="reveal"] [data-arc="orange"][data-part="shadow"] { animation-delay: 510ms; }
+  [data-logo][data-motion="reveal"] { animation: logo-settle 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) 1s both; transform-origin: 50% 60%; }
+  /* Loading — the faces breathe in sequence, 200 ms apart; the shadows wait at half strength. */
+  [data-logo][data-motion="loading"] [data-part="face"] { animation: logo-breathe 1.6s ease-in-out infinite; }
+  [data-logo][data-motion="loading"] [data-arc="lime"][data-part="face"] { animation-delay: 0.2s; }
+  [data-logo][data-motion="loading"] [data-arc="violet"][data-part="face"] { animation-delay: 0.4s; }
+  [data-logo][data-motion="loading"] [data-arc="orange"][data-part="face"] { animation-delay: 0.6s; }
+  [data-logo][data-motion="loading"] [data-part="shadow"] { opacity: 0.5; }
+  /* Tap — one settle while the control that holds it is pressed. */
+  :active > [data-logo][data-motion="tap"] { animation: logo-settle 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) both; transform-origin: 50% 60%; }
+}
+
 /* No arrow pulse (DEC-197): moment 5's arrow is simply shown. An overshoot is
    a sticker's alone (DEC-183 §2), and a pulse on an arrow widens that line. */
 

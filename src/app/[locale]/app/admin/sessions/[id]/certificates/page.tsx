@@ -26,15 +26,21 @@ import { TemplateControl } from "./template-control";
 // (DEC-208: deleted first; the kept-behaviour table is `docs/plan/notes/console.md` §4.2). REQ-UIX-109, REQ-CRT-001,
 // REQ-CRT-004, REQ-CRT-011, REQ-CRT-015, REQ-DSG-031, DEC-177, DEC-178, DEC-238.
 //
-// The job: before completion an admin sets the MODE and, per kind, the TEMPLATE here and nowhere else (the owner's C6
-// ruling — DEC-178 stands); after completion they issue held certificates one at a time or in bulk, revoke one with a
+// The job: an admin sets the MODE and, per kind, the TEMPLATE here and nowhere else (the owner's C6 ruling — DEC-178
+// stands for the writer); after completion they issue held certificates one at a time or in bulk, revoke one with a
 // mandatory reason, and hand out a PDF only through the one audited route.
+//
+// ★ DEC-250 (REQ-CRT-017): the MODE outlives completion. `certificate_mode` defaults to `off` (0010:88) and the
+// fan-out ran only on the edge into `completed` (0065:78), so a session nobody deliberately switched on completed
+// into a dead end — and this screen, gating the control on `!closed`, was where that dead end was visible. A
+// completed session now keeps the control, and saving it fans out at once (`0194`).
 //
 // The hub's header and tabs are above this page (wave 21); it renders nothing of them. In the board's order: the line
 // «الوضع · … · القالب: …», then «محجوزة» and «صادرة». The board draws a completed session; before completion is built in
 // the sober register — REQ-DSG-031's three meanings kept apart: the template per kind, the mode with its preflight, and
-// who receives one. After completion the mode is a sentence (refused by the function); the template may still change
-// while that kind has held certificates and none issued (DEC-238 §2), behind «غيّر» on the line, in a sheet.
+// who receives one. After completion the mode keeps its control and says it issues NOW; the template may still change
+// while that kind has nothing issued (DEC-238 §2), behind «غيّر» on the line, in a sheet. Only a CANCELLED session is
+// a sentence, because no fan-out will ever run for it.
 //
 // A moderator reads the line and «من يستحق» and no certificate (`certs_read_*` are admin-only, 03 §5.8). A member, or
 // a session this org cannot see, gets the streamed not-found (DEC-134).
@@ -102,8 +108,11 @@ export default async function SessionCertificatesPage({
       {t("noDefault")}
     </Link>
   );
-  // After completion the template changes only while that kind has held certificates and none issued (DEC-238 §2).
-  const changeable = (k: CertificateDesignData["kinds"][number]) => isAdmin && !cancelled && (!completed || (k.heldCount > 0 && !k.locked));
+  // After completion the template changes while that kind has nothing issued or revoked — which is exactly what
+  // `set_certificate_design()` refuses (`design_locked`, 0099), so the screen and the function agree (DEC-238 §2).
+  // ★ DEC-250: no longer `heldCount > 0`. A session completed at `off` has no held certificate and is precisely the
+  // case that must be able to choose a template before it is switched on (REQ-CRT-017).
+  const changeable = (k: CertificateDesignData["kinds"][number]) => isAdmin && !cancelled && (!completed || !k.locked);
   const editingKind = completed && typeof sp.design === "string" ? (design.kinds.find((k) => k.kind === sp.design && changeable(k)) ?? null) : null;
   const revoking = isAdmin && typeof sp.revoke === "string" ? (data.issued.find((c) => c.id === sp.revoke) ?? null) : null;
 
@@ -194,33 +203,42 @@ export default async function SessionCertificatesPage({
       ) : null}
 
       {!closed && isAdmin ? (
-        <>
-          <section aria-labelledby="cert-design" className="flex flex-col gap-4">
-            <h2 id="cert-design" className="text-label text-fg-muted">
-              {t("designHeading")}
-            </h2>
-            <div className="flex flex-col gap-6">{design.kinds.filter(changeable).map((k) => control(k))}</div>
-          </section>
-          <section aria-labelledby="cert-mode-heading" className="flex flex-col gap-4 border-t border-edge pt-6">
-            <h2 id="cert-mode-heading" className="sr-only">
-              {t("lineMode")}
-            </h2>
-            <CertificateModeControl
-              locale={locale}
-              sessionId={id}
-              mode={data.mode}
-              preflight={{
-                fontsLoaded: faces.length > 0,
-                designs: design.kinds.map((k) => ({ kind: k.kind, saved: k.chosen !== null })),
-                eligible: eligible.length,
-                serial,
-              }}
-            />
-          </section>
-        </>
+        <section aria-labelledby="cert-design" className="flex flex-col gap-4">
+          <h2 id="cert-design" className="text-label text-fg-muted">
+            {t("designHeading")}
+          </h2>
+          <div className="flex flex-col gap-6">{design.kinds.filter(changeable).map((k) => control(k))}</div>
+        </section>
       ) : null}
 
-      {!closed || !isAdmin ? (
+      {/* ★ DEC-250 (REQ-CRT-017): the mode outlives completion. It used to be gated on `!closed`, and because
+          `certificate_mode` defaults to `off` (0010:88) a session nobody switched on completed into a dead end —
+          one sentence and no control anywhere in the product. A cancelled session still has none: there is no
+          attendance to attest and no fan-out will ever run for it. On a completed session the save fans out at
+          once (`0194`), which is why the control is told so. */}
+      {!cancelled && isAdmin ? (
+        <section aria-labelledby="cert-mode-heading" className={`flex flex-col gap-4 ${closed ? "" : "border-t border-edge pt-6"}`}>
+          <h2 id="cert-mode-heading" className={closed ? "text-label text-fg-muted" : "sr-only"}>
+            {t("lineMode")}
+          </h2>
+          <CertificateModeControl
+            locale={locale}
+            sessionId={id}
+            mode={data.mode}
+            completed={completed}
+            preflight={{
+              fontsLoaded: faces.length > 0,
+              designs: design.kinds.map((k) => ({ kind: k.kind, saved: k.chosen !== null })),
+              eligible: eligible.length,
+              serial,
+            }}
+          />
+        </section>
+      ) : null}
+
+      {/* ★ DEC-250: an admin on a completed session with no certificates sees who qualifies, because that is the
+          number the mode's preflight counts and the switch they are about to press acts on. */}
+      {!closed || !isAdmin || (completed && !any) ? (
         <section aria-labelledby="cert-who" className="flex flex-col gap-3">
           <h2 id="cert-who" className="text-label text-fg-muted">
             {t.rich("whoHeading", { value: formatNumber(eligible.length), bdi })}
@@ -230,8 +248,12 @@ export default async function SessionCertificatesPage({
       ) : null}
 
       {isAdmin && closed ? (
-        (data.mode === "off" || cancelled) && !any ? (
-          <p className="text-body-sm text-fg-muted">{cancelled ? t("modeControl.closedCancelled") : t("offLine")}</p>
+        cancelled && !any ? (
+          <p className="text-body-sm text-fg-muted">{t("modeControl.closedCancelled")}</p>
+        ) : data.mode === "off" && !any ? (
+          // ★ DEC-250: no sentence. «لا تصدر شهادات لهذه الجلسة.» read as final and now contradicts the live
+          // control above it — the control, with its three named options, says this state better than prose does.
+          null
         ) : (
           <>
             <Issuance
