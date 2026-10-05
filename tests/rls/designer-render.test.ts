@@ -36,6 +36,9 @@ async function setup(tx: Tx) {
   // Order matters: `certificates.template_version_id` is ON DELETE RESTRICT
   // (a version that produced a certificate must outlive it — REQ-CRT-014),
   // so the certificates go first or nothing else can.
+  // ★ LEDGER (wave 27, DEC-255 D6): this setup empties every org's whole template library, which nothing in production
+  // does but an org's own deletion — so it opts out of the last-live-template guard (0206) for this rolled-back transaction.
+  await tx.q(`alter table public.design_templates disable trigger design_templates_keep_one_live`);
   for (const t of ["certificates", "export_artifacts", "session_posters", "design_documents", "design_template_versions", "design_templates"]) {
     await tx.q(`delete from public.${t}`);
   }

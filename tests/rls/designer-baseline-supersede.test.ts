@@ -56,6 +56,9 @@ function wave24(): string[] {
  *  Nothing is faked: these are the rows an org's certificates actually point at. */
 async function preWaveLibrary(tx: Tx): Promise<void> {
   await tx.asOwner();
+  // ★ LEDGER (wave 27, DEC-255 D6): this setup empties every org's whole template library, which nothing in production
+  // does but an org's own deletion — so it opts out of the last-live-template guard (0206) for this rolled-back transaction.
+  await tx.q(`alter table public.design_templates disable trigger design_templates_keep_one_live`);
   for (const t of ["certificates", "export_artifacts", "session_posters", "design_documents", "design_assets", "design_template_versions", "design_templates"]) {
     await tx.q(`delete from public.${t}`);
   }
