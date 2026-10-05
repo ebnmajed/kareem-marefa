@@ -417,7 +417,7 @@ form-validation rule.
 | `custom_venue_name`, `custom_venue_address`, `custom_venue_map_url` | `text` | `REQ-SES-007` |
 | `capacity` | `int` | |
 | `rsvp_deadline_at`, `cancellation_cutoff_at` | `timestamptz` | |
-| `certificate_mode` | `certificate_mode not null default 'off'` | `REQ-CRT-002` |
+| `certificate_mode` | `certificate_mode not null default 'review'` | `REQ-CRT-002` · ★ the default was `'off'` until `0201` (`DEC-254` §4, `REQ-CRT-018`): a new session's certificates are **held for review**; no existing row was rewritten |
 | `allow_walk_ins` | `boolean not null default false` | `REQ-CHK-010` as amended — DEC-065 (`0079`) |
 | `host_company_id` | `uuid references companies(id)`, nullable, same-org guarded | the hosting company — DEC-067 (`0081`) |
 | `state` | `session_state not null default 'draft'` | |

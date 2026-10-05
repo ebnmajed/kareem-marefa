@@ -644,7 +644,8 @@
           "walk_ins_changed": "تغيير الحضور دون حجز",
           "presenter_added": "إضافة مُقدِّم إلى جلسة",
           "presenter_removed": "إزالة مُقدِّم من جلسة",
-          "certificate_mode_changed": "تغيير وضع الشهادات لجلسة"
+          "certificate_mode_changed": "تغيير وضع الشهادات لجلسة",
+          "renamed": "تغيير اسم جلسة"
         },
         "storage": {
           "prefix_violation": "مخالفة في مسارات التخزين"
