@@ -10,7 +10,7 @@
 //   · `src/components/ui/` — a primitive keeps its old class beside its `pg:`
 //     form until the public site's wave deletes both (`tokens-only.test.ts` and
 //     `ui-playground.test.ts` are its gates);
-//   · the public site's own files — they keep today's look until their wave;
+//   · the old wordmark — it keeps its classes until the mark replaces it (wave 26, PR E);
 //   · a STATUS class (`text-error`, `bg-success-bg`): those names take DEC-073's
 //     on-dark forms inside the scope, once, in `globals.css`.
 //
@@ -35,20 +35,9 @@ const code = (source: string) => source.replace(/(^|[^:"'`])\/\/.*$/gm, "$1").re
 
 const EXEMPT = [
   "components/ui/",
-  "app/[locale]/(marketing)/",
-  "app/[locale]/layout.tsx",
-  "components/header.tsx",
-  "components/footer.tsx",
-  "components/chapter.tsx",
+  // ★ Wave 26 (DEC-247, DEC-252): the public site is rebuilt on the playground and is no longer exempt. What is
+  // left is the old wordmark, until the mark replaces it everywhere (PR E).
   "components/wordmark.tsx",
-  "components/intro-sting.tsx",
-  "components/network-bg.tsx",
-  "components/network-gl.tsx",
-  "components/ornaments.tsx",
-  "components/mobile-cta.tsx",
-  "components/language-toggle.tsx",
-  "components/registration-form.tsx",
-  "components/form-token.tsx",
   // The renderer's and the mail's own drawings are artifacts, not the app (DEC-199, rule 10).
   "components/email/blocks/",
 ];

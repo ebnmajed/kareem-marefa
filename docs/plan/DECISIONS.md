@@ -9172,6 +9172,239 @@ exactly such a sentence.
 
 ---
 
+## DEC-248 — Wave 26's map: five PRs divided by where a mistake can be seen; both numbering gaps are one open PR and neither number was lost; a second guard names a file the wave deletes; the story tables' contract; and the video is transcoded by `ffmpeg` from the worker image
+
+- **Date:** 2026-10-05 · **Decided by:** the wave-26 lead, on the points the owner's brief hands to the lead (the map, the two numbering gaps, the video path), from measurement of the tree at `3d22c33a`
+- **Amends:** the wave-26 brief's definition of done, whose line «`public-graph.test.ts` green and untouched» was overtaken by `DEC-247` and not removed · `STORIES-USER-STORIES.md`'s citations (§7) · `docs/design/05-stories.md` where it disagrees with `01-prd.md` §25 (§7)
+- **Adds:** `REQ-UIX-114` … `REQ-UIX-120`, `REQ-STO-001` … `REQ-STO-018` (`01` §25), requirement area `STO` (`00` §5), milestone **M28**, `STORY-UIX-104` … `110`, `STORY-STO-001` … `007`
+- **Does not touch:** the URLs, the registration behaviour, the accessibility floor, `registrations`, `console-register.test.ts`
+
+### 1 · Step 0, re-measured
+
+`main` and `origin/main` are both `3d22c33a` and the tree is clean but for the untracked `scripts/seed-demo.mjs` — the
+brief's «nine commits behind with 44 uncommitted files» was true when it was written and is not now. `src/components/ui/`
+holds **69** `.tsx`; the floor is **69** at `tests/unit/ui-playground.test.ts:123`. The last migration is `0197`; the
+next is **`0198`**. The spec is on `main` — `M13.md`, `STORIES-USER-STORIES.md`, seventeen artboards with seventeen
+PNGs, the logo pack and `prototypes/logo-motion.html` — so **this wave commits nothing under `docs/design/`**.
+
+★★ **And `main` was red when the wave opened.** CI's unit job failed on `3d22c33a`: `prototypes/logo-motion.html`
+(`cfbcb099`, pushed to `main` without a pull request) declares a class named `shadow`, and
+`tests/unit/design-files.test.ts` — which forbids a drawing's class name in `src/` (`REQ-UIX-063`) — then read
+Tailwind's own `shadow` utility at `src/components/designer/canvas.tsx:727` as a leaked prototype class. It is a name
+collision, not a leak. **The fix edits neither the guard nor the owner's drawing**: the utility is renamed to
+`shadow-sm`, which is Tailwind 4's canonical name for the same value (`theme.css` keeps `--shadow` as a deprecated
+alias of `--shadow-sm`, byte for byte), so nothing renders differently and no golden is involved — the handle is the
+studio's overlay, not a document. It is this branch's first commit and also its own pull request against `main`, so
+`main` does not stay red until PR A merges. ★ **`<Logo>` must therefore name none of the prototype's classes** —
+`arc`, `face`, `shadow` and the four colour names — which the same gate will hold.
+
+### 2 · ★★ The two numbering gaps: neither number was abandoned and nothing failed to land — both are OPEN PR #69
+
+**`0194`** is `0194_certificate_mode_after_completion.sql` and **the missing `DEC-245`** is «The certificate mode
+outlives completion». Both live on `hotfix/certificates-after-completion` (`b8a87ac7`, `e2c42ba3`), which is
+**pull request #69 — open, its checks green, and not merged.** `DEC-246` §4 already said so of `0194`; nobody said it
+of the decision.
+
+★★ **And that makes it a collision, not a gap.** The planner found `244` then `246` on `main`, took the hole for a
+skipped number and **filled it with the wave-26 entry**. So two different decisions are now called `DEC-245`: the one
+on `main`, which `DEC-247`, `STATUS.md`, the brief and this map all cite, and the one in PR #69, which its title, its
+migration's header and 25 lines of its code and tests cite. **#69 cannot merge as it stands** — GitHub reports it
+`CONFLICTING` against `main` — which is the only reason the log does not already hold two entries with one number.
+
+**The ruling.** ★ **`main`'s `DEC-245` stands**: it is on `main`, the log is append-only, and renumbering it would
+edit a merged entry and every citation of it. ★ **PR #69's entry is renumbered on its own branch when that branch is
+rebased** — it has never been on `main`, so that is a rebase and not an edit of the log — **to the next number free on
+the day of the rebase**, which this entry deliberately does not name: `DEC-180`'s lesson is precisely that a number
+cited before it is written is taken by whoever gets there first. ★ **`0194` keeps its number.** It reaches production
+after `0195` – `0197`, the three are independent (`DEC-246` §4), and `supabase db push` needs `--include-all` for it.
+★ **The order the owner should know before rehearsing `0198`:** the rehearsal dump is «taken at `0197`», and whether
+`0194` is in that dump depends on whether #69 has merged and been pushed. **#69 is a production fix and should merge
+first**, before any PR of this wave; `0198` is written to be indifferent to `0194` either way and the rehearsal note
+will say which it ran on.
+
+★ **The general form**, beside `DEC-180`'s: **a hole in a sequence is a question about open branches before it is a
+number to reuse.** `git log --all` answers it in one command, and it was not run.
+
+### 3 · The division — five PRs, and why
+
+1. **A is the lead's alone.** It is the one PR where a mistake cannot be seen by looking, every file in it was already
+   lead-only, and it rewrites a guard on the owner's explicit permission — which is not delegated.
+2. ★ **Everything PUBLIC that the mark touches is in A, not E**: the `<Logo>` component, the landing's reveal, the
+   register page's mark, `/og.png` and its new entry in `visual-diff.mjs`'s `ROUTES`. `DEC-167` lets the public
+   appearance move only with its re-baselined capture in the same commit; if E changed the landing's header after A,
+   that would be a second appearance change and a second re-baseline. **So the public appearance moves once.** E is the
+   mark **inside** the product — the shell, sign-in's reveal, the waiting state, the console and platform bars, the
+   public card, legal, the error page, the favicon — and the deletion of both wordmark components. E is cut from A's
+   head once A's one commit exists.
+3. ★ **`DEC-167` outranks `DEC-208`'s two-commit form on `000` and `001`.** A delete pushed without its create would
+   put a public URL at 404; the two rules cannot both be obeyed there, and the public contract is the older and the
+   harder one. `000`/`001` change in **one** commit, with the kept-behaviour table written first. `006` is not one of
+   the five routes and takes `DEC-208` in full.
+4. ★★ **The registration form is not rewritten.** `register/actions.ts` has **no diff** in this wave.
+   `registration-form.tsx` and `form-token.tsx` are **edited, never deleted**, and the edit is presentation only. The
+   proof is a **behaviour fingerprint** — the form's `action`, `method` and `noValidate`; for every control in document
+   order its tag, `name`, `id`, `type`, `value` where hidden, `required`, `pattern`, `minLength`, `maxLength`,
+   `autocomplete`, `inputmode` and its `aria-*` relations; every `role="alert"` region; the honeypot's attributes —
+   taken from `main`'s build and from the branch's, in both the initial state and after a refused submission, and
+   **equal**. Beside it: a submission with JavaScript **off** against the stub, `qa:contract` at every commit, and the
+   accessibility sweep. `registrations` is never read.
+5. **B is one teammate, `branding`**, and `/app/me/privacy` transfers to it from `platform` for the wave: two screens in
+   one register, and `platform` is thereby free for six screens under `DEC-208`.
+6. **C is `platform`'s behind a frame the lead lands first** — the layout and the rail are the lead's files.
+7. **D is two teammates divided by half.** `sessions` owns a session's state, so it takes the **generated** half: the
+   generator, the read model, the ring's states. `content` owns photographs, the upload routes, the worker's media
+   tasks and moderation, so it takes **the viewer, the capture and the attendee half**. `044`'s strip is `content`'s
+   component, slotted in by the lead as `checkin`'s custodian, add-only.
+8. **Merge order A, B, C, D, E.** B, C and D are cut from A's head after this entry and need nothing else of A.
+
+### 4 · ★★ A second guard names a file this wave deletes
+
+The brief asks for two things: `src/components/platform/platform-nav.tsx` **deleted**, and
+`tests/unit/console-register.test.ts` **green and untouched**. **`console-register.test.ts:108` asserts that the
+console's import graph contains `components/platform/platform-nav.tsx`** — it is one of four files the test uses to
+prove its walk found the console at all. Deleting the file turns the test red; keeping the test untouched forbids the
+delete. This is `DEC-247` §5's finding a second time: a guard read as «untouched» without being read.
+
+**The ruling, which obeys both sentences and edits no guard:** the component is deleted under `DEC-208` with its
+kept-behaviour table, and **the platform's nav set — the table `ui/admin-rail` reads for `/app/platform` — is created
+at the same path.** The file the test names continues to exist and to be reached from `platform/layout.tsx`; what it
+holds changes from a nav component to the nav set that replaces it. The assertion's purpose — «the walk reaches the
+platform's navigation» — is served exactly. The file becomes the lead's (`CLAUDE.md`, lead-only paths), as the console's
+nav table has been since wave 21. ★ **If the owner would rather the set lived beside `shell/admin-nav.ts`, that is one
+string in a guard and it is the owner's to allow** — it is not taken here.
+
+★ **And the mark in a console bar never moves** (`REQ-UIX-119`): the test's roots include `app/layout.tsx`, the mark's
+keyframes live in `globals.css`, and the console and platform frames render it with its motion off.
+
+### 5 · The story tables — the contract `0198` is written to
+
+**Frames are rows**, not the projection `05-stories.md` describes: a frame expires 24 hours after **its trigger**
+(`REQ-STO-002`), a trigger must write exactly once (`REQ-STO-004`), and staff keep an attendee's frame after it has
+expired for members (`REQ-STO-017`) — each needs a stored instant and a stored identity.
+
+- **`story_frames`** — `org_id`; the session (and its day where one applies); a `kind` (a Postgres enum: the eight of
+  STO-04 and the attendee's video); a **trigger key, unique with the session and the kind** — that constraint is the
+  idempotency; `triggered_at`; and, for an attendee's frame, the author, the caption, the album photograph or the
+  video's asset, and a state. ★ **No client role inserts, updates or deletes a frame**: every write is a definer
+  function. Members `select` a frame that is visible, inside 24 hours, and of a session that is not cancelled; staff
+  `select` every frame of their org. **Each policy has its grant** (invariant 6).
+- **`story_views`** — `org_id`, the member, the frame, the instant. A member reads and writes **their own rows only**;
+  no staff policy, because `REQ-STO-010` says a view is the member's alone.
+- ★ **A photo frame references the album photograph and copies nothing from it**, so a takedown, a report or a
+  removal of the photograph hides the frame by the policy's own join — «the viewer never keeps a frame whose row it
+  can no longer read».
+- **Where a reaction and a video's report are stored is answered at sync 1 from `content`'s plan**; if either needs a
+  table it is the lead's and it is in `0198`. The exact columns are fixed then, and `02` and `03` are written in the
+  migration's commit.
+
+### 6 · ★★ The video path, answered
+
+**The transcoder is `ffmpeg`, with `ffprobe`, from Debian's own package, installed in `worker/Dockerfile`** — a system
+binary beside `chromium`, `poppler-utils`, `webp` and `zip`, exactly as `DEC-181` requires. No npm package touches the
+bytes; the task spawns the binary as `pdf.ts` spawns `pdftoppm`.
+
+- **Why not an npm library:** `fluent-ffmpeg` and its kin are wrappers that need the same binary; `ffmpeg-static`
+  downloads an unpinned build at install time, which `--ignore-scripts` in the image's `npm ci` would skip and which
+  the lock would not describe; a WebAssembly build has no hardware limits to speak of and no H.264 encoder the licence
+  lets us ship. A binary from the distribution is pinned by the base image and patched with it.
+- **What the task does:** `ffprobe` reads the upload and **the server refuses over 15 s or 60 MB from that reading**,
+  never from the client's word; `ffmpeg` writes **one** MP4 — H.264, AAC, at most 720 px on the short side, `faststart`
+  — with **`-map_metadata -1`**, because a phone's video carries its GPS position in the container exactly as a
+  photograph carries it in EXIF, and `REQ-EVT-011`'s promise would otherwise be broken by the first video; one poster
+  frame, made WebP by the `cwebp` already in the image. The original is deleted when the rendition exists.
+- **The image-size cost, measured** on `node:22-slim` with the image's present package set already installed:
+  `apt-get install --no-install-recommends ffmpeg` brings **88 packages, 54.4 MB of archives and 148 MB on disk** — the root filesystem measured 964 MB before and 1,103 MB after, so the image grows by about **14 %**. It is `ffmpeg` 5.1.9 (`5.1.9-0+deb12u1`), and its build carries the `libx264` encoder and the native `aac` encoder, so one H.264/AAC rendition needs nothing else. The cost is paid once per image pull, never per job.
+- **What `main`'s worker does in the gap:** it has no `transcode_story_video` task, so a job enqueued before the new
+  image deploys waits in the queue and runs when it does — the frame stays in its processing state, visible to nobody.
+  The route that enqueues ships in the same PR as the task, so the gap is the minutes between Vercel's deploy and
+  Railway's.
+- **At sync 1** `content`'s plan fixes the bitrate ceiling, the wall-clock timeout and what a failure writes.
+
+### 7 · Measured corrections — what the design documents cite that does not exist
+
+1. ★ **`REQ-PRV-*` does not exist.** Privacy is `REQ-PRF-006`, `REQ-PRF-007`, `REQ-PRF-008` and `REQ-NFR-013`.
+2. ★ **`REQ-NFR-014` is «Org deletion cascades cleanly»**, not the no-data-plane rule the brief and `M13.md` cite it
+   for. **The rule is `REQ-ADM-002`**, with `DEC-014` and invariant 8.
+3. ★ **The `SCR` requirement numbered 021 that STO-05 and the brief cite does not exist** — `SCR` is the screens' prefix, not a requirement area, and it is named here without its citable form so the trace gate does not read it as a broken citation. «Reactions earn nothing» is `REQ-EVT-004` and `REQ-PTS-010`.
+4. ★ **`REQ-PHO-*` does not exist.** Photographs are `REQ-EVT-010` … `REQ-EVT-016`; «أزلني» is `REQ-EVT-012`.
+5. ★ **STO-17 cites `REQ-ADM-010` for the audit; that is the moderation queues.** The audit log is `REQ-ADM-018`.
+6. ★ **STO-10 cites migration `0192`**; it is `0198` (`DEC-245` §5.3). `STORIES-USER-STORIES.md`'s header says
+   «`wave-24-lead.md` PR D»; it is wave 26's.
+7. ★★ **`05-stories.md` and the eighteen disagree, and the eighteen win** (the brief, `01` §25): the eight frame types
+   are STO-04's — `05`'s «الشهادات» and «الفريق» frames are **not built**, and registration opening and closing, which
+   `05` does not have, are; expiry is 24 hours from the trigger, not a window around the session; a view is recorded
+   **per frame**, not as a last-frame key per session; the tap zones are `M13.md`'s — the start third is previous —
+   not `05`'s halves; swipe **down** closes, and there is no swipe between sessions. `05`'s remaining rules stand where
+   §25 is silent: the rating withheld below the minimum, at most the last twelve photographs, `<bdi>` on a serial.
+8. ★ **The brief's definition of done still says «`public-graph.test.ts` green and untouched»**; `DEC-247` overtook it.
+   It reads: **green, and rewritten once, in PR A's one commit.**
+9. ★ **The impersonation durations**: `M13.md` draws 15 / 30 / 60 minutes and the built form offers presets «ending at
+   the table's ceiling» of four hours. **`DEC-054` wins and nothing is changed** until `platform`'s plan has measured
+   the difference and the owner has seen it.
+
+### 8 · For the owner
+
+1. ★★ **PR #69** — it holds `0194` and the other `DEC-245`, it conflicts with `main`, and it is a production fix. It
+   needs a rebase with its decision renumbered (§2), then its merge and push **before** this wave's PRs. Say whether
+   the lead does the rebase or the session that wrote it does.
+2. ★ **§4** — the platform nav set at the old file's path, or one string changed in `console-register.test.ts`.
+3. ★ **§7.9** — impersonation's durations, once `platform` has measured them.
+
+- **Documents changed:** `CLAUDE.md` (the wave-26 map, the lead-only paths, the `ui/` paragraph), the ten
+  `.claude/agents/*.md`, `00-overview.md` §5, `01-prd.md` (§23's seven, §25's eighteen; *Out of scope* moves to §26),
+  `09-sitemap-screens.md` §7.2, `14-roadmap.md` (M28), `15-backlog.md` (fourteen stories), `TRACEABILITY.md`
+  (generated), `STATUS.md` (the wave-26 head)
+
+## DEC-249 — Three rulings for wave 26: the certificate hotfix lands before the dump, the design gate's name collision is fixed at the Tailwind utility, and the platform nav is rebuilt IN PLACE so `REQ-UIX-053`'s guard stays untouched
+
+- **Date:** 2026-10-05 · **Decided by:** the owner, on the wave-26 lead's three questions
+- **Amends:** the wave-26 brief's «`platform-nav.tsx` is deleted» (§3 below)
+
+### 1 · PR #69 — the lead rebases it, and it merges before the `0198` dump
+
+`hotfix/certificates-after-completion` is a **production correctness fix**, not wave work: a session
+completed at the default certificate mode could never issue one. It has been open since 2026-10-04 and
+is `CONFLICTING` because `main` moved under it.
+
+★ **The wave-26 lead rebases and merges it**, because it owns `main`'s state for this wave and the
+session that wrote it was one of three that ran outside the usual runs. ★★ **And it lands BEFORE the
+owner takes the `0198` rehearsal dump** — a dump taken first would capture a database whose
+certificate behaviour is about to change, and the rehearsal would prove the wrong thing.
+
+### 2 · PR #72 — merged; the collision was the planner's and the fix is at the right layer
+
+`main` has been red at `3d22c33a` since `cfbcb099` added `prototypes/logo-motion.html`, which declares
+a class named `shadow`. `tests/unit/design-files.test.ts` forbids a drawing's class name in `src/`
+(`REQ-UIX-063`) and correctly read **Tailwind's own `shadow` utility** on
+`src/components/designer/canvas.tsx:727` as a leaked prototype class.
+
+★ **It is a name collision, not a leak, and the gate was right to fail.** The fix is one word —
+`shadow` → `shadow-sm`, Tailwind 4's canonical name for the same value, `--shadow` surviving only as a
+byte-identical deprecated alias. ★ **Neither the guard nor the drawing is edited**, and the handle is
+the editor's **overlay, not a document**, so no parity golden is involved. **The planner committed the
+prototype that caused it** (`cfbcb099`).
+
+### 3 · The platform nav keeps its path — and the guard stays untouched
+
+The brief asked for `src/components/platform/platform-nav.tsx` to be **deleted**. ★ **It is rebuilt in
+place instead.** `tests/unit/console-register.test.ts:108` names that exact path as **one of four files
+it uses to prove the console's import graph is actually walked** — a fixture for the walk, not a claim
+about the nav's design. So the rebuilt nav keeps the path and wraps `ui/admin-rail` with the platform's
+second nav set, and **`REQ-UIX-053`'s guard stays green and untouched.**
+
+★★ **The reason to prefer this over a one-string edit:** that guard is the only thing standing between
+the console and the playground's motion, and **this wave already has the lead rewriting
+`public-graph.test.ts`** under `DEC-247`. **Two guards edited in one wave is one too many.** If
+`console-register.test.ts` must ever change, it is a separate deliberate decision, not a convenience
+inside a nav refactor.
+
+★ `DEC-208` still binds the nav's **contents** — the old markup goes, the kept-behaviour table is owed.
+**Only the path survives.**
+
+- **Documents changed:** `docs/plan/notes/wave-26-lead.md` (§C's platform-nav row)
+
+---
+
 ## DEC-250 — The certificate mode outlives completion: a session that completed at `off` could never issue a certificate, and `DEC-178`'s refusal was guarding a mechanism that already works
 
 > ★ **Renumbered on 2026-10-05 before it reached `main`** (`DEC-248` §2, `DEC-249` §1). This entry was written as
@@ -9265,3 +9498,172 @@ commit, and each is an **expectation** that changed rather than a selector that 
 
 - **Documents changed:** `01-prd.md` (`REQ-CRT-017`; `REQ-CRT-015`'s acceptance line), `03-permissions-rls.md` (§8.2's
   four rows, in the migration's own commit), `STATUS.md` (the ledger), `DECISIONS.md`
+
+---
+
+## DEC-251 — Wave 26, sync 1: four plans approved; what the artboards draw that has no data behind it is not built; the story tables' final shape; and `DEC-250` is the certificates hotfix's number
+
+- **Date:** 2026-10-05 · **Decided by:** the wave-26 lead at sync 1, from the four plans in `docs/plan/notes/{branding,platform,sessions,content}.md` (commits `b21f543d`, `0eb367c8`, `5613c9e3`, `44f4d50b`, `fe7256b1`); the items marked **owner** are defaults in force until the owner rules otherwise
+- **Amends:** `REQ-UIX-118`'s acceptance line on impersonation and `REQ-STO-004`'s on coinciding triggers (§2, §4) · `DEC-248` §5 (the tables' final shape, §5 below) · `DEC-248` §2 (the hotfix's number is now known)
+
+### 1 · The numbering, closed
+
+`DEC-249` is the owner's three rulings. **`DEC-250` is «The certificate mode outlives completion»** — PR #69's entry,
+renumbered on its own branch at `ce2a9a27`, with every line the branch added that cited the old number. ★ **By a merge
+of `main` into the branch, not a rebase**: `git rebase` is denied to every session in this repository, and a merge needs
+no force-push. `main`'s log will therefore read `247`, `250`, then `248`, `249`, `251` when PR #73 merges — unique, and
+out of order by one entry. ★ **`gh pr merge` is denied to every session too**: the owner merges #72 and #69.
+
+### 2 · PR C — `platform`'s plan is approved
+
+**The no-data-plane table is accepted as written**: nineteen exports, none returning a member's name, a session's title
+or a piece of content. Three fields cross and all three pre-date the wave and are tested — the first admin's address
+(the platform's own input, echoed), an org template's **name** in the promotion list (`REQ-DSG-008`), and the org's name
+read **inside** an impersonation session. **Nothing is added to either DAL file.**
+
+1. ★★ **`085` has no member field, and `REQ-UIX-118` was wrong to ask for one.** `start_impersonation()` takes no
+   member, the hook mints no `member_id`, `impersonation_sessions` has no member column, and filling a picker would
+   need a function that lists an org's admins — the data plane, by another door. The acceptance line reads: *«Impersonation
+   takes an org, a mandatory reason and a duration»*. The error was the lead's, copied from the artboard.
+2. **Durations (owner):** the form keeps today's five presets and today's default of 60, drawn in the artboard's
+   segmented shape, until the owner rules on 15 / 30 / 60 with 30.
+3. **`/app/platform` has no artboard**, so it is not rebuilt: it stays as built, under the new frame.
+4. **`084`**: the three existing counts are drawn; «جلسة هذا الربع», «معدّل الحضور», «التصديرات» and «الجاهزية» are **not
+   built** — nothing measures uptime, and the others are new functions in a PR that has no migration. The sixth `stat` is
+   «انتحالات جارية», which exists. ★ **The alerts and job health stay**, below the drawn content — `REQ-ADM-003` names
+   them and the artboard forgot them.
+5. **`083`**: no live thumbnail and no «قالب جديد» — a super admin has no authoring path (`DEC-052`). **The promotion
+   list stays** (`REQ-DSG-008`).
+6. **`082`**: no company column — a company is the org's data. «أُضيف» and members-per-domain are not built this wave.
+   **«تعيين أول مشرف» stays on `082`** (`DEC-148`).
+7. **`081`**: no default language (no column); the domain list, the certificate prefix and the seed checkbox stay; ★ the
+   hint «يصله بريد عند الإنشاء» is **not written — it is false**, `create_org()` sends nothing.
+8. **`080`**: delete stays offered on active orgs; a pending-deletion row keeps its counts. `tokenTail` stays on `085`.
+9. `tests/components/platform/platform-nav.test.tsx` is rewritten by the lead with the file, each case a ledger line.
+
+### 3 · PR B — `branding`'s plan is approved
+
+1. ★★ **«الصور التي تظهر فيها» has no data**: photographs are not tagged (`DEC-011`). **(owner)** The row shows what
+   exists — the member's own removal requests, with their count — and offers no page-level «أزلني», which would have no
+   photograph to act on.
+2. **Two fonts**, as `brand_kits` holds; the artboard's four would be two new columns. **One accent, `node`** — coral
+   is a status colour and never a brand token (`DEC-073`). **Ten swatches per scheme**, because every figure is read.
+3. ★ **The archive is kept 7 days, not `M13.md`'s 30**, and the sentence that says so stays the literal it is today —
+   `retention_periods` has no grant and PR B has no migration.
+4. The export has **five states and «never asked»**: `failed` exists and is kept. The two requirement-bearing
+   sentences stay (`deactivateHonest`, the export's note); the other explainer copy goes (`DEC-NEXT-25`).
+5. The database's refusal is shown **inline with the failing pair**, replacing the toast. WebP stays accepted. The
+   title is the artboard's «البيانات والخصوصية». Privacy's back goes to settings (an add-only `backHref`, the lead's),
+   it leaves the desktop strip, and it draws its own top row. The seven team colours are imported read-only.
+
+### 4 · PR D — `sessions'` and `content`'s plans are approved, and reconciled
+
+1. **Kinds** (one enum): `published`, `registration_opened`, `registration_closed`, `starts_soon`, `live`, `photo`,
+   `recap`, `materials`, `video`. ★ **Every visible album photograph makes one `photo` frame**, keyed by its id,
+   whoever uploaded it and by whichever door; the capture adds only a caption.
+2. ★ **The caption is `photos.caption`**, written by `record_photo_upload()`'s trailing defaulted argument (`content`'s
+   own function). The frame copies nothing, there is no pending row, and neither track's write waits on the other's.
+3. ★★ **A trigger that coincides with another writes one frame, not two** (`REQ-STO-004`, amended — **owner**).
+   With the priority window off, «registration opens» **is** the publication; with the default deadline, «registration
+   closes» **is** the start. `registration_opened` is written only when a priority window delays it past publication,
+   and `registration_closed` only when the deadline is earlier than the first start. Two frames in one second saying
+   one thing is the noise STO-02 exists to prevent.
+4. `starts_soon` and `live` are **per day**; a day-scoped `after` material released at its day's end makes no frame.
+   The live count is **refetched, not broadcast** — the only check-in broadcast is staff-and-presenter by design.
+5. **The ring has no fifth state.** `unseen` is drawn with `story-ring`'s `upcoming` shape before completion and its
+   `recap` shape after, the word under it the caller's. `sessions'` feed carries the session's phase for that.
+6. The feed carries **the author's own processing and failed video**, to the author alone — where «تعذّر» is said.
+7. **At a story's end the viewer moves to the next ring** and closes after the last (`05`, §25 silent). «شاهد القصة»
+   is drawn on desktop beside the live badge. `content` exports the opener; `sessions` passes its content as children.
+8. ★ **A report hides the FRAME; a photo frame's photograph stays in the album** — `REQ-EVT-008` governs the album,
+   and hiding the photograph would reverse its points on one member's word. «أزلني» on a photo frame is the photograph's
+   own takedown and hides both.
+9. **A removal request on a frame is not audited**, as a photograph's is not — the request row is the record; the
+   decision is. **A hidden video sends no notification** (STO §F). A removed photograph's objects stay unreadable, as
+   today. No retention rule for views or reactions.
+10. The viewer composes Radix's dialog directly; its one keyframe is the lead's, in `globals.css`. `content` removes
+    the feed's dead ring state with a ledger line. `purge_story_video.ts` is `content`'s; `story-media` enters the
+    worker's bucket list by the lead's edit. `sessions` edits its two own test files for «شاهد القصة», each a ledger line.
+
+### 5 · `0198`, final — the lead's
+
+Enums `story_frame_kind`, `story_frame_state`, `story_reaction_kind`; `report_target` gains `story_frame`.
+**Tables:** `story_frames` (the union of both plans' columns; `unique (session_id, kind, trigger_key)`),
+`story_views`, `story_reactions`, `story_frame_takedowns` — each with `org_id`, RLS, its full policy set, **a grant for
+every policy**, an RLS case and a fixture row. **One SQL predicate**, `story_frame_is_visible()`, called by the member
+policy **and** by `sessions'` feed, so the two cannot drift. **Columns:** `photos.caption`,
+`photos.story_derivative_ready`, `reports.story_frame_id`. **A private bucket**, `story-media`, 60 MB at the edge, its
+write policy calling `content`'s capture gate and its read policy joining the frame under the caller's own RLS — so
+expiry, hiding, cancellation and removal close the bytes exactly when they close the row. The triggers that attach
+the tracks' functions. `02`, `03`, `11` and `12` are written in the migration's commit.
+
+### 6 · For the owner
+
+1. §4.3 — one frame for coinciding triggers. 2. §3.1 — what the photographs row shows. 3. §2.2 — the durations.
+4. Merge #72, then #69 once it is green on the new `main`; push `0194` with `--include-all`; then the `0198` dump.
+
+- **Documents changed:** `01-prd.md` (`REQ-UIX-118`, `REQ-STO-004`), `STATUS.md`
+
+---
+
+## DEC-252 — The public site is rebuilt on the playground: the landing and the interest form from their artboards, the guard rewritten as `DEC-247` ruled, and the registration behaviour proven equal to `main`'s state by state
+
+- **Date:** 2026-10-05 · **Decided by:** the lead, under the owner's `DEC-247` · **Implements:** `REQ-UIX-114`, `REQ-UIX-119`, `REQ-UIX-120`; `DEC-167`'s permitted path for invariant 1 — this entry, the appearance change, the rewritten `qa:appearance`, the re-baselined capture and the rewritten `public-graph.test.ts` are **one commit**
+- **Does not amend:** `REQ-NFR-019`, `DEC-167`, invariant 1, invariant 2
+
+### 1 · What changed
+
+`SCR-000` and `SCR-001` are rebuilt from `docs/design/screens/m13/Landing.dc.html` and `Register.dc.html`. The
+route group's layout renders the scope — the sixth root layout — and the header, the page and the footer are
+inside it. The landing's regions are the artboard's, in its order: the hero with three posters and two doors, the
+seven companies as team rings, what the initiative is, the four things the platform does, the two paths, the
+register band. The header wears the mark, still; `/og.png` is redrawn with it. Five components the old design
+needed are deleted — `chapter`, `network-bg`, `network-gl`, `ornaments`, `mobile-cta`.
+
+### 2 · ★★ What did not change, and how that is known
+
+| What `REQ-NFR-019` freezes | The proof, on this commit's production build |
+|---|---|
+| The URLs | `qa:contract` — 38 checks, **no line of `scripts/qa/contract.mjs` edited** |
+| The registration behaviour | `register/actions.ts`, `lib/schema.ts` and `form-token.tsx` have a **zero-line diff** against `main`. `registration-form.tsx` changed class strings, one decorative glyph and one icon, and nothing else. `tests/e2e/wave26-lead-register-behaviour.spec.ts` — recorded from `main`'s code before any public file was touched — is **equal in all seventeen states, on both projects**: with JavaScript and without it, at rest, each role, refused in the browser, refused by the server, and one whole no-JS submission ending on the success panel |
+| The accessibility floor | `qa:contract` §6 – §8; the accessibility sweep's public case; `a11y.spec.ts` |
+| `registrations` | never read, altered or dropped — no migration is in this PR |
+
+### 3 · The guards, and exactly how each moved
+
+- **`tests/unit/public-graph.test.ts` — rewritten, as `DEC-247` §2 ruled.** «Exactly five primitives» is exactly
+  seven, named: the five, plus `scope` and `scope-portal`. «Names the scope nowhere» is «enters the scope through
+  one door, the route group's layout». Its header says why, so the old rule is not restored as a regression.
+- ★ **Two more lists followed from the same ruling, and are named here rather than left to be found.**
+  `scope-root.test.ts` gains the sixth root layout and its list of files kept outside shrinks to two;
+  `no-raw-palette.test.ts` stops exempting the public site's files. **Both became stricter**: the public site's
+  files are now held to the rules every other surface is held to. Neither is a guard loosened to let work through.
+- **`scripts/qa/contract.mjs` — not edited.** Two of its checks read things the artboard does not draw, and in
+  both the suite wins over the drawing (§4.1, §4.2).
+- **`console-register.test.ts` — untouched**, as the owner ruled (`DEC-249` §3).
+
+### 4 · Where the artboard and the plan disagree, and which wins
+
+| # | The artboard | What is built | Why |
+|---|---|---|---|
+| 1 | The other language is a footer link only | It is in the **header**, on every public page | `qa:contract` §1 switches language from the header on `/register` |
+| 2 | No opening animation is drawn | The cold start keeps its overlay, its once-a-session gate and its skip; **what it draws is the mark's reveal** | `qa:contract` §7 reads the overlay under reduced motion, and `REQ-UIX-119` gives the reveal to the landing's cold start — the same gate |
+| 3 | `001` draws «الشركة» and a third choice «كلاهما» | **Not built.** Today's fields, ids and two choices | `REQ-NFR-019`; `M13.md` §001: «the same fields and interest choice as today» |
+| 4 | Four steps a path, in new words; a shorter «about» | Three steps a path and the full paragraph, from `marketing.json` | `M13.md` §000: «copy is `marketing.json`'s, unchanged» |
+| 5 | «شبه الجزيرة · 2026» in the footer | `footer.internal`, as today | the same |
+| 6 | — | The old page's «recognition», «policy» and closing sections are **not on the page**; their strings stay in the catalogue | A screen is rebuilt to its artboard's regions (`DEC-199` §2); the artboard draws none of the three |
+
+New strings, Arabic first: the two nav labels, the three poster titles, the seven company names and the two
+list labels.
+
+### 5 · The re-baselined capture
+
+`npm run visual capture wave26a-public` on this commit's build: `/ar`, `/en`, `/ar/register` and — new in the
+route list — `/og.png`, at 390 and 1440. It is the baseline the public pairs are compared against from here.
+`visual-diff.mjs` no longer calls a section blank when a breakpoint hides it on purpose.
+
+★ **Carried, found by that run and not this PR's:** the gallery (`/ar/ui`) is refused at desktop width for two
+sections laid out at no height. This PR changes no file under `(dev)/` or `ui/`, so it is `main`'s.
+
+- **Documents changed:** `STATUS.md`, `docs/plan/notes/wave-26-ledger-a.md`
+

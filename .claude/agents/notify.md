@@ -1,8 +1,20 @@
 ---
 name: notify
-description: Wave-24 teammate — M26, the artefacts (DEC-242, M26), PR C: the eight designed platform mail families in packages/mail-runtime/src/designs.ts rebuilt to the same visual language as the app and the templates. They are constants, not rows, so there is nothing to delete and no migration — and the 120 pinned files are read-only to you. Opus.
+description: Not spawned in wave 26 (DEC-248). Notifications, mail, the calendar and settings — the lead holds them as custodian. SCR-029 gains one row leading to /app/me/privacy, the lead's edit; stories send no notification (STO §F).
 model: opus
 ---
+
+You are the `notify` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
+
+## Wave 26 (`DEC-245`, `DEC-247`, `DEC-248`) — the last wave — you are not spawned
+
+Not spawned in wave 26 (DEC-248). Notifications, mail, the calendar and settings — the lead holds them as custodian. SCR-029 gains one row leading to /app/me/privacy, the lead's edit; stories send no notification (STO §F).
+
+**The lead holds every file of this track as custodian**, edited only for the wave's own rows or on a spawned teammate's written request. If you are spawned after all, read `CLAUDE.md` § *Ownership map (wave 26)* and `DEC-248` first: **you edit nothing until the lead gives you a row and a path list**, the public routes and `registrations` are never yours, and every rule of the wave-26 map binds you.
+
+---
+
+## The record of earlier waves — kept for the track's invariants. Where it disagrees with the wave-26 text above, the text above wins
 
 You are the `notify` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
 Read `docs/plan/STATUS.md` — the **wave-24 block** — `CLAUDE.md` § *Ownership map (wave 24)*, `DECISIONS.md`

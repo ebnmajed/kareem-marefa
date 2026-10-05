@@ -126,8 +126,14 @@ building, ready and expired. `REQ-PRV-*`.
 ## §C — the platform console, redesigned
 
 `DEC-NEXT-38`: it moves onto the console frame — **`ui/admin-rail` with a second nav set** — and
-**`src/components/platform/platform-nav.tsx` is deleted**, with its kept-behaviour table. Note the
-rail's own rules still hold: a plain member gets an empty rail, and `built: false` items are excluded.
+★★ **`src/components/platform/platform-nav.tsx` is REBUILT IN PLACE, not deleted** (the owner, 2026-10-05,
+`DEC-249`). `tests/unit/console-register.test.ts:108` names that exact path as **one of four files it uses to prove
+the console's import graph is actually walked** — a fixture for the walk, not a claim about the nav's design. Keep
+the path, re-export or wrap `ui/admin-rail` with the platform's second nav set, and **`REQ-UIX-053`'s guard stays
+green and UNTOUCHED**. `DEC-208` still binds its CONTENTS — the old markup goes and the kept-behaviour table is
+owed — only the path survives. ★ **Two guards edited in one wave is one too many**: you are already rewriting
+`public-graph.test.ts` under `DEC-247`, and that is the one exception this wave gets. Note the rail's own rules
+still hold: a plain member gets an empty rail, and `built: false` items are excluded.
 
 ★ **Platform isolation is the thing to get right** (`REQ-NFR-014`, invariant 8, `DEC-014`): **the
 super admin has no data plane.** The metrics and orgs tables carry **counts only** — your plan names
@@ -259,3 +265,31 @@ reconnected with **`railway service source connect --repo ebnmajed/kareem-marefa
 in the repo · the owner's acceptance, each screen beside its artboard · and your closing entry
 records the deviation list, `0194`'s fate, and **the sentence that every screen now has a design and
 is built.**
+
+---
+
+## PR A · `SCR-006` verify — the kept-behaviour table (`DEC-208`), written before the create commit
+
+Re-derived from `REQ-CRT-007`, `009`, `010`, `011`, A13, `REQ-NFR-005` and the DAL — then read against the deleted file.
+
+| # | Behaviour | Where it lived | Where it lives after | Kept by |
+|---|---|---|---|---|
+| V1 | Public, no session; the one DAL call is `verifyCertificate()`, which runs as `anon` | `page.tsx:52` | the same call | `REQ-CRT-007`, A13 |
+| V2 | Never indexed | `metadata.robots` | the same export | `REQ-CRT-007` |
+| V3 | On an unconfigured platform the page answers not-found before touching Supabase | `page.tsx:44` | the same line, first | `DEC-038`, `DEC-051` |
+| V4 | Rate limited per forwarded address; over the limit it says so and looks nothing up | `clientKey`, `rateLimited` | the same key, the same message | `REQ-NFR-005` |
+| V5 | An unknown code, a malformed one and a serial are ONE page — nothing confirms a certificate exists | `not_found` branch | one message, «لا توجد شهادة بهذا الرمز» | `REQ-CRT-007`, `REQ-CRT-009` |
+| V6 | The answer first and largest, in a `role="status"` paragraph | `Result` | the status block — the same element and role, so the existing specs' locator holds | `REQ-CRT-007` |
+| V7 | ★ A revoked certificate still resolves, says it is revoked, shows the same facts and **never the reason** | `revoked` | the same; the reason is not in the DTO at all | `REQ-CRT-011`, `OQ-015` |
+| V8 | ★ Only what the function returns is shown — recipient, kind, session, its date, achievement, org, issue date. The allowlist is the DAL's return type, not this component | `rows` | the same seven, each only when present | A13 |
+| V9 | Every value is bidi-isolated | `<bdi>` | `<bdi>` on every value, and `dir="ltr"` on the address | `10` §bidi |
+| V10 | Dates in the locale's long form, Western numerals | `Intl.DateTimeFormat` | the product's `formatDate` | `DEC-124` |
+| V11 | One `h1`, the page's name | `h1` «التحقّق من شهادة» | the same text, in the header row beside the mark | `REQ-NFR-007` |
+| V12 | Inside the scope by its layout; the page renders its own `main` and no chrome | `verify/layout.tsx` | unchanged — the layout is not deleted | `DEC-199` §1.3 |
+
+**What the artboard draws that is not built, and what it does not draw that is kept.**
+- ★ `Verify.dc.html` lists a sixth fact, «الرقم» — the certificate's **serial**. `verify_certificate()` does not return the serial (A13's six fields are fixed by its return type, and `REQ-CRT-009` exists so a serial and a code are never confused). **Not built**; the issue date stands in the list where the certificate has one.
+- The artboard's wordmark is the mark now (`REQ-UIX-119`), still, at the brand pack's 33 px for a public page.
+- The rate-limited state is not drawn; it is kept (V4).
+- `notFoundHint` («تأكّد من الرمز … غير الرقم التسلسلي») is explainer copy and `M13.md` says «Nothing else»: dropped.
+- Copy follows the artboard: «شهادة ملغاة», «لا توجد شهادة بهذا الرمز», and the short labels الاسم · النوع · الجلسة · التاريخ · الجهة.

@@ -14,7 +14,7 @@ plan is in [`docs/plan/`](docs/plan/).
    re-litigate these.**
 3. The document you are about to change — check its status line.
 
-★ **Visual direction lives in [`docs/design/`](docs/design/)** — «ساحة اللعب», accepted by `DEC-183`, and **the product's only visual language since `DEC-199`** — every surface but the five public routes is inside its scope, and ★★ **a screen is REBUILT to its design, never restyled** — ★★ **its page file is DELETED first, then written from its artboard, and the story lists what it kept and the requirement that made it keep it** (`DEC-208`).
+★ **Visual direction lives in [`docs/design/`](docs/design/)** — «ساحة اللعب», accepted by `DEC-183`, and **the product's only visual language since `DEC-199`** — every surface but the five public routes is inside its scope (★ and from wave 26 the three rebuilt public pages are too — `DEC-247`), and ★★ **a screen is REBUILT to its design, never restyled** — ★★ **its page file is DELETED first, then written from its artboard, and the story lists what it kept and the requirement that made it keep it** (`DEC-208`).
 Read [`docs/design/README.md`](docs/design/README.md) before any UI work. **`DECISIONS.md` and
 `docs/plan/` win over it**: where the two disagree, the case is listed in `DEC-183` §4, `DEC-195` §6, `DEC-199` §5, `DEC-206` §4, `DEC-213` §5 and `DEC-216` §5
 (one hundred and forty-eight so far, plus `DEC-225` §4 and `DEC-227` §5) or becomes a new entry — nobody picks a side silently. Its prototypes are behaviour references;
@@ -325,7 +325,130 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 24 — M26, the artefacts: the baseline library and the mail designs, DEC-242) — ★ THE MAP IN FORCE
+### Ownership map (wave 26 — M28, THE LAST WAVE: the public site, the brand kit and privacy, the platform console, stories, the mark — DEC-245 · DEC-247 · DEC-248) — ★ THE MAP IN FORCE
+
+**The programme's twelfth wave and its last designed work** (milestone **M28**). Seventeen artboards in
+`docs/design/screens/m13/`, specified by `docs/design/screens/M13.md` and `STORIES-USER-STORIES.md` (STO-01 … 18), and
+corrected by the brief (`docs/plan/notes/wave-26-lead.md`), `DEC-245`, `DEC-247` and `DEC-248`. ★★ **Two new primitives
+— the floor moves 69 → 71** (`story-viewer`, `story-capture`, both in PR D). ★★ **One migration is planned, `0198`, the
+lead's** — `story_frames` and `story_views` (and whatever sync 1 adds), rehearsed by the owner on a dump taken at `0197`.
+
+★★ **THE GOAL, above the process** (the owner's words): **finish the product — everything the designer has drawn is built
+when this merges, and nothing remains.** ★★ **The public site is a live contract and the one place a mistake cannot be
+seen**: its appearance changes, and its **URLs, its registration behaviour byte for byte and its accessibility floor do
+not** — `001` carries 20 real signups; a broken screen is noticed by looking, a broken registration form is not. ★ The
+platform console gives a super admin what they need **without a data plane** — counts only, **no `is_super_admin()`
+disjunct anywhere**, org rows read only inside an impersonation session (`DEC-014`, invariant 8, `REQ-ADM-002`). ★ A
+member opens a live session and **sees what is happening in the room** — frames within a minute of each trigger, the ring
+turning seen, everything gone at 24 h. ★ An attendee's photo or short video is **moderated like every other photo** —
+metadata stripped by the worker, hidden on first report, removal cascading. ★ The mark draws itself in on sign-in and on
+the landing, breathes while the app waits, settles when tapped — and is **static under `prefers-reduced-motion`, with no
+sixth moment**. ★ The console and the studio stay the sober register (`REQ-UIX-053`). **«Good» is not «the gates are
+green».**
+
+★★ **Five PRs, each against `main` from its FIRST push. Merge order A, B, C, D, E.**
+**A — `wave-26a/the-public-site`** (the lead, alone, the main checkout): the map and the plan documents; `<Logo>`; `000`,
+`001`, `006`; `/og.png`; the rewritten `public-graph.test.ts`. **B — `wave-26b/branding-and-privacy`**
+(`../kareem-marefa-wave26b`): `059` and `/app/me/privacy`. **C — `wave-26c/the-platform-console`**
+(`../kareem-marefa-wave26c`): the platform frame, then `080` – `085`. **D — `wave-26d/stories`**
+(`../kareem-marefa-wave26d`): `0198`, the generator, the viewer, the capture, the ring, `044`'s strip.
+**E — `wave-26e/the-mark`** (`../kareem-marefa-wave26e`, **cut from A's head once A's one commit has landed**): the mark
+everywhere inside the product, and both wordmark components deleted. ★ **B, C and D are cut from A's head after the map
+and the requirements land** — none needs the public site. **A teammate edits a PR's files only in that PR's tree**; the
+lead posts each path when it exists.
+
+★ **Why it is divided this way** (`DEC-248` §3). **A is the lead's alone because it is the one PR where a mistake is
+invisible**: every file it changes is already lead-only, and a guard is rewritten in it by the owner's explicit
+permission — that is not delegated. ★ **Everything PUBLIC that the mark touches is in A, not E** — `<Logo>` itself, the
+landing's reveal, the register page's mark and `/og.png` — so the public appearance moves **once**, in A's one commit with
+its one re-baseline (`DEC-167`); **E is the mark inside the product** and moves nothing public. **B is one teammate
+because it is two screens with one register** — `branding` owns the kit, and the privacy page transfers to it so
+`platform` is free for six screens under `DEC-208`. **C is `platform`'s behind a frame the lead lands first**, because the
+frame and the rail are the lead's files. **D is two teammates divided by half**: `sessions` owns the session's state, so
+it takes the **generated** half — the generator, the read model, the ring's states; `content` owns photos, the upload
+routes, the worker's media tasks and moderation, so it takes the **viewer, the capture and the attendee** half. Tables,
+the image, the registry and every guard are the lead's.
+
+| Teammate | Model | Delivers | Edits only |
+|---|---|---|---|
+| **lead** | — | ★ `DEC-248`, this map, the ten agent files, `01`/`02`/`03`/`09`/`11`/`14`/`15`, `STATUS` · ★★ **PR A, whole**: `<Logo>` with the three moves from `prototypes/logo-motion.html` (`REQ-UIX-119`, `STORY-UIX-109`); `000` and `001` (`REQ-UIX-114`, `STORY-UIX-104`) and `/og.png`; `006` (`REQ-UIX-115`, `STORY-UIX-105`); ★★ **the one commit** — the `DEC`, the appearance, the re-baselined `visual`, the rewritten `qa:appearance` **and the rewritten `public-graph.test.ts`** (`DEC-247`), with **`qa:contract` and the register-form behaviour fingerprint unmoved** · ★★ **PR E, whole** (`REQ-UIX-120`, `STORY-UIX-110`) · ★ **contract 1, the platform frame, first in PR C** (`REQ-UIX-118`'s frame half): `platform/layout.tsx` on the console frame, `ui/admin-rail` given a second nav set, `components/platform/platform-nav.tsx` deleted and re-created as that set's table (`DEC-248` §4) · ★★ **`0198`** with its policies, grants, RLS cases and fixture rows; `worker/Dockerfile`'s **`ffmpeg`**; the job registrations · ★ **contract 2**: `ui/index.ts`'s two signatures, the registry, the floor 69 → 71 · as custodian: `044`'s one slot for the strip and `029`'s row to privacy · every capture beside its artboard · the gates, five PRs, four worktrees | the lead-only paths below, `supabase/migrations/**` from `0198`, ★ `src/app/[locale]/(marketing)/**`, `src/components/{header,footer,chapter,wordmark,intro-sting,network-bg,network-gl,ornaments,mobile-cta,language-toggle,registration-form,form-token}.tsx`, `src/messages/*/marketing.json`, `public/**`, `src/app/icon.svg`, ★ `src/app/[locale]/verify/**` and the verify keys of `certificates.json` (**from `designer`, this wave**), `src/components/brand/**`, `src/components/shell/**`, `src/app/[locale]/(auth)/**`, `src/app/[locale]/app/{layout,platform/layout}.tsx`, ★ `src/components/platform/platform-nav.tsx`, `src/components/ui/admin-rail.tsx`, `src/app/globals.css`, `ui/index.ts`, the gallery, `worker/Dockerfile`, `worker/src/index.ts`, `tests/unit/{public-graph,ui-playground,scope-root,console-register,design-files}*` (**`console-register` untouched**), `tests/rls/{fixture*,isolation.test,story*}.ts`, `tests/e2e/{a11y,frozen-routes,shell-*}*.spec.ts`, new `tests/e2e/wave26-{demo,lead}-*.spec.ts`. **Custodian** of every file of a track not spawned — `checkin`, `scoring`, `console`, `designer`, `event`, `notify` |
+| `branding` | opus | ★★ **`059` هوية المؤسسة, rebuilt** (`REQ-UIX-116`, `STORY-UIX-106`) — read mode with one «عدّل»; the logo card with format · size · the A3 PPI result as a badge; the four fonts; the light and dark tokens as swatches **each with its value in words**; the seven team colours; ★ **the line that the kit feeds posters, certificates and email — not the app** (`DEC-201`) · ★★ **`/app/me/privacy`, rebuilt as a hub page behind `029`** (`REQ-UIX-117`, `STORY-UIX-107`) — the export's four states (requested · building · ready with its date and «نزّل» · expired), the photographs count and «أزلني», the two legal links, «إيقاف حسابي» in a confirm sheet; ★ **the avatar answer kept** — all PR B | `src/app/[locale]/app/admin/branding/**`, `src/app/api/admin/branding/**`, `src/lib/brand/**`, `src/components/branding/**`, `src/messages/*/branding.json`, ★ `src/app/[locale]/app/me/privacy/**`, `src/components/privacy/**`, `src/lib/dal/privacy.ts` (add-only) and `src/messages/*/privacy.json` (**from `platform`, this wave**), `supabase/proposed/branding/**` (functions only), `tests/rls/{brand-kits,privacy}*.test.ts` and `tests/unit/{brand,privacy}*` (evidence), `tests/components/{branding,privacy}/**`, `tests/e2e/{wave8-branding-*,wave11-branding-*,wave14-platform-*}.spec.ts` (evidence), new `tests/e2e/wave26-branding-*.spec.ts`, `docs/plan/notes/branding.md`. **Nothing else** — `save_brand_kit()`'s guard, `BRAND_COLOUR_TOKENS`, `brand.ts`, the avatar import job, `build_data_export` and `anonymise_members` are frozen |
+| `platform` | opus | ★★ **`080` – `085`, deleted and rebuilt on the lead's frame** (`REQ-UIX-118`, `STORY-UIX-108`): orgs (the table of **counts**, suspend · reactivate · domains, delete with the slug typed back) · new org · domains (the removal line) · the platform library · metrics (six `stat`s and a per-org table of counts) · ★ impersonate — org, member (admins only), mandatory reason, 15 / 30 / 60, «مسجَّل ومرئي للمؤسسة», the log beside it · ★★ **the no-data-plane table in its plan**: every function of `src/lib/dal/platform*.ts`, what it returns, and the test that proves it returns counts — all PR C | `src/app/[locale]/app/platform/**` **except `layout.tsx`**, `src/app/api/platform/**`, `src/lib/dal/{platform,platform-templates}.ts` (add-only), `src/components/platform/**` **except `platform-nav.tsx`** (the lead's), `src/messages/*/platform.json`, `supabase/proposed/platform/**` (functions only), `tests/rls/{platform,impersonation,delete-org}*.test.ts` and `tests/unit/platform*` (evidence), `tests/components/platform/**`, `tests/e2e/{platform*,wave8-platform-*,wave11-platform-*}.spec.ts` (evidence), new `tests/e2e/wave26-platform-*.spec.ts`, `docs/plan/notes/platform.md`. **Nothing else** — `start_impersonation()`, `end_impersonation()`, `assert_platform_admin()`, `delete_org`, the six jobs and every policy are frozen; ★ `me/privacy/**` is `branding`'s this wave |
+| `sessions` | opus | ★★ **the generated half** (`REQ-STO-001` … `004`, `006`, `008`, `018`; `STORY-STO-001`, `002`): **the generator** — one definer function and its hooks, **one frame per trigger, idempotent by key**, for the eight of STO-04; the clock-driven three through one minutely job · **the read model** — `src/lib/dal/stories.ts`: the ring row's sessions with their state and order, a session's frames with what each draws (the live count, the recap's three stats and first three photographs), **computed, never stored** · ★ the ring's four states on `010` **as data** (contract 4) · «شاهد القصة» on a live `012` · **cancelling ends the story** — all PR D | new `src/lib/dal/stories.ts`, new `worker/src/tasks/generate_story_frames.ts`, `supabase/proposed/sessions/**` (functions and triggers — **never a table**), `src/app/[locale]/app/sessions/[id]/page.tsx` and `src/components/sessions/**` **for the story entry only**, `src/lib/dal/sessions.ts` (add-only), ★ new `src/messages/*/stories.json` (**its one writer; `content` asks for keys in writing**), new `tests/rls/story-generator*.test.ts`, new `tests/unit/stories-*`, new `tests/e2e/wave26-sessions-*.spec.ts`, `docs/plan/notes/sessions.md`. **Nothing else** — the event page's regions, browse, propose, the hub and the schedule are frozen |
+| `content` | opus | ★★ **the viewer, the capture and the attendee half** (`REQ-STO-005`, `007`, `009` … `017`; `STORY-STO-003` … `006`): ★ **`ui/story-viewer`** — segments, the header, the frame, four reactions, one action; **every gesture with a single-pointer alternative and a key** (contract 5) · ★ **`ui/story-capture`** — photo on tap, video on hold with the 0:15 cap, gallery, flip, one caption · the ring **wired** on `010` · `story_views` written · **the attendee photo through the album upload** (a photo frame **is** an album photo) · ★★ **the video path**: the upload route, **`transcode_story_video`** on the worker's `ffmpeg` — one MP4, ≤ 15 s enforced by `ffprobe`, **every container tag stripped**, a poster frame · «أزلني», report-hides-at-once, the photo queues taking a video · ★ **`044`'s «قصص الحضور» strip** as a component the lead slots in, removal cascading — all PR D | new `src/components/ui/{story-viewer,story-capture}.tsx` with their tests, `-scope` tests and demos, `src/components/ui/story-ring.tsx` (add-only), new `src/components/stories/**`, `src/components/feed/**` and `src/app/[locale]/app/{page,loading,error}.tsx` **for the ring row only**, new `src/lib/dal/story-frames.ts`, `src/lib/dal/{photos,reports,reactions}.ts` (add-only), new `src/app/api/stories/**`, `src/app/api/upload/**` (add-only), `src/lib/storage/**`, `packages/storage-paths/src/content.ts`, new `worker/src/tasks/transcode_story_video.ts`, `worker/src/content/**`, `worker/src/tasks/process_photo.ts` (the `story` derivative, add-only), ★ `src/app/[locale]/app/admin/moderation/**` and `src/lib/dal/admin-moderation.ts` (**from `console`, this wave — for a video in the queue only**), `src/components/{photos,viewer}/**` (fixes only), `src/messages/*/photos.json`, `supabase/proposed/content/**` (functions only), `tests/rls/{photos,moderation,story-frames}*.test.ts`, new `tests/components/stories/**`, new `tests/unit/story-*`, new `tests/e2e/wave26-content-*.spec.ts`, `docs/plan/notes/content.md`. **Nothing else** — the feed's items, materials, tasks, the lightbox and the album's own screens are frozen |
+
+**Wave-26 contracts.**
+
+1. **Lead → `platform` — the platform frame.** `platform/layout.tsx` renders the console frame — the 52 px bar with the
+   «لا بيانات مؤسسات هنا» badge, `ui/admin-rail` with the platform nav set, the sheet under `lg` — and the
+   `ImpersonationBanner` where `DEC-057` put it. **A page renders its `h1` row with its one primary action and its
+   content, nothing of the frame.** ★ It lands before any platform screen is deleted; the lead posts «the frame is in at
+   `<sha>`».
+2. **Lead → `content` — the signatures and the gate.** `content` names both primitives' props in its plan; the lead lands
+   them as types after sync 1 with the registry entries; **the floor moves 69 → 71** in the commit that adds the second.
+3. ★★ **Lead → `sessions` and `content` — the storage contract** (`DEC-248` §5). **Tables are the lead's.**
+   `story_frames`: `org_id`, the session, a `kind`, a **trigger key unique per session and kind** (that is the
+   idempotency), `triggered_at`, and for an attendee's frame the author, the caption, the album photo or the video asset,
+   and a state. **No client role inserts, updates or deletes a frame** — every write is a definer function; members
+   `select` what is visible and inside 24 h, staff `select` everything. `story_views`: the member's own rows and nobody
+   else's. **A plan names the columns it needs; nobody writes `create table`, a policy or a grant, even in `proposed/`.**
+4. **`sessions` → `content` — the story feed.** One DAL function returns the ring row — each session's state (live ·
+   unseen · seen), its order, its frames with what each draws. Names and types in `sessions'` note **on day one**;
+   `content` renders them and never queries a session's tables itself. **Expiry, visibility and cancellation are RLS's
+   and the DAL's, never the component's** — a component that filters is a component that leaks.
+5. ★★ **`content` — `DEC-093`, the viewer.** Tap-to-advance, hold-to-pause and swipe-to-close **each** have a visible
+   single-pointer control that is not a gesture — next and previous targets, a pause button, the close button — **and**
+   a key (← → Home End Space Escape). The plan names all three pairs **before** the viewer is built, and **a Playwright
+   case with `page.click()` alone** walks a story end to end. `story-capture`'s hold-for-video has a tap-to-start,
+   tap-to-stop path under the same rule.
+6. ★★ **`content` ↔ lead — the video.** The transcoder is **`ffmpeg` from Debian's package in `worker/Dockerfile`**
+   (`DEC-181`; the lead's file; its measured cost is in `DEC-248` §6). The task refuses over 15 s or 60 MB **from
+   `ffprobe`, not from the client's word**, writes **one** H.264/AAC MP4 with `-map_metadata -1` — a phone's video
+   carries GPS in its container exactly as a photograph does in EXIF — and a poster frame. **No npm package touches
+   media.** A failed transcode shows «تعذّر» to its poster and nothing to anyone else.
+7. ★★ **`platform` — no data plane.** A platform DAL function returns **counts and the platform's own tables**; it never
+   returns an org's row, a member's name or a session's title outside an impersonation session. **No policy gains a
+   super-admin disjunct.** Impersonation is shown as `DEC-054` built it and **changed in nothing**.
+8. **Everyone — the artboard is the specification, and `DEC-245` §5 with `DEC-248` §7 is the list of what it draws that
+   is not built or is cited wrongly.** A new disagreement is written in your note with the artboard and the line; nobody
+   picks a side. No class, id or markup pattern from a `.dc.html` in `src/`.
+
+**Wave-26 rules.**
+
+- ★★ **APPEARANCE AND THE IMPORT GRAPH MAY CHANGE; BEHAVIOUR MAY NOT** (`DEC-247`). **No teammate touches a file the
+  public routes render**; if the `TaskCompleted` hook falls through to the full `qa`, you edited something that is not
+  yours. `registrations` is never read, altered or dropped (invariant 2).
+- ★★ **Rebuilt, never restyled; deleted first** (`DEC-199` §2, `DEC-208`) — `059`, privacy, `006` and `080` – `085`. Two
+  commits per screen, the kept-behaviour table in the note **before** the create. ★ **Never push an unpaired delete.**
+  ★ **`SCR-044` is extended, add-only, its wave-21 suites untouched.** ★ `000`/`001` change in **one** commit, because
+  `DEC-167` outranks the two-commit form there, and **the registration form's behaviour-bearing lines are not rewritten
+  at all** (`DEC-248` §3).
+- ★★ **The console and the studio are not the party** (`REQ-UIX-053`): `console-register.test.ts` is green **and
+  untouched** — the mark in a console bar is static, and the platform pages declare no animation.
+- ★★ **No sixth moment.** The mark's three moves are the mark's; nothing else in the wave animates beyond the viewer's
+  segment and its crossfade, both still under reduced motion.
+- ★ **A story is the session's, never a person's; nothing generated is authored.** Reactions earn nothing; a video earns
+  nothing and never enters the album.
+- ★ **No explainer copy** (`DEC-NEXT-25`). ★ **Arabic first**; `<bdi>` on every code, slug, serial, domain and number;
+  Western numerals (`DEC-124`); six ICU forms; logical properties.
+- ★ **The existing suites are evidence**; each changed assertion is a ledger line in `STATUS.md`, in the same commit.
+- ★ **No new dependency.** **No migration but the lead's**; a function a plan needs goes under `supabase/proposed/<you>/`.
+- **Teammates spawn planning-only**; sync 1 approves four plans with their kept-behaviour tables and `content`'s
+  `DEC-093` pairs; **nobody deletes a file before the lead posts «the plans are approved».**
+- **One writer per file, specs and demos included. `ui-lint --strict` has no allowlist and never gains one.**
+- **Captures land at `.qa-shots/rtl/wave26-<track>-<screen>-<state>-<width>.png`** at the artboard's board width, from a
+  production build the row names by commit, honouring `E2E_SHOTS_DIR`; the lead opens every one beside the artboard, in
+  bands, never downscaled.
+- **Not this wave, and never-touch for every teammate:** new scope of any kind; authored text frames, stickers, drawing,
+  music, member-owned stories, story notifications, points for reactions or video, cross-org or public stories
+  (STO §F); `DEC-194`'s two gates; `DEC-186` §4; the hard-load fix (`DEC-204`); `DEC-215`'s four; the `railway.json`
+  migration (the owner's, November); the org override's guard and `BRAND_COLOUR_TOKENS`; replacing the renderer.
+- **`npm run qa`, `npm run visual` and `npm run build` stay lead-only**; so do `supabase db reset`, `start`, `stop`,
+  branch switches, worktrees, pushes and the PRs.
+
+### Ownership map (wave 24 — M26, the artefacts: the baseline library and the mail designs, DEC-242) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 24 merged as PRs #62 – #70 (`main` `29aa7ddb`), and wave 25 (`DEC-243`, `DEC-244`, `DEC-246`; PR #68, `0197`) ran without a map of its own. Wave 24's map is kept as the record; **wave 26's map is directly above** (`DEC-245`, `DEC-247`, `DEC-248`).
 
 **The programme's tenth wave** (milestone **M26**). ★★ **The owner asked for the templates to match the design and the
 current ones deleted**, and answered all three questions the ask turned on (`DEC-242`): **both** the design templates and
@@ -2039,6 +2162,7 @@ to hard-fail in M13.
 ★ from wave 22 (`DEC-231`): `admin/{scoring,recognition}/**` and `scoring-admin.ts` are `scoring`'s, `admin/{reminders,settings}/**` and `admin-settings.ts` `notify`'s, `admin/moderation/**` and `admin-moderation.ts` `content`'s — **for the wave**, back to `console` after it. `src/components/shell/admin-nav.ts` stays the lead's.
 ★ from wave 23 (`DEC-237`): `admin/templates/**`, `admin/sessions/[id]/certificates/**`, `lib/dal/{templates,certificates}.ts` and `messages/*/{templates,certificates}.json` are `console`'s **for the wave**, back to `designer` after it. `ui/{editor-rail,floating-toolbar}.tsx` are the lead's — the chrome both editors share has one writer.
 ★ from wave 24 (`DEC-242`): `packages/designer-runtime/src/brand.ts` is the lead's **for the wave** (`branding`'s otherwise, and `BRAND_COLOUR_TOKENS` is unchanged), and `tests/unit/mail-pinned/**` is the lead's **alone** — a pinned mail file and a parity golden have one writer, and in the one wave where both are allowed to move that matters more, not less. `admin/templates/**` and `lib/dal/{templates,certificates}.ts` return to `designer`.
+★ from wave 26 (`DEC-248`): `src/components/brand/**` holds `<Logo>` and is the lead's, as it always was — **and both wordmark components are deleted by PR E, so there is one mark**; `src/app/[locale]/verify/**` is the lead's **for the wave** (`designer`'s otherwise); `src/app/[locale]/app/platform/layout.tsx` and `src/components/platform/platform-nav.tsx` are the lead's — the platform frame has one writer, as the console's has since wave 21; `me/privacy/**`, `components/privacy/**` and `lib/dal/privacy.ts` are `branding`'s **for the wave**, back to `platform` after it; `admin/moderation/**` is `content`'s **for the wave**, back to `console` after it. ★★ `tests/unit/public-graph.test.ts` is rewritten **once**, by the lead, in PR A's one commit (`DEC-247`) — the only guard this programme has rewritten rather than amended, and it says so in its header.
 ★ from wave 18 (`DEC-206`): `tests/unit/design-files.test.ts` — the gate that keeps `docs/design/screens/` out of the build has one writer. `src/app/[locale]/app/page.tsx` is `content`'s for the wave: home is the feed, a page composed of three tracks' items on the lead's frame.
 
 ★ **Added by DEC-085, with the design milestone** — none of these was lead-only before, and
@@ -2055,7 +2179,7 @@ the sessions timeline (`DEC-112`), which is no longer a page composed of other t
 **Inside `src/components/ui/` ownership is per FILE, not per directory** — a glob with four writers
 is the exact failure `TEAM.md` exists to prevent. The four literal file lists — the lead's fifteen,
 `sessions'` eight, `console'`s six, `content'`s nine — are in each `.claude/agents/*.md`, and they are
-unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 18 adds four** (`DEC-206`): `week-hud` is `scoring`'s, `feed-item` and `attendee-stack` are `content`'s, `action-bar` is `sessions'` — 53 files. ★ **Wave 19 adds four** (`DEC-213`): `page-viewer` is `content`'s, `star-input` `event`'s — its first — `stepper` `sessions'`, `badge-medallion` `scoring`'s — 57 files. ★ **Wave 20 adds three** (`DEC-216` §2.1): `podium` and `ledger-row` are `scoring`'s, `settings-group` `notify`'s — its first — 60 files; `status-mark` is withdrawn. ★ **Wave 21 adds three** (`DEC-225` §2, `DEC-227` §2): `admin-rail` is the lead's — and `src/components/admin/admin-rail.tsx` is deleted, so there is one — `split-view` and `kv-card` `sessions'` — 63 files. ★ **Wave 22 adds none** (`DEC-230`): the three `data-table` cells are stories on `console`'s file — 63 files, the floor unmoved. ★ **Wave 23 adds six** (`DEC-235`, `DEC-237`): `editor-rail` and `floating-toolbar` are the lead's — both editors share them — `canvas-stage` and `layer-list` `designer`'s (and `src/components/designer/layer-list.tsx` is deleted, so there is one), `block-canvas` and `block-library` `notify`'s — 69 files. ★ **Wave 24 adds none** (`DEC-242`): the wave changes documents and constants, not screens — the floor stays **69**. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
+unchanged since wave 5 apart from naming `submit-button.tsx`, which is the lead's, and ★ **`reorderable-list.tsx`, which the lead adds in wave 10** (`DEC-160` §5 — the survey's questions and the email studio's blocks both reorder through it). ★ **Wave 15 adds ten files, each with one owner** (`DEC-183`): `sticker`, `poster`, `reaction-bar`, `progress-bar` and `story-ring` are `content`'s; `session-cta` and `code-input` are `sessions'`; `rank-row`, `race-bar` and `level-card` are `scoring`'s — its first primitives. ★ **Wave 16 adds none** (`DEC-195`): the moments compose the primitives that exist, and a moment's own component lives with its screen, not in `ui/`. ★ **Wave 18 adds four** (`DEC-206`): `week-hud` is `scoring`'s, `feed-item` and `attendee-stack` are `content`'s, `action-bar` is `sessions'` — 53 files. ★ **Wave 19 adds four** (`DEC-213`): `page-viewer` is `content`'s, `star-input` `event`'s — its first — `stepper` `sessions'`, `badge-medallion` `scoring`'s — 57 files. ★ **Wave 20 adds three** (`DEC-216` §2.1): `podium` and `ledger-row` are `scoring`'s, `settings-group` `notify`'s — its first — 60 files; `status-mark` is withdrawn. ★ **Wave 21 adds three** (`DEC-225` §2, `DEC-227` §2): `admin-rail` is the lead's — and `src/components/admin/admin-rail.tsx` is deleted, so there is one — `split-view` and `kv-card` `sessions'` — 63 files. ★ **Wave 22 adds none** (`DEC-230`): the three `data-table` cells are stories on `console`'s file — 63 files, the floor unmoved. ★ **Wave 23 adds six** (`DEC-235`, `DEC-237`): `editor-rail` and `floating-toolbar` are the lead's — both editors share them — `canvas-stage` and `layer-list` `designer`'s (and `src/components/designer/layer-list.tsx` is deleted, so there is one), `block-canvas` and `block-library` `notify`'s — 69 files. ★ **Wave 24 adds none** (`DEC-242`): the wave changes documents and constants, not screens — the floor stays **69**. ★ **Wave 26 adds two** (`DEC-245`, `DEC-248`): `story-viewer` and `story-capture` are `content`'s — 71 files, and `story-ring`, built inert in wave 15 and kept inert since wave 18, opens at last. ★ **Wave 17 adds none** (`DEC-199`) — and from it **the directory is the list**: `tests/unit/ui-playground.test.ts` fails on a file in `ui/` with no playground treatment, no test inside the scope or no gallery entry, so a primitive can no longer be absent from a plan unnoticed. **Ownership lives in those never-touch paragraphs or
 it does not exist**, which is why all ten were regenerated in the same commit as this list.
 
 `src/components/ui/index.ts` exports **types only**; implementations are imported **by path**. A

@@ -789,3 +789,263 @@ Four candidates on `/app/admin/branding` (SCR-059), none touched:
 | `/app/admin/branding` | `branding.actions.resetConfirm` | That resetting deletes the org's customisation, reverts every screen to the platform default, and re-renders live posters is conveyed only as one dialog sentence — nothing previews WHAT changes. | A small before/after swatch pair inside the dialog (current org colour → platform default), the sentence kept but no longer the only signal. |
 
 None of these are edited this wave — flagging per the rule, not fixing.
+
+---
+
+## Wave 26 plan — PR B, `SCR-059` and `/app/me/privacy` (planning only, 2026-10-05)
+
+`REQ-UIX-116` · `REQ-UIX-117` · `STORY-UIX-106` · `STORY-UIX-107` · `DEC-245` · `DEC-247` · `DEC-248` · `DEC-208` ·
+`DEC-199` §2 · `DEC-201` · `DEC-231` §3. Measured from the tree at `72933b5f` (`wave-26a/the-public-site`), not from
+memory. Nothing is deleted before the lead posts «the plans are approved»; all work happens in `../kareem-marefa-wave26b`
+once its path is posted.
+
+### W26.0 What was measured that changes the work
+
+| # | Finding | Where |
+|---|---|---|
+| M1 | ★★ **There is no data for «الصور التي تظهر فيها».** Photographs are not tagged (`DEC-011`: «No photo tagging at launch»; tagging is on every wave's never-touch list). Nothing in the schema says a member *appears* in a photo. «أزلني» today is **per photograph**, from the album's lightbox: `requestPhotoTakedownAction` → `requestPhotoTakedown()` inserts a `photo_takedowns` row with `requester_id = me`, and the `photo_takedowns_hide` trigger hides it at once (`REQ-EVT-012`) | `src/lib/dal/photos.ts:271`, `src/components/photos/album.tsx:8-9`, `0037_m5_schema.sql:173,329,529-536` |
+| M2 | ★★ **The archive is kept 7 days, not 30.** `retention_periods('data_export_archives')` is `7`; `enforce_retention()` sets `status='expired'`, nulls `payload`/`byte_size` when `completed_at < now() - 7 days`. The page today states «سبعة أيام» as a **literal** in `privacy.page.expiryNote`. `retention_periods` has RLS, **no policy and no grant** — a member cannot read the figure | `0069_m8_schema.sql:151,160`, `0073_retention_and_privacy.sql:126-129`, `src/messages/ar/privacy.json:21` |
+| M3 | The export's states are **all told from existing data** — `data_export_requests.status` is `queued · building · ready · failed · expired` (`0074`), `completed_at` is set on ready **and** failed, `my_data_export()` returns the member's latest row. **Five states plus «never asked»**, not four: `failed` exists and is kept | `0069:249-260`, `0073:295-337`, `src/lib/dal/privacy.ts:20,50-65` |
+| M4 | `brand_kits` has **two** fonts (`heading_font_id`, `body_font_id`). The artboard draws **four** (display · body · certificate «Amiri» · print «Reem Kufi») | `src/lib/brand/schema.ts:61-62`, `AdminBranding.dc.html` fonts card |
+| M5 | The kit has **ten** colour tokens per scheme (`BRAND_COLOUR_TOKENS`); the artboard draws **five** per scheme, and an «التمييز» row of **lime and coral** | `packages/designer-runtime/src/brand.ts:21`, artboard colours card |
+| M6 | The logo accepts **PNG, JPEG and WebP** (sniffed on content; SVG refused 415). The brief says «PNG/JPEG-only» | `src/lib/dal/posters.ts:34-35`, `0055_m6_schema.sql:165`, `logo-uploader.tsx:128`, `branding.logo.formatHint` |
+| M7 | `save_brand_kit()` **returns the row** (`updated_at` included) and its 55000 refusal carries `detail` = the failing pair (`live_vs_light_canvas` … six names). The DAL discards both today; the screen says one generic sentence in a **toast** | `0144_status_contrast_guard.sql:115-142,159,189,250`, `src/lib/brand/kit.ts:98-109`, `admin/branding/actions.ts:57` |
+| M8 | The logo's format and byte size are on its `design_assets` row (`sniffed_mime`, `byte_size`) but `fetchLogo()` selects only `id, storage_path, width, height` | `src/lib/brand/kit.ts:77` |
+| M9 | The «seven team colours» are the platform's **named palette** — `TEAM_COLOUR_HEX` in `console`'s `admin/companies/team-colours.ts`, names in `admin.json`'s `companies.teamColourNames.*` — not brand-kit data | `src/app/[locale]/app/admin/companies/team-colours.ts`, `src/messages/ar/admin.json:300-306` |
+| M10 | The row on `029` that leads to privacy **already exists** (`{ kind: "link", id: "privacy", href: "/app/me/privacy" }`); the desktop hub strip still lists privacy as a seventh tab; `shell-routes.ts` gives privacy **the shell's** top row, not its own | `me/settings/page.tsx:67`, `components/shell/hub-strip.tsx:19`, `components/shell/shell-routes.ts:69-71` |
+| M11 | `avatar-href.ts` and `avatar-import-prompt.tsx` are imported **outside** the page (`feed.tsx`, `comment-list.tsx`, `lib/dal/avatars.ts`, `lib/dal/points.ts`), and `avatar-import-prompt.tsx` imports `setAvatarImportAction` from `me/privacy/actions.ts` — so `actions.ts` and both files **stay where they are** | grep, above |
+| M12 | `/legal/terms` exists beside `/legal/privacy`; the page links only the policy today | `src/app/[locale]/legal/{privacy,terms}` |
+
+### W26.1 `SCR-059` — kept-behaviour table (`DEC-208`)
+
+Thirty behaviours the current files carry, each re-derived from the requirement; then eight the artboard and
+`REQ-UIX-116` add. «Lives now» is the file:line at `72933b5f`; «Lives after» is the new file.
+
+| # | Behaviour | Lives now | Lives after | Kept by |
+|---|---|---|---|---|
+| B1 | Admin only — a moderator or member gets `notFound()` | `admin/branding/page.tsx:20` | new `page.tsx` | `REQ-ADM-015`, `DEC-014` |
+| B2 | The kit is read through `getBrandKit()` with the platform defaults filled in; «no row» renders as the platform default | `page.tsx:23`, `lib/brand/kit.ts:26` | unchanged DAL, new `page.tsx` | `REQ-DSG-021`, `06` §8.3 |
+| B3 | Only fonts at `parity_status = 'passed'` are offered | `lib/brand/fonts.ts:21-28` | unchanged | `REQ-DSG-016` |
+| B4 | The org's image limit (`org_settings.limit_image_mb`) caps the picker | `kit.ts:126`, `logo-uploader.tsx:129` | unchanged DAL, new `logo-uploader.tsx` | `REQ-DSG-018` |
+| B5 | The reset dialog names the org inside `<bdi>` | `brand-kit-form.tsx:204` | new `brand-kit-edit.tsx` | `REQ-UIX-013` |
+| B6 | The logo's preview is a short-lived signed URL (`design_assets` has no public read) | `page.tsx:30`, `actions.ts:83` | `page.tsx`, `actions.ts` (kept) | `REQ-DSG-021` |
+| B7 | Save validates with Zod first, both schemes' full sets, then the DAL | `actions.ts:33-46` | `actions.ts` (kept, add-only) | `REQ-DSG-021`, CLAUDE.md § Validation |
+| B8 | `42501` → «notAdmin» | `actions.ts:52` | `actions.ts` | `DEC-014` |
+| B9 | `22023` → «badReference» (logo or font id refused) | `actions.ts:53` | `actions.ts` | `REQ-DSG-016` |
+| B10 | ★★ **The database refuses a palette on which a status badge fails AA** (`55000`), before any write | `actions.ts:57`, `0144:189` | `actions.ts`, shown **inline in edit mode** with the failing pair (W26.4 Q7) | `REQ-UIX-116`, `REQ-DSG-021`, `DEC-073`, `DEC-166` |
+| B11 | `revalidatePath` after save and reset | `actions.ts:61,74` | `actions.ts` | — |
+| B12 | Reset = `reset_brand_kit()` deletes the row; behind a confirm dialog | `brand-kit-form.tsx:199-219`, `actions.ts:67` | `brand-kit-edit.tsx` (not drawn — kept; W26.3 D10) | `06` §8.3, `REQ-UIX-013` |
+| B13 | The reset dialog closes on the action's result, derived in render | `brand-kit-form.tsx:89-93` | `brand-kit-edit.tsx` | `REQ-UIX-013` |
+| B14 | Inputs are controlled — a refused save loses nothing typed | `brand-kit-form.tsx:52-60`, `actions.ts:17-23` | `brand-kit-edit.tsx` | `DEC-149` §1, `REQ-UIX-010` |
+| B15 | Both schemes are submitted whichever is shown; switching never drops the other's edits | `brand-kit-form.tsx:120-154` | `brand-kit-edit.tsx` | `REQ-DSG-021` |
+| B16 | A malformed hex shows an adjacent error, `#rrggbb` isolated in `<bdi dir="ltr">` | `colour-field.tsx:47-54` | new `colour-field.tsx` | `REQ-UIX-010` |
+| B17 | The native colour picker is a decorative quick-pick (`aria-hidden`, `tabIndex={-1}`); the hex `Input` is the control | `colour-field.tsx:57-77` | new `colour-field.tsx` | `REQ-UIX-001` |
+| B18 | Four contrast badges per scheme (heading/large, body, muted, ui vs canvas), ratio in Western numerals, `role="alert"` on a failure | `brand-kit-form.tsx:156-161`, `contrast-badge.tsx`, `lib/brand/contrast.ts` | new `contrast-badge.tsx` in edit mode; `contrast.ts` unchanged | `REQ-DSG-021`, WCAG 1.4.3/1.4.11 |
+| B19 | The light `canvasRaise` field says it reaches no poster today | `brand-kit-form.tsx:143` | `brand-kit-edit.tsx` (W26.3 D9) | `DEC-125` |
+| B20 | Live preview of unsaved values; the poster-gradient swatch is always the **dark** set | `brand-preview.tsx` | new `brand-preview.tsx` in edit mode (not drawn — W26.3 D10) | `06` §8.3, `DEC-125`, `DEC-127` |
+| B21 | The logo upload is three round trips — initiate (Route Handler), PUT to Storage, complete — never through a Server Action | `logo-uploader.tsx:52-99`, `api/admin/branding/logo{,/complete}/route.ts` | ★ **the round trip MOVED verbatim** into `src/lib/brand/upload-logo.ts` (commit 0, `DEC-237` §2's precedent); both routes **unchanged** | `REQ-DSG-018`, Next 16's 1 MB action cap |
+| B22 | ★★ **Sniffed on content after the bytes land; SVG refused (415); raster only** | `complete/route.ts:32-37`, `lib/dal/posters.ts:115-122` (designer's, read) | unchanged | `DEC-009`, invariant 11, `REQ-DSG-018` |
+| B23 | The accepted formats and the minimum size for A3 are stated **before** the picker opens | `logo-uploader.tsx:134-141` | new `logo-uploader.tsx` | `REQ-DSG-019` |
+| B24 | The A3 PPI result after an upload, computed once server-side (`ppiAtA3`) | `complete/route.ts:35`, `logo-uploader.tsx:146-154`, `lib/brand/ppi.ts` | new `logo-uploader.tsx`, and **also in read mode** as a badge (N7) | `REQ-DSG-019`, `REQ-UIX-116` |
+| B25 | Upload errors are `branding.logo.errors.*`, inline (`FileDrop invalid`) and toasted | `logo-uploader.tsx:64-97` | new `logo-uploader.tsx` — **inline**, per `M13.md` | `REQ-UIX-010` |
+| B26 | The logo can be removed (unbound) before save | `logo-uploader.tsx:118-122` | new `logo-uploader.tsx` | `REQ-DSG-021` |
+| B27 | A font picker is disabled with a hint when no font is selectable; «platform default» is the empty option | `brand-kit-form.tsx:225-255` | `brand-kit-edit.tsx` | `REQ-DSG-016` |
+| B28 | Save shows its pending label | `brand-kit-form.tsx:191` | `brand-kit-edit.tsx` | `REQ-UIX-010` |
+| B29 | `noValidate` on the form | `brand-kit-form.tsx:105` | `brand-kit-edit.tsx` | CLAUDE.md (a form showing app-side errors) |
+| B30 | ★ **The kit never restyles the app** — the page's `h1` keeps the playground colour after a save (`branding.spec.ts:169,194`) | `DEC-201`; no code path | unchanged, and the page's «feeds» line says it (N3) | `REQ-DSG-021` (as amended), `REQ-UIX-116` |
+| N1 | **Read mode first**, one «عدّل» in the `h1` row | — | `page.tsx` + `brand-kit-view.tsx` | `REQ-UIX-116`, `DEC-NEXT-23`, `DEC-231` §3 |
+| N2 | Every colour a swatch **and** its value written (the hex in `<bdi dir="ltr">`; a team colour also by name) | — | new `swatch.tsx` | `REQ-UIX-116` |
+| N3 | «تغذّي الملصقات والشهادات والبريد — لا التطبيق» | — | `brand-kit-read.tsx` | `REQ-UIX-116`, `DEC-201` |
+| N4 | The saved mark — plain text with a glyph, with the time — read from `save_brand_kit()`'s returned row (`updated_at`) and, in read mode, from `kit.updatedAt` | — | `actions.ts` add-only, `kit.ts` add-only | `REQ-UIX-116`, `DEC-231` §3 |
+| N5 | Edit mode names its state, counts unsaved changes (six ICU forms), marks each changed field by border **and** a word, Save names the count, Cancel restores, nothing written until Save | — | `brand-kit-edit.tsx` | `DEC-231` §3 |
+| N6 | Leaving with changes asks | — | `brand-kit-edit.tsx` (`beforeunload` + in-app link guard as `profile-edit.tsx` does — read, never imported) | `DEC-231` §3 |
+| N7 | The logo card in read mode: format · width × height · «A3 عند N نقطة/بوصة» and the rating as a badge | — | `brand-kit-read.tsx`, `kit.ts` add-only (`sniffed_mime`, `byte_size`) | `REQ-UIX-116` |
+| N8 | The seven team colours, read-only, by swatch and name | — | `brand-kit-read.tsx` (W26.6 R6) | `REQ-UIX-116`, `REQ-UIX-043` |
+
+**59 declares no animation** — no `transition`, no keyframe, no moment, no object; `console-register.test.ts` green and
+untouched.
+
+### W26.2 `/app/me/privacy` — kept-behaviour table (`DEC-208`)
+
+Twenty-two behaviours today, then what `REQ-UIX-117` adds.
+
+| # | Behaviour | Lives now | Lives after | Kept by |
+|---|---|---|---|---|
+| P1 | A member requests an export through `request_data_export()`; the rate limit is in the RPC, in the insert's transaction | `me/privacy/actions.ts:19-24`, `lib/dal/privacy.ts:74-79` | unchanged | `REQ-PRF-006`, `REQ-NFR-005` |
+| P2 | The 24-hour limit is said **before** the click (`canRequestAgain`) | `page.tsx:102-109`, `privacy.ts:63` | new `export-row.tsx` | `REQ-NFR-005` |
+| P3 | The status read from `my_data_export()` | `page.tsx:44-48`, `privacy.ts:50-65` | `export-row.tsx` (W26.4) | `REQ-UIX-117` |
+| P4 | Dates in the **org's** time zone, Western numerals | `page.tsx:29-31,42` | new `page.tsx` | `REQ-TEN-008`, `DEC-124` |
+| P5 | ★ The download is a plain `<a href="/api/me/export" download>` — works with no JavaScript | `page.tsx:81-92` | `export-row.tsx` («نزّل») | `REQ-PRF-006` |
+| P6 | The archive's life is stated | `page.tsx:93` (literal «سبعة أيام») | `export-row.tsx`, the date **read** (W26.4, R5) | `REQ-NFR-012` |
+| P7 | What the export contains, and that it carries no other member's data | `page.tsx:62-66` | W26.3 D13 — explainer copy, ruling asked | `REQ-PRF-006` acceptance |
+| P8 | An export error shows in a `role="alert"` | `forms.tsx:16-26,38` | `export-row.tsx` | `REQ-UIX-010` |
+| P9 | «اطلب نسخة جديدة» once a request exists | `page.tsx:106` | `export-row.tsx` | — |
+| P10 | The privacy-policy link | `page.tsx:54` | the two legal links (N12) | `REQ-UIX-117` |
+| P11 | ★★ **The profile-picture answer, four states read from the row** — a copy («أزل صورتي») · yes and no copy («أعد المحاولة») · no/unanswered («استخدم صورتي من Google») · nothing to copy | `components/privacy/avatar-section.tsx` | ★ **kept as is, file untouched**, placed in its own card **after** the legal links and **before** «إيقاف حسابي» (W26.3 D12) | `REQ-PRF-008`, `REQ-PRF-009`, `REQ-UIX-117`, `DEC-182` |
+| P12 | Each answer is its own form, bound on the server (no field to tamper with) | `avatar-answer-form.tsx`, `actions.ts:45` | **untouched** | `DEC-159` |
+| P13 | An answer revalidates the app layout (the account menu's picture) | `actions.ts:48` | **untouched** | `REQ-PRF-008` |
+| P14 | The avatar section adds **no** `role="status"` (the page has one) | `avatar-section.tsx:21-22` | untouched | `privacy.spec.ts` |
+| P15 | Deactivation needs a reason, 3–500 characters, Zod in the DAL | `forms.tsx:103-105`, `privacy.ts:95-106` | new `deactivate-sheet.tsx` (reason **inside** the sheet — W26.3 D11) | `REQ-PRF-007` |
+| P16 | The reason is validated before the confirm opens | `forms.tsx:76-78` | `deactivate-sheet.tsx`: validated before submit, in the sheet | `REQ-UIX-010` |
+| P17 | Confirm before it acts; submission by `requestSubmit()` on the form's ref (the cross-portal `form=` bug, sync-3) | `forms.tsx:94-97,112-125` | `deactivate-sheet.tsx` | `REQ-UIX-013`, `REQ-UIX-117` |
+| P18 | After it is sent the control is replaced by a `role="status"` confirmation, so no second request | `forms.tsx:59-66` | `deactivate-sheet.tsx` / the row | `REQ-PRF-007` |
+| P19 | The request writes `member.deactivation_requested` to the org's audit and deactivates **nobody** | `privacy.ts:104-110` | unchanged | `REQ-PRF-007`, `REQ-AUT-008` |
+| P20 | The honest «no self-deletion, and why» paragraph | `page.tsx:112-117` | W26.3 D13 — ruling asked | `12` §5.4 |
+| P21 | Reached from `029`'s row and the account menu | `me/settings/page.tsx:67`, `shell/account-menu.tsx:70` (not mine) | unchanged | `REQ-UIX-117` |
+| P22 | Session required (`/app` layout + DAL `assert_active_member()`) | `my_data_export()` (`0073:327`) | unchanged | `REQ-PRF-006` |
+| N9 | The page draws **its own** hub top row — back to settings, the title in the display face | — | `page.tsx` + the lead's `HubTopRow` (W26.6 R2) | `DEC-NEXT-39`, `REQ-UIX-117` |
+| N10 | The export row with **each** of its states (W26.4) | — | `export-row.tsx` | `REQ-UIX-117` |
+| N11 | The photos row (W26.5 — ruling asked) | — | — | `REQ-UIX-117`, `REQ-EVT-012` |
+| N12 | Two legal links: `/legal/privacy`, `/legal/terms` | — | `page.tsx` | `REQ-UIX-117` |
+| N13 | «إيقاف حسابي» as a coral text action opening a confirm `sheet` | — | `deactivate-sheet.tsx` on `ui/sheet` (composed) | `REQ-UIX-117` |
+
+**Counts: `059` 30 kept + 8 new; privacy 22 kept + 5 new.**
+
+### W26.3 Disagreements — artboard vs plan/requirements (written, no side picked)
+
+| # | Artboard · line | Says | The plan / tree says |
+|---|---|---|---|
+| D1 | `AdminBranding.dc.html`, fonts card | four fonts: الخط الرئيسي · خط النص · خط الشهادات (Amiri) · الطباعة (Reem Kufi) | `brand_kits` holds **two** fonts (M4); a third or fourth is a column (the lead's, new scope). Reem Kufi is the face wave 24 removed from the baseline (`DEC-242`) |
+| D2 | colours card, «التمييز» | two accents, `#C6FF3D` **and `#FF6E4F` (coral)** | coral is a **status** colour and never a brand token (`DEC-073`; wave 24's never-touch list); the one accent is `node` (`DEC-242` §2) |
+| D3 | colours card | five swatches per scheme | ten tokens per scheme; `BRAND_COLOUR_TOKENS` frozen. «Every figure is read» argues for ten |
+| D4 | colours card, swatch values | `#F4F1EA` canvas on light, `#FFFFFF`, `#0B0C12`… | the light defaults are `#f6f3ec` … (`brand.ts:58-80`) — the artboard's are fixtures; every value is read |
+| D5 | «ألوان الفرق» | seven swatches, no names | team colours are a company's (`REQ-UIX-043`), not the kit's; `REQ-UIX-116` wants each with its value in words |
+| D6 | logo card, meta line | «PNG · 2400 × 2400 · A3 عند 320 نقطة/بوصة» + «كافٍ للطباعة» | built from data (M8); the brief's «PNG/JPEG-only» vs **WebP accepted** today (M6) |
+| D7 | `M13.md` §059 | «upload errors … inline» | today inline **and** toast; the toast goes |
+| D8 | — (not drawn) | no edit mode, no contrast badges, no preview, no reset | all kept in edit mode (B12, B18, B20); `REQ-UIX-116`'s «refused on the screen» needs an edit mode the artboard does not draw |
+| D9 | — | no explainer sentences | today: `intro`, `canvasRaiseLightHint`, `posterGradientLabel`, the PPI sentences, `resetConfirm` (the four «prose-dependent» rows above). `DEC-NEXT-25` and the artboard say a word or a number |
+| D10 | — | the read-mode «استبدال» on the logo card | nothing is written until Save (`DEC-231` §3), so «استبدال» enters edit mode with the picker focused |
+| D11 | `Privacy.dc.html:32`, `M13.md` | «إيقاف حسابي» → a confirm sheet | the action needs a **reason** (`privacy.ts:95`, the audit row) — the sheet holds the reason field and the confirm |
+| D12 | `Privacy.dc.html` | no profile-picture answer | `REQ-UIX-117`: «still given there» — placed after the legal links (P11) |
+| D13 | `Privacy.dc.html` | no paragraphs | today: `intro`, `exportIntro`, `exportNote`, `deactivateIntro`, `deactivateHonest`, `expiryNote` — `REQ-PRF-006`'s acceptance and `12` §5.4's honesty live in two of them |
+| D14 | `Privacy.dc.html:21` | title «البيانات والخصوصية» | today «بياناتي وخصوصيتي» (`privacy.page.title`, asserted by `privacy.spec.ts:300`); the hub strip / account menu label is `profile.nav.privacy` (not mine) |
+| D15 | `Privacy.dc.html:24`, `M13.md` | one state «جاهز · 2 أكتوبر»; «30-day window» | five states (M3); the archive lives **7** days (M2) |
+| D16 | `Privacy.dc.html:25` | «الصور التي تظهر فيها · 3 · أزلني» | no tagging exists (M1, `DEC-011`) |
+| D17 | `Privacy.dc.html:20` | back goes to `Settings.dc.html` | `HubTopRow`'s back goes to `/app/me` (`hub-top-row.tsx:15-27`) |
+| D18 | `Privacy.dc.html:34-40` | the phone tab bar | the shell's (the lead's); nothing here |
+
+### W26.4 The export's states — what each reads
+
+| State | Reads | Shown | Action |
+|---|---|---|---|
+| never asked | `my_data_export()` returns no id → `null` | «تصدير بياناتي» alone | «اطلب» (the existing `RequestExportForm` behaviour, P1) |
+| requested | `status = 'queued'`, `requested_at` | «طُلب · ‹date›» | none |
+| building | `status = 'building'` | «جارٍ» | none |
+| ready | `status = 'ready'`, `completed_at`, the window | «جاهز · ‹completed_at›» and «حتى ‹completed_at + days›» | «نزّل» → `/api/me/export` (P5) |
+| expired | `status = 'expired'` (set by `enforce_retention()`) | «انتهى» | «اطلب نسخة جديدة» when `canRequestAgain`, else the 24-hour line (P2) |
+| failed | `status = 'failed'`, `completed_at` | «تعثّر» | as expired |
+
+★ **Everything is in the data except the window's length**: `retention_periods` has no grant (M2). Two ways, neither
+mine to choose: **(a)** a definer function `public.data_export_archive_days() returns int` (stable, `security definer`,
+`search_path = ''`, reading `retention_periods where data_class = 'data_export_archives'`, `grant execute … to
+authenticated`) — I write it under `supabase/proposed/branding/`, proven with `applyProposed()` in a new
+`tests/rls/privacy-export-window.test.ts`, the lead promotes it (from `0199` — `0198` is D's); or **(b)** keep the
+literal sentence. No table, column or policy is needed either way.
+
+### W26.5 «الصور التي تظهر فيها» and «أزلني» — what does each today
+
+- **The count: nothing.** No function, column or table says which photos a member appears in (M1).
+- **«أزلني»: `requestPhotoTakedown()`** (`lib/dal/photos.ts:271`, `content`'s), one photograph at a time from the
+  album's lightbox; the trigger hides it instantly; the uploader is told without being told who (`0043`).
+- What *could* be counted from today's data: **(i)** the member's own takedown requests (`photo_takedowns` where
+  `requester_id = me` — the read policy already admits it; open / resolved from `resolution`); **(ii)** photos the member
+  uploaded (`listPhotosByUploader()`, `photos.ts:487` — `DEC-011`'s meaning of «photos» on a profile). Neither is
+  «photos you appear in», and a page-level «أزلني» has no photograph to act on. **Ruling asked (Q1).**
+
+### W26.6 Requests to the lead
+
+- **R1** — `029`'s row exists (`me/settings/page.tsx:67`); **nothing to add** unless the ruling on D14 renames it.
+- **R2** — `shell-routes.ts:69-71`: add `privacy` to `OWN_TOP_ROW_M10C` so the page draws its own top row; and
+  `HubTopRow` gains an add-only `backHref` (default `/app/me`) so privacy's back goes to `/app/me/settings` (D17) — or
+  rule that it goes to `/app/me`.
+- **R3** — `hub-strip.tsx:19`: privacy leaves the desktop strip (`DEC-NEXT-39`: a hub page behind `029`, not a tab); and
+  whether `me/layout.tsx`'s desktop standing band renders above it.
+- **R4** — W26.4's window function, if (a): its number, its promotion, its `03` row.
+- **R5** — the ledger lines in W26.8, written in `STATUS.md` from this note.
+- **R6** — read `TEAM_COLOUR_HEX` from `console`'s `admin/companies/team-colours.ts` and `admin.json`'s
+  `companies.teamColourNames.*` — an import across tracks, read-only. Allowed, or do the seven move somewhere shared?
+- **R7** — no primitive change: `ui/sheet`, `field`, `textarea`, `file-drop`, `select`, `tabs`, `button`, `panel`,
+  `badge`, `settings-group` composed as they are.
+
+### W26.7 Files, in commit order
+
+**`059`** (in `../kareem-marefa-wave26b`):
+0. ★ **move** (its own commit, verbatim, before any delete): the upload round trip from `logo-uploader.tsx:52-99` into
+   new `src/lib/brand/upload-logo.ts` (`uploadLogo(locale, file) → {status, assetId, a3}`), `logo-uploader.tsx`
+   importing it — its suite green.
+1. **delete**: `src/app/[locale]/app/admin/branding/page.tsx`, `src/components/branding/{brand-kit-form,colour-field,
+   contrast-badge,brand-preview,logo-uploader}.tsx`, `tests/components/branding/brand-kit-form.test.tsx` (its eight
+   cases re-homed, W26.8). **Kept**: `actions.ts`, `state.ts`, both route handlers, all of `src/lib/brand/**`.
+   The kept-behaviour table above is in the note before commit 2.
+2. **create**: `page.tsx` (h1 row + «عدّل», nothing of the frame); `src/components/branding/{brand-kit-view,
+   brand-kit-read,brand-kit-edit,swatch,colour-field,contrast-badge,brand-preview,logo-uploader}.tsx`; add-only in
+   `kit.ts` (`fetchLogo` adds `sniffed_mime`, `byte_size`; `saveBrandKit` returns `{ updatedAt }`) and `actions.ts`
+   (`SaveBrandKitState` gains `updatedAt` and `failedPair`, read from the 55000 `detail`); `branding.json` ar then en.
+
+**Privacy**:
+1. **delete**: `src/app/[locale]/app/me/privacy/{page,forms}.tsx`, `tests/components/privacy/deactivation-form.test.tsx`
+   (its four cases re-homed). **Kept untouched**: `actions.ts`, `state.ts`, `src/components/privacy/**` (all four
+   files), `lib/dal/privacy.ts`.
+2. **create**: `page.tsx`; `src/components/privacy/{export-row,deactivate-sheet}.tsx`; add-only in `privacy.ts` (the
+   window, if R4(a)); `privacy.json` ar then en; `supabase/proposed/branding/data_export_archive_days.sql` if (a).
+
+**New message keys, Arabic first** (final wording after the rulings; six ICU forms on every count):
+`branding.view.edit` «عدّل» · `branding.view.feeds` «تغذّي الملصقات والشهادات والبريد — لا التطبيق» ·
+`branding.view.saved` «✓ حُفظ · {time}» · `branding.logo.meta` «{format} · {width} × {height} · <bdi>A3</bdi> عند {ppi}
+نقطة/بوصة» · `branding.logo.rating.{sufficient,warning,insufficient}` «كافٍ للطباعة» / «أقل من المستحسن» / «غير كافٍ» ·
+`branding.fonts.{display,body}` «الخط الرئيسي» / «خط النص» · `branding.colours.{accent,teams}` «التمييز» / «ألوان
+الفرق» · `branding.edit.{state,changed,cancel,leave}` «تعديل» / «تغيّر» / «إلغاء» / «لديك تغييرات لم تُحفظ. تغادر؟» ·
+`branding.edit.unsaved` and `branding.edit.save` («احفظ {count}» — zero/one/two/few/many/other) ·
+`branding.errors.statusContrastPair.{live_vs_light_canvas, … six}`. Privacy: `privacy.hub.title` ·
+`privacy.export.{label,request,requestAgain,queued,building,ready,until,expired,failed,download,rateLimited}` ·
+`privacy.photos.{label,remove}` (if kept) · `privacy.legal.{policy,terms}` «سياسة الخصوصية» / «الشروط والأحكام» ·
+`privacy.deactivate.{action,sheetTitle,reason,submit,sent}`. Old keys are deleted only when nothing reads them.
+
+**New tests**: `tests/components/branding/{brand-kit-read,brand-kit-edit,swatch,logo-uploader}.test.tsx` (every swatch
+has its value in words; read → «عدّل» → edit → Cancel restores; the unsaved count; a 55000 answer renders inline
+`role="alert"` with the pair and keeps what was typed; the saved mark appears only from the action's `updatedAt`; no
+`transition`/`animate` class) · `tests/unit/brand-upload-logo.test.ts` (the moved round trip) ·
+`tests/components/privacy/{export-row,deactivate-sheet}.test.tsx` (each state, no-JS link, the reason required, confirm
+then `requestSubmit`, axe clean with the sheet open) · `tests/rls/privacy-export-window.test.ts` if R4(a) ·
+`tests/e2e/wave26-branding-scr059.spec.ts` (read at 1280, edit, the database refusing a failing canvas on the screen,
+a save's mark) and `tests/e2e/wave26-branding-privacy.spec.ts` (each export state seeded and captured at 390, the
+avatar answer present, the sheet) — captures `.qa-shots/rtl/wave26-branding-{scr059,privacy}-<state>-<1280|390>.png`.
+
+### W26.8 Suites — evidence
+
+**Pass untouched**: `tests/unit/{brand-defaults,brand-runtime,brand-schema}.test.ts`, `tests/rls/{brand-kits,
+brand-public-logo,privacy,data-export-surveys,avatar-copy,avatar-import}.test.ts`, `tests/rls/status-contrast.test.ts`
+(the lead's), `tests/components/privacy/avatar-import.test.tsx`, `tests/unit/avatar-href.test.ts`,
+`tests/e2e/wave14-platform-avatar.spec.ts` (the section and its button names are kept), `console-register`,
+`mail-pinned/**`, `public-graph`.
+
+**Changed — each a ledger line, selector or flow, never an expectation**:
+- `tests/components/branding/brand-kit-form.test.tsx` — deleted with its file; its eight cases (preview tracks state;
+  dark tab keeps light edits; failing ratio shown; `<bdi>` hex error; reset confirms first; dialog names the org; swatch
+  and hex in sync; gradient always dark) re-home one-for-one into `brand-kit-edit.test.tsx`.
+- `tests/components/privacy/deactivation-form.test.tsx` — deleted with `forms.tsx`; its four cases (no confirm on an
+  empty reason; submits only on confirm; cancel submits nothing; axe clean) re-home into `deactivate-sheet.test.tsx`.
+- `tests/e2e/branding.spec.ts:125-145,173-194`, `wave8-branding-review.spec.ts:137-219`,
+  `wave11-branding-status-contrast.spec.ts:91-124` — **a click on «عدّل» first**; «حفظ» becomes Save-with-count; the
+  saved and refused messages move from a toast to the page (`role="status"` / `role="alert"`, Q7); «رفع شعار» label
+  as rebuilt. The refusals, values and persisted reads assert the same things.
+- `tests/e2e/privacy.spec.ts:127-134,155-161,183-194,295-323` — the request button and «نزّل» names; deactivation
+  opens from «إيقاف حسابي» and the reason is in the sheet; the `h1` name if D14 changes. Same outcomes.
+- `tests/e2e/{a11y,wave11-lead-a11y-sweep,shell-disclosures}.spec.ts` and `tests/unit/shell-routes.test.ts` — the lead's;
+  if one reads a privacy string or R2's route, I write the failing line here.
+
+### W26.9 Questions that need a ruling
+
+- **Q1** (D16) «الصور التي تظهر فيها»: no tagging exists. Drop the row; or count the member's own takedown requests
+  (open/resolved); or photos they uploaded; or a link to where «أزلني» lives (the album)?
+- **Q2** (D1) fonts: two rows (heading as «الخط الرئيسي», body) — or two new columns (new scope, the lead's table)?
+- **Q3** (D2) «التمييز»: `node` alone, or drop the row? Coral cannot be a brand token.
+- **Q4** (D3) ten swatches per scheme, or the artboard's five (which five)?
+- **Q5** (D15, M2) the window: 7 days read through a new definer function (W26.4 a), or the literal?
+- **Q6** (D11, D13, D9) explainer copy: keep `deactivateHonest` and the export's «no other member's data» note
+  (requirement-bearing), drop the rest? And on 059 the four prose-dependent sentences?
+- **Q7** (B10, D7) the refusal inline with the failing pair from `detail`, replacing the toast — yes?
+- **Q8** (D6) WebP: keep accepting it (behaviour) and state «PNG أو JPG أو WebP»?
+- **Q9** (D14) the title: «البيانات والخصوصية» or «بياناتي وخصوصيتي»?
+- **Q10** (R2/D17) privacy's back: to settings (a `backHref` on `HubTopRow`) or `/app/me`?
+- **Q11** (R6) importing `console`'s seven team colours read-only.

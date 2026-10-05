@@ -1,45 +1,54 @@
-import { Fragment } from "react";
-import { setRequestLocale, getTranslations } from "next-intl/server";
-import { NetworkBg } from "@/components/network-bg";
-import { NetworkGL } from "@/components/network-gl";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { IntroSting } from "@/components/intro-sting";
-import { Chapter } from "@/components/chapter";
-import { MobileCta } from "@/components/mobile-cta";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
-import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
+
+// SCR-000 · the landing — REQ-UIX-114, REQ-UIX-025, REQ-NFR-019, DEC-247, DEC-252.
+// Rebuilt in wave 26 from `docs/design/screens/m13/Landing.dc.html`. The regions, in the artboard's order:
+// the hero with its three posters and two doors · the seven companies as team rings · what the initiative is ·
+// the four things the platform does · the two paths · the register band. The header and the footer are the
+// layout's.
+//
+// ★ THE COPY IS `marketing.json`'s, UNCHANGED (`M13.md` §000). Where the artboard's words differ — it draws four
+// steps a path and the catalogue has three, each with a sentence — the catalogue wins and the drawing gives the
+// structure. What is new is what the artboard adds: the two nav labels, the three poster titles, the company
+// names.
+//
+// ★ THE PRIMARY DOOR IS THE PLATFORM'S, since the platform is live (`M13.md`): «ادخل بحساب عملك» goes to the
+// Arabic sign-in from both locales, and «سجّل اهتمامك» is the band's and the header's.
+//
+// ★ STATIC, and it stays static: no session, no cookie, no data. The companies and the posters are copy, and
+// their colours are the seven team constants — a ring's colour is never the only channel, the name is beside it.
+//
+// ★ NOTHING HERE MOVES. The one motion on this page is the mark's reveal on a cold start (`IntroSting`), once a
+// session, never under reduced motion; the page under it is already whole.
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
-/** Word-by-word focus pull — blur racks to sharp like a lens finding focus.
- * Splitting on spaces is safe for Arabic (joining is within-word only). */
-function FocusHeadline({ text }: { text: string }) {
-  return (
-    <>
-      {text.split(" ").map((word, i) => (
-        <Fragment key={i}>
-          {i > 0 ? " " : ""}
-          <span
-            className="focus-word"
-            style={{ "--d": `${100 + i * 110}ms` } as React.CSSProperties}
-          >
-            {word}
-          </span>
-        </Fragment>
-      ))}
-    </>
-  );
-}
+const COMPANIES = [
+  ["silver", "border-team-silver"],
+  ["tangerine", "border-team-tangerine"],
+  ["magenta", "border-team-magenta"],
+  ["cyan", "border-team-cyan"],
+  ["gold", "border-team-gold"],
+  ["violet", "border-team-violet"],
+  ["mint", "border-team-mint"],
+] as const;
 
-const delay = (ms: number) => ({ "--d": `${ms}ms` }) as React.CSSProperties;
+// The three poster objects: a colour, a tilt and a size each, as drawn. Decoration with real titles.
+const POSTERS = [
+  ["poster1", "bg-team-tangerine -rotate-6 w-[28%] md:w-[9.375rem]"],
+  ["poster2", "bg-team-cyan rotate-3 w-[32%] md:w-[10.625rem]"],
+  ["poster3", "bg-team-mint -rotate-2 w-[28%] md:w-[9.375rem]"],
+] as const;
 
-export default async function LandingPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+const section = "mx-auto w-full max-w-[80rem] px-5 md:px-14";
+const h2 = "font-display text-[1.75rem] leading-[1.4] font-extrabold text-fg-heading md:text-[2.5rem]";
+const card = "rounded-card border border-edge bg-surface";
+
+export default async function LandingPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations();
@@ -47,249 +56,94 @@ export default async function LandingPage({
   return (
     <>
       <IntroSting />
-      {/* timeline scrub indicator — grows with scroll, like a playhead */}
-      <div
-        aria-hidden="true"
-        className="scroll-progress fixed inset-x-0 top-0 z-50 h-[2px] bg-silver-400/70"
-      />
 
-      {/* Hero — the constellation, and the single dot the spine descends from */}
-      <section
-        id="hero"
-        className="theme-dark relative flex min-h-[92svh] items-center overflow-hidden"
-      >
-        <NetworkGL />
-        <div aria-hidden="true" className="hero-fade absolute inset-0" />
-        <div className="relative mx-auto w-full max-w-6xl px-6 pb-24 pt-32 md:px-8">
-          <div className="max-w-[46rem]">
-            <p className="hero-enter flex items-center gap-3 text-eyebrow text-fg-muted">
-              <span aria-hidden="true" className="size-[5px] shrink-0 rounded-full bg-node" />
-              {t("hero.eyebrow")}
-            </p>
-            <h1 className="mt-6 text-display">
-              <FocusHeadline text={t("hero.headline")} />
-            </h1>
-            <p
-              className="hero-enter mt-7 max-w-[34ch] text-statement text-fg-body"
-              style={delay(560)}
-            >
-              {t("hero.sub")}
-            </p>
-            <div
-              className="hero-enter mt-11 flex flex-wrap items-center gap-4"
-              style={delay(680)}
-            >
-              <ButtonLink href="/register">{t("hero.cta")}</ButtonLink>
-              {/* An in-page anchor, so a plain <a> with the system's class — the locale-aware
-                  Link would turn "#about" into a navigation. */}
-              <a href="#about" className={buttonClass("secondary", "lg")}>
-                {t("hero.ctaSecondary")}
-              </a>
-            </div>
-            <p
-              className="hero-enter mt-5 text-caption text-fg-muted"
-              style={delay(760)}
-            >
-              {t("hero.microTrust")}
-            </p>
-            {/* The platform exists (REQ-UIX-025) — said once in the hero, with its door. */}
-            <p
-              className="hero-enter mt-9 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-edge pt-6 text-body text-fg-body"
-              style={delay(840)}
-            >
-              <span aria-hidden="true" className="size-[7px] shrink-0 rounded-full bg-node" />
-              <span>{t("hero.live")}</span>
-              <Link
-                href="/sign-in"
-                locale="ar"
-                hrefLang="ar"
-                className="text-label text-fg-heading underline underline-offset-4 hover:no-underline"
-              >
-                {t("hero.signIn")}
-              </Link>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 01 — The manifesto. The copy is the artwork here: set large, given
-          room, and left to carry the section on its own. */}
-      <section id="about" className="scroll-mt-24 bg-white">
-        <Chapter n={1} rhythm="clamp(6rem, 13vw, 11rem)">
-          <h2 className="reveal-cut text-chapter">{t("about.title")}</h2>
-          <p className="reveal-cut mt-10 max-w-[58ch] text-statement text-fg-body">
-            {t("about.body")}
-          </p>
-        </Chapter>
-      </section>
-
-      {/* 02 — The platform, which exists (REQ-UIX-025, DEC-126). Four things a member does
-          there, as a two-by-two of cells split by hairlines, and the door under them. */}
-      <section id="platform" className="cv-section scroll-mt-24 bg-silver-100">
-        <Chapter n={2} rhythm="clamp(4.5rem, 9vw, 8rem)">
-          <h2 className="reveal-cut text-chapter">{t("platform.title")}</h2>
-          <p className="reveal-cut mt-8 max-w-[58ch] text-body-lg text-fg-body">
-            {t("platform.body")}
-          </p>
-          <ul className="mt-12 grid gap-px border border-edge bg-[var(--edge)] sm:grid-cols-2">
-            {([1, 2, 3, 4] as const).map((n) => (
-              <li key={n} className="reveal-cut flex gap-4 bg-white p-6 md:p-8">
-                <span
-                  aria-hidden="true"
-                  className="mt-[0.7em] size-[5px] shrink-0 rounded-full bg-node"
-                />
-                <div>
-                  <h3 className="text-h3 text-fg-heading">{t(`platform.feature${n}Title`)}</h3>
-                  <p className="mt-2 max-w-[40ch] text-body text-fg-body">
-                    {t(`platform.feature${n}Body`)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="reveal-cut mt-12 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <section id="hero" className={`${section} flex flex-col gap-10 pt-8 pb-12 md:flex-row md:items-center md:pt-14 md:pb-20`}>
+        <div className="flex flex-1 flex-col gap-4">
+          <p className="text-caption font-bold text-accent">{t("hero.eyebrow")}</p>
+          <h1 className="max-w-[12ch] font-display text-[2.75rem] leading-[1.25] font-extrabold text-fg-heading md:text-[4.5rem] md:leading-[1.2]">
+            {t("hero.headline")}
+          </h1>
+          <p className="max-w-[32.5rem] text-body-lg text-fg-muted md:text-[1.25rem]">{t("hero.sub")}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2.5">
             <ButtonLink href="/sign-in" locale="ar" hrefLang="ar">
-              {t("platform.signIn")}
+              {t("hero.signIn")}
             </ButtonLink>
-            <p className="text-caption text-fg-muted">{t("platform.signInHint")}</p>
+            {/* An in-page anchor, so a plain <a> with the system's class — the locale-aware Link would turn
+                "#about" into a navigation. */}
+            <a href="#about" className={buttonClass("secondary", "lg")}>
+              {t("hero.ctaSecondary")}
+            </a>
           </div>
-        </Chapter>
+        </div>
+        <ul aria-label={t("hero.postersLabel")} className="flex shrink-0 items-center justify-center gap-2.5 md:w-[32.5rem]">
+          {POSTERS.map(([key, look]) => (
+            <li
+              key={key}
+              className={`flex aspect-[3/4] rounded-[0.875rem] p-3.5 font-display text-[1rem] leading-[1.4] font-extrabold text-on-team shadow-lg md:text-[1.125rem] ${look}`}
+            >
+              {t(`hero.${key}`)}
+            </li>
+          ))}
+        </ul>
       </section>
 
-      {/* 03 — The two paths, as a diptych split by a hairline. Each step is a
-          node; the line between them draws as you arrive at it. */}
-      <section className="cv-section bg-white">
-        <Chapter n={3} rhythm="clamp(4.5rem, 9vw, 8rem)">
-          <h2 className="reveal-cut text-chapter">{t("how.title")}</h2>
-          <div className="mt-14 grid gap-14 md:grid-cols-2 md:gap-0">
-            {(["provider", "attendee"] as const).map((path, i) => (
-              <div
-                key={path}
-                className={
-                  i === 0
-                    ? "md:pe-12 lg:pe-16"
-                    : "md:border-s md:border-edge md:ps-12 lg:ps-16"
-                }
-              >
-                <h3 className="reveal-cut text-h3">{t(`how.${path}.title`)}</h3>
-                <ol className="mt-9">
-                  {([1, 2, 3] as const).map((n) => (
-                    <li key={n} className="flex gap-5">
-                      <span className="step-rail flex flex-col items-center">
-                        <span className="step-num flex size-10 shrink-0 items-center justify-center rounded-full border border-silver-300 bg-white text-caption font-medium text-navy-950">
-                          {n}
-                        </span>
-                        {n < 3 && (
-                          <span
-                            aria-hidden="true"
-                            className="step-line mt-2 w-px flex-1 bg-spine"
-                          />
-                        )}
-                      </span>
-                      <div className={n < 3 ? "pb-10" : ""}>
-                        <p className="text-label text-fg-heading">
-                          {t(`how.${path}.step${n}Title`)}
-                        </p>
-                        <p className="mt-2 max-w-[44ch] text-body text-fg-body">
-                          {t(`how.${path}.step${n}Body`)}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ))}
-          </div>
-        </Chapter>
+      <ul aria-label={t("companies.label")} className={`${section} flex flex-wrap justify-center gap-x-7 gap-y-3 pb-12 md:pb-14`}>
+        {COMPANIES.map(([key, ring]) => (
+          <li key={key} className="inline-flex items-center gap-2 text-body-sm font-bold text-fg-muted">
+            <span aria-hidden="true" className={`size-7 rounded-pill border-[3px] bg-canvas ${ring}`} />
+            {t(`companies.${key}`)}
+          </li>
+        ))}
+      </ul>
+
+      <section id="about" className={`${section} flex scroll-mt-6 flex-col gap-4 py-10 md:flex-row md:items-start md:gap-10`}>
+        <h2 className={`${h2} md:w-[23.75rem] md:shrink-0`}>{t("about.title")}</h2>
+        <p className="max-w-[40rem] text-body-lg text-fg-muted">{t("about.body")}</p>
       </section>
 
-      {/* 04 — Recognition. The emotional peak, and the line the whole page is
-          built around. The network is drawn behind it rather than left a void. */}
-      <section className="cv-section theme-dark relative overflow-clip">
-        <NetworkBg className="draw-on-scroll opacity-[0.3]" />
-        <Chapter n={4} rhythm="clamp(5.5rem, 12vw, 10rem)" className="relative">
-          <h2 className="reveal-cut text-chapter">{t("recognition.title")}</h2>
-          <p className="reveal-cut mt-10 max-w-[54ch] text-statement">
-            {t("recognition.body")}
-          </p>
-          <ul className="mt-16 grid border-y border-edge sm:grid-cols-3">
-            {([1, 2, 3] as const).map((n, i) => (
-              <li
-                key={n}
-                className={[
-                  "reveal-cut flex items-start gap-4 py-7",
-                  i > 0 && "border-t border-edge sm:border-t-0 sm:border-s sm:ps-8",
-                  i < 2 && "sm:pe-8",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <span
-                  aria-hidden="true"
-                  className="mt-[0.6em] size-[5px] shrink-0 rounded-full bg-node"
-                />
-                <p className="text-h3 font-medium text-fg-heading">
-                  {t(`recognition.tile${n}`)}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </Chapter>
+      <section id="platform" className={`${section} py-10`}>
+        <h2 className={h2}>{t("platform.title")}</h2>
+        <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {([1, 2, 3, 4] as const).map((n) => (
+            <li key={n} className={`${card} p-[1.125rem]`}>
+              <h3 className="font-display text-[1.125rem] leading-[1.4] font-extrabold text-fg-heading">{t(`platform.feature${n}Title`)}</h3>
+              <p className="mt-1 text-body-sm text-fg-muted">{t(`platform.feature${n}Body`)}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
-      {/* 05 — The reassurance. Three qualifying criteria as an editorial
-          definition list: term in the margin, plain language beside it. */}
-      <section className="cv-section bg-white">
-        <Chapter n={5} rhythm="clamp(4.5rem, 9vw, 8rem)">
-          <h2 className="reveal-cut text-chapter">{t("policy.title")}</h2>
-          <p className="reveal-cut mt-7 max-w-[62ch] text-body-lg text-fg-body">
-            {t("policy.intro")}
-          </p>
-          <dl className="mt-12 border-t border-edge">
-            {([1, 2, 3] as const).map((n) => (
-              <div
-                key={n}
-                className="reveal-cut grid gap-2 border-b border-edge py-8 md:grid-cols-[minmax(9rem,13rem)_minmax(0,1fr)] md:gap-10 md:py-10"
-              >
-                <dt className="text-h3 text-fg-heading">
-                  {t(`policy.card${n}Title`)}
-                </dt>
-                <dd className="max-w-[54ch] text-body-lg text-fg-body">
-                  {t(`policy.card${n}Body`)}
-                </dd>
-              </div>
-            ))}
-          </dl>
-          <p className="reveal-cut mt-14 max-w-[42ch] text-statement font-medium text-fg-heading">
-            {t("policy.closer")}
-          </p>
-        </Chapter>
-      </section>
-
-      {/* Close — the title card. The network draws itself in, and the tagline
-          lands at full scale as an end credit. */}
-      <section className="cv-section theme-dark relative overflow-clip">
-        <NetworkBg className="draw-on-scroll opacity-40" />
-        <div className="relative mx-auto max-w-6xl px-6 py-[clamp(6rem,13vw,11rem)] md:px-8">
-          <div className="max-w-[34rem]">
-            <h2 className="reveal-cut text-chapter">{t("finalCta.title")}</h2>
-            <p className="reveal-cut mt-6 text-body-lg">{t("finalCta.body")}</p>
-            <div className="mt-10 flex flex-wrap items-center gap-4">
-              <ButtonLink href="/register">{t("finalCta.cta")}</ButtonLink>
-              <ButtonLink href="/sign-in" locale="ar" hrefLang="ar" variant="secondary">
-                {t("finalCta.signIn")}
-              </ButtonLink>
+      <section id="how" className={`${section} scroll-mt-6 pt-10 pb-14`}>
+        <h2 className={h2}>{t("how.title")}</h2>
+        <div className="mt-5 grid gap-6 md:grid-cols-2">
+          {(["provider", "attendee"] as const).map((path) => (
+            <div key={path} className={`${card} rounded-panel p-[1.375rem]`}>
+              <h3 className={`text-caption font-bold ${path === "provider" ? "text-signal" : "text-team-cyan"}`}>{t(`how.${path}.title`)}</h3>
+              <ol className="mt-3 grid gap-[1.125rem] sm:grid-cols-3">
+                {([1, 2, 3] as const).map((n) => (
+                  <li key={n} className="flex flex-col gap-1">
+                    <span aria-hidden="true" className="font-display text-[1.875rem] leading-none font-extrabold text-accent">
+                      {n}
+                    </span>
+                    <span className="text-body-sm font-bold text-fg-heading">{t(`how.${path}.step${n}Title`)}</span>
+                    <span className="text-caption text-fg-muted">{t(`how.${path}.step${n}Body`)}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
-          </div>
-          <div className="mt-[clamp(4rem,9vw,7rem)] border-t border-edge pt-[clamp(3rem,7vw,5.5rem)]">
-            <p className="reveal-cut text-center text-mega">
-              {t("finalCta.tagline")}
-            </p>
-          </div>
+          ))}
         </div>
       </section>
 
-      <MobileCta />
+      <section className={section}>
+        <div className={`${card} flex flex-col gap-5 rounded-[1.75rem] p-6 md:flex-row md:items-center md:gap-6 md:p-10`}>
+          <div className="flex-1">
+            <h2 className="font-display text-[1.75rem] leading-[1.4] font-extrabold text-fg-heading md:text-[2.125rem]">{t("header.cta")}</h2>
+            <p className="text-body-sm text-fg-muted">{t("hero.microTrust")}</p>
+          </div>
+          <ButtonLink href="/register">{t("header.cta")}</ButtonLink>
+        </div>
+      </section>
     </>
   );
 }

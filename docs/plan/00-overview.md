@@ -171,9 +171,12 @@ SQL the moment a table is renamed; `ENT-check_ins` cannot, because the name *is*
 | `EVT` | Event page | `DSC` | Discovery and search |
 | `INT` | i18n, RTL, typography | `NFR` | Non-functional |
 | `UIX` | Interface system ★ | `SUR` | Survey ★ |
+| `STO` | Session stories ★★ | | |
 
 Sequences are **per area**, not global. A global sequence tempts renumbering, and a renumbered
 requirement breaks every citation pointing at it.
+
+★★ **`STO` was added by `DEC-245`** with the last wave: a session's story, generated from what the session does and from what its attendees add (`01` §25).
 
 ★ **`UIX` and `SUR` were added by `DEC-070`**, with the design milestone (`16-ui-redesign.md`).
 `UIX` owns the design system, the shell, the loading and failure models, the form model, the

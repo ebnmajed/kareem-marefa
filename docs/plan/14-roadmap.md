@@ -920,6 +920,35 @@ while unbound, and refused once bound; ★ ten addresses added in one paste, eac
 keys and the 120 pinned mail files untouched; ★ `qa:contract` and the register-form fingerprint **unmoved**. **The
 acceptance is the owner's, adding a real person.**
 
+## M28 — the last wave: the public site, the brand kit and privacy, the platform console, stories, the mark · wave 26 · `DEC-245` · `DEC-247` · `DEC-248`
+
+★★ **When this milestone merges, every screen in the product has a design and is built, and nothing remains.** Seventeen
+artboards in `docs/design/screens/m13/`; five pull requests; two primitives (`story-viewer`, `story-capture`, the floor
+69 → 71); one migration, `0198`. ★★ **The public site's appearance changes and nothing it does changes**
+(`REQ-NFR-019`): the URLs, the registration behaviour byte for byte and the accessibility floor are the line.
+
+| Work | Requirements | Track | PR |
+|---|---|---|---|
+| The landing, register and `/og.png`, rebuilt; the guard rewritten in the same commit | `REQ-UIX-114` | lead | A |
+| Verify, rebuilt | `REQ-UIX-115` | lead | A |
+| The mark: one component, three moves | `REQ-UIX-119` | lead | A |
+| The brand kit screen, read first | `REQ-UIX-116` | `branding` | B |
+| Privacy, a hub page behind settings | `REQ-UIX-117` | `branding` | B |
+| The platform console on the console frame | `REQ-UIX-118` | lead (the frame), `platform` | C |
+| The story tables, their policies and grants | `REQ-STO-003`, `REQ-STO-010` | lead | D |
+| The generator, the read model, the ring's states | `REQ-STO-001`, `REQ-STO-002`, `REQ-STO-004`, `REQ-STO-006`, `REQ-STO-008`, `REQ-STO-018` | `sessions` | D |
+| The viewer, the capture, attendee frames, the video, moderation, `044`'s strip | `REQ-STO-005`, `REQ-STO-007`, `REQ-STO-009`, `REQ-STO-011` … `REQ-STO-017` | `content` | D |
+| The mark wherever the wordmark stood | `REQ-UIX-120` | lead | E |
+
+**Demonstrable:** ★★ the registration form's behaviour fingerprint **equal** on `main`'s build and the branch's, a
+submission with JavaScript off reaching the stub, and `qa:contract` green at every commit of PR A; ★★ a live session
+producing its frames **within a minute of each trigger**, a member viewing them, **the ring turning seen**, and the
+frames gone at 24 hours; ★★ a story walked end to end with `page.click()` alone, and again with the keyboard alone;
+★ a 20-second video **refused by the server**, and a 12-second one transcoded with no location tag left in it; ★ a
+reported video hidden at once and playable in the queue; ★ every platform DAL function shown to return counts, and no
+policy with a super-admin disjunct; ★ the mark static under reduced motion in all three places; ★ `console-register`
+green and untouched. **The acceptance is the owner's, every screen beside its artboard — and it is the last one.**
+
 ## 3. Dependencies
 
 ```mermaid

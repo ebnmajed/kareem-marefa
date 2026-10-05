@@ -17,8 +17,8 @@ thought about in the language it ships in. Every example string is **Arabic**.
 
 ```
 /{locale}
-├── /                                     SCR-000  marketing landing        [FROZEN]
-├── /register                             SCR-001  interest form            [FROZEN]
+├── /                                     SCR-000  marketing landing        [PUBLIC CONTRACT — rebuilt wave 26]
+├── /register                             SCR-001  interest form            [PUBLIC CONTRACT — rebuilt wave 26]
 ├── /sign-in                              SCR-002  ◐ unauthenticated
 ├── /choose-org                           SCR-003  ◐ only when ambiguous
 ├── /no-access                            SCR-004  ◐
@@ -694,16 +694,16 @@ The screens above are described in prose; this is the machine-checkable index be
 
 | Screen | Requirements it realises |
 |---|---|
-| SCR-002 sign-in | `REQ-AUT-001`, `REQ-AUT-002`, `REQ-AUT-005`, `REQ-UIX-011` |
+| SCR-002 sign-in | `REQ-AUT-001`, `REQ-AUT-002`, `REQ-AUT-005`, `REQ-UIX-011`, `REQ-UIX-120` |
 | SCR-003 choose-org | `REQ-AUT-004` |
 | SCR-004 no-access | `REQ-AUT-006`, `REQ-TEN-006` |
-| SCR-000 marketing landing · SCR-001 register | `REQ-NFR-019` — **frozen public contract** |
+| SCR-000 marketing landing · SCR-001 register | `REQ-NFR-019` — **frozen public contract**, ★ `REQ-UIX-114`, `REQ-UIX-119` — **rebuilt in wave 26; the contract is behaviour, not appearance** (`DEC-247`) |
 | SCR-005 legal | `REQ-NFR-015` |
 | SCR-007 public session card | `REQ-DSC-006`, `REQ-UIX-003` |
-| SCR-006 verify | `REQ-CRT-007`, `REQ-CRT-009`, `REQ-CRT-010`, `REQ-CRT-011`, `REQ-INT-010` |
-| SCR-010 home ★ **the sessions timeline** (DEC-112) | `REQ-TSK-004`, `REQ-REC-009`, `REQ-UIX-002`, `REQ-UIX-012`, `REQ-UIX-021`, `REQ-UIX-022`, `REQ-UIX-023` |
+| SCR-006 verify | `REQ-CRT-007`, `REQ-CRT-009`, `REQ-CRT-010`, `REQ-CRT-011`, `REQ-INT-010`, `REQ-UIX-115` |
+| SCR-010 home ★ **the sessions timeline** (DEC-112) | `REQ-TSK-004`, `REQ-REC-009`, `REQ-UIX-002`, `REQ-UIX-012`, `REQ-UIX-021`, `REQ-UIX-022`, `REQ-UIX-023`, ★ `REQ-STO-001` … `REQ-STO-007`, `REQ-STO-009` … `REQ-STO-016` — **the ring row, the story viewer and the capture** (wave 26) |
 | SCR-011 sessions | `REQ-DSC-001`, `REQ-DSC-002`, `REQ-DSC-003`, `REQ-DSC-005`, `REQ-DSC-007`, `REQ-SES-011`, `REQ-UIX-003`, `REQ-UIX-005`, `REQ-UIX-012`, `REQ-UIX-021`, `REQ-UIX-022` |
-| SCR-012 event page | `REQ-UIX-024`, `REQ-SES-013`, `REQ-SES-008`, `REQ-SES-010`, `REQ-EVT-001` … `REQ-EVT-015`, `REQ-MAT-001`, `REQ-MAT-006`, `REQ-MAT-007`, `REQ-RSV-001` … `REQ-RSV-011`, `REQ-CAL-001`, `REQ-CAL-002`, `REQ-TSK-001` … `REQ-TSK-005`, `REQ-SES-014`, `REQ-UIX-003`, `REQ-UIX-004`, `REQ-UIX-015`, `REQ-UIX-018`, `REQ-UIX-019`, `REQ-ADM-021`, `REQ-DSG-027` |
+| SCR-012 event page | `REQ-UIX-024`, `REQ-SES-013`, `REQ-SES-008`, `REQ-SES-010`, `REQ-EVT-001` … `REQ-EVT-015`, `REQ-MAT-001`, `REQ-MAT-006`, `REQ-MAT-007`, `REQ-RSV-001` … `REQ-RSV-011`, `REQ-CAL-001`, `REQ-CAL-002`, `REQ-TSK-001` … `REQ-TSK-005`, `REQ-SES-014`, `REQ-UIX-003`, `REQ-UIX-004`, `REQ-UIX-015`, `REQ-UIX-018`, `REQ-UIX-019`, `REQ-ADM-021`, `REQ-DSG-027`, ★ `REQ-STO-008`, `REQ-STO-018` |
 | SCR-013 viewer | `REQ-MAT-002`, `REQ-MAT-003`, `REQ-MAT-004`, `REQ-MAT-005`, `REQ-MAT-007`, `REQ-MAT-010`, `REQ-MAT-011`, `REQ-MAT-012`, `REQ-UIX-005` |
 | SCR-014 check-in | `REQ-CHK-003` … `REQ-CHK-006`, `REQ-CHK-009` … `REQ-CHK-013`, `REQ-UIX-015`, `REQ-UIX-019`, `REQ-CHK-015`, `REQ-CHK-016` |
 | SCR-015 rate | `REQ-RAT-001` … `REQ-RAT-004`, `REQ-RAT-006`, `REQ-SUR-001` … `REQ-SUR-004`, `REQ-SUR-009` |
@@ -720,12 +720,12 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-026 notifications | `REQ-NTF-001`, `REQ-NTF-003`, `REQ-NTF-005`, `REQ-NTF-006`, `REQ-UIX-076` |
 | SCR-027 leaderboards | `REQ-LDR-001`, `REQ-LDR-002`, `REQ-LDR-003`, `REQ-LDR-007`, `REQ-LDR-008`, `REQ-UIX-078` |
 | SCR-028 companies | `REQ-LDR-004`, `REQ-LDR-005`, `REQ-LDR-006`, `REQ-UIX-079`, `REQ-UIX-082` |
-| SCR-029 settings ★ | `REQ-NTF-003`, `REQ-LDR-008`, `REQ-CAL-003`, `REQ-UIX-077` |
+| SCR-029 settings ★ | `REQ-NTF-003`, `REQ-LDR-008`, `REQ-CAL-003`, `REQ-UIX-077`, ★ `REQ-UIX-117` — **`/app/me/privacy`, a hub page reached from here** (`DEC-NEXT-39`) |
 | SCR-040 dashboard | `REQ-ADM-004` |
 | SCR-041 proposals | `REQ-PRO-005`, `REQ-PRO-007`, `REQ-PRO-009` |
 | SCR-042 sessions | `REQ-ADM-005`, `REQ-SES-003`, `REQ-SES-005`, `REQ-SES-012` |
 | SCR-043 schedule | `REQ-CHK-010`, `REQ-SES-001`, `REQ-SES-002`, `REQ-SES-006`, `REQ-SES-007`, `REQ-SES-009`, `REQ-CRT-002`, `REQ-DSG-001`, `REQ-DSG-002`, `REQ-DSG-003`, `REQ-DSG-020`, `REQ-PRO-009`, `REQ-SES-014`, `REQ-DSG-027` |
-| SCR-044 attendance | `REQ-CHK-008`, `REQ-CHK-012`, `REQ-RAT-005`, `REQ-CHK-017` |
+| SCR-044 attendance | `REQ-CHK-008`, `REQ-CHK-012`, `REQ-RAT-005`, `REQ-CHK-017`, ★ `REQ-STO-017` — **the «قصص الحضور» strip, add-only** (wave 26) |
 | SCR-045 certificates | `REQ-CRT-001`, `REQ-CRT-003`, `REQ-CRT-004`, `REQ-CRT-011`, `REQ-CRT-012`, `REQ-DSG-031` |
 | SCR-046 venues | `REQ-ADM-006`, `REQ-SES-006` |
 | SCR-047 categories | `REQ-ADM-007`, `REQ-DSC-001`, `REQ-DSC-002`, `REQ-DSC-004`, `REQ-DSC-008` |
@@ -737,14 +737,14 @@ The screens above are described in prose; this is the machine-checkable index be
 | SCR-055–056 templates | `REQ-ADM-013`, `REQ-DSG-004`, `REQ-DSG-007`, `REQ-DSG-008`, `REQ-DSG-024`, `REQ-DSG-026`, `REQ-DSG-032`, `REQ-DSG-033`, `REQ-DSG-034`, `REQ-UIX-108`, `REQ-CRT-015`, `REQ-CRT-016` |
 | SCR-057 designer | `REQ-DSG-005`, `REQ-DSG-006`, `REQ-DSG-009` … `REQ-DSG-012`, `REQ-DSG-014`, `REQ-DSG-015`, `REQ-DSG-016` … `REQ-DSG-019`, `REQ-DSG-022`, `REQ-DSG-023`, `REQ-DSG-025`, `REQ-DSG-028`, `REQ-DSG-029`, `REQ-DSG-030`, `REQ-UIX-013` |
 | SCR-058 emails | `REQ-ADM-014`, `REQ-NTF-007`, `REQ-NTF-009` … `REQ-NTF-016`, `REQ-UIX-112` |
-| SCR-059 branding | `REQ-ADM-015`, `REQ-DSG-021` |
+| SCR-059 branding | `REQ-ADM-015`, `REQ-DSG-021`, `REQ-UIX-116` |
 | SCR-060 reminders | `REQ-ADM-016`, `REQ-NTF-004` |
 | SCR-061 exports | `REQ-ADM-017`, `REQ-INT-010` |
 | SCR-062 audit | `REQ-ADM-018`, `REQ-NFR-006` |
 | SCR-063 settings | `REQ-TEN-008`, `REQ-INT-006`, `REQ-MAT-008`, `REQ-MAT-009` |
 | SCR-064 survey results | `REQ-SUR-005`, `REQ-SUR-006`, `REQ-SUR-007`, `REQ-SUR-008` |
 | SCR-065 survey templates | `REQ-SUR-001`, `REQ-SUR-002` |
-| SCR-080 orgs | `REQ-ADM-001`, `REQ-TEN-001`, `REQ-TEN-002`, `REQ-TEN-006`, `REQ-NFR-014` |
+| SCR-080 orgs | `REQ-ADM-001`, `REQ-TEN-001`, `REQ-TEN-002`, `REQ-TEN-006`, `REQ-NFR-014`, `REQ-UIX-118` |
 | SCR-081 create org | `REQ-TEN-002`, `REQ-TEN-004` |
 | SCR-082 domains | `REQ-TEN-007`, `REQ-AUT-003` |
 | SCR-083 platform templates | `REQ-DSG-008` |

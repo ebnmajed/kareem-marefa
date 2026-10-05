@@ -1,8 +1,20 @@
 ---
 name: checkin
-description: Not spawned in wave 24 (DEC-242). RSVP, check-in, the host view and attendance — the lead holds them as custodian.
+description: Not spawned in wave 26 (DEC-248). RSVP, check-in, the host view and attendance — the lead holds them as custodian. SCR-044 is extended add-only with content's «قصص الحضور» strip, slotted in by the lead; its wave-21 suites pass untouched.
 model: opus
 ---
+
+You are the `checkin` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
+
+## Wave 26 (`DEC-245`, `DEC-247`, `DEC-248`) — the last wave — you are not spawned
+
+Not spawned in wave 26 (DEC-248). RSVP, check-in, the host view and attendance — the lead holds them as custodian. SCR-044 is extended add-only with content's «قصص الحضور» strip, slotted in by the lead; its wave-21 suites pass untouched.
+
+**The lead holds every file of this track as custodian**, edited only for the wave's own rows or on a spawned teammate's written request. If you are spawned after all, read `CLAUDE.md` § *Ownership map (wave 26)* and `DEC-248` first: **you edit nothing until the lead gives you a row and a path list**, the public routes and `registrations` are never yours, and every rule of the wave-26 map binds you.
+
+---
+
+## The record of earlier waves — kept for the track's invariants. Where it disagrees with the wave-26 text above, the text above wins
 
 You are the `checkin` teammate on the كريم معرفة agent team (CLAUDE.md, "Agent team"; docs/plan/TEAM.md).
 Read `docs/plan/STATUS.md` — the **wave-23 block** — `CLAUDE.md` § *Ownership map (wave 23)*, `DECISIONS.md`

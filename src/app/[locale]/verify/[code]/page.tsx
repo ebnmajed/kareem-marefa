@@ -1,36 +1,32 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Logo } from "@/components/brand/logo";
+import { CheckIcon } from "@/components/ui/icons";
 import { platformConfigured } from "@/lib/supabase/env";
 import { verifyCertificate } from "@/lib/dal/certificates";
 
-// SCR-006 · `/verify/[code]` — REQ-CRT-007, REQ-CRT-009, REQ-CRT-010,
-// REQ-CRT-011, A13. PUBLIC and unauthenticated.
+// SCR-006 · `/verify/[code]` — REQ-UIX-115, REQ-CRT-007, REQ-CRT-009, REQ-CRT-010, REQ-CRT-011, A13.
+// PUBLIC and unauthenticated. Rebuilt in wave 26 from `docs/design/screens/m13/Verify.dc.html`: deleted first, then
+// written (`DEC-208`); the table of what it kept is in `docs/plan/notes/wave-26-lead.md` (V1 – V12).
 //
-// «A statement, not a form.» There is no input on this page: the realistic
-// reader is holding a phone over a printed sheet, having followed the QR on
-// it, and the only thing they want is large enough to read at arm's length.
+// «A statement, not a form.» The reader is holding a phone over a printed sheet, having followed the QR on it. The
+// regions, in the artboard's order: the mark and the page's name · the answer, as a mark and two words · the facts,
+// in one card · the address they came by.
 //
-// ★ IT SHOWS SIX FIELDS AND NOTHING ELSE (A13). Not the org's logo, not a
-// link into the product, not how many certificates the org has issued. The
-// allowlist is enforced by `verify_certificate()`'s RETURN TYPE rather than
-// by this component, so a column added to `certificates` next year cannot
-// leak through here by being selected accidentally.
+// ★ IT SHOWS WHAT THE LOOKUP RETURNS AND NOTHING ELSE (A13, V8). Not a link into the product, not the org's logo, not
+// how many certificates exist — and not the SERIAL the artboard lists as a sixth fact: `verify_certificate()`'s
+// return type does not carry it, and that return type, not this component, is the allowlist.
 //
-// ★ THE REVOCATION REASON IS NEVER HERE (OQ-015, REQ-CRT-011). It is not in
-// the function's return type either. The member sees it on SCR-023; a
-// stranger with the code does not.
+// ★ THE REVOCATION REASON IS NEVER HERE (OQ-015, REQ-CRT-011, V7). It is not in the function's return type either.
 //
-// ★ UNKNOWN AND REVOKED-NONEXISTENT ARE THE SAME PAGE (REQ-CRT-007). The
-// function returns an empty set for both, and this renders one message for
-// both — «لم نعثر على شهادة بهذا الرمز.» A page that said «this code was
-// revoked» for one and «no such code» for the other would confirm the
-// existence of certificates to anyone walking the space.
+// ★ UNKNOWN, MALFORMED AND «THAT IS A SERIAL» ARE ONE PAGE (REQ-CRT-007, REQ-CRT-009, V5). One sentence for all
+// three, so nothing here confirms that a certificate exists to someone walking the space.
 //
-// ★ A SERIAL RETURNS NOT-FOUND (REQ-CRT-009). `KM-2026-000001` fails the
-// code's shape in the DAL before the database is touched, and the SQL
-// function matches only on `verification_code` even if it were reached.
+// The scope is the layout's (`verify/layout.tsx`); the mark is still (`REQ-UIX-119`) — the reveal is the landing's
+// and sign-in's, never a document's.
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -38,87 +34,92 @@ export default async function VerifyPage({ params }: { params: Promise<{ locale:
   const { locale, code } = await params;
   setRequestLocale(locale);
 
-  // ★ DEC-038. The proxy's `isPublicPlatformPath` now answers 404 for
-  // /verify before this page runs (DEC-051); this line stays as defence in
-  // depth — the page must never reach `supabaseEnv()` unconfigured and serve
-  // a 500 on a public URL of a live site, whatever the proxy's matcher does.
+  // ★ DEC-038 (V3). The proxy answers 404 for /verify on an unconfigured platform before this page runs (DEC-051);
+  // this line stays as defence in depth — the page must never reach `supabaseEnv()` unconfigured.
   if (!platformConfigured()) notFound();
 
-  const t = await getTranslations("certificates.verify");
+  const t = await getTranslations("certificates");
 
-  // REQ-NFR-005. The forwarded address is the key — it is the only thing
-  // that identifies a caller on a page with no session at all.
+  // REQ-NFR-005 (V4). The forwarded address is the key — the only thing that identifies a caller with no session.
   const h = await headers();
   const clientKey = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "unknown";
-  const outcome = await verifyCertificate(decodeURIComponent(code), clientKey);
+  const raw = decodeURIComponent(code);
+  const outcome = await verifyCertificate(raw, clientKey);
+  const host = h.get("x-forwarded-host") ?? h.get("host");
 
   return (
-    <main className="mx-auto w-full max-w-xl px-4 py-12 sm:py-16">
-      <h1 className="text-body-sm text-fg-muted">{t("title")}</h1>
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 py-6">
+      <div className="flex items-center justify-between gap-4">
+        <Logo height={33} />
+        <h1 className="text-caption text-fg-muted">{t("verify.title")}</h1>
+      </div>
 
-      {outcome.status === "rate_limited" ? (
-        <p className="mt-6 text-h2 text-fg-heading">{t("rateLimited")}</p>
-      ) : outcome.status === "not_found" ? (
-        <>
-          <p className="mt-6 text-h2 text-fg-heading">{t("notFound")}</p>
-          <p className="mt-3 text-body text-fg-body">{t("notFoundHint")}</p>
-        </>
+      {outcome.status === "found" ? (
+        <Found certificate={outcome.certificate} locale={locale} t={t} />
       ) : (
-        <Result certificate={outcome.certificate} locale={locale} />
+        <p className="mt-10 text-center font-display text-[1.75rem] leading-[1.4] font-extrabold text-fg-heading">
+          {outcome.status === "rate_limited" ? t("verify.rateLimited") : t("verify.notFound")}
+        </p>
       )}
+
+      {/* The address they came by — for a certificate that exists; an unknown code is not echoed back. */}
+      {outcome.status === "found" && host ? (
+        <p className="mt-auto pt-10 text-center text-[0.75rem] leading-[1.7] break-all text-fg-muted">
+          <bdi dir="ltr">
+            {host}/verify/{raw}
+          </bdi>
+        </p>
+      ) : null}
     </main>
   );
 }
 
 type Certificate = Extract<Awaited<ReturnType<typeof verifyCertificate>>, { status: "found" }>["certificate"];
+type T = Awaited<ReturnType<typeof getTranslations<"certificates">>>;
 
-async function Result({ certificate: c, locale }: { certificate: Certificate; locale: string }) {
-  const t = await getTranslations("certificates");
+function Found({ certificate: c, locale, t }: { certificate: Certificate; locale: string; t: T }) {
   const revoked = c.state === "revoked";
 
-  // The numeral system is the ORG's everywhere else in the product. Here
-  // there is no session and no org setting a stranger may read, so the
-  // locale's own default is the honest choice — and the date is the only
-  // number on the page.
-  const date = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(iso));
+  // There is no session and no org setting a stranger may read, so the date takes the page's locale — in Western
+  // numerals, always (DEC-124, V10).
+  const date = (iso: string) => new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { dateStyle: "long" }).format(new Date(iso));
 
-  const rows: Array<[string, React.ReactNode]> = [
-    [t("verify.recipient"), <bdi key="n">{c.recipientName}</bdi>],
+  // V8 — exactly what the lookup returned, each only when it is there.
+  const facts: Array<[string, ReactNode]> = [
+    [t("verify.recipient"), c.recipientName],
     [t("verify.kind"), t(`kind.${c.kind}`)],
   ];
-  if (c.sessionTitle) rows.push([t("verify.session"), <bdi key="s">{c.sessionTitle}</bdi>]);
-  if (c.sessionDate) rows.push([t("verify.sessionDate"), <bdi key="sd">{date(c.sessionDate)}</bdi>]);
-  if (c.achievementName) rows.push([t("verify.achievement"), <bdi key="a">{c.achievementName}</bdi>]);
-  rows.push([t("verify.org"), <bdi key="o">{c.orgName}</bdi>]);
-  if (c.issuedAt) rows.push([t("verify.issuedAt"), <bdi key="i">{date(c.issuedAt)}</bdi>]);
+  if (c.sessionTitle) facts.push([t("verify.session"), c.sessionTitle]);
+  if (c.sessionDate) facts.push([t("verify.sessionDate"), date(c.sessionDate)]);
+  if (c.achievementName) facts.push([t("verify.achievement"), c.achievementName]);
+  facts.push([t("verify.org"), c.orgName]);
+  if (c.issuedAt) facts.push([t("verify.issuedAt"), date(c.issuedAt)]);
 
   return (
     <>
-      {/* The status first and largest: it is the answer to the only question
-          the reader has. `role="status"` because on a revoked certificate it
-          is the whole point of the page. */}
-      <p
-        role="status"
-        className={
-          revoked
-            ? "mt-6 rounded-card border border-edge-strong bg-raised px-4 py-3 text-h2 text-fg-heading"
-            : "mt-6 rounded-card border border-success bg-success-bg px-4 py-3 text-h2 text-success"
-        }
-      >
-        {revoked ? t("verify.revoked") : t("verify.valid")}
-      </p>
+      {/* The answer first and largest (V6). The mark beside it repeats it for the eye; the words carry it, so colour
+          is never the only channel (REQ-NFR-007). */}
+      <div className="mt-10 flex flex-col items-center gap-3.5 text-center">
+        <span
+          aria-hidden
+          className={`inline-flex size-16 items-center justify-center rounded-pill text-[1.875rem] font-extrabold leading-none ${
+            revoked ? "bg-signal text-on-signal" : "bg-accent text-on-accent"
+          }`}
+        >
+          {revoked ? "!" : <CheckIcon />}
+        </span>
+        <p role="status" className="font-display text-[1.75rem] leading-[1.4] font-extrabold text-fg-heading">
+          {revoked ? t("verify.revoked") : t("verify.valid")}
+        </p>
+      </div>
 
-      {/* The name is the biggest element after the status — it is what a
-          person holding the sheet is checking. */}
-      <p className="mt-8 text-h1 text-fg-heading">
-        <bdi>{c.recipientName}</bdi>
-      </p>
-
-      <dl className="mt-6 flex flex-col gap-3 border-t border-edge pt-6 text-body">
-        {rows.slice(1).map(([label, value]) => (
-          <div key={label} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <dt className="text-body-sm text-fg-muted">{label}</dt>
-            <dd className="text-fg-heading">{value}</dd>
+      <dl className="mt-7 rounded-panel border border-edge bg-surface px-4">
+        {facts.map(([label, value], index) => (
+          <div key={label} className={`flex gap-4 py-3 text-body-sm ${index > 0 ? "border-t border-edge" : ""}`}>
+            <dt className="w-[6.875rem] shrink-0 font-bold text-fg-muted">{label}</dt>
+            <dd className="min-w-0 flex-1 font-bold text-fg-heading">
+              <bdi>{value}</bdi>
+            </dd>
           </div>
         ))}
       </dl>

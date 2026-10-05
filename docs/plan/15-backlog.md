@@ -1837,6 +1837,83 @@ per-line report, and «لم يسجّل الدخول بعد» with its age, «أ�
 **Extended, not rebuilt** — no page file is deleted, no primitive is added. Done when an unbound row offers
 everything a member row offers plus the delete, and the delete is refused the moment it is bound.
 
+### ★★ Wave 26 — M28, the last wave (`DEC-245`, `DEC-247`, `DEC-248`)
+
+#### STORY-UIX-104 — The landing and register, rebuilt; what they do, untouched
+**Covers:** `REQ-UIX-114` · **M28** · **L** · lead · PR A
+**Built from:** `Landing.dc.html`, `Register.dc.html`. One commit carries the `DEC`, the appearance, the re-baselined
+capture, the rewritten `qa:appearance` and the rewritten `public-graph.test.ts`. `register/actions.ts` has no diff;
+the form's diff is presentation only. Done when the behaviour fingerprint is equal on both builds, a no-JS submission
+reaches the stub, `qa:contract` is green at every commit and the sweep finds nothing on the five routes.
+
+#### STORY-UIX-105 — Verify, rebuilt in its three states
+**Covers:** `REQ-UIX-115` · **M28** · **S** · lead · PR A
+**Built from:** `Verify.dc.html`. Deleted, then written. Done when valid, revoked and not-found are each captured
+beside the artboard and a revoked certificate still never says why.
+
+#### STORY-UIX-106 — The brand kit, read first
+**Covers:** `REQ-UIX-116` · **M28** · **M** · `branding` · PR B
+**Built from:** `AdminBranding.dc.html`. Deleted, then written, with its kept-behaviour table. Done when the database's
+refusal of a failing palette reaches the screen as it did, and every swatch carries its value in words.
+
+#### STORY-UIX-107 — Privacy, behind settings
+**Covers:** `REQ-UIX-117` · **M28** · **M** · `branding` · PR B
+**Built from:** `Privacy.dc.html`. Deleted, then written. The export's four states are built from the data — the
+artboard draws one. Done when each state is captured and the avatar answer is still given on the page.
+
+#### STORY-UIX-108 — The platform console, on the console frame
+**Covers:** `REQ-UIX-118` · **M28** · **L** · lead (the frame), `platform` · PR C
+**Built from:** the six `Platform*.dc.html`. The frame lands first; `platform-nav.tsx` is deleted and its table
+re-created as the rail's second nav set. Each screen deleted, then written. Done when every platform DAL function is
+shown to return counts and impersonation's existing suites pass untouched.
+
+#### STORY-UIX-109 — The mark, and its three moves
+**Covers:** `REQ-UIX-119` · **M28** · **M** · lead · PR A
+**Built from:** `logo-animated.svg` and `prototypes/logo-motion.html`. One component under `components/brand/`,
+keyframes in `globals.css`. Done when the reveal plays once on the landing and on sign-in, and all three moves are
+static under reduced motion.
+
+#### STORY-UIX-110 — The mark replaces the wordmark inside the product
+**Covers:** `REQ-UIX-120` · **M28** · **M** · lead · PR E
+Every importer of either wordmark moves to the mark; the favicon and app icons change; both wordmark files are
+deleted. Done when neither file exists and the console's bar holds a mark that never moves.
+
+#### STORY-STO-001 — The generator: one frame per trigger
+**Covers:** `REQ-STO-001`, `REQ-STO-002`, `REQ-STO-004`, `REQ-STO-018` · **M28** · **L** · `sessions` · PR D
+One definer function and its hooks for the eight triggers, the three clock-driven ones through one minutely job; a
+frame keyed so a retry writes nothing. Done when each trigger fired twice leaves one frame, readable inside a minute,
+and a cancelled session shows none.
+
+#### STORY-STO-002 — The story feed, the ring's states, and the way in from a live session
+**Covers:** `REQ-STO-006`, `REQ-STO-008` · **M28** · **M** · `sessions` · PR D
+`src/lib/dal/stories.ts`: the ring row and each session's frames, computed. «شاهد القصة» on a live `012`. Done when
+the order and the three states are proven by a test over RLS, not by the component.
+
+#### STORY-STO-003 — The viewer
+**Covers:** `REQ-STO-005`, `REQ-STO-007`, `REQ-STO-009`, `REQ-STO-010` · **M28** · **L** · `content` · PR D
+`ui/story-viewer`, the ring wired on `010`, views written, reactions. Done when a story is walked with single clicks
+alone and with the keyboard alone, and the ring turns seen after the last frame.
+
+#### STORY-STO-004 — The capture, and an attendee's photograph
+**Covers:** `REQ-STO-011`, `REQ-STO-012`, `REQ-STO-013` · **M28** · **L** · `content` · PR D
+`ui/story-capture`; the photo path is the album's upload. Done when a checked-in attendee's photograph is both a
+frame and an album photograph with the album's points, and the server refuses a member who is not checked in.
+
+#### STORY-STO-005 — The video, and moderation
+**Covers:** `REQ-STO-014`, `REQ-STO-015`, `REQ-STO-016` · **M28** · **L** · `content` · PR D
+`transcode_story_video` on the worker's `ffmpeg`. Done when an over-long video is refused from `ffprobe`'s reading, a
+transcoded one carries no container tag, and a report hides it at once and plays it in the queue.
+
+#### STORY-STO-006 — «قصص الحضور» on the attendance tab
+**Covers:** `REQ-STO-017` · **M28** · **M** · `content` · PR D
+A strip component the lead slots into `SCR-044`, add-only. Done when a removal takes the frame, the album photograph
+and the asset, writes its audit row and its compensating ledger row, and `044`'s wave-21 suites pass untouched.
+
+#### STORY-STO-007 — The story tables
+**Covers:** `REQ-STO-003`, `REQ-STO-010` · **M28** · **M** · lead · PR D
+`0198`: `story_frames` and `story_views`, each with `org_id`, RLS, the full policy set, a grant for every policy, its
+test and a fixture row for the generated sweep. Done when the isolation sweep covers both the day they exist.
+
 ## 24. Coverage check
 
 Regenerated by `scripts/traceability.mjs`; the table is in `TRACEABILITY.md`. The invariants this
@@ -1847,7 +1924,7 @@ backlog must satisfy:
    redesigns screens `STORY-AUT-001` built. `trace` cannot see that gap, because it checks
    REQ→story, not decision→story; `DEC-129` is why it is written down.
 2. **Every story cites at least one `REQ-*`.**
-3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183`, M18 since `DEC-195`, M19 since `DEC-199`, M20 since `DEC-205`, M21 since `DEC-213`, M22 since `DEC-216`, M23 since `DEC-225`, M24 since `DEC-230` and ★ M27 since `DEC-243`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
+3. **Every story names a milestone that exists in `14-roadmap.md`** — M0 … M13 since `DEC-069`, M14 since `DEC-172`, M15 since `DEC-176`, M16 since `DEC-180`, M17 since `DEC-183`, M18 since `DEC-195`, M19 since `DEC-199`, M20 since `DEC-205`, M21 since `DEC-213`, M22 since `DEC-216`, M23 since `DEC-225`, M24 since `DEC-230`, ★ M27 since `DEC-243` and ★★ M28 since `DEC-245`. ★ Since `DEC-183` the gate **checks** it: a story citing a milestone with no `## M<n> —` heading in the roadmap fails.
 4. **No story cites a requirement that does not exist.**
 
 A violation of any of the five **fails CI** (`13` §10). That gate is the only thing that keeps this
