@@ -1769,6 +1769,14 @@ still five.
 **Built from:** the certificate thumbnails on `AdminTemplatesCerts.dc.html`. Both orientations, bone on ink text, the
 serial bidi-isolated. Done when a certificate issued before the wave still renders as its own version.
 
+#### STORY-CRT-009 — ★ Hotfix: certificates may be switched on after the session has completed
+**Covers:** `REQ-CRT-017` · **M26** · **S** · lead · hotfix (not one of the wave's three PRs)
+`certificate_mode` defaults to `off` and the fan-out ran only on the edge into `completed`, so a session nobody
+switched on completed into a dead end — and `SCR-045` gated the only control in the product on `!closed`. `0194` lifts
+the refusal for a completed or archived session and fans out when the mode is set; the screen keeps the control and
+says it issues **now**. Done when an admin turns certificates on for an already-completed session and its eligible
+recipients receive one, with a cancelled session still refused.
+
 #### STORY-DSG-016 — The superseded baseline leaves the library
 **Covers:** `REQ-DSG-034` · **M26** · **M** · `designer` · PR B
 The eleven rows are deleted where the database permits and retired where `on delete restrict` refuses, with the
