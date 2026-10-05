@@ -37,13 +37,16 @@ async function orgRows(tx: Tx, o: Org): Promise<M2Org> {
     (
       await q<{ id: string }>(
         `insert into public.sessions (org_id, title, abstract, category_id, level, starts_at, duration_minutes, ends_at,
-                                      venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at, completed_at)
+                                      venue_id, capacity, rsvp_deadline_at, cancellation_cutoff_at, state, published_at, completed_at, certificate_mode)
          values ($1, $2, 'ملخص الجلسة', $3, 'introductory',
                  now() + ($4 || ' hours')::interval, 60, now() + ($4 || ' hours')::interval + interval '1 hour',
                  $5, 30, now() + ($4 || ' hours')::interval, now() + ($4 || ' hours')::interval,
                  $6::public.session_state,
                  case when $6 in ('published','in_progress','completed','archived') then now() - interval '1 day' end,
-                 case when $6 = 'completed' then now() - interval '1 hour' end)
+                 case when $6 = 'completed' then now() - interval '1 hour' end,
+                 -- wave 27 (0201, REQ-CRT-018): the column now defaults to 'review'. The fixture's sessions are the ones every
+                 -- earlier suite was written against, so they keep the mode they always had; the default has its own test.
+                 'off')
          returning id`,
         [o.id, title, o.categoryId, String(offsetH), o.venueId, state],
       )

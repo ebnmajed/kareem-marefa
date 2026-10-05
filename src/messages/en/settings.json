@@ -52,6 +52,7 @@
       },
       "labels": {
         "checkInRotation": "Code changes every",
+        "checkInFixed": "Does not change",
         "checkInGrace": "Previous code accepted for",
         "limitDocument": "Documents (MB)",
         "limitAudio": "Audio (MB)",
@@ -71,6 +72,7 @@
         "minActive": "{count, plural, one {at least 1 active member} other {at least <bdi>{value}</bdi> active members}}",
         "checkIn": "Changes every <rotation></rotation> · previous accepted <grace></grace>",
         "checkInNoGrace": "Changes every <rotation></rotation> · previous not accepted",
+        "checkInFixed": "Does not change",
         "seconds": "{count, plural, one {1 second} other {<bdi>{value}</bdi> seconds}}",
         "minutes": "{count, plural, one {1 minute} other {<bdi>{value}</bdi> minutes}}",
         "coPresenters": "{count, plural, one {up to 1 co-presenter} other {up to <bdi>{value}</bdi> co-presenters}}",

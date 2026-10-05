@@ -242,6 +242,7 @@ leaderboard from the **next** snapshot forward — never retroactively (A11).
 
 #### REQ-PRF-001 — Profile fields
 **Serves:** A3 · D12
+★ **Amended by `DEC-254` §2 (`REQ-PRF-012`):** the member no longer supplies **الشركة** — it follows their email domain or an admin's placement — and the first acceptance line below is **withdrawn**: a member with no شركة is refused nothing.
 Name and avatar come from Google. The member supplies: **الشركة** (required, chosen from the org
 list), **المسمى الوظيفي**, **نبذة**, **اهتماماتي** (topics of interest, from the org's
 تصنيفات).
@@ -252,6 +253,7 @@ list), **المسمى الوظيفي**, **نبذة**, **اهتماماتي** (to
 
 #### REQ-PRF-002 — The org admin maintains the company list
 **Serves:** D12
+★ **Amended by `DEC-254` §2:** «Members choose from it» is withdrawn; the list now carries each company's domains (`REQ-ADM-024`).
 **شركات** are an admin-managed list per مؤسسة. Members choose from it; they cannot type a free
 value.
 **Acceptance:**
@@ -354,6 +356,32 @@ export (`REQ-PRF-006`) includes the picture.
 **Acceptance:**
 - After anonymisation no storage object remains for that member's avatar.
 - An export archive for a member with a picture contains it.
+
+
+#### REQ-PRF-012 — A member's company follows their email domain
+**Serves:** owner 2026-10-05 · `DEC-254` §2 · D12 · `REQ-PRF-002` · `REQ-PRF-003`
+A **شركة** carries one or more email domains. A member whose address is on one of them belongs to that شركة: at
+first sign-in, at the binding of a member an admin added, and **retroactively** — when an admin adds a domain, the
+members of the مؤسسة who have no شركة and whose address matches are placed in it — ★ and so are members an earlier domain placed elsewhere (`DEC-255` §4); only an admin's placement is never moved. A domain belongs to at most one
+شركة in a مؤسسة. A company's domains and the مؤسسة's allowed-domain list (`REQ-TEN-007`) are independent: neither
+validates the other. ★ **The member never chooses**: the profile shows the شركة and offers no control for it.
+**Acceptance:**
+- A person signing in for the first time from a company's domain is a member of that شركة without being asked.
+- A person whose domain matches no شركة arrives with none, and is refused nothing for it.
+- Adding a domain to a شركة places every matching member who has none; a member placed by hand is not touched.
+- The same domain cannot be saved on two شركات of one مؤسسة; the same domain on شركات of two مؤسسات is allowed.
+- The member's own profile edit cannot change their شركة — refused by the database, not only absent from the form.
+- A member moved into a شركة brings the open period's points with them at the next snapshot; finalised snapshots and company points already paid do not change (`DEC-255` §4).
+
+#### REQ-PRF-013 — An admin's placement outranks the domain
+**Serves:** owner 2026-10-05 · `DEC-254` §2.6 · `REQ-ADM-009`
+An **مشرف المؤسسة** may place one member in a شركة by hand, or remove them from one. That placement is recorded as
+the admin's, and no later change to any company's domains moves or unplaces that member. A شركة chosen while adding
+a member (`REQ-TEN-009`) is such a placement.
+**Acceptance:**
+- An admin sets a member's شركة from the members screen; the change is audited with the old and the new.
+- A later domain change that would have moved that member leaves them where the admin put them.
+- A member added with a شركة keeps it at first sign-in, whatever their domain says.
 
 ---
 
@@ -580,6 +608,20 @@ from the event page when empty rather than rendered as an empty heading.
   by the form.
 - A session with no objectives renders no «ماذا ستتعلّم؟» section and no heading.
 
+
+#### REQ-SES-021 — An admin renames a session until it is published
+**Serves:** owner 2026-10-05 · `DEC-254` §5 · ★ **rule set by `DEC-255` §1** · `REQ-SES-020` · `REQ-ADM-023` · `09` `SCR-043`
+An **مشرف المؤسسة** changes a session's title from the session hub's header **while the session has not been
+published**, whether or not it was made from a proposal. Once it is published the name is fixed. The change is audited
+with the old and the new title.
+**Acceptance:**
+- The control is offered in every state before publication and in none after; the new title is what the hub, the
+  sessions table and the schedule tab's log show.
+- A title change to a published or later session is refused by the database, for an admin and a presenter alike.
+- A moderator, and a member who does not present the session, are refused by the database.
+- An empty title, or one over the length a proposal's title allows, is refused at the field.
+- The proposal the session was made from keeps its own title.
+
 ---
 
 ## 6. RSVP and waitlist — `RSV`
@@ -800,6 +842,7 @@ time until it rotates, a live check-in count, and a **«أبطل هذا الرم
 
 #### REQ-CHK-002 — Code format and rotation
 **Serves:** A7 · DEC-015
+★ **Amended by `DEC-254` §6 (`REQ-CHK-019`):** the rotation may be switched off, leaving one code per day inside the same validity window.
 Six characters, rotating every 10 minutes (org-configurable), with the previous code valid for a
 2-minute grace period. Each rotation window's code is a **stored row**, not derived from a secret.
 **Acceptance:**
@@ -945,6 +988,18 @@ The host view — and therefore the live code — is visible to the session's pr
 and moderators only. Not to members, including members who have already checked in.
 **Acceptance:**
 - A checked-in member requesting the host view is denied by policy, not merely by hidden UI.
+
+
+#### REQ-CHK-019 — The check-in code may stay fixed for the day
+**Serves:** owner 2026-10-05 · `DEC-254` §6 · amends `REQ-CHK-002` · `REQ-CHK-016` · `REQ-TEN-008`
+The مؤسسة's rotation setting has a value **«لا يتغيّر»**. With it, each day of a session has **one** code, valid from
+the day's start until that day stops taking attendance (`REQ-CHK-016`'s ceiling) and not a moment longer.
+**Acceptance:**
+- With rotation off, the code shown at the start of a day is the code shown at its end, and it checks a member in.
+- The same code is refused after the day's ceiling, and a day's code never works for another day.
+- The host view and the check-in screen show no countdown and no rotation period when there is none.
+- Switching rotation off while a code is current keeps that code for the rest of the day; switching it on ends the whole-day code after the grace period, like any previous code (`DEC-255` §3).
+- A period, when one is set, is still between 60 and 3600 seconds.
 
 ---
 
@@ -1689,6 +1744,7 @@ held certificates and none issued**, so the held ones can be re-rendered (`DEC-2
 **Acceptance:**
 - With no choice, a certificate is issued from the template `issue_certificate()` picks, and the screens name that same
   template — «افتراضي» only when it is the kind's default (`DEC-238` §2).
+- ★ **Amended by `DEC-256`:** the mode's control also sits on the session's **schedule tab** (`SCR-043`), with the session's other settings — the same control and the same function as on its certificates screen, never the schedule form's own save. The template is still chosen on the certificates screen alone.
 - ★ **Amended by `DEC-250`:** the mode is refused only once the session is **cancelled** (see `REQ-CRT-017`); the
   template once a certificate of that kind is issued.
 
@@ -1724,6 +1780,16 @@ from active check-ins and accepted presenters through `REQ-SES-017`'s predicate 
 - A cancelled session shows no control and is refused by the function.
 - The screen says the certificates are being **prepared**, not «saved»: the worker writes the rows.
 
+
+
+#### REQ-CRT-018 — Certificates are held for review unless somebody chooses otherwise
+**Serves:** owner 2026-10-05 · `DEC-254` §4 · `REQ-CRT-004` · `REQ-CRT-017`
+A new session's certificate mode is **`review`**: when it completes, a certificate is generated for every eligible
+recipient and **held** — invisible to its recipient and sending no mail — until an admin releases it.
+**Acceptance:**
+- A session created after this requirement and never touched on `SCR-045` completes with held certificates.
+- Nothing reaches a member until a release (`REQ-CRT-004`).
+- A session that existed before keeps the mode it had.
 
 ---
 
@@ -1786,6 +1852,7 @@ Publishing a new template version **never alters** posters or certificates alrea
 
 #### REQ-DSG-008 — Two library levels
 **Serves:** D67 · D59
+★★ **Amended by `DEC-254` §3 (`REQ-DSG-035`): there is ONE library level, the org's.** The platform library, duplicating from it and both acceptance lines below are withdrawn; what survives is their reason — an org's template is its own property.
 A **platform-wide** library managed by **مدير المنصة**, and **per-org** libraries that org admins
 build by duplicating a platform template or starting blank.
 **Acceptance:**
@@ -1941,6 +2008,7 @@ Template text boxes auto-fit, because Arabic runs roughly **1.2× the length of 
 
 #### REQ-DSG-026 — The template baseline ships with the platform
 **Serves:** A27
+★ **Amended by `DEC-254` §3 (`REQ-DSG-035`):** the baseline ships as a **seed every org receives as its own rows**, not as platform rows; the roster is counted per org.
 Poster families — **جلسة** (talk), **ورشة** (workshop, with a tasks strip), **حوار** (panel,
 multi-presenter), **لقاء** (meetup), **إعلان** (announcement) — each light and dark, RTL-first
 with a mirrored LTR variant reserved for English. Certificate families — **حضور**, **تقديم**,
@@ -2074,6 +2142,24 @@ session's picker and to issuance, and kept only so an already-issued document st
 - Issuance never resolves a superseded template.
 - Every certificate issued before the wave still renders, and its PDF is byte-reproducible (`REQ-CRT-014`).
 - The migration reports, per row, whether it was deleted or retired.
+
+
+#### REQ-DSG-035 — An organisation owns its templates from the day it is created
+**Serves:** owner 2026-10-05 · `DEC-254` §3 · amends `REQ-DSG-008`, `REQ-DSG-026` · `REQ-CRT-014` · `REQ-CRT-015`
+There is **one** library level: the مؤسسة's own. Creating a مؤسسة gives it the whole designed baseline — five poster
+families and three certificate families in both orientations — as its own published, editable templates, with one
+default per purpose and family. There is no platform library to copy from, no platform template an org reads, and no
+way to publish an org's template to other orgs. An improvement to the baseline reaches orgs created after it.
+**Acceptance:**
+- A مؤسسة created through the product can export a poster and issue a certificate of each kind without any setup.
+- Every مؤسسة that existed before this requirement holds the same set, and none was left without a certificate
+  default at any point of the change.
+- An admin edits a baseline template in place; `SCR-055` shows one list and no «انسخ لتعدّل».
+- A seeded document renders byte-identically to the baseline document it came from: no parity golden moves.
+- A certificate or a design document issued against a former platform version still renders as that version
+  (`REQ-CRT-014`); such a version is retired, never deleted.
+- The platform console has no template screen, and no function promotes a template across orgs.
+- An org's last live published template of a family that issuance or a poster falls back on cannot be retired; the refusal says why (`DEC-255` §5).
 
 ---
 
@@ -2499,6 +2585,18 @@ and new value (`DEC-148`).
 - Venues, categories and companies, report resolutions and survey templates — the six kinds that wrote nothing before
   `DEC-231` — write their rows from the database, so a direct write under the table's policy is covered too.
 - No record is written twice, and none can be updated or deleted by any role.
+
+
+#### REQ-ADM-024 — A company carries its domains, and changing them asks before it moves anyone
+**Serves:** owner 2026-10-05 · `DEC-254` §2.7 · `REQ-PRF-012` · `REQ-ADM-023` · `09` `SCR-048`
+The company form on `SCR-048` holds the company's domains as a list. Saving a change that would move members first
+says **how many members move and to which شركة, and how many are left alone because an admin placed them**; nothing
+moves until the admin confirms. Removing a domain unplaces nobody.
+**Acceptance:**
+- A domain is stored lowercase and refused if malformed or already on another شركة of the مؤسسة, with that reason.
+- The confirmation's two numbers equal what the save then does.
+- A save that moves nobody saves without asking.
+- Adding and removing a domain, and each member moved by it, is answerable in the audit log (`REQ-ADM-023`).
 
 ---
 
@@ -4179,6 +4277,7 @@ in with «أزلني», the two legal links, and deactivation behind a confirm s
 
 #### REQ-UIX-118 — The platform console moves onto the console frame
 **Serves:** `DEC-245` §1.2 · `REQ-ADM-001` · `REQ-ADM-002` · `REQ-ADM-003` · `REQ-ADM-019` · `REQ-TEN-002` · `REQ-TEN-006` · `REQ-TEN-007` · `REQ-NFR-014` · `09` `SCR-080` … `SCR-085`
+★ **Amended by `DEC-254` §3.5:** `SCR-083`, the platform library, is withdrawn — **five** platform screens, not six.
 The six platform screens are drawn from `Platform*.dc.html` on the console's bar and rail, with the platform's own nav
 set and a «لا بيانات مؤسسات هنا» mark in the bar.
 **Acceptance:**

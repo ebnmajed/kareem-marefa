@@ -64,8 +64,10 @@ describe("RPC-schedule_session.admin_only", () => {
       await tx.as(f.a.members[0].claims); // a presenter of the fixture's published session
       expect(await errorCode(() => tx.q(`update public.sessions set starts_at = now() where id = $1`, [f.m2.a.published]))).toBe(PERMISSION_DENIED);
       expect(await errorCode(() => tx.q(`update public.sessions set capacity = 999 where id = $1`, [f.m2.a.published]))).toBe(PERMISSION_DENIED);
-      // …but the four columns 0010 does grant them still work.
-      expect(await tx.q(`update public.sessions set title = 'عنوان منقّح' where id = $1 returning id`, [f.m2.a.published])).toHaveLength(1);
+      // …but the four columns 0010 does grant them still work. wave 27 (0200, DEC-255 §1): the title only until
+      // publication, so it is proven on the presenter's draft; `abstract` proves the grant on the published one.
+      expect(await tx.q(`update public.sessions set title = 'عنوان منقّح' where id = $1 returning id`, [f.m2.a.draft])).toHaveLength(1);
+      expect(await tx.q(`update public.sessions set abstract = 'ملخص منقّح' where id = $1 returning id`, [f.m2.a.published])).toHaveLength(1);
     });
   });
 

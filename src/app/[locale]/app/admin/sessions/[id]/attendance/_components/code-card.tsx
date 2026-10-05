@@ -79,7 +79,8 @@ export async function CodeCard({
   const roomDay = !!view && !!day && view.day?.id === day.id;
   const dayId = day?.id ?? null;
   const ceilingPassed = !!view?.closesAt && Date.parse(view.closesAt) <= Date.parse(view.readAt);
-  const nextChangeAt = view?.rotatesAt ?? (view && day && !dayStarted ? day.startsAt : null);
+  // With rotation off (REQ-CHK-019) the code changes by itself only when the day's one code stops.
+  const nextChangeAt = view?.rotatesAt ?? (view && day && !dayStarted ? day.startsAt : view?.code ? view.validUntil : null);
 
   return (
     <section aria-label={t("attendance.code.region")} className={CARD}>
@@ -91,7 +92,7 @@ export async function CodeCard({
               <span>{view.code.slice(3)}</span>
             </p>
             <span className="shrink-0 text-caption text-fg-muted">
-              <span className="sr-only">{t("attendance.code.rotatesIn")} </span>
+              {view.rotatesAt ? <span className="sr-only">{t("attendance.code.rotatesIn")} </span> : null}
               <HostClock
                 variant="console"
                 sessionId={sessionId}
