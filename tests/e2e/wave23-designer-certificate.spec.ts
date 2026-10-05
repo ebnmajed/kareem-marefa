@@ -68,12 +68,14 @@ test.beforeAll(async ({}, testInfo) => {
   await db.query(`update public.members set display_name = $2 where id = $1`, [memberId, LONG_NAME]);
 
   // The platform's landscape attendance certificate, copied into the org's library as its own template.
+  // ★ LEDGER (wave 27, PR D, DEC-254 §3): the org's own seeded template — there is no live platform row to read.
   const { rows: platform } = await db.query<{ document: { master: { width: number; height: number } } }>(
     `select v.document from public.design_template_versions v
        join public.design_templates t on t.id = v.template_id
-      where t.scope = 'platform' and t.purpose = 'certificate' and t.family = 'attendance'
+      where t.org_id = $1 and t.purpose = 'certificate' and t.family = 'attendance'
         and (v.document->'master'->>'width')::int > (v.document->'master'->>'height')::int
-      order by v.version desc limit 1`,
+      order by t.is_default desc, v.version desc limit 1`,
+    [orgId],
   );
   // The name layer held to ONE line, so the org's longest name (120 characters at most, `0004`) cannot fit it at the
   // template's floor — the check must say so. Every other byte is the platform's.

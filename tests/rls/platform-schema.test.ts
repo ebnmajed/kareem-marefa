@@ -449,8 +449,11 @@ describe("platform — the org write paths (REQ-TEN-002, REQ-TEN-007)", () => {
       });
 
       const platform = await tx.q<{ purpose: string; family: string; is_default: boolean }>(
+        // wave 27, PR D (0206, 0209; ledger D5): the baseline is the org's OWN rows, seeded when it was created — the
+        // admin reads them through RLS, and no live platform row exists. The property this case owns is unchanged.
         `select purpose, family, is_default from public.design_templates
-          where scope = 'platform' and retired_at is null order by purpose, family`,
+          where org_id = $1 and scope = 'org' and retired_at is null order by purpose, family`,
+        [orgId],
       );
       // ★ The roster's SIZE is REQ-DSG-026's CI count (`designer`'s), and it moves
       // from `0061`'s eight to DEC-148's eleven (certificates × landscape and
@@ -470,14 +473,14 @@ describe("platform — the org write paths (REQ-TEN-002, REQ-TEN-007)", () => {
       const versions = await tx.q<{ n: string }>(
         `select count(*) as n from public.design_template_versions v
            join public.design_templates t on t.id = v.template_id
-          where t.scope = 'platform' and v.published_at is not null`,
+          where t.org_id = $1 and v.published_at is not null`,
+        [orgId],
       );
       expect(Number(versions[0].n)).toBeGreaterThanOrEqual(8);
 
-      // The org owns none of them and can edit none of them (REQ-DSG-008).
-      // `templates_update_org` has `scope = 'org'` in its USING clause, so the
-      // statement matches no row: it is not an error, it is a no-op. Asserting
-      // 42501 here would pass for the wrong reason the day the policy widened.
+      // A PLATFORM row is still never an org's to edit (REQ-DSG-008's surviving half): `templates_update_org` has
+      // `scope = 'org'` in its USING clause, so the statement matches no row — a no-op, not an error. Asserting 42501
+      // here would pass for the wrong reason the day the policy widened. (The org's OWN rows it does edit: REQ-DSG-035.)
       await tx.q(`update public.design_templates set name = 'مخطوف' where scope = 'platform' and family = 'talk'`);
       await tx.asOwner();
       expect(
@@ -506,107 +509,9 @@ describe("platform — the org write paths (REQ-TEN-002, REQ-TEN-007)", () => {
   });
 });
 
-describe("platform — the template library (REQ-DSG-008, SCR-083)", () => {
-  it("RPC-promote_template_to_platform — a published org version becomes a platform template BY COPY", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await apply(tx);
-
-      await tx.as(f.a.admin.claims);
-      expect(await errorMessage(() => tx.q(`select public.promote_template_to_platform($1)`, [f.m6.a.certTemplateVersionId]))).toMatch(
-        /not_platform_admin/,
-      );
-
-      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
-      const [{ id: promoted }] = await tx.q<{ id: string }>(
-        `select public.promote_template_to_platform($1, 'شهادة المقدّم (المنصة)') as id`,
-        [f.m6.a.certTemplateVersionId],
-      );
-
-      await tx.asOwner();
-      const [t] = await tx.q<{ scope: string; org_id: string | null; name: string; duplicated_from: string; is_default: boolean }>(
-        `select scope, org_id, name, duplicated_from, is_default from public.design_templates where id = $1`,
-        [promoted],
-      );
-      expect(t.scope).toBe("platform");
-      expect(t.org_id).toBeNull();
-      expect(t.name).toBe("شهادة المقدّم (المنصة)");
-      expect(t.duplicated_from).toBe(f.m6.a.certTemplateId);
-      expect(t.is_default).toBe(false);
-
-      // A COPY: renaming the org's template afterwards does not reach it.
-      await tx.q(`update public.design_templates set name = 'غُيّر بعد الترقية' where id = $1`, [f.m6.a.certTemplateId]);
-      const [still] = await tx.q<{ name: string }>(`select name from public.design_templates where id = $1`, [promoted]);
-      expect(still.name).toBe("شهادة المقدّم (المنصة)");
-
-      // And the version came across, published.
-      const versions = await tx.q<{ version: number; published_at: string | null }>(
-        `select version, published_at from public.design_template_versions where template_id = $1`,
-        [promoted],
-      );
-      expect(versions).toHaveLength(1);
-      expect(versions[0].published_at).not.toBeNull();
-    });
-  });
-
-  it("RPC-promote_template_to_platform — an unpublished version and a platform version are refused", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await apply(tx);
-      await tx.asOwner();
-      const [draft] = await tx.q<{ id: string }>(
-        `insert into public.design_template_versions (template_id, version, document)
-         values ($1, 2, '{"schemaVersion":1,"layers":[]}'::jsonb) returning id`,
-        [f.m6.a.certTemplateId],
-      );
-
-      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
-      expect(await errorMessage(() => tx.q(`select public.promote_template_to_platform($1)`, [draft.id]))).toMatch(
-        /version_not_published/,
-      );
-      expect(
-        await errorMessage(() => tx.q(`select public.promote_template_to_platform($1)`, [f.m6.platformTemplateVersionId])),
-      ).toMatch(/already_platform/);
-    });
-  });
-
-  it("RPC-retire_platform_template.floor — the library never falls below one default per purpose", async () => {
-    await withTx(async (tx) => {
-      const f = await seedBase(tx);
-      await apply(tx);
-      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
-
-      const library = await tx.q<{ id: string; purpose: string; family: string; is_default: boolean }>(
-        `select * from public.platform_template_library()`,
-      );
-      // Eight before DEC-148's seed, eleven after — the floor below holds on both.
-      expect(library.length).toBeGreaterThanOrEqual(8);
-
-      const certs = library.filter((t) => t.purpose === "certificate" && t.is_default);
-      // Retire every certificate default but the last; the last is refused.
-      for (const t of certs.slice(0, -1)) {
-        await tx.q(`select public.retire_platform_template($1, true)`, [t.id]);
-      }
-      const last = certs[certs.length - 1];
-      expect(await errorMessage(() => tx.q(`select public.retire_platform_template($1, true)`, [last.id]))).toMatch(
-        /last_platform_default/,
-      );
-    });
-  });
-
-  it("RPC-platform_template_library — a non-platform-admin is refused, and only platform scope comes back", async () => {
-    await withTx(async (tx) => {
-      const f = await seed(tx);
-      await apply(tx);
-      await tx.as(f.a.admin.claims);
-      expect(await errorMessage(() => tx.q(`select * from public.platform_template_library()`))).toMatch(/not_platform_admin/);
-
-      await tx.as(platformClaims(f.platformAdmin.authUserId, f.platformAdmin.email));
-      const rows = await tx.q<{ id: string }>(`select id from public.platform_template_library()`);
-      expect(rows.map((r) => r.id)).not.toContain(f.m6.a.certTemplateId);
-    });
-  });
-});
+// wave 27, PR D (0209, DEC-254 §3, REQ-DSG-035; ledger D2): the «template library» block stood here — four cases on
+// `promote_template_to_platform()`, `retire_platform_template()` and `platform_template_library()`. The platform library
+// is withdrawn and 0209 drops all three; that they are gone is asserted in `templates-platform-removal.test.ts`.
 
 describe("platform — metrics (REQ-ADM-003, SCR-084)", () => {
   const ALLOWED_ORG_COLUMNS = [

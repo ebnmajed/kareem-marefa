@@ -77,9 +77,11 @@ async function template(
   opts: { orgId: string | null; scope: "platform" | "org"; purpose?: "poster" | "certificate"; family?: string; layers?: unknown[] },
 ) {
   const purpose = opts.purpose ?? "poster";
+  // ★ LEDGER (wave 27, PR D, DEC-254 §3.4): a platform row may exist only RETIRED (`design_templates_platform_retired`,
+  // 0210), so the scaffolding makes one the way production keeps one — retired. Setup only.
   const [t] = await tx.q<{ id: string }>(
-    `insert into public.design_templates (org_id, scope, purpose, family, name)
-     values ($1, $2, $3, $4, $5) returning id`,
+    `insert into public.design_templates (org_id, scope, purpose, family, name, retired_at)
+     values ($1, $2::public.template_scope, $3, $4, $5, case when $2::public.template_scope = 'platform' then now() end) returning id`,
     [opts.orgId, opts.scope, purpose, opts.family ?? (purpose === "poster" ? "talk" : "attendance"), "قالب"],
   );
   const [v] = await tx.q<{ id: string; org_id: string | null }>(
@@ -132,19 +134,29 @@ async function certificate(
 /* ═══ design_templates — 03 §5.9a, the one deliberate cross-org read ══════ */
 
 describe("POL-design_templates", () => {
-  it("select.platform — an org admin READS a platform template, and org B's is invisible", async () => {
+  // ★ LEDGER C-4 (wave 27, PR D, DEC-254 §3.4): this read «an org admin READS a platform template». There is no
+  // platform library: a platform row is readable only while a row of the org names it (0210's `templates_read`).
+  // Expectation inverted for an unreferenced row, and the referenced case added in its place.
+  it("select.platform — an org admin reads a platform template only while its own document names it; org B's is invisible", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       const platform = await template(tx, { orgId: null, scope: "platform" });
       const mine = await template(tx, { orgId: f.a.id, scope: "org" });
       const theirs = await template(tx, { orgId: f.b.id, scope: "org" });
 
-      await tx.as(f.a.admin.claims);
-      const rows = await tx.q<{ id: string }>(`select id from public.design_templates`);
-      const ids = rows.map((r) => r.id);
-      expect(ids).toContain(platform.templateId);
+      const read = async () => {
+        await tx.as(f.a.admin.claims);
+        return (await tx.q<{ id: string }>(`select id from public.design_templates`)).map((r) => r.id);
+      };
+      let ids = await read();
+      expect(ids).not.toContain(platform.templateId);
       expect(ids).toContain(mine.templateId);
       expect(ids).not.toContain(theirs.templateId);
+
+      await tx.asOwner();
+      await document(tx, f.a.id, platform.versionId);
+      ids = await read();
+      expect(ids).toContain(platform.templateId);
     });
   });
 
@@ -221,12 +233,18 @@ describe("POL-design_templates", () => {
 /* ═══ design_template_versions — immutable, and the template guard ════════ */
 
 describe("POL-design_template_versions", () => {
-  it("read follows the parent; a version of a platform template is readable and not writable", async () => {
+  // ★ LEDGER (wave 27, PR D): «a version of a platform template is readable» holds only while the org names it (0210).
+  // Expectation narrowed: unreferenced, it is not; referenced by the org's document, it is. Never writable either way.
+  it("read follows the parent; a version of a platform template is readable only while the org names it, and never writable", async () => {
     await withTx(async (tx) => {
       const f = await setup(tx);
       const platform = await template(tx, { orgId: null, scope: "platform" });
       const theirs = await template(tx, { orgId: f.b.id, scope: "org" });
 
+      await tx.as(f.a.admin.claims);
+      expect((await tx.q<{ id: string }>(`select id from public.design_template_versions`)).map((r) => r.id)).not.toContain(platform.versionId);
+      await tx.asOwner();
+      await document(tx, f.a.id, platform.versionId);
       await tx.as(f.a.admin.claims);
       const ids = (await tx.q<{ id: string }>(`select id from public.design_template_versions`)).map((r) => r.id);
       expect(ids).toContain(platform.versionId);

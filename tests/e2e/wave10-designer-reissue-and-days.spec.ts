@@ -135,11 +135,13 @@ async function datedSession(title: string, days: string[]): Promise<string> {
 /** A poster bound to a session, on the platform `talk` family's latest
  *  published version — the same version `poster_render_context()` would pick. */
 async function bindPoster(sessionId: string): Promise<string> {
+  // ★ LEDGER (wave 27, PR D, DEC-254 §3): the org's own seeded template — there is no live platform row to read.
   const { rows: version } = await db.query<{ id: string; document: unknown }>(
     `select v.id, v.document from public.design_templates t
        join public.design_template_versions v on v.template_id = t.id
-      where t.scope = 'platform' and t.purpose = 'poster' and t.family = 'talk' and v.published_at is not null
-      order by v.version desc limit 1`,
+      where t.org_id = $1 and t.purpose = 'poster' and t.family = 'talk' and v.published_at is not null
+      order by t.is_default desc, v.version desc limit 1`,
+    [orgId],
   );
   const { rows: doc } = await db.query<{ id: string }>(
     `insert into public.design_documents (org_id, purpose, document, template_version_id, bound_session_id)

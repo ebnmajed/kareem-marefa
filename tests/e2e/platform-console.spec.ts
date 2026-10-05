@@ -453,11 +453,13 @@ test("★ REQ-TEN-002: a super admin creates an org and sets its first admin, an
   expect(audit.map((r) => r.action)).toContain("org.created");
   expect(audit.find((r) => r.action === "org.created")!.actor_role).toBe("platform_admin");
 
-  // DEC-052: the A27 baseline is there for an org that has published nothing.
+  // DEC-052, as DEC-254 §3 made it: the A27 baseline is there for an org that has published nothing — as the org's OWN
+  // eleven templates, seeded when it was created (0206), not as platform rows.
   const { rows: baseline } = await db.query<{ n: string }>(
-    `select count(*) as n from public.design_templates where scope = 'platform' and retired_at is null`,
+    `select count(*) as n from public.design_templates where org_id = $1 and retired_at is null`,
+    [rows[0].id],
   );
-  expect(Number(baseline[0].n)).toBeGreaterThanOrEqual(8);
+  expect(Number(baseline[0].n)).toBe(11);
 });
 
 /** Open a row's menu on SCR-080 and choose an act. The hidden twin (card list or table) is excluded by the role locator. */

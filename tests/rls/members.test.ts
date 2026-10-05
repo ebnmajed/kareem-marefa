@@ -72,12 +72,21 @@ describe("POL-members", () => {
     });
   });
 
-  it("update.self — a company from another org is rejected by the trigger", async () => {
+  // wave 27 (0208, REQ-PRF-012, ledger D1): a member no longer writes their own company at all — the column left the
+  // grant, so the refusal is the grant's `42501`, before 0004's same-org trigger is ever reached. The trigger itself is
+  // still proven where a writer that MAY write the column meets it (`company-domains.test.ts`, `add-a-member.test.ts`).
+  it("update.self.no_company — a member cannot write their own company; their other four fields still save", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
-      await tx.as(f.a.members[0].claims);
-      const msg = await errorMessage(() => tx.q(`update public.members set company_id = $2 where id = $1`, [f.a.members[0].memberId, f.b.companyId]));
-      expect(msg).toMatch(/another org/);
+      const me = f.a.members[0];
+      await tx.as(me.claims);
+      expect(await errorCode(() => tx.q(`update public.members set company_id = $2 where id = $1`, [me.memberId, f.b.companyId]))).toBe(PERMISSION_DENIED);
+      expect(await errorCode(() => tx.q(`update public.members set company_id = null where id = $1`, [me.memberId]))).toBe(PERMISSION_DENIED);
+      const saved = await tx.q<{ display_name: string }>(
+        `update public.members set display_name = 'اسم جديد', job_title = 'مسمّى', bio = 'نبذة', leaderboard_opt_out = true where id = $1 returning display_name`,
+        [me.memberId],
+      );
+      expect(saved).toEqual([{ display_name: "اسم جديد" }]);
     });
   });
 

@@ -1,0 +1,21 @@
+-- 0208 · wave 27, PR D (DEC-254 §2.5, §8.4, DEC-255 §6, REQ-PRF-012, STORY-PRF-007) — a member can no longer write
+-- their own company.
+--
+-- ★ THE RULE IS THE DATABASE'S, NOT THE FORM'S. Since PR B the profile shows the company and offers no control for it,
+-- and `updateMyProfile()` no longer sends the column. This removes `company_id` from the member's own column grant
+-- (0004:310), so a crafted update is refused `42501` whatever a client sends. A company is written by
+-- `provision_member()` (the email domain), `save_company()` (a domain change, confirmed), `add_member()` and
+-- `set_member_company()` (an admin's hand) — all definer functions, none of which needs the grant.
+--
+-- ★ WHY IT IS ITS OWN PULL REQUEST. `main`'s profile save sent `company_id` with every save until PR B merged, and a
+-- column the grant does not hold refuses the WHOLE update. Pushed before B's code was live, this would have broken
+-- every profile save. B merged on 2026-10-05 (`8896c98a`); this follows it.
+--
+-- The other four columns of 0004's grant — display_name, job_title, bio, leaderboard_opt_out — are untouched.
+--
+-- | Test | Proves |
+-- |---|---|
+-- | `POL-members.update.self.no_company` | A member updating their own `company_id` is refused `42501`; the same member's display_name, job_title, bio and leaderboard_opt_out still save. |
+-- | `RPC-set_member_company.still_writes` | An admin's placement through `set_member_company()` still writes the column after the revoke. |
+
+revoke update (company_id) on public.members from authenticated;

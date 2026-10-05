@@ -170,7 +170,11 @@ describe("REQ-ADM-023 — the template library (0191)", () => {
       const f = await seed(tx);
       const m = await mark(tx);
       await tx.asOwner();
-      await tx.q(`update public.design_templates set name = name || ' ' where scope = 'platform' and purpose = 'certificate'`);
+      // ★ LEDGER C-6 (wave 27, PR D): a platform row exists only retired now, and the chain leaves no platform
+      // certificate at all — so the change is made to every platform row there is (the fixture's retired poster), and
+      // the case asserts it touched one, which it could not prove before. Selector widened; expectation added.
+      const touched = await tx.q(`update public.design_templates set name = name || ' ' where scope = 'platform' returning id`);
+      expect(touched.length).toBeGreaterThan(0);
       const [{ n }] = await tx.q<{ n: string }>(
         `select count(*)::text as n from public.audit_log where action like 'design_template.%' and occurred_at > $1::timestamptz`,
         [m],

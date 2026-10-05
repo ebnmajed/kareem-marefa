@@ -1,5 +1,5 @@
--- the lead (wave 27, M29) — the POLICY half of M2: who may still read a platform template once there is no platform
--- library. Applied AFTER 0010_platform_library_removal.sql, as the last part of the same promoted migration (PR D).
+-- 0210 · wave 27, PR D (DEC-254 §3.4, DEC-255 §5, REQ-DSG-035, REQ-CRT-014) — the POLICY half of the removal: who may
+-- still read a platform template once there is no platform library. Applied after 0209, in the same push.
 --
 -- Serves:  REQ-DSG-035 · REQ-CRT-014 (a certificate or a document issued against a former platform version still
 --          renders as that version) · Cites: DEC-254 §3.4, DEC-255 §5 (D5), 0055:577-598, 0099:63

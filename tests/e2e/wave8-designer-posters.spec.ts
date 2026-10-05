@@ -129,9 +129,11 @@ test.beforeAll(async ({}, testInfo) => {
   const modId = await provision(emails.mod);
   await db.query(`update public.members set org_role = 'moderator' where id = $1`, [modId]);
 
+  // ★ LEDGER (wave 27, PR D, DEC-254 §3): the org's own seeded template — there is no live platform row to read.
   const { rows: version } = await db.query<{ id: string; document: unknown }>(
     `select v.id, v.document from public.design_template_versions v join public.design_templates t on t.id = v.template_id
-      where t.scope = 'platform' and t.purpose = 'poster' and t.family = 'talk' order by v.version desc limit 1`,
+      where t.org_id = $1 and t.purpose = 'poster' and t.family = 'talk' order by t.is_default desc, v.version desc limit 1`,
+    [orgId],
   );
   const { rows: cat } = await db.query<{ id: string }>(`insert into public.categories (org_id, name) values ($1, 'تصميم') returning id`, [orgId]);
 
@@ -184,13 +186,17 @@ async function signIn(context: BrowserContext, email: string) {
 }
 
 const onPhone = () => test.info().project.name === "phone";
-const schedule = (id: string) => `/ar/app/admin/sessions/${id}/schedule`;
+// ★ LEDGER (wave 27, PR D): wave 21 rebuilt الجدولة read-by-default (SCR-043, 2026-10-02): the poster picker is a
+// setting shown while EDITING, in its own `poster-picker` section, and `poster` is now the read view's one-line summary
+// («—» with no file yet). This spec was last edited 2026-09-17 and never followed — as `wave13-designer-upload-render`
+// did. Selector moved: `?edit`, and the picker's own section. Unrelated to the template read.
+const schedule = (id: string) => `/ar/app/admin/sessions/${id}/schedule?edit`;
 /** ★ DEC-145 / DEC-149 §4: page content under `/app` is found inside `#main`
  *  — a hidden streamed copy can sit outside it. Dialogs and toasts stay
  *  page-wide. */
 const main = (page: Page) => page.locator("#main");
 /** The slot, inside the schedule page's own «الملصق» section. */
-const picker = (page: Page) => main(page).locator('section[aria-labelledby="poster"]');
+const picker = (page: Page) => main(page).locator('section[aria-labelledby="poster-picker"]');
 /** One of the three cards, by its title. */
 const card = (page: Page, title: string) => picker(page).locator("article", { has: page.getByRole("heading", { name: title, level: 3, exact: true }) });
 

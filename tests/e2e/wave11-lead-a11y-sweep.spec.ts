@@ -193,9 +193,11 @@ test("admin", async ({ context, page }) => {
     [orgId],
   );
   ids.surveyTemplate = tpl[0].id;
+  // ★ LEDGER (wave 27, PR D, DEC-254 §3): the org's own seeded template — there is no live platform row to read.
   const { rows: version } = await db.query<{ id: string; document: unknown }>(
     `select v.id, v.document from public.design_template_versions v join public.design_templates t on t.id = v.template_id
-      where t.scope = 'platform' and t.purpose = 'poster' and t.family = 'talk' order by v.version desc limit 1`,
+      where t.org_id = $1 and t.purpose = 'poster' and t.family = 'talk' order by t.is_default desc, v.version desc limit 1`,
+    [orgId],
   );
   const { rows: doc } = await db.query<{ id: string }>(
     `insert into public.design_documents (org_id, purpose, document, template_version_id, bound_session_id)

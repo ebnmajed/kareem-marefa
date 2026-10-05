@@ -1,6 +1,5 @@
 // Who may still read a platform template once there is no platform library — REQ-DSG-035, REQ-CRT-014, DEC-254 §3.4,
-// DEC-255 (D5). The lead's policy half of M2, `supabase/proposed/designer/0011_platform_rows_read.sql`, applied after
-// `0010` in the order the follow-up PR promotes them.
+// DEC-255 (D5). The lead's policy half of M2, promoted as `0210_platform_rows_read.sql` after `0209`.
 //
 // ★ A platform row is readable by an org ONLY while a row of that org names it — a certificate, a design document or a
 // session's certificate design — and by no other org. ★★ And the reason it must stay readable is not only the studio
@@ -8,15 +7,16 @@
 // document's template version it returns early and enforces no locked region. The last case holds that.
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, pool, withTx, type Tx } from "./db";
-import { M2, M2_POLICIES, world } from "./templates-world";
+import { errorCode, errorMessage, pool, withTx, type Tx } from "./db";
+import { removal, world } from "./templates-world";
 
 afterAll(() => pool.end());
 
 async function removed(tx: Tx) {
+  // ★ LEDGER (wave 27, PR D): 0209 and 0210 are promoted — the policies are the chain's; the world 0209 met is rebuilt
+  // and 0209's sections 1 – 3 run against it (`templates-world.ts`), which leaves exactly the referenced rows, retired.
   const w = await world(tx);
-  await applyProposed(tx, M2);
-  await applyProposed(tx, M2_POLICIES);
+  await removal(tx);
   return w;
 }
 

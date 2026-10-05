@@ -22,6 +22,22 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+/** ★ LEDGER (wave 27, PR D): the pre-wave-24 `talk` composition — 0098's version 2, read from the migration. This
+ *  spec's assertions name its layers (`l_where` «المكان», `l_kicker` «نوع الجلسة»), which DEC-242 took out of the
+ *  baseline. They only passed while a database kept that RETIRED platform row and the old read (no `retired_at`
+ *  filter, a tie on `version`) happened to return it; on a fresh chain they could not. The composition is inserted as
+ *  the org's own template, so the spec owns its fixture and depends on no platform row. */
+function legacyTalk(): unknown {
+  const dir = join(process.cwd(), "supabase", "migrations");
+  const file = readdirSync(dir).find((f) => f.endsWith("_certificate_library.sql"));
+  if (!file) throw new Error("0098 (the certificate library) is not in supabase/migrations");
+  const m = readFileSync(join(dir, file), "utf8").match(/-- @family talk@v2[\s\S]*?\$json\$([\s\S]*?)\$json\$/);
+  if (!m) throw new Error("0098 has no talk@v2 document");
+  return JSON.parse(m[1]!);
+}
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
@@ -109,11 +125,15 @@ test.beforeAll(async ({}, testInfo) => {
   // `derive()` clamps a layer's position into the safe area, and only a frame
   // WIDER than the safe area is still over it — the v1 template failed a
   // check only because its 60 px box was shorter than its own line.
+  // ★ LEDGER (wave 27, PR D): the studio's fixture is the pre-wave-24 `talk` composition, as the org's own template
+  // (`legacyTalk()` says why). Setup only; every assertion below is unchanged.
+  const { rows: legacyTpl } = await db.query<{ id: string }>(
+    `insert into public.design_templates (org_id, scope, purpose, family, name) values ($1, 'org', 'poster', 'talk', 'جلسة — التركيب السابق') returning id`,
+    [orgId],
+  );
   const { rows: version } = await db.query<{ id: string; document: { layers: Array<{ id: string; frame: { x: number; w: number } }> } }>(
-    `select v.id, v.document from public.design_template_versions v
-       join public.design_templates t on t.id = v.template_id
-      where t.scope = 'platform' and t.purpose = 'poster' and t.family = 'talk'
-      order by v.version desc limit 1`,
+    `insert into public.design_template_versions (template_id, version, document, published_at) values ($1, 1, $2::jsonb, now()) returning id, document`,
+    [legacyTpl[0]!.id, JSON.stringify(legacyTalk())],
   );
   const document = version[0].document;
   for (const layer of document.layers) if (layer.id === "l_where") layer.frame = { ...layer.frame, x: 0, w: 1080 };

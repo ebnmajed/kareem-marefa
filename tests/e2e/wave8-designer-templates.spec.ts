@@ -69,14 +69,16 @@ async function newOrg(tag: string, adminAddress: string): Promise<string> {
   return rows[0].id;
 }
 
-/** The latest version of a platform default, as the migrations seeded it. */
+/** The latest version of the org's seeded default, as the seed wrote it.
+ *  ★ LEDGER (wave 27, PR D, DEC-254 §3): it read the PLATFORM default; there is no live platform row, and the org's own
+ *  seeded default is the same document under the same name. Selector moved. */
 async function platformDefault(purpose: "poster" | "certificate", family: string) {
   const { rows } = await db.query<{ template_id: string; version_id: string; name: string; document: unknown }>(
     `select t.id as template_id, v.id as version_id, t.name, v.document
        from public.design_templates t join public.design_template_versions v on v.template_id = t.id
-      where t.scope = 'platform' and t.purpose = $1 and t.family = $2 and t.is_default
+      where t.org_id = $3 and t.purpose = $1 and t.family = $2 and t.is_default
       order by v.version desc limit 1`,
-    [purpose, family],
+    [purpose, family, orgId],
   );
   return rows[0]!;
 }
