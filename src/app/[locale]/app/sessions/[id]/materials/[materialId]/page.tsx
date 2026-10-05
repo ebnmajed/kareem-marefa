@@ -19,11 +19,11 @@ export default async function MaterialViewerPage({ params }: { params: Promise<{
   const [data, heading, tList] = await Promise.all([getViewerData(locale, materialId), getSessionHeading(locale, id), getTranslations("materials.list")]);
   if (!data || !heading || data.sessionId !== id) notFound();
 
-  // Storage signs the source for these, whatever `allow_download` says (`0116:114-120`) — so they get the control,
-  // and a denied member gets neither control nor URL (REQ-MAT-005, DEC-214 §3 N2, `DEC-209`'s audio-row rule).
+  // Storage signs the source for these, whatever `allow_download` says (`0116:114-120`) — so they get the control.
+  // ★ A member never does (DEC-266, the owner's ruling): the viewer is theirs, the original file is not.
   const isStaff = !!data.viewerIsStaff;
   const isPresenter = !!data.viewerIsPresenter;
-  const canDownload = data.allowDownload || isPresenter || isStaff;
+  const canDownload = isPresenter || isStaff;
 
   return (
     <ViewerScreen

@@ -356,7 +356,10 @@ async function signDownload(
 /** One photograph — anyone who may see it, never a hidden or removed one, staff included
  *  (`record_photo_download()`, DEC-182 Q3). Audits `photo.downloaded`. */
 export async function recordPhotoDownload(locale: string, photoId: string): Promise<PhotoDownloadResult> {
-  const { supabase } = await sessionClient(locale);
+  const { session, supabase } = await sessionClient(locale);
+  // Staff only (DEC-266, the owner's ruling): a member sees a photograph and never downloads it. Said here before
+  // the round trip; `record_photo_download()` is the boundary.
+  if (session.role !== "admin" && session.role !== "moderator") return { status: "refused" };
   const { data, error } = await supabase.rpc("record_photo_download", { p_photo: photoId });
   if (error) return error.code === "42501" ? { status: "refused" } : { status: "failed" };
   return signDownload(supabase, "photos", data);

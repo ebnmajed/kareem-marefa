@@ -15,17 +15,21 @@ export function PhotoAlbum({
   locale,
   sessionId,
   reportable = {},
+  canDownload = false,
   children,
 }: {
   photos: LightboxPhoto[];
   locale: string;
   sessionId: string;
   reportable?: Record<string, "open" | "reported">;
+  /** Staff only (DEC-266). */
+  canDownload?: boolean;
   children: ReactNode;
 }) {
   return (
     <PhotoLightbox
       photos={photos}
+      canDownload={canDownload}
       extra={(photo) => (
         <>
           {reportable[photo.id] ? (
