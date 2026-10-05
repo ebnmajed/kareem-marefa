@@ -19,7 +19,7 @@ export function LanguageToggle() {
       locale={other}
       lang={other}
       dir={other === "ar" ? "rtl" : "ltr"}
-      className="flex h-11 items-center rounded-field px-3 text-label text-fg-body underline-offset-4 transition-colors duration-150 hover:text-fg-heading hover:underline"
+      className="inline-flex min-h-11 items-center px-2 text-body-sm font-semibold text-fg-muted underline-offset-4 hover:text-fg-heading hover:underline"
     >
       {other === "ar" ? "العربية" : "English"}
     </Link>

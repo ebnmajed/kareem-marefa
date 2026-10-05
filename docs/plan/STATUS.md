@@ -31,7 +31,7 @@ anything more is new scope the owner decides.
 
 | PR | Branch · tree | Who | What | State |
 |---|---|---|---|---|
-| **A** | `wave-26a/the-public-site` · the main checkout | lead | the map and the plan; `<Logo>`; `000`, `001`, `/og.png`; `006`; ★★ the one commit with the rewritten `public-graph.test.ts` | **open as a draft — Step 0 pushed** |
+| **A** | `wave-26a/the-public-site` · the main checkout | lead | the map and the plan; `<Logo>`; `000`, `001`, `/og.png`; `006`; ★★ the one commit with the rewritten `public-graph.test.ts` | ★ **built** — `006` rebuilt (`e6f87157` + `4fed2422`); `000`, `001` and `/og.png` in the one commit with `DEC-252`: `qa` 57/57 with `contract.mjs` unedited, the behaviour fingerprint equal to `main`'s in 17 states on both projects, baseline `wave26a-public` |
 | **B** | `wave-26b/branding-and-privacy` · `../kareem-marefa-wave26b` | `branding` | `059`; `/app/me/privacy` (from `platform`, for the wave) | planning |
 | **C** | `wave-26c/the-platform-console` · `../kareem-marefa-wave26c` | lead (the frame), `platform` | `080` – `085`, deleted and rebuilt | planning |
 | **D** | `wave-26d/stories` · `../kareem-marefa-wave26d` | lead (`0198`, the image), `sessions`, `content` | the generator, the feed, the viewer, the capture, the video, `044`'s strip | planning |

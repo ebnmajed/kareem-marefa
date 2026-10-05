@@ -9603,3 +9603,67 @@ the tracks' functions. `02`, `03`, `11` and `12` are written in the migration's 
 4. Merge #72, then #69 once it is green on the new `main`; push `0194` with `--include-all`; then the `0198` dump.
 
 - **Documents changed:** `01-prd.md` (`REQ-UIX-118`, `REQ-STO-004`), `STATUS.md`
+
+---
+
+## DEC-252 — The public site is rebuilt on the playground: the landing and the interest form from their artboards, the guard rewritten as `DEC-247` ruled, and the registration behaviour proven equal to `main`'s state by state
+
+- **Date:** 2026-10-05 · **Decided by:** the lead, under the owner's `DEC-247` · **Implements:** `REQ-UIX-114`, `REQ-UIX-119`, `REQ-UIX-120`; `DEC-167`'s permitted path for invariant 1 — this entry, the appearance change, the rewritten `qa:appearance`, the re-baselined capture and the rewritten `public-graph.test.ts` are **one commit**
+- **Does not amend:** `REQ-NFR-019`, `DEC-167`, invariant 1, invariant 2
+
+### 1 · What changed
+
+`SCR-000` and `SCR-001` are rebuilt from `docs/design/screens/m13/Landing.dc.html` and `Register.dc.html`. The
+route group's layout renders the scope — the sixth root layout — and the header, the page and the footer are
+inside it. The landing's regions are the artboard's, in its order: the hero with three posters and two doors, the
+seven companies as team rings, what the initiative is, the four things the platform does, the two paths, the
+register band. The header wears the mark, still; `/og.png` is redrawn with it. Five components the old design
+needed are deleted — `chapter`, `network-bg`, `network-gl`, `ornaments`, `mobile-cta`.
+
+### 2 · ★★ What did not change, and how that is known
+
+| What `REQ-NFR-019` freezes | The proof, on this commit's production build |
+|---|---|
+| The URLs | `qa:contract` — 38 checks, **no line of `scripts/qa/contract.mjs` edited** |
+| The registration behaviour | `register/actions.ts`, `lib/schema.ts` and `form-token.tsx` have a **zero-line diff** against `main`. `registration-form.tsx` changed class strings, one decorative glyph and one icon, and nothing else. `tests/e2e/wave26-lead-register-behaviour.spec.ts` — recorded from `main`'s code before any public file was touched — is **equal in all seventeen states, on both projects**: with JavaScript and without it, at rest, each role, refused in the browser, refused by the server, and one whole no-JS submission ending on the success panel |
+| The accessibility floor | `qa:contract` §6 – §8; the accessibility sweep's public case; `a11y.spec.ts` |
+| `registrations` | never read, altered or dropped — no migration is in this PR |
+
+### 3 · The guards, and exactly how each moved
+
+- **`tests/unit/public-graph.test.ts` — rewritten, as `DEC-247` §2 ruled.** «Exactly five primitives» is exactly
+  seven, named: the five, plus `scope` and `scope-portal`. «Names the scope nowhere» is «enters the scope through
+  one door, the route group's layout». Its header says why, so the old rule is not restored as a regression.
+- ★ **Two more lists followed from the same ruling, and are named here rather than left to be found.**
+  `scope-root.test.ts` gains the sixth root layout and its list of files kept outside shrinks to two;
+  `no-raw-palette.test.ts` stops exempting the public site's files. **Both became stricter**: the public site's
+  files are now held to the rules every other surface is held to. Neither is a guard loosened to let work through.
+- **`scripts/qa/contract.mjs` — not edited.** Two of its checks read things the artboard does not draw, and in
+  both the suite wins over the drawing (§4.1, §4.2).
+- **`console-register.test.ts` — untouched**, as the owner ruled (`DEC-249` §3).
+
+### 4 · Where the artboard and the plan disagree, and which wins
+
+| # | The artboard | What is built | Why |
+|---|---|---|---|
+| 1 | The other language is a footer link only | It is in the **header**, on every public page | `qa:contract` §1 switches language from the header on `/register` |
+| 2 | No opening animation is drawn | The cold start keeps its overlay, its once-a-session gate and its skip; **what it draws is the mark's reveal** | `qa:contract` §7 reads the overlay under reduced motion, and `REQ-UIX-119` gives the reveal to the landing's cold start — the same gate |
+| 3 | `001` draws «الشركة» and a third choice «كلاهما» | **Not built.** Today's fields, ids and two choices | `REQ-NFR-019`; `M13.md` §001: «the same fields and interest choice as today» |
+| 4 | Four steps a path, in new words; a shorter «about» | Three steps a path and the full paragraph, from `marketing.json` | `M13.md` §000: «copy is `marketing.json`'s, unchanged» |
+| 5 | «شبه الجزيرة · 2026» in the footer | `footer.internal`, as today | the same |
+| 6 | — | The old page's «recognition», «policy» and closing sections are **not on the page**; their strings stay in the catalogue | A screen is rebuilt to its artboard's regions (`DEC-199` §2); the artboard draws none of the three |
+
+New strings, Arabic first: the two nav labels, the three poster titles, the seven company names and the two
+list labels.
+
+### 5 · The re-baselined capture
+
+`npm run visual capture wave26a-public` on this commit's build: `/ar`, `/en`, `/ar/register` and — new in the
+route list — `/og.png`, at 390 and 1440. It is the baseline the public pairs are compared against from here.
+`visual-diff.mjs` no longer calls a section blank when a breakpoint hides it on purpose.
+
+★ **Carried, found by that run and not this PR's:** the gallery (`/ar/ui`) is refused at desktop width for two
+sections laid out at no height. This PR changes no file under `(dev)/` or `ui/`, so it is `main`'s.
+
+- **Documents changed:** `STATUS.md`, `docs/plan/notes/wave-26-ledger-a.md`
+
