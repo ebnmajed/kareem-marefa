@@ -12,14 +12,30 @@ import { Link } from "@/components/ui/link";
 // where `HubDesktop.dc.html` draws the page's title.
 //
 // The lead's. A page passes its own title, already translated; nothing here reads a page's namespace.
-export async function HubTopRow({ title, back = true, action }: { title: string; back?: boolean; action?: ReactNode }) {
+//
+// ★ wave 26 (`DEC-251` §3.5, `DEC-NEXT-39`): `backHref`, add-only. `/app/me/privacy` is a hub page reached from
+// settings, so its back control returns there (`Privacy.dc.html:20`); every other page keeps `/app/me`.
+export async function HubTopRow({
+  title,
+  back = true,
+  backHref = "/app/me",
+  backLabel,
+  action,
+}: {
+  title: string;
+  back?: boolean;
+  backHref?: string;
+  /** The back control's accessible name when it does not lead to the hub. */
+  backLabel?: string;
+  action?: ReactNode;
+}) {
   const t = await getTranslations("app.shell");
   return (
     <div className="flex items-center gap-2.5">
       {back ? (
         <Link
-          href="/app/me"
-          aria-label={t("account")}
+          href={backHref}
+          aria-label={backLabel ?? t("account")}
           className="inline-flex size-10 shrink-0 items-center justify-center rounded-pill border border-edge bg-surface text-fg-heading lg:hidden"
         >
           <ChevronIcon direction="back" />

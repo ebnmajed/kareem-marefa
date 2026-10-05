@@ -2,66 +2,31 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
+<!-- The link-preview card — REQ-NFR-019, DEC-167, DEC-247, DEC-252. Wave 26: the playground's ink ground, the
+     mark (the owner's drawing, inlined from docs/design/assets/brand/logo/logo.svg) and the tagline in the
+     display face. `node scripts/og-render.mjs` writes public/og.png from this file and from nothing else. -->
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:wght@500&display=swap');
-  * { margin: 0; padding: 0; }
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@800&family=IBM+Plex+Sans+Arabic:wght@400;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     width: 1200px; height: 630px; overflow: hidden;
-    background: #0B1220;
+    background: #0B0C12; color: #F4F1EA;
     font-family: 'IBM Plex Sans Arabic', sans-serif;
-    position: relative;
+    display: flex; align-items: center; gap: 72px; padding: 0 96px;
   }
-  svg.net { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .content {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column; justify-content: center;
-    padding: 0 96px;
-  }
-  .mark { color: #ffffff; font-size: 44px; font-weight: 600; }
-  .latin {
-    color: #A8B3C4; font-size: 17px; font-weight: 500;
-    font-family: 'IBM Plex Sans', sans-serif;
-    letter-spacing: 0.18em; text-transform: uppercase; margin-top: 10px;
-    direction: ltr; text-align: right;
-  }
-  .rule { width: 72px; height: 1px; background: rgba(201,206,214,0.38); margin: 44px 0; }
-  .tagline { color: #E6EAF0; font-size: 58px; font-weight: 600; line-height: 1.5; }
-  .sub { color: #A8B3C4; font-size: 24px; margin-top: 18px; }
+  .content { flex: 1; display: flex; flex-direction: column; gap: 18px; }
+  .eyebrow { color: #C6FF3D; font-size: 22px; font-weight: 700; }
+  .tagline { font-family: 'Baloo Bhaijaan 2', sans-serif; font-weight: 800; font-size: 84px; line-height: 1.2; }
+  .sub { color: #A7ABBE; font-size: 26px; line-height: 1.7; }
+  .logo { height: 300px; width: auto; flex-shrink: 0; }
 </style>
 </head>
 <body>
-  <svg class="net" viewBox="0 0 1200 630" preserveAspectRatio="xMidYMid slice">
-    <g stroke="#A8B3C4" stroke-width="0.9" fill="none">
-      <line x1="180" y1="140" x2="300" y2="230" opacity="0.12"/>
-      <line x1="300" y1="230" x2="240" y2="380" opacity="0.11"/>
-      <line x1="240" y1="380" x2="360" y2="470" opacity="0.10"/>
-      <line x1="300" y1="230" x2="430" y2="180" opacity="0.10"/>
-      <line x1="150" y1="520" x2="240" y2="380" opacity="0.12"/>
-      <line x1="1050" y1="120" x2="1130" y2="240" opacity="0.10"/>
-      <line x1="990" y1="500" x2="1100" y2="430" opacity="0.09"/>
-    </g>
-    <g fill="#C9CED6">
-      <circle cx="180" cy="140" r="3" opacity="0.5"/>
-      <circle cx="300" cy="230" r="4.5" opacity="0.9"/>
-      <circle cx="240" cy="380" r="3.5" opacity="0.6"/>
-      <circle cx="360" cy="470" r="2.5" opacity="0.45"/>
-      <circle cx="430" cy="180" r="2.5" opacity="0.4"/>
-      <circle cx="150" cy="520" r="2" opacity="0.4"/>
-      <circle cx="1050" cy="120" r="2.5" opacity="0.35"/>
-      <circle cx="1130" cy="240" r="3.5" opacity="0.5"/>
-      <circle cx="990" cy="500" r="2.5" opacity="0.35"/>
-      <circle cx="1100" cy="430" r="2" opacity="0.3"/>
-      <circle cx="920" cy="320" r="1.8" opacity="0.25"/>
-    </g>
-  </svg>
   <div class="content">
-    <div>
-      <div class="mark">كريم معرفة</div>
-      <div class="latin">Knowledge Kareem</div>
-    </div>
-    <div class="rule"></div>
-    <div class="tagline">شارك المعرفة.. واصنع الأثر</div>
+    <div class="eyebrow">كريم معرفة</div>
+    <div class="tagline">شارك المعرفة..<br>واصنع الأثر</div>
     <div class="sub">منصّة داخلية لمشاركة المعرفة بين شركات المجموعة</div>
   </div>
+  <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 215.78 294.03" role="img" aria-label="كريم معرفة"><defs><clipPath id="km-clip-a"><path d="M124.1,31.04c0,50.39-41.3,91.16-92.35,91.16L124.1,31.04Z"/></clipPath><clipPath id="km-clip-b"><path d="M118.47,26.68c0,50.39-41.3,91.16-92.35,91.16L118.47,26.68Z"/></clipPath></defs><g id="Layer_1-2" data-name="Layer 1"> <path d="M52.52,193.11c40.42,5.32,69.11,40.13,64.15,77.83" fill="none" stroke="#ff4d2d" stroke-width="37.83" stroke-linecap="round" pathLength="1"/> <path d="M46.9,197.29c40.42,5.32,69.11,40.13,64.15,77.83" fill="none" stroke="#ff6e4f" stroke-width="37.83" stroke-linecap="round" pathLength="1"/> <path d="M196.47,26.85c0,94.55-76.23,171.06-170.44,171.06" fill="none" stroke="#8eff3d" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <path d="M189.76,19.32c0,94.55-76.23,171.06-170.44,171.06" fill="none" stroke="#c6ff3d" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <path d="M25.22,123.17c83.56-6.87,157.01,58.54,164.22,146.25" fill="none" stroke="#9b61ff" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <path d="M30.7,118.59c83.56-6.87,157.01,58.54,164.22,146.25" fill="none" stroke="#9b7cff" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> <g> <g clip-path="url(#km-clip-a)"> <path d="M124.1,31.04c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#d48300" stroke-width="23" stroke-linecap="round" pathLength="1"/> </g> <path d="M124.1,31.04c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#d48300" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> </g> <g> <g clip-path="url(#km-clip-b)"> <path d="M118.47,26.68c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#ff9a2e" stroke-width="23" stroke-linecap="round" pathLength="1"/> </g> <path d="M118.47,26.68c0,50.39-41.3,91.16-92.35,91.16" fill="none" stroke="#ff9a2e" stroke-width="38.63" stroke-linecap="round" pathLength="1"/> </g> </g></svg>
 </body>
 </html>

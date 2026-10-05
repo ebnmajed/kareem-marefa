@@ -1995,3 +1995,17 @@ capture paths), `components/platform/{orgs-table,org-actions,new-org-form,domain
 - **Q8** `081`: default language (N-a, recommend drop), one domain or a list (N-b).
 - **Q9** `080`: delete offered on active orgs (O-b); counts on a pending-deletion row (O-c).
 - **Q10** `tokenTail` on `085` (I-c) under `DEC-NEXT-25`.
+
+### W26.8 Self-review, paused 2026-10-05 (head `6cfff9f0`)
+
+- **Reviewed:** the 02:06 captures (the lead's build of `bb28772b`) at native size beside `m13/png` — `081`, `082`, `083` at 1280 and `orgs-delete-confirm-390`; `080`, `084`, `085` at 1280 were the lead's. I could not build myself (refused as lead-only).
+- **Fixed (`6cfff9f0`):** `081` column width, rhythm and a quiet «إلغاء»; `082` full-width table, no undrawn slug/status line, the domain in the body face; `083` even 16:9 swatches and the board's card rows, no versions count; the capture case gained suspend, suspended-row, remove-confirm and impersonate-filled (ledger C17).
+- **Next:** the lead builds `6cfff9f0` and runs the capture case on both projects; then I open every state at 1280 and 390, the dialogs included, beside the boards, and fix what differs.
+
+### W26.9 Plan versus drawing, after the self-review (2026-10-05)
+
+- `081`: the board puts each hint under its input; `ui/field` puts it between the label and the input (`sessions'` primitive) — not touched. «مطلوب» is `Field`'s (REQ-UIX-009), not drawn, kept.
+- `082`: the board's company, «أُضيف» and members columns not built (DEC-251 Q7); the add form and «تعيين أول مشرف» below the list, not drawn, kept.
+- `083`: one grid drawn, two purpose sections built (their regions are read by the spec and DEC-148's composition is by purpose); a swatch, not a render; no «قالب جديد»; the promotion list below, not drawn, kept (Q6). ★ Its EMPTY state draws «المكتبة» as a lime primary — `data-table`'s required `empty.action`; kept as the primitive draws it (the lead's ruling), a second primary on the page.
+- `084`: the alerts and job health below, not drawn, kept (REQ-ADM-003); four of the board's figures not built (Q5).
+- `085`: no member field or column (Q1); five durations, not three (Q2); the token line, the live panel and the expired line, not drawn, kept (I1, I2, Q10). At 1280 the log's long fixture names wrap inside a narrow column — wrapping, never truncated.

@@ -22,23 +22,20 @@ import {
   type ImpersonationState,
 } from "./state";
 
-// SCR-085's form — REQ-ADM-002, REQ-ADM-019, DEC-014, `16` §8.2.
+// SCR-085's form, as `PlatformImpersonate.dc.html` draws it: the org, the reason, the duration as a segmented row, and
+// «ادخل» — REQ-ADM-002, REQ-ADM-019, DEC-014, `16` §8.2. ★ No member field (DEC-251, Q1): `start_impersonation()`
+// takes an org, a reason and minutes, and nothing else.
 //
-// ★ THE TOKEN IS REFRESHED IN THE SUBMIT PATH, NEVER IN AN EFFECT (wave 8, notes
-// W8.0 F2). The claims a session carries are minted at issuance, so a started
-// session reaches the token only when it is refreshed. The action no longer
-// revalidates; this wrapper awaits the action, refreshes the session through
-// the browser client (an AUTH operation — DEC-020) and only then re-renders the
-// page, so the server sees the new cookie and the active panel replaces this
-// form with the org already on the token. The race falls the safe way either
-// way: until the refresh lands the operator is only a platform admin.
+// ★ THE TOKEN IS REFRESHED IN THE SUBMIT PATH, NEVER IN AN EFFECT (wave 8, F2). A started session reaches the token
+// only when it is refreshed; the action does not revalidate, and this wrapper awaits it, refreshes the session through
+// the browser client (an AUTH operation, DEC-020) and only then re-renders, so the server sees the new cookie. Until
+// the refresh lands the operator is only a platform admin — the race falls the safe way.
 //
-// ★ The duration is a set of presets ending at the table's ceiling, not a number
-// field whose `max` only the browser enforced: one tap on a phone, and no way
-// to ask for more than Postgres stores.
+// ★ The duration is today's five presets ending at the table's ceiling, one hour by default (DEC-251, Q2;
+// `state.ts`, untouched) — one tap on a phone and no way to ask for more than Postgres stores; the board's three are
+// its first three, and its segmented shape is `radio-group`'s `chips`.
 //
-// `noValidate` — the app's own errors render beside their fields and in the
-// summary; a native `required` would block the submit before they could.
+// `noValidate` — the app's own errors render beside their fields and in the summary.
 
 const LABEL_KEY: Record<ImpersonateField, string> = {
   orgId: "orgLabel",
@@ -86,7 +83,7 @@ export function ImpersonateForm({
       : t("durationHours", { count: minutes / 60, value: formatNumber(minutes / 60) });
 
   return (
-    <form action={formAction} noValidate className="max-w-xl space-y-6">
+    <form action={formAction} noValidate className="space-y-5">
       {hasAttempted(state) && summary.length > 0 ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
       {state.formError ? (
         <Panel tone="error">
@@ -116,18 +113,21 @@ export function ImpersonateForm({
       </Field>
 
       <div>
+        {/* A chip's label never wraps (`whitespace-nowrap`); the ROW of five wraps when the column is narrower than
+            the five — `radio-group`'s chip row is `flex` without `wrap`, so the wrap is set on it from here through
+            its own `data-appearance` hook rather than by editing the primitive. */}
         <RadioGroup
+          appearance="chips"
+          className="[&_[data-appearance=chips]]:flex-wrap"
           name="minutes"
           legend={t("durationLegend")}
           defaultValue={was(state, "minutes") || String(DEFAULT_DURATION)}
           invalid={Boolean(state.errors.minutes)}
-          options={DURATION_PRESETS.map((minutes) => ({
-            value: String(minutes),
-            label: duration(minutes),
-            hint: minutes === DURATION_PRESETS[DURATION_PRESETS.length - 1] ? t("durationCeiling") : undefined,
-          }))}
+          options={DURATION_PRESETS.map((minutes) => ({ value: String(minutes), label: <span className="whitespace-nowrap">{duration(minutes)}</span> }))}
+          error={err("minutes")}
         />
-        {err("minutes") ? <p className="mt-1 text-caption text-error">{err("minutes")}</p> : null}
+        {/* A chip carries no hint, so the ceiling is said once under the row (it was the last row's hint). */}
+        <p className="mt-1.5 text-caption text-fg-muted">{t("durationCeiling")}</p>
       </div>
 
       <SubmitButton size="md" pending={pending}>

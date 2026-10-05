@@ -6,7 +6,9 @@
   "header": {
     "cta": "Register interest",
     "signIn": "Sign in",
-    "nav": "Main navigation"
+    "nav": "Main navigation",
+    "about": "The initiative",
+    "how": "How it works"
   },
   "hero": {
     "eyebrow": "An internal knowledge-sharing platform for our group",
@@ -16,7 +18,21 @@
     "ctaSecondary": "Learn about the initiative",
     "microTrust": "Takes less than a minute",
     "live": "The platform is open to everyone in the group.",
-    "signIn": "Sign in with your work account"
+    "signIn": "Sign in with your work account",
+    "postersLabel": "Sessions from the initiative",
+    "poster1": "The dashboard nobody abandons",
+    "poster2": "The talk in 5 slides",
+    "poster3": "Numbers that lie"
+  },
+  "companies": {
+    "label": "The group's companies",
+    "silver": "Peninsula",
+    "tangerine": "Sanf",
+    "magenta": "Peninsula Story",
+    "cyan": "Mawaheb",
+    "gold": "Dababees",
+    "violet": "Aik",
+    "mint": "Jathr"
   },
   "about": {
     "title": "What is Knowledge Kareem?",

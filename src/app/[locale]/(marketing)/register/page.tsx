@@ -1,45 +1,38 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { NetworkBg } from "@/components/network-bg";
-import { SeamThread } from "@/components/ornaments";
 import { RegistrationForm } from "@/components/registration-form";
 import { FormToken } from "@/components/form-token";
 
-/**
- * This page renders dynamically: <FormToken/> calls `await connection()` so
- * each visitor gets a fresh signed timestamp. The landing page stays static.
- */
-export default async function RegisterPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+// SCR-001 · «سجّل اهتمامك» — REQ-UIX-114, REQ-NFR-019, DEC-247, DEC-252.
+// Rebuilt in wave 26 from `docs/design/screens/m13/Register.dc.html`: the title and its line, the form, and at
+// the foot the way into the platform for someone who already has an account. The header is the layout's.
+//
+// ★★ WHAT THE FORM DOES IS NOT THIS WAVE'S TO CHANGE (REQ-NFR-019, DEC-247 §3). «The same fields and interest
+// choice as today, on the playground» (`M13.md` §001) — so the artboard's «الشركة» field and its third choice
+// «كلاهما» are NOT built: the form posts what it posted, to the action it posted to, under the names and ids it
+// had, with the same validation and the same no-JS path. `registration-form.tsx` changed classes only, and
+// `tests/e2e/wave26-lead-register-behaviour.spec.ts` holds it to `main`'s recorded behaviour, state by state.
+//
+// This page renders dynamically: <FormToken/> calls `await connection()` so each visitor gets a fresh signed
+// timestamp. The landing page stays static.
+export default async function RegisterPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("register");
+  const t = await getTranslations();
 
   return (
-    <>
-      <section className="theme-dark relative overflow-hidden">
-        <NetworkBg className="opacity-35" />
-        <div className="relative mx-auto max-w-6xl px-6 pb-14 pt-28 md:px-8 md:pt-32">
-          <Link
-            href="/"
-            className="text-caption text-fg-muted underline-offset-4 hover:underline"
-          >
-            {t("back")}
-          </Link>
-          <h1 className="mt-4 text-h1">{t("title")}</h1>
-          <p className="mt-3 max-w-xl text-body-lg">{t("intro")}</p>
-        </div>
-      </section>
+    <div className="mx-auto flex w-full max-w-[27.5rem] flex-col px-5 pt-6 pb-10 md:pt-10">
+      <h1 className="font-display text-[2rem] leading-[1.4] font-extrabold text-fg-heading">{t("register.title")}</h1>
+      <p className="mb-6 text-body-sm text-fg-muted">{t("register.intro")}</p>
 
-      <section className="relative bg-white">
-        <SeamThread />
-        <div className="mx-auto max-w-[40rem] px-6 py-16 md:px-0 md:py-20">
-          <RegistrationForm token={<FormToken />} />
-        </div>
-      </section>
-    </>
+      <RegistrationForm token={<FormToken />} />
+
+      <p className="mt-10 text-center text-caption text-fg-muted">
+        {t("hero.live")}{" "}
+        <Link href="/sign-in" locale="ar" hrefLang="ar" className="inline-flex min-h-11 items-center font-bold text-accent underline-offset-4 hover:underline">
+          {t("hero.signIn")}
+        </Link>
+      </p>
+    </div>
   );
 }

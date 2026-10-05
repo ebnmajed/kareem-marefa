@@ -60,17 +60,28 @@ describe("SCR-082 domains", () => {
   it("removal confirms by name and says, before the press, that nobody loses access", async () => {
     const remove = vi.fn(async () => ({ error: null }));
     wrap(<DomainsTable domains={["example.com"]} remove={remove} />);
-    const buttons = screen.getAllByRole("button", { name: "احذف example.com" });
+    const buttons = screen.getAllByRole("button", { name: "أزل example.com" });
     await userEvent.click(buttons[0]);
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("heading")).toHaveTextContent("إزالة example.com");
     expect(dialog).toHaveTextContent("لا يفقد أحد وصوله");
     expect(remove).not.toHaveBeenCalled();
     await act(async () => {
-      await userEvent.click(within(dialog).getByRole("button", { name: "احذف" }));
+      await userEvent.click(within(dialog).getByRole("button", { name: "أزل" }));
     });
     await vi.waitFor(() => expect(remove).toHaveBeenCalledWith("example.com"));
     expect(show).toHaveBeenCalledWith(expect.objectContaining({ tone: "success" }));
+  });
+
+  it("★ closing the removal confirm without removing returns focus to «أزل» (wave 26)", async () => {
+    const remove = vi.fn(async () => ({ error: null }));
+    wrap(<DomainsTable domains={["example.com"]} remove={remove} />);
+    const button = screen.getAllByRole("button", { name: "أزل example.com" })[0];
+    await userEvent.click(button);
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(document.activeElement).toBe(button);
+    expect(remove).not.toHaveBeenCalled();
   });
 
   it("the first-admin form shows the stored address, is noValidate, and is axe-clean", async () => {

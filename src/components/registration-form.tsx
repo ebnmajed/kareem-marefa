@@ -22,7 +22,7 @@ import {
 } from "@/lib/schema";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { ShareIcon } from "@/components/ui/icons";
+import { CheckIcon, ShareIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -140,7 +140,7 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
       action={formAction}
       onSubmit={onSubmit}
       noValidate
-      className="flex flex-col gap-7"
+      className="flex flex-col gap-6"
     >
       {state.freshToken ? (
         <input type="hidden" name="form_token" value={state.freshToken} />
@@ -201,7 +201,7 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
         <legend className="text-label text-fg-heading">
           {t("roleLegend")}
         </legend>
-        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <RoleCard
             id="reg-role-provider"
             value="provider"
@@ -294,7 +294,7 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
             {TOPIC_CATEGORIES.map((cat) => (
               <label
                 key={cat}
-                className="flex h-11 cursor-pointer items-center rounded-full border border-[var(--edge-strong)] px-4.5 text-label text-fg-body transition-colors duration-150 hover:border-navy-950 active:border-navy-950 has-checked:border-navy-950 has-checked:bg-navy-950 has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--ring)]"
+                className="flex min-h-11 cursor-pointer items-center rounded-pill border border-edge bg-surface px-4.5 text-body-sm font-bold text-fg-heading hover:bg-raised has-checked:border-accent has-checked:bg-accent has-checked:text-on-accent has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--ring)]"
               >
                 {/* ui-lint-disable-next-line field — self-labelling, as ui/radio-group is: the chip IS the label; its id is the registration contract (qa:contract) */}
                 <input
@@ -355,7 +355,7 @@ export function RegistrationForm({ token }: { token: ReactNode }) {
           type="submit"
           disabled={pending}
           aria-busy={pending}
-          className="min-w-48 self-start"
+          className="w-full"
         >
           {pending ? (
             <span className="flex items-center gap-2">
@@ -391,7 +391,7 @@ function RoleCard({
   return (
     <label
       htmlFor={id}
-      className="relative block cursor-pointer rounded-card border border-silver-300 bg-white p-6 shadow-card transition-colors duration-150 hover:border-silver-400 active:border-navy-950 has-checked:border-navy-950 has-checked:shadow-[inset_0_0_0_1px_#0B1220] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--ring)]"
+      className="relative block cursor-pointer rounded-card border border-edge bg-surface p-4 pe-10 hover:bg-raised has-checked:border-accent has-checked:bg-raised has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[var(--ring)]"
     >
       {/* ui-lint-disable-next-line field — self-labelling, as ui/radio-group is: the card IS the label; its id is the registration contract (qa:contract) */}
       <input
@@ -404,22 +404,12 @@ function RoleCard({
         aria-invalid={invalid || undefined}
         aria-describedby={invalid ? "reg-role-error" : undefined}
       />
+      {/* The mark of the choice: a ring that fills. The card's border says it too, so colour is not alone. */}
       <span
         aria-hidden="true"
-        className="absolute end-5 top-5 size-2 rounded-full bg-silver-200 transition-colors duration-150 peer-checked:bg-navy-950"
+        className="absolute end-4 top-4 size-4 rounded-pill border-2 border-edge-strong peer-checked:border-accent peer-checked:bg-accent"
       />
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        aria-hidden="true"
-        className="text-silver-400 peer-checked:text-navy-950"
-      >
-        <line x1="5" y1="14" x2="14" y2="6" stroke="currentColor" strokeWidth="1.5" />
-        <circle cx="4.5" cy="14.5" r="2.5" fill="currentColor" />
-        <circle cx="15" cy="5" r="3" fill="currentColor" />
-      </svg>
-      <span className="mt-3 block text-[1.0625rem] font-semibold leading-7 text-fg-heading">
+      <span className="block font-display text-[1.125rem] leading-[1.4] font-extrabold text-fg-heading">
         {title}
       </span>
       <span className="mt-1 block text-caption text-fg-muted">{body}</span>
@@ -594,27 +584,15 @@ function SuccessPanel({ state }: { state: RegistrationState }) {
   return (
     <div
       role="status"
-      className="rounded-card border border-success/30 bg-success-bg p-8"
+      className="rounded-panel border border-edge bg-surface p-6"
     >
-      {/* "Your dot joined the network" — one dot, one ripple */}
-      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true" className="text-success">
-        <circle cx="20" cy="20" r="4" fill="currentColor" />
-        <circle
-          className="ripple-ring"
-          cx="20"
-          cy="20"
-          r="8"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1"
-        />
-        <line x1="26" y1="14" x2="33" y2="9" stroke="currentColor" strokeWidth="1" opacity="0.5" />
-        <circle cx="34" cy="8" r="2" fill="currentColor" opacity="0.6" />
-      </svg>
-      <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-h3">
+      <span aria-hidden="true" className="inline-flex size-12 items-center justify-center rounded-pill bg-accent text-on-accent">
+        <CheckIcon />
+      </span>
+      <h2 ref={headingRef} tabIndex={-1} className="mt-4 font-display text-[1.5rem] leading-[1.4] font-extrabold text-fg-heading">
         {title}
       </h2>
-      <p className="mt-3 max-w-prose text-body text-fg-body">{body}</p>
+      <p className="mt-2 max-w-prose text-body text-fg-muted">{body}</p>
       <p className="mt-6 text-caption font-medium text-fg-muted">
         {t("success.tagline")}
       </p>

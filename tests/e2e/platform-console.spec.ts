@@ -236,13 +236,37 @@ async function orgClaim(context: BrowserContext): Promise<string | null | undefi
   return payload.app_metadata?.org_id ?? null;
 }
 
-/** Start a session from SCR-085's form, as an operator would. */
+/**
+ * Start a session from SCR-085's form, as an operator would.
+ *
+ * ★ Wave 26 (ledger C18). Two things made this helper flaky, both measured on a production build of `60e9e889`
+ * (desktop :583 and phone :817 failed with «ادخل» still PENDING at the 5 s default, the form on screen and no
+ * session in the log):
+ * 1. The press is ONE transition that spans three round trips — the action (`start_impersonation()`, which writes
+ *    two audit rows and enqueues the expiry), the token refresh, then `router.refresh()` re-rendering the console
+ *    with the org on the token. On a machine that has just woken, that is longer than 5 s. The region is waited for
+ *    as long as the transition can take, and «ادخل» must have finished pending — a refused start leaves the form
+ *    with its error, which this then reports instead of a bare timeout.
+ * 2. A session this platform admin left open (a failed case before the stop) makes `start_impersonation()` refuse
+ *    with `impersonation_already_active`. So any such row is closed first, as the expiry job would — this run's own
+ *    admin only, never another's.
+ */
 async function startFromForm(page: Page, orgId: string, reason: string) {
+  await db.query(
+    `update public.impersonation_sessions set ended_at = least(now(), expires_at) where platform_admin_id = $1 and ended_at is null`,
+    [platformUserId],
+  );
   await page.goto("/ar/app/platform/impersonate");
   await main(page).getByRole("combobox", { name: /^المؤسسة/ }).selectOption(orgId);
   await main(page).getByRole("textbox", { name: /^السبب/ }).fill(reason);
-  await page.getByRole("radio", { name: "30 دقيقة" }).check();
-  await page.getByRole("button", { name: /ابدأ الجلسة/ }).click();
+  // Wave 26: the durations are chips (`radio-group`'s `chips`), whose radio is visually hidden inside its label —
+  // so the operator's press is on the chip's word.
+  await main(page).locator("label").filter({ hasText: /^30 دقيقة$/ }).click();
+  await expect(main(page).getByRole("radio", { name: "30 دقيقة" })).toBeChecked();
+  const enter = main(page).getByRole("button", { name: /^ادخل/ });
+  await enter.click();
+  await expect(page.getByRole("region", { name: /جلسة مفتوحة/ }).or(main(page).getByRole("alert"))).toBeVisible({ timeout: 30_000 });
+  await expect(main(page).getByRole("alert"), "the start was refused — the form says why").toHaveCount(0);
   await expect(page.getByRole("region", { name: /جلسة مفتوحة/ })).toBeVisible();
 }
 
@@ -405,12 +429,12 @@ test("★ REQ-TEN-002: a super admin creates an org and sets its first admin, an
   const domain = `made-${tag}.example`;
 
   await page.goto("/ar/app/platform/orgs/new");
-  await main(page).getByRole("textbox", { name: /^اسم المؤسسة/ }).fill(name);
-  await main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ }).fill(slug);
+  await main(page).getByRole("textbox", { name: /^الاسم/ }).fill(name);
+  await main(page).getByRole("textbox", { name: /^المعرّف/ }).fill(slug);
   await main(page).getByRole("textbox", { name: /^بادئة الشهادات/ }).fill("MDE");
   await main(page).getByRole("textbox", { name: /^النطاقات المسموح بها/ }).fill(domain);
-  await main(page).getByRole("textbox", { name: /^بريد أول مشرف/ }).fill(`boss@${domain}`);
-  await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
+  await main(page).getByRole("textbox", { name: /^أول مشرف/ }).fill(`boss@${domain}`);
+  await page.getByRole("button", { name: /^أنشئ/ }).click();
 
   // SCR-081 lands on SCR-082 for the org it just made.
   await page.waitForURL(/\/app\/platform\/orgs\/[0-9a-f-]+\/domains/);
@@ -437,15 +461,15 @@ test("★ REQ-TEN-002: a super admin creates an org and sets its first admin, an
 });
 
 /** Open a row's menu on SCR-080 and choose an act. The hidden twin (card list or table) is excluded by the role locator. */
+// Wave 26: SCR-080's acts sit in the row (`PlatformOrgs.dc.html`), each named «{act} — {org}»; no menu opens first.
 async function orgAct(page: Page, org: { name: string }, item: string) {
-  await page.getByRole("button", { name: `إجراءات ${org.name}` }).click();
-  await page.getByRole("menuitem", { name: item }).click();
+  await main(page).getByRole("button", { name: `${item} — ${org.name}` }).click();
 }
 
 test("★ REQ-TEN-006 · REQ-UIX-013: suspension confirms by name, refuses an empty reason beside the field, and reinstating answers", async ({ context, page }) => {
   await signInPlatform(context);
   await page.goto("/ar/app/platform/orgs");
-  await orgAct(page, b, "إيقاف المؤسسة");
+  await orgAct(page, b, "أوقف");
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading")).toContainText(b.name);
   await expect(dialog).toContainText("لا يحذف شيئًا");
@@ -477,7 +501,7 @@ test("★ REQ-NFR-014: deletion needs the slug typed back — a mismatch deletes
   await db.query(`insert into public.org_settings (org_id) values ($1)`, [rows[0].id]);
 
   await page.goto("/ar/app/platform/orgs");
-  await orgAct(page, { name }, "حذف المؤسسة");
+  await orgAct(page, { name }, "احذف");
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading")).toContainText(name);
   await dialog.getByRole("textbox", { name: /^معرّف المؤسسة/ }).fill(`${slug}-typo`);
@@ -496,22 +520,22 @@ test("★ REQ-NFR-014: deletion needs the slug typed back — a mismatch deletes
   // «أعد التفعيل» for the window before the job runs. Whether the row is still
   // there («قيد الحذف») or the worker already removed it, the acts are gone.
   await page.reload();
-  await expect(page.getByRole("button", { name: `إجراءات ${name}` })).toHaveCount(0);
+  await expect(main(page).getByRole("button", { name: new RegExp(`— ${name}$`) })).toHaveCount(0);
 });
 
 test("REQ-UIX-009 · REQ-UIX-011: a refused new org summarises its fields and keeps what was typed", async ({ context, page }) => {
   await signInPlatform(context);
   await page.goto("/ar/app/platform/orgs/new");
-  await main(page).getByRole("textbox", { name: /^اسم المؤسسة/ }).fill(`مؤسسة لم تُنشأ ${tag}`);
-  await main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ }).fill("Bad Slug");
+  await main(page).getByRole("textbox", { name: /^الاسم/ }).fill(`مؤسسة لم تُنشأ ${tag}`);
+  await main(page).getByRole("textbox", { name: /^المعرّف/ }).fill("Bad Slug");
   await main(page).getByRole("textbox", { name: /^النطاقات المسموح بها/ }).fill("Example.COM");
-  await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
+  await page.getByRole("button", { name: /^أنشئ/ }).click();
 
   const summary = main(page).getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" });
   await expect(summary).toBeVisible();
   await expect(summary.getByRole("link")).toHaveCount(3); // slug, prefix, first admin
-  await expect(main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ })).toHaveAttribute("aria-invalid", "true");
-  await expect(main(page).getByRole("textbox", { name: /^اسم المؤسسة/ })).toHaveValue(`مؤسسة لم تُنشأ ${tag}`);
+  await expect(main(page).getByRole("textbox", { name: /^المعرّف/ })).toHaveAttribute("aria-invalid", "true");
+  await expect(main(page).getByRole("textbox", { name: /^الاسم/ })).toHaveValue(`مؤسسة لم تُنشأ ${tag}`);
   await expect(main(page).getByRole("textbox", { name: /^النطاقات المسموح بها/ })).toHaveValue("Example.COM");
   expect(new URL(page.url()).pathname).toBe("/ar/app/platform/orgs/new");
 });
@@ -538,11 +562,11 @@ test("★ REQ-TEN-007 (contract 4) · REQ-TEN-002 (F3): SCR-082 takes any case a
   // Put the seeded admin back: other cases sign in as it.
   await db.query(`update public.orgs set first_admin_email = $2 where id = $1`, [b.id, b.adminEmail]);
 
-  await page.getByRole("button", { name: `احذف ${storedDomain}` }).click();
+  await page.getByRole("button", { name: `أزل ${storedDomain}` }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading")).toContainText(storedDomain);
   await expect(dialog).toContainText("لا يفقد أحد وصوله");
-  await dialog.getByRole("button", { name: "احذف" }).click();
+  await dialog.getByRole("button", { name: "أزل" }).click();
   await expect(dialog).toHaveCount(0);
   await expect.poll(async () => (await db.query(`select 1 from public.org_domains where org_id = $1 and domain = $2`, [b.id, storedDomain])).rowCount).toBe(0);
 });
@@ -574,7 +598,7 @@ test("★ REQ-DSG-026 · DEC-148: SCR-083 lists the baseline as rows of a compos
   if (!phone) await expect(posters.getByRole("columnheader", { name: "الشكل" })).toHaveCount(0);
   // The baseline is badged as such, and no document or preview is on the page.
   await expect(main(page).getByText("أساسي").filter({ visible: true }).first()).toBeVisible();
-  await expect(page.locator("main img, main canvas")).toHaveCount(0);
+  await expect(page.locator("main img, main canvas, main iframe")).toHaveCount(0);
 });
 
 test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, where its admin reads it", async ({ context, page }) => {
@@ -596,7 +620,7 @@ test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, w
   // the banner carries the same control (wave 8 — there is one stop control).
   await page.goto("/ar/app/platform/impersonate");
   await page.getByRole("region", { name: /جلسة مفتوحة/ }).getByRole("button", { name: /أنهِ الجلسة/ }).click();
-  await expect(main(page).getByRole("button", { name: /ابدأ الجلسة/ })).toBeVisible();
+  await expect(main(page).getByRole("button", { name: /^ادخل/ })).toBeVisible();
 });
 
 test("REQ-ADM-001 · REQ-UIX-017: the console's home renders, and the rail follows a client-side navigation", async ({ context, page }) => {
@@ -657,7 +681,7 @@ test("★ REQ-ADM-002 (F2, F1): starting from the page puts the org on the TOKEN
   // F1 — measured red before wave 8: the page's own stop was a plain form that
   // ended the row and left the org on the token for up to 900 s.
   await page.getByRole("region", { name: /جلسة مفتوحة/ }).getByRole("button", { name: /أنهِ الجلسة/ }).click();
-  await expect(page.getByRole("button", { name: /ابدأ الجلسة/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^ادخل/ })).toBeVisible();
   await expect.poll(() => orgClaim(context), { message: "stopping takes the org off the token" }).toBeNull();
   await expect(page.getByRole("status").filter({ hasText: "جلسة استثنائية" })).toHaveCount(0);
 });
@@ -715,8 +739,10 @@ test.describe("390 px RTL review", () => {
     await page.goto("/ar/app/platform");
     await expect(page.getByRole("heading", { level: 1, name: "لوحة المنصة" })).toBeVisible();
     await review(page, "wave8-platform-home-default");
-    await page.getByRole("button", { name: "أقسام لوحة المنصة: لوحة المنصة" }).click();
-    await expect(page.getByRole("menu")).toBeVisible();
+    // ★ wave 26 (DEC-249, ledger C2): the section switcher on `ui/menu` went with the old nav component; under `lg` the
+    // console frame's sheet behind ≡ is the platform's navigation, as on every console screen since wave 21.
+    await page.getByRole("button", { name: "افتح قائمة لوحة المنصة" }).click();
+    await expect(page.getByRole("dialog").getByRole("navigation", { name: "لوحة المنصة" })).toBeVisible();
     await review(page, "wave8-platform-shell-nav-open");
     await page.keyboard.press("Escape");
 
@@ -724,11 +750,11 @@ test.describe("390 px RTL review", () => {
     await page.goto("/ar/app/platform/orgs");
     await expect(main(page).getByText(a.name).filter({ visible: true }).first()).toBeVisible();
     await review(page, "wave8-platform-orgs-cards");
-    await orgAct(page, a, "إيقاف المؤسسة");
+    await orgAct(page, a, "أوقف");
     await expect(page.getByRole("dialog")).toBeVisible();
     await review(page, "wave8-platform-orgs-suspend-confirm");
     await page.keyboard.press("Escape");
-    await orgAct(page, a, "حذف المؤسسة");
+    await orgAct(page, a, "احذف");
     await page.getByRole("dialog").getByRole("textbox", { name: /^معرّف المؤسسة/ }).fill("not-the-slug");
     await page.getByRole("dialog").getByRole("button", { name: /احذف نهائيًا/ }).click();
     await expect(page.getByRole("dialog").getByText(/لا يطابق معرّف المؤسسة/)).toBeVisible();
@@ -737,9 +763,9 @@ test.describe("390 px RTL review", () => {
 
     // P3 — a new org with field errors, the summary focused, the values kept.
     await page.goto("/ar/app/platform/orgs/new");
-    await main(page).getByRole("textbox", { name: /^اسم المؤسسة/ }).fill("مؤسسة التصوير");
-    await main(page).getByRole("textbox", { name: /^المعرّف في الروابط/ }).fill("Bad Slug");
-    await page.getByRole("button", { name: /أنشئ المؤسسة/ }).click();
+    await main(page).getByRole("textbox", { name: /^الاسم/ }).fill("مؤسسة التصوير");
+    await main(page).getByRole("textbox", { name: /^المعرّف/ }).fill("Bad Slug");
+    await page.getByRole("button", { name: /^أنشئ/ }).click();
     await expect(main(page).getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" })).toBeVisible();
     await review(page, "wave8-platform-orgs-new-field-error");
 
@@ -753,17 +779,17 @@ test.describe("390 px RTL review", () => {
 
     // P5 — the library with the baseline.
     await page.goto("/ar/app/platform/templates");
-    await expect(page.getByRole("heading", { level: 1, name: "مكتبة قوالب المنصة" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "مكتبة القوالب" })).toBeVisible();
     await review(page, "wave8-platform-templates-baseline");
 
     // P6 — metrics: the alerts, the totals, job health as cards.
     await page.goto("/ar/app/platform/metrics");
-    await expect(page.getByRole("heading", { level: 1, name: "مؤشرات المنصة" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "المؤشرات" })).toBeVisible();
     await review(page, "wave8-platform-metrics-default");
 
     // P7 — SCR-085's states, and the banner where an org route lands (C1).
     await page.goto("/ar/app/platform/impersonate");
-    await expect(page.getByRole("button", { name: /ابدأ الجلسة/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^ادخل/ })).toBeVisible();
     await review(page, "wave8-platform-impersonate-empty");
 
     await startFromForm(page, a.id, "مراجعة شاشة المؤسسة للتصوير");
@@ -789,5 +815,94 @@ test.describe("390 px RTL review", () => {
     // Scoped to `#main`: sync 2 found a second copy of this line outside it (DEC-145).
     await expect(main(page).getByText(/تلقائيًا عند/)).toBeVisible();
     await review(page, "wave8-platform-impersonate-expired");
+  });
+});
+
+// ★ Wave 26 (REQ-UIX-118, STORY-UIX-108): each of `080` – `085` captured beside its artboard — at the board's own width,
+// 1280, on the desktop project, and at 390 on the phone project — as
+// `wave26-platform-<screen>-<state>-<1280|390>.png` under `SHOTS`. The 390 captures also run the sideways check.
+// In this spec rather than a new one: the two seeded orgs and the platform admin are this file's, and a second copy of
+// that fixture would be a second thing to keep honest.
+test.describe("wave 26 — the six screens beside their artboards", () => {
+  async function capture(p: Page, screen: string, state: string) {
+    const phone = test.info().project.name === "phone";
+    if (phone) {
+      await review(p, `wave26-platform-${screen}-${state}-390`);
+      return;
+    }
+    await p.evaluate(() => document.fonts.ready);
+    mkdirSync(SHOTS, { recursive: true });
+    await p.screenshot({ path: join(SHOTS, `wave26-platform-${screen}-${state}-1280.png`), fullPage: true });
+  }
+
+  test("every screen at its board's width, and the delete refused without the slug", async ({ context, page }) => {
+    const phone = test.info().project.name === "phone";
+    if (phone) await page.setViewportSize(PHONE);
+    else await page.setViewportSize({ width: 1280, height: 800 });
+    await signInPlatform(context);
+
+    await page.goto("/ar/app/platform/orgs");
+    await expect(page.getByRole("heading", { level: 1, name: /^المؤسسات/ })).toBeVisible();
+    await capture(page, "orgs", "default");
+    // Suspend: the dialog naming the org, with its mandatory reason.
+    await orgAct(page, b, "أوقف");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await capture(page, "orgs", "suspend-confirm");
+    await page.getByRole("dialog").getByRole("textbox", { name: /^سبب الإيقاف/ }).fill("تصوير حالة الإيقاف");
+    await page.getByRole("dialog").getByRole("button", { name: /^أوقف/ }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    // Reactivate: the suspended row offers it in place of «أوقف»; then put b back as it was.
+    await expect(main(page).getByRole("button", { name: `أعد التفعيل — ${b.name}` })).toBeVisible();
+    await capture(page, "orgs", "suspended-row");
+    await orgAct(page, b, "أعد التفعيل");
+    await expect.poll(async () => (await db.query<{ status: string }>(`select status from public.orgs where id = $1`, [b.id])).rows[0].status).toBe("active");
+    await orgAct(page, a, "احذف");
+    await page.getByRole("dialog").getByRole("textbox", { name: /^معرّف المؤسسة/ }).fill("not-the-slug");
+    await page.getByRole("dialog").getByRole("button", { name: /احذف نهائيًا/ }).click();
+    await expect(page.getByRole("dialog").getByText(/لا يطابق معرّف المؤسسة/)).toBeVisible();
+    const { rows } = await db.query<{ status: string }>(`select status from public.orgs where id = $1`, [a.id]);
+    expect(rows[0].status, "a refused slug suspends nothing and deletes nothing").toBe("active");
+    await capture(page, "orgs", "delete-confirm");
+    await page.keyboard.press("Escape");
+    // ★ Focus returns to the row's act that opened the confirm — never to the top of the document (ledger C19).
+    await expect(main(page).getByRole("button", { name: `احذف — ${a.name}` })).toBeFocused();
+
+    await page.goto("/ar/app/platform/orgs/new");
+    await expect(page.getByRole("heading", { level: 1, name: "مؤسسة جديدة" })).toBeVisible();
+    await capture(page, "org-new", "default");
+    await page.getByRole("button", { name: /^أنشئ/ }).click();
+    await expect(main(page).getByRole("alert").filter({ hasText: "تعذّر إنشاء المؤسسة" })).toBeVisible();
+    await capture(page, "org-new", "refused");
+
+    await page.goto(`/ar/app/platform/orgs/${a.id}/domains`);
+    await expect(page.getByRole("heading", { level: 1, name: /^النطاقات · / })).toBeVisible();
+    await capture(page, "domains", "default");
+    // Removal: the confirm naming the domain, saying nobody loses access — cancelled, nothing removed.
+    await main(page).getByRole("button", { name: `أزل ${a.domain}` }).click();
+    await expect(page.getByRole("dialog")).toContainText("لا يفقد أحد وصوله");
+    await capture(page, "domains", "remove-confirm");
+    await page.keyboard.press("Escape");
+    await expect(main(page).getByRole("button", { name: `أزل ${a.domain}` })).toBeFocused();
+
+    await page.goto("/ar/app/platform/templates");
+    await expect(page.getByRole("heading", { level: 1, name: "مكتبة القوالب" })).toBeVisible();
+    await capture(page, "templates", "default");
+
+    await page.goto("/ar/app/platform/metrics");
+    await expect(page.getByRole("heading", { level: 1, name: "المؤشرات" })).toBeVisible();
+    await capture(page, "metrics", "default");
+
+    await page.goto("/ar/app/platform/impersonate");
+    await expect(main(page).getByRole("button", { name: /^ادخل/ })).toBeVisible();
+    await capture(page, "impersonate", "form");
+    // The form filled: an org, the mandatory reason, a duration chip — before «ادخل».
+    await main(page).getByRole("combobox", { name: /^المؤسسة/ }).selectOption(b.id);
+    await main(page).getByRole("textbox", { name: /^السبب/ }).fill("تذكرة 418 — صفحة الحضور لا تفتح للمشرف");
+    await main(page).locator("label").filter({ hasText: /^30 دقيقة$/ }).click();
+    await capture(page, "impersonate", "filled");
+    await startFromForm(page, b.id, "تصوير الشاشة بعد إعادة بنائها");
+    await capture(page, "impersonate", "active");
+    await page.getByRole("region", { name: /جلسة مفتوحة/ }).getByRole("button", { name: /أنهِ الجلسة/ }).click();
+    await expect(main(page).getByRole("button", { name: /^ادخل/ })).toBeVisible();
   });
 });
