@@ -127,7 +127,8 @@ export function EmailBuilder(props: EmailBuilderProps) {
   const [device, setDevice] = useState<600 | 375>(600);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [restoring, setRestoring] = useState<"ask" | "busy" | null>(null);
-  const [leaving, setLeaving] = useState(false);
+  /** Where the admin was going when the question was asked: the gallery (the back button), or a link's own URL. */
+  const [leaving, setLeaving] = useState<string | null>(null);
   const wide = useWide();
 
   const json = useMemo(() => documentJsonOf(doc), [doc]);
@@ -159,9 +160,28 @@ export function EmailBuilder(props: EmailBuilderProps) {
   useEffect(() => {
     if (!unsaved) return;
     const stay = (event: BeforeUnloadEvent) => event.preventDefault();
+    // ★ Every in-app link asks, not only the back button (`DEC-259` §2.7) — `profile-edit.tsx`'s listener: a plain
+    // press on a same-origin link that neither downloads nor opens a new tab.
+    const onClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as Element | null)?.closest?.("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement) || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      const url = new URL(anchor.href, window.location.href);
+      if (url.origin !== window.location.origin || url.pathname.startsWith("/api/")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      // The locale router prefixes the path itself, so the link's own prefix comes off.
+      const prefix = `/${props.locale}`;
+      const path = url.pathname === prefix ? "/" : url.pathname.startsWith(`${prefix}/`) ? url.pathname.slice(prefix.length) : url.pathname;
+      setLeaving(path + url.search + url.hash);
+    };
     window.addEventListener("beforeunload", stay);
-    return () => window.removeEventListener("beforeunload", stay);
-  }, [unsaved]);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", stay);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [unsaved, props.locale]);
 
   const checks = useMemo(() => runChecks({ parsed: true, blocks, dropped: initialDropped, subject, offered }), [blocks, subject, offered, initialDropped]);
   const blocked = hasBlocking(checks);
@@ -295,7 +315,7 @@ export function EmailBuilder(props: EmailBuilderProps) {
 
   const bar = (
     <header className="flex min-h-13 shrink-0 flex-wrap items-center gap-2.5 border-b border-edge px-4 py-2">
-      <IconButton size="sm" variant="secondary" label={t("back")} onClick={() => (unsaved ? setLeaving(true) : router.push("/app/admin/emails"))}>
+      <IconButton size="sm" variant="secondary" label={t("back")} onClick={() => (unsaved ? setLeaving("/app/admin/emails") : router.push("/app/admin/emails"))}>
         <ChevronIcon direction="back" />
       </IconButton>
       <h1 className="text-label font-bold text-fg-heading">
@@ -476,16 +496,17 @@ export function EmailBuilder(props: EmailBuilderProps) {
       />
 
       <ConfirmDialog
-        open={leaving}
-        onOpenChange={setLeaving}
+        open={leaving !== null}
+        onOpenChange={(open) => (open ? null : setLeaving(null))}
         title={t("leaveTitle")}
         body={<p>{t("leaveBody")}</p>}
         confirmLabel={t("leaveConfirm")}
         cancelLabel={t("stay")}
         closeLabel={t("close")}
         onConfirm={() => {
-          setLeaving(false);
-          router.push("/app/admin/emails");
+          const target = leaving;
+          setLeaving(null);
+          router.push(target ?? "/app/admin/emails");
         }}
       />
     </div>
