@@ -557,6 +557,7 @@ begin
 end $function$;
 -- ── 7 ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+drop policy if exists "materials_storage_delete_unrecorded" on storage.objects;
 create policy "materials_storage_delete_unrecorded" on storage.objects for delete to authenticated
   using (
     bucket_id = 'materials'
@@ -565,6 +566,7 @@ create policy "materials_storage_delete_unrecorded" on storage.objects for delet
     and not exists (select 1 from public.material_versions mv where mv.storage_path = objects.name)
   );
 
+drop policy if exists "design_assets_storage_delete_unrecorded" on storage.objects;
 create policy "design_assets_storage_delete_unrecorded" on storage.objects for delete to authenticated
   using (
     bucket_id = 'design-assets'
