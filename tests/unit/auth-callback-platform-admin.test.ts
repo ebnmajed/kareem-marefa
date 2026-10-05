@@ -42,6 +42,25 @@ describe("the callback, when no org matches", () => {
     expect(new URL(response.headers.get("location")!).pathname).toBe("/ar/no-access");
   });
 
+  // ★ DEC-263 — met on production on 2026-10-05: the super admin's own address matched a SUSPENDED org, so the
+  // answer was `member`, not `no_match`, and the first fix did not reach it.
+  it("★ a platform admin whose own org is suspended lands on the console, not on «موقوفة»", async () => {
+    provision.mockResolvedValue({ status: "member", org_status: "suspended", member_status: "active" });
+    client.rpc.mockResolvedValue({ error: null });
+    const response = await call();
+    expect(client.auth.signOut).not.toHaveBeenCalled();
+    expect(new URL(response.headers.get("location")!).pathname).toBe("/ar/app/platform");
+  });
+
+  it("an ordinary member of a suspended org still lands on its explanation, signed in", async () => {
+    provision.mockResolvedValue({ status: "member", org_status: "suspended", member_status: "active" });
+    client.rpc.mockResolvedValue({ error: { code: "42501" } });
+    const response = await call();
+    expect(client.auth.signOut).not.toHaveBeenCalled();
+    const to = new URL(response.headers.get("location")!);
+    expect(to.pathname + to.search).toBe("/ar/no-access?reason=suspended");
+  });
+
   it("a member is never asked whether they are a platform admin", async () => {
     provision.mockResolvedValue({ status: "member", org_status: "active", member_status: "active" });
     await call();
