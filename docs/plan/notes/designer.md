@@ -690,6 +690,34 @@ teammate tree. I will write the M2 assertions **in PR C's tree as new files** th
 `templates-platform-removal.test.ts` and `templates-read-narrowed.test.ts`. That leaves the lead only the deletions and
 the one-line flips in the follow-up. I hand those flips over in writing as ledger lines.
 
+### 16 · As built (in progress)
+
+- **M1** is promoted as `0205_seed_org_templates.sql`, `0206_org_templates_guard.sql` and
+  `0207_org_templates_backfill.sql`. Three files, so the roster unit still finds `_seed_org_templates.sql`. The local
+  backfill's notice was «maarifa-demo -> 11».
+- **M2** stays proposed until the follow-up PR:
+  - `0010_platform_library_removal.sql` is mine;
+  - `0011_platform_rows_read.sql` is the lead's (the two policies, the helper and the D5 constraint).
+- **Green, run one file at a time on the shared database:**
+  - `templates-org-seed` 11/11
+  - `templates-platform-removal` 6/6
+  - `templates-read-narrowed` 5/5
+  - `certificates-designs` 10/10 (C-5)
+- **The full run with M1 in the chain:** 65 failures in four of my files, every one `last_live_template`. All 65 come
+  from four setup helpers that wipe every design template of both fixture orgs as the owner:
+  - `designer-schema` `setup()`
+  - `designer-render` `setup()`
+  - `designer-baseline-supersede` `preWaveLibrary()`
+  - `templates-roster` `buildLibrary()`
+
+  The guard does what D6 specifies. How to fix it is the lead's call.
+- ★ **«لا قوالب لمؤسستك بعد» is no longer reachable by any client path.**
+  - A retired template still shows in the list, so retiring never empties it.
+  - SCR-055 has no delete control.
+  - Through the API, `templates_delete_org` would let an admin delete the four poster families other than `talk`. The
+    last `talk` and the three certificate families are refused by D6, so neither tab can be emptied.
+  - Only the owner deleting rows by hand reaches it. The string stays.
+
 ---
 
 ## Wave 24 — as built, PR B `wave-24b/the-baseline` (after the owner's four rulings)
