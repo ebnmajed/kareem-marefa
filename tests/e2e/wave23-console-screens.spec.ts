@@ -197,6 +197,10 @@ test("055 · ★ the tie guard — two non-default org templates of one kind on 
     );
     await db.query(`insert into public.design_template_versions (template_id, version, document, published_at) values ($1, 1, $2::jsonb, now())`, [rows[0].id, doc]);
   }
+  // ★ LEDGER (wave 27, DEC-254 §3): the org is seeded with a presenter DEFAULT, so the tie needs it gone. Retiring a
+  // default clears its flag (as SCR-055's «أحِله للتقاعد» does); the guard allows it because other presenter
+  // templates stay live. That is how a seeded org reaches the tie: no default left, several templates at v1.
+  await db.query(`update public.design_templates set retired_at = now(), is_default = false where org_id = $1 and family = 'presenter' and is_default`, [orgId]);
   await signIn(context, emails.admin);
   await page.goto("/ar/app/admin/templates/certificates");
   const presenter = main(page).getByLabel("القوالب الافتراضية").locator("div", { has: page.getByText("الافتراضي للتقديم", { exact: true }) });
@@ -262,13 +266,16 @@ test("045 · completed in review: «أصدر» issues one, audited as the admin;
   await signIn(context, emails.admin);
   await page.goto(`/ar/app/admin/sessions/${sessionId}/certificates`);
   await expect(main(page).getByText("تُراجَع قبل الإطلاق")).toBeVisible();
-  await expect(main(page).getByRole("radiogroup", { name: "من يستحق شهادة، ومتى" })).toHaveCount(0);
+  // ★ LEDGER (wave 27): since 01c8fe7d (DEC-250, wave 26) the mode keeps its control after completion — only a
+  // cancelled session loses it. Expectation changed from «absent» to «present»; this case had not run since.
+  await expect(main(page).getByRole("radiogroup", { name: "من يستحق شهادة، ومتى" })).toHaveCount(1);
   await expect(main(page).getByRole("table", { name: "الشهادات المحجوزة" })).toContainText(NAMES.a);
   await page.waitForLoadState("networkidle");
   await shot(page, info, "certificates", "held");
 
-  // The template, while the kind is held and none issued (DEC-238 §2).
-  await main(page).getByRole("link", { name: "غيّر" }).click();
+  // The template, while the kind is held and none issued (DEC-238 §2). ★ LEDGER (wave 27): since 01c8fe7d a kind with
+  // nothing issued stays changeable, so presenter has its own «غيّر · التقديم» too — selector moved to the kind.
+  await main(page).getByRole("link", { name: "غيّر · الحضور" }).click();
   await expect(page.getByRole("dialog", { name: /القالب/ })).toBeVisible();
   await shot(page, info, "certificates", "change-template");
   await page.keyboard.press("Escape");
@@ -280,8 +287,10 @@ test("045 · completed in review: «أصدر» issues one, audited as the admin;
   expect(await auditRows("certificate.released", ids.b)).toEqual([{ actor_id: members.admin }]);
   await expect(main(page).getByRole("table", { name: "الشهادات الصادرة" })).toContainText(NAMES.b);
 
-  // Issued now: the kind is fixed, so «غيّر» is gone (set_certificate_design()'s own lock re-checks it).
-  await expect(main(page).getByRole("link", { name: "غيّر" })).toHaveCount(0);
+  // Issued now: the kind is fixed, so its «غيّر» is gone (set_certificate_design()'s own lock re-checks it). ★ LEDGER
+  // (wave 27): the presenter kind, nothing issued, keeps its own — expectation narrowed to the locked kind.
+  await expect(main(page).locator('a[href*="design=attendance"]')).toHaveCount(0);
+  await expect(main(page).locator('a[href*="design=presenter"]')).toHaveCount(1);
   await shot(page, info, "certificates", "issued");
 });
 
