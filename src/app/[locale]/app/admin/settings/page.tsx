@@ -147,10 +147,14 @@ export default async function SettingsPage({
               {
                 id: "checkIn",
                 label: t("rows.checkIn"),
-                value: t.rich(view.checkInGraceSeconds === 0 ? "values.checkInNoGrace" : "values.checkIn", {
-                  rotation: () => duration(view.checkInRotationSeconds),
-                  grace: () => duration(view.checkInGraceSeconds),
-                }),
+                // ★ wave 27 (REQ-CHK-019): no period is «لا يتغيّر» — and nothing about a previous code, there is none.
+                value:
+                  view.checkInRotationSeconds === null
+                    ? t("values.checkInFixed")
+                    : t.rich(view.checkInGraceSeconds === 0 ? "values.checkInNoGrace" : "values.checkIn", {
+                        rotation: () => duration(view.checkInRotationSeconds!),
+                        grace: () => duration(view.checkInGraceSeconds),
+                      }),
               },
               { id: "maxCoPresenters", label: t("rows.maxCoPresenters"), value: count("values.coPresenters", view.maxCoPresenters) },
               { id: "priorityRsvpHours", label: t("rows.priorityRsvpHours"), value: count("values.priority", view.priorityRsvpHours) },

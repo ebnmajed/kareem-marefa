@@ -262,7 +262,7 @@ constraint violation rather than a runtime surprise.
 | `time_zone` | `text not null` | `'Asia/Riyadh'` |
 | ★ `company_min_active_members` | `int not null`, 1 – 50 | `3` — the company ranking's minimum of active members (`0175`, `DEC-220` §1, `REQ-UIX-082`); no admin control until the console wave |
 | ~~`numerals`~~ | ~~`numeral_system not null`~~ | **✗ dropped — `DEC-124`.** Numerals are Western everywhere; no row was ever `arabic_indic`, so the drop changes no output |
-| `check_in_rotation_seconds` | `int not null` | `600` |
+| `check_in_rotation_seconds` | `int`, nullable, `between 60 and 3600` | `600` · ★ **null = «لا يتغيّر»** (`0202`, `DEC-254` §6, `REQ-CHK-019`): one code per day, valid to `check_in_ceiling()` |
 | `check_in_grace_seconds` | `int not null` | `120` |
 | `reminder_offsets_minutes` | `int[] not null` | `'{10080,1440,120}'` |
 | `rating_prompt_delay_minutes` | `int not null` | `60` |

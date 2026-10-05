@@ -1,6 +1,14 @@
--- wave 27 (DEC-254 §6, DEC-255) — THE CHECK-IN CODE MAY STAY FIXED FOR THE DAY (REQ-CHK-019).
--- Proposed by `checkin` (docs/plan/notes/checkin.md, «Wave 27 — plan», W27-2); promoted by the lead TOGETHER WITH
--- `alter table public.org_settings alter column check_in_rotation_seconds drop not null` as ONE migration (D5).
+-- 0202 · wave 27 (DEC-254 §6, DEC-255 §3, REQ-CHK-019, STORY-CHK-009) — the check-in code may stay fixed for the day.
+-- `checkin`'s function (docs/plan/notes/checkin.md, «Wave 27 — plan», W27-2), promoted by the lead TOGETHER WITH the
+-- column change below as ONE migration.
+--
+-- ★ THE SETTING. `org_settings.check_in_rotation_seconds` drops `not null`: NULL is «لا يتغيّر». The check
+-- `between 60 and 3600` (0004:114) already admits null and still binds every other value; the default stays 600, so
+-- no org changes behaviour until an admin chooses «لا يتغيّر» on SCR-063. `save_org_settings()` (0187) needs nothing:
+-- a JSON null is written as SQL null and its history row records it.
+--
+-- Additive for `main`: no org is at null until SCR-063 offers it, which is this PR's code; and the function below is
+-- in place before the column can hold one.
 --
 -- ★★ THE ORDER IS THE SAFETY. With the column nullable and `0105`'s core still in place, a null period makes
 -- `make_interval(secs => null)` null, `valid_until = now() + null` violates `not null` (0010:211), and every issuing
@@ -40,6 +48,10 @@
 --   | `RPC-_issue_check_in_code.off_keeps_current` | Switching off while a code is current raises that code's `valid_until` to the ceiling; no new code is issued and none is shortened. |
 --   | `RPC-_issue_check_in_code.on_resumes` | Switching on while a whole-day code is current issues a successor and leaves the whole-day code valid for exactly the grace — never before now(), never past the ceiling. |
 --   | `RPC-check_in.fixed_code_per_day` | With rotation off, day 1's code is refused on day 2 (`invalid_code`), and day 2 has its own. |
+
+alter table public.org_settings alter column check_in_rotation_seconds drop not null;
+comment on column public.org_settings.check_in_rotation_seconds is
+  'Seconds between check-in codes, 60–3600; NULL = the code does not rotate: one code per day, valid to check_in_ceiling() (REQ-CHK-019).';
 
 create or replace function public._issue_check_in_code(p_session uuid, p_day uuid default null) returns public.check_in_codes
 language plpgsql security definer set search_path = '' as $$

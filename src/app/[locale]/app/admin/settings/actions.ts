@@ -56,15 +56,15 @@ export async function saveSettings(locale: Locale, previous: SettingsState, form
     else if (field === "emailFromName" || field === "emailReplyTo") value = raw.trim() === "" ? null : raw.trim();
     else if (NUMBER_FIELDS.includes(field)) {
       const text = raw.trim();
-      if (text === "") {
+      // ★ wave 27 (REQ-CHK-019): the rotation alone may be empty — the form posts it empty when «لا يتغيّر» is on.
+      if (text === "" && field === "checkInRotationSeconds") value = null;
+      else if (text === "") {
         errors[field] = "required";
         continue;
-      }
-      if (!/^\d+$/.test(text)) {
+      } else if (!/^\d+$/.test(text)) {
         errors[field] = "number";
         continue;
-      }
-      value = Number(text);
+      } else value = Number(text);
     } else value = raw;
 
     if (value === view[field]) continue;

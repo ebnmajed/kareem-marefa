@@ -1,10 +1,5 @@
 // The check-in code may stay fixed for the day — REQ-CHK-019, DEC-254 §6, DEC-255 (D1, D3, D5).
-// Proves supabase/proposed/checkin/01_rotation_off.sql through applyProposed().
-//
-// ★ D5: the lead promotes the core TOGETHER WITH `alter column check_in_rotation_seconds drop not null`, as one
-// migration. Until then the column is `not null`, so each case's setup transaction runs the `drop not null` itself
-// (rolled back with the test). After the promotion the statement is a no-op on a nullable column and the file passes
-// unchanged. ★ It takes an ACCESS EXCLUSIVE lock on `org_settings` for the test's own transaction — run this file alone.
+// Proves 0202_check_in_rotation_off.sql — the core and the column, promoted as one migration (D5).
 //
 // ★ What this file is NOT: the proof that a rotating org issues what it issued before. That is `checkin.test.ts`,
 // `checkin-days.test.ts`, `checkin-window.test.ts` and the rest passing UNTOUCHED on the new core — plus the one case
@@ -13,12 +8,10 @@
 // `03` §8.2 rows: RPC-_issue_check_in_code.rotation_off_one_code, .off_keeps_current, .on_resumes;
 // RPC-check_in.fixed_code_per_day; RPC-_issue_check_in_code.not_callable (still).
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
-
-const PROPOSED = "checkin/01_rotation_off.sql";
 
 interface Code {
   id: string;
@@ -30,11 +23,9 @@ interface Code {
 }
 type Envelope = { status: string };
 
-/** The core and the column, as the lead's one migration will land them. Leaves the transaction as the owner. */
+/** Leaves the transaction as the owner. */
 async function setUp(tx: Tx): Promise<void> {
   await tx.asOwner();
-  await tx.q(`alter table public.org_settings alter column check_in_rotation_seconds drop not null`);
-  await applyProposed(tx, PROPOSED);
 }
 
 const setRotation = (tx: Tx, org: Org, seconds: number | null) =>
