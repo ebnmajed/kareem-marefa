@@ -325,7 +325,9 @@ tracks land and touch every folder, so they are the lead's.
 The A27 baseline — eight families, light and dark — is seeded platform-owned and present for every
 org from creation (`0061`, DEC-052); promotion adds, it never supplies the baseline.
 
-### Ownership map (wave 27 — M29, the owner's list: companies by domain, templates an org owns, held certificates, a session renamed, a code that stays — DEC-254) — ★ THE MAP IN FORCE
+### Ownership map (wave 27 — M29, the owner's list: companies by domain, templates an org owns, held certificates, a session renamed, a code that stays — DEC-254) — ★ THE RECORD OF A FINISHED WAVE
+
+> Wave 27 merged as PRs #79 – #82 (`main` `46f6c1f5`, production `0210`, closed by `DEC-257`). Its map is kept as the record. **No wave is open**: the next lead writes a new map before spawning anyone.
 
 **The first wave that is not drawn** (milestone **M29**). Every screen in `09` has a design and is built (`DEC-253`);
 this wave is the owner's own list of five changes to how the product behaves, specified by `DEC-254` and the brief

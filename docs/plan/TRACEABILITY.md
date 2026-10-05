@@ -632,7 +632,7 @@ system. Each still has a story and a milestone; only gap report 2 exempts them. 
 | `REQ-UIX-111` | — | — | `SCR-056` | — | — | `STORY-UIX-101` | M25 |
 | `REQ-UIX-112` | — | — | `SCR-055` `SCR-057` `SCR-058` | — | — | `STORY-UIX-102` | M25 |
 | `REQ-UIX-113` | `ENT-member_invitations` `ENT-members` | — | `SCR-049` | `JOB-send_member_invitation` | — | `STORY-UIX-103` | M27 |
-| `REQ-UIX-114` | — | — | `SCR-000` `SCR-001` | — | — | `STORY-UIX-104` | M28 |
+| `REQ-UIX-114` | — | — | `SCR-000` `SCR-001` `SCR-048` | — | — | `STORY-UIX-104` | M28 |
 | `REQ-UIX-115` | — | — | `SCR-006` | — | — | `STORY-UIX-105` | M28 |
 | `REQ-UIX-116` | — | — | `SCR-059` | — | — | `STORY-UIX-106` | M28 |
 | `REQ-UIX-117` | — | — | `SCR-029` | — | — | `STORY-UIX-107` | M28 |

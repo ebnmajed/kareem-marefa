@@ -10067,3 +10067,70 @@ revoke of `company_id` from the member's grant, and the platform rows' removal w
 switch beside the period, in the row that already holds it. The owner sees it at acceptance.
 
 - **Documents changed:** `01-prd.md` (`REQ-CRT-015`), `STATUS.md`
+
+---
+
+## DEC-257 — Wave 27 closes: a member's company follows their domain, an org owns its templates, certificates are held by default, a session is renamed until it is published, the code may stay — all on production at `0210`
+
+- **Date:** 2026-10-05 · **Decided by:** the lead; the acceptance is the owner's · **Closes:** `DEC-254`, `DEC-255`, `DEC-256` · milestone **M29**
+
+### 1 · What merged, and what production holds
+
+| PR | Merge | Migrations, pushed by the owner before each merge | What it is |
+|---|---|---|---|
+| **A** #79 | `13a9453e` | `0200`, `0201`, `0202` | a session renamed until published, audited; certificates held for review by default; the check-in rotation may be off; the certificate mode on the schedule tab |
+| **B** #80 | `8896c98a` | `0203`, `0204` | company domains, placement by domain at sign-in, the save that asks first, an admin's placement by hand, the picker off the profile, the feed's «choose your company» gate removed |
+| **C** #81 | `bdd5ae70` | `0205`, `0206`, `0207` | every org seeded with its own eleven templates, the last-template guard, one library level, `SCR-083` deleted |
+| **D** #82 | `46f6c1f5` | `0208`, `0209`, `0210` | `company_id` out of the member's own grant; the platform templates deleted or retired, their read narrowed |
+
+**Production is at `0210`.** Each batch was rehearsed first on the owner's dump — the last on production's data too
+(`notes/wave-27-rehearsal.md`) — and each push printed what the rehearsal predicted: the backfill gave `hoiu49` and
+`maarifa-demo` eleven templates each and `ppgroup` seven beside the four it had already copied; `0209` deleted eight
+platform templates, retired four that 45 certificates and 68 design documents still name, and repointed one session
+design. The worker redeployed from `main` on `worker/Dockerfile` (the owner's build log).
+
+### 2 · What did not move
+
+`registrations` was not read, altered or dropped. The five public routes and the registration form were not touched;
+`qa` passed on every PR. No parity golden moved and no pinned mail file moved. `console-register.test.ts` and
+`ui-playground.test.ts` are untouched; `ui/` is 71 files. No policy gained a super-admin disjunct. Every certificate
+issued before the wave is pinned to the version it was issued against.
+
+### 3 · The owner's rulings taken during the wave
+
+1. **Adding an admin by email stays refused** — «add as a member then promote» (`DEC-254` §7).
+2. **A session's name is editable until it is published** (`DEC-255` §1).
+3. **The certificate mode's control sits on the schedule tab too** — «I need it repositioned» (`DEC-256`).
+4. Platform templates: delete what nothing references, retire the rest (`DEC-254` §3.4).
+
+### 4 · Where the brief and the plans were wrong, for whoever reads this later
+
+The brief said the certificate mode was still refused after completion (`DEC-250` had lifted it), called adding an
+admin by email a bug (it was a decision, enforced in SQL), and counted «24 platform templates» (12, with 24 versions).
+`DEC-254` said no gate on a missing company existed (the home feed had one), that a moved member counts «from that
+moment» (the open period's points move with them at the next snapshot), and that `create_org()` would seed templates
+(orgs are also born by direct insert, so it is a trigger). ★ **The lead's own two**: a conflict resolved by a regular
+expression dropped six hundred lines of `03` — caught by `policy-diff` within the minute — and a guess that seven e2e
+failures were a lost filter, which `designer` refuted by reading: they were stale since waves 21 and 24.
+
+### 5 · What the builds found that no plan had
+
+The confirm dialog whose button disabled itself before the browser submitted, so the confirmed save never left the
+browser — invisible to jsdom, found by the e2e on a production build. Sixty-five RLS cases refused by the new
+last-template guard, all four shared setups emptying whole libraries; **the guard stayed as written**. Eleven e2e
+cases stale since waves 21, 24 and 26, passing by accident or never run, because CI skips signed-in e2e
+(`DEC-253` §7.2) — each in a ledger, marked as the earlier wave's debt.
+
+### 6 · Carried
+
+| # | What | Whose |
+|---|---|---|
+| 1 | ★ **An intermittent error page that is the LOCAL gateway's, not the product's**: the local PostgREST container resets connections, nginx cannot retry a POST, and one failed RPC read takes a whole console page to its error screen (ledger B). What is real is the last clause: **a single failed read fails the page** | a hardening the owner may want; not a defect of this wave |
+| 2 | Every regeneration of an automatic poster inserts a new `design_documents` row — `on conflict do nothing` has no unique constraint to meet (`regenerate_poster.ts:162`, `0055:152`). 68 documents for far fewer sessions on production | pre-existing; a backlog line |
+| 3 | `ppgroup` has no default achievement certificate: its own copy is not marked, and the seed never takes a default from an org that already holds the composition. Issuance resolves one; `SCR-055` says «لا قالب افتراضي» until the admin presses «اجعله الافتراضي» | the owner's, one press |
+| 4 | The seven companies carry no domains yet, so nobody is placed until an admin enters them on `SCR-048` | the owner's |
+| 5 | `SCR-063`'s «لا يتغيّر» was built without an artboard (the settings board draws no such control) and has no capture beside one | the owner sees it at acceptance |
+| 6 | CI's Playwright job still skips every signed-in spec (`DEC-253` §7.2) — this wave met its cost eleven times | the owner's — a CI job with a database |
+| 7 | Standing: the last-org lockout (`DEC-253` §7.1, deferred by the owner); impersonation's durations (`DEC-248` §7.9); `DEC-194`'s two gates; `DEC-186` §4; `DEC-204`; `DEC-215`'s four; the `railway.json` migration due **2026-12-01** | as recorded |
+
+- **Documents changed:** `STATUS.md`, `CLAUDE.md`
