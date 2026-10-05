@@ -64,7 +64,11 @@ export interface HostViewData {
   validUntil: string | null;
   /** ★ THE DAY'S, not the session's — the room is counting who is in it now. */
   checkInCount: number;
-  rotationSeconds: number;
+  /**
+   * `org_settings.check_in_rotation_seconds` — ★ contract 2 (wave 27, REQ-CHK-019): null is «لا يتغيّر», the day's one
+   * code (DEC-254 §6), and also a failed read (D6). Either way no countdown and no period is drawn.
+   */
+  rotationSeconds: number | null;
   /** `affordancesFor(phase, "staff").hostConsole` — true only for `open` (pre-flight) and `live`. The page gates the walk-in and manual-marking sections on this, not on "is staff" alone. */
   consoleActive: boolean;
   /**
@@ -83,7 +87,7 @@ export interface HostViewData {
   title: string;
   /** The day's place, else nowhere. */
   venueName: string | null;
-  /** When the code on the wall stops being current — `valid_from + rotation` (`0105`). Null with no code. */
+  /** When the code on the wall stops being current — `valid_from + rotation` (`0105`). Null with no code, and with no rotation (REQ-CHK-019). */
   rotatesAt: string | null;
   /** The instant this read was made, so a client counts down against the SERVER's clock, never its own. */
   readAt: string;
@@ -133,7 +137,9 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   if (!sessionRes.data) return null;
 
   const s = sessionRes.data;
-  const rotationSeconds = settingsRes.data?.check_in_rotation_seconds ?? 600;
+  // ★ Wave 27 (REQ-CHK-019, D6): null is «لا يتغيّر» — and a failed read is null too, never a guessed 600 printed
+  // beside a code that does not change.
+  const rotationSeconds = settingsRes.error ? null : ((settingsRes.data?.check_in_rotation_seconds as number | null | undefined) ?? null);
   const allowWalkIns = s.allow_walk_ins === true;
   const c = codeRes.error ? null : (codeRes.data as { code: string; valid_from: string; valid_until: string; session_day_id: string });
   const phase = sessionPhase({ state: s.state, startsAt: s.starts_at, endsAt: s.ends_at, durationMinutes: s.duration_minutes, days });
@@ -156,7 +162,7 @@ export async function getHostView(locale: string, sessionId: string): Promise<Ho
   const graceSeconds = settingsRes.data?.check_in_grace_seconds ?? 120;
   const dayIndex = day ? days.findIndex((d) => d.id === day.id) : -1;
   const ceiling = dayIndex >= 0 ? checkInCeiling(days, dayIndex) : null;
-  const rotatesAt = c ? new Date(new Date(c.valid_from).getTime() + rotationSeconds * 1000).toISOString() : null;
+  const rotatesAt = c && rotationSeconds !== null ? new Date(new Date(c.valid_from).getTime() + rotationSeconds * 1000).toISOString() : null;
 
   // "staff" and "presenter" carry an identical cell (both are the console's
   // two eligible viewers) — `getHostView()` already only reaches this point
@@ -271,8 +277,11 @@ export interface CheckInScreenData {
    */
   teamColor: string | null;
   // ── wave 18, PR B (REQ-UIX-062) — add-only; nothing above changes ──
-  /** `org_settings.check_in_rotation_seconds` — the rules line says the org's rotation, never «10» (DEC-206 §4.76). */
-  rotationSeconds: number;
+  /**
+   * `org_settings.check_in_rotation_seconds` — the rules line says the org's rotation, never «10» (DEC-206 §4.76).
+   * ★ Contract 2 (wave 27, REQ-CHK-019): null is «لا يتغيّر» or a failed read (D6) — the rules line then says nothing.
+   */
+  rotationSeconds: number | null;
   /** The day's place, else nowhere — the session's mini-row. */
   venueName: string | null;
   /** The day's start, else the session's — «بدأت 6:30 م». */
@@ -313,7 +322,7 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
     // and this is the MEMBER's screen: the call was refused 42501 on every
     // render and its result never read. What the member has earned is
     // contract 1's `getSessionAwardState()`, which the page reads beside this.
-    // The rotation, for the rules line. Org-readable (`p1_org_read`, 0004); a failed read is the default.
+    // The rotation, for the rules line. Org-readable (`p1_org_read`, 0004); a failed read is null — no line (D6).
     supabase.from("org_settings").select("check_in_rotation_seconds").maybeSingle(),
   ]);
   if (sessionRes.error) throw new Error(`sessions: ${sessionRes.error.message}`);
@@ -359,7 +368,7 @@ export async function getCheckInScreenData(locale: string, sessionId: string): P
     checkedInToday: checkedIn,
     arrivedAt: (today?.arrived_at as string | undefined) ?? null,
     teamColor: company?.team_color ?? null,
-    rotationSeconds: (settingsRes.error ? null : settingsRes.data?.check_in_rotation_seconds) ?? 600,
+    rotationSeconds: settingsRes.error ? null : ((settingsRes.data?.check_in_rotation_seconds as number | null | undefined) ?? null),
     venueName: day?.venue?.name ?? null,
     startsAt: day?.startsAt ?? s.starts_at ?? null,
     requireAllDays: s.require_all_days !== false,
