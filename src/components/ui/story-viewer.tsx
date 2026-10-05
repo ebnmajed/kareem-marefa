@@ -7,7 +7,6 @@ import { teamColorOrNull } from "@/components/ui/avatar";
 import { ChevronIcon, CloseIcon, MoreIcon, PauseIcon, PlayIcon, PlusIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { Menu } from "@/components/ui/menu";
-import { ProgressBar } from "@/components/ui/progress-bar";
 import { ReactionBar } from "@/components/ui/reaction-bar";
 import { usePlayPortal } from "@/components/ui/scope-portal";
 
@@ -110,7 +109,16 @@ function Clock({
   return (
     <div aria-hidden className="flex gap-1">
       {frames.map((f, i) => (
-        <ProgressBar key={f.id} decorative size="sm" fill="text" value={i < index ? 1 : i > index ? 0 : ratio} max={1} className="flex-1" />
+        // The boards' segment: a bone fill on a bone track at 35 % — read on any ground under the top scrim. `progress-bar`'s
+        // raised track is a dark band on a team colour, so the segment is drawn here, grown by `scaleX` from the inline
+        // start as that primitive's fill is (REQ-UIX-036), never by width.
+        <span key={f.id} className="h-[3px] flex-1 overflow-hidden rounded-pill bg-fg-heading/35">
+          <span
+            data-slot="segment-fill"
+            className="block h-full w-full bg-fg-heading ltr:origin-left rtl:origin-right"
+            style={{ transform: `scaleX(${i < index ? 1 : i > index ? 0 : Math.min(1, Math.max(0, ratio))})` }}
+          />
+        </span>
       ))}
     </div>
   );
@@ -351,7 +359,21 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
                   <CloseIcon aria-hidden />
                 </RadixDialog.Close>
               </div>
+              {/* The second row: «أضف», «المزيد» (an attendee's frame: «أزلني» · «بلّغ») and pause — every control of the
+                  header that the board does not draw, kept off the bottom row so the four reactions and the one action
+                  fit on one line at 390 and never cover a caption. */}
               <div className="flex items-center justify-end gap-2">
+                {frame.moderation ? (
+                  <Menu
+                    align="end"
+                    trigger={
+                      <button type="button" aria-label={frame.moderation.menuLabel} className={CONTROL}>
+                        <MoreIcon aria-hidden />
+                      </button>
+                    }
+                    items={frame.moderation.items.map((item) => ({ label: item.label, onSelect: item.onSelect }))}
+                  />
+                ) : null}
                 {story.onAdd ? (
                   <button type="button" onClick={story.onAdd} className={`${CONTROL} w-auto gap-1.5 px-3 text-label font-bold`}>
                     <PlusIcon aria-hidden />
@@ -382,22 +404,11 @@ export function StoryViewer({ open, stories, storyIndex, onClose, onFrameShown, 
 
             <div className="relative z-10 flex items-center gap-2 px-4">
               {frame.reactions ? (
-                <ReactionBar label={frame.reactions.label} items={frame.reactions.items} onToggle={frame.reactions.onToggle} pending={frame.reactions.pending} className="flex-nowrap" />
+                <ReactionBar label={frame.reactions.label} items={frame.reactions.items} onToggle={frame.reactions.onToggle} pending={frame.reactions.pending} className="flex-nowrap! gap-1.5!" />
               ) : null}
               <span className="flex-1" />
-              {frame.moderation ? (
-                <Menu
-                  align="end"
-                  trigger={
-                    <button type="button" aria-label={frame.moderation.menuLabel} className={CONTROL}>
-                      <MoreIcon aria-hidden />
-                    </button>
-                  }
-                  items={frame.moderation.items.map((item) => ({ label: item.label, onSelect: item.onSelect }))}
-                />
-              ) : null}
               {frame.action ? (
-                <Link href={frame.action.href} onClick={onClose} className="inline-flex min-h-11 items-center rounded-pill bg-fg-heading px-4 font-display text-body font-extrabold text-canvas">
+                <Link href={frame.action.href} onClick={onClose} className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-pill bg-fg-heading px-4 font-display text-body font-extrabold text-canvas">
                   {frame.action.label}
                 </Link>
               ) : null}

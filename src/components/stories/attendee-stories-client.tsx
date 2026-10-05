@@ -60,7 +60,10 @@ export function AttendeeStoriesClient({
       </h2>
       <ul className="flex gap-2 overflow-x-auto pb-1">
         {frames.map((f) => {
+          // The pill as `AdminAttendance` draws it — a video's LENGTH alone («0:12»), or «صورة»; the full word («فيديو
+          // 0:12») is in «أزل»'s accessible name, so a screen reader hears what the eye reads from the length.
           const kind = f.kind === "video" ? t("video", { length: length(f.durationMs) }) : t("photo");
+          const pill = f.kind === "video" ? length(f.durationMs) : t("photo");
           return (
             <li key={f.id} data-frame-id={f.id} className="relative flex h-[8.75rem] w-24 shrink-0 flex-col justify-between overflow-hidden rounded-tile bg-surface p-1.5">
               {f.thumbUrl ? (
@@ -68,7 +71,7 @@ export function AttendeeStoriesClient({
                 <img src={f.thumbUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
               ) : null}
               <span className="relative self-start rounded-pill bg-chrome px-1.5 py-0.5 text-caption font-bold">
-                <bdi>{kind}</bdi>
+                <bdi dir={f.kind === "video" ? "ltr" : undefined}>{pill}</bdi>
               </span>
               {f.state !== "visible" || f.hidden ? (
                 <span className="relative self-start rounded-pill bg-chrome px-1.5 py-0.5 text-caption">

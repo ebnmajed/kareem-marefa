@@ -1,6 +1,6 @@
 // SCR-044's «قصص الحضور» — REQ-STO-017, REQ-EVT-014. Every attendee frame with its author named in text, its kind
 // and length; «أزل» asks for a reason in a sheet and posts the frame and the reason to the bound action.
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
@@ -46,7 +46,8 @@ describe("«قصص الحضور»", () => {
     const tiles = within(strip).getAllByRole("listitem");
     expect(tiles).toHaveLength(3);
     expect(within(tiles[0]).getByRole("button", { name: "أزل — فيديو 0:12 — فهد العنزي" })).toBeInTheDocument();
-    expect(within(tiles[0]).getByText("فيديو 0:12")).toBeInTheDocument();
+    expect(within(tiles[0]).getByText("0:12")).toBeInTheDocument();
+    expect(within(tiles[1]).getByText("صورة")).toBeInTheDocument();
     expect(within(tiles[1]).getByText("مخفية")).toBeInTheDocument();
     expect(within(tiles[2]).getByText("تعذّر")).toBeInTheDocument();
   });
@@ -89,6 +90,7 @@ describe("«قصص الحضور»", () => {
     const user = userEvent.setup();
     show(vi.fn<Action>(async () => ({ outcome: "reason_required", frameId: "v1" })));
     const sheet = await remove(user);
-    expect(within(sheet).getByRole("textbox", { name: /سبب الإزالة/ })).toHaveAttribute("aria-invalid", "true");
+    // The action resolves after the click: wait for its answer, never read it in the same tick.
+    await waitFor(() => expect(within(sheet).getByRole("textbox", { name: /سبب الإزالة/ })).toHaveAttribute("aria-invalid", "true"));
   });
 });

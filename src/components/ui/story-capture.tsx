@@ -97,8 +97,11 @@ export function StoryCapture({
           <div className="relative flex h-full w-full max-w-[24.375rem] flex-col overflow-hidden bg-void pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <div className="absolute inset-0">{preview}</div>
 
-            <div className="relative z-10 flex items-center justify-between gap-2 px-3">
-              <RadixDialog.Title className="truncate rounded-pill bg-chrome px-3 py-1.5 text-label font-bold">{labels.dialog}</RadixDialog.Title>
+            {/* `StoryAdd.dc.html`: the title pill CENTRED, close at a side — a three-column row whose outer columns are the
+                close's width, so the pill stays centred whatever its length. */}
+            <div className="relative z-10 grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 px-3">
+              <span aria-hidden />
+              <RadixDialog.Title className="justify-self-center truncate rounded-pill bg-chrome px-3 py-1.5 text-label font-bold">{labels.dialog}</RadixDialog.Title>
               <RadixDialog.Close aria-label={labels.close} className={`${ROUND} size-11`}>
                 <CloseIcon aria-hidden />
               </RadixDialog.Close>

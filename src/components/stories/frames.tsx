@@ -51,7 +51,10 @@ export function frameDurationMs(frame: StoryFrame, media: StoryMediaHrefs): numb
 /** The generated frames' ground — the team's colour with ink, or the neutral raised ground. */
 function ground(session: StorySession): { frame: string; pill: string; tile: string } {
   return teamColorOrNull(session.teamColor)
-    ? { frame: "bg-team text-on-team", pill: "bg-on-team text-team", tile: "bg-on-team/10" }
+    ? // ★ `text-h1/h2/h3` carry their own colour (`--fg-heading`, `globals.css`), so on the team's ground the heading
+      // variable itself is re-pointed at the ink — the title and the large figures read ink as the board draws them,
+      // and every `text-fg-heading` inside follows. Only this frame's subtree; the viewer's chrome keeps bone.
+      { frame: "bg-team text-on-team [--fg-heading:var(--color-on-team)]", pill: "bg-on-team text-team", tile: "bg-on-team/10" }
     : { frame: "bg-raised text-fg-heading", pill: "bg-canvas text-fg-heading", tile: "bg-canvas/40" };
 }
 
@@ -210,7 +213,8 @@ export function FrameBody({
         <div className="relative h-full bg-void">
           <video ref={videoRef} src={hrefs.videoUrl} poster={hrefs.posterUrl} playsInline preload="auto" className="absolute inset-0 h-full w-full object-contain" />
           {length ? (
-            <span className="absolute end-4 top-24 rounded-pill bg-chrome px-2.5 py-1 text-caption font-bold">
+            // The length pill at the inline-end as `StoryAttendee` draws it — below the viewer's two header rows, never under them.
+            <span className="absolute end-4 top-40 rounded-pill bg-chrome px-2.5 py-1 text-caption font-bold">
               <bdi dir="ltr">{videoLength(t, length)}</bdi>
             </span>
           ) : null}

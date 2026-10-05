@@ -99,6 +99,8 @@ describe("`StoryLive.dc.html` — the live frame as drawn", () => {
     const { container } = show(live);
     const root = container.firstElementChild as HTMLElement;
     expect(root).toHaveClass("bg-team", "text-on-team", "items-center", "justify-center", "text-center", "px-14");
+    // The title's `text-h1` colours itself from --fg-heading, so the ground re-points it at the ink.
+    expect(root).toHaveClass("[--fg-heading:var(--color-on-team)]");
   });
 
   it("draws the count's NUMERAL large and «في القاعة» small; the accessible text is the whole phrase", () => {
