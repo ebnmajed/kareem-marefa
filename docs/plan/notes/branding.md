@@ -1049,3 +1049,116 @@ brand-public-logo,privacy,data-export-surveys,avatar-copy,avatar-import}.test.ts
 - **Q9** (D14) the title: «البيانات والخصوصية» or «بياناتي وخصوصيتي»?
 - **Q10** (R2/D17) privacy's back: to settings (a `backHref` on `HubTopRow`) or `/app/me`?
 - **Q11** (R6) importing `console`'s seven team colours read-only.
+
+### W26.10 Built — the tables read back against the new files (2026-10-05, `../kareem-marefa-wave26b`)
+
+Commits: `25d6b9fe` (the logo round trip moved) · `84b4b844` (059 delete) · `912a8eea` (059 create) · `4cc177b3`
+(privacy delete) · `154e3deb` (privacy create) · `25438f3c` (specs). Rulings applied as `DEC-251` §3 gives them.
+
+**059** — every row lives where W26.1 said, except as ruled: **B10** inline `role="alert"` naming the pair from
+`detail` (`actions.ts` `failedPair`; `brand-kit-edit.tsx`), the toast gone (Q7) · **B19** the light `canvasRaise` hint
+and the other explainer sentences dropped (Q6; `resetConfirm` stays, it is the dialog's consequence, REQ-UIX-013) ·
+**B25** upload errors inline only, and a missing `too_small` message added (the old widget would have asked for a key
+that did not exist) · **B12** reset still offered always, as before — `isOverridden` is not used to hide it · **N2**
+ten swatches per scheme, the accent `node` in both schemes, the seven team colours by name, each hex in `<bdi dir="ltr">`
+(Q3, Q4, Q11) · **N4** the read mode's mark is `brand_kit()`'s `updatedAt`, shown only when a row exists; a save
+returns to read mode through `router.replace` from the action's own answer · the fonts are two (Q2) · WebP stays (Q8).
+No `transition`, keyframe or moment in any file this track wrote; `console-register` green and untouched.
+
+**Privacy** — every row lives where W26.2 said, with: **P6** the seven days kept as the literal (Q5) · **P7/P20** the
+export's «no other member's data» note under the rows and `deactivateHonest` inside the sheet; `intro`, `exportIntro`,
+`deactivateIntro`, `policyLink`, `requestedAt`, `readyAt`, `deactivateConfirm*` deleted (Q6) · **P16/P17** the sheet
+IS the confirmation: opening it sends nothing; the reason is checked by `reportValidity()` before the submit; the submit
+button lives in the form inside the sheet, so no `form=` attribute crosses the portal · **N11** «صور طلبت إزالتها»
+with the count of the member's own `photo_takedowns` (`countMyPhotoRemovalRequests()`, add-only in `privacy.ts`), no
+page-level «أزلني» (Q1) · **N9** `HubTopRow backHref="/app/me/settings"` (the lead's, `60b7fdb8`) · title
+«البيانات والخصوصية» (Q9). `src/components/privacy/{avatar-section,avatar-answer-form,avatar-href,avatar-import-prompt}`
+untouched; `avatar-import.test.tsx` passes untouched.
+
+### W26.11 Ledger lines for `STATUS.md` (each a selector or flow unless it says «expectation»)
+
+| File | What changed |
+|---|---|
+| `tests/components/branding/brand-kit-form.test.tsx` | deleted with `brand-kit-form.tsx` (`84b4b844`); its eight cases re-homed one-for-one in `brand-kit-edit.test.tsx` (`912a8eea`) — the reset dialog's cancel now found as the dialog's labelled button; the colour picker sits inside the swatch |
+| `tests/components/privacy/deactivation-form.test.tsx` | deleted with `forms.tsx` (`4cc177b3`); its four cases re-homed in `deactivate-sheet.test.tsx` (`154e3deb`): «no dialog over an empty reason» reads «nothing sent by opening the sheet or on an empty reason»; «confirm» is the sheet's «أرسل الطلب» |
+| `tests/e2e/branding.spec.ts` | flow: «عدّل» before the form; Save matched `/^حفظ/` (it names its count); after save the value is checked as the read mode's written hex, then in `?edit`; reset reached at `?edit` |
+| `tests/e2e/wave8-branding-review.spec.ts` | flow: `?edit` for the three form cases; Save `/^حفظ/`; the heading label not `exact` (a changed field adds «(معدّل)»). ★ **expectation**: the defaults case read `#ffffff` as the light canvas, stale since `0192` moved the palette (wave 24) — it now reads the value from `brand_kit()` and finds it written in read mode |
+| `tests/e2e/wave11-branding-status-contrast.spec.ts` | flow: `?edit`, the canvas label matched from its start, Save `/^حفظ/`; the refusal is found as `role="alert"` in `#main` naming «شارة «جارية الآن» لا تُقرأ على خلفية الوضع الفاتح», not a toast's `role="status"` (DEC-251 §3.5); the value-kept and nothing-written assertions unchanged |
+| `tests/e2e/privacy.spec.ts` | flow: the state regex is the new words («طُلب ·», «جارٍ», «جاهز ·»); «نزّل» for «نزّل الملف»; deactivation opens from «إيقاف حسابي» and the reason is in the sheet; the `h1` is «البيانات والخصوصية» (Q9); the named-states capture finds the sheet instead of the dialog. Every outcome asserted is unchanged |
+
+### W26.12 For the lead
+
+- Captures to run: **`tests/e2e/wave26-branding-scr059.spec.ts`** (desktop project, five states at 1280) and
+  **`tests/e2e/wave26-branding-privacy.spec.ts`** (phone project, eight states at 390), plus the four evidence specs
+  above.
+- `npm test` in the tree: 5404 passed; five failures were all timeouts in files this track does not touch; four pass
+  on a re-run, `tests/components/designer/inspector-align.test.tsx`'s «holds for every edge on both axes…» times out at
+  5 s even alone (`designer`'s).
+
+### W26.13 The lead's e2e on `63fbdb1e` — a kept behaviour the table carried and the rebuild dropped
+
+**P2 was in the table and was built wrong.** The table said «the 24-hour limit is said before the click — `page.tsx:102-109`»,
+but W26.4's per-state table, written after it, gave the limit line to `expired` and `failed` only, and the page was
+built from W26.4, not from P2. The deleted page drew the line whenever `request && !canRequestAgain`, **whatever the
+status** (`git show 4cc177b3^:…/privacy/page.tsx:102-103`), and REQ-NFR-005 is not state-dependent. The miss: I
+re-derived the states from the data and then wrote the controls per state, without reading each per-state row back
+against P2. Read back now, with a second row the same reading found:
+
+| # | Behaviour | Lives now | Kept by |
+|---|---|---|---|
+| P2 (corrected) | Inside the 24 hours the limit line is drawn in **every** state — requested, building, ready (after the seven days), expired, failed — and no request control is offered | `privacy/page.tsx` `exportRow()`, `limit` on every branch | `REQ-NFR-005` |
+| P9b (found on the same reading) | Outside the 24 hours a fresh copy is offered **beside** a ready one, as the old page offered its form under the ready panel | `exportRow()` `ready` branch, `{ask}` after «نزّل» | `REQ-PRF-006`, `REQ-NFR-005` |
+
+`queued` and `building` never offer a request even outside the window: `data_export_requests_one_open` refuses a second
+open request, so the button would only lead to a refusal (the old page offered it there; nothing reachable changes —
+a request stuck queued for 24 hours is the worker's failure, not a state this row can mend).
+
+### W26.14 Failure 2 — what SCR-059's reads do when one fails (the lead's question; it did not reproduce under no load)
+
+The first run showed the admin error boundary after a successful save, while the machine ran other tracks' RLS suites
+on the one database; the re-run (with the server's output captured) passed and logged no error. No fix was guessed
+for it. Instead every read the read page and the `?edit` render make, and what a failure of each does:
+
+| Read | Before | Now | Why |
+|---|---|---|---|
+| `getBrandKit()` → `brand_kit()` | throws | throws | the kit IS the page; a stand-in would show — and in edit mode post — the platform default as the org's |
+| its logo row (`fetchLogo`) | error **swallowed → «no logo»** | **throws** | ★ not soft: edit mode posts the kit's logo id; a failed read then any save would have **unbound the org's logo**, silently |
+| its font rows (`fetchFont`) | error **swallowed → «platform default»** | **throws** | ★ same — a save would have reset the chosen face |
+| `listSelectableFonts()` | error **swallowed → no fonts** | **throws** | ★ an empty list disables both pickers, and a disabled `<select>` is not posted: a save would have reset both faces |
+| the logo's signed URL (`signDesignAssetUrl`, designer's) | null on failure | unchanged | a blank tile loses nothing: the asset id is still bound and still posted |
+| `getOrgPrefs()` (sessions', for the saved mark's zone) | throws → error boundary | **soft: the mark is left out** | the mark is a line under the page; a guessed zone would print a wrong time |
+| `getImageLimitMb()`, `getOrgName()` | fall back (20 MB, «») | unchanged | advisory only; the upload route enforces the real limit |
+| team colours | constants | — | `TEAM_COLOUR_HEX`, no read |
+
+So three reads that **degraded into data loss** now fail hard, and one that failed hard for a cosmetic line now
+degrades. Proven in `tests/unit/brand-kit-reads.test.ts` (both directions: a failure throws; absence is still null).
+`getBrandKit()` has no other caller in `src/` (`app/layout.tsx` only mentions it in a comment, since `DEC-201`).
+
+**Closed (2026-10-05):** failure 2 did not reproduce in three runs on production builds with the server's output captured
+(`3dafd983` once, `567ae5f5` twice) — no digest, no server error. It is recorded as the first run's contention (load
+≈ 60, other tracks' RLS suites on the one database), not a defect of the flow; the component case «refused once, then
+saved» stays as its guard, and W26.14 is what the question found.
+
+### W26.15 `privacy.spec.ts:157` — two copies of the limit line, one outside `#main`
+
+Verified, not assumed: the page renders the caption **once** — `privacy/page.tsx` maps `exported.captions` a single
+time, no `SettingsGroup` row carries it as `detail` any more (`376bb6cc`), and `privacy-page.test.tsx` finds it with a
+strict `getByText` (it would throw on two). The second copy is `DEC-145`'s orphaned streamed segment outside `#main`,
+which is why it failed on one project per run. The spec's page-level locators are now scoped to `#main` (lines 128,
+162–163, 193, 301, 318, 324); the two `dialog` locators stay on `page`, because the sheet portals outside `#main` by
+design. `wave26-branding-{scr059,privacy}.spec.ts` were already scoped to `#main` throughout.
+
+### W26.16 Pause (2026-10-05, machine sleep)
+
+- **Reviewed:** the 14 wave26-branding captures from the lead's 01:35 build, beside `AdminBranding` / `Privacy` (`.dc.html` and PNG), and the kept-behaviour tables read back against the new files — all rows hold.
+- **Fixed:** `1fff1140` (the «refused once, then saved» guard, committed at last) · `2ac632ee` (059: the quiet «استبدال» pill, a raised tile with no logo, a medium reset; privacy: the avatar answer as a card, «إيقاف حسابي» flush). No assertion changed.
+- **Next:** captures regenerated from a production build of `2ac632ee` (the lead's build), then each opened at native size again; the upload-error state, 059 at 390 and privacy at 1280 if the lead wants them captured.
+
+### W26.17 B is done (2026-10-05, captures from a production build of `bc29ed14`)
+
+- **Self-review closed.** Every `wave26-branding-*` capture opened at native size beside `AdminBranding` / `Privacy`:
+  059 read (default, saved, with a logo), edit (empty, two changes, the database's refusal, a disguised upload refused),
+  059 at 390 (read, edit), privacy at 390 (eight states) and at 1280. Fixes in `2ac632ee`, `e782a7f0` (captures taken
+  whole, three states added) and `bc29ed14` (two swatches a row at every width; a refused file leaves the picker).
+- **Plan over drawing, added to W26.3:** on a phone, 059's edit mode puts the preview and reset after the Save bar —
+  the artboard draws read mode only, and the order follows the console's edit pattern (the lead's ruling, kept as is).

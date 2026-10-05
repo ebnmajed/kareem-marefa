@@ -69,8 +69,9 @@ const OWN_TOP_ROW_M10B = /^\/app\/(sessions\/[^/]+\/rate|propose(\/[^/]+(\/edit)
 
 /** ★ wave 20 (DEC-217, REQ-UIX-070): the hub, its pages and settings, and the two boards draw their own phone top row —
  *  a title in the display face, a back control on a sub-page, the settings link on `/app/me`, and no wordmark
- *  (`docs/design/screens/m10c/`). `/app/me/privacy` is not drawn in any batch (M13's) and keeps the shell's row. */
-const OWN_TOP_ROW_M10C = /^\/app\/(me(\/(points|certificates|bookmarks|calendar|notifications|settings))?|leaderboards(\/companies)?)$/;
+ *  (`docs/design/screens/m10c/`). ★ wave 26 (`DEC-251` §3.5): `/app/me/privacy` is drawn at last (`m13/Privacy.dc.html`)
+ *  and owns its row like the rest. */
+const OWN_TOP_ROW_M10C = /^\/app\/(me(\/(points|certificates|bookmarks|calendar|notifications|settings|privacy))?|leaderboards(\/companies)?)$/;
 
 export function ownsTopRow(pathname: string | null): boolean {
   if (!pathname) return false;
