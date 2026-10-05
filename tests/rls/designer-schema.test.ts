@@ -81,7 +81,7 @@ async function template(
   // 0210), so the scaffolding makes one the way production keeps one — retired. Setup only.
   const [t] = await tx.q<{ id: string }>(
     `insert into public.design_templates (org_id, scope, purpose, family, name, retired_at)
-     values ($1, $2, $3, $4, $5, case when $2 = 'platform' then now() end) returning id`,
+     values ($1, $2::public.template_scope, $3, $4, $5, case when $2::public.template_scope = 'platform' then now() end) returning id`,
     [opts.orgId, opts.scope, purpose, opts.family ?? (purpose === "poster" ? "talk" : "attendance"), "قالب"],
   );
   const [v] = await tx.q<{ id: string; org_id: string | null }>(
