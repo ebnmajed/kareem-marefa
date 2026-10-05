@@ -15,7 +15,7 @@
 // POL-check_in_open.shadow_is_bool_or, .reopening_one_day_opens_only_that_day,
 // .session_write_carries_to_every_day, .one_day_is_identical.
 import { afterAll, describe, expect, it } from "vitest";
-import { errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
+import { errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Tx, asSessionAdmin } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
@@ -63,7 +63,7 @@ const checkIn = async (tx: Tx, session: string, code: string, day: string | null
   (await tx.q<{ r: Envelope }>(`select public.check_in($1, $2, $3) as r`, [session, code, day]))[0].r;
 
 const codeFor = async (tx: Tx, session: string, day: string | null): Promise<string> =>
-  (await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1, $2)`, [session, day]))[0].code;
+  (await asSessionAdmin(tx, session, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1, $2)`, [session, day])))[0].code;
 
 const switchesOf = (tx: Tx, session: string) =>
   tx.q<{ check_in_open: boolean }>(`select check_in_open from public.session_days where session_id = $1 order by position`, [session]).then((r) =>
@@ -354,9 +354,9 @@ describe("the day's code", () => {
         [20, 22],
       ]);
       await tx.as(f.a.admin.claims);
-      const [live] = await tx.q<{ session_day_id: string }>(`select * from public.ensure_check_in_code($1, $2)`, [s.id, s.days[0]]);
+      const [live] = await asSessionAdmin(tx, s.id, () => tx.q<{ session_day_id: string }>(`select * from public.ensure_check_in_code($1, $2)`, [s.id, s.days[0]]));
       expect(live.session_day_id).toBe(s.days[0]);
-      expect(await errorMessage(() => tx.q(`select * from public.ensure_check_in_code($1, $2)`, [s.id, s.days[1]]))).toMatch(/not_open/);
+      expect(await errorMessage(() => asSessionAdmin(tx, s.id, () => tx.q(`select * from public.ensure_check_in_code($1, $2)`, [s.id, s.days[1]])))).toMatch(/not_open/);
     });
   });
 
@@ -470,10 +470,10 @@ describe("a one-day session, end to end, on the day-aware functions", () => {
       expect(s.days).toHaveLength(1);
 
       await tx.as(f.a.admin.claims);
-      const [issued] = await tx.q<{ code: string; session_day_id: string }>(`select * from public.ensure_check_in_code($1)`, [s.id]);
+      const [issued] = await asSessionAdmin(tx, s.id, () => tx.q<{ code: string; session_day_id: string }>(`select * from public.ensure_check_in_code($1)`, [s.id]));
       expect(issued.session_day_id).toBe(s.days[0]);
       // Idempotent inside the rotation window — the host view calls it every render.
-      expect((await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [s.id]))[0].code).toBe(issued.code);
+      expect((await asSessionAdmin(tx, s.id, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [s.id])))[0].code).toBe(issued.code);
 
       const member = f.a.members[0];
       await tx.as(member.claims);

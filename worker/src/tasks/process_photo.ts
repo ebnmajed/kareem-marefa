@@ -1,9 +1,10 @@
 import type { Task } from "graphile-worker";
 import { createHash } from "node:crypto";
-import { downloadObject, uploadObject, deleteObject } from "../content/storage.js";
+import { downloadObject, uploadObject, deleteObject, isNotFound } from "../content/storage.js";
 import { sniffImageKind, stripImageMetadata, type ImageKind } from "../content/exif.js";
 import { photoStoryPath } from "@kareem/storage-paths";
 import { renderStoryDerivative } from "../content/story-derivative.js";
+import { readJpegOrientation, swapsAxes, uprightJpeg } from "../content/orientation.js";
 
 // JOB-process_photo (11 §2.4, 07 §9.2, REQ-EVT-011, DEC-047). Enqueued by
 // initiate_photo_processing() (supabase/proposed/content/0007) the moment
@@ -71,6 +72,9 @@ export const process_photo: Task = async (payload, helpers) => {
   try {
     raw = await downloadObject("photos", payload.storage_path);
   } catch (e) {
+    // Only a missing object is terminal. Anything else — Storage down, a timeout, a 5xx — is
+    // rethrown so graphile-worker retries it; returning would drop a real photo silently.
+    if (!isNotFound(e)) throw e;
     // The object is gone (expired signed-upload token never used, a retry
     // after a prior successful run already deleted it, …) — nothing to
     // process, and nothing to retry either.
@@ -87,7 +91,25 @@ export const process_photo: Task = async (payload, helpers) => {
     return;
   }
 
-  const { bytes: stripped, width, height, removed } = stripImageMetadata(raw, sniffed);
+  // ★ The EXIF Orientation is read from the RAW bytes, because the strip below removes the APP1 that carries it —
+  // and with it the only record of which way up a phone photograph is (content/orientation.ts). Anything but 1 is
+  // turned upright with ffmpeg AFTER the strip, so the original, the story derivative made from it and the
+  // width and height recorded below are all the upright picture's. A failed turn keeps the unturned bytes.
+  const orientation = sniffed === "jpeg" ? readJpegOrientation(raw) : 1;
+  const strip = stripImageMetadata(raw, sniffed);
+  const { removed } = strip;
+  let { bytes: stripped, width, height } = strip;
+  if (orientation !== 1) {
+    const upright = await uprightJpeg(stripped, orientation);
+    if (upright) {
+      const swap = swapsAxes(orientation);
+      stripped = upright.bytes;
+      width = upright.width ?? (swap ? strip.height : strip.width);
+      height = upright.height ?? (swap ? strip.width : strip.height);
+    } else {
+      helpers.logger.warn(`process_photo: ${payload.photo_id} — orientation ${orientation} could not be applied; stored as shot`);
+    }
+  }
   await uploadObject("photos", payload.storage_path, stripped, CONTENT_TYPE[sniffed]);
   const sha256 = createHash("sha256").update(stripped).digest("hex");
 
@@ -142,5 +164,5 @@ export const process_photo: Task = async (payload, helpers) => {
     return;
   }
 
-  helpers.logger.info(`process_photo: ${payload.photo_id} stripped (${removed.join(", ") || "nothing to remove"}), ${stripped.byteLength} bytes`);
+  helpers.logger.info(`process_photo: ${payload.photo_id} stripped (${removed.join(", ") || "nothing to remove"})${orientation !== 1 ? `, orientation ${orientation}` : ""}, ${stripped.byteLength} bytes`);
 };

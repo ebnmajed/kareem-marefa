@@ -8,7 +8,7 @@
 
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Claims, type Tx } from "./db";
+import { applyProposed, errorCode, errorMessage, PERMISSION_DENIED, pool, withTx, type Claims, type Tx, asSessionAdmin } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
@@ -69,7 +69,7 @@ describe("RPC-remove_check_in.admin_only / .reason_required / .not_found", () =>
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       await tx.q(`insert into public.session_presenters (org_id, session_id, member_id, accepted) values ($1, $2, $3, true)`, [f.a.id, sessionId, f.a.members[0].memberId]);
       const bystander = await addMember(tx, f.a, "bystander", "متفرج");
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[1].claims);
       expect((await checkIn(tx, sessionId, code.code)).status).toBe("ok");
 
@@ -91,7 +91,7 @@ describe("RPC-remove_check_in.admin_only / .reason_required / .not_found", () =>
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       await checkIn(tx, sessionId, code.code);
 
@@ -110,7 +110,7 @@ describe("RPC-remove_check_in.admin_only / .reason_required / .not_found", () =>
       expect(await errorMessage(() => tx.q(`select * from public.remove_check_in($1, $2, $3)`, [sessionId, f.a.members[0].memberId, "سبب"]))).toMatch(/not_found/);
 
       await tx.asOwner();
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       await checkIn(tx, sessionId, code.code);
       await tx.as(f.a.admin.claims);
@@ -127,7 +127,7 @@ describe("RPC-remove_check_in.reversal", () => {
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       const outcome = await checkIn(tx, sessionId, code.code);
       const ciId = outcome.check_in!.id;
@@ -167,7 +167,7 @@ describe("RPC-remove_check_in.certificate_revoked", () => {
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       await tx.q(`update public.sessions set certificate_mode = 'automatic' where id = $1`, [sessionId]);
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       const outcome = await checkIn(tx, sessionId, code.code);
 
@@ -197,7 +197,7 @@ describe("RPC-remove_check_in.no_show_symmetry", () => {
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
       const [rsvp] = await tx.q<{ id: string }>(`insert into public.rsvps (org_id, session_id, member_id, status) values ($1, $2, $3, 'confirmed') returning id`, [f.a.id, sessionId, f.a.members[0].memberId]);
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       await checkIn(tx, sessionId, code.code);
       // Wave 12 (REQ-PTS-015, DEC-174 ruling 2): a removal records the no-show only once the
@@ -221,7 +221,7 @@ describe("RPC-remove_check_in.readd — a fresh check-in after a removal needs n
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       const first = await checkIn(tx, sessionId, code.code);
 
@@ -244,7 +244,7 @@ describe("RPC-remove_check_in.readd — a fresh check-in after a removal needs n
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       await checkIn(tx, sessionId, code.code);
 
@@ -264,8 +264,8 @@ describe("POL-check_ins.removed_excluded_from_overlap — REQ-CHK-013", () => {
       await tx.asOwner();
       const sessionA = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -30, endsInMinutes: 30 });
       const sessionB = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 }); // overlaps A
-      const [codeA] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionA]);
-      const [codeB] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionB]);
+      const [codeA] = await asSessionAdmin(tx, sessionA, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionA]));
+      const [codeB] = await asSessionAdmin(tx, sessionB, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionB]));
 
       await tx.as(f.a.members[0].claims);
       expect((await checkIn(tx, sessionA, codeA.code)).status).toBe("ok");
@@ -286,7 +286,7 @@ describe("POL-has_checked_in.excludes_removed", () => {
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       await checkIn(tx, sessionId, code.code);
       const [before] = await tx.q<{ has_checked_in: boolean }>(`select public.has_checked_in($1) as has_checked_in`, [sessionId]);
@@ -308,7 +308,7 @@ describe("POL-ratings.write_self_excludes_removed", () => {
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -70, endsInMinutes: -10 });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       const outcome = await checkIn(tx, sessionId, code.code);
 

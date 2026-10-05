@@ -209,14 +209,6 @@ export interface PointsStripData {
   totalPoints: number;
 }
 
-export async function getPointsStripData(locale: string): Promise<PointsStripData> {
-  const { session, supabase } = await sessionClient(locale);
-  const [{ data: balance }] = await Promise.all([
-    supabase.from("points_balances").select("total_points").eq("member_id", session.memberId).maybeSingle(),
-  ]);
-  return { totalPoints: balance?.total_points ?? 0 };
-}
-
 /** A day, as contract 7's `dayName()` takes it — the same shape as `MissedAttendance.days`. */
 export interface AwardDay {
   position: number;

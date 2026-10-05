@@ -98,7 +98,7 @@ export interface SettingsSaveInput {
 }
 export type SettingsSaveOutcome =
   | { ok: true; receipt: SaveReceipt }
-  | { ok: false; error: "not_permitted" | "not_written" | "stale" | "domain_last" | "failed"; fields?: string[] };
+  | { ok: false; error: "not_permitted" | "not_written" | "stale" | "domain_last" | "domain_taken" | "failed"; fields?: string[] };
 
 /** `063`'s one write — `save_org_settings()`. A refusal is an outcome, never a thrown success. */
 export async function saveOrgSettings(locale: string, input: SettingsSaveInput): Promise<SettingsSaveOutcome> {
@@ -114,7 +114,11 @@ export async function saveOrgSettings(locale: string, input: SettingsSaveInput):
     p_add_domains: input.addDomains,
     p_remove_domains: input.removeDomains,
   });
-  if (error) return { ok: false, error: error.code === "42501" ? "not_permitted" : "failed" };
+  if (error) {
+    // `org_domains_not_another_orgs` (0212, DEC-266): a domain another org holds is the platform's to add, never an admin's.
+    if (error.message.includes("domain_taken")) return { ok: false, error: "domain_taken" };
+    return { ok: false, error: error.code === "42501" ? "not_permitted" : "failed" };
+  }
   const answer = data as { ok: boolean; error?: string; fields?: string[]; at?: string; wrote?: string[] };
   if (!answer.ok) {
     const known = ["not_permitted", "not_written", "stale", "domain_last"] as const;

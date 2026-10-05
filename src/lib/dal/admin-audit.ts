@@ -166,57 +166,6 @@ async function namesFor(supabase: Supabase, ids: string[]): Promise<Map<string, 
   return names;
 }
 
-export async function listAuditLog(locale: string, filters: AuditFilters, timeZone: string): Promise<AuditLogPage | null> {
-  const client = await requireStaff(locale);
-  if (!client) return null;
-  const parsed = auditFiltersInput.parse(filters);
-  const { supabase } = client;
-
-  let query = supabase
-    .from("audit_log")
-    .select("id, actor_id, actor_role, action, subject_type, subject_id, reason, occurred_at")
-    .order("occurred_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(AUDIT_PAGE_SIZE + 1);
-  if (parsed.actor === "system") query = query.is("actor_id", null);
-  else if (parsed.actor) query = query.eq("actor_id", parsed.actor);
-  if (parsed.action) query = query.eq("action", parsed.action);
-  if (parsed.subjectType) query = query.eq("subject_type", parsed.subjectType);
-  if (parsed.subjectId) query = query.eq("subject_id", parsed.subjectId);
-  const { from, until } = periodBounds(parsed, timeZone);
-  if (from) query = query.gte("occurred_at", from);
-  if (until) query = query.lt("occurred_at", until);
-  if (parsed.before) {
-    const [at, id] = parsed.before.split("~");
-    // Quoted: an ISO timestamp carries `:` and `+`, which PostgREST's logic
-    // tree would otherwise read as syntax.
-    query = query.or(`occurred_at.lt."${at}",and(occurred_at.eq."${at}",id.lt.${id})`);
-  }
-
-  const { data, error } = await query;
-  if (error) throw new Error(`audit_log: ${error.message}`);
-  const all = data ?? [];
-  const rows = all.slice(0, AUDIT_PAGE_SIZE);
-  const last = rows.at(-1);
-  const nextBefore = all.length > AUDIT_PAGE_SIZE && last ? `${last.occurred_at as string}~${last.id as string}` : null;
-
-  const names = await namesFor(supabase, Array.from(new Set(rows.map((r) => r.actor_id as string | null).filter((id): id is string => id !== null))));
-  return {
-    rows: rows.map((r) => ({
-      id: r.id as string,
-      actorId: r.actor_id as string | null,
-      actorName: r.actor_id ? (names.get(r.actor_id as string) ?? null) : null,
-      actorRole: r.actor_role as string | null,
-      action: r.action as string,
-      subjectType: r.subject_type as string | null,
-      subjectId: r.subject_id as string | null,
-      reason: r.reason as string | null,
-      occurredAt: r.occurred_at as string,
-    })),
-    nextBefore,
-  };
-}
-
 export interface AuditFilterOptions {
   /** Null for a moderator: their log is already only their own. */
   actors: { id: string; displayName: string | null }[] | null;

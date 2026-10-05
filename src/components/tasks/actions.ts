@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createTask, rescopeTask, submitTaskFormResponse, toggleTaskCompletion, type CreateTaskInput } from "@/lib/dal/tasks";
 
@@ -13,6 +14,7 @@ export async function toggleTaskCompletionAction(locale: string, sessionId: stri
     revalidatePath(`/${locale}/app/sessions/${sessionId}`);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }
@@ -28,6 +30,7 @@ export async function submitTaskFormResponseAction(
     revalidatePath(`/${locale}/app/sessions/${sessionId}`);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }
@@ -38,6 +41,7 @@ export async function createTaskAction(locale: string, input: CreateTaskInput): 
     revalidatePath(`/${locale}/app/sessions/${input.sessionId}`);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }
@@ -50,6 +54,7 @@ export async function rescopeTaskAction(locale: string, sessionId: string, taskI
     revalidatePath(`/${locale}/app/sessions/${sessionId}`);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }

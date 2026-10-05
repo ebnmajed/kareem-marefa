@@ -545,6 +545,7 @@ export async function getViewerData(locale: string, materialId: string): Promise
  *  duplicate that check, it just asks Storage and lets a denial come back
  *  as no data. */
 export async function getMaterialDownloadUrl(locale: string, materialId: string): Promise<string | null> {
+  if (!z.uuid().safeParse(materialId).success) return null;
   const { session, supabase } = await sessionClient(locale);
 
   const { data: material } = await supabase.from("materials").select("current_version_id").eq("id", materialId).maybeSingle();

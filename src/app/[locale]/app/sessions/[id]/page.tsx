@@ -8,6 +8,7 @@ import { Materials, materialsSummary } from "@/components/materials/list";
 import { Photos, photosSummary } from "@/components/photos/gallery";
 import { BookmarkButton } from "@/components/search/bookmark-button";
 import { ActionCard } from "@/components/sessions/action-card";
+import { EditModeProvider, EditModeToggle } from "@/components/sessions/edit-mode";
 import { EventAside } from "@/components/sessions/event-aside";
 import { eventCheckInLink } from "@/components/sessions/event-check-in";
 import { EventHero } from "@/components/sessions/event-hero";
@@ -72,8 +73,14 @@ const ORDER: Record<"open" | "live" | "ended", Gated[]> = {
 
 const ratingRelations: ViewerRelation[] = ["attended", "presenter", "staff"];
 
-export default async function EventPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
-  const { locale, id } = await params;
+export default async function EventPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [{ locale, id }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
 
   // The auth boundary at the data, carrying the page back after sign-in (REQ-AUT-005).
@@ -94,6 +101,9 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   const canCheckIn = eventCheckInLink(session);
   const endedAttendee = phase === "ended" && relation === "attended";
   const staffOrPresenter = session.viewerIsStaff || session.viewerIsPresenter;
+  // ★ Edit mode (the owner's ruling, `edit-mode.tsx`): staff and presenters open the member's page, and «تعديل»
+  // reveals what only they may change. `?edit=1` opens it in edit mode — honoured only for a viewer who may edit.
+  const editing = staffOrPresenter && query.edit === "1";
   const counted = phase === "live" || phase === "ended";
   const facesPhase = phase === "open" || phase === "live" || phase === "ended" ? phase : null;
 
@@ -237,66 +247,73 @@ export default async function EventPage({ params }: { params: Promise<{ locale: 
   };
 
   return (
-    <article className="mx-auto w-full max-w-6xl px-3 pb-12 lg:px-8">
-      <EventTopRow session={session} phase={phase} bookmark={bookmark("icon")} share={share("icon")} story={story ? <StoryEntry story={story} /> : undefined} />
-      <DesktopBreadcrumb session={session} />
-      <Notices session={session} phase={phase} locale={locale} />
+    <EditModeProvider initialEditing={editing}>
+      <article className="mx-auto w-full max-w-6xl px-3 pb-12 lg:px-8">
+        <EventTopRow session={session} phase={phase} bookmark={bookmark("icon")} share={share("icon")} story={story ? <StoryEntry story={story} /> : undefined} />
+        <DesktopBreadcrumb session={session} />
+        <Notices session={session} phase={phase} locale={locale} />
+        {staffOrPresenter ? (
+          <div className="mb-3 flex justify-end">
+            <EditModeToggle editLabel={t("editMode.edit")} doneLabel={t("editMode.done")} editingStatus={t("editMode.editingStatus")} readingStatus={t("editMode.readingStatus")} />
+          </div>
+        ) : null}
 
-      <EventHero
-        session={session}
-        phase={phase}
-        seat={phase === "open" ? rsvp?.seat : undefined}
-        closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)}
-        dayCount={days.length}
-        points={points}
-        locale={locale}
-        story={story ? <StoryEntry story={story} /> : undefined}
-      />
-
-      {/* The card first after the hero, in flow (DEC-045); from `lg` the full-width action row, sticky once
-          scrolled past (§4.73). The element is never transformed, filtered or clipped — moment 1 thuds INSIDE it. */}
-      <div className="mt-4 lg:sticky lg:top-[var(--header-h)] lg:z-20">
-        <ActionCard
+        <EventHero
           session={session}
           phase={phase}
-          days={days}
-          can={can}
-          rsvp={rsvp}
-          primary={primary}
-          slot={slot}
+          seat={phase === "open" ? rsvp?.seat : undefined}
+          closingSoon={phase === "open" && closingSoon(session.rsvpDeadlineAt)}
+          dayCount={days.length}
           points={points}
-          figures={figures}
-          faces={faces}
-          tasks={summaries.tasks}
-          ratingClosesAt={eligibility?.windowClosesAt ?? null}
-          certificateHref={certificateHref}
-          bookmark={bookmark}
-          share={share}
-          isAdmin={me.role === "admin"}
           locale={locale}
+          story={story ? <StoryEntry story={story} /> : undefined}
         />
-      </div>
 
-      {phase === "ended" ? (
-        <div className="mt-3">
-          <Suspense fallback={null}>
-            <EventRecap attended={figures.attendedCount} registered={rsvp?.confirmedCount ?? null} photos={summaries.photos} />
+        {/* The card first after the hero, in flow (DEC-045); from `lg` the full-width action row, sticky once
+            scrolled past (§4.73). The element is never transformed, filtered or clipped — moment 1 thuds INSIDE it. */}
+        <div className="mt-4 lg:sticky lg:top-[var(--header-h)] lg:z-20">
+          <ActionCard
+            session={session}
+            phase={phase}
+            days={days}
+            can={can}
+            rsvp={rsvp}
+            primary={primary}
+            slot={slot}
+            points={points}
+            figures={figures}
+            faces={faces}
+            tasks={summaries.tasks}
+            ratingClosesAt={eligibility?.windowClosesAt ?? null}
+            certificateHref={certificateHref}
+            bookmark={bookmark}
+            share={share}
+            isAdmin={me.role === "admin"}
+            locale={locale}
+          />
+        </div>
+
+        {phase === "ended" ? (
+          <div className="mt-3">
+            <Suspense fallback={null}>
+              <EventRecap attended={figures.attendedCount} registered={rsvp?.confirmedCount ?? null} photos={summaries.photos} />
+            </Suspense>
+          </div>
+        ) : null}
+
+        <div className="mt-5">
+          {/* The sub-nav lists exactly the sections that render; a row-high placeholder holds its place. */}
+          <Suspense fallback={<div aria-hidden="true" className="h-14 border-b border-edge" />}>
+            <SubnavFor order={order} gates={gates} summaries={summaries} label={t("sectionsNav")} labels={navLabels} />
           </Suspense>
         </div>
-      ) : null}
 
-      <div className="mt-5">
-        {/* The sub-nav lists exactly the sections that render; a row-high placeholder holds its place. */}
-        <Suspense fallback={<div aria-hidden="true" className="h-14 border-b border-edge" />}>
-          <SubnavFor order={order} gates={gates} summaries={summaries} label={t("sectionsNav")} labels={navLabels} />
-        </Suspense>
-      </div>
-
-      <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8">
-        <div className="flex min-w-0 flex-col gap-10">{order.map((sectionId) => sections[sectionId])}</div>
-        <EventAside session={session} phase={phase} reserved={rsvp?.confirmedCount ?? null} attended={figures.attendedCount} faces={faces} team={team} />
-      </div>
-    </article>
+        <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8">
+          <div className="flex min-w-0 flex-col gap-10">{order.map((sectionId) => sections[sectionId])}</div>
+          <EventAside session={session} phase={phase} reserved={rsvp?.confirmedCount ?? null} attended={figures.attendedCount} faces={faces} team={team} />
+        </div>
+      </article>
+    </EditModeProvider>
   );
 }
 
@@ -329,6 +346,7 @@ async function SubnavFor({
       // A count where the slot has one, drawn beside the word (`Event.dc.html:68` «النقاش 3»); tasks say theirs in the section.
       count: summary && sectionId !== "tasks" && summary.count > 0 ? formatNumber(summary.count) : undefined,
       lgHidden: sectionId === "about",
+      editOnly: summary?.editOnly === true,
     }));
   return <EventSubnav label={label} items={items} />;
 }

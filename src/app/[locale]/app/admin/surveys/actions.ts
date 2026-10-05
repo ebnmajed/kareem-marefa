@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
@@ -23,7 +24,8 @@ export async function deleteFromList(locale: Locale, templateId: string): Promis
     try {
       await deleteSurveyTemplate(locale, templateId);
       ok = true;
-    } catch {
+    } catch (e) {
+      unstable_rethrow(e);
       ok = false;
     }
   }

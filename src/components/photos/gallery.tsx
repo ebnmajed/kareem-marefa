@@ -71,7 +71,7 @@ export async function Photos({ sessionId, locale, phase }: SlotProps & { phase?:
 
   return (
     // One sequence through every group, in the order the page shows them, visible photographs only (DEC-182).
-    <PhotoAlbum photos={lightboxSequence(ordered)} locale={locale} sessionId={sessionId} reportable={reportable(photos, myMemberId)}>
+    <PhotoAlbum photos={lightboxSequence(ordered)} locale={locale} sessionId={sessionId} reportable={reportable(photos, myMemberId)} canDownload={isStaff}>
       <div className="flex flex-col gap-3">
         {topRow}
         <PhotoDownloadNotice photoFailed={tDownload("photoFailed")} albumFailed={tDownload("albumFailed")} />

@@ -55,8 +55,21 @@ const SWIPE_PX = 48;
  * `extra` — wave 18, add-only (DEC-209): what stands beside «تنزيل الصورة» for the photograph on screen. The event
  * page's album passes the takedown there (`album.tsx`), since the tiles carry no button of their own now. A render
  * function, so it is a client-to-client prop; absent, the dialog is exactly as before.
+ *
+ * `canDownload` — «تنزيل الصورة» is staff's alone (DEC-266, the owner's ruling): a member sees the photograph and
+ * never the download. Off unless the caller says otherwise; `record_photo_download()` refuses a member regardless.
  */
-export function PhotoLightbox({ photos, children, extra }: { photos: LightboxPhoto[]; children: ReactNode; extra?: (photo: LightboxPhoto) => ReactNode }) {
+export function PhotoLightbox({
+  photos,
+  children,
+  extra,
+  canDownload = false,
+}: {
+  photos: LightboxPhoto[];
+  children: ReactNode;
+  extra?: (photo: LightboxPhoto) => ReactNode;
+  canDownload?: boolean;
+}) {
   const t = useTranslations("photos.lightbox");
   const rtl = useLocale() === "ar";
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -180,10 +193,12 @@ export function PhotoLightbox({ photos, children, extra }: { photos: LightboxPho
                   prefetches it. */}
               <div className="flex flex-wrap items-center justify-end gap-2">
                 {extra ? extra(photo) : null}
-                <a href={`/api/photos/${photo.id}/download`} className={buttonClass("secondary", "md", "gap-2")}>
-                  <DownloadIcon aria-hidden />
-                  {t("download")}
-                </a>
+                {canDownload ? (
+                  <a href={`/api/photos/${photo.id}/download`} className={buttonClass("secondary", "md", "gap-2")}>
+                    <DownloadIcon aria-hidden />
+                    {t("download")}
+                  </a>
+                ) : null}
               </div>
             </div>
             <div

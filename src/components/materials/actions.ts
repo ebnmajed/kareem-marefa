@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getMaterialDownloadUrl, rescopeMaterial, updateMaterialSettings } from "@/lib/dal/materials";
 
@@ -26,6 +27,7 @@ export async function rescopeMaterialAction(locale: string, sessionId: string, m
     revalidatePath(`/${locale}/app/sessions/${sessionId}`);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }

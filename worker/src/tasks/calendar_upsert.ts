@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Task } from "graphile-worker";
 import { createCalendarApi, CalendarAuthExpired, CalendarNotFound, type CalendarApi } from "../calendar/index.js";
 
@@ -105,6 +106,19 @@ export function daysOf(target: SyncTarget): SyncDay[] {
   ];
 }
 
+/**
+ * The Google event id this reservation's day is created under — chosen by US, so a create
+ * whose answer was lost (or whose `record_calendar_sync` failed after it) is retried under the
+ * SAME id and lands on the same event instead of a second one (REQ-CAL-004).
+ *
+ * Google's ids are base32hex — `a`–`v` and `0`–`9`, 5 to 1024 characters — and a SHA-256 in
+ * lowercase hex is already inside that alphabet. A null day (the compatibility shape) is the
+ * session's first day, so it is keyed as such.
+ */
+export function clientEventId(rsvpId: string, dayId: string | null): string {
+  return createHash("sha256").update(`kareem-calendar:${rsvpId}:${dayId ?? "first-day"}`).digest("hex");
+}
+
 interface Tokens {
   connection_id: string;
   access_token: string;
@@ -165,10 +179,10 @@ export const calendar_upsert: Task = async (payload, helpers) => {
           // rather than dead-letter: they asked for this session to be in their
           // calendar, and REQ-CAL-006's tolerance cuts both ways.
           if (!(error instanceof CalendarNotFound)) throw error;
-          eventId = (await calendarApi().createEvent(tokens.access_token, body)).id;
+          eventId = (await calendarApi().createEvent(tokens.access_token, body, clientEventId(rsvpId, day.day_id))).id;
         }
       } else {
-        eventId = (await calendarApi().createEvent(tokens.access_token, body)).id;
+        eventId = (await calendarApi().createEvent(tokens.access_token, body, clientEventId(rsvpId, day.day_id))).id;
       }
       await record("synced", eventId, null, day.day_id);
       helpers.logger.info(`calendar_upsert: rsvp ${rsvpId} synced as ${eventId}`);

@@ -150,3 +150,25 @@ export async function applyProposed(tx: Tx, relativePath: string): Promise<void>
   await tx.q(sql);
   // asOwner() reset the role; callers re-assume their identity with tx.as().
 }
+
+/**
+ * One call as the session's org admin, then back to the owner. For a setup step only staff may take: since `0212` an
+ * owner's call carries no role, and `if not (is_presenter_of(…) or is_staff())` refuses it — before, a null role made
+ * that test `not null` and skipped the refusal, which is the hole `0212` closed.
+ */
+export async function asSessionAdmin<T>(tx: Tx, sessionId: string, fn: () => Promise<T>): Promise<T> {
+  await tx.asOwner();
+  const [a] = await tx.q<{ auth_user_id: string; id: string; org_id: string; claims_version: number }>(
+    `select m.auth_user_id, m.id, m.org_id, m.claims_version
+       from public.members m join public.sessions s on s.org_id = m.org_id
+      where s.id = $1 and m.org_role = 'admin' and m.status = 'active' and m.auth_user_id is not null
+      order by m.created_at, m.id limit 1`,
+    [sessionId],
+  );
+  await tx.as({ sub: a.auth_user_id, org_id: a.org_id, member_id: a.id, org_role: "admin", status: "active", claims_version: a.claims_version, org_status: "active" });
+  try {
+    return await fn();
+  } finally {
+    await tx.asOwner();
+  }
+}

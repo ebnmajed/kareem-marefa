@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { refresh } from "next/cache";
 import { getCalendarConnection } from "@/lib/dal/calendar";
 import { cancelRsvp, reserveSeat } from "@/lib/dal/rsvp";
@@ -52,7 +53,8 @@ async function calendarFor(locale: string): Promise<"sync" | "manual"> {
   try {
     const connection = await getCalendarConnection(locale);
     return connection && connection.disconnectedAt === null ? "sync" : "manual";
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     // A whisper is an acknowledgement; losing the calendar read must never lose the reservation's answer.
     return "manual";
   }

@@ -95,7 +95,12 @@ export async function setStoryReaction(locale: string, frameId: string, kind: St
   if (updateError) throw new Error(`story_reactions: ${updateError.message}`);
   if ((updated ?? []).length === 0) {
     const { error } = await supabase.from("story_reactions").insert({ org_id: session.orgId, frame_id: id, member_id: session.memberId, kind: parsed });
-    if (error) throw new Error(`story_reactions: ${error.message}`);
+    // Two quick taps both find nothing to update and both insert; the second meets the first's row (23505), and is
+    // an update after all.
+    if (error?.code === "23505") {
+      const { error: retryError } = await supabase.from("story_reactions").update({ kind: parsed }).eq("frame_id", id).eq("member_id", session.memberId);
+      if (retryError) throw new Error(`story_reactions: ${retryError.message}`);
+    } else if (error) throw new Error(`story_reactions: ${error.message}`);
   }
   return parsed;
 }

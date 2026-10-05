@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { dayCountLabel } from "@/components/sessions/day-label";
+import { EditOnly } from "@/components/sessions/edit-mode";
 import { formatDate, formatNumber } from "@/components/sessions/numerals";
 import { Avatar } from "@/components/ui/avatar";
 import { SessionStatusBadge } from "@/components/ui/badge";
@@ -83,9 +84,12 @@ export async function EventHero({ session, phase, seat, closingSoon, dayCount, p
         </div>
         {/* Staff learn when details moved under a detached poster (DEC-012) — said once, quietly. */}
         {session.viewerIsStaff && poster?.staleSince ? (
-          <p role="status" className="text-body-sm text-fg-heading">
-            {tPoster("stale")}
-          </p>
+          // Staff's note — drawn in the event page's edit mode alone (`edit-mode.tsx`).
+          <EditOnly>
+            <p role="status" className="text-body-sm text-fg-heading">
+              {tPoster("stale")}
+            </p>
+          </EditOnly>
         ) : null}
       </div>
 

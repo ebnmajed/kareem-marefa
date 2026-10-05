@@ -313,7 +313,7 @@ Legend: pattern per action, `—` = no policy and no grant.
 | Table | select | insert | update | delete | Notes |
 |---|---|---|---|---|---|
 | `orgs` | §5.1a | — | §5.1a | — | Own org only. Creation is a super-admin RPC. |
-| `org_domains` | P2-read | P2 | P2 | P2 | Admin-only, including read — the domain list is a membership control. |
+| `org_domains` | P2-read | P2 | P2 | P2 | Admin-only, including read — the domain list is a membership control. ★ **An org admin cannot add a domain another org holds** (0212, `org_domains_not_another_orgs`, DEC-266) — `provision_member()` would offer their org to that org's people; only the platform puts one domain on two lists (the choose-org case). |
 | `company_domains` | P2-read | — | — | — | ★ `0203`, `REQ-PRF-012` — admin-only read, **no client write at all**: `save_company()` (definer) is the one writer, so the confirmation's numbers are the save's. `create policy "company_domains_read_admin" on company_domains for select to authenticated; grant select on company_domains to authenticated;` |
 | `org_settings` | P1 | — | P2 | — | Exactly one row per org; no insert or delete path. |
 | `companies` | P1 | P2 | P2 | — | `REQ-ADM-006`: deactivate, never delete. |
@@ -1154,7 +1154,9 @@ bodies are the prefix rules of §6.1–§6.6 and are read there, not restated he
 `policy-diff` gate keys `storage.objects` by schema (DEC-044) and matches these names.
 
 ```sql
-create policy "materials_storage_read"       on storage.objects for select to authenticated;  -- org prefix · phase gate · allow_download (REQ-MAT-005, REQ-MAT-006) · since 0054 also the pre-finalize self-read: whoever may WRITE the path may read it back before a material_versions row exists (the complete step sniffs the landed bytes)
+create policy "materials_storage_read"       on storage.objects for select to authenticated;  -- org prefix · phase gate · allow_download (REQ-MAT-005, REQ-MAT-006) · since 0054 also the pre-finalize self-read: whoever may WRITE the path may read it back before a material_versions row exists (the complete step sniffs the landed bytes) · ★ 0212 (DEC-265, DEC-266): matched by the version's exact storage_path (the id in the path never matched a real upload), and a member reads an original only to LISTEN — an audio material with allow_download; a PDF's original is presenters', the proposal's owner's and staff's
+create policy "materials_storage_delete_unrecorded" on storage.objects for delete to authenticated;  -- ★ 0212 (DEC-265): the uploader's own object that no material_versions row records — a rejected upload (REQ-MAT-012) is deleted, never left readable
+create policy "design_assets_storage_delete_unrecorded" on storage.objects for delete to authenticated;  -- ★ 0212 (DEC-265): an org admin's own design-asset object that no design_assets row records
 create policy "materials_storage_write"      on storage.objects for insert to authenticated;  -- org prefix · sessions/<id> · presenter or staff
 create policy "material_pages_storage_read"  on storage.objects for select to authenticated;  -- org prefix · phase gate, no allow_download conjunct
 create policy "photos_storage_read"          on storage.objects for select to authenticated;  -- org prefix · hidden only to staff (REQ-EVT-012) · ★ never once removed (0156, DEC-182)
@@ -1221,17 +1223,9 @@ create policy "realtime_session_select" on realtime.messages for select to authe
     )
   );
 
--- Send: the same, and only for the message kinds a client is allowed to originate.
-create policy "realtime_session_insert" on realtime.messages for insert to authenticated
-  with check (
-    extension = 'broadcast'
-    and topic like 'session:%'
-    and exists (
-      select 1 from public.sessions s
-       where s.id = split_part(topic, ':', 2)::uuid
-         and s.org_id = auth_org_id()
-    )
-  );
+-- Send: none. ★ 0212 (DEC-265) dropped `realtime_session_insert`: any member could broadcast on a session's topic and
+-- the event page renders a broadcast as a comment. Nothing in the browser sends; the server broadcasts from definer
+-- triggers, which need no policy.
 
 -- The host channel carries the live check-in count. Same gate as the host view
 -- itself (§5.4a / OQ-013): a member who could read it could infer attendance.

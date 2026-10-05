@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SectionHeader } from "@/components/ui/section-header";
+import { EditOnly } from "@/components/sessions/edit-mode";
 import { isSectionShown, type EventSectionId, type SlotSummary } from "@/components/sessions/slots";
 
 // One section of the event page — rebuilt in wave 18 (REQ-UIX-061); the slot contract, `16` §5.4.1a(b),
@@ -32,10 +33,12 @@ export async function EventSection({ id, title, gate = true, summary, note, chil
   const resolved = summary ? await summary : undefined;
   if (!isSectionShown(gate, resolved)) return null;
   const aside = typeof note === "function" ? note(resolved) : note;
-  return (
+  const section = (
     <section id={id} aria-labelledby={`${id}-heading`} className={`scroll-mt-4 ${className}`}>
       <SectionHeader id={`${id}-heading`} title={title} actions={aside ? <span className="text-caption text-fg-muted">{aside}</span> : undefined} />
       <div className="mt-3">{children}</div>
     </section>
   );
+  // A section only a manager can see (an empty slot with an add control) is drawn in edit mode alone.
+  return resolved?.editOnly ? <EditOnly>{section}</EditOnly> : section;
 }

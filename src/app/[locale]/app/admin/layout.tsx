@@ -32,18 +32,18 @@ export default async function AdminLayout({ children, params }: { children: Reac
   setRequestLocale(locale);
 
   const session = await requireSession(locale);
-  const [t, tApp, tShell, shell, me] = await Promise.all([
+  const role: AdminRole = session.role === "admin" ? "admin" : session.role === "moderator" ? "moderator" : "member";
+  // Contract 3: the same read as the dashboard's tiles, filtered by role at the data — so a badge never counts a
+  // queue its reader cannot open. A failed read draws no badge; it never takes the console down with it. Read in the
+  // same batch as the rest: the role is known before any of them.
+  const [t, tApp, tShell, shell, me, attention] = await Promise.all([
     getTranslations("admin.shell"),
     getTranslations("app.console"),
     getTranslations("app.shell"),
     getShellData(locale),
     getMe(locale),
+    role === "member" ? null : getAdminAttention(locale).catch(() => null),
   ]);
-
-  const role: AdminRole = session.role === "admin" ? "admin" : session.role === "moderator" ? "moderator" : "member";
-  // Contract 3: the same read as the dashboard's tiles, filtered by role at the data — so a badge never counts a
-  // queue its reader cannot open. A failed read draws no badge; it never takes the console down with it.
-  const attention = role === "member" ? null : await getAdminAttention(locale).catch(() => null);
   const BADGE: Record<AttentionQueue, "proposals" | "sessions" | "photoReports" | "commentReports"> = {
     proposals: "proposals",
     unscheduledSessions: "sessions",

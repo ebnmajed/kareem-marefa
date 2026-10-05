@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import type { Locale } from "@/i18n/routing";
 import { disconnectCalendar, retryCalendarSync, type CalendarRetryOutcome } from "@/lib/dal/calendar";
 
@@ -16,7 +16,8 @@ import { disconnectCalendar, retryCalendarSync, type CalendarRetryOutcome } from
 export async function disconnect(locale: Locale) {
   try {
     await disconnectCalendar(locale);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     redirect(`/${locale}/app/me/calendar?error=disconnect`);
   }
   redirect(`/${locale}/app/me/calendar?disconnected=1`);
@@ -30,7 +31,8 @@ export async function retry(locale: Locale, formData: FormData) {
   let outcome: CalendarRetryOutcome | "error";
   try {
     outcome = await retryCalendarSync(locale, formData.get("event")?.toString() ?? "");
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     outcome = "error";
   }
   redirect(`/${locale}/app/me/calendar?${outcome === "queued" ? "retried=1" : "error=retry"}`);

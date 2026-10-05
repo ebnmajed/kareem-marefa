@@ -80,6 +80,14 @@ describe("Photos slot — rebuilt", () => {
     await userEvent.click(screen.getByRole("button", { name: "افتح الصورة 1 من 2" }));
     const dialog = await screen.findByRole("dialog", { name: "صور الجلسة" });
     expect(within(dialog).getByRole("button", { name: "احذف الصور التي أظهر فيها" })).toBeInTheDocument();
+    // DEC-266: a member is offered no download; staff are.
+    expect(within(dialog).queryByRole("link", { name: "تنزيل الصورة" })).not.toBeInTheDocument();
+  });
+
+  it("★ DEC-266: staff are offered «تنزيل الصورة» through the audited route", async () => {
+    await renderSlot({ ...base, isStaff: true, photos: [photo("p1")] });
+    await userEvent.click(screen.getByRole("button", { name: "افتح الصورة 1 من 1" }));
+    const dialog = await screen.findByRole("dialog", { name: "صور الجلسة" });
     expect(within(dialog).getByRole("link", { name: "تنزيل الصورة" })).toHaveAttribute("href", "/api/photos/p1/download");
   });
 

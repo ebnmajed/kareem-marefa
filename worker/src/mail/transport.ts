@@ -29,6 +29,23 @@ export interface MailMessage {
    *  clients strip HTML entirely, and Arabic in a stripped HTML body is
    *  worse than Arabic in a plain one. */
   text: string;
+  /** Stable across a job's retries, so a provider that ACCEPTED a send whose answer was lost
+   *  (a timeout, a dropped socket) does not deliver it a second time on the retry. Resend
+   *  honours it as `Idempotency-Key`; the sink and the memory transport ignore it. */
+  idempotencyKey?: string;
+}
+
+/** A send the provider refused for a reason a retry cannot change — a malformed address, a
+ *  domain it will not send from, a rejected payload. The job records it and stops; burning
+ *  eight attempts on it only delays the admin seeing it (REQ-NTF-008). */
+export class PermanentMailError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "PermanentMailError";
+  }
 }
 
 export interface SentMail {

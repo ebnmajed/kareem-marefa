@@ -119,7 +119,8 @@ function nextDay(key: string): string {
  *     the range pattern and the month-boundary elision are CLDR's own and not
  *     ours: «19 – 21 سبتمبر 2026», «30 سبتمبر – 2 أكتوبر 2026».
  *   · otherwise the days are listed, and only the last carries the month and
- *     the year: «19 و21 و26 سبتمبر 2026».
+ *     the year: «19 و21 و26 سبتمبر 2026». Across months, each month's last
+ *     day carries its month: «28 سبتمبر و3 أكتوبر 2026».
  *   · THE TIME IS PRINTED ONLY WHEN EVERY DAY SHARES IT. Days may start at
  *     different hours; one time over differing days is a false statement on a
  *     sheet of paper that goes on a wall.
@@ -147,10 +148,22 @@ export function formatBindingWhen(days: readonly SessionDayWindow[], timeZone: s
   if (consecutive) {
     dates = dateOnly.formatRange(first, last)
   } else {
-    const head = starts.slice(0, -1).map((d) => dayOnly.format(d))
+    // ★ A month is printed on the LAST day of each run of days in that month — «28 سبتمبر و3 و5 أكتوبر 2026», never
+    // «28 و3 و5 أكتوبر», which reads as 28 October. The year goes on the final day only, unless the days span two
+    // years, where every month's last day carries its own. Within one month this is exactly the list it always was:
+    // one run, its last day `dateOnly`, every other day `dayOnly`.
+    const dayMonth = new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { day: 'numeric', month: 'long', timeZone })
+    const sameYear = keys.every((k) => k.slice(0, 4) === (keys[0] as string).slice(0, 4))
+    const parts = starts.map((d, i) => {
+      const isLast = i === starts.length - 1
+      const endsMonth = isLast || (keys[i + 1] as string).slice(0, 7) !== (keys[i] as string).slice(0, 7)
+      if (!endsMonth) return dayOnly.format(d)
+      return isLast || !sameYear ? dateOnly.format(d) : dayMonth.format(d)
+    })
+    const head = parts.slice(0, -1)
     const and = locale.startsWith('ar') ? ' و' : ' and '
     const comma = locale.startsWith('ar') ? ' و' : ', '
-    dates = `${head.join(comma)}${and}${dateOnly.format(last)}`
+    dates = `${head.join(comma)}${and}${parts[parts.length - 1] as string}`
   }
 
   const times = starts.map((d) => timeOnly.format(d))

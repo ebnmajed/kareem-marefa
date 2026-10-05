@@ -22,7 +22,6 @@ import { getSessionState } from "@/lib/dal/session";
 // table has no policy and no grant, so the claim cannot even be verified
 // client-side, let alone trusted.
 
-
 export interface PlatformSession {
   userId: string;
   email: string | null;
@@ -581,12 +580,3 @@ export interface PlatformAuditRow {
   after: Record<string, unknown> | null;
 }
 
-export async function listPlatformAudit(locale: string, orgId?: string, limit = 50): Promise<PlatformAuditRow[]> {
-  await requirePlatformAdmin(locale);
-  const supabase = await createServerClient();
-  const { data, error } = await supabase.rpc("platform_audit", { p_limit: limit, p_org: orgId ?? null });
-  if (error || !data) return [];
-  return (data as { id: string; action: string; subject_org: string | null; reason: string | null; occurred_at: string; after: Record<string, unknown> | null }[]).map(
-    (r) => ({ id: r.id, action: r.action, subjectOrg: r.subject_org, reason: r.reason, occurredAt: r.occurred_at, after: r.after }),
-  );
-}

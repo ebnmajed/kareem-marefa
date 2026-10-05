@@ -24,29 +24,6 @@ export interface BookmarksPageData {
   sessions: BookmarkedSession[];
 }
 
-/** SCR-024 — the member's own saved sessions, most recently bookmarked first. */
-export async function getBookmarksPageData(locale: string): Promise<BookmarksPageData> {
-  const { session, supabase } = await sessionClient(locale);
-  const [{ data, error }] = await Promise.all([
-    supabase
-      .from("bookmarks")
-      .select("created_at, sessions(id, title, abstract, starts_at, state)")
-      .eq("member_id", session.memberId)
-      .order("created_at", { ascending: false }),
-  ]);
-  if (error) throw new Error(`bookmarks: ${error.message}`);
-
-  const sessions = (data ?? [])
-    .map((row) => {
-      const s = (row as unknown as { sessions: { id: string; title: string; abstract: string; starts_at: string | null; state: string } | null }).sessions;
-      if (!s) return null;
-      return { id: s.id, title: s.title, abstract: s.abstract, startsAt: s.starts_at, state: s.state, bookmarkedAt: row.created_at as string };
-    })
-    .filter((s): s is BookmarkedSession => s !== null);
-
-  return { sessions };
-}
-
 /**
  * SCR-024 on the system — the member's saved sessions as timeline cards, so
  * `/app/me/bookmarks` renders `SessionCard` rather than a second card of its own.

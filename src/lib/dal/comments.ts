@@ -67,15 +67,6 @@ function mapCommentError(error: { message: string; code?: string }): Error {
   return new Error(`comments: ${error.message}`);
 }
 
-/**
- * A flat, chronological list. The caller (Comments slot) nests each row
- * under its `parentId` — exactly one level exists in the schema, so there is
- * nothing deeper to recurse into.
- */
-export async function listComments(locale: string, sessionId: string): Promise<CommentDTO[]> {
-  return (await getCommentsPageData(locale, sessionId)).comments;
-}
-
 export interface CommentsPageData {
   comments: CommentDTO[];
   /** null when the org's setting could not be read — treated as "no window" (no self-edit offered), never as unlimited. */

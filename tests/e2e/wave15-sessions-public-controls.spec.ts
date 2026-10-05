@@ -131,7 +131,8 @@ const SUBMIT: Part[] = [
   ["submit label", 'form button[type="submit"] > span'],
 ];
 const DOORS: Part[] = [
-  // «تسجيل الدخول» — always Arabic (the platform is Arabic-only) — and «سجّل اهتمامك».
+  // «تسجيل الدخول» — always Arabic (the platform is Arabic-only). «سجّل اهتمامك» left the header (DEC-266); it is
+  // looked for so that its absence is asserted.
   ["door sign-in", 'header a[href$="/sign-in"]'],
   ["door register", 'header a[href$="/register"]'],
 ];
@@ -418,7 +419,8 @@ test.describe("wave 15 — the public site's controls, computed", () => {
         expect(states["focus submit"]?.submit?.focusVisible, `${key} submit focus-visible`).toBe(true);
       } else {
         expect(states.rest["door sign-in"], `${key} «تسجيل الدخول»`).not.toBeNull();
-        expect(states.rest["door register"], `${key} «سجّل اهتمامك»`).not.toBeNull();
+        // DEC-266: the header's one button is «تسجيل الدخول»; «سجّل اهتمامك» left the header.
+        expect(states.rest["door register"], `${key} no «سجّل اهتمامك» in the header`).toBeNull();
         expect(states["focus door sign-in"]?.["door sign-in"]?.focusVisible, `${key} sign-in focus-visible`).toBe(true);
       }
     }

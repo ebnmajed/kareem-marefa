@@ -61,12 +61,18 @@ function Clock({
     done.current = onDone;
   }, [onDone]);
 
-  // A video is driven by its element: play and pause follow `running`, the end advances.
+  // A video is driven by its element: play and pause follow `running`, the end advances. ★ A browser that refuses to
+  // play (a power-saving mode, an autoplay policy) hands the frame to the clock, so the story never stalls on it.
+  const stalled = useRef(false);
   useEffect(() => {
     const el = media?.current;
     if (!el) return;
-    if (running) void el.play().catch(() => undefined);
-    else el.pause();
+    if (running) {
+      stalled.current = false;
+      void el.play().catch(() => {
+        stalled.current = true;
+      });
+    } else el.pause();
   }, [media, running]);
   useEffect(() => {
     const el = media?.current;
@@ -81,7 +87,7 @@ function Clock({
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
-      const el = media?.current;
+      const el = stalled.current ? null : media?.current;
       if (el) {
         const total = Number.isFinite(el.duration) && el.duration > 0 ? el.duration : durationMs / 1000;
         elapsedRef.current = el.currentTime * 1000;

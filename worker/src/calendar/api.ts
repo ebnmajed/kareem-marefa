@@ -22,10 +22,19 @@ export interface CalendarEventBody {
 
 export class CalendarNotFound extends Error {}
 export class CalendarAuthExpired extends Error {}
+/** 409 on an insert with a client id: an event with that id already exists. */
+export class CalendarConflict extends Error {}
+
+/** A request to Google that hangs holds the job's lock until graphile-worker gives up on it. */
+const GOOGLE_TIMEOUT_MS = 30_000;
 
 export interface CalendarApi {
   readonly name: "google" | "stub";
-  createEvent(accessToken: string, event: CalendarEventBody): Promise<{ id: string }>;
+  /** `eventId`, when given, is the CLIENT-chosen id (base32hex, 5–1024 chars). An insert that
+   *  answers 409 means an event with that id already exists — a create whose answer was lost, or
+   *  one the member deleted (Google keeps a deleted event's id) — and it is updated instead,
+   *  which also restores a deleted one. So a retry never creates a second event. */
+  createEvent(accessToken: string, event: CalendarEventBody, eventId?: string): Promise<{ id: string }>;
   updateEvent(accessToken: string, eventId: string, event: CalendarEventBody): Promise<{ id: string }>;
   /** REQ-CAL-006: a 404 is SUCCESS, not an error — the member may have
    *  deleted the event by hand, and insisting otherwise would retry eight
@@ -66,15 +75,23 @@ export class GoogleCalendarApi implements CalendarApi {
       method,
       headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     });
     if (response.status === 404 || response.status === 410) throw new CalendarNotFound(`${method} ${url}: gone`);
+    if (response.status === 409) throw new CalendarConflict(`${method} ${url}: the id is taken`);
     if (response.status === 401) throw new CalendarAuthExpired(`${method} ${url}: token rejected`);
     if (!response.ok) throw new Error(`google calendar ${response.status}: ${(await response.text().catch(() => "")).slice(0, 300)}`);
     return response;
   }
 
-  async createEvent(accessToken: string, event: CalendarEventBody) {
-    const response = await this.call(accessToken, ENDPOINT, "POST", toGoogle(event));
+  async createEvent(accessToken: string, event: CalendarEventBody, eventId?: string) {
+    let response: Response;
+    try {
+      response = await this.call(accessToken, ENDPOINT, "POST", { ...toGoogle(event), ...(eventId ? { id: eventId } : {}) });
+    } catch (error) {
+      if (eventId && error instanceof CalendarConflict) return this.updateEvent(accessToken, eventId, event);
+      throw error;
+    }
     const body = (await response.json()) as { id?: string };
     if (!body.id) throw new Error("google calendar accepted the event but returned no id");
     return { id: body.id };
@@ -99,8 +116,25 @@ export class GoogleCalendarApi implements CalendarApi {
         refresh_token: refreshToken,
         grant_type: "refresh_token",
       }).toString(),
+      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     });
-    if (!response.ok) throw new CalendarAuthExpired(`token refresh ${response.status}`);
+    if (!response.ok) {
+      // Only `invalid_grant` means the member revoked access (or the grant expired): that one
+      // never succeeds and the member must reconnect. A 429, a 5xx, or a client misconfiguration
+      // is not the member's doing, and calling it «revoked» would tell them to reconnect a
+      // calendar that is fine — so it is an ordinary error, retried.
+      const detail = await response.text().catch(() => "");
+      let code: string | undefined;
+      try {
+        code = (JSON.parse(detail) as { error?: string }).error;
+      } catch {
+        /* not JSON — not an invalid_grant */
+      }
+      if ((response.status === 400 || response.status === 401) && code === "invalid_grant") {
+        throw new CalendarAuthExpired(`token refresh ${response.status}: invalid_grant`);
+      }
+      throw new Error(`token refresh ${response.status}: ${detail.slice(0, 300)}`);
+    }
     const body = (await response.json()) as { access_token?: string; expires_in?: number };
     if (!body.access_token) throw new CalendarAuthExpired("token refresh returned no access_token");
     return {

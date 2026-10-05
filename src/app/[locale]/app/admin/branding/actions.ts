@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { BRAND_COLOUR_TOKENS } from "@kareem/designer-runtime";
 import type { Locale } from "@/i18n/routing";
@@ -61,6 +62,7 @@ export async function saveBrandKitAction(locale: Locale, _prev: SaveBrandKitStat
   try {
     written = await saveBrandKit(locale, parsed.data);
   } catch (e) {
+    unstable_rethrow(e);
     const code = (e as { code?: string })?.code;
     if (code === "42501") return { error: "notAdmin", saved: false };
     if (code === "22023") return { error: "badReference", saved: false };
@@ -85,6 +87,7 @@ export async function resetBrandKitAction(locale: Locale, _prev: ResetBrandKitSt
   try {
     await resetBrandKit(locale);
   } catch (e) {
+    unstable_rethrow(e);
     const code = (e as { code?: string })?.code;
     return { error: code === "42501" ? "notAdmin" : "unknown", reset: false };
   }

@@ -68,7 +68,17 @@ export const build_data_export: Task = async (payload, helpers) => {
     helpers.logger.info(`build_data_export: request ${request_id} is ready`);
   } catch (error) {
     const message = (error as Error).message;
-    await helpers.query(`select public.fail_data_export($1, $2)`, [request_id, message]);
+    try {
+      await helpers.query(`select public.fail_data_export($1, $2)`, [request_id, message]);
+    } catch (failError) {
+      // The request row went with its member (or the member is anonymised): recording the failure is itself refused
+      // the same way. That is still a terminal answer, so it must not turn into twenty-five retries.
+      if (isSubjectGone(failError) || isSubjectGone(error)) {
+        helpers.logger.warn(`build_data_export: request ${request_id} — ${message}; the failure could not be recorded and the job will not retry`);
+        return;
+      }
+      throw failError;
+    }
     if (isSubjectGone(error)) {
       helpers.logger.warn(`build_data_export: request ${request_id} — ${message}; the row says failed and the job will not retry`);
       return;

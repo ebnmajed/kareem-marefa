@@ -1,5 +1,5 @@
 import type { Task } from "graphile-worker";
-import { createTransport, fromAddress, type MailTransport } from "../mail/index.js";
+import { createTransport, fromAddress, PermanentMailError, type MailTransport } from "../mail/index.js";
 import { logoUrlFor, renderEmail, TemplateMissingError } from "@kareem/mail-runtime";
 
 // JOB-send_notification — 11 §2.6, 08 §5, REQ-NTF-002, REQ-NTF-003, REQ-NTF-008.
@@ -87,7 +87,12 @@ export const send_notification: Task = async (rawPayload, helpers) => {
     helpers.logger.info(`send_notification: ${p.key} suppressed at send time — ${ctx.category} email is off for this member`);
     return;
   }
-  if (!ctx.member.email) throw new Error(`send_notification: member ${p.member_id} has no address`);
+  if (!ctx.member.email) {
+    // Terminal: an address does not appear between attempts, and seven more tries would only
+    // delay the same answer. Said once, with the member's id and never a payload.
+    helpers.logger.error(`send_notification: member ${p.member_id} has no address — ${p.key} not sent`);
+    return;
+  }
 
   // 06 §8.3's email-template leg (wave 4, DEC-052): the org's brand kit,
   // merged over the platform defaults in SQL, so the mail carries the same
@@ -145,10 +150,12 @@ export const send_notification: Task = async (rawPayload, helpers) => {
     });
   } catch (error) {
     // A missing template is a matrix bug, not a transient fault: retrying it
-    // eight times changes nothing. Fail loudly, once, with the key named.
+    // eight times changes nothing. Fail loudly, once, with the key named —
+    // logged as an error and NOT rethrown, because a throw is what spends the
+    // other seven attempts (send_test_email and send_member_invitation agree).
     if (error instanceof TemplateMissingError) {
       helpers.logger.error(error.message);
-      throw error;
+      return;
     }
     throw error;
   }
@@ -174,6 +181,9 @@ export const send_notification: Task = async (rawPayload, helpers) => {
       subject: rendered.subject,
       html: rendered.html,
       text: rendered.text,
+      // The job's own key (`notify:{message_id}`), the same on every retry: a send Resend
+      // accepted whose answer was lost is not delivered twice.
+      idempotencyKey: `notify:${p.message_id}`,
     });
     await helpers.query(`select public.update_email_delivery($1::uuid, 'sent'::public.delivery_status, $2::text, null)`, [deliveryId, sent.providerMessageId]);
     helpers.logger.info(`send_notification: ${p.key} sent to member ${p.member_id} (${sent.providerMessageId})`);
@@ -183,6 +193,12 @@ export const send_notification: Task = async (rawPayload, helpers) => {
     // stored before the throw — the throw is what makes graphile-worker retry
     // (11 §1.3: external API, 8 attempts, exponential from 30 s).
     await helpers.query(`select public.update_email_delivery($1::uuid, 'failed'::public.delivery_status, null, $2::text)`, [deliveryId, reason.slice(0, 1000)]);
+    // A refusal the provider will repeat (a 4xx other than 429) is recorded and stops here; a
+    // retry would add seven identical `failed` rows and nothing else.
+    if (error instanceof PermanentMailError) {
+      helpers.logger.error(`send_notification: ${p.key} for member ${p.member_id} refused permanently (${error.status})`);
+      return;
+    }
     throw error;
   }
 };

@@ -246,19 +246,6 @@ export async function attachUploadedPoster(
   return { status: "ok", documentId: document.id as string };
 }
 
-/** The per-variant crop override (A32). Writes the focal point into the
- *  layer's `presets` entry for one preset and leaves the others alone. */
-export function withVariantCrop(document: DesignDocument, layerId: string, preset: PresetName, focal: { x: number; y: number }): DesignDocument {
-  return {
-    ...document,
-    layers: document.layers.map((layer) =>
-      layer.id === layerId
-        ? { ...layer, presets: { ...layer.presets, [preset]: { ...(layer.presets?.[preset] ?? {}), focal } } }
-        : layer,
-    ),
-  };
-}
-
 /** The intrinsic sizes of whatever each image layer resolves to, for the PPI
  *  guard. One query rather than one per layer. */
 export async function assetSizesFor(locale: string, document: DesignDocument): Promise<Record<string, { width: number; height: number }>> {

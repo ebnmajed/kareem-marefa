@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter as useRawRouter } from "next/navigation";
 import { DurationInput } from "@/components/admin/duration-input";
@@ -20,6 +20,7 @@ import { useRouter } from "@/i18n/navigation";
 import { summaryErrors } from "@/lib/form-state";
 import type { CatalogueRow } from "./catalogue-table";
 import { COOLDOWN_UNITS, companyField, emptyCatalogueState, ruleField, type CatalogueState, type Opened } from "./state";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 
 // SCR-053 in EDIT mode — `REQ-UIX-091`, `REQ-UIX-100`, `DEC-231` §3, `DEC-232` §3. Written from the artboard's tables
 // with `profile-edit.tsx` as the reference, read and never imported, in the shape `060` set (`583eedbc`).
@@ -71,8 +72,6 @@ const companyValues = (r: EditableCompanyRule): CompanyValues => ({
   enabled: r.enabled,
 });
 
-const noop = () => () => {};
-const useHydrated = () => useSyncExternalStore(noop, () => true, () => false);
 const plain = (chunks: string) => chunks;
 
 export function CatalogueEdit({

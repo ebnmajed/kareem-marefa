@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { avatarHref } from "@/lib/dal/avatars";
 import { sessionClient } from "@/lib/dal/session";
@@ -298,7 +299,7 @@ type PhotoRow = { id: string; storage_path: string; session_id: string; uploader
 const TAKEDOWN_COLUMNS = "id, photo_id, requester_id, requested_at, resolved_at, resolution, resolved_by";
 
 /** The queue — both chips and the closed list — in one read: the layout's, so it stays mounted beside the detail. */
-export async function listPhotoQueue(locale: string): Promise<PhotoQueue | null> {
+export const listPhotoQueue = cache(async (locale: string): Promise<PhotoQueue | null> => {
   const client = await requireStaff(locale);
   if (!client) return null;
   const { supabase } = client;
@@ -415,7 +416,7 @@ export async function listPhotoQueue(locale: string): Promise<PhotoQueue | null>
     reports: [...openItems("reports", reportGroups), ...frames.reports],
     closed: [...decided.values()].sort((a, b) => b.at.localeCompare(a.at)).map((item) => ({ photoId: item.photoId, kind: item.kind, sessionTitle: item.sessionTitle, thumbUrl: item.thumbUrl, decision: item.decision })),
   };
-}
+});
 
 export type PhotoStatus = "hidden" | "visible" | "removed";
 

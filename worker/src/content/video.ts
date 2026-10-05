@@ -120,7 +120,9 @@ export function ffmpegArgs(demuxer: StoryVideoDemuxer, input: string, output: st
     ...(hasAudio ? ["-map", "0:a:0"] : []),
     "-dn", "-sn",
     "-t", String(STORY_VIDEO_MAX_SECONDS + STORY_VIDEO_TOLERANCE_SECONDS),
-    "-vf", `scale='if(lte(iw,ih),min(${s},iw),-2)':'if(lte(iw,ih),-2,min(${s},ih))',format=yuv420p`,
+    // `trunc(…/2)*2`: a source with an odd short side (719 px) would otherwise keep it, and libx264 refuses an odd
+    // dimension in yuv420p. The other side is `-2`, which ffmpeg already rounds to even.
+    "-vf", `scale='if(lte(iw,ih),trunc(min(${s},iw)/2)*2,-2)':'if(lte(iw,ih),-2,trunc(min(${s},ih)/2)*2)',format=yuv420p`,
     "-fpsmax", "30",
     "-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-level:v", "4.0",
     "-crf", "23", "-maxrate", "2500k", "-bufsize", "5000k",

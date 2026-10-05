@@ -40,13 +40,16 @@ function isPayload(p: unknown): p is Payload {
  *  modern browser gets woff2 rather than the legacy formats. */
 const UA_WOFF2 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+/** A Google request that hangs would hold the job until graphile-worker gives up on it. */
+const GOOGLE_FONTS_TIMEOUT_MS = 30_000;
+
 async function googleFontUrl(family: string, style: string, weight: number): Promise<string> {
   const spec = style === "italic" ? `ital,wght@1,${weight}` : `wght@${weight}`;
   // `subset=arabic` is property 1: a family with no Arabic coverage returns
   // no Arabic face and the job stops here rather than storing something
   // that would fail the gate later for a reason nobody could read.
   const css = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:${spec}&subset=arabic&display=swap`;
-  const response = await fetch(css, { headers: { "user-agent": UA_WOFF2 } });
+  const response = await fetch(css, { headers: { "user-agent": UA_WOFF2 }, signal: AbortSignal.timeout(GOOGLE_FONTS_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`materialise_font: Google returned ${response.status} for ${family} ${style} ${weight}`);
   const text = await response.text();
   const match = /src:\s*url\((https:\/\/[^)]+\.woff2)\)/.exec(text);
@@ -61,7 +64,7 @@ export const materialise_font: Task = async (payload, helpers) => {
   const { family, style, weight } = payload;
 
   const url = await googleFontUrl(family, style, weight);
-  const binary = await fetch(url);
+  const binary = await fetch(url, { signal: AbortSignal.timeout(GOOGLE_FONTS_TIMEOUT_MS) });
   if (!binary.ok) throw new Error(`materialise_font: downloading ${url} returned ${binary.status}`);
   const bytes = new Uint8Array(await binary.arrayBuffer());
   if (bytes.byteLength < 1024) throw new Error(`materialise_font: ${family} came back as ${bytes.byteLength} bytes — not a font`);

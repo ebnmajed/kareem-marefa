@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { toggleBookmark } from "@/lib/dal/bookmarks";
 
@@ -13,6 +14,7 @@ export async function toggleBookmarkAction(locale: string, sessionId: string, bo
     revalidatePath(`/${locale}/app/sessions/${sessionId}`);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }

@@ -274,7 +274,9 @@ test("★ REQ-EVT-012/REQ-UIX-013: a bystander's takedown request confirms in a 
   // The moderator sees it, marked pending review, and can restore it.
   await context.clearCookies();
   await signIn(context, modEmail);
-  await page.goto(`/ar/app/sessions/${sessionId}`);
+  // ★ The event page's edit mode (the owner's ruling, 2026-10-06): a hidden photograph and its restore are staff's,
+  // drawn in edit mode alone; `?edit=1` opens the page in it, the state «تعديل» sets.
+  await page.goto(`/ar/app/sessions/${sessionId}?edit=1`);
   await waitForStreamsToSettle(page);
   await expect(page.getByText("مخفية — بانتظار المراجعة")).toBeVisible();
 

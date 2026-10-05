@@ -150,10 +150,15 @@ describe("JOB-send_notification", () => {
     setMailTransport(null);
   });
 
+  // «Once» is the point: a throw spends the job's other seven attempts on the same answer, so the task logs the key
+  // as an error and returns, as send_test_email and send_member_invitation already did (QA sweep 2026-10-05).
   it("fails loudly and once on a message with no template — a matrix bug, not a transient fault", async () => {
-    setMailTransport(new MemoryTransport());
-    const { helpers } = fakeHelpers(sendAnswers({ ...CONTEXT, key: "MSG-rsvp_confirmed" }));
-    await expect(send_notification({ ...PAYLOAD, key: "MSG-rsvp_confirmed" }, helpers)).rejects.toThrow(/no email template/);
+    const transport = new MemoryTransport();
+    setMailTransport(transport);
+    const { helpers, logs } = fakeHelpers(sendAnswers({ ...CONTEXT, key: "MSG-rsvp_confirmed" }));
+    await expect(send_notification({ ...PAYLOAD, key: "MSG-rsvp_confirmed" }, helpers)).resolves.toBeUndefined();
+    expect(logs.some((l) => /^error: .*no email template/.test(l))).toBe(true);
+    expect(transport.sent).toHaveLength(0);
     setMailTransport(null);
   });
 });

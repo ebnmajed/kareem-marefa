@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useActionState, useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter as useRawRouter } from "next/navigation";
 import { formatNumber } from "@/components/sessions/numerals";
@@ -22,6 +22,7 @@ import type { OrgSettingsView } from "@/lib/dal/admin-settings";
 import { summaryErrors } from "@/lib/form-state";
 import { FORM_FIELDS, parseDomains } from "./fields";
 import { controlId, emptySettingsState, type SettingsState } from "./state";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 
 // SCR-063 in edit mode — `REQ-UIX-091`, `M10c.md` §1, `DEC-231` §3, `DEC-232` §3 and §5.1. The four `kv-card`s of read
 // mode, `mode="edit"` (`sessions'` primitive, composed as it is: one `<fieldset>` per row, no `<form>` — the page owns
@@ -49,9 +50,6 @@ const asText = (v: string | number | boolean | null): string => (typeof v === "b
 // artboard review): `kv-card` draws it at h2 scale, which competed with the page's h1, so it is set at label scale
 // from here — the primitive itself is composed as it is.
 const CARD = "[&_h2]:text-label [&_h2]:font-bold [&_h2]:text-fg-muted";
-
-const noop = () => () => {};
-const useHydrated = () => useSyncExternalStore(noop, () => true, () => false);
 
 export function SettingsEdit({
   action,

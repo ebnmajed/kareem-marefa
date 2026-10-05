@@ -4,6 +4,7 @@ import { rescopePhotoAction } from "@/components/photos/actions";
 import { LightboxTile } from "@/components/photos/lightbox";
 import { TakedownButton } from "@/components/photos/takedown-button";
 import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
+import { EditOnly } from "@/components/sessions/edit-mode";
 import { teamColorOrNull } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import type { PhotoSummary } from "@/lib/dal/photos";
@@ -20,6 +21,8 @@ import type { PhotoSummary } from "@/lib/dal/photos";
 // (DEC-209). A HIDDEN photograph — only staff see one — is outside the lightbox, badged, with its restore here.
 // ★ The uploader's company colour is a ring dot at the tile's corner (`EventLive.dc.html:64`), decoration: it
 // reaches the DOM only as `--team`, and a company with no colour draws the neutral ring.
+// ★ The event page's edit mode (`sessions/edit-mode.tsx`): a hidden photograph with its restore, and the re-scope
+// chip, are staff's and drawn in edit mode alone — read mode shows what a member sees.
 
 type T = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -46,7 +49,7 @@ export function PhotoGrid({
       {lead ? <li className="min-w-0">{lead}</li> : null}
       {photos.map((p) => {
         const colour = teamColorOrNull(p.uploaderTeamColor ?? null);
-        return (
+        const tile = (
           <li key={p.id} className="flex min-w-0 flex-col gap-1.5">
             {p.url ? (
               <div className="relative">
@@ -70,16 +73,20 @@ export function PhotoGrid({
               </>
             ) : null}
             {scope && isStaff ? (
-              <RescopeChip
-                currentLabel={scope.currentLabel}
-                options={scope.options}
-                triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
-                failedLabel={t("rescope.failed")}
-                rescopeAction={rescopePhotoAction.bind(null, locale, sessionId, p.id)}
-              />
+              <EditOnly>
+                <RescopeChip
+                  currentLabel={scope.currentLabel}
+                  options={scope.options}
+                  triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
+                  failedLabel={t("rescope.failed")}
+                  rescopeAction={rescopePhotoAction.bind(null, locale, sessionId, p.id)}
+                />
+              </EditOnly>
             ) : null}
           </li>
         );
+        // Only staff are ever sent a hidden photograph (`photos_read`); it is theirs to restore, in edit mode.
+        return p.hiddenAt ? <EditOnly key={p.id}>{tile}</EditOnly> : tile;
       })}
     </ul>
   );

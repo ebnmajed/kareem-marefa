@@ -34,6 +34,7 @@ let db: pg.Client;
 let orgId = "";
 let sessionId = "";
 let memberEmail = "";
+let modEmail = "";
 const userIds: string[] = [];
 /** Visible photographs, in the order the page shows them (newest first, `photos.ts`). */
 let visible: string[] = [];
@@ -64,6 +65,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
   const tag = `${testInfo.workerIndex}-${Date.now()}`;
   const domain = `lightbox-e2e-${tag}.example`;
   memberEmail = `member@${domain}`;
+  modEmail = `moderator@${domain}`;
 
   const { rows: orgRows } = await db.query<{ id: string }>(
     `insert into public.orgs (name, slug, certificate_prefix, created_by) values ('مؤسسة المعرض', $1, 'LB', gen_random_uuid()) returning id`,
@@ -86,6 +88,11 @@ test.beforeAll(async ({ browser }, testInfo) => {
   if (error) throw error;
   userIds.push(data.user.id);
   const memberId = await provisionMemberId(memberEmail);
+  // DEC-266: staff alone download a photograph — a moderator, promoted before they sign in, so the token carries it.
+  const mod = await admin.auth.admin.createUser({ email: modEmail, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "مشرف" } });
+  if (mod.error) throw mod.error;
+  userIds.push(mod.data.user.id);
+  await db.query(`update public.members set org_role = 'moderator' where id = $1`, [await provisionMemberId(modEmail)]);
 
   // Four real photographs a minute apart, landscape and portrait alternating (so the captures show
   // the lightbox's letterbox on both axes and the tile's crop); the second newest is hidden. The page
@@ -212,9 +219,28 @@ test("Escape closes it too, focus returns to the opening tile, and the letterbox
   await expect(dialog).toHaveCount(0);
 });
 
-test("★ REQ-ADM-021: the lightbox offers a route, which audits and 303s to a short-lived signed URL; a hidden photo's route bounces back", async ({ context, page }) => {
+test("★ DEC-266: a member sees the photograph and is offered no download; the route refuses them and audits nothing", async ({ context, page }) => {
   await page.setViewportSize(PHONE);
   await signIn(context, memberEmail);
+  await openEventPage(page);
+
+  await page.locator("#main").getByRole("button", { name: "افتح الصورة 1 من 3", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog").getByRole("link", { name: "تنزيل الصورة", exact: true })).toHaveCount(0);
+
+  const res = await page.request.get(`/api/photos/${visible[0]}/download`, { maxRedirects: 0, headers: { referer: page.url() } });
+  expect(res.status()).toBe(303);
+  expect(new URL(res.headers()["location"]).searchParams.get("download")).toBe("photo_failed");
+  const { rows } = await db.query<{ n: number }>(
+    `select count(*)::int as n from public.audit_log where action = 'photo.downloaded' and subject_id = $1`,
+    [visible[0]],
+  );
+  expect(rows[0].n).toBe(0);
+});
+
+test("★ REQ-ADM-021: staff's lightbox offers a route, which audits and 303s to a short-lived signed URL; a hidden photo's route bounces back", async ({ context, page }) => {
+  await page.setViewportSize(PHONE);
+  await signIn(context, modEmail);
   await openEventPage(page);
 
   await page.locator("#main").getByRole("button", { name: "افتح الصورة 1 من 3", exact: true }).click();

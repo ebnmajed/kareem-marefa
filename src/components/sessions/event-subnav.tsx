@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useShowsEditOnly } from "@/components/sessions/edit-mode";
 import type { EventSectionId } from "@/components/sessions/slots";
 
 // The event page's sub-nav — rebuilt in wave 18 from `Event.dc.html:63-69` (REQ-UIX-017, REQ-UIX-061, `16`
@@ -24,9 +25,13 @@ export interface EventSubnavItem {
   count?: string;
   /** Not drawn from `lg`, because its section is not. */
   lgHidden?: boolean;
+  /** Its section is drawn in edit mode alone (`SlotSummary.editOnly`), so its entry is too. */
+  editOnly?: boolean;
 }
 
-export function EventSubnav({ label, items }: { label: string; items: EventSubnavItem[] }) {
+export function EventSubnav({ label, items: all }: { label: string; items: EventSubnavItem[] }) {
+  const showsEditOnly = useShowsEditOnly();
+  const items = useMemo(() => all.filter((item) => showsEditOnly || !item.editOnly), [all, showsEditOnly]);
   const [current, setCurrent] = useState<EventSectionId | null>(items[0]?.id ?? null);
 
   useEffect(() => {

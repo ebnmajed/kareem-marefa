@@ -233,27 +233,6 @@ const toDTO = (r: NotificationRow): NotificationDTO => ({
   createdAt: r.created_at,
 });
 
-/**
- * The inbox (`REQ-NTF-006`), newest first. `p7_self_read` is the boundary; the
- * `member_id` filter here is defence in depth, and the ordering matches the
- * `(org_id, member_id, read_at nulls first, created_at desc)` index `02` §4.14
- * names.
- */
-export async function listNotifications(locale: string, opts: { unreadOnly?: boolean; limit?: number } = {}): Promise<NotificationDTO[]> {
-  const { session, supabase } = await sessionClient(locale);
-  let query = supabase
-    .from("notifications")
-    .select("id, key, payload, session_id, read_at, created_at")
-    .eq("member_id", session.memberId)
-    .order("created_at", { ascending: false })
-    .limit(Math.min(opts.limit ?? 50, 200));
-  if (opts.unreadOnly) query = query.is("read_at", null);
-
-  const { data, error } = await query;
-  if (error) throw new Error(`notifications: ${error.message}`);
-  return ((data ?? []) as NotificationRow[]).map(toDTO);
-}
-
 /** `REQ-NTF-006`: "unread count is accurate across devices" — so it is counted
  *  at the database on every read, never cached in a cookie or a client store. */
 export async function getUnreadCount(locale: string): Promise<number> {
@@ -748,24 +727,11 @@ export async function saveTemplate(locale: string, input: TemplateInput): Promis
   if (error) throw mapTemplateError(error);
 }
 
-/** One template's stored subject, for a conversion that must not invent one. */
-export async function getTemplateSubject(locale: string, key: string): Promise<string | null> {
-  const client = await assertAdmin(locale);
-  if (!client) return null;
-  const { data } = await client.supabase
-    .from("notification_templates")
-    .select("subject")
-    .eq("org_id", client.session.orgId)
-    .eq("key", key)
-    .eq("channel", "email")
-    .maybeSingle();
-  return (data?.subject as string | undefined) ?? null;
-}
-
 export type TestSendResult =
   | { status: "queued"; remaining: number }
   | { status: "rate_limited"; retryAfterMinutes: number }
-  | { status: "not_permitted" };
+  | { status: "not_permitted" }
+  | { status: "failed" };
 
 /**
  * `REQ-NTF-011` — «أرسل اختبارًا», to the signed-in admin's OWN address.
@@ -779,7 +745,7 @@ export async function sendTestEmail(locale: string, key: string): Promise<TestSe
   const client = await assertAdmin(locale);
   if (!client) return { status: "not_permitted" };
   const { data, error } = await client.supabase.rpc("send_test_email", { p_key: key, p_locale: "ar" });
-  if (error) return { status: error.code === "42501" ? "not_permitted" : "not_permitted" };
+  if (error) return { status: error.code === "42501" ? "not_permitted" : "failed" };
   const out = data as { status: string; remaining?: number; retry_after_minutes?: number };
   return out.status === "rate_limited"
     ? { status: "rate_limited", retryAfterMinutes: out.retry_after_minutes ?? 60 }

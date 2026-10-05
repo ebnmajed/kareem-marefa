@@ -33,7 +33,6 @@ function Wrap({ children }: { children: React.ReactNode }) {
 const tokens = (s: string | null | undefined) => (s ?? "").split(/\s+/).filter(Boolean);
 const scoped = (c: string) => /^pg(?:-dark|-light)?:/.test(c);
 /** What is left when every class the scope added is taken away — the string `main` rendered. */
-const outside = (el: Element | null) => tokens(el?.getAttribute("class")).filter((c) => !scoped(c)).join(" ");
 const inside = (el: Element | null) => tokens(el?.getAttribute("class")).filter(scoped);
 
 async function expectAccessible(container: HTMLElement) {

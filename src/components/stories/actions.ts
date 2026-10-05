@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requestPhotoTakedown } from "@/lib/dal/photos";
 import { setStoryReaction, type StoryReactionKind } from "@/lib/dal/reactions";
@@ -19,7 +20,8 @@ import type { RemoveAttendeeFrameState } from "@/components/stories/state";
 export async function recordStoryViewsAction(locale: string, frameIds: string[]): Promise<void> {
   try {
     await recordStoryViews(locale, frameIds);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     // A view that fails to write is a ring that reads unseen once more — never an error in front of the member.
   }
 }
@@ -28,6 +30,7 @@ export async function setStoryReactionAction(locale: string, frameId: string, ki
   try {
     return { mine: await setStoryReaction(locale, frameId, kind) };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }
@@ -36,6 +39,7 @@ export async function reportStoryFrameAction(locale: string, frameId: string, re
   try {
     return { outcome: await reportStoryFrame(locale, frameId, reason) };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }
@@ -54,6 +58,7 @@ export async function removeMeFromFrameAction(
     revalidatePath(`/${locale}/app/sessions/${frame.sessionId}`);
     return { done: true };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }
@@ -66,7 +71,8 @@ export async function removeAttendeeFrameAction(locale: string, sessionId: strin
     const outcome = await removeStoryFrame(locale, frameId, reason);
     if (outcome === "removed") revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/attendance`);
     return { outcome, frameId };
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { outcome: "error", frameId };
   }
 }

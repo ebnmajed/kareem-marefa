@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/dal/rsvp", () => ({ reserveSeat: vi.fn(), cancelRsvp: vi.fn() }));
 vi.mock("@/lib/dal/calendar", () => ({ getCalendarConnection: vi.fn() }));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
-vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+vi.mock("next/navigation", () => ({ redirect: vi.fn(), unstable_rethrow: vi.fn() }));
 
 const { reserveSeat, cancelRsvp } = await import("@/lib/dal/rsvp");
 const { getCalendarConnection } = await import("@/lib/dal/calendar");

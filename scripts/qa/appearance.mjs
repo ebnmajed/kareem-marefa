@@ -60,17 +60,19 @@ export default async function appearance() {
   check("three posters, seven companies, four features", regions.posters === 3 && regions.companies === 7 && regions.features === 4, JSON.stringify(regions));
   check("two paths of three steps, numbered in Western digits (DEC-124)", regions.paths === "3,3" && regions.steps === "123123", JSON.stringify(regions));
 
+  // DEC-266 (the owner's ruling): one button on the public site — the header's «تسجيل الدخول», in the accent. The
+  // page carries none, and nothing on the landing links to the interest list any more (its URL and its behaviour are
+  // `qa:contract`'s and unchanged).
   const doors = await page.evaluate(() => {
     const bg = (el) => (el ? getComputedStyle(el).backgroundColor : "absent");
-    const hero = document.querySelector('#hero a[href="/ar/sign-in"]');
-    const band = document.querySelector('#main > section:last-of-type a[href="/ar/register"]');
-    const header = document.querySelector('header a[href="/ar/register"]');
+    const filled = (el) => getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)";
     const signIn = document.querySelector('header a[href="/ar/sign-in"]');
-    return { hero: bg(hero), band: bg(band), header: bg(header), signIn: bg(signIn) };
+    const buttons = [...document.querySelectorAll("header a, header button, #main a, #main button")].filter(filled);
+    return { signIn: bg(signIn), buttons: buttons.length, register: document.querySelectorAll('a[href="/ar/register"]').length };
   });
   check(
-    "the platform's door is the hero's primary; the interest list is the band's and the header's; sign-in in the header is text — two doors, not one",
-    doors.hero === LIME && doors.band === LIME && doors.header === LIME && doors.signIn === "rgba(0, 0, 0, 0)",
+    "one button: the header's sign-in, in the accent — none on the page, no link to the interest list",
+    doors.signIn === LIME && doors.buttons === 1 && doors.register === 0,
     JSON.stringify(doors),
   );
   await page.close();

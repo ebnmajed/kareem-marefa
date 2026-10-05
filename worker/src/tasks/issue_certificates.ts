@@ -1,4 +1,5 @@
-import type { Task } from "graphile-worker";
+import type { JobHelpers, Task } from "graphile-worker";
+import type { PoolClient } from "pg";
 import { createHash } from "node:crypto";
 import { renderFaces } from "../render/fonts.js";
 import { brandBindings } from "../render/brand.js";
@@ -92,59 +93,51 @@ function certificateTargets(document: DesignDocument): Array<{ preset: string; f
   ]);
 }
 
-export const issue_certificates: Task = async (payload, helpers) => {
-  if (!isPayload(payload)) throw new Error(`issue_certificates: malformed payload ${JSON.stringify(payload)}`);
+/** The issuance refused this recipient (42501): rolled back, and the job
+ *  ends quietly. */
+class NotEligible extends Error {}
 
-  const { rows: faceRows } = await helpers.query<{ sha256: string; family: string; weight: number; style: string; script: string | null }>(
-    `select sha256, family, weight, style,
-            case when 'arabic' = any(subsets) then 'arabic' else 'latin' end as script
-       from public.fonts where parity_status = 'passed'
-      order by sha256`,
-  );
-  // The platform set when nothing has been materialised — see
-  // `renderFaces()`. Pinning an empty list makes `render_variant` refuse
-  // every export, which is the right refusal for the wrong input.
-  const faces = await renderFaces(faceRows);
-
-  // ★ The serial is allocated HERE, inside this statement's transaction,
-  // and `allocate_serial()` holds the counter row's lock until it commits.
-  // A failure anywhere after this point rolls the whole thing back and
+/** What one issuance does, on ONE connection inside the caller's
+ *  transaction: issue (or find) the certificate, record its document,
+ *  request its exports, and announce it — only when this transaction wrote
+ *  it. Returns what the log line needs. */
+async function issueAndRequest(
+  client: PoolClient,
+  payload: Payload,
+  faces: Array<{ sha256: string }>,
+  helpers: JobHelpers,
+): Promise<{ ctx: Context; targets: number; announced: boolean }> {
+  // ★ The serial is allocated HERE, inside this transaction, and
+  // `allocate_serial()` holds the counter row's lock until it commits. A
+  // failure anywhere after this point rolls the whole thing back and
   // RETURNS the number, which is what «gapless» means (DEC-010,
   // REQ-CRT-008). It is also why the render is requested rather than
   // performed: a 30-second Chromium export inside the lock would serialise
   // every issuance in the org behind it.
-  let certificateId: string;
-  try {
-    const { rows } =
-      payload.kind === "achievement"
-        ? await helpers.query<{ id: string }>(`select id from public.issue_achievement_certificate($1, $2, $3, $4)`, [
-            payload.member_id,
-            payload.badge_id ?? null,
-            payload.snapshot_id ?? null,
-            faces.map((f) => f.sha256),
-          ])
-        : await helpers.query<{ id: string }>(`select id from public.issue_certificate($1, $2, $3::public.certificate_kind, null, $4)`, [
-            payload.session_id,
-            payload.member_id,
-            payload.kind,
-            faces.map((f) => f.sha256),
-          ]);
-    certificateId = rows[0].id;
-  } catch (error) {
-    const code = (error as { code?: string }).code;
+  // `created` is true only for a row inserted by THIS transaction (the
+  // caller's comment says why `created_at = now()` is that test).
+  const { rows } = await (payload.kind === "achievement"
+      ? client.query<{ id: string; created: boolean }>(
+          `select c.id, (c.created_at = now()) as created from public.issue_achievement_certificate($1, $2, $3, $4) c`,
+          [payload.member_id, payload.badge_id ?? null, payload.snapshot_id ?? null, faces.map((f) => f.sha256)],
+        )
+      : client.query<{ id: string; created: boolean }>(
+          `select c.id, (c.created_at = now()) as created from public.issue_certificate($1, $2, $3::public.certificate_kind, null, $4) c`,
+          [payload.session_id, payload.member_id, payload.kind, faces.map((f) => f.sha256)],
+        )
+  ).catch((error: unknown) => {
     // Every eligibility refusal is 42501 — `no_check_in`,
     // `certificates_off`, a badge whose `issues_certificate` was turned back
     // off, a snapshot no longer final — and all of them mean the world
     // changed between the fan-out and this job. None is a fault worth twelve
     // retries: the absence of a certificate IS the correct outcome.
-    if (code === "42501") {
-      helpers.logger.info(`issue_certificates: ${payload.member_id} is no longer eligible (${payload.kind}) — nothing issued`);
-      return;
-    }
+    if ((error as { code?: string }).code === "42501") throw new NotEligible();
     throw error;
-  }
+  });
+  const certificateId = rows[0].id;
+  const created = rows[0].created;
 
-  const { rows: ctxRows } = await helpers.query<Context>(`select * from public.certificate_render_context($1)`, [certificateId]);
+  const { rows: ctxRows } = await client.query<Context>(`select * from public.certificate_render_context($1)`, [certificateId]);
   const ctx = ctxRows[0];
   if (!ctx) throw new Error(`issue_certificates: no render context for ${certificateId}`);
 
@@ -176,27 +169,88 @@ export const issue_certificates: Task = async (payload, helpers) => {
     ),
   };
 
-  const documentId = (await helpers.query<{ id: string }>(`select public.record_certificate_document($1, $2::jsonb) as id`, [certificateId, JSON.stringify(document)]))
-    .rows[0].id;
+  const documentId = (
+    await client.query<{ id: string }>(`select public.record_certificate_document($1, $2::jsonb) as id`, [certificateId, JSON.stringify(document)])
+  ).rows[0].id;
 
   const fingerprint = createHash("sha256")
     .update(fingerprintSource({ document, templateVersionId: ctx.template_version_id, bindings, fontHashes: faces.map((f) => f.sha256) }))
     .digest("hex");
 
-  await helpers.query(`select public.system_request_render($1, $2, $3::jsonb, $4::jsonb)`, [
+  // The cache is keyed by (document, fingerprint): an existing certificate
+  // whose inputs have not moved requests nothing new (REQ-DSG-013), and a
+  // retry after a failed request gets its exports.
+  const targets = certificateTargets(document);
+  await client.query(`select public.system_request_render($1, $2, $3::jsonb, $4::jsonb)`, [
     documentId,
     fingerprint,
     JSON.stringify({ bindings, faces }),
-    JSON.stringify(certificateTargets(document)),
+    JSON.stringify(targets),
   ]);
 
   // D50: `automatic` issued it outright, so announce it now. `review` left
   // it `held` and an admin releases it on SCR-045 — which is where the
   // notification comes from in that mode. Held certificates are invisible
-  // and unemailed until then (REQ-CRT-004).
-  if (ctx.state === "issued") {
-    await helpers.query(`select public.announce_certificate($1)`, [certificateId]);
+  // and unemailed until then (REQ-CRT-004). ★ And only a certificate THIS
+  // run created: an existing one was announced by the run that created it,
+  // or by its release.
+  const announced = created && ctx.state === "issued";
+  if (announced) {
+    await client.query(`select public.announce_certificate($1)`, [certificateId]);
   }
 
-  helpers.logger.info(`issue_certificates: ${ctx.serial} (${payload.kind}, ${ctx.state}) → ${certificateTargets(document).length} export(s) requested`);
+  return { ctx, targets: targets.length, announced };
+}
+
+export const issue_certificates: Task = async (payload, helpers) => {
+  if (!isPayload(payload)) throw new Error(`issue_certificates: malformed payload ${JSON.stringify(payload)}`);
+
+  const { rows: faceRows } = await helpers.query<{ sha256: string; family: string; weight: number; style: string; script: string | null }>(
+    `select sha256, family, weight, style,
+            case when 'arabic' = any(subsets) then 'arabic' else 'latin' end as script
+       from public.fonts where parity_status = 'passed'
+      order by sha256`,
+  );
+  // The platform set when nothing has been materialised — see
+  // `renderFaces()`. Pinning an empty list makes `render_variant` refuse
+  // every export, which is the right refusal for the wrong input.
+  const faces = await renderFaces(faceRows);
+
+  // ★ ONE TRANSACTION, from the issuance to the announcement. `issue_certificate()`
+  // is idempotent over a live row — it RETURNS the existing certificate — so
+  // a mode switch, a re-fan-out or a retry used to announce (and so mail)
+  // every recipient again. The row says whether THIS call wrote it:
+  // `created_at` defaults to `now()`, which is the transaction's start, so it
+  // equals `now()` only for a row inserted in this transaction. A row a
+  // concurrent run wrote first carries that run's instant, and that run
+  // announces it — the race costs at worst one extra announcement (two
+  // transactions starting in the same microsecond), never a missed one. And
+  // because the announcement commits WITH the issuance, a failure anywhere
+  // between them rolls both back and the retry starts fresh: an issued row
+  // never exists without its announcement having been made.
+  const issuance = await helpers.withPgClient(async (client) => {
+    await client.query("begin");
+    try {
+      const result = await issueAndRequest(client, payload, faces, helpers);
+      await client.query("commit");
+      return result;
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    }
+  }).catch((error: unknown) => {
+    // Only the issuance's own refusal — see `NotEligible`. A 42501 from
+    // anything later in the transaction is a fault and still throws.
+    if (error instanceof NotEligible) return null;
+    throw error;
+  });
+  if (!issuance) {
+    helpers.logger.info(`issue_certificates: ${payload.member_id} is no longer eligible (${payload.kind}) — nothing issued`);
+    return;
+  }
+  const { ctx, targets, announced } = issuance;
+
+  helpers.logger.info(
+    `issue_certificates: ${ctx.serial} (${payload.kind}, ${ctx.state}${announced ? ", announced" : ""}) → ${targets} export(s) requested`,
+  );
 };

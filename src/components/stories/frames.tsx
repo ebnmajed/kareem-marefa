@@ -183,8 +183,8 @@ export function FrameBody({
       return (
         <div className="relative h-full bg-void">
           {url ? (
-            // eslint-disable-next-line @next/next/no-img-element -- a signed URL; never cropped (REQ-UIX-026)
-            <img src={url} alt={frame.caption ?? ""} className="absolute inset-0 h-full w-full object-contain" />
+            // eslint-disable-next-line @next/next/no-img-element -- a signed URL; never cropped (REQ-UIX-026). The caption is drawn below, so alt="" — never read twice.
+            <img src={url} alt="" className="absolute inset-0 h-full w-full object-contain" />
           ) : null}
           <div className="absolute inset-x-4 bottom-24 flex flex-col gap-2">
             <Person person={frame.uploader} line={frameAge(t, frame.triggeredAt, now)} />
@@ -211,7 +211,7 @@ export function FrameBody({
       }
       return (
         <div className="relative h-full bg-void">
-          <video ref={videoRef} src={hrefs.videoUrl} poster={hrefs.posterUrl} playsInline preload="auto" className="absolute inset-0 h-full w-full object-contain" />
+          <video ref={videoRef} src={hrefs.videoUrl} poster={hrefs.posterUrl} muted playsInline preload="auto" className="absolute inset-0 h-full w-full object-contain" />
           {length ? (
             // The length pill at the inline-end as `StoryAttendee` draws it — below the viewer's two header rows, never under them.
             <span className="absolute end-4 top-40 rounded-pill bg-chrome px-2.5 py-1 text-caption font-bold">

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { storyVideoPath, storyVideoPosterPath, storyVideoSourcePath, type StoryVideoSourceExt } from "@kareem/storage-paths";
-import { deleteObject, downloadObject, uploadObject } from "../content/storage.js";
+import { deleteObject, downloadObject, isNotFound, uploadObject } from "../content/storage.js";
 import { withTempDir } from "../content/pdf.js";
 import { sniffImageKind } from "../content/exif.js";
 import {
@@ -67,22 +67,40 @@ export const transcode_story_video: Task = async (payload, helpers) => {
   if (!isPayload(payload)) throw new Error(`transcode_story_video: malformed payload ${JSON.stringify(payload)}`);
   const { frame_id: frameId, org_id: orgId, session_id: sessionId, source_path: sourcePath } = payload;
 
+  const fail = async (reason: string, detail: string, opts: { deleteFiles?: boolean } = {}) => {
+    helpers.logger.warn(`transcode_story_video: ${frameId} refused (${reason}) — ${detail}`);
+    const { rows } = await helpers.query<{ envelope: { status?: string } | null }>(`select public.fail_story_video($1, $2) as envelope`, [
+      frameId,
+      reason,
+    ]);
+    // A rendition or poster uploaded before the failure (the record call failing on the last attempt) is referenced by
+    // no frame now — it goes, so nothing playable outlives the `failed` state. ONLY when this call is what failed the
+    // frame: a `noop` is a frame already visible (a retry after a run that finished), whose files are live.
+    if (opts.deleteFiles !== false && rows[0]?.envelope?.status === "ok") {
+      await deleteObject(BUCKET, storyVideoPath(orgId, sessionId, frameId)).catch(() => undefined);
+      await deleteObject(BUCKET, storyVideoPosterPath(orgId, sessionId, frameId)).catch(() => undefined);
+    }
+    if (opts.deleteFiles !== false) await deleteObject(BUCKET, sourcePath).catch(() => undefined);
+  };
+
   // The path is rebuilt by the one builder and must equal what the frame recorded — never trusted from the payload.
+  // A path that is not this frame's is terminal: thrown, it would only retry to the same answer and leave the frame
+  // `processing` for ever. The frame is failed; nothing is deleted — paths built from a payload that does not match
+  // its frame name no object this job may touch.
   const ext = sourcePath.split(".").pop() as StoryVideoSourceExt;
   if (storyVideoSourcePath(orgId, sessionId, frameId, ext) !== sourcePath) {
-    throw new Error(`transcode_story_video: ${frameId} — the source path is not this frame's`);
+    return fail("failed", "the source path is not this frame's", { deleteFiles: false });
   }
-
-  const fail = async (reason: string, detail: string) => {
-    helpers.logger.warn(`transcode_story_video: ${frameId} refused (${reason}) — ${detail}`);
-    await helpers.query(`select public.fail_story_video($1, $2) as envelope`, [frameId, reason]);
-    await deleteObject(BUCKET, sourcePath).catch(() => undefined);
-  };
 
   let raw: Uint8Array;
   try {
     raw = await downloadObject(BUCKET, sourcePath);
   } catch (e) {
+    // Storage down or slow is not «gone»: retried, and failed only on the last attempt (the header's contract).
+    if (!isNotFound(e)) {
+      if (helpers.job.attempts >= helpers.job.max_attempts) return fail("failed", (e as Error).message);
+      throw e;
+    }
     // Gone already: a retry after a run that finished, or a PUT that never happened. Fail the frame if it is still
     // processing (a no-op otherwise) — nothing is left to transcode.
     await helpers.query(`select public.fail_story_video($1, 'failed') as envelope`, [frameId]);

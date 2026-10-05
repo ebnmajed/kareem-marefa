@@ -156,21 +156,37 @@ export const regenerate_poster: Task = async (payload, helpers) => {
   // The document a LIVE poster is: the template's, bound to this session.
   // Written before the render is requested, so the fingerprint the artifact
   // carries describes a document that actually exists.
-  const { rows: docRows } = await helpers.query<{ id: string }>(
-    `insert into public.design_documents (org_id, template_version_id, purpose, document, bound_session_id)
-     values ($1, $2, 'poster', $3::jsonb, $4)
-     on conflict do nothing
-     returning id`,
-    [ctx.org_id, ctx.template_version_id, JSON.stringify(document), ctx.session_id],
+  // ★ ONE document per session, rewritten in place. Nothing is unique on
+  // `bound_session_id` (0055 indexes it, plainly), so the `insert … on
+  // conflict do nothing` this replaced inserted a NEW document on every run:
+  // the render cache, keyed by document, never hit and the rows grew without
+  // end. The poster's own document first, else the session's oldest poster
+  // document — deterministic by (created_at, id) — and an insert only when
+  // the session has none. A live poster carries no one's judgement
+  // (REQ-DSG-003), so overwriting its document is what regenerating means.
+  const { rows: existingRows } = await helpers.query<{ id: string }>(
+    `select id from public.design_documents
+      where bound_session_id = $1 and purpose = 'poster'
+      order by (id = $2) desc nulls last, created_at, id
+      limit 1`,
+    [ctx.session_id, ctx.document_id],
   );
-  const documentId =
-    docRows[0]?.id ??
-    ctx.document_id ??
-    (
-      await helpers.query<{ id: string }>(`select id from public.design_documents where bound_session_id = $1 order by created_at limit 1`, [
-        ctx.session_id,
-      ])
-    ).rows[0]?.id;
+  let documentId = existingRows[0]?.id;
+  if (documentId) {
+    await helpers.query(`update public.design_documents set template_version_id = $2, document = $3::jsonb where id = $1`, [
+      documentId,
+      ctx.template_version_id,
+      JSON.stringify(document),
+    ]);
+  } else {
+    const { rows: docRows } = await helpers.query<{ id: string }>(
+      `insert into public.design_documents (org_id, template_version_id, purpose, document, bound_session_id)
+       values ($1, $2, 'poster', $3::jsonb, $4)
+       returning id`,
+      [ctx.org_id, ctx.template_version_id, JSON.stringify(document), ctx.session_id],
+    );
+    documentId = docRows[0]?.id;
+  }
   if (!documentId) throw new Error(`regenerate_poster: could not resolve a document for ${payload.session_id}`);
 
   await helpers.query(`select public.record_session_poster($1, $2, false)`, [payload.session_id, documentId]);

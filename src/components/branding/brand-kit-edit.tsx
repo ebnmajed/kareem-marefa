@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter as useRawRouter } from "next/navigation";
 import { BRAND_COLOUR_TOKENS, type BrandColourToken } from "@kareem/designer-runtime";
@@ -23,6 +23,7 @@ import { BrandPreview } from "./brand-preview";
 import { ColourField } from "./colour-field";
 import { ContrastBadge } from "./contrast-badge";
 import { LogoUploader } from "./logo-uploader";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
 
 // SCR-059 in edit mode — REQ-UIX-116, REQ-DSG-021, DEC-231 §3, DEC-251 §3. The artboard draws read mode only; this is
 // the pattern every console read-mode page shares (`profile-edit.tsx` is the reference, read and never imported).
@@ -39,8 +40,6 @@ import { LogoUploader } from "./logo-uploader";
 const TOKENS = BRAND_COLOUR_TOKENS as readonly BrandColourToken[];
 const READ_HREF = "/app/admin/branding";
 
-const noop = () => () => {};
-const useHydrated = () => useSyncExternalStore(noop, () => true, () => false);
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 export function BrandKitEdit({

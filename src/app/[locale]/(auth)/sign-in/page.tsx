@@ -50,7 +50,7 @@ export default async function SignInPage({
         <Sticker fill="gold" rotate={6} size="sm" className="absolute -top-3.5 end-4">
           {t("sticker")}
         </Sticker>
-        <h1 className="font-display text-[1.625rem] leading-[1.2] font-extrabold text-fg-heading">{t("title")}</h1>
+        <h1 className="font-display text-[1.625rem] leading-[1.4] font-extrabold text-fg-heading">{t("title")}</h1>
         <p className="text-fg-muted">{t("subtitle")}</p>
 
         {error ? (

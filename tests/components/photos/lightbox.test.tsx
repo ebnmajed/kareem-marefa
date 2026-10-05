@@ -15,9 +15,9 @@ import { LightboxTile, PhotoLightbox, type LightboxPhoto } from "@/components/ph
 const photo = (id: string): LightboxPhoto => ({ id, url: `https://storage.test/${id}.jpg`, width: 1200, height: 800 });
 const THREE = [photo("p1"), photo("p2"), photo("p3")];
 
-function Gallery({ photos, tiles = ["p1", "p2", "p3"] }: { photos: LightboxPhoto[]; tiles?: string[] }) {
+function Gallery({ photos, tiles = ["p1", "p2", "p3"], canDownload = true }: { photos: LightboxPhoto[]; tiles?: string[]; canDownload?: boolean }) {
   return (
-    <PhotoLightbox photos={photos}>
+    <PhotoLightbox photos={photos} canDownload={canDownload}>
       <ul>
         {tiles.map((id) => (
           <li key={id}>
@@ -96,6 +96,13 @@ describe("PhotoLightbox (REQ-EVT-016)", () => {
     const link = screen.getByRole("link", { name: "تنزيل الصورة" });
     expect(link).toHaveAttribute("href", "/api/photos/p3/download");
     expect(link).not.toHaveAttribute("download");
+  });
+
+  it("★ DEC-266: without canDownload — a member — the photograph is shown and no download is offered", () => {
+    renderIn("ar", <Gallery photos={THREE} canDownload={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "افتح الصورة 3 من 3" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "تنزيل الصورة" })).not.toBeInTheDocument();
   });
 
   it("returns focus to the tile that opened it, after moving, when Escape closes it", async () => {

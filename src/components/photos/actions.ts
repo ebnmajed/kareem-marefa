@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requestPhotoTakedown, rescopePhoto, restorePhoto } from "@/lib/dal/photos";
 import { reportPhoto, type ReportPhotoOutcome } from "@/lib/dal/reports";
@@ -19,6 +20,7 @@ export async function requestPhotoTakedownAction(locale: string, sessionId: stri
     revalidatePath(`/${locale}/app/sessions/${sessionId}`);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }
@@ -29,6 +31,7 @@ export async function restorePhotoAction(locale: string, sessionId: string, phot
     revalidatePath(`/${locale}/app/sessions/${sessionId}`);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }
@@ -40,6 +43,7 @@ export async function rescopePhotoAction(locale: string, sessionId: string, phot
     revalidatePath(`/${locale}/app/sessions/${sessionId}`);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: e instanceof Error ? e.message : "unknown_error" };
   }
 }
@@ -51,7 +55,8 @@ export async function reportPhotoAction(locale: string, sessionId: string, photo
     const outcome = await reportPhoto(locale, { photoId, reason });
     if (outcome === "reported" || outcome === "already_reported") revalidatePath(`/${locale}/app/sessions/${sessionId}`);
     return { outcome };
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { outcome: "unknown" };
   }
 }

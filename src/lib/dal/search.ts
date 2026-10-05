@@ -86,20 +86,6 @@ export interface TimelineData {
 // re-exported here for every caller that already imported it from the DAL.
 export { arNormalize } from "@/components/browse/ar-normalize";
 
-export async function getSearchFilterOptions(locale: string): Promise<SearchFilterOptions> {
-  const { session, supabase } = await sessionClient(locale);
-  const [{ data: categories }, { data: venues }, { data: companies }] = await Promise.all([
-    supabase.from("categories").select("id, name").eq("org_id", session.orgId).is("deactivated_at", null).order("name"),
-    supabase.from("venues").select("id, name").eq("org_id", session.orgId).order("name"),
-    supabase.from("companies").select("id, name").eq("org_id", session.orgId).is("deactivated_at", null).order("name"),
-  ]);
-  return {
-    categories: (categories ?? []).map((c) => ({ id: c.id as string, name: c.name as string })),
-    venues: (venues ?? []).map((v) => ({ id: v.id as string, name: v.name as string })),
-    companies: (companies ?? []).map((c) => ({ id: c.id as string, name: c.name as string })),
-  };
-}
-
 /** The ended view shows the most recent this many; older pages are a later concern (`notes/sessions.md` §24.2). */
 const ENDED_LIMIT = 60;
 

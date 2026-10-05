@@ -60,6 +60,12 @@ export interface SlotSummary {
   count: number;
   /** Tasks only: not yet completed by this viewer — the action card's «المهام التحضيرية (2)». */
   outstanding: number | null;
+  /**
+   * ★ The event page's edit mode (`edit-mode.tsx`): true when the section is visible to this viewer ONLY because
+   * they may manage it — nothing a member would see is in it. The page then draws the section, and its sub-nav
+   * entry, in edit mode alone, so read mode is the member's page. Absent means false. Add-only.
+   */
+  editOnly?: boolean;
 }
 
 export type SlotSummaryReader = (props: SlotProps) => Promise<SlotSummary>;

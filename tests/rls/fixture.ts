@@ -9,10 +9,10 @@
 
 import { randomUUID } from "node:crypto";
 import type { Claims, Tx } from "./db";
-import { seedM2, type M2Fixture } from "./fixture-m2";
+import { seedM2 } from "./fixture-m2";
 import { seedM3 } from "./fixture-m3";
 import { seedM4 } from "./fixture-m4";
-import { seedM5, type M5Fixture } from "./fixture-m5";
+import { seedM5 } from "./fixture-m5";
 import { seedM6 } from "./fixture-m6";
 import { seedM7, type M7Fixture } from "./fixture-m7";
 

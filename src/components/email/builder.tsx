@@ -143,7 +143,7 @@ export function EmailBuilder(props: EmailBuilderProps) {
     result.saved
       ? { title: t("saved"), tone: "success" }
       : result.formError
-        ? { title: result.formError === "unknownBinding" ? t.markup("errors.unknownBinding", { binding: result.values.binding ?? "", bdi: (c) => c }) : t(`errors.${result.formError}`), tone: "error" }
+        ? { title: result.formError === "unknownBinding" ? t.markup("errors.unknownBinding", { binding: result.values.binding ?? "", bdi: (c) => `\u2068${c}\u2069` }) : t(`errors.${result.formError}`), tone: "error" }
         : null,
   );
 

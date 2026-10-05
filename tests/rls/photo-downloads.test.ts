@@ -2,7 +2,7 @@
 // requested through a definer that enqueues its job, and a removed photograph is
 // no longer readable (REQ-ADM-021, REQ-EVT-012, DEC-180, DEC-182). 0156.
 import { afterAll, describe, expect, it } from "vitest";
-import { errorCode, pool, withTx, type Tx } from "./db";
+import { errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
 afterAll(() => pool.end());
@@ -45,11 +45,23 @@ describe("POL-photos_storage_read.removed", () => {
 });
 
 describe("RPC-record_photo_download", () => {
-  it("a member of the org downloads a visible photo; one audit row names the session", async () => {
+  // ★ DEC-266 (the owner's ruling, 0212): staff alone download a photograph — a member sees it and is refused here.
+  it("★ a member who sees a visible photo is refused its download, and nothing is audited", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       const p = await photo(tx, f);
       await tx.as(f.a.members[1].claims);
+      expect(await errorCode(() => tx.q(`select * from public.record_photo_download($1)`, [p.id]))).toBe(PERMISSION_DENIED);
+      await tx.asOwner();
+      expect(await audits(tx, "photo.downloaded", p.id)).toBe(0);
+    });
+  });
+
+  it("staff download a visible photo; one audit row names the session", async () => {
+    await withTx(async (tx) => {
+      const f = await seed(tx);
+      const p = await photo(tx, f);
+      await tx.as(f.a.mod.claims);
       const rows = await tx.q<{ storage_path: string; file_name: string }>(`select * from public.record_photo_download($1)`, [p.id]);
       expect(rows).toHaveLength(1);
       expect(rows[0].storage_path).toBe(p.path);

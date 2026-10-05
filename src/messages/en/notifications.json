@@ -333,7 +333,8 @@
           "altHint": "What someone who cannot see the image is told.",
           "availableFields": "Available fields",
           "errors": {
-            "notPermitted": "You do not have permission."
+            "notPermitted": "You do not have permission.",
+            "testFailed": "The test could not be sent. Try again."
           },
           "save": "Save the design",
           "subject": "Subject",

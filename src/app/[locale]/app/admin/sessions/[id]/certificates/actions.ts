@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
@@ -99,7 +100,8 @@ export async function saveCertificateMode(locale: string, sessionId: string, mod
       revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/schedule`);
     }
     return result;
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { status: "failed" };
   }
 }

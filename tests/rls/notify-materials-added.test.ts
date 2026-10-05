@@ -10,6 +10,11 @@ import { applyProposed, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 import type { M2Fixture } from "./fixture-m2";
 
+// The path the builder writes for this material — `{org}/{sessions|proposals}/{id}/materials/{version}/{file}` — which
+// finalize_material_upload() holds a client's path to since 0212 (DEC-266).
+const SRC = (ext: string) =>
+  `(select m.org_id || '/' || case when m.session_id is not null then 'sessions/' || m.session_id else 'proposals/' || m.proposal_id end || '/materials/' || gen_random_uuid() || '/file.${ext}' from public.materials m where m.id = $1)`;
+
 afterAll(async () => {
   const { pool } = await import("./db");
   await pool.end();
@@ -52,7 +57,7 @@ async function addFile(tx: Tx, f: M2Fixture, session: string) {
 
 async function finalize(tx: Tx, f: M2Fixture, material: string) {
   await tx.as(presenterOf(f).claims);
-  await tx.q(`select public.finalize_material_upload($1, $2, 1024, 'application/pdf', $3)`, [material, `${f.a.id}/sessions/x/materials/${material}.pdf`, "a".repeat(64)]);
+  await tx.q(`select public.finalize_material_upload($1, ${SRC("pdf")}, 1024, 'application/pdf', $2)`, [material, "a".repeat(64)]);
   await tx.asOwner();
 }
 

@@ -49,9 +49,22 @@ describe("renderFaces", () => {
     for (const f of await renderFaces([])) expect(f.sha256).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("a materialised set supersedes the manifest, so the export matches what the editor showed", async () => {
+  // QA sweep 2026-10-05: `fonts` holds only what an org materialised (0064) — the platform set is never seeded into
+  // it — so «the table supersedes the manifest» dropped every platform family the first time anyone materialised one
+  // font. The editor's `listEditorFaces()` now composes the same way, so the export still matches what it showed.
+  it("a materialised face is ADDED to the manifest's, never instead of it", async () => {
     const { renderFaces } = await import("../../worker/src/render/fonts");
+    const platform = await renderFaces([]);
     const row = { family: "Cairo", weight: 700, style: "normal", sha256: "a".repeat(64), script: "arabic" };
-    expect(await renderFaces([row])).toEqual([row]);
+    const faces = await renderFaces([row]);
+    expect(faces).toContainEqual(expect.objectContaining({ family: "Cairo", sha256: row.sha256 }));
+    for (const f of platform) expect(faces).toContainEqual(f);
+    expect(faces).toHaveLength(platform.length + 1);
+  });
+
+  it("a materialised row with a platform face's hash is not listed twice", async () => {
+    const { renderFaces } = await import("../../worker/src/render/fonts");
+    const platform = await renderFaces([]);
+    expect(await renderFaces([{ ...platform[0] }])).toHaveLength(platform.length);
   });
 });

@@ -11,7 +11,7 @@
 
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, pool, withTx, type Claims, type Tx } from "./db";
+import { applyProposed, pool, withTx, type Claims, type Tx, asSessionAdmin } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
@@ -77,7 +77,7 @@ describe("RPC-award_points.skips_removed_check_in", () => {
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       const outcome = await checkIn(tx, sessionId, code.code);
       const ciId = outcome.check_in!.id;
@@ -98,7 +98,7 @@ describe("RPC-issue_certificate.no_check_in_when_removed", () => {
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50, certificateMode: "automatic" });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       await checkIn(tx, sessionId, code.code);
 
@@ -116,7 +116,7 @@ describe("RPC-fan_out_certificates.excludes_removed", () => {
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -70, endsInMinutes: -10, certificateMode: "automatic" });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       await checkIn(tx, sessionId, code.code);
 
@@ -147,7 +147,7 @@ describe("RPC-send_rating_prompt.excludes_removed", () => {
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -70, endsInMinutes: -10 });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       await checkIn(tx, sessionId, code.code);
       await tx.asOwner();
@@ -179,7 +179,7 @@ describe("RPC-evaluate_streaks.excludes_removed / RPC-evaluate_badges.excludes_r
       await tx.q(`update public.streak_rules set required_count = 1 where org_id = $1 and key = 'monthly_3'`, [f.a.id]);
 
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(fresh.claims);
       await checkIn(tx, sessionId, code.code);
 
@@ -208,7 +208,7 @@ describe("RPC-build_data_export_payload.shows_removal", () => {
       const f = await setup(tx);
       await tx.asOwner();
       const sessionId = await makeSession(tx, f.a, { state: "in_progress", startsInMinutes: -10, endsInMinutes: 50 });
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
       await tx.as(f.a.members[0].claims);
       await checkIn(tx, sessionId, code.code);
 

@@ -12,7 +12,6 @@ import type { Tx } from "./db";
 
 afterAll(() => pool.end());
 
-const CHECK_VIOLATION = "23514";
 
 /** Wave 12 (REQ-SES-019, DEC-174 Q1): the direct branch assigns. A no-op once promoted. */
 const ASSIGNED = "sessions/0001_session_presenters_admin.sql";

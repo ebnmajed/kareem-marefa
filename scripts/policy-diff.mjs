@@ -29,6 +29,7 @@ const EXEMPT_TABLES = new Set(['registrations'])
 
 const sql = readdirSync(MIGRATIONS)
   .filter((f) => f.endsWith('.sql'))
+  .sort() // migration order: a later file's `drop policy` must see the earlier `create policy`
   .map((f) => ({ file: f, body: readFileSync(join(MIGRATIONS, f), 'utf8') }))
 
 const strip = (s) => s.replace(/--[^\n]*/g, '')
@@ -51,11 +52,15 @@ const granted = new Set()
 
 for (const { body } of sql) {
   const text = strip(body)
-  for (const m of text.matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+(?:(\w+)\.)?(\w+)/gi)) {
-    const [, name, schema, rel] = m
+  // In statement order, so a policy a later migration drops (and never re-creates) is gone — 0212 is the first
+  // migration to remove a policy outright. A name may be quoted or bare.
+  for (const m of text.matchAll(/(create|drop)\s+policy\s+(?:if\s+exists\s+)?(?:"([^"]+)"|(\w+))\s+on\s+(?:(\w+)\.)?(\w+)/gi)) {
+    const [, verb, quoted, bare, schema, rel] = m
+    const name = quoted ?? bare
     const table = key(schema, rel)
     if (!inMigrations.has(table)) inMigrations.set(table, new Set())
-    inMigrations.get(table).add(name)
+    if (verb.toLowerCase() === 'create') inMigrations.get(table).add(name)
+    else inMigrations.get(table).delete(name)
   }
   for (const m of text.matchAll(/alter\s+table\s+(?:(\w+)\.)?(\w+)\s+enable\s+row\s+level\s+security/gi)) {
     rlsEnabled.add(key(m[1], m[2]))

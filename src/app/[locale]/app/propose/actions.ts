@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
@@ -99,6 +100,7 @@ export async function submitProposal(locale: Locale, prev: ProposeState, formDat
   try {
     created = await createProposal(locale, input, submit, coPresenters);
   } catch (e) {
+    unstable_rethrow(e);
     const message = e instanceof Error ? e.message : "";
     if (message.includes("too_many_presenters")) return withErrors(state, { coPresenters: "coPresentersTooMany" });
     if (message.includes("presenter_not_in_org")) return withErrors(state, { coPresenters: "coPresentersUnknown" });
@@ -130,6 +132,7 @@ export async function updateProposalAction(locale: Locale, proposalId: string, a
   try {
     await updateProposal(locale, proposalId, input, submit);
   } catch (e) {
+    unstable_rethrow(e);
     return withFormError(state, e instanceof Error && e.message === "not_editable" ? "notEditable" : "failed");
   }
 

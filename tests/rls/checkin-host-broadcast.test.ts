@@ -7,7 +7,7 @@
 // is `security definer` precisely because those callers cannot write `realtime.messages` themselves.
 
 import { afterAll, describe, expect, it } from "vitest";
-import { pool, withTx, type Tx } from "./db";
+import { pool, withTx, type Tx, asSessionAdmin } from "./db";
 import { seed, type Org } from "./fixture";
 
 afterAll(() => pool.end());
@@ -33,7 +33,7 @@ describe("TRG-check_ins_host_broadcast", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       const sessionId = await liveSession(tx, f.a);
-      const [code] = await tx.q<{ code: string; session_day_id: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string; session_day_id: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
 
       await tx.as(f.a.members[1].claims);
       const [{ r }] = await tx.q<{ r: { status: string } }>(`select public.check_in($1, $2) as r`, [sessionId, code.code]);
@@ -54,7 +54,7 @@ describe("TRG-check_ins_host_broadcast", () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       const sessionId = await liveSession(tx, f.a);
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
 
       await tx.as(f.a.members[1].claims);
       await tx.q(`select public.check_in($1, 'ZZZZZZ')`, [sessionId]); // wrong: an attempt row, no check-in
@@ -74,7 +74,7 @@ describe("TRG-check_ins_host_broadcast", () => {
       const f = await seed(tx);
       const sessionId = await liveSession(tx, f.a);
       const other = await liveSession(tx, f.a);
-      const [code] = await tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]);
+      const [code] = await asSessionAdmin(tx, sessionId, () => tx.q<{ code: string }>(`select * from public.ensure_check_in_code($1)`, [sessionId]));
 
       await tx.as(f.a.members[1].claims);
       await tx.q(`select public.check_in($1, $2)`, [sessionId, code.code]);

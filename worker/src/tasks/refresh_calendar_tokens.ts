@@ -28,6 +28,10 @@ export const refresh_calendar_tokens: Task = async (payload, helpers) => {
     : (await helpers.query<{ member_id: string }>(`select member_id from public.calendar_connections_due_refresh()`)).rows;
 
   let refreshed = 0;
+  // A transient failure for one member (Google down, a 429, a timeout) must not stop the sweep
+  // for everyone after them. The first one is kept and rethrown once the loop is done, so the
+  // job still retries — and a retry refreshes only who is still due.
+  let firstTransient: unknown = null;
   for (const row of due) {
     const { rows } = await helpers.query<{ tokens: Tokens | null }>(`select public.calendar_tokens_for_job($1::uuid) as tokens`, [row.member_id]);
     const tokens = rows[0]?.tokens;
@@ -46,8 +50,12 @@ export const refresh_calendar_tokens: Task = async (payload, helpers) => {
         helpers.logger.error(`refresh_calendar_tokens: connection ${tokens.connection_id} was revoked; the member must reconnect`);
         continue;
       }
-      throw error;
+      helpers.logger.error(
+        `refresh_calendar_tokens: connection ${tokens.connection_id} failed to refresh: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      firstTransient ??= error;
     }
   }
   helpers.logger.info(`refresh_calendar_tokens: ${due.length} due, ${refreshed} refreshed`);
+  if (firstTransient) throw firstTransient;
 };

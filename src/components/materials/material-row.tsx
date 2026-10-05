@@ -4,6 +4,7 @@ import { rescopeMaterialAction } from "@/components/materials/actions";
 import { phaseLabelKey } from "@/components/materials/phase-label";
 import { RescopeChip, type RescopeOption } from "@/components/materials/rescope-chip";
 import { SettingsForm } from "@/components/materials/settings-form";
+import { EditOnly } from "@/components/sessions/edit-mode";
 import { Badge } from "@/components/ui/badge";
 import { ChevronIcon, DownloadIcon, ImageIcon, LinkIcon } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
@@ -21,7 +22,9 @@ import type { MaterialSummary } from "@/lib/dal/materials";
 // ★ Audio plays only when the server signed it for this viewer (`playbackUrl`); a member of a recording with
 // download off gets none, and the row says so (DEC-209).
 // ★ Below the row, for a presenter or staff only: its render state, the font warning, the settings and — at
-// more than one day — the re-scope chip. A plain member sees the row alone.
+// more than one day — the re-scope chip. A plain member sees the row alone. ★ The font warning, the re-scope chip
+// and the settings are drawn in the event page's edit mode alone (`sessions/edit-mode.tsx`); the render state stays
+// in the row, where a member who may see the item sees it too.
 
 type T = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -61,6 +64,9 @@ export function MaterialRow({ m, sessionId, locale, canManage, scope, playbackUr
   const phase = t(phaseLabelKey(m.phase, m.sessionDayId));
   const join = (...parts: (string | null)[]) => parts.filter(Boolean).join(" · ");
   const ready = m.renderStatus === "ready";
+  // DEC-266 (the owner's ruling): a member never downloads a material's original file — the viewer and the player
+  // are theirs, the file is presenters' and staff's. `allow_download` no longer reaches a member's row.
+  const downloadable = canManage && m.allowDownload;
 
   let row: React.ReactNode;
   if (m.kind === "pdf" && ready) {
@@ -69,8 +75,8 @@ export function MaterialRow({ m, sessionId, locale, canManage, scope, playbackUr
         <Head
           tile={t("kind.pdf")}
           title={m.title}
-          meta={join(phase, m.allowDownload ? t("row.viewerAndDownload") : t("row.viewer"))}
-          trailing={m.allowDownload ? <DownloadIcon aria-hidden className="shrink-0 text-lg text-fg-muted" /> : <ChevronIcon aria-hidden direction="forward" className="shrink-0 text-fg-muted" />}
+          meta={join(phase, downloadable ? t("row.viewerAndDownload") : t("row.viewer"))}
+          trailing={downloadable ? <DownloadIcon aria-hidden className="shrink-0 text-lg text-fg-muted" /> : <ChevronIcon aria-hidden direction="forward" className="shrink-0 text-fg-muted" />}
         />
       </Link>
     );
@@ -86,7 +92,7 @@ export function MaterialRow({ m, sessionId, locale, canManage, scope, playbackUr
       </div>
     );
   } else if (m.kind === "audio") {
-    const note = m.allowDownload ? t("audio.listenAndDownload") : t("audio.listenOnly");
+    const note = downloadable ? t("audio.listenAndDownload") : t("audio.listenOnly");
     row = playbackUrl ? (
       <AudioRow
         src={playbackUrl}
@@ -128,21 +134,25 @@ export function MaterialRow({ m, sessionId, locale, canManage, scope, playbackUr
           {t("renderStatus.failed")}
         </Badge>
       ) : null}
-      {canManage && m.fontSubstitutionWarning ? (
-        <Panel tone="info" className="p-3">
-          <p className="text-body-sm text-fg-heading">{t.rich("substitutionWarning.body", { family: m.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
-        </Panel>
+      {canManage ? (
+        <EditOnly>
+          {m.fontSubstitutionWarning ? (
+            <Panel tone="info" className="p-3">
+              <p className="text-body-sm text-fg-heading">{t.rich("substitutionWarning.body", { family: m.fontSubstitutionWarning, bdi: (chunks) => <bdi>{chunks}</bdi> })}</p>
+            </Panel>
+          ) : null}
+          {scope ? (
+            <RescopeChip
+              currentLabel={scope.currentLabel}
+              options={scope.options}
+              triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
+              failedLabel={t("rescope.failed")}
+              rescopeAction={rescopeMaterialAction.bind(null, locale, sessionId, m.id)}
+            />
+          ) : null}
+          <SettingsForm locale={locale} materialId={m.id} phase={m.phase} allowDownload={m.allowDownload} sessionDayId={m.sessionDayId} />
+        </EditOnly>
       ) : null}
-      {scope && canManage ? (
-        <RescopeChip
-          currentLabel={scope.currentLabel}
-          options={scope.options}
-          triggerAriaLabel={t.markup("rescope.trigger", { label: scope.currentLabel, bdi: (chunks) => chunks })}
-          failedLabel={t("rescope.failed")}
-          rescopeAction={rescopeMaterialAction.bind(null, locale, sessionId, m.id)}
-        />
-      ) : null}
-      {canManage ? <SettingsForm locale={locale} materialId={m.id} phase={m.phase} allowDownload={m.allowDownload} sessionDayId={m.sessionDayId} /> : null}
     </div>
   );
 }
