@@ -1639,3 +1639,607 @@ generated suite is the highest-value test in the product.
 | `TRG-sessions.renamed_audited` | ★ `0200`, `DEC-254` §5, `REQ-SES-021` — a title change writes one `session.renamed` row with the actor, `before.title` and `after.title`; an update that leaves the title equal writes none. A definer trigger on `0181`'s pattern; no new grant. |
 | `TRG-sessions.title_locked_from_published` | ★ `0200`, `DEC-255` §1 — a title change to a session in `published`, `in_progress`, `completed`, `archived` or `cancelled` raises `session_title_locked` (`55000`) for an admin and for its presenter alike; in every earlier state it succeeds. The guard binds every signed-in caller. |
 | `COL-sessions.certificate_mode_default` | ★ `0201`, `REQ-CRT-018` — a session inserted with no mode is `review`; a session that existed before keeps its mode. |
+| `MIG-org_templates` | ★ `0205` – `0207`, `DEC-254` §3, `DEC-255` §5, `REQ-DSG-035` — every org holds the baseline as its OWN published templates: seeded by an `after insert` trigger on `orgs`, backfilled onto every existing org, and an org's last live published template of attendance, presenter, achievement or poster talk cannot be retired (`last_live_template`, `23514`). No policy and no grant changes; the platform rows are untouched until PR D. |
+| `RPC-seed_org_templates.set` | An org holds the eleven compositions as its own published v1 rows: five poster families, three certificate families × landscape and portrait, one default per (purpose, family) — every poster and the landscape certificates. |
+| `RPC-seed_org_templates.idempotent` | A second call inserts nothing and returns 0; a retired seeded row is not re-seeded. |
+| `RPC-seed_org_templates.keeps_defaults` | An org's own live default of a (purpose, family) is not demoted. |
+| `RPC-seed_org_templates.not_callable` | No role may execute it: owner-only, invisible through PostgREST. |
+| `RPC-org_template_version` | The org's live template of a (purpose, family) with a published version — default first, then the highest version, then the id. Owner-only. |
+| `RPC-org_missing_templates` | Every (purpose, family) of the FALLBACK SET — certificate attendance, presenter, achievement; poster talk — for which `org_template_version()` is null. Empty for every seeded org. Owner-only. |
+| `TRG-orgs_seed_templates` | An org inserted by ANY path — `create_org()`, a fixture, the owner's hand — holds the baseline the moment the insert commits. |
+| `TRG-design_templates_keep_one_live` | Retiring, deleting or re-familying an org's LAST live published template of a fallback family is refused with `last_live_template` (23514); every other retire is untouched; an org's deletion is not blocked. |
+| `RPC-set_session_certificate_mode.after_completion` | ★ A **completed** or **archived** session accepts a mode change: the mode is written, one `session.certificate_mode_changed` row carries the old and the new, the function returns `fanned_out`, and a mode other than `off` fans out in the same transaction — one `issue_certificates` job per eligible recipient per kind, under `11` §2.5's key. (migration `0194`). |
+| `RPC-set_session_certificate_mode.after_completion_off` | ★ Switching a completed session back to `off` is accepted, returns `ok`, writes its audit row, and enqueues **nothing**; certificates already issued are untouched. (migration `0194`). |
+| `RPC-set_session_certificate_mode.late_switch_is_idempotent` | ★ The same mode twice returns `unchanged` and enqueues nothing new; a second fan-out **moves** each pending job rather than duplicating it (the `cert:{session}:{member}:{kind}` key). (migration `0194`). |
+| `POL-storage.materials.preupload_self_read` | Before a material's `material_versions` row exists, only whoever `materials_storage_write` would have let write to that exact prefix — the session's presenter, the proposal's owner, or staff — can read the object back; nobody else, and the ordinary phase/`allow_download` branches are unaffected once the version row exists. (migration `0054`). |
+| `POL-materials.proposal.visibility` | A proposal's own materials are visible to its proposer, an accepted co-presenter, and staff — never to a plain member — until the proposal becomes a session. (migration `0053`). |
+| `POL-materials.proposal.write` | The same three may upload/update a proposal's materials; nobody else. (migration `0053`). |
+| `RPC-carry_over_proposal_materials.trigger` | A session inserted with a `proposal_id` reassigns every material with that `proposal_id` to the new session (`session_id` set, `proposal_id` cleared), leaving `phase`/`allow_download` untouched. (migration `0053`). |
+| `POL-storage.materials.proposal_write` | The `materials` bucket's write policy accepts a `{org}/proposals/{proposal_id}/materials/…` prefix for the proposal's owner/co-presenter/staff, the same shape the `{org}/sessions/{session_id}/materials/…` prefix already had. (migration `0053`). |
+| `POL-materials.phase_change.audited` | Changing `phase` writes one `audit_log` row naming the old and new value; changing `title` or `allow_download` alone writes none. (migration `0052`). |
+| `RPC-initiate_photo_processing.authority` | A member with a confirmed RSVP and no check-in, who is not the session's presenter or org staff, is refused `42501` — REQ-EVT-009, mirroring `photos_storage_write`. (migration `0050`). |
+| `RPC-initiate_photo_processing.size` | A declared byte size over the org's `limit_image_mb` is refused `23514`, naming the limit — the courtesy check; `record_photo_upload`'s is the control, against the REAL (post-strip) size. (migration `0050`). |
+| `RPC-initiate_photo_processing.enqueues` | A successful call enqueues `process_photo` keyed `photo:{photo_id}`. (migration `0050`). |
+| `RPC-record_photo_upload.service_role_only` | `authenticated` and `anon` are both refused on the grant; `service_role` succeeds. (migration `0050`). |
+| `RPC-record_photo_upload.exif_stripped` | Every row this function inserts has `exif_stripped = true` — it is the ONLY door that can ever create a `photos` row (03 §5.6c's `with check (exif_stripped)` says the same thing again, as a constraint rather than a door). (migration `0050`). |
+| `RPC-record_photo_upload.size_envelope` | A real byte size over the org's `limit_image_mb` returns `{status: 'file_too_large', limit_mb}` and inserts no row, rather than raising (DEC-043). (migration `0050`). |
+| `RPC-record_photo_upload.idempotent` | A second call with the same `p_photo_id` (a retried job) returns the already-inserted row's envelope rather than erroring on the primary key. (migration `0050`). |
+| `POL-photos.restore.audited` | `hidden_at` going from set to null writes one `audit_log` row naming the photo. (migration `0051`). |
+| `POL-photos.removal.audited` | `removed_at` going from null to set writes one `audit_log` row naming the photo and `removed_by`. (migration `0051`). |
+| `POL-task_form_responses.select` | A moderator reading form responses gets nothing (`REQ-ADM-020`). (migration `0037`). |
+| `POL-photos.insert.checked_in` | ★ No direct insert: a checked-in member, the presenter and an admin are all refused `42501`; a row is written only by `record_photo_upload()`, the gate is `initiate_photo_processing()`'s (migration `0037`, closed by `0174`, `DEC-221`). |
+| `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the table constraint. (migration `0037`). |
+| `POL-photo_takedowns.insert` | Inserting hides the photo in the same transaction, before any other read. (migration `0037`). |
+| `POL-photo_takedowns.restore` | A moderator resolving with `restored` unhides the photo; `resolved_by` is stamped, never trusted from the client. (migration `0037`). |
+| `POL-photos.select.hidden` | A hidden photo is invisible to a member, visible to staff. (migration `0037`). |
+| `POL-tags.insert.admin` · `POL-tags.delete.admin` | A member's insert is rejected; an admin's succeeds; a moderator cannot delete a tag, an admin can. (migration `0037`). |
+| `POL-session_tags.write.presenter` | A non-presenter member cannot tag a session they do not present; the presenter and an admin can. (migration `0037`). |
+| `POL-bookmarks.self` | A member reads and writes only their own bookmarks; another member's bookmark is invisible. (migration `0037`). |
+| `POL-search.ar_normalize` | «معرفات» and «مُعرِّفات» normalise to the same string; «إدارة» and «ادارة» too. (migration `0037`). |
+| `POL-storage.materials.prefix` | An authenticated write to another org's prefix is rejected. (migration `0037`). |
+| `POL-storage.materials.download` | With `allow_download = false`, the joined `materials` bucket read policy denies a member (but not the presenter or staff). (migration `0037`). |
+| `POL-storage.material_pages.phase` | An `after` page image is denied to a member before completion, regardless of `allow_download`. (migration `0037`). |
+| `POL-storage.photos.hidden` | A hidden photo's object is denied to a member, permitted to staff. (migration `0037`). |
+| `POL-storage.exports.write` | An authenticated client cannot write to `exports`; only `service_role` can (bypassrls, not a policy). (migration `0037`). |
+| `POL-storage.fonts.read` | Any authenticated member reads the `fonts` bucket with no org prefix required. (migration `0037`). |
+| `RPC-notify.matrix_closed` | A key absent from `08` §1 raises `22023` — nothing outside the matrix can be sent (`REQ-NTF-002`). (migration `0026`). |
+| `RPC-notify.preference` | A member who disabled a category gets no inbox row and no job; the call is a no-op, not an error. (migration `0026`). |
+| `RPC-notify.non_optional` | One of `08` §1.7's messages is written and enqueued even with both channels disabled. (migration `0026`). |
+| `RPC-notify.definer_only` | `anon`, `authenticated` and an org admin are all refused on the grant; a definer RPC and `service_role` succeed. (migration `0026`). |
+| `RPC-notify.enqueues_in_transaction` | The `notify:{message_id}` job and the `notifications` row commit or roll back together (`02` §4.17). (migration `0026`). |
+| `POL-session_presenters.select.member` · `POL-session_presenters.insert.admin` · `POL-session_presenters.update.self` · `POL-session_presenters.delete.admin` | Org-readable; an admin adds and removes; the named member accepts or declines only their own row. |
+| `POL-session_state_transitions.select.staff_or_presenter` | A member reads none; staff read the org's; the session's presenter reads their own session's; no role inserts directly. |
+| `POL-check_in_attempts.select.staff` | A member — including the attempter — reads none; staff read the org's; no role inserts directly. |
+| `POL-reactions.select.member` · `POL-reactions.write.self` | Org-readable; a member adds and removes only their own; a duplicate `(member, comment, kind)` is rejected. |
+| `POL-reports.select.staff_or_reporter` · `POL-reports.insert.self` · `POL-reports.update.staff` | The reporter and staff read; a member cannot read another's report; a member cannot resolve; a moderator resolves through the column grant. |
+| `POL-proposals.update.own` | A proposer cannot write `decision_reason`; cannot edit an `approved` proposal. |
+| `POL-proposals.transition.content` | ★ wave 21 (`DEC-228` §2, migration `0179`): a transition INTO `submitted` records the seven content columns in the audit row's `after`; `changes_requested → submitted` also records them, as they were, in `before`; every other transition's row is unchanged (`tests/rls/proposals-diff.test.ts`). |
+| `POL-proposals.edits.private` | ★ wave 21 (`0179`): those rows are readable by the org's admin only — never by the proposer, a co-presenter, a moderator who did not act, or another org's admin (`audit_read_admin`). |
+| `POL-proposals.transition.audit` | Creating a proposal and submitting it each write an `audit_log` row; a member cannot suppress either, and cannot write one directly (`REQ-PRO-006`, migration `0011`). |
+| `POL-proposals.transition.legal` | `changes_requested → draft` and `submitted → approved` are refused with `23514`; `draft → submitted` and `in_review → approved` succeed (`02` §6.1, migration `0011`). |
+| `POL-sessions.select.member` | A `draft` session is invisible to members, visible to its presenter. |
+| `POL-sessions.update.presenter` | A presenter setting `starts_at` is rejected — the column is not granted (D13). |
+| `POL-sessions.update.presenter` | A presenter setting `state = 'published'` is rejected. |
+| `POL-rsvps.insert.rpc` | Direct `insert into rsvps` is rejected for every role. |
+| `POL-rsvps.reserve.capacity` | N concurrent reservations, N−1 seats → exactly N−1 confirmed, rest waitlisted, no duplicates. |
+| `POL-rsvps.reserve.deadline` | Reserving after `rsvp_deadline_at` is rejected; **promotion after it succeeds** (OQ-002). |
+| `POL-rsvps.select.member` | Member B cannot read member A's RSVP; staff and the presenter can. |
+| `POL-check_in_codes.select.member` | A **checked-in** member reading the current code gets nothing (OQ-013). |
+| `POL-check_in_codes.select.presenter` | The session's presenter reads it; a presenter of a *different* session does not. |
+| `RPC-check_in.reservation_required` | With `allow_walk_ins` off, a member with no confirmed reservation gets `reservation_required` — the attempt is recorded, the code is not revealed as right or wrong; with it on, the same member checks in (migration `0079`, DEC-065). |
+| `RPC-set_session_walk_ins.staff` | A member and a presenter are refused `42501`; an admin and a moderator flip the flag, audited as `session.walk_ins_changed` (migration `0079`). ★ *Retired with the function by `0085` (`DEC-118`) — see `RPC-set_session_walk_ins.retired`.* |
+| `POL-sessions.public_card.anon` | `session_public_card()` as `anon` on a published, in-progress or completed session returns exactly the public fields (title, times, time zone, venue name, org name, the poster's `og.png` path and size — `numerals` left the row type in migration `0082`, DEC-124/DEC-132); the abstract, presenters, capacity and every other column are absent from the return type. A draft, approved, archived or cancelled session, a suspended org's session and an unknown uuid are the same empty answer. `anon` still has no policy on `sessions`, `venues`, `session_posters` or `export_artifacts` (migration `0080`, DEC-066). |
+| `POL-storage.exports.public_card` | `anon` reads the `og.png` object of a card-eligible session's poster and nothing else in `exports` — not the same poster's `master`, `a4`, `og.webp` or `cert_*`, not a draft's or a cancelled session's — and cannot write. A member of ANOTHER org reads the same object and no more: signing in never shows less than being a stranger (migration `0080`). |
+| `POL-company_scoring_rules.select` | Any org member reads the company rule catalogue; another org's rows are invisible (migration `0081`, DEC-067). |
+| `POL-company_scoring_rules.update.admin` | A moderator changing a value is rejected; an admin's edit succeeds and appends to `scoring_config_history` with scope `company_scoring` (`.history`). |
+| `POL-company_scoring_rules.catalogue` · `.shape` | An `action_key` outside the three is rejected; a hosting row cannot carry a percent configuration and vice versa. |
+| `POL-company_points_ledger.insert` · `.update` · `.select` · `.idempotency` | A direct insert is rejected for `authenticated` AND `service_role`; update and delete raise for every client role including `service_role` (append-only, invariant 9); the read is org-wide (a company has no session); evaluating the same session twice inserts no duplicate rows. |
+| `POL-company_points_balances.select` | Org-wide read, no client writes; the rollup trigger is the only writer. |
+| `RPC-evaluate_company_points.service_role_only` · `.hosting` · `.attendance_pct` · `.presenting_pct` | No client role may call it; a session with `host_company_id` set and the rule enabled credits the hosting points once; a company's share of its own active members who checked in (and, separately, who presented as accepted presenters) credits `round(percent × points_per_percent)` capped, only above `min_active_members`. |
+| `RPC-audit_company_balances.service_role_only` · `.no_self_heal` | Mirrors `audit_balances()` exactly: worker-only, reports divergence, never repairs it. |
+| `RPC-rebuild_company_points_balances.reproduces` | Truncate and re-sum always reproduces the same totals from the ledger. |
+| `POL-sessions.host_company_same_org` | A session cannot be assigned a host company from another org (`sessions_host_company_same_org`). |
+| `RPC-snapshot_leaderboard.company_ledger_included` | The company board's total is the member-derived sum plus the company ledger's sum for the period; the frozen `active_member_count` denominator is unchanged. |
+| `RPC-ensure_check_in_code.only_live` | The presenter of a `published` session is refused `not_open` before it starts and after it ends; once `in_progress` the same call returns a code (migration `0078`). ★ *Superseded by `RPC-ensure_check_in_code.floor_ceiling` (`0084`, `DEC-141`).* |
+| `POL-check_ins.insert.rpc` | Direct insert is rejected; `check_in()` with a valid code succeeds. |
+| `POL-check_ins.rate_limit` | 11 attempts in 10 minutes → the 11th returns `status = 'rate_limited'`, and the attempt is still recorded. (An exception would roll back the attempt row written in the same call — DEC-043; `check_in()` returns an envelope for every outcome after the attempt insert and raises only for `not_found`, before anything is logged.) |
+| `POL-check_ins.window` | A valid code before `starts_at` and after `ends_at` is rejected. ★ *Since `0084` (`DEC-141`) the ceiling is `ends_at` + 2 h — see `RPC-check_in.floor` / `.ceiling`.* |
+| `POL-check_ins.revoked` | A revoked code is rejected; check-ins already recorded with it stand. |
+| `POL-check_ins.single_use` | A second check-in is a no-op returning the first, with `status = 'already_checked_in'` so SCR-014 renders its own state (`09`). |
+| `POL-check_ins.overlap` | Checking in to an overlapping session raises on the exclusion constraint. |
+| `POL-check_ins.presenter` | A presenter checking in to their own session is rejected (OQ-025). |
+| `POL-check_ins.select.member` | A member cannot list who else attended (A33 rule 3). |
+| `POL-materials.select.phase` | An `after` material is invisible to a member until the session is `completed`; visible to the presenter throughout. |
+| `POL-materials.insert.presenter` | A member who is not a presenter cannot add a material. |
+| `POL-material_pages.select` | No rows exist for a Keynote material (DEC-006). |
+| `POL-task_form_responses.select` | A moderator reading form responses gets nothing. |
+| `POL-comments.insert.member` | A member with no RSVP and no check-in **can** comment (D32). |
+| `POL-comments.update.window` | Editing at 14 minutes succeeds; at 16 minutes is rejected. |
+| `POL-comments.update.moderator` | A moderator can set `deleted_at` and **cannot** change `body`. |
+| `POL-comments.depth` | A reply to a reply attaches to the parent thread. |
+| `POL-photos.insert.checked_in` | ★ Since `0174` **no member inserts directly** — checked in or not, presenter or admin; the check-in gate is `initiate_photo_processing()`'s. |
+| `POL-photos.insert.exif` | Inserting with `exif_stripped = false` is rejected by the constraint. |
+| `POL-photo_takedowns.insert` | Inserting hides the photo **in the same transaction**. |
+| `POL-ratings.insert.check_in` | A member with an RSVP and no check-in cannot rate. |
+| `POL-ratings.insert.check_in` | Supplying another member's `check_in_id` is rejected. |
+| `POL-ratings.insert.window` | Rating 15 days after completion is rejected. |
+| `POL-ratings.select.presenter` | A presenter selecting from `ratings` gets **zero rows** — not redacted rows. |
+| `POL-ratings.aggregate.min` | With 2 ratings the aggregate view returns nothing; with 3 it returns a value (OQ-009). |
+| `POL-ratings.select.admin` | An org admin's **direct** select on `ratings` returns zero rows (DEC-044, migration `0017`); a moderator's too. |
+| `POL-ratings.select.admin.audited` | `list_session_ratings_admin()` returns the org's rows for that session to a fresh admin **and writes one `audit_log` row naming them**; a moderator and a stale admin are refused; another org's session is refused (`REQ-RAT-005`, migration `0017`). |
+| `RPC-session_rating_count` | Below `rating_min_aggregate` the presenter and staff get the bare **count**; a member gets nothing; another org's presenter gets nothing (`REQ-RAT-006`, migration `0019`). |
+| `RPC-delete_own_comment` | The author soft-deletes their own comment **after** the edit window; another member cannot; a tombstone remains when replies exist (`REQ-EVT-005`, migration `0018`). |
+| `POL-points_ledger.insert` | Direct insert is rejected for `authenticated` **and** `service_role`. |
+| `POL-points_ledger.update` | `update` and `delete` raise for every role including `service_role`. |
+| `POL-points_ledger.select` | A member reads only their own rows; an admin reads the org's. |
+| `POL-points_ledger.idempotency` | Awarding the same source event twice inserts one row. |
+| `POL-scoring_rules.update.admin` | A moderator changing a point value is rejected. |
+| `POL-scoring_rules.catalogue` | Inserting `action_key = 'rsvp'` is rejected (`REQ-PTS-010`). |
+| `POL-leaderboard_entries.select.opt_out` | An opted-out member is absent from B's view, present in their own, and **the company row is unchanged**. |
+| `POL-certificates.select.held` | A `held` certificate is invisible to its recipient, visible to an admin. |
+| `POL-certificates.verify.anon` | `verify_certificate()` with a valid code returns exactly A13's fields. |
+| `POL-certificates.verify.anon` | With a **serial** instead of a code: empty. |
+| `POL-certificates.verify.anon` | Unknown code and revoked-nonexistent code are **indistinguishable**. |
+| `POL-certificates.serial.gapless` | A rolled-back issuance leaves `next_value` unchanged. |
+| `POL-certificates.serial.per_org` | Two orgs both issue `…-000001` without collision. |
+| `POL-certificate_serial_counters.*` | Direct select by any role is rejected. |
+| `POL-design_templates.select.platform` | An org admin **reads** a platform template. |
+| `POL-design_templates.update.platform` | An org admin **cannot update** one (`REQ-DSG-008`). |
+| `POL-design_assets.insert.mime` | An SVG with a `.png` name is rejected on `sniffed_mime` (DEC-009). |
+| `POL-fonts.select` | A font at `parity_status = 'pending'` is not selectable in the picker. |
+| `POL-calendar_connections.select` | **No role** can select a token column — member, admin, moderator alike. |
+| `POL-calendar_connections.delete` | Disconnect deletes the row; the tokens are gone immediately. |
+| `POL-notifications.select.self` | A member cannot read another's notifications. |
+| `POL-audit_log.insert` | Direct insert is rejected; `write_audit()` succeeds. |
+| `POL-audit_log.update` | `update` and `delete` raise for every role. |
+| `POL-audit_log.select.moderator` | A moderator sees their own actions and not the admin's. |
+| `POL-design_templates.select.platform` | An org admin reads a platform template; org B's own templates are invisible. (migration `0055`). |
+| `POL-design_templates.update.platform` | An org admin cannot update a platform template (`REQ-DSG-008`). (migration `0055`). |
+| `POL-design_templates.insert.org` | An admin cannot create a platform-scope template; a plain member cannot create any. The scope/`org_id` and family/purpose constraints hold. (migration `0055`). |
+| `POL-design_template_versions.read` | Read follows the parent; a platform template's version is readable and not writable; a published version has no update and no delete grant (`REQ-DSG-007`); `org_id` mirrors the parent. (migration `0055`). |
+| `POL-design_template_versions.guard` | A hard-coded colour, an unknown layer kind or a duplicate layer id is refused by the trigger (`REQ-DSG-021`, `REQ-DSG-005`). (migration `0055`). |
+| `POL-design_documents.read` | The presenter of the bound session sees the document, another member does not, the admin does; a member sees the document behind their own certificate only. (migration `0055`). |
+| `POL-design_documents.write` | Design is an admin act (`REQ-DSG-002`): a presenter cannot edit their own poster document. (migration `0055`). |
+| `POL-design_documents.locked` | A locked region cannot be moved, resized, hidden, unlocked or deleted (`REQ-DSG-024`). (migration `0055`). |
+| `POL-design_assets.insert.mime` | An SVG named `.png` is rejected on `sniffed_mime`, never on the filename (DEC-009); a plain member cannot add or remove an asset; an asset is never updated in place. (migration `0055`). |
+| `POL-fonts.select` | Every member reads the manifest; only the job writes it; a font cannot reach `passed` without Arabic coverage (A39). (migration `0055`). |
+| `POL-export_artifacts.select` | Select follows the document; no client role writes one; `source_fingerprint` is the cache key — the same source cannot be stored twice (`REQ-DSG-013`). (migration `0055`). |
+| `POL-export_artifacts.select.session_poster` | A plain member reads the render of a published session's poster; a draft's stays hidden; another org — even its admin — reads nothing; a render of a document that is no session's poster stays admin-only. `exports_read`'s `exists` over `design_documents` had shown members none (migration `0145`, `DEC-172`). |
+| `POL-session_posters.*` | An `auto` poster is always live (structural); every member reads the poster, only an admin writes it, nobody deletes it. (migration `0055`). |
+| `POL-certificates.constraints` | An attendee certificate without a `check_in_id` is refused by the table (`REQ-CRT-001`); the same session, member and kind cannot be certified twice (`REQ-CRT-003`); a revoked certificate must carry a reason (`REQ-CRT-011`). (migration `0055`). |
+| `POL-certificates.select.held` | A held certificate is invisible to its recipient and visible to the admin (`REQ-CRT-004`); writes are RPC-only for every role. (migration `0055`). |
+| `POL-certificates.serial` | A rolled-back issuance leaves `next_value` unchanged; two orgs both issue `…-000001`; the counter table has no policy and no grant (`REQ-CRT-008`, DEC-010). (migration `0055`). |
+| `POL-certificates.verify.anon` | `verify_certificate()` resolves by code and returns the A13 fields and nothing else; a serial returns not-found; unknown and held are the same empty answer (`REQ-CRT-007`, `REQ-CRT-009`). (migration `0055`). |
+| `POL-admin_list_members.select.admin` | An admin reads every member of their org **with email** through `admin_list_members()`, and none of org B's (`REQ-ADM-009`). (migration `0056`). |
+| `POL-admin_list_members.select.non_admin` | A member and a moderator get zero rows from the function, not an error. (migration `0056`). |
+| `POL-admin_list_members.select.no_base_grant` | The base table's column grant still hides `email` from a direct select, admin included — the function is the only door (A33, DEC-044's pattern). (migration `0056`). |
+| `POL-write_admin_export_audit.execute.admin` | An admin's export writes exactly one audit row naming the export type and the subject (`REQ-ADM-017`). (migration `0058`). |
+| `POL-write_admin_export_audit.execute.non_admin` | A moderator and a member are both refused — the boundary is `assert_fresh_admin()`, not the route handler. (migration `0058`). |
+| `POL-write_admin_export_audit.execute.own_org_only` | An admin cannot forge another org's export as their own subject; the audit row lands in the caller's own org. (migration `0058`). |
+| `POL-comments.removal_audit` | A staff removal of a comment writes an audit row with the reason; a self-delete writes none (`REQ-EVT-014`, `REQ-ADM-018`). (migration `0059`). |
+| `POL-remove_photo.staff_only` | `remove_photo()` is admin-or-moderator with a mandatory reason; a member is refused. (migration `0059`). |
+| `POL-remove_photo.resolves_takedown_and_report` | One call hides the photo and resolves any open takedown and report on it in the same transaction (DEC-005). (migration `0059`). |
+| `POL-remove_photo.reverses_points` | Removing a photo reverses its points the way a comment's removal does (`0032`'s deferred half). (migration `0059`). |
+| `POL-remove_photo.own_org_only` | A staff member cannot remove another org's photo. (migration `0059`). |
+| `POL-export_artifacts.request.admin` | A moderator's `request_render()` is refused; an admin's queues one row per target and returns them. (migration `0060`). |
+| `POL-export_artifacts.cache` | Re-requesting an unchanged document re-renders nothing — the `ready` rows come back as they are (`REQ-DSG-013`). (migration `0060`). |
+| `POL-export_artifacts.record.worker` | `record_export_artifact()` and `export_render_context()` are `service_role` only; an admin calling them is refused; `service_role`'s direct select on the table is refused too — the definer functions are the boundary. (migration `0060`). |
+| `POL-export_artifacts.retry.admin` | An admin retries a `failed` artifact and it returns to `queued`; a `ready` one is left alone. (migration `0060`). |
+| `POL-reminder_message_key.tolerance_band` | `reminder_message_key()` picks a fixed reminder message within ±20% of its offset and `MSG-reminder_generic` for anything else (`08` §1.2's fourth message, DEC-047). (migration `0062`). |
+| `POL-reminder_message_key.default_unaffected` | Every default org offset still maps to the message it mapped to before. (migration `0062`). |
+| `POL-notification_matrix.generic_key_accepted` | `MSG-reminder_generic` is in the matrix under `reminders`, so a template for it is accepted and a reminder carrying it is deliverable. (migration `0062`). |
+| `POL-session_posters.publish` | Publishing a session enqueues `regenerate_poster` once, with `11` §2.5's key (`REQ-DSG-001`). (migration `0063`). |
+| `POL-session_posters.detach` | `detach_poster()` flips binding to `detached` and mode to `customised`, one way: no call ever re-attaches (`REQ-DSG-003`). (migration `0063`). |
+| `POL-session_posters.detach.admin` | A moderator's `detach_poster()` is refused. (migration `0063`). |
+| `POL-session_posters.stale` | A data change on a detached poster sets `stale_since` and enqueues no render. (migration `0063`). |
+| `POL-session_posters.live` | A data change on a live poster enqueues one render and leaves `stale_since` null. (migration `0063`). |
+| `POL-request_render.system` | `system_request_render()`, `poster_render_context()` and `record_session_poster()` are `service_role` only; an admin calling them is refused. (migration `0063`). |
+| `POL-fonts.materialise.admin` | An org admin requests a Google family and one `materialise_font` job is enqueued with `11` §2.5's key; a moderator is refused (`REQ-DSG-017`). (migration `0064`). |
+| `POL-fonts.record.worker` | `record_font()` is `service_role` only; an admin calling it is refused. (migration `0064`). |
+| `POL-fonts.gate` | A font recorded as `failed` carries the report naming which checks failed and stays unselectable (A39). (migration `0064`). |
+| `POL-fonts.select.service_role` | `service_role` reads the manifest (a bucket-walking job sees every font) and still cannot write a row directly — the only write path stays `record_font()`. (migration `0067`). |
+| `POL-brand_kits.select.member` | Any member of the org reads the kit; a member of another org gets nothing. (migration `0068`). |
+| `POL-brand_kits.write.rpc_only` | `brand_kits` has no insert/update/delete grant to `authenticated`: a direct write is refused on the grant, even by an admin. (migration `0068`). |
+| `POL-save_brand_kit.admin_only` | A member and a moderator are refused `42501`; an admin's save succeeds. (migration `0068`). |
+| `POL-save_brand_kit.history` | A save writes one `scoring_config_history` row per changed column (`scope = 'branding'`) and one `audit_log` row, in the same transaction. (migration `0068`). |
+| `POL-save_brand_kit.logo_ownership` | A logo asset belonging to another org is refused. (migration `0068`). |
+| `POL-save_brand_kit.font_gate` | A font at `parity_status <> 'passed'` is refused for either face (A39). (migration `0068`). |
+| `POL-reset_brand_kit.admin_only` | A moderator's reset is refused; an admin's deletes the row and is audited. (migration `0068`). |
+| `POL-brand_kit.identity_default` | `public.brand_kit(p_org)` for an org with no row returns the platform defaults, matching `packages/designer-runtime/src/brand.ts` byte-for-byte. (migration `0068`). |
+| `POL-brand_kit.override` | With a row, `public.brand_kit(p_org)` returns the org's own colours, not the platform defaults. (migration `0068`). |
+| `POL-export_render_context.brand_identity` | For an org with no `brand_kits` row, the new `brand` column is `{}` and every previously-existing column is unchanged (the identity override, DEC-052). (migration `0068`). |
+| `POL-export_render_context.brand_override` | For an org with a row, the `brand` column carries exactly its light/dark overrides and `logoAssetId`. (migration `0068`). |
+| `POL-impersonation_sessions.append_only` | No role — `authenticated` or `service_role` — may insert, update or delete a row; `end_impersonation()` is the only writer of `ended_at`. (migration `0069`). |
+| `RPC-start_impersonation.platform_only` | A member, an org admin and a stale admin are all refused `42501`; only a row in `platform_admins` passes, and the audit row lands in the target org's log with `platform_admin`. (migration `0069`). |
+| `RPC-end_impersonation.actor` | The starting super admin and `service_role` (the expiry job) may end a session; another super admin and the org's own admin cannot. Ending twice is a no-op. (migration `0069`). |
+| `POL-auth_hook.impersonation` | With an active session the hook mints `org_id`, `org_role = 'member'`, `status`, `org_status` and the session id, and NO `member_id`; after `ended_at` it mints none. It still never raises. (migration `0069`). |
+| `RPC-set_first_admin.platform_only` | Only a platform admin may name an org's first admin; an existing member with that address is promoted and their `claims_version` bumps; the org's log records it. (migration `0069`). |
+| `RPC-add_org_domain.platform_only` | A platform admin adds and removes a domain on an org it is not a member of; the audit row is attributed `platform_admin`, not `system` (`REQ-TEN-007`). (migration `0069`). |
+| `POL-retention_periods.none` | RLS enabled, no policy, no grant — every client role and `service_role` are refused on the grant; `12` §5.3's periods are read through `retention_period()` alone. (migration `0069`). |
+| `POL-platform_audit_log.none` | Same shape. The platform-side trail has no foreign key to `orgs`, so an `org.deleted` row survives the org. (migration `0069`). |
+| `POL-data_export_requests.select.self` | A member reads their own export requests and nobody else's; no role may insert, update or delete directly — `request_data_export()` is the only door (`REQ-PRF-006`). (migration `0069`). |
+| `RPC-platform_metrics.aggregate_only` | Both metrics functions refuse a non-platform-admin, and the two views expose counts alone — no member, no session title, no content column (`REQ-ADM-003`). (migration `0069`). |
+| `RPC-promote_template_to_platform` | A published org version becomes a platform template by COPY; a later edit of the org template does not reach it; an unpublished version and a platform version are both refused (`REQ-DSG-008`). (migration `0069`). |
+| `RPC-retire_platform_template.floor` | Retiring the last non-retired default for a purpose is refused — the A27 baseline never falls below one default per purpose (DEC-052). (migration `0069`). |
+| `RPC-delete_org.slug` | Deletion needs the org's slug typed back; a wrong slug changes nothing. The org is suspended in the same transaction, the platform trail records it, and `orgdel:{org_id}` is enqueued once (`REQ-NFR-014`, `12` §5.5). (migration `0069`). |
+| `RPC-assert_org_deleted` | After `perform_org_deletion()` no table with an `org_id` column holds a row for the id, walked dynamically so a table added later is covered the day it is created. (migration `0069`). |
+| `RPC-platform_org.platform_only` | An org admin, a moderator, a member and `anon` are all refused `42501`; a platform admin gets the org's own row, its domains and its counts — and no member, title or content field. (migration `0070`). |
+| `RPC-platform_impersonations.own` | A platform admin lists their OWN sessions across orgs; another platform admin's do not appear. The org's admins read the same fact through the table's own policy (`REQ-ADM-019`). (migration `0070`). |
+| `POL-save_brand_kit.regenerates_live_posters` | Saving a kit enqueues `regenerate_poster` once per org session with a LIVE poster, with `11` §2.5's key; a `detached` (customised) poster is left alone. (migration `0071`). |
+| `POL-reset_brand_kit.regenerates_live_posters` | Resetting a kit does the same; resetting an org with no kit enqueues nothing. (migration `0071`). |
+| `RPC-platform_promotable_versions.platform_only` | An org admin, a moderator and a member are refused `42501`; a platform admin gets one row per PUBLISHED org version with its purpose, family, name and version number — and no document, no `published_by`, and nothing from a draft. (migration `0072`). |
+| `RPC-platform_promotable_versions.scope` | Platform-scope versions never appear: the library does not offer to promote itself (`REQ-DSG-008`). (migration `0072`). |
+| `RPC-enforce_retention.periods` | The sweep reads `retention_periods` and nothing else: a class marked `retain` deletes nothing, and the job is worker-only — `authenticated` and a platform admin are both refused. (migration `0073`). |
+| `RPC-enforce_retention.idempotent` | A second run in the same window deletes nothing further, and never touches `points_ledger`. (migration `0073`). |
+| `RPC-anonymise_members.total` | After anonymisation every org-level points total is UNCHANGED and no ledger row is gone; the member's personal columns are rewritten, `anonymised_at` is set, and the row keeps its id as the pseudonymous key (`REQ-PRF-007`, `12` §5.4). (migration `0073`). |
+| `RPC-anonymise_members.window` | A member deactivated yesterday is left alone; only the period in `retention_periods` decides. (migration `0073`). |
+| `RPC-build_data_export_payload.self_only` | The archive carries the member's own rows and no other member's personal data — another member's comment appears by display name alone, with no address and no id (`REQ-PRF-006`). (migration `0073`). |
+| `RPC-record_data_export.worker` | Only `service_role` may mark a request ready or failed; the member can read their own row and write none of it. (migration `0073`). |
+| `RPC-request_data_export.rate_limited` | A second request inside 24 hours is refused `42501` while an already-queued one is returned unchanged (`REQ-NFR-005`, `REQ-PRF-006`). (migration `0073`). |
+| `RPC-my_data_export.self` | A member handed another member's request id gets their OWN latest row, never the other's archive. (migration `0073`). |
+| `RPC-evaluate_alerts.worker` | `service_role` only — `authenticated`, a platform admin and `anon` are all refused on the grant. (migration `0075`). |
+| `RPC-evaluate_alerts.eight` | It returns exactly the eight alerts of `11` §3.2, every call, whether or not any is firing. (migration `0075`). |
+| `RPC-evaluate_alerts.isolation` | Seeding any ONE condition fires that alert and leaves the other seven quiet; clearing it stops the alert. (migration `0075`). |
+| `RPC-evaluate_alerts.no_queue` | Without the `graphile_worker` schema the queue alert reports `not_installed` rather than raising — the drill runs in an environment that may not have it. (migration `0075`). |
+| `RPC-platform_job_health.due` | A job scheduled in the future counts as neither pending nor old; a job overdue by an hour counts as both, and the age is never negative. (migration `0076`). |
+| `POL-certificates.fanout` | Completing a session with `certificate_mode <> 'off'` enqueues one `issue_certificates` job per checked-in attendee and per accepted presenter, with `11` §2.5's key; `off` enqueues none (`REQ-CRT-002`). (migration `0065`). |
+| `POL-certificates.fanout.member` | The completion trigger fires for a non-owner caller too — it is `security definer`, like `rsvps_notify()` (0034). (migration `0065`). |
+| `POL-issue_certificate.check_in` | An attendance certificate re-derives its `check_in_id` and is refused when the member never checked in (`REQ-CHK-009`). (migration `0065`). |
+| `POL-issue_certificate.idempotent` | Running the job twice produces one certificate and consumes one serial (`REQ-CRT-003`, `REQ-CRT-008`). (migration `0065`). |
+| `POL-issue_certificate.mode` | `automatic` issues; `review` holds, invisible to the recipient and unemailed (`REQ-CRT-004`). (migration `0065`). |
+| `POL-release_certificates.admin` | An admin releases held certificates; a moderator is refused; the release is audited and notifies once. (migration `0065`). |
+| `POL-revoke_certificate.reason` | Revoking without a reason is refused; with one the state flips, it is audited, and the PDF is not deleted (`REQ-CRT-011`). (migration `0065`). |
+| `POL-achievement.badge` | Earning a badge issues an achievement certificate outright (`issue_achievement_certificate()` from a definer row trigger on `member_badges`, driven as an admin, not the owner); a second earn issues no second certificate (`REQ-CRT-012`). (migration `0066`). |
+| `POL-achievement.snapshot` | A final member-ranked snapshot's top three get HELD achievement certificates through `fan_out_snapshot_certificates()` (a statement-level definer trigger on `leaderboard_entries`); topic boards issue none; an admin releases them (`REQ-CRT-012`, `REQ-LDR-006`). (migration `0066`). |
+| `POL-verify_certificate.public` | `/verify/[code]` for `anon`: an issued certificate resolves with the A13 fields; a held one, a revoked one's reason, a serial and an unknown code are all the same not-found (`REQ-CRT-007`, `REQ-CRT-009`, `REQ-CRT-011`). (migration `0065`). |
+| `POL-allocate_serial.gapless` | Two issuances in two transactions take consecutive serials; a rolled-back one leaves `next_value` unchanged (`REQ-CRT-008`, DEC-010). (migration `0065`). |
+| `POL-design_documents.certificate_read` | A member reads the document behind their own issued certificate and nobody else's. (migration `0065`). |
+| `POL-impersonation_sessions.select` | The **org's own admin** can see that a super admin impersonated (`REQ-ADM-019`). |
+| `POL-impersonation_sessions.expiry` | A session exceeding 4 hours is rejected by the constraint. |
+| `POL-registrations.*` | Unchanged from migration `0002`: `anon` inserts, nobody selects. |
+| `POL-storage.materials.prefix` | An authenticated write to another org's prefix is rejected. |
+| `POL-storage.materials.download` | With `allow_download = false`, no signed URL is issued. |
+| `POL-storage.exports.write` | An authenticated client cannot write to `exports`; only the worker can. |
+| `POL-realtime.channel_private` | A `channel()` call without `private: true` fails the lint rule; an anonymous subscribe to any topic is refused. |
+| `POL-realtime.messages.select` | A member of org A subscribing to `session:{a session in org B}` receives **nothing**. |
+| `POL-realtime.messages.insert` | A member cannot broadcast into a session topic belonging to another org. |
+| `POL-realtime.host_topic` | A **checked-in member** subscribing to `host:{id}` receives nothing (OQ-013). |
+| `POL-realtime.payload_shape` | The `session:{id}` payload carries **counts**, never `check_ins` rows. |
+| `POL-realtime.notification_payload` | The notification broadcast carries an **id**, not content. |
+| `POL-super_admin.no_data_plane` | A super admin selects from `sessions`, `members`, `points_ledger` and `certificates` → **zero rows in every case** (`REQ-ADM-002`). |
+| ★ **wave 7 (`DEC-141`), migrations `0084` – `0090`** — the check-in switch and its ceiling, walk-ins at publication, the admin's removal and its reversal, and the profile's admin tier | |
+| `RPC-check_in.floor` | A code entered before the session's scheduled start is refused `not_started`, clock-derived, independent of `state`. |
+| `RPC-check_in.ceiling` | A code entered at or after `ends_at + 2h` is refused `session_ended`, computed from the SCHEDULED end, not from when the session actually finished. |
+| `RPC-check_in.switch_closed` | Inside the window, with `check_in_open = false`, a correct code is refused `check_in_closed` — never revealing whether it was right. |
+| `RPC-check_in.attendance_states` | A `draft`/`approved`/`cancelled`/`archived` session refuses `not_started` regardless of the clock. |
+| `RPC-set_check_in_open.role_set` | A plain member is refused; the session's own accepted presenter, any moderator, any admin succeed; a presenter of a DIFFERENT session is refused. |
+| `RPC-set_check_in_open.ceiling` | Opening (not closing) past `ends_at + 2h` is refused; closing is always allowed. |
+| `RPC-set_check_in_open.audited` | Every open and close writes an audit row naming who and when. |
+| `RPC-ensure_check_in_code.floor_ceiling` | Mirrors `check_in()`'s own floor/ceiling/state gate — supersedes 0078's `RPC-ensure_check_in_code.only_live`. |
+| `RPC-schedule_session.walk_ins` | `p_allow_walk_ins = true`/`false` sets `allow_walk_ins`; admin-only, same as every other field this RPC writes. |
+| `RPC-schedule_session.walk_ins_unchanged` | Rescheduling WITHOUT passing the parameter (the default, `null`) leaves `allow_walk_ins` exactly as it was. |
+| `RPC-schedule_session.walk_ins_changed_audited` | A reschedule that actually changes `allow_walk_ins` writes a `session.walk_ins_changed` row with the old and new values, KEPT SEPARATE from `session.scheduled`'s own row (the lead's promotion-review fix) — a reschedule that leaves it unchanged writes none. |
+| `RPC-set_session_walk_ins.retired` | The function no longer exists — DEC-118: no door but `schedule_session()`. |
+| `RPC-mark_checked_in_manually.window` | An admin marks a member present any time after the scheduled start, including on an archived session; a moderator is refused outside the code family's floor/ceiling; both are refused on a cancelled session. |
+| `RPC-mark_checked_in_manually.award_points` | A manual mark enqueues exactly one `award_points` job, keyed `pts:check_in:<check_in.id>` — the same key shape a code check-in uses. |
+| `RPC-remove_check_in.admin_only` | A member, a presenter and a moderator are all refused `not_authorized`; only an admin succeeds. |
+| `RPC-remove_check_in.reason_required` | An empty reason is refused before anything is written. |
+| `RPC-remove_check_in.reversal` | Removing a check-in with a points award inserts ONE compensating `reversal` row per original award (attendee's own and the presenter's `attendee_bonus`), `-amount`, reason «أُلغي تسجيل الحضور»; a second removal attempt is refused, never a second reversal. |
+| `RPC-remove_check_in.certificate_revoked` | Removing a check-in with an issued attendance certificate revokes it through the existing `revoke_certificate()` path — audited, PDF not deleted, the member never sees the admin's own words. |
+| `RPC-remove_check_in.no_show_symmetry` | Removing a confirmed-RSVP member's check-in awards the `no_show` rule with the same key `evaluate_no_shows` would compute. |
+| `RPC-remove_check_in.not_found` | Removing a member with no active check-in (never checked in, or already removed) is refused `P0002`. |
+| `RPC-remove_check_in.readd` | After a removal, the same member can check in again (code or manual) with no special path — the partial index frees the slot. |
+| `POL-check_ins.removed_excluded_from_overlap` | A removed check-in no longer blocks an overlapping session's check-in (REQ-CHK-013). |
+| `POL-has_checked_in.excludes_removed` | `has_checked_in()` returns false once the check-in is removed — the photo-upload gate re-derives live. |
+| `POL-ratings.write_self_excludes_removed` | A rating insert whose `check_in_id` points at a removed check-in is refused, same as no check-in at all. |
+| `RPC-award_points.skips_removed_check_in` | A late `award_points('check_in', …)` call for a check-in removed before it ran writes nothing, silently — the same shape as a capped or cooled-down rule. |
+| `RPC-issue_certificate.no_check_in_when_removed` | A late `issue_certificates` job for a removed check-in raises `no_check_in`, the same refusal as for a member who never checked in. |
+| `RPC-fan_out_certificates.excludes_removed` | The completion fan-out does not enqueue an attendance certificate for a member whose check-in was removed before completion. |
+| `RPC-send_rating_prompt.excludes_removed` | A member whose check-in was removed is not prompted to rate the session. |
+| `RPC-evaluate_streaks.excludes_removed` | A removed check-in does not count toward a streak period not yet awarded; an already-awarded streak_awards row is untouched. |
+| `RPC-evaluate_badges.excludes_removed` | A removed check-in does not count toward the `check_ins_count` badge metric for a badge not yet granted; an already-granted member_badges row is untouched. |
+| `RPC-build_data_export_payload.shows_removal` | A member's own data export includes a removed check-in, with `removed_at`/`removal_reason` populated — never dropped from the list. |
+| `RPC-transition_session.check_in_open_early` | Completing a session BEFORE its scheduled end sets `check_in_open = false` in the same transaction; completing on or after the scheduled end leaves it untouched (the ceiling already governs). |
+| `RPC-transition_session.check_in_open_cancel` | Cancelling sets `check_in_open = false` too. |
+| `RPC-transition_session.check_in_open_reopenable` | An early close from completion is an ordinary close — the room can reopen it through `set_check_in_open()`, same as any other, up to the ceiling. |
+| `RPC-admin_member_profile.admin_only` | An admin of the member's org gets one row; a moderator, a member (including the member themselves) and an admin of another org get zero rows. |
+| `RPC-admin_member_profile.fields` | The row carries exactly email, attended_count, attended, no_show_count, late_cancel_count. |
+| `RPC-admin_member_profile.removed_excluded` | A removed check-in is neither counted nor listed as attended, and turns a confirmed reservation on an ended session into a no-show. |
+| ★ **wave 7 (`DEC-139`), migration `0091`** — a processing photo takes its place without a reload | |
+| `TRG-photos_broadcast.session_topic` | An insert on `photos` sends `{id, sessionId, uploaderId}` on `session:{session_id}` (event `INSERT`), the topic and `realtime.messages` policy `0016` already authorise. It carries no photo bytes and no path, and another org's subscriber receives nothing (`POL-realtime.messages.select`). |
+| ★ **wave 8 (`DEC-147`), migration `0092`** — one domain check in every environment | |
+| `CHK-org_domains.domain_lowercase_everywhere` | The check is text's case-sensitive `~`, stated with an explicit cast, so it reads the same on production and locally; a mixed-case domain written through the table is stored lowercase by `org_domains_normalise` and accepted; one that bypasses the trigger is refused (`23514`). |
+| ★ **wave 8 (`DEC-127`, `DEC-148`), migration `0093`** — `canvasRaise` joins the brand kit | |
+| `POL-brand_kit.canvas_raise_identity_default` | For an org with no row, or a row saved before `0093`, `brand_kit()`'s `canvasRaise` matches `platformBrand()`'s — the per-token identity override. |
+| `POL-brand_kit.canvas_raise_override` | With a row whose `canvasRaise` was explicitly saved, `brand_kit()` returns that value, not the platform default. |
+| `POL-save_brand_kit.canvas_raise_required` | A save whose `p_light`/`p_dark` omits `canvasRaise` fails `23502`, as any other missing token does. |
+| `POL-export_render_context.canvas_raise_override` | With a row, the `brand` column's `light`/`dark` objects carry the saved `canvasRaise`; with none, the key is absent (the raw override, `{}` semantics unchanged). |
+| ★ **wave 8 (`DEC-127`, `DEC-148`), migration `0094`** — the template guard walks every colour | |
+| `POL-design_template_versions.guard_gradient_stop_hex` | A template version whose gradient background carries a hex literal in ANY stop is refused (`22023`); the same gradient on `{{brand.*}}` tokens is accepted. |
+| `POL-design_template_versions.guard_non_hex_literal` | A colour that is not a `{{brand.<token>}}` binding — `rgb(…)`, `navy` — is refused on the background, a stop, a layer `color`, `shape.fill` and `shape.stroke` alike (`22023`). |
+| `POL-design_template_versions.guard_structure_kept` | `0055`'s checks still hold: a missing `schemaVersion`, a non-array `layers`, a missing or duplicated layer id and an unknown layer kind are refused (`22023`). |
+| ★ **wave 8 (`DEC-148`), migration `0095`** — the platform console reads the alert states | |
+| `RPC-platform_alerts.platform_only` | An org admin, a moderator and a member are refused `not_platform_admin`; `anon` is refused `42501` on the grant. |
+| `RPC-platform_alerts.aggregate` | A platform admin reads all eight alerts of `11` §3.2, firing or not, and every `detail` key is a count, an age, a rate or a threshold — no org, member, session or content. |
+| ★ **wave 8 (`DEC-148`), migration `0096`** — the platform library reads the roster | |
+| `RPC-platform_template_library.roster` | A platform admin reads every platform row with its `orientation` (certificates only, from the latest version's master: wider than tall is landscape), `is_baseline` (false once a `template.promoted` row names it) and `retirable` (false exactly for the last non-retired default of a purpose, true again once a second default exists). |
+| ★ **wave 8 (`DEC-148`), migration `0097`** — a reinstate cannot undo a requested deletion | |
+| `RPC-reinstate_org.pending_deletion` | After `delete_org()`, `reinstate_org()` is refused `org_deletion_pending` (`42501`), the org stays suspended and no `org.reinstated` is written; a suspended org with no deletion requested still reinstates. `platform_metrics_by_org()` reports `deletion_pending` for the first and not the second, and `platform_org()` returns `deletionPending` outside its counts. |
+| ★ **wave 8 (`DEC-148`), migration `0099`** — a session's certificate design, and the scheme pinned on a certificate (`0098`, the library seed, adds no policy) | |
+| `POL-session_certificate_designs.select_staff` | An admin and a moderator of the org read a session's certificate design; a member does not; another org's staff do not. |
+| `POL-session_certificate_designs.no_write_grant` | An authenticated insert, update or delete is refused (42501) — the only writer is `set_certificate_design()`. |
+| `RPC-set_certificate_design.admin` | An admin sets (and resets) the design, audited as `certificate.design_set`; a moderator is refused (42501). |
+| `RPC-set_certificate_design.family_matches_kind` | A template of another family, a poster template, a retired one or another org's is refused (22023). |
+| `RPC-set_certificate_design.locked_after_issue` | Once a certificate of that kind for that session is `issued` or `revoked`, the design is refused (55000); while they are `held` it may change. |
+| `RPC-issue_certificate.pins_design` | A certificate issued for a session with a design pins that template's latest PUBLISHED version and its scheme. |
+| `RPC-issue_certificate.no_design_is_default_light` | With no design, the org's default of the family, else the platform's, and `light` — every certificate before this file. |
+| `RPC-issue_certificate.no_check_in_when_removed` | Kept from 0088: a late job for a removed check-in raises `no_check_in`. |
+| `RPC-redesign_held_certificates.held_only` | Re-pins the HELD certificates of a kind to the current design and re-enqueues each render with 11 §2.5's key; issued and revoked ones are untouched; audited; a moderator is refused. |
+| `RPC-record_certificate_document.follows_the_pin` | The certificate's document follows its pinned version, so a redesigned held certificate is not refused by the locked-region guard. |
+| ★ **wave 9 (`DEC-150`), migration `0100`** — a session's days (`ENT-session_days`, `DEC-119`): the entity, the two-way derivation of `sessions.starts_at` / `ends_at` / venue, check-in per day, content scoped to a day |
+| `POL-session_days.read_follows_session` | A member reads a day exactly when they can read its session: a published session's days are visible to the org, a draft's only to staff and its presenters; another org's never; `anon` is refused. |
+| `POL-session_days.no_direct_write` | `authenticated` holds no insert, update or delete on `session_days` (42501), and `service_role` holds nothing at all (invariant 7); every write is a definer RPC, as for every scheduling column since `0010`. `resolve_session_day()` is executable by no client role. |
+| `POL-session_days.single_day_follows_session` | A write to a session's own window or venue creates, moves or removes its one day while it has at most one — the same day id throughout; with `kareem.days_writer` on, or with several days, it does not. |
+| `POL-session_days.session_follows_days` | A day write re-derives the session's window (first start, last end), its venue (the first day's) and every day's `position` (chronological rank). ★ An equal value writes nothing — the session's row version is unchanged, so no notice, re-render or reschedule fires on a no-op. |
+| `POL-session_days.consistent_at_commit` | At commit a session with days stores its derived window and venue (`session_window_not_derived`), and a session at `published` or beyond has a day (`session_without_days`); `23514`, whatever `kareem.days_writer` says. The last day of a published session cannot be removed. |
+| `POL-session_days.no_overlap` | Two days of one session cannot overlap (`23P01`) — back to back is allowed, the range is `[start, end)` — and a day ends after it starts (`23514`). |
+| `POL-check_ins.day_derived` | `check_ins.session_day_id` and `session_window` are derived on insert — the code's day first, else `resolve_session_day()`: the day whose window to `ends_at + 2 h` holds the instant (the later-started of two), else the latest day begun, else the first — and the window is THE DAY'S. No day: `session_not_scheduled`, `23514`, as before. |
+| `POL-check_ins.one_active_per_day` | One active check-in per member per DAY (`23505`, never `23P01` — `0087`'s creation order is kept); a second day of the same session is a second row. `REQ-CHK-013`'s exclusion compares DAY windows, so a talk on Tuesday does not collide with a workshop that meets Monday and Wednesday. A day that holds attendance cannot be deleted (`23503`). |
+| `POL-content.day_of_own_session` | `materials`, `session_tasks` and `photos` may name a day only of their own session (`23503`); existing content is session-scoped (null) and adding a day re-scopes nothing; deleting a day sets the column null — the content is promoted to the session, never deleted (`DEC-121`). |
+| `POL-tasks.never_read_by_check_in` | `REQ-TSK-002`, enforced: no function names both a task table and anything of check-in, attendance or the day; no policy on a check-in table or on `session_days` names a task table; no trigger joins the two. The TypeScript half walks the check-in import graph (`tests/unit/tasks-never-read-by-check-in.test.ts`). |
+| ★ **wave 9, sync 1 (`DEC-151`), migration `0101`** — the day's check-in switch, the ceiling capped by the next day, one calendar entry per day |
+| `POL-session_days.switch_born_with_session` | A day created for a legacy writer of the session's window carries the session's `check_in_open` — a session inserted closed never has a day born open; an existing day's switch is not touched by a later write to the session's window. |
+| `RPC-check_in_ceiling.capped_by_next_day` | A day's check-in ceiling is `least(ends_at + 2 h, the next day's starts_at)`; with no next day it is `ends_at + 2 h`, exactly a one-day session's ceiling. Executable by no client role (`service_role` holds it for the worker's `rotate_codes` query). |
+| `RPC-resolve_session_day.windows_never_overlap` | With the cap, at most one day of a session holds any instant: between a 9–12 and a 13–16 day on one date, 12:30 is the morning and 13:00 and 13:30 are the afternoon. |
+| `POL-calendar_events.legacy_insert_gets_first_day` | A row inserted with no day — `main`'s `record_calendar_sync()` — is given its session's first day, so a null day only ever means «the day was deleted» or «the session has none». |
+| `POL-calendar_events.day_of_own_session` | A calendar row may name a day only of its own session (`23503`); deleting the day sets the column null and KEEPS the row with its `provider_event_id`, so the provider event can still be removed. `unique (member_id, session_day_id)` holds beside `unique (member_id, session_id)`, which leaves in the same file as the function that names it in `on conflict`. |
+| ★ **wave 9 (`DEC-151`), migration `0102`** — contract 5: what a check-in earns is decided in two functions of `scoring`'s, with `main`'s exact behaviour |
+| `RPC-attendance_recorded.definer_only` | No client role can call it; only `service_role` and the function owner (so `check_in()` and `mark_checked_in_manually()`, both definer, can). |
+| `RPC-attendance_removed.definer_only` | The same. |
+| `RPC-attendance_recorded.enqueues_award` | A recorded attendance enqueues exactly one `award_points` job, task `award_points`, key `pts:check_in:<check_in id>`, payload `{rule:'check_in', member_id, source:'check_in', source_id:<check_in id>, session_id}` — byte for byte what `check_in()` enqueues on `main`. |
+| `RPC-attendance_removed.reversal` | One compensating `reversal` row per not-yet-reversed `check_in`/`attendee_bonus` award keyed to that check-in: `-amount`, reason «أُلغي تسجيل الحضور», key `reversal:<ledger id>:v1`. A second call writes no second row. |
+| `RPC-attendance_removed.no_show_symmetry` | A removed check-in whose member holds a confirmed RSVP awards the `no_show` rule under `evaluate_no_shows`' own key; a member with no confirmed RSVP earns no such row. |
+| `RPC-attendance_hooks.terminal_row` | Either function called with a check-in id that no longer exists returns silently — the terminal-row pattern (DEC-059), never an exception into an admin's transaction. |
+| ★ **wave 9 (`DEC-152`), migration `0103`** — a SECURITY fix: the private core that mints a live check-in code was executable by `anon` since M2 (`0015` never revoked it) |
+| `RPC-_issue_check_in_code.not_public` | The private core that mints a live check-in code is executable by NO client role — `anon`, `authenticated` and `service_role` are each refused 42501; its three definer callers still work. |
+| `RPC-definer.anon_allowlist` | The SECURITY DEFINER, non-trigger functions `anon` may execute are EXACTLY the documented six; a new one fails the suite until it is either revoked or added to the list with its reason. |
+| ★ **wave 9 (`DEC-151`), migration `0104`** — `sessions.check_in_open` is the shadow of its days' switches, and only a writer of the SESSION's column reaches the days |
+| `POL-check_in_open.shadow_is_bool_or` | `sessions.check_in_open` equals `bool_or` of its days: closing the only open day closes the session's shadow, reopening any day opens it. |
+| `POL-check_in_open.reopening_one_day_opens_only_that_day` | ★ Three closed days; reopening day 2 leaves days 1 and 3 closed, and flips the session's shadow to open. The defect this file exists to prevent. |
+| `POL-check_in_open.session_write_carries_to_every_day` | A writer of the session's own column — `transition_session()`'s early completion or cancellation, or a fixture's direct `update` — closes every day of the session. |
+| `POL-check_in_open.one_day_is_identical` | At one day the pair moves together in both directions, and `set_check_in_open()` returns a session row carrying the day's value. |
+| ★ **wave 9 (`DEC-151`), migration `0105`** — contract 4: check-in moves to the day — eight RPCs, each keeping `p_session` and gaining a trailing `p_day` |
+| `RPC-check_in.day_from_code` | A live code names the day it was minted for, and only while that day is taking attendance; a code of any other day of the same session — one not yet begun, or one whose ceiling has passed — is `invalid_code`, never a disclosure that it was real. |
+| `RPC-check_in.already_checked_in_per_day` | A member checked into day 1 checking into day 2 succeeds; a second attempt on day 2 returns `already_checked_in` for day 2's row. |
+| `RPC-check_in.rate_limit_per_day` | Ten attempts against day 1 do not consume day 2's stream (REQ-SES-015: «its own rate-limit stream»); at one day every attempt of the session is that day's. |
+| `RPC-check_in.day_window` | The floor is the day's start, the ceiling `check_in_ceiling()`; after day 2's ceiling with day 3 still ahead the answer is `session_ended`, and the envelope status is the one main returns. |
+| `RPC-check_in.day_switch` | Closing day 2's switch refuses day 2 with `check_in_closed` and leaves day 3 open. |
+| `RPC-check_in.overlap_compares_days` | Three check-ins across three days of one session are all accepted (their windows are disjoint); a check-in overlapping ANOTHER session's day is refused `overlap` naming it. |
+| `RPC-ensure_check_in_code.per_day` | The host view of day 2 gets day 2's code; issuance is refused `not_open` outside that day's floor/ceiling even while day 3 is ahead. |
+| `RPC-_issue_check_in_code.not_callable` | ★ The private core is executable by no client role — a member calling it directly is refused `42501` instead of being handed a live code. |
+| `RPC-revoke_check_in_code.per_day` | Revoking on day 2 revokes day 2's code and issues day 2's replacement; day 3 has none and is unaffected. |
+| `RPC-mark_checked_in_manually.day` | An admin marks a member present on day 1 while day 3 is running; a future day is refused `not_open`; a moderator is still bound by that day's floor and ceiling. |
+| `RPC-remove_check_in.day` | Removing day 2 leaves days 1 and 3 standing; removing a member with no active check-in on that day is `not_found`. |
+| `RPC-set_check_in_open.day` | The switch moves the day's column; the audit row still names the SESSION and carries the day in its payload; the returned session row carries the recomputed shadow. |
+| ★ **wave 9 (`DEC-151`), migration `0106`** — contract 3: `schedule_session()` writes a day set, matched by `id`; a null `p_days` is `main`'s call exactly; `publish_session()` names a gap per day |
+| `RPC-schedule_session.days_null_is_today` | `p_days => null` writes the session once and nothing else: one `session.scheduled` row, one notice, and `0100`'s trigger A carries the window onto its one day. Byte-identical to `0085`. |
+| `RPC-schedule_session.days_written` | `p_days` replaces the session's day set: entries with an `id` are updated, entries without one inserted, stored days left out deleted. `position` is never written by the caller — `0100` derives it. |
+| `RPC-schedule_session.days_derive_the_session` | With `p_days`, the session's stored window is the first day's start and the last day's end and its venue is the first day's, written ONCE — `sessions_notify` fires exactly once for the whole change. |
+| `RPC-schedule_session.days_required` | A `null` `p_days` on a session that already has more than one day is refused `days_required` (23514), by name, rather than left to `0100`'s commit check. |
+| `RPC-schedule_session.day_has_attendance` | A day left out of `p_days` that holds a check-in — removed or not — is refused `day_has_attendance: <position>` (23514) before anything is written. |
+| `RPC-schedule_session.days_refusals` | `days_empty`, `days_too_many`, `days_invalid`, `day_window_invalid`, `days_overlap`, `day_repeated` (23514) and `day_not_of_session` (42501) are each raised by name, before the first write. |
+| `RPC-schedule_session.day_venue_rules` | A day names the org's venue OR the inline trio, never both and never a name without an address, and never another org's or a deactivated venue. |
+| `RPC-schedule_session.require_all_days` | `p_require_all_days` sets `sessions.require_all_days`; `null` leaves it exactly as it was, as `p_allow_walk_ins` does (DEC-141 correction B). |
+| `RPC-publish_session.missing_days` | Publishing a session with no day names `days`; a day after the first with no place names `day:<position>:venue`. A one-day session's `missing[]` is unchanged. |
+| ★ **wave 9 (`DEC-151`), migration `0107`** — contract 6: the one definition of «attended the session» for points and certificates, and the per-day reader behind it |
+| `RPC-session_attendance_complete.definer_only` | No client role can call it; only `service_role` and the function owner. |
+| `RPC-session_attendance_complete.every_day` | With `require_all_days` (the default), an active check-in on EVERY day is required: one missing day, or one removed check-in, makes it false. |
+| `RPC-session_attendance_complete.any_day` | With `require_all_days = false`, an active check-in on ANY day makes it true. |
+| `RPC-session_attendance_complete.one_day_equals_has_checked_in` | On a one-day session the predicate agrees with `has_checked_in()` for that member, in both directions and under both settings. |
+| `RPC-session_attendance_complete.no_days` | A session with no days is false under both settings — never vacuously true. |
+| `POL-session_attendance.reader` | A member reads their own per-day rows; staff and the session's presenter read any member's; another ordinary member sees every day with `attended` false and learns nothing. |
+| ★ **wave 9 (`DEC-153`), migration `0108`** — certificates follow attendance: eligibility reads contract 6's predicate in all three places, and contract 5's third hook keeps a member's certificate in step |
+| `RPC-fan_out_certificates.complete_attendance` | At completion an attendance certificate is fanned out to each member contract 6's predicate holds for — once per member, never once per check-in; a member who attended two days of three gets none; with `require_all_days = false` one day is enough. At one day: every active check-in, as before. |
+| `RPC-issue_certificate.complete_attendance` | A late job for a member whose attendance is not complete raises `no_check_in` (42501), the error a member who never came raises; the certificate's `check_in_id` is the member's latest active check-in. |
+| `RPC-attendance_certificate_sync.revokes_whichever_day` | Removing ANY day's check-in from a member holding a live attendance certificate revokes it, with the fixed phrase, whichever check-in the certificate names. |
+| `RPC-attendance_certificate_sync.issues_when_completed_late` | A member whose attendance becomes complete after the session completed gets the issue job under `cert:<session>:<member>:attendance`; not while the session is still running, not with certificates off, and not when a certificate row already exists — a revoked one included (wave 7's carry). |
+| `RPC-attendance_certificate_sync.never_fails_a_check_in` | Called from a member's own check-in it raises nothing, whatever the state of the session or of their attendance. Executable by no client role. |
+| `RPC-session_complete_attendees.staff_only` | Staff of the session's org read the members whose attendance is complete; a member is refused 42501, another org's staff read nothing. |
+| ★ **wave 9 (`DEC-151`), migration `0109`** — contract 8: one calendar entry per day, under the reservation's existing job key; the old `unique (member_id, session_id)` leaves in the same file as the function that named it |
+| `RPC-record_calendar_sync.per_day` | One row per member per DAY: running it twice for one
+| `RPC-record_calendar_sync.legacy_call_gets_first_day` | `main`'s six-argument call resolves to
+| `RPC-calendar_sync_target.days_and_orphans` | The target carries one entry per day with that
+| `RPC-record_calendar_event_removed.worker_only` | Only the worker may mark an orphaned row
+| `RPC-resync_calendars.definer_only` | No client role may fan calendar jobs out across an org. |
+| ★ **wave 9 (`DEC-151`), migration `0110`** — contract 8: reminders fire per day — an offset for day `k` only when its moment falls after day `k − 1` ended — and a key set that can shrink |
+| `RPC-schedule_session_reminders.per_day` | A confirmed seat on a three-day session holds one
+| `RPC-schedule_session_reminders.offset_after_previous_day` | An offset fires for day `k` only
+| `RPC-cancel_unlisted_reminders.sweeps` | Every pending reminder of a session that the
+| `RPC-cancel_member_reminders.every_day` | Cancelling a seat removes that member's keys for
+| `RPC-send_reminder_notification.day_scoped` | The reminder names the DAY's moment and the
+| ★ **wave 9 (`DEC-151`), migration `0111`** — contract 11: `session_days_changed()` announces a changed day set once and names the day; under `kareem.days_writer` `sessions_notify()`'s change branch stands down for it |
+| `RPC-session_days_changed.names_the_day` | Moving day 2 of a three-day session — which moves
+| `RPC-session_days_changed.once_per_transaction` | However many statements a day-aware writer
+| `RPC-session_days_changed.day_added_or_removed` | A day added to or removed from a published
+| `RPC-session_days_changed.definer_only` | No client role may notify a session's members. |
+| `POL-sessions.change_notice.days_writer_stands_down` | `sessions_notify()` does not announce a
+| ★ **wave 9 (`DEC-151`), migration `0112`** — contract 11's call site: a day-aware `schedule_session()` calls `session_days_changed()` once, after its last day write — promoted WITH `0111`, because either alone announces nothing |
+| `RPC-schedule_session.announces_the_day_set` | A day-aware save calls `session_days_changed()` exactly once, after its last day write, with the whole day set before and after — so moving day 2 of a three-day workshop, which moves no column of `sessions`, still reaches every confirmed member. |
+| `RPC-schedule_session.days_null_announces_nothing` | A `null` `p_days` does not call it: main's path announces through `sessions_notify()` as it always has. |
+| ★ **wave 9 (`DEC-151`), migration `0113`** — `REQ-SES-017`: the attendance award moves to completion for a session with several days, decided from two facts under a lock; one day is unchanged |
+| `RPC-evaluate_member_attendance.awards_once` | Complete and nothing standing awards exactly one attendance row; run again it writes nothing, whatever the epoch has become. |
+| `RPC-evaluate_member_attendance.reverses_when_incomplete` | Not complete with one standing writes exactly one compensating `reversal`, with the caller's reason. |
+| `RPC-evaluate_member_attendance.no_double_pay_on_new_epoch` | A new active check-in appearing while an award stands writes nothing — the `require_all_days = false` double-pay. |
+| `RPC-evaluate_member_attendance.no_double_pay_on_replay` | Removing the epoch check-in while the predicate still holds, then replaying the completion pass, writes nothing. |
+| `RPC-attendance_recorded.one_day_pays_at_check_in` | On a one-day session the hook enqueues main's job, under main's key, with main's payload. |
+| `RPC-attendance_recorded.multi_day_waits` | On a multi-day session before completion the hook enqueues nothing, whatever days have been attended. |
+| `RPC-attendance_recorded.after_completion_evaluates` | A member marked present after completion is evaluated at once, which is what pays a re-added member. |
+| `RPC-evaluate_session_attendance.one_award_per_member` | A three-day workshop attended in full pays one attendance award, not three. |
+| `RPC-evaluate_session_attendance.reverses_added_day` | A one-day award, then a second day added and missed, is reversed at completion with «لم يكتمل حضور جميع الأيام». |
+| `RPC-award_points.requires_attendance_complete` | A late `award_points('check_in', …)` for a member who did not attend every day writes nothing. |
+| `RPC-award_points.skips_when_award_standing` | The same call with an attendance award already standing for that session writes nothing. |
+| `RPC-attendance_removed.no_show_only_when_none_left` | Removing one day of three records no `no_show`; removing the last active one does. |
+| `RPC-attendance_removed.reverses_presenter_bonus_by_member` | The presenter's `attendee_bonus` for an attendee who no longer qualifies is reversed even when it is keyed to a different day's check-in. |
+| `RPC-evaluate_streaks.counts_sessions_not_check_ins` | Three check-ins on one workshop count as one session toward a streak. |
+| `RPC-evaluate_badges.counts_sessions_not_check_ins` | The same for the `check_ins_count` badge metric. |
+| `RPC-evaluate_company_points.counts_members_not_check_ins` | A company's attendance share counts distinct members, and excludes a removed check-in (named difference 2). |
+| ★ **wave 9 (`DEC-151`), migration `0114`** — `REQ-SES-017`: the member can see which day was missed — a reader that answers only about its caller |
+| `RPC-missed_attendance_days.self_only` | The function takes no member and reads the caller's own claims; a member cannot ask about anyone else, and `anon` cannot call it at all. |
+| `RPC-missed_attendance_days.multi_day_only` | A one-day session never appears, whatever the member did or did not attend. |
+| `RPC-missed_attendance_days.names_the_missed_day` | A three-day workshop attended on days one and three returns exactly day two, with its position and its start. |
+| `RPC-missed_attendance_days.silent_when_complete` | A workshop attended in full returns nothing — there is nothing to explain. |
+| ★ **wave 9 (`DEC-151`), migration `0115`** — `DEC-121`: content is scoped by where it was added — three re-scope doors, and a photo takes the day its upload moment falls in (null while the session has one day) |
+| `RPC-rescope_material.authority` | Staff, or the session's own presenter, may move a material between the session and one of its own days; anyone else is refused `42501`. A proposal's own material (no session) is refused `not_found`. |
+| `RPC-rescope_material.day_of_own_session` | A day naming another session is refused `day_not_of_session` (`23503`) before the update is attempted. |
+| `RPC-rescope_material.audited` | Every successful call writes one `material.rescoped` audit row naming the old and new `session_day_id` — REQ-MAT-006's visibility fix (0052 already audits a phase change for the same reason). |
+| `RPC-rescope_task.authority` | Staff, or the session's own presenter, may move a task; anyone else is refused `42501`. No audit row — REQ-TSK-002 makes a task's scope carry no visibility rule for one to protect. |
+| `RPC-rescope_photo.authority` | Staff alone may move a photo; a presenter who is not staff is refused `42501` — a photo has no presenter-write concept (`photos_insert_checked_in`, 03 §5.6c). No audit row. |
+| `RPC-record_photo_upload.day_from_upload_moment` | With more than one day, the photo is scoped to the day whose window contains `p_uploaded_at`, falling back to the day whose nearer edge (start or end) is closest to it. With at most one day, `session_day_id` stays null (DEC-121: a one-day session's content is session-scoped, which is what makes "adding a second day re-scopes nothing" true). |
+| `RPC-initiate_photo_processing.enqueues_uploaded_at` | The enqueued `process_photo` payload carries `uploaded_at`, the instant of THIS call — not the worker's own, later clock. |
+| ★ **wave 9 (`DEC-151`), migration `0116`** — `REQ-MAT-006` as amended: `phase` is relative to the scope — in all FIVE policies that carry the rule, table and storage alike |
+| `POL-materials.day_scoped_after_release` | A day-scoped «بعد» material is visible once ITS OWN DAY has ended, even if the session as a whole has not yet completed. |
+| `POL-materials.day_scoped_after_release_on_early_completion` | A day-scoped «بعد» material is ALSO visible once the session reaches `completed`/`archived`, whether or not its own day has ended — an early completion never leaves it hidden forever. |
+| `POL-storage.materials.day_scoped_after_release` | The storage twin releases the same object at the same two moments. |
+| `POL-material_versions.day_scoped_after_release` | The version row a released day-scoped material's `current_version_id` points at is readable the same two moments — otherwise `getViewerData()` finds a material but no version. |
+| `POL-material_pages.day_scoped_after_release` | A released day-scoped material's rendered page rows are readable the same two moments. |
+| `POL-storage.material_pages.day_scoped_after_release` | The page-image objects in the `material-pages` bucket are readable the same two moments — otherwise the viewer shows a page count with no images. |
+| ★ **wave 9, sync 3, migration `0117`** — `session_day_place()` is the worker's, not a member's — `notify` closing the same class of hole it had copied a grant into |
+| `RPC-session_day_place.definer_only` | No client role may execute it; it exists for
+| ★ **wave 9, sync 3, migration `0118`** — the public card says how many days a session has — `anon` cannot read `session_days`, so the count travels in the card's own row |
+| `POL-sessions.public_card.day_count` | The public card's row carries the number of days of the session, for `anon` and `authenticated` alike. No policy changes and `session_days` gains no grant: the count comes from the definer function, never from the table. |
+| ★ **wave 9, sync 3, migration `0119`** — `DEC-152`'s low finding closed: `session_venue_label()` revoked from members, after every caller was verified to be a definer function |
+| `RPC-session_venue_label.not_for_members` | A member calling `session_venue_label()` with another org's venue uuid is refused 42501 rather than handed its name; every notice, reminder and calendar payload still carries the venue, because their definer callers run as the owner. |
+| ★ **wave 9, sync 3, migration `0120`** — contract 5's call sites: `check_in()`, `mark_checked_in_manually()` and `remove_check_in()` call the three hooks and decide nothing about points or certificates |
+| `RPC-check_in.calls_attendance_recorded` | A code check-in enqueues exactly one `award_points` job under `pts:check_in:<check_in id>` — through the hook, and the source of all three functions names no points primitive. |
+| `RPC-mark_checked_in_manually.calls_attendance_recorded` | A manual mark enqueues the same one job under the same key, so REQ-CHK-008's «the same rights as a code check-in» is one call site each rather than two blocks kept in step. |
+| `RPC-remove_check_in.calls_attendance_removed` | A removal writes one compensating row per unreversed award and the no-show row, through the hook; a second removal of the same check-in is refused and writes no second row. |
+| `RPC-remove_check_in.certificate_revoked_through_the_hook` | An issued attendance certificate is still revoked when a removal makes attendance incomplete — now through `attendance_certificate_sync()` rather than a `check_in_id` lookup, and still with only the fixed phrase «أُلغي تسجيل الحضور» reaching it. |
+| `RPC-check_in.certificate_synced` | A check-in on a session that is already `completed` reaches the same hook, so a member recorded after the fact becomes eligible rather than being silently skipped (named difference 3). |
+| `RPC-checkin_functions.decide_nothing` | ★ The source of `check_in()`, `mark_checked_in_manually()` and `remove_check_in()`, comments stripped, names none of `points_ledger`, `award_points`, `enqueue_job`, `certificates`, `revoke_certificate` — nor any of `REQ-TSK-002`'s three task tables. |
+| ★ **wave 9, sync 3, migration `0121`** — the presenter's attendee bonus is decided in SQL (`DEC-157`), so `main`'s OLD worker — which runs on this schema between the merge and Railway's redeploy — cannot over-pay an append-only ledger |
+| `RPC-award_points.attendee_bonus_epoch_only` | An `attendee_bonus` call naming any active check-in other than that attendee's epoch writes nothing — so `main`'s old per-check-in loop pays a three-day workshop's presenter ONE bonus per attendee, not three. |
+| `RPC-award_points.attendee_bonus_requires_complete` | An `attendee_bonus` call for a partial attendee writes nothing, even when it names that attendee's own latest day. |
+| `RPC-award_points.attendee_bonus_one_day_unchanged` | On a one-day session every call that writes a row today still writes it, with the same amount and the same key. |
+| `RPC-award_points.attendee_bonus_skips_silently` | Every refusal above returns normally — `main`'s loop must never throw part-way through a session. |
+| ★ **wave 9, sync 4, migration `0122`** — the public card is given its day windows (`DEC-157`), so `sessionPhase()` stays the one implementation and the card stops saying «جارية الآن» between two days |
+| `POL-sessions.public_card.day_windows` | The public card's row carries one `{ starts_at, ends_at }` per day, ordered, for `anon` and `authenticated` alike — enough for `sessionPhase()` and nothing more. No day id, no position, no venue; `session_days` gains no grant. |
+| `POL-sessions.public_card.one_day_unchanged` | A one-day session returns a one-element array, which `betweenDays()` has no pair to walk — the card's phase is what it has always been. |
+| ★ **wave 10, migration `0123`** — recognition edits are recorded (`DEC-160`, row L9): the four recognition tables get the history trigger every other configuration table has carried since `0004` and `0027` |
+| `POL-badges.history` | An admin's edit of a badge appends one `scoring_config_history` row per changed column (`scope = 'badges'`), retiring included; a custom badge's creation appends one `created` row; a save that changes nothing appends none; the org's seed appends none. |
+| `POL-levels.history` | An admin's edit of a level appends one row per changed column (`scope = 'levels'`), with the old and the new threshold. |
+| `POL-perks.history` | An admin's edit of a perk appends one row per changed column (`scope = 'perks'`). |
+| `POL-streak_rules.history` | An admin's edit of a streak rule appends one row per changed column (`scope = 'streaks'`). |
+| `POL-recognition.history.no_forgery` | A moderator's refused edit appends nothing; another org's history is untouched; no client role — the admin included — can insert a history row directly (`42501`). |
+| ★ **wave 10, migration `0124`** — the survey's tables (`DEC-160` §3, `DEC-161`): six authoring tables staff read, and a register and a box no client role reads. Tables only; each row below is proven by `event`'s suites at the promotion of its functions |
+| `POL-survey_templates.staff_read` | Staff of the org read its templates, questions and options; a plain member and the other org's staff read none; no client role writes any of the three directly. |
+| `POL-surveys.staff_read` | Staff of the org read a session's survey, its questions and options; a plain member, the session's presenter as such, and the other org's staff read none; no client role writes directly. |
+| `POL-survey_participations.no_client_select` | RLS enabled, no policy, no grant: `anon`, a member, the presenter, a moderator, an admin and `service_role` are each refused `42501`. |
+| `POL-survey_responses.no_client_select` | The same, for the box. |
+| `POL-survey_answers.no_client_select` | The same, for the answers. |
+| `POL-survey.structure` | Generated over the catalogue: no member, check-in, rating or timestamp column on `survey_responses` or `survey_answers`; no timestamp column on `survey_participations`; no foreign key from a response or an answer to `members`. |
+| `POL-org_settings.survey_min_responses.floor` | The minimum cannot be set below 3 by any role. |
+| ★ **wave 10, migration `0125`** — a notification template may carry blocks, on its own row (`DEC-161`): no table of shared designs, so one trigger polices one key's bindings and `body` cannot go stale |
+| `POL-notification_templates.blocks.shape` | `blocks` is null or an object carrying `schemaVersion` and an array `blocks`; anything else is refused `23514`, for every writer. `source_family` without `blocks` is refused. |
+| `POL-notification_templates.blocks.admin_only` | An admin of the org writes `blocks` and `source_family` on its own rows through the existing policies; a moderator, a member and the other org's admin cannot. |
+| ★ **wave 10, migration `0126`** — an active org's logo, readable with no session (`DEC-161`, contract 9): a mail client fetches months later with no cookie, and every app-minted URL for `design-assets` is a five-minute signature. `0080`'s shape, for one more object |
+| `POL-storage.design_assets.public_logo` | `anon` reads exactly the object an ACTIVE org's `brand_kits.logo_asset_id` names, while it is PNG or JPEG. Refused: any other design asset of the same org; the same org's logo while it is WebP (Outlook draws none); a suspended org's logo; a logo the org has since replaced or cleared. A signed-in member of ANOTHER org sees what a stranger sees. `anon` writes and deletes nothing. |
+| `RPC-org_public_logo.path_only` | Returns the storage path and the SNIFFED content type of that one object, or no row — for `anon`, `authenticated` and the worker. It reveals nothing a caller could not learn by fetching the object. |
+| `RPC-definer.anon_allowlist` (amended) | The `anon`-executable definer functions are exactly the documented nine: `0080`'s two, `verify_certificate`, the three that answer about the caller, `0126`'s two, and `0140`'s `resend_webhook` — which authenticates its own input. |
+| ★ **wave 10, migration `0127`** — `designer` — certificates re-issued (`DEC-160` §6, `DEC-161`): a removal's revocation may be replaced under the next serial, an admin's revocation for cause never is; the lead's DDL inside it (contract 10) |
+| `POL-certificates.live_once` | A second LIVE certificate for one (org, session, member, kind) is refused 23505 by `certificates_live_once`; a second REVOKED row is accepted, which is what lets a re-issue keep the first one on the register. |
+| `RPC-issue_certificate.replacement_after_removal` | A member whose certificate was revoked BY A REMOVAL, then re-added, is issued a second certificate under the NEXT serial; its `check_in_id` is the new check-in; the first keeps its serial and still verifies as revoked, without its reason. |
+| `RPC-issue_certificate.no_replacement_after_for_cause` | A certificate revoked FOR CAUSE is never replaced — not by the sync hook, not by a re-run fan-out, not by a late job. `issue_certificate()` raises `revoked_for_cause` (42501) BEFORE `allocate_serial()`, so the org's serial counter does not move. |
+| `RPC-revoke_certificate.records_its_cause` | Every revocation records why it happened: the removal path passes `attendance_removed`, every other caller takes `for_cause`. A revocation written before this file reads as `for_cause` — final — through `coalesce`. |
+| `RPC-attendance_certificate_sync.reissues_after_removal` | Attendance complete again on a completed session with certificates on, holding only a removal-revoked certificate, enqueues the issue job under 11 §2.5's key; holding a for-cause-revoked one enqueues nothing; holding a LIVE one still enqueues nothing. |
+| ★ **wave 10, migration `0128`** — `designer` — `poster_render_context()` hands the worker a session's days, by `position`; no new binding, so any document version renders on any runtime (`DEC-161`, defect 1) |
+| `RPC-poster_render_context.days` | The render context carries the session's days in `position` order — the database's derived rank, never a minimum or a maximum computed by a caller. At one day it is that one day, and every other column is `0082`'s, in `0082`'s order. Executable by `service_role` alone. |
+| ★ **wave 10, migration `0129`** — `content` — a proposal's own material (`DEC-155`'s carry): the three policies that `inner join sessions` admit it for its owner and for staff |
+| `POL-material_versions.proposal` | The version row of a proposal's own material is readable by its proposer, an accepted co-presenter, and staff — never a plain member — the same audience `materials_read`'s proposal branch already admits at the row. |
+| `POL-material_pages.proposal` | Same audience, for a proposal-owned material's page rows — in practice always empty, since no page is ever rendered before carry-over. |
+| `POL-storage.material_pages.proposal` | The page-image bucket's own copy of the same rule. |
+| ★ **wave 10, migration `0130`** — `event` — `ratings` holds no instant finer than a day (`DEC-160` §3.4): a coarsening trigger pinned to UTC, the backfill, the presenter's comments no longer in submission order |
+| `POL-ratings.day_precision.insert` | A rating written by a member is stored at midnight UTC — the instant it was written is not recoverable from the row. |
+| `POL-ratings.day_precision.update` | An edit coarsens `edited_at` too: `main`'s app writes it from JavaScript at millisecond precision, and the trigger covers `update` for exactly that reason. |
+| `POL-ratings.day_precision.backfill` | The rows that existed before this file are coarsened by it, and coarsening an already-coarsened row changes nothing. |
+| `POL-ratings.day_precision.no_award` | The backfill enqueues no `award_points` job: `ratings_award_points` is `after insert`, and this is an `update`. |
+| `POL-ratings.aggregate.comment_order` | The presenter's comment list is ordered by the rating's random id, never by submission: submission order is itself a disclosure to a presenter who watched people leave. |
+| ★ **wave 10, migration `0131`** — `event` — `rating_window_open()`: the one SQL definition of «completed, and inside the window», called by both rating policies and by the survey's submit |
+| `RPC-rating_window_open.completed_and_inside` | True for a completed session inside `rating_window_days`; false before completion and false the day after the window closes. |
+| `RPC-rating_window_open.other_org` | False for a session of another org, whatever its state — the function answers about the CALLER's org only. |
+| `RPC-rating_window_open.not_public` | `anon` cannot execute it; `authenticated` can. |
+| `POL-ratings.insert.window` | The re-created insert policy still accepts a rating inside the window and refuses one past it — the rule moved into a function, not out of the policy. |
+| `POL-ratings.update.window` | The re-created update policy still refuses an edit past the window. |
+| ★ **wave 10, migration `0132`** — `event` — the survey's authoring half: templates saved whole, attach copies, detach refused once anyone has answered; attach and detach audited |
+| `RPC-survey_template_save.staff_only` | A member is refused `not_authorized`; an admin and a moderator both succeed; a stale admin is refused `stale_claims`. |
+| `RPC-survey_template_save.whole_set` | Saving replaces the whole question set in the array's order: positions are 1…n and are never read from the client. |
+| `RPC-survey_template_save.shapes` | A choice question with fewer than two options, an empty prompt, an unknown kind and options on a non-choice question are each refused by name, with the question's index — and nothing is written. |
+| `RPC-survey_template_save.title_taken` | Two templates of one org cannot share a title; the refusal is an envelope, not a constraint error. |
+| `RPC-survey_template_save.other_org` | A template of another org is `not_found`, never edited. |
+| `RPC-survey_attach.copies` | Attaching copies the template's questions and options into the session's own rows: editing the template afterwards changes nothing that was attached. |
+| `RPC-survey_attach.one_per_session` | A second attach to the same session is refused by name; an empty template is refused before anything is written. |
+| `RPC-survey_attach.audited` | Attach and detach each write one `audit_log` row naming the session and the survey. |
+| `RPC-survey_detach.has_responses` | Once one member has answered, detaching is refused and the survey stands. |
+| ★ **wave 10, migration `0133`** — `notify` — bindings declared per message key and refused by the database for every writer (`REQ-NTF-012`), inside blocks too; `0026`'s three rules verbatim |
+| `RPC-notification_bindings.total` | Every message with an email channel offers at least the three the renderer injects; no key offers a binding twice. |
+| `RPC-notification_bindings.defaults_are_legal` | Every binding the built-in Arabic templates interpolate is offered by the key that uses it — the platform's own text cannot be refused by the rule the platform ships. |
+| `POL-notification_templates.unknown_binding` | A template whose subject, body or blocks reference a binding the key does not offer is refused `22023`, as the org admin — the writer the screen uses — and as the owner. |
+| `POL-notification_templates.blocks_bindings` | The scan reaches INSIDE `blocks`: a paragraph's `{{…}}`, a button's `urlBinding` (a bare name, not a placeholder), a detail row's label and value, an image's `alt`. |
+| `POL-notification_templates.in_app_unchecked` | An `in_app` row is not subject to the binding rule: nothing reads one (`notification_send_context` filters `channel = 'email'`), and its key may have no email channel and so no declared bindings at all. |
+| ★ **wave 10, migration `0134`** — lead — corrects `0125`: an object with no `blocks` key is refused (a CHECK rejects only on FALSE) |
+| `POL-notification_templates.blocks.shape` | … an object with `schemaVersion` and NO `blocks` key is refused `23514` too. |
+| ★ **wave 10, migration `0135`** — lead, as `platform`'s custodian — the PDPL self-export lists the surveys a member answered (`REQ-PRF-006`, `REQ-SUR-009`, `DEC-160` §3) |
+| `RPC-build_data_export_payload.surveys_answered` | `surveys_answered` lists, for the member alone, the sessions whose survey they took part in — by title, each entry carrying that one key and so no instant, ordered by title and never by insertion. |
+| `RPC-build_data_export_payload.surveys_no_answers` | No answer text and no question prompt appears anywhere in the archive: there is no path from a member to a stored response. Every key `0088` returned is still returned, and `surveys_answered` is the only addition. |
+| ★ **wave 10, migration `0136`** — `notify` — what one send needs to render a design: the template's blocks, and whether the mail may carry the session card's image (`REQ-NTF-009`, `REQ-NTF-014`, contract 8, `DEC-162` §3) |
+| `RPC-notification_send_context.blocks` | The `template` object carries `blocks` — null for a string template, the stored document otherwise — so the worker renders a design without a second read. |
+| `RPC-notification_send_context.card_image` | Given a session id, the context says whether `/api/s/{id}/og` will answer with BYTES — derived from `session_public_card()`, the function the route itself reads, never from a second copy of its predicate. False for a cancelled session, false for one whose poster has not finished rendering, false for another org's id however eligible, false — not an error — for an id that is no session. |
+| `RPC-notification_send_context.definer_only` | Unchanged after the drop and re-create: `anon`, `authenticated` and an org admin are all refused on the grant, because it returns another member's email address. |
+| ★ **wave 10, migration `0137`** — `event` — the one function that accepts an answer, the one that stores it, and what a member may read of a survey (`REQ-SUR-003`, `REQ-SUR-004`, `REQ-SUR-009`, `DEC-160` §3) |
+| `RPC-submit_survey_response.eligibility` | Exactly the members who may rate may answer: no check-in, a removed check-in, a session that has not completed and one past the window are each refused `not_eligible` with the reason. |
+| `RPC-submit_survey_response.agrees_with_rating_policy` | Across those situations the answer is `not_eligible` exactly when a rating insert is refused — the survey never admits someone the rating turns away. |
+| `RPC-submit_survey_response.second_submission` | A second submission is refused `already_answered`, read from the register by name, and enqueues nothing. |
+| `RPC-submit_survey_response.validates_before_writing` | A missing required question, an option of another question, a scale out of range and an unknown question are each refused naming the question ids — and no participation and no job are left behind. |
+| `RPC-submit_survey_response.enqueues_decorrelated` | One job, task `record_survey_response`, key NULL, `run_at` between 10 minutes and 4 hours ahead, payload `{response_id, survey_id, answers}` and nothing else. |
+| `RPC-submit_survey_response.no_audit` | The submit writes no `audit_log` row. |
+| `RPC-submit_survey_response.duplicate_option` | The same option sent twice on one question is stored once: the answer is normalised to one id at the door, so the partial unique index can never raise inside the job and lose the response. |
+| `RPC-submit_survey_response.empty_submission` | A submission with no answer at all writes NOTHING — no participation, no job — and the member who returns inside the window still finds the survey. |
+| `RPC-record_survey_response.service_role_only` | `anon`, a member, a moderator and an admin are all refused; the worker's role succeeds. |
+| `RPC-record_survey_response.replay` | Running the same job twice writes one response — the id is in the payload and the insert is `on conflict do nothing`. |
+| `RPC-survey_for_member.no_survey` | A session with no survey answers `null` — nothing about a survey reaches a member who has none (REQ-SUR-001). |
+| `RPC-survey_for_member.audience` | It answers a member with an active check-in (or one who has already answered) and nobody else: a member who never attended cannot read a session's questions by its id. |
+| ★ **wave 10, migration `0138`** — `event` — the one function that releases results, under the withhold (`REQ-SUR-005` … `008`, `DEC-160` §3.3) |
+| `RPC-survey_results.staff_only` | An admin and a moderator read; a member is refused `not_authorized`; a stale admin is refused `stale_claims`; another org's session is `not_found`. |
+| `RPC-survey_results.presenter_refused` | ★ The session's presenter is refused — whatever their role. An admin who presented their own session is refused too (REQ-SUR-005 is about presenting, not about rank). |
+| `RPC-survey_results.withheld_below_minimum` | Below `survey_min_responses` nothing leaves: no mean, no distribution, no free text — and no response count either, because in a survey one person answered the register says who. |
+| `RPC-survey_results.withheld_per_question` | At or above the minimum, a question that FEWER than the minimum answered is withheld on its own while the rest are drawn — and its own answered count is withheld with it. |
+| `RPC-survey_results.withheld_hides_n` | In the withheld branch the eligible count is the ACTIVE ATTENDEE count alone: `greatest(attendees, responses)` would publish `n` itself whenever a check-in was removed after its member answered. |
+| `RPC-survey_results.drawn` | At the minimum: a scale question's count, mean and 1…5 distribution; a choice question's per-option counts in the authored order; free text as a list. |
+| `RPC-survey_results.free_text_order` | Free text comes back ordered by the answer's random id — never by insertion, which would be the order people answered in. |
+| `RPC-survey_results.response_rate` | The numerator is the stored responses and the denominator the session's active attendees; with no eligible attendee the count is zero and the caller says so rather than dividing. |
+| `RPC-survey_results.rate_never_exceeds_one` | A member whose check-in is removed AFTER they answered cannot be taken out of the box, so the denominator is `greatest(attendees, responses)` and the rate is never above 100 %. |
+| `RPC-survey_results.no_settings_fails_closed` | ★ An org with NO `org_settings` row still withholds — at one response and at two, read by an admin and by a moderator, the answer's sentence nowhere in the serialised payload; at three it draws, with `withheld` a boolean on every question (the floor is not a wall); and with `0124`'s check dropped and the minimum set to 1 it still withholds at 3 (the function does not lean on the constraint). The minimum falls back to the floor of 3 and is never lower than it. Without the fallback `v_min` is NULL, every guard compares with NULL, and one response's free text is released with `withheld` reading null — mutation-checked: the case reads `ok` against the unfixed function. |
+| ★ **wave 10, migration `0139`** — `notify` — «أرسل اختبارًا»: the rendered message to the signed-in admin's OWN address and no other (`REQ-NTF-011`; the role read from the members table, `assert_fresh_admin()`) |
+| `RPC-send_test_email.own_address_only` | The function takes NO address: `pg_get_function_identity_arguments` is exactly `p_key text, p_locale text`, and the queued job names the caller with no address in its payload, so «to the admin's own and to no other» is a property of the signature rather than of a check a caller could omit (migration `0139`). |
+| `RPC-send_test_email.admin_only` | A moderator and a member are refused `42501`; the org's admin succeeds (migration `0139`). |
+| `RPC-send_test_email.matrix_closed` | A key `08` §1 gives no email channel, a key not in the matrix at all, and an unknown locale are each refused `22023` — a test is not a way to send what the product does not send (migration `0139`). |
+| `RPC-send_test_email.rate_limited` | The eleventh call within an hour returns `{"status":"rate_limited"}` and writes nothing — ten audit rows, not eleven, because the limit precedes every write; another admin's calls do not count against this one's (migration `0139`). |
+| `RPC-send_test_email.audited` | One `notify.test_email_sent` row whose `after` is exactly `{key, locale}` and never an address — the actor is the recipient (migration `0139`). |
+| ★ **wave 10, migration `0140`** — `notify` — the bounce webhook, its Svix signature verified IN THE DATABASE against the vault's secret; `anon` may call it and it can only move a delivery row it names (`REQ-NTF-008`, `DEC-161` defect 5b) |
+| `RPC-resend_webhook.signature_required` | No signature, a wrong one, one made over different bytes, one under a different Svix id, and one from another secret are each `{"status":"rejected","reason":"signature"}` and move no row; a `whsec_` prefix on the stored secret is stripped; a header carrying several `v1,` values is accepted when one matches, so a rotation works (migration `0140`). |
+| `RPC-resend_webhook.replay_window` | A correctly-signed body older than five minutes is rejected `stale`, and so is one five minutes in the future — the window is symmetric because a signature is valid forever; a non-numeric timestamp is rejected rather than raised (migration `0140`). |
+| `RPC-resend_webhook.anon_granted` | `anon` holds the grant, because a provider webhook carries no session; the secret it verifies against is reachable only inside the definer body, and `anon` selecting `vault.decrypted_secrets` gets nothing (migration `0140`). |
+| `RPC-resend_webhook.moves_only_existing` | A verified body naming a message this deployment never sent returns `unknown_message` and creates no row; a bounce moves the row it names and lands `data.bounce.message` in `error`, which is `REQ-NTF-008`'s «with the reason» (migration `0140`). |
+| `RPC-resend_webhook.unconfigured_is_quiet` | With no `resend_webhook_secret` in the vault it returns `{"status":"unconfigured"}` rather than raising, so a deployment that has not set one answers 200 and the provider does not retry forever (migration `0140`). |
+| ★ **wave 10, migration `0141`** — `notify` — one session whose public card has rendered, for the two surfaces that carry sample data (the preview and the test send), asking `session_public_card()` rather than copying its rule (`REQ-NTF-010`, contract F3) |
+| `RPC-preview_card_session.own_org_only` | An authenticated caller naming another org is refused `42501`; the worker (`service_role`, no claims) may name any org, because it is the one caller that already knows which org it is sending for. |
+| `RPC-preview_card_session.asks_the_rule` | A session whose poster has NOT finished rendering is skipped and the next candidate tried — `og_path is null` is «not rendered yet», which a state check on the session would call ready. |
+| `RPC-preview_card_session.none_is_null` | An org with no card-bearing session returns null rather than a session id whose image would 404. |
+| ★ **wave 10, migration `0142`** — lead — a spam complaint is its own delivery status (`DEC-165`, the owner's decision) |
+| `RPC-resend_webhook.complained` | A verified `email.complained` body moves the row to `complained` with the reason «complained», and returns `applied`. |
+| `RPC-evaluate_alerts.complaint_counts` | The bounce-spike rule counts a complaint as damage beside a bounce and a failure — twenty-five sends with two complaints fire it exactly as two bounces would. |
+| ★ **wave 11, migration `0143`** — `platform` — a job that used its last attempt raises an alert, by task name and count, never a payload (`DEC-168` §2) |
+| `RPC-evaluate_job_exhaustion.worker_only` | `service_role` only — an org member, a moderator, an org admin, a platform admin and `anon` are all refused on the grant. |
+| `RPC-evaluate_job_exhaustion.fires` | One row, `job_exhausted`; fired while any job has no attempts left and is not running; `detail` is `exhausted_jobs`, `tasks` and `by_task` (identifier → count). |
+| `RPC-evaluate_job_exhaustion.running_last_attempt` | A job locked on its last attempt is not counted; a job with attempts left never is. |
+| `RPC-evaluate_job_exhaustion.clears` | Rescheduling or completing every dead job clears it; resolving one of two tasks leaves it firing. |
+| `RPC-evaluate_job_exhaustion.no_payload` | Nothing from a job's payload, key or last error appears anywhere in the row. |
+| `RPC-evaluate_job_exhaustion.not_installed` | Without the `graphile_worker` schema it reports `not_installed` rather than raising. |
+| `RPC-platform_job_health.failed_agrees` | `failed` counts exactly the jobs the alert counts — a job running its last attempt is not failed. |
+| `RPC-platform_job_health.no_org_reader` | An org member, moderator and admin are refused `not_platform_admin`, `anon` on the grant, and none of them can select `graphile_worker._private_jobs`. |
+| ★ **wave 11, migration `0144`** — `branding` — `save_brand_kit()` refuses a palette on which a status colour fails AA (`DEC-073`, `DEC-168` §3) |
+| `POL-save_brand_kit.status_contrast_refused` | A light palette whose `canvas` sits too close to `--color-live-bg`/`--color-ended-bg`'s ink threshold (i.e. `--color-live`/`--color-ended` would read below 4.5:1 against it) is refused `55000`, before any write. |
+| `POL-save_brand_kit.status_contrast_accepted` | The platform default palette (`platformBrand()`'s own light/dark, transcribed) always saves — the guard's own regression test against DEC-052's identity override. |
+| `POL-save_brand_kit.status_contrast_dark` | A dark palette whose `dark_canvas`/`dark_surface` sits too close to `--color-live-on-dark` is refused; a dark palette far from it saves. |
+| `POL-status-contrast-formula-agreement` | `public.wcag_contrast_ratio()`'s SQL formula and `src/lib/brand/contrast.ts`'s TypeScript formula agree on every pair this guard checks — a second copy of WCAG's maths, proven not to drift (`tests/rls/status-contrast.test.ts`). |
+
+The last row is the one to run first after any policy change. If it ever returns rows, DEC-014 has
+been undone and D3 with it.
+
+### 8.3 The policy-vs-migration diff
+
+Protocol decays; a machine does not. `scripts/policy-diff.mjs` extracts every `create policy` from
+the migrations and diffs it against this document, failing CI on any policy present in one and
+absent from the other.
+
+This is the **highest-value automation in the plan**: this document is only true if it matches the
+database, and nothing else checks that it does.
