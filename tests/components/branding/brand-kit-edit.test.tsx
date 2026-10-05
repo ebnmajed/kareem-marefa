@@ -166,7 +166,7 @@ describe("BrandKitEdit — the read-mode pattern (DEC-231 §3)", () => {
   });
 
   it("both schemes are submitted whichever tab is open (B15)", async () => {
-    const saveAction = vi.fn(async (prev: SaveBrandKitState, _fd: FormData) => prev); // eslint-disable-line @typescript-eslint/no-unused-vars
+    const saveAction = vi.fn(async (prev: SaveBrandKitState, _fd: FormData) => prev);
     renderEdit(saveAction);
     fireEvent.change(field("fgHeading"), { target: { value: "#ff0000" } });
     await act(async () => {

@@ -15,7 +15,6 @@ export type PrivacyState = { error: string | null; ok: boolean };
 
 // `useActionState` fixes the signature; this action needs neither argument —
 // the member is the session and there is nothing to read from the form.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function requestExportAction(locale: Locale, _prev: PrivacyState, _formData: FormData): Promise<PrivacyState> {
   const result = await requestMyExport(locale);
   if (result.status === "failed") return { error: result.message, ok: false };
@@ -41,7 +40,6 @@ export async function requestDeactivationAction(
  * (DEC-159). The layout is revalidated because the shell's account menu draws
  * the picture, and a decline takes it away at once.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function setAvatarImportAction(locale: Locale, answer: AvatarAnswer, _prev: PrivacyState, _formData: FormData): Promise<PrivacyState> {
   const result = await setMyAvatarImport(locale, answer);
   if (result.status === "failed") return { error: "failed", ok: false };

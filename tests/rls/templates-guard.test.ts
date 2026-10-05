@@ -27,7 +27,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { applyProposed, errorCode, errorMessage, pool, withTx, type Tx } from "./db";
+import { applyProposed, errorCode, pool, withTx, type Tx } from "./db";
 import { seedBase } from "./fixture";
 
 afterAll(() => pool.end());
