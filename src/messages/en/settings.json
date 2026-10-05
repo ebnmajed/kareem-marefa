@@ -101,7 +101,7 @@
         "emailFromName": "The sender name is too long.",
         "emailReplyTo": "Enter a valid email address.",
         "domainInvalid": "Not a valid domain: <bdi>{domain}</bdi>",
-        "domainTaken": "Already added: <bdi>{domain}</bdi>",
+        "domainTaken": "This domain belongs to another organisation.",
         "domainLast": "Keep at least one domain.",
         "stale": "Another admin changed this field after you opened the page. Open it again.",
         "failed": "The settings could not be saved. Try again."

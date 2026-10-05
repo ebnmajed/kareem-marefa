@@ -108,6 +108,7 @@ export async function saveSettings(locale: Locale, previous: SettingsState, form
   if (!outcome.ok) {
     if (outcome.error === "stale") return refused(Object.fromEntries((outcome.fields ?? ["name"]).map((f) => [f, "stale"])));
     if (outcome.error === "domain_last") return refused({ domains: "domainLast" });
+    if (outcome.error === "domain_taken") return refused({ domains: "domainTaken" });
     return failed("failed");
   }
   revalidatePath(`/${locale}/app/admin/settings`);

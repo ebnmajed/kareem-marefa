@@ -99,7 +99,9 @@ describe("POL-storage.materials.day_scoped_after_release", () => {
       await tx.as(f.a.members[1].claims);
       expect((await tx.q(`select id from public.material_versions where id = $1`, [versionId])).length).toBe(1);
       expect((await tx.q(`select id from public.material_pages where id = $1`, [pageId])).length).toBe(1);
-      expect((await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [objectName])).length).toBe(1);
+      // ★ DEC-266 (0212): the PDF's ORIGINAL stays closed to a member — the version and its pages release, and the viewer
+      // is how they read it; the source is presenters' and staff's.
+      expect(await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [objectName])).toEqual([]);
       expect((await tx.q(`select id from storage.objects where bucket_id = 'material-pages' and name = $1`, [pageObjectName])).length).toBe(1);
     });
   });
@@ -117,7 +119,9 @@ describe("POL-storage.materials.day_scoped_after_release", () => {
       await tx.as(f.a.members[1].claims);
       expect((await tx.q(`select id from public.material_versions where id = $1`, [versionId])).length).toBe(1);
       expect((await tx.q(`select id from public.material_pages where id = $1`, [pageId])).length).toBe(1);
-      expect((await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [objectName])).length).toBe(1);
+      // ★ DEC-266 (0212): the PDF's ORIGINAL stays closed to a member — the version and its pages release, and the viewer
+      // is how they read it; the source is presenters' and staff's.
+      expect(await tx.q(`select id from storage.objects where bucket_id = 'materials' and name = $1`, [objectName])).toEqual([]);
       expect((await tx.q(`select id from storage.objects where bucket_id = 'material-pages' and name = $1`, [pageObjectName])).length).toBe(1);
     });
   });

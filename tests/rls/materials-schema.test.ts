@@ -6,6 +6,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import { errorCode, PERMISSION_DENIED, pool, withTx, type Tx } from "./db";
 import { seed } from "./fixture";
 
+// The path the builder writes for this material — `{org}/{sessions|proposals}/{id}/materials/{version}/{file}` — which
+// finalize_material_upload() holds a client's path to since 0212 (DEC-266).
+const SRC = (ext: string) =>
+  `(select m.org_id || '/' || case when m.session_id is not null then 'sessions/' || m.session_id else 'proposals/' || m.proposal_id end || '/materials/' || gen_random_uuid() || '/file.${ext}' from public.materials m where m.id = $1)`;
+
 afterAll(() => pool.end());
 
 const CHECK_VIOLATION = "23514";
@@ -45,13 +50,13 @@ describe("RPC-finalize_material_upload", () => {
       await tx.as(f.a.members[1].claims); // attendee, not this material's presenter
       expect(
         await errorCode(() =>
-          tx.q(`select public.finalize_material_upload($1, 'x/y/z.pdf', 1000, 'application/pdf', $2)`, [materialId, "a".repeat(64)]),
+          tx.q(`select public.finalize_material_upload($1, ${SRC("pdf")}, 1000, 'application/pdf', $2)`, [materialId, "a".repeat(64)]),
         ),
       ).toBe(PERMISSION_DENIED);
 
       await tx.as(f.a.members[0].claims); // the presenter
       const [version] = await tx.q<{ version: number; sniffed_mime: string }>(
-        `select r.version, r.sniffed_mime from public.finalize_material_upload($1, 'x/y/z.pdf', 1000, 'application/pdf', $2) r`,
+        `select r.version, r.sniffed_mime from public.finalize_material_upload($1, ${SRC("pdf")}, 1000, 'application/pdf', $2) r`,
         [materialId, "b".repeat(64)],
       );
       expect(version.version).toBe(1);
@@ -73,7 +78,7 @@ describe("RPC-finalize_material_upload", () => {
       const materialId = await seedBareMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "image");
 
       await tx.as(f.a.members[0].claims);
-      await tx.q(`select public.finalize_material_upload($1, 'x/y/z.webp', 1000, 'image/webp', $2)`, [materialId, "c".repeat(64)]);
+      await tx.q(`select public.finalize_material_upload($1, ${SRC("webp")}, 1000, 'image/webp', $2)`, [materialId, "c".repeat(64)]);
       const [row] = await tx.q<{ render_status: string }>(`select render_status from public.materials where id = $1`, [materialId]);
       expect(row.render_status).toBe("not_applicable");
     });
@@ -108,7 +113,7 @@ describe("RPC-finalize_material_upload", () => {
       await tx.as(f.a.members[0].claims);
       expect(
         await errorCode(() =>
-          tx.q(`select public.finalize_material_upload($1, 'x/y/z.pdf', $2, 'application/pdf', $3)`, [materialId, overLimit, "d".repeat(64)]),
+          tx.q(`select public.finalize_material_upload($1, ${SRC("pdf")}, $2, 'application/pdf', $3)`, [materialId, overLimit, "d".repeat(64)]),
         ),
       ).toBe(CHECK_VIOLATION);
     });
@@ -121,12 +126,12 @@ describe("RPC-finalize_material_upload", () => {
       const materialId = await seedBareMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId, "pdf");
 
       await tx.as(f.a.members[0].claims);
-      const [v1] = await tx.q<{ id: string }>(`select r.id from public.finalize_material_upload($1, 'v1.pdf', 1000, 'application/pdf', $2) r`, [
+      const [v1] = await tx.q<{ id: string }>(`select r.id from public.finalize_material_upload($1, ${SRC("pdf")}, 1000, 'application/pdf', $2) r`, [
         materialId,
         "e".repeat(64),
       ]);
       const [v2] = await tx.q<{ id: string; version: number }>(
-        `select r.id, r.version from public.finalize_material_upload($1, 'v2.pdf', 2000, 'application/pdf', $2) r`,
+        `select r.id, r.version from public.finalize_material_upload($1, ${SRC("pdf")}, 2000, 'application/pdf', $2) r`,
         [materialId, "f".repeat(64)],
       );
       expect(v2.version).toBe(2);
@@ -134,8 +139,11 @@ describe("RPC-finalize_material_upload", () => {
       await tx.asOwner();
       const [material] = await tx.q<{ current_version_id: string }>(`select current_version_id from public.materials where id = $1`, [materialId]);
       expect(material.current_version_id).toBe(v2.id);
-      const untouched = await tx.q<{ storage_path: string }>(`select storage_path from public.material_versions where id = $1`, [v1.id]);
-      expect(untouched[0].storage_path).toBe("v1.pdf");
+      const paths = await tx.q<{ id: string; storage_path: string }>(`select id, storage_path from public.material_versions where id in ($1, $2)`, [v1.id, v2.id]);
+      const v1Path = paths.find((p) => p.id === v1.id)!.storage_path;
+      // Version 1 keeps its own builder-shaped path, untouched by version 2's.
+      expect(v1Path).toMatch(/\/materials\/[0-9a-f-]{36}\/file\.pdf$/);
+      expect(v1Path).not.toBe(paths.find((p) => p.id === v2.id)!.storage_path);
     });
   });
 });
@@ -207,7 +215,7 @@ describe("RPC-record_material_conversion", () => {
       const { versionId: v1, materialId } = await seedMaterial(tx, f.a.id, f.m2.a.published, f.a.members[0].memberId);
 
       await tx.as(f.a.members[0].claims);
-      await tx.q(`select public.finalize_material_upload($1, 'v2.pdf', 1000, 'application/pdf', $2)`, [materialId, "9".repeat(64)]);
+      await tx.q(`select public.finalize_material_upload($1, ${SRC("pdf")}, 1000, 'application/pdf', $2)`, [materialId, "9".repeat(64)]);
 
       await tx.asServiceRole();
       await tx.q(`select public.record_material_conversion($1, '{}', 3, false)`, [v1]); // v1 is no longer current_version_id
@@ -719,7 +727,7 @@ describe("RPC-finalize_material_upload — proposal branch", () => {
       const materialId = await seedProposalMaterial(tx, f.a.id, f.m2.a.proposal, f.a.members[0].memberId);
 
       await tx.as(f.a.members[0].claims);
-      const [version] = await tx.q<{ id: string }>(`select r.id from public.finalize_material_upload($1, 'x.pdf', 1000, 'application/pdf', $2) r`, [
+      const [version] = await tx.q<{ id: string }>(`select r.id from public.finalize_material_upload($1, ${SRC("pdf")}, 1000, 'application/pdf', $2) r`, [
         materialId,
         "a".repeat(64),
       ]);

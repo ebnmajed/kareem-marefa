@@ -172,7 +172,7 @@ export async function listMembersForConsole(locale: string, query: MemberQuery):
 
 const ROLE_CHANGE_ERRORS = ["last_admin", "not_an_admin", "member_not_found", "stale_claims"] as const;
 const DEACTIVATE_ERRORS = ["reason_required", "cannot_deactivate_self", "not_an_admin", "member_not_found", "stale_claims"] as const;
-type KnownError = (typeof ROLE_CHANGE_ERRORS)[number] | (typeof DEACTIVATE_ERRORS)[number] | "already_a_member" | "not_an_address" | "role_not_allowed" | "already_signed_in" | "company_other_org";
+type KnownError = (typeof ROLE_CHANGE_ERRORS)[number] | (typeof DEACTIVATE_ERRORS)[number] | "already_a_member" | "not_an_address" | "role_not_allowed" | "platform_admin" | "already_signed_in" | "company_other_org";
 
 /** Every RPC below raises a plain identifier as its message (0005's own
  *  style — `raise exception 'last_admin' using errcode = '42501'`), so the
@@ -224,7 +224,8 @@ export async function reactivateMember(locale: string, memberId: string): Promis
 // ★ `role` may be `admin` since `0211` (`DEC-261`, the owner's ruling, reversing `DEC-244` §11): an admin adds
 // another admin by email. The enum is the SHAPE; the authority is `assert_fresh_admin()` in the RPC.
 
-const ADD_MEMBER_ERRORS = ["already_a_member", "not_an_address", "role_not_allowed", "not_an_admin", "stale_claims"] as const;
+// `platform_admin` (0212, DEC-266): a platform admin's address is never an org's member.
+const ADD_MEMBER_ERRORS = ["already_a_member", "not_an_address", "role_not_allowed", "platform_admin", "not_an_admin", "stale_claims"] as const;
 // `members_company_same_org` (0004) raises a sentence, not an identifier — the one error here
 // that is not already a key, so it is mapped rather than passed through with a space in it.
 const OTHER_ORG_COMPANY = "another org";
@@ -279,7 +280,7 @@ export async function addMember(locale: string, input: AddMemberInput): Promise<
 /** One line of «أضف عضوًا»'s pasted list, as the RPC reports it. */
 export interface AddMemberLine {
   email: string;
-  outcome: "added" | "already_a_member" | "not_an_address" | "role_not_allowed" | "failed";
+  outcome: "added" | "already_a_member" | "not_an_address" | "role_not_allowed" | "platform_admin" | "failed";
   memberId?: string;
 }
 

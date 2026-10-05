@@ -30,7 +30,7 @@ describe("POL-realtime.messages", () => {
     });
   });
 
-  it("insert — a member cannot broadcast into a session topic belonging to another org", async () => {
+  it("insert — a member cannot broadcast into a session topic, another org's or their own (0212)", async () => {
     await withTx(async (tx) => {
       const f = await seed(tx);
       await tx.as(f.a.members[0].claims);
@@ -39,10 +39,13 @@ describe("POL-realtime.messages", () => {
           tx.q(`insert into realtime.messages (topic, extension, event, payload) values ($1, 'broadcast', 'x', '{}'::jsonb)`, [`session:${f.m2.b.published}`]),
         ),
       ).toBe(PERMISSION_DENIED);
-      const ok = await tx.q(`insert into realtime.messages (topic, extension, event, payload) values ($1, 'broadcast', 'x', '{}'::jsonb) returning id`, [
-        `session:${f.m2.a.published}`,
-      ]);
-      expect(ok.length).toBe(1);
+      // ★ 0212 (DEC-265): nor into their OWN org's — the event page renders a broadcast as a comment, and nothing in
+      // the browser sends; the server's definer triggers do.
+      expect(
+        await errorCode(() =>
+          tx.q(`insert into realtime.messages (topic, extension, event, payload) values ($1, 'broadcast', 'x', '{}'::jsonb)`, [`session:${f.m2.a.published}`]),
+        ),
+      ).toBe(PERMISSION_DENIED);
     });
   });
 

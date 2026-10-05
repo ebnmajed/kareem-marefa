@@ -396,7 +396,8 @@
         "already_signed_in": "سجّل الدخول بالفعل — عطّل العضوية بسبب بدلًا من الحذف.",
         "no_addresses": "اكتب بريدًا إلكترونيًا واحدًا على الأقل.",
         "company_other_org": "هذه الشركة ليست من شركات مؤسستك.",
-        "company_deactivated": "هذه الشركة معطّلة."
+        "company_deactivated": "هذه الشركة معطّلة.",
+        "platform_admin": "هذا البريد لمشرف المنصة، ولا يكون عضوًا في مؤسسة."
       },
       "columnLevel": "المستوى",
       "columnPoints": "النقاط",
@@ -439,7 +440,8 @@
           "already_a_member": "عضو بالفعل",
           "not_an_address": "ليس بريدًا إلكترونيًا",
           "role_not_allowed": "هذا الدور غير متاح هنا",
-          "failed": "تعذّر إضافته"
+          "failed": "تعذّر إضافته",
+          "platform_admin": "مشرف المنصة"
         },
         "reportLabel": "نتيجة الإضافة"
       },
