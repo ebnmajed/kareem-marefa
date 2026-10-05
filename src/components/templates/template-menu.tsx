@@ -14,15 +14,15 @@ import { Menu } from "@/components/ui/menu";
 import type { MenuItem } from "@/components/ui";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { useToast } from "@/components/ui/toast";
-import { duplicateFromPlatform, editTemplate, makeDefault, publishVersion, rename, setRetired } from "@/app/[locale]/app/admin/templates/actions";
+import { duplicate, editTemplate, makeDefault, publishVersion, rename, setRetired } from "@/app/[locale]/app/admin/templates/actions";
 import { initialTemplateActionState, type TemplateActionState } from "@/app/[locale]/app/admin/templates/state";
 
 // SCR-055's card menu (wave 23, `AdminTemplates.dc.html`'s ⋯) — REQ-ADM-013, REQ-DSG-007, REQ-DSG-008, REQ-UIX-013.
 //
-// An org card: open, copy, set default, publish (while a draft exists — `designer`'s bar takes it in PR B, DEC-238 §3.6),
-// rename, retire or restore. A platform card: «انسخ لتعدّل» alone — the policy makes an org's write match no row
-// (03 §5.9a), so the action that exists is the one shown. Every answer is a toast FROM THE ACTION'S RESULT, never from
-// an effect (wave 6's trap); forms are `noValidate` so the name is refused at the field, by the action.
+// Every card is the org's own (DEC-254 §3 — there is no platform library): open, copy, set default, publish (while a
+// draft exists — `designer`'s bar takes it in PR B, DEC-238 §3.6), rename, retire or restore. Every answer is a toast
+// FROM THE ACTION'S RESULT, never from an effect (wave 6's trap); forms are `noValidate` so the name is refused at the
+// field, by the action.
 
 function useSay() {
   const t = useTranslations("templates.result");
@@ -31,6 +31,7 @@ function useSay() {
     if (result.status === "ok") toast.show({ tone: "success", title: result.kind === "published" ? t("publishedToast") : t(result.kind) });
     else if (result.status === "not_authorized") toast.show({ tone: "error", title: t("notAuthorized") });
     else if (result.status === "invalid") toast.show({ tone: "error", title: t("invalidToast") });
+    else if (result.status === "last_template") toast.show({ tone: "error", title: t("lastTemplate") });
   };
 }
 
@@ -90,25 +91,6 @@ const trigger = (label: string) => (
   </IconButton>
 );
 
-export function PlatformTemplateMenu({ locale, purpose, templateId, name }: { locale: string; purpose: TemplatePurpose; templateId: string; name: string }) {
-  const t = useTranslations("templates");
-  const [copyOpen, setCopyOpen] = useState(false);
-  const bdi = (c: React.ReactNode) => <bdi>{c}</bdi>;
-  return (
-    <>
-      <Menu trigger={trigger(t("card.more"))} items={[{ label: t("card.duplicate"), onSelect: () => setCopyOpen(true) }]} />
-      <NameDialog
-        open={copyOpen}
-        onOpenChange={setCopyOpen}
-        title={t.rich("create.copyTitle", { name, bdi })}
-        submit={t("card.duplicate")}
-        defaultName={name}
-        action={(form) => duplicateFromPlatform(locale, purpose, templateId, form)}
-      />
-    </>
-  );
-}
-
 export function OrgTemplateMenu({
   locale,
   purpose,
@@ -163,7 +145,7 @@ export function OrgTemplateMenu({
         title={t.rich("create.copyTitle", { name, bdi })}
         submit={t("card.copy")}
         defaultName={`${name} ${t("create.copySuffix")}`}
-        action={(form) => duplicateFromPlatform(locale, purpose, templateId, form)}
+        action={(form) => duplicate(locale, purpose, templateId, form)}
       />
       <NameDialog
         open={dialog === "rename"}

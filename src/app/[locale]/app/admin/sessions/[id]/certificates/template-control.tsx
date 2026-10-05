@@ -22,8 +22,8 @@ import { applyDesignToHeld, saveCertificateDesign, type CertificateActionResult 
 // «طبّق على المحجوزة» re-pins them (`redesignHeldCertificates()`). `set_certificate_design()` refuses once one of the
 // kind is issued or revoked (`55000`, 0099), which the DAL maps to «locked» — the data's re-check of this screen's gate.
 //
-// No board draws it, so it is the sober register: a select of the org's and the platform's published templates of the
-// kind, defaulting to what issuance would pick (DEC-238 §2.3), the scheme (DEC-148), «احفظ». At `lg` the preview beside
+// No board draws it, so it is the sober register: a select of the org's own published templates of the kind (DEC-254 §3 —
+// there is no platform library), defaulting to what issuance would pick (DEC-238 §2.3), the scheme (DEC-148), «احفظ». At `lg` the preview beside
 // it binds the kind's LONGEST eligible name and runs the studio's own checks (REQ-DSG-031): the name that breaks is never
 // the sample's.
 
@@ -129,7 +129,6 @@ export function TemplateControl({ locale, sessionId, kind, brand, sample, longes
             {kind.options.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
-                {o.scope === "platform" ? ` · ${t("platformTemplate")}` : ""}
               </option>
             ))}
           </Select>

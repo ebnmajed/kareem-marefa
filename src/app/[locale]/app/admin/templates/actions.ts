@@ -44,6 +44,7 @@ function answer(locale: string, purpose: TemplatePurpose, result: TemplateWriteR
     revalidatePath(screen(locale, purpose));
     return { status: "ok", kind, at: Date.now() };
   }
+  if (result.status === "last_template") return { status: "last_template", at: Date.now() };
   return result.status === "not_authorized" ? { status: "not_authorized", at: Date.now() } : { status: "invalid", at: Date.now() };
 }
 
@@ -54,8 +55,8 @@ function nameError(raw: unknown): TemplateActionState | null {
   return { status: "invalid_field", field: "name", error: empty ? "nameRequired" : "nameTooLong", at: Date.now() };
 }
 
-/** REQ-DSG-008 — a copy the org owns; no later platform change reaches it. */
-export async function duplicateFromPlatform(locale: string, purpose: TemplatePurpose, sourceTemplateId: string, form: FormData): Promise<TemplateActionState> {
+/** REQ-DSG-008 — a copy of one of the org's own templates; a later edit of either never reaches the other. */
+export async function duplicate(locale: string, purpose: TemplatePurpose, sourceTemplateId: string, form: FormData): Promise<TemplateActionState> {
   const name = form.get("name");
   const invalidName = nameError(name);
   if (invalidName) return invalidName;
