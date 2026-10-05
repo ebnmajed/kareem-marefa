@@ -14,6 +14,22 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+/** ★ LEDGER (wave 27, PR D): the pre-wave-24 `talk` composition — 0098's version 2, read from the migration. This
+ *  spec's assertions name its layers (`l_where` «المكان», `l_kicker` «نوع الجلسة»), which DEC-242 took out of the
+ *  baseline. They only passed while a database kept that RETIRED platform row and the old read (no `retired_at`
+ *  filter, a tie on `version`) happened to return it; on a fresh chain they could not. The composition is inserted as
+ *  the org's own template, so the spec owns its fixture and depends on no platform row. */
+function legacyTalk(): unknown {
+  const dir = join(process.cwd(), "supabase", "migrations");
+  const file = readdirSync(dir).find((f) => f.endsWith("_certificate_library.sql"));
+  if (!file) throw new Error("0098 (the certificate library) is not in supabase/migrations");
+  const m = readFileSync(join(dir, file), "utf8").match(/-- @family talk@v2[\s\S]*?\$json\$([\s\S]*?)\$json\$/);
+  if (!m) throw new Error("0098 has no talk@v2 document");
+  return JSON.parse(m[1]!);
+}
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_KEY = process.env.E2E_SUPABASE_SERVICE_KEY;
@@ -76,13 +92,15 @@ test.beforeAll(async ({}, testInfo) => {
   );
   // The platform's `talk` template, as seeded, plus one PHOTO layer that fills
   // its frame — the focal point's grid shows only for `cover` (REQ-DSG-030).
-  // ★ LEDGER (wave 27, PR D, DEC-254 §3): the org's own seeded template — there is no live platform row to read.
-  const { rows: version } = await db.query<{ id: string; document: { layers: Array<Record<string, unknown>> } }>(
-    `select v.id, v.document from public.design_template_versions v
-       join public.design_templates t on t.id = v.template_id
-      where t.org_id = $1 and t.purpose = 'poster' and t.family = 'talk'
-      order by t.is_default desc, v.version desc limit 1`,
+  // ★ LEDGER (wave 27, PR D): the studio's fixture is the pre-wave-24 `talk` composition, as the org's own template
+  // (`legacyTalk()` says why). Setup only; every assertion below is unchanged.
+  const { rows: legacyTpl } = await db.query<{ id: string }>(
+    `insert into public.design_templates (org_id, scope, purpose, family, name) values ($1, 'org', 'poster', 'talk', 'جلسة — التركيب السابق') returning id`,
     [orgId],
+  );
+  const { rows: version } = await db.query<{ id: string; document: { layers: Array<Record<string, unknown>> } }>(
+    `insert into public.design_template_versions (template_id, version, document, published_at) values ($1, 1, $2::jsonb, now()) returning id, document`,
+    [legacyTpl[0]!.id, JSON.stringify(legacyTalk())],
   );
   const document = version[0].document;
   document.layers.push({ id: "l_photo", kind: "image", name: "الصورة", z: 1, frame: { x: 300, y: 1060, w: 400, h: 200 }, image: { assetId: "https://example.invalid/photo.png", fit: "cover" } });
