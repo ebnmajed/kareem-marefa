@@ -3,17 +3,20 @@
 // sheet's one save, which replaced the row's colour menu) only ever posts one of
 // the seven NAMES to the DAL, translated to its `#rrggbb` here, never a hex the
 // client invented; the column's check (`0160`) is the second boundary.
+// ★ wave 27 (DEC-254 §2.7; ledger B): the save reaches `saveCompanyWithDomains()` — one call with the domains — instead
+// of `updateCompany()`. The colour's expectations are unchanged; only the function they reach moved.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/dal/session", () => ({ sessionClient: vi.fn() }));
 
-const updateCompany = vi.fn(async () => ({ ok: true }));
+const updateCompany = vi.fn(async (..._a: unknown[]) => ({ status: "saved" as const, companyId: "c1", moved: 0, held: 0 }));
 vi.mock("@/lib/dal/admin-lists", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/dal/admin-lists")>()),
-  updateCompany: (...a: unknown[]) => updateCompany(...(a as [])),
+  saveCompanyWithDomains: (...a: unknown[]) => updateCompany(...a),
 }));
+const wrote = (hex: string | null) => expect.objectContaining({ companyId: ID, name: "مواهب", teamColorHex: hex });
 
 const { saveCompany } = await import("@/app/[locale]/app/admin/companies/actions");
 const { TEAM_COLOUR_HEX } = await import("@/app/[locale]/app/admin/companies/team-colours");
@@ -33,13 +36,13 @@ describe("saveCompany — the colour, through the Server Action", () => {
   it("translates every one of the seven names into its exact globals.css hex", async () => {
     for (const [name, hex] of Object.entries(TEAM_COLOUR_HEX)) {
       await saveCompany("ar", ID, emptyCompanyState, form(name));
-      expect(updateCompany).toHaveBeenLastCalledWith("ar", ID, { name: "مواهب" }, hex);
+      expect(updateCompany).toHaveBeenLastCalledWith("ar", wrote(hex));
     }
   });
 
   it("«بلا لون» posts null, not the string 'null' or an empty string", async () => {
     await saveCompany("ar", ID, emptyCompanyState, form("none"));
-    expect(updateCompany).toHaveBeenCalledWith("ar", ID, { name: "مواهب" }, null);
+    expect(updateCompany).toHaveBeenCalledWith("ar", wrote(null));
   });
 
   it("refuses a name outside the seven — never reaches the DAL with an invented value", async () => {
