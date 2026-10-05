@@ -1153,3 +1153,12 @@ design. `wave26-branding-{scr059,privacy}.spec.ts` were already scoped to `#main
 - **Reviewed:** the 14 wave26-branding captures from the lead's 01:35 build, beside `AdminBranding` / `Privacy` (`.dc.html` and PNG), and the kept-behaviour tables read back against the new files — all rows hold.
 - **Fixed:** `1fff1140` (the «refused once, then saved» guard, committed at last) · `2ac632ee` (059: the quiet «استبدال» pill, a raised tile with no logo, a medium reset; privacy: the avatar answer as a card, «إيقاف حسابي» flush). No assertion changed.
 - **Next:** captures regenerated from a production build of `2ac632ee` (the lead's build), then each opened at native size again; the upload-error state, 059 at 390 and privacy at 1280 if the lead wants them captured.
+
+### W26.17 B is done (2026-10-05, captures from a production build of `bc29ed14`)
+
+- **Self-review closed.** Every `wave26-branding-*` capture opened at native size beside `AdminBranding` / `Privacy`:
+  059 read (default, saved, with a logo), edit (empty, two changes, the database's refusal, a disguised upload refused),
+  059 at 390 (read, edit), privacy at 390 (eight states) and at 1280. Fixes in `2ac632ee`, `e782a7f0` (captures taken
+  whole, three states added) and `bc29ed14` (two swatches a row at every width; a refused file leaves the picker).
+- **Plan over drawing, added to W26.3:** on a phone, 059's edit mode puts the preview and reset after the Save bar —
+  the artboard draws read mode only, and the order follows the console's edit pattern (the lead's ruling, kept as is).
