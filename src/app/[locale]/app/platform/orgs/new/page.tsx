@@ -5,27 +5,23 @@ import { requirePlatformAdmin } from "@/lib/dal/platform";
 import { createOrgAction } from "../actions";
 import { NewOrgForm } from "./org-form";
 
-// SCR-081 · /app/platform/orgs/new — REQ-TEN-002, REQ-TEN-004, onto the system
-// for wave 8 (`docs/plan/notes/platform.md` W8.4).
+// SCR-081 · /app/platform/orgs/new — REQ-TEN-002, REQ-TEN-004, REQ-TEN-007, REQ-UIX-118. Written for wave 26 from
+// `PlatformOrgNew.dc.html` (`DEC-208`: deleted first); what it kept is `docs/plan/notes/platform.md` W26.2.2.
 //
-// The gate is called here, at the data, and not only in the layout: Partial
-// Rendering does not re-render a layout on navigation [v16], so a page that
-// relies on its layout's check is a page with no check.
+// The page has no read, so it gates here, at the page (F2): a layout is not re-rendered on navigation [v16], and a
+// page that relies on its layout's check is a page with no check. Its `h1` row carries no primary — the form's own
+// «أنشئ» is the one action, at the form's end as drawn.
+
 export default async function NewOrgPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   await requirePlatformAdmin(locale);
-  const [t, tOrgs] = await Promise.all([getTranslations("platform.newOrg"), getTranslations("platform.orgs")]);
+  const t = await getTranslations("platform.newOrg");
 
   return (
     <>
-      <PageHeader
-        title={t("title")}
-        description={t("intro")}
-        breadcrumb={[{ href: "/app/platform/orgs", label: tOrgs("title") }]}
-        breadcrumbLabel={t("breadcrumb")}
-      />
-      <div className="mt-8">
+      <PageHeader inlineActions title={t("title")} />
+      <div className="mt-6">
         <NewOrgForm action={createOrgAction.bind(null, locale as Locale)} />
       </div>
     </>

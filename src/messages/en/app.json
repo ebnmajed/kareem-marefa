@@ -47,6 +47,10 @@
     "console": {
       "title": "Admin",
       "toApp": "App",
+      "platform": {
+        "openRail": "Open the platform console's menu",
+        "noOrgData": "No org data here"
+      },
       "badge": {
         "proposals": "{count, plural, one {{value} proposal awaiting a decision} other {{value} proposals awaiting a decision}}",
         "sessions": "{count, plural, one {{value} session not scheduled} other {{value} sessions not scheduled}}",

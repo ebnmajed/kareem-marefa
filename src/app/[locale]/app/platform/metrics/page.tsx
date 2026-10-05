@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Badge } from "@/components/ui/badge";
 import { AlertCircleIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
@@ -8,22 +9,18 @@ import { formatNumber } from "@/components/sessions/numerals";
 import { getJobHealth, getPlatformTotals, listOrgs, listPlatformAlerts } from "@/lib/dal/platform";
 import { AlertsTable, JobsTable, OrgMetricsTable } from "./metrics-tables";
 
-// SCR-084 · /app/platform/metrics — REQ-ADM-003, REQ-NFR-016 (the numbers; the
-// transport is the lead's), onto the system for wave 8
-// (`docs/plan/notes/platform.md` W8.7).
+// SCR-084 · /app/platform/metrics — REQ-ADM-003, REQ-NFR-016, REQ-UIX-118. Written for wave 26 from
+// `PlatformMetrics.dc.html` (`DEC-208`: deleted first); what it kept is `docs/plan/notes/platform.md` W26.2.5.
 //
-// ★ AGGREGATE ONLY, and that is enforced upstream of this file: the totals and
-// the per-org rows come from two views whose select lists a test pins, and the
-// alerts come from `platform_alerts()`, whose `detail` keys another test pins.
-// No query behind this screen can name a member, a session or a piece of content.
+// The board's `h1` with «أعداد فقط · لا محتوى», six `stat`s and the per-org table — then, below what the board draws,
+// the alerts and job health, which `REQ-ADM-003` names («job health, error rates») and the console's home links to
+// (`#jobs`). ★ ONLY COUNTS THAT EXIST (DEC-251, Q5): the board's «جلسة هذا الربع», «معدّل الحضور», «التصديرات» and
+// «الجاهزية 30 يومًا» have no function behind them — nothing measures uptime at all — so they are not drawn; the
+// sessions are all-time and the sixth `stat` is the open break-glass sessions, which `platform_totals` counts.
 //
-// ★ «Error rates» (`REQ-ADM-003`) were missing until wave 8 (DEC-148, C2): the
-// alerts section shows `11` §3.2's eight readings — the bounce rate, the
-// consecutive render failures, the stalled queue and the rest — as the worker
-// measures them, never re-derived here.
-//
-// When the alert read fails the page says so; it never shows eight quiet rows
-// it did not read.
+// ★ AGGREGATE ONLY, enforced upstream: the totals and the per-org rows come from two views whose select lists a test
+// pins, the alerts from `platform_alerts()`, whose `detail` keys another pins. A failed alert read is SAID, never
+// eight quiet rows.
 
 export default async function PlatformMetricsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -38,24 +35,39 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
   ]);
   const fired = alerts?.filter((a) => a.fired).length ?? 0;
 
-  const TOTALS = [
-    ["orgs", totals?.orgs ?? 0],
-    ["activeOrgs", totals?.activeOrgs ?? 0],
-    ["suspendedOrgs", totals?.suspendedOrgs ?? 0],
-    ["members", totals?.members ?? 0],
-    ["activeMembers", totals?.activeMembers ?? 0],
-    ["sessions", totals?.sessions ?? 0],
-    ["certificates", totals?.certificates ?? 0],
-    ["activeImpersonations", totals?.activeImpersonations ?? 0],
+  const STATS = [
+    ["statActiveOrgs", totals?.activeOrgs ?? 0],
+    ["statMembers", totals?.members ?? 0],
+    ["statSessions", totals?.sessions ?? 0],
+    ["statActiveMembers", totals?.activeMembers ?? 0],
+    ["statCertificates", totals?.certificates ?? 0],
+    ["statImpersonations", totals?.activeImpersonations ?? 0],
   ] as const;
 
   return (
     <>
-      <PageHeader title={t("metrics.title")} description={t("metrics.intro")} />
+      <PageHeader inlineActions title={t("metrics.title")} actions={<Badge tone="neutral">{t("metrics.countsOnly")}</Badge>} />
 
-      <section aria-labelledby="alerts" className="mt-10">
-        <SectionHeader as="h2" id="alerts" title={t("metrics.alertsTitle")} description={t("metrics.alertsIntro")} count={fired > 0 ? fired : undefined} />
-        <div className="mt-4">
+      <section aria-label={t("metrics.totalsTitle")} className="mt-6">
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {STATS.map(([key, value]) => (
+            <li key={key}>
+              <Stat label={t(`metrics.${key}`)} value={formatNumber(value)} className="h-full" />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="per-org" className="mt-8">
+        <SectionHeader as="h2" id="per-org" title={t("metrics.perOrgTitle")} />
+        <div className="mt-3">
+          <OrgMetricsTable orgs={orgs} />
+        </div>
+      </section>
+
+      <section aria-labelledby="alerts" className="mt-10 border-t border-edge pt-8">
+        <SectionHeader as="h2" id="alerts" title={t("metrics.alertsTitle")} count={fired > 0 ? fired : undefined} />
+        <div className="mt-3">
           {alerts === null ? (
             <Panel tone="error">
               <p className="flex items-start gap-2 text-body text-fg-heading">
@@ -69,28 +81,10 @@ export default async function PlatformMetricsPage({ params }: { params: Promise<
         </div>
       </section>
 
-      <section aria-labelledby="totals" className="mt-12">
-        <SectionHeader as="h2" id="totals" title={t("metrics.totalsTitle")} />
-        <ul className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {TOTALS.map(([key, value]) => (
-            <li key={key}>
-              <Stat label={t(`metrics.${key}`)} value={formatNumber(value)} className="h-full" />
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-labelledby="jobs" className="mt-12 border-t border-edge pt-8">
-        <SectionHeader as="h2" id="jobs" title={t("metrics.jobsTitle")} description={t("metrics.jobsIntro")} />
-        <div className="mt-4">
+      <section id="jobs" aria-labelledby="jobs-title" className="mt-10 scroll-mt-20 border-t border-edge pt-8">
+        <SectionHeader as="h2" id="jobs-title" title={t("metrics.jobsTitle")} />
+        <div className="mt-3">
           <JobsTable jobs={jobs} />
-        </div>
-      </section>
-
-      <section aria-labelledby="per-org" className="mt-12 border-t border-edge pt-8">
-        <SectionHeader as="h2" id="per-org" title={t("metrics.perOrgTitle")} count={orgs.length} />
-        <div className="mt-4">
-          <OrgMetricsTable orgs={orgs} />
         </div>
       </section>
     </>

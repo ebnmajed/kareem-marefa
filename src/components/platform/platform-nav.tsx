@@ -1,126 +1,53 @@
-"use client";
+import type { AdminRailLink } from "@/components/ui";
 
-import type { ComponentType } from "react";
-import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
-import { BuildingIcon, ChartIcon, ChevronIcon, HomeIcon, ImageIcon, LockIcon } from "@/components/ui/icons";
-import { Link } from "@/components/ui/link";
-import { Menu } from "@/components/ui/menu";
-
-// The super-admin console's navigation — SCR-080 … 085, REQ-ADM-001,
-// REQ-UIX-017, `16` §6.7, DEC-111, DEC-147. `docs/plan/notes/platform.md` W8.1
-// is the plan this implements.
+// The platform console's destinations — SCR-080 … 085, REQ-UIX-118, REQ-ADM-001, DEC-NEXT-38. The lead's.
 //
-// ★ TWO SHAPES, ONE LIST. Desktop is a persistent rail after the admin
-// console's (`16` §6.7): five items, icon and label, not collapsible — five
-// items cost 14 rem and there is nothing to hide. A phone gets a SECTION
-// SWITCHER on `ui/menu`: its trigger names the section you are in, which a
-// hamburger behind a sheet does not, and Radix closes it on selection, on an
-// outside press and on Escape with focus returned (DEC-111). Never a
-// horizontal scroller — at 390 px an item scrolled out of view reads as not
-// being there at all.
+// ★★ THIS PATH IS KEPT ON PURPOSE (`DEC-249` §3). `tests/unit/console-register.test.ts` names
+// `components/platform/platform-nav.tsx` as one of four files that prove the console's import graph is walked at
+// all, and that guard — the only thing between the console and the playground's motion — is not edited inside a nav
+// refactor. So the old nav COMPONENT was deleted (`DEC-208`) and this file returns as what replaces it: the SECOND
+// NAV SET that `ui/admin-rail` draws for `/app/platform`, through `shell/console-frame`. Only the path survived.
 //
-// ★ `current` IS READ HERE, FROM `usePathname()`, never in the layout. A layout
-// is not re-rendered on a client-side navigation, so a current item computed
-// there from `x-pathname` is right on a full load and wrong from the second
-// screen on — the bug `shell-routes.ts` records for the tab bar. A client
-// component still renders on the server with the same path, so there is no
-// flash on a full load either.
+// Kept from the old component, by name (`docs/plan/notes/platform.md` W26.2.0, F5 – F12):
+//   · F5 — no org-scoped link: a super admin has no org (`DEC-014`);
+//   · F6 — the five sections in this order, their words from `platform.shell.nav.*`;
+//   · F7 — the home is current on its own path alone; every other section by prefix, so `orgs/new` and
+//     `orgs/[id]/domains` keep «المؤسسات» — `exact` here, `admin-rail`'s `isCurrent` there;
+//   · F8, F9 — `current` is read on the client from `usePathname()` and marked `aria-current="page"`; the `nav`
+//     landmark is named «لوحة المنصة». Both are `admin-rail`'s, which is why this file holds data and no hook;
+//   · F11 — nothing but strings and booleans crosses the server/client boundary (`DEC-159`);
+//   · F12 — every label in `<bdi>` (the rail's).
+// Not kept, and why: the icons — the console frame's rail draws none (`M11a.md` §0, the artboards); and F10's phone
+// section switcher on `ui/menu` — under `lg` the frame's sheet behind ≡ is the phone's navigation, as on every
+// console screen since wave 21.
 //
-// It takes no props: the icons live in this module and the words come from
-// `platform.shell` through the client provider, so nothing crosses the
-// server/client boundary — a component reference or a formatter passed from
-// the layout is exactly the function React Flight refuses to serialise
-// (`admin-rail.tsx`'s header).
+// One ruled group: the six `Platform*.dc.html` boards draw the five items with no rule between them.
 
 export type PlatformNavKey = "home" | "orgs" | "templates" | "metrics" | "impersonate";
 
-const ITEMS: { key: PlatformNavKey; href: string; Icon: ComponentType<{ className?: string }> }[] = [
-  { key: "home", href: "/app/platform", Icon: HomeIcon },
-  { key: "orgs", href: "/app/platform/orgs", Icon: BuildingIcon },
-  { key: "templates", href: "/app/platform/templates", Icon: ImageIcon },
-  { key: "metrics", href: "/app/platform/metrics", Icon: ChartIcon },
-  { key: "impersonate", href: "/app/platform/impersonate", Icon: LockIcon },
+export interface PlatformNavLeaf {
+  key: PlatformNavKey;
+  href: string;
+  /** The home: current on its own path alone. */
+  exact?: boolean;
+}
+
+export const PLATFORM_NAV: readonly PlatformNavLeaf[] = [
+  { key: "home", href: "/app/platform", exact: true },
+  { key: "orgs", href: "/app/platform/orgs" },
+  { key: "templates", href: "/app/platform/templates" },
+  { key: "metrics", href: "/app/platform/metrics" },
+  { key: "impersonate", href: "/app/platform/impersonate" },
 ];
 
-/** Which section a path is in. The home item matches exactly; the rest by prefix, so `orgs/new` keeps «المؤسسات». */
+/** The rail's groups — plain data, ready to cross into the client rail. */
+export function platformRailGroups(label: (key: PlatformNavKey) => string): AdminRailLink[][] {
+  return [PLATFORM_NAV.map((leaf) => ({ key: leaf.key, href: leaf.href, label: label(leaf.key), ...(leaf.exact ? { exact: true } : {}) }))];
+}
+
+/** Which section a path is in — the home exactly, the rest by prefix, the locale and a trailing slash ignored. */
 export function platformSection(pathname: string | null): PlatformNavKey | null {
-  const path = (pathname ?? "").replace(/^\/(ar|en)(?=\/|$)/, "").replace(/\/$/, "");
-  for (const item of ITEMS) {
-    if (item.key === "home" ? path === item.href : path === item.href || path.startsWith(`${item.href}/`)) return item.key;
-  }
-  return null;
-}
-
-function itemClassName(current: boolean) {
-  return `flex min-h-11 items-center gap-3 rounded-field px-3 py-2.5 text-label ${
-    current ? "bg-raised text-fg-heading" : "text-fg-body hover:bg-hover hover:text-fg-heading"
-  }`;
-}
-
-export function PlatformNav() {
-  const t = useTranslations("platform.shell");
-  const current = platformSection(usePathname());
-  const brand = t("brand");
-  const label = (key: PlatformNavKey) => t(`nav.${key}`);
-  const currentLabel = label(current ?? "home");
-
-  return (
-    <>
-      {/* Phone: the brand and the section switcher. On the home page the
-          section IS «لوحة المنصة», so the brand is not said twice in one bar;
-          the switcher sits at the inline end either way. */}
-      <nav aria-label={brand} className="flex items-center justify-between gap-3 border-b border-edge pb-3 md:hidden">
-        {current === "home" ? (
-          <span aria-hidden />
-        ) : (
-          <p className="min-w-0 text-label text-fg-muted">
-            <bdi>{brand}</bdi>
-          </p>
-        )}
-        <Menu
-          align="end"
-          trigger={
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              aria-label={t("switcher", { section: currentLabel })}
-              iconEnd={<ChevronIcon direction="down" className="text-fg-muted" />}
-            >
-              <bdi>{currentLabel}</bdi>
-            </Button>
-          }
-          items={ITEMS.map((item) => ({
-            label: label(item.key),
-            href: item.href,
-            icon: <item.Icon className="shrink-0 text-[1.125rem] text-fg-muted" />,
-          }))}
-        />
-      </nav>
-
-      {/* Desktop: the rail. */}
-      <nav aria-label={brand} className="hidden shrink-0 md:block">
-        <p className="px-3 text-label text-fg-muted">
-          <bdi>{brand}</bdi>
-        </p>
-        <ul className="mt-3 w-56 space-y-1">
-          {ITEMS.map((item) => {
-            const isCurrent = item.key === current;
-            return (
-              <li key={item.key}>
-                <Link href={item.href} quiet aria-current={isCurrent ? "page" : undefined} className={itemClassName(isCurrent)}>
-                  <item.Icon className="shrink-0 text-[1.25rem]" />
-                  <span className="min-w-0">
-                    <bdi>{label(item.key)}</bdi>
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-    </>
-  );
+  const path = (pathname ?? "").replace(/^\/(ar|en)(?=\/|$)/, "").replace(/\/+$/, "");
+  const hit = PLATFORM_NAV.find((leaf) => (leaf.exact ? path === leaf.href : path === leaf.href || path.startsWith(`${leaf.href}/`)));
+  return hit?.key ?? null;
 }

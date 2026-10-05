@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
+import { ButtonLink } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
 import { FormSummary } from "@/components/ui/form-summary";
@@ -12,20 +13,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { hasAttempted, summaryErrors, was, wasList } from "@/lib/form-state";
 import { emptyNewOrgState, NEW_ORG_FIELDS, type NewOrgField, type NewOrgState } from "../state";
 
-// SCR-081's form — REQ-TEN-002, REQ-TEN-004, REQ-TEN-007, onto the form model
-// (`16` §8.2) for wave 8 (`docs/plan/notes/platform.md` W8.4).
+// SCR-081's form, in `PlatformOrgNew.dc.html`'s order — name, slug, domains, first admin — with what `create_org()`
+// needs and the board leaves out (DEC-251, Q8): the CERTIFICATE PREFIX (`orgs.certificate_prefix` is not null), the
+// domains as a LIST (one to ten, `create_org`'s `domains_required`), and the starting categories, ticked. No default
+// language: there is no column and no parameter for one. And no promise of an email to the first admin —
+// `create_org()` sends none, so the board's «يصله بريد عند الإنشاء» is not written.
 //
-// Four of the six fields are Latin by nature: a slug, a certificate prefix, a
-// list of domains and an email address. Each carries `dir="ltr"` on the control
-// alone, so the label, the hint and the error stay in the page's direction and
-// only the typed value flips.
-//
-// Case is forgiven where the stored form is fixed anyway: the prefix is stored
-// in capitals and the domains in lowercase (contract 4 — `org_domains_normalise`
-// runs before the check), so neither refuses what the operator typed.
-//
-// `noValidate`: the app's own errors render beside their fields and in the
-// summary, and every value survives a refused submit (REQ-UIX-009 … 011).
+// Kept (W26.2.2, N2 – N5): the Latin controls carry `dir="ltr"` on the control alone, so the label, hint and error
+// stay in the page's direction; case is forgiven where the stored form is fixed (contract 4); `noValidate`, each
+// error beside its field and in the summary, every value kept after a refusal (REQ-UIX-009 … 011, DEC-149 §1).
 
 const LABEL_KEY: Record<NewOrgField, string> = {
   name: "nameLabel",
@@ -49,7 +45,7 @@ export function NewOrgForm({ action }: { action: (prev: NewOrgState, formData: F
   const seeded = hasAttempted(state) ? wasList(state, "seedCategories").length > 0 : true;
 
   return (
-    <form action={formAction} noValidate className="max-w-2xl space-y-6">
+    <form action={formAction} noValidate className="max-w-md space-y-4">
       {hasAttempted(state) && summary.length > 0 ? <FormSummary key={state.attempt} title={t("errorSummaryTitle")} errors={summary} /> : null}
       {state.formError ? (
         <Panel tone="error">
@@ -59,7 +55,7 @@ export function NewOrgForm({ action }: { action: (prev: NewOrgState, formData: F
         </Panel>
       ) : null}
 
-      <Field id="name" label={t("nameLabel")} hint={t("nameHint")} required error={err("name")}>
+      <Field id="name" label={t("nameLabel")} required error={err("name")}>
         <Input name="name" maxLength={120} defaultValue={was(state, "name")} />
       </Field>
 
@@ -80,7 +76,7 @@ export function NewOrgForm({ action }: { action: (prev: NewOrgState, formData: F
       </Field>
 
       <Field id="domains" label={t("domainsLabel")} hint={t("domainsHint")} required error={err("domains")}>
-        <Textarea name="domains" dir="ltr" rows={3} spellCheck={false} className="font-mono" defaultValue={was(state, "domains")} />
+        <Textarea name="domains" dir="ltr" rows={2} spellCheck={false} className="font-mono" defaultValue={was(state, "domains")} />
       </Field>
 
       <Field id="firstAdminEmail" label={t("firstAdminLabel")} hint={t("firstAdminHint")} required error={err("firstAdminEmail")}>
@@ -98,9 +94,14 @@ export function NewOrgForm({ action }: { action: (prev: NewOrgState, formData: F
         }
       />
 
-      <SubmitButton size="md" pending={pending}>
-        {t("submit")}
-      </SubmitButton>
+      <div className="flex flex-wrap items-center gap-3">
+        <SubmitButton size="md" pending={pending}>
+          {t("submit")}
+        </SubmitButton>
+        <ButtonLink href="/app/platform/orgs" variant="quiet" size="md">
+          {t("cancel")}
+        </ButtonLink>
+      </div>
     </form>
   );
 }

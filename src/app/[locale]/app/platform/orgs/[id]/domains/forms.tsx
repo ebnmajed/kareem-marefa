@@ -10,18 +10,16 @@ import { useToast } from "@/components/ui/toast";
 import { hasFailed, was } from "@/lib/form-state";
 import { emptyAddDomainState, emptyFirstAdminState, type AddDomainState, type FirstAdminState } from "./state";
 
-// SCR-082's two forms — REQ-TEN-007, REQ-TEN-002, onto the form model for wave 8
-// (`docs/plan/notes/platform.md` W8.5).
+// SCR-082's two forms — a new domain (the target of the `h1` row's «نطاق جديد») and the first admin, which the board
+// does not draw and this screen keeps (DEC-251, Q7; `DEC-148` C3) — REQ-TEN-007, REQ-TEN-002. Kept (W26.2.3, D7, D9):
 //
-// Both are Latin-valued and keep `dir="ltr"` on the control alone, so the label,
-// the hint and the error stay in the page's direction. Both are `noValidate`,
-// with the app's error beside its field. The acknowledgement fires in the
-// action's own path, never from an effect.
-//
-// ★ Contract 4: any case is accepted, and the toast names the domain AS STORED
-// — the same lowercase form the list re-renders — so what the operator reads
-// is what provisioning will compare against. A toast title is plain text, so
-// the domain is isolated with FSI/PDI, the character form of `<bdi>`.
+// · Both are Latin-valued and carry `dir="ltr"` on the control alone; both are `noValidate`, the error beside its
+//   field; the acknowledgement fires in the action's own path, never from an effect.
+// · ★ Contract 4: any case is accepted, and the toast names the domain AS STORED — the lowercase form the list
+//   re-renders — so what the operator reads is what provisioning compares against; «already present» is `info`,
+//   never «saved». A toast title is plain text, so the domain is isolated with FSI/PDI.
+// · The first admin's field shows the stored address, and after a refusal what was typed; the DAL lowercases the
+//   address before the RPC (wave 8 F3).
 
 const isolate = (value: string) => `⁨${value}⁩`;
 

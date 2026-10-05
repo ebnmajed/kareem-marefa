@@ -19,18 +19,18 @@ import { was } from "@/lib/form-state";
 import { promoteAction } from "./actions";
 import { emptyPromoteState, type PromoteState } from "./state";
 
-// SCR-083's promotion candidates — REQ-DSG-008, wave 8 (`docs/plan/notes/platform.md` W8.6).
+// SCR-083's promotion candidates, below the grid — REQ-DSG-008. `PlatformTemplates.dc.html` does not draw them and the
+// screen keeps them (DEC-251, Q6): promotion is the one way a platform template comes into being after the baseline,
+// so dropping the list would drop the requirement (W26.2.4, T5).
 //
-// Published org versions, BY IDENTITY ALONE: a name, an org, a family, a version
-// number and a date. No preview and no document — `promote_template_to_platform()`
-// copies the document server-side without handing it to anyone, which is what
-// keeps «managed» from becoming «reads every org's designs».
+// Published org versions, BY IDENTITY ALONE: a name, an org, a family, a version number and a date — the one place
+// the console carries an org-authored string, and `tests/rls/platform-console.test.ts` pins that it carries nothing
+// more. No preview and no document: `promote_template_to_platform()` copies the document server-side without handing
+// it to anyone, which keeps «managed» from becoming «reads every org's designs».
 //
-// «رقِّ النسخة» opens a dialog per candidate: the optional new name belongs to
-// THIS version (a shared field beside a picker is how the wrong one gets
-// renamed), and the dialog says the copy-not-link consequence before the press.
-// `noValidate`; the refusal stays in the dialog; success closes it and says so,
-// in the action's own path.
+// «رقِّ النسخة» opens a dialog per candidate: the optional new name belongs to THIS version, and the dialog says the
+// copy-not-link consequence before the press. `noValidate`; a refusal stays in the dialog; success closes it and says
+// so, in the action's own path.
 
 const PLATFORM_TIME_ZONE = "Asia/Riyadh";
 
@@ -112,6 +112,9 @@ export function PromoteTable({ candidates, locale }: { candidates: PromotableVer
 
   return (
     <DataTable
+      // The surface card at md+, as every console table since wave 21 draws it; the rows are cards below `md`.
+      className="md:rounded-panel md:border md:border-edge md:bg-surface md:px-2 md:py-1"
+      hiddenHeaders={["actions"]}
       label={t("promoteTitle")}
       columns={columns}
       rows={candidates}
