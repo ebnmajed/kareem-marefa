@@ -585,21 +585,8 @@ test("★ REQ-ADM-003: SCR-084 reads all eight alerts through platform_alerts(),
   for (const s of [...secrets(a), ...secrets(b)]) await expect(page.locator("body")).not.toContainText(s);
 });
 
-test("★ REQ-DSG-026 · DEC-148: SCR-083 lists the baseline as rows of a composition — certificates in both orientations — and offers no retirement below the floor", async ({ context, page }) => {
-  // Needs `0009_platform_library_roster` and `designer`'s roster seed applied.
-  await signInPlatform(context);
-  await page.goto("/ar/app/platform/templates");
-  const phone = test.info().project.name === "phone";
-  const certificates = page.getByRole("region", { name: /^الشهادات/ });
-  const posters = page.getByRole("region", { name: /^الملصقات/ });
-  await expect(certificates).toContainText("أفقي");
-  await expect(certificates).toContainText("عمودي");
-  await expect(posters).not.toContainText("عمودي");
-  if (!phone) await expect(posters.getByRole("columnheader", { name: "الشكل" })).toHaveCount(0);
-  // The baseline is badged as such, and no document or preview is on the page.
-  await expect(main(page).getByText("أساسي").filter({ visible: true }).first()).toBeVisible();
-  await expect(page.locator("main img, main canvas, main iframe")).toHaveCount(0);
-});
+// wave 27 (DEC-254 §3.5, REQ-DSG-035): SCR-083's case stood here. The platform library is withdrawn — an org owns its
+// templates — so the screen, its route and this case are gone; the roster is proven per org in `templates-roster`.
 
 test("★ REQ-ADM-019: a break-glass session lands in the ORG's own audit log, where its admin reads it", async ({ context, page }) => {
   await signInPlatform(context);
@@ -720,7 +707,6 @@ test("REQ-NFR-007: the console passes axe at WCAG 2.2 AA", async ({ context, pag
     "/ar/app/platform",
     "/ar/app/platform/orgs",
     "/ar/app/platform/orgs/new",
-    "/ar/app/platform/templates",
     "/ar/app/platform/metrics",
     "/ar/app/platform/impersonate",
   ]) {
@@ -776,11 +762,6 @@ test.describe("390 px RTL review", () => {
     await page.getByRole("button", { name: /أضف النطاق/ }).click();
     await expect(main(page).getByText(shotDomain.toLowerCase(), { exact: true }).filter({ visible: true }).first()).toBeVisible();
     await review(page, "wave8-platform-domains-mixed-case-saved");
-
-    // P5 — the library with the baseline.
-    await page.goto("/ar/app/platform/templates");
-    await expect(page.getByRole("heading", { level: 1, name: "مكتبة القوالب" })).toBeVisible();
-    await review(page, "wave8-platform-templates-baseline");
 
     // P6 — metrics: the alerts, the totals, job health as cards.
     await page.goto("/ar/app/platform/metrics");
@@ -883,10 +864,6 @@ test.describe("wave 26 — the six screens beside their artboards", () => {
     await capture(page, "domains", "remove-confirm");
     await page.keyboard.press("Escape");
     await expect(main(page).getByRole("button", { name: `أزل ${a.domain}` })).toBeFocused();
-
-    await page.goto("/ar/app/platform/templates");
-    await expect(page.getByRole("heading", { level: 1, name: "مكتبة القوالب" })).toBeVisible();
-    await capture(page, "templates", "default");
 
     await page.goto("/ar/app/platform/metrics");
     await expect(page.getByRole("heading", { level: 1, name: "المؤشرات" })).toBeVisible();

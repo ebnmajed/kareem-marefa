@@ -89,7 +89,6 @@ describe("platform, legal and privacy messages", () => {
     const rich: [string, string][] = [
       ["platform.orgs.suspendConfirmTitle", "<bdi>{org}</bdi>"],
       ["platform.orgs.deleteConfirmTitle", "<bdi>{org}</bdi>"],
-      ["platform.templates.version", "<bdi>{value}</bdi>"],
       ["platform.banner.viewingAs", "<bdi>{org}</bdi>"],
       ["platform.banner.endsAt", "<bdi>{time}</bdi>"],
       ["platform.impersonate.expiredRecently", "<bdi>{org}</bdi>"],
