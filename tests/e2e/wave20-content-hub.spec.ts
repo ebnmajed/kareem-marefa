@@ -140,7 +140,8 @@ test("★ SCR-021: read by default, no company, edit on intent, a refused save s
   // ★ wave 27 (ledger B): an admin's placement — the owner stands in for SCR-049 here — then a profile save that must
   // leave it where it is: the save never sends the column (REQ-PRF-012, REQ-PRF-013).
   await db.query(`update public.members set company_id = (select id from public.companies where org_id = $1 and name = 'شركة الاختبار') where id = $2`, [orgId, memberId]);
-  await page.reload();
+  await page.goto("/ar/app/me");
+  await settle(page);
   await expect(profileRegion.getByText("شركة الاختبار", { exact: true })).toBeVisible();
 
   await main.getByRole("link", { name: "عدّل ملفك" }).click();

@@ -184,7 +184,7 @@ test("048 at 390: the domain is in the card, never a sideways page", async ({ co
   );
   await signIn(context);
   await goto(page, "/ar/app/admin/companies");
-  await expect(page.locator("#main").getByText(acmeDomain, { exact: true }).first()).toBeVisible();
+  await expect(page.locator("#main").getByText(acmeDomain, { exact: true }).filter({ visible: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   await shot(page, "048-default-390");
 });
