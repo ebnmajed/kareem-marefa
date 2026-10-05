@@ -1,179 +1,164 @@
 #!/usr/bin/env node
-// Writes a baseline library seed from `src/library.ts` —
-// REQ-DSG-026, DEC-128, DEC-148.
+// Writes the baseline library as an ORG SEED from `src/library.ts` —
+// REQ-DSG-035, REQ-DSG-026 as DEC-254 §3 amends it, DEC-128, DEC-148.
 //
-// ★ FORWARD-ONLY (DEC-149 §3). Its first output is promoted as
-// `supabase/migrations/0098_certificate_library.sql`, and a migration is never
-// regenerated. A later change to `library.ts` is written as a NEW proposed
-// seed and promoted as a new migration:
+// ★ FORWARD-ONLY (DEC-149 §3). A promoted output is never regenerated: 0061,
+// 0098, 0193 and 0196 were each this script's output at the time, and each is
+// now a migration. A later change to `library.ts` is written as a NEW proposed
+// file and promoted as a new migration:
 //
 //   npm run build -w @kareem/designer-runtime
-//   node packages/designer-runtime/scripts/seed-sql.mjs > supabase/proposed/designer/NNNN_<what-changed>.sql
-//
-// Because the seed is idempotent by composition (below), the new file carries
-// the whole library and adds only the versions the database does not have.
-// Edit the header text below before handing it over — it names this seed.
+//   node packages/designer-runtime/scripts/seed-sql.mjs > supabase/proposed/designer/NNNN_seed_org_templates.sql
 //
 // The library is the source and the SQL is a copy. `tests/unit/designer-
 // library.test.ts` parses every `$json$…$json$` back out of the seed files and
 // deep-equals it against the library, so a hand edit of the SQL — or a
 // library change nobody reseeded — fails CI rather than diverging.
 //
-// Idempotent by COMPOSITION, never by id, so a re-run adds nothing:
-//   · a poster family, or a certificate family's landscape composition, is
-//     the platform DEFAULT of its (purpose, family) — the row 0061 seeded —
-//     and gains the library's version when it does not have it yet;
-//   · a certificate family's portrait composition is the non-default platform
-//     row of that family whose versions carry a portrait master, created with
-//     its version 1 when there is none.
-// A version is ADDED, never edited: an artifact references a version, and a
-// certificate issued against version 1 renders as version 1 forever
-// (REQ-DSG-007, REQ-CRT-014).
+// ★★ WAVE 27 (DEC-254 §3): THERE IS NO PLATFORM LIBRARY. Until wave 26 this
+// script wrote platform rows every org read and copied. It now writes ONE
+// FUNCTION, `seed_org_templates(p_org)`, which inserts the eleven compositions
+// as that org's OWN published, editable templates. An org created after a
+// library change gets the change; an org created before keeps what it has —
+// its templates are its property (REQ-DSG-008's own reasoning, DEC-254 §3.2).
+//
+// Idempotent by COMPOSITION, never by id or by document, so a re-run adds
+// nothing and an admin's edit is never undone:
+//   · a poster family is present when the org holds ANY template of that
+//     `(purpose, family)`, live or retired;
+//   · a certificate composition is present when the org holds a template of
+//     that family whose LATEST version's master has this orientation (DEC-148:
+//     the orientation is the document's, never a column).
+// Retired rows count, so a template an admin retired is never brought back.
+//
+// A seeded row is a DEFAULT only when the library says so (every poster, the
+// landscape certificates) AND the org has no live default of that
+// `(purpose, family)` yet — `design_templates_single_default` (0057) would
+// otherwise DEMOTE the org's own. The seed takes no default away from anyone.
 
 import { BASELINE_LIBRARY, dynamicFieldsOf } from '../dist/index.js'
 
 const lit = (s) => `'${String(s).replace(/'/g, "''")}'`
 
 const out = []
-out.push(`-- designer (wave 24, the RE-COLOUR) — the baseline library's documents rebuilt
--- to what the artboards actually draw, as VERSION 2 of the eleven rows the
--- wave's first seed created. Follows 0193 and the guard that admits \`design.*\`.
+out.push(`-- designer (wave 27, M29) — an org owns its templates: the baseline library as a SEED every org
+-- receives as its own rows. Generated; the lead promotes it as the first part of M1.
 --
--- Serves:  REQ-DSG-033 (the designed poster families), REQ-CRT-016 (the
---          designed certificate families), REQ-DSG-021 (bound colours only),
---          REQ-DSG-007 and REQ-CRT-014 (a version is ADDED, never edited),
---          REQ-DSG-026 (the roster, still five and three)
--- Cites:   DEC-242 §1 and §2 as the re-colour amends them
+-- Serves:  REQ-DSG-035 (an organisation owns its templates from the day it is created),
+--          REQ-DSG-026 as DEC-254 §3 amends it (the roster is counted per org),
+--          REQ-DSG-007 (a published version is immutable), REQ-CRT-015 (one default per kind)
+-- Cites:   DEC-254 §3.1 · DEC-255 §5–§6 (the sync-1 rulings) · DEC-148 · DEC-176
 --
--- 03 §8.2 ROWS: none. This file inserts one version per existing platform row,
--- into two tables 0055 already policied, as the owner during migration. It
--- creates no policy, no grant and no function.
+-- 03 §8.2 ROWS THIS FILE NEEDS:
+--   | \`RPC-seed_org_templates.set\` | An org holds the eleven compositions as its own published v1 rows: five poster families, three certificate families × landscape and portrait, one default per (purpose, family) — every poster and the landscape certificates. |
+--   | \`RPC-seed_org_templates.idempotent\` | A second call inserts nothing and returns 0; a retired seeded row is not re-seeded. |
+--   | \`RPC-seed_org_templates.keeps_defaults\` | An org's own live default of a (purpose, family) is not demoted. |
+--   | \`RPC-seed_org_templates.not_callable\` | No role may execute it: owner-only, invisible through PostgREST. |
 --
 -- GENERATED by packages/designer-runtime/scripts/seed-sql.mjs from
 -- packages/designer-runtime/src/library.ts. Do not edit by hand:
--- tests/unit/designer-library.test.ts parses every \$json\$…\$json\$ back out and
+-- tests/unit/designer-library.test.ts parses every $json$…$json$ back out and
 -- deep-equals it against the library.
 --
--- ★★ A VERSION, NOT A ROW — and this is the one thing it does differently from
--- the seed before it. 0193 created eleven NEW rows because REQ-DSG-034 required
--- M6's baseline to LEAVE the library: there was something to remove, and it was
--- removed. Here there is not. The eleven rows are the right rows, with the
--- right families and the right names, carrying the wrong document — because
--- DEC-242 §1 declared «there is no artboard for a poster» and
--- AdminDesignerElements.dc.html is one. So nothing is superseded, deleted or
--- retired by this file, and \`supersede_baseline_template()\` is not called.
+-- ★ THE MARKER CARRIES THE LIBRARY'S VERSION (\`@v2\`), THE ROW CARRIES VERSION 1. The marker names WHICH
+-- library document this is — the same document 0196 stored as platform v2 — so the roster unit's
+-- «the newest file wins» comparison holds unchanged. The row is a new template of the org's, and a new
+-- template's first version is 1; the platform's numbering means nothing on it.
 --
--- ★ WHY THE DOCUMENT CHANGED AGAIN. The artboard draws the poster at 640 × 360
--- on \`#FF9A2E\` with \`#0B0C12\` type; its <title> is «ساحة اللعب — لون الفريق»,
--- which is the NAME of the first card in the library artboard — the two files
--- were always one specification. The shipped documents instead took five brand
--- tokens as grounds, three of which (\`canvas\`, \`surface\`, \`canvasRaise\`)
--- resolve within 1.10:1, 1.22:1 and 1.11:1 of one another: three of the five
--- families were the same poster, measured. The colours now come from the
--- design's own namespace, which the guard migration beside this file admits.
+-- ★ NO PARITY GOLDEN MOVES (DEC-176). Every document below is byte-identical to the platform row's latest
+-- version it replaces — the same library object, serialised the same way — and no golden reads the
+-- database in any case: the harness renders from BASELINE_LIBRARY in memory.
 --
--- ★ REQ-CRT-014 IS UNTOUCHED, and that is what makes this safe where a hard
--- delete was not: version 1 stays exactly where it is. A certificate issued
--- against it still renders as it, byte for byte, and its \`font_hashes\` and
--- \`recipient_name_snapshot\` are not read by this file at all. Issuance and
--- \`poster_render_context()\` resolve the LATEST version, so a new export is the
--- designed one and an old certificate is its own.
+-- ★ AUDITED, AND TRUTHFULLY: each inserted template fires 0191's \`design_template.created\`, with no
+-- session, so the actor is null and the role \`system\` (write_audit, 0005:33-34). Eleven rows per org
+-- (DEC-255, D7). The v1 versions write nothing (0191:76).
 --
--- ★ IDEMPOTENT ON THE DOCUMENT, as 0193 is, and for the same measured reason: a
--- key of «(scope, purpose, family)» cannot tell a row that needs the new version
--- from one that already has it. The row carrying this exact document is the
--- honest key — jsonb equality is structural and key-order independent — so a
--- re-run inserts nothing. The version number is \`max(version) + 1\` on the row
--- rather than a literal, so the file is correct whatever the row has reached.
---
--- ★ \`main\`'S WORKER IN THE PUSH-BEFORE-MERGE WINDOW renders these documents
--- with the OLD runtime, which does not know the \`design\` namespace: \`isBinding()\`
--- returns false for \`{{design.tangerine}}\`, so \`resolveColour()\` returns the
--- moustache as a literal CSS colour and a poster exported in that window has no
--- ground and no type colour. ★★ SO THIS FILE IS PROMOTED AND PUSHED ONLY WITH
--- THE MERGE, never before it — the opposite of the wave's usual order, and the
--- reason is that it is the first seed whose documents need a runtime the old
--- code does not have. The guard migration beside it is safe to push early: it
--- only widens what an INSERT may carry.
+-- ★ WHAT IS NOT SET: \`created_by\`, \`published_by\`, \`description\`, \`duplicated_from\` — no member made
+-- these, and a provenance link to a platform row that is about to be deleted would only be nulled by
+-- \`on delete set null\` (0055:84). \`font_hashes\` and \`safe_areas\` are '{}', as on every platform row
+-- (issuance pins fonts from the worker, 0127:282).
 
-do $$
+create or replace function public.seed_org_templates(p_org uuid)
+returns integer
+language plpgsql security definer set search_path = '' as $seed$
 declare
   v_template uuid;
   v_doc      jsonb;
   v_fields   jsonb;
+  v_n        integer := 0;
 begin
+  if not exists (select 1 from public.orgs o where o.id = p_org) then
+    raise exception 'unknown_org' using errcode = '42704';
+  end if;
 `)
 
 for (const t of BASELINE_LIBRARY) {
   const marker = t.purpose === 'poster' ? `${t.family}@v${t.version}` : `${t.family}@${t.orientation}@v${t.version}`
   const json = JSON.stringify(t.document, null, 2)
   const fields = JSON.stringify(dynamicFieldsOf(t.document))
-  if (json.includes('$json$') || fields.includes('$fields$')) throw new Error(`${marker}: a dollar-quote tag appears inside the document`)
+  for (const tag of ['$json$', '$fields$', '$seed$']) {
+    if (json.includes(tag) || fields.includes(tag)) throw new Error(`${marker}: the dollar-quote tag ${tag} appears inside the document`)
+  }
 
-  // ★★ IDEMPOTENT ON THE DOCUMENT, not on `(scope, purpose, family)` — and this
-  // is the one thing wave 24's seed does differently from every seed before it.
-  //
-  // 0061 and 0098 ADDED A VERSION to an existing row, so «the live default of
-  // this (purpose, family)» was exactly the row to seed into. Wave 24 REPLACES
-  // the row (REQ-DSG-034), and that key cannot tell the row being replaced from
-  // the row replacing it: on the first run it matches the SUPERSEDED row, finds
-  // version 1 already present, inserts nothing, and the document never changes.
-  // Measured, not reasoned about — `tests/rls/templates-roster.test.ts` caught
-  // it: 11 templates and 19 versions, the old documents still live.
-  //
-  // The row carrying THIS EXACT DOCUMENT is the honest key. `jsonb` equality is
-  // structural and key-order independent, the literal is declared once into
-  // `v_doc` rather than written twice, and a re-run finds the row it created and
-  // does nothing.
-  // ★ The LIVE platform row of this composition, by its own name. After 0193 the
-  // eleven names are distinct among non-retired platform rows — a poster's is its
-  // family name, a certificate's its family plus its orientation — and any row
-  // 0193 retired is excluded by `retired_at is null` rather than by hoping its
-  // name differs.
-  const seedOne = () => `v_template := null;
+  // ★ Present when the org holds a template of this COMPOSITION, live or retired.
+  // A certificate's orientation is its latest version's master (DEC-148); a
+  // template with no version has no orientation and does not count.
+  const present =
+    t.purpose === 'poster'
+      ? `exists (
+    select 1 from public.design_templates t
+     where t.org_id = p_org and t.purpose = 'poster' and t.family = ${lit(t.family)}
+  )`
+      : `exists (
+    select 1
+      from public.design_templates t
+      cross join lateral (
+        select v.document from public.design_template_versions v
+         where v.template_id = t.id order by v.version desc limit 1
+      ) l
+     where t.org_id = p_org and t.purpose = 'certificate' and t.family = ${lit(t.family)}
+       and ((l.document #>> '{master,width}')::numeric >= (l.document #>> '{master,height}')::numeric) is ${t.orientation === 'landscape'}
+  )`
+
+  // ★ A default only when the library says so AND the org has none of its own.
+  const isDefault = t.isDefault
+    ? `not exists (
+      select 1 from public.design_templates d
+       where d.org_id = p_org and d.purpose = ${lit(t.purpose)} and d.family = ${lit(t.family)}
+         and d.is_default and d.retired_at is null
+    )`
+    : 'false'
+
+  out.push(`-- @family ${marker}
 v_doc    := $json$${json}$json$::jsonb;
 v_fields := $fields$${fields}$fields$::jsonb;
 
-select t.id into v_template
-  from public.design_templates t
- where t.scope = 'platform' and t.purpose = ${lit(t.purpose)} and t.family = ${lit(t.family)}
-   and t.name = ${lit(t.name)} and t.retired_at is null
- order by t.created_at
- limit 1;
+if not ${present} then
+  -- RETURNING, never a second lookup: a lookup by (family, name) is how 0193 once
+  -- matched the wrong row and inserted a second version 1 (0193:450-453).
+  insert into public.design_templates (org_id, scope, purpose, family, name, is_default)
+  values (
+    p_org, 'org', ${lit(t.purpose)}, ${lit(t.family)}, ${lit(t.name)},
+    ${isDefault}
+  )
+  returning id into v_template;
 
-if v_template is null then
-  -- Louder than a silent skip: the row this seed amends is 0193's, and if it is
-  -- not there the library is not what this file was generated against.
-  raise exception 'baseline row missing for % % (%)', ${lit(t.purpose)}, ${lit(t.family)}, ${lit(t.name)};
-end if;
-
--- ADD the version unless this row already carries this exact document, which is
--- what makes a re-run a no-op. Never an UPDATE: a version is immutable
--- (REQ-DSG-007), and version 1 is what a certificate already issued renders as
--- (REQ-CRT-014).
-if not exists (
-  select 1 from public.design_template_versions v
-   where v.template_id = v_template and v.document = v_doc
-) then
   insert into public.design_template_versions (template_id, version, document, dynamic_fields, font_hashes, published_at)
-  select
-    v_template,
-    coalesce(max(v.version), 0) + 1,
-    v_doc, v_fields,
-    -- No font hash is pinned on a platform version: the platform set is
-    -- installed by hash in every image (REQ-DSG-016), as 0061 recorded.
-    '{}',
-    now()
-  from public.design_template_versions v
-  where v.template_id = v_template;
+  values (v_template, 1, v_doc, v_fields, '{}', now());
+  v_n := v_n + 1;
 end if;
-`
-
-  out.push(`-- @family ${marker}`)
-  out.push(seedOne())
+`)
 }
 
-out.push(`end $$;
+out.push(`return v_n;
+end $seed$;
+
+-- Owner-only. It is called by \`orgs_seed_templates\` (the trigger, M1's second part) and by M1's
+-- backfill, both as the owner. No grant, so PostgREST never sees it (tests/rls/definer-exposure.test.ts).
+revoke execute on function public.seed_org_templates(uuid) from public, anon, authenticated, service_role;
+
+comment on function public.seed_org_templates(uuid) is
+  'DEC-254 §3 — insert the baseline library as one org''s own published templates; idempotent by composition; returns how many it inserted. Owner-only.';
 `)
 
 process.stdout.write(out.join('\n'))

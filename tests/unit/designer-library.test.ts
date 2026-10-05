@@ -513,9 +513,13 @@ describe("the seed migrations are a copy of this library, and have not drifted",
       // eleven rows 0193 created, not eleven more rows. Last in the list because
       // the newest FILE wins, which is what makes this the live document.
       seedFile("0002_baseline_library_recolour.sql", /_baseline_library_recolour\.sql$/),
+      // ★ LEDGER C-1 (wave 27, DEC-254 §3): the baseline is now a SEED FUNCTION every org runs on itself —
+      // `seed_org_templates()`. Its markers carry the library's version (`@v2`), so it is the newest file and must
+      // deep-equal the library exactly as 0196 did; the rows it inserts are each org's own version 1.
+      seedFile("0007_seed_org_templates.sql", /_seed_org_templates\.sql$/),
     ];
     if (bodies.some((b) => b === null)) {
-      expect.fail("a baseline-library seed migration (0061's, the wave-8 certificate library, or one of wave 24's two) was not found");
+      expect.fail("a baseline-library seed migration (0061's, the wave-8 certificate library, one of wave 24's two, or wave 27's org seed) was not found");
       return;
     }
 
