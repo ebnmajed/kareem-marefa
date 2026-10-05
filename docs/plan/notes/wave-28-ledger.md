@@ -13,6 +13,11 @@ One line per changed assertion or fixture in a file that existed before the wave
 | D-4 | same, `settle()` | advanced the timers past `AUTOSAVE_DELAY_MS` → `save()` presses the state's `saveDocument()` inside `act`, and a new `wait()` advances 60 s to prove nothing fires | selector (the trigger) | the person saves |
 | D-5 | same, «the autosave — a Route Handler, after 1200 ms of quiet» → «the save — the person's, through the Route Handler» · first case | **expectation**: «nothing before 1200 ms, one PUT after» → «nothing after 60 s, one PUT on Save». The URL, method, `baseUpdatedAt`, the body's rotation, «saved», and the second save carrying the answered base are all kept | **expectation** | `DEC-258` §2.1 |
 | D-6 | same, the refusal table (`it.each`, five answers) | triggered by `save()` instead of the timer; the five states and toast counts unchanged; each row also asserts the save resolved `false` and the document is still dirty | selector (the trigger), addition | as D-5 |
+| D-7 | `tests/e2e/wave8-designer-editor.spec.ts`, `saved()` | waited for the autosave's PUT → when awaited, clicks «احفظ» and waits for that PUT. Its 8 call sites and every assertion unchanged | selector (the trigger) | as D-5 |
+| D-8 | `tests/e2e/wave13-designer-studio-drag.spec.ts`, `saved()` | the same; 4 call sites unchanged | selector | as D-5 |
+| D-9 | `tests/e2e/wave13-designer-studio-taps.spec.ts`, `saved()` | the same, by `click()` — never ⌘S, which the taps guard forbids; 13 call sites unchanged | selector | as D-5 |
+| D-10 | `tests/e2e/wave23-designer-taps.spec.ts`, `saved()` | the same, by `click()`; 7 call sites unchanged | selector | as D-5 |
+| D-11 | `tests/unit/designer-taps-guard.test.ts`, `SPECS` | gains `tests/e2e/wave28-designer-save.spec.ts` — the three answers are proven on taps | addition | `DEC-093`, `STORY-DSG-019` |
 
 **No lead-owned spec changes** (`DEC-259` §1.2): `wave23-lead-certificate-walk` opens the studio and edits nothing;
 `wave11-lead-a11y-sweep` scans it; `wave13-demo-download` never opens it.

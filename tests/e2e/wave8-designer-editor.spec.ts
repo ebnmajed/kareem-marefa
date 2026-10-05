@@ -211,8 +211,19 @@ async function storedLayer(id: string): Promise<{ frame: { x: number; y: number;
   return { frame: rows[0].layer.frame, z: rows[0].layer.z ?? null };
 }
 
-function saved(page: Page) {
-  return page.waitForResponse((r) => r.url().includes(`/api/designer/${documentId}`) && r.request().method() === "PUT" && r.status() === 200);
+// ★ wave 28 (REQ-DSG-036, DEC-258): the designer no longer saves on its own. Awaiting this presses «احفظ» — AFTER the
+// edit it follows, because a thenable runs when it is awaited — and waits for the one PUT that sends. A click, never
+// ⌘S (the tap specs may not press a key). The call sites do not move.
+function saved(page: Page): PromiseLike<Awaited<ReturnType<Page["waitForResponse"]>>> {
+  return {
+    then: (resolve, reject) =>
+      Promise.all([
+        page.waitForResponse((r) => r.url().includes(`/api/designer/${documentId}`) && r.request().method() === "PUT" && r.status() === 200),
+        main(page).getByRole("button", { name: "احفظ", exact: true }).click(),
+      ])
+        .then(([response]) => response)
+        .then(resolve, reject),
+  };
 }
 
 async function openStudio(page: Page) {
