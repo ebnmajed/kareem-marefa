@@ -187,6 +187,11 @@ export function compareSessions(a: StorySession, b: StorySession): number {
   return a.sessionId < b.sessionId ? -1 : a.sessionId > b.sessionId ? 1 : 0;
 }
 
+/** A day is running at `now`: started and not yet ended. */
+export function liveNow(day: { starts_at: string; ends_at: string }, now: number): boolean {
+  return Date.parse(day.starts_at) <= now && now < Date.parse(day.ends_at);
+}
+
 export function firstUnseen(frames: readonly { seen: boolean }[]): number {
   const i = frames.findIndex((f) => !f.seen);
   return i === -1 ? 0 : i;
@@ -305,6 +310,7 @@ export const getStoryFeed = cache(async (locale: string): Promise<StoryFeed> => 
     if (held.length < RECAP_PHOTOS) firstPhotos.set(p.session_id, [...held, p.id]);
   }
 
+  const now = Date.now();
   const out: StorySession[] = [];
   for (const sessionId of sessionIds) {
     const s = sessions.get(sessionId);
@@ -340,7 +346,12 @@ export const getStoryFeed = cache(async (locale: string): Promise<StoryFeed> => 
           case "starts_soon":
             return day ? { ...base, kind: "starts_soon", startsAt: day.starts_at, venueName: day.venue } : null;
           case "live":
-            return day ? { ...base, kind: "live", checkedInCount: liveCountByFrame.get(r.frame_id) ?? null, venueName: day.venue, endsAt: day.ends_at } : null;
+            // ★ «جارية الآن» is true only while its day runs (REQ-STO-004: «current while the session is live»). A
+            // frame row lives 24 hours; once its day has ended — or the session completed early — it says nothing
+            // true, and the recap carries the room's figure from then on.
+            return day && s.state === "in_progress" && liveNow(day, now)
+              ? { ...base, kind: "live", checkedInCount: liveCountByFrame.get(r.frame_id) ?? null, venueName: day.venue, endsAt: day.ends_at }
+              : null;
           case "photo": {
             if (!r.photo_id) return null;
             const p = photos.get(r.photo_id);

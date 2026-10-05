@@ -129,6 +129,15 @@ describe("getStoryFeed — what each frame draws", () => {
     expect((await getStoryFeed("ar")).sessions).toEqual([]);
   });
 
+  it("★ a live frame whose day has ended says nothing true and is not drawn; the rest of the story stays", async () => {
+    tables.session_days = [
+      { id: DAY_LIVE, session_id: LIVE, position: 1, starts_at: hoursAgo(3), ends_at: hoursAgo(2), venues: { name: "قاعة الرياض", address: null, map_url: null } },
+    ];
+    rpcs.story_feed = () => [frame("f-pub", LIVE, "published", hoursAgo(5)), frame("f-live", LIVE, "live", hoursAgo(3), { session_day_id: DAY_LIVE })];
+    const story = (await getStoryFeed("ar")).sessions.find((s) => s.sessionId === LIVE);
+    expect(story?.frames.map((f) => f.kind)).toEqual(["published"]);
+  });
+
   it("no rows, no sessions", async () => {
     rpcs.story_feed = () => [];
     expect((await getStoryFeed("ar")).sessions).toEqual([]);
