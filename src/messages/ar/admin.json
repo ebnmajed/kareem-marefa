@@ -580,7 +580,9 @@
           "created": "إنشاء شركة",
           "changed": "تعديل شركة",
           "deactivated": "تعطيل شركة",
-          "reactivated": "إعادة تفعيل شركة"
+          "reactivated": "إعادة تفعيل شركة",
+          "domain_added": "إضافة نطاق إلى شركة",
+          "domain_removed": "إزالة نطاق من شركة"
         },
         "design": {
           "export_requested": "طلب تصدير تصميم",
@@ -621,7 +623,8 @@
           "added": "إضافة عضو",
           "add_undone": "حذف عضو مضاف قبل تسجيل دخوله",
           "invite_resent": "إعادة إرسال دعوة عضو",
-          "claimed": "تسجيل دخول عضو مضاف لأول مرة"
+          "claimed": "تسجيل دخول عضو مضاف لأول مرة",
+          "company_changed": "تغيير شركة عضو"
         },
         "org": {
           "created": "إنشاء المؤسسة",

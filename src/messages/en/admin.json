@@ -580,7 +580,9 @@
           "created": "Company created",
           "changed": "Company changed",
           "deactivated": "Company deactivated",
-          "reactivated": "Company reactivated"
+          "reactivated": "Company reactivated",
+          "domain_added": "Domain added to a company",
+          "domain_removed": "Domain removed from a company"
         },
         "design": {
           "export_requested": "Design export requested",
@@ -621,7 +623,8 @@
           "added": "Member added",
           "add_undone": "Added member removed before signing in",
           "invite_resent": "Member invitation resent",
-          "claimed": "Added member signed in for the first time"
+          "claimed": "Added member signed in for the first time",
+          "company_changed": "Member's company changed"
         },
         "org": {
           "created": "Organisation created",
