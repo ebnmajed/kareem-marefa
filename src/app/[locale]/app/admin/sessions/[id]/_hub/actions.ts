@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { publishSession, renameSession, sessionRenameInput, transitionSession } from "@/lib/dal/sessions";
@@ -24,7 +25,8 @@ export async function publishFromHub(locale: Locale, sessionId: string, _prev: L
   if (!z.uuid().safeParse(sessionId).success) return { error: "failed", done: null, reason: "" };
   try {
     await publishSession(locale, sessionId);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { error: "failed", done: null, reason: "" };
   }
   revalidateHub(locale, sessionId);
@@ -37,7 +39,8 @@ export async function cancelFromHub(locale: Locale, sessionId: string, _prev: Li
   if (!parsed.success) return { error: parsed.error.issues.some((i) => i.path[0] === "reason") ? "reasonRequired" : "failed", done: null, reason: typed };
   try {
     await transitionSession(locale, parsed.data.sessionId, "cancel", parsed.data.reason);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { error: "failed", done: null, reason: typed };
   }
   revalidateHub(locale, sessionId);
@@ -58,7 +61,8 @@ export async function renameFromHub(locale: Locale, sessionId: string, _prev: Re
   let result;
   try {
     result = await renameSession(locale, sessionId, parsed.data.title);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { error: "failed", saved: null, title: typed };
   }
   if (!result.ok) {

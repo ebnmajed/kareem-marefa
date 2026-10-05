@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSessionDirect, createSessionFromProposal, directSessionInput, transitionSession, type SessionAction } from "@/lib/dal/sessions";
@@ -76,7 +77,8 @@ export async function makeSessionDirectly(locale: Locale, prev: CreateSessionSta
   let id: string;
   try {
     id = await createSessionDirect(locale, parsed.data);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return withFormError(state, "failed");
   }
   revalidatePath(`/${locale}/app/admin/sessions`);
@@ -118,7 +120,8 @@ export async function runTransition(locale: Locale, sessionId: string, _prev: Tr
 
   try {
     await transitionSession(locale, sessionId, parsed.data.action as SessionAction, parsed.data.reason);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { error: "actionFailed", done: false };
   }
   revalidatePath(`/${locale}/app/admin/sessions`);
@@ -153,7 +156,8 @@ export async function runBulkCancel(locale: Locale, prev: BulkCancelState, formD
       await transitionSession(locale, id, "cancel", parsed.data.reason);
       done.push(id);
       revalidatePath(`/${locale}/app/sessions/${id}`);
-    } catch {
+    } catch (e) {
+      unstable_rethrow(e);
       failed.push(id);
     }
   }

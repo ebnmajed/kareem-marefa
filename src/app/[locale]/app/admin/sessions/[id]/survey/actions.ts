@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
@@ -35,7 +36,8 @@ export async function attach(locale: Locale, sessionId: string, formData: FormDa
   let outcome;
   try {
     outcome = await attachSurvey(locale, parsed.data.sessionId, parsed.data.templateId);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     back(locale, sessionId, { error: "generic" });
   }
   back(locale, sessionId, outcome.status === "ok" ? { attached: "1" } : { error: outcome.status });
@@ -48,7 +50,8 @@ export async function detach(locale: Locale, sessionId: string): Promise<void> {
   let outcome;
   try {
     outcome = await detachSurvey(locale, parsed.data.sessionId);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     back(locale, sessionId, { error: "generic" });
   }
   back(locale, sessionId, outcome.status === "ok" ? { detached: "1" } : { error: outcome.status });

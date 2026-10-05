@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { savedState, type SavedFormState } from "@/components/admin/saved-form-state";
 import type { Locale } from "@/i18n/routing";
@@ -48,14 +49,17 @@ export async function saveEmailDesign(locale: Locale, previous: State, formData:
   if (subject === "") return { ...withErrors(captured, { subject: "subjectRequired" }), formError: "subjectRequired", saved: false };
 
   let blocks: unknown;
+  let body: string;
   try {
     blocks = JSON.parse(raw);
-  } catch {
-    // The builder cannot produce this; a stale tab or a hand-edited request can.
+    body = blocksToTemplateText(blocks);
+  } catch (e) {
+    unstable_rethrow(e);
+    // The builder cannot produce this; a stale tab or a hand-edited request can — JSON that does not parse, or
+    // parses to something that is not a document.
     return { ...withFormError(captured, "blocksUnreadable"), saved: false };
   }
 
-  const body = blocksToTemplateText(blocks);
   if (body.trim() === "") return { ...withFormError(captured, "designEmpty"), saved: false };
 
   try {
@@ -74,7 +78,8 @@ export async function saveEmailDesign(locale: Locale, previous: State, formData:
     revalidatePath(SCREEN(locale));
     const saved = savedState();
     return { ...saved, values: { ...saved.values, updatedAt: after?.updatedAt ?? "" } };
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { ...withFormError(captured, "failed"), saved: false };
   }
 }

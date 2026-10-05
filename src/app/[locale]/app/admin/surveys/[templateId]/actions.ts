@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import type { Locale } from "@/i18n/routing";
 import { deleteSurveyTemplate, saveSurveyTemplate, saveTemplateInput, type SaveTemplateOutcome } from "@/lib/dal/surveys";
 
@@ -29,7 +30,8 @@ export async function saveTemplate(locale: Locale, input: unknown): Promise<Save
   }
   try {
     return await saveSurveyTemplate(locale, parsed.data);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { status: "generic" };
   }
 }
@@ -38,7 +40,8 @@ export async function removeTemplate(locale: Locale, templateId: string): Promis
   try {
     await deleteSurveyTemplate(locale, templateId);
     return { status: "ok" };
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { status: "generic" };
   }
 }

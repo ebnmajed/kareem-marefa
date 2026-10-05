@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { createComment, createCommentInput, deleteOwnComment, moderateComment, removeCommentAsStaff, searchMentionCandidates, updateComment, updateCommentInput, type RemoveCommentOutcome } from "@/lib/dal/comments";
 import { toggleReaction } from "@/lib/dal/reactions";
 import { reportComment, reportCommentInput } from "@/lib/dal/reports";
@@ -51,6 +52,7 @@ export async function postCommentAction(locale: string, sessionId: string, paren
     await createComment(locale, parsed.data);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: toErrorKey(e) };
   }
 }
@@ -62,6 +64,7 @@ export async function editCommentAction(locale: string, commentId: string, body:
     await updateComment(locale, parsed.data);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: toErrorKey(e) };
   }
 }
@@ -72,6 +75,7 @@ export async function deleteMyCommentAction(locale: string, commentId: string): 
     await deleteOwnComment(locale, commentId);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: toErrorKey(e) };
   }
 }
@@ -82,6 +86,7 @@ export async function moderateCommentAction(locale: string, commentId: string, a
     await moderateComment(locale, commentId, action);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: toErrorKey(e) };
   }
 }
@@ -91,7 +96,8 @@ export async function moderateCommentAction(locale: string, commentId: string, a
 export async function removeCommentAction(locale: string, commentId: string, reason: string): Promise<{ outcome: RemoveCommentOutcome }> {
   try {
     return { outcome: await removeCommentAsStaff(locale, { commentId, reason }) };
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { outcome: "unknown" };
   }
 }
@@ -101,6 +107,7 @@ export async function toggleReactionAction(locale: string, commentId: string, ki
     await toggleReaction(locale, { commentId }, kind);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: toErrorKey(e) };
   }
 }
@@ -112,6 +119,7 @@ export async function reportCommentAction(locale: string, commentId: string, rea
     await reportComment(locale, parsed.data);
     return { error: null };
   } catch (e) {
+    unstable_rethrow(e);
     return { error: toErrorKey(e) };
   }
 }

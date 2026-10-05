@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { parseDuration } from "@/components/admin/duration";
@@ -30,7 +31,8 @@ export async function saveReminderSchedule(locale: Locale, previous: RemindersSt
   let before: z.infer<typeof opened>;
   try {
     before = opened.parse(JSON.parse(was(captured, "opened")));
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return failed("failed");
   }
 
@@ -64,6 +66,7 @@ export async function saveReminderSchedule(locale: Locale, previous: RemindersSt
     revalidatePath(`/${locale}/app/admin/reminders`);
     return { ...emptyFormState<string>(), receipt };
   } catch (error) {
+    unstable_rethrow(error);
     return failed(error instanceof Error && error.message === "stale" ? "stale" : "failed");
   }
 }

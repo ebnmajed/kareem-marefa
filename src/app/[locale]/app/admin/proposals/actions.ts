@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { redirect } from "@/i18n/navigation";
@@ -68,6 +69,7 @@ export async function decideProposal(locale: Locale, _prev: ReviewState, formDat
   try {
     await reviewProposal(locale, parsed.data.proposalId, parsed.data.action, parsed.data.reason);
   } catch (e) {
+    unstable_rethrow(e);
     const message = e instanceof Error ? e.message : "";
     return { error: message.includes("reason_required") ? "reasonRequired" : "failed", done: false, reason: typed };
   }

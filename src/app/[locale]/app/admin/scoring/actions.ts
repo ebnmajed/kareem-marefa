@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { parseDuration } from "@/components/admin/duration";
@@ -37,7 +38,8 @@ export async function saveCatalogue(locale: Locale, previous: CatalogueState, fo
   let before: z.infer<typeof opened>;
   try {
     before = opened.parse(JSON.parse(String(formData.get("opened") ?? "")));
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { ...withFormError(emptyFormState<string>(), "failed"), receipt: null };
   }
   const fields = [
@@ -104,6 +106,7 @@ export async function saveCatalogue(locale: Locale, previous: CatalogueState, fo
     revalidatePath(SCREEN(locale));
     return { ...emptyFormState<string>(), receipt };
   } catch (error) {
+    unstable_rethrow(error);
     const message = error instanceof Error ? error.message : "";
     const sign = message.match(/^sign_mismatch:(.+)$/);
     if (sign) {
@@ -139,6 +142,7 @@ export async function saveManualAdjustment(locale: Locale, previous: SavedFormSt
   try {
     await submitManualAdjustment(locale, parsed.data);
   } catch (error) {
+    unstable_rethrow(error);
     const message = error instanceof Error ? error.message : "";
     if (message === "member_not_found") return { ...withErrors(captured, { memberId: "memberNotFound" }), saved: false };
     if (message === "reason_required") return { ...withErrors(captured, { reason: "reasonRequired" }), saved: false };

@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { savedState, type SavedFormState } from "@/components/admin/saved-form-state";
@@ -57,7 +58,8 @@ export async function saveRecognitionEdit(locale: Locale, previous: RecognitionS
   let opened: RecognitionOpened;
   try {
     opened = openedShape.parse(JSON.parse(String(formData.get("opened") ?? "")));
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { ...withFormError(emptyFormState<string>(), "failed"), receipt: null };
   }
   const fields = [
@@ -111,6 +113,7 @@ export async function saveRecognitionEdit(locale: Locale, previous: RecognitionS
     revalidatePath(SCREEN(locale));
     return { ...emptyFormState<string>(), receipt };
   } catch (error) {
+    unstable_rethrow(error);
     const r = refusal(error instanceof Error ? error.message : "");
     if (typeof r === "string") return { ...withFormError(captured, r), receipt: null };
     return { ...withErrors(captured, { [r.field]: r.key }), receipt: null };
@@ -178,6 +181,7 @@ export async function saveBadgeSheet(locale: Locale, previous: RecognitionState,
     revalidatePath(SCREEN(locale));
     return { ...emptyFormState<string>(), receipt };
   } catch (error) {
+    unstable_rethrow(error);
     const message = error instanceof Error ? error.message : "";
     return { ...withFormError(captured, message.startsWith("stale") ? "stale" : "failed"), receipt: null };
   }
@@ -228,6 +232,7 @@ export async function awardBadge(locale: Locale, previous: SavedFormState, formD
       return { ...refused, values: { ...refused.values, alreadyHeldSince, alreadyHeldBadge: alreadyHeldBadge ?? "" }, saved: false };
     }
   } catch (error) {
+    unstable_rethrow(error);
     const message = error instanceof Error ? error.message : "";
     if (message === "reason_required") return { ...withErrors(captured, { reason: "reasonRequired" }), saved: false };
     return { ...withFormError(captured, message === "not_found" ? "notFound" : "failed"), saved: false };

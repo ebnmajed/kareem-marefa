@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Locale } from "@/i18n/routing";
@@ -31,7 +32,8 @@ export async function saveSettings(locale: Locale, previous: SettingsState, form
   let view: OrgSettingsView;
   try {
     view = opened.parse(JSON.parse(was(captured, "opened"))).view as unknown as OrgSettingsView;
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return failed("failed");
   }
 

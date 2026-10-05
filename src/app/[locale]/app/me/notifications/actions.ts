@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import type { Locale } from "@/i18n/routing";
 import { markAllRead, openNotification } from "@/lib/dal/notifications";
 
@@ -20,7 +20,8 @@ export async function markAllNotificationsRead(locale: Locale) {
   // ★ wave 20 (N14): a failure says so on the inbox rather than throwing to the boundary.
   try {
     await markAllRead(locale);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     redirect(`${screen(locale)}?error=inbox`);
   }
   redirect(screen(locale));
@@ -32,7 +33,8 @@ export async function openNotificationAction(locale: Locale, formData: FormData)
   let sessionId: string | null = null;
   try {
     ({ sessionId } = await openNotification(locale, formData.get("id")?.toString() ?? ""));
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     redirect(`${screen(locale)}?error=inbox`);
   }
   redirect(sessionId ? `/${locale}/app/sessions/${sessionId}` : screen(locale));

@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { SettingsSwitchState } from "@/components/ui";
@@ -56,7 +57,8 @@ export async function saveVisibility(locale: Locale, previous: SettingsSwitchSta
   const visible = z.boolean().parse(formData.get("enabled") === "on");
   try {
     await setLeaderboardOptOut(locale, !visible);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { checked: previous.checked, failed: true };
   }
   revalidatePath(screen(locale));

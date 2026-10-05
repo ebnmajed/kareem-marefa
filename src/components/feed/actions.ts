@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { toggleReaction } from "@/lib/dal/reactions";
 
@@ -15,7 +16,8 @@ export async function toggleSessionLike(locale: string, sessionId: string): Prom
   try {
     const result = await toggleReaction(parsed.data.locale, { sessionId: parsed.data.sessionId }, "like");
     return { ok: true, liked: result === "added" };
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { ok: false };
   }
 }

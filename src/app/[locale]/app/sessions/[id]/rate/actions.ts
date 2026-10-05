@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { redirect } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { getRatingEligibility, submitRating, submitRatingInput, updateRating, updateRatingInput } from "@/lib/dal/ratings";
@@ -146,7 +147,8 @@ async function sendSurvey(locale: Locale, sessionId: string, survey: SurveyFormS
   let outcome;
   try {
     outcome = await submitSurveyResponse(locale, sessionId, captured.answers);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     // The DAL already reduced this to a key; nothing about the answers travels.
     return withFormError(captured.state, surveyKey("survey_not_sent"));
   }
@@ -187,7 +189,7 @@ export async function submitRatingAction(
 ): Promise<RateFormState> {
   const captured = capture(prev, formData, survey);
   const { state, errors, sessionStars, presenterStars, comment } = captured;
-  const { rating: ratingErrors, survey: surveyErrors, ratingFailed, surveyFailed } = split(errors);
+  const { survey: surveyErrors, ratingFailed, surveyFailed } = split(errors);
 
   // 1. The rating's own validation. Unchanged, and it still writes nothing —
   //    the survey's failures are shown beside it rather than hidden.
@@ -200,6 +202,7 @@ export async function submitRatingAction(
   try {
     await submitRating(locale, parsed.data);
   } catch (e) {
+    unstable_rethrow(e);
     // ★ With a survey on the screen, a rating that is already there is not a
     // refusal: the member pressed one button for two things and the first was
     // already done — the second press sends the survey alone (`DEC-164`).
@@ -216,7 +219,8 @@ export async function submitRatingAction(
       if (existing && ratingChanged(existing, { sessionStars, presenterStars, comment })) {
         await updateRating(locale, { ratingId: existing.id, sessionStars, presenterStars, comment });
       }
-    } catch {
+    } catch (e) {
+      unstable_rethrow(e);
       // the rating stands as first written; the survey continues
     }
   }
@@ -248,6 +252,7 @@ export async function updateRatingAction(
   try {
     await updateRating(locale, parsed.data);
   } catch (e) {
+    unstable_rethrow(e);
     return refusal(state, e);
   }
   // The same split on the edit path: the rating's update stands and the survey

@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { Locale } from "@/i18n/routing";
 import { interestsInput, profileInput, setMyInterests, updateMyProfile } from "@/lib/dal/members";
@@ -57,7 +58,8 @@ export async function saveProfile(locale: Locale, prev: ProfileState, formData: 
   try {
     await updateMyProfile(locale, parsed.data);
     await setMyInterests(locale, interests.data);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { ...withFormError(state, "failed"), saved: false };
   }
 

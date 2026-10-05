@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getTranslations } from "next-intl/server";
@@ -69,7 +70,8 @@ function parseDays(raw: string): DayPayload[] | null | undefined {
   try {
     const parsed = z.array(dayPayload).min(1).max(30).safeParse(JSON.parse(raw));
     return parsed.success ? parsed.data : null;
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return null;
   }
 }
@@ -221,7 +223,8 @@ export async function saveSchedule(
 
   try {
     await scheduleSession(locale, sessionId, parsed.data);
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { ...withFormError(state, "failed"), saved: false, published: false };
   }
   revalidatePath(`/${locale}/app/admin/sessions/${sessionId}/schedule`);
@@ -232,7 +235,8 @@ export async function saveSchedule(
   if (intent === "publish") {
     try {
       await publishSession(locale, sessionId);
-    } catch {
+    } catch (e) {
+      unstable_rethrow(e);
       // The schedule IS saved; only the publish was refused — publish_session()
       // names the gap, and the page lists it.
       return { ...withFormError(state, "publishFailed"), saved: true, published: false };
@@ -263,7 +267,8 @@ export async function addPresenter(locale: Locale, sessionId: string, _prev: Add
   try {
     const result = await addSessionPresenter(locale, sessionId, memberId.data);
     if (!result.ok) return { status: "refused", error: result.error, memberId: memberId.data };
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { status: "refused", error: "failed", memberId: memberId.data };
   }
   revalidatePresenters(locale, sessionId);
@@ -280,7 +285,8 @@ export async function removePresenter(locale: Locale, sessionId: string, memberI
   try {
     const result = await removeSessionPresenter(locale, sessionId, memberId);
     if (!result.ok) return { error: t.has(result.error) ? t(result.error) : t("failed") };
-  } catch {
+  } catch (e) {
+    unstable_rethrow(e);
     return { error: t("failed") };
   }
   revalidatePresenters(locale, sessionId);
